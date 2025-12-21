@@ -28,7 +28,7 @@ if (SENTRY_DSN) {
         // Block all media elements
         blockAllMedia: true,
         // Sampling options
-        networkDetailAllowUrls: [window.location.origin],
+        networkDetailAllowUrls: typeof window !== 'undefined' ? [window.location.origin] : [],
       }),
     ],
 

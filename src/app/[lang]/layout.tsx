@@ -55,7 +55,7 @@ export default async function LocaleLayout({
   params: Promise<{ lang: Locale }>;
 }) {
   const { lang } = await params;
-  const config = localeConfig[lang];
+  const config = localeConfig[lang] || localeConfig['en'];
   const isRTL = config.dir === 'rtl';
 
   return (

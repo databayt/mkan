@@ -1,127 +1,183 @@
-import { getDictionary } from '@/components/internationalization/dictionaries';
-import type { Locale } from '@/components/internationalization/config';
-import Link from 'next/link';
+"use client";
 
-export default async function HomePage({
-  params,
-}: {
-  params: Promise<{ lang: Locale }>;
-}) {
-  const { lang } = await params;
-  const dictionary = await getDictionary(lang);
+import { useEffect, useState, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import HeroSection from "@/components/site/HeroSection";
+import { PropertyContent } from "@/components/site/property/content";
+import PropertyFilter from "@/components/site/property-filter";
+import { Listing } from "@/types/listing";
+import AirbnbInspiration from "@/components/site/airbnb-inspiration";
+
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  'Islands': ['island', 'private island', 'tropical', 'paradise', 'exotic'],
+  'Mension': ['mansion', 'luxury', 'estate', 'villa', 'palace'],
+  'Beach': ['beach', 'beachfront', 'ocean', 'coastal', 'seaside', 'waterfront'],
+  'Boat': ['boat', 'yacht', 'houseboat', 'marine', 'sailing', 'nautical'],
+  'Containers': ['container', 'modern', 'industrial', 'minimalist', 'shipping container'],
+  'New': ['new', 'recent', 'latest', 'brand new', 'just added'],
+  'Beauty Pools': ['pool', 'swimming pool', 'infinity pool', 'poolside', 'private pool'],
+  'Group': ['group', 'large', 'family', 'multiple bedrooms', 'sleeps 8+', 'spacious'],
+  'layer1': ['featured', 'popular', 'trending', 'top rated', 'best seller'],
+  'Calque 2': ['unique', 'special', 'unusual', 'extraordinary', 'one of a kind'],
+  'Windmill': ['windmill', 'rural', 'countryside', 'farm', 'rustic']
+};
+
+function HomeContent() {
+  const searchParams = useSearchParams();
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [filteredListings, setFilteredListings] = useState<Listing[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  const scrollToResults = () => {
+    if (resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const filterListingsBySearch = ({
+    location,
+    guests,
+    category
+  }: {
+    location?: string | null;
+    guests?: string | null;
+    category?: string | null;
+  }) => {
+    let filtered = [...listings];
+
+    if (location) {
+      const locationLower = location.toLowerCase();
+      filtered = filtered.filter(listing =>
+        listing.title?.toLowerCase().includes(locationLower) ||
+        listing.location?.city?.toLowerCase().includes(locationLower) ||
+        listing.location?.country?.toLowerCase().includes(locationLower)
+      );
+    }
+
+    if (category && CATEGORY_KEYWORDS[category]) {
+      const keywords = CATEGORY_KEYWORDS[category];
+      filtered = filtered.filter(listing => {
+        const searchText = `${listing.title} ${listing.description} ${listing.propertyType}`.toLowerCase();
+        return keywords.some(keyword => searchText.includes(keyword.toLowerCase()));
+      });
+    }
+
+    if (guests) {
+      const guestCount = parseInt(guests, 10);
+      if (!isNaN(guestCount)) {
+        filtered = filtered.filter(listing =>
+          (listing.maxGuests || 0) >= guestCount
+        );
+      }
+    }
+
+    setFilteredListings(filtered);
+  };
+
+  useEffect(() => {
+    const fetchListings = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch('/api/listings/published');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch listings: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid data format');
+        }
+
+        setListings(data);
+        setFilteredListings(data);
+      } catch (error) {
+        console.error("Error fetching listings:", error);
+        setError(error instanceof Error ? error.message : 'Failed to load listings');
+        setListings([]);
+        setFilteredListings([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchListings();
+  }, []);
+
+  useEffect(() => {
+    if (listings.length === 0) return;
+
+    const location = searchParams.get('location');
+    const guests = searchParams.get('guests');
+    const category = searchParams.get('category');
+
+    if (category) {
+      setSelectedCategory(category);
+    }
+
+    if (location || guests || category) {
+      filterListingsBySearch({ location, guests, category });
+      if (location || guests || category) {
+        setTimeout(() => scrollToResults(), 300);
+      }
+    } else {
+      setFilteredListings(listings);
+    }
+  }, [searchParams, listings]);
+
+  const handleCategorySelect = (category: string) => {
+    setSelectedCategory(category);
+
+    if (category) {
+      filterListingsBySearch({ category });
+    } else {
+      setFilteredListings(listings);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
-      {/* Hero Section */}
-      <section className="relative px-6 lg:px-8 pt-20 pb-16">
-        <div className="mx-auto max-w-7xl">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-              {dictionary.rental.hero.title}
-            </h1>
-            <p className="mt-6 text-lg leading-8 text-gray-600 max-w-2xl mx-auto">
-              {dictionary.rental.hero.subtitle}
-            </p>
+    <div className="min-h-screen">
+      <HeroSection onSearch={scrollToResults} />
 
-            {/* Search Bar */}
-            <div className="mt-10 max-w-2xl mx-auto">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder={dictionary.rental.hero.searchPlaceholder}
-                  className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
-                />
-                <button className="rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500">
-                  {dictionary.rental.hero.searchButton}
-                </button>
-              </div>
-            </div>
+      <div className="sticky top-0 z-40 bg-white border-b">
+        <PropertyFilter
+          onCategorySelect={handleCategorySelect}
+          selectedCategory={selectedCategory}
+        />
+      </div>
+
+      <div ref={resultsRef} className="layout-container py-8">
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
           </div>
-        </div>
-      </section>
-
-      {/* Property Types */}
-      <section className="px-6 lg:px-8 py-16">
-        <div className="mx-auto max-w-7xl">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8">
-            {dictionary.rental.property.filters.propertyType}
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {Object.entries(dictionary.rental.property.types).map(([key, value]) => (
-              <div
-                key={key}
-                className="rounded-lg border border-gray-200 p-4 text-center hover:shadow-lg transition-shadow cursor-pointer"
-              >
-                <div className="text-sm font-medium text-gray-900">{value}</div>
-              </div>
-            ))}
+        ) : error ? (
+          <div className="text-center py-20">
+            <p className="text-red-500">{error}</p>
           </div>
-        </div>
-      </section>
+        ) : (
+          <PropertyContent properties={filteredListings} />
+        )}
+      </div>
 
-      {/* Sample Properties */}
-      <section className="px-6 lg:px-8 py-16 bg-gray-50">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {dictionary.rental.property.filters.allProperties}
-            </h2>
-            <Link
-              href={`/${lang}/listings`}
-              className="text-sm font-medium text-blue-600 hover:text-blue-500"
-            >
-              {dictionary.common.next} →
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Sample Property Cards */}
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="rounded-lg border border-gray-200 overflow-hidden bg-white">
-                <div className="h-48 bg-gray-300"></div>
-                <div className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">
-                        {dictionary.rental.property.types.Apartment} #{i}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        2 {dictionary.rental.property.card.beds} • 1 {dictionary.rental.property.card.baths}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900">
-                        $1,500{dictionary.rental.property.card.perMonth}
-                      </p>
-                    </div>
-                  </div>
-                  <button className="w-full mt-4 rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white hover:bg-gray-700">
-                    {dictionary.rental.property.card.viewDetails}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="px-6 lg:px-8 py-16">
-        <div className="mx-auto max-w-7xl text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            {dictionary.rental.hosting.title}
-          </h2>
-          <p className="text-lg text-gray-600 mb-8">
-            {dictionary.rental.hosting.subtitle}
-          </p>
-          <Link
-            href={`/${lang}/host`}
-            className="rounded-md bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 inline-block"
-          >
-            {dictionary.common.next} →
-          </Link>
-        </div>
-      </section>
+      <AirbnbInspiration />
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }

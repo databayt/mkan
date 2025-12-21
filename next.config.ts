@@ -94,12 +94,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  eslint: {
-    // TODO: Fix ESLint errors before production deployment
-    // Currently allowing builds with errors for development
-    ignoreDuringBuilds: true,
-    dirs: ['src', 'app', 'components', 'lib'],
-  },
   typescript: {
     // TODO: Fix TypeScript errors before production deployment
     // Currently allowing builds with errors for development

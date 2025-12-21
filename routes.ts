@@ -5,7 +5,17 @@
  */
 export const publicRoutes = [
   "/",
+  "/en",
+  "/ar",
+  "/en/listings",
+  "/ar/listings",
+  "/en/search",
+  "/ar/search",
+  "/en/help",
+  "/ar/help",
   "/new-verification",
+  "/en/new-verification",
+  "/ar/new-verification",
   "/admin",
   "/client",
   "/server",
@@ -21,11 +31,25 @@ export const publicRoutes = [
 export const authRoutes = [
   "/login",
   "/join",
-  "/register", 
+  "/register",
   "/error",
   "/reset",
   "/new-password",
-  "/new-verification"
+  "/new-verification",
+  "/en/login",
+  "/ar/login",
+  "/en/join",
+  "/ar/join",
+  "/en/register",
+  "/ar/register",
+  "/en/error",
+  "/ar/error",
+  "/en/reset",
+  "/ar/reset",
+  "/en/new-password",
+  "/ar/new-password",
+  "/en/new-verification",
+  "/ar/new-verification"
 ];
 
 /**

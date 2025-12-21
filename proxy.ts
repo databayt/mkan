@@ -4,12 +4,10 @@ import { auth } from '@/auth';
 import { localizationMiddleware } from '@/components/internationalization/middleware';
 import { i18n } from '@/components/internationalization/config';
 import { rateLimitWithFallback, rateLimitResponse } from '@/lib/rate-limit';
-import crypto from 'crypto';
 
 const isProduction = process.env.NODE_ENV === 'production';
-const isDevelopment = process.env.NODE_ENV === 'development';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Apply localization middleware first for non-API and non-static routes
@@ -31,7 +29,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next();
-  
+
   // Security headers for all environments
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
@@ -71,20 +69,20 @@ export async function middleware(request: NextRequest) {
     response.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
     response.headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
   }
-  
+
   // Enhanced rate limiting for API routes
   if (request.nextUrl.pathname.startsWith('/api/')) {
     // Determine rate limit tier based on endpoint
     let limiterType: 'api' | 'auth' | 'upload' | 'search' | 'payment' = 'api';
 
-    const pathname = request.nextUrl.pathname;
-    if (pathname.includes('/auth/') || pathname.includes('/login') || pathname.includes('/register')) {
+    const apiPath = request.nextUrl.pathname;
+    if (apiPath.includes('/auth/') || apiPath.includes('/login') || apiPath.includes('/register')) {
       limiterType = 'auth';
-    } else if (pathname.includes('/upload')) {
+    } else if (apiPath.includes('/upload')) {
       limiterType = 'upload';
-    } else if (pathname.includes('/search')) {
+    } else if (apiPath.includes('/search')) {
       limiterType = 'search';
-    } else if (pathname.includes('/payment') || pathname.includes('/stripe')) {
+    } else if (apiPath.includes('/payment') || apiPath.includes('/stripe')) {
       limiterType = 'payment';
     }
 
@@ -121,7 +119,7 @@ export async function middleware(request: NextRequest) {
       }
     }
   }
-  
+
   // Protected routes check (with locale support)
   const protectedPaths = [
     '/dashboard',
@@ -140,10 +138,10 @@ export async function middleware(request: NextRequest) {
   const isProtectedPath = protectedPaths.some(path =>
     pathWithoutLocale.startsWith(path) || pathname.startsWith(path)
   );
-  
+
   if (isProtectedPath) {
     const session = await auth();
-    
+
     if (!session) {
       // Extract locale from pathname if present
       const localeMatch = pathname.match(new RegExp(`^/(${i18n.locales.join('|')})`));
@@ -171,7 +169,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
     }
   }
-  
+
   return response;
 }
 
