@@ -7,6 +7,9 @@ import { PropertyContent } from "@/components/site/property/content";
 import PropertyFilter from "@/components/site/property-filter";
 import { Listing } from "@/types/listing";
 import AirbnbInspiration from "@/components/site/airbnb-inspiration";
+import GiftCard from "@/components/site/airbnb-gift-card";
+import Ask from "@/components/site/airbnb-ask";
+import Footer from "@/components/row/Footer";
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'Islands': ['island', 'private island', 'tropical', 'paradise', 'exotic'],
@@ -166,6 +169,9 @@ function HomeContent() {
       </div>
 
       <AirbnbInspiration />
+      <GiftCard />
+      <Ask />
+      <Footer />
     </div>
   );
 }
