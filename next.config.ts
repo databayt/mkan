@@ -100,7 +100,10 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Webpack configuration
+  // Turbopack configuration (Next.js 16 default)
+  turbopack: {},
+
+  // Webpack configuration (fallback)
   webpack: (config, { isServer }) => {
     // Ignore optional dependencies that might cause issues
     if (!isServer) {
