@@ -1,16 +1,20 @@
 "use client"
 
 import React from 'react'
+import { useRouter } from 'next/navigation'
 import { useAppSelector } from '@/state/redux'
 import { PropertyCard } from './card'
 import { Listing } from '@/types/listing'
 import Link from 'next/link'
+import { useLocale } from '@/components/internationalization/use-locale'
 
 interface PropertyListingsProps {
   properties: Listing[]
 }
 
 export const PropertyListings = ({ properties }: PropertyListingsProps) => {
+  const router = useRouter()
+  const { locale } = useLocale()
   const viewMode = useAppSelector((state) => state.global.viewMode)
   const filters = useAppSelector((state) => state.global.filters)
 
@@ -20,7 +24,7 @@ export const PropertyListings = ({ properties }: PropertyListingsProps) => {
   }
 
   const handleCardClick = (propertyId: string) => {
-    window.location.href = `/listings/${propertyId}`
+    router.push(`/${locale}/listings/${propertyId}`)
   }
 
   if (!properties || properties.length === 0) {
@@ -62,7 +66,7 @@ export const PropertyListings = ({ properties }: PropertyListingsProps) => {
           Properties Available
         </span>
       </h3> */}
-      <Link href='/search' className="text-xl font-bold mb-6 flex items-center gap-1 hover:text-gray-700 transition-colors">
+      <Link href={`/${locale}/search`} className="text-xl font-bold mb-6 flex items-center gap-1 hover:text-gray-700 transition-colors">
         Popular homes in Khartoum
         <svg className="w-3 h-3 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M9 5l7 7-7 7" />

@@ -9,8 +9,10 @@ import AirbnbInspiration from "./airbnb-inspiration";
 import GiftCard from "./airbnb-gift-card";
 import Ask from "./airbnb-ask";
 import { useSite } from "./use-site";
+import { useLocale } from "@/components/internationalization/use-locale";
 
 export function SiteContent() {
+  const { locale } = useLocale();
   const { state, actions, refs, filteredCount, hasActiveFilters } = useSite();
   
   const {
@@ -84,7 +86,7 @@ export function SiteContent() {
         </div>
         
         {filteredCount > 0 && !isLoading && (
-          <Link href='/listings' className='flex my-14'>
+          <Link href={`/${locale}/listings`} className='flex my-14'>
             <Button
               size='lg'
               className='bg-foreground text-background hover:bg-foreground/90 h-12 px-10'>

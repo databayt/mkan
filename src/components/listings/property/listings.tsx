@@ -1,15 +1,19 @@
 "use client"
 
 import React from 'react'
+import { useRouter } from 'next/navigation'
 import { useAppSelector } from '@/state/redux'
 import { PropertyCard } from './card'
 import { Listing } from '@/types/listing'
+import { useLocale } from '@/components/internationalization/use-locale'
 
 interface PropertyListingsProps {
   properties: Listing[]
 }
 
 export const PropertyListings = ({ properties }: PropertyListingsProps) => {
+  const router = useRouter()
+  const { locale } = useLocale()
   const viewMode = useAppSelector((state) => state.global.viewMode)
   const filters = useAppSelector((state) => state.global.filters)
 
@@ -19,7 +23,7 @@ export const PropertyListings = ({ properties }: PropertyListingsProps) => {
   }
 
   const handleCardClick = (propertyId: string) => {
-    window.location.href = `/listings/${propertyId}`
+    router.push(`/${locale}/listings/${propertyId}`)
   }
 
   if (!properties || properties.length === 0) {
