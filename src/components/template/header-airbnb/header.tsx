@@ -29,7 +29,7 @@ const SiteHeader = () => {
 
   const isDashboardPage =
     pathname.includes("/managers") || pathname.includes("/tenants");
-  const isLandingPage = pathname === "/";
+  const isLandingPage = pathname === "/" || pathname === "/en" || pathname === "/ar";
 
   const handleSignOut = async () => {
     await signOut({ 
@@ -69,7 +69,7 @@ const SiteHeader = () => {
                 alt="Mkan Logo"
                 width={20}
                 height={20}
-                className="w-4.5 h-4.5 invert"
+                className={`w-4.5 h-4.5 ${isLandingPage ? "invert" : ""}`}
               />
               <div className={`text-xl font-bold ${
                 isLandingPage ? "text-white" : "text-primary-700"

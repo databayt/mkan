@@ -3,17 +3,12 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ShareIcon, HeartIcon } from "@/components/atom/icons"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import PhotoTour from "@/components/listings/photo-tour"
 
-interface PhotoTourPageProps {
-  params: {
-    id: string;
-  };
-}
-
-export default function PhotoTourPage({ params }: PhotoTourPageProps) {
+export default function PhotoTourPage() {
   const router = useRouter()
+  const params = useParams<{ id: string }>()
   const [isSaved, setIsSaved] = useState(false)
 
   const handleBack = () => {

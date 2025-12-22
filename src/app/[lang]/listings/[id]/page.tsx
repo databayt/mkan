@@ -8,13 +8,15 @@ import MobileReserve from "@/components/listings/mobile-reserve";
 import MobileReviews from "@/components/listings/mobile-reviews";
 
 interface ListingPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+    lang: string;
+  }>;
 }
 
 export default async function ListingPage({ params }: ListingPageProps) {
-  const listingId = parseInt(params.id);
+  const { id } = await params;
+  const listingId = parseInt(id);
 
   if (isNaN(listingId)) {
     notFound();
