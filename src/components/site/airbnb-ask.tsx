@@ -18,7 +18,7 @@ export default function Ask() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col justify-center h-full px-6 sm:px-12 lg:px-16 max-w-7xl mx-auto">
+      <div className="relative z-10 flex flex-col justify-center h-full">
         <div className="max-w-2xl">
           <h1 className="text-[#ffffff] text-5xl font-bold leading-tight mb-8">
             Questions

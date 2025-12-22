@@ -37,11 +37,15 @@ const itemData = [
 
 export default function Footer() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-y-10 px-8 md:px-32 py-14 bg-gray-100 text-gray-600">
-      {itemData.map((item, index) => (
-        <FooterColumn key={index} index={index} data={item} />
-      ))}
-      <p className="text-sm">United States</p>
+    <div className="py-14 bg-gray-100 text-gray-600">
+      <div className="layout-container">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-y-10">
+          {itemData.map((item, index) => (
+            <FooterColumn key={index} index={index} data={item} />
+          ))}
+          <p className="text-sm">United States</p>
+        </div>
+      </div>
     </div>
   );
 }

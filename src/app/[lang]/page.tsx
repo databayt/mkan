@@ -148,10 +148,12 @@ function HomeContent() {
       <HeroSection onSearch={scrollToResults} />
 
       <div className="sticky top-0 z-40 bg-white border-b">
-        <PropertyFilter
-          onCategorySelect={handleCategorySelect}
-          selectedCategory={selectedCategory}
-        />
+        <div className="layout-container">
+          <PropertyFilter
+            onCategorySelect={handleCategorySelect}
+            selectedCategory={selectedCategory}
+          />
+        </div>
       </div>
 
       <div ref={resultsRef} className="layout-container py-8">
@@ -168,9 +170,15 @@ function HomeContent() {
         )}
       </div>
 
-      <AirbnbInspiration />
-      <GiftCard />
-      <Ask />
+      <div className="layout-container py-12">
+        <AirbnbInspiration />
+      </div>
+      <div className="layout-container py-12">
+        <GiftCard />
+      </div>
+      <div className="layout-container py-12">
+        <Ask />
+      </div>
       <Footer />
     </div>
   );

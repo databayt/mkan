@@ -3,8 +3,8 @@ import Image from "next/image"
 
 export default function GiftCard() {
   return (
-    <div className="bg-[#ffffff] min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl w-full flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-16">
+    <div className="bg-[#ffffff] min-h-screen flex items-center justify-center">
+      <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-16">
         {/* Left side - Text content */}
         <div className="flex-1 max-w-md text-center lg:text-left order-2 lg:order-1">
           <h1 className="text-[#000000] text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-6 lg:mb-8">

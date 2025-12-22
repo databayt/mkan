@@ -46,7 +46,7 @@ const PropertyFilter: React.FC<PropertyFilterProps> = ({
   return (
     <div className={`w-full ${className}`}>
       {/* Desktop Layout */}
-      <div className="hidden md:flex items-start justify-between py-1 -mx-6">
+      <div className="hidden md:flex items-start justify-between py-1">
         {AIRBNB_ICONS.map((icon) => (
           <div
             key={icon.filename}
