@@ -38,9 +38,10 @@ const SiteHeader = () => {
     });
   };
 
-  // Filter out login/join items if user is logged in
+  const isAuthenticated = status === "authenticated" && currentUser;
+
+  // Filter out login/join items - they'll be shown separately based on auth state
   const filteredNavItems = ALL_NAVIGATION_ITEMS.filter(item => {
-    if (!currentUser) return true;
     return item.href !== "/login" && item.href !== "/join";
   });
 
@@ -116,7 +117,7 @@ const SiteHeader = () => {
         <nav className="hidden md:flex items-center gap-6">
           {filteredNavItems.map((item, index) => {
             const commonClasses = `text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`;
-            
+
             // If item has href, render as Link
             if (item.href) {
               return (
@@ -125,7 +126,7 @@ const SiteHeader = () => {
                 </Link>
               );
             }
-            
+
             // If no href, render as display text
             return (
               <span key={index} className={commonClasses}>
@@ -133,14 +134,34 @@ const SiteHeader = () => {
               </span>
             );
           })}
-          
-          {currentUser && (
-            <button 
+
+          {/* Auth section - show Login/Join OR Logout based on session */}
+          {status === "loading" ? (
+            <span className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"}`}>
+              ...
+            </span>
+          ) : isAuthenticated ? (
+            <button
               onClick={handleSignOut}
               className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`}
             >
               Logout
             </button>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`}
+              >
+                Login
+              </Link>
+              <Link
+                href="/join"
+                className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`}
+              >
+                Join
+              </Link>
+            </>
           )}
         </nav>
 
