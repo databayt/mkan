@@ -9,31 +9,30 @@ const footerSections = [
     links: [
       { label: "Help Center", href: "/help" },
       { label: "AirCover", href: "/aircover" },
-      { label: "Anti-discrimination", href: "/against-discrimination" },
-      { label: "Disability support", href: "/accessibility" },
       { label: "Cancellation options", href: "/help/cancellation" },
-      { label: "Report neighborhood concern", href: "/neighbors" },
     ],
   },
   {
     title: "Hosting",
     links: [
       { label: "Mkan your home", href: "/host/homes" },
-      { label: "AirCover for Hosts", href: "/aircover-for-hosts" },
       { label: "Hosting resources", href: "/resources" },
       { label: "Community forum", href: "/community" },
-      { label: "Hosting responsibly", href: "/responsible-hosting" },
-      { label: "Mkan-friendly apartments", href: "/airbnb-friendly" },
     ],
   },
   {
-    title: "Mkan",
+    title: "Company",
     links: [
       { label: "Newsroom", href: "/press/news" },
-      { label: "New features", href: "/release" },
       { label: "Careers", href: "/careers" },
       { label: "Investors", href: "/investors" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
       { label: "Gift cards", href: "/giftcards" },
+      { label: "New features", href: "/release" },
       { label: "Emergency stays", href: "/emergency" },
     ],
   },
@@ -44,7 +43,7 @@ export default function Footer() {
     <footer className="bg-gray-100 border-t border-gray-200">
       {/* Main Footer Content */}
       <div className="layout-container py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           {footerSections.map((section) => (
             <div key={section.title}>
               <h3 className="text-sm font-semibold text-gray-900 mb-4">
