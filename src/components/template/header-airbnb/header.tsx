@@ -135,12 +135,8 @@ const SiteHeader = () => {
             );
           })}
 
-          {/* Auth section - show Login/Join OR Logout based on session */}
-          {status === "loading" ? (
-            <span className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"}`}>
-              ...
-            </span>
-          ) : isAuthenticated ? (
+          {/* Auth section - show Login OR Logout based on session */}
+          {status === "loading" ? null : isAuthenticated ? (
             <button
               onClick={handleSignOut}
               className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`}
@@ -148,20 +144,12 @@ const SiteHeader = () => {
               Logout
             </button>
           ) : (
-            <>
-              <Link
-                href="/login"
-                className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`}
-              >
-                Login
-              </Link>
-              <Link
-                href="/join"
-                className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`}
-              >
-                Join
-              </Link>
-            </>
+            <Link
+              href="/login"
+              className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`}
+            >
+              Login
+            </Link>
           )}
         </nav>
 
