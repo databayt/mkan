@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { localizationMiddleware } from '@/components/internationalization/middleware';
-import { i18n } from '@/components/internationalization/config';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
