@@ -1,3 +1,6 @@
+// Prisma Schema - Consolidated
+// Mkan Rental & Transportation Platform
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,12 +10,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================
+// USER & AUTH ENUMS
+// ============================================
+
 enum UserRole {
   ADMIN
   USER
   MANAGER
   TENANT
 }
+
+// ============================================
+// RENTAL PROPERTY ENUMS
+// ============================================
 
 enum Highlight {
   HighSpeedInternetAccess
@@ -70,7 +81,56 @@ enum PaymentStatus {
   Overdue
 }
 
-// NextAuth.js Models
+// ============================================
+// TRANSPORTATION ENUMS
+// ============================================
+
+enum BusAmenity {
+  AirConditioning
+  WiFi
+  USB
+  LegRoom
+  Toilet
+  Refreshments
+  Entertainment
+  Luggage
+  Reclining
+}
+
+enum TransportBookingStatus {
+  Pending
+  Confirmed
+  Cancelled
+  Completed
+  NoShow
+}
+
+enum TransportPaymentStatus {
+  Pending
+  Paid
+  Refunded
+  Failed
+}
+
+enum TransportPaymentMethod {
+  MobileMoney
+  CreditCard
+  DebitCard
+  CashOnArrival
+  BankTransfer
+}
+
+enum SeatStatus {
+  Available
+  Reserved
+  Booked
+  Blocked
+}
+
+// ============================================
+// AUTHENTICATION MODELS (NextAuth.js)
+// ============================================
+
 model User {
   id                    String                 @id @default(cuid())
   username              String?                @unique
@@ -84,8 +144,14 @@ model User {
   twoFactorConfirmation TwoFactorConfirmation?
   accounts              Account[]
   sessions              Session[]
+
+  // Rental relations
   managedListings       Listing[]
   tenantProfile         Tenant?
+
+  // Transport relations
+  transportOffices      TransportOffice[]
+  transportBookings     TransportBooking[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -158,6 +224,10 @@ model TwoFactorConfirmation {
   @@unique([userId])
 }
 
+// ============================================
+// RENTAL PROPERTY MODELS
+// ============================================
+
 model Listing {
   id                Int          @id @default(autoincrement())
   title             String?
@@ -193,10 +263,10 @@ model Listing {
 }
 
 model Tenant {
-  id       Int    @id @default(autoincrement())
-  userId   String @unique
-  name     String
-  email    String
+  id          Int    @id @default(autoincrement())
+  userId      String @unique
+  name        String
+  email       String
   phoneNumber String
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -232,16 +302,16 @@ model Application {
   leaseId         Int?              @unique
 
   listing Listing @relation(fields: [propertyId], references: [id])
-  tenant   Tenant   @relation(fields: [tenantId], references: [userId])
-  lease    Lease?   @relation(fields: [leaseId], references: [id])
+  tenant  Tenant  @relation(fields: [tenantId], references: [userId])
+  lease   Lease?  @relation(fields: [leaseId], references: [id])
 }
 
 model Lease {
-  id       Int      @id @default(autoincrement())
-  startDate DateTime
-  endDate   DateTime
-  rent      Float
-  deposit   Float
+  id         Int      @id @default(autoincrement())
+  startDate  DateTime
+  endDate    DateTime
+  rent       Float
+  deposit    Float
   propertyId Int
   tenantId   String
 
@@ -261,4 +331,197 @@ model Payment {
   leaseId       Int
 
   lease Lease @relation(fields: [leaseId], references: [id])
+}
+
+// ============================================
+// TRANSPORTATION MODELS
+// ============================================
+
+model AssemblyPoint {
+  id        Int      @id @default(autoincrement())
+  name      String
+  nameAr    String?
+  address   String
+  city      String
+  latitude  Float
+  longitude Float
+  isActive  Boolean  @default(true)
+
+  offices           TransportOffice[]
+  routeOrigins      Route[]           @relation("RouteOrigin")
+  routeDestinations Route[]           @relation("RouteDestination")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TransportOffice {
+  id            Int     @id @default(autoincrement())
+  name          String
+  nameAr        String?
+  description   String?
+  descriptionAr String?
+  logoUrl       String?
+  phone         String
+  email         String
+  licenseNumber String?
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+
+  assemblyPointId Int
+  assemblyPoint   AssemblyPoint @relation(fields: [assemblyPointId], references: [id])
+
+  isVerified  Boolean @default(false)
+  isActive    Boolean @default(true)
+  rating      Float?  @default(0)
+  reviewCount Int     @default(0)
+
+  buses    Bus[]
+  routes   Route[]
+  bookings TransportBooking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Bus {
+  id           Int          @id @default(autoincrement())
+  plateNumber  String       @unique
+  model        String?
+  manufacturer String?
+  year         Int?
+  capacity     Int
+  photoUrls    String[]     @default([])
+  amenities    BusAmenity[] @default([])
+  seatLayout   Json?
+
+  officeId Int
+  office   TransportOffice @relation(fields: [officeId], references: [id])
+
+  isActive Boolean @default(true)
+  trips    Trip[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Route {
+  id Int @id @default(autoincrement())
+
+  officeId Int
+  office   TransportOffice @relation(fields: [officeId], references: [id])
+
+  originId Int
+  origin   AssemblyPoint @relation("RouteOrigin", fields: [originId], references: [id])
+
+  destinationId Int
+  destination   AssemblyPoint @relation("RouteDestination", fields: [destinationId], references: [id])
+
+  basePrice Float
+  duration  Int
+  distance  Float?
+  isActive  Boolean @default(true)
+
+  trips Trip[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([officeId, originId, destinationId])
+}
+
+model Trip {
+  id Int @id @default(autoincrement())
+
+  routeId Int
+  route   Route @relation(fields: [routeId], references: [id])
+
+  busId Int
+  bus   Bus @relation(fields: [busId], references: [id])
+
+  departureDate  DateTime
+  departureTime  String
+  arrivalTime    String?
+  price          Float
+  availableSeats Int
+
+  isActive    Boolean @default(true)
+  isCancelled Boolean @default(false)
+
+  seats    Seat[]
+  bookings TransportBooking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([departureDate])
+  @@index([routeId, departureDate])
+}
+
+model Seat {
+  id Int @id @default(autoincrement())
+
+  tripId Int
+  trip   Trip @relation(fields: [tripId], references: [id])
+
+  seatNumber String
+  row        Int
+  column     Int
+  seatType   String?
+  status     SeatStatus @default(Available)
+
+  bookingId Int?
+  booking   TransportBooking? @relation(fields: [bookingId], references: [id])
+
+  @@unique([tripId, seatNumber])
+}
+
+model TransportBooking {
+  id               Int    @id @default(autoincrement())
+  bookingReference String @unique @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  tripId Int
+  trip   Trip @relation(fields: [tripId], references: [id])
+
+  officeId Int
+  office   TransportOffice @relation(fields: [officeId], references: [id])
+
+  passengerName  String
+  passengerPhone String
+  passengerEmail String?
+  totalAmount    Float
+  status         TransportBookingStatus @default(Pending)
+
+  qrCode    String?
+  ticketUrl String?
+
+  seats    Seat[]
+  payments TransportPayment[]
+
+  bookedAt    DateTime  @default(now())
+  confirmedAt DateTime?
+  cancelledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TransportPayment {
+  id Int @id @default(autoincrement())
+
+  bookingId Int
+  booking   TransportBooking @relation(fields: [bookingId], references: [id])
+
+  amount        Float
+  method        TransportPaymentMethod
+  status        TransportPaymentStatus @default(Pending)
+  transactionId String?
+  paidAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

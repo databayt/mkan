@@ -20,6 +20,8 @@ import { SidebarTrigger } from "../../ui/sidebar";
 import { NAVIGATION_LINKS, DISPLAY_ITEMS, AUTH_LINKS, ALL_NAVIGATION_ITEMS } from "./constant";
 import { useCurrentUser } from "../../auth/use-current-user";
 import MobileNav from "./mobile-nav";
+import { CategorySwitcher } from "./category-switcher";
+import { BecomeHostMenu } from "./become-host-menu";
 
 const SiteHeader = () => {
   const { data: session, status } = useSession();
@@ -28,7 +30,7 @@ const SiteHeader = () => {
   const pathname = usePathname();
 
   const isDashboardPage =
-    pathname.includes("/managers") || pathname.includes("/tenants");
+    pathname.includes("/managers") || pathname.includes("/tenants") || pathname.includes("/offices");
   const isLandingPage = pathname === "/" || pathname === "/en" || pathname === "/ar";
 
   const handleSignOut = async () => {
@@ -40,9 +42,9 @@ const SiteHeader = () => {
 
   const isAuthenticated = status === "authenticated" && currentUser;
 
-  // Filter out login/join items - they'll be shown separately based on auth state
+  // Filter out login/join and host items - they'll be shown separately based on auth state
   const filteredNavItems = ALL_NAVIGATION_ITEMS.filter(item => {
-    return item.href !== "/login" && item.href !== "/join";
+    return item.href !== "/login" && item.href !== "/join" && item.href !== "/host";
   });
 
   return (
@@ -113,8 +115,18 @@ const SiteHeader = () => {
           )}
         </div>
 
+        {/* Category Switcher - Only visible on non-dashboard pages */}
+        {!isDashboardPage && (
+          <div className="hidden md:flex">
+            <CategorySwitcher lang={pathname.startsWith('/ar') ? 'ar' : 'en'} />
+          </div>
+        )}
+
         {/* Desktop Navigation Links - Hidden on mobile */}
         <nav className="hidden md:flex items-center gap-6">
+          {/* Become a Host dropdown menu */}
+          <BecomeHostMenu isLandingPage={isLandingPage} />
+
           {filteredNavItems.map((item, index) => {
             const commonClasses = `text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`;
 

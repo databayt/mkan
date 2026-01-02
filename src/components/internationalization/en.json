@@ -1192,5 +1192,154 @@
       "maxLength": "Maximum {max} characters",
       "invalidFormat": "Invalid format"
     }
+  },
+  "transport": {
+    "title": "Transportation",
+    "subtitle": "Book intercity bus tickets",
+    "hero": {
+      "title": "Travel Between Cities in Sudan",
+      "subtitle": "Book your bus tickets online. Choose your seat, pay securely, and receive your e-ticket instantly.",
+      "badge": "Intercity Bus Booking"
+    },
+    "search": {
+      "title": "Find Your Ride",
+      "from": "From",
+      "to": "To",
+      "date": "Travel Date",
+      "search": "Search Trips",
+      "swap": "Swap cities",
+      "noResults": "No trips found",
+      "tripsFound": "{count} trip(s) found"
+    },
+    "booking": {
+      "selectSeats": "Select Your Seats",
+      "seatSelected": "seat selected",
+      "seatsSelected": "seats selected",
+      "maxReached": "Maximum seats reached",
+      "passengerDetails": "Passenger Details",
+      "fullName": "Full Name",
+      "phone": "Phone Number",
+      "email": "Email (optional)",
+      "summary": "Booking Summary",
+      "totalAmount": "Total Amount",
+      "confirmBooking": "Confirm Booking",
+      "proceedPayment": "Proceed to Payment"
+    },
+    "payment": {
+      "title": "Payment",
+      "selectMethod": "Select Payment Method",
+      "methods": {
+        "mobileMoney": "Mobile Money",
+        "creditCard": "Credit/Debit Card",
+        "bankTransfer": "Bank Transfer",
+        "cashOnArrival": "Cash on Arrival"
+      },
+      "mobileNumber": "Mobile Money Number",
+      "cardNumber": "Card Number",
+      "expiry": "Expiry Date",
+      "cvv": "CVV",
+      "bankReference": "Bank Reference",
+      "pay": "Pay Now",
+      "processing": "Processing...",
+      "success": "Payment Successful",
+      "failed": "Payment Failed"
+    },
+    "ticket": {
+      "title": "E-Ticket",
+      "reference": "Booking Reference",
+      "download": "Download PDF",
+      "share": "Share Ticket",
+      "scanQr": "Scan QR code at boarding",
+      "passenger": "Passenger",
+      "phone": "Phone",
+      "seats": "Seats",
+      "departure": "Departure",
+      "arrival": "Arrival",
+      "duration": "Duration",
+      "status": "Status",
+      "total": "Total Amount"
+    },
+    "trip": {
+      "selectSeats": "Select Seats",
+      "seatsAvailable": "seats available",
+      "duration": "Duration",
+      "perSeat": "per seat"
+    },
+    "office": {
+      "title": "Transport Office",
+      "buses": "Buses",
+      "routes": "Routes",
+      "verified": "Verified Office",
+      "rating": "Rating",
+      "assemblyPoint": "Assembly Point"
+    },
+    "seat": {
+      "available": "Available",
+      "selected": "Selected",
+      "booked": "Booked",
+      "blocked": "Not Available"
+    },
+    "status": {
+      "Pending": "Pending",
+      "Confirmed": "Confirmed",
+      "Cancelled": "Cancelled",
+      "Completed": "Completed",
+      "NoShow": "No Show"
+    },
+    "onboarding": {
+      "welcome": "Start Your Transport Office",
+      "subtitle": "Join Mkan to reach more customers and manage your bookings online",
+      "steps": {
+        "officeInfo": "Office Information",
+        "assemblyPoint": "Assembly Point",
+        "buses": "Add Buses",
+        "routes": "Define Routes",
+        "pricing": "Set Pricing",
+        "schedule": "Trip Schedule",
+        "photos": "Photos",
+        "legal": "Legal Documents",
+        "finish": "Review & Publish"
+      }
+    },
+    "dashboard": {
+      "title": "Office Dashboard",
+      "overview": "Overview",
+      "buses": "Manage Buses",
+      "routes": "Manage Routes",
+      "trips": "Trip Schedule",
+      "bookings": "Bookings",
+      "analytics": "Analytics",
+      "settings": "Settings",
+      "stats": {
+        "totalBookings": "Total Bookings",
+        "revenue": "Revenue",
+        "activeBuses": "Active Buses",
+        "activeRoutes": "Active Routes"
+      }
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "step1": {
+        "title": "Search",
+        "description": "Enter your origin, destination, and travel date"
+      },
+      "step2": {
+        "title": "Select",
+        "description": "Choose your preferred bus and select your seats"
+      },
+      "step3": {
+        "title": "Pay",
+        "description": "Pay securely with mobile money, card, or cash on arrival"
+      },
+      "step4": {
+        "title": "Travel",
+        "description": "Show your e-ticket at the assembly point and board"
+      }
+    },
+    "cta": {
+      "hostTitle": "Own a Transport Office?",
+      "hostSubtitle": "Join Mkan to reach more customers and manage your bookings online. Start accepting online reservations today.",
+      "registerOffice": "Register Your Office"
+    }
   }
 }

@@ -17,10 +17,17 @@ import {
   Menu,
   Settings,
   X,
+  Bus,
+  Calendar,
+  Ticket,
 } from "lucide-react";
 import { NAVBAR_HEIGHT } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+
+interface AppSidebarProps {
+  userType: "manager" | "tenant" | "office";
+}
 
 const AppSidebar = ({ userType }: AppSidebarProps) => {
   const pathname = usePathname();
@@ -37,8 +44,16 @@ const AppSidebar = ({ userType }: AppSidebarProps) => {
           },
           { icon: Settings, label: "Settings", href: "/managers/settings" },
         ]
+      : userType === "office"
+      ? [
+          { icon: Bus, label: "Dashboard", href: "/offices" },
+          { icon: Ticket, label: "Bookings", href: "/offices/bookings" },
+          { icon: Calendar, label: "Trips", href: "/offices/trips" },
+          { icon: Settings, label: "Settings", href: "/offices/settings" },
+        ]
       : [
           { icon: Heart, label: "Favorites", href: "/tenants/favorites" },
+          { icon: Bus, label: "My Trips", href: "/tenants/trips" },
           {
             icon: FileText,
             label: "Applications",
@@ -69,7 +84,7 @@ const AppSidebar = ({ userType }: AppSidebarProps) => {
               {open ? (
                 <>
                   <h1 className="text-xl font-bold text-gray-800">
-                    {userType === "manager" ? "Manager View" : "Renter View"}
+                    {userType === "manager" ? "Manager View" : userType === "office" ? "Office View" : "Renter View"}
                   </h1>
                   <button
                     className="hover:bg-gray-100 p-2 rounded-md"

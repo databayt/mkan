@@ -1192,5 +1192,154 @@
       "maxLength": "الحد الأقصى {max} أحرف",
       "invalidFormat": "تنسيق غير صالح"
     }
+  },
+  "transport": {
+    "title": "النقل",
+    "subtitle": "احجز تذاكر الباص بين المدن",
+    "hero": {
+      "title": "السفر بين مدن السودان",
+      "subtitle": "احجز تذاكر الباص عبر الإنترنت. اختر مقعدك، ادفع بأمان، واستلم تذكرتك الإلكترونية فوراً.",
+      "badge": "حجز الباصات بين المدن"
+    },
+    "search": {
+      "title": "ابحث عن رحلتك",
+      "from": "من",
+      "to": "إلى",
+      "date": "تاريخ السفر",
+      "search": "البحث عن رحلات",
+      "swap": "تبديل المدن",
+      "noResults": "لا توجد رحلات",
+      "tripsFound": "تم العثور على {count} رحلة"
+    },
+    "booking": {
+      "selectSeats": "اختر مقاعدك",
+      "seatSelected": "مقعد محدد",
+      "seatsSelected": "مقاعد محددة",
+      "maxReached": "تم الوصول للحد الأقصى",
+      "passengerDetails": "بيانات المسافر",
+      "fullName": "الاسم الكامل",
+      "phone": "رقم الهاتف",
+      "email": "البريد الإلكتروني (اختياري)",
+      "summary": "ملخص الحجز",
+      "totalAmount": "المبلغ الإجمالي",
+      "confirmBooking": "تأكيد الحجز",
+      "proceedPayment": "المتابعة للدفع"
+    },
+    "payment": {
+      "title": "الدفع",
+      "selectMethod": "اختر طريقة الدفع",
+      "methods": {
+        "mobileMoney": "الدفع بالموبايل",
+        "creditCard": "بطاقة ائتمان/خصم",
+        "bankTransfer": "تحويل بنكي",
+        "cashOnArrival": "الدفع عند الوصول"
+      },
+      "mobileNumber": "رقم الموبايل",
+      "cardNumber": "رقم البطاقة",
+      "expiry": "تاريخ الانتهاء",
+      "cvv": "رمز الأمان",
+      "bankReference": "رقم المرجع البنكي",
+      "pay": "ادفع الآن",
+      "processing": "جاري المعالجة...",
+      "success": "تم الدفع بنجاح",
+      "failed": "فشل الدفع"
+    },
+    "ticket": {
+      "title": "التذكرة الإلكترونية",
+      "reference": "رقم الحجز",
+      "download": "تحميل PDF",
+      "share": "مشاركة التذكرة",
+      "scanQr": "امسح رمز QR عند الصعود",
+      "passenger": "المسافر",
+      "phone": "الهاتف",
+      "seats": "المقاعد",
+      "departure": "المغادرة",
+      "arrival": "الوصول",
+      "duration": "المدة",
+      "status": "الحالة",
+      "total": "المبلغ الإجمالي"
+    },
+    "trip": {
+      "selectSeats": "اختر المقاعد",
+      "seatsAvailable": "مقاعد متاحة",
+      "duration": "المدة",
+      "perSeat": "للمقعد"
+    },
+    "office": {
+      "title": "مكتب النقل",
+      "buses": "الباصات",
+      "routes": "المسارات",
+      "verified": "مكتب موثق",
+      "rating": "التقييم",
+      "assemblyPoint": "موقف التجمع"
+    },
+    "seat": {
+      "available": "متاح",
+      "selected": "محدد",
+      "booked": "محجوز",
+      "blocked": "غير متاح"
+    },
+    "status": {
+      "Pending": "قيد الانتظار",
+      "Confirmed": "مؤكد",
+      "Cancelled": "ملغي",
+      "Completed": "مكتمل",
+      "NoShow": "لم يحضر"
+    },
+    "onboarding": {
+      "welcome": "ابدأ مكتب النقل الخاص بك",
+      "subtitle": "انضم إلى مكان للوصول إلى المزيد من العملاء وإدارة حجوزاتك عبر الإنترنت",
+      "steps": {
+        "officeInfo": "معلومات المكتب",
+        "assemblyPoint": "موقف التجمع",
+        "buses": "إضافة الباصات",
+        "routes": "تحديد المسارات",
+        "pricing": "تحديد الأسعار",
+        "schedule": "جدول الرحلات",
+        "photos": "الصور",
+        "legal": "المستندات القانونية",
+        "finish": "المراجعة والنشر"
+      }
+    },
+    "dashboard": {
+      "title": "لوحة تحكم المكتب",
+      "overview": "نظرة عامة",
+      "buses": "إدارة الباصات",
+      "routes": "إدارة المسارات",
+      "trips": "جدول الرحلات",
+      "bookings": "الحجوزات",
+      "analytics": "التحليلات",
+      "settings": "الإعدادات",
+      "stats": {
+        "totalBookings": "إجمالي الحجوزات",
+        "revenue": "الإيرادات",
+        "activeBuses": "الباصات النشطة",
+        "activeRoutes": "المسارات النشطة"
+      }
+    },
+    "howItWorks": {
+      "title": "كيف يعمل",
+      "step1": {
+        "title": "ابحث",
+        "description": "أدخل نقطة المغادرة والوجهة وتاريخ السفر"
+      },
+      "step2": {
+        "title": "اختر",
+        "description": "اختر الباص المفضل وحدد مقاعدك"
+      },
+      "step3": {
+        "title": "ادفع",
+        "description": "ادفع بأمان عبر الموبايل أو البطاقة أو نقداً عند الوصول"
+      },
+      "step4": {
+        "title": "سافر",
+        "description": "أظهر تذكرتك الإلكترونية في موقف التجمع واصعد"
+      }
+    },
+    "cta": {
+      "hostTitle": "تمتلك مكتب نقل؟",
+      "hostSubtitle": "انضم إلى مكان للوصول إلى المزيد من العملاء وإدارة حجوزاتك عبر الإنترنت. ابدأ بقبول الحجوزات عبر الإنترنت اليوم.",
+      "registerOffice": "سجل مكتبك"
+    }
   }
 }
