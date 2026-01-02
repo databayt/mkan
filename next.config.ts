@@ -100,8 +100,8 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Disable Turbopack for build (Windows symlink issue)
-  // turbopack: {},
+  // Enable Turbopack for Next.js 16
+  turbopack: {},
 
   // Webpack configuration (fallback)
   webpack: (config, { isServer }) => {
