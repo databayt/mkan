@@ -30,11 +30,25 @@ export const transportOfficeSchema = z.object({
   phone: z.string().min(9, 'Phone number must be at least 9 digits'),
   email: z.string().email('Invalid email address'),
   licenseNumber: z.string().optional(),
-  assemblyPointId: z.number().positive('Please select an assembly point'),
+  assemblyPointId: z.number().positive('Please select an assembly point').optional(),
   logoUrl: z.string().url().optional().or(z.literal('')),
 });
 
 export type TransportOfficeFormData = z.infer<typeof transportOfficeSchema>;
+
+export const transportOfficeDraftSchema = z.object({
+  name: z.string().min(1, 'Office name is required'),
+  nameAr: z.string().optional(),
+  description: z.string().optional(),
+  descriptionAr: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().optional(),
+  licenseNumber: z.string().optional(),
+  assemblyPointId: z.number().positive().optional(),
+  logoUrl: z.string().url().optional().or(z.literal('')),
+});
+
+export type TransportOfficeDraftData = z.infer<typeof transportOfficeDraftSchema>;
 
 // ============================================
 // BUS SCHEMAS

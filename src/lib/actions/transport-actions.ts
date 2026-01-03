@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import type {
   TransportOfficeFormData,
+  TransportOfficeDraftData,
   BusFormData,
   RouteFormData,
   TripFormData,
@@ -42,7 +43,7 @@ export async function getCities() {
 // TRANSPORT OFFICE ACTIONS
 // ============================================
 
-export async function createTransportOffice(data: TransportOfficeFormData) {
+export async function createTransportOffice(data: TransportOfficeDraftData) {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -51,8 +52,17 @@ export async function createTransportOffice(data: TransportOfficeFormData) {
 
   const office = await db.transportOffice.create({
     data: {
-      ...data,
+      name: data.name,
+      nameAr: data.nameAr || null,
+      description: data.description || null,
+      descriptionAr: data.descriptionAr || null,
+      phone: data.phone || '',
+      email: data.email || '',
+      licenseNumber: data.licenseNumber || null,
+      assemblyPointId: data.assemblyPointId || null,
+      logoUrl: data.logoUrl || null,
       ownerId: session.user.id,
+      isActive: false,
     },
   });
 

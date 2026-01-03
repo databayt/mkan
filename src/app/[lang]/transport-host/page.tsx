@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import Loading from '@/components/atom/loading';
-import { getMyTransportOffices, createTransportOffice } from '@/lib/actions/transport-actions';
+import { getMyTransportOffices } from '@/lib/actions/transport-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +32,6 @@ const TransportHostPage = () => {
   const router = useRouter();
   const { session, status } = useAuthRedirect();
   const [offices, setOffices] = useState<TransportOffice[]>([]);
-  const [isCreating, setIsCreating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -55,24 +54,8 @@ const TransportHostPage = () => {
     router.push(`/transport-host/${id}/office-info`);
   };
 
-  const handleCreateNew = async () => {
-    if (isCreating) return;
-
-    setIsCreating(true);
-    try {
-      const newOffice = await createTransportOffice({
-        name: 'New Transport Office',
-        phone: '',
-        email: '',
-      });
-      if (newOffice) {
-        router.push(`/transport-host/${newOffice.id}/office-info`);
-      }
-    } catch (error) {
-      console.error('Error creating office:', error);
-    } finally {
-      setIsCreating(false);
-    }
+  const handleCreateNew = () => {
+    router.push('/transport-host/overview');
   };
 
   if (status === 'loading' || isLoading) {
@@ -104,7 +87,7 @@ const TransportHostPage = () => {
           <div className="space-y-8">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-semibold">Your Offices</h2>
-              <Button onClick={handleCreateNew} disabled={isCreating}>
+              <Button onClick={handleCreateNew}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add New Office
               </Button>
@@ -181,17 +164,10 @@ const TransportHostPage = () => {
               <Button
                 size="lg"
                 onClick={handleCreateNew}
-                disabled={isCreating}
                 className="w-full sm:w-auto"
               >
-                {isCreating ? (
-                  'Creating...'
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Your First Office
-                  </>
-                )}
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Office
               </Button>
             </CardContent>
           </Card>
