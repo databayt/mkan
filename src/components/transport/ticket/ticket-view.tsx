@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
 import { Download, Share2, MapPin, Clock, User, Phone, Bus } from 'lucide-react';
 import QRCode from 'qrcode';
@@ -87,14 +87,27 @@ export function TicketView({
 }: TicketViewProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
+  // Memoize seat numbers to prevent unnecessary recalculations
+  const seatNumbers = useMemo(
+    () => booking.seats.map(s => s.seatNumber),
+    [booking.seats]
+  );
+
+  // Memoize QR data - only changes when booking reference or seats change
+  const qrData = useMemo(() => {
+    return booking.qrCode || JSON.stringify({
+      ref: booking.bookingReference,
+      passenger: booking.passengerName,
+      seats: seatNumbers,
+    });
+  }, [booking.qrCode, booking.bookingReference, booking.passengerName, seatNumbers]);
+
+  // Generate QR code only when qrData changes
   useEffect(() => {
+    let isMounted = true;
+
     const generateQR = async () => {
       try {
-        const qrData = booking.qrCode || JSON.stringify({
-          ref: booking.bookingReference,
-          passenger: booking.passengerName,
-          seats: booking.seats.map(s => s.seatNumber),
-        });
         const url = await QRCode.toDataURL(qrData, {
           width: 200,
           margin: 2,
@@ -103,29 +116,39 @@ export function TicketView({
             light: '#ffffff',
           },
         });
-        setQrCodeUrl(url);
+        if (isMounted) {
+          setQrCodeUrl(url);
+        }
       } catch {
         console.error('Failed to generate QR code');
       }
     };
-    generateQR();
-  }, [booking]);
 
-  const formatDuration = (minutes: number) => {
+    generateQR();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [qrData]);
+
+  // Memoize formatDuration function
+  const formatDuration = useCallback((minutes: number) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours}h ${mins}m`;
-  };
+  }, []);
 
-  const statusColors: Record<string, string> = {
+  // Memoize status colors object
+  const statusColors = useMemo<Record<string, string>>(() => ({
     Pending: 'bg-yellow-100 text-yellow-800',
     Confirmed: 'bg-green-100 text-green-800',
     Cancelled: 'bg-red-100 text-red-800',
     Completed: 'bg-blue-100 text-blue-800',
     NoShow: 'bg-gray-100 text-gray-800',
-  };
+  }), []);
 
-  const handleShare = async () => {
+  // Memoize share handler
+  const handleShare = useCallback(async () => {
     if (navigator.share) {
       try {
         await navigator.share({
@@ -137,7 +160,7 @@ export function TicketView({
         // User cancelled or share failed
       }
     }
-  };
+  }, [booking.bookingReference, booking.trip.route.origin.city, booking.trip.route.destination.city, booking.trip.departureDate]);
 
   if (variant === 'compact') {
     return (

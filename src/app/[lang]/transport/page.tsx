@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { Bus, MapPin, Clock, Shield, Ticket } from 'lucide-react';
 
 import TransportBigSearch from '@/components/transport/search/transport-big-search';
+import TransportHostHero from '@/components/transport/transport-host-hero';
 import { getAssemblyPoints } from '@/lib/actions/transport-actions';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import type { Locale } from '@/components/internationalization/config';
@@ -225,24 +226,7 @@ export default async function TransportPage({ params }: TransportPageProps) {
       </section>
 
       {/* CTA - Become a Transport Host */}
-      <section className="py-16 px-4 md:px-8 bg-primary text-primary-foreground">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-4">
-            Own a Transport Office?
-          </h2>
-          <p className="text-lg opacity-90 mb-8">
-            Join Mkan to reach more customers and manage your bookings online.
-            Start accepting online reservations today.
-          </p>
-          <a
-            href={`/${lang}/transport-host`}
-            className="inline-flex items-center gap-2 bg-background text-foreground px-8 py-3 rounded-lg font-semibold hover:bg-background/90 transition-colors"
-          >
-            <Bus className="h-5 w-5" />
-            Register Your Office
-          </a>
-        </div>
-      </section>
+      <TransportHostHero lang={lang} />
     </div>
   );
 }

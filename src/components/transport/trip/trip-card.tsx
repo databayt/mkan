@@ -1,6 +1,6 @@
 'use client';
 
-import { format } from 'date-fns';
+import { memo, useMemo, useCallback } from 'react';
 import { Clock, MapPin, Users, Wifi, Wind, Armchair } from 'lucide-react';
 import Link from 'next/link';
 
@@ -64,6 +64,7 @@ interface TripCardProps {
   };
 }
 
+// Memoized amenity icons - defined outside component to prevent recreation
 const amenityIcons: Record<BusAmenity, React.ReactNode> = {
   AirConditioning: <Wind className="h-4 w-4" />,
   WiFi: <Wifi className="h-4 w-4" />,
@@ -76,7 +77,22 @@ const amenityIcons: Record<BusAmenity, React.ReactNode> = {
   Reclining: <span className="text-xs">💺</span>,
 };
 
-export function TripCard({
+// Memoized amenity label formatter
+const formatAmenityLabel = (amenity: BusAmenity): string => {
+  return amenity.replace(/([A-Z])/g, ' $1').trim();
+};
+
+// Memoized AmenityBadge component
+const AmenityBadge = memo(function AmenityBadge({ amenity }: { amenity: BusAmenity }) {
+  return (
+    <Badge variant="outline" className="text-xs gap-1">
+      {amenityIcons[amenity]}
+      <span className="hidden sm:inline">{formatAmenityLabel(amenity)}</span>
+    </Badge>
+  );
+});
+
+export const TripCard = memo(function TripCard({
   trip,
   lang = 'en',
   dictionary = {
@@ -86,11 +102,39 @@ export function TripCard({
     verified: 'Verified',
   },
 }: TripCardProps) {
-  const formatDuration = (minutes: number) => {
+  // Memoize formatDuration function
+  const formatDuration = useCallback((minutes: number) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours}h ${mins}m`;
-  };
+  }, []);
+
+  // Memoize displayed amenities
+  const displayedAmenities = useMemo(() => {
+    return trip.bus.amenities.slice(0, 5);
+  }, [trip.bus.amenities]);
+
+  // Memoize remaining amenities count
+  const remainingAmenitiesCount = useMemo(() => {
+    return trip.bus.amenities.length > 5 ? trip.bus.amenities.length - 5 : 0;
+  }, [trip.bus.amenities.length]);
+
+  // Memoize formatted duration
+  const formattedDuration = useMemo(() => {
+    return formatDuration(trip.route.duration);
+  }, [trip.route.duration, formatDuration]);
+
+  // Memoize formatted price
+  const formattedPrice = useMemo(() => {
+    return trip.price.toLocaleString();
+  }, [trip.price]);
+
+  // Memoize seats warning class
+  const seatsClassName = useMemo(() => {
+    return trip.availableSeats < 10
+      ? 'text-amber-600 font-medium'
+      : 'text-muted-foreground';
+  }, [trip.availableSeats]);
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -136,7 +180,7 @@ export function TripCard({
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-background px-2">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" />
-                  <span>{formatDuration(trip.route.duration)}</span>
+                  <span>{formattedDuration}</span>
                 </div>
               </div>
             </div>
@@ -155,19 +199,14 @@ export function TripCard({
         </div>
 
         {/* Amenities */}
-        {trip.bus.amenities.length > 0 && (
+        {displayedAmenities.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
-            {trip.bus.amenities.slice(0, 5).map((amenity) => (
-              <Badge key={amenity} variant="outline" className="text-xs gap-1">
-                {amenityIcons[amenity]}
-                <span className="hidden sm:inline">
-                  {amenity.replace(/([A-Z])/g, ' $1').trim()}
-                </span>
-              </Badge>
+            {displayedAmenities.map((amenity) => (
+              <AmenityBadge key={amenity} amenity={amenity} />
             ))}
-            {trip.bus.amenities.length > 5 && (
+            {remainingAmenitiesCount > 0 && (
               <Badge variant="outline" className="text-xs">
-                +{trip.bus.amenities.length - 5}
+                +{remainingAmenitiesCount}
               </Badge>
             )}
           </div>
@@ -176,13 +215,7 @@ export function TripCard({
         {/* Available Seats */}
         <div className="flex items-center gap-1 text-sm">
           <Users className="h-4 w-4 text-muted-foreground" />
-          <span
-            className={
-              trip.availableSeats < 10
-                ? 'text-amber-600 font-medium'
-                : 'text-muted-foreground'
-            }
-          >
+          <span className={seatsClassName}>
             {trip.availableSeats} {dictionary.seatsAvailable}
           </span>
         </div>
@@ -191,7 +224,7 @@ export function TripCard({
       <CardFooter className="flex items-center justify-between pt-3 border-t">
         <div>
           <p className="text-2xl font-bold">
-            {trip.price.toLocaleString()} <span className="text-sm">SDG</span>
+            {formattedPrice} <span className="text-sm">SDG</span>
           </p>
           <p className="text-xs text-muted-foreground">per seat</p>
         </div>
@@ -201,4 +234,4 @@ export function TripCard({
       </CardFooter>
     </Card>
   );
-}
+});

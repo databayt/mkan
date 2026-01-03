@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx seed.ts",
-    "seed:listings": "tsx scripts/seed-listings.ts"
+    "seed:listings": "tsx scripts/seed-listings.ts",
+    "seed:test-user": "tsx scripts/seed-test-user.ts",
+    "seed:transport": "tsx scripts/seed-transport.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",
@@ -98,6 +100,7 @@
     "@types/react-date-range": "^1.4.10",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
+    "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "15.3.3",
     "prisma": "^6.9.0",

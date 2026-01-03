@@ -1,5 +1,6 @@
 'use client';
 
+import { memo, useMemo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { SeatLegend } from './seat-legend';
 
@@ -26,52 +27,21 @@ interface SeatPickerProps {
   };
 }
 
-export function SeatPicker({
-  seats,
-  selectedSeats,
-  onSeatSelect,
-  onSeatDeselect,
-  maxSeats = 5,
-  dictionary = {
-    selectSeats: 'Select Your Seats',
-    seatSelected: 'seat selected',
-    seatsSelected: 'seats selected',
-    maxReached: 'Maximum seats reached',
-  },
-}: SeatPickerProps) {
-  // Group seats by row
-  const rows = seats.reduce(
-    (acc, seat) => {
-      if (!acc[seat.row]) {
-        acc[seat.row] = [];
-      }
-      acc[seat.row].push(seat);
-      return acc;
-    },
-    {} as Record<number, Seat[]>
-  );
+interface SeatButtonProps {
+  seat: Seat;
+  isSelected: boolean;
+  isMaxReached: boolean;
+  onClick: (seat: Seat) => void;
+}
 
-  const rowNumbers = Object.keys(rows)
-    .map(Number)
-    .sort((a, b) => a - b);
-
-  // Determine max columns
-  const maxColumns = Math.max(...seats.map((s) => s.column));
-
-  const handleSeatClick = (seat: Seat) => {
-    if (seat.status !== 'Available') return;
-
-    if (selectedSeats.includes(seat.seatNumber)) {
-      onSeatDeselect(seat.seatNumber);
-    } else {
-      if (selectedSeats.length >= maxSeats) return;
-      onSeatSelect(seat.seatNumber);
-    }
-  };
-
-  const getSeatStyle = (seat: Seat) => {
-    const isSelected = selectedSeats.includes(seat.seatNumber);
-
+// Memoized seat button component
+const SeatButton = memo(function SeatButton({
+  seat,
+  isSelected,
+  isMaxReached,
+  onClick,
+}: SeatButtonProps) {
+  const seatStyle = useMemo(() => {
     if (isSelected) {
       return 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer';
     }
@@ -88,7 +58,98 @@ export function SeatPicker({
       default:
         return 'bg-gray-100';
     }
-  };
+  }, [seat.status, isSelected]);
+
+  const isDisabled = seat.status !== 'Available' || (isMaxReached && !isSelected);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(seat)}
+      disabled={isDisabled}
+      className={cn(
+        'w-10 h-10 rounded-lg border-2 flex items-center justify-center text-xs font-semibold transition-colors',
+        seatStyle,
+        isDisabled && seat.status === 'Available' && 'opacity-50'
+      )}
+      title={`${seat.seatNumber} - ${seat.status}${seat.seatType ? ` (${seat.seatType})` : ''}`}
+    >
+      {seat.seatNumber}
+    </button>
+  );
+});
+
+export function SeatPicker({
+  seats,
+  selectedSeats,
+  onSeatSelect,
+  onSeatDeselect,
+  maxSeats = 5,
+  dictionary = {
+    selectSeats: 'Select Your Seats',
+    seatSelected: 'seat selected',
+    seatsSelected: 'seats selected',
+    maxReached: 'Maximum seats reached',
+  },
+}: SeatPickerProps) {
+  // Memoize selected seats as a Set for O(1) lookup
+  const selectedSeatsSet = useMemo(
+    () => new Set(selectedSeats),
+    [selectedSeats]
+  );
+
+  // Memoize seat grouping by row with Map for O(1) lookup
+  const { rows, rowNumbers, maxColumns, seatMap } = useMemo(() => {
+    const rowsMap: Record<number, Seat[]> = {};
+    const seatLookup = new Map<string, Seat>();
+
+    for (const seat of seats) {
+      if (!rowsMap[seat.row]) {
+        rowsMap[seat.row] = [];
+      }
+      rowsMap[seat.row].push(seat);
+      seatLookup.set(`${seat.row}-${seat.column}`, seat);
+    }
+
+    const sortedRowNumbers = Object.keys(rowsMap)
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    let maxCol = 0;
+    for (const seat of seats) {
+      if (seat.column > maxCol) maxCol = seat.column;
+    }
+
+    return {
+      rows: rowsMap,
+      rowNumbers: sortedRowNumbers,
+      maxColumns: maxCol,
+      seatMap: seatLookup,
+    };
+  }, [seats]);
+
+  // Memoize click handler
+  const handleSeatClick = useCallback(
+    (seat: Seat) => {
+      if (seat.status !== 'Available') return;
+
+      if (selectedSeatsSet.has(seat.seatNumber)) {
+        onSeatDeselect(seat.seatNumber);
+      } else {
+        if (selectedSeats.length >= maxSeats) return;
+        onSeatSelect(seat.seatNumber);
+      }
+    },
+    [selectedSeatsSet, selectedSeats.length, maxSeats, onSeatSelect, onSeatDeselect]
+  );
+
+  const isMaxReached = selectedSeats.length >= maxSeats;
+
+  // Memoize column array
+  const columnArray = useMemo(
+    () => Array.from({ length: maxColumns }, (_, i) => i + 1),
+    [maxColumns]
+  );
 
   return (
     <div className="space-y-6">
@@ -100,7 +161,7 @@ export function SeatPicker({
           {selectedSeats.length === 1
             ? dictionary.seatSelected
             : dictionary.seatsSelected}
-          {selectedSeats.length >= maxSeats && (
+          {isMaxReached && (
             <span className="text-amber-600 ml-2">
               ({dictionary.maxReached})
             </span>
@@ -129,38 +190,26 @@ export function SeatPicker({
 
                 {/* Seats in Row */}
                 <div className="flex gap-2">
-                  {Array.from({ length: maxColumns }, (_, i) => i + 1).map(
-                    (colNum) => {
-                      const seat = rows[rowNum]?.find(
-                        (s) => s.column === colNum
-                      );
+                  {columnArray.map((colNum) => {
+                    const seat = seatMap.get(`${rowNum}-${colNum}`);
+                    const showAisle = colNum === 2 && maxColumns === 4;
 
-                      // Add aisle space after column 2 (for 4-column bus)
-                      const showAisle = colNum === 2 && maxColumns === 4;
-
-                      return (
-                        <div key={colNum} className="flex items-center">
-                          {seat ? (
-                            <button
-                              type="button"
-                              onClick={() => handleSeatClick(seat)}
-                              disabled={seat.status !== 'Available'}
-                              className={cn(
-                                'w-10 h-10 rounded-lg border-2 flex items-center justify-center text-xs font-semibold transition-colors',
-                                getSeatStyle(seat)
-                              )}
-                              title={`${seat.seatNumber} - ${seat.status}${seat.seatType ? ` (${seat.seatType})` : ''}`}
-                            >
-                              {seat.seatNumber}
-                            </button>
-                          ) : (
-                            <div className="w-10 h-10" /> // Empty space
-                          )}
-                          {showAisle && <div className="w-6" />}
-                        </div>
-                      );
-                    }
-                  )}
+                    return (
+                      <div key={colNum} className="flex items-center">
+                        {seat ? (
+                          <SeatButton
+                            seat={seat}
+                            isSelected={selectedSeatsSet.has(seat.seatNumber)}
+                            isMaxReached={isMaxReached}
+                            onClick={handleSeatClick}
+                          />
+                        ) : (
+                          <div className="w-10 h-10" />
+                        )}
+                        {showAisle && <div className="w-6" />}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -170,19 +219,17 @@ export function SeatPicker({
           <div className="flex items-center gap-2 mt-4">
             <span className="w-6" />
             <div className="flex gap-2">
-              {Array.from({ length: maxColumns }, (_, i) => i + 1).map(
-                (colNum) => {
-                  const showAisle = colNum === 2 && maxColumns === 4;
-                  return (
-                    <div key={colNum} className="flex items-center">
-                      <span className="w-10 text-center text-xs text-muted-foreground">
-                        {colNum}
-                      </span>
-                      {showAisle && <div className="w-6" />}
-                    </div>
-                  );
-                }
-              )}
+              {columnArray.map((colNum) => {
+                const showAisle = colNum === 2 && maxColumns === 4;
+                return (
+                  <div key={colNum} className="flex items-center">
+                    <span className="w-10 text-center text-xs text-muted-foreground">
+                      {colNum}
+                    </span>
+                    {showAisle && <div className="w-6" />}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

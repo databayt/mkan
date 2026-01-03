@@ -1,3 +1,6 @@
+import { config } from 'dotenv';
+config({ path: '.env.local' });
+
 import { PrismaClient, PropertyType, Amenity, Highlight } from '@prisma/client'
 
 const prisma = new PrismaClient()
