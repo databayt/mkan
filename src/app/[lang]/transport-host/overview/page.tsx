@@ -4,11 +4,14 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import TransportStepsOverview from '@/components/transport/transport-steps-overview';
 import { createTransportOffice } from '@/lib/actions/transport-actions';
+import { useAuthRedirect } from '@/hooks/use-auth-redirect';
+import Loading from '@/components/atom/loading';
 
 export const dynamic = 'force-dynamic';
 
 const TransportOverviewPage = () => {
   const router = useRouter();
+  const { session, status } = useAuthRedirect();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGetStarted = async () => {
@@ -31,6 +34,14 @@ const TransportOverviewPage = () => {
       setIsLoading(false);
     }
   };
+
+  if (status === 'loading') {
+    return <Loading variant="fullscreen" text="Loading..." />;
+  }
+
+  if (!session) {
+    return null;
+  }
 
   return (
     <div className="h-screen overflow-hidden">
