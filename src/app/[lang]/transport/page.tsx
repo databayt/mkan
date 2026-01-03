@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { Bus, MapPin, Clock, Shield, Ticket } from 'lucide-react';
 
-import { SearchWidget } from '@/components/transport/search/search-widget';
+import TransportBigSearch from '@/components/transport/search/transport-big-search';
 import { getAssemblyPoints } from '@/lib/actions/transport-actions';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import type { Locale } from '@/components/internationalization/config';
@@ -66,17 +66,20 @@ export default async function TransportPage({ params }: TransportPageProps) {
           {/* Search Widget */}
           <Suspense
             fallback={
-              <div className="h-32 bg-muted animate-pulse rounded-2xl" />
+              <div className="h-16 bg-muted animate-pulse rounded-full max-w-4xl mx-auto" />
             }
           >
-            <SearchWidget
+            <TransportBigSearch
               assemblyPoints={assemblyPoints}
+              lang={lang}
               dictionary={{
                 from: 'From',
                 to: 'To',
                 date: 'Travel Date',
-                search: 'Search Trips',
+                search: 'Search',
                 swap: 'Swap cities',
+                selectCity: 'Select city',
+                selectDate: 'Select date',
               }}
             />
           </Suspense>
