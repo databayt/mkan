@@ -330,10 +330,10 @@ export default function Component() {
                   searchParams.set("location", selectedLocation)
                 }
                 if (dateRange.from) {
-                  searchParams.set("checkIn", dateRange.from.toISOString().split('T')[0])
+                  searchParams.set("checkIn", dateRange.from.toISOString().split('T')[0] ?? '')
                 }
                 if (dateRange.to) {
-                  searchParams.set("checkOut", dateRange.to.toISOString().split('T')[0])
+                  searchParams.set("checkOut", dateRange.to.toISOString().split('T')[0] ?? '')
                 }
                 
                 const totalGuests = guests.adults + guests.children + guests.infants

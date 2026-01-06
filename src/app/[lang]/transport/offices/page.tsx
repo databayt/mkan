@@ -29,7 +29,7 @@ interface TransportOffice {
   assemblyPoint: {
     name: string;
     city: string;
-  };
+  } | null;
   _count: {
     buses: number;
     routes: number;
@@ -58,7 +58,7 @@ export default function OfficesListPage() {
 
   const filteredOffices = offices.filter((office) =>
     office.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    office.assemblyPoint.city.toLowerCase().includes(searchQuery.toLowerCase())
+    (office.assemblyPoint?.city.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
   );
 
   if (loading) {
@@ -132,7 +132,7 @@ export default function OfficesListPage() {
                         </CardTitle>
                         <CardDescription className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          {office.assemblyPoint.city}
+                          {office.assemblyPoint?.city ?? 'Location not set'}
                         </CardDescription>
                       </div>
                     </div>

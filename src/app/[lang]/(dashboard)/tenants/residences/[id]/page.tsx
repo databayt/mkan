@@ -1,5 +1,5 @@
 "use client";
-n// Disable static generation for this page
+// Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
 import Loading from "@/components/Loading";
@@ -17,7 +17,12 @@ import {
   useGetPaymentsQuery,
   useGetPropertyQuery,
 } from "@/state/api";
-import { Lease, Payment, Property } from "@/types/prismaTypes";
+import { Lease, Payment, Property, Location } from "@/types/prismaTypes";
+
+// Extended type for Property with location relation
+type PropertyWithLocation = Property & {
+  location?: Location | null;
+};
 import {
   ArrowDownToLineIcon,
   Check,
@@ -81,7 +86,7 @@ const ResidenceCard = ({
   property,
   currentLease,
 }: {
-  property: Property;
+  property: PropertyWithLocation;
   currentLease: Lease;
 }) => {
   return (
@@ -97,12 +102,14 @@ const ResidenceCard = ({
             </div>
 
             <h2 className="text-2xl font-bold my-2">{property.name}</h2>
-            <div className="flex items-center mb-2">
-              <MapPin className="w-5 h-5 mr-1" />
-              <span>
-                {property.location.city}, {property.location.country}
-              </span>
-            </div>
+            {property.location && (
+              <div className="flex items-center mb-2">
+                <MapPin className="w-5 h-5 mr-1" />
+                <span>
+                  {property.location.city}, {property.location.country}
+                </span>
+              </div>
+            )}
           </div>
           <div className="text-xl font-bold">
             ${currentLease.rent}{" "}
@@ -258,7 +265,7 @@ const Residence = () => {
       <div className="w-full mx-auto">
         <div className="md:flex gap-10">
           {currentLease && (
-            <ResidenceCard property={property} currentLease={currentLease} />
+            <ResidenceCard property={property as PropertyWithLocation} currentLease={currentLease} />
           )}
           <PaymentMethod />
         </div>

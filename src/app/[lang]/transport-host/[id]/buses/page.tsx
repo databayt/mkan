@@ -21,6 +21,7 @@ import {
 import { useTransportHostValidation } from '@/context/transport-host-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
 import { createBus, updateBus, deleteBus, getBusesByOffice } from '@/lib/actions/transport-actions';
+import { BusAmenity } from '@prisma/client';
 
 const BUS_AMENITIES = [
   { value: 'AirConditioning', label: 'Air Conditioning' },
@@ -118,8 +119,9 @@ const BusesPage = () => {
     try {
       const busData = {
         ...data,
-        amenities: selectedAmenities,
+        amenities: selectedAmenities as BusAmenity[],
         officeId: office.id,
+        photoUrls: [] as string[],
       };
 
       if (editingBus) {

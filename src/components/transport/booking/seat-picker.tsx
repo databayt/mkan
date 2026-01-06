@@ -104,10 +104,12 @@ export function SeatPicker({
     const seatLookup = new Map<string, Seat>();
 
     for (const seat of seats) {
-      if (!rowsMap[seat.row]) {
-        rowsMap[seat.row] = [];
+      const row = rowsMap[seat.row];
+      if (!row) {
+        rowsMap[seat.row] = [seat];
+      } else {
+        row.push(seat);
       }
-      rowsMap[seat.row].push(seat);
       seatLookup.set(`${seat.row}-${seat.column}`, seat);
     }
 

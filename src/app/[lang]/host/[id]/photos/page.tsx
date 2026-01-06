@@ -1,5 +1,5 @@
 "use client";
-n// Disable static generation for this page
+// Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
@@ -157,6 +157,8 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
     
     // Render uploaded photos
     for (let i = 0; i < uploadedPhotos.length; i++) {
+      const photoUrl = uploadedPhotos[i];
+      if (!photoUrl) continue;
       boxes.push(
         <div
           key={`photo-${i}`}
@@ -164,7 +166,7 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
         >
           <div className="relative w-full h-full group">
             <Image
-              src={uploadedPhotos[i]}
+              src={photoUrl}
               alt={`Photo ${i + 1}`}
               fill
               className="object-cover rounded-lg"

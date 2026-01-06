@@ -29,7 +29,6 @@ const AppDateRange: FC = () => {
         rangeColors={['#FD5B61']}
         minDate={new Date()}
         direction="horizontal"
-        showSelectionPreview={true}
         moveRangeOnFirstSelection={false}
       />
     </div>

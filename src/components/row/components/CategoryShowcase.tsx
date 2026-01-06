@@ -40,8 +40,16 @@ interface CategoryShowcaseProps {
   onClick?: () => void;
 }
 
+const DEFAULT_CATEGORY = {
+  name: "Beach",
+  title: "Beach Houses",
+  description: "Properties with direct beach access",
+  imageUrl: "/airbnb/Beach.svg",
+  bgColor: "bg-blue-50"
+};
+
 export function CategoryShowcase({ categoryName, className, onClick }: CategoryShowcaseProps) {
-  const category = CATEGORY_ITEMS.find((item) => item.name === categoryName) || CATEGORY_ITEMS[0];
+  const category = CATEGORY_ITEMS.find((item) => item.name === categoryName) ?? DEFAULT_CATEGORY;
 
   return (
     <div 

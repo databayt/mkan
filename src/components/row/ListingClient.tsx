@@ -1,7 +1,7 @@
 "use client";
 
 import useLoginModel from "@/hook/useLoginModal";
-import { SafeReservation, SafeUser, safeListing } from "@/types";
+import { SafeReservation, SafeUser, safeListing } from "@/types/row-types";
 import axios from "axios";
 import { differenceInCalendarDays, eachDayOfInterval } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -123,7 +123,7 @@ function ListingClient({ reservations = [], listing, currentUser }: Props) {
               <ListingReservation
                 price={listing.price}
                 totalPrice={totalPrice}
-                onChangeDate={(value) => setDateRange(value)}
+                onChangeDate={(value: Range) => setDateRange(value)}
                 dateRange={dateRange}
                 onSubmit={onCreateReservation}
                 disabled={isLoading}

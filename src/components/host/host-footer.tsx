@@ -86,8 +86,8 @@ const HostFooter: React.FC<HostFooterProps> = ({
   };
   
   const currentStepIndex = getCurrentStepFromPath();
-  const currentStepSlug = HOSTING_STEPS[currentStepIndex] || HOSTING_STEPS[0];
-  
+  const currentStepSlug = HOSTING_STEPS[currentStepIndex] ?? HOSTING_STEPS[0] ?? 'about-place';
+
   // Determine which step group we're in
   const getCurrentStepGroup = () => {
     for (const [group, steps] of Object.entries(STEP_GROUPS)) {

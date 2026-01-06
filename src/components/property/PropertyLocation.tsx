@@ -6,6 +6,19 @@ import React, { useEffect, useRef } from "react";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN as string;
 
+interface PropertyDetailsProps {
+  propertyId: number;
+}
+
+// Extended property type that includes the location relation
+interface PropertyWithLocation {
+  location?: {
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+  } | null;
+}
+
 const PropertyLocation = ({ propertyId }: PropertyDetailsProps) => {
   const {
     data: property,
@@ -14,24 +27,24 @@ const PropertyLocation = ({ propertyId }: PropertyDetailsProps) => {
   } = useGetPropertyQuery(propertyId);
   const mapContainerRef = useRef(null);
 
+  // Type assertion for property with location
+  const propertyWithLocation = property as (typeof property & PropertyWithLocation) | undefined;
+
   useEffect(() => {
-    if (isLoading || isError || !property) return;
+    if (isLoading || isError || !propertyWithLocation) return;
+
+    const longitude = propertyWithLocation.location?.longitude ?? -118.2437;
+    const latitude = propertyWithLocation.location?.latitude ?? 34.0522;
 
     const map = new mapboxgl.Map({
       container: mapContainerRef.current!,
       style: "mapbox://styles/majesticglue/cm6u301pq008b01sl7yk1cnvb",
-      center: [
-        property.location.coordinates.longitude,
-        property.location.coordinates.latitude,
-      ],
+      center: [longitude, latitude],
       zoom: 14,
     });
 
     const marker = new mapboxgl.Marker()
-      .setLngLat([
-        property.location.coordinates.longitude,
-        property.location.coordinates.latitude,
-      ])
+      .setLngLat([longitude, latitude])
       .addTo(map);
 
     const markerElement = marker.getElement();
@@ -39,10 +52,10 @@ const PropertyLocation = ({ propertyId }: PropertyDetailsProps) => {
     if (path) path.setAttribute("fill", "#000000");
 
     return () => map.remove();
-  }, [property, isError, isLoading]);
+  }, [propertyWithLocation, isError, isLoading]);
 
   if (isLoading) return <>Loading...</>;
-  if (isError || !property) {
+  if (isError || !propertyWithLocation) {
     return <>Property not Found</>;
   }
 
@@ -56,12 +69,12 @@ const PropertyLocation = ({ propertyId }: PropertyDetailsProps) => {
           <MapPin className="w-4 h-4 mr-1 text-gray-700" />
           Property Address:
           <span className="ml-2 font-semibold text-gray-700">
-            {property.location?.address || "Address not available"}
+            {propertyWithLocation.location?.address ?? "Address not available"}
           </span>
         </div>
         <a
           href={`https://maps.google.com/?q=${encodeURIComponent(
-            property.location?.address || ""
+            propertyWithLocation.location?.address ?? ""
           )}`}
           target="_blank"
           rel="noopener noreferrer"

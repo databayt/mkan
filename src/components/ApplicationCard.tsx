@@ -1,6 +1,13 @@
 import { Mail, MapPin, PhoneCall } from "lucide-react";
 import Image from "next/image";
 import React, { useState } from "react";
+import { ApplicationWithDetails } from "./application/action";
+
+interface ApplicationCardProps {
+  application: ApplicationWithDetails;
+  userType: "manager" | "renter";
+  children: React.ReactNode;
+}
 
 const ApplicationCard = ({
   application,
@@ -18,8 +25,7 @@ const ApplicationCard = ({
       ? "bg-red-500"
       : "bg-yellow-500";
 
-  const contactPerson =
-    userType === "manager" ? application.tenant : application.manager;
+  const contactPerson = application.tenant;
 
   return (
     <div className="border rounded-xl overflow-hidden shadow-sm bg-white mb-4">
@@ -42,7 +48,7 @@ const ApplicationCard = ({
               </h2>
               <div className="flex items-center mb-2">
                 <MapPin className="w-5 h-5 mr-1" />
-                <span>{`${application.property.location.city}, ${application.property.location.country}`}</span>
+                <span>{application.property.location ? `${application.property.location.city}, ${application.property.location.country}` : 'Location not specified'}</span>
               </div>
             </div>
             <div className="text-xl font-semibold">
@@ -70,15 +76,15 @@ const ApplicationCard = ({
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Start Date:</span>{" "}
-            {new Date(application.lease?.startDate).toLocaleDateString()}
+            {application.lease?.startDate ? new Date(application.lease.startDate).toLocaleDateString() : 'N/A'}
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">End Date:</span>{" "}
-            {new Date(application.lease?.endDate).toLocaleDateString()}
+            {application.lease?.endDate ? new Date(application.lease.endDate).toLocaleDateString() : 'N/A'}
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Next Payment:</span>{" "}
-            {new Date(application.lease?.nextPaymentDate).toLocaleDateString()}
+            {application.lease?.nextPaymentDate ? new Date(application.lease.nextPaymentDate).toLocaleDateString() : 'N/A'}
           </div>
         </div>
 

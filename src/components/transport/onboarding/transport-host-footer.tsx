@@ -72,7 +72,7 @@ const TransportHostFooter: React.FC<TransportHostFooterProps> = ({
   };
 
   const currentStepIndex = getCurrentStepFromPath();
-  const currentStepSlug = HOSTING_STEPS[currentStepIndex] || HOSTING_STEPS[0];
+  const currentStepSlug = HOSTING_STEPS[currentStepIndex] ?? HOSTING_STEPS[0] ?? 'office-info';
 
   const getCurrentStepGroup = () => {
     for (const [group, steps] of Object.entries(STEP_GROUPS)) {

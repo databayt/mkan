@@ -8,10 +8,12 @@ import "react-toastify/dist/ReactToastify.css";
 export default function Toast() {
     const params = useSearchParams();
     useEffect(() => {
-        if (params?.get("error")) {
-            toast.error(params.get("error"), { type: "error", theme: "colored" });
-        } else if (params?.get("success")) {
-            toast.success(params.get("success"), { theme: "colored" });
+        const error = params?.get("error");
+        const success = params?.get("success");
+        if (error) {
+            toast.error(error, { type: "error", theme: "colored" });
+        } else if (success) {
+            toast.success(success, { theme: "colored" });
         }
     }, [params]);
 

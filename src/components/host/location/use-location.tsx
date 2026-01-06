@@ -40,7 +40,7 @@ export function useLocation() {
       })
 
       // Navigate to next step
-      const nextStep = STEP_NAVIGATION['location'].next
+      const nextStep = STEP_NAVIGATION['location']?.next
       if (nextStep) {
         goToNextStep(nextStep)
       }
@@ -50,7 +50,7 @@ export function useLocation() {
   }
 
   const onBack = () => {
-    const previousStep = STEP_NAVIGATION['location'].previous
+    const previousStep = STEP_NAVIGATION['location']?.previous
     if (previousStep) {
       goToPreviousStep(previousStep)
     }

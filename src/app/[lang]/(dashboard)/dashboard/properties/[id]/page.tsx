@@ -1,5 +1,5 @@
 "use client";
-n// Disable static generation for this page
+// Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
 import Header from "@/components/Header";
@@ -38,7 +38,8 @@ const PropertyManagement = () => {
         setError(null);
         
         // Try to fetch property data with fallback
-        let propertyData, leasesData = [];
+        let propertyData;
+        let leasesData: unknown[] = [];
         
         try {
           propertyData = await getListing(propertyId);
@@ -64,25 +65,25 @@ const PropertyManagement = () => {
         setProperty(propertyData);
         setLeases(leasesData);
         
-        // Try to fetch payments with error handling
-        if (leasesData.length > 0) {
-          try {
-            const allPayments = await Promise.all(
-              leasesData.map(async (lease: any) => {
-                try {
-                  return await getPayments(lease.id);
-                } catch (paymentError) {
-                  console.error(`Payment fetch error for lease ${lease.id}:`, paymentError);
-                  return []; // Return empty array for failed payment fetches
-                }
-              })
-            );
-            setPayments(allPayments.flat());
-          } catch (paymentError) {
-            console.error("Payments fetch error:", paymentError);
-            setPayments([]); // Fallback to empty payments
-          }
-        }
+        // TODO: Implement payment fetching when lease system is ready
+        // if (leasesData.length > 0) {
+        //   try {
+        //     const allPayments = await Promise.all(
+        //       leasesData.map(async (lease: any) => {
+        //         try {
+        //           return await getPayments(lease.id);
+        //         } catch (paymentError) {
+        //           console.error(`Payment fetch error for lease ${lease.id}:`, paymentError);
+        //           return [];
+        //         }
+        //       })
+        //     );
+        //     setPayments(allPayments.flat());
+        //   } catch (paymentError) {
+        //     console.error("Payments fetch error:", paymentError);
+        //     setPayments([]);
+        //   }
+        // }
       } catch (err: any) {
         console.error("Error fetching data:", err);
         setError(err.message || "Error loading property details");

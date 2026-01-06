@@ -25,7 +25,7 @@ export type ApplicationWithDetails = {
       city: string;
       country: string;
       address: string;
-    };
+    } | null;
   };
   tenant: {
     name: string;
@@ -57,12 +57,12 @@ export async function getManagerApplications(): Promise<{
     // Fetch applications for properties managed by this user
     const applications = await db.application.findMany({
       where: {
-        property: {
-          managerId: session.user.id,
+        listing: {
+          hostId: session.user.id,
         },
       },
       include: {
-        property: {
+        listing: {
           include: {
             location: true,
           },
@@ -96,15 +96,15 @@ export async function getManagerApplications(): Promise<{
       status: app.status,
       message: app.message,
       property: {
-        id: app.property.id,
-        name: app.property.name,
-        pricePerMonth: app.property.pricePerMonth,
-        photoUrls: app.property.photoUrls,
-        location: {
-          city: app.property.location.city,
-          country: app.property.location.country,
-          address: app.property.location.address,
-        },
+        id: app.listing.id,
+        name: app.listing.title ?? 'Untitled Property',
+        pricePerMonth: app.listing.pricePerNight ?? 0,
+        photoUrls: app.listing.photoUrls,
+        location: app.listing.location ? {
+          city: app.listing.location.city,
+          country: app.listing.location.country,
+          address: app.listing.location.address,
+        } : null,
       },
       tenant: {
         name: app.tenant.name,
@@ -156,10 +156,10 @@ export async function getTenantApplications(): Promise<{
         tenantId: tenant.userId,
       },
       include: {
-        property: {
+        listing: {
           include: {
             location: true,
-            manager: true,
+            host: true,
           },
         },
         tenant: true,
@@ -191,15 +191,15 @@ export async function getTenantApplications(): Promise<{
       status: app.status,
       message: app.message,
       property: {
-        id: app.property.id,
-        name: app.property.name,
-        pricePerMonth: app.property.pricePerMonth,
-        photoUrls: app.property.photoUrls,
-        location: {
-          city: app.property.location.city,
-          country: app.property.location.country,
-          address: app.property.location.address,
-        },
+        id: app.listing.id,
+        name: app.listing.title ?? 'Untitled Property',
+        pricePerMonth: app.listing.pricePerNight ?? 0,
+        photoUrls: app.listing.photoUrls,
+        location: app.listing.location ? {
+          city: app.listing.location.city,
+          country: app.listing.location.country,
+          address: app.listing.location.address,
+        } : null,
       },
       tenant: {
         name: app.tenant.name,
@@ -240,11 +240,11 @@ export async function updateApplicationStatus(
       return { success: false, error: "Unauthorized" };
     }
 
-    // Verify the user is the manager of the property for this application
+    // Verify the user is the host of the listing for this application
     const application = await db.application.findUnique({
       where: { id: applicationId },
       include: {
-        property: true,
+        listing: true,
       },
     });
 
@@ -252,7 +252,7 @@ export async function updateApplicationStatus(
       return { success: false, error: "Application not found" };
     }
 
-    if (application.property.managerId !== session.user.id) {
+    if (application.listing.hostId !== session.user.id) {
       return { success: false, error: "Not authorized to update this application" };
     }
 
@@ -263,7 +263,7 @@ export async function updateApplicationStatus(
         where: { id: applicationId },
         data: { status },
         include: {
-          property: {
+          listing: {
             include: {
               location: true,
             },
@@ -279,8 +279,8 @@ export async function updateApplicationStatus(
           data: {
             startDate: new Date(),
             endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-            rent: updated.property.pricePerMonth,
-            deposit: updated.property.securityDeposit,
+            rent: updated.listing.pricePerNight ?? 0,
+            deposit: updated.listing.securityDeposit ?? 0,
             propertyId: updated.propertyId,
             tenantId: updated.tenantId,
           },
@@ -296,7 +296,7 @@ export async function updateApplicationStatus(
         return await prisma.application.findUnique({
           where: { id: applicationId },
           include: {
-            property: {
+            listing: {
               include: {
                 location: true,
               },
@@ -335,15 +335,15 @@ export async function updateApplicationStatus(
       status: updatedApplication.status,
       message: updatedApplication.message,
       property: {
-        id: updatedApplication.property.id,
-        name: updatedApplication.property.name,
-        pricePerMonth: updatedApplication.property.pricePerMonth,
-        photoUrls: updatedApplication.property.photoUrls,
-        location: {
-          city: updatedApplication.property.location.city,
-          country: updatedApplication.property.location.country,
-          address: updatedApplication.property.location.address,
-        },
+        id: updatedApplication.listing.id,
+        name: updatedApplication.listing.title ?? 'Untitled Property',
+        pricePerMonth: updatedApplication.listing.pricePerNight ?? 0,
+        photoUrls: updatedApplication.listing.photoUrls,
+        location: updatedApplication.listing.location ? {
+          city: updatedApplication.listing.location.city,
+          country: updatedApplication.listing.location.country,
+          address: updatedApplication.listing.location.address,
+        } : null,
       },
       tenant: {
         name: updatedApplication.tenant.name,
@@ -401,11 +401,11 @@ export async function createApplication(data: {
     }
 
     // Check if property exists
-    const property = await db.property.findUnique({
+    const listing = await db.listing.findUnique({
       where: { id: data.propertyId },
     });
 
-    if (!property) {
+    if (!listing) {
       return { success: false, error: "Property not found" };
     }
 
@@ -434,7 +434,7 @@ export async function createApplication(data: {
         message: data.message,
       },
       include: {
-        property: {
+        listing: {
           include: {
             location: true,
           },
@@ -456,15 +456,15 @@ export async function createApplication(data: {
       status: application.status,
       message: application.message,
       property: {
-        id: application.property.id,
-        name: application.property.name,
-        pricePerMonth: application.property.pricePerMonth,
-        photoUrls: application.property.photoUrls,
-        location: {
-          city: application.property.location.city,
-          country: application.property.location.country,
-          address: application.property.location.address,
-        },
+        id: application.listing.id,
+        name: application.listing.title ?? 'Untitled Property',
+        pricePerMonth: application.listing.pricePerNight ?? 0,
+        photoUrls: application.listing.photoUrls,
+        location: application.listing.location ? {
+          city: application.listing.location.city,
+          country: application.listing.location.country,
+          address: application.listing.location.address,
+        } : null,
       },
       tenant: {
         name: application.tenant.name,
@@ -484,4 +484,4 @@ export async function createApplication(data: {
     console.error("Error creating application:", error);
     return { success: false, error: "Failed to create application" };
   }
-} 
+}

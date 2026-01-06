@@ -35,7 +35,7 @@ function ListingReservation({
       <Calendar
         value={dateRange}
         disabledDates={disabledDates}
-        onChange={(value) => onChangeDate(value.selection)}
+        onChange={(value) => onChangeDate(value)}
       />
       <hr />
       <div className="p-4">

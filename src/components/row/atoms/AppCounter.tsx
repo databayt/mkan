@@ -8,7 +8,8 @@ interface AppCounterProps {
   maxValue?: number;
   minValue?: number;
   onIncrease: () => void;
-  onDecrease: () => void;
+  onDecrease?: () => void;
+  onDescrease?: () => void; // Allow typo for compatibility
 }
 
 const AppCounter: FC<AppCounterProps> = ({
@@ -17,11 +18,13 @@ const AppCounter: FC<AppCounterProps> = ({
   minValue = 0,
   onIncrease,
   onDecrease,
+  onDescrease,
 }) => {
+  const handleDecrease = onDecrease || onDescrease || (() => {});
   return (
     <div className="flex items-center gap-4">
       <button
-        onClick={onDecrease}
+        onClick={handleDecrease}
         disabled={value <= minValue}
         className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:border-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
       >

@@ -47,7 +47,7 @@ interface BookingDetails {
         assemblyPoint: {
           name: string;
           address: string;
-        };
+        } | null;
       };
     };
     bus: {
@@ -288,7 +288,7 @@ export default function BookingConfirmationPage() {
             <span>Total Paid</span>
             <span className="text-xl font-bold">SDG {booking.totalAmount.toLocaleString()}</span>
           </div>
-          {booking.payments.length > 0 && (
+          {booking.payments.length > 0 && booking.payments[0] && (
             <div className="mt-2 text-sm text-muted-foreground">
               Paid via {booking.payments[0].method.replace(/([A-Z])/g, ' $1').trim()}
             </div>

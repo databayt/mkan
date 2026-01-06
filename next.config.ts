@@ -17,6 +17,12 @@ const nextConfig: NextConfig = {
   // Production source maps for error tracking
   productionBrowserSourceMaps: false, // Set to true if you need client-side source maps
 
+  // Transpile packages that have issues with Turbopack
+  transpilePackages: [
+    'react-day-picker',
+    'date-fns',
+  ],
+
   // Experimental features
   experimental: {
     // Enable server actions
@@ -95,15 +101,14 @@ const nextConfig: NextConfig = {
     ],
   },
   typescript: {
-    // TODO: Fix TypeScript errors before production deployment
-    // Currently allowing builds with errors for development
-    ignoreBuildErrors: true,
+    // TypeScript errors must be fixed before build succeeds
+    ignoreBuildErrors: false,
   },
 
-  // Enable Turbopack for Next.js 16
-  turbopack: {},
+  // Note: Turbopack disabled for production builds due to Windows symlink issues
+  // turbopack: {},
 
-  // Webpack configuration (fallback)
+  // Webpack configuration
   webpack: (config, { isServer }) => {
     // Ignore optional dependencies that might cause issues
     if (!isServer) {

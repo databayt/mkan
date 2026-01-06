@@ -41,7 +41,7 @@ interface BookingDetails {
         assemblyPoint: {
           name: string;
           address: string;
-        };
+        } | null;
       };
     };
     bus: {

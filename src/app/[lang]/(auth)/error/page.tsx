@@ -1,14 +1,15 @@
 import { ErrorCard } from "@/components/auth/error-card";
 
 interface AuthErrorPageProps {
-  searchParams?: {
+  searchParams?: Promise<{
     error?: string;
-  };
+  }>;
 }
 
-const AuthErrorPage = ({ searchParams }: AuthErrorPageProps) => {
-  return ( 
-    <ErrorCard error={searchParams?.error} />
+const AuthErrorPage = async ({ searchParams }: AuthErrorPageProps) => {
+  const resolvedSearchParams = await searchParams;
+  return (
+    <ErrorCard error={resolvedSearchParams?.error} />
   );
 };
 

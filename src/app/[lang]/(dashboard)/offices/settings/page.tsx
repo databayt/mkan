@@ -87,8 +87,8 @@ const OfficeSettingsPage = () => {
           const myOffices = await getMyTransportOffices();
           setOffices(myOffices);
 
-          if (myOffices.length > 0) {
-            const firstOffice = myOffices[0];
+          const firstOffice = myOffices[0];
+          if (firstOffice) {
             setSelectedOffice(firstOffice);
             reset({
               name: firstOffice.name,
@@ -137,13 +137,12 @@ const OfficeSettingsPage = () => {
     try {
       await updateTransportOffice(selectedOffice.id, {
         name: data.name,
-        nameAr: data.nameAr || null,
+        nameAr: data.nameAr || undefined,
         phone: data.phone,
         email: data.email,
-        description: data.description || null,
-        descriptionAr: data.descriptionAr || null,
-        licenseNumber: data.licenseNumber || null,
-        isActive: data.isActive,
+        description: data.description || undefined,
+        descriptionAr: data.descriptionAr || undefined,
+        licenseNumber: data.licenseNumber || undefined,
       });
 
       setOffices((prev) =>

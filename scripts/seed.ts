@@ -290,16 +290,16 @@ async function main() {
         data: property.location
       })
 
-      // Create property
-      const createdProperty = await prisma.property.create({
+      // Create listing
+      const createdProperty = await prisma.listing.create({
         data: {
-          name: property.name,
+          title: property.name,
           description: property.description,
-          pricePerMonth: property.pricePerMonth,
+          pricePerNight: property.pricePerMonth,
           securityDeposit: property.securityDeposit,
           applicationFee: property.applicationFee,
-          beds: property.beds,
-          baths: property.baths,
+          bedrooms: property.beds,
+          bathrooms: property.baths,
           squareFeet: property.squareFeet,
           propertyType: property.propertyType,
           isPetsAllowed: property.isPetsAllowed,
@@ -308,11 +308,13 @@ async function main() {
           highlights: property.highlights,
           photoUrls: property.photoUrls,
           locationId: location.id,
-          managerId: property.managerId,
+          hostId: property.managerId,
+          isPublished: true,
+          draft: false,
         }
       })
 
-      console.log(`✅ Created property: ${createdProperty.name}`)
+      console.log(`✅ Created listing: ${createdProperty.title}`)
     } catch (error) {
       console.error(`❌ Error creating property ${index + 1}:`, error)
     }

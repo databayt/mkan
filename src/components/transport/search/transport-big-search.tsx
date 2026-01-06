@@ -107,7 +107,7 @@ export default function TransportBigSearch({
     const searchParams = new URLSearchParams();
     searchParams.set("origin", origin);
     searchParams.set("destination", destination);
-    searchParams.set("date", date.toISOString().split("T")[0]);
+    searchParams.set("date", date.toISOString().split("T")[0] ?? '');
 
     router.push(`/${lang}/transport/search?${searchParams.toString()}`);
   };

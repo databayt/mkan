@@ -55,8 +55,10 @@ const SearchSheet = ({ session }: { session: any }) => {
   }, [params]);
 
   const handleSubmit = () => {
-    const startDate = format(state[0].startDate, 'dd-MM-y')
-    const endDate = format(state[0].endDate, 'dd-MM-y')
+    const firstState = state[0];
+    if (!firstState) return;
+    const startDate = format(firstState.startDate, 'dd-MM-y')
+    const endDate = format(firstState.endDate, 'dd-MM-y')
 
     router.replace(`/?country=${search}&startDate=${startDate}&endDate=${endDate}`)
     setShow(false)

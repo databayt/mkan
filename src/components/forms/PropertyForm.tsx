@@ -182,17 +182,17 @@ export function PropertyForm() {
 
       console.log('🚀 Calling createListing with final data:', propertyData)
       console.log('📊 Data validation before API call:', {
-        hasName: !!propertyData.name,
+        hasTitle: !!propertyData.title,
         hasDescription: !!propertyData.description && propertyData.description.length >= 10,
         hasAddress: !!propertyData.address,
         hasCity: !!propertyData.city,
         hasState: !!propertyData.state,
         hasCountry: !!propertyData.country,
         hasPostalCode: !!propertyData.postalCode,
-        priceGreaterThanZero: propertyData.pricePerMonth > 0,
-        squareFeetGreaterThanZero: propertyData.squareFeet > 0,
+        priceGreaterThanZero: (propertyData.pricePerNight ?? 0) > 0,
+        squareFeetGreaterThanZero: (propertyData.squareFeet ?? 0) > 0,
         hasPropertyType: !!propertyData.propertyType,
-        photoUrlsCount: propertyData.photoUrls.length
+        photoUrlsCount: propertyData.photoUrls?.length ?? 0
       })
 
       const result = await createListing(propertyData)

@@ -124,6 +124,7 @@ function Categories() {
       checkScroll(); // Initial check
       return () => scrollContainer.removeEventListener('scroll', checkScroll);
     }
+    return undefined;
   }, []);
 
   const scroll = (direction: 'left' | 'right') => {

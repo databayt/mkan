@@ -1,59 +1,26 @@
 "use client";
-n// Disable static generation for this page
+// Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
-import Card from "@/components/Card";
 import Header from "@/components/Header";
-import Loading from "@/components/Loading";
-import {
-  useGetAuthUserQuery,
-  useGetPropertiesQuery,
-  useGetTenantQuery,
-} from "@/state/api";
 import React from "react";
 
 const Favorites = () => {
-  const { data: authUser } = useGetAuthUserQuery();
-  const { data: tenant } = useGetTenantQuery(
-    authUser?.id || "",
-    {
-      skip: !authUser?.id,
-    }
-  );
-
-  const {
-    data: favoriteProperties,
-    isLoading,
-    error,
-  } = useGetPropertiesQuery(
-    { favoriteIds: tenant?.favorites?.map((fav: { id: number }) => fav.id) },
-    { skip: !tenant?.favorites || tenant?.favorites.length === 0 }
-  );
-
-  if (isLoading) return <Loading />;
-  if (error) return <div>Error loading favorites</div>;
-
+  // TODO: Implement favorites system with proper tenant-listing relationship
   return (
     <div className="dashboard-container">
       <Header
         title="Favorited Properties"
         subtitle="Browse and manage your saved property listings"
       />
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {favoriteProperties?.map((property) => (
-          <Card
-            key={property.id}
-            property={property}
-            isFavorite={true}
-            onFavoriteToggle={() => {}}
-            showFavoriteButton={false}
-            propertyLink={`/tenants/residences/${property.id}`}
-          />
-        ))}
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">
+          You don&apos;t have any favorited properties yet.
+        </p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Browse listings and click the heart icon to save your favorites.
+        </p>
       </div>
-      {(!favoriteProperties || favoriteProperties.length === 0) && (
-        <p>You don&lsquo;t have any favorited properties</p>
-      )}
     </div>
   );
 };

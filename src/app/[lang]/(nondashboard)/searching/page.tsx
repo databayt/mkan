@@ -14,20 +14,21 @@ async function getListingsData(filters: any) {
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const filters = {
-    location: searchParams.location as string | undefined,
-    priceMin: searchParams.priceMin
-      ? Number(searchParams.priceMin)
+    location: resolvedSearchParams.location as string | undefined,
+    priceMin: resolvedSearchParams.priceMin
+      ? Number(resolvedSearchParams.priceMin)
       : undefined,
-    priceMax: searchParams.priceMax
-      ? Number(searchParams.priceMax)
+    priceMax: resolvedSearchParams.priceMax
+      ? Number(resolvedSearchParams.priceMax)
       : undefined,
-    beds: searchParams.beds ? Number(searchParams.beds) : undefined,
-    baths: searchParams.baths ? Number(searchParams.baths) : undefined,
-    propertyType: searchParams.propertyType as any | undefined,
-    amenities: searchParams.amenities as any | undefined,
+    beds: resolvedSearchParams.beds ? Number(resolvedSearchParams.beds) : undefined,
+    baths: resolvedSearchParams.baths ? Number(resolvedSearchParams.baths) : undefined,
+    propertyType: resolvedSearchParams.propertyType as string | undefined,
+    amenities: resolvedSearchParams.amenities as string | undefined,
   };
 
   const listings = await getListingsData(filters);

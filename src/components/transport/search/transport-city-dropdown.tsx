@@ -57,10 +57,12 @@ export default function TransportCityDropdown({
   const citiesMap = useMemo(() => {
     return assemblyPoints.reduce(
       (acc, point) => {
-        if (!acc[point.city]) {
-          acc[point.city] = [];
+        const city = acc[point.city];
+        if (!city) {
+          acc[point.city] = [point];
+        } else {
+          city.push(point);
         }
-        acc[point.city].push(point);
         return acc;
       },
       {} as Record<string, AssemblyPoint[]>

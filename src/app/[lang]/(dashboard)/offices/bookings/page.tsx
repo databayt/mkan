@@ -96,12 +96,13 @@ const BookingsPage = () => {
           const myOffices = await getMyTransportOffices();
           setOffices(myOffices);
 
-          if (myOffices.length > 0) {
-            const firstOffice = myOffices[0];
+          const firstOffice = myOffices[0];
+          if (firstOffice) {
             setSelectedOfficeId(firstOffice.id);
-            const officeBookings = await getOfficeBookings(firstOffice.id);
-            setBookings(officeBookings as Booking[]);
-            setFilteredBookings(officeBookings as Booking[]);
+            const response = await getOfficeBookings(firstOffice.id);
+            const officeBookings = response.bookings as unknown as Booking[];
+            setBookings(officeBookings);
+            setFilteredBookings(officeBookings);
           }
         }
       } catch (err: any) {
@@ -137,9 +138,10 @@ const BookingsPage = () => {
   const handleOfficeChange = async (officeId: number) => {
     setSelectedOfficeId(officeId);
     try {
-      const officeBookings = await getOfficeBookings(officeId);
-      setBookings(officeBookings as Booking[]);
-      setFilteredBookings(officeBookings as Booking[]);
+      const response = await getOfficeBookings(officeId);
+      const officeBookings = response.bookings as unknown as Booking[];
+      setBookings(officeBookings);
+      setFilteredBookings(officeBookings);
     } catch (err) {
       console.error('Error loading bookings:', err);
     }

@@ -112,11 +112,9 @@ export default function CheckoutPage() {
 
     setProcessing(true);
     try {
-      const result = await processPayment({
-        bookingId: booking.id,
-        amount: booking.totalAmount,
+      const result = await processPayment(booking.id, {
         method: paymentMethod,
-        transactionId: paymentMethod === 'MobileMoney' ? mobileNumber : undefined,
+        mobileMoneyNumber: paymentMethod === 'MobileMoney' ? mobileNumber : undefined,
       });
 
       if (result.success) {

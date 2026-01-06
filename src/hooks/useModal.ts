@@ -15,4 +15,5 @@ const createModalStore = () =>
 
 export const useLoginModal = createModalStore();
 export const useRegisterModal = createModalStore();
-export const useRentModal = createModalStore(); 
+export const useRentModal = createModalStore();
+export const useSearchModal = createModalStore(); 

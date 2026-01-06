@@ -44,7 +44,7 @@ export function usePhotos() {
       })
 
       // Navigate to next step
-      const nextStep = STEP_NAVIGATION['photos'].next
+      const nextStep = STEP_NAVIGATION['photos']?.next
       if (nextStep) {
         goToNextStep(nextStep)
       }
@@ -54,7 +54,7 @@ export function usePhotos() {
   }
 
   const onBack = () => {
-    const previousStep = STEP_NAVIGATION['photos'].previous
+    const previousStep = STEP_NAVIGATION['photos']?.previous
     if (previousStep) {
       goToPreviousStep(previousStep)
     }

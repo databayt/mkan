@@ -44,8 +44,7 @@ export default function BigSearchDatePicker({
           head_cell: "border-0",
           row: "border-0",
           cell: "border-0",
-          weekdays: "flex gap-0",
-          weekday: "text-sm h-10 w-12 flex items-center justify-center p-0 border-0"
+          weekdays: "flex gap-0"
         }}
       />
     </div>

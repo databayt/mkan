@@ -5,6 +5,7 @@ import { FC } from 'react';
 interface AppHeaderOptionProps {
   children: React.ReactNode;
   isSnap?: boolean;
+  isActiveHeader?: boolean;
   active?: boolean;
   onClick?: () => void;
 }

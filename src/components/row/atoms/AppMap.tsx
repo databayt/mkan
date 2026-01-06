@@ -1,6 +1,12 @@
 import React, { FC, PropsWithChildren } from 'react';
 import ReactMapGL from 'react-map-gl';
 
+interface Viewport {
+  latitude: number;
+  longitude: number;
+  zoom: number;
+}
+
 interface IAppMap extends PropsWithChildren<any> {
   center: { longitude: number; latitude: number };
 }
@@ -19,7 +25,7 @@ const AppMap: FC<IAppMap> = ({ children, center }) => {
       mapboxApiAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
       width="100%"
       height="100%"
-      onViewportChange={(viewport) => setViewport(viewport)}
+      onViewportChange={(viewport: Viewport) => setViewport(viewport)}
     >
       {children}
     </ReactMapGL>

@@ -133,7 +133,9 @@ const SchedulePage = () => {
   }, [selectedRoute, setValue]);
 
   const calculateArrivalTime = (departureTime: string, durationMinutes: number) => {
-    const [hours, minutes] = departureTime.split(':').map(Number);
+    const parts = departureTime.split(':').map(Number);
+    const hours = parts[0] ?? 0;
+    const minutes = parts[1] ?? 0;
     const totalMinutes = hours * 60 + minutes + durationMinutes;
     const arrivalHours = Math.floor(totalMinutes / 60) % 24;
     const arrivalMins = totalMinutes % 60;

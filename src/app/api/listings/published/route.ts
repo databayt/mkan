@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { getListings } from "@/components/host/actions";
 import { Listing } from "@/types/listing";
 
+// Cache for 5 minutes, serve stale for up to 10 minutes while revalidating
+export const revalidate = 300;
+
 export async function GET() {
 	try {
 		const listings = await getListings({ publishedOnly: true });

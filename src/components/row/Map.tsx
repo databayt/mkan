@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface MapProps {
   center?: number[];
+  locationValue?: string;
 }
 
 const Map: React.FC<MapProps> = ({ center }) => {

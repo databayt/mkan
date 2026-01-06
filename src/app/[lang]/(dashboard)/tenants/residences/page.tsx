@@ -1,5 +1,5 @@
 "use client";
-n// Disable static generation for this page
+// Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
 import Card from "@/components/Card";
@@ -43,7 +43,7 @@ const Residences = () => {
           <Card
             key={property.id}
             property={property}
-            isFavorite={tenant?.favorites.includes(property.id) || false}
+            isFavorite={false}
             onFavoriteToggle={() => {}}
             showFavoriteButton={false}
             propertyLink={`/tenants/residences/${property.id}`}

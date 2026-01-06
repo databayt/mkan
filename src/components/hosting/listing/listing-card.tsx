@@ -51,9 +51,9 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewType }) => {
     }
   };
 
-  const getListingImage = (listing: Listing) => {
+  const getListingImage = (listing: Listing): string => {
     if (listing.photoUrls && listing.photoUrls.length > 0) {
-      return listing.photoUrls[0];
+      return listing.photoUrls[0] ?? '/assets/hero.jpg';
     }
     return '/assets/hero.jpg'; // Default fallback image
   };

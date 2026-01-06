@@ -26,7 +26,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
 
     console.log('📡 Fetching property with ID:', propertyId)
     const property = await getListing(propertyId)
-    console.log('✅ Property fetched successfully:', property?.name)
+    console.log('✅ Property fetched successfully:', property?.title)
 
     if (!property) {
       console.error('❌ Property not found for ID:', propertyId)
@@ -55,8 +55,8 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
         <div className="relative h-96 w-full">
           {property.photoUrls && property.photoUrls.length > 0 ? (
             <Image
-              src={property.photoUrls[0]}
-              alt={property.name}
+              src={property.photoUrls[0] ?? '/api/placeholder/800/400'}
+              alt={property.title ?? 'Property'}
               fill
               className="object-cover"
               priority
@@ -68,11 +68,11 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
           )}
           <div className="absolute inset-0 bg-black bg-opacity-30" />
           <div className="absolute bottom-6 left-6 text-white">
-            <h1 className="text-4xl font-bold mb-2">{property.name}</h1>
+            <h1 className="text-4xl font-bold mb-2">{property.title ?? 'Untitled Property'}</h1>
             <div className="flex items-center text-lg">
               <MapPin className="w-5 h-5 mr-2" />
               <span>
-                {property.location.address}, {property.location.city}, {property.location.state}
+                {property.location?.address ?? ''}, {property.location?.city ?? ''}, {property.location?.state ?? ''}
               </span>
             </div>
           </div>
@@ -99,20 +99,20 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div className="flex items-center gap-2">
                       <Bed className="w-5 h-5 text-gray-600" />
-                      <span>{property.beds} {property.beds === 1 ? 'Bedroom' : 'Bedrooms'}</span>
+                      <span>{property.bedrooms ?? 0} {property.bedrooms === 1 ? 'Bedroom' : 'Bedrooms'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Bath className="w-5 h-5 text-gray-600" />
-                      <span>{property.baths} {property.baths === 1 ? 'Bathroom' : 'Bathrooms'}</span>
+                      <span>{property.bathrooms ?? 0} {property.bathrooms === 1 ? 'Bathroom' : 'Bathrooms'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Square className="w-5 h-5 text-gray-600" />
-                      <span>{property.squareFeet.toLocaleString()} sq ft</span>
+                      <span>{(property.squareFeet ?? 0).toLocaleString()} sq ft</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <DollarSign className="w-5 h-5 text-green-600" />
                       <span className="font-semibold text-green-600">
-                        ${property.pricePerMonth.toLocaleString()}/mo
+                        ${(property.pricePerNight ?? 0).toLocaleString()}/night
                       </span>
                     </div>
                   </div>
@@ -192,7 +192,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
                         <div key={index} className="relative h-48 rounded-lg overflow-hidden">
                           <Image
                             src={photo}
-                            alt={`${property.name} photo ${index + 2}`}
+                            alt={`${property.title ?? 'Property'} photo ${index + 2}`}
                             fill
                             className="object-cover hover:scale-105 transition-transform"
                           />
@@ -211,18 +211,18 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               <Card className="sticky top-6">
                 <CardHeader>
                   <CardTitle className="text-2xl text-green-600">
-                    ${property.pricePerMonth.toLocaleString()}/month
+                    ${(property.pricePerNight ?? 0).toLocaleString()}/night
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>Security Deposit:</span>
-                      <span className="font-medium">${property.securityDeposit.toLocaleString()}</span>
+                      <span className="font-medium">${(property.securityDeposit ?? 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Application Fee:</span>
-                      <span className="font-medium">${property.applicationFee.toLocaleString()}</span>
+                      <span className="font-medium">${(property.applicationFee ?? 0).toLocaleString()}</span>
                     </div>
                   </div>
                   
@@ -238,21 +238,21 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
                 </CardContent>
               </Card>
 
-              {/* Property Manager */}
+              {/* Property Host */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Property Manager</CardTitle>
+                  <CardTitle>Property Host</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
                       <span className="text-gray-600 font-medium">
-                        {property.manager.username[0]}
+                        {property.host.username?.[0] ?? 'H'}
                       </span>
                     </div>
                     <div>
-                      <p className="font-medium">{property.manager.username}</p>
-                      <p className="text-sm text-gray-600">{property.manager.email}</p>
+                      <p className="font-medium">{property.host.username ?? 'Host'}</p>
+                      <p className="text-sm text-gray-600">{property.host.email}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -265,13 +265,13 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    <p className="font-medium">{property.location.address}</p>
+                    <p className="font-medium">{property.location?.address ?? 'Address not available'}</p>
                     <p className="text-gray-600">
-                      {property.location.city}, {property.location.state} {property.location.postalCode}
+                      {property.location?.city ?? ''}, {property.location?.state ?? ''} {property.location?.postalCode ?? ''}
                     </p>
-                    <p className="text-gray-600">{property.location.country}</p>
+                    <p className="text-gray-600">{property.location?.country ?? ''}</p>
                   </div>
-                  
+
                   {/* Map placeholder */}
                   <div className="mt-4 h-48 bg-gray-200 rounded-lg flex items-center justify-center">
                     <span className="text-gray-500">Map Coming Soon</span>

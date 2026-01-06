@@ -1,32 +1,40 @@
 "use client";
 
+import { FocusEvent, ReactNode, ChangeEvent } from 'react';
 import { Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AppSearchOptionButtonProps {
+  children?: ReactNode;
   title: string;
   placeholder: string;
   value?: string;
   active?: boolean;
   separator?: boolean;
+  relative?: boolean;
   withSearch?: boolean;
-  type?: 'input' | 'button';
-  onChange?: (value: string) => void;
+  isSearch?: boolean;
+  type?: 'input' | 'inputText' | 'button';
+  onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
   onFocus?: () => void;
+  onBlur?: (event?: FocusEvent<HTMLElement>) => void;
   onClear?: () => void;
   onSearch?: () => void;
 }
 
 const AppSearchOptionButton = ({
+  children,
   title,
   placeholder,
   value,
   active = false,
   separator = false,
+  relative = false,
   withSearch = false,
   type = 'button',
   onChange,
   onFocus,
+  onBlur,
   onClear,
   onSearch
 }: AppSearchOptionButtonProps) => {
@@ -45,18 +53,20 @@ const AppSearchOptionButton = ({
         </label>
 
         {/* Input or Button */}
-        {type === 'input' ? (
+        {(type === 'input' || type === 'inputText') ? (
           <input
             type="text"
             placeholder={placeholder}
             value={value}
-            onChange={(e) => onChange?.(e.target.value)}
+            onChange={(e) => onChange?.(e)}
             className="w-full text-sm text-gray-600 placeholder-gray-400 bg-transparent border-none outline-none"
             onFocus={onFocus}
+            onBlur={onBlur}
           />
         ) : (
           <button
             onClick={onFocus}
+            onBlur={onBlur}
             className="w-full text-left text-sm text-gray-600 bg-transparent border-none outline-none"
           >
             {value || placeholder}
@@ -83,6 +93,8 @@ const AppSearchOptionButton = ({
           </button>
         )}
       </div>
+      {/* Children (dropdown content) */}
+      {children}
     </div>
   );
 };

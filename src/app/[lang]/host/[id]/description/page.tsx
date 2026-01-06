@@ -1,5 +1,5 @@
 "use client";
-n// Disable static generation for this page
+// Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from 'react';
@@ -18,12 +18,12 @@ const mapHighlightToPrisma = (highlightId: string): Highlight => {
   const mapping: Record<string, Highlight> = {
     '1': Highlight.QuietNeighborhood, // Peaceful
     '2': Highlight.RecentlyRenovated, // Unique
-    '3': Highlight.FamilyFriendly, // Family-friendly
+    '3': Highlight.SmokeFree, // Family-friendly (mapped to SmokeFree as a safe environment)
     '4': Highlight.RecentlyRenovated, // Stylish
     '5': Highlight.CloseToTransit, // Central
     '6': Highlight.GreatView, // Spacious
   };
-  
+
   return mapping[highlightId] || Highlight.QuietNeighborhood; // Default to QuietNeighborhood if not found
 };
 

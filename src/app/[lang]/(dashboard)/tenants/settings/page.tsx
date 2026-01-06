@@ -1,5 +1,5 @@
 "use client";
-n// Disable static generation for this page
+// Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
 import SettingsForm from "@/components/SettingsForm";
@@ -16,14 +16,15 @@ const TenantSettings = () => {
   if (isLoading) return <>Loading...</>;
 
   const initialData = {
-    name: authUser?.userInfo.name,
-    email: authUser?.userInfo.email,
-    phoneNumber: authUser?.userInfo.phoneNumber,
+    name: authUser?.userInfo?.name ?? "",
+    email: authUser?.userInfo?.email ?? "",
+    phoneNumber: authUser?.userInfo?.phoneNumber ?? "",
   };
 
   const handleSubmit = async (data: typeof initialData) => {
+    if (!authUser?.id) return;
     await updateTenant({
-      userId: authUser?.id,
+      userId: authUser.id,
       ...data,
     });
   };

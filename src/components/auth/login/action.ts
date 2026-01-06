@@ -111,4 +111,6 @@ export const login = async (
 
     throw error;
   }
+
+  return { success: "Logged in successfully!" };
 };

@@ -260,6 +260,14 @@ model Listing {
   applications Application[]
   favoritedBy  Tenant[]      @relation("TenantFavorites")
   tenants      Tenant[]      @relation("TenantProperties")
+
+  @@index([hostId])
+  @@index([isPublished, draft])
+  @@index([propertyType])
+  @@index([pricePerNight])
+  @@index([postedDate])
+  @@index([locationId])
+  @@index([hostId, isPublished])
 }
 
 model Tenant {
@@ -274,6 +282,8 @@ model Tenant {
   favorites    Listing[]     @relation("TenantFavorites")
   applications Application[]
   leases       Lease[]
+
+  @@index([email])
 }
 
 model Location {
@@ -287,6 +297,10 @@ model Location {
   longitude  Float
 
   listings Listing[]
+
+  @@index([city])
+  @@index([country])
+  @@index([latitude, longitude])
 }
 
 model Application {
@@ -304,6 +318,12 @@ model Application {
   listing Listing @relation(fields: [propertyId], references: [id])
   tenant  Tenant  @relation(fields: [tenantId], references: [userId])
   lease   Lease?  @relation(fields: [leaseId], references: [id])
+
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([status])
+  @@index([applicationDate])
+  @@index([propertyId, status])
 }
 
 model Lease {
@@ -383,6 +403,10 @@ model TransportOffice {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([isActive, isVerified])
+  @@index([assemblyPointId])
 }
 
 model Bus {
@@ -429,6 +453,10 @@ model Route {
   updatedAt DateTime @updatedAt
 
   @@unique([officeId, originId, destinationId])
+  @@index([originId])
+  @@index([destinationId])
+  @@index([isActive])
+  @@index([officeId, isActive])
 }
 
 model Trip {
@@ -475,6 +503,7 @@ model Seat {
   booking   TransportBooking? @relation(fields: [bookingId], references: [id])
 
   @@unique([tripId, seatNumber])
+  @@index([tripId, status])
 }
 
 model TransportBooking {
@@ -508,6 +537,12 @@ model TransportBooking {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([tripId])
+  @@index([officeId])
+  @@index([status])
+  @@index([bookedAt])
 }
 
 model TransportPayment {

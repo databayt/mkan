@@ -73,14 +73,14 @@ const Card = ({
           <div className="flex items-center mb-2">
             <Star className="w-4 h-4 text-yellow-400 mr-1" />
             <span className="font-semibold">
-              {property.averageRating.toFixed(1)}
+              {(property.averageRating ?? 0).toFixed(1)}
             </span>
             <span className="text-gray-600 ml-1">
-              ({property.numberOfReviews} Reviews)
+              ({property.numberOfReviews ?? 0} Reviews)
             </span>
           </div>
           <p className="text-lg font-bold mb-3">
-            ${property.pricePerMonth.toFixed(0)}{" "}
+            ${(property.pricePerMonth ?? 0).toFixed(0)}{" "}
             <span className="text-gray-600 text-base font-normal"> /month</span>
           </p>
         </div>

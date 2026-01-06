@@ -5,6 +5,9 @@ import { getListings } from "@/components/host/actions"
 import { Listing } from "@/types/listing"
 import { Button } from "@/components/ui/button"
 
+// ISR: Revalidate every 5 minutes (search results can be cached briefly)
+export const revalidate = 300;
+
 async function getPublishedListings(searchParams?: {
   location?: string
   checkIn?: string
@@ -41,21 +44,22 @@ async function getPublishedListings(searchParams?: {
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     location?: string
     checkIn?: string
     checkOut?: string
     guests?: string
-  }
+  }>
 }) {
-  const listings = await getPublishedListings(searchParams);
+  const resolvedSearchParams = await searchParams;
+  const listings = await getPublishedListings(resolvedSearchParams);
 
   // Build search summary
   const searchSummary = [];
-  if (searchParams?.location) searchSummary.push(searchParams.location);
-  if (searchParams?.checkIn) searchSummary.push(`Check-in: ${searchParams.checkIn}`);
-  if (searchParams?.checkOut) searchSummary.push(`Check-out: ${searchParams.checkOut}`);
-  if (searchParams?.guests) searchSummary.push(`${searchParams.guests} guests`);
+  if (resolvedSearchParams?.location) searchSummary.push(resolvedSearchParams.location);
+  if (resolvedSearchParams?.checkIn) searchSummary.push(`Check-in: ${resolvedSearchParams.checkIn}`);
+  if (resolvedSearchParams?.checkOut) searchSummary.push(`Check-out: ${resolvedSearchParams.checkOut}`);
+  if (resolvedSearchParams?.guests) searchSummary.push(`${resolvedSearchParams.guests} guests`);
 
   return (
     <div className="min-h-screen bg-white">
@@ -67,7 +71,7 @@ export default async function SearchPage({
           <div className="p-10 border-b border-gray-200">
             <h1 className="text-base font-normal text-gray-500 mb-6">
               {listings.length}+ Airbnb Luxe stays 
-              {searchParams?.location ? ` in ${searchParams.location}` : " in Bordeaux"}
+              {resolvedSearchParams?.location ? ` in ${resolvedSearchParams.location}` : " in Bordeaux"}
               {searchSummary.length > 0 && (
                 <span className="text-sm text-gray-400 ml-2">
                   • {searchSummary.join(" • ")}

@@ -1,16 +1,16 @@
 "use client";
 
 import useCountries from "@/hook/useCountries";
-import { SafeUser } from "@/types";
+import { SafeUser } from "@/types/row-types";
 import dynamic from "next/dynamic";
 import React from "react";
 import { IconType } from "react-icons";
-import Avatar from "../Avatar";
+import Avatar from "./Avatar";
 import ListingCategory from "./ListingCategory";
-import Sleep from "../Sleep";
-import Offers from "../Offers";
+import Sleep from "./Sleep";
+import Offers from "./Offers";
 
-const Map = dynamic(() => import("../Map"), {
+const Map = dynamic(() => import("./Map"), {
   ssr: false,
 });
 

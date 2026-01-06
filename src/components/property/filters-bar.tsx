@@ -176,7 +176,7 @@ const FiltersBar = () => {
           >
             <SelectTrigger className="w-22 rounded-xl border-primary-400">
               <SelectValue>
-                {formatPriceValue(filters.priceRange[0], true)}
+                {formatPriceValue(filters.priceRange[0] ?? undefined, true)}
               </SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-white">
@@ -198,7 +198,7 @@ const FiltersBar = () => {
           >
             <SelectTrigger className="w-22 rounded-xl border-primary-400">
               <SelectValue>
-                {formatPriceValue(filters.priceRange[1], false)}
+                {formatPriceValue(filters.priceRange[1] ?? undefined, false)}
               </SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-white">

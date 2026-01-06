@@ -10,12 +10,7 @@ interface IAppLogoProps {
   type?: EAppLogo;
 }
 
-const defaultProps: IAppLogoProps = {
-  className: 'text-black',
-  type: EAppLogo.TEXT,
-};
-
-const AppLogo: FC<IAppLogoProps> = ({ className, type }) => {
+const AppLogo: FC<IAppLogoProps> = ({ className = 'text-black', type = EAppLogo.TEXT }) => {
   switch (type) {
     case EAppLogo.LOGO:
       return (
@@ -40,10 +35,8 @@ const AppLogo: FC<IAppLogoProps> = ({ className, type }) => {
         </svg>
       );
     default:
-      break;
+      return null;
   }
 };
-
-AppLogo.defaultProps = defaultProps;
 
 export default AppLogo;

@@ -790,71 +790,141 @@ export async function getBooking(id: number) {
   return booking;
 }
 
-export async function getMyBookings() {
+export async function getMyBookings(params?: { page?: number; limit?: number; status?: string }) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
 
-  const bookings = await db.transportBooking.findMany({
-    where: { userId: session.user.id },
-    include: {
-      trip: {
-        include: {
-          route: {
-            include: {
-              origin: true,
-              destination: true,
-            },
-          },
-          bus: true,
-        },
-      },
-      seats: true,
-      office: true,
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  const page = Math.max(1, params?.page ?? 1);
+  const limit = Math.min(100, Math.max(1, params?.limit ?? 20));
+  const skip = (page - 1) * limit;
 
-  return bookings;
+  const where = {
+    userId: session.user.id,
+    ...(params?.status && { status: params.status as any }),
+  };
+
+  const [bookings, total] = await Promise.all([
+    db.transportBooking.findMany({
+      where,
+      select: {
+        id: true,
+        bookingReference: true,
+        passengerName: true,
+        passengerPhone: true,
+        totalAmount: true,
+        status: true,
+        bookedAt: true,
+        confirmedAt: true,
+        trip: {
+          select: {
+            id: true,
+            departureDate: true,
+            departureTime: true,
+            arrivalTime: true,
+            route: {
+              select: {
+                origin: { select: { name: true, city: true } },
+                destination: { select: { name: true, city: true } },
+              },
+            },
+            bus: { select: { plateNumber: true, capacity: true } },
+          },
+        },
+        _count: { select: { seats: true } },
+        office: { select: { name: true, phone: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    }),
+    db.transportBooking.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    bookings,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
+  };
 }
 
-export async function getOfficeBookings(officeId: number) {
+export async function getOfficeBookings(
+  officeId: number,
+  params?: { page?: number; limit?: number; status?: string }
+) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
 
-  const bookings = await db.transportBooking.findMany({
-    where: { officeId },
-    include: {
-      trip: {
-        include: {
-          route: {
-            include: {
-              origin: true,
-              destination: true,
-            },
-          },
-          bus: true,
-        },
-      },
-      seats: true,
-      user: {
-        select: {
-          id: true,
-          email: true,
-          username: true,
-        },
-      },
-      payments: true,
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  const page = Math.max(1, params?.page ?? 1);
+  const limit = Math.min(100, Math.max(1, params?.limit ?? 20));
+  const skip = (page - 1) * limit;
 
-  return bookings;
+  const where = {
+    officeId,
+    ...(params?.status && { status: params.status as any }),
+  };
+
+  const [bookings, total] = await Promise.all([
+    db.transportBooking.findMany({
+      where,
+      select: {
+        id: true,
+        bookingReference: true,
+        passengerName: true,
+        passengerPhone: true,
+        passengerEmail: true,
+        totalAmount: true,
+        status: true,
+        bookedAt: true,
+        trip: {
+          select: {
+            departureDate: true,
+            departureTime: true,
+            route: {
+              select: {
+                origin: { select: { name: true } },
+                destination: { select: { name: true } },
+              },
+            },
+            bus: { select: { plateNumber: true } },
+          },
+        },
+        user: { select: { email: true, username: true } },
+        _count: { select: { seats: true, payments: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    }),
+    db.transportBooking.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    bookings,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
+  };
 }
 
 // ============================================

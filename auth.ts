@@ -97,11 +97,6 @@ export const {
         }).catch(() => {});
       }
     },
-    async error(error) {
-      if (isDevelopment) {
-        console.error("Auth error event:", error);
-      }
-    }
   },
   callbacks: {
     async signIn({ user, account }) {
@@ -178,7 +173,5 @@ export const {
   debug: isDevelopment,
   // Production security settings
   useSecureCookies: isProduction,
-  // Protect against open redirects
-  skipCSRFCheck: false,
   ...authConfig,
 })

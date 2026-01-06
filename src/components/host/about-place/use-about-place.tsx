@@ -28,7 +28,7 @@ export function useAboutPlace() {
       })
 
       // Navigate to next step
-      const nextStep = STEP_NAVIGATION['about-place'].next
+      const nextStep = STEP_NAVIGATION['about-place']?.next
       if (nextStep) {
         goToNextStep(nextStep)
       }

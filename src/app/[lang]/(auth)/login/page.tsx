@@ -1,19 +1,20 @@
 import { LoginForm } from "@/components/auth/login/form";
 
 interface LoginPageProps {
-  searchParams?: {
+  searchParams?: Promise<{
     callbackUrl?: string;
     error?: string;
-  };
+  }>;
 }
 
-const LoginPage = ({ searchParams }: LoginPageProps) => {
-  return ( 
-    <LoginForm 
-      callbackUrl={searchParams?.callbackUrl}
-      error={searchParams?.error}
+const LoginPage = async ({ searchParams }: LoginPageProps) => {
+  const resolvedSearchParams = await searchParams;
+  return (
+    <LoginForm
+      callbackUrl={resolvedSearchParams?.callbackUrl}
+      error={resolvedSearchParams?.error}
     />
   );
-}
- 
+};
+
 export default LoginPage;

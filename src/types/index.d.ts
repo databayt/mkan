@@ -1,5 +1,5 @@
 import { LucideIcon } from "lucide-react";
-import { Manager, Tenant, Property, Application } from "./prismaTypes";
+import { Manager, Tenant, Property, Location, Application } from "./prismaTypes";
 import { MotionProps as OriginalMotionProps } from "framer-motion";
 import { UserRole } from "@prisma/client";
 
@@ -8,6 +8,11 @@ declare module "framer-motion" {
     className?: string;
   }
 }
+
+// Extended Property type with location relation
+type PropertyWithLocation = Property & {
+  location?: Location | null;
+};
 
 declare global {
   enum AmenityEnum {
@@ -96,7 +101,7 @@ declare global {
   }
 
   interface CardProps {
-    property: Property;
+    property: PropertyWithLocation;
     isFavorite: boolean;
     onFavoriteToggle: () => void;
     showFavoriteButton?: boolean;
@@ -104,7 +109,7 @@ declare global {
   }
 
   interface CardCompactProps {
-    property: Property;
+    property: PropertyWithLocation;
     isFavorite: boolean;
     onFavoriteToggle: () => void;
     showFavoriteButton?: boolean;

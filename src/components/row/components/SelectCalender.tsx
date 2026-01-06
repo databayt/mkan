@@ -34,17 +34,19 @@ export function SelectCalender({
 
     disabledDates = [...disabledDates, ...dateRange];
   });
+  const currentState = state[0] ?? { startDate: new Date(), endDate: new Date(), key: "selection" };
+
   return (
     <>
       <input
         type="hidden"
         name="startDate"
-        value={state[0].startDate.toISOString()}
+        value={currentState.startDate.toISOString()}
       />
       <input
         type="hidden"
         name="endDate"
-        value={state[0].endDate.toISOString()}
+        value={currentState.endDate.toISOString()}
       />
       <DateRange
         date={new Date()}

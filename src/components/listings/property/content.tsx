@@ -65,12 +65,11 @@ export const PropertyContent = ({ properties: initialProperties }: PropertyConte
     if (debouncedFilters.location) {
       const locationLower = debouncedFilters.location.toLowerCase();
       filteredProperties = filteredProperties.filter(property => {
-        const locationMatch = 
+        const locationMatch =
           property.location?.city?.toLowerCase().includes(locationLower) ||
           property.location?.state?.toLowerCase().includes(locationLower) ||
           property.location?.country?.toLowerCase().includes(locationLower) ||
-          property.title?.toLowerCase().includes(locationLower) ||
-          property.name?.toLowerCase().includes(locationLower);
+          property.title?.toLowerCase().includes(locationLower);
         return locationMatch;
       });
     }
@@ -79,7 +78,7 @@ export const PropertyContent = ({ properties: initialProperties }: PropertyConte
     if (debouncedFilters.guests > 0 || debouncedFilters.adults > 0) {
       const totalGuests = Math.max(debouncedFilters.guests, debouncedFilters.adults + debouncedFilters.children);
       filteredProperties = filteredProperties.filter(property => {
-        const capacity = property.guestCapacity || property.maxGuests || 1;
+        const capacity = property.guestCount ?? 1;
         return capacity >= totalGuests;
       });
     }
@@ -89,7 +88,7 @@ export const PropertyContent = ({ properties: initialProperties }: PropertyConte
       // For now, just ensure the property allows bookings
       // In a real app, you'd check availability calendar
       filteredProperties = filteredProperties.filter(property => {
-        return property.isPublished && !property.isBlocked;
+        return property.isPublished === true;
       });
     }
 

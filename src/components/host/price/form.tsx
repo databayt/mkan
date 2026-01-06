@@ -92,13 +92,13 @@ export function PriceForm() {
               <span>Base price per night</span>
               <span>${pricePerNight || 0}</span>
             </div>
-            {securityDeposit > 0 && (
+            {(securityDeposit ?? 0) > 0 && (
               <div className="flex justify-between">
                 <span>Security deposit</span>
                 <span>${securityDeposit}</span>
               </div>
             )}
-            {applicationFee > 0 && (
+            {(applicationFee ?? 0) > 0 && (
               <div className="flex justify-between">
                 <span>Application fee</span>
                 <span>${applicationFee}</span>

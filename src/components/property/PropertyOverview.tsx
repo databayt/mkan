@@ -2,6 +2,19 @@ import { useGetPropertyQuery } from "@/state/api";
 import { MapPin, Star } from "lucide-react";
 import React from "react";
 
+interface PropertyOverviewProps {
+  propertyId: number;
+}
+
+// Extended property type that includes the location relation
+interface PropertyWithLocation {
+  location?: {
+    city?: string;
+    state?: string;
+    country?: string;
+  } | null;
+}
+
 const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
   const {
     data: property,
@@ -9,8 +22,11 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
     isLoading,
   } = useGetPropertyQuery(propertyId);
 
+  // Type assertion for property with location
+  const propertyWithLocation = property as (typeof property & PropertyWithLocation) | undefined;
+
   if (isLoading) return <>Loading...</>;
-  if (isError || !property) {
+  if (isError || !propertyWithLocation) {
     return <>Property not Found</>;
   }
 
@@ -19,22 +35,22 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
       {/* Header */}
       <div className="mb-4">
         <div className="text-sm text-gray-500 mb-1">
-          {property.location?.country} / {property.location?.state} /{" "}
+          {propertyWithLocation.location?.country} / {propertyWithLocation.location?.state} /{" "}
           <span className="font-semibold text-gray-600">
-            {property.location?.city}
+            {propertyWithLocation.location?.city}
           </span>
         </div>
-        <h1 className="text-3xl font-bold my-5">{property.name}</h1>
+        <h1 className="text-3xl font-bold my-5">{propertyWithLocation.name}</h1>
         <div className="flex justify-between items-center">
           <span className="flex items-center text-gray-500">
             <MapPin className="w-4 h-4 mr-1 text-gray-700" />
-            {property.location?.city}, {property.location?.state},{" "}
-            {property.location?.country}
+            {propertyWithLocation.location?.city}, {propertyWithLocation.location?.state},{" "}
+            {propertyWithLocation.location?.country}
           </span>
           <div className="flex justify-between items-center gap-3">
             <span className="flex items-center text-yellow-500">
               <Star className="w-4 h-4 mr-1 fill-current" />
-              {property.averageRating.toFixed(1)} ({property.numberOfReviews}{" "}
+              {(propertyWithLocation.averageRating ?? 0).toFixed(1)} ({propertyWithLocation.numberOfReviews ?? 0}{" "}
               Reviews)
             </span>
             <span className="text-green-600">Verified Listing</span>
@@ -48,24 +64,24 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
           <div>
             <div className="text-sm text-gray-500">Monthly Rent</div>
             <div className="font-semibold">
-              ${property.pricePerMonth.toLocaleString()}
+              ${(propertyWithLocation.pricePerMonth ?? 0).toLocaleString()}
             </div>
           </div>
           <div className="border-l border-gray-300 h-10"></div>
           <div>
             <div className="text-sm text-gray-500">Bedrooms</div>
-            <div className="font-semibold">{property.beds} bd</div>
+            <div className="font-semibold">{propertyWithLocation.beds ?? 0} bd</div>
           </div>
           <div className="border-l border-gray-300 h-10"></div>
           <div>
             <div className="text-sm text-gray-500">Bathrooms</div>
-            <div className="font-semibold">{property.baths} ba</div>
+            <div className="font-semibold">{propertyWithLocation.baths ?? 0} ba</div>
           </div>
           <div className="border-l border-gray-300 h-10"></div>
           <div>
             <div className="text-sm text-gray-500">Square Feet</div>
             <div className="font-semibold">
-              {property.squareFeet.toLocaleString()} sq ft
+              {(propertyWithLocation.squareFeet ?? 0).toLocaleString()} sq ft
             </div>
           </div>
         </div>
@@ -73,9 +89,9 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
 
       {/* Summary */}
       <div className="my-16">
-        <h2 className="text-xl font-semibold mb-5">About {property.name}</h2>
+        <h2 className="text-xl font-semibold mb-5">About {propertyWithLocation.name}</h2>
         <p className="text-gray-500 leading-7">
-          {property.description}
+          {propertyWithLocation.description}
           Experience resort style luxury living at Seacrest Homes, where the
           ocean and city are seamlessly intertwined. Our newly built community
           features sophisticated two and three-bedroom residences, each complete
@@ -93,7 +109,7 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
           room, adjacent to our internet and coffee lounge. Conveniently located
           near beautiful local beaches with easy access to the 110, 405 and 91
           freeways, exclusive shopping at the largest mall in the Western United
-          States “The Del Amo Fashion Center” to the hospital of your choice,
+          States "The Del Amo Fashion Center" to the hospital of your choice,
           Kaiser Hospital, UCLA Harbor Medical Center, Torrance Memorial Medical
           Center, and Providence Little Company of Mary Hospital Torrance rated
           one of the top 10 Best in Los Angeles. Contact us today to tour and

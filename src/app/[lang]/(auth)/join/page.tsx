@@ -1,15 +1,16 @@
 import { RegisterForm } from "@/components/auth/join/form";
 
 interface RegisterPageProps {
-  searchParams?: {
+  searchParams?: Promise<{
     callbackUrl?: string;
-  };
+  }>;
 }
 
-const RegisterPage = ({ searchParams }: RegisterPageProps) => {
-  return ( 
-    <RegisterForm callbackUrl={searchParams?.callbackUrl} />
+const RegisterPage = async ({ searchParams }: RegisterPageProps) => {
+  const resolvedSearchParams = await searchParams;
+  return (
+    <RegisterForm callbackUrl={resolvedSearchParams?.callbackUrl} />
   );
-}
- 
+};
+
 export default RegisterPage;

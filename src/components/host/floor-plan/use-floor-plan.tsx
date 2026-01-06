@@ -32,7 +32,7 @@ export function useFloorPlan() {
       })
 
       // Navigate to next step
-      const nextStep = STEP_NAVIGATION['floor-plan'].next
+      const nextStep = STEP_NAVIGATION['floor-plan']?.next
       if (nextStep) {
         goToNextStep(nextStep)
       }
@@ -42,7 +42,7 @@ export function useFloorPlan() {
   }
 
   const onBack = () => {
-    const previousStep = STEP_NAVIGATION['floor-plan'].previous
+    const previousStep = STEP_NAVIGATION['floor-plan']?.previous
     if (previousStep) {
       goToPreviousStep(previousStep)
     }

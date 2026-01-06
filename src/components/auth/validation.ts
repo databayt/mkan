@@ -120,7 +120,7 @@ export const EmailSchema = z
       "tempmail.com", "throwaway.email", "guerrillamail.com",
       "mailinator.com", "10minutemail.com", "trashmail.com"
     ];
-    const domain = email.split('@')[1];
+    const domain = email.split('@')[1] ?? '';
     return !disposableProviders.includes(domain);
   }, {
     message: "Disposable email addresses are not allowed",

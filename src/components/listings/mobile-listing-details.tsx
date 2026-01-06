@@ -48,11 +48,17 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
   // Touch handlers for swipe
   const onTouchStart = (e: TouchEvent) => {
     setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
+    const touch = e.targetTouches[0];
+    if (touch) {
+      setTouchStart(touch.clientX);
+    }
   };
 
   const onTouchMove = (e: TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
+    const touch = e.targetTouches[0];
+    if (touch) {
+      setTouchEnd(touch.clientX);
+    }
   };
 
   const onTouchEnd = () => {
@@ -118,7 +124,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
        >
         {/* Current Image */}
         <Image
-          src={displayImages[currentImageIndex]}
+          src={displayImages[currentImageIndex] ?? '/placeholder.svg?height=500&width=600'}
           alt={`Property image ${currentImageIndex + 1}`}
           fill
           className="object-cover"

@@ -45,12 +45,12 @@ export const PropertyListings = ({ properties }: PropertyListingsProps) => {
   // Transform properties to match PropertyCard interface
   const transformedProperties = properties.map(property => ({
     id: property.id.toString(),
-    images: property.photoUrls || [],
-    title: property.title || property.name || "Property",
-    location: `${property.location?.city || ""}, ${property.location?.state || ""}`,
+    images: property.photoUrls ?? [],
+    title: property.title ?? "Property",
+    location: `${property.location?.city ?? ""}, ${property.location?.state ?? ""}`,
     dates: undefined, // You can add availability dates logic here
-    price: property.pricePerNight || property.pricePerMonth || 0,
-    rating: property.averageRating || 4.5, // Default rating
+    price: property.pricePerNight ?? 0,
+    rating: property.averageRating ?? 4.5, // Default rating
     isSuperhostBadge: false, // You can add logic for this
     isFavorite: false, // TODO: Implement user favorites
     onFavoriteToggle: handleFavoriteToggle,
@@ -80,7 +80,7 @@ export const PropertyListings = ({ properties }: PropertyListingsProps) => {
             <div key={property.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
               <div className="flex gap-4">
                 <div className="w-48 h-32 bg-gray-200 rounded-lg overflow-hidden">
-                  {property.images.length > 0 && (
+                  {property.images.length > 0 && property.images[0] && (
                     <img
                       src={property.images[0]}
                       alt={property.title}

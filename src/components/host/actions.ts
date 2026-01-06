@@ -304,11 +304,13 @@ export async function getListings(filters?: ListingFilters) {
       // Location filtering
       if (filters.location) {
         where.location = {
-          OR: [
-            { city: { contains: filters.location, mode: 'insensitive' } },
-            { state: { contains: filters.location, mode: 'insensitive' } },
-            { address: { contains: filters.location, mode: 'insensitive' } },
-          ]
+          is: {
+            OR: [
+              { city: { contains: filters.location, mode: 'insensitive' } },
+              { state: { contains: filters.location, mode: 'insensitive' } },
+              { address: { contains: filters.location, mode: 'insensitive' } },
+            ]
+          }
         }
       }
 
@@ -347,16 +349,38 @@ export async function getListings(filters?: ListingFilters) {
       if (filters.coordinates) {
         const [longitude, latitude] = filters.coordinates
         const radius = 0.1 // Adjust radius as needed
-        where.location = {
-          ...where.location,
-          latitude: {
-            gte: latitude - radius,
-            lte: latitude + radius,
-          },
-          longitude: {
-            gte: longitude - radius,
-            lte: longitude + radius,
-          },
+        // If we already have a location filter, merge with AND
+        if (where.location) {
+          where.location = {
+            is: {
+              AND: [
+                ...(where.location.is && 'OR' in where.location.is ? [{ OR: where.location.is.OR }] : []),
+                {
+                  latitude: {
+                    gte: latitude - radius,
+                    lte: latitude + radius,
+                  },
+                  longitude: {
+                    gte: longitude - radius,
+                    lte: longitude + radius,
+                  },
+                }
+              ]
+            }
+          }
+        } else {
+          where.location = {
+            is: {
+              latitude: {
+                gte: latitude - radius,
+                lte: latitude + radius,
+              },
+              longitude: {
+                gte: longitude - radius,
+                lte: longitude + radius,
+              },
+            }
+          }
         }
       }
 

@@ -53,6 +53,7 @@ const AppSearchBar: FC<IAppSearchBarProps> = ({
     const result = relatedTargetClassList.some((className) => {
       const prefix = ['rdr', 'btn'];
       if (prefix.includes(className.slice(0, 3))) return true;
+      return false;
     });
     if (!result) setSearchMenu(null);
   };
@@ -70,18 +71,15 @@ const AppSearchBar: FC<IAppSearchBarProps> = ({
       setSearchMenu(ESearchMenu.LOCATION);
       return;
     }
-    if (searchPage) closeSearch();
+    if (searchPage) closeSearch?.();
     setSearchMenu(null);
 
-    router.push({
-      pathname: '/search',
-      query: {
-        location,
-        checkIn: checkIn?.toISOString(),
-        checkOut: checkOut?.toISOString(),
-        guests: JSON.stringify(guests),
-      },
-    });
+    const params = new URLSearchParams();
+    params.set('location', location);
+    if (checkIn) params.set('checkIn', checkIn.toISOString());
+    if (checkOut) params.set('checkOut', checkOut.toISOString());
+    params.set('guests', JSON.stringify(guests));
+    router.push(`/search?${params.toString()}`);
   };
 
   const dateRangeStyle =

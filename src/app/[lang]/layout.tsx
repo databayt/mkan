@@ -6,8 +6,8 @@ import { Providers } from '../providers';
 import { Toaster } from 'sonner';
 import '../globals.css';
 
-// Force dynamic rendering for all internationalized routes
-export const dynamic = 'force-dynamic';
+// Enable ISR with 1-hour revalidation
+export const revalidate = 3600;
 
 const inter = Inter({
   subsets: ['latin'],
@@ -24,9 +24,10 @@ const rubik = Rubik({
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ lang: Locale }>;
+  params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
-  const { lang } = await params;
+  const resolvedParams = await params;
+  const lang = (resolvedParams.lang as Locale) || 'en';
   const dictionary = await getDictionary(lang);
 
   return {
@@ -52,9 +53,10 @@ export default async function LocaleLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: Promise<{ lang: Locale }>;
+  params: Promise<{ lang: string }>;
 }) {
-  const { lang } = await params;
+  const resolvedParams = await params;
+  const lang = (resolvedParams.lang as Locale) || 'en';
   const config = localeConfig[lang] || localeConfig['en'];
   const isRTL = config.dir === 'rtl';
 

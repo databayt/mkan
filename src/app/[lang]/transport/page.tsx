@@ -7,6 +7,9 @@ import { getAssemblyPoints } from '@/lib/actions/transport-actions';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import type { Locale } from '@/components/internationalization/config';
 
+// ISR: Revalidate every 10 minutes (assembly points rarely change)
+export const revalidate = 600;
+
 interface TransportPageProps {
   params: Promise<{ lang: Locale }>;
 }

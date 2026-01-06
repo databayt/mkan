@@ -32,7 +32,7 @@ export function useTitle() {
       })
 
       // Navigate to next step
-      const nextStep = STEP_NAVIGATION['title'].next
+      const nextStep = STEP_NAVIGATION['title']?.next
       if (nextStep) {
         goToNextStep(nextStep)
       }
@@ -42,7 +42,7 @@ export function useTitle() {
   }
 
   const onBack = () => {
-    const previousStep = STEP_NAVIGATION['title'].previous
+    const previousStep = STEP_NAVIGATION['title']?.previous
     if (previousStep) {
       goToPreviousStep(previousStep)
     }

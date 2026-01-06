@@ -70,7 +70,7 @@ export function PropertyCard({
         {/* Main Image */}
         <div className="relative w-full h-52 bg-gray-200 rounded-md overflow-hidden">
           <Image
-            src={displayImages[currentImageIndex]}
+            src={displayImages[currentImageIndex] ?? '/api/placeholder/303/287'}
             alt={title}
             width={303}
             height={287}

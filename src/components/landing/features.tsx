@@ -48,17 +48,17 @@ const FeaturesSection = () => {
                     "Trustworthy and Verified Listings",
                     "Browse Rental Listings with Ease",
                     "Simplify Your Rental Search with Advanced",
-                  ][index]
+                  ][index] ?? "Feature"
                 }
                 description={
                   [
                     "Discover the best rental options with user reviews and ratings.",
                     "Get access to user reviews and ratings for a better understanding of rental options.",
                     "Find trustworthy and verified rental listings to ensure a hassle-free experience.",
-                  ][index]
+                  ][index] ?? ""
                 }
-                linkText={["Explore", "Search", "Discover"][index]}
-                linkHref={["/explore", "/search", "/discover"][index]}
+                linkText={["Explore", "Search", "Discover"][index] ?? "Learn more"}
+                linkHref={["/explore", "/search", "/discover"][index] ?? "/"}
               />
             </motion.div>
           ))}

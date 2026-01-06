@@ -69,7 +69,7 @@ export function useSite() {
     if (params.location) {
       const locationLower = params.location.toLowerCase();
       filtered = filtered.filter(listing => {
-        const searchableText = `${listing.location || ''} ${listing.title || ''} ${listing.city || ''} ${listing.country || ''}`.toLowerCase();
+        const searchableText = `${listing.location?.address || ''} ${listing.title || ''} ${listing.location?.city || ''} ${listing.location?.country || ''}`.toLowerCase();
         return searchableText.includes(locationLower);
       });
     }
@@ -78,19 +78,21 @@ export function useSite() {
     if (params.guests) {
       const guestCount = parseInt(params.guests);
       if (!isNaN(guestCount)) {
-        filtered = filtered.filter(listing => 
-          (listing.maxGuests || 0) >= guestCount
+        filtered = filtered.filter(listing =>
+          (listing.guestCount ?? 0) >= guestCount
         );
       }
     }
 
     // Category filter
-    if (params.category && CATEGORY_KEYWORDS[params.category]) {
+    if (params.category) {
       const keywords = CATEGORY_KEYWORDS[params.category];
-      filtered = filtered.filter(listing => {
-        const searchableText = `${listing.title || ''} ${listing.description || ''} ${listing.propertyType || ''} ${listing.amenities?.join(' ') || ''}`.toLowerCase();
-        return keywords.some(keyword => searchableText.includes(keyword.toLowerCase()));
-      });
+      if (keywords) {
+        filtered = filtered.filter(listing => {
+          const searchableText = `${listing.title || ''} ${listing.description || ''} ${listing.propertyType || ''} ${listing.amenities?.join(' ') || ''}`.toLowerCase();
+          return keywords.some(keyword => searchableText.includes(keyword.toLowerCase()));
+        });
+      }
     }
 
     setFilteredListings(filtered);

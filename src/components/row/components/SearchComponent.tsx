@@ -29,6 +29,7 @@ import { Counter } from "./Counter";
 import { Skeleton } from "@/components/ui/skeleton";
 import dynamic from "next/dynamic";
 import CountrySelect from "../inputs/CountrySelect";
+import { CountrySelectValue } from "@/types/row-types";
 
 const DynamicMap = dynamic(() => import("./DynamicMap"), {
   loading: () => <Skeleton className="h-[35vh] w-full rounded-lg" />,
@@ -37,7 +38,7 @@ const DynamicMap = dynamic(() => import("./DynamicMap"), {
 
 export function SearchModalCompnent() {
   const [step, setStep] = useState(1);
-  const [locationValue, setLocationValue] = useState("");
+  const [locationValue, setLocationValue] = useState<CountrySelectValue | undefined>(undefined);
   const { getAllCountries } = useCountries();
 
   function SubmitButtonLocal() {
@@ -50,6 +51,7 @@ export function SearchModalCompnent() {
     } else if (step === 2) {
       return <CreationSubmit />;
     }
+    return null;
   }
   return (
     <Dialog>
@@ -66,7 +68,7 @@ export function SearchModalCompnent() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <form className="gap-4 flex flex-col">
-          <input type="hidden" name="country" value={locationValue} />
+          <input type="hidden" name="country" value={locationValue?.value ?? ''} />
           {step === 1 ? (
             <>
               <DialogHeader>
@@ -80,7 +82,7 @@ export function SearchModalCompnent() {
                 value={locationValue}
                 onChange={(value) => setLocationValue(value)}
               />
-              <DynamicMap locationValue={locationValue} />
+              <DynamicMap locationValue={locationValue?.value ?? ''} />
             </>
           ) : (
             <>

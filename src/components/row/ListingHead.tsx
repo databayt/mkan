@@ -1,11 +1,11 @@
 "use client";
 
 import useCountries from "@/hook/useCountries";
-import { SafeUser } from "@/types";
+import { SafeUser } from "@/types/row-types";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import Heading from "../Heading";
-import HeartButton from "../HeartButton";
+import Heading from "./Heading";
+import HeartButton from "@/components/HeartButton";
 
 type Props = {
   title: string;

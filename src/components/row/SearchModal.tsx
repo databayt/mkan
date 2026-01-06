@@ -145,7 +145,7 @@ function SearchModal({}: Props) {
           subtitle="Make sure everyone is free!"
         />
         <Calendar
-          onChange={(value) => setDateRange(value.selection)}
+          onChange={(value) => value.selection && setDateRange(value.selection)}
           value={dateRange}
         />
       </div>

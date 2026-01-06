@@ -1,19 +1,19 @@
 "use client";
 
 import React, { FC, useState } from 'react';
-import Link from 'next/link';
 // context
-import { DATA_ACTION_TYPES } from 'context/actionTypes';
-import { useDataContext } from 'hooks/useDataContext';
-// components
-import AppClearButtonProps from '@/components/atoms/AppClearButton';
-import AppNearby from '@/components/atoms/AppNearby';
-import AppSearchOptionMobile from '@/components/atoms/AppSearchOptionMobile';
-import AppMobileNavigation from '@/components/atoms/AppNavigationMobile';
+import { DATA_ACTION_TYPES } from '@/context/DataContext';
+import { useDataContext } from '@/hooks/useDataContext';
 // icons
-import { ChevronLeftIcon, ChevronRightIcon, SearchIcon } from '@heroicons/react/outline';
-// typings
-import { IExploreNearby } from '@/typings';
+import { ChevronLeftIcon, ChevronRightIcon, SearchIcon } from '@/components/row/placeholders/Icons';
+
+// Stub interface for explore nearby
+interface IExploreNearby {
+  id: string;
+  location: string;
+  distance: string;
+  img: string;
+}
 
 interface AppSearchBarMobileProps {
   exploreNearby: IExploreNearby[];

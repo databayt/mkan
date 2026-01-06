@@ -1,58 +1,125 @@
-export function validateEnv() {
-  // During build, be more lenient with environment validation
-  const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+import { z } from 'zod';
 
-  const requiredEnvVars = [
-    'NEXTAUTH_SECRET',
-    'DATABASE_URL',
-    'NEXTAUTH_URL',
-  ];
+/**
+ * Environment variable schema for validation
+ * Ensures all required configuration is present and valid
+ */
+const envSchema = z.object({
+  // Database
+  DATABASE_URL: z.string().url('DATABASE_URL must be a valid URL'),
 
-  const optionalEnvVars = [
-    'NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY',
-    'IMAGEKIT_PRIVATE_KEY',
-    'NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT',
-  ];
+  // NextAuth
+  NEXTAUTH_SECRET: z
+    .string()
+    .min(32, 'NEXTAUTH_SECRET must be at least 32 characters for security'),
+  NEXTAUTH_URL: z
+    .string()
+    .url('NEXTAUTH_URL must be a valid URL')
+    .refine(
+      (url) => {
+        if (process.env.NODE_ENV === 'production') {
+          return url.startsWith('https://');
+        }
+        return true;
+      },
+      { message: 'NEXTAUTH_URL must use HTTPS in production' }
+    ),
 
-  const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-  const missingOptionalVars = optionalEnvVars.filter(varName => !process.env[varName]);
-  const isProduction = process.env.NODE_ENV === 'production' && !isBuildTime;
+  // Redis (Upstash)
+  UPSTASH_REDIS_REST_URL: z.string().url('UPSTASH_REDIS_REST_URL must be a valid URL'),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(1, 'UPSTASH_REDIS_REST_TOKEN is required'),
 
-  // Check for missing required variables
-  if (missingVars.length > 0) {
-    console.warn(`Missing required environment variables: ${missingVars.join(', ')}`);
-    // Only throw in actual production runtime, not during build
-    if (isProduction) {
-      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+  // Optional: ImageKit
+  NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY: z.string().optional(),
+  IMAGEKIT_PRIVATE_KEY: z.string().optional(),
+  NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT: z.string().url().optional(),
+
+  // Optional: Email Service
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().email().optional(),
+
+  // Optional: OAuth Providers
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  FACEBOOK_CLIENT_ID: z.string().optional(),
+  FACEBOOK_CLIENT_SECRET: z.string().optional(),
+
+  // Optional: Sentry
+  SENTRY_ORG: z.string().optional(),
+  SENTRY_PROJECT: z.string().optional(),
+  SENTRY_AUTH_TOKEN: z.string().optional(),
+
+  // Node environment
+  NODE_ENV: z.enum(['development', 'production', 'test']).optional(),
+});
+
+export type Env = z.infer<typeof envSchema>;
+
+/**
+ * Validates environment variables at runtime
+ * @throws {Error} If validation fails
+ * @returns {Env} Validated environment variables
+ */
+export function validateEnv(): Env {
+  try {
+    const env = envSchema.parse(process.env);
+    return env;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const errors = error.errors.map((err) => `  - ${err.path.join('.')}: ${err.message}`).join('\n');
+
+      throw new Error(
+        `Environment validation failed:\n${errors}\n\nPlease check your .env file and ensure all required variables are set correctly.`
+      );
+    }
+    throw error;
+  }
+}
+
+/**
+ * Validates environment variables with detailed logging
+ * Useful during build time for better error messages
+ */
+export function validateEnvWithLogging(): Env {
+  console.log('🔍 Validating environment variables...');
+
+  try {
+    const env = validateEnv();
+    console.log('✅ Environment validation passed');
+    return env;
+  } catch (error) {
+    console.error('❌ Environment validation failed:');
+    console.error(error instanceof Error ? error.message : String(error));
+
+    if (process.env.NODE_ENV === 'production') {
+      throw error; // Fail fast in production
+    } else {
+      console.warn('⚠️  Continuing in development mode despite validation errors');
+      console.warn('   Fix these issues before deploying to production!');
+      return process.env as Env; // Allow development to continue with warnings
     }
   }
+}
 
-  // Only warn about optional variables
-  if (missingOptionalVars.length > 0) {
-    console.warn(`Missing optional environment variables: ${missingOptionalVars.join(', ')}`);
-    if (missingOptionalVars.includes('NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY') ||
-        missingOptionalVars.includes('IMAGEKIT_PRIVATE_KEY') ||
-        missingOptionalVars.includes('NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT')) {
-      console.warn('Image upload functionality will not work without ImageKit configuration');
-    }
-  }
+/**
+ * Check if optional services are configured
+ */
+export const serviceStatus = {
+  imageKit: Boolean(
+    process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY &&
+    process.env.IMAGEKIT_PRIVATE_KEY &&
+    process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT
+  ),
+  email: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM),
+  googleOAuth: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+  facebookOAuth: Boolean(process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET),
+  sentry: Boolean(process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT),
+} as const;
 
-  // Validate NEXTAUTH_SECRET strength only in actual production runtime
-  if (isProduction && process.env.NEXTAUTH_SECRET) {
-    if (process.env.NEXTAUTH_SECRET.length < 32) {
-      console.warn('NEXTAUTH_SECRET should be at least 32 characters in production');
-    }
-  }
-
-  // Validate NEXTAUTH_URL format
-  if (process.env.NEXTAUTH_URL && isProduction) {
-    try {
-      const url = new URL(process.env.NEXTAUTH_URL);
-      if (url.protocol !== 'https:') {
-        console.warn('NEXTAUTH_URL should use HTTPS protocol in production');
-      }
-    } catch (e) {
-      throw new Error('NEXTAUTH_URL must be a valid URL');
-    }
-  }
-} 
+// Log service status in development
+if (process.env.NODE_ENV === 'development') {
+  console.log('📦 Optional Services Status:');
+  Object.entries(serviceStatus).forEach(([service, enabled]) => {
+    console.log(`  ${enabled ? '✅' : '❌'} ${service}`);
+  });
+}

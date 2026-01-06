@@ -24,8 +24,8 @@ export interface SiteActions {
 }
 
 export interface SiteRefs {
-  resultsRef: React.RefObject<HTMLDivElement>;
-  filterRef: React.RefObject<HTMLDivElement>;
-  propertyContentRef: React.RefObject<HTMLDivElement>;
-  propertyEndRef: React.RefObject<HTMLDivElement>;
+  resultsRef: React.RefObject<HTMLDivElement | null>;
+  filterRef: React.RefObject<HTMLDivElement | null>;
+  propertyContentRef: React.RefObject<HTMLDivElement | null>;
+  propertyEndRef: React.RefObject<HTMLDivElement | null>;
 }

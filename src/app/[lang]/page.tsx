@@ -69,10 +69,10 @@ function HomeContent() {
     }
 
     if (guests) {
-      const guestCount = parseInt(guests, 10);
-      if (!isNaN(guestCount)) {
+      const parsedGuestCount = parseInt(guests, 10);
+      if (!isNaN(parsedGuestCount)) {
         filtered = filtered.filter(listing =>
-          (listing.maxGuests || 0) >= guestCount
+          (listing.guestCount || 0) >= parsedGuestCount
         );
       }
     }
@@ -150,8 +150,8 @@ function HomeContent() {
       <div className="sticky top-0 z-40 bg-white border-b">
         <div className="layout-container">
           <PropertyFilter
-            onCategorySelect={handleCategorySelect}
-            selectedCategory={selectedCategory}
+            onIconClick={handleCategorySelect}
+            selectedIcon={selectedCategory}
           />
         </div>
       </div>

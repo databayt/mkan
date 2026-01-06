@@ -38,7 +38,7 @@ interface OfficeDetails {
     name: string;
     city: string;
     address: string;
-  };
+  } | null;
   buses: {
     id: number;
     plateNumber: string;
@@ -161,10 +161,12 @@ export default function OfficeDetailsPage() {
               )}
 
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <MapPin className="h-4 w-4" />
-                  {office.assemblyPoint.city} - {office.assemblyPoint.name}
-                </div>
+                {office.assemblyPoint && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    {office.assemblyPoint.city} - {office.assemblyPoint.name}
+                  </div>
+                )}
                 <div className="flex items-center gap-1">
                   <Phone className="h-4 w-4" />
                   {office.phone}
@@ -336,25 +338,27 @@ export default function OfficeDetailsPage() {
           </Card>
 
           {/* Location */}
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                Location
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="font-medium">{office.assemblyPoint.name}</div>
-                <div className="text-sm text-muted-foreground">
-                  {office.assemblyPoint.address}
+          {office.assemblyPoint && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Location
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="font-medium">{office.assemblyPoint.name}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {office.assemblyPoint.address}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {office.assemblyPoint.city}
+                  </div>
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {office.assemblyPoint.city}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

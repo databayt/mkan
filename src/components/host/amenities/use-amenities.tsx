@@ -42,7 +42,7 @@ export function useAmenities() {
       })
 
       // Navigate to next step
-      const nextStep = STEP_NAVIGATION['amenities'].next
+      const nextStep = STEP_NAVIGATION['amenities']?.next
       if (nextStep) {
         goToNextStep(nextStep)
       }
@@ -52,7 +52,7 @@ export function useAmenities() {
   }
 
   const onBack = () => {
-    const previousStep = STEP_NAVIGATION['amenities'].previous
+    const previousStep = STEP_NAVIGATION['amenities']?.previous
     if (previousStep) {
       goToPreviousStep(previousStep)
     }

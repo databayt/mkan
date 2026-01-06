@@ -4,6 +4,15 @@ import Link from 'next/link'
 import React from 'react'
 import HeartButton from '@/components/HeartButton'
 
+interface HomesType {
+  id: string | number;
+  title: string;
+  city: string;
+  country: string;
+  price: number;
+  image: string | null;
+}
+
 const HomeCard = ({ home }: { home: HomesType }) => {
     return (
         <Link href={`/home/${home.id}`} className="block">

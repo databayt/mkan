@@ -45,7 +45,7 @@ if (SENTRY_DSN) {
         }
 
         // Remove sensitive query params
-        if (event.request.query_string) {
+        if (event.request.query_string && typeof event.request.query_string === 'string') {
           event.request.query_string = event.request.query_string
             .replace(/token=[^&]+/g, "token=***")
             .replace(/secret=[^&]+/g, "secret=***")

@@ -32,7 +32,7 @@ export function useDescription() {
       })
 
       // Navigate to next step
-      const nextStep = STEP_NAVIGATION['description'].next
+      const nextStep = STEP_NAVIGATION['description']?.next
       if (nextStep) {
         goToNextStep(nextStep)
       }
@@ -42,7 +42,7 @@ export function useDescription() {
   }
 
   const onBack = () => {
-    const previousStep = STEP_NAVIGATION['description'].previous
+    const previousStep = STEP_NAVIGATION['description']?.previous
     if (previousStep) {
       goToPreviousStep(previousStep)
     }

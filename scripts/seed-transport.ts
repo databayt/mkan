@@ -251,7 +251,9 @@ function addDays(date: Date, days: number): Date {
 }
 
 function calculateArrivalTime(departureTime: string, durationMinutes: number): string {
-  const [hours, minutes] = departureTime.split(':').map(Number);
+  const parts = departureTime.split(':').map(Number);
+  const hours = parts[0] ?? 0;
+  const minutes = parts[1] ?? 0;
   const totalMinutes = hours * 60 + minutes + durationMinutes;
   const arrivalHours = Math.floor(totalMinutes / 60) % 24;
   const arrivalMinutes = totalMinutes % 60;
@@ -309,6 +311,11 @@ async function main() {
   const createdOffices: { id: number; name: string; baseCity: string }[] = [];
   for (const office of transportOffices) {
     const assemblyPointId = createdAssemblyPoints[office.baseCity];
+    const ownerId = createdOwners[office.ownerIndex];
+    if (!ownerId || !assemblyPointId) {
+      console.error(`Missing data for office: ${office.name}`);
+      continue;
+    }
     const created = await prisma.transportOffice.create({
       data: {
         name: office.name,
@@ -318,7 +325,7 @@ async function main() {
         phone: office.phone,
         email: office.email,
         licenseNumber: office.licenseNumber,
-        ownerId: createdOwners[office.ownerIndex],
+        ownerId,
         assemblyPointId,
         isVerified: true,
         isActive: true,
@@ -341,7 +348,8 @@ async function main() {
     for (let i = 0; i < numBuses; i++) {
       const busConfig = busConfigs[Math.floor(Math.random() * busConfigs.length)];
       const busModel = busModels[Math.floor(Math.random() * busModels.length)];
-      const year = busModel.years[Math.floor(Math.random() * busModel.years.length)];
+      if (!busConfig || !busModel) continue;
+      const year = busModel.years[Math.floor(Math.random() * busModel.years.length)] ?? busModel.years[0] ?? 2023;
       const seatLayout = generateSeatLayout(busConfig.capacity);
 
       const bus = await prisma.bus.create({
@@ -433,6 +441,7 @@ async function main() {
 
       for (const departureTime of selectedTimes) {
         const bus = officeBuses[Math.floor(Math.random() * officeBuses.length)];
+        if (!bus) continue;
         const priceMultiplier = bus.type === 'premium' ? 1.5 : bus.type === 'standard' ? 1.2 : 1.0;
         const price = Math.round(route.basePrice * priceMultiplier);
         const arrivalTime = calculateArrivalTime(departureTime, route.duration);
@@ -478,8 +487,11 @@ async function main() {
         const seatsData: { tripId: number; seatNumber: string; row: number; column: number; seatType: string; status: SeatStatus }[] = [];
 
         for (let r = 0; r < seatLayout.rows; r++) {
-          for (let c = 0; c < seatLayout.layout[r].length; c++) {
-            const seatNumber = seatLayout.layout[r][c];
+          const row = seatLayout.layout[r];
+          if (!row) continue;
+          for (let c = 0; c < row.length; c++) {
+            const seatNumber = row[c];
+            if (!seatNumber) continue;
             const seatType = c === 0 || c === 3 ? 'window' : 'aisle';
 
             seatsData.push({
@@ -518,8 +530,11 @@ async function main() {
           const seatsData: { tripId: number; seatNumber: string; row: number; column: number; seatType: string; status: SeatStatus }[] = [];
 
           for (let r = 0; r < seatLayout.rows; r++) {
-            for (let c = 0; c < seatLayout.layout[r].length; c++) {
-              const seatNumber = seatLayout.layout[r][c];
+            const row = seatLayout.layout[r];
+            if (!row) continue;
+            for (let c = 0; c < row.length; c++) {
+              const seatNumber = row[c];
+              if (!seatNumber) continue;
               const seatType = c === 0 || c === 3 ? 'window' : 'aisle';
 
               seatsData.push({
@@ -584,7 +599,7 @@ async function main() {
 
       const numSeats = 1 + Math.floor(Math.random() * 2);
       const selectedSeats = trip.seats.slice(0, numSeats);
-      const passengerName = passengerNames[Math.floor(Math.random() * passengerNames.length)];
+      const passengerName = passengerNames[Math.floor(Math.random() * passengerNames.length)] ?? 'Test User';
       const totalAmount = trip.price * numSeats;
 
       const statuses: TransportBookingStatus[] = [
@@ -593,7 +608,7 @@ async function main() {
         TransportBookingStatus.Pending,
         TransportBookingStatus.Completed,
       ];
-      const status = statuses[Math.floor(Math.random() * statuses.length)];
+      const status = statuses[Math.floor(Math.random() * statuses.length)] ?? TransportBookingStatus.Confirmed;
 
       const booking = await prisma.transportBooking.create({
         data: {
@@ -632,7 +647,7 @@ async function main() {
         TransportPaymentMethod.CashOnArrival,
         TransportPaymentMethod.BankTransfer,
       ];
-      const paymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
+      const paymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)] ?? TransportPaymentMethod.MobileMoney;
       const paymentStatus = status === TransportBookingStatus.Pending
         ? TransportPaymentStatus.Pending
         : TransportPaymentStatus.Paid;

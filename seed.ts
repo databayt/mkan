@@ -12,7 +12,7 @@ async function main() {
   await prisma.application.deleteMany()
   await prisma.lease.deleteMany()
   await prisma.tenant.deleteMany()
-  await prisma.property.deleteMany()
+  await prisma.listing.deleteMany()
   await prisma.location.deleteMany()
   console.log('🧹 Cleared existing data')
 
@@ -273,16 +273,16 @@ async function main() {
         data: property.location
       })
 
-      // Create property
-      const createdProperty = await prisma.property.create({
+      // Create listing
+      const createdProperty = await prisma.listing.create({
         data: {
-          name: property.name,
+          title: property.name,
           description: property.description,
-          pricePerMonth: property.pricePerMonth,
+          pricePerNight: property.pricePerMonth,
           securityDeposit: property.securityDeposit,
           applicationFee: property.applicationFee,
-          beds: property.beds,
-          baths: property.baths,
+          bedrooms: property.beds,
+          bathrooms: property.baths,
           squareFeet: property.squareFeet,
           propertyType: property.propertyType,
           isPetsAllowed: property.isPetsAllowed,
@@ -291,11 +291,13 @@ async function main() {
           highlights: property.highlights,
           photoUrls: property.photoUrls,
           locationId: location.id,
-          managerId: property.managerId,
+          hostId: property.managerId,
+          isPublished: true,
+          draft: false,
         }
       })
 
-      console.log(`✅ Created property: ${createdProperty.name}`)
+      console.log(`✅ Created listing: ${createdProperty.title}`)
     } catch (error) {
       console.error(`❌ Error creating property ${index + 1}:`, error)
     }
@@ -351,9 +353,9 @@ async function main() {
     })
   }))
 
-  // Get all created properties
-  const properties = await prisma.property.findMany({
-    include: { manager: true }
+  // Get all created listings
+  const properties = await prisma.listing.findMany({
+    include: { host: true }
   })
 
   // Create sample applications
@@ -411,16 +413,20 @@ async function main() {
   ]
 
   console.log('📝 Creating sample applications...')
-  
+
   let applicationsCreated = 0
   for (const appData of applicationData) {
-    if (appData.propertyId) {
+    const propertyId = appData.propertyId;
+    if (propertyId !== undefined) {
       try {
         await prisma.application.create({
-          data: appData
+          data: {
+            ...appData,
+            propertyId,
+          }
         })
         applicationsCreated++
-        console.log(`✅ Created application for ${appData.name} on ${appData.propertyId}`)
+        console.log(`✅ Created application for ${appData.name} on ${propertyId}`)
       } catch (error) {
         console.error(`❌ Error creating application:`, error)
       }

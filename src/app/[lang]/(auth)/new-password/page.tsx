@@ -1,15 +1,16 @@
 import { NewPasswordForm } from "@/components/auth/password/form";
 
 interface NewPasswordPageProps {
-  searchParams?: {
+  searchParams?: Promise<{
     token?: string;
-  };
+  }>;
 }
 
-const NewPasswordPage = ({ searchParams }: NewPasswordPageProps) => {
-  return ( 
-    <NewPasswordForm token={searchParams?.token} />
-   );
-}
- 
+const NewPasswordPage = async ({ searchParams }: NewPasswordPageProps) => {
+  const resolvedSearchParams = await searchParams;
+  return (
+    <NewPasswordForm token={resolvedSearchParams?.token} />
+  );
+};
+
 export default NewPasswordPage;

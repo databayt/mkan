@@ -8,6 +8,15 @@ import { Property } from "@/types/prismaTypes";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN as string;
 
+// Property with location relation included
+interface PropertyWithLocation extends Property {
+  location?: {
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+  } | null;
+}
+
 const Map = () => {
   const mapContainerRef = useRef(null);
   const filters = useAppSelector((state) => state.global.filters);
@@ -27,8 +36,9 @@ const Map = () => {
       zoom: 9,
     });
 
-    properties.forEach((property) => {
+    (properties as PropertyWithLocation[]).forEach((property) => {
       const marker = createPropertyMarker(property, map);
+      if (!marker) return;
       const markerElement = marker.getElement();
       const path = markerElement.querySelector("path[fill='#3FB1CE']");
       if (path) path.setAttribute("fill", "#000000");
@@ -59,12 +69,15 @@ const Map = () => {
   );
 };
 
-const createPropertyMarker = (property: Property, map: mapboxgl.Map) => {
+const createPropertyMarker = (property: PropertyWithLocation, map: mapboxgl.Map) => {
+  // Skip properties without location data
+  if (!property.location) return null;
+
+  const longitude = property.location.longitude ?? -74.5;
+  const latitude = property.location.latitude ?? 40;
+
   const marker = new mapboxgl.Marker()
-    .setLngLat([
-      property.location.coordinates.longitude,
-      property.location.coordinates.latitude,
-    ])
+    .setLngLat([longitude, latitude])
     .setPopup(
       new mapboxgl.Popup().setHTML(
         `

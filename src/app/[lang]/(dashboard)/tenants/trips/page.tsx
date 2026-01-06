@@ -19,24 +19,26 @@ interface TransportBooking {
   totalAmount: number;
   status: string;
   bookedAt: Date;
+  confirmedAt?: Date | null;
   trip: {
+    id: number;
     departureDate: Date;
     departureTime: string;
-    price: number;
+    arrivalTime?: string | null;
     route: {
       origin: { name: string; city: string };
       destination: { name: string; city: string };
-      duration: number;
     };
     bus: {
       plateNumber: string;
-      model: string | null;
+      capacity?: number;
     };
   };
   office: {
     name: string;
+    phone?: string;
   };
-  seats: { seatNumber: string }[];
+  _count: { seats: number };
 }
 
 const TripsPage = () => {
@@ -46,8 +48,8 @@ const TripsPage = () => {
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const bookings = await getMyBookings();
-        setTransportBookings(bookings || []);
+        const result = await getMyBookings();
+        setTransportBookings(result?.bookings || []);
       } catch (error) {
         console.error('Failed to fetch transport bookings:', error);
       } finally {
@@ -216,12 +218,12 @@ const TransportBookingCard = ({ booking, getStatusColor, isPast }: TransportBook
               {booking.trip.departureTime}
             </div>
             <div>
-              Seats: {booking.seats.map((s) => s.seatNumber).join(', ')}
+              Seats: {booking._count.seats}
             </div>
           </div>
 
           <div className="text-sm text-gray-500">
-            {booking.office.name} • {booking.trip.bus.model || booking.trip.bus.plateNumber}
+            {booking.office.name} • {booking.trip.bus.plateNumber}
           </div>
         </div>
 

@@ -73,10 +73,10 @@ const CardCompact = ({
           <div className="flex text-sm items-center">
             <Star className="w-3 h-3 text-yellow-400 mr-1" />
             <span className="font-semibold">
-              {property.averageRating.toFixed(1)}
+              {(property.averageRating ?? 0).toFixed(1)}
             </span>
             <span className="text-gray-600 ml-1">
-              ({property.numberOfReviews})
+              ({property.numberOfReviews ?? 0})
             </span>
           </div>
         </div>
@@ -84,20 +84,20 @@ const CardCompact = ({
           <div className="flex gap-2 text-gray-600">
             <span className="flex items-center">
               <Bed className="w-4 h-4 mr-1" />
-              {property.beds}
+              {property.beds ?? 0}
             </span>
             <span className="flex items-center">
               <Bath className="w-4 h-4 mr-1" />
-              {property.baths}
+              {property.baths ?? 0}
             </span>
             <span className="flex items-center">
               <House className="w-4 h-4 mr-1" />
-              {property.squareFeet}
+              {property.squareFeet ?? 0}
             </span>
           </div>
 
           <p className="text-base font-bold">
-            ${property.pricePerMonth.toFixed(0)}
+            ${(property.pricePerMonth ?? 0).toFixed(0)}
             <span className="text-gray-600 text-xs font-normal"> /mo</span>
           </p>
         </div>

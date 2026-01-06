@@ -32,7 +32,7 @@ export function usePrice() {
       })
 
       // Navigate to next step
-      const nextStep = STEP_NAVIGATION['price'].next
+      const nextStep = STEP_NAVIGATION['price']?.next
       if (nextStep) {
         goToNextStep(nextStep)
       }
@@ -42,7 +42,7 @@ export function usePrice() {
   }
 
   const onBack = () => {
-    const previousStep = STEP_NAVIGATION['price'].previous
+    const previousStep = STEP_NAVIGATION['price']?.previous
     if (previousStep) {
       goToPreviousStep(previousStep)
     }

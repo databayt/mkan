@@ -109,7 +109,7 @@ export default function PropertyGallery({
     )
   }
 
-  const mainImage = images[0];
+  const mainImage = images[0] ?? "/placeholder.svg?height=500&width=600";
   const thumbnailImages = images.slice(1, 5);
   const totalImages = images.length;
 

@@ -1,12 +1,12 @@
 import { cleanParams, createNewUserInDatabase, withToast } from "@/lib/utils";
 import {
-  Application,
   Lease,
   Manager,
   Payment,
   Property,
   Tenant,
 } from "@/types/prismaTypes";
+import { ApplicationWithDetails } from "@/components/application/action";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { getSession } from "next-auth/react";
 import { FiltersState } from ".";
@@ -312,7 +312,7 @@ export const api = createApi({
 
     // application related endpoints
     getApplications: build.query<
-      Application[],
+      ApplicationWithDetails[],
       { userId?: string; userType?: string }
     >({
       query: (params) => {
