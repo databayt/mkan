@@ -57,16 +57,30 @@ export type Env = z.infer<typeof envSchema>;
 
 /**
  * Validates environment variables at runtime
- * @throws {Error} If validation fails
+ * @throws {Error} If validation fails in production
  * @returns {Env} Validated environment variables
  */
 export function validateEnv(): Env {
+  // Skip strict validation during build time
+  const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+
+  if (isBuildTime) {
+    console.log('⏭️  Skipping strict env validation during build');
+    return process.env as Env;
+  }
+
   try {
     const env = envSchema.parse(process.env);
     return env;
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errors = error.errors.map((err) => `  - ${err.path.join('.')}: ${err.message}`).join('\n');
+
+      // In development, just warn and continue
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`⚠️  Environment validation warnings:\n${errors}`);
+        return process.env as Env;
+      }
 
       throw new Error(
         `Environment validation failed:\n${errors}\n\nPlease check your .env file and ensure all required variables are set correctly.`

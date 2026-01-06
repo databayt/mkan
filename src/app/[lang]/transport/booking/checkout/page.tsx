@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -79,7 +79,7 @@ const paymentMethods = [
   },
 ];
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const bookingId = Number(searchParams.get('bookingId'));
@@ -329,5 +329,24 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function CheckoutFallback() {
+  return (
+    <div className="container mx-auto py-8 px-4">
+      <div className="animate-pulse space-y-4">
+        <div className="h-8 w-64 bg-gray-200 rounded" />
+        <div className="h-96 bg-gray-200 rounded" />
+      </div>
+    </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<CheckoutFallback />}>
+      <CheckoutContent />
+    </Suspense>
   );
 }

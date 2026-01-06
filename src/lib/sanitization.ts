@@ -1,7 +1,7 @@
 import DOMPurify from 'isomorphic-dompurify';
 
 // Configure DOMPurify for safe HTML
-const purifyConfig: DOMPurify.Config = {
+const purifyConfig = {
   ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li'],
   ALLOWED_ATTR: ['href', 'target', 'rel'],
   ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,

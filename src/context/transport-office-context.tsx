@@ -7,6 +7,7 @@ import {
   updateTransportOffice,
   getTransportOffice,
 } from '@/lib/actions/transport-actions';
+import type { TransportOfficeFormData } from '@/lib/schemas/transport-schemas';
 
 export interface TransportOfficeData {
   id?: number;
@@ -58,27 +59,35 @@ export function TransportOfficeProvider({ children, initialOffice = null }: Tran
     setError(null);
 
     try {
-      const result = await createTransportOffice({
+      // Convert null values to undefined for the API
+      const sanitizedData = {
         name: data.name || 'New Office',
-        phone: data.phone || '',
-        email: data.email || '',
-        ...data,
-      });
+        phone: data.phone ?? undefined,
+        email: data.email ?? undefined,
+        description: data.description ?? undefined,
+        nameAr: data.nameAr ?? undefined,
+        descriptionAr: data.descriptionAr ?? undefined,
+        logoUrl: data.logoUrl ?? undefined,
+        licenseNumber: data.licenseNumber ?? undefined,
+        assemblyPointId: data.assemblyPointId ?? undefined,
+      };
+      const result = await createTransportOffice(sanitizedData);
 
-      if (result) {
+      if (result?.success && result.office) {
+        const office = result.office;
         const newOffice: TransportOfficeData = {
-          id: result.id,
-          name: result.name,
-          nameAr: result.nameAr,
-          description: result.description,
-          descriptionAr: result.descriptionAr,
-          logoUrl: result.logoUrl,
-          phone: result.phone,
-          email: result.email,
-          licenseNumber: result.licenseNumber,
-          assemblyPointId: result.assemblyPointId,
-          isVerified: result.isVerified,
-          isActive: result.isActive,
+          id: office.id,
+          name: office.name,
+          nameAr: office.nameAr,
+          description: office.description,
+          descriptionAr: office.descriptionAr,
+          logoUrl: office.logoUrl,
+          phone: office.phone,
+          email: office.email,
+          licenseNumber: office.licenseNumber,
+          assemblyPointId: office.assemblyPointId,
+          isVerified: office.isVerified,
+          isActive: office.isActive,
         };
 
         setOffice(newOffice);
@@ -137,22 +146,26 @@ export function TransportOfficeProvider({ children, initialOffice = null }: Tran
     setError(null);
 
     try {
-      const result = await updateTransportOffice(office.id, data);
+      // Sanitize data: convert null to undefined for API compatibility
+      const sanitizedData = Object.fromEntries(
+        Object.entries(data).map(([key, value]) => [key, value === null ? undefined : value])
+      ) as Partial<TransportOfficeFormData>;
+      const result = await updateTransportOffice(office.id, sanitizedData);
 
-      if (result) {
+      if (result?.success && result.office) {
         const updatedOffice: TransportOfficeData = {
-          id: result.id,
-          name: result.name,
-          nameAr: result.nameAr,
-          description: result.description,
-          descriptionAr: result.descriptionAr,
-          logoUrl: result.logoUrl,
-          phone: result.phone,
-          email: result.email,
-          licenseNumber: result.licenseNumber,
-          assemblyPointId: result.assemblyPointId,
-          isVerified: result.isVerified,
-          isActive: result.isActive,
+          id: result.office.id,
+          name: result.office.name,
+          nameAr: result.office.nameAr,
+          description: result.office.description,
+          descriptionAr: result.office.descriptionAr,
+          logoUrl: result.office.logoUrl,
+          phone: result.office.phone,
+          email: result.office.email,
+          licenseNumber: result.office.licenseNumber,
+          assemblyPointId: result.office.assemblyPointId,
+          isVerified: result.office.isVerified,
+          isActive: result.office.isActive,
         };
 
         setOffice(updatedOffice);

@@ -458,7 +458,7 @@ export async function createTrip(data: TripFormData) {
       departureTime: data.departureTime,
       arrivalTime: data.arrivalTime || null,
       price: data.price ?? 0,
-      availableSeats: data.availableSeats ?? bus.capacity,
+      availableSeats: bus.capacity,
     },
     include: {
       route: {

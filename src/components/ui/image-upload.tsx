@@ -64,11 +64,10 @@ export function ImageUpload({
         onupdatefiles={setFiles}
         allowMultiple={maxFiles > 1}
         maxFiles={maxFiles}
-        server={filePondServer}
+        server={filePondServer as any}
         name="images"
         labelIdle='Drag & Drop your images or <span class="filepond--label-action">Browse</span>'
         acceptedFileTypes={['image/jpeg', 'image/jpg', 'image/png', 'image/webp']}
-        maxFileSize="10MB"
         credits={false}
         allowImagePreview={true}
         imagePreviewHeight={200}

@@ -22,19 +22,19 @@ export async function getApplications(params?: {
       // Get applications for a specific tenant
       where.tenantId = params.userId;
     } else if (params?.userType === "manager" && params?.userId) {
-      // Get applications for properties managed by this manager
-      where.property = {
-        managerId: params.userId,
+      // Get applications for properties managed by this manager (host)
+      where.listing = {
+        hostId: params.userId,
       };
     }
 
     const applications = await db.application.findMany({
       where,
       include: {
-        property: {
+        listing: {
           include: {
             location: true,
-            manager: {
+            host: {
               select: {
                 id: true,
                 email: true,
@@ -124,10 +124,10 @@ export async function createApplication(data: {
         status: ApplicationStatus.Pending,
       },
       include: {
-        property: {
+        listing: {
           include: {
             location: true,
-            manager: {
+            host: {
               select: {
                 id: true,
                 email: true,
@@ -175,9 +175,9 @@ export async function updateApplicationStatus(
     const application = await db.application.findUnique({
       where: { id: applicationId },
       include: {
-        property: {
+        listing: {
           select: {
-            managerId: true,
+            hostId: true,
           },
         },
       },
@@ -187,8 +187,8 @@ export async function updateApplicationStatus(
       throw new Error("Application not found");
     }
 
-    // Verify that the user is the manager of this property
-    if (application.property.managerId !== session.user.id) {
+    // Verify that the user is the host of this listing
+    if (application.listing.hostId !== session.user.id) {
       throw new Error("Unauthorized: You don't manage this property");
     }
 
@@ -197,10 +197,10 @@ export async function updateApplicationStatus(
       where: { id: applicationId },
       data: { status },
       include: {
-        property: {
+        listing: {
           include: {
             location: true,
-            manager: {
+            host: {
               select: {
                 id: true,
                 email: true,
@@ -241,11 +241,11 @@ export async function updateApplicationStatus(
             tenantId: application.tenantId,
             startDate: leaseStartDate,
             endDate: leaseEndDate,
-            rent: updatedApplication.property.pricePerMonth,
-            deposit: updatedApplication.property.securityDeposit,
+            rent: updatedApplication.listing.pricePerNight ?? 0,
+            deposit: updatedApplication.listing.securityDeposit ?? 0,
           },
           include: {
-            property: {
+            listing: {
               include: {
                 location: true,
               },

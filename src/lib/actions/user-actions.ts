@@ -24,7 +24,7 @@ export async function getAuthUser() {
         // For managers, we don't have a separate manager table, just use the User data
         userInfo = {
           id: user.id,
-          name: user.username || user.email,
+          name: user.name || user.email,
           email: user.email,
           phoneNumber: null, // You might want to add this field to User model
         };
@@ -33,13 +33,13 @@ export async function getAuthUser() {
         userInfo = await db.tenant.findUnique({
           where: { userId: user.id },
         });
-        
+
         // If tenant doesn't exist, create one
         if (!userInfo) {
           userInfo = await db.tenant.create({
             data: {
               userId: user.id,
-              name: user.username || user.email || "Unknown User",
+              name: user.name || user.email || "Unknown User",
               email: user.email || "",
               phoneNumber: "",
             },
@@ -51,7 +51,7 @@ export async function getAuthUser() {
       // Create default user info if database operations fail
       userInfo = {
         id: user.id,
-        name: user.username || user.email,
+        name: user.name || user.email,
         email: user.email,
         phoneNumber: null,
       };
@@ -59,7 +59,7 @@ export async function getAuthUser() {
 
     return {
       id: user.id,
-      name: user.username ?? null,
+      name: user.name ?? null,
       email: user.email ?? null,
       image: user.image ?? null,
       role: user.role ?? null,
@@ -103,7 +103,7 @@ export async function getTenant(userId: string) {
             applicationDate: true,
             status: true,
             propertyId: true,
-            property: {
+            listing: {
               select: {
                 id: true,
                 title: true,
@@ -118,7 +118,7 @@ export async function getTenant(userId: string) {
             startDate: true,
             endDate: true,
             rent: true,
-            property: {
+            listing: {
               select: {
                 id: true,
                 title: true,
@@ -186,7 +186,7 @@ export async function getTenant(userId: string) {
               applicationDate: true,
               status: true,
               propertyId: true,
-              property: {
+              listing: {
                 select: {
                   id: true,
                   title: true,
@@ -201,7 +201,7 @@ export async function getTenant(userId: string) {
               startDate: true,
               endDate: true,
               rent: true,
-              property: {
+              listing: {
                 select: {
                   id: true,
                   title: true,
@@ -322,7 +322,7 @@ export async function getCurrentResidences(userId: string) {
         endDate: { gte: currentDate },
       },
       select: {
-        property: {
+        listing: {
           select: {
             id: true,
             title: true,
@@ -332,7 +332,7 @@ export async function getCurrentResidences(userId: string) {
             bedrooms: true,
             bathrooms: true,
             location: true,
-            manager: {
+            host: {
               select: {
                 id: true,
                 email: true,
@@ -344,7 +344,7 @@ export async function getCurrentResidences(userId: string) {
       },
     });
 
-    return leases.map(lease => lease.property);
+    return leases.map(lease => lease.listing);
   } catch (error) {
     console.error("Error fetching current residences:", error);
     throw new Error("Failed to fetch current residences");

@@ -41,7 +41,7 @@ const ApplicationModal = ({
 
     await createApplication({
       ...data,
-      applicationDate: new Date().toISOString(),
+      applicationDate: new Date(),
       status: "Pending",
       propertyId: propertyId,
       tenantCognitoId: authUser.id,

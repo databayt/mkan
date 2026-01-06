@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getListings } from "@/components/host/actions";
 import ListingsHeader from "@/components/listings/listings-header";
 import MobileListingsHeader from "@/components/listings/mobile-listings-header";
@@ -14,6 +15,20 @@ async function getPublishedListings() {
   }
 }
 
+function PropertySkeleton() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {[...Array(8)].map((_, i) => (
+        <div key={i} className="animate-pulse">
+          <div className="aspect-square bg-gray-200 rounded-lg" />
+          <div className="mt-2 h-4 bg-gray-200 rounded w-3/4" />
+          <div className="mt-1 h-3 bg-gray-200 rounded w-1/2" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default async function ListingsPage() {
   const listings = await getPublishedListings();
 
@@ -23,12 +38,14 @@ export default async function ListingsPage() {
       <div className="hidden md:block sticky top-0 z-50">
         <ListingsHeader />
       </div>
-      
+
       {/* Mobile Header - Hidden on desktop */}
       <MobileListingsHeader />
-      
+
       <div className="layout-container py-8">
-        <PropertyContent properties={listings} />
+        <Suspense fallback={<PropertySkeleton />}>
+          <PropertyContent properties={listings} />
+        </Suspense>
       </div>
     </div>
   );

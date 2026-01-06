@@ -59,10 +59,9 @@ export async function getClientId(request?: NextRequest): Promise<string> {
     const realIp = request.headers.get("x-real-ip");
     const cfConnectingIp = request.headers.get("cf-connecting-ip");
 
-    return forwardedFor?.split(",")[0].trim() ||
+    return forwardedFor?.split(",")[0]?.trim() ||
            realIp ||
            cfConnectingIp ||
-           request.ip ||
            "unknown";
   } else {
     // For server components/actions
@@ -71,7 +70,7 @@ export async function getClientId(request?: NextRequest): Promise<string> {
     const realIp = headersList.get("x-real-ip");
     const cfConnectingIp = headersList.get("cf-connecting-ip");
 
-    return forwardedFor?.split(",")[0].trim() ||
+    return forwardedFor?.split(",")[0]?.trim() ||
            realIp ||
            cfConnectingIp ||
            "unknown";
@@ -127,11 +126,11 @@ export function rateLimitResponse(
 // Edge Runtime compatible - no setInterval for cleanup
 class InMemoryRateLimiter {
   private requests: Map<string, { count: number; resetTime: number }> = new Map();
-  private readonly limit: number;
+  private readonly maxRequests: number;
   private readonly windowMs: number;
 
-  constructor(limit: number, windowMs: number) {
-    this.limit = limit;
+  constructor(maxRequests: number, windowMs: number) {
+    this.maxRequests = maxRequests;
     this.windowMs = windowMs;
 
     // Note: No setInterval cleanup in Edge Runtime
@@ -157,17 +156,17 @@ class InMemoryRateLimiter {
       // New window
       const resetTime = now + this.windowMs;
       this.requests.set(identifier, { count: 1, resetTime });
-      return { success: true, limit: this.limit, remaining: this.limit - 1, reset: resetTime };
+      return { success: true, limit: this.maxRequests, remaining: this.maxRequests - 1, reset: resetTime };
     }
 
-    if (record.count >= this.limit) {
+    if (record.count >= this.maxRequests) {
       // Rate limit exceeded
-      return { success: false, limit: this.limit, remaining: 0, reset: record.resetTime };
+      return { success: false, limit: this.maxRequests, remaining: 0, reset: record.resetTime };
     }
 
     // Increment count
     record.count++;
-    return { success: true, limit: this.limit, remaining: this.limit - record.count, reset: record.resetTime };
+    return { success: true, limit: this.maxRequests, remaining: this.maxRequests - record.count, reset: record.resetTime };
   }
 }
 
