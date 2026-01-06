@@ -1,201 +1,22 @@
-// Sample locations for autocomplete - Sudan focused with neighborhoods
-export const LOCATIONS = [
-  // Khartoum neighborhoods
-  "Khartoum, Arkaweet",
-  "Khartoum, Al Amarat",
-  "Khartoum, Al Riyadh",
-  "Khartoum, Al Sahafa",
-  "Khartoum, Al Mamoura",
-  "Khartoum, Al Taif",
-  "Khartoum, Al Manshiya",
-  "Khartoum, Al Kalakla",
-  "Khartoum, Al Jabal",
-  "Khartoum, Al Souq Al Arabi",
-  "Khartoum, Al Souq Al Shaabi",
-  "Khartoum, Al Souq Al Afriqi",
-  "Khartoum, Al Souq Al Sudan",
-  "Khartoum, Al Souq Al Khartoum",
-  "Khartoum, Al Souq Al Omdurman",
-  "Khartoum, Al Souq Al Bahri",
-  "Khartoum, Al Souq Al Shargi",
-  "Khartoum, Al Souq Al Gharbi",
-  "Khartoum, Al Souq Al Shamali",
-  "Khartoum, Al Souq Al Janobi",
-  // Omdurman neighborhoods
-  "Omdurman, Al Thawra",
-  "Omdurman, Al Salha",
-  "Omdurman, Al Halfaya",
-  "Omdurman, Al Abasiya",
-  "Omdurman, Al Mulazmeen",
-  "Omdurman, Al Souq Al Omdurman",
-  "Omdurman, Al Souq Al Shaabi",
-  "Omdurman, Al Souq Al Arabi",
-  "Omdurman, Al Souq Al Sudan",
-  "Omdurman, Al Souq Al Afriqi",
-  "Omdurman, Al Souq Al Khartoum",
-  "Omdurman, Al Souq Al Bahri",
-  "Omdurman, Al Souq Al Shargi",
-  "Omdurman, Al Souq Al Gharbi",
-  "Omdurman, Al Souq Al Shamali",
-  "Omdurman, Al Souq Al Janobi",
-  // Port Sudan neighborhoods
-  "Port Sudan, Al Souq Al Bahri",
-  "Port Sudan, Al Souq Al Shargi",
-  "Port Sudan, Al Souq Al Gharbi",
-  "Port Sudan, Al Souq Al Shamali",
-  "Port Sudan, Al Souq Al Janobi",
-  // Kassala neighborhoods
-  "Kassala, Al Souq Al Bahri",
-  "Kassala, Al Souq Al Shargi",
-  "Kassala, Al Souq Al Gharbi",
-  "Kassala, Al Souq Al Shamali",
-  "Kassala, Al Souq Al Janobi",
-  // El Obeid neighborhoods
-  "El Obeid, Al Souq Al Bahri",
-  "El Obeid, Al Souq Al Shargi",
-  "El Obeid, Al Souq Al Gharbi",
-  "El Obeid, Al Souq Al Shamali",
-  "El Obeid, Al Souq Al Janobi",
-  // Nyala neighborhoods
-  "Nyala, Al Souq Al Bahri",
-  "Nyala, Al Souq Al Shargi",
-  "Nyala, Al Souq Al Gharbi",
-  "Nyala, Al Souq Al Shamali",
-  "Nyala, Al Souq Al Janobi",
-  // Wad Madani neighborhoods
-  "Wad Madani, Al Souq Al Bahri",
-  "Wad Madani, Al Souq Al Shargi",
-  "Wad Madani, Al Souq Al Gharbi",
-  "Wad Madani, Al Souq Al Shamali",
-  "Wad Madani, Al Souq Al Janobi",
-  // El Fasher neighborhoods
-  "El Fasher, Al Souq Al Bahri",
-  "El Fasher, Al Souq Al Shargi",
-  "El Fasher, Al Souq Al Gharbi",
-  "El Fasher, Al Souq Al Shamali",
-  "El Fasher, Al Souq Al Janobi",
-  // Kosti neighborhoods
-  "Kosti, Al Souq Al Bahri",
-  "Kosti, Al Souq Al Shargi",
-  "Kosti, Al Souq Al Gharbi",
-  "Kosti, Al Souq Al Shamali",
-  "Kosti, Al Souq Al Janobi",
-  // Gedaref neighborhoods
-  "Gedaref, Al Souq Al Bahri",
-  "Gedaref, Al Souq Al Shargi",
-  "Gedaref, Al Souq Al Gharbi",
-  "Gedaref, Al Souq Al Shamali",
-  "Gedaref, Al Souq Al Janobi",
-  // Rabak neighborhoods
-  "Rabak, Al Souq Al Bahri",
-  "Rabak, Al Souq Al Shargi",
-  "Rabak, Al Souq Al Gharbi",
-  "Rabak, Al Souq Al Shamali",
-  "Rabak, Al Souq Al Janobi",
-  // Sennar neighborhoods
-  "Sennar, Al Souq Al Bahri",
-  "Sennar, Al Souq Al Shargi",
-  "Sennar, Al Souq Al Gharbi",
-  "Sennar, Al Souq Al Shamali",
-  "Sennar, Al Souq Al Janobi",
-  // El Daein neighborhoods
-  "El Daein, Al Souq Al Bahri",
-  "El Daein, Al Souq Al Shargi",
-  "El Daein, Al Souq Al Gharbi",
-  "El Daein, Al Souq Al Shamali",
-  "El Daein, Al Souq Al Janobi",
-  // El Fula neighborhoods
-  "El Fula, Al Souq Al Bahri",
-  "El Fula, Al Souq Al Shargi",
-  "El Fula, Al Souq Al Gharbi",
-  "El Fula, Al Souq Al Shamali",
-  "El Fula, Al Souq Al Janobi",
-  // Dongola neighborhoods
-  "Dongola, Al Souq Al Bahri",
-  "Dongola, Al Souq Al Shargi",
-  "Dongola, Al Souq Al Gharbi",
-  "Dongola, Al Souq Al Shamali",
-  "Dongola, Al Souq Al Janobi",
-  // Atbara neighborhoods
-  "Atbara, Al Souq Al Bahri",
-  "Atbara, Al Souq Al Shargi",
-  "Atbara, Al Souq Al Gharbi",
-  "Atbara, Al Souq Al Shamali",
-  "Atbara, Al Souq Al Janobi",
-  // Kadugli neighborhoods
-  "Kadugli, Al Souq Al Bahri",
-  "Kadugli, Al Souq Al Shargi",
-  "Kadugli, Al Souq Al Gharbi",
-  "Kadugli, Al Souq Al Shamali",
-  "Kadugli, Al Souq Al Janobi",
-  // El Geneina neighborhoods
-  "El Geneina, Al Souq Al Bahri",
-  "El Geneina, Al Souq Al Shargi",
-  "El Geneina, Al Souq Al Gharbi",
-  "El Geneina, Al Souq Al Shamali",
-  "El Geneina, Al Souq Al Janobi",
-  // El Damazin neighborhoods
-  "El Damazin, Al Souq Al Bahri",
-  "El Damazin, Al Souq Al Shargi",
-  "El Damazin, Al Souq Al Gharbi",
-  "El Damazin, Al Souq Al Shamali",
-  "El Damazin, Al Souq Al Janobi",
-  // El Manaqil neighborhoods
-  "El Manaqil, Al Souq Al Bahri",
-  "El Manaqil, Al Souq Al Shargi",
-  "El Manaqil, Al Souq Al Gharbi",
-  "El Manaqil, Al Souq Al Shamali",
-  "El Manaqil, Al Souq Al Janobi",
-  // Shendi neighborhoods
-  "Shendi, Al Souq Al Bahri",
-  "Shendi, Al Souq Al Shargi",
-  "Shendi, Al Souq Al Gharbi",
-  "Shendi, Al Souq Al Shamali",
-  "Shendi, Al Souq Al Janobi",
-  // Singa neighborhoods
-  "Singa, Al Souq Al Bahri",
-  "Singa, Al Souq Al Shargi",
-  "Singa, Al Souq Al Gharbi",
-  "Singa, Al Souq Al Shamali",
-  "Singa, Al Souq Al Janobi",
-  // El Nuhud neighborhoods
-  "El Nuhud, Al Souq Al Bahri",
-  "El Nuhud, Al Souq Al Shargi",
-  "El Nuhud, Al Souq Al Gharbi",
-  "El Nuhud, Al Souq Al Shamali",
-  "El Nuhud, Al Souq Al Janobi",
-  // Tokar neighborhoods
-  "Tokar, Al Souq Al Bahri",
-  "Tokar, Al Souq Al Shargi",
-  "Tokar, Al Souq Al Gharbi",
-  "Tokar, Al Souq Al Shamali",
-  "Tokar, Al Souq Al Janobi",
-  // El Dinder neighborhoods
-  "El Dinder, Al Souq Al Bahri",
-  "El Dinder, Al Souq Al Shargi",
-  "El Dinder, Al Souq Al Gharbi",
-  "El Dinder, Al Souq Al Shamali",
-  "El Dinder, Al Souq Al Janobi",
-  // El Roseires neighborhoods
-  "El Roseires, Al Souq Al Bahri",
-  "El Roseires, Al Souq Al Shargi",
-  "El Roseires, Al Souq Al Gharbi",
-  "El Roseires, Al Souq Al Shamali",
-  "El Roseires, Al Souq Al Janobi"
-]
+// Re-export centralized search configuration
+export { SEARCH_CONFIG } from "@/lib/schemas/search-schema";
 
 // Guest type limits
 export const GUEST_LIMITS = {
   adults: { min: 0, max: 16 },
   children: { min: 0, max: 10 },
-  infants: { min: 0, max: 5 }
-} as const
+  infants: { min: 0, max: 5 },
+} as const;
 
 // Mobile breakpoint
-export const MOBILE_BREAKPOINT = 768
+export const MOBILE_BREAKPOINT = 768;
 
-// Search constants
+// Search UI constants (legacy support)
 export const SEARCH_CONSTANTS = {
-  MAX_AUTOCOMPLETE_RESULTS: 3,
-  DEFAULT_POPULAR_LOCATIONS_COUNT: 3
-} as const
+  MAX_AUTOCOMPLETE_RESULTS: 10,
+  DEFAULT_POPULAR_LOCATIONS_COUNT: 5,
+} as const;
+
+// Note: Static LOCATIONS array has been removed.
+// Location suggestions are now fetched dynamically from the database
+// via the useLocationSuggestions hook and /api/search/locations endpoint.

@@ -10,7 +10,7 @@ import { Building2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { useTransportHostValidation } from '@/context/transport-host-validation-context';
+import { useTransportHostValidation } from '@/components/onboarding';
 import { useTransportOffice } from '@/context/transport-office-context';
 
 const officeInfoSchema = z.object({

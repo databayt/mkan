@@ -4,12 +4,14 @@ import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import HeroSection from "@/components/site/HeroSection";
 import { PropertyContent } from "@/components/site/property/content";
+import { ListingCarouselSection } from "@/components/site/property/listing-carousel-section";
 import PropertyFilter from "@/components/site/property-filter";
 import { Listing } from "@/types/listing";
 import AirbnbInspiration from "@/components/site/airbnb-inspiration";
 import GiftCard from "@/components/site/airbnb-gift-card";
 import Ask from "@/components/site/airbnb-ask";
 import Footer from "@/components/row/Footer";
+import { useLocale } from "@/components/internationalization/use-locale";
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'Islands': ['island', 'private island', 'tropical', 'paradise', 'exotic'],
@@ -25,8 +27,19 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'Windmill': ['windmill', 'rural', 'countryside', 'farm', 'rustic']
 };
 
+// Helper functions for section data
+const getRecentListings = (listings: Listing[], limit: number) =>
+  [...listings].sort((a, b) => b.id - a.id).slice(0, limit)
+
+const getTopRatedListings = (listings: Listing[], limit: number) =>
+  [...listings]
+    .filter(l => l.averageRating)
+    .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
+    .slice(0, limit)
+
 function HomeContent() {
   const searchParams = useSearchParams();
+  const { locale } = useLocale();
   const [listings, setListings] = useState<Listing[]>([]);
   const [filteredListings, setFilteredListings] = useState<Listing[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -165,8 +178,26 @@ function HomeContent() {
           <div className="text-center py-20">
             <p className="text-red-500">{error}</p>
           </div>
-        ) : (
+        ) : selectedCategory ? (
           <PropertyContent properties={filteredListings} />
+        ) : (
+          <div className="space-y-12">
+            <ListingCarouselSection
+              title="Popular homes in Khartoum"
+              href={`/${locale}/search`}
+              listings={listings.slice(0, 12)}
+            />
+            <ListingCarouselSection
+              title="Recently added"
+              href={`/${locale}/search?sort=newest`}
+              listings={getRecentListings(listings, 12)}
+            />
+            <ListingCarouselSection
+              title="Top rated"
+              href={`/${locale}/search?sort=rating`}
+              listings={getTopRatedListings(listings, 12)}
+            />
+          </div>
         )}
       </div>
 

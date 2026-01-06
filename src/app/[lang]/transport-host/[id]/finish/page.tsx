@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { useTransportHostValidation } from '@/context/transport-host-validation-context';
+import { useTransportHostValidation } from '@/components/onboarding';
 import { useTransportOffice } from '@/context/transport-office-context';
 import {
   publishTransportOffice,

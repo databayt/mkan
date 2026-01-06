@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import React from 'react';
 import { StepHeader } from '@/components/host';
-import { useHostValidation } from '@/context/host-validation-context';
+import { useHostValidation } from '@/components/onboarding';
 
 interface StandOutPageProps {
   params: Promise<{ id: string }>;

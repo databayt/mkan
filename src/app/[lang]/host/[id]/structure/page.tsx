@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import HostStepLayout from '@/components/host/host-step-layout';
 import PropertySelector, { mapPropertyTypeToPrisma } from '@/components/host/property-type-selector';
 import { useListing } from '@/components/host/use-listing';
-import { useHostValidation } from '@/context/host-validation-context';
+import { useHostValidation } from '@/components/onboarding';
 
 interface StructurePageProps {
   params: Promise<{ id: string }>;

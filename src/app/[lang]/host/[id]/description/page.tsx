@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Heart, Star, Sparkles, Home, MapPin, Users } from 'lucide-react';
 import { useListing } from '@/components/host/use-listing';
-import { useHostValidation } from '@/context/host-validation-context';
+import { useHostValidation } from '@/components/onboarding';
 import { Highlight } from '@prisma/client';
 
 interface DescriptionPageProps {

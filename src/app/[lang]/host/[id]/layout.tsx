@@ -2,8 +2,12 @@
 
 import React, { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import HostFooter from '@/components/host/host-footer';
-import { HostValidationProvider } from '@/context/host-validation-context';
+import {
+  OnboardingFooter,
+  HOST_FOOTER_CONFIG,
+  HostValidationProvider,
+  useHostValidation,
+} from '@/components/onboarding';
 import { ListingProvider, useListing } from '@/components/host/use-listing';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 
@@ -49,7 +53,10 @@ function HostLayoutContent({ children }: HostLayoutProps) {
       </main>
 
       {/* Footer with embedded navigation */}
-      <HostFooter />
+      <OnboardingFooter
+        config={HOST_FOOTER_CONFIG}
+        useValidation={useHostValidation}
+      />
     </div>
   );
 }

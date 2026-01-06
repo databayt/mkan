@@ -2,8 +2,12 @@
 
 import React, { useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import TransportHostFooter from '@/components/transport/onboarding/transport-host-footer';
-import { TransportHostValidationProvider } from '@/context/transport-host-validation-context';
+import {
+  OnboardingFooter,
+  TRANSPORT_FOOTER_CONFIG,
+  TransportHostValidationProvider,
+  useTransportHostValidation,
+} from '@/components/onboarding';
 import { TransportOfficeProvider, useTransportOffice } from '@/context/transport-office-context';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 
@@ -43,7 +47,10 @@ function TransportHostLayoutContent({ children }: TransportHostLayoutProps) {
       <main className="h-screen pt-16 sm:pt-20 pb-24">
         {children}
       </main>
-      <TransportHostFooter />
+      <OnboardingFooter
+        config={TRANSPORT_FOOTER_CONFIG}
+        useValidation={useTransportHostValidation}
+      />
     </div>
   );
 }

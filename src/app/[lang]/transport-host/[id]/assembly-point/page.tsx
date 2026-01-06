@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { MapPin, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useTransportHostValidation } from '@/context/transport-host-validation-context';
+import { useTransportHostValidation } from '@/components/onboarding';
 import { useTransportOffice } from '@/context/transport-office-context';
 import { getAssemblyPoints } from '@/lib/actions/transport-actions';
 

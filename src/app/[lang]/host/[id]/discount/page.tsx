@@ -8,7 +8,7 @@ import { HostStepLayout } from '@/components/host';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { useHostValidation } from '@/context/host-validation-context';
+import { useHostValidation } from '@/components/onboarding';
 
 interface DiscountPageProps {
   params: Promise<{ id: string }>;

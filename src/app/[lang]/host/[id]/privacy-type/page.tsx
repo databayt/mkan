@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Home, DoorOpen, Building } from 'lucide-react';
 import { HostStepLayout, SelectionCard } from '@/components/host';
-import { useHostValidation } from '@/context/host-validation-context';
+import { useHostValidation } from '@/components/onboarding';
 
 interface PrivacyTypePageProps {
   params: Promise<{ id: string }>;

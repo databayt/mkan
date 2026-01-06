@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import HostStepLayout from '@/components/host/host-step-layout';
 import AmenitySelector, { mapAmenityToPrisma } from '@/components/host/amenity-selector';
 import { useListing } from '@/components/host/use-listing';
-import { useHostValidation } from '@/context/host-validation-context';
+import { useHostValidation } from '@/components/onboarding';
 
 interface AmenitiesPageProps {
   params: Promise<{ id: string }>;

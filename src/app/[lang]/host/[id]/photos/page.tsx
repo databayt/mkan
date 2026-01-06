@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { Plus } from 'lucide-react';
 import HostStepLayout from '@/components/host/host-step-layout';
 import { useListing } from '@/components/host/use-listing';
-import { useHostValidation } from '@/context/host-validation-context';
+import { useHostValidation } from '@/components/onboarding';
 
 interface PhotosPageProps {
   params: Promise<{ id: string }>;

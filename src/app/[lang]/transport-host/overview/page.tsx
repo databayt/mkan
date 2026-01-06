@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import TransportStepsOverview from '@/components/transport/transport-steps-overview';
+import { OnboardingStepsOverview, TRANSPORT_OVERVIEW_CONFIG } from '@/components/onboarding';
 import { createTransportOffice } from '@/lib/actions/transport-actions';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import Loading from '@/components/atom/loading';
@@ -45,7 +45,11 @@ const TransportOverviewPage = () => {
 
   return (
     <div className="h-screen overflow-hidden">
-      <TransportStepsOverview onGetStarted={handleGetStarted} isLoading={isLoading} />
+      <OnboardingStepsOverview
+        config={TRANSPORT_OVERVIEW_CONFIG}
+        onGetStarted={handleGetStarted}
+        isLoading={isLoading}
+      />
     </div>
   );
 };

@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useTransportHostValidation } from '@/context/transport-host-validation-context';
+import { useTransportHostValidation } from '@/components/onboarding';
 import { useTransportOffice } from '@/context/transport-office-context';
 import { createBus, updateBus, deleteBus, getBusesByOffice } from '@/lib/actions/transport-actions';
 import { BusAmenity } from '@prisma/client';

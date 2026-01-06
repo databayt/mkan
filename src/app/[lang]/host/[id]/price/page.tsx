@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { HostStepLayout } from '@/components/host';
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
-import { useHostValidation } from '@/context/host-validation-context';
+import { useHostValidation } from '@/components/onboarding';
 import { ListingProvider, useListing } from '@/components/host/use-listing';
 
 interface PricePageProps {

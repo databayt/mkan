@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { HostStepLayout } from '@/components/host';
-import { useHostValidation } from '@/context/host-validation-context';
+import { useHostValidation } from '@/components/onboarding';
 import { ListingProvider, useListing } from '@/components/host/use-listing';
 import { LocationForm } from '@/components/host/location/form';
 

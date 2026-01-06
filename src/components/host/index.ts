@@ -1,8 +1,7 @@
 export { default as HostDashboard } from './host-dashboard';
 export { default as HostHeader } from './host-header';
-export { default as HostFooter } from './host-footer';
-export { default as StepsOverview } from './steps-overview';
 export { default as StepHeader } from './step-header';
+// Note: HostFooter and StepsOverview moved to @/components/onboarding
 export { StepNavigation } from './step-navigation';
 export { default as PropertySelector } from './property-type-selector';
 

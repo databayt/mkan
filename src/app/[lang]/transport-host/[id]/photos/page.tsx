@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { Camera, Upload, X, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { useTransportHostValidation } from '@/context/transport-host-validation-context';
+import { useTransportHostValidation } from '@/components/onboarding';
 import { useTransportOffice } from '@/context/transport-office-context';
 
 interface UploadedImage {
