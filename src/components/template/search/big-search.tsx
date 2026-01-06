@@ -88,15 +88,20 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
     });
   };
 
-  // Get date display text
-  const getDateDisplayText = () => {
-    if (dateRange.from && dateRange.to) {
-      return `${formatDate(dateRange.from)} - ${formatDate(dateRange.to)}`;
-    } else if (dateRange.from) {
-      return `${formatDate(dateRange.from)} - Add checkout`;
-    } else {
-      return "Add dates";
+  // Get check-in display text
+  const getCheckInDisplayText = () => {
+    if (dateRange.from) {
+      return formatDate(dateRange.from);
     }
+    return "Add date";
+  };
+
+  // Get check-out display text
+  const getCheckOutDisplayText = () => {
+    if (dateRange.to) {
+      return formatDate(dateRange.to);
+    }
+    return "Add date";
   };
 
   // Handle guest change
@@ -338,42 +343,65 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
           }`}
         ></div>
 
-        {/* Check in Button */}
-        <button
-          className={`flex-1 px-6 py-3 ${getButtonStyling("checkin")}`}
-          onMouseEnter={() => setHoveredButton("checkin")}
-          onMouseLeave={() => setHoveredButton(null)}
-          onClick={() => handleButtonClick("checkin")}
-        >
-          <div className="text-left">
-            <div className="text-sm font-semibold text-[#000000] mb-1">
-              Check in
-            </div>
-            <div className="text-sm text-[#6b7280]">{getDateDisplayText()}</div>
-          </div>
-        </button>
-
-        {/* Divider 2 */}
+        {/* Unified Date Section (Check in + Check out) */}
         <div
-          className={`w-px h-8 bg-[#e5e7eb] transition-opacity duration-200 ${
-            isLineHidden("checkin-checkout") ? "opacity-0" : "opacity-100"
-          }`}
-        ></div>
-
-        {/* Check out Button */}
-        <button
-          className={`flex-1 px-6 py-3 ${getButtonStyling("checkout")}`}
-          onMouseEnter={() => setHoveredButton("checkout")}
+          className={`flex-[2] flex items-center ${
+            activeButton === "checkin" || activeButton === "checkout"
+              ? "bg-white shadow-md rounded-full"
+              : hoveredButton === "checkin" || hoveredButton === "checkout"
+                ? "bg-[#f3f4f6] rounded-full"
+                : activeButton
+                  ? "bg-[#e5e7eb] rounded-full"
+                  : ""
+          } transition-all duration-200`}
+          onMouseEnter={() => {
+            if (!activeButton || (activeButton !== "checkin" && activeButton !== "checkout")) {
+              setHoveredButton("checkin");
+            }
+          }}
           onMouseLeave={() => setHoveredButton(null)}
-          onClick={() => handleButtonClick("checkout")}
         >
-          <div className="text-left">
-            <div className="text-sm font-semibold text-[#000000] mb-1">
-              Check out
+          {/* Check in Button */}
+          <button
+            className={`flex-1 px-5 py-3 rounded-l-full transition-all duration-200 ${
+              activeButton === "checkin"
+                ? "bg-white"
+                : activeButton === "checkout"
+                  ? "bg-transparent"
+                  : ""
+            }`}
+            onClick={() => handleButtonClick("checkin")}
+          >
+            <div className="text-left">
+              <div className="text-sm font-semibold text-[#000000] mb-1">
+                Check in
+              </div>
+              <div className="text-sm text-[#6b7280]">{getCheckInDisplayText()}</div>
             </div>
-            <div className="text-sm text-[#6b7280]">{getDateDisplayText()}</div>
-          </div>
-        </button>
+          </button>
+
+          {/* Subtle Inner Divider */}
+          <div className="w-px h-10 bg-[#e5e7eb]/50"></div>
+
+          {/* Check out Button */}
+          <button
+            className={`flex-1 px-5 py-3 rounded-r-full transition-all duration-200 ${
+              activeButton === "checkout"
+                ? "bg-white"
+                : activeButton === "checkin"
+                  ? "bg-transparent"
+                  : ""
+            }`}
+            onClick={() => handleButtonClick("checkout")}
+          >
+            <div className="text-left">
+              <div className="text-sm font-semibold text-[#000000] mb-1">
+                Check out
+              </div>
+              <div className="text-sm text-[#6b7280]">{getCheckOutDisplayText()}</div>
+            </div>
+          </button>
+        </div>
 
         {/* Divider 3 */}
         <div
@@ -420,7 +448,7 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
 
       {/* Dropdown Menus */}
       {activeButton === "location" && (
-        <div className="absolute top-full left-0 mt-2 w-96 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10">
+        <div className="absolute top-full left-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10 overflow-hidden">
           <LocationDropdown
             searchQuery={searchQuery}
             suggestions={suggestions}
@@ -434,7 +462,7 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
       )}
 
       {activeButton === "checkin" && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-4 z-10">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-3 z-10 overflow-hidden">
           <BigSearchDatePicker
             dateRange={dateRange}
             onDateChange={handleDateChange}
@@ -443,7 +471,7 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
       )}
 
       {activeButton === "checkout" && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-4 z-10">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-3 z-10 overflow-hidden">
           <BigSearchDatePicker
             dateRange={dateRange}
             onDateChange={handleDateChange}

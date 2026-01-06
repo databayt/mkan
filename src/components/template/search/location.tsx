@@ -94,18 +94,9 @@ export default function LocationDropdown({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">
-                    {location.displayName}
-                  </div>
-                  <div className="text-sm text-gray-500 truncate">
-                    {location.country}
+                    {location.city}
                   </div>
                 </div>
-                {location.listingCount > 0 && (
-                  <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full flex-shrink-0">
-                    {location.listingCount}{" "}
-                    {location.listingCount === 1 ? "listing" : "listings"}
-                  </span>
-                )}
               </div>
             ))}
           </>
