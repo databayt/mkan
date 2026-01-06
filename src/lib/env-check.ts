@@ -25,9 +25,9 @@ const envSchema = z.object({
       { message: 'NEXTAUTH_URL must use HTTPS in production' }
     ),
 
-  // Redis (Upstash)
-  UPSTASH_REDIS_REST_URL: z.string().url('UPSTASH_REDIS_REST_URL must be a valid URL'),
-  UPSTASH_REDIS_REST_TOKEN: z.string().min(1, 'UPSTASH_REDIS_REST_TOKEN is required'),
+  // Redis (Upstash) - Optional, used for rate limiting
+  UPSTASH_REDIS_REST_URL: z.string().url('UPSTASH_REDIS_REST_URL must be a valid URL').optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(1, 'UPSTASH_REDIS_REST_TOKEN is required').optional(),
 
   // Optional: ImageKit
   NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY: z.string().optional(),
