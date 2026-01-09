@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Menu, X, LogOut, Home, Bus } from 'lucide-react';
+import { Menu, X, LogOut } from 'lucide-react';
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { Button } from '@/components/ui/button';
@@ -46,6 +46,7 @@ const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
 
   const isDashboardPage =
     pathname.includes("/managers") || pathname.includes("/tenants") || pathname.includes("/offices");
+  const currentLocale = pathname.startsWith('/ar') ? 'ar' : 'en';
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -70,26 +71,14 @@ const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
 
       <SheetContent side="right" className="w-80 p-6">
         <div className="flex flex-col space-y-4 pt-8">
-          {/* Host options - expanded for mobile */}
-          <div className="space-y-1">
-            <span className="text-xs text-gray-500 uppercase tracking-wide">Become a host</span>
-            <Link
-              href="/host"
-              onClick={handleLinkClick}
-              className="flex items-center gap-3 text-black text-sm hover:text-black/70 transition-colors py-1"
-            >
-              <Home className="size-4" />
-              Host your space
-            </Link>
-            <Link
-              href="/transport-host"
-              onClick={handleLinkClick}
-              className="flex items-center gap-3 text-black text-sm hover:text-black/70 transition-colors py-1"
-            >
-              <Bus className="size-4" />
-              Host transportation
-            </Link>
-          </div>
+          {/* Become a host - direct link */}
+          <Link
+            href={`/${currentLocale}/host`}
+            onClick={handleLinkClick}
+            className="text-black text-sm hover:text-black/70 transition-colors"
+          >
+            Become a host
+          </Link>
 
           <Separator className="my-2" />
 
@@ -102,13 +91,14 @@ const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
                 </div>
               );
             }
-            
+
             // Handle navigation items with href
             if (item.href) {
+              const localizedHref = `/${currentLocale}${item.href}`;
               return (
                 <Link
                   key={item.href || index}
-                  href={item.href}
+                  href={localizedHref}
                   onClick={handleLinkClick}
                   className="text-black text-sm hover:text-black/70 transition-colors"
                 >
@@ -116,7 +106,7 @@ const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
                 </Link>
               );
             }
-            
+
             return null;
           })}
           

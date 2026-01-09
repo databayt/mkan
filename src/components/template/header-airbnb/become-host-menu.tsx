@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Home, Bus, ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,
@@ -17,6 +18,9 @@ interface BecomeHostMenuProps {
 }
 
 export function BecomeHostMenu({ isLandingPage = false, className }: BecomeHostMenuProps) {
+  const pathname = usePathname();
+  const currentLocale = pathname.startsWith('/ar') ? 'ar' : 'en';
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -31,7 +35,7 @@ export function BecomeHostMenu({ isLandingPage = false, className }: BecomeHostM
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuItem asChild>
-          <Link href="/host" className="flex items-center gap-3 cursor-pointer">
+          <Link href={`/${currentLocale}/host`} className="flex items-center gap-3 cursor-pointer">
             <Home className="h-4 w-4" />
             <div>
               <div className="font-medium">Host your space</div>
@@ -40,7 +44,7 @@ export function BecomeHostMenu({ isLandingPage = false, className }: BecomeHostM
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/transport-host" className="flex items-center gap-3 cursor-pointer">
+          <Link href={`/${currentLocale}/transport-host`} className="flex items-center gap-3 cursor-pointer">
             <Bus className="h-4 w-4" />
             <div>
               <div className="font-medium">Host transportation</div>

@@ -20,7 +20,6 @@ import { SidebarTrigger } from "../../ui/sidebar";
 import { NAVIGATION_LINKS, DISPLAY_ITEMS, AUTH_LINKS, ALL_NAVIGATION_ITEMS } from "./constant";
 import { useCurrentUser } from "../../auth/use-current-user";
 import MobileNav from "./mobile-nav";
-import { BecomeHostMenu } from "./become-host-menu";
 
 const SiteHeader = () => {
   const { data: session, status } = useSession();
@@ -31,6 +30,7 @@ const SiteHeader = () => {
   const isDashboardPage =
     pathname.includes("/managers") || pathname.includes("/tenants") || pathname.includes("/offices");
   const isLandingPage = pathname === "/" || pathname === "/en" || pathname === "/ar";
+  const currentLocale = pathname.startsWith('/ar') ? 'ar' : 'en';
 
   const handleSignOut = async () => {
     await signOut({ 
@@ -116,16 +116,22 @@ const SiteHeader = () => {
 
         {/* Desktop Navigation Links - Hidden on mobile */}
         <nav className="hidden md:flex items-center gap-6">
-          {/* Become a Host dropdown menu */}
-          <BecomeHostMenu isLandingPage={isLandingPage} />
+          {/* Become a Host - direct link */}
+          <Link
+            href={`/${currentLocale}/host`}
+            className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`}
+          >
+            Become a host
+          </Link>
 
           {filteredNavItems.map((item, index) => {
             const commonClasses = `text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`;
 
             // If item has href, render as Link
             if (item.href) {
+              const localizedHref = `/${currentLocale}${item.href}`;
               return (
-                <Link key={item.href || index} href={item.href} className={commonClasses}>
+                <Link key={item.href || index} href={localizedHref} className={commonClasses}>
                   {item.label}
                 </Link>
               );
@@ -149,7 +155,7 @@ const SiteHeader = () => {
             </button>
           ) : (
             <Link
-              href="/login"
+              href={`/${currentLocale}/login`}
               className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`}
             >
               Login

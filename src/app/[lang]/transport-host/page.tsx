@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Bus, Plus, Building2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +30,8 @@ interface TransportOffice {
 
 const TransportHostPage = () => {
   const router = useRouter();
+  const pathname = usePathname();
+  const currentLocale = pathname.startsWith('/ar') ? 'ar' : 'en';
   const { session, status } = useAuthRedirect();
   const [offices, setOffices] = useState<TransportOffice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,11 +53,11 @@ const TransportHostPage = () => {
   }, [session]);
 
   const handleOfficeClick = (id: number) => {
-    router.push(`/transport-host/${id}/office-info`);
+    router.push(`/${currentLocale}/transport-host/${id}/office-info`);
   };
 
   const handleCreateNew = () => {
-    router.push('/transport-host/overview');
+    router.push(`/${currentLocale}/transport-host/overview`);
   };
 
   if (status === 'loading' || isLoading) {

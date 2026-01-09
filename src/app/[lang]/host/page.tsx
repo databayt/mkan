@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { HostDashboard } from '@/components/host';
 import { getHostListings, createListing } from '@/components/host/actions';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
@@ -12,6 +12,8 @@ export const dynamic = 'force-dynamic';
 
 const BecomeAHostPage = () => {
   const router = useRouter();
+  const pathname = usePathname();
+  const currentLocale = pathname.startsWith('/ar') ? 'ar' : 'en';
   const { session, status } = useAuthRedirect();
   const [backendListings, setBackendListings] = useState<any[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -33,7 +35,7 @@ const BecomeAHostPage = () => {
     // Use backend functionality but preserve frontend behavior
     const backendListing = backendListings.find(listing => listing.id.toString() === id);
     if (backendListing) {
-      router.push(`/host/${id}/about-place`);
+      router.push(`/${currentLocale}/host/${id}/about-place`);
     } else {
       // Fallback to console log as in frontend
       console.log('Listing clicked:', id);
@@ -42,10 +44,10 @@ const BecomeAHostPage = () => {
 
   const handleCreateNew = async () => {
     if (isCreating) return;
-    
+
     setIsCreating(true);
     // Always navigate to overview page
-    router.push('/host/overview');
+    router.push(`/${currentLocale}/host/overview`);
     setIsCreating(false);
   };
 
