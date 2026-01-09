@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useDeferredValue, useCallback } from "react";
-import { MapPin, Search } from "lucide-react";
+import { Search, ChevronUp, ChevronDown } from "lucide-react";
 
 interface AssemblyPoint {
   id: number;
@@ -49,6 +49,9 @@ export default function TransportCityDropdown({
 }: TransportCityDropdownProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
 
   // Debounce search query using useDeferredValue
   const deferredSearchQuery = useDeferredValue(searchQuery);
@@ -94,6 +97,32 @@ export default function TransportCityDropdown({
     inputRef.current?.focus();
   }, []);
 
+  // Check scroll position to show/hide chevron buttons
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const checkScroll = () => {
+      setCanScrollUp(container.scrollTop > 0);
+      setCanScrollDown(
+        container.scrollTop < container.scrollHeight - container.clientHeight - 1
+      );
+    };
+
+    checkScroll();
+    container.addEventListener("scroll", checkScroll);
+    return () => container.removeEventListener("scroll", checkScroll);
+  }, [filteredCities]);
+
+  // Scroll handlers
+  const scrollUp = useCallback(() => {
+    scrollContainerRef.current?.scrollBy({ top: -100, behavior: "smooth" });
+  }, []);
+
+  const scrollDown = useCallback(() => {
+    scrollContainerRef.current?.scrollBy({ top: 100, behavior: "smooth" });
+  }, []);
+
   // Memoize city select handler
   const handleCitySelect = useCallback((city: string) => {
     onChange(city);
@@ -118,53 +147,79 @@ export default function TransportCityDropdown({
           value={searchQuery}
           onChange={handleSearchChange}
           placeholder={placeholder}
-          className="w-full pl-10 pr-4 py-3 text-sm border border-[#e5e7eb] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          className="w-full pl-10 pr-4 py-3 text-sm border border-[#e5e7eb] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
         />
       </div>
 
-      {/* City List */}
-      <div className="max-h-64 overflow-y-auto">
-        {filteredCities.length === 0 ? (
-          <div className="text-sm text-muted-foreground text-center py-4">
-            No cities found
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {isShowingPopular && (
-              <div className="text-xs font-medium text-muted-foreground px-2 py-1">
-                Popular destinations
-              </div>
-            )}
-            {filteredCities.map((city) => {
-              const cityPoints = citiesMap[city];
-              const isSelected = value === city;
+      {/* City List with Scroll Indicators */}
+      <div className="relative">
+        {/* Scroll Up Button */}
+        {canScrollUp && (
+          <button
+            type="button"
+            onClick={scrollUp}
+            className="flex w-full items-center justify-center py-1 cursor-pointer hover:bg-accent/50 transition-colors rounded-t-lg"
+          >
+            <ChevronUp className="size-4 opacity-50" />
+          </button>
+        )}
 
-              return (
-                <button
-                  key={city}
-                  onClick={() => handleCitySelect(city)}
-                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors ${
-                    isSelected
-                      ? "bg-primary/10 text-primary"
-                      : "hover:bg-gray-50"
-                  }`}
-                >
-                  <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <MapPin className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">{city}</div>
-                    {cityPoints && (
-                      <div className="text-xs text-muted-foreground">
-                        {cityPoints.length} assembly point
-                        {cityPoints.length !== 1 ? "s" : ""}
-                      </div>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+        {/* Scrollable Container */}
+        <div
+          ref={scrollContainerRef}
+          className="max-h-64 overflow-y-auto no-scrollbar"
+        >
+          {filteredCities.length === 0 ? (
+            <div className="text-sm text-muted-foreground text-center py-4">
+              No cities found
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {isShowingPopular && (
+                <div className="text-xs font-medium text-muted-foreground px-2 py-1">
+                  Popular destinations
+                </div>
+              )}
+              {filteredCities.map((city) => {
+                const cityPoints = citiesMap[city];
+                const isSelected = value === city;
+
+                return (
+                  <button
+                    key={city}
+                    type="button"
+                    onClick={() => handleCitySelect(city)}
+                    className={`w-full flex items-center px-3 py-2.5 rounded-xl text-left transition-colors ${
+                      isSelected
+                        ? "bg-primary/10 text-primary"
+                        : "hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm">{city}</div>
+                      {cityPoints && (
+                        <div className="text-xs text-muted-foreground">
+                          {cityPoints.length} assembly point
+                          {cityPoints.length !== 1 ? "s" : ""}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Scroll Down Button */}
+        {canScrollDown && (
+          <button
+            type="button"
+            onClick={scrollDown}
+            className="flex w-full items-center justify-center py-1 cursor-pointer hover:bg-accent/50 transition-colors rounded-b-lg"
+          >
+            <ChevronDown className="size-4 opacity-50" />
+          </button>
         )}
       </div>
     </div>

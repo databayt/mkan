@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, ArrowRightLeft } from "lucide-react";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -23,7 +23,6 @@ interface TransportBigSearchProps {
     to: string;
     date: string;
     search: string;
-    swap: string;
     selectCity: string;
     selectDate: string;
   };
@@ -40,7 +39,6 @@ export default function TransportBigSearch({
     to: "To",
     date: "Travel Date",
     search: "Search",
-    swap: "Swap cities",
     selectCity: "Select city",
     selectDate: "Select date",
   },
@@ -53,6 +51,7 @@ export default function TransportBigSearch({
   const [activeButton, setActiveButton] = useState<ActiveButton>(null);
   const [hoveredButton, setHoveredButton] = useState<ActiveButton>(null);
   const searchBarRef = useRef<HTMLDivElement>(null);
+  const destinationBtnRef = useRef<HTMLButtonElement>(null);
 
   // Form state
   const [origin, setOrigin] = useState(initialOrigin);
@@ -61,13 +60,6 @@ export default function TransportBigSearch({
 
   const handleButtonClick = (button: ActiveButton) => {
     setActiveButton(activeButton === button ? null : button);
-  };
-
-  // Swap origin and destination
-  const handleSwap = () => {
-    const temp = origin;
-    setOrigin(destination);
-    setDestination(temp);
   };
 
   // Handle origin selection
@@ -238,17 +230,9 @@ export default function TransportBigSearch({
           }`}
         />
 
-        {/* Swap Button (positioned in the middle) */}
-        <button
-          onClick={handleSwap}
-          className="absolute left-1/2 -translate-x-[calc(50%+2rem)] z-10 w-8 h-8 rounded-full border border-[#e5e7eb] bg-white flex items-center justify-center hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
-          title={dictionary.swap}
-        >
-          <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
-        </button>
-
         {/* Destination Button */}
         <button
+          ref={destinationBtnRef}
           className={`flex-[1.5] px-6 py-3 ${getButtonStyling("destination")}`}
           onMouseEnter={() => setHoveredButton("destination")}
           onMouseLeave={() => setHoveredButton(null)}
@@ -312,7 +296,7 @@ export default function TransportBigSearch({
 
       {/* Dropdown Menus */}
       {activeButton === "origin" && (
-        <div className="absolute top-full left-0 mt-2 w-96 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10">
+        <div className="absolute top-full left-0 mt-2 w-96 bg-white rounded-3xl shadow-lg border border-[#e5e7eb] p-6 z-10">
           <TransportCityDropdown
             value={origin}
             onChange={handleOriginSelect}
@@ -323,7 +307,10 @@ export default function TransportBigSearch({
       )}
 
       {activeButton === "destination" && (
-        <div className="absolute top-full left-1/4 mt-2 w-96 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10">
+        <div
+          className="absolute top-full mt-2 w-96 bg-white rounded-3xl shadow-lg border border-[#e5e7eb] p-6 z-10"
+          style={{ left: destinationBtnRef.current?.offsetLeft ?? '25%' }}
+        >
           <TransportCityDropdown
             value={destination}
             onChange={handleDestinationSelect}
@@ -334,7 +321,7 @@ export default function TransportBigSearch({
       )}
 
       {activeButton === "date" && (
-        <div className="absolute top-full right-0 mt-2 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-4 z-10">
+        <div className="absolute top-full right-0 mt-2 bg-white rounded-3xl shadow-lg border border-[#e5e7eb] p-4 z-10">
           <TransportDatePicker date={date} onDateChange={handleDateChange} />
         </div>
       )}

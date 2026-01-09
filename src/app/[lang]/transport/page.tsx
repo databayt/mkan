@@ -1,8 +1,10 @@
 import { Suspense } from 'react';
+import Image from 'next/image';
 import { Bus, MapPin, Clock, Shield, Ticket } from 'lucide-react';
 
 import TransportBigSearch from '@/components/transport/search/transport-big-search';
 import TransportHostHero from '@/components/transport/transport-host-hero';
+import Footer from '@/components/row/Footer';
 import { getAssemblyPoints } from '@/lib/actions/transport-actions';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import type { Locale } from '@/components/internationalization/config';
@@ -46,22 +48,35 @@ export default async function TransportPage({ params }: TransportPageProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background">
-      {/* Hero Section */}
-      <section className="relative py-20 px-4 md:px-8">
-        <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen">
+      {/* Hero Section with Background Image */}
+      <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+        {/* Background Image */}
+        <Image
+          src="/hero.png"
+          alt="Transport booking hero background"
+          fill
+          className="object-cover object-center"
+          priority
+          sizes="100vw"
+        />
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
+
+        {/* Content */}
+        <div className="relative z-10 w-full max-w-6xl mx-auto px-4 md:px-8 py-20">
           {/* Header */}
           <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full mb-6">
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full mb-6">
               <Bus className="h-5 w-5" />
               <span className="text-sm font-medium">
                 Intercity Bus Booking
               </span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white">
               Travel Between Cities in Sudan
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg text-white/80 max-w-2xl mx-auto">
               Book your bus tickets online. Choose your seat, pay securely, and
               receive your e-ticket instantly.
             </p>
@@ -70,7 +85,7 @@ export default async function TransportPage({ params }: TransportPageProps) {
           {/* Search Widget */}
           <Suspense
             fallback={
-              <div className="h-16 bg-muted animate-pulse rounded-full max-w-4xl mx-auto" />
+              <div className="h-16 bg-white/20 animate-pulse rounded-full max-w-4xl mx-auto" />
             }
           >
             <TransportBigSearch
@@ -81,7 +96,6 @@ export default async function TransportPage({ params }: TransportPageProps) {
                 to: 'To',
                 date: 'Travel Date',
                 search: 'Search',
-                swap: 'Swap cities',
                 selectCity: 'Select city',
                 selectDate: 'Select date',
               }}
@@ -230,6 +244,9 @@ export default async function TransportPage({ params }: TransportPageProps) {
 
       {/* CTA - Become a Transport Host */}
       <TransportHostHero lang={lang} />
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }
