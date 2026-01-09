@@ -14,7 +14,6 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { ALL_NAVIGATION_ITEMS } from './constant';
 import { useCurrentUser } from '../../auth/use-current-user';
-import { CategorySwitcher } from './category-switcher';
 
 interface MobileNavProps {
   isLandingPage?: boolean;
@@ -71,16 +70,6 @@ const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
 
       <SheetContent side="right" className="w-80 p-6">
         <div className="flex flex-col space-y-4 pt-8">
-          {/* Category Switcher for mobile - only on non-dashboard pages */}
-          {!isDashboardPage && (
-            <>
-              <div className="pb-2">
-                <CategorySwitcher lang={pathname.startsWith('/ar') ? 'ar' : 'en'} />
-              </div>
-              <Separator className="my-2" />
-            </>
-          )}
-
           {/* Host options - expanded for mobile */}
           <div className="space-y-1">
             <span className="text-xs text-gray-500 uppercase tracking-wide">Become a host</span>

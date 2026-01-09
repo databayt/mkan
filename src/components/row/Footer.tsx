@@ -10,6 +10,7 @@ const footerSections = [
       { label: "Help Center", href: "/help" },
       { label: "AirCover", href: "/aircover" },
       { label: "Cancellation options", href: "/help/cancellation" },
+      { label: "Safety information", href: "/safety" },
     ],
   },
   {
@@ -18,6 +19,7 @@ const footerSections = [
       { label: "Mkan your home", href: "/host/homes" },
       { label: "Hosting resources", href: "/resources" },
       { label: "Community forum", href: "/community" },
+      { label: "Hosting responsibly", href: "/responsible-hosting" },
     ],
   },
   {
@@ -26,6 +28,7 @@ const footerSections = [
       { label: "Newsroom", href: "/press/news" },
       { label: "Careers", href: "/careers" },
       { label: "Investors", href: "/investors" },
+      { label: "About us", href: "/about" },
     ],
   },
   {
@@ -34,6 +37,7 @@ const footerSections = [
       { label: "Gift cards", href: "/giftcards" },
       { label: "New features", href: "/release" },
       { label: "Emergency stays", href: "/emergency" },
+      { label: "Accessibility", href: "/accessibility" },
     ],
   },
 ];
@@ -70,19 +74,9 @@ export default function Footer() {
       <div className="border-t border-gray-200">
         <div className="layout-container py-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            {/* Left side - Copyright and links */}
+            {/* Left side - Copyright */}
             <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-sm text-gray-600">
-              <span>© 2024 Mkan, Inc.</span>
-              <span className="hidden md:inline">·</span>
-              <Link href="/terms" className="hover:underline">Terms</Link>
-              <span className="hidden md:inline">·</span>
-              <Link href="/sitemap" className="hover:underline">Sitemap</Link>
-              <span className="hidden md:inline">·</span>
-              <Link href="/privacy" className="hover:underline">Privacy</Link>
-              <span className="hidden md:inline">·</span>
-              <Link href="/sitemaps/v2" className="hover:underline flex items-center gap-1">
-                Your Privacy Choices
-              </Link>
+              <span>© 2026 Mkan, Inc.</span>
             </div>
 
             {/* Right side - Language and currency */}

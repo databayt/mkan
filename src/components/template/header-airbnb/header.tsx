@@ -20,7 +20,6 @@ import { SidebarTrigger } from "../../ui/sidebar";
 import { NAVIGATION_LINKS, DISPLAY_ITEMS, AUTH_LINKS, ALL_NAVIGATION_ITEMS } from "./constant";
 import { useCurrentUser } from "../../auth/use-current-user";
 import MobileNav from "./mobile-nav";
-import { CategorySwitcher } from "./category-switcher";
 import { BecomeHostMenu } from "./become-host-menu";
 
 const SiteHeader = () => {
@@ -114,13 +113,6 @@ const SiteHeader = () => {
             </Button>
           )}
         </div>
-
-        {/* Category Switcher - Only visible on non-dashboard pages */}
-        {!isDashboardPage && (
-          <div className="hidden md:flex">
-            <CategorySwitcher lang={pathname.startsWith('/ar') ? 'ar' : 'en'} />
-          </div>
-        )}
 
         {/* Desktop Navigation Links - Hidden on mobile */}
         <nav className="hidden md:flex items-center gap-6">
