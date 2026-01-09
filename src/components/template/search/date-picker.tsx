@@ -19,7 +19,7 @@ export default function DatePickerDropdown({
   dateRange,
   onDateChange,
 }: DatePickerProps) {
-  const { isValid, errors, nights } = useSearchValidation(dateRange);
+  const { isValid, errors } = useSearchValidation(dateRange);
   const today = startOfToday();
 
   const handleSelect = (range: DateRange | undefined) => {
@@ -54,20 +54,6 @@ export default function DatePickerDropdown({
           )}
         </div>
       )}
-
-      {/* Stay Duration Info */}
-      <div className="text-sm text-gray-500 mb-2 text-center">
-        {nights !== null && nights > 0 ? (
-          <span className="font-medium text-gray-700">
-            {nights} night{nights > 1 ? "s" : ""} selected
-          </span>
-        ) : (
-          <span>
-            Min {SEARCH_CONFIG.MIN_NIGHTS} night, max{" "}
-            {SEARCH_CONFIG.DEFAULT_MAX_NIGHTS} nights
-          </span>
-        )}
-      </div>
 
       <Calendar
         mode="range"

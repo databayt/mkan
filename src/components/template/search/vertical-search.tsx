@@ -292,7 +292,6 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                         : "Add date"}
                     </span>
                   </button>
-                  <div className="w-px h-8 bg-[#e5e7eb] self-center"></div>
                   <button
                     className={`flex-1 h-12 text-left px-3 border border-gray-300 border-l-0 rounded-r-xs rounded-l-none ${getFieldStyling("checkout")}`}
                     onClick={() => handleFieldClick("checkout")}
@@ -439,7 +438,6 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                       : "Add date"}
                   </span>
                 </button>
-                <div className="w-px h-8 bg-[#e5e7eb] self-center"></div>
                 <button
                   className={`flex-1 h-12 text-left px-3 border border-gray-300 border-l-0 rounded-r-xs rounded-l-none ${getFieldStyling("checkout")}`}
                   onClick={() => handleFieldClick("checkout")}
@@ -507,7 +505,7 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
         )}
 
         {(activeField === "checkin" || activeField === "checkout") && (
-          <div className="absolute top-0 left-full ml-4 w-[600px] h-full bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10">
+          <div className="absolute top-0 left-full ml-4 w-[600px] h-auto bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10">
             <DatePickerDropdown
               dateRange={dateRange}
               onDateChange={handleDateRangeChange}
