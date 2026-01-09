@@ -50,18 +50,20 @@ export default async function TransportPage({ params }: TransportPageProps) {
   return (
     <div className="min-h-screen">
       {/* Hero Section with Background Image */}
-      <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
-        {/* Background Image */}
-        <Image
-          src="/hero.png"
-          alt="Transport booking hero background"
-          fill
-          className="object-cover object-center"
-          priority
-          sizes="100vw"
-        />
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
+      <section className="relative min-h-[60vh] flex items-center justify-center pb-48">
+        {/* Background Image Container */}
+        <div className="absolute inset-0 overflow-hidden">
+          <Image
+            src="/hero.png"
+            alt="Transport booking hero background"
+            fill
+            className="object-cover object-center"
+            priority
+            sizes="100vw"
+          />
+          {/* Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
+        </div>
 
         {/* Content */}
         <div className="relative z-10 w-full max-w-6xl mx-auto px-4 md:px-8 py-20">
