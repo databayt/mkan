@@ -1,7 +1,7 @@
 import DetailCard from "@/components/listings/detial-card"
 import SearchHeader from "@/components/listings/search-header"
 import SearchMap from "@/components/listings/search-map"
-import { getListings } from "@/components/host/actions"
+import { db } from "@/lib/db"
 import { Listing } from "@/types/listing"
 import { Button } from "@/components/ui/button"
 
@@ -15,25 +15,44 @@ async function getPublishedListings(searchParams?: {
   guests?: string
 }) {
   try {
-    const listings = await getListings({ publishedOnly: true });
+    const listings = await db.listing.findMany({
+      where: {
+        isPublished: true,
+        draft: false,
+      },
+      include: {
+        location: true,
+        host: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+          }
+        },
+      },
+      orderBy: {
+        postedDate: 'desc'
+      }
+    });
+
     let filteredListings = listings as Listing[];
-    
+
     // Apply filters based on search parameters
     if (searchParams?.location) {
-      filteredListings = filteredListings.filter(listing => 
+      filteredListings = filteredListings.filter(listing =>
         listing.location?.city?.toLowerCase().includes(searchParams.location!.toLowerCase()) ||
         listing.location?.country?.toLowerCase().includes(searchParams.location!.toLowerCase()) ||
         listing.title?.toLowerCase().includes(searchParams.location!.toLowerCase())
       );
     }
-    
+
     if (searchParams?.guests) {
       const guestCount = parseInt(searchParams.guests);
-      filteredListings = filteredListings.filter(listing => 
+      filteredListings = filteredListings.filter(listing =>
         (listing.guestCount || 0) >= guestCount
       );
     }
-    
+
     return filteredListings;
   } catch (error) {
     console.error("Error fetching published listings:", error);
@@ -70,7 +89,7 @@ export default async function SearchPage({
           {/* Header with search results count */}
           <div className="p-10 border-b border-gray-200">
             <h1 className="text-base font-normal text-gray-500 mb-6">
-              {listings.length}+ Airbnb Luxe stays 
+              {listings.length}+ Airbnb Luxe stays
               {resolvedSearchParams?.location ? ` in ${resolvedSearchParams.location}` : " in Bordeaux"}
               {searchSummary.length > 0 && (
                 <span className="text-sm text-gray-400 ml-2">
@@ -78,7 +97,7 @@ export default async function SearchPage({
                 </span>
               )}
             </h1>
-            
+
             {/* Filters */}
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="rounded-full px-3 py-1.5 text-sm font-normal border-gray-200 shadow-sm">
@@ -104,7 +123,7 @@ export default async function SearchPage({
             <div className="space-y-6">
               {listings.map((listing, index) => (
                 <div key={listing.id}>
-                  <DetailCard 
+                  <DetailCard
                     title={listing.title || "Bordeaux Getaway"}
                     location={`Entire home in ${listing.location?.city || "Bordeaux"}`}
                     guests={`${listing.guestCount || 4}-${(listing.guestCount || 4) + 2} guests`}
@@ -122,23 +141,23 @@ export default async function SearchPage({
                   )}
                 </div>
               ))}
-              
+
               {/* Fallback cards if no listings */}
               {listings.length === 0 && (
                 <>
-                  <DetailCard 
+                  <DetailCard
                     title="Bordeaux Getaway"
                     price="$325"
                     isFavorited={false}
                   />
                   <div className="h-px bg-gray-200"></div>
-                  <DetailCard 
+                  <DetailCard
                     title="Charming Waterfront Condo"
                     price="$200"
                     isFavorited={true}
                   />
                   <div className="h-px bg-gray-200"></div>
-                  <DetailCard 
+                  <DetailCard
                     title="Historic City Center Home"
                     price="$125"
                     guests="4-6 guests"
