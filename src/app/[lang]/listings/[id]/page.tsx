@@ -1,4 +1,4 @@
-import { getListing } from "@/components/host/actions";
+import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 
 interface ListingPageProps {
@@ -19,7 +19,19 @@ export default async function ListingPage({ params }: ListingPageProps) {
 
   let listing;
   try {
-    listing = await getListing(listingId);
+    listing = await db.listing.findUnique({
+      where: { id: listingId },
+      include: {
+        location: true,
+        host: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+          }
+        },
+      }
+    });
   } catch (error) {
     console.error("Error fetching listing:", error);
     notFound();
@@ -29,16 +41,13 @@ export default async function ListingPage({ params }: ListingPageProps) {
     notFound();
   }
 
-  // Serialize the listing data to avoid Prisma serialization issues
-  const serializedListing = JSON.parse(JSON.stringify(listing));
-
   return (
     <div className="min-h-screen p-8">
-      <h1 className="text-2xl font-bold">{serializedListing.title}</h1>
-      <p className="text-gray-600 mt-2">{serializedListing.description}</p>
-      <p className="text-lg font-semibold mt-4">${serializedListing.pricePerNight}/night</p>
+      <h1 className="text-2xl font-bold">{listing.title}</h1>
+      <p className="text-gray-600 mt-2">{listing.description}</p>
+      <p className="text-lg font-semibold mt-4">${listing.pricePerNight}/night</p>
       <p className="text-sm text-gray-500 mt-2">
-        Location: {serializedListing.location?.city}, {serializedListing.location?.state}
+        Location: {listing.location?.city}, {listing.location?.state}
       </p>
     </div>
   );
