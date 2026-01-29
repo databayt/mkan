@@ -2,12 +2,6 @@
 
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
-
-// Spring configuration for natural, Airbnb-like feel
-const SPRING_CONFIG = {
-  scale: { type: "spring" as const, stiffness: 300, damping: 25 },
-};
 
 interface SmallSearchProps {
   onExpand?: () => void;
@@ -27,11 +21,8 @@ export default function SmallSearch({
   };
 
   return (
-    <motion.div
-      className="bg-white rounded-full shadow-lg border border-gray-200 flex items-center overflow-hidden cursor-pointer"
-      whileHover={{ scale: 1.02, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
-      whileTap={{ scale: 0.98 }}
-      transition={SPRING_CONFIG.scale}
+    <div
+      className="bg-white rounded-full shadow-lg border border-gray-200 flex items-center overflow-hidden cursor-pointer hover:shadow-xl transition-shadow"
       onClick={handleClick}
       role="button"
       tabIndex={0}
@@ -99,6 +90,6 @@ export default function SmallSearch({
           <Search className="w-4 h-4" />
         </Button>
       </div>
-    </motion.div>
+    </div>
   );
 }
