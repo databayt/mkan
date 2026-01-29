@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 // Connection pool configuration
 const connectionPoolConfig = {
   connection_limit: parseInt(process.env.DATABASE_CONNECTION_LIMIT || "10"),
-  pool_timeout: parseInt(process.env.DATABASE_POOL_TIMEOUT || "2"),
+  pool_timeout: parseInt(process.env.DATABASE_POOL_TIMEOUT || "10"),
 };
 
 // Build connection URL with pooling parameters for production
@@ -61,10 +61,10 @@ const createPrismaClient = () => {
 
 export const db = globalForPrisma.prisma ?? createPrismaClient();
 
-// Only cache in development
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = db;
-}
+// Cache the Prisma client in all environments
+// In serverless environments like Vercel, this prevents creating new connections
+// for each request within the same container/lambda instance
+globalForPrisma.prisma = db;
 
 // Note: Graceful shutdown is handled by Vercel's serverless environment
 // Edge Runtime does not support process.on() for signal handling 
