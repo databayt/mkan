@@ -20,6 +20,7 @@ import { SidebarTrigger } from "../../ui/sidebar";
 import { NAVIGATION_LINKS, DISPLAY_ITEMS, AUTH_LINKS, ALL_NAVIGATION_ITEMS } from "./constant";
 import { useCurrentUser } from "../../auth/use-current-user";
 import MobileNav from "./mobile-nav";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 const SiteHeader = () => {
   const { data: session, status } = useSession();
@@ -88,7 +89,7 @@ const SiteHeader = () => {
           {isDashboardPage && session?.user && (
             <Button
               variant="secondary"
-              className="md:ml-4 bg-primary-50 text-primary-700 hover:bg-secondary-500 hover:text-primary-50"
+              className="md:ms-4 bg-primary-50 text-primary-700 hover:bg-secondary-500 hover:text-primary-50"
               onClick={() =>
                 router.push(
                   session.user.role?.toLowerCase() === "manager"
@@ -100,12 +101,12 @@ const SiteHeader = () => {
               {session.user.role?.toLowerCase() === "manager" ? (
                 <>
                   <Plus className="h-4 w-4" />
-                  <span className="hidden md:block ml-2">Add New Property</span>
+                  <span className="hidden md:block ms-2">Add New Property</span>
                 </>
               ) : (
                 <>
                   <Search className="h-4 w-4" />
-                  <span className="hidden md:block ml-2">
+                  <span className="hidden md:block ms-2">
                     Search Properties
                   </span>
                 </>
@@ -137,13 +138,21 @@ const SiteHeader = () => {
               );
             }
 
-            // If no href, render as display text
+            // If no href, render as display text (skip "English" - handled by LanguageSwitcher)
+            if (item.label === "English") return null;
+
             return (
               <span key={index} className={commonClasses}>
                 {item.label}
               </span>
             );
           })}
+
+          {/* Language Switcher */}
+          <LanguageSwitcher
+            variant="dropdown"
+            className={isLandingPage ? "text-white hover:text-white/80" : "text-gray-700 hover:text-gray-700/80"}
+          />
 
           {/* Auth section - show Login OR Logout based on session */}
           {status === "loading" ? null : isAuthenticated ? (

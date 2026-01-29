@@ -146,6 +146,31 @@ body {
   .bg-gradient-radial {
     background-image: radial-gradient(circle, var(--tw-gradient-stops));
   }
+
+  /* RTL-aware logical properties */
+  .ms-auto { margin-inline-start: auto; }
+  .me-auto { margin-inline-end: auto; }
+  .ms-2 { margin-inline-start: 0.5rem; }
+  .me-2 { margin-inline-end: 0.5rem; }
+  .ms-4 { margin-inline-start: 1rem; }
+  .me-4 { margin-inline-end: 1rem; }
+
+  .ps-2 { padding-inline-start: 0.5rem; }
+  .pe-2 { padding-inline-end: 0.5rem; }
+  .ps-4 { padding-inline-start: 1rem; }
+  .pe-4 { padding-inline-end: 1rem; }
+  .ps-8 { padding-inline-start: 2rem; }
+  .pe-8 { padding-inline-end: 2rem; }
+
+  .start-0 { inset-inline-start: 0; }
+  .end-0 { inset-inline-end: 0; }
+  .start-2 { inset-inline-start: 0.5rem; }
+  .end-2 { inset-inline-end: 0.5rem; }
+  .start-4 { inset-inline-start: 1rem; }
+  .end-4 { inset-inline-end: 1rem; }
+
+  .text-start { text-align: start; }
+  .text-end { text-align: end; }
 }
 
 @keyframes moveHorizontal {

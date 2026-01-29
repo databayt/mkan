@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { match } from '@formatjs/intl-localematcher';
 import Negotiator from 'negotiator';
+import { i18n } from './src/components/internationalization/config';
 
-const locales = ['en', 'ar'];
-const defaultLocale = 'en';
+const locales: readonly string[] = i18n.locales;
+const defaultLocale = i18n.defaultLocale;
 
 function addSecurityHeaders(response: NextResponse) {
   // Security headers for all responses

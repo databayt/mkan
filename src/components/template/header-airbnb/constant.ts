@@ -3,7 +3,6 @@ export const ALL_NAVIGATION_ITEMS = [
   { type: "display", href: "/host", label: "Become a host" },
   { type: "display", href: "/transport", label: "Create your experience" },
   { type: "display", href: "/help", label: "Help" },
-  { type: "display", label: "English" },
   { type: "display", href: "/login", label: "Login" },
   { type: "display", href: "/join", label: "Join" },
 ];
@@ -15,9 +14,7 @@ export const NAVIGATION_LINKS = [
   { href: "/help", label: "Help" },
 ];
 
-export const DISPLAY_ITEMS = [
-  { label: "English" },
-];
+export const DISPLAY_ITEMS: { label: string }[] = [];
 
 export const AUTH_LINKS = [
   { href: "/login", label: "Sign in" },

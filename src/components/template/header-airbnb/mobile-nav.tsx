@@ -14,6 +14,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { ALL_NAVIGATION_ITEMS } from './constant';
 import { useCurrentUser } from '../../auth/use-current-user';
+import { LanguageSwitcher } from '@/components/language-switcher';
 
 interface MobileNavProps {
   isLandingPage?: boolean;
@@ -83,8 +84,9 @@ const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
           <Separator className="my-2" />
 
           {filteredNavItems.map((item, index) => {
-            // Handle display items without href
+            // Handle display items without href (skip "English" - handled by LanguageSwitcher)
             if (item.type === "display" && !item.href) {
+              if (item.label === "English") return null;
               return (
                 <div key={index} className="text-black text-sm">
                   {item.label}
@@ -109,13 +111,17 @@ const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
 
             return null;
           })}
-          
+
+          {/* Language Switcher */}
+          <Separator className="my-2" />
+          <LanguageSwitcher variant="inline" />
+
           {currentUser && (
             <>
               <Separator className="my-2" />
               <button
                 onClick={handleSignOut}
-                className="text-black text-sm text-left hover:text-black/70 transition-colors flex items-center gap-2"
+                className="text-black text-sm text-start hover:text-black/70 transition-colors flex items-center gap-2"
               >
                 <LogOut className="size-4" />
                 Logout
