@@ -150,8 +150,8 @@ const SiteHeader = () => {
 
           {/* Language Switcher */}
           <LanguageSwitcher
-            variant="dropdown"
-            className={isLandingPage ? "text-white hover:text-white/80" : "text-gray-700 hover:text-gray-700/80"}
+            variant="text"
+            className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"}`}
           />
 
           {/* Auth section - show Login OR Logout based on session */}

@@ -260,6 +260,10 @@ model Listing {
   applications Application[]
   favoritedBy  Tenant[]      @relation("TenantFavorites")
   tenants      Tenant[]      @relation("TenantProperties")
+  reviews      Review[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([hostId])
   @@index([isPublished, draft])
@@ -268,6 +272,7 @@ model Listing {
   @@index([postedDate])
   @@index([locationId])
   @@index([hostId, isPublished])
+  @@index([createdAt])
 }
 
 model Tenant {
@@ -282,6 +287,9 @@ model Tenant {
   favorites    Listing[]     @relation("TenantFavorites")
   applications Application[]
   leases       Lease[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([email])
 }
@@ -301,6 +309,7 @@ model Location {
   @@index([city])
   @@index([country])
   @@index([latitude, longitude])
+  @@index([city, state])
 }
 
 model Application {
@@ -318,6 +327,9 @@ model Application {
   listing Listing @relation(fields: [propertyId], references: [id])
   tenant  Tenant  @relation(fields: [tenantId], references: [userId])
   lease   Lease?  @relation(fields: [leaseId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tenantId])
   @@index([propertyId])
@@ -339,6 +351,12 @@ model Lease {
   tenant      Tenant       @relation(fields: [tenantId], references: [userId])
   application Application?
   payments    Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, startDate, endDate])
+  @@index([propertyId])
 }
 
 model Payment {
@@ -351,6 +369,36 @@ model Payment {
   leaseId       Int
 
   lease Lease @relation(fields: [leaseId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leaseId, paymentStatus])
+  @@index([dueDate])
+}
+
+// ============================================
+// REVIEW MODEL
+// ============================================
+
+model Review {
+  id         String   @id @default(cuid())
+  rating     Int      // 1-5 stars
+  comment    String
+  listingId  Int
+  userId     String
+  hostReply  String?
+  hostReplyAt DateTime?
+
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([listingId])
+  @@index([userId])
+  @@index([rating])
+  @@index([createdAt])
 }
 
 // ============================================

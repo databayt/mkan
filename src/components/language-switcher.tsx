@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 interface LanguageSwitcherProps {
   className?: string;
-  variant?: "dropdown" | "inline" | "toggle";
+  variant?: "dropdown" | "inline" | "toggle" | "text";
 }
 
 export function LanguageSwitcher({
@@ -24,6 +24,20 @@ export function LanguageSwitcher({
 }: LanguageSwitcherProps) {
   const getSwitchLocaleHref = useSwitchLocaleHref();
   const { locale: currentLocale, isRTL } = useLocale();
+
+  // Text variant - simple text showing "English", clicks to switch
+  if (variant === "text") {
+    const nextLocale = i18n.locales.find(locale => locale !== currentLocale) || i18n.locales[0];
+
+    return (
+      <Link
+        href={getSwitchLocaleHref(nextLocale)}
+        className={cn("transition-opacity hover:opacity-80", className)}
+      >
+        English
+      </Link>
+    );
+  }
 
   // Toggle variant - simple button that switches to the other language
   if (variant === "toggle") {
