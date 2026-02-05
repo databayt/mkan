@@ -43,8 +43,8 @@ export function SafeImage({
       src={imgSrc || getFallbackImage()}
       alt={alt}
       className={cn(
-        'transition-opacity duration-300',
-        hasError && 'opacity-70',
+        "transition-opacity duration-300",
+        hasError && "opacity-70",
         className
       )}
       onError={handleError}
