@@ -12,6 +12,8 @@ import type {
   BookingFormData,
   PaymentFormData,
 } from '@/lib/schemas/transport-schemas';
+import { sanitizeInput, sanitizeEmail, sanitizePhone } from "@/lib/sanitization";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // ASSEMBLY POINT ACTIONS
@@ -49,6 +51,14 @@ export async function createTransportOffice(data: TransportOfficeDraftData) {
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
+
+  // Sanitize inputs
+  if (data.name) data.name = sanitizeInput(data.name);
+  if (data.nameAr) data.nameAr = sanitizeInput(data.nameAr);
+  if (data.description) data.description = sanitizeInput(data.description);
+  if (data.descriptionAr) data.descriptionAr = sanitizeInput(data.descriptionAr);
+  if (data.phone) data.phone = sanitizePhone(data.phone);
+  if (data.email) data.email = sanitizeEmail(data.email);
 
   const office = await db.transportOffice.create({
     data: {
@@ -376,6 +386,11 @@ export async function searchRoutes(
   destination: string,
   date: Date
 ) {
+  const dayStart = new Date(date);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(date);
+  dayEnd.setHours(23, 59, 59, 999);
+
   const routes = await db.route.findMany({
     where: {
       isActive: true,
@@ -393,10 +408,7 @@ export async function searchRoutes(
       },
       trips: {
         some: {
-          departureDate: {
-            gte: new Date(date.setHours(0, 0, 0, 0)),
-            lt: new Date(date.setHours(23, 59, 59, 999)),
-          },
+          departureDate: { gte: dayStart, lt: dayEnd },
           isActive: true,
           isCancelled: false,
         },
@@ -412,10 +424,7 @@ export async function searchRoutes(
       },
       trips: {
         where: {
-          departureDate: {
-            gte: new Date(date.setHours(0, 0, 0, 0)),
-            lt: new Date(date.setHours(23, 59, 59, 999)),
-          },
+          departureDate: { gte: dayStart, lt: dayEnd },
           isActive: true,
           isCancelled: false,
         },
@@ -542,10 +551,11 @@ export async function getTrips(routeId?: number, date?: Date) {
 
   if (routeId) where.routeId = routeId;
   if (date) {
-    where.departureDate = {
-      gte: new Date(date.setHours(0, 0, 0, 0)),
-      lt: new Date(date.setHours(23, 59, 59, 999)),
-    };
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+    where.departureDate = { gte: dayStart, lt: dayEnd };
   }
 
   const trips = await db.trip.findMany({
@@ -611,71 +621,81 @@ export async function createBooking(data: BookingFormData) {
     throw new Error('Unauthorized');
   }
 
-  // Get trip details
-  const trip = await db.trip.findUnique({
-    where: { id: data.tripId },
-    include: {
-      route: {
-        include: {
-          office: true,
+  // Sanitize passenger inputs
+  data.passengerName = sanitizeInput(data.passengerName);
+  data.passengerPhone = sanitizePhone(data.passengerPhone);
+  if (data.passengerEmail) data.passengerEmail = sanitizeEmail(data.passengerEmail);
+
+  const booking = await db.$transaction(async (tx) => {
+    // Get trip details
+    const trip = await tx.trip.findUnique({
+      where: { id: data.tripId },
+      include: {
+        route: {
+          include: {
+            office: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!trip) {
-    throw new Error('Trip not found');
-  }
+    if (!trip) {
+      throw new Error('Trip not found');
+    }
 
-  // Verify seats are available
-  const seats = await db.seat.findMany({
-    where: {
-      tripId: data.tripId,
-      seatNumber: { in: data.seatNumbers },
-      status: 'Available',
-    },
-  });
-
-  if (seats.length !== data.seatNumbers.length) {
-    throw new Error('Some selected seats are no longer available');
-  }
-
-  const totalAmount = trip.price * data.seatNumbers.length;
-
-  // Create booking
-  const booking = await db.transportBooking.create({
-    data: {
-      userId: session.user.id,
-      tripId: data.tripId,
-      officeId: trip.route.office.id,
-      passengerName: data.passengerName,
-      passengerPhone: data.passengerPhone,
-      passengerEmail: data.passengerEmail || null,
-      totalAmount,
-      status: 'Pending',
-    },
-  });
-
-  // Reserve seats
-  await db.seat.updateMany({
-    where: {
-      tripId: data.tripId,
-      seatNumber: { in: data.seatNumbers },
-    },
-    data: {
-      status: 'Reserved',
-      bookingId: booking.id,
-    },
-  });
-
-  // Update available seats count
-  await db.trip.update({
-    where: { id: data.tripId },
-    data: {
-      availableSeats: {
-        decrement: data.seatNumbers.length,
+    // Verify seats are available
+    const seats = await tx.seat.findMany({
+      where: {
+        tripId: data.tripId,
+        seatNumber: { in: data.seatNumbers },
+        status: 'Available',
       },
-    },
+    });
+
+    if (seats.length !== data.seatNumbers.length) {
+      throw new Error('Some selected seats are no longer available');
+    }
+
+    const totalAmount = trip.price * data.seatNumbers.length;
+
+    // Create booking
+    const newBooking = await tx.transportBooking.create({
+      data: {
+        bookingReference: `BK-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        userId: session.user.id,
+        tripId: data.tripId,
+        officeId: trip.route.office.id,
+        passengerName: data.passengerName,
+        passengerPhone: data.passengerPhone,
+        passengerEmail: data.passengerEmail || null,
+        totalAmount,
+        status: 'Pending',
+      },
+    });
+
+    // Reserve seats
+    await tx.seat.updateMany({
+      where: {
+        tripId: data.tripId,
+        seatNumber: { in: data.seatNumbers },
+      },
+      data: {
+        status: 'Reserved',
+        bookingId: newBooking.id,
+      },
+    });
+
+    // Update available seats count
+    await tx.trip.update({
+      where: { id: data.tripId },
+      data: {
+        availableSeats: {
+          decrement: data.seatNumbers.length,
+        },
+      },
+    });
+
+    return newBooking;
   });
 
   revalidatePath('/[lang]/transport');

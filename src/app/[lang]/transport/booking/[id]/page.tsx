@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { getBooking } from '@/lib/actions/transport-actions';
+import { getTransportDictionary } from '@/components/transport/transport-dictionary';
 
 interface BookingDetails {
   id: number;
@@ -67,16 +68,18 @@ interface BookingDetails {
 export default function BookingConfirmationPage() {
   const params = useParams();
   const router = useRouter();
+  const lang = params.lang as string;
   const bookingId = Number(params.id);
 
   const [booking, setBooking] = useState<BookingDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const t = getTransportDictionary(lang);
 
   useEffect(() => {
     const fetchBooking = async () => {
       try {
         const data = await getBooking(bookingId);
-        setBooking(data);
+        setBooking(data as unknown as BookingDetails | null);
       } catch (error) {
         console.error('Failed to fetch booking:', error);
       } finally {
@@ -98,7 +101,7 @@ export default function BookingConfirmationPage() {
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -106,9 +109,9 @@ export default function BookingConfirmationPage() {
     return (
       <div className="container mx-auto py-8 px-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-16 w-16 bg-gray-200 rounded-full mx-auto" />
-          <div className="h-8 w-64 bg-gray-200 rounded mx-auto" />
-          <div className="h-64 bg-gray-200 rounded" />
+          <div className="h-16 w-16 bg-muted rounded-full mx-auto" />
+          <div className="h-8 w-64 bg-muted rounded mx-auto" />
+          <div className="h-64 bg-muted rounded" />
         </div>
       </div>
     );
@@ -117,9 +120,9 @@ export default function BookingConfirmationPage() {
   if (!booking) {
     return (
       <div className="container mx-auto py-8 px-4 text-center">
-        <h1 className="text-2xl font-bold">Booking not found</h1>
-        <Button onClick={() => router.push('/transport')} className="mt-4">
-          Back to Transport
+        <h1 className="text-2xl font-bold">{t.booking.notFound}</h1>
+        <Button onClick={() => router.push(`/${lang}/transport`)} className="mt-4">
+          {t.booking.backToTransport}
         </Button>
       </div>
     );
@@ -139,12 +142,12 @@ export default function BookingConfirmationPage() {
           }`} />
         </div>
         <h1 className="text-2xl font-bold mb-2">
-          {isConfirmed ? 'Booking Confirmed!' : 'Booking Received'}
+          {isConfirmed ? t.booking.confirmed : t.booking.received}
         </h1>
         <p className="text-muted-foreground">
           {isConfirmed
-            ? 'Your bus ticket has been confirmed. Show your ticket at the office.'
-            : 'Your booking is being processed. You will receive confirmation shortly.'}
+            ? t.booking.confirmedMessage
+            : t.booking.receivedMessage}
         </p>
       </div>
 
@@ -153,7 +156,7 @@ export default function BookingConfirmationPage() {
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-muted-foreground">Booking Reference</div>
+              <div className="text-sm text-muted-foreground">{t.booking.reference}</div>
               <div className="text-2xl font-mono font-bold">{booking.bookingReference}</div>
             </div>
             <Badge className={getStatusColor(booking.status)}>{booking.status}</Badge>
@@ -166,7 +169,7 @@ export default function BookingConfirmationPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Ticket className="h-5 w-5" />
-            Trip Details
+            {t.booking.tripDetails}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -234,12 +237,12 @@ export default function BookingConfirmationPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            Passenger Information
+            {t.booking.passengerInfo}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Name</span>
+            <span className="text-muted-foreground">{t.booking.name}</span>
             <span className="font-medium">{booking.passengerName}</span>
           </div>
           <div className="flex justify-between">
@@ -260,7 +263,7 @@ export default function BookingConfirmationPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5" />
-            Boarding Location
+            {t.booking.boardingLocation}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -281,16 +284,16 @@ export default function BookingConfirmationPage() {
       {/* Payment Summary */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Payment Summary</CardTitle>
+          <CardTitle>{t.booking.paymentSummary}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex justify-between items-center">
-            <span>Total Paid</span>
+            <span>{t.booking.totalPaid}</span>
             <span className="text-xl font-bold">SDG {booking.totalAmount.toLocaleString()}</span>
           </div>
           {booking.payments.length > 0 && booking.payments[0] && (
             <div className="mt-2 text-sm text-muted-foreground">
-              Paid via {booking.payments[0].method.replace(/([A-Z])/g, ' $1').trim()}
+              {t.booking.paidVia} {booking.payments[0].method.replace(/([A-Z])/g, ' $1').trim()}
             </div>
           )}
         </CardContent>
@@ -299,23 +302,23 @@ export default function BookingConfirmationPage() {
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-3">
         <Button asChild className="flex-1">
-          <Link href={`/transport/booking/${booking.id}/ticket`}>
-            <Download className="h-4 w-4 mr-2" />
-            View Ticket
+          <Link href={`/${lang}/transport/booking/${booking.id}/ticket`}>
+            <Download className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+            {t.booking.viewTicket}
           </Link>
         </Button>
         <Button variant="outline" className="flex-1">
-          <Share2 className="h-4 w-4 mr-2" />
-          Share
+          <Share2 className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+          {t.booking.share}
         </Button>
       </div>
 
       <div className="mt-6 text-center">
         <Link
-          href="/tenants/trips"
+          href={`/${lang}/tenants/trips`}
           className="text-sm text-primary hover:underline"
         >
-          View all my trips
+          {t.booking.viewAllTrips}
         </Link>
       </div>
     </div>

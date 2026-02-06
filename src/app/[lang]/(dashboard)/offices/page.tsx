@@ -74,7 +74,7 @@ const OfficeDashboard = () => {
 
         if (user?.id) {
           const myOffices = await getMyTransportOffices();
-          setOffices(myOffices as TransportOffice[]);
+          setOffices(myOffices as unknown as TransportOffice[]);
 
           const firstOffice = myOffices[0];
           if (firstOffice) {

@@ -22,7 +22,9 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { getTripDetails, createBooking } from '@/lib/actions/transport-actions';
+import { getTransportDictionary } from '@/components/transport/transport-dictionary';
 import { cn } from '@/lib/utils';
 
 interface Seat {
@@ -69,6 +71,7 @@ const amenityIcons: Record<string, React.ElementType> = {
 export default function TripDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const lang = params.lang as string;
   const tripId = Number(params.id);
 
   const [trip, setTrip] = useState<TripDetails | null>(null);
@@ -78,12 +81,13 @@ export default function TripDetailsPage() {
   const [passengerPhone, setPassengerPhone] = useState('');
   const [passengerEmail, setPassengerEmail] = useState('');
   const [booking, setBooking] = useState(false);
+  const t = getTransportDictionary(lang);
 
   useEffect(() => {
     const fetchTrip = async () => {
       try {
         const data = await getTripDetails(tripId);
-        setTrip(data);
+        setTrip(data as unknown as TripDetails | null);
       } catch (error) {
         console.error('Failed to fetch trip:', error);
       } finally {
@@ -126,10 +130,13 @@ export default function TripDetailsPage() {
       });
 
       if (result.success && result.booking) {
-        router.push(`/transport/booking/checkout?bookingId=${result.booking.id}`);
+        router.push(`/${lang}/transport/booking/checkout?bookingId=${result.booking.id}`);
+      } else {
+        toast.error('Failed to create booking. Please try again.');
       }
     } catch (error) {
-      console.error('Booking failed:', error);
+      const message = error instanceof Error ? error.message : 'Booking failed';
+      toast.error(message);
     } finally {
       setBooking(false);
     }
@@ -139,8 +146,8 @@ export default function TripDetailsPage() {
     return (
       <div className="container mx-auto py-8 px-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 w-64 bg-gray-200 rounded" />
-          <div className="h-64 bg-gray-200 rounded" />
+          <div className="h-8 w-64 bg-muted rounded" />
+          <div className="h-64 bg-muted rounded" />
         </div>
       </div>
     );
@@ -187,7 +194,7 @@ export default function TripDetailsPage() {
                   <div className="text-2xl font-bold text-primary">
                     SDG {trip.price.toLocaleString()}
                   </div>
-                  <div className="text-sm text-muted-foreground">per seat</div>
+                  <div className="text-sm text-muted-foreground">{t.trip.perSeat}</div>
                 </div>
               </div>
             </CardHeader>
@@ -203,7 +210,7 @@ export default function TripDetailsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <span>{trip.availableSeats} seats available</span>
+                  <span>{trip.availableSeats} {t.trip.seatsAvailable}</span>
                 </div>
               </div>
 
@@ -233,9 +240,9 @@ export default function TripDetailsPage() {
           {/* Seat Picker */}
           <Card>
             <CardHeader>
-              <CardTitle>Select Your Seats</CardTitle>
+              <CardTitle>{t.booking.selectSeats}</CardTitle>
               <CardDescription>
-                Click to select seats (max 5). Selected: {selectedSeats.length}
+                {t.booking.clickToSelect} {selectedSeats.length}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -243,20 +250,20 @@ export default function TripDetailsPage() {
               <div className="flex gap-4 mb-6">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded bg-green-100 border-2 border-green-500" />
-                  <span className="text-sm">Available</span>
+                  <span className="text-sm">{t.seat.available}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded bg-blue-500 border-2 border-blue-600" />
-                  <span className="text-sm">Selected</span>
+                  <span className="text-sm">{t.seat.selected}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-gray-300 border-2 border-gray-400" />
-                  <span className="text-sm">Booked</span>
+                  <div className="w-6 h-6 rounded bg-muted border-2 border-muted-foreground/40" />
+                  <span className="text-sm">{t.seat.booked}</span>
                 </div>
               </div>
 
               {/* Bus Layout */}
-              <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
+              <div className="bg-muted/50 rounded-lg p-4 overflow-x-auto">
                 <div className="min-w-[200px] mx-auto" style={{ maxWidth: `${(maxCol + 1) * 50}px` }}>
                   {/* Driver */}
                   <div className="text-center mb-4 text-sm text-muted-foreground">
@@ -294,7 +301,7 @@ export default function TripDetailsPage() {
                                     ? 'bg-blue-500 border-blue-600 text-white'
                                     : isAvailable
                                     ? 'bg-green-100 border-green-500 hover:bg-green-200 cursor-pointer'
-                                    : 'bg-gray-300 border-gray-400 cursor-not-allowed'
+                                    : 'bg-muted border-muted-foreground/40 cursor-not-allowed'
                                 )}
                               >
                                 {seat.seatNumber}
@@ -318,38 +325,38 @@ export default function TripDetailsPage() {
           {selectedSeats.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Passenger Information</CardTitle>
-                <CardDescription>Enter details for the booking</CardDescription>
+                <CardTitle>{t.booking.passengerDetails}</CardTitle>
+                <CardDescription>{t.booking.enterDetails}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Full Name *</Label>
+                    <Label htmlFor="name">{t.booking.fullName} *</Label>
                     <Input
                       id="name"
                       value={passengerName}
                       onChange={(e) => setPassengerName(e.target.value)}
-                      placeholder="Enter passenger name"
+                      placeholder={t.booking.fullNamePlaceholder}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number *</Label>
+                    <Label htmlFor="phone">{t.booking.phone} *</Label>
                     <Input
                       id="phone"
                       value={passengerPhone}
                       onChange={(e) => setPassengerPhone(e.target.value)}
-                      placeholder="Enter phone number"
+                      placeholder={t.booking.phonePlaceholder}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email (Optional)</Label>
+                  <Label htmlFor="email">{t.booking.email}</Label>
                   <Input
                     id="email"
                     type="email"
                     value={passengerEmail}
                     onChange={(e) => setPassengerEmail(e.target.value)}
-                    placeholder="Enter email for ticket delivery"
+                    placeholder={t.booking.emailPlaceholder}
                   />
                 </div>
               </CardContent>
@@ -361,22 +368,22 @@ export default function TripDetailsPage() {
         <div className="lg:col-span-1">
           <Card className="sticky top-4">
             <CardHeader>
-              <CardTitle>Booking Summary</CardTitle>
+              <CardTitle>{t.booking.summary}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Route</span>
+                  <span>{t.booking.route}</span>
                   <span className="font-medium">
                     {trip.route.origin.city} → {trip.route.destination.city}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Date</span>
+                  <span>{t.booking.date}</span>
                   <span>{format(new Date(trip.departureDate), 'MMM d, yyyy')}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Time</span>
+                  <span>{t.booking.time}</span>
                   <span>{trip.departureTime}</span>
                 </div>
               </div>
@@ -387,15 +394,15 @@ export default function TripDetailsPage() {
                 <>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Selected Seats</span>
+                      <span>{t.booking.selectedSeats}</span>
                       <span className="font-medium">{selectedSeats.join(', ')}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>Price per seat</span>
+                      <span>{t.booking.pricePerSeat}</span>
                       <span>SDG {trip.price.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>Number of seats</span>
+                      <span>{t.booking.numberOfSeats}</span>
                       <span>× {selectedSeats.length}</span>
                     </div>
                   </div>
@@ -403,7 +410,7 @@ export default function TripDetailsPage() {
                   <Separator />
 
                   <div className="flex justify-between font-bold text-lg">
-                    <span>Total</span>
+                    <span>{t.booking.total}</span>
                     <span>SDG {totalAmount.toLocaleString()}</span>
                   </div>
 
@@ -413,12 +420,12 @@ export default function TripDetailsPage() {
                     onClick={handleBooking}
                     disabled={booking || !passengerName || !passengerPhone}
                   >
-                    {booking ? 'Processing...' : 'Continue to Payment'}
+                    {booking ? t.booking.processing : t.booking.continueToPayment}
                   </Button>
                 </>
               ) : (
                 <div className="text-center text-muted-foreground py-4">
-                  Select seats to continue
+                  {t.booking.selectSeatsToContinue}
                 </div>
               )}
             </CardContent>

@@ -4,8 +4,10 @@ import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 import TransportCityDropdown from "./transport-city-dropdown";
 import TransportDatePicker from "./transport-date-picker";
+import { isRTL as checkRTL, type Locale } from "@/components/internationalization/config";
 
 type ActiveButton = "origin" | "destination" | "date" | null;
 
@@ -48,10 +50,12 @@ export default function TransportBigSearch({
   lang = "en",
 }: TransportBigSearchProps) {
   const router = useRouter();
+  const isRTL = checkRTL(lang as Locale);
   const [activeButton, setActiveButton] = useState<ActiveButton>(null);
   const [hoveredButton, setHoveredButton] = useState<ActiveButton>(null);
   const searchBarRef = useRef<HTMLDivElement>(null);
   const destinationBtnRef = useRef<HTMLButtonElement>(null);
+  const originBtnRef = useRef<HTMLButtonElement>(null);
 
   // Form state
   const [origin, setOrigin] = useState(initialOrigin);
@@ -85,7 +89,8 @@ export default function TransportBigSearch({
   // Format date for display
   const formatDate = (date: Date | undefined) => {
     if (!date) return dictionary.selectDate;
-    return date.toLocaleDateString("en-US", {
+    const locale = lang === 'ar' ? 'ar-SA' : 'en-US';
+    return date.toLocaleDateString(locale, {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -144,57 +149,28 @@ export default function TransportBigSearch({
     }
   };
 
-  // Get button styling
+  // Get button styling with glass morphism
   const getButtonStyling = (button: ActiveButton) => {
     const isActive = activeButton === button;
     const isHovered = hoveredButton === button;
     const hasActiveButton = activeButton !== null;
 
-    // Base background color
+    // Glass morphism background colors
     let bgClass = "bg-transparent";
     if (isActive) {
-      bgClass = "bg-white shadow-md";
+      bgClass = "bg-white/30 backdrop-blur-md shadow-lg";
     } else if (hasActiveButton) {
-      bgClass = "bg-[#e5e7eb]";
+      bgClass = "bg-white/10 backdrop-blur-sm";
       if (isHovered) {
-        bgClass = "bg-[#d1d5db]";
+        bgClass = "bg-white/20 backdrop-blur-md";
       }
     } else if (isHovered) {
-      bgClass = "bg-[#f3f4f6]";
+      bgClass = "bg-white/20 backdrop-blur-md";
     } else {
-      bgClass = "bg-transparent hover:bg-[#f3f4f6]";
+      bgClass = "bg-transparent hover:bg-white/20 hover:backdrop-blur-md";
     }
 
-    // Rounded corners logic
-    let roundedClass = "rounded-full";
-
-    if (hasActiveButton) {
-      if (isActive) {
-        // Active button sharp edges towards hovered neighbors
-        if (hoveredButton === "destination" && button === "origin") {
-          roundedClass = "rounded-l-full rounded-r-none";
-        } else if (hoveredButton === "origin" && button === "destination") {
-          roundedClass = "rounded-r-full rounded-l-none";
-        } else if (hoveredButton === "date" && button === "destination") {
-          roundedClass = "rounded-l-full rounded-r-none";
-        } else if (hoveredButton === "destination" && button === "date") {
-          roundedClass = "rounded-r-full rounded-l-none";
-        }
-      } else if (isHovered) {
-        // Hovered button sharp edges towards active neighbor
-        if (activeButton === "origin" && button === "destination") {
-          roundedClass = "rounded-r-full rounded-l-none";
-        } else if (activeButton === "destination" && button === "origin") {
-          roundedClass = "rounded-l-full rounded-r-none";
-        } else if (activeButton === "destination" && button === "date") {
-          roundedClass = "rounded-r-full rounded-l-none";
-        } else if (activeButton === "date" && button === "destination") {
-          roundedClass = "rounded-l-full rounded-r-none";
-        }
-      }
-    }
-
-    return `${bgClass} ${roundedClass} transition-all duration-200`;
+    return `${bgClass} rounded-full transition-all duration-200`;
   };
 
   const canSearch = origin && destination && date;
@@ -202,22 +178,24 @@ export default function TransportBigSearch({
   return (
     <div className="relative w-full max-w-4xl mx-auto" ref={searchBarRef}>
       <div
-        className={`flex items-center border border-[#e5e7eb] rounded-full shadow-sm transition-colors ${
-          activeButton ? "bg-[#e5e7eb]" : "bg-white"
-        }`}
+        className={cn(
+          "flex items-center rounded-full shadow-sm transition-colors liquid-glass",
+          activeButton ? "bg-[#e5e7eb]/80" : "bg-white/20"
+        )}
       >
         {/* Origin Button */}
         <button
+          ref={originBtnRef}
           className={`flex-[1.5] px-6 py-3 ${getButtonStyling("origin")}`}
           onMouseEnter={() => setHoveredButton("origin")}
           onMouseLeave={() => setHoveredButton(null)}
           onClick={() => handleButtonClick("origin")}
         >
-          <div className="text-left">
-            <div className="text-sm font-semibold text-[#000000] mb-1">
+          <div className="text-start">
+            <div className="text-sm font-semibold text-white mb-1">
               {dictionary.from}
             </div>
-            <div className="text-sm text-[#6b7280] truncate">
+            <div className="text-sm text-white/70 truncate">
               {origin || dictionary.selectCity}
             </div>
           </div>
@@ -225,9 +203,10 @@ export default function TransportBigSearch({
 
         {/* Divider 1 */}
         <div
-          className={`w-px h-8 bg-[#e5e7eb] transition-opacity duration-200 ${
+          className={cn(
+            "w-px h-8 bg-white/30 transition-opacity duration-200",
             isLineHidden("origin-destination") ? "opacity-0" : "opacity-100"
-          }`}
+          )}
         />
 
         {/* Destination Button */}
@@ -238,11 +217,11 @@ export default function TransportBigSearch({
           onMouseLeave={() => setHoveredButton(null)}
           onClick={() => handleButtonClick("destination")}
         >
-          <div className="text-left">
-            <div className="text-sm font-semibold text-[#000000] mb-1">
+          <div className="text-start">
+            <div className="text-sm font-semibold text-white mb-1">
               {dictionary.to}
             </div>
-            <div className="text-sm text-[#6b7280] truncate">
+            <div className="text-sm text-white/70 truncate">
               {destination || dictionary.selectCity}
             </div>
           </div>
@@ -250,9 +229,10 @@ export default function TransportBigSearch({
 
         {/* Divider 2 */}
         <div
-          className={`w-px h-8 bg-[#e5e7eb] transition-opacity duration-200 ${
+          className={cn(
+            "w-px h-8 bg-white/30 transition-opacity duration-200",
             isLineHidden("destination-date") ? "opacity-0" : "opacity-100"
-          }`}
+          )}
         />
 
         {/* Date + Search Button Container */}
@@ -263,13 +243,13 @@ export default function TransportBigSearch({
         >
           {/* Date Button */}
           <div
-            className="flex-1 px-6 py-3 text-left cursor-pointer"
+            className="flex-1 px-6 py-3 text-start cursor-pointer"
             onClick={() => handleButtonClick("date")}
           >
-            <div className="text-sm font-semibold text-[#000000] mb-1">
+            <div className="text-sm font-semibold text-white mb-1">
               {dictionary.date}
             </div>
-            <div className="text-sm text-[#6b7280]">{formatDate(date)}</div>
+            <div className="text-sm text-white/70" dir="ltr">{formatDate(date)}</div>
           </div>
 
           {/* Search Button */}
@@ -296,32 +276,43 @@ export default function TransportBigSearch({
 
       {/* Dropdown Menus */}
       {activeButton === "origin" && (
-        <div className="absolute top-full left-0 mt-2 w-96 bg-white rounded-3xl shadow-lg border border-[#e5e7eb] p-6 z-10">
+        <div
+          className={cn(
+            "absolute top-full mt-2 w-96 bg-white/20 backdrop-blur-xl rounded-2xl shadow-xl border border-white/30 p-6 z-50",
+            isRTL ? "right-0" : "left-0"
+          )}
+        >
           <TransportCityDropdown
             value={origin}
             onChange={handleOriginSelect}
             assemblyPoints={assemblyPoints}
-            placeholder="Search origin city..."
+            placeholder={dictionary.selectCity}
           />
         </div>
       )}
 
       {activeButton === "destination" && (
         <div
-          className="absolute top-full mt-2 w-96 bg-white rounded-3xl shadow-lg border border-[#e5e7eb] p-6 z-10"
-          style={{ left: destinationBtnRef.current?.offsetLeft ?? '25%' }}
+          className="absolute top-full mt-2 w-96 bg-white/20 backdrop-blur-xl rounded-2xl shadow-xl border border-white/30 p-6 z-50"
+          style={isRTL
+            ? { right: destinationBtnRef.current ? `calc(100% - ${destinationBtnRef.current.offsetLeft + destinationBtnRef.current.offsetWidth}px)` : '25%' }
+            : { left: destinationBtnRef.current?.offsetLeft ?? '25%' }
+          }
         >
           <TransportCityDropdown
             value={destination}
             onChange={handleDestinationSelect}
             assemblyPoints={assemblyPoints}
-            placeholder="Search destination city..."
+            placeholder={dictionary.selectCity}
           />
         </div>
       )}
 
       {activeButton === "date" && (
-        <div className="absolute top-full right-0 mt-2 bg-white rounded-3xl shadow-lg border border-[#e5e7eb] p-4 z-10">
+        <div className={cn(
+          "absolute top-full mt-2 bg-white/20 backdrop-blur-xl rounded-2xl shadow-xl border border-white/30 p-4 z-50",
+          isRTL ? "left-0" : "right-0"
+        )}>
           <TransportDatePicker date={date} onDateChange={handleDateChange} />
         </div>
       )}

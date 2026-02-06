@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +16,7 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { getTransportOffices } from '@/lib/actions/transport-actions';
+import { getTransportDictionary } from '@/components/transport/transport-dictionary';
 
 interface TransportOffice {
   id: number;
@@ -37,15 +39,18 @@ interface TransportOffice {
 }
 
 export default function OfficesListPage() {
+  const params = useParams();
+  const lang = params.lang as string;
   const [offices, setOffices] = useState<TransportOffice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const t = getTransportDictionary(lang);
 
   useEffect(() => {
     const fetchOffices = async () => {
       try {
         const data = await getTransportOffices();
-        setOffices(data || []);
+        setOffices((data || []) as unknown as TransportOffice[]);
       } catch (error) {
         console.error('Failed to fetch offices:', error);
       } finally {
@@ -65,10 +70,10 @@ export default function OfficesListPage() {
     return (
       <div className="container mx-auto py-8 px-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-10 w-64 bg-gray-200 rounded" />
+          <div className="h-10 w-64 bg-muted rounded" />
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 bg-gray-200 rounded" />
+              <div key={i} className="h-48 bg-muted rounded" />
             ))}
           </div>
         </div>
@@ -79,9 +84,9 @@ export default function OfficesListPage() {
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Transport Offices</h1>
+        <h1 className="text-3xl font-bold mb-2">{t.office.title}</h1>
         <p className="text-muted-foreground">
-          Find and book with trusted transport operators
+          {t.office.subtitle}
         </p>
       </div>
 
@@ -90,7 +95,7 @@ export default function OfficesListPage() {
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by office name or city..."
+            placeholder={t.office.searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -102,12 +107,12 @@ export default function OfficesListPage() {
       {filteredOffices.length === 0 ? (
         <div className="text-center py-12">
           <Bus className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <p className="text-muted-foreground">No offices found</p>
+          <p className="text-muted-foreground">{t.office.noOffices}</p>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredOffices.map((office) => (
-            <Link key={office.id} href={`/transport/offices/${office.id}`}>
+            <Link key={office.id} href={`/${lang}/transport/offices/${office.id}`}>
               <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -132,7 +137,7 @@ export default function OfficesListPage() {
                         </CardTitle>
                         <CardDescription className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          {office.assemblyPoint?.city ?? 'Location not set'}
+                          {office.assemblyPoint?.city ?? t.office.locationNotSet}
                         </CardDescription>
                       </div>
                     </div>
@@ -145,7 +150,7 @@ export default function OfficesListPage() {
                       <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                       <span className="font-medium">{office.rating.toFixed(1)}</span>
                       <span className="text-muted-foreground text-sm">
-                        ({office.reviewCount} reviews)
+                        ({office.reviewCount} {t.office.reviews})
                       </span>
                     </div>
                   )}
@@ -154,10 +159,10 @@ export default function OfficesListPage() {
                   <div className="flex gap-4 mb-3">
                     <Badge variant="secondary" className="gap-1">
                       <Bus className="h-3 w-3" />
-                      {office._count.buses} buses
+                      {office._count.buses} {t.office.buses}
                     </Badge>
                     <Badge variant="secondary">
-                      {office._count.routes} routes
+                      {office._count.routes} {t.office.routes}
                     </Badge>
                   </div>
 

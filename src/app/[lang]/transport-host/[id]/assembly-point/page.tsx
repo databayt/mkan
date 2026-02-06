@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useTransportHostValidation } from '@/components/onboarding';
 import { useTransportOffice } from '@/context/transport-office-context';
 import { getAssemblyPoints } from '@/lib/actions/transport-actions';
+import HostStepLayout from '@/components/host/host-step-layout';
 
 interface AssemblyPoint {
   id: number;
@@ -67,22 +68,11 @@ const AssemblyPointPage = () => {
   );
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-              <MapPin className="h-6 w-6 text-primary" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold mb-2">Select your assembly point</h1>
-          <p className="text-muted-foreground">
-            Choose the assembly point where your office is located. This is
-            where passengers will come to board your buses.
-          </p>
-        </div>
-
-        <div className="flex-1 space-y-6">
+    <HostStepLayout
+      title={<h3>Select your assembly point</h3>}
+      subtitle="Choose the assembly point where your office is located. This is where passengers will come to board your buses."
+    >
+      <div className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="search">Search locations</Label>
             <Input
@@ -142,9 +132,8 @@ const AssemblyPointPage = () => {
               </p>
             </div>
           )}
-        </div>
       </div>
-    </div>
+    </HostStepLayout>
   );
 };
 

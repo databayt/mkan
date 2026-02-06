@@ -40,7 +40,7 @@ const TransportHostPage = () => {
     async function loadOffices() {
       try {
         const myOffices = await getMyTransportOffices();
-        setOffices(myOffices as TransportOffice[]);
+        setOffices(myOffices as unknown as TransportOffice[]);
       } catch (error) {
         console.error('Error loading offices:', error);
       } finally {

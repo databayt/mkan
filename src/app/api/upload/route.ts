@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { validateImageFile } from '@/lib/imagekit';
+import { rateLimitWithFallback, rateLimitResponse } from '@/lib/rate-limit';
 
 // Handle image upload completion
 // This is called after successful upload to ImageKit
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const rl = await rateLimitWithFallback(request, 'upload');
+    if (!rl.success) {
+      return rateLimitResponse('Too many upload requests');
+    }
+
     // Check authentication
     const session = await auth();
     if (!session?.user) {

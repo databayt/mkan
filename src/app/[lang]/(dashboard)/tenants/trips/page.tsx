@@ -49,7 +49,7 @@ const TripsPage = () => {
     const fetchBookings = async () => {
       try {
         const result = await getMyBookings();
-        setTransportBookings(result?.bookings || []);
+        setTransportBookings((result?.bookings || []) as unknown as TransportBooking[]);
       } catch (error) {
         console.error('Failed to fetch transport bookings:', error);
       } finally {

@@ -9,12 +9,16 @@ export const metadata: Metadata = {
   },
 };
 
-// Minimal root layout that redirects to [lang]
-// All actual layouts are in app/[lang]/layout.tsx
+// Root layout required by Next.js App Router
+// The [lang] layout will override html/body for localized pages
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body>{children}</body>
+    </html>
+  );
 }

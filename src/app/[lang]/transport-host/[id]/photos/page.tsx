@@ -3,11 +3,12 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useEffect, useState } from 'react';
-import { Camera, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useTransportHostValidation } from '@/components/onboarding';
 import { useTransportOffice } from '@/context/transport-office-context';
+import HostStepLayout from '@/components/host/host-step-layout';
 
 interface UploadedImage {
   id: string;
@@ -105,22 +106,11 @@ const PhotosPage = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Camera className="h-6 w-6 text-primary" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold mb-2">Add photos</h1>
-          <p className="text-muted-foreground">
-            Upload your office logo and photos of your buses. Good photos help
-            travelers trust your service.
-          </p>
-        </div>
-
-        <div className="flex-1 space-y-8">
+    <HostStepLayout
+      title={<h3>Add photos</h3>}
+      subtitle="Upload your office logo and photos of your buses. Good photos help travelers trust your service."
+    >
+      <div className="space-y-8">
           <div className="space-y-4">
             <Label>Office Logo</Label>
             <div className="flex items-center gap-4">
@@ -214,9 +204,8 @@ const PhotosPage = () => {
               <li>• Photos help travelers choose your service</li>
             </ul>
           </div>
-        </div>
       </div>
-    </div>
+    </HostStepLayout>
   );
 };
 

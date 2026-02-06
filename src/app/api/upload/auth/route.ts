@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import crypto from 'crypto';
+import { rateLimitWithFallback, rateLimitResponse } from '@/lib/rate-limit';
 
 // ImageKit authentication endpoint
 // This generates authentication parameters for client-side uploads
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting
+    const rl = await rateLimitWithFallback(request, 'upload');
+    if (!rl.success) {
+      return rateLimitResponse('Too many upload auth requests');
+    }
+
     // Check if user is authenticated
     const session = await auth();
     if (!session?.user) {

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { Suspense } from "react";
 import { searchListings } from "@/lib/actions/search-actions";
 import { getListings } from "@/components/host/actions";

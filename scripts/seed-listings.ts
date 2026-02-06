@@ -1,4 +1,5 @@
 import { PrismaClient, PropertyType, Amenity, Highlight } from '@prisma/client'
+import crypto from 'crypto'
 
 const prisma = new PrismaClient()
 
@@ -18,10 +19,12 @@ async function main() {
     where: { email: 'osmanabdout@hotmail.com' },
     update: { role: 'MANAGER' },
     create: {
+      id: crypto.randomUUID(),
       email: 'osmanabdout@hotmail.com',
       username: 'Osman Abdout',
       role: 'MANAGER',
-      emailVerified: new Date()
+      emailVerified: new Date(),
+      updatedAt: new Date(),
     }
   })
 

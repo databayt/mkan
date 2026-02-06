@@ -3,6 +3,7 @@ config({ path: '.env.local' });
 
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -18,11 +19,13 @@ async function main() {
       emailVerified: new Date()
     },
     create: {
+      id: crypto.randomUUID(),
       email: 'office@hotmail.com',
       username: 'Office Test User',
       password: hashedPassword,
       role: 'USER',
-      emailVerified: new Date()
+      emailVerified: new Date(),
+      updatedAt: new Date(),
     }
   });
 

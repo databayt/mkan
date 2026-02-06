@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { rateLimitWithFallback, rateLimitResponse } from '@/lib/rate-limit';
 import os from 'os';
 
 // Get system metrics
@@ -91,6 +92,12 @@ async function checkExternalServices() {
 }
 
 export async function GET(request: NextRequest) {
+  // Rate limiting
+  const rl = await rateLimitWithFallback(request, 'api');
+  if (!rl.success) {
+    return rateLimitResponse('Too many requests');
+  }
+
   const startTime = Date.now();
 
   // Get query parameters for detailed checks

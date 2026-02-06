@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { Amenity, Highlight, PropertyType, Prisma } from "@prisma/client";
+import { sanitizeInput, sanitizeHtml } from "@/lib/sanitization";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // TYPES
@@ -68,6 +70,15 @@ export async function createListing(data: Partial<ListingFormData> = {}) {
     throw new Error("You must be logged in to create a listing");
   }
 
+  // Sanitize string inputs
+  if (data.title) data.title = sanitizeInput(data.title);
+  if (data.description) data.description = sanitizeHtml(data.description);
+  if (data.address) data.address = sanitizeInput(data.address);
+  if (data.city) data.city = sanitizeInput(data.city);
+  if (data.state) data.state = sanitizeInput(data.state);
+  if (data.country) data.country = sanitizeInput(data.country);
+  if (data.postalCode) data.postalCode = sanitizeInput(data.postalCode);
+
   try {
     // Create location if provided
     let locationId = null;
@@ -130,7 +141,7 @@ export async function createListing(data: Partial<ListingFormData> = {}) {
 
     return { success: true, listing };
   } catch (error) {
-    console.error("Error creating listing:", error);
+    logger.error("Error creating listing:", error);
     throw new Error(
       `Failed to create listing: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -155,10 +166,6 @@ export async function getListing(id: number) {
             image: true,
           },
         },
-        reviews: {
-          orderBy: { createdAt: "desc" },
-          take: 10,
-        },
       },
     });
 
@@ -168,7 +175,7 @@ export async function getListing(id: number) {
 
     return listing;
   } catch (error) {
-    console.error("Error fetching listing:", error);
+    logger.error("Error fetching listing:", error);
     throw new Error(
       `Failed to fetch listing: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -283,7 +290,7 @@ export async function getListings(filters?: ListingFilters) {
 
     return listings;
   } catch (error) {
-    console.error("Error fetching listings:", error);
+    logger.error("Error fetching listings:", error);
     throw new Error(
       `Failed to fetch listings: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -318,7 +325,6 @@ export async function getHostListings(hostId?: string) {
           select: {
             applications: true,
             leases: true,
-            reviews: true,
           },
         },
       },
@@ -329,7 +335,7 @@ export async function getHostListings(hostId?: string) {
 
     return listings;
   } catch (error) {
-    console.error("Error fetching host listings:", error);
+    logger.error("Error fetching host listings:", error);
     throw new Error(
       `Failed to fetch host listings: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -361,6 +367,15 @@ export async function updateListing(id: number, data: Partial<ListingFormData>) 
     if (existingListing.hostId !== session.user.id) {
       throw new Error("You can only update your own listings");
     }
+
+    // Sanitize string inputs
+    if (data.title) data.title = sanitizeInput(data.title);
+    if (data.description) data.description = sanitizeHtml(data.description);
+    if (data.address) data.address = sanitizeInput(data.address);
+    if (data.city) data.city = sanitizeInput(data.city);
+    if (data.state) data.state = sanitizeInput(data.state);
+    if (data.country) data.country = sanitizeInput(data.country);
+    if (data.postalCode) data.postalCode = sanitizeInput(data.postalCode);
 
     // Handle location update if provided
     let locationUpdate = {};
@@ -445,7 +460,7 @@ export async function updateListing(id: number, data: Partial<ListingFormData>) 
 
     return { success: true, listing };
   } catch (error) {
-    console.error("Error updating listing:", error);
+    logger.error("Error updating listing:", error);
     throw new Error(
       `Failed to update listing: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -500,7 +515,7 @@ export async function deleteListing(id: number) {
 
     return { success: true };
   } catch (error) {
-    console.error("Error deleting listing:", error);
+    logger.error("Error deleting listing:", error);
     throw new Error(
       `Failed to delete listing: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -578,7 +593,7 @@ export async function publishListing(id: number) {
 
     return { success: true, listing: publishedListing };
   } catch (error) {
-    console.error("Error publishing listing:", error);
+    logger.error("Error publishing listing:", error);
     throw new Error(
       `Failed to publish listing: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -632,7 +647,7 @@ export async function unpublishListing(id: number) {
 
     return { success: true, listing: unpublishedListing };
   } catch (error) {
-    console.error("Error unpublishing listing:", error);
+    logger.error("Error unpublishing listing:", error);
     throw new Error(
       `Failed to unpublish listing: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -678,20 +693,22 @@ export async function searchListings(params: {
 
     // Text search
     if (query) {
+      const sanitizedQuery = sanitizeInput(query);
       where.OR = [
-        { title: { contains: query, mode: "insensitive" } },
-        { description: { contains: query, mode: "insensitive" } },
+        { title: { contains: sanitizedQuery, mode: "insensitive" } },
+        { description: { contains: sanitizedQuery, mode: "insensitive" } },
       ];
     }
 
     // Location search
     if (location) {
+      const sanitizedLocation = sanitizeInput(location);
       where.location = {
         is: {
           OR: [
-            { city: { contains: location, mode: "insensitive" } },
-            { state: { contains: location, mode: "insensitive" } },
-            { country: { contains: location, mode: "insensitive" } },
+            { city: { contains: sanitizedLocation, mode: "insensitive" } },
+            { state: { contains: sanitizedLocation, mode: "insensitive" } },
+            { country: { contains: sanitizedLocation, mode: "insensitive" } },
           ],
         },
       };
@@ -760,7 +777,7 @@ export async function searchListings(params: {
       },
     };
   } catch (error) {
-    console.error("Error searching listings:", error);
+    logger.error("Error searching listings:", error);
     throw new Error(
       `Failed to search listings: ${error instanceof Error ? error.message : "Unknown error"}`
     );

@@ -1,6 +1,7 @@
 import { config } from 'dotenv';
 config({ path: '.env.local' });
 
+import crypto from 'crypto';
 import { PrismaClient, BusAmenity, SeatStatus, TransportBookingStatus, TransportPaymentMethod, TransportPaymentStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -294,11 +295,13 @@ async function main() {
       where: { email: owner.email },
       update: { password: hashedPassword, emailVerified: new Date() },
       create: {
+        id: crypto.randomUUID(),
         email: owner.email,
         username: owner.username,
         password: hashedPassword,
         role: 'USER',
         emailVerified: new Date(),
+        updatedAt: new Date(),
       },
     });
     createdOwners.push(user.id);

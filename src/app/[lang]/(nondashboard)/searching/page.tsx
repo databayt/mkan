@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getListings } from '@/components/host/actions';
 import { PropertyContent } from "@/components/site/property/content";
 

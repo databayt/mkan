@@ -25,16 +25,17 @@ export function LanguageSwitcher({
   const getSwitchLocaleHref = useSwitchLocaleHref();
   const { locale: currentLocale, isRTL } = useLocale();
 
-  // Text variant - simple text showing "English", clicks to switch
+  // Text variant - simple text showing native language name, clicks to switch
   if (variant === "text") {
     const nextLocale = i18n.locales.find(locale => locale !== currentLocale) || i18n.locales[0];
+    const nextConfig = localeConfig[nextLocale];
 
     return (
       <Link
         href={getSwitchLocaleHref(nextLocale)}
         className={cn("transition-opacity hover:opacity-80", className)}
       >
-        English
+        {nextConfig.nativeName}
       </Link>
     );
   }

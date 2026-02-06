@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { PaymentStatus } from "@prisma/client";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // TYPES
@@ -84,7 +85,7 @@ export async function createPayment(data: CreatePaymentData) {
 
     return { success: true, payment };
   } catch (error) {
-    console.error("Error creating payment:", error);
+    logger.error("Error creating payment:", error);
     throw new Error(
       `Failed to create payment: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -141,7 +142,7 @@ export async function getPayment(paymentId: number) {
 
     return payment;
   } catch (error) {
-    console.error("Error fetching payment:", error);
+    logger.error("Error fetching payment:", error);
     throw new Error(
       `Failed to fetch payment: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -181,7 +182,7 @@ export async function getLeasePayments(leaseId: number) {
 
     return payments;
   } catch (error) {
-    console.error("Error fetching lease payments:", error);
+    logger.error("Error fetching lease payments:", error);
     throw new Error(
       `Failed to fetch payments: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -237,7 +238,7 @@ export async function getUserPayments(userId?: string) {
 
     return payments;
   } catch (error) {
-    console.error("Error fetching user payments:", error);
+    logger.error("Error fetching user payments:", error);
     throw new Error(
       `Failed to fetch payments: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -307,7 +308,7 @@ export async function processPayment(data: ProcessPaymentData) {
 
     return { success: true, payment: updatedPayment };
   } catch (error) {
-    console.error("Error processing payment:", error);
+    logger.error("Error processing payment:", error);
     throw new Error(
       `Failed to process payment: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -362,7 +363,7 @@ export async function updatePaymentStatus(paymentId: number, status: PaymentStat
 
     return { success: true, payment: updatedPayment };
   } catch (error) {
-    console.error("Error updating payment status:", error);
+    logger.error("Error updating payment status:", error);
     throw new Error(
       `Failed to update payment status: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -392,7 +393,7 @@ export async function markOverduePayments() {
 
     return { success: true, updatedCount: result.count };
   } catch (error) {
-    console.error("Error marking overdue payments:", error);
+    logger.error("Error marking overdue payments:", error);
     throw new Error(
       `Failed to mark overdue payments: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -450,7 +451,7 @@ export async function getPaymentSummary(userId?: string): Promise<PaymentSummary
       upcomingPayments,
     };
   } catch (error) {
-    console.error("Error getting payment summary:", error);
+    logger.error("Error getting payment summary:", error);
     throw new Error(
       `Failed to get payment summary: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -514,7 +515,7 @@ export async function generateMonthlyPayments(leaseId: number) {
 
     return { success: true, payments };
   } catch (error) {
-    console.error("Error generating payments:", error);
+    logger.error("Error generating payments:", error);
     throw new Error(
       `Failed to generate payments: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -661,7 +662,7 @@ export async function generateInvoice(paymentId: number) {
 
     return invoice;
   } catch (error) {
-    console.error("Error generating invoice:", error);
+    logger.error("Error generating invoice:", error);
     throw new Error(
       `Failed to generate invoice: ${error instanceof Error ? error.message : "Unknown error"}`
     );

@@ -136,9 +136,9 @@ const TripsPage = () => {
       getRoutesByOffice(officeId),
       getBusesByOffice(officeId),
     ]);
-    setTrips(officeTrips as Trip[]);
-    setRoutes(officeRoutes as RouteData[]);
-    setBuses(officeBuses as BusData[]);
+    setTrips(officeTrips as unknown as Trip[]);
+    setRoutes(officeRoutes as unknown as RouteData[]);
+    setBuses(officeBuses as unknown as BusData[]);
   };
 
   const handleOfficeChange = async (officeId: number) => {
@@ -193,7 +193,7 @@ const TripsPage = () => {
 
       const created = await createTrip(tripData);
       if (created) {
-        setTrips((prev) => [...prev, created as Trip]);
+        setTrips((prev) => [...prev, created as unknown as Trip]);
       }
 
       setIsDialogOpen(false);

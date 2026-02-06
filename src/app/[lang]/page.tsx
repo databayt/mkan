@@ -13,6 +13,20 @@ import Ask from "@/components/site/airbnb-ask";
 import Footer from "@/components/row/Footer";
 import { useLocale } from "@/components/internationalization/use-locale";
 
+// Home section translations
+const homeSectionTranslations = {
+  en: {
+    popular: "Popular homes in Khartoum",
+    recent: "Recently added",
+    topRated: "Top rated",
+  },
+  ar: {
+    popular: "منازل شائعة في الخرطوم",
+    recent: "أضيفت مؤخراً",
+    topRated: "الأعلى تقييماً",
+  },
+} as const;
+
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'Islands': ['island', 'private island', 'tropical', 'paradise', 'exotic'],
   'Mension': ['mansion', 'luxury', 'estate', 'villa', 'palace'],
@@ -40,6 +54,7 @@ const getTopRatedListings = (listings: Listing[], limit: number) =>
 function HomeContent() {
   const searchParams = useSearchParams();
   const { locale } = useLocale();
+  const t = homeSectionTranslations[locale as 'en' | 'ar'] || homeSectionTranslations.en;
   const [listings, setListings] = useState<Listing[]>([]);
   const [filteredListings, setFilteredListings] = useState<Listing[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -183,17 +198,17 @@ function HomeContent() {
         ) : (
           <div className="space-y-12">
             <ListingCarouselSection
-              title="Popular homes in Khartoum"
+              title={t.popular}
               href={`/${locale}/search`}
               listings={listings.slice(0, 12)}
             />
             <ListingCarouselSection
-              title="Recently added"
+              title={t.recent}
               href={`/${locale}/search?sort=newest`}
               listings={getRecentListings(listings, 12)}
             />
             <ListingCarouselSection
-              title="Top rated"
+              title={t.topRated}
               href={`/${locale}/search?sort=rating`}
               listings={getTopRatedListings(listings, 12)}
             />

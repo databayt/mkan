@@ -6,12 +6,12 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Building2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useTransportHostValidation } from '@/components/onboarding';
 import { useTransportOffice } from '@/context/transport-office-context';
+import HostStepLayout from '@/components/host/host-step-layout';
 
 const officeInfoSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -91,22 +91,11 @@ const OfficeInfoPage = () => {
   }, [watchedValues, office, isValid, updateOfficeData]);
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Building2 className="h-6 w-6 text-primary" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold mb-2">Tell us about your office</h1>
-          <p className="text-muted-foreground">
-            Enter your transport office details. This information will be shown
-            to travelers when they search for trips.
-          </p>
-        </div>
-
-        <div className="flex-1 space-y-6">
+    <HostStepLayout
+      title={<h3>Tell us about your office</h3>}
+      subtitle="Enter your transport office details. This information will be shown to travelers when they search for trips."
+    >
+      <div className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="name">Office Name *</Label>
             <Input
@@ -186,9 +175,8 @@ const OfficeInfoPage = () => {
               dir="rtl"
             />
           </div>
-        </div>
       </div>
-    </div>
+    </HostStepLayout>
   );
 };
 

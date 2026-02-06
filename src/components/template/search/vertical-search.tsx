@@ -10,10 +10,52 @@ import { useClickOutside } from "./use-click";
 import { GUEST_LIMITS, MOBILE_BREAKPOINT } from "./constant";
 import LocationDropdown from "./location";
 import DatePickerDropdown from "./date-picker";
+import DatePickerCompact from "./date-picker-compact";
 import GuestSelectorDropdown from "./guest-selector";
 import { useLocationSuggestions } from "./hooks/use-location-suggestions";
 import { useSearchValidation } from "@/hooks/useSearchValidation";
 import { type LocationSuggestion } from "@/lib/schemas/search-schema";
+import { useLocale } from "@/components/internationalization/use-locale";
+
+// Search form translations
+const searchTranslations = {
+  en: {
+    heading: "Book unique\naccommodations and\nactivities.",
+    where: "WHERE",
+    checkIn: "CHECK-IN",
+    checkOut: "CHECK-OUT",
+    guests: "GUESTS",
+    anywhere: "Anywhere",
+    addDate: "Add date",
+    addGuests: "Add guests",
+    back: "Back",
+    search: "Search",
+    adult: "adult",
+    adults: "adults",
+    child: "child",
+    children: "children",
+    infant: "infant",
+    infants: "infants",
+  },
+  ar: {
+    heading: "احجز أماكن\nإقامة وأنشطة\nفريدة.",
+    where: "أين",
+    checkIn: "تسجيل الوصول",
+    checkOut: "المغادرة",
+    guests: "الضيوف",
+    anywhere: "أي مكان",
+    addDate: "أضف تاريخ",
+    addGuests: "أضف ضيوف",
+    back: "رجوع",
+    search: "بحث",
+    adult: "بالغ",
+    adults: "بالغين",
+    child: "طفل",
+    children: "أطفال",
+    infant: "رضيع",
+    infants: "رضع",
+  },
+} as const;
 
 type ActiveField = "location" | "checkin" | "checkout" | "guests" | null;
 
@@ -24,6 +66,8 @@ interface VerticalSearchProps {
 export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { locale, isRTL } = useLocale();
+  const t = searchTranslations[locale as 'en' | 'ar'] || searchTranslations.en;
   const [activeField, setActiveField] = useState<ActiveField>(null);
   const [isMobile, setIsMobile] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
@@ -123,22 +167,22 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
   // Helper function to get guest display text
   const getGuestDisplayText = () => {
     const total = getTotalGuests();
-    if (total === 0) return "Add guests";
+    if (total === 0) return t.addGuests;
 
     const parts = [];
     if (formData.guests.adults > 0) {
       parts.push(
-        `${formData.guests.adults} adult${formData.guests.adults > 1 ? "s" : ""}`
+        `${formData.guests.adults} ${formData.guests.adults > 1 ? t.adults : t.adult}`
       );
     }
     if (formData.guests.children > 0) {
       parts.push(
-        `${formData.guests.children} child${formData.guests.children > 1 ? "ren" : ""}`
+        `${formData.guests.children} ${formData.guests.children > 1 ? t.children : t.child}`
       );
     }
     if (formData.guests.infants > 0) {
       parts.push(
-        `${formData.guests.infants} infant${formData.guests.infants > 1 ? "s" : ""}`
+        `${formData.guests.infants} ${formData.guests.infants > 1 ? t.infants : t.infant}`
       );
     }
 
@@ -206,19 +250,15 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
   if (isMobile) {
     return (
       <div
-        className="absolute top-[53%] left-4 md:left-8 transform -translate-y-1/2 z-20 w-[calc(100%-2rem)] md:w-auto max-h-[80vh] overflow-auto"
+        className="absolute top-[53%] start-4 md:start-8 transform -translate-y-1/2 z-20 w-[calc(100%-2rem)] md:w-auto max-h-[80vh] overflow-auto"
         ref={formRef}
       >
         <div className="bg-white rounded-xs px-4 md:px-6 py-6 md:py-4 shadow-md w-full md:w-80">
           {/* Header - Show heading or back arrow */}
           {!activeField ? (
             /* Show main heading when no field is active */
-            <h1 className="text-lg md:text-xl font-medium text-[#6b6b6b] mb-4 md:mb-3 leading-tight">
-              Book unique
-              <br />
-              accommodations and
-              <br />
-              activities.
+            <h1 className="text-lg md:text-xl font-medium text-[#6b6b6b] mb-4 md:mb-3 leading-tight whitespace-pre-line">
+              {t.heading}
             </h1>
           ) : (
             /* Show back arrow when dropdown is active */
@@ -236,10 +276,11 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  className={isRTL ? "rotate-180" : ""}
                 >
                   <path d="m15 18-6-6 6-6" />
                 </svg>
-                <span className="ml-2 text-sm font-medium">Back</span>
+                <span className="ms-2 text-sm font-medium">{t.back}</span>
               </button>
             </div>
           )}
@@ -251,16 +292,16 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
               {/* Location field */}
               <div>
                 <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
-                  WHERE
+                  {t.where}
                 </Label>
                 <button
-                  className={`w-full h-12 text-left px-3 border border-gray-300 rounded-xs ${getFieldStyling("location")}`}
+                  className={`w-full h-12 text-start px-3 border border-gray-300 rounded-xs ${getFieldStyling("location")}`}
                   onClick={() => handleFieldClick("location")}
                 >
                   <span
                     className={`text-sm ${formData.location ? "text-black" : "text-[#c0c0c0]"}`}
                   >
-                    {formData.location || "Anywhere"}
+                    {formData.location || t.anywhere}
                   </span>
                 </button>
               </div>
@@ -270,18 +311,18 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                 <div className="grid grid-cols-2">
                   <div>
                     <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
-                      CHECK-IN
+                      {t.checkIn}
                     </Label>
                   </div>
                   <div>
                     <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
-                      CHECK-OUT
+                      {t.checkOut}
                     </Label>
                   </div>
                 </div>
                 <div className="flex">
                   <button
-                    className={`flex-1 h-12 text-left px-3 border border-gray-300 rounded-l-xs rounded-r-none ${getFieldStyling("checkin")}`}
+                    className={`flex-1 h-12 text-start px-3 border border-gray-300 rounded-s-xs rounded-e-none ${getFieldStyling("checkin")}`}
                     onClick={() => handleFieldClick("checkin")}
                   >
                     <span
@@ -289,11 +330,11 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                     >
                       {dateRange.from
                         ? format(dateRange.from, "MMM dd")
-                        : "Add date"}
+                        : t.addDate}
                     </span>
                   </button>
                   <button
-                    className={`flex-1 h-12 text-left px-3 border border-gray-300 border-l-0 rounded-r-xs rounded-l-none ${getFieldStyling("checkout")}`}
+                    className={`flex-1 h-12 text-start px-3 border border-gray-300 border-s-0 rounded-e-xs rounded-s-none ${getFieldStyling("checkout")}`}
                     onClick={() => handleFieldClick("checkout")}
                   >
                     <span
@@ -301,7 +342,7 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                     >
                       {dateRange.to
                         ? format(dateRange.to, "MMM dd")
-                        : "Add date"}
+                        : t.addDate}
                     </span>
                   </button>
                 </div>
@@ -310,10 +351,10 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
               {/* Guests field */}
               <div>
                 <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
-                  GUESTS
+                  {t.guests}
                 </Label>
                 <button
-                  className={`w-full h-12 text-left px-3 border border-gray-300 rounded-xs ${getFieldStyling("guests")}`}
+                  className={`w-full h-12 text-start px-3 border border-gray-300 rounded-xs ${getFieldStyling("guests")}`}
                   onClick={() => handleFieldClick("guests")}
                 >
                   <span
@@ -367,7 +408,7 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
               onClick={handleSearch}
               className="px-8 py-2 md:py-1 h-12 md:h-10 text-sm font-medium bg-[#de3151] hover:bg-[#de3151]/90 text-white rounded-xs"
             >
-              Search
+              {t.search}
             </Button>
           </div>
         </div>
@@ -378,149 +419,140 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
   // Desktop version
   return (
     <div
-      className="absolute top-[53%] left-4 md:left-8 transform -translate-y-1/2 z-20 w-[calc(100%-2rem)] md:w-auto"
+      className="absolute top-[53%] start-4 md:start-8 transform -translate-y-1/2 z-20 w-[calc(100%-2rem)] md:w-auto max-h-[90vh] overflow-auto"
       ref={formRef}
     >
-      <div className="relative">
-        <div className="bg-white rounded-xs px-4 md:px-6 py-6 md:py-4 shadow-md w-full md:w-80">
-          {/* Main heading */}
-          <h1 className="text-lg md:text-xl font-medium text-[#6b6b6b] mb-4 md:mb-3 leading-tight">
-            Book unique
-            <br />
-            accommodations and
-            <br />
-            activities.
-          </h1>
+      <div className="bg-white rounded-xs px-4 md:px-6 py-6 md:py-4 shadow-md w-full md:w-[340px]">
+        {/* Main heading */}
+        <h1 className="text-lg md:text-xl font-medium text-[#6b6b6b] mb-4 md:mb-3 leading-tight whitespace-pre-line">
+          {t.heading}
+        </h1>
 
-          {/* Desktop: All fields visible */}
-          <div className="space-y-4 md:space-y-3">
-            {/* Location field */}
-            <div>
-              <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
-                WHERE
-              </Label>
+        {/* Desktop: All fields visible */}
+        <div className="space-y-4 md:space-y-3">
+          {/* Location field */}
+          <div>
+            <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
+              {t.where}
+            </Label>
+            <button
+              className={`w-full h-12 text-start px-3 border border-gray-300 rounded-xs ${getFieldStyling("location")}`}
+              onClick={() => handleFieldClick("location")}
+            >
+              <span
+                className={`text-sm ${formData.location ? "text-black" : "text-[#c0c0c0]"}`}
+              >
+                {formData.location || t.anywhere}
+              </span>
+            </button>
+          </div>
+
+          {/* Date fields */}
+          <div>
+            <div className="grid grid-cols-2">
+              <div>
+                <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
+                  {t.checkIn}
+                </Label>
+              </div>
+              <div>
+                <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
+                  {t.checkOut}
+                </Label>
+              </div>
+            </div>
+            <div className="flex">
               <button
-                className={`w-full h-12 text-left px-3 border border-gray-300 rounded-xs ${getFieldStyling("location")}`}
-                onClick={() => handleFieldClick("location")}
+                className={`flex-1 h-12 text-start px-3 border border-gray-300 rounded-s-xs rounded-e-none ${getFieldStyling("checkin")}`}
+                onClick={() => handleFieldClick("checkin")}
               >
                 <span
-                  className={`text-sm ${formData.location ? "text-black" : "text-[#c0c0c0]"}`}
+                  className={`text-sm ${dateRange.from ? "text-black" : "text-[#c0c0c0]"}`}
                 >
-                  {formData.location || "Anywhere"}
+                  {dateRange.from
+                    ? format(dateRange.from, "MMM dd")
+                    : t.addDate}
+                </span>
+              </button>
+              <button
+                className={`flex-1 h-12 text-start px-3 border border-gray-300 border-s-0 rounded-e-xs rounded-s-none ${getFieldStyling("checkout")}`}
+                onClick={() => handleFieldClick("checkout")}
+              >
+                <span
+                  className={`text-sm ${dateRange.to ? "text-black" : "text-[#c0c0c0]"}`}
+                >
+                  {dateRange.to ? format(dateRange.to, "MMM dd") : t.addDate}
                 </span>
               </button>
             </div>
+          </div>
 
-            {/* Date fields */}
-            <div>
-              <div className="grid grid-cols-2">
-                <div>
-                  <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
-                    CHECK-IN
-                  </Label>
-                </div>
-                <div>
-                  <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
-                    CHECK-OUT
-                  </Label>
-                </div>
-              </div>
-              <div className="flex">
-                <button
-                  className={`flex-1 h-12 text-left px-3 border border-gray-300 rounded-l-xs rounded-r-none ${getFieldStyling("checkin")}`}
-                  onClick={() => handleFieldClick("checkin")}
-                >
-                  <span
-                    className={`text-sm ${dateRange.from ? "text-black" : "text-[#c0c0c0]"}`}
-                  >
-                    {dateRange.from
-                      ? format(dateRange.from, "MMM dd")
-                      : "Add date"}
-                  </span>
-                </button>
-                <button
-                  className={`flex-1 h-12 text-left px-3 border border-gray-300 border-l-0 rounded-r-xs rounded-l-none ${getFieldStyling("checkout")}`}
-                  onClick={() => handleFieldClick("checkout")}
-                >
-                  <span
-                    className={`text-sm ${dateRange.to ? "text-black" : "text-[#c0c0c0]"}`}
-                  >
-                    {dateRange.to ? format(dateRange.to, "MMM dd") : "Add date"}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* Travelers field */}
-            <div>
-              <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
-                GUESTS
-              </Label>
-              <button
-                className={`w-full h-12 text-left px-3 border border-gray-300 rounded-xs ${getFieldStyling("guests")}`}
-                onClick={() => handleFieldClick("guests")}
+          {/* Travelers field */}
+          <div>
+            <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
+              {t.guests}
+            </Label>
+            <button
+              className={`w-full h-12 text-start px-3 border border-gray-300 rounded-xs ${getFieldStyling("guests")}`}
+              onClick={() => handleFieldClick("guests")}
+            >
+              <span
+                className={`text-sm ${getTotalGuests() > 0 ? "text-black" : "text-[#c0c0c0]"}`}
               >
-                <span
-                  className={`text-sm ${getTotalGuests() > 0 ? "text-black" : "text-[#c0c0c0]"}`}
-                >
-                  {getGuestDisplayText()}
-                </span>
-              </button>
-            </div>
+                {getGuestDisplayText()}
+              </span>
+            </button>
+          </div>
 
-            {/* Search button */}
-            <div className="pt-3 md:pt-2 flex justify-end">
-              <Button
-                onClick={handleSearch}
-                className="px-8 py-2 md:py-1 h-12 md:h-10 text-sm font-medium bg-[#de3151] hover:bg-[#de3151]/90 text-white rounded-xs"
-              >
-                Search
-              </Button>
+          {/* Inline Dropdowns - appear below fields when active */}
+          {activeField === "location" && (
+            <div className="pt-3 border-t border-gray-200">
+              <LocationDropdown
+                searchQuery={searchQuery}
+                suggestions={suggestions}
+                popularLocations={popularLocations}
+                isLoading={isLoadingLocations}
+                error={locationError}
+                onSearchQueryChange={searchLocations}
+                onLocationSelect={(location) => {
+                  if (location) {
+                    selectLocation(location);
+                  } else {
+                    setActiveField(null);
+                  }
+                }}
+              />
             </div>
+          )}
+
+          {(activeField === "checkin" || activeField === "checkout") && (
+            <div className="pt-3 border-t border-gray-200">
+              <DatePickerCompact
+                dateRange={dateRange}
+                onDateChange={handleDateRangeChange}
+              />
+            </div>
+          )}
+
+          {activeField === "guests" && (
+            <div className="pt-3 border-t border-gray-200">
+              <GuestSelectorDropdown
+                guests={formData.guests}
+                onGuestChange={handleGuestChange}
+              />
+            </div>
+          )}
+
+          {/* Search button */}
+          <div className="pt-3 md:pt-2 flex justify-end">
+            <Button
+              onClick={handleSearch}
+              className="px-8 py-2 md:py-1 h-12 md:h-10 text-sm font-medium bg-[#de3151] hover:bg-[#de3151]/90 text-white rounded-xs"
+            >
+              {t.search}
+            </Button>
           </div>
         </div>
-
-        {/* Desktop Dropdowns - Positioned to the right */}
-        {activeField === "location" && (
-          <div
-            className="absolute top-0 left-full ml-4 w-80 h-full bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10"
-            onMouseLeave={() => setActiveField(null)}
-          >
-            <LocationDropdown
-              searchQuery={searchQuery}
-              suggestions={suggestions}
-              popularLocations={popularLocations}
-              isLoading={isLoadingLocations}
-              error={locationError}
-              onSearchQueryChange={searchLocations}
-              onLocationSelect={(location) => {
-                if (location) {
-                  selectLocation(location);
-                } else {
-                  setActiveField(null);
-                }
-              }}
-            />
-          </div>
-        )}
-
-        {(activeField === "checkin" || activeField === "checkout") && (
-          <div className="absolute top-0 left-full ml-4 w-[600px] h-auto bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10">
-            <DatePickerDropdown
-              dateRange={dateRange}
-              onDateChange={handleDateRangeChange}
-            />
-          </div>
-        )}
-
-        {activeField === "guests" && (
-          <div className="absolute top-0 left-full ml-4 w-80 h-full bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10">
-            <GuestSelectorDropdown
-              guests={formData.guests}
-              onGuestChange={handleGuestChange}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

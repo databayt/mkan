@@ -1,0 +1,47 @@
+const isDev = process.env.NODE_ENV === "development";
+
+function formatMessage(level: string, message: string, meta?: Record<string, unknown>) {
+  const timestamp = new Date().toISOString();
+  const metaStr = meta ? ` ${JSON.stringify(meta)}` : "";
+  return `[${timestamp}] ${level}: ${message}${metaStr}`;
+}
+
+export const logger = {
+  info(message: string, meta?: Record<string, unknown>) {
+    if (isDev) {
+      console.log(formatMessage("INFO", message, meta));
+    }
+  },
+
+  warn(message: string, meta?: Record<string, unknown>) {
+    console.warn(formatMessage("WARN", message, meta));
+  },
+
+  error(message: string, error?: unknown, meta?: Record<string, unknown>) {
+    const errorMeta = error instanceof Error
+      ? { ...meta, errorMessage: error.message, stack: error.stack }
+      : { ...meta, error };
+
+    console.error(formatMessage("ERROR", message, errorMeta));
+
+    // Report to Sentry in production
+    if (!isDev && typeof globalThis !== "undefined") {
+      try {
+        const Sentry = require("@sentry/nextjs");
+        if (error instanceof Error) {
+          Sentry.captureException(error);
+        } else {
+          Sentry.captureMessage(message, { extra: errorMeta });
+        }
+      } catch {
+        // Sentry not available, already logged to console
+      }
+    }
+  },
+
+  debug(message: string, meta?: Record<string, unknown>) {
+    if (isDev) {
+      console.debug(formatMessage("DEBUG", message, meta));
+    }
+  },
+};

@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Calendar, Plus, Trash2, Edit2, Clock, Bus as BusIcon } from 'lucide-react';
+import { Calendar, Plus, Trash2, Clock, Bus as BusIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ import {
   getBusesByOffice,
 } from '@/lib/actions/transport-actions';
 import { format, addDays } from 'date-fns';
+import HostStepLayout from '@/components/host/host-step-layout';
 
 const tripSchema = z.object({
   routeId: z.number().min(1, 'Route is required'),
@@ -110,9 +111,9 @@ const SchedulePage = () => {
           getBusesByOffice(office.id),
           getTripsByOffice(office.id),
         ]);
-        setRoutes(officeRoutes as RouteData[]);
-        setBuses(officeBuses as BusData[]);
-        setTrips(officeTrips as TripData[]);
+        setRoutes(officeRoutes as unknown as RouteData[]);
+        setBuses(officeBuses as unknown as BusData[]);
+        setTrips(officeTrips as unknown as TripData[]);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -162,7 +163,7 @@ const SchedulePage = () => {
 
       const created = await createTrip(tripData);
       if (created) {
-        setTrips((prev) => [...prev, created as TripData]);
+        setTrips((prev) => [...prev, created as unknown as TripData]);
       }
 
       setIsDialogOpen(false);
@@ -202,20 +203,15 @@ const SchedulePage = () => {
   }, {} as Record<string, TripData[]>);
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Calendar className="h-6 w-6 text-primary" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold mb-2">Set up your schedule</h1>
-          <p className="text-muted-foreground">
+    <HostStepLayout
+      title={<h3>Set up your schedule</h3>}
+      subtitle={
+        <div className="space-y-4">
+          <p className="text-sm sm:text-base text-muted-foreground">
             Create trips by assigning buses to routes with specific departure
             times. You can add more trips later from your dashboard.
           </p>
-          <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+          <div className="p-4 bg-muted/50 rounded-lg">
             <p className="text-sm text-muted-foreground">
               <strong>Tip:</strong> Most buses in Sudan depart around 5:00 AM.
               You can create multiple trips for the same route on different
@@ -223,8 +219,9 @@ const SchedulePage = () => {
             </p>
           </div>
         </div>
-
-        <div className="flex-1 space-y-6">
+      }
+    >
+      <div className="space-y-6">
           {routes.length === 0 || buses.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground border rounded-lg">
               <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -446,9 +443,8 @@ const SchedulePage = () => {
               )}
             </>
           )}
-        </div>
       </div>
-    </div>
+    </HostStepLayout>
   );
 };
 

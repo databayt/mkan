@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { UserRole } from "@prisma/client";
+import { sanitizeInput, sanitizeEmail, sanitizePhone } from "@/lib/sanitization";
+import { logger } from "@/lib/logger";
 
 // Get current authenticated user with profile info
 export async function getAuthUser() {
@@ -47,7 +49,7 @@ export async function getAuthUser() {
         }
       }
     } catch (error) {
-      console.error("Error fetching/creating user info:", error);
+      logger.error("Error fetching/creating user info:", error);
       // Create default user info if database operations fail
       userInfo = {
         id: user.id,
@@ -69,7 +71,7 @@ export async function getAuthUser() {
       userRole: userRole,
     };
   } catch (error) {
-    console.error("Error in getAuthUser:", error);
+    logger.error("Error in getAuthUser:", error);
     throw new Error("Failed to get authenticated user");
   }
 }
@@ -225,7 +227,7 @@ export async function getTenant(userId: string) {
 
     return tenant;
   } catch (error) {
-    console.error("Error fetching tenant:", error);
+    logger.error("Error fetching tenant:", error);
     throw new Error("Failed to fetch tenant profile");
   }
 }
@@ -244,6 +246,11 @@ export async function updateTenantSettings(
     if (!session?.user?.id || session.user.id !== userId) {
       throw new Error("Unauthorized");
     }
+
+    // Sanitize inputs
+    if (data.name) data.name = sanitizeInput(data.name);
+    if (data.email) data.email = sanitizeEmail(data.email);
+    if (data.phoneNumber) data.phoneNumber = sanitizePhone(data.phoneNumber);
 
     const updatedTenant = await db.tenant.update({
       where: { userId },
@@ -267,7 +274,7 @@ export async function updateTenantSettings(
     revalidatePath("/tenants/settings");
     return updatedTenant;
   } catch (error) {
-    console.error("Error updating tenant settings:", error);
+    logger.error("Error updating tenant settings:", error);
     throw new Error("Failed to update tenant settings");
   }
 }
@@ -287,6 +294,11 @@ export async function updateManagerSettings(
       throw new Error("Unauthorized");
     }
 
+    // Sanitize inputs
+    if (data.name) data.name = sanitizeInput(data.name);
+    if (data.email) data.email = sanitizeEmail(data.email);
+    if (data.username) data.username = sanitizeInput(data.username);
+
     const updatedUser = await db.user.update({
       where: { id: userId },
       data: {
@@ -305,7 +317,7 @@ export async function updateManagerSettings(
     revalidatePath("/managers/settings");
     return updatedUser;
   } catch (error) {
-    console.error("Error updating manager settings:", error);
+    logger.error("Error updating manager settings:", error);
     throw new Error("Failed to update manager settings");
   }
 }
@@ -346,7 +358,7 @@ export async function getCurrentResidences(userId: string) {
 
     return leases.map(lease => lease.listing);
   } catch (error) {
-    console.error("Error fetching current residences:", error);
+    logger.error("Error fetching current residences:", error);
     throw new Error("Failed to fetch current residences");
   }
 }
@@ -384,7 +396,7 @@ export async function addFavoriteProperty(userId: string, propertyId: number) {
     revalidatePath("/search");
     return tenant;
   } catch (error) {
-    console.error("Error adding favorite property:", error);
+    logger.error("Error adding favorite property:", error);
     throw new Error("Failed to add property to favorites");
   }
 }
@@ -422,7 +434,7 @@ export async function removeFavoriteProperty(userId: string, propertyId: number)
     revalidatePath("/search");
     return tenant;
   } catch (error) {
-    console.error("Error removing favorite property:", error);
+    logger.error("Error removing favorite property:", error);
     throw new Error("Failed to remove property from favorites");
   }
 } 
