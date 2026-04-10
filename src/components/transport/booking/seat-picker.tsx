@@ -164,7 +164,7 @@ export function SeatPicker({
             ? dictionary.seatSelected
             : dictionary.seatsSelected}
           {isMaxReached && (
-            <span className="text-amber-600 ml-2">
+            <span className="text-amber-600 ms-2">
               ({dictionary.maxReached})
             </span>
           )}
@@ -175,7 +175,7 @@ export function SeatPicker({
       <div className="overflow-x-auto pb-4">
         <div className="bg-muted/30 rounded-xl p-6 min-w-[300px] inline-block">
           {/* Driver Area */}
-          <div className="flex justify-end mb-6 pr-4">
+          <div className="flex justify-end mb-6 pe-4">
             <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
               Driver
             </div>
@@ -254,7 +254,7 @@ export function SeatPicker({
                 <button
                   type="button"
                   onClick={() => onSeatDeselect(seatNumber)}
-                  className="ml-2 hover:text-primary-foreground/70"
+                  className="ms-2 hover:text-primary-foreground/70"
                 >
                   ×
                 </button>

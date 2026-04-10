@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from 'react';
+import type { ProcessServerConfigFunction, RevertServerConfigFunction } from 'filepond';
 import { validateImageFile } from '@/lib/imagekit';
 
 export interface UploadOptions {
@@ -157,49 +158,52 @@ export function useImageUpload(options: UploadOptions = {}) {
   }, [options.listingId]);
 
   // FilePond server configuration
-  const filePondServer = {
-    process: async (
-      fieldName: string,
-      file: File,
-      metadata: any,
-      load: (response: any) => void,
-      error: (errorText: string) => void,
-      progress: (computable: boolean, loaded: number, total: number) => void,
-      abort: () => void
-    ) => {
-      try {
-        // Update progress
-        const progressHandler = (loaded: number, total: number) => {
-          const percentage = Math.round((loaded / total) * 100);
-          setProgress({ loaded, total, percentage });
-          progress(true, loaded, total);
-        };
+  const filePondProcess: ProcessServerConfigFunction = async (
+    fieldName,
+    file,
+    metadata,
+    load,
+    error,
+    progress,
+    abort
+  ) => {
+    try {
+      // Update progress
+      const progressHandler = (loaded: number, total: number) => {
+        const percentage = Math.round((loaded / total) * 100);
+        setProgress({ loaded, total, percentage });
+        progress(true, loaded, total);
+      };
 
-        // Start upload
-        progressHandler(0, file.size);
-        
-        const uploadedFile = await uploadFile(file);
-        load(uploadedFile);
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Upload failed';
-        error(errorMessage);
+      // Start upload
+      progressHandler(0, (file as File).size);
+
+      const uploadedFile = await uploadFile(file as File);
+      load(uploadedFile.fileId);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Upload failed';
+      error(errorMessage);
+    }
+  };
+
+  const filePondRevert: RevertServerConfigFunction = async (
+    uniqueFileId,
+    load,
+    error
+  ) => {
+    try {
+      if (uniqueFileId && typeof uniqueFileId === 'object' && 'fileId' in uniqueFileId && 'url' in uniqueFileId) {
+        await deleteFile(uniqueFileId.fileId as string, uniqueFileId.url as string);
       }
-    },
-    
-    revert: async (
-      uniqueFileId: any,
-      load: () => void,
-      error: (errorText: string) => void
-    ) => {
-      try {
-        if (uniqueFileId?.fileId && uniqueFileId?.url) {
-          await deleteFile(uniqueFileId.fileId, uniqueFileId.url);
-        }
-        load();
-      } catch (err) {
-        error('Failed to remove file');
-      }
-    },
+      load();
+    } catch (err) {
+      error('Failed to remove file');
+    }
+  };
+
+  const filePondServer = {
+    process: filePondProcess,
+    revert: filePondRevert,
   };
 
   return {

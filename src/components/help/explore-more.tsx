@@ -19,7 +19,7 @@ export default function ExploreMore() {
                   <CardContent className="p-0">
                     <div className="aspect-[4/3] relative">
                       <Image
-                        src="/airbnb/help-one.png"
+                        src="/assets/help-one.png"
                         alt="Team collaboration and discussion in office setting"
                         fill
                         className="object-cover"
@@ -37,7 +37,7 @@ export default function ExploreMore() {
                   <CardContent className="p-0">
                     <div className="aspect-[4/3] relative">
                       <Image
-                        src="/airbnb/help-two.png"
+                        src="/assets/help-two.png"
                         alt="Father and son preparing for outdoor activity with life vests"
                         fill
                         className="object-cover"

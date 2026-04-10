@@ -39,54 +39,71 @@ function getSystemMetrics() {
 async function checkExternalServices() {
   const services: Record<string, { status: boolean; latency?: number; error?: string }> = {};
 
+  // Parallelize independent health checks
+  const checks: Promise<void>[] = [];
+
   // Check database with latency
-  try {
-    const start = Date.now();
-    await db.$queryRaw`SELECT 1`;
-    const latency = Date.now() - start;
-    services.database = { status: true, latency };
-  } catch (error) {
-    services.database = {
-      status: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
-  }
+  checks.push(
+    (async () => {
+      try {
+        const start = Date.now();
+        await db.$queryRaw`SELECT 1`;
+        const latency = Date.now() - start;
+        services.database = { status: true, latency };
+      } catch (error) {
+        services.database = {
+          status: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
+    })()
+  );
 
   // Check Redis if configured
   if (process.env.UPSTASH_REDIS_REST_URL) {
-    try {
-      const start = Date.now();
-      const response = await fetch(process.env.UPSTASH_REDIS_REST_URL + '/ping', {
-        headers: {
-          Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
-        },
-      });
-      const latency = Date.now() - start;
-      services.redis = { status: response.ok, latency };
-    } catch (error) {
-      services.redis = {
-        status: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
+    checks.push(
+      (async () => {
+        try {
+          const start = Date.now();
+          const response = await fetch(process.env.UPSTASH_REDIS_REST_URL + '/ping', {
+            headers: {
+              Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
+            },
+          });
+          const latency = Date.now() - start;
+          services.redis = { status: response.ok, latency };
+        } catch (error) {
+          services.redis = {
+            status: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          };
+        }
+      })()
+    );
   }
 
   // Check ImageKit endpoint
   if (process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT) {
-    try {
-      const start = Date.now();
-      const response = await fetch(process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT, {
-        method: 'HEAD',
-      });
-      const latency = Date.now() - start;
-      services.imagekit = { status: response.ok, latency };
-    } catch (error) {
-      services.imagekit = {
-        status: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
+    checks.push(
+      (async () => {
+        try {
+          const start = Date.now();
+          const response = await fetch(process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT!, {
+            method: 'HEAD',
+          });
+          const latency = Date.now() - start;
+          services.imagekit = { status: response.ok, latency };
+        } catch (error) {
+          services.imagekit = {
+            status: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          };
+        }
+      })()
+    );
   }
+
+  await Promise.all(checks);
 
   return services;
 }
@@ -117,8 +134,8 @@ export async function GET(request: NextRequest) {
       auth: false,
       env: false,
     },
-    metrics: {} as any,
-    services: {} as any,
+    metrics: {} as ReturnType<typeof getSystemMetrics> | Record<string, never>,
+    services: {} as Record<string, { status: boolean; latency?: number; error?: string }>,
     responseTime: 0,
   };
 
@@ -154,16 +171,17 @@ export async function GET(request: NextRequest) {
 
   // Add detailed metrics if requested
   if (detailed) {
-    healthData.metrics = getSystemMetrics();
+    const metrics = getSystemMetrics();
+    healthData.metrics = metrics;
 
     // Check for warning conditions
-    if (healthData.metrics.memory.usagePercent > 90) {
+    if (metrics.memory.usagePercent > 90) {
       healthData.status = 'degraded';
     }
 
     // Check if process heap is too high
-    const heapUsagePercent = (healthData.metrics.process.memoryUsage.heapUsed /
-                             healthData.metrics.process.memoryUsage.heapTotal) * 100;
+    const heapUsagePercent = (metrics.process.memoryUsage.heapUsed /
+                             metrics.process.memoryUsage.heapTotal) * 100;
     if (heapUsagePercent > 90) {
       healthData.status = 'degraded';
     }

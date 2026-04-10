@@ -5,14 +5,15 @@ import { Button } from "@/components/ui/button";
 import HeroSection from "./HeroSection";
 import { PropertyContent } from "./property/content";
 import PropertyFilter from "./property-filter";
-import AirbnbInspiration from "./airbnb-inspiration";
-import GiftCard from "./airbnb-gift-card";
-import Ask from "./airbnb-ask";
+import AirbnbInspiration from "./inspiration";
+import GiftCard from "./gift-card";
+import Ask from "./ask";
 import { useSite } from "./use-site";
 import { useLocale } from "@/components/internationalization/use-locale";
 
 export function SiteContent() {
   const { locale } = useLocale();
+  const isAr = locale === "ar";
   const { state, actions, refs, filteredCount, hasActiveFilters } = useSite();
   
   const {
@@ -51,13 +52,13 @@ export function SiteContent() {
           {hasActiveFilters && (
             <div className="flex items-center justify-between mt-2 px-2">
               <p className="text-sm text-muted-foreground">
-                {filteredCount} {filteredCount === 1 ? 'property' : 'properties'} found
+                {filteredCount} {isAr ? (filteredCount === 1 ? 'عقار' : 'عقارات') : (filteredCount === 1 ? 'property' : 'properties')} {isAr ? 'وُجد' : 'found'}
               </p>
               <button
                 onClick={clearFilters}
                 className="text-sm text-primary hover:underline"
               >
-                Clear filters
+                {isAr ? "مسح الفلاتر" : "Clear filters"}
               </button>
             </div>
           )}
@@ -77,7 +78,7 @@ export function SiteContent() {
                 onClick={() => window.location.reload()}
                 variant="outline"
               >
-                Try Again
+                {isAr ? "حاول مجدداً" : "Try Again"}
               </Button>
             </div>
           )}
@@ -90,7 +91,7 @@ export function SiteContent() {
             <Button
               size='lg'
               className='bg-foreground text-background hover:bg-foreground/90 h-12 px-10'>
-              Explore All Listings
+              {isAr ? "استكشف جميع العقارات" : "Explore All Listings"}
             </Button>
           </Link>
         )}

@@ -1,7 +1,26 @@
 export const dynamic = 'force-dynamic';
 
+import { Metadata } from "next";
 import { getListings } from '@/components/host/actions';
 import { PropertyContent } from "@/components/site/property/content";
+import { createMetadata } from "@/lib/metadata";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  const { lang } = await params;
+  return createMetadata({
+    title: lang === "ar" ? "البحث عن عقارات" : "Search Properties",
+    description:
+      lang === "ar"
+        ? "ابحث وتصفح العقارات المتاحة"
+        : "Search and browse available properties",
+    locale: lang,
+    path: "/searching",
+  });
+}
 
 async function getListingsData(filters: any) {
   try {

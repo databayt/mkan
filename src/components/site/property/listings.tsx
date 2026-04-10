@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { useRouter } from 'next/navigation'
-import { useAppSelector } from '@/state/redux'
+import { useGlobalStore } from '@/state/filters'
 import { PropertyCard } from './card'
 import { Listing } from '@/types/listing'
 import Link from 'next/link'
@@ -15,8 +15,8 @@ interface PropertyListingsProps {
 export const PropertyListings = ({ properties }: PropertyListingsProps) => {
   const router = useRouter()
   const { locale } = useLocale()
-  const viewMode = useAppSelector((state) => state.global.viewMode)
-  const filters = useAppSelector((state) => state.global.filters)
+  const viewMode = useGlobalStore((s) => s.viewMode)
+  const filters = useGlobalStore((s) => s.filters)
 
   const handleFavoriteToggle = async (propertyId: string, isFavorite: boolean) => {
     // TODO: Implement favorites functionality with server actions

@@ -236,7 +236,7 @@ export default function OfficeDetailsPage() {
                           <div className="text-xs text-muted-foreground">{route.destination.name}</div>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-end">
                         <div className="font-bold text-primary">
                           SDG {route.basePrice.toLocaleString()}
                         </div>
@@ -276,11 +276,11 @@ export default function OfficeDetailsPage() {
                         <div className="text-sm text-muted-foreground flex items-center gap-2">
                           <Calendar className="h-3 w-3" />
                           {format(new Date(trip.departureDate), 'EEE, MMM d')}
-                          <Clock className="h-3 w-3 ml-2" />
+                          <Clock className="h-3 w-3 ms-2" />
                           {trip.departureTime}
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-end">
                         <div className="font-bold">SDG {trip.price.toLocaleString()}</div>
                         <div className="text-xs text-muted-foreground">
                           {trip.availableSeats} {t.office.seatsLeft}

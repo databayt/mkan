@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface VisibilityPageProps {
   params: Promise<{ id: string }>;
@@ -11,6 +11,8 @@ interface VisibilityPageProps {
 
 const VisibilityPage = ({ params }: VisibilityPageProps) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [id, setId] = React.useState<string>('');
   const [selectedOption, setSelectedOption] = useState<string>('any-guest');
 
@@ -24,13 +26,13 @@ const VisibilityPage = ({ params }: VisibilityPageProps) => {
   const guestOptions = [
     {
       id: 'any-guest',
-      title: 'Any Airbnb guest',
-      description: 'Get reservations faster when you welcome anyone from the Airbnb community.',
+      title: isAr ? 'أي ضيف على مكان' : 'Any Mkan guest',
+      description: isAr ? 'احصل على حجوزات أسرع عندما ترحب بأي شخص من مجتمع مكان.' : 'Get reservations faster when you welcome anyone from the Mkan community.',
     },
     {
       id: 'experienced-guest',
-      title: 'An experienced guest',
-      description: 'For your first guest, welcome someone with a good track record on Airbnb who can offer tips for how to be a great Host.',
+      title: isAr ? 'ضيف ذو خبرة' : 'An experienced guest',
+      description: isAr ? 'لضيفك الأول، رحّب بشخص لديه سجل جيد على مكان يمكنه تقديم نصائح لتكون مضيفاً رائعاً.' : 'For your first guest, welcome someone with a good track record on Mkan who can offer tips for how to be a great Host.',
     },
   ];
 
@@ -41,12 +43,12 @@ const VisibilityPage = ({ params }: VisibilityPageProps) => {
           {/* Left column - Title and description */}
           <div className="lg:col-span-2 space-y-3 sm:space-y-4">
             <h3>
-              Choose who to welcome for your first reservation
+              {isAr ? "اختر من ترحب به في أول حجز لك" : "Choose who to welcome for your first reservation"}
             </h3>
             <p className="text-sm sm:text-base text-muted-foreground">
-              After your first guest, anyone can book your place.{' '}
+              {isAr ? 'بعد ضيفك الأول، يمكن لأي شخص حجز مكانك.' : 'After your first guest, anyone can book your place.'}{' '}
               <button className="underline hover:no-underline text-foreground">
-                Learn more
+                {isAr ? 'تعرف على المزيد' : 'Learn more'}
               </button>
             </p>
           </div>
@@ -57,7 +59,7 @@ const VisibilityPage = ({ params }: VisibilityPageProps) => {
               <button
                 key={option.id}
                 onClick={() => setSelectedOption(option.id)}
-                className={`w-full p-4 sm:p-5 rounded-xl border transition-all duration-200 text-left ${
+                className={`w-full p-4 sm:p-5 rounded-xl border transition-all duration-200 text-start ${
                   selectedOption === option.id
                     ? 'border-foreground bg-accent'
                     : 'border-border hover:border-foreground/50'

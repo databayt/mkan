@@ -13,8 +13,8 @@
 //   icon?: string
 // }) => {
 //   return (
-//     <div className='justify-start md:-ml-2 rubik'>
-//       <div className="flex flex-row items-center gap-2 pb-2 pl-[3px]">
+//     <div className='justify-start md:-ms-2 rubik'>
+//       <div className="flex flex-row items-center gap-2 pb-2 ps-[3px]">
 //         <Image src='/folder.png' alt="Logo" width={25} height={25} />
 //         <p className="font-light text-lg  tracking-wide "> {props.description}</p>
 //       </div>

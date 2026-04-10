@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useTransportHostValidation } from '@/components/onboarding';
+import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
 import {
   createRoute,
@@ -191,7 +191,7 @@ const RoutesPage = () => {
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="w-full" onClick={() => handleDialogClose()}>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 me-2" />
                 Add Route
               </Button>
             </DialogTrigger>
@@ -356,6 +356,7 @@ const RoutesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(route)}
+                        aria-label="Edit route"
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -363,6 +364,7 @@ const RoutesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(route.id)}
+                        aria-label="Delete route"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { OnboardingStepsOverview, HOST_OVERVIEW_CONFIG } from '@/components/onboarding';
+import OnboardingStepsOverview from '@/components/onboarding/onboarding-steps-overview';
+import { HOST_OVERVIEW_CONFIG } from '@/components/onboarding/configs';
 import { createListing } from '@/components/host/actions';
 
 // Disable static generation for this page

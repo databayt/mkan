@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useTransportHostValidation } from '@/components/onboarding';
+import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
 import {
   createTrip,
@@ -236,7 +236,7 @@ const SchedulePage = () => {
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="w-full" onClick={() => handleDialogClose()}>
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="h-4 w-4 me-2" />
                     Add Trip
                   </Button>
                 </DialogTrigger>
@@ -407,7 +407,7 @@ const SchedulePage = () => {
                                   </p>
                                   <div className="flex items-center gap-2 mt-2">
                                     <Badge variant="outline" className="text-xs">
-                                      <BusIcon className="h-3 w-3 mr-1" />
+                                      <BusIcon className="h-3 w-3 me-1" />
                                       {trip.bus.plateNumber}
                                     </Badge>
                                     <Badge variant="secondary" className="text-xs">
@@ -422,6 +422,7 @@ const SchedulePage = () => {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleDelete(trip.id)}
+                                  aria-label="Delete trip"
                                 >
                                   <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>

@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { Home } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -19,6 +20,9 @@ const ListingCard: React.FC<ListingCardProps> = ({
   type = 'listing',
   onClick
 }) => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
+
   const handleClick = () => {
     onClick?.(id);
   };
@@ -38,7 +42,7 @@ const ListingCard: React.FC<ListingCardProps> = ({
               {title}
             </h5>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Started {startDate}
+              {isAr ? `بدأ ${startDate}` : `Started ${startDate}`}
             </p>
           </div>
         </div>

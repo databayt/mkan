@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 export default function Guides() {
   const guides = [
     {
-      title: "Getting started on Airbnb",
+      title: "Getting started on Mkan",
       image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop&crop=center",
     },
     {
@@ -17,7 +17,7 @@ export default function Guides() {
       image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&crop=center",
     },
     {
-      title: "Setting up your Airbnb account",
+      title: "Setting up your Mkan account",
       image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop&crop=center",
     },
   ]

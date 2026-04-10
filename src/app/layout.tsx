@@ -9,16 +9,11 @@ export const metadata: Metadata = {
   },
 };
 
-// Root layout required by Next.js App Router
-// The [lang] layout will override html/body for localized pages
+// Root layout - just a wrapper, actual html/body defined in [lang]/layout.tsx
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body>{children}</body>
-    </html>
-  );
+  return children;
 }

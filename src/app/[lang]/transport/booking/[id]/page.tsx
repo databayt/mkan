@@ -182,7 +182,7 @@ export default function BookingConfirmationPage() {
               </div>
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <div className="flex-1 text-right">
+            <div className="flex-1 text-end">
               <div className="font-medium">{booking.trip.route.destination.city}</div>
               <div className="text-sm text-muted-foreground">
                 {booking.trip.route.destination.name}
@@ -303,12 +303,12 @@ export default function BookingConfirmationPage() {
       <div className="flex flex-col sm:flex-row gap-3">
         <Button asChild className="flex-1">
           <Link href={`/${lang}/transport/booking/${booking.id}/ticket`}>
-            <Download className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+            <Download className="h-4 w-4 me-2" />
             {t.booking.viewTicket}
           </Link>
         </Button>
         <Button variant="outline" className="flex-1">
-          <Share2 className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+          <Share2 className="h-4 w-4 me-2" />
           {t.booking.share}
         </Button>
       </div>

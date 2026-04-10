@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { OnboardingStepsOverview, TRANSPORT_OVERVIEW_CONFIG } from '@/components/onboarding';
+import OnboardingStepsOverview from '@/components/onboarding/onboarding-steps-overview';
+import { TRANSPORT_OVERVIEW_CONFIG } from '@/components/onboarding/configs';
 import { createTransportOffice } from '@/lib/actions/transport-actions';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import Loading from '@/components/atom/loading';

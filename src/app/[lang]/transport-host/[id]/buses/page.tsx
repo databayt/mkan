@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useTransportHostValidation } from '@/components/onboarding';
+import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
 import { createBus, updateBus, deleteBus, getBusesByOffice } from '@/lib/actions/transport-actions';
 import { BusAmenity } from '@prisma/client';
@@ -186,7 +186,7 @@ const BusesPage = () => {
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="w-full" onClick={() => handleDialogClose()}>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 me-2" />
                 Add Bus
               </Button>
             </DialogTrigger>
@@ -347,6 +347,7 @@ const BusesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(bus)}
+                        aria-label="Edit bus"
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -354,6 +355,7 @@ const BusesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(bus.id)}
+                        aria-label="Delete bus"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

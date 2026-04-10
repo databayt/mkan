@@ -149,6 +149,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                size="icon"
                onClick={handleBack}
                className="h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white"
+               aria-label="Go back"
              >
                <ArrowLeft className="w-5 h-5 text-gray-700" />
              </Button>
@@ -160,15 +161,17 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                  size="icon"
                  onClick={handleShare}
                  className="h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white"
+                 aria-label="Share listing"
                >
                  <ShareIcon className="w-5 h-5 text-gray-700" />
                </Button>
-               
+
                <Button
                  variant="ghost"
                  size="icon"
                  onClick={handleSave}
                  className="h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white"
+                 aria-label={isSaved ? "Remove from saved" : "Save listing"}
                >
                  <HeartIcon className={`w-5 h-5 ${isSaved ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
                </Button>

@@ -1,5 +1,5 @@
 // import React from 'react';
-// import { Icon } from "@iconify/react";
+// import { ChevronLeft, ChevronRight } from "lucide-react";
 // import { Button } from '../ui/button';
 
 // interface CarouselProps {

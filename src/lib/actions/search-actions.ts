@@ -25,7 +25,7 @@ export const getLocationSuggestions = unstable_cache(
     const validated = locationQuerySchema.safeParse({ query, limit });
 
     if (!validated.success) {
-      console.error("Invalid location query:", validated.error);
+      // Invalid location query
       return [];
     }
 
@@ -94,8 +94,7 @@ export const getLocationSuggestions = unstable_cache(
         .filter((loc) => loc.listingCount > 0)
         .sort((a, b) => b.listingCount - a.listingCount)
         .slice(0, limit);
-    } catch (error) {
-      console.error("Error fetching location suggestions:", error);
+    } catch {
       return [];
     }
   },
@@ -164,8 +163,7 @@ export const getPopularLocations = unstable_cache(
         .filter((loc) => loc.listingCount > 0)
         .sort((a, b) => b.listingCount - a.listingCount)
         .slice(0, limit);
-    } catch (error) {
-      console.error("Error fetching popular locations:", error);
+    } catch {
       return [];
     }
   },
@@ -237,8 +235,7 @@ export async function searchListings(
       data: listings,
       count: listings.length,
     };
-  } catch (error) {
-    console.error("Error searching listings:", error);
+  } catch {
     return {
       success: false,
       error: "Failed to search listings. Please try again.",

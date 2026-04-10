@@ -3,9 +3,9 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { StepNavigation } from '@/components/host';
-import { useHostValidation } from '@/components/onboarding';
+import { useRouter, usePathname } from 'next/navigation';
+import { StepNavigation } from '@/components/host/step-navigation';
+import { useHostValidation } from '@/context/onboarding-validation-context';
 import { ListingProvider, useListing } from '@/components/host/use-listing';
 
 interface TitlePageProps {
@@ -14,6 +14,8 @@ interface TitlePageProps {
 
 const TitlePageContent = ({ params }: TitlePageProps) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [id, setId] = React.useState<string>('');
   const { enableNext, disableNext } = useHostValidation();
   const { listing, updateListingData, loadListing } = useListing();
@@ -79,12 +81,10 @@ const TitlePageContent = ({ params }: TitlePageProps) => {
           {/* Left side - Text content */}
           <div className="space-y-3 sm:space-y-4">
             <h3>
-              Now, let's give your
-              <br />
-              house a title
+              {isAr ? <>الآن، دعنا نعطي <br /> منزلك عنواناً</> : <>Now, let's give your <br /> house a title</>}
             </h3>
             <p className="text-sm sm:text-base text-muted-foreground">
-              Short titles work best. Have fun with it—you can always change it later.
+              {isAr ? 'العناوين القصيرة تعمل بشكل أفضل. استمتع بها — يمكنك تغييرها لاحقاً.' : "Short titles work best. Have fun with it—you can always change it later."}
             </p>
           </div>
 

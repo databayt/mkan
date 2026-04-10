@@ -1,7 +1,26 @@
 export const dynamic = 'force-dynamic';
 
+import { Metadata } from "next";
 import { Suspense } from "react";
+import { createMetadata } from "@/lib/metadata";
 import { searchListings } from "@/lib/actions/search-actions";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  const { lang } = await params;
+  return createMetadata({
+    title: lang === "ar" ? "العقارات" : "Listings",
+    description:
+      lang === "ar"
+        ? "تصفح العقارات المتاحة للإيجار"
+        : "Browse available properties for rent",
+    locale: lang,
+    path: "/listings",
+  });
+}
 import { getListings } from "@/components/host/actions";
 import ListingsHeader from "@/components/listings/listings-header";
 import MobileListingsHeader from "@/components/listings/mobile-listings-header";
@@ -82,14 +101,23 @@ function PropertySkeleton() {
   );
 }
 
-export default async function ListingsPage({ searchParams }: ListingsPageProps) {
-  const listings = await getFilteredListings(searchParams);
-  const params = await searchParams;
+export default async function ListingsPage({ searchParams, params: pageParams }: ListingsPageProps & { params: Promise<{ lang: string }> }) {
+  // Parallelize independent data fetches — resolve params and listings concurrently
+  const [listings, params, { lang }] = await Promise.all([
+    getFilteredListings(searchParams),
+    searchParams,
+    pageParams,
+  ]);
+  const isAr = lang === "ar";
 
   // Build search summary for display
   const searchSummary = [];
   if (params.location) searchSummary.push(params.location);
-  if (params.guests) searchSummary.push(`${params.guests} guest${parseInt(params.guests) > 1 ? "s" : ""}`);
+  if (params.guests) searchSummary.push(
+    isAr
+      ? `${params.guests} ${parseInt(params.guests) > 1 ? "ضيوف" : "ضيف"}`
+      : `${params.guests} guest${parseInt(params.guests) > 1 ? "s" : ""}`
+  );
   if (params.checkIn && params.checkOut) {
     searchSummary.push(`${params.checkIn} - ${params.checkOut}`);
   }
@@ -109,8 +137,8 @@ export default async function ListingsPage({ searchParams }: ListingsPageProps) 
         {searchSummary.length > 0 && (
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-gray-900">
-              {listings.length} {listings.length === 1 ? "place" : "places"}
-              {params.location && ` in ${params.location}`}
+              {listings.length} {isAr ? (listings.length === 1 ? "مكان" : "أماكن") : (listings.length === 1 ? "place" : "places")}
+              {params.location && (isAr ? ` في ${params.location}` : ` in ${params.location}`)}
             </h1>
             <p className="text-gray-500 mt-1">
               {searchSummary.join(" · ")}
@@ -122,11 +150,12 @@ export default async function ListingsPage({ searchParams }: ListingsPageProps) 
         {listings.length === 0 && searchSummary.length > 0 && (
           <div className="text-center py-12">
             <h2 className="text-xl font-medium text-gray-900 mb-2">
-              No exact matches
+              {isAr ? "لا توجد نتائج مطابقة" : "No exact matches"}
             </h2>
             <p className="text-gray-500 mb-4">
-              Try adjusting your search by changing your dates, removing filters,
-              or searching for a different location.
+              {isAr
+                ? "حاول تعديل بحثك بتغيير التواريخ أو إزالة الفلاتر أو البحث في موقع مختلف."
+                : "Try adjusting your search by changing your dates, removing filters, or searching for a different location."}
             </p>
           </div>
         )}

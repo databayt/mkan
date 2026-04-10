@@ -18,11 +18,13 @@ import {
 import { ArrowDownToLine, ArrowLeft, Check, Download } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
 const PropertyManagement = () => {
   const { id } = useParams();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const propertyId = Number(id);
 
   const [property, setProperty] = useState<any>(null);
@@ -111,33 +113,33 @@ const PropertyManagement = () => {
         new Date(payment.dueDate).getMonth() === currentDate.getMonth() &&
         new Date(payment.dueDate).getFullYear() === currentDate.getFullYear()
     );
-    return currentMonthPayment?.paymentStatus || "Not Paid";
+    return currentMonthPayment?.paymentStatus || (isAr ? "غير مدفوع" : "Not Paid");
   };
 
   return (
     <div className="dashboard-container">
       {/* Back to properties page */}
       <Link
-        href="/dashboard/properties"
+        href={isAr ? "/ar/dashboard/properties" : "/en/dashboard/properties"}
         className="flex items-center mb-4 hover:text-primary-500"
         scroll={false}
       >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        <span>Back to Properties</span>
+        <ArrowLeft className="w-4 h-4 me-2" />
+        <span>{isAr ? "العودة إلى العقارات" : "Back to Properties"}</span>
       </Link>
 
       <Header
-        title={property?.name || "Property Management"}
-        subtitle="Manage tenants and leases for this property"
+        title={property?.name || (isAr ? "إدارة العقار" : "Property Management")}
+        subtitle={isAr ? "إدارة المستأجرين وعقود الإيجار لهذا العقار" : "Manage tenants and leases for this property"}
       />
 
       <div className="w-full space-y-6">
         <div className="mt-8 bg-white rounded-xl shadow-md overflow-hidden p-6">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="text-2xl font-bold mb-1">Tenants Overview</h2>
+              <h2 className="text-2xl font-bold mb-1">{isAr ? "نظرة عامة على المستأجرين" : "Tenants Overview"}</h2>
               <p className="text-sm text-gray-500">
-                Manage and view all tenants for this property.
+                {isAr ? "إدارة وعرض جميع المستأجرين لهذا العقار." : "Manage and view all tenants for this property."}
               </p>
             </div>
             <div>
@@ -145,8 +147,8 @@ const PropertyManagement = () => {
                 className={`bg-white border border-gray-300 text-gray-700 py-2
               px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50`}
               >
-                <Download className="w-5 h-5 mr-2" />
-                <span>Download All</span>
+                <Download className="w-5 h-5 me-2" />
+                <span>{isAr ? "تحميل الكل" : "Download All"}</span>
               </button>
             </div>
           </div>
@@ -155,12 +157,12 @@ const PropertyManagement = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tenant</TableHead>
-                  <TableHead>Lease Period</TableHead>
-                  <TableHead>Monthly Rent</TableHead>
-                  <TableHead>Current Month Status</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead>{isAr ? "المستأجر" : "Tenant"}</TableHead>
+                  <TableHead>{isAr ? "فترة الإيجار" : "Lease Period"}</TableHead>
+                  <TableHead>{isAr ? "الإيجار الشهري" : "Monthly Rent"}</TableHead>
+                  <TableHead>{isAr ? "حالة الشهر الحالي" : "Current Month Status"}</TableHead>
+                  <TableHead>{isAr ? "التواصل" : "Contact"}</TableHead>
+                  <TableHead>{isAr ? "الإجراء" : "Action"}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -180,7 +182,7 @@ const PropertyManagement = () => {
                             {lease.tenant?.name || lease.tenantId}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {lease.tenant?.email || "Email not available"}
+                            {lease.tenant?.email || (isAr ? "البريد غير متوفر" : "Email not available")}
                           </div>
                         </div>
                       </div>
@@ -201,7 +203,7 @@ const PropertyManagement = () => {
                         }`}
                       >
                         {getCurrentMonthPaymentStatus(lease.id) === "Paid" && (
-                          <Check className="w-4 h-4 inline-block mr-1" />
+                          <Check className="w-4 h-4 inline-block me-1" />
                         )}
                         {getCurrentMonthPaymentStatus(lease.id)}
                       </span>
@@ -212,8 +214,8 @@ const PropertyManagement = () => {
                         className={`border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex 
                       items-center justify-center font-semibold hover:bg-primary-700 hover:text-primary-50`}
                       >
-                        <ArrowDownToLine className="w-4 h-4 mr-1" />
-                        Download Agreement
+                        <ArrowDownToLine className="w-4 h-4 me-1" />
+                        {isAr ? "تحميل العقد" : "Download Agreement"}
                       </button>
                     </TableCell>
                   </TableRow>
@@ -224,7 +226,7 @@ const PropertyManagement = () => {
 
           {(!leases || leases.length === 0) && (
             <div className="text-center py-8 text-gray-500">
-              <p>No leases found for this property.</p>
+              <p>{isAr ? "لم يتم العثور على عقود إيجار لهذا العقار." : "No leases found for this property."}</p>
             </div>
           )}
         </div>

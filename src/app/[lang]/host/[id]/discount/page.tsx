@@ -3,12 +3,12 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { HostStepLayout } from '@/components/host';
+import { useRouter, usePathname } from 'next/navigation';
+import HostStepLayout from '@/components/host/host-step-layout';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { useHostValidation } from '@/components/onboarding';
+import { useHostValidation } from '@/context/onboarding-validation-context';
 
 interface DiscountPageProps {
   params: Promise<{ id: string }>;
@@ -16,6 +16,8 @@ interface DiscountPageProps {
 
 const DiscountPage = ({ params }: DiscountPageProps) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [id, setId] = React.useState<string>('');
   const [selectedDiscounts, setSelectedDiscounts] = useState<string[]>([
     'new-listing',
@@ -47,27 +49,27 @@ const DiscountPage = ({ params }: DiscountPageProps) => {
     {
       id: 'new-listing',
       percentage: '20%',
-      title: 'New listing promotion',
-      description: 'Offer 20% off your first 3 bookings',
+      title: isAr ? 'عرض الإعلان الجديد' : 'New listing promotion',
+      description: isAr ? 'قدّم خصم 20% على أول 3 حجوزات' : 'Offer 20% off your first 3 bookings',
     },
     {
       id: 'last-minute',
       percentage: '25%',
-      title: 'Last-minute discount',
-      description: 'For stays booked 14 days or less before arrival',
+      title: isAr ? 'خصم اللحظة الأخيرة' : 'Last-minute discount',
+      description: isAr ? 'للإقامات المحجوزة قبل 14 يوماً أو أقل من الوصول' : 'For stays booked 14 days or less before arrival',
     },
     {
       id: 'weekly',
       percentage: '10%',
-      title: 'Weekly discount',
-      description: 'For stays of 7 nights or more',
+      title: isAr ? 'خصم أسبوعي' : 'Weekly discount',
+      description: isAr ? 'للإقامات من 7 ليالٍ أو أكثر' : 'For stays of 7 nights or more',
     },
   ];
 
   return (
     <HostStepLayout
-      title="Add discounts"
-      subtitle="Help your place stand out to get booked faster and earn your first reviews."
+      title={isAr ? "أضف خصومات" : "Add discounts"}
+      subtitle={isAr ? "ساعد مكانك على التميز للحصول على حجوزات أسرع وكسب تقييماتك الأولى." : "Help your place stand out to get booked faster and earn your first reviews."}
     >
       <div className="space-y-4">
         {discounts.map((discount) => (

@@ -116,7 +116,7 @@ const DescriptionPage = () => {
             Back
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving && <Loader2 className="size-4 mr-2 animate-spin" />}
+            {isSaving && <Loader2 className="size-4 me-2 animate-spin" />}
             Save
           </Button>
         </div>

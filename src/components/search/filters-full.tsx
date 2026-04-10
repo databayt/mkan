@@ -1,10 +1,8 @@
 "use client"
 
-import { FiltersState, initialState, setFilters } from "@/state";
-import { useAppSelector } from "@/state/redux";
+import { FiltersState, initialFilters, useGlobalStore } from "@/state/filters";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useState } from "react";
-import { useDispatch } from "react-redux";
 import { debounce } from "lodash";
 import { cleanParams, cn, formatEnumString } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -22,14 +20,13 @@ import {
 import { Label } from "@/components/ui/label";
 
 const FiltersFull = () => {
-  const dispatch = useDispatch();
   const router = useRouter();
   const pathname = usePathname();
-  const filters = useAppSelector((state) => state.global.filters);
-  const [localFilters, setLocalFilters] = useState(initialState.filters);
-  const isFiltersFullOpen = useAppSelector(
-    (state) => state.global.isFiltersFullOpen
-  );
+  const isAr = pathname?.startsWith("/ar");
+  const filters = useGlobalStore((s) => s.filters);
+  const isFiltersFullOpen = useGlobalStore((s) => s.isFiltersFullOpen);
+  const setFilters = useGlobalStore((s) => s.setFilters);
+  const [localFilters, setLocalFilters] = useState(initialFilters);
 
   const updateURL = debounce((newFilters: FiltersState) => {
     const cleanFilters = cleanParams(newFilters);
@@ -46,14 +43,14 @@ const FiltersFull = () => {
   });
 
   const handleSubmit = () => {
-    dispatch(setFilters(localFilters));
+    setFilters(localFilters);
     updateURL(localFilters);
   };
 
   const handleReset = () => {
-    setLocalFilters(initialState.filters);
-    dispatch(setFilters(initialState.filters));
-    updateURL(initialState.filters);
+    setLocalFilters(initialFilters);
+    setFilters(initialFilters);
+    updateURL(initialFilters);
   };
 
   const handleAmenityChange = (amenity: AmenityEnum) => {
@@ -94,10 +91,10 @@ const FiltersFull = () => {
       <div className="flex flex-col space-y-6">
         {/* Location */}
         <div>
-          <h4 className="font-bold mb-2">Location</h4>
+          <h4 className="font-bold mb-2">{isAr ? "الموقع" : "Location"}</h4>
           <div className="flex items-center">
             <Input
-              placeholder="Enter location"
+              placeholder={isAr ? "أدخل الموقع" : "Enter location"}
               value={filters.location}
               onChange={(e) =>
                 setLocalFilters((prev) => ({
@@ -105,11 +102,11 @@ const FiltersFull = () => {
                   location: e.target.value,
                 }))
               }
-              className="rounded-l-xl rounded-r-none border-r-0"
+              className="rounded-s-xl rounded-e-none border-e-0"
             />
             <Button
               onClick={handleLocationSearch}
-              className="rounded-r-xl rounded-l-none border-l-none border-black shadow-none border hover:bg-primary-700 hover:text-primary-50"
+              className="rounded-e-xl rounded-s-none border-s-none border-black shadow-none border hover:bg-primary-700 hover:text-primary-50"
             >
               <Search className="w-4 h-4" />
             </Button>
@@ -118,7 +115,7 @@ const FiltersFull = () => {
 
         {/* Property Type */}
         <div>
-          <h4 className="font-bold mb-2">Property Type</h4>
+          <h4 className="font-bold mb-2">{isAr ? "نوع العقار" : "Property Type"}</h4>
           <div className="grid grid-cols-2 gap-4">
             {Object.entries(PropertyTypeIcons).map(([type, Icon]) => (
               <div
@@ -145,7 +142,7 @@ const FiltersFull = () => {
 
         {/* Price Range */}
         <div>
-          <h4 className="font-bold mb-2">Price Range (Monthly)</h4>
+          <h4 className="font-bold mb-2">{isAr ? "نطاق السعر (شهرياً)" : "Price Range (Monthly)"}</h4>
           <Slider
             min={0}
             max={10000}
@@ -170,7 +167,7 @@ const FiltersFull = () => {
         {/* Beds and Baths */}
         <div className="flex gap-4">
           <div className="flex-1">
-            <h4 className="font-bold mb-2">Beds</h4>
+            <h4 className="font-bold mb-2">{isAr ? "أسرّة" : "Beds"}</h4>
             <Select
               value={localFilters.beds || "any"}
               onValueChange={(value) =>
@@ -178,19 +175,19 @@ const FiltersFull = () => {
               }
             >
               <SelectTrigger className="w-full rounded-xl">
-                <SelectValue placeholder="Beds" />
+                <SelectValue placeholder={isAr ? "أسرّة" : "Beds"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="any">Any beds</SelectItem>
-                <SelectItem value="1">1+ bed</SelectItem>
-                <SelectItem value="2">2+ beds</SelectItem>
-                <SelectItem value="3">3+ beds</SelectItem>
-                <SelectItem value="4">4+ beds</SelectItem>
+                <SelectItem value="any">{isAr ? "أي عدد أسرّة" : "Any beds"}</SelectItem>
+                <SelectItem value="1">{isAr ? "+1 سرير" : "1+ bed"}</SelectItem>
+                <SelectItem value="2">{isAr ? "+2 أسرّة" : "2+ beds"}</SelectItem>
+                <SelectItem value="3">{isAr ? "+3 أسرّة" : "3+ beds"}</SelectItem>
+                <SelectItem value="4">{isAr ? "+4 أسرّة" : "4+ beds"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="flex-1">
-            <h4 className="font-bold mb-2">Baths</h4>
+            <h4 className="font-bold mb-2">{isAr ? "حمامات" : "Baths"}</h4>
             <Select
               value={localFilters.baths || "any"}
               onValueChange={(value) =>
@@ -198,13 +195,13 @@ const FiltersFull = () => {
               }
             >
               <SelectTrigger className="w-full rounded-xl">
-                <SelectValue placeholder="Baths" />
+                <SelectValue placeholder={isAr ? "حمامات" : "Baths"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="any">Any baths</SelectItem>
-                <SelectItem value="1">1+ bath</SelectItem>
-                <SelectItem value="2">2+ baths</SelectItem>
-                <SelectItem value="3">3+ baths</SelectItem>
+                <SelectItem value="any">{isAr ? "أي عدد حمامات" : "Any baths"}</SelectItem>
+                <SelectItem value="1">{isAr ? "+1 حمام" : "1+ bath"}</SelectItem>
+                <SelectItem value="2">{isAr ? "+2 حمامات" : "2+ baths"}</SelectItem>
+                <SelectItem value="3">{isAr ? "+3 حمامات" : "3+ baths"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -212,7 +209,7 @@ const FiltersFull = () => {
 
         {/* Square Feet */}
         <div>
-          <h4 className="font-bold mb-2">Square Feet</h4>
+          <h4 className="font-bold mb-2">{isAr ? "المساحة (قدم مربع)" : "Square Feet"}</h4>
           <Slider
             min={0}
             max={5000}
@@ -237,7 +234,7 @@ const FiltersFull = () => {
 
         {/* Amenities */}
         <div>
-          <h4 className="font-bold mb-2">Amenities</h4>
+          <h4 className="font-bold mb-2">{isAr ? "المرافق" : "Amenities"}</h4>
           <div className="flex flex-wrap gap-2">
             {Object.entries(AmenityIcons).map(([amenity, Icon]) => (
               <div
@@ -261,7 +258,7 @@ const FiltersFull = () => {
 
         {/* Available From */}
         <div>
-          <h4 className="font-bold mb-2">Available From</h4>
+          <h4 className="font-bold mb-2">{isAr ? "متاح من" : "Available From"}</h4>
           <Input
             type="date"
             value={
@@ -285,14 +282,14 @@ const FiltersFull = () => {
             onClick={handleSubmit}
             className="flex-1 bg-primary-700 text-white rounded-xl"
           >
-            APPLY
+            {isAr ? "تطبيق" : "APPLY"}
           </Button>
           <Button
             onClick={handleReset}
             variant="outline"
             className="flex-1 rounded-xl"
           >
-            Reset Filters
+            {isAr ? "إعادة ضبط الفلاتر" : "Reset Filters"}
           </Button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
@@ -19,6 +20,9 @@ const HostStepHeader: React.FC<HostStepHeaderProps> = ({
   illustration,
   className,
 }) => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
+
   return (
     <div className={cn('w-full -mt-6 sm:-mt-10', className)}>
       <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-6 lg:gap-12">
@@ -26,7 +30,7 @@ const HostStepHeader: React.FC<HostStepHeaderProps> = ({
         <div className="space-y-4 sm:space-y-6">
           {stepNumber && (
             <h6 className="text-sm sm:text-base font-medium text-muted-foreground">
-              Step {stepNumber}
+              {isAr ? `الخطوة ${stepNumber}` : `Step ${stepNumber}`}
             </h6>
           )}
           

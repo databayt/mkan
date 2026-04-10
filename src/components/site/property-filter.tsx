@@ -1,7 +1,8 @@
 "use client";
 
 import React from 'react';
-import AirbnbIcon from '../atom/airbnb-icon';
+import { usePathname } from 'next/navigation';
+import AirbnbIcon from '../atom/property-icon';
 import {
   Carousel,
   CarouselContent,
@@ -13,21 +14,23 @@ import {
 interface IconItem {
   filename: string;
   label: string;
+  labelAr: string;
   description?: string;
+  descriptionAr?: string;
 }
 
 const AIRBNB_ICONS: IconItem[] = [
-  { filename: 'Islands', label: 'Islands', description: 'Private islands' },
-  { filename: 'Mension', label: 'Mansions', description: 'Luxury homes' },
-  { filename: 'Beach', label: 'Beach', description: 'Beachfront' },
-  { filename: 'Boat', label: 'Boats', description: 'Unique stays' },
-  { filename: 'Containers', label: 'Containers', description: 'Modern design' },
-  { filename: 'New', label: 'New', description: 'Latest additions' },
-  { filename: 'Beauty Pools', label: 'Pools', description: 'Pool paradise' },
-  { filename: 'Group', label: 'Groups', description: 'Large groups' },
-  { filename: 'layer1', label: 'Featured', description: 'Top picks' },
-  { filename: 'Calque 2', label: 'Special', description: 'Unique stays' },
-  { filename: 'Windmill', label: 'Windmills', description: 'Unique stays' },
+  { filename: 'Islands', label: 'Islands', labelAr: 'جزر', description: 'Private islands', descriptionAr: 'جزر خاصة' },
+  { filename: 'Mension', label: 'Mansions', labelAr: 'قصور', description: 'Luxury homes', descriptionAr: 'منازل فاخرة' },
+  { filename: 'Beach', label: 'Beach', labelAr: 'شاطئ', description: 'Beachfront', descriptionAr: 'واجهة بحرية' },
+  { filename: 'Boat', label: 'Boats', labelAr: 'قوارب', description: 'Unique stays', descriptionAr: 'إقامات فريدة' },
+  { filename: 'Containers', label: 'Containers', labelAr: 'حاويات', description: 'Modern design', descriptionAr: 'تصميم عصري' },
+  { filename: 'New', label: 'New', labelAr: 'جديد', description: 'Latest additions', descriptionAr: 'أحدث الإضافات' },
+  { filename: 'Beauty Pools', label: 'Pools', labelAr: 'مسابح', description: 'Pool paradise', descriptionAr: 'جنة المسابح' },
+  { filename: 'Group', label: 'Groups', labelAr: 'مجموعات', description: 'Large groups', descriptionAr: 'مجموعات كبيرة' },
+  { filename: 'layer1', label: 'Featured', labelAr: 'مميز', description: 'Top picks', descriptionAr: 'أفضل الخيارات' },
+  { filename: 'Calque 2', label: 'Special', labelAr: 'خاص', description: 'Unique stays', descriptionAr: 'إقامات فريدة' },
+  { filename: 'Windmill', label: 'Windmills', labelAr: 'طواحين', description: 'Unique stays', descriptionAr: 'إقامات فريدة' },
 ];
 
 interface PropertyFilterProps {
@@ -43,6 +46,9 @@ const PropertyFilter: React.FC<PropertyFilterProps> = ({
   className = "",
   showDescriptions = false
 }) => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
+
   return (
     <div className={`w-full ${className}`}>
       {/* Desktop Layout */}
@@ -75,13 +81,13 @@ const PropertyFilter: React.FC<PropertyFilterProps> = ({
                     : 'text-gray-700 group-hover:text-black'
                 }`}
               >
-                {icon.label}
+                {isAr ? icon.labelAr : icon.label}
               </div>
               
               {/* Optional Description */}
               {showDescriptions && icon.description && (
                 <div className="text-[10px] text-gray-700">
-                  {icon.description}
+                  {isAr ? icon.descriptionAr : icon.description}
                 </div>
               )}
             </div>
@@ -108,9 +114,9 @@ const PropertyFilter: React.FC<PropertyFilterProps> = ({
           }}
           className="w-full"
         >
-          <CarouselContent className="-ml-2">
+          <CarouselContent className="-ms-2">
             {AIRBNB_ICONS.map((icon) => (
-              <CarouselItem key={icon.filename} className="pl-2 basis-auto">
+              <CarouselItem key={icon.filename} className="ps-2 basis-auto">
                 <div
                   onClick={() => onIconClick?.(icon.filename)}
                   className="flex flex-col items-center cursor-pointer group transition-all duration-200 px-2 py-1"
@@ -137,13 +143,13 @@ const PropertyFilter: React.FC<PropertyFilterProps> = ({
                           : 'text-gray-700 group-hover:text-black'
                       }`}
                     >
-                      {icon.label}
+                      {isAr ? icon.labelAr : icon.label}
                     </div>
                     
                     {/* Optional Description */}
                     {showDescriptions && icon.description && (
                       <div className="text-[10px] text-gray-700">
-                        {icon.description}
+                        {isAr ? icon.descriptionAr : icon.description}
                       </div>
                     )}
                   </div>

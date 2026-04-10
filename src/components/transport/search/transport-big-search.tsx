@@ -1,6 +1,6 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { Search, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -160,7 +160,7 @@ export default function TransportBigSearch({
     if (isActive) {
       bgClass = "bg-white/30 backdrop-blur-md shadow-lg";
     } else if (hasActiveButton) {
-      bgClass = "bg-white/10 backdrop-blur-sm";
+      bgClass = "bg-transparent";
       if (isHovered) {
         bgClass = "bg-white/20 backdrop-blur-md";
       }
@@ -177,9 +177,10 @@ export default function TransportBigSearch({
 
   return (
     <div className="relative w-full max-w-4xl mx-auto" ref={searchBarRef}>
+      {/* Desktop Layout */}
       <div
         className={cn(
-          "flex items-center rounded-full shadow-sm transition-colors liquid-glass",
+          "hidden md:flex items-center rounded-full shadow-sm transition-colors liquid-glass",
           activeButton ? "bg-[#e5e7eb]/80" : "bg-white/20"
         )}
       >
@@ -253,7 +254,7 @@ export default function TransportBigSearch({
           </div>
 
           {/* Search Button */}
-          <div className="pr-2">
+          <div className="pe-2">
             <Button
               onClick={handleSearch}
               disabled={!canSearch}
@@ -264,8 +265,8 @@ export default function TransportBigSearch({
             >
               <Search className="w-4 h-4" />
               {activeButton && (
-                <span className="ml-2 text-sm font-medium">
-                  {dictionary.search}
+                <span className="ms-2 text-sm font-medium">
+                  {lang === 'ar' ? 'بحث' : 'Search'}
                 </span>
               )}
               <span className="sr-only">{dictionary.search}</span>
@@ -274,11 +275,72 @@ export default function TransportBigSearch({
         </div>
       </div>
 
-      {/* Dropdown Menus */}
+      {/* Mobile Layout */}
+      <div className="md:hidden bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-4 space-y-3">
+        {/* Origin */}
+        <button
+          onClick={() => handleButtonClick(activeButton === "origin" ? null : "origin")}
+          className="w-full p-3 rounded-xl border border-[#e5e7eb] hover:border-[#de3151] transition-colors"
+        >
+          <div className={cn("flex justify-between items-center", isRTL && "flex-row-reverse")}>
+            <div className={cn(isRTL ? "text-end" : "text-start")}>
+              <div className="text-xs text-[#6b7280]">{dictionary.from}</div>
+              <div className="text-sm font-medium text-black">
+                {origin || dictionary.selectCity}
+              </div>
+            </div>
+            <ChevronDown className="h-4 w-4 text-[#6b7280]" />
+          </div>
+        </button>
+
+        {/* Destination */}
+        <button
+          onClick={() => handleButtonClick(activeButton === "destination" ? null : "destination")}
+          className="w-full p-3 rounded-xl border border-[#e5e7eb] hover:border-[#de3151] transition-colors"
+        >
+          <div className={cn("flex justify-between items-center", isRTL && "flex-row-reverse")}>
+            <div className={cn(isRTL ? "text-end" : "text-start")}>
+              <div className="text-xs text-[#6b7280]">{dictionary.to}</div>
+              <div className="text-sm font-medium text-black">
+                {destination || dictionary.selectCity}
+              </div>
+            </div>
+            <ChevronDown className="h-4 w-4 text-[#6b7280]" />
+          </div>
+        </button>
+
+        {/* Date */}
+        <button
+          onClick={() => handleButtonClick(activeButton === "date" ? null : "date")}
+          className="w-full p-3 rounded-xl border border-[#e5e7eb] hover:border-[#de3151] transition-colors"
+        >
+          <div className={cn("flex justify-between items-center", isRTL && "flex-row-reverse")}>
+            <div className={cn(isRTL ? "text-end" : "text-start")}>
+              <div className="text-xs text-[#6b7280]">{dictionary.date}</div>
+              <div className="text-sm font-medium text-black" dir="ltr">
+                {formatDate(date)}
+              </div>
+            </div>
+            <ChevronDown className="h-4 w-4 text-[#6b7280]" />
+          </div>
+        </button>
+
+        {/* Search Button */}
+        <Button
+          onClick={handleSearch}
+          disabled={!canSearch}
+          className="w-full bg-[#de3151] hover:bg-[#de3151]/90 text-white rounded-xl h-12 disabled:opacity-50"
+        >
+          <Search className="w-4 h-4" />
+          <span className="ms-2">{dictionary.search}</span>
+        </Button>
+      </div>
+
+      {/* Desktop Dropdown Menus */}
       {activeButton === "origin" && (
         <div
           className={cn(
-            "absolute top-full mt-2 w-96 bg-white/20 backdrop-blur-xl rounded-2xl shadow-xl border border-white/30 p-6 z-50",
+            "hidden md:block absolute top-full mt-2 w-96 bg-white/20 backdrop-blur-xl rounded-2xl shadow-xl border border-white/30 p-6 z-50",
             isRTL ? "right-0" : "left-0"
           )}
         >
@@ -293,7 +355,7 @@ export default function TransportBigSearch({
 
       {activeButton === "destination" && (
         <div
-          className="absolute top-full mt-2 w-96 bg-white/20 backdrop-blur-xl rounded-2xl shadow-xl border border-white/30 p-6 z-50"
+          className="hidden md:block absolute top-full mt-2 w-96 bg-white/20 backdrop-blur-xl rounded-2xl shadow-xl border border-white/30 p-6 z-50"
           style={isRTL
             ? { right: destinationBtnRef.current ? `calc(100% - ${destinationBtnRef.current.offsetLeft + destinationBtnRef.current.offsetWidth}px)` : '25%' }
             : { left: destinationBtnRef.current?.offsetLeft ?? '25%' }
@@ -310,9 +372,38 @@ export default function TransportBigSearch({
 
       {activeButton === "date" && (
         <div className={cn(
-          "absolute top-full mt-2 bg-white/20 backdrop-blur-xl rounded-2xl shadow-xl border border-white/30 p-4 z-50",
+          "hidden md:block absolute top-full mt-2 bg-white/20 backdrop-blur-xl rounded-2xl shadow-xl border border-white/30 p-4 z-50",
           isRTL ? "left-0" : "right-0"
         )}>
+          <TransportDatePicker date={date} onDateChange={handleDateChange} />
+        </div>
+      )}
+
+      {/* Mobile Dropdown Menus */}
+      {activeButton === "origin" && (
+        <div className="md:hidden absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-200 p-2 z-50">
+          <TransportCityDropdown
+            value={origin}
+            onChange={handleOriginSelect}
+            assemblyPoints={assemblyPoints}
+            placeholder={dictionary.selectCity}
+          />
+        </div>
+      )}
+
+      {activeButton === "destination" && (
+        <div className="md:hidden absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-200 p-2 z-50">
+          <TransportCityDropdown
+            value={destination}
+            onChange={handleDestinationSelect}
+            assemblyPoints={assemblyPoints}
+            placeholder={dictionary.selectCity}
+          />
+        </div>
+      )}
+
+      {activeButton === "date" && (
+        <div className="md:hidden absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-2xl shadow-xl border border-gray-200 p-4 z-50">
           <TransportDatePicker date={date} onDateChange={handleDateChange} />
         </div>
       )}

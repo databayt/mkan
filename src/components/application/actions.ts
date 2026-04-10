@@ -1,31 +1,46 @@
 "use server";
 
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { ApplicationStatus } from "@prisma/client";
 
-// Get applications (filtered by user and role)
-export async function getApplications(params?: {
-  userId?: string;
-  userType?: string;
-}) {
+const createApplicationSchema = z.object({
+  propertyId: z.number().int().positive(),
+  name: z.string().min(1).max(200),
+  email: z.string().email(),
+  phoneNumber: z.string().min(1).max(30),
+  message: z.string().max(1000).optional(),
+});
+
+const updateApplicationStatusSchema = z.object({
+  applicationId: z.number().int().positive(),
+  status: z.nativeEnum(ApplicationStatus),
+});
+
+// Get applications (filtered by user role from session, NOT client input)
+export async function getApplications() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       throw new Error("Unauthorized");
     }
 
+    // Determine user type from session role, not from client input
+    const userRole = session.user.role?.toLowerCase();
+    const userId = session.user.id;
+
     let where: Record<string, unknown> = {};
 
-    if (params?.userType === "tenant" && params?.userId) {
-      // Get applications for a specific tenant
-      where.tenantId = params.userId;
-    } else if (params?.userType === "manager" && params?.userId) {
-      // Get applications for properties managed by this manager (now called host)
+    if (userRole === "manager" || userRole === "host") {
+      // Get applications for properties managed by this host
       where.listing = {
-        hostId: params.userId,
+        hostId: userId,
       };
+    } else {
+      // Default: get applications for this tenant
+      where.tenantId = userId;
     }
 
     const applications = await db.application.findMany({
@@ -63,25 +78,25 @@ export async function getApplications(params?: {
     });
 
     return applications;
-  } catch (error) {
-    console.error("Error fetching applications:", error);
+  } catch {
     throw new Error("Failed to fetch applications");
   }
 }
 
 // Create a new application
-export async function createApplication(data: {
-  propertyId: number;
-  name: string;
-  email: string;
-  phoneNumber: string;
-  message?: string;
-}) {
+export async function createApplication(data: unknown) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       throw new Error("Unauthorized");
     }
+
+    const parsed = createApplicationSchema.safeParse(data);
+    if (!parsed.success) {
+      throw new Error("Invalid input");
+    }
+
+    const validData = parsed.data;
 
     // Ensure tenant profile exists
     let tenant = await db.tenant.findUnique({
@@ -92,9 +107,9 @@ export async function createApplication(data: {
       tenant = await db.tenant.create({
         data: {
           userId: session.user.id,
-          name: data.name,
-          email: data.email,
-          phoneNumber: data.phoneNumber,
+          name: validData.name,
+          email: validData.email,
+          phoneNumber: validData.phoneNumber,
         },
       });
     }
@@ -102,7 +117,7 @@ export async function createApplication(data: {
     // Check if application already exists for this property
     const existingApplication = await db.application.findFirst({
       where: {
-        propertyId: data.propertyId,
+        propertyId: validData.propertyId,
         tenantId: session.user.id,
       },
     });
@@ -114,12 +129,12 @@ export async function createApplication(data: {
     // Create the application
     const application = await db.application.create({
       data: {
-        propertyId: data.propertyId,
+        propertyId: validData.propertyId,
         tenantId: session.user.id,
-        name: data.name,
-        email: data.email,
-        phoneNumber: data.phoneNumber,
-        message: data.message,
+        name: validData.name,
+        email: validData.email,
+        phoneNumber: validData.phoneNumber,
+        message: validData.message,
         applicationDate: new Date(),
         status: ApplicationStatus.Pending,
       },
@@ -154,16 +169,15 @@ export async function createApplication(data: {
     revalidatePath("/tenants/applications");
     revalidatePath("/managers/applications");
     return application;
-  } catch (error) {
-    console.error("Error creating application:", error);
+  } catch {
     throw new Error("Failed to create application");
   }
 }
 
 // Update application status (for managers)
 export async function updateApplicationStatus(
-  applicationId: number,
-  status: ApplicationStatus
+  applicationId: unknown,
+  status: unknown
 ) {
   try {
     const session = await auth();
@@ -171,9 +185,14 @@ export async function updateApplicationStatus(
       throw new Error("Unauthorized");
     }
 
+    const parsed = updateApplicationStatusSchema.safeParse({ applicationId, status });
+    if (!parsed.success) {
+      throw new Error("Invalid input");
+    }
+
     // Get the application to verify ownership
     const application = await db.application.findUnique({
-      where: { id: applicationId },
+      where: { id: parsed.data.applicationId },
       include: {
         listing: {
           select: {
@@ -194,8 +213,8 @@ export async function updateApplicationStatus(
 
     // Update the application status
     const updatedApplication = await db.application.update({
-      where: { id: applicationId },
-      data: { status },
+      where: { id: parsed.data.applicationId },
+      data: { status: parsed.data.status },
       include: {
         listing: {
           include: {
@@ -226,7 +245,7 @@ export async function updateApplicationStatus(
 
     // If approved, create a lease (basic implementation)
     let lease = null;
-    if (status === ApplicationStatus.Approved) {
+    if (parsed.data.status === ApplicationStatus.Approved) {
       try {
         // Create a lease with default values (you might want to make this more sophisticated)
         const leaseStartDate = new Date();
@@ -256,11 +275,10 @@ export async function updateApplicationStatus(
 
         // Link the lease to the application
         await db.application.update({
-          where: { id: applicationId },
+          where: { id: parsed.data.applicationId },
           data: { leaseId: lease.id },
         });
-      } catch (leaseError) {
-        console.error("Error creating lease:", leaseError);
+      } catch {
         // Don't throw here, the application status was still updated
       }
     }
@@ -270,8 +288,7 @@ export async function updateApplicationStatus(
     revalidatePath("/managers/properties");
 
     return { ...updatedApplication, lease };
-  } catch (error) {
-    console.error("Error updating application status:", error);
+  } catch {
     throw new Error("Failed to update application status");
   }
 }

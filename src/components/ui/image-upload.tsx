@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { FilePond, registerPlugin } from 'react-filepond';
+import type { FilePondFile, FilePondInitialFile } from 'filepond';
 import FilePondPluginImagePreview from 'filepond-plugin-image-preview';
 import FilePondPluginImageExifOrientation from 'filepond-plugin-image-exif-orientation';
 import FilePondPluginFileValidateType from 'filepond-plugin-file-validate-type';
@@ -39,7 +40,7 @@ export function ImageUpload({
   onImagesChange,
   className,
 }: ImageUploadProps) {
-  const [files, setFiles] = useState<any[]>([]);
+  const [files, setFiles] = useState<FilePondFile[]>([]);
   const [imageUrls, setImageUrls] = useState<string[]>(existingImages);
 
   const { filePondServer, uploading, error } = useImageUpload({
@@ -60,11 +61,11 @@ export function ImageUpload({
   return (
     <div className={cn("w-full", className)}>
       <FilePond
-        files={files}
+        files={files as unknown as FilePondInitialFile[]}
         onupdatefiles={setFiles}
         allowMultiple={maxFiles > 1}
         maxFiles={maxFiles}
-        server={filePondServer as any}
+        server={filePondServer}
         name="images"
         labelIdle='Drag & Drop your images or <span class="filepond--label-action">Browse</span>'
         acceptedFileTypes={['image/jpeg', 'image/jpg', 'image/png', 'image/webp']}

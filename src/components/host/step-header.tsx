@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 
 interface StepHeaderProps {
   stepNumber?: number;
@@ -15,6 +16,9 @@ const StepHeader: React.FC<StepHeaderProps> = ({
   description,
   illustration
 }) => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
+
   return (
     <div className="w-full -mt-6 sm:-mt-10">
       <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-6 lg:gap-12">
@@ -22,7 +26,7 @@ const StepHeader: React.FC<StepHeaderProps> = ({
         <div className="space-y-4 sm:space-y-6">
           {stepNumber && (
             <div className="text-sm sm:text-base font-medium text-muted-foreground">
-              Step {stepNumber}
+              {isAr ? `الخطوة ${stepNumber}` : `Step ${stepNumber}`}
             </div>
           )}
           

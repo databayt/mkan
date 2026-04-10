@@ -23,17 +23,17 @@ export default function Guest() {
             <CardContent className="px-4">
               <h5 className="">Your identity is not fully verified</h5>
               <p className="text-sm leading-relaxed font-normal">
-                Identity verification helps us check that you're really you. It's one of the ways we keep Airbnb secure.
+                Identity verification helps us check that you're really you. It's one of the ways we keep Mkan secure.
               </p>
             </CardContent>
             <div className="space-y-0">
               <div className="border-t border-gray-200 "></div>
-              <Button variant="ghost" className="w-full justify-between text-left h-12 hover:bg-gray-50 border-0">
+              <Button variant="ghost" className="w-full justify-between text-start h-12 hover:bg-gray-50 border-0">
                 <span className="font-semibold text-sm text-gray-900">Check identity verification status</span>
                 <ChevronRight className="w-4 h-4 text-gray-900" />
               </Button>
               <div className="border-t border-gray-200"></div>
-              <Button variant="ghost" className="w-full justify-between text-left h-12 hover:bg-gray-50 border-0">
+              <Button variant="ghost" className="w-full justify-between text-start h-12 hover:bg-gray-50 border-0">
                 <span className="font-semibold text-sm text-gray-900">Learn more</span>
                 <ChevronRight className="w-4 h-4 text-gray-900" />
               </Button>
@@ -53,7 +53,7 @@ export default function Guest() {
             </CardContent>
             <div className="absolute bottom-0 left-0 right-0">
               <div className="border-t border-gray-200 "></div>
-              <Button  className="bg-transparent w-full justify-between text-left h-12 hover:rounded-lg hover:bg-gray-50 border-0">
+              <Button  className="bg-transparent w-full justify-between text-start h-12 hover:rounded-lg hover:bg-gray-50 border-0">
                 <span className="font-semibold text-sm text-gray-900">Go to Trips</span>
                 <ChevronRight className="w-4 h-4 text-gray-900" />
               </Button>

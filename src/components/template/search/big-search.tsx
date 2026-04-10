@@ -20,6 +20,7 @@ interface BigSearchProps {
 export default function BigSearch({ onClose }: BigSearchProps = {}) {
   const router = useRouter();
   const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [activeButton, setActiveButton] = useState<ActiveButton>(null);
   const [hoveredButton, setHoveredButton] = useState<ActiveButton>(null);
   const searchBarRef = useRef<HTMLDivElement>(null);
@@ -93,7 +94,7 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
     if (dateRange.from) {
       return formatDate(dateRange.from);
     }
-    return "Add date";
+    return isAr ? "أضف تاريخ" : "Add date";
   };
 
   // Get check-out display text
@@ -101,7 +102,7 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
     if (dateRange.to) {
       return formatDate(dateRange.to);
     }
-    return "Add date";
+    return isAr ? "أضف تاريخ" : "Add date";
   };
 
   // Handle guest change
@@ -121,19 +122,24 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
   // Get guest display text
   const getGuestDisplayText = () => {
     const total = guests.adults + guests.children + guests.infants;
-    if (total === 0) return "Add guests";
+    if (total === 0) return isAr ? "أضف ضيوف" : "Add guests";
 
     const parts = [];
     if (guests.adults > 0) {
-      parts.push(`${guests.adults} adult${guests.adults > 1 ? "s" : ""}`);
+      parts.push(isAr
+        ? `${guests.adults} ${guests.adults > 1 ? "بالغين" : "بالغ"}`
+        : `${guests.adults} adult${guests.adults > 1 ? "s" : ""}`);
     }
     if (guests.children > 0) {
-      parts.push(
-        `${guests.children} child${guests.children > 1 ? "ren" : ""}`
+      parts.push(isAr
+        ? `${guests.children} ${guests.children > 1 ? "أطفال" : "طفل"}`
+        : `${guests.children} child${guests.children > 1 ? "ren" : ""}`
       );
     }
     if (guests.infants > 0) {
-      parts.push(`${guests.infants} infant${guests.infants > 1 ? "s" : ""}`);
+      parts.push(isAr
+        ? `${guests.infants} ${guests.infants > 1 ? "رضع" : "رضيع"}`
+        : `${guests.infants} infant${guests.infants > 1 ? "s" : ""}`);
     }
 
     return parts.join(", ");
@@ -234,32 +240,32 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
       if (isActive) {
         // Active button gets sharp edges on sides touching hovered buttons
         if (hoveredButton === "checkin" && button === "location") {
-          roundedClass = "rounded-l-full rounded-r-none"; // Sharp right edge
+          roundedClass = "rounded-s-full rounded-e-none"; // Sharp right edge
         } else if (hoveredButton === "location" && button === "checkin") {
-          roundedClass = "rounded-r-full rounded-l-none"; // Sharp left edge
+          roundedClass = "rounded-e-full rounded-s-none"; // Sharp left edge
         } else if (hoveredButton === "checkout" && button === "checkin") {
-          roundedClass = "rounded-l-full rounded-r-none"; // Sharp right edge
+          roundedClass = "rounded-s-full rounded-e-none"; // Sharp right edge
         } else if (hoveredButton === "checkin" && button === "checkout") {
-          roundedClass = "rounded-r-full rounded-l-none"; // Sharp left edge
+          roundedClass = "rounded-e-full rounded-s-none"; // Sharp left edge
         } else if (hoveredButton === "guests" && button === "checkout") {
-          roundedClass = "rounded-l-full rounded-r-none"; // Sharp right edge
+          roundedClass = "rounded-s-full rounded-e-none"; // Sharp right edge
         } else if (hoveredButton === "checkout" && button === "guests") {
-          roundedClass = "rounded-r-full rounded-l-none"; // Sharp left edge
+          roundedClass = "rounded-e-full rounded-s-none"; // Sharp left edge
         }
       } else if (isHovered && isAdjacentToActive) {
         // Hovered button gets sharp edge on side touching active button
         if (activeButton === "location" && button === "checkin") {
-          roundedClass = "rounded-r-full rounded-l-none"; // Sharp left edge
+          roundedClass = "rounded-e-full rounded-s-none"; // Sharp left edge
         } else if (activeButton === "checkin" && button === "location") {
-          roundedClass = "rounded-l-full rounded-r-none"; // Sharp right edge
+          roundedClass = "rounded-s-full rounded-e-none"; // Sharp right edge
         } else if (activeButton === "checkin" && button === "checkout") {
-          roundedClass = "rounded-r-full rounded-l-none"; // Sharp left edge
+          roundedClass = "rounded-e-full rounded-s-none"; // Sharp left edge
         } else if (activeButton === "checkout" && button === "checkin") {
-          roundedClass = "rounded-l-full rounded-r-none"; // Sharp right edge
+          roundedClass = "rounded-s-full rounded-e-none"; // Sharp right edge
         } else if (activeButton === "checkout" && button === "guests") {
-          roundedClass = "rounded-r-full rounded-l-none"; // Sharp left edge
+          roundedClass = "rounded-e-full rounded-s-none"; // Sharp left edge
         } else if (activeButton === "guests" && button === "checkout") {
-          roundedClass = "rounded-l-full rounded-r-none"; // Sharp right edge
+          roundedClass = "rounded-s-full rounded-e-none"; // Sharp right edge
         }
       }
     }
@@ -326,12 +332,12 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
           onMouseLeave={() => setHoveredButton(null)}
           onClick={() => handleButtonClick("location")}
         >
-          <div className="text-left">
+          <div className="text-start">
             <div className="text-sm font-semibold text-[#000000] mb-1">
-              Location
+              {isAr ? "الموقع" : "Location"}
             </div>
             <div className="text-sm text-[#6b7280]">
-              {selectedLocation || "Where are you going?"}
+              {selectedLocation || (isAr ? "إلى أين تذهب؟" : "Where are you going?")}
             </div>
           </div>
         </button>
@@ -363,7 +369,7 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
         >
           {/* Check in Button */}
           <button
-            className={`flex-1 px-5 py-3 rounded-l-full transition-all duration-200 ${
+            className={`flex-1 px-5 py-3 rounded-s-full transition-all duration-200 ${
               activeButton === "checkin"
                 ? "bg-white"
                 : activeButton === "checkout"
@@ -372,9 +378,9 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
             }`}
             onClick={() => handleButtonClick("checkin")}
           >
-            <div className="text-left">
+            <div className="text-start">
               <div className="text-sm font-semibold text-[#000000] mb-1">
-                Check in
+                {isAr ? "تسجيل الوصول" : "Check in"}
               </div>
               <div className="text-sm text-[#6b7280]">{getCheckInDisplayText()}</div>
             </div>
@@ -385,7 +391,7 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
 
           {/* Check out Button */}
           <button
-            className={`flex-1 px-5 py-3 rounded-r-full transition-all duration-200 ${
+            className={`flex-1 px-5 py-3 rounded-e-full transition-all duration-200 ${
               activeButton === "checkout"
                 ? "bg-white"
                 : activeButton === "checkin"
@@ -394,9 +400,9 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
             }`}
             onClick={() => handleButtonClick("checkout")}
           >
-            <div className="text-left">
+            <div className="text-start">
               <div className="text-sm font-semibold text-[#000000] mb-1">
-                Check out
+                {isAr ? "المغادرة" : "Check out"}
               </div>
               <div className="text-sm text-[#6b7280]">{getCheckOutDisplayText()}</div>
             </div>
@@ -418,17 +424,17 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
         >
           {/* Guests Button */}
           <div
-            className="flex-1 px-6 py-3 text-left"
+            className="flex-1 px-6 py-3 text-start"
             onClick={() => handleButtonClick("guests")}
           >
             <div className="text-sm font-semibold text-[#000000] mb-1">
-              Guests
+              {isAr ? "الضيوف" : "Guests"}
             </div>
             <div className="text-sm text-[#6b7280]">{getGuestDisplayText()}</div>
           </div>
 
           {/* Search Button */}
-          <div className="pr-2">
+          <div className="pe-2">
             <Button
               onClick={handleSearch}
               size="icon"
@@ -438,9 +444,9 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
             >
               <Search className="w-4 h-4" />
               {activeButton && (
-                <span className="ml-2 text-sm font-medium">Search</span>
+                <span className="ms-2 text-sm font-medium">{isAr ? "بحث" : "Search"}</span>
               )}
-              <span className="sr-only">Search</span>
+              <span className="sr-only">{isAr ? "بحث" : "Search"}</span>
             </Button>
           </div>
         </div>

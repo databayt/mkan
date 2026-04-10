@@ -3,12 +3,12 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { Plus } from 'lucide-react';
 import HostStepLayout from '@/components/host/host-step-layout';
 import { useListing } from '@/components/host/use-listing';
-import { useHostValidation } from '@/components/onboarding';
+import { useHostValidation } from '@/context/onboarding-validation-context';
 
 interface PhotosPageProps {
   params: Promise<{ id: string }>;
@@ -16,6 +16,8 @@ interface PhotosPageProps {
 
 const PhotosPageContent = ({ params }: PhotosPageProps) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [id, setId] = React.useState<string>('');
   const { enableNext } = useHostValidation();
   const { listing, updateListingData, loadListing } = useListing();
@@ -219,12 +221,10 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
           {/* Left side - Text content */}
           <div className="space-y-3 sm:space-y-4">
             <h3>
-              Add some
-              <br />
-              photos of your house
+              {isAr ? <>أضف بعض <br /> صور منزلك</> : <>Add some <br /> photos of your house</>}
             </h3>
             <p className="text-sm sm:text-base text-muted-foreground">
-              You'll need 5 photos to get started. You can add more or make changes later.
+              {isAr ? 'ستحتاج إلى 5 صور للبدء. يمكنك إضافة المزيد أو إجراء تغييرات لاحقاً.' : "You'll need 5 photos to get started. You can add more or make changes later."}
             </p>
           </div>
           
@@ -236,7 +236,7 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
                 <div className="">
                   <div className="relative w-20 h-20 sm:w-32 sm:h-32 mx-auto">
                     <Image
-                      src="/airbnb/camera.avif"
+                      src="/assets/camera.avif"
                       alt="Camera"
                       fill
                       className="object-contain"
@@ -249,7 +249,7 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
                     htmlFor="photo-upload"
                     className="inline-block px-3 py-1.5 border border-foreground rounded-md bg-background hover:bg-accent cursor-pointer transition-colors text-sm sm:text-base"
                   >
-                    {isUploading ? 'Uploading...' : 'Add photos'}
+                    {isUploading ? (isAr ? 'جارٍ الرفع...' : 'Uploading...') : (isAr ? 'أضف صوراً' : 'Add photos')}
                   </label>
                   <input
                     id="photo-upload"

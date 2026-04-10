@@ -16,5 +16,17 @@
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "browser",
+    "vercel",
+    "sentry",
+    "figma",
+    "linear",
+    "github",
+    "stripe",
+    "postgres-dev",
+    "ref"
+  ],
+  "enableAllProjectMcpServers": true
 }

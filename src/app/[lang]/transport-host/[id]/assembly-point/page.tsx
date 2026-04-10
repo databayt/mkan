@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { MapPin, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useTransportHostValidation } from '@/components/onboarding';
+import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
 import { getAssemblyPoints } from '@/lib/actions/transport-actions';
 import HostStepLayout from '@/components/host/host-step-layout';
@@ -98,7 +98,7 @@ const AssemblyPointPage = () => {
                 <button
                   key={point.id}
                   onClick={() => handleSelect(point.id)}
-                  className={`w-full p-4 rounded-lg border text-left transition-all ${
+                  className={`w-full p-4 rounded-lg border text-start transition-all ${
                     selectedId === point.id
                       ? 'border-primary bg-primary/5 ring-2 ring-primary'
                       : 'border-border hover:border-primary/50'

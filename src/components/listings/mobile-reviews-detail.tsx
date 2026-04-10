@@ -69,7 +69,7 @@ const MobileReviewsDetail: React.FC<MobileReviewsDetailProps> = ({
     <div className={`md:hidden px-4 py-6 space-y-6 ${className}`}>
       {/* Title */}
       <div className="flex items-center">
-        <StarIcon className="w-5 h-5 mr-2" />
+        <StarIcon className="w-5 h-5 me-2" />
         <span className="text-lg font-semibold">
           {overallRating}
         </span>

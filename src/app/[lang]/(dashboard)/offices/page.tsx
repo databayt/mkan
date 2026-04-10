@@ -25,6 +25,7 @@ import {
 import Header from '@/components/Header';
 import Loading from '@/components/Loading';
 import { getAuthUser } from '@/lib/actions/user-actions';
+import { usePathname } from 'next/navigation';
 import {
   getMyTransportOffices,
   getOfficeDashboardStats,
@@ -56,6 +57,8 @@ interface TransportOffice {
 
 const OfficeDashboard = () => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [authUser, setAuthUser] = useState<any>(null);
   const [offices, setOffices] = useState<TransportOffice[]>([]);
   const [selectedOfficeId, setSelectedOfficeId] = useState<number | null>(null);
@@ -105,30 +108,31 @@ const OfficeDashboard = () => {
   };
 
   if (isLoading) return <Loading />;
-  if (error) return <div className="text-red-500">Error: {error}</div>;
+  if (error) return <div className="text-red-500">{isAr ? "خطأ" : "Error"}: {error}</div>;
 
   if (offices.length === 0) {
     return (
       <div className="dashboard-container">
         <Header
-          title="Transport Office"
-          subtitle="Manage your transport business"
+          title={isAr ? "مكتب النقل" : "Transport Office"}
+          subtitle={isAr ? "إدارة أعمال النقل الخاصة بك" : "Manage your transport business"}
         />
         <Card className="max-w-xl mx-auto mt-8">
           <CardHeader className="text-center">
             <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Bus className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle>No Transport Office</CardTitle>
+            <CardTitle>{isAr ? "لا يوجد مكتب نقل" : "No Transport Office"}</CardTitle>
             <CardDescription>
-              You haven't created a transport office yet. Start by registering
-              your office to manage buses, routes, and bookings.
+              {isAr
+                ? "لم تقم بإنشاء مكتب نقل بعد. ابدأ بتسجيل مكتبك لإدارة الحافلات والمسارات والحجوزات."
+                : "You haven't created a transport office yet. Start by registering your office to manage buses, routes, and bookings."}
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <Button onClick={() => router.push('/transport-host')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Transport Office
+              <Plus className="h-4 w-4 me-2" />
+              {isAr ? "إنشاء مكتب نقل" : "Create Transport Office"}
             </Button>
           </CardContent>
         </Card>
@@ -141,8 +145,8 @@ const OfficeDashboard = () => {
   return (
     <div className="dashboard-container">
       <Header
-        title="Transport Dashboard"
-        subtitle={selectedOffice?.name || 'Manage your transport business'}
+        title={isAr ? "لوحة تحكم النقل" : "Transport Dashboard"}
+        subtitle={selectedOffice?.name || (isAr ? "إدارة أعمال النقل الخاصة بك" : "Manage your transport business")}
       />
 
       {offices.length > 1 && (
@@ -163,50 +167,50 @@ const OfficeDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+            <CardTitle className="text-sm font-medium">{isAr ? "إجمالي الحجوزات" : "Total Bookings"}</CardTitle>
             <Ticket className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalBookings || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {stats?.pendingBookings || 0} pending
+              {stats?.pendingBookings || 0} {isAr ? "قيد الانتظار" : "pending"}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">{isAr ? "الإيرادات" : "Revenue"}</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {(stats?.totalRevenue || 0).toLocaleString()} SDG
+              {isAr ? `${(stats?.totalRevenue || 0).toLocaleString()} ج.س` : `${(stats?.totalRevenue || 0).toLocaleString()} SDG`}
             </div>
-            <p className="text-xs text-muted-foreground">Total earnings</p>
+            <p className="text-xs text-muted-foreground">{isAr ? "إجمالي الأرباح" : "Total earnings"}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming Trips</CardTitle>
+            <CardTitle className="text-sm font-medium">{isAr ? "الرحلات القادمة" : "Upcoming Trips"}</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.upcomingTrips || 0}</div>
-            <p className="text-xs text-muted-foreground">Next 7 days</p>
+            <p className="text-xs text-muted-foreground">{isAr ? "الأيام الـ 7 القادمة" : "Next 7 days"}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fleet Size</CardTitle>
+            <CardTitle className="text-sm font-medium">{isAr ? "حجم الأسطول" : "Fleet Size"}</CardTitle>
             <Bus className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalBuses || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {stats?.totalRoutes || 0} routes
+              {stats?.totalRoutes || 0} {isAr ? "مسارات" : "routes"}
             </p>
           </CardContent>
         </Card>
@@ -215,7 +219,7 @@ const OfficeDashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
+            <CardTitle>{isAr ? "إجراءات سريعة" : "Quick Actions"}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <Button
@@ -225,7 +229,7 @@ const OfficeDashboard = () => {
             >
               <span className="flex items-center gap-2">
                 <Ticket className="h-4 w-4" />
-                View Bookings
+                {isAr ? "عرض الحجوزات" : "View Bookings"}
               </span>
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -236,7 +240,7 @@ const OfficeDashboard = () => {
             >
               <span className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Manage Trips
+                {isAr ? "إدارة الرحلات" : "Manage Trips"}
               </span>
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -249,7 +253,7 @@ const OfficeDashboard = () => {
             >
               <span className="flex items-center gap-2">
                 <Bus className="h-4 w-4" />
-                Manage Buses
+                {isAr ? "إدارة الحافلات" : "Manage Buses"}
               </span>
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -258,16 +262,16 @@ const OfficeDashboard = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest bookings and updates</CardDescription>
+            <CardTitle>{isAr ? "النشاط الأخير" : "Recent Activity"}</CardTitle>
+            <CardDescription>{isAr ? "آخر الحجوزات والتحديثات" : "Latest bookings and updates"}</CardDescription>
           </CardHeader>
           <CardContent>
             {stats?.totalBookings === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Ticket className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No bookings yet</p>
+                <p>{isAr ? "لا توجد حجوزات بعد" : "No bookings yet"}</p>
                 <p className="text-sm mt-1">
-                  Bookings will appear here once travelers start booking
+                  {isAr ? "ستظهر الحجوزات هنا عندما يبدأ المسافرون بالحجز" : "Bookings will appear here once travelers start booking"}
                 </p>
               </div>
             ) : (
@@ -278,10 +282,10 @@ const OfficeDashboard = () => {
                   </div>
                   <div>
                     <p className="font-medium">
-                      {stats?.confirmedBookings || 0} confirmed bookings
+                      {stats?.confirmedBookings || 0} {isAr ? "حجوزات مؤكدة" : "confirmed bookings"}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Ready for travel
+                      {isAr ? "جاهزة للسفر" : "Ready for travel"}
                     </p>
                   </div>
                 </div>
@@ -291,10 +295,10 @@ const OfficeDashboard = () => {
                   </div>
                   <div>
                     <p className="font-medium">
-                      {stats?.pendingBookings || 0} pending bookings
+                      {stats?.pendingBookings || 0} {isAr ? "حجوزات قيد الانتظار" : "pending bookings"}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Awaiting confirmation
+                      {isAr ? "بانتظار التأكيد" : "Awaiting confirmation"}
                     </p>
                   </div>
                 </div>

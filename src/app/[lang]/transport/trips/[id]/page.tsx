@@ -190,7 +190,7 @@ export default function TripDetailsPage() {
                     {trip.route.office.name}
                   </CardDescription>
                 </div>
-                <div className="text-right">
+                <div className="text-end">
                   <div className="text-2xl font-bold text-primary">
                     SDG {trip.price.toLocaleString()}
                   </div>

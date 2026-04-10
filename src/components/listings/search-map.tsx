@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 
 export default function SearchMap() {
   return (
-    <div className="w-[430px] border-l border-gray-200">
+    <div className="w-[430px] border-s border-gray-200">
       {/* Sticky map container - sticks until end of listings */}
       <div className="sticky top-16 w-[430px] h-[calc(100vh-64px)] bg-gray-100">
         {/* Actual map image */}
@@ -91,10 +91,10 @@ export default function SearchMap() {
 
         {/* Bottom right map controls */}
         <div className="absolute bottom-4 right-4 flex gap-1">
-          <Button size="icon" variant="outline" className="w-7 h-7 rounded-full bg-white border-gray-200 hover:bg-gray-100">
+          <Button size="icon" variant="outline" className="w-7 h-7 rounded-full bg-white border-gray-200 hover:bg-gray-100" aria-label="Zoom in">
             <Plus className="w-3 h-3 text-gray-700" />
           </Button>
-          <Button size="icon" variant="outline" className="w-7 h-7 rounded-full bg-white border-gray-200 hover:bg-gray-100">
+          <Button size="icon" variant="outline" className="w-7 h-7 rounded-full bg-white border-gray-200 hover:bg-gray-100" aria-label="Zoom out">
             <Minus className="w-3 h-3 text-gray-700" />
           </Button>
         </div>
@@ -104,6 +104,7 @@ export default function SearchMap() {
           size="icon"
           variant="outline"
           className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white border-gray-200 hover:bg-gray-100"
+          aria-label="Fullscreen map"
         >
           <svg className="w-2.5 h-2.5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" strokeWidth="2"/>

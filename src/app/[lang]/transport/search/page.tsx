@@ -1,3 +1,4 @@
+import { Metadata } from "next";
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
@@ -13,7 +14,25 @@ import {
   getAssemblyPoints,
 } from '@/lib/actions/transport-actions';
 import { getDictionary } from '@/components/internationalization/dictionaries';
+import { createMetadata } from "@/lib/metadata";
 import type { Locale } from '@/components/internationalization/config';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  const { lang } = await params;
+  return createMetadata({
+    title: lang === "ar" ? "بحث النقل" : "Transport Search",
+    description:
+      lang === "ar"
+        ? "ابحث عن رحلات النقل المتاحة"
+        : "Search for available transport trips",
+    locale: lang,
+    path: "/transport/search",
+  });
+}
 
 interface SearchPageProps {
   params: Promise<{ lang: Locale }>;
@@ -38,16 +57,19 @@ export default async function SearchPage({
     redirect(`/${lang}/transport`);
   }
 
-  const dictionary = await getDictionary(lang);
+  const searchDate = parseISO(date);
+
+  // Parallelize independent data fetches
+  const [dictionary, routes, assemblyPoints] = await Promise.all([
+    getDictionary(lang),
+    searchRoutes(origin, destination, searchDate),
+    getAssemblyPoints(),
+  ]);
   const t = dictionary.transport;
 
-  const searchDate = parseISO(date);
-  const routes = await searchRoutes(origin, destination, searchDate) as any[];
-  const assemblyPoints = await getAssemblyPoints();
-
   // Flatten trips from routes
-  const trips = routes.flatMap((route: any) =>
-    route.trips.map((trip: any) => ({
+  const trips = routes.flatMap((route) =>
+    route.trips.map((trip) => ({
       ...trip,
       route: {
         origin: route.origin,
@@ -67,7 +89,7 @@ export default async function SearchPage({
         <div className="max-w-6xl mx-auto px-4 py-6">
           <div className="flex items-center gap-4 mb-6">
             <Link href={`/${lang}/transport`}>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" aria-label="Go back">
                 <ArrowLeft className="h-5 w-5 rtl:rotate-180" />
               </Button>
             </Link>
@@ -100,7 +122,7 @@ export default async function SearchPage({
             {t.search.tripsFound.replace('{count}', String(trips.length))}
           </p>
           <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+            <Filter className="h-4 w-4 me-2" />
             {t.search.filters}
           </Button>
         </div>

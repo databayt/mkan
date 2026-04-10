@@ -1,8 +1,10 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Loader2, MapPin } from "lucide-react";
 import { type LocationSuggestion } from "@/lib/schemas/search-schema";
+import { FALLBACK_RECOMMENDATIONS } from "./constant";
 
 interface LocationProps {
   searchQuery: string;
@@ -23,8 +25,20 @@ export default function LocationDropdown({
   onSearchQueryChange,
   onLocationSelect,
 }: LocationProps) {
-  const displayLocations = searchQuery.trim() ? suggestions : popularLocations;
-  const title = searchQuery.trim() ? "Search results" : "Popular destinations";
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
+
+  const displayLocations = searchQuery.trim()
+    ? suggestions
+    : popularLocations.length > 0
+      ? popularLocations
+      : FALLBACK_RECOMMENDATIONS;
+
+  const title = searchQuery.trim()
+    ? (isAr ? "نتائج البحث" : "Search results")
+    : popularLocations.length > 0
+      ? (isAr ? "وجهات شائعة" : "Popular destinations")
+      : (isAr ? "وجهات مقترحة" : "Recommended destinations");
 
   const handleKeyDown = (
     e: React.KeyboardEvent,
@@ -38,17 +52,17 @@ export default function LocationDropdown({
 
   return (
     <div role="combobox" aria-expanded="true" aria-haspopup="listbox">
-      <h3 className="text-lg font-semibold mb-4">Where to?</h3>
+      <h3 className="text-lg font-semibold mb-4">{isAr ? "إلى أين؟" : "Where to?"}</h3>
 
       {/* Search input */}
       <div className="mb-4 relative">
         <Input
-          placeholder="Search destinations..."
+          placeholder={isAr ? "ابحث عن وجهات..." : "Search destinations..."}
           value={searchQuery}
           onChange={(e) => onSearchQueryChange(e.target.value)}
-          className="w-full h-10 border-0 border-none rounded-lg focus:outline-none focus:border-0 shadow-none text-black caret-black pr-10"
+          className="w-full h-10 border-0 border-none rounded-lg focus:outline-none focus:border-0 shadow-none text-black caret-black pe-10"
           autoFocus
-          aria-label="Search for a location"
+          aria-label={isAr ? "ابحث عن موقع" : "Search for a location"}
           aria-autocomplete="list"
           aria-controls="location-listbox"
         />
@@ -69,7 +83,7 @@ export default function LocationDropdown({
 
       {/* Results */}
       <div
-        className="space-y-2 max-h-80 overflow-y-auto no-scrollbar"
+        className="space-y-1 max-h-80 overflow-y-auto no-scrollbar"
         role="listbox"
         id="location-listbox"
         aria-label={title}
@@ -82,14 +96,14 @@ export default function LocationDropdown({
             {displayLocations.map((location, index) => (
               <div
                 key={`${location.city}-${location.state}-${index}`}
-                className="p-3 rounded-lg hover:bg-gray-50 cursor-pointer flex items-center gap-3 transition-colors"
+                className="py-1 rounded-lg hover:bg-gray-50 cursor-pointer flex items-center gap-3 transition-colors"
                 onClick={() => onLocationSelect(location)}
                 role="option"
                 aria-selected="false"
                 tabIndex={0}
                 onKeyDown={(e) => handleKeyDown(e, location)}
               >
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center flex-shrink-0">
                   <MapPin className="w-5 h-5 text-gray-500" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -102,11 +116,7 @@ export default function LocationDropdown({
           </>
         ) : searchQuery && !isLoading ? (
           <div className="text-center text-gray-500 py-4">
-            No destinations found for &quot;{searchQuery}&quot;
-          </div>
-        ) : !searchQuery && !isLoading && popularLocations.length === 0 ? (
-          <div className="text-center text-gray-500 py-4">
-            No destinations available
+            {isAr ? `لم يتم العثور على وجهات لـ "${searchQuery}"` : <>No destinations found for &quot;{searchQuery}&quot;</>}
           </div>
         ) : null}
       </div>

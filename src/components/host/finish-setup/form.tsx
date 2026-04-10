@@ -68,7 +68,7 @@ export function FinishSetupForm() {
                   {listing.propertyType} in {listing.city}, {listing.state}
                 </p>
               </div>
-              <div className="text-right">
+              <div className="text-end">
                 <p className="text-lg font-medium">
                   ${listing.pricePerNight || 0}/night
                 </p>

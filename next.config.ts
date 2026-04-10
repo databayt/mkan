@@ -35,9 +35,7 @@ const nextConfig: NextConfig = {
     },
     // Optimize packages for server
     optimizePackageImports: [
-      '@radix-ui/react-icons',
       'lucide-react',
-      'react-icons',
       '@sentry/nextjs',
     ],
   },

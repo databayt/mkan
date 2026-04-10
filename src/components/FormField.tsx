@@ -251,6 +251,7 @@ const MultiInputField: React.FC<MultiInputFieldProps> = ({
             variant="ghost"
             size="icon"
             className="text-customgreys-dirtyGrey"
+            aria-label="Remove item"
           >
             <X className="w-4 h-4" />
           </Button>
@@ -263,7 +264,7 @@ const MultiInputField: React.FC<MultiInputFieldProps> = ({
         size="sm"
         className="mt-2 text-customgreys-dirtyGrey"
       >
-        <Plus className="w-4 h-4 mr-2" />
+        <Plus className="w-4 h-4 me-2" />
         Add Item
       </Button>
     </div>

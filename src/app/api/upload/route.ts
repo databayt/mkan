@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { validateImageFile } from '@/lib/imagekit';
 import { rateLimitWithFallback, rateLimitResponse } from '@/lib/rate-limit';

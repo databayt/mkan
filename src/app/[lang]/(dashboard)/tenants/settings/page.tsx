@@ -7,13 +7,16 @@ import {
   useGetAuthUserQuery,
   useUpdateTenantSettingsMutation,
 } from "@/state/api";
+import { usePathname } from "next/navigation";
 import React from "react";
 
 const TenantSettings = () => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const { data: authUser, isLoading } = useGetAuthUserQuery();
   const [updateTenant] = useUpdateTenantSettingsMutation();
 
-  if (isLoading) return <>Loading...</>;
+  if (isLoading) return <>{isAr ? "جاري التحميل..." : "Loading..."}</>;
 
   const initialData = {
     name: authUser?.userInfo?.name ?? "",

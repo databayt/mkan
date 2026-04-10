@@ -54,13 +54,13 @@ const CustomLinkPage = () => {
             <div>
               <Label htmlFor="slug">Custom URL slug (optional)</Label>
               <div className="flex items-center mt-2">
-                <span className="px-3 py-2 bg-gray-100 border border-r-0 rounded-l-md text-sm text-muted-foreground">
+                <span className="px-3 py-2 bg-gray-100 border border-e-0 rounded-s-md text-sm text-muted-foreground">
                   {baseUrl}/p/
                 </span>
                 <Input
                   id="slug"
                   placeholder="my-amazing-place"
-                  className="rounded-l-none"
+                  className="rounded-s-none"
                   value={customSlug}
                   onChange={(e) => handleSlugChange(e.target.value)}
                 />
@@ -76,14 +76,14 @@ const CustomLinkPage = () => {
                 <div className="flex-1 p-3 bg-gray-50 border rounded-lg text-sm font-mono truncate">
                   {fullUrl}
                 </div>
-                <Button variant="outline" size="icon" onClick={handleCopy}>
+                <Button variant="outline" size="icon" onClick={handleCopy} aria-label={copied ? "Copied" : "Copy link"}>
                   {copied ? (
                     <Check className="size-4 text-green-600" />
                   ) : (
                     <Copy className="size-4" />
                   )}
                 </Button>
-                <Button variant="outline" size="icon" asChild>
+                <Button variant="outline" size="icon" asChild aria-label="Open link in new tab">
                   <a href={fullUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="size-4" />
                   </a>

@@ -35,7 +35,7 @@ export default function SearchButton({
     >
       <Search className="w-4 h-4" />
       {showText && isBig && (
-        <span className="ml-2 text-sm font-medium">Search</span>
+        <span className="ms-2 text-sm font-medium">Search</span>
       )}
       <span className="sr-only">Search</span>
     </Button>

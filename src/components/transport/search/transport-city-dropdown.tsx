@@ -147,7 +147,7 @@ export default function TransportCityDropdown({
           value={searchQuery}
           onChange={handleSearchChange}
           placeholder={placeholder}
-          className="w-full pl-10 pr-4 py-3 text-sm border border-[#e5e7eb] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          className="w-full ps-10 pe-4 py-3 text-sm border border-[#e5e7eb] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
         />
       </div>
 
@@ -189,7 +189,7 @@ export default function TransportCityDropdown({
                     key={city}
                     type="button"
                     onClick={() => handleCitySelect(city)}
-                    className={`w-full flex items-center px-3 py-2.5 rounded-xl text-left transition-colors ${
+                    className={`w-full flex items-center px-3 py-2.5 rounded-xl text-start transition-colors ${
                       isSelected
                         ? "bg-primary/10 text-primary"
                         : "hover:bg-gray-50"

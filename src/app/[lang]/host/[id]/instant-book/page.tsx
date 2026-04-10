@@ -3,8 +3,8 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { CalendarCheckmark, LightningBoltIcon } from '@/components/atom/airbnb-icons';
+import { useRouter, usePathname } from 'next/navigation';
+import { CalendarCheckmark, LightningBoltIcon } from '@/components/atom/property-icons';
 
 interface InstantBookPageProps {
   params: Promise<{ id: string }>;
@@ -12,6 +12,8 @@ interface InstantBookPageProps {
 
 const InstantBookPage = ({ params }: InstantBookPageProps) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [id, setId] = React.useState<string>('');
   const [selectedOption, setSelectedOption] = useState<string>('approve-first-5');
 
@@ -25,16 +27,16 @@ const InstantBookPage = ({ params }: InstantBookPageProps) => {
   const bookingOptions = [
     {
       id: 'approve-first-5',
-      title: 'Approve your first 5 bookings',
-      subtitle: 'Recommended',
-      description: 'Start by reviewing reservation requests, then switch to Instant Book, so guests can book automatically.',
+      title: isAr ? 'وافق على أول 5 حجوزات' : 'Approve your first 5 bookings',
+      subtitle: isAr ? 'موصى به' : 'Recommended',
+      description: isAr ? 'ابدأ بمراجعة طلبات الحجز، ثم انتقل إلى الحجز الفوري، حتى يتمكن الضيوف من الحجز تلقائياً.' : 'Start by reviewing reservation requests, then switch to Instant Book, so guests can book automatically.',
       icon: CalendarCheckmark,
       recommended: true,
     },
     {
       id: 'instant-book',
-      title: 'Use Instant Book',
-      description: 'Let guests book automatically.',
+      title: isAr ? 'استخدم الحجز الفوري' : 'Use Instant Book',
+      description: isAr ? 'دع الضيوف يحجزون تلقائياً.' : 'Let guests book automatically.',
       icon: LightningBoltIcon,
       recommended: false,
     },
@@ -47,13 +49,12 @@ const InstantBookPage = ({ params }: InstantBookPageProps) => {
           {/* Left column - Title and description */}
           <div className="space-y-3 sm:space-y-4">
             <h3>
-              Pick your<br />
-              booking settings
+              {isAr ? <>اختر إعدادات<br /> الحجز الخاصة بك</> : <>Pick your<br /> booking settings</>}
             </h3>
             <p className="text-sm sm:text-base text-muted-foreground">
-              You can change this at any time.{' '}
+              {isAr ? 'يمكنك تغيير هذا في أي وقت.' : 'You can change this at any time.'}{' '}
               <button className="underline hover:no-underline text-foreground">
-                Learn more
+                {isAr ? 'تعرف على المزيد' : 'Learn more'}
               </button>
             </p>
           </div>
@@ -64,7 +65,7 @@ const InstantBookPage = ({ params }: InstantBookPageProps) => {
               <button
                 key={option.id}
                 onClick={() => setSelectedOption(option.id)}
-                className={`w-full py-4 sm:py-5 px-4 sm:px-8 rounded-xl border transition-all duration-200 text-left ${
+                className={`w-full py-4 sm:py-5 px-4 sm:px-8 rounded-xl border transition-all duration-200 text-start ${
                   selectedOption === option.id
                     ? 'border-foreground bg-accent'
                     : 'border-border hover:border-foreground/50'
@@ -86,7 +87,7 @@ const InstantBookPage = ({ params }: InstantBookPageProps) => {
                       {option.description}
                     </p>
                   </div>
-                  <div className="flex-shrink-0 ml-3">
+                  <div className="flex-shrink-0 ms-3">
                     <option.icon size={20} className="sm:w-6 sm:h-6" />
                   </div>
                 </div>

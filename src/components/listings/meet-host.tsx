@@ -108,7 +108,7 @@ export default function MeetHost() {
                 <Shield className="w-8 h-8 text-[#e31c5f]" />
               
               <p className="text-sm text-gray-700 leading-relaxed">
-                To help protect your payment, always use Airbnb to send money and communicate with hosts.
+                To help protect your payment, always use Mkan to send money and communicate with hosts.
               </p>
             </div>
           </div>

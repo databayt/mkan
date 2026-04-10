@@ -21,7 +21,7 @@ function AmenityCard({ amenity, title, isSelected, onToggle }: AmenityCardProps)
       type="button"
       onClick={onToggle}
       className={`
-        w-full p-4 rounded-lg border-2 transition-colors text-left
+        w-full p-4 rounded-lg border-2 transition-colors text-start
         ${isSelected
           ? 'border-primary bg-primary/5'
           : 'border-border hover:border-muted-foreground'

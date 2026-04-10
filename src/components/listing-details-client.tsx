@@ -1,16 +1,16 @@
 "use client";
 
 import React from "react";
-import AirbnbPropertyHeader from "@/components/atom/airbnb-property-header";
-import AirbnbImages from "@/components/atom/airbnb-images";
-import AirbnbReviews from "@/components/atom/airbnb-reviews";
-import AirbnbReserve from "@/components/atom/airbnb-reserve";
+import AirbnbPropertyHeader from "@/components/atom/property-header";
+import AirbnbImages from "@/components/atom/property-images";
+import AirbnbReviews from "@/components/atom/reviews";
+import AirbnbReserve from "@/components/atom/property-reserve";
 import AmenityViewer from "@/components/listings/amenity-viewer";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Bed, Bath, Users, Square } from "lucide-react";
 import { Listing } from "@/types/listing";
-import PropertyGallery from "@/components/atom/airbnb-img";
-import AirbnbInfo from "./atom/airbnb-info";
+import PropertyGallery from "@/components/atom/property-gallery";
+import AirbnbInfo from "./atom/property-info";
 import Review from "./listings/review";
 import HostedBy from "./listings/hosted-by";
 import MeetHost from "./listings/meet-host";

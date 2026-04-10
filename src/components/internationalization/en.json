@@ -1320,7 +1320,9 @@
       "arrival": "Arrival",
       "duration": "Duration",
       "status": "Status",
-      "total": "Total Amount"
+      "total": "Total Amount",
+      "showcaseTitle": "Your Digital Ticket",
+      "showcaseSubtitle": "Book online and receive your e-ticket instantly with QR code for easy boarding."
     },
     "trip": {
       "selectSeats": "Select Seats",

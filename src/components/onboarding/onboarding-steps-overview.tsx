@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -15,10 +16,53 @@ const OnboardingStepsOverview: React.FC<OnboardingStepsOverviewProps> = ({
   config,
   onGetStarted,
   isLoading = false,
-  loadingLabel = "Creating...",
+  loadingLabel: loadingLabelProp,
   className,
 }) => {
-  const defaultHeadline = (
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
+  const loadingLabel = loadingLabelProp ?? (isAr ? "جارٍ الإنشاء..." : "Creating...");
+
+  // Translation map for overview step titles and descriptions
+  const overviewTranslations: Record<string, { title: string; description: string }> = isAr ? {
+    "Tell us about your place": {
+      title: "أخبرنا عن مكانك",
+      description: "شارك بعض المعلومات الأساسية، مثل موقعه وعدد الضيوف الذين يمكنهم الإقامة.",
+    },
+    "Make it stand out": {
+      title: "اجعله مميزاً",
+      description: "أضف 5 صور أو أكثر بالإضافة إلى عنوان ووصف — سنساعدك.",
+    },
+    "Finish up and publish": {
+      title: "أكمل وانشر",
+      description: "اختر سعراً للبدء، تحقق من بعض التفاصيل، ثم انشر إعلانك.",
+    },
+    "Set up your office": {
+      title: "أعد مكتبك",
+      description: "أدخل تفاصيل مكتبك ومعلومات الاتصال واختر موقع نقطة التجمع.",
+    },
+    "Add buses & routes": {
+      title: "أضف الحافلات والمسارات",
+      description: "سجّل حافلاتك بالمرافق والسعة، ثم حدد مساراتك مع الأسعار.",
+    },
+    "Create schedules & publish": {
+      title: "أنشئ الجداول وانشر",
+      description: "أعد جداول الرحلات، أضف صوراً، وانشر مكتبك لبدء استقبال الحجوزات.",
+    },
+  } : {};
+
+  const translateStep = (step: { title: string; description: string }) => {
+    const translation = overviewTranslations[step.title];
+    return translation ? { title: translation.title, description: translation.description } : step;
+  };
+
+  const defaultHeadline = isAr ? (
+    <>
+      من السهل البدء
+      <br />
+      على مكان
+    </>
+  ) : (
     <>
       It's easy to get
       <br />
@@ -45,7 +89,9 @@ const OnboardingStepsOverview: React.FC<OnboardingStepsOverviewProps> = ({
 
             {/* Right Side - Steps */}
             <div className="space-y-6">
-              {config.steps.map((step) => (
+              {config.steps.map((step) => {
+                const translated = translateStep(step);
+                return (
                 <div key={step.number} className="flex gap-6 items-start">
                   <div className="flex gap-3 flex-1">
                     <div className="flex-shrink-0">
@@ -55,10 +101,10 @@ const OnboardingStepsOverview: React.FC<OnboardingStepsOverviewProps> = ({
                     </div>
                     <div>
                       <h4 className="mb-1">
-                        {step.title}
+                        {translated.title}
                       </h4>
                       <p>
-                        {step.description}
+                        {translated.description}
                       </p>
                     </div>
                   </div>
@@ -66,7 +112,8 @@ const OnboardingStepsOverview: React.FC<OnboardingStepsOverviewProps> = ({
                     {step.illustration}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -75,7 +122,7 @@ const OnboardingStepsOverview: React.FC<OnboardingStepsOverviewProps> = ({
             <Separator className="w-full" />
             <div className="flex justify-end py-4">
               <Button onClick={onGetStarted} disabled={isLoading}>
-                {isLoading ? loadingLabel : (config.buttonLabel || 'Get started')}
+                {isLoading ? loadingLabel : (config.buttonLabel || (isAr ? 'ابدأ الآن' : 'Get started'))}
               </Button>
             </div>
           </div>

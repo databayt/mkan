@@ -1,70 +1,15 @@
-'use client';
+import { requireAuth } from "@/lib/auth-guard"
+import TransportHostLayoutClient from "./layout-client"
 
-import React, { useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import {
-  OnboardingFooter,
-  TRANSPORT_FOOTER_CONFIG,
-  TransportHostValidationProvider,
-  useTransportHostValidation,
-} from '@/components/onboarding';
-import { TransportOfficeProvider, useTransportOffice } from '@/context/transport-office-context';
-import { useAuthRedirect } from '@/hooks/use-auth-redirect';
+export default async function TransportHostLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode
+  params: Promise<{ lang: string; id: string }>
+}) {
+  const { lang } = await params
+  await requireAuth(lang)
 
-interface TransportHostLayoutProps {
-  children: React.ReactNode;
+  return <TransportHostLayoutClient>{children}</TransportHostLayoutClient>
 }
-
-function TransportHostLayoutContent({ children }: TransportHostLayoutProps) {
-  const params = useParams();
-  const { session, status } = useAuthRedirect();
-  const { loadOffice } = useTransportOffice();
-  const officeId = params.id ? parseInt(params.id as string, 10) : null;
-
-  useEffect(() => {
-    if (officeId) {
-      loadOffice(officeId);
-    }
-  }, [officeId, loadOffice]);
-
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!session) {
-    return null;
-  }
-
-  return (
-    <div className="px-4 sm:px-6 md:px-12 lg:px-20 bg-background min-h-screen">
-      <main className="h-screen pt-16 sm:pt-20 pb-24">
-        {children}
-      </main>
-      <OnboardingFooter
-        config={TRANSPORT_FOOTER_CONFIG}
-        useValidation={useTransportHostValidation}
-      />
-    </div>
-  );
-}
-
-const TransportHostLayout = ({ children }: TransportHostLayoutProps) => {
-  return (
-    <TransportOfficeProvider>
-      <TransportHostValidationProvider>
-        <TransportHostLayoutContent>
-          {children}
-        </TransportHostLayoutContent>
-      </TransportHostValidationProvider>
-    </TransportOfficeProvider>
-  );
-};
-
-export default TransportHostLayout;

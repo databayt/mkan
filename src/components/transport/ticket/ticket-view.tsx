@@ -182,7 +182,7 @@ export function TicketView({
             </p>
           </div>
           <div className="flex-1 border-t border-dashed" />
-          <div className="text-right">
+          <div className="text-end">
             <p className="font-bold text-lg">
               {booking.trip.arrivalTime || '--:--'}
             </p>
@@ -252,7 +252,7 @@ export function TicketView({
               {formatDuration(booking.trip.route.duration)}
             </p>
           </div>
-          <div className="text-right">
+          <div className="text-end">
             <p className="text-xs text-muted-foreground">{dictionary.arrival}</p>
             <p className="text-2xl font-bold">
               {booking.trip.arrivalTime || '--:--'}
@@ -319,7 +319,7 @@ export function TicketView({
             {booking.status}
           </Badge>
         </div>
-        <div className="text-right">
+        <div className="text-end">
           <p className="text-xs text-muted-foreground">{dictionary.total}</p>
           <p className="text-xl font-bold">
             {booking.totalAmount.toLocaleString()} SDG
@@ -331,10 +331,10 @@ export function TicketView({
       {showDownload && (
         <div className="p-6 flex gap-3">
           <Button className="flex-1" variant="outline">
-            <Download className="h-4 w-4 mr-2" />
+            <Download className="h-4 w-4 me-2" />
             {dictionary.download}
           </Button>
-          <Button variant="outline" size="icon" onClick={handleShare}>
+          <Button variant="outline" size="icon" onClick={handleShare} aria-label="Share ticket">
             <Share2 className="h-4 w-4" />
           </Button>
         </div>

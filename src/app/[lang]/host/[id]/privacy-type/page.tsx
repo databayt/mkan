@@ -3,10 +3,11 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Home, DoorOpen, Building } from 'lucide-react';
-import { HostStepLayout, SelectionCard } from '@/components/host';
-import { useHostValidation } from '@/components/onboarding';
+import HostStepLayout from '@/components/host/host-step-layout';
+import SelectionCard from '@/components/host/selection-card';
+import { useHostValidation } from '@/context/onboarding-validation-context';
 
 interface PrivacyTypePageProps {
   params: Promise<{ id: string }>;
@@ -14,6 +15,8 @@ interface PrivacyTypePageProps {
 
 const PrivacyTypePage = ({ params }: PrivacyTypePageProps) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [id, setId] = React.useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('entire-place');
   const { enableNext } = useHostValidation();
@@ -32,20 +35,20 @@ const PrivacyTypePage = ({ params }: PrivacyTypePageProps) => {
   const privacyTypes = [
     {
       id: 'entire-place',
-      title: 'An entire place',
-      description: 'Guests have the whole place to themselves.',
+      title: isAr ? 'مكان كامل' : 'An entire place',
+      description: isAr ? 'يحصل الضيوف على المكان بالكامل لأنفسهم.' : 'Guests have the whole place to themselves.',
       icon: Home,
     },
     {
       id: 'room',
-      title: 'A room',
-      description: 'Guests have their own room in a home, plus access to shared spaces.',
+      title: isAr ? 'غرفة' : 'A room',
+      description: isAr ? 'يحصل الضيوف على غرفتهم الخاصة في المنزل، بالإضافة إلى الوصول إلى المساحات المشتركة.' : 'Guests have their own room in a home, plus access to shared spaces.',
       icon: DoorOpen,
     },
     {
       id: 'shared-room',
-      title: 'A shared room in a hostel',
-      description: 'Guests sleep in a shared room in a professionally managed hostel with staff onsite 24/7.',
+      title: isAr ? 'غرفة مشتركة في نزل' : 'A shared room in a hostel',
+      description: isAr ? 'ينام الضيوف في غرفة مشتركة في نزل مُدار باحترافية مع موظفين متواجدين على مدار الساعة.' : 'Guests sleep in a shared room in a professionally managed hostel with staff onsite 24/7.',
       icon: Building,
     },
   ];
@@ -53,7 +56,7 @@ const PrivacyTypePage = ({ params }: PrivacyTypePageProps) => {
   return (
     <HostStepLayout
       title={
-        <h3>What type of <br /> place will guests have?</h3>
+        <h3>{isAr ? <>ما نوع المكان الذي <br /> سيحصل عليه الضيوف؟</> : <>What type of <br /> place will guests have?</>}</h3>
       }
     >
       <div className="space-y-3">

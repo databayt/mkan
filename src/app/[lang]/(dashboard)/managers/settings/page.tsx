@@ -4,9 +4,12 @@ export const dynamic = 'force-dynamic';
 
 import SettingsForm from "@/components/SettingsForm";
 import { getAuthUser, updateManagerSettings } from "@/lib/actions/user-actions";
+import { usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
 const ManagerSettings = () => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [authUser, setAuthUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,8 +29,8 @@ const ManagerSettings = () => {
     fetchData();
   }, []);
 
-  if (isLoading) return <>Loading...</>;
-  if (error) return <div className="text-red-500">Error: {error}</div>;
+  if (isLoading) return <>{isAr ? "جاري التحميل..." : "Loading..."}</>;
+  if (error) return <div className="text-red-500">{isAr ? "خطأ" : "Error"}: {error}</div>;
 
   const initialData = {
     name: authUser?.userInfo?.name,

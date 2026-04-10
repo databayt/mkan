@@ -1,8 +1,19 @@
 'use server';
 
-import { auth } from '@/auth';
+import { z } from 'zod';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { TransportBookingStatus } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import {
+  transportOfficeDraftSchema,
+  transportOfficeSchema,
+  busSchema,
+  routeSchema,
+  tripSchema,
+  bookingSchema as transportBookingSchema,
+  paymentSchema as transportPaymentSchema,
+} from '@/lib/schemas/transport-schemas';
 import type {
   TransportOfficeFormData,
   TransportOfficeDraftData,
@@ -15,19 +26,26 @@ import type {
 import { sanitizeInput, sanitizeEmail, sanitizePhone } from "@/lib/sanitization";
 import { logger } from "@/lib/logger";
 
+const idSchema = z.number().int().positive();
+
 // ============================================
 // ASSEMBLY POINT ACTIONS
 // ============================================
 
 export async function getAssemblyPoints(city?: string) {
-  const where = city ? { city, isActive: true } : { isActive: true };
+  try {
+    const where = city ? { city, isActive: true } : { isActive: true };
 
-  const assemblyPoints = await db.assemblyPoint.findMany({
-    where,
-    orderBy: { name: 'asc' },
-  });
+    const assemblyPoints = await db.assemblyPoint.findMany({
+      where,
+      orderBy: { name: 'asc' },
+    });
 
-  return assemblyPoints;
+    return assemblyPoints;
+  } catch (error) {
+    logger.error('Failed to fetch assembly points', { error });
+    return [];
+  }
 }
 
 export async function getCities() {
@@ -45,32 +63,39 @@ export async function getCities() {
 // TRANSPORT OFFICE ACTIONS
 // ============================================
 
-export async function createTransportOffice(data: TransportOfficeDraftData) {
+export async function createTransportOffice(data: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
 
+  const parsed = transportOfficeDraftSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error('Invalid office data');
+  }
+
+  const d = { ...parsed.data };
+
   // Sanitize inputs
-  if (data.name) data.name = sanitizeInput(data.name);
-  if (data.nameAr) data.nameAr = sanitizeInput(data.nameAr);
-  if (data.description) data.description = sanitizeInput(data.description);
-  if (data.descriptionAr) data.descriptionAr = sanitizeInput(data.descriptionAr);
-  if (data.phone) data.phone = sanitizePhone(data.phone);
-  if (data.email) data.email = sanitizeEmail(data.email);
+  if (d.name) d.name = sanitizeInput(d.name);
+  if (d.nameAr) d.nameAr = sanitizeInput(d.nameAr);
+  if (d.description) d.description = sanitizeInput(d.description);
+  if (d.descriptionAr) d.descriptionAr = sanitizeInput(d.descriptionAr);
+  if (d.phone) d.phone = sanitizePhone(d.phone);
+  if (d.email) d.email = sanitizeEmail(d.email);
 
   const office = await db.transportOffice.create({
     data: {
-      name: data.name,
-      nameAr: data.nameAr || null,
-      description: data.description || null,
-      descriptionAr: data.descriptionAr || null,
-      phone: data.phone || '',
-      email: data.email || '',
-      licenseNumber: data.licenseNumber || null,
-      assemblyPointId: data.assemblyPointId || null,
-      logoUrl: data.logoUrl || null,
+      name: d.name,
+      nameAr: d.nameAr || null,
+      description: d.description || null,
+      descriptionAr: d.descriptionAr || null,
+      phone: d.phone || '',
+      email: d.email || '',
+      licenseNumber: d.licenseNumber || null,
+      assemblyPointId: d.assemblyPointId || null,
+      logoUrl: d.logoUrl || null,
       ownerId: session.user.id,
       isActive: false,
     },
@@ -81,8 +106,8 @@ export async function createTransportOffice(data: TransportOfficeDraftData) {
 }
 
 export async function updateTransportOffice(
-  id: number,
-  data: Partial<TransportOfficeFormData>
+  id: unknown,
+  data: unknown
 ) {
   const session = await auth();
 
@@ -90,9 +115,19 @@ export async function updateTransportOffice(
     throw new Error('Unauthorized');
   }
 
+  const parsedId = idSchema.safeParse(id);
+  if (!parsedId.success) {
+    throw new Error('Invalid office ID');
+  }
+
+  const parsed = transportOfficeSchema.partial().safeParse(data);
+  if (!parsed.success) {
+    throw new Error('Invalid office data');
+  }
+
   // Verify ownership
   const existing = await db.transportOffice.findUnique({
-    where: { id },
+    where: { id: parsedId.data },
     select: { ownerId: true },
   });
 
@@ -101,8 +136,8 @@ export async function updateTransportOffice(
   }
 
   const office = await db.transportOffice.update({
-    where: { id },
-    data,
+    where: { id: parsedId.data },
+    data: parsed.data,
   });
 
   revalidatePath('/[lang]/transport-host');
@@ -247,16 +282,36 @@ export async function createBus(data: BusFormData & { officeId: number }) {
   return bus;
 }
 
-export async function updateBus(id: number, data: Partial<BusFormData>) {
+export async function updateBus(id: unknown, data: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
 
+  const parsedId = idSchema.safeParse(id);
+  if (!parsedId.success) {
+    throw new Error('Invalid bus ID');
+  }
+
+  const parsed = busSchema.partial().safeParse(data);
+  if (!parsed.success) {
+    throw new Error('Invalid bus data');
+  }
+
+  // Verify ownership via office
+  const existingBus = await db.bus.findUnique({
+    where: { id: parsedId.data },
+    include: { office: { select: { ownerId: true } } },
+  });
+
+  if (!existingBus || existingBus.office.ownerId !== session.user.id) {
+    throw new Error('Unauthorized');
+  }
+
   const bus = await db.bus.update({
-    where: { id },
-    data,
+    where: { id: parsedId.data },
+    data: parsed.data,
   });
 
   revalidatePath('/[lang]/transport-host');
@@ -264,15 +319,30 @@ export async function updateBus(id: number, data: Partial<BusFormData>) {
   return bus;
 }
 
-export async function deleteBus(id: number) {
+export async function deleteBus(id: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
 
+  const parsedId = idSchema.safeParse(id);
+  if (!parsedId.success) {
+    throw new Error('Invalid bus ID');
+  }
+
+  // Verify ownership via office
+  const existingBus = await db.bus.findUnique({
+    where: { id: parsedId.data },
+    include: { office: { select: { ownerId: true } } },
+  });
+
+  if (!existingBus || existingBus.office.ownerId !== session.user.id) {
+    throw new Error('Unauthorized');
+  }
+
   await db.bus.delete({
-    where: { id },
+    where: { id: parsedId.data },
   });
 
   revalidatePath('/[lang]/transport-host');
@@ -328,16 +398,36 @@ export async function createRoute(data: RouteFormData & { officeId: number }) {
   return route;
 }
 
-export async function updateRoute(id: number, data: Partial<RouteFormData>) {
+export async function updateRoute(id: unknown, data: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
 
+  const parsedId = idSchema.safeParse(id);
+  if (!parsedId.success) {
+    throw new Error('Invalid route ID');
+  }
+
+  const parsed = routeSchema.partial().safeParse(data);
+  if (!parsed.success) {
+    throw new Error('Invalid route data');
+  }
+
+  // Verify ownership via office
+  const existingRoute = await db.route.findUnique({
+    where: { id: parsedId.data },
+    include: { office: { select: { ownerId: true } } },
+  });
+
+  if (!existingRoute || existingRoute.office.ownerId !== session.user.id) {
+    throw new Error('Unauthorized');
+  }
+
   const route = await db.route.update({
-    where: { id },
-    data,
+    where: { id: parsedId.data },
+    data: parsed.data,
     include: {
       origin: true,
       destination: true,
@@ -349,15 +439,30 @@ export async function updateRoute(id: number, data: Partial<RouteFormData>) {
   return route;
 }
 
-export async function deleteRoute(id: number) {
+export async function deleteRoute(id: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
 
+  const parsedId = idSchema.safeParse(id);
+  if (!parsedId.success) {
+    throw new Error('Invalid route ID');
+  }
+
+  // Verify ownership via office
+  const existingRoute = await db.route.findUnique({
+    where: { id: parsedId.data },
+    include: { office: { select: { ownerId: true } } },
+  });
+
+  if (!existingRoute || existingRoute.office.ownerId !== session.user.id) {
+    throw new Error('Unauthorized');
+  }
+
   await db.route.delete({
-    where: { id },
+    where: { id: parsedId.data },
   });
 
   revalidatePath('/[lang]/transport-host');
@@ -614,22 +719,29 @@ export async function getTripSeats(tripId: number) {
 // BOOKING ACTIONS
 // ============================================
 
-export async function createBooking(data: BookingFormData) {
+export async function createBooking(data: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
 
-  // Sanitize passenger inputs
-  data.passengerName = sanitizeInput(data.passengerName);
-  data.passengerPhone = sanitizePhone(data.passengerPhone);
-  if (data.passengerEmail) data.passengerEmail = sanitizeEmail(data.passengerEmail);
+  const parsed = transportBookingSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error('Invalid booking data');
+  }
+
+  const validData = {
+    ...parsed.data,
+    passengerName: sanitizeInput(parsed.data.passengerName),
+    passengerPhone: sanitizePhone(parsed.data.passengerPhone),
+    passengerEmail: parsed.data.passengerEmail ? sanitizeEmail(parsed.data.passengerEmail) : undefined,
+  };
 
   const booking = await db.$transaction(async (tx) => {
     // Get trip details
     const trip = await tx.trip.findUnique({
-      where: { id: data.tripId },
+      where: { id: validData.tripId },
       include: {
         route: {
           include: {
@@ -646,28 +758,28 @@ export async function createBooking(data: BookingFormData) {
     // Verify seats are available
     const seats = await tx.seat.findMany({
       where: {
-        tripId: data.tripId,
-        seatNumber: { in: data.seatNumbers },
+        tripId: validData.tripId,
+        seatNumber: { in: validData.seatNumbers },
         status: 'Available',
       },
     });
 
-    if (seats.length !== data.seatNumbers.length) {
+    if (seats.length !== validData.seatNumbers.length) {
       throw new Error('Some selected seats are no longer available');
     }
 
-    const totalAmount = trip.price * data.seatNumbers.length;
+    const totalAmount = trip.price * validData.seatNumbers.length;
 
     // Create booking
     const newBooking = await tx.transportBooking.create({
       data: {
         bookingReference: `BK-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
         userId: session.user.id,
-        tripId: data.tripId,
+        tripId: validData.tripId,
         officeId: trip.route.office.id,
-        passengerName: data.passengerName,
-        passengerPhone: data.passengerPhone,
-        passengerEmail: data.passengerEmail || null,
+        passengerName: validData.passengerName,
+        passengerPhone: validData.passengerPhone,
+        passengerEmail: validData.passengerEmail || null,
         totalAmount,
         status: 'Pending',
       },
@@ -676,8 +788,8 @@ export async function createBooking(data: BookingFormData) {
     // Reserve seats
     await tx.seat.updateMany({
       where: {
-        tripId: data.tripId,
-        seatNumber: { in: data.seatNumbers },
+        tripId: validData.tripId,
+        seatNumber: { in: validData.seatNumbers },
       },
       data: {
         status: 'Reserved',
@@ -687,10 +799,10 @@ export async function createBooking(data: BookingFormData) {
 
     // Update available seats count
     await tx.trip.update({
-      where: { id: data.tripId },
+      where: { id: validData.tripId },
       data: {
         availableSeats: {
-          decrement: data.seatNumbers.length,
+          decrement: validData.seatNumbers.length,
         },
       },
     });
@@ -823,7 +935,7 @@ export async function getMyBookings(params?: { page?: number; limit?: number; st
 
   const where = {
     userId: session.user.id,
-    ...(params?.status && { status: params.status as any }),
+    ...(params?.status && { status: params.status as TransportBookingStatus }),
   };
 
   const [bookings, total] = await Promise.all([
@@ -894,7 +1006,7 @@ export async function getOfficeBookings(
 
   const where = {
     officeId,
-    ...(params?.status && { status: params.status as any }),
+    ...(params?.status && { status: params.status as TransportBookingStatus }),
   };
 
   const [bookings, total] = await Promise.all([

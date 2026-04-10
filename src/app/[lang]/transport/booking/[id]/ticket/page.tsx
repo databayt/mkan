@@ -128,7 +128,7 @@ export default function TicketViewPage() {
       {/* Download Button - Hidden when printing */}
       <div className="mb-4 print:hidden">
         <Button onClick={handleDownload} className="w-full">
-          <Download className="h-4 w-4 mr-2" />
+          <Download className="h-4 w-4 me-2" />
           Download Ticket
         </Button>
       </div>

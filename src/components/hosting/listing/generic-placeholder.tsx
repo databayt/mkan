@@ -37,7 +37,7 @@ const GenericPlaceholder = ({ title, description, section }: GenericPlaceholderP
                 This {section} configuration page is currently under development. 
                 You'll be able to manage your {title.toLowerCase()} settings here.
               </p>
-              <div className="bg-blue-50 p-4 rounded-lg text-left">
+              <div className="bg-blue-50 p-4 rounded-lg text-start">
                 <h4 className="font-medium text-blue-900 mb-2">What you'll be able to do:</h4>
                 <ul className="text-sm text-blue-700 space-y-1">
                   <li>• Configure {title.toLowerCase()} settings</li>

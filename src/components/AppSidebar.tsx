@@ -1,3 +1,5 @@
+"use client";
+
 import { usePathname } from "next/navigation";
 import React from "react";
 import {
@@ -25,43 +27,55 @@ import { NAVBAR_HEIGHT } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
-interface AppSidebarProps {
-  userType: "manager" | "tenant" | "office";
-}
+type UserType = "manager" | "tenant" | "office";
 
-const AppSidebar = ({ userType }: AppSidebarProps) => {
+const AppSidebar = () => {
   const pathname = usePathname();
   const { toggleSidebar, open } = useSidebar();
+
+  const isAr = pathname?.startsWith("/ar");
+
+  const userType: UserType = pathname.includes("/offices")
+    ? "office"
+    : pathname.includes("/managers")
+    ? "manager"
+    : "tenant";
 
   const navLinks =
     userType === "manager"
       ? [
-          { icon: Building, label: "Properties", href: "/managers/properties" },
+          { icon: Building, label: isAr ? "العقارات" : "Properties", href: "/managers/properties" },
           {
             icon: FileText,
-            label: "Applications",
+            label: isAr ? "الطلبات" : "Applications",
             href: "/managers/applications",
           },
-          { icon: Settings, label: "Settings", href: "/managers/settings" },
+          { icon: Settings, label: isAr ? "الإعدادات" : "Settings", href: "/managers/settings" },
         ]
       : userType === "office"
       ? [
-          { icon: Bus, label: "Dashboard", href: "/offices" },
-          { icon: Ticket, label: "Bookings", href: "/offices/bookings" },
-          { icon: Calendar, label: "Trips", href: "/offices/trips" },
-          { icon: Settings, label: "Settings", href: "/offices/settings" },
+          { icon: Bus, label: isAr ? "لوحة التحكم" : "Dashboard", href: "/offices" },
+          { icon: Ticket, label: isAr ? "الحجوزات" : "Bookings", href: "/offices/bookings" },
+          { icon: Calendar, label: isAr ? "الرحلات" : "Trips", href: "/offices/trips" },
+          { icon: Settings, label: isAr ? "الإعدادات" : "Settings", href: "/offices/settings" },
         ]
       : [
-          { icon: Heart, label: "Favorites", href: "/tenants/favorites" },
-          { icon: Bus, label: "My Trips", href: "/tenants/trips" },
+          { icon: Heart, label: isAr ? "المفضلة" : "Favorites", href: "/tenants/favorites" },
+          { icon: Bus, label: isAr ? "رحلاتي" : "My Trips", href: "/tenants/trips" },
           {
             icon: FileText,
-            label: "Applications",
+            label: isAr ? "الطلبات" : "Applications",
             href: "/tenants/applications",
           },
-          { icon: Home, label: "Residences", href: "/tenants/residences" },
-          { icon: Settings, label: "Settings", href: "/tenants/settings" },
+          { icon: Home, label: isAr ? "السكن" : "Residences", href: "/tenants/residences" },
+          { icon: Settings, label: isAr ? "الإعدادات" : "Settings", href: "/tenants/settings" },
         ];
+
+  const viewLabels = {
+    manager: isAr ? "عرض المدير" : "Manager View",
+    office: isAr ? "عرض المكتب" : "Office View",
+    tenant: isAr ? "عرض المستأجر" : "Renter View",
+  };
 
   return (
     <Sidebar
@@ -84,7 +98,7 @@ const AppSidebar = ({ userType }: AppSidebarProps) => {
               {open ? (
                 <>
                   <h1 className="text-xl font-bold text-gray-800">
-                    {userType === "manager" ? "Manager View" : userType === "office" ? "Office View" : "Renter View"}
+                    {viewLabels[userType]}
                   </h1>
                   <button
                     className="hover:bg-gray-100 p-2 rounded-md"
@@ -120,7 +134,7 @@ const AppSidebar = ({ userType }: AppSidebarProps) => {
                     isActive
                       ? "bg-gray-100"
                       : "text-gray-600 hover:bg-gray-100",
-                    open ? "text-blue-600" : "ml-[5px]"
+                    open ? "text-blue-600" : "ms-[5px]"
                   )}
                 >
                   <Link href={link.href} className="w-full" scroll={false}>

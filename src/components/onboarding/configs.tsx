@@ -96,7 +96,7 @@ export const HOST_OVERVIEW_CONFIG: StepsOverviewConfig = {
       illustration: (
         <div className="relative w-24 h-24 overflow-hidden">
           <Image
-            src="/airbnb/place.webp"
+            src="/assets/place.webp"
             alt="Place illustration"
             fill
             className="object-contain"
@@ -111,7 +111,7 @@ export const HOST_OVERVIEW_CONFIG: StepsOverviewConfig = {
       illustration: (
         <div className="relative w-24 h-24 overflow-hidden">
           <Image
-            src="/airbnb/stand-out.webp"
+            src="/assets/stand-out.webp"
             alt="Stand out illustration"
             fill
             className="object-contain"
@@ -126,7 +126,7 @@ export const HOST_OVERVIEW_CONFIG: StepsOverviewConfig = {
       illustration: (
         <div className="relative w-24 h-24 overflow-hidden">
           <Image
-            src="/airbnb/publish.png"
+            src="/assets/publish.png"
             alt="Publish illustration"
             fill
             className="object-contain"
@@ -178,7 +178,7 @@ export const TRANSPORT_OVERVIEW_CONFIG_WITH_ILLUSTRATIONS: StepsOverviewConfig =
       illustration: (
         <div className="relative w-24 h-24 overflow-hidden">
           <Image
-            src="/airbnb/transport-office.webp"
+            src="/assets/transport-office.webp"
             alt="Office illustration"
             fill
             className="object-contain"
@@ -193,7 +193,7 @@ export const TRANSPORT_OVERVIEW_CONFIG_WITH_ILLUSTRATIONS: StepsOverviewConfig =
       illustration: (
         <div className="relative w-24 h-24 overflow-hidden">
           <Image
-            src="/airbnb/transport-bus.webp"
+            src="/assets/transport-bus.webp"
             alt="Bus illustration"
             fill
             className="object-contain"
@@ -208,7 +208,7 @@ export const TRANSPORT_OVERVIEW_CONFIG_WITH_ILLUSTRATIONS: StepsOverviewConfig =
       illustration: (
         <div className="relative w-24 h-24 overflow-hidden">
           <Image
-            src="/airbnb/transport-schedule.webp"
+            src="/assets/transport-schedule.webp"
             alt="Schedule illustration"
             fill
             className="object-contain"

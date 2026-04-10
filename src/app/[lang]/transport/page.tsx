@@ -1,10 +1,12 @@
 import { Suspense } from 'react';
-import { Bus, MapPin, Clock, Shield, Ticket } from 'lucide-react';
+import { MapPin, Clock, Shield, Ticket } from 'lucide-react';
 import type { Metadata } from 'next';
 
 import TransportBigSearch from '@/components/transport/search/transport-big-search';
 import TransportHostHero from '@/components/transport/transport-host-hero';
-import Footer from '@/components/row/Footer';
+import { TicketShowcase } from '@/components/transport/ticket/ticket-showcase';
+import { LogoCarousel } from '@/components/transport/logo-carousel';
+import Footer from '@/components/site/footer';
 import { getAssemblyPoints } from '@/lib/actions/transport-actions';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import type { Locale } from '@/components/internationalization/config';
@@ -31,8 +33,12 @@ interface TransportPageProps {
 
 export default async function TransportPage({ params }: TransportPageProps) {
   const { lang } = await params;
-  const dictionary = await getDictionary(lang);
-  const assemblyPoints = await getAssemblyPoints();
+
+  // Parallelize independent data fetches
+  const [dictionary, assemblyPoints] = await Promise.all([
+    getDictionary(lang),
+    getAssemblyPoints(),
+  ]);
   const t = dictionary.transport;
 
   const features = [
@@ -78,13 +84,9 @@ export default async function TransportPage({ params }: TransportPageProps) {
         </div>
 
         {/* Content overlay - on top of video */}
-        <div className="relative z-20 h-screen md:h-[50vh] container flex flex-col justify-between pt-32 pb-0">
+        <div className="relative z-20 h-screen md:h-[50vh] flex flex-col items-center justify-center pt-16 px-4">
           {/* Hero Text */}
-          <div className="text-center max-w-3xl mx-auto mt-8">
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full mb-6">
-              <Bus className="h-5 w-5" />
-              <span className="text-sm font-medium">{t.hero.badge}</span>
-            </div>
+          <div className="text-center max-w-3xl mx-auto mb-12">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white">
               <span className="block">{t.hero.titleLine1}</span>
               <span className="block">{t.hero.titleLine2}</span>
@@ -92,7 +94,7 @@ export default async function TransportPage({ params }: TransportPageProps) {
           </div>
 
           {/* BigSearch Component - at very bottom of video */}
-          <div className="mb-4">
+          <div className="w-full max-w-4xl">
             <Suspense
               fallback={
                 <div className="h-16 bg-white/20 animate-pulse rounded-full max-w-4xl mx-auto" />
@@ -116,6 +118,13 @@ export default async function TransportPage({ params }: TransportPageProps) {
 
         {/* Rest of content below video */}
         <div className="relative z-10 bg-background">
+        </div>
+      </section>
+
+      {/* Logo Carousel */}
+      <section className="py-12 px-4 md:px-8 bg-background">
+        <div className="max-w-6xl mx-auto flex justify-center">
+          <LogoCarousel />
         </div>
       </section>
 
@@ -185,8 +194,19 @@ export default async function TransportPage({ params }: TransportPageProps) {
         </div>
       </section>
 
-      {/* Popular Routes */}
+      {/* Ticket Showcase */}
       <section className="py-16 px-4 md:px-8 bg-background">
+        <div className="max-w-6xl mx-auto text-center">
+          <h2 className="text-3xl font-bold mb-3">{t.ticket.showcaseTitle}</h2>
+          <p className="text-muted-foreground mb-10 max-w-xl mx-auto">
+            {t.ticket.showcaseSubtitle}
+          </p>
+          <TicketShowcase lang={lang} />
+        </div>
+      </section>
+
+      {/* Popular Routes */}
+      <section className="py-16 px-4 md:px-8 bg-muted/30">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">
             {t.routes.title}

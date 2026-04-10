@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Rubik } from 'next/font/google';
 import { getDictionary } from '@/components/internationalization/dictionaries';
+import { DictionaryProvider } from '@/components/internationalization/dictionary-context';
 import { type Locale, localeConfig, i18n } from '@/components/internationalization/config';
 import { Providers } from '../providers';
 import { Toaster } from 'sonner';
@@ -59,15 +60,24 @@ export default async function LocaleLayout({
   const lang = (resolvedParams.lang as Locale) || 'en';
   const config = localeConfig[lang] || localeConfig['en'];
   const isRTL = config.dir === 'rtl';
+  const dictionary = await getDictionary(lang);
 
   return (
     <html lang={lang} dir={config.dir} suppressHydrationWarning>
       <body
         className={`${isRTL ? rubik.className : inter.className} ${inter.variable} ${rubik.variable} antialiased`}
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background focus:text-foreground focus:border focus:border-border focus:rounded-md focus:m-2"
+        >
+          {isRTL ? 'تخطي إلى المحتوى الرئيسي' : 'Skip to main content'}
+        </a>
         <Providers>
-          {children}
-          <Toaster richColors />
+          <DictionaryProvider dictionary={dictionary}>
+            {children}
+            <Toaster richColors />
+          </DictionaryProvider>
         </Providers>
       </body>
     </html>

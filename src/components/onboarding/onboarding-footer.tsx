@@ -17,8 +17,8 @@ const OnboardingFooter: React.FC<OnboardingFooterProps> = ({
   onNext,
   onHelp,
   onSave,
-  backLabel = "Back",
-  nextLabel = "Next",
+  backLabel: backLabelProp,
+  nextLabel: nextLabelProp,
   canGoBack = true,
   canGoNext = true,
   nextDisabled = false,
@@ -27,6 +27,9 @@ const OnboardingFooter: React.FC<OnboardingFooterProps> = ({
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
+  const backLabel = backLabelProp ?? (isAr ? "السابق" : "Back");
+  const nextLabel = nextLabelProp ?? (isAr ? "التالي" : "Next");
 
   // Use validation context if hook is provided
   let contextNextDisabled = false;
@@ -137,7 +140,10 @@ const OnboardingFooter: React.FC<OnboardingFooterProps> = ({
     !(customNavigation?.nextDisabled);
 
   // Set the next button label based on current step
-  const actualNextLabel = currentStepSlug === config.finalStep ? config.finalButtonLabel : nextLabel;
+  const finalLabel = isAr && config.finalButtonLabel === 'Create listing' ? 'إنشاء الإعلان' :
+                     isAr && config.finalButtonLabel === 'Publish office' ? 'نشر المكتب' :
+                     config.finalButtonLabel;
+  const actualNextLabel = currentStepSlug === config.finalStep ? finalLabel : nextLabel;
 
   return (
     <footer className="fixed bottom-0 left-0 right-0 bg-white">
@@ -165,7 +171,8 @@ const OnboardingFooter: React.FC<OnboardingFooterProps> = ({
             variant="ghost"
             size="icon"
             onClick={onHelp}
-            className="rounded-full ml-2 w-10 h-10 sm:w-8 sm:h-8"
+            className="rounded-full ms-2 w-10 h-10 sm:w-8 sm:h-8"
+            aria-label="Help"
           >
             <HelpCircle className="h-5 w-5 sm:h-6 sm:w-6" />
           </Button>
@@ -174,6 +181,7 @@ const OnboardingFooter: React.FC<OnboardingFooterProps> = ({
             size="icon"
             onClick={onSave}
             className="rounded-full w-10 h-10 sm:w-8 sm:h-8"
+            aria-label="Save progress"
           >
             <Bookmark className="h-5 w-5 sm:h-6 sm:w-6" />
           </Button>

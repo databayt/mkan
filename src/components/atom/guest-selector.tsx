@@ -1,6 +1,6 @@
 "use client"
 
-import { Counter } from "@/components/atom"
+import { Counter } from "@/components/atom/counter"
 
 interface GuestData {
   adults: number

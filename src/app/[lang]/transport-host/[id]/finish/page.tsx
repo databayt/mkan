@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { useTransportHostValidation } from '@/components/onboarding';
+import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
 import {
   publishTransportOffice,
@@ -202,7 +202,7 @@ const FinishPage = () => {
               <button
                 key={step.name}
                 onClick={() => handleStepClick(step.link)}
-                className="w-full p-4 rounded-lg border bg-background text-left hover:border-primary/50 transition-colors"
+                className="w-full p-4 rounded-lg border bg-background text-start hover:border-primary/50 transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -278,7 +278,7 @@ const FinishPage = () => {
             >
               {isPublishing ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white me-2"></div>
                   Publishing...
                 </>
               ) : (

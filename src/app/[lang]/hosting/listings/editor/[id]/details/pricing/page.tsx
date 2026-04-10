@@ -38,7 +38,7 @@ const PricingPage = async ({ params }: PageProps) => {
                   id="price"
                   type="number"
                   placeholder="0"
-                  className="pl-8"
+                  className="ps-8"
                 />
               </div>
             </div>
@@ -63,7 +63,7 @@ const PricingPage = async ({ params }: PageProps) => {
                   <span>$100</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Airbnb service fee</span>
+                  <span>Mkan service fee</span>
                   <span>$14</span>
                 </div>
                 <div className="flex justify-between font-medium border-t pt-2">

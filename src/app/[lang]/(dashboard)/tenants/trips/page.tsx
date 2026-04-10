@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Home, Bus, Calendar, MapPin, Clock, Download, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { getMyBookings } from '@/lib/actions/transport-actions';
 
 interface TransportBooking {
@@ -42,6 +43,8 @@ interface TransportBooking {
 }
 
 const TripsPage = () => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [transportBookings, setTransportBookings] = useState<TransportBooking[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -96,35 +99,35 @@ const TripsPage = () => {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
-        <p className="text-gray-500">View and manage all your bookings</p>
+        <h1 className="text-2xl font-bold text-gray-900">{isAr ? "رحلاتي" : "My Trips"}</h1>
+        <p className="text-gray-500">{isAr ? "عرض وإدارة جميع حجوزاتك" : "View and manage all your bookings"}</p>
       </div>
 
       <Tabs defaultValue="transport" className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="stays" className="flex items-center gap-2">
             <Home className="h-4 w-4" />
-            Stays
+            {isAr ? "الإقامات" : "Stays"}
           </TabsTrigger>
           <TabsTrigger value="transport" className="flex items-center gap-2">
             <Bus className="h-4 w-4" />
-            Transport
+            {isAr ? "النقل" : "Transport"}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="stays" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Rental Stays</CardTitle>
-              <CardDescription>Your property rental bookings</CardDescription>
+              <CardTitle>{isAr ? "الإقامات المستأجرة" : "Rental Stays"}</CardTitle>
+              <CardDescription>{isAr ? "حجوزات استئجار العقارات" : "Your property rental bookings"}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-12 text-gray-500">
                 <Home className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No rental stays yet</p>
-                <p className="text-sm">Browse properties to book your first stay</p>
+                <p>{isAr ? "لا توجد إقامات بعد" : "No rental stays yet"}</p>
+                <p className="text-sm">{isAr ? "تصفح العقارات لحجز إقامتك الأولى" : "Browse properties to book your first stay"}</p>
                 <Button asChild className="mt-4">
-                  <Link href="/search">Browse Properties</Link>
+                  <Link href="/search">{isAr ? "تصفح العقارات" : "Browse Properties"}</Link>
                 </Button>
               </div>
             </CardContent>
@@ -137,23 +140,23 @@ const TripsPage = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                Upcoming Trips
+                {isAr ? "الرحلات القادمة" : "Upcoming Trips"}
               </CardTitle>
-              <CardDescription>Your upcoming bus tickets</CardDescription>
+              <CardDescription>{isAr ? "تذاكر الحافلات القادمة" : "Your upcoming bus tickets"}</CardDescription>
             </CardHeader>
             <CardContent>
               {upcomingTransport.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Bus className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No upcoming trips</p>
+                  <p>{isAr ? "لا توجد رحلات قادمة" : "No upcoming trips"}</p>
                   <Button asChild className="mt-4">
-                    <Link href="/transport">Book a Trip</Link>
+                    <Link href="/transport">{isAr ? "احجز رحلة" : "Book a Trip"}</Link>
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {upcomingTransport.map((booking) => (
-                    <TransportBookingCard key={booking.id} booking={booking} getStatusColor={getStatusColor} />
+                    <TransportBookingCard key={booking.id} booking={booking} getStatusColor={getStatusColor} isAr={isAr} />
                   ))}
                 </div>
               )}
@@ -166,14 +169,14 @@ const TripsPage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5" />
-                  Past Trips
+                  {isAr ? "الرحلات السابقة" : "Past Trips"}
                 </CardTitle>
-                <CardDescription>Your completed or cancelled trips</CardDescription>
+                <CardDescription>{isAr ? "الرحلات المكتملة أو الملغاة" : "Your completed or cancelled trips"}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {pastTransport.map((booking) => (
-                    <TransportBookingCard key={booking.id} booking={booking} getStatusColor={getStatusColor} isPast />
+                    <TransportBookingCard key={booking.id} booking={booking} getStatusColor={getStatusColor} isPast isAr={isAr} />
                   ))}
                 </div>
               </CardContent>
@@ -189,16 +192,17 @@ interface TransportBookingCardProps {
   booking: TransportBooking;
   getStatusColor: (status: string) => string;
   isPast?: boolean;
+  isAr?: boolean;
 }
 
-const TransportBookingCard = ({ booking, getStatusColor, isPast }: TransportBookingCardProps) => {
+const TransportBookingCard = ({ booking, getStatusColor, isPast, isAr }: TransportBookingCardProps) => {
   return (
     <div className={`border rounded-lg p-4 ${isPast ? 'opacity-75' : ''}`}>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Badge className={getStatusColor(booking.status)}>{booking.status}</Badge>
-            <span className="text-sm text-gray-500">Ref: {booking.bookingReference}</span>
+            <span className="text-sm text-gray-500">{isAr ? "المرجع" : "Ref"}: {booking.bookingReference}</span>
           </div>
 
           <div className="flex items-center gap-2 text-lg font-medium">
@@ -218,7 +222,7 @@ const TransportBookingCard = ({ booking, getStatusColor, isPast }: TransportBook
               {booking.trip.departureTime}
             </div>
             <div>
-              Seats: {booking._count.seats}
+              {isAr ? "المقاعد" : "Seats"}: {booking._count.seats}
             </div>
           </div>
 
@@ -228,19 +232,19 @@ const TransportBookingCard = ({ booking, getStatusColor, isPast }: TransportBook
         </div>
 
         <div className="flex flex-col items-end gap-2">
-          <div className="text-xl font-bold">SDG {booking.totalAmount.toLocaleString()}</div>
+          <div className="text-xl font-bold">{isAr ? `${booking.totalAmount.toLocaleString()} ج.س` : `SDG ${booking.totalAmount.toLocaleString()}`}</div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild>
               <Link href={`/transport/booking/${booking.id}`}>
-                <Eye className="h-4 w-4 mr-1" />
-                View
+                <Eye className="h-4 w-4 me-1" />
+                {isAr ? "عرض" : "View"}
               </Link>
             </Button>
             {!isPast && booking.status === 'Confirmed' && (
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/transport/booking/${booking.id}/ticket`}>
-                  <Download className="h-4 w-4 mr-1" />
-                  Ticket
+                  <Download className="h-4 w-4 me-1" />
+                  {isAr ? "التذكرة" : "Ticket"}
                 </Link>
               </Button>
             )}

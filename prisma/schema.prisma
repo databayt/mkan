@@ -60,6 +60,98 @@ model AssemblyPoint {
   routesAsDestination Route[]           @relation("Route_destinationIdToAssemblyPoint")
   routesAsOrigin      Route[]           @relation("Route_originIdToAssemblyPoint")
   transportOffices    TransportOffice[]
+  rideDrivers         RideDriver[]
+}
+
+// ─── Homes Vertical ─────────────────────────────────────────────────────────
+
+model Booking {
+  id              Int           @id @default(autoincrement())
+  listingId       Int
+  guestId         String
+  checkIn         DateTime
+  checkOut        DateTime
+  guestCount      Int
+  nightlyRate     Float
+  nightsCount     Int
+  subtotal        Float
+  cleaningFee     Float         @default(0)
+  serviceFee      Float         @default(0)
+  weeklyDiscount  Float         @default(0)
+  monthlyDiscount Float         @default(0)
+  totalPrice      Float
+  status          BookingStatus @default(Pending)
+  specialRequests String?
+  confirmedAt     DateTime?
+  cancelledAt     DateTime?
+  checkedInAt     DateTime?
+  checkedOutAt    DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id])
+  guest   User    @relation(fields: [guestId], references: [id])
+  review  Review?
+
+  @@index([listingId])
+  @@index([guestId])
+  @@index([status])
+  @@index([listingId, checkIn, checkOut])
+}
+
+model Review {
+  id            Int       @id @default(autoincrement())
+  listingId     Int
+  bookingId     Int       @unique
+  reviewerId    String
+  rating        Int
+  comment       String?
+  cleanliness   Float?
+  accuracy      Float?
+  checkIn       Float?
+  communication Float?
+  location      Float?
+  value         Float?
+  hostReply     String?
+  hostRepliedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  listing  Listing @relation(fields: [listingId], references: [id])
+  booking  Booking @relation(fields: [bookingId], references: [id])
+  reviewer User    @relation(fields: [reviewerId], references: [id])
+
+  @@index([listingId])
+  @@index([reviewerId])
+}
+
+model BlockedDate {
+  id        Int      @id @default(autoincrement())
+  listingId Int
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, startDate, endDate])
+}
+
+model SeasonalPricing {
+  id            Int      @id @default(autoincrement())
+  listingId     Int
+  name          String?
+  startDate     DateTime
+  endDate       DateTime
+  pricePerNight Float
+  minStay       Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, startDate, endDate])
 }
 
 model Bus {
@@ -98,39 +190,57 @@ model Lease {
 }
 
 model Listing {
-  id                Int           @id @default(autoincrement())
-  title             String?
-  description       String?
-  pricePerNight     Float?
-  securityDeposit   Float?
-  applicationFee    Float?
-  photoUrls         String[]      @default([])
-  amenities         Amenity[]     @default([])
-  highlights        Highlight[]   @default([])
-  isPetsAllowed     Boolean       @default(false)
-  isParkingIncluded Boolean       @default(false)
-  bedrooms          Int?
-  bathrooms         Float?
-  squareFeet        Int?
-  guestCount        Int           @default(2)
-  propertyType      PropertyType?
-  postedDate        DateTime?
-  averageRating     Float?        @default(0)
-  numberOfReviews   Int?          @default(0)
-  draft             Boolean       @default(true)
-  isPublished       Boolean       @default(false)
-  instantBook       Boolean       @default(false)
-  locationId        Int?
-  hostId            String
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id                 Int                 @id @default(autoincrement())
+  title              String?
+  description        String?
+  pricePerNight      Float?
+  securityDeposit    Float?
+  applicationFee     Float?
+  photoUrls          String[]            @default([])
+  amenities          Amenity[]           @default([])
+  highlights         Highlight[]         @default([])
+  isPetsAllowed      Boolean             @default(false)
+  isParkingIncluded  Boolean             @default(false)
+  bedrooms           Int?
+  bathrooms          Float?
+  squareFeet         Int?
+  guestCount         Int                 @default(2)
+  propertyType       PropertyType?
+  postedDate         DateTime?
+  averageRating      Float?              @default(0)
+  numberOfReviews    Int?                @default(0)
+  draft              Boolean             @default(true)
+  isPublished        Boolean             @default(false)
+  instantBook        Boolean             @default(false)
+  locationId         Int?
+  hostId             String
+  // Homes vertical fields
+  cleaningFee        Float?              @default(0)
+  weeklyDiscount     Float?              @default(0)
+  monthlyDiscount    Float?              @default(0)
+  cancellationPolicy CancellationPolicy? @default(Flexible)
+  checkInTime        String?
+  checkOutTime       String?
+  checkInMethod      CheckInMethod?
+  houseRules         Json?
+  minStay            Int?                @default(1)
+  maxStay            Int?                @default(365)
+  advanceNotice      Int?                @default(1)
+  preparationTime    Int?                @default(0)
+  availabilityWindow Int?                @default(12)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
-  location    Location?     @relation(fields: [locationId], references: [id])
-  host        User          @relation(fields: [hostId], references: [id])
-  leases      Lease[]
-  applications Application[]
-  favoritedBy Tenant[]      @relation("TenantFavorites")
-  tenants     Tenant[]      @relation("TenantProperties")
+  location        Location?         @relation(fields: [locationId], references: [id])
+  host            User              @relation(fields: [hostId], references: [id])
+  leases          Lease[]
+  applications    Application[]
+  favoritedBy     Tenant[]          @relation("TenantFavorites")
+  tenants         Tenant[]          @relation("TenantProperties")
+  bookings        Booking[]
+  reviews         Review[]
+  blockedDates    BlockedDate[]
+  seasonalPricing SeasonalPricing[]
 
   @@index([hostId])
   @@index([isPublished, draft])
@@ -175,6 +285,70 @@ model Payment {
   @@index([paymentStatus])
   @@index([dueDate])
 }
+
+// ─── Rides Vertical ─────────────────────────────────────────────────────────
+
+model RideDriver {
+  id              Int            @id @default(autoincrement())
+  userId          String         @unique
+  vehicleType     VehicleType
+  vehiclePlate    String
+  vehicleModel    String?
+  vehicleColor    String?
+  assemblyPointId Int?
+  isActive        Boolean        @default(true)
+  isVerified      Boolean        @default(false)
+  rating          Float          @default(5.0)
+  reviewCount     Int            @default(0)
+  phone           String
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id])
+  assemblyPoint AssemblyPoint? @relation(fields: [assemblyPointId], references: [id])
+  rides         Ride[]
+
+  @@index([assemblyPointId])
+  @@index([isActive, isVerified])
+}
+
+model Ride {
+  id                  Int               @id @default(autoincrement())
+  transportBookingId  Int?              @unique
+  passengerId         String
+  passengerName       String
+  passengerPhone      String
+  driverId            Int?
+  pickupAddress       String
+  pickupLat           Float
+  pickupLng           Float
+  dropoffAddress      String
+  dropoffLat          Float
+  dropoffLng          Float
+  vehicleType         VehicleType
+  scheduledTime       DateTime
+  estimatedDuration   Int?
+  estimatedDistance    Float?
+  price               Float
+  status              RideStatus        @default(Requested)
+  acceptedAt          DateTime?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  cancelledAt         DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  transportBooking TransportBooking? @relation(fields: [transportBookingId], references: [id])
+  passenger        User              @relation("RidePassenger", fields: [passengerId], references: [id])
+  driver           RideDriver?       @relation(fields: [driverId], references: [id])
+
+  @@index([passengerId])
+  @@index([driverId])
+  @@index([status])
+  @@index([scheduledTime])
+}
+
+// ─── Transport Vertical ─────────────────────────────────────────────────────
 
 model Route {
   id            Int             @id @default(autoincrement())
@@ -222,16 +396,16 @@ model Session {
 }
 
 model Tenant {
-  id          Int           @id @default(autoincrement())
-  userId      String        @unique
-  name        String
-  email       String
-  phoneNumber String
+  id           Int           @id @default(autoincrement())
+  userId       String        @unique
+  name         String
+  email        String
+  phoneNumber  String
   applications Application[]
-  leases      Lease[]
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  favorites   Listing[]     @relation("TenantFavorites")
-  properties  Listing[]     @relation("TenantProperties")
+  leases       Lease[]
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favorites    Listing[]     @relation("TenantFavorites")
+  properties   Listing[]     @relation("TenantProperties")
 }
 
 model TransportBooking {
@@ -257,6 +431,7 @@ model TransportBooking {
   trip             Trip                   @relation(fields: [tripId], references: [id])
   user             User                   @relation(fields: [userId], references: [id])
   payments         TransportPayment[]
+  ride             Ride?
 
   @@index([userId])
   @@index([status])
@@ -359,6 +534,12 @@ model User {
   transportBookings     TransportBooking[]
   transportOffices      TransportOffice[]
   twoFactorConfirmation TwoFactorConfirmation?
+  // Homes
+  bookings              Booking[]
+  reviews               Review[]
+  // Rides
+  rideDriver            RideDriver?
+  ridesAsPassenger      Ride[]                 @relation("RidePassenger")
 }
 
 model VerificationToken {
@@ -369,6 +550,8 @@ model VerificationToken {
 
   @@unique([email, token])
 }
+
+// ─── Enums ──────────────────────────────────────────────────────────────────
 
 enum Amenity {
   WasherDryer
@@ -392,6 +575,14 @@ enum ApplicationStatus {
   Approved
 }
 
+enum BookingStatus {
+  Pending
+  Confirmed
+  Cancelled
+  Completed
+  Declined
+}
+
 enum BusAmenity {
   AirConditioning
   WiFi
@@ -402,6 +593,21 @@ enum BusAmenity {
   Entertainment
   Luggage
   Reclining
+}
+
+enum CancellationPolicy {
+  Flexible
+  Moderate
+  Firm
+  Strict
+  NonRefundable
+}
+
+enum CheckInMethod {
+  SelfCheckIn
+  InPerson
+  Lockbox
+  SmartLock
 }
 
 enum Highlight {
@@ -436,6 +642,17 @@ enum PropertyType {
   Villa
   Townhouse
   Cottage
+}
+
+enum RideStatus {
+  Requested
+  Accepted
+  EnRoute
+  Arrived
+  InProgress
+  Completed
+  Cancelled
+  NoShow
 }
 
 enum SeatStatus {
@@ -473,4 +690,11 @@ enum UserRole {
   USER
   MANAGER
   TENANT
+  DRIVER
+}
+
+enum VehicleType {
+  Car
+  Tuktuk
+  Van
 }

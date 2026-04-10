@@ -1,10 +1,27 @@
 "use server";
 
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { PaymentStatus } from "@prisma/client";
 import { logger } from "@/lib/logger";
+
+const createPaymentSchema = z.object({
+  leaseId: z.number().int().positive(),
+  amountDue: z.number().positive(),
+  dueDate: z.coerce.date(),
+});
+
+const processPaymentSchema = z.object({
+  paymentId: z.number().int().positive(),
+  amountPaid: z.number().positive(),
+  paymentMethod: z.string().optional(),
+  stripePaymentIntentId: z.string().optional(),
+});
+
+const paymentIdSchema = z.number().int().positive();
+const leaseIdSchema = z.number().int().positive();
 
 // ============================================
 // TYPES
@@ -41,14 +58,19 @@ export interface PaymentSummary {
 // CREATE PAYMENT
 // ============================================
 
-export async function createPayment(data: CreatePaymentData) {
+export async function createPayment(data: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error("You must be logged in to create a payment");
   }
 
-  const { leaseId, amountDue, dueDate } = data;
+  const parsed = createPaymentSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error("Invalid payment data");
+  }
+
+  const { leaseId, amountDue, dueDate } = parsed.data;
 
   try {
     // Verify lease exists and user has permission
@@ -96,16 +118,21 @@ export async function createPayment(data: CreatePaymentData) {
 // GET PAYMENTS
 // ============================================
 
-export async function getPayment(paymentId: number) {
+export async function getPayment(paymentId: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error("You must be logged in to view payment details");
   }
 
+  const parsedId = paymentIdSchema.safeParse(paymentId);
+  if (!parsedId.success) {
+    throw new Error("Invalid payment ID");
+  }
+
   try {
     const payment = await db.payment.findUnique({
-      where: { id: paymentId },
+      where: { id: parsedId.data },
       include: {
         lease: {
           include: {
@@ -149,17 +176,22 @@ export async function getPayment(paymentId: number) {
   }
 }
 
-export async function getLeasePayments(leaseId: number) {
+export async function getLeasePayments(leaseId: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error("You must be logged in to view payments");
   }
 
+  const parsedId = leaseIdSchema.safeParse(leaseId);
+  if (!parsedId.success) {
+    throw new Error("Invalid lease ID");
+  }
+
   try {
     // Verify lease access
     const lease = await db.lease.findUnique({
-      where: { id: leaseId },
+      where: { id: parsedId.data },
       include: {
         listing: {
           select: { hostId: true },
@@ -176,7 +208,7 @@ export async function getLeasePayments(leaseId: number) {
     }
 
     const payments = await db.payment.findMany({
-      where: { leaseId },
+      where: { leaseId: parsedId.data },
       orderBy: { dueDate: "asc" },
     });
 
@@ -249,14 +281,19 @@ export async function getUserPayments(userId?: string) {
 // PROCESS PAYMENT
 // ============================================
 
-export async function processPayment(data: ProcessPaymentData) {
+export async function processPayment(data: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error("You must be logged in to process a payment");
   }
 
-  const { paymentId, amountPaid } = data;
+  const parsed = processPaymentSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error("Invalid payment data");
+  }
+
+  const { paymentId, amountPaid } = parsed.data;
 
   try {
     const payment = await db.payment.findUnique({
@@ -319,16 +356,22 @@ export async function processPayment(data: ProcessPaymentData) {
 // UPDATE PAYMENT STATUS
 // ============================================
 
-export async function updatePaymentStatus(paymentId: number, status: PaymentStatus) {
+export async function updatePaymentStatus(paymentId: unknown, status: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error("You must be logged in to update payment status");
   }
 
+  const parsedId = paymentIdSchema.safeParse(paymentId);
+  const parsedStatus = z.nativeEnum(PaymentStatus).safeParse(status);
+  if (!parsedId.success || !parsedStatus.success) {
+    throw new Error("Invalid input");
+  }
+
   try {
     const payment = await db.payment.findUnique({
-      where: { id: paymentId },
+      where: { id: parsedId.data },
       include: {
         lease: {
           include: {
@@ -355,8 +398,8 @@ export async function updatePaymentStatus(paymentId: number, status: PaymentStat
     }
 
     const updatedPayment = await db.payment.update({
-      where: { id: paymentId },
-      data: { paymentStatus: status },
+      where: { id: parsedId.data },
+      data: { paymentStatus: parsedStatus.data },
     });
 
     revalidatePath(`/leases/${payment.leaseId}`);
@@ -462,16 +505,21 @@ export async function getPaymentSummary(userId?: string): Promise<PaymentSummary
 // GENERATE RECURRING PAYMENTS
 // ============================================
 
-export async function generateMonthlyPayments(leaseId: number) {
+export async function generateMonthlyPayments(leaseId: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error("You must be logged in");
   }
 
+  const parsedId = leaseIdSchema.safeParse(leaseId);
+  if (!parsedId.success) {
+    throw new Error("Invalid lease ID");
+  }
+
   try {
     const lease = await db.lease.findUnique({
-      where: { id: leaseId },
+      where: { id: parsedId.data },
       include: {
         listing: {
           select: { hostId: true },
@@ -497,7 +545,7 @@ export async function generateMonthlyPayments(leaseId: number) {
     while (currentDate <= endDate) {
       const payment = await db.payment.create({
         data: {
-          leaseId,
+          leaseId: parsedId.data,
           amountDue: lease.rent,
           amountPaid: 0,
           dueDate: new Date(currentDate),
@@ -511,7 +559,7 @@ export async function generateMonthlyPayments(leaseId: number) {
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
 
-    revalidatePath(`/leases/${leaseId}`);
+    revalidatePath(`/leases/${parsedId.data}`);
 
     return { success: true, payments };
   } catch (error) {
@@ -585,16 +633,21 @@ export async function processRefund(data: RefundData) {
 // INVOICE GENERATION
 // ============================================
 
-export async function generateInvoice(paymentId: number) {
+export async function generateInvoice(paymentId: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error("You must be logged in to generate an invoice");
   }
 
+  const parsedId = paymentIdSchema.safeParse(paymentId);
+  if (!parsedId.success) {
+    throw new Error("Invalid payment ID");
+  }
+
   try {
     const payment = await db.payment.findUnique({
-      where: { id: paymentId },
+      where: { id: parsedId.data },
       include: {
         lease: {
           include: {

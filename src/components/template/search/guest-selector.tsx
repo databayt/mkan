@@ -1,6 +1,7 @@
 "use client"
 
-import { Counter } from "@/components/atom"
+import { usePathname } from "next/navigation"
+import { Counter } from "@/components/atom/counter"
 import { GUEST_LIMITS } from "./constant"
 
 interface GuestSelectorProps {
@@ -16,14 +17,17 @@ export default function GuestSelectorDropdown({
   guests,
   onGuestChange
 }: GuestSelectorProps) {
+  const pathname = usePathname()
+  const isAr = pathname?.startsWith("/ar")
+
   return (
     <>
-      <h3 className="text-lg font-semibold mb-4">Who's coming?</h3>
+      <h3 className="text-lg font-semibold mb-4">{isAr ? "من سيحضر؟" : "Who's coming?"}</h3>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <div className="font-medium">Adults</div>
-            <div className="text-sm text-gray-500">Ages 13 or above</div>
+            <div className="font-medium">{isAr ? "بالغون" : "Adults"}</div>
+            <div className="text-sm text-gray-500">{isAr ? "13 سنة فأكثر" : "Ages 13 or above"}</div>
           </div>
           <Counter
             value={guests.adults}
@@ -37,8 +41,8 @@ export default function GuestSelectorDropdown({
         
         <div className="flex items-center justify-between">
           <div>
-            <div className="font-medium">Children</div>
-            <div className="text-sm text-gray-500">Ages 2-12</div>
+            <div className="font-medium">{isAr ? "أطفال" : "Children"}</div>
+            <div className="text-sm text-gray-500">{isAr ? "2-12 سنة" : "Ages 2-12"}</div>
           </div>
           <Counter
             value={guests.children}
@@ -52,8 +56,8 @@ export default function GuestSelectorDropdown({
         
         <div className="flex items-center justify-between">
           <div>
-            <div className="font-medium">Infants</div>
-            <div className="text-sm text-gray-500">Under 2</div>
+            <div className="font-medium">{isAr ? "رضّع" : "Infants"}</div>
+            <div className="text-sm text-gray-500">{isAr ? "أقل من سنتين" : "Under 2"}</div>
           </div>
           <Counter
             value={guests.infants}

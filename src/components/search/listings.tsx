@@ -1,7 +1,8 @@
 "use client"
 
 import React from 'react'
-import { useAppSelector } from '@/state/redux'
+import { usePathname } from 'next/navigation'
+import { useGlobalStore } from '@/state/filters'
 import { PropertyCard } from '@/components/site/property/card'
 
 interface ListingsProps {
@@ -9,8 +10,10 @@ interface ListingsProps {
 }
 
 const Listings = ({ properties }: ListingsProps) => {
-  const viewMode = useAppSelector((state) => state.global.viewMode)
-  const filters = useAppSelector((state) => state.global.filters)
+  const pathname = usePathname()
+  const isAr = pathname?.startsWith("/ar")
+  const viewMode = useGlobalStore((s) => s.viewMode)
+  const filters = useGlobalStore((s) => s.filters)
 
   const handleFavoriteToggle = async (propertyId: string, isFavorite: boolean) => {
     // TODO: Implement favorites functionality with server actions
@@ -25,12 +28,12 @@ const Listings = ({ properties }: ListingsProps) => {
     return (
       <div className="w-full p-4">
         <h3 className="text-sm px-4 font-bold">
-          0 <span className="text-gray-700 font-normal">Places in {filters.location}</span>
+          0 <span className="text-gray-700 font-normal">{isAr ? `أماكن في ${filters.location}` : `Places in ${filters.location}`}</span>
         </h3>
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No properties found</h3>
-            <p className="text-gray-600">Try adjusting your search filters to see more results.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{isAr ? "لا توجد عقارات" : "No properties found"}</h3>
+            <p className="text-gray-600">{isAr ? "حاول تعديل فلاتر البحث لرؤية المزيد من النتائج." : "Try adjusting your search filters to see more results."}</p>
           </div>
         </div>
       </div>
@@ -57,7 +60,7 @@ const Listings = ({ properties }: ListingsProps) => {
       <h3 className="text-sm px-4 font-bold mb-4">
         {properties.length}{' '}
         <span className="text-gray-700 font-normal">
-          Places in {filters.location}
+          {isAr ? `أماكن في ${filters.location}` : `Places in ${filters.location}`}
         </span>
       </h3>
       

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -23,6 +24,9 @@ const itemVariants = {
 };
 
 const FeaturesSection = () => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
+
   return (
     <motion.div
       initial="hidden"
@@ -36,7 +40,7 @@ const FeaturesSection = () => {
           variants={itemVariants}
           className="text-3xl font-bold text-center mb-12 w-full sm:w-2/3 mx-auto"
         >
-          Quickly find the home you want using our effective search filters!
+          {isAr ? "ابحث بسرعة عن المنزل الذي تريده باستخدام فلاتر البحث الفعالة!" : "Quickly find the home you want using our effective search filters!"}
         </motion.h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 xl:gap-16">
           {[0, 1, 2].map((index) => (
@@ -44,20 +48,34 @@ const FeaturesSection = () => {
               <FeatureCard
                 imageSrc={`/landing-search${3 - index}.png`}
                 title={
-                  [
-                    "Trustworthy and Verified Listings",
-                    "Browse Rental Listings with Ease",
-                    "Simplify Your Rental Search with Advanced",
-                  ][index] ?? "Feature"
+                  (isAr
+                    ? [
+                        "إعلانات موثوقة ومُوثّقة",
+                        "تصفح إعلانات الإيجار بسهولة",
+                        "بسّط بحثك عن الإيجار بفلاتر متقدمة",
+                      ]
+                    : [
+                        "Trustworthy and Verified Listings",
+                        "Browse Rental Listings with Ease",
+                        "Simplify Your Rental Search with Advanced",
+                      ]
+                  )[index] ?? (isAr ? "ميزة" : "Feature")
                 }
                 description={
-                  [
-                    "Discover the best rental options with user reviews and ratings.",
-                    "Get access to user reviews and ratings for a better understanding of rental options.",
-                    "Find trustworthy and verified rental listings to ensure a hassle-free experience.",
-                  ][index] ?? ""
+                  (isAr
+                    ? [
+                        "اكتشف أفضل خيارات الإيجار مع تقييمات ومراجعات المستخدمين.",
+                        "احصل على تقييمات ومراجعات المستخدمين لفهم أفضل لخيارات الإيجار.",
+                        "ابحث عن إعلانات إيجار موثوقة ومُوثّقة لضمان تجربة سلسة.",
+                      ]
+                    : [
+                        "Discover the best rental options with user reviews and ratings.",
+                        "Get access to user reviews and ratings for a better understanding of rental options.",
+                        "Find trustworthy and verified rental listings to ensure a hassle-free experience.",
+                      ]
+                  )[index] ?? ""
                 }
-                linkText={["Explore", "Search", "Discover"][index] ?? "Learn more"}
+                linkText={(isAr ? ["استكشف", "بحث", "اكتشف"] : ["Explore", "Search", "Discover"])[index] ?? (isAr ? "اعرف المزيد" : "Learn more")}
                 linkHref={["/explore", "/search", "/discover"][index] ?? "/"}
               />
             </motion.div>

@@ -2,7 +2,7 @@
 import React, { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useAppSelector } from "@/state/redux";
+import { useGlobalStore } from "@/state/filters";
 import { useGetPropertiesQuery } from "@/state/api";
 import { Property } from "@/types/prismaTypes";
 
@@ -19,7 +19,7 @@ interface PropertyWithLocation extends Property {
 
 const Map = () => {
   const mapContainerRef = useRef(null);
-  const filters = useAppSelector((state) => state.global.filters);
+  const filters = useGlobalStore((s) => s.filters);
   const {
     data: properties,
     isLoading,

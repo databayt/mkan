@@ -1,5 +1,5 @@
 import React from 'react'
-import { Icon } from "@iconify/react";
+import { Github } from "lucide-react";
 import Link from 'next/link'
 
 interface GithubButtonProps {
@@ -10,7 +10,7 @@ const GithubButton = ({ url }: GithubButtonProps) => {
         <Link
             href={url} 
             className='absolute top-8 right-10 reveal-less'>
-            <Icon icon="bi:github" width={30} />
+            <Github size={30} />
         </Link>
     )
 }

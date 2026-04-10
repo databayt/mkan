@@ -47,7 +47,7 @@ const ApplicationCard = ({
                 {application.property.name}
               </h2>
               <div className="flex items-center mb-2">
-                <MapPin className="w-5 h-5 mr-1" />
+                <MapPin className="w-5 h-5 me-1" />
                 <span>{application.property.location ? `${application.property.location.city}, ${application.property.location.country}` : 'Location not specified'}</span>
               </div>
             </div>
@@ -106,17 +106,17 @@ const ApplicationCard = ({
                 alt={contactPerson.name}
                 width={40}
                 height={40}
-                className="rounded-full mr-2 min-w-[40px] min-h-[40px]"
+                className="rounded-full me-2 min-w-[40px] min-h-[40px]"
               />
             </div>
             <div className="flex flex-col gap-2">
               <div className="font-semibold">{contactPerson.name}</div>
               <div className="text-sm flex items-center text-primary-600">
-                <PhoneCall className="w-5 h-5 mr-2" />
+                <PhoneCall className="w-5 h-5 me-2" />
                 {contactPerson.phoneNumber}
               </div>
               <div className="text-sm flex items-center text-primary-600">
-                <Mail className="w-5 h-5 mr-2" />
+                <Mail className="w-5 h-5 me-2" />
                 {contactPerson.email}
               </div>
             </div>

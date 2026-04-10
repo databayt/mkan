@@ -29,7 +29,7 @@ const Loading: React.FC<LoadingProps> = ({
 
   if (variant === "fullscreen") {
     return (
-      <div className={cn("fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm", className)}>
+      <div className={cn("fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm", className)} role="status" aria-label={text || "Loading"}>
         <div className="flex flex-col items-center gap-4">
           {spinner}
           {text && <p className="text-sm text-muted-foreground">{text}</p>}
@@ -40,7 +40,7 @@ const Loading: React.FC<LoadingProps> = ({
 
   if (variant === "overlay") {
     return (
-      <div className={cn("absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm", className)}>
+      <div className={cn("absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm", className)} role="status" aria-label={text || "Loading"}>
         <div className="flex flex-col items-center gap-4">
           {spinner}
           {text && <p className="text-sm text-muted-foreground">{text}</p>}
@@ -51,7 +51,7 @@ const Loading: React.FC<LoadingProps> = ({
 
   // inline variant
   return (
-    <div className={cn("flex flex-col items-center gap-2", className)}>
+    <div className={cn("flex flex-col items-center gap-2", className)} role="status" aria-label={text || "Loading"}>
       {spinner}
       {text && <p className="text-sm text-muted-foreground">{text}</p>}
     </div>
