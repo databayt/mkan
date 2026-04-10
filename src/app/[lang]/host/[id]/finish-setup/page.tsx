@@ -3,8 +3,9 @@
 export const dynamic = 'force-dynamic';
 
 import React from 'react';
-import { StepHeader } from '@/components/host';
-import { useHostValidation } from '@/components/onboarding';
+import { usePathname } from 'next/navigation';
+import StepHeader from '@/components/host/step-header';
+import { useHostValidation } from '@/context/onboarding-validation-context';
 import { ListingProvider, useListing } from '@/components/host/use-listing';
 
 interface FinishSetupPageProps {
@@ -12,6 +13,8 @@ interface FinishSetupPageProps {
 }
 
 const FinishSetupPageContent = ({ params }: FinishSetupPageProps) => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [id, setId] = React.useState<string>('');
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const { enableNext } = useHostValidation();
@@ -73,8 +76,8 @@ const FinishSetupPageContent = ({ params }: FinishSetupPageProps) => {
       <div className="w-full">
         <StepHeader
           stepNumber={2}
-          title="Finish up and publish"
-          description="Finally, you'll choose booking settings, set up pricing, and publish your listing."
+          title={isAr ? "أكمل وانشر" : "Finish up and publish"}
+          description={isAr ? "أخيراً، ستختار إعدادات الحجز، وتحدد التسعير، وتنشر إعلانك." : "Finally, you'll choose booking settings, set up pricing, and publish your listing."}
           illustration={illustration}
         />
       </div>

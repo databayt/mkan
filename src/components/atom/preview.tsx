@@ -27,7 +27,7 @@
 //                 <div className="flex justify-center items-center">
 //                     <div className="space-y-4 text-center">
 
-//                         <h1 className="flex text-5xl font-bold items-center justify-center"> <span className="text-[34px] pr-2"> 🟨 </span>   Atom </h1>
+//                         <h1 className="flex text-5xl font-bold items-center justify-center"> <span className="text-[34px] pe-2"> 🟨 </span>   Atom </h1>
 //                         <p className=" text-lg font-light">
 //                             A reusable ui components, buit with Shadcn.
 //                         </p>

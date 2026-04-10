@@ -1,6 +1,7 @@
 "use client"
 
 import React from 'react'
+import { usePathname } from 'next/navigation'
 
 interface StepNavigationProps {
   onNext: () => void
@@ -13,13 +14,16 @@ interface StepNavigationProps {
 }
 
 export function StepNavigation(props: StepNavigationProps) {
+  const pathname = usePathname()
+  const isAr = pathname?.startsWith("/ar")
+
   const {
     onNext,
     onPrevious,
     isNextDisabled = false,
     isPreviousDisabled = false,
-    nextLabel = 'Next',
-    previousLabel = 'Back',
+    nextLabel = isAr ? 'التالي' : 'Next',
+    previousLabel = isAr ? 'السابق' : 'Back',
     showPrevious = true,
   } = props
 

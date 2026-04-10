@@ -1,10 +1,25 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_LOGIN_REDIRECT } from "../../../routes";
 
+const translations = {
+  en: {
+    continueWithFacebook: "Continue with Facebook",
+    continueWithGoogle: "Continue with Google",
+  },
+  ar: {
+    continueWithFacebook: "المتابعة مع فيسبوك",
+    continueWithGoogle: "المتابعة مع جوجل",
+  },
+} as const;
+
 export const Social = ({ callbackUrl }: { callbackUrl?: string }) => {
+  const pathname = usePathname();
+  const t = translations[pathname?.startsWith("/ar") ? "ar" : "en"];
+
   const onClick = (provider: "google" | "facebook") => {
     signIn(provider, {
       callbackUrl: callbackUrl || DEFAULT_LOGIN_REDIRECT,
@@ -19,7 +34,7 @@ export const Social = ({ callbackUrl }: { callbackUrl?: string }) => {
         onClick={() => onClick("facebook")}
       >
         <FacebookIcon />
-        Continue with Facebook
+        {t.continueWithFacebook}
       </Button>
 
       <Button
@@ -28,7 +43,7 @@ export const Social = ({ callbackUrl }: { callbackUrl?: string }) => {
         onClick={() => onClick("google")}
       >
         <GoogleIcon />
-        Continue with Google
+        {t.continueWithGoogle}
       </Button>
     </div>
   );

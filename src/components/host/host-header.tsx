@@ -31,6 +31,7 @@ const HostHeader: React.FC<HostHeaderProps> = ({ onHelp, onSave }) => {
             size="icon"
             onClick={onHelp}
             className="rounded-full"
+            aria-label="Help"
           >
             <HelpCircle className="h-4 w-4" />
           </Button>
@@ -39,6 +40,7 @@ const HostHeader: React.FC<HostHeaderProps> = ({ onHelp, onSave }) => {
             size="icon"
             onClick={onSave}
             className="rounded-full"
+            aria-label="Save progress"
           >
             <Bookmark className="h-4 w-4" />
           </Button>

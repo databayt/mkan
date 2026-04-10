@@ -20,7 +20,7 @@ export default function SearchDropdown({
 }: SearchDropdownProps) {
   const positionClasses = {
     "top-full": "absolute top-full left-0 mt-2",
-    "left-full": "absolute top-0 left-full ml-4"
+    "left-full": "absolute top-0 left-full ms-4"
   }
 
   const widthClasses = {

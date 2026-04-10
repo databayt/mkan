@@ -55,6 +55,7 @@ interface BookingDetails {
 export default function TicketViewPage() {
   const params = useParams();
   const router = useRouter();
+  const lang = params.lang as string;
   const bookingId = Number(params.id);
 
   const [booking, setBooking] = useState<BookingDetails | null>(null);
@@ -64,7 +65,8 @@ export default function TicketViewPage() {
   useEffect(() => {
     const fetchBooking = async () => {
       try {
-        const data = await getBooking(bookingId);
+        const raw = await getBooking(bookingId);
+        const data = raw as unknown as BookingDetails | null;
         setBooking(data);
 
         // Generate QR code
@@ -104,7 +106,7 @@ export default function TicketViewPage() {
     return (
       <div className="container mx-auto py-8 px-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-96 bg-gray-200 rounded" />
+          <div className="h-96 bg-muted rounded" />
         </div>
       </div>
     );
@@ -114,7 +116,7 @@ export default function TicketViewPage() {
     return (
       <div className="container mx-auto py-8 px-4 text-center">
         <h1 className="text-2xl font-bold">Ticket not found</h1>
-        <Button onClick={() => router.push('/transport')} className="mt-4">
+        <Button onClick={() => router.push(`/${lang}/transport`)} className="mt-4">
           Back to Transport
         </Button>
       </div>
@@ -126,7 +128,7 @@ export default function TicketViewPage() {
       {/* Download Button - Hidden when printing */}
       <div className="mb-4 print:hidden">
         <Button onClick={handleDownload} className="w-full">
-          <Download className="h-4 w-4 mr-2" />
+          <Download className="h-4 w-4 me-2" />
           Download Ticket
         </Button>
       </div>
@@ -259,7 +261,7 @@ export default function TicketViewPage() {
       <div className="mt-4 text-center print:hidden">
         <Button
           variant="link"
-          onClick={() => router.push(`/transport/booking/${booking.id}`)}
+          onClick={() => router.push(`/${lang}/transport/booking/${booking.id}`)}
         >
           Back to Booking Details
         </Button>

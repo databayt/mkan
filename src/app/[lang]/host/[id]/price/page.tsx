@@ -3,11 +3,11 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { HostStepLayout } from '@/components/host';
+import { useRouter, usePathname } from 'next/navigation';
+import HostStepLayout from '@/components/host/host-step-layout';
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
-import { useHostValidation } from '@/components/onboarding';
+import { useHostValidation } from '@/context/onboarding-validation-context';
 import { ListingProvider, useListing } from '@/components/host/use-listing';
 
 interface PricePageProps {
@@ -16,6 +16,8 @@ interface PricePageProps {
 
 const PricePageContent = ({ params }: PricePageProps) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [id, setId] = React.useState<string>('');
   const { enableNext } = useHostValidation();
   const { listing, updateListingData, loadListing } = useListing();
@@ -84,8 +86,8 @@ const PricePageContent = ({ params }: PricePageProps) => {
 
   return (
     <HostStepLayout
-      title="Now, set a base price"
-      subtitle="Tip: SR158. You may set a weekend price later."
+      title={isAr ? "الآن، حدد سعراً أساسياً" : "Now, set a base price"}
+      subtitle={isAr ? "نصيحة: ر.س١٥٨. يمكنك تحديد سعر عطلة نهاية الأسبوع لاحقاً." : "Tip: SR158. You may set a weekend price later."}
     >
       <div className="flex flex-col items-center">
         {/* Large price display with edit functionality */}
@@ -123,7 +125,7 @@ const PricePageContent = ({ params }: PricePageProps) => {
             />
             {!isFocused && (
               <div 
-                className="ml-4 w-8 h-8 bg-muted rounded-full flex items-center justify-center cursor-pointer hover:bg-accent transition-colors"
+                className="ms-4 w-8 h-8 bg-muted rounded-full flex items-center justify-center cursor-pointer hover:bg-accent transition-colors"
                 onClick={() => {
                   if (inputRef.current) {
                     inputRef.current.focus();
@@ -142,7 +144,7 @@ const PricePageContent = ({ params }: PricePageProps) => {
         {/* Guest price info */}
         <div className="mb-4">
           <Button variant="ghost" className="inline-flex items-center space-x-2 text-muted-foreground hover:text-foreground">
-            <span>Guest price before taxes SR{guestPriceBeforeTaxes}</span>
+            <span>{isAr ? `سعر الضيف قبل الضرائب ر.س${guestPriceBeforeTaxes}` : `Guest price before taxes SR${guestPriceBeforeTaxes}`}</span>
             <ChevronDown size={16} />
           </Button>
         </div>
@@ -154,14 +156,14 @@ const PricePageContent = ({ params }: PricePageProps) => {
               <circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" strokeWidth="1.5"/>
               <path d="M8 1v3M8 12v3M15 8h-3M4 8H1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
-            <span>View similar listings</span>
+            <span>{isAr ? "عرض إعلانات مشابهة" : "View similar listings"}</span>
           </Button>
         </div>
 
         {/* Learn more link */}
         <div className="">
           <Button variant="link" className="text-muted-foreground underline hover:no-underline p-0">
-            Learn more about pricing
+            {isAr ? "تعرف على المزيد عن التسعير" : "Learn more about pricing"}
           </Button>
         </div>
       </div>

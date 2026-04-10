@@ -83,6 +83,7 @@ export function PropertyCard({
             size="icon"
             className="absolute top-3 right-3.5 w-6 h-6 backdrop-blur-sm rounded-full"
             onClick={handleFavoriteClick}
+            aria-label={isLiked ? "Remove from favorites" : "Add to favorites"}
           >
             <Heart
               className={cn(
@@ -149,7 +150,7 @@ export function PropertyCard({
           </div>
           <div className="flex items-center">
             <Star className="w-3 h-3 text-gray-500 fill-current" />
-            <span className="ml-1 text-xs font-medium text-gray-500">
+            <span className="ms-1 text-xs font-medium text-gray-500">
               {rating.toFixed(2)}
             </span>
           </div>

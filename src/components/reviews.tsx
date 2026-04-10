@@ -1,4 +1,4 @@
-import AirbnbReview from "@/components/atom/airbnb-review"
+import AirbnbReview from "@/components/atom/review"
 
 const reviewsData = [
   {

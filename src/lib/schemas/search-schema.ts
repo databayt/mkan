@@ -10,7 +10,7 @@ export const SEARCH_CONFIG = {
   MAX_INFANTS: 5,
   DEBOUNCE_MS: 300,
   MAX_LOCATION_RESULTS: 10,
-  DEFAULT_POPULAR_LOCATIONS_COUNT: 5,
+  DEFAULT_POPULAR_LOCATIONS_COUNT: 3,
 } as const;
 
 // Helper to get today's date at midnight

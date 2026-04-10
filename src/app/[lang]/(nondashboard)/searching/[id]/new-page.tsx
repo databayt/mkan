@@ -6,8 +6,8 @@ import { MapPin, Bed, Bath, Square, DollarSign, Car, PawPrint, Wifi, Dumbbell } 
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import AirbnbPropertyHeader from '@/components/atom/airbnb-property-header'
-import AirbnbImages from '@/components/atom/airbnb-images'
+import AirbnbPropertyHeader from '@/components/atom/property-header'
+import AirbnbImages from '@/components/atom/property-images'
 import { RentalListingHeader } from '@/components/property/rental-listing-header'
 
 export default async function PropertyPage({
@@ -17,8 +17,6 @@ export default async function PropertyPage({
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const resolvedParams = await params;
-  console.log('🔍 Property page loading for ID:', resolvedParams.id)
-
   const propertyId = parseInt(resolvedParams.id)
 
   if (isNaN(propertyId)) {
@@ -96,7 +94,7 @@ export default async function PropertyPage({
         <div className="absolute bottom-6 left-6 text-white">
           <h1 className="text-4xl font-bold mb-2">{property.title ?? 'Untitled Property'}</h1>
           <div className="flex items-center text-lg">
-            <MapPin className="w-5 h-5 mr-2" />
+            <MapPin className="w-5 h-5 me-2" />
             <span>
               {property.location?.address ?? ''}, {property.location?.city ?? ''}, {property.location?.state ?? ''}
             </span>

@@ -1,16 +1,31 @@
 import { Suspense } from 'react';
-import Image from 'next/image';
-import { Bus, MapPin, Clock, Shield, Ticket } from 'lucide-react';
+import { MapPin, Clock, Shield, Ticket } from 'lucide-react';
+import type { Metadata } from 'next';
 
 import TransportBigSearch from '@/components/transport/search/transport-big-search';
 import TransportHostHero from '@/components/transport/transport-host-hero';
-import Footer from '@/components/row/Footer';
+import { TicketShowcase } from '@/components/transport/ticket/ticket-showcase';
+import { LogoCarousel } from '@/components/transport/logo-carousel';
+import Footer from '@/components/site/footer';
 import { getAssemblyPoints } from '@/lib/actions/transport-actions';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import type { Locale } from '@/components/internationalization/config';
+import { createMetadata } from '@/lib/metadata';
 
 // ISR: Revalidate every 10 minutes (assembly points rarely change)
-export const revalidate = 600;
+export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  const { lang } = await params;
+  return createMetadata({
+    title: lang === "ar" ? "النقل البري" : "Bus Transport",
+    description: lang === "ar"
+      ? "احجز رحلات الحافلات بين المدن السودانية"
+      : "Book intercity bus trips across Sudan",
+    locale: lang,
+    path: "/transport",
+  });
+}
 
 interface TransportPageProps {
   params: Promise<{ lang: Locale }>;
@@ -18,122 +33,127 @@ interface TransportPageProps {
 
 export default async function TransportPage({ params }: TransportPageProps) {
   const { lang } = await params;
-  const dictionary = await getDictionary(lang);
-  const assemblyPoints = await getAssemblyPoints();
+
+  // Parallelize independent data fetches
+  const [dictionary, assemblyPoints] = await Promise.all([
+    getDictionary(lang),
+    getAssemblyPoints(),
+  ]);
+  const t = dictionary.transport;
 
   const features = [
     {
       icon: <MapPin className="h-8 w-8" />,
-      title: 'Multiple Destinations',
-      description:
-        'Book tickets to cities across Sudan from major assembly points.',
+      title: t.features.items.destinations.title,
+      description: t.features.items.destinations.description,
     },
     {
       icon: <Clock className="h-8 w-8" />,
-      title: 'Daily Departures',
-      description: 'Regular morning departures at 5:00 AM, 7 days a week.',
+      title: t.features.items.departures.title,
+      description: t.features.items.departures.description,
     },
     {
       icon: <Ticket className="h-8 w-8" />,
-      title: 'E-Tickets',
-      description:
-        'Receive your ticket instantly via PDF with QR code for easy boarding.',
+      title: t.features.items.etickets.title,
+      description: t.features.items.etickets.description,
     },
     {
       icon: <Shield className="h-8 w-8" />,
-      title: 'Verified Offices',
-      description:
-        'All transport offices are verified for your safety and comfort.',
+      title: t.features.items.verified.title,
+      description: t.features.items.verified.description,
     },
   ];
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section with Background Image */}
-      <section className="relative min-h-[60vh] flex items-center justify-center pb-48">
-        {/* Background Image Container */}
-        <div className="absolute inset-0 overflow-hidden">
-          <Image
-            src="/hero.png"
-            alt="Transport booking hero background"
-            fill
-            className="object-cover object-center"
-            priority
-            sizes="100vw"
-          />
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
+      {/* Hero Section with Video Background */}
+      <section className="relative min-h-screen flex flex-col">
+        {/* Video Background - full screen on mobile, half screen on desktop */}
+        <div className="absolute inset-x-0 top-0 h-screen md:h-[50vh] z-0 overflow-hidden bg-[#1a1a2e]">
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          >
+            <source src="/videos/hero-bg.mp4" type="video/mp4" />
+          </video>
+          {/* Dark overlay for text readability */}
+          <div className="absolute inset-0 bg-black/40" />
         </div>
 
-        {/* Content */}
-        <div className="relative z-10 w-full max-w-6xl mx-auto px-4 md:px-8 py-20">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full mb-6">
-              <Bus className="h-5 w-5" />
-              <span className="text-sm font-medium">
-                Intercity Bus Booking
-              </span>
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white">
-              Travel Between Cities in Sudan
+        {/* Content overlay - on top of video */}
+        <div className="relative z-20 h-screen md:h-[50vh] flex flex-col items-center justify-center pt-16 px-4">
+          {/* Hero Text */}
+          <div className="text-center max-w-3xl mx-auto mb-12">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white">
+              <span className="block">{t.hero.titleLine1}</span>
+              <span className="block">{t.hero.titleLine2}</span>
             </h1>
-            <p className="text-lg text-white/80 max-w-2xl mx-auto">
-              Book your bus tickets online. Choose your seat, pay securely, and
-              receive your e-ticket instantly.
-            </p>
           </div>
 
-          {/* Search Widget */}
-          <Suspense
-            fallback={
-              <div className="h-16 bg-white/20 animate-pulse rounded-full max-w-4xl mx-auto" />
-            }
-          >
-            <TransportBigSearch
-              assemblyPoints={assemblyPoints}
-              lang={lang}
-              dictionary={{
-                from: 'From',
-                to: 'To',
-                date: 'Travel Date',
-                search: 'Search',
-                selectCity: 'Select city',
-                selectDate: 'Select date',
-              }}
-            />
-          </Suspense>
+          {/* BigSearch Component - at very bottom of video */}
+          <div className="w-full max-w-4xl">
+            <Suspense
+              fallback={
+                <div className="h-16 bg-white/20 animate-pulse rounded-full max-w-4xl mx-auto" />
+              }
+            >
+              <TransportBigSearch
+                assemblyPoints={assemblyPoints}
+                lang={lang}
+                dictionary={{
+                  from: t.search.from,
+                  to: t.search.to,
+                  date: t.search.date,
+                  search: t.search.search,
+                  selectCity: dictionary.common.search,
+                  selectDate: t.search.date,
+                }}
+              />
+            </Suspense>
+          </div>
+        </div>
+
+        {/* Rest of content below video */}
+        <div className="relative z-10 bg-background">
+        </div>
+      </section>
+
+      {/* Logo Carousel */}
+      <section className="py-12 px-4 md:px-8 bg-background">
+        <div className="max-w-6xl mx-auto flex justify-center">
+          <LogoCarousel />
         </div>
       </section>
 
       {/* How It Works */}
       <section className="py-16 px-4 md:px-8 bg-background">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">{t.howItWorks.title}</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {[
               {
                 step: 1,
-                title: 'Search',
-                description: 'Enter your origin, destination, and travel date',
+                title: t.howItWorks.step1.title,
+                description: t.howItWorks.step1.description,
               },
               {
                 step: 2,
-                title: 'Select',
-                description: 'Choose your preferred bus and select your seats',
+                title: t.howItWorks.step2.title,
+                description: t.howItWorks.step2.description,
               },
               {
                 step: 3,
-                title: 'Pay',
-                description:
-                  'Pay securely with mobile money, card, or cash on arrival',
+                title: t.howItWorks.step3.title,
+                description: t.howItWorks.step3.description,
               },
               {
                 step: 4,
-                title: 'Travel',
-                description:
-                  'Show your e-ticket at the assembly point and board',
+                title: t.howItWorks.step4.title,
+                description: t.howItWorks.step4.description,
               },
             ].map((item) => (
               <div key={item.step} className="text-center">
@@ -154,7 +174,7 @@ export default async function TransportPage({ params }: TransportPageProps) {
       <section className="py-16 px-4 md:px-8 bg-muted/30">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">
-            Why Book With Us
+            {t.features.title}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -174,11 +194,22 @@ export default async function TransportPage({ params }: TransportPageProps) {
         </div>
       </section>
 
-      {/* Popular Routes */}
+      {/* Ticket Showcase */}
       <section className="py-16 px-4 md:px-8 bg-background">
+        <div className="max-w-6xl mx-auto text-center">
+          <h2 className="text-3xl font-bold mb-3">{t.ticket.showcaseTitle}</h2>
+          <p className="text-muted-foreground mb-10 max-w-xl mx-auto">
+            {t.ticket.showcaseSubtitle}
+          </p>
+          <TicketShowcase lang={lang} />
+        </div>
+      </section>
+
+      {/* Popular Routes */}
+      <section className="py-16 px-4 md:px-8 bg-muted/30">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">
-            Popular Routes
+            {t.routes.title}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -187,37 +218,37 @@ export default async function TransportPage({ params }: TransportPageProps) {
                 from: 'Khartoum',
                 to: 'Port Sudan',
                 duration: '12h',
-                price: 'From 5,000 SDG',
+                price: 5000,
               },
               {
                 from: 'Khartoum',
                 to: 'Kassala',
                 duration: '8h',
-                price: 'From 3,500 SDG',
+                price: 3500,
               },
               {
                 from: 'Khartoum',
                 to: 'Wad Madani',
                 duration: '3h',
-                price: 'From 1,500 SDG',
+                price: 1500,
               },
               {
                 from: 'Omdurman',
                 to: 'Dongola',
                 duration: '6h',
-                price: 'From 2,500 SDG',
+                price: 2500,
               },
               {
                 from: 'Khartoum',
                 to: 'Atbara',
                 duration: '5h',
-                price: 'From 2,000 SDG',
+                price: 2000,
               },
               {
                 from: 'Port Sudan',
                 to: 'Kassala',
                 duration: '6h',
-                price: 'From 2,500 SDG',
+                price: 2500,
               },
             ].map((route) => (
               <div
@@ -235,7 +266,7 @@ export default async function TransportPage({ params }: TransportPageProps) {
                     {route.duration}
                   </span>
                   <span className="font-medium text-primary">
-                    {route.price}
+                    {t.routes.pricePrefix} {route.price.toLocaleString()} SDG
                   </span>
                 </div>
               </div>
@@ -245,7 +276,7 @@ export default async function TransportPage({ params }: TransportPageProps) {
       </section>
 
       {/* CTA - Become a Transport Host */}
-      <TransportHostHero lang={lang} />
+      <TransportHostHero lang={lang} dictionary={t.cta} />
 
       {/* Footer */}
       <Footer />

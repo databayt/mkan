@@ -14,11 +14,12 @@ import {
   Camera,
   AlertCircle,
 } from 'lucide-react';
+import HostStepLayout from '@/components/host/host-step-layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { useTransportHostValidation } from '@/components/onboarding';
+import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
 import {
   publishTransportOffice,
@@ -174,23 +175,17 @@ const FinishPage = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-              <CheckCircle2 className="h-6 w-6 text-primary" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold mb-2">Review and publish</h1>
-          <p className="text-muted-foreground">
+    <HostStepLayout
+      title={<h3>Review and publish</h3>}
+      subtitle={
+        <div className="space-y-4">
+          <p className="text-sm sm:text-base text-muted-foreground">
             Review your office setup before publishing. Once published, your
             office will be visible to travelers.
           </p>
-
           {office && (
-            <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-              <h3 className="font-semibold text-lg">{office.name}</h3>
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="font-semibold text-lg">{office.name}</p>
               {office.description && (
                 <p className="text-sm text-muted-foreground mt-1">
                   {office.description}
@@ -199,14 +194,15 @@ const FinishPage = () => {
             </div>
           )}
         </div>
-
-        <div className="flex-1 space-y-6">
+      }
+    >
+      <div className="space-y-6">
           <div className="space-y-3">
             {steps.map((step) => (
               <button
                 key={step.name}
                 onClick={() => handleStepClick(step.link)}
-                className="w-full p-4 rounded-lg border bg-background text-left hover:border-primary/50 transition-colors"
+                className="w-full p-4 rounded-lg border bg-background text-start hover:border-primary/50 transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -282,7 +278,7 @@ const FinishPage = () => {
             >
               {isPublishing ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white me-2"></div>
                   Publishing...
                 </>
               ) : (
@@ -290,9 +286,8 @@ const FinishPage = () => {
               )}
             </Button>
           </div>
-        </div>
       </div>
-    </div>
+    </HostStepLayout>
   );
 };
 

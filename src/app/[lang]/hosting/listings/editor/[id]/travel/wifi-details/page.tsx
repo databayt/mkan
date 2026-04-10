@@ -46,7 +46,7 @@ const WifiDetailsPage = async ({ params }: PageProps) => {
                   id="password"
                   type="password"
                   placeholder="Enter wifi password"
-                  className="pr-10"
+                  className="pe-10"
                 />
                 <button className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
                   <EyeOff className="size-4" />

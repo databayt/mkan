@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { Home, Building, Bed, Ship, TreePine, Castle, Mountain, Container, Warehouse, Car, Building2 } from 'lucide-react';
 import SelectionCard from './selection-card';
 import { cn } from '@/lib/utils';
@@ -46,19 +47,22 @@ const PropertySelector: React.FC<PropertySelectorProps> = ({
   compact = false,
   className,
 }) => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
+
   const propertyTypes: PropertyTypeOption[] = [
-    { id: 'house', name: 'House', icon: Home, prismaValue: PropertyType.Villa },
-    { id: 'apartment', name: 'Apartment', icon: Building, prismaValue: PropertyType.Apartment },
-    { id: 'barn', name: 'Barn', icon: Warehouse, prismaValue: PropertyType.Cottage },
-    { id: 'bed-breakfast', name: 'Bed & Breakfast', icon: Bed, prismaValue: PropertyType.Rooms },
-    { id: 'boat', name: 'Boat', icon: Ship, prismaValue: PropertyType.Cottage },
-    { id: 'cabin', name: 'Cabin', icon: TreePine, prismaValue: PropertyType.Cottage },
-    { id: 'camper-rv', name: 'Camper/RV', icon: Car, prismaValue: PropertyType.Tinyhouse },
-    { id: 'casa-particular', name: 'Casa Particular', icon: Building2, prismaValue: PropertyType.Villa },
-    { id: 'castle', name: 'Castle', icon: Castle, prismaValue: PropertyType.Villa },
-    { id: 'cave', name: 'Cave', icon: Mountain, prismaValue: PropertyType.Cottage },
-    { id: 'container', name: 'Container', icon: Container, prismaValue: PropertyType.Tinyhouse },
-    { id: 'cycladic-home', name: 'Cycladic Home', icon: Home, prismaValue: PropertyType.Villa }
+    { id: 'house', name: isAr ? 'منزل' : 'House', icon: Home, prismaValue: PropertyType.Villa },
+    { id: 'apartment', name: isAr ? 'شقة' : 'Apartment', icon: Building, prismaValue: PropertyType.Apartment },
+    { id: 'barn', name: isAr ? 'حظيرة' : 'Barn', icon: Warehouse, prismaValue: PropertyType.Cottage },
+    { id: 'bed-breakfast', name: isAr ? 'مبيت وإفطار' : 'Bed & Breakfast', icon: Bed, prismaValue: PropertyType.Rooms },
+    { id: 'boat', name: isAr ? 'قارب' : 'Boat', icon: Ship, prismaValue: PropertyType.Cottage },
+    { id: 'cabin', name: isAr ? 'كوخ' : 'Cabin', icon: TreePine, prismaValue: PropertyType.Cottage },
+    { id: 'camper-rv', name: isAr ? 'عربة تخييم' : 'Camper/RV', icon: Car, prismaValue: PropertyType.Tinyhouse },
+    { id: 'casa-particular', name: isAr ? 'كازا بارتيكولار' : 'Casa Particular', icon: Building2, prismaValue: PropertyType.Villa },
+    { id: 'castle', name: isAr ? 'قلعة' : 'Castle', icon: Castle, prismaValue: PropertyType.Villa },
+    { id: 'cave', name: isAr ? 'كهف' : 'Cave', icon: Mountain, prismaValue: PropertyType.Cottage },
+    { id: 'container', name: isAr ? 'حاوية' : 'Container', icon: Container, prismaValue: PropertyType.Tinyhouse },
+    { id: 'cycladic-home', name: isAr ? 'منزل سيكلادي' : 'Cycladic Home', icon: Home, prismaValue: PropertyType.Villa }
   ];
 
   if (compact) {

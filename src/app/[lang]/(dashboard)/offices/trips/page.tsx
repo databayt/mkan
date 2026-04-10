@@ -35,6 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Header from '@/components/Header';
 import Loading from '@/components/Loading';
+import { usePathname } from 'next/navigation';
 import { getAuthUser } from '@/lib/actions/user-actions';
 import {
   getMyTransportOffices,
@@ -85,6 +86,8 @@ interface BusData {
 
 const TripsPage = () => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [trips, setTrips] = useState<Trip[]>([]);
   const [routes, setRoutes] = useState<RouteData[]>([]);
   const [buses, setBuses] = useState<BusData[]>([]);
@@ -136,9 +139,9 @@ const TripsPage = () => {
       getRoutesByOffice(officeId),
       getBusesByOffice(officeId),
     ]);
-    setTrips(officeTrips as Trip[]);
-    setRoutes(officeRoutes as RouteData[]);
-    setBuses(officeBuses as BusData[]);
+    setTrips(officeTrips as unknown as Trip[]);
+    setRoutes(officeRoutes as unknown as RouteData[]);
+    setBuses(officeBuses as unknown as BusData[]);
   };
 
   const handleOfficeChange = async (officeId: number) => {
@@ -193,7 +196,7 @@ const TripsPage = () => {
 
       const created = await createTrip(tripData);
       if (created) {
-        setTrips((prev) => [...prev, created as Trip]);
+        setTrips((prev) => [...prev, created as unknown as Trip]);
       }
 
       setIsDialogOpen(false);
@@ -219,13 +222,13 @@ const TripsPage = () => {
   };
 
   if (isLoading) return <Loading />;
-  if (error) return <div className="text-red-500">Error: {error}</div>;
+  if (error) return <div className="text-red-500">{isAr ? "خطأ" : "Error"}: {error}</div>;
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(selectedDate, i - 3));
 
   return (
     <div className="dashboard-container">
-      <Header title="Trip Schedule" subtitle="Manage your trip schedule" />
+      <Header title={isAr ? "جدول الرحلات" : "Trip Schedule"} subtitle={isAr ? "إدارة جدول رحلاتك" : "Manage your trip schedule"} />
 
       {offices.length > 1 && (
         <div className="mb-6 flex gap-2 flex-wrap">
@@ -244,7 +247,7 @@ const TripsPage = () => {
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => handleDateChange(-7)}>
+          <Button variant="outline" size="icon" onClick={() => handleDateChange(-7)} aria-label="Previous week">
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="flex gap-1">
@@ -263,7 +266,7 @@ const TripsPage = () => {
               </Button>
             ))}
           </div>
-          <Button variant="outline" size="icon" onClick={() => handleDateChange(7)}>
+          <Button variant="outline" size="icon" onClick={() => handleDateChange(7)} aria-label="Next week">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -271,17 +274,17 @@ const TripsPage = () => {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Trip
+              <Plus className="h-4 w-4 me-2" />
+              {isAr ? "إضافة رحلة" : "Add Trip"}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Trip</DialogTitle>
+              <DialogTitle>{isAr ? "إضافة رحلة جديدة" : "Add New Trip"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Route</Label>
+                <Label>{isAr ? "المسار" : "Route"}</Label>
                 <Select
                   value={newTrip.routeId}
                   onValueChange={(value) => {
@@ -294,7 +297,7 @@ const TripsPage = () => {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select route" />
+                    <SelectValue placeholder={isAr ? "اختر المسار" : "Select route"} />
                   </SelectTrigger>
                   <SelectContent>
                     {routes.map((route) => (
@@ -307,7 +310,7 @@ const TripsPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Bus</Label>
+                <Label>{isAr ? "الحافلة" : "Bus"}</Label>
                 <Select
                   value={newTrip.busId}
                   onValueChange={(value) =>
@@ -315,12 +318,12 @@ const TripsPage = () => {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select bus" />
+                    <SelectValue placeholder={isAr ? "اختر الحافلة" : "Select bus"} />
                   </SelectTrigger>
                   <SelectContent>
                     {buses.map((bus) => (
                       <SelectItem key={bus.id} value={bus.id.toString()}>
-                        {bus.plateNumber} ({bus.capacity} seats)
+                        {bus.plateNumber} ({bus.capacity} {isAr ? "مقعد" : "seats"})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -329,7 +332,7 @@ const TripsPage = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Date</Label>
+                  <Label>{isAr ? "التاريخ" : "Date"}</Label>
                   <Input
                     type="date"
                     value={newTrip.departureDate}
@@ -343,7 +346,7 @@ const TripsPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Time</Label>
+                  <Label>{isAr ? "الوقت" : "Time"}</Label>
                   <Input
                     type="time"
                     value={newTrip.departureTime}
@@ -358,7 +361,7 @@ const TripsPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Price (SDG)</Label>
+                <Label>{isAr ? "السعر (ج.س)" : "Price (SDG)"}</Label>
                 <Input
                   type="number"
                   value={newTrip.price}
@@ -377,14 +380,14 @@ const TripsPage = () => {
                   onClick={() => setIsDialogOpen(false)}
                   className="flex-1"
                 >
-                  Cancel
+                  {isAr ? "إلغاء" : "Cancel"}
                 </Button>
                 <Button
                   onClick={handleCreateTrip}
                   className="flex-1"
                   disabled={!newTrip.routeId || !newTrip.busId}
                 >
-                  Add Trip
+                  {isAr ? "إضافة رحلة" : "Add Trip"}
                 </Button>
               </div>
             </div>
@@ -397,7 +400,9 @@ const TripsPage = () => {
           {format(selectedDate, 'EEEE, MMMM d, yyyy')}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {filteredTrips.length} trip{filteredTrips.length !== 1 ? 's' : ''} scheduled
+          {isAr
+            ? `${filteredTrips.length} رحلة مجدولة`
+            : `${filteredTrips.length} trip${filteredTrips.length !== 1 ? 's' : ''} scheduled`}
         </p>
       </div>
 
@@ -441,7 +446,7 @@ const TripsPage = () => {
                       </span>
                       <span className="flex items-center gap-1">
                         <Users className="h-4 w-4" />
-                        {trip.availableSeats}/{trip.bus.capacity} available
+                        {trip.availableSeats}/{trip.bus.capacity} {isAr ? "متاح" : "available"}
                       </span>
                       <span className="font-medium text-primary">
                         {trip.price.toLocaleString()} SDG
@@ -461,6 +466,7 @@ const TripsPage = () => {
                       size="icon"
                       onClick={() => handleDeleteTrip(trip.id)}
                       disabled={trip._count && trip._count.bookings > 0}
+                      aria-label="Delete trip"
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -472,10 +478,10 @@ const TripsPage = () => {
       ) : (
         <div className="text-center py-16 border rounded-lg">
           <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <p className="text-muted-foreground">No trips scheduled for this day</p>
+          <p className="text-muted-foreground">{isAr ? "لا توجد رحلات مجدولة لهذا اليوم" : "No trips scheduled for this day"}</p>
           <Button className="mt-4" onClick={() => setIsDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Trip
+            <Plus className="h-4 w-4 me-2" />
+            {isAr ? "إضافة رحلة" : "Add Trip"}
           </Button>
         </div>
       )}

@@ -10,7 +10,7 @@ export default function SearchBar() {
           <Input
             type="text"
             placeholder="Search how-tos and more"
-            className="w-full h-14 pl-6 pr-16 text-base border rounded-full shadow-lg bg-[#ffffff] placeholder:text-[#6b7280] focus-visible:ring-2 focus-visible:ring-[#de3151] focus-visible:ring-offset-0"
+            className="w-full h-14 ps-6 pe-16 text-base border rounded-full shadow-lg bg-[#ffffff] placeholder:text-[#6b7280] focus-visible:ring-2 focus-visible:ring-[#de3151] focus-visible:ring-offset-0"
           />
           <Button
             size="icon"

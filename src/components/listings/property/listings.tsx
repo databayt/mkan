@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { useRouter } from 'next/navigation'
-import { useAppSelector } from '@/state/redux'
+import { useGlobalStore } from '@/state/filters'
 import { PropertyCard } from './card'
 import { Listing } from '@/types/listing'
 import { useLocale } from '@/components/internationalization/use-locale'
@@ -14,8 +14,9 @@ interface PropertyListingsProps {
 export const PropertyListings = ({ properties }: PropertyListingsProps) => {
   const router = useRouter()
   const { locale } = useLocale()
-  const viewMode = useAppSelector((state) => state.global.viewMode)
-  const filters = useAppSelector((state) => state.global.filters)
+  const isAr = locale === "ar"
+  const viewMode = useGlobalStore((s) => s.viewMode)
+  const filters = useGlobalStore((s) => s.filters)
 
   const handleFavoriteToggle = async (propertyId: string, isFavorite: boolean) => {
     // TODO: Implement favorites functionality with server actions
@@ -30,12 +31,12 @@ export const PropertyListings = ({ properties }: PropertyListingsProps) => {
     return (
       <div className="w-full p-4">
         <h3 className="text-sm px-4 font-bold">
-          0 <span className="text-gray-700 font-normal">Properties Available</span>
+          0 <span className="text-gray-700 font-normal">{isAr ? "عقارات متاحة" : "Properties Available"}</span>
         </h3>
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No properties found</h3>
-            <p className="text-gray-600">Try adjusting your search filters to see more results.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{isAr ? "لا توجد عقارات" : "No properties found"}</h3>
+            <p className="text-gray-600">{isAr ? "حاول تعديل فلاتر البحث لرؤية المزيد من النتائج." : "Try adjusting your search filters to see more results."}</p>
           </div>
         </div>
       </div>
@@ -62,7 +63,7 @@ export const PropertyListings = ({ properties }: PropertyListingsProps) => {
       <h3 className="text-sm px-4 font-bold mb-4">
         {properties.length}{' '}
         <span className="text-gray-700 font-normal">
-          Properties Available
+          {isAr ? "عقارات متاحة" : "Properties Available"}
         </span>
       </h3>
       

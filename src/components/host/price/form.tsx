@@ -37,7 +37,7 @@ export function PriceForm() {
                 max="10000"
                 step="1"
                 {...form.register('pricePerNight', { valueAsNumber: true })}
-                className="w-full pl-8 pr-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full ps-8 pe-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="50"
               />
             </div>
@@ -57,7 +57,7 @@ export function PriceForm() {
                 min="0"
                 step="1"
                 {...form.register('securityDeposit', { valueAsNumber: true })}
-                className="w-full pl-8 pr-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full ps-8 pe-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="0"
               />
             </div>
@@ -77,7 +77,7 @@ export function PriceForm() {
                 min="0"
                 step="1"
                 {...form.register('applicationFee', { valueAsNumber: true })}
-                className="w-full pl-8 pr-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full ps-8 pe-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="0"
               />
             </div>

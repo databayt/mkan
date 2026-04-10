@@ -1,10 +1,8 @@
 "use client"
 
-import { FiltersState, initialState, setFilters } from "@/state";
-import { useAppSelector } from "@/state/redux";
+import { FiltersState, initialFilters, useGlobalStore } from "@/state/filters";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useState } from "react";
-import { useDispatch } from "react-redux";
 import { debounce } from "lodash";
 import { cleanParams, cn, formatEnumString } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -22,14 +20,12 @@ import {
 import { Label } from "@/components/ui/label";
 
 const FiltersFull = () => {
-  const dispatch = useDispatch();
   const router = useRouter();
   const pathname = usePathname();
-  const filters = useAppSelector((state) => state.global.filters);
-  const [localFilters, setLocalFilters] = useState(initialState.filters);
-  const isFiltersFullOpen = useAppSelector(
-    (state) => state.global.isFiltersFullOpen
-  );
+  const filters = useGlobalStore((s) => s.filters);
+  const isFiltersFullOpen = useGlobalStore((s) => s.isFiltersFullOpen);
+  const setFilters = useGlobalStore((s) => s.setFilters);
+  const [localFilters, setLocalFilters] = useState(initialFilters);
 
   const updateURL = debounce((newFilters: FiltersState) => {
     const cleanFilters = cleanParams(newFilters);
@@ -46,14 +42,14 @@ const FiltersFull = () => {
   });
 
   const handleSubmit = () => {
-    dispatch(setFilters(localFilters));
+    setFilters(localFilters);
     updateURL(localFilters);
   };
 
   const handleReset = () => {
-    setLocalFilters(initialState.filters);
-    dispatch(setFilters(initialState.filters));
-    updateURL(initialState.filters);
+    setLocalFilters(initialFilters);
+    setFilters(initialFilters);
+    updateURL(initialFilters);
   };
 
   const handleAmenityChange = (amenity: AmenityEnum) => {
@@ -105,11 +101,11 @@ const FiltersFull = () => {
                   location: e.target.value,
                 }))
               }
-              className="rounded-l-xl rounded-r-none border-r-0"
+              className="rounded-s-xl rounded-e-none border-e-0"
             />
             <Button
               onClick={handleLocationSearch}
-              className="rounded-r-xl rounded-l-none border-l-none border-black shadow-none border hover:bg-primary-700 hover:text-primary-50"
+              className="rounded-e-xl rounded-s-none border-s-none border-black shadow-none border hover:bg-primary-700 hover:text-primary-50"
             >
               <Search className="w-4 h-4" />
             </Button>

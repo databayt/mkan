@@ -92,10 +92,10 @@ export function CitySelect({
           className="w-full justify-between h-12"
         >
           <div className="flex items-center">
-            <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
+            <MapPin className="me-2 h-4 w-4 text-muted-foreground" />
             {value || placeholder}
           </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="ms-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[300px] p-0" align="start">
@@ -116,14 +116,14 @@ export function CitySelect({
                 >
                   <Check
                     className={cn(
-                      'mr-2 h-4 w-4',
+                      'me-2 h-4 w-4',
                       value === city ? 'opacity-100' : 'opacity-0'
                     )}
                   />
-                  <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <MapPin className="me-2 h-4 w-4 text-muted-foreground" />
                   {city}
                   {citiesMap[city] && (
-                    <span className="ml-auto text-xs text-muted-foreground">
+                    <span className="ms-auto text-xs text-muted-foreground">
                       {citiesMap[city].length} point
                       {citiesMap[city].length !== 1 ? 's' : ''}
                     </span>

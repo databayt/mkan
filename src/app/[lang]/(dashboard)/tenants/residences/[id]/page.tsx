@@ -58,12 +58,12 @@ const PaymentMethod = () => {
                   </span>
                 </div>
                 <div className="text-sm text-gray-500 flex items-center">
-                  <CreditCard className="w-4 h-4 mr-1" />
+                  <CreditCard className="w-4 h-4 me-1" />
                   <span>Expiry • 26/06/2024</span>
                 </div>
               </div>
               <div className="text-sm text-gray-500 flex items-center">
-                <Mail className="w-4 h-4 mr-1" />
+                <Mail className="w-4 h-4 me-1" />
                 <span>billing@baseclub.com</span>
               </div>
             </div>
@@ -72,7 +72,7 @@ const PaymentMethod = () => {
           <hr className="my-4" />
           <div className="flex justify-end">
             <button className="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50">
-              <Edit className="w-5 h-5 mr-2" />
+              <Edit className="w-5 h-5 me-2" />
               <span>Edit</span>
             </button>
           </div>
@@ -104,7 +104,7 @@ const ResidenceCard = ({
             <h2 className="text-2xl font-bold my-2">{property.name}</h2>
             {property.location && (
               <div className="flex items-center mb-2">
-                <MapPin className="w-5 h-5 mr-1" />
+                <MapPin className="w-5 h-5 me-1" />
                 <span>
                   {property.location.city}, {property.location.country}
                 </span>
@@ -122,21 +122,21 @@ const ResidenceCard = ({
         <hr className="my-4" />
         <div className="flex justify-between items-center">
           <div className="xl:flex">
-            <div className="text-gray-500 mr-2">Start Date: </div>
+            <div className="text-gray-500 me-2">Start Date: </div>
             <div className="font-semibold">
               {new Date(currentLease.startDate).toLocaleDateString()}
             </div>
           </div>
           <div className="border-[0.5px] border-primary-300 h-4" />
           <div className="xl:flex">
-            <div className="text-gray-500 mr-2">End Date: </div>
+            <div className="text-gray-500 me-2">End Date: </div>
             <div className="font-semibold">
               {new Date(currentLease.endDate).toLocaleDateString()}
             </div>
           </div>
           <div className="border-[0.5px] border-primary-300 h-4" />
           <div className="xl:flex">
-            <div className="text-gray-500 mr-2">Next Payment: </div>
+            <div className="text-gray-500 me-2">Next Payment: </div>
             <div className="font-semibold">
               {new Date(currentLease.endDate).toLocaleDateString()}
             </div>
@@ -147,11 +147,11 @@ const ResidenceCard = ({
       {/* Buttons */}
       <div className="flex justify-end gap-2 w-full">
         <button className="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50">
-          <User className="w-5 h-5 mr-2" />
+          <User className="w-5 h-5 me-2" />
           Manager
         </button>
         <button className="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50">
-          <Download className="w-5 h-5 mr-2" />
+          <Download className="w-5 h-5 me-2" />
           Download Agreement
         </button>
       </div>
@@ -172,7 +172,7 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
         </div>
         <div>
           <button className="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50">
-            <Download className="w-5 h-5 mr-2" />
+            <Download className="w-5 h-5 me-2" />
             <span>Download All</span>
           </button>
         </div>
@@ -194,7 +194,7 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
               <TableRow key={payment.id} className="h-16">
                 <TableCell className="font-medium">
                   <div className="flex items-center">
-                    <FileText className="w-4 h-4 mr-2" />
+                    <FileText className="w-4 h-4 me-2" />
                     Invoice #{payment.id} -{" "}
                     {new Date(payment.paymentDate).toLocaleString("default", {
                       month: "short",
@@ -211,7 +211,7 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
                     }`}
                   >
                     {payment.paymentStatus === "Paid" ? (
-                      <Check className="w-4 h-4 inline-block mr-1" />
+                      <Check className="w-4 h-4 inline-block me-1" />
                     ) : null}
                     {payment.paymentStatus}
                   </span>
@@ -222,7 +222,7 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
                 <TableCell>${payment.amountPaid.toFixed(2)}</TableCell>
                 <TableCell>
                   <button className="border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center justify-center font-semibold hover:bg-primary-700 hover:text-primary-50">
-                    <ArrowDownToLineIcon className="w-4 h-4 mr-1" />
+                    <ArrowDownToLineIcon className="w-4 h-4 me-1" />
                     Download
                   </button>
                 </TableCell>

@@ -95,6 +95,7 @@ export function SearchWidget({
             onClick={handleSwap}
             className="rounded-full"
             title={dictionary.swap}
+            aria-label={dictionary.swap}
           >
             <ArrowRightLeft className="h-4 w-4" />
           </Button>
@@ -123,11 +124,11 @@ export function SearchWidget({
               <Button
                 variant="outline"
                 className={cn(
-                  'w-full justify-start text-left font-normal h-12',
+                  'w-full justify-start text-start font-normal h-12',
                   !date && 'text-muted-foreground'
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                <CalendarIcon className="me-2 h-4 w-4" />
                 {date ? format(date, 'PPP') : <span>Pick a date</span>}
               </Button>
             </PopoverTrigger>
@@ -150,7 +151,7 @@ export function SearchWidget({
             disabled={!origin || !destination || !date}
             className="w-full lg:w-auto h-12 px-8"
           >
-            <Search className="mr-2 h-4 w-4" />
+            <Search className="me-2 h-4 w-4" />
             {dictionary.search}
           </Button>
         </div>

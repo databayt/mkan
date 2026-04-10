@@ -1,12 +1,12 @@
 import { match } from '@formatjs/intl-localematcher';
 import Negotiator from 'negotiator';
 import { type NextRequest, NextResponse } from 'next/server';
-import { i18n } from './config';
+import { i18n, type Locale } from './config';
 
 function getLocale(request: NextRequest) {
   // 1. Check cookie first for user preference
   const cookieLocale = request.cookies.get('NEXT_LOCALE')?.value;
-  if (cookieLocale && i18n.locales.includes(cookieLocale as any)) {
+  if (cookieLocale && i18n.locales.includes(cookieLocale as Locale)) {
     return cookieLocale;
   }
 

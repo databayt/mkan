@@ -1,6 +1,8 @@
+import { Metadata } from "next";
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
+import { ar } from 'date-fns/locale';
 import { ArrowLeft, Filter } from 'lucide-react';
 import Link from 'next/link';
 
@@ -11,7 +13,26 @@ import {
   searchRoutes,
   getAssemblyPoints,
 } from '@/lib/actions/transport-actions';
+import { getDictionary } from '@/components/internationalization/dictionaries';
+import { createMetadata } from "@/lib/metadata";
 import type { Locale } from '@/components/internationalization/config';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  const { lang } = await params;
+  return createMetadata({
+    title: lang === "ar" ? "بحث النقل" : "Transport Search",
+    description:
+      lang === "ar"
+        ? "ابحث عن رحلات النقل المتاحة"
+        : "Search for available transport trips",
+    locale: lang,
+    path: "/transport/search",
+  });
+}
 
 interface SearchPageProps {
   params: Promise<{ lang: Locale }>;
@@ -21,6 +42,8 @@ interface SearchPageProps {
     date?: string;
   }>;
 }
+
+export const dynamic = 'force-dynamic';
 
 export default async function SearchPage({
   params,
@@ -35,8 +58,14 @@ export default async function SearchPage({
   }
 
   const searchDate = parseISO(date);
-  const routes = await searchRoutes(origin, destination, searchDate);
-  const assemblyPoints = await getAssemblyPoints();
+
+  // Parallelize independent data fetches
+  const [dictionary, routes, assemblyPoints] = await Promise.all([
+    getDictionary(lang),
+    searchRoutes(origin, destination, searchDate),
+    getAssemblyPoints(),
+  ]);
+  const t = dictionary.transport;
 
   // Flatten trips from routes
   const trips = routes.flatMap((route) =>
@@ -51,6 +80,8 @@ export default async function SearchPage({
     }))
   );
 
+  const dateLocale = lang === 'ar' ? ar : undefined;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -58,8 +89,8 @@ export default async function SearchPage({
         <div className="max-w-6xl mx-auto px-4 py-6">
           <div className="flex items-center gap-4 mb-6">
             <Link href={`/${lang}/transport`}>
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
+              <Button variant="ghost" size="icon" aria-label="Go back">
+                <ArrowLeft className="h-5 w-5 rtl:rotate-180" />
               </Button>
             </Link>
             <div>
@@ -67,7 +98,7 @@ export default async function SearchPage({
                 {origin} → {destination}
               </h1>
               <p className="text-muted-foreground">
-                {format(searchDate, 'EEEE, MMMM d, yyyy')}
+                {format(searchDate, 'EEEE, MMMM d, yyyy', { locale: dateLocale })}
               </p>
             </div>
           </div>
@@ -88,31 +119,39 @@ export default async function SearchPage({
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <p className="text-muted-foreground">
-            {trips.length} trip{trips.length !== 1 ? 's' : ''} found
+            {t.search.tripsFound.replace('{count}', String(trips.length))}
           </p>
           <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4 mr-2" />
-            Filters
+            <Filter className="h-4 w-4 me-2" />
+            {t.search.filters}
           </Button>
         </div>
 
         {trips.length > 0 ? (
           <div className="grid gap-4">
             {trips.map((trip) => (
-              <TripCard key={trip.id} trip={trip} lang={lang} />
+              <TripCard
+                key={trip.id}
+                trip={trip}
+                lang={lang}
+                dictionary={{
+                  selectSeats: t.trip.selectSeats,
+                  seatsAvailable: t.trip.seatsAvailable,
+                  duration: t.trip.duration,
+                  verified: t.office.verified,
+                }}
+              />
             ))}
           </div>
         ) : (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">🚌</div>
-            <h2 className="text-xl font-semibold mb-2">No trips found</h2>
+            <h2 className="text-xl font-semibold mb-2">{t.search.noResults}</h2>
             <p className="text-muted-foreground mb-6">
-              There are no available trips for this route on the selected date.
-              <br />
-              Try a different date or route.
+              {t.search.noResultsDescription}
             </p>
             <Link href={`/${lang}/transport`}>
-              <Button>Search Again</Button>
+              <Button>{t.search.searchAgain}</Button>
             </Link>
           </div>
         )}

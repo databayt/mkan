@@ -61,7 +61,7 @@ const PhotoTour = ({ listingId }: PhotoTourProps) => {
             <PhotoOverlayIcon />
             <span>All photos</span>
           </Button>
-          <Button variant="outline" size="icon" className="rounded-full">
+          <Button variant="outline" size="icon" className="rounded-full" aria-label="Add photo">
             <Plus className="size-4" />
           </Button>
         </div>

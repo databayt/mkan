@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/dialog';
 import Header from '@/components/Header';
 import Loading from '@/components/Loading';
+import { usePathname } from 'next/navigation';
 import { getAuthUser } from '@/lib/actions/user-actions';
 import {
   getMyTransportOffices,
@@ -76,9 +77,11 @@ const statusColors: Record<string, string> = {
 };
 
 const BookingsPage = () => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
-  const [offices, setOffices] = useState<any[]>([]);
+  const [offices, setOffices] = useState<Array<{ id: number; name: string }>>([]);
   const [selectedOfficeId, setSelectedOfficeId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,9 +108,9 @@ const BookingsPage = () => {
             setFilteredBookings(officeBookings);
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching data:', err);
-        setError(err.message || 'Error loading bookings');
+        setError(err instanceof Error ? err.message : 'Error loading bookings');
       } finally {
         setIsLoading(false);
       }
@@ -149,10 +152,10 @@ const BookingsPage = () => {
 
   const handleStatusChange = async (bookingId: number, newStatus: string) => {
     try {
-      await updateBookingStatus(bookingId, newStatus as any);
+      await updateBookingStatus(bookingId, newStatus as Booking['status']);
       setBookings((prev) =>
         prev.map((b) =>
-          b.id === bookingId ? { ...b, status: newStatus as any } : b
+          b.id === bookingId ? { ...b, status: newStatus as Booking['status'] } : b
         )
       );
       setSelectedBooking(null);
@@ -162,11 +165,11 @@ const BookingsPage = () => {
   };
 
   if (isLoading) return <Loading />;
-  if (error) return <div className="text-red-500">Error: {error}</div>;
+  if (error) return <div className="text-red-500">{isAr ? "خطأ" : "Error"}: {error}</div>;
 
   return (
     <div className="dashboard-container">
-      <Header title="Bookings" subtitle="Manage passenger bookings" />
+      <Header title={isAr ? "الحجوزات" : "Bookings"} subtitle={isAr ? "إدارة حجوزات المسافرين" : "Manage passenger bookings"} />
 
       {offices.length > 1 && (
         <div className="mb-6 flex gap-2 flex-wrap">
@@ -187,24 +190,24 @@ const BookingsPage = () => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by reference, name, or phone..."
+            placeholder={isAr ? "بحث بالمرجع أو الاسم أو الهاتف..." : "Search by reference, name, or phone..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="ps-10"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[180px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filter by status" />
+            <Filter className="h-4 w-4 me-2" />
+            <SelectValue placeholder={isAr ? "تصفية حسب الحالة" : "Filter by status"} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="Pending">Pending</SelectItem>
-            <SelectItem value="Confirmed">Confirmed</SelectItem>
-            <SelectItem value="Completed">Completed</SelectItem>
-            <SelectItem value="Cancelled">Cancelled</SelectItem>
-            <SelectItem value="NoShow">No Show</SelectItem>
+            <SelectItem value="all">{isAr ? "جميع الحالات" : "All Status"}</SelectItem>
+            <SelectItem value="Pending">{isAr ? "قيد الانتظار" : "Pending"}</SelectItem>
+            <SelectItem value="Confirmed">{isAr ? "مؤكد" : "Confirmed"}</SelectItem>
+            <SelectItem value="Completed">{isAr ? "مكتمل" : "Completed"}</SelectItem>
+            <SelectItem value="Cancelled">{isAr ? "ملغي" : "Cancelled"}</SelectItem>
+            <SelectItem value="NoShow">{isAr ? "لم يحضر" : "No Show"}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -214,13 +217,13 @@ const BookingsPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Reference</TableHead>
-                <TableHead>Passenger</TableHead>
-                <TableHead>Route</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Seats</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{isAr ? "المرجع" : "Reference"}</TableHead>
+                <TableHead>{isAr ? "المسافر" : "Passenger"}</TableHead>
+                <TableHead>{isAr ? "المسار" : "Route"}</TableHead>
+                <TableHead>{isAr ? "التاريخ" : "Date"}</TableHead>
+                <TableHead>{isAr ? "المقاعد" : "Seats"}</TableHead>
+                <TableHead>{isAr ? "المبلغ" : "Amount"}</TableHead>
+                <TableHead>{isAr ? "الحالة" : "Status"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -275,7 +278,7 @@ const BookingsPage = () => {
       ) : (
         <div className="text-center py-16 border rounded-lg">
           <Ticket className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <p className="text-muted-foreground">No bookings found</p>
+          <p className="text-muted-foreground">{isAr ? "لم يتم العثور على حجوزات" : "No bookings found"}</p>
         </div>
       )}
 
@@ -285,12 +288,12 @@ const BookingsPage = () => {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Booking Details</DialogTitle>
+            <DialogTitle>{isAr ? "تفاصيل الحجز" : "Booking Details"}</DialogTitle>
           </DialogHeader>
           {selectedBooking && (
             <div className="space-y-4">
               <div className="p-4 bg-muted/50 rounded-lg text-center">
-                <p className="text-xs text-muted-foreground">Reference</p>
+                <p className="text-xs text-muted-foreground">{isAr ? "المرجع" : "Reference"}</p>
                 <p className="text-xl font-mono font-bold">
                   {selectedBooking.bookingReference}
                 </p>
@@ -300,7 +303,7 @@ const BookingsPage = () => {
                 <div className="flex items-center gap-3">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Passenger</p>
+                    <p className="text-sm text-muted-foreground">{isAr ? "المسافر" : "Passenger"}</p>
                     <p className="font-medium">{selectedBooking.passengerName}</p>
                     <p className="text-sm">{selectedBooking.passengerPhone}</p>
                   </div>
@@ -309,7 +312,7 @@ const BookingsPage = () => {
                 <div className="flex items-center gap-3">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Route</p>
+                    <p className="text-sm text-muted-foreground">{isAr ? "المسار" : "Route"}</p>
                     <p className="font-medium">
                       {selectedBooking.trip.route.origin.city} →{' '}
                       {selectedBooking.trip.route.destination.city}
@@ -320,7 +323,7 @@ const BookingsPage = () => {
                 <div className="flex items-center gap-3">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Departure</p>
+                    <p className="text-sm text-muted-foreground">{isAr ? "المغادرة" : "Departure"}</p>
                     <p className="font-medium">
                       {selectedBooking.trip.departureTime} •{' '}
                       {format(
@@ -334,7 +337,7 @@ const BookingsPage = () => {
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      Seats: {selectedBooking.seats.map((s) => s.seatNumber).join(', ')}
+                      {isAr ? "المقاعد" : "Seats"}: {selectedBooking.seats.map((s) => s.seatNumber).join(', ')}
                     </p>
                     <p className="font-bold">
                       {selectedBooking.totalAmount.toLocaleString()} SDG
@@ -355,8 +358,8 @@ const BookingsPage = () => {
                         handleStatusChange(selectedBooking.id, 'Confirmed')
                       }
                     >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Confirm
+                      <CheckCircle2 className="h-4 w-4 me-2" />
+                      {isAr ? "تأكيد" : "Confirm"}
                     </Button>
                     <Button
                       variant="outline"
@@ -364,8 +367,8 @@ const BookingsPage = () => {
                         handleStatusChange(selectedBooking.id, 'Cancelled')
                       }
                     >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Cancel
+                      <XCircle className="h-4 w-4 me-2" />
+                      {isAr ? "إلغاء" : "Cancel"}
                     </Button>
                   </>
                 )}
@@ -377,8 +380,8 @@ const BookingsPage = () => {
                         handleStatusChange(selectedBooking.id, 'Completed')
                       }
                     >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Mark Complete
+                      <CheckCircle2 className="h-4 w-4 me-2" />
+                      {isAr ? "تم الاكتمال" : "Mark Complete"}
                     </Button>
                     <Button
                       variant="outline"
@@ -386,7 +389,7 @@ const BookingsPage = () => {
                         handleStatusChange(selectedBooking.id, 'NoShow')
                       }
                     >
-                      No Show
+                      {isAr ? "لم يحضر" : "No Show"}
                     </Button>
                   </>
                 )}

@@ -1,18 +1,37 @@
+import { Metadata } from "next";
 import React from "react";
+import { createMetadata } from "@/lib/metadata";
 import HeroSection from "@/components/site/HeroSection";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  const { lang } = await params;
+  return createMetadata({
+    title: lang === "ar" ? "مرحباً" : "Welcome",
+    description:
+      lang === "ar"
+        ? "مرحباً بك في مكان — منصة الإيجار والاستضافة"
+        : "Welcome to Mkan — your rental and hosting platform",
+    locale: lang,
+    path: "/landing",
+  });
+}
 import FeaturesSection from "@/components/landing/features";
 import DiscoverSection from "@/components/landing/discover";
 import CallToActionSection from "@/components/landing/call-to-action";
 import FooterSection from "@/components/landing/footer";
 import { PropertyContent } from "@/components/site/property/content";
-import AirbnbFilter from "@/components/atom/airbnb-filter";
-import AirbnbPropertyHeader from "@/components/atom/airbnb-property-header";
-import AirbnbSelect from "@/components/atom/airbnb-select";
+import AirbnbFilter from "@/components/atom/property-filter";
+import AirbnbPropertyHeader from "@/components/atom/property-header";
+import AirbnbSelect from "@/components/atom/property-select";
 import AirbnbIconsRow from "@/components/site/property-filter";
-import AirbnbImages from "@/components/atom/airbnb-images";
-import AirbnbReserve from "@/components/atom/airbnb-reserve";
-import AirbnbInspiration from "@/components/site/airbnb-inspiration";
-import AirbnbReviews from "@/components/atom/airbnb-reviews";
+import AirbnbImages from "@/components/atom/property-images";
+import AirbnbReserve from "@/components/atom/property-reserve";
+import AirbnbInspiration from "@/components/site/inspiration";
+import AirbnbReviews from "@/components/atom/reviews";
 
 import PropertyContentComponent from "@/components/property/content";
 

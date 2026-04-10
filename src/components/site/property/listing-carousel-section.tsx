@@ -99,11 +99,11 @@ export function ListingCarouselSection({
         }}
         className="w-full"
       >
-        <CarouselContent className="-ml-4">
+        <CarouselContent className="-ms-4">
           {transformedListings.map((property) => (
             <CarouselItem
               key={property.id}
-              className="pl-4 basis-[85%] sm:basis-1/2 lg:basis-1/4"
+              className="ps-4 basis-[85%] sm:basis-1/2 lg:basis-1/4"
             >
               <PropertyCard {...property} />
             </CarouselItem>

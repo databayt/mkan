@@ -1,31 +1,48 @@
 "use server";
 
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { ApplicationStatus } from "@prisma/client";
+import { sanitizeInput, sanitizeEmail, sanitizePhone } from "@/lib/sanitization";
+import { logger } from "@/lib/logger";
 
-// Get applications (filtered by user and role)
-export async function getApplications(params?: {
-  userId?: string;
-  userType?: string;
-}) {
+const createApplicationSchema = z.object({
+  propertyId: z.number().int().positive(),
+  name: z.string().min(1).max(200),
+  email: z.string().email(),
+  phoneNumber: z.string().min(1).max(30),
+  message: z.string().max(1000).optional(),
+});
+
+const updateApplicationStatusSchema = z.object({
+  applicationId: z.number().int().positive(),
+  status: z.nativeEnum(ApplicationStatus),
+});
+
+// Get applications (filtered by user role from session, NOT client input)
+export async function getApplications() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       throw new Error("Unauthorized");
     }
 
-    let where: any = {};
+    // Determine user type from session role, not from client input
+    const userRole = session.user.role?.toLowerCase();
+    const userId = session.user.id;
 
-    if (params?.userType === "tenant" && params?.userId) {
-      // Get applications for a specific tenant
-      where.tenantId = params.userId;
-    } else if (params?.userType === "manager" && params?.userId) {
-      // Get applications for properties managed by this manager (host)
+    let where: Record<string, unknown> = {};
+
+    if (userRole === "manager" || userRole === "host") {
+      // Get applications for properties managed by this host
       where.listing = {
-        hostId: params.userId,
+        hostId: userId,
       };
+    } else {
+      // Default: get applications for this tenant
+      where.tenantId = userId;
     }
 
     const applications = await db.application.findMany({
@@ -64,24 +81,31 @@ export async function getApplications(params?: {
 
     return applications;
   } catch (error) {
-    console.error("Error fetching applications:", error);
+    logger.error("Error fetching applications:", error);
     throw new Error("Failed to fetch applications");
   }
 }
 
 // Create a new application
-export async function createApplication(data: {
-  propertyId: number;
-  name: string;
-  email: string;
-  phoneNumber: string;
-  message?: string;
-}) {
+export async function createApplication(data: unknown) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       throw new Error("Unauthorized");
     }
+
+    const parsed = createApplicationSchema.safeParse(data);
+    if (!parsed.success) {
+      throw new Error("Invalid input");
+    }
+
+    const validData = {
+      ...parsed.data,
+      name: sanitizeInput(parsed.data.name),
+      email: sanitizeEmail(parsed.data.email),
+      phoneNumber: sanitizePhone(parsed.data.phoneNumber),
+      message: parsed.data.message ? sanitizeInput(parsed.data.message) : undefined,
+    };
 
     // Ensure tenant profile exists
     let tenant = await db.tenant.findUnique({
@@ -92,78 +116,81 @@ export async function createApplication(data: {
       tenant = await db.tenant.create({
         data: {
           userId: session.user.id,
-          name: data.name,
-          email: data.email,
-          phoneNumber: data.phoneNumber,
+          name: validData.name,
+          email: validData.email,
+          phoneNumber: validData.phoneNumber,
         },
       });
     }
 
-    // Check if application already exists for this property
-    const existingApplication = await db.application.findFirst({
-      where: {
-        propertyId: data.propertyId,
-        tenantId: session.user.id,
-      },
-    });
+    // Use transaction to prevent duplicate applications under concurrent requests
+    const application = await db.$transaction(async (tx) => {
+      // Check if application already exists for this property
+      const existingApplication = await tx.application.findFirst({
+        where: {
+          propertyId: validData.propertyId,
+          tenantId: session.user.id,
+        },
+      });
 
-    if (existingApplication) {
-      throw new Error("You have already applied for this property");
-    }
+      if (existingApplication) {
+        throw new Error("You have already applied for this property");
+      }
 
-    // Create the application
-    const application = await db.application.create({
-      data: {
-        propertyId: data.propertyId,
-        tenantId: session.user.id,
-        name: data.name,
-        email: data.email,
-        phoneNumber: data.phoneNumber,
-        message: data.message,
-        applicationDate: new Date(),
-        status: ApplicationStatus.Pending,
-      },
-      include: {
-        listing: {
-          include: {
-            location: true,
-            host: {
-              select: {
-                id: true,
-                email: true,
-                username: true,
+      // Create the application
+      return tx.application.create({
+        data: {
+          propertyId: validData.propertyId,
+          tenantId: session.user.id,
+          name: validData.name,
+          email: validData.email,
+          phoneNumber: validData.phoneNumber,
+          message: validData.message,
+          applicationDate: new Date(),
+          status: ApplicationStatus.Pending,
+        },
+        include: {
+          listing: {
+            include: {
+              location: true,
+              host: {
+                select: {
+                  id: true,
+                  email: true,
+                  username: true,
+                },
+              },
+            },
+          },
+          tenant: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  username: true,
+                  image: true,
+                },
               },
             },
           },
         },
-        tenant: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                username: true,
-                image: true,
-              },
-            },
-          },
-        },
-      },
+      });
     });
 
     revalidatePath("/tenants/applications");
     revalidatePath("/managers/applications");
     return application;
   } catch (error) {
-    console.error("Error creating application:", error);
+    logger.error("Error creating application:", error);
     throw new Error("Failed to create application");
   }
 }
 
 // Update application status (for managers)
 export async function updateApplicationStatus(
-  applicationId: number,
-  status: ApplicationStatus
+  applicationId: unknown,
+  status: unknown
 ) {
   try {
     const session = await auth();
@@ -171,9 +198,14 @@ export async function updateApplicationStatus(
       throw new Error("Unauthorized");
     }
 
+    const parsed = updateApplicationStatusSchema.safeParse({ applicationId, status });
+    if (!parsed.success) {
+      throw new Error("Invalid input");
+    }
+
     // Get the application to verify ownership
     const application = await db.application.findUnique({
-      where: { id: applicationId },
+      where: { id: parsed.data.applicationId },
       include: {
         listing: {
           select: {
@@ -192,50 +224,50 @@ export async function updateApplicationStatus(
       throw new Error("Unauthorized: You don't manage this property");
     }
 
-    // Update the application status
-    const updatedApplication = await db.application.update({
-      where: { id: applicationId },
-      data: { status },
-      include: {
-        listing: {
-          include: {
-            location: true,
-            host: {
-              select: {
-                id: true,
-                email: true,
-                username: true,
+    // Use transaction for status update + lease creation
+    const result = await db.$transaction(async (tx) => {
+      // Update the application status
+      const updatedApplication = await tx.application.update({
+        where: { id: parsed.data.applicationId },
+        data: { status: parsed.data.status },
+        include: {
+          listing: {
+            include: {
+              location: true,
+              host: {
+                select: {
+                  id: true,
+                  email: true,
+                  username: true,
+                },
+              },
+            },
+          },
+          tenant: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  username: true,
+                  image: true,
+                },
               },
             },
           },
         },
-        tenant: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                username: true,
-                image: true,
-              },
-            },
-          },
-        },
-      },
-    });
+      });
 
-    // If approved, create a lease (basic implementation)
-    let lease = null;
-    if (status === ApplicationStatus.Approved) {
-      try {
-        // Create a lease with default values (you might want to make this more sophisticated)
+      // If approved, create a lease
+      let lease = null;
+      if (parsed.data.status === ApplicationStatus.Approved) {
         const leaseStartDate = new Date();
-        leaseStartDate.setDate(leaseStartDate.getDate() + 30); // Start 30 days from now
-        
-        const leaseEndDate = new Date(leaseStartDate);
-        leaseEndDate.setFullYear(leaseEndDate.getFullYear() + 1); // 1 year lease
+        leaseStartDate.setDate(leaseStartDate.getDate() + 30);
 
-        lease = await db.lease.create({
+        const leaseEndDate = new Date(leaseStartDate);
+        leaseEndDate.setFullYear(leaseEndDate.getFullYear() + 1);
+
+        lease = await tx.lease.create({
           data: {
             propertyId: application.propertyId,
             tenantId: application.tenantId,
@@ -255,23 +287,22 @@ export async function updateApplicationStatus(
         });
 
         // Link the lease to the application
-        await db.application.update({
-          where: { id: applicationId },
+        await tx.application.update({
+          where: { id: parsed.data.applicationId },
           data: { leaseId: lease.id },
         });
-      } catch (leaseError) {
-        console.error("Error creating lease:", leaseError);
-        // Don't throw here, the application status was still updated
       }
-    }
+
+      return { ...updatedApplication, lease };
+    });
 
     revalidatePath("/tenants/applications");
     revalidatePath("/managers/applications");
     revalidatePath("/managers/properties");
 
-    return { ...updatedApplication, lease };
+    return result;
   } catch (error) {
-    console.error("Error updating application status:", error);
+    logger.error("Error updating application status:", error);
     throw new Error("Failed to update application status");
   }
 } 

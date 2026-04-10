@@ -1,5 +1,8 @@
+"use client"
+
 import { Heart, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { usePathname } from "next/navigation"
 
 interface DetailCardProps {
   title?: string
@@ -28,6 +31,9 @@ export default function DetailCard({
   image = "/placeholder.svg?height=200&width=300",
   isFavorited = false
 }: DetailCardProps) {
+  const pathname = usePathname()
+  const isAr = pathname?.startsWith("/ar")
+
   return (
     <div className="flex gap-6">
       {/* Property Image */}
@@ -47,10 +53,11 @@ export default function DetailCard({
             <p className="text-xs font-normal text-gray-500">{location}</p>
             <h3 className="text-base font-medium text-gray-900">{title}</h3>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             className="w-6 h-6 p-0"
+            aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
           >
             <Heart className={`h-4 w-4 ${isFavorited ? 'fill-pink-300 text-pink-500' : 'text-gray-700'}`} />
           </Button>
@@ -58,7 +65,7 @@ export default function DetailCard({
 
         {/* Details */}
         <div className="flex flex-col">
-          <p className="text-xs font-normal text-gray-500">{guests} · Entire Home · {beds} · {baths}</p>
+          <p className="text-xs font-normal text-gray-500">{guests} · {isAr ? "منزل كامل" : "Entire Home"} · {beds} · {baths}</p>
           <p className="text-xs font-normal text-gray-500">{amenities}</p>
         </div>
 
@@ -67,12 +74,12 @@ export default function DetailCard({
           <div className="flex items-center gap-1">
             <span className="text-xs font-medium text-gray-700">{rating}</span>
             <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-            <span className="text-xs font-normal text-gray-700">({reviews} reviews)</span>
+            <span className="text-xs font-normal text-gray-700">({reviews} {isAr ? "تقييم" : "reviews"})</span>
           </div>
           
           <div className="flex items-center gap-1">
             <span className="text-sm font-medium text-gray-700">{price}</span>
-            <span className="text-xs font-normal text-gray-700">/night</span>
+            <span className="text-xs font-normal text-gray-700">/{isAr ? "ليلة" : "night"}</span>
           </div>
         </div>
       </div>

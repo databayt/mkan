@@ -145,20 +145,23 @@ export const {
 
       return session
     },
-    async jwt({ token }) {
+    async jwt({ token, trigger }) {
       if (!token.sub) return token
 
-      const existingUser = await getUserById(token.sub)
+      // Only fetch from DB on sign-in, explicit update, or when role is missing
+      if (trigger === "signIn" || trigger === "update" || !token.role) {
+        const existingUser = await getUserById(token.sub)
 
-      if (!existingUser) return token
+        if (!existingUser) return token
 
-      const existingAccount = await getAccountByUserId(existingUser.id)
+        const existingAccount = await getAccountByUserId(existingUser.id)
 
-      token.isOAuth = !!existingAccount
-      token.name = existingUser.username
-      token.email = existingUser.email
-      token.role = existingUser.role
-      token.isTwoFactorEnabled = existingUser.isTwoFactorEnabled
+        token.isOAuth = !!existingAccount
+        token.name = existingUser.username
+        token.email = existingUser.email
+        token.role = existingUser.role
+        token.isTwoFactorEnabled = existingUser.isTwoFactorEnabled
+      }
 
       return token
     }

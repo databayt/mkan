@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import Image from "next/image";
 
@@ -20,6 +21,9 @@ const itemVariants = {
 };
 
 const DiscoverSection = () => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
+
   return (
     <motion.div
       initial="hidden"
@@ -31,20 +35,35 @@ const DiscoverSection = () => {
       <div className="max-w-6xl xl:max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 xl:px-16">
         <motion.div variants={itemVariants} className="my-12 text-center">
           <h2 className="text-3xl font-semibold leading-tight text-gray-800">
-            Discover
+            {isAr ? "اكتشف" : "Discover"}
           </h2>
           <p className="mt-4 text-lg text-gray-600">
-            Find your Dream Rental Property Today!
+            {isAr ? "ابحث عن عقار إيجارك المثالي اليوم!" : "Find your Dream Rental Property Today!"}
           </p>
           <p className="mt-2 text-gray-500 max-w-3xl mx-auto">
-            Searching for your dream rental property has never been easier. With
-            our user-friendly search feature, you can quickly find the perfect
-            home that meets all your needs. Start your search today and discover
-            your dream rental property!
+            {isAr
+              ? "لم يكن البحث عن عقار الإيجار المثالي أسهل من أي وقت مضى. مع ميزة البحث السهلة، يمكنك العثور بسرعة على المنزل المثالي الذي يلبي جميع احتياجاتك. ابدأ بحثك اليوم!"
+              : "Searching for your dream rental property has never been easier. With our user-friendly search feature, you can quickly find the perfect home that meets all your needs. Start your search today and discover your dream rental property!"}
           </p>
         </motion.div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 xl:gap-16 text-center">
-          {[
+          {(isAr ? [
+            {
+              imageSrc: "/landing-icon-wand.png",
+              title: "ابحث عن العقارات",
+              description: "تصفح مجموعتنا الواسعة من العقارات المتاحة للإيجار في موقعك المفضل.",
+            },
+            {
+              imageSrc: "/landing-icon-calendar.png",
+              title: "احجز إيجارك",
+              description: "بمجرد العثور على العقار المثالي، احجزه بسهولة عبر الإنترنت بنقرات قليلة.",
+            },
+            {
+              imageSrc: "/landing-icon-heart.png",
+              title: "استمتع بمنزلك الجديد",
+              description: "انتقل إلى عقارك الجديد وابدأ بالاستمتاع بمنزل أحلامك.",
+            },
+          ] : [
             {
               imageSrc: "/landing-icon-wand.png",
               title: "Search for Properties",
@@ -63,7 +82,7 @@ const DiscoverSection = () => {
               description:
                 "Move into your new rental property and start enjoying your dream home.",
             },
-          ].map((card, index) => (
+          ]).map((card, index) => (
             <motion.div key={index} variants={itemVariants}>
               <DiscoverCard {...card} />
             </motion.div>

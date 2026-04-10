@@ -48,6 +48,9 @@
   "exclude": [
     "node_modules",
     "src/server",
-    "src/validation"
+    "src/validation",
+    "scripts",
+    "seed.ts",
+    "tests"
   ]
 }

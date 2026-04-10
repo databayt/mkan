@@ -1,9 +1,42 @@
 "use server";
 
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { Amenity, Highlight, PropertyType, Prisma } from "@prisma/client";
+import { sanitizeInput, sanitizeHtml } from "@/lib/sanitization";
+import { logger } from "@/lib/logger";
+
+const listingIdSchema = z.number().int().positive();
+
+const listingFormDataSchema = z.object({
+  title: z.string().max(200).optional(),
+  description: z.string().max(10000).optional(),
+  pricePerNight: z.number().min(0).optional(),
+  securityDeposit: z.number().min(0).optional(),
+  applicationFee: z.number().min(0).optional(),
+  bedrooms: z.number().int().min(0).optional(),
+  bathrooms: z.number().min(0).optional(),
+  squareFeet: z.number().int().min(0).optional(),
+  guestCount: z.number().int().min(1).optional(),
+  propertyType: z.nativeEnum(PropertyType).optional(),
+  isPetsAllowed: z.boolean().optional(),
+  isParkingIncluded: z.boolean().optional(),
+  instantBook: z.boolean().optional(),
+  amenities: z.array(z.nativeEnum(Amenity)).optional(),
+  highlights: z.array(z.nativeEnum(Highlight)).optional(),
+  photoUrls: z.array(z.string().url()).optional(),
+  address: z.string().max(500).optional(),
+  city: z.string().max(200).optional(),
+  state: z.string().max(200).optional(),
+  country: z.string().max(200).optional(),
+  postalCode: z.string().max(20).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  draft: z.boolean().optional(),
+  isPublished: z.boolean().optional(),
+}).partial();
 
 // ============================================
 // TYPES
@@ -61,26 +94,42 @@ export interface ListingFilters {
 // CREATE
 // ============================================
 
-export async function createListing(data: Partial<ListingFormData> = {}) {
+export async function createListing(data: unknown = {}) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error("You must be logged in to create a listing");
   }
 
+  const parsed = listingFormDataSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error("Invalid listing data");
+  }
+
+  const validData = { ...parsed.data };
+
+  // Sanitize string inputs
+  if (validData.title) validData.title = sanitizeInput(validData.title);
+  if (validData.description) validData.description = sanitizeHtml(validData.description);
+  if (validData.address) validData.address = sanitizeInput(validData.address);
+  if (validData.city) validData.city = sanitizeInput(validData.city);
+  if (validData.state) validData.state = sanitizeInput(validData.state);
+  if (validData.country) validData.country = sanitizeInput(validData.country);
+  if (validData.postalCode) validData.postalCode = sanitizeInput(validData.postalCode);
+
   try {
     // Create location if provided
     let locationId = null;
-    if (data.address && data.city && data.state && data.country) {
+    if (validData.address && validData.city && validData.state && validData.country) {
       const location = await db.location.create({
         data: {
-          address: data.address,
-          city: data.city,
-          state: data.state,
-          country: data.country,
-          postalCode: data.postalCode || "",
-          latitude: data.latitude || 0,
-          longitude: data.longitude || 0,
+          address: validData.address,
+          city: validData.city,
+          state: validData.state,
+          country: validData.country,
+          postalCode: validData.postalCode || "",
+          latitude: validData.latitude || 0,
+          longitude: validData.longitude || 0,
         },
       });
       locationId = location.id;
@@ -88,24 +137,24 @@ export async function createListing(data: Partial<ListingFormData> = {}) {
 
     // Create listing
     const listingData: Prisma.ListingCreateInput = {
-      title: data.title,
-      description: data.description,
-      pricePerNight: data.pricePerNight,
-      securityDeposit: data.securityDeposit,
-      applicationFee: data.applicationFee,
-      bedrooms: data.bedrooms,
-      bathrooms: data.bathrooms,
-      squareFeet: data.squareFeet,
-      guestCount: data.guestCount || 2,
-      propertyType: data.propertyType,
-      isPetsAllowed: data.isPetsAllowed || false,
-      isParkingIncluded: data.isParkingIncluded || false,
-      instantBook: data.instantBook || false,
-      amenities: data.amenities || [],
-      highlights: data.highlights || [],
-      photoUrls: data.photoUrls || [],
-      draft: data.draft ?? true,
-      isPublished: data.isPublished ?? false,
+      title: validData.title,
+      description: validData.description,
+      pricePerNight: validData.pricePerNight,
+      securityDeposit: validData.securityDeposit,
+      applicationFee: validData.applicationFee,
+      bedrooms: validData.bedrooms,
+      bathrooms: validData.bathrooms,
+      squareFeet: validData.squareFeet,
+      guestCount: validData.guestCount || 2,
+      propertyType: validData.propertyType,
+      isPetsAllowed: validData.isPetsAllowed || false,
+      isParkingIncluded: validData.isParkingIncluded || false,
+      instantBook: validData.instantBook || false,
+      amenities: validData.amenities || [],
+      highlights: validData.highlights || [],
+      photoUrls: validData.photoUrls || [],
+      draft: validData.draft ?? true,
+      isPublished: validData.isPublished ?? false,
       host: { connect: { id: session.user.id } },
       ...(locationId && { location: { connect: { id: locationId } } }),
     };
@@ -130,7 +179,7 @@ export async function createListing(data: Partial<ListingFormData> = {}) {
 
     return { success: true, listing };
   } catch (error) {
-    console.error("Error creating listing:", error);
+    logger.error("Error creating listing:", error);
     throw new Error(
       `Failed to create listing: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -141,10 +190,15 @@ export async function createListing(data: Partial<ListingFormData> = {}) {
 // READ
 // ============================================
 
-export async function getListing(id: number) {
+export async function getListing(id: unknown) {
+  const parsedId = listingIdSchema.safeParse(id);
+  if (!parsedId.success) {
+    throw new Error("Invalid listing ID");
+  }
+
   try {
     const listing = await db.listing.findUnique({
-      where: { id },
+      where: { id: parsedId.data },
       include: {
         location: true,
         host: {
@@ -155,10 +209,6 @@ export async function getListing(id: number) {
             image: true,
           },
         },
-        reviews: {
-          orderBy: { createdAt: "desc" },
-          take: 10,
-        },
       },
     });
 
@@ -168,7 +218,7 @@ export async function getListing(id: number) {
 
     return listing;
   } catch (error) {
-    console.error("Error fetching listing:", error);
+    logger.error("Error fetching listing:", error);
     throw new Error(
       `Failed to fetch listing: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -283,7 +333,7 @@ export async function getListings(filters?: ListingFilters) {
 
     return listings;
   } catch (error) {
-    console.error("Error fetching listings:", error);
+    logger.error("Error fetching listings:", error);
     throw new Error(
       `Failed to fetch listings: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -318,7 +368,6 @@ export async function getHostListings(hostId?: string) {
           select: {
             applications: true,
             leases: true,
-            reviews: true,
           },
         },
       },
@@ -329,7 +378,7 @@ export async function getHostListings(hostId?: string) {
 
     return listings;
   } catch (error) {
-    console.error("Error fetching host listings:", error);
+    logger.error("Error fetching host listings:", error);
     throw new Error(
       `Failed to fetch host listings: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -340,17 +389,27 @@ export async function getHostListings(hostId?: string) {
 // UPDATE
 // ============================================
 
-export async function updateListing(id: number, data: Partial<ListingFormData>) {
+export async function updateListing(id: unknown, data: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error("You must be logged in to update a listing");
   }
 
+  const parsedId = listingIdSchema.safeParse(id);
+  if (!parsedId.success) {
+    throw new Error("Invalid listing ID");
+  }
+
+  const parsed = listingFormDataSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error("Invalid listing data");
+  }
+
   try {
     // Check if the listing belongs to the authenticated user
     const existingListing = await db.listing.findUnique({
-      where: { id },
+      where: { id: parsedId.data },
       select: { hostId: true, locationId: true },
     });
 
@@ -362,34 +421,45 @@ export async function updateListing(id: number, data: Partial<ListingFormData>) 
       throw new Error("You can only update your own listings");
     }
 
+    const d = parsed.data;
+
+    // Sanitize string inputs
+    if (d.title) d.title = sanitizeInput(d.title);
+    if (d.description) d.description = sanitizeHtml(d.description);
+    if (d.address) d.address = sanitizeInput(d.address);
+    if (d.city) d.city = sanitizeInput(d.city);
+    if (d.state) d.state = sanitizeInput(d.state);
+    if (d.country) d.country = sanitizeInput(d.country);
+    if (d.postalCode) d.postalCode = sanitizeInput(d.postalCode);
+
     // Handle location update if provided
     let locationUpdate = {};
-    if (data.address || data.city || data.state || data.country) {
+    if (d.address || d.city || d.state || d.country) {
       if (existingListing.locationId) {
         // Update existing location
         await db.location.update({
           where: { id: existingListing.locationId },
           data: {
-            ...(data.address && { address: data.address }),
-            ...(data.city && { city: data.city }),
-            ...(data.state && { state: data.state }),
-            ...(data.country && { country: data.country }),
-            ...(data.postalCode && { postalCode: data.postalCode }),
-            ...(data.latitude !== undefined && { latitude: data.latitude }),
-            ...(data.longitude !== undefined && { longitude: data.longitude }),
+            ...(d.address && { address: d.address }),
+            ...(d.city && { city: d.city }),
+            ...(d.state && { state: d.state }),
+            ...(d.country && { country: d.country }),
+            ...(d.postalCode && { postalCode: d.postalCode }),
+            ...(d.latitude !== undefined && { latitude: d.latitude }),
+            ...(d.longitude !== undefined && { longitude: d.longitude }),
           },
         });
-      } else if (data.address && data.city && data.state && data.country) {
+      } else if (d.address && d.city && d.state && d.country) {
         // Create new location
         const location = await db.location.create({
           data: {
-            address: data.address,
-            city: data.city,
-            state: data.state,
-            country: data.country,
-            postalCode: data.postalCode || "",
-            latitude: data.latitude || 0,
-            longitude: data.longitude || 0,
+            address: d.address,
+            city: d.city,
+            state: d.state,
+            country: d.country,
+            postalCode: d.postalCode || "",
+            latitude: d.latitude || 0,
+            longitude: d.longitude || 0,
           },
         });
         locationUpdate = { location: { connect: { id: location.id } } };
@@ -398,32 +468,32 @@ export async function updateListing(id: number, data: Partial<ListingFormData>) 
 
     // Prepare listing update data
     const updateData: Prisma.ListingUpdateInput = {
-      ...(data.title !== undefined && { title: data.title }),
-      ...(data.description !== undefined && { description: data.description }),
-      ...(data.pricePerNight !== undefined && { pricePerNight: data.pricePerNight }),
-      ...(data.securityDeposit !== undefined && { securityDeposit: data.securityDeposit }),
-      ...(data.applicationFee !== undefined && { applicationFee: data.applicationFee }),
-      ...(data.bedrooms !== undefined && { bedrooms: data.bedrooms }),
-      ...(data.bathrooms !== undefined && { bathrooms: data.bathrooms }),
-      ...(data.squareFeet !== undefined && { squareFeet: data.squareFeet }),
-      ...(data.guestCount !== undefined && { guestCount: data.guestCount }),
-      ...(data.propertyType !== undefined && { propertyType: data.propertyType }),
-      ...(data.isPetsAllowed !== undefined && { isPetsAllowed: data.isPetsAllowed }),
-      ...(data.isParkingIncluded !== undefined && { isParkingIncluded: data.isParkingIncluded }),
-      ...(data.instantBook !== undefined && { instantBook: data.instantBook }),
-      ...(data.amenities !== undefined && { amenities: data.amenities }),
-      ...(data.highlights !== undefined && { highlights: data.highlights }),
-      ...(data.photoUrls !== undefined && { photoUrls: data.photoUrls }),
-      ...(data.draft !== undefined && { draft: data.draft }),
-      ...(data.isPublished !== undefined && {
-        isPublished: data.isPublished,
-        ...(data.isPublished && { postedDate: new Date() }),
+      ...(d.title !== undefined && { title: d.title }),
+      ...(d.description !== undefined && { description: d.description }),
+      ...(d.pricePerNight !== undefined && { pricePerNight: d.pricePerNight }),
+      ...(d.securityDeposit !== undefined && { securityDeposit: d.securityDeposit }),
+      ...(d.applicationFee !== undefined && { applicationFee: d.applicationFee }),
+      ...(d.bedrooms !== undefined && { bedrooms: d.bedrooms }),
+      ...(d.bathrooms !== undefined && { bathrooms: d.bathrooms }),
+      ...(d.squareFeet !== undefined && { squareFeet: d.squareFeet }),
+      ...(d.guestCount !== undefined && { guestCount: d.guestCount }),
+      ...(d.propertyType !== undefined && { propertyType: d.propertyType }),
+      ...(d.isPetsAllowed !== undefined && { isPetsAllowed: d.isPetsAllowed }),
+      ...(d.isParkingIncluded !== undefined && { isParkingIncluded: d.isParkingIncluded }),
+      ...(d.instantBook !== undefined && { instantBook: d.instantBook }),
+      ...(d.amenities !== undefined && { amenities: d.amenities }),
+      ...(d.highlights !== undefined && { highlights: d.highlights }),
+      ...(d.photoUrls !== undefined && { photoUrls: d.photoUrls }),
+      ...(d.draft !== undefined && { draft: d.draft }),
+      ...(d.isPublished !== undefined && {
+        isPublished: d.isPublished,
+        ...(d.isPublished && { postedDate: new Date() }),
       }),
       ...locationUpdate,
     };
 
     const listing = await db.listing.update({
-      where: { id },
+      where: { id: parsedId.data },
       data: updateData,
       include: {
         location: true,
@@ -439,13 +509,13 @@ export async function updateListing(id: number, data: Partial<ListingFormData>) 
     });
 
     revalidatePath("/hosting/listings");
-    revalidatePath(`/hosting/listings/editor/${id}`);
-    revalidatePath(`/listing/${id}`);
+    revalidatePath(`/hosting/listings/editor/${parsedId.data}`);
+    revalidatePath(`/listing/${parsedId.data}`);
     revalidatePath("/search");
 
     return { success: true, listing };
   } catch (error) {
-    console.error("Error updating listing:", error);
+    logger.error("Error updating listing:", error);
     throw new Error(
       `Failed to update listing: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -456,17 +526,22 @@ export async function updateListing(id: number, data: Partial<ListingFormData>) 
 // DELETE
 // ============================================
 
-export async function deleteListing(id: number) {
+export async function deleteListing(id: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error("You must be logged in to delete a listing");
   }
 
+  const parsedId = listingIdSchema.safeParse(id);
+  if (!parsedId.success) {
+    throw new Error("Invalid listing ID");
+  }
+
   try {
     // Check if the listing belongs to the authenticated user
     const existingListing = await db.listing.findUnique({
-      where: { id },
+      where: { id: parsedId.data },
       select: { hostId: true, locationId: true },
     });
 
@@ -480,7 +555,7 @@ export async function deleteListing(id: number) {
 
     // Delete the listing (cascades will handle related records)
     await db.listing.delete({
-      where: { id },
+      where: { id: parsedId.data },
     });
 
     // Optionally delete orphaned location
@@ -500,7 +575,7 @@ export async function deleteListing(id: number) {
 
     return { success: true };
   } catch (error) {
-    console.error("Error deleting listing:", error);
+    logger.error("Error deleting listing:", error);
     throw new Error(
       `Failed to delete listing: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -511,17 +586,22 @@ export async function deleteListing(id: number) {
 // PUBLISH / UNPUBLISH
 // ============================================
 
-export async function publishListing(id: number) {
+export async function publishListing(id: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error("You must be logged in to publish a listing");
   }
 
+  const parsedId = listingIdSchema.safeParse(id);
+  if (!parsedId.success) {
+    throw new Error("Invalid listing ID");
+  }
+
   try {
     // Check ownership
     const existingListing = await db.listing.findUnique({
-      where: { id },
+      where: { id: parsedId.data },
       include: { location: true },
     });
 
@@ -553,7 +633,7 @@ export async function publishListing(id: number) {
 
     // Publish the listing
     const publishedListing = await db.listing.update({
-      where: { id },
+      where: { id: parsedId.data },
       data: {
         draft: false,
         isPublished: true,
@@ -573,29 +653,34 @@ export async function publishListing(id: number) {
     });
 
     revalidatePath("/hosting/listings");
-    revalidatePath(`/listing/${id}`);
+    revalidatePath(`/listing/${parsedId.data}`);
     revalidatePath("/search");
 
     return { success: true, listing: publishedListing };
   } catch (error) {
-    console.error("Error publishing listing:", error);
+    logger.error("Error publishing listing:", error);
     throw new Error(
       `Failed to publish listing: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
 }
 
-export async function unpublishListing(id: number) {
+export async function unpublishListing(id: unknown) {
   const session = await auth();
 
   if (!session?.user?.id) {
     throw new Error("You must be logged in to unpublish a listing");
   }
 
+  const parsedId = listingIdSchema.safeParse(id);
+  if (!parsedId.success) {
+    throw new Error("Invalid listing ID");
+  }
+
   try {
     // Check ownership
     const existingListing = await db.listing.findUnique({
-      where: { id },
+      where: { id: parsedId.data },
       select: { hostId: true },
     });
 
@@ -609,7 +694,7 @@ export async function unpublishListing(id: number) {
 
     // Unpublish the listing
     const unpublishedListing = await db.listing.update({
-      where: { id },
+      where: { id: parsedId.data },
       data: {
         isPublished: false,
       },
@@ -627,12 +712,12 @@ export async function unpublishListing(id: number) {
     });
 
     revalidatePath("/hosting/listings");
-    revalidatePath(`/listing/${id}`);
+    revalidatePath(`/listing/${parsedId.data}`);
     revalidatePath("/search");
 
     return { success: true, listing: unpublishedListing };
   } catch (error) {
-    console.error("Error unpublishing listing:", error);
+    logger.error("Error unpublishing listing:", error);
     throw new Error(
       `Failed to unpublish listing: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -678,20 +763,22 @@ export async function searchListings(params: {
 
     // Text search
     if (query) {
+      const sanitizedQuery = sanitizeInput(query);
       where.OR = [
-        { title: { contains: query, mode: "insensitive" } },
-        { description: { contains: query, mode: "insensitive" } },
+        { title: { contains: sanitizedQuery, mode: "insensitive" } },
+        { description: { contains: sanitizedQuery, mode: "insensitive" } },
       ];
     }
 
     // Location search
     if (location) {
+      const sanitizedLocation = sanitizeInput(location);
       where.location = {
         is: {
           OR: [
-            { city: { contains: location, mode: "insensitive" } },
-            { state: { contains: location, mode: "insensitive" } },
-            { country: { contains: location, mode: "insensitive" } },
+            { city: { contains: sanitizedLocation, mode: "insensitive" } },
+            { state: { contains: sanitizedLocation, mode: "insensitive" } },
+            { country: { contains: sanitizedLocation, mode: "insensitive" } },
           ],
         },
       };
@@ -760,7 +847,7 @@ export async function searchListings(params: {
       },
     };
   } catch (error) {
-    console.error("Error searching listings:", error);
+    logger.error("Error searching listings:", error);
     throw new Error(
       `Failed to search listings: ${error instanceof Error ? error.message : "Unknown error"}`
     );

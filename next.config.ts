@@ -24,6 +24,9 @@ const nextConfig: NextConfig = {
   ],
 
   // Experimental features
+  // Externalize packages that break when bundled by webpack
+  serverExternalPackages: ['jsdom'],
+
   experimental: {
     // Enable server actions
     serverActions: {
@@ -32,9 +35,7 @@ const nextConfig: NextConfig = {
     },
     // Optimize packages for server
     optimizePackageImports: [
-      '@radix-ui/react-icons',
       'lucide-react',
-      'react-icons',
       '@sentry/nextjs',
     ],
   },
@@ -101,12 +102,11 @@ const nextConfig: NextConfig = {
     ],
   },
   typescript: {
-    // TypeScript errors must be fixed before build succeeds
     ignoreBuildErrors: false,
   },
 
-  // Note: Turbopack disabled for production builds due to Windows symlink issues
-  // turbopack: {},
+  // Enable Turbopack for development (default in Next.js 16)
+  turbopack: {},
 
   // Webpack configuration
   webpack: (config, { isServer }) => {
@@ -120,11 +120,11 @@ const nextConfig: NextConfig = {
       };
     }
 
-    // Add Sentry webpack plugin configuration
-    config.module.rules.push({
-      test: /\.(png|jpe?g|gif|svg|webp|ico)$/,
-      type: isServer ? 'asset/resource' : 'asset',
-    });
+    // Externalize jsdom on server to prevent its CSS file path from breaking
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push('jsdom');
+    }
 
     return config;
   },

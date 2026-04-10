@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { HelpCircle } from 'lucide-react';
 
 interface LegalAndCreatePageProps {
@@ -12,6 +12,8 @@ interface LegalAndCreatePageProps {
 
 const LegalAndCreatePage = ({ params }: LegalAndCreatePageProps) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [id, setId] = React.useState<string>('');
   const [hostingType, setHostingType] = useState<string>('private-individual');
   const [safetyFeatures, setSafetyFeatures] = useState<string[]>([]);
@@ -32,7 +34,11 @@ const LegalAndCreatePage = ({ params }: LegalAndCreatePageProps) => {
     );
   };
 
-  const safetyOptions = [
+  const safetyOptions = isAr ? [
+    'كاميرا أمان خارجية موجودة',
+    'جهاز مراقبة الضوضاء موجود',
+    'أسلحة في العقار',
+  ] : [
     'Exterior security camera present',
     'Noise decibel monitor present',
     'Weapon(s) on the property',
@@ -46,7 +52,7 @@ const LegalAndCreatePage = ({ params }: LegalAndCreatePageProps) => {
         {/* Title at the top */}
         <div className="mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-2xl lg:text-4xl font-medium text-foreground">
-            Share safety details
+            {isAr ? "شارك تفاصيل السلامة" : "Share safety details"}
           </h1>
         </div>
 
@@ -56,7 +62,7 @@ const LegalAndCreatePage = ({ params }: LegalAndCreatePageProps) => {
           <div className="lg:col-span-2">
             <div className="flex items-center space-x-2 mb-3 sm:mb-4">
               <h2 className="text-base sm:text-lg font-medium text-foreground">
-                How are you hosting on Airbnb?
+                {isAr ? "كيف تستضيف على مكان؟" : "How are you hosting on Mkan?"}
               </h2>
               <HelpCircle size={16} className="text-muted-foreground sm:w-4.5 sm:h-4.5" />
             </div>
@@ -80,7 +86,7 @@ const LegalAndCreatePage = ({ params }: LegalAndCreatePageProps) => {
                     <div className="w-1.5 h-1.5 rounded-full bg-background"></div>
                   )}
                 </div>
-                <span className="text-sm text-foreground">I'm hosting as a private individual</span>
+                <span className="text-sm text-foreground">{isAr ? "أنا أستضيف كفرد خاص" : "I'm hosting as a private individual"}</span>
               </label>
               
               <label className="flex items-center space-x-2 cursor-pointer">
@@ -101,7 +107,7 @@ const LegalAndCreatePage = ({ params }: LegalAndCreatePageProps) => {
                     <div className="w-1.5 h-1.5 rounded-full bg-background"></div>
                   )}
                 </div>
-                <span className="text-sm text-foreground">I'm hosting as a business</span>
+                <span className="text-sm text-foreground">{isAr ? "أنا أستضيف كشركة" : "I'm hosting as a business"}</span>
               </label>
             </div>
           </div>
@@ -112,7 +118,7 @@ const LegalAndCreatePage = ({ params }: LegalAndCreatePageProps) => {
             <div>
               <div className="flex items-center space-x-2 mb-3">
                 <h2 className="text-base sm:text-lg font-medium text-foreground">
-                  Does your place have any of these?
+                  {isAr ? "هل يحتوي مكانك على أي من هذه؟" : "Does your place have any of these?"}
                 </h2>
                 <HelpCircle size={16} className="text-muted-foreground sm:w-4.5 sm:h-4.5" />
               </div>
@@ -148,10 +154,14 @@ const LegalAndCreatePage = ({ params }: LegalAndCreatePageProps) => {
             {/* Important Information */}
             <div className="space-y-3">
               <h3 className="text-sm sm:text-base font-medium text-foreground">
-                Important things to know
+                {isAr ? "أشياء مهمة يجب معرفتها" : "Important things to know"}
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Be sure to comply with your <span className="underline">local laws</span> and review Airbnb's <span className="underline">anti-discrimination policy</span> and <span className="underline">guest and Host fees</span>.
+                {isAr ? (
+                  <>تأكد من الامتثال لـ<span className="underline">القوانين المحلية</span> ومراجعة <span className="underline">سياسة عدم التمييز</span> و<span className="underline">رسوم الضيف والمضيف</span>.</>
+                ) : (
+                  <>Be sure to comply with your <span className="underline">local laws</span> and review Mkan's <span className="underline">anti-discrimination policy</span> and <span className="underline">guest and Host fees</span>.</>
+                )}
               </p>
             </div>
           </div>

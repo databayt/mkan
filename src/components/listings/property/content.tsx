@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Listing } from "@/types/listing";
 import { PropertyListings } from "./listings";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -14,6 +14,8 @@ interface PropertyContentProps {
 export const PropertyContent = ({ properties: initialProperties }: PropertyContentProps) => {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [properties, setProperties] = useState(initialProperties);
   const [searchFilters, setSearchFilters] = useState({
     location: searchParams.get("location") || "",
@@ -107,7 +109,7 @@ export const PropertyContent = ({ properties: initialProperties }: PropertyConte
             className="flex items-center gap-2 hover:bg-gray-50"
           >
             <X size={16} />
-            Clear all filters
+            {isAr ? "مسح جميع الفلاتر" : "Clear all filters"}
           </Button>
         </div>
       )}

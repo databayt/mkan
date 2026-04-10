@@ -1,8 +1,9 @@
 "use client";
 import React, { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useAppSelector } from "@/state/redux";
+import { useGlobalStore } from "@/state/filters";
 import { useGetPropertiesQuery } from "@/state/api";
 import { Property } from "@/types/prismaTypes";
 
@@ -19,7 +20,9 @@ interface PropertyWithLocation extends Property {
 
 const Map = () => {
   const mapContainerRef = useRef(null);
-  const filters = useAppSelector((state) => state.global.filters);
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
+  const filters = useGlobalStore((s) => s.filters);
   const {
     data: properties,
     isLoading,
@@ -37,7 +40,7 @@ const Map = () => {
     });
 
     (properties as PropertyWithLocation[]).forEach((property) => {
-      const marker = createPropertyMarker(property, map);
+      const marker = createPropertyMarker(property, map, isAr);
       if (!marker) return;
       const markerElement = marker.getElement();
       const path = markerElement.querySelector("path[fill='#3FB1CE']");
@@ -52,8 +55,8 @@ const Map = () => {
     return () => map.remove();
   }, [isLoading, isError, properties, filters.coordinates]);
 
-  if (isLoading) return <>Loading...</>;
-  if (isError || !properties) return <div>Failed to fetch properties</div>;
+  if (isLoading) return <>{isAr ? "جاري التحميل..." : "Loading..."}</>;
+  if (isError || !properties) return <div>{isAr ? "فشل تحميل العقارات" : "Failed to fetch properties"}</div>;
 
   return (
     <div className="basis-5/12 grow relative rounded-xl">
@@ -69,7 +72,7 @@ const Map = () => {
   );
 };
 
-const createPropertyMarker = (property: PropertyWithLocation, map: mapboxgl.Map) => {
+const createPropertyMarker = (property: PropertyWithLocation, map: mapboxgl.Map, isAr?: boolean) => {
   // Skip properties without location data
   if (!property.location) return null;
 
@@ -87,7 +90,7 @@ const createPropertyMarker = (property: PropertyWithLocation, map: mapboxgl.Map)
             <a href="/search/${property.id}" target="_blank" class="marker-popup-title">${property.name}</a>
             <p class="marker-popup-price">
               $${property.pricePerMonth}
-              <span class="marker-popup-price-unit"> / month</span>
+              <span class="marker-popup-price-unit"> / ${isAr ? "شهر" : "month"}</span>
             </p>
           </div>
         </div>

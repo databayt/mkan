@@ -1,6 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 interface SmallSearchProps {
@@ -16,6 +17,9 @@ export default function SmallSearch({
   onExpand,
   searchValues,
 }: SmallSearchProps) {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
+
   const handleClick = () => {
     onExpand?.();
   };
@@ -35,7 +39,7 @@ export default function SmallSearch({
       }}
     >
       <button
-        className="flex-1 px-5 py-3 text-left hover:bg-gray-50/50 transition-colors rounded-l-full"
+        className="flex-1 px-5 py-3 text-start hover:bg-gray-50/50 transition-colors rounded-s-full"
         aria-label="Search location"
         onClick={(e) => {
           e.stopPropagation();
@@ -43,14 +47,14 @@ export default function SmallSearch({
         }}
       >
         <div className="font-semibold text-black text-xs whitespace-nowrap">
-          {searchValues?.location || "Anywhere"}
+          {searchValues?.location || (isAr ? "أي مكان" : "Anywhere")}
         </div>
       </button>
 
       <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
 
       <button
-        className="flex-1 px-5 py-3 text-left hover:bg-gray-50/50 transition-colors"
+        className="flex-1 px-5 py-3 text-start hover:bg-gray-50/50 transition-colors"
         aria-label="Select dates"
         onClick={(e) => {
           e.stopPropagation();
@@ -58,14 +62,14 @@ export default function SmallSearch({
         }}
       >
         <div className="font-semibold text-black text-xs whitespace-nowrap">
-          {searchValues?.dates || "Any week"}
+          {searchValues?.dates || (isAr ? "أي أسبوع" : "Any week")}
         </div>
       </button>
 
       <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
 
       <button
-        className="flex-1 px-5 py-3 text-left hover:bg-gray-50/50 transition-colors"
+        className="flex-1 px-5 py-3 text-start hover:bg-gray-50/50 transition-colors"
         aria-label="Add guests"
         onClick={(e) => {
           e.stopPropagation();
@@ -73,11 +77,11 @@ export default function SmallSearch({
         }}
       >
         <div className="font-semibold text-gray-500 text-xs whitespace-nowrap">
-          {searchValues?.guests || "Guests"}
+          {searchValues?.guests || (isAr ? "الضيوف" : "Guests")}
         </div>
       </button>
 
-      <div className="pr-2 pl-1">
+      <div className="pe-2 ps-1">
         <Button
           size="icon"
           className="rounded-full bg-[#de3151] hover:bg-[#de3151]/90 text-white w-8 h-8"

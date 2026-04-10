@@ -2,7 +2,7 @@
 import { useModal } from "@/components/atom/modal/context";
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Icon } from '@iconify/react';
+import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Custom hook for managing body scroll
@@ -30,18 +30,18 @@ function Modal({ content, sm = false, big = false }: Props) {
   useBodyScroll(modal.open);
 
   const modalVariants = {
-    hidden: { 
+    hidden: {
       opacity: 0,
       scale: 0.8,
     },
-  
-    visible: { 
+
+    visible: {
       opacity: 1,
       scale: 1,
       transition: {
-  
+
         duration: 0.2,
-        ease: 'easeOut'
+        ease: 'easeOut' as const
       }
     },
     exit: {
@@ -49,7 +49,7 @@ function Modal({ content, sm = false, big = false }: Props) {
       scale: 0.8,
       transition: {
         duration: 0.2,
-        ease: 'easeIn'
+        ease: 'easeIn' as const
       }
     }
   };
@@ -66,6 +66,10 @@ function Modal({ content, sm = false, big = false }: Props) {
           <motion.div
             className="fixed inset-0 w-full h-screen bg-black bg-opacity-70"
             onClick={closeModal}
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Escape') closeModal(); }}
+            role="button"
+            tabIndex={0}
+            aria-label="Close modal"
             initial="hidden"
             animate="visible"
             exit="hidden"
@@ -86,13 +90,14 @@ function Modal({ content, sm = false, big = false }: Props) {
               variants={modalVariants}
             >
               {!sm && (
-                <Button 
-                  size='icon' 
-                  variant='outline' 
+                <Button
+                  size='icon'
+                  variant='outline'
                   className="rounded-full absolute top-4 right-4"
                   onClick={closeModal}
+                  aria-label="Close modal"
                 >
-                  <Icon icon='ic:twotone-close' width={25} />
+                  <X size={25} />
                 </Button>
               )}
               {content}

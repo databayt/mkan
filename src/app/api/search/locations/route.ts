@@ -4,11 +4,17 @@ import {
   getPopularLocations,
 } from "@/lib/actions/search-actions";
 import { SEARCH_CONFIG } from "@/lib/schemas/search-schema";
+import { rateLimitWithFallback, rateLimitResponse } from "@/lib/rate-limit";
 
 export const revalidate = 3600; // Cache for 1 hour
 
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting
+    const rl = await rateLimitWithFallback(request, "search");
+    if (!rl.success) {
+      return rateLimitResponse("Too many search requests");
+    }
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q") || "";
     const limitParam = searchParams.get("limit");

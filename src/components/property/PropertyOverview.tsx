@@ -43,13 +43,13 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
         <h1 className="text-3xl font-bold my-5">{propertyWithLocation.name}</h1>
         <div className="flex justify-between items-center">
           <span className="flex items-center text-gray-500">
-            <MapPin className="w-4 h-4 mr-1 text-gray-700" />
+            <MapPin className="w-4 h-4 me-1 text-gray-700" />
             {propertyWithLocation.location?.city}, {propertyWithLocation.location?.state},{" "}
             {propertyWithLocation.location?.country}
           </span>
           <div className="flex justify-between items-center gap-3">
             <span className="flex items-center text-yellow-500">
-              <Star className="w-4 h-4 mr-1 fill-current" />
+              <Star className="w-4 h-4 me-1 fill-current" />
               {(propertyWithLocation.averageRating ?? 0).toFixed(1)} ({propertyWithLocation.numberOfReviews ?? 0}{" "}
               Reviews)
             </span>
@@ -67,17 +67,17 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
               ${(propertyWithLocation.pricePerMonth ?? 0).toLocaleString()}
             </div>
           </div>
-          <div className="border-l border-gray-300 h-10"></div>
+          <div className="border-s border-gray-300 h-10"></div>
           <div>
             <div className="text-sm text-gray-500">Bedrooms</div>
             <div className="font-semibold">{propertyWithLocation.beds ?? 0} bd</div>
           </div>
-          <div className="border-l border-gray-300 h-10"></div>
+          <div className="border-s border-gray-300 h-10"></div>
           <div>
             <div className="text-sm text-gray-500">Bathrooms</div>
             <div className="font-semibold">{propertyWithLocation.baths ?? 0} ba</div>
           </div>
-          <div className="border-l border-gray-300 h-10"></div>
+          <div className="border-s border-gray-300 h-10"></div>
           <div>
             <div className="text-sm text-gray-500">Square Feet</div>
             <div className="font-semibold">

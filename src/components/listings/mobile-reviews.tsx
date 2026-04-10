@@ -73,7 +73,7 @@ const MobileReviews: React.FC<MobileReviewsProps> = ({
           {displayReviews.map((review, index) => (
             <div 
               key={review.id}
-              className="flex-shrink-0 w-screen pr-4"
+              className="flex-shrink-0 w-screen pe-4"
               style={{ width: 'calc(100vw - 2rem)' }}
             >
               <div className="bg-white rounded-lg p-6 border border-gray-200 h-full">

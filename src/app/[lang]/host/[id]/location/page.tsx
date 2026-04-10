@@ -3,9 +3,9 @@
 export const dynamic = 'force-dynamic';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
-import { HostStepLayout } from '@/components/host';
-import { useHostValidation } from '@/components/onboarding';
+import { useRouter, usePathname } from 'next/navigation';
+import HostStepLayout from '@/components/host/host-step-layout';
+import { useHostValidation } from '@/context/onboarding-validation-context';
 import { ListingProvider, useListing } from '@/components/host/use-listing';
 import { LocationForm } from '@/components/host/location/form';
 
@@ -15,6 +15,8 @@ interface LocationPageProps {
 
 const LocationPageContent = ({ params }: LocationPageProps) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [id, setId] = React.useState<string>('');
   const { listing, loadListing } = useListing();
 
@@ -36,12 +38,10 @@ const LocationPageContent = ({ params }: LocationPageProps) => {
           {/* Left side - Text content */}
           <div className="space-y-4">
             <h3>
-              Where's your place
-              <br />
-              located?
+              {isAr ? <>أين يقع <br /> مكانك؟</> : <>Where's your place <br /> located?</>}
             </h3>
             <p>
-              Your address is only shared with guests after they make a reservation.
+              {isAr ? "يتم مشاركة عنوانك فقط مع الضيوف بعد إتمام الحجز." : "Your address is only shared with guests after they make a reservation."}
             </p>
           </div>
 

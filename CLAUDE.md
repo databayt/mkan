@@ -10,9 +10,10 @@ Mkan is a rental marketplace application connecting tenants with property manage
 
 ### Development
 ```bash
-pnpm dev                # Start development server with Turbopack
+pnpm dev                # Start development server with Turbopack on port 3000
+pnpm dev:kill           # Kill port 3000 and start dev server
 pnpm build             # Build for production (runs prisma generate first)
-pnpm start             # Start production server
+pnpm start             # Start production server on port 3000
 pnpm lint              # Run ESLint
 ```
 

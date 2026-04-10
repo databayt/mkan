@@ -25,16 +25,17 @@ export function LanguageSwitcher({
   const getSwitchLocaleHref = useSwitchLocaleHref();
   const { locale: currentLocale, isRTL } = useLocale();
 
-  // Text variant - simple text showing "English", clicks to switch
+  // Text variant - simple text showing native language name, clicks to switch
   if (variant === "text") {
     const nextLocale = i18n.locales.find(locale => locale !== currentLocale) || i18n.locales[0];
+    const nextConfig = localeConfig[nextLocale];
 
     return (
       <Link
         href={getSwitchLocaleHref(nextLocale)}
         className={cn("transition-opacity hover:opacity-80", className)}
       >
-        English
+        {nextConfig.nativeName}
       </Link>
     );
   }
@@ -77,7 +78,7 @@ export function LanguageSwitcher({
                   : "bg-muted hover:bg-muted/80"
               )}
             >
-              <span className="text-lg mr-2">{config.flag}</span>
+              <span className="text-lg me-2">{config.flag}</span>
               <span className="text-sm">{config.nativeName}</span>
             </Link>
           );
@@ -115,7 +116,7 @@ export function LanguageSwitcher({
                 <span className="text-lg">{config.flag}</span>
                 <span>{config.nativeName}</span>
                 {isActive && (
-                  <span className="ml-auto text-xs">✓</span>
+                  <span className="ms-auto text-xs">✓</span>
                 )}
               </Link>
             </DropdownMenuItem>

@@ -7,9 +7,12 @@ import Header from "@/components/Header";
 import Loading from "@/components/Loading";
 import { useGetApplicationsQuery, useGetAuthUserQuery } from "@/state/api";
 import { CircleCheckBig, Clock, Download, XCircle } from "lucide-react";
+import { usePathname } from "next/navigation";
 import React from "react";
 
 const Applications = () => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const { data: authUser } = useGetAuthUserQuery();
   const {
     data: applications,
@@ -21,13 +24,13 @@ const Applications = () => {
   });
 
   if (isLoading) return <Loading />;
-  if (isError || !applications) return <div>Error fetching applications</div>;
+  if (isError || !applications) return <div>{isAr ? "خطأ في تحميل الطلبات" : "Error fetching applications"}</div>;
 
   return (
     <div className="dashboard-container">
       <Header
-        title="Applications"
-        subtitle="Track and manage your property rental applications"
+        title={isAr ? "الطلبات" : "Applications"}
+        subtitle={isAr ? "تتبع وإدارة طلبات استئجار العقارات" : "Track and manage your property rental applications"}
       />
       <div className="w-full">
         {applications?.map((application) => (
@@ -39,18 +42,18 @@ const Applications = () => {
             <div className="flex justify-between gap-5 w-full pb-4 px-4">
               {application.status === "Approved" ? (
                 <div className="bg-green-100 p-4 text-green-700 grow flex items-center">
-                  <CircleCheckBig className="w-5 h-5 mr-2" />
-                  Your application has been approved
+                  <CircleCheckBig className="w-5 h-5 me-2" />
+                  {isAr ? "تمت الموافقة على طلبك" : "Your application has been approved"}
                 </div>
               ) : application.status === "Pending" ? (
                 <div className="bg-yellow-100 p-4 text-yellow-700 grow flex items-center">
-                  <Clock className="w-5 h-5 mr-2" />
-                  Your application is pending approval
+                  <Clock className="w-5 h-5 me-2" />
+                  {isAr ? "طلبك قيد المراجعة" : "Your application is pending approval"}
                 </div>
               ) : (
                 <div className="bg-red-100 p-4 text-red-700 grow flex items-center">
-                  <XCircle className="w-5 h-5 mr-2" />
-                  Your application has been denied
+                  <XCircle className="w-5 h-5 me-2" />
+                  {isAr ? "تم رفض طلبك" : "Your application has been denied"}
                 </div>
               )}
 
@@ -58,8 +61,8 @@ const Applications = () => {
                 className={`bg-white border border-gray-300 text-gray-700 py-2 px-4
                           rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50`}
               >
-                <Download className="w-5 h-5 mr-2" />
-                Download Agreement
+                <Download className="w-5 h-5 me-2" />
+                {isAr ? "تحميل العقد" : "Download Agreement"}
               </button>
             </div>
           </ApplicationCard>

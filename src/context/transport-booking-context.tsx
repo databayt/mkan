@@ -10,7 +10,6 @@ import {
 import {
   createBooking,
   processPayment,
-  confirmBooking,
 } from '@/lib/actions/transport-actions';
 import type { PaymentMethod } from '@/lib/schemas/transport-schemas';
 
@@ -141,18 +140,13 @@ export function TransportBookingProvider({
       setBookingId(bookingResult.booking.id);
       setBookingReference(bookingResult.booking.bookingReference);
 
-      // Process payment
+      // Process payment (also confirms booking internally for non-cash methods)
       const paymentResult = await processPayment(bookingResult.booking.id, {
         method: paymentMethod,
       });
 
       if (!paymentResult.success) {
         throw new Error('Payment failed');
-      }
-
-      // Confirm booking if payment was successful (not cash on arrival)
-      if (paymentMethod !== 'CashOnArrival') {
-        await confirmBooking(bookingResult.booking.id);
       }
 
       return { success: true, bookingId: bookingResult.booking.id };

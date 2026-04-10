@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { Home, Copy, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -14,6 +15,8 @@ const NewListingOptions: React.FC<NewListingOptionsProps> = ({
   onCreateNew,
   onCreateFromExisting
 }) => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const handleCreateNew = (e: React.MouseEvent) => {
     e.preventDefault();
     onCreateNew?.();
@@ -27,7 +30,7 @@ const NewListingOptions: React.FC<NewListingOptionsProps> = ({
   return (
     <div className="space-y-2 sm:space-y-3">
       <h5 className="text-base sm:text-lg font-semibold">
-        Start a new listing
+        {isAr ? "ابدأ إعلاناً جديداً" : "Start a new listing"}
       </h5>
       
       <div className="space-y-2">
@@ -37,9 +40,9 @@ const NewListingOptions: React.FC<NewListingOptionsProps> = ({
             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
               <Home className="w-4 h-4 sm:w-5 sm:h-5 text-foreground" />
             </div>
-            <div className="text-left min-w-0 flex-1">
+            <div className="text-start min-w-0 flex-1">
               <h5 className="text-xs sm:text-sm font-medium">
-                Create a new listing
+                {isAr ? "إنشاء إعلان جديد" : "Create a new listing"}
               </h5>
             </div>
           </div>
@@ -52,9 +55,9 @@ const NewListingOptions: React.FC<NewListingOptionsProps> = ({
             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
               <Copy className="w-4 h-4 sm:w-5 sm:h-5 text-foreground" />
             </div>
-            <div className="text-left min-w-0 flex-1">
+            <div className="text-start min-w-0 flex-1">
               <h5 className="text-xs sm:text-sm font-medium">
-                Create from an existing listing
+                {isAr ? "إنشاء من إعلان موجود" : "Create from an existing listing"}
               </h5>
             </div>
           </div>

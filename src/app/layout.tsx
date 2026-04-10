@@ -9,8 +9,7 @@ export const metadata: Metadata = {
   },
 };
 
-// Minimal root layout that redirects to [lang]
-// All actual layouts are in app/[lang]/layout.tsx
+// Root layout - just a wrapper, actual html/body defined in [lang]/layout.tsx
 export default function RootLayout({
   children,
 }: {

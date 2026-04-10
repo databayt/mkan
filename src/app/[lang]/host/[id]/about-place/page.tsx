@@ -3,8 +3,9 @@
 export const dynamic = 'force-dynamic';
 
 import React from 'react';
-import { HostStepHeader } from '@/components/host';
-import { useHostValidation } from '@/components/onboarding';
+import { usePathname } from 'next/navigation';
+import HostStepHeader from '@/components/host/host-step-header';
+import { useHostValidation } from '@/context/onboarding-validation-context';
 import { ListingProvider, useListing } from '@/components/host/use-listing';
 
 interface AboutPlaceProps {
@@ -12,6 +13,8 @@ interface AboutPlaceProps {
 }
 
 const AboutPlaceContent = ({ params }: AboutPlaceProps) => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [id, setId] = React.useState<string>('');
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const { enableNext } = useHostValidation();
@@ -83,8 +86,8 @@ const AboutPlaceContent = ({ params }: AboutPlaceProps) => {
       <div className="w-full">
         <HostStepHeader
           stepNumber={1}
-          title="Tell us about your place"
-          description="In this step, we'll ask you which type of property you have and if guests will book the entire place or just a room. Then let us know the location and how many guests can stay."
+          title={isAr ? "أخبرنا عن مكانك" : "Tell us about your place"}
+          description={isAr ? "في هذه الخطوة، سنسألك عن نوع العقار الذي لديك وما إذا كان الضيوف سيحجزون المكان بالكامل أو غرفة فقط. ثم أخبرنا عن الموقع وعدد الضيوف الذين يمكنهم الإقامة." : "In this step, we'll ask you which type of property you have and if guests will book the entire place or just a room. Then let us know the location and how many guests can stay."}
           illustration={illustration}
         />
       </div>

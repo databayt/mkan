@@ -1,3 +1,5 @@
+"use client";
+
 import { cleanParams, createNewUserInDatabase, withToast } from "@/lib/utils";
 import {
   Application,
@@ -8,384 +10,437 @@ import {
   Tenant,
 } from "@/types/prismaTypes";
 import { ApplicationWithDetails } from "@/components/application/action";
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { getSession } from "next-auth/react";
-import { FiltersState } from ".";
+import { FiltersState } from "./filters";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
-export const api = createApi({
-  baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
-    prepareHeaders: async (headers) => {
-      // Get the session from NextAuth.js (client-side)
-      const session = await getSession();
-      
-      if (session?.user) {
-        // Create a simple encoded token with user information for the backend
-        const token = Buffer.from(JSON.stringify({
-          userId: session.user.id,
-          role: session.user.role,
-          email: session.user.email
-        })).toString('base64');
-        
-        headers.set("Authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
-  }),
-  reducerPath: "api",
-  tagTypes: [
-    "Managers",
-    "Tenants",
-    "Properties",
-    "PropertyDetails",
-    "Leases",
-    "Payments",
-    "Applications",
-  ],
-  endpoints: (build) => ({
-    getAuthUser: build.query<User, void>({
-      queryFn: async (_, _queryApi, _extraoptions, fetchWithBQ) => {
-        try {
-          // Get session from NextAuth.js (client-side)
-          const session = await getSession();
-          
-          if (!session?.user) {
-            return { error: "No authenticated user found" };
-          }
+// ─── Base fetch helper ───────────────────────────────────────────────
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
-          const user = session.user;
-          const userRole = user.role?.toLowerCase() || "user";
+async function apiFetch<T>(
+  url: string,
+  options?: RequestInit
+): Promise<T> {
+  const session = await getSession();
+  const headers = new Headers(options?.headers);
 
-          // Determine the endpoint based on user role
-          const endpoint = userRole === "manager" 
-            ? `/managers/${user.id}` 
-            : `/tenants/${user.id}`;
+  if (session?.user) {
+    const token = Buffer.from(
+      JSON.stringify({
+        userId: session.user.id,
+        role: session.user.role,
+        email: session.user.email,
+      })
+    ).toString("base64");
+    headers.set("Authorization", `Bearer ${token}`);
+  }
 
-          let userDetailsResponse = await fetchWithBQ(endpoint);
+  if (
+    !(options?.body instanceof FormData) &&
+    !headers.has("Content-Type")
+  ) {
+    headers.set("Content-Type", "application/json");
+  }
 
-          // If user doesn't exist in the database, create new user
-          if (
-            userDetailsResponse.error &&
-            userDetailsResponse.error.status === 404
-          ) {
-            userDetailsResponse = await createNewUserInDatabase(
-              user,
-              userRole,
-              fetchWithBQ
-            );
-          }
+  const res = await fetch(`${API_BASE}/${url}`, {
+    ...options,
+    headers,
+  });
 
-          return {
-            data: {
-              id: user.id,
-              name: user.name,
-              email: user.email,
-              image: user.image,
-              role: user.role,
-              isTwoFactorEnabled: user.isTwoFactorEnabled,
-              isOAuth: user.isOAuth,
-              userInfo: userDetailsResponse.data as Tenant | Manager,
-              userRole: userRole,
-            },
-          };
-        } catch (error: any) {
-          return { error: error.message || "Could not fetch user data" };
+  if (!res.ok) {
+    const errorBody = await res.text().catch(() => "");
+    throw Object.assign(new Error(errorBody || res.statusText), {
+      status: res.status,
+    });
+  }
+
+  return res.json() as Promise<T>;
+}
+
+// ─── Generic query hook ──────────────────────────────────────────────
+interface QueryResult<T> {
+  data: T | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  refetch: () => void;
+}
+
+function useQuery<T>(
+  fetcher: () => Promise<T>,
+  deps: unknown[],
+  options?: { skip?: boolean; errorToast?: string }
+): QueryResult<T> {
+  const [data, setData] = useState<T | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(!options?.skip);
+  const [isError, setIsError] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const mountedRef = useRef(true);
+  const fetcherRef = useRef(fetcher);
+  fetcherRef.current = fetcher;
+
+  const run = useCallback(() => {
+    if (options?.skip) {
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setIsError(false);
+    setError(null);
+
+    fetcherRef
+      .current()
+      .then((result) => {
+        if (mountedRef.current) {
+          setData(result);
+          setIsLoading(false);
         }
-      },
-    }),
+      })
+      .catch((err) => {
+        if (mountedRef.current) {
+          setError(err);
+          setIsError(true);
+          setIsLoading(false);
+          if (options?.errorToast) {
+            toast.error(options.errorToast);
+          }
+        }
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options?.skip, ...deps]);
 
-    // property related endpoints
-    getProperties: build.query<
-      Property[],
-      Partial<FiltersState> & { favoriteIds?: number[] }
-    >({
-      query: (filters) => {
-        const params = cleanParams({
-          location: filters.location,
-          priceMin: filters.priceRange?.[0],
-          priceMax: filters.priceRange?.[1],
-          beds: filters.beds,
-          baths: filters.baths,
-          propertyType: filters.propertyType,
-          squareFeetMin: filters.squareFeet?.[0],
-          squareFeetMax: filters.squareFeet?.[1],
-          amenities: filters.amenities?.join(","),
-          availableFrom: filters.availableFrom,
-          favoriteIds: filters.favoriteIds?.join(","),
-          latitude: filters.coordinates?.[1],
-          longitude: filters.coordinates?.[0],
-        });
+  useEffect(() => {
+    mountedRef.current = true;
+    run();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [run]);
 
-        return { url: "properties", params };
-      },
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }) => ({ type: "Properties" as const, id })),
-              { type: "Properties", id: "LIST" },
-            ]
-          : [{ type: "Properties", id: "LIST" }],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          error: "Failed to fetch properties.",
-        });
-      },
-    }),
+  return { data, isLoading, isError, error, refetch: run };
+}
 
-    getProperty: build.query<Property, number>({
-      query: (id) => `properties/${id}`,
-      providesTags: (result, error, id) => [{ type: "PropertyDetails", id }],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          error: "Failed to load property details.",
-        });
-      },
-    }),
+// ─── Generic mutation hook ───────────────────────────────────────────
+function useMutation<TArg, TResult>(
+  mutationFn: (arg: TArg) => Promise<TResult>,
+  options?: { successToast?: string; errorToast?: string }
+): [(arg: TArg) => Promise<TResult>, { isLoading: boolean }] {
+  const [isLoading, setIsLoading] = useState(false);
 
-    // tenant related endpoints
-    getTenant: build.query<Tenant, string>({
-      query: (userId) => `tenants/${userId}`,
-      providesTags: (result) => [{ type: "Tenants", id: result?.id }],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          error: "Failed to load tenant profile.",
-        });
-      },
-    }),
+  const trigger = useCallback(
+    async (arg: TArg) => {
+      setIsLoading(true);
+      try {
+        const result = await mutationFn(arg);
+        if (options?.successToast) toast.success(options.successToast);
+        return result;
+      } catch (err) {
+        if (options?.errorToast) toast.error(options.errorToast);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
-    getCurrentResidences: build.query<Property[], string>({
-      query: (userId) => `tenants/${userId}/current-residences`,
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }) => ({ type: "Properties" as const, id })),
-              { type: "Properties", id: "LIST" },
-            ]
-          : [{ type: "Properties", id: "LIST" }],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          error: "Failed to fetch current residences.",
-        });
-      },
-    }),
+  return [trigger, { isLoading }];
+}
 
-    updateTenantSettings: build.mutation<
-      Tenant,
-      { userId: string } & Partial<Tenant>
-    >({
-      query: ({ userId, ...updatedTenant }) => ({
-        url: `tenants/${userId}`,
+// ─── Auth user ───────────────────────────────────────────────────────
+interface User {
+  id: string;
+  name: string | null;
+  email: string | null;
+  image: string | null;
+  role: string | null;
+  isTwoFactorEnabled: boolean;
+  isOAuth: boolean;
+  userInfo: Tenant | Manager;
+  userRole: string;
+}
+
+export function useGetAuthUserQuery() {
+  return useQuery<User>(
+    async () => {
+      const session = await getSession();
+      if (!session?.user) throw new Error("No authenticated user found");
+
+      const user = session.user;
+      const userRole = user.role?.toLowerCase() || "user";
+      const endpoint =
+        userRole === "manager"
+          ? `managers/${user.id}`
+          : `tenants/${user.id}`;
+
+      let userDetails: Tenant | Manager;
+      try {
+        userDetails = await apiFetch(endpoint);
+      } catch (err: any) {
+        if (err.status === 404) {
+          const createEndpoint =
+            userRole === "manager" ? "managers" : "tenants";
+          userDetails = await apiFetch(createEndpoint, {
+            method: "POST",
+            body: JSON.stringify({
+              cognitoId: user.id,
+              name: user.name || user.email?.split("@")[0] || "",
+              email: user.email || "",
+              phoneNumber: "",
+            }),
+          });
+        } else {
+          throw err;
+        }
+      }
+
+      return {
+        id: user.id!,
+        name: user.name ?? null,
+        email: user.email ?? null,
+        image: user.image ?? null,
+        role: user.role ?? null,
+        isTwoFactorEnabled: user.isTwoFactorEnabled ?? false,
+        isOAuth: user.isOAuth ?? false,
+        userInfo: userDetails,
+        userRole,
+      };
+    },
+    [],
+    { errorToast: "Could not fetch user data" }
+  );
+}
+
+// ─── Properties ──────────────────────────────────────────────────────
+export function useGetPropertiesQuery(
+  filters: Partial<FiltersState> & { favoriteIds?: number[] },
+  options?: { skip?: boolean }
+) {
+  return useQuery<Property[]>(
+    () => {
+      const params = cleanParams({
+        location: filters.location,
+        priceMin: filters.priceRange?.[0],
+        priceMax: filters.priceRange?.[1],
+        beds: filters.beds,
+        baths: filters.baths,
+        propertyType: filters.propertyType,
+        squareFeetMin: filters.squareFeet?.[0],
+        squareFeetMax: filters.squareFeet?.[1],
+        amenities: filters.amenities?.join(","),
+        availableFrom: filters.availableFrom,
+        favoriteIds: filters.favoriteIds?.join(","),
+        latitude: filters.coordinates?.[1],
+        longitude: filters.coordinates?.[0],
+      });
+      const qs = new URLSearchParams(
+        Object.entries(params).map(([k, v]) => [k, String(v)])
+      ).toString();
+      return apiFetch<Property[]>(`properties${qs ? `?${qs}` : ""}`);
+    },
+    [JSON.stringify(filters)],
+    { skip: options?.skip, errorToast: "Failed to fetch properties." }
+  );
+}
+
+export function useGetPropertyQuery(id: number, options?: { skip?: boolean }) {
+  return useQuery<Property>(
+    () => apiFetch<Property>(`properties/${id}`),
+    [id],
+    { skip: options?.skip, errorToast: "Failed to load property details." }
+  );
+}
+
+// ─── Tenants ─────────────────────────────────────────────────────────
+export function useGetTenantQuery(
+  userId: string,
+  options?: { skip?: boolean }
+) {
+  return useQuery<Tenant>(
+    () => apiFetch<Tenant>(`tenants/${userId}`),
+    [userId],
+    { skip: options?.skip, errorToast: "Failed to load tenant profile." }
+  );
+}
+
+export function useGetCurrentResidencesQuery(
+  userId: string,
+  options?: { skip?: boolean }
+) {
+  return useQuery<Property[]>(
+    () => apiFetch<Property[]>(`tenants/${userId}/current-residences`),
+    [userId],
+    {
+      skip: options?.skip,
+      errorToast: "Failed to fetch current residences.",
+    }
+  );
+}
+
+export function useUpdateTenantSettingsMutation() {
+  return useMutation<{ userId: string } & Partial<Tenant>, Tenant>(
+    ({ userId, ...body }) =>
+      apiFetch<Tenant>(`tenants/${userId}`, {
         method: "PUT",
-        body: updatedTenant,
+        body: JSON.stringify(body),
       }),
-      invalidatesTags: (result) => [{ type: "Tenants", id: result?.id }],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          success: "Settings updated successfully!",
-          error: "Failed to update settings.",
-        });
-      },
-    }),
+    {
+      successToast: "Settings updated successfully!",
+      errorToast: "Failed to update settings.",
+    }
+  );
+}
 
-    addFavoriteProperty: build.mutation<
-      Tenant,
-      { userId: string; propertyId: number }
-    >({
-      query: ({ userId, propertyId }) => ({
-        url: `tenants/${userId}/favorites/${propertyId}`,
+export function useAddFavoritePropertyMutation() {
+  return useMutation<{ userId: string; propertyId: number }, Tenant>(
+    ({ userId, propertyId }) =>
+      apiFetch<Tenant>(`tenants/${userId}/favorites/${propertyId}`, {
         method: "POST",
       }),
-      invalidatesTags: (result) => [
-        { type: "Tenants", id: result?.id },
-        { type: "Properties", id: "LIST" },
-      ],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          success: "Added to favorites!!",
-          error: "Failed to add to favorites",
-        });
-      },
-    }),
+    {
+      successToast: "Added to favorites!!",
+      errorToast: "Failed to add to favorites",
+    }
+  );
+}
 
-    removeFavoriteProperty: build.mutation<
-      Tenant,
-      { userId: string; propertyId: number }
-    >({
-      query: ({ userId, propertyId }) => ({
-        url: `tenants/${userId}/favorites/${propertyId}`,
+export function useRemoveFavoritePropertyMutation() {
+  return useMutation<{ userId: string; propertyId: number }, Tenant>(
+    ({ userId, propertyId }) =>
+      apiFetch<Tenant>(`tenants/${userId}/favorites/${propertyId}`, {
         method: "DELETE",
       }),
-      invalidatesTags: (result) => [
-        { type: "Tenants", id: result?.id },
-        { type: "Properties", id: "LIST" },
-      ],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          success: "Removed from favorites!",
-          error: "Failed to remove from favorites.",
-        });
-      },
-    }),
+    {
+      successToast: "Removed from favorites!",
+      errorToast: "Failed to remove from favorites.",
+    }
+  );
+}
 
-    // manager related endpoints
-    getManagerProperties: build.query<Property[], string>({
-      query: (userId) => `managers/${userId}/properties`,
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }) => ({ type: "Properties" as const, id })),
-              { type: "Properties", id: "LIST" },
-            ]
-          : [{ type: "Properties", id: "LIST" }],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          error: "Failed to load manager profile.",
-        });
-      },
-    }),
+// ─── Managers ────────────────────────────────────────────────────────
+export function useGetManagerPropertiesQuery(
+  userId: string,
+  options?: { skip?: boolean }
+) {
+  return useQuery<Property[]>(
+    () => apiFetch<Property[]>(`managers/${userId}/properties`),
+    [userId],
+    { skip: options?.skip, errorToast: "Failed to load manager profile." }
+  );
+}
 
-    updateManagerSettings: build.mutation<
-      Manager,
-      { userId: string } & Partial<Manager>
-    >({
-      query: ({ userId, ...updatedManager }) => ({
-        url: `managers/${userId}`,
+export function useUpdateManagerSettingsMutation() {
+  return useMutation<{ userId: string } & Partial<Manager>, Manager>(
+    ({ userId, ...body }) =>
+      apiFetch<Manager>(`managers/${userId}`, {
         method: "PUT",
-        body: updatedManager,
+        body: JSON.stringify(body),
       }),
-      invalidatesTags: (result) => [{ type: "Managers", id: result?.id }],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          success: "Settings updated successfully!",
-          error: "Failed to update settings.",
-        });
-      },
-    }),
+    {
+      successToast: "Settings updated successfully!",
+      errorToast: "Failed to update settings.",
+    }
+  );
+}
 
-    createProperty: build.mutation<Property, FormData>({
-      query: (newProperty) => ({
-        url: `properties`,
+export function useCreatePropertyMutation() {
+  return useMutation<FormData, Property>(
+    (formData) =>
+      apiFetch<Property>("properties", {
         method: "POST",
-        body: newProperty,
+        body: formData,
       }),
-      invalidatesTags: (result) => [
-        { type: "Properties", id: "LIST" },
-        { type: "Managers", id: result?.managerCognitoId },
-      ],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          success: "Property created successfully!",
-          error: "Failed to create property.",
-        });
-      },
-    }),
+    {
+      successToast: "Property created successfully!",
+      errorToast: "Failed to create property.",
+    }
+  );
+}
 
-    // lease related enpoints
-    getLeases: build.query<Lease[], number>({
-      query: () => "leases",
-      providesTags: ["Leases"],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          error: "Failed to fetch leases.",
-        });
-      },
-    }),
+// ─── Leases ──────────────────────────────────────────────────────────
+export function useGetLeasesQuery(
+  _?: number,
+  options?: { skip?: boolean }
+) {
+  return useQuery<Lease[]>(() => apiFetch<Lease[]>("leases"), [_], {
+    skip: options?.skip,
+    errorToast: "Failed to fetch leases.",
+  });
+}
 
-    getPropertyLeases: build.query<Lease[], number>({
-      query: (propertyId) => `properties/${propertyId}/leases`,
-      providesTags: ["Leases"],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          error: "Failed to fetch property leases.",
-        });
-      },
-    }),
+export function useGetPropertyLeasesQuery(
+  propertyId: number,
+  options?: { skip?: boolean }
+) {
+  return useQuery<Lease[]>(
+    () => apiFetch<Lease[]>(`properties/${propertyId}/leases`),
+    [propertyId],
+    { skip: options?.skip, errorToast: "Failed to fetch property leases." }
+  );
+}
 
-    getPayments: build.query<Payment[], number>({
-      query: (leaseId) => `leases/${leaseId}/payments`,
-      providesTags: ["Payments"],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          error: "Failed to fetch payment info.",
-        });
-      },
-    }),
+export function useGetPaymentsQuery(
+  leaseId: number,
+  options?: { skip?: boolean }
+) {
+  return useQuery<Payment[]>(
+    () => apiFetch<Payment[]>(`leases/${leaseId}/payments`),
+    [leaseId],
+    { skip: options?.skip, errorToast: "Failed to fetch payment info." }
+  );
+}
 
-    // application related endpoints
-    getApplications: build.query<
-      ApplicationWithDetails[],
-      { userId?: string; userType?: string }
-    >({
-      query: (params) => {
-        const queryParams = new URLSearchParams();
-        if (params.userId) {
-          queryParams.append("userId", params.userId.toString());
+// ─── Applications ────────────────────────────────────────────────────
+export function useGetApplicationsQuery(
+  params: { userId?: string; userType?: string },
+  options?: { skip?: boolean }
+) {
+  return useQuery<ApplicationWithDetails[]>(
+    () => {
+      const qs = new URLSearchParams();
+      if (params.userId) qs.append("userId", params.userId);
+      if (params.userType) qs.append("userType", params.userType);
+      return apiFetch<ApplicationWithDetails[]>(
+        `applications?${qs.toString()}`
+      );
+    },
+    [params.userId, params.userType],
+    { skip: options?.skip, errorToast: "Failed to fetch applications." }
+  );
+}
+
+export function useUpdateApplicationStatusMutation() {
+  return useMutation<
+    { id: number; status: string },
+    Application & { lease?: Lease }
+  >(
+    ({ id, status }) =>
+      apiFetch<Application & { lease?: Lease }>(
+        `applications/${id}/status`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ status }),
         }
-        if (params.userType) {
-          queryParams.append("userType", params.userType);
-        }
+      ),
+    {
+      successToast: "Application status updated successfully!",
+      errorToast: "Failed to update application settings.",
+    }
+  );
+}
 
-        return `applications?${queryParams.toString()}`;
-      },
-      providesTags: ["Applications"],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          error: "Failed to fetch applications.",
-        });
-      },
-    }),
-
-    updateApplicationStatus: build.mutation<
-      Application & { lease?: Lease },
-      { id: number; status: string }
-    >({
-      query: ({ id, status }) => ({
-        url: `applications/${id}/status`,
-        method: "PUT",
-        body: { status },
-      }),
-      invalidatesTags: ["Applications", "Leases"],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          success: "Application status updated successfully!",
-          error: "Failed to update application settings.",
-        });
-      },
-    }),
-
-    createApplication: build.mutation<Application, Partial<Application>>({
-      query: (body) => ({
-        url: `applications`,
+export function useCreateApplicationMutation() {
+  return useMutation<Partial<Application>, Application>(
+    (body) =>
+      apiFetch<Application>("applications", {
         method: "POST",
-        body: body,
+        body: JSON.stringify(body),
       }),
-      invalidatesTags: ["Applications"],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          success: "Application created successfully!",
-          error: "Failed to create applications.",
-        });
-      },
-    }),
-  }),
-});
-
-export const {
-  useGetAuthUserQuery,
-  useUpdateTenantSettingsMutation,
-  useUpdateManagerSettingsMutation,
-  useGetPropertiesQuery,
-  useGetPropertyQuery,
-  useGetCurrentResidencesQuery,
-  useGetManagerPropertiesQuery,
-  useCreatePropertyMutation,
-  useGetTenantQuery,
-  useAddFavoritePropertyMutation,
-  useRemoveFavoritePropertyMutation,
-  useGetLeasesQuery,
-  useGetPropertyLeasesQuery,
-  useGetPaymentsQuery,
-  useGetApplicationsQuery,
-  useUpdateApplicationStatusMutation,
-  useCreateApplicationMutation,
-} = api;
+    {
+      successToast: "Application created successfully!",
+      errorToast: "Failed to create applications.",
+    }
+  );
+}

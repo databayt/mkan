@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import Header from '@/components/Header';
 import Loading from '@/components/Loading';
+import { usePathname } from 'next/navigation';
 import { getAuthUser } from '@/lib/actions/user-actions';
 import {
   getMyTransportOffices,
@@ -55,6 +56,8 @@ type SettingsFormData = z.infer<typeof settingsSchema>;
 
 const OfficeSettingsPage = () => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [offices, setOffices] = useState<any[]>([]);
   const [selectedOffice, setSelectedOffice] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -170,20 +173,20 @@ const OfficeSettingsPage = () => {
   };
 
   if (isLoading) return <Loading />;
-  if (error) return <div className="text-red-500">Error: {error}</div>;
+  if (error) return <div className="text-red-500">{isAr ? "خطأ" : "Error"}: {error}</div>;
 
   if (offices.length === 0) {
     return (
       <div className="dashboard-container">
-        <Header title="Settings" subtitle="Manage office settings" />
-        <p className="text-muted-foreground">No transport office found.</p>
+        <Header title={isAr ? "الإعدادات" : "Settings"} subtitle={isAr ? "إدارة إعدادات المكتب" : "Manage office settings"} />
+        <p className="text-muted-foreground">{isAr ? "لم يتم العثور على مكتب نقل." : "No transport office found."}</p>
       </div>
     );
   }
 
   return (
     <div className="dashboard-container">
-      <Header title="Office Settings" subtitle="Manage your transport office" />
+      <Header title={isAr ? "إعدادات المكتب" : "Office Settings"} subtitle={isAr ? "إدارة مكتب النقل الخاص بك" : "Manage your transport office"} />
 
       {offices.length > 1 && (
         <div className="mb-6 flex gap-2 flex-wrap">
@@ -205,37 +208,37 @@ const OfficeSettingsPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              Office Information
+              {isAr ? "معلومات المكتب" : "Office Information"}
             </CardTitle>
             <CardDescription>
-              Update your office details visible to travelers
+              {isAr ? "تحديث بيانات مكتبك المرئية للمسافرين" : "Update your office details visible to travelers"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Office Name</Label>
+                <Label htmlFor="name">{isAr ? "اسم المكتب" : "Office Name"}</Label>
                 <Input id="name" {...register('name')} />
                 {errors.name && (
                   <p className="text-sm text-destructive">{errors.name.message}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="nameAr">Office Name (Arabic)</Label>
+                <Label htmlFor="nameAr">{isAr ? "اسم المكتب (عربي)" : "Office Name (Arabic)"}</Label>
                 <Input id="nameAr" {...register('nameAr')} dir="rtl" />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone">{isAr ? "رقم الهاتف" : "Phone Number"}</Label>
                 <Input id="phone" type="tel" {...register('phone')} />
                 {errors.phone && (
                   <p className="text-sm text-destructive">{errors.phone.message}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">{isAr ? "البريد الإلكتروني" : "Email Address"}</Label>
                 <Input id="email" type="email" {...register('email')} />
                 {errors.email && (
                   <p className="text-sm text-destructive">{errors.email.message}</p>
@@ -244,17 +247,17 @@ const OfficeSettingsPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="licenseNumber">License Number</Label>
+              <Label htmlFor="licenseNumber">{isAr ? "رقم الترخيص" : "License Number"}</Label>
               <Input id="licenseNumber" {...register('licenseNumber')} />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{isAr ? "الوصف" : "Description"}</Label>
               <Textarea id="description" {...register('description')} rows={3} />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="descriptionAr">Description (Arabic)</Label>
+              <Label htmlFor="descriptionAr">{isAr ? "الوصف (عربي)" : "Description (Arabic)"}</Label>
               <Textarea
                 id="descriptionAr"
                 {...register('descriptionAr')}
@@ -267,17 +270,17 @@ const OfficeSettingsPage = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Office Status</CardTitle>
-            <CardDescription>Control your office visibility</CardDescription>
+            <CardTitle>{isAr ? "حالة المكتب" : "Office Status"}</CardTitle>
+            <CardDescription>{isAr ? "التحكم في ظهور مكتبك" : "Control your office visibility"}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Active Status</p>
+                <p className="font-medium">{isAr ? "حالة التفعيل" : "Active Status"}</p>
                 <p className="text-sm text-muted-foreground">
                   {isActive
-                    ? 'Your office is visible and accepting bookings'
-                    : 'Your office is hidden from travelers'}
+                    ? (isAr ? "مكتبك مرئي ويقبل الحجوزات" : "Your office is visible and accepting bookings")
+                    : (isAr ? "مكتبك مخفي عن المسافرين" : "Your office is hidden from travelers")}
                 </p>
               </div>
               <Switch
@@ -292,36 +295,37 @@ const OfficeSettingsPage = () => {
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button type="button" variant="destructive">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Office
+                <Trash2 className="h-4 w-4 me-2" />
+                {isAr ? "حذف المكتب" : "Delete Office"}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-destructive" />
-                  Delete Transport Office
+                  {isAr ? "حذف مكتب النقل" : "Delete Transport Office"}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete your
-                  office, all buses, routes, and booking history.
+                  {isAr
+                    ? "لا يمكن التراجع عن هذا الإجراء. سيتم حذف مكتبك وجميع الحافلات والمسارات وسجل الحجوزات نهائيًا."
+                    : "This action cannot be undone. This will permanently delete your office, all buses, routes, and booking history."}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{isAr ? "إلغاء" : "Cancel"}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDelete}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  Delete
+                  {isAr ? "حذف" : "Delete"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
 
           <Button type="submit" disabled={!isDirty || isSaving}>
-            <Save className="h-4 w-4 mr-2" />
-            {isSaving ? 'Saving...' : 'Save Changes'}
+            <Save className="h-4 w-4 me-2" />
+            {isSaving ? (isAr ? 'جاري الحفظ...' : 'Saving...') : (isAr ? 'حفظ التغييرات' : 'Save Changes')}
           </Button>
         </div>
       </form>

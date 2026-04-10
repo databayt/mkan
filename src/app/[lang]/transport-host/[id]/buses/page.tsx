@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Bus, Plus, Trash2, Edit2, X } from 'lucide-react';
+import { Bus, Plus, Trash2, Edit2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -18,10 +18,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useTransportHostValidation } from '@/components/onboarding';
+import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
 import { createBus, updateBus, deleteBus, getBusesByOffice } from '@/lib/actions/transport-actions';
 import { BusAmenity } from '@prisma/client';
+import HostStepLayout from '@/components/host/host-step-layout';
 
 const BUS_AMENITIES = [
   { value: 'AirConditioning', label: 'Air Conditioning' },
@@ -87,7 +88,7 @@ const BusesPage = () => {
       if (!office?.id) return;
       try {
         const officeBuses = await getBusesByOffice(office.id);
-        setBuses(officeBuses as BusData[]);
+        setBuses(officeBuses as unknown as BusData[]);
       } catch (error) {
         console.error('Error loading buses:', error);
       } finally {
@@ -128,13 +129,13 @@ const BusesPage = () => {
         const updated = await updateBus(editingBus.id, busData);
         if (updated) {
           setBuses((prev) =>
-            prev.map((b) => (b.id === editingBus.id ? (updated as BusData) : b))
+            prev.map((b) => (b.id === editingBus.id ? (updated as unknown as BusData) : b))
           );
         }
       } else {
         const created = await createBus(busData);
         if (created) {
-          setBuses((prev) => [...prev, created as BusData]);
+          setBuses((prev) => [...prev, created as unknown as BusData]);
         }
       }
 
@@ -177,26 +178,15 @@ const BusesPage = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Bus className="h-6 w-6 text-primary" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold mb-2">Add your buses</h1>
-          <p className="text-muted-foreground">
-            Register the buses in your fleet. Include details like capacity and
-            amenities to help travelers choose.
-          </p>
-        </div>
-
-        <div className="flex-1 space-y-6">
+    <HostStepLayout
+      title={<h3>Add your buses</h3>}
+      subtitle="Register the buses in your fleet. Include details like capacity and amenities to help travelers choose."
+    >
+      <div className="space-y-6">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="w-full" onClick={() => handleDialogClose()}>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 me-2" />
                 Add Bus
               </Button>
             </DialogTrigger>
@@ -357,6 +347,7 @@ const BusesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(bus)}
+                        aria-label="Edit bus"
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -364,6 +355,7 @@ const BusesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(bus.id)}
+                        aria-label="Delete bus"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -381,9 +373,8 @@ const BusesPage = () => {
               </p>
             </div>
           )}
-        </div>
       </div>
-    </div>
+    </HostStepLayout>
   );
 };
 

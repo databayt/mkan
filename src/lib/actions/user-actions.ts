@@ -1,9 +1,27 @@
 "use server";
 
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { UserRole } from "@prisma/client";
+import { sanitizeInput, sanitizeEmail, sanitizePhone } from "@/lib/sanitization";
+import { logger } from "@/lib/logger";
+
+const userIdSchema = z.string().min(1);
+const propertyIdSchema = z.number().int().positive();
+
+const tenantSettingsSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  email: z.string().email().optional(),
+  phoneNumber: z.string().max(30).optional(),
+});
+
+const managerSettingsSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  email: z.string().email().optional(),
+  username: z.string().min(1).max(100).optional(),
+});
 
 // Get current authenticated user with profile info
 export async function getAuthUser() {
@@ -47,7 +65,7 @@ export async function getAuthUser() {
         }
       }
     } catch (error) {
-      console.error("Error fetching/creating user info:", error);
+      logger.error("Error fetching/creating user info:", error);
       // Create default user info if database operations fail
       userInfo = {
         id: user.id,
@@ -69,16 +87,31 @@ export async function getAuthUser() {
       userRole: userRole,
     };
   } catch (error) {
-    console.error("Error in getAuthUser:", error);
+    logger.error("Error in getAuthUser:", error);
     throw new Error("Failed to get authenticated user");
   }
 }
 
 // Get tenant profile
-export async function getTenant(userId: string) {
+export async function getTenant(userId: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const parsedId = userIdSchema.safeParse(userId);
+  if (!parsedId.success) {
+    throw new Error("Invalid user ID");
+  }
+
+  // Users can only view their own tenant profile
+  if (parsedId.data !== session.user.id) {
+    throw new Error("Unauthorized");
+  }
+
   try {
     let tenant = await db.tenant.findUnique({
-      where: { userId },
+      where: { userId: parsedId.data },
       include: {
         user: {
           select: {
@@ -142,7 +175,7 @@ export async function getTenant(userId: string) {
     if (!tenant) {
       // Get user info to create tenant profile
       const user = await db.user.findUnique({
-        where: { id: userId },
+        where: { id: parsedId.data },
         select: {
           id: true,
           email: true,
@@ -225,32 +258,44 @@ export async function getTenant(userId: string) {
 
     return tenant;
   } catch (error) {
-    console.error("Error fetching tenant:", error);
+    logger.error("Error fetching tenant:", error);
     throw new Error("Failed to fetch tenant profile");
   }
 }
 
 // Update tenant settings
 export async function updateTenantSettings(
-  userId: string,
-  data: {
-    name?: string;
-    email?: string;
-    phoneNumber?: string;
-  }
+  userId: unknown,
+  data: unknown
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.id || session.user.id !== userId) {
+    const parsedUserId = userIdSchema.safeParse(userId);
+    if (!parsedUserId.success) {
+      throw new Error("Invalid user ID");
+    }
+    if (!session?.user?.id || session.user.id !== parsedUserId.data) {
       throw new Error("Unauthorized");
     }
 
+    const parsed = tenantSettingsSchema.safeParse(data);
+    if (!parsed.success) {
+      throw new Error("Invalid settings data");
+    }
+
+    const validData = { ...parsed.data };
+
+    // Sanitize inputs
+    if (validData.name) validData.name = sanitizeInput(validData.name);
+    if (validData.email) validData.email = sanitizeEmail(validData.email);
+    if (validData.phoneNumber) validData.phoneNumber = sanitizePhone(validData.phoneNumber);
+
     const updatedTenant = await db.tenant.update({
-      where: { userId },
+      where: { userId: parsedUserId.data },
       data: {
-        ...(data.name && { name: data.name }),
-        ...(data.email && { email: data.email }),
-        ...(data.phoneNumber && { phoneNumber: data.phoneNumber }),
+        ...(validData.name && { name: validData.name }),
+        ...(validData.email && { email: validData.email }),
+        ...(validData.phoneNumber && { phoneNumber: validData.phoneNumber }),
       },
       include: {
         user: {
@@ -267,31 +312,43 @@ export async function updateTenantSettings(
     revalidatePath("/tenants/settings");
     return updatedTenant;
   } catch (error) {
-    console.error("Error updating tenant settings:", error);
+    logger.error("Error updating tenant settings:", error);
     throw new Error("Failed to update tenant settings");
   }
 }
 
 // Update manager settings (updates User model directly since managers don't have separate profile)
 export async function updateManagerSettings(
-  userId: string,
-  data: {
-    name?: string;
-    email?: string;
-    username?: string;
-  }
+  userId: unknown,
+  data: unknown
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.id || session.user.id !== userId) {
+    const parsedUserId = userIdSchema.safeParse(userId);
+    if (!parsedUserId.success) {
+      throw new Error("Invalid user ID");
+    }
+    if (!session?.user?.id || session.user.id !== parsedUserId.data) {
       throw new Error("Unauthorized");
     }
 
+    const parsed = managerSettingsSchema.safeParse(data);
+    if (!parsed.success) {
+      throw new Error("Invalid settings data");
+    }
+
+    const validData = { ...parsed.data };
+
+    // Sanitize inputs
+    if (validData.name) validData.name = sanitizeInput(validData.name);
+    if (validData.email) validData.email = sanitizeEmail(validData.email);
+    if (validData.username) validData.username = sanitizeInput(validData.username);
+
     const updatedUser = await db.user.update({
-      where: { id: userId },
+      where: { id: parsedUserId.data },
       data: {
-        ...(data.username && { username: data.username }),
-        ...(data.email && { email: data.email }),
+        ...(validData.username && { username: validData.username }),
+        ...(validData.email && { email: validData.email }),
       },
       select: {
         id: true,
@@ -305,19 +362,34 @@ export async function updateManagerSettings(
     revalidatePath("/managers/settings");
     return updatedUser;
   } catch (error) {
-    console.error("Error updating manager settings:", error);
+    logger.error("Error updating manager settings:", error);
     throw new Error("Failed to update manager settings");
   }
 }
 
 // Get current residences for a tenant
-export async function getCurrentResidences(userId: string) {
+export async function getCurrentResidences(userId: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const parsedId = userIdSchema.safeParse(userId);
+  if (!parsedId.success) {
+    throw new Error("Invalid user ID");
+  }
+
+  // Users can only view their own residences
+  if (parsedId.data !== session.user.id) {
+    throw new Error("Unauthorized");
+  }
+
   try {
     const currentDate = new Date();
 
     const leases = await db.lease.findMany({
       where: {
-        tenantId: userId,
+        tenantId: parsedId.data,
         startDate: { lte: currentDate },
         endDate: { gte: currentDate },
       },
@@ -346,24 +418,30 @@ export async function getCurrentResidences(userId: string) {
 
     return leases.map(lease => lease.listing);
   } catch (error) {
-    console.error("Error fetching current residences:", error);
+    logger.error("Error fetching current residences:", error);
     throw new Error("Failed to fetch current residences");
   }
 }
 
 // Add property to favorites
-export async function addFavoriteProperty(userId: string, propertyId: number) {
+export async function addFavoriteProperty(userId: unknown, propertyId: unknown) {
+  const parsedUserId = userIdSchema.safeParse(userId);
+  const parsedPropertyId = propertyIdSchema.safeParse(propertyId);
+  if (!parsedUserId.success || !parsedPropertyId.success) {
+    throw new Error("Invalid input");
+  }
+
   try {
     const session = await auth();
-    if (!session?.user?.id || session.user.id !== userId) {
+    if (!session?.user?.id || session.user.id !== parsedUserId.data) {
       throw new Error("Unauthorized");
     }
 
     const tenant = await db.tenant.update({
-      where: { userId },
+      where: { userId: parsedUserId.data },
       data: {
         favorites: {
-          connect: { id: propertyId },
+          connect: { id: parsedPropertyId.data },
         },
       },
       select: {
@@ -384,24 +462,30 @@ export async function addFavoriteProperty(userId: string, propertyId: number) {
     revalidatePath("/search");
     return tenant;
   } catch (error) {
-    console.error("Error adding favorite property:", error);
+    logger.error("Error adding favorite property:", error);
     throw new Error("Failed to add property to favorites");
   }
 }
 
 // Remove property from favorites
-export async function removeFavoriteProperty(userId: string, propertyId: number) {
+export async function removeFavoriteProperty(userId: unknown, propertyId: unknown) {
+  const parsedUserId = userIdSchema.safeParse(userId);
+  const parsedPropertyId = propertyIdSchema.safeParse(propertyId);
+  if (!parsedUserId.success || !parsedPropertyId.success) {
+    throw new Error("Invalid input");
+  }
+
   try {
     const session = await auth();
-    if (!session?.user?.id || session.user.id !== userId) {
+    if (!session?.user?.id || session.user.id !== parsedUserId.data) {
       throw new Error("Unauthorized");
     }
 
     const tenant = await db.tenant.update({
-      where: { userId },
+      where: { userId: parsedUserId.data },
       data: {
         favorites: {
-          disconnect: { id: propertyId },
+          disconnect: { id: parsedPropertyId.data },
         },
       },
       select: {
@@ -422,7 +506,7 @@ export async function removeFavoriteProperty(userId: string, propertyId: number)
     revalidatePath("/search");
     return tenant;
   } catch (error) {
-    console.error("Error removing favorite property:", error);
+    logger.error("Error removing favorite property:", error);
     throw new Error("Failed to remove property from favorites");
   }
 } 

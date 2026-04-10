@@ -1198,8 +1198,36 @@
     "subtitle": "Book intercity bus tickets",
     "hero": {
       "title": "Travel Between Cities in Sudan",
+      "titleLine1": "Travel Between",
+      "titleLine2": "Cities in Sudan",
       "subtitle": "Book your bus tickets online. Choose your seat, pay securely, and receive your e-ticket instantly.",
       "badge": "Intercity Bus Booking"
+    },
+    "features": {
+      "title": "Why Book With Us",
+      "items": {
+        "destinations": {
+          "title": "Multiple Destinations",
+          "description": "Book tickets to cities across Sudan from major assembly points."
+        },
+        "departures": {
+          "title": "Daily Departures",
+          "description": "Regular morning departures at 5:00 AM, 7 days a week."
+        },
+        "etickets": {
+          "title": "E-Tickets",
+          "description": "Receive your ticket instantly via PDF with QR code for easy boarding."
+        },
+        "verified": {
+          "title": "Verified Offices",
+          "description": "All transport offices are verified for your safety and comfort."
+        }
+      }
+    },
+    "routes": {
+      "title": "Popular Routes",
+      "from": "From",
+      "pricePrefix": "From"
     },
     "search": {
       "title": "Find Your Ride",
@@ -1209,21 +1237,56 @@
       "search": "Search Trips",
       "swap": "Swap cities",
       "noResults": "No trips found",
-      "tripsFound": "{count} trip(s) found"
+      "noResultsDescription": "There are no available trips for this route on the selected date. Try a different date or route.",
+      "tripsFound": "{count} trip(s) found",
+      "filters": "Filters",
+      "searchAgain": "Search Again"
     },
     "booking": {
       "selectSeats": "Select Your Seats",
+      "clickToSelect": "Click to select seats (max 5). Selected:",
       "seatSelected": "seat selected",
       "seatsSelected": "seats selected",
       "maxReached": "Maximum seats reached",
       "passengerDetails": "Passenger Details",
+      "enterDetails": "Enter details for the booking",
       "fullName": "Full Name",
+      "fullNamePlaceholder": "Enter passenger name",
       "phone": "Phone Number",
+      "phonePlaceholder": "Enter phone number",
       "email": "Email (optional)",
+      "emailPlaceholder": "Enter email for ticket delivery",
       "summary": "Booking Summary",
+      "route": "Route",
+      "date": "Date",
+      "time": "Time",
+      "selectedSeats": "Selected Seats",
+      "pricePerSeat": "Price per seat",
+      "numberOfSeats": "Number of seats",
       "totalAmount": "Total Amount",
+      "total": "Total",
+      "selectSeatsToContinue": "Select seats to continue",
+      "continueToPayment": "Continue to Payment",
+      "processing": "Processing...",
       "confirmBooking": "Confirm Booking",
-      "proceedPayment": "Proceed to Payment"
+      "proceedPayment": "Proceed to Payment",
+      "confirmed": "Booking Confirmed!",
+      "confirmedMessage": "Your bus ticket has been confirmed. Show your ticket at the office.",
+      "received": "Booking Received",
+      "receivedMessage": "Your booking is being processed. You will receive confirmation shortly.",
+      "reference": "Booking Reference",
+      "notFound": "Booking not found",
+      "backToTransport": "Back to Transport",
+      "tripDetails": "Trip Details",
+      "passengerInfo": "Passenger Information",
+      "name": "Name",
+      "boardingLocation": "Boarding Location",
+      "paymentSummary": "Payment Summary",
+      "totalPaid": "Total Paid",
+      "paidVia": "Paid via",
+      "viewTicket": "View Ticket",
+      "share": "Share",
+      "viewAllTrips": "View all my trips"
     },
     "payment": {
       "title": "Payment",
@@ -1257,7 +1320,9 @@
       "arrival": "Arrival",
       "duration": "Duration",
       "status": "Status",
-      "total": "Total Amount"
+      "total": "Total Amount",
+      "showcaseTitle": "Your Digital Ticket",
+      "showcaseSubtitle": "Book online and receive your e-ticket instantly with QR code for easy boarding."
     },
     "trip": {
       "selectSeats": "Select Seats",
@@ -1266,12 +1331,29 @@
       "perSeat": "per seat"
     },
     "office": {
-      "title": "Transport Office",
+      "title": "Transport Offices",
+      "subtitle": "Find and book with trusted transport operators",
+      "searchPlaceholder": "Search by office name or city...",
+      "noOffices": "No offices found",
       "buses": "Buses",
       "routes": "Routes",
-      "verified": "Verified Office",
+      "reviews": "reviews",
+      "verified": "Verified",
       "rating": "Rating",
-      "assemblyPoint": "Assembly Point"
+      "assemblyPoint": "Assembly Point",
+      "locationNotSet": "Location not set",
+      "availableRoutes": "Available Routes",
+      "routesOperated": "Routes operated by",
+      "noRoutes": "No routes available",
+      "upcomingTrips": "Upcoming Trips",
+      "next7Days": "Next 7 days",
+      "seatsLeft": "seats left",
+      "ourFleet": "Our Fleet",
+      "noBuses": "No buses listed",
+      "location": "Location",
+      "notFound": "Office not found",
+      "backToOffices": "Back to Offices",
+      "hours": "hours"
     },
     "seat": {
       "available": "Available",
@@ -1339,7 +1421,79 @@
     "cta": {
       "hostTitle": "Own a Transport Office?",
       "hostSubtitle": "Join Mkan to reach more customers and manage your bookings online. Start accepting online reservations today.",
-      "registerOffice": "Register Your Office"
+      "registerOffice": "Register Your Office",
+      "forBusiness": "For Transport Businesses",
+      "verifiedOffices": "Verified Offices",
+      "joinPartners": "Join trusted partners",
+      "benefits": [
+        "Reach more customers with online visibility",
+        "Accept bookings 24/7, even when offline",
+        "Manage all trips and seats in one dashboard",
+        "Get paid securely through multiple payment options"
+      ]
+    },
+    "checkout": {
+      "title": "Complete Your Booking",
+      "selectPayment": "Select Payment Method",
+      "choosePayment": "Choose how you would like to pay",
+      "orderSummary": "Order Summary",
+      "bookingNotFound": "Booking not found",
+      "backToTransport": "Back to Transport",
+      "paySecure": "Your payment is secure and encrypted",
+      "mobileMoneyDetails": "Mobile Money Details",
+      "enterMobileNumber": "Enter your mobile money number",
+      "mobileNumber": "Mobile Number",
+      "bankDetails": "Bank Transfer Details",
+      "transferTo": "Transfer to the following account",
+      "bankName": "Bank Name",
+      "accountName": "Account Name",
+      "accountNumber": "Account Number",
+      "reference": "Reference",
+      "includeReference": "Please include the booking reference in your transfer description. Your booking will be confirmed once payment is verified.",
+      "cashTitle": "Cash on Arrival",
+      "cashSubtitle": "Pay at the transport office",
+      "cashWarning": "Your seats will be reserved for 30 minutes. Please arrive at the office early to complete payment and collect your tickets.",
+      "passenger": "Passenger",
+      "seats": "Seats",
+      "total": "Total"
+    },
+    "paymentMethods": {
+      "mobileMoney": {
+        "name": "Mobile Money",
+        "description": "Pay with MTN or Bankak"
+      },
+      "creditCard": {
+        "name": "Credit/Debit Card",
+        "description": "Visa, Mastercard"
+      },
+      "bankTransfer": {
+        "name": "Bank Transfer",
+        "description": "Direct bank transfer"
+      },
+      "cashOnArrival": {
+        "name": "Cash on Arrival",
+        "description": "Pay at the office"
+      }
+    }
+  },
+  "home": {
+    "sections": {
+      "popular": "Popular homes in Khartoum",
+      "recent": "Recently added",
+      "topRated": "Top rated"
+    },
+    "categories": {
+      "islands": "Islands",
+      "mansion": "Mansion",
+      "beach": "Beach",
+      "boat": "Boat",
+      "containers": "Containers",
+      "new": "New",
+      "beautyPools": "Beauty Pools",
+      "group": "Group",
+      "featured": "Featured",
+      "unique": "Unique",
+      "windmill": "Windmill"
     }
   }
 }

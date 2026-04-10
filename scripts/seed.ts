@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { PrismaClient, PropertyType, Amenity, Highlight } from '@prisma/client'
 
 const prisma = new PrismaClient()
@@ -11,36 +12,44 @@ async function main() {
       where: { email: 'test@example.com' },
       update: {},
       create: {
+        id: crypto.randomUUID(),
         email: 'test@example.com',
         username: 'Test Manager',
-        role: 'MANAGER'
+        role: 'MANAGER',
+        updatedAt: new Date()
       }
     }),
     prisma.user.upsert({
       where: { email: 'sarah.johnson@realty.com' },
       update: {},
       create: {
+        id: crypto.randomUUID(),
         email: 'sarah.johnson@realty.com',
         username: 'Sarah Johnson',
-        role: 'MANAGER'
+        role: 'MANAGER',
+        updatedAt: new Date()
       }
     }),
     prisma.user.upsert({
       where: { email: 'mike.chen@properties.com' },
       update: {},
       create: {
+        id: crypto.randomUUID(),
         email: 'mike.chen@properties.com',
         username: 'Mike Chen',
-        role: 'MANAGER'
+        role: 'MANAGER',
+        updatedAt: new Date()
       }
     }),
     prisma.user.upsert({
       where: { email: 'lisa.martinez@luxury.com' },
       update: {},
       create: {
+        id: crypto.randomUUID(),
         email: 'lisa.martinez@luxury.com',
         username: 'Lisa Martinez',
-        role: 'MANAGER'
+        role: 'MANAGER',
+        updatedAt: new Date()
       }
     })
   ])
@@ -326,27 +335,33 @@ async function main() {
       where: { email: 'john.doe@email.com' },
       update: {},
       create: {
+        id: crypto.randomUUID(),
         email: 'john.doe@email.com',
         username: 'John Doe',
-        role: 'TENANT'
+        role: 'TENANT',
+        updatedAt: new Date()
       }
     }),
     prisma.user.upsert({
       where: { email: 'jane.smith@email.com' },
       update: {},
       create: {
+        id: crypto.randomUUID(),
         email: 'jane.smith@email.com',
         username: 'Jane Smith',
-        role: 'TENANT'
+        role: 'TENANT',
+        updatedAt: new Date()
       }
     }),
     prisma.user.upsert({
       where: { email: 'alex.wilson@email.com' },
       update: {},
       create: {
+        id: crypto.randomUUID(),
         email: 'alex.wilson@email.com',
         username: 'Alex Wilson',
-        role: 'TENANT'
+        role: 'TENANT',
+        updatedAt: new Date()
       }
     })
   ])

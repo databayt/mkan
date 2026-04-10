@@ -22,7 +22,7 @@ export default function Loading() {
 
           {/* Image gallery skeleton */}
           <div className="grid grid-cols-2 gap-2 h-[320px] mb-8">
-            <Skeleton className="rounded-l-xl" />
+            <Skeleton className="rounded-s-xl" />
             <div className="grid grid-cols-2 gap-2">
               <Skeleton />
               <Skeleton className="rounded-tr-xl" />

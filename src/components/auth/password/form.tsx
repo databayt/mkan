@@ -4,6 +4,7 @@ import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { useState, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
@@ -13,7 +14,7 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormMessage,  
+  FormMessage,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,21 @@ import { newPassword } from "./action";
 import { FormError } from "../error/form-error";
 import { FormSuccess } from "../form-success";
 
+const translations = {
+  en: {
+    heading: "Enter a new password",
+    newPassword: "New Password",
+    resetPassword: "Reset password",
+    backToLogin: "Back to login",
+  },
+  ar: {
+    heading: "أدخل كلمة مرور جديدة",
+    newPassword: "كلمة المرور الجديدة",
+    resetPassword: "إعادة تعيين كلمة المرور",
+    backToLogin: "العودة لتسجيل الدخول",
+  },
+} as const;
+
 interface NewPasswordFormProps extends React.ComponentPropsWithoutRef<"div"> {
   token?: string;
 }
@@ -35,6 +51,8 @@ export const NewPasswordForm = ({
   token,
   ...props
 }: NewPasswordFormProps) => {
+  const pathname = usePathname();
+  const t = translations[pathname?.startsWith("/ar") ? "ar" : "en"];
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isPending, startTransition] = useTransition();
@@ -63,7 +81,7 @@ export const NewPasswordForm = ({
     <div className={cn("flex flex-col gap-6 min-w-[200px] md:min-w-[350px]", className)} {...props}>
       <Card className="border-none shadow-none">
         <CardHeader className="text-center">
-          <h1 className="text-xl font-semibold">Enter a new password</h1>
+          <h1 className="text-xl font-semibold">{t.heading}</h1>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -78,7 +96,7 @@ export const NewPasswordForm = ({
                         <Input
                           {...field}
                           disabled={isPending}
-                          placeholder="New Password"
+                          placeholder={t.newPassword}
                           type="password"
                         />
                       </FormControl>
@@ -90,18 +108,18 @@ export const NewPasswordForm = ({
                 <FormError message={error} />
                 <FormSuccess message={success} />
 
-                <Button 
-                  disabled={isPending} 
-                  type="submit" 
+                <Button
+                  disabled={isPending}
+                  type="submit"
                   className="w-full h-11 text-base"
                 >
-                  Reset password
+                  {t.resetPassword}
                 </Button>
               </div>
 
               <div className="text-center text-sm">
                 <Link href="/auth/login" className="hover:underline underline-offset-4">
-                  Back to login
+                  {t.backToLogin}
                 </Link>
               </div>
             </form>

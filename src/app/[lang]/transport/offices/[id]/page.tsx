@@ -20,6 +20,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { getTransportOffice, getOfficeTrips } from '@/lib/actions/transport-actions';
+import { getTransportDictionary } from '@/components/transport/transport-dictionary';
 import { format, addDays } from 'date-fns';
 
 interface OfficeDetails {
@@ -70,11 +71,13 @@ interface Trip {
 export default function OfficeDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const lang = params.lang as string;
   const officeId = Number(params.id);
 
   const [office, setOffice] = useState<OfficeDetails | null>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
+  const t = getTransportDictionary(lang);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -83,8 +86,8 @@ export default function OfficeDetailsPage() {
           getTransportOffice(officeId),
           getOfficeTrips(officeId, new Date(), addDays(new Date(), 7)),
         ]);
-        setOffice(officeData);
-        setTrips(tripsData || []);
+        setOffice(officeData as unknown as OfficeDetails | null);
+        setTrips((tripsData || []) as unknown as Trip[]);
       } catch (error) {
         console.error('Failed to fetch office:', error);
       } finally {
@@ -101,8 +104,8 @@ export default function OfficeDetailsPage() {
     return (
       <div className="container mx-auto py-8 px-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-32 bg-gray-200 rounded" />
-          <div className="h-64 bg-gray-200 rounded" />
+          <div className="h-32 bg-muted rounded" />
+          <div className="h-64 bg-muted rounded" />
         </div>
       </div>
     );
@@ -111,9 +114,9 @@ export default function OfficeDetailsPage() {
   if (!office) {
     return (
       <div className="container mx-auto py-8 px-4 text-center">
-        <h1 className="text-2xl font-bold">Office not found</h1>
-        <Button onClick={() => router.push('/transport/offices')} className="mt-4">
-          Back to Offices
+        <h1 className="text-2xl font-bold">{t.office.notFound}</h1>
+        <Button onClick={() => router.push(`/${lang}/transport/offices`)} className="mt-4">
+          {t.office.backToOffices}
         </Button>
       </div>
     );
@@ -145,7 +148,7 @@ export default function OfficeDetailsPage() {
                 {office.isVerified && (
                   <Badge className="gap-1 bg-blue-100 text-blue-800">
                     <CheckCircle className="h-3 w-3" />
-                    Verified
+                    {t.office.verified}
                   </Badge>
                 )}
               </div>
@@ -155,7 +158,7 @@ export default function OfficeDetailsPage() {
                   <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
                   <span className="font-medium text-lg">{office.rating.toFixed(1)}</span>
                   <span className="text-muted-foreground">
-                    ({office.reviewCount} reviews)
+                    ({office.reviewCount} {t.office.reviews})
                   </span>
                 </div>
               )}
@@ -204,16 +207,16 @@ export default function OfficeDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Route className="h-5 w-5" />
-                Available Routes
+                {t.office.availableRoutes}
               </CardTitle>
               <CardDescription>
-                Routes operated by {office.name}
+                {t.office.routesOperated} {office.name}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {office.routes.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
-                  No routes available
+                  {t.office.noRoutes}
                 </p>
               ) : (
                 <div className="space-y-4">
@@ -233,12 +236,12 @@ export default function OfficeDetailsPage() {
                           <div className="text-xs text-muted-foreground">{route.destination.name}</div>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-end">
                         <div className="font-bold text-primary">
                           SDG {route.basePrice.toLocaleString()}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {route.duration} hours
+                          {route.duration} {t.office.hours}
                         </div>
                       </div>
                     </div>
@@ -254,16 +257,16 @@ export default function OfficeDetailsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
-                  Upcoming Trips
+                  {t.office.upcomingTrips}
                 </CardTitle>
-                <CardDescription>Next 7 days</CardDescription>
+                <CardDescription>{t.office.next7Days}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   {trips.slice(0, 5).map((trip) => (
                     <Link
                       key={trip.id}
-                      href={`/transport/trips/${trip.id}`}
+                      href={`/${lang}/transport/trips/${trip.id}`}
                       className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                     >
                       <div>
@@ -273,14 +276,14 @@ export default function OfficeDetailsPage() {
                         <div className="text-sm text-muted-foreground flex items-center gap-2">
                           <Calendar className="h-3 w-3" />
                           {format(new Date(trip.departureDate), 'EEE, MMM d')}
-                          <Clock className="h-3 w-3 ml-2" />
+                          <Clock className="h-3 w-3 ms-2" />
                           {trip.departureTime}
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-end">
                         <div className="font-bold">SDG {trip.price.toLocaleString()}</div>
                         <div className="text-xs text-muted-foreground">
-                          {trip.availableSeats} seats left
+                          {trip.availableSeats} {t.office.seatsLeft}
                         </div>
                       </div>
                     </Link>
@@ -298,13 +301,13 @@ export default function OfficeDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bus className="h-5 w-5" />
-                Our Fleet
+                {t.office.ourFleet}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {office.buses.length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">
-                  No buses listed
+                  {t.office.noBuses}
                 </p>
               ) : (
                 <div className="space-y-3">
@@ -343,7 +346,7 @@ export default function OfficeDetailsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MapPin className="h-5 w-5" />
-                  Location
+                  {t.office.location}
                 </CardTitle>
               </CardHeader>
               <CardContent>

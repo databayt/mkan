@@ -1,28 +1,27 @@
-"use client";
+import { Metadata } from "next";
+import { createMetadata } from "@/lib/metadata";
+import FavoritesContent from "./content";
+
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
-import Header from "@/components/Header";
-import React from "react";
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  const { lang } = await params;
+  return createMetadata({
+    title: lang === "ar" ? "المفضلة" : "Favorites",
+    description:
+      lang === "ar"
+        ? "تصفح وإدارة العقارات المفضلة لديك"
+        : "Browse and manage your saved property listings",
+    locale: lang,
+    path: "/tenants/favorites",
+  });
+}
 
-const Favorites = () => {
-  // TODO: Implement favorites system with proper tenant-listing relationship
-  return (
-    <div className="dashboard-container">
-      <Header
-        title="Favorited Properties"
-        subtitle="Browse and manage your saved property listings"
-      />
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">
-          You don&apos;t have any favorited properties yet.
-        </p>
-        <p className="text-sm text-muted-foreground mt-2">
-          Browse listings and click the heart icon to save your favorites.
-        </p>
-      </div>
-    </div>
-  );
-};
-
-export default Favorites;
+export default function FavoritesPage() {
+  return <FavoritesContent />;
+}

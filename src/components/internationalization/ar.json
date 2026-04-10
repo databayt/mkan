@@ -1198,8 +1198,36 @@
     "subtitle": "احجز تذاكر الباص بين المدن",
     "hero": {
       "title": "السفر بين مدن السودان",
+      "titleLine1": "السفر بين",
+      "titleLine2": "مدن السودان",
       "subtitle": "احجز تذاكر الباص عبر الإنترنت. اختر مقعدك، ادفع بأمان، واستلم تذكرتك الإلكترونية فوراً.",
       "badge": "حجز الباصات بين المدن"
+    },
+    "features": {
+      "title": "لماذا تحجز معنا",
+      "items": {
+        "destinations": {
+          "title": "وجهات متعددة",
+          "description": "احجز تذاكر إلى مدن في جميع أنحاء السودان من نقاط التجمع الرئيسية."
+        },
+        "departures": {
+          "title": "رحلات يومية",
+          "description": "مغادرات صباحية منتظمة في الساعة 5:00 صباحاً، 7 أيام في الأسبوع."
+        },
+        "etickets": {
+          "title": "تذاكر إلكترونية",
+          "description": "استلم تذكرتك فوراً عبر PDF مع رمز QR للصعود بسهولة."
+        },
+        "verified": {
+          "title": "مكاتب موثقة",
+          "description": "جميع مكاتب النقل موثقة لسلامتك وراحتك."
+        }
+      }
+    },
+    "routes": {
+      "title": "المسارات الشائعة",
+      "from": "من",
+      "pricePrefix": "من"
     },
     "search": {
       "title": "ابحث عن رحلتك",
@@ -1209,21 +1237,56 @@
       "search": "البحث عن رحلات",
       "swap": "تبديل المدن",
       "noResults": "لا توجد رحلات",
-      "tripsFound": "تم العثور على {count} رحلة"
+      "noResultsDescription": "لا توجد رحلات متاحة لهذا المسار في التاريخ المحدد. جرب تاريخاً أو مساراً مختلفاً.",
+      "tripsFound": "تم العثور على {count} رحلة",
+      "filters": "تصفية",
+      "searchAgain": "ابحث مجدداً"
     },
     "booking": {
       "selectSeats": "اختر مقاعدك",
+      "clickToSelect": "انقر لاختيار المقاعد (الحد الأقصى 5). المحدد:",
       "seatSelected": "مقعد محدد",
       "seatsSelected": "مقاعد محددة",
       "maxReached": "تم الوصول للحد الأقصى",
       "passengerDetails": "بيانات المسافر",
+      "enterDetails": "أدخل بيانات الحجز",
       "fullName": "الاسم الكامل",
+      "fullNamePlaceholder": "أدخل اسم المسافر",
       "phone": "رقم الهاتف",
+      "phonePlaceholder": "أدخل رقم الهاتف",
       "email": "البريد الإلكتروني (اختياري)",
+      "emailPlaceholder": "أدخل البريد الإلكتروني لاستلام التذكرة",
       "summary": "ملخص الحجز",
+      "route": "المسار",
+      "date": "التاريخ",
+      "time": "الوقت",
+      "selectedSeats": "المقاعد المحددة",
+      "pricePerSeat": "السعر للمقعد",
+      "numberOfSeats": "عدد المقاعد",
       "totalAmount": "المبلغ الإجمالي",
+      "total": "الإجمالي",
+      "selectSeatsToContinue": "اختر المقاعد للمتابعة",
+      "continueToPayment": "المتابعة للدفع",
+      "processing": "جاري المعالجة...",
       "confirmBooking": "تأكيد الحجز",
-      "proceedPayment": "المتابعة للدفع"
+      "proceedPayment": "المتابعة للدفع",
+      "confirmed": "تم تأكيد الحجز!",
+      "confirmedMessage": "تم تأكيد تذكرة الباص. أظهر تذكرتك في المكتب.",
+      "received": "تم استلام الحجز",
+      "receivedMessage": "جاري معالجة حجزك. ستتلقى تأكيداً قريباً.",
+      "reference": "رقم الحجز",
+      "notFound": "الحجز غير موجود",
+      "backToTransport": "العودة إلى النقل",
+      "tripDetails": "تفاصيل الرحلة",
+      "passengerInfo": "بيانات المسافر",
+      "name": "الاسم",
+      "boardingLocation": "موقع الصعود",
+      "paymentSummary": "ملخص الدفع",
+      "totalPaid": "إجمالي المدفوع",
+      "paidVia": "تم الدفع عبر",
+      "viewTicket": "عرض التذكرة",
+      "share": "مشاركة",
+      "viewAllTrips": "عرض جميع رحلاتي"
     },
     "payment": {
       "title": "الدفع",
@@ -1257,7 +1320,9 @@
       "arrival": "الوصول",
       "duration": "المدة",
       "status": "الحالة",
-      "total": "المبلغ الإجمالي"
+      "total": "المبلغ الإجمالي",
+      "showcaseTitle": "تذكرتك الرقمية",
+      "showcaseSubtitle": "احجز عبر الإنترنت واحصل على تذكرتك الإلكترونية فوراً مع رمز QR لصعود سهل."
     },
     "trip": {
       "selectSeats": "اختر المقاعد",
@@ -1266,12 +1331,29 @@
       "perSeat": "للمقعد"
     },
     "office": {
-      "title": "مكتب النقل",
+      "title": "مكاتب النقل",
+      "subtitle": "ابحث واحجز مع شركات النقل الموثوقة",
+      "searchPlaceholder": "ابحث باسم المكتب أو المدينة...",
+      "noOffices": "لا توجد مكاتب",
       "buses": "الباصات",
       "routes": "المسارات",
-      "verified": "مكتب موثق",
+      "reviews": "تقييمات",
+      "verified": "موثق",
       "rating": "التقييم",
-      "assemblyPoint": "موقف التجمع"
+      "assemblyPoint": "موقف التجمع",
+      "locationNotSet": "الموقع غير محدد",
+      "availableRoutes": "المسارات المتاحة",
+      "routesOperated": "مسارات يديرها",
+      "noRoutes": "لا توجد مسارات متاحة",
+      "upcomingTrips": "الرحلات القادمة",
+      "next7Days": "الأيام السبعة القادمة",
+      "seatsLeft": "مقاعد متبقية",
+      "ourFleet": "أسطولنا",
+      "noBuses": "لا توجد باصات مسجلة",
+      "location": "الموقع",
+      "notFound": "المكتب غير موجود",
+      "backToOffices": "العودة إلى المكاتب",
+      "hours": "ساعات"
     },
     "seat": {
       "available": "متاح",
@@ -1339,7 +1421,79 @@
     "cta": {
       "hostTitle": "تمتلك مكتب نقل؟",
       "hostSubtitle": "انضم إلى مكان للوصول إلى المزيد من العملاء وإدارة حجوزاتك عبر الإنترنت. ابدأ بقبول الحجوزات عبر الإنترنت اليوم.",
-      "registerOffice": "سجل مكتبك"
+      "registerOffice": "سجل مكتبك",
+      "forBusiness": "لشركات النقل",
+      "verifiedOffices": "مكاتب موثقة",
+      "joinPartners": "انضم إلى الشركاء الموثوقين",
+      "benefits": [
+        "الوصول إلى المزيد من العملاء عبر الإنترنت",
+        "قبول الحجوزات على مدار الساعة، حتى في وضع عدم الاتصال",
+        "إدارة جميع الرحلات والمقاعد في لوحة تحكم واحدة",
+        "الحصول على مدفوعات آمنة عبر خيارات دفع متعددة"
+      ]
+    },
+    "checkout": {
+      "title": "أكمل حجزك",
+      "selectPayment": "اختر طريقة الدفع",
+      "choosePayment": "اختر كيف تريد الدفع",
+      "orderSummary": "ملخص الطلب",
+      "bookingNotFound": "الحجز غير موجود",
+      "backToTransport": "العودة إلى النقل",
+      "paySecure": "دفعتك آمنة ومشفرة",
+      "mobileMoneyDetails": "تفاصيل الدفع بالموبايل",
+      "enterMobileNumber": "أدخل رقم الموبايل للدفع",
+      "mobileNumber": "رقم الموبايل",
+      "bankDetails": "تفاصيل التحويل البنكي",
+      "transferTo": "حول إلى الحساب التالي",
+      "bankName": "اسم البنك",
+      "accountName": "اسم الحساب",
+      "accountNumber": "رقم الحساب",
+      "reference": "المرجع",
+      "includeReference": "يرجى تضمين رقم الحجز في وصف التحويل. سيتم تأكيد حجزك بمجرد التحقق من الدفع.",
+      "cashTitle": "الدفع عند الوصول",
+      "cashSubtitle": "ادفع في مكتب النقل",
+      "cashWarning": "سيتم حجز مقاعدك لمدة 30 دقيقة. يرجى الوصول إلى المكتب مبكراً لإتمام الدفع واستلام تذاكرك.",
+      "passenger": "المسافر",
+      "seats": "المقاعد",
+      "total": "الإجمالي"
+    },
+    "paymentMethods": {
+      "mobileMoney": {
+        "name": "الدفع بالموبايل",
+        "description": "ادفع عبر MTN أو بنكك"
+      },
+      "creditCard": {
+        "name": "بطاقة ائتمان/خصم",
+        "description": "فيزا، ماستركارد"
+      },
+      "bankTransfer": {
+        "name": "تحويل بنكي",
+        "description": "تحويل بنكي مباشر"
+      },
+      "cashOnArrival": {
+        "name": "الدفع عند الوصول",
+        "description": "ادفع في المكتب"
+      }
+    }
+  },
+  "home": {
+    "sections": {
+      "popular": "منازل شائعة في الخرطوم",
+      "recent": "أضيفت مؤخراً",
+      "topRated": "الأعلى تقييماً"
+    },
+    "categories": {
+      "islands": "جزر",
+      "mansion": "قصر",
+      "beach": "شاطئ",
+      "boat": "قارب",
+      "containers": "حاويات",
+      "new": "جديد",
+      "beautyPools": "مسابح جميلة",
+      "group": "مجموعات",
+      "featured": "مميز",
+      "unique": "فريد",
+      "windmill": "طاحونة"
     }
   }
 }

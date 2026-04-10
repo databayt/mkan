@@ -4,19 +4,40 @@ import { Bus, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+interface TransportCtaDictionary {
+  hostTitle: string;
+  hostSubtitle: string;
+  registerOffice: string;
+  forBusiness: string;
+  verifiedOffices: string;
+  joinPartners: string;
+  benefits: string[];
+}
+
 interface TransportHostHeroProps {
   lang: string;
   className?: string;
+  dictionary?: TransportCtaDictionary;
 }
 
-const benefits = [
-  'Reach more customers with online visibility',
-  'Accept bookings 24/7, even when offline',
-  'Manage all trips and seats in one dashboard',
-  'Get paid securely through multiple payment options',
-];
+const defaultDictionary: TransportCtaDictionary = {
+  hostTitle: 'Own a Transport Office?',
+  hostSubtitle: 'Join Mkan to reach more customers and manage your bookings online. Start accepting online reservations today.',
+  registerOffice: 'Register Your Office',
+  forBusiness: 'For Transport Businesses',
+  verifiedOffices: 'Verified Offices',
+  joinPartners: 'Join trusted partners',
+  benefits: [
+    'Reach more customers with online visibility',
+    'Accept bookings 24/7, even when offline',
+    'Manage all trips and seats in one dashboard',
+    'Get paid securely through multiple payment options',
+  ],
+};
 
-export function TransportHostHero({ lang, className }: TransportHostHeroProps) {
+export function TransportHostHero({ lang, className, dictionary = defaultDictionary }: TransportHostHeroProps) {
+  const t = dictionary;
+
   return (
     <section
       className={cn(
@@ -32,23 +53,22 @@ export function TransportHostHero({ lang, className }: TransportHostHeroProps) {
             {/* Badge */}
             <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full">
               <Bus className="h-5 w-5" />
-              <span className="text-sm font-medium">For Transport Businesses</span>
+              <span className="text-sm font-medium">{t.forBusiness}</span>
             </div>
 
             {/* Heading */}
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight">
-              Own a Transport Office?
+              {t.hostTitle}
             </h2>
 
             {/* Subheading */}
             <p className="text-lg md:text-xl text-muted-foreground max-w-xl">
-              Join Mkan to reach more customers and manage your bookings online.
-              Start accepting online reservations today.
+              {t.hostSubtitle}
             </p>
 
             {/* Benefits List */}
             <ul className="space-y-4 pt-2">
-              {benefits.map((benefit, index) => (
+              {t.benefits.map((benefit, index) => (
                 <li key={index} className="flex items-start gap-3">
                   <CheckCircle className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
                   <span className="text-base">{benefit}</span>
@@ -61,7 +81,7 @@ export function TransportHostHero({ lang, className }: TransportHostHeroProps) {
               <Button size="lg" asChild>
                 <Link href={`/${lang}/transport-host`}>
                   <Bus className="h-5 w-5" />
-                  Register Your Office
+                  {t.registerOffice}
                 </Link>
               </Button>
             </div>
@@ -88,9 +108,9 @@ export function TransportHostHero({ lang, className }: TransportHostHeroProps) {
                     <CheckCircle className="h-5 w-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold">Verified Offices</p>
+                    <p className="text-sm font-semibold">{t.verifiedOffices}</p>
                     <p className="text-xs text-muted-foreground">
-                      Join trusted partners
+                      {t.joinPartners}
                     </p>
                   </div>
                 </div>

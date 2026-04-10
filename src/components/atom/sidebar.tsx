@@ -9,7 +9,7 @@
 
 // const Sidebar: React.FC<SidebarProps> = ({ onSelect }) => {
 //   return (
-//     <div className="w-64 p-4 border-r">
+//     <div className="w-64 p-4 border-e">
 //       <h2 className="text-sm font-bold px-4">Components</h2>
 //       <ul>
 //         {Object.keys(registry).map((component) => (

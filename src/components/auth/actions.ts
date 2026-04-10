@@ -46,8 +46,7 @@ export async function getAuthUser() {
           });
         }
       }
-    } catch (error) {
-      console.error("Error fetching/creating user info:", error);
+    } catch {
       // Create default user info if database operations fail
       userInfo = {
         id: user.id,
@@ -68,8 +67,7 @@ export async function getAuthUser() {
       userInfo: userInfo,
       userRole: userRole,
     };
-  } catch (error) {
-    console.error("Error in getAuthUser:", error);
+  } catch {
     throw new Error("Failed to get authenticated user");
   }
 }
@@ -224,8 +222,7 @@ export async function getTenant(userId: string) {
     }
 
     return tenant;
-  } catch (error) {
-    console.error("Error fetching tenant:", error);
+  } catch {
     throw new Error("Failed to fetch tenant profile");
   }
 }
@@ -266,8 +263,7 @@ export async function updateTenantSettings(
 
     revalidatePath("/tenants/settings");
     return updatedTenant;
-  } catch (error) {
-    console.error("Error updating tenant settings:", error);
+  } catch {
     throw new Error("Failed to update tenant settings");
   }
 }
@@ -304,8 +300,7 @@ export async function updateManagerSettings(
 
     revalidatePath("/managers/settings");
     return updatedUser;
-  } catch (error) {
-    console.error("Error updating manager settings:", error);
+  } catch {
     throw new Error("Failed to update manager settings");
   }
 }
@@ -345,8 +340,7 @@ export async function getCurrentResidences(userId: string) {
     });
 
     return leases.map(lease => lease.listing);
-  } catch (error) {
-    console.error("Error fetching current residences:", error);
+  } catch {
     throw new Error("Failed to fetch current residences");
   }
 }
@@ -383,8 +377,7 @@ export async function addFavoriteProperty(userId: string, propertyId: number) {
     revalidatePath("/tenants/favorites");
     revalidatePath("/search");
     return tenant;
-  } catch (error) {
-    console.error("Error adding favorite property:", error);
+  } catch {
     throw new Error("Failed to add property to favorites");
   }
 }
@@ -421,8 +414,7 @@ export async function removeFavoriteProperty(userId: string, propertyId: number)
     revalidatePath("/tenants/favorites");
     revalidatePath("/search");
     return tenant;
-  } catch (error) {
-    console.error("Error removing favorite property:", error);
+  } catch {
     throw new Error("Failed to remove property from favorites");
   }
 } 

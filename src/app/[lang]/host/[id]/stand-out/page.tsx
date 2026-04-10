@@ -3,14 +3,17 @@
 export const dynamic = 'force-dynamic';
 
 import React from 'react';
-import { StepHeader } from '@/components/host';
-import { useHostValidation } from '@/components/onboarding';
+import { usePathname } from 'next/navigation';
+import StepHeader from '@/components/host/step-header';
+import { useHostValidation } from '@/context/onboarding-validation-context';
 
 interface StandOutPageProps {
   params: Promise<{ id: string }>;
 }
 
 const StandOutPage = ({ params }: StandOutPageProps) => {
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [id, setId] = React.useState<string>('');
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const { enableNext } = useHostValidation();
@@ -66,8 +69,8 @@ const StandOutPage = ({ params }: StandOutPageProps) => {
       <div className="w-full">
         <StepHeader
           stepNumber={2}
-          title="Make your place stand out"
-          description="In this step, you'll add some of the amenities your place offers, plus 5 or more photos. Then, you'll create a title and description."
+          title={isAr ? "اجعل مكانك مميزاً" : "Make your place stand out"}
+          description={isAr ? "في هذه الخطوة، ستضيف بعض المرافق التي يوفرها مكانك، بالإضافة إلى 5 صور أو أكثر. ثم ستنشئ عنواناً ووصفاً." : "In this step, you'll add some of the amenities your place offers, plus 5 or more photos. Then, you'll create a title and description."}
           illustration={illustration}
         />
       </div>

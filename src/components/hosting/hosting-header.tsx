@@ -4,17 +4,19 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { MoreHorizontal, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 const HostingHeader = () => {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  const isAr = pathname?.startsWith('/ar');
+
   const navigationItems = [
-    { name: 'Today', href: '/hosting' },
-    { name: 'Calendar', href: '/hosting/calendar' },
-    { name: 'Listings', href: '/hosting/listings' },
-    { name: 'Messages', href: '/hosting/messages', hasNotification: true },
+    { name: isAr ? "اليوم" : "Today", href: '/hosting' },
+    { name: isAr ? "التقويم" : "Calendar", href: '/hosting/calendar' },
+    { name: isAr ? "القوائم" : "Listings", href: '/hosting/listings' },
+    { name: isAr ? "الرسائل" : "Messages", href: '/hosting/messages', hasNotification: true },
   ];
 
   const isActiveRoute = (href: string) => {
@@ -31,28 +33,24 @@ const HostingHeader = () => {
         <div className="relative flex items-center justify-between h-16">
           {/* Left side - Logo */}
           <div className="flex items-center">
-            {/* Mkan Logo */}
             <Link href="/hosting" className="cursor-pointer hover:text-gray-700" scroll={false}>
               <div className="flex items-center gap-2">
                 <Image
                   src="/tent.png"
-                  alt="Mkan Logo"
+                  alt={isAr ? "شعار مكان" : "Mkan Logo"}
                   width={20}
                   height={20}
                   className="w-4 h-4 sm:w-5 sm:h-5"
                 />
                 <div className="text-lg sm:text-xl font-bold text-gray-900">
-                  Mk
-                  <span className="font-light hover:text-gray-700 text-gray-600">
-                    an
-                  </span>
+                  {isAr ? "مكان" : (<>Mk<span className="font-light hover:text-gray-700 text-gray-600">an</span></>)}
                 </div>
               </div>
             </Link>
           </div>
 
           {/* Center - Navigation (Hidden on mobile, shown on desktop) */}
-          <nav className="hidden lg:flex absolute left-1/2 transform -translate-x-1/2 space-x-8">
+          <nav className="hidden lg:flex absolute left-1/2 transform -translate-x-1/2 space-x-8 rtl:space-x-reverse">
             {navigationItems.map((item) => (
               <Link
                 key={item.name}
@@ -72,22 +70,10 @@ const HostingHeader = () => {
           </nav>
 
           {/* Right side - User Controls */}
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* <Link
-              href="/search"
-              className="hidden sm:block text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Switch to traveling
-            </Link> */}
-            
+          <div className="flex items-center space-x-2 sm:space-x-4 rtl:space-x-reverse">
             <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center">
               <span className="text-white font-medium text-sm">A</span>
             </div>
-            
-            {/* <button className="text-gray-600 hover:text-gray-900 relative transition-colors">
-              <MoreHorizontal size={20} />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button> */}
 
             {/* Mobile Menu Button */}
             <button
@@ -127,7 +113,7 @@ const HostingHeader = () => {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="px-4 py-3 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
               >
-                Switch to traveling
+                {isAr ? "التبديل إلى وضع المسافر" : "Switch to traveling"}
               </Link>
             </nav>
           </div>

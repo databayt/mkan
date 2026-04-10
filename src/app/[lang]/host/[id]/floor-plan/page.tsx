@@ -3,9 +3,9 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Minus, Plus } from 'lucide-react';
-import { useHostValidation } from '@/components/onboarding';
+import { useHostValidation } from '@/context/onboarding-validation-context';
 import { ListingProvider, useListing } from '@/components/host/use-listing';
 
 interface FloorPlanPageProps {
@@ -14,6 +14,8 @@ interface FloorPlanPageProps {
 
 const FloorPlanPageContent = ({ params }: FloorPlanPageProps) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const [id, setId] = React.useState<string>('');
   const { enableNext } = useHostValidation();
   const { listing, updateListingData, loadListing } = useListing();
@@ -122,11 +124,10 @@ const FloorPlanPageContent = ({ params }: FloorPlanPageProps) => {
           {/* Left div - Title */}
           <div className="flex-1 flex flex-col">
             <h3 className="">
-              Share some basics <br />
-              about your place
+              {isAr ? <>شارك بعض الأساسيات <br /> عن مكانك</> : <>Share some basics <br /> about your place</>}
             </h3>
             <p className="mt-3 sm:mt-4 text-sm sm:text-base text-muted-foreground">
-              You'll add more details later, like bed types.
+              {isAr ? 'ستضيف المزيد من التفاصيل لاحقاً، مثل أنواع الأسرّة.' : "You'll add more details later, like bed types."}
             </p>
           </div>
 
@@ -134,25 +135,25 @@ const FloorPlanPageContent = ({ params }: FloorPlanPageProps) => {
           <div className="flex-1">
             <div className="bg-background">
               <CounterRow
-                label="Guests"
+                label={isAr ? "الضيوف" : "Guests"}
                 value={counts.guests}
                 onDecrease={() => updateCount('guests', -1)}
                 onIncrease={() => updateCount('guests', 1)}
               />
               <CounterRow
-                label="Bedrooms"
+                label={isAr ? "غرف النوم" : "Bedrooms"}
                 value={counts.bedrooms}
                 onDecrease={() => updateCount('bedrooms', -1)}
                 onIncrease={() => updateCount('bedrooms', 1)}
               />
               <CounterRow
-                label="Beds"
+                label={isAr ? "الأسرّة" : "Beds"}
                 value={counts.beds}
                 onDecrease={() => updateCount('beds', -1)}
                 onIncrease={() => updateCount('beds', 1)}
               />
               <CounterRow
-                label="Bathrooms"
+                label={isAr ? "الحمامات" : "Bathrooms"}
                 value={counts.bathrooms}
                 onDecrease={() => updateCount('bathrooms', -1)}
                 onIncrease={() => updateCount('bathrooms', 1)}

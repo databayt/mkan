@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Route, Plus, Trash2, Edit2, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, Edit2, ArrowRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useTransportHostValidation } from '@/components/onboarding';
+import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
 import {
   createRoute,
@@ -33,6 +33,7 @@ import {
   getRoutesByOffice,
   getAssemblyPoints,
 } from '@/lib/actions/transport-actions';
+import HostStepLayout from '@/components/host/host-step-layout';
 
 const routeSchema = z.object({
   originId: z.number().min(1, 'Origin is required'),
@@ -97,7 +98,7 @@ const RoutesPage = () => {
           office?.id ? getRoutesByOffice(office.id) : Promise.resolve([]),
         ]);
         setAssemblyPoints(points);
-        setRoutes(officeRoutes as RouteData[]);
+        setRoutes(officeRoutes as unknown as RouteData[]);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -128,13 +129,13 @@ const RoutesPage = () => {
         const updated = await updateRoute(editingRoute.id, routeData);
         if (updated) {
           setRoutes((prev) =>
-            prev.map((r) => (r.id === editingRoute.id ? (updated as RouteData) : r))
+            prev.map((r) => (r.id === editingRoute.id ? (updated as unknown as RouteData) : r))
           );
         }
       } else {
         const created = await createRoute(routeData);
         if (created) {
-          setRoutes((prev) => [...prev, created as RouteData]);
+          setRoutes((prev) => [...prev, created as unknown as RouteData]);
         }
       }
 
@@ -182,26 +183,15 @@ const RoutesPage = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Route className="h-6 w-6 text-primary" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold mb-2">Define your routes</h1>
-          <p className="text-muted-foreground">
-            Set up the routes you operate. Each route connects two assembly
-            points with a base price and estimated duration.
-          </p>
-        </div>
-
-        <div className="flex-1 space-y-6">
+    <HostStepLayout
+      title={<h3>Define your routes</h3>}
+      subtitle="Set up the routes you operate. Each route connects two assembly points with a base price and estimated duration."
+    >
+      <div className="space-y-6">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="w-full" onClick={() => handleDialogClose()}>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 me-2" />
                 Add Route
               </Button>
             </DialogTrigger>
@@ -366,6 +356,7 @@ const RoutesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(route)}
+                        aria-label="Edit route"
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -373,6 +364,7 @@ const RoutesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(route.id)}
+                        aria-label="Delete route"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -383,16 +375,14 @@ const RoutesPage = () => {
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground border rounded-lg">
-              <Route className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No routes added yet</p>
               <p className="text-sm mt-1">
                 Add at least one route to continue
               </p>
             </div>
           )}
-        </div>
       </div>
-    </div>
+    </HostStepLayout>
   );
 };
 

@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { useModal } from "./context";
 import React from "react";
-import { Icon } from "@iconify/react";
+import { X } from "lucide-react";
 import { useTheme } from "next-themes";
 
 interface Props {
@@ -17,7 +17,14 @@ function Modal({ content, big = false, full = false }: Props) {
 
   return (
     <div className={`fixed inset-0 w-full h-screen z-50 flex  ${theme === 'dark' ? 'bg-black' : 'bg-white'}  justify-center items-center`}>
-      <div className="absolute inset-0 w-full h-screen" onClick={closeModal}></div>
+      <div
+        className="absolute inset-0 w-full h-screen"
+        onClick={closeModal}
+        onKeyDown={(e) => { if (e.key === 'Escape') closeModal(); }}
+        role="button"
+        tabIndex={0}
+        aria-label="Close modal"
+      />
       <div className={`
         relative p-8 z-70 sm:text-sm z-80
         ${full ? 'w-full h-full max-w-none' : big ? 'max-w-4xl w-[35rem] h-[42rem]' : 'max-w-2xl w-[24rem] h-[29rem]'} 
@@ -26,8 +33,8 @@ function Modal({ content, big = false, full = false }: Props) {
 
       `}>
         {full && 
-        <Button size='icon' variant='outline' onClick={closeModal} className="absolute top-0 right-0 m-4">
-        <Icon icon='ic:twotone-close' width={25}  />
+        <Button size='icon' variant='outline' onClick={closeModal} className="absolute top-0 right-0 m-4" aria-label="Close modal">
+        <X size={25} />
         </Button>}
         {content}
       </div>

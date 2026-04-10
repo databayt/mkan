@@ -3,10 +3,10 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Heart, Star, Sparkles, Home, MapPin, Users } from 'lucide-react';
 import { useListing } from '@/components/host/use-listing';
-import { useHostValidation } from '@/components/onboarding';
+import { useHostValidation } from '@/context/onboarding-validation-context';
 import { Highlight } from '@prisma/client';
 
 interface DescriptionPageProps {
@@ -29,6 +29,8 @@ const mapHighlightToPrisma = (highlightId: string): Highlight => {
 
 const DescriptionPageContent = ({ params }: DescriptionPageProps) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = pathname?.startsWith("/ar");
   const { setCustomNavigation } = useHostValidation();
   const { listing, updateListingData, loadListing } = useListing();
   const [id, setId] = React.useState<string>('');
@@ -120,12 +122,12 @@ const DescriptionPageContent = ({ params }: DescriptionPageProps) => {
   }, [currentStep, selectedHighlights, description, id]);
 
   const highlights = [
-    { id: '1', title: 'Peaceful', icon: Heart },
-    { id: '2', title: 'Unique', icon: Star },
-    { id: '3', title: 'Family-friendly', icon: Users },
-    { id: '4', title: 'Stylish', icon: Sparkles },
-    { id: '5', title: 'Central', icon: MapPin },
-    { id: '6', title: 'Spacious', icon: Home }
+    { id: '1', title: isAr ? 'هادئ' : 'Peaceful', icon: Heart },
+    { id: '2', title: isAr ? 'فريد' : 'Unique', icon: Star },
+    { id: '3', title: isAr ? 'مناسب للعائلات' : 'Family-friendly', icon: Users },
+    { id: '4', title: isAr ? 'أنيق' : 'Stylish', icon: Sparkles },
+    { id: '5', title: isAr ? 'مركزي' : 'Central', icon: MapPin },
+    { id: '6', title: isAr ? 'واسع' : 'Spacious', icon: Home }
   ];
 
   const toggleHighlight = (highlightId: string) => {
@@ -155,21 +157,15 @@ const DescriptionPageContent = ({ params }: DescriptionPageProps) => {
           <div className="space-y-3 sm:space-y-4">
             <h3>
               {currentStep === 'highlights' ? (
-                <>
-                  Next, let's describe
-                  <br />
-                  your house
-                </>
+                isAr ? <>بعد ذلك، دعنا نصف <br /> منزلك</> : <>Next, let's describe <br /> your house</>
               ) : (
-                <>
-                  Create your description
-                </>
+                isAr ? <>أنشئ وصفك</> : <>Create your description</>
               )}
             </h3>
             <p className="text-sm sm:text-base text-muted-foreground">
-              {currentStep === 'highlights' 
-                ? "Choose up to 2 highlights. We'll use these to get your description started."
-                : "Share what makes your place special."}
+              {currentStep === 'highlights'
+                ? (isAr ? "اختر حتى ميزتين. سنستخدمها لبدء وصفك." : "Choose up to 2 highlights. We'll use these to get your description started.")
+                : (isAr ? "شارك ما يجعل مكانك مميزاً." : "Share what makes your place special.")}
             </p>
           </div>
 

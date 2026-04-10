@@ -66,9 +66,9 @@ const PropertyLocation = ({ propertyId }: PropertyDetailsProps) => {
       </h3>
       <div className="flex justify-between items-center text-sm text-primary-500 mt-2">
         <div className="flex items-center text-gray-500">
-          <MapPin className="w-4 h-4 mr-1 text-gray-700" />
+          <MapPin className="w-4 h-4 me-1 text-gray-700" />
           Property Address:
-          <span className="ml-2 font-semibold text-gray-700">
+          <span className="ms-2 font-semibold text-gray-700">
             {propertyWithLocation.location?.address ?? "Address not available"}
           </span>
         </div>

@@ -16,7 +16,7 @@ export default function Article() {
     },
     {
       title: "Payment methods accepted",
-      description: "Airbnb accepts a variety of payment methods. However, your available optio...",
+      description: "Mkan accepts a variety of payment methods. However, your available optio...",
     },
     {
       title: "Add or remove a payment method",

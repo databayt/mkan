@@ -36,7 +36,7 @@ export default function MobileMeetHost() {
           </div>
 
           {/* Host stats */}
-          <div className="text-right space-y-1">
+          <div className="text-end space-y-1">
             <div>
               <strong className="text-lg font-bold">75</strong>
               <p className="text-xs text-gray-600">Reviews</p>
@@ -99,7 +99,7 @@ export default function MobileMeetHost() {
           <div className="flex items-start gap-3">
             <Shield className="w-6 h-6 text-[#e31c5f] flex-shrink-0 mt-0.5" />
             <p className="text-sm text-gray-700 leading-relaxed">
-              To help protect your payment, always use Airbnb to send money and communicate with hosts.
+              To help protect your payment, always use Mkan to send money and communicate with hosts.
             </p>
           </div>
         </div>

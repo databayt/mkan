@@ -73,7 +73,7 @@ const SelectionCard: React.FC<SelectionCardProps> = ({
         </div>
         {icon && !compact && (
           <div className={cn(
-            'flex-shrink-0 ml-2 sm:ml-4',
+            'flex-shrink-0 ms-2 sm:ms-4',
             isSelected ? 'text-foreground' : 'text-muted-foreground'
           )}>
             {icon}

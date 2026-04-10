@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { Heart, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -36,6 +37,8 @@ export function PropertyCard({
   onCardClick,
   className
 }: PropertyCardProps) {
+  const pathname = usePathname()
+  const isAr = pathname?.startsWith("/ar")
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isLiked, setIsLiked] = useState(isFavorite)
 
@@ -99,7 +102,7 @@ export function PropertyCard({
               variant="secondary"
               className="absolute top-3 left-3 bg-white text-gray-800 text-xs font-medium"
             >
-              Superhost
+              {isAr ? "مضيف متميز" : "Superhost"}
             </Badge>
           )}
 
@@ -131,7 +134,7 @@ export function PropertyCard({
             {title}
           </h5>
           <span className="text-gray-900 font-normal text-sm truncate">
-            in {location}
+            {isAr ? `في ${location}` : `in ${location}`}
           </span>
         </div>
 
@@ -146,11 +149,11 @@ export function PropertyCard({
         <div className="flex items-center gap-2">
           <div className="text-gray-500 text-xs">
             <span className="font-medium">${price}</span>
-            <span className="text-gray-500 text-xs"> night</span>
+            <span className="text-gray-500 text-xs"> {isAr ? "ليلة" : "night"}</span>
           </div>
           <div className="flex items-center">
             <Star className="w-3 h-3 text-gray-500 fill-current" />
-            <span className="ml-1 text-xs font-medium text-gray-500">
+            <span className="ms-1 text-xs font-medium text-gray-500">
               {rating.toFixed(2)}
             </span>
           </div>

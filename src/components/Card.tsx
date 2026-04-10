@@ -71,11 +71,11 @@ const Card = ({
         </p>
         <div className="flex justify-between items-center">
           <div className="flex items-center mb-2">
-            <Star className="w-4 h-4 text-yellow-400 mr-1" />
+            <Star className="w-4 h-4 text-yellow-400 me-1" />
             <span className="font-semibold">
               {(property.averageRating ?? 0).toFixed(1)}
             </span>
-            <span className="text-gray-600 ml-1">
+            <span className="text-gray-600 ms-1">
               ({property.numberOfReviews ?? 0} Reviews)
             </span>
           </div>
@@ -87,15 +87,15 @@ const Card = ({
         <hr />
         <div className="flex justify-between items-center gap-4 text-gray-600 mt-5">
           <span className="flex items-center">
-            <Bed className="w-5 h-5 mr-2" />
+            <Bed className="w-5 h-5 me-2" />
             {property.beds} Bed
           </span>
           <span className="flex items-center">
-            <Bath className="w-5 h-5 mr-2" />
+            <Bath className="w-5 h-5 me-2" />
             {property.baths} Bath
           </span>
           <span className="flex items-center">
-            <House className="w-5 h-5 mr-2" />
+            <House className="w-5 h-5 me-2" />
             {property.squareFeet} sq ft
           </span>
         </div>
