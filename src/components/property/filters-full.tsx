@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 const FiltersFull = () => {
   const router = useRouter();
@@ -25,6 +26,7 @@ const FiltersFull = () => {
   const filters = useGlobalStore((s) => s.filters);
   const isFiltersFullOpen = useGlobalStore((s) => s.isFiltersFullOpen);
   const setFilters = useGlobalStore((s) => s.setFilters);
+  const dict = useDictionary();
   const [localFilters, setLocalFilters] = useState(initialFilters);
 
   const updateURL = debounce((newFilters: FiltersState) => {
@@ -90,10 +92,10 @@ const FiltersFull = () => {
       <div className="flex flex-col space-y-6">
         {/* Location */}
         <div>
-          <h4 className="font-bold mb-2">Location</h4>
+          <h4 className="font-bold mb-2">{dict.filters?.location ?? "Location"}</h4>
           <div className="flex items-center">
             <Input
-              placeholder="Enter location"
+              placeholder={dict.filters?.enterLocation ?? "Enter location"}
               value={filters.location}
               onChange={(e) =>
                 setLocalFilters((prev) => ({
@@ -114,7 +116,7 @@ const FiltersFull = () => {
 
         {/* Property Type */}
         <div>
-          <h4 className="font-bold mb-2">Property Type</h4>
+          <h4 className="font-bold mb-2">{dict.filters?.propertyType ?? "Property Type"}</h4>
           <div className="grid grid-cols-2 gap-4">
             {Object.entries(PropertyTypeIcons).map(([type, Icon]) => (
               <div
@@ -141,7 +143,7 @@ const FiltersFull = () => {
 
         {/* Price Range */}
         <div>
-          <h4 className="font-bold mb-2">Price Range (Monthly)</h4>
+          <h4 className="font-bold mb-2">{dict.filters?.priceRangeMonthly ?? "Price Range (Monthly)"}</h4>
           <Slider
             min={0}
             max={10000}
@@ -166,7 +168,7 @@ const FiltersFull = () => {
         {/* Beds and Baths */}
         <div className="flex gap-4">
           <div className="flex-1">
-            <h4 className="font-bold mb-2">Beds</h4>
+            <h4 className="font-bold mb-2">{dict.filters?.beds ?? "Beds"}</h4>
             <Select
               value={localFilters.beds || "any"}
               onValueChange={(value) =>
@@ -174,19 +176,19 @@ const FiltersFull = () => {
               }
             >
               <SelectTrigger className="w-full rounded-xl">
-                <SelectValue placeholder="Beds" />
+                <SelectValue placeholder={dict.filters?.beds ?? "Beds"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="any">Any beds</SelectItem>
-                <SelectItem value="1">1+ bed</SelectItem>
-                <SelectItem value="2">2+ beds</SelectItem>
-                <SelectItem value="3">3+ beds</SelectItem>
-                <SelectItem value="4">4+ beds</SelectItem>
+                <SelectItem value="any">{dict.filters?.anyBeds ?? "Any beds"}</SelectItem>
+                <SelectItem value="1">{dict.filters?.oneBed ?? "1+ bed"}</SelectItem>
+                <SelectItem value="2">{dict.filters?.twoBeds ?? "2+ beds"}</SelectItem>
+                <SelectItem value="3">{dict.filters?.threeBeds ?? "3+ beds"}</SelectItem>
+                <SelectItem value="4">{dict.filters?.fourBeds ?? "4+ beds"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="flex-1">
-            <h4 className="font-bold mb-2">Baths</h4>
+            <h4 className="font-bold mb-2">{dict.filters?.baths ?? "Baths"}</h4>
             <Select
               value={localFilters.baths || "any"}
               onValueChange={(value) =>
@@ -194,13 +196,13 @@ const FiltersFull = () => {
               }
             >
               <SelectTrigger className="w-full rounded-xl">
-                <SelectValue placeholder="Baths" />
+                <SelectValue placeholder={dict.filters?.baths ?? "Baths"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="any">Any baths</SelectItem>
-                <SelectItem value="1">1+ bath</SelectItem>
-                <SelectItem value="2">2+ baths</SelectItem>
-                <SelectItem value="3">3+ baths</SelectItem>
+                <SelectItem value="any">{dict.filters?.anyBaths ?? "Any baths"}</SelectItem>
+                <SelectItem value="1">{dict.filters?.oneBath ?? "1+ bath"}</SelectItem>
+                <SelectItem value="2">{dict.filters?.twoBaths ?? "2+ baths"}</SelectItem>
+                <SelectItem value="3">{dict.filters?.threeBaths ?? "3+ baths"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -208,7 +210,7 @@ const FiltersFull = () => {
 
         {/* Square Feet */}
         <div>
-          <h4 className="font-bold mb-2">Square Feet</h4>
+          <h4 className="font-bold mb-2">{dict.filters?.squareFeet ?? "Square Feet"}</h4>
           <Slider
             min={0}
             max={5000}
@@ -233,7 +235,7 @@ const FiltersFull = () => {
 
         {/* Amenities */}
         <div>
-          <h4 className="font-bold mb-2">Amenities</h4>
+          <h4 className="font-bold mb-2">{dict.filters?.amenities ?? "Amenities"}</h4>
           <div className="flex flex-wrap gap-2">
             {Object.entries(AmenityIcons).map(([amenity, Icon]) => (
               <div
@@ -257,7 +259,7 @@ const FiltersFull = () => {
 
         {/* Available From */}
         <div>
-          <h4 className="font-bold mb-2">Available From</h4>
+          <h4 className="font-bold mb-2">{dict.filters?.availableFrom ?? "Available From"}</h4>
           <Input
             type="date"
             value={
@@ -281,14 +283,14 @@ const FiltersFull = () => {
             onClick={handleSubmit}
             className="flex-1 bg-primary-700 text-white rounded-xl"
           >
-            APPLY
+            {dict.filters?.apply ?? "APPLY"}
           </Button>
           <Button
             onClick={handleReset}
             variant="outline"
             className="flex-1 rounded-xl"
           >
-            Reset Filters
+            {dict.filters?.resetFilters ?? "Reset Filters"}
           </Button>
         </div>
       </div>

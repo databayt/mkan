@@ -1,6 +1,5 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import HelpHeader from "@/components/help/header";
 import HelpHeading from "@/components/help/heading";
 import Guest from "@/components/help/guest";
@@ -9,10 +8,10 @@ import { useState } from "react";
 import Guides from "@/components/help/guides";
 import Article from "@/components/help/article";
 import ExploreMore from "@/components/help/explore-more";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 export default function HelpContent() {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [activeTab, setActiveTab] = useState('guest');
 
   const renderTabContent = () => {
@@ -20,13 +19,13 @@ export default function HelpContent() {
       case 'guest':
         return <Guest />;
       case 'home-host':
-        return <div className="py-8">{isAr ? "محتوى مضيف المنزل قريباً..." : "Home host content coming soon..."}</div>;
+        return <div className="py-8">{dict.pages?.help?.homeHostComingSoon ?? "Home host content coming soon..."}</div>;
       case 'experience-host':
-        return <div className="py-8">{isAr ? "محتوى مضيف التجربة قريباً..." : "Experience host content coming soon..."}</div>;
+        return <div className="py-8">{dict.pages?.help?.experienceHostComingSoon ?? "Experience host content coming soon..."}</div>;
       case 'service-host':
-        return <div className="py-8">{isAr ? "محتوى مضيف الخدمة قريباً..." : "Service host content coming soon..."}</div>;
+        return <div className="py-8">{dict.pages?.help?.serviceHostComingSoon ?? "Service host content coming soon..."}</div>;
       case 'travel-admin':
-        return <div className="py-8">{isAr ? "محتوى مسؤول السفر قريباً..." : "Travel admin content coming soon..."}</div>;
+        return <div className="py-8">{dict.pages?.help?.travelAdminComingSoon ?? "Travel admin content coming soon..."}</div>;
       default:
         return <Guest />;
     }

@@ -2,18 +2,17 @@ import { SettingsFormData, settingsSchema } from "@/lib/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
-import { usePathname } from "next/navigation";
 import { Form } from "./ui/form";
 import { CustomFormField } from "./FormField";
 import { Button } from "./ui/button";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 const SettingsForm = ({
   initialData,
   onSubmit,
   userType,
 }: SettingsFormProps) => {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [editMode, setEditMode] = useState(false);
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
@@ -36,12 +35,14 @@ const SettingsForm = ({
     <div className="pt-8 pb-5 px-8">
       <div className="mb-5">
         <h1 className="text-xl font-semibold">
-          {isAr
-            ? `إعدادات ${userType === "manager" ? "المدير" : userType === "tenant" ? "المستأجر" : userType}`
-            : `${userType.charAt(0).toUpperCase() + userType.slice(1)} Settings`}
+          {userType === "manager"
+            ? (dict.dashboard?.settingsForm?.managerSettings ?? "Manager Settings")
+            : userType === "tenant"
+            ? (dict.dashboard?.settingsForm?.tenantSettings ?? "Tenant Settings")
+            : (dict.dashboard?.settingsForm?.managerSettings ?? "Settings")}
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          {isAr ? "إدارة تفضيلات حسابك ومعلوماتك الشخصية" : "Manage your account preferences and personal information"}
+          {dict.dashboard?.settingsForm?.settingsSubtitle ?? "Manage your account preferences and personal information"}
         </p>
       </div>
       <div className="bg-white rounded-xl p-6">
@@ -50,16 +51,16 @@ const SettingsForm = ({
             onSubmit={form.handleSubmit(handleSubmit)}
             className="space-y-6"
           >
-            <CustomFormField name="name" label={isAr ? "الاسم" : "Name"} disabled={!editMode} />
+            <CustomFormField name="name" label={dict.dashboard?.settingsForm?.name ?? "Name"} disabled={!editMode} />
             <CustomFormField
               name="email"
-              label={isAr ? "البريد الإلكتروني" : "Email"}
+              label={dict.dashboard?.settingsForm?.email ?? "Email"}
               type="email"
               disabled={!editMode}
             />
             <CustomFormField
               name="phoneNumber"
-              label={isAr ? "رقم الهاتف" : "Phone Number"}
+              label={dict.dashboard?.settingsForm?.phoneNumber ?? "Phone Number"}
               disabled={!editMode}
             />
 
@@ -69,14 +70,14 @@ const SettingsForm = ({
                 onClick={toggleEditMode}
                 className="bg-secondary-500 text-white hover:bg-secondary-600"
               >
-                {editMode ? (isAr ? "إلغاء" : "Cancel") : (isAr ? "تعديل" : "Edit")}
+                {editMode ? (dict.common?.cancel ?? "Cancel") : (dict.common?.edit ?? "Edit")}
               </Button>
               {editMode && (
                 <Button
                   type="submit"
                   className="bg-primary-700 text-white hover:bg-primary-800"
                 >
-                  {isAr ? "حفظ التغييرات" : "Save Changes"}
+                  {dict.dashboard?.common?.saveChanges ?? "Save Changes"}
                 </Button>
               )}
             </div>

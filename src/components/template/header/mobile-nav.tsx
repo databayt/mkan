@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { ALL_NAVIGATION_ITEMS } from './constant';
 import { useCurrentUser } from '../../auth/use-current-user';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface MobileNavProps {
   isLandingPage?: boolean;
@@ -26,6 +27,7 @@ const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
   const currentUser = useCurrentUser();
   const pathname = usePathname();
 
+  const dict = useDictionary();
   const isAr = pathname?.startsWith('/ar');
 
   const handleSignOut = async () => {
@@ -68,7 +70,7 @@ const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
           <div className="w-5 h-5 flex items-center justify-center">
             {open ? <X className="size-5" /> : <Menu className="size-5" />}
           </div>
-          <span className="sr-only">{isAr ? "القائمة" : "Toggle menu"}</span>
+          <span className="sr-only">{dict.navigation?.toggleMenu ?? "Toggle menu"}</span>
         </Button>
       </SheetTrigger>
 
@@ -80,7 +82,7 @@ const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
             onClick={handleLinkClick}
             className="text-black text-sm hover:text-black/70 transition-colors"
           >
-            {isAr ? "كن مضيفًا" : "Become a host"}
+            {dict.navigation?.becomeHost ?? "Become a host"}
           </Link>
 
           <Separator className="my-2" />
@@ -128,7 +130,7 @@ const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
                 className="text-black text-sm text-start hover:text-black/70 transition-colors flex items-center gap-2"
               >
                 <LogOut className="size-4" />
-                {isAr ? "تسجيل الخروج" : "Logout"}
+                {dict.navigation?.logout ?? "Logout"}
               </button>
             </>
           )}

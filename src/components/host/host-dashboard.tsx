@@ -4,6 +4,7 @@ import React from 'react';
 import { usePathname } from 'next/navigation';
 import ListingCard from './listing-card';
 import NewListingOptions from './new-listing-options';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface Listing {
   id: string;
@@ -41,21 +42,21 @@ const HostDashboard: React.FC<HostDashboardProps> = ({
   onCreateFromExisting
 }) => {
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
 
   return (
     <div className="w-full max-w-xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
       {/* Welcome Header */}
       <div>
         <h3 className="mb-3 sm:mb-4 text-lg sm:text-xl lg:text-2xl">
-          {isAr ? `مرحباً بعودتك، ${hostName}` : `Welcome back, ${hostName}`}
+          {dict.hosting.components.dashboard.welcomeBack.replace('{name}', hostName)}
         </h3>
       </div>
 
       {/* Finish your listing section */}
       <div className="space-y-2 sm:space-y-3">
         <h5 className="text-base sm:text-lg font-semibold">
-          {isAr ? "أكمل إعلانك" : "Finish your listing"}
+          {dict.hosting.components.dashboard.finishYourListing}
         </h5>
         
         <div className="space-y-2">

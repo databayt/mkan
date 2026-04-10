@@ -9,6 +9,7 @@ import { Plus } from 'lucide-react';
 import HostStepLayout from '@/components/host/host-step-layout';
 import { useListing } from '@/components/host/use-listing';
 import { useHostValidation } from '@/context/onboarding-validation-context';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface PhotosPageProps {
   params: Promise<{ id: string }>;
@@ -17,7 +18,7 @@ interface PhotosPageProps {
 const PhotosPageContent = ({ params }: PhotosPageProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [id, setId] = React.useState<string>('');
   const { enableNext } = useHostValidation();
   const { listing, updateListingData, loadListing } = useListing();
@@ -221,10 +222,10 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
           {/* Left side - Text content */}
           <div className="space-y-3 sm:space-y-4">
             <h3>
-              {isAr ? <>أضف بعض <br /> صور منزلك</> : <>Add some <br /> photos of your house</>}
+              {dict.hosting.pages.photos.title}
             </h3>
             <p className="text-sm sm:text-base text-muted-foreground">
-              {isAr ? 'ستحتاج إلى 5 صور للبدء. يمكنك إضافة المزيد أو إجراء تغييرات لاحقاً.' : "You'll need 5 photos to get started. You can add more or make changes later."}
+              {dict.hosting.pages.photos.subtitle}
             </p>
           </div>
           
@@ -249,7 +250,7 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
                     htmlFor="photo-upload"
                     className="inline-block px-3 py-1.5 border border-foreground rounded-md bg-background hover:bg-accent cursor-pointer transition-colors text-sm sm:text-base"
                   >
-                    {isUploading ? (isAr ? 'جارٍ الرفع...' : 'Uploading...') : (isAr ? 'أضف صوراً' : 'Add photos')}
+                    {isUploading ? dict.hosting.pages.photos.uploading : dict.hosting.pages.photos.addPhotos}
                   </label>
                   <input
                     id="photo-upload"

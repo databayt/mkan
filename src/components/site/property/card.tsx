@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Image from 'next/image'
+import { useDictionary } from '@/components/internationalization/dictionary-context'
 
 interface PropertyCardProps {
   id: string
@@ -36,6 +37,7 @@ export function PropertyCard({
   onCardClick,
   className
 }: PropertyCardProps) {
+  const dict = useDictionary()
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isLiked, setIsLiked] = useState(isFavorite)
 
@@ -96,7 +98,7 @@ export function PropertyCard({
               variant="secondary"
               className="absolute top-3 left-3 bg-white text-gray-800 text-xs font-medium"
             >
-              Superhost
+              {dict.rental?.property?.card?.superhost}
             </Badge>
           )}
 
@@ -128,7 +130,7 @@ export function PropertyCard({
             {title}
           </h5>
           <span className="text-gray-900 font-normal text-sm truncate">
-            in {location}
+            {dict.rental?.property?.card?.in} {location}
           </span>
         </div>
 
@@ -143,7 +145,7 @@ export function PropertyCard({
         <div className="flex items-center gap-2">
           <div className="text-gray-500 text-xs">
             <span className="font-medium">${price}</span>
-            <span className="text-gray-500 text-xs"> night</span>
+            <span className="text-gray-500 text-xs"> {dict.rental?.property?.card?.night}</span>
           </div>
           <div className="flex items-center">
             <Star className="w-3 h-3 text-gray-500 fill-current" />

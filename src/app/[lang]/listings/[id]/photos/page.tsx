@@ -3,14 +3,14 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ShareIcon, HeartIcon } from "@/components/atom/icons"
-import { useRouter, useParams, usePathname } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import PhotoTour from "@/components/listings/photo-tour"
+import { useDictionary } from "@/components/internationalization/dictionary-context"
 
 export default function PhotoTourPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
-  const pathname = usePathname()
-  const isAr = pathname?.startsWith("/ar")
+  const dict = useDictionary()
   const [isSaved, setIsSaved] = useState(false)
 
   const handleBack = () => {
@@ -58,7 +58,7 @@ export default function PhotoTourPage() {
               className="p-2"
             >
               <ShareIcon className="w-5 h-5" />
-              <span className="ms-1 underline">{isAr ? "مشاركة" : "Share"}</span>
+              <span className="ms-1 underline">{dict.rental?.listing?.share}</span>
             </Button>
             
             <Button
@@ -70,7 +70,7 @@ export default function PhotoTourPage() {
               <HeartIcon 
                 className={`w-5 h-5 ${isSaved ? 'fill-red-500 text-red-500' : ''}`} 
               />
-              <span className="ms-1 underline">{isAr ? "حفظ" : "Save"}</span>
+              <span className="ms-1 underline">{dict.rental?.listing?.save}</span>
             </Button>
           </div>
         </div>

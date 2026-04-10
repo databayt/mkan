@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 import {
   createTrip,
   deleteTrip,
@@ -78,6 +79,8 @@ interface TripData {
 const SchedulePage = () => {
   const { enableNext } = useTransportHostValidation();
   const { office } = useTransportOffice();
+  const dict = useDictionary();
+  const t = dict.transport.host;
   const [trips, setTrips] = useState<TripData[]>([]);
   const [routes, setRoutes] = useState<RouteData[]>([]);
   const [buses, setBuses] = useState<BusData[]>([]);
@@ -204,18 +207,15 @@ const SchedulePage = () => {
 
   return (
     <HostStepLayout
-      title={<h3>Set up your schedule</h3>}
+      title={<h3>{t.setupSchedule}</h3>}
       subtitle={
         <div className="space-y-4">
           <p className="text-sm sm:text-base text-muted-foreground">
-            Create trips by assigning buses to routes with specific departure
-            times. You can add more trips later from your dashboard.
+            {t.scheduleDescription}
           </p>
           <div className="p-4 bg-muted/50 rounded-lg">
             <p className="text-sm text-muted-foreground">
-              <strong>Tip:</strong> Most buses in Sudan depart around 5:00 AM.
-              You can create multiple trips for the same route on different
-              dates.
+              <strong>Tip:</strong> {t.scheduleTip}
             </p>
           </div>
         </div>
@@ -227,8 +227,8 @@ const SchedulePage = () => {
               <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>
                 {routes.length === 0
-                  ? 'Add routes first before creating trips'
-                  : 'Add buses first before creating trips'}
+                  ? t.addRoutesFirst
+                  : t.addBusesFirst}
               </p>
             </div>
           ) : (
@@ -237,16 +237,16 @@ const SchedulePage = () => {
                 <DialogTrigger asChild>
                   <Button className="w-full" onClick={() => handleDialogClose()}>
                     <Plus className="h-4 w-4 me-2" />
-                    Add Trip
+                    {t.addTrip}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Add New Trip</DialogTitle>
+                    <DialogTitle>{t.addNewTrip}</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div className="space-y-2">
-                      <Label>Route *</Label>
+                      <Label>{t.route} *</Label>
                       <Select
                         value={selectedRouteId?.toString()}
                         onValueChange={(value) =>
@@ -254,7 +254,7 @@ const SchedulePage = () => {
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select route" />
+                          <SelectValue placeholder={t.selectRoute} />
                         </SelectTrigger>
                         <SelectContent>
                           {routes.map((route) => (
@@ -275,14 +275,14 @@ const SchedulePage = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Bus *</Label>
+                      <Label>{t.bus} *</Label>
                       <Select
                         onValueChange={(value) =>
                           setValue('busId', parseInt(value))
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select bus" />
+                          <SelectValue placeholder={t.selectBus} />
                         </SelectTrigger>
                         <SelectContent>
                           {buses.map((bus) => (
@@ -303,7 +303,7 @@ const SchedulePage = () => {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="departureDate">Date *</Label>
+                        <Label htmlFor="departureDate">{t.date} *</Label>
                         <Input
                           id="departureDate"
                           type="date"
@@ -317,7 +317,7 @@ const SchedulePage = () => {
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="departureTime">Time *</Label>
+                        <Label htmlFor="departureTime">{t.time} *</Label>
                         <Input
                           id="departureTime"
                           type="time"
@@ -332,7 +332,7 @@ const SchedulePage = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="price">Price (SDG) *</Label>
+                      <Label htmlFor="price">{t.priceSDG} *</Label>
                       <Input
                         id="price"
                         type="number"
@@ -353,10 +353,10 @@ const SchedulePage = () => {
                         onClick={handleDialogClose}
                         className="flex-1"
                       >
-                        Cancel
+                        {dict.common.cancel}
                       </Button>
                       <Button type="submit" className="flex-1">
-                        Add Trip
+                        {t.addTrip}
                       </Button>
                     </div>
                   </form>
@@ -411,7 +411,7 @@ const SchedulePage = () => {
                                       {trip.bus.plateNumber}
                                     </Badge>
                                     <Badge variant="secondary" className="text-xs">
-                                      {trip.availableSeats} seats
+                                      {trip.availableSeats} {t.seats}
                                     </Badge>
                                     <span className="text-sm font-medium text-primary">
                                       {trip.price.toLocaleString()} SDG
@@ -436,9 +436,9 @@ const SchedulePage = () => {
               ) : (
                 <div className="text-center py-8 text-muted-foreground border rounded-lg">
                   <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No trips scheduled yet</p>
+                  <p>{t.noTripsYet}</p>
                   <p className="text-sm mt-1">
-                    You can add trips now or later from your dashboard
+                    {t.addTripsLater}
                   </p>
                 </div>
               )}

@@ -1,18 +1,19 @@
 "use client";
 
 import React from 'react';
-import { 
+import {
   StarIcon,
-  CleanlinessIcon, 
-  AccuracyIcon, 
-  CheckInIcon, 
-  CommunicationIcon, 
-  LocationIcon, 
-  ValueIcon 
+  CleanlinessIcon,
+  AccuracyIcon,
+  CheckInIcon,
+  CommunicationIcon,
+  LocationIcon,
+  ValueIcon
 } from '@/components/atom/icons';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface ReviewCategory {
-  name: string;
+  nameKey: string;
   rating: number;
   icon: React.ReactNode;
 }
@@ -27,32 +28,32 @@ interface MobileReviewsDetailProps {
 
 const defaultCategories: ReviewCategory[] = [
   {
-    name: 'Cleanliness',
+    nameKey: 'cleanliness',
     rating: 4.9,
     icon: <CleanlinessIcon className="w-6 h-6" />
   },
   {
-    name: 'Accuracy',
+    nameKey: 'accuracy',
     rating: 4.9,
     icon: <AccuracyIcon className="w-6 h-6" />
   },
   {
-    name: 'Check-in',
+    nameKey: 'checkIn',
     rating: 4.8,
     icon: <CheckInIcon className="w-6 h-6" />
   },
   {
-    name: 'Communication',
+    nameKey: 'communication',
     rating: 4.8,
     icon: <CommunicationIcon className="w-6 h-6" />
   },
   {
-    name: 'Location',
+    nameKey: 'location',
     rating: 4.7,
     icon: <LocationIcon className="w-6 h-6" />
   },
   {
-    name: 'Value',
+    nameKey: 'value',
     rating: 4.6,
     icon: <ValueIcon className="w-6 h-6" />
   }
@@ -65,6 +66,9 @@ const MobileReviewsDetail: React.FC<MobileReviewsDetailProps> = ({
   categories = defaultCategories,
   className = "",
 }) => {
+  const dict = useDictionary();
+  const reviewCategories = dict.rental?.reviews?.categories as Record<string, string> | undefined;
+
   return (
     <div className={`md:hidden px-4 py-6 space-y-6 ${className}`}>
       {/* Title */}
@@ -75,13 +79,13 @@ const MobileReviewsDetail: React.FC<MobileReviewsDetailProps> = ({
         </span>
         <span className="text-lg font-semibold mx-1">·</span>
         <span className="text-lg font-semibold">
-          {totalReviews} reviews
+          {totalReviews} {dict.rental?.reviews?.reviews}
         </span>
       </div>
 
       {/* Overall Rating */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium">Overall rating</h3>
+        <h3 className="text-sm font-medium">{dict.rental?.reviews?.overallRating}</h3>
         <div className="space-y-2">
           {[5, 4, 3, 2, 1].map((star, index) => (
             <div key={star} className="flex items-center space-x-3">
@@ -107,7 +111,7 @@ const MobileReviewsDetail: React.FC<MobileReviewsDetailProps> = ({
               </div>
               <div>
                 <h4 className="text-sm font-medium text-gray-900">
-                  {category.name}
+                  {reviewCategories?.[category.nameKey] ?? category.nameKey}
                 </h4>
                 <span className="text-lg font-semibold">
                   {category.rating}

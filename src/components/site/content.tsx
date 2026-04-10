@@ -10,10 +10,11 @@ import GiftCard from "./gift-card";
 import Ask from "./ask";
 import { useSite } from "./use-site";
 import { useLocale } from "@/components/internationalization/use-locale";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 export function SiteContent() {
   const { locale } = useLocale();
-  const isAr = locale === "ar";
+  const dict = useDictionary();
   const { state, actions, refs, filteredCount, hasActiveFilters } = useSite();
   
   const {
@@ -52,13 +53,15 @@ export function SiteContent() {
           {hasActiveFilters && (
             <div className="flex items-center justify-between mt-2 px-2">
               <p className="text-sm text-muted-foreground">
-                {filteredCount} {isAr ? (filteredCount === 1 ? 'عقار' : 'عقارات') : (filteredCount === 1 ? 'property' : 'properties')} {isAr ? 'وُجد' : 'found'}
+                {filteredCount === 1
+                  ? dict.home?.propertyCountSingular?.replace('{count}', String(filteredCount))
+                  : dict.home?.propertyCount?.replace('{count}', String(filteredCount))}
               </p>
               <button
                 onClick={clearFilters}
                 className="text-sm text-primary hover:underline"
               >
-                {isAr ? "مسح الفلاتر" : "Clear filters"}
+                {dict.home?.clearFilters}
               </button>
             </div>
           )}
@@ -78,7 +81,7 @@ export function SiteContent() {
                 onClick={() => window.location.reload()}
                 variant="outline"
               >
-                {isAr ? "حاول مجدداً" : "Try Again"}
+                {dict.home?.tryAgain}
               </Button>
             </div>
           )}
@@ -91,7 +94,7 @@ export function SiteContent() {
             <Button
               size='lg'
               className='bg-foreground text-background hover:bg-foreground/90 h-12 px-10'>
-              {isAr ? "استكشف جميع العقارات" : "Explore All Listings"}
+              {dict.home?.exploreAll}
             </Button>
           </Link>
         )}

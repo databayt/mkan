@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Listing } from "@/types/listing";
 import { PropertyListings } from "./listings";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 interface PropertyContentProps {
   properties: Listing[];
@@ -9,6 +10,7 @@ interface PropertyContentProps {
 }
 
 export const PropertyContent = ({ properties: initialProperties, isLoading = false }: PropertyContentProps) => {
+  const dict = useDictionary();
   const [properties, setProperties] = useState(initialProperties);
 
   useEffect(() => {
@@ -21,7 +23,7 @@ export const PropertyContent = ({ properties: initialProperties, isLoading = fal
     return (
       <div className="w-full">
         <div className="flex justify-center items-center py-20">
-          <div className="text-gray-500">Loading properties...</div>
+          <div className="text-gray-500">{dict.home?.loadingProperties}</div>
         </div>
       </div>
     );
@@ -31,7 +33,7 @@ export const PropertyContent = ({ properties: initialProperties, isLoading = fal
     return (
       <div className="w-full">
         <div className="flex justify-center items-center py-20">
-          <div className="text-gray-500">No properties found matching your criteria.</div>
+          <div className="text-gray-500">{dict.home?.noProperties}</div>
         </div>
       </div>
     );

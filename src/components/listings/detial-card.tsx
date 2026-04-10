@@ -2,7 +2,7 @@
 
 import { Heart, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { usePathname } from "next/navigation"
+import { useDictionary } from "@/components/internationalization/dictionary-context"
 
 interface DetailCardProps {
   title?: string
@@ -31,8 +31,7 @@ export default function DetailCard({
   image = "/placeholder.svg?height=200&width=300",
   isFavorited = false
 }: DetailCardProps) {
-  const pathname = usePathname()
-  const isAr = pathname?.startsWith("/ar")
+  const dict = useDictionary()
 
   return (
     <div className="flex gap-6">
@@ -65,7 +64,7 @@ export default function DetailCard({
 
         {/* Details */}
         <div className="flex flex-col">
-          <p className="text-xs font-normal text-gray-500">{guests} · {isAr ? "منزل كامل" : "Entire Home"} · {beds} · {baths}</p>
+          <p className="text-xs font-normal text-gray-500">{guests} · {dict.rental?.property?.card?.entireHome ?? "Entire Home"} · {beds} · {baths}</p>
           <p className="text-xs font-normal text-gray-500">{amenities}</p>
         </div>
 
@@ -74,12 +73,12 @@ export default function DetailCard({
           <div className="flex items-center gap-1">
             <span className="text-xs font-medium text-gray-700">{rating}</span>
             <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-            <span className="text-xs font-normal text-gray-700">({reviews} {isAr ? "تقييم" : "reviews"})</span>
+            <span className="text-xs font-normal text-gray-700">({reviews} {dict.rental?.property?.card?.reviews ?? "reviews"})</span>
           </div>
           
           <div className="flex items-center gap-1">
             <span className="text-sm font-medium text-gray-700">{price}</span>
-            <span className="text-xs font-normal text-gray-700">/{isAr ? "ليلة" : "night"}</span>
+            <span className="text-xs font-normal text-gray-700">/{dict.rental?.property?.card?.night ?? "night"}</span>
           </div>
         </div>
       </div>

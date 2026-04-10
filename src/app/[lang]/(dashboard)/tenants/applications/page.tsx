@@ -9,10 +9,11 @@ import { useGetApplicationsQuery, useGetAuthUserQuery } from "@/state/api";
 import { CircleCheckBig, Clock, Download, XCircle } from "lucide-react";
 import { usePathname } from "next/navigation";
 import React from "react";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 const Applications = () => {
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const { data: authUser } = useGetAuthUserQuery();
   const {
     data: applications,
@@ -24,13 +25,13 @@ const Applications = () => {
   });
 
   if (isLoading) return <Loading />;
-  if (isError || !applications) return <div>{isAr ? "خطأ في تحميل الطلبات" : "Error fetching applications"}</div>;
+  if (isError || !applications) return <div>{dict.dashboard?.tenants?.errorLoading ?? "Error fetching applications"}</div>;
 
   return (
     <div className="dashboard-container">
       <Header
-        title={isAr ? "الطلبات" : "Applications"}
-        subtitle={isAr ? "تتبع وإدارة طلبات استئجار العقارات" : "Track and manage your property rental applications"}
+        title={dict.dashboard?.tenants?.applications ?? "Applications"}
+        subtitle={dict.dashboard?.tenants?.applicationsSubtitle ?? "Track and manage your property rental applications"}
       />
       <div className="w-full">
         {applications?.map((application) => (
@@ -43,17 +44,17 @@ const Applications = () => {
               {application.status === "Approved" ? (
                 <div className="bg-green-100 p-4 text-green-700 grow flex items-center">
                   <CircleCheckBig className="w-5 h-5 me-2" />
-                  {isAr ? "تمت الموافقة على طلبك" : "Your application has been approved"}
+                  {dict.dashboard?.tenants?.applicationApproved ?? "Your application has been approved"}
                 </div>
               ) : application.status === "Pending" ? (
                 <div className="bg-yellow-100 p-4 text-yellow-700 grow flex items-center">
                   <Clock className="w-5 h-5 me-2" />
-                  {isAr ? "طلبك قيد المراجعة" : "Your application is pending approval"}
+                  {dict.dashboard?.tenants?.applicationPending ?? "Your application is pending approval"}
                 </div>
               ) : (
                 <div className="bg-red-100 p-4 text-red-700 grow flex items-center">
                   <XCircle className="w-5 h-5 me-2" />
-                  {isAr ? "تم رفض طلبك" : "Your application has been denied"}
+                  {dict.dashboard?.tenants?.applicationDenied ?? "Your application has been denied"}
                 </div>
               )}
 
@@ -62,7 +63,7 @@ const Applications = () => {
                           rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50`}
               >
                 <Download className="w-5 h-5 me-2" />
-                {isAr ? "تحميل العقد" : "Download Agreement"}
+                {dict.dashboard?.tenants?.downloadAgreement ?? "Download Agreement"}
               </button>
             </div>
           </ApplicationCard>

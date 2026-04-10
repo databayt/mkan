@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import HostStepHeader from '@/components/host/host-step-header';
 import { useHostValidation } from '@/context/onboarding-validation-context';
 import { ListingProvider, useListing } from '@/components/host/use-listing';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface AboutPlaceProps {
   params: Promise<{ id: string }>;
@@ -14,7 +15,7 @@ interface AboutPlaceProps {
 
 const AboutPlaceContent = ({ params }: AboutPlaceProps) => {
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [id, setId] = React.useState<string>('');
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const { enableNext } = useHostValidation();
@@ -86,8 +87,8 @@ const AboutPlaceContent = ({ params }: AboutPlaceProps) => {
       <div className="w-full">
         <HostStepHeader
           stepNumber={1}
-          title={isAr ? "أخبرنا عن مكانك" : "Tell us about your place"}
-          description={isAr ? "في هذه الخطوة، سنسألك عن نوع العقار الذي لديك وما إذا كان الضيوف سيحجزون المكان بالكامل أو غرفة فقط. ثم أخبرنا عن الموقع وعدد الضيوف الذين يمكنهم الإقامة." : "In this step, we'll ask you which type of property you have and if guests will book the entire place or just a room. Then let us know the location and how many guests can stay."}
+          title={dict.hosting.pages.aboutPlace.title}
+          description={dict.hosting.pages.aboutPlace.description}
           illustration={illustration}
         />
       </div>

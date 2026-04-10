@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter, usePathname } from "next/navigation";
 import { useGlobalStore } from "@/state/filters";
 import SiteHeader from "@/components/template/header/header";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 
 const HeroSection = () => {
@@ -15,7 +16,7 @@ const HeroSection = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
 
   const handleLocationSearch = async () => {
     try {
@@ -59,7 +60,7 @@ const HeroSection = () => {
       <div className="relative h-full w-full">
         <Image
           src="/hero.png"
-          alt={isAr ? "منصة مكان للإيجارات" : "Mkan Rental Platform Hero Section"}
+          alt={dict.hero?.heroAlt ?? "Mkan Rental Platform Hero Section"}
           fill
           className="object-cover object-center"
           priority
@@ -76,14 +77,10 @@ const HeroSection = () => {
         >
         <div className="max-w-4xl mx-auto px-16 sm:px-12">
           <h1 className="text-5xl font-bold text-white drop-shadow-lg mb-4">
-            {isAr
-              ? "ابدأ رحلتك لإيجاد المكان المثالي لتسميه وطنك"
-              : "Start your journey to finding the perfect place to call home"}
+            {dict.hero?.title ?? "Start your journey to finding the perfect place to call home"}
           </h1>
           <p className="text-xl text-white drop-shadow-md mb-8">
-            {isAr
-              ? "استكشف مجموعتنا الواسعة من العقارات المصممة لتناسب أسلوب حياتك واحتياجاتك!"
-              : "Explore our wide range of rental properties tailored to fit your lifestyle and needs!"}
+            {dict.hero?.subtitle ?? "Explore our wide range of rental properties tailored to fit your lifestyle and needs!"}
           </p>
 
           <div className="flex justify-center">
@@ -91,14 +88,14 @@ const HeroSection = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={isAr ? "ابحث بالمدينة أو الحي أو العنوان" : "Search by city, neighborhood or address"}
+              placeholder={dict.hero?.searchPlaceholder ?? "Search by city, neighborhood or address"}
               className="w-full max-w-lg rounded-none rounded-s-xl rtl:rounded-s-none rtl:rounded-e-xl border-none bg-white h-12"
             />
             <Button
               onClick={handleLocationSearch}
               className="bg-secondary-500 text-white rounded-none rounded-e-xl rtl:rounded-e-none rtl:rounded-s-xl border-none hover:bg-secondary-600 h-12"
             >
-              {isAr ? "بحث" : "Search"}
+              {dict.hero?.searchButton ?? "Search"}
             </Button>
           </div>
         </div>

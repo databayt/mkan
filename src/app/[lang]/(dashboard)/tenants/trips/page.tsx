@@ -9,8 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { Home, Bus, Calendar, MapPin, Clock, Download, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { getMyBookings } from '@/lib/actions/transport-actions';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface TransportBooking {
   id: number;
@@ -43,8 +43,7 @@ interface TransportBooking {
 }
 
 const TripsPage = () => {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [transportBookings, setTransportBookings] = useState<TransportBooking[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -99,35 +98,35 @@ const TripsPage = () => {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">{isAr ? "رحلاتي" : "My Trips"}</h1>
-        <p className="text-gray-500">{isAr ? "عرض وإدارة جميع حجوزاتك" : "View and manage all your bookings"}</p>
+        <h1 className="text-2xl font-bold text-gray-900">{dict.dashboard?.tenantTrips?.title ?? "My Trips"}</h1>
+        <p className="text-gray-500">{dict.dashboard?.tenantTrips?.subtitle ?? "View and manage all your bookings"}</p>
       </div>
 
       <Tabs defaultValue="transport" className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="stays" className="flex items-center gap-2">
             <Home className="h-4 w-4" />
-            {isAr ? "الإقامات" : "Stays"}
+            {dict.dashboard?.tenantTrips?.stays ?? "Stays"}
           </TabsTrigger>
           <TabsTrigger value="transport" className="flex items-center gap-2">
             <Bus className="h-4 w-4" />
-            {isAr ? "النقل" : "Transport"}
+            {dict.dashboard?.tenantTrips?.transport ?? "Transport"}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="stays" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>{isAr ? "الإقامات المستأجرة" : "Rental Stays"}</CardTitle>
-              <CardDescription>{isAr ? "حجوزات استئجار العقارات" : "Your property rental bookings"}</CardDescription>
+              <CardTitle>{dict.dashboard?.tenantTrips?.rentalStays ?? "Rental Stays"}</CardTitle>
+              <CardDescription>{dict.dashboard?.tenantTrips?.rentalStaysSubtitle ?? "Your property rental bookings"}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-12 text-gray-500">
                 <Home className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>{isAr ? "لا توجد إقامات بعد" : "No rental stays yet"}</p>
-                <p className="text-sm">{isAr ? "تصفح العقارات لحجز إقامتك الأولى" : "Browse properties to book your first stay"}</p>
+                <p>{dict.dashboard?.tenantTrips?.noRentalStays ?? "No rental stays yet"}</p>
+                <p className="text-sm">{dict.dashboard?.tenantTrips?.browseProperties ?? "Browse properties to book your first stay"}</p>
                 <Button asChild className="mt-4">
-                  <Link href="/search">{isAr ? "تصفح العقارات" : "Browse Properties"}</Link>
+                  <Link href="/search">{dict.dashboard?.tenantTrips?.browsePropertiesBtn ?? "Browse Properties"}</Link>
                 </Button>
               </div>
             </CardContent>
@@ -140,23 +139,23 @@ const TripsPage = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                {isAr ? "الرحلات القادمة" : "Upcoming Trips"}
+                {dict.dashboard?.tenantTrips?.upcomingTrips ?? "Upcoming Trips"}
               </CardTitle>
-              <CardDescription>{isAr ? "تذاكر الحافلات القادمة" : "Your upcoming bus tickets"}</CardDescription>
+              <CardDescription>{dict.dashboard?.tenantTrips?.upcomingTripsSubtitle ?? "Your upcoming bus tickets"}</CardDescription>
             </CardHeader>
             <CardContent>
               {upcomingTransport.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Bus className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>{isAr ? "لا توجد رحلات قادمة" : "No upcoming trips"}</p>
+                  <p>{dict.dashboard?.tenantTrips?.noUpcomingTrips ?? "No upcoming trips"}</p>
                   <Button asChild className="mt-4">
-                    <Link href="/transport">{isAr ? "احجز رحلة" : "Book a Trip"}</Link>
+                    <Link href="/transport">{dict.dashboard?.tenantTrips?.bookATrip ?? "Book a Trip"}</Link>
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {upcomingTransport.map((booking) => (
-                    <TransportBookingCard key={booking.id} booking={booking} getStatusColor={getStatusColor} isAr={isAr} />
+                    <TransportBookingCard key={booking.id} booking={booking} getStatusColor={getStatusColor} />
                   ))}
                 </div>
               )}
@@ -169,14 +168,14 @@ const TripsPage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5" />
-                  {isAr ? "الرحلات السابقة" : "Past Trips"}
+                  {dict.dashboard?.tenantTrips?.pastTrips ?? "Past Trips"}
                 </CardTitle>
-                <CardDescription>{isAr ? "الرحلات المكتملة أو الملغاة" : "Your completed or cancelled trips"}</CardDescription>
+                <CardDescription>{dict.dashboard?.tenantTrips?.pastTripsSubtitle ?? "Your completed or cancelled trips"}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {pastTransport.map((booking) => (
-                    <TransportBookingCard key={booking.id} booking={booking} getStatusColor={getStatusColor} isPast isAr={isAr} />
+                    <TransportBookingCard key={booking.id} booking={booking} getStatusColor={getStatusColor} isPast />
                   ))}
                 </div>
               </CardContent>
@@ -192,17 +191,17 @@ interface TransportBookingCardProps {
   booking: TransportBooking;
   getStatusColor: (status: string) => string;
   isPast?: boolean;
-  isAr?: boolean;
 }
 
-const TransportBookingCard = ({ booking, getStatusColor, isPast, isAr }: TransportBookingCardProps) => {
+const TransportBookingCard = ({ booking, getStatusColor, isPast }: TransportBookingCardProps) => {
+  const dict = useDictionary();
   return (
     <div className={`border rounded-lg p-4 ${isPast ? 'opacity-75' : ''}`}>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Badge className={getStatusColor(booking.status)}>{booking.status}</Badge>
-            <span className="text-sm text-gray-500">{isAr ? "المرجع" : "Ref"}: {booking.bookingReference}</span>
+            <span className="text-sm text-gray-500">{dict.dashboard?.tenantTrips?.ref ?? "Ref"}: {booking.bookingReference}</span>
           </div>
 
           <div className="flex items-center gap-2 text-lg font-medium">
@@ -222,7 +221,7 @@ const TransportBookingCard = ({ booking, getStatusColor, isPast, isAr }: Transpo
               {booking.trip.departureTime}
             </div>
             <div>
-              {isAr ? "المقاعد" : "Seats"}: {booking._count.seats}
+              {dict.dashboard?.common?.seats ?? "Seats"}: {booking._count.seats}
             </div>
           </div>
 
@@ -232,19 +231,19 @@ const TransportBookingCard = ({ booking, getStatusColor, isPast, isAr }: Transpo
         </div>
 
         <div className="flex flex-col items-end gap-2">
-          <div className="text-xl font-bold">{isAr ? `${booking.totalAmount.toLocaleString()} ج.س` : `SDG ${booking.totalAmount.toLocaleString()}`}</div>
+          <div className="text-xl font-bold">{`${booking.totalAmount.toLocaleString()} ${dict.dashboard?.tenantTrips?.currencySDG ?? "SDG"}`}</div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild>
               <Link href={`/transport/booking/${booking.id}`}>
                 <Eye className="h-4 w-4 me-1" />
-                {isAr ? "عرض" : "View"}
+                {dict.dashboard?.common?.view ?? "View"}
               </Link>
             </Button>
             {!isPast && booking.status === 'Confirmed' && (
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/transport/booking/${booking.id}/ticket`}>
                   <Download className="h-4 w-4 me-1" />
-                  {isAr ? "التذكرة" : "Ticket"}
+                  {dict.dashboard?.tenantTrips?.ticket ?? "Ticket"}
                 </Link>
               </Button>
             )}

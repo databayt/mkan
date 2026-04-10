@@ -1,13 +1,16 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { ChevronRight, Home, Minus, Plus } from "lucide-react"
 import Image from "next/image"
+import { useDictionary } from "@/components/internationalization/dictionary-context"
 
 export default function Location() {
+  const dict = useDictionary()
   return (
     <div className="max-w-6xl mx-auto p-6">
       {/* Header */}
-      <h1 className="text-2xl font-semibold mb-6 text-[#000000]">Where you'll be</h1>
+      <h1 className="text-2xl font-semibold mb-6 text-[#000000]">{dict.rental?.map?.whereYoullBe}</h1>
 
       {/* Map Container */}
       <div className="relative w-full h-[400px] mb-6 rounded-lg overflow-hidden border border-[#e5e7eb]">
@@ -28,7 +31,7 @@ export default function Location() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
           {/* Location Tooltip */}
           <div className="relative bg-[#ffffff] shadow-lg border border-[#e5e7eb] px-4 py-2 mb-4">
-            <p className="text-sm text-[#374151] whitespace-nowrap font-medium">Exact location provided after booking</p>
+            <p className="text-sm text-[#374151] whitespace-nowrap font-medium">{dict.rental?.map?.exactLocation}</p>
             {/* Down arrow */}
             <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-s-5 border-e-5 border-t-5 border-s-transparent border-e-transparent border-t-[#ffffff]"></div>
           </div>
@@ -75,7 +78,7 @@ export default function Location() {
         </p>
 
         <button className="flex items-center p-0 underline h-auto text-[#000000] hover:text-[#374151] font-medium">
-          Show more
+          {dict.rental?.map?.showMore}
           <ChevronRight className="w-3 h-3 ms-1" />
         </button>
       </div>

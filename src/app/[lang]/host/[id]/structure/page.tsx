@@ -8,6 +8,7 @@ import HostStepLayout from '@/components/host/host-step-layout';
 import PropertySelector, { mapPropertyTypeToPrisma } from '@/components/host/property-type-selector';
 import { useListing } from '@/components/host/use-listing';
 import { useHostValidation } from '@/context/onboarding-validation-context';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface StructurePageProps {
   params: Promise<{ id: string }>;
@@ -16,7 +17,7 @@ interface StructurePageProps {
 const StructurePageContent = ({ params }: StructurePageProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [id, setId] = React.useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('');
   const { enableNext, disableNext } = useHostValidation();
@@ -71,7 +72,7 @@ const StructurePageContent = ({ params }: StructurePageProps) => {
   return (
     <HostStepLayout
       title={
-        <h3>{isAr ? <>أي من هذه يصف <br /> مكانك بشكل أفضل؟</> : <>Which of these best <br /> describes your place?</>}</h3>
+        <h3>{dict.hosting.pages.structure.title}</h3>
       }
     >
       <PropertySelector

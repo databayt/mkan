@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 import AirbnbIcon from '../atom/property-icon';
 import {
   Carousel,
@@ -13,24 +13,21 @@ import {
 
 interface IconItem {
   filename: string;
-  label: string;
-  labelAr: string;
-  description?: string;
-  descriptionAr?: string;
+  labelKey: string;
 }
 
 const AIRBNB_ICONS: IconItem[] = [
-  { filename: 'Islands', label: 'Islands', labelAr: 'جزر', description: 'Private islands', descriptionAr: 'جزر خاصة' },
-  { filename: 'Mension', label: 'Mansions', labelAr: 'قصور', description: 'Luxury homes', descriptionAr: 'منازل فاخرة' },
-  { filename: 'Beach', label: 'Beach', labelAr: 'شاطئ', description: 'Beachfront', descriptionAr: 'واجهة بحرية' },
-  { filename: 'Boat', label: 'Boats', labelAr: 'قوارب', description: 'Unique stays', descriptionAr: 'إقامات فريدة' },
-  { filename: 'Containers', label: 'Containers', labelAr: 'حاويات', description: 'Modern design', descriptionAr: 'تصميم عصري' },
-  { filename: 'New', label: 'New', labelAr: 'جديد', description: 'Latest additions', descriptionAr: 'أحدث الإضافات' },
-  { filename: 'Beauty Pools', label: 'Pools', labelAr: 'مسابح', description: 'Pool paradise', descriptionAr: 'جنة المسابح' },
-  { filename: 'Group', label: 'Groups', labelAr: 'مجموعات', description: 'Large groups', descriptionAr: 'مجموعات كبيرة' },
-  { filename: 'layer1', label: 'Featured', labelAr: 'مميز', description: 'Top picks', descriptionAr: 'أفضل الخيارات' },
-  { filename: 'Calque 2', label: 'Special', labelAr: 'خاص', description: 'Unique stays', descriptionAr: 'إقامات فريدة' },
-  { filename: 'Windmill', label: 'Windmills', labelAr: 'طواحين', description: 'Unique stays', descriptionAr: 'إقامات فريدة' },
+  { filename: 'Islands', labelKey: 'Islands' },
+  { filename: 'Mension', labelKey: 'Mansions' },
+  { filename: 'Beach', labelKey: 'Beach' },
+  { filename: 'Boat', labelKey: 'Boats' },
+  { filename: 'Containers', labelKey: 'Containers' },
+  { filename: 'New', labelKey: 'New' },
+  { filename: 'Beauty Pools', labelKey: 'Pools' },
+  { filename: 'Group', labelKey: 'Groups' },
+  { filename: 'layer1', labelKey: 'Featured' },
+  { filename: 'Calque 2', labelKey: 'Special' },
+  { filename: 'Windmill', labelKey: 'Windmills' },
 ];
 
 interface PropertyFilterProps {
@@ -46,8 +43,8 @@ const PropertyFilter: React.FC<PropertyFilterProps> = ({
   className = "",
   showDescriptions = false
 }) => {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
+  const filter = dict.home?.filter as Record<string, any> | undefined;
 
   return (
     <div className={`w-full ${className}`}>
@@ -81,13 +78,13 @@ const PropertyFilter: React.FC<PropertyFilterProps> = ({
                     : 'text-gray-700 group-hover:text-black'
                 }`}
               >
-                {isAr ? icon.labelAr : icon.label}
+                {filter?.[icon.labelKey] ?? icon.labelKey}
               </div>
               
               {/* Optional Description */}
-              {showDescriptions && icon.description && (
+              {showDescriptions && filter?.desc?.[icon.labelKey] && (
                 <div className="text-[10px] text-gray-700">
-                  {isAr ? icon.descriptionAr : icon.description}
+                  {filter?.desc?.[icon.labelKey] ?? icon.labelKey}
                 </div>
               )}
             </div>
@@ -143,13 +140,13 @@ const PropertyFilter: React.FC<PropertyFilterProps> = ({
                           : 'text-gray-700 group-hover:text-black'
                       }`}
                     >
-                      {isAr ? icon.labelAr : icon.label}
+                      {filter?.[icon.labelKey] ?? icon.labelKey}
                     </div>
                     
                     {/* Optional Description */}
-                    {showDescriptions && icon.description && (
+                    {showDescriptions && filter?.desc?.[icon.labelKey] && (
                       <div className="text-[10px] text-gray-700">
-                        {isAr ? icon.descriptionAr : icon.description}
+                        {filter?.desc?.[icon.labelKey] ?? icon.labelKey}
                       </div>
                     )}
                   </div>

@@ -21,6 +21,7 @@ import { NAVIGATION_LINKS, DISPLAY_ITEMS, AUTH_LINKS, ALL_NAVIGATION_ITEMS } fro
 import { useCurrentUser } from "../../auth/use-current-user";
 import MobileNav from "./mobile-nav";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 const SiteHeader = () => {
   const { data: session, status } = useSession();
@@ -32,7 +33,7 @@ const SiteHeader = () => {
     pathname.includes("/managers") || pathname.includes("/tenants") || pathname.includes("/offices");
   const isLandingPage = pathname === "/" || pathname === "/en" || pathname === "/ar";
   const currentLocale = pathname.startsWith('/ar') ? 'ar' : 'en';
-  const isAr = currentLocale === 'ar';
+  const dict = useDictionary();
 
   const handleSignOut = async () => {
     await signOut({
@@ -70,7 +71,7 @@ const SiteHeader = () => {
             <div className="flex items-center gap-2">
               <Image
                 src="/tent.png"
-                alt={isAr ? "شعار مكان" : "Mkan Logo"}
+                alt={dict.navigation?.logoAlt ?? "Mkan Logo"}
                 width={20}
                 height={20}
                 className={`w-4.5 h-4.5 ${isLandingPage ? "invert" : ""}`}
@@ -78,7 +79,7 @@ const SiteHeader = () => {
               <div className={`text-xl font-bold ${
                 isLandingPage ? "text-white" : "text-primary-700"
               }`}>
-                {isAr ? "مكان" : (<>Mk<span className={`font-light hover:!text-primary-300 ${
+                {currentLocale === 'ar' ? (dict.navigation?.brandName ?? "مكان") : (<>Mk<span className={`font-light hover:!text-primary-300 ${
                   isLandingPage ? "text-white" : "text-secondary-500"
                 }`}>an</span></>)}
               </div>
@@ -100,14 +101,14 @@ const SiteHeader = () => {
                 <>
                   <Plus className="h-4 w-4" />
                   <span className="hidden md:block ms-2">
-                    {isAr ? "إضافة عقار جديد" : "Add New Property"}
+                    {dict.navigation?.addNewProperty ?? "Add New Property"}
                   </span>
                 </>
               ) : (
                 <>
                   <Search className="h-4 w-4" />
                   <span className="hidden md:block ms-2">
-                    {isAr ? "البحث عن عقارات" : "Search Properties"}
+                    {dict.navigation?.searchProperties ?? "Search Properties"}
                   </span>
                 </>
               )}
@@ -122,12 +123,13 @@ const SiteHeader = () => {
             href={`/${currentLocale}/host`}
             className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`}
           >
-            {isAr ? "كن مضيفًا" : "Become a host"}
+            {dict.navigation?.becomeHost ?? "Become a host"}
           </Link>
 
           {filteredNavItems.map((item, index) => {
             const commonClasses = `text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`;
-            const label = isAr ? (item.labelAr || item.label) : item.label;
+            const currentLocale = pathname?.startsWith("/ar") ? "ar" : "en";
+            const label = currentLocale === "ar" ? (item.labelAr || item.label) : item.label;
 
             // If item has href, render as Link
             if (item.href) {
@@ -161,14 +163,14 @@ const SiteHeader = () => {
               onClick={handleSignOut}
               className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`}
             >
-              {isAr ? "تسجيل الخروج" : "Logout"}
+              {dict.navigation?.logout ?? "Logout"}
             </button>
           ) : (
             <Link
               href={`/${currentLocale}/login`}
               className={`text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`}
             >
-              {isAr ? "تسجيل الدخول" : "Login"}
+              {dict.navigation?.signIn ?? "Login"}
             </Link>
           )}
         </nav>

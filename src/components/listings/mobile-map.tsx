@@ -3,12 +3,14 @@
 import { Button } from "@/components/ui/button"
 import { ChevronRight, Home, Minus, Plus } from "lucide-react"
 import Image from "next/image"
+import { useDictionary } from "@/components/internationalization/dictionary-context"
 
 export default function MobileMap() {
+  const dict = useDictionary()
   return (
     <div className="md:hidden px-4 py-6">
       {/* Header */}
-      <h1 className="text-xl font-semibold mb-4 text-[#000000]">Where you'll be</h1>
+      <h1 className="text-xl font-semibold mb-4 text-[#000000]">{dict.rental?.map?.whereYoullBe}</h1>
 
       {/* Map Container */}
       <div className="relative w-full h-[250px] mb-4 rounded-lg overflow-hidden border border-[#e5e7eb]">
@@ -29,7 +31,7 @@ export default function MobileMap() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
           {/* Location Tooltip */}
           <div className="relative bg-[#ffffff] shadow-lg border border-[#e5e7eb] px-3 py-2 mb-3">
-            <p className="text-xs text-[#374151] whitespace-nowrap font-medium">Exact location provided after booking</p>
+            <p className="text-xs text-[#374151] whitespace-nowrap font-medium">{dict.rental?.map?.exactLocation}</p>
             {/* Down arrow */}
             <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-s-4 border-e-4 border-t-4 border-s-transparent border-e-transparent border-t-[#ffffff]"></div>
           </div>
@@ -76,7 +78,7 @@ export default function MobileMap() {
         </p>
 
         <button className="flex items-center p-0 underline h-auto text-[#000000] hover:text-[#374151] font-medium text-sm">
-          Show more
+          {dict.rental?.map?.showMore}
           <ChevronRight className="w-3 h-3 ms-1" />
         </button>
       </div>

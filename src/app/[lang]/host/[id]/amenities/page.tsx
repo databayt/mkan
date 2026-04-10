@@ -8,6 +8,7 @@ import HostStepLayout from '@/components/host/host-step-layout';
 import AmenitySelector, { mapAmenityToPrisma } from '@/components/host/amenity-selector';
 import { useListing } from '@/components/host/use-listing';
 import { useHostValidation } from '@/context/onboarding-validation-context';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface AmenitiesPageProps {
   params: Promise<{ id: string }>;
@@ -16,7 +17,7 @@ interface AmenitiesPageProps {
 const AmenitiesPageContent = ({ params }: AmenitiesPageProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [id, setId] = React.useState<string>('');
   const { enableNext } = useHostValidation();
   const { listing, updateListingData, loadListing } = useListing();
@@ -70,9 +71,9 @@ const AmenitiesPageContent = ({ params }: AmenitiesPageProps) => {
   return (
     <HostStepLayout
       title={
-        <h3>{isAr ? <>أخبر الضيوف بما <br /> يقدمه مكانك</> : <>Tell guests what <br /> your place has to offer</>}</h3>
+        <h3>{dict.hosting.pages.amenities.title}</h3>
       }
-      subtitle={isAr ? "يمكنك إضافة المزيد من المرافق بعد نشر إعلانك." : "You can add more amenities after you publish your listing."}
+      subtitle={dict.hosting.pages.amenities.subtitle}
     >
       <AmenitySelector
         selectedAmenities={selectedAmenities}

@@ -1,11 +1,16 @@
-import { Star, Globe, Shield } from "lucide-react"
+"use client"
+
+import { Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { IdentityVerified, Building, Chat, SuperhostSimple } from "@/components/atom/icons"
+import { useDictionary } from "@/components/internationalization/dictionary-context"
 
 export default function MeetHost() {
+  const dict = useDictionary()
+  const host = dict.rental?.host as Record<string, any> | undefined
   return (
     <div className="max-w-6xl mx-auto py-6 bg-white">
-      <h1 className="text-3xl font-semibold text-gray-900 mb-8">Meet your host</h1>
+      <h1 className="text-3xl font-semibold text-gray-900 mb-8">{host?.meetYourHost}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Left side - Host profile */}
@@ -29,7 +34,7 @@ export default function MeetHost() {
                 <h2 className="text-3xl font-semibold text-gray-900 ">Faisal</h2>
                 <div className="flex items-center gap-1 text-gray-600">
                   <SuperhostSimple className=" " />
-                  <span className="text-xs">Superhost</span>
+                  <span className="text-xs">{host?.superhost}</span>
                 </div>
               </div>
 
@@ -37,21 +42,21 @@ export default function MeetHost() {
               <div className="flex flex-col  gap-2 flex-1">
                 <div className="">
                   <strong className="text-xl font-bold">75</strong>
-                  <p className="text-xs -mt-1">Reviews</p>
+                  <p className="text-xs -mt-1">{host?.reviews}</p>
                 </div>
 
                 <div className="w-24 h-[1px] bg-gray-300 "></div>
 
                 <div className="leading-none">
                   <strong className="text-xl font-bold ">5.0</strong>
-                  <p className="text-xs -mt-1">Rating</p>
+                  <p className="text-xs -mt-1">{host?.rating}</p>
                 </div>
 
                 <div className="w-24 h-[1px] bg-gray-300 "></div>
 
                 <div className="leading-none">
                   <strong className="text-xl font-bold ">9</strong>
-                  <p className="text-xs -mt-1">Months hosting</p>
+                  <p className="text-xs -mt-1">{host?.monthsHosting}</p>
                 </div>
               </div>
             </div>
@@ -61,33 +66,33 @@ export default function MeetHost() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <Building className="w-5 h-5 text-gray-600" />
-              <span className="text-gray-900">My work: Architect</span>
+              <span className="text-gray-900">{host?.myWork}</span>
             </div>
             <div className="flex items-center gap-3">
               <Chat className="w-5 h-5 text-gray-600" />
-              <span className="text-gray-900">Speaks Arabic and English</span>
+              <span className="text-gray-900">{host?.speaksLanguages}</span>
             </div>
           </div>
 
           <div>
-            <p className="text-gray-900 font-medium">Living the Dream!</p>
+            <p className="text-gray-900 font-medium">{host?.livingTheDream}</p>
           </div>
         </div>
 
         {/* Right side - Host details */}
         <div className="space-y-4">
           <div>
-            <h5 className="mb-2">Faisal is a Superhost</h5>
+            <h5 className="mb-2">{host?.isSuperhost?.replace('{name}', 'Faisal')}</h5>
             <p className="text-sm leading-relaxed">
-              Superhosts are experienced, highly rated hosts who are committed to providing great stays for guests.
+              {host?.superhostDescription}
             </p>
           </div>
 
           <div>
-            <h5 className="mb-2">Host details</h5>
+            <h5 className="mb-2">{host?.hostDetails}</h5>
             <div className="">
-              <p className="text-sm">Response rate: 100%</p>
-              <p className="text-sm">Responds within an hour</p>
+              <p className="text-sm">{host?.responseRate}</p>
+              <p className="text-sm">{host?.respondsWithin}</p>
             </div>
           </div>
 
@@ -97,7 +102,7 @@ export default function MeetHost() {
               
             >
               
-              Message host
+              {host?.messageHost}
             </Button>
           </div>
 
@@ -108,7 +113,7 @@ export default function MeetHost() {
                 <Shield className="w-8 h-8 text-[#e31c5f]" />
               
               <p className="text-sm text-gray-700 leading-relaxed">
-                To help protect your payment, always use Mkan to send money and communicate with hosts.
+                {host?.paymentProtection}
               </p>
             </div>
           </div>

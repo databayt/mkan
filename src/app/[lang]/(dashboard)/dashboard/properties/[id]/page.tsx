@@ -20,11 +20,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 const PropertyManagement = () => {
   const { id } = useParams();
   const pathname = usePathname();
   const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const propertyId = Number(id);
 
   const [property, setProperty] = useState<any>(null);
@@ -113,7 +115,7 @@ const PropertyManagement = () => {
         new Date(payment.dueDate).getMonth() === currentDate.getMonth() &&
         new Date(payment.dueDate).getFullYear() === currentDate.getFullYear()
     );
-    return currentMonthPayment?.paymentStatus || (isAr ? "غير مدفوع" : "Not Paid");
+    return currentMonthPayment?.paymentStatus || dict.dashboard.common.notPaid;
   };
 
   return (
@@ -125,21 +127,21 @@ const PropertyManagement = () => {
         scroll={false}
       >
         <ArrowLeft className="w-4 h-4 me-2" />
-        <span>{isAr ? "العودة إلى العقارات" : "Back to Properties"}</span>
+        <span>{dict.dashboard.common.backToProperties}</span>
       </Link>
 
       <Header
-        title={property?.name || (isAr ? "إدارة العقار" : "Property Management")}
-        subtitle={isAr ? "إدارة المستأجرين وعقود الإيجار لهذا العقار" : "Manage tenants and leases for this property"}
+        title={property?.name || dict.dashboard.propertyManagement.title}
+        subtitle={dict.dashboard.propertyManagement.subtitle}
       />
 
       <div className="w-full space-y-6">
         <div className="mt-8 bg-white rounded-xl shadow-md overflow-hidden p-6">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="text-2xl font-bold mb-1">{isAr ? "نظرة عامة على المستأجرين" : "Tenants Overview"}</h2>
+              <h2 className="text-2xl font-bold mb-1">{dict.dashboard.propertyManagement.tenantsOverview}</h2>
               <p className="text-sm text-gray-500">
-                {isAr ? "إدارة وعرض جميع المستأجرين لهذا العقار." : "Manage and view all tenants for this property."}
+                {dict.dashboard.propertyManagement.tenantsOverviewSubtitle}
               </p>
             </div>
             <div>
@@ -148,7 +150,7 @@ const PropertyManagement = () => {
               px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50`}
               >
                 <Download className="w-5 h-5 me-2" />
-                <span>{isAr ? "تحميل الكل" : "Download All"}</span>
+                <span>{dict.dashboard.common.downloadAll}</span>
               </button>
             </div>
           </div>
@@ -157,12 +159,12 @@ const PropertyManagement = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{isAr ? "المستأجر" : "Tenant"}</TableHead>
-                  <TableHead>{isAr ? "فترة الإيجار" : "Lease Period"}</TableHead>
-                  <TableHead>{isAr ? "الإيجار الشهري" : "Monthly Rent"}</TableHead>
-                  <TableHead>{isAr ? "حالة الشهر الحالي" : "Current Month Status"}</TableHead>
-                  <TableHead>{isAr ? "التواصل" : "Contact"}</TableHead>
-                  <TableHead>{isAr ? "الإجراء" : "Action"}</TableHead>
+                  <TableHead>{dict.dashboard.propertyManagement.tenant}</TableHead>
+                  <TableHead>{dict.dashboard.propertyManagement.leasePeriod}</TableHead>
+                  <TableHead>{dict.dashboard.propertyManagement.monthlyRent}</TableHead>
+                  <TableHead>{dict.dashboard.propertyManagement.currentMonthStatus}</TableHead>
+                  <TableHead>{dict.dashboard.propertyManagement.contact}</TableHead>
+                  <TableHead>{dict.dashboard.propertyManagement.action}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -182,7 +184,7 @@ const PropertyManagement = () => {
                             {lease.tenant?.name || lease.tenantId}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {lease.tenant?.email || (isAr ? "البريد غير متوفر" : "Email not available")}
+                            {lease.tenant?.email || dict.dashboard.common.emailNotAvailable}
                           </div>
                         </div>
                       </div>
@@ -215,7 +217,7 @@ const PropertyManagement = () => {
                       items-center justify-center font-semibold hover:bg-primary-700 hover:text-primary-50`}
                       >
                         <ArrowDownToLine className="w-4 h-4 me-1" />
-                        {isAr ? "تحميل العقد" : "Download Agreement"}
+                        {dict.dashboard.common.downloadAgreement}
                       </button>
                     </TableCell>
                   </TableRow>
@@ -226,7 +228,7 @@ const PropertyManagement = () => {
 
           {(!leases || leases.length === 0) && (
             <div className="text-center py-8 text-gray-500">
-              <p>{isAr ? "لم يتم العثور على عقود إيجار لهذا العقار." : "No leases found for this property."}</p>
+              <p>{dict.dashboard.propertyManagement.noLeasesFound}</p>
             </div>
           )}
         </div>

@@ -8,7 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { usePathname } from 'next/navigation';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface SearchState {
   where: string;
@@ -18,15 +18,14 @@ interface SearchState {
 }
 
 const MobileListingsHeader = () => {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState<'where' | 'checkIn' | 'checkOut' | 'guests'>('where');
   const [searchState, setSearchState] = useState<SearchState>({
-    where: isAr ? 'أي مكان' : 'Anywhere',
-    checkIn: isAr ? 'تسجيل الوصول' : 'Check in',
-    checkOut: isAr ? 'المغادرة' : 'Check out',
-    guests: isAr ? 'أضف ضيوف' : 'Add guests'
+    where: dict.search?.anywhere ?? 'Anywhere',
+    checkIn: dict.search?.checkIn ?? 'Check in',
+    checkOut: dict.search?.checkOut ?? 'Check out',
+    guests: dict.search?.addGuests ?? 'Add guests'
   });
 
   const handleStepComplete = (step: keyof SearchState, value: string) => {
@@ -63,14 +62,14 @@ const MobileListingsHeader = () => {
             <DropdownMenuTrigger asChild>
               <div className="relative flex items-center">
                 <div className="w-full h-14 ps-6 pe-16 text-base border rounded-full shadow-lg bg-[#ffffff] placeholder:text-[#6b7280] focus-visible:ring-2 focus-visible:ring-[#de3151] focus-visible:ring-offset-0 flex items-center cursor-pointer">
-                  <span className="text-[#6b7280]">{isAr ? "ابدأ البحث" : "Start your search"}</span>
+                  <span className="text-[#6b7280]">{dict.search?.startSearch ?? "Start your search"}</span>
                 </div>
                 <Button
                   size="icon"
                   className="absolute right-2 h-10 w-10 rounded-full bg-[#de3151] hover:bg-[#c42a47] focus-visible:ring-2 focus-visible:ring-[#de3151] focus-visible:ring-offset-2"
                 >
                   <Search className="h-5 w-5 text-[#ffffff]" />
-                  <span className="sr-only">{isAr ? "ابدأ البحث" : "Start your search"}</span>
+                  <span className="sr-only">{dict.search?.startSearch ?? "Start your search"}</span>
                 </Button>
               </div>
             </DropdownMenuTrigger>
@@ -84,7 +83,7 @@ const MobileListingsHeader = () => {
             <div className="flex flex-col h-full">
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">{isAr ? "تعديل البحث" : "Edit your search"}</h2>
+                <h2 className="text-lg font-semibold text-gray-900">{dict.search?.editSearch ?? "Edit your search"}</h2>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -101,12 +100,10 @@ const MobileListingsHeader = () => {
                 {/* Where Section */}
                 {currentStep === 'where' && (
                   <div className="p-4">
-                    <h3 className="text-lg font-semibold mb-4">{isAr ? "إلى أين؟" : "Where to?"}</h3>
+                    <h3 className="text-lg font-semibold mb-4">{dict.search?.whereTo ?? "Where to?"}</h3>
                     <div className="space-y-3">
-                      {(isAr
-                        ? ['أي مكان', 'مرن', 'السودان', 'الخليج', 'أفريقيا', 'أوروبا']
-                        : ['Anywhere', 'I\'m flexible', 'United States', 'Europe', 'Asia', 'Africa']
-                      ).map((location) => (
+                      {(dict.search?.locations ?? ['Anywhere', "I'm flexible", 'United States', 'Europe', 'Asia', 'Africa']
+                      ).map((location: string) => (
                         <button
                           key={location}
                           onClick={() => handleStepComplete('where', location)}
@@ -125,12 +122,10 @@ const MobileListingsHeader = () => {
                 {/* Check-in Section */}
                 {currentStep === 'checkIn' && (
                   <div className="p-4">
-                    <h3 className="text-lg font-semibold mb-4">{isAr ? "متى تسافر؟" : "When are you traveling?"}</h3>
+                    <h3 className="text-lg font-semibold mb-4">{dict.search?.whenTraveling ?? "When are you traveling?"}</h3>
                     <div className="space-y-3">
-                      {(isAr
-                        ? ['مرن', 'نهاية هذا الأسبوع', 'الأسبوع القادم', 'الشهر القادم', 'الصيف']
-                        : ['I\'m flexible', 'This weekend', 'Next week', 'Next month', 'Summer 2024']
-                      ).map((date) => (
+                      {(dict.search?.dates ?? ["I'm flexible", 'This weekend', 'Next week', 'Next month', 'Summer 2024']
+                      ).map((date: string) => (
                         <button
                           key={date}
                           onClick={() => handleStepComplete('checkIn', date)}
@@ -149,12 +144,10 @@ const MobileListingsHeader = () => {
                 {/* Check-out Section */}
                 {currentStep === 'checkOut' && (
                   <div className="p-4">
-                    <h3 className="text-lg font-semibold mb-4">{isAr ? "كم مدة إقامتك؟" : "How long are you staying?"}</h3>
+                    <h3 className="text-lg font-semibold mb-4">{dict.search?.howLongStaying ?? "How long are you staying?"}</h3>
                     <div className="space-y-3">
-                      {(isAr
-                        ? ['ليلة واحدة', 'ليلتان', '3 ليالي', 'أسبوع', 'أسبوعان', 'شهر']
-                        : ['1 night', '2 nights', '3 nights', '1 week', '2 weeks', '1 month']
-                      ).map((duration) => (
+                      {(dict.search?.durations ?? ['1 night', '2 nights', '3 nights', '1 week', '2 weeks', '1 month']
+                      ).map((duration: string) => (
                         <button
                           key={duration}
                           onClick={() => handleStepComplete('checkOut', duration)}
@@ -173,12 +166,10 @@ const MobileListingsHeader = () => {
                 {/* Guests Section */}
                 {currentStep === 'guests' && (
                   <div className="p-4">
-                    <h3 className="text-lg font-semibold mb-4">{isAr ? "من سيحضر؟" : "Who's coming?"}</h3>
+                    <h3 className="text-lg font-semibold mb-4">{dict.search?.whoComing ?? "Who's coming?"}</h3>
                     <div className="space-y-3">
-                      {(isAr
-                        ? ['ضيف واحد', 'ضيفان', '3 ضيوف', '4 ضيوف', '5+ ضيوف', 'مرن']
-                        : ['1 guest', '2 guests', '3 guests', '4 guests', '5+ guests', 'I\'m flexible']
-                      ).map((guest) => (
+                      {(dict.search?.guestOptions ?? ['1 guest', '2 guests', '3 guests', '4 guests', '5+ guests', "I'm flexible"]
+                      ).map((guest: string) => (
                         <button
                           key={guest}
                           onClick={() => handleStepComplete('guests', guest)}
@@ -201,7 +192,7 @@ const MobileListingsHeader = () => {
                   onClick={handleSearch}
                   className="w-full bg-[#de3151] hover:bg-[#de3151]/90 text-white"
                 >
-                  {isAr ? "بحث" : "Search"}
+                  {dict.search?.searchButton ?? "Search"}
                 </Button>
               </div>
             </div>

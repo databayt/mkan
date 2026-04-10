@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Plus, MapPin, DollarSign } from 'lucide-react'
 import { createMetadata } from "@/lib/metadata";
+import { getDictionary } from "@/components/internationalization/dictionaries";
+import type { Locale } from "@/components/internationalization/config";
 
 export async function generateMetadata({
   params,
@@ -15,12 +17,10 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const d = await getDictionary(lang as Locale);
   return createMetadata({
-    title: lang === "ar" ? "عقاراتي" : "My Properties",
-    description:
-      lang === "ar"
-        ? "إدارة عقاراتك وتتبع الطلبات"
-        : "Manage your property listings and track applications",
+    title: d.dashboard.properties.title,
+    description: d.dashboard.properties.subtitle,
     locale: lang,
     path: "/dashboard/properties",
   });
@@ -35,7 +35,7 @@ export default async function PropertiesPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const isAr = lang === "ar";
+  const d = await getDictionary(lang as Locale);
 
   // TODO: Uncomment auth check when ready for production
   // const session = await auth()
@@ -63,15 +63,15 @@ export default async function PropertiesPage({
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{isAr ? "عقاراتي" : "My Properties"}</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{d.dashboard.properties.title}</h1>
           <p className="text-gray-600 mt-2">
-            {isAr ? "إدارة عقاراتك وتتبع الطلبات" : "Manage your property listings and track applications"}
+            {d.dashboard.properties.subtitle}
           </p>
         </div>
         <Link href={`/${lang}/dashboard/properties/new`}>
           <Button className="flex items-center gap-2">
             <Plus className="w-4 h-4" />
-            {isAr ? "إضافة عقار جديد" : "Add New Property"}
+            {d.dashboard.properties.addNew}
           </Button>
         </Link>
       </div>
@@ -83,12 +83,12 @@ export default async function PropertiesPage({
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
                 <Plus className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold">{isAr ? "لا توجد عقارات بعد" : "No properties yet"}</h3>
+              <h3 className="text-lg font-semibold">{d.dashboard.properties.noProperties}</h3>
               <p className="text-gray-600 max-w-md">
-                {isAr ? "ابدأ بإضافة أول عقار لك." : "Start by adding your first property listing."}
+                {d.dashboard.properties.noPropertiesMessage}
               </p>
               <Link href={`/${lang}/dashboard/properties/new`}>
-                <Button>{isAr ? "أضف أول عقار لك" : "Add Your First Property"}</Button>
+                <Button>{d.dashboard.propertyManagement.addFirstProperty}</Button>
               </Link>
             </div>
           </CardContent>
@@ -120,12 +120,12 @@ export default async function PropertiesPage({
                 <div className="flex gap-2 pt-2">
                   <Button variant="outline" size="sm" className="flex-1" asChild>
                     <Link href={`/${lang}/search/${property.id}`}>
-                      {isAr ? "عرض" : "View"}
+                      {d.dashboard.common.view}
                     </Link>
                   </Button>
                   <Button size="sm" className="flex-1" asChild>
                     <Link href={`/${lang}/dashboard/properties/${property.id}`}>
-                      {isAr ? "إدارة" : "Manage"}
+                      {d.dashboard.common.manage}
                     </Link>
                   </Button>
                 </div>

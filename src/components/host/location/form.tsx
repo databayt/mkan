@@ -1,15 +1,14 @@
 "use client"
 
-import { usePathname } from 'next/navigation'
 import { useLocation } from './use-location'
 import { StepWrapper } from '../step-wrapper'
 import { StepNavigation } from '../step-navigation'
 import { FormField } from '../form-field'
 import { Input } from '@/components/ui/input'
+import { useDictionary } from '@/components/internationalization/dictionary-context'
 
 export function LocationForm() {
-  const pathname = usePathname()
-  const isAr = pathname?.startsWith("/ar")
+  const dict = useDictionary()
   const {
     form,
     onSubmit,
@@ -24,35 +23,35 @@ export function LocationForm() {
       <form onSubmit={onSubmit} className="space-y-8">
         <div className="space-y-6">
           <FormField
-            label={isAr ? "عنوان الشارع" : "Street address"}
+            label={dict.host?.location?.streetAddress ?? "Street address"}
             error={form.formState.errors.address?.message}
           >
             <Input
               {...form.register('address')}
-              placeholder={isAr ? "١٢٣ شارع الرئيسي" : "123 Main Street"}
+              placeholder={dict.host?.location?.streetAddressPlaceholder ?? "123 Main Street"}
               className="h-10"
             />
           </FormField>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
-              label={isAr ? "المدينة" : "City"}
+              label={dict.host?.location?.city ?? "City"}
               error={form.formState.errors.city?.message}
             >
               <Input
                 {...form.register('city')}
-                placeholder={isAr ? "الرياض" : "New York"}
+                placeholder={dict.host?.location?.cityPlaceholder ?? "New York"}
                 className="h-10"
               />
             </FormField>
 
             <FormField
-              label={isAr ? "المنطقة / المحافظة" : "State/Province"}
+              label={dict.host?.location?.stateProvince ?? "State/Province"}
               error={form.formState.errors.state?.message}
             >
               <Input
                 {...form.register('state')}
-                placeholder={isAr ? "الرياض" : "NY"}
+                placeholder={dict.host?.location?.stateProvincePlaceholder ?? "NY"}
                 className="h-10"
               />
             </FormField>
@@ -60,23 +59,23 @@ export function LocationForm() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
-              label={isAr ? "الدولة" : "Country"}
+              label={dict.host?.location?.country ?? "Country"}
               error={form.formState.errors.country?.message}
             >
               <Input
                 {...form.register('country')}
-                placeholder={isAr ? "المملكة العربية السعودية" : "United States"}
+                placeholder={dict.host?.location?.countryPlaceholder ?? "United States"}
                 className="h-10"
               />
             </FormField>
 
             <FormField
-              label={isAr ? "الرمز البريدي" : "Postal code"}
+              label={dict.host?.location?.postalCode ?? "Postal code"}
               error={form.formState.errors.postalCode?.message}
             >
               <Input
                 {...form.register('postalCode')}
-                placeholder={isAr ? "١٢٢٧١" : "10001"}
+                placeholder={dict.host?.location?.postalCodePlaceholder ?? "10001"}
                 className="h-10"
               />
             </FormField>

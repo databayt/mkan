@@ -1,11 +1,11 @@
 "use client";
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import type { OnboardingStepsOverviewProps } from './types';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 /**
  * Generic steps overview component for onboarding flows
@@ -19,56 +19,30 @@ const OnboardingStepsOverview: React.FC<OnboardingStepsOverviewProps> = ({
   loadingLabel: loadingLabelProp,
   className,
 }) => {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
-  const loadingLabel = loadingLabelProp ?? (isAr ? "جارٍ الإنشاء..." : "Creating...");
+  const dict = useDictionary();
+  const loadingLabel = loadingLabelProp ?? (dict.onboarding?.creating ?? "Creating...");
 
-  // Translation map for overview step titles and descriptions
-  const overviewTranslations: Record<string, { title: string; description: string }> = isAr ? {
-    "Tell us about your place": {
-      title: "أخبرنا عن مكانك",
-      description: "شارك بعض المعلومات الأساسية، مثل موقعه وعدد الضيوف الذين يمكنهم الإقامة.",
-    },
-    "Make it stand out": {
-      title: "اجعله مميزاً",
-      description: "أضف 5 صور أو أكثر بالإضافة إلى عنوان ووصف — سنساعدك.",
-    },
-    "Finish up and publish": {
-      title: "أكمل وانشر",
-      description: "اختر سعراً للبدء، تحقق من بعض التفاصيل، ثم انشر إعلانك.",
-    },
-    "Set up your office": {
-      title: "أعد مكتبك",
-      description: "أدخل تفاصيل مكتبك ومعلومات الاتصال واختر موقع نقطة التجمع.",
-    },
-    "Add buses & routes": {
-      title: "أضف الحافلات والمسارات",
-      description: "سجّل حافلاتك بالمرافق والسعة، ثم حدد مساراتك مع الأسعار.",
-    },
-    "Create schedules & publish": {
-      title: "أنشئ الجداول وانشر",
-      description: "أعد جداول الرحلات، أضف صوراً، وانشر مكتبك لبدء استقبال الحجوزات.",
-    },
-  } : {};
-
-  const translateStep = (step: { title: string; description: string }) => {
-    const translation = overviewTranslations[step.title];
-    return translation ? { title: translation.title, description: translation.description } : step;
+  // Translation map for overview step titles and descriptions using dictionary
+  const stepTranslations: Record<string, string> = {
+    "Tell us about your place": "tellAboutPlace",
+    "Make it stand out": "makeStandOut",
+    "Finish up and publish": "finishPublish",
+    "Set up your office": "setupOffice",
+    "Add buses & routes": "addBusesRoutes",
+    "Create schedules & publish": "createSchedules",
   };
 
-  const defaultHeadline = isAr ? (
-    <>
-      من السهل البدء
-      <br />
-      على مكان
-    </>
-  ) : (
-    <>
-      It's easy to get
-      <br />
-      started on Mkan
-    </>
-  );
+  const translateStep = (step: { title: string; description: string }) => {
+    const key = stepTranslations[step.title];
+    if (key) {
+      const steps = dict.onboarding?.steps as Record<string, { title: string; description: string }> | undefined;
+      const translation = steps?.[key];
+      if (translation) return { title: translation.title, description: translation.description };
+    }
+    return step;
+  };
+
+  const defaultHeadline = dict.onboarding?.headline ?? "It's easy to get started on Mkan";
 
   return (
     <div className={cn("h-full flex flex-col px-6 md:px-20", className)}>
@@ -122,7 +96,7 @@ const OnboardingStepsOverview: React.FC<OnboardingStepsOverviewProps> = ({
             <Separator className="w-full" />
             <div className="flex justify-end py-4">
               <Button onClick={onGetStarted} disabled={isLoading}>
-                {isLoading ? loadingLabel : (config.buttonLabel || (isAr ? 'ابدأ الآن' : 'Get started'))}
+                {isLoading ? loadingLabel : (config.buttonLabel || (dict.onboarding?.getStarted ?? 'Get started'))}
               </Button>
             </div>
           </div>

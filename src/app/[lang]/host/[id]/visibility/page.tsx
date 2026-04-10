@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface VisibilityPageProps {
   params: Promise<{ id: string }>;
@@ -12,7 +13,7 @@ interface VisibilityPageProps {
 const VisibilityPage = ({ params }: VisibilityPageProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [id, setId] = React.useState<string>('');
   const [selectedOption, setSelectedOption] = useState<string>('any-guest');
 
@@ -26,13 +27,13 @@ const VisibilityPage = ({ params }: VisibilityPageProps) => {
   const guestOptions = [
     {
       id: 'any-guest',
-      title: isAr ? 'أي ضيف على مكان' : 'Any Mkan guest',
-      description: isAr ? 'احصل على حجوزات أسرع عندما ترحب بأي شخص من مجتمع مكان.' : 'Get reservations faster when you welcome anyone from the Mkan community.',
+      title: dict.hosting.pages.visibility.anyGuest,
+      description: dict.hosting.pages.visibility.anyGuestDescription,
     },
     {
       id: 'experienced-guest',
-      title: isAr ? 'ضيف ذو خبرة' : 'An experienced guest',
-      description: isAr ? 'لضيفك الأول، رحّب بشخص لديه سجل جيد على مكان يمكنه تقديم نصائح لتكون مضيفاً رائعاً.' : 'For your first guest, welcome someone with a good track record on Mkan who can offer tips for how to be a great Host.',
+      title: dict.hosting.pages.visibility.experiencedGuest,
+      description: dict.hosting.pages.visibility.experiencedGuestDescription,
     },
   ];
 
@@ -43,12 +44,12 @@ const VisibilityPage = ({ params }: VisibilityPageProps) => {
           {/* Left column - Title and description */}
           <div className="lg:col-span-2 space-y-3 sm:space-y-4">
             <h3>
-              {isAr ? "اختر من ترحب به في أول حجز لك" : "Choose who to welcome for your first reservation"}
+              {dict.hosting.pages.visibility.title}
             </h3>
             <p className="text-sm sm:text-base text-muted-foreground">
-              {isAr ? 'بعد ضيفك الأول، يمكن لأي شخص حجز مكانك.' : 'After your first guest, anyone can book your place.'}{' '}
+              {dict.hosting.pages.visibility.subtitle}{' '}
               <button className="underline hover:no-underline text-foreground">
-                {isAr ? 'تعرف على المزيد' : 'Learn more'}
+                {dict.hosting.pages.visibility.learnMore}
               </button>
             </p>
           </div>

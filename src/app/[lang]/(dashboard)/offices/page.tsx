@@ -30,6 +30,7 @@ import {
   getMyTransportOffices,
   getOfficeDashboardStats,
 } from '@/lib/actions/transport-actions';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface OfficeStats {
   totalBookings: number;
@@ -59,6 +60,7 @@ const OfficeDashboard = () => {
   const router = useRouter();
   const pathname = usePathname();
   const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [authUser, setAuthUser] = useState<any>(null);
   const [offices, setOffices] = useState<TransportOffice[]>([]);
   const [selectedOfficeId, setSelectedOfficeId] = useState<number | null>(null);
@@ -108,31 +110,29 @@ const OfficeDashboard = () => {
   };
 
   if (isLoading) return <Loading />;
-  if (error) return <div className="text-red-500">{isAr ? "خطأ" : "Error"}: {error}</div>;
+  if (error) return <div className="text-red-500">{dict.dashboard.common.error}: {error}</div>;
 
   if (offices.length === 0) {
     return (
       <div className="dashboard-container">
         <Header
-          title={isAr ? "مكتب النقل" : "Transport Office"}
-          subtitle={isAr ? "إدارة أعمال النقل الخاصة بك" : "Manage your transport business"}
+          title={dict.dashboard.offices.title}
+          subtitle={dict.dashboard.offices.subtitle}
         />
         <Card className="max-w-xl mx-auto mt-8">
           <CardHeader className="text-center">
             <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Bus className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle>{isAr ? "لا يوجد مكتب نقل" : "No Transport Office"}</CardTitle>
+            <CardTitle>{dict.dashboard.offices.noOffice}</CardTitle>
             <CardDescription>
-              {isAr
-                ? "لم تقم بإنشاء مكتب نقل بعد. ابدأ بتسجيل مكتبك لإدارة الحافلات والمسارات والحجوزات."
-                : "You haven't created a transport office yet. Start by registering your office to manage buses, routes, and bookings."}
+              {dict.dashboard.offices.noOfficeDescription}
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <Button onClick={() => router.push('/transport-host')}>
               <Plus className="h-4 w-4 me-2" />
-              {isAr ? "إنشاء مكتب نقل" : "Create Transport Office"}
+              {dict.dashboard.offices.createOffice}
             </Button>
           </CardContent>
         </Card>
@@ -145,8 +145,8 @@ const OfficeDashboard = () => {
   return (
     <div className="dashboard-container">
       <Header
-        title={isAr ? "لوحة تحكم النقل" : "Transport Dashboard"}
-        subtitle={selectedOffice?.name || (isAr ? "إدارة أعمال النقل الخاصة بك" : "Manage your transport business")}
+        title={dict.dashboard.offices.transportDashboard}
+        subtitle={selectedOffice?.name || dict.dashboard.offices.subtitle}
       />
 
       {offices.length > 1 && (
@@ -167,50 +167,50 @@ const OfficeDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{isAr ? "إجمالي الحجوزات" : "Total Bookings"}</CardTitle>
+            <CardTitle className="text-sm font-medium">{dict.dashboard.offices.totalBookings}</CardTitle>
             <Ticket className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalBookings || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {stats?.pendingBookings || 0} {isAr ? "قيد الانتظار" : "pending"}
+              {stats?.pendingBookings || 0} {dict.dashboard.common.pending}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{isAr ? "الإيرادات" : "Revenue"}</CardTitle>
+            <CardTitle className="text-sm font-medium">{dict.dashboard.offices.revenue}</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isAr ? `${(stats?.totalRevenue || 0).toLocaleString()} ج.س` : `${(stats?.totalRevenue || 0).toLocaleString()} SDG`}
+              {`${(stats?.totalRevenue || 0).toLocaleString()} ${dict.dashboard.offices.currencySDG}`}
             </div>
-            <p className="text-xs text-muted-foreground">{isAr ? "إجمالي الأرباح" : "Total earnings"}</p>
+            <p className="text-xs text-muted-foreground">{dict.dashboard.offices.totalEarnings}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{isAr ? "الرحلات القادمة" : "Upcoming Trips"}</CardTitle>
+            <CardTitle className="text-sm font-medium">{dict.dashboard.offices.upcomingTrips}</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.upcomingTrips || 0}</div>
-            <p className="text-xs text-muted-foreground">{isAr ? "الأيام الـ 7 القادمة" : "Next 7 days"}</p>
+            <p className="text-xs text-muted-foreground">{dict.dashboard.offices.next7Days}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{isAr ? "حجم الأسطول" : "Fleet Size"}</CardTitle>
+            <CardTitle className="text-sm font-medium">{dict.dashboard.offices.fleetSize}</CardTitle>
             <Bus className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalBuses || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {stats?.totalRoutes || 0} {isAr ? "مسارات" : "routes"}
+              {stats?.totalRoutes || 0} {dict.dashboard.common.routes}
             </p>
           </CardContent>
         </Card>
@@ -219,7 +219,7 @@ const OfficeDashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>{isAr ? "إجراءات سريعة" : "Quick Actions"}</CardTitle>
+            <CardTitle>{dict.dashboard.offices.quickActions}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <Button
@@ -229,7 +229,7 @@ const OfficeDashboard = () => {
             >
               <span className="flex items-center gap-2">
                 <Ticket className="h-4 w-4" />
-                {isAr ? "عرض الحجوزات" : "View Bookings"}
+                {dict.dashboard.offices.viewBookings}
               </span>
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -240,7 +240,7 @@ const OfficeDashboard = () => {
             >
               <span className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                {isAr ? "إدارة الرحلات" : "Manage Trips"}
+                {dict.dashboard.offices.manageTrips}
               </span>
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -253,7 +253,7 @@ const OfficeDashboard = () => {
             >
               <span className="flex items-center gap-2">
                 <Bus className="h-4 w-4" />
-                {isAr ? "إدارة الحافلات" : "Manage Buses"}
+                {dict.dashboard.offices.manageBuses}
               </span>
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -262,16 +262,16 @@ const OfficeDashboard = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>{isAr ? "النشاط الأخير" : "Recent Activity"}</CardTitle>
-            <CardDescription>{isAr ? "آخر الحجوزات والتحديثات" : "Latest bookings and updates"}</CardDescription>
+            <CardTitle>{dict.dashboard.offices.recentActivity}</CardTitle>
+            <CardDescription>{dict.dashboard.offices.latestBookingsAndUpdates}</CardDescription>
           </CardHeader>
           <CardContent>
             {stats?.totalBookings === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Ticket className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>{isAr ? "لا توجد حجوزات بعد" : "No bookings yet"}</p>
+                <p>{dict.dashboard.offices.noBookingsYet}</p>
                 <p className="text-sm mt-1">
-                  {isAr ? "ستظهر الحجوزات هنا عندما يبدأ المسافرون بالحجز" : "Bookings will appear here once travelers start booking"}
+                  {dict.dashboard.offices.bookingsWillAppear}
                 </p>
               </div>
             ) : (
@@ -282,10 +282,10 @@ const OfficeDashboard = () => {
                   </div>
                   <div>
                     <p className="font-medium">
-                      {stats?.confirmedBookings || 0} {isAr ? "حجوزات مؤكدة" : "confirmed bookings"}
+                      {stats?.confirmedBookings || 0} {dict.dashboard.offices.confirmedBookings}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {isAr ? "جاهزة للسفر" : "Ready for travel"}
+                      {dict.dashboard.offices.readyForTravel}
                     </p>
                   </div>
                 </div>
@@ -295,10 +295,10 @@ const OfficeDashboard = () => {
                   </div>
                   <div>
                     <p className="font-medium">
-                      {stats?.pendingBookings || 0} {isAr ? "حجوزات قيد الانتظار" : "pending bookings"}
+                      {stats?.pendingBookings || 0} {dict.dashboard.offices.pendingBookings}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {isAr ? "بانتظار التأكيد" : "Awaiting confirmation"}
+                      {dict.dashboard.offices.awaitingConfirmation}
                     </p>
                   </div>
                 </div>

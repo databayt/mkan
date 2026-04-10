@@ -4,25 +4,26 @@ import ApplicationCard from "@/components/ApplicationCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CircleCheckBig, Download, File, Hospital } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { type ApplicationWithDetails } from "@/components/application/action";
 import { ApplicationStatusButtons } from "./status-buttons";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { useLocale } from "@/components/internationalization/use-locale";
 
 interface ApplicationTabsProps {
   applications: ApplicationWithDetails[];
 }
 
 export function ApplicationTabs({ applications }: ApplicationTabsProps) {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
+  const { locale } = useLocale();
 
   return (
     <Tabs defaultValue="all" className="w-full my-5">
       <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="all">{isAr ? "الكل" : "All"}</TabsTrigger>
-        <TabsTrigger value="pending">{isAr ? "قيد الانتظار" : "Pending"}</TabsTrigger>
-        <TabsTrigger value="approved">{isAr ? "مقبول" : "Approved"}</TabsTrigger>
-        <TabsTrigger value="denied">{isAr ? "مرفوض" : "Denied"}</TabsTrigger>
+        <TabsTrigger value="all">{dict.applicationTabs?.all ?? "All"}</TabsTrigger>
+        <TabsTrigger value="pending">{dict.applicationTabs?.pending ?? "Pending"}</TabsTrigger>
+        <TabsTrigger value="approved">{dict.applicationTabs?.approved ?? "Approved"}</TabsTrigger>
+        <TabsTrigger value="denied">{dict.applicationTabs?.denied ?? "Denied"}</TabsTrigger>
       </TabsList>
       
       {["all", "pending", "approved", "denied"].map((tab) => (
@@ -51,8 +52,8 @@ export function ApplicationTabs({ applications }: ApplicationTabsProps) {
                     <div className="flex flex-wrap items-center">
                       <File className="w-5 h-5 me-2 flex-shrink-0" />
                       <span className="me-2">
-                        {isAr ? "تم تقديم الطلب في " : "Application submitted on "}
-                        {new Date(application.applicationDate).toLocaleDateString(isAr ? "ar" : "en")}
+                        {dict.applicationTabs?.submittedOn ?? "Application submitted on "}
+                        {new Date(application.applicationDate).toLocaleDateString(locale)}
                         .
                       </span>
                       <CircleCheckBig className="w-5 h-5 me-2 flex-shrink-0" />
@@ -66,11 +67,11 @@ export function ApplicationTabs({ applications }: ApplicationTabsProps) {
                         }`}
                       >
                         {application.status === "Approved" &&
-                          (isAr ? "تمت الموافقة على هذا الطلب." : "This application has been approved.")}
+                          (dict.applicationTabs?.approvedMessage ?? "This application has been approved.")}
                         {application.status === "Denied" &&
-                          (isAr ? "تم رفض هذا الطلب." : "This application has been denied.")}
+                          (dict.applicationTabs?.deniedMessage ?? "This application has been denied.")}
                         {application.status === "Pending" &&
-                          (isAr ? "هذا الطلب قيد المراجعة." : "This application is pending review.")}
+                          (dict.applicationTabs?.pendingMessage ?? "This application is pending review.")}
                       </span>
                     </div>
                   </div>
@@ -84,7 +85,7 @@ export function ApplicationTabs({ applications }: ApplicationTabsProps) {
                       scroll={false}
                     >
                       <Hospital className="w-5 h-5 me-2" />
-                      {isAr ? "تفاصيل العقار" : "Property Details"}
+                      {dict.applicationTabs?.propertyDetails ?? "Property Details"}
                     </Link>
                     {application.status === "Approved" && (
                       <button
@@ -92,7 +93,7 @@ export function ApplicationTabs({ applications }: ApplicationTabsProps) {
                         rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50`}
                       >
                         <Download className="w-5 h-5 me-2" />
-                        {isAr ? "تحميل العقد" : "Download Agreement"}
+                        {dict.applicationTabs?.downloadAgreement ?? "Download Agreement"}
                       </button>
                     )}
                     <ApplicationStatusButtons 

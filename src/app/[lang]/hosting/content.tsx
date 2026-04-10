@@ -1,22 +1,22 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import NotificationCard from '@/components/hosting/notification-card';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import Loading from '@/components/atom/loading';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 export default function HostingContent() {
   const router = useRouter();
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith('/ar');
+  const dict = useDictionary();
   const { session, status } = useAuthRedirect();
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming'>('today');
 
   // Show loading while checking session
   if (status === 'loading') {
-    return <Loading variant="fullscreen" text={isAr ? "جاري التحميل..." : "Loading..."} />;
+    return <Loading variant="fullscreen" text={dict.common?.loading ?? "Loading..."} />;
   }
 
   // Don't render if not authenticated
@@ -45,7 +45,7 @@ export default function HostingContent() {
                 : 'bg-white text-gray-600 border-gray-300 hover:text-gray-900 hover:border-gray-400'
             }`}
           >
-            {isAr ? "اليوم" : "Today"}
+            {dict.hosting?.content?.today ?? "Today"}
           </button>
           <button
             onClick={() => setActiveTab('upcoming')}
@@ -55,7 +55,7 @@ export default function HostingContent() {
                 : 'bg-white text-gray-600 border-gray-300 hover:text-gray-900 hover:border-gray-400'
             }`}
           >
-            {isAr ? "القادم" : "Upcoming"}
+            {dict.hosting?.content?.upcoming ?? "Upcoming"}
           </button>
         </div>
 
@@ -65,7 +65,7 @@ export default function HostingContent() {
           <div className="">
             <Image
               src="/hosting/today.png"
-              alt={isAr ? "رسم توضيحي لليوم" : "Today illustration"}
+              alt={dict.hosting?.content?.todayIllustration ?? "Today illustration"}
               width={150}
               height={150}
               className="object-contain sm:w-[200px] sm:h-[200px]"
@@ -76,8 +76,8 @@ export default function HostingContent() {
           <div className="text-center">
             <p className="text-gray-500 text-base sm:text-lg">
               {activeTab === 'today'
-                ? (isAr ? 'ليس لديك أي حجوزات' : 'You don\'t have any reservations')
-                : (isAr ? 'ليس لديك أي حجوزات قادمة' : 'You don\'t have any upcoming reservations')}
+                ? (dict.hosting?.content?.noReservations ?? 'You don\'t have any reservations')
+                : (dict.hosting?.content?.noUpcomingReservations ?? 'You don\'t have any upcoming reservations')}
             </p>
           </div>
         </div>

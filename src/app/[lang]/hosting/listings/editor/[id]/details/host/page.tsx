@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,11 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, Camera, Info } from 'lucide-react';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 const HostPage = () => {
   const router = useRouter();
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [hostInfo, setHostInfo] = useState({
     displayName: '',
     bio: '',
@@ -31,9 +31,9 @@ const HostPage = () => {
     <div className="lg:col-span-2">
       <div className="max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">{isAr ? "أخبر الضيوف عن نفسك" : "Tell guests about yourself"}</h1>
+          <h1 className="text-3xl font-semibold mb-2">{dict.hosting?.editor?.host?.title ?? "Tell guests about yourself"}</h1>
           <p className="text-muted-foreground">
-            {isAr ? "شارك قليلاً عن هويتك لمساعدة الضيوف على الشعور بالراحة عند حجز مكانك." : "Share a bit about who you are to help guests feel comfortable booking your place."}
+            {dict.hosting?.editor?.host?.subtitle ?? "Share a bit about who you are to help guests feel comfortable booking your place."}
           </p>
         </div>
 
@@ -41,7 +41,7 @@ const HostPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="size-5" />
-              {isAr ? "صورة الملف الشخصي" : "Profile photo"}
+              {dict.hosting?.editor?.host?.profilePhoto ?? "Profile photo"}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -53,10 +53,10 @@ const HostPage = () => {
               <div>
                 <Button variant="outline" className="gap-2">
                   <Camera className="size-4" />
-                  {isAr ? "رفع صورة" : "Upload photo"}
+                  {dict.hosting?.editor?.host?.uploadPhoto ?? "Upload photo"}
                 </Button>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {isAr ? "صورة واضحة تساعد الضيوف على التعرف عليك" : "A clear photo helps guests recognize you"}
+                  {dict.hosting?.editor?.host?.photoHelp ?? "A clear photo helps guests recognize you"}
                 </p>
               </div>
             </div>
@@ -65,14 +65,14 @@ const HostPage = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>{isAr ? "عنك" : "About you"}</CardTitle>
+            <CardTitle>{dict.hosting?.editor?.host?.aboutYou ?? "About you"}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <Label htmlFor="displayName">{isAr ? "الاسم المعروض" : "Display name"}</Label>
+              <Label htmlFor="displayName">{dict.hosting?.editor?.host?.displayName ?? "Display name"}</Label>
               <Input
                 id="displayName"
-                placeholder={isAr ? "كيف تريد أن يُنادى عليك" : "How you'd like to be called"}
+                placeholder={dict.hosting?.editor?.host?.displayNamePlaceholder ?? "How you'd like to be called"}
                 className="mt-2"
                 value={hostInfo.displayName}
                 onChange={(e) => handleChange('displayName', e.target.value)}
@@ -80,10 +80,10 @@ const HostPage = () => {
             </div>
 
             <div>
-              <Label htmlFor="bio">{isAr ? "نبذة" : "Bio"}</Label>
+              <Label htmlFor="bio">{dict.hosting?.editor?.host?.bio ?? "Bio"}</Label>
               <Textarea
                 id="bio"
-                placeholder={isAr ? "أخبر الضيوف قليلاً عن نفسك وخلفيتك وما تحبه في الاستضافة..." : "Tell guests a bit about yourself, your background, and what you love about hosting..."}
+                placeholder={dict.hosting?.editor?.host?.bioPlaceholder ?? "Tell guests a bit about yourself, your background, and what you love about hosting..."}
                 className="mt-2 min-h-[120px]"
                 value={hostInfo.bio}
                 onChange={(e) => handleChange('bio', e.target.value)}
@@ -94,20 +94,20 @@ const HostPage = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="work">{isAr ? "العمل" : "Work"}</Label>
+                <Label htmlFor="work">{dict.hosting?.editor?.host?.work ?? "Work"}</Label>
                 <Input
                   id="work"
-                  placeholder={isAr ? "ماذا تعمل؟" : "What do you do?"}
+                  placeholder={dict.hosting?.editor?.host?.workPlaceholder ?? "What do you do?"}
                   className="mt-2"
                   value={hostInfo.work}
                   onChange={(e) => handleChange('work', e.target.value)}
                 />
               </div>
               <div>
-                <Label htmlFor="location">{isAr ? "مكان إقامتك" : "Where you live"}</Label>
+                <Label htmlFor="location">{dict.hosting?.editor?.host?.whereYouLive ?? "Where you live"}</Label>
                 <Input
                   id="location"
-                  placeholder={isAr ? "المدينة، الدولة" : "City, Country"}
+                  placeholder={dict.hosting?.editor?.host?.locationPlaceholder ?? "City, Country"}
                   className="mt-2"
                   value={hostInfo.location}
                   onChange={(e) => handleChange('location', e.target.value)}
@@ -116,10 +116,10 @@ const HostPage = () => {
             </div>
 
             <div>
-              <Label htmlFor="languages">{isAr ? "اللغات التي تتحدثها" : "Languages you speak"}</Label>
+              <Label htmlFor="languages">{dict.hosting?.editor?.host?.languages ?? "Languages you speak"}</Label>
               <Input
                 id="languages"
-                placeholder={isAr ? "العربية، الإنجليزية، الفرنسية..." : "English, Arabic, French..."}
+                placeholder={dict.hosting?.editor?.host?.languagesPlaceholder ?? "English, Arabic, French..."}
                 className="mt-2"
                 value={hostInfo.languages}
                 onChange={(e) => handleChange('languages', e.target.value)}
@@ -130,9 +130,9 @@ const HostPage = () => {
               <div className="flex items-start gap-3">
                 <Info className="size-5 text-blue-600 mt-0.5" />
                 <div>
-                  <h4 className="font-medium text-blue-900">{isAr ? "نصيحة للملف الشخصي" : "Profile tip"}</h4>
+                  <h4 className="font-medium text-blue-900">{dict.hosting?.editor?.host?.profileTip ?? "Profile tip"}</h4>
                   <p className="text-sm text-blue-700 mt-1">
-                    {isAr ? "من المرجح أن يحجز الضيوف مع المضيفين الذين لديهم ملفات شخصية مكتملة. شارك ما يجعلك مضيفاً رائعاً ولماذا تحب منطقتك." : "Guests are more likely to book with hosts who have complete profiles. Share what makes you a great host and why you love your area."}
+                    {dict.hosting?.editor?.host?.profileTipText ?? "Guests are more likely to book with hosts who have complete profiles. Share what makes you a great host and why you love your area."}
                   </p>
                 </div>
               </div>
@@ -142,10 +142,10 @@ const HostPage = () => {
 
         <div className="mt-8 flex justify-between">
           <Button variant="outline" onClick={() => router.back()}>
-            {isAr ? "السابق" : "Back"}
+            {dict.common?.back ?? "Back"}
           </Button>
           <Button>
-            {isAr ? "حفظ" : "Save"}
+            {dict.common?.save ?? "Save"}
           </Button>
         </div>
       </div>

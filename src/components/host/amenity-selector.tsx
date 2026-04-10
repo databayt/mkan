@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import SelectionCard from './selection-card';
 import { cn } from '@/lib/utils';
 import { Amenity } from '@prisma/client';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface AmenityOption {
   id: string;
@@ -56,24 +57,24 @@ const AmenitySelector: React.FC<AmenitySelectorProps> = ({
   className,
 }) => {
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
 
   const guestFavorites: AmenityOption[] = [
-    { id: 'wifi', label: isAr ? 'واي فاي' : 'Wifi', icon: () => <SvgIcon src="/amenities/Wifi.svg" alt="Wifi" /> },
-    { id: 'tv', label: isAr ? 'تلفزيون' : 'TV', icon: () => <SvgIcon src="/amenities/TV.svg" alt="TV" /> },
-    { id: 'kitchen', label: isAr ? 'مطبخ' : 'Kitchen', icon: () => <SvgIcon src="/amenities/Kitchen.svg" alt="Kitchen" /> },
-    { id: 'washer', label: isAr ? 'غسالة' : 'Washer', icon: () => <SvgIcon src="/amenities/Washing machine.svg" alt="Washing machine" /> },
-    { id: 'free-parking', label: isAr ? 'موقف مجاني' : 'Free parking', icon: () => <SvgIcon src="/amenities/Parking.svg" alt="Free parking" /> },
-    { id: 'paid-parking', label: isAr ? 'موقف مدفوع' : 'Paid parking', icon: () => <SvgIcon src="/amenities/Paid parking.svg" alt="Paid parking" /> },
-    { id: 'air-conditioning', label: isAr ? 'تكييف' : 'AC', icon: () => <SvgIcon src="/amenities/Air conditioning.svg" alt="Air conditioning" /> },
-    { id: 'dedicated-workspace', label: isAr ? 'مساحة عمل' : 'Workspace', icon: () => <SvgIcon src="/amenities/Workspace.svg" alt="Workspace" /> },
+    { id: 'wifi', label: dict.hosting.pages.amenities.wifi, icon: () => <SvgIcon src="/amenities/Wifi.svg" alt="Wifi" /> },
+    { id: 'tv', label: dict.hosting.pages.amenities.tv, icon: () => <SvgIcon src="/amenities/TV.svg" alt="TV" /> },
+    { id: 'kitchen', label: dict.hosting.pages.amenities.kitchen, icon: () => <SvgIcon src="/amenities/Kitchen.svg" alt="Kitchen" /> },
+    { id: 'washer', label: dict.hosting.pages.amenities.washer, icon: () => <SvgIcon src="/amenities/Washing machine.svg" alt="Washing machine" /> },
+    { id: 'free-parking', label: dict.hosting.pages.amenities.freeParking, icon: () => <SvgIcon src="/amenities/Parking.svg" alt="Free parking" /> },
+    { id: 'paid-parking', label: dict.hosting.pages.amenities.paidParking, icon: () => <SvgIcon src="/amenities/Paid parking.svg" alt="Paid parking" /> },
+    { id: 'air-conditioning', label: dict.hosting.pages.amenities.ac, icon: () => <SvgIcon src="/amenities/Air conditioning.svg" alt="Air conditioning" /> },
+    { id: 'dedicated-workspace', label: dict.hosting.pages.amenities.workspace, icon: () => <SvgIcon src="/amenities/Workspace.svg" alt="Workspace" /> },
   ];
 
   const standoutAmenities: AmenityOption[] = [
-    { id: 'pool', label: isAr ? 'مسبح' : 'Pool', icon: () => <SvgIcon src="/amenities/Pool.svg" alt="Pool" /> },
-    { id: 'hot-tub', label: isAr ? 'جاكوزي' : 'Hot tub', icon: () => <SvgIcon src="/amenities/Hot tub.svg" alt="Hot tub" /> },
-    { id: 'patio', label: isAr ? 'فناء' : 'Patio', icon: () => <SvgIcon src="/amenities/Patio.svg" alt="Patio" /> },
-    { id: 'bbq-grill', label: isAr ? 'شواية' : 'BBQ grill', icon: () => <SvgIcon src="/amenities/BBQ grill.svg" alt="BBQ grill" /> },
+    { id: 'pool', label: dict.hosting.pages.amenities.pool, icon: () => <SvgIcon src="/amenities/Pool.svg" alt="Pool" /> },
+    { id: 'hot-tub', label: dict.hosting.pages.amenities.hotTub, icon: () => <SvgIcon src="/amenities/Hot tub.svg" alt="Hot tub" /> },
+    { id: 'patio', label: dict.hosting.pages.amenities.patio, icon: () => <SvgIcon src="/amenities/Patio.svg" alt="Patio" /> },
+    { id: 'bbq-grill', label: dict.hosting.pages.amenities.bbqGrill, icon: () => <SvgIcon src="/amenities/BBQ grill.svg" alt="BBQ grill" /> },
   ];
 
   return (
@@ -81,7 +82,7 @@ const AmenitySelector: React.FC<AmenitySelectorProps> = ({
       {/* Guest Favorites */}
       <div>
         <h5 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
-          {isAr ? "ماذا عن مفضلات الضيوف هذه؟" : "What about these guest favorites?"}
+          {dict.hosting.pages.amenities.guestFavorites}
         </h5>
         <div className="grid grid-cols-4 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 pt-2 ">
           {guestFavorites.map((amenity) => (
@@ -102,7 +103,7 @@ const AmenitySelector: React.FC<AmenitySelectorProps> = ({
       {/* Standout Amenities */}
       <div>
         <h5 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
-          {isAr ? "هل لديك أي مرافق مميزة؟" : "Do you have any standout amenities?"}
+          {dict.hosting.pages.amenities.standoutAmenities}
         </h5>
         <div className="grid grid-cols-4 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 pt-2">
           {standoutAmenities.map((amenity) => (

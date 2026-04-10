@@ -7,6 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Minus, Plus } from 'lucide-react';
 import { useHostValidation } from '@/context/onboarding-validation-context';
 import { ListingProvider, useListing } from '@/components/host/use-listing';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface FloorPlanPageProps {
   params: Promise<{ id: string }>;
@@ -15,7 +16,7 @@ interface FloorPlanPageProps {
 const FloorPlanPageContent = ({ params }: FloorPlanPageProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [id, setId] = React.useState<string>('');
   const { enableNext } = useHostValidation();
   const { listing, updateListingData, loadListing } = useListing();
@@ -124,10 +125,10 @@ const FloorPlanPageContent = ({ params }: FloorPlanPageProps) => {
           {/* Left div - Title */}
           <div className="flex-1 flex flex-col">
             <h3 className="">
-              {isAr ? <>شارك بعض الأساسيات <br /> عن مكانك</> : <>Share some basics <br /> about your place</>}
+              {dict.hosting.pages.floorPlan.title}
             </h3>
             <p className="mt-3 sm:mt-4 text-sm sm:text-base text-muted-foreground">
-              {isAr ? 'ستضيف المزيد من التفاصيل لاحقاً، مثل أنواع الأسرّة.' : "You'll add more details later, like bed types."}
+              {dict.hosting.pages.floorPlan.subtitle}
             </p>
           </div>
 
@@ -135,25 +136,25 @@ const FloorPlanPageContent = ({ params }: FloorPlanPageProps) => {
           <div className="flex-1">
             <div className="bg-background">
               <CounterRow
-                label={isAr ? "الضيوف" : "Guests"}
+                label={dict.hosting.pages.floorPlan.guests}
                 value={counts.guests}
                 onDecrease={() => updateCount('guests', -1)}
                 onIncrease={() => updateCount('guests', 1)}
               />
               <CounterRow
-                label={isAr ? "غرف النوم" : "Bedrooms"}
+                label={dict.hosting.pages.floorPlan.bedrooms}
                 value={counts.bedrooms}
                 onDecrease={() => updateCount('bedrooms', -1)}
                 onIncrease={() => updateCount('bedrooms', 1)}
               />
               <CounterRow
-                label={isAr ? "الأسرّة" : "Beds"}
+                label={dict.hosting.pages.floorPlan.beds}
                 value={counts.beds}
                 onDecrease={() => updateCount('beds', -1)}
                 onIncrease={() => updateCount('beds', 1)}
               />
               <CounterRow
-                label={isAr ? "الحمامات" : "Bathrooms"}
+                label={dict.hosting.pages.floorPlan.bathrooms}
                 value={counts.bathrooms}
                 onDecrease={() => updateCount('bathrooms', -1)}
                 onIncrease={() => updateCount('bathrooms', 1)}

@@ -7,6 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { StepNavigation } from '@/components/host/step-navigation';
 import { useHostValidation } from '@/context/onboarding-validation-context';
 import { ListingProvider, useListing } from '@/components/host/use-listing';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface TitlePageProps {
   params: Promise<{ id: string }>;
@@ -15,7 +16,7 @@ interface TitlePageProps {
 const TitlePageContent = ({ params }: TitlePageProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [id, setId] = React.useState<string>('');
   const { enableNext, disableNext } = useHostValidation();
   const { listing, updateListingData, loadListing } = useListing();
@@ -81,10 +82,10 @@ const TitlePageContent = ({ params }: TitlePageProps) => {
           {/* Left side - Text content */}
           <div className="space-y-3 sm:space-y-4">
             <h3>
-              {isAr ? <>الآن، دعنا نعطي <br /> منزلك عنواناً</> : <>Now, let's give your <br /> house a title</>}
+              {dict.hosting.pages.titlePage.title}
             </h3>
             <p className="text-sm sm:text-base text-muted-foreground">
-              {isAr ? 'العناوين القصيرة تعمل بشكل أفضل. استمتع بها — يمكنك تغييرها لاحقاً.' : "Short titles work best. Have fun with it—you can always change it later."}
+              {dict.hosting.pages.titlePage.subtitle}
             </p>
           </div>
 

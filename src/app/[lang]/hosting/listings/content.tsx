@@ -1,18 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { ListView, GridView } from '@/components/atom/property-icons';
 import { getHostListings } from '@/components/host/actions';
 import { useSession } from 'next-auth/react';
 import ListingCard from '@/components/hosting/listing/listing-card';
 import { Listing } from '@/types/listing';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 export default function HostingListingsContent() {
   const router = useRouter();
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith('/ar');
+  const dict = useDictionary();
   const { data: session, status } = useSession();
   const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
   const [listings, setListings] = useState<Listing[]>([]);
@@ -47,7 +47,7 @@ export default function HostingListingsContent() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading your listings...</div>
+          <div className="text-gray-500">{dict.hosting?.listingsPage?.loading ?? "Loading your listings..."}</div>
         </div>
       </div>
     );
@@ -63,7 +63,7 @@ export default function HostingListingsContent() {
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
-              Try Again
+              {dict.hosting?.listingsPage?.tryAgain ?? "Try Again"}
             </button>
           </div>
         </div>
@@ -76,7 +76,7 @@ export default function HostingListingsContent() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 space-y-4 sm:space-y-0">
-          <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">Your listings</h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">{dict.hosting?.listingsPage?.title ?? "Your listings"}</h1>
           <div className="flex items-center space-x-2 sm:space-x-3">
             <button className="p-3 sm:p-2 bg-muted rounded-full hover:bg-muted/80 transition-colors min-h-[44px] sm:min-h-[32px] min-w-[44px] sm:min-w-[32px]">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -110,15 +110,15 @@ export default function HostingListingsContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No listings yet</h3>
-            <p className="mt-1 text-sm text-gray-500">Get started by creating your first listing.</p>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">{dict.hosting?.listingsPage?.noListings ?? "No listings yet"}</h3>
+            <p className="mt-1 text-sm text-gray-500">{dict.hosting?.listingsPage?.noListingsDescription ?? "Get started by creating your first listing."}</p>
             <div className="mt-4 sm:mt-6">
               <button
                 onClick={() => router.push('/host/overview')}
                 className="inline-flex items-center px-6 py-3 sm:px-4 sm:py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 min-h-[44px] sm:min-h-[32px]"
               >
                 <Plus className="-ms-1 me-2 h-5 w-5" />
-                Create Listing
+                {dict.hosting?.listingsPage?.createListing ?? "Create Listing"}
               </button>
             </div>
           </div>

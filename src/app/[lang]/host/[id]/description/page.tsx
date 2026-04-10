@@ -8,6 +8,7 @@ import { Heart, Star, Sparkles, Home, MapPin, Users } from 'lucide-react';
 import { useListing } from '@/components/host/use-listing';
 import { useHostValidation } from '@/context/onboarding-validation-context';
 import { Highlight } from '@prisma/client';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface DescriptionPageProps {
   params: Promise<{ id: string }>;
@@ -30,7 +31,7 @@ const mapHighlightToPrisma = (highlightId: string): Highlight => {
 const DescriptionPageContent = ({ params }: DescriptionPageProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const { setCustomNavigation } = useHostValidation();
   const { listing, updateListingData, loadListing } = useListing();
   const [id, setId] = React.useState<string>('');
@@ -122,12 +123,12 @@ const DescriptionPageContent = ({ params }: DescriptionPageProps) => {
   }, [currentStep, selectedHighlights, description, id]);
 
   const highlights = [
-    { id: '1', title: isAr ? 'هادئ' : 'Peaceful', icon: Heart },
-    { id: '2', title: isAr ? 'فريد' : 'Unique', icon: Star },
-    { id: '3', title: isAr ? 'مناسب للعائلات' : 'Family-friendly', icon: Users },
-    { id: '4', title: isAr ? 'أنيق' : 'Stylish', icon: Sparkles },
-    { id: '5', title: isAr ? 'مركزي' : 'Central', icon: MapPin },
-    { id: '6', title: isAr ? 'واسع' : 'Spacious', icon: Home }
+    { id: '1', title: dict.hosting.pages.description.peaceful, icon: Heart },
+    { id: '2', title: dict.hosting.pages.description.unique, icon: Star },
+    { id: '3', title: dict.hosting.pages.description.familyFriendly, icon: Users },
+    { id: '4', title: dict.hosting.pages.description.stylish, icon: Sparkles },
+    { id: '5', title: dict.hosting.pages.description.central, icon: MapPin },
+    { id: '6', title: dict.hosting.pages.description.spacious, icon: Home }
   ];
 
   const toggleHighlight = (highlightId: string) => {
@@ -156,16 +157,14 @@ const DescriptionPageContent = ({ params }: DescriptionPageProps) => {
           {/* Left side - Text content */}
           <div className="space-y-3 sm:space-y-4">
             <h3>
-              {currentStep === 'highlights' ? (
-                isAr ? <>بعد ذلك، دعنا نصف <br /> منزلك</> : <>Next, let's describe <br /> your house</>
-              ) : (
-                isAr ? <>أنشئ وصفك</> : <>Create your description</>
-              )}
+              {currentStep === 'highlights'
+                ? dict.hosting.pages.description.highlightsTitle
+                : dict.hosting.pages.description.descriptionTitle}
             </h3>
             <p className="text-sm sm:text-base text-muted-foreground">
               {currentStep === 'highlights'
-                ? (isAr ? "اختر حتى ميزتين. سنستخدمها لبدء وصفك." : "Choose up to 2 highlights. We'll use these to get your description started.")
-                : (isAr ? "شارك ما يجعل مكانك مميزاً." : "Share what makes your place special.")}
+                ? dict.hosting.pages.description.highlightsSubtitle
+                : dict.hosting.pages.description.descriptionSubtitle}
             </p>
           </div>
 

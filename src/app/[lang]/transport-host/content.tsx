@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import Loading from '@/components/atom/loading';
 import { getMyTransportOffices } from '@/lib/actions/transport-actions';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface TransportOffice {
   id: number;
@@ -31,6 +32,8 @@ export default function TransportHostContent() {
   const pathname = usePathname();
   const currentLocale = pathname.startsWith('/ar') ? 'ar' : 'en';
   const { session, status } = useAuthRedirect();
+  const dict = useDictionary();
+  const t = dict.transport.host;
   const [offices, setOffices] = useState<TransportOffice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -59,7 +62,7 @@ export default function TransportHostContent() {
   };
 
   if (status === 'loading' || isLoading) {
-    return <Loading variant="fullscreen" text="Loading..." />;
+    return <Loading variant="fullscreen" text={dict.common.loading} />;
   }
 
   if (!session) {
@@ -72,24 +75,23 @@ export default function TransportHostContent() {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full mb-6">
             <Bus className="h-5 w-5" />
-            <span className="text-sm font-medium">Transport Host</span>
+            <span className="text-sm font-medium">{t.badge}</span>
           </div>
           <h1 className="text-4xl font-bold mb-4">
-            Welcome, {session.user?.name || 'Host'}
+            {t.welcome.replace('{name}', session.user?.name || 'Host')}
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Manage your transport offices and start accepting online bookings for
-            your bus services.
+            {t.manageDescription}
           </p>
         </div>
 
         {offices.length > 0 ? (
           <div className="space-y-8">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">Your Offices</h2>
+              <h2 className="text-2xl font-semibold">{t.yourOffices}</h2>
               <Button onClick={handleCreateNew}>
                 <Plus className="h-4 w-4 me-2" />
-                Add New Office
+                {t.addNewOffice}
               </Button>
             </div>
 
@@ -116,12 +118,12 @@ export default function TransportHostContent() {
                       <div className="flex gap-2">
                         {office.isVerified && (
                           <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                            Verified
+                            {t.verified}
                           </span>
                         )}
                         {!office.isActive && (
                           <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                            Draft
+                            {t.draft}
                           </span>
                         )}
                       </div>
@@ -130,13 +132,13 @@ export default function TransportHostContent() {
                     <CardDescription>
                       {office.assemblyPoint
                         ? `${office.assemblyPoint.name}, ${office.assemblyPoint.city}`
-                        : 'No location set'}
+                        : t.noLocationSet}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>{office._count.buses} buses</span>
-                      <span>{office._count.routes} routes</span>
+                      <span>{office._count.buses} {t.buses}</span>
+                      <span>{office._count.routes} {t.routes}</span>
                     </div>
                     <Button variant="ghost" className="mt-4 w-full">
                       Continue Setup

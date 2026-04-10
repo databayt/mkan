@@ -5,18 +5,20 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 const HostingHeader = () => {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const dict = useDictionary();
 
   const isAr = pathname?.startsWith('/ar');
 
   const navigationItems = [
-    { name: isAr ? "اليوم" : "Today", href: '/hosting' },
-    { name: isAr ? "التقويم" : "Calendar", href: '/hosting/calendar' },
-    { name: isAr ? "القوائم" : "Listings", href: '/hosting/listings' },
-    { name: isAr ? "الرسائل" : "Messages", href: '/hosting/messages', hasNotification: true },
+    { name: dict.hosting?.header?.today ?? "Today", href: '/hosting' },
+    { name: dict.hosting?.header?.calendar ?? "Calendar", href: '/hosting/calendar' },
+    { name: dict.hosting?.header?.listings ?? "Listings", href: '/hosting/listings' },
+    { name: dict.hosting?.header?.messages ?? "Messages", href: '/hosting/messages', hasNotification: true },
   ];
 
   const isActiveRoute = (href: string) => {
@@ -37,13 +39,13 @@ const HostingHeader = () => {
               <div className="flex items-center gap-2">
                 <Image
                   src="/tent.png"
-                  alt={isAr ? "شعار مكان" : "Mkan Logo"}
+                  alt={dict.hosting?.header?.logo ?? "Mkan Logo"}
                   width={20}
                   height={20}
                   className="w-4 h-4 sm:w-5 sm:h-5"
                 />
                 <div className="text-lg sm:text-xl font-bold text-gray-900">
-                  {isAr ? "مكان" : (<>Mk<span className="font-light hover:text-gray-700 text-gray-600">an</span></>)}
+                  {isAr ? (dict.hosting?.header?.brandName ?? "مكان") : (<>Mk<span className="font-light hover:text-gray-700 text-gray-600">an</span></>)}
                 </div>
               </div>
             </Link>
@@ -113,7 +115,7 @@ const HostingHeader = () => {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="px-4 py-3 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
               >
-                {isAr ? "التبديل إلى وضع المسافر" : "Switch to traveling"}
+                {dict.hosting?.header?.switchToTraveling ?? "Switch to traveling"}
               </Link>
             </nav>
           </div>

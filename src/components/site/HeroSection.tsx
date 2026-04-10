@@ -4,15 +4,14 @@ import Image from "next/image";
 import React from "react";
 import SiteHeader from "@/components/template/header/header";
 import BookingForm from "@/components/template/search/vertical-search";
-import { usePathname } from "next/navigation";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 interface HeroSectionProps {
   onSearch?: () => void;
 }
 
 const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
@@ -25,7 +24,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
       <div className="relative h-full w-full">
         <Image
           src="/hero.png"
-          alt={isAr ? "منصة مكان للإيجارات" : "Mkan Rental Platform Hero Section"}
+          alt={dict.home?.hero?.altText}
           fill
           className="object-cover object-center"
           priority

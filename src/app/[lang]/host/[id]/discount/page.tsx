@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useHostValidation } from '@/context/onboarding-validation-context';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface DiscountPageProps {
   params: Promise<{ id: string }>;
@@ -17,7 +18,7 @@ interface DiscountPageProps {
 const DiscountPage = ({ params }: DiscountPageProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [id, setId] = React.useState<string>('');
   const [selectedDiscounts, setSelectedDiscounts] = useState<string[]>([
     'new-listing',
@@ -49,27 +50,27 @@ const DiscountPage = ({ params }: DiscountPageProps) => {
     {
       id: 'new-listing',
       percentage: '20%',
-      title: isAr ? 'عرض الإعلان الجديد' : 'New listing promotion',
-      description: isAr ? 'قدّم خصم 20% على أول 3 حجوزات' : 'Offer 20% off your first 3 bookings',
+      title: dict.hosting.pages.discount.newListingPromotion,
+      description: dict.hosting.pages.discount.newListingDescription,
     },
     {
       id: 'last-minute',
       percentage: '25%',
-      title: isAr ? 'خصم اللحظة الأخيرة' : 'Last-minute discount',
-      description: isAr ? 'للإقامات المحجوزة قبل 14 يوماً أو أقل من الوصول' : 'For stays booked 14 days or less before arrival',
+      title: dict.hosting.pages.discount.lastMinuteDiscount,
+      description: dict.hosting.pages.discount.lastMinuteDescription,
     },
     {
       id: 'weekly',
       percentage: '10%',
-      title: isAr ? 'خصم أسبوعي' : 'Weekly discount',
-      description: isAr ? 'للإقامات من 7 ليالٍ أو أكثر' : 'For stays of 7 nights or more',
+      title: dict.hosting.pages.discount.weeklyDiscount,
+      description: dict.hosting.pages.discount.weeklyDescription,
     },
   ];
 
   return (
     <HostStepLayout
-      title={isAr ? "أضف خصومات" : "Add discounts"}
-      subtitle={isAr ? "ساعد مكانك على التميز للحصول على حجوزات أسرع وكسب تقييماتك الأولى." : "Help your place stand out to get booked faster and earn your first reviews."}
+      title={dict.hosting.pages.discount.title}
+      subtitle={dict.hosting.pages.discount.subtitle}
     >
       <div className="space-y-4">
         {discounts.map((discount) => (

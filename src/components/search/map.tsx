@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import mapboxgl from "mapbox-gl";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useGlobalStore } from "@/state/filters";
 import { useGetPropertiesQuery } from "@/state/api";
@@ -21,7 +22,7 @@ interface PropertyWithLocation extends Property {
 const Map = () => {
   const mapContainerRef = useRef(null);
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const filters = useGlobalStore((s) => s.filters);
   const {
     data: properties,
@@ -40,7 +41,7 @@ const Map = () => {
     });
 
     (properties as PropertyWithLocation[]).forEach((property) => {
-      const marker = createPropertyMarker(property, map, isAr);
+      const marker = createPropertyMarker(property, map, dict);
       if (!marker) return;
       const markerElement = marker.getElement();
       const path = markerElement.querySelector("path[fill='#3FB1CE']");
@@ -55,8 +56,8 @@ const Map = () => {
     return () => map.remove();
   }, [isLoading, isError, properties, filters.coordinates]);
 
-  if (isLoading) return <>{isAr ? "جاري التحميل..." : "Loading..."}</>;
-  if (isError || !properties) return <div>{isAr ? "فشل تحميل العقارات" : "Failed to fetch properties"}</div>;
+  if (isLoading) return <>{dict.listings?.loading ?? "Loading..."}</>;
+  if (isError || !properties) return <div>{dict.listings?.failedToLoad ?? "Failed to fetch properties"}</div>;
 
   return (
     <div className="basis-5/12 grow relative rounded-xl">
@@ -72,7 +73,7 @@ const Map = () => {
   );
 };
 
-const createPropertyMarker = (property: PropertyWithLocation, map: mapboxgl.Map, isAr?: boolean) => {
+const createPropertyMarker = (property: PropertyWithLocation, map: mapboxgl.Map, dict?: Record<string, any>) => {
   // Skip properties without location data
   if (!property.location) return null;
 
@@ -90,7 +91,7 @@ const createPropertyMarker = (property: PropertyWithLocation, map: mapboxgl.Map,
             <a href="/search/${property.id}" target="_blank" class="marker-popup-title">${property.name}</a>
             <p class="marker-popup-price">
               $${property.pricePerMonth}
-              <span class="marker-popup-price-unit"> / ${isAr ? "شهر" : "month"}</span>
+              <span class="marker-popup-price-unit"> / ${dict?.listings?.month ?? "month"}</span>
             </p>
           </div>
         </div>

@@ -6,6 +6,7 @@ import React from 'react';
 import { usePathname } from 'next/navigation';
 import StepHeader from '@/components/host/step-header';
 import { useHostValidation } from '@/context/onboarding-validation-context';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface StandOutPageProps {
   params: Promise<{ id: string }>;
@@ -13,7 +14,7 @@ interface StandOutPageProps {
 
 const StandOutPage = ({ params }: StandOutPageProps) => {
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [id, setId] = React.useState<string>('');
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const { enableNext } = useHostValidation();
@@ -69,8 +70,8 @@ const StandOutPage = ({ params }: StandOutPageProps) => {
       <div className="w-full">
         <StepHeader
           stepNumber={2}
-          title={isAr ? "اجعل مكانك مميزاً" : "Make your place stand out"}
-          description={isAr ? "في هذه الخطوة، ستضيف بعض المرافق التي يوفرها مكانك، بالإضافة إلى 5 صور أو أكثر. ثم ستنشئ عنواناً ووصفاً." : "In this step, you'll add some of the amenities your place offers, plus 5 or more photos. Then, you'll create a title and description."}
+          title={dict.hosting.pages.standOut.title}
+          description={dict.hosting.pages.standOut.description}
           illustration={illustration}
         />
       </div>

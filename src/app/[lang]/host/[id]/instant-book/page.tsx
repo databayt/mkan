@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { CalendarCheckmark, LightningBoltIcon } from '@/components/atom/property-icons';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface InstantBookPageProps {
   params: Promise<{ id: string }>;
@@ -13,7 +14,7 @@ interface InstantBookPageProps {
 const InstantBookPage = ({ params }: InstantBookPageProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [id, setId] = React.useState<string>('');
   const [selectedOption, setSelectedOption] = useState<string>('approve-first-5');
 
@@ -27,16 +28,16 @@ const InstantBookPage = ({ params }: InstantBookPageProps) => {
   const bookingOptions = [
     {
       id: 'approve-first-5',
-      title: isAr ? 'وافق على أول 5 حجوزات' : 'Approve your first 5 bookings',
-      subtitle: isAr ? 'موصى به' : 'Recommended',
-      description: isAr ? 'ابدأ بمراجعة طلبات الحجز، ثم انتقل إلى الحجز الفوري، حتى يتمكن الضيوف من الحجز تلقائياً.' : 'Start by reviewing reservation requests, then switch to Instant Book, so guests can book automatically.',
+      title: dict.hosting.pages.instantBook.approveFirst5,
+      subtitle: dict.hosting.pages.instantBook.recommended,
+      description: dict.hosting.pages.instantBook.approveFirst5Description,
       icon: CalendarCheckmark,
       recommended: true,
     },
     {
       id: 'instant-book',
-      title: isAr ? 'استخدم الحجز الفوري' : 'Use Instant Book',
-      description: isAr ? 'دع الضيوف يحجزون تلقائياً.' : 'Let guests book automatically.',
+      title: dict.hosting.pages.instantBook.useInstantBook,
+      description: dict.hosting.pages.instantBook.useInstantBookDescription,
       icon: LightningBoltIcon,
       recommended: false,
     },
@@ -49,12 +50,12 @@ const InstantBookPage = ({ params }: InstantBookPageProps) => {
           {/* Left column - Title and description */}
           <div className="space-y-3 sm:space-y-4">
             <h3>
-              {isAr ? <>اختر إعدادات<br /> الحجز الخاصة بك</> : <>Pick your<br /> booking settings</>}
+              {dict.hosting.pages.instantBook.title}
             </h3>
             <p className="text-sm sm:text-base text-muted-foreground">
-              {isAr ? 'يمكنك تغيير هذا في أي وقت.' : 'You can change this at any time.'}{' '}
+              {dict.hosting.pages.instantBook.subtitle}{' '}
               <button className="underline hover:no-underline text-foreground">
-                {isAr ? 'تعرف على المزيد' : 'Learn more'}
+                {dict.hosting.pages.instantBook.learnMore}
               </button>
             </p>
           </div>

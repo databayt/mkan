@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select';
 import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 import {
   createRoute,
   updateRoute,
@@ -66,6 +67,8 @@ interface RouteData {
 const RoutesPage = () => {
   const { enableNext, disableNext } = useTransportHostValidation();
   const { office } = useTransportOffice();
+  const dict = useDictionary();
+  const t = dict.transport.host;
   const [routes, setRoutes] = useState<RouteData[]>([]);
   const [assemblyPoints, setAssemblyPoints] = useState<AssemblyPoint[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -184,26 +187,26 @@ const RoutesPage = () => {
 
   return (
     <HostStepLayout
-      title={<h3>Define your routes</h3>}
-      subtitle="Set up the routes you operate. Each route connects two assembly points with a base price and estimated duration."
+      title={<h3>{t.defineRoutes}</h3>}
+      subtitle={t.defineRoutesSubtitle}
     >
       <div className="space-y-6">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="w-full" onClick={() => handleDialogClose()}>
                 <Plus className="h-4 w-4 me-2" />
-                Add Route
+                {t.addRoute}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>
-                  {editingRoute ? 'Edit Route' : 'Add New Route'}
+                  {editingRoute ? t.editRoute : t.addNewRoute}
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Origin *</Label>
+                  <Label>{t.origin} *</Label>
                   <Select
                     value={originId?.toString()}
                     onValueChange={(value) =>
@@ -211,7 +214,7 @@ const RoutesPage = () => {
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select origin" />
+                      <SelectValue placeholder={t.selectOrigin} />
                     </SelectTrigger>
                     <SelectContent>
                       {assemblyPoints
@@ -231,7 +234,7 @@ const RoutesPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Destination *</Label>
+                  <Label>{t.destination} *</Label>
                   <Select
                     value={destinationId?.toString()}
                     onValueChange={(value) =>
@@ -239,7 +242,7 @@ const RoutesPage = () => {
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select destination" />
+                      <SelectValue placeholder={t.selectDestination} />
                     </SelectTrigger>
                     <SelectContent>
                       {assemblyPoints
@@ -260,7 +263,7 @@ const RoutesPage = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="basePrice">Base Price (SDG) *</Label>
+                    <Label htmlFor="basePrice">{t.basePriceSDG} *</Label>
                     <Input
                       id="basePrice"
                       type="number"
@@ -274,7 +277,7 @@ const RoutesPage = () => {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="duration">Duration (minutes) *</Label>
+                    <Label htmlFor="duration">{t.durationMinutes} *</Label>
                     <Input
                       id="duration"
                       type="number"
@@ -290,7 +293,7 @@ const RoutesPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="distance">Distance (km)</Label>
+                  <Label htmlFor="distance">{t.distanceKm}</Label>
                   <Input
                     id="distance"
                     type="number"
@@ -306,10 +309,10 @@ const RoutesPage = () => {
                     onClick={handleDialogClose}
                     className="flex-1"
                   >
-                    Cancel
+                    {dict.common.cancel}
                   </Button>
                   <Button type="submit" className="flex-1">
-                    {editingRoute ? 'Save Changes' : 'Add Route'}
+                    {editingRoute ? t.saveChanges : t.addRoute}
                   </Button>
                 </div>
               </form>
@@ -375,9 +378,9 @@ const RoutesPage = () => {
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground border rounded-lg">
-              <p>No routes added yet</p>
+              <p>{t.noRoutesYet}</p>
               <p className="text-sm mt-1">
-                Add at least one route to continue
+                {t.addAtLeastOneRoute}
               </p>
             </div>
           )}

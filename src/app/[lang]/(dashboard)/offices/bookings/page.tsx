@@ -42,6 +42,7 @@ import Header from '@/components/Header';
 import Loading from '@/components/Loading';
 import { usePathname } from 'next/navigation';
 import { getAuthUser } from '@/lib/actions/user-actions';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 import {
   getMyTransportOffices,
   getOfficeBookings,
@@ -79,6 +80,7 @@ const statusColors: Record<string, string> = {
 const BookingsPage = () => {
   const pathname = usePathname();
   const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
   const [offices, setOffices] = useState<Array<{ id: number; name: string }>>([]);
@@ -165,11 +167,11 @@ const BookingsPage = () => {
   };
 
   if (isLoading) return <Loading />;
-  if (error) return <div className="text-red-500">{isAr ? "خطأ" : "Error"}: {error}</div>;
+  if (error) return <div className="text-red-500">{dict.dashboard.common.error}: {error}</div>;
 
   return (
     <div className="dashboard-container">
-      <Header title={isAr ? "الحجوزات" : "Bookings"} subtitle={isAr ? "إدارة حجوزات المسافرين" : "Manage passenger bookings"} />
+      <Header title={dict.dashboard.bookings.title} subtitle={dict.dashboard.bookings.subtitle} />
 
       {offices.length > 1 && (
         <div className="mb-6 flex gap-2 flex-wrap">
@@ -190,7 +192,7 @@ const BookingsPage = () => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder={isAr ? "بحث بالمرجع أو الاسم أو الهاتف..." : "Search by reference, name, or phone..."}
+            placeholder={dict.dashboard.bookings.searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="ps-10"
@@ -199,15 +201,15 @@ const BookingsPage = () => {
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[180px]">
             <Filter className="h-4 w-4 me-2" />
-            <SelectValue placeholder={isAr ? "تصفية حسب الحالة" : "Filter by status"} />
+            <SelectValue placeholder={dict.dashboard.bookings.filterByStatus} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{isAr ? "جميع الحالات" : "All Status"}</SelectItem>
-            <SelectItem value="Pending">{isAr ? "قيد الانتظار" : "Pending"}</SelectItem>
-            <SelectItem value="Confirmed">{isAr ? "مؤكد" : "Confirmed"}</SelectItem>
-            <SelectItem value="Completed">{isAr ? "مكتمل" : "Completed"}</SelectItem>
-            <SelectItem value="Cancelled">{isAr ? "ملغي" : "Cancelled"}</SelectItem>
-            <SelectItem value="NoShow">{isAr ? "لم يحضر" : "No Show"}</SelectItem>
+            <SelectItem value="all">{dict.dashboard.bookings.allStatus}</SelectItem>
+            <SelectItem value="Pending">{dict.dashboard.bookings.pending}</SelectItem>
+            <SelectItem value="Confirmed">{dict.dashboard.bookings.confirmed}</SelectItem>
+            <SelectItem value="Completed">{dict.dashboard.bookings.completed}</SelectItem>
+            <SelectItem value="Cancelled">{dict.dashboard.bookings.cancelled}</SelectItem>
+            <SelectItem value="NoShow">{dict.dashboard.bookings.noShow}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -217,13 +219,13 @@ const BookingsPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{isAr ? "المرجع" : "Reference"}</TableHead>
-                <TableHead>{isAr ? "المسافر" : "Passenger"}</TableHead>
-                <TableHead>{isAr ? "المسار" : "Route"}</TableHead>
-                <TableHead>{isAr ? "التاريخ" : "Date"}</TableHead>
-                <TableHead>{isAr ? "المقاعد" : "Seats"}</TableHead>
-                <TableHead>{isAr ? "المبلغ" : "Amount"}</TableHead>
-                <TableHead>{isAr ? "الحالة" : "Status"}</TableHead>
+                <TableHead>{dict.dashboard.bookings.reference}</TableHead>
+                <TableHead>{dict.dashboard.bookings.passenger}</TableHead>
+                <TableHead>{dict.dashboard.bookings.route}</TableHead>
+                <TableHead>{dict.dashboard.bookings.date}</TableHead>
+                <TableHead>{dict.dashboard.common.seats}</TableHead>
+                <TableHead>{dict.dashboard.bookings.amount}</TableHead>
+                <TableHead>{dict.dashboard.bookings.status}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -278,7 +280,7 @@ const BookingsPage = () => {
       ) : (
         <div className="text-center py-16 border rounded-lg">
           <Ticket className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <p className="text-muted-foreground">{isAr ? "لم يتم العثور على حجوزات" : "No bookings found"}</p>
+          <p className="text-muted-foreground">{dict.dashboard.bookings.noBookingsFound}</p>
         </div>
       )}
 
@@ -288,12 +290,12 @@ const BookingsPage = () => {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{isAr ? "تفاصيل الحجز" : "Booking Details"}</DialogTitle>
+            <DialogTitle>{dict.dashboard.bookings.bookingDetails}</DialogTitle>
           </DialogHeader>
           {selectedBooking && (
             <div className="space-y-4">
               <div className="p-4 bg-muted/50 rounded-lg text-center">
-                <p className="text-xs text-muted-foreground">{isAr ? "المرجع" : "Reference"}</p>
+                <p className="text-xs text-muted-foreground">{dict.dashboard.bookings.reference}</p>
                 <p className="text-xl font-mono font-bold">
                   {selectedBooking.bookingReference}
                 </p>
@@ -303,7 +305,7 @@ const BookingsPage = () => {
                 <div className="flex items-center gap-3">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm text-muted-foreground">{isAr ? "المسافر" : "Passenger"}</p>
+                    <p className="text-sm text-muted-foreground">{dict.dashboard.bookings.passenger}</p>
                     <p className="font-medium">{selectedBooking.passengerName}</p>
                     <p className="text-sm">{selectedBooking.passengerPhone}</p>
                   </div>
@@ -312,7 +314,7 @@ const BookingsPage = () => {
                 <div className="flex items-center gap-3">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm text-muted-foreground">{isAr ? "المسار" : "Route"}</p>
+                    <p className="text-sm text-muted-foreground">{dict.dashboard.bookings.route}</p>
                     <p className="font-medium">
                       {selectedBooking.trip.route.origin.city} →{' '}
                       {selectedBooking.trip.route.destination.city}
@@ -323,7 +325,7 @@ const BookingsPage = () => {
                 <div className="flex items-center gap-3">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm text-muted-foreground">{isAr ? "المغادرة" : "Departure"}</p>
+                    <p className="text-sm text-muted-foreground">{dict.dashboard.bookings.departure}</p>
                     <p className="font-medium">
                       {selectedBooking.trip.departureTime} •{' '}
                       {format(
@@ -337,7 +339,7 @@ const BookingsPage = () => {
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      {isAr ? "المقاعد" : "Seats"}: {selectedBooking.seats.map((s) => s.seatNumber).join(', ')}
+                      {dict.dashboard.common.seats}: {selectedBooking.seats.map((s) => s.seatNumber).join(', ')}
                     </p>
                     <p className="font-bold">
                       {selectedBooking.totalAmount.toLocaleString()} SDG
@@ -359,7 +361,7 @@ const BookingsPage = () => {
                       }
                     >
                       <CheckCircle2 className="h-4 w-4 me-2" />
-                      {isAr ? "تأكيد" : "Confirm"}
+                      {dict.dashboard.common.confirm}
                     </Button>
                     <Button
                       variant="outline"
@@ -368,7 +370,7 @@ const BookingsPage = () => {
                       }
                     >
                       <XCircle className="h-4 w-4 me-2" />
-                      {isAr ? "إلغاء" : "Cancel"}
+                      {dict.dashboard.common.cancel}
                     </Button>
                   </>
                 )}
@@ -381,7 +383,7 @@ const BookingsPage = () => {
                       }
                     >
                       <CheckCircle2 className="h-4 w-4 me-2" />
-                      {isAr ? "تم الاكتمال" : "Mark Complete"}
+                      {dict.dashboard.bookings.markComplete}
                     </Button>
                     <Button
                       variant="outline"
@@ -389,7 +391,7 @@ const BookingsPage = () => {
                         handleStatusChange(selectedBooking.id, 'NoShow')
                       }
                     >
-                      {isAr ? "لم يحضر" : "No Show"}
+                      {dict.dashboard.bookings.noShow}
                     </Button>
                   </>
                 )}

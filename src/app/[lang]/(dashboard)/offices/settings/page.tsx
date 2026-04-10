@@ -35,6 +35,7 @@ import Header from '@/components/Header';
 import Loading from '@/components/Loading';
 import { usePathname } from 'next/navigation';
 import { getAuthUser } from '@/lib/actions/user-actions';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 import {
   getMyTransportOffices,
   updateTransportOffice,
@@ -58,6 +59,7 @@ const OfficeSettingsPage = () => {
   const router = useRouter();
   const pathname = usePathname();
   const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [offices, setOffices] = useState<any[]>([]);
   const [selectedOffice, setSelectedOffice] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -173,20 +175,20 @@ const OfficeSettingsPage = () => {
   };
 
   if (isLoading) return <Loading />;
-  if (error) return <div className="text-red-500">{isAr ? "خطأ" : "Error"}: {error}</div>;
+  if (error) return <div className="text-red-500">{dict.dashboard.common.error}: {error}</div>;
 
   if (offices.length === 0) {
     return (
       <div className="dashboard-container">
-        <Header title={isAr ? "الإعدادات" : "Settings"} subtitle={isAr ? "إدارة إعدادات المكتب" : "Manage office settings"} />
-        <p className="text-muted-foreground">{isAr ? "لم يتم العثور على مكتب نقل." : "No transport office found."}</p>
+        <Header title={dict.dashboard.officeSettings.settingsTitle} subtitle={dict.dashboard.officeSettings.settingsSubtitle} />
+        <p className="text-muted-foreground">{dict.dashboard.officeSettings.noOfficeFound}</p>
       </div>
     );
   }
 
   return (
     <div className="dashboard-container">
-      <Header title={isAr ? "إعدادات المكتب" : "Office Settings"} subtitle={isAr ? "إدارة مكتب النقل الخاص بك" : "Manage your transport office"} />
+      <Header title={dict.dashboard.officeSettings.title} subtitle={dict.dashboard.officeSettings.subtitle} />
 
       {offices.length > 1 && (
         <div className="mb-6 flex gap-2 flex-wrap">
@@ -208,37 +210,37 @@ const OfficeSettingsPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              {isAr ? "معلومات المكتب" : "Office Information"}
+              {dict.dashboard.officeSettings.officeInformation}
             </CardTitle>
             <CardDescription>
-              {isAr ? "تحديث بيانات مكتبك المرئية للمسافرين" : "Update your office details visible to travelers"}
+              {dict.dashboard.officeSettings.officeInfoSubtitle}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">{isAr ? "اسم المكتب" : "Office Name"}</Label>
+                <Label htmlFor="name">{dict.dashboard.officeSettings.officeName}</Label>
                 <Input id="name" {...register('name')} />
                 {errors.name && (
                   <p className="text-sm text-destructive">{errors.name.message}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="nameAr">{isAr ? "اسم المكتب (عربي)" : "Office Name (Arabic)"}</Label>
+                <Label htmlFor="nameAr">{dict.dashboard.officeSettings.officeNameArabic}</Label>
                 <Input id="nameAr" {...register('nameAr')} dir="rtl" />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">{isAr ? "رقم الهاتف" : "Phone Number"}</Label>
+                <Label htmlFor="phone">{dict.dashboard.officeSettings.phoneNumber}</Label>
                 <Input id="phone" type="tel" {...register('phone')} />
                 {errors.phone && (
                   <p className="text-sm text-destructive">{errors.phone.message}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">{isAr ? "البريد الإلكتروني" : "Email Address"}</Label>
+                <Label htmlFor="email">{dict.dashboard.officeSettings.emailAddress}</Label>
                 <Input id="email" type="email" {...register('email')} />
                 {errors.email && (
                   <p className="text-sm text-destructive">{errors.email.message}</p>
@@ -247,17 +249,17 @@ const OfficeSettingsPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="licenseNumber">{isAr ? "رقم الترخيص" : "License Number"}</Label>
+              <Label htmlFor="licenseNumber">{dict.dashboard.officeSettings.licenseNumber}</Label>
               <Input id="licenseNumber" {...register('licenseNumber')} />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">{isAr ? "الوصف" : "Description"}</Label>
+              <Label htmlFor="description">{dict.dashboard.officeSettings.description}</Label>
               <Textarea id="description" {...register('description')} rows={3} />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="descriptionAr">{isAr ? "الوصف (عربي)" : "Description (Arabic)"}</Label>
+              <Label htmlFor="descriptionAr">{dict.dashboard.officeSettings.descriptionArabic}</Label>
               <Textarea
                 id="descriptionAr"
                 {...register('descriptionAr')}
@@ -270,17 +272,17 @@ const OfficeSettingsPage = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>{isAr ? "حالة المكتب" : "Office Status"}</CardTitle>
-            <CardDescription>{isAr ? "التحكم في ظهور مكتبك" : "Control your office visibility"}</CardDescription>
+            <CardTitle>{dict.dashboard.officeSettings.officeStatus}</CardTitle>
+            <CardDescription>{dict.dashboard.officeSettings.controlVisibility}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">{isAr ? "حالة التفعيل" : "Active Status"}</p>
+                <p className="font-medium">{dict.dashboard.officeSettings.activeStatus}</p>
                 <p className="text-sm text-muted-foreground">
                   {isActive
-                    ? (isAr ? "مكتبك مرئي ويقبل الحجوزات" : "Your office is visible and accepting bookings")
-                    : (isAr ? "مكتبك مخفي عن المسافرين" : "Your office is hidden from travelers")}
+                    ? dict.dashboard.officeSettings.officeVisible
+                    : dict.dashboard.officeSettings.officeHidden}
                 </p>
               </div>
               <Switch
@@ -296,28 +298,26 @@ const OfficeSettingsPage = () => {
             <AlertDialogTrigger asChild>
               <Button type="button" variant="destructive">
                 <Trash2 className="h-4 w-4 me-2" />
-                {isAr ? "حذف المكتب" : "Delete Office"}
+                {dict.dashboard.officeSettings.deleteOffice}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-destructive" />
-                  {isAr ? "حذف مكتب النقل" : "Delete Transport Office"}
+                  {dict.dashboard.officeSettings.deleteOfficeTitle}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  {isAr
-                    ? "لا يمكن التراجع عن هذا الإجراء. سيتم حذف مكتبك وجميع الحافلات والمسارات وسجل الحجوزات نهائيًا."
-                    : "This action cannot be undone. This will permanently delete your office, all buses, routes, and booking history."}
+                  {dict.dashboard.officeSettings.deleteOfficeDescription}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>{isAr ? "إلغاء" : "Cancel"}</AlertDialogCancel>
+                <AlertDialogCancel>{dict.dashboard.common.cancel}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDelete}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  {isAr ? "حذف" : "Delete"}
+                  {dict.dashboard.common.delete}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -325,7 +325,7 @@ const OfficeSettingsPage = () => {
 
           <Button type="submit" disabled={!isDirty || isSaving}>
             <Save className="h-4 w-4 me-2" />
-            {isSaving ? (isAr ? 'جاري الحفظ...' : 'Saving...') : (isAr ? 'حفظ التغييرات' : 'Save Changes')}
+            {isSaving ? dict.dashboard.common.saving : dict.dashboard.common.saveChanges}
           </Button>
         </div>
       </form>

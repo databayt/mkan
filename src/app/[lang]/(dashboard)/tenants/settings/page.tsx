@@ -7,16 +7,15 @@ import {
   useGetAuthUserQuery,
   useUpdateTenantSettingsMutation,
 } from "@/state/api";
-import { usePathname } from "next/navigation";
 import React from "react";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 const TenantSettings = () => {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const { data: authUser, isLoading } = useGetAuthUserQuery();
   const [updateTenant] = useUpdateTenantSettingsMutation();
 
-  if (isLoading) return <>{isAr ? "جاري التحميل..." : "Loading..."}</>;
+  if (isLoading) return <>{dict.common?.loading ?? "Loading..."}</>;
 
   const initialData = {
     name: authUser?.userInfo?.name ?? "",

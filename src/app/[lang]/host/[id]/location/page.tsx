@@ -8,6 +8,7 @@ import HostStepLayout from '@/components/host/host-step-layout';
 import { useHostValidation } from '@/context/onboarding-validation-context';
 import { ListingProvider, useListing } from '@/components/host/use-listing';
 import { LocationForm } from '@/components/host/location/form';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface LocationPageProps {
   params: Promise<{ id: string }>;
@@ -16,7 +17,7 @@ interface LocationPageProps {
 const LocationPageContent = ({ params }: LocationPageProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [id, setId] = React.useState<string>('');
   const { listing, loadListing } = useListing();
 
@@ -38,10 +39,10 @@ const LocationPageContent = ({ params }: LocationPageProps) => {
           {/* Left side - Text content */}
           <div className="space-y-4">
             <h3>
-              {isAr ? <>أين يقع <br /> مكانك؟</> : <>Where's your place <br /> located?</>}
+              {dict.hosting.pages.location.title}
             </h3>
             <p>
-              {isAr ? "يتم مشاركة عنوانك فقط مع الضيوف بعد إتمام الحجز." : "Your address is only shared with guests after they make a reservation."}
+              {dict.hosting.pages.location.subtitle}
             </p>
           </div>
 

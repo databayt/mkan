@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import StepHeader from '@/components/host/step-header';
 import { useHostValidation } from '@/context/onboarding-validation-context';
 import { ListingProvider, useListing } from '@/components/host/use-listing';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface FinishSetupPageProps {
   params: Promise<{ id: string }>;
@@ -14,7 +15,7 @@ interface FinishSetupPageProps {
 
 const FinishSetupPageContent = ({ params }: FinishSetupPageProps) => {
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [id, setId] = React.useState<string>('');
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const { enableNext } = useHostValidation();
@@ -76,8 +77,8 @@ const FinishSetupPageContent = ({ params }: FinishSetupPageProps) => {
       <div className="w-full">
         <StepHeader
           stepNumber={2}
-          title={isAr ? "أكمل وانشر" : "Finish up and publish"}
-          description={isAr ? "أخيراً، ستختار إعدادات الحجز، وتحدد التسعير، وتنشر إعلانك." : "Finally, you'll choose booking settings, set up pricing, and publish your listing."}
+          title={dict.hosting.pages.finishSetup.title}
+          description={dict.hosting.pages.finishSetup.description}
           illustration={illustration}
         />
       </div>

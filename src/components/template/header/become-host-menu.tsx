@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface BecomeHostMenuProps {
   isLandingPage?: boolean;
@@ -20,7 +21,7 @@ interface BecomeHostMenuProps {
 export function BecomeHostMenu({ isLandingPage = false, className }: BecomeHostMenuProps) {
   const pathname = usePathname();
   const currentLocale = pathname.startsWith('/ar') ? 'ar' : 'en';
-  const isAr = currentLocale === 'ar';
+  const dict = useDictionary();
 
   return (
     <DropdownMenu>
@@ -31,7 +32,7 @@ export function BecomeHostMenu({ isLandingPage = false, className }: BecomeHostM
           className
         )}
       >
-        {isAr ? "كن مضيفًا" : "Become a host"}
+        {dict.navigation?.becomeHost ?? "Become a host"}
         <ChevronDown className="h-3 w-3" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
@@ -40,10 +41,10 @@ export function BecomeHostMenu({ isLandingPage = false, className }: BecomeHostM
             <Home className="h-4 w-4" />
             <div>
               <div className="font-medium">
-                {isAr ? "استضف مساحتك" : "Host your space"}
+                {dict.navigation?.hostYourSpace ?? "Host your space"}
               </div>
               <div className="text-xs text-muted-foreground">
-                {isAr ? "أضف عقارًا للإيجار" : "List a property for rent"}
+                {dict.navigation?.listProperty ?? "List a property for rent"}
               </div>
             </div>
           </Link>
@@ -53,10 +54,10 @@ export function BecomeHostMenu({ isLandingPage = false, className }: BecomeHostM
             <Bus className="h-4 w-4" />
             <div>
               <div className="font-medium">
-                {isAr ? "استضف وسيلة نقل" : "Host transportation"}
+                {dict.navigation?.hostTransportation ?? "Host transportation"}
               </div>
               <div className="text-xs text-muted-foreground">
-                {isAr ? "قدّم خدمات النقل" : "Offer bus services"}
+                {dict.navigation?.offerBusServices ?? "Offer bus services"}
               </div>
             </div>
           </Link>

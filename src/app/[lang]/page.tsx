@@ -4,19 +4,18 @@ import { getListings } from "@/components/host/actions";
 import { createMetadata } from "@/lib/metadata";
 import { Listing } from "@/types/listing";
 import HomeContent from "./home-content";
+import { getDictionary } from "@/components/internationalization/dictionaries";
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ lang: string }>;
+  params: Promise<{ lang: "en" | "ar" }>;
 }): Promise<Metadata> {
   const { lang } = await params;
-  const isAr = lang === "ar";
+  const d = await getDictionary(lang);
   return createMetadata({
-    title: isAr ? "مكان - إيجار وسكن" : "Mkan - Rentals & Housing",
-    description: isAr
-      ? "اكتشف أفضل العقارات والشقق المفروشة للإيجار"
-      : "Discover the best properties and furnished apartments for rent",
+    title: d.home?.metadata?.title ?? "Mkan - Rentals & Housing",
+    description: d.home?.metadata?.description ?? "Discover the best properties and furnished apartments for rent",
     locale: lang,
   });
 }
@@ -33,7 +32,7 @@ async function getPublishedListings(): Promise<Listing[]> {
 export default async function HomePage({
   params,
 }: {
-  params: Promise<{ lang: string }>;
+  params: Promise<{ lang: "en" | "ar" }>;
 }) {
   const { lang } = await params;
   const listings = await getPublishedListings();

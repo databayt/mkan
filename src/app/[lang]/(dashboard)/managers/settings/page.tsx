@@ -6,10 +6,11 @@ import SettingsForm from "@/components/SettingsForm";
 import { getAuthUser, updateManagerSettings } from "@/lib/actions/user-actions";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 const ManagerSettings = () => {
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [authUser, setAuthUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +30,8 @@ const ManagerSettings = () => {
     fetchData();
   }, []);
 
-  if (isLoading) return <>{isAr ? "جاري التحميل..." : "Loading..."}</>;
-  if (error) return <div className="text-red-500">{isAr ? "خطأ" : "Error"}: {error}</div>;
+  if (isLoading) return <>{dict.dashboard.common.loading}</>;
+  if (error) return <div className="text-red-500">{dict.dashboard.common.error}: {error}</div>;
 
   const initialData = {
     name: authUser?.userInfo?.name,

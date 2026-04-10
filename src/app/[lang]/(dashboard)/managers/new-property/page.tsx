@@ -13,12 +13,13 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 const NewProperty = () => {
   const [createProperty] = useCreatePropertyMutation();
   const { data: authUser } = useGetAuthUserQuery();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
 
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -71,8 +72,8 @@ const NewProperty = () => {
   return (
     <div className="dashboard-container">
       <Header
-        title={isAr ? "إضافة عقار جديد" : "Add New Property"}
-        subtitle={isAr ? "إنشاء إعلان عقار جديد بمعلومات تفصيلية" : "Create a new property listing with detailed information"}
+        title={dict.dashboard.newProperty.title}
+        subtitle={dict.dashboard.newProperty.subtitle}
       />
       <div className="bg-white rounded-xl p-6">
         <Form {...form}>
@@ -82,12 +83,12 @@ const NewProperty = () => {
           >
             {/* Basic Information */}
             <div>
-              <h2 className="text-lg font-semibold mb-4">{isAr ? "المعلومات الأساسية" : "Basic Information"}</h2>
+              <h2 className="text-lg font-semibold mb-4">{dict.dashboard.newProperty.basicInformation}</h2>
               <div className="space-y-4">
-                <CustomFormField name="name" label={isAr ? "اسم العقار" : "Property Name"} />
+                <CustomFormField name="name" label={dict.dashboard.newProperty.propertyName} />
                 <CustomFormField
                   name="description"
-                  label={isAr ? "الوصف" : "Description"}
+                  label={dict.dashboard.newProperty.description}
                   type="textarea"
                 />
               </div>
@@ -97,21 +98,21 @@ const NewProperty = () => {
 
             {/* Fees */}
             <div className="space-y-6">
-              <h2 className="text-lg font-semibold mb-4">{isAr ? "الرسوم" : "Fees"}</h2>
+              <h2 className="text-lg font-semibold mb-4">{dict.dashboard.newProperty.fees}</h2>
               <CustomFormField
                 name="pricePerNight"
-                label={isAr ? "السعر لليلة" : "Price per Night"}
+                label={dict.dashboard.newProperty.pricePerNight}
                 type="number"
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <CustomFormField
                   name="securityDeposit"
-                  label={isAr ? "مبلغ التأمين" : "Security Deposit"}
+                  label={dict.dashboard.newProperty.securityDeposit}
                   type="number"
                 />
                 <CustomFormField
                   name="applicationFee"
-                  label={isAr ? "رسوم الطلب" : "Application Fee"}
+                  label={dict.dashboard.newProperty.applicationFee}
                   type="number"
                 />
               </div>
@@ -121,40 +122,40 @@ const NewProperty = () => {
 
             {/* Property Details */}
             <div className="space-y-6">
-              <h2 className="text-lg font-semibold mb-4">{isAr ? "تفاصيل العقار" : "Property Details"}</h2>
+              <h2 className="text-lg font-semibold mb-4">{dict.dashboard.newProperty.propertyDetails}</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <CustomFormField
                   name="beds"
-                  label={isAr ? "عدد الأسرّة" : "Number of Beds"}
+                  label={dict.dashboard.newProperty.numberOfBeds}
                   type="number"
                 />
                 <CustomFormField
                   name="baths"
-                  label={isAr ? "عدد الحمامات" : "Number of Baths"}
+                  label={dict.dashboard.newProperty.numberOfBaths}
                   type="number"
                 />
                 <CustomFormField
                   name="squareFeet"
-                  label={isAr ? "المساحة (قدم مربع)" : "Square Feet"}
+                  label={dict.dashboard.newProperty.squareFeet}
                   type="number"
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <CustomFormField
                   name="isPetsAllowed"
-                  label={isAr ? "يُسمح بالحيوانات" : "Pets Allowed"}
+                  label={dict.dashboard.newProperty.petsAllowed}
                   type="switch"
                 />
                 <CustomFormField
                   name="isParkingIncluded"
-                  label={isAr ? "موقف سيارات متاح" : "Parking Included"}
+                  label={dict.dashboard.newProperty.parkingIncluded}
                   type="switch"
                 />
               </div>
               <div className="mt-4">
                 <CustomFormField
                   name="propertyType"
-                  label={isAr ? "نوع العقار" : "Property Type"}
+                  label={dict.dashboard.newProperty.propertyType}
                   type="select"
                   options={Object.keys(PropertyTypeEnum).map((type) => ({
                     value: type,
@@ -169,12 +170,12 @@ const NewProperty = () => {
             {/* Amenities and Highlights */}
             <div>
               <h2 className="text-lg font-semibold mb-4">
-                {isAr ? "المرافق والمميزات" : "Amenities and Highlights"}
+                {dict.dashboard.newProperty.amenitiesAndHighlights}
               </h2>
               <div className="space-y-6">
                 <CustomFormField
                   name="amenities"
-                  label={isAr ? "المرافق" : "Amenities"}
+                  label={dict.dashboard.newProperty.amenities}
                   type="select"
                   options={Object.keys(AmenityEnum).map((amenity) => ({
                     value: amenity,
@@ -183,7 +184,7 @@ const NewProperty = () => {
                 />
                 <CustomFormField
                   name="highlights"
-                  label={isAr ? "المميزات" : "Highlights"}
+                  label={dict.dashboard.newProperty.highlights}
                   type="select"
                   options={Object.keys(HighlightEnum).map((highlight) => ({
                     value: highlight,
@@ -197,10 +198,10 @@ const NewProperty = () => {
 
             {/* Photos */}
             <div>
-              <h2 className="text-lg font-semibold mb-4">{isAr ? "الصور" : "Photos"}</h2>
+              <h2 className="text-lg font-semibold mb-4">{dict.dashboard.newProperty.photos}</h2>
               <CustomFormField
                 name="photoUrls"
-                label={isAr ? "صور العقار" : "Property Photos"}
+                label={dict.dashboard.newProperty.propertyPhotos}
                 type="file"
                 accept="image/*"
               />
@@ -211,30 +212,30 @@ const NewProperty = () => {
             {/* Additional Information */}
             <div className="space-y-6">
               <h2 className="text-lg font-semibold mb-4">
-                {isAr ? "معلومات إضافية" : "Additional Information"}
+                {dict.dashboard.newProperty.additionalInformation}
               </h2>
-              <CustomFormField name="address" label={isAr ? "العنوان" : "Address"} />
+              <CustomFormField name="address" label={dict.dashboard.newProperty.address} />
               <div className="flex justify-between gap-4">
-                <CustomFormField name="city" label={isAr ? "المدينة" : "City"} className="w-full" />
+                <CustomFormField name="city" label={dict.dashboard.newProperty.city} className="w-full" />
                 <CustomFormField
                   name="state"
-                  label={isAr ? "الولاية" : "State"}
+                  label={dict.dashboard.newProperty.state}
                   className="w-full"
                 />
                 <CustomFormField
                   name="postalCode"
-                  label={isAr ? "الرمز البريدي" : "Postal Code"}
+                  label={dict.dashboard.newProperty.postalCode}
                   className="w-full"
                 />
               </div>
-              <CustomFormField name="country" label={isAr ? "الدولة" : "Country"} />
+              <CustomFormField name="country" label={dict.dashboard.newProperty.country} />
             </div>
 
             <Button
               type="submit"
               className="bg-primary-700 text-white w-full mt-8"
             >
-              {isAr ? "إنشاء العقار" : "Create Property"}
+              {dict.dashboard.newProperty.createProperty}
             </Button>
           </form>
         </Form>

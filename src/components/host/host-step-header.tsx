@@ -4,6 +4,7 @@ import React from 'react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface HostStepHeaderProps {
   stepNumber?: number;
@@ -21,7 +22,7 @@ const HostStepHeader: React.FC<HostStepHeaderProps> = ({
   className,
 }) => {
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
 
   return (
     <div className={cn('w-full -mt-6 sm:-mt-10', className)}>
@@ -30,7 +31,7 @@ const HostStepHeader: React.FC<HostStepHeaderProps> = ({
         <div className="space-y-4 sm:space-y-6">
           {stepNumber && (
             <h6 className="text-sm sm:text-base font-medium text-muted-foreground">
-              {isAr ? `الخطوة ${stepNumber}` : `Step ${stepNumber}`}
+              {dict.hosting.components.stepHeader.step.replace('{number}', String(stepNumber))}
             </h6>
           )}
           

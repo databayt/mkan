@@ -1,8 +1,8 @@
 "use client";
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
 import { Home, Building, Bed, Ship, TreePine, Castle, Mountain, Container, Warehouse, Car, Building2 } from 'lucide-react';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 import SelectionCard from './selection-card';
 import { cn } from '@/lib/utils';
 import { PropertyType } from '@prisma/client';
@@ -47,22 +47,21 @@ const PropertySelector: React.FC<PropertySelectorProps> = ({
   compact = false,
   className,
 }) => {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
 
   const propertyTypes: PropertyTypeOption[] = [
-    { id: 'house', name: isAr ? 'منزل' : 'House', icon: Home, prismaValue: PropertyType.Villa },
-    { id: 'apartment', name: isAr ? 'شقة' : 'Apartment', icon: Building, prismaValue: PropertyType.Apartment },
-    { id: 'barn', name: isAr ? 'حظيرة' : 'Barn', icon: Warehouse, prismaValue: PropertyType.Cottage },
-    { id: 'bed-breakfast', name: isAr ? 'مبيت وإفطار' : 'Bed & Breakfast', icon: Bed, prismaValue: PropertyType.Rooms },
-    { id: 'boat', name: isAr ? 'قارب' : 'Boat', icon: Ship, prismaValue: PropertyType.Cottage },
-    { id: 'cabin', name: isAr ? 'كوخ' : 'Cabin', icon: TreePine, prismaValue: PropertyType.Cottage },
-    { id: 'camper-rv', name: isAr ? 'عربة تخييم' : 'Camper/RV', icon: Car, prismaValue: PropertyType.Tinyhouse },
-    { id: 'casa-particular', name: isAr ? 'كازا بارتيكولار' : 'Casa Particular', icon: Building2, prismaValue: PropertyType.Villa },
-    { id: 'castle', name: isAr ? 'قلعة' : 'Castle', icon: Castle, prismaValue: PropertyType.Villa },
-    { id: 'cave', name: isAr ? 'كهف' : 'Cave', icon: Mountain, prismaValue: PropertyType.Cottage },
-    { id: 'container', name: isAr ? 'حاوية' : 'Container', icon: Container, prismaValue: PropertyType.Tinyhouse },
-    { id: 'cycladic-home', name: isAr ? 'منزل سيكلادي' : 'Cycladic Home', icon: Home, prismaValue: PropertyType.Villa }
+    { id: 'house', name: dict.host?.propertyTypes?.house ?? 'House', icon: Home, prismaValue: PropertyType.Villa },
+    { id: 'apartment', name: dict.host?.propertyTypes?.apartment ?? 'Apartment', icon: Building, prismaValue: PropertyType.Apartment },
+    { id: 'barn', name: dict.host?.propertyTypes?.barn ?? 'Barn', icon: Warehouse, prismaValue: PropertyType.Cottage },
+    { id: 'bed-breakfast', name: dict.host?.propertyTypes?.bedBreakfast ?? 'Bed & Breakfast', icon: Bed, prismaValue: PropertyType.Rooms },
+    { id: 'boat', name: dict.host?.propertyTypes?.boat ?? 'Boat', icon: Ship, prismaValue: PropertyType.Cottage },
+    { id: 'cabin', name: dict.host?.propertyTypes?.cabin ?? 'Cabin', icon: TreePine, prismaValue: PropertyType.Cottage },
+    { id: 'camper-rv', name: dict.host?.propertyTypes?.camperRv ?? 'Camper/RV', icon: Car, prismaValue: PropertyType.Tinyhouse },
+    { id: 'casa-particular', name: dict.host?.propertyTypes?.casaParticular ?? 'Casa Particular', icon: Building2, prismaValue: PropertyType.Villa },
+    { id: 'castle', name: dict.host?.propertyTypes?.castle ?? 'Castle', icon: Castle, prismaValue: PropertyType.Villa },
+    { id: 'cave', name: dict.host?.propertyTypes?.cave ?? 'Cave', icon: Mountain, prismaValue: PropertyType.Cottage },
+    { id: 'container', name: dict.host?.propertyTypes?.container ?? 'Container', icon: Container, prismaValue: PropertyType.Tinyhouse },
+    { id: 'cycladic-home', name: dict.host?.propertyTypes?.cycladicHome ?? 'Cycladic Home', icon: Home, prismaValue: PropertyType.Villa }
   ];
 
   if (compact) {

@@ -1,10 +1,10 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Loader2, MapPin } from "lucide-react";
 import { type LocationSuggestion } from "@/lib/schemas/search-schema";
 import { FALLBACK_RECOMMENDATIONS } from "./constant";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 interface LocationProps {
   searchQuery: string;
@@ -25,8 +25,7 @@ export default function LocationDropdown({
   onSearchQueryChange,
   onLocationSelect,
 }: LocationProps) {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
 
   const displayLocations = searchQuery.trim()
     ? suggestions
@@ -35,10 +34,10 @@ export default function LocationDropdown({
       : FALLBACK_RECOMMENDATIONS;
 
   const title = searchQuery.trim()
-    ? (isAr ? "نتائج البحث" : "Search results")
+    ? (dict.search?.searchResults ?? "Search results")
     : popularLocations.length > 0
-      ? (isAr ? "وجهات شائعة" : "Popular destinations")
-      : (isAr ? "وجهات مقترحة" : "Recommended destinations");
+      ? (dict.search?.popularDestinations ?? "Popular destinations")
+      : (dict.search?.recommendedDestinations ?? "Recommended destinations");
 
   const handleKeyDown = (
     e: React.KeyboardEvent,
@@ -52,17 +51,17 @@ export default function LocationDropdown({
 
   return (
     <div role="combobox" aria-expanded="true" aria-haspopup="listbox">
-      <h3 className="text-lg font-semibold mb-4">{isAr ? "إلى أين؟" : "Where to?"}</h3>
+      <h3 className="text-lg font-semibold mb-4">{dict.search?.whereTo ?? "Where to?"}</h3>
 
       {/* Search input */}
       <div className="mb-4 relative">
         <Input
-          placeholder={isAr ? "ابحث عن وجهات..." : "Search destinations..."}
+          placeholder={dict.search?.searchDestinations ?? "Search destinations..."}
           value={searchQuery}
           onChange={(e) => onSearchQueryChange(e.target.value)}
           className="w-full h-10 border-0 border-none rounded-lg focus:outline-none focus:border-0 shadow-none text-black caret-black pe-10"
           autoFocus
-          aria-label={isAr ? "ابحث عن موقع" : "Search for a location"}
+          aria-label={dict.search?.searchLocation ?? "Search for a location"}
           aria-autocomplete="list"
           aria-controls="location-listbox"
         />
@@ -116,7 +115,7 @@ export default function LocationDropdown({
           </>
         ) : searchQuery && !isLoading ? (
           <div className="text-center text-gray-500 py-4">
-            {isAr ? `لم يتم العثور على وجهات لـ "${searchQuery}"` : <>No destinations found for &quot;{searchQuery}&quot;</>}
+            {(dict.search?.noDestinationsFound ?? "No destinations found for \"{query}\"").replace("{query}", searchQuery)}
           </div>
         ) : null}
       </div>

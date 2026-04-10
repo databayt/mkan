@@ -1,7 +1,7 @@
 "use client"
 
 import React from 'react'
-import { usePathname } from 'next/navigation'
+import { useDictionary } from '@/components/internationalization/dictionary-context'
 
 interface StepNavigationProps {
   onNext: () => void
@@ -14,16 +14,15 @@ interface StepNavigationProps {
 }
 
 export function StepNavigation(props: StepNavigationProps) {
-  const pathname = usePathname()
-  const isAr = pathname?.startsWith("/ar")
+  const dict = useDictionary()
 
   const {
     onNext,
     onPrevious,
     isNextDisabled = false,
     isPreviousDisabled = false,
-    nextLabel = isAr ? 'التالي' : 'Next',
-    previousLabel = isAr ? 'السابق' : 'Back',
+    nextLabel = dict.host?.stepNavigation?.next ?? 'Next',
+    previousLabel = dict.host?.stepNavigation?.back ?? 'Back',
     showPrevious = true,
   } = props
 

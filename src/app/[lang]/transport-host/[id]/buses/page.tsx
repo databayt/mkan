@@ -20,21 +20,22 @@ import {
 } from '@/components/ui/dialog';
 import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { createBus, updateBus, deleteBus, getBusesByOffice } from '@/lib/actions/transport-actions';
 import { BusAmenity } from '@prisma/client';
 import HostStepLayout from '@/components/host/host-step-layout';
 
-const BUS_AMENITIES = [
-  { value: 'AirConditioning', label: 'Air Conditioning' },
-  { value: 'WiFi', label: 'WiFi' },
-  { value: 'USB', label: 'USB Charging' },
-  { value: 'LegRoom', label: 'Extra Leg Room' },
-  { value: 'Toilet', label: 'Toilet' },
-  { value: 'Refreshments', label: 'Refreshments' },
-  { value: 'Entertainment', label: 'Entertainment' },
-  { value: 'Luggage', label: 'Luggage Storage' },
-  { value: 'Reclining', label: 'Reclining Seats' },
-];
+const BUS_AMENITY_KEYS = [
+  'AirConditioning',
+  'WiFi',
+  'USB',
+  'LegRoom',
+  'Toilet',
+  'Refreshments',
+  'Entertainment',
+  'Luggage',
+  'Reclining',
+] as const;
 
 const busSchema = z.object({
   plateNumber: z.string().min(3, 'Plate number is required'),
@@ -61,6 +62,8 @@ interface BusData {
 const BusesPage = () => {
   const { enableNext, disableNext } = useTransportHostValidation();
   const { office } = useTransportOffice();
+  const dict = useDictionary();
+  const t = dict.transport.host;
   const [buses, setBuses] = useState<BusData[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBus, setEditingBus] = useState<BusData | null>(null);
@@ -179,26 +182,26 @@ const BusesPage = () => {
 
   return (
     <HostStepLayout
-      title={<h3>Add your buses</h3>}
-      subtitle="Register the buses in your fleet. Include details like capacity and amenities to help travelers choose."
+      title={<h3>{t.addBuses}</h3>}
+      subtitle={t.addBusesSubtitle}
     >
       <div className="space-y-6">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="w-full" onClick={() => handleDialogClose()}>
                 <Plus className="h-4 w-4 me-2" />
-                Add Bus
+                {t.addBus}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>
-                  {editingBus ? 'Edit Bus' : 'Add New Bus'}
+                  {editingBus ? t.editBus : t.addNewBus}
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="plateNumber">Plate Number *</Label>
+                  <Label htmlFor="plateNumber">{t.plateNumber} *</Label>
                   <Input
                     id="plateNumber"
                     {...register('plateNumber')}
@@ -213,7 +216,7 @@ const BusesPage = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="manufacturer">Manufacturer</Label>
+                    <Label htmlFor="manufacturer">{t.manufacturer}</Label>
                     <Input
                       id="manufacturer"
                       {...register('manufacturer')}
@@ -221,7 +224,7 @@ const BusesPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="model">Model</Label>
+                    <Label htmlFor="model">{t.model}</Label>
                     <Input
                       id="model"
                       {...register('model')}
@@ -232,7 +235,7 @@ const BusesPage = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="year">Year</Label>
+                    <Label htmlFor="year">{t.year}</Label>
                     <Input
                       id="year"
                       type="number"
@@ -241,7 +244,7 @@ const BusesPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="capacity">Capacity *</Label>
+                    <Label htmlFor="capacity">{t.capacity} *</Label>
                     <Input
                       id="capacity"
                       type="number"
@@ -257,20 +260,20 @@ const BusesPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Amenities</Label>
+                  <Label>{t.amenities}</Label>
                   <div className="flex flex-wrap gap-2">
-                    {BUS_AMENITIES.map((amenity) => (
+                    {BUS_AMENITY_KEYS.map((amenity) => (
                       <Badge
-                        key={amenity.value}
+                        key={amenity}
                         variant={
-                          selectedAmenities.includes(amenity.value)
+                          selectedAmenities.includes(amenity)
                             ? 'default'
                             : 'outline'
                         }
                         className="cursor-pointer"
-                        onClick={() => toggleAmenity(amenity.value)}
+                        onClick={() => toggleAmenity(amenity)}
                       >
-                        {amenity.label}
+                        {t.amenityLabels?.[amenity as keyof typeof t.amenityLabels] || amenity}
                       </Badge>
                     ))}
                   </div>
@@ -283,10 +286,10 @@ const BusesPage = () => {
                     onClick={handleDialogClose}
                     className="flex-1"
                   >
-                    Cancel
+                    {dict.common.cancel}
                   </Button>
                   <Button type="submit" className="flex-1">
-                    {editingBus ? 'Save Changes' : 'Add Bus'}
+                    {editingBus ? t.saveChanges : t.addBus}
                   </Button>
                 </div>
               </form>
@@ -317,7 +320,7 @@ const BusesPage = () => {
                         {bus.model && ` ${bus.model}`}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {bus.capacity} seats
+                        {bus.capacity} {t.seats}
                         {bus.year && ` • ${bus.year}`}
                       </p>
                       {bus.amenities && bus.amenities.length > 0 && (
@@ -328,15 +331,12 @@ const BusesPage = () => {
                               variant="secondary"
                               className="text-xs"
                             >
-                              {
-                                BUS_AMENITIES.find((a) => a.value === amenity)
-                                  ?.label
-                              }
+                              {t.amenityLabels?.[amenity as keyof typeof t.amenityLabels] || amenity}
                             </Badge>
                           ))}
                           {bus.amenities.length > 4 && (
                             <Badge variant="secondary" className="text-xs">
-                              +{bus.amenities.length - 4} more
+                              +{bus.amenities.length - 4} {t.more}
                             </Badge>
                           )}
                         </div>
@@ -367,9 +367,9 @@ const BusesPage = () => {
           ) : (
             <div className="text-center py-8 text-muted-foreground border rounded-lg">
               <Bus className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No buses added yet</p>
+              <p>{t.noBusesYet}</p>
               <p className="text-sm mt-1">
-                Add at least one bus to continue
+                {t.addAtLeastOneBus}
               </p>
             </div>
           )}

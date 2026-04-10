@@ -3,11 +3,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { usePathname } from "next/navigation";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 const HeaderContent = () => {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
 
   return (
     <header className="w-full bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -18,13 +17,13 @@ const HeaderContent = () => {
             <div className="flex items-center space-x-2 rtl:space-x-reverse">
               <Image
                 src="/logo.svg"
-                alt={isAr ? "مكان" : "Mkan"}
+                alt={dict.navigation?.brandName ?? "Mkan"}
                 width={32}
                 height={32}
                 className="w-8 h-8"
               />
               <span className="text-xl font-bold text-secondary-600">
-                {isAr ? "مكان" : "Mkan"}
+                {dict.navigation?.brandName ?? "Mkan"}
               </span>
             </div>
           </Link>
@@ -35,31 +34,31 @@ const HeaderContent = () => {
               href="/search"
               className="text-gray-700 hover:text-secondary-600 transition-colors"
             >
-              {isAr ? "تصفح الإيجارات" : "Browse Rentals"}
+              {dict.navigation?.browseRentals ?? "Browse Rentals"}
             </Link>
             <Link
               href="/become-host"
               className="text-gray-700 hover:text-secondary-600 transition-colors"
             >
-              {isAr ? "كن مضيفًا" : "Become a Host"}
+              {dict.navigation?.becomeHost ?? "Become a Host"}
             </Link>
             <Link
               href="/help"
               className="text-gray-700 hover:text-secondary-600 transition-colors"
             >
-              {isAr ? "المساعدة" : "Help"}
+              {dict.navigation?.help ?? "Help"}
             </Link>
 
             {/* Auth Buttons */}
             <div className="flex items-center space-x-2 rtl:space-x-reverse">
               <Button variant="ghost" asChild>
                 <Link href="/auth/login">
-                  {isAr ? "تسجيل الدخول" : "Sign In"}
+                  {dict.navigation?.signIn ?? "Sign In"}
                 </Link>
               </Button>
               <Button asChild>
                 <Link href="/auth/register">
-                  {isAr ? "إنشاء حساب" : "Sign Up"}
+                  {dict.navigation?.signUp ?? "Sign Up"}
                 </Link>
               </Button>
             </div>

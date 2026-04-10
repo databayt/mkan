@@ -1,7 +1,8 @@
 "use client";
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
+import { useLocale } from '@/components/internationalization/use-locale';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface Destination {
   id: string;
@@ -61,14 +62,14 @@ const AirbnbInspiration: React.FC<AirbnbInspirationProps> = ({
   destinations = defaultDestinations,
   className = "",
 }) => {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const { locale } = useLocale();
+  const dict = useDictionary();
 
   return (
     <div className={`w-full ${className}`}>
       {/* Section Title */}
       <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-6">
-        {isAr ? "إلهام لرحلتك القادمة في السودان" : "Inspiration for your next trip in Sudan"}
+        {dict.home?.inspiration?.title}
       </h2>
 
       {/* Destination Cards Grid */}
@@ -93,10 +94,10 @@ const AirbnbInspiration: React.FC<AirbnbInspirationProps> = ({
               style={{ backgroundColor: destination.backgroundColor }}
             >
               <h3 className="text-lg font-semibold mb-1">
-                {isAr ? destination.titleAr : destination.title}
+                {locale === 'ar' ? destination.titleAr : destination.title}
               </h3>
               <p className="text-sm opacity-90 text-white">
-                {isAr ? destination.distanceAr : destination.distance}
+                {locale === 'ar' ? destination.distanceAr : destination.distance}
               </p>
             </div>
           </div>

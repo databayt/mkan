@@ -47,7 +47,21 @@
     "blog": "المدونة",
     "pricing": "التسعير",
     "documentation": "الوثائق",
-    "brandName": "مكان"
+    "brandName": "مكان",
+    "browseRentals": "تصفح الإيجارات",
+    "becomeHost": "كن مضيفاً",
+    "help": "المساعدة",
+    "hostYourSpace": "استضف مساحتك",
+    "listProperty": "أضف عقاراً للإيجار",
+    "hostTransportation": "استضف وسيلة نقل",
+    "offerBusServices": "قدّم خدمات النقل",
+    "addNewProperty": "إضافة عقار جديد",
+    "searchProperties": "البحث عن عقارات",
+    "switchLanguage": "تبديل اللغة",
+    "logoAlt": "شعار مكان",
+    "signIn": "تسجيل الدخول",
+    "signUp": "إنشاء حساب",
+    "logout": "تسجيل الخروج"
   },
   "auth": {
     "signIn": "دخول",
@@ -83,13 +97,171 @@
       "subtitle": "كل ما تحتاجه لبناء مشروعك التالي"
     },
     "pricing": {
-      "title": "التسعير",
-      "subtitle": "اختر الخطة التي تناسبك",
-      "monthly": "شهرياً",
-      "yearly": "سنوياً",
-      "free": "مجاني",
-      "pro": "احترافي",
-      "enterprise": "المؤسسات"
+      "badge": "ضمان العائد على الاستثمار",
+      "title": "بسيط. شفاف.",
+      "subtitle": "جميع المكونات واللبنات الأساسية مفتوحة المصدر — نتقاضى رسوماً مقابل صياغة تحف فنية كاملة الوظائف وضمان موثوقيتها المستمرة.",
+      "headerSection": {
+        "label": "التسعير",
+        "title": "حول حضورك الرقمي",
+        "subtitle": "اختر الخطة المثالية لاحتياجات عملك"
+      },
+      "plans": {
+        "hobby": {
+          "title": "هواية",
+          "description": "ابدأ مجاناً",
+          "benefits": [
+            "موقع ويب يصل إلى 5 صفحات",
+            "تصميم متجاوب أساسي",
+            "تكامل نموذج الاتصال"
+          ]
+        },
+        "pro": {
+          "title": "احترافي",
+          "description": "للشركات المتنامية",
+          "benefits": [
+            "موقع ويب يصل إلى 15 صفحة",
+            "رسوم متحركة متقدمة",
+            "تحسين محركات البحث",
+            "علامة تجارية مخصصة"
+          ]
+        },
+        "ultra": {
+          "title": "ألترا",
+          "description": "للمؤسسات الكبيرة",
+          "benefits": [
+            "صفحات وميزات غير محدودة",
+            "تكاملات مخصصة"
+          ]
+        }
+      },
+      "constants": {
+        "free": "مجاني",
+        "includes": "يتضمن",
+        "everythingInHobby": "كل شيء في الهواية، بالإضافة إلى",
+        "everythingInPro": "كل شيء في الاحترافي، بالإضافة إلى",
+        "startTrial": "ابدأ التجربة",
+        "getPro": "احصل على الاحترافي",
+        "getUltra": "احصل على ألترا",
+        "monthly": "شهرياً",
+        "yearly": "سنوياً (وفر 20%)",
+        "perMonth": "/شهر",
+        "moreInfo": "مزيد من المعلومات"
+      },
+      "planNames": {
+        "hobby": "هواية",
+        "pro": "احترافي",
+        "ultra": "ألترا",
+        "enterprise": "المؤسسات"
+      },
+      "enterprise": {
+        "badge": "المؤسسات",
+        "title": "تحتاج إلى شيء أكبر؟",
+        "description": "للمؤسسات والمنظمات الكبيرة، نقدم حلولاً مخصصة مع فرق مخصصة واتفاقيات مستوى الخدمة ودعم متخصص مصمم خصيصاً لمتطلباتك الفريدة.",
+        "talkToSales": "تحدث إلى المبيعات"
+      },
+      "comparePlans": {
+        "title": "قارن الخطط",
+        "subtitle": "ابحث عن الخطة المثالية المصممة خصيصاً لاحتياجات عملك!",
+        "features": {
+          "websitePages": "صفحات الموقع",
+          "responsiveDesign": "تصميم متجاوب",
+          "customBranding": "علامة تجارية مخصصة",
+          "seoOptimization": "تحسين محركات البحث",
+          "contactForms": "نماذج الاتصال",
+          "animationsEffects": "الرسوم المتحركة والتأثيرات",
+          "contentManagement": "إدارة المحتوى",
+          "performanceOptimization": "تحسين الأداء",
+          "securityFeatures": "ميزات الأمان",
+          "analyticsReporting": "التحليلات والتقارير",
+          "support": "الدعم",
+          "revisions": "المراجعات",
+          "hosting": "الاستضافة",
+          "backupMaintenance": "النسخ الاحتياطي والصيانة",
+          "customIntegrations": "تكاملات مخصصة",
+          "trainingDocumentation": "التدريب والتوثيق",
+          "launchAssistance": "المساعدة في الإطلاق",
+          "performanceMonitoring": "مراقبة الأداء"
+        },
+        "values": {
+          "upTo5": "يصل إلى 5",
+          "upTo15": "يصل إلى 15",
+          "unlimited": "غير محدود",
+          "basic": "أساسي",
+          "advanced": "متقدم",
+          "premium": "مميز",
+          "custom": "مخصص",
+          "static": "ثابت",
+          "basicCms": "CMS أساسي",
+          "advancedCms": "CMS متقدم",
+          "customCms": "CMS مخصص",
+          "basicSsl": "SSL أساسي",
+          "advancedSsl": "SSL متقدم",
+          "premiumSsl": "SSL مميز",
+          "customSecurity": "أمان مخصص",
+          "email": "البريد الإلكتروني",
+          "priority": "أولوية",
+          "support24_7": "24/7",
+          "support24_7Manager": "24/7 + مدير",
+          "oneRound": "جولة واحدة",
+          "threeRounds": "3 جولات",
+          "shared": "مشترك",
+          "vps": "VPS",
+          "dedicated": "مخصص",
+          "monthly": "شهرياً",
+          "weekly": "أسبوعياً",
+          "daily": "يومياً",
+          "realTime": "فوري",
+          "selfService": "خدمة ذاتية",
+          "guided": "موجه",
+          "fullService": "خدمة كاملة",
+          "whiteGlove": "خدمة فاخرة",
+          "basicGuides": "أدلة أساسية",
+          "videoTutorials": "دروس فيديو",
+          "customTraining": "تدريب مخصص"
+        },
+        "tooltips": {
+          "websitePages": "عدد صفحات الموقع المضمنة في خطتك.",
+          "responsiveDesign": "مستوى تحسين التصميم الملائم للجوال.",
+          "customBranding": "ألوان العلامة التجارية والشعار متاحة من الخطة الاحترافية.",
+          "seoOptimization": "تحسين محركات البحث وإعداد العلامات الوصفية.",
+          "contactForms": "وظيفة نموذج الاتصال وخيارات التكامل.",
+          "animationsEffects": "رسوم متحركة تفاعلية وتأثيرات بصرية.",
+          "contentManagement": "قدرات نظام إدارة المحتوى.",
+          "performanceOptimization": "تحسين سرعة وأداء الموقع.",
+          "securityFeatures": "شهادات الأمان وميزات الحماية.",
+          "analyticsReporting": "تحليلات الموقع وتقارير الأداء.",
+          "support": "مستوى دعم العملاء ووقت الاستجابة.",
+          "revisions": "عدد مراجعات التصميم المضمنة.",
+          "hosting": "نوع البنية التحتية لاستضافة الموقع.",
+          "backupMaintenance": "تكرار النسخ الاحتياطي وجدول الصيانة.",
+          "customIntegrations": "تكاملات الخدمات الخارجية وواجهات برمجة التطبيقات.",
+          "trainingDocumentation": "التدريب والتوثيق المقدم للمستخدمين.",
+          "launchAssistance": "المساعدة في إطلاق الموقع والنشر.",
+          "performanceMonitoring": "مراقبة أداء الموقع المستمرة."
+        }
+      },
+      "faqs": {
+        "title": "الأسئلة الشائعة",
+        "subtitle": "دليلك للتسعير والخطط مع داتابايت.",
+        "questions": [
+          {
+            "question": "ما الذي يتضمنه مشروع واحد؟",
+            "answer": "تتضمن خطة مشروع واحد تطويراً مخصصاً كاملاً لحل أتمتة واحد، بما في ذلك الاستشارة والتطوير والاختبار والنشر."
+          },
+          {
+            "question": "كيف يعمل الفوترة بالساعة للشريك الاستراتيجي؟",
+            "answer": "مع الشريك الاستراتيجي، تحصل على الوصول إلى فريق التطوير لدينا بسعر 10 دولار/ساعة. مثالي للمشاريع المستمرة أو الصيانة أو عندما تحتاج إلى موارد تطوير مرنة."
+          },
+          {
+            "question": "هل يمكنني التبديل بين الخطط؟",
+            "answer": "نعم، يمكنك الترقية أو التخفيض من خطتك في أي وقت. سيتم التعديل في دورة الفوترة التالية."
+          },
+          {
+            "question": "هل تقدمون حلول مؤسسات؟",
+            "answer": "بالتأكيد! لاحتياجات المؤسسات، نقدم حلولاً مخصصة مع فرق مخصصة واتفاقيات مستوى الخدمة ودعم متخصص. اتصل بنا للحصول على عرض أسعار مخصص."
+          }
+        ]
+      }
     },
     "logoCloud": {
       "trustedBy": "موثوق من قبل\nرعاة مميزين"
@@ -491,173 +663,6 @@
         }
       }
     },
-    "pricing": {
-      "badge": "ضمان العائد على الاستثمار",
-      "title": "بسيط. شفاف.",
-      "subtitle": "جميع المكونات واللبنات الأساسية مفتوحة المصدر — نتقاضى رسوماً مقابل صياغة تحف فنية كاملة الوظائف وضمان موثوقيتها المستمرة.",
-      "headerSection": {
-        "label": "التسعير",
-        "title": "حول حضورك الرقمي",
-        "subtitle": "اختر الخطة المثالية لاحتياجات عملك"
-      },
-      "plans": {
-        "hobby": {
-          "title": "هواية",
-          "description": "ابدأ مجاناً",
-          "benefits": [
-            "موقع ويب يصل إلى 5 صفحات",
-            "تصميم متجاوب أساسي",
-            "تكامل نموذج الاتصال"
-          ]
-        },
-        "pro": {
-          "title": "احترافي",
-          "description": "للشركات المتنامية",
-          "benefits": [
-            "موقع ويب يصل إلى 15 صفحة",
-            "رسوم متحركة متقدمة",
-            "تحسين محركات البحث",
-            "علامة تجارية مخصصة"
-          ]
-        },
-        "ultra": {
-          "title": "ألترا",
-          "description": "للمؤسسات الكبيرة",
-          "benefits": [
-            "صفحات وميزات غير محدودة",
-            "تكاملات مخصصة"
-          ]
-        }
-      },
-      "constants": {
-        "free": "مجاني",
-        "includes": "يتضمن",
-        "everythingInHobby": "كل شيء في الهواية، بالإضافة إلى",
-        "everythingInPro": "كل شيء في الاحترافي، بالإضافة إلى",
-        "startTrial": "ابدأ التجربة",
-        "getPro": "احصل على الاحترافي",
-        "getUltra": "احصل على ألترا",
-        "monthly": "شهرياً",
-        "yearly": "سنوياً (وفر 20%)",
-        "perMonth": "/شهر",
-        "moreInfo": "مزيد من المعلومات"
-      },
-      "planNames": {
-        "hobby": "هواية",
-        "pro": "احترافي",
-        "ultra": "ألترا",
-        "enterprise": "المؤسسات"
-      },
-      "enterprise": {
-        "badge": "المؤسسات",
-        "title": "تحتاج إلى شيء أكبر؟",
-        "description": "للمؤسسات والمنظمات الكبيرة، نقدم حلولاً مخصصة مع فرق مخصصة واتفاقيات مستوى الخدمة ودعم متخصص مصمم خصيصاً لمتطلباتك الفريدة.",
-        "talkToSales": "تحدث إلى المبيعات"
-      },
-      "comparePlans": {
-        "title": "قارن الخطط",
-        "subtitle": "ابحث عن الخطة المثالية المصممة خصيصاً لاحتياجات عملك!",
-        "features": {
-          "websitePages": "صفحات الموقع",
-          "responsiveDesign": "تصميم متجاوب",
-          "customBranding": "علامة تجارية مخصصة",
-          "seoOptimization": "تحسين محركات البحث",
-          "contactForms": "نماذج الاتصال",
-          "animationsEffects": "الرسوم المتحركة والتأثيرات",
-          "contentManagement": "إدارة المحتوى",
-          "performanceOptimization": "تحسين الأداء",
-          "securityFeatures": "ميزات الأمان",
-          "analyticsReporting": "التحليلات والتقارير",
-          "support": "الدعم",
-          "revisions": "المراجعات",
-          "hosting": "الاستضافة",
-          "backupMaintenance": "النسخ الاحتياطي والصيانة",
-          "customIntegrations": "تكاملات مخصصة",
-          "trainingDocumentation": "التدريب والتوثيق",
-          "launchAssistance": "المساعدة في الإطلاق",
-          "performanceMonitoring": "مراقبة الأداء"
-        },
-        "values": {
-          "upTo5": "يصل إلى 5",
-          "upTo15": "يصل إلى 15",
-          "unlimited": "غير محدود",
-          "basic": "أساسي",
-          "advanced": "متقدم",
-          "premium": "مميز",
-          "custom": "مخصص",
-          "static": "ثابت",
-          "basicCms": "CMS أساسي",
-          "advancedCms": "CMS متقدم",
-          "customCms": "CMS مخصص",
-          "basicSsl": "SSL أساسي",
-          "advancedSsl": "SSL متقدم",
-          "premiumSsl": "SSL مميز",
-          "customSecurity": "أمان مخصص",
-          "email": "البريد الإلكتروني",
-          "priority": "أولوية",
-          "support24_7": "24/7",
-          "support24_7Manager": "24/7 + مدير",
-          "oneRound": "جولة واحدة",
-          "threeRounds": "3 جولات",
-          "shared": "مشترك",
-          "vps": "VPS",
-          "dedicated": "مخصص",
-          "monthly": "شهرياً",
-          "weekly": "أسبوعياً",
-          "daily": "يومياً",
-          "realTime": "فوري",
-          "selfService": "خدمة ذاتية",
-          "guided": "موجه",
-          "fullService": "خدمة كاملة",
-          "whiteGlove": "خدمة فاخرة",
-          "basicGuides": "أدلة أساسية",
-          "videoTutorials": "دروس فيديو",
-          "customTraining": "تدريب مخصص"
-        },
-        "tooltips": {
-          "websitePages": "عدد صفحات الموقع المضمنة في خطتك.",
-          "responsiveDesign": "مستوى تحسين التصميم الملائم للجوال.",
-          "customBranding": "ألوان العلامة التجارية والشعار متاحة من الخطة الاحترافية.",
-          "seoOptimization": "تحسين محركات البحث وإعداد العلامات الوصفية.",
-          "contactForms": "وظيفة نموذج الاتصال وخيارات التكامل.",
-          "animationsEffects": "رسوم متحركة تفاعلية وتأثيرات بصرية.",
-          "contentManagement": "قدرات نظام إدارة المحتوى.",
-          "performanceOptimization": "تحسين سرعة وأداء الموقع.",
-          "securityFeatures": "شهادات الأمان وميزات الحماية.",
-          "analyticsReporting": "تحليلات الموقع وتقارير الأداء.",
-          "support": "مستوى دعم العملاء ووقت الاستجابة.",
-          "revisions": "عدد مراجعات التصميم المضمنة.",
-          "hosting": "نوع البنية التحتية لاستضافة الموقع.",
-          "backupMaintenance": "تكرار النسخ الاحتياطي وجدول الصيانة.",
-          "customIntegrations": "تكاملات الخدمات الخارجية وواجهات برمجة التطبيقات.",
-          "trainingDocumentation": "التدريب والتوثيق المقدم للمستخدمين.",
-          "launchAssistance": "المساعدة في إطلاق الموقع والنشر.",
-          "performanceMonitoring": "مراقبة أداء الموقع المستمرة."
-        }
-      },
-      "faqs": {
-        "title": "الأسئلة الشائعة",
-        "subtitle": "دليلك للتسعير والخطط مع داتابايت.",
-        "questions": [
-          {
-            "question": "ما الذي يتضمنه مشروع واحد؟",
-            "answer": "تتضمن خطة مشروع واحد تطويراً مخصصاً كاملاً لحل أتمتة واحد، بما في ذلك الاستشارة والتطوير والاختبار والنشر."
-          },
-          {
-            "question": "كيف يعمل الفوترة بالساعة للشريك الاستراتيجي؟",
-            "answer": "مع الشريك الاستراتيجي، تحصل على الوصول إلى فريق التطوير لدينا بسعر 10 دولار/ساعة. مثالي للمشاريع المستمرة أو الصيانة أو عندما تحتاج إلى موارد تطوير مرنة."
-          },
-          {
-            "question": "هل يمكنني التبديل بين الخطط؟",
-            "answer": "نعم، يمكنك الترقية أو التخفيض من خطتك في أي وقت. سيتم التعديل في دورة الفوترة التالية."
-          },
-          {
-            "question": "هل تقدمون حلول مؤسسات؟",
-            "answer": "بالتأكيد! لاحتياجات المؤسسات، نقدم حلولاً مخصصة مع فرق مخصصة واتفاقيات مستوى الخدمة ودعم متخصص. اتصل بنا للحصول على عرض أسعار مخصص."
-          }
-        ]
-      }
-    },
     "services": {
       "title": "الخدمة",
       "description": "نقدم حلول تصميم ويب وعلامة تجارية شاملة لمساعدة عملك على التميز في المشهد الرقمي. من مواقع الويب المذهلة إلى هويات العلامة التجارية التي لا تُنسى.",
@@ -771,7 +776,13 @@
         "available": "متاح",
         "unavailable": "غير متاح",
         "viewDetails": "عرض التفاصيل",
-        "contactManager": "اتصل بالمدير"
+        "contactManager": "اتصل بالمدير",
+        "superhost": "مضيف متميز",
+        "in": "في",
+        "night": "ليلة",
+        "noImage": "لا تتوفر صورة",
+        "entireHome": "منزل كامل",
+        "reviews": "تقييم"
       },
       "types": {
         "Rooms": "غرف",
@@ -822,14 +833,40 @@
         "pricing": "التسعير",
         "availability": "التوفر",
         "pricePerMonth": "السعر شهرياً",
-        "securityDeposit": "التأمين",
-        "applicationFee": "رسوم التقديم",
+        "securityDeposit": "مبلغ التأمين:",
+        "applicationFee": "رسوم التقديم:",
         "petsAllowed": "الحيوانات الأليفة مسموحة",
-        "parkingIncluded": "موقف السيارات مشمول",
+        "parkingIncluded": "موقف سيارات مشمول",
         "contactInfo": "معلومات الاتصال",
         "similarProperties": "عقارات مشابهة",
         "scheduleViewing": "حدد موعد المشاهدة",
-        "applyNow": "قدم الآن"
+        "applyNow": "قدّم الآن",
+        "propertyDetails": "تفاصيل العقار",
+        "bedroom": "غرفة نوم",
+        "bedrooms": "غرف نوم",
+        "bathroom": "حمام",
+        "bathrooms": "حمامات",
+        "petFriendly": "يسمح بالحيوانات الأليفة",
+        "morePhotos": "صور إضافية",
+        "propertyHighlights": "مميزات العقار",
+        "propertyHost": "مضيف العقار",
+        "contactPropertyManager": "اتصل بمدير العقار",
+        "backToSearch": "العودة للبحث",
+        "errorLoading": "خطأ في تحميل العقار",
+        "errorLoadingMessage": "تعذر تحميل هذا العقار. قد يكون تم إزالته أو المعرف غير صالح.",
+        "mapComingSoon": "الخريطة قريباً",
+        "addressNotAvailable": "العنوان غير متوفر",
+        "perNight": "ليلة",
+        "bedroomSingular": "غرفة نوم",
+        "bedroomPlural": "غرف نوم",
+        "bathroomSingular": "حمام",
+        "bathroomPlural": "حمامات",
+        "sqft": "قدم مربع",
+        "notChargedYet": "لن يتم تحصيل أي مبلغ الآن",
+        "contactManager": "تواصل مع مدير العقار",
+        "aboutHost": "عن المضيف",
+        "hostFallback": "المضيف",
+        "joinedIn": "انضم في 2023"
       },
       "filters": {
         "allProperties": "جميع العقارات",
@@ -860,6 +897,80 @@
       "mapView": "عرض الخريطة",
       "listView": "عرض القائمة",
       "saveSearch": "حفظ البحث"
+    },
+    "listing": {
+      "details": "تفاصيل العقار",
+      "viewDetails": "عرض تفاصيل العقار",
+      "loadingHeader": "جاري التحميل...",
+      "loadingDetails": "جاري تحميل التفاصيل...",
+      "loadingMap": "جاري تحميل الخريطة...",
+      "loading": "جاري التحميل...",
+      "loadingReviews": "جاري تحميل التقييمات...",
+      "share": "مشاركة",
+      "save": "حفظ",
+      "title": "العقارات",
+      "clearAllFilters": "مسح جميع الفلاتر",
+      "propertiesAvailable": "عقارات متاحة",
+      "noProperties": "لا توجد عقارات",
+      "adjustFilters": "حاول تعديل فلاتر البحث لرؤية المزيد من النتائج."
+    },
+    "map": {
+      "whereYoullBe": "أين ستكون",
+      "exactLocation": "يتم توفير الموقع الدقيق بعد الحجز",
+      "showMore": "عرض المزيد"
+    },
+    "reviews": {
+      "reviews": "تقييمات",
+      "overallRating": "التقييم العام",
+      "categories": {
+        "cleanliness": "النظافة",
+        "accuracy": "الدقة",
+        "checkIn": "تسجيل الوصول",
+        "communication": "التواصل",
+        "location": "الموقع",
+        "value": "القيمة"
+      }
+    },
+    "host": {
+      "meetYourHost": "تعرف على مضيفك",
+      "superhost": "مضيف متميز",
+      "reviews": "تقييمات",
+      "rating": "التقييم",
+      "monthsHosting": "أشهر الاستضافة",
+      "months": "أشهر",
+      "myWork": "عملي: مهندس معماري",
+      "speaksLanguages": "يتحدث العربية والإنجليزية",
+      "livingTheDream": "أعيش الحلم!",
+      "isSuperhost": "{name} مضيف متميز",
+      "superhostDescription": "المضيفون المتميزون هم مضيفون ذوو خبرة وتقييم عالٍ ملتزمون بتوفير إقامات رائعة للضيوف.",
+      "hostDetails": "تفاصيل المضيف",
+      "responseRate": "معدل الاستجابة: 100%",
+      "respondsWithin": "يستجيب خلال ساعة",
+      "messageHost": "مراسلة المضيف",
+      "paymentProtection": "لحماية مدفوعاتك، استخدم دائماً مكان لإرسال الأموال والتواصل مع المضيفين."
+    },
+    "searchPage": {
+      "luxeStays": "إقامات مكان الفاخرة",
+      "in": "في",
+      "checkIn": "الوصول:",
+      "checkOut": "المغادرة:",
+      "guests": "ضيوف",
+      "freeCancellation": "إلغاء مجاني",
+      "typeOfPlace": "نوع المكان",
+      "price": "السعر",
+      "instantBook": "حجز فوري",
+      "moreFilters": "فلاتر أخرى",
+      "entireHome": "منزل كامل في",
+      "guestsSuffix": "ضيوف",
+      "bedsSuffix": "أسرّة",
+      "bathSuffix": "حمام",
+      "placeSingular": "مكان",
+      "placePlural": "أماكن",
+      "inLocation": "في {location}",
+      "noExactMatches": "لا توجد نتائج مطابقة",
+      "tryAdjusting": "حاول تعديل بحثك بتغيير التواريخ أو إزالة الفلاتر أو البحث في موقع مختلف.",
+      "guestSingular": "ضيف",
+      "guestPlural": "ضيوف"
     }
   },
   "dashboard": {
@@ -890,7 +1001,14 @@
       "subtitle": "عرض وإدارة المستأجرين",
       "active": "المستأجرون النشطون",
       "past": "المستأجرون السابقون",
-      "noTenants": "لا يوجد مستأجرون حتى الآن"
+      "noTenants": "لا يوجد مستأجرون حتى الآن",
+      "errorLoading": "خطأ في تحميل الطلبات",
+      "applications": "الطلبات",
+      "applicationsSubtitle": "تتبع وإدارة طلبات استئجار العقارات",
+      "applicationApproved": "تمت الموافقة على طلبك",
+      "applicationPending": "طلبك قيد المراجعة",
+      "applicationDenied": "تم رفض طلبك",
+      "downloadAgreement": "تحميل العقد"
     },
     "favorites": {
       "title": "العقارات المفضلة",
@@ -940,6 +1058,214 @@
         "nextPayment": "موعد الدفعة التالية",
         "status": "الحالة"
       }
+    },
+    "common": {
+      "loading": "جاري التحميل...",
+      "error": "خطأ",
+      "backToProperties": "العودة إلى العقارات",
+      "downloadAll": "تحميل الكل",
+      "downloadAgreement": "تحميل العقد",
+      "notPaid": "غير مدفوع",
+      "emailNotAvailable": "البريد غير متوفر",
+      "view": "عرض",
+      "manage": "إدارة",
+      "cancel": "إلغاء",
+      "delete": "حذف",
+      "save": "حفظ",
+      "edit": "تعديل",
+      "confirm": "تأكيد",
+      "saveChanges": "حفظ التغييرات",
+      "saving": "جاري الحفظ...",
+      "pending": "قيد الانتظار",
+      "seats": "المقاعد",
+      "available": "متاح",
+      "routes": "مسارات"
+    },
+    "propertyManagement": {
+      "title": "إدارة العقار",
+      "subtitle": "إدارة المستأجرين وعقود الإيجار لهذا العقار",
+      "myProperty": "عقاري",
+      "tenantsOverview": "نظرة عامة على المستأجرين",
+      "tenantsOverviewSubtitle": "إدارة وعرض جميع المستأجرين لهذا العقار.",
+      "tenant": "المستأجر",
+      "leasePeriod": "فترة الإيجار",
+      "monthlyRent": "الإيجار الشهري",
+      "currentMonthStatus": "حالة الشهر الحالي",
+      "contact": "التواصل",
+      "action": "الإجراء",
+      "noLeasesFound": "لم يتم العثور على عقود إيجار لهذا العقار.",
+      "addFirstProperty": "أضف أول عقار لك"
+    },
+    "newProperty": {
+      "title": "إضافة عقار جديد",
+      "subtitle": "إنشاء إعلان عقار جديد بمعلومات تفصيلية",
+      "basicInformation": "المعلومات الأساسية",
+      "propertyName": "اسم العقار",
+      "description": "الوصف",
+      "fees": "الرسوم",
+      "pricePerNight": "السعر لليلة",
+      "securityDeposit": "مبلغ التأمين",
+      "applicationFee": "رسوم الطلب",
+      "propertyDetails": "تفاصيل العقار",
+      "numberOfBeds": "عدد الأسرّة",
+      "numberOfBaths": "عدد الحمامات",
+      "squareFeet": "المساحة (قدم مربع)",
+      "petsAllowed": "يُسمح بالحيوانات",
+      "parkingIncluded": "موقف سيارات متاح",
+      "propertyType": "نوع العقار",
+      "amenitiesAndHighlights": "المرافق والمميزات",
+      "amenities": "المرافق",
+      "highlights": "المميزات",
+      "photos": "الصور",
+      "propertyPhotos": "صور العقار",
+      "additionalInformation": "معلومات إضافية",
+      "address": "العنوان",
+      "city": "المدينة",
+      "state": "الولاية",
+      "postalCode": "الرمز البريدي",
+      "country": "الدولة",
+      "createProperty": "إنشاء العقار"
+    },
+    "sidebar": {
+      "properties": "العقارات",
+      "applications": "الطلبات",
+      "settings": "الإعدادات",
+      "dashboard": "لوحة التحكم",
+      "bookings": "الحجوزات",
+      "trips": "الرحلات",
+      "favorites": "المفضلة",
+      "myTrips": "رحلاتي",
+      "residences": "السكن",
+      "managerView": "عرض المدير",
+      "officeView": "عرض المكتب",
+      "renterView": "عرض المستأجر",
+      "step": "الخطوة {number}"
+    },
+    "settingsForm": {
+      "managerSettings": "إعدادات المدير",
+      "tenantSettings": "إعدادات المستأجر",
+      "settingsSubtitle": "إدارة تفضيلات حسابك ومعلوماتك الشخصية",
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "phoneNumber": "رقم الهاتف",
+      "officeSettings": "إعدادات المكتب"
+    },
+    "offices": {
+      "title": "مكتب النقل",
+      "subtitle": "إدارة أعمال النقل الخاصة بك",
+      "noOffice": "لا يوجد مكتب نقل",
+      "noOfficeDescription": "لم تقم بإنشاء مكتب نقل بعد. ابدأ بتسجيل مكتبك لإدارة الحافلات والمسارات والحجوزات.",
+      "createOffice": "إنشاء مكتب نقل",
+      "transportDashboard": "لوحة تحكم النقل",
+      "totalBookings": "إجمالي الحجوزات",
+      "revenue": "الإيرادات",
+      "totalEarnings": "إجمالي الأرباح",
+      "upcomingTrips": "الرحلات القادمة",
+      "next7Days": "الأيام الـ 7 القادمة",
+      "fleetSize": "حجم الأسطول",
+      "quickActions": "إجراءات سريعة",
+      "viewBookings": "عرض الحجوزات",
+      "manageTrips": "إدارة الرحلات",
+      "manageBuses": "إدارة الحافلات",
+      "recentActivity": "النشاط الأخير",
+      "latestBookingsAndUpdates": "آخر الحجوزات والتحديثات",
+      "noBookingsYet": "لا توجد حجوزات بعد",
+      "bookingsWillAppear": "ستظهر الحجوزات هنا عندما يبدأ المسافرون بالحجز",
+      "confirmedBookings": "حجوزات مؤكدة",
+      "readyForTravel": "جاهزة للسفر",
+      "pendingBookings": "حجوزات قيد الانتظار",
+      "awaitingConfirmation": "بانتظار التأكيد",
+      "currencySDG": "ج.س",
+      "currencyJSAr": "ج.س"
+    },
+    "bookings": {
+      "title": "الحجوزات",
+      "subtitle": "إدارة حجوزات المسافرين",
+      "searchPlaceholder": "بحث بالمرجع أو الاسم أو الهاتف...",
+      "filterByStatus": "تصفية حسب الحالة",
+      "allStatus": "جميع الحالات",
+      "pending": "قيد الانتظار",
+      "confirmed": "مؤكد",
+      "completed": "مكتمل",
+      "cancelled": "ملغي",
+      "noShow": "لم يحضر",
+      "reference": "المرجع",
+      "passenger": "المسافر",
+      "route": "المسار",
+      "date": "التاريخ",
+      "amount": "المبلغ",
+      "status": "الحالة",
+      "noBookingsFound": "لم يتم العثور على حجوزات",
+      "bookingDetails": "تفاصيل الحجز",
+      "departure": "المغادرة",
+      "markComplete": "تم الاكتمال"
+    },
+    "officeSettings": {
+      "title": "إعدادات المكتب",
+      "subtitle": "إدارة مكتب النقل الخاص بك",
+      "noOfficeFound": "لم يتم العثور على مكتب نقل.",
+      "settingsTitle": "الإعدادات",
+      "settingsSubtitle": "إدارة إعدادات المكتب",
+      "officeInformation": "معلومات المكتب",
+      "officeInfoSubtitle": "تحديث بيانات مكتبك المرئية للمسافرين",
+      "officeName": "اسم المكتب",
+      "officeNameArabic": "اسم المكتب (عربي)",
+      "phoneNumber": "رقم الهاتف",
+      "emailAddress": "البريد الإلكتروني",
+      "licenseNumber": "رقم الترخيص",
+      "description": "الوصف",
+      "descriptionArabic": "الوصف (عربي)",
+      "officeStatus": "حالة المكتب",
+      "controlVisibility": "التحكم في ظهور مكتبك",
+      "activeStatus": "حالة التفعيل",
+      "officeVisible": "مكتبك مرئي ويقبل الحجوزات",
+      "officeHidden": "مكتبك مخفي عن المسافرين",
+      "deleteOffice": "حذف المكتب",
+      "deleteOfficeTitle": "حذف مكتب النقل",
+      "deleteOfficeDescription": "لا يمكن التراجع عن هذا الإجراء. سيتم حذف مكتبك وجميع الحافلات والمسارات وسجل الحجوزات نهائيًا."
+    },
+    "tripsSchedule": {
+      "title": "جدول الرحلات",
+      "subtitle": "إدارة جدول رحلاتك",
+      "addTrip": "إضافة رحلة",
+      "addNewTrip": "إضافة رحلة جديدة",
+      "selectRoute": "اختر المسار",
+      "bus": "الحافلة",
+      "selectBus": "اختر الحافلة",
+      "tripDate": "التاريخ",
+      "tripTime": "الوقت",
+      "priceSDG": "السعر (ج.س)",
+      "tripsScheduled": "رحلة مجدولة",
+      "noTripsScheduled": "لا توجد رحلات مجدولة لهذا اليوم"
+    },
+    "tenantApplications": {
+      "title": "الطلبات",
+      "subtitle": "تتبع وإدارة طلبات استئجار العقارات",
+      "errorFetching": "خطأ في تحميل الطلبات",
+      "approved": "تمت الموافقة على طلبك",
+      "pendingApproval": "طلبك قيد المراجعة",
+      "denied": "تم رفض طلبك"
+    },
+    "tenantTrips": {
+      "title": "رحلاتي",
+      "subtitle": "عرض وإدارة جميع حجوزاتك",
+      "stays": "الإقامات",
+      "transport": "النقل",
+      "rentalStays": "الإقامات المستأجرة",
+      "rentalStaysSubtitle": "حجوزات استئجار العقارات",
+      "noRentalStays": "لا توجد إقامات بعد",
+      "browseProperties": "تصفح العقارات لحجز إقامتك الأولى",
+      "browsePropertiesBtn": "تصفح العقارات",
+      "upcomingTrips": "الرحلات القادمة",
+      "upcomingTripsSubtitle": "تذاكر الحافلات القادمة",
+      "noUpcomingTrips": "لا توجد رحلات قادمة",
+      "bookATrip": "احجز رحلة",
+      "pastTrips": "الرحلات السابقة",
+      "pastTripsSubtitle": "الرحلات المكتملة أو الملغاة",
+      "ref": "المرجع",
+      "ticket": "التذكرة",
+      "currencySDG": "ج.س",
+      "currencyJSAr": "ج.س"
     }
   },
   "hosting": {
@@ -1070,6 +1396,26 @@
           "title": "تفاصيل الواي فاي",
           "subtitle": "اسم الشبكة وكلمة المرور"
         }
+      },
+      "host": {
+        "title": "أخبر الضيوف عن نفسك",
+        "subtitle": "شارك قليلاً عن هويتك لمساعدة الضيوف على الشعور بالراحة عند حجز مكانك.",
+        "profilePhoto": "صورة الملف الشخصي",
+        "uploadPhoto": "رفع صورة",
+        "photoHelp": "صورة واضحة تساعد الضيوف على التعرف عليك",
+        "aboutYou": "عنك",
+        "displayName": "الاسم المعروض",
+        "displayNamePlaceholder": "كيف تريد أن يُنادى عليك",
+        "bio": "نبذة",
+        "bioPlaceholder": "أخبر الضيوف قليلاً عن نفسك وخلفيتك وما تحبه في الاستضافة...",
+        "work": "العمل",
+        "workPlaceholder": "ماذا تعمل؟",
+        "whereYouLive": "مكان إقامتك",
+        "locationPlaceholder": "المدينة، الدولة",
+        "languages": "اللغات التي تتحدثها",
+        "languagesPlaceholder": "العربية، الإنجليزية، الفرنسية...",
+        "profileTip": "نصيحة للملف الشخصي",
+        "profileTipText": "من المرجح أن يحجز الضيوف مع المضيفين الذين لديهم ملفات شخصية مكتملة. شارك ما يجعلك مضيفاً رائعاً ولماذا تحب منطقتك."
       }
     },
     "onboarding": {
@@ -1138,6 +1484,168 @@
         "title": "الحجز الفوري",
         "subtitle": "السماح بالحجز الفوري؟"
       }
+    },
+    "pages": {
+      "aboutPlace": {
+        "title": "أخبرنا عن مكانك",
+        "description": "في هذه الخطوة، سنسألك عن نوع العقار الذي لديك وما إذا كان الضيوف سيحجزون المكان بالكامل أو غرفة فقط. ثم أخبرنا عن الموقع وعدد الضيوف الذين يمكنهم الإقامة."
+      },
+      "amenities": {
+        "title": "أخبر الضيوف بما يقدمه مكانك",
+        "subtitle": "يمكنك إضافة المزيد من المرافق بعد نشر إعلانك.",
+        "guestFavorites": "ماذا عن مفضلات الضيوف هذه؟",
+        "standoutAmenities": "هل لديك أي مرافق مميزة؟",
+        "wifi": "واي فاي",
+        "tv": "تلفزيون",
+        "kitchen": "مطبخ",
+        "washer": "غسالة",
+        "freeParking": "موقف مجاني",
+        "paidParking": "موقف مدفوع",
+        "ac": "تكييف",
+        "workspace": "مساحة عمل",
+        "pool": "مسبح",
+        "hotTub": "جاكوزي",
+        "patio": "فناء",
+        "bbqGrill": "شواية"
+      },
+      "description": {
+        "highlightsTitle": "بعد ذلك، دعنا نصف منزلك",
+        "highlightsSubtitle": "اختر حتى ميزتين. سنستخدمها لبدء وصفك.",
+        "descriptionTitle": "أنشئ وصفك",
+        "descriptionSubtitle": "شارك ما يجعل مكانك مميزاً.",
+        "peaceful": "هادئ",
+        "unique": "فريد",
+        "familyFriendly": "مناسب للعائلات",
+        "stylish": "أنيق",
+        "central": "مركزي",
+        "spacious": "واسع"
+      },
+      "discount": {
+        "title": "أضف خصومات",
+        "subtitle": "ساعد مكانك على التميز للحصول على حجوزات أسرع وكسب تقييماتك الأولى.",
+        "newListingPromotion": "عرض الإعلان الجديد",
+        "newListingDescription": "قدّم خصم 20% على أول 3 حجوزات",
+        "lastMinuteDiscount": "خصم اللحظة الأخيرة",
+        "lastMinuteDescription": "للإقامات المحجوزة قبل 14 يوماً أو أقل من الوصول",
+        "weeklyDiscount": "خصم أسبوعي",
+        "weeklyDescription": "للإقامات من 7 ليالٍ أو أكثر"
+      },
+      "finishSetup": {
+        "title": "أكمل وانشر",
+        "description": "أخيراً، ستختار إعدادات الحجز، وتحدد التسعير، وتنشر إعلانك."
+      },
+      "floorPlan": {
+        "title": "شارك بعض الأساسيات عن مكانك",
+        "subtitle": "ستضيف المزيد من التفاصيل لاحقاً، مثل أنواع الأسرّة.",
+        "guests": "الضيوف",
+        "bedrooms": "غرف النوم",
+        "beds": "الأسرّة",
+        "bathrooms": "الحمامات"
+      },
+      "instantBook": {
+        "title": "اختر إعدادات الحجز الخاصة بك",
+        "subtitle": "يمكنك تغيير هذا في أي وقت.",
+        "learnMore": "تعرف على المزيد",
+        "approveFirst5": "وافق على أول 5 حجوزات",
+        "recommended": "موصى به",
+        "approveFirst5Description": "ابدأ بمراجعة طلبات الحجز، ثم انتقل إلى الحجز الفوري، حتى يتمكن الضيوف من الحجز تلقائياً.",
+        "useInstantBook": "استخدم الحجز الفوري",
+        "useInstantBookDescription": "دع الضيوف يحجزون تلقائياً."
+      },
+      "legal": {
+        "title": "شارك تفاصيل السلامة",
+        "hostingOnMkan": "كيف تستضيف على مكان؟",
+        "privateIndividual": "أنا أستضيف كفرد خاص",
+        "business": "أنا أستضيف كشركة",
+        "safetyQuestion": "هل يحتوي مكانك على أي من هذه؟",
+        "exteriorCamera": "كاميرا أمان خارجية موجودة",
+        "noiseMonitor": "جهاز مراقبة الضوضاء موجود",
+        "weapons": "أسلحة في العقار",
+        "importantThings": "أشياء مهمة يجب معرفتها",
+        "complianceNotice": "تأكد من الامتثال للقوانين المحلية ومراجعة سياسة عدم التمييز ورسوم الضيف والمضيف."
+      },
+      "location": {
+        "title": "أين يقع مكانك؟",
+        "subtitle": "يتم مشاركة عنوانك فقط مع الضيوف بعد إتمام الحجز."
+      },
+      "photos": {
+        "title": "أضف بعض صور منزلك",
+        "subtitle": "ستحتاج إلى 5 صور للبدء. يمكنك إضافة المزيد أو إجراء تغييرات لاحقاً.",
+        "uploading": "جارٍ الرفع...",
+        "addPhotos": "أضف صوراً"
+      },
+      "price": {
+        "title": "الآن، حدد سعراً أساسياً",
+        "subtitle": "نصيحة: ر.س١٥٨. يمكنك تحديد سعر عطلة نهاية الأسبوع لاحقاً.",
+        "guestPriceBeforeTaxes": "سعر الضيف قبل الضرائب ر.س{price}",
+        "viewSimilarListings": "عرض إعلانات مشابهة",
+        "learnMoreAboutPricing": "تعرف على المزيد عن التسعير"
+      },
+      "privacyType": {
+        "title": "ما نوع المكان الذي سيحصل عليه الضيوف؟",
+        "entirePlace": "مكان كامل",
+        "entirePlaceDescription": "يحصل الضيوف على المكان بالكامل لأنفسهم.",
+        "room": "غرفة",
+        "roomDescription": "يحصل الضيوف على غرفتهم الخاصة في المنزل، بالإضافة إلى الوصول إلى المساحات المشتركة.",
+        "sharedRoom": "غرفة مشتركة في نزل",
+        "sharedRoomDescription": "ينام الضيوف في غرفة مشتركة في نزل مُدار باحترافية مع موظفين متواجدين على مدار الساعة."
+      },
+      "standOut": {
+        "title": "اجعل مكانك مميزاً",
+        "description": "في هذه الخطوة، ستضيف بعض المرافق التي يوفرها مكانك، بالإضافة إلى 5 صور أو أكثر. ثم ستنشئ عنواناً ووصفاً."
+      },
+      "structure": {
+        "title": "أي من هذه يصف مكانك بشكل أفضل؟"
+      },
+      "titlePage": {
+        "title": "الآن، دعنا نعطي منزلك عنواناً",
+        "subtitle": "العناوين القصيرة تعمل بشكل أفضل. استمتع بها — يمكنك تغييرها لاحقاً."
+      },
+      "visibility": {
+        "title": "اختر من ترحب به في أول حجز لك",
+        "subtitle": "بعد ضيفك الأول، يمكن لأي شخص حجز مكانك.",
+        "learnMore": "تعرف على المزيد",
+        "anyGuest": "أي ضيف على مكان",
+        "anyGuestDescription": "احصل على حجوزات أسرع عندما ترحب بأي شخص من مجتمع مكان.",
+        "experiencedGuest": "ضيف ذو خبرة",
+        "experiencedGuestDescription": "لضيفك الأول، رحّب بشخص لديه سجل جيد على مكان يمكنه تقديم نصائح لتكون مضيفاً رائعاً."
+      }
+    },
+    "components": {
+      "stepHeader": {
+        "step": "الخطوة {number}"
+      },
+      "dashboard": {
+        "welcomeBack": "مرحباً بعودتك، {name}",
+        "finishYourListing": "أكمل إعلانك"
+      },
+      "listingCard": {
+        "started": "بدأ {date}"
+      }
+    },
+    "header": {
+      "today": "اليوم",
+      "calendar": "التقويم",
+      "listings": "القوائم",
+      "messages": "الرسائل",
+      "logo": "شعار مكان",
+      "brandName": "مكان",
+      "switchToTraveling": "التبديل إلى وضع المسافر"
+    },
+    "content": {
+      "today": "اليوم",
+      "upcoming": "القادم",
+      "todayIllustration": "رسم توضيحي لليوم",
+      "noReservations": "ليس لديك أي حجوزات",
+      "noUpcomingReservations": "ليس لديك أي حجوزات قادمة"
+    },
+    "listingsPage": {
+      "title": "قوائمك",
+      "loading": "جاري تحميل القوائم...",
+      "tryAgain": "حاول مرة أخرى",
+      "noListings": "لا توجد قوائم بعد",
+      "noListingsDescription": "ابدأ بإنشاء قائمتك الأولى.",
+      "createListing": "إنشاء قائمة"
     }
   },
   "application": {
@@ -1474,7 +1982,197 @@
         "name": "الدفع عند الوصول",
         "description": "ادفع في المكتب"
       }
+    },
+    "host": {
+      "badge": "مضيف النقل",
+      "welcome": "مرحباً، {name}",
+      "manageDescription": "أدر مكاتب النقل الخاصة بك وابدأ بقبول الحجوزات عبر الإنترنت لخدمات الباصات.",
+      "yourOffices": "مكاتبك",
+      "addNewOffice": "إضافة مكتب جديد",
+      "verified": "موثق",
+      "draft": "مسودة",
+      "noLocationSet": "الموقع غير محدد",
+      "buses": "باصات",
+      "routes": "مسارات",
+      "continueSetup": "متابعة الإعداد",
+      "startBusiness": "ابدأ مشروع النقل الخاص بك",
+      "startDescription": "سجل مكتب النقل الخاص بك وابدأ بقبول الحجوزات عبر الإنترنت. أضف باصاتك، حدد المسارات، واصل إلى المزيد من العملاء.",
+      "createFirstOffice": "أنشئ مكتبك الأول",
+      "step1Title": "أضف مكتبك",
+      "step1Description": "أدخل تفاصيل مكتبك واختر موقع نقطة التجمع.",
+      "step2Title": "أضف الباصات والمسارات",
+      "step2Description": "سجل باصاتك مع المرافق وحدد مساراتك مع الأسعار.",
+      "step3Title": "ابدأ باستقبال الحجوزات",
+      "step3Description": "انشر مكتبك وابدأ بقبول الحجوزات عبر الإنترنت من المسافرين.",
+      "addBuses": "أضف باصاتك",
+      "addBusesSubtitle": "سجل الباصات في أسطولك. أضف تفاصيل مثل السعة والمرافق لمساعدة المسافرين في الاختيار.",
+      "addBus": "إضافة باص",
+      "editBus": "تعديل الباص",
+      "addNewBus": "إضافة باص جديد",
+      "plateNumber": "رقم اللوحة",
+      "manufacturer": "الشركة المصنعة",
+      "model": "الموديل",
+      "year": "السنة",
+      "capacity": "السعة",
+      "amenities": "المرافق",
+      "saveChanges": "حفظ التغييرات",
+      "seats": "مقاعد",
+      "more": "أخرى",
+      "noBusesYet": "لم تُضف باصات بعد",
+      "addAtLeastOneBus": "أضف باصاً واحداً على الأقل للمتابعة",
+      "defineRoutes": "حدد مساراتك",
+      "defineRoutesSubtitle": "أنشئ المسارات التي تشغلها. كل مسار يربط بين نقطتي تجمع بسعر أساسي ومدة تقديرية.",
+      "addRoute": "إضافة مسار",
+      "editRoute": "تعديل المسار",
+      "addNewRoute": "إضافة مسار جديد",
+      "origin": "نقطة الانطلاق",
+      "destination": "الوجهة",
+      "selectOrigin": "اختر نقطة الانطلاق",
+      "selectDestination": "اختر الوجهة",
+      "basePriceSDG": "السعر الأساسي (ج.س)",
+      "durationMinutes": "المدة (دقائق)",
+      "distanceKm": "المسافة (كم)",
+      "noRoutesYet": "لم تُضف مسارات بعد",
+      "addAtLeastOneRoute": "أضف مساراً واحداً على الأقل للمتابعة",
+      "setupSchedule": "أنشئ جدول رحلاتك",
+      "scheduleDescription": "أنشئ رحلات بتعيين باصات للمسارات مع أوقات مغادرة محددة. يمكنك إضافة المزيد من الرحلات لاحقاً من لوحة التحكم.",
+      "scheduleTip": "معظم الباصات في السودان تغادر حوالي الساعة 5:00 صباحاً. يمكنك إنشاء عدة رحلات لنفس المسار في تواريخ مختلفة.",
+      "addRoutesFirst": "أضف مسارات أولاً قبل إنشاء الرحلات",
+      "addBusesFirst": "أضف باصات أولاً قبل إنشاء الرحلات",
+      "addTrip": "إضافة رحلة",
+      "addNewTrip": "إضافة رحلة جديدة",
+      "route": "المسار",
+      "bus": "الباص",
+      "date": "التاريخ",
+      "time": "الوقت",
+      "priceSDG": "السعر (ج.س)",
+      "selectRoute": "اختر المسار",
+      "selectBus": "اختر الباص",
+      "noTripsYet": "لا توجد رحلات مجدولة بعد",
+      "addTripsLater": "يمكنك إضافة رحلات الآن أو لاحقاً من لوحة التحكم",
+      "reviewAndPublish": "المراجعة والنشر",
+      "reviewDescription": "راجع إعداد مكتبك قبل النشر. بمجرد النشر، سيكون مكتبك مرئياً للمسافرين.",
+      "officeInformation": "معلومات المكتب",
+      "assemblyPoint": "موقف التجمع",
+      "schedule": "الجدول",
+      "photos": "الصور",
+      "required": "مطلوب",
+      "completeRequiredSteps": "أكمل الخطوات المطلوبة",
+      "completeRequiredDescription": "يرجى إكمال جميع الخطوات المطلوبة قبل نشر مكتبك.",
+      "termsAgreement": "أؤكد أن جميع المعلومات المقدمة دقيقة. أوافق على شروط الخدمة وأفهم أن مكتبي سيكون مرئياً لجميع مستخدمي مكان.",
+      "publishingError": "فشل نشر المكتب. يرجى المحاولة مرة أخرى.",
+      "publishing": "جاري النشر...",
+      "publishOffice": "نشر المكتب",
+      "amenityLabels": {
+        "AirConditioning": "تكييف هواء",
+        "WiFi": "واي فاي",
+        "USB": "شحن USB",
+        "LegRoom": "مساحة إضافية للأرجل",
+        "Toilet": "دورة مياه",
+        "Refreshments": "مرطبات",
+        "Entertainment": "ترفيه",
+        "Luggage": "تخزين الأمتعة",
+        "Reclining": "مقاعد قابلة للإمالة"
+      }
+    },
+    "seatPicker": {
+      "driver": "السائق",
+      "selectedSeats": "المقاعد المحددة"
+    },
+    "citySelect": {
+      "selectCity": "اختر المدينة",
+      "searchCity": "ابحث عن مدينة...",
+      "noCityFound": "لم يتم العثور على مدينة.",
+      "point": "نقطة",
+      "points": "نقاط"
+    },
+    "ticketView": {
+      "ticketNotFound": "التذكرة غير موجودة",
+      "backToTransport": "العودة إلى النقل",
+      "downloadTicket": "تحميل التذكرة",
+      "mkanTransport": "نقل مكان",
+      "busTicket": "تذكرة باص",
+      "hrs": "ساعات",
+      "bookingReference": "رقم الحجز",
+      "showQrCode": "أظهر رمز QR هذا في المكتب",
+      "backToBooking": "العودة إلى تفاصيل الحجز"
+    },
+    "bookingPage": {
+      "dateLabel": "التاريخ",
+      "departureLabel": "المغادرة",
+      "seatsLabel": "المقاعد",
+      "busLabel": "الباص",
+      "phoneLabel": "الهاتف",
+      "emailLabel": "البريد الإلكتروني",
+      "totalLabel": "الإجمالي",
+      "paymentSuccess": "تم الدفع بنجاح",
+      "paymentFailed": "فشل الدفع. يرجى المحاولة مرة أخرى."
     }
+  },
+  "siteFooter": {
+    "support": "الدعم",
+    "helpCenter": "مركز المساعدة",
+    "safetyInfo": "معلومات السلامة",
+    "cancellationOptions": "خيارات الإلغاء",
+    "disabilitySupport": "دعم ذوي الاحتياجات الخاصة",
+    "reportConcern": "الإبلاغ عن مشكلة",
+    "community": "المجتمع",
+    "disasterRelief": "الإسكان الإغاثي",
+    "diversityBelonging": "الاحتفاء بالتنوع والانتماء",
+    "combatDiscrimination": "مكافحة التمييز",
+    "hosting": "الاستضافة",
+    "tryHosting": "جرّب الاستضافة",
+    "hostingResources": "استكشف موارد الاستضافة",
+    "communityForum": "زر منتدى المجتمع",
+    "hostResponsibly": "كيف تستضيف بمسؤولية",
+    "about": "حول",
+    "newsroom": "غرفة الأخبار",
+    "newFeatures": "تعرّف على الميزات الجديدة",
+    "careers": "وظائف",
+    "investors": "المستثمرون",
+    "copyright": "© 2024 مكان",
+    "privacy": "الخصوصية",
+    "terms": "الشروط",
+    "sitemap": "خريطة الموقع",
+    "language": "العربية"
+  },
+  "hero": {
+    "title": "ابدأ رحلتك لإيجاد المكان المثالي لتسميه وطنك",
+    "subtitle": "استكشف مجموعتنا الواسعة من العقارات المصممة لتناسب أسلوب حياتك واحتياجاتك!",
+    "searchPlaceholder": "ابحث بالمدينة أو الحي أو العنوان",
+    "searchButton": "بحث",
+    "heroAlt": "منصة مكان للإيجارات"
+  },
+  "reportIssue": {
+    "link": "الإبلاغ عن مشكلة",
+    "title": "الإبلاغ عن مشكلة",
+    "placeholder": "صف المشكلة...",
+    "submit": "إرسال",
+    "submitting": "جاري الإرسال...",
+    "success": "تم الإرسال. شكراً لك!",
+    "error": "حدث خطأ. حاول مرة أخرى."
+  },
+  "userButton": {
+    "logout": "تسجيل الخروج"
+  },
+  "applicationTabs": {
+    "all": "الكل",
+    "pending": "قيد الانتظار",
+    "approved": "مقبول",
+    "denied": "مرفوض",
+    "submittedOn": "تم تقديم الطلب في ",
+    "approvedMessage": "تمت الموافقة على هذا الطلب.",
+    "deniedMessage": "تم رفض هذا الطلب.",
+    "pendingMessage": "هذا الطلب قيد المراجعة.",
+    "propertyDetails": "تفاصيل العقار",
+    "downloadAgreement": "تحميل العقد"
+  },
+  "propertyCard": {
+    "in": "في",
+    "night": "ليلة",
+    "superhost": "مضيف متميز",
+    "addFavorite": "إضافة للمفضلة",
+    "removeFavorite": "إزالة من المفضلة"
   },
   "home": {
     "sections": {
@@ -1494,6 +2192,351 @@
       "featured": "مميز",
       "unique": "فريد",
       "windmill": "طاحونة"
+    },
+    "hero": {
+      "altText": "منصة مكان للإيجارات"
+    },
+    "propertyCount": "{count} عقارات وُجدت",
+    "propertyCountSingular": "{count} عقار وُجد",
+    "clearFilters": "مسح الفلاتر",
+    "tryAgain": "حاول مجدداً",
+    "exploreAll": "استكشف جميع العقارات",
+    "loadingProperties": "جاري تحميل العقارات...",
+    "noProperties": "لم يتم العثور على عقارات تطابق معاييرك.",
+    "inspiration": {
+      "title": "إلهام لرحلتك القادمة في السودان"
+    },
+    "ask": {
+      "title": "أسئلة\nحول\nالاستضافة؟",
+      "button": "اسأل مضيفاً متميزاً"
+    },
+    "giftCard": {
+      "title": "تسوق بطاقات\nهدايا مكان",
+      "button": "اعرف المزيد",
+      "altText": "ثلاث بطاقات هدايا مكان متراكبة"
+    },
+    "filter": {
+      "Islands": "جزر",
+      "Mansions": "قصور",
+      "Beach": "شاطئ",
+      "Boats": "قوارب",
+      "Containers": "حاويات",
+      "New": "جديد",
+      "Pools": "مسابح",
+      "Groups": "مجموعات",
+      "Featured": "مميز",
+      "Special": "خاص",
+      "Windmills": "طواحين",
+      "desc": {
+        "Islands": "جزر خاصة",
+        "Mansions": "منازل فاخرة",
+        "Beach": "واجهة بحرية",
+        "Boats": "إقامات فريدة",
+        "Containers": "تصميم عصري",
+        "New": "أحدث الإضافات",
+        "Pools": "جنة المسابح",
+        "Groups": "مجموعات كبيرة",
+        "Featured": "أفضل الخيارات",
+        "Special": "إقامات فريدة",
+        "Windmills": "إقامات فريدة"
+      }
+    },
+    "metadata": {
+      "title": "مكان - إيجار وسكن",
+      "description": "اكتشف أفضل العقارات والشقق المفروشة للإيجار"
+    }
+  },
+  "search": {
+    "location": "الموقع",
+    "whereAreYouGoing": "إلى أين تذهب؟",
+    "checkIn": "تسجيل الوصول",
+    "checkOut": "المغادرة",
+    "addDate": "أضف تاريخ",
+    "guestsLabel": "الضيوف",
+    "addGuests": "أضف ضيوف",
+    "searchButton": "بحث",
+    "adult": "بالغ",
+    "adults": "بالغين",
+    "child": "طفل",
+    "children": "أطفال",
+    "infant": "رضيع",
+    "infants": "رضع",
+    "anywhere": "أي مكان",
+    "anyWeek": "أي أسبوع",
+    "searchHowTos": "ابحث عن الإرشادات والمزيد",
+    "whereTo": "إلى أين؟",
+    "searchDestinations": "ابحث عن وجهات...",
+    "searchLocation": "ابحث عن موقع",
+    "searchResults": "نتائج البحث",
+    "popularDestinations": "وجهات شائعة",
+    "recommendedDestinations": "وجهات مقترحة",
+    "noDestinationsFound": "لم يتم العثور على وجهات لـ \"{query}\"",
+    "whosComing": "من سيحضر؟",
+    "adultsLabel": "بالغون",
+    "adultsAge": "13 سنة فأكثر",
+    "childrenLabel": "أطفال",
+    "childrenAge": "2-12 سنة",
+    "infantsLabel": "رضّع",
+    "infantsAge": "أقل من سنتين",
+    "startSearch": "ابدأ البحث",
+    "editSearch": "تعديل البحث",
+    "whenTraveling": "متى تسافر؟",
+    "howLongStaying": "كم مدة إقامتك؟",
+    "whoComing": "من سيحضر؟",
+    "flexible": "مرن",
+    "locations": [
+      "أي مكان",
+      "مرن",
+      "السودان",
+      "الخليج",
+      "أفريقيا",
+      "أوروبا"
+    ],
+    "dates": [
+      "مرن",
+      "نهاية هذا الأسبوع",
+      "الأسبوع القادم",
+      "الشهر القادم",
+      "الصيف"
+    ],
+    "durations": [
+      "ليلة واحدة",
+      "ليلتان",
+      "3 ليالي",
+      "أسبوع",
+      "أسبوعان",
+      "شهر"
+    ],
+    "guestOptions": [
+      "ضيف واحد",
+      "ضيفان",
+      "3 ضيوف",
+      "4 ضيوف",
+      "5+ ضيوف",
+      "مرن"
+    ]
+  },
+  "filters": {
+    "allFilters": "جميع الفلاتر",
+    "searchPlaceholder": "جرب: الخرطوم، بورتسودان...",
+    "availableCities": "المدن المتاحة:",
+    "showAllProperties": "عرض جميع العقارات",
+    "anyMinPrice": "أي حد أدنى",
+    "anyMaxPrice": "أي حد أقصى",
+    "beds": "أسرّة",
+    "anyBeds": "أي عدد أسرّة",
+    "oneBed": "+1 سرير",
+    "twoBeds": "+2 أسرّة",
+    "threeBeds": "+3 أسرّة",
+    "fourBeds": "+4 أسرّة",
+    "baths": "حمامات",
+    "anyBaths": "أي عدد حمامات",
+    "oneBath": "+1 حمام",
+    "twoBaths": "+2 حمامات",
+    "threeBaths": "+3 حمامات",
+    "homeType": "نوع العقار",
+    "anyPropertyType": "أي نوع عقار",
+    "location": "الموقع",
+    "enterLocation": "أدخل الموقع",
+    "propertyType": "نوع العقار",
+    "priceRangeMonthly": "نطاق السعر (شهرياً)",
+    "squareFeet": "المساحة (قدم مربع)",
+    "amenities": "المرافق",
+    "availableFrom": "متاح من",
+    "apply": "تطبيق",
+    "resetFilters": "إعادة ضبط الفلاتر"
+  },
+  "listings": {
+    "placesIn": "أماكن في {location}",
+    "noPropertiesFound": "لا توجد عقارات",
+    "adjustFilters": "حاول تعديل فلاتر البحث لرؤية المزيد من النتائج.",
+    "loading": "جاري التحميل...",
+    "failedToLoad": "فشل تحميل العقارات",
+    "perMonth": "/شهر",
+    "month": "شهر"
+  },
+  "landing": {
+    "callToAction": {
+      "bgAlt": "خلفية قسم البحث في مكان",
+      "title": "ابحث عن عقارك المثالي للإيجار",
+      "description": "اكتشف مجموعة واسعة من العقارات المتاحة للإيجار في موقعك المفضل.",
+      "searchButton": "البحث",
+      "signUpButton": "سجّل الآن"
+    },
+    "discover": {
+      "title": "اكتشف",
+      "subtitle": "ابحث عن عقار إيجارك المثالي اليوم!",
+      "description": "لم يكن البحث عن عقار الإيجار المثالي أسهل من أي وقت مضى. مع ميزة البحث السهلة، يمكنك العثور بسرعة على المنزل المثالي الذي يلبي جميع احتياجاتك. ابدأ بحثك اليوم!",
+      "searchProperties": "ابحث عن العقارات",
+      "searchPropertiesDesc": "تصفح مجموعتنا الواسعة من العقارات المتاحة للإيجار في موقعك المفضل.",
+      "bookRental": "احجز إيجارك",
+      "bookRentalDesc": "بمجرد العثور على العقار المثالي، احجزه بسهولة عبر الإنترنت بنقرات قليلة.",
+      "enjoyHome": "استمتع بمنزلك الجديد",
+      "enjoyHomeDesc": "انتقل إلى عقارك الجديد وابدأ بالاستمتاع بمنزل أحلامك."
+    },
+    "features": {
+      "heading": "ابحث بسرعة عن المنزل الذي تريده باستخدام فلاتر البحث الفعالة!",
+      "titles": [
+        "إعلانات موثوقة ومُوثّقة",
+        "تصفح إعلانات الإيجار بسهولة",
+        "بسّط بحثك عن الإيجار بفلاتر متقدمة"
+      ],
+      "descriptions": [
+        "اكتشف أفضل خيارات الإيجار مع تقييمات ومراجعات المستخدمين.",
+        "احصل على تقييمات ومراجعات المستخدمين لفهم أفضل لخيارات الإيجار.",
+        "ابحث عن إعلانات إيجار موثوقة ومُوثّقة لضمان تجربة سلسة."
+      ],
+      "links": [
+        "استكشف",
+        "بحث",
+        "اكتشف"
+      ],
+      "fallbackTitle": "ميزة",
+      "fallbackLink": "اعرف المزيد"
+    },
+    "footer": {
+      "brandName": "مكان",
+      "aboutUs": "من نحن",
+      "contactUs": "اتصل بنا",
+      "faq": "الأسئلة الشائعة",
+      "terms": "الشروط",
+      "privacy": "الخصوصية",
+      "copyright": "© 2024 مكان. جميع الحقوق محفوظة.",
+      "privacyPolicy": "سياسة الخصوصية",
+      "termsOfService": "شروط الخدمة",
+      "cookiePolicy": "سياسة ملفات تعريف الارتباط"
+    }
+  },
+  "host": {
+    "location": {
+      "streetAddress": "عنوان الشارع",
+      "streetAddressPlaceholder": "١٢٣ شارع الرئيسي",
+      "city": "المدينة",
+      "cityPlaceholder": "الرياض",
+      "stateProvince": "المنطقة / المحافظة",
+      "stateProvincePlaceholder": "الرياض",
+      "country": "الدولة",
+      "countryPlaceholder": "المملكة العربية السعودية",
+      "postalCode": "الرمز البريدي",
+      "postalCodePlaceholder": "١٢٢٧١"
+    },
+    "newListing": {
+      "startNewListing": "ابدأ إعلاناً جديداً",
+      "createNewListing": "إنشاء إعلان جديد",
+      "createFromExisting": "إنشاء من إعلان موجود"
+    },
+    "propertyTypes": {
+      "house": "منزل",
+      "apartment": "شقة",
+      "barn": "حظيرة",
+      "bedBreakfast": "مبيت وإفطار",
+      "boat": "قارب",
+      "cabin": "كوخ",
+      "camperRv": "عربة تخييم",
+      "casaParticular": "كازا بارتيكولار",
+      "castle": "قلعة",
+      "cave": "كهف",
+      "container": "حاوية",
+      "cycladicHome": "منزل سيكلادي"
+    },
+    "stepNavigation": {
+      "next": "التالي",
+      "back": "السابق"
+    },
+    "stepHeader": {
+      "step": "الخطوة {number}"
+    }
+  },
+  "pages": {
+    "accessibility": {
+      "title": "إمكانية الوصول",
+      "lastUpdated": "آخر تحديث: فبراير 2026",
+      "commitmentTitle": "التزامنا",
+      "commitmentText": "نلتزم بضمان إمكانية الوصول الرقمي للأشخاص ذوي الإعاقة. نعمل باستمرار على تحسين تجربة المستخدم للجميع.",
+      "standardsTitle": "المعايير",
+      "standardsText": "نسعى للامتثال لإرشادات WCAG 2.1 على المستوى AA.",
+      "featuresTitle": "الميزات",
+      "screenReader": "دعم قارئ الشاشة",
+      "keyboard": "التنقل بلوحة المفاتيح",
+      "rtlLtr": "دعم RTL/LTR",
+      "colorContrast": "تباين ألوان كافٍ",
+      "feedbackTitle": "ملاحظات",
+      "feedbackText": "نرحب بملاحظاتك حول إمكانية الوصول إلى موقعنا. يرجى التواصل معنا إذا واجهت أي عوائق."
+    },
+    "cookies": {
+      "title": "سياسة ملفات تعريف الارتباط",
+      "lastUpdated": "آخر تحديث: فبراير 2026",
+      "whatAreCookiesTitle": "ما هي ملفات تعريف الارتباط",
+      "whatAreCookiesText": "ملفات تعريف الارتباط هي ملفات نصية صغيرة تُخزن على جهازك عند زيارة موقعنا.",
+      "essentialTitle": "ملفات تعريف الارتباط الأساسية",
+      "essentialText": "نستخدم ملفات تعريف ارتباط أساسية للمصادقة وتفضيلات اللغة وأمان الموقع.",
+      "managingTitle": "إدارة ملفات تعريف الارتباط",
+      "managingText": "يمكنك التحكم في ملفات تعريف الارتباط من خلال إعدادات المتصفح الخاص بك."
+    },
+    "privacy": {
+      "title": "سياسة الخصوصية",
+      "lastUpdated": "آخر تحديث: فبراير 2026",
+      "collectTitle": "المعلومات التي نجمعها",
+      "collectText": "نجمع المعلومات التي تقدمها مباشرة عند إنشاء حساب أو إجراء حجز أو التواصل معنا.",
+      "useTitle": "كيف نستخدم معلوماتك",
+      "useText": "نستخدم معلوماتك لتقديم خدماتنا وتحسينها وحماية مستخدمينا.",
+      "sharingTitle": "مشاركة المعلومات",
+      "sharingText": "لا نبيع معلوماتك الشخصية. نشارك المعلومات فقط كما هو موضح في هذه السياسة.",
+      "contactTitle": "اتصل بنا",
+      "contactText": "إذا كانت لديك أسئلة حول سياسة الخصوصية، يرجى التواصل معنا."
+    },
+    "terms": {
+      "title": "شروط الخدمة",
+      "lastUpdated": "آخر تحديث: فبراير 2026",
+      "acceptanceTitle": "قبول الشروط",
+      "acceptanceText": "باستخدام منصة مكان، فإنك توافق على الالتزام بهذه الشروط.",
+      "useTitle": "استخدام الخدمة",
+      "useText": "يجب أن تكون بعمر 18 عامًا أو أكثر لاستخدام خدماتنا. أنت مسؤول عن الحفاظ على أمان حسابك.",
+      "bookingsTitle": "الحجوزات والمدفوعات",
+      "bookingsText": "جميع الحجوزات تخضع للتوافر. تتم معالجة المدفوعات بشكل آمن من خلال مزودي خدمة الدفع لدينا.",
+      "liabilityTitle": "تحديد المسؤولية",
+      "liabilityText": "مكان يعمل كوسيط بين المستأجرين ومديري العقارات. نحن لسنا مسؤولين عن حالة العقارات."
+    },
+    "help": {
+      "homeHostComingSoon": "محتوى مضيف المنزل قريباً...",
+      "experienceHostComingSoon": "محتوى مضيف التجربة قريباً...",
+      "serviceHostComingSoon": "محتوى مضيف الخدمة قريباً...",
+      "travelAdminComingSoon": "محتوى مسؤول السفر قريباً..."
+    }
+  },
+  "onboarding": {
+    "back": "السابق",
+    "next": "التالي",
+    "creating": "جارٍ الإنشاء...",
+    "createListing": "إنشاء الإعلان",
+    "publishOffice": "نشر المكتب",
+    "getStarted": "ابدأ الآن",
+    "headline": "من السهل البدء على مكان",
+    "steps": {
+      "tellAboutPlace": {
+        "title": "أخبرنا عن مكانك",
+        "description": "شارك بعض المعلومات الأساسية، مثل موقعه وعدد الضيوف الذين يمكنهم الإقامة."
+      },
+      "makeStandOut": {
+        "title": "اجعله مميزاً",
+        "description": "أضف 5 صور أو أكثر بالإضافة إلى عنوان ووصف — سنساعدك."
+      },
+      "finishPublish": {
+        "title": "أكمل وانشر",
+        "description": "اختر سعراً للبدء، تحقق من بعض التفاصيل، ثم انشر إعلانك."
+      },
+      "setupOffice": {
+        "title": "أعد مكتبك",
+        "description": "أدخل تفاصيل مكتبك ومعلومات الاتصال واختر موقع نقطة التجمع."
+      },
+      "addBusesRoutes": {
+        "title": "أضف الحافلات والمسارات",
+        "description": "سجّل حافلاتك بالمرافق والسعة، ثم حدد مساراتك مع الأسعار."
+      },
+      "createSchedules": {
+        "title": "أنشئ الجداول وانشر",
+        "description": "أعد جداول الرحلات، أضف صوراً، وانشر مكتبك لبدء استقبال الحجوزات."
+      }
     }
   }
 }

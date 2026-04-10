@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import React from "react";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 import {
   Sidebar,
   SidebarContent,
@@ -32,8 +33,7 @@ type UserType = "manager" | "tenant" | "office";
 const AppSidebar = () => {
   const pathname = usePathname();
   const { toggleSidebar, open } = useSidebar();
-
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
 
   const userType: UserType = pathname.includes("/offices")
     ? "office"
@@ -44,37 +44,37 @@ const AppSidebar = () => {
   const navLinks =
     userType === "manager"
       ? [
-          { icon: Building, label: isAr ? "العقارات" : "Properties", href: "/managers/properties" },
+          { icon: Building, label: dict.dashboard?.sidebar?.properties ?? "Properties", href: "/managers/properties" },
           {
             icon: FileText,
-            label: isAr ? "الطلبات" : "Applications",
+            label: dict.dashboard?.sidebar?.applications ?? "Applications",
             href: "/managers/applications",
           },
-          { icon: Settings, label: isAr ? "الإعدادات" : "Settings", href: "/managers/settings" },
+          { icon: Settings, label: dict.dashboard?.sidebar?.settings ?? "Settings", href: "/managers/settings" },
         ]
       : userType === "office"
       ? [
-          { icon: Bus, label: isAr ? "لوحة التحكم" : "Dashboard", href: "/offices" },
-          { icon: Ticket, label: isAr ? "الحجوزات" : "Bookings", href: "/offices/bookings" },
-          { icon: Calendar, label: isAr ? "الرحلات" : "Trips", href: "/offices/trips" },
-          { icon: Settings, label: isAr ? "الإعدادات" : "Settings", href: "/offices/settings" },
+          { icon: Bus, label: dict.dashboard?.sidebar?.dashboard ?? "Dashboard", href: "/offices" },
+          { icon: Ticket, label: dict.dashboard?.sidebar?.bookings ?? "Bookings", href: "/offices/bookings" },
+          { icon: Calendar, label: dict.dashboard?.sidebar?.trips ?? "Trips", href: "/offices/trips" },
+          { icon: Settings, label: dict.dashboard?.sidebar?.settings ?? "Settings", href: "/offices/settings" },
         ]
       : [
-          { icon: Heart, label: isAr ? "المفضلة" : "Favorites", href: "/tenants/favorites" },
-          { icon: Bus, label: isAr ? "رحلاتي" : "My Trips", href: "/tenants/trips" },
+          { icon: Heart, label: dict.dashboard?.sidebar?.favorites ?? "Favorites", href: "/tenants/favorites" },
+          { icon: Bus, label: dict.dashboard?.sidebar?.myTrips ?? "My Trips", href: "/tenants/trips" },
           {
             icon: FileText,
-            label: isAr ? "الطلبات" : "Applications",
+            label: dict.dashboard?.sidebar?.applications ?? "Applications",
             href: "/tenants/applications",
           },
-          { icon: Home, label: isAr ? "السكن" : "Residences", href: "/tenants/residences" },
-          { icon: Settings, label: isAr ? "الإعدادات" : "Settings", href: "/tenants/settings" },
+          { icon: Home, label: dict.dashboard?.sidebar?.residences ?? "Residences", href: "/tenants/residences" },
+          { icon: Settings, label: dict.dashboard?.sidebar?.settings ?? "Settings", href: "/tenants/settings" },
         ];
 
   const viewLabels = {
-    manager: isAr ? "عرض المدير" : "Manager View",
-    office: isAr ? "عرض المكتب" : "Office View",
-    tenant: isAr ? "عرض المستأجر" : "Renter View",
+    manager: dict.dashboard?.sidebar?.managerView ?? "Manager View",
+    office: dict.dashboard?.sidebar?.officeView ?? "Office View",
+    tenant: dict.dashboard?.sidebar?.renterView ?? "Renter View",
   };
 
   return (

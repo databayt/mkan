@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { HelpCircle, Bookmark } from 'lucide-react';
@@ -27,9 +28,9 @@ const OnboardingFooter: React.FC<OnboardingFooterProps> = ({
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
-  const backLabel = backLabelProp ?? (isAr ? "السابق" : "Back");
-  const nextLabel = nextLabelProp ?? (isAr ? "التالي" : "Next");
+  const dict = useDictionary();
+  const backLabel = backLabelProp ?? (dict.onboarding?.back ?? "Back");
+  const nextLabel = nextLabelProp ?? (dict.onboarding?.next ?? "Next");
 
   // Use validation context if hook is provided
   let contextNextDisabled = false;
@@ -140,8 +141,8 @@ const OnboardingFooter: React.FC<OnboardingFooterProps> = ({
     !(customNavigation?.nextDisabled);
 
   // Set the next button label based on current step
-  const finalLabel = isAr && config.finalButtonLabel === 'Create listing' ? 'إنشاء الإعلان' :
-                     isAr && config.finalButtonLabel === 'Publish office' ? 'نشر المكتب' :
+  const finalLabel = config.finalButtonLabel === 'Create listing' ? (dict.onboarding?.createListing ?? 'Create listing') :
+                     config.finalButtonLabel === 'Publish office' ? (dict.onboarding?.publishOffice ?? 'Publish office') :
                      config.finalButtonLabel;
   const actualNextLabel = currentStepSlug === config.finalStep ? finalLabel : nextLabel;
 

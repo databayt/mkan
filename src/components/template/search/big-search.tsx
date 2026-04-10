@@ -10,6 +10,7 @@ import GuestSelectorDropdown from "./guest-selector";
 import { useLocationSuggestions } from "./hooks/use-location-suggestions";
 import { useSearchValidation } from "@/hooks/useSearchValidation";
 import { type LocationSuggestion } from "@/lib/schemas/search-schema";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 type ActiveButton = "location" | "checkin" | "checkout" | "guests" | null;
 
@@ -20,7 +21,7 @@ interface BigSearchProps {
 export default function BigSearch({ onClose }: BigSearchProps = {}) {
   const router = useRouter();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [activeButton, setActiveButton] = useState<ActiveButton>(null);
   const [hoveredButton, setHoveredButton] = useState<ActiveButton>(null);
   const searchBarRef = useRef<HTMLDivElement>(null);
@@ -94,7 +95,7 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
     if (dateRange.from) {
       return formatDate(dateRange.from);
     }
-    return isAr ? "أضف تاريخ" : "Add date";
+    return dict.search?.addDate ?? "Add date";
   };
 
   // Get check-out display text
@@ -102,7 +103,7 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
     if (dateRange.to) {
       return formatDate(dateRange.to);
     }
-    return isAr ? "أضف تاريخ" : "Add date";
+    return dict.search?.addDate ?? "Add date";
   };
 
   // Handle guest change
@@ -122,24 +123,17 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
   // Get guest display text
   const getGuestDisplayText = () => {
     const total = guests.adults + guests.children + guests.infants;
-    if (total === 0) return isAr ? "أضف ضيوف" : "Add guests";
+    if (total === 0) return dict.search?.addGuests ?? "Add guests";
 
     const parts = [];
     if (guests.adults > 0) {
-      parts.push(isAr
-        ? `${guests.adults} ${guests.adults > 1 ? "بالغين" : "بالغ"}`
-        : `${guests.adults} adult${guests.adults > 1 ? "s" : ""}`);
+      parts.push(`${guests.adults} ${guests.adults > 1 ? (dict.search?.adults ?? "adults") : (dict.search?.adult ?? "adult")}`);
     }
     if (guests.children > 0) {
-      parts.push(isAr
-        ? `${guests.children} ${guests.children > 1 ? "أطفال" : "طفل"}`
-        : `${guests.children} child${guests.children > 1 ? "ren" : ""}`
-      );
+      parts.push(`${guests.children} ${guests.children > 1 ? (dict.search?.children ?? "children") : (dict.search?.child ?? "child")}`);
     }
     if (guests.infants > 0) {
-      parts.push(isAr
-        ? `${guests.infants} ${guests.infants > 1 ? "رضع" : "رضيع"}`
-        : `${guests.infants} infant${guests.infants > 1 ? "s" : ""}`);
+      parts.push(`${guests.infants} ${guests.infants > 1 ? (dict.search?.infants ?? "infants") : (dict.search?.infant ?? "infant")}`);
     }
 
     return parts.join(", ");
@@ -334,10 +328,10 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
         >
           <div className="text-start">
             <div className="text-sm font-semibold text-[#000000] mb-1">
-              {isAr ? "الموقع" : "Location"}
+              {dict.search?.location ?? "Location"}
             </div>
             <div className="text-sm text-[#6b7280]">
-              {selectedLocation || (isAr ? "إلى أين تذهب؟" : "Where are you going?")}
+              {selectedLocation || (dict.search?.whereAreYouGoing ?? "Where are you going?")}
             </div>
           </div>
         </button>
@@ -380,7 +374,7 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
           >
             <div className="text-start">
               <div className="text-sm font-semibold text-[#000000] mb-1">
-                {isAr ? "تسجيل الوصول" : "Check in"}
+                {dict.search?.checkIn ?? "Check in"}
               </div>
               <div className="text-sm text-[#6b7280]">{getCheckInDisplayText()}</div>
             </div>
@@ -402,7 +396,7 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
           >
             <div className="text-start">
               <div className="text-sm font-semibold text-[#000000] mb-1">
-                {isAr ? "المغادرة" : "Check out"}
+                {dict.search?.checkOut ?? "Check out"}
               </div>
               <div className="text-sm text-[#6b7280]">{getCheckOutDisplayText()}</div>
             </div>
@@ -428,7 +422,7 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
             onClick={() => handleButtonClick("guests")}
           >
             <div className="text-sm font-semibold text-[#000000] mb-1">
-              {isAr ? "الضيوف" : "Guests"}
+              {dict.search?.guestsLabel ?? "Guests"}
             </div>
             <div className="text-sm text-[#6b7280]">{getGuestDisplayText()}</div>
           </div>
@@ -444,9 +438,9 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
             >
               <Search className="w-4 h-4" />
               {activeButton && (
-                <span className="ms-2 text-sm font-medium">{isAr ? "بحث" : "Search"}</span>
+                <span className="ms-2 text-sm font-medium">{dict.search?.searchButton ?? "Search"}</span>
               )}
-              <span className="sr-only">{isAr ? "بحث" : "Search"}</span>
+              <span className="sr-only">{dict.search?.searchButton ?? "Search"}</span>
             </Button>
           </div>
         </div>

@@ -6,11 +6,10 @@ import Link from "next/link";
 import { Globe, Facebook, Twitter, Instagram } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReportIssue } from "@/components/report-issue";
-import { usePathname } from "next/navigation";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 export default function SiteFooter() {
-	const pathname = usePathname();
-	const isAr = pathname?.startsWith("/ar");
+	const dict = useDictionary();
 
 	return (
 		<div className='bg-muted border-t border-border'>
@@ -20,42 +19,42 @@ export default function SiteFooter() {
 					{/* Support Column */}
 					<div className='text-start'>
 						<h3 className='font-semibold text-sm mb-4'>
-							{isAr ? "الدعم" : "Support"}
+							{dict.siteFooter?.support ?? "Support"}
 						</h3>
 						<ul className='space-y-3'>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "مركز المساعدة" : "Help Center"}
+									{dict.siteFooter?.helpCenter ?? "Help Center"}
 								</Link>
 							</li>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "معلومات السلامة" : "Safety information"}
+									{dict.siteFooter?.safetyInfo ?? "Safety information"}
 								</Link>
 							</li>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "خيارات الإلغاء" : "Cancellation options"}
+									{dict.siteFooter?.cancellationOptions ?? "Cancellation options"}
 								</Link>
 							</li>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "دعم ذوي الاحتياجات الخاصة" : "Supporting people with disabilities"}
+									{dict.siteFooter?.disabilitySupport ?? "Supporting people with disabilities"}
 								</Link>
 							</li>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "الإبلاغ عن مشكلة" : "Report a concern"}
+									{dict.siteFooter?.reportConcern ?? "Report a concern"}
 								</Link>
 							</li>
 						</ul>
@@ -64,28 +63,28 @@ export default function SiteFooter() {
 					{/* Community Column */}
 					<div className='text-start'>
 						<h3 className='font-semibold text-sm mb-4'>
-							{isAr ? "المجتمع" : "Community"}
+							{dict.siteFooter?.community ?? "Community"}
 						</h3>
 						<ul className='space-y-3'>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "الإسكان الإغاثي" : "Disaster relief housing"}
+									{dict.siteFooter?.disasterRelief ?? "Disaster relief housing"}
 								</Link>
 							</li>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "الاحتفاء بالتنوع والانتماء" : "Celebrating diversity & belonging"}
+									{dict.siteFooter?.diversityBelonging ?? "Celebrating diversity & belonging"}
 								</Link>
 							</li>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "مكافحة التمييز" : "Combating discrimination"}
+									{dict.siteFooter?.combatDiscrimination ?? "Combating discrimination"}
 								</Link>
 							</li>
 						</ul>
@@ -94,35 +93,35 @@ export default function SiteFooter() {
 					{/* Hosting Column */}
 					<div className='text-start'>
 						<h3 className='font-semibold text-sm mb-4'>
-							{isAr ? "الاستضافة" : "Hosting"}
+							{dict.siteFooter?.hosting ?? "Hosting"}
 						</h3>
 						<ul className='space-y-3'>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "جرّب الاستضافة" : "Try hosting"}
+									{dict.siteFooter?.tryHosting ?? "Try hosting"}
 								</Link>
 							</li>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "استكشف موارد الاستضافة" : "Explore hosting resources"}
+									{dict.siteFooter?.hostingResources ?? "Explore hosting resources"}
 								</Link>
 							</li>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "زر منتدى المجتمع" : "Visit our community forum"}
+									{dict.siteFooter?.communityForum ?? "Visit our community forum"}
 								</Link>
 							</li>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "كيف تستضيف بمسؤولية" : "How to host responsibly"}
+									{dict.siteFooter?.hostResponsibly ?? "How to host responsibly"}
 								</Link>
 							</li>
 						</ul>
@@ -131,35 +130,35 @@ export default function SiteFooter() {
 					{/* About Column */}
 					<div className='text-start'>
 						<h3 className='font-semibold text-sm mb-4'>
-							{isAr ? "حول" : "About"}
+							{dict.siteFooter?.about ?? "About"}
 						</h3>
 						<ul className='space-y-3'>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "غرفة الأخبار" : "Newsroom"}
+									{dict.siteFooter?.newsroom ?? "Newsroom"}
 								</Link>
 							</li>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "تعرّف على الميزات الجديدة" : "Learn about new features"}
+									{dict.siteFooter?.newFeatures ?? "Learn about new features"}
 								</Link>
 							</li>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "وظائف" : "Careers"}
+									{dict.siteFooter?.careers ?? "Careers"}
 								</Link>
 							</li>
 							<li>
 								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
-									{isAr ? "المستثمرون" : "Investors"}
+									{dict.siteFooter?.investors ?? "Investors"}
 								</Link>
 							</li>
 						</ul>
@@ -171,18 +170,18 @@ export default function SiteFooter() {
 					<div className='flex flex-col gap-4 sm:gap-6 lg:flex-row justify-between items-start lg:items-center'>
 						{/* Left side - Copyright and legal links */}
 						<div className='flex flex-wrap items-center gap-4 text-sm text-muted-foreground'>
-							<p>{isAr ? "\u00A9 2024 مكان" : "\u00A9 2024 Mkan"}</p>
+							<p>{dict.siteFooter?.copyright ?? "\u00A9 2024 Mkan"}</p>
 							<span>·</span>
 							<Link href='#' className='hover:underline'>
-								{isAr ? "الخصوصية" : "Privacy"}
+								{dict.siteFooter?.privacy ?? "Privacy"}
 							</Link>
 							<span>·</span>
 							<Link href='#' className='hover:underline'>
-								{isAr ? "الشروط" : "Terms"}
+								{dict.siteFooter?.terms ?? "Terms"}
 							</Link>
 							<span>·</span>
 							<Link href='#' className='hover:underline'>
-								{isAr ? "خريطة الموقع" : "Sitemap"}
+								{dict.siteFooter?.sitemap ?? "Sitemap"}
 							</Link>
 							<span>·</span>
 							<ReportIssue />
@@ -195,7 +194,7 @@ export default function SiteFooter() {
 								size='sm'
 								className='text-muted-foreground hover:bg-background gap-2'>
 								<Globe className='w-4 h-4' />
-								{isAr ? "العربية" : "English"}
+								{dict.siteFooter?.language ?? "English"}
 							</Button>
 							<div className='flex items-center gap-2'>
 								<Button

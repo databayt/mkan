@@ -47,7 +47,21 @@
     "blog": "Blog",
     "pricing": "Pricing",
     "documentation": "Documentation",
-    "brandName": "Mkan"
+    "brandName": "Mkan",
+    "browseRentals": "Browse Rentals",
+    "becomeHost": "Become a host",
+    "help": "Help",
+    "hostYourSpace": "Host your space",
+    "listProperty": "List a property for rent",
+    "hostTransportation": "Host transportation",
+    "offerBusServices": "Offer bus services",
+    "addNewProperty": "Add New Property",
+    "searchProperties": "Search Properties",
+    "switchLanguage": "Switch language",
+    "logoAlt": "Mkan Logo",
+    "signIn": "Login",
+    "signUp": "Sign Up",
+    "logout": "Logout"
   },
   "auth": {
     "signIn": "Login",
@@ -83,13 +97,171 @@
       "subtitle": "Everything you need to build your next project"
     },
     "pricing": {
-      "title": "Pricing",
-      "subtitle": "Choose the plan that works for you",
-      "monthly": "Monthly",
-      "yearly": "Yearly",
-      "free": "Free",
-      "pro": "Pro",
-      "enterprise": "Enterprise"
+      "badge": "ROI Guaranteed",
+      "title": "Simple. Transparent.",
+      "subtitle": "All components and building blocks are open source — we charge for crafting fully functional masterpieces and ensuring their ongoing reliability.",
+      "headerSection": {
+        "label": "Pricing",
+        "title": "Transform your digital presence",
+        "subtitle": "Choose the perfect plan for your business needs"
+      },
+      "plans": {
+        "hobby": {
+          "title": "Hobby",
+          "description": "Get started for free",
+          "benefits": [
+            "Up to 5 pages website",
+            "Basic responsive design",
+            "Contact form integration"
+          ]
+        },
+        "pro": {
+          "title": "Pro",
+          "description": "For growing businesses",
+          "benefits": [
+            "Up to 15 pages website",
+            "Advanced animations",
+            "SEO optimization",
+            "Custom branding"
+          ]
+        },
+        "ultra": {
+          "title": "Ultra",
+          "description": "For large organizations",
+          "benefits": [
+            "Unlimited pages and features",
+            "Custom integrations"
+          ]
+        }
+      },
+      "constants": {
+        "free": "Free",
+        "includes": "Includes",
+        "everythingInHobby": "Everything in Hobby, plus",
+        "everythingInPro": "Everything in Pro, plus",
+        "startTrial": "Start Trial",
+        "getPro": "Get Pro",
+        "getUltra": "Get Ultra",
+        "monthly": "Monthly",
+        "yearly": "Yearly (save 20%)",
+        "perMonth": "/mo",
+        "moreInfo": "More info"
+      },
+      "planNames": {
+        "hobby": "Hobby",
+        "pro": "Pro",
+        "ultra": "Ultra",
+        "enterprise": "Enterprise"
+      },
+      "enterprise": {
+        "badge": "Enterprise",
+        "title": "Need Something Bigger?",
+        "description": "For enterprises and large organizations, we offer custom solutions with dedicated teams, SLAs, and specialized support tailored to your unique requirements.",
+        "talkToSales": "Talk to Sales"
+      },
+      "comparePlans": {
+        "title": "Compare Plans",
+        "subtitle": "Find the perfect plan tailored for your business needs!",
+        "features": {
+          "websitePages": "Website pages",
+          "responsiveDesign": "Responsive design",
+          "customBranding": "Custom branding",
+          "seoOptimization": "SEO optimization",
+          "contactForms": "Contact forms",
+          "animationsEffects": "Animations & effects",
+          "contentManagement": "Content management",
+          "performanceOptimization": "Performance optimization",
+          "securityFeatures": "Security features",
+          "analyticsReporting": "Analytics & reporting",
+          "support": "Support",
+          "revisions": "Revisions",
+          "hosting": "Hosting",
+          "backupMaintenance": "Backup & maintenance",
+          "customIntegrations": "Custom integrations",
+          "trainingDocumentation": "Training & documentation",
+          "launchAssistance": "Launch assistance",
+          "performanceMonitoring": "Performance monitoring"
+        },
+        "values": {
+          "upTo5": "Up to 5",
+          "upTo15": "Up to 15",
+          "unlimited": "Unlimited",
+          "basic": "Basic",
+          "advanced": "Advanced",
+          "premium": "Premium",
+          "custom": "Custom",
+          "static": "Static",
+          "basicCms": "Basic CMS",
+          "advancedCms": "Advanced CMS",
+          "customCms": "Custom CMS",
+          "basicSsl": "Basic SSL",
+          "advancedSsl": "Advanced SSL",
+          "premiumSsl": "Premium SSL",
+          "customSecurity": "Custom Security",
+          "email": "Email",
+          "priority": "Priority",
+          "support24_7": "24/7",
+          "support24_7Manager": "24/7 + Manager",
+          "oneRound": "1 round",
+          "threeRounds": "3 rounds",
+          "shared": "Shared",
+          "vps": "VPS",
+          "dedicated": "Dedicated",
+          "monthly": "Monthly",
+          "weekly": "Weekly",
+          "daily": "Daily",
+          "realTime": "Real-time",
+          "selfService": "Self-service",
+          "guided": "Guided",
+          "fullService": "Full service",
+          "whiteGlove": "White-glove",
+          "basicGuides": "Basic guides",
+          "videoTutorials": "Video tutorials",
+          "customTraining": "Custom training"
+        },
+        "tooltips": {
+          "websitePages": "Number of website pages included in your plan.",
+          "responsiveDesign": "Mobile-friendly design optimization level.",
+          "customBranding": "Brand colors and logo available from Pro.",
+          "seoOptimization": "Search engine optimization and meta tag setup.",
+          "contactForms": "Contact form functionality and integration options.",
+          "animationsEffects": "Interactive animations and visual effects.",
+          "contentManagement": "Content management system capabilities.",
+          "performanceOptimization": "Website speed and performance optimization.",
+          "securityFeatures": "Security certificates and protection features.",
+          "analyticsReporting": "Website analytics and performance reporting.",
+          "support": "Customer support level and response time.",
+          "revisions": "Number of design revisions included.",
+          "hosting": "Website hosting infrastructure type.",
+          "backupMaintenance": "Backup frequency and maintenance schedule.",
+          "customIntegrations": "Third-party service integrations and APIs.",
+          "trainingDocumentation": "User training and documentation provided.",
+          "launchAssistance": "Website launch and deployment assistance.",
+          "performanceMonitoring": "Ongoing website performance monitoring."
+        }
+      },
+      "faqs": {
+        "title": "Frequently Asked Questions",
+        "subtitle": "Your guide to pricing and plans with Databayt.",
+        "questions": [
+          {
+            "question": "What's included in the One Project plan?",
+            "answer": "The One Project plan includes complete custom development for a single automation solution, including consultation, development, testing, and deployment."
+          },
+          {
+            "question": "How does the hourly billing work for Strategic Partner?",
+            "answer": "With Strategic Partner, you get access to our development team at $10/hour. Perfect for ongoing projects, maintenance, or when you need flexible development resources."
+          },
+          {
+            "question": "Can I switch between plans?",
+            "answer": "Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle."
+          },
+          {
+            "question": "Do you offer enterprise solutions?",
+            "answer": "Absolutely! For enterprise needs, we offer custom solutions with dedicated teams, SLAs, and specialized support. Contact us for a tailored quote."
+          }
+        ]
+      }
     },
     "logoCloud": {
       "trustedBy": "Trusted by amazing\nsponsors"
@@ -269,7 +441,7 @@
     },
     "parallax": {
       "design": "Design",
-      "automate": "Automate", 
+      "automate": "Automate",
       "analytics": "Analytics",
       "efficient": "Efficient"
     },
@@ -293,7 +465,7 @@
     },
     "footer": {
       "product": "Product",
-      "company": "Company", 
+      "company": "Company",
       "services": "Services",
       "support": "Support",
       "readyToBuild": "Ready to build?",
@@ -308,7 +480,7 @@
         "description": "App dir, Routing, Layouts, Loading UI and API routes."
       },
       "react": {
-        "title": "React 19", 
+        "title": "React 19",
         "description": "Server and Client Components.\nUse hook."
       },
       "database": {
@@ -449,7 +621,7 @@
         "title": "What We Do",
         "development": "Development - Enterprise-grade applications and platforms",
         "automation": "Automation - Streamlined workflows and process optimization",
-        "consulting": "Consulting - Technical expertise and implementation support", 
+        "consulting": "Consulting - Technical expertise and implementation support",
         "openSource": "Open Source - Community-driven development and innovation"
       },
       "businessModel": {
@@ -459,7 +631,7 @@
           "description": "Custom solutions tailored to specific client requirements and business processes. Each project delivers unique automation systems designed to solve particular challenges and operational needs."
         },
         "partners": {
-          "title": "Partners", 
+          "title": "Partners",
           "description": "Partnership opportunities for businesses seeking to outsource technology development, access specialized talent for temporary projects and specific technical expertise."
         },
         "codebase": {
@@ -489,173 +661,6 @@
           "title": "Excellence",
           "description": "Every product we ship meets the highest standards of quality, security, and performance. Our reputation is built on reliable, enterprise-grade solutions."
         }
-      }
-    },
-    "pricing": {
-      "badge": "ROI Guaranteed",
-      "title": "Simple. Transparent.",
-      "subtitle": "All components and building blocks are open source — we charge for crafting fully functional masterpieces and ensuring their ongoing reliability.",
-      "headerSection": {
-        "label": "Pricing",
-        "title": "Transform your digital presence",
-        "subtitle": "Choose the perfect plan for your business needs"
-      },
-      "plans": {
-        "hobby": {
-          "title": "Hobby",
-          "description": "Get started for free",
-          "benefits": [
-            "Up to 5 pages website",
-            "Basic responsive design",
-            "Contact form integration"
-          ]
-        },
-        "pro": {
-          "title": "Pro",
-          "description": "For growing businesses",
-          "benefits": [
-            "Up to 15 pages website",
-            "Advanced animations",
-            "SEO optimization",
-            "Custom branding"
-          ]
-        },
-        "ultra": {
-          "title": "Ultra",
-          "description": "For large organizations",
-          "benefits": [
-            "Unlimited pages and features",
-            "Custom integrations"
-          ]
-        }
-      },
-      "constants": {
-        "free": "Free",
-        "includes": "Includes",
-        "everythingInHobby": "Everything in Hobby, plus",
-        "everythingInPro": "Everything in Pro, plus",
-        "startTrial": "Start Trial",
-        "getPro": "Get Pro",
-        "getUltra": "Get Ultra",
-        "monthly": "Monthly",
-        "yearly": "Yearly (save 20%)",
-        "perMonth": "/mo",
-        "moreInfo": "More info"
-      },
-      "planNames": {
-        "hobby": "Hobby",
-        "pro": "Pro",
-        "ultra": "Ultra",
-        "enterprise": "Enterprise"
-      },
-      "enterprise": {
-        "badge": "Enterprise",
-        "title": "Need Something Bigger?",
-        "description": "For enterprises and large organizations, we offer custom solutions with dedicated teams, SLAs, and specialized support tailored to your unique requirements.",
-        "talkToSales": "Talk to Sales"
-      },
-      "comparePlans": {
-        "title": "Compare Plans",
-        "subtitle": "Find the perfect plan tailored for your business needs!",
-        "features": {
-          "websitePages": "Website pages",
-          "responsiveDesign": "Responsive design",
-          "customBranding": "Custom branding",
-          "seoOptimization": "SEO optimization",
-          "contactForms": "Contact forms",
-          "animationsEffects": "Animations & effects",
-          "contentManagement": "Content management",
-          "performanceOptimization": "Performance optimization",
-          "securityFeatures": "Security features",
-          "analyticsReporting": "Analytics & reporting",
-          "support": "Support",
-          "revisions": "Revisions",
-          "hosting": "Hosting",
-          "backupMaintenance": "Backup & maintenance",
-          "customIntegrations": "Custom integrations",
-          "trainingDocumentation": "Training & documentation",
-          "launchAssistance": "Launch assistance",
-          "performanceMonitoring": "Performance monitoring"
-        },
-        "values": {
-          "upTo5": "Up to 5",
-          "upTo15": "Up to 15",
-          "unlimited": "Unlimited",
-          "basic": "Basic",
-          "advanced": "Advanced",
-          "premium": "Premium",
-          "custom": "Custom",
-          "static": "Static",
-          "basicCms": "Basic CMS",
-          "advancedCms": "Advanced CMS",
-          "customCms": "Custom CMS",
-          "basicSsl": "Basic SSL",
-          "advancedSsl": "Advanced SSL",
-          "premiumSsl": "Premium SSL",
-          "customSecurity": "Custom Security",
-          "email": "Email",
-          "priority": "Priority",
-          "support24_7": "24/7",
-          "support24_7Manager": "24/7 + Manager",
-          "oneRound": "1 round",
-          "threeRounds": "3 rounds",
-          "shared": "Shared",
-          "vps": "VPS",
-          "dedicated": "Dedicated",
-          "monthly": "Monthly",
-          "weekly": "Weekly",
-          "daily": "Daily",
-          "realTime": "Real-time",
-          "selfService": "Self-service",
-          "guided": "Guided",
-          "fullService": "Full service",
-          "whiteGlove": "White-glove",
-          "basicGuides": "Basic guides",
-          "videoTutorials": "Video tutorials",
-          "customTraining": "Custom training"
-        },
-        "tooltips": {
-          "websitePages": "Number of website pages included in your plan.",
-          "responsiveDesign": "Mobile-friendly design optimization level.",
-          "customBranding": "Brand colors and logo available from Pro.",
-          "seoOptimization": "Search engine optimization and meta tag setup.",
-          "contactForms": "Contact form functionality and integration options.",
-          "animationsEffects": "Interactive animations and visual effects.",
-          "contentManagement": "Content management system capabilities.",
-          "performanceOptimization": "Website speed and performance optimization.",
-          "securityFeatures": "Security certificates and protection features.",
-          "analyticsReporting": "Website analytics and performance reporting.",
-          "support": "Customer support level and response time.",
-          "revisions": "Number of design revisions included.",
-          "hosting": "Website hosting infrastructure type.",
-          "backupMaintenance": "Backup frequency and maintenance schedule.",
-          "customIntegrations": "Third-party service integrations and APIs.",
-          "trainingDocumentation": "User training and documentation provided.",
-          "launchAssistance": "Website launch and deployment assistance.",
-          "performanceMonitoring": "Ongoing website performance monitoring."
-        }
-      },
-      "faqs": {
-        "title": "Frequently Asked Questions",
-        "subtitle": "Your guide to pricing and plans with Databayt.",
-        "questions": [
-          {
-            "question": "What's included in the One Project plan?",
-            "answer": "The One Project plan includes complete custom development for a single automation solution, including consultation, development, testing, and deployment."
-          },
-          {
-            "question": "How does the hourly billing work for Strategic Partner?",
-            "answer": "With Strategic Partner, you get access to our development team at $10/hour. Perfect for ongoing projects, maintenance, or when you need flexible development resources."
-          },
-          {
-            "question": "Can I switch between plans?",
-            "answer": "Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle."
-          },
-          {
-            "question": "Do you offer enterprise solutions?",
-            "answer": "Absolutely! For enterprise needs, we offer custom solutions with dedicated teams, SLAs, and specialized support. Contact us for a tailored quote."
-          }
-        ]
       }
     },
     "services": {
@@ -771,7 +776,13 @@
         "available": "Available",
         "unavailable": "Unavailable",
         "viewDetails": "View Details",
-        "contactManager": "Contact Manager"
+        "contactManager": "Contact Manager",
+        "superhost": "Superhost",
+        "in": "in",
+        "night": "night",
+        "noImage": "No Image Available",
+        "entireHome": "Entire Home",
+        "reviews": "reviews"
       },
       "types": {
         "Rooms": "Rooms",
@@ -822,14 +833,40 @@
         "pricing": "Pricing",
         "availability": "Availability",
         "pricePerMonth": "Price per month",
-        "securityDeposit": "Security deposit",
-        "applicationFee": "Application fee",
+        "securityDeposit": "Security Deposit:",
+        "applicationFee": "Application Fee:",
         "petsAllowed": "Pets allowed",
-        "parkingIncluded": "Parking included",
+        "parkingIncluded": "Parking Included",
         "contactInfo": "Contact Information",
         "similarProperties": "Similar Properties",
         "scheduleViewing": "Schedule Viewing",
-        "applyNow": "Apply Now"
+        "applyNow": "Apply Now",
+        "propertyDetails": "Property Details",
+        "bedroom": "Bedroom",
+        "bedrooms": "Bedrooms",
+        "bathroom": "Bathroom",
+        "bathrooms": "Bathrooms",
+        "petFriendly": "Pet-Friendly",
+        "morePhotos": "More Photos",
+        "propertyHighlights": "Property Highlights",
+        "propertyHost": "Property Host",
+        "contactPropertyManager": "Contact Property Manager",
+        "backToSearch": "Back to Search",
+        "errorLoading": "Error Loading Property",
+        "errorLoadingMessage": "We couldn't load this property. It may have been removed or the ID is invalid.",
+        "mapComingSoon": "Map Coming Soon",
+        "addressNotAvailable": "Address not available",
+        "perNight": "night",
+        "bedroomSingular": "Bedroom",
+        "bedroomPlural": "Bedrooms",
+        "bathroomSingular": "Bathroom",
+        "bathroomPlural": "Bathrooms",
+        "sqft": "sq ft",
+        "notChargedYet": "You won't be charged yet",
+        "contactManager": "Contact Property Manager",
+        "aboutHost": "About the Host",
+        "hostFallback": "Host",
+        "joinedIn": "Joined in 2023"
       },
       "filters": {
         "allProperties": "All Properties",
@@ -860,6 +897,80 @@
       "mapView": "Map View",
       "listView": "List View",
       "saveSearch": "Save Search"
+    },
+    "listing": {
+      "details": "Listing Details",
+      "viewDetails": "View property listing details",
+      "loadingHeader": "Loading header...",
+      "loadingDetails": "Loading listing details...",
+      "loadingMap": "Loading map...",
+      "loading": "Loading...",
+      "loadingReviews": "Loading reviews...",
+      "share": "Share",
+      "save": "Save",
+      "title": "Listings",
+      "clearAllFilters": "Clear all filters",
+      "propertiesAvailable": "Properties Available",
+      "noProperties": "No properties found",
+      "adjustFilters": "Try adjusting your search filters to see more results."
+    },
+    "map": {
+      "whereYoullBe": "Where you'll be",
+      "exactLocation": "Exact location provided after booking",
+      "showMore": "Show more"
+    },
+    "reviews": {
+      "reviews": "reviews",
+      "overallRating": "Overall rating",
+      "categories": {
+        "cleanliness": "Cleanliness",
+        "accuracy": "Accuracy",
+        "checkIn": "Check-in",
+        "communication": "Communication",
+        "location": "Location",
+        "value": "Value"
+      }
+    },
+    "host": {
+      "meetYourHost": "Meet your host",
+      "superhost": "Superhost",
+      "reviews": "Reviews",
+      "rating": "Rating",
+      "monthsHosting": "Months hosting",
+      "months": "Months",
+      "myWork": "My work: Architect",
+      "speaksLanguages": "Speaks Arabic and English",
+      "livingTheDream": "Living the Dream!",
+      "isSuperhost": "{name} is a Superhost",
+      "superhostDescription": "Superhosts are experienced, highly rated hosts who are committed to providing great stays for guests.",
+      "hostDetails": "Host details",
+      "responseRate": "Response rate: 100%",
+      "respondsWithin": "Responds within an hour",
+      "messageHost": "Message host",
+      "paymentProtection": "To help protect your payment, always use Mkan to send money and communicate with hosts."
+    },
+    "searchPage": {
+      "luxeStays": "Mkan Luxe stays",
+      "in": "in",
+      "checkIn": "Check-in:",
+      "checkOut": "Check-out:",
+      "guests": "guests",
+      "freeCancellation": "Free cancellation",
+      "typeOfPlace": "Type of place",
+      "price": "Price",
+      "instantBook": "Instant Book",
+      "moreFilters": "More filters",
+      "entireHome": "Entire home in",
+      "guestsSuffix": "guests",
+      "bedsSuffix": "beds",
+      "bathSuffix": "bath",
+      "placeSingular": "place",
+      "placePlural": "places",
+      "inLocation": "in {location}",
+      "noExactMatches": "No exact matches",
+      "tryAdjusting": "Try adjusting your search by changing your dates, removing filters, or searching for a different location.",
+      "guestSingular": "guest",
+      "guestPlural": "guests"
     }
   },
   "dashboard": {
@@ -890,7 +1001,14 @@
       "subtitle": "View and manage your tenants",
       "active": "Active Tenants",
       "past": "Past Tenants",
-      "noTenants": "No tenants yet"
+      "noTenants": "No tenants yet",
+      "errorLoading": "Error fetching applications",
+      "applications": "Applications",
+      "applicationsSubtitle": "Track and manage your property rental applications",
+      "applicationApproved": "Your application has been approved",
+      "applicationPending": "Your application is pending approval",
+      "applicationDenied": "Your application has been denied",
+      "downloadAgreement": "Download Agreement"
     },
     "favorites": {
       "title": "Favorite Properties",
@@ -940,6 +1058,214 @@
         "nextPayment": "Next Payment Due",
         "status": "Status"
       }
+    },
+    "common": {
+      "loading": "Loading...",
+      "error": "Error",
+      "backToProperties": "Back to Properties",
+      "downloadAll": "Download All",
+      "downloadAgreement": "Download Agreement",
+      "notPaid": "Not Paid",
+      "emailNotAvailable": "Email not available",
+      "view": "View",
+      "manage": "Manage",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "save": "Save",
+      "edit": "Edit",
+      "confirm": "Confirm",
+      "saveChanges": "Save Changes",
+      "saving": "Saving...",
+      "pending": "pending",
+      "seats": "Seats",
+      "available": "available",
+      "routes": "routes"
+    },
+    "propertyManagement": {
+      "title": "Property Management",
+      "subtitle": "Manage tenants and leases for this property",
+      "myProperty": "My Property",
+      "tenantsOverview": "Tenants Overview",
+      "tenantsOverviewSubtitle": "Manage and view all tenants for this property.",
+      "tenant": "Tenant",
+      "leasePeriod": "Lease Period",
+      "monthlyRent": "Monthly Rent",
+      "currentMonthStatus": "Current Month Status",
+      "contact": "Contact",
+      "action": "Action",
+      "noLeasesFound": "No leases found for this property.",
+      "addFirstProperty": "Add Your First Property"
+    },
+    "newProperty": {
+      "title": "Add New Property",
+      "subtitle": "Create a new property listing with detailed information",
+      "basicInformation": "Basic Information",
+      "propertyName": "Property Name",
+      "description": "Description",
+      "fees": "Fees",
+      "pricePerNight": "Price per Night",
+      "securityDeposit": "Security Deposit",
+      "applicationFee": "Application Fee",
+      "propertyDetails": "Property Details",
+      "numberOfBeds": "Number of Beds",
+      "numberOfBaths": "Number of Baths",
+      "squareFeet": "Square Feet",
+      "petsAllowed": "Pets Allowed",
+      "parkingIncluded": "Parking Included",
+      "propertyType": "Property Type",
+      "amenitiesAndHighlights": "Amenities and Highlights",
+      "amenities": "Amenities",
+      "highlights": "Highlights",
+      "photos": "Photos",
+      "propertyPhotos": "Property Photos",
+      "additionalInformation": "Additional Information",
+      "address": "Address",
+      "city": "City",
+      "state": "State",
+      "postalCode": "Postal Code",
+      "country": "Country",
+      "createProperty": "Create Property"
+    },
+    "sidebar": {
+      "properties": "Properties",
+      "applications": "Applications",
+      "settings": "Settings",
+      "dashboard": "Dashboard",
+      "bookings": "Bookings",
+      "trips": "Trips",
+      "favorites": "Favorites",
+      "myTrips": "My Trips",
+      "residences": "Residences",
+      "managerView": "Manager View",
+      "officeView": "Office View",
+      "renterView": "Renter View",
+      "step": "Step {number}"
+    },
+    "settingsForm": {
+      "managerSettings": "Manager Settings",
+      "tenantSettings": "Tenant Settings",
+      "settingsSubtitle": "Manage your account preferences and personal information",
+      "name": "Name",
+      "email": "Email",
+      "phoneNumber": "Phone Number",
+      "officeSettings": "Office Settings"
+    },
+    "offices": {
+      "title": "Transport Office",
+      "subtitle": "Manage your transport business",
+      "noOffice": "No Transport Office",
+      "noOfficeDescription": "You haven't created a transport office yet. Start by registering your office to manage buses, routes, and bookings.",
+      "createOffice": "Create Transport Office",
+      "transportDashboard": "Transport Dashboard",
+      "totalBookings": "Total Bookings",
+      "revenue": "Revenue",
+      "totalEarnings": "Total earnings",
+      "upcomingTrips": "Upcoming Trips",
+      "next7Days": "Next 7 days",
+      "fleetSize": "Fleet Size",
+      "quickActions": "Quick Actions",
+      "viewBookings": "View Bookings",
+      "manageTrips": "Manage Trips",
+      "manageBuses": "Manage Buses",
+      "recentActivity": "Recent Activity",
+      "latestBookingsAndUpdates": "Latest bookings and updates",
+      "noBookingsYet": "No bookings yet",
+      "bookingsWillAppear": "Bookings will appear here once travelers start booking",
+      "confirmedBookings": "confirmed bookings",
+      "readyForTravel": "Ready for travel",
+      "pendingBookings": "pending bookings",
+      "awaitingConfirmation": "Awaiting confirmation",
+      "currencySDG": "SDG",
+      "currencyJSAr": "ج.س"
+    },
+    "bookings": {
+      "title": "Bookings",
+      "subtitle": "Manage passenger bookings",
+      "searchPlaceholder": "Search by reference, name, or phone...",
+      "filterByStatus": "Filter by status",
+      "allStatus": "All Status",
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "noShow": "No Show",
+      "reference": "Reference",
+      "passenger": "Passenger",
+      "route": "Route",
+      "date": "Date",
+      "amount": "Amount",
+      "status": "Status",
+      "noBookingsFound": "No bookings found",
+      "bookingDetails": "Booking Details",
+      "departure": "Departure",
+      "markComplete": "Mark Complete"
+    },
+    "officeSettings": {
+      "title": "Office Settings",
+      "subtitle": "Manage your transport office",
+      "noOfficeFound": "No transport office found.",
+      "settingsTitle": "Settings",
+      "settingsSubtitle": "Manage office settings",
+      "officeInformation": "Office Information",
+      "officeInfoSubtitle": "Update your office details visible to travelers",
+      "officeName": "Office Name",
+      "officeNameArabic": "Office Name (Arabic)",
+      "phoneNumber": "Phone Number",
+      "emailAddress": "Email Address",
+      "licenseNumber": "License Number",
+      "description": "Description",
+      "descriptionArabic": "Description (Arabic)",
+      "officeStatus": "Office Status",
+      "controlVisibility": "Control your office visibility",
+      "activeStatus": "Active Status",
+      "officeVisible": "Your office is visible and accepting bookings",
+      "officeHidden": "Your office is hidden from travelers",
+      "deleteOffice": "Delete Office",
+      "deleteOfficeTitle": "Delete Transport Office",
+      "deleteOfficeDescription": "This action cannot be undone. This will permanently delete your office, all buses, routes, and booking history."
+    },
+    "tripsSchedule": {
+      "title": "Trip Schedule",
+      "subtitle": "Manage your trip schedule",
+      "addTrip": "Add Trip",
+      "addNewTrip": "Add New Trip",
+      "selectRoute": "Select route",
+      "bus": "Bus",
+      "selectBus": "Select bus",
+      "tripDate": "Date",
+      "tripTime": "Time",
+      "priceSDG": "Price (SDG)",
+      "tripsScheduled": "trip(s) scheduled",
+      "noTripsScheduled": "No trips scheduled for this day"
+    },
+    "tenantApplications": {
+      "title": "Applications",
+      "subtitle": "Track and manage your property rental applications",
+      "errorFetching": "Error fetching applications",
+      "approved": "Your application has been approved",
+      "pendingApproval": "Your application is pending approval",
+      "denied": "Your application has been denied"
+    },
+    "tenantTrips": {
+      "title": "My Trips",
+      "subtitle": "View and manage all your bookings",
+      "stays": "Stays",
+      "transport": "Transport",
+      "rentalStays": "Rental Stays",
+      "rentalStaysSubtitle": "Your property rental bookings",
+      "noRentalStays": "No rental stays yet",
+      "browseProperties": "Browse properties to book your first stay",
+      "browsePropertiesBtn": "Browse Properties",
+      "upcomingTrips": "Upcoming Trips",
+      "upcomingTripsSubtitle": "Your upcoming bus tickets",
+      "noUpcomingTrips": "No upcoming trips",
+      "bookATrip": "Book a Trip",
+      "pastTrips": "Past Trips",
+      "pastTripsSubtitle": "Your completed or cancelled trips",
+      "ref": "Ref",
+      "ticket": "Ticket",
+      "currencySDG": "SDG",
+      "currencyJSAr": "JS"
     }
   },
   "hosting": {
@@ -1070,6 +1396,26 @@
           "title": "WiFi Details",
           "subtitle": "Network name and password"
         }
+      },
+      "host": {
+        "title": "Tell guests about yourself",
+        "subtitle": "Share a bit about who you are to help guests feel comfortable booking your place.",
+        "profilePhoto": "Profile photo",
+        "uploadPhoto": "Upload photo",
+        "photoHelp": "A clear photo helps guests recognize you",
+        "aboutYou": "About you",
+        "displayName": "Display name",
+        "displayNamePlaceholder": "How you'd like to be called",
+        "bio": "Bio",
+        "bioPlaceholder": "Tell guests a bit about yourself, your background, and what you love about hosting...",
+        "work": "Work",
+        "workPlaceholder": "What do you do?",
+        "whereYouLive": "Where you live",
+        "locationPlaceholder": "City, Country",
+        "languages": "Languages you speak",
+        "languagesPlaceholder": "English, Arabic, French...",
+        "profileTip": "Profile tip",
+        "profileTipText": "Guests are more likely to book with hosts who have complete profiles. Share what makes you a great host and why you love your area."
       }
     },
     "onboarding": {
@@ -1138,6 +1484,168 @@
         "title": "Instant Book",
         "subtitle": "Allow instant booking?"
       }
+    },
+    "pages": {
+      "aboutPlace": {
+        "title": "Tell us about your place",
+        "description": "In this step, we'll ask you which type of property you have and if guests will book the entire place or just a room. Then let us know the location and how many guests can stay."
+      },
+      "amenities": {
+        "title": "Tell guests what your place has to offer",
+        "subtitle": "You can add more amenities after you publish your listing.",
+        "guestFavorites": "What about these guest favorites?",
+        "standoutAmenities": "Do you have any standout amenities?",
+        "wifi": "Wifi",
+        "tv": "TV",
+        "kitchen": "Kitchen",
+        "washer": "Washer",
+        "freeParking": "Free parking",
+        "paidParking": "Paid parking",
+        "ac": "AC",
+        "workspace": "Workspace",
+        "pool": "Pool",
+        "hotTub": "Hot tub",
+        "patio": "Patio",
+        "bbqGrill": "BBQ grill"
+      },
+      "description": {
+        "highlightsTitle": "Next, let's describe your house",
+        "highlightsSubtitle": "Choose up to 2 highlights. We'll use these to get your description started.",
+        "descriptionTitle": "Create your description",
+        "descriptionSubtitle": "Share what makes your place special.",
+        "peaceful": "Peaceful",
+        "unique": "Unique",
+        "familyFriendly": "Family-friendly",
+        "stylish": "Stylish",
+        "central": "Central",
+        "spacious": "Spacious"
+      },
+      "discount": {
+        "title": "Add discounts",
+        "subtitle": "Help your place stand out to get booked faster and earn your first reviews.",
+        "newListingPromotion": "New listing promotion",
+        "newListingDescription": "Offer 20% off your first 3 bookings",
+        "lastMinuteDiscount": "Last-minute discount",
+        "lastMinuteDescription": "For stays booked 14 days or less before arrival",
+        "weeklyDiscount": "Weekly discount",
+        "weeklyDescription": "For stays of 7 nights or more"
+      },
+      "finishSetup": {
+        "title": "Finish up and publish",
+        "description": "Finally, you'll choose booking settings, set up pricing, and publish your listing."
+      },
+      "floorPlan": {
+        "title": "Share some basics about your place",
+        "subtitle": "You'll add more details later, like bed types.",
+        "guests": "Guests",
+        "bedrooms": "Bedrooms",
+        "beds": "Beds",
+        "bathrooms": "Bathrooms"
+      },
+      "instantBook": {
+        "title": "Pick your booking settings",
+        "subtitle": "You can change this at any time.",
+        "learnMore": "Learn more",
+        "approveFirst5": "Approve your first 5 bookings",
+        "recommended": "Recommended",
+        "approveFirst5Description": "Start by reviewing reservation requests, then switch to Instant Book, so guests can book automatically.",
+        "useInstantBook": "Use Instant Book",
+        "useInstantBookDescription": "Let guests book automatically."
+      },
+      "legal": {
+        "title": "Share safety details",
+        "hostingOnMkan": "How are you hosting on Mkan?",
+        "privateIndividual": "I'm hosting as a private individual",
+        "business": "I'm hosting as a business",
+        "safetyQuestion": "Does your place have any of these?",
+        "exteriorCamera": "Exterior security camera present",
+        "noiseMonitor": "Noise decibel monitor present",
+        "weapons": "Weapon(s) on the property",
+        "importantThings": "Important things to know",
+        "complianceNotice": "Be sure to comply with your local laws and review Mkan's anti-discrimination policy and guest and Host fees."
+      },
+      "location": {
+        "title": "Where's your place located?",
+        "subtitle": "Your address is only shared with guests after they make a reservation."
+      },
+      "photos": {
+        "title": "Add some photos of your house",
+        "subtitle": "You'll need 5 photos to get started. You can add more or make changes later.",
+        "uploading": "Uploading...",
+        "addPhotos": "Add photos"
+      },
+      "price": {
+        "title": "Now, set a base price",
+        "subtitle": "Tip: SR158. You may set a weekend price later.",
+        "guestPriceBeforeTaxes": "Guest price before taxes SR{price}",
+        "viewSimilarListings": "View similar listings",
+        "learnMoreAboutPricing": "Learn more about pricing"
+      },
+      "privacyType": {
+        "title": "What type of place will guests have?",
+        "entirePlace": "An entire place",
+        "entirePlaceDescription": "Guests have the whole place to themselves.",
+        "room": "A room",
+        "roomDescription": "Guests have their own room in a home, plus access to shared spaces.",
+        "sharedRoom": "A shared room in a hostel",
+        "sharedRoomDescription": "Guests sleep in a shared room in a professionally managed hostel with staff onsite 24/7."
+      },
+      "standOut": {
+        "title": "Make your place stand out",
+        "description": "In this step, you'll add some of the amenities your place offers, plus 5 or more photos. Then, you'll create a title and description."
+      },
+      "structure": {
+        "title": "Which of these best describes your place?"
+      },
+      "titlePage": {
+        "title": "Now, let's give your house a title",
+        "subtitle": "Short titles work best. Have fun with it—you can always change it later."
+      },
+      "visibility": {
+        "title": "Choose who to welcome for your first reservation",
+        "subtitle": "After your first guest, anyone can book your place.",
+        "learnMore": "Learn more",
+        "anyGuest": "Any Mkan guest",
+        "anyGuestDescription": "Get reservations faster when you welcome anyone from the Mkan community.",
+        "experiencedGuest": "An experienced guest",
+        "experiencedGuestDescription": "For your first guest, welcome someone with a good track record on Mkan who can offer tips for how to be a great Host."
+      }
+    },
+    "components": {
+      "stepHeader": {
+        "step": "Step {number}"
+      },
+      "dashboard": {
+        "welcomeBack": "Welcome back, {name}",
+        "finishYourListing": "Finish your listing"
+      },
+      "listingCard": {
+        "started": "Started {date}"
+      }
+    },
+    "header": {
+      "today": "Today",
+      "calendar": "Calendar",
+      "listings": "Listings",
+      "messages": "Messages",
+      "logo": "Mkan Logo",
+      "brandName": "Mkan",
+      "switchToTraveling": "Switch to traveling"
+    },
+    "content": {
+      "today": "Today",
+      "upcoming": "Upcoming",
+      "todayIllustration": "Today illustration",
+      "noReservations": "You don't have any reservations",
+      "noUpcomingReservations": "You don't have any upcoming reservations"
+    },
+    "listingsPage": {
+      "title": "Your listings",
+      "loading": "Loading your listings...",
+      "tryAgain": "Try Again",
+      "noListings": "No listings yet",
+      "noListingsDescription": "Get started by creating your first listing.",
+      "createListing": "Create Listing"
     }
   },
   "application": {
@@ -1474,7 +1982,197 @@
         "name": "Cash on Arrival",
         "description": "Pay at the office"
       }
+    },
+    "host": {
+      "badge": "Transport Host",
+      "welcome": "Welcome, {name}",
+      "manageDescription": "Manage your transport offices and start accepting online bookings for your bus services.",
+      "yourOffices": "Your Offices",
+      "addNewOffice": "Add New Office",
+      "verified": "Verified",
+      "draft": "Draft",
+      "noLocationSet": "No location set",
+      "buses": "buses",
+      "routes": "routes",
+      "continueSetup": "Continue Setup",
+      "startBusiness": "Start Your Transport Business",
+      "startDescription": "Register your transport office and start accepting online bookings. Add your buses, define routes, and reach more customers.",
+      "createFirstOffice": "Create Your First Office",
+      "step1Title": "Add Your Office",
+      "step1Description": "Enter your office details and select your assembly point location.",
+      "step2Title": "Add Buses & Routes",
+      "step2Description": "Register your buses with amenities and define your routes with pricing.",
+      "step3Title": "Start Receiving Bookings",
+      "step3Description": "Publish your office and start accepting online bookings from travelers.",
+      "addBuses": "Add your buses",
+      "addBusesSubtitle": "Register the buses in your fleet. Include details like capacity and amenities to help travelers choose.",
+      "addBus": "Add Bus",
+      "editBus": "Edit Bus",
+      "addNewBus": "Add New Bus",
+      "plateNumber": "Plate Number",
+      "manufacturer": "Manufacturer",
+      "model": "Model",
+      "year": "Year",
+      "capacity": "Capacity",
+      "amenities": "Amenities",
+      "saveChanges": "Save Changes",
+      "seats": "seats",
+      "more": "more",
+      "noBusesYet": "No buses added yet",
+      "addAtLeastOneBus": "Add at least one bus to continue",
+      "defineRoutes": "Define your routes",
+      "defineRoutesSubtitle": "Set up the routes you operate. Each route connects two assembly points with a base price and estimated duration.",
+      "addRoute": "Add Route",
+      "editRoute": "Edit Route",
+      "addNewRoute": "Add New Route",
+      "origin": "Origin",
+      "destination": "Destination",
+      "selectOrigin": "Select origin",
+      "selectDestination": "Select destination",
+      "basePriceSDG": "Base Price (SDG)",
+      "durationMinutes": "Duration (minutes)",
+      "distanceKm": "Distance (km)",
+      "noRoutesYet": "No routes added yet",
+      "addAtLeastOneRoute": "Add at least one route to continue",
+      "setupSchedule": "Set up your schedule",
+      "scheduleDescription": "Create trips by assigning buses to routes with specific departure times. You can add more trips later from your dashboard.",
+      "scheduleTip": "Most buses in Sudan depart around 5:00 AM. You can create multiple trips for the same route on different dates.",
+      "addRoutesFirst": "Add routes first before creating trips",
+      "addBusesFirst": "Add buses first before creating trips",
+      "addTrip": "Add Trip",
+      "addNewTrip": "Add New Trip",
+      "route": "Route",
+      "bus": "Bus",
+      "date": "Date",
+      "time": "Time",
+      "priceSDG": "Price (SDG)",
+      "selectRoute": "Select route",
+      "selectBus": "Select bus",
+      "noTripsYet": "No trips scheduled yet",
+      "addTripsLater": "You can add trips now or later from your dashboard",
+      "reviewAndPublish": "Review and publish",
+      "reviewDescription": "Review your office setup before publishing. Once published, your office will be visible to travelers.",
+      "officeInformation": "Office Information",
+      "assemblyPoint": "Assembly Point",
+      "schedule": "Schedule",
+      "photos": "Photos",
+      "required": "Required",
+      "completeRequiredSteps": "Complete required steps",
+      "completeRequiredDescription": "Please complete all required steps before publishing your office.",
+      "termsAgreement": "I confirm that all information provided is accurate. I agree to the Terms of Service and understand that my office will be visible to all Mkan users.",
+      "publishingError": "Failed to publish office. Please try again.",
+      "publishing": "Publishing...",
+      "publishOffice": "Publish Office",
+      "amenityLabels": {
+        "AirConditioning": "Air Conditioning",
+        "WiFi": "WiFi",
+        "USB": "USB Charging",
+        "LegRoom": "Extra Leg Room",
+        "Toilet": "Toilet",
+        "Refreshments": "Refreshments",
+        "Entertainment": "Entertainment",
+        "Luggage": "Luggage Storage",
+        "Reclining": "Reclining Seats"
+      }
+    },
+    "seatPicker": {
+      "driver": "Driver",
+      "selectedSeats": "Selected Seats"
+    },
+    "citySelect": {
+      "selectCity": "Select city",
+      "searchCity": "Search city...",
+      "noCityFound": "No city found.",
+      "point": "point",
+      "points": "points"
+    },
+    "ticketView": {
+      "ticketNotFound": "Ticket not found",
+      "backToTransport": "Back to Transport",
+      "downloadTicket": "Download Ticket",
+      "mkanTransport": "Mkan Transport",
+      "busTicket": "Bus Ticket",
+      "hrs": "hrs",
+      "bookingReference": "Booking Reference",
+      "showQrCode": "Show this QR code at the office",
+      "backToBooking": "Back to Booking Details"
+    },
+    "bookingPage": {
+      "dateLabel": "Date",
+      "departureLabel": "Departure",
+      "seatsLabel": "Seats",
+      "busLabel": "Bus",
+      "phoneLabel": "Phone",
+      "emailLabel": "Email",
+      "totalLabel": "Total",
+      "paymentSuccess": "Payment successful",
+      "paymentFailed": "Payment failed. Please try again."
     }
+  },
+  "siteFooter": {
+    "support": "Support",
+    "helpCenter": "Help Center",
+    "safetyInfo": "Safety information",
+    "cancellationOptions": "Cancellation options",
+    "disabilitySupport": "Supporting people with disabilities",
+    "reportConcern": "Report a concern",
+    "community": "Community",
+    "disasterRelief": "Disaster relief housing",
+    "diversityBelonging": "Celebrating diversity & belonging",
+    "combatDiscrimination": "Combating discrimination",
+    "hosting": "Hosting",
+    "tryHosting": "Try hosting",
+    "hostingResources": "Explore hosting resources",
+    "communityForum": "Visit our community forum",
+    "hostResponsibly": "How to host responsibly",
+    "about": "About",
+    "newsroom": "Newsroom",
+    "newFeatures": "Learn about new features",
+    "careers": "Careers",
+    "investors": "Investors",
+    "copyright": "© 2024 Mkan",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "sitemap": "Sitemap",
+    "language": "English"
+  },
+  "hero": {
+    "title": "Start your journey to finding the perfect place to call home",
+    "subtitle": "Explore our wide range of rental properties tailored to fit your lifestyle and needs!",
+    "searchPlaceholder": "Search by city, neighborhood or address",
+    "searchButton": "Search",
+    "heroAlt": "Mkan Rental Platform Hero Section"
+  },
+  "reportIssue": {
+    "link": "Report an issue",
+    "title": "Report an issue",
+    "placeholder": "Describe the issue...",
+    "submit": "Submit",
+    "submitting": "Submitting...",
+    "success": "Submitted. Thank you!",
+    "error": "Something went wrong. Try again."
+  },
+  "userButton": {
+    "logout": "Logout"
+  },
+  "applicationTabs": {
+    "all": "All",
+    "pending": "Pending",
+    "approved": "Approved",
+    "denied": "Denied",
+    "submittedOn": "Application submitted on ",
+    "approvedMessage": "This application has been approved.",
+    "deniedMessage": "This application has been denied.",
+    "pendingMessage": "This application is pending review.",
+    "propertyDetails": "Property Details",
+    "downloadAgreement": "Download Agreement"
+  },
+  "propertyCard": {
+    "in": "in",
+    "night": "night",
+    "superhost": "Superhost",
+    "addFavorite": "Add to favorites",
+    "removeFavorite": "Remove from favorites"
   },
   "home": {
     "sections": {
@@ -1494,6 +2192,351 @@
       "featured": "Featured",
       "unique": "Unique",
       "windmill": "Windmill"
+    },
+    "hero": {
+      "altText": "Mkan Rental Platform Hero Section"
+    },
+    "propertyCount": "{count} properties found",
+    "propertyCountSingular": "{count} property found",
+    "clearFilters": "Clear filters",
+    "tryAgain": "Try Again",
+    "exploreAll": "Explore All Listings",
+    "loadingProperties": "Loading properties...",
+    "noProperties": "No properties found matching your criteria.",
+    "inspiration": {
+      "title": "Inspiration for your next trip in Sudan"
+    },
+    "ask": {
+      "title": "Questions\nabout\nhosting?",
+      "button": "Ask a Superhost"
+    },
+    "giftCard": {
+      "title": "Shop Mkan\ngift cards",
+      "button": "Learn more",
+      "altText": "Three Mkan gift cards overlapping at angles"
+    },
+    "filter": {
+      "Islands": "Islands",
+      "Mansions": "Mansions",
+      "Beach": "Beach",
+      "Boats": "Boats",
+      "Containers": "Containers",
+      "New": "New",
+      "Pools": "Pools",
+      "Groups": "Groups",
+      "Featured": "Featured",
+      "Special": "Special",
+      "Windmills": "Windmills",
+      "desc": {
+        "Islands": "Private islands",
+        "Mansions": "Luxury homes",
+        "Beach": "Beachfront",
+        "Boats": "Unique stays",
+        "Containers": "Modern design",
+        "New": "Latest additions",
+        "Pools": "Pool paradise",
+        "Groups": "Large groups",
+        "Featured": "Top picks",
+        "Special": "Unique stays",
+        "Windmills": "Unique stays"
+      }
+    },
+    "metadata": {
+      "title": "Mkan - Rentals & Housing",
+      "description": "Discover the best properties and furnished apartments for rent"
+    }
+  },
+  "search": {
+    "location": "Location",
+    "whereAreYouGoing": "Where are you going?",
+    "checkIn": "Check in",
+    "checkOut": "Check out",
+    "addDate": "Add date",
+    "guestsLabel": "Guests",
+    "addGuests": "Add guests",
+    "searchButton": "Search",
+    "adult": "adult",
+    "adults": "adults",
+    "child": "child",
+    "children": "children",
+    "infant": "infant",
+    "infants": "infants",
+    "anywhere": "Anywhere",
+    "anyWeek": "Any week",
+    "searchHowTos": "Search how-tos and more",
+    "whereTo": "Where to?",
+    "searchDestinations": "Search destinations...",
+    "searchLocation": "Search for a location",
+    "searchResults": "Search results",
+    "popularDestinations": "Popular destinations",
+    "recommendedDestinations": "Recommended destinations",
+    "noDestinationsFound": "No destinations found for \"{query}\"",
+    "whosComing": "Who's coming?",
+    "adultsLabel": "Adults",
+    "adultsAge": "Ages 13 or above",
+    "childrenLabel": "Children",
+    "childrenAge": "Ages 2-12",
+    "infantsLabel": "Infants",
+    "infantsAge": "Under 2",
+    "startSearch": "Start your search",
+    "editSearch": "Edit your search",
+    "whenTraveling": "When are you traveling?",
+    "howLongStaying": "How long are you staying?",
+    "whoComing": "Who's coming?",
+    "flexible": "I'm flexible",
+    "locations": [
+      "Anywhere",
+      "I'm flexible",
+      "United States",
+      "Europe",
+      "Asia",
+      "Africa"
+    ],
+    "dates": [
+      "I'm flexible",
+      "This weekend",
+      "Next week",
+      "Next month",
+      "Summer 2024"
+    ],
+    "durations": [
+      "1 night",
+      "2 nights",
+      "3 nights",
+      "1 week",
+      "2 weeks",
+      "1 month"
+    ],
+    "guestOptions": [
+      "1 guest",
+      "2 guests",
+      "3 guests",
+      "4 guests",
+      "5+ guests",
+      "I'm flexible"
+    ]
+  },
+  "filters": {
+    "allFilters": "All Filters",
+    "searchPlaceholder": "Try: New York, Austin, Portland...",
+    "availableCities": "Available cities:",
+    "showAllProperties": "Show All Properties",
+    "anyMinPrice": "Any Min Price",
+    "anyMaxPrice": "Any Max Price",
+    "beds": "Beds",
+    "anyBeds": "Any Beds",
+    "oneBed": "1+ bed",
+    "twoBeds": "2+ beds",
+    "threeBeds": "3+ beds",
+    "fourBeds": "4+ beds",
+    "baths": "Baths",
+    "anyBaths": "Any Baths",
+    "oneBath": "1+ bath",
+    "twoBaths": "2+ baths",
+    "threeBaths": "3+ baths",
+    "homeType": "Home Type",
+    "anyPropertyType": "Any Property Type",
+    "location": "Location",
+    "enterLocation": "Enter location",
+    "propertyType": "Property Type",
+    "priceRangeMonthly": "Price Range (Monthly)",
+    "squareFeet": "Square Feet",
+    "amenities": "Amenities",
+    "availableFrom": "Available From",
+    "apply": "APPLY",
+    "resetFilters": "Reset Filters"
+  },
+  "listings": {
+    "placesIn": "Places in {location}",
+    "noPropertiesFound": "No properties found",
+    "adjustFilters": "Try adjusting your search filters to see more results.",
+    "loading": "Loading...",
+    "failedToLoad": "Failed to fetch properties",
+    "perMonth": "/month",
+    "month": "month"
+  },
+  "landing": {
+    "callToAction": {
+      "bgAlt": "Mkan Search Section Background",
+      "title": "Find Your Dream Rental Property",
+      "description": "Discover a wide range of rental properties in your desired location.",
+      "searchButton": "Search",
+      "signUpButton": "Sign Up"
+    },
+    "discover": {
+      "title": "Discover",
+      "subtitle": "Find your Dream Rental Property Today!",
+      "description": "Searching for your dream rental property has never been easier. With our user-friendly search feature, you can quickly find the perfect home that meets all your needs. Start your search today and discover your dream rental property!",
+      "searchProperties": "Search for Properties",
+      "searchPropertiesDesc": "Browse through our extensive collection of rental properties in your desired location.",
+      "bookRental": "Book Your Rental",
+      "bookRentalDesc": "Once you've found the perfect rental property, easily book it online with just a few clicks.",
+      "enjoyHome": "Enjoy your New Home",
+      "enjoyHomeDesc": "Move into your new rental property and start enjoying your dream home."
+    },
+    "features": {
+      "heading": "Quickly find the home you want using our effective search filters!",
+      "titles": [
+        "Trustworthy and Verified Listings",
+        "Browse Rental Listings with Ease",
+        "Simplify Your Rental Search with Advanced"
+      ],
+      "descriptions": [
+        "Discover the best rental options with user reviews and ratings.",
+        "Get access to user reviews and ratings for a better understanding of rental options.",
+        "Find trustworthy and verified rental listings to ensure a hassle-free experience."
+      ],
+      "links": [
+        "Explore",
+        "Search",
+        "Discover"
+      ],
+      "fallbackTitle": "Feature",
+      "fallbackLink": "Learn more"
+    },
+    "footer": {
+      "brandName": "Mkan",
+      "aboutUs": "About Us",
+      "contactUs": "Contact Us",
+      "faq": "FAQ",
+      "terms": "Terms",
+      "privacy": "Privacy",
+      "copyright": "© 2024 Mkan. All rights reserved.",
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service",
+      "cookiePolicy": "Cookie Policy"
+    }
+  },
+  "host": {
+    "location": {
+      "streetAddress": "Street address",
+      "streetAddressPlaceholder": "123 Main Street",
+      "city": "City",
+      "cityPlaceholder": "New York",
+      "stateProvince": "State/Province",
+      "stateProvincePlaceholder": "NY",
+      "country": "Country",
+      "countryPlaceholder": "United States",
+      "postalCode": "Postal code",
+      "postalCodePlaceholder": "10001"
+    },
+    "newListing": {
+      "startNewListing": "Start a new listing",
+      "createNewListing": "Create a new listing",
+      "createFromExisting": "Create from an existing listing"
+    },
+    "propertyTypes": {
+      "house": "House",
+      "apartment": "Apartment",
+      "barn": "Barn",
+      "bedBreakfast": "Bed & Breakfast",
+      "boat": "Boat",
+      "cabin": "Cabin",
+      "camperRv": "Camper/RV",
+      "casaParticular": "Casa Particular",
+      "castle": "Castle",
+      "cave": "Cave",
+      "container": "Container",
+      "cycladicHome": "Cycladic Home"
+    },
+    "stepNavigation": {
+      "next": "Next",
+      "back": "Back"
+    },
+    "stepHeader": {
+      "step": "Step {number}"
+    }
+  },
+  "pages": {
+    "accessibility": {
+      "title": "Accessibility",
+      "lastUpdated": "Last updated: February 2026",
+      "commitmentTitle": "Our Commitment",
+      "commitmentText": "We are committed to ensuring digital accessibility for people with disabilities. We continually improve the user experience for everyone.",
+      "standardsTitle": "Standards",
+      "standardsText": "We aim to conform to WCAG 2.1 Level AA guidelines.",
+      "featuresTitle": "Features",
+      "screenReader": "Screen reader support",
+      "keyboard": "Keyboard navigation",
+      "rtlLtr": "RTL/LTR support",
+      "colorContrast": "Sufficient color contrast",
+      "feedbackTitle": "Feedback",
+      "feedbackText": "We welcome your feedback on the accessibility of our site. Please contact us if you encounter any barriers."
+    },
+    "cookies": {
+      "title": "Cookie Policy",
+      "lastUpdated": "Last updated: February 2026",
+      "whatAreCookiesTitle": "What Are Cookies",
+      "whatAreCookiesText": "Cookies are small text files stored on your device when you visit our website.",
+      "essentialTitle": "Essential Cookies",
+      "essentialText": "We use essential cookies for authentication, language preferences, and site security.",
+      "managingTitle": "Managing Cookies",
+      "managingText": "You can control cookies through your browser settings."
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "lastUpdated": "Last updated: February 2026",
+      "collectTitle": "Information We Collect",
+      "collectText": "We collect information you provide directly when creating an account, making a booking, or contacting us.",
+      "useTitle": "How We Use Your Information",
+      "useText": "We use your information to provide, improve, and protect our services and our users.",
+      "sharingTitle": "Information Sharing",
+      "sharingText": "We do not sell your personal information. We share information only as described in this policy.",
+      "contactTitle": "Contact Us",
+      "contactText": "If you have questions about this privacy policy, please contact us."
+    },
+    "terms": {
+      "title": "Terms of Service",
+      "lastUpdated": "Last updated: February 2026",
+      "acceptanceTitle": "Acceptance of Terms",
+      "acceptanceText": "By using the Mkan platform, you agree to be bound by these terms.",
+      "useTitle": "Use of Service",
+      "useText": "You must be 18 years or older to use our services. You are responsible for maintaining the security of your account.",
+      "bookingsTitle": "Bookings and Payments",
+      "bookingsText": "All bookings are subject to availability. Payments are processed securely through our payment providers.",
+      "liabilityTitle": "Limitation of Liability",
+      "liabilityText": "Mkan acts as an intermediary between tenants and property managers. We are not responsible for property conditions."
+    },
+    "help": {
+      "homeHostComingSoon": "Home host content coming soon...",
+      "experienceHostComingSoon": "Experience host content coming soon...",
+      "serviceHostComingSoon": "Service host content coming soon...",
+      "travelAdminComingSoon": "Travel admin content coming soon..."
+    }
+  },
+  "onboarding": {
+    "back": "Back",
+    "next": "Next",
+    "creating": "Creating...",
+    "createListing": "Create listing",
+    "publishOffice": "Publish office",
+    "getStarted": "Get started",
+    "headline": "It's easy to get started on Mkan",
+    "steps": {
+      "tellAboutPlace": {
+        "title": "Tell us about your place",
+        "description": "Share some basic info, like where it is and how many guests can stay."
+      },
+      "makeStandOut": {
+        "title": "Make it stand out",
+        "description": "Add 5 or more photos plus a title and description—we'll help you out."
+      },
+      "finishPublish": {
+        "title": "Finish up and publish",
+        "description": "Choose a starting price, verify a few details, then publish your listing."
+      },
+      "setupOffice": {
+        "title": "Set up your office",
+        "description": "Enter your office details, contact information, and choose your gathering point location."
+      },
+      "addBusesRoutes": {
+        "title": "Add buses & routes",
+        "description": "Register your buses with amenities and capacity, then define your routes with pricing."
+      },
+      "createSchedules": {
+        "title": "Create schedules & publish",
+        "description": "Set up trip schedules, add photos, and publish your office to start accepting bookings."
+      }
     }
   }
 }

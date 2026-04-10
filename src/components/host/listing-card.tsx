@@ -4,6 +4,7 @@ import React from 'react';
 import { usePathname } from 'next/navigation';
 import { Home } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface ListingCardProps {
   id: string;
@@ -21,7 +22,7 @@ const ListingCard: React.FC<ListingCardProps> = ({
   onClick
 }) => {
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
 
   const handleClick = () => {
     onClick?.(id);
@@ -42,7 +43,7 @@ const ListingCard: React.FC<ListingCardProps> = ({
               {title}
             </h5>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {isAr ? `بدأ ${startDate}` : `Started ${startDate}`}
+              {dict.hosting.components.listingCard.started.replace('{date}', startDate)}
             </p>
           </div>
         </div>

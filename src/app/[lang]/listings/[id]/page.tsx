@@ -9,11 +9,13 @@ import MobileListingDetails from "@/components/listings/mobile-listing-details";
 import MobileReserve from "@/components/listings/mobile-reserve";
 import MobileReviews from "@/components/listings/mobile-reviews";
 import { createMetadata } from "@/lib/metadata";
+import { getDictionary } from "@/components/internationalization/dictionaries";
+import type { Locale } from "@/components/internationalization/config";
 
 interface ListingPageProps {
   params: Promise<{
     id: string;
-    lang: string;
+    lang: Locale;
   }>;
 }
 
@@ -21,14 +23,12 @@ export async function generateMetadata({
   params,
 }: ListingPageProps): Promise<Metadata> {
   const { id, lang } = await params;
+  const d = await getDictionary(lang);
   const listingId = parseInt(id);
   if (isNaN(listingId)) {
     return createMetadata({
-      title: lang === "ar" ? "تفاصيل العقار" : "Listing Details",
-      description:
-        lang === "ar"
-          ? "عرض تفاصيل العقار"
-          : "View property listing details",
+      title: d.rental?.listing?.details,
+      description: d.rental?.listing?.viewDetails,
       locale: lang,
       path: `/listings/${id}`,
     });
@@ -38,12 +38,9 @@ export async function generateMetadata({
     select: { title: true, description: true },
   });
   return createMetadata({
-    title: listing?.title || (lang === "ar" ? "تفاصيل العقار" : "Listing Details"),
+    title: listing?.title || d.rental?.listing?.details,
     description:
-      listing?.description ||
-      (lang === "ar"
-        ? "عرض تفاصيل العقار"
-        : "View property listing details"),
+      listing?.description || d.rental?.listing?.viewDetails,
     locale: lang,
     path: `/listings/${id}`,
   });
@@ -90,35 +87,35 @@ export default async function ListingPage({ params }: ListingPageProps) {
   // Serialize the listing data to avoid Prisma serialization issues
   const serializedListing = JSON.parse(JSON.stringify(listing));
 
-  const isAr = lang === "ar";
+  const d = await getDictionary(lang);
 
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop Layout - Preserved */}
       <div className="hidden md:block mx-14">
-        <Suspense fallback={<div>{isAr ? "جاري التحميل..." : "Loading header..."}</div>}>
+        <Suspense fallback={<div>{d.rental?.listing?.loadingHeader}</div>}>
           <DetailsHeader />
         </Suspense>
-        <Suspense fallback={<div>{isAr ? "جاري تحميل التفاصيل..." : "Loading listing details..."}</div>}>
+        <Suspense fallback={<div>{d.rental?.listing?.loadingDetails}</div>}>
           <ListingDetailsClient listing={serializedListing} />
         </Suspense>
-        <Suspense fallback={<div>{isAr ? "جاري تحميل الخريطة..." : "Loading map..."}</div>}>
+        <Suspense fallback={<div>{d.rental?.listing?.loadingMap}</div>}>
           <Location />
         </Suspense>
       </div>
 
       {/* Mobile Layout */}
       <div className="md:hidden">
-        <Suspense fallback={<div>{isAr ? "جاري التحميل..." : "Loading..."}</div>}>
+        <Suspense fallback={<div>{d.rental?.listing?.loading}</div>}>
           <MobileListingDetails
             listing={serializedListing}
             images={serializedListing.photoUrls || []}
           />
         </Suspense>
-        <Suspense fallback={<div>{isAr ? "جاري تحميل التقييمات..." : "Loading reviews..."}</div>}>
+        <Suspense fallback={<div>{d.rental?.listing?.loadingReviews}</div>}>
           <MobileReviews />
         </Suspense>
-        <Suspense fallback={<div>{isAr ? "جاري التحميل..." : "Loading..."}</div>}>
+        <Suspense fallback={<div>{d.rental?.listing?.loading}</div>}>
           <MobileReserve
             pricePerNight={serializedListing.pricePerNight || 700}
           />

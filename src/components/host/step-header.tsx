@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface StepHeaderProps {
   stepNumber?: number;
@@ -16,8 +16,7 @@ const StepHeader: React.FC<StepHeaderProps> = ({
   description,
   illustration
 }) => {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
 
   return (
     <div className="w-full -mt-6 sm:-mt-10">
@@ -26,7 +25,7 @@ const StepHeader: React.FC<StepHeaderProps> = ({
         <div className="space-y-4 sm:space-y-6">
           {stepNumber && (
             <div className="text-sm sm:text-base font-medium text-muted-foreground">
-              {isAr ? `الخطوة ${stepNumber}` : `Step ${stepNumber}`}
+              {(dict.host?.stepHeader?.step ?? "Step {number}").replace("{number}", String(stepNumber))}
             </div>
           )}
           

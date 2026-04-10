@@ -37,6 +37,7 @@ import Header from '@/components/Header';
 import Loading from '@/components/Loading';
 import { usePathname } from 'next/navigation';
 import { getAuthUser } from '@/lib/actions/user-actions';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 import {
   getMyTransportOffices,
   getTripsByOffice,
@@ -88,6 +89,7 @@ const TripsPage = () => {
   const router = useRouter();
   const pathname = usePathname();
   const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [routes, setRoutes] = useState<RouteData[]>([]);
   const [buses, setBuses] = useState<BusData[]>([]);
@@ -222,13 +224,13 @@ const TripsPage = () => {
   };
 
   if (isLoading) return <Loading />;
-  if (error) return <div className="text-red-500">{isAr ? "خطأ" : "Error"}: {error}</div>;
+  if (error) return <div className="text-red-500">{dict.dashboard.common.error}: {error}</div>;
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(selectedDate, i - 3));
 
   return (
     <div className="dashboard-container">
-      <Header title={isAr ? "جدول الرحلات" : "Trip Schedule"} subtitle={isAr ? "إدارة جدول رحلاتك" : "Manage your trip schedule"} />
+      <Header title={dict.dashboard.tripsSchedule.title} subtitle={dict.dashboard.tripsSchedule.subtitle} />
 
       {offices.length > 1 && (
         <div className="mb-6 flex gap-2 flex-wrap">
@@ -275,16 +277,16 @@ const TripsPage = () => {
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 me-2" />
-              {isAr ? "إضافة رحلة" : "Add Trip"}
+              {dict.dashboard.tripsSchedule.addTrip}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{isAr ? "إضافة رحلة جديدة" : "Add New Trip"}</DialogTitle>
+              <DialogTitle>{dict.dashboard.tripsSchedule.addNewTrip}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>{isAr ? "المسار" : "Route"}</Label>
+                <Label>{dict.dashboard.bookings.route}</Label>
                 <Select
                   value={newTrip.routeId}
                   onValueChange={(value) => {
@@ -297,7 +299,7 @@ const TripsPage = () => {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={isAr ? "اختر المسار" : "Select route"} />
+                    <SelectValue placeholder={dict.dashboard.tripsSchedule.selectRoute} />
                   </SelectTrigger>
                   <SelectContent>
                     {routes.map((route) => (
@@ -310,7 +312,7 @@ const TripsPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>{isAr ? "الحافلة" : "Bus"}</Label>
+                <Label>{dict.dashboard.tripsSchedule.bus}</Label>
                 <Select
                   value={newTrip.busId}
                   onValueChange={(value) =>
@@ -318,12 +320,12 @@ const TripsPage = () => {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={isAr ? "اختر الحافلة" : "Select bus"} />
+                    <SelectValue placeholder={dict.dashboard.tripsSchedule.selectBus} />
                   </SelectTrigger>
                   <SelectContent>
                     {buses.map((bus) => (
                       <SelectItem key={bus.id} value={bus.id.toString()}>
-                        {bus.plateNumber} ({bus.capacity} {isAr ? "مقعد" : "seats"})
+                        {bus.plateNumber} ({bus.capacity} {dict.dashboard.common.seats})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -332,7 +334,7 @@ const TripsPage = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>{isAr ? "التاريخ" : "Date"}</Label>
+                  <Label>{dict.dashboard.tripsSchedule.tripDate}</Label>
                   <Input
                     type="date"
                     value={newTrip.departureDate}
@@ -346,7 +348,7 @@ const TripsPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{isAr ? "الوقت" : "Time"}</Label>
+                  <Label>{dict.dashboard.tripsSchedule.tripTime}</Label>
                   <Input
                     type="time"
                     value={newTrip.departureTime}
@@ -361,7 +363,7 @@ const TripsPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>{isAr ? "السعر (ج.س)" : "Price (SDG)"}</Label>
+                <Label>{dict.dashboard.tripsSchedule.priceSDG}</Label>
                 <Input
                   type="number"
                   value={newTrip.price}
@@ -380,14 +382,14 @@ const TripsPage = () => {
                   onClick={() => setIsDialogOpen(false)}
                   className="flex-1"
                 >
-                  {isAr ? "إلغاء" : "Cancel"}
+                  {dict.dashboard.common.cancel}
                 </Button>
                 <Button
                   onClick={handleCreateTrip}
                   className="flex-1"
                   disabled={!newTrip.routeId || !newTrip.busId}
                 >
-                  {isAr ? "إضافة رحلة" : "Add Trip"}
+                  {dict.dashboard.tripsSchedule.addTrip}
                 </Button>
               </div>
             </div>
@@ -400,9 +402,7 @@ const TripsPage = () => {
           {format(selectedDate, 'EEEE, MMMM d, yyyy')}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {isAr
-            ? `${filteredTrips.length} رحلة مجدولة`
-            : `${filteredTrips.length} trip${filteredTrips.length !== 1 ? 's' : ''} scheduled`}
+          {`${filteredTrips.length} ${dict.dashboard.tripsSchedule.tripsScheduled}`}
         </p>
       </div>
 
@@ -446,7 +446,7 @@ const TripsPage = () => {
                       </span>
                       <span className="flex items-center gap-1">
                         <Users className="h-4 w-4" />
-                        {trip.availableSeats}/{trip.bus.capacity} {isAr ? "متاح" : "available"}
+                        {trip.availableSeats}/{trip.bus.capacity} {dict.dashboard.common.available}
                       </span>
                       <span className="font-medium text-primary">
                         {trip.price.toLocaleString()} SDG
@@ -478,10 +478,10 @@ const TripsPage = () => {
       ) : (
         <div className="text-center py-16 border rounded-lg">
           <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <p className="text-muted-foreground">{isAr ? "لا توجد رحلات مجدولة لهذا اليوم" : "No trips scheduled for this day"}</p>
+          <p className="text-muted-foreground">{dict.dashboard.tripsSchedule.noTripsScheduled}</p>
           <Button className="mt-4" onClick={() => setIsDialogOpen(true)}>
             <Plus className="h-4 w-4 me-2" />
-            {isAr ? "إضافة رحلة" : "Add Trip"}
+            {dict.dashboard.tripsSchedule.addTrip}
           </Button>
         </div>
       )}

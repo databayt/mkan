@@ -9,15 +9,16 @@ import { notFound } from 'next/navigation'
 import AirbnbPropertyHeader from '@/components/atom/property-header'
 import AirbnbImages from '@/components/atom/property-images'
 import { RentalListingHeader } from '@/components/property/rental-listing-header'
+import { getDictionary } from '@/components/internationalization/dictionaries'
 
 export default async function PropertyPage({
   params,
 }: {
-  params: Promise<{ id: string; lang: string }>;
+  params: Promise<{ id: string; lang: "en" | "ar" }>;
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const resolvedParams = await params;
-  const isAr = resolvedParams.lang === "ar";
+  const d = await getDictionary(resolvedParams.lang);
   const propertyId = parseInt(resolvedParams.id)
 
   if (isNaN(propertyId)) {
@@ -94,7 +95,7 @@ export default async function PropertyPage({
           />
         ) : (
           <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-            <span className="text-gray-500 text-xl">{isAr ? "لا توجد صورة" : "No Image Available"}</span>
+            <span className="text-gray-500 text-xl">{d.rental?.property?.card?.noImage ?? "No Image Available"}</span>
           </div>
         )}
         <div className="absolute inset-0 bg-black bg-opacity-30" />
@@ -120,7 +121,7 @@ export default async function PropertyPage({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span>{isAr ? "تفاصيل العقار" : "Property Details"}</span>
+                  <span>{d.rental?.property?.details?.propertyDetails ?? "Property Details"}</span>
                   <Badge variant="secondary" className="text-lg px-3 py-1">
                     {property.propertyType}
                   </Badge>
@@ -130,20 +131,20 @@ export default async function PropertyPage({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   <div className="flex items-center gap-2">
                     <Bed className="w-5 h-5 text-gray-600" />
-                    <span>{property.bedrooms ?? 0} {isAr ? (property.bedrooms === 1 ? 'غرفة نوم' : 'غرف نوم') : (property.bedrooms === 1 ? 'Bedroom' : 'Bedrooms')}</span>
+                    <span>{property.bedrooms ?? 0} {property.bedrooms === 1 ? (d.rental?.property?.details?.bedroomSingular ?? "Bedroom") : (d.rental?.property?.details?.bedroomPlural ?? "Bedrooms")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Bath className="w-5 h-5 text-gray-600" />
-                    <span>{property.bathrooms ?? 0} {isAr ? (property.bathrooms === 1 ? 'حمام' : 'حمامات') : (property.bathrooms === 1 ? 'Bathroom' : 'Bathrooms')}</span>
+                    <span>{property.bathrooms ?? 0} {property.bathrooms === 1 ? (d.rental?.property?.details?.bathroomSingular ?? "Bathroom") : (d.rental?.property?.details?.bathroomPlural ?? "Bathrooms")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Square className="w-5 h-5 text-gray-600" />
-                    <span>{(property.squareFeet ?? 0).toLocaleString()} {isAr ? "قدم مربع" : "sq ft"}</span>
+                    <span>{(property.squareFeet ?? 0).toLocaleString()} {d.rental?.property?.details?.sqft ?? "sq ft"}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <DollarSign className="w-5 h-5 text-green-600" />
                     <span className="font-semibold text-green-600">
-                      ${(property.pricePerNight ?? 0).toLocaleString()}/{isAr ? "ليلة" : "night"}
+                      ${(property.pricePerNight ?? 0).toLocaleString()}/{d.rental?.property?.details?.perNight ?? "night"}
                     </span>
                   </div>
                 </div>
@@ -152,13 +153,13 @@ export default async function PropertyPage({
                   {property.isPetsAllowed && (
                     <div className="flex items-center gap-2 text-green-600">
                       <PawPrint className="w-4 h-4" />
-                      <span>{isAr ? "يسمح بالحيوانات الأليفة" : "Pet-Friendly"}</span>
+                      <span>{d.rental?.property?.details?.petFriendly ?? "Pet-Friendly"}</span>
                     </div>
                   )}
                   {property.isParkingIncluded && (
                     <div className="flex items-center gap-2 text-blue-600">
                       <Car className="w-4 h-4" />
-                      <span>{isAr ? "موقف سيارات مشمول" : "Parking Included"}</span>
+                      <span>{d.rental?.property?.details?.parkingIncluded ?? "Parking Included"}</span>
                     </div>
                   )}
                 </div>
@@ -168,7 +169,7 @@ export default async function PropertyPage({
             {/* Description */}
             <Card>
               <CardHeader>
-                <CardTitle>{isAr ? "الوصف" : "Description"}</CardTitle>
+                <CardTitle>{d.rental?.property?.details?.description ?? "Description"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-700 leading-relaxed">{property.description}</p>
@@ -179,7 +180,7 @@ export default async function PropertyPage({
             {property.amenities && property.amenities.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>{isAr ? "المرافق" : "Amenities"}</CardTitle>
+                  <CardTitle>{d.rental?.property?.details?.amenities ?? "Amenities"}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -197,7 +198,7 @@ export default async function PropertyPage({
             {property.highlights && property.highlights.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>{isAr ? "مميزات العقار" : "Property Highlights"}</CardTitle>
+                  <CardTitle>{d.rental?.property?.details?.propertyHighlights ?? "Property Highlights"}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -215,7 +216,7 @@ export default async function PropertyPage({
             {property.photoUrls && property.photoUrls.length > 1 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>{isAr ? "صور إضافية" : "More Photos"}</CardTitle>
+                  <CardTitle>{d.rental?.property?.details?.morePhotos ?? "More Photos"}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -244,32 +245,32 @@ export default async function PropertyPage({
             <Card className="sticky top-6">
               <CardHeader>
                 <CardTitle className="text-2xl text-green-600">
-                  ${(property.pricePerNight ?? 0).toLocaleString()}/{isAr ? "ليلة" : "night"}
+                  ${(property.pricePerNight ?? 0).toLocaleString()}/{d.rental?.property?.details?.perNight ?? "night"}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span>{isAr ? "مبلغ التأمين:" : "Security Deposit:"}</span>
+                    <span>{d.rental?.property?.details?.securityDeposit ?? "Security Deposit:"}</span>
                     <span className="font-medium">${(property.securityDeposit ?? 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>{isAr ? "رسوم التقديم:" : "Application Fee:"}</span>
+                    <span>{d.rental?.property?.details?.applicationFee ?? "Application Fee:"}</span>
                     <span className="font-medium">${(property.applicationFee ?? 0).toLocaleString()}</span>
                   </div>
                 </div>
 
                 <Button className="w-full text-lg py-6">
-                  {isAr ? "قدّم الآن" : "Apply Now"}
+                  {d.rental?.property?.details?.applyNow ?? "Apply Now"}
                 </Button>
 
                 <p className="text-xs text-center text-gray-500">
-                  {isAr ? "لن يتم تحصيل أي مبلغ الآن" : "You won't be charged yet"}
+                  {d.rental?.property?.details?.notChargedYet ?? "You won't be charged yet"}
                 </p>
 
                 <div className="text-sm text-gray-600 text-center">
                   <Link href={`/contact?propertyId=${property.id}`} className="underline">
-                    {isAr ? "تواصل مع مدير العقار" : "Contact Property Manager"}
+                    {d.rental?.property?.details?.contactManager ?? "Contact Property Manager"}
                   </Link>
                 </div>
               </CardContent>
@@ -277,15 +278,15 @@ export default async function PropertyPage({
 
             <Card>
               <CardHeader>
-                <CardTitle>{isAr ? "عن المضيف" : "About the Host"}</CardTitle>
+                <CardTitle>{d.rental?.property?.details?.aboutHost ?? "About the Host"}</CardTitle>
               </CardHeader>
               <CardContent className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
                   <span className="text-gray-500 text-2xl">{(property.host.username ?? 'H').charAt(0).toUpperCase()}</span>
                 </div>
                 <div>
-                  <h3 className="font-semibold">{property.host.username ?? (isAr ? 'المضيف' : 'Host')}</h3>
-                  <p className="text-sm text-gray-500">{isAr ? "انضم في 2023" : "Joined in 2023"}</p>
+                  <h3 className="font-semibold">{property.host.username ?? (d.rental?.property?.details?.hostFallback ?? 'Host')}</h3>
+                  <p className="text-sm text-gray-500">{d.rental?.property?.details?.joinedIn ?? "Joined in 2023"}</p>
                 </div>
               </CardContent>
             </Card>

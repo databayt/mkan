@@ -2,19 +2,18 @@
 
 import Image from "next/image";
 import React from "react";
-import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 const CallToActionSection = () => {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
 
   return (
     <div className="relative py-24">
       <Image
         src="/landing-call-to-action.jpg"
-        alt={isAr ? "خلفية قسم البحث في مكان" : "Mkan Search Section Background"}
+        alt={dict.landing?.callToAction?.bgAlt ?? "Mkan Search Section Background"}
         fill
         className="object-cover object-center"
       />
@@ -29,28 +28,26 @@ const CallToActionSection = () => {
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="mb-6 md:mb-0 md:me-10">
             <h2 className="text-2xl font-bold text-white">
-              {isAr ? "ابحث عن عقارك المثالي للإيجار" : "Find Your Dream Rental Property"}
+              {dict.landing?.callToAction?.title ?? "Find Your Dream Rental Property"}
             </h2>
           </div>
           <div>
             <p className="text-white mb-3">
-              {isAr
-                ? "اكتشف مجموعة واسعة من العقارات المتاحة للإيجار في موقعك المفضل."
-                : "Discover a wide range of rental properties in your desired location."}
+              {dict.landing?.callToAction?.description ?? "Discover a wide range of rental properties in your desired location."}
             </p>
             <div className="flex justify-center md:justify-start gap-4">
               <button
                 onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                 className="inline-block text-primary-700 bg-white rounded-lg px-6 py-3 font-semibold hover:bg-primary-500 hover:text-primary-50"
               >
-                {isAr ? "البحث" : "Search"}
+                {dict.landing?.callToAction?.searchButton ?? "Search"}
               </button>
               <Link
                 href="/signup"
                 className="inline-block text-white bg-secondary-500 rounded-lg px-6 py-3 font-semibold hover:bg-secondary-600"
                 scroll={false}
               >
-                {isAr ? "سجّل الآن" : "Sign Up"}
+                {dict.landing?.callToAction?.signUpButton ?? "Sign Up"}
               </Link>
             </div>
           </div>

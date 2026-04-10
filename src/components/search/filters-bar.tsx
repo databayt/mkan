@@ -16,11 +16,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PropertyTypeIcons } from "@/lib/constants";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 const FiltersBar = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
   const filters = useGlobalStore((s) => s.filters);
   const isFiltersFullOpen = useGlobalStore((s) => s.isFiltersFullOpen);
   const viewMode = useGlobalStore((s) => s.viewMode);
@@ -104,13 +105,13 @@ const FiltersBar = () => {
           onClick={() => toggleFiltersFullOpen()}
         >
           <Filter className="w-4 h-4" />
-          <span>{isAr ? "جميع الفلاتر" : "All Filters"}</span>
+          <span>{dict.filters?.allFilters ?? "All Filters"}</span>
         </Button>
 
         {/* Search Location */}
         <div className="flex items-center relative">
           <Input
-            placeholder={isAr ? "جرب: الخرطوم، بورتسودان..." : "Try: New York, Austin, Portland..."}
+            placeholder={dict.filters?.searchPlaceholder ?? "Try: New York, Austin, Portland..."}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => {
@@ -131,7 +132,7 @@ const FiltersBar = () => {
           {/* Quick location suggestions */}
           {searchInput === '' && (
             <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 w-48">
-              <div className="p-2 text-xs text-gray-500 border-b">{isAr ? "المدن المتاحة:" : "Available cities:"}</div>
+              <div className="p-2 text-xs text-gray-500 border-b">{dict.filters?.availableCities ?? "Available cities:"}</div>
               <button
                 className="w-full text-start px-3 py-2 text-sm hover:bg-blue-50 text-blue-600 font-medium"
                 onClick={() => {
@@ -139,7 +140,7 @@ const FiltersBar = () => {
                   handleFilterChange('location', '', null);
                 }}
               >
-                {isAr ? "عرض جميع العقارات" : "Show All Properties"}
+                {dict.filters?.showAllProperties ?? "Show All Properties"}
               </button>
               {['New York', 'Austin', 'Portland', 'Seattle', 'Chicago', 'Boston'].map((city) => (
                 <button
@@ -172,7 +173,7 @@ const FiltersBar = () => {
               </SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-white">
-              <SelectItem value="any">{isAr ? "أي حد أدنى" : "Any Min Price"}</SelectItem>
+              <SelectItem value="any">{dict.filters?.anyMinPrice ?? "Any Min Price"}</SelectItem>
               {[500, 1000, 1500, 2000, 3000, 5000, 10000].map((price) => (
                 <SelectItem key={price} value={price.toString()}>
                   ${price / 1000}k+
@@ -194,7 +195,7 @@ const FiltersBar = () => {
               </SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-white">
-              <SelectItem value="any">{isAr ? "أي حد أقصى" : "Any Max Price"}</SelectItem>
+              <SelectItem value="any">{dict.filters?.anyMaxPrice ?? "Any Max Price"}</SelectItem>
               {[1000, 2000, 3000, 5000, 10000].map((price) => (
                 <SelectItem key={price} value={price.toString()}>
                   &lt;${price / 1000}k
@@ -212,14 +213,14 @@ const FiltersBar = () => {
             onValueChange={(value) => handleFilterChange("beds", value, null)}
           >
             <SelectTrigger className="w-26 rounded-xl border-primary-400">
-              <SelectValue placeholder={isAr ? "أسرّة" : "Beds"} />
+              <SelectValue placeholder={dict.filters?.beds ?? "Beds"} />
             </SelectTrigger>
             <SelectContent className="bg-white">
-              <SelectItem value="any">{isAr ? "أي عدد أسرّة" : "Any Beds"}</SelectItem>
-              <SelectItem value="1">{isAr ? "+1 سرير" : "1+ bed"}</SelectItem>
-              <SelectItem value="2">{isAr ? "+2 أسرّة" : "2+ beds"}</SelectItem>
-              <SelectItem value="3">{isAr ? "+3 أسرّة" : "3+ beds"}</SelectItem>
-              <SelectItem value="4">{isAr ? "+4 أسرّة" : "4+ beds"}</SelectItem>
+              <SelectItem value="any">{dict.filters?.anyBeds ?? "Any Beds"}</SelectItem>
+              <SelectItem value="1">{dict.filters?.oneBed ?? "1+ bed"}</SelectItem>
+              <SelectItem value="2">{dict.filters?.twoBeds ?? "2+ beds"}</SelectItem>
+              <SelectItem value="3">{dict.filters?.threeBeds ?? "3+ beds"}</SelectItem>
+              <SelectItem value="4">{dict.filters?.fourBeds ?? "4+ beds"}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -229,13 +230,13 @@ const FiltersBar = () => {
             onValueChange={(value) => handleFilterChange("baths", value, null)}
           >
             <SelectTrigger className="w-26 rounded-xl border-primary-400">
-              <SelectValue placeholder={isAr ? "حمامات" : "Baths"} />
+              <SelectValue placeholder={dict.filters?.baths ?? "Baths"} />
             </SelectTrigger>
             <SelectContent className="bg-white">
-              <SelectItem value="any">{isAr ? "أي عدد حمامات" : "Any Baths"}</SelectItem>
-              <SelectItem value="1">{isAr ? "+1 حمام" : "1+ bath"}</SelectItem>
-              <SelectItem value="2">{isAr ? "+2 حمامات" : "2+ baths"}</SelectItem>
-              <SelectItem value="3">{isAr ? "+3 حمامات" : "3+ baths"}</SelectItem>
+              <SelectItem value="any">{dict.filters?.anyBaths ?? "Any Baths"}</SelectItem>
+              <SelectItem value="1">{dict.filters?.oneBath ?? "1+ bath"}</SelectItem>
+              <SelectItem value="2">{dict.filters?.twoBaths ?? "2+ baths"}</SelectItem>
+              <SelectItem value="3">{dict.filters?.threeBaths ?? "3+ baths"}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -248,10 +249,10 @@ const FiltersBar = () => {
           }
         >
           <SelectTrigger className="w-32 rounded-xl border-primary-400">
-            <SelectValue placeholder={isAr ? "نوع العقار" : "Home Type"} />
+            <SelectValue placeholder={dict.filters?.homeType ?? "Home Type"} />
           </SelectTrigger>
           <SelectContent className="bg-white">
-            <SelectItem value="any">{isAr ? "أي نوع عقار" : "Any Property Type"}</SelectItem>
+            <SelectItem value="any">{dict.filters?.anyPropertyType ?? "Any Property Type"}</SelectItem>
             {Object.entries(PropertyTypeIcons).map(([type, Icon]) => (
               <SelectItem key={type} value={type}>
                 <div className="flex items-center">

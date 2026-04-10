@@ -21,6 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 import {
   publishTransportOffice,
   getRoutesByOffice,
@@ -41,6 +42,8 @@ const FinishPage = () => {
   const params = useParams();
   const { enableNext, disableNext, setCustomNavigation } = useTransportHostValidation();
   const { office, loadOffice } = useTransportOffice();
+  const dict = useDictionary();
+  const t = dict.transport.host;
   const [steps, setSteps] = useState<StepStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -60,42 +63,42 @@ const FinishPage = () => {
 
         const statusSteps: StepStatus[] = [
           {
-            name: 'Office Information',
+            name: t.officeInformation,
             icon: <Building2 className="h-5 w-5" />,
             completed: !!(office.name && office.phone && office.email),
             required: true,
             link: 'office-info',
           },
           {
-            name: 'Assembly Point',
+            name: t.assemblyPoint,
             icon: <MapPin className="h-5 w-5" />,
             completed: !!office.assemblyPointId,
             required: true,
             link: 'assembly-point',
           },
           {
-            name: 'Buses',
+            name: dict.transport.onboarding.steps.buses,
             icon: <Bus className="h-5 w-5" />,
             completed: buses.length > 0,
             required: true,
             link: 'buses',
           },
           {
-            name: 'Routes',
+            name: dict.transport.onboarding.steps.routes,
             icon: <Route className="h-5 w-5" />,
             completed: routes.length > 0,
             required: true,
             link: 'routes',
           },
           {
-            name: 'Schedule',
+            name: t.schedule,
             icon: <Calendar className="h-5 w-5" />,
             completed: trips.length > 0,
             required: false,
             link: 'schedule',
           },
           {
-            name: 'Photos',
+            name: t.photos,
             icon: <Camera className="h-5 w-5" />,
             completed: !!office.logoUrl,
             required: false,
@@ -149,7 +152,7 @@ const FinishPage = () => {
       router.push('/offices');
     } catch (error) {
       console.error('Error publishing office:', error);
-      setPublishError('Failed to publish office. Please try again.');
+      setPublishError(t.publishingError);
     } finally {
       setIsPublishing(false);
     }
@@ -176,12 +179,11 @@ const FinishPage = () => {
 
   return (
     <HostStepLayout
-      title={<h3>Review and publish</h3>}
+      title={<h3>{t.reviewAndPublish}</h3>}
       subtitle={
         <div className="space-y-4">
           <p className="text-sm sm:text-base text-muted-foreground">
-            Review your office setup before publishing. Once published, your
-            office will be visible to travelers.
+            {t.reviewDescription}
           </p>
           {office && (
             <div className="p-4 bg-muted/50 rounded-lg">
@@ -219,7 +221,7 @@ const FinishPage = () => {
                       <p className="font-medium">{step.name}</p>
                       {step.required && (
                         <Badge variant="secondary" className="text-xs mt-1">
-                          Required
+                          {t.required}
                         </Badge>
                       )}
                     </div>
@@ -239,11 +241,10 @@ const FinishPage = () => {
               <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium text-yellow-800">
-                  Complete required steps
+                  {t.completeRequiredSteps}
                 </p>
                 <p className="text-sm text-yellow-700 mt-1">
-                  Please complete all required steps before publishing your
-                  office.
+                  {t.completeRequiredDescription}
                 </p>
               </div>
             </div>
@@ -257,9 +258,7 @@ const FinishPage = () => {
                 onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
               />
               <Label htmlFor="terms" className="text-sm leading-relaxed">
-                I confirm that all information provided is accurate. I agree to
-                the Terms of Service and understand that my office will be
-                visible to all Mkan users.
+                {t.termsAgreement}
               </Label>
             </div>
 
@@ -279,10 +278,10 @@ const FinishPage = () => {
               {isPublishing ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white me-2"></div>
-                  Publishing...
+                  {t.publishing}
                 </>
               ) : (
-                'Publish Office'
+                t.publishOffice
               )}
             </Button>
           </div>

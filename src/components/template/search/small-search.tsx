@@ -1,8 +1,8 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 interface SmallSearchProps {
   onExpand?: () => void;
@@ -17,8 +17,7 @@ export default function SmallSearch({
   onExpand,
   searchValues,
 }: SmallSearchProps) {
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const dict = useDictionary();
 
   const handleClick = () => {
     onExpand?.();
@@ -47,7 +46,7 @@ export default function SmallSearch({
         }}
       >
         <div className="font-semibold text-black text-xs whitespace-nowrap">
-          {searchValues?.location || (isAr ? "أي مكان" : "Anywhere")}
+          {searchValues?.location || (dict.search?.anywhere ?? "Anywhere")}
         </div>
       </button>
 
@@ -62,7 +61,7 @@ export default function SmallSearch({
         }}
       >
         <div className="font-semibold text-black text-xs whitespace-nowrap">
-          {searchValues?.dates || (isAr ? "أي أسبوع" : "Any week")}
+          {searchValues?.dates || (dict.search?.anyWeek ?? "Any week")}
         </div>
       </button>
 
@@ -77,7 +76,7 @@ export default function SmallSearch({
         }}
       >
         <div className="font-semibold text-gray-500 text-xs whitespace-nowrap">
-          {searchValues?.guests || (isAr ? "الضيوف" : "Guests")}
+          {searchValues?.guests || (dict.search?.guestsLabel ?? "Guests")}
         </div>
       </button>
 
