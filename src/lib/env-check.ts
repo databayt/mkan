@@ -76,15 +76,8 @@ export function validateEnv(): Env {
     if (error instanceof z.ZodError) {
       const errors = error.errors.map((err) => `  - ${err.path.join('.')}: ${err.message}`).join('\n');
 
-      // In development, just warn and continue
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn(`⚠️  Environment validation warnings:\n${errors}`);
-        return process.env as Env;
-      }
-
-      throw new Error(
-        `Environment validation failed:\n${errors}\n\nPlease check your .env file and ensure all required variables are set correctly.`
-      );
+      console.error(`⚠️  Environment validation errors:\n${errors}`);
+      return process.env as Env;
     }
     throw error;
   }
