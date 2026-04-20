@@ -7,21 +7,45 @@ import { PropertyCard } from './card'
 import { Listing } from '@/types/listing'
 import { useLocale } from '@/components/internationalization/use-locale'
 import { useDictionary } from '@/components/internationalization/dictionary-context'
+import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-actions'
+import { useSession } from 'next-auth/react'
+import { formatCurrency } from '@/lib/i18n/formatters'
 
 interface PropertyListingsProps {
   properties: Listing[]
+  favoriteIds?: number[]
 }
 
-export const PropertyListings = ({ properties }: PropertyListingsProps) => {
+export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListingsProps) => {
   const router = useRouter()
   const { locale } = useLocale()
   const dict = useDictionary()
+  const { data: session } = useSession()
   const viewMode = useGlobalStore((s) => s.viewMode)
   const filters = useGlobalStore((s) => s.filters)
+  const [localFavorites, setLocalFavorites] = React.useState<Set<number>>(new Set(favoriteIds))
 
   const handleFavoriteToggle = async (propertyId: string, isFavorite: boolean) => {
-    // TODO: Implement favorites functionality with server actions
-    console.log('Toggle favorite:', propertyId, isFavorite)
+    if (!session?.user?.id) return
+    const id = parseInt(propertyId)
+    setLocalFavorites(prev => {
+      const next = new Set(prev)
+      isFavorite ? next.add(id) : next.delete(id)
+      return next
+    })
+    try {
+      if (isFavorite) {
+        await addFavoriteProperty(session.user.id, id)
+      } else {
+        await removeFavoriteProperty(session.user.id, id)
+      }
+    } catch {
+      setLocalFavorites(prev => {
+        const next = new Set(prev)
+        isFavorite ? next.delete(id) : next.add(id)
+        return next
+      })
+    }
   }
 
   const handleCardClick = (propertyId: string) => {
@@ -54,7 +78,7 @@ export const PropertyListings = ({ properties }: PropertyListingsProps) => {
     price: property.pricePerNight ?? 0,
     rating: property.averageRating ?? 4.5, // Default rating
     isSuperhostBadge: false, // You can add logic for this
-    isFavorite: false, // TODO: Implement user favorites
+    isFavorite: localFavorites.has(property.id),
     onFavoriteToggle: handleFavoriteToggle,
     onCardClick: handleCardClick,
   }))
@@ -93,7 +117,7 @@ export const PropertyListings = ({ properties }: PropertyListingsProps) => {
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg mb-2">{property.title}</h3>
                   <p className="text-gray-600 mb-2">{property.location}</p>
-                  <p className="font-semibold text-lg">${property.price}/night</p>
+                  <p className="font-semibold text-lg">{formatCurrency(property.price, locale)} / {dict.rental?.listing?.perNight ?? 'night'}</p>
                 </div>
               </div>
             </div>

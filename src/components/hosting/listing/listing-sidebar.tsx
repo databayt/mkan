@@ -58,7 +58,7 @@ const ListingSidebar = ({ listingId }: ListingSidebarProps) => {
         onClick={() => router.push('/hosting/listings')}
         className="gap-2 mb-6 p-0 h-auto"
       >
-        <ArrowLeft className="size-5" />
+        <ArrowLeft className="size-5 rtl:rotate-180" />
         <span>Listing editor</span>
       </Button>
 
@@ -103,7 +103,7 @@ const ListingSidebar = ({ listingId }: ListingSidebarProps) => {
               <CardTitle className="text-lg">Complete required steps</CardTitle>
             </div>
             <Button variant="ghost" size="sm" className="p-0 h-auto">
-              <ArrowLeft className="size-4 rotate-180" />
+              <ArrowLeft className="size-4 rotate-180 rtl:rotate-180" />
             </Button>
           </div>
         </CardHeader>

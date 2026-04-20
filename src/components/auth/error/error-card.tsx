@@ -22,7 +22,7 @@ export const ErrorCard = () => {
   return (
     <CardWrapper
       headerLabel={t.headerLabel}
-      backButtonHref="/auth/login"
+      backButtonHref="/login"
       backButtonLabel={t.backButtonLabel}
     >
       <div className="w-full flex justify-center items-center">

@@ -4,7 +4,6 @@ import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { useState, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { LoginSchema } from "../validation";
@@ -12,39 +11,7 @@ import { login } from "./action";
 import { FormError } from "../error/form-error";
 import { FormSuccess } from "../form-success";
 import { Social } from "../social";
-
-const translations = {
-  en: {
-    welcome: "Welcome to Mkan",
-    email: "Email",
-    password: "Password",
-    twoFactorCode: "Two Factor Code",
-    forgotPrefix: "Did you ",
-    forgotPassword: "Forget your password",
-    noAccountPrefix: "? or ",
-    noAccount: "Don't have an account",
-    noAccountSuffix: "?",
-    continue: "Continue",
-    confirm: "Confirm",
-    or: "or",
-    somethingWentWrong: "Something went wrong",
-  },
-  ar: {
-    welcome: "مرحبا بك في مكان",
-    email: "البريد الإلكتروني",
-    password: "كلمة المرور",
-    twoFactorCode: "رمز التحقق",
-    forgotPrefix: "هل ",
-    forgotPassword: "نسيت كلمة المرور",
-    noAccountPrefix: "؟ أو ",
-    noAccount: "ليس لديك حساب",
-    noAccountSuffix: "؟",
-    continue: "متابعة",
-    confirm: "تأكيد",
-    or: "أو",
-    somethingWentWrong: "حدث خطأ ما",
-  },
-} as const;
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 interface LoginFormProps extends React.ComponentPropsWithoutRef<"div"> {
   callbackUrl?: string;
@@ -57,8 +24,25 @@ export const LoginForm = ({
   error: urlError,
   ...props
 }: LoginFormProps) => {
-  const pathname = usePathname();
-  const t = translations[pathname?.startsWith("/ar") ? "ar" : "en"];
+  const dict = useDictionary();
+  const auth = dict.auth ?? ({} as Record<string, any>);
+  // Compact accessor that falls back to a visible English string if the key
+  // is missing mid-rollout. Avoids blank labels on a dictionary miss.
+  const t = {
+    welcome: auth.welcome ?? "Welcome to Mkan",
+    email: auth.email ?? "Email",
+    password: auth.password ?? "Password",
+    twoFactorCode: auth.twoFactorCode ?? "Two Factor Code",
+    forgotPrefix: auth.login?.forgotPrefix ?? "Did you ",
+    forgotPassword: auth.forgotPassword ?? "Forget your password",
+    noAccountPrefix: auth.login?.noAccountPrefix ?? "? or ",
+    noAccount: auth.dontHaveAccount ?? "Don't have an account",
+    noAccountSuffix: auth.login?.noAccountSuffix ?? "?",
+    continue: auth.continueButton ?? "Continue",
+    confirm: auth.confirm ?? "Confirm",
+    or: auth.or ?? "or",
+    somethingWentWrong: auth.somethingWentWrong ?? "Something went wrong",
+  };
   const [showTwoFactor, setShowTwoFactor] = useState(false);
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");

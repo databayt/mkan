@@ -37,14 +37,16 @@ export default async function PropertiesPage({
   const { lang } = await params;
   const d = await getDictionary(lang as Locale);
 
-  // TODO: Uncomment auth check when ready for production
-  // const session = await auth()
+  const session = await auth();
 
-  // if (!session?.user) {
-  //   redirect('/login')
-  // }
+  if (!session?.user) {
+    redirect(`/${lang}/login`);
+  }
 
   const properties = await db.listing.findMany({
+    where: {
+      hostId: session.user.id,
+    },
     include: {
       location: true,
       _count: {

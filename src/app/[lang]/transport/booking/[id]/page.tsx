@@ -20,6 +20,7 @@ import {
   Ticket,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { ar, enUS } from 'date-fns/locale';
 import { getBooking } from '@/lib/actions/transport-actions';
 import { getTransportDictionary } from '@/components/transport/transport-dictionary';
 
@@ -74,6 +75,9 @@ export default function BookingConfirmationPage() {
   const [booking, setBooking] = useState<BookingDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const t = getTransportDictionary(lang);
+  // Locale for date-fns — gives Arabic users "الثلاثاء، ١٥ أبريل" instead of
+  // "Tue, Apr 15". All `format()` calls in this file must pass this.
+  const dateLocale = lang === 'ar' ? ar : enUS;
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -181,7 +185,7 @@ export default function BookingConfirmationPage() {
                 {booking.trip.route.origin.name}
               </div>
             </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0 rtl:rotate-180" />
             <div className="flex-1 text-end">
               <div className="font-medium">{booking.trip.route.destination.city}</div>
               <div className="text-sm text-muted-foreground">
@@ -199,7 +203,7 @@ export default function BookingConfirmationPage() {
               <div>
                 <div className="text-sm text-muted-foreground">Date</div>
                 <div className="font-medium">
-                  {format(new Date(booking.trip.departureDate), 'EEE, MMM d, yyyy')}
+                  {format(new Date(booking.trip.departureDate), 'EEE, MMM d, yyyy', { locale: dateLocale })}
                 </div>
               </div>
             </div>

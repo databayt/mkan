@@ -1,27 +1,34 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
+import { waitForPageLoad } from "../e2e/helpers";
 
-test.describe('Transport Search Flow', () => {
+test.describe("Transport Search Flow", () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to transport page
-    await page.goto('/en/transport');
+    await page.goto("/en/transport");
+    await waitForPageLoad(page);
   });
 
-  test('should display transport search page', async ({ page }) => {
+  test("should display transport search page", async ({ page }) => {
     // Check main elements are visible
-    await expect(page.getByRole('heading', { name: /transport/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /transport/i }),
+    ).toBeVisible();
 
     // Check search widget is present
-    await expect(page.locator('[data-testid="transport-search"]').or(page.getByPlaceholder(/search/i).first())).toBeVisible();
+    await expect(
+      page
+        .locator('[data-testid="transport-search"]')
+        .or(page.getByPlaceholder(/search/i).first()),
+    ).toBeVisible();
   });
 
-  test('should search for trips between cities', async ({ page }) => {
+  test("should search for trips between cities", async ({ page }) => {
     // Click on origin city selector
     const originInput = page.getByPlaceholder(/from|origin/i).first();
     if (await originInput.isVisible()) {
       await originInput.click();
 
       // Select Khartoum as origin
-      await page.getByText('Khartoum').first().click();
+      await page.getByText("Khartoum").first().click();
     }
 
     // Click on destination city selector
@@ -30,45 +37,58 @@ test.describe('Transport Search Flow', () => {
       await destInput.click();
 
       // Select Port Sudan as destination
-      await page.getByText('Port Sudan').first().click();
+      await page.getByText("Port Sudan").first().click();
     }
 
     // Select travel date (tomorrow)
-    const dateInput = page.getByRole('button', { name: /date|calendar/i }).first();
+    const dateInput = page
+      .getByRole("button", { name: /date|calendar/i })
+      .first();
     if (await dateInput.isVisible()) {
       await dateInput.click();
 
-      // Select a date in the future
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 2);
-      const dayButton = page.getByRole('gridcell', { name: String(tomorrow.getDate()) });
+      const dayButton = page.getByRole("gridcell", {
+        name: String(tomorrow.getDate()),
+      });
       if (await dayButton.isVisible()) {
         await dayButton.click();
       }
     }
 
     // Click search button
-    const searchButton = page.getByRole('button', { name: /search/i });
+    const searchButton = page.getByRole("button", { name: /search/i });
     if (await searchButton.isVisible()) {
       await searchButton.click();
 
-      // Wait for navigation or results
-      await page.waitForTimeout(2000);
+      // Wait for navigation to search results or for results to appear
+      await page
+        .waitForURL(/\/search|\/transport/, { timeout: 10_000 })
+        .catch(() => {});
     }
   });
 
-  test('should display trip cards with correct information', async ({ page }) => {
-    // Navigate to search results page with query params
-    await page.goto('/en/transport/search?origin=Khartoum&destination=Port%20Sudan');
+  test("should display trip cards with correct information", async ({
+    page,
+  }) => {
+    await page.goto(
+      "/en/transport/search?origin=Khartoum&destination=Port%20Sudan",
+    );
 
-    // Wait for results to load
-    await page.waitForTimeout(3000);
+    // Wait for results to render
+    await page
+      .locator('[class*="card"]')
+      .first()
+      .waitFor({ state: "visible", timeout: 10_000 })
+      .catch(() => {});
 
     // Check if trip cards are displayed
-    const tripCards = page.locator('[class*="card"]').filter({ hasText: /SDG/ });
+    const tripCards = page
+      .locator('[class*="card"]')
+      .filter({ hasText: /SDG/ });
 
-    if (await tripCards.count() > 0) {
-      // Verify trip card contains expected elements
+    if ((await tripCards.count()) > 0) {
       const firstCard = tripCards.first();
 
       // Should show departure time
@@ -79,15 +99,21 @@ test.describe('Transport Search Flow', () => {
     }
   });
 
-  test('should navigate to trip details on card click', async ({ page }) => {
-    // Navigate to search results
-    await page.goto('/en/transport/search?origin=Khartoum&destination=Port%20Sudan');
+  test("should navigate to trip details on card click", async ({ page }) => {
+    await page.goto(
+      "/en/transport/search?origin=Khartoum&destination=Port%20Sudan",
+    );
 
-    // Wait for results
-    await page.waitForTimeout(3000);
+    // Wait for results to render
+    await page
+      .locator('[class*="card"]')
+      .first()
+      .waitFor({ state: "visible", timeout: 10_000 })
+      .catch(() => {});
 
-    // Find and click first trip card's select seats button
-    const selectSeatsButton = page.getByRole('link', { name: /select seats/i }).first();
+    const selectSeatsButton = page
+      .getByRole("link", { name: /select seats/i })
+      .first();
 
     if (await selectSeatsButton.isVisible()) {
       await selectSeatsButton.click();

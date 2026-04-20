@@ -22,6 +22,7 @@ import {
 import { getTransportOffice, getOfficeTrips } from '@/lib/actions/transport-actions';
 import { getTransportDictionary } from '@/components/transport/transport-dictionary';
 import { format, addDays } from 'date-fns';
+import { ar, enUS } from 'date-fns/locale';
 
 interface OfficeDetails {
   id: number;
@@ -72,6 +73,7 @@ export default function OfficeDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const lang = params.lang as string;
+  const dateLocale = lang === 'ar' ? ar : enUS;
   const officeId = Number(params.id);
 
   const [office, setOffice] = useState<OfficeDetails | null>(null);
@@ -230,7 +232,7 @@ export default function OfficeDetailsPage() {
                           <div className="font-medium">{route.origin.city}</div>
                           <div className="text-xs text-muted-foreground">{route.origin.name}</div>
                         </div>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <ArrowRight className="h-4 w-4 text-muted-foreground rtl:rotate-180" />
                         <div className="text-center">
                           <div className="font-medium">{route.destination.city}</div>
                           <div className="text-xs text-muted-foreground">{route.destination.name}</div>
@@ -275,7 +277,7 @@ export default function OfficeDetailsPage() {
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center gap-2">
                           <Calendar className="h-3 w-3" />
-                          {format(new Date(trip.departureDate), 'EEE, MMM d')}
+                          {format(new Date(trip.departureDate), 'EEE, MMM d', { locale: dateLocale })}
                           <Clock className="h-3 w-3 ms-2" />
                           {trip.departureTime}
                         </div>

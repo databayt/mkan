@@ -4,35 +4,26 @@ import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { useState, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ResetSchema } from "../validation";
 import { reset } from "./action";
 import { FormError } from "../error/form-error";
 import { FormSuccess } from "../form-success";
-
-const translations = {
-  en: {
-    heading: "Reset your password",
-    email: "Email",
-    resetPassword: "Reset password",
-    backToLogin: "Back to login",
-  },
-  ar: {
-    heading: "إعادة تعيين كلمة المرور",
-    email: "البريد الإلكتروني",
-    resetPassword: "إعادة تعيين كلمة المرور",
-    backToLogin: "العودة لتسجيل الدخول",
-  },
-} as const;
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 export const ResetForm = ({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) => {
-  const pathname = usePathname();
-  const t = translations[pathname?.startsWith("/ar") ? "ar" : "en"];
+  const dict = useDictionary();
+  const auth = dict.auth ?? ({} as Record<string, any>);
+  const t = {
+    heading: auth.reset?.heading ?? "Reset your password",
+    email: auth.email ?? "Email",
+    resetPassword: auth.resetPassword ?? "Reset password",
+    backToLogin: auth.backToLogin ?? "Back to login",
+  };
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isPending, startTransition] = useTransition();

@@ -12,12 +12,15 @@ import {
   CarouselItem,
 } from '@/components/ui/carousel'
 import { cn } from '@/lib/utils'
+import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-actions'
+import { useSession } from 'next-auth/react'
 
 interface ListingCarouselSectionProps {
   title: string
   href?: string
   listings: Listing[]
   className?: string
+  favoriteIds?: number[]
 }
 
 export function ListingCarouselSection({
@@ -25,13 +28,34 @@ export function ListingCarouselSection({
   href,
   listings,
   className,
+  favoriteIds = [],
 }: ListingCarouselSectionProps) {
   const router = useRouter()
   const { locale } = useLocale()
+  const { data: session } = useSession()
+  const [localFavorites, setLocalFavorites] = React.useState<Set<number>>(new Set(favoriteIds))
 
   const handleFavoriteToggle = async (propertyId: string, isFavorite: boolean) => {
-    // TODO: Implement favorites functionality with server actions
-    console.log('Toggle favorite:', propertyId, isFavorite)
+    if (!session?.user?.id) return
+    const id = parseInt(propertyId)
+    setLocalFavorites(prev => {
+      const next = new Set(prev)
+      isFavorite ? next.add(id) : next.delete(id)
+      return next
+    })
+    try {
+      if (isFavorite) {
+        await addFavoriteProperty(session.user.id, id)
+      } else {
+        await removeFavoriteProperty(session.user.id, id)
+      }
+    } catch {
+      setLocalFavorites(prev => {
+        const next = new Set(prev)
+        isFavorite ? next.delete(id) : next.add(id)
+        return next
+      })
+    }
   }
 
   const handleCardClick = (propertyId: string) => {
@@ -52,7 +76,7 @@ export function ListingCarouselSection({
     price: listing.pricePerNight || 0,
     rating: listing.averageRating || 4.5,
     isSuperhostBadge: false,
-    isFavorite: false,
+    isFavorite: localFavorites.has(listing.id),
     onFavoriteToggle: handleFavoriteToggle,
     onCardClick: handleCardClick,
   }))

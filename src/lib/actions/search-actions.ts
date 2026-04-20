@@ -5,12 +5,19 @@ import { Prisma } from "@prisma/client";
 import { unstable_cache } from "next/cache";
 import {
   searchFormSchema,
+  listingFilterSchema,
   locationQuerySchema,
   SEARCH_CONFIG,
   type LocationSuggestion,
   type SearchFilters,
   type SearchResult,
 } from "@/lib/schemas/search-schema";
+
+// Cache tags used to invalidate search results when listings change.
+// Mutations in listing-actions.ts call `revalidateTag('listings')` on
+// create/update/delete, which blows this cache + every `listing:${id}` tag.
+const LISTINGS_TAG = "listings";
+const SEARCH_TAG = "search";
 
 /**
  * Get location suggestions based on search query
@@ -172,14 +179,113 @@ export const getPopularLocations = unstable_cache(
 );
 
 /**
- * Search listings with server-side filtering
- * Validates input and returns filtered listings
+ * Core search query — the part that hits Prisma. Wrapped by `unstable_cache`
+ * below, so every distinct stringified-filters key is cached for 60s. The
+ * 60s ceiling balances freshness (new listings appear ~1 min after
+ * publish, which matches user expectations for a marketplace) with DB
+ * load. Mutations in `listing-actions.ts` call `revalidateTag('listings')`
+ * for immediate invalidation when editing.
+ */
+const cachedListingSearch = unstable_cache(
+  async (
+    normalized: string
+  ): Promise<
+    Prisma.ListingGetPayload<{
+      include: { location: true; host: { select: { id: true; email: true; username: true } } };
+    }>[]
+  > => {
+    const f = JSON.parse(normalized) as ReturnType<typeof listingFilterSchema.parse>;
+
+    const where: Prisma.ListingWhereInput = {
+      isPublished: true,
+      draft: false,
+    };
+
+    if (f.location) {
+      where.location = {
+        OR: [
+          { city: { contains: f.location, mode: "insensitive" } },
+          { state: { contains: f.location, mode: "insensitive" } },
+          { country: { contains: f.location, mode: "insensitive" } },
+        ],
+      };
+    }
+
+    const totalGuests = f.guests || (f.adults || 0) + (f.children || 0);
+    if (totalGuests > 0) {
+      where.guestCount = { gte: totalGuests };
+    }
+
+    // Price band. `pricePerNight` is nullable in the schema; the `gte/lte`
+    // still matches non-null rows, and null rows drop out implicitly when a
+    // price filter is active (matches user intent: "show me what's priced").
+    if (f.priceMin !== undefined || f.priceMax !== undefined) {
+      where.pricePerNight = {
+        ...(f.priceMin !== undefined ? { gte: f.priceMin } : {}),
+        ...(f.priceMax !== undefined ? { lte: f.priceMax } : {}),
+      };
+    }
+
+    if (f.beds !== undefined) where.bedrooms = { gte: f.beds };
+    if (f.baths !== undefined) where.bathrooms = { gte: f.baths };
+    if (f.propertyType) where.propertyType = f.propertyType;
+
+    // `hasEvery` = AND semantics ("listing has ALL requested amenities").
+    // Flip to `hasSome` if product decides OR is better for marketing filters.
+    if (f.amenities && f.amenities.length > 0) {
+      where.amenities = { hasEvery: f.amenities };
+    }
+
+    // Availability filter — exclude listings with overlapping confirmed or
+    // pending bookings in the requested window. Only runs when BOTH dates
+    // are provided so users browsing without dates still see everything.
+    // Note: this subquery means date-based searches can't share a cache
+    // with undated searches, which is fine — the cache keys diverge.
+    if (f.checkIn && f.checkOut) {
+      where.bookings = {
+        none: {
+          status: { in: ["Confirmed", "Pending"] },
+          AND: [
+            { checkIn: { lt: new Date(f.checkOut) } },
+            { checkOut: { gt: new Date(f.checkIn) } },
+          ],
+        },
+      };
+    }
+
+    const take = Math.min(f.take ?? 20, 50);
+    const skip = f.skip ?? 0;
+
+    return db.listing.findMany({
+      where,
+      include: {
+        location: true,
+        host: {
+          select: { id: true, email: true, username: true },
+        },
+      },
+      orderBy: { postedDate: "desc" },
+      take,
+      skip,
+    });
+  },
+  ["search-listings"],
+  { revalidate: 60, tags: [LISTINGS_TAG, SEARCH_TAG] }
+);
+
+/**
+ * Search listings with server-side filtering.
+ *
+ * Validation is done OUTSIDE the cache boundary so invalid filters don't
+ * populate the cache with empty error responses.
  */
 export async function searchListings(
   filters: SearchFilters
 ): Promise<SearchResult<Prisma.ListingGetPayload<{ include: { location: true; host: { select: { id: true; email: true; username: true } } } }>[]>> {
-  // Validate input
-  const validated = searchFormSchema.safeParse(filters);
+  // Use the query-level schema so price/beds/type/amenities are actually
+  // validated. `searchFormSchema` is form-level (rejects past dates), not
+  // query-level — it silently dropped extra fields.
+  const validated = listingFilterSchema.safeParse(filters);
 
   if (!validated.success) {
     return {
@@ -190,46 +296,10 @@ export async function searchListings(
   }
 
   try {
-    const where: Prisma.ListingWhereInput = {
-      isPublished: true,
-      draft: false,
-    };
-
-    // Location filter - search in city, state, or country
-    if (filters.location) {
-      where.location = {
-        OR: [
-          { city: { contains: filters.location, mode: "insensitive" } },
-          { state: { contains: filters.location, mode: "insensitive" } },
-          { country: { contains: filters.location, mode: "insensitive" } },
-        ],
-      };
-    }
-
-    // Guest capacity filter - listing must accommodate total guests
-    const totalGuests =
-      filters.guests || (filters.adults || 0) + (filters.children || 0);
-    if (totalGuests > 0) {
-      where.guestCount = { gte: totalGuests };
-    }
-
-    const listings = await db.listing.findMany({
-      where,
-      include: {
-        location: true,
-        host: {
-          select: {
-            id: true,
-            email: true,
-            username: true,
-          },
-        },
-      },
-      orderBy: {
-        postedDate: "desc",
-      },
-    });
-
+    // Stringify *after* zod has normalized the shape so the cache key is
+    // deterministic — two callers with the same logical filters hit the
+    // same cache entry regardless of object property order.
+    const listings = await cachedListingSearch(JSON.stringify(validated.data));
     return {
       success: true,
       data: listings,

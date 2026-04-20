@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Listing } from '@/types/listing';
 import { Badge } from '@/components/ui/badge';
 import { getNextStep } from '@/components/hosting/listing/listing-progress';
+import { useLocale } from '@/components/internationalization/use-locale';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { formatCurrency } from '@/lib/i18n/formatters';
 
 interface ListingCardProps {
   listing: Listing;
@@ -14,6 +17,8 @@ interface ListingCardProps {
 
 const ListingCard: React.FC<ListingCardProps> = ({ listing, viewType }) => {
   const router = useRouter();
+  const { locale } = useLocale();
+  const dict = useDictionary();
 
   const getListingStatus = (listing: Listing) => {
     if (!listing.draft && listing.isPublished) {
@@ -141,7 +146,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewType }) => {
         
         {listing.pricePerNight && (
           <p className="text-xs sm:text-sm font-medium text-gray-900">
-            ${listing.pricePerNight}/night
+            {formatCurrency(listing.pricePerNight, locale)}/{dict.rental?.listing?.perNight ?? "night"}
           </p>
         )}
         

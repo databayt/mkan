@@ -79,7 +79,7 @@ export default function Location() {
 
         <button className="flex items-center p-0 underline h-auto text-[#000000] hover:text-[#374151] font-medium">
           {dict.rental?.map?.showMore}
-          <ChevronRight className="w-3 h-3 ms-1" />
+          <ChevronRight className="w-3 h-3 ms-1 rtl:rotate-180" />
         </button>
       </div>
     </div>

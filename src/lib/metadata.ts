@@ -21,8 +21,11 @@ export function createMetadata({
   const url = `${SITE_URL}/${locale}${path}`;
   const ogImage = image || `${SITE_URL}/og-default.png`;
 
+  // NOTE: do NOT append " | Mkan" here — the root layout's `title.template`
+  // ('%s | Mkan') already wraps this value, so appending would yield
+  // "Listings | Mkan | Mkan" on every page.
   return {
-    title: `${title} | ${SITE_NAME}`,
+    title,
     description,
     openGraph: {
       title: `${title} | ${SITE_NAME}`,

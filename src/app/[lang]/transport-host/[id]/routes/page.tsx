@@ -341,7 +341,7 @@ const RoutesPage = () => {
                         <span className="font-medium">
                           {route.origin.city}
                         </span>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <ArrowRight className="h-4 w-4 text-muted-foreground rtl:rotate-180" />
                         <span className="font-medium">
                           {route.destination.city}
                         </span>

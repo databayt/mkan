@@ -3,10 +3,11 @@
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { Amenity, Highlight, PropertyType, Prisma } from "@prisma/client";
 import { sanitizeInput, sanitizeHtml } from "@/lib/sanitization";
 import { logger } from "@/lib/logger";
+import { assertRateLimit } from "@/lib/rate-limit";
 
 const listingIdSchema = z.number().int().positive();
 
@@ -88,6 +89,8 @@ export interface ListingFilters {
   favoriteIds?: number[];
   publishedOnly?: boolean;
   hostId?: string;
+  take?: number;
+  skip?: number;
 }
 
 // ============================================
@@ -100,6 +103,8 @@ export async function createListing(data: unknown = {}) {
   if (!session?.user?.id) {
     throw new Error("You must be logged in to create a listing");
   }
+
+  await assertRateLimit("mutation", `listing:${session.user.id}`);
 
   const parsed = listingFormDataSchema.safeParse(data);
   if (!parsed.success) {
@@ -176,6 +181,9 @@ export async function createListing(data: unknown = {}) {
 
     revalidatePath("/hosting/listings");
     revalidatePath("/search");
+    // Bust the searchListings cache so new/updated listings appear on the
+    // public /listings page without waiting for the 60s revalidate window.
+    updateTag("listings");
 
     return { success: true, listing };
   } catch (error) {
@@ -313,6 +321,9 @@ export async function getListings(filters?: ListingFilters) {
       }
     }
 
+    const take = filters?.take ?? 50;
+    const skip = filters?.skip ?? 0;
+
     const listings = await db.listing.findMany({
       where,
       include: {
@@ -329,6 +340,8 @@ export async function getListings(filters?: ListingFilters) {
       orderBy: {
         createdAt: "desc",
       },
+      take,
+      skip,
     });
 
     return listings;
@@ -572,6 +585,9 @@ export async function deleteListing(id: unknown) {
 
     revalidatePath("/hosting/listings");
     revalidatePath("/search");
+    // Bust the searchListings cache so new/updated listings appear on the
+    // public /listings page without waiting for the 60s revalidate window.
+    updateTag("listings");
 
     return { success: true };
   } catch (error) {

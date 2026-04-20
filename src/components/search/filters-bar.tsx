@@ -2,7 +2,7 @@
 
 import { FiltersState, useGlobalStore } from "@/state/filters";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { debounce } from "lodash";
 import { cleanParams, cn, formatPriceValue } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,19 +30,27 @@ const FiltersBar = () => {
   const setViewMode = useGlobalStore((s) => s.setViewMode);
   const [searchInput, setSearchInput] = useState(filters.location);
 
-  const updateURL = debounce((newFilters: FiltersState) => {
-    const cleanFilters = cleanParams(newFilters);
-    const updatedSearchParams = new URLSearchParams();
+  // Memoize the debounced updater so each keystroke reuses the same
+  // trailing-edge timer. The previous implementation re-created it on
+  // every render with default 0ms, effectively disabling debounce and
+  // pushing to the URL on every keystroke.
+  const updateURL = useMemo(
+    () =>
+      debounce((newFilters: FiltersState) => {
+        const cleanFilters = cleanParams(newFilters);
+        const updatedSearchParams = new URLSearchParams();
 
-    Object.entries(cleanFilters).forEach(([key, value]) => {
-      updatedSearchParams.set(
-        key,
-        Array.isArray(value) ? value.join(",") : value.toString()
-      );
-    });
+        Object.entries(cleanFilters).forEach(([key, value]) => {
+          updatedSearchParams.set(
+            key,
+            Array.isArray(value) ? value.join(",") : value.toString()
+          );
+        });
 
-    router.push(`${pathname}?${updatedSearchParams.toString()}`);
-  });
+        router.push(`${pathname}?${updatedSearchParams.toString()}`);
+      }, 300),
+    [router, pathname]
+  );
 
   const handleFilterChange = (
     key: string,

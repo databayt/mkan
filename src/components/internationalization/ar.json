@@ -81,7 +81,20 @@
     "createNewAccount": "إنشاء حساب جديد",
     "orContinueWith": "أو تابع بواسطة",
     "twoFactorCode": "رمز المصادقة الثنائية",
-    "confirm": "تأكيد"
+    "confirm": "تأكيد",
+    "welcome": "مرحبا بك في مكان",
+    "continueButton": "متابعة",
+    "or": "أو",
+    "somethingWentWrong": "حدث خطأ ما",
+    "login": {
+      "forgotPrefix": "هل ",
+      "noAccountPrefix": "؟ أو ",
+      "noAccountSuffix": "؟"
+    },
+    "reset": {
+      "heading": "إعادة تعيين كلمة المرور"
+    },
+    "backToLogin": "العودة لتسجيل الدخول"
   },
   "marketing": {
     "hero": {
@@ -758,7 +771,17 @@
     "unauthorized": "غير مصرح لك بالوصول إلى هذه الصفحة",
     "forbidden": "الوصول ممنوع",
     "tryAgain": "حاول مرة أخرى",
-    "goHome": "الذهاب للرئيسية"
+    "goHome": "العودة للرئيسية",
+    "retry": "حاول مرة أخرى",
+    "backToListings": "العودة إلى القوائم",
+    "listings": {
+      "title": "حدث خطأ أثناء تحميل القوائم",
+      "description": "تعذّر جلب العقارات الآن. يُرجى المحاولة بعد قليل."
+    },
+    "verifyListing": {
+      "title": "تعذّر تحميل التحقق",
+      "description": "تعذّر تحميل تدفق التحقق لهذه القائمة. يُرجى المحاولة مرة أخرى."
+    }
   },
   "rental": {
     "hero": {
@@ -912,7 +935,9 @@
       "clearAllFilters": "مسح جميع الفلاتر",
       "propertiesAvailable": "عقارات متاحة",
       "noProperties": "لا توجد عقارات",
-      "adjustFilters": "حاول تعديل فلاتر البحث لرؤية المزيد من النتائج."
+      "adjustFilters": "حاول تعديل فلاتر البحث لرؤية المزيد من النتائج.",
+      "perMonth": "شهر",
+      "perNight": "ليلة"
     },
     "map": {
       "whereYoullBe": "أين ستكون",
@@ -2134,7 +2159,17 @@
     "privacy": "الخصوصية",
     "terms": "الشروط",
     "sitemap": "خريطة الموقع",
-    "language": "العربية"
+    "language": "العربية",
+    "company": "الشركة",
+    "aboutUs": "من نحن",
+    "resources": "موارد",
+    "aircover": "إير كوفر",
+    "giftCards": "بطاقات الهدايا",
+    "emergencyStays": "إقامات طارئة",
+    "accessibility": "إمكانية الوصول",
+    "mkanYourHome": "استضف منزلك على مكان",
+    "englishUS": "العربية (السعودية)",
+    "currencyUSD": "ر.س SAR"
   },
   "hero": {
     "title": "ابدأ رحلتك لإيجاد المكان المثالي لتسميه وطنك",
@@ -2172,7 +2207,14 @@
     "night": "ليلة",
     "superhost": "مضيف متميز",
     "addFavorite": "إضافة للمفضلة",
-    "removeFavorite": "إزالة من المفضلة"
+    "removeFavorite": "إزالة من المفضلة",
+    "PetsAllowed": "يُسمح بالحيوانات الأليفة",
+    "ParkingIncluded": "يشمل موقف سيارات",
+    "bed": "سرير",
+    "bath": "حمام",
+    "sqft": "قدم مربع",
+    "reviews": "تقييمات",
+    "toggleFavorite": "تبديل المفضلة"
   },
   "home": {
     "sections": {
@@ -2344,7 +2386,8 @@
     "amenities": "المرافق",
     "availableFrom": "متاح من",
     "apply": "تطبيق",
-    "resetFilters": "إعادة ضبط الفلاتر"
+    "resetFilters": "إعادة ضبط الفلاتر",
+    "parkingIncluded": "يشمل موقف سيارات"
   },
   "listings": {
     "placesIn": "أماكن في {location}",

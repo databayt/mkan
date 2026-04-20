@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
+import { ar, enUS } from 'date-fns/locale';
 import {
   Ticket,
   Search,
@@ -80,6 +81,7 @@ const statusColors: Record<string, string> = {
 const BookingsPage = () => {
   const pathname = usePathname();
   const isAr = pathname?.startsWith("/ar");
+  const dateLocale = isAr ? ar : enUS;
   const dict = useDictionary();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
@@ -257,7 +259,7 @@ const BookingsPage = () => {
                     <div>
                       <p className="font-medium">{booking.trip.departureTime}</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(booking.trip.departureDate), 'MMM d, yyyy')}
+                        {format(new Date(booking.trip.departureDate), 'MMM d, yyyy', { locale: dateLocale })}
                       </p>
                     </div>
                   </TableCell>

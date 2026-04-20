@@ -49,6 +49,16 @@ export const rateLimiters = {
     analytics: true,
     prefix: "@upstash/ratelimit/payment",
   }) : null,
+
+  // Mutating server actions: createBooking, createApplication, updateProfile,
+  // createListing, createReview, etc. Tuned to prevent spam without getting
+  // in the way of legitimate use (e.g., a host publishing 5 listings in a row).
+  mutation: redis ? new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, "1 m"), // 10 per minute per user
+    analytics: true,
+    prefix: "@upstash/ratelimit/mutation",
+  }) : null,
 };
 
 // Get client identifier for rate limiting
@@ -200,4 +210,39 @@ export async function rateLimitWithFallback(
     remaining: 99,
     reset: Date.now() + 60000,
   };
+}
+
+// ─── Server-action rate limiting ─────────────────────────────────────────────
+// Mutating server actions (createBooking, createApplication, etc.) are not
+// HTTP routes, so the middleware-based limiter doesn't apply to them. Use
+// `assertRateLimit` at the top of mutating actions. It throws a typed
+// RateLimitError if exceeded so the caller can surface a Retry-After hint.
+// In development it fails open (no Redis required locally).
+
+export class RateLimitError extends Error {
+  readonly code = "rate_limited" as const;
+  readonly retryAfter: number; // seconds
+  constructor(retryAfter: number) {
+    super("Too many requests");
+    this.retryAfter = retryAfter;
+  }
+}
+
+/**
+ * Throws RateLimitError if the (limiter, identifier) tuple is over budget.
+ * `identifier` is typically a userId for authenticated flows, or the IP for
+ * anonymous ones. Always combine with a prefix via `limiterType` so different
+ * actions don't share a bucket.
+ */
+export async function assertRateLimit(
+  limiterType: keyof typeof rateLimiters,
+  identifier: string
+): Promise<void> {
+  if (process.env.NODE_ENV === "development" || !redis) return;
+  const limiter = rateLimiters[limiterType];
+  if (!limiter) return;
+  const res = await limiter.limit(identifier);
+  if (!res.success) {
+    throw new RateLimitError(Math.max(1, Math.ceil((res.reset - Date.now()) / 1000)));
+  }
 }

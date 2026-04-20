@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Home, Bus, Calendar, MapPin, Clock, Download, Eye } from 'lucide-react';
 import { format } from 'date-fns';
+import { ar, enUS } from 'date-fns/locale';
 import Link from 'next/link';
 import { getMyBookings } from '@/lib/actions/transport-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useLocale } from '@/components/internationalization/use-locale';
 
 interface TransportBooking {
   id: number;
@@ -44,6 +46,8 @@ interface TransportBooking {
 
 const TripsPage = () => {
   const dict = useDictionary();
+  const { locale } = useLocale();
+  const dateLocale = locale === 'ar' ? ar : enUS;
   const [transportBookings, setTransportBookings] = useState<TransportBooking[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -195,6 +199,8 @@ interface TransportBookingCardProps {
 
 const TransportBookingCard = ({ booking, getStatusColor, isPast }: TransportBookingCardProps) => {
   const dict = useDictionary();
+  const { locale } = useLocale();
+  const dateLocale = locale === 'ar' ? ar : enUS;
   return (
     <div className={`border rounded-lg p-4 ${isPast ? 'opacity-75' : ''}`}>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -214,7 +220,7 @@ const TransportBookingCard = ({ booking, getStatusColor, isPast }: TransportBook
           <div className="flex flex-wrap gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4" />
-              {format(new Date(booking.trip.departureDate), 'EEE, MMM d, yyyy')}
+              {format(new Date(booking.trip.departureDate), 'EEE, MMM d, yyyy', { locale: dateLocale })}
             </div>
             <div className="flex items-center gap-1">
               <Clock className="h-4 w-4" />

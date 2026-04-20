@@ -2,47 +2,54 @@
 
 import { Globe } from "lucide-react";
 import Link from "next/link";
-
-const footerSections = [
-  {
-    title: "Support",
-    links: [
-      { label: "Help Center", href: "/help" },
-      { label: "AirCover", href: "/aircover" },
-      { label: "Cancellation options", href: "/help/cancellation" },
-      { label: "Safety information", href: "/safety" },
-    ],
-  },
-  {
-    title: "Hosting",
-    links: [
-      { label: "Mkan your home", href: "/host/homes" },
-      { label: "Hosting resources", href: "/resources" },
-      { label: "Community forum", href: "/community" },
-      { label: "Hosting responsibly", href: "/responsible-hosting" },
-    ],
-  },
-  {
-    title: "Company",
-    links: [
-      { label: "Newsroom", href: "/press/news" },
-      { label: "Careers", href: "/careers" },
-      { label: "Investors", href: "/investors" },
-      { label: "About us", href: "/about" },
-    ],
-  },
-  {
-    title: "Resources",
-    links: [
-      { label: "Gift cards", href: "/giftcards" },
-      { label: "New features", href: "/release" },
-      { label: "Emergency stays", href: "/emergency" },
-      { label: "Accessibility", href: "/accessibility" },
-    ],
-  },
-];
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 export default function Footer() {
+  const dict = useDictionary();
+  const f = dict.siteFooter ?? ({} as Record<string, string>);
+
+  // Sections now pull labels from the siteFooter dictionary namespace. The
+  // fallback strings preserve the prior English copy so rendering never
+  // collapses to blank if a key is missing mid-rollout.
+  const footerSections = [
+    {
+      title: f.support ?? "Support",
+      links: [
+        { label: f.helpCenter ?? "Help Center", href: "/help" },
+        { label: f.aircover ?? "AirCover", href: "/aircover" },
+        { label: f.cancellationOptions ?? "Cancellation options", href: "/help/cancellation" },
+        { label: f.safetyInfo ?? "Safety information", href: "/safety" },
+      ],
+    },
+    {
+      title: f.hosting ?? "Hosting",
+      links: [
+        { label: f.mkanYourHome ?? "Mkan your home", href: "/host/homes" },
+        { label: f.hostingResources ?? "Hosting resources", href: "/resources" },
+        { label: f.communityForum ?? "Community forum", href: "/community" },
+        { label: f.hostResponsibly ?? "Hosting responsibly", href: "/responsible-hosting" },
+      ],
+    },
+    {
+      title: f.company ?? "Company",
+      links: [
+        { label: f.newsroom ?? "Newsroom", href: "/press/news" },
+        { label: f.careers ?? "Careers", href: "/careers" },
+        { label: f.investors ?? "Investors", href: "/investors" },
+        { label: f.aboutUs ?? "About us", href: "/about" },
+      ],
+    },
+    {
+      title: f.resources ?? "Resources",
+      links: [
+        { label: f.giftCards ?? "Gift cards", href: "/giftcards" },
+        { label: f.newFeatures ?? "New features", href: "/release" },
+        { label: f.emergencyStays ?? "Emergency stays", href: "/emergency" },
+        { label: f.accessibility ?? "Accessibility", href: "/accessibility" },
+      ],
+    },
+  ];
+
   return (
     <footer className="bg-gray-100 border-t border-gray-200">
       {/* Main Footer Content */}
@@ -76,17 +83,17 @@ export default function Footer() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             {/* Left side - Copyright */}
             <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-sm text-gray-600">
-              <span>&copy; 2026 Mkan, Inc.</span>
+              <span>{f.copyright ?? "© 2026 Mkan, Inc."}</span>
             </div>
 
             {/* Right side - Language and currency */}
             <div className="flex items-center gap-4 text-sm text-gray-900">
               <button className="flex items-center gap-2 hover:underline">
                 <Globe className="w-4 h-4" />
-                <span>English (US)</span>
+                <span>{f.englishUS ?? "English (US)"}</span>
               </button>
               <button className="hover:underline">
-                $ USD
+                {f.currencyUSD ?? "$ USD"}
               </button>
               {/* Social Links */}
               <div className="flex items-center gap-3">

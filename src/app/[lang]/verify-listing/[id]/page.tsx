@@ -61,7 +61,7 @@ const VerifyListingPage = async ({ params }: PageProps) => {
           onClick={() => window.history.back()}
           className="gap-2 mb-6 p-0 h-auto"
         >
-          <ArrowLeft className="size-5" />
+          <ArrowLeft className="size-5 rtl:rotate-180" />
           <span>Back to listing editor</span>
         </Button>
 

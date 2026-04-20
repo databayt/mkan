@@ -45,7 +45,7 @@ const NewListingOptions: React.FC<NewListingOptionsProps> = ({
               </h5>
             </div>
           </div>
-          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-foreground group-hover:text-foreground transition-colors flex-shrink-0 rtl:rotate-180" />
         </Link>
 
         {/* Create from existing listing */}
@@ -60,7 +60,7 @@ const NewListingOptions: React.FC<NewListingOptionsProps> = ({
               </h5>
             </div>
           </div>
-          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-foreground group-hover:text-foreground transition-colors flex-shrink-0 rtl:rotate-180" />
         </Link>
       </div>
     </div>

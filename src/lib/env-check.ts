@@ -56,12 +56,20 @@ const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 /**
- * Validates environment variables at runtime
- * @throws {Error} If validation fails in production
- * @returns {Env} Validated environment variables
+ * Validates environment variables at runtime.
+ *
+ * Behavior by phase:
+ *   - **Build phase** (`NEXT_PHASE=phase-production-build`): skip; env is
+ *     injected at runtime on Vercel, so build-time validation gives false
+ *     negatives.
+ *   - **Production runtime**: fail fast with a descriptive error listing
+ *     which vars failed — silent boot-with-undefined caused a production
+ *     incident on 2026-04-20 where `DATABASE_URL` was missing and every
+ *     page returned 500 from `PrismaClientConstructorValidationError`.
+ *   - **Development / test**: log the errors and continue, so a wiped
+ *     `.env` in dev is visible in the terminal rather than hidden.
  */
 export function validateEnv(): Env {
-  // Skip strict validation during build time
   const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
 
   if (isBuildTime) {
@@ -70,16 +78,23 @@ export function validateEnv(): Env {
   }
 
   try {
-    const env = envSchema.parse(process.env);
-    return env;
+    return envSchema.parse(process.env);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      const errors = error.errors.map((err) => `  - ${err.path.join('.')}: ${err.message}`).join('\n');
+    if (!(error instanceof z.ZodError)) throw error;
 
-      console.error(`⚠️  Environment validation errors:\n${errors}`);
-      return process.env as Env;
+    const details = error.errors
+      .map((err) => `  - ${err.path.join('.')}: ${err.message}`)
+      .join('\n');
+    const message = `Environment validation failed:\n${details}`;
+
+    if (process.env.NODE_ENV === 'production') {
+      console.error(`❌ ${message}`);
+      throw new Error(message);
     }
-    throw error;
+
+    console.warn(`⚠️  ${message}`);
+    console.warn('   Dev continues, but production boot would fail. Fix .env.');
+    return process.env as Env;
   }
 }
 

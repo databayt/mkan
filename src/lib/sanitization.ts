@@ -96,6 +96,12 @@ export function sanitizeUrl(url: string): string {
     return parsed.toString();
   } catch {
     // If not a valid URL, treat as relative path
+    // Block dangerous protocol-like patterns even in malformed URLs
+    const lower = url.toLowerCase().replace(/[\s\x00-\x1f]/g, '');
+    if (/^(javascript|data|vbscript)/i.test(lower)) {
+      return '';
+    }
+
     // Remove any protocol-like strings
     const cleaned = url.replace(/^[a-z]+:/i, '');
 

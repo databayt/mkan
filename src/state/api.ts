@@ -1,6 +1,6 @@
 "use client";
 
-import { cleanParams, createNewUserInDatabase, withToast } from "@/lib/utils";
+import { cleanParams, withToast } from "@/lib/utils";
 import {
   Application,
   Lease,
@@ -9,7 +9,7 @@ import {
   Property,
   Tenant,
 } from "@/types/prismaTypes";
-import { ApplicationWithDetails } from "@/components/application/action";
+import { ApplicationWithDetails } from "@/lib/actions/application-actions";
 import { getSession } from "next-auth/react";
 import { FiltersState } from "./filters";
 import { useCallback, useEffect, useRef, useState } from "react";

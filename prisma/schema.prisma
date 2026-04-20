@@ -44,6 +44,7 @@ model Application {
   @@index([tenantId])
   @@index([status])
   @@index([propertyId, tenantId])
+  @@index([status, applicationDate])
 }
 
 model AssemblyPoint {
@@ -96,7 +97,9 @@ model Booking {
   @@index([listingId])
   @@index([guestId])
   @@index([status])
+  @@index([listingId, status])
   @@index([listingId, checkIn, checkOut])
+  @@index([checkIn, checkOut])
 }
 
 model Review {
@@ -122,6 +125,7 @@ model Review {
   reviewer User    @relation(fields: [reviewerId], references: [id])
 
   @@index([listingId])
+  @@index([listingId, rating])
   @@index([reviewerId])
 }
 
@@ -243,9 +247,13 @@ model Listing {
   seasonalPricing SeasonalPricing[]
 
   @@index([hostId])
+  @@index([hostId, isPublished])
   @@index([isPublished, draft])
+  @@index([isPublished, draft, postedDate])
+  @@index([isPublished, draft, pricePerNight])
   @@index([propertyType])
   @@index([pricePerNight])
+  @@index([guestCount])
 }
 
 model Location {
@@ -260,6 +268,8 @@ model Location {
   listings   Listing[]
 
   @@index([city, state])
+  @@index([country])
+  @@index([latitude, longitude])
 }
 
 model PasswordResetToken {
@@ -447,7 +457,7 @@ model TransportOffice {
   logoUrl         String?
   phone           String
   email           String
-  licenseNumber   String?
+  licenseNumber   String?            @unique
   ownerId         String
   assemblyPointId Int?
   isVerified      Boolean            @default(false)

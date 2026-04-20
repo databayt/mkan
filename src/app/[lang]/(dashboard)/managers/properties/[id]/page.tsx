@@ -83,7 +83,7 @@ const PropertyTenants = () => {
         className="flex items-center mb-4 hover:text-primary-500"
         scroll={false}
       >
-        <ArrowLeft className="w-4 h-4 me-2" />
+        <ArrowLeft className="w-4 h-4 me-2 rtl:rotate-180" />
         <span>{dict.dashboard.common.backToProperties}</span>
       </Link>
 

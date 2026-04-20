@@ -1,149 +1,182 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
+import { waitForPageLoad } from "../e2e/helpers";
 
-test.describe('Transport Host Onboarding Flow', () => {
+const TEST_EMAIL = process.env.TEST_USER_EMAIL ?? "office@hotmail.com";
+const TEST_PASSWORD = process.env.TEST_USER_PASSWORD ?? "123456";
+const HOST_EMAIL =
+  process.env.TEST_HOST_EMAIL ?? "ahmed.hassan@khartoumexpress.sd";
+const HOST_PASSWORD = process.env.TEST_HOST_PASSWORD ?? "123456";
+
+test.describe("Transport Host Onboarding Flow", () => {
   // Login before each test
   test.beforeEach(async ({ page }) => {
-    // Navigate to login page
-    await page.goto('/en/login');
+    await page.goto("/en/login");
+    await waitForPageLoad(page);
 
-    // Fill login credentials
-    await page.fill('input[name="email"]', 'office@hotmail.com');
-    await page.fill('input[name="password"]', '123456');
+    await page.fill('input[name="email"]', TEST_EMAIL);
+    await page.fill('input[name="password"]', TEST_PASSWORD);
 
-    // Submit login form
     await page.click('button[type="submit"]');
 
-    // Wait for redirect
-    await page.waitForTimeout(3000);
+    await page.waitForURL((url) => !url.pathname.includes("/login"), {
+      timeout: 10_000,
+    });
   });
 
-  test('should display transport host dashboard', async ({ page }) => {
-    // Navigate to transport host page
-    await page.goto('/en/transport-host');
+  test("should display transport host dashboard", async ({ page }) => {
+    await page.goto("/en/transport-host");
+    await waitForPageLoad(page);
 
-    // Wait for page load
-    await page.waitForTimeout(2000);
-
-    // Should show transport host page or redirect to login
     const currentUrl = page.url();
-    expect(currentUrl).toContain('/transport-host');
+    expect(currentUrl).toContain("/transport-host");
   });
 
-  test('should start new office creation flow', async ({ page }) => {
-    // Navigate to transport host page
-    await page.goto('/en/transport-host');
+  test("should start new office creation flow", async ({ page }) => {
+    await page.goto("/en/transport-host");
+    await waitForPageLoad(page);
 
-    await page.waitForTimeout(2000);
-
-    // Look for "Create Office" or "Add Office" button
-    const createButton = page.getByRole('button', { name: /create|add|new/i });
+    const createButton = page.getByRole("button", {
+      name: /create|add|new/i,
+    });
 
     if (await createButton.isVisible()) {
       await createButton.click();
 
-      // Should navigate to office creation flow
-      await page.waitForTimeout(2000);
-      expect(page.url()).toContain('/transport-host');
+      // Wait for the creation form/flow to appear
+      await page
+        .locator("form, [role='dialog'], [data-testid]")
+        .first()
+        .waitFor({ state: "visible", timeout: 5_000 })
+        .catch(() => {});
+
+      expect(page.url()).toContain("/transport-host");
     }
   });
 
-  test('should fill office info form', async ({ page }) => {
-    // Navigate directly to office info step (assuming an office ID exists)
-    await page.goto('/en/transport-host');
+  test("should fill office info form", async ({ page }) => {
+    await page.goto("/en/transport-host");
+    await waitForPageLoad(page);
 
-    await page.waitForTimeout(2000);
-
-    // Try to create a new office
-    const createButton = page.getByRole('button', { name: /create|add|new/i });
+    const createButton = page.getByRole("button", {
+      name: /create|add|new/i,
+    });
 
     if (await createButton.isVisible()) {
       await createButton.click();
-      await page.waitForTimeout(2000);
+
+      await page
+        .locator("form")
+        .first()
+        .waitFor({ state: "visible", timeout: 5_000 })
+        .catch(() => {});
     }
 
     // Fill office info if form is visible
     const officeNameInput = page.locator('input[name="name"]');
     if (await officeNameInput.isVisible()) {
-      await officeNameInput.fill('Test Transport Office');
+      await officeNameInput.fill("Test Transport Office");
 
       const phoneInput = page.locator('input[name="phone"]');
       if (await phoneInput.isVisible()) {
-        await phoneInput.fill('+249912345678');
+        await phoneInput.fill("+249912345678");
       }
 
       const emailInput = page.locator('input[name="email"]');
       if (await emailInput.isVisible()) {
-        await emailInput.fill('test@transport.sd');
+        await emailInput.fill("test@transport.sd");
       }
     }
   });
 
-  test('should navigate through onboarding steps', async ({ page }) => {
-    // Navigate to transport host
-    await page.goto('/en/transport-host');
+  test("should navigate through onboarding steps", async ({ page }) => {
+    await page.goto("/en/transport-host");
+    await waitForPageLoad(page);
 
-    await page.waitForTimeout(2000);
-
-    // Look for navigation buttons (Next, Previous, etc.)
-    const nextButton = page.getByRole('button', { name: /next|continue/i });
-    const prevButton = page.getByRole('button', { name: /back|previous/i });
+    const nextButton = page.getByRole("button", {
+      name: /next|continue/i,
+    });
+    const prevButton = page.getByRole("button", {
+      name: /back|previous/i,
+    });
 
     if (await nextButton.isVisible()) {
-      // Step through the onboarding
       await nextButton.click();
-      await page.waitForTimeout(1000);
 
-      // Check if navigation worked
+      // Wait for step transition
+      await page
+        .locator("form, [data-step], [class*='step']")
+        .first()
+        .waitFor({ state: "visible", timeout: 5_000 })
+        .catch(() => {});
+
       if (await prevButton.isVisible()) {
         await prevButton.click();
-        await page.waitForTimeout(1000);
+
+        await page
+          .locator("form, [data-step], [class*='step']")
+          .first()
+          .waitFor({ state: "visible", timeout: 5_000 })
+          .catch(() => {});
       }
     }
   });
 
-  test('should list existing transport offices', async ({ page }) => {
+  test("should list existing transport offices", async ({ page }) => {
     // Login with a transport office owner
-    await page.goto('/en/login');
-    await page.fill('input[name="email"]', 'ahmed.hassan@khartoumexpress.sd');
-    await page.fill('input[name="password"]', '123456');
-    await page.click('button[type="submit"]');
-    await page.waitForTimeout(3000);
+    await page.goto("/en/login");
+    await waitForPageLoad(page);
 
-    // Navigate to transport host dashboard
-    await page.goto('/en/transport-host');
-    await page.waitForTimeout(3000);
+    await page.fill('input[name="email"]', HOST_EMAIL);
+    await page.fill('input[name="password"]', HOST_PASSWORD);
+    await page.click('button[type="submit"]');
+
+    await page.waitForURL((url) => !url.pathname.includes("/login"), {
+      timeout: 10_000,
+    });
+
+    await page.goto("/en/transport-host");
+    await waitForPageLoad(page);
 
     // Should show existing offices
     const officeCards = page.locator('[class*="card"]');
     const count = await officeCards.count();
 
-    // At least one office should be visible (from seed data)
     if (count > 0) {
       expect(count).toBeGreaterThan(0);
     }
   });
 
-  test('should view office details', async ({ page }) => {
+  test("should view office details", async ({ page }) => {
     // Login with a transport office owner
-    await page.goto('/en/login');
-    await page.fill('input[name="email"]', 'ahmed.hassan@khartoumexpress.sd');
-    await page.fill('input[name="password"]', '123456');
+    await page.goto("/en/login");
+    await waitForPageLoad(page);
+
+    await page.fill('input[name="email"]', HOST_EMAIL);
+    await page.fill('input[name="password"]', HOST_PASSWORD);
     await page.click('button[type="submit"]');
-    await page.waitForTimeout(3000);
 
-    // Navigate to transport host dashboard
-    await page.goto('/en/transport-host');
-    await page.waitForTimeout(3000);
+    await page.waitForURL((url) => !url.pathname.includes("/login"), {
+      timeout: 10_000,
+    });
 
-    // Click on an office card or edit button
-    const editButton = page.getByRole('button', { name: /edit|manage|view/i }).first();
+    await page.goto("/en/transport-host");
+    await waitForPageLoad(page);
+
+    const editButton = page
+      .getByRole("button", { name: /edit|manage|view/i })
+      .first();
 
     if (await editButton.isVisible()) {
       await editButton.click();
-      await page.waitForTimeout(2000);
 
-      // Should navigate to office details
-      expect(page.url()).toContain('/transport-host');
+      // Wait for navigation or modal to open
+      await page
+        .locator("form, [role='dialog'], [data-testid]")
+        .first()
+        .waitFor({ state: "visible", timeout: 5_000 })
+        .catch(() => {});
+
+      expect(page.url()).toContain("/transport-host");
     }
   });
 });

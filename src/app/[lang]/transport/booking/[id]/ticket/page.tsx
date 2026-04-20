@@ -17,6 +17,7 @@ import {
   QrCode,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { ar, enUS } from 'date-fns/locale';
 import { getBooking } from '@/lib/actions/transport-actions';
 import QRCode from 'qrcode';
 
@@ -54,6 +55,7 @@ interface BookingDetails {
 
 export default function TicketViewPage() {
   const params = useParams();
+  const dateLocale = (params.lang as string) === 'ar' ? ar : enUS;
   const router = useRouter();
   const lang = params.lang as string;
   const bookingId = Number(params.id);
@@ -183,7 +185,7 @@ export default function TicketViewPage() {
               <div>
                 <div className="text-xs text-muted-foreground">Date</div>
                 <div className="font-medium text-sm">
-                  {format(new Date(booking.trip.departureDate), 'EEE, MMM d')}
+                  {format(new Date(booking.trip.departureDate), 'EEE, MMM d', { locale: dateLocale })}
                 </div>
               </div>
             </div>

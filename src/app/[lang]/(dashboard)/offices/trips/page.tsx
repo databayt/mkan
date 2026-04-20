@@ -250,7 +250,7 @@ const TripsPage = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => handleDateChange(-7)} aria-label="Previous week">
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
           </Button>
           <div className="flex gap-1">
             {weekDays.map((date) => (
@@ -269,7 +269,7 @@ const TripsPage = () => {
             ))}
           </div>
           <Button variant="outline" size="icon" onClick={() => handleDateChange(7)} aria-label="Next week">
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4 rtl:rotate-180" />
           </Button>
         </div>
 

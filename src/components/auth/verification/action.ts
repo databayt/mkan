@@ -72,14 +72,12 @@ export const newVerification = async (token: string) => {
     console.log("User email verified successfully");
   }
 
-  setTimeout(async () => {
-    await db.verificationToken.delete({
-      where: { id: existingToken.id }
-    });
-    if (isDevelopment) {
-      console.log("Verification token scheduled for deletion");
-    }
-  }, 9000);
+  await db.verificationToken.delete({
+    where: { id: existingToken.id }
+  });
+  if (isDevelopment) {
+    console.log("Verification token deleted");
+  }
 
   return { success: "Email verified!" };
 };

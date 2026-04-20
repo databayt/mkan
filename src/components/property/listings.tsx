@@ -3,18 +3,41 @@
 import React from 'react'
 import { useGlobalStore } from '@/state/filters'
 import { PropertyCard } from './card'
+import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-actions'
+import { useSession } from 'next-auth/react'
 
 interface ListingsProps {
   properties: any[]
+  favoriteIds?: number[]
 }
 
-const Listings = ({ properties }: ListingsProps) => {
+const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
+  const { data: session } = useSession()
   const viewMode = useGlobalStore((s) => s.viewMode)
   const filters = useGlobalStore((s) => s.filters)
+  const [localFavorites, setLocalFavorites] = React.useState<Set<number>>(new Set(favoriteIds))
 
   const handleFavoriteToggle = async (propertyId: string, isFavorite: boolean) => {
-    // TODO: Implement favorites functionality with server actions
-    console.log('Toggle favorite:', propertyId, isFavorite)
+    if (!session?.user?.id) return
+    const id = parseInt(propertyId)
+    setLocalFavorites(prev => {
+      const next = new Set(prev)
+      isFavorite ? next.add(id) : next.delete(id)
+      return next
+    })
+    try {
+      if (isFavorite) {
+        await addFavoriteProperty(session.user.id, id)
+      } else {
+        await removeFavoriteProperty(session.user.id, id)
+      }
+    } catch {
+      setLocalFavorites(prev => {
+        const next = new Set(prev)
+        isFavorite ? next.delete(id) : next.add(id)
+        return next
+      })
+    }
   }
 
   const handleCardClick = (propertyId: string) => {
@@ -47,7 +70,7 @@ const Listings = ({ properties }: ListingsProps) => {
     price: property.pricePerMonth,
     rating: property.averageRating || 4.5, // Default rating
     isSuperhostBadge: false, // You can add logic for this
-    isFavorite: false, // TODO: Implement user favorites
+    isFavorite: localFavorites.has(property.id),
     onFavoriteToggle: handleFavoriteToggle,
     onCardClick: handleCardClick,
   }))

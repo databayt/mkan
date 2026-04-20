@@ -7,6 +7,48 @@ import { revalidatePath } from "next/cache";
 import { ApplicationStatus } from "@prisma/client";
 import { sanitizeInput, sanitizeEmail, sanitizePhone } from "@/lib/sanitization";
 import { logger } from "@/lib/logger";
+import { assertRateLimit } from "@/lib/rate-limit";
+
+// Shared type for consumers that need typed application data
+export type ApplicationWithDetails = {
+  id: number;
+  name: string;
+  email: string;
+  phoneNumber: string;
+  propertyId: number;
+  tenantId: string;
+  leaseId: number | null;
+  applicationDate: Date;
+  status: ApplicationStatus;
+  message: string | null;
+  listing: {
+    id: number;
+    title: string | null;
+    pricePerNight: number | null;
+    photoUrls: string[];
+    location: {
+      city: string;
+      country: string;
+      address: string;
+    } | null;
+  };
+  tenant: {
+    name: string;
+    email: string;
+    phoneNumber: string;
+    user?: {
+      id: string;
+      email: string | null;
+      username: string | null;
+      image: string | null;
+    };
+  };
+  lease?: {
+    id: number;
+    startDate: Date;
+    endDate: Date;
+  } | null;
+};
 
 const createApplicationSchema = z.object({
   propertyId: z.number().int().positive(),
@@ -93,6 +135,8 @@ export async function createApplication(data: unknown) {
     if (!session?.user?.id) {
       throw new Error("Unauthorized");
     }
+
+    await assertRateLimit("mutation", `application:${session.user.id}`);
 
     const parsed = createApplicationSchema.safeParse(data);
     if (!parsed.success) {
@@ -305,4 +349,50 @@ export async function updateApplicationStatus(
     logger.error("Error updating application status:", error);
     throw new Error("Failed to update application status");
   }
-} 
+}
+
+// Convenience wrapper for manager dashboard pages
+export async function getManagerApplications() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  try {
+    const applications = await db.application.findMany({
+      where: {
+        listing: {
+          hostId: session.user.id,
+        },
+      },
+      include: {
+        listing: {
+          include: {
+            location: true,
+          },
+        },
+        tenant: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                username: true,
+                image: true,
+              },
+            },
+          },
+        },
+        lease: true,
+      },
+      orderBy: {
+        applicationDate: "desc",
+      },
+    });
+
+    return { success: true, applications };
+  } catch (error) {
+    logger.error("Error fetching manager applications:", error);
+    throw new Error("Failed to fetch applications");
+  }
+}

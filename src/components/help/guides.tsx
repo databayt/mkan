@@ -29,7 +29,7 @@ export default function Guides() {
         <h1 className="text-3xl font-semibold text-gray-900">Guides for getting started</h1>
         <button className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors">
           <span className="text-base font-medium">Browse all topics</span>
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-4 h-4 rtl:rotate-180" />
         </button>
       </div>
 

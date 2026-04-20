@@ -36,18 +36,64 @@ interface ListingsPageProps {
     adults?: string;
     children?: string;
     infants?: string;
+    priceMin?: string;
+    priceMax?: string;
+    // `priceRange` is emitted by the legacy filter-bar as "min,max".
+    // Accept it for backwards compat until Epic 3.1 (nuqs) lands.
+    priceRange?: string;
+    beds?: string;
+    baths?: string;
+    propertyType?: string;
+    amenities?: string | string[];
+    page?: string;
   }>;
+}
+
+// Safe int parser: blocks NaN / negatives / absurd values at the page edge
+// before they reach the server action. The action itself validates again,
+// but doing it here yields a sharper 400-style experience in the URL bar.
+function toInt(v: string | undefined, max?: number) {
+  if (!v) return undefined;
+  const n = Number.parseInt(v, 10);
+  if (!Number.isFinite(n) || n < 0) return undefined;
+  return max !== undefined ? Math.min(n, max) : n;
 }
 
 async function getFilteredListings(searchParams: ListingsPageProps["searchParams"]) {
   const params = await searchParams;
-  const hasFilters =
+
+  // Normalize amenities param — it can arrive as "a,b" or ["a","b"].
+  const rawAmenities = Array.isArray(params.amenities)
+    ? params.amenities
+    : typeof params.amenities === "string"
+      ? params.amenities.split(",").filter(Boolean)
+      : [];
+
+  // Back-compat: legacy filter bar emits `priceRange=min,max`. Split it into
+  // priceMin/priceMax here so the server action only needs one shape.
+  let legacyPriceMin: string | undefined;
+  let legacyPriceMax: string | undefined;
+  if (params.priceRange) {
+    const [lo, hi] = params.priceRange.split(",");
+    if (lo) legacyPriceMin = lo;
+    if (hi) legacyPriceMax = hi;
+  }
+
+  const hasFilters = Boolean(
     params.location ||
     params.guests ||
     params.checkIn ||
-    params.checkOut;
+    params.checkOut ||
+    params.priceMin ||
+    params.priceMax ||
+    params.priceRange ||
+    params.beds ||
+    params.baths ||
+    params.propertyType ||
+    rawAmenities.length > 0
+  );
 
-  // If no search filters, get all published listings
+  // If no search filters, get all published listings (unpaginated first page).
   if (!hasFilters) {
     try {
       const listings = await getListings({ publishedOnly: true });
@@ -58,22 +104,32 @@ async function getFilteredListings(searchParams: ListingsPageProps["searchParams
     }
   }
 
-  // Use server-side filtering when search params are present
+  // Pagination: `page` param is 1-indexed for humans; take/skip are 0-indexed.
+  const page = Math.max(1, toInt(params.page) ?? 1);
+  const pageSize = 20;
+
   const filters: SearchFilters = {
     location: params.location,
     checkIn: params.checkIn,
     checkOut: params.checkOut,
-    guests: params.guests ? parseInt(params.guests) : undefined,
-    adults: params.adults ? parseInt(params.adults) : undefined,
-    children: params.children ? parseInt(params.children) : undefined,
-    infants: params.infants ? parseInt(params.infants) : undefined,
+    guests: toInt(params.guests, 16),
+    adults: toInt(params.adults, 16),
+    children: toInt(params.children, 10),
+    infants: toInt(params.infants, 5),
+    priceMin: toInt(params.priceMin ?? legacyPriceMin, 100000),
+    priceMax: toInt(params.priceMax ?? legacyPriceMax, 100000),
+    beds: toInt(params.beds, 20),
+    baths: toInt(params.baths, 20),
+    propertyType: params.propertyType as SearchFilters["propertyType"],
+    amenities: rawAmenities as SearchFilters["amenities"],
+    take: pageSize,
+    skip: (page - 1) * pageSize,
   };
 
   const result = await searchListings(filters);
 
   if (!result.success) {
     console.error("Search error:", result.error);
-    // Fallback to all published listings on error
     try {
       const listings = await getListings({ publishedOnly: true });
       return listings as Listing[];

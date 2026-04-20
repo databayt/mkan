@@ -81,7 +81,20 @@
     "createNewAccount": "Create a new account",
     "orContinueWith": "Or continue with",
     "twoFactorCode": "Two Factor Code",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "welcome": "Welcome to Mkan",
+    "continueButton": "Continue",
+    "or": "or",
+    "somethingWentWrong": "Something went wrong",
+    "login": {
+      "forgotPrefix": "Did you ",
+      "noAccountPrefix": "? or ",
+      "noAccountSuffix": "?"
+    },
+    "reset": {
+      "heading": "Reset your password"
+    },
+    "backToLogin": "Back to login"
   },
   "marketing": {
     "hero": {
@@ -758,7 +771,17 @@
     "unauthorized": "You are not authorized to access this page",
     "forbidden": "Access forbidden",
     "tryAgain": "Try Again",
-    "goHome": "Go Home"
+    "goHome": "Go home",
+    "retry": "Try again",
+    "backToListings": "Back to listings",
+    "listings": {
+      "title": "Something went wrong loading listings",
+      "description": "We couldn't fetch properties right now. Try again in a moment."
+    },
+    "verifyListing": {
+      "title": "Couldn't load verification",
+      "description": "We couldn't load the verification flow for this listing. Try again."
+    }
   },
   "rental": {
     "hero": {
@@ -912,7 +935,9 @@
       "clearAllFilters": "Clear all filters",
       "propertiesAvailable": "Properties Available",
       "noProperties": "No properties found",
-      "adjustFilters": "Try adjusting your search filters to see more results."
+      "adjustFilters": "Try adjusting your search filters to see more results.",
+      "perMonth": "month",
+      "perNight": "night"
     },
     "map": {
       "whereYoullBe": "Where you'll be",
@@ -2134,7 +2159,17 @@
     "privacy": "Privacy",
     "terms": "Terms",
     "sitemap": "Sitemap",
-    "language": "English"
+    "language": "English",
+    "company": "Company",
+    "aboutUs": "About us",
+    "resources": "Resources",
+    "aircover": "AirCover",
+    "giftCards": "Gift cards",
+    "emergencyStays": "Emergency stays",
+    "accessibility": "Accessibility",
+    "mkanYourHome": "Mkan your home",
+    "englishUS": "English (US)",
+    "currencyUSD": "$ USD"
   },
   "hero": {
     "title": "Start your journey to finding the perfect place to call home",
@@ -2172,7 +2207,14 @@
     "night": "night",
     "superhost": "Superhost",
     "addFavorite": "Add to favorites",
-    "removeFavorite": "Remove from favorites"
+    "removeFavorite": "Remove from favorites",
+    "PetsAllowed": "Pets Allowed",
+    "ParkingIncluded": "Parking Included",
+    "bed": "Bed",
+    "bath": "Bath",
+    "sqft": "sq ft",
+    "reviews": "Reviews",
+    "toggleFavorite": "Toggle favorite"
   },
   "home": {
     "sections": {
@@ -2344,7 +2386,8 @@
     "amenities": "Amenities",
     "availableFrom": "Available From",
     "apply": "APPLY",
-    "resetFilters": "Reset Filters"
+    "resetFilters": "Reset Filters",
+    "parkingIncluded": "Parking Included"
   },
   "listings": {
     "placesIn": "Places in {location}",

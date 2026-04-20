@@ -4,7 +4,6 @@ import * as z from "zod";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { RegisterSchema } from "../validation";
@@ -12,25 +11,7 @@ import { register } from "./action";
 import { FormError } from "../error/form-error";
 import { FormSuccess } from "../form-success";
 import { Social } from "../social";
-
-const translations = {
-  en: {
-    welcome: "Welcome to Mkan",
-    email: "Email",
-    password: "Password",
-    continue: "Continue",
-    or: "or",
-    alreadyHaveAccount: "Already have an account?",
-  },
-  ar: {
-    welcome: "مرحبا بك في مكان",
-    email: "البريد الإلكتروني",
-    password: "كلمة المرور",
-    continue: "متابعة",
-    or: "أو",
-    alreadyHaveAccount: "لديك حساب بالفعل؟",
-  },
-} as const;
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 interface RegisterFormProps extends React.ComponentPropsWithoutRef<"div"> {
   callbackUrl?: string;
@@ -41,8 +22,16 @@ export const RegisterForm = ({
   callbackUrl,
   ...props
 }: RegisterFormProps) => {
-  const pathname = usePathname();
-  const t = translations[pathname?.startsWith("/ar") ? "ar" : "en"];
+  const dict = useDictionary();
+  const auth = dict.auth ?? ({} as Record<string, any>);
+  const t = {
+    welcome: auth.welcome ?? "Welcome to Mkan",
+    email: auth.email ?? "Email",
+    password: auth.password ?? "Password",
+    continue: auth.continueButton ?? "Continue",
+    or: auth.or ?? "or",
+    alreadyHaveAccount: auth.alreadyHaveAccount ?? "Already have an account?",
+  };
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isPending, startTransition] = useTransition();

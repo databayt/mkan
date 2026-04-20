@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
+import { ar, enUS } from 'date-fns/locale';
 import { Download, Share2, MapPin, Clock, User, Phone, Bus } from 'lucide-react';
 import QRCode from 'qrcode';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useLocale } from '@/components/internationalization/use-locale';
 
 interface Booking {
   id: number;
@@ -85,6 +87,9 @@ export function TicketView({
     total: 'Total Amount',
   },
 }: TicketViewProps) {
+  const { locale } = useLocale();
+  // Arabic date output — "الثلاثاء، ١٥ أبريل ٢٠٢٦" instead of "Tue, Apr 15 2026".
+  const dateLocale = locale === 'ar' ? ar : enUS;
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
   // Memoize seat numbers to prevent unnecessary recalculations
@@ -153,7 +158,7 @@ export function TicketView({
       try {
         await navigator.share({
           title: `Bus Ticket - ${booking.bookingReference}`,
-          text: `${booking.trip.route.origin.city} to ${booking.trip.route.destination.city} on ${format(new Date(booking.trip.departureDate), 'PPP')}`,
+          text: `${booking.trip.route.origin.city} to ${booking.trip.route.destination.city} on ${format(new Date(booking.trip.departureDate), 'PPP', { locale: dateLocale })}`,
           url: window.location.href,
         });
       } catch {
@@ -266,7 +271,7 @@ export function TicketView({
 
         <div className="pt-4 border-t">
           <p className="text-sm text-muted-foreground">
-            {format(new Date(booking.trip.departureDate), 'EEEE, MMMM d, yyyy')}
+            {format(new Date(booking.trip.departureDate), 'EEEE, MMMM d, yyyy', { locale: dateLocale })}
           </p>
         </div>
       </div>

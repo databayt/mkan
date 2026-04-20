@@ -1,7 +1,7 @@
 import { Mail, MapPin, PhoneCall } from "lucide-react";
 import Image from "next/image";
 import React, { useState } from "react";
-import { ApplicationWithDetails } from "./application/action";
+import { ApplicationWithDetails } from "@/lib/actions/application-actions";
 
 interface ApplicationCardProps {
   application: ApplicationWithDetails;
@@ -15,7 +15,7 @@ const ApplicationCard = ({
   children,
 }: ApplicationCardProps) => {
   const [imgSrc, setImgSrc] = useState(
-    application.property.photoUrls?.[0] || "/placeholder.jpg"
+    application.listing.photoUrls?.[0] || "/placeholder.jpg"
   );
 
   const statusColor =
@@ -34,7 +34,7 @@ const ApplicationCard = ({
         <div className="flex flex-col lg:flex-row gap-5 w-full lg:w-auto">
           <Image
             src={imgSrc}
-            alt={application.property.name}
+            alt={application.listing.title || "Property"}
             width={200}
             height={150}
             className="rounded-xl object-cover w-full lg:w-[200px] h-[150px]"
@@ -44,16 +44,16 @@ const ApplicationCard = ({
           <div className="flex flex-col justify-between">
             <div>
               <h2 className="text-xl font-bold my-2">
-                {application.property.name}
+                {application.listing.title || "Untitled"}
               </h2>
               <div className="flex items-center mb-2">
                 <MapPin className="w-5 h-5 me-1" />
-                <span>{application.property.location ? `${application.property.location.city}, ${application.property.location.country}` : 'Location not specified'}</span>
+                <span>{application.listing.location ? `${application.listing.location.city}, ${application.listing.location.country}` : 'Location not specified'}</span>
               </div>
             </div>
             <div className="text-xl font-semibold">
-              ${application.property.pricePerMonth}{" "}
-              <span className="text-sm font-normal">/ month</span>
+              ${application.listing.pricePerNight}{" "}
+              <span className="text-sm font-normal">/ night</span>
             </div>
           </div>
         </div>
@@ -83,8 +83,8 @@ const ApplicationCard = ({
             {application.lease?.endDate ? new Date(application.lease.endDate).toLocaleDateString() : 'N/A'}
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">Next Payment:</span>{" "}
-            {application.lease?.nextPaymentDate ? new Date(application.lease.nextPaymentDate).toLocaleDateString() : 'N/A'}
+            <span className="text-gray-500">Lease ID:</span>{" "}
+            {application.lease?.id ?? 'N/A'}
           </div>
         </div>
 

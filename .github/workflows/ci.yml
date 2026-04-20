@@ -41,10 +41,25 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
 
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: [typecheck, lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma generate
+      - run: pnpm test -- --reporter=verbose
+
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [typecheck, lint]
+    needs: [typecheck, lint, test]
     env:
       AUTH_SECRET: ci-placeholder
       DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder

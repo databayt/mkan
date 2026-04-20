@@ -151,7 +151,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                className="h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white"
                aria-label="Go back"
              >
-               <ArrowLeft className="w-5 h-5 text-gray-700" />
+               <ArrowLeft className="w-5 h-5 text-gray-700 rtl:rotate-180" />
              </Button>
 
              {/* Right Side - Share and Love */}

@@ -52,12 +52,12 @@ const HeaderContent = () => {
             {/* Auth Buttons */}
             <div className="flex items-center space-x-2 rtl:space-x-reverse">
               <Button variant="ghost" asChild>
-                <Link href="/auth/login">
+                <Link href="/login">
                   {dict.navigation?.signIn ?? "Sign In"}
                 </Link>
               </Button>
               <Button asChild>
-                <Link href="/auth/register">
+                <Link href="/join">
                   {dict.navigation?.signUp ?? "Sign Up"}
                 </Link>
               </Button>

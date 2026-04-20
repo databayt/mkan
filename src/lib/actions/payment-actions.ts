@@ -456,42 +456,38 @@ export async function getPaymentSummary(userId?: string): Promise<PaymentSummary
   }
 
   try {
-    const payments = await db.payment.findMany({
-      where: {
-        lease: {
-          tenantId: targetUserId,
-        },
-      },
-    });
-
+    const tenantFilter = { lease: { tenantId: targetUserId } };
     const now = new Date();
-    let totalDue = 0;
-    let totalPaid = 0;
-    let overdueAmount = 0;
-    let upcomingPayments = 0;
 
-    payments.forEach((payment) => {
-      totalDue += payment.amountDue;
-      totalPaid += payment.amountPaid;
+    const [totals, overdueAgg, upcomingCount] = await Promise.all([
+      db.payment.aggregate({
+        where: tenantFilter,
+        _sum: { amountDue: true, amountPaid: true },
+      }),
+      db.payment.aggregate({
+        where: { ...tenantFilter, paymentStatus: PaymentStatus.Overdue },
+        _sum: { amountDue: true, amountPaid: true },
+      }),
+      db.payment.count({
+        where: {
+          ...tenantFilter,
+          dueDate: { gt: now },
+          paymentStatus: { not: PaymentStatus.Paid },
+        },
+      }),
+    ]);
 
-      if (payment.paymentStatus === PaymentStatus.Overdue) {
-        overdueAmount += payment.amountDue - payment.amountPaid;
-      }
-
-      if (
-        payment.dueDate > now &&
-        payment.paymentStatus !== PaymentStatus.Paid
-      ) {
-        upcomingPayments++;
-      }
-    });
+    const totalDue = totals._sum.amountDue ?? 0;
+    const totalPaid = totals._sum.amountPaid ?? 0;
+    const overdueDue = overdueAgg._sum.amountDue ?? 0;
+    const overduePaid = overdueAgg._sum.amountPaid ?? 0;
 
     return {
       totalDue,
       totalPaid,
       balance: totalDue - totalPaid,
-      overdueAmount,
-      upcomingPayments,
+      overdueAmount: overdueDue - overduePaid,
+      upcomingPayments: upcomingCount,
     };
   } catch (error) {
     logger.error("Error getting payment summary:", error);
@@ -538,30 +534,28 @@ export async function generateMonthlyPayments(leaseId: unknown) {
 
     const startDate = new Date(lease.startDate);
     const endDate = new Date(lease.endDate);
-    const payments = [];
+    const paymentData = [];
 
-    // Generate monthly payments
+    // Build payment records
     let currentDate = new Date(startDate);
     while (currentDate <= endDate) {
-      const payment = await db.payment.create({
-        data: {
-          leaseId: parsedId.data,
-          amountDue: lease.rent,
-          amountPaid: 0,
-          dueDate: new Date(currentDate),
-          paymentDate: new Date(currentDate),
-          paymentStatus: PaymentStatus.Pending,
-        },
+      paymentData.push({
+        leaseId: parsedId.data,
+        amountDue: lease.rent,
+        amountPaid: 0,
+        dueDate: new Date(currentDate),
+        paymentDate: new Date(currentDate),
+        paymentStatus: PaymentStatus.Pending,
       });
-      payments.push(payment);
-
-      // Move to next month
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
 
+    // Batch create all payments at once
+    const result = await db.payment.createMany({ data: paymentData });
+
     revalidatePath(`/leases/${parsedId.data}`);
 
-    return { success: true, payments };
+    return { success: true, count: result.count };
   } catch (error) {
     logger.error("Error generating payments:", error);
     throw new Error(

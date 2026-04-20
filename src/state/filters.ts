@@ -21,8 +21,12 @@ interface GlobalState {
   setViewMode: (mode: "grid" | "list") => void;
 }
 
+// Khartoum, Sudan — matches mkan's primary market. Used only as a fallback
+// map center when the user hasn't granted geolocation and hasn't typed a
+// location. Previously "Los Angeles" which silently filtered all listings
+// to LA on first visit.
 export const initialFilters: FiltersState = {
-  location: "Los Angeles",
+  location: "",
   beds: "any",
   baths: "any",
   propertyType: "any",
@@ -30,7 +34,7 @@ export const initialFilters: FiltersState = {
   availableFrom: "any",
   priceRange: [null, null],
   squareFeet: [null, null],
-  coordinates: [-118.25, 34.05],
+  coordinates: [32.5599, 15.5007],
 };
 
 export const useGlobalStore = create<GlobalState>((set) => ({

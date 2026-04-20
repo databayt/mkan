@@ -1,5 +1,10 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import withBundleAnalyzerFactory from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = withBundleAnalyzerFactory({
+  enabled: process.env.ANALYZE === "true",
+});
 
 const nextConfig: NextConfig = {
   // Strict mode for better React development
@@ -37,6 +42,19 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       'lucide-react',
       '@sentry/nextjs',
+      'framer-motion',
+      'date-fns',
+      'react-day-picker',
+      'lodash',
+      'react-select',
+      'mapbox-gl',
+      '@radix-ui/react-popover',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-select',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-tooltip',
+      '@radix-ui/react-toast',
     ],
   },
   images: {
@@ -165,21 +183,18 @@ const nextConfig: NextConfig = {
   // Redirects for common patterns
   async redirects() {
     return [
-      {
-        source: '/home',
-        destination: '/',
-        permanent: true,
-      },
-      {
-        source: '/signin',
-        destination: '/login',
-        permanent: true,
-      },
-      {
-        source: '/signup',
-        destination: '/register',
-        permanent: true,
-      },
+      { source: '/home', destination: '/', permanent: true },
+      { source: '/signin', destination: '/login', permanent: true },
+      { source: '/signup', destination: '/register', permanent: true },
+      // Epic 3.4: Unify /search and /searching into canonical /listings.
+      // 308 preserves query params; both legacy routes loaded all listings
+      // into memory and filtered client-side — /listings is the canonical
+      // server-filtered path. Use a regex-constrained `:lang` param to avoid
+      // catching /api/search/... (where `api` would match `:lang` otherwise).
+      { source: '/:lang(en|ar)/search/:path*', destination: '/:lang/listings/:path*', permanent: true },
+      { source: '/:lang(en|ar)/search', destination: '/:lang/listings', permanent: true },
+      { source: '/:lang(en|ar)/searching/:path*', destination: '/:lang/listings/:path*', permanent: true },
+      { source: '/:lang(en|ar)/searching', destination: '/:lang/listings', permanent: true },
     ];
   },
 };
@@ -197,9 +212,6 @@ const sentryWebpackPluginOptions = {
   // Upload a larger set of source maps for prettier stack traces
   widenClientFileUpload: true,
 
-  // Transpiles SDK to be compatible with IE11
-  transpileClientSDK: true,
-
   // Hides source maps from generated client bundles
   hideSourceMaps: true,
 
@@ -210,7 +222,8 @@ const sentryWebpackPluginOptions = {
   automaticVercelMonitors: true,
 };
 
-// Export with Sentry if configured, otherwise export plain config
+// Wrap config: bundle analyzer first, then Sentry if configured.
+const withAnalyzer = withBundleAnalyzer(nextConfig);
 export default process.env.SENTRY_AUTH_TOKEN
-  ? withSentryConfig(nextConfig, sentryWebpackPluginOptions)
-  : nextConfig;
+  ? withSentryConfig(withAnalyzer, sentryWebpackPluginOptions)
+  : withAnalyzer;

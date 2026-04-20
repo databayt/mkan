@@ -142,7 +142,7 @@ export default function TransportHostContent() {
                     </div>
                     <Button variant="ghost" className="mt-4 w-full">
                       Continue Setup
-                      <ArrowRight className="h-4 w-4 ms-2" />
+                      <ArrowRight className="h-4 w-4 ms-2 rtl:rotate-180" />
                     </Button>
                   </CardContent>
                 </Card>

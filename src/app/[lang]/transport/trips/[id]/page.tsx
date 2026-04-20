@@ -22,6 +22,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { ar, enUS } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { getTripDetails, createBooking } from '@/lib/actions/transport-actions';
 import { getTransportDictionary } from '@/components/transport/transport-dictionary';
@@ -72,6 +73,7 @@ export default function TripDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const lang = params.lang as string;
+  const dateLocale = lang === 'ar' ? ar : enUS;
   const tripId = Number(params.id);
 
   const [trip, setTrip] = useState<TripDetails | null>(null);
@@ -183,7 +185,7 @@ export default function TripDetailsPage() {
                   <CardTitle className="flex items-center gap-2 text-xl">
                     <MapPin className="h-5 w-5 text-primary" />
                     {trip.route.origin.city}
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="h-4 w-4 rtl:rotate-180" />
                     {trip.route.destination.city}
                   </CardTitle>
                   <CardDescription>
@@ -202,7 +204,7 @@ export default function TripDetailsPage() {
               <div className="grid sm:grid-cols-3 gap-4">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{format(new Date(trip.departureDate), 'EEE, MMM d, yyyy')}</span>
+                  <span>{format(new Date(trip.departureDate), 'EEE, MMM d, yyyy', { locale: dateLocale })}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
@@ -380,7 +382,7 @@ export default function TripDetailsPage() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>{t.booking.date}</span>
-                  <span>{format(new Date(trip.departureDate), 'MMM d, yyyy')}</span>
+                  <span>{format(new Date(trip.departureDate), 'MMM d, yyyy', { locale: dateLocale })}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>{t.booking.time}</span>

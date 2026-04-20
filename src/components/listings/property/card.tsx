@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Image from 'next/image'
 import { useDictionary } from '@/components/internationalization/dictionary-context'
+import { useLocale } from '@/components/internationalization/use-locale'
+import { formatCurrency, formatNumber } from '@/lib/i18n/formatters'
 
 interface PropertyCardProps {
   id: string
@@ -38,6 +40,7 @@ export function PropertyCard({
   className
 }: PropertyCardProps) {
   const dict = useDictionary()
+  const { locale } = useLocale()
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isLiked, setIsLiked] = useState(isFavorite)
 
@@ -147,13 +150,13 @@ export function PropertyCard({
         {/* Price and Rating Row */}
         <div className="flex items-center gap-2">
           <div className="text-gray-500 text-xs">
-            <span className="font-medium">${price}</span>
+            <span className="font-medium">{formatCurrency(price, locale)}</span>
             <span className="text-gray-500 text-xs"> {dict.rental?.property?.card?.night}</span>
           </div>
           <div className="flex items-center">
             <Star className="w-3 h-3 text-gray-500 fill-current" />
             <span className="ms-1 text-xs font-medium text-gray-500">
-              {rating.toFixed(2)}
+              {formatNumber(rating, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
         </div>

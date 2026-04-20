@@ -231,7 +231,7 @@ const OfficeDashboard = () => {
                 <Ticket className="h-4 w-4" />
                 {dict.dashboard.offices.viewBookings}
               </span>
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4 rtl:rotate-180" />
             </Button>
             <Button
               variant="outline"
@@ -242,7 +242,7 @@ const OfficeDashboard = () => {
                 <Calendar className="h-4 w-4" />
                 {dict.dashboard.offices.manageTrips}
               </span>
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4 rtl:rotate-180" />
             </Button>
             <Button
               variant="outline"
@@ -255,7 +255,7 @@ const OfficeDashboard = () => {
                 <Bus className="h-4 w-4" />
                 {dict.dashboard.offices.manageBuses}
               </span>
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4 rtl:rotate-180" />
             </Button>
           </CardContent>
         </Card>

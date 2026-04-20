@@ -30,12 +30,12 @@ export default function Guest() {
               <div className="border-t border-gray-200 "></div>
               <Button variant="ghost" className="w-full justify-between text-start h-12 hover:bg-gray-50 border-0">
                 <span className="font-semibold text-sm text-gray-900">Check identity verification status</span>
-                <ChevronRight className="w-4 h-4 text-gray-900" />
+                <ChevronRight className="w-4 h-4 text-gray-900 rtl:rotate-180" />
               </Button>
               <div className="border-t border-gray-200"></div>
               <Button variant="ghost" className="w-full justify-between text-start h-12 hover:bg-gray-50 border-0">
                 <span className="font-semibold text-sm text-gray-900">Learn more</span>
-                <ChevronRight className="w-4 h-4 text-gray-900" />
+                <ChevronRight className="w-4 h-4 text-gray-900 rtl:rotate-180" />
               </Button>
             </div>
           </Card>
@@ -55,7 +55,7 @@ export default function Guest() {
               <div className="border-t border-gray-200 "></div>
               <Button  className="bg-transparent w-full justify-between text-start h-12 hover:rounded-lg hover:bg-gray-50 border-0">
                 <span className="font-semibold text-sm text-gray-900">Go to Trips</span>
-                <ChevronRight className="w-4 h-4 text-gray-900" />
+                <ChevronRight className="w-4 h-4 text-gray-900 rtl:rotate-180" />
               </Button>
             </div>
           </Card>

@@ -4,7 +4,7 @@ import ApplicationCard from "@/components/ApplicationCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CircleCheckBig, Download, File, Hospital } from "lucide-react";
 import Link from "next/link";
-import { type ApplicationWithDetails } from "@/components/application/action";
+import { type ApplicationWithDetails } from "@/lib/actions/application-actions";
 import { ApplicationStatusButtons } from "./status-buttons";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { useLocale } from "@/components/internationalization/use-locale";

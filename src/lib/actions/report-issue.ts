@@ -12,7 +12,7 @@ export async function reportIssue(data: {
   const token = process.env.GITHUB_PERSONAL_ACCESS_TOKEN
   const repo = process.env.GITHUB_REPO || "databayt/mkan"
 
-  if (!token) throw new Error("GITHUB_PERSONAL_ACCESS_TOKEN not configured")
+  if (!token) throw new Error("Issue reporting is not configured")
 
   const desc = data.description
   const truncated =

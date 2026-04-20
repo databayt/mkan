@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { PropertyType, Amenity } from "@prisma/client";
 
 // Centralized search configuration
 export const SEARCH_CONFIG = {
@@ -11,6 +12,11 @@ export const SEARCH_CONFIG = {
   DEBOUNCE_MS: 300,
   MAX_LOCATION_RESULTS: 10,
   DEFAULT_POPULAR_LOCATIONS_COUNT: 3,
+  DEFAULT_PAGE_SIZE: 20,
+  MAX_PAGE_SIZE: 50,
+  MAX_PRICE: 100000,
+  MAX_BEDS: 20,
+  MAX_BATHS: 20,
 } as const;
 
 // Helper to get today's date at midnight
@@ -112,7 +118,8 @@ export interface LocationSuggestion {
   listingCount: number;
 }
 
-// Search filters type for server action
+// Search filters type for server action. Keep in sync with `listingFilterSchema`
+// below — every field here needs a Zod parser or it'll bypass validation.
 export interface SearchFilters {
   location?: string;
   checkIn?: string;
@@ -121,7 +128,36 @@ export interface SearchFilters {
   adults?: number;
   children?: number;
   infants?: number;
+  priceMin?: number;
+  priceMax?: number;
+  beds?: number;
+  baths?: number;
+  propertyType?: PropertyType;
+  amenities?: Amenity[];
+  take?: number;
+  skip?: number;
 }
+
+// Zod schema used by `searchListings` to validate incoming filter objects.
+// The `searchFormSchema` above is form-level (rejects past check-ins etc.);
+// this one is query-level (rejects out-of-range numbers, unknown enum values).
+export const listingFilterSchema = z.object({
+  location: z.string().max(200).optional(),
+  checkIn: z.string().optional(),
+  checkOut: z.string().optional(),
+  guests: z.number().int().min(0).max(SEARCH_CONFIG.MAX_GUESTS).optional(),
+  adults: z.number().int().min(0).max(SEARCH_CONFIG.MAX_ADULTS).optional(),
+  children: z.number().int().min(0).max(SEARCH_CONFIG.MAX_CHILDREN).optional(),
+  infants: z.number().int().min(0).max(SEARCH_CONFIG.MAX_INFANTS).optional(),
+  priceMin: z.number().min(0).max(SEARCH_CONFIG.MAX_PRICE).optional(),
+  priceMax: z.number().min(0).max(SEARCH_CONFIG.MAX_PRICE).optional(),
+  beds: z.number().int().min(0).max(SEARCH_CONFIG.MAX_BEDS).optional(),
+  baths: z.number().min(0).max(SEARCH_CONFIG.MAX_BATHS).optional(),
+  propertyType: z.nativeEnum(PropertyType).optional(),
+  amenities: z.array(z.nativeEnum(Amenity)).max(30).optional(),
+  take: z.number().int().min(1).max(SEARCH_CONFIG.MAX_PAGE_SIZE).optional(),
+  skip: z.number().int().min(0).optional(),
+});
 
 // Search result type
 export interface SearchResult<T> {

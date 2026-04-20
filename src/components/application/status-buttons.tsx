@@ -1,6 +1,6 @@
 "use client";
 
-import { updateApplicationStatus } from "@/components/application/action";
+import { updateApplicationStatus } from "@/lib/actions/application-actions";
 import { ApplicationStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -23,14 +23,9 @@ export function ApplicationStatusButtons({
     
     setIsUpdating(true);
     try {
-      const result = await updateApplicationStatus(applicationId, status);
-      
-      if (result.success) {
-        toast.success(`Application ${status.toLowerCase()} successfully!`);
-        router.refresh(); // Refresh to show updated data
-      } else {
-        toast.error(result.error || "Failed to update application status");
-      }
+      await updateApplicationStatus(applicationId, status);
+      toast.success(`Application ${status.toLowerCase()} successfully!`);
+      router.refresh();
     } catch (error) {
       console.error("Error updating application status:", error);
       toast.error("Failed to update application status");
