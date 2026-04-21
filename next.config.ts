@@ -28,9 +28,26 @@ const nextConfig: NextConfig = {
     'date-fns',
   ],
 
-  // Experimental features
-  // Externalize packages that break when bundled by webpack
-  serverExternalPackages: ['jsdom'],
+  // Externalize packages that break when webpack tries to bundle them.
+  //
+  // jsdom — its CSS file path breaks webpack.
+  //
+  // Sentry + OpenTelemetry — Sentry's CJS server bundle requires
+  // OpenTelemetry's ESM-only build, which fails at runtime with
+  // `Error: require() of ES Module` on Vercel's Node serverless
+  // function. Listing them here keeps them as real Node packages so
+  // Node handles the ESM/CJS boundaries instead of webpack.
+  // Note: `@sentry/nextjs` itself is already added to `transpilePackages`
+  // by `withSentryConfig`, so it cannot go here. The rest are the server
+  // SDK + instrumentation that get pulled in transitively.
+  serverExternalPackages: [
+    'jsdom',
+    '@sentry/node',
+    '@sentry/core',
+    '@opentelemetry/api',
+    '@opentelemetry/instrumentation',
+    '@prisma/instrumentation',
+  ],
 
   experimental: {
     // Enable server actions
