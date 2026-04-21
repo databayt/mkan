@@ -1,9 +1,23 @@
 import { z } from 'zod';
 
 /**
- * Environment variable schema for validation
- * Ensures all required configuration is present and valid
+ * An empty string is a common Vercel dashboard drift for an "unset" variable.
+ * Treat it as undefined for optional URL/email fields so the schema doesn't
+ * reject a harmless blank on an optional service.
  */
+const optionalUrl = z.preprocess(
+  (v) => (v === '' ? undefined : v),
+  z.string().url().optional()
+);
+const optionalEmail = z.preprocess(
+  (v) => (v === '' ? undefined : v),
+  z.string().email().optional()
+);
+const optionalString = z.preprocess(
+  (v) => (v === '' ? undefined : v),
+  z.string().optional()
+);
+
 const envSchema = z.object({
   // Database
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid URL'),
@@ -26,28 +40,28 @@ const envSchema = z.object({
     ),
 
   // Redis (Upstash) - Optional, used for rate limiting
-  UPSTASH_REDIS_REST_URL: z.string().url('UPSTASH_REDIS_REST_URL must be a valid URL').optional(),
-  UPSTASH_REDIS_REST_TOKEN: z.string().min(1, 'UPSTASH_REDIS_REST_TOKEN is required').optional(),
+  UPSTASH_REDIS_REST_URL: optionalUrl,
+  UPSTASH_REDIS_REST_TOKEN: optionalString,
 
   // Optional: ImageKit
-  NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY: z.string().optional(),
-  IMAGEKIT_PRIVATE_KEY: z.string().optional(),
-  NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT: z.string().url().optional(),
+  NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY: optionalString,
+  IMAGEKIT_PRIVATE_KEY: optionalString,
+  NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT: optionalUrl,
 
   // Optional: Email Service
-  RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().email().optional(),
+  RESEND_API_KEY: optionalString,
+  EMAIL_FROM: optionalEmail,
 
   // Optional: OAuth Providers
-  GOOGLE_CLIENT_ID: z.string().optional(),
-  GOOGLE_CLIENT_SECRET: z.string().optional(),
-  FACEBOOK_CLIENT_ID: z.string().optional(),
-  FACEBOOK_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_CLIENT_ID: optionalString,
+  GOOGLE_CLIENT_SECRET: optionalString,
+  FACEBOOK_CLIENT_ID: optionalString,
+  FACEBOOK_CLIENT_SECRET: optionalString,
 
   // Optional: Sentry
-  SENTRY_ORG: z.string().optional(),
-  SENTRY_PROJECT: z.string().optional(),
-  SENTRY_AUTH_TOKEN: z.string().optional(),
+  SENTRY_ORG: optionalString,
+  SENTRY_PROJECT: optionalString,
+  SENTRY_AUTH_TOKEN: optionalString,
 
   // Node environment
   NODE_ENV: z.enum(['development', 'production', 'test']).optional(),
@@ -62,12 +76,13 @@ export type Env = z.infer<typeof envSchema>;
  *   - **Build phase** (`NEXT_PHASE=phase-production-build`): skip; env is
  *     injected at runtime on Vercel, so build-time validation gives false
  *     negatives.
- *   - **Production runtime**: fail fast with a descriptive error listing
- *     which vars failed — silent boot-with-undefined caused a production
- *     incident on 2026-04-20 where `DATABASE_URL` was missing and every
- *     page returned 500 from `PrismaClientConstructorValidationError`.
- *   - **Development / test**: log the errors and continue, so a wiped
- *     `.env` in dev is visible in the terminal rather than hidden.
+ *   - **Production runtime**: log loudly, never throw. Throwing here runs
+ *     at module load (auth.ts imports this eagerly), which crashes the
+ *     entire serverless function with FUNCTION_INVOCATION_FAILED before
+ *     any handler runs. A real missing `DATABASE_URL` will still surface
+ *     at the first query with a clear Prisma error.
+ *   - **Development / test**: warn and continue so a wiped `.env` shows
+ *     up in the terminal but doesn't block iteration.
  */
 export function validateEnv(): Env {
   const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
@@ -77,50 +92,33 @@ export function validateEnv(): Env {
     return process.env as Env;
   }
 
-  try {
-    return envSchema.parse(process.env);
-  } catch (error) {
-    if (!(error instanceof z.ZodError)) throw error;
+  const result = envSchema.safeParse(process.env);
+  if (result.success) return result.data;
 
-    const details = error.errors
-      .map((err) => `  - ${err.path.join('.')}: ${err.message}`)
-      .join('\n');
-    const message = `Environment validation failed:\n${details}`;
+  const details = result.error.errors
+    .map((err) => `  - ${err.path.join('.')}: ${err.message}`)
+    .join('\n');
 
-    if (process.env.NODE_ENV === 'production') {
-      console.error(`❌ ${message}`);
-      throw new Error(message);
-    }
-
-    console.warn(`⚠️  ${message}`);
-    console.warn('   Dev continues, but production boot would fail. Fix .env.');
+  if (process.env.NODE_ENV === 'production') {
+    console.error(`❌ Environment validation failed:\n${details}`);
+    console.error('   Continuing boot; individual features depending on invalid vars will fail at use.');
     return process.env as Env;
   }
+
+  console.warn(`⚠️  Environment validation warnings:\n${details}`);
+  console.warn('   Dev continues, but production will log this as an error. Fix .env.');
+  return process.env as Env;
 }
 
 /**
- * Validates environment variables with detailed logging
- * Useful during build time for better error messages
+ * Wrapper that prints a success line when validation passes. Used for
+ * startup diagnostics where the extra log is useful.
  */
 export function validateEnvWithLogging(): Env {
   console.log('🔍 Validating environment variables...');
-
-  try {
-    const env = validateEnv();
-    console.log('✅ Environment validation passed');
-    return env;
-  } catch (error) {
-    console.error('❌ Environment validation failed:');
-    console.error(error instanceof Error ? error.message : String(error));
-
-    if (process.env.NODE_ENV === 'production') {
-      throw error; // Fail fast in production
-    } else {
-      console.warn('⚠️  Continuing in development mode despite validation errors');
-      console.warn('   Fix these issues before deploying to production!');
-      return process.env as Env; // Allow development to continue with warnings
-    }
-  }
+  const env = validateEnv();
+  console.log('✅ Environment validation complete');
+  return env;
 }
 
 /**

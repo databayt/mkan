@@ -49,40 +49,61 @@ describe("validateEnv", () => {
     warnSpy.mockRestore();
   });
 
-  it("throws in production when required variables are missing", async () => {
+  it("logs an error but does not throw in production when required variables are missing", async () => {
     process.env.NODE_ENV = "production";
     delete process.env.DATABASE_URL;
     delete process.env.NEXTAUTH_SECRET;
     delete process.env.NEXTAUTH_URL;
 
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
     const { validateEnv } = await import("@/lib/env-check");
 
-    expect(() => validateEnv()).toThrow("Environment validation failed");
+    // In production, we must NOT throw at module load — it crashes the
+    // serverless function before any handler runs. Log loudly instead.
+    expect(() => validateEnv()).not.toThrow();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Environment validation failed")
+    );
+
+    errorSpy.mockRestore();
   });
 
-  it("flags NEXTAUTH_SECRET shorter than 32 characters in production", async () => {
+  it("flags NEXTAUTH_SECRET shorter than 32 characters in production (logs, does not throw)", async () => {
     process.env.NODE_ENV = "production";
     process.env.DATABASE_URL = "https://db.example.com/mydb";
     process.env.NEXTAUTH_SECRET = "short";
     process.env.NEXTAUTH_URL = "https://example.com";
 
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
     const { validateEnv } = await import("@/lib/env-check");
 
-    expect(() => validateEnv()).toThrow(
-      "NEXTAUTH_SECRET must be at least 32 characters"
+    expect(() => validateEnv()).not.toThrow();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("NEXTAUTH_SECRET must be at least 32 characters")
     );
+
+    errorSpy.mockRestore();
   });
 
-  it("flags DATABASE_URL that is not a valid URL in production", async () => {
+  it("flags DATABASE_URL that is not a valid URL in production (logs, does not throw)", async () => {
     process.env.NODE_ENV = "production";
     process.env.DATABASE_URL = "not-a-url";
     process.env.NEXTAUTH_SECRET =
       "a-very-long-secret-that-is-at-least-32-chars!!";
     process.env.NEXTAUTH_URL = "https://example.com";
 
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
     const { validateEnv } = await import("@/lib/env-check");
 
-    expect(() => validateEnv()).toThrow("DATABASE_URL must be a valid URL");
+    expect(() => validateEnv()).not.toThrow();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("DATABASE_URL must be a valid URL")
+    );
+
+    errorSpy.mockRestore();
   });
 
   it("skips strict validation during build time", async () => {
@@ -106,16 +127,23 @@ describe("validateEnv", () => {
     logSpy.mockRestore();
   });
 
-  it("requires HTTPS for NEXTAUTH_URL in production", async () => {
+  it("flags non-HTTPS NEXTAUTH_URL in production (logs, does not throw)", async () => {
     process.env.NODE_ENV = "production";
     process.env.DATABASE_URL = "https://db.example.com/mydb";
     process.env.NEXTAUTH_SECRET =
       "a-very-long-secret-that-is-at-least-32-chars!!";
     process.env.NEXTAUTH_URL = "http://example.com"; // not https
 
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
     const { validateEnv } = await import("@/lib/env-check");
 
-    expect(() => validateEnv()).toThrow("NEXTAUTH_URL must use HTTPS");
+    expect(() => validateEnv()).not.toThrow();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("NEXTAUTH_URL must use HTTPS")
+    );
+
+    errorSpy.mockRestore();
   });
 
   it("allows HTTP for NEXTAUTH_URL in development", async () => {
@@ -129,6 +157,29 @@ describe("validateEnv", () => {
     const env = validateEnv();
 
     expect(env.NEXTAUTH_URL).toBe("http://localhost:3000");
+  });
+
+  it("treats empty-string optional URL/email vars as unset", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.DATABASE_URL = "https://db.example.com/mydb";
+    process.env.NEXTAUTH_SECRET =
+      "a-very-long-secret-that-is-at-least-32-chars!!";
+    process.env.NEXTAUTH_URL = "https://example.com";
+    // These empty values previously failed `.url()` / `.email()` validation
+    process.env.UPSTASH_REDIS_REST_URL = "";
+    process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT = "";
+    process.env.EMAIL_FROM = "";
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { validateEnv } = await import("@/lib/env-check");
+    expect(() => validateEnv()).not.toThrow();
+    // No validation errors should be logged for the empty optional fields
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("Environment validation failed")
+    );
+
+    errorSpy.mockRestore();
   });
 });
 
@@ -155,7 +206,7 @@ describe("validateEnvWithLogging", () => {
       expect.stringContaining("Validating environment variables")
     );
     expect(logSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Environment validation passed")
+      expect.stringContaining("Environment validation complete")
     );
 
     logSpy.mockRestore();
@@ -179,7 +230,7 @@ describe("validateEnvWithLogging", () => {
     warnSpy.mockRestore();
   });
 
-  it("throws in production when validation fails", async () => {
+  it("logs an error but does not throw in production when validation fails", async () => {
     process.env.NODE_ENV = "production";
     delete process.env.DATABASE_URL;
     delete process.env.NEXTAUTH_SECRET;
@@ -190,8 +241,9 @@ describe("validateEnvWithLogging", () => {
 
     const { validateEnvWithLogging } = await import("@/lib/env-check");
 
-    expect(() => validateEnvWithLogging()).toThrow(
-      "Environment validation failed"
+    expect(() => validateEnvWithLogging()).not.toThrow();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Environment validation failed")
     );
 
     logSpy.mockRestore();
