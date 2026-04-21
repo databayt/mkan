@@ -23,20 +23,6 @@ export const logger = {
       : { ...meta, error };
 
     console.error(formatMessage("ERROR", message, errorMeta));
-
-    // Report to Sentry in production
-    if (!isDev && typeof globalThis !== "undefined") {
-      try {
-        const Sentry = require("@sentry/nextjs");
-        if (error instanceof Error) {
-          Sentry.captureException(error);
-        } else {
-          Sentry.captureMessage(message, { extra: errorMeta });
-        }
-      } catch {
-        // Sentry not available, already logged to console
-      }
-    }
   },
 
   debug(message: string, meta?: Record<string, unknown>) {

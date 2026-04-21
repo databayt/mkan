@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { withSentryConfig } from "@sentry/nextjs";
 import withBundleAnalyzerFactory from "@next/bundle-analyzer";
 
 const withBundleAnalyzer = withBundleAnalyzerFactory({
@@ -28,26 +27,8 @@ const nextConfig: NextConfig = {
     'date-fns',
   ],
 
-  // Externalize packages that break when webpack tries to bundle them.
-  //
-  // jsdom — its CSS file path breaks webpack.
-  //
-  // Sentry + OpenTelemetry — Sentry's CJS server bundle requires
-  // OpenTelemetry's ESM-only build, which fails at runtime with
-  // `Error: require() of ES Module` on Vercel's Node serverless
-  // function. Listing them here keeps them as real Node packages so
-  // Node handles the ESM/CJS boundaries instead of webpack.
-  // Note: `@sentry/nextjs` itself is already added to `transpilePackages`
-  // by `withSentryConfig`, so it cannot go here. The rest are the server
-  // SDK + instrumentation that get pulled in transitively.
-  serverExternalPackages: [
-    'jsdom',
-    '@sentry/node',
-    '@sentry/core',
-    '@opentelemetry/api',
-    '@opentelemetry/instrumentation',
-    '@prisma/instrumentation',
-  ],
+  // Externalize jsdom — its CSS file path breaks webpack.
+  serverExternalPackages: ['jsdom'],
 
   experimental: {
     // Enable server actions
@@ -58,7 +39,6 @@ const nextConfig: NextConfig = {
     // Optimize packages for server
     optimizePackageImports: [
       'lucide-react',
-      '@sentry/nextjs',
       'framer-motion',
       'date-fns',
       'react-day-picker',
@@ -216,31 +196,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-// Sentry configuration wrapper
-const sentryWebpackPluginOptions = {
-  // Sentry options
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-
-  // Suppresses source map uploading logs during build
-  silent: true,
-
-  // Upload a larger set of source maps for prettier stack traces
-  widenClientFileUpload: true,
-
-  // Hides source maps from generated client bundles
-  hideSourceMaps: true,
-
-  // Disables org/project/auth token validation
-  disableLogger: true,
-
-  // Automatically release
-  automaticVercelMonitors: true,
-};
-
-// Wrap config: bundle analyzer first, then Sentry if configured.
-const withAnalyzer = withBundleAnalyzer(nextConfig);
-export default process.env.SENTRY_AUTH_TOKEN
-  ? withSentryConfig(withAnalyzer, sentryWebpackPluginOptions)
-  : withAnalyzer;
+// Sentry was removed to fix a production `require() of ES Module`
+// crash on Vercel. When Sentry's webpack plugin bundled @sentry/node
+// server-side, it pulled in @opentelemetry/instrumentation (ESM-only),
+// which Node's CJS loader rejected at first request, breaking every
+// serverless invocation. No DSN was ever configured, so the integration
+// wasn't actually capturing anything — safe to drop. Re-introduce via
+// Next.js 16's `instrumentation.ts` pattern if needed.
+export default withBundleAnalyzer(nextConfig);
