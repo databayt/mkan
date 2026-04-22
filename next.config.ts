@@ -27,9 +27,6 @@ const nextConfig: NextConfig = {
     'date-fns',
   ],
 
-  // Externalize jsdom — its CSS file path breaks webpack.
-  serverExternalPackages: ['jsdom'],
-
   experimental: {
     // Enable server actions
     serverActions: {
@@ -133,12 +130,6 @@ const nextConfig: NextConfig = {
         net: false,
         tls: false,
       };
-    }
-
-    // Externalize jsdom on server to prevent its CSS file path from breaking
-    if (isServer) {
-      config.externals = config.externals || [];
-      config.externals.push('jsdom');
     }
 
     return config;

@@ -1,27 +1,21 @@
-import DOMPurify from 'isomorphic-dompurify';
+import sanitizeHtmlLib, { type IOptions } from 'sanitize-html';
 
-// Configure DOMPurify for safe HTML
-const purifyConfig = {
-  ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li'],
-  ALLOWED_ATTR: ['href', 'target', 'rel'],
-  ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
-  ADD_ATTR: ['target'],
-  ADD_DATA_URI_TAGS: [],
-  FORCE_BODY: true,
-  SANITIZE_DOM: true,
-  SANITIZE_NAMED_PROPS: true,
-  WHOLE_DOCUMENT: false,
-  RETURN_DOM: false,
-  RETURN_DOM_FRAGMENT: false,
-  RETURN_TRUSTED_TYPE: false,
-  IN_PLACE: false,
+// sanitize-html is pure CJS — no jsdom/@csstools ESM chain that crashes
+// require() on Vercel's Node runtime.
+const baseOptions: IOptions = {
+  allowedTags: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li'],
+  allowedAttributes: {
+    a: ['href', 'target', 'rel'],
+  },
+  allowedSchemes: ['http', 'https', 'mailto'],
+  allowProtocolRelative: false,
 };
 
 /**
  * Sanitize HTML content to prevent XSS attacks
  */
 export function sanitizeHtml(dirty: string): string {
-  return DOMPurify.sanitize(dirty, purifyConfig);
+  return sanitizeHtmlLib(dirty, baseOptions);
 }
 
 /**
@@ -205,7 +199,7 @@ export function sanitizeSqlIdentifier(identifier: string): string {
  * Strip all HTML tags from a string
  */
 export function stripHtml(html: string): string {
-  return DOMPurify.sanitize(html, { ALLOWED_TAGS: [] });
+  return sanitizeHtmlLib(html, { allowedTags: [], allowedAttributes: {} });
 }
 
 /**
