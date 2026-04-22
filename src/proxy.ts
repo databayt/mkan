@@ -1,14 +1,24 @@
+/**
+ * Next.js 16 Proxy (formerly "middleware"). Runs at the edge before pages
+ * and API routes resolve. Responsibilities:
+ *   1. Enforce locale prefix on all page routes (redirect if missing).
+ *   2. Route-level auth gating (redirect anonymous users to /login).
+ *   3. Attach security headers (X-Frame-Options, CSP in production, etc.).
+ *
+ * File was renamed from middleware.ts to proxy.ts per the Next 16
+ * migration: https://nextjs.org/docs/messages/middleware-to-proxy
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { match } from '@formatjs/intl-localematcher';
 import Negotiator from 'negotiator';
-import { i18n } from './src/components/internationalization/config';
+import { i18n } from './components/internationalization/config';
 import {
   publicRoutes,
   authRoutes,
   protectedPrefixes,
   apiAuthPrefix,
   DEFAULT_LOGIN_REDIRECT,
-} from './routes';
+} from '../routes';
 
 const locales: readonly string[] = i18n.locales;
 const defaultLocale = i18n.defaultLocale;
@@ -58,6 +68,9 @@ function addSecurityHeaders(response: NextResponse) {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // Sanity marker — integration tests assert this to confirm the proxy
+  // actually executed on a given response.
+  response.headers.set('X-Mw-Ran', '1');
 
   if (process.env.NODE_ENV === 'production') {
     response.headers.set(
@@ -103,13 +116,13 @@ function getLocale(request: NextRequest) {
 }
 
 // ---------------------------------------------------------------------------
-// Middleware
+// Proxy (Next 16 export name)
 // ---------------------------------------------------------------------------
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip middleware for static files, API routes, and auth API
+  // Skip proxy for static files, API routes, and auth API
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith(apiAuthPrefix) ||
@@ -132,7 +145,7 @@ export function middleware(request: NextRequest) {
       )!
     : getLocale(request);
 
-  // If no locale in URL, redirect to add it (existing i18n behavior)
+  // If no locale in URL, redirect to add it
   if (!pathnameHasLocale) {
     request.nextUrl.pathname = `/${locale}${pathname}`;
     const response = NextResponse.redirect(request.nextUrl);
@@ -160,7 +173,6 @@ export function middleware(request: NextRequest) {
       addSecurityHeaders(response);
       return response;
     }
-    // Not logged in — let them through to the auth page
     const response = NextResponse.next();
     addSecurityHeaders(response);
     return response;
@@ -173,8 +185,12 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // Protected routes (and any non-public route): require session cookie
-  if (!loggedIn && (isProtectedRoute(path) || !isPublicRoute(path))) {
+  // Protected routes: require session cookie.
+  // NOTE: only redirect when the route is *explicitly* protected. Unknown
+  // paths fall through so Next's not-found handler can render a 404 —
+  // previously we redirected every non-public path to /login which hid
+  // legitimate 404s behind an auth wall.
+  if (!loggedIn && isProtectedRoute(path)) {
     const callbackUrl = encodeURIComponent(pathname);
     request.nextUrl.pathname = `/${locale}/login`;
     request.nextUrl.search = `?callbackUrl=${callbackUrl}`;
@@ -183,7 +199,8 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // Authenticated user on a non-public/non-auth route — let through
+  // Everything else (authenticated users on any route, anonymous users on
+  // unknown paths, etc.) — let through so the app router can resolve.
   const response = NextResponse.next();
   addSecurityHeaders(response);
   return response;
