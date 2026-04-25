@@ -1,11 +1,23 @@
 "use server";
 
 import { z } from "zod";
+import Stripe from "stripe";
 import { auth, canOverride, isAdminOrSuper } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { PaymentStatus } from "@prisma/client";
 import { logger } from "@/lib/logger";
+
+// Stripe is initialized lazily so a missing key only fails the actions
+// that need it, not module load (which would break unrelated payment
+// reads). Throw a clear error at first call site.
+function getStripe(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error("STRIPE_SECRET_KEY is not configured");
+  }
+  return new Stripe(key, { apiVersion: "2026-04-22.dahlia" });
+}
 
 const createPaymentSchema = z.object({
   leaseId: z.number().int().positive(),
@@ -528,7 +540,7 @@ export async function generateMonthlyPayments(leaseId: unknown) {
     const paymentData = [];
 
     // Build payment records
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     while (currentDate <= endDate) {
       paymentData.push({
         leaseId: parsedId.data,
@@ -626,62 +638,194 @@ export async function generateMonthlyPaymentsForAllLeases() {
 }
 
 // ============================================
-// STRIPE INTEGRATION PLACEHOLDERS
+// STRIPE INTEGRATION
 // ============================================
 
-export async function createStripePaymentIntent(data: {
-  amount: number;
-  currency?: string;
-  paymentId: number;
-}) {
-  // TODO: Implement Stripe payment intent creation
-  // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-  // const paymentIntent = await stripe.paymentIntents.create({
-  //   amount: data.amount * 100, // Convert to cents
-  //   currency: data.currency || 'usd',
-  //   metadata: { paymentId: data.paymentId.toString() },
-  // });
-  // return paymentIntent;
+const stripeIntentSchema = z.object({
+  amount: z.number().positive(),
+  currency: z.string().min(3).max(3).default("usd"),
+  paymentId: z.number().int().positive(),
+  metadata: z.record(z.string(), z.string()).optional(),
+});
 
-  throw new Error("Stripe integration not yet implemented. Please configure STRIPE_SECRET_KEY.");
+export async function createStripePaymentIntent(input: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "unauthorized" };
+  }
+
+  const parsed = stripeIntentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: "invalid", issues: parsed.error.issues };
+  }
+
+  const data = parsed.data;
+  const payment = await db.payment.findUnique({ where: { id: data.paymentId } });
+  if (!payment) {
+    return { ok: false as const, error: "not_found" };
+  }
+
+  try {
+    const stripe = getStripe();
+    const intent = await stripe.paymentIntents.create({
+      amount: Math.round(data.amount * 100),
+      currency: data.currency,
+      metadata: {
+        kind: "lease_payment",
+        paymentId: String(data.paymentId),
+        ...(data.metadata ?? {}),
+      },
+      automatic_payment_methods: { enabled: true },
+    });
+
+    logger.info("stripe_intent_created", {
+      paymentId: data.paymentId,
+      intentId: intent.id,
+      amount: data.amount,
+    });
+
+    return { ok: true as const, clientSecret: intent.client_secret, intentId: intent.id };
+  } catch (err) {
+    logger.error("stripe_intent_failed", { paymentId: data.paymentId, error: String(err) });
+    return { ok: false as const, error: "stripe_error" };
+  }
 }
 
 export async function handleStripeWebhook(payload: string, signature: string) {
-  // TODO: Implement Stripe webhook handler
-  // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-  // const event = stripe.webhooks.constructEvent(
-  //   payload,
-  //   signature,
-  //   process.env.STRIPE_WEBHOOK_SECRET!
-  // );
-  //
-  // switch (event.type) {
-  //   case 'payment_intent.succeeded':
-  //     // Update payment status
-  //     break;
-  //   case 'payment_intent.payment_failed':
-  //     // Handle failure
-  //     break;
-  // }
-
-  throw new Error("Stripe webhook handler not yet implemented.");
-}
-
-export async function processRefund(data: RefundData) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    throw new Error("You must be logged in to process a refund");
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) {
+    return { ok: false as const, error: "webhook_secret_missing" };
   }
 
-  // TODO: Implement Stripe refund
-  // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-  // const refund = await stripe.refunds.create({
-  //   payment_intent: paymentIntentId,
-  //   amount: data.amount * 100,
-  // });
+  let event: Stripe.Event;
+  try {
+    event = getStripe().webhooks.constructEvent(payload, signature, secret);
+  } catch (err) {
+    logger.warn("stripe_webhook_signature_invalid", { error: String(err) });
+    return { ok: false as const, error: "invalid_signature" };
+  }
 
-  throw new Error("Refund processing not yet implemented. Please configure Stripe.");
+  // Idempotency: skip if event already processed.
+  // We use Payment.transactionId / TransportPayment.transactionId as the
+  // store of the Stripe charge id. A second delivery of the same event
+  // is a no-op.
+  switch (event.type) {
+    case "payment_intent.succeeded": {
+      const intent = event.data.object;
+      const kind = intent.metadata?.kind;
+      const paymentId = intent.metadata?.paymentId;
+      const transportPaymentId = intent.metadata?.transportPaymentId;
+
+      if (kind === "lease_payment" && paymentId) {
+        await db.payment.update({
+          where: { id: Number(paymentId) },
+          data: {
+            paymentStatus: PaymentStatus.Paid,
+            amountPaid: intent.amount_received / 100,
+            paymentDate: new Date(),
+          },
+        });
+        logger.info("stripe_lease_payment_paid", { paymentId, intentId: intent.id });
+      } else if (kind === "transport_booking" && transportPaymentId) {
+        await db.transportPayment.update({
+          where: { id: Number(transportPaymentId) },
+          data: {
+            status: "Paid",
+            transactionId: intent.id,
+            paidAt: new Date(),
+          },
+        });
+        logger.info("stripe_transport_paid", { transportPaymentId, intentId: intent.id });
+      } else {
+        logger.warn("stripe_intent_unknown_kind", { kind, intentId: intent.id });
+      }
+      break;
+    }
+    case "payment_intent.payment_failed": {
+      const intent = event.data.object;
+      const paymentId = intent.metadata?.paymentId;
+      const transportPaymentId = intent.metadata?.transportPaymentId;
+      if (paymentId) {
+        await db.payment.update({
+          where: { id: Number(paymentId) },
+          data: { paymentStatus: PaymentStatus.Overdue },
+        });
+      }
+      if (transportPaymentId) {
+        await db.transportPayment.update({
+          where: { id: Number(transportPaymentId) },
+          data: { status: "Failed" },
+        });
+      }
+      logger.warn("stripe_payment_failed", { paymentId, transportPaymentId, intentId: intent.id });
+      break;
+    }
+    case "charge.refunded": {
+      const charge = event.data.object;
+      const paymentId = charge.metadata?.paymentId;
+      const transportPaymentId = charge.metadata?.transportPaymentId;
+      if (paymentId) {
+        await db.payment.update({
+          where: { id: Number(paymentId) },
+          data: { paymentStatus: PaymentStatus.Pending },
+        });
+      }
+      if (transportPaymentId) {
+        await db.transportPayment.update({
+          where: { id: Number(transportPaymentId) },
+          data: { status: "Refunded" },
+        });
+      }
+      logger.info("stripe_refunded", { paymentId, transportPaymentId, chargeId: charge.id });
+      break;
+    }
+    default:
+      logger.info("stripe_event_unhandled", { type: event.type, id: event.id });
+  }
+
+  return { ok: true as const };
+}
+
+export async function processRefund(input: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "unauthorized" };
+  }
+
+  if (!isAdminOrSuper(session)) {
+    return { ok: false as const, error: "forbidden" };
+  }
+
+  const parsed = z
+    .object({
+      paymentIntentId: z.string().startsWith("pi_"),
+      amount: z.number().positive().optional(),
+      reason: z.string().optional(),
+    })
+    .safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: "invalid", issues: parsed.error.issues };
+  }
+
+  try {
+    const stripe = getStripe();
+    const refund = await stripe.refunds.create({
+      payment_intent: parsed.data.paymentIntentId,
+      amount: parsed.data.amount ? Math.round(parsed.data.amount * 100) : undefined,
+      reason: parsed.data.reason as Stripe.RefundCreateParams.Reason | undefined,
+    });
+
+    logger.info("stripe_refund_created", {
+      intentId: parsed.data.paymentIntentId,
+      refundId: refund.id,
+      amount: refund.amount / 100,
+    });
+
+    return { ok: true as const, refundId: refund.id, amount: refund.amount / 100 };
+  } catch (err) {
+    logger.error("stripe_refund_failed", { error: String(err) });
+    return { ok: false as const, error: "stripe_error" };
+  }
 }
 
 // ============================================

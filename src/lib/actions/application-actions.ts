@@ -75,7 +75,7 @@ export async function getApplications() {
     const userRole = session.user.role?.toLowerCase();
     const userId = session.user.id;
 
-    let where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {};
 
     if (userRole === "manager" || userRole === "host") {
       // Get applications for properties managed by this host

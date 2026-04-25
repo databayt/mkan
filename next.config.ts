@@ -27,6 +27,12 @@ const nextConfig: NextConfig = {
     'date-fns',
   ],
 
+  // Externalize ESM-only server packages to avoid Next 16's
+  // `require() of ES Module` runtime crashes on Vercel.
+  serverExternalPackages: [
+    '@react-pdf/renderer',
+  ],
+
   experimental: {
     // Enable server actions
     serverActions: {

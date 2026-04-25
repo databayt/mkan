@@ -22,37 +22,7 @@ import { ar, enUS } from 'date-fns/locale';
 import { getBooking } from '@/lib/actions/transport-actions';
 import QRCode from 'qrcode';
 
-interface BookingDetails {
-  id: number;
-  bookingReference: string;
-  passengerName: string;
-  passengerPhone: string;
-  totalAmount: number;
-  status: string;
-  trip: {
-    departureDate: Date;
-    departureTime: string;
-    arrivalTime: string | null;
-    route: {
-      origin: { name: string; city: string };
-      destination: { name: string; city: string };
-      duration: number;
-      office: {
-        name: string;
-        phone: string;
-        assemblyPoint: {
-          name: string;
-          address: string;
-        } | null;
-      };
-    };
-    bus: {
-      plateNumber: string;
-      model: string | null;
-    };
-  };
-  seats: { seatNumber: string }[];
-}
+type BookingDetails = NonNullable<Awaited<ReturnType<typeof getBooking>>>;
 
 export default function TicketViewPage() {
   const params = useParams();
@@ -68,8 +38,7 @@ export default function TicketViewPage() {
   useEffect(() => {
     const fetchBooking = async () => {
       try {
-        const raw = await getBooking(bookingId);
-        const data = raw as unknown as BookingDetails | null;
+        const data = await getBooking(bookingId);
         setBooking(data);
 
         // Generate QR code

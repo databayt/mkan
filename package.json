@@ -5,6 +5,7 @@
   "engines": {
     "node": ">=22.12.0"
   },
+  "packageManager": "pnpm@10.24.0",
   "scripts": {
     "predev": "tsx scripts/wake-db.ts",
     "dev": "next dev --turbopack -p 3000",
@@ -77,6 +78,7 @@
     "resend": "^6.12.2",
     "sanitize-html": "^2.17.3",
     "sonner": "^2.0.7",
+    "stripe": "^22.1.0",
     "tailwind-merge": "^3.5.0",
     "uuid": "^14.0.0",
     "ws": "^8.20.0",

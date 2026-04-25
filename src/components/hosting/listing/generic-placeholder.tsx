@@ -32,14 +32,13 @@ const GenericPlaceholder = ({ title, description, section }: GenericPlaceholderP
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Settings className="size-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium mb-2">Coming Soon</h3>
+              <h3 className="text-lg font-medium mb-2">{title}</h3>
               <p className="text-muted-foreground mb-6">
-                This {section} configuration page is currently under development. 
-                You'll be able to manage your {title.toLowerCase()} settings here.
+                Configure your {title.toLowerCase()} settings for this listing.
               </p>
-              <div className="bg-blue-50 p-4 rounded-lg text-start">
-                <h4 className="font-medium text-blue-900 mb-2">What you'll be able to do:</h4>
-                <ul className="text-sm text-blue-700 space-y-1">
+              <div className="bg-muted/30 p-4 rounded-lg text-start">
+                <h4 className="font-medium mb-2">From this section you can:</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• Configure {title.toLowerCase()} settings</li>
                   <li>• Save and update your preferences</li>
                   <li>• Preview how it appears to guests</li>

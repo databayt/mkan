@@ -3,15 +3,17 @@
 import HelpHeader from "@/components/help/header";
 import HelpHeading from "@/components/help/heading";
 import Guest from "@/components/help/guest";
+import HomeHost from "@/components/help/home-host";
+import ExperienceHost from "@/components/help/experience-host";
+import ServiceHost from "@/components/help/service-host";
+import TravelAdmin from "@/components/help/travel-admin";
 import Tabs from "@/components/help/tabs";
 import { useState } from "react";
 import Guides from "@/components/help/guides";
 import Article from "@/components/help/article";
 import ExploreMore from "@/components/help/explore-more";
-import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 export default function HelpContent() {
-  const dict = useDictionary();
   const [activeTab, setActiveTab] = useState('guest');
 
   const renderTabContent = () => {
@@ -19,13 +21,13 @@ export default function HelpContent() {
       case 'guest':
         return <Guest />;
       case 'home-host':
-        return <div className="py-8">{dict.pages?.help?.homeHostComingSoon ?? "Home host content coming soon..."}</div>;
+        return <HomeHost />;
       case 'experience-host':
-        return <div className="py-8">{dict.pages?.help?.experienceHostComingSoon ?? "Experience host content coming soon..."}</div>;
+        return <ExperienceHost />;
       case 'service-host':
-        return <div className="py-8">{dict.pages?.help?.serviceHostComingSoon ?? "Service host content coming soon..."}</div>;
+        return <ServiceHost />;
       case 'travel-admin':
-        return <div className="py-8">{dict.pages?.help?.travelAdminComingSoon ?? "Travel admin content coming soon..."}</div>;
+        return <TravelAdmin />;
       default:
         return <Guest />;
     }

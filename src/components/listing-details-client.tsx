@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import AirbnbPropertyHeader from "@/components/atom/property-header";
 import AirbnbImages from "@/components/atom/property-images";
 import AirbnbReviews from "@/components/atom/reviews";
@@ -20,6 +20,16 @@ interface ListingDetailsClientProps {
 }
 
 export default function ListingDetailsClient({ listing }: ListingDetailsClientProps) {
+    // Local-only saved state for the v1.0 ship; persistence (User.savedListings)
+    // is tracked in Story 8.1 follow-up. We use localStorage so the heart icon
+    // remembers across reloads on the same device — good enough for launch.
+    const storageKey = `mkan:saved:${listing.id ?? "anon"}`;
+    const [isSaved, setIsSaved] = useState<boolean>(() => {
+        if (typeof window === "undefined") return false;
+        return window.localStorage.getItem(storageKey) === "1";
+    });
+    const [galleryOpen, setGalleryOpen] = useState(false);
+
     const locationString = listing.location
         ? `${listing.location.city}, ${listing.location.state}`
         : "Location not available";
@@ -31,19 +41,25 @@ export default function ListingDetailsClient({ listing }: ListingDetailsClientPr
                 url: window.location.href,
             });
         } else {
-            // Fallback: copy to clipboard
             navigator.clipboard.writeText(window.location.href);
         }
     };
 
     const handleSave = () => {
-        // TODO: Implement save/favorite functionality
-        console.log("Save listing:", listing.id);
+        const next = !isSaved;
+        setIsSaved(next);
+        if (typeof window !== "undefined") {
+            if (next) window.localStorage.setItem(storageKey, "1");
+            else window.localStorage.removeItem(storageKey);
+        }
     };
 
     const handleShowAllPhotos = () => {
-        // TODO: Implement photo gallery modal
-        console.log("Show all photos");
+        setGalleryOpen(true);
+        // Defer the real lightbox modal to v1.0.1; for now we scroll to the
+        // photo grid which already supports keyboard navigation.
+        const grid = document.querySelector("[data-photo-grid]");
+        grid?.scrollIntoView({ behavior: "smooth" });
     };
 
     return (
@@ -54,19 +70,22 @@ export default function ListingDetailsClient({ listing }: ListingDetailsClientPr
                 location={locationString}
                 rating={listing.averageRating || 4.5}
                 reviewCount={listing.numberOfReviews || 0}
-                isSuperhost={false} // TODO: Add superhost logic
+                // Derive superhost from rating + review count — at v1.0 we
+                // don't surface a separate Superhost program, so this is a
+                // simple proxy that highlights consistently great hosts.
+                isSuperhost={(listing.averageRating ?? 0) >= 4.8 && (listing.numberOfReviews ?? 0) >= 10}
                 onShare={handleShare}
                 onSave={handleSave}
-                isSaved={false} // TODO: Add saved state logic
+                isSaved={isSaved}
                 className="mb-4"
             />
 
             {/* Main Content */}
 
-            <PropertyGallery 
+            <PropertyGallery
                 images={listing.photoUrls || []}
                 onSave={handleSave}
-                isSaved={false}
+                isSaved={isSaved}
                 onShowAllPhotos={handleShowAllPhotos}
                 listingId={listing.id?.toString()}
             />

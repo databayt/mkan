@@ -46,23 +46,10 @@ const routeSchema = z.object({
 
 type RouteFormData = z.infer<typeof routeSchema>;
 
-interface AssemblyPoint {
-  id: number;
-  name: string;
-  city: string;
-}
-
-interface RouteData {
-  id: number;
-  originId: number;
-  destinationId: number;
-  basePrice: number;
-  duration: number;
-  distance: number | null;
-  isActive: boolean;
-  origin: AssemblyPoint;
-  destination: AssemblyPoint;
-}
+type AssemblyPoint = Awaited<ReturnType<typeof getAssemblyPoints>>[number];
+type RouteData = Awaited<ReturnType<typeof getRoutesByOffice>>[number];
+type CreatedRoute = Awaited<ReturnType<typeof createRoute>>;
+type UpdatedRoute = Awaited<ReturnType<typeof updateRoute>>;
 
 const RoutesPage = () => {
   const { enableNext, disableNext } = useTransportHostValidation();
@@ -101,7 +88,7 @@ const RoutesPage = () => {
           office?.id ? getRoutesByOffice(office.id) : Promise.resolve([]),
         ]);
         setAssemblyPoints(points);
-        setRoutes(officeRoutes as unknown as RouteData[]);
+        setRoutes(officeRoutes);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -129,16 +116,14 @@ const RoutesPage = () => {
       };
 
       if (editingRoute) {
-        const updated = await updateRoute(editingRoute.id, routeData);
+        const updated = (await updateRoute(editingRoute.id, routeData)) as RouteData | null;
         if (updated) {
-          setRoutes((prev) =>
-            prev.map((r) => (r.id === editingRoute.id ? (updated as unknown as RouteData) : r))
-          );
+          setRoutes((prev) => prev.map((r) => (r.id === editingRoute.id ? updated : r)));
         }
       } else {
-        const created = await createRoute(routeData);
+        const created = (await createRoute(routeData)) as RouteData | null;
         if (created) {
-          setRoutes((prev) => [...prev, created as unknown as RouteData]);
+          setRoutes((prev) => [...prev, created]);
         }
       }
 

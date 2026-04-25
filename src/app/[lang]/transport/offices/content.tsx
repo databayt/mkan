@@ -19,25 +19,7 @@ import {
 import { getTransportOffices } from '@/lib/actions/transport-actions';
 import { getTransportDictionary } from '@/components/transport/transport-dictionary';
 
-interface TransportOffice {
-  id: number;
-  name: string;
-  nameAr: string | null;
-  description: string | null;
-  logoUrl: string | null;
-  phone: string;
-  rating: number | null;
-  reviewCount: number;
-  isVerified: boolean;
-  assemblyPoint: {
-    name: string;
-    city: string;
-  } | null;
-  _count: {
-    buses: number;
-    routes: number;
-  };
-}
+type TransportOffice = Awaited<ReturnType<typeof getTransportOffices>>[number];
 
 export default function OfficesListContent() {
   const params = useParams();
@@ -51,7 +33,7 @@ export default function OfficesListContent() {
     const fetchOffices = async () => {
       try {
         const data = await getTransportOffices();
-        setOffices((data || []) as unknown as TransportOffice[]);
+        setOffices(data || []);
       } catch (error) {
         console.error('Failed to fetch offices:', error);
       } finally {

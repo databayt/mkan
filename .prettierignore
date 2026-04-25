@@ -1,0 +1,15 @@
+node_modules/
+.next/
+.vercel/
+coverage/
+playwright-report/
+test-results/
+out/
+build/
+public/
+src/components/internationalization/*.json
+prisma/migrations/
+*.tsbuildinfo
+pnpm-lock.yaml
+package-lock.json
+.next-env.d.ts

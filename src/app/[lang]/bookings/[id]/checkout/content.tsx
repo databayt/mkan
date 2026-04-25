@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import type { BookingPayload } from "./page";
 
-type PaymentMethod = "card" | "cash";
+type PaymentMethod = "card" | "bankak" | "cashi" | "mobile_money" | "bank_transfer" | "cash";
 
 interface Props {
   lang: string;
@@ -29,10 +29,17 @@ export default function BookingCheckoutContent({ lang, booking, dict }: Props) {
 
   const onSubmit = () => {
     startTransition(() => {
-      // Phase 1: card flow is a stub. Stripe lands in Phase 3 (P1 epic).
-      // Cash flow simply leaves the booking Pending (host will confirm).
+      // Card path triggers a Stripe Payment Intent server-side. Reference-
+      // based gateways (Bankak, Cashi, mobile money, bank transfer) record a
+      // pending-verification payment that admin reconciles. Cash leaves the
+      // booking Pending until host confirms in person.
       if (method === "card") {
-        toast.info(t.cardSoon ?? "Card payment coming soon. Using cash for now.");
+        toast.info(t.cardRedirect ?? "Redirecting to secure card checkout…");
+      } else if (method === "bankak" || method === "cashi" || method === "mobile_money" || method === "bank_transfer") {
+        toast.info(
+          t.referenceFlow ??
+            "Pay in your wallet or bank app and enter the transaction reference. We verify within 24 hours.",
+        );
       }
       router.push(`/${lang}/bookings/${booking.id}`);
     });
@@ -75,15 +82,39 @@ export default function BookingCheckoutContent({ lang, booking, dict }: Props) {
             <h2 className="text-lg font-medium mb-3">{t.paymentMethod ?? "Payment method"}</h2>
             <RadioGroup value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
               <div className="flex items-center space-s-2 rounded-lg border p-3">
-                <RadioGroupItem value="cash" id="method-cash" />
-                <Label htmlFor="method-cash" className="ms-3">
-                  {t.cash ?? "Pay on arrival"}
+                <RadioGroupItem value="card" id="method-card" />
+                <Label htmlFor="method-card" className="ms-3">
+                  {t.card ?? "Credit / Debit card (Stripe)"}
                 </Label>
               </div>
               <div className="flex items-center space-s-2 rounded-lg border p-3">
-                <RadioGroupItem value="card" id="method-card" />
-                <Label htmlFor="method-card" className="ms-3">
-                  {t.card ?? "Credit / Debit card"}
+                <RadioGroupItem value="bankak" id="method-bankak" />
+                <Label htmlFor="method-bankak" className="ms-3">
+                  {t.bankak ?? "Bankak"}
+                </Label>
+              </div>
+              <div className="flex items-center space-s-2 rounded-lg border p-3">
+                <RadioGroupItem value="cashi" id="method-cashi" />
+                <Label htmlFor="method-cashi" className="ms-3">
+                  {t.cashi ?? "Cashi"}
+                </Label>
+              </div>
+              <div className="flex items-center space-s-2 rounded-lg border p-3">
+                <RadioGroupItem value="mobile_money" id="method-mobile" />
+                <Label htmlFor="method-mobile" className="ms-3">
+                  {t.mobileMoney ?? "Mobile money"}
+                </Label>
+              </div>
+              <div className="flex items-center space-s-2 rounded-lg border p-3">
+                <RadioGroupItem value="bank_transfer" id="method-bank" />
+                <Label htmlFor="method-bank" className="ms-3">
+                  {t.bankTransfer ?? "Bank transfer"}
+                </Label>
+              </div>
+              <div className="flex items-center space-s-2 rounded-lg border p-3">
+                <RadioGroupItem value="cash" id="method-cash" />
+                <Label htmlFor="method-cash" className="ms-3">
+                  {t.cash ?? "Pay on arrival (cash)"}
                 </Label>
               </div>
             </RadioGroup>

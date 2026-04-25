@@ -49,6 +49,7 @@ vi.mock("@/lib/db", () => ({
       findUnique: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       count: vi.fn(),
       aggregate: vi.fn(),
     },
@@ -731,19 +732,25 @@ describe("cancelTrip", () => {
     await expect(cancelTrip(1)).rejects.toThrow("Unauthorized");
   });
 
-  it("sets isCancelled to true", async () => {
+  it("sets isCancelled to true and notifies booked passengers", async () => {
     mockAuth.mockResolvedValue(session as never);
     const trip = { id: 1, isCancelled: true };
     mockDb.trip.findUnique.mockResolvedValue({
       route: { office: { ownerId: "user-1" } },
     } as never);
     mockDb.trip.update.mockResolvedValue(trip as never);
+    mockDb.transportBooking.findMany.mockResolvedValue([] as never);
+    mockDb.transportBooking.updateMany.mockResolvedValue({ count: 0 } as never);
 
     const result = await cancelTrip(1);
-    expect(result).toEqual({ success: true, trip });
+    expect(result).toEqual({ success: true, trip, notified: 0 });
     expect(mockDb.trip.update).toHaveBeenCalledWith({
       where: { id: 1 },
       data: { isCancelled: true },
+    });
+    expect(mockDb.transportBooking.updateMany).toHaveBeenCalledWith({
+      where: { tripId: 1, status: { in: ["Pending", "Confirmed"] } },
+      data: expect.objectContaining({ status: "Cancelled" }),
     });
   });
 });

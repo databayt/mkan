@@ -36,31 +36,7 @@ interface Seat {
   status: string;
 }
 
-interface TripDetails {
-  id: number;
-  departureDate: Date;
-  departureTime: string;
-  arrivalTime: string | null;
-  price: number;
-  availableSeats: number;
-  route: {
-    origin: { name: string; city: string };
-    destination: { name: string; city: string };
-    duration: number;
-    office: {
-      name: string;
-      phone: string;
-      rating: number | null;
-    };
-  };
-  bus: {
-    plateNumber: string;
-    model: string | null;
-    capacity: number;
-    amenities: string[];
-  };
-  seats: Seat[];
-}
+type TripDetails = NonNullable<Awaited<ReturnType<typeof getTripDetails>>>;
 
 const amenityIcons: Record<string, React.ElementType> = {
   WiFi: Wifi,
@@ -89,7 +65,7 @@ export default function TripDetailsPage() {
     const fetchTrip = async () => {
       try {
         const data = await getTripDetails(tripId);
-        setTrip(data as unknown as TripDetails | null);
+        setTrip(data);
       } catch (error) {
         console.error('Failed to fetch trip:', error);
       } finally {

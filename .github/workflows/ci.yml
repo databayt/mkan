@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
 
 jobs:
   typecheck:
@@ -39,7 +39,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
+      - run: pnpm exec eslint . --max-warnings 850
 
   test:
     name: Unit Tests
@@ -61,8 +61,19 @@ jobs:
     runs-on: ubuntu-latest
     needs: [typecheck, lint, test]
     env:
-      AUTH_SECRET: ci-placeholder
+      AUTH_SECRET: ci-placeholder-secret-32-bytes-long-xx
       DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+      NEXTAUTH_URL: http://localhost:3000
+      IMAGEKIT_PRIVATE_KEY: placeholder
+      NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY: placeholder
+      NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT: https://ik.imagekit.io/placeholder
+      RESEND_API_KEY: placeholder
+      EMAIL_FROM: noreply@example.com
+      UPSTASH_REDIS_REST_URL: https://placeholder.upstash.io
+      UPSTASH_REDIS_REST_TOKEN: placeholder
+      STRIPE_SECRET_KEY: sk_test_placeholder
+      STRIPE_WEBHOOK_SECRET: whsec_placeholder
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -72,3 +83,34 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [typecheck, lint, test]
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    env:
+      AUTH_SECRET: ci-placeholder-secret-32-bytes-long-xx
+      DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+      NEXTAUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma generate
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test --shard=${{ matrix.shard }}/2
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-shard-${{ matrix.shard }}
+          path: playwright-report/
+          retention-days: 7

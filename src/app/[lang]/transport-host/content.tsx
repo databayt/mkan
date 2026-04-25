@@ -11,22 +11,7 @@ import Loading from '@/components/atom/loading';
 import { getMyTransportOffices } from '@/lib/actions/transport-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 
-interface TransportOffice {
-  id: number;
-  name: string;
-  nameAr: string | null;
-  logoUrl: string | null;
-  isVerified: boolean;
-  isActive: boolean;
-  assemblyPoint: {
-    name: string;
-    city: string;
-  } | null;
-  _count: {
-    buses: number;
-    routes: number;
-  };
-}
+type TransportOffice = Awaited<ReturnType<typeof getMyTransportOffices>>[number];
 
 export default function TransportHostContent() {
   const router = useRouter();
@@ -42,7 +27,7 @@ export default function TransportHostContent() {
     async function loadOffices() {
       try {
         const myOffices = await getMyTransportOffices();
-        setOffices(myOffices as unknown as TransportOffice[]);
+        setOffices(myOffices);
       } catch (error) {
         console.error('Error loading offices:', error);
       } finally {

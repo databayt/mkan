@@ -25,50 +25,8 @@ import { getTransportDictionary } from '@/components/transport/transport-diction
 import { format, addDays } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 
-interface OfficeDetails {
-  id: number;
-  name: string;
-  nameAr: string | null;
-  description: string | null;
-  descriptionAr: string | null;
-  logoUrl: string | null;
-  phone: string;
-  email: string;
-  rating: number | null;
-  reviewCount: number;
-  isVerified: boolean;
-  assemblyPoint: {
-    name: string;
-    city: string;
-    address: string;
-  } | null;
-  buses: {
-    id: number;
-    plateNumber: string;
-    model: string | null;
-    capacity: number;
-    amenities: string[];
-  }[];
-  routes: {
-    id: number;
-    basePrice: number;
-    duration: number;
-    origin: { name: string; city: string };
-    destination: { name: string; city: string };
-  }[];
-}
-
-interface Trip {
-  id: number;
-  departureDate: Date;
-  departureTime: string;
-  price: number;
-  availableSeats: number;
-  route: {
-    origin: { city: string };
-    destination: { city: string };
-  };
-}
+type OfficeDetails = NonNullable<Awaited<ReturnType<typeof getTransportOffice>>>;
+type Trip = Awaited<ReturnType<typeof getOfficeTrips>>[number];
 
 export default function OfficeDetailsPage() {
   const params = useParams();
@@ -89,8 +47,8 @@ export default function OfficeDetailsPage() {
           getTransportOffice(officeId),
           getOfficeTrips(officeId, new Date(), addDays(new Date(), 7)),
         ]);
-        setOffice(officeData as unknown as OfficeDetails | null);
-        setTrips((tripsData || []) as unknown as Trip[]);
+        setOffice(officeData);
+        setTrips(tripsData || []);
       } catch (error) {
         console.error('Failed to fetch office:', error);
       } finally {

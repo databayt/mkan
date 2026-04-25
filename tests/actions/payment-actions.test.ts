@@ -571,21 +571,38 @@ describe("generateMonthlyPayments", () => {
 // Stripe placeholders
 // ============================================
 
-describe("Stripe integration stubs", () => {
-  it("createStripePaymentIntent throws not implemented", async () => {
-    await expect(
-      createStripePaymentIntent({ amount: 100, paymentId: 1 })
-    ).rejects.toThrow("not yet implemented");
+describe("Stripe integration", () => {
+  it("createStripePaymentIntent rejects unauthenticated callers", async () => {
+    mockAuth.mockResolvedValue(null as never);
+    const result = await createStripePaymentIntent({ amount: 100, paymentId: 1 });
+    expect(result).toEqual({ ok: false, error: "unauthorized" });
   });
 
-  it("handleStripeWebhook throws not implemented", async () => {
-    await expect(handleStripeWebhook("payload", "sig")).rejects.toThrow("not yet implemented");
-  });
-
-  it("processRefund throws not implemented", async () => {
+  it("createStripePaymentIntent rejects invalid input", async () => {
     mockAuth.mockResolvedValue(hostSession as never);
+    const result = await createStripePaymentIntent({ amount: -1, paymentId: 0 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toBe("invalid");
+  });
 
-    await expect(processRefund({ paymentId: 1, amount: 50 })).rejects.toThrow("not yet implemented");
+  it("handleStripeWebhook rejects when STRIPE_WEBHOOK_SECRET missing", async () => {
+    const original = process.env.STRIPE_WEBHOOK_SECRET;
+    delete process.env.STRIPE_WEBHOOK_SECRET;
+    const result = await handleStripeWebhook("payload", "sig");
+    expect(result).toEqual({ ok: false, error: "webhook_secret_missing" });
+    if (original !== undefined) process.env.STRIPE_WEBHOOK_SECRET = original;
+  });
+
+  it("processRefund rejects unauthenticated callers", async () => {
+    mockAuth.mockResolvedValue(null as never);
+    const result = await processRefund({ paymentIntentId: "pi_123", amount: 50 });
+    expect(result).toEqual({ ok: false, error: "unauthorized" });
+  });
+
+  it("processRefund rejects non-admin callers", async () => {
+    mockAuth.mockResolvedValue(tenantSession as never);
+    const result = await processRefund({ paymentIntentId: "pi_123", amount: 50 });
+    expect(result).toEqual({ ok: false, error: "forbidden" });
   });
 });
 

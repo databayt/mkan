@@ -1047,11 +1047,49 @@ export async function cancelTrip(id: number) {
     data: { isCancelled: true },
   });
 
-  // TODO: Send notifications to booked passengers
+  // Notify every passenger with a confirmed/pending booking on this trip.
+  // Best-effort: a single failed email must not roll back the cancellation.
+  const affectedBookings = await db.transportBooking.findMany({
+    where: { tripId: id, status: { in: ["Pending", "Confirmed"] } },
+    include: {
+      user: { select: { email: true } },
+      trip: {
+        include: {
+          route: {
+            include: {
+              origin: { select: { city: true } },
+              destination: { select: { city: true } },
+              office: { select: { name: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  await db.transportBooking.updateMany({
+    where: { tripId: id, status: { in: ["Pending", "Confirmed"] } },
+    data: { status: "Cancelled", cancelledAt: new Date() },
+  });
+
+  const { sendTripCancelledEmail } = await import("@/lib/mail");
+  await Promise.all(
+    affectedBookings
+      .filter((b) => b.user?.email)
+      .map((b) =>
+        sendTripCancelledEmail(b.user!.email!, {
+          bookingReference: b.bookingReference,
+          origin: b.trip.route.origin.city,
+          destination: b.trip.route.destination.city,
+          departureDate: b.trip.departureDate.toISOString().slice(0, 10),
+          operatorName: b.trip.route.office.name,
+        }).catch((err) => console.error("trip_cancel_email_failed", err)),
+      ),
+  );
 
   revalidatePath('/[lang]/transport');
   revalidatePath('/[lang]/(dashboard)/offices');
-  return { success: true, trip };
+  return { success: true, trip, notified: affectedBookings.length };
 }
 
 export async function getTrips(routeId?: number, date?: Date) {

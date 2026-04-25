@@ -12,14 +12,15 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log the error to an error reporting service
-    console.error('Application error:', error);
-    
-    // In production, send to error tracking service
-    if (process.env.NODE_ENV === 'production') {
-      // TODO: Send to Sentry or similar service
-      // window.Sentry?.captureException(error);
-    }
+    // Structured client-side error log; the structured logger picks this up
+    // via the Next.js framework's runtime logs (Vercel) or stdout (dev). No
+    // external SaaS — Sentry was removed for Next 16 / Vercel ESM compat.
+    console.error("client_error", {
+      message: error.message,
+      digest: error.digest,
+      stack: error.stack,
+      url: typeof window !== "undefined" ? window.location.href : null,
+    });
   }, [error]);
 
   return (
