@@ -23,8 +23,8 @@
 | Become-operator entry | ✅ existing dropdown | header link | 🟢 |
 | `as unknown as` casts in transport | 0 | 0 | 🟢 |
 | `as unknown as` casts in homes/dashboard | ~13 (deferred) | 0 | 🟡 |
-| Vercel READY on prod | n/a | READY | 🔴 manual |
-| `v1.0.0` tag | n/a | tagged | 🔴 manual |
+| Vercel READY on prod | ✅ READY (dpl_7TuHGKSS2d6NsHms6gitdxcmPEKv) | READY | 🟢 |
+| `v1.0.0` tag | ✅ tagged 2026-04-25 | tagged | 🟢 |
 
 ## Branch
 
@@ -101,13 +101,15 @@ All work on `ship/v1.0`. Final ship steps (Epic 12) require manual operator acti
 - Sentry restoration — replaced by structured logger sink.
 - Turbopack in production builds — webpack stays.
 
-## Sign-off (final)
+## Sign-off (final) — SHIPPED 2026-04-25
 
 - [x] PRD approved (`prd.md`)
 - [x] Architecture approved (`architecture.md`)
-- [ ] All 12 epics Done (45 / 94 stories — see deferred above)
-- [x] CI workflow green on `ship/v1.0`
-- [ ] Vercel READY (manual)
-- [ ] Smoke prod passes (manual)
-- [ ] `v1.0.0` tagged (manual)
-- [ ] Release notes drafted (manual)
+- [x] CI workflow green on `ship/v1.0` (typecheck + lint + unit + build + e2e shards 1+2)
+- [x] PR #2 merged to main (`425d393`)
+- [x] Vercel deploy `dpl_7TuHGKSS2d6NsHms6gitdxcmPEKv` reached state READY
+- [x] Smoke prod passes — 11 of 12 routes 200 OK on https://mk.databayt.org (`/api/listings/published` 500 is a pre-existing bug, tracked in issue #4)
+- [x] `v1.0.0` tag pushed to origin
+- [x] GitHub release notes drafted (untagged-42f6e1cee4482069b893)
+- [ ] All 94 stories Done (45 shipped; 49 deferred to v1.0.1 — see backlog above)
+- [ ] Env vars provisioned on Vercel (issue #3 tracks the checklist)
