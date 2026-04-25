@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { auth, canOverride, isAdminOrSuper } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { PaymentStatus } from "@prisma/client";
@@ -87,8 +87,8 @@ export async function createPayment(data: unknown) {
       throw new Error("Lease not found");
     }
 
-    // Only host or tenant can create payments
-    if (lease.listing.hostId !== session.user.id && lease.tenantId !== session.user.id) {
+    // Only host, tenant, or platform admin can create payments
+    if (!canOverride(session, lease.listing.hostId) && lease.tenantId !== session.user.id) {
       throw new Error("You don't have permission to create payments for this lease");
     }
 
@@ -161,7 +161,7 @@ export async function getPayment(paymentId: unknown) {
 
     // Verify permission
     if (
-      payment.lease.listing.hostId !== session.user.id &&
+      !canOverride(session, payment.lease.listing.hostId) &&
       payment.lease.tenantId !== session.user.id
     ) {
       throw new Error("You don't have permission to view this payment");
@@ -203,7 +203,7 @@ export async function getLeasePayments(leaseId: unknown) {
       throw new Error("Lease not found");
     }
 
-    if (lease.listing.hostId !== session.user.id && lease.tenantId !== session.user.id) {
+    if (!canOverride(session, lease.listing.hostId) && lease.tenantId !== session.user.id) {
       throw new Error("You don't have permission to view payments for this lease");
     }
 
@@ -229,13 +229,9 @@ export async function getUserPayments(userId?: string) {
     throw new Error("User ID is required");
   }
 
-  // Only allow viewing own payments unless admin
+  // Only allow viewing own payments unless admin or super admin
   if (userId && userId !== session?.user?.id) {
-    const currentUser = await db.user.findUnique({
-      where: { id: session?.user?.id },
-      select: { role: true },
-    });
-    if (currentUser?.role !== "ADMIN") {
+    if (!isAdminOrSuper(session)) {
       throw new Error("You can only view your own payments");
     }
   }
@@ -364,7 +360,7 @@ export async function updatePaymentStatus(paymentId: unknown, status: unknown) {
   }
 
   const parsedId = paymentIdSchema.safeParse(paymentId);
-  const parsedStatus = z.nativeEnum(PaymentStatus).safeParse(status);
+  const parsedStatus = z.enum(PaymentStatus).safeParse(status);
   if (!parsedId.success || !parsedStatus.success) {
     throw new Error("Invalid input");
   }
@@ -387,13 +383,8 @@ export async function updatePaymentStatus(paymentId: unknown, status: unknown) {
       throw new Error("Payment not found");
     }
 
-    // Only host or admin can update payment status
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-
-    if (payment.lease.listing.hostId !== session.user.id && user?.role !== "ADMIN") {
+    // Only host, admin, or super admin can update payment status
+    if (!canOverride(session, payment.lease.listing.hostId)) {
       throw new Error("You don't have permission to update this payment");
     }
 
@@ -527,8 +518,8 @@ export async function generateMonthlyPayments(leaseId: unknown) {
       throw new Error("Lease not found");
     }
 
-    // Only host can generate payments
-    if (lease.listing.hostId !== session.user.id) {
+    // Only host (or platform admin) can generate payments
+    if (!canOverride(session, lease.listing.hostId)) {
       throw new Error("Only the host can generate payments");
     }
 
@@ -562,6 +553,62 @@ export async function generateMonthlyPayments(leaseId: unknown) {
       `Failed to generate payments: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
+}
+
+// Cron-friendly variant: iterates every active lease and creates the next
+// month's Payment row if one isn't already present. Skips auth checks
+// because it's only reachable behind the CRON_SECRET header check in
+// `/api/cron/generate-monthly/route.ts`.
+export async function generateMonthlyPaymentsForAllLeases() {
+  const now = new Date();
+  const horizonEnd = new Date(now);
+  horizonEnd.setMonth(horizonEnd.getMonth() + 1);
+
+  const leases = await db.lease.findMany({
+    where: {
+      startDate: { lte: now },
+      endDate: { gte: now },
+    },
+    select: {
+      id: true,
+      rent: true,
+      startDate: true,
+      endDate: true,
+      payments: {
+        where: {
+          dueDate: { gte: now, lte: horizonEnd },
+        },
+        select: { id: true },
+      },
+    },
+  });
+
+  let created = 0;
+  for (const lease of leases) {
+    if (lease.payments.length > 0) continue;
+
+    // Due date is the same day-of-month as the lease start, bumped forward
+    // to the next occurrence in the future.
+    const due = new Date(lease.startDate);
+    while (due < now) {
+      due.setMonth(due.getMonth() + 1);
+    }
+    if (due > new Date(lease.endDate)) continue;
+
+    await db.payment.create({
+      data: {
+        leaseId: lease.id,
+        amountDue: lease.rent,
+        amountPaid: 0,
+        dueDate: due,
+        paymentDate: due,
+        paymentStatus: PaymentStatus.Pending,
+      },
+    });
+    created++;
+  }
+
+  return { success: true, created, scanned: leases.length };
 }
 
 // ============================================
@@ -669,7 +716,7 @@ export async function generateInvoice(paymentId: unknown) {
 
     // Verify permission
     if (
-      payment.lease.listing.hostId !== session.user.id &&
+      !canOverride(session, payment.lease.listing.hostId) &&
       payment.lease.tenantId !== session.user.id
     ) {
       throw new Error("You don't have permission to generate this invoice");

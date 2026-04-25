@@ -16,26 +16,18 @@ const translations = {
 
 interface RoleGateProps {
   children: React.ReactNode;
-  allowedRole: UserRole;
-};
+  allowedRoles: UserRole[];
+}
 
-export const RoleGate = ({
-  children,
-  allowedRole,
-}: RoleGateProps) => {
+export const RoleGate = ({ children, allowedRoles }: RoleGateProps) => {
   const role = useCurrentRole();
   const pathname = usePathname();
   const t = translations[pathname?.startsWith("/ar") ? "ar" : "en"];
+  const roles = allowedRoles ?? [];
 
-  if (role !== allowedRole) {
-    return (
-      <FormError message={t.noPermission} />
-    )
+  if (!role || !roles.includes(role)) {
+    return <FormError message={t.noPermission} />;
   }
 
-  return (
-    <>
-      {children}
-    </>
-  );
+  return <>{children}</>;
 };

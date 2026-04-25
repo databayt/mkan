@@ -29,22 +29,30 @@ import {
 // ---------------------------------------------------------------------------
 
 describe("LoginSchema", () => {
-  it("accepts valid login data", () => {
+  it("accepts valid email identifier", () => {
     const result = LoginSchema.safeParse({
-      email: "user@example.com",
+      identifier: "user@example.com",
       password: "secret",
     });
     expect(result.success).toBe(true);
   });
 
-  it("rejects missing email", () => {
+  it("accepts valid username identifier", () => {
+    const result = LoginSchema.safeParse({
+      identifier: "tarco-express",
+      password: "secret",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects missing identifier", () => {
     const result = LoginSchema.safeParse({ password: "secret" });
     expect(result.success).toBe(false);
   });
 
-  it("rejects invalid email format", () => {
+  it("rejects identifier shorter than 3 characters", () => {
     const result = LoginSchema.safeParse({
-      email: "not-an-email",
+      identifier: "ab",
       password: "secret",
     });
     expect(result.success).toBe(false);
@@ -52,7 +60,7 @@ describe("LoginSchema", () => {
 
   it("rejects empty password", () => {
     const result = LoginSchema.safeParse({
-      email: "user@example.com",
+      identifier: "user@example.com",
       password: "",
     });
     expect(result.success).toBe(false);
@@ -60,7 +68,7 @@ describe("LoginSchema", () => {
 
   it("accepts optional code field", () => {
     const result = LoginSchema.safeParse({
-      email: "user@example.com",
+      identifier: "user@example.com",
       password: "secret",
       code: "123456",
     });
@@ -69,7 +77,7 @@ describe("LoginSchema", () => {
 
   it("accepts login without code field", () => {
     const result = LoginSchema.safeParse({
-      email: "user@example.com",
+      identifier: "user@example.com",
       password: "a",
     });
     expect(result.success).toBe(true);
@@ -209,9 +217,13 @@ describe("SettingsSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects invalid role", () => {
+  it("strips role field (role changes go through admin-actions, not user settings)", () => {
     const result = SettingsSchema.safeParse({ role: "SUPERADMIN" });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      // Role must not round-trip through user-controlled settings — zod strips it.
+      expect((result.data as Record<string, unknown>).role).toBeUndefined();
+    }
   });
 
   it("rejects password without newPassword", () => {

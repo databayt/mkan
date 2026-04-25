@@ -12,6 +12,7 @@ import { useCreateApplicationMutation, useGetAuthUserQuery } from "@/state/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { useForm } from "react-hook-form";
+import type { z } from "zod";
 
 const ApplicationModal = ({
   isOpen,
@@ -21,7 +22,7 @@ const ApplicationModal = ({
   const [createApplication] = useCreateApplicationMutation();
   const { data: authUser } = useGetAuthUserQuery();
 
-  const form = useForm<ApplicationFormData>({
+  const form = useForm<z.input<typeof applicationSchema>, unknown, ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
     defaultValues: {
       name: "",
@@ -39,12 +40,14 @@ const ApplicationModal = ({
       return;
     }
 
+    // applicationDate, status, and tenantId are set server-side in
+    // `createApplication`. Client just sends the user-editable fields.
     await createApplication({
-      ...data,
-      applicationDate: new Date(),
-      status: "Pending",
-      propertyId: propertyId,
-      tenantCognitoId: authUser.id,
+      propertyId,
+      name: data.name,
+      email: data.email,
+      phoneNumber: data.phoneNumber,
+      message: data.message,
     });
     onClose();
   };

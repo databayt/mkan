@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, ArrowRightLeft, Search } from 'lucide-react';
 
@@ -14,10 +14,13 @@ import {
 } from '@/components/ui/popover';
 import { CitySelect } from './city-select';
 import { cn } from '@/lib/utils';
+import { mergeSearchParams, parseSearchParams } from './url-state';
 
 interface SearchWidgetProps {
   initialOrigin?: string;
   initialDestination?: string;
+  initialOriginId?: number;
+  initialDestinationId?: number;
   initialDate?: Date;
   assemblyPoints?: Array<{
     id: number;
@@ -37,6 +40,8 @@ interface SearchWidgetProps {
 export function SearchWidget({
   initialOrigin = '',
   initialDestination = '',
+  initialOriginId,
+  initialDestinationId,
   initialDate,
   assemblyPoints = [],
   dictionary = {
@@ -48,26 +53,52 @@ export function SearchWidget({
   },
 }: SearchWidgetProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const params = useParams<{ lang: string }>();
+  const lang = params?.lang === 'ar' ? 'ar' : 'en';
   const [origin, setOrigin] = useState(initialOrigin);
   const [destination, setDestination] = useState(initialDestination);
+  const [originId, setOriginId] = useState<number | undefined>(initialOriginId);
+  const [destinationId, setDestinationId] = useState<number | undefined>(
+    initialDestinationId,
+  );
   const [date, setDate] = useState<Date | undefined>(initialDate || new Date());
 
   const handleSwap = () => {
-    const temp = origin;
+    const tempText = origin;
+    const tempId = originId;
     setOrigin(destination);
-    setDestination(temp);
+    setOriginId(destinationId);
+    setDestination(tempText);
+    setDestinationId(tempId);
   };
+
+  const resolveCity = (label: string) =>
+    assemblyPoints.find(
+      (p) =>
+        p.city.toLowerCase() === label.toLowerCase() ||
+        p.name.toLowerCase() === label.toLowerCase(),
+    );
 
   const handleSearch = () => {
     if (!origin || !destination || !date) return;
 
-    const params = new URLSearchParams({
+    const resolvedOrigin = originId ? undefined : resolveCity(origin)?.id;
+    const resolvedDestination = destinationId
+      ? undefined
+      : resolveCity(destination)?.id;
+
+    const current = parseSearchParams(searchParams);
+    const qs = mergeSearchParams(current, {
+      originId: originId ?? resolvedOrigin,
+      destinationId: destinationId ?? resolvedDestination,
       origin,
       destination,
       date: format(date, 'yyyy-MM-dd'),
+      page: 1,
     });
 
-    router.push(`/transport/search?${params.toString()}`);
+    router.push(`/${lang}/transport/search?${qs.toString()}`);
   };
 
   return (

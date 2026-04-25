@@ -7,7 +7,9 @@ import TransportHostHero from '@/components/transport/transport-host-hero';
 import { TicketShowcase } from '@/components/transport/ticket/ticket-showcase';
 import { LogoCarousel } from '@/components/transport/logo-carousel';
 import Footer from '@/components/site/footer';
-import { getAssemblyPoints } from '@/lib/actions/transport-actions';
+import { getAssemblyPoints, getPopularRoutes } from '@/lib/actions/transport-actions';
+import Link from 'next/link';
+import { format } from 'date-fns';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import type { Locale } from '@/components/internationalization/config';
 import { createMetadata } from '@/lib/metadata';
@@ -35,11 +37,13 @@ export default async function TransportPage({ params }: TransportPageProps) {
   const { lang } = await params;
 
   // Parallelize independent data fetches
-  const [dictionary, assemblyPoints] = await Promise.all([
+  const [dictionary, assemblyPoints, popularRoutes] = await Promise.all([
     getDictionary(lang),
     getAssemblyPoints(),
+    getPopularRoutes(),
   ]);
   const t = dictionary.transport;
+  const todayIso = format(new Date(), 'yyyy-MM-dd');
 
   const features = [
     {
@@ -213,64 +217,40 @@ export default async function TransportPage({ params }: TransportPageProps) {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                from: 'Khartoum',
-                to: 'Port Sudan',
-                duration: '12h',
-                price: 5000,
-              },
-              {
-                from: 'Khartoum',
-                to: 'Kassala',
-                duration: '8h',
-                price: 3500,
-              },
-              {
-                from: 'Khartoum',
-                to: 'Wad Madani',
-                duration: '3h',
-                price: 1500,
-              },
-              {
-                from: 'Omdurman',
-                to: 'Dongola',
-                duration: '6h',
-                price: 2500,
-              },
-              {
-                from: 'Khartoum',
-                to: 'Atbara',
-                duration: '5h',
-                price: 2000,
-              },
-              {
-                from: 'Port Sudan',
-                to: 'Kassala',
-                duration: '6h',
-                price: 2500,
-              },
-            ].map((route) => (
-              <div
-                key={`${route.from}-${route.to}`}
-                className="bg-muted/30 rounded-xl p-4 hover:bg-muted/50 transition-colors cursor-pointer border"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">{route.from}</span>
-                  <div className="flex-1 mx-3 border-t border-dashed border-muted-foreground/30" />
-                  <span className="font-medium">{route.to}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {route.duration}
-                  </span>
-                  <span className="font-medium text-primary">
-                    {t.routes.pricePrefix} {route.price.toLocaleString()} SDG
-                  </span>
-                </div>
-              </div>
-            ))}
+            {popularRoutes.map((route) => {
+              const fromLabel = lang === 'ar' ? (route.origin.nameAr ?? route.origin.city) : route.origin.city;
+              const toLabel = lang === 'ar' ? (route.destination.nameAr ?? route.destination.city) : route.destination.city;
+              const hours = Math.round(route.duration / 60);
+              const query = new URLSearchParams({
+                originId: String(route.originId),
+                destinationId: String(route.destinationId),
+                origin: route.origin.city,
+                destination: route.destination.city,
+                date: todayIso,
+              });
+              return (
+                <Link
+                  key={route.id}
+                  href={`/${lang}/transport/search?${query.toString()}`}
+                  className="bg-muted/30 rounded-xl p-4 hover:bg-muted/50 transition-colors cursor-pointer border block"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">{fromLabel}</span>
+                    <div className="flex-1 mx-3 border-t border-dashed border-muted-foreground/30" />
+                    <span className="font-medium">{toLabel}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {lang === 'ar' ? `${hours} ساعة` : `${hours}h`}
+                    </span>
+                    <span className="font-medium text-primary">
+                      {t.routes.pricePrefix} {route.basePrice.toLocaleString()} {lang === 'ar' ? 'ج.س' : 'SDG'}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>

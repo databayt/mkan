@@ -1,4 +1,5 @@
-import { requireAuth } from "@/lib/auth-guard"
+import { UserRole } from "@prisma/client"
+import { requireRole } from "@/lib/auth-guard"
 import HostingHeader from '@/components/hosting/hosting-header'
 import NotificationCard from '@/components/hosting/notification-card'
 
@@ -10,7 +11,11 @@ export default async function HostingLayout({
   params: Promise<{ lang: string }>
 }) {
   const { lang } = await params
-  await requireAuth(lang)
+  await requireRole(lang, [
+    UserRole.MANAGER,
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+  ])
 
   return (
     <div className="min-h-screen">

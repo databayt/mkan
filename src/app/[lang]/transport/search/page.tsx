@@ -3,15 +3,17 @@ import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { ArrowLeft, Filter } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { SearchWidget } from '@/components/transport/search/search-widget';
+import { FiltersPanel } from '@/components/transport/search/filters-panel';
 import { TripCard } from '@/components/transport/trip/trip-card';
+import { parseSearchParams } from '@/components/transport/search/url-state';
 import {
-  searchRoutes,
   getAssemblyPoints,
+  searchTrips,
 } from '@/lib/actions/transport-actions';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import { createMetadata } from "@/lib/metadata";
@@ -36,57 +38,110 @@ export async function generateMetadata({
 
 interface SearchPageProps {
   params: Promise<{ lang: Locale }>;
-  searchParams: Promise<{
-    origin?: string;
-    destination?: string;
-    date?: string;
-  }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export const dynamic = 'force-dynamic';
+
+function flatten(sp: Record<string, string | string[] | undefined>): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {};
+  for (const [k, v] of Object.entries(sp)) {
+    out[k] = Array.isArray(v) ? v[0] : v;
+  }
+  return out;
+}
 
 export default async function SearchPage({
   params,
   searchParams,
 }: SearchPageProps) {
   const { lang } = await params;
-  const { origin, destination, date } = await searchParams;
+  const spObject = flatten(await searchParams);
 
-  // Redirect if missing search params
-  if (!origin || !destination || !date) {
+  // Must have origin (id or string) + destination + date
+  const hasOrigin = spObject.originId || spObject.origin;
+  const hasDestination = spObject.destinationId || spObject.destination;
+  if (!hasOrigin || !hasDestination || !spObject.date) {
     redirect(`/${lang}/transport`);
   }
 
-  const searchDate = parseISO(date);
+  const searchDate = parseISO(spObject.date);
 
-  // Parallelize independent data fetches
-  const [dictionary, routes, assemblyPoints] = await Promise.all([
+  const parsed = parseSearchParams(spObject);
+
+  const [dictionary, result, assemblyPoints] = await Promise.all([
     getDictionary(lang),
-    searchRoutes(origin, destination, searchDate),
+    searchTrips({
+      originId: parsed.originId,
+      destinationId: parsed.destinationId,
+      origin: parsed.origin,
+      destination: parsed.destination,
+      date: searchDate,
+      when: parsed.when,
+      priceMin: parsed.priceMin,
+      priceMax: parsed.priceMax,
+      amenities: parsed.amenities,
+      officeIds: parsed.officeIds,
+      minSeats: parsed.minSeats,
+      sort: parsed.sort,
+      page: parsed.page,
+      limit: 20,
+    }),
     getAssemblyPoints(),
   ]);
-  const t = dictionary.transport;
 
-  // Flatten trips from routes
-  const trips = routes.flatMap((route) =>
-    route.trips.map((trip) => ({
-      ...trip,
-      route: {
-        origin: route.origin,
-        destination: route.destination,
-        duration: route.duration,
-        office: route.office,
-      },
-    }))
-  );
+  const t = dictionary.transport;
+  const { trips, total, page, pageCount, facets } = result;
 
   const dateLocale = lang === 'ar' ? ar : undefined;
+
+  const originLabel = parsed.originId
+    ? assemblyPoints.find((p) => p.id === parsed.originId)?.[lang === 'ar' ? 'nameAr' : 'name']
+      ?? parsed.origin
+      ?? ''
+    : parsed.origin ?? '';
+  const destinationLabel = parsed.destinationId
+    ? assemblyPoints.find((p) => p.id === parsed.destinationId)?.[lang === 'ar' ? 'nameAr' : 'name']
+      ?? parsed.destination
+      ?? ''
+    : parsed.destination ?? '';
+
+  // Filter dictionary with graceful fallbacks while translations land
+  const filterDict = {
+    filters: {
+      title: t.search.filters?.title ?? t.search.filters ?? (lang === 'ar' ? 'الفلاتر' : 'Filters'),
+      clearAll: t.search.filters?.clearAll ?? (lang === 'ar' ? 'مسح الكل' : 'Clear all'),
+      showResults: t.search.filters?.showResults ?? (lang === 'ar' ? 'عرض {count} رحلة' : 'Show {count} trips'),
+    },
+    sort: {
+      label: t.search.sort?.label ?? (lang === 'ar' ? 'ترتيب' : 'Sort'),
+      priceAsc: t.search.sort?.priceAsc ?? (lang === 'ar' ? 'السعر: من الأقل للأعلى' : 'Price: low to high'),
+      priceDesc: t.search.sort?.priceDesc ?? (lang === 'ar' ? 'السعر: من الأعلى للأقل' : 'Price: high to low'),
+      departureAsc: t.search.sort?.departureAsc ?? (lang === 'ar' ? 'الأبكر مغادرة' : 'Earliest departure'),
+      durationAsc: t.search.sort?.durationAsc ?? (lang === 'ar' ? 'الأقصر مدة' : 'Shortest duration'),
+    },
+    timeOfDay: {
+      label: t.search.timeOfDay?.label ?? (lang === 'ar' ? 'وقت المغادرة' : 'Departure time'),
+      morning: t.search.timeOfDay?.morning ?? (lang === 'ar' ? 'الصباح' : 'Morning'),
+      afternoon: t.search.timeOfDay?.afternoon ?? (lang === 'ar' ? 'الظهيرة' : 'Afternoon'),
+      evening: t.search.timeOfDay?.evening ?? (lang === 'ar' ? 'المساء' : 'Evening'),
+      night: t.search.timeOfDay?.night ?? (lang === 'ar' ? 'الليل' : 'Night'),
+    },
+    price: {
+      label: t.search.price?.label ?? (lang === 'ar' ? 'نطاق السعر' : 'Price range'),
+      currency: t.search.price?.currency ?? (lang === 'ar' ? 'ج.س' : 'SDG'),
+    },
+    amenitiesLabel: t.search.amenitiesLabel ?? (lang === 'ar' ? 'المرافق' : 'Amenities'),
+    officesLabel: t.search.officesLabel ?? (lang === 'ar' ? 'المشغّلون' : 'Operators'),
+    amenities: t.host?.amenityLabels,
+    mobileTriggerLabel: t.search.filters?.title ?? (typeof t.search.filters === 'string' ? t.search.filters : (lang === 'ar' ? 'الفلاتر' : 'Filters')),
+  };
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-muted/30">
-        <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-center gap-4 mb-6">
             <Link href={`/${lang}/transport`}>
               <Button variant="ghost" size="icon" aria-label="Go back">
@@ -95,7 +150,7 @@ export default async function SearchPage({
             </Link>
             <div>
               <h1 className="text-2xl font-bold">
-                {origin} → {destination}
+                {originLabel} → {destinationLabel}
               </h1>
               <p className="text-muted-foreground">
                 {format(searchDate, 'EEEE, MMMM d, yyyy', { locale: dateLocale })}
@@ -106,56 +161,134 @@ export default async function SearchPage({
           {/* Search Widget */}
           <Suspense fallback={null}>
             <SearchWidget
-              initialOrigin={origin}
-              initialDestination={destination}
+              initialOrigin={parsed.origin ?? originLabel}
+              initialDestination={parsed.destination ?? destinationLabel}
+              initialOriginId={parsed.originId}
+              initialDestinationId={parsed.destinationId}
               initialDate={searchDate}
               assemblyPoints={assemblyPoints}
+              dictionary={{
+                from: t.search.from,
+                to: t.search.to,
+                date: t.search.date,
+                search: t.search.search,
+                swap: t.search.swap,
+              }}
             />
           </Suspense>
         </div>
       </div>
 
-      {/* Results */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-muted-foreground">
-            {t.search.tripsFound.replace('{count}', String(trips.length))}
-          </p>
-          <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4 me-2" />
-            {t.search.filters}
-          </Button>
-        </div>
+      {/* Results layout */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="flex flex-col lg:flex-row gap-6">
+          <Suspense fallback={null}>
+            <FiltersPanel
+              facets={facets}
+              totalTrips={total}
+              dict={filterDict}
+            />
+          </Suspense>
 
-        {trips.length > 0 ? (
-          <div className="grid gap-4">
-            {trips.map((trip) => (
-              <TripCard
-                key={trip.id}
-                trip={trip}
-                lang={lang}
-                dictionary={{
-                  selectSeats: t.trip.selectSeats,
-                  seatsAvailable: t.trip.seatsAvailable,
-                  duration: t.trip.duration,
-                  verified: t.office.verified,
-                }}
-              />
-            ))}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-muted-foreground">
+                {typeof t.search.tripsFound === 'string'
+                  ? t.search.tripsFound.replace('{count}', String(total))
+                  : `${total} trips`}
+              </p>
+            </div>
+
+            {trips.length > 0 ? (
+              <>
+                <div className="grid gap-4">
+                  {trips.map((trip) => (
+                    <TripCard
+                      key={trip.id}
+                      trip={trip}
+                      lang={lang}
+                      dictionary={{
+                        selectSeats: t.trip.selectSeats,
+                        seatsAvailable: t.trip.seatsAvailable,
+                        duration: t.trip.duration,
+                        verified: t.office.verified,
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {pageCount > 1 && (
+                  <Pagination
+                    page={page}
+                    pageCount={pageCount}
+                    lang={lang}
+                    searchParams={spObject}
+                  />
+                )}
+              </>
+            ) : (
+              <div className="text-center py-16">
+                <div className="text-6xl mb-4">🚌</div>
+                <h2 className="text-xl font-semibold mb-2">{t.search.noResults}</h2>
+                <p className="text-muted-foreground mb-6">
+                  {t.search.noResultsDescription}
+                </p>
+                <Link href={`/${lang}/transport`}>
+                  <Button>{t.search.searchAgain}</Button>
+                </Link>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="text-center py-16">
-            <div className="text-6xl mb-4">🚌</div>
-            <h2 className="text-xl font-semibold mb-2">{t.search.noResults}</h2>
-            <p className="text-muted-foreground mb-6">
-              {t.search.noResultsDescription}
-            </p>
-            <Link href={`/${lang}/transport`}>
-              <Button>{t.search.searchAgain}</Button>
-            </Link>
-          </div>
-        )}
+        </div>
       </div>
+    </div>
+  );
+}
+
+function Pagination({
+  page,
+  pageCount,
+  lang,
+  searchParams,
+}: {
+  page: number;
+  pageCount: number;
+  lang: string;
+  searchParams: Record<string, string | undefined>;
+}) {
+  const buildHref = (p: number) => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(searchParams)) {
+      if (v !== undefined && k !== 'page') qs.set(k, v);
+    }
+    if (p > 1) qs.set('page', String(p));
+    return `/${lang}/transport/search?${qs.toString()}`;
+  };
+
+  return (
+    <div className="mt-8 flex items-center justify-center gap-2">
+      <Link
+        href={page > 1 ? buildHref(page - 1) : '#'}
+        aria-disabled={page <= 1}
+        tabIndex={page <= 1 ? -1 : 0}
+        className="pointer-events-auto"
+      >
+        <Button variant="outline" size="sm" disabled={page <= 1}>
+          {lang === 'ar' ? 'السابق' : 'Previous'}
+        </Button>
+      </Link>
+      <span className="text-sm text-muted-foreground mx-3">
+        {lang === 'ar' ? `الصفحة ${page} من ${pageCount}` : `Page ${page} of ${pageCount}`}
+      </span>
+      <Link
+        href={page < pageCount ? buildHref(page + 1) : '#'}
+        aria-disabled={page >= pageCount}
+        tabIndex={page >= pageCount ? -1 : 0}
+      >
+        <Button variant="outline" size="sm" disabled={page >= pageCount}>
+          {lang === 'ar' ? 'التالي' : 'Next'}
+        </Button>
+      </Link>
     </div>
   );
 }

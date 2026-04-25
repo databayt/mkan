@@ -1,12 +1,27 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaNeon } from "@prisma/adapter-neon";
+import { neonConfig } from "@neondatabase/serverless";
+import ws from "ws";
 
-// Connection pool configuration
+/**
+ * Prisma client factory.
+ *
+ * Adapter selection is controlled by `DATABASE_URL_ADAPTER`:
+ *   - `neon`  → `@neondatabase/serverless` driver over HTTPS + WebSockets.
+ *               Works from networks where direct TCP to Neon is blocked and
+ *               shaves ~300ms off cold-start.
+ *   - default → `@prisma/adapter-pg` (direct TCP). Used for local Postgres,
+ *               CI, and any environment where HTTPS is slower than TCP.
+ *
+ * Production deployments on Vercel should set `DATABASE_URL_ADAPTER=neon`.
+ */
+
 const connectionPoolConfig = {
   connection_limit: parseInt(process.env.DATABASE_CONNECTION_LIMIT || "10"),
   pool_timeout: parseInt(process.env.DATABASE_POOL_TIMEOUT || "10"),
 };
 
-// Build connection URL with pooling parameters for production
 function getConnectionUrl(): string | undefined {
   if (process.env.NODE_ENV !== "production") {
     return process.env.DATABASE_URL;
@@ -18,16 +33,13 @@ function getConnectionUrl(): string | undefined {
   try {
     const url = new URL(baseUrl);
 
-    // Add connection pooling parameters for production
     url.searchParams.set("connection_limit", connectionPoolConfig.connection_limit.toString());
     url.searchParams.set("pool_timeout", connectionPoolConfig.pool_timeout.toString());
 
-    // Add pgbouncer mode if using PgBouncer
     if (process.env.DATABASE_POOLING_MODE) {
       url.searchParams.set("pgbouncer", process.env.DATABASE_POOLING_MODE);
     }
 
-    // Ensure SSL for production
     if (!url.searchParams.has("sslmode")) {
       url.searchParams.set("sslmode", "require");
     }
@@ -42,16 +54,25 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Configure Prisma based on environment
 const createPrismaClient = () => {
   const isProduction = process.env.NODE_ENV === "production";
+  const connectionString = getConnectionUrl();
+  const adapterKind = (process.env.DATABASE_URL_ADAPTER ?? "pg").toLowerCase();
+
+  let adapter;
+  if (adapterKind === "neon") {
+    // Neon serverless driver — works over HTTPS+WebSockets when TCP is blocked.
+    // ws is only needed in Node (Edge runtime provides WebSocket globally).
+    if (typeof WebSocket === "undefined") {
+      neonConfig.webSocketConstructor = ws;
+    }
+    adapter = new PrismaNeon({ connectionString });
+  } else {
+    adapter = new PrismaPg({ connectionString });
+  }
 
   return new PrismaClient({
-    datasources: {
-      db: {
-        url: getConnectionUrl(),
-      },
-    },
+    adapter,
     log: isProduction
       ? ["error", "warn"]
       : ["query", "error", "warn"],
@@ -61,10 +82,4 @@ const createPrismaClient = () => {
 
 export const db = globalForPrisma.prisma ?? createPrismaClient();
 
-// Cache the Prisma client in all environments
-// In serverless environments like Vercel, this prevents creating new connections
-// for each request within the same container/lambda instance
 globalForPrisma.prisma = db;
-
-// Note: Graceful shutdown is handled by Vercel's serverless environment
-// Edge Runtime does not support process.on() for signal handling 

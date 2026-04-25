@@ -6,12 +6,13 @@ import { amenitiesSchema, AmenitiesFormData } from './validation'
 import { useListing, useHostNavigation } from '../use-listing'
 import { STEP_NAVIGATION } from '../constants'
 import { Amenity } from '@prisma/client'
+import type { z } from 'zod'
 
 export function useAmenities() {
   const { listing, updateListingData, isLoading, error } = useListing()
   const { goToNextStep, goToPreviousStep } = useHostNavigation('amenities')
 
-  const form = useForm<AmenitiesFormData>({
+  const form = useForm<z.input<typeof amenitiesSchema>, unknown, AmenitiesFormData>({
     resolver: zodResolver(amenitiesSchema),
     defaultValues: {
       amenities: listing?.amenities || [],
@@ -19,16 +20,16 @@ export function useAmenities() {
     mode: 'onChange',
   })
 
-  const selectedAmenities = form.watch('amenities')
+  const selectedAmenities = form.watch('amenities') ?? []
 
   const toggleAmenity = (amenity: Amenity) => {
-    const currentAmenities = form.getValues('amenities')
+    const currentAmenities = form.getValues('amenities') ?? []
     const isSelected = currentAmenities.includes(amenity)
-    
+
     const newAmenities = isSelected
       ? currentAmenities.filter(a => a !== amenity)
       : [...currentAmenities, amenity]
-    
+
     form.setValue('amenities', newAmenities, { shouldValidate: true })
   }
 

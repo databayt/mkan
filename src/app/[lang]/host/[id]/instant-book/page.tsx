@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { CalendarCheckmark, LightningBoltIcon } from '@/components/atom/property-icons';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useListing } from '@/components/host/use-listing';
 
 interface InstantBookPageProps {
   params: Promise<{ id: string }>;
@@ -16,13 +17,35 @@ const InstantBookPage = ({ params }: InstantBookPageProps) => {
   const pathname = usePathname();
   const dict = useDictionary();
   const [id, setId] = React.useState<string>('');
+  const { listing, updateListingData, loadListing } = useListing();
   const [selectedOption, setSelectedOption] = useState<string>('approve-first-5');
 
   React.useEffect(() => {
     params.then((resolvedParams) => {
       setId(resolvedParams.id);
+      const listingId = parseInt(resolvedParams.id);
+      if (!isNaN(listingId)) {
+        loadListing(listingId).catch(() => {});
+      }
     });
-  }, [params]);
+  }, [params, loadListing]);
+
+  // Hydrate the local picker from the existing draft so refresh preserves choice.
+  React.useEffect(() => {
+    if (listing?.instantBook) setSelectedOption('instant-book');
+    else if (listing) setSelectedOption('approve-first-5');
+  }, [listing]);
+
+  // Persist the instantBook flag whenever it changes.
+  const handleSelect = async (optionId: string) => {
+    setSelectedOption(optionId);
+    try {
+      await updateListingData({ instantBook: optionId === 'instant-book' });
+    } catch {
+      // Silent — the next step's Save button will retry. Toast would
+      // spam a field that's a one-click radio.
+    }
+  };
 
 
   const bookingOptions = [
@@ -65,7 +88,7 @@ const InstantBookPage = ({ params }: InstantBookPageProps) => {
             {bookingOptions.map((option) => (
               <button
                 key={option.id}
-                onClick={() => setSelectedOption(option.id)}
+                onClick={() => handleSelect(option.id)}
                 className={`w-full py-4 sm:py-5 px-4 sm:px-8 rounded-xl border transition-all duration-200 text-start ${
                   selectedOption === option.id
                     ? 'border-foreground bg-accent'

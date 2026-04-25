@@ -169,7 +169,10 @@ export default function ListingDetailsClient({ listing }: ListingDetailsClientPr
                     <div className="w-80 flex-shrink-0">
                         <div className="sticky top-24">
                             <AirbnbReserve
+                                listingId={listing.id}
                                 pricePerNight={listing.pricePerNight || 0}
+                                cleaningFee={listing.cleaningFee ?? null}
+                                maxGuests={listing.guestCount ?? 10}
                                 rating={listing.averageRating || 4.5}
                                 reviewCount={listing.numberOfReviews || 0}
                                 className="w-full"

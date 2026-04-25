@@ -102,6 +102,19 @@ export default function TransportBigSearch({
     if (!origin || !destination || !date) return;
 
     const searchParams = new URLSearchParams();
+
+    const resolveCity = (label: string) =>
+      assemblyPoints.find(
+        (p) =>
+          p.city.toLowerCase() === label.toLowerCase() ||
+          p.name.toLowerCase() === label.toLowerCase(),
+      );
+
+    const originMatch = resolveCity(origin);
+    const destinationMatch = resolveCity(destination);
+
+    if (originMatch) searchParams.set("originId", String(originMatch.id));
+    if (destinationMatch) searchParams.set("destinationId", String(destinationMatch.id));
     searchParams.set("origin", origin);
     searchParams.set("destination", destination);
     searchParams.set("date", date.toISOString().split("T")[0] ?? '');

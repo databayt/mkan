@@ -13,6 +13,14 @@ vi.mock("next/navigation", () => ({
 // Mock @/lib/auth
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
+  canOverride: (session: { user?: { id?: string; role?: string } } | null | undefined, ownerId: string | null | undefined) =>
+    (!!session?.user?.id && session.user.id === ownerId) ||
+    session?.user?.role === "ADMIN" ||
+    session?.user?.role === "SUPER_ADMIN",
+  isAdminOrSuper: (session: { user?: { role?: string } } | null | undefined) =>
+    session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN",
+  isSuperAdmin: (session: { user?: { role?: string } } | null | undefined) =>
+    session?.user?.role === "SUPER_ADMIN",
 }));
 
 import { redirect } from "next/navigation";

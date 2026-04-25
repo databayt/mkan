@@ -75,7 +75,7 @@ const BusesPage = () => {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<BusFormData>({
+  } = useForm<z.input<typeof busSchema>, unknown, BusFormData>({
     resolver: zodResolver(busSchema),
     defaultValues: {
       plateNumber: '',

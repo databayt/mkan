@@ -10,16 +10,26 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useHostValidation } from '@/context/onboarding-validation-context';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useListing } from '@/components/host/use-listing';
 
 interface DiscountPageProps {
   params: Promise<{ id: string }>;
 }
+
+// Maps preset discount cards to the concrete percent fields on Listing.
+// Only `weekly` / `monthly` persist; `new-listing` and `last-minute` are
+// marketing concepts not yet modelled in the schema.
+const DISCOUNT_MAP: Record<string, { field: "weeklyDiscount" | "monthlyDiscount"; value: number }> = {
+  weekly: { field: "weeklyDiscount", value: 10 },
+  monthly: { field: "monthlyDiscount", value: 20 },
+};
 
 const DiscountPage = ({ params }: DiscountPageProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const dict = useDictionary();
   const [id, setId] = React.useState<string>('');
+  const { listing, updateListingData, loadListing } = useListing();
   const [selectedDiscounts, setSelectedDiscounts] = useState<string[]>([
     'new-listing',
     'last-minute',
@@ -30,20 +40,42 @@ const DiscountPage = ({ params }: DiscountPageProps) => {
   React.useEffect(() => {
     params.then((resolvedParams) => {
       setId(resolvedParams.id);
+      const listingId = parseInt(resolvedParams.id);
+      if (!isNaN(listingId)) loadListing(listingId).catch(() => {});
     });
-  }, [params]);
+  }, [params, loadListing]);
 
   // Enable next button since discounts are optional
   React.useEffect(() => {
     enableNext();
   }, [enableNext]);
 
-  const toggleDiscount = (discountId: string) => {
-    setSelectedDiscounts(prev => 
-      prev.includes(discountId)
-        ? prev.filter(id => id !== discountId)
-        : [...prev, discountId]
-    );
+  // Hydrate from existing draft so refresh preserves choices.
+  React.useEffect(() => {
+    if (!listing) return;
+    const active: string[] = [];
+    if (listing.weeklyDiscount && listing.weeklyDiscount > 0) active.push('weekly');
+    if (listing.monthlyDiscount && listing.monthlyDiscount > 0) active.push('monthly');
+    if (active.length) setSelectedDiscounts(active);
+  }, [listing]);
+
+  const toggleDiscount = async (discountId: string) => {
+    const willBeActive = !selectedDiscounts.includes(discountId);
+    const next = willBeActive
+      ? [...selectedDiscounts, discountId]
+      : selectedDiscounts.filter((d) => d !== discountId);
+    setSelectedDiscounts(next);
+
+    // Persist mapped fields only; unmapped presets (new-listing, last-minute)
+    // stay client-side until the schema grows support.
+    const mapping = DISCOUNT_MAP[discountId];
+    if (mapping) {
+      try {
+        await updateListingData({ [mapping.field]: willBeActive ? mapping.value : 0 });
+      } catch {
+        // Soft-fail: toggle state stays; user can retry via Next button.
+      }
+    }
   };
 
   const discounts = [

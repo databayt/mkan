@@ -6,16 +6,18 @@ import { useDictionary } from "@/components/internationalization/dictionary-cont
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useGlobalStore } from "@/state/filters";
 import { useGetPropertiesQuery } from "@/state/api";
-import { Property } from "@/types/prismaTypes";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN as string;
 
-// Property with location relation included
-interface PropertyWithLocation extends Property {
+// Minimal marker shape that the popup renderer needs. Derived from whatever
+// `searchListings` returns so the file stays independent of Prisma shape drift.
+interface MapListing {
+  id: number | string;
+  title?: string | null;
+  pricePerNight?: number | null;
   location?: {
-    address?: string;
-    latitude?: number;
-    longitude?: number;
+    latitude?: number | null;
+    longitude?: number | null;
   } | null;
 }
 
@@ -40,7 +42,7 @@ const Map = () => {
       zoom: 9,
     });
 
-    (properties as PropertyWithLocation[]).forEach((property) => {
+    (properties as unknown as MapListing[]).forEach((property) => {
       const marker = createPropertyMarker(property, map, dict);
       if (!marker) return;
       const markerElement = marker.getElement();
@@ -73,7 +75,7 @@ const Map = () => {
   );
 };
 
-const createPropertyMarker = (property: PropertyWithLocation, map: mapboxgl.Map, dict?: Record<string, any>) => {
+const createPropertyMarker = (property: MapListing, map: mapboxgl.Map, dict?: Record<string, any>) => {
   // Skip properties without location data
   if (!property.location) return null;
 
@@ -88,10 +90,10 @@ const createPropertyMarker = (property: PropertyWithLocation, map: mapboxgl.Map,
         <div class="marker-popup">
           <div class="marker-popup-image"></div>
           <div>
-            <a href="/search/${property.id}" target="_blank" class="marker-popup-title">${property.name}</a>
+            <a href="/listings/${property.id}" target="_blank" class="marker-popup-title">${property.title ?? ""}</a>
             <p class="marker-popup-price">
-              $${property.pricePerMonth}
-              <span class="marker-popup-price-unit"> / ${dict?.listings?.month ?? "month"}</span>
+              $${property.pricePerNight ?? 0}
+              <span class="marker-popup-price-unit"> / ${dict?.listings?.night ?? "night"}</span>
             </p>
           </div>
         </div>

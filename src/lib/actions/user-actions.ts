@@ -423,6 +423,107 @@ export async function getCurrentResidences(userId: unknown) {
   }
 }
 
+// Get all leases for a tenant (past + current + upcoming). Used by the
+// tenant residence detail page to render rent history and billing.
+export async function getTenantLeases(userId: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const parsedId = userIdSchema.safeParse(userId);
+  if (!parsedId.success) {
+    throw new Error("Invalid user ID");
+  }
+
+  if (parsedId.data !== session.user.id) {
+    throw new Error("Unauthorized");
+  }
+
+  try {
+    return await db.lease.findMany({
+      where: { tenantId: parsedId.data },
+      orderBy: { startDate: "desc" },
+      include: {
+        listing: {
+          include: { location: true },
+        },
+        payments: {
+          orderBy: { dueDate: "desc" },
+        },
+      },
+    });
+  } catch (error) {
+    logger.error("Error fetching tenant leases:", error);
+    throw new Error("Failed to fetch tenant leases");
+  }
+}
+
+// Get all leases for a single listing. Host/manager owners only.
+export async function getListingLeases(listingId: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const parsedId = propertyIdSchema.safeParse(listingId);
+  if (!parsedId.success) {
+    throw new Error("Invalid listing ID");
+  }
+
+  try {
+    const listing = await db.listing.findUnique({
+      where: { id: parsedId.data },
+      select: { hostId: true },
+    });
+    if (!listing) {
+      throw new Error("Listing not found");
+    }
+    // Only the host or an admin may read leases for a listing.
+    const isHost = listing.hostId === session.user.id;
+    const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+    if (!isHost && !isAdmin) {
+      throw new Error("Not authorized to view leases for this listing");
+    }
+
+    return await db.lease.findMany({
+      where: { propertyId: parsedId.data },
+      orderBy: { startDate: "desc" },
+      include: {
+        tenant: true,
+        payments: { orderBy: { dueDate: "desc" } },
+      },
+    });
+  } catch (error) {
+    logger.error("Error fetching listing leases:", error);
+    throw new Error("Failed to fetch listing leases");
+  }
+}
+
+// Get the full listing detail for every favorite the current user has saved.
+// Used by /tenants/favorites. Returns an empty array when the user isn't
+// logged in rather than throwing — the page handles that case.
+export async function getTenantFavorites() {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
+  try {
+    const tenant = await db.tenant.findUnique({
+      where: { userId: session.user.id },
+      include: {
+        favorites: {
+          include: { location: true },
+          orderBy: { postedDate: "desc" },
+        },
+      },
+    });
+    return tenant?.favorites ?? [];
+  } catch (error) {
+    logger.error("Error fetching favorites:", error);
+    return [];
+  }
+}
+
 // Add property to favorites
 export async function addFavoriteProperty(userId: unknown, propertyId: unknown) {
   const parsedUserId = userIdSchema.safeParse(userId);

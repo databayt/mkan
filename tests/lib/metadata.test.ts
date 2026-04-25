@@ -2,9 +2,12 @@ import { describe, it, expect } from "vitest";
 import { createMetadata } from "@/lib/metadata";
 
 describe("createMetadata", () => {
-  it("generates title with site name suffix", () => {
+  it("passes title through without suffix (root layout applies title.template)", () => {
     const meta = createMetadata({ title: "Home", description: "Welcome" });
-    expect(meta.title).toBe("Home | Mkan");
+    expect(meta.title).toBe("Home");
+    // OpenGraph title carries the site-name suffix since OG doesn't use template
+    const og = meta.openGraph as Record<string, unknown>;
+    expect(og.title).toBe("Home | Mkan");
   });
 
   it("sets description", () => {

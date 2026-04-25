@@ -186,6 +186,61 @@ export const getPopularLocations = unstable_cache(
  * load. Mutations in `listing-actions.ts` call `revalidateTag('listings')`
  * for immediate invalidation when editing.
  */
+// Build the Prisma where clause from a normalized filters object. Shared
+// by the findMany and count paths so they can't drift apart.
+function buildSearchWhere(
+  f: ReturnType<typeof listingFilterSchema.parse>
+): Prisma.ListingWhereInput {
+  const where: Prisma.ListingWhereInput = {
+    isPublished: true,
+    draft: false,
+  };
+
+  if (f.location) {
+    where.location = {
+      OR: [
+        { city: { contains: f.location, mode: "insensitive" } },
+        { state: { contains: f.location, mode: "insensitive" } },
+        { country: { contains: f.location, mode: "insensitive" } },
+      ],
+    };
+  }
+
+  const totalGuests = f.guests || (f.adults || 0) + (f.children || 0);
+  if (totalGuests > 0) {
+    where.guestCount = { gte: totalGuests };
+  }
+
+  if (f.priceMin !== undefined || f.priceMax !== undefined) {
+    where.pricePerNight = {
+      ...(f.priceMin !== undefined ? { gte: f.priceMin } : {}),
+      ...(f.priceMax !== undefined ? { lte: f.priceMax } : {}),
+    };
+  }
+
+  if (f.beds !== undefined) where.bedrooms = { gte: f.beds };
+  if (f.baths !== undefined) where.bathrooms = { gte: f.baths };
+  if (f.propertyType) where.propertyType = f.propertyType;
+
+  if (f.amenities && f.amenities.length > 0) {
+    where.amenities = { hasEvery: f.amenities };
+  }
+
+  if (f.checkIn && f.checkOut) {
+    where.bookings = {
+      none: {
+        status: { in: ["Confirmed", "Pending"] },
+        AND: [
+          { checkIn: { lt: new Date(f.checkOut) } },
+          { checkOut: { gt: new Date(f.checkIn) } },
+        ],
+      },
+    };
+  }
+
+  return where;
+}
+
 const cachedListingSearch = unstable_cache(
   async (
     normalized: string
@@ -195,64 +250,7 @@ const cachedListingSearch = unstable_cache(
     }>[]
   > => {
     const f = JSON.parse(normalized) as ReturnType<typeof listingFilterSchema.parse>;
-
-    const where: Prisma.ListingWhereInput = {
-      isPublished: true,
-      draft: false,
-    };
-
-    if (f.location) {
-      where.location = {
-        OR: [
-          { city: { contains: f.location, mode: "insensitive" } },
-          { state: { contains: f.location, mode: "insensitive" } },
-          { country: { contains: f.location, mode: "insensitive" } },
-        ],
-      };
-    }
-
-    const totalGuests = f.guests || (f.adults || 0) + (f.children || 0);
-    if (totalGuests > 0) {
-      where.guestCount = { gte: totalGuests };
-    }
-
-    // Price band. `pricePerNight` is nullable in the schema; the `gte/lte`
-    // still matches non-null rows, and null rows drop out implicitly when a
-    // price filter is active (matches user intent: "show me what's priced").
-    if (f.priceMin !== undefined || f.priceMax !== undefined) {
-      where.pricePerNight = {
-        ...(f.priceMin !== undefined ? { gte: f.priceMin } : {}),
-        ...(f.priceMax !== undefined ? { lte: f.priceMax } : {}),
-      };
-    }
-
-    if (f.beds !== undefined) where.bedrooms = { gte: f.beds };
-    if (f.baths !== undefined) where.bathrooms = { gte: f.baths };
-    if (f.propertyType) where.propertyType = f.propertyType;
-
-    // `hasEvery` = AND semantics ("listing has ALL requested amenities").
-    // Flip to `hasSome` if product decides OR is better for marketing filters.
-    if (f.amenities && f.amenities.length > 0) {
-      where.amenities = { hasEvery: f.amenities };
-    }
-
-    // Availability filter — exclude listings with overlapping confirmed or
-    // pending bookings in the requested window. Only runs when BOTH dates
-    // are provided so users browsing without dates still see everything.
-    // Note: this subquery means date-based searches can't share a cache
-    // with undated searches, which is fine — the cache keys diverge.
-    if (f.checkIn && f.checkOut) {
-      where.bookings = {
-        none: {
-          status: { in: ["Confirmed", "Pending"] },
-          AND: [
-            { checkIn: { lt: new Date(f.checkOut) } },
-            { checkOut: { gt: new Date(f.checkIn) } },
-          ],
-        },
-      };
-    }
-
+    const where = buildSearchWhere(f);
     const take = Math.min(f.take ?? 20, 50);
     const skip = f.skip ?? 0;
 
@@ -273,6 +271,18 @@ const cachedListingSearch = unstable_cache(
   { revalidate: 60, tags: [LISTINGS_TAG, SEARCH_TAG] }
 );
 
+// Total-count companion to cachedListingSearch, cached on the same filter
+// key minus take/skip so paging within a filter reuses one cache entry.
+const cachedListingCount = unstable_cache(
+  async (normalized: string): Promise<number> => {
+    const parsed = JSON.parse(normalized) as ReturnType<typeof listingFilterSchema.parse>;
+    const where = buildSearchWhere(parsed);
+    return db.listing.count({ where });
+  },
+  ["search-listings-count"],
+  { revalidate: 60, tags: [LISTINGS_TAG, SEARCH_TAG] }
+);
+
 /**
  * Search listings with server-side filtering.
  *
@@ -290,7 +300,7 @@ export async function searchListings(
   if (!validated.success) {
     return {
       success: false,
-      error: validated.error.errors[0]?.message || "Invalid search parameters",
+      error: validated.error.issues[0]?.message || "Invalid search parameters",
       data: [],
     };
   }
@@ -299,11 +309,24 @@ export async function searchListings(
     // Stringify *after* zod has normalized the shape so the cache key is
     // deterministic — two callers with the same logical filters hit the
     // same cache entry regardless of object property order.
-    const listings = await cachedListingSearch(JSON.stringify(validated.data));
+    //
+    // Count and page results are fetched in parallel; they share a where
+    // clause but use different cache keys so paging doesn't invalidate
+    // the total.
+    const pageKey = JSON.stringify(validated.data);
+    const { take: _take, skip: _skip, ...countData } = validated.data;
+    const countKey = JSON.stringify(countData);
+
+    const [listings, total] = await Promise.all([
+      cachedListingSearch(pageKey),
+      cachedListingCount(countKey),
+    ]);
+
     return {
       success: true,
       data: listings,
       count: listings.length,
+      total,
     };
   } catch {
     return {

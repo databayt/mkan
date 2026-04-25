@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import LocationDropdown from "./location";
 import BigSearchDatePicker from "./big-search-date-picker";
 import GuestSelectorDropdown from "./guest-selector";
@@ -12,19 +13,39 @@ import { useSearchValidation } from "@/hooks/useSearchValidation";
 import { type LocationSuggestion } from "@/lib/schemas/search-schema";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 
+// Slide-and-fade downward when a dropdown opens — gives the impression
+// that the panel is emerging from beneath the search bar, without the bar
+// itself shifting.
+const DROPDOWN_TRANSITION = { duration: 0.18, ease: [0.22, 1, 0.36, 1] as const };
+const dropdownMotion = {
+  initial: { opacity: 0, y: -6, scale: 0.985 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -6, scale: 0.985 },
+};
+
 type ActiveButton = "location" | "checkin" | "checkout" | "guests" | null;
 
 interface BigSearchProps {
   onClose?: () => void;
+  // When the parent toggles this off (e.g. header collapses on scroll),
+  // reset any open dropdown so it doesn't reappear when the header re-expands.
+  isActive?: boolean;
 }
 
-export default function BigSearch({ onClose }: BigSearchProps = {}) {
+export default function BigSearch({ onClose, isActive = true }: BigSearchProps = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const dict = useDictionary();
   const [activeButton, setActiveButton] = useState<ActiveButton>(null);
   const [hoveredButton, setHoveredButton] = useState<ActiveButton>(null);
   const searchBarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isActive) {
+      setActiveButton(null);
+      setHoveredButton(null);
+    }
+  }, [isActive]);
 
   // Selected location state
   const [selectedLocation, setSelectedLocation] = useState("");
@@ -427,13 +448,14 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
             <div className="text-sm text-[#6b7280]">{getGuestDisplayText()}</div>
           </div>
 
-          {/* Search Button */}
+          {/* Search Button. Width expands on active; height stays fixed so
+              opening a dropdown never nudges the pill's vertical position. */}
           <div className="pe-2">
             <Button
               onClick={handleSearch}
               size="icon"
-              className={`rounded-full bg-[#de3151] hover:bg-[#de3151]/90 text-white transition-all duration-300 ${
-                activeButton ? "w-28 h-14 px-4" : "w-12 h-12"
+              className={`rounded-full bg-[#de3151] hover:bg-[#de3151]/90 text-white h-12 transition-[width,padding] duration-300 ${
+                activeButton ? "w-28 px-4" : "w-12"
               }`}
             >
               <Search className="w-4 h-4" />
@@ -446,47 +468,75 @@ export default function BigSearch({ onClose }: BigSearchProps = {}) {
         </div>
       </div>
 
-      {/* Dropdown Menus */}
-      {activeButton === "location" && (
-        <div className="absolute top-full left-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10 overflow-hidden">
-          <LocationDropdown
-            searchQuery={searchQuery}
-            suggestions={suggestions}
-            popularLocations={popularLocations}
-            isLoading={isLoadingLocations}
-            error={locationError}
-            onSearchQueryChange={searchLocations}
-            onLocationSelect={handleLocationSelect}
-          />
-        </div>
-      )}
+      {/* Dropdown Menus — absolute top-full anchors them below the pill, so
+          the pill never shifts. Framer-motion slides each panel down a few
+          pixels on enter/exit to reinforce the "emerging from below" feel. */}
+      <AnimatePresence>
+        {activeButton === "location" && (
+          <motion.div
+            key="dropdown-location"
+            {...dropdownMotion}
+            transition={DROPDOWN_TRANSITION}
+            style={{ transformOrigin: "top center", willChange: "transform, opacity" }}
+            className="absolute top-full left-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10 overflow-hidden"
+          >
+            <LocationDropdown
+              searchQuery={searchQuery}
+              suggestions={suggestions}
+              popularLocations={popularLocations}
+              isLoading={isLoadingLocations}
+              error={locationError}
+              onSearchQueryChange={searchLocations}
+              onLocationSelect={handleLocationSelect}
+            />
+          </motion.div>
+        )}
 
-      {activeButton === "checkin" && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-3 z-10 overflow-hidden">
-          <BigSearchDatePicker
-            dateRange={dateRange}
-            onDateChange={handleDateChange}
-          />
-        </div>
-      )}
+        {activeButton === "checkin" && (
+          <motion.div
+            key="dropdown-checkin"
+            {...dropdownMotion}
+            transition={DROPDOWN_TRANSITION}
+            style={{ transformOrigin: "top center", willChange: "transform, opacity" }}
+            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-2 z-10"
+          >
+            <BigSearchDatePicker
+              dateRange={dateRange}
+              onDateChange={handleDateChange}
+            />
+          </motion.div>
+        )}
 
-      {activeButton === "checkout" && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-3 z-10 overflow-hidden">
-          <BigSearchDatePicker
-            dateRange={dateRange}
-            onDateChange={handleDateChange}
-          />
-        </div>
-      )}
+        {activeButton === "checkout" && (
+          <motion.div
+            key="dropdown-checkout"
+            {...dropdownMotion}
+            transition={DROPDOWN_TRANSITION}
+            style={{ transformOrigin: "top center", willChange: "transform, opacity" }}
+            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-2 z-10"
+          >
+            <BigSearchDatePicker
+              dateRange={dateRange}
+              onDateChange={handleDateChange}
+            />
+          </motion.div>
+        )}
 
-      {activeButton === "guests" && (
-        <div className="absolute top-full right-0 mt-2 w-96 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10">
-          <GuestSelectorDropdown
-            guests={guests}
-            onGuestChange={handleGuestChange}
-          />
-        </div>
-      )}
+        {activeButton === "guests" && (
+          <motion.div
+            key="dropdown-guests"
+            {...dropdownMotion}
+            transition={DROPDOWN_TRANSITION}
+            style={{ transformOrigin: "top center", willChange: "transform, opacity" }}
+            className="absolute top-full right-0 mt-2 w-96 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10"
+          >
+            <GuestSelectorDropdown
+              guests={guests}
+              onGuestChange={handleGuestChange}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

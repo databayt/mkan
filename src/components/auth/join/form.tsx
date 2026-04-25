@@ -26,6 +26,8 @@ export const RegisterForm = ({
   const auth = dict.auth ?? ({} as Record<string, any>);
   const t = {
     welcome: auth.welcome ?? "Welcome to Mkan",
+    name: auth.name ?? "Name",
+    namePlaceholder: auth.namePlaceholder ?? "Full name",
     email: auth.email ?? "Email",
     password: auth.password ?? "Password",
     continue: auth.continueButton ?? "Continue",
@@ -39,6 +41,7 @@ export const RegisterForm = ({
   const form = useForm<z.infer<typeof RegisterSchema>>({
     resolver: zodResolver(RegisterSchema),
     defaultValues: {
+      name: "",
       email: "",
       password: "",
     },
@@ -67,12 +70,27 @@ export const RegisterForm = ({
       {/* Form Section */}
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="border border-gray-300 rounded-lg overflow-hidden">
+          {/* Name Input */}
+          <div className="relative w-full">
+            <input
+              {...form.register("name")}
+              type="text"
+              autoComplete="name"
+              disabled={isPending}
+              aria-label={t.name}
+              className="w-full px-3 py-2.5 text-base bg-transparent outline-none border-b border-gray-300 focus:border focus:border-black focus:rounded-lg focus:z-10 relative"
+              placeholder={t.namePlaceholder}
+            />
+          </div>
+
           {/* Email Input */}
           <div className="relative w-full">
             <input
               {...form.register("email")}
               type="email"
+              autoComplete="email"
               disabled={isPending}
+              aria-label={t.email}
               className="w-full px-3 py-2.5 text-base bg-transparent outline-none border-b border-gray-300 focus:border focus:border-black focus:rounded-lg focus:z-10 relative"
               placeholder={t.email}
             />
@@ -83,12 +101,25 @@ export const RegisterForm = ({
             <input
               {...form.register("password")}
               type="password"
+              autoComplete="new-password"
               disabled={isPending}
+              aria-label={t.password}
               className="w-full px-3 py-2.5 text-base bg-transparent outline-none focus:border focus:border-black focus:rounded-lg focus:z-10 relative"
               placeholder={t.password}
             />
           </div>
         </div>
+
+        {/* Show validation errors so silent "Invalid fields!" no longer happens */}
+        {form.formState.errors.name && (
+          <p className="text-sm text-red-600">{form.formState.errors.name.message}</p>
+        )}
+        {form.formState.errors.email && (
+          <p className="text-sm text-red-600">{form.formState.errors.email.message}</p>
+        )}
+        {form.formState.errors.password && (
+          <p className="text-sm text-red-600">{form.formState.errors.password.message}</p>
+        )}
 
         <FormError message={error} />
         <FormSuccess message={success} />

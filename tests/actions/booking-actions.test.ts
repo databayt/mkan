@@ -42,10 +42,21 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
+  canOverride: (session: { user?: { id?: string; role?: string } } | null | undefined, ownerId: string | null | undefined) =>
+    (!!session?.user?.id && session.user.id === ownerId) ||
+    session?.user?.role === "ADMIN" ||
+    session?.user?.role === "SUPER_ADMIN",
+  isAdminOrSuper: (session: { user?: { role?: string } } | null | undefined) =>
+    session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN",
+  isSuperAdmin: (session: { user?: { role?: string } } | null | undefined) =>
+    session?.user?.role === "SUPER_ADMIN",
 }));
 
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+  updateTag: vi.fn(),
+  unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -241,19 +252,23 @@ describe("createBooking", () => {
 
 describe("getBooking", () => {
   it("throws for invalid ID", async () => {
+    mockAuth.mockResolvedValue(guestSession as never);
     await expect(getBooking("abc")).rejects.toThrow("Invalid booking ID");
   });
 
   it("throws when booking not found", async () => {
+    mockAuth.mockResolvedValue(guestSession as never);
     mockDb.booking.findUnique.mockResolvedValue(null as never);
 
     await expect(getBooking(999)).rejects.toThrow("Booking not found");
   });
 
   it("returns booking with listing and guest", async () => {
+    mockAuth.mockResolvedValue(guestSession as never);
     const mockBooking = {
       id: 1,
-      listing: { id: 1, location: { city: "Khartoum" } },
+      guestId: "guest-1",
+      listing: { id: 1, hostId: "host-1", location: { city: "Khartoum" } },
       guest: { id: "guest-1", email: "g@t.com" },
     };
     mockDb.booking.findUnique.mockResolvedValue(mockBooking as never);

@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { auth, canOverride } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath, updateTag } from "next/cache";
 import { Amenity, Highlight, PropertyType, Prisma } from "@prisma/client";
@@ -21,12 +21,12 @@ const listingFormDataSchema = z.object({
   bathrooms: z.number().min(0).optional(),
   squareFeet: z.number().int().min(0).optional(),
   guestCount: z.number().int().min(1).optional(),
-  propertyType: z.nativeEnum(PropertyType).optional(),
+  propertyType: z.enum(PropertyType).optional(),
   isPetsAllowed: z.boolean().optional(),
   isParkingIncluded: z.boolean().optional(),
   instantBook: z.boolean().optional(),
-  amenities: z.array(z.nativeEnum(Amenity)).optional(),
-  highlights: z.array(z.nativeEnum(Highlight)).optional(),
+  amenities: z.array(z.enum(Amenity)).optional(),
+  highlights: z.array(z.enum(Highlight)).optional(),
   photoUrls: z.array(z.string().url()).optional(),
   address: z.string().max(500).optional(),
   city: z.string().max(200).optional(),
@@ -49,6 +49,9 @@ export type ListingFormData = {
   pricePerNight?: number;
   securityDeposit?: number;
   applicationFee?: number;
+  cleaningFee?: number;
+  weeklyDiscount?: number;
+  monthlyDiscount?: number;
   bedrooms?: number;
   bathrooms?: number;
   squareFeet?: number;
@@ -430,7 +433,7 @@ export async function updateListing(id: unknown, data: unknown) {
       throw new Error("Listing not found");
     }
 
-    if (existingListing.hostId !== session.user.id) {
+    if (!canOverride(session, existingListing.hostId)) {
       throw new Error("You can only update your own listings");
     }
 
@@ -562,7 +565,7 @@ export async function deleteListing(id: unknown) {
       throw new Error("Listing not found");
     }
 
-    if (existingListing.hostId !== session.user.id) {
+    if (!canOverride(session, existingListing.hostId)) {
       throw new Error("You can only delete your own listings");
     }
 
@@ -625,7 +628,7 @@ export async function publishListing(id: unknown) {
       throw new Error("Listing not found");
     }
 
-    if (existingListing.hostId !== session.user.id) {
+    if (!canOverride(session, existingListing.hostId)) {
       throw new Error("You can only publish your own listings");
     }
 
@@ -704,7 +707,7 @@ export async function unpublishListing(id: unknown) {
       throw new Error("Listing not found");
     }
 
-    if (existingListing.hostId !== session.user.id) {
+    if (!canOverride(session, existingListing.hostId)) {
       throw new Error("You can only unpublish your own listings");
     }
 

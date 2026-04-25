@@ -83,7 +83,7 @@ Use the `RoleGate` component for role-based permissions:
 import { RoleGate } from "@/components/auth/role-gate";
 import { UserRole } from "@prisma/client";
 
-<RoleGate allowedRole={UserRole.ADMIN}>
+<RoleGate allowedRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
   <AdminPanel />
 </RoleGate>
 ```

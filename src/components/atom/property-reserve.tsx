@@ -1,140 +1,278 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { ChevronDown } from 'lucide-react';
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { ChevronDown, Loader2 } from "lucide-react";
+import { DateRange, DayPicker } from "react-day-picker";
+import "react-day-picker/dist/style.css";
+
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { checkAvailability, createBooking, getBlockedDates } from "@/lib/actions/booking-actions";
+import { toast } from "sonner";
 
 interface AirbnbReserveProps {
+  listingId?: number;
   pricePerNight?: number;
+  cleaningFee?: number | null;
+  serviceFeePct?: number;
+  maxGuests?: number;
   rating?: number;
   reviewCount?: number;
   className?: string;
 }
 
+const DEFAULT_SERVICE_FEE_PCT = 0.12;
+
+function formatDate(d: Date | undefined): string {
+  if (!d) return "";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function diffNights(from: Date, to: Date): number {
+  const ms = to.getTime() - from.getTime();
+  return Math.max(0, Math.round(ms / (1000 * 60 * 60 * 24)));
+}
+
 const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
-  pricePerNight = 700,
-  rating = 5.0,
-  reviewCount = 7,
+  listingId,
+  pricePerNight = 0,
+  cleaningFee = 0,
+  serviceFeePct = DEFAULT_SERVICE_FEE_PCT,
+  maxGuests = 10,
   className = "",
 }) => {
-  const [checkIn, setCheckIn] = useState('2/19/2022');
-  const [checkOut, setCheckOut] = useState('2/26/2022');
-  const [guests, setGuests] = useState(2);
+  const dict = useDictionary() as unknown as Record<string, Record<string, string>>;
+  const params = useParams();
+  const router = useRouter();
+  const lang = (params?.lang as string) ?? "en";
+  const t = dict.booking ?? {};
+  const currency = dict.common?.currency ?? "$";
 
-  // Calculate nights and pricing
-  const nights = 7; // This would be calculated from dates
-  const basePrice = 79; // Actual nightly rate
-  const subtotal = basePrice * nights;
-  const weeklyDiscount = -28;
-  const cleaningFee = 62;
-  const serviceFee = 83;
-  const occupancyTaxes = 29;
-  const total = subtotal + weeklyDiscount + cleaningFee + serviceFee + occupancyTaxes;
+  const [range, setRange] = useState<DateRange | undefined>();
+  const [guests, setGuests] = useState(1);
+  const [blockedDates, setBlockedDates] = useState<Date[]>([]);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  // Load blocked dates for the listing so users can't pick conflicting ranges.
+  useEffect(() => {
+    if (!listingId) return;
+    getBlockedDates(listingId)
+      .then((ranges) => {
+        const dates: Date[] = [];
+        for (const r of ranges as Array<{ startDate: Date; endDate: Date }>) {
+          const start = new Date(r.startDate);
+          const end = new Date(r.endDate);
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            dates.push(new Date(d));
+          }
+        }
+        setBlockedDates(dates);
+      })
+      .catch(() => {
+        // Soft-fail — user can still attempt a booking and server-side
+        // availability check will catch conflicts.
+      });
+  }, [listingId]);
+
+  // Verify availability whenever the range changes to give early feedback.
+  useEffect(() => {
+    if (!listingId || !range?.from || !range?.to) {
+      setAvailabilityError(null);
+      return;
+    }
+    setIsChecking(true);
+    checkAvailability({
+      listingId,
+      checkIn: range.from,
+      checkOut: range.to,
+    })
+      .then((res: unknown) => {
+        const r = res as { available: boolean };
+        setAvailabilityError(
+          r?.available ? null : (t.unavailable ?? "Those dates aren't available.")
+        );
+      })
+      .catch(() => {
+        setAvailabilityError(t.unavailable ?? "Those dates aren't available.");
+      })
+      .finally(() => setIsChecking(false));
+  }, [listingId, range?.from, range?.to, t.unavailable]);
+
+  const nights = useMemo(() => {
+    if (!range?.from || !range?.to) return 0;
+    return diffNights(range.from, range.to);
+  }, [range]);
+
+  const subtotal = nights * pricePerNight;
+  const cleaning = nights > 0 ? (cleaningFee ?? 0) : 0;
+  const serviceFee = Math.round(subtotal * serviceFeePct);
+  const total = subtotal + cleaning + serviceFee;
+
+  const canReserve =
+    !!listingId &&
+    !!range?.from &&
+    !!range?.to &&
+    nights > 0 &&
+    !availabilityError &&
+    !isChecking;
+
+  const onReserve = () => {
+    if (!canReserve || !listingId || !range?.from || !range?.to) return;
+    startTransition(async () => {
+      try {
+        const result = (await createBooking({
+          listingId,
+          checkIn: range.from,
+          checkOut: range.to,
+          guestCount: guests,
+        })) as { success: boolean; booking?: { id: number } };
+        const id = result?.booking?.id;
+        if (!id) throw new Error("No booking ID returned");
+        router.push(`/${lang}/bookings/${id}/checkout`);
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : (t.createFailed ?? "Could not reserve")
+        );
+      }
+    });
+  };
 
   return (
-    <div className={`rounded-sm bg-neutral-50 p-4  max-w-xs ${className}`}>
-      {/* Header with price and rating */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-baseline space-x-1">
-          <span className="text-lg font-bold underline">SR{pricePerNight}</span>
-          <span className="text-gray-600 text-sm"> for 2 night</span>
+    <div className={`rounded-xl border bg-background p-4 max-w-xs ${className}`}>
+      <div className="flex items-baseline justify-between mb-4">
+        <div>
+          <span className="text-lg font-bold">
+            {currency}
+            {pricePerNight || 0}
+          </span>
+          <span className="text-muted-foreground text-sm ms-1">
+            {t.perNight ?? "/ night"}
+          </span>
         </div>
-        {/* <div className="flex items-center space-x-1">
-          <svg className="w-3 h-3" viewBox="0 0 16 16" fill="none">
-            <path d="M7.99996 3.16675L9.16663 6.83341H12.8333L9.83329 9.16675L10.8333 12.8334L7.99996 10.5001L5.16663 12.8334L6.16663 9.16675L3.16663 6.83341H6.83329L7.99996 3.16675Z" stroke="#DE3151" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="#DE3151"/>
-          </svg>
-          <span className="text-xs font-normal text-gray-900">{rating}</span>
-          <span className="text-xs text-gray-500 underline">· {reviewCount} reviews</span>
-        </div> */}
       </div>
 
-      {/* Date inputs and Guest selector - unified container */}
-      <div className="border border-gray-400 rounded-md mb-4">
-        {/* Date inputs */}
-        <div className="grid grid-cols-2 border-b border-gray-400">
-          <div className="p-2 border-e border-gray-400">
-            <label className="block text-[10px] font-medium text-gray-900 uppercase tracking-wide">
-              CHECK-IN
-            </label>
-            <input
-              type="text"
-              value={checkIn}
-              onChange={(e) => setCheckIn(e.target.value)}
-              className="w-full text-xs text-gray-600 bg-transparent border-none outline-none"
+      {/* Date range picker */}
+      <div className="border rounded-md mb-3">
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="grid grid-cols-2 w-full text-start"
+            >
+              <div className="p-2 border-e">
+                <div className="text-[10px] font-medium uppercase tracking-wide">
+                  {t.checkIn ?? "Check-in"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {formatDate(range?.from) || "—"}
+                </div>
+              </div>
+              <div className="p-2">
+                <div className="text-[10px] font-medium uppercase tracking-wide">
+                  {t.checkOut ?? "Check-out"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {formatDate(range?.to) || "—"}
+                </div>
+              </div>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <DayPicker
+              mode="range"
+              selected={range}
+              onSelect={setRange}
+              numberOfMonths={1}
+              disabled={[{ before: new Date() }, ...blockedDates]}
             />
-          </div>
-          <div className="p-2">
-            <label className="block text-[10px] font-medium text-gray-900 uppercase tracking-wide">
-              CHECKOUT
-            </label>
-            <input
-              type="text"
-              value={checkOut}
-              onChange={(e) => setCheckOut(e.target.value)}
-              className="w-full text-xs text-gray-600 bg-transparent border-none outline-none"
-            />
-          </div>
-        </div>
-        
-        {/* Guest selector */}
-        <div className="p-2 flex items-center justify-between cursor-pointer">
+          </PopoverContent>
+        </Popover>
+
+        {/* Guest picker */}
+        <div className="border-t p-2 flex items-center justify-between">
           <div>
-            <label className="block text-[10px] font-medium text-gray-900 uppercase tracking-wide">
-              GUESTS
-            </label>
-            <span className="text-xs text-gray-600">{guests} guests</span>
+            <div className="text-[10px] font-medium uppercase tracking-wide">
+              {t.guests ?? "Guests"}
+            </div>
+            <select
+              value={guests}
+              onChange={(e) => setGuests(Number(e.target.value))}
+              className="text-xs bg-transparent outline-none"
+            >
+              {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  {n} {n === 1 ? (t.guestSingular ?? "guest") : (t.guestsPlural ?? "guests")}
+                </option>
+              ))}
+            </select>
           </div>
-          <ChevronDown className="w-3 h-3 text-gray-600" />
+          <ChevronDown className="w-3 h-3 text-muted-foreground" />
         </div>
       </div>
 
-      {/* Reserve button */}
-      <Button 
+      {availabilityError && (
+        <p className="text-xs text-destructive mb-2">{availabilityError}</p>
+      )}
+
+      <Button
         className="w-full bg-[#E91E63] hover:bg-[#D81B60] text-white font-medium h-10 mb-3 text-sm"
         size="sm"
+        disabled={!canReserve || isPending}
+        onClick={onReserve}
       >
-        Reserve
+        {isPending ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          t.reserve ?? "Reserve"
+        )}
       </Button>
 
-      {/* Notice */}
-      <p className="text-center text-xs text-gray-600 mb-4">
-        You won't be charged yet
+      <p className="text-center text-xs text-muted-foreground mb-4">
+        {t.notChargedYet ?? "You won't be charged yet"}
       </p>
 
-      {/* Price breakdown */}
-      {/* <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <span className="text-gray-900 underline text-xs">${basePrice} × {nights} nights</span>
-          <span className="text-gray-900 text-xs">${subtotal}</span>
+      {nights > 0 && (
+        <div className="space-y-2 text-xs">
+          <div className="flex justify-between">
+            <span className="underline">
+              {currency}
+              {pricePerNight} × {nights} {nights === 1 ? (t.nightSingular ?? "night") : (t.nightsPlural ?? "nights")}
+            </span>
+            <span>
+              {currency}
+              {subtotal}
+            </span>
+          </div>
+          {cleaning > 0 && (
+            <div className="flex justify-between">
+              <span className="underline">{t.cleaningFee ?? "Cleaning fee"}</span>
+              <span>
+                {currency}
+                {cleaning}
+              </span>
+            </div>
+          )}
+          <div className="flex justify-between">
+            <span className="underline">{t.serviceFee ?? "Service fee"}</span>
+            <span>
+              {currency}
+              {serviceFee}
+            </span>
+          </div>
+          <hr className="my-2" />
+          <div className="flex justify-between font-medium">
+            <span>{t.total ?? "Total"}</span>
+            <span>
+              {currency}
+              {total}
+            </span>
+          </div>
         </div>
-        
-        <div className="flex justify-between items-center">
-          <span className="text-gray-900 underline text-xs">Weekly discount</span>
-          <span className="text-green-600 text-xs">${weeklyDiscount}</span>
-        </div>
-        
-        <div className="flex justify-between items-center">
-          <span className="text-gray-900 underline text-xs">Cleaning fee</span>
-          <span className="text-gray-900 text-xs">${cleaningFee}</span>
-        </div>
-        
-        <div className="flex justify-between items-center">
-          <span className="text-gray-900 underline text-xs">Service fee</span>
-          <span className="text-gray-900 text-xs">${serviceFee}</span>
-        </div>
-        
-        <div className="flex justify-between items-center">
-          <span className="text-gray-900 underline text-xs">Occupancy taxes and fees</span>
-          <span className="text-gray-900 text-xs">${occupancyTaxes}</span>
-        </div>
-        
-        <hr className="border-gray-200 my-3" />
-        
-        <div className="flex justify-between items-center">
-          <span className="text-gray-900 font-medium text-sm">Total</span>
-          <span className="text-gray-900 font-medium text-sm">${total}</span>
-        </div>
-      </div> */}
+      )}
     </div>
   );
 };

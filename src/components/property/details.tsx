@@ -27,7 +27,7 @@ const PropertyDetails = ({ propertyId }: PropertyDetailsProps) => {
       <div>
         <h2 className="text-xl font-semibold my-3">Property Amenities</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {property.amenities.map((amenity) => {
+          {property.amenities.map((amenity: string) => {
             const amenityKey = amenity as unknown as AmenityEnum;
             const Icon = AmenityIcons[amenityKey] ?? HelpCircle;
             return (
@@ -51,7 +51,7 @@ const PropertyDetails = ({ propertyId }: PropertyDetailsProps) => {
           Highlights
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mt-4 w-full">
-          {property.highlights.map((highlight) => {
+          {property.highlights.map((highlight: string) => {
             const highlightKey = highlight as unknown as HighlightEnum;
             const Icon = HighlightIcons[highlightKey] ?? HelpCircle;
             return (

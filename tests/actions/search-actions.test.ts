@@ -7,6 +7,7 @@ vi.mock("@/lib/db", () => ({
     },
     listing: {
       findMany: vi.fn(),
+      count: vi.fn().mockResolvedValue(0),
     },
   },
 }));
@@ -14,6 +15,7 @@ vi.mock("@/lib/db", () => ({
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
   revalidateTag: vi.fn(),
+  updateTag: vi.fn(),
   unstable_cache: vi.fn(
     (fn: (...args: unknown[]) => unknown) =>
       (...args: unknown[]) =>
@@ -149,12 +151,14 @@ describe("searchListings", () => {
   it("returns listings with no filters", async () => {
     const listings = [{ id: 1, title: "A" }, { id: 2, title: "B" }];
     mockDb.listing.findMany.mockResolvedValue(listings as never);
+    mockDb.listing.count.mockResolvedValue(2 as never);
 
     const result = await searchListings({});
 
     expect(result.success).toBe(true);
     expect(result.data).toHaveLength(2);
     expect(result.count).toBe(2);
+    expect(result.total).toBe(2);
   });
 
   it("applies location filter", async () => {

@@ -31,6 +31,7 @@ export const LoginForm = ({
   const t = {
     welcome: auth.welcome ?? "Welcome to Mkan",
     email: auth.email ?? "Email",
+    emailOrUsername: auth.emailOrUsername ?? "Email or username",
     password: auth.password ?? "Password",
     twoFactorCode: auth.twoFactorCode ?? "Two Factor Code",
     forgotPrefix: auth.login?.forgotPrefix ?? "Did you ",
@@ -51,7 +52,7 @@ export const LoginForm = ({
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
     defaultValues: {
-      email: "",
+      identifier: "",
       password: "",
     },
   });
@@ -102,14 +103,15 @@ export const LoginForm = ({
           </div>
         ) : (
           <div className="border border-gray-300 rounded-lg overflow-hidden">
-            {/* Email Input */}
+            {/* Identifier (email or username) */}
             <div className="relative w-full">
               <input
-                {...form.register("email")}
-                type="email"
+                {...form.register("identifier")}
+                type="text"
+                autoComplete="username"
                 disabled={isPending}
                 className="w-full px-3 py-2.5 text-base bg-transparent outline-none border-b border-gray-300 focus:border focus:border-black focus:rounded-lg focus:z-10 relative"
-                placeholder={t.email}
+                placeholder={t.emailOrUsername}
               />
             </div>
 

@@ -57,11 +57,34 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: optionalString,
   FACEBOOK_CLIENT_ID: optionalString,
   FACEBOOK_CLIENT_SECRET: optionalString,
+  GITHUB_CLIENT_ID: optionalString,
+  GITHUB_CLIENT_SECRET: optionalString,
 
-  // Optional: Sentry
-  SENTRY_ORG: optionalString,
-  SENTRY_PROJECT: optionalString,
-  SENTRY_AUTH_TOKEN: optionalString,
+  // Optional: Stripe (required when ENABLE_PAYMENTS=true)
+  STRIPE_SECRET_KEY: optionalString,
+  STRIPE_WEBHOOK_SECRET: optionalString,
+  NEXT_PUBLIC_STRIPE_PUBLIC_KEY: optionalString,
+  ENABLE_PAYMENTS: optionalString,
+
+  // Optional: Google Translate v2 (required when ENABLE_CONTENT_TRANSLATION=true)
+  GOOGLE_TRANSLATE_API_KEY: optionalString,
+  ENABLE_CONTENT_TRANSLATION: optionalString,
+
+  // Optional: Sudan payment rails (each behind its own flag)
+  ENABLE_MTN_MOMO: optionalString,
+  MTN_MOMO_API_KEY: optionalString,
+  MTN_MOMO_SUBSCRIPTION_KEY: optionalString,
+  MTN_MOMO_ENVIRONMENT: optionalString,
+  ENABLE_BANKAK: optionalString,
+  BANKAK_MERCHANT_ID: optionalString,
+  BANKAK_API_KEY: optionalString,
+  BANKAK_SIGNING_KEY: optionalString,
+  ENABLE_BOK: optionalString,
+  BOK_API_KEY: optionalString,
+  BOK_MERCHANT_CODE: optionalString,
+
+  // Cron job protection
+  CRON_SECRET: optionalString,
 
   // Node environment
   NODE_ENV: z.enum(['development', 'production', 'test']).optional(),
@@ -95,7 +118,7 @@ export function validateEnv(): Env {
   const result = envSchema.safeParse(process.env);
   if (result.success) return result.data;
 
-  const details = result.error.errors
+  const details = result.error.issues
     .map((err) => `  - ${err.path.join('.')}: ${err.message}`)
     .join('\n');
 
@@ -133,8 +156,44 @@ export const serviceStatus = {
   email: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM),
   googleOAuth: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
   facebookOAuth: Boolean(process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET),
-  sentry: Boolean(process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT),
+  githubOAuth: Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET),
+  stripe: Boolean(
+    process.env.STRIPE_SECRET_KEY &&
+    process.env.STRIPE_WEBHOOK_SECRET &&
+    process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY
+  ),
+  googleTranslate: Boolean(process.env.GOOGLE_TRANSLATE_API_KEY),
+  mtnMomo: Boolean(
+    process.env.ENABLE_MTN_MOMO === 'true' &&
+    process.env.MTN_MOMO_API_KEY &&
+    process.env.MTN_MOMO_SUBSCRIPTION_KEY
+  ),
+  bankak: Boolean(
+    process.env.ENABLE_BANKAK === 'true' &&
+    process.env.BANKAK_MERCHANT_ID &&
+    process.env.BANKAK_API_KEY
+  ),
+  bok: Boolean(
+    process.env.ENABLE_BOK === 'true' &&
+    process.env.BOK_API_KEY &&
+    process.env.BOK_MERCHANT_CODE
+  ),
 } as const;
+
+/**
+ * Hard requirements that must be set when a feature flag is on. Logged at
+ * boot so a misconfigured deploy surfaces the gap before a user hits it.
+ */
+export function checkFeatureFlagRequirements(): string[] {
+  const errors: string[] = [];
+  if (process.env.ENABLE_PAYMENTS === 'true' && !serviceStatus.stripe) {
+    errors.push('ENABLE_PAYMENTS=true requires STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and NEXT_PUBLIC_STRIPE_PUBLIC_KEY');
+  }
+  if (process.env.ENABLE_CONTENT_TRANSLATION === 'true' && !serviceStatus.googleTranslate) {
+    errors.push('ENABLE_CONTENT_TRANSLATION=true requires GOOGLE_TRANSLATE_API_KEY');
+  }
+  return errors;
+}
 
 // Log service status in development
 if (process.env.NODE_ENV === 'development') {
@@ -142,4 +201,9 @@ if (process.env.NODE_ENV === 'development') {
   Object.entries(serviceStatus).forEach(([service, enabled]) => {
     console.log(`  ${enabled ? '✅' : '❌'} ${service}`);
   });
+  const flagErrors = checkFeatureFlagRequirements();
+  if (flagErrors.length > 0) {
+    console.warn('⚠️  Feature flag requirements:');
+    flagErrors.forEach((err) => console.warn(`   - ${err}`));
+  }
 }

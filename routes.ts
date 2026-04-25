@@ -19,6 +19,7 @@ export const publicRoutes = [
   "/landing",
   "/host",
   "/transport-host",
+  "/dev/credentials",
   "/new-verification",
 ];
 
@@ -44,6 +45,7 @@ export const authRoutes = [
  * @type {string[]}
  */
 export const protectedPrefixes = [
+  "/admin",
   "/dashboard",
   "/managers",
   "/tenants",

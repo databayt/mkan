@@ -2,10 +2,13 @@
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
-import React, { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import React, { useState, useCallback } from 'react';
+import { useRouter, usePathname, useParams as useRouteParams } from 'next/navigation';
 import { HelpCircle } from 'lucide-react';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useHostValidation } from '@/context/onboarding-validation-context';
+import { publishListing } from '@/components/host/actions';
+import { toast } from 'sonner';
 
 interface LegalAndCreatePageProps {
   params: Promise<{ id: string }>;
@@ -15,15 +18,50 @@ const LegalAndCreatePage = ({ params }: LegalAndCreatePageProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const dict = useDictionary();
+  const routeParams = useRouteParams();
+  const lang = (routeParams?.lang as string) ?? 'en';
   const [id, setId] = React.useState<string>('');
   const [hostingType, setHostingType] = useState<string>('private-individual');
   const [safetyFeatures, setSafetyFeatures] = useState<string[]>([]);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const { setCustomNavigation } = useHostValidation();
 
   React.useEffect(() => {
     params.then((resolvedParams) => {
       setId(resolvedParams.id);
     });
   }, [params]);
+
+  // Hook the footer's "Create listing" button to actually publish the draft.
+  // Without this the listing stays in draft=true/isPublished=false forever.
+  const handlePublish = useCallback(async () => {
+    if (!id || isPublishing) return;
+    const listingId = Number(id);
+    if (!Number.isFinite(listingId)) return;
+
+    setIsPublishing(true);
+    try {
+      await publishListing(listingId);
+      toast.success(
+        (dict.hosting?.pages?.legal as Record<string, string>)?.published ??
+          'Your listing is live!'
+      );
+      router.push(`/${lang}/listings/${listingId}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not publish';
+      toast.error(message);
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [id, isPublishing, lang, router, dict]);
+
+  React.useEffect(() => {
+    setCustomNavigation({
+      onNext: handlePublish,
+      nextDisabled: !id || isPublishing,
+    });
+    return () => setCustomNavigation(undefined);
+  }, [setCustomNavigation, handlePublish, id, isPublishing]);
 
 
 

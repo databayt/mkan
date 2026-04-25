@@ -3,7 +3,8 @@
 "use client";
 
 import Link from "next/link";
-import { Globe, Facebook, Twitter, Instagram } from "lucide-react";
+import { Globe } from "lucide-react";
+import { Facebook, Twitter, Instagram } from "@/components/atom/brand-icons";
 import { Button } from "@/components/ui/button";
 import { ReportIssue } from "@/components/report-issue";
 import { useDictionary } from "@/components/internationalization/dictionary-context";

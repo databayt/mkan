@@ -5,6 +5,9 @@ export interface Listing {
   pricePerNight: number | null;
   securityDeposit?: number | null;
   applicationFee?: number | null;
+  cleaningFee?: number | null;
+  weeklyDiscount?: number | null;
+  monthlyDiscount?: number | null;
   photoUrls: string[];
   amenities?: string[];
   highlights?: string[];

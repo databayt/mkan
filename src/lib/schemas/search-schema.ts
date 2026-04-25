@@ -153,8 +153,8 @@ export const listingFilterSchema = z.object({
   priceMax: z.number().min(0).max(SEARCH_CONFIG.MAX_PRICE).optional(),
   beds: z.number().int().min(0).max(SEARCH_CONFIG.MAX_BEDS).optional(),
   baths: z.number().min(0).max(SEARCH_CONFIG.MAX_BATHS).optional(),
-  propertyType: z.nativeEnum(PropertyType).optional(),
-  amenities: z.array(z.nativeEnum(Amenity)).max(30).optional(),
+  propertyType: z.enum(PropertyType).optional(),
+  amenities: z.array(z.enum(Amenity)).max(30).optional(),
   take: z.number().int().min(1).max(SEARCH_CONFIG.MAX_PAGE_SIZE).optional(),
   skip: z.number().int().min(0).optional(),
 });
@@ -164,5 +164,8 @@ export interface SearchResult<T> {
   success: boolean;
   error?: string;
   data: T;
+  /** Number of rows in this page of results. */
   count?: number;
+  /** Total number of rows matching the filter, across all pages. */
+  total?: number;
 }

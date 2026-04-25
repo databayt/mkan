@@ -3,7 +3,7 @@
 import * as z from "zod";
 import { AuthError } from "next-auth";
 import { LoginSchema } from "@/components/auth/validation";
-import { getUserByEmail } from "@/components/auth/user";
+import { getUserByIdentifier } from "@/components/auth/user";
 import { getTwoFactorTokenByEmail } from "@/components/auth/verification/2f-token";
 import { sendTwoFactorTokenEmail, sendVerificationEmail } from "@/lib/mail";
 import { generateTwoFactorToken, generateVerificationToken } from "@/lib/tokens";
@@ -22,12 +22,12 @@ export const login = async (
     return { error: "Invalid fields!" };
   }
 
-  const { email, password, code } = validatedFields.data;
+  const { identifier, password, code } = validatedFields.data;
 
-  const existingUser = await getUserByEmail(email);
+  const existingUser = await getUserByIdentifier(identifier);
 
   if (!existingUser || !existingUser.email || !existingUser.password) {
-    return { error: "Email does not exist!" }
+    return { error: "Account does not exist!" }
   }
 
   if (!existingUser.emailVerified) {
@@ -95,7 +95,7 @@ export const login = async (
 
   try {
     await signIn("credentials", {
-      email,
+      identifier,
       password,
       redirectTo: callbackUrl || DEFAULT_LOGIN_REDIRECT,
     })

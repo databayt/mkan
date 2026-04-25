@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { auth, canOverride } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath, updateTag } from "next/cache";
 import { BookingStatus } from "@prisma/client";
@@ -28,7 +28,7 @@ const createBookingSchema = z
   });
 
 const bookingFiltersSchema = z.object({
-  status: z.nativeEnum(BookingStatus).optional(),
+  status: z.enum(BookingStatus).optional(),
   take: z.number().int().min(1).max(100).default(50),
   skip: z.number().int().min(0).default(0),
 });
@@ -247,6 +247,11 @@ export async function getBooking(id: unknown) {
     throw new Error("Invalid booking ID");
   }
 
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
   try {
     const booking = await db.booking.findUnique({
       where: { id: parsedId.data },
@@ -269,6 +274,13 @@ export async function getBooking(id: unknown) {
 
     if (!booking) {
       throw new Error("Booking not found");
+    }
+
+    // Only the guest who booked, the host of the listing, or an admin may read.
+    const isGuest = booking.guestId === session.user.id;
+    const isHostOrAdmin = canOverride(session, booking.listing.hostId);
+    if (!isGuest && !isHostOrAdmin) {
+      throw new Error("Not authorized to view this booking");
     }
 
     return booking;
@@ -423,7 +435,7 @@ export async function confirmBooking(id: unknown) {
       throw new Error("Booking not found");
     }
 
-    if (booking.listing.hostId !== session.user.id) {
+    if (!canOverride(session, booking.listing.hostId)) {
       throw new Error("Only the host can confirm this booking");
     }
 
@@ -481,8 +493,8 @@ export async function cancelBooking(id: unknown) {
       throw new Error("Booking not found");
     }
 
-    // Allow either the guest or the host to cancel
-    if (booking.guestId !== session.user.id && booking.listing.hostId !== session.user.id) {
+    // Allow either the guest or the host (or a super admin) to cancel
+    if (booking.guestId !== session.user.id && !canOverride(session, booking.listing.hostId)) {
       throw new Error("You don't have permission to cancel this booking");
     }
 
@@ -596,7 +608,7 @@ export async function addBlockedDates(data: unknown) {
       throw new Error("Listing not found");
     }
 
-    if (listing.hostId !== session.user.id) {
+    if (!canOverride(session, listing.hostId)) {
       throw new Error("Only the host can manage blocked dates");
     }
 
@@ -650,7 +662,7 @@ export async function removeBlockedDates(data: unknown) {
       throw new Error("Listing not found");
     }
 
-    if (listing.hostId !== session.user.id) {
+    if (!canOverride(session, listing.hostId)) {
       throw new Error("Only the host can manage blocked dates");
     }
 
@@ -670,5 +682,28 @@ export async function removeBlockedDates(data: unknown) {
     throw new Error(
       `Failed to remove blocked dates: ${error instanceof Error ? error.message : "Unknown error"}`
     );
+  }
+}
+
+// Read blocked date ranges for a listing. Public (no auth) so guest users
+// see "unavailable" shading on the reserve widget without being logged in.
+export async function getBlockedDates(listingId: unknown) {
+  const parsedId = listingIdSchema.safeParse(listingId);
+  if (!parsedId.success) {
+    throw new Error("Invalid listing ID");
+  }
+
+  try {
+    return await db.blockedDate.findMany({
+      where: {
+        listingId: parsedId.data,
+        endDate: { gte: new Date() },
+      },
+      select: { startDate: true, endDate: true },
+      orderBy: { startDate: "asc" },
+    });
+  } catch (error) {
+    logger.error("Error fetching blocked dates:", error);
+    return [];
   }
 }

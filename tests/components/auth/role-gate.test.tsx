@@ -32,7 +32,7 @@ describe("RoleGate", () => {
   it("renders children when user has the allowed role", () => {
     mocks.useCurrentRole.mockReturnValue("ADMIN");
     render(
-      <RoleGate allowedRole="ADMIN">
+      <RoleGate allowedRoles={["ADMIN"]}>
         <div data-testid="protected-content">Admin Content</div>
       </RoleGate>
     );
@@ -43,7 +43,7 @@ describe("RoleGate", () => {
   it("shows error message when user does not have the allowed role", () => {
     mocks.useCurrentRole.mockReturnValue("USER");
     render(
-      <RoleGate allowedRole="ADMIN">
+      <RoleGate allowedRoles={["ADMIN"]}>
         <div data-testid="protected-content">Admin Content</div>
       </RoleGate>
     );
@@ -57,7 +57,7 @@ describe("RoleGate", () => {
     mocks.usePathname.mockReturnValue("/ar/dashboard");
     mocks.useCurrentRole.mockReturnValue("USER");
     render(
-      <RoleGate allowedRole="ADMIN">
+      <RoleGate allowedRoles={["ADMIN"]}>
         <div>Admin Content</div>
       </RoleGate>
     );
@@ -69,7 +69,7 @@ describe("RoleGate", () => {
   it("shows error when user role is undefined", () => {
     mocks.useCurrentRole.mockReturnValue(undefined);
     render(
-      <RoleGate allowedRole="ADMIN">
+      <RoleGate allowedRoles={["ADMIN"]}>
         <div data-testid="protected-content">Admin Content</div>
       </RoleGate>
     );
@@ -80,7 +80,7 @@ describe("RoleGate", () => {
   it("renders children for non-ADMIN roles when that role is allowed", () => {
     mocks.useCurrentRole.mockReturnValue("MANAGER");
     render(
-      <RoleGate allowedRole="MANAGER">
+      <RoleGate allowedRoles={["MANAGER"]}>
         <div data-testid="manager-content">Manager Content</div>
       </RoleGate>
     );

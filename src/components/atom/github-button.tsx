@@ -1,5 +1,5 @@
 import React from 'react'
-import { Github } from "lucide-react";
+import { Github } from "@/components/atom/brand-icons";
 import Link from 'next/link'
 
 interface GithubButtonProps {

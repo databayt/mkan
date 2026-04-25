@@ -1,724 +1,430 @@
-import { PrismaClient, PropertyType, Amenity, Highlight } from '@prisma/client'
-import crypto from 'crypto'
+import { config } from 'dotenv';
+config();
 
-const prisma = new PrismaClient()
+import {
+  PrismaClient,
+  PropertyType,
+  Amenity,
+  Highlight,
+  CancellationPolicy,
+  BookingStatus,
+} from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
+
+const DEMO_PASSWORD = '123456';
+
+// ─── Hosts ──────────────────────────────────────────────────────────────────
+// 20 real-sounding Sudanese hosts. Username = slug. All anchored at Port Sudan.
+interface HostRow {
+  slug: string;
+  displayName: string;
+}
+
+const HOSTS: HostRow[] = [
+  { slug: 'ahmed-altayeb',       displayName: 'Ahmed Al-Tayeb' },
+  { slug: 'fatima-abdallah',     displayName: 'Fatima Abdallah' },
+  { slug: 'mohammed-osman',      displayName: 'Mohammed Osman' },
+  { slug: 'aisha-elmahdi',       displayName: 'Aisha El-Mahdi' },
+  { slug: 'omar-bashir',         displayName: 'Omar Bashir' },
+  { slug: 'zainab-hassan',       displayName: 'Zainab Hassan' },
+  { slug: 'ibrahim-awad',        displayName: 'Ibrahim Awad' },
+  { slug: 'khadija-nur',         displayName: 'Khadija Nur' },
+  { slug: 'abdelrahman-sheikh',  displayName: 'Abdelrahman Sheikh' },
+  { slug: 'maryam-salim',        displayName: 'Maryam Salim' },
+  { slug: 'yasir-alamin',        displayName: 'Yasir Al-Amin' },
+  { slug: 'noor-ali',            displayName: 'Noor Ali' },
+  { slug: 'tariq-saeed',         displayName: 'Tariq Saeed' },
+  { slug: 'huda-musa',           displayName: 'Huda Musa' },
+  { slug: 'hisham-eltom',        displayName: 'Hisham El-Tom' },
+  { slug: 'safia-omer',          displayName: 'Safia Omer' },
+  { slug: 'walid-khalifa',       displayName: 'Walid Khalifa' },
+  { slug: 'amira-abdelrahim',    displayName: 'Amira Abdelrahim' },
+  { slug: 'salah-mahmoud',       displayName: 'Salah Mahmoud' },
+  { slug: 'leila-hassan',        displayName: 'Leila Hassan' },
+];
+
+const GUEST_COUNT = 5;
+
+// ─── Port Sudan districts (for address variety) ─────────────────────────────
+const DISTRICTS = [
+  'Deim Arab', 'Deim Sawakin', 'Al-Transit', 'Salah El-Din', 'Deim Madrasa',
+  'Al-Shaabi', 'Port Sudan Central', 'Coral Coast', 'Suakin Island', 'Marina District',
+  'Al-Thawra', 'New Halfa Sq', 'Airport District', 'Red Sea University Area', 'Flamingo Bay',
+  'Free Zone', 'Old Town', 'Corniche', 'Industrial Port', 'Diving Harbor',
+];
+
+const ADJECTIVES = [
+  'Beachfront', 'Cozy', 'Modern', 'Sea View', 'Luxury',
+  'Stylish', 'Charming', 'Traditional', 'Contemporary', 'Spacious',
+];
+
+// 10-slot cycle that gives 40% Apartment, 20% Villa, 10% each of the rest
+const PROPERTY_CYCLE: PropertyType[] = [
+  PropertyType.Apartment, PropertyType.Apartment, PropertyType.Apartment, PropertyType.Apartment,
+  PropertyType.Villa, PropertyType.Villa,
+  PropertyType.Townhouse,
+  PropertyType.Cottage,
+  PropertyType.Rooms,
+  PropertyType.Tinyhouse,
+];
+
+const PHOTO_POOL = [
+  'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800',
+  'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
+  'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
+  'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800',
+  'https://images.unsplash.com/photo-1555854877-bab0e5b6856c?w=800',
+  'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
+  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
+  'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800',
+  'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800',
+  'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=800',
+  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
+  'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800',
+];
+
+const REVIEW_COMMENTS = [
+  'Great host and clean place. Highly recommend for Port Sudan stays!',
+  'Location was perfect, close to the Red Sea. Would stay again.',
+  'Very comfortable and the host was responsive. Enjoyed the trip.',
+  'Decent stay overall. Minor issues but host handled them well.',
+  'Excellent value for the price. Beautiful sea breeze at night.',
+  'Spotless and welcoming. A pleasant surprise.',
+  'Good amenities, though a bit far from downtown.',
+  'Perfect for a family visit. Kids loved the space.',
+];
+
+// ─── Pricing + attributes per property type ─────────────────────────────────
+function specFor(type: PropertyType, idx: number) {
+  switch (type) {
+    case PropertyType.Rooms:
+      return { price: 30 + (idx % 40), bedrooms: 1, bathrooms: 1.0, sqft: 200 + (idx % 100), guests: 2, cleaningFee: 10 };
+    case PropertyType.Tinyhouse:
+      return { price: 45 + (idx % 45), bedrooms: 1, bathrooms: 1.0, sqft: 250 + (idx % 200), guests: 2, cleaningFee: 15 };
+    case PropertyType.Apartment:
+      return { price: 60 + (idx % 120), bedrooms: 1 + (idx % 3), bathrooms: 1.0 + ((idx % 3) * 0.5), sqft: 500 + (idx % 1000), guests: 2 + (idx % 4), cleaningFee: 20 };
+    case PropertyType.Townhouse:
+      return { price: 120 + (idx % 130), bedrooms: 2 + (idx % 3), bathrooms: 2.0 + ((idx % 2) * 0.5), sqft: 1000 + (idx % 1500), guests: 4 + (idx % 4), cleaningFee: 35 };
+    case PropertyType.Cottage:
+      return { price: 80 + (idx % 80), bedrooms: 2 + (idx % 2), bathrooms: 1.5, sqft: 700 + (idx % 800), guests: 3 + (idx % 3), cleaningFee: 25 };
+    case PropertyType.Villa:
+      return { price: 180 + (idx % 220), bedrooms: 3 + (idx % 3), bathrooms: 2.5 + ((idx % 2) * 1.0), sqft: 1800 + (idx % 2500), guests: 6 + (idx % 6), cleaningFee: 50 };
+  }
+}
+
+function amenitiesFor(type: PropertyType): Amenity[] {
+  if (type === PropertyType.Villa || type === PropertyType.Townhouse) {
+    return [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.WasherDryer, Amenity.Dishwasher, Amenity.Pool];
+  }
+  if (type === PropertyType.Apartment) {
+    return [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.Refrigerator];
+  }
+  if (type === PropertyType.Cottage) {
+    return [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.PetsAllowed];
+  }
+  return [Amenity.AirConditioning, Amenity.WiFi];
+}
+
+const CANCELLATION_CYCLE: CancellationPolicy[] = [
+  CancellationPolicy.Flexible, CancellationPolicy.Flexible,
+  CancellationPolicy.Moderate, CancellationPolicy.Moderate,
+  CancellationPolicy.Firm, CancellationPolicy.Strict,
+];
+
+function addDays(date: Date, days: number): Date {
+  const r = new Date(date);
+  r.setDate(r.getDate() + days);
+  return r;
+}
 
 async function main() {
-  console.log('🌱 Starting Sudan listings seed process...')
-
-  // Clear existing listings and related data
-  await prisma.application.deleteMany()
-  await prisma.lease.deleteMany()
-  await prisma.tenant.deleteMany()
-  await prisma.listing.deleteMany()
-  await prisma.location.deleteMany()
-  console.log('🧹 Cleared existing data')
-
-  // Find or create the Facebook account manager
-  const manager = await prisma.user.upsert({
-    where: { email: 'osmanabdout@hotmail.com' },
-    update: { role: 'MANAGER' },
-    create: {
-      id: crypto.randomUUID(),
-      email: 'osmanabdout@hotmail.com',
-      username: 'Osman Abdout',
-      role: 'MANAGER',
-      emailVerified: new Date(),
-      updatedAt: new Date(),
-    }
-  })
-
-  console.log(`✅ Manager set up: ${manager.email} (${manager.username})`)
-
-  // Define diverse listing data with Sudanese locations and realistic pricing
-  const listingData = [
-    // KHARTOUM - 8 Listings
-    {
-      title: 'Luxury Nile View Apartment',
-      description: 'Stunning modern apartment with breathtaking views of the Nile River. Located in the prestigious Al-Manshiya district, this property features premium finishes, a private balcony, and 24/7 security. Perfect for executives and families seeking luxury living in the heart of Khartoum.',
-      pricePerNight: 250,
-      securityDeposit: 2500,
-      applicationFee: 100,
-      bedrooms: 3,
-      bathrooms: 2.5,
-      squareFeet: 1800,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: false,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.Dishwasher, Amenity.WasherDryer],
-      highlights: [Highlight.GreatView, Highlight.RecentlyRenovated, Highlight.HighSpeedInternetAccess, Highlight.QuietNeighborhood],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800',
-        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
-        'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800',
-        'https://images.unsplash.com/photo-1555854877-bab0e5b6856c?w=800'
-      ],
-      location: { address: 'Al-Manshiya Street, Building 15', city: 'Khartoum', state: 'Khartoum', country: 'Sudan', postalCode: '11111', latitude: 15.5007, longitude: 32.5599 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.8, numberOfReviews: 24, guestCount: 6
-    },
-    {
-      title: 'Traditional Sudanese Villa',
-      description: 'Beautiful traditional Sudanese villa with courtyard and garden. Features authentic Sudanese architecture with modern amenities. Located in the peaceful Al-Riyadh neighborhood.',
-      pricePerNight: 180,
-      securityDeposit: 1800,
-      applicationFee: 75,
-      bedrooms: 4,
-      bathrooms: 3,
-      squareFeet: 2500,
-      propertyType: PropertyType.Villa,
-      isPetsAllowed: true,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.WasherDryer, Amenity.PetsAllowed],
-      highlights: [Highlight.QuietNeighborhood, Highlight.GreatView, Highlight.RecentlyRenovated],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
-        'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
-        'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800',
-        'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800',
-        'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=800'
-      ],
-      location: { address: 'Al-Riyadh District, Villa 8', city: 'Khartoum', state: 'Khartoum', country: 'Sudan', postalCode: '11112', latitude: 15.5507, longitude: 32.5599 },
-      isPublished: true, draft: false, instantBook: false, averageRating: 4.6, numberOfReviews: 18, guestCount: 8
-    },
-    {
-      title: 'Downtown Studio Apartment',
-      description: 'Cozy studio apartment in the heart of downtown Khartoum. Perfect for solo travelers or couples. Walking distance to shops, restaurants, and public transport.',
-      pricePerNight: 75,
-      securityDeposit: 750,
-      applicationFee: 30,
-      bedrooms: 1,
-      bathrooms: 1,
-      squareFeet: 450,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: false,
-      isParkingIncluded: false,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi],
-      highlights: [Highlight.CloseToTransit, Highlight.HighSpeedInternetAccess],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
-        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'
-      ],
-      location: { address: 'Central Business District, Tower 3', city: 'Khartoum', state: 'Khartoum', country: 'Sudan', postalCode: '11113', latitude: 15.5887, longitude: 32.5342 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.4, numberOfReviews: 42, guestCount: 2
-    },
-    {
-      title: 'Penthouse with Panoramic Views',
-      description: 'Exclusive penthouse apartment with 360-degree views of Khartoum. Features a private rooftop terrace, luxury finishes, and concierge service. The ultimate in urban living.',
-      pricePerNight: 450,
-      securityDeposit: 4500,
-      applicationFee: 150,
-      bedrooms: 4,
-      bathrooms: 4,
-      squareFeet: 3200,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: false,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.Dishwasher, Amenity.WasherDryer, Amenity.Pool],
-      highlights: [Highlight.GreatView, Highlight.RecentlyRenovated, Highlight.HighSpeedInternetAccess, Highlight.QuietNeighborhood],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
-        'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800',
-        'https://images.unsplash.com/photo-1600607687644-c7171b42498b?w=800',
-        'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800'
-      ],
-      location: { address: 'Nile Tower, Penthouse Floor', city: 'Khartoum', state: 'Khartoum', country: 'Sudan', postalCode: '11114', latitude: 15.6007, longitude: 32.5399 },
-      isPublished: true, draft: false, instantBook: false, averageRating: 4.9, numberOfReviews: 12, guestCount: 8
-    },
-    {
-      title: 'Garden Flat near University',
-      description: 'Charming ground floor apartment with private garden. Located near University of Khartoum, ideal for visiting academics or students. Quiet and secure.',
-      pricePerNight: 95,
-      securityDeposit: 950,
-      applicationFee: 40,
-      bedrooms: 2,
-      bathrooms: 1,
-      squareFeet: 850,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: true,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.PetsAllowed],
-      highlights: [Highlight.QuietNeighborhood, Highlight.CloseToTransit],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
-        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800'
-      ],
-      location: { address: 'University Avenue, Building 12', city: 'Khartoum', state: 'Khartoum', country: 'Sudan', postalCode: '11115', latitude: 15.5607, longitude: 32.5499 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.5, numberOfReviews: 28, guestCount: 4
-    },
-    {
-      title: 'Modern Loft in Amarat',
-      description: 'Stylish loft apartment in trendy Amarat district. Open plan living with industrial design elements. Walking distance to cafes and galleries.',
-      pricePerNight: 130,
-      securityDeposit: 1300,
-      applicationFee: 55,
-      bedrooms: 1,
-      bathrooms: 1,
-      squareFeet: 700,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: false,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.WasherDryer],
-      highlights: [Highlight.RecentlyRenovated, Highlight.HighSpeedInternetAccess],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
-        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800'
-      ],
-      location: { address: 'Amarat Street 41, Unit 5', city: 'Khartoum', state: 'Khartoum', country: 'Sudan', postalCode: '11116', latitude: 15.5807, longitude: 32.5299 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.7, numberOfReviews: 35, guestCount: 2
-    },
-    {
-      title: 'Family Home with Pool',
-      description: 'Spacious family home with private swimming pool in prestigious Khartoum 2 district. Large garden, modern kitchen, and multiple living areas. Perfect for families.',
-      pricePerNight: 320,
-      securityDeposit: 3200,
-      applicationFee: 120,
-      bedrooms: 5,
-      bathrooms: 4,
-      squareFeet: 4000,
-      propertyType: PropertyType.Villa,
-      isPetsAllowed: true,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.Dishwasher, Amenity.WasherDryer, Amenity.Pool, Amenity.PetsAllowed],
-      highlights: [Highlight.GreatView, Highlight.QuietNeighborhood, Highlight.RecentlyRenovated],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
-        'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
-        'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800',
-        'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800'
-      ],
-      location: { address: 'Khartoum 2 District, Villa 22', city: 'Khartoum', state: 'Khartoum', country: 'Sudan', postalCode: '11117', latitude: 15.5407, longitude: 32.5699 },
-      isPublished: true, draft: false, instantBook: false, averageRating: 4.8, numberOfReviews: 19, guestCount: 10
-    },
-    {
-      title: 'Business Traveler Suite',
-      description: 'Executive suite designed for business travelers. Located in the business district with high-speed internet, work desk, and meeting facilities nearby.',
-      pricePerNight: 160,
-      securityDeposit: 1600,
-      applicationFee: 65,
-      bedrooms: 1,
-      bathrooms: 1,
-      squareFeet: 600,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: false,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.Dishwasher],
-      highlights: [Highlight.HighSpeedInternetAccess, Highlight.CloseToTransit, Highlight.RecentlyRenovated],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
-        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800'
-      ],
-      location: { address: 'Africa Street, Business Center', city: 'Khartoum', state: 'Khartoum', country: 'Sudan', postalCode: '11118', latitude: 15.5907, longitude: 32.5199 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.6, numberOfReviews: 56, guestCount: 2
-    },
-
-    // OMDURMAN - 6 Listings
-    {
-      title: 'Family Villa in Omdurman',
-      description: 'Spacious family villa in the heart of Omdurman. Features a large garden, traditional Sudanese design elements, and modern conveniences. Located near markets and schools.',
-      pricePerNight: 150,
-      securityDeposit: 1500,
-      applicationFee: 60,
-      bedrooms: 5,
-      bathrooms: 3,
-      squareFeet: 3000,
-      propertyType: PropertyType.Villa,
-      isPetsAllowed: true,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.WasherDryer, Amenity.PetsAllowed],
-      highlights: [Highlight.QuietNeighborhood, Highlight.GreatView, Highlight.CloseToTransit],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
-        'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800',
-        'https://images.unsplash.com/photo-1600607687644-c7171b42498b?w=800',
-        'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800'
-      ],
-      location: { address: 'Al-Thawra Street, Villa 12', city: 'Omdurman', state: 'Khartoum', country: 'Sudan', postalCode: '11211', latitude: 15.6507, longitude: 32.4799 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.7, numberOfReviews: 28, guestCount: 10
-    },
-    {
-      title: 'Modern Apartment Complex',
-      description: 'Contemporary apartment in a modern complex with security, parking, and community facilities. Located in the growing Al-Sahafa district of Omdurman.',
-      pricePerNight: 120,
-      securityDeposit: 1200,
-      applicationFee: 50,
-      bedrooms: 2,
-      bathrooms: 2,
-      squareFeet: 1200,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: false,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.Dishwasher],
-      highlights: [Highlight.RecentlyRenovated, Highlight.CloseToTransit, Highlight.QuietNeighborhood],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800',
-        'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800',
-        'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'
-      ],
-      location: { address: 'Al-Sahafa District, Building 7', city: 'Omdurman', state: 'Khartoum', country: 'Sudan', postalCode: '11212', latitude: 15.6007, longitude: 32.4899 },
-      isPublished: true, draft: false, instantBook: false, averageRating: 4.5, numberOfReviews: 15, guestCount: 4
-    },
-    {
-      title: 'Historic Quarter Townhouse',
-      description: 'Beautifully restored townhouse in Omdurman historic quarter. Original architecture with modern comforts. Steps from the famous Omdurman Souq.',
-      pricePerNight: 110,
-      securityDeposit: 1100,
-      applicationFee: 45,
-      bedrooms: 3,
-      bathrooms: 2,
-      squareFeet: 1600,
-      propertyType: PropertyType.Townhouse,
-      isPetsAllowed: false,
-      isParkingIncluded: false,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.WasherDryer],
-      highlights: [Highlight.CloseToTransit, Highlight.RecentlyRenovated],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800',
-        'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800',
-        'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'
-      ],
-      location: { address: 'Old Souq Street, House 45', city: 'Omdurman', state: 'Khartoum', country: 'Sudan', postalCode: '11213', latitude: 15.6407, longitude: 32.4699 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.8, numberOfReviews: 22, guestCount: 6
-    },
-    {
-      title: 'Riverside Retreat',
-      description: 'Peaceful villa on the banks of the White Nile. Private garden reaching the riverbank. Perfect for those seeking tranquility away from city noise.',
-      pricePerNight: 200,
-      securityDeposit: 2000,
-      applicationFee: 80,
-      bedrooms: 4,
-      bathrooms: 3,
-      squareFeet: 2800,
-      propertyType: PropertyType.Villa,
-      isPetsAllowed: true,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.WasherDryer, Amenity.PetsAllowed],
-      highlights: [Highlight.GreatView, Highlight.QuietNeighborhood],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=800',
-        'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
-        'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800'
-      ],
-      location: { address: 'Nile Bank Road, Villa 8', city: 'Omdurman', state: 'Khartoum', country: 'Sudan', postalCode: '11214', latitude: 15.6607, longitude: 32.4599 },
-      isPublished: true, draft: false, instantBook: false, averageRating: 4.9, numberOfReviews: 11, guestCount: 8
-    },
-    {
-      title: 'Budget-Friendly Flat',
-      description: 'Clean and affordable apartment for budget-conscious travelers. Basic amenities with good transport links. Ideal for short stays.',
-      pricePerNight: 55,
-      securityDeposit: 550,
-      applicationFee: 25,
-      bedrooms: 1,
-      bathrooms: 1,
-      squareFeet: 400,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: false,
-      isParkingIncluded: false,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi],
-      highlights: [Highlight.CloseToTransit],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'
-      ],
-      location: { address: 'Central Omdurman, Block 15', city: 'Omdurman', state: 'Khartoum', country: 'Sudan', postalCode: '11215', latitude: 15.6307, longitude: 32.4799 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.2, numberOfReviews: 67, guestCount: 2
-    },
-    {
-      title: 'Artist Loft Studio',
-      description: 'Creative space with high ceilings and natural light. Popular with artists and photographers. Includes small workspace area.',
-      pricePerNight: 85,
-      securityDeposit: 850,
-      applicationFee: 35,
-      bedrooms: 1,
-      bathrooms: 1,
-      squareFeet: 550,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: false,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking],
-      highlights: [Highlight.HighSpeedInternetAccess, Highlight.RecentlyRenovated],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800',
-        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800'
-      ],
-      location: { address: 'Arts District, Studio 12', city: 'Omdurman', state: 'Khartoum', country: 'Sudan', postalCode: '11216', latitude: 15.6207, longitude: 32.4899 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.6, numberOfReviews: 29, guestCount: 2
-    },
-
-    // KHARTOUM BAHRI - 4 Listings
-    {
-      title: 'Executive Townhouse',
-      description: 'Elegant townhouse in the prestigious Al-Kalakla district. Features modern design, private garden, and premium amenities. Perfect for professionals.',
-      pricePerNight: 200,
-      securityDeposit: 2000,
-      applicationFee: 80,
-      bedrooms: 3,
-      bathrooms: 2.5,
-      squareFeet: 1800,
-      propertyType: PropertyType.Townhouse,
-      isPetsAllowed: false,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.WasherDryer, Amenity.Dishwasher],
-      highlights: [Highlight.RecentlyRenovated, Highlight.QuietNeighborhood, Highlight.GreatView],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800',
-        'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800',
-        'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'
-      ],
-      location: { address: 'Al-Kalakla Street, Townhouse 5', city: 'Khartoum Bahri', state: 'Khartoum', country: 'Sudan', postalCode: '11311', latitude: 15.6507, longitude: 32.5599 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.9, numberOfReviews: 31, guestCount: 6
-    },
-    {
-      title: 'Compact City Apartment',
-      description: 'Well-designed compact apartment perfect for solo travelers or couples. Modern amenities in a convenient location.',
-      pricePerNight: 70,
-      securityDeposit: 700,
-      applicationFee: 30,
-      bedrooms: 1,
-      bathrooms: 1,
-      squareFeet: 480,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: false,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking],
-      highlights: [Highlight.CloseToTransit, Highlight.HighSpeedInternetAccess],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'
-      ],
-      location: { address: 'Bahri Central, Building 9', city: 'Khartoum Bahri', state: 'Khartoum', country: 'Sudan', postalCode: '11312', latitude: 15.6607, longitude: 32.5499 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.4, numberOfReviews: 45, guestCount: 2
-    },
-    {
-      title: 'Industrial Chic Warehouse',
-      description: 'Converted warehouse space with exposed brick and high ceilings. Unique accommodation for those seeking something different.',
-      pricePerNight: 140,
-      securityDeposit: 1400,
-      applicationFee: 55,
-      bedrooms: 2,
-      bathrooms: 2,
-      squareFeet: 1500,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: true,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.WasherDryer, Amenity.PetsAllowed],
-      highlights: [Highlight.RecentlyRenovated, Highlight.HighSpeedInternetAccess],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800',
-        'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800',
-        'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'
-      ],
-      location: { address: 'Industrial Zone, Unit 22', city: 'Khartoum Bahri', state: 'Khartoum', country: 'Sudan', postalCode: '11313', latitude: 15.6707, longitude: 32.5399 },
-      isPublished: true, draft: false, instantBook: false, averageRating: 4.7, numberOfReviews: 18, guestCount: 4
-    },
-    {
-      title: 'Garden Bungalow',
-      description: 'Charming bungalow surrounded by tropical garden. Single-story living with outdoor entertaining area. Pet-friendly and family-oriented.',
-      pricePerNight: 125,
-      securityDeposit: 1250,
-      applicationFee: 50,
-      bedrooms: 3,
-      bathrooms: 2,
-      squareFeet: 1400,
-      propertyType: PropertyType.Villa,
-      isPetsAllowed: true,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.WasherDryer, Amenity.PetsAllowed],
-      highlights: [Highlight.QuietNeighborhood, Highlight.GreatView],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
-        'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
-        'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800'
-      ],
-      location: { address: 'Garden District, Bungalow 3', city: 'Khartoum Bahri', state: 'Khartoum', country: 'Sudan', postalCode: '11314', latitude: 15.6807, longitude: 32.5299 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.8, numberOfReviews: 24, guestCount: 6
-    },
-
-    // PORT SUDAN - 4 Listings
-    {
-      title: 'Beachfront Apartment',
-      description: 'Beautiful apartment with stunning Red Sea views in Port Sudan. Features modern amenities and easy access to the beach. Perfect for those who love the sea.',
-      pricePerNight: 140,
-      securityDeposit: 1400,
-      applicationFee: 60,
-      bedrooms: 2,
-      bathrooms: 2,
-      squareFeet: 1000,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: false,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.Dishwasher],
-      highlights: [Highlight.GreatView, Highlight.CloseToTransit, Highlight.QuietNeighborhood],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=800',
-        'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800',
-        'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'
-      ],
-      location: { address: 'Red Sea Street, Building 10', city: 'Port Sudan', state: 'Red Sea', country: 'Sudan', postalCode: '22111', latitude: 19.6158, longitude: 37.2164 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.6, numberOfReviews: 22, guestCount: 4
-    },
-    {
-      title: 'Diving Paradise Villa',
-      description: 'Spacious villa perfect for diving enthusiasts. Equipment storage, outdoor shower, and close to dive sites. Stunning coral reef views.',
-      pricePerNight: 220,
-      securityDeposit: 2200,
-      applicationFee: 90,
-      bedrooms: 4,
-      bathrooms: 3,
-      squareFeet: 2200,
-      propertyType: PropertyType.Villa,
-      isPetsAllowed: false,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.WasherDryer, Amenity.Pool],
-      highlights: [Highlight.GreatView, Highlight.QuietNeighborhood, Highlight.RecentlyRenovated],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
-        'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
-        'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800',
-        'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800'
-      ],
-      location: { address: 'Coral Beach Road, Villa 5', city: 'Port Sudan', state: 'Red Sea', country: 'Sudan', postalCode: '22112', latitude: 19.6058, longitude: 37.2264 },
-      isPublished: true, draft: false, instantBook: false, averageRating: 4.8, numberOfReviews: 14, guestCount: 8
-    },
-    {
-      title: 'Harbor View Studio',
-      description: 'Cozy studio overlooking Port Sudan harbor. Watch ships come and go from your balcony. Central location with easy access to restaurants.',
-      pricePerNight: 65,
-      securityDeposit: 650,
-      applicationFee: 25,
-      bedrooms: 1,
-      bathrooms: 1,
-      squareFeet: 380,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: false,
-      isParkingIncluded: false,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi],
-      highlights: [Highlight.GreatView, Highlight.CloseToTransit],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'
-      ],
-      location: { address: 'Harbor District, Building 3', city: 'Port Sudan', state: 'Red Sea', country: 'Sudan', postalCode: '22113', latitude: 19.6258, longitude: 37.2064 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.3, numberOfReviews: 38, guestCount: 2
-    },
-    {
-      title: 'Seaside Family Home',
-      description: 'Large family home with direct beach access. Multiple bedrooms, large garden, and outdoor BBQ area. Perfect for family vacations.',
-      pricePerNight: 280,
-      securityDeposit: 2800,
-      applicationFee: 100,
-      bedrooms: 5,
-      bathrooms: 4,
-      squareFeet: 3500,
-      propertyType: PropertyType.Villa,
-      isPetsAllowed: true,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.WasherDryer, Amenity.Dishwasher, Amenity.PetsAllowed],
-      highlights: [Highlight.GreatView, Highlight.QuietNeighborhood],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
-        'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800',
-        'https://images.unsplash.com/photo-1600607687644-c7171b42498b?w=800',
-        'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800'
-      ],
-      location: { address: 'Beach Road, Villa 12', city: 'Port Sudan', state: 'Red Sea', country: 'Sudan', postalCode: '22114', latitude: 19.5958, longitude: 37.2364 },
-      isPublished: true, draft: false, instantBook: false, averageRating: 4.9, numberOfReviews: 9, guestCount: 12
-    },
-
-    // WAD MADANI - 3 Listings
-    {
-      title: 'Agricultural Villa',
-      description: 'Spacious villa with garden and agricultural land in Wad Madani. Perfect for families who enjoy gardening and outdoor activities.',
-      pricePerNight: 100,
-      securityDeposit: 1000,
-      applicationFee: 40,
-      bedrooms: 4,
-      bathrooms: 2,
-      squareFeet: 2200,
-      propertyType: PropertyType.Villa,
-      isPetsAllowed: true,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.WasherDryer, Amenity.PetsAllowed],
-      highlights: [Highlight.QuietNeighborhood, Highlight.GreatView],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
-        'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
-        'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800'
-      ],
-      location: { address: 'Agricultural District, Villa 3', city: 'Wad Madani', state: 'Al Jazirah', country: 'Sudan', postalCode: '33111', latitude: 14.4019, longitude: 33.5199 },
-      isPublished: true, draft: false, instantBook: false, averageRating: 4.3, numberOfReviews: 8, guestCount: 8
-    },
-    {
-      title: 'Blue Nile View Apartment',
-      description: 'Modern apartment with beautiful views of the Blue Nile. Located in central Wad Madani with easy access to local attractions.',
-      pricePerNight: 80,
-      securityDeposit: 800,
-      applicationFee: 35,
-      bedrooms: 2,
-      bathrooms: 1,
-      squareFeet: 900,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: false,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking],
-      highlights: [Highlight.GreatView, Highlight.CloseToTransit],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800',
-        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800'
-      ],
-      location: { address: 'Nile Street, Building 7', city: 'Wad Madani', state: 'Al Jazirah', country: 'Sudan', postalCode: '33112', latitude: 14.3919, longitude: 33.5299 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.5, numberOfReviews: 16, guestCount: 4
-    },
-    {
-      title: 'Traditional Guesthouse',
-      description: 'Authentic Sudanese guesthouse with traditional architecture. Experience local hospitality in a comfortable setting.',
-      pricePerNight: 60,
-      securityDeposit: 600,
-      applicationFee: 25,
-      bedrooms: 3,
-      bathrooms: 2,
-      squareFeet: 1200,
-      propertyType: PropertyType.Villa,
-      isPetsAllowed: false,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking],
-      highlights: [Highlight.QuietNeighborhood],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800',
-        'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800'
-      ],
-      location: { address: 'Old Town District, House 15', city: 'Wad Madani', state: 'Al Jazirah', country: 'Sudan', postalCode: '33113', latitude: 14.4119, longitude: 33.5099 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.4, numberOfReviews: 21, guestCount: 6
-    },
-
-    // KASSALA - 3 Listings
-    {
-      title: 'Mountain View Cottage',
-      description: 'Charming cottage with beautiful views of the Taka Mountains. Features traditional Sudanese architecture with modern comforts.',
-      pricePerNight: 80,
-      securityDeposit: 800,
-      applicationFee: 30,
-      bedrooms: 2,
-      bathrooms: 1,
-      squareFeet: 800,
-      propertyType: PropertyType.Cottage,
-      isPetsAllowed: true,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.PetsAllowed],
-      highlights: [Highlight.GreatView, Highlight.QuietNeighborhood],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800',
-        'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800',
-        'https://images.unsplash.com/photo-1502005229762-cf1b2da7c5d6?w=800'
-      ],
-      location: { address: 'Mountain District, Cottage 7', city: 'Kassala', state: 'Kassala', country: 'Sudan', postalCode: '44111', latitude: 15.4507, longitude: 36.3999 },
-      isPublished: true, draft: false, instantBook: false, averageRating: 4.7, numberOfReviews: 16, guestCount: 4
-    },
-    {
-      title: 'Taka Mountain Lodge',
-      description: 'Rustic lodge at the foot of Taka Mountains. Perfect base for hiking and exploring the natural beauty of Kassala.',
-      pricePerNight: 95,
-      securityDeposit: 950,
-      applicationFee: 40,
-      bedrooms: 3,
-      bathrooms: 2,
-      squareFeet: 1100,
-      propertyType: PropertyType.Cottage,
-      isPetsAllowed: true,
-      isParkingIncluded: true,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi, Amenity.Parking, Amenity.PetsAllowed],
-      highlights: [Highlight.GreatView, Highlight.QuietNeighborhood],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800',
-        'https://images.unsplash.com/photo-1555854877-bab0e5b6856c?w=800',
-        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800'
-      ],
-      location: { address: 'Taka Foothills, Lodge 2', city: 'Kassala', state: 'Kassala', country: 'Sudan', postalCode: '44112', latitude: 15.4607, longitude: 36.4099 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.8, numberOfReviews: 11, guestCount: 6
-    },
-    {
-      title: 'City Center Flat',
-      description: 'Convenient apartment in the center of Kassala. Walking distance to markets, restaurants, and local attractions.',
-      pricePerNight: 55,
-      securityDeposit: 550,
-      applicationFee: 25,
-      bedrooms: 1,
-      bathrooms: 1,
-      squareFeet: 450,
-      propertyType: PropertyType.Apartment,
-      isPetsAllowed: false,
-      isParkingIncluded: false,
-      amenities: [Amenity.AirConditioning, Amenity.WiFi],
-      highlights: [Highlight.CloseToTransit],
-      photoUrls: [
-        'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'
-      ],
-      location: { address: 'Central Kassala, Building 5', city: 'Kassala', state: 'Kassala', country: 'Sudan', postalCode: '44113', latitude: 15.4407, longitude: 36.3899 },
-      isPublished: true, draft: false, instantBook: true, averageRating: 4.2, numberOfReviews: 33, guestCount: 2
-    }
-  ]
-
-  // Create listings with locations
-  console.log('🏠 Creating Sudanese listings with locations...')
-
-  let publishedCount = 0
-
-  for (const listing of listingData) {
-    try {
-      const location = await prisma.location.create({
-        data: listing.location
-      })
-
-      await prisma.listing.create({
-        data: {
-          title: listing.title,
-          description: listing.description,
-          pricePerNight: listing.pricePerNight,
-          securityDeposit: listing.securityDeposit,
-          applicationFee: listing.applicationFee,
-          bedrooms: listing.bedrooms,
-          bathrooms: listing.bathrooms,
-          squareFeet: listing.squareFeet,
-          propertyType: listing.propertyType,
-          isPetsAllowed: listing.isPetsAllowed,
-          isParkingIncluded: listing.isParkingIncluded,
-          amenities: listing.amenities,
-          highlights: listing.highlights,
-          photoUrls: listing.photoUrls,
-          locationId: location.id,
-          hostId: manager.id,
-          isPublished: listing.isPublished,
-          draft: listing.draft,
-          instantBook: listing.instantBook,
-          averageRating: listing.averageRating,
-          numberOfReviews: listing.numberOfReviews,
-          guestCount: listing.guestCount,
-          postedDate: new Date()
-        }
-      })
-
-      publishedCount++
-      console.log(`✅ Created: ${listing.title} (${listing.location.city})`)
-    } catch (error) {
-      console.error(`❌ Error creating ${listing.title}:`, error)
-    }
+  if (process.env.NODE_ENV === 'production' && !process.env.FORCE_SEED) {
+    throw new Error('Refusing to seed production without FORCE_SEED=1');
   }
 
-  console.log('\n🎉 Sudan listings seed completed!')
-  console.log(`📊 Total listings created: ${publishedCount}`)
-  console.log(`\n🌍 Cities: Khartoum (8), Omdurman (6), Khartoum Bahri (4), Port Sudan (4), Wad Madani (3), Kassala (3)`)
+  const started = Date.now();
+  console.log(`🏠 Homes seed — 20 Port Sudan hosts × 5 listings, password "${DEMO_PASSWORD}"\n`);
+
+  // 1. Wipe homes-vertical tables in FK-safe order (keep User to preserve real accounts — upsert hosts)
+  console.log('🧹 Clearing homes tables...');
+  await prisma.review.deleteMany();
+  await prisma.blockedDate.deleteMany();
+  await prisma.seasonalPricing.deleteMany();
+  await prisma.booking.deleteMany();
+  await prisma.application.deleteMany();
+  await prisma.lease.deleteMany();
+  await prisma.tenant.deleteMany();
+  await prisma.listing.deleteMany();
+  await prisma.location.deleteMany();
+  console.log('✅ Cleared\n');
+
+  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
+
+  // 2. Upsert 20 host users
+  //    Email localpart drops hyphens — `ahmed-altayeb` → `ahmedaltayeb@mkan.org`.
+  //    Username keeps the slug with hyphens so login still works with either form.
+  console.log('👥 Upserting hosts...');
+  const hostUsers = await Promise.all(
+    HOSTS.map((h) => {
+      const email = `${h.slug.replace(/-/g, '')}@mkan.org`;
+      return prisma.user.upsert({
+        where: { email },
+        update: { username: h.slug, password: passwordHash, role: 'MANAGER', emailVerified: new Date() },
+        create: {
+          email,
+          username: h.slug,
+          password: passwordHash,
+          role: 'MANAGER',
+          emailVerified: new Date(),
+        },
+      });
+    }),
+  );
+  console.log(`✅ ${hostUsers.length} hosts ready\n`);
+
+  // 3. Upsert 5 guest users for bookings
+  console.log('🧳 Upserting guests...');
+  const guestUsers = await Promise.all(
+    Array.from({ length: GUEST_COUNT }, (_, i) => i + 1).map((n) =>
+      prisma.user.upsert({
+        where: { email: `traveler${n}@mkan.org` },
+        update: { username: `traveler${n}`, password: passwordHash, emailVerified: new Date() },
+        create: {
+          email: `traveler${n}@mkan.org`,
+          username: `traveler${n}`,
+          password: passwordHash,
+          role: 'USER',
+          emailVerified: new Date(),
+        },
+      }),
+    ),
+  );
+  console.log(`✅ ${guestUsers.length} guests ready\n`);
+
+  // 4. Create 100 Locations + Listings (5 per host)
+  console.log('🏠 Creating locations + listings...');
+  const listings: { id: number; type: PropertyType; price: number; cleaningFee: number }[] = [];
+
+  for (let idx = 1; idx <= 100; idx++) {
+    const district = DISTRICTS[(idx - 1) % DISTRICTS.length]!;
+    const adj = ADJECTIVES[(idx - 1) % ADJECTIVES.length]!;
+    const type = PROPERTY_CYCLE[(idx - 1) % PROPERTY_CYCLE.length]!;
+    const spec = specFor(type, idx);
+    const host = hostUsers[Math.floor((idx - 1) / 5)]!;
+
+    const photoSlice = [
+      PHOTO_POOL[(idx - 1) % PHOTO_POOL.length]!,
+      PHOTO_POOL[idx % PHOTO_POOL.length]!,
+      PHOTO_POOL[(idx + 1) % PHOTO_POOL.length]!,
+      PHOTO_POOL[(idx + 2) % PHOTO_POOL.length]!,
+    ];
+
+    const location = await prisma.location.create({
+      data: {
+        address: `${district} Street, Building ${idx}`,
+        city: 'Port Sudan',
+        state: 'Red Sea',
+        country: 'Sudan',
+        postalCode: String(idx).padStart(5, '0'),
+        latitude: 19.58 + ((idx * 7) % 80) / 1000,
+        longitude: 37.19 + ((idx * 13) % 70) / 1000,
+      },
+    });
+
+    const listing = await prisma.listing.create({
+      data: {
+        title: `${adj} ${type} in ${district} Street, Building ${idx}`,
+        description: `Comfortable ${type.toLowerCase()} in Port Sudan, within easy reach of the Red Sea coast and the city center. Ideal for short and long stays.`,
+        pricePerNight: spec.price,
+        securityDeposit: spec.price * 5,
+        applicationFee: spec.cleaningFee + 5,
+        photoUrls: photoSlice,
+        amenities: amenitiesFor(type),
+        highlights: [Highlight.GreatView, Highlight.RecentlyRenovated, Highlight.CloseToTransit],
+        isPetsAllowed: idx % 3 === 0,
+        isParkingIncluded: [PropertyType.Villa, PropertyType.Townhouse, PropertyType.Apartment, PropertyType.Cottage].includes(type),
+        bedrooms: spec.bedrooms,
+        bathrooms: spec.bathrooms,
+        squareFeet: spec.sqft,
+        guestCount: spec.guests,
+        propertyType: type,
+        postedDate: addDays(new Date(), -(idx % 60)),
+        draft: false,
+        isPublished: true,
+        instantBook: idx % 2 === 0,
+        locationId: location.id,
+        hostId: host.id,
+        cleaningFee: spec.cleaningFee,
+        cancellationPolicy: CANCELLATION_CYCLE[(idx - 1) % CANCELLATION_CYCLE.length]!,
+        checkInTime: '15:00',
+        checkOutTime: '11:00',
+        minStay: 1 + (idx % 3),
+        maxStay: 28 + (idx % 90),
+      },
+    });
+
+    listings.push({ id: listing.id, type, price: spec.price, cleaningFee: spec.cleaningFee });
+  }
+  console.log(`✅ ${listings.length} listings created\n`);
+
+  // 5. Bookings: 3 per listing (2 completed + 1 future confirmed)
+  console.log('📆 Creating bookings...');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const BOOKING_SLOTS = [
+    { dayOffset: -90, nights: 3, status: BookingStatus.Completed },
+    { dayOffset: -45, nights: 2, status: BookingStatus.Completed },
+    { dayOffset:  40, nights: 4, status: BookingStatus.Confirmed },
+  ];
+
+  const bookings: { id: number; listingId: number; guestId: string; checkedOutAt: Date | null; status: BookingStatus }[] = [];
+
+  for (const l of listings) {
+    for (const slot of BOOKING_SLOTS) {
+      const checkIn = addDays(today, slot.dayOffset);
+      const checkOut = addDays(checkIn, slot.nights);
+      const guest = guestUsers[(l.id * 3 + slot.dayOffset + 99) % guestUsers.length]!;
+      const subtotal = l.price * slot.nights;
+      const serviceFee = subtotal * 0.1;
+      const total = subtotal + l.cleaningFee + serviceFee;
+
+      const booking = await prisma.booking.create({
+        data: {
+          listingId: l.id,
+          guestId: guest.id,
+          checkIn,
+          checkOut,
+          guestCount: 1 + (l.id % 3),
+          nightlyRate: l.price,
+          nightsCount: slot.nights,
+          subtotal,
+          cleaningFee: l.cleaningFee,
+          serviceFee,
+          totalPrice: total,
+          status: slot.status,
+          confirmedAt: addDays(checkIn, -10),
+          checkedInAt: slot.status === BookingStatus.Completed ? checkIn : null,
+          checkedOutAt: slot.status === BookingStatus.Completed ? checkOut : null,
+        },
+      });
+      bookings.push({ id: booking.id, listingId: l.id, guestId: guest.id, checkedOutAt: booking.checkedOutAt, status: slot.status });
+    }
+  }
+  console.log(`✅ ${bookings.length} bookings created\n`);
+
+  // 6. Reviews — one per completed booking
+  console.log('⭐ Creating reviews...');
+  let reviewCount = 0;
+  for (const b of bookings) {
+    if (b.status !== BookingStatus.Completed || !b.checkedOutAt) continue;
+    await prisma.review.create({
+      data: {
+        listingId: b.listingId,
+        bookingId: b.id,
+        reviewerId: b.guestId,
+        rating: 3 + ((b.id * 7) % 3),
+        comment: REVIEW_COMMENTS[b.id % REVIEW_COMMENTS.length]!,
+        cleanliness: 4 + ((b.id * 3 % 10) / 10),
+        accuracy: 4 + ((b.id * 5 % 10) / 10),
+        checkIn: 4 + ((b.id * 7 % 10) / 10),
+        communication: 4 + ((b.id * 11 % 10) / 10),
+        location: 4 + ((b.id * 13 % 10) / 10),
+        value: 4 + ((b.id * 17 % 10) / 10),
+        createdAt: addDays(b.checkedOutAt, 1),
+      },
+    });
+    reviewCount++;
+  }
+  console.log(`✅ ${reviewCount} reviews created\n`);
+
+  // 7. Seasonal pricing + blocked dates
+  console.log('🎉 Creating seasonal pricing + blocked dates...');
+  for (const l of listings) {
+    await prisma.seasonalPricing.createMany({
+      data: [
+        {
+          listingId: l.id,
+          name: 'Ramadan Premium',
+          startDate: addDays(today, 120),
+          endDate: addDays(today, 150),
+          pricePerNight: Math.round(l.price * 1.4),
+          minStay: 3,
+        },
+        {
+          listingId: l.id,
+          name: 'Red Sea Summer Season',
+          startDate: addDays(today, 60),
+          endDate: addDays(today, 105),
+          pricePerNight: Math.round(l.price * 1.25),
+          minStay: 2,
+        },
+      ],
+    });
+    await prisma.blockedDate.create({
+      data: {
+        listingId: l.id,
+        startDate: addDays(today, 10 + (l.id % 20)),
+        endDate: addDays(today, 14 + (l.id % 20)),
+        reason: ['Host unavailable', 'Maintenance', 'Personal use', 'Cleaning deep-clean'][l.id % 4],
+      },
+    });
+  }
+  console.log(`✅ seasonal + blocked ready\n`);
+
+  // 8. Update per-listing averageRating + numberOfReviews
+  console.log('📊 Computing per-listing rating aggregates...');
+  const aggregates = await prisma.review.groupBy({
+    by: ['listingId'],
+    _avg: { rating: true },
+    _count: { _all: true },
+  });
+  await Promise.all(
+    aggregates.map((a) =>
+      prisma.listing.update({
+        where: { id: a.listingId },
+        data: {
+          averageRating: a._avg.rating ?? 0,
+          numberOfReviews: a._count._all,
+        },
+      }),
+    ),
+  );
+  console.log(`✅ Aggregates updated for ${aggregates.length} listings\n`);
+
+  // 9. Summary
+  const elapsed = ((Date.now() - started) / 1000).toFixed(1);
+  console.log(`═══════════════════════════════════════════════════════════════`);
+  console.log(`🎉 Homes seed completed in ${elapsed}s`);
+  console.log(`═══════════════════════════════════════════════════════════════`);
+  console.log(`📊 Totals:`);
+  console.log(`   • ${hostUsers.length} hosts`);
+  console.log(`   • ${guestUsers.length} guests`);
+  console.log(`   • ${listings.length} listings (all Port Sudan)`);
+  console.log(`   • ${bookings.length} bookings (${reviewCount} completed with reviews)`);
+  console.log(`   • ${listings.length * 2} seasonal pricing entries`);
+  console.log(`   • ${listings.length} blocked-date windows`);
+  console.log('');
+  console.log(`🔐 Demo credentials (password for ALL: "${DEMO_PASSWORD}")`);
+  console.log(`   ${'Username'.padEnd(22)} ${'Email'.padEnd(40)} Display name`);
+  console.log(`   ${'─'.repeat(22)} ${'─'.repeat(40)} ${'─'.repeat(22)}`);
+  for (const h of HOSTS) {
+    console.log(`   ${h.slug.padEnd(22)} ${`${h.slug.replace(/-/g, '')}@mkan.org`.padEnd(40)} ${h.displayName}`);
+  }
+  console.log('');
+  console.log(`🌐 Test URLs:`);
+  console.log(`   Public browse:   /en/listings`);
+  console.log(`   Host dashboard:  /en/hosting`);
+  console.log(`   Demo logins:     /en/dev/credentials`);
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seed failed:', e)
-    process.exit(1)
+    console.error('❌ Seed failed:', e);
+    process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect()
-  })
+    await prisma.$disconnect();
+  });

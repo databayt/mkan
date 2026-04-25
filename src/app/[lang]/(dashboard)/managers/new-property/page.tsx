@@ -11,6 +11,7 @@ import { AmenityEnum, HighlightEnum, PropertyTypeEnum } from "@/lib/constants";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { useForm } from "react-hook-form";
+import type { z } from "zod";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
@@ -21,7 +22,7 @@ const NewProperty = () => {
   const pathname = usePathname();
   const dict = useDictionary();
 
-  const form = useForm<PropertyFormData>({
+  const form = useForm<z.input<typeof propertySchema>, unknown, PropertyFormData>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
       name: "",

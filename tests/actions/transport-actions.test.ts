@@ -62,10 +62,21 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
+  canOverride: (session: { user?: { id?: string; role?: string } } | null | undefined, ownerId: string | null | undefined) =>
+    (!!session?.user?.id && session.user.id === ownerId) ||
+    session?.user?.role === "ADMIN" ||
+    session?.user?.role === "SUPER_ADMIN",
+  isAdminOrSuper: (session: { user?: { role?: string } } | null | undefined) =>
+    session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN",
+  isSuperAdmin: (session: { user?: { role?: string } } | null | undefined) =>
+    session?.user?.role === "SUPER_ADMIN",
 }));
 
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+  updateTag: vi.fn(),
+  unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
 }));
 
 vi.mock("@/lib/sanitization", () => ({
@@ -702,6 +713,10 @@ describe("updateTrip", () => {
   it("updates trip and returns success", async () => {
     mockAuth.mockResolvedValue(session as never);
     const trip = { id: 1, price: 200 };
+    // Owner-scope check fetches existing trip first.
+    mockDb.trip.findUnique.mockResolvedValue({
+      route: { office: { ownerId: "user-1" } },
+    } as never);
     mockDb.trip.update.mockResolvedValue(trip as never);
 
     const result = await updateTrip(1, { price: 200 });
@@ -719,6 +734,9 @@ describe("cancelTrip", () => {
   it("sets isCancelled to true", async () => {
     mockAuth.mockResolvedValue(session as never);
     const trip = { id: 1, isCancelled: true };
+    mockDb.trip.findUnique.mockResolvedValue({
+      route: { office: { ownerId: "user-1" } },
+    } as never);
     mockDb.trip.update.mockResolvedValue(trip as never);
 
     const result = await cancelTrip(1);
@@ -929,6 +947,11 @@ describe("confirmBooking", () => {
   it("sets status to Confirmed and updates seats to Booked", async () => {
     mockAuth.mockResolvedValue(session as never);
     const booking = { id: 1, status: "Confirmed" };
+    // Owner-scope check looks up the booking first.
+    mockDb.transportBooking.findUnique.mockResolvedValue({
+      userId: "user-1",
+      trip: { route: { office: { ownerId: "user-1" } } },
+    } as never);
     mockDb.transportBooking.update.mockResolvedValue(booking as never);
     mockDb.seat.updateMany.mockResolvedValue({ count: 2 } as never);
 
@@ -936,7 +959,9 @@ describe("confirmBooking", () => {
     expect(result).toEqual({ success: true, booking });
     expect(mockDb.seat.updateMany).toHaveBeenCalledWith({
       where: { bookingId: 1 },
-      data: { status: "Booked" },
+      // reservedUntil is cleared on confirm so the seat-TTL sweeper
+      // doesn't later try to release a genuinely-booked seat.
+      data: { status: "Booked", reservedUntil: null },
     });
   });
 });
@@ -957,7 +982,13 @@ describe("cancelBooking", () => {
 
   it("releases seats and increments available seats count", async () => {
     mockAuth.mockResolvedValue(session as never);
-    const booking = { id: 1, tripId: 5, seats: [{ id: 10 }, { id: 11 }] };
+    const booking = {
+      id: 1,
+      tripId: 5,
+      userId: "user-1",
+      seats: [{ id: 10 }, { id: 11 }],
+      trip: { route: { office: { ownerId: "user-1" } } },
+    };
     mockDb.transportBooking.findUnique.mockResolvedValue(booking as never);
     mockDb.seat.updateMany.mockResolvedValue({ count: 2 } as never);
     mockDb.transportBooking.update.mockResolvedValue({
@@ -981,7 +1012,14 @@ describe("cancelBooking", () => {
 
 describe("getBooking", () => {
   it("returns booking with all relations", async () => {
-    const booking = { id: 1, trip: {}, seats: [], payments: [] };
+    mockAuth.mockResolvedValue(session as never);
+    const booking = {
+      id: 1,
+      userId: "user-1",
+      trip: { route: { office: { ownerId: "user-1" } } },
+      seats: [],
+      payments: [],
+    };
     mockDb.transportBooking.findUnique.mockResolvedValue(booking as never);
 
     const result = await getBooking(1);
@@ -1067,9 +1105,13 @@ describe("processPayment", () => {
 
   it("creates Paid payment for CreditCard and confirms booking", async () => {
     mockAuth.mockResolvedValue(session as never);
+    // First lookup for processPayment + second lookup (owner check inside
+    // confirmBooking) — both must include nested office.
     mockDb.transportBooking.findUnique.mockResolvedValue({
       id: 1,
+      userId: "user-1",
       totalAmount: 200,
+      trip: { route: { office: { ownerId: "user-1" } } },
     } as never);
     const payment = { id: 1, status: "Paid" };
     mockDb.transportPayment.create.mockResolvedValue(payment as never);
@@ -1098,11 +1140,23 @@ describe("verifyPayment", () => {
 
   it("sets payment to Paid and confirms the booking", async () => {
     mockAuth.mockResolvedValue(session as never);
+    // Owner-scope lookup chained through booking → trip → route → office.
+    mockDb.transportPayment.findUnique = vi.fn().mockResolvedValue({
+      id: 1,
+      bookingId: 5,
+      booking: {
+        trip: { route: { office: { ownerId: "user-1" } } },
+      },
+    } as never) as never;
     mockDb.transportPayment.update.mockResolvedValue({
       id: 1,
       bookingId: 5,
     } as never);
-    // confirmBooking mocks
+    // confirmBooking uses this lookup and the nested office.
+    mockDb.transportBooking.findUnique.mockResolvedValue({
+      userId: "user-1",
+      trip: { route: { office: { ownerId: "user-1" } } },
+    } as never);
     mockDb.transportBooking.update.mockResolvedValue({} as never);
     mockDb.seat.updateMany.mockResolvedValue({} as never);
 

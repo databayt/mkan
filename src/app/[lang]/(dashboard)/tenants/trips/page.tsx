@@ -11,8 +11,12 @@ import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import Link from 'next/link';
 import { getMyBookings } from '@/lib/actions/transport-actions';
+import { getGuestBookings, cancelBooking } from '@/lib/actions/booking-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { useLocale } from '@/components/internationalization/use-locale';
+import { useParams } from 'next/navigation';
+import { toast } from 'sonner';
+import { useTransition } from 'react';
 
 interface TransportBooking {
   id: number;
@@ -44,20 +48,42 @@ interface TransportBooking {
   _count: { seats: number };
 }
 
+interface HomeBooking {
+  id: number;
+  checkIn: Date;
+  checkOut: Date;
+  guestCount: number;
+  totalPrice: number;
+  status: string;
+  listing: {
+    id: number;
+    title: string | null;
+    photoUrls: string[];
+    location: { city: string; country: string } | null;
+  };
+}
+
 const TripsPage = () => {
   const dict = useDictionary();
   const { locale } = useLocale();
+  const params = useParams();
+  const lang = (params?.lang as string) ?? 'en';
   const dateLocale = locale === 'ar' ? ar : enUS;
   const [transportBookings, setTransportBookings] = useState<TransportBooking[]>([]);
+  const [homeBookings, setHomeBookings] = useState<HomeBooking[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const result = await getMyBookings();
-        setTransportBookings((result?.bookings || []) as unknown as TransportBooking[]);
+        const [transportResult, homeResult] = await Promise.all([
+          getMyBookings().catch(() => null),
+          getGuestBookings().catch(() => null),
+        ]);
+        setTransportBookings((transportResult?.bookings || []) as unknown as TransportBooking[]);
+        setHomeBookings(((homeResult as { bookings?: HomeBooking[] } | null)?.bookings || []) as HomeBooking[]);
       } catch (error) {
-        console.error('Failed to fetch transport bookings:', error);
+        console.error('Failed to fetch bookings:', error);
       } finally {
         setLoading(false);
       }
@@ -87,6 +113,25 @@ const TripsPage = () => {
   const pastTransport = transportBookings.filter(
     (b) => new Date(b.trip.departureDate) < new Date() || b.status === 'Cancelled'
   );
+  const upcomingStays = homeBookings.filter(
+    (b) => new Date(b.checkOut) >= new Date() && b.status !== 'Cancelled'
+  );
+  const pastStays = homeBookings.filter(
+    (b) => new Date(b.checkOut) < new Date() || b.status === 'Cancelled'
+  );
+
+  const handleCancelStay = async (id: number) => {
+    if (!window.confirm(dict.booking?.cancelConfirm ?? 'Cancel this booking?')) return;
+    try {
+      await cancelBooking(id);
+      setHomeBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status: 'Cancelled' } : b))
+      );
+      toast.success('Booking cancelled');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not cancel');
+    }
+  };
 
   if (loading) {
     return (
@@ -118,23 +163,66 @@ const TripsPage = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="stays" className="mt-6">
+        <TabsContent value="stays" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>{dict.dashboard?.tenantTrips?.rentalStays ?? "Rental Stays"}</CardTitle>
-              <CardDescription>{dict.dashboard?.tenantTrips?.rentalStaysSubtitle ?? "Your property rental bookings"}</CardDescription>
+              <CardTitle>Upcoming stays</CardTitle>
+              <CardDescription>
+                {dict.dashboard?.tenantTrips?.rentalStaysSubtitle ?? "Your property rental bookings"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 text-gray-500">
-                <Home className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>{dict.dashboard?.tenantTrips?.noRentalStays ?? "No rental stays yet"}</p>
-                <p className="text-sm">{dict.dashboard?.tenantTrips?.browseProperties ?? "Browse properties to book your first stay"}</p>
-                <Button asChild className="mt-4">
-                  <Link href="/search">{dict.dashboard?.tenantTrips?.browsePropertiesBtn ?? "Browse Properties"}</Link>
-                </Button>
-              </div>
+              {upcomingStays.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Home className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>{dict.dashboard?.tenantTrips?.noRentalStays ?? "No upcoming stays"}</p>
+                  <p className="text-sm">
+                    {dict.dashboard?.tenantTrips?.browseProperties ?? "Browse properties to book your first stay"}
+                  </p>
+                  <Button asChild className="mt-4">
+                    <Link href={`/${lang}/listings`}>
+                      {dict.dashboard?.tenantTrips?.browsePropertiesBtn ?? "Browse Properties"}
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {upcomingStays.map((stay) => (
+                    <HomeBookingCard
+                      key={stay.id}
+                      booking={stay}
+                      lang={lang}
+                      dict={dict}
+                      getStatusColor={getStatusColor}
+                      onCancel={() => handleCancelStay(stay.id)}
+                    />
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {pastStays.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Past stays</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {pastStays.map((stay) => (
+                    <HomeBookingCard
+                      key={stay.id}
+                      booking={stay}
+                      lang={lang}
+                      dict={dict}
+                      getStatusColor={getStatusColor}
+                      isPast
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="transport" className="mt-6 space-y-6">
@@ -187,6 +275,73 @@ const TripsPage = () => {
           )}
         </TabsContent>
       </Tabs>
+    </div>
+  );
+};
+
+interface HomeBookingCardProps {
+  booking: HomeBooking;
+  lang: string;
+  dict: ReturnType<typeof useDictionary>;
+  getStatusColor: (status: string) => string;
+  isPast?: boolean;
+  onCancel?: () => void;
+}
+
+const HomeBookingCard = ({ booking, lang, dict, getStatusColor, isPast, onCancel }: HomeBookingCardProps) => {
+  const [isPending, startTransition] = useTransition();
+  const cover = booking.listing.photoUrls?.[0];
+  const loc = booking.listing.location;
+
+  return (
+    <div className={`border rounded-lg p-4 ${isPast ? 'opacity-75' : ''}`}>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Badge className={getStatusColor(booking.status)}>{booking.status}</Badge>
+          </div>
+          <div className="text-lg font-medium">{booking.listing.title ?? "Untitled stay"}</div>
+          {loc && (
+            <div className="flex items-center gap-1 text-sm text-gray-600">
+              <MapPin className="h-4 w-4" />
+              {loc.city}, {loc.country}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              {new Date(booking.checkIn).toLocaleDateString()} →{" "}
+              {new Date(booking.checkOut).toLocaleDateString()}
+            </div>
+            <div>{booking.guestCount} {dict.booking?.guestsPlural ?? "guests"}</div>
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <div className="text-xl font-bold">
+            {(dict.common as Record<string, string> | undefined)?.currency ?? "$"}
+            {booking.totalPrice.toLocaleString()}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/${lang}/bookings/${booking.id}`}>
+                <Eye className="h-4 w-4 me-1" />
+                {dict.dashboard?.common?.view ?? "View"}
+              </Link>
+            </Button>
+            {cover && <span className="hidden" aria-hidden>{cover}</span>}
+            {!isPast && booking.status !== 'Cancelled' && onCancel && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isPending}
+                onClick={() => startTransition(onCancel)}
+              >
+                {dict.booking?.cancel ?? "Cancel"}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

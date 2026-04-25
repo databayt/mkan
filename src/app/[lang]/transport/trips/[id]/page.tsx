@@ -155,13 +155,54 @@ export default function TripDetailsPage() {
     );
   }
 
+  // Extra translations not yet in the schema-driven dictionary type — cast
+  // through a permissive lookup so missing keys don't block compilation.
+  const td = t as unknown as Record<string, Record<string, string>>;
+  const tTrip = td.trip ?? {};
+  const tCommon = td.common ?? {};
+
   if (!trip) {
     return (
       <div className="container mx-auto py-8 px-4 text-center">
-        <h1 className="text-2xl font-bold">Trip not found</h1>
+        <h1 className="text-2xl font-bold">{tTrip.notFound ?? 'Trip not found'}</h1>
         <Button onClick={() => router.back()} className="mt-4">
-          Go Back
+          {tCommon.back ?? 'Go Back'}
         </Button>
+      </div>
+    );
+  }
+
+  // Unavailable-state guards run before the seat picker renders so a
+  // cancelled / departed / fully-booked trip never lands a user in the
+  // booking form with no way forward.
+  const now = new Date();
+  const hasDeparted = new Date(trip.departureDate) < now;
+  const isCancelled = Boolean((trip as { isCancelled?: boolean }).isCancelled);
+  const isSoldOut = (trip.availableSeats ?? 0) <= 0 && !isCancelled && !hasDeparted;
+
+  if (isCancelled || hasDeparted || isSoldOut) {
+    const title = isCancelled
+      ? (tTrip.cancelled ?? 'This trip was cancelled')
+      : hasDeparted
+        ? (tTrip.departed ?? 'This trip has already departed')
+        : (tTrip.soldOut ?? 'This trip is fully booked');
+    const hint = isCancelled
+      ? (tTrip.cancelledHint ?? 'The operator cancelled this trip. Search for an alternative below.')
+      : hasDeparted
+        ? (tTrip.departedHint ?? 'Search for an upcoming departure on the same route.')
+        : (tTrip.soldOutHint ?? 'All seats are taken. Try another trip on this route.');
+    return (
+      <div className="container mx-auto py-12 px-4 max-w-xl text-center space-y-4">
+        <h1 className="text-2xl font-semibold">{title}</h1>
+        <p className="text-muted-foreground">{hint}</p>
+        <div className="flex items-center justify-center gap-3">
+          <Button variant="outline" onClick={() => router.back()}>
+            {tCommon.back ?? 'Back'}
+          </Button>
+          <Button onClick={() => router.push(`/${lang}/transport`)}>
+            {tTrip.findAnother ?? 'Find another trip'}
+          </Button>
+        </div>
       </div>
     );
   }

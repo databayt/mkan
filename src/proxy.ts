@@ -59,8 +59,68 @@ function isProtectedRoute(path: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Origin check (CSRF defense-in-depth beyond NextAuth's own token)
+// ---------------------------------------------------------------------------
+
+/**
+ * For state-changing methods, require Origin header to match Host header.
+ * Blocks cross-origin form posts from attacker-controlled pages that ride
+ * the victim's session cookie. Browsers omit Origin on top-level form GETs
+ * but send it on POST/PUT/PATCH/DELETE, so same-origin flows pass cleanly.
+ */
+function isOriginMismatch(request: NextRequest): boolean {
+  const method = request.method.toUpperCase();
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return false;
+
+  const origin = request.headers.get('origin');
+  const host = request.headers.get('host');
+  if (!origin || !host) return false;
+
+  // ALLOWED_ORIGINS lets staging/preview environments accept known external
+  // origins (Stripe webhooks, Vercel preview frames, etc.). Comma-separated.
+  const extraOrigins = (process.env.ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  try {
+    const originHost = new URL(origin).host;
+    if (originHost === host) return false;
+    if (extraOrigins.some((allowed) => origin === allowed)) return false;
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Security headers
 // ---------------------------------------------------------------------------
+
+function buildCsp(options: { isDev: boolean }): string {
+  // unsafe-eval is required by Next dev for HMR. In production it's dropped.
+  // unsafe-inline is retained until Phase 4 ships per-request nonce threading
+  // through `next/headers` into inline <script> tags (see plan EPIC F2.S5 and
+  // Phase 4 Q3). Removing it prematurely breaks Next.js inline bootstrap.
+  const scriptSrc = options.isDev
+    ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://api.mapbox.com https://js.stripe.com"
+    : "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://api.mapbox.com https://js.stripe.com";
+
+  return [
+    "default-src 'self'",
+    scriptSrc,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.mapbox.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: https: blob:",
+    "connect-src 'self' https://api.mapbox.com https://*.imagekit.io https://api.stripe.com https://translation.googleapis.com",
+    "frame-src 'self' https://www.google.com https://js.stripe.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests",
+  ].join('; ');
+}
 
 function addSecurityHeaders(response: NextResponse) {
   response.headers.set('X-Frame-Options', 'DENY');
@@ -72,28 +132,22 @@ function addSecurityHeaders(response: NextResponse) {
   // actually executed on a given response.
   response.headers.set('X-Mw-Ran', '1');
 
-  if (process.env.NODE_ENV === 'production') {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  if (isProduction) {
     response.headers.set(
       'Strict-Transport-Security',
       'max-age=31536000; includeSubDomains; preload'
     );
-
-    const csp = [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://api.mapbox.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.mapbox.com",
-      "font-src 'self' https://fonts.gstatic.com data:",
-      "img-src 'self' data: https: blob:",
-      "connect-src 'self' https://api.mapbox.com https://*.imagekit.io https://*.sentry.io",
-      "frame-src 'self' https://www.google.com",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-      "upgrade-insecure-requests",
-    ].join('; ');
-
-    response.headers.set('Content-Security-Policy', csp);
+    response.headers.set('Content-Security-Policy', buildCsp({ isDev: false }));
+  } else {
+    // Dev ships CSP in Report-Only mode so violations surface in the console
+    // without breaking the inner-loop. Upgrade to enforced once Phase 4 ships
+    // the nonce flow.
+    response.headers.set(
+      'Content-Security-Policy-Report-Only',
+      buildCsp({ isDev: true })
+    );
   }
 }
 
@@ -121,6 +175,16 @@ function getLocale(request: NextRequest) {
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Origin/Host check runs for every state-changing request, including API
+  // routes. NextAuth's own endpoints handle CSRF via rotating tokens, so we
+  // skip them here to avoid double-rejecting legitimate OAuth callbacks.
+  if (!pathname.startsWith(apiAuthPrefix) && isOriginMismatch(request)) {
+    return new NextResponse('Forbidden: cross-origin request blocked', {
+      status: 403,
+      headers: { 'X-Mw-Ran': '1' },
+    });
+  }
 
   // Skip proxy for static files, API routes, and auth API
   if (

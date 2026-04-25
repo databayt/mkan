@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth, canOverride } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { validateImageFile } from '@/lib/imagekit';
 import { rateLimitWithFallback, rateLimitResponse } from '@/lib/rate-limit';
@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
         select: { hostId: true, photoUrls: true },
       });
 
-      // Verify ownership
-      if (listing?.hostId !== session.user.id) {
+      // Verify ownership (admins bypass)
+      if (!listing || !canOverride(session, listing.hostId)) {
         return NextResponse.json(
           { error: 'Unauthorized to update this listing' },
           { status: 403 }
@@ -121,8 +121,8 @@ export async function DELETE(request: NextRequest) {
         select: { hostId: true, photoUrls: true },
       });
 
-      // Verify ownership
-      if (listing?.hostId !== session.user.id) {
+      // Verify ownership (admins bypass)
+      if (!listing || !canOverride(session, listing.hostId)) {
         return NextResponse.json(
           { error: 'Unauthorized to update this listing' },
           { status: 403 }

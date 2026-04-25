@@ -21,11 +21,17 @@ export async function generateMetadata({
   });
 }
 import { getListings } from "@/components/host/actions";
+import { db } from "@/lib/db";
 import ListingsHeader from "@/components/listings/listings-header";
 import MobileListingsHeader from "@/components/listings/mobile-listings-header";
 import { PropertyContent } from "@/components/listings/property/content";
+import { ListingsFiltersPanel } from "@/components/listings/filters-panel";
+import { ListingsPagination } from "@/components/listings/pagination";
 import { Listing } from "@/types/listing";
 import { type SearchFilters } from "@/lib/schemas/search-schema";
+import { Amenity, PropertyType } from "@prisma/client";
+
+const PAGE_SIZE = 20;
 
 interface ListingsPageProps {
   searchParams: Promise<{
@@ -79,35 +85,11 @@ async function getFilteredListings(searchParams: ListingsPageProps["searchParams
     if (hi) legacyPriceMax = hi;
   }
 
-  const hasFilters = Boolean(
-    params.location ||
-    params.guests ||
-    params.checkIn ||
-    params.checkOut ||
-    params.priceMin ||
-    params.priceMax ||
-    params.priceRange ||
-    params.beds ||
-    params.baths ||
-    params.propertyType ||
-    rawAmenities.length > 0
-  );
-
-  // If no search filters, get all published listings (unpaginated first page).
-  if (!hasFilters) {
-    try {
-      const listings = await getListings({ publishedOnly: true });
-      return listings as Listing[];
-    } catch (error) {
-      console.error("Error fetching listings:", error);
-      return [];
-    }
-  }
-
   // Pagination: `page` param is 1-indexed for humans; take/skip are 0-indexed.
   const page = Math.max(1, toInt(params.page) ?? 1);
-  const pageSize = 20;
 
+  // searchListings() runs even without filters now — it's the only path that
+  // returns both paginated data AND a total count for the pagination UI.
   const filters: SearchFilters = {
     location: params.location,
     checkIn: params.checkIn,
@@ -122,8 +104,8 @@ async function getFilteredListings(searchParams: ListingsPageProps["searchParams
     baths: toInt(params.baths, 20),
     propertyType: params.propertyType as SearchFilters["propertyType"],
     amenities: rawAmenities as SearchFilters["amenities"],
-    take: pageSize,
-    skip: (page - 1) * pageSize,
+    take: PAGE_SIZE,
+    skip: (page - 1) * PAGE_SIZE,
   };
 
   const result = await searchListings(filters);
@@ -132,14 +114,18 @@ async function getFilteredListings(searchParams: ListingsPageProps["searchParams
     console.error("Search error:", result.error);
     try {
       const listings = await getListings({ publishedOnly: true });
-      return listings as Listing[];
+      return { listings: listings as Listing[], total: listings.length, page };
     } catch (error) {
       console.error("Error fetching listings:", error);
-      return [];
+      return { listings: [] as Listing[], total: 0, page };
     }
   }
 
-  return result.data as Listing[];
+  return {
+    listings: result.data as Listing[],
+    total: result.total ?? result.data.length,
+    page,
+  };
 }
 
 function PropertySkeleton() {
@@ -157,13 +143,55 @@ function PropertySkeleton() {
 }
 
 export default async function ListingsPage({ searchParams, params: pageParams }: ListingsPageProps & { params: Promise<{ lang: "en" | "ar" }> }) {
-  // Parallelize independent data fetches — resolve params and listings concurrently
-  const [listings, params, { lang }] = await Promise.all([
+  // Parallelize independent data fetches — resolve params, listings, and
+  // the cross-catalog price bounds concurrently. Price bounds feed the
+  // filters-panel slider so it snaps to the actual catalog range.
+  const [listingsResult, params, { lang }, priceAgg] = await Promise.all([
     getFilteredListings(searchParams),
     searchParams,
     pageParams,
+    db.listing.aggregate({
+      where: { isPublished: true, draft: false, pricePerNight: { not: null } },
+      _min: { pricePerNight: true },
+      _max: { pricePerNight: true },
+    }),
   ]);
+  const { listings, total: totalListings, page: currentPage } = listingsResult;
+  const totalPages = Math.max(1, Math.ceil(totalListings / PAGE_SIZE));
   const d = await getDictionary(lang);
+
+  const priceBounds = {
+    min: priceAgg._min.pricePerNight ?? 0,
+    max: priceAgg._max.pricePerNight ?? 1000,
+  };
+
+  // Dictionary keys live at `rental.property.filters` and `rental.property.amenities`.
+  // Graceful fallbacks keep the UI readable even if a key is missing mid-rollout.
+  const rentalProperty = (d.rental?.property ?? {}) as Record<string, unknown>;
+  const rentalFilters = (rentalProperty.filters ?? {}) as Record<string, string>;
+  const rentalAmenities = (rentalProperty.amenities ?? {}) as Record<string, string>;
+  const rentalPropertyTypes = (rentalProperty.types ?? {}) as Record<string, string>;
+
+  const filtersDict = {
+    filters: {
+      title: rentalFilters.title ?? (lang === "ar" ? "الفلاتر" : "Filters"),
+      clearAll: rentalFilters.clearFilters ?? (lang === "ar" ? "مسح الكل" : "Clear all"),
+      showResults:
+        rentalFilters.showResults ?? (lang === "ar" ? "عرض {count} عقار" : "Show {count} places"),
+    },
+    price: {
+      label: rentalFilters.minPrice ?? (lang === "ar" ? "نطاق السعر" : "Price range"),
+      currency: "$",
+    },
+    bedrooms: rentalFilters.bedrooms ?? (lang === "ar" ? "غرف النوم" : "Bedrooms"),
+    bathrooms: rentalFilters.bathrooms ?? (lang === "ar" ? "الحمامات" : "Bathrooms"),
+    propertyType: rentalFilters.propertyType ?? (lang === "ar" ? "نوع العقار" : "Property type"),
+    amenitiesLabel: rentalFilters.amenities ?? (lang === "ar" ? "المرافق" : "Amenities"),
+    anyLabel: lang === "ar" ? "الكل" : "Any",
+    mobileTriggerLabel: rentalFilters.title ?? (lang === "ar" ? "الفلاتر" : "Filters"),
+    propertyTypes: rentalPropertyTypes as Partial<Record<PropertyType, string>>,
+    amenityLabels: rentalAmenities as Partial<Record<Amenity, string>>,
+  };
 
   // Build search summary for display
   const searchSummary = [];
@@ -215,9 +243,34 @@ export default async function ListingsPage({ searchParams, params: pageParams }:
           </div>
         )}
 
-        <Suspense fallback={<PropertySkeleton />}>
-          <PropertyContent properties={listings} />
-        </Suspense>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <Suspense fallback={null}>
+            <ListingsFiltersPanel
+              priceBounds={priceBounds}
+              totalListings={listings.length}
+              dict={filtersDict}
+            />
+          </Suspense>
+          <div className="flex-1 min-w-0">
+            <Suspense fallback={<PropertySkeleton />}>
+              <PropertyContent properties={listings} />
+            </Suspense>
+            <ListingsPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              lang={lang}
+              baseParams={params}
+              dict={{
+                previous: lang === "ar" ? "السابق" : "Previous",
+                next: lang === "ar" ? "التالي" : "Next",
+                pageOf:
+                  lang === "ar"
+                    ? "الصفحة {current} من {total}"
+                    : "Page {current} of {total}",
+              }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

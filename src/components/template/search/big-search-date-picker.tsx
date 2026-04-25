@@ -1,7 +1,10 @@
 "use client"
 
-import { Calendar } from "@/components/ui/calendar"
+import { ar, enUS } from "date-fns/locale"
 import { type DateRange } from "react-day-picker"
+
+import { Calendar } from "@/components/ui/calendar"
+import { useLocale } from "@/components/internationalization/use-locale"
 
 interface BigSearchDatePickerProps {
   dateRange: {
@@ -13,8 +16,10 @@ interface BigSearchDatePickerProps {
 
 export default function BigSearchDatePicker({
   dateRange,
-  onDateChange
+  onDateChange,
 }: BigSearchDatePickerProps) {
+  const { locale } = useLocale()
+
   const handleDateSelect = (range: DateRange | undefined) => {
     if (range) {
       onDateChange(range.from, range.to)
@@ -22,31 +27,15 @@ export default function BigSearchDatePicker({
   }
 
   return (
-    <div className="w-full flex justify-center">
+    <div className="flex w-full justify-center">
       <Calendar
         mode="range"
-        defaultMonth={dateRange?.from}
+        defaultMonth={dateRange?.from ?? new Date()}
+        locale={locale === "ar" ? ar : enUS}
         selected={dateRange}
         onSelect={handleDateSelect}
         numberOfMonths={2}
-        className="w-full p-0 [--cell-size:2.25rem] border-0"
-        classNames={{
-          root: "w-full border-0",
-          months: "w-full flex gap-4 border-0",
-          month: "flex-1 min-w-0 border-0",
-          week: "flex w-full mt-0 border-0",
-          caption: "py-0 text-sm border-0 mb-0",
-          table: "w-full border-collapse border-0",
-          day: "h-9 w-10 text-sm p-0 flex items-center justify-center border-0",
-          weekday: "text-sm h-8 w-10 flex items-center justify-center p-0 border-0",
-          head: "border-0",
-          head_row: "border-0",
-          head_cell: "border-0",
-          row: "border-0",
-          cell: "border-0",
-          weekdays: "flex gap-0"
-        }}
       />
     </div>
   )
-} 
+}

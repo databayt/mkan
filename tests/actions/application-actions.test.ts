@@ -48,10 +48,21 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
+  canOverride: (session: { user?: { id?: string; role?: string } } | null | undefined, ownerId: string | null | undefined) =>
+    (!!session?.user?.id && session.user.id === ownerId) ||
+    session?.user?.role === "ADMIN" ||
+    session?.user?.role === "SUPER_ADMIN",
+  isAdminOrSuper: (session: { user?: { role?: string } } | null | undefined) =>
+    session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN",
+  isSuperAdmin: (session: { user?: { role?: string } } | null | undefined) =>
+    session?.user?.role === "SUPER_ADMIN",
 }));
 
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+  updateTag: vi.fn(),
+  unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
 }));
 
 vi.mock("@/lib/sanitization", () => ({
@@ -373,7 +384,8 @@ describe("updateApplicationStatus", () => {
       id: 1,
       listing: { pricePerNight: 100, securityDeposit: 500 },
     });
-    const mockTxLeaseCreate = vi.fn().mockResolvedValue({ id: 10 });
+    const mockTxLeaseCreate = vi.fn().mockResolvedValue({ id: 10, rent: 100 });
+    const mockTxPaymentCreate = vi.fn().mockResolvedValue({ id: 50 });
 
     mockDb.$transaction.mockImplementation(async (cb: (tx: Record<string, unknown>) => unknown) =>
       cb({
@@ -382,6 +394,9 @@ describe("updateApplicationStatus", () => {
         },
         lease: {
           create: mockTxLeaseCreate,
+        },
+        payment: {
+          create: mockTxPaymentCreate,
         },
       })
     );

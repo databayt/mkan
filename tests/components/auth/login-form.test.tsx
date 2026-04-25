@@ -49,6 +49,48 @@ vi.mock("@/components/auth/form-success", () => ({
     message ? <div data-testid="form-success">{message}</div> : null,
 }));
 
+vi.mock("@/components/internationalization/dictionary-context", () => ({
+  useDictionary: () => {
+    // Mirror the component's pathname-based locale fork so tests can assert
+    // both EN and AR copy via the same mock.
+    const isAr = mocks.usePathname().startsWith("/ar");
+    return isAr
+      ? {
+          auth: {
+            signIn: "دخول",
+            signUp: "إنشاء حساب",
+            email: "البريد الإلكتروني",
+            emailOrUsername: "البريد الإلكتروني",
+            password: "كلمة المرور",
+            forgotPassword: "نسيت كلمة المرور؟",
+            alreadyHaveAccount: "لديك حساب بالفعل؟",
+            dontHaveAccount: "ليس لديك حساب",
+            welcome: "مرحبا بك في مكان",
+            continueButton: "متابعة",
+            or: "أو",
+            login: { forgotPrefix: "", noAccountPrefix: "؟ أو ", noAccountSuffix: "؟" },
+          },
+        }
+      : {
+          auth: {
+            signIn: "Login",
+            signUp: "Sign Up",
+            email: "Email",
+            emailOrUsername: "Email",
+            password: "Password",
+            forgotPassword: "Forget your password",
+            alreadyHaveAccount: "Already have an account?",
+            dontHaveAccount: "Don't have an account",
+            welcome: "Welcome to Mkan",
+            continueButton: "Continue",
+            or: "or",
+            login: { forgotPrefix: "Did you ", noAccountPrefix: "? or ", noAccountSuffix: "?" },
+          },
+        };
+  },
+  DictionaryProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 import { LoginForm } from "@/components/auth/login/form";
 
 describe("LoginForm", () => {
@@ -125,7 +167,7 @@ describe("LoginForm", () => {
     await waitFor(() => {
       expect(mocks.login).toHaveBeenCalledWith(
         expect.objectContaining({
-          email: "test@example.com",
+          identifier: "test@example.com",
           password: "password123",
         }),
         undefined

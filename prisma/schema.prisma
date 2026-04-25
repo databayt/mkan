@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Account {
@@ -62,6 +61,8 @@ model AssemblyPoint {
   routesAsOrigin      Route[]           @relation("Route_originIdToAssemblyPoint")
   transportOffices    TransportOffice[]
   rideDrivers         RideDriver[]
+
+  @@index([city, isActive])
 }
 
 // ─── Homes Vertical ─────────────────────────────────────────────────────────
@@ -174,6 +175,8 @@ model Bus {
   updatedAt    DateTime        @updatedAt
   office       TransportOffice @relation(fields: [officeId], references: [id])
   trips        Trip[]
+
+  @@index([officeId])
 }
 
 model Lease {
@@ -184,6 +187,8 @@ model Lease {
   deposit     Float
   propertyId  Int
   tenantId    String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   application Application?
   listing     Listing      @relation(fields: [propertyId], references: [id])
   tenant      Tenant       @relation(fields: [tenantId], references: [userId])
@@ -265,6 +270,8 @@ model Location {
   postalCode String
   latitude   Float
   longitude  Float
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   listings   Listing[]
 
   @@index([city, state])
@@ -289,6 +296,8 @@ model Payment {
   paymentDate   DateTime
   paymentStatus PaymentStatus
   leaseId       Int
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   lease         Lease         @relation(fields: [leaseId], references: [id])
 
   @@index([leaseId])
@@ -378,22 +387,26 @@ model Route {
 
   @@unique([officeId, originId, destinationId])
   @@index([officeId])
+  @@index([officeId, isActive])
+  @@index([originId, destinationId, isActive])
 }
 
 model Seat {
-  id         Int               @id @default(autoincrement())
-  tripId     Int
-  seatNumber String
-  row        Int
-  column     Int
-  seatType   String?
-  status     SeatStatus        @default(Available)
-  bookingId  Int?
-  booking    TransportBooking? @relation(fields: [bookingId], references: [id])
-  trip       Trip              @relation(fields: [tripId], references: [id])
+  id             Int               @id @default(autoincrement())
+  tripId         Int
+  seatNumber     String
+  row            Int
+  column         Int
+  seatType       String?
+  status         SeatStatus        @default(Available)
+  bookingId      Int?
+  reservedUntil  DateTime?
+  booking        TransportBooking? @relation(fields: [bookingId], references: [id])
+  trip           Trip              @relation(fields: [tripId], references: [id])
 
   @@unique([tripId, seatNumber])
   @@index([tripId, status])
+  @@index([reservedUntil])
 }
 
 model Session {
@@ -411,6 +424,8 @@ model Tenant {
   name         String
   email        String
   phoneNumber  String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   applications Application[]
   leases       Lease[]
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -508,6 +523,8 @@ model Trip {
 
   @@index([departureDate])
   @@index([routeId, departureDate])
+  @@index([isActive, isCancelled, departureDate])
+  @@index([routeId, departureDate, departureTime])
 }
 
 model TwoFactorConfirmation {
@@ -534,6 +551,9 @@ model User {
   password              String?
   role                  UserRole               @default(USER)
   isTwoFactorEnabled    Boolean                @default(false)
+  isSuspended           Boolean                @default(false)
+  suspendedAt           DateTime?
+  suspensionReason      String?
   lastLogin             DateTime?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
@@ -696,6 +716,7 @@ enum TransportPaymentStatus {
 }
 
 enum UserRole {
+  SUPER_ADMIN
   ADMIN
   USER
   MANAGER

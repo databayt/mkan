@@ -10,6 +10,8 @@ import HostStepLayout from '@/components/host/host-step-layout';
 import { useListing } from '@/components/host/use-listing';
 import { useHostValidation } from '@/context/onboarding-validation-context';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { uploadListingPhoto } from '@/lib/image-upload-client';
+import { toast } from 'sonner';
 
 interface PhotosPageProps {
   params: Promise<{ id: string }>;
@@ -48,38 +50,11 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
     enableNext();
   }, [enableNext]);
 
-  const uploadFileToCloudinary = async (file: File): Promise<string> => {
-    // For now, create a local object URL as a fallback
-    // This allows the app to work without Cloudinary configuration
-    const objectUrl = URL.createObjectURL(file);
-    
-    // In a production environment, you would use the actual Cloudinary API
-    // const formData = new FormData();
-    // formData.append('file', file);
-    // formData.append('upload_preset', 'cptcecyi'); // Use the working upload preset
-    
-    // try {
-    //   const response = await fetch(
-    //     'https://api.cloudinary.com/v1_1/your_cloud_name/image/upload',
-    //     {
-    //       method: 'POST',
-    //       body: formData,
-    //     }
-    //   );
-      
-    //   if (!response.ok) {
-    //     throw new Error('Upload failed');
-    //   }
-      
-    //   const data = await response.json();
-    //   return data.secure_url;
-    // } catch (error) {
-    //   console.error('Upload error:', error);
-    //   // Fallback: create object URL for preview
-    //   return URL.createObjectURL(file);
-    // }
-    
-    return objectUrl;
+  // Uploads the file directly to ImageKit and returns its persistent URL.
+  // Rejects non-image types and >10MB files before hitting the server.
+  const uploadFile = async (file: File): Promise<string> => {
+    const uploaded = await uploadListingPhoto(file, { listingId: id });
+    return uploaded.url;
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,22 +64,30 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
       
       try {
         const newPhotos: string[] = [];
-        
+
         for (const file of Array.from(files)) {
-          const photoUrl = await uploadFileToCloudinary(file);
-          newPhotos.push(photoUrl);
+          try {
+            const photoUrl = await uploadFile(file);
+            newPhotos.push(photoUrl);
+          } catch (err) {
+            toast.error(
+              err instanceof Error
+                ? `${file.name}: ${err.message}`
+                : `Could not upload ${file.name}`
+            );
+          }
         }
-        
-        const updatedPhotos = [...uploadedPhotos, ...newPhotos];
-        setUploadedPhotos(updatedPhotos);
-        
-        // Update backend
-        await updateListingData({
-          photoUrls: updatedPhotos
-        });
-        
+
+        if (newPhotos.length > 0) {
+          const updatedPhotos = [...uploadedPhotos, ...newPhotos];
+          setUploadedPhotos(updatedPhotos);
+          // The /api/upload call already pushes each URL into the listing,
+          // but we also update the draft state so the UI stays in sync
+          // without needing a reload.
+          await updateListingData({ photoUrls: updatedPhotos });
+        }
       } catch (error) {
-        console.error('Error uploading photos:', error);
+        toast.error(error instanceof Error ? error.message : 'Upload failed');
       } finally {
         setIsUploading(false);
       }
@@ -120,17 +103,13 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
       setIsUploading(true);
       
       try {
-        const photoUrl = await uploadFileToCloudinary(file);
+        const photoUrl = await uploadFile(file);
         const updatedPhotos = [...uploadedPhotos, photoUrl];
         setUploadedPhotos(updatedPhotos);
-        
-        // Update backend
-        await updateListingData({
-          photoUrls: updatedPhotos
-        });
-        
+
+        await updateListingData({ photoUrls: updatedPhotos });
       } catch (error) {
-        console.error('Error uploading photo:', error);
+        toast.error(error instanceof Error ? error.message : 'Upload failed');
       } finally {
         setIsUploading(false);
       }

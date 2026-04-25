@@ -10,6 +10,24 @@ export const getUserByEmail = async (email: string) => {
   }
 };
 
+export const getUserByUsername = async (username: string) => {
+  try {
+    const user = await db.user.findUnique({ where: { username } });
+
+    return user;
+  } catch {
+    return null;
+  }
+};
+
+export const getUserByIdentifier = async (identifier: string) => {
+  const value = identifier.trim();
+  if (value.includes("@")) {
+    return getUserByEmail(value.toLowerCase());
+  }
+  return getUserByUsername(value);
+};
+
 export const getUserById = async (id: string) => {
   try {
     const user = await db.user.findUnique({ where: { id } });

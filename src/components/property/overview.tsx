@@ -6,15 +6,6 @@ interface PropertyOverviewProps {
   propertyId: number;
 }
 
-// Extended property type that includes the location relation
-interface PropertyWithLocation {
-  location?: {
-    city?: string;
-    state?: string;
-    country?: string;
-  } | null;
-}
-
 const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
   const {
     data: property,
@@ -22,35 +13,33 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
     isLoading,
   } = useGetPropertyQuery(propertyId);
 
-  // Type assertion for property with location
-  const propertyWithLocation = property as (typeof property & PropertyWithLocation) | undefined;
-
   if (isLoading) return <>Loading...</>;
-  if (isError || !propertyWithLocation) {
+  if (isError || !property) {
     return <>Property not Found</>;
   }
+
+  const location = property.location;
 
   return (
     <div>
       {/* Header */}
       <div className="mb-4">
         <div className="text-sm text-gray-500 mb-1">
-          {propertyWithLocation.location?.country} / {propertyWithLocation.location?.state} /{" "}
+          {location?.country} / {location?.state} /{" "}
           <span className="font-semibold text-gray-600">
-            {propertyWithLocation.location?.city}
+            {location?.city}
           </span>
         </div>
-        <h1 className="text-3xl font-bold my-5">{propertyWithLocation.name}</h1>
+        <h1 className="text-3xl font-bold my-5">{property.title}</h1>
         <div className="flex justify-between items-center">
           <span className="flex items-center text-gray-500">
             <MapPin className="w-4 h-4 me-1 text-gray-700" />
-            {propertyWithLocation.location?.city}, {propertyWithLocation.location?.state},{" "}
-            {propertyWithLocation.location?.country}
+            {location?.city}, {location?.state}, {location?.country}
           </span>
           <div className="flex justify-between items-center gap-3">
             <span className="flex items-center text-yellow-500">
               <Star className="w-4 h-4 me-1 fill-current" />
-              {(propertyWithLocation.averageRating ?? 0).toFixed(1)} ({propertyWithLocation.numberOfReviews ?? 0}{" "}
+              {(property.averageRating ?? 0).toFixed(1)} ({property.numberOfReviews ?? 0}{" "}
               Reviews)
             </span>
             <span className="text-green-600">Verified Listing</span>
@@ -62,26 +51,26 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
       <div className="border border-primary-200 rounded-xl p-6 mb-6">
         <div className="flex justify-between items-center gap-4 px-5">
           <div>
-            <div className="text-sm text-gray-500">Monthly Rent</div>
+            <div className="text-sm text-gray-500">Price / night</div>
             <div className="font-semibold">
-              ${(propertyWithLocation.pricePerMonth ?? 0).toLocaleString()}
+              ${(property.pricePerNight ?? 0).toLocaleString()}
             </div>
           </div>
           <div className="border-s border-gray-300 h-10"></div>
           <div>
             <div className="text-sm text-gray-500">Bedrooms</div>
-            <div className="font-semibold">{propertyWithLocation.beds ?? 0} bd</div>
+            <div className="font-semibold">{property.bedrooms ?? 0} bd</div>
           </div>
           <div className="border-s border-gray-300 h-10"></div>
           <div>
             <div className="text-sm text-gray-500">Bathrooms</div>
-            <div className="font-semibold">{propertyWithLocation.baths ?? 0} ba</div>
+            <div className="font-semibold">{property.bathrooms ?? 0} ba</div>
           </div>
           <div className="border-s border-gray-300 h-10"></div>
           <div>
             <div className="text-sm text-gray-500">Square Feet</div>
             <div className="font-semibold">
-              {(propertyWithLocation.squareFeet ?? 0).toLocaleString()} sq ft
+              {(property.squareFeet ?? 0).toLocaleString()} sq ft
             </div>
           </div>
         </div>
@@ -89,35 +78,8 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
 
       {/* Summary */}
       <div className="my-16">
-        <h2 className="text-xl font-semibold mb-5">About {propertyWithLocation.name}</h2>
-        <p className="text-gray-500 leading-7">
-          {propertyWithLocation.description}
-          Experience resort style luxury living at Seacrest Homes, where the
-          ocean and city are seamlessly intertwined. Our newly built community
-          features sophisticated two and three-bedroom residences, each complete
-          with high end designer finishes, quartz counter tops, stainless steel
-          whirlpool appliances, office nook, and a full size in-unit washer and
-          dryer. Find your personal escape at home beside stunning swimming
-          pools and spas with poolside cabanas. Experience your very own oasis
-          surrounded by lavish landscaped courtyards, with indoor/outdoor
-          entertainment seating. By day, lounge in the BBQ area and experience
-          the breath taking unobstructed views stretching from the Palos Verdes
-          Peninsula to Downtown Los Angeles, or watch the beauty of the South
-          Bay skyline light up by night. Start or end your day with a workout in
-          our full-size state of the art fitness club and yoga studio. Save the
-          commute and plan your next meeting in the business centers conference
-          room, adjacent to our internet and coffee lounge. Conveniently located
-          near beautiful local beaches with easy access to the 110, 405 and 91
-          freeways, exclusive shopping at the largest mall in the Western United
-          States “The Del Amo Fashion Center” to the hospital of your choice,
-          Kaiser Hospital, UCLA Harbor Medical Center, Torrance Memorial Medical
-          Center, and Providence Little Company of Mary Hospital Torrance rated
-          one of the top 10 Best in Los Angeles. Contact us today to tour and
-          embrace the Seacrest luxury lifestyle as your own. Seacrest Homes
-          Apartments is an apartment community located in Los Angeles County and
-          the 90501 ZIP Code. This area is served by the Los Angeles Unified
-          attendance zone.
-        </p>
+        <h2 className="text-xl font-semibold mb-5">About {property.title}</h2>
+        <p className="text-gray-500 leading-7">{property.description}</p>
       </div>
     </div>
   );

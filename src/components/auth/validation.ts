@@ -1,5 +1,4 @@
 import * as z from "zod";
-import { UserRole } from "@prisma/client";
 
 // Password validation regex patterns
 const passwordPatterns = {
@@ -49,10 +48,10 @@ const passwordValidator = process.env.NODE_ENV === "production"
   ? strongPasswordSchema
   : moderatePasswordSchema;
 
+// Role is intentionally NOT included — role changes must go through admin-actions.
 export const SettingsSchema = z.object({
   name: z.optional(z.string()),
   isTwoFactorEnabled: z.optional(z.boolean()),
-  role: z.enum([UserRole.ADMIN, UserRole.USER]),
   email: z.optional(z.string().email()),
   password: z.optional(passwordValidator),
   newPassword: z.optional(passwordValidator),
@@ -89,8 +88,8 @@ export const ResetSchema = z.object({
 });
 
 export const LoginSchema = z.object({
-  email: z.string().email({
-    message: "Email is required",
+  identifier: z.string().min(3, {
+    message: "Email or username is required",
   }),
   password: z.string().min(1, {
     message: "Password is required",
@@ -106,7 +105,7 @@ export const RegisterSchema = z.object({
   name: z.string()
     .min(1, "Name is required")
     .max(100, "Name must be less than 100 characters")
-    .regex(/^[a-zA-Z\s'-]+$/, "Name can only contain letters, spaces, hyphens, and apostrophes"),
+    .regex(/^[\p{L}\s'-]+$/u, "Name can only contain letters, spaces, hyphens, and apostrophes"),
 });
 
 // Email validation schema with additional checks

@@ -22,6 +22,11 @@ export async function generateMetadata({
   });
 }
 
-export default function FavoritesPage() {
-  return <FavoritesContent />;
+export default async function FavoritesPage({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}) {
+  const { lang } = await params;
+  return <FavoritesContent lang={lang} />;
 }

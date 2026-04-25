@@ -348,6 +348,17 @@ export const ASSEMBLY_POINTS: AssemblyPointData[] = [
     stationName: 'Duwaym Bus Station',
     status: 'active',
   },
+  {
+    name: 'Dilling Bus Station',
+    nameAr: 'موقف الدلنج',
+    city: 'Dilling',
+    cityAr: 'الدلنج',
+    state: 'South Kordofan',
+    latitude: 12.05,
+    longitude: 29.6333,
+    stationName: 'Dilling Bus Station',
+    status: 'active',
+  },
 ];
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
@@ -847,3 +858,245 @@ export const INDUSTRY_STATS = {
   kltDepartureHalls: 4,       // Tourist, 2nd class, Nissan, minibus
   kltOpenedDate: '2004-10-24',
 } as const;
+
+// ─── Sudan Operators (demo seed source of truth) ─────────────────────────────
+// Real Sudanese inter-city coach operators. `slug` doubles as login username.
+
+export type FleetTier = 'large' | 'medium' | 'small';
+
+export interface SudanOperatorData {
+  nameEn: string;
+  nameAr: string;
+  slug: string;                                       // kebab-case, username + email localpart
+  phone: string;
+  licenseNumber: string;
+  fleet: FleetTier;
+  routes: Array<{ from: string; to: string }>;
+}
+
+// City name normalisation — research data uses short names,
+// AssemblyPoint.city uses the canonical Sudanese form.
+export const CITY_ALIASES: Record<string, string> = {
+  Khartoum: 'Khartoum',
+  'Port Sudan': 'Port Sudan',
+  Madani: 'Wad Madani',
+  'Wad Madani': 'Wad Madani',
+  Kassala: 'Kassala',
+  'El Obeid': 'El Obeid',
+  Atbara: 'Atbara',
+  Dongola: 'Dongola',
+  Nyala: 'Nyala',
+  Kosti: 'Kosti',
+  Gedaref: 'Gedaref',
+  Sennar: 'Sennar',
+  Damazin: 'Ed Damazin',
+  'Ed Damazin': 'Ed Damazin',
+  Shendi: 'Shendi',
+  'Wadi Halfa': 'Wadi Halfa',
+  Dilling: 'Dilling',
+  Omdurman: 'Omdurman',
+};
+
+export const SUDAN_OPERATORS: SudanOperatorData[] = [
+  {
+    nameEn: 'Tarco Express',
+    nameAr: 'تاركو',
+    slug: 'tarco-express',
+    phone: '+249912100001',
+    licenseNumber: 'SD-TR-TARCO',
+    fleet: 'large',
+    routes: [
+      { from: 'Khartoum', to: 'Port Sudan' },
+      { from: 'Khartoum', to: 'Kassala' },
+      { from: 'Khartoum', to: 'Atbara' },
+    ],
+  },
+  {
+    nameEn: 'Almashreq',
+    nameAr: 'المشارق',
+    slug: 'almashreq',
+    phone: '+249912100002',
+    licenseNumber: 'SD-TR-ALMASHREQ',
+    fleet: 'large',
+    routes: [
+      { from: 'Khartoum', to: 'Port Sudan' },
+      { from: 'Khartoum', to: 'Kassala' },
+      { from: 'Khartoum', to: 'Gedaref' },
+      { from: 'Khartoum', to: 'Madani' },
+    ],
+  },
+  {
+    nameEn: 'Sudan Express',
+    nameAr: 'السودان إكسبريس',
+    slug: 'sudan-express',
+    phone: '+249912100003',
+    licenseNumber: 'SD-TR-SUDANEXP',
+    fleet: 'large',
+    routes: [
+      { from: 'Khartoum', to: 'Port Sudan' },
+      { from: 'Khartoum', to: 'Atbara' },
+      { from: 'Khartoum', to: 'Dongola' },
+    ],
+  },
+  {
+    nameEn: 'Al-Huda',
+    nameAr: 'الهدى',
+    slug: 'al-huda',
+    phone: '+249912100004',
+    licenseNumber: 'SD-TR-ALHUDA',
+    fleet: 'medium',
+    routes: [
+      { from: 'Khartoum', to: 'Madani' },
+      { from: 'Khartoum', to: 'Kosti' },
+      { from: 'Khartoum', to: 'Sennar' },
+    ],
+  },
+  {
+    nameEn: 'Sahel',
+    nameAr: 'الساحل',
+    slug: 'sahel',
+    phone: '+249912100005',
+    licenseNumber: 'SD-TR-SAHEL',
+    fleet: 'medium',
+    routes: [
+      { from: 'Khartoum', to: 'Port Sudan' },
+      { from: 'Khartoum', to: 'Kassala' },
+      { from: 'Atbara', to: 'Port Sudan' },
+    ],
+  },
+  {
+    nameEn: 'Al-Bashair',
+    nameAr: 'البشائر',
+    slug: 'al-bashair',
+    phone: '+249912100006',
+    licenseNumber: 'SD-TR-ALBASHAIR',
+    fleet: 'medium',
+    routes: [
+      { from: 'Khartoum', to: 'El Obeid' },
+      { from: 'Khartoum', to: 'Nyala' },
+      { from: 'Khartoum', to: 'Kosti' },
+    ],
+  },
+  {
+    nameEn: 'Nile Express',
+    nameAr: 'النيل إكسبريس',
+    slug: 'nile-express',
+    phone: '+249912100007',
+    licenseNumber: 'SD-TR-NILEEXP',
+    fleet: 'large',
+    routes: [
+      { from: 'Khartoum', to: 'Atbara' },
+      { from: 'Khartoum', to: 'Dongola' },
+      { from: 'Khartoum', to: 'Shendi' },
+      { from: 'Khartoum', to: 'Wadi Halfa' },
+    ],
+  },
+  {
+    nameEn: 'Nebras',
+    nameAr: 'نبراس',
+    slug: 'nebras',
+    phone: '+249912100008',
+    licenseNumber: 'SD-TR-NEBRAS',
+    fleet: 'medium',
+    routes: [
+      { from: 'Khartoum', to: 'Port Sudan' },
+      { from: 'Khartoum', to: 'Kassala' },
+      { from: 'Khartoum', to: 'Gedaref' },
+    ],
+  },
+  {
+    nameEn: 'Farrah',
+    nameAr: 'فرح',
+    slug: 'farrah',
+    phone: '+249912100009',
+    licenseNumber: 'SD-TR-FARRAH',
+    fleet: 'medium',
+    routes: [
+      { from: 'Khartoum', to: 'Madani' },
+      { from: 'Khartoum', to: 'Sennar' },
+      { from: 'Khartoum', to: 'Damazin' },
+    ],
+  },
+  {
+    nameEn: 'Al-Massa',
+    nameAr: 'الماسة',
+    slug: 'al-massa',
+    phone: '+249912100010',
+    licenseNumber: 'SD-TR-ALMASSA',
+    fleet: 'medium',
+    routes: [
+      { from: 'Khartoum', to: 'Port Sudan' },
+      { from: 'Khartoum', to: 'Atbara' },
+    ],
+  },
+  {
+    nameEn: 'Al-Musalam',
+    nameAr: 'المسلم',
+    slug: 'al-musalam',
+    phone: '+249912100011',
+    licenseNumber: 'SD-TR-ALMUSALAM',
+    fleet: 'medium',
+    routes: [
+      { from: 'Khartoum', to: 'El Obeid' },
+      { from: 'Khartoum', to: 'Kosti' },
+      { from: 'Khartoum', to: 'Nyala' },
+    ],
+  },
+  {
+    nameEn: 'Jamel El Dien',
+    nameAr: 'جمال الدين',
+    slug: 'jamel-el-dien',
+    phone: '+249912100012',
+    licenseNumber: 'SD-TR-JAMELELDIEN',
+    fleet: 'large',
+    routes: [
+      { from: 'Khartoum', to: 'Port Sudan' },
+      { from: 'Khartoum', to: 'Kassala' },
+      { from: 'Khartoum', to: 'Atbara' },
+      { from: 'Khartoum', to: 'Dongola' },
+    ],
+  },
+  {
+    nameEn: 'Marshal',
+    nameAr: 'مارشال',
+    slug: 'marshal',
+    phone: '+249912100013',
+    licenseNumber: 'SD-TR-MARSHAL',
+    fleet: 'medium',
+    routes: [
+      { from: 'Khartoum', to: 'Port Sudan' },
+      { from: 'Khartoum', to: 'El Obeid' },
+      { from: 'Khartoum', to: 'Dilling' },
+    ],
+  },
+];
+
+// ─── Operator Fares (2024-25 SDG fare anchors) ───────────────────────────────
+// Distance in km, fare range in Sudanese Pounds. Used by seed to derive
+// per-trip prices (basePrice = (fareMin + fareMax) / 2, ±10% jitter per trip).
+
+export interface OperatorFare {
+  from: string;        // raw name (may need CITY_ALIASES lookup)
+  to: string;
+  km: number;
+  fareMinSdg: number;
+  fareMaxSdg: number;
+}
+
+export const OPERATOR_FARES: OperatorFare[] = [
+  { from: 'Khartoum', to: 'Port Sudan', km: 850, fareMinSdg: 140000, fareMaxSdg: 165000 },
+  { from: 'Khartoum', to: 'Madani', km: 180, fareMinSdg: 40000, fareMaxSdg: 55000 },
+  { from: 'Khartoum', to: 'Kassala', km: 500, fareMinSdg: 110000, fareMaxSdg: 130000 },
+  { from: 'Khartoum', to: 'El Obeid', km: 415, fareMinSdg: 90000, fareMaxSdg: 110000 },
+  { from: 'Khartoum', to: 'Atbara', km: 310, fareMinSdg: 70000, fareMaxSdg: 90000 },
+  { from: 'Khartoum', to: 'Dongola', km: 520, fareMinSdg: 110000, fareMaxSdg: 135000 },
+  { from: 'Khartoum', to: 'Nyala', km: 1050, fareMinSdg: 180000, fareMaxSdg: 220000 },
+  { from: 'Khartoum', to: 'Kosti', km: 300, fareMinSdg: 65000, fareMaxSdg: 85000 },
+  { from: 'Khartoum', to: 'Gedaref', km: 410, fareMinSdg: 90000, fareMaxSdg: 110000 },
+  { from: 'Khartoum', to: 'Sennar', km: 280, fareMinSdg: 60000, fareMaxSdg: 80000 },
+  { from: 'Khartoum', to: 'Damazin', km: 510, fareMinSdg: 105000, fareMaxSdg: 130000 },
+  { from: 'Khartoum', to: 'Shendi', km: 170, fareMinSdg: 35000, fareMaxSdg: 50000 },
+  { from: 'Khartoum', to: 'Wadi Halfa', km: 920, fareMinSdg: 150000, fareMaxSdg: 180000 },
+  { from: 'Khartoum', to: 'Dilling', km: 620, fareMinSdg: 120000, fareMaxSdg: 150000 },
+  { from: 'Atbara', to: 'Port Sudan', km: 620, fareMinSdg: 110000, fareMaxSdg: 135000 },
+];

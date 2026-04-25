@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { auth, canOverride } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { sanitizeInput, sanitizeHtml } from "@/lib/sanitization";
@@ -268,7 +268,7 @@ export async function addHostReply(data: unknown) {
       throw new Error("Review not found");
     }
 
-    if (review.listing.hostId !== session.user.id) {
+    if (!canOverride(session, review.listing.hostId)) {
       throw new Error("Only the host can reply to reviews on their listing");
     }
 
