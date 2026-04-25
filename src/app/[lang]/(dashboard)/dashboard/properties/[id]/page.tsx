@@ -12,9 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  getListing,
-} from "@/components/host/actions";
+import { getListing } from "@/components/host/actions";
+import { getListingLeases } from "@/lib/actions/user-actions";
+import { getLeasePayments } from "@/lib/actions/payment-actions";
 import { ArrowDownToLine, ArrowLeft, Check, Download } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -40,54 +40,48 @@ const PropertyManagement = () => {
       try {
         setIsLoading(true);
         setError(null);
-        
-        // Try to fetch property data with fallback
-        let propertyData;
-        let leasesData: unknown[] = [];
-        
+
+        let propertyData: unknown = null;
         try {
           propertyData = await getListing(propertyId);
         } catch (propError) {
           console.error("Property fetch error:", propError);
-          // Create mock property data for testing
           propertyData = {
             id: propertyId,
             name: `Property #${propertyId}`,
             description: "Property details not available",
-            location: { address: "Address not available", city: "Unknown", state: "Unknown" }
+            location: { address: "Address not available", city: "Unknown", state: "Unknown" },
           };
         }
-        
+
+        let leasesData: any[] = [];
         try {
-          // TODO: Implement lease fetching for listings
-    // leasesData = await getPropertyLeases(propertyId);
+          leasesData = await getListingLeases(propertyId);
         } catch (leaseError) {
           console.error("Leases fetch error:", leaseError);
-          leasesData = []; // Empty array as fallback
         }
-        
+
         setProperty(propertyData);
         setLeases(leasesData);
-        
-        // TODO: Implement payment fetching when lease system is ready
-        // if (leasesData.length > 0) {
-        //   try {
-        //     const allPayments = await Promise.all(
-        //       leasesData.map(async (lease: any) => {
-        //         try {
-        //           return await getPayments(lease.id);
-        //         } catch (paymentError) {
-        //           console.error(`Payment fetch error for lease ${lease.id}:`, paymentError);
-        //           return [];
-        //         }
-        //       })
-        //     );
-        //     setPayments(allPayments.flat());
-        //   } catch (paymentError) {
-        //     console.error("Payments fetch error:", paymentError);
-        //     setPayments([]);
-        //   }
-        // }
+
+        if (leasesData.length > 0) {
+          try {
+            const allPayments = await Promise.all(
+              leasesData.map(async (lease) => {
+                try {
+                  return await getLeasePayments(lease.id);
+                } catch (e) {
+                  console.error(`Payment fetch error for lease ${lease.id}:`, e);
+                  return [];
+                }
+              }),
+            );
+            setPayments(allPayments.flat());
+          } catch (paymentError) {
+            console.error("Payments fetch error:", paymentError);
+            setPayments([]);
+          }
+        }
       } catch (err: any) {
         console.error("Error fetching data:", err);
         setError(err.message || "Error loading property details");

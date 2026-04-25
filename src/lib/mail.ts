@@ -42,4 +42,57 @@ export const sendVerificationEmail = async (
     subject: "Confirm your email",
     html: `<p>Click <a href="${confirmLink}">here</a> to confirm email.</p>`
   });
-}; 
+};
+
+export const sendTripCancelledEmail = async (
+  email: string,
+  data: {
+    bookingReference: string;
+    origin: string;
+    destination: string;
+    departureDate: string;
+    operatorName: string;
+  },
+) => {
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM ?? "onboarding@resend.dev",
+    to: email,
+    subject: `Your trip ${data.origin} → ${data.destination} has been cancelled`,
+    html: `
+      <p>Hello,</p>
+      <p>${data.operatorName} has cancelled your trip on ${data.departureDate}.</p>
+      <p><strong>Booking reference:</strong> ${data.bookingReference}</p>
+      <p>Your booking has been marked cancelled. If you paid online, the refund is being processed.</p>
+      <p>You can rebook on mkan at <a href="${domain}/transport">mkan transport</a>.</p>
+    `,
+  });
+};
+
+export const sendBookingConfirmationEmail = async (
+  email: string,
+  data: {
+    bookingReference: string;
+    origin: string;
+    destination: string;
+    departureDate: string;
+    departureTime: string;
+    seats: string[];
+    totalAmount: number;
+    ticketUrl: string;
+  },
+) => {
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM ?? "onboarding@resend.dev",
+    to: email,
+    subject: `Booking confirmed — ${data.origin} → ${data.destination}`,
+    html: `
+      <p>Your booking is confirmed.</p>
+      <p><strong>Reference:</strong> ${data.bookingReference}<br/>
+         <strong>Route:</strong> ${data.origin} → ${data.destination}<br/>
+         <strong>Departure:</strong> ${data.departureDate} ${data.departureTime}<br/>
+         <strong>Seats:</strong> ${data.seats.join(", ")}<br/>
+         <strong>Total:</strong> ${data.totalAmount.toLocaleString()} SDG</p>
+      <p>Your ticket: <a href="${data.ticketUrl}">${data.ticketUrl}</a></p>
+    `,
+  });
+};

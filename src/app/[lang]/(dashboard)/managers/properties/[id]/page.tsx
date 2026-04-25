@@ -12,9 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  getListing,
-} from "@/components/host/actions";
+import { getListing } from "@/components/host/actions";
+import { getListingLeases } from "@/lib/actions/user-actions";
+import { getLeasePayments } from "@/lib/actions/payment-actions";
 import { ArrowDownToLine, ArrowLeft, Check, Download } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -39,19 +39,20 @@ const PropertyTenants = () => {
       try {
         setIsLoading(true);
         const propertyData = await getListing(propertyId);
-        
         setProperty(propertyData);
-        // TODO: Implement lease and payment fetching for listings
-        // const leasesData = await getPropertyLeases(propertyId);
-        // setLeases(leasesData);
-        
-        // Fetch payments for all leases
-        // if (leasesData.length > 0) {
-        //   const allPayments = await Promise.all(
-        //     leasesData.map((lease: any) => getPayments(lease.id))
-        //   );
-        //   setPayments(allPayments.flat());
-        // }
+
+        // Pull every lease for this listing then fan out to fetch each
+        // lease's payments. The host/manager-only authorization is enforced
+        // server-side; this page just renders what comes back.
+        const leasesData = await getListingLeases(propertyId);
+        setLeases(leasesData);
+
+        if (leasesData.length > 0) {
+          const allPayments = await Promise.all(
+            leasesData.map((lease) => getLeasePayments(lease.id)),
+          );
+          setPayments(allPayments.flat());
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
