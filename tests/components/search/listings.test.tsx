@@ -44,7 +44,7 @@ vi.mock("@/components/internationalization/dictionary-context", () => ({
 // Mock next/image to a plain img element
 vi.mock("next/image", () => ({
   default: (props: any) => {
-    // eslint-disable-next-line @next/next/no-img-element
+     
     const { fill, priority, sizes, ...rest } = props;
     return <img {...rest} />;
   },

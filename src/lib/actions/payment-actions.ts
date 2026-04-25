@@ -528,7 +528,7 @@ export async function generateMonthlyPayments(leaseId: unknown) {
     const paymentData = [];
 
     // Build payment records
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     while (currentDate <= endDate) {
       paymentData.push({
         leaseId: parsedId.data,
