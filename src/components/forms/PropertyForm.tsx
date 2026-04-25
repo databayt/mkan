@@ -615,6 +615,7 @@ export function PropertyForm() {
                   console.log('🔘 isSubmitting:', isSubmitting)
                   console.log('🔘 Form validation state:', { isValid, isDirty, isValidating })
                   console.log('🔘 Form errors:', errors)
+                  // eslint-disable-next-line react-hooks/incompatible-library -- Debug log only; RHF watch() is a subscription, used here for one-shot value snapshot.
                   console.log('🔘 Current form values:', watch())
                 }}
               >

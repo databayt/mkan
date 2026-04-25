@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { Plus, Minus, Maximize2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -8,10 +9,12 @@ export default function SearchMap() {
       {/* Sticky map container - sticks until end of listings */}
       <div className="sticky top-16 w-[430px] h-[calc(100vh-64px)] bg-gray-100">
         {/* Actual map image */}
-        <img
+        <Image
           src="/search-map.png"
           alt="Map of Bordeaux region"
-          className="w-full h-full object-cover"
+          fill
+          className="object-cover"
+          sizes="430px"
         />
         
         {/* Map controls overlay */}

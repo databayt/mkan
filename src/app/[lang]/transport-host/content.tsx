@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { Bus, Plus, Building2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -106,9 +107,11 @@ export default function TransportHostContent() {
                     <div className="flex items-start justify-between">
                       <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                         {office.logoUrl ? (
-                          <img
+                          <Image
                             src={office.logoUrl}
                             alt={office.name}
+                            width={40}
+                            height={40}
                             className="h-10 w-10 rounded object-cover"
                           />
                         ) : (

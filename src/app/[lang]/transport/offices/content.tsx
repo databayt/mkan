@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -118,9 +119,11 @@ export default function OfficesListContent() {
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       {office.logoUrl ? (
-                        <img
+                        <Image
                           src={office.logoUrl}
                           alt={office.name}
+                          width={48}
+                          height={48}
                           className="w-12 h-12 rounded-lg object-cover"
                         />
                       ) : (

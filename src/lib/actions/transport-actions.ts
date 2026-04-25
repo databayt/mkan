@@ -1576,10 +1576,20 @@ export async function processPayment(bookingId: number, data: PaymentFormData) {
 
   const booking = await db.transportBooking.findUnique({
     where: { id: bookingId },
+    include: { trip: { include: { route: { include: { office: true } } } } },
   });
 
   if (!booking) {
     throw new Error('Booking not found');
+  }
+
+  // Only the traveler who booked, the office owner, or an admin may pay.
+  // Without this, any authenticated user could mark someone else's booking
+  // as paid and force-confirm it.
+  const isOwner = booking.userId === session.user.id;
+  const isOperatorOrAdmin = canOverride(session, booking.trip.route.office.ownerId);
+  if (!isOwner && !isOperatorOrAdmin) {
+    throw new Error('Not authorized to process payment for this booking');
   }
 
   // Create payment record

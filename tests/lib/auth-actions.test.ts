@@ -191,6 +191,7 @@ describe("getAuthUser", () => {
 // ---------- getTenant ----------
 describe("getTenant", () => {
   it("returns existing tenant with includes", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "u1" } });
     const tenant = {
       id: "t1",
       userId: "u1",
@@ -207,6 +208,7 @@ describe("getTenant", () => {
   });
 
   it("creates tenant when one does not exist", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "u2" } });
     mockDbTenantFindUnique.mockResolvedValue(null);
     mockDbUserFindUnique.mockResolvedValue({
       id: "u2",
@@ -297,6 +299,7 @@ describe("updateManagerSettings", () => {
 // ---------- getCurrentResidences ----------
 describe("getCurrentResidences", () => {
   it("returns listings from active leases", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "u1" } });
     const listing = {
       id: 1,
       title: "Apt 1",
@@ -315,6 +318,7 @@ describe("getCurrentResidences", () => {
   });
 
   it("returns empty array when no active leases", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "u1" } });
     mockDbLeaseFindMany.mockResolvedValue([]);
 
     const result = await getCurrentResidences("u1");

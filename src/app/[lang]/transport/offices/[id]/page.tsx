@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -132,9 +133,11 @@ export default function OfficeDetailsPage() {
           <div className="flex flex-col md:flex-row gap-6">
             {/* Logo */}
             {office.logoUrl ? (
-              <img
+              <Image
                 src={office.logoUrl}
                 alt={office.name}
+                width={96}
+                height={96}
                 className="w-24 h-24 rounded-xl object-cover"
               />
             ) : (

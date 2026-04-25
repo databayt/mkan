@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 
 interface AirbnbIconProps {
   name: string;
@@ -7,26 +8,24 @@ interface AirbnbIconProps {
   style?: React.CSSProperties;
 }
 
-const AirbnbIcon: React.FC<AirbnbIconProps> = ({ 
-  name, 
-  className = "", 
+const AirbnbIcon: React.FC<AirbnbIconProps> = ({
+  name,
+  className = "",
   size = 24,
   style = {}
 }) => {
   const iconPath = `/assets/${name}.svg`;
-  
+
   return (
-    <img 
-      src={iconPath} 
+    <Image
+      src={iconPath}
       alt={name}
+      width={size}
+      height={size}
       className={`inline-block ${className}`}
-      style={{ 
-        width: size, 
-        height: size,
-        ...style
-      }}
+      style={style}
     />
   );
 };
 
-export default AirbnbIcon; 
+export default AirbnbIcon;

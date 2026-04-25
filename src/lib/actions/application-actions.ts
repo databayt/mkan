@@ -89,32 +89,38 @@ export async function getApplications() {
 
     const applications = await db.application.findMany({
       where,
+      // Use select on listing/tenant to avoid pulling large fields
+      // (description, photoUrls — listing.photoUrls can be a long array,
+      // listing.description can be 10k chars). Only the fields the table
+      // and detail views consume are fetched.
       include: {
         listing: {
-          include: {
-            location: true,
+          select: {
+            id: true,
+            title: true,
+            pricePerNight: true,
+            photoUrls: true,
+            location: {
+              select: { city: true, country: true, address: true },
+            },
             host: {
-              select: {
-                id: true,
-                email: true,
-                username: true,
-              },
+              select: { id: true, email: true, username: true },
             },
           },
         },
         tenant: {
-          include: {
+          select: {
+            name: true,
+            email: true,
+            phoneNumber: true,
             user: {
-              select: {
-                id: true,
-                email: true,
-                username: true,
-                image: true,
-              },
+              select: { id: true, email: true, username: true, image: true },
             },
           },
         },
-        lease: true,
+        lease: {
+          select: { id: true, startDate: true, endDate: true },
+        },
       },
       orderBy: {
         applicationDate: 'desc',
@@ -380,25 +386,33 @@ export async function getManagerApplications() {
           hostId: session.user.id,
         },
       },
+      // Same scoping as getApplications — manager dashboard only needs
+      // listing summary fields, not full description/highlights/amenities.
       include: {
         listing: {
-          include: {
-            location: true,
-          },
-        },
-        tenant: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                username: true,
-                image: true,
-              },
+          select: {
+            id: true,
+            title: true,
+            pricePerNight: true,
+            photoUrls: true,
+            location: {
+              select: { city: true, country: true, address: true },
             },
           },
         },
-        lease: true,
+        tenant: {
+          select: {
+            name: true,
+            email: true,
+            phoneNumber: true,
+            user: {
+              select: { id: true, email: true, username: true, image: true },
+            },
+          },
+        },
+        lease: {
+          select: { id: true, startDate: true, endDate: true },
+        },
       },
       orderBy: {
         applicationDate: "desc",

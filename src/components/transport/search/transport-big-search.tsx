@@ -369,10 +369,12 @@ export default function TransportBigSearch({
       {activeButton === "destination" && (
         <div
           className="hidden md:block absolute top-full mt-2 w-96 bg-white/20 backdrop-blur-xl rounded-2xl shadow-xl border border-white/30 p-6 z-50"
+          /* eslint-disable react-hooks/refs -- Reading destinationBtnRef.current.offsetLeft for one-time positioning fallback when the dropdown opens; the parent re-renders on activeButton change so this stays in sync. */
           style={isRTL
             ? { right: destinationBtnRef.current ? `calc(100% - ${destinationBtnRef.current.offsetLeft + destinationBtnRef.current.offsetWidth}px)` : '25%' }
             : { left: destinationBtnRef.current?.offsetLeft ?? '25%' }
           }
+          /* eslint-enable react-hooks/refs */
         >
           <TransportCityDropdown
             value={destination}

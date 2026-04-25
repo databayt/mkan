@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import Image from 'next/image';
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { Download, Share2, MapPin, Clock, User, Phone, Bus } from 'lucide-react';
@@ -165,7 +166,7 @@ export function TicketView({
         // User cancelled or share failed
       }
     }
-  }, [booking.bookingReference, booking.trip.route.origin.city, booking.trip.route.destination.city, booking.trip.departureDate]);
+  }, [booking.bookingReference, booking.trip.route.origin.city, booking.trip.route.destination.city, booking.trip.departureDate, dateLocale]);
 
   if (variant === 'compact') {
     return (
@@ -212,9 +213,12 @@ export function TicketView({
       {/* QR Code */}
       <div className="p-6 flex flex-col items-center border-b">
         {qrCodeUrl ? (
-          <img
+          <Image
             src={qrCodeUrl}
             alt="Ticket QR Code"
+            width={160}
+            height={160}
+            unoptimized
             className="w-40 h-40 rounded-lg"
           />
         ) : (

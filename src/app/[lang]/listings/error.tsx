@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 
@@ -32,7 +33,7 @@ export default function ListingsError({
           {dict.errors?.retry ?? "Try again"}
         </Button>
         <Button variant="outline" asChild>
-          <a href="/">{dict.errors?.goHome ?? "Go home"}</a>
+          <Link href="/">{dict.errors?.goHome ?? "Go home"}</Link>
         </Button>
       </div>
     </div>

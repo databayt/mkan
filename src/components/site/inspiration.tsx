@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 
@@ -81,10 +82,12 @@ const AirbnbInspiration: React.FC<AirbnbInspirationProps> = ({
           >
             {/* Image Section */}
             <div className="relative h-40 overflow-hidden">
-              <img
+              <Image
                 src={destination.image}
                 alt={destination.title}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
               />
             </div>
 

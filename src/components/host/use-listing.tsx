@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useCallback } from 'react'
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ListingFormData, createListing, updateListing, getListing } from './actions'
 
@@ -199,18 +199,22 @@ export function ListingProvider({ children, initialListing = null }: ListingProv
     } finally {
       setIsLoading(false)
     }
-  }, [listing?.id])
+  }, [listing])
 
-  const contextValue: ListingContextType = {
-    listing,
-    isLoading,
-    error,
-    setListing,
-    updateListingData,
-    createNewListing,
-    loadListing,
-    clearError,
-  }
+  // Memoize context value so consumers don't re-render on unrelated parent renders.
+  const contextValue = useMemo<ListingContextType>(
+    () => ({
+      listing,
+      isLoading,
+      error,
+      setListing,
+      updateListingData,
+      createNewListing,
+      loadListing,
+      clearError,
+    }),
+    [listing, isLoading, error, updateListingData, createNewListing, loadListing, clearError]
+  )
 
   return (
     <ListingContext.Provider value={contextValue}>
@@ -239,8 +243,10 @@ export function useHostNavigation(currentStep: string) {
       return
     }
     router.push(`/host/${listing.id}/${step}`)
-  }, [listing?.id, router])
+  }, [listing, router])
 
+  // Wrap goToStep one level — the new react-hooks/preserve-manual-memoization rule
+  // wants both wrappers themselves memoized (not just the inner one they call).
   const goToNextStep = useCallback((nextStep: string) => {
     goToStep(nextStep)
   }, [goToStep])

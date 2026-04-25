@@ -56,6 +56,13 @@ vi.mock("next-auth/react", () => ({
   SessionProvider: ({ children }: any) => children,
 }));
 
+// Mock next/navigation — Listings now uses useRouter() for card navigation.
+vi.mock("next/navigation", () => ({
+  useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() })),
+  usePathname: vi.fn(() => "/"),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
+}));
+
 // Mock server actions
 vi.mock("@/lib/actions/user-actions", () => ({
   addFavoriteProperty: vi.fn(),

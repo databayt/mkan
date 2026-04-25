@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { Heart, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
@@ -37,9 +38,11 @@ export default function DetailCard({
     <div className="flex gap-6">
       {/* Property Image */}
       <div className="relative flex-shrink-0">
-        <img
+        <Image
           src={image}
           alt={title}
+          width={250}
+          height={170}
           className="w-[250px] h-[170px] object-cover rounded-xl border border-gray-200"
         />
       </div>

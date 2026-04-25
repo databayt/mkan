@@ -95,6 +95,9 @@ function Carousel({
 
   React.useEffect(() => {
     if (!api) return
+    // Sync embla scroll-state into React state. setState (inside onSelect)
+    // is intentional — subscribing to an external library's events.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial sync from embla API; canScrollPrev/Next are read from the lib, not derivable.
     onSelect(api)
     api.on("reInit", onSelect)
     api.on("select", onSelect)

@@ -136,9 +136,12 @@ export function TicketShowcase({ lang }: TicketShowcaseProps) {
         <div className="px-5 pt-4 pb-5 md:py-5 md:w-[220px] shrink-0 flex flex-col">
           <div className="bg-primary/5 rounded-xl p-4 flex items-center gap-4 md:flex-col md:items-center md:gap-3 flex-1">
             {qrCodeUrl ? (
-              <img
+              <Image
                 src={qrCodeUrl}
                 alt="QR Code"
+                width={108}
+                height={108}
+                unoptimized
                 className="w-[72px] h-[72px] md:w-[108px] md:h-[108px] rounded-lg shrink-0"
               />
             ) : (

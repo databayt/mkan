@@ -75,6 +75,17 @@ export async function getAuthUser() {
 // Get tenant profile
 export async function getTenant(userId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      throw new Error("Unauthorized");
+    }
+    // A tenant profile is private to the owning user. Admins bypass.
+    const isSelf = session.user.id === userId;
+    const isAdmin = session.user.role === UserRole.ADMIN || session.user.role === UserRole.SUPER_ADMIN;
+    if (!isSelf && !isAdmin) {
+      throw new Error("Unauthorized");
+    }
+
     let tenant = await db.tenant.findUnique({
       where: { userId },
       include: {
@@ -308,6 +319,17 @@ export async function updateManagerSettings(
 // Get current residences for a tenant
 export async function getCurrentResidences(userId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      throw new Error("Unauthorized");
+    }
+    // Residence list is private to the tenant. Admins may read for support.
+    const isSelf = session.user.id === userId;
+    const isAdmin = session.user.role === UserRole.ADMIN || session.user.role === UserRole.SUPER_ADMIN;
+    if (!isSelf && !isAdmin) {
+      throw new Error("Unauthorized");
+    }
+
     const currentDate = new Date();
 
     const leases = await db.lease.findMany({

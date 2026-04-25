@@ -46,6 +46,10 @@ function useQuery<T>(
   const [error, setError] = useState<unknown>(null);
   const mountedRef = useRef(true);
   const fetcherRef = useRef(fetcher);
+  // Keep ref in sync with the latest fetcher between renders. The ref is
+  // read inside `run` (a stable callback) — `deps` from the caller drives
+  // refetching, so we need the latest closure when `run` fires.
+  // eslint-disable-next-line react-hooks/refs -- Refresh closure across renders without changing run()'s identity; assigning here is the standard "latest-ref" pattern.
   fetcherRef.current = fetcher;
 
   const run = useCallback(() => {
@@ -75,7 +79,9 @@ function useQuery<T>(
           }
         }
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Caller-supplied `deps` is intentionally spread — this hook is generic
+    // and does not know the shape ahead of time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/use-memo
   }, [options?.skip, ...deps]);
 
   useEffect(() => {

@@ -98,45 +98,8 @@ export function useSite() {
     setFilteredListings(filtered);
   }, [listings]);
 
-  // Handle category click
-  const handleCategoryClick = useCallback((category: string) => {
-    setSelectedCategory(category);
-    
-    // Update URL with category
-    const params = new URLSearchParams(searchParams.toString());
-    if (category) {
-      params.set('category', category);
-    } else {
-      params.delete('category');
-    }
-    
-    // Update URL without navigation
-    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
-    window.history.pushState({}, '', newUrl);
-    
-    // Apply filters
-    const location = params.get('location');
-    const checkIn = params.get('checkIn');
-    const checkOut = params.get('checkOut');
-    const guests = params.get('guests');
-    
-    filterListingsBySearch({ location, checkIn, checkOut, guests, category });
-    
-    // Scroll to results
-    if (category) {
-      setTimeout(() => scrollToResults(), 300);
-    }
-  }, [searchParams, filterListingsBySearch]);
-
-  // Clear filters
-  const clearFilters = useCallback(() => {
-    setSelectedCategory("");
-    setSearchTerm("");
-    router.push(window.location.pathname);
-    setFilteredListings(listings);
-  }, [router, listings]);
-
-  // Scroll to results
+  // Scroll to results — declared before handleCategoryClick so the callback
+  // can include it in its deps without forward-reference.
   const scrollToResults = useCallback(() => {
     if (resultsRef.current) {
       const offset = 100; // Offset to account for sticky header
@@ -149,6 +112,44 @@ export function useSite() {
       });
     }
   }, []);
+
+  // Handle category click
+  const handleCategoryClick = useCallback((category: string) => {
+    setSelectedCategory(category);
+
+    // Update URL with category
+    const params = new URLSearchParams(searchParams.toString());
+    if (category) {
+      params.set('category', category);
+    } else {
+      params.delete('category');
+    }
+
+    // Update URL without navigation
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    window.history.pushState({}, '', newUrl);
+
+    // Apply filters
+    const location = params.get('location');
+    const checkIn = params.get('checkIn');
+    const checkOut = params.get('checkOut');
+    const guests = params.get('guests');
+
+    filterListingsBySearch({ location, checkIn, checkOut, guests, category });
+
+    // Scroll to results
+    if (category) {
+      setTimeout(() => scrollToResults(), 300);
+    }
+  }, [searchParams, filterListingsBySearch, scrollToResults]);
+
+  // Clear filters
+  const clearFilters = useCallback(() => {
+    setSelectedCategory("");
+    setSearchTerm("");
+    router.push(window.location.pathname);
+    setFilteredListings(listings);
+  }, [router, listings]);
 
   // Filter sticky behavior
   useEffect(() => {
@@ -189,6 +190,7 @@ export function useSite() {
     const category = searchParams.get('category');
 
     if (category) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Sync URL search-param into UI state; URL is the source of truth.
       setSelectedCategory(category);
     }
 
@@ -203,8 +205,10 @@ export function useSite() {
     }
   }, [searchParams, listings, debouncedSearchTerm, filterListingsBySearch, scrollToResults]);
 
-  // Fetch listings on mount
+  // Fetch listings on mount — fetchListings sets state internally to drive the
+  // initial render. Cannot be derived (it's an async API call).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchListings calls async API and updates state with the result; not derivable.
     fetchListings();
   }, [fetchListings]);
 

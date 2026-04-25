@@ -56,7 +56,7 @@ const Map = () => {
     resizeMap();
 
     return () => map.remove();
-  }, [isLoading, isError, properties, filters.coordinates]);
+  }, [isLoading, isError, properties, filters.coordinates, dict]);
 
   if (isLoading) return <>{dict.listings?.loading ?? "Loading..."}</>;
   if (isError || !properties) return <div>{dict.listings?.failedToLoad ?? "Failed to fetch properties"}</div>;

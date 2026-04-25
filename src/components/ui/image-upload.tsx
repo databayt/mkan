@@ -93,6 +93,7 @@ export function ImageUpload({
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {imageUrls.map((url, index) => (
               <div key={index} className="relative group">
+                {/* eslint-disable-next-line @next/next/no-img-element -- user-uploaded URL with unknown dimensions */}
                 <img
                   src={url}
                   alt={`Upload ${index + 1}`}

@@ -285,10 +285,12 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                  {/* Hosted By */}
          <div className="flex items-center gap-4 py-6">
            <div className="relative">
-             <div className="w-11 h-11 rounded-full overflow-hidden">
-               <img
+             <div className="w-11 h-11 rounded-full overflow-hidden relative">
+               <Image
                  src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=48&h=48&fit=crop"
                  alt="Host Faisal"
+                 width={44}
+                 height={44}
                  className="w-full h-full object-cover"
                />
              </div>

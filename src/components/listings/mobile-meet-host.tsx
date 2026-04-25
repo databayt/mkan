@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image"
 import { Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { IdentityVerified, Building, Chat, SuperhostSimple } from "@/components/atom/icons"
@@ -17,10 +18,12 @@ export default function MobileMeetHost() {
         <div className="flex items-center space-x-4">
           {/* Host image and verification */}
           <div className="relative">
-            <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200">
-              <img
+            <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 relative">
+              <Image
                 src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=48&h=48&fit=crop"
                 alt="Host Faisal"
+                width={64}
+                height={64}
                 className="w-full h-full object-cover"
               />
             </div>

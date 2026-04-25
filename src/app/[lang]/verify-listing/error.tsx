@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 
@@ -29,9 +30,9 @@ export default function VerifyListingError({
       <div className="flex gap-3">
         <Button onClick={reset}>{dict.errors?.retry ?? "Try again"}</Button>
         <Button variant="outline" asChild>
-          <a href="/hosting/listings">
+          <Link href="/hosting/listings">
             {dict.errors?.backToListings ?? "Back to listings"}
-          </a>
+          </Link>
         </Button>
       </div>
     </div>

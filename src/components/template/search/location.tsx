@@ -50,7 +50,7 @@ export default function LocationDropdown({
   };
 
   return (
-    <div role="combobox" aria-expanded="true" aria-haspopup="listbox">
+    <div role="combobox" aria-expanded="true" aria-haspopup="listbox" aria-controls="location-listbox">
       <h3 className="text-lg font-semibold mb-4">{dict.search?.whereTo ?? "Where to?"}</h3>
 
       {/* Search input */}

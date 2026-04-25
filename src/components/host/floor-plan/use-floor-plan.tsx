@@ -74,8 +74,9 @@ export function useFloorPlan() {
     error,
     isFormValid,
     isDirty,
+    // eslint-disable-next-line react-hooks/incompatible-library -- RHF's watch() is a subscription; standard pattern for RHF-driven UI.
     bedrooms: form.watch('bedrooms'),
     bathrooms: form.watch('bathrooms'),
     guestCount: form.watch('guestCount'),
   }
-} 
+}

@@ -1090,7 +1090,9 @@ describe("processPayment", () => {
     mockAuth.mockResolvedValue(session as never);
     mockDb.transportBooking.findUnique.mockResolvedValue({
       id: 1,
+      userId: "user-1",
       totalAmount: 200,
+      trip: { route: { office: { ownerId: "user-1" } } },
     } as never);
     const payment = { id: 1, status: "Pending" };
     mockDb.transportPayment.create.mockResolvedValue(payment as never);

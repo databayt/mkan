@@ -1,6 +1,8 @@
 "use client"
 
 import React from 'react'
+import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { useGlobalStore } from '@/state/filters'
 import { PropertyCard } from '@/components/site/property/card'
 import { useDictionary } from '@/components/internationalization/dictionary-context'
@@ -14,6 +16,7 @@ interface ListingsProps {
 
 const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
   const dict = useDictionary()
+  const router = useRouter()
   const { data: session } = useSession()
   const viewMode = useGlobalStore((s) => s.viewMode)
   const filters = useGlobalStore((s) => s.filters)
@@ -43,7 +46,7 @@ const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
   }
 
   const handleCardClick = (propertyId: string) => {
-    window.location.href = `/search/${propertyId}`
+    router.push(`/search/${propertyId}`)
   }
 
   if (!properties || properties.length === 0) {
@@ -99,11 +102,13 @@ const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
           {transformedProperties.map((property) => (
             <div key={property.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
               <div className="flex gap-4">
-                <div className="w-48 h-32 bg-gray-200 rounded-lg overflow-hidden">
+                <div className="w-48 h-32 bg-gray-200 rounded-lg overflow-hidden relative">
                   {property.images.length > 0 && (
-                    <img
+                    <Image
                       src={property.images[0]}
                       alt={property.title}
+                      width={192}
+                      height={128}
                       className="w-full h-full object-cover"
                     />
                   )}

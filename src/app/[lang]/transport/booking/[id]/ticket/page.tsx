@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -236,9 +237,12 @@ export default function TicketViewPage() {
           {/* QR Code and Reference */}
           <div className="p-4 flex items-center gap-4">
             {qrCodeUrl && (
-              <img
+              <Image
                 src={qrCodeUrl}
                 alt="Ticket QR Code"
+                width={96}
+                height={96}
+                unoptimized
                 className="w-24 h-24"
               />
             )}

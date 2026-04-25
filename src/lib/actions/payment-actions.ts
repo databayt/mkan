@@ -583,7 +583,18 @@ export async function generateMonthlyPaymentsForAllLeases() {
     },
   });
 
-  let created = 0;
+  // Build the batch of payments to create — one per lease that doesn't
+  // already have a payment in the next month. A single createMany avoids
+  // N+1 round-trips for large lease portfolios (was one INSERT per lease).
+  const paymentsToCreate: Array<{
+    leaseId: number;
+    amountDue: number;
+    amountPaid: number;
+    dueDate: Date;
+    paymentDate: Date;
+    paymentStatus: PaymentStatus;
+  }> = [];
+
   for (const lease of leases) {
     if (lease.payments.length > 0) continue;
 
@@ -595,17 +606,20 @@ export async function generateMonthlyPaymentsForAllLeases() {
     }
     if (due > new Date(lease.endDate)) continue;
 
-    await db.payment.create({
-      data: {
-        leaseId: lease.id,
-        amountDue: lease.rent,
-        amountPaid: 0,
-        dueDate: due,
-        paymentDate: due,
-        paymentStatus: PaymentStatus.Pending,
-      },
+    paymentsToCreate.push({
+      leaseId: lease.id,
+      amountDue: lease.rent,
+      amountPaid: 0,
+      dueDate: due,
+      paymentDate: due,
+      paymentStatus: PaymentStatus.Pending,
     });
-    created++;
+  }
+
+  let created = 0;
+  if (paymentsToCreate.length > 0) {
+    const result = await db.payment.createMany({ data: paymentsToCreate });
+    created = result.count;
   }
 
   return { success: true, created, scanned: leases.length };

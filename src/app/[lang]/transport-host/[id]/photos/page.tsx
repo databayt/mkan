@@ -116,6 +116,7 @@ const PhotosPage = () => {
             <div className="flex items-center gap-4">
               {logoUrl ? (
                 <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- user-uploaded URL with unknown dimensions */}
                   <img
                     src={logoUrl}
                     alt="Office logo"
@@ -153,6 +154,7 @@ const PhotosPage = () => {
             <div className="grid grid-cols-3 gap-3">
               {images.map((image) => (
                 <div key={image.id} className="relative aspect-video">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- user-uploaded URL with unknown dimensions */}
                   <img
                     src={image.url}
                     alt="Bus photo"

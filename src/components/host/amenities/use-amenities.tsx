@@ -20,6 +20,7 @@ export function useAmenities() {
     mode: 'onChange',
   })
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- RHF's watch() is a subscription; standard pattern for RHF-driven UI.
   const selectedAmenities = form.watch('amenities') ?? []
 
   const toggleAmenity = (amenity: Amenity) => {

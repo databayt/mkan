@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 
 interface AirbnbImagesProps {
@@ -26,7 +27,7 @@ const AirbnbImages: React.FC<AirbnbImagesProps> = ({
     );
   }
 
-  const mainImage = images[0];
+  const mainImage = images[0]!;
   const thumbnailImages = images.slice(1, 5);
   const totalImages = images.length;
 
@@ -34,11 +35,12 @@ const AirbnbImages: React.FC<AirbnbImagesProps> = ({
     <div className={`w-full ${className}`}>
       {/* Mobile version */}
       <div className="md:hidden relative h-[400px] overflow-hidden rounded-xl">
-        <img
+        <Image
           src={mainImage}
           alt="Property main image"
-          className="w-full h-full object-cover"
-          style={{ objectFit: 'cover' }}
+          fill
+          className="object-cover"
+          sizes="100vw"
         />
         {onSave && (
           <Button
@@ -67,11 +69,12 @@ const AirbnbImages: React.FC<AirbnbImagesProps> = ({
         <div className="grid grid-cols-2 gap-2 h-[400px] overflow-hidden rounded-xl">
           {/* Left half - large image */}
           <button type="button" className="relative h-full cursor-pointer" onClick={onShowAllPhotos} aria-label="View all property photos">
-            <img
+            <Image
               src={mainImage}
               alt="Property main image"
-              className="w-full h-full object-cover rounded-tl-md rounded-bl-md"
-              style={{ objectFit: 'cover' }}
+              fill
+              className="object-cover rounded-tl-md rounded-bl-md"
+              sizes="(min-width: 768px) 50vw, 100vw"
             />
             {onSave && (
               <Button
@@ -100,35 +103,39 @@ const AirbnbImages: React.FC<AirbnbImagesProps> = ({
           {/* Right half - 2x2 grid of smaller images */}
           <div className="grid grid-cols-2 grid-rows-2 gap-2 h-full">
             <button type="button" className="relative cursor-pointer" onClick={onShowAllPhotos} aria-label="View property photo 2">
-              <img
+              <Image
                 src={thumbnailImages[0] || mainImage}
                 alt="Property image 2"
-                className="w-full h-full object-cover"
-                style={{ objectFit: 'cover' }}
+                fill
+                className="object-cover"
+                sizes="(min-width: 768px) 25vw, 50vw"
               />
             </button>
             <button type="button" className="relative cursor-pointer" onClick={onShowAllPhotos} aria-label="View property photo 3">
-              <img
+              <Image
                 src={thumbnailImages[1] || mainImage}
                 alt="Property image 3"
-                className="w-full h-full object-cover rounded-tr-md"
-                style={{ objectFit: 'cover' }}
+                fill
+                className="object-cover rounded-tr-md"
+                sizes="(min-width: 768px) 25vw, 50vw"
               />
             </button>
             <button type="button" className="relative cursor-pointer" onClick={onShowAllPhotos} aria-label="View property photo 4">
-              <img
+              <Image
                 src={thumbnailImages[2] || mainImage}
                 alt="Property image 4"
-                className="w-full h-full object-cover"
-                style={{ objectFit: 'cover' }}
+                fill
+                className="object-cover"
+                sizes="(min-width: 768px) 25vw, 50vw"
               />
             </button>
             <button type="button" className="relative cursor-pointer" onClick={onShowAllPhotos} aria-label="View all property photos">
-              <img
+              <Image
                 src={thumbnailImages[3] || mainImage}
                 alt="Property image 5"
-                className="w-full h-full object-cover rounded-br-md"
-                style={{ objectFit: 'cover' }}
+                fill
+                className="object-cover rounded-br-md"
+                sizes="(min-width: 768px) 25vw, 50vw"
               />
               <span className="absolute bottom-4 right-4 bg-white px-3 py-2 rounded-md flex items-center gap-2 text-sm font-medium" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">

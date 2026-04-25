@@ -18,6 +18,7 @@ export function useDescription() {
     mode: 'onChange',
   })
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- RHF's watch() is a subscription, not a memoizable value; using it here is the standard RHF pattern.
   const description = form.watch('description')
   const characterCount = description?.length || 0
   const remainingCharacters = FORM_LIMITS.DESCRIPTION_MAX_LENGTH - characterCount

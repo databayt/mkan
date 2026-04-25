@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   createTransportOffice,
@@ -176,18 +176,22 @@ export function TransportOfficeProvider({ children, initialOffice = null }: Tran
     } finally {
       setIsLoading(false);
     }
-  }, [office?.id]);
+  }, [office]);
 
-  const contextValue: TransportOfficeContextType = {
-    office,
-    isLoading,
-    error,
-    setOffice,
-    updateOfficeData,
-    createNewOffice,
-    loadOffice,
-    clearError,
-  };
+  // Memoize context value so consumers don't re-render on unrelated parent renders.
+  const contextValue = useMemo<TransportOfficeContextType>(
+    () => ({
+      office,
+      isLoading,
+      error,
+      setOffice,
+      updateOfficeData,
+      createNewOffice,
+      loadOffice,
+      clearError,
+    }),
+    [office, isLoading, error, updateOfficeData, createNewOffice, loadOffice, clearError]
+  );
 
   return (
     <TransportOfficeContext.Provider value={contextValue}>
@@ -213,7 +217,7 @@ export function useTransportHostNavigation(currentStep: string) {
       return;
     }
     router.push(`/transport-host/${office.id}/${step}`);
-  }, [office?.id, router]);
+  }, [office, router]);
 
   const goToNextStep = useCallback((nextStep: string) => {
     goToStep(nextStep);

@@ -59,8 +59,9 @@ export function usePrice() {
     error,
     isFormValid,
     isDirty,
+    // eslint-disable-next-line react-hooks/incompatible-library -- RHF's watch() is a subscription; standard pattern for RHF-driven UI.
     pricePerNight: form.watch('pricePerNight'),
     securityDeposit: form.watch('securityDeposit'),
     applicationFee: form.watch('applicationFee'),
   }
-} 
+}

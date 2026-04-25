@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useMemo } from "react";
 import { Listing } from "@/types/listing";
 import { PropertyListings } from "./listings";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
@@ -11,13 +11,12 @@ interface PropertyContentProps {
 
 export const PropertyContent = ({ properties: initialProperties, isLoading = false }: PropertyContentProps) => {
   const dict = useDictionary();
-  const [properties, setProperties] = useState(initialProperties);
-
-  useEffect(() => {
-    // Filter to show only published listings
-    const publishedProperties = initialProperties.filter(property => property.isPublished === true);
-    setProperties(publishedProperties);
-  }, [initialProperties]);
+  // Derive published listings from props instead of mirroring into state via
+  // an effect — eliminates an unnecessary re-render and a setState-in-effect.
+  const properties = useMemo(
+    () => initialProperties.filter(property => property.isPublished === true),
+    [initialProperties]
+  );
 
   if (isLoading) {
     return (

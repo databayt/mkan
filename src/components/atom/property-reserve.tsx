@@ -79,8 +79,12 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
   }, [listingId]);
 
   // Verify availability whenever the range changes to give early feedback.
+  // Both setState calls are intentional: clearing the error when range
+  // becomes incomplete and flipping isChecking around an async network
+  // call. The availability is derived from a server action, not props.
   useEffect(() => {
     if (!listingId || !range?.from || !range?.to) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Clearing error when input becomes incomplete; not derivable from props alone.
       setAvailabilityError(null);
       return;
     }

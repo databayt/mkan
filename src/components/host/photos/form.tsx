@@ -5,7 +5,7 @@ import { usePhotos } from './use-photos'
 import { StepWrapper } from '../step-wrapper'
 import { StepNavigation } from '../step-navigation'
 import { FormField } from '../form-field'
-import { X, Plus, Image } from 'lucide-react'
+import { X, Plus, Image as ImageIcon } from 'lucide-react'
 
 export function PhotosForm() {
   const { 
@@ -87,6 +87,7 @@ export function PhotosForm() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {photoUrls.map((url, index) => (
                   <div key={index} className="relative group aspect-square">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- user-provided URL with unknown dimensions and dynamic onError fallback */}
                     <img
                       src={url}
                       alt={`Photo ${index + 1}`}
@@ -107,7 +108,7 @@ export function PhotosForm() {
               </div>
             ) : (
               <div className="border-2 border-dashed border-border rounded-lg p-12 text-center">
-                <Image className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <ImageIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" aria-hidden="true" />
                 <p className="text-muted-foreground">
                   Add your first photo to get started
                 </p>

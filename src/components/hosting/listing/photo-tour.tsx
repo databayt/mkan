@@ -11,46 +11,50 @@ interface PhotoTourProps {
   listingId: string;
 }
 
-const PhotoTour = ({ listingId }: PhotoTourProps) => {
-  const rooms = [
-    {
-      id: 'bedroom',
-      name: 'Bedroom',
-      status: 'add-photos',
-      photoCount: 0,
-      image: '/hosting/bedroom.png',
-    },
-    {
-      id: 'bathroom',
-      name: 'Bathroom',
-      status: 'add-photos',
-      photoCount: 0,
-      image: '/hosting/bathroom.png',
-    },
-    {
-      id: 'additional',
-      name: 'Additional photos',
-      status: 'has-photos',
-      photoCount: 5,
-      image: null,
-    },
-  ];
+// Hoist out of the component body so it isn't recreated on every render —
+// `react-hooks/static-components` flags inline component definitions.
+const PhotoOverlayIcon = () => (
+  <svg
+    viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg"
+    style={{display: 'block', fill: 'none', height: '16px', width: '16px', stroke: 'currentColor', strokeWidth: 3, overflow: 'visible'}}
+    aria-hidden="true"
+    role="presentation"
+    focusable="false"
+  >
+    <g>
+      <path d="m9.37059905 10.0233417c.18293611-1.03748223.45734027-2.59370556.82321245-4.66866999.383613-2.17557722 2.4582465-3.62825127 4.6338238-3.24463831l11.817693 2.08377814c2.1755772.38361296 3.6282513 2.4582465 3.2446383 4.63382372l-2.0837781 11.81769304c-.383613 2.1755772-2.4582465 3.6282513-4.6338238 3.2446383-.5125818-.090382-.8970182-.1581685-1.1533092-.2033595"></path>
+      <path d="m6 10h12c2.209139 0 4 1.790861 4 4v12c0 2.209139-1.790861 4-4 4h-12c-2.209139 0-4-1.790861-4-4v-12c0-2.209139 1.790861-4 4-4z"></path>
+    </g>
+  </svg>
+);
 
-  const PhotoOverlayIcon = () => (
-    <svg 
-      viewBox="0 0 32 32" 
-      xmlns="http://www.w3.org/2000/svg" 
-      style={{display: 'block', fill: 'none', height: '16px', width: '16px', stroke: 'currentColor', strokeWidth: 3, overflow: 'visible'}} 
-      aria-hidden="true" 
-      role="presentation" 
-      focusable="false"
-    >
-      <g>
-        <path d="m9.37059905 10.0233417c.18293611-1.03748223.45734027-2.59370556.82321245-4.66866999.383613-2.17557722 2.4582465-3.62825127 4.6338238-3.24463831l11.817693 2.08377814c2.1755772.38361296 3.6282513 2.4582465 3.2446383 4.63382372l-2.0837781 11.81769304c-.383613 2.1755772-2.4582465 3.6282513-4.6338238 3.2446383-.5125818-.090382-.8970182-.1581685-1.1533092-.2033595"></path>
-        <path d="m6 10h12c2.209139 0 4 1.790861 4 4v12c0 2.209139-1.790861 4-4 4h-12c-2.209139 0-4-1.790861-4-4v-12c0-2.209139 1.790861-4 4-4z"></path>
-      </g>
-    </svg>
-  );
+const ROOMS = [
+  {
+    id: 'bedroom',
+    name: 'Bedroom',
+    status: 'add-photos',
+    photoCount: 0,
+    image: '/hosting/bedroom.png',
+  },
+  {
+    id: 'bathroom',
+    name: 'Bathroom',
+    status: 'add-photos',
+    photoCount: 0,
+    image: '/hosting/bathroom.png',
+  },
+  {
+    id: 'additional',
+    name: 'Additional photos',
+    status: 'has-photos',
+    photoCount: 5,
+    image: null,
+  },
+];
+
+const PhotoTour = ({ listingId }: PhotoTourProps) => {
+  const rooms = ROOMS;
 
   return (
     <div className="lg:col-span-2">

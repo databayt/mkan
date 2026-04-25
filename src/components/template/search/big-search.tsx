@@ -41,7 +41,11 @@ export default function BigSearch({ onClose, isActive = true }: BigSearchProps =
   const searchBarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // When the parent collapses the search bar (isActive=false), reset any
+    // open dropdown so it doesn't reappear on re-expand. Sync from prop —
+    // intentional setState-in-effect.
     if (!isActive) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset on parent prop change; reverse-state-derivation would need controlled mode.
       setActiveButton(null);
       setHoveredButton(null);
     }

@@ -62,7 +62,11 @@ export function useLocationSuggestions(
 
   // Fetch suggestions when debounced query changes
   useEffect(() => {
+    // When the user clears the search box, drop suggestions and any error.
+    // Reset is gated on the actual debounced query value — not derivable
+    // without keeping prior suggestions in mirror state.
     if (!debouncedQuery.trim()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset on cleared search input; suggestions are async-fetched, not derivable.
       setSuggestions([]);
       setError(null);
       return;

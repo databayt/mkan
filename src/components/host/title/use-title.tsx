@@ -18,6 +18,7 @@ export function useTitle() {
     mode: 'onChange',
   })
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- RHF's watch() is a subscription, not a memoizable value; using it here is the standard RHF pattern.
   const title = form.watch('title')
   const characterCount = title?.length || 0
   const remainingCharacters = FORM_LIMITS.TITLE_MAX_LENGTH - characterCount
