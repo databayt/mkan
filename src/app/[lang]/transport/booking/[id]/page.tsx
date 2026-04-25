@@ -24,47 +24,7 @@ import { ar, enUS } from 'date-fns/locale';
 import { getBooking } from '@/lib/actions/transport-actions';
 import { getTransportDictionary } from '@/components/transport/transport-dictionary';
 
-interface BookingDetails {
-  id: number;
-  bookingReference: string;
-  passengerName: string;
-  passengerPhone: string;
-  passengerEmail: string | null;
-  totalAmount: number;
-  status: string;
-  bookedAt: Date;
-  confirmedAt: Date | null;
-  trip: {
-    departureDate: Date;
-    departureTime: string;
-    arrivalTime: string | null;
-    price: number;
-    route: {
-      origin: { name: string; city: string; address: string };
-      destination: { name: string; city: string; address: string };
-      duration: number;
-      office: {
-        name: string;
-        phone: string;
-        assemblyPoint: {
-          name: string;
-          address: string;
-        } | null;
-      };
-    };
-    bus: {
-      plateNumber: string;
-      model: string | null;
-    };
-  };
-  seats: { seatNumber: string }[];
-  payments: {
-    amount: number;
-    method: string;
-    status: string;
-    paidAt: Date | null;
-  }[];
-}
+type BookingDetails = NonNullable<Awaited<ReturnType<typeof getBooking>>>;
 
 export default function BookingConfirmationPage() {
   const params = useParams();
@@ -83,7 +43,7 @@ export default function BookingConfirmationPage() {
     const fetchBooking = async () => {
       try {
         const data = await getBooking(bookingId);
-        setBooking(data as unknown as BookingDetails | null);
+        setBooking(data);
       } catch (error) {
         console.error('Failed to fetch booking:', error);
       } finally {

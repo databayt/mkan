@@ -26,33 +26,7 @@ import { useLocale } from '@/components/internationalization/use-locale';
 
 type PaymentMethod = 'MobileMoney' | 'CreditCard' | 'BankTransfer' | 'CashOnArrival';
 
-interface BookingDetails {
-  id: number;
-  bookingReference: string;
-  passengerName: string;
-  passengerPhone: string;
-  totalAmount: number;
-  status: string;
-  trip: {
-    departureDate: Date;
-    departureTime: string;
-    price: number;
-    route: {
-      origin: { name: string; city: string };
-      destination: { name: string; city: string };
-      duration: number;
-      office: {
-        name: string;
-        phone: string;
-      };
-    };
-    bus: {
-      plateNumber: string;
-      model: string | null;
-    };
-  };
-  seats: { seatNumber: string }[];
-}
+type BookingDetails = NonNullable<Awaited<ReturnType<typeof getBooking>>>;
 
 // Payment method translations
 const paymentMethodTranslations = {
@@ -159,7 +133,7 @@ function CheckoutInner() {
     const fetchBooking = async () => {
       try {
         const data = await getBooking(bookingId);
-        setBooking(data as unknown as BookingDetails | null);
+        setBooking(data);
       } catch (error) {
         console.error('Failed to fetch booking:', error);
       } finally {

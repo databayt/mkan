@@ -48,33 +48,9 @@ const tripSchema = z.object({
 
 type TripFormData = z.infer<typeof tripSchema>;
 
-interface RouteData {
-  id: number;
-  basePrice: number;
-  duration: number;
-  origin: { name: string; city: string };
-  destination: { name: string; city: string };
-}
-
-interface BusData {
-  id: number;
-  plateNumber: string;
-  model: string | null;
-  capacity: number;
-}
-
-interface TripData {
-  id: number;
-  routeId: number;
-  busId: number;
-  departureDate: Date;
-  departureTime: string;
-  arrivalTime: string | null;
-  price: number;
-  availableSeats: number;
-  route: RouteData;
-  bus: BusData;
-}
+type RouteData = Awaited<ReturnType<typeof getRoutesByOffice>>[number];
+type BusData = Awaited<ReturnType<typeof getBusesByOffice>>[number];
+type TripData = Awaited<ReturnType<typeof getTripsByOffice>>[number];
 
 const SchedulePage = () => {
   const { enableNext } = useTransportHostValidation();
@@ -114,9 +90,9 @@ const SchedulePage = () => {
           getBusesByOffice(office.id),
           getTripsByOffice(office.id),
         ]);
-        setRoutes(officeRoutes as unknown as RouteData[]);
-        setBuses(officeBuses as unknown as BusData[]);
-        setTrips(officeTrips as unknown as TripData[]);
+        setRoutes(officeRoutes);
+        setBuses(officeBuses);
+        setTrips(officeTrips);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -164,9 +140,9 @@ const SchedulePage = () => {
         availableSeats: bus.capacity,
       };
 
-      const created = await createTrip(tripData);
+      const created = (await createTrip(tripData)) as TripData | null;
       if (created) {
-        setTrips((prev) => [...prev, created as unknown as TripData]);
+        setTrips((prev) => [...prev, created]);
       }
 
       setIsDialogOpen(false);

@@ -48,16 +48,7 @@ const busSchema = z.object({
 
 type BusFormData = z.infer<typeof busSchema>;
 
-interface BusData {
-  id: number;
-  plateNumber: string;
-  model: string | null;
-  manufacturer: string | null;
-  year: number | null;
-  capacity: number;
-  amenities: string[];
-  isActive: boolean;
-}
+type BusData = Awaited<ReturnType<typeof getBusesByOffice>>[number];
 
 const BusesPage = () => {
   const { enableNext, disableNext } = useTransportHostValidation();
@@ -91,7 +82,7 @@ const BusesPage = () => {
       if (!office?.id) return;
       try {
         const officeBuses = await getBusesByOffice(office.id);
-        setBuses(officeBuses as unknown as BusData[]);
+        setBuses(officeBuses);
       } catch (error) {
         console.error('Error loading buses:', error);
       } finally {
@@ -129,16 +120,14 @@ const BusesPage = () => {
       };
 
       if (editingBus) {
-        const updated = await updateBus(editingBus.id, busData);
+        const updated = (await updateBus(editingBus.id, busData)) as BusData | null;
         if (updated) {
-          setBuses((prev) =>
-            prev.map((b) => (b.id === editingBus.id ? (updated as unknown as BusData) : b))
-          );
+          setBuses((prev) => prev.map((b) => (b.id === editingBus.id ? updated : b)));
         }
       } else {
-        const created = await createBus(busData);
+        const created = (await createBus(busData)) as BusData | null;
         if (created) {
-          setBuses((prev) => [...prev, created as unknown as BusData]);
+          setBuses((prev) => [...prev, created]);
         }
       }
 
