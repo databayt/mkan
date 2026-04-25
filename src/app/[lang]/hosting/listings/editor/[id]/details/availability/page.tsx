@@ -170,12 +170,35 @@ const AvailabilityPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12 border-2 border-dashed rounded-lg">
-              <Calendar className="size-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="font-medium mb-2">Calendar view coming soon</h3>
-              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                A full calendar will be available here to block dates, set seasonal pricing, and sync with external calendars.
-              </p>
+            <div className="rounded-lg border p-4">
+              <div className="grid grid-cols-7 gap-1 mb-3 text-xs text-muted-foreground text-center">
+                {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+                  <div key={i}>{d}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: 35 }).map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className="aspect-square rounded text-sm hover:bg-muted/50 disabled:opacity-30"
+                    disabled={i < 4 || i > 32}
+                  >
+                    {i >= 4 && i <= 32 ? i - 3 : ""}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="size-2 rounded-full bg-muted" /> Available
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="size-2 rounded-full bg-primary" /> Booked
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="size-2 rounded-full bg-destructive/60" /> Blocked
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
