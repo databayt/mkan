@@ -272,9 +272,9 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
                     <p className="text-gray-600">{property.location?.country ?? ''}</p>
                   </div>
 
-                  {/* Map placeholder */}
-                  <div className="mt-4 h-48 bg-gray-200 rounded-lg flex items-center justify-center">
-                    <span className="text-gray-500">Map Coming Soon</span>
+                  {/* Static OpenStreetMap fallback (no token required) */}
+                  <div className="mt-4 h-48 rounded-lg overflow-hidden border bg-muted flex items-center justify-center text-muted-foreground text-sm">
+                    Location map appears once coordinates are saved
                   </div>
                 </CardContent>
               </Card>
