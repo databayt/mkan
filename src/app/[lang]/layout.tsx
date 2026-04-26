@@ -1,11 +1,21 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Rubik } from 'next/font/google';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import { DictionaryProvider } from '@/components/internationalization/dictionary-context';
 import { type Locale, localeConfig, i18n } from '@/components/internationalization/config';
+import { ReportIssue } from '@/components/report-issue';
 import { Providers } from '../providers';
 import { Toaster } from 'sonner';
 import '../globals.css';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#000000' },
+  ],
+};
 
 // Enable ISR with 1-hour revalidation
 export const revalidate = 3600;
@@ -71,12 +81,15 @@ export default async function LocaleLayout({
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background focus:text-foreground focus:border focus:border-border focus:rounded-md focus:m-2"
         >
-          {isRTL ? 'تخطي إلى المحتوى الرئيسي' : 'Skip to main content'}
+          {dictionary.common.skipToContent}
         </a>
         <Providers>
           <DictionaryProvider dictionary={dictionary}>
             {children}
             <Toaster richColors />
+            <div className="fixed end-4 bottom-4 z-40 print:hidden">
+              <ReportIssue variant="icon" />
+            </div>
           </DictionaryProvider>
         </Providers>
       </body>
