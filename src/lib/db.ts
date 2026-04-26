@@ -54,10 +54,21 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+const isNeonUrl = (url: string | undefined): boolean =>
+  typeof url === "string" && /\.neon\.tech/i.test(url);
+
 const createPrismaClient = () => {
   const isProduction = process.env.NODE_ENV === "production";
   const connectionString = getConnectionUrl();
-  const adapterKind = (process.env.DATABASE_URL_ADAPTER ?? "pg").toLowerCase();
+  // Default to the neon serverless adapter when the URL points at Neon.
+  // The pg adapter holds long-lived TCP connections that Neon drops when
+  // its serverless compute scales to zero — the next query then fails with
+  // "Server has closed the connection" (issue #4). The neon adapter speaks
+  // HTTPS+WS and wakes the compute on demand.
+  const adapterKind = (
+    process.env.DATABASE_URL_ADAPTER ??
+    (isNeonUrl(connectionString) ? "neon" : "pg")
+  ).toLowerCase();
 
   let adapter;
   if (adapterKind === "neon") {
