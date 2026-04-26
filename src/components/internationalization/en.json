@@ -37,7 +37,8 @@
     "dark": "Dark",
     "system": "System",
     "platform": "Platform",
-    "brandName": "Mkan"
+    "brandName": "Mkan",
+    "skipToContent": "Skip to main content"
   },
   "navigation": {
     "menu": "Menu",
