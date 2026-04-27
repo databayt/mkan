@@ -18,11 +18,11 @@ export default function HostingCalendarPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" aria-label="Previous month">
-            <ChevronLeft className="size-4" />
+            <ChevronLeft className="size-4 rtl:rotate-180" />
           </Button>
           <span className="font-medium min-w-[140px] text-center">{monthLabel}</span>
           <Button variant="outline" size="icon" aria-label="Next month">
-            <ChevronRight className="size-4" />
+            <ChevronRight className="size-4 rtl:rotate-180" />
           </Button>
         </div>
       </div>

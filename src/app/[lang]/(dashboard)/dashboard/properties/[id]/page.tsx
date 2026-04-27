@@ -21,12 +21,15 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { useLocale } from "@/components/internationalization/use-locale";
+import { formatDate } from "@/lib/i18n/formatters";
 
 const PropertyManagement = () => {
   const { id } = useParams();
   const pathname = usePathname();
   const isAr = pathname?.startsWith("/ar");
   const dict = useDictionary();
+  const { locale: lang } = useLocale();
   const propertyId = Number(id);
 
   const [property, setProperty] = useState<any>(null);
@@ -185,9 +188,9 @@ const PropertyManagement = () => {
                     </TableCell>
                     <TableCell>
                       <div>
-                        {new Date(lease.startDate).toLocaleDateString()} -
+                        {formatDate(lease.startDate, lang)} -
                       </div>
-                      <div>{new Date(lease.endDate).toLocaleDateString()}</div>
+                      <div>{formatDate(lease.endDate, lang)}</div>
                     </TableCell>
                     <TableCell>${lease.rent.toFixed(2)}</TableCell>
                     <TableCell>

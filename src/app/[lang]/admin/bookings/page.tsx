@@ -15,7 +15,8 @@ export default async function AdminBookingsPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const dict = await getDictionary(lang as "en" | "ar");
+  const locale = lang as "en" | "ar";
+  const dict = await getDictionary(locale);
   const a = (dict as { admin?: Record<string, string> }).admin ?? {};
 
   const [homes, transport] = await Promise.all([
@@ -43,6 +44,7 @@ export default async function AdminBookingsPage({
         <TabsContent value="homes">
           <div className="rounded-md border">
             <HomeBookingsTable
+              lang={locale}
               bookings={homes.bookings}
               labels={{
                 guest: a.guest ?? "Guest",
@@ -59,6 +61,7 @@ export default async function AdminBookingsPage({
         <TabsContent value="transport">
           <div className="rounded-md border">
             <TransportBookingsTable
+              lang={locale}
               bookings={transport.bookings}
               labels={{
                 passenger: a.passenger ?? "Passenger",

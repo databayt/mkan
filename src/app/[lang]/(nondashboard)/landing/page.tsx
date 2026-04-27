@@ -1,20 +1,20 @@
 import { Metadata } from "next";
 import React from "react";
 import { createMetadata } from "@/lib/metadata";
+import { getDictionary } from "@/components/internationalization/dictionaries";
+import type { Locale } from "@/components/internationalization/config";
 import HeroSection from "@/components/site/HeroSection";
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ lang: string }>;
+  params: Promise<{ lang: Locale }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const m = (await getDictionary(lang)).pageMetadata.landing;
   return createMetadata({
-    title: lang === "ar" ? "مرحباً" : "Welcome",
-    description:
-      lang === "ar"
-        ? "مرحباً بك في مكان — منصة الإيجار والاستضافة"
-        : "Welcome to Mkan — your rental and hosting platform",
+    title: m.title,
+    description: m.description,
     locale: lang,
     path: "/landing",
   });
