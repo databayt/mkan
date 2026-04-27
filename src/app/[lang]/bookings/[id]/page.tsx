@@ -5,6 +5,8 @@ import { Check, Clock, MapPin, Users } from "lucide-react";
 
 import { getBooking } from "@/lib/actions/booking-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
+import { formatDate } from "@/lib/i18n/formatters";
+import type { Locale } from "@/components/internationalization/config";
 import CancelBookingButton from "./cancel-button";
 
 export default async function BookingConfirmationPage({
@@ -103,11 +105,11 @@ export default async function BookingConfirmationPage({
           <div className="grid grid-cols-3 gap-4 pt-3 border-t">
             <div>
               <div className="text-xs text-muted-foreground">{t.checkIn ?? "Check-in"}</div>
-              <div className="text-sm font-medium">{new Date(b.checkIn).toLocaleDateString()}</div>
+              <div className="text-sm font-medium">{formatDate(b.checkIn, lang as Locale)}</div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground">{t.checkOut ?? "Check-out"}</div>
-              <div className="text-sm font-medium">{new Date(b.checkOut).toLocaleDateString()}</div>
+              <div className="text-sm font-medium">{formatDate(b.checkOut, lang as Locale)}</div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground">

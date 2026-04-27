@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Home, Bus, Calendar, MapPin, Clock, Download, Eye } from 'lucide-react';
 import { format } from 'date-fns';
-import { ar, enUS } from 'date-fns/locale';
+import { dateLocaleFor } from '@/lib/i18n/date-locale';
+import { formatDate } from '@/lib/i18n/formatters';
 import Link from 'next/link';
 import { getMyBookings } from '@/lib/actions/transport-actions';
 import { getGuestBookings, cancelBooking } from '@/lib/actions/booking-actions';
@@ -68,7 +69,7 @@ const TripsPage = () => {
   const { locale } = useLocale();
   const params = useParams();
   const lang = (params?.lang as string) ?? 'en';
-  const dateLocale = locale === 'ar' ? ar : enUS;
+  const dateLocale = dateLocaleFor(locale);
   const [transportBookings, setTransportBookings] = useState<TransportBooking[]>([]);
   const [homeBookings, setHomeBookings] = useState<HomeBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -310,8 +311,8 @@ const HomeBookingCard = ({ booking, lang, dict, getStatusColor, isPast, onCancel
           <div className="flex flex-wrap gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4" />
-              {new Date(booking.checkIn).toLocaleDateString()} →{" "}
-              {new Date(booking.checkOut).toLocaleDateString()}
+              {formatDate(booking.checkIn, lang as 'en' | 'ar')} →{" "}
+              {formatDate(booking.checkOut, lang as 'en' | 'ar')}
             </div>
             <div>{booking.guestCount} {dict.booking?.guestsPlural ?? "guests"}</div>
           </div>
@@ -355,7 +356,7 @@ interface TransportBookingCardProps {
 const TransportBookingCard = ({ booking, getStatusColor, isPast }: TransportBookingCardProps) => {
   const dict = useDictionary();
   const { locale } = useLocale();
-  const dateLocale = locale === 'ar' ? ar : enUS;
+  const dateLocale = dateLocaleFor(locale);
   return (
     <div className={`border rounded-lg p-4 ${isPast ? 'opacity-75' : ''}`}>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

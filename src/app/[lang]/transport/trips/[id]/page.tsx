@@ -22,7 +22,8 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ar, enUS } from 'date-fns/locale';
+import { dateLocaleFor } from '@/lib/i18n/date-locale';
+import type { Locale } from '@/components/internationalization/config';
 import { toast } from 'sonner';
 import { getTripDetails, createBooking } from '@/lib/actions/transport-actions';
 import { getTransportDictionary } from '@/components/transport/transport-dictionary';
@@ -48,8 +49,8 @@ const amenityIcons: Record<string, React.ElementType> = {
 export default function TripDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const lang = params.lang as string;
-  const dateLocale = lang === 'ar' ? ar : enUS;
+  const lang = params.lang as Locale;
+  const dateLocale = dateLocaleFor(lang);
   const tripId = Number(params.id);
 
   const [trip, setTrip] = useState<TripDetails | null>(null);

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import TransportCityDropdown from "./transport-city-dropdown";
 import TransportDatePicker from "./transport-date-picker";
 import { isRTL as checkRTL, type Locale } from "@/components/internationalization/config";
+import { intlLocaleFor } from "@/lib/i18n/date-locale";
 
 type ActiveButton = "origin" | "destination" | "date" | null;
 
@@ -89,7 +90,7 @@ export default function TransportBigSearch({
   // Format date for display
   const formatDate = (date: Date | undefined) => {
     if (!date) return dictionary.selectDate;
-    const locale = lang === 'ar' ? 'ar-SA' : 'en-US';
+    const locale = intlLocaleFor(lang as Locale);
     return date.toLocaleDateString(locale, {
       month: "short",
       day: "numeric",
@@ -279,7 +280,7 @@ export default function TransportBigSearch({
               <Search className="w-4 h-4" />
               {activeButton && (
                 <span className="ms-2 text-sm font-medium">
-                  {lang === 'ar' ? 'بحث' : 'Search'}
+                  {dictionary.search}
                 </span>
               )}
               <span className="sr-only">{dictionary.search}</span>

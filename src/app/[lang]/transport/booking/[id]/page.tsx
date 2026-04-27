@@ -20,7 +20,8 @@ import {
   Ticket,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ar, enUS } from 'date-fns/locale';
+import { dateLocaleFor } from '@/lib/i18n/date-locale';
+import type { Locale } from '@/components/internationalization/config';
 import { getBooking } from '@/lib/actions/transport-actions';
 import { getTransportDictionary } from '@/components/transport/transport-dictionary';
 
@@ -29,7 +30,7 @@ type BookingDetails = NonNullable<Awaited<ReturnType<typeof getBooking>>>;
 export default function BookingConfirmationPage() {
   const params = useParams();
   const router = useRouter();
-  const lang = params.lang as string;
+  const lang = params.lang as Locale;
   const bookingId = Number(params.id);
 
   const [booking, setBooking] = useState<BookingDetails | null>(null);
@@ -37,7 +38,7 @@ export default function BookingConfirmationPage() {
   const t = getTransportDictionary(lang);
   // Locale for date-fns — gives Arabic users "الثلاثاء، ١٥ أبريل" instead of
   // "Tue, Apr 15". All `format()` calls in this file must pass this.
-  const dateLocale = lang === 'ar' ? ar : enUS;
+  const dateLocale = dateLocaleFor(lang);
 
   useEffect(() => {
     const fetchBooking = async () => {
