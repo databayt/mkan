@@ -9,12 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Route as RouteIcon } from "lucide-react";
 import { getTripsByOffice } from "@/lib/actions/transport-actions";
+import { formatDate } from "@/lib/i18n/formatters";
+import { useLocale } from "@/components/internationalization/use-locale";
 
 type Trip = Awaited<ReturnType<typeof getTripsByOffice>>[number];
 type Bucket = "today" | "upcoming" | "past";
 
 export default function TransportHostTripsPage() {
   const params = useParams();
+  const { locale: lang } = useLocale();
   const officeId = Number(params.id);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [bucket, setBucket] = useState<Bucket>("today");
@@ -85,7 +88,7 @@ export default function TransportHostTripsPage() {
                   </div>
                 </div>
                 <div className="text-sm">
-                  <div>{new Date(t.departureDate).toLocaleDateString()}</div>
+                  <div>{formatDate(t.departureDate, lang)}</div>
                   <div className="text-muted-foreground">{t.departureTime}</div>
                 </div>
                 <div className="text-sm">

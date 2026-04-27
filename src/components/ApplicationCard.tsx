@@ -2,6 +2,8 @@ import { Mail, MapPin, PhoneCall } from "lucide-react";
 import Image from "next/image";
 import React, { useState } from "react";
 import { ApplicationWithDetails } from "@/lib/actions/application-actions";
+import { useLocale } from "@/components/internationalization/use-locale";
+import { formatDate } from "@/lib/i18n/formatters";
 
 interface ApplicationCardProps {
   application: ApplicationWithDetails;
@@ -14,6 +16,7 @@ const ApplicationCard = ({
   userType,
   children,
 }: ApplicationCardProps) => {
+  const { locale: lang } = useLocale();
   const [imgSrc, setImgSrc] = useState(
     application.listing.photoUrls?.[0] || "/placeholder.jpg"
   );
@@ -76,11 +79,11 @@ const ApplicationCard = ({
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Start Date:</span>{" "}
-            {application.lease?.startDate ? new Date(application.lease.startDate).toLocaleDateString() : 'N/A'}
+            {application.lease?.startDate ? formatDate(application.lease.startDate, lang) : 'N/A'}
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">End Date:</span>{" "}
-            {application.lease?.endDate ? new Date(application.lease.endDate).toLocaleDateString() : 'N/A'}
+            {application.lease?.endDate ? formatDate(application.lease.endDate, lang) : 'N/A'}
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Lease ID:</span>{" "}

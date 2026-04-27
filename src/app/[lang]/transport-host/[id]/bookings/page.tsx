@@ -12,12 +12,15 @@ import {
   getOfficeBookings,
   updateBookingStatus,
 } from "@/lib/actions/transport-actions";
+import { formatDate } from "@/lib/i18n/formatters";
+import { useLocale } from "@/components/internationalization/use-locale";
 
 type BookingsResult = Awaited<ReturnType<typeof getOfficeBookings>>;
 type Booking = BookingsResult extends { bookings: infer B } ? (B extends Array<infer I> ? I : never) : never;
 
 export default function TransportHostBookingsPage() {
   const params = useParams();
+  const { locale: lang } = useLocale();
   const officeId = Number(params.id);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +93,7 @@ export default function TransportHostBookingsPage() {
                     {b.trip?.route?.origin?.city} → {b.trip?.route?.destination?.city}
                   </div>
                   <div className="text-muted-foreground">
-                    {new Date(b.trip?.departureDate).toLocaleDateString()} ·{" "}
+                    {b.trip?.departureDate ? formatDate(b.trip.departureDate, lang) : '—'} ·{" "}
                     {b.trip?.departureTime}
                   </div>
                 </div>

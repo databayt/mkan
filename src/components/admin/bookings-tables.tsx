@@ -7,6 +7,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/i18n/formatters";
+import type { Locale } from "@/components/internationalization/config";
 
 type HomeBooking = {
   id: number;
@@ -51,9 +53,11 @@ type TransportLabels = {
 export function HomeBookingsTable({
   bookings,
   labels,
+  lang,
 }: {
   bookings: HomeBooking[];
   labels: HomeLabels;
+  lang: Locale;
 }) {
   return (
     <Table>
@@ -77,10 +81,10 @@ export function HomeBookingsTable({
             </TableCell>
             <TableCell className="text-sm">{b.listing.title ?? `#${b.listing.id}`}</TableCell>
             <TableCell className="text-sm">
-              {new Date(b.checkIn).toLocaleDateString()}
+              {formatDate(b.checkIn, lang)}
             </TableCell>
             <TableCell className="text-sm">
-              {new Date(b.checkOut).toLocaleDateString()}
+              {formatDate(b.checkOut, lang)}
             </TableCell>
             <TableCell>
               <Badge variant="outline">{b.status}</Badge>
@@ -89,7 +93,7 @@ export function HomeBookingsTable({
               ${b.totalPrice.toFixed(0)}
             </TableCell>
             <TableCell className="text-xs text-muted-foreground">
-              {new Date(b.createdAt).toLocaleDateString()}
+              {formatDate(b.createdAt, lang)}
             </TableCell>
           </TableRow>
         ))}
@@ -101,9 +105,11 @@ export function HomeBookingsTable({
 export function TransportBookingsTable({
   bookings,
   labels,
+  lang,
 }: {
   bookings: TransportBooking[];
   labels: TransportLabels;
+  lang: Locale;
 }) {
   return (
     <Table>
@@ -133,7 +139,7 @@ export function TransportBookingsTable({
               ${b.totalAmount.toFixed(0)}
             </TableCell>
             <TableCell className="text-xs text-muted-foreground">
-              {new Date(b.createdAt).toLocaleDateString()}
+              {formatDate(b.createdAt, lang)}
             </TableCell>
           </TableRow>
         ))}

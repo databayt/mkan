@@ -3,6 +3,37 @@
     "title": "مكان - منصة الإيجار",
     "description": "تواصل مع مديري العقارات واعثر على منزل الإيجار المثالي"
   },
+  "hostingListings": {
+    "status": {
+      "published": "منشور",
+      "inProgress": "قيد التنفيذ",
+      "actionRequired": "إجراء مطلوب"
+    },
+    "publish": "نشر",
+    "unpublish": "إلغاء النشر",
+    "publishing": "جاري النشر...",
+    "unpublishing": "جاري إلغاء النشر...",
+    "publishSuccess": "تم نشر العقار",
+    "unpublishSuccess": "تم إلغاء نشر العقار",
+    "publishCannotYet": "أكمل الإعداد قبل النشر",
+    "publishUnknownError": "تعذر النشر — حاول مجدداً"
+  },
+  "pageMetadata": {
+    "help": { "title": "مركز المساعدة", "description": "احصل على المساعدة والدعم" },
+    "host": { "title": "كن مضيفاً", "description": "ابدأ باستضافة الضيوف وكسب الدخل" },
+    "hosting": { "title": "الاستضافة", "description": "إدارة حجوزاتك واستضافتك" },
+    "hostingListings": { "title": "إعلاناتي", "description": "عرض وإدارة إعلاناتك" },
+    "transportHost": { "title": "مضيف النقل", "description": "إدارة مكاتب النقل والحجوزات" },
+    "transportOffices": { "title": "مكاتب النقل", "description": "تصفح مشغلي النقل" },
+    "transportCheckout": { "title": "الدفع", "description": "أكمل حجزك" },
+    "landing": { "title": "مرحباً", "description": "ابحث عن منزلك أو رحلتك القادمة" },
+    "login": { "title": "تسجيل الدخول", "description": "سجل الدخول إلى حسابك" },
+    "join": { "title": "إنشاء حساب", "description": "أنشئ حساباً جديداً" },
+    "reset": { "title": "إعادة تعيين كلمة المرور", "description": "استعد الوصول إلى حسابك" },
+    "managersProperties": { "title": "إدارة العقارات", "description": "إدارة طلبات المستأجرين والإيجارات" },
+    "tenantsFavorites": { "title": "المفضلة", "subtitle": "تصفح وإدارة العقارات المحفوظة", "description": "العقارات التي حفظتها" },
+    "tenantsResidences": { "title": "مساكني", "description": "العقارات التي تستأجرها حالياً" }
+  },
   "chatbot": {
     "title": "مساعد الدردشة",
     "startMessage": "ابدأ محادثة...",
@@ -37,7 +68,8 @@
     "dark": "داكن",
     "system": "النظام",
     "platform": "منصة",
-    "brandName": "مكان"
+    "brandName": "مكان",
+    "skipToContent": "تخطي إلى المحتوى الرئيسي"
   },
   "navigation": {
     "menu": "القائمة",
@@ -925,6 +957,9 @@
         "joinedIn": "انضم في 2023"
       },
       "filters": {
+        "title": "الفلاتر",
+        "clearAll": "مسح الكل",
+        "any": "الكل",
         "allProperties": "جميع العقارات",
         "sortBy": "ترتيب حسب",
         "priceLowest": "السعر: من الأقل إلى الأعلى",
@@ -932,13 +967,19 @@
         "newest": "الأحدث أولاً",
         "bedrooms": "غرف النوم",
         "bathrooms": "الحمامات",
+        "priceRange": "نطاق السعر",
         "minPrice": "الحد الأدنى للسعر",
         "maxPrice": "الحد الأقصى للسعر",
         "propertyType": "نوع العقار",
         "amenities": "المرافق",
         "applyFilters": "تطبيق الفلاتر",
         "clearFilters": "مسح الفلاتر",
-        "showResults": "عرض {count} نتائج"
+        "showResults": "عرض {count} عقار"
+      },
+      "pagination": {
+        "previous": "السابق",
+        "next": "التالي",
+        "pageOf": "الصفحة {current} من {total}"
       }
     },
     "hosting": {
@@ -1005,7 +1046,15 @@
       "responseRate": "معدل الاستجابة: 100%",
       "respondsWithin": "يستجيب خلال ساعة",
       "messageHost": "مراسلة المضيف",
-      "paymentProtection": "لحماية مدفوعاتك، استخدم دائماً مكان لإرسال الأموال والتواصل مع المضيفين."
+      "paymentProtection": "لحماية مدفوعاتك، استخدم دائماً مكان لإرسال الأموال والتواصل مع المضيفين.",
+      "hostedBy": "يستضيفك {name}",
+      "hostFallback": "المضيف"
+    },
+    "reviewsList": {
+      "heading": "ما يقوله الضيوف",
+      "subhead": "اقرأ تقييمات الضيوف الأخيرين",
+      "empty": "لا توجد تقييمات بعد — كن أول من يشاركها.",
+      "learnMore": "تعرّف على آلية التقييمات"
     },
     "searchPage": {
       "luxeStays": "إقامات مكان الفاخرة",
@@ -1790,10 +1839,14 @@
         }
       }
     },
+    "metadataTitle": "النقل البري",
+    "metadataDescription": "احجز رحلات الحافلات بين المدن السودانية",
     "routes": {
       "title": "المسارات الشائعة",
       "from": "من",
-      "pricePrefix": "من"
+      "pricePrefix": "من",
+      "hoursFormat": "{hours} ساعة",
+      "currency": "ج.س"
     },
     "search": {
       "title": "ابحث عن رحلتك",
@@ -1830,7 +1883,14 @@
       },
       "amenitiesLabel": "المرافق",
       "officesLabel": "المشغّلون",
-      "searchAgain": "ابحث مجدداً"
+      "searchAgain": "ابحث مجدداً",
+      "metadataTitle": "بحث النقل",
+      "metadataDescription": "ابحث عن رحلات النقل المتاحة",
+      "pagination": {
+        "previous": "السابق",
+        "next": "التالي",
+        "pageOf": "الصفحة {current} من {total}"
+      }
     },
     "booking": {
       "selectSeats": "اختر مقاعدك",

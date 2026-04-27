@@ -13,16 +13,14 @@ interface CategorySwitcherProps {
 const categories = [
   {
     id: 'homes',
-    label: 'Homes',
-    labelAr: 'المنازل',
+    label: { en: 'Homes', ar: 'المنازل' },
     icon: Home,
     href: '/',
     patterns: ['/', '/listing', '/search'],
   },
   {
     id: 'transport',
-    label: 'Transport',
-    labelAr: 'النقل',
+    label: { en: 'Transport', ar: 'النقل' },
     icon: Bus,
     href: '/transport',
     patterns: ['/transport'],
@@ -50,7 +48,7 @@ export function CategorySwitcher({ lang = 'en' }: CategorySwitcherProps) {
         const active = isActive(category.patterns);
         const Icon = category.icon;
         const href = lang ? `/${lang}${category.href}` : category.href;
-        const label = lang === 'ar' ? category.labelAr : category.label;
+        const label = lang.startsWith('ar') ? category.label.ar : category.label.en;
 
         return (
           <Link

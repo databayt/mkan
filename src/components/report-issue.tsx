@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { usePathname } from "next/navigation"
 import { Bug } from "lucide-react"
 
 import { reportIssue } from "@/lib/actions/report-issue"
+import { useDictionary } from "@/components/internationalization/dictionary-context"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,46 +14,27 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
-const translations = {
-  en: {
-    link: "Report an issue",
-    title: "Report an issue",
-    placeholder: "Describe the issue...",
-    submit: "Submit",
-    submitting: "Submitting...",
-    success: "Submitted. Thank you!",
-    error: "Something went wrong. Try again.",
-  },
-  ar: {
-    link: "\u0627\u0644\u0625\u0628\u0644\u0627\u063a \u0639\u0646 \u0645\u0634\u0643\u0644\u0629",
-    title: "\u0627\u0644\u0625\u0628\u0644\u0627\u063a \u0639\u0646 \u0645\u0634\u0643\u0644\u0629",
-    placeholder: "\u0635\u0641 \u0627\u0644\u0645\u0634\u0643\u0644\u0629...",
-    submit: "\u0625\u0631\u0633\u0627\u0644",
-    submitting: "\u062c\u0627\u0631\u064a \u0627\u0644\u0625\u0631\u0633\u0627\u0644...",
-    success: "\u062a\u0645 \u0627\u0644\u0625\u0631\u0633\u0627\u0644. \u0634\u0643\u0631\u0627\u064b \u0644\u0643!",
-    error: "\u062d\u062f\u062b \u062e\u0637\u0623. \u062d\u0627\u0648\u0644 \u0645\u0631\u0629 \u0623\u062e\u0631\u0649.",
-  },
-} as const
-
 interface ReportIssueProps {
   variant?: "text" | "icon"
 }
 
 function parseBrowser(ua: string): string {
-  if (ua.includes("Firefox/")) return `Firefox / ${getOS(ua)}`
-  if (ua.includes("Edg/")) return `Edge / ${getOS(ua)}`
-  if (ua.includes("Chrome/")) return `Chrome / ${getOS(ua)}`
-  if (ua.includes("Safari/")) return `Safari / ${getOS(ua)}`
+  const os = ua.includes("Mac OS")
+    ? "macOS"
+    : ua.includes("Windows")
+    ? "Windows"
+    : ua.includes("Android")
+    ? "Android"
+    : ua.includes("iPhone") || ua.includes("iPad")
+    ? "iOS"
+    : ua.includes("Linux")
+    ? "Linux"
+    : "Unknown"
+  if (ua.includes("Firefox/")) return `Firefox / ${os}`
+  if (ua.includes("Edg/")) return `Edge / ${os}`
+  if (ua.includes("Chrome/")) return `Chrome / ${os}`
+  if (ua.includes("Safari/")) return `Safari / ${os}`
   return ua.slice(0, 50)
-}
-
-function getOS(ua: string): string {
-  if (ua.includes("Mac OS")) return "macOS"
-  if (ua.includes("Windows")) return "Windows"
-  if (ua.includes("Android")) return "Android"
-  if (ua.includes("iPhone") || ua.includes("iPad")) return "iOS"
-  if (ua.includes("Linux")) return "Linux"
-  return "Unknown"
 }
 
 export function ReportIssue({ variant = "text" }: ReportIssueProps) {
@@ -62,8 +43,8 @@ export function ReportIssue({ variant = "text" }: ReportIssueProps) {
   const [status, setStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle")
-  const pathname = usePathname()
-  const t = translations[pathname?.startsWith("/ar") ? "ar" : "en"]
+  const dictionary = useDictionary()
+  const t = dictionary.reportIssue
 
   async function handleSubmit() {
     if (!description.trim()) return
@@ -72,9 +53,11 @@ export function ReportIssue({ variant = "text" }: ReportIssueProps) {
       await reportIssue({
         description,
         pageUrl: window.location.href,
-        viewport: `${window.innerWidth}x${window.innerHeight}`,
-        direction: document.documentElement.dir || "ltr",
-        browser: parseBrowser(navigator.userAgent),
+        meta: {
+          viewport: `${window.innerWidth}x${window.innerHeight}`,
+          direction: document.documentElement.dir || "ltr",
+          browser: parseBrowser(navigator.userAgent),
+        },
       })
       setStatus("success")
       setDescription("")
@@ -98,10 +81,10 @@ export function ReportIssue({ variant = "text" }: ReportIssueProps) {
       <DialogTrigger asChild>
         {variant === "icon" ? (
           <button
-            className="cursor-pointer"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-background/80 text-foreground/70 hover:text-foreground shadow-sm backdrop-blur cursor-pointer"
             aria-label={t.link}
           >
-            <Bug className="h-6 w-6" strokeWidth={1} />
+            <Bug className="h-5 w-5" strokeWidth={1.5} />
           </button>
         ) : (
           <button className="cursor-pointer font-medium underline underline-offset-4">

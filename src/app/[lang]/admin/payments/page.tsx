@@ -15,7 +15,8 @@ export default async function AdminPaymentsPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const dict = await getDictionary(lang as "en" | "ar");
+  const locale = lang as "en" | "ar";
+  const dict = await getDictionary(locale);
   const a = (dict as { admin?: Record<string, string> }).admin ?? {};
 
   const [homes, transport] = await Promise.all([
@@ -43,6 +44,7 @@ export default async function AdminPaymentsPage({
         <TabsContent value="homes">
           <div className="rounded-md border">
             <HomePaymentsTable
+              lang={locale}
               payments={homes.payments}
               labels={{
                 listing: a.listing ?? "Listing",
@@ -59,6 +61,7 @@ export default async function AdminPaymentsPage({
         <TabsContent value="transport">
           <div className="rounded-md border">
             <TransportPaymentsTable
+              lang={locale}
               payments={transport.payments}
               labels={{
                 office: a.office ?? "Office",
