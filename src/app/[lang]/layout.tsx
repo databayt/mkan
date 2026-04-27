@@ -38,7 +38,7 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const resolvedParams = await params;
-  const lang = (resolvedParams.lang as Locale) || 'en';
+  const lang = (resolvedParams.lang as Locale) || i18n.defaultLocale;
   const dictionary = await getDictionary(lang);
 
   return {
@@ -51,7 +51,7 @@ export async function generateMetadata({
       languages: Object.keys(localeConfig).reduce((acc, locale) => ({
         ...acc,
         [locale]: `/${locale}`,
-      }), { 'x-default': '/en' }),
+      }), { 'x-default': `/${i18n.defaultLocale}` }),
     },
     other: {
       'accept-language': lang,
@@ -67,8 +67,8 @@ export default async function LocaleLayout({
   params: Promise<{ lang: string }>;
 }) {
   const resolvedParams = await params;
-  const lang = (resolvedParams.lang as Locale) || 'en';
-  const config = localeConfig[lang] || localeConfig['en'];
+  const lang = (resolvedParams.lang as Locale) || i18n.defaultLocale;
+  const config = localeConfig[lang] || localeConfig[i18n.defaultLocale];
   const isRTL = config.dir === 'rtl';
   const dictionary = await getDictionary(lang);
 
