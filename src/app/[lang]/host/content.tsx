@@ -46,7 +46,12 @@ export default function BecomeAHostContent() {
   };
 
   const handleCreateFromExisting = () => {
-    // TODO: implement create from existing listing
+    // "Create from existing" duplicates an already-set-up listing as a draft
+    // so the host can swap photos/title/price without re-running the wizard.
+    // Tracked as a follow-up issue: https://github.com/databayt/mkan/issues
+    // For now, send the host to the overview page with the existing listings
+    // visible so they can pick the source manually before this is automated.
+    router.push(`/${currentLocale}/host/overview`);
   };
 
   // Show loading while checking session

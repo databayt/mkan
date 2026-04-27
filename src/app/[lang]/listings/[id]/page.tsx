@@ -12,6 +12,7 @@ import Review from "@/components/listings/review";
 import MeetHost from "@/components/listings/meet-host";
 import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
+import { getListingReviews } from "@/lib/actions/review-actions";
 import type { Locale } from "@/components/internationalization/config";
 
 interface ListingPageProps {
@@ -89,7 +90,18 @@ export default async function ListingPage({ params }: ListingPageProps) {
   // Serialize the listing data to avoid Prisma serialization issues
   const serializedListing = JSON.parse(JSON.stringify(listing));
 
-  const d = await getDictionary(lang);
+  const [d, mobileReviewsResult] = await Promise.all([
+    getDictionary(lang),
+    getListingReviews(listingId, { take: 8 }).catch(() => ({ reviews: [], total: 0 })),
+  ]);
+
+  const mobileReviewItems = mobileReviewsResult.reviews.map((r) => ({
+    id: r.id,
+    author: r.reviewer?.username ?? r.reviewer?.id?.slice(0, 8) ?? "Guest",
+    rating: r.rating,
+    createdAt: r.createdAt as unknown as Date,
+    comment: r.comment ?? null,
+  }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -125,7 +137,11 @@ export default async function ListingPage({ params }: ListingPageProps) {
           />
         </Suspense>
         <Suspense fallback={<div>{d.rental?.listing?.loadingReviews}</div>}>
-          <MobileReviews />
+          <MobileReviews
+            reviews={mobileReviewItems}
+            averageRating={serializedListing.averageRating ?? undefined}
+            totalReviews={mobileReviewsResult.total}
+          />
         </Suspense>
         <Suspense fallback={<div>{d.rental?.listing?.loading}</div>}>
           <MobileReserve
