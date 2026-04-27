@@ -3,6 +3,21 @@
     "title": "مكان - منصة الإيجار",
     "description": "تواصل مع مديري العقارات واعثر على منزل الإيجار المثالي"
   },
+  "hostingListings": {
+    "status": {
+      "published": "منشور",
+      "inProgress": "قيد التنفيذ",
+      "actionRequired": "إجراء مطلوب"
+    },
+    "publish": "نشر",
+    "unpublish": "إلغاء النشر",
+    "publishing": "جاري النشر...",
+    "unpublishing": "جاري إلغاء النشر...",
+    "publishSuccess": "تم نشر العقار",
+    "unpublishSuccess": "تم إلغاء نشر العقار",
+    "publishCannotYet": "أكمل الإعداد قبل النشر",
+    "publishUnknownError": "تعذر النشر — حاول مجدداً"
+  },
   "pageMetadata": {
     "help": { "title": "مركز المساعدة", "description": "احصل على المساعدة والدعم" },
     "host": { "title": "كن مضيفاً", "description": "ابدأ باستضافة الضيوف وكسب الدخل" },
@@ -1031,7 +1046,15 @@
       "responseRate": "معدل الاستجابة: 100%",
       "respondsWithin": "يستجيب خلال ساعة",
       "messageHost": "مراسلة المضيف",
-      "paymentProtection": "لحماية مدفوعاتك، استخدم دائماً مكان لإرسال الأموال والتواصل مع المضيفين."
+      "paymentProtection": "لحماية مدفوعاتك، استخدم دائماً مكان لإرسال الأموال والتواصل مع المضيفين.",
+      "hostedBy": "يستضيفك {name}",
+      "hostFallback": "المضيف"
+    },
+    "reviewsList": {
+      "heading": "ما يقوله الضيوف",
+      "subhead": "اقرأ تقييمات الضيوف الأخيرين",
+      "empty": "لا توجد تقييمات بعد — كن أول من يشاركها.",
+      "learnMore": "تعرّف على آلية التقييمات"
     },
     "searchPage": {
       "luxeStays": "إقامات مكان الفاخرة",

@@ -8,6 +8,8 @@ import DetailsHeader from "@/components/listings/detials-header";
 import MobileListingDetails from "@/components/listings/mobile-listing-details";
 import MobileReserve from "@/components/listings/mobile-reserve";
 import MobileReviews from "@/components/listings/mobile-reviews";
+import Review from "@/components/listings/review";
+import MeetHost from "@/components/listings/meet-host";
 import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import type { Locale } from "@/components/internationalization/config";
@@ -97,7 +99,17 @@ export default async function ListingPage({ params }: ListingPageProps) {
           <DetailsHeader />
         </Suspense>
         <Suspense fallback={<div>{d.rental?.listing?.loadingDetails}</div>}>
-          <ListingDetailsClient listing={serializedListing} />
+          <ListingDetailsClient
+            listing={serializedListing}
+            reviewsSlot={<Review listingId={listingId} lang={lang} />}
+            meetHostSlot={
+              <MeetHost
+                hostUser={serializedListing.host ?? null}
+                reviewsCount={serializedListing.numberOfReviews ?? undefined}
+                averageRating={serializedListing.averageRating ?? undefined}
+              />
+            }
+          />
         </Suspense>
         <Suspense fallback={<div>{d.rental?.listing?.loadingMap}</div>}>
           <Location />

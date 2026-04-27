@@ -3,6 +3,21 @@
     "title": "Mkan - Rental Marketplace",
     "description": "Connect with property managers and find your perfect rental home"
   },
+  "hostingListings": {
+    "status": {
+      "published": "Published",
+      "inProgress": "In progress",
+      "actionRequired": "Action required"
+    },
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "publishing": "Publishing...",
+    "unpublishing": "Unpublishing...",
+    "publishSuccess": "Listing published",
+    "unpublishSuccess": "Listing unpublished",
+    "publishCannotYet": "Finish setup before publishing",
+    "publishUnknownError": "Could not publish — try again"
+  },
   "pageMetadata": {
     "help": { "title": "Help Center", "description": "Get help and support" },
     "host": { "title": "Become a Host", "description": "Start hosting guests and earning income" },
@@ -1031,7 +1046,15 @@
       "responseRate": "Response rate: 100%",
       "respondsWithin": "Responds within an hour",
       "messageHost": "Message host",
-      "paymentProtection": "To help protect your payment, always use Mkan to send money and communicate with hosts."
+      "paymentProtection": "To help protect your payment, always use Mkan to send money and communicate with hosts.",
+      "hostedBy": "Hosted by {name}",
+      "hostFallback": "Host"
+    },
+    "reviewsList": {
+      "heading": "What guests are saying",
+      "subhead": "Read reviews from recent guests",
+      "empty": "No reviews yet — be the first to share your experience.",
+      "learnMore": "Learn how reviews work"
     },
     "searchPage": {
       "luxeStays": "Mkan Luxe stays",

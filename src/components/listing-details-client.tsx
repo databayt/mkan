@@ -11,15 +11,20 @@ import { MapPin, Bed, Bath, Users, Square } from "lucide-react";
 import { Listing } from "@/types/listing";
 import PropertyGallery from "@/components/atom/property-gallery";
 import AirbnbInfo from "./atom/property-info";
-import Review from "./listings/review";
 import HostedBy from "./listings/hosted-by";
-import MeetHost from "./listings/meet-host";
 
 interface ListingDetailsClientProps {
     listing: Listing;
+    /**
+     * Reviews are rendered server-side and threaded in as children so the
+     * client island doesn't have to re-fetch on hydrate.
+     */
+    reviewsSlot?: React.ReactNode;
+    /** Same pattern for the host detail card. */
+    meetHostSlot?: React.ReactNode;
 }
 
-export default function ListingDetailsClient({ listing }: ListingDetailsClientProps) {
+export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlot }: ListingDetailsClientProps) {
     // Local-only saved state for the v1.0 ship; persistence (User.savedListings)
     // is tracked in Story 8.1 follow-up. We use localStorage so the heart icon
     // remembers across reloads on the same device — good enough for launch.
@@ -175,7 +180,7 @@ export default function ListingDetailsClient({ listing }: ListingDetailsClientPr
                                 </div>
                             )}
                         </div>
-                        <HostedBy />
+                        <HostedBy host={listing.host ?? null} />
 
                         <AirbnbInfo />
 
@@ -208,8 +213,8 @@ export default function ListingDetailsClient({ listing }: ListingDetailsClientPr
                     className="border-b border-gray-200 pb-8"
                 />
 
-                <Review />
-                <MeetHost />
+                {reviewsSlot}
+                {meetHostSlot}
 
                 {/* Host Information */}
                 {/* <div className="border-b border-gray-200 pb-8">
