@@ -3,6 +3,22 @@
     "title": "Mkan - Rental Marketplace",
     "description": "Connect with property managers and find your perfect rental home"
   },
+  "pageMetadata": {
+    "help": { "title": "Help Center", "description": "Get help and support" },
+    "host": { "title": "Become a Host", "description": "Start hosting guests and earning income" },
+    "hosting": { "title": "Hosting", "description": "Manage your reservations and hosting" },
+    "hostingListings": { "title": "My Listings", "description": "View and manage your listings" },
+    "transportHost": { "title": "Transport Host", "description": "Manage your transport offices and bookings" },
+    "transportOffices": { "title": "Transport Offices", "description": "Browse transport operators" },
+    "transportCheckout": { "title": "Checkout", "description": "Complete your booking" },
+    "landing": { "title": "Welcome", "description": "Find your next home or trip" },
+    "login": { "title": "Login", "description": "Sign in to your account" },
+    "join": { "title": "Join", "description": "Create a new account" },
+    "reset": { "title": "Reset Password", "description": "Recover access to your account" },
+    "managersProperties": { "title": "Manage Properties", "description": "Manage tenant applications and leases" },
+    "tenantsFavorites": { "title": "Favorites", "subtitle": "Browse and manage your saved properties", "description": "Properties you have saved" },
+    "tenantsResidences": { "title": "My Residences", "description": "Properties you currently rent" }
+  },
   "chatbot": {
     "title": "Chat Assistant",
     "startMessage": "Start a conversation...",
@@ -926,6 +942,9 @@
         "joinedIn": "Joined in 2023"
       },
       "filters": {
+        "title": "Filters",
+        "clearAll": "Clear all",
+        "any": "Any",
         "allProperties": "All Properties",
         "sortBy": "Sort by",
         "priceLowest": "Price: Low to High",
@@ -933,13 +952,19 @@
         "newest": "Newest First",
         "bedrooms": "Bedrooms",
         "bathrooms": "Bathrooms",
+        "priceRange": "Price range",
         "minPrice": "Min Price",
         "maxPrice": "Max Price",
         "propertyType": "Property Type",
         "amenities": "Amenities",
         "applyFilters": "Apply Filters",
         "clearFilters": "Clear Filters",
-        "showResults": "Show {count} results"
+        "showResults": "Show {count} places"
+      },
+      "pagination": {
+        "previous": "Previous",
+        "next": "Next",
+        "pageOf": "Page {current} of {total}"
       }
     },
     "hosting": {
@@ -1794,8 +1819,12 @@
     "routes": {
       "title": "Popular Routes",
       "from": "From",
-      "pricePrefix": "From"
+      "pricePrefix": "From",
+      "hoursFormat": "{hours}h",
+      "currency": "SDG"
     },
+    "metadataTitle": "Bus Transport",
+    "metadataDescription": "Book intercity bus trips across Sudan",
     "search": {
       "title": "Find Your Ride",
       "from": "From",
@@ -1831,7 +1860,14 @@
       },
       "amenitiesLabel": "Amenities",
       "officesLabel": "Operators",
-      "searchAgain": "Search Again"
+      "searchAgain": "Search Again",
+      "metadataTitle": "Transport Search",
+      "metadataDescription": "Search for available transport trips",
+      "pagination": {
+        "previous": "Previous",
+        "next": "Next",
+        "pageOf": "Page {current} of {total}"
+      }
     },
     "booking": {
       "selectSeats": "Select Your Seats",
