@@ -85,3 +85,33 @@ test.describe("SEO — status codes", () => {
     expect(res.status()).toBe(404);
   });
 });
+
+test.describe("SEO — html lang/dir parity per locale", () => {
+  test("/ar/* renders <html lang='ar' dir='rtl'>", async ({ page }) => {
+    await page.goto("/ar");
+    await waitForPageLoad(page);
+    const html = page.locator("html");
+    await expect(html).toHaveAttribute("lang", "ar");
+    await expect(html).toHaveAttribute("dir", "rtl");
+  });
+
+  test("/en/* renders <html lang='en' dir='ltr'>", async ({ page }) => {
+    await page.goto("/en");
+    await waitForPageLoad(page);
+    const html = page.locator("html");
+    await expect(html).toHaveAttribute("lang", "en");
+    await expect(html).toHaveAttribute("dir", "ltr");
+  });
+
+  test("a report-issue widget is mounted on every locale-prefixed route", async ({ page }) => {
+    // Single floating mount in [lang]/layout.tsx covers all 117 routes.
+    for (const path of ["/en", "/ar", "/en/login", "/en/listings"]) {
+      await page.goto(path);
+      await waitForPageLoad(page);
+      // Either the icon variant (aria-label English/Arabic) or the text variant
+      // anchored in the footer must be present.
+      const icon = page.locator('button[aria-label="Report an issue"], button[aria-label="الإبلاغ عن مشكلة"]');
+      await expect(icon.first()).toBeVisible({ timeout: 5000 });
+    }
+  });
+});

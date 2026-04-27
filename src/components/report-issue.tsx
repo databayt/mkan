@@ -80,8 +80,11 @@ export function ReportIssue({ variant = "text" }: ReportIssueProps) {
     >
       <DialogTrigger asChild>
         {variant === "icon" ? (
-          <button className="cursor-pointer" aria-label={t.link}>
-            <Bug className="h-6 w-6" strokeWidth={1} />
+          <button
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-background/80 text-foreground/70 hover:text-foreground shadow-sm backdrop-blur cursor-pointer"
+            aria-label={t.link}
+          >
+            <Bug className="h-5 w-5" strokeWidth={1.5} />
           </button>
         ) : (
           <button className="cursor-pointer font-medium underline underline-offset-4">

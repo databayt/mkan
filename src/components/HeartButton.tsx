@@ -9,7 +9,7 @@ interface HeartButtonProps {
 const HeartButton: React.FC<HeartButtonProps> = ({ listingId, currentUser }) => {
   return (
     <button
-      className="relative hover:opacity-80 transition cursor-pointer"
+      className="relative inline-flex h-11 w-11 items-center justify-center hover:opacity-80 transition cursor-pointer"
       aria-label="Add to favorites"
     >
       <svg
