@@ -24,3 +24,11 @@ Please read the [contributing guide](/CONTRIBUTING.md).
 ## License
 
 Licensed under the [MIT license](https://github.com/shadcn/ui/blob/main/LICENSE.md).
+
+## 💰 Bounty Contribution
+
+- **Task:** QA: End-to-end test of Homes & Transport (A→Z)
+- **Reward:** $400
+- **Source:** GitHub-Paid
+- **Date:** 2026-04-27
+
