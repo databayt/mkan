@@ -166,29 +166,31 @@ export default async function ListingsPage({ searchParams, params: pageParams }:
   };
 
   // Dictionary keys live at `rental.property.filters` and `rental.property.amenities`.
-  // Graceful fallbacks keep the UI readable even if a key is missing mid-rollout.
+  // `pick` returns the dict string if present, falling back to "" so the
+  // downstream component contract (string, not string | undefined) holds.
   const rentalProperty = (d.rental?.property ?? {}) as Record<string, unknown>;
-  const rentalFilters = (rentalProperty.filters ?? {}) as Record<string, string>;
+  const rentalFilters = (rentalProperty.filters ?? {}) as Record<string, string | undefined>;
   const rentalAmenities = (rentalProperty.amenities ?? {}) as Record<string, string>;
   const rentalPropertyTypes = (rentalProperty.types ?? {}) as Record<string, string>;
+  const rentalPagination = (rentalProperty.pagination ?? {}) as Record<string, string | undefined>;
+  const pick = (k: string, src: Record<string, string | undefined>) => src[k] ?? '';
 
   const filtersDict = {
     filters: {
-      title: rentalFilters.title ?? (lang === "ar" ? "الفلاتر" : "Filters"),
-      clearAll: rentalFilters.clearFilters ?? (lang === "ar" ? "مسح الكل" : "Clear all"),
-      showResults:
-        rentalFilters.showResults ?? (lang === "ar" ? "عرض {count} عقار" : "Show {count} places"),
+      title: pick('title', rentalFilters),
+      clearAll: pick('clearAll', rentalFilters),
+      showResults: pick('showResults', rentalFilters),
     },
     price: {
-      label: rentalFilters.minPrice ?? (lang === "ar" ? "نطاق السعر" : "Price range"),
+      label: pick('priceRange', rentalFilters),
       currency: "$",
     },
-    bedrooms: rentalFilters.bedrooms ?? (lang === "ar" ? "غرف النوم" : "Bedrooms"),
-    bathrooms: rentalFilters.bathrooms ?? (lang === "ar" ? "الحمامات" : "Bathrooms"),
-    propertyType: rentalFilters.propertyType ?? (lang === "ar" ? "نوع العقار" : "Property type"),
-    amenitiesLabel: rentalFilters.amenities ?? (lang === "ar" ? "المرافق" : "Amenities"),
-    anyLabel: lang === "ar" ? "الكل" : "Any",
-    mobileTriggerLabel: rentalFilters.title ?? (lang === "ar" ? "الفلاتر" : "Filters"),
+    bedrooms: pick('bedrooms', rentalFilters),
+    bathrooms: pick('bathrooms', rentalFilters),
+    propertyType: pick('propertyType', rentalFilters),
+    amenitiesLabel: pick('amenities', rentalFilters),
+    anyLabel: pick('any', rentalFilters),
+    mobileTriggerLabel: pick('title', rentalFilters),
     propertyTypes: rentalPropertyTypes as Partial<Record<PropertyType, string>>,
     amenityLabels: rentalAmenities as Partial<Record<Amenity, string>>,
   };
@@ -261,12 +263,9 @@ export default async function ListingsPage({ searchParams, params: pageParams }:
               lang={lang}
               baseParams={params}
               dict={{
-                previous: lang === "ar" ? "السابق" : "Previous",
-                next: lang === "ar" ? "التالي" : "Next",
-                pageOf:
-                  lang === "ar"
-                    ? "الصفحة {current} من {total}"
-                    : "Page {current} of {total}",
+                previous: pick('previous', rentalPagination),
+                next: pick('next', rentalPagination),
+                pageOf: pick('pageOf', rentalPagination),
               }}
             />
           </div>

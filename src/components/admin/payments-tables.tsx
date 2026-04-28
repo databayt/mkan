@@ -7,6 +7,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/i18n/formatters";
+import type { Locale } from "@/components/internationalization/config";
 
 type HomePayment = {
   id: number;
@@ -57,9 +59,11 @@ type TransportLabels = {
 export function HomePaymentsTable({
   payments,
   labels,
+  lang,
 }: {
   payments: HomePayment[];
   labels: HomeLabels;
+  lang: Locale;
 }) {
   return (
     <Table>
@@ -84,10 +88,10 @@ export function HomePaymentsTable({
             <TableCell className="text-right text-sm">${p.amountDue.toFixed(0)}</TableCell>
             <TableCell className="text-right text-sm">${p.amountPaid.toFixed(0)}</TableCell>
             <TableCell className="text-xs text-muted-foreground">
-              {new Date(p.dueDate).toLocaleDateString()}
+              {formatDate(p.dueDate, lang)}
             </TableCell>
             <TableCell className="text-xs text-muted-foreground">
-              {p.paymentDate ? new Date(p.paymentDate).toLocaleDateString() : "—"}
+              {p.paymentDate ? formatDate(p.paymentDate, lang) : "—"}
             </TableCell>
             <TableCell>
               <Badge variant="outline">{p.paymentStatus}</Badge>
@@ -102,9 +106,11 @@ export function HomePaymentsTable({
 export function TransportPaymentsTable({
   payments,
   labels,
+  lang,
 }: {
   payments: TransportPayment[];
   labels: TransportLabels;
+  lang: Locale;
 }) {
   return (
     <Table>
@@ -129,7 +135,7 @@ export function TransportPaymentsTable({
               <Badge variant="outline">{p.status}</Badge>
             </TableCell>
             <TableCell className="text-xs text-muted-foreground">
-              {new Date(p.createdAt).toLocaleDateString()}
+              {formatDate(p.createdAt, lang)}
             </TableCell>
           </TableRow>
         ))}

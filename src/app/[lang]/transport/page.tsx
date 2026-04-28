@@ -17,13 +17,12 @@ import { createMetadata } from '@/lib/metadata';
 // ISR: Revalidate every 10 minutes (assembly points rarely change)
 export const dynamic = 'force-dynamic';
 
-export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ lang: Locale }> }): Promise<Metadata> {
   const { lang } = await params;
+  const dictionary = await getDictionary(lang);
   return createMetadata({
-    title: lang === "ar" ? "النقل البري" : "Bus Transport",
-    description: lang === "ar"
-      ? "احجز رحلات الحافلات بين المدن السودانية"
-      : "Book intercity bus trips across Sudan",
+    title: dictionary.transport.metadataTitle,
+    description: dictionary.transport.metadataDescription,
     locale: lang,
     path: "/transport",
   });
@@ -218,8 +217,9 @@ export default async function TransportPage({ params }: TransportPageProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {popularRoutes.map((route) => {
-              const fromLabel = lang === 'ar' ? (route.origin.nameAr ?? route.origin.city) : route.origin.city;
-              const toLabel = lang === 'ar' ? (route.destination.nameAr ?? route.destination.city) : route.destination.city;
+              const isArabic = lang === 'ar';
+              const fromLabel = isArabic ? (route.origin.nameAr ?? route.origin.city) : route.origin.city;
+              const toLabel = isArabic ? (route.destination.nameAr ?? route.destination.city) : route.destination.city;
               const hours = Math.round(route.duration / 60);
               const query = new URLSearchParams({
                 originId: String(route.originId),
@@ -242,10 +242,10 @@ export default async function TransportPage({ params }: TransportPageProps) {
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {lang === 'ar' ? `${hours} ساعة` : `${hours}h`}
+                      {t.routes.hoursFormat.replace('{hours}', String(hours))}
                     </span>
                     <span className="font-medium text-primary">
-                      {t.routes.pricePrefix} {route.basePrice.toLocaleString()} {lang === 'ar' ? 'ج.س' : 'SDG'}
+                      {t.routes.pricePrefix} {route.basePrice.toLocaleString(lang)} {t.routes.currency}
                     </span>
                   </div>
                 </Link>

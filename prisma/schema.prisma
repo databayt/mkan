@@ -479,6 +479,14 @@ model TransportOffice {
   isActive        Boolean            @default(false)
   rating          Float?             @default(0)
   reviewCount     Int                @default(0)
+  // Per-office payment instructions for bank transfer + mobile money. Empty
+  // strings are allowed during onboarding; UI hides the section when blank
+  // so a guest never sees an empty bank-transfer card.
+  bankName        String             @default("")
+  bankAccount     String             @default("")
+  bankHolder      String             @default("")
+  momoNumber      String             @default("")
+  momoProvider    String             @default("")
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   buses           Bus[]
@@ -486,6 +494,41 @@ model TransportOffice {
   bookings        TransportBooking[]
   assemblyPoint   AssemblyPoint?     @relation(fields: [assemblyPointId], references: [id])
   owner           User               @relation(fields: [ownerId], references: [id])
+}
+
+/// Stripe webhook idempotency log. Insert by `eventId @unique` before
+/// processing — second delivery of the same event short-circuits and the
+/// route returns 200 without re-running side effects.
+model WebhookEvent {
+  id          Int      @id @default(autoincrement())
+  provider    String
+  eventId     String   @unique
+  eventType   String
+  payload     Json
+  processedAt DateTime @default(now())
+
+  @@index([provider, eventType])
+}
+
+/// Singleton platform-level configuration. We always read/write id = 1.
+/// New settings get added as columns via a one-off migration so the type
+/// surface stays explicit (much easier than a KV table when six different
+/// admin pages read the same handful of values).
+model PlatformSetting {
+  id                        Int                @id @default(1)
+  /// Percentage (0..1) of each booking the platform keeps. 0.10 = 10%.
+  platformFeePct            Float              @default(0.10)
+  /// Default cancellation policy when a host doesn't pick one explicitly.
+  defaultCancellationPolicy CancellationPolicy @default(Flexible)
+  /// Comma-separated ISO 4217 codes (e.g. "SDG,USD,SAR"). Empty = unrestricted.
+  supportedCurrencies       String             @default("SDG,USD,SAR")
+  /// How many days after booking the platform pays the host.
+  payoutScheduleDays        Int                @default(30)
+  /// Outbound email From: address (Resend / SES).
+  emailFrom                 String             @default("")
+  /// Where bug reports / billing questions go.
+  supportEmail              String             @default("")
+  updatedAt                 DateTime           @updatedAt
 }
 
 model TransportPayment {

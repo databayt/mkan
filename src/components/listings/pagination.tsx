@@ -49,7 +49,7 @@ export function ListingsPagination({
     >
       {prevDisabled ? (
         <span className="inline-flex items-center text-sm text-muted-foreground">
-          <ChevronLeft className="w-4 h-4 me-1" />
+          <ChevronLeft className="w-4 h-4 me-1 rtl:rotate-180" />
           {dict.previous}
         </span>
       ) : (
@@ -57,7 +57,7 @@ export function ListingsPagination({
           href={makeUrl(currentPage - 1)}
           className="inline-flex items-center text-sm hover:underline"
         >
-          <ChevronLeft className="w-4 h-4 me-1" />
+          <ChevronLeft className="w-4 h-4 me-1 rtl:rotate-180" />
           {dict.previous}
         </Link>
       )}
@@ -69,7 +69,7 @@ export function ListingsPagination({
       {nextDisabled ? (
         <span className={cn("inline-flex items-center text-sm text-muted-foreground")}>
           {dict.next}
-          <ChevronRight className="w-4 h-4 ms-1" />
+          <ChevronRight className="w-4 h-4 ms-1 rtl:rotate-180" />
         </span>
       ) : (
         <Link
@@ -77,7 +77,7 @@ export function ListingsPagination({
           className="inline-flex items-center text-sm hover:underline"
         >
           {dict.next}
-          <ChevronRight className="w-4 h-4 ms-1" />
+          <ChevronRight className="w-4 h-4 ms-1 rtl:rotate-180" />
         </Link>
       )}
     </nav>

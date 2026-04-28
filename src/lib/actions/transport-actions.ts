@@ -555,7 +555,12 @@ function whenClause(
 function buildTripWhere(input: SearchTripsInput): Prisma.TripWhereInput {
   const { gte: dayStart, lt: dayEnd } = dayWindow(input.date);
 
-  const routeFilter: Prisma.RouteWhereInput = { isActive: true };
+  // Public search must hide unverified operators. Admin can still browse
+  // them via /admin/transport, but a guest never sees their trips.
+  const routeFilter: Prisma.RouteWhereInput = {
+    isActive: true,
+    office: { isVerified: true, isActive: true },
+  };
 
   if (input.officeId || (input.officeIds && input.officeIds.length > 0)) {
     routeFilter.officeId = input.officeIds?.length

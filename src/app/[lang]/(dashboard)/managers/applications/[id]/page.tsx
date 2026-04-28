@@ -7,6 +7,8 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { canOverride } from "@/lib/auth";
 import { getDictionary } from "@/components/internationalization/dictionaries";
+import { formatDate } from "@/lib/i18n/formatters";
+import type { Locale } from "@/components/internationalization/config";
 import ApplicationActions from "./actions";
 
 /**
@@ -70,7 +72,7 @@ export default async function ManagerApplicationDetailPage({
         href={`/${lang}/managers/applications`}
         className="inline-flex items-center text-sm text-muted-foreground hover:underline mb-6"
       >
-        <ArrowLeft className="w-4 h-4 me-1" />
+        <ArrowLeft className="w-4 h-4 me-1 rtl:rotate-180" />
         {t.backToList ?? "Back to applications"}
       </Link>
 
@@ -80,7 +82,7 @@ export default async function ManagerApplicationDetailPage({
             {t.applicationFrom ?? "Application from"} {application.name}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {new Date(application.applicationDate).toLocaleDateString()}
+            {formatDate(application.applicationDate, lang as Locale)}
           </p>
         </div>
         <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
@@ -119,8 +121,8 @@ export default async function ManagerApplicationDetailPage({
               <h2 className="text-lg font-medium">{t.lease ?? "Lease created"}</h2>
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="w-4 h-4 text-muted-foreground" />
-                {new Date(application.lease.startDate).toLocaleDateString()} →{" "}
-                {new Date(application.lease.endDate).toLocaleDateString()}
+                {formatDate(application.lease.startDate, lang as Locale)} →{" "}
+                {formatDate(application.lease.endDate, lang as Locale)}
               </div>
               <div className="text-sm">
                 {t.monthlyRent ?? "Monthly rent"}:{" "}

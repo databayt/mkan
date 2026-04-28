@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter, useSearchParams, useParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useLocale } from "@/components/internationalization/use-locale";
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { BusAmenity } from "@prisma/client";
 import {
@@ -59,11 +60,11 @@ const AMENITY_ICON: Record<BusAmenity, React.ComponentType<{ className?: string 
   Reclining: Armchair,
 };
 
-const TIME_WINDOWS: { key: TimeOfDay; rangeEn: string; rangeAr: string }[] = [
-  { key: "morning", rangeEn: "4am – 12pm", rangeAr: "٤ص – ١٢ظ" },
-  { key: "afternoon", rangeEn: "12pm – 5pm", rangeAr: "١٢ظ – ٥م" },
-  { key: "evening", rangeEn: "5pm – 9pm", rangeAr: "٥م – ٩م" },
-  { key: "night", rangeEn: "9pm – 4am", rangeAr: "٩م – ٤ص" },
+const TIME_WINDOWS: { key: TimeOfDay; range: { en: string; ar: string } }[] = [
+  { key: "morning", range: { en: "4am – 12pm", ar: "٤ص – ١٢ظ" } },
+  { key: "afternoon", range: { en: "12pm – 5pm", ar: "١٢ظ – ٥م" } },
+  { key: "evening", range: { en: "5pm – 9pm", ar: "٥م – ٩م" } },
+  { key: "night", range: { en: "9pm – 4am", ar: "٩م – ٤ص" } },
 ];
 
 type FacetOffice = { id: number; name: string; nameAr: string | null };
@@ -156,8 +157,7 @@ function FilterControls({
 }: Pick<FiltersPanelProps, "facets" | "dict">) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const params = useParams<{ lang: string }>();
-  const lang = params?.lang === "ar" ? "ar" : "en";
+  const { locale: lang } = useLocale();
   const [isPending, startTransition] = useTransition();
 
   const current = useMemo(
@@ -301,7 +301,7 @@ function FilterControls({
               >
                 <div className="font-medium">{label}</div>
                 <div className="text-[11px] opacity-70 mt-0.5">
-                  {lang === "ar" ? tw.rangeAr : tw.rangeEn}
+                  {tw.range[lang]}
                 </div>
               </button>
             );

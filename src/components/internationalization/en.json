@@ -3,6 +3,37 @@
     "title": "Mkan - Rental Marketplace",
     "description": "Connect with property managers and find your perfect rental home"
   },
+  "hostingListings": {
+    "status": {
+      "published": "Published",
+      "inProgress": "In progress",
+      "actionRequired": "Action required"
+    },
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "publishing": "Publishing...",
+    "unpublishing": "Unpublishing...",
+    "publishSuccess": "Listing published",
+    "unpublishSuccess": "Listing unpublished",
+    "publishCannotYet": "Finish setup before publishing",
+    "publishUnknownError": "Could not publish — try again"
+  },
+  "pageMetadata": {
+    "help": { "title": "Help Center", "description": "Get help and support" },
+    "host": { "title": "Become a Host", "description": "Start hosting guests and earning income" },
+    "hosting": { "title": "Hosting", "description": "Manage your reservations and hosting" },
+    "hostingListings": { "title": "My Listings", "description": "View and manage your listings" },
+    "transportHost": { "title": "Transport Host", "description": "Manage your transport offices and bookings" },
+    "transportOffices": { "title": "Transport Offices", "description": "Browse transport operators" },
+    "transportCheckout": { "title": "Checkout", "description": "Complete your booking" },
+    "landing": { "title": "Welcome", "description": "Find your next home or trip" },
+    "login": { "title": "Login", "description": "Sign in to your account" },
+    "join": { "title": "Join", "description": "Create a new account" },
+    "reset": { "title": "Reset Password", "description": "Recover access to your account" },
+    "managersProperties": { "title": "Manage Properties", "description": "Manage tenant applications and leases" },
+    "tenantsFavorites": { "title": "Favorites", "subtitle": "Browse and manage your saved properties", "description": "Properties you have saved" },
+    "tenantsResidences": { "title": "My Residences", "description": "Properties you currently rent" }
+  },
   "chatbot": {
     "title": "Chat Assistant",
     "startMessage": "Start a conversation...",
@@ -37,7 +68,8 @@
     "dark": "Dark",
     "system": "System",
     "platform": "Platform",
-    "brandName": "Mkan"
+    "brandName": "Mkan",
+    "skipToContent": "Skip to main content"
   },
   "navigation": {
     "menu": "Menu",
@@ -925,6 +957,9 @@
         "joinedIn": "Joined in 2023"
       },
       "filters": {
+        "title": "Filters",
+        "clearAll": "Clear all",
+        "any": "Any",
         "allProperties": "All Properties",
         "sortBy": "Sort by",
         "priceLowest": "Price: Low to High",
@@ -932,13 +967,19 @@
         "newest": "Newest First",
         "bedrooms": "Bedrooms",
         "bathrooms": "Bathrooms",
+        "priceRange": "Price range",
         "minPrice": "Min Price",
         "maxPrice": "Max Price",
         "propertyType": "Property Type",
         "amenities": "Amenities",
         "applyFilters": "Apply Filters",
         "clearFilters": "Clear Filters",
-        "showResults": "Show {count} results"
+        "showResults": "Show {count} places"
+      },
+      "pagination": {
+        "previous": "Previous",
+        "next": "Next",
+        "pageOf": "Page {current} of {total}"
       }
     },
     "hosting": {
@@ -1005,7 +1046,15 @@
       "responseRate": "Response rate: 100%",
       "respondsWithin": "Responds within an hour",
       "messageHost": "Message host",
-      "paymentProtection": "To help protect your payment, always use Mkan to send money and communicate with hosts."
+      "paymentProtection": "To help protect your payment, always use Mkan to send money and communicate with hosts.",
+      "hostedBy": "Hosted by {name}",
+      "hostFallback": "Host"
+    },
+    "reviewsList": {
+      "heading": "What guests are saying",
+      "subhead": "Read reviews from recent guests",
+      "empty": "No reviews yet — be the first to share your experience.",
+      "learnMore": "Learn how reviews work"
     },
     "searchPage": {
       "luxeStays": "Mkan Luxe stays",
@@ -1793,8 +1842,12 @@
     "routes": {
       "title": "Popular Routes",
       "from": "From",
-      "pricePrefix": "From"
+      "pricePrefix": "From",
+      "hoursFormat": "{hours}h",
+      "currency": "SDG"
     },
+    "metadataTitle": "Bus Transport",
+    "metadataDescription": "Book intercity bus trips across Sudan",
     "search": {
       "title": "Find Your Ride",
       "from": "From",
@@ -1830,7 +1883,14 @@
       },
       "amenitiesLabel": "Amenities",
       "officesLabel": "Operators",
-      "searchAgain": "Search Again"
+      "searchAgain": "Search Again",
+      "metadataTitle": "Transport Search",
+      "metadataDescription": "Search for available transport trips",
+      "pagination": {
+        "previous": "Previous",
+        "next": "Next",
+        "pageOf": "Page {current} of {total}"
+      }
     },
     "booking": {
       "selectSeats": "Select Your Seats",

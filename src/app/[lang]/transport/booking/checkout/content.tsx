@@ -49,6 +49,9 @@ const paymentMethodTranslations = {
       accountNumber: 'Account Number',
       reference: 'Reference',
       includeReference: 'Please include the booking reference in your transfer description. Your booking will be confirmed once payment is verified.',
+      bankDetailsMissing: 'This office has not published bank transfer details yet. Pick another method or contact the operator directly.',
+      paymentSucceeded: 'Payment successful',
+      paymentFailed: 'Payment failed. Please try again.',
       cashTitle: 'Cash on Arrival',
       cashSubtitle: 'Pay at the transport office',
       cashWarning: 'Your seats will be reserved for 30 minutes. Please arrive at the office early to complete payment and collect your tickets.',
@@ -84,6 +87,9 @@ const paymentMethodTranslations = {
       accountNumber: 'رقم الحساب',
       reference: 'المرجع',
       includeReference: 'يرجى تضمين رقم الحجز في وصف التحويل. سيتم تأكيد حجزك بمجرد التحقق من الدفع.',
+      bankDetailsMissing: 'لم يقدّم هذا المكتب تفاصيل الحساب البنكي بعد. اختر طريقة دفع أخرى أو تواصل معه مباشرةً.',
+      paymentSucceeded: 'تم الدفع بنجاح',
+      paymentFailed: 'فشل الدفع. حاول مرة أخرى.',
       cashTitle: 'الدفع عند الوصول',
       cashSubtitle: 'ادفع في مكتب النقل',
       cashWarning: 'سيتم حجز مقاعدك لمدة 30 دقيقة. يرجى الوصول إلى المكتب مبكراً لإتمام الدفع واستلام تذاكرك.',
@@ -157,10 +163,10 @@ function CheckoutInner() {
       });
 
       if (result.success) {
-        toast.success(locale === 'ar' ? 'تم الدفع بنجاح' : 'Payment successful');
+        toast.success(t.checkout.paymentSucceeded);
         router.push(`/${locale}/transport/booking/${booking.id}`);
       } else {
-        toast.error(locale === 'ar' ? 'فشل الدفع' : 'Payment failed. Please try again.');
+        toast.error(t.checkout.paymentFailed);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Payment failed';
@@ -247,23 +253,40 @@ function CheckoutInner() {
             </Card>
           )}
 
-          {paymentMethod === 'BankTransfer' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.checkout.bankDetails}</CardTitle>
-                <CardDescription>{t.checkout.transferTo}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-muted p-4 rounded-lg space-y-2">
-                  <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.bankName}</span><span className="font-medium">Bank of Khartoum</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.accountName}</span><span className="font-medium">Mkan Transport Services</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.accountNumber}</span><span className="font-medium font-mono" dir="ltr">1234567890</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.reference}</span><span className="font-medium font-mono" dir="ltr">{booking.bookingReference}</span></div>
-                </div>
-                <p className="text-sm text-muted-foreground">{t.checkout.includeReference}</p>
-              </CardContent>
-            </Card>
-          )}
+          {paymentMethod === 'BankTransfer' && (() => {
+            const office = booking.trip?.route?.office as
+              | { name?: string; bankName?: string; bankAccount?: string; bankHolder?: string }
+              | undefined;
+            const bankName = office?.bankName?.trim();
+            const bankAccount = office?.bankAccount?.trim();
+            const bankHolder = office?.bankHolder?.trim() || office?.name;
+            const hasBankDetails = !!(bankName && bankAccount);
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t.checkout.bankDetails}</CardTitle>
+                  <CardDescription>{t.checkout.transferTo}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {hasBankDetails ? (
+                    <div className="bg-muted p-4 rounded-lg space-y-2">
+                      <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.bankName}</span><span className="font-medium">{bankName}</span></div>
+                      {bankHolder && (
+                        <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.accountName}</span><span className="font-medium">{bankHolder}</span></div>
+                      )}
+                      <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.accountNumber}</span><span className="font-medium font-mono" dir="ltr">{bankAccount}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.reference}</span><span className="font-medium font-mono" dir="ltr">{booking.bookingReference}</span></div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t.checkout.bankDetailsMissing}</p>
+                  )}
+                  {hasBankDetails && (
+                    <p className="text-sm text-muted-foreground">{t.checkout.includeReference}</p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {paymentMethod === 'CashOnArrival' && (
             <Card>

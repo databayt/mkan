@@ -1,5 +1,8 @@
 export const i18n = {
-  defaultLocale: 'en',
+  // Arabic-first per the global rule (databayt operates primarily in Arabic).
+  // Existing /en/* URLs keep working — proxy.ts cookie-pins NEXT_LOCALE so
+  // visitors with a prior English preference are not flipped.
+  defaultLocale: 'ar',
   locales: ['en', 'ar'], // Add your supported locales
 } as const;
 

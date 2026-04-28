@@ -35,6 +35,8 @@ import {
   User,
 } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useLocale } from "@/components/internationalization/use-locale";
+import { formatDate } from "@/lib/i18n/formatters";
 import React from "react";
 
 const PaymentMethod = () => {
@@ -89,6 +91,7 @@ const ResidenceCard = ({
   property: PropertyWithLocation;
   currentLease: Lease;
 }) => {
+  const { locale: lang } = useLocale();
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden p-6 flex-1 flex flex-col justify-between">
       {/* Header */}
@@ -124,21 +127,21 @@ const ResidenceCard = ({
           <div className="xl:flex">
             <div className="text-gray-500 me-2">Start Date: </div>
             <div className="font-semibold">
-              {new Date(currentLease.startDate).toLocaleDateString()}
+              {formatDate(currentLease.startDate, lang)}
             </div>
           </div>
           <div className="border-[0.5px] border-primary-300 h-4" />
           <div className="xl:flex">
             <div className="text-gray-500 me-2">End Date: </div>
             <div className="font-semibold">
-              {new Date(currentLease.endDate).toLocaleDateString()}
+              {formatDate(currentLease.endDate, lang)}
             </div>
           </div>
           <div className="border-[0.5px] border-primary-300 h-4" />
           <div className="xl:flex">
             <div className="text-gray-500 me-2">Next Payment: </div>
             <div className="font-semibold">
-              {new Date(currentLease.endDate).toLocaleDateString()}
+              {formatDate(currentLease.endDate, lang)}
             </div>
           </div>
         </div>
@@ -160,6 +163,7 @@ const ResidenceCard = ({
 };
 
 const BillingHistory = ({ payments }: { payments: Payment[] }) => {
+  const { locale: lang } = useLocale();
   return (
     <div className="mt-8 bg-white rounded-xl shadow-md overflow-hidden p-6">
       {/* Header */}
@@ -217,7 +221,7 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
                   </span>
                 </TableCell>
                 <TableCell>
-                  {new Date(payment.paymentDate).toLocaleDateString()}
+                  {formatDate(payment.paymentDate, lang)}
                 </TableCell>
                 <TableCell>${payment.amountPaid.toFixed(2)}</TableCell>
                 <TableCell>
