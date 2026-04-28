@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { UserRole } from "@prisma/client";
 import { toast } from "sonner";
+import { useLocale } from "@/components/internationalization/use-locale";
+import { formatDate } from "@/lib/i18n/formatters";
 
 import {
   Table,
@@ -115,6 +117,7 @@ function UserRow({
 }) {
   const [isPending, startTransition] = useTransition();
   const [reason, setReason] = useState("");
+  const { locale: lang } = useLocale();
 
   function onRoleChange(next: UserRole) {
     if (next === user.role) return;
@@ -175,10 +178,10 @@ function UserRow({
         </Badge>
       </TableCell>
       <TableCell className="text-xs text-muted-foreground">
-        {new Date(user.createdAt).toLocaleDateString()}
+        {formatDate(user.createdAt, lang)}
       </TableCell>
       <TableCell className="text-xs text-muted-foreground">
-        {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : "—"}
+        {user.lastLogin ? formatDate(user.lastLogin, lang) : "—"}
       </TableCell>
       <TableCell className="text-right">
         <AlertDialog>

@@ -1,9 +1,15 @@
 import Reviews from "@/components/reviews"
+import type { Locale } from "@/components/internationalization/config"
 
-export default function Review() {
+interface ReviewProps {
+  listingId: number
+  lang: Locale
+}
+
+export default function Review({ listingId, lang }: ReviewProps) {
   return (
     <div>
-      <Reviews />
+      <Reviews listingId={listingId} lang={lang} />
     </div>
   )
 }

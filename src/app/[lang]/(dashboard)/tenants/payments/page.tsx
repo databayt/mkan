@@ -4,6 +4,8 @@ import { CreditCard, Home, Clock, Check, AlertCircle } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { getUserPayments } from "@/lib/actions/payment-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
+import { formatDate } from "@/lib/i18n/formatters";
+import type { Locale } from "@/components/internationalization/config";
 import {
   Table,
   TableBody,
@@ -189,7 +191,7 @@ function PaymentsTable({
                 </div>
               )}
             </TableCell>
-            <TableCell>{new Date(p.dueDate).toLocaleDateString()}</TableCell>
+            <TableCell>{formatDate(p.dueDate, lang as Locale)}</TableCell>
             <TableCell className="font-medium">
               {currency}
               {p.amountDue.toLocaleString()}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, ArrowRightLeft, Search } from 'lucide-react';
 
@@ -12,6 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { useLocale } from '@/components/internationalization/use-locale';
 import { CitySelect } from './city-select';
 import { cn } from '@/lib/utils';
 import { mergeSearchParams, parseSearchParams } from './url-state';
@@ -54,8 +55,7 @@ export function SearchWidget({
 }: SearchWidgetProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const params = useParams<{ lang: string }>();
-  const lang = params?.lang === 'ar' ? 'ar' : 'en';
+  const { locale: lang } = useLocale();
   const [origin, setOrigin] = useState(initialOrigin);
   const [destination, setDestination] = useState(initialDestination);
   const [originId, setOriginId] = useState<number | undefined>(initialOriginId);

@@ -7,6 +7,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { BookingStatus } from "@prisma/client";
 import { logger } from "@/lib/logger";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { computeRefundAmount } from "@/lib/refund";
 
 // ============================================
 // SCHEMAS
@@ -484,7 +485,7 @@ export async function cancelBooking(id: unknown) {
       where: { id: parsedId.data },
       include: {
         listing: {
-          select: { hostId: true },
+          select: { hostId: true, cancellationPolicy: true, cleaningFee: true },
         },
       },
     });
@@ -506,6 +507,21 @@ export async function cancelBooking(id: unknown) {
       throw new Error("Completed bookings cannot be cancelled");
     }
 
+    // Compute the refund the guest would be owed. We surface this in the
+    // response so the cancellation dialog can confirm the breakdown before
+    // the click-through; the actual Stripe refund is currently fired by an
+    // admin via processRefund() because the Booking model doesn't carry a
+    // direct payment_intent yet (tracked as a follow-up).
+    const hoursBeforeCheckIn = Math.floor(
+      (booking.checkIn.getTime() - Date.now()) / (1000 * 60 * 60),
+    );
+    const refundQuote = computeRefundAmount({
+      policy: booking.listing.cancellationPolicy,
+      totalPaid: booking.totalPrice ?? 0,
+      cleaningFee: booking.listing.cleaningFee ?? 0,
+      hoursBeforeCheckIn,
+    });
+
     const updated = await db.booking.update({
       where: { id: parsedId.data },
       data: {
@@ -514,10 +530,17 @@ export async function cancelBooking(id: unknown) {
       },
     });
 
+    logger.info("booking_cancelled", {
+      bookingId: parsedId.data,
+      hoursBeforeCheckIn,
+      refundAmount: refundQuote.refundAmount,
+      policy: booking.listing.cancellationPolicy ?? "Flexible",
+    });
+
     revalidatePath("/bookings");
     revalidatePath("/hosting/bookings");
 
-    return { success: true, booking: updated };
+    return { success: true, booking: updated, refund: refundQuote };
   } catch (error) {
     logger.error("Error cancelling booking:", error);
     throw new Error(

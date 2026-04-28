@@ -705,10 +705,28 @@ export async function handleStripeWebhook(payload: string, signature: string) {
     return { ok: false as const, error: "invalid_signature" };
   }
 
-  // Idempotency: skip if event already processed.
-  // We use Payment.transactionId / TransportPayment.transactionId as the
-  // store of the Stripe charge id. A second delivery of the same event
-  // is a no-op.
+  // Idempotency: insert into WebhookEvent by `eventId @unique`. A duplicate
+  // delivery hits the unique constraint, we catch P2002, and return ok
+  // without re-running side effects.
+  try {
+    await db.webhookEvent.create({
+      data: {
+        provider: "stripe",
+        eventId: event.id,
+        eventType: event.type,
+        payload: JSON.parse(JSON.stringify(event)),
+      },
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("P2002")) {
+      logger.info("stripe_webhook_duplicate", { eventId: event.id, type: event.type });
+      return { ok: true as const };
+    }
+    // Surface other DB errors so Stripe retries — but log loudly.
+    logger.error("stripe_webhook_log_failed", { eventId: event.id, error: String(err) });
+    throw err;
+  }
+
   switch (event.type) {
     case "payment_intent.succeeded": {
       const intent = event.data.object;

@@ -23,7 +23,8 @@ import {
 import { getTransportOffice, getOfficeTrips } from '@/lib/actions/transport-actions';
 import { getTransportDictionary } from '@/components/transport/transport-dictionary';
 import { format, addDays } from 'date-fns';
-import { ar, enUS } from 'date-fns/locale';
+import { dateLocaleFor } from '@/lib/i18n/date-locale';
+import type { Locale } from '@/components/internationalization/config';
 
 type OfficeDetails = NonNullable<Awaited<ReturnType<typeof getTransportOffice>>>;
 type Trip = Awaited<ReturnType<typeof getOfficeTrips>>[number];
@@ -31,8 +32,8 @@ type Trip = Awaited<ReturnType<typeof getOfficeTrips>>[number];
 export default function OfficeDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const lang = params.lang as string;
-  const dateLocale = lang === 'ar' ? ar : enUS;
+  const lang = params.lang as Locale;
+  const dateLocale = dateLocaleFor(lang);
   const officeId = Number(params.id);
 
   const [office, setOffice] = useState<OfficeDetails | null>(null);

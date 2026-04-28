@@ -479,6 +479,14 @@ model TransportOffice {
   isActive        Boolean            @default(false)
   rating          Float?             @default(0)
   reviewCount     Int                @default(0)
+  // Per-office payment instructions for bank transfer + mobile money. Empty
+  // strings are allowed during onboarding; UI hides the section when blank
+  // so a guest never sees an empty bank-transfer card.
+  bankName        String             @default("")
+  bankAccount     String             @default("")
+  bankHolder      String             @default("")
+  momoNumber      String             @default("")
+  momoProvider    String             @default("")
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   buses           Bus[]
@@ -486,6 +494,20 @@ model TransportOffice {
   bookings        TransportBooking[]
   assemblyPoint   AssemblyPoint?     @relation(fields: [assemblyPointId], references: [id])
   owner           User               @relation(fields: [ownerId], references: [id])
+}
+
+/// Stripe webhook idempotency log. Insert by `eventId @unique` before
+/// processing — second delivery of the same event short-circuits and the
+/// route returns 200 without re-running side effects.
+model WebhookEvent {
+  id          Int      @id @default(autoincrement())
+  provider    String
+  eventId     String   @unique
+  eventType   String
+  payload     Json
+  processedAt DateTime @default(now())
+
+  @@index([provider, eventType])
 }
 
 model TransportPayment {
