@@ -510,6 +510,27 @@ model WebhookEvent {
   @@index([provider, eventType])
 }
 
+/// Singleton platform-level configuration. We always read/write id = 1.
+/// New settings get added as columns via a one-off migration so the type
+/// surface stays explicit (much easier than a KV table when six different
+/// admin pages read the same handful of values).
+model PlatformSetting {
+  id                        Int                @id @default(1)
+  /// Percentage (0..1) of each booking the platform keeps. 0.10 = 10%.
+  platformFeePct            Float              @default(0.10)
+  /// Default cancellation policy when a host doesn't pick one explicitly.
+  defaultCancellationPolicy CancellationPolicy @default(Flexible)
+  /// Comma-separated ISO 4217 codes (e.g. "SDG,USD,SAR"). Empty = unrestricted.
+  supportedCurrencies       String             @default("SDG,USD,SAR")
+  /// How many days after booking the platform pays the host.
+  payoutScheduleDays        Int                @default(30)
+  /// Outbound email From: address (Resend / SES).
+  emailFrom                 String             @default("")
+  /// Where bug reports / billing questions go.
+  supportEmail              String             @default("")
+  updatedAt                 DateTime           @updatedAt
+}
+
 model TransportPayment {
   id            Int                    @id @default(autoincrement())
   bookingId     Int
