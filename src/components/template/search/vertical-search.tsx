@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Label } from "@/components/ui/label";
 import { Counter } from "@/components/atom/counter";
 import { format, addDays } from "date-fns";
+import { ar, enUS } from "date-fns/locale";
 import { useClickOutside } from "./use-click";
 import { GUEST_LIMITS, MOBILE_BREAKPOINT } from "./constant";
 import LocationDropdown from "./location";
@@ -487,6 +488,7 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                         }
                       }}
                       numberOfMonths={1}
+                      locale={isRTL ? ar : enUS}
                       className="[--cell-size:2rem] p-0 text-sm"
                       classNames={{
                         months: "gap-0",
@@ -658,6 +660,7 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                       }
                     }}
                     numberOfMonths={1}
+                    locale={isRTL ? ar : enUS}
                     className="[--cell-size:2rem] p-0 text-sm"
                     classNames={{
                       months: "gap-0",
@@ -757,6 +760,7 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                   }
                 }}
                 numberOfMonths={2}
+                locale={isRTL ? ar : enUS}
                 className="[--cell-size:2rem] p-0 text-sm"
                 classNames={{
                   months: "gap-4",

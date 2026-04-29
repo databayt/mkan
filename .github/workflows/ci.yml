@@ -40,6 +40,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec eslint . --max-warnings 850
+      - name: i18n anti-pattern audit
+        run: pnpm i18n:check
 
   test:
     name: Unit Tests

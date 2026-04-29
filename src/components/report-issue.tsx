@@ -44,7 +44,7 @@ export function ReportIssue({ variant = "text" }: ReportIssueProps) {
     "idle" | "loading" | "success" | "error"
   >("idle")
   const dictionary = useDictionary()
-  const t = dictionary.reportIssue
+  const t = dictionary?.reportIssue
 
   async function handleSubmit() {
     if (!description.trim()) return
@@ -82,37 +82,43 @@ export function ReportIssue({ variant = "text" }: ReportIssueProps) {
         {variant === "icon" ? (
           <button
             className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-background/80 text-foreground/70 hover:text-foreground shadow-sm backdrop-blur cursor-pointer"
-            aria-label={t.link}
+            aria-label={t?.link ?? "Report an issue"}
           >
             <Bug className="h-5 w-5" strokeWidth={1.5} />
           </button>
         ) : (
           <button className="cursor-pointer font-medium underline underline-offset-4">
-            {t.link}
+            {t?.link ?? "Report an issue"}
           </button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t.title}</DialogTitle>
+          <DialogTitle>{t?.title ?? "Report an issue"}</DialogTitle>
         </DialogHeader>
         <textarea
           className="border-input placeholder:text-muted-foreground focus-visible:ring-ring min-h-[120px] w-full rounded-md border bg-transparent px-3 py-2 text-sm focus-visible:ring-1 focus-visible:outline-none"
-          placeholder={t.placeholder}
+          placeholder={t?.placeholder ?? "Describe the issue..."}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
         {status === "error" && (
-          <p className="text-destructive text-sm">{t.error}</p>
+          <p className="text-destructive text-sm">
+            {t?.error ?? "Something went wrong. Try again."}
+          </p>
         )}
         {status === "success" ? (
-          <p className="text-sm text-green-600">{t.success}</p>
+          <p className="text-sm text-green-600">
+            {t?.success ?? "Submitted. Thank you!"}
+          </p>
         ) : (
           <Button
             onClick={handleSubmit}
             disabled={!description.trim() || status === "loading"}
           >
-            {status === "loading" ? t.submitting : t.submit}
+            {status === "loading"
+              ? (t?.submitting ?? "Submitting...")
+              : (t?.submit ?? "Submit")}
           </Button>
         )}
       </DialogContent>

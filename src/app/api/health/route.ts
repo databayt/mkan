@@ -169,6 +169,24 @@ export async function GET(request: NextRequest) {
     healthData.checks.database = healthData.services.database.status;
   }
 
+  // Booking liveness — surfaces "no booking traffic in N hours" so on-call
+  // can spot a silent regression in the booking flow before users report it.
+  // We don't fail the health check on this; it's informational at the moment.
+  if (healthData.checks.database) {
+    try {
+      const last = await db.booking.findFirst({
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      });
+      const ageHours = last
+        ? Math.floor((Date.now() - last.createdAt.getTime()) / (1000 * 60 * 60))
+        : null;
+      healthData.services.lastBooking = { status: true, latency: ageHours ?? -1 };
+    } catch {
+      // already covered by the database check above; don't double-fail
+    }
+  }
+
   // Add detailed metrics if requested
   if (detailed) {
     const metrics = getSystemMetrics();
