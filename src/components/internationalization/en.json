@@ -3,6 +3,13 @@
     "title": "Mkan - Rental Marketplace",
     "description": "Connect with property managers and find your perfect rental home"
   },
+  "cookieConsent": {
+    "title": "We use cookies",
+    "description": "We use cookies for sign-in, security, and to understand how the site is used. You can accept everything, only the essentials, or customize.",
+    "acceptAll": "Accept all",
+    "rejectNonEssential": "Reject non-essential",
+    "learnMore": "Learn more"
+  },
   "hostingListings": {
     "status": {
       "published": "Published",

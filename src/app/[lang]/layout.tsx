@@ -4,6 +4,8 @@ import { getDictionary } from '@/components/internationalization/dictionaries';
 import { DictionaryProvider } from '@/components/internationalization/dictionary-context';
 import { type Locale, localeConfig, i18n } from '@/components/internationalization/config';
 import { ReportIssue } from '@/components/report-issue';
+import { CookieBanner } from '@/components/consent/cookie-banner';
+import { ConsentAwareAnalytics } from '@/components/consent/consent-aware-analytics';
 import { Providers } from '../providers';
 import { Toaster } from 'sonner';
 import '../globals.css';
@@ -90,6 +92,8 @@ export default async function LocaleLayout({
             <div className="fixed end-4 bottom-4 z-40 print:hidden">
               <ReportIssue variant="icon" />
             </div>
+            <CookieBanner />
+            <ConsentAwareAnalytics />
           </DictionaryProvider>
         </Providers>
       </body>
