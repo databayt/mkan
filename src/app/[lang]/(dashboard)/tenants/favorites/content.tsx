@@ -18,9 +18,10 @@ interface FavoritesContentProps {
  * updated list.
  */
 export default async function FavoritesContent({ lang }: FavoritesContentProps) {
-  const dict = (await getDictionary(lang as "en" | "ar")) as unknown as Record<string, Record<string, string>>;
+  const dict = (await getDictionary(lang as "en" | "ar")) as unknown as Record<string, Record<string, unknown>>;
   const t = (dict.dashboard as Record<string, Record<string, string>> | undefined)?.favorites ?? {};
-  const currency = dict.common?.currency ?? "$";
+  const meta = (dict.pageMetadata as Record<string, Record<string, string>> | undefined)?.tenantsFavorites ?? {};
+  const currency = (dict.common?.currency as string | undefined) ?? "$";
   const favorites = (await getTenantFavorites()) as Array<{
     id: number;
     title: string | null;
@@ -32,8 +33,8 @@ export default async function FavoritesContent({ lang }: FavoritesContentProps) 
   return (
     <div className="dashboard-container p-6 space-y-6">
       <Header
-        title={t.title ?? (lang === "ar" ? "المفضلة" : "Favorites")}
-        subtitle={t.subtitle ?? (lang === "ar" ? "تصفح وإدارة العقارات المحفوظة" : "Browse and manage your saved properties")}
+        title={t.title ?? meta.title ?? ''}
+        subtitle={t.subtitle ?? meta.subtitle ?? ''}
       />
 
       {favorites.length === 0 ? (

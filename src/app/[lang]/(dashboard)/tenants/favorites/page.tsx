@@ -1,5 +1,7 @@
 import { Metadata } from "next";
 import { createMetadata } from "@/lib/metadata";
+import { getDictionary } from "@/components/internationalization/dictionaries";
+import type { Locale } from "@/components/internationalization/config";
 import FavoritesContent from "./content";
 
 // Disable static generation for this page
@@ -8,15 +10,13 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ lang: string }>;
+  params: Promise<{ lang: Locale }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const m = (await getDictionary(lang)).pageMetadata.tenantsFavorites;
   return createMetadata({
-    title: lang === "ar" ? "المفضلة" : "Favorites",
-    description:
-      lang === "ar"
-        ? "تصفح وإدارة العقارات المفضلة لديك"
-        : "Browse and manage your saved property listings",
+    title: m.title,
+    description: m.description,
     locale: lang,
     path: "/tenants/favorites",
   });

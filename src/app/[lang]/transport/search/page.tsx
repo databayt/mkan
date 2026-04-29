@@ -22,15 +22,13 @@ import type { Locale } from '@/components/internationalization/config';
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ lang: string }>;
+  params: Promise<{ lang: Locale }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const dictionary = await getDictionary(lang);
   return createMetadata({
-    title: lang === "ar" ? "بحث النقل" : "Transport Search",
-    description:
-      lang === "ar"
-        ? "ابحث عن رحلات النقل المتاحة"
-        : "Search for available transport trips",
+    title: dictionary.transport.search.metadataTitle,
+    description: dictionary.transport.search.metadataDescription,
     locale: lang,
     path: "/transport/search",
   });
@@ -93,48 +91,49 @@ export default async function SearchPage({
   const t = dictionary.transport;
   const { trips, total, page, pageCount, facets } = result;
 
-  const dateLocale = lang === 'ar' ? ar : undefined;
+  const isArabic = lang === 'ar';
+  const dateLocale = isArabic ? ar : undefined;
+  const localizedNameKey = isArabic ? 'nameAr' : 'name';
 
   const originLabel = parsed.originId
-    ? assemblyPoints.find((p) => p.id === parsed.originId)?.[lang === 'ar' ? 'nameAr' : 'name']
+    ? assemblyPoints.find((p) => p.id === parsed.originId)?.[localizedNameKey]
       ?? parsed.origin
       ?? ''
     : parsed.origin ?? '';
   const destinationLabel = parsed.destinationId
-    ? assemblyPoints.find((p) => p.id === parsed.destinationId)?.[lang === 'ar' ? 'nameAr' : 'name']
+    ? assemblyPoints.find((p) => p.id === parsed.destinationId)?.[localizedNameKey]
       ?? parsed.destination
       ?? ''
     : parsed.destination ?? '';
 
-  // Filter dictionary with graceful fallbacks while translations land
   const filterDict = {
     filters: {
-      title: t.search.filters?.title ?? t.search.filters ?? (lang === 'ar' ? 'الفلاتر' : 'Filters'),
-      clearAll: t.search.filters?.clearAll ?? (lang === 'ar' ? 'مسح الكل' : 'Clear all'),
-      showResults: t.search.filters?.showResults ?? (lang === 'ar' ? 'عرض {count} رحلة' : 'Show {count} trips'),
+      title: t.search.filters.title,
+      clearAll: t.search.filters.clearAll,
+      showResults: t.search.filters.showResults,
     },
     sort: {
-      label: t.search.sort?.label ?? (lang === 'ar' ? 'ترتيب' : 'Sort'),
-      priceAsc: t.search.sort?.priceAsc ?? (lang === 'ar' ? 'السعر: من الأقل للأعلى' : 'Price: low to high'),
-      priceDesc: t.search.sort?.priceDesc ?? (lang === 'ar' ? 'السعر: من الأعلى للأقل' : 'Price: high to low'),
-      departureAsc: t.search.sort?.departureAsc ?? (lang === 'ar' ? 'الأبكر مغادرة' : 'Earliest departure'),
-      durationAsc: t.search.sort?.durationAsc ?? (lang === 'ar' ? 'الأقصر مدة' : 'Shortest duration'),
+      label: t.search.sort.label,
+      priceAsc: t.search.sort.priceAsc,
+      priceDesc: t.search.sort.priceDesc,
+      departureAsc: t.search.sort.departureAsc,
+      durationAsc: t.search.sort.durationAsc,
     },
     timeOfDay: {
-      label: t.search.timeOfDay?.label ?? (lang === 'ar' ? 'وقت المغادرة' : 'Departure time'),
-      morning: t.search.timeOfDay?.morning ?? (lang === 'ar' ? 'الصباح' : 'Morning'),
-      afternoon: t.search.timeOfDay?.afternoon ?? (lang === 'ar' ? 'الظهيرة' : 'Afternoon'),
-      evening: t.search.timeOfDay?.evening ?? (lang === 'ar' ? 'المساء' : 'Evening'),
-      night: t.search.timeOfDay?.night ?? (lang === 'ar' ? 'الليل' : 'Night'),
+      label: t.search.timeOfDay.label,
+      morning: t.search.timeOfDay.morning,
+      afternoon: t.search.timeOfDay.afternoon,
+      evening: t.search.timeOfDay.evening,
+      night: t.search.timeOfDay.night,
     },
     price: {
-      label: t.search.price?.label ?? (lang === 'ar' ? 'نطاق السعر' : 'Price range'),
-      currency: t.search.price?.currency ?? (lang === 'ar' ? 'ج.س' : 'SDG'),
+      label: t.search.price.label,
+      currency: t.search.price.currency,
     },
-    amenitiesLabel: t.search.amenitiesLabel ?? (lang === 'ar' ? 'المرافق' : 'Amenities'),
-    officesLabel: t.search.officesLabel ?? (lang === 'ar' ? 'المشغّلون' : 'Operators'),
+    amenitiesLabel: t.search.amenitiesLabel,
+    officesLabel: t.search.officesLabel,
     amenities: t.host?.amenityLabels,
-    mobileTriggerLabel: t.search.filters?.title ?? (typeof t.search.filters === 'string' ? t.search.filters : (lang === 'ar' ? 'الفلاتر' : 'Filters')),
+    mobileTriggerLabel: t.search.filters.title,
   };
 
   return (
@@ -223,6 +222,7 @@ export default async function SearchPage({
                     pageCount={pageCount}
                     lang={lang}
                     searchParams={spObject}
+                    dict={t.search.pagination}
                   />
                 )}
               </>
@@ -245,16 +245,24 @@ export default async function SearchPage({
   );
 }
 
+interface PaginationDict {
+  previous: string;
+  next: string;
+  pageOf: string;
+}
+
 function Pagination({
   page,
   pageCount,
   lang,
   searchParams,
+  dict,
 }: {
   page: number;
   pageCount: number;
   lang: string;
   searchParams: Record<string, string | undefined>;
+  dict: PaginationDict;
 }) {
   const buildHref = (p: number) => {
     const qs = new URLSearchParams();
@@ -265,6 +273,10 @@ function Pagination({
     return `/${lang}/transport/search?${qs.toString()}`;
   };
 
+  const pageLabel = dict.pageOf
+    .replace('{current}', String(page))
+    .replace('{total}', String(pageCount));
+
   return (
     <div className="mt-8 flex items-center justify-center gap-2">
       <Link
@@ -274,19 +286,17 @@ function Pagination({
         className="pointer-events-auto"
       >
         <Button variant="outline" size="sm" disabled={page <= 1}>
-          {lang === 'ar' ? 'السابق' : 'Previous'}
+          {dict.previous}
         </Button>
       </Link>
-      <span className="text-sm text-muted-foreground mx-3">
-        {lang === 'ar' ? `الصفحة ${page} من ${pageCount}` : `Page ${page} of ${pageCount}`}
-      </span>
+      <span className="text-sm text-muted-foreground mx-3">{pageLabel}</span>
       <Link
         href={page < pageCount ? buildHref(page + 1) : '#'}
         aria-disabled={page >= pageCount}
         tabIndex={page >= pageCount ? -1 : 0}
       >
         <Button variant="outline" size="sm" disabled={page >= pageCount}>
-          {lang === 'ar' ? 'التالي' : 'Next'}
+          {dict.next}
         </Button>
       </Link>
     </div>

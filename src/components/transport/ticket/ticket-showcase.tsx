@@ -7,8 +7,14 @@ import QRCode from 'qrcode';
 
 import { Button } from '@/components/ui/button';
 
+type DemoLocale = 'en' | 'ar';
+
 interface TicketShowcaseProps {
   lang: string;
+}
+
+function toDemoLocale(lang: string): DemoLocale {
+  return lang.startsWith('ar') ? 'ar' : 'en';
 }
 
 const DEMO_DATA = {
@@ -50,7 +56,7 @@ const DEMO_DATA = {
 
 export function TicketShowcase({ lang }: TicketShowcaseProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
-  const d = lang === 'ar' ? DEMO_DATA.ar : DEMO_DATA.en;
+  const d = DEMO_DATA[toDemoLocale(lang)];
 
   useEffect(() => {
     let mounted = true;

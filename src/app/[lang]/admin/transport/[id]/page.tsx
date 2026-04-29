@@ -6,6 +6,7 @@ import { auth, isAdminOrSuper } from "@/lib/auth";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { VerifyOfficeButton } from "./verify-button";
 
 export default async function AdminOfficeDetailPage({
   params,
@@ -52,13 +53,27 @@ export default async function AdminOfficeDetailPage({
             <span className="text-sm text-muted-foreground">#{office.id}</span>
           </div>
         </div>
-        <Link
-          href={`/${lang}/transport/offices/${office.id}`}
-          target="_blank"
-          className="text-sm underline text-muted-foreground"
-        >
-          {a.viewPublic ?? "View public page"}
-        </Link>
+        <div className="flex items-center gap-3">
+          <VerifyOfficeButton
+            officeId={office.id}
+            isVerified={office.isVerified}
+            labels={{
+              verify: a.verifyOffice ?? "Verify office",
+              unverify: a.unverifyOffice ?? "Unverify",
+              verifying: a.verifying ?? "Saving...",
+              verifiedToast: a.officeVerifiedToast ?? "Office marked verified",
+              unverifiedToast: a.officeUnverifiedToast ?? "Verification removed",
+              error: a.error ?? "Something went wrong",
+            }}
+          />
+          <Link
+            href={`/${lang}/transport/offices/${office.id}`}
+            target="_blank"
+            className="text-sm underline text-muted-foreground"
+          >
+            {a.viewPublic ?? "View public page"}
+          </Link>
+        </div>
       </header>
 
       <div className="grid gap-4 md:grid-cols-2">

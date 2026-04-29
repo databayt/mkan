@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/i18n/formatters";
+import type { Locale } from "@/components/internationalization/config";
 import type { BookingPayload } from "./page";
 
 type PaymentMethod = "card" | "bankak" | "cashi" | "mobile_money" | "bank_transfer" | "cash";
@@ -45,8 +47,8 @@ export default function BookingCheckoutContent({ lang, booking, dict }: Props) {
     });
   };
 
-  const checkIn = new Date(booking.checkIn).toLocaleDateString();
-  const checkOut = new Date(booking.checkOut).toLocaleDateString();
+  const checkIn = formatDate(booking.checkIn, lang as Locale);
+  const checkOut = formatDate(booking.checkOut, lang as Locale);
   const locationLabel = booking.listing.location
     ? `${booking.listing.location.city}, ${booking.listing.location.country}`
     : "";
