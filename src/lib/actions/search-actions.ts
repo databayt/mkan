@@ -19,10 +19,42 @@ import {
 const LISTINGS_TAG = "listings";
 const SEARCH_TAG = "search";
 
+// Row shape returned from the SQL aggregation. `n` is bigint because
+// Postgres `COUNT(*)` returns an int8 — we cast to Number on the way out.
+type LocationCountRow = {
+  city: string;
+  state: string;
+  country: string;
+  n: bigint;
+};
+
+// Convert a raw aggregation row into the LocationSuggestion shape that
+// callers expect. Centralised so the popular and search paths can't drift.
+function toSuggestion(row: LocationCountRow): LocationSuggestion {
+  return {
+    city: row.city ?? "",
+    state: row.state ?? "",
+    country: row.country ?? "",
+    displayName: row.city && row.state ? `${row.city}, ${row.state}` : row.city || row.state || "",
+    listingCount: Number(row.n),
+  };
+}
+
 /**
- * Get location suggestions based on search query
- * Queries unique cities from published listings with listing count
- * Cached for 1 hour
+ * Get location suggestions based on search query.
+ *
+ * Aggregates published-listing counts per (city, state, country) directly
+ * in SQL so the returned `listingCount` is the true number of matching
+ * listings, regardless of how many denormalised Location rows back them.
+ *
+ * Previously this used `findMany({ take: limit })` and dedup'd in JS — but
+ * `take` was applied BEFORE the JS dedup, which meant a city with N
+ * listings would show up as `listingCount = take` instead of N. Now we
+ * GROUP BY in SQL and only LIMIT the *grouped* result.
+ *
+ * Cached for 1 hour. The `%`-style ILIKE will become trigram-indexed once
+ * the pg_trgm migration lands; for now it's a sequential scan but bounded
+ * by the cache.
  */
 export const getLocationSuggestions = unstable_cache(
   async (
@@ -30,77 +62,25 @@ export const getLocationSuggestions = unstable_cache(
     limit: number = SEARCH_CONFIG.MAX_LOCATION_RESULTS
   ): Promise<LocationSuggestion[]> => {
     const validated = locationQuerySchema.safeParse({ query, limit });
-
-    if (!validated.success) {
-      // Invalid location query
-      return [];
-    }
+    if (!validated.success) return [];
 
     try {
-      // Use Prisma groupBy for efficient grouping
-      const locations = await db.location.findMany({
-        where: {
-          AND: [
-            {
-              listings: {
-                some: {
-                  isPublished: true,
-                  draft: false,
-                },
-              },
-            },
-            {
-              OR: [
-                { city: { contains: query, mode: "insensitive" } },
-                { state: { contains: query, mode: "insensitive" } },
-                { country: { contains: query, mode: "insensitive" } },
-              ],
-            },
-          ],
-        },
-        select: {
-          city: true,
-          state: true,
-          country: true,
-          _count: {
-            select: {
-              listings: {
-                where: {
-                  isPublished: true,
-                  draft: false,
-                },
-              },
-            },
-          },
-        },
-        take: limit,
-      });
-
-      // Group by city, state, country and aggregate counts
-      const groupedLocations = new Map<string, LocationSuggestion>();
-
-      for (const loc of locations) {
-        const key = `${loc.city}-${loc.state}-${loc.country}`;
-        const existing = groupedLocations.get(key);
-
-        if (existing) {
-          existing.listingCount += loc._count.listings;
-        } else {
-          groupedLocations.set(key, {
-            city: loc.city || "",
-            state: loc.state || "",
-            country: loc.country || "",
-            displayName: loc.city && loc.state ? `${loc.city}, ${loc.state}` : loc.city || loc.state || "",
-            listingCount: loc._count.listings,
-          });
-        }
-      }
-
-      // Sort by listing count and return
-      return Array.from(groupedLocations.values())
-        .filter((loc) => loc.listingCount > 0)
-        .sort((a, b) => b.listingCount - a.listingCount)
-        .slice(0, limit);
+      const pattern = `%${query}%`;
+      const rows = await db.$queryRaw<LocationCountRow[]>`
+        SELECT l.city, l.state, l.country, COUNT(li.id)::bigint AS n
+        FROM "Location" l
+        JOIN "Listing" li ON li."locationId" = l.id
+        WHERE li."isPublished" = true AND li.draft = false
+          AND (
+            l.city    ILIKE ${pattern} OR
+            l.state   ILIKE ${pattern} OR
+            l.country ILIKE ${pattern}
+          )
+        GROUP BY l.city, l.state, l.country
+        ORDER BY n DESC
+        LIMIT ${limit};
+      `;
+      return rows.map(toSuggestion);
     } catch {
       return [];
     }
@@ -110,66 +90,30 @@ export const getLocationSuggestions = unstable_cache(
 );
 
 /**
- * Get popular locations (no search query)
- * Returns locations with most published listings
- * Cached for 1 hour
+ * Get popular locations (no search query).
+ *
+ * Same SQL-side aggregation as `getLocationSuggestions` minus the WHERE
+ * filter — returns the cities with the most published listings.
+ * Previously fetched the entire Location table and dedup'd in JS, which
+ * scaled linearly with row count.
+ *
+ * Cached for 1 hour.
  */
 export const getPopularLocations = unstable_cache(
   async (
     limit: number = SEARCH_CONFIG.DEFAULT_POPULAR_LOCATIONS_COUNT
   ): Promise<LocationSuggestion[]> => {
     try {
-      const locations = await db.location.findMany({
-        where: {
-          listings: {
-            some: {
-              isPublished: true,
-              draft: false,
-            },
-          },
-        },
-        select: {
-          city: true,
-          state: true,
-          country: true,
-          _count: {
-            select: {
-              listings: {
-                where: {
-                  isPublished: true,
-                  draft: false,
-                },
-              },
-            },
-          },
-        },
-      });
-
-      // Group by city, state, country and aggregate counts
-      const groupedLocations = new Map<string, LocationSuggestion>();
-
-      for (const loc of locations) {
-        const key = `${loc.city}-${loc.state}-${loc.country}`;
-        const existing = groupedLocations.get(key);
-
-        if (existing) {
-          existing.listingCount += loc._count.listings;
-        } else {
-          groupedLocations.set(key, {
-            city: loc.city || "",
-            state: loc.state || "",
-            country: loc.country || "",
-            displayName: loc.city && loc.state ? `${loc.city}, ${loc.state}` : loc.city || loc.state || "",
-            listingCount: loc._count.listings,
-          });
-        }
-      }
-
-      // Sort by listing count and return top results
-      return Array.from(groupedLocations.values())
-        .filter((loc) => loc.listingCount > 0)
-        .sort((a, b) => b.listingCount - a.listingCount)
-        .slice(0, limit);
+      const rows = await db.$queryRaw<LocationCountRow[]>`
+        SELECT l.city, l.state, l.country, COUNT(li.id)::bigint AS n
+        FROM "Location" l
+        JOIN "Listing" li ON li."locationId" = l.id
+        WHERE li."isPublished" = true AND li.draft = false
+        GROUP BY l.city, l.state, l.country
+        ORDER BY n DESC
+        LIMIT ${limit};
+      `;
+      return rows.map(toSuggestion);
     } catch {
       return [];
     }
