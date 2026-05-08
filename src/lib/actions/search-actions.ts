@@ -21,12 +21,24 @@ const SEARCH_TAG = "search";
 
 // Row shape returned from the SQL aggregation. `n` is bigint because
 // Postgres `COUNT(*)` returns an int8 — we cast to Number on the way out.
+// `sim` is the per-group trigram similarity score (0..1); only set on
+// the search path, omitted for the popular-locations path.
 type LocationCountRow = {
   city: string;
   state: string;
   country: string;
   n: bigint;
+  sim?: number;
 };
+
+// Escape SQL LIKE wildcards in user input. Without this, a query like
+// "khar%" would match anything containing "khar" (the % is the SQL
+// wildcard) instead of the literal four characters the user typed. The
+// pg_trgm `%` operator takes the raw query — it doesn't interpret % as
+// a wildcard — so we only escape for the ILIKE branch.
+function escapeLike(s: string): string {
+  return s.replace(/([%_\\])/g, "\\$1");
+}
 
 // Convert a raw aggregation row into the LocationSuggestion shape that
 // callers expect. Centralised so the popular and search paths can't drift.
@@ -47,14 +59,16 @@ function toSuggestion(row: LocationCountRow): LocationSuggestion {
  * in SQL so the returned `listingCount` is the true number of matching
  * listings, regardless of how many denormalised Location rows back them.
  *
- * Previously this used `findMany({ take: limit })` and dedup'd in JS — but
- * `take` was applied BEFORE the JS dedup, which meant a city with N
- * listings would show up as `listingCount = take` instead of N. Now we
- * GROUP BY in SQL and only LIMIT the *grouped* result.
+ * Match strategy is the OR of two complementary signals, both backed by
+ * the same GIN trigram index from the pg_trgm migration:
+ *   - ILIKE '%foo%' — substring match for partial typing ("khar" → "Khartoum").
+ *   - `%` similarity — typo tolerance under the default 0.3 threshold
+ *     ("khartom" → "Khartoum"). Returns `similarity(...)` for ranking
+ *     so closer matches sort above looser ones within the same listing
+ *     count tier.
  *
- * Cached for 1 hour. The `%`-style ILIKE will become trigram-indexed once
- * the pg_trgm migration lands; for now it's a sequential scan but bounded
- * by the cache.
+ * Cached for 1 hour. Validation runs outside the cache boundary so an
+ * invalid query doesn't poison the cache with an empty entry.
  */
 export const getLocationSuggestions = unstable_cache(
   async (
@@ -65,19 +79,31 @@ export const getLocationSuggestions = unstable_cache(
     if (!validated.success) return [];
 
     try {
-      const pattern = `%${query}%`;
+      const pattern = `%${escapeLike(query)}%`;
+      // Inner query: do the join + filter + aggregation. Outer query:
+      // sort by listing-count then similarity, then take the limit.
+      // We can't ORDER BY before GROUP BY, and putting `similarity()` in
+      // the GROUP BY would defeat the grouping — wrapping in a subquery
+      // is the cleanest expression.
       const rows = await db.$queryRaw<LocationCountRow[]>`
-        SELECT l.city, l.state, l.country, COUNT(li.id)::bigint AS n
-        FROM "Location" l
-        JOIN "Listing" li ON li."locationId" = l.id
-        WHERE li."isPublished" = true AND li.draft = false
-          AND (
-            l.city    ILIKE ${pattern} OR
-            l.state   ILIKE ${pattern} OR
-            l.country ILIKE ${pattern}
-          )
-        GROUP BY l.city, l.state, l.country
-        ORDER BY n DESC
+        SELECT city, state, country, n, sim FROM (
+          SELECT l.city, l.state, l.country, COUNT(li.id)::bigint AS n,
+                 GREATEST(
+                   similarity(l.city,    ${query}),
+                   similarity(l.state,   ${query}),
+                   similarity(l.country, ${query})
+                 ) AS sim
+          FROM "Location" l
+          JOIN "Listing" li ON li."locationId" = l.id
+          WHERE li."isPublished" = true AND li.draft = false
+            AND (
+              l.city    ILIKE ${pattern} OR l.city    % ${query} OR
+              l.state   ILIKE ${pattern} OR l.state   % ${query} OR
+              l.country ILIKE ${pattern} OR l.country % ${query}
+            )
+          GROUP BY l.city, l.state, l.country
+        ) sub
+        ORDER BY n DESC, sim DESC
         LIMIT ${limit};
       `;
       return rows.map(toSuggestion);

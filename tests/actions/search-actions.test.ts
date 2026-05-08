@@ -105,6 +105,21 @@ describe("getLocationSuggestions", () => {
 
     expect(result).toEqual([]);
   });
+
+  it("passes the query to the SQL aggregation as a parameter", async () => {
+    // Sanity check that the user's query reaches the database. The trigram
+    // matching (similarity, ILIKE) is delegated to Postgres, so we don't
+    // simulate it here — we just confirm that whatever the user typed is
+    // what \$queryRaw was invoked with.
+    mockDb.$queryRaw.mockResolvedValue([] as never);
+
+    await getLocationSuggestions("khartom");
+
+    // \$queryRaw is tagged-template-style, so the parameters arrive as
+    // additional positional arguments after the strings array.
+    const [, ...params] = mockDb.$queryRaw.mock.calls[0];
+    expect(params).toContain("khartom");
+  });
 });
 
 // ============================================
