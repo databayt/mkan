@@ -121,6 +121,14 @@ export interface LocationSuggestion {
 // Search filters type for server action. Keep in sync with `listingFilterSchema`
 // below — every field here needs a Zod parser or it'll bypass validation.
 export interface SearchFilters {
+  /**
+   * Free-text query matched against listing title + description via
+   * Postgres full-text search. The match is index-backed by the
+   * `idx_listing_fulltext` GIN(to_tsvector(...)) index that lives on
+   * the Listing table; an empty / undefined query short-circuits the
+   * full-text branch entirely.
+   */
+  query?: string;
   location?: string;
   checkIn?: string;
   checkOut?: string;
@@ -142,6 +150,9 @@ export interface SearchFilters {
 // The `searchFormSchema` above is form-level (rejects past check-ins etc.);
 // this one is query-level (rejects out-of-range numbers, unknown enum values).
 export const listingFilterSchema = z.object({
+  // Title/description search. Capped at 200 chars to keep
+  // plainto_tsquery cheap and bound the cache key size.
+  query: z.string().trim().min(1).max(200).optional(),
   location: z.string().max(200).optional(),
   checkIn: z.string().optional(),
   checkOut: z.string().optional(),

@@ -12,7 +12,13 @@ vi.mock("@/lib/db", () => ({
       findMany: vi.fn(),
       count: vi.fn().mockResolvedValue(0),
     },
-    $queryRaw: vi.fn(),
+    // $queryRaw is used by getLocationSuggestions/getPopularLocations
+    // (SQL groupBy autocomplete, PR #19) AND by getFullTextMatchingIds
+    // (title/description keyword search via this PR). Each test that
+    // hits one of those paths sets the resolved value explicitly.
+    // Default `[]` keeps tests that don't pass `query` from leaking
+    // stale state into other suites.
+    $queryRaw: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -229,6 +235,45 @@ describe("searchListings", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("Failed to search");
+    expect(result.data).toEqual([]);
+  });
+
+  it("intersects findMany with full-text matching IDs when query is set", async () => {
+    // First call: getFullTextMatchingIds for the page query.
+    // Second call: getFullTextMatchingIds for the count query.
+    // Both return the same set because the query is the same.
+    mockDb.$queryRaw
+      .mockResolvedValueOnce([{ id: 7 }, { id: 12 }])
+      .mockResolvedValueOnce([{ id: 7 }, { id: 12 }]);
+    mockDb.listing.findMany.mockResolvedValue([{ id: 7 }, { id: 12 }] as never);
+    mockDb.listing.count.mockResolvedValue(2 as never);
+
+    const result = await searchListings({ query: "beach view" });
+
+    expect(result.success).toBe(true);
+    const where = mockDb.listing.findMany.mock.calls[0][0]?.where;
+    expect(where?.id).toEqual({ in: [7, 12] });
+    expect(result.data).toHaveLength(2);
+  });
+
+  it("short-circuits to empty when full-text matches nothing", async () => {
+    mockDb.$queryRaw.mockResolvedValue([]);
+
+    const result = await searchListings({ query: "zzznever" });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual([]);
+    // findMany should never be hit — empty IDs short-circuits before the query.
+    expect(mockDb.listing.findMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects empty-string query at the validation boundary", async () => {
+    // Zod's `.min(1)` on the query field means an empty string is
+    // invalid (whitespace also trims to empty). Treats it as "no
+    // query" rather than "match everything", which would be a footgun.
+    const result = await searchListings({ query: "   " });
+
+    expect(result.success).toBe(false);
     expect(result.data).toEqual([]);
   });
 });
