@@ -118,7 +118,13 @@ export const getLocationSuggestions = unstable_cache(
     }
   },
   ["location-suggestions"],
-  { revalidate: 3600 } // Cache for 1 hour
+  // Tagged with LISTINGS_TAG so the existing updateTag("listings") calls
+  // in listing-actions.ts (create/update/publish/unpublish/delete) bust
+  // the autocomplete cache too. Without this, autocomplete kept serving
+  // pre-mutation results for up to an hour — a deploy that introduced
+  // pg_trgm errors had its empty results cached, and that empty cache
+  // outlived the migration fix.
+  { revalidate: 3600, tags: [LISTINGS_TAG] }
 );
 
 /**
@@ -129,7 +135,9 @@ export const getLocationSuggestions = unstable_cache(
  * Previously fetched the entire Location table and dedup'd in JS, which
  * scaled linearly with row count.
  *
- * Cached for 1 hour.
+ * Cached for 1 hour. Tagged with LISTINGS_TAG so listing mutations
+ * invalidate it (the popular-cities ranking changes whenever a listing
+ * is added or removed in a city).
  */
 export const getPopularLocations = unstable_cache(
   async (
@@ -151,7 +159,7 @@ export const getPopularLocations = unstable_cache(
     }
   },
   ["popular-locations"],
-  { revalidate: 3600 } // Cache for 1 hour
+  { revalidate: 3600, tags: [LISTINGS_TAG] }
 );
 
 /**
