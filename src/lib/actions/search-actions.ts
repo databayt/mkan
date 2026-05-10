@@ -80,29 +80,35 @@ export const getLocationSuggestions = unstable_cache(
 
     try {
       const pattern = `%${escapeLike(query)}%`;
-      // Inner query: do the join + filter + aggregation. Outer query:
-      // sort by listing-count then similarity, then take the limit.
-      // We can't ORDER BY before GROUP BY, and putting `similarity()` in
-      // the GROUP BY would defeat the grouping — wrapping in a subquery
-      // is the cleanest expression.
+      // Flat query: compute COUNT and MAX(similarity) directly in the
+      // SELECT, GROUP BY (city, state, country), then ORDER BY n + sim
+      // and LIMIT.
+      //
+      // An earlier version wrapped this in a subquery to keep
+      // `similarity(l.city, ...)` out of an aggregate, but that version
+      // shipped a Postgres bug where the outer LIMIT leaked into the
+      // inner COUNT — every result returned `listingCount = limit`
+      // regardless of the true row count. The flat form with MAX() of
+      // the per-row GREATEST is grammatically correct (similarity is a
+      // function of the GROUP BY column, MAX collapses it idempotently)
+      // and avoids the planner pathology.
       const rows = await db.$queryRaw<LocationCountRow[]>`
-        SELECT city, state, country, n, sim FROM (
-          SELECT l.city, l.state, l.country, COUNT(li.id)::bigint AS n,
-                 GREATEST(
-                   similarity(l.city,    ${query}),
-                   similarity(l.state,   ${query}),
-                   similarity(l.country, ${query})
-                 ) AS sim
-          FROM "Location" l
-          JOIN "Listing" li ON li."locationId" = l.id
-          WHERE li."isPublished" = true AND li.draft = false
-            AND (
-              l.city    ILIKE ${pattern} OR l.city    % ${query} OR
-              l.state   ILIKE ${pattern} OR l.state   % ${query} OR
-              l.country ILIKE ${pattern} OR l.country % ${query}
-            )
-          GROUP BY l.city, l.state, l.country
-        ) sub
+        SELECT l.city, l.state, l.country,
+               COUNT(li.id)::bigint AS n,
+               MAX(GREATEST(
+                 similarity(l.city,    ${query}),
+                 similarity(l.state,   ${query}),
+                 similarity(l.country, ${query})
+               )) AS sim
+        FROM "Location" l
+        JOIN "Listing" li ON li."locationId" = l.id
+        WHERE li."isPublished" = true AND li.draft = false
+          AND (
+            l.city    ILIKE ${pattern} OR l.city    % ${query} OR
+            l.state   ILIKE ${pattern} OR l.state   % ${query} OR
+            l.country ILIKE ${pattern} OR l.country % ${query}
+          )
+        GROUP BY l.city, l.state, l.country
         ORDER BY n DESC, sim DESC
         LIMIT ${limit};
       `;
