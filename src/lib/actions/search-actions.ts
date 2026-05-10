@@ -264,6 +264,39 @@ const SEARCH_LISTING_SELECT = {
   },
 } as const satisfies Prisma.ListingSelect;
 
+/**
+ * Title/description full-text search via the existing
+ * `idx_listing_fulltext` GIN(to_tsvector(...)) index.
+ *
+ * Returns the IDs of matching published listings; the caller adds an
+ * `id IN (...)` predicate to its where-clause. Two-step instead of one
+ * `$queryRaw` for the whole search because the rest of the where-clause
+ * (price ranges, amenity arrays, date overlap subquery) is much cleaner
+ * to express through Prisma's typed query builder.
+ *
+ * `plainto_tsquery` (not `to_tsquery`) so the user input doesn't need to
+ * be operator-quoted — "luxury beach" parses as `luxury & beach`, and
+ * stop words / punctuation are handled by the parser. The 'english'
+ * dictionary is what the index was built with, so the operator can use
+ * the index directly.
+ */
+async function getFullTextMatchingIds(query: string): Promise<number[]> {
+  try {
+    const rows = await db.$queryRaw<Array<{ id: number }>>`
+      SELECT id FROM "Listing"
+      WHERE "isPublished" = true AND draft = false
+        AND to_tsvector('english', COALESCE(title, '') || ' ' || COALESCE(description, ''))
+            @@ plainto_tsquery('english', ${query})
+    `;
+    return rows.map((r) => r.id);
+  } catch {
+    // If pg_trgm / fulltext isn't available (e.g., the migration that
+    // created idx_listing_fulltext hasn't run), bail gracefully — the
+    // outer search will return all listings instead of zero.
+    return [];
+  }
+}
+
 const cachedListingSearch = unstable_cache(
   async (
     normalized: string
@@ -272,6 +305,15 @@ const cachedListingSearch = unstable_cache(
     const where = buildSearchWhere(f);
     const take = Math.min(f.take ?? 20, 50);
     const skip = f.skip ?? 0;
+
+    // Full-text branch: when query is set, intersect the where-clause
+    // with the IDs returned by the GIN index. An empty match short-
+    // circuits the page query — avoids a `WHERE id IN ()` round-trip.
+    if (f.query) {
+      const ids = await getFullTextMatchingIds(f.query);
+      if (ids.length === 0) return [];
+      where.id = { in: ids };
+    }
 
     return db.listing.findMany({
       where,
@@ -291,6 +333,15 @@ const cachedListingCount = unstable_cache(
   async (normalized: string): Promise<number> => {
     const parsed = JSON.parse(normalized) as ReturnType<typeof listingFilterSchema.parse>;
     const where = buildSearchWhere(parsed);
+
+    // Same full-text intersection as the page query so the count
+    // matches what the user actually sees.
+    if (parsed.query) {
+      const ids = await getFullTextMatchingIds(parsed.query);
+      if (ids.length === 0) return 0;
+      where.id = { in: ids };
+    }
+
     return db.listing.count({ where });
   },
   ["search-listings-count"],

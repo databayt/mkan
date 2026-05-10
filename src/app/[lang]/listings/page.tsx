@@ -34,6 +34,14 @@ const PAGE_SIZE = 20;
 
 interface ListingsPageProps {
   searchParams: Promise<{
+    /**
+     * Free-text title/description search. Matched server-side against
+     * the GIN(to_tsvector) full-text index. `q` is the conventional
+     * short URL param for keyword search; `query` is accepted as an
+     * alias for clarity.
+     */
+    q?: string;
+    query?: string;
     location?: string;
     checkIn?: string;
     checkOut?: string;
@@ -87,9 +95,16 @@ async function getFilteredListings(searchParams: ListingsPageProps["searchParams
   // Pagination: `page` param is 1-indexed for humans; take/skip are 0-indexed.
   const page = Math.max(1, toInt(params.page) ?? 1);
 
+  // Title/description full-text search. `q` is the conventional short
+  // form; `query` is accepted as an alias. Trim is also done in the
+  // server-action zod schema, but the URL-bar copy is friendlier with
+  // a leading trim here.
+  const rawQuery = (params.q ?? params.query ?? "").trim();
+
   // searchListings() runs even without filters now — it's the only path that
   // returns both paginated data AND a total count for the pagination UI.
   const filters: SearchFilters = {
+    query: rawQuery || undefined,
     location: params.location,
     checkIn: params.checkIn,
     checkOut: params.checkOut,
@@ -185,8 +200,12 @@ export default async function ListingsPage({ searchParams, params: pageParams }:
     amenityLabels: rentalAmenities as Partial<Record<Amenity, string>>,
   };
 
-  // Build search summary for display
+  // Build search summary for display. `q`/`query` get a quoted-keyword
+  // chip so users can see what they searched for and why a result set
+  // looks unfamiliar.
   const searchSummary = [];
+  const summaryQuery = (params.q ?? params.query ?? "").trim();
+  if (summaryQuery) searchSummary.push(`"${summaryQuery}"`);
   if (params.location) searchSummary.push(params.location);
   if (params.guests) searchSummary.push(
     `${params.guests} ${parseInt(params.guests) > 1
