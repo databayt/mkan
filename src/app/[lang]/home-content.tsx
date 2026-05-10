@@ -154,17 +154,17 @@ export default function HomeContent({ listings, locale }: HomeContentProps) {
           <div className="space-y-12">
             <ListingCarouselSection
               title={t.popular}
-              href={`/${locale}/search`}
+              href={`/${locale}/listings`}
               listings={listings.slice(0, 12)}
             />
             <ListingCarouselSection
               title={t.recent}
-              href={`/${locale}/search?sort=newest`}
+              href={`/${locale}/listings?sort=newest`}
               listings={getRecentListings(listings, 12)}
             />
             <ListingCarouselSection
               title={t.topRated}
-              href={`/${locale}/search?sort=rating`}
+              href={`/${locale}/listings?sort=rating`}
               listings={getTopRatedListings(listings, 12)}
             />
           </div>

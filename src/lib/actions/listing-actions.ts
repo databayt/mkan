@@ -183,9 +183,9 @@ export async function createListing(data: unknown = {}) {
     });
 
     revalidatePath("/hosting/listings");
-    revalidatePath("/search");
     // Bust the searchListings cache so new/updated listings appear on the
     // public /listings page without waiting for the 60s revalidate window.
+    // (`/search` is not a real route — invalidation flows through the tag.)
     updateTag("listings");
 
     return { success: true, listing };
@@ -527,7 +527,9 @@ export async function updateListing(id: unknown, data: unknown) {
     revalidatePath("/hosting/listings");
     revalidatePath(`/hosting/listings/editor/${parsedId.data}`);
     revalidatePath(`/listing/${parsedId.data}`);
-    revalidatePath("/search");
+    // Bust the searchListings cache so edits surface on the public /listings
+    // page without waiting for the 60s revalidate window.
+    updateTag("listings");
 
     return { success: true, listing };
   } catch (error) {
@@ -587,8 +589,7 @@ export async function deleteListing(id: unknown) {
     }
 
     revalidatePath("/hosting/listings");
-    revalidatePath("/search");
-    // Bust the searchListings cache so new/updated listings appear on the
+    // Bust the searchListings cache so deleted listings disappear from the
     // public /listings page without waiting for the 60s revalidate window.
     updateTag("listings");
 
@@ -673,7 +674,9 @@ export async function publishListing(id: unknown) {
 
     revalidatePath("/hosting/listings");
     revalidatePath(`/listing/${parsedId.data}`);
-    revalidatePath("/search");
+    // Bust the searchListings cache so newly-published listings surface on
+    // the public /listings page without waiting for the 60s revalidate window.
+    updateTag("listings");
 
     return { success: true, listing: publishedListing };
   } catch (error) {
@@ -732,7 +735,9 @@ export async function unpublishListing(id: unknown) {
 
     revalidatePath("/hosting/listings");
     revalidatePath(`/listing/${parsedId.data}`);
-    revalidatePath("/search");
+    // Bust the searchListings cache so unpublished listings disappear from
+    // the public /listings page without waiting for the 60s revalidate window.
+    updateTag("listings");
 
     return { success: true, listing: unpublishedListing };
   } catch (error) {

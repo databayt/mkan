@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// Autocomplete actions now use `db.$queryRaw` for SQL-side aggregation
+// (groupBy in the database, not JS). Mock that as a generic vi.fn() —
+// each test sets the resolved value directly.
 vi.mock("@/lib/db", () => ({
   db: {
     location: {
@@ -9,6 +12,7 @@ vi.mock("@/lib/db", () => ({
       findMany: vi.fn(),
       count: vi.fn().mockResolvedValue(0),
     },
+    $queryRaw: vi.fn(),
   },
 }));
 
@@ -56,32 +60,36 @@ describe("getLocationSuggestions", () => {
   });
 
   it("returns location suggestions matching query", async () => {
-    mockDb.location.findMany.mockResolvedValue([
-      { city: "Riyadh", state: "Riyadh", country: "SA", _count: { listings: 5 } },
-      { city: "Riyadh", state: "Riyadh", country: "SA", _count: { listings: 3 } },
+    // The SQL aggregation already groups + sums in the DB, so the mock
+    // returns one pre-grouped row per (city, state, country).
+    mockDb.$queryRaw.mockResolvedValue([
+      { city: "Riyadh", state: "Riyadh", country: "SA", n: 8n },
     ] as never);
 
     const result = await getLocationSuggestions("Riyadh");
 
-    expect(result).toHaveLength(1); // grouped by city+state+country
+    expect(result).toHaveLength(1);
     expect(result[0].listingCount).toBe(8);
     expect(result[0].city).toBe("Riyadh");
   });
 
-  it("filters out locations with zero listings", async () => {
-    mockDb.location.findMany.mockResolvedValue([
-      { city: "Ghost", state: "Town", country: "XX", _count: { listings: 0 } },
-    ] as never);
+  it("returns empty array when no rows match", async () => {
+    // SQL GROUP BY only returns rows for cities with ≥1 listing match;
+    // the join + WHERE filter zero-row case maps to an empty result.
+    mockDb.$queryRaw.mockResolvedValue([] as never);
 
     const result = await getLocationSuggestions("Ghost");
 
     expect(result).toHaveLength(0);
   });
 
-  it("sorts by listing count descending", async () => {
-    mockDb.location.findMany.mockResolvedValue([
-      { city: "A", state: "S1", country: "C1", _count: { listings: 2 } },
-      { city: "B", state: "S2", country: "C2", _count: { listings: 10 } },
+  it("preserves listing-count ordering from the database", async () => {
+    // ORDER BY n DESC happens in SQL, so the mock returns the rows
+    // in the order Postgres would have produced them. We just verify
+    // the mapping is order-preserving.
+    mockDb.$queryRaw.mockResolvedValue([
+      { city: "B", state: "S2", country: "C2", n: 10n },
+      { city: "A", state: "S1", country: "C1", n: 2n },
     ] as never);
 
     const result = await getLocationSuggestions("test");
@@ -91,7 +99,7 @@ describe("getLocationSuggestions", () => {
   });
 
   it("returns empty array on database error", async () => {
-    mockDb.location.findMany.mockRejectedValue(new Error("DB down"));
+    mockDb.$queryRaw.mockRejectedValue(new Error("DB down"));
 
     const result = await getLocationSuggestions("test");
 
@@ -104,10 +112,11 @@ describe("getLocationSuggestions", () => {
 // ============================================
 
 describe("getPopularLocations", () => {
-  it("returns popular locations sorted by count", async () => {
-    mockDb.location.findMany.mockResolvedValue([
-      { city: "Jeddah", state: "Makkah", country: "SA", _count: { listings: 20 } },
-      { city: "Riyadh", state: "Riyadh", country: "SA", _count: { listings: 50 } },
+  it("returns popular locations in the order the database produced", async () => {
+    // ORDER BY n DESC is applied in SQL; mock just returns pre-sorted.
+    mockDb.$queryRaw.mockResolvedValue([
+      { city: "Riyadh", state: "Riyadh", country: "SA", n: 50n },
+      { city: "Jeddah", state: "Makkah", country: "SA", n: 20n },
     ] as never);
 
     const result = await getPopularLocations();
@@ -117,7 +126,7 @@ describe("getPopularLocations", () => {
   });
 
   it("returns empty array on error", async () => {
-    mockDb.location.findMany.mockRejectedValue(new Error("DB down"));
+    mockDb.$queryRaw.mockRejectedValue(new Error("DB down"));
 
     const result = await getPopularLocations();
 
@@ -125,8 +134,8 @@ describe("getPopularLocations", () => {
   });
 
   it("builds displayName from city and state", async () => {
-    mockDb.location.findMany.mockResolvedValue([
-      { city: "Dammam", state: "Eastern", country: "SA", _count: { listings: 5 } },
+    mockDb.$queryRaw.mockResolvedValue([
+      { city: "Dammam", state: "Eastern", country: "SA", n: 5n },
     ] as never);
 
     const result = await getPopularLocations();

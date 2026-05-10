@@ -121,7 +121,7 @@ export default async function PropertiesPage({
 
                 <div className="flex gap-2 pt-2">
                   <Button variant="outline" size="sm" className="flex-1" asChild>
-                    <Link href={`/${lang}/search/${property.id}`}>
+                    <Link href={`/${lang}/listings/${property.id}`}>
                       {d.dashboard.common.view}
                     </Link>
                   </Button>
