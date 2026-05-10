@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { Metadata } from "next";
 import { Suspense } from "react";
 import { createMetadata } from "@/lib/metadata";
-import { searchListings } from "@/lib/actions/search-actions";
+import { searchListings, getPriceBounds } from "@/lib/actions/search-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 
 export async function generateMetadata({
@@ -21,7 +21,6 @@ export async function generateMetadata({
   });
 }
 import { getListings } from "@/components/host/actions";
-import { db } from "@/lib/db";
 import ListingsHeader from "@/components/listings/listings-header";
 import MobileListingsHeader from "@/components/listings/mobile-listings-header";
 import { PropertyContent } from "@/components/listings/property/content";
@@ -145,25 +144,18 @@ function PropertySkeleton() {
 export default async function ListingsPage({ searchParams, params: pageParams }: ListingsPageProps & { params: Promise<{ lang: "en" | "ar" }> }) {
   // Parallelize independent data fetches — resolve params, listings, and
   // the cross-catalog price bounds concurrently. Price bounds feed the
-  // filters-panel slider so it snaps to the actual catalog range.
-  const [listingsResult, params, { lang }, priceAgg] = await Promise.all([
+  // filters-panel slider so it snaps to the actual catalog range. The
+  // bounds query is `unstable_cache`d under the `listings` tag (see
+  // search-actions.ts) so it doesn't re-aggregate on every pageview.
+  const [listingsResult, params, { lang }, priceBounds] = await Promise.all([
     getFilteredListings(searchParams),
     searchParams,
     pageParams,
-    db.listing.aggregate({
-      where: { isPublished: true, draft: false, pricePerNight: { not: null } },
-      _min: { pricePerNight: true },
-      _max: { pricePerNight: true },
-    }),
+    getPriceBounds(),
   ]);
   const { listings, total: totalListings, page: currentPage } = listingsResult;
   const totalPages = Math.max(1, Math.ceil(totalListings / PAGE_SIZE));
   const d = await getDictionary(lang);
-
-  const priceBounds = {
-    min: priceAgg._min.pricePerNight ?? 0,
-    max: priceAgg._max.pricePerNight ?? 1000,
-  };
 
   // Dictionary keys live at `rental.property.filters` and `rental.property.amenities`.
   // Graceful fallbacks keep the UI readable even if a key is missing mid-rollout.
