@@ -77,6 +77,21 @@ try {
     process.exit(0);
   }
 
+  // P1002 = "Database server reached but timed out." Most often surfaces
+  // here as a stuck advisory lock when a previous deploy crashed without
+  // releasing it, or two deploys race for the same lock. Skipping is
+  // safe — the next deploy retries, and Prisma's _prisma_migrations
+  // table prevents double-application.
+  if (combined.includes("P1002")) {
+    console.warn(
+      "\n⚠️  P1002: migration lock timeout — skipping migrate deploy this build.\n" +
+        "    The next successful deploy will retry. If this persists, manually\n" +
+        "    release the advisory lock against production DATABASE_URL:\n" +
+        "      SELECT pg_advisory_unlock(72707369);"
+    );
+    process.exit(0);
+  }
+
   console.error("\n❌ prisma migrate deploy failed:", err.message);
   process.exit(1);
 }
