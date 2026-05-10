@@ -18,19 +18,23 @@
  * see fallback below).
  */
 
-import { config } from "dotenv";
-config();
+// CRITICAL ORDER: load .env via the side-effect entry point BEFORE any
+// other module (especially @/lib/db) is imported. ES module imports are
+// hoisted and execute in source order; if @/lib/db is imported first,
+// its module-level `createPrismaClient()` runs against an empty
+// process.env and the adapter can't find DATABASE_URL.
+import "dotenv/config";
 
 import {
-  PrismaClient,
   PropertyType,
   Amenity,
   Highlight,
   CancellationPolicy,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
-
-const prisma = new PrismaClient();
+// Reuse the app's PrismaClient so we get the same Neon/PG adapter
+// selection and connection pool config the running app uses.
+import { db as prisma } from "@/lib/db";
 
 const DEMO_PASSWORD = "123456";
 
