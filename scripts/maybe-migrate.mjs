@@ -38,8 +38,18 @@ if (!looksReal) {
 }
 
 console.log("▶️  Running prisma migrate deploy...");
+// Pipe stdout+stderr so we can both inspect them on failure (to detect
+// P3005) AND echo them to the parent build log so operators see what
+// happened. `stdio: "inherit"` would print directly but leaves
+// err.stderr/err.stdout empty on failure, which is why an earlier
+// version of this script silently fell through.
 try {
-  execSync("pnpm exec prisma migrate deploy", { stdio: "inherit", encoding: "utf8" });
+  const out = execSync("pnpm exec prisma migrate deploy 2>&1", {
+    stdio: ["inherit", "pipe", "pipe"],
+    encoding: "utf8",
+  });
+  // Echo successful output for visibility in build logs.
+  if (out) process.stdout.write(out);
 } catch (err) {
   // P3005 = "The database schema is not empty." Happens when the DB was
   // populated by `prisma db push` and `_prisma_migrations` is missing or
@@ -52,9 +62,13 @@ try {
   const stdout = (err.stdout ?? "").toString();
   const combined = stderr + stdout + (err.message ?? "");
 
+  // Always echo the captured output so the operator sees the real error.
+  if (stdout) process.stdout.write(stdout);
+  if (stderr) process.stderr.write(stderr);
+
   if (combined.includes("P3005")) {
     console.warn(
-      "⚠️  P3005: production schema is not baselined — skipping migrate deploy.\n" +
+      "\n⚠️  P3005: production schema is not baselined — skipping migrate deploy.\n" +
         "    Pending migrations will NOT be applied automatically.\n" +
         "    To baseline (one-time): for each existing migration directory, run\n" +
         "      pnpm exec prisma migrate resolve --applied <migration_name>\n" +
@@ -63,6 +77,6 @@ try {
     process.exit(0);
   }
 
-  console.error("❌ prisma migrate deploy failed:", err.message);
+  console.error("\n❌ prisma migrate deploy failed:", err.message);
   process.exit(1);
 }
