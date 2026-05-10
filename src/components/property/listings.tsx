@@ -63,12 +63,20 @@ const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
     )
   }
 
-  // Transform properties to match PropertyCard interface
+  // Transform properties to match PropertyCard interface.
+  //
+  // Defensive: `location` is nullable on the schema (Listing.locationId is
+  // optional), so any listing inserted without an address has a null
+  // relation. Without optional chaining, `property.location.city` crashes
+  // the prerender for the whole landing page — which is what bit us
+  // when prod accumulated a few location-less rows.
   const transformedProperties = properties.map(property => ({
     id: property.id.toString(),
     images: property.photoUrls || [],
     title: property.name,
-    location: `${property.location.city}, ${property.location.state}`,
+    location: property.location
+      ? `${property.location.city}, ${property.location.state}`
+      : "",
     dates: undefined, // You can add availability dates logic here
     price: property.pricePerMonth,
     rating: property.averageRating || 4.5, // Default rating
