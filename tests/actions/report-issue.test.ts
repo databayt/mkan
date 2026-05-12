@@ -1,171 +1,116 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+/**
+ * Smoke tests for the report-issue server action.
+ *
+ * The action is now a thin wrapper around {@link runReportPipeline}. Heavy
+ * logic (scoring, hard filters, AI triage) is covered in the canonical
+ * `src/lib/report/__tests__` suite (mirrored from /Users/abdout/codebase).
+ *
+ * These tests only check that the action:
+ *   1. Forwards the input shape to the pipeline
+ *   2. Returns the expected discriminated-union result
+ *   3. Surfaces issueNumber only when bucket === "verified-report"
+ */
 
-vi.mock("@/lib/auth", () => ({
-  auth: vi.fn(),
-  canOverride: (session: { user?: { id?: string; role?: string } } | null | undefined, ownerId: string | null | undefined) =>
-    (!!session?.user?.id && session.user.id === ownerId) ||
-    session?.user?.role === "ADMIN" ||
-    session?.user?.role === "SUPER_ADMIN",
-  isAdminOrSuper: (session: { user?: { role?: string } } | null | undefined) =>
-    session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN",
-  isSuperAdmin: (session: { user?: { role?: string } } | null | undefined) =>
-    session?.user?.role === "SUPER_ADMIN",
+import { describe, expect, it, vi, beforeEach } from "vitest";
+
+// Mock next/headers (the action calls this for IP resolution).
+vi.mock("next/headers", () => ({
+  headers: () => Promise.resolve(new Map([["x-forwarded-for", "203.0.113.42"]])),
 }));
 
-// Mock global fetch
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
+// Mock the pipeline so we can assert on the action's wiring.
+const mockRunPipeline = vi.fn();
+vi.mock("@/lib/report", () => ({
+  runReportPipeline: (...args: unknown[]) => mockRunPipeline(...args),
+}));
+vi.mock("@/lib/report/adapter", () => ({
+  mkanReportAdapter: { repo: "databayt/mkan" },
+}));
 
-import { auth } from "@/lib/auth";
 import { reportIssue } from "@/lib/actions/report-issue";
 
-const mockAuth = vi.mocked(auth);
-
-const baseData = {
-  description: "Button is broken on the search page",
-  pageUrl: "https://mkan.databayt.org/en/search",
+const validInput = {
+  description:
+    "Button is broken on the search page. Clicking Search does nothing.",
+  pageUrl: "https://mkan.com.sa/en/search",
+  category: "broken" as const,
   viewport: "1440x900",
-  direction: "ltr",
-  browser: "Chrome",
+  direction: "ltr" as const,
+  browser: "Mozilla/5.0 Chrome/120.0",
+  hasScreenshot: false as const,
 };
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  process.env.GITHUB_PERSONAL_ACCESS_TOKEN = "test-token";
-  process.env.GITHUB_REPO = "databayt/mkan";
-});
-
-describe("reportIssue", () => {
-  it("throws when token is not configured", async () => {
-    delete process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
-
-    await expect(reportIssue(baseData)).rejects.toThrow("not configured");
+describe("reportIssue (action wiring)", () => {
+  beforeEach(() => {
+    mockRunPipeline.mockReset();
   });
 
-  it("does not expose env var name in error", async () => {
-    delete process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
-
-    await expect(reportIssue(baseData)).rejects.not.toThrow(
-      "GITHUB_PERSONAL_ACCESS_TOKEN"
-    );
-  });
-
-  it("creates GitHub issue via fetch", async () => {
-    mockAuth.mockResolvedValue({
-      user: { id: "1", name: "Test User", email: "test@test.com" },
-    } as never);
-    mockFetch.mockResolvedValue({
+  it("returns { ok: true, issueNumber } when pipeline yields verified-report", async () => {
+    mockRunPipeline.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ html_url: "https://github.com/databayt/mkan/issues/1" }),
+      bucket: "verified-report",
+      issueNumber: 42,
+      score: 78,
     });
 
-    await reportIssue(baseData);
+    const result = await reportIssue(validInput);
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("api.github.com/repos/databayt/mkan/issues"),
-      expect.objectContaining({
-        method: "POST",
-        headers: expect.objectContaining({
-          Authorization: "Bearer test-token",
-        }),
-      })
-    );
+    expect(result).toEqual({ ok: true, issueNumber: 42 });
+    expect(mockRunPipeline).toHaveBeenCalledTimes(1);
   });
 
-  it("includes reporter info from session", async () => {
-    mockAuth.mockResolvedValue({
-      user: { id: "1", name: "John", email: "john@test.com" },
-    } as never);
-    mockFetch.mockResolvedValue({
+  it("returns { ok: true } without issueNumber for silent-reject", async () => {
+    mockRunPipeline.mockResolvedValueOnce({ ok: true, bucket: "silent-reject" });
+
+    const result = await reportIssue(validInput);
+
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("returns { ok: true } without issueNumber for needs-human", async () => {
+    mockRunPipeline.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ html_url: "url" }),
+      bucket: "needs-human",
+      issueNumber: 99,
+      score: 60,
     });
 
-    await reportIssue(baseData);
+    const result = await reportIssue(validInput);
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.body).toContain("John");
-    expect(body.body).toContain("john@test.com");
+    expect(result).toEqual({ ok: true });
   });
 
-  it("handles anonymous reporter", async () => {
-    mockAuth.mockRejectedValue(new Error("no session"));
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ html_url: "url" }),
+  it("returns { ok: false } when pipeline reports failure", async () => {
+    mockRunPipeline.mockResolvedValueOnce({ ok: false, error: "internal" });
+
+    const result = await reportIssue(validInput);
+
+    expect(result).toEqual({ ok: false });
+  });
+
+  it("forwards every input field to the pipeline", async () => {
+    mockRunPipeline.mockResolvedValueOnce({ ok: true, bucket: "silent-reject" });
+
+    await reportIssue({
+      ...validInput,
+      reproSteps: "1. open page 2. click search",
+      expected: "results appear",
+      actual: "nothing",
+      severityHint: "high",
+      captchaToken: "tok-abc",
     });
 
-    await reportIssue(baseData);
-
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.body).toContain("Anonymous");
-  });
-
-  it("truncates long descriptions in title", async () => {
-    mockAuth.mockResolvedValue(null as never);
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ html_url: "url" }),
+    const [input, , opts] = mockRunPipeline.mock.calls[0]!;
+    expect(input).toMatchObject({
+      description: validInput.description,
+      pageUrl: validInput.pageUrl,
+      category: "broken",
+      reproSteps: "1. open page 2. click search",
+      expected: "results appear",
+      actual: "nothing",
+      severityHint: "high",
+      captchaToken: "tok-abc",
     });
-
-    const longData = { ...baseData, description: "a".repeat(200) };
-    await reportIssue(longData);
-
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.title.length).toBeLessThanOrEqual(80);
-  });
-
-  it("retries without labels on 422", async () => {
-    mockAuth.mockResolvedValue(null as never);
-    mockFetch
-      .mockResolvedValueOnce({ ok: false, status: 422 })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ html_url: "url" }),
-      });
-
-    await reportIssue(baseData);
-
-    // First call includes labels
-    const firstPayload = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(firstPayload.labels).toEqual(["report"]);
-
-    // Second call (retry) has no labels
-    const secondPayload = JSON.parse(mockFetch.mock.calls[1][1].body);
-    expect(secondPayload.labels).toBeUndefined();
-  });
-
-  it("throws on non-422 API error", async () => {
-    mockAuth.mockResolvedValue(null as never);
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 500,
-      text: () => Promise.resolve("Internal Server Error"),
-    });
-
-    await expect(reportIssue(baseData)).rejects.toThrow(
-      "GitHub API error: 500"
-    );
-    consoleSpy.mockRestore();
-  });
-
-  it("posts acknowledgment comment after issue creation", async () => {
-    mockAuth.mockResolvedValue(null as never);
-    const commentsUrl =
-      "https://api.github.com/repos/databayt/mkan/issues/1/comments";
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({ html_url: "url", comments_url: commentsUrl }),
-    });
-
-    await reportIssue(baseData);
-
-    // Second fetch call should be the acknowledgment comment
-    expect(mockFetch).toHaveBeenCalledTimes(2);
-    expect(mockFetch.mock.calls[1][0]).toBe(commentsUrl);
-    const commentBody = JSON.parse(mockFetch.mock.calls[1][1].body);
-    expect(commentBody.body).toContain("queued for automated review");
+    expect(opts).toMatchObject({ ip: "203.0.113.42" });
   });
 });
