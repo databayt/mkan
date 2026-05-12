@@ -1,88 +1,57 @@
-"use server"
+"use server";
 
-import { auth } from "@/lib/auth"
+/**
+ * Report-issue server action — thin wrapper around the shared pipeline.
+ *
+ * All quality gating (Zod, hard filters, captcha, dedup, AI triage, scoring)
+ * lives in {@link runReportPipeline}. The client receives a symmetric success
+ * shape so spammers can't probe the filter.
+ */
 
-export async function reportIssue(data: {
-  description: string
-  pageUrl: string
-  viewport?: string
-  direction?: string
-  browser?: string
-}) {
-  const token = process.env.GITHUB_PERSONAL_ACCESS_TOKEN
-  const repo = process.env.GITHUB_REPO || "databayt/mkan"
+import { headers } from "next/headers";
 
-  if (!token) throw new Error("Issue reporting is not configured")
+import { runReportPipeline } from "@/lib/report";
+import { mkanReportAdapter } from "@/lib/report/adapter";
 
-  const desc = data.description
-  const truncated =
-    desc.length > 80 ? desc.slice(0, 77) + "..." : desc
-  const title = truncated
+import type {
+  ReportIssueSubmitInput,
+  ReportIssueSubmitResult,
+} from "@/components/report-issue/dialog";
 
-  // Reporter from auth session
-  const session = await auth().catch(() => null)
-  const reporter = session?.user
-    ? `${session.user.name} (${session.user.email})`
-    : "Anonymous"
+export async function reportIssue(
+  data: ReportIssueSubmitInput
+): Promise<ReportIssueSubmitResult> {
+  const h = await headers();
+  const ip =
+    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    h.get("x-real-ip") ||
+    h.get("cf-connecting-ip") ||
+    "0.0.0.0";
 
-  const body = [
-    data.description,
-    "",
-    "---",
-    "",
-    `**Reporter**: ${reporter}`,
-    `**Page**: \`${data.pageUrl}\``,
-    data.viewport ? `**Viewport**: ${data.viewport}` : null,
-    data.direction ? `**Direction**: ${data.direction}` : null,
-    data.browser ? `**Browser**: ${data.browser}` : null,
-    `**Time**: ${new Date().toISOString()}`,
-  ]
-    .filter(Boolean)
-    .join("\n")
-
-  // Try with label first, fall back without if label doesn't exist
-  const payload: Record<string, unknown> = { title, body, labels: ["report"] }
-
-  let response = await fetch(`https://api.github.com/repos/${repo}/issues`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
+  const result = await runReportPipeline(
+    {
+      description: data.description,
+      pageUrl: data.pageUrl,
+      category: data.category,
+      reproSteps: data.reproSteps,
+      expected: data.expected,
+      actual: data.actual,
+      severityHint: data.severityHint,
+      viewport: data.viewport,
+      direction: data.direction,
+      browser: data.browser,
+      hasScreenshot: data.hasScreenshot,
+      captchaToken: data.captchaToken,
     },
-    body: JSON.stringify(payload),
-  })
+    mkanReportAdapter,
+    { ip }
+  );
 
-  // If 422 (label doesn't exist), retry without labels
-  if (response.status === 422) {
-    delete payload.labels
-    response = await fetch(`https://api.github.com/repos/${repo}/issues`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github+json",
-      },
-      body: JSON.stringify(payload),
-    })
+  if (result.ok && result.bucket === "verified-report" && result.issueNumber) {
+    return { ok: true, issueNumber: result.issueNumber };
   }
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => "")
-    console.error(`[report-issue] GitHub API ${response.status}: ${text}`)
-    throw new Error(`GitHub API error: ${response.status}`)
+  if (result.ok) {
+    return { ok: true };
   }
-
-  // Acknowledgment comment (fire-and-forget)
-  const issueData = await response.json().catch(() => null)
-  if (issueData?.comments_url) {
-    fetch(issueData.comments_url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github+json",
-      },
-      body: JSON.stringify({
-        body: "Received. This report is queued for automated review and fix. You'll be notified here when resolved.",
-      }),
-    }).catch(() => {})
-  }
+  return { ok: false };
 }

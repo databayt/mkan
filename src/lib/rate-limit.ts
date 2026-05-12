@@ -59,6 +59,24 @@ export const rateLimiters = {
     analytics: true,
     prefix: "@upstash/ratelimit/mutation",
   }) : null,
+
+  // Report-an-issue submissions: 5 per 10 minutes per reporter (user or IP).
+  // Tight enough to defeat flood spam, loose enough that a frustrated
+  // legitimate user can file a few related reports back to back.
+  report: redis ? new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(5, "10 m"),
+    analytics: true,
+    prefix: "@upstash/ratelimit/report",
+  }) : null,
+
+  // Per-tenant aggregate to catch coordinated abuse across many reporters.
+  "report-tenant": redis ? new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(30, "1 h"),
+    analytics: true,
+    prefix: "@upstash/ratelimit/report-tenant",
+  }) : null,
 };
 
 // Get client identifier for rate limiting
