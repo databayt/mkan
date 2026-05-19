@@ -1,10 +1,14 @@
+"use client";
+
 /**
- * Server-component wrapper. Reads the mkan session (next-auth) and renders the
- * client dialog. External code keeps importing `@/components/report-issue` as
- * before — the surface is unchanged for callers.
+ * Client wrapper. Resolves the session via `useSession()` instead of `auth()`
+ * so this module is safe to import from client components (e.g. site-footer).
+ * Importing the server `auth()` here transitively pulled `@/lib/db` and the
+ * `pg` driver into the client bundle, which broke the Vercel build because
+ * `pg/lib/connection-parameters.js` requires Node's `dns` module.
  */
 
-import { auth } from "@/lib/auth";
+import { useSession } from "next-auth/react";
 
 import { reportIssue } from "@/lib/actions/report-issue";
 import { ReportIssueDialog } from "./dialog";
@@ -13,8 +17,8 @@ export interface ReportIssueProps {
   variant?: "text" | "icon";
 }
 
-export async function ReportIssue({ variant }: ReportIssueProps = {}) {
-  const session = await auth().catch(() => null);
+export function ReportIssue({ variant }: ReportIssueProps = {}) {
+  const { data: session } = useSession();
   const hasSession = Boolean(session?.user);
 
   return (
