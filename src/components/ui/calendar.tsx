@@ -50,63 +50,86 @@ function Calendar({
         ...formatters,
       }}
       classNames={{
-        root: cn("w-fit", defaultClassNames.root),
+        // Per-key `cn()` merge — the consumer's `classNames` override is
+        // applied *last* inside each cn(), so tailwind-merge resolves
+        // single-axis conflicts (e.g. consumer's `gap-1` beats `gap-4`)
+        // while structural classes that have no consumer counterpart
+        // (`flex`, `w-full`, `relative`) survive. The wholesale `...classNames`
+        // spread used by upstream shadcn loses any default the consumer didn't
+        // re-state — a footgun when callers only want to tweak gap or text.
+        root: cn("w-fit", defaultClassNames.root, classNames?.root),
         months: cn(
           "relative flex flex-col gap-4 md:flex-row",
-          defaultClassNames.months
+          defaultClassNames.months,
+          classNames?.months
         ),
-        month: cn("flex w-full flex-col gap-4", defaultClassNames.month),
+        month: cn(
+          "flex w-full flex-col gap-4",
+          defaultClassNames.month,
+          classNames?.month
+        ),
         nav: cn(
           "absolute inset-x-0 top-0 flex w-full items-center justify-between gap-1",
-          defaultClassNames.nav
+          defaultClassNames.nav,
+          classNames?.nav
         ),
         button_previous: cn(
           buttonVariants({ variant: buttonVariant }),
           "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
-          defaultClassNames.button_previous
+          defaultClassNames.button_previous,
+          classNames?.button_previous
         ),
         button_next: cn(
           buttonVariants({ variant: buttonVariant }),
           "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
-          defaultClassNames.button_next
+          defaultClassNames.button_next,
+          classNames?.button_next
         ),
         month_caption: cn(
           "flex h-(--cell-size) w-full items-center justify-center px-(--cell-size)",
-          defaultClassNames.month_caption
+          defaultClassNames.month_caption,
+          classNames?.month_caption
         ),
         dropdowns: cn(
           "flex h-(--cell-size) w-full items-center justify-center gap-1.5 text-sm font-medium",
-          defaultClassNames.dropdowns
+          defaultClassNames.dropdowns,
+          classNames?.dropdowns
         ),
         dropdown_root: cn(
           "relative rounded-(--cell-radius) border border-input shadow-xs has-focus:border-ring has-focus:ring-[3px] has-focus:ring-ring/50",
-          defaultClassNames.dropdown_root
+          defaultClassNames.dropdown_root,
+          classNames?.dropdown_root
         ),
         dropdown: cn(
           "absolute inset-0 bg-popover opacity-0",
-          defaultClassNames.dropdown
+          defaultClassNames.dropdown,
+          classNames?.dropdown
         ),
         caption_label: cn(
           "font-medium select-none",
           captionLayout === "label"
             ? "text-sm"
             : "flex h-8 items-center gap-1 rounded-(--cell-radius) ps-2 pe-1 text-sm [&>svg]:size-3.5 [&>svg]:text-muted-foreground",
-          defaultClassNames.caption_label
+          defaultClassNames.caption_label,
+          classNames?.caption_label
         ),
-        table: "w-full border-collapse",
-        weekdays: cn("flex", defaultClassNames.weekdays),
+        table: cn("w-full border-collapse", classNames?.table),
+        weekdays: cn("flex", defaultClassNames.weekdays, classNames?.weekdays),
         weekday: cn(
           "flex-1 rounded-(--cell-radius) text-[0.8rem] font-normal text-muted-foreground select-none",
-          defaultClassNames.weekday
+          defaultClassNames.weekday,
+          classNames?.weekday
         ),
-        week: cn("mt-2 flex w-full", defaultClassNames.week),
+        week: cn("mt-2 flex w-full", defaultClassNames.week, classNames?.week),
         week_number_header: cn(
           "w-(--cell-size) select-none",
-          defaultClassNames.week_number_header
+          defaultClassNames.week_number_header,
+          classNames?.week_number_header
         ),
         week_number: cn(
           "text-[0.8rem] text-muted-foreground select-none",
-          defaultClassNames.week_number
+          defaultClassNames.week_number,
+          classNames?.week_number
         ),
         day: cn(
           // Logical (`rounded-s`/`rounded-e`) so the range pill caps the
@@ -115,7 +138,8 @@ function Calendar({
           props.showWeekNumber
             ? "[&:nth-child(2)[data-selected=true]_button]:rounded-s-(--cell-radius)"
             : "[&:first-child[data-selected=true]_button]:rounded-s-(--cell-radius)",
-          defaultClassNames.day
+          defaultClassNames.day,
+          classNames?.day
         ),
         // The ::after pseudo-element bridges any sub-pixel gap between the
         // primary-coloured endpoint pill and the muted range_middle band.
@@ -123,27 +147,35 @@ function Calendar({
         // pointing inward in both LTR and RTL.
         range_start: cn(
           "relative isolate z-0 rounded-s-(--cell-radius) bg-muted after:absolute after:inset-y-0 after:end-0 after:w-4 after:bg-muted",
-          defaultClassNames.range_start
+          defaultClassNames.range_start,
+          classNames?.range_start
         ),
-        range_middle: cn("rounded-none", defaultClassNames.range_middle),
+        range_middle: cn(
+          "rounded-none",
+          defaultClassNames.range_middle,
+          classNames?.range_middle
+        ),
         range_end: cn(
           "relative isolate z-0 rounded-e-(--cell-radius) bg-muted after:absolute after:inset-y-0 after:start-0 after:w-4 after:bg-muted",
-          defaultClassNames.range_end
+          defaultClassNames.range_end,
+          classNames?.range_end
         ),
         today: cn(
           "rounded-(--cell-radius) bg-muted text-foreground data-[selected=true]:rounded-none",
-          defaultClassNames.today
+          defaultClassNames.today,
+          classNames?.today
         ),
         outside: cn(
           "text-muted-foreground aria-selected:text-muted-foreground",
-          defaultClassNames.outside
+          defaultClassNames.outside,
+          classNames?.outside
         ),
         disabled: cn(
           "text-muted-foreground opacity-50",
-          defaultClassNames.disabled
+          defaultClassNames.disabled,
+          classNames?.disabled
         ),
-        hidden: cn("invisible", defaultClassNames.hidden),
-        ...classNames,
+        hidden: cn("invisible", defaultClassNames.hidden, classNames?.hidden),
       }}
       components={{
         Root: ({ className, rootRef, ...props }) => {
