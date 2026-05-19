@@ -1,7 +1,8 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type LocationSuggestion } from "@/lib/schemas/search-schema";
 import { FALLBACK_RECOMMENDATIONS } from "./constant";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
@@ -26,12 +27,20 @@ export default function LocationDropdown({
   onLocationSelect,
 }: LocationProps) {
   const dict = useDictionary();
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Tracks which suggestion is highlighted by keyboard. -1 = none.
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const optionsRef = useRef<Array<HTMLDivElement | null>>([]);
 
-  const displayLocations = searchQuery.trim()
-    ? suggestions
-    : popularLocations.length > 0
-      ? popularLocations
-      : FALLBACK_RECOMMENDATIONS;
+  const displayLocations = useMemo(
+    () =>
+      searchQuery.trim()
+        ? suggestions
+        : popularLocations.length > 0
+          ? popularLocations
+          : ([...FALLBACK_RECOMMENDATIONS] as LocationSuggestion[]),
+    [searchQuery, suggestions, popularLocations]
+  );
 
   const title = searchQuery.trim()
     ? (dict.search?.searchResults ?? "Search results")
@@ -39,7 +48,46 @@ export default function LocationDropdown({
       ? (dict.search?.popularDestinations ?? "Popular destinations")
       : (dict.search?.recommendedDestinations ?? "Recommended destinations");
 
-  const handleKeyDown = (
+  // Reset highlight when the option list changes
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [displayLocations]);
+
+  const scrollOptionIntoView = useCallback((idx: number) => {
+    const node = optionsRef.current[idx];
+    if (node) {
+      node.scrollIntoView({ block: "nearest" });
+    }
+  }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (displayLocations.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((prev) => {
+        const next = prev < displayLocations.length - 1 ? prev + 1 : 0;
+        scrollOptionIntoView(next);
+        return next;
+      });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((prev) => {
+        const next = prev > 0 ? prev - 1 : displayLocations.length - 1;
+        scrollOptionIntoView(next);
+        return next;
+      });
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      // Default to the first result if user just pressed Enter without
+      // arrowing; otherwise pick the highlighted item.
+      const idx = activeIndex >= 0 ? activeIndex : 0;
+      const target = displayLocations[idx];
+      if (target) onLocationSelect(target);
+    }
+  };
+
+  const handleOptionKeyDown = (
     e: React.KeyboardEvent,
     location: LocationSuggestion
   ) => {
@@ -49,25 +97,54 @@ export default function LocationDropdown({
     }
   };
 
+  const clearInput = () => {
+    onSearchQueryChange("");
+    inputRef.current?.focus();
+  };
+
   return (
-    <div role="combobox" aria-expanded="true" aria-haspopup="listbox" aria-controls="location-listbox">
-      <h3 className="text-lg font-semibold mb-4">{dict.search?.whereTo ?? "Where to?"}</h3>
+    <div
+      role="combobox"
+      aria-expanded="true"
+      aria-haspopup="listbox"
+      aria-controls="location-listbox"
+      aria-activedescendant={
+        activeIndex >= 0 ? `location-option-${activeIndex}` : undefined
+      }
+    >
+      <h3 className="text-lg font-semibold mb-4">
+        {dict.search?.whereTo ?? "Where to?"}
+      </h3>
 
       {/* Search input */}
       <div className="mb-4 relative">
         <Input
+          ref={inputRef}
           placeholder={dict.search?.searchDestinations ?? "Search destinations..."}
           value={searchQuery}
           onChange={(e) => onSearchQueryChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="w-full h-10 border-0 border-none rounded-lg focus:outline-none focus:border-0 shadow-none text-black caret-black pe-10"
           autoFocus
           aria-label={dict.search?.searchLocation ?? "Search for a location"}
           aria-autocomplete="list"
           aria-controls="location-listbox"
         />
-        {isLoading && (
-          <Loader2 className="absolute right-3 top-2.5 h-5 w-5 animate-spin text-gray-400" />
-        )}
+        {isLoading ? (
+          <Loader2 className="absolute end-3 top-2.5 h-5 w-5 animate-spin text-gray-400" />
+        ) : searchQuery ? (
+          <button
+            type="button"
+            onClick={clearInput}
+            className="absolute end-3 top-1/2 -translate-y-1/2 rounded-full p-1 hover:bg-gray-100 transition-colors"
+            aria-label={
+              (dict.search as unknown as Record<string, string | undefined>)
+                ?.clear ?? "Clear"
+            }
+          >
+            <X className="h-4 w-4 text-gray-500" />
+          </button>
+        ) : null}
       </div>
 
       {/* Error message */}
@@ -92,30 +169,40 @@ export default function LocationDropdown({
             <p className="text-xs text-gray-500 uppercase tracking-wide px-3 mb-2">
               {title}
             </p>
-            {displayLocations.map((location, index) => (
-              <div
-                key={`${location.city}-${location.state}-${index}`}
-                className="py-1 rounded-lg hover:bg-gray-50 cursor-pointer flex items-center gap-3 transition-colors"
-                onClick={() => onLocationSelect(location)}
-                role="option"
-                aria-selected="false"
-                tabIndex={0}
-                onKeyDown={(e) => handleKeyDown(e, location)}
-              >
-                <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <MapPin className="w-5 h-5 text-gray-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">
-                    {location.city}
+            {displayLocations.map((location, index) => {
+              const isActive = index === activeIndex;
+              return (
+                <div
+                  key={`${location.city}-${location.state}-${index}`}
+                  id={`location-option-${index}`}
+                  ref={(el) => {
+                    optionsRef.current[index] = el;
+                  }}
+                  className={`py-1 px-2 -mx-2 rounded-lg cursor-pointer flex items-center gap-3 transition-colors ${
+                    isActive ? "bg-gray-100" : "hover:bg-gray-50"
+                  }`}
+                  onClick={() => onLocationSelect(location)}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  role="option"
+                  aria-selected={isActive}
+                  tabIndex={0}
+                  onKeyDown={(e) => handleOptionKeyDown(e, location)}
+                >
+                  <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-gray-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{location.city}</div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </>
         ) : searchQuery && !isLoading ? (
           <div className="text-center text-gray-500 py-4">
-            {(dict.search?.noDestinationsFound ?? "No destinations found for \"{query}\"").replace("{query}", searchQuery)}
+            {(dict.search?.noDestinationsFound ??
+              'No destinations found for "{query}"'
+            ).replace("{query}", searchQuery)}
           </div>
         ) : null}
       </div>

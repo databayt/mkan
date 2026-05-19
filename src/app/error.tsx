@@ -1,8 +1,30 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+
+// Inline SVG + native buttons instead of `lucide-react` / `@/components/ui/button`:
+// Turbopack's error.tsx boundary fires before lazy chunks finish loading, so any
+// external component import fails with "module factory is not available". Keep
+// this file dependency-light — only `react` is safe to import here.
+function AlertTriangle({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+    </svg>
+  );
+}
 
 export default function Error({
   error,
@@ -60,19 +82,18 @@ export default function Error({
         </div>
 
         <div className="flex gap-3 justify-center">
-          <Button
+          <button
             onClick={reset}
-            size="lg"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             Try again
-          </Button>
-          <Button
-            onClick={() => window.location.href = '/'}
-            variant="outline"
-            size="lg"
+          </button>
+          <button
+            onClick={() => (window.location.href = '/')}
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-6 py-2.5 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             Go home
-          </Button>
+          </button>
         </div>
 
         <p className="text-xs text-gray-500">

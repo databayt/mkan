@@ -97,13 +97,16 @@ export default function BigSearch({ onClose, isActive = true }: BigSearchProps =
     }
   };
 
-  // Handle date range change
+  // Handle date range change — the picker now does field-aware resolution
+  // internally, so we just trust the (from, to) it gives us and update state.
+  // Focus advancement is handled separately via `onAdvance` so we can decide
+  // which button to focus next (checkin → checkout → close).
   const handleDateChange = (from: Date | undefined, to: Date | undefined) => {
     setDateRange({ from, to });
-    // Close the dropdown when both dates are selected
-    if (from && to) {
-      setActiveButton(null);
-    }
+  };
+
+  const handleDateAdvance = (next: "checkin" | "checkout" | null) => {
+    setActiveButton(next);
   };
 
   // Format date for display
@@ -506,7 +509,9 @@ export default function BigSearch({ onClose, isActive = true }: BigSearchProps =
           >
             <BigSearchDatePicker
               dateRange={dateRange}
+              activeField="checkin"
               onDateChange={handleDateChange}
+              onAdvance={handleDateAdvance}
             />
           </motion.div>
         )}
@@ -521,7 +526,9 @@ export default function BigSearch({ onClose, isActive = true }: BigSearchProps =
           >
             <BigSearchDatePicker
               dateRange={dateRange}
+              activeField="checkout"
               onDateChange={handleDateChange}
+              onAdvance={handleDateAdvance}
             />
           </motion.div>
         )}

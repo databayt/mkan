@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { Metadata } from "next";
 import { getListings } from "@/components/host/actions";
 import { createMetadata } from "@/lib/metadata";
@@ -29,6 +28,9 @@ async function getPublishedListings(): Promise<Listing[]> {
   }
 }
 
+// Note: no <Suspense> here. The colocated `loading.tsx` already provides the
+// streaming fallback for this segment; adding a redundant Suspense boundary
+// triggers Next 16 Turbopack's "$RS parentNode null" hydration race.
 export default async function HomePage({
   params,
 }: {
@@ -37,15 +39,5 @@ export default async function HomePage({
   const { lang } = await params;
   const listings = await getPublishedListings();
 
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center" role="status" aria-label="Loading">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" aria-hidden="true"></div>
-        </div>
-      }
-    >
-      <HomeContent listings={listings} locale={lang} />
-    </Suspense>
-  );
+  return <HomeContent listings={listings} locale={lang} />;
 }
