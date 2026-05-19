@@ -284,8 +284,8 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
     const pathParts = pathname.split("/");
     const locale = pathParts[1] || "en";
 
-    // Always navigate to listings page
-    const searchUrl = `/${locale}/listings${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+    // Navigate to /search (map-sidebar variant)
+    const searchUrl = `/${locale}/search${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
     router.push(searchUrl);
 
     // Call onSearch callback if provided (for analytics or other side effects)
@@ -467,11 +467,6 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                         {t.checkOut}
                       </button>
                     </div>
-
-                    {/* Hint below tabs */}
-                    <p className="text-xs text-gray-500 text-center mt-1.5">
-                      {activeField === "checkin" ? t.selectCheckIn : t.selectCheckOut}
-                    </p>
                   </div>
 
                   <div className="flex justify-center">
@@ -487,15 +482,6 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                         }
                       }}
                       numberOfMonths={1}
-                      className="[--cell-size:2rem] p-0 text-sm"
-                      classNames={{
-                        months: "gap-0",
-                        month: "gap-1",
-                        nav: "gap-0.5",
-                        week: "mt-0",
-                        weekday: "text-[10px] font-normal",
-                        month_caption: "h-8",
-                      }}
                       disabled={(date) => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
@@ -737,13 +723,6 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
             className="hidden md:block absolute top-0 start-full ms-4 w-auto bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-3 z-10 overflow-hidden"
             onMouseLeave={() => setActiveField(null)}
           >
-            {/* HINT TEXT */}
-            <div className="mb-2 px-1">
-              <p className="text-xs font-medium text-gray-600 text-center">
-                {activeField === "checkin" ? t.selectCheckIn : t.selectCheckOut}
-              </p>
-            </div>
-
             <div className="flex justify-center">
               <Calendar
                 mode="range"
@@ -757,15 +736,6 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                   }
                 }}
                 numberOfMonths={2}
-                className="[--cell-size:2rem] p-0 text-sm"
-                classNames={{
-                  months: "gap-4",
-                  month: "gap-1",
-                  nav: "gap-0.5",
-                  week: "mt-0",
-                  weekday: "text-[10px] font-normal",
-                  month_caption: "h-8",
-                }}
                 disabled={(date) => {
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
