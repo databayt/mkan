@@ -72,6 +72,9 @@ export default function BigSearchDatePicker({
 
   return (
     <div className="flex w-full justify-center">
+      {/* Calendar uses the shadcn radix-nova mirror in
+          `src/components/ui/calendar.tsx` — 28px cells with a muted
+          range-middle bridge. No size override needed here. */}
       <Calendar
         mode="range"
         defaultMonth={dateRange?.from ?? new Date()}
@@ -79,11 +82,6 @@ export default function BigSearchDatePicker({
         selected={dateRange}
         onSelect={handleSelect}
         numberOfMonths={2}
-        classNames={{
-          // Force a natural per-month width so day cells stay square and the
-          // range-middle accent doesn't stretch into a horizontal stripe.
-          month: "flex flex-col gap-4 w-[calc(var(--cell-size)*7)]",
-        }}
       />
     </div>
   )

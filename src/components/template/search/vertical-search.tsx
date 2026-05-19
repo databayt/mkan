@@ -438,12 +438,11 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
   // Shared calendar render. Keeps the date logic in one place across the
   // mobile/desktop instances.
   //
-  // We override `month` to a fixed natural width (`cell-size × 7`). The
-  // shadcn calendar ships with `month: w-full`, which made the day cells
-  // stretch to whatever container width the dropdown gave them — turning the
-  // range-middle accent into a wide horizontal stripe across each row. The
-  // explicit `w-[calc(var(--cell-size)*7)]` keeps cells truly square so the
-  // range highlight stays cell-sized.
+  // The Calendar now mirrors shadcn radix-nova: 28px cells via
+  // `--cell-size:--spacing(7)` and a muted range-middle band bridged by
+  // ::after pseudo-elements (see `src/components/ui/calendar.tsx`). The
+  // container only needs `w-fit` to let the calendar render at its
+  // natural shadcn proportions — no per-consumer width override.
   const renderCalendar = (months: 1 | 2) => (
     <Calendar
       mode="range"
@@ -453,9 +452,6 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
       onSelect={handleCalendarSelect}
       numberOfMonths={months}
       disabled={isDateDisabled}
-      classNames={{
-        month: "flex flex-col gap-4 w-[calc(var(--cell-size)*7)]",
-      }}
     />
   );
 
