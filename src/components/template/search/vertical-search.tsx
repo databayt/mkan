@@ -181,13 +181,13 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
       checkOut: to ? format(to, "yyyy-MM-dd") : "",
     }));
 
-    // AUTO-ADVANCE & AUTO-CLOSE LOGIC:
+    // AUTO-ADVANCE: location → checkin → checkout → guests → (close on outside-click)
     if (fromChanged && from && !to) {
       // User just selected check-in → auto-switch to check-out field
       setActiveField("checkout");
     } else if (toChanged && from && to) {
-      // User just selected check-out → auto-close dropdown
-      setActiveField(null);
+      // User just selected check-out → auto-advance to guests
+      setActiveField("guests");
     }
 
     // Track for next comparison
@@ -441,10 +441,10 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
               )}
 
               {(activeField === "checkin" || activeField === "checkout") && (
-                <div className="flex flex-col overflow-hidden -mx-2">
+                <div className="flex flex-col">
                   {/* FIELD SWITCHER TABS - Mobile only */}
-                  <div className="w-full mb-3 px-2">
-                    <div className="flex gap-2 justify-center">
+                  <div className="w-full mb-3">
+                    <div className="flex gap-2">
                       <button
                         onClick={() => setActiveField("checkin")}
                         className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
@@ -469,7 +469,10 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                     </div>
                   </div>
 
-                  <div className="flex justify-center">
+                  {/* On mobile the calendar uses ~10vw cells (typically
+                      ~36-44px on a phone) and fills the full panel width
+                      so the rightmost column doesn't get clipped. */}
+                  <div className="flex justify-center w-full">
                     <Calendar
                       mode="range"
                       defaultMonth={dateRange.from || new Date()}
@@ -482,6 +485,11 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                         }
                       }}
                       numberOfMonths={1}
+                      className="[--cell-size:2.5rem] p-0"
+                      classNames={{
+                        month: "w-[calc(var(--cell-size)*7)]",
+                        day: "size-(--cell-size) p-0 text-center select-none",
+                      }}
                       disabled={(date) => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
