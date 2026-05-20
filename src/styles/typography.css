@@ -49,28 +49,33 @@
     @apply relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold;
   }
 
-  /* Tables */
-  table {
+  /* Tables — scoped to the shadcn `<Table>` component (data-slot="table")
+     so these styles don't leak onto react-day-picker's calendar table or
+     any other third-party table. Previously the bare `tr { border-b }` and
+     `td { p-4 }` rules drew hairline dividers under every calendar row and
+     gave each day cell 16px of padding, making the calendar look like a
+     spreadsheet instead of a date picker. */
+  table[data-slot="table"] {
     @apply w-full;
   }
 
-  thead {
+  table[data-slot="table"] thead {
     @apply [&_tr]:border-b;
   }
 
-  tbody {
+  table[data-slot="table"] tbody {
     @apply [&_tr:last-child]:border-0;
   }
 
-  tr {
+  table[data-slot="table"] tr {
     @apply border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted;
   }
 
-  th {
+  table[data-slot="table"] th {
     @apply h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0;
   }
 
-  td {
+  table[data-slot="table"] td {
     @apply p-4 align-middle [&:has([role=checkbox])]:pr-0;
   }
 

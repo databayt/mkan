@@ -644,15 +644,6 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                       }
                     }}
                     numberOfMonths={1}
-                    className="[--cell-size:2rem] p-0 text-sm"
-                    classNames={{
-                      months: "gap-0",
-                      month: "gap-1",
-                      nav: "gap-0.5",
-                      week: "mt-0",
-                      weekday: "text-[10px] font-normal",
-                      month_caption: "h-8",
-                    }}
                     disabled={(date) => {
                       const today = new Date();
                       today.setHours(0, 0, 0, 0);
@@ -720,36 +711,56 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
 
         {(activeField === "checkin" || activeField === "checkout") && (
           <div
-            className="hidden md:block absolute top-0 start-full ms-4 w-auto bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-3 z-10 overflow-hidden"
+            className="hidden md:block absolute top-0 start-full ms-4 w-fit bg-white rounded-2xl shadow-lg border border-[#e5e7eb] z-10 overflow-hidden p-8 flex items-center justify-center"
+            style={{ height: formHeight ? `${formHeight}px` : "auto" }}
             onMouseLeave={() => setActiveField(null)}
           >
-            <div className="flex justify-center">
-              <Calendar
-                mode="range"
-                defaultMonth={dateRange.from || new Date()}
-                selected={dateRange}
-                onSelect={(range: DateRange | undefined) => {
-                  if (range) {
-                    handleDateRangeChange(range.from, range.to);
-                  } else {
-                    handleDateRangeChange(undefined, undefined);
-                  }
-                }}
-                numberOfMonths={2}
-                disabled={(date) => {
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  if (date < today) return true;
-                  const maxDate = addDays(today, SEARCH_CONFIG.DEFAULT_MAX_NIGHTS);
-                  if (date > maxDate) return true;
-                  if (dateRange.from && !dateRange.to) {
-                    const maxCheckout = addDays(dateRange.from, SEARCH_CONFIG.DEFAULT_MAX_NIGHTS);
-                    if (date > maxCheckout) return true;
-                  }
-                  return false;
-                }}
-              />
-            </div>
+            {/* Mirror shadcn's canonical CalendarRange pattern. The
+                `classNames.month` override pins each month to `cell-size * 7`
+                (28 × 7 = 196px) so the calendar renders at the compact size
+                shown in shadcn's docs — without it, the body font-size and
+                max-content cell calculation inflate cells to ~50px wide.
+                The dropdown card matches the search form's measured height
+                (formHeight) and centers the compact calendar vertically so
+                both cards visually align on the desktop hero. */}
+            <Calendar
+              mode="range"
+              defaultMonth={dateRange.from || new Date()}
+              selected={dateRange}
+              onSelect={(range: DateRange | undefined) => {
+                if (range) {
+                  handleDateRangeChange(range.from, range.to);
+                } else {
+                  handleDateRangeChange(undefined, undefined);
+                }
+              }}
+              numberOfMonths={2}
+              // No `--cell-size` override — uses the calendar.tsx default
+              // (`--spacing(7)` = 28px) to keep the range calendar compact
+              // like the canonical shadcn radix-nova docs example. The
+              // dropdown card's p-8 padding gives the breathing room.
+              classNames={{
+                // Pin each month and every day cell to the (--cell-size)
+                // grid so the calendar matches shadcn's compact look. With
+                // mkan's 16px body font, the natural `aspect-square h-full
+                // w-full` on the day td inflates rows to ~49px tall and
+                // overflows the 196px month container.
+                month: "w-[calc(var(--cell-size)*7)]",
+                day: "size-(--cell-size) p-0 text-center select-none",
+              }}
+              disabled={(date) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (date < today) return true;
+                const maxDate = addDays(today, SEARCH_CONFIG.DEFAULT_MAX_NIGHTS);
+                if (date > maxDate) return true;
+                if (dateRange.from && !dateRange.to) {
+                  const maxCheckout = addDays(dateRange.from, SEARCH_CONFIG.DEFAULT_MAX_NIGHTS);
+                  if (date > maxCheckout) return true;
+                }
+                return false;
+              }}
+            />
           </div>
         )}
 

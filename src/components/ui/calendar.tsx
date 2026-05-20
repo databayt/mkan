@@ -113,7 +113,16 @@ function Calendar({
           defaultClassNames.caption_label,
           classNames?.caption_label
         ),
-        table: cn("w-full border-collapse", classNames?.table),
+        // react-day-picker v9 renamed `table` → `month_grid`. `table-fixed`
+        // forces the table to respect `w-full` of its parent month and
+        // share width evenly across its 7 columns. Without it, the default
+        // `table-layout: auto` lets the table balloon to max-content
+        // (~343px), so a 196px month would overflow into its sibling.
+        month_grid: cn(
+          "w-full table-fixed border-collapse",
+          defaultClassNames.month_grid,
+          classNames?.month_grid
+        ),
         weekdays: cn("flex", defaultClassNames.weekdays, classNames?.weekdays),
         weekday: cn(
           "flex-1 rounded-(--cell-radius) text-[0.8rem] font-normal text-muted-foreground select-none",
