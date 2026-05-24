@@ -42,6 +42,8 @@
     "@prisma/client": "^7.8.0",
     "@radix-ui/react-popover": "^1.1.15",
     "@react-pdf/renderer": "^4.5.1",
+    "@stripe/react-stripe-js": "^6.4.0",
+    "@stripe/stripe-js": "^9.6.0",
     "@tiptap/react": "^3.22.4",
     "@tiptap/starter-kit": "^3.22.4",
     "@types/ws": "^8.18.1",

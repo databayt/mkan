@@ -5,7 +5,12 @@ import Stripe from "stripe";
 import { auth, canOverride, isAdminOrSuper } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { PaymentStatus } from "@prisma/client";
+import {
+  BookingPaymentMethod,
+  BookingPaymentStatus,
+  BookingStatus,
+  PaymentStatus,
+} from "@prisma/client";
 import { logger } from "@/lib/logger";
 
 // Stripe is initialized lazily so a missing key only fails the actions
@@ -715,6 +720,8 @@ export async function handleStripeWebhook(payload: string, signature: string) {
       const kind = intent.metadata?.kind;
       const paymentId = intent.metadata?.paymentId;
       const transportPaymentId = intent.metadata?.transportPaymentId;
+      const bookingPaymentId = intent.metadata?.bookingPaymentId;
+      const bookingId = intent.metadata?.bookingId;
 
       if (kind === "lease_payment" && paymentId) {
         await db.payment.update({
@@ -736,6 +743,29 @@ export async function handleStripeWebhook(payload: string, signature: string) {
           },
         });
         logger.info("stripe_transport_paid", { transportPaymentId, intentId: intent.id });
+      } else if (kind === "booking_payment" && bookingPaymentId && bookingId) {
+        // Atomically mark the BookingPayment Paid and flip the Booking to
+        // Confirmed. Idempotent: a re-delivered webhook hits the same
+        // unique (bookingPaymentId, bookingId) and produces identical state.
+        await db.$transaction([
+          db.bookingPayment.update({
+            where: { id: Number(bookingPaymentId) },
+            data: {
+              status: BookingPaymentStatus.Paid,
+              transactionId: intent.id,
+              paidAt: new Date(),
+            },
+          }),
+          db.booking.update({
+            where: { id: Number(bookingId) },
+            data: { status: BookingStatus.Confirmed, confirmedAt: new Date() },
+          }),
+        ]);
+        logger.info("stripe_booking_payment_paid", {
+          bookingPaymentId,
+          bookingId,
+          intentId: intent.id,
+        });
       } else {
         logger.warn("stripe_intent_unknown_kind", { kind, intentId: intent.id });
       }
@@ -745,6 +775,7 @@ export async function handleStripeWebhook(payload: string, signature: string) {
       const intent = event.data.object;
       const paymentId = intent.metadata?.paymentId;
       const transportPaymentId = intent.metadata?.transportPaymentId;
+      const bookingPaymentId = intent.metadata?.bookingPaymentId;
       if (paymentId) {
         await db.payment.update({
           where: { id: Number(paymentId) },
@@ -757,13 +788,28 @@ export async function handleStripeWebhook(payload: string, signature: string) {
           data: { status: "Failed" },
         });
       }
-      logger.warn("stripe_payment_failed", { paymentId, transportPaymentId, intentId: intent.id });
+      if (bookingPaymentId) {
+        await db.bookingPayment.update({
+          where: { id: Number(bookingPaymentId) },
+          data: {
+            status: BookingPaymentStatus.Failed,
+            failureCode: intent.last_payment_error?.code ?? "stripe_failed",
+          },
+        });
+      }
+      logger.warn("stripe_payment_failed", {
+        paymentId,
+        transportPaymentId,
+        bookingPaymentId,
+        intentId: intent.id,
+      });
       break;
     }
     case "charge.refunded": {
       const charge = event.data.object;
       const paymentId = charge.metadata?.paymentId;
       const transportPaymentId = charge.metadata?.transportPaymentId;
+      const bookingPaymentId = charge.metadata?.bookingPaymentId;
       if (paymentId) {
         await db.payment.update({
           where: { id: Number(paymentId) },
@@ -776,7 +822,25 @@ export async function handleStripeWebhook(payload: string, signature: string) {
           data: { status: "Refunded" },
         });
       }
-      logger.info("stripe_refunded", { paymentId, transportPaymentId, chargeId: charge.id });
+      if (bookingPaymentId) {
+        await db.bookingPayment.update({
+          where: { id: Number(bookingPaymentId) },
+          data: {
+            status:
+              charge.amount_refunded === charge.amount
+                ? BookingPaymentStatus.Refunded
+                : BookingPaymentStatus.PartiallyRefunded,
+            refundedAt: new Date(),
+            refundAmount: charge.amount_refunded / 100,
+          },
+        });
+      }
+      logger.info("stripe_refunded", {
+        paymentId,
+        transportPaymentId,
+        bookingPaymentId,
+        chargeId: charge.id,
+      });
       break;
     }
     default:
@@ -919,4 +983,259 @@ export async function generateInvoice(paymentId: unknown) {
       `Failed to generate invoice: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
+}
+
+// ============================================
+// BOOKING PAYMENT (short-term stay checkout)
+// ============================================
+// Mirrors the lease/transport flows but targets the Booking model. The card
+// path creates a Stripe PaymentIntent; handleStripeWebhook (above) flips
+// BookingPayment.status to Paid and Booking.status to Confirmed on
+// `payment_intent.succeeded` with metadata.kind === "booking_payment".
+// Reference-based methods (Bankak/Cashi/MobileMoney/BankTransfer) park at
+// PendingVerification until an admin reconciles via verifyBookingPayment.
+// Cash on arrival records a Pending intent that the host confirms in person.
+
+const bookingPaymentIntentSchema = z.object({
+  bookingId: z.number().int().positive(),
+  currency: z.string().min(3).max(3).default("usd"),
+});
+
+const bookingReferencePaymentSchema = z.object({
+  bookingId: z.number().int().positive(),
+  method: z.enum([
+    BookingPaymentMethod.Bankak,
+    BookingPaymentMethod.Cashi,
+    BookingPaymentMethod.MobileMoney,
+    BookingPaymentMethod.BankTransfer,
+  ]),
+  reference: z.string().trim().min(3).max(200),
+});
+
+const bookingCashPaymentSchema = z.object({
+  bookingId: z.number().int().positive(),
+});
+
+const verifyBookingPaymentSchema = z.object({
+  bookingPaymentId: z.number().int().positive(),
+  approve: z.boolean(),
+  note: z.string().max(500).optional(),
+});
+
+// Loads a booking and verifies the caller owns it (or is admin). Centralised
+// so the three guest-initiated payment paths share the same gate.
+async function loadBookingForPayment(bookingId: number) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "unauthorized" as const };
+  }
+  const booking = await db.booking.findUnique({ where: { id: bookingId } });
+  if (!booking) {
+    return { ok: false as const, error: "not_found" as const };
+  }
+  // canOverride(session, ownerId) is true when the session IS the owner OR
+  // is an admin — exactly the "guest pays for their own booking, admin can
+  // override" semantics we want here.
+  if (!canOverride(session, booking.guestId)) {
+    return { ok: false as const, error: "forbidden" as const };
+  }
+  if (booking.status === BookingStatus.Cancelled) {
+    return { ok: false as const, error: "booking_cancelled" as const };
+  }
+  if (
+    booking.status === BookingStatus.Confirmed ||
+    booking.status === BookingStatus.Completed
+  ) {
+    return { ok: false as const, error: "already_paid" as const };
+  }
+  return { ok: true as const, session, booking };
+}
+
+export async function createBookingPaymentIntent(input: unknown) {
+  const parsed = bookingPaymentIntentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: "invalid", issues: parsed.error.issues };
+  }
+  const loaded = await loadBookingForPayment(parsed.data.bookingId);
+  if (!loaded.ok) return loaded;
+  const { booking } = loaded;
+
+  // Persist the BookingPayment row first so we have a stable id to thread
+  // through Stripe metadata. The Stripe intent id is patched in after the
+  // round-trip succeeds; a failed create flips the row to Failed so admins
+  // can triage from the same ledger.
+  const bookingPayment = await db.bookingPayment.create({
+    data: {
+      bookingId: booking.id,
+      amount: booking.totalPrice,
+      method: BookingPaymentMethod.Card,
+      status: BookingPaymentStatus.Pending,
+    },
+  });
+
+  try {
+    const stripe = getStripe();
+    const intent = await stripe.paymentIntents.create({
+      amount: Math.round(booking.totalPrice * 100),
+      currency: parsed.data.currency,
+      metadata: {
+        kind: "booking_payment",
+        bookingPaymentId: String(bookingPayment.id),
+        bookingId: String(booking.id),
+      },
+      automatic_payment_methods: { enabled: true },
+    });
+
+    await db.bookingPayment.update({
+      where: { id: bookingPayment.id },
+      data: { intentId: intent.id },
+    });
+
+    logger.info("stripe_booking_intent_created", {
+      bookingId: booking.id,
+      bookingPaymentId: bookingPayment.id,
+      intentId: intent.id,
+      amount: booking.totalPrice,
+    });
+
+    return {
+      ok: true as const,
+      clientSecret: intent.client_secret,
+      bookingPaymentId: bookingPayment.id,
+      intentId: intent.id,
+    };
+  } catch (err) {
+    await db.bookingPayment.update({
+      where: { id: bookingPayment.id },
+      data: {
+        status: BookingPaymentStatus.Failed,
+        failureCode: "intent_create_failed",
+      },
+    });
+    logger.error("stripe_booking_intent_failed", {
+      bookingId: booking.id,
+      bookingPaymentId: bookingPayment.id,
+      error: String(err),
+    });
+    return { ok: false as const, error: "stripe_error" };
+  }
+}
+
+export async function createBookingReferencePayment(input: unknown) {
+  const parsed = bookingReferencePaymentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: "invalid", issues: parsed.error.issues };
+  }
+  const loaded = await loadBookingForPayment(parsed.data.bookingId);
+  if (!loaded.ok) return loaded;
+
+  const bookingPayment = await db.bookingPayment.create({
+    data: {
+      bookingId: loaded.booking.id,
+      amount: loaded.booking.totalPrice,
+      method: parsed.data.method,
+      reference: parsed.data.reference,
+      status: BookingPaymentStatus.PendingVerification,
+    },
+  });
+
+  logger.info("booking_reference_payment_recorded", {
+    bookingId: loaded.booking.id,
+    bookingPaymentId: bookingPayment.id,
+    method: parsed.data.method,
+  });
+
+  revalidatePath(`/bookings/${loaded.booking.id}`);
+  return { ok: true as const, bookingPaymentId: bookingPayment.id };
+}
+
+export async function createBookingCashPayment(input: unknown) {
+  const parsed = bookingCashPaymentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: "invalid", issues: parsed.error.issues };
+  }
+  const loaded = await loadBookingForPayment(parsed.data.bookingId);
+  if (!loaded.ok) return loaded;
+
+  const bookingPayment = await db.bookingPayment.create({
+    data: {
+      bookingId: loaded.booking.id,
+      amount: loaded.booking.totalPrice,
+      method: BookingPaymentMethod.Cash,
+      status: BookingPaymentStatus.Pending,
+    },
+  });
+
+  logger.info("booking_cash_payment_recorded", {
+    bookingId: loaded.booking.id,
+    bookingPaymentId: bookingPayment.id,
+  });
+
+  revalidatePath(`/bookings/${loaded.booking.id}`);
+  return { ok: true as const, bookingPaymentId: bookingPayment.id };
+}
+
+export async function verifyBookingPayment(input: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "unauthorized" };
+  }
+  if (!isAdminOrSuper(session)) {
+    return { ok: false as const, error: "forbidden" };
+  }
+
+  const parsed = verifyBookingPaymentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: "invalid", issues: parsed.error.issues };
+  }
+
+  const payment = await db.bookingPayment.findUnique({
+    where: { id: parsed.data.bookingPaymentId },
+  });
+  if (!payment) {
+    return { ok: false as const, error: "not_found" };
+  }
+  if (payment.status !== BookingPaymentStatus.PendingVerification) {
+    return { ok: false as const, error: "not_pending_verification" };
+  }
+
+  if (parsed.data.approve) {
+    await db.$transaction([
+      db.bookingPayment.update({
+        where: { id: payment.id },
+        data: {
+          status: BookingPaymentStatus.Paid,
+          verifiedAt: new Date(),
+          verifiedBy: session.user.id,
+          paidAt: new Date(),
+        },
+      }),
+      db.booking.update({
+        where: { id: payment.bookingId },
+        data: { status: BookingStatus.Confirmed, confirmedAt: new Date() },
+      }),
+    ]);
+    logger.info("booking_payment_verified", {
+      bookingPaymentId: payment.id,
+      bookingId: payment.bookingId,
+      adminId: session.user.id,
+    });
+  } else {
+    await db.bookingPayment.update({
+      where: { id: payment.id },
+      data: {
+        status: BookingPaymentStatus.Failed,
+        failureCode: "verification_rejected",
+      },
+    });
+    logger.warn("booking_payment_rejected", {
+      bookingPaymentId: payment.id,
+      adminId: session.user.id,
+      note: parsed.data.note,
+    });
+  }
+
+  revalidatePath("/admin/payments");
+  revalidatePath(`/bookings/${payment.bookingId}`);
+  return { ok: true as const };
 }

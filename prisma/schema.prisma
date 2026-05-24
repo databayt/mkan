@@ -91,9 +91,10 @@ model Booking {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  listing Listing @relation(fields: [listingId], references: [id])
-  guest   User    @relation(fields: [guestId], references: [id])
-  review  Review?
+  listing  Listing          @relation(fields: [listingId], references: [id])
+  guest    User             @relation(fields: [guestId], references: [id])
+  review   Review?
+  payments BookingPayment[]
 
   @@index([listingId])
   @@index([guestId])
@@ -308,20 +309,20 @@ model Payment {
 // ─── Rides Vertical ─────────────────────────────────────────────────────────
 
 model RideDriver {
-  id              Int            @id @default(autoincrement())
-  userId          String         @unique
+  id              Int         @id @default(autoincrement())
+  userId          String      @unique
   vehicleType     VehicleType
   vehiclePlate    String
   vehicleModel    String?
   vehicleColor    String?
   assemblyPointId Int?
-  isActive        Boolean        @default(true)
-  isVerified      Boolean        @default(false)
-  rating          Float          @default(5.0)
-  reviewCount     Int            @default(0)
+  isActive        Boolean     @default(true)
+  isVerified      Boolean     @default(false)
+  rating          Float       @default(5.0)
+  reviewCount     Int         @default(0)
   phone           String
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   user          User           @relation(fields: [userId], references: [id])
   assemblyPoint AssemblyPoint? @relation(fields: [assemblyPointId], references: [id])
@@ -332,30 +333,30 @@ model RideDriver {
 }
 
 model Ride {
-  id                  Int               @id @default(autoincrement())
-  transportBookingId  Int?              @unique
-  passengerId         String
-  passengerName       String
-  passengerPhone      String
-  driverId            Int?
-  pickupAddress       String
-  pickupLat           Float
-  pickupLng           Float
-  dropoffAddress      String
-  dropoffLat          Float
-  dropoffLng          Float
-  vehicleType         VehicleType
-  scheduledTime       DateTime
-  estimatedDuration   Int?
-  estimatedDistance    Float?
-  price               Float
-  status              RideStatus        @default(Requested)
-  acceptedAt          DateTime?
-  startedAt           DateTime?
-  completedAt         DateTime?
-  cancelledAt         DateTime?
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
+  id                 Int         @id @default(autoincrement())
+  transportBookingId Int?        @unique
+  passengerId        String
+  passengerName      String
+  passengerPhone     String
+  driverId           Int?
+  pickupAddress      String
+  pickupLat          Float
+  pickupLng          Float
+  dropoffAddress     String
+  dropoffLat         Float
+  dropoffLng         Float
+  vehicleType        VehicleType
+  scheduledTime      DateTime
+  estimatedDuration  Int?
+  estimatedDistance  Float?
+  price              Float
+  status             RideStatus  @default(Requested)
+  acceptedAt         DateTime?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 
   transportBooking TransportBooking? @relation(fields: [transportBookingId], references: [id])
   passenger        User              @relation("RidePassenger", fields: [passengerId], references: [id])
@@ -392,17 +393,17 @@ model Route {
 }
 
 model Seat {
-  id             Int               @id @default(autoincrement())
-  tripId         Int
-  seatNumber     String
-  row            Int
-  column         Int
-  seatType       String?
-  status         SeatStatus        @default(Available)
-  bookingId      Int?
-  reservedUntil  DateTime?
-  booking        TransportBooking? @relation(fields: [bookingId], references: [id])
-  trip           Trip              @relation(fields: [tripId], references: [id])
+  id            Int               @id @default(autoincrement())
+  tripId        Int
+  seatNumber    String
+  row           Int
+  column        Int
+  seatType      String?
+  status        SeatStatus        @default(Available)
+  bookingId     Int?
+  reservedUntil DateTime?
+  booking       TransportBooking? @relation(fields: [bookingId], references: [id])
+  trip          Trip              @relation(fields: [tripId], references: [id])
 
   @@unique([tripId, seatNumber])
   @@index([tripId, status])
@@ -728,4 +729,52 @@ enum VehicleType {
   Car
   Tuktuk
   Van
+}
+
+// Short-term Booking payment record. Mirrors TransportPayment so the three
+// payment verticals (lease / transport / booking) stay consistent. The
+// reference flow (Bankak / Cashi / mobile money / bank transfer) parks at
+// PendingVerification until an admin reconciles via verifyBookingPayment;
+// the card flow (Stripe) advances to Paid via handleStripeWebhook.
+model BookingPayment {
+  id            Int                  @id @default(autoincrement())
+  bookingId     Int
+  amount        Float
+  method        BookingPaymentMethod
+  status        BookingPaymentStatus @default(Pending)
+  intentId      String? // Stripe payment_intent id (card path)
+  reference     String? // user-supplied wallet/bank reference
+  transactionId String? // gateway-issued transaction id
+  paidAt        DateTime?
+  verifiedAt    DateTime? // admin reconciled the reference
+  verifiedBy    String? // admin user id (loose ref, no FK)
+  failureCode   String?
+  refundedAt    DateTime?
+  refundAmount  Float?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  booking       Booking              @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([status])
+  @@index([intentId])
+  @@index([reference])
+}
+
+enum BookingPaymentMethod {
+  Card
+  Bankak
+  Cashi
+  MobileMoney
+  BankTransfer
+  Cash
+}
+
+enum BookingPaymentStatus {
+  Pending
+  PendingVerification
+  Paid
+  Failed
+  Refunded
+  PartiallyRefunded
 }
