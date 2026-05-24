@@ -27,7 +27,7 @@
 A **v1.0 was shipped 2026-04-25** (PR #2 `425d393` → `main`, Vercel `dpl_7TuHGKSS…` READY, tag `v1.0.0`, live at `https://mk.databayt.org`). Per `docs/ship-readiness.md` that release closed **45 of 94 stories** and consciously deferred 49. This backlog is the path from that shipped-but-thin v1.0 to **fully production-ready**. Two pre-existing tracked issues remain from the ship: `#4` (`/api/listings/published` 500) and `#3` (Vercel env-var checklist).
 
 **Reconciliation headlines (what changed since the docs were written):**
-- **Stripe is real server-side** — `createStripePaymentIntent`, `handleStripeWebhook`, `processRefund` are implemented (`src/lib/actions/payment-actions.ts:651/694/789`) and the webhook route exists (`src/app/api/webhooks/stripe/route.ts`). **But no client Element is mounted and no UI calls them** — booking checkout still only fires a toast. The money path is *built but not connected*.
+- **Stripe is wired end-to-end for the Homes booking flow** — server (`createStripePaymentIntent`, `handleStripeWebhook`, `processRefund`) was real at v1.0; client `<PaymentElement>` (`src/components/booking/payment/card-checkout.tsx`) + the `BookingPayment` data model landed 2026-05-24 (commit `ba6ba02`). Reference methods (Bankak/Cashi/mobile money/bank transfer) and cash both persist `BookingPayment` rows; admin reconciles reference flow via `verifyBookingPayment`. **Transport payment is still honor-system** — see below.
 - **Transport payment is still honor-system** — `processPayment` fabricates `TXN-{ts}-{rand}` (`transport-actions.ts:1644`) and never reaches Stripe; bank account `1234567890` is still hardcoded (`transport/booking/checkout/content.tsx:258`).
 - **Shipped since the docs but were marked "to do":** publish flow (`publishListing` + validation + `/api/upload` DELETE), editor "Coming soon" stubs replaced, real Mapbox search map, transport operator dashboard (overview/bookings/earnings/trips), long-term lease/payment wiring, `cancelTrip` passenger notifications, Node 22 in CI, `requireRole` at layouts, `lastLogin` writes, pg_trgm search indexes, `prisma migrate deploy` in build.
 - **"Config added but never wired" (regressions to watch):** `src/lib/env.ts` (throwing zod) is dead code while the live `env-check.ts` *fails open in prod*; `.prettierrc` + `lefthook.yml` exist but neither tool is installed; `serverExternalPackages` lists only `@react-pdf/renderer`; CI lint ceiling is 850 (not strict); E2E is `continue-on-error`.
@@ -42,7 +42,7 @@ A **v1.0 was shipped 2026-04-25** (PR #2 `425d393` → `main`, Vercel `dpl_7TuHG
 | Homes — onboarding & publish | 85 % | Publish CTA + validation + draft→public all work (`use-finish-setup.tsx`, `publishListing`). Steps mostly English. |
 | Homes — listing editor | 35 % | Stubs replaced with forms, but only ~4 of ~25 pages persist (amenities/location/description/instant-book). Pricing/house-rules/co-hosts/travel/availability/title don't save. |
 | Homes — search | 70 % | Real Mapbox search map ✅. **Two routes again** (`/listings` + a re-added `/search` that loads all + filters in JS). No date-availability filter. Detail map still static Bordeaux PNG. |
-| Homes — booking | 70 % | Reserve→createBooking works. **Checkout is a toast** (no payment, no Payment row). No confirmation email wired, no auto-Complete, no review prompt. |
+| Homes — booking | 80 % | Reserve→createBooking works ✅. **Checkout pays for real** (card via Stripe test mode; reference flow persists `BookingPayment` Pending-Verification; cash persists Pending). Confirmation email helper exists but uncalled; no auto-Complete; no review prompt. |
 | Homes — reviews | 50 % backend / 0 % UI | `review-actions.ts` complete; **zero UI callers**. Detail shows hardcoded reviews + "Hosted by Faisal". |
 | Homes — favorites | 50 % | Search-grid heart works; detail heart writes **localStorage only** (`addFavoriteProperty` exists, uncalled). Dead `useFavorite.ts` remains. |
 | Homes — host dashboard | 20 % | `/hosting` + `/hosting/calendar` are static stubs; no earnings route; `new-property` still RTK Query. |
@@ -53,7 +53,7 @@ A **v1.0 was shipped 2026-04-25** (PR #2 `425d393` → `main`, Vercel `dpl_7TuHG
 | Transport — ticket | 50 % | QR + validate action. No PDF, no email delivery (helper exists, uncalled), no HMAC signing, no scanner UI. |
 | Transport — operator dashboard | 75 % | Overview KPIs + bookings + earnings + trips routes live ✅. No manifest export, no CSV, no occupancy report. |
 | Rides | 5 % | Schema only (`Ride`, `RideDriver`). Zero actions/routes/UI. |
-| Payments (cross-vertical) | 45 % | Stripe server + webhook ✅ (Homes-wired). No client Element, no reference-gateway models/forms, no refund-on-cancel, no payouts, no fee ledger. Currency config still `SAR`. |
+| Payments (cross-vertical) | 60 % | Stripe server + webhook ✅; client `<PaymentElement>` ✅ for Homes; `BookingPayment` model + reference + cash flows ✅; admin verify action ✅. Still open: transport-checkout Stripe path; admin verification **UI**; refund-on-cancel (`cancelBooking` doesn't refund); payouts; fee ledger. Currency config still `SAR`. |
 | Notifications | 20 % | 5 email helpers (2FA, reset, verify, trip-cancel, booking-confirm[uncalled]); auth mails from sandbox `onboarding@resend.dev`. No in-app, no SMS, no booking/payment/application emails. |
 | Messaging | 0 % | No model, no UI. |
 | Admin | 50 % | Users/listings/offices CRUD + read-only payment ledger. Settings "Coming soon"; no verify-office; no refund panel; audit is `logger.info` only. |
@@ -68,7 +68,7 @@ A **v1.0 was shipped 2026-04-25** (PR #2 `425d393` → `main`, Vercel `dpl_7TuHG
 
 ### 1.2 Remaining launch blockers ("do not call it production-ready until")
 
-1. **Money cannot actually move** — Stripe server is built but no client Element/UI calls it; booking checkout is a toast; transport is honor-system. *(P1, P2, H5)*
+1. **Money path: Homes ✅, Transport ⬜, refund-on-cancel ⬜** — Homes booking takes card (Stripe), reference, or cash and persists `BookingPayment` rows; webhook flips Booking → Confirmed. Transport checkout still routes to the honor-system `processPayment`. `cancelBooking` flips status only — no `processRefund` call. *(P1.S5, P3.S3)*
 2. **Refunds & cancellation policy not enforced** — `cancelBooking` flips status only; no `Refunded` enum; policy not persisted from editor. *(P3)*
 3. **Fake data on listing detail** — hardcoded reviews, "Hosted by Faisal", static map; the real review API has zero callers. *(H4, H6)*
 4. **No transactional emails** for booking/payment/application (helpers exist, uncalled; auth mail from sandbox sender). *(N1)*
@@ -100,8 +100,8 @@ A **v1.0 was shipped 2026-04-25** (PR #2 `425d393` → `main`, Vercel `dpl_7TuHG
 | **F4** | Legal, Privacy & GDPR | P0 | 0 / 7 | ⬜ |
 | **F5** | Build, Type, Lint & Bundle Hygiene | P0 | 4 / 12 | 🟡 |
 | **F6** | Database Operations & Data Quality | P1 | 3 / 10 | 🟡 |
-| **P1** | Stripe Card Payments | P0 | 3 / 8 | 🟡 |
-| **P2** | Sudan Mobile Money & Bank Transfer | P0 | 0 / 7 | ⬜ |
+| **P1** | Stripe Card Payments | P0 | 5 / 8 | 🟢 |
+| **P2** | Sudan Mobile Money & Bank Transfer | P0 | 3 / 7 | 🟡 |
 | **P3** | Refunds & Cancellation Policy | P0 | 1 / 7 | ⬜ |
 | **P4** | Currency, Pricing & Fee Ledger | P1 | 1 / 6 | 🟡 |
 | **P5** | Host & Operator Payouts | P1 | 0 / 6 | ⬜ |
@@ -109,7 +109,7 @@ A **v1.0 was shipped 2026-04-25** (PR #2 `425d393` → `main`, Vercel `dpl_7TuHG
 | **H2** | Listing Editor (post-publish) | P1 | 1 / 10 | 🟡 |
 | **H3** | Search, Filters, Discovery | P0 | 1 / 9 | 🟡 |
 | **H4** | Listing Detail Page (real data) | P0 | 1 / 9 | ⬜ |
-| **H5** | Booking Flow (end-to-end) | P0 | 0 / 9 | ⬜ |
+| **H5** | Booking Flow (end-to-end) | P0 | 1 / 9 | 🟡 |
 | **H6** | Reviews & Ratings | P0 | 0 / 7 | ⬜ |
 | **H7** | Favorites / Wishlists | P1 | 0 / 5 | ⬜ |
 | **H8** | Tenant Dashboard | P1 | 1 / 7 | 🟡 |
@@ -233,27 +233,25 @@ Done: ✅ `prisma migrate deploy` in build (`scripts/maybe-migrate.mjs`), ✅ se
 
 ## 4. Payments epics
 
-### Epic P1 — Stripe card payments · P0 · 🟡 3/8  ·  *(BMAD Epic 4)*
-Done: ✅ `createStripePaymentIntent` (`payment-actions.ts:651`), ✅ `handleStripeWebhook` (`:694`, handles lease + `kind=transport`), ✅ webhook route (`api/webhooks/stripe/route.ts`), server `stripe ^22.1.0`.
+### Epic P1 — Stripe card payments · P0 · 🟢 5/8  ·  *(BMAD Epic 4)*
+Done: ✅ `createStripePaymentIntent` (`payment-actions.ts:651`), ✅ `handleStripeWebhook` (`:694`, handles lease + `kind=transport_booking` + `kind=booking_payment`), ✅ webhook route, ✅ **S1 client SDKs installed** (`@stripe/stripe-js ^9.6.0`, `@stripe/react-stripe-js ^6.4.0`), ✅ **S4 Homes Payment Element mounted** (`src/components/booking/payment/card-checkout.tsx` + `BookingPayment` model + intent metadata routing).
 
 | Story | St | Detail |
 |---|---|---|
-| P1.S1 Install client SDK + Stripe envs | 🟡 | now: `@stripe/stripe-js` + `@stripe/react-stripe-js` **not installed**. |
-| P1.S4 Homes checkout = real Payment Element | ⬜ | now: `bookings/[id]/checkout/content.tsx:30` toast-only; no Element, no intent call, no Payment row. **(launch blocker)** |
-| P1.S5 Transport checkout = real card path | ⬜ | now: routes to honor-system `processPayment`. |
-| P1.S6 Idempotency-Key in `createBooking` | ⬜ | now: no idempotency. |
-| P1.S7 3-D Secure verified | ⬜ | moot until Element mounts. |
+| P1.S5 Transport checkout = real card path | ⬜ | now: routes to honor-system `processPayment`. **(launch blocker)** |
+| P1.S6 Idempotency-Key in `createBooking` | ⬜ | now: no idempotency. (Note: webhook itself is idempotent via Stripe event_id semantics + `$transaction`.) |
+| P1.S7 3-D Secure verified | 🟡 | `confirmPayment({ redirect: 'if_required' })` handles SCA in-page. Needs a test-card matrix run. |
 | P1.S8 Test/live env switch; never log card meta | 🟡 | server keys switch; verify in CI. |
 
-### Epic P2 — Sudan mobile money & bank transfer · P0 · ⬜ 0/7
+### Epic P2 — Sudan mobile money & bank transfer · P0 · 🟡 3/7
+Done (2026-05-24): ✅ S1 `BookingPaymentMethod`/`BookingPaymentStatus` enums + `BookingPayment` model with `reference`/`verifiedAt`/`verifiedBy` columns (the design's analogue to `PaymentGateway`/`PaymentReference`); ✅ S5 Reference forms inline in checkout (`bookings/[id]/checkout/content.tsx` `ReferenceForm`) for all 4 methods, plus `createBookingReferencePayment` server action; ✅ verify *action* shipped (`verifyBookingPayment` — flips PendingVerification → Paid + Booking → Confirmed in one `$transaction`).
+
 | Story | St | Detail |
 |---|---|---|
-| P2.S1 `PaymentGateway` enum + `PaymentReference` model | ⬜ | now: no such model/enum. |
-| P2.S5 Reference forms (Bankak/Cashi/MoMo/bank-transfer) | ⬜ | now: `src/components/booking/payment/` doesn't exist. |
-| P2.S5b Per-operator bank details (drop hardcoded `1234567890`) | ⬜ | now: `transport/booking/checkout/content.tsx:258` hardcoded. |
-| P2.S6 Cash-on-arrival operator confirm + reminder | 🟡 | cash status exists; no SMS reminder. |
-| P2.S7 Admin reconciliation report | 🟡 | now: `/admin/payments` is a **read-only ledger** (`page.tsx`); no verify/markPaid action or "Pending verification" tab. |
-| P2.S2/S3 Real Bankak/MTN clients | ⬜ | (no public API — reference flow is the design.) |
+| P2.S5b Per-host bank details (drop hardcoded `1234567890`) | ⬜ | now: transport checkout (`transport/booking/checkout/content.tsx:258`) hardcoded; Homes reference form shows generic instruction. Needs `Listing.payoutDetails` (or per-host model). |
+| P2.S6 Cash-on-arrival operator confirm + reminder | 🟡 | Booking cash path persisted ✅ (`createBookingCashPayment`); host-confirms-receipt action + SMS reminder still ⬜. |
+| P2.S7 Admin verification **UI** | ⬜ | server action exists; `/admin/payments` is still a read-only ledger — needs a "Pending verification" tab + Approve/Reject buttons calling `verifyBookingPayment`. |
+| P2.S2/S3 Real Bankak/MTN provider clients | ⬜ | (no public API — reference flow is the design.) |
 
 ### Epic P3 — Refunds & cancellation policy · P0 · ⬜ 1/7
 Done: ✅ `processRefund` (`payment-actions.ts:789`, admin-gated, real `stripe.refunds.create`).
@@ -337,7 +335,7 @@ Done: ✅ `/listings/[id]/photos` route exists.
 ### Epic H5 — Booking flow (end-to-end) · P0 · ⬜ 0/9
 | Story | St | Detail |
 |---|---|---|
-| H5.S2 Card payment via P1 | ⬜ | toast (see P1.S4). **(launch blocker)** |
+| H5.S2 Card payment via P1 | ✅ | landed 2026-05-24 in commit `ba6ba02`: `CardCheckout` mounts `<PaymentElement>`, `createBookingPaymentIntent` creates a `BookingPayment(method=Card,status=Pending)` row + intent, webhook flips to Confirmed. Reference + cash paths shipped alongside (see P2). |
 | H5.S3 Booking confirmation email (guest+host, iCal) | 🟡 | `mail.ts:71 sendBookingConfirmationEmail` exists but **never called**. |
 | H5.S4 Reminder emails | ⬜ | |
 | H5.S5 Auto-mark `Completed` cron | ⬜ | crons exist (overdue/monthly/seats); no auto-complete. |
