@@ -42,3 +42,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+
+# debug / scratch artifacts — one-off Playwright capture+inspect scripts and
+# screenshots from local debugging. Put throwaway scripts in /scratch/.
+# (Tracked configs eslint.config.mjs / postcss.config.mjs are NOT matched below.)
+/*.png
+/capture-*.mjs
+/inspect-*.mjs
+/compose-*.mjs
+/hard-refresh.mjs
+/scratch/
