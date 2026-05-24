@@ -69,6 +69,22 @@ vi.mock("@/components/ui/avatar", () => ({
   ),
 }));
 
+vi.mock("@/components/internationalization/dictionary-context", () => ({
+  useDictionary: () => {
+    // Mirror the previous pathname-based locale fork so tests can assert both
+    // EN and AR copy via the same mock the component now reads from context.
+    const isAr = mocks.usePathname().startsWith("/ar");
+    return {
+      auth: {
+        userButton: {
+          logout: isAr ? "تسجيل الخروج" : "Logout",
+        },
+      },
+    };
+  },
+  DictionaryProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 import { UserButton } from "@/components/auth/user-button";
 
 describe("UserButton", () => {

@@ -60,13 +60,14 @@ describe("useDictionary", () => {
     expect(result.current.common.loading).toBe("Loading...");
   });
 
-  it("throws when used outside DictionaryProvider", () => {
-    // Suppress console.error from React for the expected error
+  it("does not throw outside DictionaryProvider (graceful client fallback)", () => {
+    // The hook no longer throws when no provider is present; it returns null
+    // until a client-side load resolves. Consumers use optional chaining, so
+    // this brief null window degrades to their fallback strings safely.
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    expect(() => {
-      renderHook(() => useDictionary());
-    }).toThrow("useDictionary must be used within a DictionaryProvider");
+    const { result } = renderHook(() => useDictionary());
+    expect(result.current).toBeNull();
 
     spy.mockRestore();
   });

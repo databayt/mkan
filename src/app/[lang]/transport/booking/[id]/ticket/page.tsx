@@ -20,6 +20,7 @@ import {
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { getBooking } from '@/lib/actions/transport-actions';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 import QRCode from 'qrcode';
 
 type BookingDetails = NonNullable<Awaited<ReturnType<typeof getBooking>>>;
@@ -30,6 +31,7 @@ export default function TicketViewPage() {
   const router = useRouter();
   const lang = params.lang as string;
   const bookingId = Number(params.id);
+  const tv = useDictionary()?.transport?.ticketView;
 
   const [booking, setBooking] = useState<BookingDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -87,9 +89,9 @@ export default function TicketViewPage() {
   if (!booking) {
     return (
       <div className="container mx-auto py-8 px-4 text-center">
-        <h1 className="text-2xl font-bold">Ticket not found</h1>
+        <h1 className="text-2xl font-bold">{tv?.ticketNotFound ?? "Ticket not found"}</h1>
         <Button onClick={() => router.push(`/${lang}/transport`)} className="mt-4">
-          Back to Transport
+          {tv?.backToTransport ?? "Back to Transport"}
         </Button>
       </div>
     );
@@ -101,7 +103,7 @@ export default function TicketViewPage() {
       <div className="mb-4 print:hidden">
         <Button onClick={handleDownload} className="w-full">
           <Download className="h-4 w-4 me-2" />
-          Download Ticket
+          {tv?.downloadTicket ?? "Download Ticket"}
         </Button>
       </div>
 
@@ -112,8 +114,8 @@ export default function TicketViewPage() {
           <div className="bg-primary text-primary-foreground p-4">
             <div className="flex justify-between items-center">
               <div>
-                <div className="text-sm opacity-80">Mkan Transport</div>
-                <div className="text-xl font-bold">Bus Ticket</div>
+                <div className="text-sm opacity-80">{tv?.mkanTransport ?? "Mkan Transport"}</div>
+                <div className="text-xl font-bold">{tv?.busTicket ?? "Bus Ticket"}</div>
               </div>
               <Bus className="h-8 w-8" />
             </div>
@@ -134,7 +136,7 @@ export default function TicketViewPage() {
                   <ArrowRight className="h-4 w-4 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-primary bg-white" />
                 </div>
                 <div className="text-center text-xs text-muted-foreground mt-1">
-                  {booking.trip.route.duration} hrs
+                  {booking.trip.route.duration} {tv?.hrs ?? "hrs"}
                 </div>
               </div>
               <div className="text-center">
@@ -153,7 +155,7 @@ export default function TicketViewPage() {
             <div className="flex items-start gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <div className="text-xs text-muted-foreground">Date</div>
+                <div className="text-xs text-muted-foreground">{tv?.dateLabel ?? "Date"}</div>
                 <div className="font-medium text-sm">
                   {format(new Date(booking.trip.departureDate), 'EEE, MMM d', { locale: dateLocale })}
                 </div>
@@ -162,14 +164,14 @@ export default function TicketViewPage() {
             <div className="flex items-start gap-2">
               <Clock className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <div className="text-xs text-muted-foreground">Time</div>
+                <div className="text-xs text-muted-foreground">{tv?.timeLabel ?? "Time"}</div>
                 <div className="font-medium text-sm">{booking.trip.departureTime}</div>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <User className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <div className="text-xs text-muted-foreground">Passenger</div>
+                <div className="text-xs text-muted-foreground">{tv?.passengerLabel ?? "Passenger"}</div>
                 <div className="font-medium text-sm truncate max-w-[120px]">
                   {booking.passengerName}
                 </div>
@@ -178,7 +180,7 @@ export default function TicketViewPage() {
             <div className="flex items-start gap-2">
               <QrCode className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <div className="text-xs text-muted-foreground">Seat(s)</div>
+                <div className="text-xs text-muted-foreground">{tv?.seatLabel ?? "Seat(s)"}</div>
                 <div className="font-medium text-sm">
                   {booking.seats.map((s) => s.seatNumber).join(', ')}
                 </div>
@@ -216,18 +218,18 @@ export default function TicketViewPage() {
               />
             )}
             <div className="flex-1">
-              <div className="text-xs text-muted-foreground">Booking Reference</div>
+              <div className="text-xs text-muted-foreground">{tv?.bookingReference ?? "Booking Reference"}</div>
               <div className="text-xl font-mono font-bold">{booking.bookingReference}</div>
               <div className="text-xs text-muted-foreground mt-2">
-                Show this QR code at the office
+                {tv?.showQrCode ?? "Show this QR code at the office"}
               </div>
             </div>
           </div>
 
           {/* Footer */}
           <div className="p-3 bg-muted text-center text-xs text-muted-foreground">
-            <div>Bus: {booking.trip.bus.model || booking.trip.bus.plateNumber}</div>
-            <div className="mt-1">Total: SDG {booking.totalAmount.toLocaleString()}</div>
+            <div>{tv?.busLabel ?? "Bus"}: {booking.trip.bus.model || booking.trip.bus.plateNumber}</div>
+            <div className="mt-1">{tv?.totalLabel ?? "Total"}: SDG {booking.totalAmount.toLocaleString()}</div>
           </div>
         </CardContent>
       </Card>
@@ -238,7 +240,7 @@ export default function TicketViewPage() {
           variant="link"
           onClick={() => router.push(`/${lang}/transport/booking/${booking.id}`)}
         >
-          Back to Booking Details
+          {tv?.backToBooking ?? "Back to Booking Details"}
         </Button>
       </div>
 

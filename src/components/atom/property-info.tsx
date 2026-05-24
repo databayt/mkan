@@ -1,7 +1,12 @@
-import { Calendar, Car, DoorOpen } from "lucide-react"
+"use client"
+
 import { WifiIcon, DedicatedWorkspaceIcon, KitchenIcon } from "./icons"
+import { useDictionary } from "@/components/internationalization/dictionary-context"
 
 export default function AirbnbInfo() {
+  const dict = useDictionary()
+  const t = dict?.atom?.propertyInfo
+
   return (
     <div className="max-w-2xl mx-auto space-y-6 py-6">
       <div className="flex items-start gap-4 ">
@@ -9,8 +14,8 @@ export default function AirbnbInfo() {
           <WifiIcon className="w-6 h-6 text-gray-700" />
         </div>
         <div className="space-y-1">
-          <strong className="font-semibold text-gray-900">Fast wifi</strong>
-          <p className="text-gray-600">100 Mbps download speed for streaming and video calls.</p>
+          <strong className="font-semibold text-gray-900">{t?.fastWifiTitle ?? "Fast wifi"}</strong>
+          <p className="text-gray-600">{t?.fastWifiDesc ?? "100 Mbps download speed for streaming and video calls."}</p>
         </div>
       </div>
 
@@ -19,8 +24,8 @@ export default function AirbnbInfo() {
           <DedicatedWorkspaceIcon className="w-6 h-6 text-gray-700" />
         </div>
         <div className="space-y-1">
-          <strong className="font-semibold text-gray-900">Park for free</strong>
-          <p className="text-gray-600">This is one of the few places in the area with free parking.</p>
+          <strong className="font-semibold text-gray-900">{t?.freeParkingTitle ?? "Park for free"}</strong>
+          <p className="text-gray-600">{t?.freeParkingDesc ?? "This is one of the few places in the area with free parking."}</p>
         </div>
       </div>
 
@@ -29,8 +34,8 @@ export default function AirbnbInfo() {
           <KitchenIcon className="w-6 h-6 text-gray-700" />
         </div>
         <div className="space-y-1">
-          <strong className="font-semibold text-gray-900">Free cancellation before Aug 7</strong>
-          <p className="text-gray-600">Get a full refund if you change your mind.</p>
+          <strong className="font-semibold text-gray-900">{t?.freeCancellationTitle ?? "Free cancellation before Aug 7"}</strong>
+          <p className="text-gray-600">{t?.freeCancellationDesc ?? "Get a full refund if you change your mind."}</p>
         </div>
       </div>
     </div>

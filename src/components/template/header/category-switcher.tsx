@@ -29,7 +29,7 @@ const categories = [
   },
 ];
 
-export function CategorySwitcher({ lang = 'en' }: CategorySwitcherProps) {
+export function CategorySwitcher({ lang = 'ar' }: CategorySwitcherProps) {
   const pathname = usePathname();
 
   // Remove locale prefix from pathname for matching

@@ -94,7 +94,7 @@ const AmenityBadge = memo(function AmenityBadge({ amenity }: { amenity: BusAmeni
 
 export const TripCard = memo(function TripCard({
   trip,
-  lang = 'en',
+  lang = 'ar',
   dictionary = {
     selectSeats: 'Select Seats',
     seatsAvailable: 'seats available',

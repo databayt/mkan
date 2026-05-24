@@ -1,8 +1,11 @@
+"use client";
+
 import React from 'react';
 import { MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ShareIcon, HeartIcon } from '@/components/atom/icons';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface AirbnbPropertyHeaderProps {
   title: string;
@@ -27,6 +30,8 @@ const AirbnbPropertyHeader: React.FC<AirbnbPropertyHeaderProps> = ({
   isSaved = false,
   className = "",
 }) => {
+  const dict = useDictionary();
+  const t = dict?.atom?.propertyHeader;
   const formatReviewCount = (count: number) => {
     if (count >= 1000) {
       return `${(count / 1000).toFixed(1)}k`;
@@ -59,7 +64,7 @@ const AirbnbPropertyHeader: React.FC<AirbnbPropertyHeaderProps> = ({
                 </span>
                 {reviewCount && (
                   <span className="text-sm text-gray-600">
-                    · {formatReviewCount(reviewCount)} reviews
+                    · {formatReviewCount(reviewCount)} {t?.reviewsLabel ?? "reviews"}
                   </span>
                 )}
               </div>
@@ -74,7 +79,7 @@ const AirbnbPropertyHeader: React.FC<AirbnbPropertyHeaderProps> = ({
                     <path d="M9.50004 5.83341L12.1667 3.16675H3.83337L6.50004 5.83341" stroke="#DE3151" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M11.5 9.33325C11.5 11.2662 9.933 12.8333 8 12.8333C6.067 12.8333 4.5 11.2662 4.5 9.33325C4.5 7.40026 6.067 5.83325 8 5.83325C9.933 5.83325 11.5 7.40026 11.5 9.33325Z" stroke="#DE3151" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  <span className="text-sm font-normal">Superhost</span>
+                  <span className="text-sm font-normal">{t?.superhost ?? "Superhost"}</span>
                 </div>
               </>
             )}
@@ -98,9 +103,9 @@ const AirbnbPropertyHeader: React.FC<AirbnbPropertyHeaderProps> = ({
               className="flex items-center space-x-1 text-gray-700 hover:bg-transparent hover:underline text-sm font-medium underline"
             >
               <ShareIcon className="w-4 h-4" />
-              <span>Share</span>
+              <span>{t?.share ?? "Share"}</span>
             </Button>
-            
+
             <Button
               variant="ghost"
               size="sm"
@@ -110,7 +115,7 @@ const AirbnbPropertyHeader: React.FC<AirbnbPropertyHeaderProps> = ({
               }`}
             >
               <HeartIcon className={`w-4 h-4 ${isSaved ? 'fill-red-500 text-red-500' : ''}`} />
-              <span>Save</span>
+              <span>{t?.save ?? "Save"}</span>
             </Button>
           </div>
         </div>

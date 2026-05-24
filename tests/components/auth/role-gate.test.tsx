@@ -21,6 +21,24 @@ vi.mock("@/components/auth/error/form-error", () => ({
     message ? <div data-testid="form-error">{message}</div> : null,
 }));
 
+vi.mock("@/components/internationalization/dictionary-context", () => ({
+  useDictionary: () => {
+    // Mirror the previous pathname-based locale fork so tests can assert both
+    // EN and AR copy via the same mock the component now reads from context.
+    const isAr = mocks.usePathname().startsWith("/ar");
+    return {
+      auth: {
+        roleGate: {
+          noPermission: isAr
+            ? "ليس لديك صلاحية لعرض هذا المحتوى!"
+            : "You do not have permission to view this content!",
+        },
+      },
+    };
+  },
+  DictionaryProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 import { RoleGate } from "@/components/auth/role-gate";
 
 describe("RoleGate", () => {

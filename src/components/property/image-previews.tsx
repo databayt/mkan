@@ -3,8 +3,11 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import React, { useState } from "react";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 const ImagePreviews = ({ images }: ImagePreviewsProps) => {
+  const dict = useDictionary();
+  const t = dict?.property?.imagePreviews;
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const handlePrev = () => {
@@ -26,7 +29,7 @@ const ImagePreviews = ({ images }: ImagePreviewsProps) => {
         >
           <Image
             src={image}
-            alt={`Property Image ${index + 1}`}
+            alt={(t?.imageAlt ?? "Property Image {index}").replace("{index}", String(index + 1))}
             fill
             priority={index == 0}
             className="object-cover cursor-pointer transition-transform duration-500 ease-in-out"
@@ -35,15 +38,15 @@ const ImagePreviews = ({ images }: ImagePreviewsProps) => {
       ))}
       <button
         onClick={handlePrev}
-        className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-primary-700 bg-opacity-50 p-2 rounded-full focus:outline-none focus:ring focus:ring-secondary-300"
-        aria-label="Previous image"
+        className="absolute start-0 top-1/2 transform -translate-y-1/2 bg-primary-700 bg-opacity-50 p-2 rounded-full focus:outline-none focus:ring focus:ring-secondary-300"
+        aria-label={t?.previousImage ?? "Previous image"}
       >
         <ChevronLeft className="text-white rtl:rotate-180" />
       </button>
       <button
         onClick={handleNext}
-        className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-primary-700 bg-opacity-50 p-2 rounded-full focus:outline-none focus:ring focus:ring-secondary-300"
-        aria-label="Previous image"
+        className="absolute end-0 top-1/2 transform -translate-y-1/2 bg-primary-700 bg-opacity-50 p-2 rounded-full focus:outline-none focus:ring focus:ring-secondary-300"
+        aria-label={t?.nextImage ?? "Next image"}
       >
         <ChevronRight className="text-white rtl:rotate-180" />
       </button>

@@ -1,11 +1,13 @@
 import { Suspense } from 'react';
-import { MapPin, Clock, Shield, Ticket } from 'lucide-react';
+import { MapPin, Clock, Shield, Ticket, Building2, ArrowRight } from 'lucide-react';
 import type { Metadata } from 'next';
 
 import TransportBigSearch from '@/components/transport/search/transport-big-search';
 import TransportHostHero from '@/components/transport/transport-host-hero';
 import { TicketShowcase } from '@/components/transport/ticket/ticket-showcase';
 import { LogoCarousel } from '@/components/transport/logo-carousel';
+import { TransportTestimonials } from '@/components/transport/transport-testimonials';
+import { TransportMap } from '@/components/transport/transport-map';
 import Footer from '@/components/site/footer';
 import { getAssemblyPoints, getPopularRoutes } from '@/lib/actions/transport-actions';
 import Link from 'next/link';
@@ -19,11 +21,11 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
+  const dict = await getDictionary(lang as Locale);
+  const t = dict?.transport;
   return createMetadata({
-    title: lang === "ar" ? "النقل البري" : "Bus Transport",
-    description: lang === "ar"
-      ? "احجز رحلات الحافلات بين المدن السودانية"
-      : "Book intercity bus trips across Sudan",
+    title: t?.meta?.title ?? "Bus Transport",
+    description: t?.meta?.description ?? "Book intercity bus trips across Sudan",
     locale: lang,
     path: "/transport",
   });
@@ -42,29 +44,29 @@ export default async function TransportPage({ params }: TransportPageProps) {
     getAssemblyPoints(),
     getPopularRoutes(),
   ]);
-  const t = dictionary.transport;
+  const t = dictionary?.transport;
   const todayIso = format(new Date(), 'yyyy-MM-dd');
 
   const features = [
     {
       icon: <MapPin className="h-8 w-8" />,
-      title: t.features.items.destinations.title,
-      description: t.features.items.destinations.description,
+      title: t?.features?.items?.destinations?.title ?? "Multiple Destinations",
+      description: t?.features?.items?.destinations?.description ?? "Book tickets to cities across Sudan from major assembly points.",
     },
     {
       icon: <Clock className="h-8 w-8" />,
-      title: t.features.items.departures.title,
-      description: t.features.items.departures.description,
+      title: t?.features?.items?.departures?.title ?? "Daily Departures",
+      description: t?.features?.items?.departures?.description ?? "Regular morning departures at 5:00 AM, 7 days a week.",
     },
     {
       icon: <Ticket className="h-8 w-8" />,
-      title: t.features.items.etickets.title,
-      description: t.features.items.etickets.description,
+      title: t?.features?.items?.etickets?.title ?? "E-Tickets",
+      description: t?.features?.items?.etickets?.description ?? "Receive your ticket instantly via PDF with QR code for easy boarding.",
     },
     {
       icon: <Shield className="h-8 w-8" />,
-      title: t.features.items.verified.title,
-      description: t.features.items.verified.description,
+      title: t?.features?.items?.verified?.title ?? "Verified Offices",
+      description: t?.features?.items?.verified?.description ?? "All transport offices are verified for your safety and comfort.",
     },
   ];
 
@@ -92,8 +94,8 @@ export default async function TransportPage({ params }: TransportPageProps) {
           {/* Hero Text */}
           <div className="text-center max-w-3xl mx-auto mb-12">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white">
-              <span className="block">{t.hero.titleLine1}</span>
-              <span className="block">{t.hero.titleLine2}</span>
+              <span className="block">{t?.hero?.titleLine1 ?? "Travel Between"}</span>
+              <span className="block">{t?.hero?.titleLine2 ?? "Cities in Sudan"}</span>
             </h1>
           </div>
 
@@ -108,12 +110,12 @@ export default async function TransportPage({ params }: TransportPageProps) {
                 assemblyPoints={assemblyPoints}
                 lang={lang}
                 dictionary={{
-                  from: t.search.from,
-                  to: t.search.to,
-                  date: t.search.date,
-                  search: t.search.search,
-                  selectCity: dictionary.common.search,
-                  selectDate: t.search.date,
+                  from: t?.search?.from ?? "From",
+                  to: t?.search?.to ?? "To",
+                  date: t?.search?.date ?? "Travel Date",
+                  search: t?.search?.search ?? "Search Trips",
+                  selectCity: dictionary?.common?.search ?? "Search",
+                  selectDate: t?.search?.date ?? "Travel Date",
                 }}
               />
             </Suspense>
@@ -127,37 +129,42 @@ export default async function TransportPage({ params }: TransportPageProps) {
 
       {/* Logo Carousel */}
       <section className="py-12 px-4 md:px-8 bg-background">
-        <div className="max-w-6xl mx-auto flex justify-center">
-          <LogoCarousel />
+        <div className="max-w-6xl mx-auto">
+          <p className="text-center text-sm text-muted-foreground mb-8">
+            {t?.home?.operatorsCaption ?? "Trusted transport operators on our platform"}
+          </p>
+          <div className="flex justify-center">
+            <LogoCarousel />
+          </div>
         </div>
       </section>
 
       {/* How It Works */}
       <section className="py-16 px-4 md:px-8 bg-background">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">{t.howItWorks.title}</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">{t?.howItWorks?.title ?? "How It Works"}</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {[
               {
                 step: 1,
-                title: t.howItWorks.step1.title,
-                description: t.howItWorks.step1.description,
+                title: t?.howItWorks?.step1?.title ?? "Search",
+                description: t?.howItWorks?.step1?.description ?? "Enter your origin, destination, and travel date",
               },
               {
                 step: 2,
-                title: t.howItWorks.step2.title,
-                description: t.howItWorks.step2.description,
+                title: t?.howItWorks?.step2?.title ?? "Select",
+                description: t?.howItWorks?.step2?.description ?? "Choose your preferred bus and select your seats",
               },
               {
                 step: 3,
-                title: t.howItWorks.step3.title,
-                description: t.howItWorks.step3.description,
+                title: t?.howItWorks?.step3?.title ?? "Pay",
+                description: t?.howItWorks?.step3?.description ?? "Pay securely with mobile money, card, or cash on arrival",
               },
               {
                 step: 4,
-                title: t.howItWorks.step4.title,
-                description: t.howItWorks.step4.description,
+                title: t?.howItWorks?.step4?.title ?? "Travel",
+                description: t?.howItWorks?.step4?.description ?? "Show your e-ticket at the assembly point and board",
               },
             ].map((item) => (
               <div key={item.step} className="text-center">
@@ -174,11 +181,26 @@ export default async function TransportPage({ params }: TransportPageProps) {
         </div>
       </section>
 
-      {/* Features */}
+      {/* Assembly Points Map */}
       <section className="py-16 px-4 md:px-8 bg-muted/30">
         <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-3">
+            {t?.home?.assemblyPointsTitle ?? "Assembly Points"}
+          </h2>
+          <p className="text-muted-foreground text-center mb-10 max-w-xl mx-auto">
+            {t?.home?.assemblyPointsSubtitle ?? "All major bus stations across Sudan"}
+          </p>
+          <Suspense fallback={<div className="h-[400px] md:h-[450px] bg-muted animate-pulse rounded-xl" />}>
+            <TransportMap assemblyPoints={assemblyPoints} lang={lang} />
+          </Suspense>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="py-16 px-4 md:px-8 bg-background">
+        <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">
-            {t.features.title}
+            {t?.features?.title ?? "Why Book With Us"}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -201,20 +223,33 @@ export default async function TransportPage({ params }: TransportPageProps) {
       {/* Ticket Showcase */}
       <section className="py-16 px-4 md:px-8 bg-background">
         <div className="max-w-6xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-3">{t.ticket.showcaseTitle}</h2>
+          <h2 className="text-3xl font-bold mb-3">{t?.ticket?.showcaseTitle ?? "Your Digital Ticket"}</h2>
           <p className="text-muted-foreground mb-10 max-w-xl mx-auto">
-            {t.ticket.showcaseSubtitle}
+            {t?.ticket?.showcaseSubtitle ?? "Book online and receive your e-ticket instantly with QR code for easy boarding."}
           </p>
           <TicketShowcase lang={lang} />
         </div>
       </section>
 
+      {/* Testimonials */}
+      <TransportTestimonials lang={lang} />
+
       {/* Popular Routes */}
       <section className="py-16 px-4 md:px-8 bg-muted/30">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">
-            {t.routes.title}
-          </h2>
+          <div className="flex items-center justify-between mb-12">
+            <h2 className="text-3xl font-bold">
+              {t?.routes?.title ?? "Popular Routes"}
+            </h2>
+            <Link
+              href={`/${lang}/transport/offices`}
+              className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              <Building2 className="h-4 w-4" />
+              {t?.home?.browseOffices ?? "Browse Offices"}
+              <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+            </Link>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {popularRoutes.map((route) => {
@@ -242,21 +277,33 @@ export default async function TransportPage({ params }: TransportPageProps) {
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {lang === 'ar' ? `${hours} ساعة` : `${hours}h`}
+                      {(t?.home?.hoursSuffix ?? "{hours}h").replace('{hours}', String(hours))}
                     </span>
                     <span className="font-medium text-primary">
-                      {t.routes.pricePrefix} {route.basePrice.toLocaleString()} {lang === 'ar' ? 'ج.س' : 'SDG'}
+                      {t?.routes?.pricePrefix ?? "From"} {route.basePrice.toLocaleString()} {t?.home?.currency ?? "SDG"}
                     </span>
                   </div>
                 </Link>
               );
             })}
           </div>
+
+          {/* Mobile Browse Offices link */}
+          <div className="mt-8 text-center sm:hidden">
+            <Link
+              href={`/${lang}/transport/offices`}
+              className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              <Building2 className="h-4 w-4" />
+              {t?.home?.browseAllOffices ?? "Browse all offices"}
+              <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* CTA - Become a Transport Host */}
-      <TransportHostHero lang={lang} dictionary={t.cta} />
+      <TransportHostHero lang={lang} dictionary={t?.cta} />
 
       {/* Footer */}
       <Footer />

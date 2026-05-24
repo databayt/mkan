@@ -7,11 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Link2, Copy, Check, Info, ExternalLink } from 'lucide-react';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 const CustomLinkPage = () => {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
+  const dict = useDictionary();
+  const t = dict?.listingEditor?.customLink;
 
   const [customSlug, setCustomSlug] = useState('');
   const [copied, setCopied] = useState(false);

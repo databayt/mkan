@@ -1,29 +1,21 @@
 'use client';
 import { TriangleAlert } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { useParams } from "next/navigation";
 
 import { CardWrapper } from "@/components/auth/card-wrapper";
-
-const translations = {
-  en: {
-    headerLabel: "Oops! Something went wrong!",
-    backButtonLabel: "Back to login",
-  },
-  ar: {
-    headerLabel: "عذرا! حدث خطأ ما!",
-    backButtonLabel: "العودة لتسجيل الدخول",
-  },
-} as const;
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 export const ErrorCard = () => {
-  const pathname = usePathname();
-  const t = translations[pathname?.startsWith("/ar") ? "ar" : "en"];
+  const params = useParams();
+  const lang = (params?.lang as string) ?? "ar";
+  const dict = useDictionary();
+  const t = dict?.auth?.authError;
 
   return (
     <CardWrapper
-      headerLabel={t.headerLabel}
-      backButtonHref="/login"
-      backButtonLabel={t.backButtonLabel}
+      headerLabel={t?.headerLabel ?? "Oops! Something went wrong!"}
+      backButtonHref={`/${lang}/login`}
+      backButtonLabel={dict?.auth?.backToLogin ?? "Back to login"}
     >
       <div className="w-full flex justify-center items-center">
       <TriangleAlert className="text-destructive" />

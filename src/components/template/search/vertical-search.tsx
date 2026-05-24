@@ -15,51 +15,8 @@ import { useLocationSuggestions } from "./hooks/use-location-suggestions";
 import { useSearchValidation } from "@/hooks/useSearchValidation";
 import { type LocationSuggestion, SEARCH_CONFIG } from "@/lib/schemas/search-schema";
 import { useLocale } from "@/components/internationalization/use-locale";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { type DateRange } from "react-day-picker";
-
-// Search form translations
-const searchTranslations = {
-  en: {
-    heading: "Book unique\naccommodations and\nactivities.",
-    where: "WHERE",
-    checkIn: "CHECK-IN",
-    checkOut: "CHECK-OUT",
-    guests: "GUESTS",
-    anywhere: "Anywhere",
-    addDate: "Add date",
-    addGuests: "Add guests",
-    back: "Back",
-    search: "Search",
-    adult: "adult",
-    adults: "adults",
-    child: "child",
-    children: "children",
-    infant: "infant",
-    infants: "infants",
-    selectCheckIn: "Select check-in date",
-    selectCheckOut: "Select check-out date",
-  },
-  ar: {
-    heading: "احجز أماكن\nإقامة وأنشطة\nفريدة.",
-    where: "أين",
-    checkIn: "تسجيل الوصول",
-    checkOut: "المغادرة",
-    guests: "الضيوف",
-    anywhere: "أي مكان",
-    addDate: "أضف تاريخ",
-    addGuests: "أضف ضيوف",
-    back: "رجوع",
-    search: "بحث",
-    adult: "بالغ",
-    adults: "بالغين",
-    child: "طفل",
-    children: "أطفال",
-    infant: "رضيع",
-    infants: "رضع",
-    selectCheckIn: "اختر تاريخ الوصول",
-    selectCheckOut: "اختر تاريخ المغادرة",
-  },
-} as const;
 
 type ActiveField = "location" | "checkin" | "checkout" | "guests" | null;
 
@@ -70,8 +27,29 @@ interface VerticalSearchProps {
 export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { locale, isRTL } = useLocale();
-  const t = searchTranslations[locale as 'en' | 'ar'] || searchTranslations.en;
+  const { isRTL } = useLocale();
+  const dict = useDictionary();
+  const vf = dict?.search?.verticalForm;
+  const t = {
+    heading: vf?.heading ?? "Book unique\naccommodations and\nactivities.",
+    where: vf?.where ?? "WHERE",
+    checkIn: vf?.checkIn ?? "CHECK-IN",
+    checkOut: vf?.checkOut ?? "CHECK-OUT",
+    guests: vf?.guests ?? "GUESTS",
+    anywhere: vf?.anywhere ?? "Anywhere",
+    addDate: vf?.addDate ?? "Add date",
+    addGuests: vf?.addGuests ?? "Add guests",
+    back: vf?.back ?? "Back",
+    search: vf?.search ?? "Search",
+    adult: vf?.adult ?? "adult",
+    adults: vf?.adults ?? "adults",
+    child: vf?.child ?? "child",
+    children: vf?.children ?? "children",
+    infant: vf?.infant ?? "infant",
+    infants: vf?.infants ?? "infants",
+    selectCheckIn: vf?.selectCheckIn ?? "Select check-in date",
+    selectCheckOut: vf?.selectCheckOut ?? "Select check-out date",
+  };
   const [activeField, setActiveField] = useState<ActiveField>(null);
   const [isMobile, setIsMobile] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
@@ -282,7 +260,7 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
 
     // Get current locale from pathname
     const pathParts = pathname.split("/");
-    const locale = pathParts[1] || "en";
+    const locale = pathParts[1] || "ar";
 
     // Navigate to /search (map-sidebar variant)
     const searchUrl = `/${locale}/search${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;

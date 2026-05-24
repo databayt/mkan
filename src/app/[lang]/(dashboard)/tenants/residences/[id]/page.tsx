@@ -18,6 +18,7 @@ import {
   useGetPropertyQuery,
 } from "@/state/api";
 import { Lease, Payment, Property, Location } from "@/types/prismaTypes";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 // Extended type for Property with location relation
 type PropertyWithLocation = Property & {
@@ -38,10 +39,13 @@ import { useParams } from "next/navigation";
 import React from "react";
 
 const PaymentMethod = () => {
+  const dict = useDictionary();
+  const t = dict?.dashboard?.tenants?.residenceDetail?.paymentMethod;
+  const tCommon = dict?.dashboard?.common;
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden p-6 mt-10 md:mt-0 flex-1">
-      <h2 className="text-2xl font-bold mb-4">Payment method</h2>
-      <p className="mb-4">Change how you pay for your plan.</p>
+      <h2 className="text-2xl font-bold mb-4">{t?.title ?? "Payment method"}</h2>
+      <p className="mb-4">{t?.description ?? "Change how you pay for your plan."}</p>
       <div className="border rounded-lg p-6">
         <div>
           {/* Card Info */}
@@ -52,14 +56,14 @@ const PaymentMethod = () => {
             <div className="flex flex-col justify-between">
               <div>
                 <div className="flex items-start gap-5">
-                  <h3 className="text-lg font-semibold">Visa ending in 2024</h3>
+                  <h3 className="text-lg font-semibold">{t?.visaEndingIn ?? "Visa ending in 2024"}</h3>
                   <span className="text-sm font-medium border border-primary-700 text-primary-700 px-3 py-1 rounded-full">
-                    Default
+                    {t?.default ?? "Default"}
                   </span>
                 </div>
                 <div className="text-sm text-gray-500 flex items-center">
                   <CreditCard className="w-4 h-4 me-1" />
-                  <span>Expiry • 26/06/2024</span>
+                  <span>{t?.expiry ?? "Expiry"} • 26/06/2024</span>
                 </div>
               </div>
               <div className="text-sm text-gray-500 flex items-center">
@@ -73,7 +77,7 @@ const PaymentMethod = () => {
           <div className="flex justify-end">
             <button className="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50">
               <Edit className="w-5 h-5 me-2" />
-              <span>Edit</span>
+              <span>{tCommon?.edit ?? "Edit"}</span>
             </button>
           </div>
         </div>
@@ -89,6 +93,9 @@ const ResidenceCard = ({
   property: PropertyWithLocation;
   currentLease: Lease;
 }) => {
+  const dict = useDictionary();
+  const t = dict?.dashboard?.tenants?.residenceDetail?.residenceCard;
+  const tCommon = dict?.dashboard?.common;
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden p-6 flex-1 flex flex-col justify-between">
       {/* Header */}
@@ -98,7 +105,7 @@ const ResidenceCard = ({
         <div className="flex flex-col justify-between">
           <div>
             <div className="bg-green-500 w-fit text-white px-4 py-1 rounded-full text-sm font-semibold">
-              Active Leases
+              {t?.activeLeases ?? "Active Leases"}
             </div>
 
             <h2 className="text-2xl font-bold my-2">{property.name}</h2>
@@ -113,7 +120,7 @@ const ResidenceCard = ({
           </div>
           <div className="text-xl font-bold">
             ${currentLease.rent}{" "}
-            <span className="text-gray-500 text-sm font-normal">/ night</span>
+            <span className="text-gray-500 text-sm font-normal">{t?.perNight ?? "/ night"}</span>
           </div>
         </div>
       </div>
@@ -122,21 +129,21 @@ const ResidenceCard = ({
         <hr className="my-4" />
         <div className="flex justify-between items-center">
           <div className="xl:flex">
-            <div className="text-gray-500 me-2">Start Date: </div>
+            <div className="text-gray-500 me-2">{t?.startDate ?? "Start Date"}: </div>
             <div className="font-semibold">
               {new Date(currentLease.startDate).toLocaleDateString()}
             </div>
           </div>
           <div className="border-[0.5px] border-primary-300 h-4" />
           <div className="xl:flex">
-            <div className="text-gray-500 me-2">End Date: </div>
+            <div className="text-gray-500 me-2">{t?.endDate ?? "End Date"}: </div>
             <div className="font-semibold">
               {new Date(currentLease.endDate).toLocaleDateString()}
             </div>
           </div>
           <div className="border-[0.5px] border-primary-300 h-4" />
           <div className="xl:flex">
-            <div className="text-gray-500 me-2">Next Payment: </div>
+            <div className="text-gray-500 me-2">{t?.nextPayment ?? "Next Payment"}: </div>
             <div className="font-semibold">
               {new Date(currentLease.endDate).toLocaleDateString()}
             </div>
@@ -148,11 +155,11 @@ const ResidenceCard = ({
       <div className="flex justify-end gap-2 w-full">
         <button className="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50">
           <User className="w-5 h-5 me-2" />
-          Manager
+          {t?.manager ?? "Manager"}
         </button>
         <button className="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50">
           <Download className="w-5 h-5 me-2" />
-          Download Agreement
+          {tCommon?.downloadAgreement ?? "Download Agreement"}
         </button>
       </div>
     </div>
@@ -160,20 +167,23 @@ const ResidenceCard = ({
 };
 
 const BillingHistory = ({ payments }: { payments: Payment[] }) => {
+  const dict = useDictionary();
+  const t = dict?.dashboard?.tenants?.residenceDetail?.billingHistory;
+  const tCommon = dict?.dashboard?.common;
   return (
     <div className="mt-8 bg-white rounded-xl shadow-md overflow-hidden p-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold mb-1">Billing History</h2>
+          <h2 className="text-2xl font-bold mb-1">{t?.title ?? "Billing History"}</h2>
           <p className="text-sm text-gray-500">
-            Download your previous plan receipts and usage details.
+            {t?.description ?? "Download your previous plan receipts and usage details."}
           </p>
         </div>
         <div>
           <button className="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50">
             <Download className="w-5 h-5 me-2" />
-            <span>Download All</span>
+            <span>{tCommon?.downloadAll ?? "Download All"}</span>
           </button>
         </div>
       </div>
@@ -182,11 +192,11 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Invoice</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Billing Date</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Action</TableHead>
+              <TableHead>{t?.invoice ?? "Invoice"}</TableHead>
+              <TableHead>{t?.status ?? "Status"}</TableHead>
+              <TableHead>{t?.billingDate ?? "Billing Date"}</TableHead>
+              <TableHead>{t?.amount ?? "Amount"}</TableHead>
+              <TableHead>{t?.action ?? "Action"}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -195,7 +205,7 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
                 <TableCell className="font-medium">
                   <div className="flex items-center">
                     <FileText className="w-4 h-4 me-2" />
-                    Invoice #{payment.id} -{" "}
+                    {t?.invoiceLabel ?? "Invoice"} #{payment.id} -{" "}
                     {new Date(payment.paymentDate).toLocaleString("default", {
                       month: "short",
                       year: "numeric",
@@ -223,7 +233,7 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
                 <TableCell>
                   <button className="border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center justify-center font-semibold hover:bg-primary-700 hover:text-primary-50">
                     <ArrowDownToLineIcon className="w-4 h-4 me-1" />
-                    Download
+                    {t?.download ?? "Download"}
                   </button>
                 </TableCell>
               </TableRow>
@@ -236,6 +246,7 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
 };
 
 const Residence = () => {
+  const dict = useDictionary();
   const { id } = useParams();
   const { data: authUser } = useGetAuthUserQuery();
   const {
@@ -254,7 +265,13 @@ const Residence = () => {
   );
 
   if (propertyLoading || leasesLoading || paymentsLoading) return <Loading />;
-  if (!property || propertyError) return <div>Error loading property</div>;
+  if (!property || propertyError)
+    return (
+      <div>
+        {dict?.dashboard?.tenants?.residenceDetail?.errorLoadingProperty ??
+          "Error loading property"}
+      </div>
+    );
 
   const currentLease = leases?.find(
     (lease) => lease.propertyId === property.id

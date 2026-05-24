@@ -15,6 +15,7 @@ import {
 import { CitySelect } from './city-select';
 import { cn } from '@/lib/utils';
 import { mergeSearchParams, parseSearchParams } from './url-state';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface SearchWidgetProps {
   initialOrigin?: string;
@@ -56,6 +57,7 @@ export function SearchWidget({
   const searchParams = useSearchParams();
   const params = useParams<{ lang: string }>();
   const lang = params?.lang === 'ar' ? 'ar' : 'en';
+  const dict = useDictionary();
   const [origin, setOrigin] = useState(initialOrigin);
   const [destination, setDestination] = useState(initialDestination);
   const [originId, setOriginId] = useState<number | undefined>(initialOriginId);
@@ -160,7 +162,7 @@ export function SearchWidget({
                 )}
               >
                 <CalendarIcon className="me-2 h-4 w-4" />
-                {date ? format(date, 'PPP') : <span>Pick a date</span>}
+                {date ? format(date, 'PPP') : <span>{dict?.transport?.search?.pickDate ?? "Pick a date"}</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">

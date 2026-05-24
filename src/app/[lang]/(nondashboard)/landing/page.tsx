@@ -1,6 +1,8 @@
 import { Metadata } from "next";
 import React from "react";
 import { createMetadata } from "@/lib/metadata";
+import { getDictionary } from "@/components/internationalization/dictionaries";
+import type { Locale } from "@/components/internationalization/config";
 import HeroSection from "@/components/site/HeroSection";
 
 export async function generateMetadata({
@@ -9,12 +11,12 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const dict = await getDictionary(lang as Locale);
   return createMetadata({
-    title: lang === "ar" ? "مرحباً" : "Welcome",
+    title: dict?.pages?.landing?.metadata?.title ?? "Welcome",
     description:
-      lang === "ar"
-        ? "مرحباً بك في مكان — منصة الإيجار والاستضافة"
-        : "Welcome to Mkan — your rental and hosting platform",
+      dict?.pages?.landing?.metadata?.description ??
+      "Welcome to Mkan — your rental and hosting platform",
     locale: lang,
     path: "/landing",
   });

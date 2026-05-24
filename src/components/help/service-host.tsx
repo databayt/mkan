@@ -1,19 +1,43 @@
+"use client";
+
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Wrench, Clock, FileCheck, BadgeCheck } from "lucide-react";
-
-const articles = [
-  { icon: Wrench, title: "Defining your service", body: "Plumbing, cleaning, photography — be specific about scope and what's not included." },
-  { icon: Clock, title: "Scheduling", body: "Set your weekly availability. Same-day bookings are optional." },
-  { icon: FileCheck, title: "Quotes & invoicing", body: "Send quotes, accept payment via any of mkan's gateways, and issue receipts automatically." },
-  { icon: BadgeCheck, title: "Verification", body: "Service hosts pass a background and license check before publishing." },
-];
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 export default function ServiceHost() {
+  const dict = useDictionary();
+  const t = dict?.help?.serviceHost;
+  const learnMore = dict?.help?.common?.learnMore ?? "Learn more";
+  const items = t?.items;
+
+  const articles = [
+    {
+      icon: Wrench,
+      title: items?.defining?.title ?? "Defining your service",
+      body: items?.defining?.body ?? "Plumbing, cleaning, photography — be specific about scope and what's not included.",
+    },
+    {
+      icon: Clock,
+      title: items?.scheduling?.title ?? "Scheduling",
+      body: items?.scheduling?.body ?? "Set your weekly availability. Same-day bookings are optional.",
+    },
+    {
+      icon: FileCheck,
+      title: items?.quotes?.title ?? "Quotes & invoicing",
+      body: items?.quotes?.body ?? "Send quotes, accept payment via any of mkan's gateways, and issue receipts automatically.",
+    },
+    {
+      icon: BadgeCheck,
+      title: items?.verification?.title ?? "Verification",
+      body: items?.verification?.body ?? "Service hosts pass a background and license check before publishing.",
+    },
+  ];
+
   return (
     <div className="py-10">
       <div className="space-y-6">
-        <h4 className="">Service host help</h4>
+        <h4 className="">{t?.title ?? "Service host help"}</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {articles.map((a) => (
             <Card key={a.title} className="border border-gray-300 rounded-md">
@@ -26,7 +50,7 @@ export default function ServiceHost() {
               </CardContent>
               <div className="border-t border-gray-200" />
               <Button variant="ghost" className="w-full justify-between text-start h-12 hover:bg-gray-50 border-0">
-                <span className="font-semibold text-sm text-gray-900">Learn more</span>
+                <span className="font-semibold text-sm text-gray-900">{learnMore}</span>
                 <ChevronRight className="w-4 h-4 text-gray-900 rtl:rotate-180" />
               </Button>
             </Card>

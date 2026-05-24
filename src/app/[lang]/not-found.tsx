@@ -7,14 +7,14 @@ interface NotFoundProps {
 }
 
 export default async function NotFound({ params }: NotFoundProps) {
-  // Default to 'en' if params aren't available (edge case)
-  let lang: Locale = 'en';
-  let dir: 'ltr' | 'rtl' = 'ltr';
+  // Default to 'ar' if params aren't available (edge case)
+  let lang: Locale = 'ar';
+  let dir: 'ltr' | 'rtl' = 'rtl';
 
   try {
     const resolvedParams = await params;
-    lang = resolvedParams?.lang || 'en';
-    dir = localeConfig[lang]?.dir || 'ltr';
+    lang = resolvedParams?.lang || 'ar';
+    dir = localeConfig[lang]?.dir || 'rtl';
   } catch {
     // Use defaults
   }

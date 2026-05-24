@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { BeatLoader } from "react-spinners";
-import { usePathname } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
@@ -13,21 +13,7 @@ import {
 import { FormSuccess } from "../form-success";
 import { FormError } from "../error/form-error";
 import { newVerification } from "./action";
-
-const translations = {
-  en: {
-    heading: "Confirming your verification",
-    missingToken: "Missing token!",
-    somethingWentWrong: "Something went wrong!",
-    backToLogin: "Back to login",
-  },
-  ar: {
-    heading: "جاري تأكيد التحقق",
-    missingToken: "الرمز مفقود!",
-    somethingWentWrong: "حدث خطأ ما!",
-    backToLogin: "العودة لتسجيل الدخول",
-  },
-} as const;
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 interface NewVerificationFormProps extends React.ComponentPropsWithoutRef<"div"> {
   token?: string;
@@ -38,8 +24,12 @@ export const NewVerificationForm = ({
   token,
   ...props
 }: NewVerificationFormProps) => {
-  const pathname = usePathname();
-  const t = translations[pathname?.startsWith("/ar") ? "ar" : "en"];
+  const params = useParams();
+  const lang = (params?.lang as string) ?? "ar";
+  const dict = useDictionary();
+  const t = dict?.auth?.verification;
+  const missingToken = t?.missingToken ?? "Missing token!";
+  const somethingWentWrong = dict?.auth?.somethingWentWrong ?? "Something went wrong!";
   const [error, setError] = useState<string | undefined>();
   const [success, setSuccess] = useState<string | undefined>();
 
@@ -47,7 +37,7 @@ export const NewVerificationForm = ({
     if (success || error) return;
 
     if (!token) {
-      setError(t.missingToken);
+      setError(missingToken);
       return;
     }
 
@@ -57,9 +47,9 @@ export const NewVerificationForm = ({
         setError(data.error);
       })
       .catch(() => {
-        setError(t.somethingWentWrong);
+        setError(somethingWentWrong);
       });
-  }, [token, success, error, t.missingToken, t.somethingWentWrong]);
+  }, [token, success, error, missingToken, somethingWentWrong]);
 
   useEffect(() => {
     if (token) {
@@ -71,7 +61,7 @@ export const NewVerificationForm = ({
     <div className={cn("flex flex-col gap-6 min-w-[200px] md:min-w-[350px]", className)} {...props}>
       <Card className="border-none shadow-none">
         <CardHeader className="text-center">
-          <h1 className="text-xl font-semibold">{t.heading}</h1>
+          <h1 className="text-xl font-semibold">{t?.heading ?? "Confirming your verification"}</h1>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6">
@@ -86,8 +76,8 @@ export const NewVerificationForm = ({
             </div>
 
             <div className="text-center text-sm">
-              <Link href="/login" className="hover:underline underline-offset-4">
-                {t.backToLogin}
+              <Link href={`/${lang}/login`} className="hover:underline underline-offset-4">
+                {dict?.auth?.backToLogin ?? "Back to login"}
               </Link>
             </div>
           </div>

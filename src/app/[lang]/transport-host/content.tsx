@@ -20,6 +20,7 @@ export default function TransportHostContent() {
   const { session, status } = useAuthRedirect();
   const dict = useDictionary();
   const t = dict.transport.host;
+  const tHub = dict?.transportHost?.hub;
   const [offices, setOffices] = useState<TransportOffice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -64,7 +65,7 @@ export default function TransportHostContent() {
             <span className="text-sm font-medium">{t.badge}</span>
           </div>
           <h1 className="text-4xl font-bold mb-4">
-            {t.welcome.replace('{name}', session.user?.name || 'Host')}
+            {t.welcome.replace('{name}', session.user?.name || (tHub?.defaultName ?? 'Host'))}
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             {t.manageDescription}
@@ -129,7 +130,7 @@ export default function TransportHostContent() {
                       <span>{office._count.routes} {t.routes}</span>
                     </div>
                     <Button variant="ghost" className="mt-4 w-full">
-                      Continue Setup
+                      {t?.continueSetup ?? "Continue Setup"}
                       <ArrowRight className="h-4 w-4 ms-2 rtl:rotate-180" />
                     </Button>
                   </CardContent>
@@ -143,11 +144,10 @@ export default function TransportHostContent() {
               <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <Bus className="h-8 w-8 text-primary" />
               </div>
-              <CardTitle>Start Your Transport Business</CardTitle>
+              <CardTitle>{t?.startBusiness ?? "Start Your Transport Business"}</CardTitle>
               <CardDescription>
-                Register your transport office and start accepting online
-                bookings. Add your buses, define routes, and reach more
-                customers.
+                {t?.startDescription ??
+                  "Register your transport office and start accepting online bookings. Add your buses, define routes, and reach more customers."}
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
@@ -157,7 +157,7 @@ export default function TransportHostContent() {
                 className="w-full sm:w-auto"
               >
                 <Plus className="h-4 w-4 me-2" />
-                Create Your First Office
+                {t?.createFirstOffice ?? "Create Your First Office"}
               </Button>
             </CardContent>
           </Card>
@@ -168,29 +168,30 @@ export default function TransportHostContent() {
             <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <span className="text-xl font-bold text-primary">1</span>
             </div>
-            <h3 className="font-semibold mb-2">Add Your Office</h3>
+            <h3 className="font-semibold mb-2">{t?.step1Title ?? "Add Your Office"}</h3>
             <p className="text-sm text-muted-foreground">
-              Enter your office details and select your assembly point location.
+              {t?.step1Description ??
+                "Enter your office details and select your assembly point location."}
             </p>
           </div>
           <div className="text-center">
             <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <span className="text-xl font-bold text-primary">2</span>
             </div>
-            <h3 className="font-semibold mb-2">Add Buses & Routes</h3>
+            <h3 className="font-semibold mb-2">{t?.step2Title ?? "Add Buses & Routes"}</h3>
             <p className="text-sm text-muted-foreground">
-              Register your buses with amenities and define your routes with
-              pricing.
+              {t?.step2Description ??
+                "Register your buses with amenities and define your routes with pricing."}
             </p>
           </div>
           <div className="text-center">
             <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <span className="text-xl font-bold text-primary">3</span>
             </div>
-            <h3 className="font-semibold mb-2">Start Receiving Bookings</h3>
+            <h3 className="font-semibold mb-2">{t?.step3Title ?? "Start Receiving Bookings"}</h3>
             <p className="text-sm text-muted-foreground">
-              Publish your office and start accepting online bookings from
-              travelers.
+              {t?.step3Description ??
+                "Publish your office and start accepting online bookings from travelers."}
             </p>
           </div>
         </div>

@@ -8,9 +8,15 @@ import {
   useGetCurrentResidencesQuery,
   useGetTenantQuery,
 } from "@/state/api";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { useParams } from "next/navigation";
 import React from "react";
 
 export default function ResidencesContent() {
+  const dict = useDictionary();
+  const t = dict?.dashboard?.tenants?.residencesPage;
+  const params = useParams();
+  const lang = (params?.lang as string) ?? "ar";
   const { data: authUser } = useGetAuthUserQuery();
   const { data: tenant } = useGetTenantQuery(
     authUser?.id || "",
@@ -28,13 +34,13 @@ export default function ResidencesContent() {
   });
 
   if (isLoading) return <Loading />;
-  if (error) return <div>Error loading current residences</div>;
+  if (error) return <div>{t?.errorLoading ?? "Error loading current residences"}</div>;
 
   return (
     <div className="dashboard-container">
       <Header
-        title="Current Residences"
-        subtitle="View and manage your current living spaces"
+        title={t?.title ?? "Current Residences"}
+        subtitle={t?.subtitle ?? "View and manage your current living spaces"}
       />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {currentResidences?.map((property) => (
@@ -44,12 +50,12 @@ export default function ResidencesContent() {
             isFavorite={false}
             onFavoriteToggle={() => {}}
             showFavoriteButton={false}
-            propertyLink={`/tenants/residences/${property.id}`}
+            propertyLink={`/${lang}/tenants/residences/${property.id}`}
           />
         ))}
       </div>
       {(!currentResidences || currentResidences.length === 0) && (
-        <p>You don&lsquo;t have any current residences</p>
+        <p>{t?.noCurrentResidences ?? "You don't have any current residences"}</p>
       )}
     </div>
   );

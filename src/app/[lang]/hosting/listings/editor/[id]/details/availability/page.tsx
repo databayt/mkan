@@ -8,11 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Calendar, Info, Clock, CalendarDays } from 'lucide-react';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 const AvailabilityPage = () => {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
+  const dict = useDictionary();
+  const t = dict?.listingEditor?.availability;
 
   const [availability, setAvailability] = useState({
     minStay: 1,
@@ -33,9 +36,9 @@ const AvailabilityPage = () => {
     <div className="lg:col-span-2">
       <div className="max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">Availability settings</h1>
+          <h1 className="text-3xl font-semibold mb-2">{t?.heading ?? "Availability settings"}</h1>
           <p className="text-muted-foreground">
-            Control when and how guests can book your place.
+            {t?.subtitle ?? "Control when and how guests can book your place."}
           </p>
         </div>
 
@@ -43,13 +46,13 @@ const AvailabilityPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CalendarDays className="size-5" />
-              Trip length
+              {t?.tripLengthTitle ?? "Trip length"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="minStay">Minimum nights</Label>
+                <Label htmlFor="minStay">{t?.minNights ?? "Minimum nights"}</Label>
                 <Input
                   id="minStay"
                   type="number"
@@ -60,11 +63,11 @@ const AvailabilityPage = () => {
                   onChange={(e) => handleChange('minStay', parseInt(e.target.value) || 1)}
                 />
                 <p className="text-sm text-muted-foreground mt-1">
-                  Shortest stay allowed
+                  {t?.minNightsHint ?? "Shortest stay allowed"}
                 </p>
               </div>
               <div>
-                <Label htmlFor="maxStay">Maximum nights</Label>
+                <Label htmlFor="maxStay">{t?.maxNights ?? "Maximum nights"}</Label>
                 <Input
                   id="maxStay"
                   type="number"
@@ -75,7 +78,7 @@ const AvailabilityPage = () => {
                   onChange={(e) => handleChange('maxStay', parseInt(e.target.value) || 365)}
                 />
                 <p className="text-sm text-muted-foreground mt-1">
-                  Longest stay allowed
+                  {t?.maxNightsHint ?? "Longest stay allowed"}
                 </p>
               </div>
             </div>
@@ -86,12 +89,12 @@ const AvailabilityPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="size-5" />
-              Booking settings
+              {t?.bookingSettingsTitle ?? "Booking settings"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <Label htmlFor="advanceNotice">Advance notice</Label>
+              <Label htmlFor="advanceNotice">{t?.advanceNotice ?? "Advance notice"}</Label>
               <div className="flex items-center gap-2 mt-2">
                 <Input
                   id="advanceNotice"
@@ -102,15 +105,15 @@ const AvailabilityPage = () => {
                   value={availability.advanceNotice}
                   onChange={(e) => handleChange('advanceNotice', parseInt(e.target.value) || 0)}
                 />
-                <span className="text-sm text-muted-foreground">day(s) before check-in</span>
+                <span className="text-sm text-muted-foreground">{t?.advanceNoticeUnit ?? "day(s) before check-in"}</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                How much notice you need before a guest arrives
+                {t?.advanceNoticeHint ?? "How much notice you need before a guest arrives"}
               </p>
             </div>
 
             <div>
-              <Label htmlFor="preparationTime">Preparation time</Label>
+              <Label htmlFor="preparationTime">{t?.preparationTime ?? "Preparation time"}</Label>
               <div className="flex items-center gap-2 mt-2">
                 <Input
                   id="preparationTime"
@@ -121,15 +124,15 @@ const AvailabilityPage = () => {
                   value={availability.preparationTime}
                   onChange={(e) => handleChange('preparationTime', parseInt(e.target.value) || 0)}
                 />
-                <span className="text-sm text-muted-foreground">day(s) between bookings</span>
+                <span className="text-sm text-muted-foreground">{t?.preparationTimeUnit ?? "day(s) between bookings"}</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Buffer time for cleaning between guests
+                {t?.preparationTimeHint ?? "Buffer time for cleaning between guests"}
               </p>
             </div>
 
             <div>
-              <Label htmlFor="availabilityWindow">Availability window</Label>
+              <Label htmlFor="availabilityWindow">{t?.availabilityWindow ?? "Availability window"}</Label>
               <div className="flex items-center gap-2 mt-2">
                 <Input
                   id="availabilityWindow"
@@ -140,18 +143,18 @@ const AvailabilityPage = () => {
                   value={availability.availabilityWindow}
                   onChange={(e) => handleChange('availabilityWindow', parseInt(e.target.value) || 12)}
                 />
-                <span className="text-sm text-muted-foreground">months in advance</span>
+                <span className="text-sm text-muted-foreground">{t?.availabilityWindowUnit ?? "months in advance"}</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                How far in advance guests can book
+                {t?.availabilityWindowHint ?? "How far in advance guests can book"}
               </p>
             </div>
 
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div>
-                <Label className="text-base font-medium">Same-day booking</Label>
+                <Label className="text-base font-medium">{t?.sameDayBooking ?? "Same-day booking"}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Allow guests to book for today
+                  {t?.sameDayBookingDesc ?? "Allow guests to book for today"}
                 </p>
               </div>
               <Switch
@@ -166,7 +169,7 @@ const AvailabilityPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="size-5" />
-              Calendar
+              {t?.calendarTitle ?? "Calendar"}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -190,13 +193,13 @@ const AvailabilityPage = () => {
               </div>
               <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-muted" /> Available
+                  <span className="size-2 rounded-full bg-muted" /> {t?.legendAvailable ?? "Available"}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-primary" /> Booked
+                  <span className="size-2 rounded-full bg-primary" /> {t?.legendBooked ?? "Booked"}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-destructive/60" /> Blocked
+                  <span className="size-2 rounded-full bg-destructive/60" /> {t?.legendBlocked ?? "Blocked"}
                 </div>
               </div>
             </div>
@@ -208,9 +211,9 @@ const AvailabilityPage = () => {
             <div className="flex items-start gap-3">
               <Info className="size-5 text-blue-600 mt-0.5" />
               <div>
-                <h4 className="font-medium text-blue-900">Availability tip</h4>
+                <h4 className="font-medium text-blue-900">{t?.tipTitle ?? "Availability tip"}</h4>
                 <p className="text-sm text-blue-700 mt-1">
-                  Keeping your calendar up to date helps you avoid double bookings and ensures guests can find available dates. Consider syncing with external calendars if you list on multiple platforms.
+                  {t?.tipText ?? "Keeping your calendar up to date helps you avoid double bookings and ensures guests can find available dates. Consider syncing with external calendars if you list on multiple platforms."}
                 </p>
               </div>
             </div>
@@ -219,10 +222,10 @@ const AvailabilityPage = () => {
 
         <div className="mt-8 flex justify-between">
           <Button variant="outline" onClick={() => router.back()}>
-            Back
+            {dict?.common?.back ?? "Back"}
           </Button>
           <Button>
-            Save
+            {dict?.common?.save ?? "Save"}
           </Button>
         </div>
       </div>

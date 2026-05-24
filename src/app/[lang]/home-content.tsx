@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 import HeroSection from "@/components/site/HeroSection";
 import { PropertyContent } from "@/components/site/property/content";
 import { ListingCarouselSection } from "@/components/site/property/listing-carousel-section";
@@ -11,19 +12,6 @@ import AirbnbInspiration from "@/components/site/inspiration";
 import GiftCard from "@/components/site/gift-card";
 import Ask from "@/components/site/ask";
 import Footer from "@/components/site/footer";
-
-const translations = {
-  en: {
-    popular: "Popular homes in Khartoum",
-    recent: "Recently added",
-    topRated: "Top rated",
-  },
-  ar: {
-    popular: "منازل شائعة في الخرطوم",
-    recent: "أضيفت مؤخراً",
-    topRated: "الأعلى تقييماً",
-  },
-} as const;
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   Islands: ["island", "private island", "tropical", "paradise", "exotic"],
@@ -55,7 +43,8 @@ interface HomeContentProps {
 
 export default function HomeContent({ listings, locale }: HomeContentProps) {
   const searchParams = useSearchParams();
-  const t = translations[locale as "en" | "ar"] || translations.en;
+  const dict = useDictionary();
+  const sections = dict?.home?.sections;
   const [filteredListings, setFilteredListings] = useState<Listing[]>(listings);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -153,17 +142,17 @@ export default function HomeContent({ listings, locale }: HomeContentProps) {
         ) : (
           <div className="space-y-12">
             <ListingCarouselSection
-              title={t.popular}
+              title={sections?.popular ?? "Popular homes in Khartoum"}
               href={`/${locale}/listings`}
               listings={listings.slice(0, 12)}
             />
             <ListingCarouselSection
-              title={t.recent}
+              title={sections?.recent ?? "Recently added"}
               href={`/${locale}/listings?sort=newest`}
               listings={getRecentListings(listings, 12)}
             />
             <ListingCarouselSection
-              title={t.topRated}
+              title={sections?.topRated ?? "Top rated"}
               href={`/${locale}/listings?sort=rating`}
               listings={getTopRatedListings(listings, 12)}
             />

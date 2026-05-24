@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
 export const dynamic = 'force-dynamic';
 
 import React, { useEffect, useState } from 'react';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
 import HostStepLayout from '@/components/host/host-step-layout';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface UploadedImage {
   id: string;
@@ -22,6 +22,8 @@ const PhotosPage = () => {
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const dict = useDictionary();
+  const t = dict?.transportHost?.photos;
 
   useEffect(() => {
     if (office?.logoUrl) {
@@ -105,26 +107,37 @@ const PhotosPage = () => {
     await updateOfficeData({ logoUrl: null });
   };
 
+  const tipsFallback = [
+    "Use well-lit photos of your buses",
+    "Show the interior and seat quality",
+    "Include any special amenities",
+    "Photos help travelers choose your service",
+  ];
+  const tips = t?.tipsList ?? tipsFallback;
+
   return (
     <HostStepLayout
-      title={<h3>Add photos</h3>}
-      subtitle="Upload your office logo and photos of your buses. Good photos help travelers trust your service."
+      title={<h3>{t?.title ?? "Add photos"}</h3>}
+      subtitle={
+        t?.subtitle ??
+        "Upload your office logo and photos of your buses. Good photos help travelers trust your service."
+      }
     >
       <div className="space-y-8">
           <div className="space-y-4">
-            <Label>Office Logo</Label>
+            <Label>{t?.officeLogoLabel ?? "Office Logo"}</Label>
             <div className="flex items-center gap-4">
               {logoUrl ? (
                 <div className="relative">
                   {/* eslint-disable-next-line @next/next/no-img-element -- user-uploaded URL with unknown dimensions */}
                   <img
                     src={logoUrl}
-                    alt="Office logo"
+                    alt={t?.logoAlt ?? "Office logo"}
                     className="h-24 w-24 rounded-lg object-cover border"
                   />
                   <button
                     onClick={removeLogo}
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
+                    className="absolute -top-2 -end-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -132,7 +145,9 @@ const PhotosPage = () => {
               ) : (
                 <label className="h-24 w-24 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors">
                   <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-                  <span className="text-xs text-muted-foreground">Logo</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t?.logoPlaceholder ?? "Logo"}
+                  </span>
                   <input
                     type="file"
                     accept="image/*"
@@ -143,26 +158,26 @@ const PhotosPage = () => {
                 </label>
               )}
               <div className="text-sm text-muted-foreground">
-                <p>Upload your office logo</p>
-                <p className="text-xs mt-1">PNG, JPG up to 2MB</p>
+                <p>{t?.logoHelp ?? "Upload your office logo"}</p>
+                <p className="text-xs mt-1">{t?.logoSizeHint ?? "PNG, JPG up to 2MB"}</p>
               </div>
             </div>
           </div>
 
           <div className="space-y-4">
-            <Label>Bus & Office Photos (Optional)</Label>
+            <Label>{t?.busPhotosLabel ?? "Bus & Office Photos (Optional)"}</Label>
             <div className="grid grid-cols-3 gap-3">
               {images.map((image) => (
                 <div key={image.id} className="relative aspect-video">
                   {/* eslint-disable-next-line @next/next/no-img-element -- user-uploaded URL with unknown dimensions */}
                   <img
                     src={image.url}
-                    alt="Bus photo"
+                    alt={t?.busPhotoAlt ?? "Bus photo"}
                     className="w-full h-full rounded-lg object-cover border"
                   />
                   <button
                     onClick={() => removeImage(image.id)}
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
+                    className="absolute -top-2 -end-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -170,7 +185,9 @@ const PhotosPage = () => {
               ))}
               <label className="aspect-video rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors">
                 <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-                <span className="text-xs text-muted-foreground">Add photos</span>
+                <span className="text-xs text-muted-foreground">
+                  {t?.addPhotos ?? "Add photos"}
+                </span>
                 <input
                   type="file"
                   accept="image/*"
@@ -182,28 +199,27 @@ const PhotosPage = () => {
               </label>
             </div>
             <p className="text-xs text-muted-foreground">
-              Add photos of your buses, seats, and office to build trust with
-              travelers
+              {t?.photosHint ??
+                "Add photos of your buses, seats, and office to build trust with travelers"}
             </p>
           </div>
 
           {isUploading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-              Uploading...
+              {t?.uploading ?? "Uploading..."}
             </div>
           )}
 
           <div className="p-4 bg-muted/50 rounded-lg">
             <h4 className="font-medium mb-2 flex items-center gap-2">
               <ImageIcon className="h-4 w-4" />
-              Photo Tips
+              {t?.tipsTitle ?? "Photo Tips"}
             </h4>
             <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Use well-lit photos of your buses</li>
-              <li>• Show the interior and seat quality</li>
-              <li>• Include any special amenities</li>
-              <li>• Photos help travelers choose your service</li>
+              {tips.map((tip, idx) => (
+                <li key={idx}>{`• ${tip}`}</li>
+              ))}
             </ul>
           </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 interface TabsProps {
   activeTab: string;
@@ -8,12 +9,15 @@ interface TabsProps {
 }
 
 export default function Tabs({ activeTab, onTabChange }: TabsProps) {
+  const dict = useDictionary();
+  const t = dict?.help?.tabs;
+
   const tabs = [
-    { id: 'guest', name: 'Guest' },
-    { id: 'home-host', name: 'Home host' },
-    { id: 'experience-host', name: 'Experience host' },
-    { id: 'service-host', name: 'Service host' },
-    { id: 'travel-admin', name: 'Travel admin' },
+    { id: 'guest', name: t?.guest ?? 'Guest' },
+    { id: 'home-host', name: t?.homeHost ?? 'Home host' },
+    { id: 'experience-host', name: t?.experienceHost ?? 'Experience host' },
+    { id: 'service-host', name: t?.serviceHost ?? 'Service host' },
+    { id: 'travel-admin', name: t?.travelAdmin ?? 'Travel admin' },
   ];
 
   return (

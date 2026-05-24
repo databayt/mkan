@@ -4,29 +4,33 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { KeyRound } from "lucide-react";
+import { getDictionary } from "@/components/internationalization/dictionaries";
+import type { Locale } from "@/components/internationalization/config";
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; lang: string }>;
 }
 
-const methods = [
-  { id: "smart_lock", label: "Smart lock", hint: "Code-based entry" },
-  { id: "lockbox", label: "Lockbox", hint: "Key inside a coded box" },
-  { id: "in_person", label: "In person", hint: "You greet the guest" },
-  { id: "doorman", label: "Doorman", hint: "Front-desk hands over key" },
-  { id: "self_check_in", label: "Self check-in", hint: "Guest opens with code only" },
-];
-
 const CheckInMethodPage = async ({ params }: PageProps) => {
-  await params;
+  const { lang } = await params;
+  const dict = await getDictionary(lang as Locale);
+  const t = dict?.listingEditor?.checkInMethod;
+
+  const methods = [
+    { id: "smart_lock", label: t?.smartLock ?? "Smart lock", hint: t?.smartLockHint ?? "Code-based entry" },
+    { id: "lockbox", label: t?.lockbox ?? "Lockbox", hint: t?.lockboxHint ?? "Key inside a coded box" },
+    { id: "in_person", label: t?.inPerson ?? "In person", hint: t?.inPersonHint ?? "You greet the guest" },
+    { id: "doorman", label: t?.doorman ?? "Doorman", hint: t?.doormanHint ?? "Front-desk hands over key" },
+    { id: "self_check_in", label: t?.selfCheckIn ?? "Self check-in", hint: t?.selfCheckInHint ?? "Guest opens with code only" },
+  ];
 
   return (
     <div className="lg:col-span-2">
       <div className="max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">Check-in method</h1>
+          <h1 className="text-3xl font-semibold mb-2">{t?.heading ?? "Check-in method"}</h1>
           <p className="text-muted-foreground">
-            How will your guests get inside? Pick a method and add custom instructions.
+            {t?.subtitle ?? "How will your guests get inside? Pick a method and add custom instructions."}
           </p>
         </div>
 
@@ -34,7 +38,7 @@ const CheckInMethodPage = async ({ params }: PageProps) => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <KeyRound className="size-5" />
-              Pick a method
+              {t?.pickTitle ?? "Pick a method"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -55,22 +59,22 @@ const CheckInMethodPage = async ({ params }: PageProps) => {
 
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Custom instructions</CardTitle>
+            <CardTitle>{t?.customTitle ?? "Custom instructions"}</CardTitle>
           </CardHeader>
           <CardContent>
-            <Label htmlFor="instructions">Instructions for guests</Label>
+            <Label htmlFor="instructions">{t?.instructionsLabel ?? "Instructions for guests"}</Label>
             <Textarea
               id="instructions"
               className="mt-2"
               rows={5}
-              placeholder="Sample: The lockbox is to the left of the front door. Code is 1234."
+              placeholder={t?.instructionsPlaceholder ?? "Sample: The lockbox is to the left of the front door. Code is 1234."}
             />
           </CardContent>
         </Card>
 
         <div className="mt-8 flex justify-between">
-          <Button variant="outline">Back</Button>
-          <Button>Save</Button>
+          <Button variant="outline">{dict?.common?.back ?? "Back"}</Button>
+          <Button>{dict?.common?.save ?? "Save"}</Button>
         </div>
       </div>
     </div>

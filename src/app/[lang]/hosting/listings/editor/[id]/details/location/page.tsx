@@ -8,11 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MapPin, Info, Loader2 } from 'lucide-react';
 import { getListing, updateListing } from '@/components/host/actions';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 const LocationPage = () => {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
+  const dict = useDictionary();
+  const t = dict?.listingEditor?.location;
 
   const [location, setLocation] = useState({
     address: '',
@@ -79,9 +82,9 @@ const LocationPage = () => {
     <div className="lg:col-span-2">
       <div className="max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">Where's your place located?</h1>
+          <h1 className="text-3xl font-semibold mb-2">{t?.heading ?? "Where's your place located?"}</h1>
           <p className="text-muted-foreground">
-            Your address is only shared with guests after they've made a reservation.
+            {t?.subtitle ?? "Your address is only shared with guests after they've made a reservation."}
           </p>
         </div>
 
@@ -89,15 +92,15 @@ const LocationPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MapPin className="size-5" />
-              Location details
+              {t?.cardTitle ?? "Location details"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <Label htmlFor="address">Street address</Label>
+              <Label htmlFor="address">{t?.streetAddress ?? "Street address"}</Label>
               <Input
                 id="address"
-                placeholder="123 Main Street"
+                placeholder={t?.streetAddressPlaceholder ?? "123 Main Street"}
                 className="mt-2"
                 value={location.address}
                 onChange={(e) => handleChange('address', e.target.value)}
@@ -106,20 +109,20 @@ const LocationPage = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="city">City</Label>
+                <Label htmlFor="city">{t?.city ?? "City"}</Label>
                 <Input
                   id="city"
-                  placeholder="City"
+                  placeholder={t?.cityPlaceholder ?? "City"}
                   className="mt-2"
                   value={location.city}
                   onChange={(e) => handleChange('city', e.target.value)}
                 />
               </div>
               <div>
-                <Label htmlFor="state">State/Province</Label>
+                <Label htmlFor="state">{t?.state ?? "State/Province"}</Label>
                 <Input
                   id="state"
-                  placeholder="State"
+                  placeholder={t?.statePlaceholder ?? "State"}
                   className="mt-2"
                   value={location.state}
                   onChange={(e) => handleChange('state', e.target.value)}
@@ -129,20 +132,20 @@ const LocationPage = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="country">Country</Label>
+                <Label htmlFor="country">{t?.country ?? "Country"}</Label>
                 <Input
                   id="country"
-                  placeholder="Country"
+                  placeholder={t?.countryPlaceholder ?? "Country"}
                   className="mt-2"
                   value={location.country}
                   onChange={(e) => handleChange('country', e.target.value)}
                 />
               </div>
               <div>
-                <Label htmlFor="postalCode">Postal code</Label>
+                <Label htmlFor="postalCode">{t?.postalCode ?? "Postal code"}</Label>
                 <Input
                   id="postalCode"
-                  placeholder="12345"
+                  placeholder={t?.postalCodePlaceholder ?? "12345"}
                   className="mt-2"
                   value={location.postalCode}
                   onChange={(e) => handleChange('postalCode', e.target.value)}
@@ -151,27 +154,27 @@ const LocationPage = () => {
             </div>
 
             <div className="border-t pt-4">
-              <h4 className="font-medium mb-3">Coordinates (optional)</h4>
+              <h4 className="font-medium mb-3">{t?.coordinatesTitle ?? "Coordinates (optional)"}</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="latitude">Latitude</Label>
+                  <Label htmlFor="latitude">{t?.latitude ?? "Latitude"}</Label>
                   <Input
                     id="latitude"
                     type="number"
                     step="any"
-                    placeholder="0.0"
+                    placeholder={t?.coordinatePlaceholder ?? "0.0"}
                     className="mt-2"
                     value={location.latitude || ''}
                     onChange={(e) => handleChange('latitude', parseFloat(e.target.value) || 0)}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="longitude">Longitude</Label>
+                  <Label htmlFor="longitude">{t?.longitude ?? "Longitude"}</Label>
                   <Input
                     id="longitude"
                     type="number"
                     step="any"
-                    placeholder="0.0"
+                    placeholder={t?.coordinatePlaceholder ?? "0.0"}
                     className="mt-2"
                     value={location.longitude || ''}
                     onChange={(e) => handleChange('longitude', parseFloat(e.target.value) || 0)}
@@ -184,9 +187,9 @@ const LocationPage = () => {
               <div className="flex items-start gap-3">
                 <Info className="size-5 text-blue-600 mt-0.5" />
                 <div>
-                  <h4 className="font-medium text-blue-900">Privacy note</h4>
+                  <h4 className="font-medium text-blue-900">{t?.privacyTitle ?? "Privacy note"}</h4>
                   <p className="text-sm text-blue-700 mt-1">
-                    We'll only show a general area to guests until after they book. Your exact address will only be shared once a booking is confirmed.
+                    {t?.privacyText ?? "We'll only show a general area to guests until after they book. Your exact address will only be shared once a booking is confirmed."}
                   </p>
                 </div>
               </div>
@@ -196,11 +199,11 @@ const LocationPage = () => {
 
         <div className="mt-8 flex justify-between">
           <Button variant="outline" onClick={() => router.back()}>
-            Back
+            {dict?.common?.back ?? "Back"}
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
             {isSaving && <Loader2 className="size-4 me-2 animate-spin" />}
-            Save
+            {dict?.common?.save ?? "Save"}
           </Button>
         </div>
       </div>

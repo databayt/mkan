@@ -3,6 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface AirbnbImagesProps {
   images: string[];
@@ -19,10 +20,15 @@ const AirbnbImages: React.FC<AirbnbImagesProps> = ({
   onShowAllPhotos,
   className = "",
 }) => {
+  const dict = useDictionary();
+  const t = dict?.atom?.propertyImages;
+  const imageAlt = (n: number) => (t?.imageAlt ?? "Property image {n}").replace("{n}", String(n));
+  const viewPhotoN = (n: number) => (t?.viewPhotoN ?? "View property photo {n}").replace("{n}", String(n));
+
   if (!images || images.length === 0) {
     return (
       <div className={`w-full h-96 bg-gray-200 rounded-xl flex items-center justify-center ${className}`}>
-        <span className="text-gray-500">No images available</span>
+        <span className="text-gray-500">{t?.noImages ?? "No images available"}</span>
       </div>
     );
   }
@@ -37,7 +43,7 @@ const AirbnbImages: React.FC<AirbnbImagesProps> = ({
       <div className="md:hidden relative h-[400px] overflow-hidden rounded-xl">
         <Image
           src={mainImage}
-          alt="Property main image"
+          alt={t?.mainImageAlt ?? "Property main image"}
           fill
           className="object-cover"
           sizes="100vw"
@@ -48,7 +54,7 @@ const AirbnbImages: React.FC<AirbnbImagesProps> = ({
             size="sm"
             onClick={onSave}
             className="absolute top-4 right-4 bg-white/90 hover:bg-white shadow-md rounded-full p-2"
-            aria-label={isSaved ? "Remove from saved" : "Save property"}
+            aria-label={isSaved ? (t?.removeFromSaved ?? "Remove from saved") : (t?.saveProperty ?? "Save property")}
           >
             <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
               <path 
@@ -68,10 +74,10 @@ const AirbnbImages: React.FC<AirbnbImagesProps> = ({
       <div className="hidden md:block">
         <div className="grid grid-cols-2 gap-2 h-[400px] overflow-hidden rounded-xl">
           {/* Left half - large image */}
-          <button type="button" className="relative h-full cursor-pointer" onClick={onShowAllPhotos} aria-label="View all property photos">
+          <button type="button" className="relative h-full cursor-pointer" onClick={onShowAllPhotos} aria-label={t?.viewAllPhotos ?? "View all property photos"}>
             <Image
               src={mainImage}
-              alt="Property main image"
+              alt={t?.mainImageAlt ?? "Property main image"}
               fill
               className="object-cover rounded-tl-md rounded-bl-md"
               sizes="(min-width: 768px) 50vw, 100vw"
@@ -102,37 +108,37 @@ const AirbnbImages: React.FC<AirbnbImagesProps> = ({
 
           {/* Right half - 2x2 grid of smaller images */}
           <div className="grid grid-cols-2 grid-rows-2 gap-2 h-full">
-            <button type="button" className="relative cursor-pointer" onClick={onShowAllPhotos} aria-label="View property photo 2">
+            <button type="button" className="relative cursor-pointer" onClick={onShowAllPhotos} aria-label={viewPhotoN(2)}>
               <Image
                 src={thumbnailImages[0] || mainImage}
-                alt="Property image 2"
+                alt={imageAlt(2)}
                 fill
                 className="object-cover"
                 sizes="(min-width: 768px) 25vw, 50vw"
               />
             </button>
-            <button type="button" className="relative cursor-pointer" onClick={onShowAllPhotos} aria-label="View property photo 3">
+            <button type="button" className="relative cursor-pointer" onClick={onShowAllPhotos} aria-label={viewPhotoN(3)}>
               <Image
                 src={thumbnailImages[1] || mainImage}
-                alt="Property image 3"
+                alt={imageAlt(3)}
                 fill
                 className="object-cover rounded-tr-md"
                 sizes="(min-width: 768px) 25vw, 50vw"
               />
             </button>
-            <button type="button" className="relative cursor-pointer" onClick={onShowAllPhotos} aria-label="View property photo 4">
+            <button type="button" className="relative cursor-pointer" onClick={onShowAllPhotos} aria-label={viewPhotoN(4)}>
               <Image
                 src={thumbnailImages[2] || mainImage}
-                alt="Property image 4"
+                alt={imageAlt(4)}
                 fill
                 className="object-cover"
                 sizes="(min-width: 768px) 25vw, 50vw"
               />
             </button>
-            <button type="button" className="relative cursor-pointer" onClick={onShowAllPhotos} aria-label="View all property photos">
+            <button type="button" className="relative cursor-pointer" onClick={onShowAllPhotos} aria-label={t?.viewAllPhotos ?? "View all property photos"}>
               <Image
                 src={thumbnailImages[3] || mainImage}
-                alt="Property image 5"
+                alt={imageAlt(5)}
                 fill
                 className="object-cover rounded-br-md"
                 sizes="(min-width: 768px) 25vw, 50vw"
@@ -141,7 +147,7 @@ const AirbnbImages: React.FC<AirbnbImagesProps> = ({
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M8 6a2 2 0 1 1-4 0a2 2 0 0 1 4 0m0 6a2 2 0 1 1-4 0a2 2 0 0 1 4 0m-2 8a2 2 0 1 0 0-4a2 2 0 0 0 0 4m8-14a2 2 0 1 1-4 0a2 2 0 0 1 4 0m-2 8a2 2 0 1 0 0-4a2 2 0 0 0 0 4m2 4a2 2 0 1 1-4 0a2 2 0 0 1 4 0m4-10a2 2 0 1 0 0-4a2 2 0 0 0 0 4m2 4a2 2 0 1 1-4 0a2 2 0 0 1 4 0m-2 8a2 2 0 1 0 0-4a2 2 0 0 0 0 4"/>
                 </svg>
-                Show all photos
+                {t?.showAllPhotos ?? "Show all photos"}
               </span>
             </button>
           </div>
@@ -156,7 +162,7 @@ const AirbnbImages: React.FC<AirbnbImagesProps> = ({
           <svg className="w-4 h-4 me-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" />
           </svg>
-          {totalImages}+ photos
+          {(t?.morePhotos ?? "{count}+ photos").replace("{count}", String(totalImages))}
         </Button>
       )}
     </div>

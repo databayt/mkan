@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import TransportCityDropdown from "./transport-city-dropdown";
 import TransportDatePicker from "./transport-date-picker";
 import { isRTL as checkRTL, type Locale } from "@/components/internationalization/config";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 type ActiveButton = "origin" | "destination" | "date" | null;
 
@@ -47,9 +48,10 @@ export default function TransportBigSearch({
   initialOrigin = "",
   initialDestination = "",
   initialDate,
-  lang = "en",
+  lang = "ar",
 }: TransportBigSearchProps) {
   const router = useRouter();
+  const dict = useDictionary();
   const isRTL = checkRTL(lang as Locale);
   const [activeButton, setActiveButton] = useState<ActiveButton>(null);
   const [hoveredButton, setHoveredButton] = useState<ActiveButton>(null);
@@ -122,6 +124,59 @@ export default function TransportBigSearch({
     router.push(`/${lang}/transport/search?${searchParams.toString()}`);
   };
 
+  // Helper function to get button styling.
+  //
+  // The pill background lives on a `before:` pseudo-element (not the button
+  // itself) so a hovered neighbor can extend its fill *under* the active white
+  // pill. This prevents a lighter gap at the seam between two rounded pills.
+  //
+  // Keep the glass effect colors (white-transparent with backdrop-blur)
+  // appropriate for the dark video background behind the search bar.
+  const getButtonStyling = (button: ActiveButton) => {
+    const isActive = activeButton === button;
+    const isHovered = hoveredButton === button;
+    const hasActiveButton = activeButton !== null;
+
+    // Stacking: active pill paints above its neighbors so their extended fills
+    // tuck underneath it.
+    const z = isActive ? "z-20" : "z-10";
+
+    // Pseudo background color by state — glass effect colors.
+    let bgClass = "";
+    if (isActive) {
+      bgClass = "before:bg-white/30 before:backdrop-blur-md before:shadow-lg";
+    } else if (hasActiveButton) {
+      bgClass = isHovered ? "before:bg-white/40" : "";
+    } else if (isHovered) {
+      bgClass = "before:bg-white/20 before:backdrop-blur-md";
+    }
+
+    // Seam fill: when a neighbor of the active pill is hovered, stretch its
+    // pseudo past the cap radius toward the active side AND square off the edge
+    // that tucks under the white pill. A rounded edge would recede at the
+    // top/bottom corners and leave a lighter notch; squaring it fills the
+    // full height while the square edge stays hidden under the white pill.
+    const order: Exclude<ActiveButton, null>[] = ["origin", "destination", "date"];
+    let insetStart = "before:start-0";
+    let insetEnd = "before:end-0";
+    let roundClass = "before:rounded-full";
+    if (activeButton !== null && !isActive && isHovered && button !== null) {
+      const activeIdx = order.indexOf(activeButton);
+      const buttonIdx = order.indexOf(button);
+      if (buttonIdx === activeIdx + 1) {
+        // Active is to my left → extend left under it, square the left edge.
+        insetStart = "before:-start-10";
+        roundClass = "before:rounded-e-full before:rounded-s-none";
+      } else if (buttonIdx === activeIdx - 1) {
+        // Active is to my right → extend right under it, square the right edge.
+        insetEnd = "before:-end-10";
+        roundClass = "before:rounded-s-full before:rounded-e-none";
+      }
+    }
+
+    return `relative ${z} before:absolute before:inset-y-0 ${insetStart} ${insetEnd} before:-z-10 ${roundClass} before:transition-colors before:duration-200 before:content-[''] ${bgClass} transition-all duration-200`;
+  };
+
   // Click outside to reset
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -162,40 +217,15 @@ export default function TransportBigSearch({
     }
   };
 
-  // Get button styling with glass morphism
-  const getButtonStyling = (button: ActiveButton) => {
-    const isActive = activeButton === button;
-    const isHovered = hoveredButton === button;
-    const hasActiveButton = activeButton !== null;
-
-    // Glass morphism background colors
-    let bgClass = "bg-transparent";
-    if (isActive) {
-      bgClass = "bg-white/30 backdrop-blur-md shadow-lg";
-    } else if (hasActiveButton) {
-      bgClass = "bg-transparent";
-      if (isHovered) {
-        bgClass = "bg-white/20 backdrop-blur-md";
-      }
-    } else if (isHovered) {
-      bgClass = "bg-white/20 backdrop-blur-md";
-    } else {
-      bgClass = "bg-transparent hover:bg-white/20 hover:backdrop-blur-md";
-    }
-
-    return `${bgClass} rounded-full transition-all duration-200`;
-  };
-
   const canSearch = origin && destination && date;
 
   return (
     <div className="relative w-full max-w-4xl mx-auto" ref={searchBarRef}>
       {/* Desktop Layout */}
       <div
-        className={cn(
-          "hidden md:flex items-center rounded-full shadow-sm transition-colors liquid-glass",
-          activeButton ? "bg-[#e5e7eb]/80" : "bg-white/20"
-        )}
+        className={
+          "hidden md:flex items-center rounded-full shadow-sm transition-colors liquid-glass"
+        }
       >
         {/* Origin Button */}
         <button
@@ -279,7 +309,7 @@ export default function TransportBigSearch({
               <Search className="w-4 h-4" />
               {activeButton && (
                 <span className="ms-2 text-sm font-medium">
-                  {lang === 'ar' ? 'بحث' : 'Search'}
+                  {dict?.common?.search ?? "Search"}
                 </span>
               )}
               <span className="sr-only">{dictionary.search}</span>

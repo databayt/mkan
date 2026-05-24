@@ -1,5 +1,7 @@
 import { Metadata } from "next";
 import { createMetadata } from "@/lib/metadata";
+import { getDictionary } from "@/components/internationalization/dictionaries";
+import type { Locale } from "@/components/internationalization/config";
 import FavoritesContent from "./content";
 
 // Disable static generation for this page
@@ -11,12 +13,12 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const dict = await getDictionary(lang as Locale);
   return createMetadata({
-    title: lang === "ar" ? "المفضلة" : "Favorites",
+    title: dict?.pages?.tenantFavorites?.metadata?.title ?? "Favorites",
     description:
-      lang === "ar"
-        ? "تصفح وإدارة العقارات المفضلة لديك"
-        : "Browse and manage your saved property listings",
+      dict?.pages?.tenantFavorites?.metadata?.description ??
+      "Browse and manage your saved property listings",
     locale: lang,
     path: "/tenants/favorites",
   });

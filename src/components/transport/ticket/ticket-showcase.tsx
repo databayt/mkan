@@ -6,51 +6,54 @@ import { Download, Send } from 'lucide-react';
 import QRCode from 'qrcode';
 
 import { Button } from '@/components/ui/button';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface TicketShowcaseProps {
   lang: string;
 }
 
-const DEMO_DATA = {
-  en: {
-    route: 'Khartoum → Port Sudan',
-    name: 'Ahmed',
-    seat: 'A12',
-    time: '5:00 AM',
-    date: '15 March 2026',
-    place: 'Souq Al-Arabi, Khartoum',
-    scanLabel: 'Scan this QR code or show this ticket at boarding',
-    ticketId: 'MKN-32212',
-    nameLabel: 'Name',
-    seatLabel: 'Seat',
-    timeLabel: 'Time',
-    dateLabel: 'Date',
-    placeLabel: 'Boarding Point',
-    share: 'Share',
-    download: 'Download Ticket',
-  },
-  ar: {
-    route: 'الخرطوم → بورتسودان',
-    name: 'أحمد',
-    seat: 'A12',
-    time: '5:00 ص',
-    date: '15 مارس 2026',
-    place: 'سوق العربي، الخرطوم',
-    scanLabel: 'امسح رمز QR أو أظهر هذه التذكرة عند الصعود',
-    ticketId: 'MKN-32212',
-    nameLabel: 'الاسم',
-    seatLabel: 'المقعد',
-    timeLabel: 'الوقت',
-    dateLabel: 'التاريخ',
-    placeLabel: 'نقطة التجمع',
-    share: 'مشاركة',
-    download: 'تحميل التذكرة',
-  },
+const FALLBACK = {
+  route: 'Khartoum → Port Sudan',
+  name: 'Ahmed',
+  seat: 'A12',
+  time: '5:00 AM',
+  date: '15 March 2026',
+  place: 'Souq Al-Arabi, Khartoum',
+  scanLabel: 'Scan this QR code or show this ticket at boarding',
+  ticketId: 'MKN-32212',
+  nameLabel: 'Name',
+  seatLabel: 'Seat',
+  timeLabel: 'Time',
+  dateLabel: 'Date',
+  placeLabel: 'Boarding Point',
+  ticketIdLabel: 'Ticket ID',
+  share: 'Share',
+  download: 'Download Ticket',
 };
 
 export function TicketShowcase({ lang }: TicketShowcaseProps) {
+  void lang;
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
-  const d = lang === 'ar' ? DEMO_DATA.ar : DEMO_DATA.en;
+  const dict = useDictionary();
+  const ts = dict?.transport?.ticketShowcase;
+  const d = {
+    route: ts?.route ?? FALLBACK.route,
+    name: ts?.name ?? FALLBACK.name,
+    seat: ts?.seat ?? FALLBACK.seat,
+    time: ts?.time ?? FALLBACK.time,
+    date: ts?.date ?? FALLBACK.date,
+    place: ts?.place ?? FALLBACK.place,
+    scanLabel: ts?.scanLabel ?? FALLBACK.scanLabel,
+    ticketId: ts?.ticketId ?? FALLBACK.ticketId,
+    nameLabel: ts?.nameLabel ?? FALLBACK.nameLabel,
+    seatLabel: ts?.seatLabel ?? FALLBACK.seatLabel,
+    timeLabel: ts?.timeLabel ?? FALLBACK.timeLabel,
+    dateLabel: ts?.dateLabel ?? FALLBACK.dateLabel,
+    placeLabel: ts?.placeLabel ?? FALLBACK.placeLabel,
+    ticketIdLabel: ts?.ticketIdLabel ?? FALLBACK.ticketIdLabel,
+    share: ts?.share ?? FALLBACK.share,
+    download: ts?.download ?? FALLBACK.download,
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -152,7 +155,7 @@ export function TicketShowcase({ lang }: TicketShowcaseProps) {
                 {d.scanLabel}
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                Ticket ID{' '}
+                {d.ticketIdLabel}{' '}
                 <span className="font-mono font-bold text-foreground">
                   {d.ticketId}
                 </span>

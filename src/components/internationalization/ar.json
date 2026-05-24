@@ -1,4 +1,138 @@
 {
+  "messages": {
+    "validation": {
+      "required": "مطلوب",
+      "email": "بريد إلكتروني صالح مطلوب",
+      "emailRequired": "البريد الإلكتروني مطلوب",
+      "passwordRequired": "كلمة المرور مطلوبة",
+      "passwordMismatch": "كلمتا المرور غير متطابقتين",
+      "passwordMinLength": "الحد الأدنى 8 أحرف",
+      "minLength": "يجب أن يكون {min} أحرف على الأقل",
+      "maxLength": "يجب ألا يزيد عن {max} حرف",
+      "min": "يجب أن يكون {min} على الأقل",
+      "max": "يجب ألا يزيد عن {max}",
+      "positive": "يجب أن يكون رقمًا موجبًا",
+      "phone": "رقم هاتف صالح مطلوب",
+      "date": "تاريخ صالح مطلوب",
+      "invalidFormat": "تنسيق غير صالح",
+      "futureDate": "يجب أن يكون التاريخ في المستقبل",
+      "startBeforeEnd": "يجب أن يكون تاريخ البدء قبل تاريخ الانتهاء",
+      "titleRequired": "العنوان مطلوب",
+      "titleTooShort": "يجب أن يكون العنوان {min} أحرف على الأقل",
+      "titleTooLong": "يجب ألا يزيد العنوان عن {max} حرف",
+      "amountRequired": "المبلغ مطلوب",
+      "amountPositive": "يجب أن يكون المبلغ موجبًا",
+      "priceRequired": "السعر مطلوب",
+      "pricePositive": "يجب أن يكون السعر موجبًا",
+      "guestsRequired": "عدد الضيوف مطلوب",
+      "checkInRequired": "تاريخ تسجيل الوصول مطلوب",
+      "checkOutRequired": "تاريخ تسجيل المغادرة مطلوب",
+      "locationRequired": "الموقع مطلوب",
+      "ratingRequired": "التقييم مطلوب",
+      "ratingInvalidRange": "يجب أن يكون التقييم بين {min} و {max}"
+    },
+    "toast": {
+      "success": {
+        "created": "تم الإنشاء بنجاح",
+        "updated": "تم التحديث بنجاح",
+        "deleted": "تم الحذف بنجاح",
+        "saved": "تم الحفظ بنجاح",
+        "uploaded": "تم الرفع بنجاح",
+        "sent": "تم الإرسال بنجاح",
+        "loggedIn": "تم تسجيل الدخول بنجاح",
+        "loggedOut": "تم تسجيل الخروج بنجاح",
+        "signedUp": "تم إنشاء الحساب بنجاح",
+        "listingCreated": "تم إنشاء الإعلان بنجاح",
+        "listingUpdated": "تم تحديث الإعلان بنجاح",
+        "listingDeleted": "تم حذف الإعلان بنجاح",
+        "listingPublished": "تم نشر الإعلان بنجاح",
+        "bookingCreated": "تم تأكيد الحجز",
+        "bookingUpdated": "تم تحديث الحجز",
+        "bookingCancelled": "تم إلغاء الحجز",
+        "applicationSubmitted": "تم إرسال الطلب",
+        "applicationApproved": "تمت الموافقة على الطلب",
+        "applicationRejected": "تم رفض الطلب",
+        "paymentProcessed": "تمت معالجة الدفع بنجاح",
+        "reviewCreated": "تم نشر التقييم",
+        "hostUpdated": "تم تحديث ملف المضيف"
+      },
+      "error": {
+        "generic": "حدث خطأ ما",
+        "createFailed": "فشل الإنشاء",
+        "updateFailed": "فشل التحديث",
+        "deleteFailed": "فشل الحذف",
+        "saveFailed": "فشل الحفظ",
+        "uploadFailed": "فشل الرفع",
+        "listingCreateFailed": "فشل إنشاء الإعلان",
+        "listingUpdateFailed": "فشل تحديث الإعلان",
+        "listingDeleteFailed": "فشل حذف الإعلان",
+        "bookingCreateFailed": "فشل إنشاء الحجز",
+        "bookingUpdateFailed": "فشل تحديث الحجز",
+        "bookingCancelFailed": "فشل إلغاء الحجز",
+        "applicationCreateFailed": "فشل إرسال الطلب",
+        "applicationUpdateFailed": "فشل تحديث الطلب",
+        "paymentFailed": "فشل الدفع",
+        "reviewCreateFailed": "فشل نشر التقييم",
+        "hostUpdateFailed": "فشل تحديث ملف المضيف"
+      },
+      "warning": {
+        "unsavedChanges": "لديك تغييرات غير محفوظة",
+        "confirmDelete": "هل أنت متأكد من الحذف؟",
+        "confirmCancel": "هل أنت متأكد من الإلغاء؟",
+        "irreversible": "لا يمكن التراجع عن هذا الإجراء"
+      },
+      "info": {
+        "loading": "جاري التحميل...",
+        "saving": "جاري الحفظ...",
+        "uploading": "جاري الرفع...",
+        "processing": "جاري المعالجة...",
+        "searching": "جاري البحث..."
+      }
+    },
+    "errors": {
+      "server": {
+        "internalError": "خطأ داخلي في الخادم",
+        "databaseError": "خطأ في قاعدة البيانات",
+        "connectionError": "خطأ في الاتصال",
+        "serviceUnavailable": "الخدمة غير متاحة"
+      },
+      "auth": {
+        "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+        "accountNotFound": "الحساب غير موجود",
+        "accountDisabled": "تم تعطيل حسابك",
+        "sessionExpired": "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى",
+        "permissionDenied": "ليس لديك إذن لتنفيذ هذا الإجراء",
+        "notAuthenticated": "يرجى تسجيل الدخول للمتابعة",
+        "emailNotVerified": "يرجى تأكيد بريدك الإلكتروني"
+      },
+      "resource": {
+        "notFound": "المورد غير موجود",
+        "alreadyExists": "المورد موجود بالفعل",
+        "cannotDelete": "لا يمكن حذف هذا المورد",
+        "cannotModify": "لا يمكن تعديل هذا المورد"
+      },
+      "file": {
+        "uploadFailed": "فشل رفع الملف",
+        "fileTooLarge": "حجم الملف يتجاوز الحد المسموح",
+        "invalidType": "نوع ملف غير صالح",
+        "notFound": "الملف غير موجود"
+      },
+      "payment": {
+        "processingFailed": "فشلت معالجة الدفع",
+        "cardDeclined": "تم رفض البطاقة",
+        "insufficientFunds": "رصيد غير كافٍ",
+        "cardExpired": "انتهت صلاحية البطاقة",
+        "transactionFailed": "فشلت المعاملة",
+        "refundFailed": "فشل استرداد المبلغ"
+      },
+      "booking": {
+        "unavailable": "هذه التواريخ لم تعد متاحة",
+        "overlap": "لديك حجز بالفعل في هذه التواريخ",
+        "minStay": "لم يتم استيفاء الحد الأدنى لمدة الإقامة",
+        "maxGuests": "يتجاوز الحد الأقصى لعدد الضيوف"
+      }
+    }
+  },
   "metadata": {
     "title": "مكان - منصة الإيجار",
     "description": "تواصل مع مديري العقارات واعثر على منزل الإيجار المثالي"
@@ -37,7 +171,8 @@
     "dark": "داكن",
     "system": "النظام",
     "platform": "منصة",
-    "brandName": "مكان"
+    "brandName": "مكان",
+    "skipToContent": "تخطي إلى المحتوى الرئيسي"
   },
   "navigation": {
     "menu": "القائمة",
@@ -91,7 +226,24 @@
     "viewMyTrips": "عرض رحلاتي",
     "cancel": "إلغاء الحجز",
     "cancelConfirm": "هل أنت متأكد من إلغاء هذا الحجز؟",
-    "status": "الحالة"
+    "status": "الحالة",
+    "bankak": "بنكك",
+    "cashi": "كاشي",
+    "mobileMoney": "محفظة الجوال",
+    "bankTransfer": "تحويل بنكي",
+    "cardProcessing": "جارٍ معالجة الدفع…",
+    "cardLoading": "جارٍ تجهيز الدفع الآمن…",
+    "cardConfigMissing": "الدفع بالبطاقة غير مفعّل في هذه البيئة.",
+    "cardErrorPrefix": "فشل الدفع",
+    "cashInstruction": "سيُحفظ حجزك قيد الانتظار حتى يؤكد المضيف استلام النقد عند الوصول.",
+    "cashSubmit": "تأكيد الحجز بالدفع نقدًا",
+    "cashSuccess": "تم الحجز. ادفع للمضيف عند الوصول وسيؤكد ذلك شخصيًا.",
+    "referenceInstruction": "ادفع من تطبيق محفظتك أو البنك، ثم أدخل رقم العملية هنا. سيقوم المشرف بالتحقق خلال 24 ساعة.",
+    "referenceLabel": "رقم العملية",
+    "referencePlaceholder": "مثال: TXN-2026-049238",
+    "referenceSubmit": "إرسال المرجع",
+    "referenceSuccess": "تم تسجيل المرجع. سنتحقق منه خلال 24 ساعة ونؤكد حجزك.",
+    "referenceTooShort": "يجب أن يحتوي المرجع على 3 أحرف على الأقل."
   },
   "auth": {
     "signIn": "دخول",
@@ -127,7 +279,57 @@
     "reset": {
       "heading": "إعادة تعيين كلمة المرور"
     },
-    "backToLogin": "العودة لتسجيل الدخول"
+    "backToLogin": "العودة لتسجيل الدخول",
+    "loginModel": {
+      "login": "تسجيل الدخول"
+    },
+    "signup": {
+      "signUp": "إنشاء حساب"
+    },
+    "social": {
+      "continueWithFacebook": "المتابعة مع فيسبوك",
+      "continueWithGoogle": "المتابعة مع جوجل"
+    },
+    "userButton": {
+      "logout": "تسجيل الخروج"
+    },
+    "roleGate": {
+      "noPermission": "ليس لديك صلاحية لعرض هذا المحتوى!"
+    },
+    "cardWrapper": {
+      "or": "أو"
+    },
+    "passwordReset": {
+      "heading": "أدخل كلمة مرور جديدة",
+      "newPassword": "كلمة المرور الجديدة"
+    },
+    "verification": {
+      "heading": "جاري تأكيد التحقق",
+      "missingToken": "الرمز مفقود!"
+    },
+    "authError": {
+      "headerLabel": "عذرا! حدث خطأ ما!"
+    },
+    "errorCard": {
+      "headerLabel": "خطأ في المصادقة",
+      "errorCode": "رمز الخطأ:",
+      "contactSupport": "إذا استمرت هذه المشكلة، يرجى التواصل مع الدعم.",
+      "errors": {
+        "Configuration": "توجد مشكلة في إعدادات الخادم.",
+        "AccessDenied": "ليس لديك صلاحية لتسجيل الدخول.",
+        "Verification": "قد يكون رابط التحقق منتهي الصلاحية أو مستخدم بالفعل.",
+        "OAuthSignin": "تعذر بدء تسجيل الدخول عبر مزود OAuth.",
+        "OAuthCallback": "خطأ في إكمال تسجيل الدخول عبر OAuth.",
+        "OAuthCreateAccount": "تعذر إنشاء مستخدم OAuth في قاعدة البيانات.",
+        "EmailCreateAccount": "تعذر إنشاء مستخدم البريد الإلكتروني في قاعدة البيانات.",
+        "Callback": "حدث خطأ ما في عملية المصادقة.",
+        "OAuthAccountNotLinked": "هذا البريد الإلكتروني مرتبط بحساب آخر بالفعل.",
+        "EmailSignin": "تعذر إرسال البريد الإلكتروني.",
+        "CredentialsSignin": "بيانات الاعتماد المقدمة غير صالحة.",
+        "SessionRequired": "يجب تسجيل الدخول للوصول إلى هذه الصفحة.",
+        "default": "حدث خطأ غير متوقع."
+      }
+    }
   },
   "marketing": {
     "hero": {
@@ -1066,7 +1268,49 @@
       "applicationApproved": "تمت الموافقة على طلبك",
       "applicationPending": "طلبك قيد المراجعة",
       "applicationDenied": "تم رفض طلبك",
-      "downloadAgreement": "تحميل العقد"
+      "downloadAgreement": "تحميل العقد",
+      "residenceDetail": {
+        "paymentMethod": {
+          "title": "طريقة الدفع",
+          "description": "غيّر طريقة دفع اشتراكك.",
+          "default": "افتراضية",
+          "expiry": "تاريخ الانتهاء",
+          "visaEndingIn": "فيزا تنتهي بـ 2024"
+        },
+        "residenceCard": {
+          "activeLeases": "عقود إيجار نشطة",
+          "perNight": "/ الليلة",
+          "startDate": "تاريخ البدء",
+          "endDate": "تاريخ الانتهاء",
+          "nextPayment": "الدفعة التالية",
+          "manager": "المدير"
+        },
+        "billingHistory": {
+          "title": "سجل الفوترة",
+          "description": "حمّل إيصالات اشتراكك السابقة وتفاصيل الاستخدام.",
+          "invoice": "الفاتورة",
+          "status": "الحالة",
+          "billingDate": "تاريخ الفوترة",
+          "amount": "المبلغ",
+          "action": "الإجراء",
+          "download": "تحميل",
+          "invoiceLabel": "فاتورة"
+        },
+        "errorLoadingProperty": "حدث خطأ أثناء تحميل العقار"
+      },
+      "residencesPage": {
+        "title": "الإقامات الحالية",
+        "subtitle": "عرض وإدارة أماكن إقامتك الحالية",
+        "errorLoading": "حدث خطأ أثناء تحميل الإقامات الحالية",
+        "noCurrentResidences": "ليس لديك أي إقامات حالية"
+      },
+      "tripsPage": {
+        "upcomingStays": "الإقامات القادمة",
+        "pastStays": "الإقامات السابقة",
+        "untitledStay": "إقامة بدون عنوان",
+        "bookingCancelled": "تم إلغاء الحجز",
+        "couldNotCancel": "تعذّر الإلغاء"
+      }
     },
     "favorites": {
       "title": "العقارات المفضلة",
@@ -1822,7 +2066,11 @@
         "morning": "الصباح",
         "afternoon": "الظهيرة",
         "evening": "المساء",
-        "night": "الليل"
+        "night": "الليل",
+        "morningRange": "٤ص – ١٢ظ",
+        "afternoonRange": "١٢ظ – ٥م",
+        "eveningRange": "٥م – ٩م",
+        "nightRange": "٩م – ٤ص"
       },
       "price": {
         "label": "نطاق السعر",
@@ -1830,7 +2078,8 @@
       },
       "amenitiesLabel": "المرافق",
       "officesLabel": "المشغّلون",
-      "searchAgain": "ابحث مجدداً"
+      "searchAgain": "ابحث مجدداً",
+      "pickDate": "اختر التاريخ"
     },
     "booking": {
       "selectSeats": "اختر مقاعدك",
@@ -1912,7 +2161,9 @@
       "status": "الحالة",
       "total": "المبلغ الإجمالي",
       "showcaseTitle": "تذكرتك الرقمية",
-      "showcaseSubtitle": "احجز عبر الإنترنت واحصل على تذكرتك الإلكترونية فوراً مع رمز QR لصعود سهل."
+      "showcaseSubtitle": "احجز عبر الإنترنت واحصل على تذكرتك الإلكترونية فوراً مع رمز QR لصعود سهل.",
+      "office": "مكتب النقل",
+      "assemblyPoint": "نقطة التجمع"
     },
     "trip": {
       "selectSeats": "اختر المقاعد",
@@ -2045,7 +2296,9 @@
       "cashWarning": "سيتم حجز مقاعدك لمدة 30 دقيقة. يرجى الوصول إلى المكتب مبكراً لإتمام الدفع واستلام تذاكرك.",
       "passenger": "المسافر",
       "seats": "المقاعد",
-      "total": "الإجمالي"
+      "total": "الإجمالي",
+      "processing": "جاري المعالجة...",
+      "pay": "ادفع"
     },
     "paymentMethods": {
       "mobileMoney": {
@@ -2177,7 +2430,13 @@
       "hrs": "ساعات",
       "bookingReference": "رقم الحجز",
       "showQrCode": "أظهر رمز QR هذا في المكتب",
-      "backToBooking": "العودة إلى تفاصيل الحجز"
+      "backToBooking": "العودة إلى تفاصيل الحجز",
+      "dateLabel": "التاريخ",
+      "timeLabel": "الوقت",
+      "passengerLabel": "المسافر",
+      "seatLabel": "المقعد/المقاعد",
+      "busLabel": "الباص",
+      "totalLabel": "الإجمالي"
     },
     "bookingPage": {
       "dateLabel": "التاريخ",
@@ -2189,6 +2448,87 @@
       "totalLabel": "الإجمالي",
       "paymentSuccess": "تم الدفع بنجاح",
       "paymentFailed": "فشل الدفع. يرجى المحاولة مرة أخرى."
+    },
+    "meta": {
+      "title": "النقل البري",
+      "description": "احجز رحلات الحافلات بين المدن السودانية",
+      "searchTitle": "بحث النقل",
+      "searchDescription": "ابحث عن رحلات النقل المتاحة",
+      "checkoutTitle": "الدفع",
+      "checkoutDescription": "أكمل حجزك وادفع",
+      "officesTitle": "مكاتب النقل",
+      "officesDescription": "تصفح مكاتب النقل المتاحة"
+    },
+    "home": {
+      "operatorsCaption": "مشغّلو النقل على منصتنا",
+      "assemblyPointsTitle": "نقاط التجمع",
+      "assemblyPointsSubtitle": "جميع نقاط التجمع المعتمدة في السودان",
+      "browseOffices": "تصفح المكاتب",
+      "browseAllOffices": "تصفح جميع المكاتب",
+      "hoursSuffix": "{hours} ساعة",
+      "currency": "ج.س"
+    },
+    "searchPage": {
+      "previous": "السابق",
+      "next": "التالي",
+      "pageOf": "الصفحة {page} من {pageCount}",
+      "tripsCountFallback": "{count} رحلة"
+    },
+    "map": {
+      "noPoints": "لا توجد نقاط تجمع متاحة",
+      "unavailable": "خريطة نقاط التجمع غير متوفرة حالياً"
+    },
+    "testimonials": {
+      "title": "ماذا يقول المسافرون",
+      "subtitle": "آلاف المسافرين يثقون في منصة مكن لحجز رحلاتهم",
+      "items": [
+        {
+          "name": "أحمد بابكر",
+          "location": "بورتسودان",
+          "route": "بورتسودان → عطبرة",
+          "content": "كنت أقف في الطابور لساعات في المحطة. الآن أحجز مقعدي من المنزل، وأختار بالضبط أين أريد أن أجلس، وأظهر رمز QR عند الصعود فقط. وفّر عليّ صباحاً كاملاً.",
+          "rating": 5
+        },
+        {
+          "name": "منى حسن",
+          "location": "الخرطوم",
+          "route": "الخرطوم → ود مدني",
+          "content": "الدفع عبر الموبايل تم فوراً. حجزت لوالدتي التي لا تستخدم الهواتف الذكية — أرسلت لها ملف التذكرة فقط. صعدت دون أي مشاكل.",
+          "rating": 5
+        },
+        {
+          "name": "خالد نور",
+          "location": "كسلا",
+          "route": "كسلا → بورتسودان",
+          "content": "بصفتي شخصاً يسافر بين كسلا وبورتسودان كل أسبوعين، غيّرت هذه المنصة قواعد اللعبة. يمكنني معرفة الحافلات التي بها واي فاي وشواحن USB قبل الحجز.",
+          "rating": 4
+        },
+        {
+          "name": "فاطمة الطيب",
+          "location": "عطبرة",
+          "route": "عطبرة → دنقلا",
+          "content": "يعرض محدد المقاعد بالضبط أي المقاعد متاحة. أحجز دائماً الصف الأمامي. لا مزيد من الوصول في الرابعة فجراً للحصول على مقعد جيد.",
+          "rating": 5
+        }
+      ]
+    },
+    "ticketShowcase": {
+      "route": "الخرطوم → بورتسودان",
+      "name": "أحمد",
+      "seat": "A12",
+      "time": "5:00 ص",
+      "date": "15 مارس 2026",
+      "place": "سوق العربي، الخرطوم",
+      "scanLabel": "امسح رمز QR أو أظهر هذه التذكرة عند الصعود",
+      "ticketId": "MKN-32212",
+      "nameLabel": "الاسم",
+      "seatLabel": "المقعد",
+      "timeLabel": "الوقت",
+      "dateLabel": "التاريخ",
+      "placeLabel": "نقطة التجمع",
+      "ticketIdLabel": "رقم التذكرة",
+      "share": "مشاركة",
+      "download": "تحميل التذكرة"
     }
   },
   "siteFooter": {
@@ -2242,7 +2582,35 @@
     "submit": "إرسال",
     "submitting": "جاري الإرسال...",
     "success": "تم الإرسال. شكراً لك!",
-    "error": "حدث خطأ. حاول مرة أخرى."
+    "error": "حدث خطأ. حاول مرة أخرى.",
+    "triggerText": "الإبلاغ عن مشكلة",
+    "triggerAriaLabel": "الإبلاغ عن مشكلة",
+    "categoryPlaceholder": "التصنيف",
+    "descriptionPlaceholder": "صف المشكلة بالتفصيل (30 حرفاً على الأقل)…",
+    "descriptionHint": "{count}/30+ حرف",
+    "addDetails": "أضف الخطوات والسلوك المتوقع (اختياري)",
+    "reproPlaceholder": "خطوات إعادة الإنتاج: 1. … 2. … 3. …",
+    "expectedPlaceholder": "ما الذي توقعت حدوثه؟",
+    "actualPlaceholder": "ما الذي حدث فعلياً؟",
+    "severityLabel": "الخطورة",
+    "severityLow": "منخفضة — مظهر فقط",
+    "severityMedium": "متوسطة — ملحوظة",
+    "severityHigh": "عالية — تعيقني",
+    "severityCritical": "حرجة — فقدان بيانات / تعطل",
+    "captchaHint": "البلاغات من المستخدمين المسجلين تُعالج أسرع.",
+    "captchaLink": "تسجيل الدخول",
+    "successWithId": "تم الإرسال. رقم البلاغ #{id}.",
+    "cooldown": "يرجى الانتظار لحظة قبل إرسال بلاغ آخر.",
+    "categories": {
+      "visual": "مظهر / تخطيط",
+      "broken": "معطل / لا يعمل",
+      "data": "بيانات خاطئة",
+      "slow": "بطيء / أداء",
+      "confusing": "مربك / تجربة المستخدم",
+      "auth": "تسجيل الدخول / الصلاحيات",
+      "i18n": "ترجمة / لغة",
+      "other": "أخرى"
+    }
   },
   "userButton": {
     "logout": "تسجيل الخروج"
@@ -2347,6 +2715,10 @@
   },
   "search": {
     "location": "الموقع",
+    "where": "أين",
+    "when": "متى",
+    "who": "من",
+    "addDates": "أضف التواريخ",
     "whereAreYouGoing": "إلى أين تذهب؟",
     "checkIn": "تسجيل الوصول",
     "checkOut": "المغادرة",
@@ -2364,7 +2736,7 @@
     "anyWeek": "أي أسبوع",
     "searchHowTos": "ابحث عن الإرشادات والمزيد",
     "whereTo": "إلى أين؟",
-    "searchDestinations": "ابحث عن وجهات...",
+    "searchDestinations": "ابحث عن وجهات",
     "searchLocation": "ابحث عن موقع",
     "searchResults": "نتائج البحث",
     "popularDestinations": "وجهات شائعة",
@@ -2413,7 +2785,27 @@
       "4 ضيوف",
       "5+ ضيوف",
       "مرن"
-    ]
+    ],
+    "verticalForm": {
+      "heading": "احجز أماكن\nإقامة وأنشطة\nفريدة.",
+      "where": "أين",
+      "checkIn": "تسجيل الوصول",
+      "checkOut": "المغادرة",
+      "guests": "الضيوف",
+      "anywhere": "أي مكان",
+      "addDate": "أضف تاريخ",
+      "addGuests": "أضف ضيوف",
+      "back": "رجوع",
+      "search": "بحث",
+      "adult": "بالغ",
+      "adults": "بالغين",
+      "child": "طفل",
+      "children": "أطفال",
+      "infant": "رضيع",
+      "infants": "رضع",
+      "selectCheckIn": "اختر تاريخ الوصول",
+      "selectCheckOut": "اختر تاريخ المغادرة"
+    }
   },
   "filters": {
     "allFilters": "جميع الفلاتر",
@@ -2453,7 +2845,10 @@
     "loading": "جاري التحميل...",
     "failedToLoad": "فشل تحميل العقارات",
     "perMonth": "/شهر",
-    "month": "شهر"
+    "month": "شهر",
+    "pagination": {
+      "pageOf": "الصفحة {current} من {total}"
+    }
   },
   "landing": {
     "callToAction": {
@@ -2601,7 +2996,71 @@
       "homeHostComingSoon": "محتوى مضيف المنزل قريباً...",
       "experienceHostComingSoon": "محتوى مضيف التجربة قريباً...",
       "serviceHostComingSoon": "محتوى مضيف الخدمة قريباً...",
-      "travelAdminComingSoon": "محتوى مسؤول السفر قريباً..."
+      "travelAdminComingSoon": "محتوى مسؤول السفر قريباً...",
+      "metadata": {
+        "title": "مركز المساعدة",
+        "description": "احصل على المساعدة والدعم"
+      }
+    },
+    "host": {
+      "metadata": {
+        "title": "كن مضيفاً",
+        "description": "ابدأ باستضافة الضيوف وكسب الدخل"
+      }
+    },
+    "hosting": {
+      "metadata": {
+        "title": "الاستضافة",
+        "description": "إدارة حجوزاتك واستضافتك"
+      }
+    },
+    "hostingListings": {
+      "metadata": {
+        "title": "إعلاناتي",
+        "description": "عرض وإدارة إعلاناتك"
+      }
+    },
+    "landing": {
+      "metadata": {
+        "title": "مرحباً",
+        "description": "مرحباً بك في مكان — منصة الإيجار والاستضافة"
+      }
+    },
+    "login": {
+      "metadata": {
+        "title": "تسجيل الدخول",
+        "description": "سجل دخولك إلى حسابك"
+      }
+    },
+    "join": {
+      "metadata": {
+        "title": "إنشاء حساب",
+        "description": "أنشئ حسابك الجديد"
+      }
+    },
+    "reset": {
+      "metadata": {
+        "title": "إعادة تعيين كلمة المرور",
+        "description": "أعد تعيين كلمة المرور الخاصة بك"
+      }
+    },
+    "managerProperties": {
+      "metadata": {
+        "title": "إدارة العقارات",
+        "description": "عرض وإدارة عقاراتك"
+      }
+    },
+    "tenantFavorites": {
+      "metadata": {
+        "title": "المفضلة",
+        "description": "تصفح وإدارة العقارات المفضلة لديك"
+      }
+    },
+    "tenantResidences": {
+      "metadata": {
+        "title": "مساكني",
+        "description": "عرض وإدارة مساكنك الحالية"
+      }
     }
   },
   "onboarding": {
@@ -2753,5 +3212,1070 @@
     "comingSoonTitle": "قادم قريباً",
     "comingSoonDescription": "أعلام الميزات وقوالب البريد ورسوم المنصة ستظهر هنا.",
     "settingsPlaceholder": "حالياً، أدر حالة المنصة من خلال علامات التبويب: نظرة عامة، المستخدمون، المنازل، النقل."
+  },
+  "listingEditor": {
+    "common": {
+      "next": "التالي",
+      "save": "حفظ",
+      "back": "رجوع",
+      "remove": "إزالة"
+    },
+    "title": {
+      "heading": "والآن، لنضع عنوانًا لمكانك",
+      "subtitle": "العناوين القصيرة هي الأفضل. استمتع بصياغته—يمكنك تغييره في أي وقت لاحقًا.",
+      "cardTitle": "اكتب عنوانك",
+      "label": "العنوان",
+      "placeholder": "مكان هادئ للاسترخاء",
+      "tipTitle": "نصيحة حول العنوان",
+      "tipText": "معظم المضيفين في منطقتك يستخدمون عناوين بين 20 و40 حرفًا. حاول إبراز ما يميّز مكانك، مثل \"كوخ جبلي دافئ بإطلالة على البحيرة\" أو \"شقة عصرية وسط المدينة قرب المطاعم\".",
+      "previewTitle": "معاينة",
+      "previewSample": "مكان هادئ للاسترخاء",
+      "previewHint": "هكذا سيظهر عنوانك للضيوف"
+    },
+    "location": {
+      "heading": "أين يقع مكانك؟",
+      "subtitle": "لا تتم مشاركة عنوانك مع الضيوف إلا بعد إتمام الحجز.",
+      "cardTitle": "تفاصيل الموقع",
+      "streetAddress": "عنوان الشارع",
+      "streetAddressPlaceholder": "شارع الرئيسي 123",
+      "city": "المدينة",
+      "cityPlaceholder": "المدينة",
+      "state": "الولاية/المحافظة",
+      "statePlaceholder": "الولاية",
+      "country": "الدولة",
+      "countryPlaceholder": "الدولة",
+      "postalCode": "الرمز البريدي",
+      "postalCodePlaceholder": "12345",
+      "coordinatesTitle": "الإحداثيات (اختياري)",
+      "latitude": "خط العرض",
+      "longitude": "خط الطول",
+      "coordinatePlaceholder": "0.0",
+      "privacyTitle": "ملاحظة حول الخصوصية",
+      "privacyText": "نعرض للضيوف المنطقة العامة فقط إلى أن يتم الحجز. ولا تتم مشاركة عنوانك الدقيق إلا بعد تأكيد الحجز."
+    },
+    "amenities": {
+      "heading": "ما المرافق التي تقدّمها؟",
+      "subtitle": "اختر جميع المرافق المتوفرة في عقارك. يستخدمها الضيوف لتصفية نتائج بحثهم.",
+      "cardTitle": "المرافق",
+      "selectedLabel": "المرافق المختارة:",
+      "options": {
+        "wifi": "واي فاي",
+        "wifiDesc": "إنترنت لاسلكي عالي السرعة",
+        "airConditioning": "تكييف هواء",
+        "airConditioningDesc": "تكييف مركزي أو وحدات نوافذ",
+        "parking": "موقف مجاني",
+        "parkingDesc": "موقف سيارات متوفر في الموقع",
+        "pool": "مسبح",
+        "poolDesc": "مسبح خاص أو مشترك",
+        "gym": "صالة رياضية",
+        "gymDesc": "إمكانية استخدام مركز اللياقة",
+        "petsAllowed": "السماح بالحيوانات الأليفة",
+        "petsAllowedDesc": "عقار يرحّب بالحيوانات الأليفة",
+        "washerDryer": "غسالة/مجفف",
+        "washerDryerDesc": "غسيل داخل الوحدة",
+        "dishwasher": "غسالة صحون",
+        "dishwasherDesc": "غسالة صحون متوفرة",
+        "highSpeedInternet": "إنترنت عالي السرعة",
+        "highSpeedInternetDesc": "اتصال إنترنت سريع",
+        "hardwoodFloors": "أرضيات خشبية",
+        "hardwoodFloorsDesc": "أرضيات خشبية جميلة في كل المكان",
+        "walkInClosets": "خزائن ملابس واسعة",
+        "walkInClosetsDesc": "مساحة تخزين واسعة للخزائن",
+        "microwave": "ميكروويف",
+        "microwaveDesc": "ميكروويف في المطبخ",
+        "refrigerator": "ثلاجة",
+        "refrigeratorDesc": "ثلاجة بحجم كامل"
+      }
+    },
+    "description": {
+      "heading": "اكتب وصف مكانك",
+      "subtitle": "اشرح ما يميّز مكانك وما الذي يمكن أن يتوقعه الضيوف خلال إقامتهم.",
+      "cardTitle": "عن مساحتك",
+      "label": "الوصف",
+      "placeholder": "أخبر الضيوف عن مساحتك والحي المحيط وما الذي يجعل مكانك مميزًا...",
+      "tipTitle": "نصائح للكتابة",
+      "tip1": "أبرز المميزات الفريدة لمساحتك",
+      "tip2": "اذكر الحي والمعالم القريبة",
+      "tip3": "صِف الأجواء وما الذي يمكن أن يتوقعه الضيوف",
+      "tip4": "كن دقيقًا في وصف توزيع المساحة",
+      "previewTitle": "معاينة",
+      "previewPlaceholder": "سيظهر وصفك هنا..."
+    },
+    "pricing": {
+      "heading": "والآن، حدّد سعرك",
+      "subtitle": "يمكنك تغييره في أي وقت. اطّلع على إعلانات مشابهة في منطقتك لتختار السعر المناسب.",
+      "cardTitle": "السعر الأساسي",
+      "label": "السعر لكل ليلة (دولار أمريكي)",
+      "pricePlaceholder": "0",
+      "tipTitle": "نصيحة حول السعر",
+      "tipText": "معظم المضيفين في منطقتك يتقاضون بين 85 و130 دولارًا في الليلة. فكّر في البدء بسعر تنافسي لجذب أول ضيوفك وتقييماتك.",
+      "breakdownTitle": "تفاصيل السعر للضيف",
+      "breakdownNights": "100$ × ليلة واحدة",
+      "serviceFee": "رسوم خدمة مكان",
+      "total": "الإجمالي"
+    },
+    "houseRules": {
+      "heading": "حدّد قواعد المنزل",
+      "subtitle": "أخبر الضيوف بما هو مسموح وما هو ممنوع في مكانك.",
+      "standardRulesTitle": "القواعد الأساسية",
+      "smokingAllowed": "السماح بالتدخين",
+      "smokingAllowedDesc": "يمكن للضيوف التدخين في الداخل",
+      "petsAllowed": "السماح بالحيوانات الأليفة",
+      "petsAllowedDesc": "يمكن للضيوف إحضار حيواناتهم الأليفة",
+      "partiesAllowed": "السماح بالحفلات/المناسبات",
+      "partiesAllowedDesc": "يمكن للضيوف إقامة التجمعات",
+      "quietHours": "ساعات الهدوء",
+      "quietHoursDesc": "حدّد وقت الهدوء للضيوف",
+      "startTime": "وقت البداية",
+      "endTime": "وقت النهاية",
+      "additionalRulesTitle": "قواعد إضافية",
+      "additionalRulesPlaceholder": "أضف أي قواعد أخرى أو معلومات مهمة للضيوف...",
+      "whyTitle": "لماذا تهمّ القواعد",
+      "whyText": "قواعد المنزل الواضحة تساعد على ضبط التوقعات وتجنّب سوء الفهم. الضيوف الذين يحجزون يوافقون على الالتزام بقواعدك."
+    },
+    "cancellationPolicy": {
+      "heading": "سياسة الإلغاء",
+      "subtitle": "اختر سياسة تناسبك. تحدّد هذه السياسة متى يمكن للضيوف الإلغاء واسترداد المبلغ.",
+      "cardTitle": "اختر سياستك",
+      "recommended": "موصى بها",
+      "policyDetailsSuffix": "تفاصيل السياسة",
+      "chooseTitle": "اختيار السياسة المناسبة",
+      "chooseText": "السياسات المرنة تحصل عادةً على حجوزات أكثر لأن الضيوف يشعرون بمزيد من الراحة عند الحجز. أما السياسات الأكثر صرامة فتمنحك حماية أكبر من الإلغاءات في اللحظات الأخيرة.",
+      "flexibleName": "مرنة",
+      "flexibleDesc": "استرداد كامل قبل يوم واحد من الوصول",
+      "flexibleD1": "استرداد كامل للإلغاء قبل 24 ساعة على الأقل من تسجيل الوصول",
+      "flexibleD2": "في حال الإلغاء قبل أقل من 24 ساعة من تسجيل الوصول، تكون الليلة الأولى غير قابلة للاسترداد",
+      "flexibleD3": "تُسترد رسوم التنظيف دائمًا إذا لم يسجّل الضيف وصوله",
+      "moderateName": "معتدلة",
+      "moderateDesc": "استرداد كامل قبل 5 أيام من الوصول",
+      "moderateD1": "استرداد كامل للإلغاء قبل 5 أيام على الأقل من تسجيل الوصول",
+      "moderateD2": "في حال الإلغاء قبل أقل من 5 أيام من تسجيل الوصول، يُسترد 50% من سعر الليلة",
+      "moderateD3": "تُسترد رسوم التنظيف دائمًا إذا لم يسجّل الضيف وصوله",
+      "firmName": "حازمة",
+      "firmDesc": "استرداد كامل قبل 30 يومًا من الوصول",
+      "firmD1": "استرداد كامل للإلغاء قبل 30 يومًا على الأقل من تسجيل الوصول",
+      "firmD2": "في حال الإلغاء قبل أقل من 30 يومًا من تسجيل الوصول، يُسترد 50% من سعر الليلة",
+      "firmD3": "في حال الإلغاء قبل أقل من 7 أيام من تسجيل الوصول، لا يوجد استرداد",
+      "strictName": "صارمة",
+      "strictDesc": "استرداد 50% حتى أسبوع واحد قبل الوصول",
+      "strictD1": "استرداد 50% للإلغاء قبل 7 أيام على الأقل من تسجيل الوصول",
+      "strictD2": "لا يوجد استرداد للإلغاء قبل أقل من 7 أيام من تسجيل الوصول",
+      "strictD3": "تُسترد رسوم التنظيف دائمًا إذا لم يسجّل الضيف وصوله",
+      "nonRefundableName": "غير قابلة للاسترداد",
+      "nonRefundableDesc": "يدفع الضيوف أقل بنسبة 10% دون استرداد",
+      "nonRefundableD1": "لا يوجد استرداد في أي وقت",
+      "nonRefundableD2": "يحصل الضيوف على خصم 10% على حجزهم",
+      "nonRefundableD3": "الأنسب للمضيفين الذين يريدون تقليل الإلغاءات"
+    },
+    "propertyType": {
+      "heading": "ما نوع المكان الذي سيحظى به الضيوف؟",
+      "subtitle": "اختر الخيار الذي يصف مكانك على أفضل وجه.",
+      "cardTitle": "نوع العقار",
+      "houseTitle": "منزل",
+      "houseDesc": "منزل قد يكون منفصلًا أو متصلًا بوحدات أخرى",
+      "apartmentTitle": "شقة",
+      "apartmentDesc": "مكان داخل مبنى أو مجمّع سكني متعدد الوحدات",
+      "cabinTitle": "كوخ",
+      "cabinDesc": "منزل مصنوع من الخشب يقع في محيط طبيعي",
+      "campingTitle": "تخييم",
+      "campingDesc": "إقامة في الهواء الطلق بخيام أو هياكل مشابهة",
+      "spaceTitle": "ما نوع المساحة التي سيحظى بها الضيوف؟",
+      "entirePlaceTitle": "مكان كامل",
+      "entirePlaceDesc": "يحظى الضيوف بالمكان بأكمله لأنفسهم",
+      "roomTitle": "غرفة",
+      "roomDesc": "يحظى الضيوف بغرفتهم الخاصة في منزل، مع إمكانية استخدام المساحات المشتركة",
+      "sharedRoomTitle": "غرفة مشتركة",
+      "sharedRoomDesc": "ينام الضيوف في غرفة أو مساحة مشتركة قد يشاركونها معك أو مع آخرين"
+    },
+    "numberOfGuests": {
+      "heading": "السعة",
+      "subtitle": "كم عدد الضيوف الذين يمكن لمكانك استيعابهم؟ حدّد الحدود التي سيراها الضيوف عند البحث.",
+      "cardTitle": "الضيوف وغرف النوم والأسرّة والحمامات",
+      "guests": "الضيوف",
+      "guestsHint": "أقصى عدد للضيوف المبيتين بمن فيهم الأطفال",
+      "bedrooms": "غرف النوم",
+      "bedroomsHint": "غرف نوم منفصلة",
+      "beds": "الأسرّة",
+      "bedsHint": "جميع الأسرّة بما فيها أسرّة الكنب",
+      "bathrooms": "الحمامات",
+      "bathroomsHint": "حمامات كاملة أو مشتركة",
+      "decreaseLabel": "تقليل {label}",
+      "increaseLabel": "زيادة {label}"
+    },
+    "accessibility": {
+      "heading": "ميزات إمكانية الوصول",
+      "subtitle": "ساعد الضيوف ذوي احتياجات الوصول على العثور على مكانك بإبراز هذه الميزات.",
+      "cardTitle": "اختر الميزات المتوفرة",
+      "whyTitle": "لماذا يهمّ هذا",
+      "whyText": "توفير معلومات دقيقة عن إمكانية الوصول يساعد الضيوف ذوي الإعاقة على إيجاد إقامة مناسبة. كن صادقًا بشأن الميزات المتوفرة لضمان تجربة إيجابية لجميع الضيوف.",
+      "features": {
+        "stepFreeEntrance": "مدخل خالٍ من الدرجات",
+        "stepFreeEntranceDesc": "لا توجد درجات أو سلالم للدخول",
+        "wideDoorway": "مدخل واسع",
+        "wideDoorwayDesc": "عرض المداخل لا يقل عن 81 سم",
+        "wideHallway": "ممر واسع",
+        "wideHallwayDesc": "عرض الممرات لا يقل عن 91 سم",
+        "accessibleBathroom": "حمام مهيأ لذوي الإعاقة",
+        "accessibleBathroomDesc": "دش يمكن دخوله بالكرسي المتحرك أو حوض بمقابض إمساك",
+        "stepFreeBedroom": "وصول إلى غرفة النوم خالٍ من الدرجات",
+        "stepFreeBedroomDesc": "لا توجد درجات للوصول إلى غرفة النوم",
+        "stepFreeBathroom": "وصول إلى الحمام خالٍ من الدرجات",
+        "stepFreeBathroomDesc": "لا توجد درجات للوصول إلى الحمام",
+        "showerChair": "كرسي للدش أو الحوض",
+        "showerChairDesc": "مقعد متوفر في الدش/الحوض",
+        "grabBars": "مقابض إمساك",
+        "grabBarsDesc": "مثبتة في الحمام",
+        "toiletGrabBars": "مقابض إمساك حول المرحاض",
+        "toiletGrabBarsDesc": "مقابض قرب المرحاض للدعم",
+        "raisedToilet": "مرحاض مرتفع",
+        "raisedToiletDesc": "مقعد مرحاض أعلى متوفر",
+        "accessibleParking": "موقف مهيأ لذوي الإعاقة",
+        "accessibleParkingDesc": "موقف مخصص لذوي الإعاقة",
+        "elevator": "مصعد",
+        "elevatorDesc": "المبنى مزوّد بمصعد"
+      }
+    },
+    "guestSafety": {
+      "heading": "سلامة الضيوف",
+      "subtitle": "ساعد الضيوف على فهم ميزات السلامة والمخاطر المحتملة في مكانك.",
+      "devicesTitle": "أجهزة السلامة",
+      "devicesHint": "اختر جميع أجهزة السلامة المتوفرة في عقارك.",
+      "hazardsTitle": "المخاطر المحتملة",
+      "hazardsHint": "أخبر الضيوف بأي مخاطر محتملة ليتمكنوا من اتخاذ قرار مدروس.",
+      "additionalTitle": "معلومات سلامة إضافية",
+      "additionalPlaceholder": "أضف أي معلومات سلامة أخرى ينبغي أن يعرفها الضيوف...",
+      "whyTitle": "لماذا تهمّ الشفافية",
+      "whyText": "الوضوح بشأن ميزات السلامة والمخاطر يبني الثقة مع الضيوف ويساعدهم على الاستعداد لإقامتهم، كما يحميك بصفتك مضيفًا.",
+      "devices": {
+        "smokeAlarm": "جهاز إنذار الدخان",
+        "smokeAlarmDesc": "كاشف دخان يعمل ومثبّت",
+        "carbonMonoxide": "جهاز إنذار أول أكسيد الكربون",
+        "carbonMonoxideDesc": "كاشف أول أكسيد الكربون مثبّت",
+        "fireExtinguisher": "طفاية حريق",
+        "fireExtinguisherDesc": "طفاية حريق في متناول اليد",
+        "firstAid": "حقيبة إسعافات أولية",
+        "firstAidDesc": "مستلزمات إسعافات أولية متوفرة",
+        "securityCamera": "كاميرا مراقبة/جهاز تسجيل",
+        "securityCameraDesc": "توجد كاميرات خارجية"
+      },
+      "hazards": {
+        "pool": "مسبح/جاكوزي دون بوابة أو قفل",
+        "poolDesc": "مسطح مائي غير مسوّر",
+        "lake": "بحيرة أو نهر أو مسطح مائي قريب",
+        "lakeDesc": "مياه طبيعية قريبة",
+        "heights": "مرتفعات دون حواجز أو حماية",
+        "heightsDesc": "شُرفات أو طوابق علوية أو أسطح",
+        "animals": "حيوانات خطرة في العقار",
+        "animalsDesc": "ماشية أو حيوانات برية",
+        "stairs": "سلالم حادة الانحدار",
+        "stairsDesc": "سلالم قد تكون صعبة",
+        "weapons": "أسلحة في العقار",
+        "weaponsDesc": "أسلحة نارية أو أسلحة أخرى مخزّنة"
+      }
+    },
+    "coHosts": {
+      "heading": "أضف مضيفين مشاركين",
+      "subtitle": "ادعُ آخرين لمساعدتك في إدارة هذا الإعلان. يمكن للمضيفين المشاركين الرد على الرسائل وتحديث التقويمات والمزيد.",
+      "inviteTitle": "ادعُ مضيفًا مشاركًا",
+      "emailLabel": "عنوان البريد الإلكتروني",
+      "emailPlaceholder": "أدخل عنوان البريد الإلكتروني",
+      "sendInvite": "إرسال الدعوة",
+      "inviteHint": "سيتلقّون دعوة بالبريد الإلكتروني ليصبحوا مضيفين مشاركين.",
+      "listTitle": "المضيفون المشاركون",
+      "emptyTitle": "لا يوجد مضيفون مشاركون بعد",
+      "emptyHint": "ادعُ شخصًا لمساعدتك في إدارة هذا الإعلان",
+      "statusActive": "نشط",
+      "statusPending": "قيد الانتظار",
+      "whatTitle": "ماذا يمكن للمضيفين المشاركين فعله؟",
+      "what1": "الرد على رسائل الضيوف",
+      "what2": "تحديث التوفر والأسعار",
+      "what3": "إدارة الحجوزات",
+      "what4": "الاطّلاع على معلومات الضيوف"
+    },
+    "customLink": {
+      "heading": "رابط مخصص",
+      "subtitle": "أنشئ رابطًا سهل التذكّر وقابلًا للمشاركة لإعلانك.",
+      "urlTitle": "رابط إعلانك",
+      "slugLabel": "مقطع رابط مخصص (اختياري)",
+      "slugPlaceholder": "مكاني-الرائع",
+      "slugHint": "استخدم الأحرف الإنجليزية الصغيرة والأرقام والشرطات فقط",
+      "shareableLabel": "رابطك القابل للمشاركة",
+      "copied": "تم النسخ",
+      "copyLink": "نسخ الرابط",
+      "openInNewTab": "فتح الرابط في علامة تبويب جديدة",
+      "quickShareTitle": "مشاركة سريعة",
+      "email": "البريد الإلكتروني",
+      "messages": "الرسائل",
+      "social": "التواصل الاجتماعي",
+      "whyTitle": "لماذا تستخدم رابطًا مخصصًا؟",
+      "whyText": "الرابط المخصص أسهل في التذكّر والمشاركة، ويبدو أكثر احترافية عند مشاركته على وسائل التواصل الاجتماعي أو بطاقات العمل أو في الرسائل."
+    },
+    "host": {
+      "heading": "أخبر الضيوف عن نفسك",
+      "subtitle": "شارك القليل عن شخصيتك لتساعد الضيوف على الشعور بالراحة عند حجز مكانك.",
+      "profilePhoto": "صورة الملف الشخصي",
+      "uploadPhoto": "رفع صورة",
+      "photoHelp": "الصورة الواضحة تساعد الضيوف على التعرّف عليك",
+      "aboutYou": "نبذة عنك",
+      "displayName": "الاسم المعروض",
+      "displayNamePlaceholder": "كيف تحب أن يُنادى عليك",
+      "bio": "نبذة تعريفية",
+      "bioPlaceholder": "أخبر الضيوف قليلًا عن نفسك وخلفيتك وما تحبه في الاستضافة...",
+      "work": "العمل",
+      "workPlaceholder": "ما الذي تعمل به؟",
+      "whereYouLive": "أين تعيش",
+      "locationPlaceholder": "المدينة، الدولة",
+      "languages": "اللغات التي تتحدثها",
+      "languagesPlaceholder": "العربية، الإنجليزية، الفرنسية...",
+      "profileTip": "نصيحة حول الملف الشخصي",
+      "profileTipText": "الضيوف أكثر ميلًا للحجز مع المضيفين الذين لديهم ملفات شخصية مكتملة. شارك ما يجعلك مضيفًا رائعًا وسبب حبك لمنطقتك."
+    },
+    "instantBook": {
+      "heading": "الحجز الفوري",
+      "subtitle": "اسمح للضيوف بالحجز فورًا دون انتظار موافقتك.",
+      "enableTitle": "تفعيل الحجز الفوري",
+      "turnOn": "تشغيل الحجز الفوري",
+      "turnOnDesc": "يمكن للضيوف الحجز فورًا دون إرسال طلب",
+      "fasterTitle": "حجوزات أسرع",
+      "fasterText": "يمكن للضيوف الحجز على الفور، ما يعني غالبًا حجوزات أكثر",
+      "visibilityTitle": "ظهور أفضل",
+      "visibilityText": "تظهر إعلانات الحجز الفوري في مرتبة أعلى في نتائج البحث",
+      "protectedTitle": "تبقى محميًا",
+      "protectedText": "حتى مع الحجز الفوري، لا يزال بإمكانك تحديد متطلبات للضيوف (مثل الهوية الموثّقة) ويمكنك الإلغاء دون غرامة إذا لم يستوفِ الضيف متطلباتك."
+    },
+    "availability": {
+      "heading": "إعدادات التوفر",
+      "subtitle": "تحكّم في متى وكيف يمكن للضيوف حجز مكانك.",
+      "tripLengthTitle": "مدة الإقامة",
+      "minNights": "الحد الأدنى لعدد الليالي",
+      "minNightsHint": "أقصر إقامة مسموح بها",
+      "maxNights": "الحد الأقصى لعدد الليالي",
+      "maxNightsHint": "أطول إقامة مسموح بها",
+      "bookingSettingsTitle": "إعدادات الحجز",
+      "advanceNotice": "مهلة الإشعار المسبق",
+      "advanceNoticeUnit": "يوم/أيام قبل تسجيل الوصول",
+      "advanceNoticeHint": "المهلة التي تحتاجها قبل وصول الضيف",
+      "preparationTime": "وقت التحضير",
+      "preparationTimeUnit": "يوم/أيام بين الحجوزات",
+      "preparationTimeHint": "وقت فاصل للتنظيف بين الضيوف",
+      "availabilityWindow": "نافذة التوفر",
+      "availabilityWindowUnit": "أشهر مقدمًا",
+      "availabilityWindowHint": "إلى أي مدى مسبقًا يمكن للضيوف الحجز",
+      "sameDayBooking": "الحجز في نفس اليوم",
+      "sameDayBookingDesc": "اسمح للضيوف بالحجز لليوم نفسه",
+      "calendarTitle": "التقويم",
+      "legendAvailable": "متاح",
+      "legendBooked": "محجوز",
+      "legendBlocked": "محظور",
+      "tipTitle": "نصيحة حول التوفر",
+      "tipText": "الحفاظ على تقويمك محدّثًا يساعدك على تجنّب الحجوزات المزدوجة ويضمن أن يجد الضيوف تواريخ متاحة. فكّر في المزامنة مع تقويمات خارجية إذا كنت تعرض مكانك على منصات متعددة."
+    },
+    "photoTour": {
+      "heading": "جولة بالصور",
+      "subtitle": "ارفع صور عقارك",
+      "allPhotos": "جميع الصور",
+      "addPhotoAria": "إضافة صورة",
+      "description": "أدر الصور وأضف التفاصيل. لن يرى الضيوف جولتك إلا إذا كانت كل غرفة تحتوي على صورة.",
+      "bedroom": "غرفة النوم",
+      "bathroom": "الحمام",
+      "additional": "صور إضافية",
+      "addPhotos": "إضافة صور",
+      "photosCount": "{count} صور"
+    },
+    "checkInMethod": {
+      "heading": "طريقة تسجيل الوصول",
+      "subtitle": "كيف سيدخل ضيوفك؟ اختر طريقة وأضف تعليمات مخصصة.",
+      "pickTitle": "اختر طريقة",
+      "smartLock": "قفل ذكي",
+      "smartLockHint": "دخول برمز",
+      "lockbox": "صندوق مفاتيح",
+      "lockboxHint": "مفتاح داخل صندوق برمز",
+      "inPerson": "شخصيًا",
+      "inPersonHint": "تستقبل الضيف بنفسك",
+      "doorman": "بواب",
+      "doormanHint": "موظف الاستقبال يسلّم المفتاح",
+      "selfCheckIn": "تسجيل وصول ذاتي",
+      "selfCheckInHint": "يدخل الضيف بالرمز فقط",
+      "customTitle": "تعليمات مخصصة",
+      "instructionsLabel": "تعليمات للضيوف",
+      "instructionsPlaceholder": "مثال: صندوق المفاتيح على يسار الباب الأمامي. الرمز هو 1234."
+    },
+    "checkInOut": {
+      "heading": "حدّد أوقات تسجيل الوصول والمغادرة",
+      "subtitle": "اختر أوقاتًا تناسبك وتناسب ضيوفك.",
+      "checkInTitle": "وقت تسجيل الوصول",
+      "checkOutTitle": "وقت المغادرة",
+      "from": "من",
+      "until": "حتى",
+      "before": "قبل",
+      "time1400": "2:00 م",
+      "time1500": "3:00 م",
+      "time1600": "4:00 م",
+      "time2000": "8:00 م",
+      "time2100": "9:00 م",
+      "time2200": "10:00 م",
+      "time1000": "10:00 ص",
+      "time1100": "11:00 ص",
+      "time1200": "12:00 م"
+    },
+    "checkoutInstructions": {
+      "heading": "تعليمات المغادرة",
+      "subtitle": "أخبر الضيوف بما يجب فعله عند مغادرتهم — إطفاء التكييف وقفل الباب وما إلى ذلك.",
+      "cardTitle": "خطوات المغادرة",
+      "instructionsLabel": "التعليمات",
+      "instructionsPlaceholder": "1. اقفل الباب الأمامي\n2. أطفئ جميع الأضواء والتكييف\n3. اترك المفاتيح على طاولة المطبخ\n4. ضع نفاياتك في الحاوية بالخارج",
+      "note": "تُرسل هذه التعليمات تلقائيًا صباح يوم المغادرة."
+    },
+    "directions": {
+      "heading": "الاتجاهات",
+      "subtitle": "ساعد الضيوف على إيجاد مكانك. أضف اتجاهات مكتوبة ودبوس موقع اختياري على الخريطة.",
+      "writtenTitle": "اتجاهات مكتوبة",
+      "fromLandmark": "الاتجاهات من معلم بارز",
+      "fromLandmarkPlaceholder": "من المطار، اسلك مخرج الطريق السريع باتجاه بورتسودان. انعطف يمينًا عند الدوار الثالث...",
+      "mapPinTitle": "دبوس الخريطة (اختياري)",
+      "latitude": "خط العرض",
+      "longitude": "خط الطول",
+      "mapPreview": "تظهر معاينة الخريطة هنا بمجرد تحديد الإحداثيات"
+    },
+    "guidebooks": {
+      "heading": "دليل المنطقة",
+      "subtitle": "اقترح على ضيوفك أماكن قريبة: مطاعم ومقاهٍ ومعالم وخدمات.",
+      "address": "العنوان",
+      "note": "ملاحظة",
+      "addPlace": "إضافة مكان",
+      "sample1Name": "بيت الغدا",
+      "sample1Address": "الجيف الشرقي، بورتسودان",
+      "sample1Note": "أفضل فطور سوداني تقليدي — يفتح من الساعة 7 صباحًا",
+      "sample2Name": "مارينا مول",
+      "sample2Address": "شارع البحر، بورتسودان",
+      "sample2Note": "أكبر مركز تسوّق، موقف مجاني، أجهزة صراف آلي متوفرة"
+    },
+    "houseManual": {
+      "heading": "دليل المنزل",
+      "subtitle": "كيف يعمل التكييف؟ أين النفايات؟ وفّر على الضيوف عناء مراسلتك بنفس الأسئلة المتكررة.",
+      "cardTitle": "الدليل",
+      "notesLabel": "ملاحظات حرة",
+      "notesPlaceholder": "جهاز تحكّم التكييف: الأبيض على طاولة المطبخ. اضبطه على 24 درجة مئوية للراحة.\nالنفايات: الحاويات في الطابق السفلي بالموقف، قرب المصعد. القابلة لإعادة التدوير زرقاء.\nالواي فاي: التفاصيل على مغناطيس الثلاجة.",
+      "visibilityNote": "ظاهر فقط للضيوف ذوي الحجوزات المؤكدة بعد الدفع."
+    },
+    "travelHouseRules": {
+      "heading": "قواعد المنزل",
+      "subtitle": "يجب على الضيوف قبول هذه القواعد قبل الحجز. كن واضحًا ومعقولًا.",
+      "standardTitle": "القواعد الأساسية",
+      "smoking": "السماح بالتدخين",
+      "smokingHint": "حدّد ما إذا كان بإمكان الضيوف التدخين في الداخل",
+      "pets": "السماح بالحيوانات الأليفة",
+      "petsHint": "حدّد ما إذا كان بإمكان الضيوف إحضار حيواناتهم الأليفة",
+      "parties": "السماح بالحفلات أو المناسبات",
+      "partiesHint": "تجمعات كبيرة في الموقع",
+      "kids": "مناسب للأطفال",
+      "kidsHint": "تأمين للأطفال وسلامة",
+      "quietHours": "ساعات الهدوء",
+      "quietHoursHint": "افتراضيًا من 10 مساءً إلى 8 صباحًا",
+      "customTitle": "قواعد مخصصة",
+      "customLabel": "قاعدة واحدة في كل سطر",
+      "customPlaceholder": "يُرجى خلع الأحذية في الداخل\nلا ضيوف من الخارج بعد الساعة 10 مساءً"
+    },
+    "interactionPreferences": {
+      "heading": "تفضيلات التواصل",
+      "subtitle": "ما مدى رغبتك في التواجد؟ اضبط التوقعات حتى لا يكثر الضيوف من مراسلتك.",
+      "styleTitle": "أسلوبك",
+      "alwaysAvailable": "متاح دائمًا",
+      "alwaysAvailableHint": "الرد خلال ساعة، كل يوم",
+      "onRequest": "عند الطلب",
+      "onRequestHint": "الرد عندما يراسلك الضيوف",
+      "minimalContact": "تواصل محدود",
+      "minimalContactHint": "إقامة بخدمة ذاتية، دون أحاديث جانبية",
+      "responseTimeTitle": "وقت الرد",
+      "withinHour": "خلال ساعة",
+      "withinFewHours": "خلال بضع ساعات",
+      "withinDay": "خلال يوم"
+    },
+    "wifiDetails": {
+      "heading": "أضف تفاصيل الواي فاي",
+      "subtitle": "ساعد الضيوف على الاتصال بشبكة الواي فاي بسهولة بتوفير اسم الشبكة وكلمة المرور.",
+      "cardTitle": "معلومات الواي فاي",
+      "networkName": "اسم الشبكة (SSID)",
+      "networkNamePlaceholder": "MyWifiNetwork",
+      "password": "كلمة المرور",
+      "passwordPlaceholder": "أدخل كلمة مرور الواي فاي",
+      "instructionsTitle": "تعليمات للضيوف",
+      "instructionsText": "تتم مشاركة هذه التفاصيل مع الضيوف بعد تسجيل وصولهم. تأكد من أن معلومات الواي فاي دقيقة ومحدّثة."
+    }
+  },
+  "atom": {
+    "propertyInfo": {
+      "fastWifiTitle": "واي فاي سريع",
+      "fastWifiDesc": "سرعة تنزيل 100 ميغابت/ث للبث ومكالمات الفيديو.",
+      "freeParkingTitle": "موقف مجاني",
+      "freeParkingDesc": "هذا أحد الأماكن القليلة في المنطقة التي توفّر موقفًا مجانيًا.",
+      "freeCancellationTitle": "إلغاء مجاني قبل 7 أغسطس",
+      "freeCancellationDesc": "احصل على استرداد كامل إذا غيّرت رأيك."
+    },
+    "propertySelect": {
+      "whereGoingPlaceholder": "إلى أين تذهب؟",
+      "propertyTypePlaceholder": "نوع العقار",
+      "amenitiesPlaceholder": "المرافق",
+      "addDatesPlaceholder": "أضف التواريخ",
+      "guestSingular": "ضيف واحد",
+      "guestPlural": "{count} ضيوف",
+      "infantSingular": "، رضيع واحد",
+      "infantPlural": "، {count} رضّع",
+      "petSingular": "، حيوان أليف واحد",
+      "petPlural": "، {count} حيوانات أليفة",
+      "adultsLabel": "بالغون",
+      "adultsAge": "13 سنة فأكثر",
+      "childrenLabel": "أطفال",
+      "childrenAge": "2-12 سنة",
+      "infantsLabel": "رضّع",
+      "infantsAge": "أقل من سنتين",
+      "petsLabel": "حيوانات أليفة",
+      "petsHint": "هل تصطحب حيوانًا للخدمة؟",
+      "decreaseAdults": "تقليل البالغين",
+      "increaseAdults": "زيادة البالغين",
+      "decreaseChildren": "تقليل الأطفال",
+      "increaseChildren": "زيادة الأطفال",
+      "decreaseInfants": "تقليل الرضّع",
+      "increaseInfants": "زيادة الرضّع",
+      "locations": {
+        "newYork": "نيويورك، نيويورك",
+        "losAngeles": "لوس أنجلوس، كاليفورنيا",
+        "miami": "ميامي، فلوريدا",
+        "sanFrancisco": "سان فرانسيسكو، كاليفورنيا",
+        "chicago": "شيكاغو، إلينوي"
+      },
+      "propertyTypes": {
+        "mansion": "قصر",
+        "mansionDesc": "إقامة فاخرة",
+        "islands": "جُزر",
+        "islandsDesc": "إقامات في جزر خاصة",
+        "beach": "شاطئ",
+        "beachDesc": "عقارات على الشاطئ",
+        "boat": "قارب",
+        "boatDesc": "إقامات عائمة فريدة",
+        "containers": "حاويات",
+        "containersDesc": "منازل حاويات حديثة"
+      },
+      "amenities": {
+        "wifi": "واي فاي",
+        "freeParking": "موقف مجاني",
+        "pool": "مسبح",
+        "newListings": "إعلانات جديدة"
+      }
+    },
+    "propertyHeader": {
+      "reviewsLabel": "تقييمات",
+      "superhost": "مضيف متميز",
+      "share": "مشاركة",
+      "save": "حفظ"
+    },
+    "propertyImages": {
+      "noImages": "لا توجد صور متاحة",
+      "mainImageAlt": "الصورة الرئيسية للعقار",
+      "imageAlt": "صورة العقار {n}",
+      "viewAllPhotos": "عرض جميع صور العقار",
+      "viewPhotoN": "عرض صورة العقار {n}",
+      "showAllPhotos": "عرض جميع الصور",
+      "morePhotos": "{count}+ صور",
+      "removeFromSaved": "إزالة من المحفوظات",
+      "saveProperty": "حفظ العقار"
+    },
+    "propertyGallery": {
+      "showAllPhotos": "عرض جميع الصور",
+      "viewAllPhotos": "عرض جميع صور العقار",
+      "viewPhotoN": "عرض صورة العقار {n}",
+      "mainImageAlt": "الصورة الرئيسية للعقار",
+      "imageAlt": "صورة العقار {n}",
+      "placeholderAlts": {
+        "livingRoom": "غرفة معيشة حديثة بأريكة رمادية وكرسي أصفر مميّز",
+        "diningArea": "ركن طعام بطاولة خشبية ودرج عصري",
+        "livingView": "إطلالة من غرفة المعيشة الحديثة",
+        "kitchen": "مطبخ حديث بخزائن ذات ألوان فاتحة",
+        "exterior": "إطلالة خارجية لمبانٍ أوروبية تقليدية"
+      }
+    },
+    "propertyFilter": {
+      "filtersButton": "الفلاتر",
+      "filtersTitle": "الفلاتر",
+      "priceRange": "نطاق السعر",
+      "propertyType": "نوع العقار",
+      "amenities": "المرافق",
+      "bookingOptions": "خيارات الحجز",
+      "instantBook": "حجز فوري",
+      "instantBookDesc": "احجز دون انتظار موافقة المضيف",
+      "superhost": "مضيف متميز",
+      "superhostDesc": "أقم لدى مضيفين معتمدين",
+      "guestFavorites": "مفضلات الضيوف",
+      "guestFavoritesDesc": "أكثر المنازل تفضيلًا على مكان",
+      "clearAll": "مسح الكل",
+      "showResults": "عرض النتائج",
+      "types": {
+        "house": "منزل",
+        "apartment": "شقة",
+        "cabin": "كابينة",
+        "villa": "فيلا"
+      },
+      "amenitiesList": {
+        "wifi": "واي فاي",
+        "freeParking": "موقف مجاني",
+        "pool": "مسبح",
+        "kitchen": "مطبخ"
+      }
+    },
+    "searchButton": {
+      "label": "بحث"
+    },
+    "reviews": {
+      "reviewsLabel": "تقييمات",
+      "overallRating": "التقييم العام",
+      "categories": {
+        "cleanliness": "النظافة",
+        "accuracy": "الدقة",
+        "checkIn": "تسجيل الوصول",
+        "communication": "التواصل",
+        "location": "الموقع",
+        "value": "القيمة"
+      }
+    },
+    "review": {
+      "profilePictureAlt": "صورة الملف الشخصي لـ {name}"
+    },
+    "iconLabels": {
+      "listView": "التغيير إلى عرض القائمة",
+      "gridView": "التغيير إلى عرض الشبكة"
+    },
+    "modal": {
+      "closeModal": "إغلاق النافذة"
+    },
+    "expandableCard": {
+      "closeButton": "إغلاق"
+    }
+  },
+  "property": {
+    "common": {
+      "loading": "جاري التحميل...",
+      "notFound": "العقار غير موجود"
+    },
+    "details": {
+      "amenitiesHeading": "مرافق العقار",
+      "highlightsHeading": "أبرز المميزات",
+      "feesPoliciesHeading": "الرسوم والسياسات",
+      "feesPoliciesDescription": "الرسوم المذكورة أدناه مبنية على بيانات يقدمها المجتمع وقد لا تشمل رسومًا ومرافق إضافية.",
+      "tabRequiredFees": "الرسوم المطلوبة",
+      "tabPets": "الحيوانات الأليفة",
+      "tabParking": "موقف السيارات",
+      "oneTimeMoveInFees": "رسوم الانتقال لمرة واحدة",
+      "applicationFee": "رسوم الطلب",
+      "securityDeposit": "وديعة التأمين",
+      "petsAllowed": "يُسمح بالحيوانات الأليفة",
+      "petsNotAllowed": "لا يُسمح بالحيوانات الأليفة",
+      "parkingIncluded": "موقف السيارات مشمول",
+      "parkingNotIncluded": "موقف السيارات غير مشمول"
+    },
+    "card": {
+      "addFavorite": "إضافة للمفضلة",
+      "removeFavorite": "إزالة من المفضلة",
+      "superhost": "مضيف متميز",
+      "in": "في",
+      "night": "ليلة",
+      "currency": "ج.س"
+    },
+    "applicationModal": {
+      "title": "قدّم طلبًا لهذا العقار",
+      "nameLabel": "الاسم",
+      "namePlaceholder": "أدخل اسمك الكامل",
+      "emailLabel": "البريد الإلكتروني",
+      "emailPlaceholder": "أدخل بريدك الإلكتروني",
+      "phoneLabel": "رقم الهاتف",
+      "phonePlaceholder": "أدخل رقم هاتفك",
+      "messageLabel": "رسالة (اختياري)",
+      "messagePlaceholder": "أدخل أي معلومات إضافية",
+      "submit": "تقديم الطلب"
+    },
+    "content": {
+      "fetchError": "فشل تحميل العقارات"
+    },
+    "imagePreviews": {
+      "imageAlt": "صورة العقار {index}",
+      "previousImage": "الصورة السابقة",
+      "nextImage": "الصورة التالية"
+    },
+    "overview": {
+      "verifiedListing": "إعلان موثّق",
+      "reviews": "تقييمات",
+      "pricePerNight": "السعر / الليلة",
+      "bedrooms": "غرف النوم",
+      "bedroomsShort": "غرفة",
+      "bathrooms": "الحمامات",
+      "bathroomsShort": "حمام",
+      "squareFeet": "المساحة",
+      "squareFeetShort": "قدم مربع",
+      "aboutPrefix": "نبذة عن"
+    },
+    "contactWidget": {
+      "contactProperty": "تواصل مع هذا العقار",
+      "submitApplication": "تقديم الطلب",
+      "signInToApply": "سجّل الدخول للتقديم",
+      "languages": "اللغات: العربية، الإنجليزية.",
+      "appointmentHours": "متاح بموعد مسبق من الإثنين إلى الأحد"
+    },
+    "location": {
+      "mapAndLocation": "الخريطة والموقع",
+      "propertyAddress": "عنوان العقار:",
+      "addressNotAvailable": "العنوان غير متوفر",
+      "getDirections": "احصل على الاتجاهات"
+    },
+    "listings": {
+      "placesIn": "أماكن في {location}",
+      "noPropertiesTitle": "لا توجد عقارات",
+      "noPropertiesDescription": "حاول تعديل فلاتر البحث لرؤية المزيد من النتائج.",
+      "perMonth": "/شهر"
+    }
+  },
+  "transportHost": {
+    "common": {
+      "loading": "جاري التحميل...",
+      "tryAgain": "حاول مرة أخرى",
+      "errorId": "معرّف الخطأ",
+      "all": "الكل",
+      "sdg": "ج.س",
+      "confirm": "تأكيد"
+    },
+    "loading": {
+      "label": "جاري التحميل",
+      "text": "جاري التحميل..."
+    },
+    "error": {
+      "title": "حدث خطأ ما",
+      "fallback": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى."
+    },
+    "metadata": {
+      "title": "مضيف النقل",
+      "description": "إدارة مكاتب النقل والحجوزات"
+    },
+    "hub": {
+      "badge": "مضيف النقل",
+      "welcome": "مرحباً، {name}",
+      "defaultName": "المضيف",
+      "manageDescription": "أدر مكاتب النقل الخاصة بك وابدأ بقبول الحجوزات عبر الإنترنت لخدمات الباصات.",
+      "yourOffices": "مكاتبك",
+      "addNewOffice": "إضافة مكتب جديد",
+      "verified": "موثق",
+      "draft": "مسودة",
+      "noLocationSet": "الموقع غير محدد",
+      "busesCount": "باصات",
+      "routesCount": "مسارات",
+      "continueSetup": "متابعة الإعداد",
+      "startBusinessTitle": "ابدأ مشروع النقل الخاص بك",
+      "startBusinessDescription": "سجل مكتب النقل الخاص بك وابدأ بقبول الحجوزات عبر الإنترنت. أضف باصاتك، حدد المسارات، واصل إلى المزيد من العملاء.",
+      "createFirstOffice": "أنشئ مكتبك الأول",
+      "step1Title": "أضف مكتبك",
+      "step1Description": "أدخل تفاصيل مكتبك واختر موقع نقطة التجمع.",
+      "step2Title": "أضف الباصات والمسارات",
+      "step2Description": "سجل باصاتك مع المرافق وحدد مساراتك مع الأسعار.",
+      "step3Title": "ابدأ باستقبال الحجوزات",
+      "step3Description": "انشر مكتبك وابدأ بقبول الحجوزات عبر الإنترنت من المسافرين."
+    },
+    "overview": {
+      "title": "نظرة عامة على المشغّل",
+      "subtitle": "رحلات اليوم وأحدث الحجوزات والإيرادات.",
+      "upcomingTrips": "الرحلات القادمة",
+      "confirmedBookings": "الحجوزات المؤكدة",
+      "totalRevenue": "إجمالي الإيرادات",
+      "buses": "الباصات",
+      "bookingsTitle": "الحجوزات",
+      "bookingsSubtitle": "إدارة الحجوزات القادمة والسابقة",
+      "tripsTitle": "الرحلات",
+      "tripsSubtitle": "جدولة الرحلات وتشغيلها",
+      "earningsTitle": "الإيرادات",
+      "earningsSubtitle": "الإيرادات لكل مسار ولكل شهر"
+    },
+    "onboardingLanding": {
+      "loadingText": "جاري التحميل...",
+      "creatingOfficeName": "مكتب نقل جديد"
+    },
+    "officeInfo": {
+      "title": "أخبرنا عن مكتبك",
+      "subtitle": "أدخل تفاصيل مكتب النقل الخاص بك. ستظهر هذه المعلومات للمسافرين عند بحثهم عن الرحلات.",
+      "nameLabel": "اسم المكتب *",
+      "namePlaceholder": "مثال: النقل السريع",
+      "nameArLabel": "اسم المكتب (بالعربية)",
+      "nameArPlaceholder": "مثال: النقل السريع",
+      "phoneLabel": "رقم الهاتف *",
+      "phonePlaceholder": "+249 9xxxxxxxx",
+      "emailLabel": "البريد الإلكتروني *",
+      "emailPlaceholder": "office@example.com",
+      "licenseLabel": "رقم الترخيص (اختياري)",
+      "licensePlaceholder": "رقم ترخيص النقل",
+      "descriptionLabel": "الوصف",
+      "descriptionPlaceholder": "أخبر المسافرين عن خدماتك وخبرتك وما يميّز مكتبك...",
+      "descriptionArLabel": "الوصف (بالعربية)",
+      "descriptionArPlaceholder": "أخبر المسافرين عن خدماتك...",
+      "validation": {
+        "nameMin": "يجب أن يتكوّن الاسم من حرفين على الأقل",
+        "phoneInvalid": "يرجى إدخال رقم هاتف صحيح",
+        "emailInvalid": "يرجى إدخال بريد إلكتروني صحيح"
+      }
+    },
+    "assemblyPoint": {
+      "title": "اختر نقطة التجمع الخاصة بك",
+      "subtitle": "اختر نقطة التجمع التي يقع فيها مكتبك. هذا هو المكان الذي سيأتي إليه الركاب لركوب باصاتك.",
+      "searchLabel": "ابحث عن المواقع",
+      "searchPlaceholder": "ابحث بالاسم أو المدينة...",
+      "emptyTitle": "لا توجد نقاط تجمّع",
+      "emptyHint": "جرّب كلمة بحث مختلفة أو تواصل مع الدعم"
+    },
+    "bookings": {
+      "title": "الحجوزات",
+      "subtitle": "إدارة جميع الحجوزات الخاصة بمكتبك.",
+      "filterAll": "الكل",
+      "filterPending": "قيد الانتظار",
+      "filterConfirmed": "مؤكد",
+      "filterCancelled": "ملغى",
+      "loading": "جاري التحميل…",
+      "countLabel": "{count} حجز",
+      "empty": "لا توجد حجوزات بعد.",
+      "ref": "المرجع",
+      "confirm": "تأكيد",
+      "statusPending": "قيد الانتظار",
+      "statusConfirmed": "مؤكد",
+      "statusCancelled": "ملغى"
+    },
+    "earnings": {
+      "title": "الإيرادات",
+      "subtitle": "إجمالي الإيرادات من الحجوزات المؤكدة.",
+      "exportCsv": "تصدير CSV",
+      "totalRevenue": "إجمالي الإيرادات",
+      "confirmedBookingsSuffix": "حجوزات مؤكدة",
+      "pending": "قيد الانتظار",
+      "awaitingConfirmation": "حجوزات بانتظار التأكيد",
+      "notesTitle": "ملاحظات",
+      "notesRevenueRule": "تُحتسب الإيرادات فقط من الحجوزات المؤكدة. الحجوزات قيد الانتظار والملغاة مستثناة.",
+      "notesReferencePayments": "المدفوعات المرجعية (بنكك، كاشي، إلخ) تظهر بعد تحقق المسؤول منها.",
+      "csvHeaders": {
+        "metric": "المقياس",
+        "value": "القيمة",
+        "totalBookings": "إجمالي الحجوزات",
+        "confirmedBookings": "الحجوزات المؤكدة",
+        "pendingBookings": "الحجوزات قيد الانتظار",
+        "totalRevenueSdg": "إجمالي الإيرادات (ج.س)",
+        "upcomingTrips": "الرحلات القادمة",
+        "totalBuses": "إجمالي الباصات",
+        "totalRoutes": "إجمالي المسارات"
+      }
+    },
+    "photos": {
+      "title": "أضف الصور",
+      "subtitle": "ارفع شعار مكتبك وصور باصاتك. الصور الجيدة تساعد المسافرين على الثقة بخدمتك.",
+      "officeLogoLabel": "شعار المكتب",
+      "logoPlaceholder": "الشعار",
+      "logoAlt": "شعار المكتب",
+      "logoHelp": "ارفع شعار مكتبك",
+      "logoSizeHint": "PNG أو JPG بحجم أقصى 2 ميغابايت",
+      "busPhotosLabel": "صور الباصات والمكتب (اختياري)",
+      "addPhotos": "إضافة صور",
+      "busPhotoAlt": "صورة الباص",
+      "photosHint": "أضف صور باصاتك ومقاعدها ومكتبك لبناء الثقة مع المسافرين",
+      "uploading": "جاري الرفع...",
+      "tipsTitle": "نصائح للصور",
+      "tipsList": [
+        "استخدم صوراً واضحة الإضاءة لباصاتك",
+        "أظهر التصميم الداخلي وجودة المقاعد",
+        "أدرج أي مرافق خاصة",
+        "الصور تساعد المسافرين على اختيار خدمتك"
+      ]
+    },
+    "trips": {
+      "title": "الرحلات",
+      "subtitle": "جميع الرحلات المجدولة لمكتبك.",
+      "bucketToday": "اليوم",
+      "bucketUpcoming": "القادمة",
+      "bucketPast": "السابقة",
+      "countLabel": "{count} رحلة",
+      "empty": "لا توجد رحلات في هذه الفئة.",
+      "busLabel": "الباص",
+      "seatsSuffix": "مقعد",
+      "statusActive": "نشطة",
+      "statusCancelled": "ملغاة"
+    }
+  },
+  "help": {
+    "common": {
+      "learnMore": "اعرف المزيد"
+    },
+    "header": {
+      "title": "مركز المساعدة",
+      "logoAlt": "شعار مكان",
+      "menu": "القائمة"
+    },
+    "heading": {
+      "greeting": "مرحبًا، كيف يمكننا مساعدتك؟"
+    },
+    "tabs": {
+      "guest": "ضيف",
+      "homeHost": "مضيف منزل",
+      "experienceHost": "مضيف تجربة",
+      "serviceHost": "مضيف خدمة",
+      "travelAdmin": "مسؤول سفر"
+    },
+    "article": {
+      "title": "أهم المقالات",
+      "items": {
+        "cancelReservation": {
+          "title": "إلغاء حجز المنزل كضيف",
+          "description": "تغيرت خططك وتحتاج الآن إلى إلغاء حجز المنزل. ..."
+        },
+        "changeDateTime": {
+          "title": "تغيير تاريخ أو وقت حجز الخدمة أو التجربة",
+          "description": "إذا حجزت خدمة أو تجربة، لكن التاريخ أو الوقت لم يعد يناسبك..."
+        },
+        "hostCancels": {
+          "title": "إذا ألغى المضيف حجز منزلك",
+          "description": "رغم ندرته، قد يحتاج المضيف أحيانًا إلى إلغاء الحجز. نحن..."
+        },
+        "paymentMethodsAccepted": {
+          "title": "طرق الدفع المقبولة",
+          "description": "يقبل مكان مجموعة متنوعة من طرق الدفع. ومع ذلك، تختلف الخيارات المتاحة..."
+        },
+        "addRemovePayment": {
+          "title": "إضافة أو إزالة طريقة دفع",
+          "description": "إذا كانت طريقة الدفع الموجودة في حسابك غير صحيحة (مثل بطاقة منتهية الصلاحية)..."
+        },
+        "whenYoullPay": {
+          "title": "متى ستدفع مقابل حجزك",
+          "description": "هل تريد معرفة متى سيُخصم منك مقابل الحجز؟ يعتمد ذلك على نوع..."
+        }
+      }
+    },
+    "guides": {
+      "title": "أدلة للبدء",
+      "browseAll": "تصفح جميع المواضيع",
+      "items": {
+        "gettingStarted": "البدء على مكان",
+        "findingStay": "العثور على إقامة مناسبة لك",
+        "airCover": "إير كوفر للضيوف",
+        "settingUpAccount": "إعداد حساب مكان الخاص بك"
+      }
+    },
+    "exploreMore": {
+      "title": "استكشف المزيد",
+      "communityPolicies": {
+        "title": "سياسات مجتمعنا",
+        "description": "كيف نبني أساسًا من الثقة.",
+        "imageAlt": "تعاون ونقاش الفريق في بيئة المكتب"
+      },
+      "safetyTips": {
+        "title": "نصائح وإرشادات السلامة",
+        "description": "موارد لمساعدة المسافرين على البقاء بأمان.",
+        "imageAlt": "أب وابنه يستعدان لنشاط في الهواء الطلق مرتديَين سترات النجاة"
+      },
+      "contact": {
+        "title": "هل تريد التواصل معنا؟",
+        "description": "سنبدأ ببعض الأسئلة لنوجهك إلى المكان الصحيح.",
+        "button": "اتصل بنا",
+        "feedbackPrefix": "يمكنك أيضًا",
+        "feedbackLink": "إرسال ملاحظاتك إلينا."
+      }
+    },
+    "guest": {
+      "title": "موصى لك",
+      "actionRequired": "إجراء مطلوب",
+      "quickLink": "رابط سريع",
+      "verification": {
+        "title": "لم يتم التحقق من هويتك بالكامل",
+        "description": "يساعدنا التحقق من الهوية على التأكد من هويتك. وهي إحدى الطرق التي نحافظ بها على أمان مكان.",
+        "checkStatus": "تحقق من حالة التحقق من الهوية",
+        "learnMore": "اعرف المزيد"
+      },
+      "reservationDetails": {
+        "title": "العثور على تفاصيل الحجز",
+        "description": "تحتوي صفحة الرحلات على كافة التفاصيل والإيصالات ومعلومات الاتصال بالمضيف لكل حجز من حجوزاتك.",
+        "goToTrips": "الذهاب إلى الرحلات"
+      }
+    },
+    "homeHost": {
+      "title": "مساعدة مضيف المنزل",
+      "items": {
+        "listing": {
+          "title": "نشر إعلان مكانك",
+          "body": "أنشئ إعلانًا في 17 خطوة — صف المكان وأضف الصور وحدد السعر."
+        },
+        "calendar": {
+          "title": "إدارة التقويم الخاص بك",
+          "body": "احظر التواريخ واقبل الحجوزات وزامن التوفر عبر إعلاناتك."
+        },
+        "gettingPaid": {
+          "title": "تلقي المدفوعات",
+          "body": "سترايب، بنكك، كاشي، المحفظة الإلكترونية، التحويل البنكي، أو الدفع نقدًا عند الوصول."
+        },
+        "reviews": {
+          "title": "التقييمات والمضيف المتميز",
+          "body": "احصل على شارة المضيف المتميز بالحفاظ على تقييم 4.8+ ومعدل استجابة 90%+."
+        }
+      }
+    },
+    "experienceHost": {
+      "title": "مساعدة مضيف التجربة",
+      "items": {
+        "designing": {
+          "title": "تصميم تجربة",
+          "body": "اختر مكانًا وموضوعًا واضحًا يمكن للضيوف تخيله من خلال صورة."
+        },
+        "groupSizes": {
+          "title": "أحجام المجموعات",
+          "body": "تُقام معظم التجارب بـ 4-12 ضيفًا. تشعر المجموعات الصغيرة بطابع شخصي؛ بينما تحتاج المجموعات الكبيرة إلى تنظيم أكثر."
+        },
+        "photo": {
+          "title": "إرشادات الصور",
+          "body": "الصور الواضحة والمشرقة الملتقطة في المكان تتفوق على الصور المعدة مسبقًا. اعرض النشاط الفعلي."
+        },
+        "safety": {
+          "title": "السلامة والتأمين",
+          "body": "نوفر حماية للمضيف تصل إلى مليون دولار. تأكد من حصولك على التصاريح المحلية حيث يلزم ذلك."
+        }
+      }
+    },
+    "serviceHost": {
+      "title": "مساعدة مضيف الخدمة",
+      "items": {
+        "defining": {
+          "title": "تعريف خدمتك",
+          "body": "سباكة، تنظيف، تصوير — كن محددًا بشأن النطاق وما هو غير مشمول."
+        },
+        "scheduling": {
+          "title": "الجدولة",
+          "body": "حدد توفرك الأسبوعي. الحجوزات في نفس اليوم اختيارية."
+        },
+        "quotes": {
+          "title": "عروض الأسعار والفواتير",
+          "body": "أرسل عروض الأسعار، واقبل الدفع عبر أي من بوابات مكان، وأصدر الإيصالات تلقائيًا."
+        },
+        "verification": {
+          "title": "التحقق",
+          "body": "يجتاز مضيفو الخدمة فحص الخلفية والترخيص قبل النشر."
+        }
+      }
+    },
+    "travelAdmin": {
+      "title": "مساعدة مسؤول السفر",
+      "items": {
+        "setup": {
+          "title": "إعداد حساب مسؤول السفر",
+          "body": "أدر رحلات فريقك. محفظة مركزية واحدة، وإيصالات فردية."
+        },
+        "invitingEmployees": {
+          "title": "دعوة الموظفين",
+          "body": "أرسل الدعوات عبر البريد الإلكتروني. يحجز كل موظف بمفرده؛ وتقوم أنت بالموافقة أو الموافقة المسبقة."
+        },
+        "expenseReports": {
+          "title": "تقارير المصاريف والإيصالات",
+          "body": "صدّر ملفات PDF حسب الشهر أو حسب الموظف. يتضمن كل حجز فاتورة متوافقة مع الضرائب."
+        },
+        "insurance": {
+          "title": "تأمين السفر",
+          "body": "طبقة اختيارية تغطي الإلغاء والأمتعة والرعاية الطبية لرحلات العمل."
+        }
+      }
+    }
   }
 }

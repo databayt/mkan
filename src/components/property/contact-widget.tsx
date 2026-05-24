@@ -1,10 +1,17 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { useGetAuthUserQuery } from "@/state/api";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { useLocale } from "@/components/internationalization/use-locale";
 import { Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
 
 const ContactWidget = ({ onOpenModal }: ContactWidgetProps) => {
+  const dict = useDictionary();
+  const t = dict?.property?.contactWidget;
+  const { locale } = useLocale();
   const { data: authUser } = useGetAuthUserQuery();
   const router = useRouter();
 
@@ -12,7 +19,7 @@ const ContactWidget = ({ onOpenModal }: ContactWidgetProps) => {
     if (authUser) {
       onOpenModal();
     } else {
-      router.push("/signin");
+      router.push(`/${locale}/signin`);
     }
   };
 
@@ -24,7 +31,7 @@ const ContactWidget = ({ onOpenModal }: ContactWidgetProps) => {
           <Phone className="text-primary-50" size={15} />
         </div>
         <div>
-          <p>Contact This Property</p>
+          <p>{t?.contactProperty ?? "Contact This Property"}</p>
           <div className="text-lg font-bold text-primary-800">
             (424) 340-5574
           </div>
@@ -34,14 +41,16 @@ const ContactWidget = ({ onOpenModal }: ContactWidgetProps) => {
         className="w-full bg-primary-700 text-white hover:bg-primary-600"
         onClick={handleButtonClick}
       >
-        {authUser ? "Submit Application" : "Sign In to Apply"}
+        {authUser
+          ? (t?.submitApplication ?? "Submit Application")
+          : (t?.signInToApply ?? "Sign In to Apply")}
       </Button>
 
       <hr className="my-4" />
       <div className="text-sm">
-        <div className="text-primary-600 mb-1">Language: English, Bahasa.</div>
+        <div className="text-primary-600 mb-1">{t?.languages ?? "Language: English, Bahasa."}</div>
         <div className="text-primary-600">
-          Open by appointment on Monday - Sunday
+          {t?.appointmentHours ?? "Open by appointment on Monday - Sunday"}
         </div>
       </div>
     </div>

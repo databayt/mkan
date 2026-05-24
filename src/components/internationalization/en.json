@@ -1,4 +1,138 @@
 {
+  "messages": {
+    "validation": {
+      "required": "Required",
+      "email": "Valid email required",
+      "emailRequired": "Email is required",
+      "passwordRequired": "Password is required",
+      "passwordMismatch": "Passwords do not match",
+      "passwordMinLength": "Minimum 8 characters required",
+      "minLength": "Must be at least {min} characters",
+      "maxLength": "Must be no more than {max} characters",
+      "min": "Must be at least {min}",
+      "max": "Must be no more than {max}",
+      "positive": "Must be a positive number",
+      "phone": "Valid phone number required",
+      "date": "Valid date required",
+      "invalidFormat": "Invalid format",
+      "futureDate": "Date must be in the future",
+      "startBeforeEnd": "Start date must be before end date",
+      "titleRequired": "Title is required",
+      "titleTooShort": "Title must be at least {min} characters",
+      "titleTooLong": "Title must be no more than {max} characters",
+      "amountRequired": "Amount is required",
+      "amountPositive": "Amount must be positive",
+      "priceRequired": "Price is required",
+      "pricePositive": "Price must be positive",
+      "guestsRequired": "Number of guests is required",
+      "checkInRequired": "Check-in date is required",
+      "checkOutRequired": "Check-out date is required",
+      "locationRequired": "Location is required",
+      "ratingRequired": "Rating is required",
+      "ratingInvalidRange": "Rating must be between {min} and {max}"
+    },
+    "toast": {
+      "success": {
+        "created": "Created successfully",
+        "updated": "Updated successfully",
+        "deleted": "Deleted successfully",
+        "saved": "Saved successfully",
+        "uploaded": "Uploaded successfully",
+        "sent": "Sent successfully",
+        "loggedIn": "Logged in successfully",
+        "loggedOut": "Logged out successfully",
+        "signedUp": "Account created successfully",
+        "listingCreated": "Listing created successfully",
+        "listingUpdated": "Listing updated successfully",
+        "listingDeleted": "Listing deleted successfully",
+        "listingPublished": "Listing published successfully",
+        "bookingCreated": "Booking confirmed",
+        "bookingUpdated": "Booking updated",
+        "bookingCancelled": "Booking cancelled",
+        "applicationSubmitted": "Application submitted",
+        "applicationApproved": "Application approved",
+        "applicationRejected": "Application rejected",
+        "paymentProcessed": "Payment processed successfully",
+        "reviewCreated": "Review posted",
+        "hostUpdated": "Host profile updated"
+      },
+      "error": {
+        "generic": "Something went wrong",
+        "createFailed": "Failed to create",
+        "updateFailed": "Failed to update",
+        "deleteFailed": "Failed to delete",
+        "saveFailed": "Failed to save",
+        "uploadFailed": "Failed to upload",
+        "listingCreateFailed": "Failed to create listing",
+        "listingUpdateFailed": "Failed to update listing",
+        "listingDeleteFailed": "Failed to delete listing",
+        "bookingCreateFailed": "Failed to create booking",
+        "bookingUpdateFailed": "Failed to update booking",
+        "bookingCancelFailed": "Failed to cancel booking",
+        "applicationCreateFailed": "Failed to submit application",
+        "applicationUpdateFailed": "Failed to update application",
+        "paymentFailed": "Payment failed",
+        "reviewCreateFailed": "Failed to post review",
+        "hostUpdateFailed": "Failed to update host profile"
+      },
+      "warning": {
+        "unsavedChanges": "You have unsaved changes",
+        "confirmDelete": "Are you sure you want to delete?",
+        "confirmCancel": "Are you sure you want to cancel?",
+        "irreversible": "This action cannot be undone"
+      },
+      "info": {
+        "loading": "Loading...",
+        "saving": "Saving...",
+        "uploading": "Uploading...",
+        "processing": "Processing...",
+        "searching": "Searching..."
+      }
+    },
+    "errors": {
+      "server": {
+        "internalError": "Internal server error",
+        "databaseError": "Database error",
+        "connectionError": "Connection error",
+        "serviceUnavailable": "Service unavailable"
+      },
+      "auth": {
+        "invalidCredentials": "Invalid email or password",
+        "accountNotFound": "Account not found",
+        "accountDisabled": "Your account has been disabled",
+        "sessionExpired": "Your session has expired. Please log in again",
+        "permissionDenied": "You don't have permission to perform this action",
+        "notAuthenticated": "Please log in to continue",
+        "emailNotVerified": "Please verify your email"
+      },
+      "resource": {
+        "notFound": "Resource not found",
+        "alreadyExists": "Resource already exists",
+        "cannotDelete": "Cannot delete this resource",
+        "cannotModify": "Cannot modify this resource"
+      },
+      "file": {
+        "uploadFailed": "File upload failed",
+        "fileTooLarge": "File size exceeds limit",
+        "invalidType": "Invalid file type",
+        "notFound": "File not found"
+      },
+      "payment": {
+        "processingFailed": "Payment processing failed",
+        "cardDeclined": "Card declined",
+        "insufficientFunds": "Insufficient funds",
+        "cardExpired": "Card expired",
+        "transactionFailed": "Transaction failed",
+        "refundFailed": "Refund failed"
+      },
+      "booking": {
+        "unavailable": "These dates are no longer available",
+        "overlap": "You already have a booking for these dates",
+        "minStay": "Minimum stay not met",
+        "maxGuests": "Exceeds maximum number of guests"
+      }
+    }
+  },
   "metadata": {
     "title": "Mkan - Rental Marketplace",
     "description": "Connect with property managers and find your perfect rental home"
@@ -37,7 +171,8 @@
     "dark": "Dark",
     "system": "System",
     "platform": "Platform",
-    "brandName": "Mkan"
+    "brandName": "Mkan",
+    "skipToContent": "Skip to main content"
   },
   "navigation": {
     "menu": "Menu",
@@ -91,7 +226,24 @@
     "viewMyTrips": "View my trips",
     "cancel": "Cancel booking",
     "cancelConfirm": "Are you sure you want to cancel this booking?",
-    "status": "Status"
+    "status": "Status",
+    "bankak": "Bankak",
+    "cashi": "Cashi",
+    "mobileMoney": "Mobile money",
+    "bankTransfer": "Bank transfer",
+    "cardProcessing": "Processing payment…",
+    "cardLoading": "Preparing secure checkout…",
+    "cardConfigMissing": "Card payments are not configured in this environment.",
+    "cardErrorPrefix": "Payment failed",
+    "cashInstruction": "Your booking will be held as Pending until your host confirms cash payment on arrival.",
+    "cashSubmit": "Confirm cash booking",
+    "cashSuccess": "Booked. Pay your host on arrival; they'll confirm in person.",
+    "referenceInstruction": "Pay in your wallet or bank app, then enter the transaction reference here. An admin verifies within 24 hours.",
+    "referenceLabel": "Transaction reference",
+    "referencePlaceholder": "e.g. TXN-2026-049238",
+    "referenceSubmit": "Submit reference",
+    "referenceSuccess": "Reference recorded. We verify within 24 hours and confirm your booking.",
+    "referenceTooShort": "Reference must be at least 3 characters."
   },
   "auth": {
     "signIn": "Login",
@@ -127,7 +279,57 @@
     "reset": {
       "heading": "Reset your password"
     },
-    "backToLogin": "Back to login"
+    "backToLogin": "Back to login",
+    "loginModel": {
+      "login": "Login"
+    },
+    "signup": {
+      "signUp": "Sign up"
+    },
+    "social": {
+      "continueWithFacebook": "Continue with Facebook",
+      "continueWithGoogle": "Continue with Google"
+    },
+    "userButton": {
+      "logout": "Logout"
+    },
+    "roleGate": {
+      "noPermission": "You do not have permission to view this content!"
+    },
+    "cardWrapper": {
+      "or": "Or"
+    },
+    "passwordReset": {
+      "heading": "Enter a new password",
+      "newPassword": "New Password"
+    },
+    "verification": {
+      "heading": "Confirming your verification",
+      "missingToken": "Missing token!"
+    },
+    "authError": {
+      "headerLabel": "Oops! Something went wrong!"
+    },
+    "errorCard": {
+      "headerLabel": "Authentication Error",
+      "errorCode": "Error code:",
+      "contactSupport": "If this problem persists, please contact support.",
+      "errors": {
+        "Configuration": "There is a problem with the server configuration.",
+        "AccessDenied": "You do not have permission to sign in.",
+        "Verification": "The verification link may have expired or already been used.",
+        "OAuthSignin": "Could not initiate sign in with OAuth provider.",
+        "OAuthCallback": "Error completing OAuth sign in.",
+        "OAuthCreateAccount": "Could not create OAuth user in database.",
+        "EmailCreateAccount": "Could not create email user in database.",
+        "Callback": "Something went wrong with the authentication callback.",
+        "OAuthAccountNotLinked": "This email is already associated with another account.",
+        "EmailSignin": "The email could not be sent.",
+        "CredentialsSignin": "The credentials you provided are invalid.",
+        "SessionRequired": "You must be signed in to access this page.",
+        "default": "An unexpected error occurred."
+      }
+    }
   },
   "marketing": {
     "hero": {
@@ -1066,7 +1268,49 @@
       "applicationApproved": "Your application has been approved",
       "applicationPending": "Your application is pending approval",
       "applicationDenied": "Your application has been denied",
-      "downloadAgreement": "Download Agreement"
+      "downloadAgreement": "Download Agreement",
+      "residenceDetail": {
+        "paymentMethod": {
+          "title": "Payment method",
+          "description": "Change how you pay for your plan.",
+          "default": "Default",
+          "expiry": "Expiry",
+          "visaEndingIn": "Visa ending in 2024"
+        },
+        "residenceCard": {
+          "activeLeases": "Active Leases",
+          "perNight": "/ night",
+          "startDate": "Start Date",
+          "endDate": "End Date",
+          "nextPayment": "Next Payment",
+          "manager": "Manager"
+        },
+        "billingHistory": {
+          "title": "Billing History",
+          "description": "Download your previous plan receipts and usage details.",
+          "invoice": "Invoice",
+          "status": "Status",
+          "billingDate": "Billing Date",
+          "amount": "Amount",
+          "action": "Action",
+          "download": "Download",
+          "invoiceLabel": "Invoice"
+        },
+        "errorLoadingProperty": "Error loading property"
+      },
+      "residencesPage": {
+        "title": "Current Residences",
+        "subtitle": "View and manage your current living spaces",
+        "errorLoading": "Error loading current residences",
+        "noCurrentResidences": "You don't have any current residences"
+      },
+      "tripsPage": {
+        "upcomingStays": "Upcoming stays",
+        "pastStays": "Past stays",
+        "untitledStay": "Untitled stay",
+        "bookingCancelled": "Booking cancelled",
+        "couldNotCancel": "Could not cancel"
+      }
     },
     "favorites": {
       "title": "Favorite Properties",
@@ -1822,7 +2066,11 @@
         "morning": "Morning",
         "afternoon": "Afternoon",
         "evening": "Evening",
-        "night": "Night"
+        "night": "Night",
+        "morningRange": "4am – 12pm",
+        "afternoonRange": "12pm – 5pm",
+        "eveningRange": "5pm – 9pm",
+        "nightRange": "9pm – 4am"
       },
       "price": {
         "label": "Price range",
@@ -1830,7 +2078,8 @@
       },
       "amenitiesLabel": "Amenities",
       "officesLabel": "Operators",
-      "searchAgain": "Search Again"
+      "searchAgain": "Search Again",
+      "pickDate": "Pick a date"
     },
     "booking": {
       "selectSeats": "Select Your Seats",
@@ -1912,7 +2161,9 @@
       "status": "Status",
       "total": "Total Amount",
       "showcaseTitle": "Your Digital Ticket",
-      "showcaseSubtitle": "Book online and receive your e-ticket instantly with QR code for easy boarding."
+      "showcaseSubtitle": "Book online and receive your e-ticket instantly with QR code for easy boarding.",
+      "office": "Transport Office",
+      "assemblyPoint": "Assembly Point"
     },
     "trip": {
       "selectSeats": "Select Seats",
@@ -2045,7 +2296,9 @@
       "cashWarning": "Your seats will be reserved for 30 minutes. Please arrive at the office early to complete payment and collect your tickets.",
       "passenger": "Passenger",
       "seats": "Seats",
-      "total": "Total"
+      "total": "Total",
+      "processing": "Processing...",
+      "pay": "Pay"
     },
     "paymentMethods": {
       "mobileMoney": {
@@ -2177,7 +2430,13 @@
       "hrs": "hrs",
       "bookingReference": "Booking Reference",
       "showQrCode": "Show this QR code at the office",
-      "backToBooking": "Back to Booking Details"
+      "backToBooking": "Back to Booking Details",
+      "dateLabel": "Date",
+      "timeLabel": "Time",
+      "passengerLabel": "Passenger",
+      "seatLabel": "Seat(s)",
+      "busLabel": "Bus",
+      "totalLabel": "Total"
     },
     "bookingPage": {
       "dateLabel": "Date",
@@ -2189,6 +2448,87 @@
       "totalLabel": "Total",
       "paymentSuccess": "Payment successful",
       "paymentFailed": "Payment failed. Please try again."
+    },
+    "meta": {
+      "title": "Bus Transport",
+      "description": "Book intercity bus trips across Sudan",
+      "searchTitle": "Transport Search",
+      "searchDescription": "Search for available transport trips",
+      "checkoutTitle": "Checkout",
+      "checkoutDescription": "Complete your booking and pay",
+      "officesTitle": "Transport Offices",
+      "officesDescription": "Browse available transport offices"
+    },
+    "home": {
+      "operatorsCaption": "Trusted transport operators on our platform",
+      "assemblyPointsTitle": "Assembly Points",
+      "assemblyPointsSubtitle": "All major bus stations across Sudan",
+      "browseOffices": "Browse Offices",
+      "browseAllOffices": "Browse all offices",
+      "hoursSuffix": "{hours}h",
+      "currency": "SDG"
+    },
+    "searchPage": {
+      "previous": "Previous",
+      "next": "Next",
+      "pageOf": "Page {page} of {pageCount}",
+      "tripsCountFallback": "{count} trips"
+    },
+    "map": {
+      "noPoints": "No assembly points available",
+      "unavailable": "Assembly points map unavailable"
+    },
+    "testimonials": {
+      "title": "What Travelers Say",
+      "subtitle": "Thousands of travelers trust Mkan for their bus bookings",
+      "items": [
+        {
+          "name": "Ahmed Babiker",
+          "location": "Port Sudan",
+          "route": "Port Sudan → Atbara",
+          "content": "I used to queue for hours at the terminal. Now I book my seat from home, pick exactly where I want to sit, and just show the QR code at boarding. Saved me a whole morning.",
+          "rating": 5
+        },
+        {
+          "name": "Mona Hassan",
+          "location": "Khartoum",
+          "route": "Khartoum → Wad Madani",
+          "content": "The mobile money payment worked instantly. I booked for my mother who doesn't use smartphones — just forwarded her the ticket PDF. She boarded without any issues.",
+          "rating": 5
+        },
+        {
+          "name": "Khaled Nour",
+          "location": "Kassala",
+          "route": "Kassala → Port Sudan",
+          "content": "As someone who travels between Kassala and Port Sudan every other week, this platform has been a game-changer. I can see which buses have WiFi and USB chargers before booking.",
+          "rating": 4
+        },
+        {
+          "name": "Fatima Al-Tayeb",
+          "location": "Atbara",
+          "route": "Atbara → Dongola",
+          "content": "The seat picker shows exactly which seats are free. I always book the front row. No more arriving at 4 AM to get a good seat.",
+          "rating": 5
+        }
+      ]
+    },
+    "ticketShowcase": {
+      "route": "Khartoum → Port Sudan",
+      "name": "Ahmed",
+      "seat": "A12",
+      "time": "5:00 AM",
+      "date": "15 March 2026",
+      "place": "Souq Al-Arabi, Khartoum",
+      "scanLabel": "Scan this QR code or show this ticket at boarding",
+      "ticketId": "MKN-32212",
+      "nameLabel": "Name",
+      "seatLabel": "Seat",
+      "timeLabel": "Time",
+      "dateLabel": "Date",
+      "placeLabel": "Boarding Point",
+      "ticketIdLabel": "Ticket ID",
+      "share": "Share",
+      "download": "Download Ticket"
     }
   },
   "siteFooter": {
@@ -2242,7 +2582,35 @@
     "submit": "Submit",
     "submitting": "Submitting...",
     "success": "Submitted. Thank you!",
-    "error": "Something went wrong. Try again."
+    "error": "Something went wrong. Try again.",
+    "triggerText": "Report an issue",
+    "triggerAriaLabel": "Report an issue",
+    "categoryPlaceholder": "Category",
+    "descriptionPlaceholder": "Describe the issue in detail (minimum 30 characters)…",
+    "descriptionHint": "{count}/30+ chars",
+    "addDetails": "Add steps and expected behavior (optional)",
+    "reproPlaceholder": "Steps to reproduce: 1. … 2. … 3. …",
+    "expectedPlaceholder": "What did you expect to happen?",
+    "actualPlaceholder": "What actually happened?",
+    "severityLabel": "Severity",
+    "severityLow": "Low — cosmetic",
+    "severityMedium": "Medium — noticeable",
+    "severityHigh": "High — blocks me",
+    "severityCritical": "Critical — data loss / outage",
+    "captchaHint": "Reports from signed-in users are processed faster.",
+    "captchaLink": "Sign in",
+    "successWithId": "Submitted. Tracked as #{id}.",
+    "cooldown": "Please wait a moment before submitting another report.",
+    "categories": {
+      "visual": "Visual / Layout",
+      "broken": "Broken / Not Working",
+      "data": "Wrong Data",
+      "slow": "Slow / Performance",
+      "confusing": "Confusing / UX",
+      "auth": "Sign in / Permissions",
+      "i18n": "Translation / Language",
+      "other": "Other"
+    }
   },
   "userButton": {
     "logout": "Logout"
@@ -2347,6 +2715,10 @@
   },
   "search": {
     "location": "Location",
+    "where": "Where",
+    "when": "When",
+    "who": "Who",
+    "addDates": "Add dates",
     "whereAreYouGoing": "Where are you going?",
     "checkIn": "Check in",
     "checkOut": "Check out",
@@ -2364,7 +2736,7 @@
     "anyWeek": "Any week",
     "searchHowTos": "Search how-tos and more",
     "whereTo": "Where to?",
-    "searchDestinations": "Search destinations...",
+    "searchDestinations": "Search destinations",
     "searchLocation": "Search for a location",
     "searchResults": "Search results",
     "popularDestinations": "Popular destinations",
@@ -2413,7 +2785,27 @@
       "4 guests",
       "5+ guests",
       "I'm flexible"
-    ]
+    ],
+    "verticalForm": {
+      "heading": "Book unique\naccommodations and\nactivities.",
+      "where": "WHERE",
+      "checkIn": "CHECK-IN",
+      "checkOut": "CHECK-OUT",
+      "guests": "GUESTS",
+      "anywhere": "Anywhere",
+      "addDate": "Add date",
+      "addGuests": "Add guests",
+      "back": "Back",
+      "search": "Search",
+      "adult": "adult",
+      "adults": "adults",
+      "child": "child",
+      "children": "children",
+      "infant": "infant",
+      "infants": "infants",
+      "selectCheckIn": "Select check-in date",
+      "selectCheckOut": "Select check-out date"
+    }
   },
   "filters": {
     "allFilters": "All Filters",
@@ -2453,7 +2845,10 @@
     "loading": "Loading...",
     "failedToLoad": "Failed to fetch properties",
     "perMonth": "/month",
-    "month": "month"
+    "month": "month",
+    "pagination": {
+      "pageOf": "Page {current} of {total}"
+    }
   },
   "landing": {
     "callToAction": {
@@ -2601,7 +2996,71 @@
       "homeHostComingSoon": "Home host content coming soon...",
       "experienceHostComingSoon": "Experience host content coming soon...",
       "serviceHostComingSoon": "Service host content coming soon...",
-      "travelAdminComingSoon": "Travel admin content coming soon..."
+      "travelAdminComingSoon": "Travel admin content coming soon...",
+      "metadata": {
+        "title": "Help Center",
+        "description": "Get help and support"
+      }
+    },
+    "host": {
+      "metadata": {
+        "title": "Become a Host",
+        "description": "Start hosting guests and earning income"
+      }
+    },
+    "hosting": {
+      "metadata": {
+        "title": "Hosting",
+        "description": "Manage your reservations and hosting"
+      }
+    },
+    "hostingListings": {
+      "metadata": {
+        "title": "My Listings",
+        "description": "View and manage your listings"
+      }
+    },
+    "landing": {
+      "metadata": {
+        "title": "Welcome",
+        "description": "Welcome to Mkan — your rental and hosting platform"
+      }
+    },
+    "login": {
+      "metadata": {
+        "title": "Login",
+        "description": "Sign in to your account"
+      }
+    },
+    "join": {
+      "metadata": {
+        "title": "Join",
+        "description": "Create your new account"
+      }
+    },
+    "reset": {
+      "metadata": {
+        "title": "Reset Password",
+        "description": "Reset your password"
+      }
+    },
+    "managerProperties": {
+      "metadata": {
+        "title": "Manage Properties",
+        "description": "View and manage your property listings"
+      }
+    },
+    "tenantFavorites": {
+      "metadata": {
+        "title": "Favorites",
+        "description": "Browse and manage your saved property listings"
+      }
+    },
+    "tenantResidences": {
+      "metadata": {
+        "title": "My Residences",
+        "description": "View and manage your current living spaces"
+      }
     }
   },
   "onboarding": {
@@ -2753,5 +3212,1070 @@
     "comingSoonTitle": "Coming soon",
     "comingSoonDescription": "Feature flags, email templates, and platform fees will live here.",
     "settingsPlaceholder": "For now, manage platform state directly through the overview, users, homes, and transport tabs."
+  },
+  "listingEditor": {
+    "common": {
+      "next": "Next",
+      "save": "Save",
+      "back": "Back",
+      "remove": "Remove"
+    },
+    "title": {
+      "heading": "Now, let's give your place a title",
+      "subtitle": "Short titles work best. Have fun with it—you can always change it later.",
+      "cardTitle": "Create your title",
+      "label": "Title",
+      "placeholder": "Peaceful place to relax",
+      "tipTitle": "Title tip",
+      "tipText": "Most hosts in your area use titles with 20-40 characters. Consider highlighting what makes your place unique, like \"Cozy mountain cabin with lake view\" or \"Modern downtown loft near restaurants.\"",
+      "previewTitle": "Preview",
+      "previewSample": "Peaceful place to relax",
+      "previewHint": "This is how your title will appear to guests"
+    },
+    "location": {
+      "heading": "Where's your place located?",
+      "subtitle": "Your address is only shared with guests after they've made a reservation.",
+      "cardTitle": "Location details",
+      "streetAddress": "Street address",
+      "streetAddressPlaceholder": "123 Main Street",
+      "city": "City",
+      "cityPlaceholder": "City",
+      "state": "State/Province",
+      "statePlaceholder": "State",
+      "country": "Country",
+      "countryPlaceholder": "Country",
+      "postalCode": "Postal code",
+      "postalCodePlaceholder": "12345",
+      "coordinatesTitle": "Coordinates (optional)",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "coordinatePlaceholder": "0.0",
+      "privacyTitle": "Privacy note",
+      "privacyText": "We'll only show a general area to guests until after they book. Your exact address will only be shared once a booking is confirmed."
+    },
+    "amenities": {
+      "heading": "What amenities do you offer?",
+      "subtitle": "Select all the amenities available at your property. Guests use these to filter their search.",
+      "cardTitle": "Amenities",
+      "selectedLabel": "Selected amenities:",
+      "options": {
+        "wifi": "WiFi",
+        "wifiDesc": "High-speed wireless internet",
+        "airConditioning": "Air Conditioning",
+        "airConditioningDesc": "Central air or window units",
+        "parking": "Free Parking",
+        "parkingDesc": "On-site parking available",
+        "pool": "Pool",
+        "poolDesc": "Private or shared pool access",
+        "gym": "Gym",
+        "gymDesc": "Fitness center access",
+        "petsAllowed": "Pets Allowed",
+        "petsAllowedDesc": "Pet-friendly property",
+        "washerDryer": "Washer/Dryer",
+        "washerDryerDesc": "In-unit laundry",
+        "dishwasher": "Dishwasher",
+        "dishwasherDesc": "Dishwasher available",
+        "highSpeedInternet": "High-Speed Internet",
+        "highSpeedInternetDesc": "Fast broadband connection",
+        "hardwoodFloors": "Hardwood Floors",
+        "hardwoodFloorsDesc": "Beautiful hardwood throughout",
+        "walkInClosets": "Walk-In Closets",
+        "walkInClosetsDesc": "Spacious closet storage",
+        "microwave": "Microwave",
+        "microwaveDesc": "Kitchen microwave",
+        "refrigerator": "Refrigerator",
+        "refrigeratorDesc": "Full-size refrigerator"
+      }
+    },
+    "description": {
+      "heading": "Create your description",
+      "subtitle": "Share what makes your place special and what guests can expect during their stay.",
+      "cardTitle": "About your space",
+      "label": "Description",
+      "placeholder": "Tell guests about your space, the neighborhood, and what makes your place unique...",
+      "tipTitle": "Writing tips",
+      "tip1": "Highlight unique features of your space",
+      "tip2": "Mention the neighborhood and nearby attractions",
+      "tip3": "Describe the ambiance and what guests can expect",
+      "tip4": "Be specific about the space layout",
+      "previewTitle": "Preview",
+      "previewPlaceholder": "Your description will appear here..."
+    },
+    "pricing": {
+      "heading": "Now, set your price",
+      "subtitle": "You can change it anytime. Research similar listings in your area to help you pick the right price.",
+      "cardTitle": "Base price",
+      "label": "Price per night (USD)",
+      "pricePlaceholder": "0",
+      "tipTitle": "Price tip",
+      "tipText": "Most hosts in your area charge $85–$130 per night. Consider starting with a competitive price to attract your first guests and reviews.",
+      "breakdownTitle": "Guest price breakdown",
+      "breakdownNights": "$100 x 1 night",
+      "serviceFee": "Mkan service fee",
+      "total": "Total"
+    },
+    "houseRules": {
+      "heading": "Set your house rules",
+      "subtitle": "Let guests know what's allowed and what's not at your place.",
+      "standardRulesTitle": "Standard rules",
+      "smokingAllowed": "Smoking allowed",
+      "smokingAllowedDesc": "Guests can smoke inside",
+      "petsAllowed": "Pets allowed",
+      "petsAllowedDesc": "Guests can bring pets",
+      "partiesAllowed": "Parties/events allowed",
+      "partiesAllowedDesc": "Guests can host gatherings",
+      "quietHours": "Quiet hours",
+      "quietHoursDesc": "Set quiet time for guests",
+      "startTime": "Start time",
+      "endTime": "End time",
+      "additionalRulesTitle": "Additional rules",
+      "additionalRulesPlaceholder": "Add any other rules or important information for guests...",
+      "whyTitle": "Why rules matter",
+      "whyText": "Clear house rules help set expectations and prevent misunderstandings. Guests who book agree to follow your rules."
+    },
+    "cancellationPolicy": {
+      "heading": "Cancellation policy",
+      "subtitle": "Choose a policy that works for you. This determines when guests can cancel and get a refund.",
+      "cardTitle": "Select your policy",
+      "recommended": "Recommended",
+      "policyDetailsSuffix": "policy details",
+      "chooseTitle": "Choosing the right policy",
+      "chooseText": "Flexible policies tend to get more bookings because guests feel more comfortable booking. Stricter policies give you more protection against last-minute cancellations.",
+      "flexibleName": "Flexible",
+      "flexibleDesc": "Full refund 1 day prior to arrival",
+      "flexibleD1": "Full refund for cancellations made at least 24 hours before check-in",
+      "flexibleD2": "If cancelled less than 24 hours before check-in, the first night is non-refundable",
+      "flexibleD3": "Cleaning fees are always refunded if the guest did not check in",
+      "moderateName": "Moderate",
+      "moderateDesc": "Full refund 5 days prior to arrival",
+      "moderateD1": "Full refund for cancellations made at least 5 days before check-in",
+      "moderateD2": "If cancelled less than 5 days before check-in, 50% refund of nightly rate",
+      "moderateD3": "Cleaning fees are always refunded if the guest did not check in",
+      "firmName": "Firm",
+      "firmDesc": "Full refund 30 days prior to arrival",
+      "firmD1": "Full refund for cancellations made at least 30 days before check-in",
+      "firmD2": "If cancelled less than 30 days before check-in, 50% refund of nightly rate",
+      "firmD3": "If cancelled less than 7 days before check-in, no refund",
+      "strictName": "Strict",
+      "strictDesc": "50% refund up to 1 week prior to arrival",
+      "strictD1": "50% refund for cancellations made at least 7 days before check-in",
+      "strictD2": "No refund for cancellations made less than 7 days before check-in",
+      "strictD3": "Cleaning fees are always refunded if the guest did not check in",
+      "nonRefundableName": "Non-refundable",
+      "nonRefundableDesc": "Guests pay 10% less, no refund",
+      "nonRefundableD1": "No refunds at any time",
+      "nonRefundableD2": "Guests get a 10% discount on their booking",
+      "nonRefundableD3": "Best for hosts who want to minimize cancellations"
+    },
+    "propertyType": {
+      "heading": "What type of place will guests have?",
+      "subtitle": "Choose the option that best describes your place.",
+      "cardTitle": "Property type",
+      "houseTitle": "House",
+      "houseDesc": "A home that may be detached or attached to other units",
+      "apartmentTitle": "Apartment",
+      "apartmentDesc": "A place within a multi-unit residential building or complex",
+      "cabinTitle": "Cabin",
+      "cabinDesc": "A home made of wood and located in a natural setting",
+      "campingTitle": "Camping",
+      "campingDesc": "An outdoor accommodation with tents or similar structures",
+      "spaceTitle": "What type of space will guests have?",
+      "entirePlaceTitle": "An entire place",
+      "entirePlaceDesc": "Guests have the whole place to themselves",
+      "roomTitle": "A room",
+      "roomDesc": "Guests have their own room in a home, plus access to shared spaces",
+      "sharedRoomTitle": "A shared room",
+      "sharedRoomDesc": "Guests sleep in a room or common area that may be shared with you or others"
+    },
+    "numberOfGuests": {
+      "heading": "Capacity",
+      "subtitle": "How many guests can your place accommodate? Set the limits guests will see at search.",
+      "cardTitle": "Guests, bedrooms, beds, and baths",
+      "guests": "Guests",
+      "guestsHint": "Max overnight guests including children",
+      "bedrooms": "Bedrooms",
+      "bedroomsHint": "Separate sleeping rooms",
+      "beds": "Beds",
+      "bedsHint": "All beds including sofa beds",
+      "bathrooms": "Bathrooms",
+      "bathroomsHint": "Full or shared bathrooms",
+      "decreaseLabel": "Decrease {label}",
+      "increaseLabel": "Increase {label}"
+    },
+    "accessibility": {
+      "heading": "Accessibility features",
+      "subtitle": "Help guests with accessibility needs find your place by highlighting these features.",
+      "cardTitle": "Select available features",
+      "whyTitle": "Why this matters",
+      "whyText": "Providing accurate accessibility information helps guests with disabilities find suitable accommodations. Be honest about what features are available to ensure a positive experience for all guests.",
+      "features": {
+        "stepFreeEntrance": "Step-free guest entrance",
+        "stepFreeEntranceDesc": "No steps or stairs to enter",
+        "wideDoorway": "Wide doorway",
+        "wideDoorwayDesc": "Doorways are at least 32 inches wide",
+        "wideHallway": "Wide hallway",
+        "wideHallwayDesc": "Hallways at least 36 inches wide",
+        "accessibleBathroom": "Accessible bathroom",
+        "accessibleBathroomDesc": "Roll-in shower or bath with grab bars",
+        "stepFreeBedroom": "Step-free bedroom access",
+        "stepFreeBedroomDesc": "No steps to reach the bedroom",
+        "stepFreeBathroom": "Step-free bathroom access",
+        "stepFreeBathroomDesc": "No steps to reach the bathroom",
+        "showerChair": "Shower or bath chair",
+        "showerChairDesc": "Seating available in shower/bath",
+        "grabBars": "Grab bars",
+        "grabBarsDesc": "Installed in bathroom",
+        "toiletGrabBars": "Toilet grab bars",
+        "toiletGrabBarsDesc": "Bars near toilet for support",
+        "raisedToilet": "Raised toilet",
+        "raisedToiletDesc": "Higher toilet seat available",
+        "accessibleParking": "Accessible parking",
+        "accessibleParkingDesc": "Designated accessible parking spot",
+        "elevator": "Elevator",
+        "elevatorDesc": "Building has elevator access"
+      }
+    },
+    "guestSafety": {
+      "heading": "Guest safety",
+      "subtitle": "Help guests understand safety features and potential hazards at your place.",
+      "devicesTitle": "Safety devices",
+      "devicesHint": "Select all the safety devices available at your property.",
+      "hazardsTitle": "Potential hazards",
+      "hazardsHint": "Let guests know about any potential hazards so they can make an informed decision.",
+      "additionalTitle": "Additional safety information",
+      "additionalPlaceholder": "Add any other safety information guests should know about...",
+      "whyTitle": "Why transparency matters",
+      "whyText": "Being upfront about safety features and hazards builds trust with guests and helps them prepare for their stay. It also protects you as a host.",
+      "devices": {
+        "smokeAlarm": "Smoke alarm",
+        "smokeAlarmDesc": "Working smoke detector installed",
+        "carbonMonoxide": "Carbon monoxide alarm",
+        "carbonMonoxideDesc": "CO detector installed",
+        "fireExtinguisher": "Fire extinguisher",
+        "fireExtinguisherDesc": "Accessible fire extinguisher",
+        "firstAid": "First aid kit",
+        "firstAidDesc": "First aid supplies available",
+        "securityCamera": "Security camera/recording device",
+        "securityCameraDesc": "Outdoor cameras present"
+      },
+      "hazards": {
+        "pool": "Pool/hot tub without gate or lock",
+        "poolDesc": "Unfenced water feature",
+        "lake": "Lake, river, or other body of water nearby",
+        "lakeDesc": "Natural water nearby",
+        "heights": "Heights without rails or protection",
+        "heightsDesc": "Balconies, lofts, or rooftops",
+        "animals": "Dangerous animals on property",
+        "animalsDesc": "Livestock or wildlife",
+        "stairs": "Steep stairs",
+        "stairsDesc": "Stairs that may be challenging",
+        "weapons": "Weapons on property",
+        "weaponsDesc": "Firearms or other weapons stored"
+      }
+    },
+    "coHosts": {
+      "heading": "Add co-hosts",
+      "subtitle": "Invite others to help manage this listing. Co-hosts can respond to messages, update calendars, and more.",
+      "inviteTitle": "Invite a co-host",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "Enter email address",
+      "sendInvite": "Send invite",
+      "inviteHint": "They'll receive an email invitation to become a co-host.",
+      "listTitle": "Co-hosts",
+      "emptyTitle": "No co-hosts yet",
+      "emptyHint": "Invite someone to help manage this listing",
+      "statusActive": "Active",
+      "statusPending": "Pending",
+      "whatTitle": "What can co-hosts do?",
+      "what1": "Respond to messages from guests",
+      "what2": "Update availability and pricing",
+      "what3": "Manage reservations",
+      "what4": "Access guest information"
+    },
+    "customLink": {
+      "heading": "Custom link",
+      "subtitle": "Create a memorable, shareable link for your listing.",
+      "urlTitle": "Your listing URL",
+      "slugLabel": "Custom URL slug (optional)",
+      "slugPlaceholder": "my-amazing-place",
+      "slugHint": "Use lowercase letters, numbers, and hyphens only",
+      "shareableLabel": "Your shareable link",
+      "copied": "Copied",
+      "copyLink": "Copy link",
+      "openInNewTab": "Open link in new tab",
+      "quickShareTitle": "Quick share",
+      "email": "Email",
+      "messages": "Messages",
+      "social": "Social",
+      "whyTitle": "Why use a custom link?",
+      "whyText": "A custom URL is easier to remember and share. It looks more professional when you share it on social media, business cards, or in messages."
+    },
+    "host": {
+      "heading": "Tell guests about yourself",
+      "subtitle": "Share a bit about who you are to help guests feel comfortable booking your place.",
+      "profilePhoto": "Profile photo",
+      "uploadPhoto": "Upload photo",
+      "photoHelp": "A clear photo helps guests recognize you",
+      "aboutYou": "About you",
+      "displayName": "Display name",
+      "displayNamePlaceholder": "How you'd like to be called",
+      "bio": "Bio",
+      "bioPlaceholder": "Tell guests a bit about yourself, your background, and what you love about hosting...",
+      "work": "Work",
+      "workPlaceholder": "What do you do?",
+      "whereYouLive": "Where you live",
+      "locationPlaceholder": "City, Country",
+      "languages": "Languages you speak",
+      "languagesPlaceholder": "English, Arabic, French...",
+      "profileTip": "Profile tip",
+      "profileTipText": "Guests are more likely to book with hosts who have complete profiles. Share what makes you a great host and why you love your area."
+    },
+    "instantBook": {
+      "heading": "Instant Book",
+      "subtitle": "Allow guests to book instantly without waiting for your approval.",
+      "enableTitle": "Enable Instant Book",
+      "turnOn": "Turn on Instant Book",
+      "turnOnDesc": "Guests can book immediately without sending a request",
+      "fasterTitle": "Faster bookings",
+      "fasterText": "Guests can book right away, which often means more bookings",
+      "visibilityTitle": "Better visibility",
+      "visibilityText": "Instant Book listings appear higher in search results",
+      "protectedTitle": "You're still protected",
+      "protectedText": "Even with Instant Book, you can still set requirements for guests (like verified ID) and can cancel penalty-free if a guest doesn't meet your requirements."
+    },
+    "availability": {
+      "heading": "Availability settings",
+      "subtitle": "Control when and how guests can book your place.",
+      "tripLengthTitle": "Trip length",
+      "minNights": "Minimum nights",
+      "minNightsHint": "Shortest stay allowed",
+      "maxNights": "Maximum nights",
+      "maxNightsHint": "Longest stay allowed",
+      "bookingSettingsTitle": "Booking settings",
+      "advanceNotice": "Advance notice",
+      "advanceNoticeUnit": "day(s) before check-in",
+      "advanceNoticeHint": "How much notice you need before a guest arrives",
+      "preparationTime": "Preparation time",
+      "preparationTimeUnit": "day(s) between bookings",
+      "preparationTimeHint": "Buffer time for cleaning between guests",
+      "availabilityWindow": "Availability window",
+      "availabilityWindowUnit": "months in advance",
+      "availabilityWindowHint": "How far in advance guests can book",
+      "sameDayBooking": "Same-day booking",
+      "sameDayBookingDesc": "Allow guests to book for today",
+      "calendarTitle": "Calendar",
+      "legendAvailable": "Available",
+      "legendBooked": "Booked",
+      "legendBlocked": "Blocked",
+      "tipTitle": "Availability tip",
+      "tipText": "Keeping your calendar up to date helps you avoid double bookings and ensures guests can find available dates. Consider syncing with external calendars if you list on multiple platforms."
+    },
+    "photoTour": {
+      "heading": "Photo tour",
+      "subtitle": "Upload photos of your property",
+      "allPhotos": "All photos",
+      "addPhotoAria": "Add photo",
+      "description": "Manage photos and add details. Guests will only see your tour if every room has a photo.",
+      "bedroom": "Bedroom",
+      "bathroom": "Bathroom",
+      "additional": "Additional photos",
+      "addPhotos": "Add photos",
+      "photosCount": "{count} photos"
+    },
+    "checkInMethod": {
+      "heading": "Check-in method",
+      "subtitle": "How will your guests get inside? Pick a method and add custom instructions.",
+      "pickTitle": "Pick a method",
+      "smartLock": "Smart lock",
+      "smartLockHint": "Code-based entry",
+      "lockbox": "Lockbox",
+      "lockboxHint": "Key inside a coded box",
+      "inPerson": "In person",
+      "inPersonHint": "You greet the guest",
+      "doorman": "Doorman",
+      "doormanHint": "Front-desk hands over key",
+      "selfCheckIn": "Self check-in",
+      "selfCheckInHint": "Guest opens with code only",
+      "customTitle": "Custom instructions",
+      "instructionsLabel": "Instructions for guests",
+      "instructionsPlaceholder": "Sample: The lockbox is to the left of the front door. Code is 1234."
+    },
+    "checkInOut": {
+      "heading": "Set your check-in and checkout times",
+      "subtitle": "Choose times that work for both you and your guests.",
+      "checkInTitle": "Check-in time",
+      "checkOutTitle": "Checkout time",
+      "from": "From",
+      "until": "Until",
+      "before": "Before",
+      "time1400": "2:00 PM",
+      "time1500": "3:00 PM",
+      "time1600": "4:00 PM",
+      "time2000": "8:00 PM",
+      "time2100": "9:00 PM",
+      "time2200": "10:00 PM",
+      "time1000": "10:00 AM",
+      "time1100": "11:00 AM",
+      "time1200": "12:00 PM"
+    },
+    "checkoutInstructions": {
+      "heading": "Checkout instructions",
+      "subtitle": "Tell guests what to do when they leave — turn off the AC, lock the door, and so on.",
+      "cardTitle": "Departure steps",
+      "instructionsLabel": "Instructions",
+      "instructionsPlaceholder": "1. Lock the front door\n2. Turn off all lights and AC\n3. Leave keys on the kitchen counter\n4. Take your trash to the bin outside",
+      "note": "These instructions are sent automatically the morning of checkout."
+    },
+    "directions": {
+      "heading": "Directions",
+      "subtitle": "Help guests find your place. Add written directions and an optional map pin.",
+      "writtenTitle": "Written directions",
+      "fromLandmark": "Directions from a landmark",
+      "fromLandmarkPlaceholder": "From the airport, take the highway exit toward Port Sudan. Turn right at the third roundabout...",
+      "mapPinTitle": "Map pin (optional)",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "mapPreview": "Map preview appears here once coordinates are set"
+    },
+    "guidebooks": {
+      "heading": "Guidebook",
+      "subtitle": "Recommend nearby places to your guests. Restaurants, cafés, attractions, services.",
+      "address": "Address",
+      "note": "Note",
+      "addPlace": "Add a place",
+      "sample1Name": "Beit Al-Ghada",
+      "sample1Address": "Al-Geyf Al-Sharqi, Port Sudan",
+      "sample1Note": "Best traditional Sudanese breakfast — open from 7 AM",
+      "sample2Name": "Marina Mall",
+      "sample2Address": "Shari'a Al-Bahr, Port Sudan",
+      "sample2Note": "Largest shopping mall, free parking, ATMs available"
+    },
+    "houseManual": {
+      "heading": "House manual",
+      "subtitle": "How does the AC work? Where's the trash? Save guests from texting you with the same questions.",
+      "cardTitle": "Manual",
+      "notesLabel": "Free-form notes",
+      "notesPlaceholder": "AC remote: the white one on the kitchen counter. Set to 24°C for comfort.\nTrash: the bins are downstairs in the car park, near the lift. Recyclables are blue.\nWifi: details on the fridge magnet.",
+      "visibilityNote": "Visible only to guests with confirmed bookings, after they pay."
+    },
+    "travelHouseRules": {
+      "heading": "House rules",
+      "subtitle": "Guests must accept these rules before booking. Be clear and reasonable.",
+      "standardTitle": "Standard rules",
+      "smoking": "Smoking allowed",
+      "smokingHint": "Set whether guests can smoke inside",
+      "pets": "Pets allowed",
+      "petsHint": "Set whether guests can bring pets",
+      "parties": "Parties or events allowed",
+      "partiesHint": "Large gatherings on-site",
+      "kids": "Suitable for kids",
+      "kidsHint": "Childproofing & safety",
+      "quietHours": "Quiet hours",
+      "quietHoursHint": "Default 10 PM – 8 AM",
+      "customTitle": "Custom rules",
+      "customLabel": "One rule per line",
+      "customPlaceholder": "Please remove your shoes inside\nNo outside guests after 10 PM"
+    },
+    "interactionPreferences": {
+      "heading": "Interaction preferences",
+      "subtitle": "How available do you want to be? Set expectations so guests don't over-message you.",
+      "styleTitle": "Your style",
+      "alwaysAvailable": "Always available",
+      "alwaysAvailableHint": "Reply within an hour, every day",
+      "onRequest": "On request",
+      "onRequestHint": "Reply when guests message",
+      "minimalContact": "Minimal contact",
+      "minimalContactHint": "Self-service stay, no chit-chat",
+      "responseTimeTitle": "Response time",
+      "withinHour": "Within an hour",
+      "withinFewHours": "Within a few hours",
+      "withinDay": "Within a day"
+    },
+    "wifiDetails": {
+      "heading": "Add your wifi details",
+      "subtitle": "Help guests connect to your wifi easily by providing the network name and password.",
+      "cardTitle": "Wifi information",
+      "networkName": "Network name (SSID)",
+      "networkNamePlaceholder": "MyWifiNetwork",
+      "password": "Password",
+      "passwordPlaceholder": "Enter wifi password",
+      "instructionsTitle": "Guest instructions",
+      "instructionsText": "These details will be shared with guests after they check in. Make sure your wifi information is accurate and up to date."
+    }
+  },
+  "atom": {
+    "propertyInfo": {
+      "fastWifiTitle": "Fast wifi",
+      "fastWifiDesc": "100 Mbps download speed for streaming and video calls.",
+      "freeParkingTitle": "Park for free",
+      "freeParkingDesc": "This is one of the few places in the area with free parking.",
+      "freeCancellationTitle": "Free cancellation before Aug 7",
+      "freeCancellationDesc": "Get a full refund if you change your mind."
+    },
+    "propertySelect": {
+      "whereGoingPlaceholder": "Where are you going?",
+      "propertyTypePlaceholder": "Property type",
+      "amenitiesPlaceholder": "Amenities",
+      "addDatesPlaceholder": "Add dates",
+      "guestSingular": "{count} guest",
+      "guestPlural": "{count} guests",
+      "infantSingular": ", {count} infant",
+      "infantPlural": ", {count} infants",
+      "petSingular": ", {count} pet",
+      "petPlural": ", {count} pets",
+      "adultsLabel": "Adults",
+      "adultsAge": "Ages 13 or above",
+      "childrenLabel": "Children",
+      "childrenAge": "Ages 2-12",
+      "infantsLabel": "Infants",
+      "infantsAge": "Under 2",
+      "petsLabel": "Pets",
+      "petsHint": "Bringing a service animal?",
+      "decreaseAdults": "Decrease adults",
+      "increaseAdults": "Increase adults",
+      "decreaseChildren": "Decrease children",
+      "increaseChildren": "Increase children",
+      "decreaseInfants": "Decrease infants",
+      "increaseInfants": "Increase infants",
+      "locations": {
+        "newYork": "New York, NY",
+        "losAngeles": "Los Angeles, CA",
+        "miami": "Miami, FL",
+        "sanFrancisco": "San Francisco, CA",
+        "chicago": "Chicago, IL"
+      },
+      "propertyTypes": {
+        "mansion": "Mansion",
+        "mansionDesc": "Luxury accommodations",
+        "islands": "Islands",
+        "islandsDesc": "Private island getaways",
+        "beach": "Beach",
+        "beachDesc": "Beachfront properties",
+        "boat": "Boat",
+        "boatDesc": "Unique floating stays",
+        "containers": "Containers",
+        "containersDesc": "Modern container homes"
+      },
+      "amenities": {
+        "wifi": "WiFi",
+        "freeParking": "Free parking",
+        "pool": "Pool",
+        "newListings": "New listings"
+      }
+    },
+    "propertyHeader": {
+      "reviewsLabel": "reviews",
+      "superhost": "Superhost",
+      "share": "Share",
+      "save": "Save"
+    },
+    "propertyImages": {
+      "noImages": "No images available",
+      "mainImageAlt": "Property main image",
+      "imageAlt": "Property image {n}",
+      "viewAllPhotos": "View all property photos",
+      "viewPhotoN": "View property photo {n}",
+      "showAllPhotos": "Show all photos",
+      "morePhotos": "{count}+ photos",
+      "removeFromSaved": "Remove from saved",
+      "saveProperty": "Save property"
+    },
+    "propertyGallery": {
+      "showAllPhotos": "Show all photos",
+      "viewAllPhotos": "View all property photos",
+      "viewPhotoN": "View property photo {n}",
+      "mainImageAlt": "Property main image",
+      "imageAlt": "Property image {n}",
+      "placeholderAlts": {
+        "livingRoom": "Modern living room with gray sectional sofa and yellow accent chair",
+        "diningArea": "Dining area with wooden table and modern stairs",
+        "livingView": "Modern living room view",
+        "kitchen": "Modern kitchen with light colored cabinets",
+        "exterior": "Exterior view of traditional European buildings"
+      }
+    },
+    "propertyFilter": {
+      "filtersButton": "Filters",
+      "filtersTitle": "Filters",
+      "priceRange": "Price range",
+      "propertyType": "Property type",
+      "amenities": "Amenities",
+      "bookingOptions": "Booking options",
+      "instantBook": "Instant Book",
+      "instantBookDesc": "Book without waiting for host approval",
+      "superhost": "Superhost",
+      "superhostDesc": "Stay with recognized hosts",
+      "guestFavorites": "Guest favorites",
+      "guestFavoritesDesc": "The most loved homes on Mkan",
+      "clearAll": "Clear all",
+      "showResults": "Show results",
+      "types": {
+        "house": "House",
+        "apartment": "Apartment",
+        "cabin": "Cabin",
+        "villa": "Villa"
+      },
+      "amenitiesList": {
+        "wifi": "Wifi",
+        "freeParking": "Free parking",
+        "pool": "Pool",
+        "kitchen": "Kitchen"
+      }
+    },
+    "searchButton": {
+      "label": "Search"
+    },
+    "reviews": {
+      "reviewsLabel": "reviews",
+      "overallRating": "Overall rating",
+      "categories": {
+        "cleanliness": "Cleanliness",
+        "accuracy": "Accuracy",
+        "checkIn": "Check-in",
+        "communication": "Communication",
+        "location": "Location",
+        "value": "Value"
+      }
+    },
+    "review": {
+      "profilePictureAlt": "{name}'s profile picture"
+    },
+    "iconLabels": {
+      "listView": "Change to List view",
+      "gridView": "Change to grid view"
+    },
+    "modal": {
+      "closeModal": "Close modal"
+    },
+    "expandableCard": {
+      "closeButton": "Close"
+    }
+  },
+  "property": {
+    "common": {
+      "loading": "Loading...",
+      "notFound": "Property not Found"
+    },
+    "details": {
+      "amenitiesHeading": "Property Amenities",
+      "highlightsHeading": "Highlights",
+      "feesPoliciesHeading": "Fees and Policies",
+      "feesPoliciesDescription": "The fees below are based on community-supplied data and may exclude additional fees and utilities.",
+      "tabRequiredFees": "Required Fees",
+      "tabPets": "Pets",
+      "tabParking": "Parking",
+      "oneTimeMoveInFees": "One time move in fees",
+      "applicationFee": "Application Fee",
+      "securityDeposit": "Security Deposit",
+      "petsAllowed": "Pets are allowed",
+      "petsNotAllowed": "Pets are not allowed",
+      "parkingIncluded": "Parking is included",
+      "parkingNotIncluded": "Parking is not included"
+    },
+    "card": {
+      "addFavorite": "Add to favorites",
+      "removeFavorite": "Remove from favorites",
+      "superhost": "Superhost",
+      "in": "in",
+      "night": "night",
+      "currency": "SDG"
+    },
+    "applicationModal": {
+      "title": "Submit Application for this Property",
+      "nameLabel": "Name",
+      "namePlaceholder": "Enter your full name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter your email address",
+      "phoneLabel": "Phone Number",
+      "phonePlaceholder": "Enter your phone number",
+      "messageLabel": "Message (Optional)",
+      "messagePlaceholder": "Enter any additional information",
+      "submit": "Submit Application"
+    },
+    "content": {
+      "fetchError": "Failed to load properties"
+    },
+    "imagePreviews": {
+      "imageAlt": "Property Image {index}",
+      "previousImage": "Previous image",
+      "nextImage": "Next image"
+    },
+    "overview": {
+      "verifiedListing": "Verified Listing",
+      "reviews": "Reviews",
+      "pricePerNight": "Price / night",
+      "bedrooms": "Bedrooms",
+      "bedroomsShort": "bd",
+      "bathrooms": "Bathrooms",
+      "bathroomsShort": "ba",
+      "squareFeet": "Square Feet",
+      "squareFeetShort": "sq ft",
+      "aboutPrefix": "About"
+    },
+    "contactWidget": {
+      "contactProperty": "Contact This Property",
+      "submitApplication": "Submit Application",
+      "signInToApply": "Sign In to Apply",
+      "languages": "Language: English, Bahasa.",
+      "appointmentHours": "Open by appointment on Monday - Sunday"
+    },
+    "location": {
+      "mapAndLocation": "Map and Location",
+      "propertyAddress": "Property Address:",
+      "addressNotAvailable": "Address not available",
+      "getDirections": "Get Directions"
+    },
+    "listings": {
+      "placesIn": "Places in {location}",
+      "noPropertiesTitle": "No properties found",
+      "noPropertiesDescription": "Try adjusting your search filters to see more results.",
+      "perMonth": "/month"
+    }
+  },
+  "transportHost": {
+    "common": {
+      "loading": "Loading...",
+      "tryAgain": "Try again",
+      "errorId": "Error ID",
+      "all": "All",
+      "sdg": "SDG",
+      "confirm": "Confirm"
+    },
+    "loading": {
+      "label": "Loading",
+      "text": "Loading..."
+    },
+    "error": {
+      "title": "Something went wrong",
+      "fallback": "An unexpected error occurred. Please try again."
+    },
+    "metadata": {
+      "title": "Transport Host",
+      "description": "Manage your transport offices and bookings"
+    },
+    "hub": {
+      "badge": "Transport Host",
+      "welcome": "Welcome, {name}",
+      "defaultName": "Host",
+      "manageDescription": "Manage your transport offices and start accepting online bookings for your bus services.",
+      "yourOffices": "Your Offices",
+      "addNewOffice": "Add New Office",
+      "verified": "Verified",
+      "draft": "Draft",
+      "noLocationSet": "No location set",
+      "busesCount": "buses",
+      "routesCount": "routes",
+      "continueSetup": "Continue Setup",
+      "startBusinessTitle": "Start Your Transport Business",
+      "startBusinessDescription": "Register your transport office and start accepting online bookings. Add your buses, define routes, and reach more customers.",
+      "createFirstOffice": "Create Your First Office",
+      "step1Title": "Add Your Office",
+      "step1Description": "Enter your office details and select your assembly point location.",
+      "step2Title": "Add Buses & Routes",
+      "step2Description": "Register your buses with amenities and define your routes with pricing.",
+      "step3Title": "Start Receiving Bookings",
+      "step3Description": "Publish your office and start accepting online bookings from travelers."
+    },
+    "overview": {
+      "title": "Operator overview",
+      "subtitle": "Today's trips, recent bookings, and revenue.",
+      "upcomingTrips": "Upcoming trips",
+      "confirmedBookings": "Confirmed bookings",
+      "totalRevenue": "Total revenue",
+      "buses": "Buses",
+      "bookingsTitle": "Bookings",
+      "bookingsSubtitle": "Manage upcoming and past bookings",
+      "tripsTitle": "Trips",
+      "tripsSubtitle": "Schedule and run your trips",
+      "earningsTitle": "Earnings",
+      "earningsSubtitle": "Revenue per route and per month"
+    },
+    "onboardingLanding": {
+      "loadingText": "Loading...",
+      "creatingOfficeName": "New Transport Office"
+    },
+    "officeInfo": {
+      "title": "Tell us about your office",
+      "subtitle": "Enter your transport office details. This information will be shown to travelers when they search for trips.",
+      "nameLabel": "Office Name *",
+      "namePlaceholder": "e.g., Express Transport",
+      "nameArLabel": "Office Name (Arabic)",
+      "nameArPlaceholder": "e.g., النقل السريع",
+      "phoneLabel": "Phone Number *",
+      "phonePlaceholder": "+249 9xxxxxxxx",
+      "emailLabel": "Email Address *",
+      "emailPlaceholder": "office@example.com",
+      "licenseLabel": "License Number (Optional)",
+      "licensePlaceholder": "Transport license number",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Tell travelers about your services, experience, and what makes your office special...",
+      "descriptionArLabel": "Description (Arabic)",
+      "descriptionArPlaceholder": "أخبر المسافرين عن خدماتك...",
+      "validation": {
+        "nameMin": "Name must be at least 2 characters",
+        "phoneInvalid": "Please enter a valid phone number",
+        "emailInvalid": "Please enter a valid email"
+      }
+    },
+    "assemblyPoint": {
+      "title": "Select your assembly point",
+      "subtitle": "Choose the assembly point where your office is located. This is where passengers will come to board your buses.",
+      "searchLabel": "Search locations",
+      "searchPlaceholder": "Search by name or city...",
+      "emptyTitle": "No assembly points found",
+      "emptyHint": "Try a different search term or contact support"
+    },
+    "bookings": {
+      "title": "Bookings",
+      "subtitle": "Manage all reservations for your office.",
+      "filterAll": "All",
+      "filterPending": "Pending",
+      "filterConfirmed": "Confirmed",
+      "filterCancelled": "Cancelled",
+      "loading": "Loading…",
+      "countLabel": "{count} bookings",
+      "empty": "No bookings yet.",
+      "ref": "Ref",
+      "confirm": "Confirm",
+      "statusPending": "Pending",
+      "statusConfirmed": "Confirmed",
+      "statusCancelled": "Cancelled"
+    },
+    "earnings": {
+      "title": "Earnings",
+      "subtitle": "Revenue rolled up from confirmed bookings.",
+      "exportCsv": "Export CSV",
+      "totalRevenue": "Total revenue",
+      "confirmedBookingsSuffix": "confirmed bookings",
+      "pending": "Pending",
+      "awaitingConfirmation": "bookings awaiting confirmation",
+      "notesTitle": "Notes",
+      "notesRevenueRule": "Revenue counts only Confirmed bookings. Pending and Cancelled are excluded.",
+      "notesReferencePayments": "Reference-based payments (Bankak, Cashi, etc.) appear after admin verifies them.",
+      "csvHeaders": {
+        "metric": "Metric",
+        "value": "Value",
+        "totalBookings": "Total bookings",
+        "confirmedBookings": "Confirmed bookings",
+        "pendingBookings": "Pending bookings",
+        "totalRevenueSdg": "Total revenue (SDG)",
+        "upcomingTrips": "Upcoming trips",
+        "totalBuses": "Total buses",
+        "totalRoutes": "Total routes"
+      }
+    },
+    "photos": {
+      "title": "Add photos",
+      "subtitle": "Upload your office logo and photos of your buses. Good photos help travelers trust your service.",
+      "officeLogoLabel": "Office Logo",
+      "logoPlaceholder": "Logo",
+      "logoAlt": "Office logo",
+      "logoHelp": "Upload your office logo",
+      "logoSizeHint": "PNG, JPG up to 2MB",
+      "busPhotosLabel": "Bus & Office Photos (Optional)",
+      "addPhotos": "Add photos",
+      "busPhotoAlt": "Bus photo",
+      "photosHint": "Add photos of your buses, seats, and office to build trust with travelers",
+      "uploading": "Uploading...",
+      "tipsTitle": "Photo Tips",
+      "tipsList": [
+        "Use well-lit photos of your buses",
+        "Show the interior and seat quality",
+        "Include any special amenities",
+        "Photos help travelers choose your service"
+      ]
+    },
+    "trips": {
+      "title": "Trips",
+      "subtitle": "All scheduled trips for your office.",
+      "bucketToday": "Today",
+      "bucketUpcoming": "Upcoming",
+      "bucketPast": "Past",
+      "countLabel": "{count} trips",
+      "empty": "No trips in this bucket.",
+      "busLabel": "Bus",
+      "seatsSuffix": "seats",
+      "statusActive": "Active",
+      "statusCancelled": "Cancelled"
+    }
+  },
+  "help": {
+    "common": {
+      "learnMore": "Learn more"
+    },
+    "header": {
+      "title": "Help Center",
+      "logoAlt": "Mkan Logo",
+      "menu": "Menu"
+    },
+    "heading": {
+      "greeting": "Hi About, how can we help?"
+    },
+    "tabs": {
+      "guest": "Guest",
+      "homeHost": "Home host",
+      "experienceHost": "Experience host",
+      "serviceHost": "Service host",
+      "travelAdmin": "Travel admin"
+    },
+    "article": {
+      "title": "Top articles",
+      "items": {
+        "cancelReservation": {
+          "title": "Cancel your home reservation as a guest",
+          "description": "Your plans have changed and now you need to cancel your home reservation. ..."
+        },
+        "changeDateTime": {
+          "title": "Change the date or time of your service or experience reservation",
+          "description": "If you booked a service or experience, but the date or time no longer works for you..."
+        },
+        "hostCancels": {
+          "title": "If your host cancels your home reservation",
+          "description": "While it's rare, sometimes a host may need to cancel a reservation. We..."
+        },
+        "paymentMethodsAccepted": {
+          "title": "Payment methods accepted",
+          "description": "Mkan accepts a variety of payment methods. However, your available optio..."
+        },
+        "addRemovePayment": {
+          "title": "Add or remove a payment method",
+          "description": "If an existing payment method on your account is incorrect (ex: an expired cred..."
+        },
+        "whenYoullPay": {
+          "title": "When you'll pay for your reservation",
+          "description": "Want to know when you'll be charged for a reservation? It all depends on the type..."
+        }
+      }
+    },
+    "guides": {
+      "title": "Guides for getting started",
+      "browseAll": "Browse all topics",
+      "items": {
+        "gettingStarted": "Getting started on Mkan",
+        "findingStay": "Finding a stay that's right for you",
+        "airCover": "AirCover for guests",
+        "settingUpAccount": "Setting up your Mkan account"
+      }
+    },
+    "exploreMore": {
+      "title": "Explore more",
+      "communityPolicies": {
+        "title": "Our community policies",
+        "description": "How we build a foundation of trust.",
+        "imageAlt": "Team collaboration and discussion in office setting"
+      },
+      "safetyTips": {
+        "title": "Safety tips and guidelines",
+        "description": "Resources to help travelers stay safe.",
+        "imageAlt": "Father and son preparing for outdoor activity with life vests"
+      },
+      "contact": {
+        "title": "Need to get in touch?",
+        "description": "We'll start with some questions and get you to the right place.",
+        "button": "Contact us",
+        "feedbackPrefix": "You can also",
+        "feedbackLink": "give us feedback."
+      }
+    },
+    "guest": {
+      "title": "Recommended for you",
+      "actionRequired": "ACTION REQUIRED",
+      "quickLink": "QUICK LINK",
+      "verification": {
+        "title": "Your identity is not fully verified",
+        "description": "Identity verification helps us check that you're really you. It's one of the ways we keep Mkan secure.",
+        "checkStatus": "Check identity verification status",
+        "learnMore": "Learn more"
+      },
+      "reservationDetails": {
+        "title": "Finding reservation details",
+        "description": "Your Trips tab has full details, receipts, and Host contact info for each of your reservations.",
+        "goToTrips": "Go to Trips"
+      }
+    },
+    "homeHost": {
+      "title": "Home host help",
+      "items": {
+        "listing": {
+          "title": "Listing your space",
+          "body": "Create a listing in 17 steps — describe the place, add photos, set the price."
+        },
+        "calendar": {
+          "title": "Managing your calendar",
+          "body": "Block dates, accept bookings, sync availability across listings."
+        },
+        "gettingPaid": {
+          "title": "Getting paid",
+          "body": "Stripe, Bankak, Cashi, mobile money, bank transfer, or cash at check-in."
+        },
+        "reviews": {
+          "title": "Reviews & superhost",
+          "body": "Earn the superhost badge by maintaining a 4.8+ rating and 90%+ response rate."
+        }
+      }
+    },
+    "experienceHost": {
+      "title": "Experience host help",
+      "items": {
+        "designing": {
+          "title": "Designing an experience",
+          "body": "Pick a venue and a clear theme guests can picture from a photo."
+        },
+        "groupSizes": {
+          "title": "Group sizes",
+          "body": "Most experiences run with 4-12 guests. Smaller groups feel personal; larger groups need more structure."
+        },
+        "photo": {
+          "title": "Photo guidelines",
+          "body": "Bright, in-focus photos taken at the venue beat staged shots. Show the actual activity."
+        },
+        "safety": {
+          "title": "Safety & insurance",
+          "body": "We provide host protection up to $1M. Make sure you have local permits where required."
+        }
+      }
+    },
+    "serviceHost": {
+      "title": "Service host help",
+      "items": {
+        "defining": {
+          "title": "Defining your service",
+          "body": "Plumbing, cleaning, photography — be specific about scope and what's not included."
+        },
+        "scheduling": {
+          "title": "Scheduling",
+          "body": "Set your weekly availability. Same-day bookings are optional."
+        },
+        "quotes": {
+          "title": "Quotes & invoicing",
+          "body": "Send quotes, accept payment via any of mkan's gateways, and issue receipts automatically."
+        },
+        "verification": {
+          "title": "Verification",
+          "body": "Service hosts pass a background and license check before publishing."
+        }
+      }
+    },
+    "travelAdmin": {
+      "title": "Travel admin help",
+      "items": {
+        "setup": {
+          "title": "Setting up a travel admin account",
+          "body": "Manage trips for your team. One central wallet, individual receipts."
+        },
+        "invitingEmployees": {
+          "title": "Inviting employees",
+          "body": "Send invites by email. Each employee books on their own; you approve or pre-approve."
+        },
+        "expenseReports": {
+          "title": "Expense reports & receipts",
+          "body": "Export PDFs by month or by employee. Each booking includes a tax-friendly invoice."
+        },
+        "insurance": {
+          "title": "Travel insurance",
+          "body": "Optional layer covers cancellation, baggage, and medical for business trips."
+        }
+      }
+    }
   }
 }

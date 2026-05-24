@@ -1,23 +1,30 @@
+"use client";
+
 import Image from "next/image"
 import { ChevronRight } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 export default function Guides() {
+  const dict = useDictionary();
+  const t = dict?.help?.guides;
+  const items = t?.items;
+
   const guides = [
     {
-      title: "Getting started on Mkan",
+      title: items?.gettingStarted ?? "Getting started on Mkan",
       image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop&crop=center",
     },
     {
-      title: "Finding a stay that's right for you",
+      title: items?.findingStay ?? "Finding a stay that's right for you",
       image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=300&fit=crop&crop=center",
     },
     {
-      title: "AirCover for guests",
+      title: items?.airCover ?? "AirCover for guests",
       image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&crop=center",
     },
     {
-      title: "Setting up your Mkan account",
+      title: items?.settingUpAccount ?? "Setting up your Mkan account",
       image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop&crop=center",
     },
   ]
@@ -26,9 +33,9 @@ export default function Guides() {
     <div className="py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-semibold text-gray-900">Guides for getting started</h1>
+        <h1 className="text-3xl font-semibold text-gray-900">{t?.title ?? "Guides for getting started"}</h1>
         <button className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors">
-          <span className="text-base font-medium">Browse all topics</span>
+          <span className="text-base font-medium">{t?.browseAll ?? "Browse all topics"}</span>
           <ChevronRight className="w-4 h-4 rtl:rotate-180" />
         </button>
       </div>

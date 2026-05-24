@@ -2,6 +2,7 @@
 
 import React from 'react';
 import ListingSidebar from '@/components/hosting/listing/listing-sidebar';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,6 +10,8 @@ interface LayoutProps {
 }
 
 const Layout = ({ children, params }: LayoutProps) => {
+  // Subscribe so child pages can rely on dictionary-context being available.
+  useDictionary();
   const [listingId, setListingId] = React.useState<string>('');
 
   React.useEffect(() => {

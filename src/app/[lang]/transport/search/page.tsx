@@ -25,12 +25,11 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const dict = await getDictionary(lang as Locale);
+  const t = dict?.transport;
   return createMetadata({
-    title: lang === "ar" ? "بحث النقل" : "Transport Search",
-    description:
-      lang === "ar"
-        ? "ابحث عن رحلات النقل المتاحة"
-        : "Search for available transport trips",
+    title: t?.meta?.searchTitle ?? "Transport Search",
+    description: t?.meta?.searchDescription ?? "Search for available transport trips",
     locale: lang,
     path: "/transport/search",
   });
@@ -90,7 +89,7 @@ export default async function SearchPage({
     getAssemblyPoints(),
   ]);
 
-  const t = dictionary.transport;
+  const t = dictionary?.transport;
   const { trips, total, page, pageCount, facets } = result;
 
   const dateLocale = lang === 'ar' ? ar : undefined;
@@ -106,35 +105,35 @@ export default async function SearchPage({
       ?? ''
     : parsed.destination ?? '';
 
-  // Filter dictionary with graceful fallbacks while translations land
+  // Filter dictionary sourced from the central transport namespace.
   const filterDict = {
     filters: {
-      title: t.search.filters?.title ?? t.search.filters ?? (lang === 'ar' ? 'الفلاتر' : 'Filters'),
-      clearAll: t.search.filters?.clearAll ?? (lang === 'ar' ? 'مسح الكل' : 'Clear all'),
-      showResults: t.search.filters?.showResults ?? (lang === 'ar' ? 'عرض {count} رحلة' : 'Show {count} trips'),
+      title: t?.search?.filters?.title ?? "Filters",
+      clearAll: t?.search?.filters?.clearAll ?? "Clear all",
+      showResults: t?.search?.filters?.showResults ?? "Show {count} trips",
     },
     sort: {
-      label: t.search.sort?.label ?? (lang === 'ar' ? 'ترتيب' : 'Sort'),
-      priceAsc: t.search.sort?.priceAsc ?? (lang === 'ar' ? 'السعر: من الأقل للأعلى' : 'Price: low to high'),
-      priceDesc: t.search.sort?.priceDesc ?? (lang === 'ar' ? 'السعر: من الأعلى للأقل' : 'Price: high to low'),
-      departureAsc: t.search.sort?.departureAsc ?? (lang === 'ar' ? 'الأبكر مغادرة' : 'Earliest departure'),
-      durationAsc: t.search.sort?.durationAsc ?? (lang === 'ar' ? 'الأقصر مدة' : 'Shortest duration'),
+      label: t?.search?.sort?.label ?? "Sort",
+      priceAsc: t?.search?.sort?.priceAsc ?? "Price: low to high",
+      priceDesc: t?.search?.sort?.priceDesc ?? "Price: high to low",
+      departureAsc: t?.search?.sort?.departureAsc ?? "Earliest departure",
+      durationAsc: t?.search?.sort?.durationAsc ?? "Shortest duration",
     },
     timeOfDay: {
-      label: t.search.timeOfDay?.label ?? (lang === 'ar' ? 'وقت المغادرة' : 'Departure time'),
-      morning: t.search.timeOfDay?.morning ?? (lang === 'ar' ? 'الصباح' : 'Morning'),
-      afternoon: t.search.timeOfDay?.afternoon ?? (lang === 'ar' ? 'الظهيرة' : 'Afternoon'),
-      evening: t.search.timeOfDay?.evening ?? (lang === 'ar' ? 'المساء' : 'Evening'),
-      night: t.search.timeOfDay?.night ?? (lang === 'ar' ? 'الليل' : 'Night'),
+      label: t?.search?.timeOfDay?.label ?? "Departure time",
+      morning: t?.search?.timeOfDay?.morning ?? "Morning",
+      afternoon: t?.search?.timeOfDay?.afternoon ?? "Afternoon",
+      evening: t?.search?.timeOfDay?.evening ?? "Evening",
+      night: t?.search?.timeOfDay?.night ?? "Night",
     },
     price: {
-      label: t.search.price?.label ?? (lang === 'ar' ? 'نطاق السعر' : 'Price range'),
-      currency: t.search.price?.currency ?? (lang === 'ar' ? 'ج.س' : 'SDG'),
+      label: t?.search?.price?.label ?? "Price range",
+      currency: t?.search?.price?.currency ?? "SDG",
     },
-    amenitiesLabel: t.search.amenitiesLabel ?? (lang === 'ar' ? 'المرافق' : 'Amenities'),
-    officesLabel: t.search.officesLabel ?? (lang === 'ar' ? 'المشغّلون' : 'Operators'),
-    amenities: t.host?.amenityLabels,
-    mobileTriggerLabel: t.search.filters?.title ?? (typeof t.search.filters === 'string' ? t.search.filters : (lang === 'ar' ? 'الفلاتر' : 'Filters')),
+    amenitiesLabel: t?.search?.amenitiesLabel ?? "Amenities",
+    officesLabel: t?.search?.officesLabel ?? "Operators",
+    amenities: t?.host?.amenityLabels,
+    mobileTriggerLabel: t?.search?.filters?.title ?? "Filters",
   };
 
   return (
@@ -168,11 +167,11 @@ export default async function SearchPage({
               initialDate={searchDate}
               assemblyPoints={assemblyPoints}
               dictionary={{
-                from: t.search.from,
-                to: t.search.to,
-                date: t.search.date,
-                search: t.search.search,
-                swap: t.search.swap,
+                from: t?.search?.from ?? "From",
+                to: t?.search?.to ?? "To",
+                date: t?.search?.date ?? "Travel Date",
+                search: t?.search?.search ?? "Search Trips",
+                swap: t?.search?.swap ?? "Swap cities",
               }}
             />
           </Suspense>
@@ -193,9 +192,7 @@ export default async function SearchPage({
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-6">
               <p className="text-muted-foreground">
-                {typeof t.search.tripsFound === 'string'
-                  ? t.search.tripsFound.replace('{count}', String(total))
-                  : `${total} trips`}
+                {(t?.search?.tripsFound ?? t?.searchPage?.tripsCountFallback ?? "{count} trip(s) found").replace('{count}', String(total))}
               </p>
             </div>
 
@@ -208,10 +205,10 @@ export default async function SearchPage({
                       trip={trip}
                       lang={lang}
                       dictionary={{
-                        selectSeats: t.trip.selectSeats,
-                        seatsAvailable: t.trip.seatsAvailable,
-                        duration: t.trip.duration,
-                        verified: t.office.verified,
+                        selectSeats: t?.trip?.selectSeats ?? "Select Seats",
+                        seatsAvailable: t?.trip?.seatsAvailable ?? "seats available",
+                        duration: t?.trip?.duration ?? "Duration",
+                        verified: t?.office?.verified ?? "Verified",
                       }}
                     />
                   ))}
@@ -223,18 +220,23 @@ export default async function SearchPage({
                     pageCount={pageCount}
                     lang={lang}
                     searchParams={spObject}
+                    labels={{
+                      previous: t?.searchPage?.previous ?? "Previous",
+                      next: t?.searchPage?.next ?? "Next",
+                      pageOf: t?.searchPage?.pageOf ?? "Page {page} of {pageCount}",
+                    }}
                   />
                 )}
               </>
             ) : (
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">🚌</div>
-                <h2 className="text-xl font-semibold mb-2">{t.search.noResults}</h2>
+                <h2 className="text-xl font-semibold mb-2">{t?.search?.noResults ?? "No trips found"}</h2>
                 <p className="text-muted-foreground mb-6">
-                  {t.search.noResultsDescription}
+                  {t?.search?.noResultsDescription ?? "There are no available trips for this route on the selected date. Try a different date or route."}
                 </p>
                 <Link href={`/${lang}/transport`}>
-                  <Button>{t.search.searchAgain}</Button>
+                  <Button>{t?.search?.searchAgain ?? "Search Again"}</Button>
                 </Link>
               </div>
             )}
@@ -250,11 +252,13 @@ function Pagination({
   pageCount,
   lang,
   searchParams,
+  labels,
 }: {
   page: number;
   pageCount: number;
   lang: string;
   searchParams: Record<string, string | undefined>;
+  labels: { previous: string; next: string; pageOf: string };
 }) {
   const buildHref = (p: number) => {
     const qs = new URLSearchParams();
@@ -274,11 +278,11 @@ function Pagination({
         className="pointer-events-auto"
       >
         <Button variant="outline" size="sm" disabled={page <= 1}>
-          {lang === 'ar' ? 'السابق' : 'Previous'}
+          {labels.previous}
         </Button>
       </Link>
       <span className="text-sm text-muted-foreground mx-3">
-        {lang === 'ar' ? `الصفحة ${page} من ${pageCount}` : `Page ${page} of ${pageCount}`}
+        {labels.pageOf.replace('{page}', String(page)).replace('{pageCount}', String(pageCount))}
       </span>
       <Link
         href={page < pageCount ? buildHref(page + 1) : '#'}
@@ -286,7 +290,7 @@ function Pagination({
         tabIndex={page >= pageCount ? -1 : 0}
       >
         <Button variant="outline" size="sm" disabled={page >= pageCount}>
-          {lang === 'ar' ? 'التالي' : 'Next'}
+          {labels.next}
         </Button>
       </Link>
     </div>

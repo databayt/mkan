@@ -67,7 +67,7 @@ const TripsPage = () => {
   const dict = useDictionary();
   const { locale } = useLocale();
   const params = useParams();
-  const lang = (params?.lang as string) ?? 'en';
+  const lang = (params?.lang as string) ?? 'ar';
   const dateLocale = locale === 'ar' ? ar : enUS;
   const [transportBookings, setTransportBookings] = useState<TransportBooking[]>([]);
   const [homeBookings, setHomeBookings] = useState<HomeBooking[]>([]);
@@ -127,9 +127,13 @@ const TripsPage = () => {
       setHomeBookings((prev) =>
         prev.map((b) => (b.id === id ? { ...b, status: 'Cancelled' } : b))
       );
-      toast.success('Booking cancelled');
+      toast.success(dict?.dashboard?.tenants?.tripsPage?.bookingCancelled ?? 'Booking cancelled');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not cancel');
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : dict?.dashboard?.tenants?.tripsPage?.couldNotCancel ?? 'Could not cancel'
+      );
     }
   };
 
@@ -166,7 +170,7 @@ const TripsPage = () => {
         <TabsContent value="stays" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Upcoming stays</CardTitle>
+              <CardTitle>{dict?.dashboard?.tenants?.tripsPage?.upcomingStays ?? "Upcoming stays"}</CardTitle>
               <CardDescription>
                 {dict.dashboard?.tenantTrips?.rentalStaysSubtitle ?? "Your property rental bookings"}
               </CardDescription>
@@ -205,7 +209,7 @@ const TripsPage = () => {
           {pastStays.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Past stays</CardTitle>
+                <CardTitle>{dict?.dashboard?.tenants?.tripsPage?.pastStays ?? "Past stays"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -300,7 +304,7 @@ const HomeBookingCard = ({ booking, lang, dict, getStatusColor, isPast, onCancel
           <div className="flex items-center gap-2">
             <Badge className={getStatusColor(booking.status)}>{booking.status}</Badge>
           </div>
-          <div className="text-lg font-medium">{booking.listing.title ?? "Untitled stay"}</div>
+          <div className="text-lg font-medium">{booking.listing.title ?? (dict?.dashboard?.tenants?.tripsPage?.untitledStay ?? "Untitled stay")}</div>
           {loc && (
             <div className="flex items-center gap-1 text-sm text-gray-600">
               <MapPin className="h-4 w-4" />

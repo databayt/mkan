@@ -1,19 +1,43 @@
+"use client";
+
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, MapPin, Users, Camera, ShieldCheck } from "lucide-react";
-
-const articles = [
-  { icon: MapPin, title: "Designing an experience", body: "Pick a venue and a clear theme guests can picture from a photo." },
-  { icon: Users, title: "Group sizes", body: "Most experiences run with 4-12 guests. Smaller groups feel personal; larger groups need more structure." },
-  { icon: Camera, title: "Photo guidelines", body: "Bright, in-focus photos taken at the venue beat staged shots. Show the actual activity." },
-  { icon: ShieldCheck, title: "Safety & insurance", body: "We provide host protection up to $1M. Make sure you have local permits where required." },
-];
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 export default function ExperienceHost() {
+  const dict = useDictionary();
+  const t = dict?.help?.experienceHost;
+  const learnMore = dict?.help?.common?.learnMore ?? "Learn more";
+  const items = t?.items;
+
+  const articles = [
+    {
+      icon: MapPin,
+      title: items?.designing?.title ?? "Designing an experience",
+      body: items?.designing?.body ?? "Pick a venue and a clear theme guests can picture from a photo.",
+    },
+    {
+      icon: Users,
+      title: items?.groupSizes?.title ?? "Group sizes",
+      body: items?.groupSizes?.body ?? "Most experiences run with 4-12 guests. Smaller groups feel personal; larger groups need more structure.",
+    },
+    {
+      icon: Camera,
+      title: items?.photo?.title ?? "Photo guidelines",
+      body: items?.photo?.body ?? "Bright, in-focus photos taken at the venue beat staged shots. Show the actual activity.",
+    },
+    {
+      icon: ShieldCheck,
+      title: items?.safety?.title ?? "Safety & insurance",
+      body: items?.safety?.body ?? "We provide host protection up to $1M. Make sure you have local permits where required.",
+    },
+  ];
+
   return (
     <div className="py-10">
       <div className="space-y-6">
-        <h4 className="">Experience host help</h4>
+        <h4 className="">{t?.title ?? "Experience host help"}</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {articles.map((a) => (
             <Card key={a.title} className="border border-gray-300 rounded-md">
@@ -26,7 +50,7 @@ export default function ExperienceHost() {
               </CardContent>
               <div className="border-t border-gray-200" />
               <Button variant="ghost" className="w-full justify-between text-start h-12 hover:bg-gray-50 border-0">
-                <span className="font-semibold text-sm text-gray-900">Learn more</span>
+                <span className="font-semibold text-sm text-gray-900">{learnMore}</span>
                 <ChevronRight className="w-4 h-4 text-gray-900 rtl:rotate-180" />
               </Button>
             </Card>

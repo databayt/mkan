@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +10,7 @@ import { useTransportHostValidation } from '@/context/onboarding-validation-cont
 import { useTransportOffice } from '@/context/transport-office-context';
 import { getAssemblyPoints } from '@/lib/actions/transport-actions';
 import HostStepLayout from '@/components/host/host-step-layout';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface AssemblyPoint {
   id: number;
@@ -26,6 +27,8 @@ const AssemblyPointPage = () => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const dict = useDictionary();
+  const t = dict?.transportHost?.assemblyPoint;
 
   useEffect(() => {
     async function loadAssemblyPoints() {
@@ -69,17 +72,20 @@ const AssemblyPointPage = () => {
 
   return (
     <HostStepLayout
-      title={<h3>Select your assembly point</h3>}
-      subtitle="Choose the assembly point where your office is located. This is where passengers will come to board your buses."
+      title={<h3>{t?.title ?? "Select your assembly point"}</h3>}
+      subtitle={
+        t?.subtitle ??
+        "Choose the assembly point where your office is located. This is where passengers will come to board your buses."
+      }
     >
       <div className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="search">Search locations</Label>
+            <Label htmlFor="search">{t?.searchLabel ?? "Search locations"}</Label>
             <Input
               id="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name or city..."
+              placeholder={t?.searchPlaceholder ?? "Search by name or city..."}
             />
           </div>
 
@@ -126,9 +132,9 @@ const AssemblyPointPage = () => {
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No assembly points found</p>
+              <p>{t?.emptyTitle ?? "No assembly points found"}</p>
               <p className="text-sm mt-1">
-                Try a different search term or contact support
+                {t?.emptyHint ?? "Try a different search term or contact support"}
               </p>
             </div>
           )}

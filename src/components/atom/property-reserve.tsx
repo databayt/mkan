@@ -46,7 +46,7 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
   const dict = useDictionary() as unknown as Record<string, Record<string, string>>;
   const params = useParams();
   const router = useRouter();
-  const lang = (params?.lang as string) ?? "en";
+  const lang = (params?.lang as string) ?? "ar";
   const t = dict.booking ?? {};
   const currency = dict.common?.currency ?? "$";
 

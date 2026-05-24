@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { Metadata } from "next";
 import { Suspense } from "react";
 import { createMetadata } from "@/lib/metadata";
-import { searchListings, getPriceBounds } from "@/lib/actions/search-actions";
+import { searchListings } from "@/lib/actions/search-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 
 export async function generateMetadata({
@@ -24,11 +24,9 @@ import { getListings } from "@/components/host/actions";
 import ListingsHeader from "@/components/listings/listings-header";
 import MobileListingsHeader from "@/components/listings/mobile-listings-header";
 import { PropertyContent } from "@/components/listings/property/content";
-import { ListingsFiltersPanel } from "@/components/listings/filters-panel";
 import { ListingsPagination } from "@/components/listings/pagination";
 import { Listing } from "@/types/listing";
 import { type SearchFilters } from "@/lib/schemas/search-schema";
-import { Amenity, PropertyType } from "@prisma/client";
 
 const PAGE_SIZE = 20;
 
@@ -157,48 +155,18 @@ function PropertySkeleton() {
 }
 
 export default async function ListingsPage({ searchParams, params: pageParams }: ListingsPageProps & { params: Promise<{ lang: "en" | "ar" }> }) {
-  // Parallelize independent data fetches — resolve params, listings, and
-  // the cross-catalog price bounds concurrently. Price bounds feed the
-  // filters-panel slider so it snaps to the actual catalog range. The
-  // bounds query is `unstable_cache`d under the `listings` tag (see
-  // search-actions.ts) so it doesn't re-aggregate on every pageview.
-  const [listingsResult, params, { lang }, priceBounds] = await Promise.all([
+  // Parallelize independent data fetches — resolve params and listings
+  // concurrently. The filters panel and its price-bounds aggregation are
+  // intentionally hidden on this page; URL filters still work because the
+  // server action reads them directly from `searchParams`.
+  const [listingsResult, params, { lang }] = await Promise.all([
     getFilteredListings(searchParams),
     searchParams,
     pageParams,
-    getPriceBounds(),
   ]);
   const { listings, total: totalListings, page: currentPage } = listingsResult;
   const totalPages = Math.max(1, Math.ceil(totalListings / PAGE_SIZE));
   const d = await getDictionary(lang);
-
-  // Dictionary keys live at `rental.property.filters` and `rental.property.amenities`.
-  // Graceful fallbacks keep the UI readable even if a key is missing mid-rollout.
-  const rentalProperty = (d.rental?.property ?? {}) as Record<string, unknown>;
-  const rentalFilters = (rentalProperty.filters ?? {}) as Record<string, string>;
-  const rentalAmenities = (rentalProperty.amenities ?? {}) as Record<string, string>;
-  const rentalPropertyTypes = (rentalProperty.types ?? {}) as Record<string, string>;
-
-  const filtersDict = {
-    filters: {
-      title: rentalFilters.title ?? (lang === "ar" ? "الفلاتر" : "Filters"),
-      clearAll: rentalFilters.clearFilters ?? (lang === "ar" ? "مسح الكل" : "Clear all"),
-      showResults:
-        rentalFilters.showResults ?? (lang === "ar" ? "عرض {count} عقار" : "Show {count} places"),
-    },
-    price: {
-      label: rentalFilters.minPrice ?? (lang === "ar" ? "نطاق السعر" : "Price range"),
-      currency: "$",
-    },
-    bedrooms: rentalFilters.bedrooms ?? (lang === "ar" ? "غرف النوم" : "Bedrooms"),
-    bathrooms: rentalFilters.bathrooms ?? (lang === "ar" ? "الحمامات" : "Bathrooms"),
-    propertyType: rentalFilters.propertyType ?? (lang === "ar" ? "نوع العقار" : "Property type"),
-    amenitiesLabel: rentalFilters.amenities ?? (lang === "ar" ? "المرافق" : "Amenities"),
-    anyLabel: lang === "ar" ? "الكل" : "Any",
-    mobileTriggerLabel: rentalFilters.title ?? (lang === "ar" ? "الفلاتر" : "Filters"),
-    propertyTypes: rentalPropertyTypes as Partial<Record<PropertyType, string>>,
-    amenityLabels: rentalAmenities as Partial<Record<Amenity, string>>,
-  };
 
   // Build search summary for display. `q`/`query` get a quoted-keyword
   // chip so users can see what they searched for and why a result set
@@ -254,33 +222,21 @@ export default async function ListingsPage({ searchParams, params: pageParams }:
           </div>
         )}
 
-        <div className="flex flex-col lg:flex-row gap-6">
-          <Suspense fallback={null}>
-            <ListingsFiltersPanel
-              priceBounds={priceBounds}
-              totalListings={listings.length}
-              dict={filtersDict}
-            />
+        <div>
+          <Suspense fallback={<PropertySkeleton />}>
+            <PropertyContent properties={listings} />
           </Suspense>
-          <div className="flex-1 min-w-0">
-            <Suspense fallback={<PropertySkeleton />}>
-              <PropertyContent properties={listings} />
-            </Suspense>
-            <ListingsPagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              lang={lang}
-              baseParams={params}
-              dict={{
-                previous: lang === "ar" ? "السابق" : "Previous",
-                next: lang === "ar" ? "التالي" : "Next",
-                pageOf:
-                  lang === "ar"
-                    ? "الصفحة {current} من {total}"
-                    : "Page {current} of {total}",
-              }}
-            />
-          </div>
+          <ListingsPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            lang={lang}
+            baseParams={params}
+            dict={{
+              previous: d.common?.previous ?? "Previous",
+              next: d.common?.next ?? "Next",
+              pageOf: d.listings?.pagination?.pageOf ?? "Page {current} of {total}",
+            }}
+          />
         </div>
       </div>
     </div>

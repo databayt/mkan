@@ -17,7 +17,7 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { getTransportOffices } from '@/lib/actions/transport-actions';
-import { getTransportDictionary } from '@/components/transport/transport-dictionary';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 type TransportOffice = Awaited<ReturnType<typeof getTransportOffices>>[number];
 
@@ -27,7 +27,7 @@ export default function OfficesListContent() {
   const [offices, setOffices] = useState<TransportOffice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const t = getTransportDictionary(lang);
+  const t = useDictionary().transport;
 
   useEffect(() => {
     const fetchOffices = async () => {

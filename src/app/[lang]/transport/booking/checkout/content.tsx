@@ -22,87 +22,11 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { getBooking, processPayment } from '@/lib/actions/transport-actions';
-import { useLocale } from '@/components/internationalization/use-locale';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 type PaymentMethod = 'MobileMoney' | 'CreditCard' | 'BankTransfer' | 'CashOnArrival';
 
 type BookingDetails = NonNullable<Awaited<ReturnType<typeof getBooking>>>;
-
-// Payment method translations
-const paymentMethodTranslations = {
-  en: {
-    checkout: {
-      title: 'Complete Your Booking',
-      selectPayment: 'Select Payment Method',
-      choosePayment: 'Choose how you would like to pay',
-      orderSummary: 'Order Summary',
-      bookingNotFound: 'Booking not found',
-      backToTransport: 'Back to Transport',
-      paySecure: 'Your payment is secure and encrypted',
-      mobileMoneyDetails: 'Mobile Money Details',
-      enterMobileNumber: 'Enter your mobile money number',
-      mobileNumber: 'Mobile Number',
-      bankDetails: 'Bank Transfer Details',
-      transferTo: 'Transfer to the following account',
-      bankName: 'Bank Name',
-      accountName: 'Account Name',
-      accountNumber: 'Account Number',
-      reference: 'Reference',
-      includeReference: 'Please include the booking reference in your transfer description. Your booking will be confirmed once payment is verified.',
-      cashTitle: 'Cash on Arrival',
-      cashSubtitle: 'Pay at the transport office',
-      cashWarning: 'Your seats will be reserved for 30 minutes. Please arrive at the office early to complete payment and collect your tickets.',
-      passenger: 'Passenger',
-      seats: 'Seats',
-      total: 'Total',
-      processing: 'Processing...',
-      pay: 'Pay',
-    },
-    paymentMethods: {
-      mobileMoney: { name: 'Mobile Money', description: 'Pay with MTN or Bankak' },
-      creditCard: { name: 'Credit/Debit Card', description: 'Visa, Mastercard' },
-      bankTransfer: { name: 'Bank Transfer', description: 'Direct bank transfer' },
-      cashOnArrival: { name: 'Cash on Arrival', description: 'Pay at the office' },
-    },
-  },
-  ar: {
-    checkout: {
-      title: 'أكمل حجزك',
-      selectPayment: 'اختر طريقة الدفع',
-      choosePayment: 'اختر كيف تريد الدفع',
-      orderSummary: 'ملخص الطلب',
-      bookingNotFound: 'الحجز غير موجود',
-      backToTransport: 'العودة إلى النقل',
-      paySecure: 'دفعتك آمنة ومشفرة',
-      mobileMoneyDetails: 'تفاصيل الدفع بالموبايل',
-      enterMobileNumber: 'أدخل رقم الموبايل للدفع',
-      mobileNumber: 'رقم الموبايل',
-      bankDetails: 'تفاصيل التحويل البنكي',
-      transferTo: 'حول إلى الحساب التالي',
-      bankName: 'اسم البنك',
-      accountName: 'اسم الحساب',
-      accountNumber: 'رقم الحساب',
-      reference: 'المرجع',
-      includeReference: 'يرجى تضمين رقم الحجز في وصف التحويل. سيتم تأكيد حجزك بمجرد التحقق من الدفع.',
-      cashTitle: 'الدفع عند الوصول',
-      cashSubtitle: 'ادفع في مكتب النقل',
-      cashWarning: 'سيتم حجز مقاعدك لمدة 30 دقيقة. يرجى الوصول إلى المكتب مبكراً لإتمام الدفع واستلام تذاكرك.',
-      passenger: 'المسافر',
-      seats: 'المقاعد',
-      total: 'الإجمالي',
-      processing: 'جاري المعالجة...',
-      pay: 'ادفع',
-    },
-    paymentMethods: {
-      mobileMoney: { name: 'الدفع بالموبايل', description: 'ادفع عبر MTN أو بنكك' },
-      creditCard: { name: 'بطاقة ائتمان/خصم', description: 'فيزا، ماستركارد' },
-      bankTransfer: { name: 'تحويل بنكي', description: 'تحويل بنكي مباشر' },
-      cashOnArrival: { name: 'الدفع عند الوصول', description: 'ادفع في المكتب' },
-    },
-  },
-} as const;
-
-type Locale = 'en' | 'ar';
 
 function CheckoutInner() {
   const searchParams = useSearchParams();
@@ -110,17 +34,21 @@ function CheckoutInner() {
   const pathname = usePathname();
   const bookingId = Number(searchParams.get('bookingId'));
 
-  // Get locale from pathname
+  // Locale string drives the post-payment redirect path (not display text).
   const pathParts = pathname.split('/');
-  const locale = (pathParts[1] === 'ar' ? 'ar' : 'en') as Locale;
-  const t = paymentMethodTranslations[locale];
+  const locale = pathParts[1] === 'ar' ? 'ar' : 'en';
+
+  const dict = useDictionary();
+  const t = dict?.transport;
+  const c = t?.checkout;
+  const pm = t?.paymentMethods;
 
   // Build payment methods with translated content
   const paymentMethods = [
-    { id: 'MobileMoney' as PaymentMethod, name: t.paymentMethods.mobileMoney.name, description: t.paymentMethods.mobileMoney.description, icon: Smartphone },
-    { id: 'CreditCard' as PaymentMethod, name: t.paymentMethods.creditCard.name, description: t.paymentMethods.creditCard.description, icon: CreditCard },
-    { id: 'BankTransfer' as PaymentMethod, name: t.paymentMethods.bankTransfer.name, description: t.paymentMethods.bankTransfer.description, icon: Building2 },
-    { id: 'CashOnArrival' as PaymentMethod, name: t.paymentMethods.cashOnArrival.name, description: t.paymentMethods.cashOnArrival.description, icon: Banknote },
+    { id: 'MobileMoney' as PaymentMethod, name: pm?.mobileMoney?.name ?? "Mobile Money", description: pm?.mobileMoney?.description ?? "Pay with MTN or Bankak", icon: Smartphone },
+    { id: 'CreditCard' as PaymentMethod, name: pm?.creditCard?.name ?? "Credit/Debit Card", description: pm?.creditCard?.description ?? "Visa, Mastercard", icon: CreditCard },
+    { id: 'BankTransfer' as PaymentMethod, name: pm?.bankTransfer?.name ?? "Bank Transfer", description: pm?.bankTransfer?.description ?? "Direct bank transfer", icon: Building2 },
+    { id: 'CashOnArrival' as PaymentMethod, name: pm?.cashOnArrival?.name ?? "Cash on Arrival", description: pm?.cashOnArrival?.description ?? "Pay at the office", icon: Banknote },
   ];
 
   const [booking, setBooking] = useState<BookingDetails | null>(null);
@@ -157,10 +85,10 @@ function CheckoutInner() {
       });
 
       if (result.success) {
-        toast.success(locale === 'ar' ? 'تم الدفع بنجاح' : 'Payment successful');
+        toast.success(t?.bookingPage?.paymentSuccess ?? "Payment successful");
         router.push(`/${locale}/transport/booking/${booking.id}`);
       } else {
-        toast.error(locale === 'ar' ? 'فشل الدفع' : 'Payment failed. Please try again.');
+        toast.error(t?.bookingPage?.paymentFailed ?? "Payment failed. Please try again.");
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Payment failed';
@@ -184,9 +112,9 @@ function CheckoutInner() {
   if (!booking) {
     return (
       <div className="container mx-auto py-8 px-4 text-center">
-        <h1 className="text-2xl font-bold">{t.checkout.bookingNotFound}</h1>
+        <h1 className="text-2xl font-bold">{c?.bookingNotFound ?? "Booking not found"}</h1>
         <Button onClick={() => router.push(`/${locale}/transport`)} className="mt-4">
-          {t.checkout.backToTransport}
+          {c?.backToTransport ?? "Back to Transport"}
         </Button>
       </div>
     );
@@ -194,15 +122,15 @@ function CheckoutInner() {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-6">{t.checkout.title}</h1>
+      <h1 className="text-2xl font-bold mb-6">{c?.title ?? "Complete Your Booking"}</h1>
 
       <div className="grid md:grid-cols-3 gap-6">
         {/* Payment Methods */}
         <div className="md:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>{t.checkout.selectPayment}</CardTitle>
-              <CardDescription>{t.checkout.choosePayment}</CardDescription>
+              <CardTitle>{c?.selectPayment ?? "Select Payment Method"}</CardTitle>
+              <CardDescription>{c?.choosePayment ?? "Choose how you would like to pay"}</CardDescription>
             </CardHeader>
             <CardContent>
               <RadioGroup
@@ -235,12 +163,12 @@ function CheckoutInner() {
           {paymentMethod === 'MobileMoney' && (
             <Card>
               <CardHeader>
-                <CardTitle>{t.checkout.mobileMoneyDetails}</CardTitle>
-                <CardDescription>{t.checkout.enterMobileNumber}</CardDescription>
+                <CardTitle>{c?.mobileMoneyDetails ?? "Mobile Money Details"}</CardTitle>
+                <CardDescription>{c?.enterMobileNumber ?? "Enter your mobile money number"}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <Label htmlFor="mobile">{t.checkout.mobileNumber}</Label>
+                  <Label htmlFor="mobile">{c?.mobileNumber ?? "Mobile Number"}</Label>
                   <Input id="mobile" value={mobileNumber} onChange={(e) => setMobileNumber(e.target.value)} placeholder="e.g., 0912345678" dir="ltr" />
                 </div>
               </CardContent>
@@ -250,17 +178,17 @@ function CheckoutInner() {
           {paymentMethod === 'BankTransfer' && (
             <Card>
               <CardHeader>
-                <CardTitle>{t.checkout.bankDetails}</CardTitle>
-                <CardDescription>{t.checkout.transferTo}</CardDescription>
+                <CardTitle>{c?.bankDetails ?? "Bank Transfer Details"}</CardTitle>
+                <CardDescription>{c?.transferTo ?? "Transfer to the following account"}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="bg-muted p-4 rounded-lg space-y-2">
-                  <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.bankName}</span><span className="font-medium">Bank of Khartoum</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.accountName}</span><span className="font-medium">Mkan Transport Services</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.accountNumber}</span><span className="font-medium font-mono" dir="ltr">1234567890</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.reference}</span><span className="font-medium font-mono" dir="ltr">{booking.bookingReference}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{c?.bankName ?? "Bank Name"}</span><span className="font-medium">Bank of Khartoum</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{c?.accountName ?? "Account Name"}</span><span className="font-medium">Mkan Transport Services</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{c?.accountNumber ?? "Account Number"}</span><span className="font-medium font-mono" dir="ltr">1234567890</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{c?.reference ?? "Reference"}</span><span className="font-medium font-mono" dir="ltr">{booking.bookingReference}</span></div>
                 </div>
-                <p className="text-sm text-muted-foreground">{t.checkout.includeReference}</p>
+                <p className="text-sm text-muted-foreground">{c?.includeReference ?? "Please include the booking reference in your transfer description. Your booking will be confirmed once payment is verified."}</p>
               </CardContent>
             </Card>
           )}
@@ -268,24 +196,24 @@ function CheckoutInner() {
           {paymentMethod === 'CashOnArrival' && (
             <Card>
               <CardHeader>
-                <CardTitle>{t.checkout.cashTitle}</CardTitle>
-                <CardDescription>{t.checkout.cashSubtitle}</CardDescription>
+                <CardTitle>{c?.cashTitle ?? "Cash on Arrival"}</CardTitle>
+                <CardDescription>{c?.cashSubtitle ?? "Pay at the transport office"}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 rounded-lg">
-                  <p className="text-sm text-amber-800 dark:text-amber-200">{t.checkout.cashWarning}</p>
+                  <p className="text-sm text-amber-800 dark:text-amber-200">{c?.cashWarning ?? "Your seats will be reserved for 30 minutes. Please arrive at the office early to complete payment and collect your tickets."}</p>
                 </div>
               </CardContent>
             </Card>
           )}
 
           <Button className="w-full" size="lg" onClick={handlePayment} disabled={processing || (paymentMethod === 'MobileMoney' && !mobileNumber)}>
-            {processing ? t.checkout.processing : `${t.checkout.pay} SDG ${booking.totalAmount.toLocaleString()}`}
+            {processing ? (c?.processing ?? "Processing...") : `${c?.pay ?? "Pay"} SDG ${booking.totalAmount.toLocaleString()}`}
           </Button>
 
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Shield className="h-4 w-4" />
-            <span>{t.checkout.paySecure}</span>
+            <span>{c?.paySecure ?? "Your payment is secure and encrypted"}</span>
           </div>
         </div>
 
@@ -293,7 +221,7 @@ function CheckoutInner() {
         <div className="md:col-span-1">
           <Card className="sticky top-4">
             <CardHeader>
-              <CardTitle>{t.checkout.orderSummary}</CardTitle>
+              <CardTitle>{c?.orderSummary ?? "Order Summary"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2 text-sm">
@@ -316,15 +244,15 @@ function CheckoutInner() {
               <Separator />
 
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.passenger}</span><span>{booking.passengerName}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.seats}</span><span dir="ltr">{booking.seats.map((s) => s.seatNumber).join(', ')}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">{t.checkout.reference}</span><span className="font-mono text-xs" dir="ltr">{booking.bookingReference}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">{c?.passenger ?? "Passenger"}</span><span>{booking.passengerName}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">{c?.seats ?? "Seats"}</span><span dir="ltr">{booking.seats.map((s) => s.seatNumber).join(', ')}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">{c?.reference ?? "Reference"}</span><span className="font-mono text-xs" dir="ltr">{booking.bookingReference}</span></div>
               </div>
 
               <Separator />
 
               <div className="flex justify-between font-bold">
-                <span>{t.checkout.total}</span>
+                <span>{c?.total ?? "Total"}</span>
                 <span dir="ltr">SDG {booking.totalAmount.toLocaleString()}</span>
               </div>
             </CardContent>

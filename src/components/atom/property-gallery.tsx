@@ -4,7 +4,8 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Grip } from "lucide-react"
 import { ShareIcon, HeartIcon } from "@/components/atom/icons"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
+import { useDictionary } from "@/components/internationalization/dictionary-context"
 
 interface PropertyGalleryProps {
   images?: string[];
@@ -15,19 +16,26 @@ interface PropertyGalleryProps {
   listingId?: string;
 }
 
-export default function PropertyGallery({ 
-  images = [], 
-  onSave, 
-  isSaved = false, 
+export default function PropertyGallery({
+  images = [],
+  onSave,
+  isSaved = false,
   onShowAllPhotos,
   className = "",
   listingId
 }: PropertyGalleryProps) {
   const router = useRouter()
+  const params = useParams()
+  const lang = (params?.lang as string) ?? "ar"
+  const dict = useDictionary()
+  const t = dict?.atom?.propertyGallery
+  const placeholderAlts = t?.placeholderAlts
+  const imageAlt = (n: number) => (t?.imageAlt ?? "Property image {n}").replace("{n}", String(n))
+  const viewPhotoN = (n: number) => (t?.viewPhotoN ?? "View property photo {n}").replace("{n}", String(n))
 
   const handleShowAllPhotos = () => {
     if (listingId) {
-      router.push(`/listings/${listingId}/photos`)
+      router.push(`/${lang}/listings/${listingId}/photos`)
     } else if (onShowAllPhotos) {
       onShowAllPhotos()
     }
@@ -42,11 +50,11 @@ export default function PropertyGallery({
           type="button"
           className="relative overflow-hidden rounded-s-xl lg:rounded-s-xl rounded-e-xl lg:rounded-e-none cursor-pointer"
           onClick={handleShowAllPhotos}
-          aria-label="View all property photos"
+          aria-label={t?.viewAllPhotos ?? "View all property photos"}
         >
           <Image
             src="/placeholder.svg?height=500&width=600"
-            alt="Modern living room with gray sectional sofa and yellow accent chair"
+            alt={placeholderAlts?.livingRoom ?? "Modern living room with gray sectional sofa and yellow accent chair"}
             fill
             className="object-cover hover:scale-105 transition-transform duration-300"
           />
@@ -58,7 +66,7 @@ export default function PropertyGallery({
             <div className="relative overflow-hidden">
               <Image
                 src="/placeholder.svg?height=250&width=300"
-                alt="Dining area with wooden table and modern stairs"
+                alt={placeholderAlts?.diningArea ?? "Dining area with wooden table and modern stairs"}
                 fill
                 className="object-cover hover:scale-105 transition-transform duration-300"
               />
@@ -68,7 +76,7 @@ export default function PropertyGallery({
             <div className="relative overflow-hidden rounded-tr-xl">
               <Image
                 src="/placeholder.svg?height=250&width=300"
-                alt="Modern living room view"
+                alt={placeholderAlts?.livingView ?? "Modern living room view"}
                 fill
                 className="object-cover hover:scale-105 transition-transform duration-300"
               />
@@ -78,7 +86,7 @@ export default function PropertyGallery({
             <div className="relative overflow-hidden">
               <Image
                 src="/placeholder.svg?height=250&width=300"
-                alt="Modern kitchen with light colored cabinets"
+                alt={placeholderAlts?.kitchen ?? "Modern kitchen with light colored cabinets"}
                 fill
                 className="object-cover hover:scale-105 transition-transform duration-300"
               />
@@ -88,7 +96,7 @@ export default function PropertyGallery({
             <div className="relative overflow-hidden rounded-br-xl">
               <Image
                 src="/placeholder.svg?height=250&width=300"
-                alt="Exterior view of traditional European buildings"
+                alt={placeholderAlts?.exterior ?? "Exterior view of traditional European buildings"}
                 fill
                 className="object-cover hover:scale-105 transition-transform duration-300"
               />
@@ -102,7 +110,7 @@ export default function PropertyGallery({
               className="absolute bottom-4 right-4 gap-2 bg-[#ffffff] text-[#000000] hover:bg-gray-100 border border-gray-300"
             >
               <Grip className="w-4 h-4" />
-              Show all photos
+              {t?.showAllPhotos ?? "Show all photos"}
             </Button>
             </div>
           </div>
@@ -119,10 +127,10 @@ export default function PropertyGallery({
     <div className={`w-full ${className}`}>
       <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-2 h-[200px] lg:h-[320px]">
         {/* Main large image */}
-        <button type="button" className="relative overflow-hidden rounded-s-xl lg:rounded-s-xl rounded-e-xl lg:rounded-e-none cursor-pointer" onClick={handleShowAllPhotos} aria-label="View all property photos">
+        <button type="button" className="relative overflow-hidden rounded-s-xl lg:rounded-s-xl rounded-e-xl lg:rounded-e-none cursor-pointer" onClick={handleShowAllPhotos} aria-label={t?.viewAllPhotos ?? "View all property photos"}>
           <Image
             src={mainImage}
-            alt="Property main image"
+            alt={t?.mainImageAlt ?? "Property main image"}
             fill
             className="object-cover hover:scale-105 transition-transform duration-300"
           />
@@ -131,40 +139,40 @@ export default function PropertyGallery({
         {/* Grid of smaller images */}
         <div className="hidden lg:grid grid-cols-2 gap-2">
           {/* Top left */}
-          <button type="button" className="relative overflow-hidden cursor-pointer" onClick={handleShowAllPhotos} aria-label="View property photo 2">
+          <button type="button" className="relative overflow-hidden cursor-pointer" onClick={handleShowAllPhotos} aria-label={viewPhotoN(2)}>
             <Image
               src={thumbnailImages[0] || mainImage}
-              alt="Property image 2"
+              alt={imageAlt(2)}
               fill
               className="object-cover hover:scale-105 transition-transform duration-300"
             />
           </button>
 
           {/* Top right */}
-          <button type="button" className="relative overflow-hidden rounded-tr-xl cursor-pointer" onClick={handleShowAllPhotos} aria-label="View property photo 3">
+          <button type="button" className="relative overflow-hidden rounded-tr-xl cursor-pointer" onClick={handleShowAllPhotos} aria-label={viewPhotoN(3)}>
             <Image
               src={thumbnailImages[1] || mainImage}
-              alt="Property image 3"
+              alt={imageAlt(3)}
               fill
               className="object-cover hover:scale-105 transition-transform duration-300"
             />
           </button>
 
           {/* Bottom left */}
-          <button type="button" className="relative overflow-hidden cursor-pointer" onClick={handleShowAllPhotos} aria-label="View property photo 4">
+          <button type="button" className="relative overflow-hidden cursor-pointer" onClick={handleShowAllPhotos} aria-label={viewPhotoN(4)}>
             <Image
               src={thumbnailImages[2] || mainImage}
-              alt="Property image 4"
+              alt={imageAlt(4)}
               fill
               className="object-cover hover:scale-105 transition-transform duration-300"
             />
           </button>
 
           {/* Bottom right with overlay button */}
-          <button type="button" className="relative overflow-hidden rounded-br-xl cursor-pointer" onClick={handleShowAllPhotos} aria-label="View all property photos">
+          <button type="button" className="relative overflow-hidden rounded-br-xl cursor-pointer" onClick={handleShowAllPhotos} aria-label={t?.viewAllPhotos ?? "View all property photos"}>
             <Image
               src={thumbnailImages[3] || mainImage}
-              alt="Property image 5"
+              alt={imageAlt(5)}
               fill
               className="object-cover hover:scale-105 transition-transform duration-300"
             />
@@ -178,7 +186,7 @@ export default function PropertyGallery({
               tabIndex={-1}
             >
               <Grip className="w-4 h-4" />
-              Show all photos
+              {t?.showAllPhotos ?? "Show all photos"}
             </Button>
           </button>
         </div>

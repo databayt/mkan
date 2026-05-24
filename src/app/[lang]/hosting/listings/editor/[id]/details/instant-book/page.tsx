@@ -8,11 +8,14 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Zap, Info, Loader2, Clock, Shield, CheckCircle } from 'lucide-react';
 import { getListing, updateListing } from '@/components/host/actions';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 const InstantBookPage = () => {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
+  const dict = useDictionary();
+  const t = dict?.listingEditor?.instantBook;
 
   const [instantBook, setInstantBook] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -57,9 +60,9 @@ const InstantBookPage = () => {
     <div className="lg:col-span-2">
       <div className="max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">Instant Book</h1>
+          <h1 className="text-3xl font-semibold mb-2">{t?.heading ?? "Instant Book"}</h1>
           <p className="text-muted-foreground">
-            Allow guests to book instantly without waiting for your approval.
+            {t?.subtitle ?? "Allow guests to book instantly without waiting for your approval."}
           </p>
         </div>
 
@@ -67,17 +70,17 @@ const InstantBookPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="size-5" />
-              Enable Instant Book
+              {t?.enableTitle ?? "Enable Instant Book"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div className="flex-1">
                 <Label htmlFor="instant-book" className="text-base font-medium cursor-pointer">
-                  Turn on Instant Book
+                  {t?.turnOn ?? "Turn on Instant Book"}
                 </Label>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Guests can book immediately without sending a request
+                  {t?.turnOnDesc ?? "Guests can book immediately without sending a request"}
                 </p>
               </div>
               <Switch
@@ -95,9 +98,9 @@ const InstantBookPage = () => {
               <div className="flex items-start gap-3">
                 <Clock className="size-5 text-green-600 mt-0.5" />
                 <div>
-                  <h4 className="font-medium">Faster bookings</h4>
+                  <h4 className="font-medium">{t?.fasterTitle ?? "Faster bookings"}</h4>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Guests can book right away, which often means more bookings
+                    {t?.fasterText ?? "Guests can book right away, which often means more bookings"}
                   </p>
                 </div>
               </div>
@@ -109,9 +112,9 @@ const InstantBookPage = () => {
               <div className="flex items-start gap-3">
                 <CheckCircle className="size-5 text-green-600 mt-0.5" />
                 <div>
-                  <h4 className="font-medium">Better visibility</h4>
+                  <h4 className="font-medium">{t?.visibilityTitle ?? "Better visibility"}</h4>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Instant Book listings appear higher in search results
+                    {t?.visibilityText ?? "Instant Book listings appear higher in search results"}
                   </p>
                 </div>
               </div>
@@ -124,9 +127,9 @@ const InstantBookPage = () => {
             <div className="flex items-start gap-3">
               <Shield className="size-5 text-blue-600 mt-0.5" />
               <div>
-                <h4 className="font-medium text-blue-900">You're still protected</h4>
+                <h4 className="font-medium text-blue-900">{t?.protectedTitle ?? "You're still protected"}</h4>
                 <p className="text-sm text-blue-700 mt-1">
-                  Even with Instant Book, you can still set requirements for guests (like verified ID) and can cancel penalty-free if a guest doesn't meet your requirements.
+                  {t?.protectedText ?? "Even with Instant Book, you can still set requirements for guests (like verified ID) and can cancel penalty-free if a guest doesn't meet your requirements."}
                 </p>
               </div>
             </div>
@@ -135,11 +138,11 @@ const InstantBookPage = () => {
 
         <div className="mt-8 flex justify-between">
           <Button variant="outline" onClick={() => router.back()}>
-            Back
+            {dict?.common?.back ?? "Back"}
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
             {isSaving && <Loader2 className="size-4 me-2 animate-spin" />}
-            Save
+            {dict?.common?.save ?? "Save"}
           </Button>
         </div>
       </div>

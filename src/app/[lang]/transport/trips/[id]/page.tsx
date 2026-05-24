@@ -25,7 +25,7 @@ import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { getTripDetails, createBooking } from '@/lib/actions/transport-actions';
-import { getTransportDictionary } from '@/components/transport/transport-dictionary';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { cn } from '@/lib/utils';
 
 interface Seat {
@@ -59,7 +59,7 @@ export default function TripDetailsPage() {
   const [passengerPhone, setPassengerPhone] = useState('');
   const [passengerEmail, setPassengerEmail] = useState('');
   const [booking, setBooking] = useState(false);
-  const t = getTransportDictionary(lang);
+  const t = useDictionary().transport;
 
   useEffect(() => {
     const fetchTrip = async () => {

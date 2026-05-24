@@ -1,5 +1,7 @@
 import { Metadata } from "next";
 import { createMetadata } from "@/lib/metadata";
+import { getDictionary } from "@/components/internationalization/dictionaries";
+import type { Locale } from "@/components/internationalization/config";
 import ManagerPropertiesContent from "./content";
 
 // Disable static generation for this page
@@ -11,12 +13,12 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const dict = await getDictionary(lang as Locale);
   return createMetadata({
-    title: lang === "ar" ? "إدارة العقارات" : "Manage Properties",
+    title: dict?.pages?.managerProperties?.metadata?.title ?? "Manage Properties",
     description:
-      lang === "ar"
-        ? "عرض وإدارة عقاراتك"
-        : "View and manage your property listings",
+      dict?.pages?.managerProperties?.metadata?.description ??
+      "View and manage your property listings",
     locale: lang,
     path: "/managers/properties",
   });

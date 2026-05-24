@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Users, Plus, X, Info, Mail } from 'lucide-react';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface CoHost {
   id: string;
@@ -18,6 +19,8 @@ interface CoHost {
 
 const CoHostsPage = () => {
   const router = useRouter();
+  const dict = useDictionary();
+  const t = dict?.listingEditor?.coHosts;
   const [coHosts, setCoHosts] = useState<CoHost[]>([]);
   const [newEmail, setNewEmail] = useState('');
 
@@ -45,9 +48,9 @@ const CoHostsPage = () => {
     <div className="lg:col-span-2">
       <div className="max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">Add co-hosts</h1>
+          <h1 className="text-3xl font-semibold mb-2">{t?.heading ?? "Add co-hosts"}</h1>
           <p className="text-muted-foreground">
-            Invite others to help manage this listing. Co-hosts can respond to messages, update calendars, and more.
+            {t?.subtitle ?? "Invite others to help manage this listing. Co-hosts can respond to messages, update calendars, and more."}
           </p>
         </div>
 
@@ -55,28 +58,28 @@ const CoHostsPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Plus className="size-5" />
-              Invite a co-host
+              {t?.inviteTitle ?? "Invite a co-host"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex gap-3">
               <div className="flex-1">
-                <Label htmlFor="email" className="sr-only">Email address</Label>
+                <Label htmlFor="email" className="sr-only">{t?.emailLabel ?? "Email address"}</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter email address"
+                  placeholder={t?.emailPlaceholder ?? "Enter email address"}
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addCoHost()}
                 />
               </div>
               <Button onClick={addCoHost}>
-                Send invite
+                {t?.sendInvite ?? "Send invite"}
               </Button>
             </div>
             <p className="text-sm text-muted-foreground mt-2">
-              They'll receive an email invitation to become a co-host.
+              {t?.inviteHint ?? "They'll receive an email invitation to become a co-host."}
             </p>
           </CardContent>
         </Card>
@@ -85,15 +88,15 @@ const CoHostsPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="size-5" />
-              Co-hosts ({coHosts.length})
+              {t?.listTitle ?? "Co-hosts"} ({coHosts.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             {coHosts.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="size-12 mx-auto mb-3 opacity-50" />
-                <p>No co-hosts yet</p>
-                <p className="text-sm">Invite someone to help manage this listing</p>
+                <p>{t?.emptyTitle ?? "No co-hosts yet"}</p>
+                <p className="text-sm">{t?.emptyHint ?? "Invite someone to help manage this listing"}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -120,7 +123,7 @@ const CoHostsPage = () => {
                           ? 'bg-green-100 text-green-700'
                           : 'bg-yellow-100 text-yellow-700'
                       }`}>
-                        {host.status === 'accepted' ? 'Active' : 'Pending'}
+                        {host.status === 'accepted' ? (t?.statusActive ?? 'Active') : (t?.statusPending ?? 'Pending')}
                       </span>
                       <Button
                         variant="ghost"
@@ -143,12 +146,12 @@ const CoHostsPage = () => {
               <div className="flex items-start gap-3">
                 <Info className="size-5 text-blue-600 mt-0.5" />
                 <div>
-                  <h4 className="font-medium text-blue-900">What can co-hosts do?</h4>
+                  <h4 className="font-medium text-blue-900">{t?.whatTitle ?? "What can co-hosts do?"}</h4>
                   <ul className="text-sm text-blue-700 mt-2 space-y-1">
-                    <li>• Respond to messages from guests</li>
-                    <li>• Update availability and pricing</li>
-                    <li>• Manage reservations</li>
-                    <li>• Access guest information</li>
+                    <li>• {t?.what1 ?? "Respond to messages from guests"}</li>
+                    <li>• {t?.what2 ?? "Update availability and pricing"}</li>
+                    <li>• {t?.what3 ?? "Manage reservations"}</li>
+                    <li>• {t?.what4 ?? "Access guest information"}</li>
                   </ul>
                 </div>
               </div>
@@ -158,10 +161,10 @@ const CoHostsPage = () => {
 
         <div className="mt-8 flex justify-between">
           <Button variant="outline" onClick={() => router.back()}>
-            Back
+            {dict?.common?.back ?? "Back"}
           </Button>
           <Button>
-            Save
+            {dict?.common?.save ?? "Save"}
           </Button>
         </div>
       </div>

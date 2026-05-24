@@ -2,22 +2,22 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
 } from '@/components/ui/popover';
-import { 
+import {
   Calendar,
-  Users, 
-  MapPin, 
+  Users,
+  MapPin,
   Search,
   Minus,
   Plus,
@@ -26,6 +26,7 @@ import {
   Car
 } from 'lucide-react';
 import AirbnbIcon from './property-icon';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface SelectOption {
   value: string;
@@ -49,36 +50,39 @@ interface AirbnbSelectProps {
   className?: string;
 }
 
-const LOCATION_OPTIONS: SelectOption[] = [
-  { value: 'new-york', label: 'New York, NY', icon: MapPin },
-  { value: 'los-angeles', label: 'Los Angeles, CA', icon: MapPin },
-  { value: 'miami', label: 'Miami, FL', icon: MapPin },
-  { value: 'san-francisco', label: 'San Francisco, CA', icon: MapPin },
-  { value: 'chicago', label: 'Chicago, IL', icon: MapPin },
-];
-
-const PROPERTY_TYPE_OPTIONS: SelectOption[] = [
-  { value: 'mension', label: 'Mansion', description: 'Luxury accommodations' },
-  { value: 'islands', label: 'Islands', description: 'Private island getaways' },
-  { value: 'beach', label: 'Beach', description: 'Beachfront properties' },
-  { value: 'boat', label: 'Boat', description: 'Unique floating stays' },
-  { value: 'containers', label: 'Containers', description: 'Modern container homes' },
-];
-
-const AMENITY_OPTIONS: SelectOption[] = [
-  { value: 'wifi', label: 'WiFi', icon: Wifi },
-  { value: 'parking', label: 'Free parking', icon: Car },
-  { value: 'beauty-pools', label: 'Pool' },
-  { value: 'new', label: 'New listings' },
-];
-
-const AirbnbSelect: React.FC<AirbnbSelectProps> = ({ 
-  type, 
-  placeholder, 
-  value, 
-  onChange, 
-  className = "" 
+const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
+  type,
+  placeholder,
+  value,
+  onChange,
+  className = ""
 }) => {
+  const dict = useDictionary();
+  const t = dict?.atom?.propertySelect;
+
+  const LOCATION_OPTIONS: SelectOption[] = [
+    { value: 'new-york', label: t?.locations?.newYork ?? 'New York, NY', icon: MapPin },
+    { value: 'los-angeles', label: t?.locations?.losAngeles ?? 'Los Angeles, CA', icon: MapPin },
+    { value: 'miami', label: t?.locations?.miami ?? 'Miami, FL', icon: MapPin },
+    { value: 'san-francisco', label: t?.locations?.sanFrancisco ?? 'San Francisco, CA', icon: MapPin },
+    { value: 'chicago', label: t?.locations?.chicago ?? 'Chicago, IL', icon: MapPin },
+  ];
+
+  const PROPERTY_TYPE_OPTIONS: SelectOption[] = [
+    { value: 'mension', label: t?.propertyTypes?.mansion ?? 'Mansion', description: t?.propertyTypes?.mansionDesc ?? 'Luxury accommodations' },
+    { value: 'islands', label: t?.propertyTypes?.islands ?? 'Islands', description: t?.propertyTypes?.islandsDesc ?? 'Private island getaways' },
+    { value: 'beach', label: t?.propertyTypes?.beach ?? 'Beach', description: t?.propertyTypes?.beachDesc ?? 'Beachfront properties' },
+    { value: 'boat', label: t?.propertyTypes?.boat ?? 'Boat', description: t?.propertyTypes?.boatDesc ?? 'Unique floating stays' },
+    { value: 'containers', label: t?.propertyTypes?.containers ?? 'Containers', description: t?.propertyTypes?.containersDesc ?? 'Modern container homes' },
+  ];
+
+  const AMENITY_OPTIONS: SelectOption[] = [
+    { value: 'wifi', label: t?.amenities?.wifi ?? 'WiFi', icon: Wifi },
+    { value: 'parking', label: t?.amenities?.freeParking ?? 'Free parking', icon: Car },
+    { value: 'beauty-pools', label: t?.amenities?.pool ?? 'Pool' },
+    { value: 'new', label: t?.amenities?.newListings ?? 'New listings' },
+  ];
+
   const [open, setOpen] = useState(false);
   const [guestCount, setGuestCount] = useState<GuestCount>({
     adults: 1,
@@ -94,28 +98,37 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
     } else if (newCount[category] > 0) {
       newCount[category]--;
     }
-    
+
     // Adults must be at least 1
     if (category === 'adults' && newCount.adults < 1) {
       newCount.adults = 1;
     }
-    
+
     setGuestCount(newCount);
     onChange?.(newCount);
   };
 
   const getGuestSummary = () => {
     const total = guestCount.adults + guestCount.children;
-    let summary = `${total} guest${total !== 1 ? 's' : ''}`;
-    
+    const guestTemplate = total === 1
+      ? (t?.guestSingular ?? "{count} guest")
+      : (t?.guestPlural ?? "{count} guests");
+    let summary = guestTemplate.replace("{count}", String(total));
+
     if (guestCount.infants > 0) {
-      summary += `, ${guestCount.infants} infant${guestCount.infants !== 1 ? 's' : ''}`;
+      const infantTemplate = guestCount.infants === 1
+        ? (t?.infantSingular ?? ", {count} infant")
+        : (t?.infantPlural ?? ", {count} infants");
+      summary += infantTemplate.replace("{count}", String(guestCount.infants));
     }
-    
+
     if (guestCount.pets > 0) {
-      summary += `, ${guestCount.pets} pet${guestCount.pets !== 1 ? 's' : ''}`;
+      const petTemplate = guestCount.pets === 1
+        ? (t?.petSingular ?? ", {count} pet")
+        : (t?.petPlural ?? ", {count} pets");
+      summary += petTemplate.replace("{count}", String(guestCount.pets));
     }
-    
+
     return summary;
   };
 
@@ -124,7 +137,7 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
       <SelectTrigger className={`h-14 px-4 border-gray-300 hover:border-gray-400 rounded-xl bg-white ${className}`}>
         <div className="flex items-center space-x-3 w-full">
           <Search className="w-5 h-5 text-gray-500" />
-          <SelectValue placeholder={placeholder || "Where are you going?"} />
+          <SelectValue placeholder={placeholder || (t?.whereGoingPlaceholder ?? "Where are you going?")} />
         </div>
       </SelectTrigger>
       <SelectContent>
@@ -148,7 +161,7 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
       <SelectTrigger className={`h-14 px-4 border-gray-300 hover:border-gray-400 rounded-xl bg-white ${className}`}>
         <div className="flex items-center space-x-3 w-full">
           <AirbnbIcon name="Mension" size={20} />
-          <SelectValue placeholder={placeholder || "Property type"} />
+          <SelectValue placeholder={placeholder || (t?.propertyTypePlaceholder ?? "Property type")} />
         </div>
       </SelectTrigger>
       <SelectContent>
@@ -176,7 +189,7 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
       <SelectTrigger className={`h-14 px-4 border-gray-300 hover:border-gray-400 rounded-xl bg-white ${className}`}>
         <div className="flex items-center space-x-3 w-full">
           <Wifi className="w-5 h-5 text-gray-500" />
-          <SelectValue placeholder={placeholder || "Amenities"} />
+          <SelectValue placeholder={placeholder || (t?.amenitiesPlaceholder ?? "Amenities")} />
         </div>
       </SelectTrigger>
       <SelectContent>
@@ -201,8 +214,8 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
   const renderGuestsSelect = () => (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className={`h-14 px-4 border-gray-300 hover:border-gray-400 rounded-xl bg-white justify-between ${className}`}
         >
           <div className="flex items-center space-x-3">
@@ -219,8 +232,8 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
           {/* Adults */}
           <div className="flex items-center justify-between">
             <div>
-              <div className="font-medium">Adults</div>
-              <div className="text-sm text-gray-500">Ages 13 or above</div>
+              <div className="font-medium">{t?.adultsLabel ?? "Adults"}</div>
+              <div className="text-sm text-gray-500">{t?.adultsAge ?? "Ages 13 or above"}</div>
             </div>
             <div className="flex items-center space-x-3">
               <Button
@@ -229,7 +242,7 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
                 className="h-8 w-8 rounded-full"
                 onClick={() => updateGuestCount('adults', false)}
                 disabled={guestCount.adults <= 1}
-                aria-label="Decrease adults"
+                aria-label={t?.decreaseAdults ?? "Decrease adults"}
               >
                 <Minus className="w-4 h-4" />
               </Button>
@@ -239,7 +252,7 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
                 size="icon"
                 className="h-8 w-8 rounded-full"
                 onClick={() => updateGuestCount('adults', true)}
-                aria-label="Increase adults"
+                aria-label={t?.increaseAdults ?? "Increase adults"}
               >
                 <Plus className="w-4 h-4" />
               </Button>
@@ -249,8 +262,8 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
           {/* Children */}
           <div className="flex items-center justify-between">
             <div>
-              <div className="font-medium">Children</div>
-              <div className="text-sm text-gray-500">Ages 2-12</div>
+              <div className="font-medium">{t?.childrenLabel ?? "Children"}</div>
+              <div className="text-sm text-gray-500">{t?.childrenAge ?? "Ages 2-12"}</div>
             </div>
             <div className="flex items-center space-x-3">
               <Button
@@ -259,7 +272,7 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
                 className="h-8 w-8 rounded-full"
                 onClick={() => updateGuestCount('children', false)}
                 disabled={guestCount.children <= 0}
-                aria-label="Decrease children"
+                aria-label={t?.decreaseChildren ?? "Decrease children"}
               >
                 <Minus className="w-4 h-4" />
               </Button>
@@ -269,7 +282,7 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
                 size="icon"
                 className="h-8 w-8 rounded-full"
                 onClick={() => updateGuestCount('children', true)}
-                aria-label="Increase children"
+                aria-label={t?.increaseChildren ?? "Increase children"}
               >
                 <Plus className="w-4 h-4" />
               </Button>
@@ -279,8 +292,8 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
           {/* Infants */}
           <div className="flex items-center justify-between">
             <div>
-              <div className="font-medium">Infants</div>
-              <div className="text-sm text-gray-500">Under 2</div>
+              <div className="font-medium">{t?.infantsLabel ?? "Infants"}</div>
+              <div className="text-sm text-gray-500">{t?.infantsAge ?? "Under 2"}</div>
             </div>
             <div className="flex items-center space-x-3">
               <Button
@@ -289,7 +302,7 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
                 className="h-8 w-8 rounded-full"
                 onClick={() => updateGuestCount('infants', false)}
                 disabled={guestCount.infants <= 0}
-                aria-label="Decrease infants"
+                aria-label={t?.decreaseInfants ?? "Decrease infants"}
               >
                 <Minus className="w-4 h-4" />
               </Button>
@@ -299,7 +312,7 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
                 size="icon"
                 className="h-8 w-8 rounded-full"
                 onClick={() => updateGuestCount('infants', true)}
-                aria-label="Increase infants"
+                aria-label={t?.increaseInfants ?? "Increase infants"}
               >
                 <Plus className="w-4 h-4" />
               </Button>
@@ -309,8 +322,8 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
           {/* Pets */}
           <div className="flex items-center justify-between">
             <div>
-              <div className="font-medium">Pets</div>
-              <div className="text-sm text-gray-500">Bringing a service animal?</div>
+              <div className="font-medium">{t?.petsLabel ?? "Pets"}</div>
+              <div className="text-sm text-gray-500">{t?.petsHint ?? "Bringing a service animal?"}</div>
             </div>
             <div className="flex items-center space-x-3">
               <Button
@@ -339,12 +352,12 @@ const AirbnbSelect: React.FC<AirbnbSelectProps> = ({
   );
 
   const renderDatesSelect = () => (
-    <Button 
-      variant="outline" 
+    <Button
+      variant="outline"
       className={`h-14 px-4 border-gray-300 hover:border-gray-400 rounded-xl bg-white justify-start ${className}`}
     >
       <Calendar className="w-5 h-5 text-gray-500 me-3" />
-      <span>{placeholder || "Add dates"}</span>
+      <span>{placeholder || (t?.addDatesPlaceholder ?? "Add dates")}</span>
     </Button>
   );
 

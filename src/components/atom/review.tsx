@@ -1,6 +1,9 @@
+"use client"
+
 import Image from "next/image"
 import { Star } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { useDictionary } from "@/components/internationalization/dictionary-context"
 
 interface AirbnbReviewProps {
   reviewerName: string;
@@ -23,6 +26,10 @@ export default function AirbnbReview({
   reviewText,
   className = ""
 }: AirbnbReviewProps) {
+  const dict = useDictionary()
+  const t = dict?.atom?.review
+  const altTemplate = t?.profilePictureAlt ?? "{name}'s profile picture"
+  const profileAlt = altTemplate.replace("{name}", reviewerName)
   return (
     <div className={`max-w-md mx-auto ${className}`}>
       <Card className="border-0 shadow-none bg-transparent">
@@ -34,7 +41,7 @@ export default function AirbnbReview({
               <div className="flex-shrink-0">
                 <Image
                   src={reviewerImage}
-                  alt={`${reviewerName}'s profile picture`}
+                  alt={profileAlt}
                   width={60}
                   height={60}
                   className="rounded-full object-cover"

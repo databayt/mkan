@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface PhotoTourProps {
   listingId: string;
@@ -32,87 +33,99 @@ const PhotoOverlayIcon = () => (
 const ROOMS = [
   {
     id: 'bedroom',
-    name: 'Bedroom',
+    nameKey: 'bedroom',
+    fallbackName: 'Bedroom',
     status: 'add-photos',
     photoCount: 0,
     image: '/hosting/bedroom.png',
   },
   {
     id: 'bathroom',
-    name: 'Bathroom',
+    nameKey: 'bathroom',
+    fallbackName: 'Bathroom',
     status: 'add-photos',
     photoCount: 0,
     image: '/hosting/bathroom.png',
   },
   {
     id: 'additional',
-    name: 'Additional photos',
+    nameKey: 'additional',
+    fallbackName: 'Additional photos',
     status: 'has-photos',
     photoCount: 5,
     image: null,
   },
-];
+] as const;
 
 const PhotoTour = ({ listingId }: PhotoTourProps) => {
+  const dict = useDictionary();
+  const t = dict?.listingEditor?.photoTour;
   const rooms = ROOMS;
 
   return (
     <div className="lg:col-span-2">
       <div className="flex items-center justify-between mb-8">
-        <h3>Photo tour</h3>
-        <div className="flex items-center space-x-4">
+        <h3>{t?.heading ?? "Photo tour"}</h3>
+        <div className="flex items-center space-x-4 rtl:space-x-reverse">
           <Button variant="default" className="gap-2 rounded-full bg-muted text-primary">
             <PhotoOverlayIcon />
-            <span>All photos</span>
+            <span>{t?.allPhotos ?? "All photos"}</span>
           </Button>
-          <Button variant="outline" size="icon" className="rounded-full" aria-label="Add photo">
+          <Button variant="outline" size="icon" className="rounded-full" aria-label={t?.addPhotoAria ?? "Add photo"}>
             <Plus className="size-4" />
           </Button>
         </div>
       </div>
 
       <p className="mb-8">
-        Manage photos and add details. Guests will only see your tour if every room has a photo.
+        {t?.description ?? "Manage photos and add details. Guests will only see your tour if every room has a photo."}
       </p>
 
       {/* Rooms Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {rooms.map((room) => (
-          <div key={room.id} className="">
-            {/* Image */}
-            <div className="aspect-square bg-muted flex items-center justify-center relative overflow-hidden rounded-xl">
-              {room.image ? (
-                <Image
-                  src={room.image}
-                  alt={room.name}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                />
+        {rooms.map((room) => {
+          const roomName =
+            (t && (t as Record<string, string>)[room.nameKey]) || room.fallbackName;
+          const photosTemplate = t?.photosCount ?? "{count} photos";
+          const photosLabel = photosTemplate.replace("{count}", String(room.photoCount));
+
+          return (
+            <div key={room.id} className="">
+              {/* Image */}
+              <div className="aspect-square bg-muted flex items-center justify-center relative overflow-hidden rounded-xl">
+                {room.image ? (
+                  <Image
+                    src={room.image}
+                    alt={roomName}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  />
+                ) : (
+                  <Avatar className="size-16">
+                    <AvatarFallback className="text-2xl">
+                      👤
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+              </div>
+
+              {/* Room name */}
+              <h5>{roomName}</h5>
+
+              {/* Action button/badge */}
+              {room.status === 'add-photos' ? (
+                <Button variant="link" size="sm" className="self-start">
+                  {t?.addPhotos ?? "Add photos"}
+                </Button>
               ) : (
-                <Avatar className="size-16">
-                  <AvatarFallback className="text-2xl">
-                    👤
-                  </AvatarFallback>
-                </Avatar>
+                <Badge variant="secondary" className="self-start">
+                  {photosLabel}
+                </Badge>
               )}
             </div>
-            
-            {/* Room name */}
-            <h5>{room.name}</h5>
-            
-            {/* Action button/badge */}
-            {room.status === 'add-photos' ? (
-              <Button variant="link" size="sm" className="self-start">
-                Add photos
-              </Button>
-            ) : (
-              <Badge variant="secondary" className="self-start">
-                {room.photoCount} photos
-              </Badge>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

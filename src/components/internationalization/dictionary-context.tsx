@@ -1,9 +1,10 @@
 "use client"
 
-import { createContext, useContext } from "react"
+import { createContext } from "react"
 import type { Dictionary } from "./dictionaries"
 
-const DictionaryContext = createContext<Dictionary | null>(null)
+// Exported so the client-fallback hook in `use-dictionary.ts` can read it.
+export const DictionaryContext = createContext<Dictionary | null>(null)
 
 export function DictionaryProvider({
   dictionary,
@@ -19,10 +20,7 @@ export function DictionaryProvider({
   )
 }
 
-export function useDictionary() {
-  const dictionary = useContext(DictionaryContext)
-  if (!dictionary) {
-    throw new Error("useDictionary must be used within a DictionaryProvider")
-  }
-  return dictionary
-}
+// The hook lives in `use-dictionary.ts` (context-first with a client-side
+// fallback). Re-exported here so the existing imports
+// (`@/components/internationalization/dictionary-context`) keep resolving.
+export { useDictionary } from "./use-dictionary"

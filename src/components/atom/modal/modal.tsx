@@ -4,6 +4,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 // Custom hook for managing body scroll
 function useBodyScroll(open: boolean) {
@@ -28,6 +29,8 @@ interface Props {
 function Modal({ content, sm = false, big = false }: Props) {
   const { modal, closeModal } = useModal();
   useBodyScroll(modal.open);
+  const dict = useDictionary();
+  const closeLabel = dict?.atom?.modal?.closeModal ?? "Close modal";
 
   const modalVariants = {
     hidden: {
@@ -69,7 +72,7 @@ function Modal({ content, sm = false, big = false }: Props) {
             onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Escape') closeModal(); }}
             role="button"
             tabIndex={0}
-            aria-label="Close modal"
+            aria-label={closeLabel}
             initial="hidden"
             animate="visible"
             exit="hidden"
@@ -95,7 +98,7 @@ function Modal({ content, sm = false, big = false }: Props) {
                   variant='outline'
                   className="rounded-full absolute top-4 right-4"
                   onClick={closeModal}
-                  aria-label="Close modal"
+                  aria-label={closeLabel}
                 >
                   <X size={25} />
                 </Button>

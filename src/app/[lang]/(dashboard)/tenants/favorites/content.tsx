@@ -32,8 +32,8 @@ export default async function FavoritesContent({ lang }: FavoritesContentProps) 
   return (
     <div className="dashboard-container p-6 space-y-6">
       <Header
-        title={t.title ?? (lang === "ar" ? "المفضلة" : "Favorites")}
-        subtitle={t.subtitle ?? (lang === "ar" ? "تصفح وإدارة العقارات المحفوظة" : "Browse and manage your saved properties")}
+        title={t.title ?? "Favorites"}
+        subtitle={t.subtitle ?? "Browse and manage your saved properties"}
       />
 
       {favorites.length === 0 ? (

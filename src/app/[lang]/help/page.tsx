@@ -1,5 +1,7 @@
 import { Metadata } from "next";
 import { createMetadata } from "@/lib/metadata";
+import { getDictionary } from "@/components/internationalization/dictionaries";
+import type { Locale } from "@/components/internationalization/config";
 import HelpContent from "./content";
 
 // Disable static generation for this page
@@ -11,12 +13,11 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const dict = await getDictionary(lang as Locale);
   return createMetadata({
-    title: lang === "ar" ? "مركز المساعدة" : "Help Center",
+    title: dict?.pages?.help?.metadata?.title ?? "Help Center",
     description:
-      lang === "ar"
-        ? "احصل على المساعدة والدعم"
-        : "Get help and support",
+      dict?.pages?.help?.metadata?.description ?? "Get help and support",
     locale: lang,
     path: "/help",
   });

@@ -7,6 +7,8 @@ import { useGlobalStore } from '@/state/filters'
 import { PropertyCard } from './card'
 import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-actions'
 import { useSession } from 'next-auth/react'
+import { useDictionary } from '@/components/internationalization/dictionary-context'
+import { useLocale } from '@/components/internationalization/use-locale'
 
 interface ListingsProps {
   properties: any[]
@@ -14,11 +16,19 @@ interface ListingsProps {
 }
 
 const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
+  const dict = useDictionary()
+  const t = dict?.property?.listings
+  const { locale } = useLocale()
   const router = useRouter()
   const { data: session } = useSession()
   const viewMode = useGlobalStore((s) => s.viewMode)
   const filters = useGlobalStore((s) => s.filters)
   const [localFavorites, setLocalFavorites] = React.useState<Set<number>>(new Set(favoriteIds))
+
+  const placesInText = () => {
+    const template = t?.placesIn ?? "Places in {location}"
+    return template.replace("{location}", filters.location ?? "")
+  }
 
   const handleFavoriteToggle = async (propertyId: string, isFavorite: boolean) => {
     if (!session?.user?.id) return
@@ -44,19 +54,19 @@ const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
   }
 
   const handleCardClick = (propertyId: string) => {
-    router.push(`/search/${propertyId}`)
+    router.push(`/${locale}/search/${propertyId}`)
   }
 
   if (!properties || properties.length === 0) {
     return (
       <div className="w-full p-4">
         <h3 className="text-sm px-4 font-bold">
-          0 <span className="text-gray-700 font-normal">Places in {filters.location}</span>
+          0 <span className="text-gray-700 font-normal">{placesInText()}</span>
         </h3>
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No properties found</h3>
-            <p className="text-gray-600">Try adjusting your search filters to see more results.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{t?.noPropertiesTitle ?? "No properties found"}</h3>
+            <p className="text-gray-600">{t?.noPropertiesDescription ?? "Try adjusting your search filters to see more results."}</p>
           </div>
         </div>
       </div>
@@ -91,7 +101,7 @@ const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
       <h3 className="text-sm px-4 font-bold mb-4">
         {properties.length}{' '}
         <span className="text-gray-700 font-normal">
-          Places in {filters.location}
+          {placesInText()}
         </span>
       </h3>
       
@@ -122,7 +132,7 @@ const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg mb-2">{property.title}</h3>
                   <p className="text-gray-600 mb-2">{property.location}</p>
-                  <p className="font-semibold text-lg">${property.price}/month</p>
+                  <p className="font-semibold text-lg">${property.price}{t?.perMonth ?? "/month"}</p>
                 </div>
               </div>
             </div>

@@ -6,7 +6,6 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   CalendarCheck,
   ListChecks,
@@ -17,15 +16,19 @@ import {
 } from "lucide-react";
 import { useTransportOffice } from "@/context/transport-office-context";
 import { getOfficeDashboardStats } from "@/lib/actions/transport-actions";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 type Stats = Awaited<ReturnType<typeof getOfficeDashboardStats>>;
 
 export default function TransportHostOverviewPage() {
   const params = useParams();
-  const lang = (params.lang as string) ?? "en";
+  const lang = (params.lang as string) ?? "ar";
   const officeId = Number(params.id);
   const { office } = useTransportOffice();
   const [stats, setStats] = useState<Stats | null>(null);
+  const dict = useDictionary();
+  const t = dict?.transportHost?.overview;
+  const tCommon = dict?.transportHost?.common;
 
   useEffect(() => {
     if (!officeId) return;
@@ -37,33 +40,33 @@ export default function TransportHostOverviewPage() {
   return (
     <div className="max-w-6xl mx-auto py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold mb-1">{office?.name ?? "Operator overview"}</h1>
-        <p className="text-muted-foreground">Today&apos;s trips, recent bookings, and revenue.</p>
+        <h1 className="text-3xl font-semibold mb-1">{office?.name ?? (t?.title ?? "Operator overview")}</h1>
+        <p className="text-muted-foreground">{t?.subtitle ?? "Today's trips, recent bookings, and revenue."}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <KpiCard
           icon={<CalendarCheck className="size-5" />}
-          label="Upcoming trips"
+          label={t?.upcomingTrips ?? "Upcoming trips"}
           value={stats?.upcomingTrips ?? "—"}
         />
         <KpiCard
           icon={<ListChecks className="size-5" />}
-          label="Confirmed bookings"
+          label={t?.confirmedBookings ?? "Confirmed bookings"}
           value={stats?.confirmedBookings ?? "—"}
         />
         <KpiCard
           icon={<Wallet className="size-5" />}
-          label="Total revenue"
+          label={t?.totalRevenue ?? "Total revenue"}
           value={
             stats?.totalRevenue != null
-              ? `${(stats.totalRevenue as number).toLocaleString()} SDG`
+              ? `${(stats.totalRevenue as number).toLocaleString()} ${tCommon?.sdg ?? "SDG"}`
               : "—"
           }
         />
         <KpiCard
           icon={<Bus className="size-5" />}
-          label="Buses"
+          label={t?.buses ?? "Buses"}
           value={stats?.totalBuses ?? "—"}
         />
       </div>
@@ -72,20 +75,20 @@ export default function TransportHostOverviewPage() {
         <QuickAction
           href={`/${lang}/transport-host/${officeId}/bookings`}
           icon={<ListChecks className="size-5" />}
-          title="Bookings"
-          subtitle="Manage upcoming and past bookings"
+          title={t?.bookingsTitle ?? "Bookings"}
+          subtitle={t?.bookingsSubtitle ?? "Manage upcoming and past bookings"}
         />
         <QuickAction
           href={`/${lang}/transport-host/${officeId}/trips`}
           icon={<RouteIcon className="size-5" />}
-          title="Trips"
-          subtitle="Schedule and run your trips"
+          title={t?.tripsTitle ?? "Trips"}
+          subtitle={t?.tripsSubtitle ?? "Schedule and run your trips"}
         />
         <QuickAction
           href={`/${lang}/transport-host/${officeId}/earnings`}
           icon={<Wallet className="size-5" />}
-          title="Earnings"
-          subtitle="Revenue per route and per month"
+          title={t?.earningsTitle ?? "Earnings"}
+          subtitle={t?.earningsSubtitle ?? "Revenue per route and per month"}
         />
       </div>
     </div>

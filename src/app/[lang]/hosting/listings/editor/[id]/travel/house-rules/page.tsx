@@ -5,29 +5,33 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollText } from "lucide-react";
+import { getDictionary } from "@/components/internationalization/dictionaries";
+import type { Locale } from "@/components/internationalization/config";
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; lang: string }>;
 }
 
-const rules = [
-  { id: "smoking", label: "Smoking allowed", hint: "Set whether guests can smoke inside" },
-  { id: "pets", label: "Pets allowed", hint: "Set whether guests can bring pets" },
-  { id: "parties", label: "Parties or events allowed", hint: "Large gatherings on-site" },
-  { id: "kids", label: "Suitable for kids", hint: "Childproofing & safety" },
-  { id: "quiet_hours", label: "Quiet hours", hint: "Default 10 PM – 8 AM" },
-];
-
 const HouseRulesPage = async ({ params }: PageProps) => {
-  await params;
+  const { lang } = await params;
+  const dict = await getDictionary(lang as Locale);
+  const t = dict?.listingEditor?.travelHouseRules;
+
+  const rules = [
+    { id: "smoking", label: t?.smoking ?? "Smoking allowed", hint: t?.smokingHint ?? "Set whether guests can smoke inside" },
+    { id: "pets", label: t?.pets ?? "Pets allowed", hint: t?.petsHint ?? "Set whether guests can bring pets" },
+    { id: "parties", label: t?.parties ?? "Parties or events allowed", hint: t?.partiesHint ?? "Large gatherings on-site" },
+    { id: "kids", label: t?.kids ?? "Suitable for kids", hint: t?.kidsHint ?? "Childproofing & safety" },
+    { id: "quiet_hours", label: t?.quietHours ?? "Quiet hours", hint: t?.quietHoursHint ?? "Default 10 PM – 8 AM" },
+  ];
 
   return (
     <div className="lg:col-span-2">
       <div className="max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">House rules</h1>
+          <h1 className="text-3xl font-semibold mb-2">{t?.heading ?? "House rules"}</h1>
           <p className="text-muted-foreground">
-            Guests must accept these rules before booking. Be clear and reasonable.
+            {t?.subtitle ?? "Guests must accept these rules before booking. Be clear and reasonable."}
           </p>
         </div>
 
@@ -35,7 +39,7 @@ const HouseRulesPage = async ({ params }: PageProps) => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ScrollText className="size-5" />
-              Standard rules
+              {t?.standardTitle ?? "Standard rules"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -58,22 +62,22 @@ const HouseRulesPage = async ({ params }: PageProps) => {
 
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Custom rules</CardTitle>
+            <CardTitle>{t?.customTitle ?? "Custom rules"}</CardTitle>
           </CardHeader>
           <CardContent>
-            <Label htmlFor="custom">One rule per line</Label>
+            <Label htmlFor="custom">{t?.customLabel ?? "One rule per line"}</Label>
             <Textarea
               id="custom"
               rows={5}
               className="mt-2"
-              placeholder="Please remove your shoes inside&#10;No outside guests after 10 PM"
+              placeholder={t?.customPlaceholder ?? "Please remove your shoes inside\nNo outside guests after 10 PM"}
             />
           </CardContent>
         </Card>
 
         <div className="mt-8 flex justify-between">
-          <Button variant="outline">Back</Button>
-          <Button>Save</Button>
+          <Button variant="outline">{dict?.common?.back ?? "Back"}</Button>
+          <Button>{dict?.common?.save ?? "Save"}</Button>
         </div>
       </div>
     </div>

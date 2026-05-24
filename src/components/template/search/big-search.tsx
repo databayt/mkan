@@ -23,7 +23,7 @@ const dropdownMotion = {
   exit: { opacity: 0, y: -6, scale: 0.985 },
 };
 
-type ActiveButton = "location" | "checkin" | "checkout" | "guests" | null;
+type ActiveButton = "location" | "dates" | "guests" | null;
 
 interface BigSearchProps {
   onClose?: () => void;
@@ -91,7 +91,7 @@ export default function BigSearch({ onClose, isActive = true }: BigSearchProps =
   const handleLocationSelect = (location: LocationSuggestion | null) => {
     if (location) {
       setSelectedLocation(location.displayName);
-      setActiveButton("checkin"); // Move to next field
+      setActiveButton("dates"); // Move to next field
     } else {
       setActiveButton(null);
     }
@@ -115,20 +115,15 @@ export default function BigSearch({ onClose, isActive = true }: BigSearchProps =
     });
   };
 
-  // Get check-in display text
-  const getCheckInDisplayText = () => {
+  // Get combined dates display text for the single "When" segment
+  const getDatesDisplayText = () => {
+    if (dateRange.from && dateRange.to) {
+      return `${formatDate(dateRange.from)} – ${formatDate(dateRange.to)}`;
+    }
     if (dateRange.from) {
       return formatDate(dateRange.from);
     }
-    return dict.search?.addDate ?? "Add date";
-  };
-
-  // Get check-out display text
-  const getCheckOutDisplayText = () => {
-    if (dateRange.to) {
-      return formatDate(dateRange.to);
-    }
-    return dict.search?.addDate ?? "Add date";
+    return dict.search?.addDates ?? "Add dates";
   };
 
   // Handle guest change
@@ -182,29 +177,20 @@ export default function BigSearch({ onClose, isActive = true }: BigSearchProps =
     };
   }, []);
 
-  const isLineHidden = (
-    position: "location-checkin" | "checkin-checkout" | "checkout-guests"
-  ) => {
+  const isLineHidden = (position: "location-dates" | "dates-guests") => {
     switch (position) {
-      case "location-checkin":
+      case "location-dates":
         return (
           hoveredButton === "location" ||
-          hoveredButton === "checkin" ||
+          hoveredButton === "dates" ||
           activeButton === "location" ||
-          activeButton === "checkin"
+          activeButton === "dates"
         );
-      case "checkin-checkout":
+      case "dates-guests":
         return (
-          hoveredButton === "checkin" ||
-          hoveredButton === "checkout" ||
-          activeButton === "checkin" ||
-          activeButton === "checkout"
-        );
-      case "checkout-guests":
-        return (
-          hoveredButton === "checkout" ||
+          hoveredButton === "dates" ||
           hoveredButton === "guests" ||
-          activeButton === "checkout" ||
+          activeButton === "dates" ||
           activeButton === "guests"
         );
       default:
@@ -212,90 +198,64 @@ export default function BigSearch({ onClose, isActive = true }: BigSearchProps =
     }
   };
 
-  // Helper function to get button styling
+  // Helper function to get button styling.
+  //
+  // The pill background lives on a `before:` pseudo-element (not the button
+  // itself) so a hovered neighbor can extend its fill *under* the active white
+  // pill. Two convex rounded caps facing each other would otherwise leave a
+  // lighter #EBEBEB lens at the seam; tucking the darker #DDDDDD behind the
+  // active pill (which sits at z-20) fills that notch instead.
   const getButtonStyling = (button: ActiveButton) => {
     const isActive = activeButton === button;
     const isHovered = hoveredButton === button;
     const hasActiveButton = activeButton !== null;
 
-    // Base background color
-    let bgClass = "bg-transparent";
+    // Stacking: active pill paints above its neighbors so their extended fills
+    // tuck underneath it.
+    const z = isActive ? "z-20" : "z-10";
+
+    // Pseudo background color by state.
+    let bgClass = "";
     if (isActive) {
-      bgClass = "bg-white shadow-md";
+      bgClass = "before:bg-white before:shadow-md";
     } else if (hasActiveButton) {
-      // When there's an active button, all other buttons get dark gray background
-      bgClass = "bg-[#e5e7eb]";
-      if (isHovered) {
-        bgClass = "bg-[#d1d5db]"; // Slightly darker on hover
-      }
+      // Another segment is active: blend into the bar's #EBEBEB, darken on hover.
+      bgClass = isHovered ? "before:bg-[#DDDDDD]" : "";
     } else if (isHovered) {
-      bgClass = "bg-[#f3f4f6]"; // Regular gray when no button is active
-    } else {
-      bgClass = "bg-transparent hover:bg-[#f3f4f6]";
+      bgClass = "before:bg-[#EBEBEB]";
     }
 
-    // Rounded corners logic - sharp edges when adjacent to active/hovered buttons
-    let roundedClass = "rounded-full";
-
-    if (hasActiveButton) {
-      // Check if this button is adjacent to active button
-      const isAdjacentToActive =
-        (activeButton === "location" && button === "checkin") ||
-        (activeButton === "checkin" &&
-          (button === "location" || button === "checkout")) ||
-        (activeButton === "checkout" &&
-          (button === "checkin" || button === "guests")) ||
-        (activeButton === "guests" && button === "checkout");
-
-      // Check if this button is adjacent to hovered button
-      const isAdjacentToHovered =
-        (hoveredButton === "location" && button === "checkin") ||
-        (hoveredButton === "checkin" &&
-          (button === "location" || button === "checkout")) ||
-        (hoveredButton === "checkout" &&
-          (button === "checkin" || button === "guests")) ||
-        (hoveredButton === "guests" && button === "checkout");
-
-      if (isActive) {
-        // Active button gets sharp edges on sides touching hovered buttons
-        if (hoveredButton === "checkin" && button === "location") {
-          roundedClass = "rounded-s-full rounded-e-none"; // Sharp right edge
-        } else if (hoveredButton === "location" && button === "checkin") {
-          roundedClass = "rounded-e-full rounded-s-none"; // Sharp left edge
-        } else if (hoveredButton === "checkout" && button === "checkin") {
-          roundedClass = "rounded-s-full rounded-e-none"; // Sharp right edge
-        } else if (hoveredButton === "checkin" && button === "checkout") {
-          roundedClass = "rounded-e-full rounded-s-none"; // Sharp left edge
-        } else if (hoveredButton === "guests" && button === "checkout") {
-          roundedClass = "rounded-s-full rounded-e-none"; // Sharp right edge
-        } else if (hoveredButton === "checkout" && button === "guests") {
-          roundedClass = "rounded-e-full rounded-s-none"; // Sharp left edge
-        }
-      } else if (isHovered && isAdjacentToActive) {
-        // Hovered button gets sharp edge on side touching active button
-        if (activeButton === "location" && button === "checkin") {
-          roundedClass = "rounded-e-full rounded-s-none"; // Sharp left edge
-        } else if (activeButton === "checkin" && button === "location") {
-          roundedClass = "rounded-s-full rounded-e-none"; // Sharp right edge
-        } else if (activeButton === "checkin" && button === "checkout") {
-          roundedClass = "rounded-e-full rounded-s-none"; // Sharp left edge
-        } else if (activeButton === "checkout" && button === "checkin") {
-          roundedClass = "rounded-s-full rounded-e-none"; // Sharp right edge
-        } else if (activeButton === "checkout" && button === "guests") {
-          roundedClass = "rounded-e-full rounded-s-none"; // Sharp left edge
-        } else if (activeButton === "guests" && button === "checkout") {
-          roundedClass = "rounded-s-full rounded-e-none"; // Sharp right edge
-        }
+    // Seam fill: when a neighbor of the active pill is hovered, stretch its
+    // pseudo past the cap radius toward the active side AND square off the edge
+    // that tucks under the white pill. A rounded edge would recede at the
+    // top/bottom corners and leave a light-gray notch; squaring it fills the
+    // full height while the square edge stays hidden under the white pill.
+    // Exactly one start/end inset and a non-conflicting round class are emitted.
+    const order: Exclude<ActiveButton, null>[] = ["location", "dates", "guests"];
+    let insetStart = "before:start-0";
+    let insetEnd = "before:end-0";
+    let roundClass = "before:rounded-full";
+    if (activeButton !== null && !isActive && isHovered && button !== null) {
+      const activeIdx = order.indexOf(activeButton);
+      const buttonIdx = order.indexOf(button);
+      if (buttonIdx === activeIdx + 1) {
+        // Active is to my left → extend left under it, square the left edge.
+        insetStart = "before:-start-10";
+        roundClass = "before:rounded-e-full before:rounded-s-none";
+      } else if (buttonIdx === activeIdx - 1) {
+        // Active is to my right → extend right under it, square the right edge.
+        insetEnd = "before:-end-10";
+        roundClass = "before:rounded-s-full before:rounded-e-none";
       }
     }
 
-    return `${bgClass} ${roundedClass} transition-all duration-200`;
+    return `relative ${z} before:absolute before:inset-y-0 ${insetStart} ${insetEnd} before:-z-10 ${roundClass} before:transition-colors before:duration-200 before:content-[''] ${bgClass} transition-all duration-200`;
   };
 
   const handleSearch = () => {
     // Validate dates before search
     if (dateRange.from && dateRange.to && !isDateValid) {
-      setActiveButton("checkin");
+      setActiveButton("dates");
       return;
     }
 
@@ -327,9 +287,9 @@ export default function BigSearch({ onClose, isActive = true }: BigSearchProps =
 
     // Get current locale from pathname
     const pathParts = pathname.split("/");
-    const locale = pathParts[1] || "en";
+    const locale = pathParts[1] || "ar";
 
-    const searchUrl = `/${locale}/listings${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+    const searchUrl = `/${locale}/search${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
     router.push(searchUrl);
 
     if (onClose) {
@@ -338,25 +298,25 @@ export default function BigSearch({ onClose, isActive = true }: BigSearchProps =
   };
 
   return (
-    <div className="relative w-full" ref={searchBarRef}>
+    <div className="relative w-full max-w-4xl mx-auto" ref={searchBarRef}>
       <div
         className={`flex items-center border border-[#e5e7eb] rounded-full shadow-sm transition-colors ${
-          activeButton ? "bg-[#e5e7eb]" : "bg-white"
+          activeButton ? "bg-[#EBEBEB]" : "bg-white"
         }`}
       >
-        {/* Location Button */}
+        {/* Where Button */}
         <button
-          className={`flex-[1.8] px-6 py-3 ${getButtonStyling("location")}`}
+          className={`flex-1 min-w-0 px-6 py-3 ${getButtonStyling("location")}`}
           onMouseEnter={() => setHoveredButton("location")}
           onMouseLeave={() => setHoveredButton(null)}
           onClick={() => handleButtonClick("location")}
         >
           <div className="text-start">
-            <div className="text-sm font-semibold text-[#000000] mb-1">
-              {dict.search?.location ?? "Location"}
+            <div className="text-[13px] font-medium text-[#000000] mb-0.5">
+              {dict.search?.where ?? "Where"}
             </div>
-            <div className="text-sm text-[#6b7280]">
-              {selectedLocation || (dict.search?.whereAreYouGoing ?? "Where are you going?")}
+            <div className="text-[13px] text-[#6b7280]">
+              {selectedLocation || (dict.search?.searchDestinations ?? "Search destinations")}
             </div>
           </div>
         </button>
@@ -364,80 +324,35 @@ export default function BigSearch({ onClose, isActive = true }: BigSearchProps =
         {/* Divider 1 */}
         <div
           className={`w-px h-8 bg-[#e5e7eb] transition-opacity duration-200 ${
-            isLineHidden("location-checkin") ? "opacity-0" : "opacity-100"
+            isLineHidden("location-dates") ? "opacity-0" : "opacity-100"
           }`}
         ></div>
 
-        {/* Unified Date Section (Check in + Check out) */}
-        <div
-          className={`flex-[2] flex items-center ${
-            activeButton === "checkin" || activeButton === "checkout"
-              ? "bg-white shadow-md rounded-full"
-              : hoveredButton === "checkin" || hoveredButton === "checkout"
-                ? "bg-[#f3f4f6] rounded-full"
-                : activeButton
-                  ? "bg-[#e5e7eb] rounded-full"
-                  : ""
-          } transition-all duration-200`}
-          onMouseEnter={() => {
-            if (!activeButton || (activeButton !== "checkin" && activeButton !== "checkout")) {
-              setHoveredButton("checkin");
-            }
-          }}
+        {/* When Button (combined dates) */}
+        <button
+          className={`flex-1 min-w-0 px-6 py-3 ${getButtonStyling("dates")}`}
+          onMouseEnter={() => setHoveredButton("dates")}
           onMouseLeave={() => setHoveredButton(null)}
+          onClick={() => handleButtonClick("dates")}
         >
-          {/* Check in Button */}
-          <button
-            className={`flex-1 px-5 py-3 rounded-s-full transition-all duration-200 ${
-              activeButton === "checkin"
-                ? "bg-white"
-                : activeButton === "checkout"
-                  ? "bg-transparent"
-                  : ""
-            }`}
-            onClick={() => handleButtonClick("checkin")}
-          >
-            <div className="text-start">
-              <div className="text-sm font-semibold text-[#000000] mb-1">
-                {dict.search?.checkIn ?? "Check in"}
-              </div>
-              <div className="text-sm text-[#6b7280]">{getCheckInDisplayText()}</div>
+          <div className="text-start">
+            <div className="text-[13px] font-medium text-[#000000] mb-0.5">
+              {dict.search?.when ?? "When"}
             </div>
-          </button>
+            <div className="text-[13px] text-[#6b7280]">{getDatesDisplayText()}</div>
+          </div>
+        </button>
 
-          {/* Subtle Inner Divider */}
-          <div className="w-px h-10 bg-[#e5e7eb]/50"></div>
-
-          {/* Check out Button */}
-          <button
-            className={`flex-1 px-5 py-3 rounded-e-full transition-all duration-200 ${
-              activeButton === "checkout"
-                ? "bg-white"
-                : activeButton === "checkin"
-                  ? "bg-transparent"
-                  : ""
-            }`}
-            onClick={() => handleButtonClick("checkout")}
-          >
-            <div className="text-start">
-              <div className="text-sm font-semibold text-[#000000] mb-1">
-                {dict.search?.checkOut ?? "Check out"}
-              </div>
-              <div className="text-sm text-[#6b7280]">{getCheckOutDisplayText()}</div>
-            </div>
-          </button>
-        </div>
-
-        {/* Divider 3 */}
+        {/* Divider 2 */}
         <div
           className={`w-px h-8 bg-[#e5e7eb] transition-opacity duration-200 ${
-            isLineHidden("checkout-guests") ? "opacity-0" : "opacity-100"
+            isLineHidden("dates-guests") ? "opacity-0" : "opacity-100"
           }`}
         ></div>
 
         {/* Guests Button + Search Button Container */}
         <div
-          className={`flex-[2.2] flex items-center ${getButtonStyling("guests")}`}
+          className={`flex-[1.15] min-w-0 flex items-center ${getButtonStyling("guests")}`}
           onMouseEnter={() => setHoveredButton("guests")}
           onMouseLeave={() => setHoveredButton(null)}
         >
@@ -446,10 +361,10 @@ export default function BigSearch({ onClose, isActive = true }: BigSearchProps =
             className="flex-1 px-6 py-3 text-start"
             onClick={() => handleButtonClick("guests")}
           >
-            <div className="text-sm font-semibold text-[#000000] mb-1">
-              {dict.search?.guestsLabel ?? "Guests"}
+            <div className="text-[13px] font-medium text-[#000000] mb-0.5">
+              {dict.search?.who ?? "Who"}
             </div>
-            <div className="text-sm text-[#6b7280]">{getGuestDisplayText()}</div>
+            <div className="text-[13px] text-[#6b7280]">{getGuestDisplayText()}</div>
           </div>
 
           {/* Search Button. Width expands on active; height stays fixed so
@@ -496,24 +411,9 @@ export default function BigSearch({ onClose, isActive = true }: BigSearchProps =
           </motion.div>
         )}
 
-        {activeButton === "checkin" && (
+        {activeButton === "dates" && (
           <motion.div
-            key="dropdown-checkin"
-            {...dropdownMotion}
-            transition={DROPDOWN_TRANSITION}
-            style={{ transformOrigin: "top center", willChange: "transform, opacity" }}
-            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-2 z-10"
-          >
-            <BigSearchDatePicker
-              dateRange={dateRange}
-              onDateChange={handleDateChange}
-            />
-          </motion.div>
-        )}
-
-        {activeButton === "checkout" && (
-          <motion.div
-            key="dropdown-checkout"
+            key="dropdown-dates"
             {...dropdownMotion}
             transition={DROPDOWN_TRANSITION}
             style={{ transformOrigin: "top center", willChange: "transform, opacity" }}

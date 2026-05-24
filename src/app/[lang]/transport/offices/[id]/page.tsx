@@ -21,7 +21,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { getTransportOffice, getOfficeTrips } from '@/lib/actions/transport-actions';
-import { getTransportDictionary } from '@/components/transport/transport-dictionary';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { format, addDays } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 
@@ -38,7 +38,7 @@ export default function OfficeDetailsPage() {
   const [office, setOffice] = useState<OfficeDetails | null>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
-  const t = getTransportDictionary(lang);
+  const t = useDictionary().transport;
 
   useEffect(() => {
     const fetchData = async () => {

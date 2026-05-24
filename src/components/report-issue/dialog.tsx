@@ -31,8 +31,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
-import { REPORT_CATEGORY_LABELS, REPORT_DICTIONARY, type ReportLang } from "./dictionary";
+/** Active language. Kept for prop-shape parity with the portable dialog API. */
+export type ReportLang = "en" | "ar";
 
 const REPORT_CATEGORIES = [
   "visual",
@@ -74,7 +76,11 @@ export interface ReportIssueSubmitResult {
 export interface ReportIssueDialogProps {
   /** "text" = underlined link, "icon" = bug icon button. Default "text". */
   variant?: "text" | "icon";
-  /** Active language. Default detected from `<html lang>` attr or "en". */
+  /**
+   * Active language. Retained for API parity with the portable dialog; the
+   * displayed strings now come from the central dictionary provider, so this
+   * prop is no longer used for lookup.
+   */
   lang?: ReportLang;
   /** True when the visitor is signed in. Controls captcha visibility. */
   hasSession: boolean;
@@ -91,15 +97,52 @@ const inputClass =
 
 export function ReportIssueDialog({
   variant = "text",
-  lang,
   hasSession,
   onSubmit,
   turnstileSiteKey,
   signInHref = "/login",
 }: ReportIssueDialogProps): React.JSX.Element {
-  const effectiveLang = lang ?? detectLang();
-  const t = REPORT_DICTIONARY[effectiveLang];
-  const cats = REPORT_CATEGORY_LABELS[effectiveLang];
+  const dict = useDictionary();
+  const r = dict?.reportIssue;
+  const t = {
+    triggerText: r?.triggerText ?? "Report an issue",
+    triggerAriaLabel: r?.triggerAriaLabel ?? "Report an issue",
+    title: r?.title ?? "Report an issue",
+    categoryPlaceholder: r?.categoryPlaceholder ?? "Category",
+    descriptionPlaceholder:
+      r?.descriptionPlaceholder ??
+      "Describe the issue in detail (minimum 30 characters)…",
+    descriptionHint: r?.descriptionHint ?? "{count}/30+ chars",
+    addDetails: r?.addDetails ?? "Add steps and expected behavior (optional)",
+    reproPlaceholder: r?.reproPlaceholder ?? "Steps to reproduce: 1. … 2. … 3. …",
+    expectedPlaceholder: r?.expectedPlaceholder ?? "What did you expect to happen?",
+    actualPlaceholder: r?.actualPlaceholder ?? "What actually happened?",
+    severityLabel: r?.severityLabel ?? "Severity",
+    severityLow: r?.severityLow ?? "Low — cosmetic",
+    severityMedium: r?.severityMedium ?? "Medium — noticeable",
+    severityHigh: r?.severityHigh ?? "High — blocks me",
+    severityCritical: r?.severityCritical ?? "Critical — data loss / outage",
+    captchaHint:
+      r?.captchaHint ?? "Reports from signed-in users are processed faster.",
+    captchaLink: r?.captchaLink ?? "Sign in",
+    submit: r?.submit ?? "Submit",
+    submitting: r?.submitting ?? "Submitting…",
+    success: r?.success ?? "Submitted. Thank you!",
+    successWithId: r?.successWithId ?? "Submitted. Tracked as #{id}.",
+    error: r?.error ?? "Something went wrong. Try again.",
+    cooldown:
+      r?.cooldown ?? "Please wait a moment before submitting another report.",
+  };
+  const cats = {
+    visual: r?.categories?.visual ?? "Visual / Layout",
+    broken: r?.categories?.broken ?? "Broken / Not Working",
+    data: r?.categories?.data ?? "Wrong Data",
+    slow: r?.categories?.slow ?? "Slow / Performance",
+    confusing: r?.categories?.confusing ?? "Confusing / UX",
+    auth: r?.categories?.auth ?? "Sign in / Permissions",
+    i18n: r?.categories?.i18n ?? "Translation / Language",
+    other: r?.categories?.other ?? "Other",
+  };
 
   const [open, setOpen] = React.useState(false);
   const [category, setCategory] = React.useState<(typeof REPORT_CATEGORIES)[number]>("other");
@@ -392,10 +435,4 @@ function TurnstileSlot({
       </p>
     </div>
   );
-}
-
-function detectLang(): ReportLang {
-  if (typeof document === "undefined") return "en";
-  const htmlLang = document.documentElement.lang?.toLowerCase();
-  return htmlLang?.startsWith("ar") ? "ar" : "en";
 }

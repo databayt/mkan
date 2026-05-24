@@ -10,6 +10,7 @@ import QRCode from 'qrcode';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useLocale } from '@/components/internationalization/use-locale';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 interface Booking {
   id: number;
@@ -70,27 +71,32 @@ export function TicketView({
   booking,
   showDownload = true,
   variant = 'full',
-  dictionary = {
-    title: 'E-Ticket',
-    reference: 'Booking Reference',
-    download: 'Download PDF',
-    share: 'Share',
-    scanQr: 'Scan QR code at boarding',
-    passenger: 'Passenger',
-    phone: 'Phone',
-    seats: 'Seats',
-    departure: 'Departure',
-    arrival: 'Arrival',
-    duration: 'Duration',
-    office: 'Transport Office',
-    assemblyPoint: 'Assembly Point',
-    status: 'Status',
-    total: 'Total Amount',
-  },
+  dictionary,
 }: TicketViewProps) {
   const { locale } = useLocale();
   // Arabic date output — "الثلاثاء، ١٥ أبريل ٢٠٢٦" instead of "Tue, Apr 15 2026".
   const dateLocale = locale === 'ar' ? ar : enUS;
+
+  // Resolve labels: explicit prop wins, then the central transport.ticket
+  // namespace, then an English fallback.
+  const tk = useDictionary()?.transport?.ticket;
+  const dictionaryResolved = {
+    title: dictionary?.title ?? tk?.title ?? 'E-Ticket',
+    reference: dictionary?.reference ?? tk?.reference ?? 'Booking Reference',
+    download: dictionary?.download ?? tk?.download ?? 'Download PDF',
+    share: dictionary?.share ?? tk?.share ?? 'Share Ticket',
+    scanQr: dictionary?.scanQr ?? tk?.scanQr ?? 'Scan QR code at boarding',
+    passenger: dictionary?.passenger ?? tk?.passenger ?? 'Passenger',
+    phone: dictionary?.phone ?? tk?.phone ?? 'Phone',
+    seats: dictionary?.seats ?? tk?.seats ?? 'Seats',
+    departure: dictionary?.departure ?? tk?.departure ?? 'Departure',
+    arrival: dictionary?.arrival ?? tk?.arrival ?? 'Arrival',
+    duration: dictionary?.duration ?? tk?.duration ?? 'Duration',
+    office: dictionary?.office ?? tk?.office ?? 'Transport Office',
+    assemblyPoint: dictionary?.assemblyPoint ?? tk?.assemblyPoint ?? 'Assembly Point',
+    status: dictionary?.status ?? tk?.status ?? 'Status',
+    total: dictionary?.total ?? tk?.total ?? 'Total Amount',
+  };
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
   // Memoize seat numbers to prevent unnecessary recalculations
@@ -173,7 +179,7 @@ export function TicketView({
       <div className="bg-background border rounded-xl p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-muted-foreground">{dictionary.reference}</p>
+            <p className="text-xs text-muted-foreground">{dictionaryResolved.reference}</p>
             <p className="font-mono font-bold">{booking.bookingReference}</p>
           </div>
           <Badge className={statusColors[booking.status]}>
@@ -206,7 +212,7 @@ export function TicketView({
       {/* Header */}
       <div className="bg-primary text-primary-foreground p-6 text-center">
         <Bus className="h-10 w-10 mx-auto mb-2" />
-        <h2 className="text-xl font-bold">{dictionary.title}</h2>
+        <h2 className="text-xl font-bold">{dictionaryResolved.title}</h2>
         <p className="text-sm opacity-80">{booking.trip.route.office.name}</p>
       </div>
 
@@ -225,14 +231,14 @@ export function TicketView({
           <div className="w-40 h-40 bg-muted animate-pulse rounded-lg" />
         )}
         <p className="text-xs text-muted-foreground mt-2">
-          {dictionary.scanQr}
+          {dictionaryResolved.scanQr}
         </p>
       </div>
 
       {/* Booking Reference */}
       <div className="p-4 bg-muted/30 text-center border-b">
         <p className="text-xs text-muted-foreground uppercase tracking-wide">
-          {dictionary.reference}
+          {dictionaryResolved.reference}
         </p>
         <p className="text-2xl font-mono font-bold tracking-wider">
           {booking.bookingReference}
@@ -243,7 +249,7 @@ export function TicketView({
       <div className="p-6 border-b space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-muted-foreground">{dictionary.departure}</p>
+            <p className="text-xs text-muted-foreground">{dictionaryResolved.departure}</p>
             <p className="text-2xl font-bold">{booking.trip.departureTime}</p>
             <p className="text-sm flex items-center gap-1">
               <MapPin className="h-3 w-3" />
@@ -262,7 +268,7 @@ export function TicketView({
             </p>
           </div>
           <div className="text-end">
-            <p className="text-xs text-muted-foreground">{dictionary.arrival}</p>
+            <p className="text-xs text-muted-foreground">{dictionaryResolved.arrival}</p>
             <p className="text-2xl font-bold">
               {booking.trip.arrivalTime || '--:--'}
             </p>
@@ -285,21 +291,21 @@ export function TicketView({
         <div className="flex items-center gap-3">
           <User className="h-4 w-4 text-muted-foreground" />
           <div>
-            <p className="text-xs text-muted-foreground">{dictionary.passenger}</p>
+            <p className="text-xs text-muted-foreground">{dictionaryResolved.passenger}</p>
             <p className="font-medium">{booking.passengerName}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <Phone className="h-4 w-4 text-muted-foreground" />
           <div>
-            <p className="text-xs text-muted-foreground">{dictionary.phone}</p>
+            <p className="text-xs text-muted-foreground">{dictionaryResolved.phone}</p>
             <p className="font-medium">{booking.passengerPhone}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-muted-foreground">💺</span>
           <div>
-            <p className="text-xs text-muted-foreground">{dictionary.seats}</p>
+            <p className="text-xs text-muted-foreground">{dictionaryResolved.seats}</p>
             <p className="font-medium">
               {booking.seats.map((s) => s.seatNumber).join(', ')}
             </p>
@@ -310,7 +316,7 @@ export function TicketView({
       {/* Assembly Point */}
       <div className="p-6 border-b bg-muted/30">
         <p className="text-xs text-muted-foreground mb-1">
-          {dictionary.assemblyPoint}
+          {dictionaryResolved.assemblyPoint}
         </p>
         <p className="font-medium">
           {booking.trip.route.office.assemblyPoint.name}
@@ -323,13 +329,13 @@ export function TicketView({
       {/* Status & Amount */}
       <div className="p-6 border-b flex items-center justify-between">
         <div>
-          <p className="text-xs text-muted-foreground">{dictionary.status}</p>
+          <p className="text-xs text-muted-foreground">{dictionaryResolved.status}</p>
           <Badge className={statusColors[booking.status]}>
             {booking.status}
           </Badge>
         </div>
         <div className="text-end">
-          <p className="text-xs text-muted-foreground">{dictionary.total}</p>
+          <p className="text-xs text-muted-foreground">{dictionaryResolved.total}</p>
           <p className="text-xl font-bold">
             {booking.totalAmount.toLocaleString()} SDG
           </p>
@@ -341,7 +347,7 @@ export function TicketView({
         <div className="p-6 flex gap-3">
           <Button className="flex-1" variant="outline">
             <Download className="h-4 w-4 me-2" />
-            {dictionary.download}
+            {dictionaryResolved.download}
           </Button>
           <Button variant="outline" size="icon" onClick={handleShare} aria-label="Share ticket">
             <Share2 className="h-4 w-4" />

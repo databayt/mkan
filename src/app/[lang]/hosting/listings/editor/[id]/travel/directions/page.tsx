@@ -5,21 +5,25 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Map as MapIcon, Navigation } from "lucide-react";
+import { getDictionary } from "@/components/internationalization/dictionaries";
+import type { Locale } from "@/components/internationalization/config";
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; lang: string }>;
 }
 
 const DirectionsPage = async ({ params }: PageProps) => {
-  await params;
+  const { lang } = await params;
+  const dict = await getDictionary(lang as Locale);
+  const t = dict?.listingEditor?.directions;
 
   return (
     <div className="lg:col-span-2">
       <div className="max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">Directions</h1>
+          <h1 className="text-3xl font-semibold mb-2">{t?.heading ?? "Directions"}</h1>
           <p className="text-muted-foreground">
-            Help guests find your place. Add written directions and an optional map pin.
+            {t?.subtitle ?? "Help guests find your place. Add written directions and an optional map pin."}
           </p>
         </div>
 
@@ -27,16 +31,16 @@ const DirectionsPage = async ({ params }: PageProps) => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Navigation className="size-5" />
-              Written directions
+              {t?.writtenTitle ?? "Written directions"}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Label htmlFor="directions">Directions from a landmark</Label>
+            <Label htmlFor="directions">{t?.fromLandmark ?? "Directions from a landmark"}</Label>
             <Textarea
               id="directions"
               rows={6}
               className="mt-2"
-              placeholder="From the airport, take the highway exit toward Port Sudan. Turn right at the third roundabout..."
+              placeholder={t?.fromLandmarkPlaceholder ?? "From the airport, take the highway exit toward Port Sudan. Turn right at the third roundabout..."}
             />
           </CardContent>
         </Card>
@@ -45,29 +49,29 @@ const DirectionsPage = async ({ params }: PageProps) => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MapIcon className="size-5" />
-              Map pin (optional)
+              {t?.mapPinTitle ?? "Map pin (optional)"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="lat">Latitude</Label>
+                <Label htmlFor="lat">{t?.latitude ?? "Latitude"}</Label>
                 <Input id="lat" placeholder="19.6158" className="mt-2" />
               </div>
               <div>
-                <Label htmlFor="lng">Longitude</Label>
+                <Label htmlFor="lng">{t?.longitude ?? "Longitude"}</Label>
                 <Input id="lng" placeholder="37.2164" className="mt-2" />
               </div>
             </div>
             <div className="rounded-md border bg-muted/20 h-48 flex items-center justify-center text-sm text-muted-foreground">
-              Map preview appears here once coordinates are set
+              {t?.mapPreview ?? "Map preview appears here once coordinates are set"}
             </div>
           </CardContent>
         </Card>
 
         <div className="mt-8 flex justify-between">
-          <Button variant="outline">Back</Button>
-          <Button>Save</Button>
+          <Button variant="outline">{dict?.common?.back ?? "Back"}</Button>
+          <Button>{dict?.common?.save ?? "Save"}</Button>
         </div>
       </div>
     </div>

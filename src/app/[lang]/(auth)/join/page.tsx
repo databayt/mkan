@@ -1,6 +1,8 @@
 import { Metadata } from "next";
 import { RegisterForm } from "@/components/auth/join/form";
 import { createMetadata } from "@/lib/metadata";
+import { getDictionary } from "@/components/internationalization/dictionaries";
+import type { Locale } from "@/components/internationalization/config";
 
 export async function generateMetadata({
   params,
@@ -8,12 +10,11 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const dict = await getDictionary(lang as Locale);
   return createMetadata({
-    title: lang === "ar" ? "إنشاء حساب" : "Join",
+    title: dict?.pages?.join?.metadata?.title ?? "Join",
     description:
-      lang === "ar"
-        ? "أنشئ حسابك الجديد"
-        : "Create your new account",
+      dict?.pages?.join?.metadata?.description ?? "Create your new account",
     locale: lang,
     path: "/join",
   });

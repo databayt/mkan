@@ -15,12 +15,12 @@ describe("createMetadata", () => {
     expect(meta.description).toBe("Desc text");
   });
 
-  it("defaults locale to en and builds correct URL", () => {
+  it("defaults locale to ar and builds correct URL", () => {
     const meta = createMetadata({ title: "T", description: "D", path: "/search" });
     const og = meta.openGraph as Record<string, unknown>;
-    // default locale is "en"
-    expect(og.url).toContain("/en/search");
-    expect(og.locale).toBe("en_US");
+    // default locale is "ar"
+    expect(og.url).toContain("/ar/search");
+    expect(og.locale).toBe("ar_SA");
   });
 
   it("uses ar locale with ar_SA OG locale", () => {
@@ -72,7 +72,7 @@ describe("createMetadata", () => {
   it("handles empty path", () => {
     const meta = createMetadata({ title: "T", description: "D" });
     const og = meta.openGraph as Record<string, unknown>;
-    // path defaults to ""
-    expect((og.url as string).endsWith("/en")).toBe(true);
+    // path defaults to "", locale defaults to "ar"
+    expect((og.url as string).endsWith("/ar")).toBe(true);
   });
 });

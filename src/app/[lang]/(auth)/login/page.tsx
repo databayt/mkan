@@ -1,6 +1,8 @@
 import { Metadata } from "next";
 import { LoginForm } from "@/components/auth/login/form";
 import { createMetadata } from "@/lib/metadata";
+import { getDictionary } from "@/components/internationalization/dictionaries";
+import type { Locale } from "@/components/internationalization/config";
 
 export async function generateMetadata({
   params,
@@ -8,12 +10,11 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const dict = await getDictionary(lang as Locale);
   return createMetadata({
-    title: lang === "ar" ? "تسجيل الدخول" : "Login",
+    title: dict?.pages?.login?.metadata?.title ?? "Login",
     description:
-      lang === "ar"
-        ? "سجل دخولك إلى حسابك"
-        : "Sign in to your account",
+      dict?.pages?.login?.metadata?.description ?? "Sign in to your account",
     locale: lang,
     path: "/login",
   });

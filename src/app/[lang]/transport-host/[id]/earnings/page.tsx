@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Wallet, Download } from "lucide-react";
 import { getOfficeDashboardStats } from "@/lib/actions/transport-actions";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 type Stats = Awaited<ReturnType<typeof getOfficeDashboardStats>>;
 
@@ -15,6 +16,9 @@ export default function TransportHostEarningsPage() {
   const params = useParams();
   const officeId = Number(params.id);
   const [stats, setStats] = useState<Stats | null>(null);
+  const dict = useDictionary();
+  const t = dict?.transportHost?.earnings;
+  const tCommon = dict?.transportHost?.common;
 
   useEffect(() => {
     if (!officeId) return;
@@ -24,15 +28,16 @@ export default function TransportHostEarningsPage() {
   }, [officeId]);
 
   const onExport = () => {
+    const h = t?.csvHeaders;
     const rows: (string | number)[][] = [
-      ["Metric", "Value"],
-      ["Total bookings", stats?.totalBookings ?? 0],
-      ["Confirmed bookings", stats?.confirmedBookings ?? 0],
-      ["Pending bookings", stats?.pendingBookings ?? 0],
-      ["Total revenue (SDG)", stats?.totalRevenue ?? 0],
-      ["Upcoming trips", stats?.upcomingTrips ?? 0],
-      ["Total buses", stats?.totalBuses ?? 0],
-      ["Total routes", stats?.totalRoutes ?? 0],
+      [h?.metric ?? "Metric", h?.value ?? "Value"],
+      [h?.totalBookings ?? "Total bookings", stats?.totalBookings ?? 0],
+      [h?.confirmedBookings ?? "Confirmed bookings", stats?.confirmedBookings ?? 0],
+      [h?.pendingBookings ?? "Pending bookings", stats?.pendingBookings ?? 0],
+      [h?.totalRevenueSdg ?? "Total revenue (SDG)", stats?.totalRevenue ?? 0],
+      [h?.upcomingTrips ?? "Upcoming trips", stats?.upcomingTrips ?? 0],
+      [h?.totalBuses ?? "Total buses", stats?.totalBuses ?? 0],
+      [h?.totalRoutes ?? "Total routes", stats?.totalRoutes ?? 0],
     ];
     const csv = rows.map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -48,12 +53,14 @@ export default function TransportHostEarningsPage() {
     <div className="max-w-6xl mx-auto py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold mb-1">Earnings</h1>
-          <p className="text-muted-foreground">Revenue rolled up from confirmed bookings.</p>
+          <h1 className="text-3xl font-semibold mb-1">{t?.title ?? "Earnings"}</h1>
+          <p className="text-muted-foreground">
+            {t?.subtitle ?? "Revenue rolled up from confirmed bookings."}
+          </p>
         </div>
         <Button variant="outline" onClick={onExport}>
           <Download className="size-4 me-2" />
-          Export CSV
+          {t?.exportCsv ?? "Export CSV"}
         </Button>
       </div>
 
@@ -62,15 +69,16 @@ export default function TransportHostEarningsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wallet className="size-5" />
-              Total revenue
+              {t?.totalRevenue ?? "Total revenue"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-semibold">
-              {(stats?.totalRevenue as number | undefined)?.toLocaleString() ?? "—"} SDG
+              {(stats?.totalRevenue as number | undefined)?.toLocaleString() ?? "—"} {tCommon?.sdg ?? "SDG"}
             </div>
             <div className="text-sm text-muted-foreground mt-1">
-              {(stats?.confirmedBookings as number | undefined) ?? 0} confirmed bookings
+              {(stats?.confirmedBookings as number | undefined) ?? 0}{" "}
+              {t?.confirmedBookingsSuffix ?? "confirmed bookings"}
             </div>
           </CardContent>
         </Card>
@@ -78,25 +86,33 @@ export default function TransportHostEarningsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wallet className="size-5" />
-              Pending
+              {t?.pending ?? "Pending"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-semibold">
               {(stats?.pendingBookings as number | undefined) ?? 0}
             </div>
-            <div className="text-sm text-muted-foreground mt-1">bookings awaiting confirmation</div>
+            <div className="text-sm text-muted-foreground mt-1">
+              {t?.awaitingConfirmation ?? "bookings awaiting confirmation"}
+            </div>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Notes</CardTitle>
+          <CardTitle>{t?.notesTitle ?? "Notes"}</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>Revenue counts only Confirmed bookings. Pending and Cancelled are excluded.</p>
-          <p>Reference-based payments (Bankak, Cashi, etc.) appear after admin verifies them.</p>
+          <p>
+            {t?.notesRevenueRule ??
+              "Revenue counts only Confirmed bookings. Pending and Cancelled are excluded."}
+          </p>
+          <p>
+            {t?.notesReferencePayments ??
+              "Reference-based payments (Bankak, Cashi, etc.) appear after admin verifies them."}
+          </p>
         </CardContent>
       </Card>
     </div>

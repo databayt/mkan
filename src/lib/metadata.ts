@@ -14,7 +14,7 @@ interface CreateMetadataParams {
 export function createMetadata({
   title,
   description,
-  locale = "en",
+  locale = "ar",
   path = "",
   image,
 }: CreateMetadataParams): Metadata {

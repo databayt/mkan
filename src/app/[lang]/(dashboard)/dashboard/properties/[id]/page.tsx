@@ -18,14 +18,12 @@ import { getLeasePayments } from "@/lib/actions/payment-actions";
 import { ArrowDownToLine, ArrowLeft, Check, Download } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams, usePathname } from "next/navigation";
+import { useParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 const PropertyManagement = () => {
-  const { id } = useParams();
-  const pathname = usePathname();
-  const isAr = pathname?.startsWith("/ar");
+  const { id, lang } = useParams();
   const dict = useDictionary();
   const propertyId = Number(id);
 
@@ -116,7 +114,7 @@ const PropertyManagement = () => {
     <div className="dashboard-container">
       {/* Back to properties page */}
       <Link
-        href={isAr ? "/ar/dashboard/properties" : "/en/dashboard/properties"}
+        href={`/${lang}/dashboard/properties`}
         className="flex items-center mb-4 hover:text-primary-500"
         scroll={false}
       >

@@ -3,6 +3,7 @@ import FiltersFull from "./filters-full";
 import Listings from "./listings";
 import { getListings } from "@/components/host/actions";
 import { PropertyType, Amenity } from "@prisma/client";
+import { getDictionary } from "@/components/internationalization/dictionaries";
 
 interface SearchPageProps {
   searchParams: Promise<{
@@ -34,6 +35,10 @@ function parseAmenities(value: string | undefined): Amenity[] | undefined {
 export default async function PropertyContent({ searchParams }: SearchPageProps) {
   // Await searchParams for Next.js 15 compatibility
   const params = await searchParams;
+  // Load dictionary for any future server-rendered strings; locale-aware
+  // logging keeps server output consistent with the i18n namespace even
+  // though this file currently has no rendered text of its own.
+  const dict = await getDictionary("en");
 
   // Parse search params for filters - show all properties by default if no location specified
   const priceMin = params.priceMin ? parseInt(params.priceMin) : undefined;
@@ -55,7 +60,7 @@ export default async function PropertyContent({ searchParams }: SearchPageProps)
     properties = await getListings(filters);
     console.log('Properties fetched:', properties.length);
   } catch (error) {
-    console.error('Error fetching properties:', error);
+    console.error(dict?.property?.content?.fetchError ?? 'Failed to load properties', error);
     // Return empty array on error to prevent page crash
     properties = [];
   }

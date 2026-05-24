@@ -1,7 +1,6 @@
 "use client";
 
 import { LogOut, User } from "lucide-react"
-import { usePathname } from "next/navigation";
 
 import {
   DropdownMenu,
@@ -17,20 +16,12 @@ import {
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { useCurrentUser } from "./use-current-user";
-
-const translations = {
-  en: {
-    logout: "Logout",
-  },
-  ar: {
-    logout: "تسجيل الخروج",
-  },
-} as const;
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 export const UserButton = () => {
   const user = useCurrentUser();
-  const pathname = usePathname();
-  const t = translations[pathname?.startsWith("/ar") ? "ar" : "en"];
+  const dict = useDictionary();
+  const t = dict?.auth?.userButton;
 
   return (
     <DropdownMenu>
@@ -46,7 +37,7 @@ export const UserButton = () => {
         <LogoutButton>
           <DropdownMenuItem>
             <LogOut className="h-4 w-4 me-2" />
-            {t.logout}
+            {t?.logout ?? "Logout"}
           </DropdownMenuItem>
         </LogoutButton>
       </DropdownMenuContent>

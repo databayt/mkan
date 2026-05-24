@@ -9,9 +9,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { ScrollText, Info, Cigarette, PawPrint, Music, Clock } from 'lucide-react';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 const HouseRulesPage = () => {
   const router = useRouter();
+  const dict = useDictionary();
+  const t = dict?.listingEditor?.houseRules;
   const [rules, setRules] = useState({
     smokingAllowed: false,
     petsAllowed: false,
@@ -30,9 +33,9 @@ const HouseRulesPage = () => {
     <div className="lg:col-span-2">
       <div className="max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">Set your house rules</h1>
+          <h1 className="text-3xl font-semibold mb-2">{t?.heading ?? "Set your house rules"}</h1>
           <p className="text-muted-foreground">
-            Let guests know what's allowed and what's not at your place.
+            {t?.subtitle ?? "Let guests know what's allowed and what's not at your place."}
           </p>
         </div>
 
@@ -40,7 +43,7 @@ const HouseRulesPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ScrollText className="size-5" />
-              Standard rules
+              {t?.standardRulesTitle ?? "Standard rules"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -48,8 +51,8 @@ const HouseRulesPage = () => {
               <div className="flex items-center gap-3">
                 <Cigarette className="size-5 text-gray-600" />
                 <div>
-                  <Label className="text-base font-medium">Smoking allowed</Label>
-                  <p className="text-sm text-muted-foreground">Guests can smoke inside</p>
+                  <Label className="text-base font-medium">{t?.smokingAllowed ?? "Smoking allowed"}</Label>
+                  <p className="text-sm text-muted-foreground">{t?.smokingAllowedDesc ?? "Guests can smoke inside"}</p>
                 </div>
               </div>
               <Switch
@@ -62,8 +65,8 @@ const HouseRulesPage = () => {
               <div className="flex items-center gap-3">
                 <PawPrint className="size-5 text-gray-600" />
                 <div>
-                  <Label className="text-base font-medium">Pets allowed</Label>
-                  <p className="text-sm text-muted-foreground">Guests can bring pets</p>
+                  <Label className="text-base font-medium">{t?.petsAllowed ?? "Pets allowed"}</Label>
+                  <p className="text-sm text-muted-foreground">{t?.petsAllowedDesc ?? "Guests can bring pets"}</p>
                 </div>
               </div>
               <Switch
@@ -76,8 +79,8 @@ const HouseRulesPage = () => {
               <div className="flex items-center gap-3">
                 <Music className="size-5 text-gray-600" />
                 <div>
-                  <Label className="text-base font-medium">Parties/events allowed</Label>
-                  <p className="text-sm text-muted-foreground">Guests can host gatherings</p>
+                  <Label className="text-base font-medium">{t?.partiesAllowed ?? "Parties/events allowed"}</Label>
+                  <p className="text-sm text-muted-foreground">{t?.partiesAllowedDesc ?? "Guests can host gatherings"}</p>
                 </div>
               </div>
               <Switch
@@ -91,8 +94,8 @@ const HouseRulesPage = () => {
                 <div className="flex items-center gap-3">
                   <Clock className="size-5 text-gray-600" />
                   <div>
-                    <Label className="text-base font-medium">Quiet hours</Label>
-                    <p className="text-sm text-muted-foreground">Set quiet time for guests</p>
+                    <Label className="text-base font-medium">{t?.quietHours ?? "Quiet hours"}</Label>
+                    <p className="text-sm text-muted-foreground">{t?.quietHoursDesc ?? "Set quiet time for guests"}</p>
                   </div>
                 </div>
                 <Switch
@@ -104,7 +107,7 @@ const HouseRulesPage = () => {
               {rules.quietHoursEnabled && (
                 <div className="flex gap-4 pt-2">
                   <div className="flex-1">
-                    <Label htmlFor="quietStart">Start time</Label>
+                    <Label htmlFor="quietStart">{t?.startTime ?? "Start time"}</Label>
                     <Input
                       id="quietStart"
                       type="time"
@@ -114,7 +117,7 @@ const HouseRulesPage = () => {
                     />
                   </div>
                   <div className="flex-1">
-                    <Label htmlFor="quietEnd">End time</Label>
+                    <Label htmlFor="quietEnd">{t?.endTime ?? "End time"}</Label>
                     <Input
                       id="quietEnd"
                       type="time"
@@ -131,11 +134,11 @@ const HouseRulesPage = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Additional rules</CardTitle>
+            <CardTitle>{t?.additionalRulesTitle ?? "Additional rules"}</CardTitle>
           </CardHeader>
           <CardContent>
             <Textarea
-              placeholder="Add any other rules or important information for guests..."
+              placeholder={t?.additionalRulesPlaceholder ?? "Add any other rules or important information for guests..."}
               className="min-h-[120px]"
               value={rules.additionalRules}
               onChange={(e) => handleChange('additionalRules', e.target.value)}
@@ -151,9 +154,9 @@ const HouseRulesPage = () => {
               <div className="flex items-start gap-3">
                 <Info className="size-5 text-blue-600 mt-0.5" />
                 <div>
-                  <h4 className="font-medium text-blue-900">Why rules matter</h4>
+                  <h4 className="font-medium text-blue-900">{t?.whyTitle ?? "Why rules matter"}</h4>
                   <p className="text-sm text-blue-700 mt-1">
-                    Clear house rules help set expectations and prevent misunderstandings. Guests who book agree to follow your rules.
+                    {t?.whyText ?? "Clear house rules help set expectations and prevent misunderstandings. Guests who book agree to follow your rules."}
                   </p>
                 </div>
               </div>
@@ -163,10 +166,10 @@ const HouseRulesPage = () => {
 
         <div className="mt-8 flex justify-between">
           <Button variant="outline" onClick={() => router.back()}>
-            Back
+            {dict?.common?.back ?? "Back"}
           </Button>
           <Button>
-            Save
+            {dict?.common?.save ?? "Save"}
           </Button>
         </div>
       </div>

@@ -1,35 +1,43 @@
+"use client";
+
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Home, Wallet, Calendar, Star } from "lucide-react";
-
-const articles = [
-  {
-    icon: Home,
-    title: "Listing your space",
-    body: "Create a listing in 17 steps — describe the place, add photos, set the price.",
-  },
-  {
-    icon: Calendar,
-    title: "Managing your calendar",
-    body: "Block dates, accept bookings, sync availability across listings.",
-  },
-  {
-    icon: Wallet,
-    title: "Getting paid",
-    body: "Stripe, Bankak, Cashi, mobile money, bank transfer, or cash at check-in.",
-  },
-  {
-    icon: Star,
-    title: "Reviews & superhost",
-    body: "Earn the superhost badge by maintaining a 4.8+ rating and 90%+ response rate.",
-  },
-];
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 export default function HomeHost() {
+  const dict = useDictionary();
+  const t = dict?.help?.homeHost;
+  const learnMore = dict?.help?.common?.learnMore ?? "Learn more";
+  const items = t?.items;
+
+  const articles = [
+    {
+      icon: Home,
+      title: items?.listing?.title ?? "Listing your space",
+      body: items?.listing?.body ?? "Create a listing in 17 steps — describe the place, add photos, set the price.",
+    },
+    {
+      icon: Calendar,
+      title: items?.calendar?.title ?? "Managing your calendar",
+      body: items?.calendar?.body ?? "Block dates, accept bookings, sync availability across listings.",
+    },
+    {
+      icon: Wallet,
+      title: items?.gettingPaid?.title ?? "Getting paid",
+      body: items?.gettingPaid?.body ?? "Stripe, Bankak, Cashi, mobile money, bank transfer, or cash at check-in.",
+    },
+    {
+      icon: Star,
+      title: items?.reviews?.title ?? "Reviews & superhost",
+      body: items?.reviews?.body ?? "Earn the superhost badge by maintaining a 4.8+ rating and 90%+ response rate.",
+    },
+  ];
+
   return (
     <div className="py-10">
       <div className="space-y-6">
-        <h4 className="">Home host help</h4>
+        <h4 className="">{t?.title ?? "Home host help"}</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {articles.map((a) => (
             <Card key={a.title} className="border border-gray-300 rounded-md">
@@ -45,7 +53,7 @@ export default function HomeHost() {
                 variant="ghost"
                 className="w-full justify-between text-start h-12 hover:bg-gray-50 border-0"
               >
-                <span className="font-semibold text-sm text-gray-900">Learn more</span>
+                <span className="font-semibold text-sm text-gray-900">{learnMore}</span>
                 <ChevronRight className="w-4 h-4 text-gray-900 rtl:rotate-180" />
               </Button>
             </Card>

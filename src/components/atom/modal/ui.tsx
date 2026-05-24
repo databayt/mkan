@@ -4,6 +4,7 @@ import { useModal } from "./context";
 import React from "react";
 import { X } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 interface Props {
   content: React.ReactNode;
@@ -14,6 +15,8 @@ interface Props {
 function Modal({ content, big = false, full = false }: Props) {
   const { closeModal } = useModal();
   const { theme = 'light' } = useTheme();
+  const dict = useDictionary();
+  const closeLabel = dict?.atom?.modal?.closeModal ?? "Close modal";
 
   return (
     <div className={`fixed inset-0 w-full h-screen z-50 flex  ${theme === 'dark' ? 'bg-black' : 'bg-white'}  justify-center items-center`}>
@@ -23,7 +26,7 @@ function Modal({ content, big = false, full = false }: Props) {
         onKeyDown={(e) => { if (e.key === 'Escape') closeModal(); }}
         role="button"
         tabIndex={0}
-        aria-label="Close modal"
+        aria-label={closeLabel}
       />
       <div className={`
         relative p-8 z-70 sm:text-sm z-80
@@ -33,7 +36,7 @@ function Modal({ content, big = false, full = false }: Props) {
 
       `}>
         {full && 
-        <Button size='icon' variant='outline' onClick={closeModal} className="absolute top-0 right-0 m-4" aria-label="Close modal">
+        <Button size='icon' variant='outline' onClick={closeModal} className="absolute top-0 right-0 m-4" aria-label={closeLabel}>
         <X size={25} />
         </Button>}
         {content}

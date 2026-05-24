@@ -28,7 +28,7 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const resolvedParams = await params;
-  const lang = (resolvedParams.lang as Locale) || 'en';
+  const lang = (resolvedParams.lang as Locale) || 'ar';
   const dictionary = await getDictionary(lang);
 
   return {
@@ -41,7 +41,7 @@ export async function generateMetadata({
       languages: Object.keys(localeConfig).reduce((acc, locale) => ({
         ...acc,
         [locale]: `/${locale}`,
-      }), { 'x-default': '/en' }),
+      }), { 'x-default': '/ar' }),
     },
     other: {
       'accept-language': lang,
@@ -57,8 +57,8 @@ export default async function LocaleLayout({
   params: Promise<{ lang: string }>;
 }) {
   const resolvedParams = await params;
-  const lang = (resolvedParams.lang as Locale) || 'en';
-  const config = localeConfig[lang] || localeConfig['en'];
+  const lang = (resolvedParams.lang as Locale) || 'ar';
+  const config = localeConfig[lang] || localeConfig['ar'];
   const isRTL = config.dir === 'rtl';
   const dictionary = await getDictionary(lang);
 
@@ -71,7 +71,7 @@ export default async function LocaleLayout({
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background focus:text-foreground focus:border focus:border-border focus:rounded-md focus:m-2"
         >
-          {isRTL ? 'تخطي إلى المحتوى الرئيسي' : 'Skip to main content'}
+          {dictionary?.common?.skipToContent ?? 'Skip to main content'}
         </a>
         <Providers>
           <DictionaryProvider dictionary={dictionary}>

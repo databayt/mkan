@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Calendar, Info, CheckCircle } from 'lucide-react';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 const policies = [
   {
     id: 'flexible',
+    keyPrefix: 'flexible',
     name: 'Flexible',
     description: 'Full refund 1 day prior to arrival',
     details: [
@@ -22,6 +24,7 @@ const policies = [
   },
   {
     id: 'moderate',
+    keyPrefix: 'moderate',
     name: 'Moderate',
     description: 'Full refund 5 days prior to arrival',
     details: [
@@ -33,6 +36,7 @@ const policies = [
   },
   {
     id: 'firm',
+    keyPrefix: 'firm',
     name: 'Firm',
     description: 'Full refund 30 days prior to arrival',
     details: [
@@ -44,6 +48,7 @@ const policies = [
   },
   {
     id: 'strict',
+    keyPrefix: 'strict',
     name: 'Strict',
     description: '50% refund up to 1 week prior to arrival',
     details: [
@@ -55,6 +60,7 @@ const policies = [
   },
   {
     id: 'non-refundable',
+    keyPrefix: 'nonRefundable',
     name: 'Non-refundable',
     description: 'Guests pay 10% less, no refund',
     details: [
@@ -68,7 +74,14 @@ const policies = [
 
 const CancellationPolicyPage = () => {
   const router = useRouter();
+  const dict = useDictionary();
+  const t = dict?.listingEditor?.cancellationPolicy as Record<string, string> | undefined;
   const [selectedPolicy, setSelectedPolicy] = useState('flexible');
+
+  const policyName = (p: typeof policies[number]) => t?.[`${p.keyPrefix}Name`] ?? p.name;
+  const policyDesc = (p: typeof policies[number]) => t?.[`${p.keyPrefix}Desc`] ?? p.description;
+  const policyDetail = (p: typeof policies[number], i: number) =>
+    t?.[`${p.keyPrefix}D${i + 1}`] ?? p.details[i];
 
   const selected = policies.find(p => p.id === selectedPolicy);
 
@@ -76,9 +89,9 @@ const CancellationPolicyPage = () => {
     <div className="lg:col-span-2">
       <div className="max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">Cancellation policy</h1>
+          <h1 className="text-3xl font-semibold mb-2">{t?.heading ?? "Cancellation policy"}</h1>
           <p className="text-muted-foreground">
-            Choose a policy that works for you. This determines when guests can cancel and get a refund.
+            {t?.subtitle ?? "Choose a policy that works for you. This determines when guests can cancel and get a refund."}
           </p>
         </div>
 
@@ -86,7 +99,7 @@ const CancellationPolicyPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="size-5" />
-              Select your policy
+              {t?.cardTitle ?? "Select your policy"}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -106,15 +119,15 @@ const CancellationPolicyPage = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <Label htmlFor={policy.id} className="text-base font-medium cursor-pointer">
-                          {policy.name}
+                          {policyName(policy)}
                         </Label>
                         {policy.recommended && (
                           <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
-                            Recommended
+                            {t?.recommended ?? "Recommended"}
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">{policy.description}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{policyDesc(policy)}</p>
                     </div>
                   </div>
                 ))}
@@ -126,14 +139,14 @@ const CancellationPolicyPage = () => {
         {selected && (
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>{selected.name} policy details</CardTitle>
+              <CardTitle>{policyName(selected)} {t?.policyDetailsSuffix ?? "policy details"}</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3">
                 {selected.details.map((detail, index) => (
                   <li key={index} className="flex items-start gap-3">
                     <CheckCircle className="size-5 text-green-600 mt-0.5 shrink-0" />
-                    <span className="text-sm">{detail}</span>
+                    <span className="text-sm">{policyDetail(selected, index)}</span>
                   </li>
                 ))}
               </ul>
@@ -146,9 +159,9 @@ const CancellationPolicyPage = () => {
             <div className="flex items-start gap-3">
               <Info className="size-5 text-blue-600 mt-0.5" />
               <div>
-                <h4 className="font-medium text-blue-900">Choosing the right policy</h4>
+                <h4 className="font-medium text-blue-900">{t?.chooseTitle ?? "Choosing the right policy"}</h4>
                 <p className="text-sm text-blue-700 mt-1">
-                  Flexible policies tend to get more bookings because guests feel more comfortable booking. Stricter policies give you more protection against last-minute cancellations.
+                  {t?.chooseText ?? "Flexible policies tend to get more bookings because guests feel more comfortable booking. Stricter policies give you more protection against last-minute cancellations."}
                 </p>
               </div>
             </div>
@@ -157,10 +170,10 @@ const CancellationPolicyPage = () => {
 
         <div className="mt-8 flex justify-between">
           <Button variant="outline" onClick={() => router.back()}>
-            Back
+            {dict?.common?.back ?? "Back"}
           </Button>
           <Button>
-            Save
+            {dict?.common?.save ?? "Save"}
           </Button>
         </div>
       </div>

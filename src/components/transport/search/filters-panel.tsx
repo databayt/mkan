@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/sheet";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 import {
   mergeSearchParams,
   parseSearchParams,
@@ -59,11 +60,12 @@ const AMENITY_ICON: Record<BusAmenity, React.ComponentType<{ className?: string 
   Reclining: Armchair,
 };
 
-const TIME_WINDOWS: { key: TimeOfDay; rangeEn: string; rangeAr: string }[] = [
-  { key: "morning", rangeEn: "4am – 12pm", rangeAr: "٤ص – ١٢ظ" },
-  { key: "afternoon", rangeEn: "12pm – 5pm", rangeAr: "١٢ظ – ٥م" },
-  { key: "evening", rangeEn: "5pm – 9pm", rangeAr: "٥م – ٩م" },
-  { key: "night", rangeEn: "9pm – 4am", rangeAr: "٩م – ٤ص" },
+// Fallback time-range labels (used only if the dictionary entry is missing).
+const TIME_WINDOWS: { key: TimeOfDay; rangeFallback: string }[] = [
+  { key: "morning", rangeFallback: "4am – 12pm" },
+  { key: "afternoon", rangeFallback: "12pm – 5pm" },
+  { key: "evening", rangeFallback: "5pm – 9pm" },
+  { key: "night", rangeFallback: "9pm – 4am" },
 ];
 
 type FacetOffice = { id: number; name: string; nameAr: string | null };
@@ -158,6 +160,8 @@ function FilterControls({
   const searchParams = useSearchParams();
   const params = useParams<{ lang: string }>();
   const lang = params?.lang === "ar" ? "ar" : "en";
+  const dictionary = useDictionary();
+  const timeRanges = dictionary?.transport?.search?.timeOfDay;
   const [isPending, startTransition] = useTransition();
 
   const current = useMemo(
@@ -284,6 +288,14 @@ function FilterControls({
                   : tw.key === "evening"
                     ? dict.timeOfDay.evening
                     : dict.timeOfDay.night;
+            const range =
+              (tw.key === "morning"
+                ? timeRanges?.morningRange
+                : tw.key === "afternoon"
+                  ? timeRanges?.afternoonRange
+                  : tw.key === "evening"
+                    ? timeRanges?.eveningRange
+                    : timeRanges?.nightRange) ?? tw.rangeFallback;
             return (
               <button
                 key={tw.key}
@@ -301,7 +313,7 @@ function FilterControls({
               >
                 <div className="font-medium">{label}</div>
                 <div className="text-[11px] opacity-70 mt-0.5">
-                  {lang === "ar" ? tw.rangeAr : tw.rangeEn}
+                  {range}
                 </div>
               </button>
             );

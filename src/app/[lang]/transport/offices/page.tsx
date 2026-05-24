@@ -1,5 +1,7 @@
 import { Metadata } from "next";
 import { createMetadata } from "@/lib/metadata";
+import { getDictionary } from "@/components/internationalization/dictionaries";
+import type { Locale } from "@/components/internationalization/config";
 import OfficesListContent from "./content";
 
 export async function generateMetadata({
@@ -8,12 +10,10 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const t = (await getDictionary(lang as Locale))?.transport;
   return createMetadata({
-    title: lang === "ar" ? "مكاتب النقل" : "Transport Offices",
-    description:
-      lang === "ar"
-        ? "تصفح مكاتب النقل المتاحة"
-        : "Browse available transport offices",
+    title: t?.meta?.officesTitle ?? "Transport Offices",
+    description: t?.meta?.officesDescription ?? "Browse available transport offices",
     locale: lang,
     path: "/transport/offices",
   });

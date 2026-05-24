@@ -22,7 +22,7 @@ import {
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { getBooking } from '@/lib/actions/transport-actions';
-import { getTransportDictionary } from '@/components/transport/transport-dictionary';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 type BookingDetails = NonNullable<Awaited<ReturnType<typeof getBooking>>>;
 
@@ -34,7 +34,7 @@ export default function BookingConfirmationPage() {
 
   const [booking, setBooking] = useState<BookingDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const t = getTransportDictionary(lang);
+  const t = useDictionary().transport;
   // Locale for date-fns — gives Arabic users "الثلاثاء، ١٥ أبريل" instead of
   // "Tue, Apr 15". All `format()` calls in this file must pass this.
   const dateLocale = lang === 'ar' ? ar : enUS;

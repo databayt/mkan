@@ -9,27 +9,31 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Wifi, Car, Dumbbell, Waves, Thermometer, PawPrint } from 'lucide-react';
 import { getListing, updateListing } from '@/components/host/actions';
 import { Amenity } from '@prisma/client';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 const amenityOptions = [
-  { value: 'WiFi', label: 'WiFi', icon: Wifi, description: 'High-speed wireless internet' },
-  { value: 'AirConditioning', label: 'Air Conditioning', icon: Thermometer, description: 'Central air or window units' },
-  { value: 'Parking', label: 'Free Parking', icon: Car, description: 'On-site parking available' },
-  { value: 'Pool', label: 'Pool', icon: Waves, description: 'Private or shared pool access' },
-  { value: 'Gym', label: 'Gym', icon: Dumbbell, description: 'Fitness center access' },
-  { value: 'PetsAllowed', label: 'Pets Allowed', icon: PawPrint, description: 'Pet-friendly property' },
-  { value: 'WasherDryer', label: 'Washer/Dryer', icon: Waves, description: 'In-unit laundry' },
-  { value: 'Dishwasher', label: 'Dishwasher', icon: Waves, description: 'Dishwasher available' },
-  { value: 'HighSpeedInternet', label: 'High-Speed Internet', icon: Wifi, description: 'Fast broadband connection' },
-  { value: 'HardwoodFloors', label: 'Hardwood Floors', icon: Waves, description: 'Beautiful hardwood throughout' },
-  { value: 'WalkInClosets', label: 'Walk-In Closets', icon: Waves, description: 'Spacious closet storage' },
-  { value: 'Microwave', label: 'Microwave', icon: Waves, description: 'Kitchen microwave' },
-  { value: 'Refrigerator', label: 'Refrigerator', icon: Thermometer, description: 'Full-size refrigerator' },
-];
+  { value: 'WiFi', key: 'wifi', label: 'WiFi', icon: Wifi, description: 'High-speed wireless internet' },
+  { value: 'AirConditioning', key: 'airConditioning', label: 'Air Conditioning', icon: Thermometer, description: 'Central air or window units' },
+  { value: 'Parking', key: 'parking', label: 'Free Parking', icon: Car, description: 'On-site parking available' },
+  { value: 'Pool', key: 'pool', label: 'Pool', icon: Waves, description: 'Private or shared pool access' },
+  { value: 'Gym', key: 'gym', label: 'Gym', icon: Dumbbell, description: 'Fitness center access' },
+  { value: 'PetsAllowed', key: 'petsAllowed', label: 'Pets Allowed', icon: PawPrint, description: 'Pet-friendly property' },
+  { value: 'WasherDryer', key: 'washerDryer', label: 'Washer/Dryer', icon: Waves, description: 'In-unit laundry' },
+  { value: 'Dishwasher', key: 'dishwasher', label: 'Dishwasher', icon: Waves, description: 'Dishwasher available' },
+  { value: 'HighSpeedInternet', key: 'highSpeedInternet', label: 'High-Speed Internet', icon: Wifi, description: 'Fast broadband connection' },
+  { value: 'HardwoodFloors', key: 'hardwoodFloors', label: 'Hardwood Floors', icon: Waves, description: 'Beautiful hardwood throughout' },
+  { value: 'WalkInClosets', key: 'walkInClosets', label: 'Walk-In Closets', icon: Waves, description: 'Spacious closet storage' },
+  { value: 'Microwave', key: 'microwave', label: 'Microwave', icon: Waves, description: 'Kitchen microwave' },
+  { value: 'Refrigerator', key: 'refrigerator', label: 'Refrigerator', icon: Thermometer, description: 'Full-size refrigerator' },
+] as const;
 
 const AmenitiesPage = () => {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
+  const dict = useDictionary();
+  const t = dict?.listingEditor?.amenities;
+  const opts = t?.options as Record<string, string> | undefined;
 
   const [selectedAmenities, setSelectedAmenities] = useState<Amenity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,21 +86,23 @@ const AmenitiesPage = () => {
     <div className="lg:col-span-2">
       <div className="max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">What amenities do you offer?</h1>
+          <h1 className="text-3xl font-semibold mb-2">{t?.heading ?? "What amenities do you offer?"}</h1>
           <p className="text-muted-foreground">
-            Select all the amenities available at your property. Guests use these to filter their search.
+            {t?.subtitle ?? "Select all the amenities available at your property. Guests use these to filter their search."}
           </p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Amenities</CardTitle>
+            <CardTitle>{t?.cardTitle ?? "Amenities"}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {amenityOptions.map((amenity) => {
                 const IconComponent = amenity.icon;
                 const isSelected = selectedAmenities.includes(amenity.value as Amenity);
+                const label = opts?.[amenity.key] ?? amenity.label;
+                const description = opts?.[`${amenity.key}Desc`] ?? amenity.description;
 
                 return (
                   <div
@@ -114,8 +120,8 @@ const AmenitiesPage = () => {
                     />
                     <IconComponent className="size-5 text-gray-600" />
                     <div className="flex-1">
-                      <Label className="font-medium cursor-pointer">{amenity.label}</Label>
-                      <p className="text-sm text-muted-foreground">{amenity.description}</p>
+                      <Label className="font-medium cursor-pointer">{label}</Label>
+                      <p className="text-sm text-muted-foreground">{description}</p>
                     </div>
                   </div>
                 );
@@ -125,23 +131,26 @@ const AmenitiesPage = () => {
         </Card>
 
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-medium mb-2">Selected amenities: {selectedAmenities.length}</h4>
+          <h4 className="font-medium mb-2">{t?.selectedLabel ?? "Selected amenities:"} {selectedAmenities.length}</h4>
           <div className="flex flex-wrap gap-2">
-            {selectedAmenities.map(amenity => (
-              <span key={amenity} className="px-3 py-1 bg-white border rounded-full text-sm">
-                {amenityOptions.find(a => a.value === amenity)?.label || amenity}
-              </span>
-            ))}
+            {selectedAmenities.map(amenity => {
+              const opt = amenityOptions.find(a => a.value === amenity);
+              return (
+                <span key={amenity} className="px-3 py-1 bg-white border rounded-full text-sm">
+                  {(opt && opts?.[opt.key]) || opt?.label || amenity}
+                </span>
+              );
+            })}
           </div>
         </div>
 
         <div className="mt-8 flex justify-between">
           <Button variant="outline" onClick={() => router.back()}>
-            Back
+            {dict?.common?.back ?? "Back"}
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
             {isSaving && <Loader2 className="size-4 me-2 animate-spin" />}
-            Save
+            {dict?.common?.save ?? "Save"}
           </Button>
         </div>
       </div>

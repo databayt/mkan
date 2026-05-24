@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { createMetadata } from "@/lib/metadata";
+import { getDictionary } from "@/components/internationalization/dictionaries";
 import TransportHostContent from "./content";
 
 export const dynamic = 'force-dynamic';
@@ -10,12 +11,11 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const dict = await getDictionary(lang as "en" | "ar");
+  const t = dict?.transportHost?.metadata;
   return createMetadata({
-    title: lang === "ar" ? "مضيف النقل" : "Transport Host",
-    description:
-      lang === "ar"
-        ? "إدارة مكاتب النقل والحجوزات"
-        : "Manage your transport offices and bookings",
+    title: t?.title ?? "Transport Host",
+    description: t?.description ?? "Manage your transport offices and bookings",
     locale: lang,
     path: "/transport-host",
   });

@@ -19,7 +19,7 @@ const LegalAndCreatePage = ({ params }: LegalAndCreatePageProps) => {
   const pathname = usePathname();
   const dict = useDictionary();
   const routeParams = useRouteParams();
-  const lang = (routeParams?.lang as string) ?? 'en';
+  const lang = (routeParams?.lang as string) ?? 'ar';
   const [id, setId] = React.useState<string>('');
   const [hostingType, setHostingType] = useState<string>('private-individual');
   const [safetyFeatures, setSafetyFeatures] = useState<string[]>([]);

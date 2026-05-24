@@ -1,3 +1,5 @@
+"use client";
+
 import { CustomFormField } from "@/components/FormField";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +11,7 @@ import {
 import { Form } from "@/components/ui/form";
 import { ApplicationFormData, applicationSchema } from "@/lib/schemas";
 import { useCreateApplicationMutation, useGetAuthUserQuery } from "@/state/api";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { useForm } from "react-hook-form";
@@ -19,6 +22,8 @@ const ApplicationModal = ({
   onClose,
   propertyId,
 }: ApplicationModalProps) => {
+  const dict = useDictionary();
+  const t = dict?.property?.applicationModal;
   const [createApplication] = useCreateApplicationMutation();
   const { data: authUser } = useGetAuthUserQuery();
 
@@ -56,36 +61,36 @@ const ApplicationModal = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="bg-white">
         <DialogHeader className="mb-4">
-          <DialogTitle>Submit Application for this Property</DialogTitle>
+          <DialogTitle>{t?.title ?? "Submit Application for this Property"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <CustomFormField
               name="name"
-              label="Name"
+              label={t?.nameLabel ?? "Name"}
               type="text"
-              placeholder="Enter your full name"
+              placeholder={t?.namePlaceholder ?? "Enter your full name"}
             />
             <CustomFormField
               name="email"
-              label="Email"
+              label={t?.emailLabel ?? "Email"}
               type="email"
-              placeholder="Enter your email address"
+              placeholder={t?.emailPlaceholder ?? "Enter your email address"}
             />
             <CustomFormField
               name="phoneNumber"
-              label="Phone Number"
+              label={t?.phoneLabel ?? "Phone Number"}
               type="text"
-              placeholder="Enter your phone number"
+              placeholder={t?.phonePlaceholder ?? "Enter your phone number"}
             />
             <CustomFormField
               name="message"
-              label="Message (Optional)"
+              label={t?.messageLabel ?? "Message (Optional)"}
               type="textarea"
-              placeholder="Enter any additional information"
+              placeholder={t?.messagePlaceholder ?? "Enter any additional information"}
             />
             <Button type="submit" className="bg-primary-700 text-white w-full">
-              Submit Application
+              {t?.submit ?? "Submit Application"}
             </Button>
           </form>
         </Form>

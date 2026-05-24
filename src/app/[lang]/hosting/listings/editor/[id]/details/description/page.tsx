@@ -9,11 +9,14 @@ import { Label } from '@/components/ui/label';
 import { FileText, Info, Loader2 } from 'lucide-react';
 import { getListing, updateListing } from '@/components/host/actions';
 import { useParams } from 'next/navigation';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 const DescriptionPage = () => {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
+  const dict = useDictionary();
+  const t = dict?.listingEditor?.description;
 
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -58,9 +61,9 @@ const DescriptionPage = () => {
     <div className="lg:col-span-2">
       <div className="max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">Create your description</h1>
+          <h1 className="text-3xl font-semibold mb-2">{t?.heading ?? "Create your description"}</h1>
           <p className="text-muted-foreground">
-            Share what makes your place special and what guests can expect during their stay.
+            {t?.subtitle ?? "Share what makes your place special and what guests can expect during their stay."}
           </p>
         </div>
 
@@ -68,15 +71,15 @@ const DescriptionPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="size-5" />
-              About your space
+              {t?.cardTitle ?? "About your space"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{t?.label ?? "Description"}</Label>
               <Textarea
                 id="description"
-                placeholder="Tell guests about your space, the neighborhood, and what makes your place unique..."
+                placeholder={t?.placeholder ?? "Tell guests about your space, the neighborhood, and what makes your place unique..."}
                 className="mt-2 min-h-[200px]"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -89,22 +92,22 @@ const DescriptionPage = () => {
               <div className="flex items-start gap-3">
                 <Info className="size-5 text-blue-600 mt-0.5" />
                 <div>
-                  <h4 className="font-medium text-blue-900">Writing tips</h4>
+                  <h4 className="font-medium text-blue-900">{t?.tipTitle ?? "Writing tips"}</h4>
                   <ul className="text-sm text-blue-700 mt-1 space-y-1">
-                    <li>• Highlight unique features of your space</li>
-                    <li>• Mention the neighborhood and nearby attractions</li>
-                    <li>• Describe the ambiance and what guests can expect</li>
-                    <li>• Be specific about the space layout</li>
+                    <li>• {t?.tip1 ?? "Highlight unique features of your space"}</li>
+                    <li>• {t?.tip2 ?? "Mention the neighborhood and nearby attractions"}</li>
+                    <li>• {t?.tip3 ?? "Describe the ambiance and what guests can expect"}</li>
+                    <li>• {t?.tip4 ?? "Be specific about the space layout"}</li>
                   </ul>
                 </div>
               </div>
             </div>
 
             <div className="border-t pt-4">
-              <h4 className="font-medium mb-3">Preview</h4>
+              <h4 className="font-medium mb-3">{t?.previewTitle ?? "Preview"}</h4>
               <div className="p-4 bg-gray-50 rounded-lg">
                 <p className="text-gray-700 whitespace-pre-wrap">
-                  {description || "Your description will appear here..."}
+                  {description || (t?.previewPlaceholder ?? "Your description will appear here...")}
                 </p>
               </div>
             </div>
@@ -113,11 +116,11 @@ const DescriptionPage = () => {
 
         <div className="mt-8 flex justify-between">
           <Button variant="outline" onClick={() => router.back()}>
-            Back
+            {dict?.common?.back ?? "Back"}
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
             {isSaving && <Loader2 className="size-4 me-2 animate-spin" />}
-            Save
+            {dict?.common?.save ?? "Save"}
           </Button>
         </div>
       </div>

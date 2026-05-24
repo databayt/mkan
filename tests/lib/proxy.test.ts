@@ -8,8 +8,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  */
 
 const mocks = vi.hoisted(() => ({
-  matchFn: vi.fn().mockReturnValue("en"),
-  negotiatorLanguages: vi.fn().mockReturnValue(["en"]),
+  matchFn: vi.fn().mockReturnValue("ar"),
+  negotiatorLanguages: vi.fn().mockReturnValue(["ar"]),
 }));
 
 vi.mock("@formatjs/intl-localematcher", () => ({
@@ -26,7 +26,7 @@ vi.mock("negotiator", () => ({
 
 vi.mock("@/components/internationalization/config", () => ({
   i18n: {
-    defaultLocale: "en",
+    defaultLocale: "ar",
     locales: ["en", "ar"],
   },
 }));
@@ -76,14 +76,14 @@ function getRedirectLocation(response: NextResponse): string {
 describe("proxy — locale detection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.matchFn.mockReturnValue("en");
-    mocks.negotiatorLanguages.mockReturnValue(["en"]);
+    mocks.matchFn.mockReturnValue("ar");
+    mocks.negotiatorLanguages.mockReturnValue(["ar"]);
   });
 
-  it("redirects bare / to /en when no locale cookie", () => {
+  it("redirects bare / to /ar when no locale cookie", () => {
     const res = proxy(createRequest("/"));
     expect(isRedirect(res!)).toBe(true);
-    expect(getRedirectLocation(res!)).toContain("/en");
+    expect(getRedirectLocation(res!)).toContain("/ar");
   });
 
   it("redirects to /ar when NEXT_LOCALE cookie is ar", () => {
@@ -105,11 +105,11 @@ describe("proxy — locale detection", () => {
     expect(getRedirectLocation(res!)).toContain("/ar/listings");
   });
 
-  it("defaults to en when locale is unknown", () => {
-    mocks.matchFn.mockReturnValue("en");
+  it("defaults to ar when locale is unknown", () => {
+    mocks.matchFn.mockReturnValue("ar");
     const res = proxy(createRequest("/about"));
     expect(isRedirect(res!)).toBe(true);
-    expect(getRedirectLocation(res!)).toContain("/en/about");
+    expect(getRedirectLocation(res!)).toContain("/ar/about");
   });
 
   it("sets NEXT_LOCALE cookie on locale redirect", () => {
