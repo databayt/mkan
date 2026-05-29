@@ -15,6 +15,32 @@ vi.mock("@prisma/client", () => ({
     PartiallyPaid: "PartiallyPaid",
     Overdue: "Overdue",
   },
+  // payment-actions.ts imports these enums at module load (used as runtime
+  // values in z.enum(...) and status writes). The mock must provide them or
+  // the whole suite throws on import. Mirror prisma/schema.prisma.
+  BookingPaymentMethod: {
+    Card: "Card",
+    Bankak: "Bankak",
+    Cashi: "Cashi",
+    MobileMoney: "MobileMoney",
+    BankTransfer: "BankTransfer",
+    Cash: "Cash",
+  },
+  BookingPaymentStatus: {
+    Pending: "Pending",
+    PendingVerification: "PendingVerification",
+    Paid: "Paid",
+    Failed: "Failed",
+    Refunded: "Refunded",
+    PartiallyRefunded: "PartiallyRefunded",
+  },
+  BookingStatus: {
+    Pending: "Pending",
+    Confirmed: "Confirmed",
+    Cancelled: "Cancelled",
+    Completed: "Completed",
+    Declined: "Declined",
+  },
 }));
 
 vi.mock("@/lib/db", () => ({
