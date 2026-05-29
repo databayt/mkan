@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 
 export async function requireAuth(locale: string) {
   const session = await auth();
-  if (!session?.user) {
+  // Check user.id (not just user): a suspended user's stripped JWT yields a
+  // session object with no id, which must still be treated as unauthenticated.
+  if (!session?.user?.id) {
     redirect(`/${locale}/login`);
   }
   return session;

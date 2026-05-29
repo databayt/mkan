@@ -108,10 +108,15 @@ export const {
       }
       
       if (!user.id) return false
-      
-      if (account?.provider !== "credentials") return true
 
+      // Block suspended accounts on EVERY sign-in path (OAuth + credentials).
+      // getUserById returns null for a brand-new OAuth user (created after this
+      // callback resolves), which is correct: a not-yet-existing user can't be
+      // suspended.
       const existingUser = await getUserById(user.id)
+      if (existingUser?.isSuspended) return false
+
+      if (account?.provider !== "credentials") return true
 
       if (!existingUser?.emailVerified) return false
 
@@ -153,6 +158,12 @@ export const {
         const existingUser = await getUserById(token.sub)
 
         if (!existingUser) return token
+
+        // Invalidate the session of a user suspended after their token was
+        // issued: strip the token so the session callback yields no id/role.
+        // requireAuth/requireRole then reject. (Hard live-revocation on every
+        // request is a Phase-1 refinement.)
+        if (existingUser.isSuspended) return {}
 
         const existingAccount = await getAccountByUserId(existingUser.id)
 

@@ -5,8 +5,13 @@ export async function GET(
   { params }: { params: Promise<{ dimensions: string[] }> }
 ) {
   const { dimensions } = await params;
-  const width = parseInt(dimensions?.[0] ?? '400') || 400;
-  const height = parseInt(dimensions?.[1] ?? '300') || 300;
+  // Clamp to a sane range so a request like /api/placeholder/999999/999999
+  // can't allocate an enormous SVG and OOM the serverless function.
+  const MAX_DIM = 4096;
+  const clamp = (n: number, fallback: number) =>
+    Math.min(Math.max(Number.isFinite(n) && n > 0 ? n : fallback, 1), MAX_DIM);
+  const width = clamp(parseInt(dimensions?.[0] ?? '400'), 400);
+  const height = clamp(parseInt(dimensions?.[1] ?? '300'), 300);
 
   // Create SVG placeholder
   const svg = `
