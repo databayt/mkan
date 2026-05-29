@@ -32,7 +32,7 @@ export function createMetadata({
       description,
       url,
       siteName: SITE_NAME,
-      locale: locale === "ar" ? "ar_SA" : "en_US",
+      locale: locale === "ar" ? "ar_SD" : "en_US",
       type: "website",
       images: [{ url: ogImage, width: 1200, height: 630 }],
     },

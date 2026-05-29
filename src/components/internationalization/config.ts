@@ -13,15 +13,15 @@ export const localeConfig = {
     dir: 'ltr',
     flag: '🇺🇸',
     dateFormat: 'MM/dd/yyyy',
-    currency: 'USD',
+    currency: 'SDG',
   },
   'ar': {
     name: 'Arabic',
     nativeName: 'العربية',
     dir: 'rtl',
-    flag: '🇸🇦',
+    flag: '🇸🇩',
     dateFormat: 'dd/MM/yyyy',
-    currency: 'SAR',
+    currency: 'SDG',
   },
 } as const;
 

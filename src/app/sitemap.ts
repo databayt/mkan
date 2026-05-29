@@ -11,8 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/transport",
     "/transport/offices",
     "/transport/search",
-    "/login",
-    "/register",
+    // /login + /register intentionally excluded — auth pages must not be indexed.
     "/privacy",
     "/terms",
     "/cookies",

@@ -20,14 +20,15 @@ describe("createMetadata", () => {
     const og = meta.openGraph as Record<string, unknown>;
     // default locale is "ar"
     expect(og.url).toContain("/ar/search");
-    expect(og.locale).toBe("ar_SA");
+    // Sudan product → ar_SD (not ar_SA / Saudi Arabia)
+    expect(og.locale).toBe("ar_SD");
   });
 
-  it("uses ar locale with ar_SA OG locale", () => {
+  it("uses ar locale with ar_SD OG locale", () => {
     const meta = createMetadata({ title: "T", description: "D", locale: "ar" });
     const og = meta.openGraph as Record<string, unknown>;
     expect(og.url).toContain("/ar");
-    expect(og.locale).toBe("ar_SA");
+    expect(og.locale).toBe("ar_SD");
   });
 
   it("builds openGraph with site name and type", () => {
