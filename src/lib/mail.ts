@@ -68,6 +68,43 @@ export const sendTripCancelledEmail = async (
   });
 };
 
+/**
+ * Home (property) booking confirmation. Distinct from the transport-shaped
+ * sendBookingConfirmationEmail above (origin→destination/seats); this one
+ * carries property/stay fields. Sent from EMAIL_FROM once a Booking is
+ * Confirmed (Stripe webhook, admin reference-verification, or host confirm).
+ */
+export const sendHomeBookingConfirmationEmail = async (
+  email: string,
+  data: {
+    reference: string;
+    guestName: string;
+    propertyTitle: string;
+    checkIn: string;
+    checkOut: string;
+    nights: number;
+    guests: number;
+    total: number;
+    currency: string;
+  },
+) => {
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM ?? "onboarding@resend.dev",
+    to: email,
+    subject: `Booking confirmed — ${data.propertyTitle}`,
+    html: `
+      <p>Hi ${data.guestName}, your booking is confirmed.</p>
+      <p><strong>Reference:</strong> ${data.reference}<br/>
+         <strong>Property:</strong> ${data.propertyTitle}<br/>
+         <strong>Check-in:</strong> ${data.checkIn}<br/>
+         <strong>Check-out:</strong> ${data.checkOut}<br/>
+         <strong>Nights:</strong> ${data.nights} &middot; <strong>Guests:</strong> ${data.guests}<br/>
+         <strong>Total:</strong> ${data.total.toLocaleString()} ${data.currency}</p>
+      <p>View your booking at <a href="${domain}/bookings">mkan bookings</a>.</p>
+    `,
+  });
+};
+
 export const sendBookingConfirmationEmail = async (
   email: string,
   data: {

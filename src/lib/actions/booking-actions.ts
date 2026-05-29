@@ -7,6 +7,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { BookingStatus } from "@prisma/client";
 import { logger } from "@/lib/logger";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { notifyHomeBookingConfirmed } from "@/lib/notifications/booking";
 
 // ============================================
 // SCHEMAS
@@ -450,6 +451,9 @@ export async function confirmBooking(id: unknown) {
         confirmedAt: new Date(),
       },
     });
+
+    // Host manually confirmed → email the guest (best-effort, never throws).
+    await notifyHomeBookingConfirmed(updated.id);
 
     revalidatePath("/bookings");
     revalidatePath("/hosting/bookings");

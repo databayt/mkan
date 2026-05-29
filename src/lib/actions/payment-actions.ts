@@ -12,6 +12,7 @@ import {
   PaymentStatus,
 } from "@prisma/client";
 import { logger } from "@/lib/logger";
+import { notifyHomeBookingConfirmed } from "@/lib/notifications/booking";
 
 // Stripe is initialized lazily so a missing key only fails the actions
 // that need it, not module load (which would break unrelated payment
@@ -766,6 +767,8 @@ export async function handleStripeWebhook(payload: string, signature: string) {
           bookingId,
           intentId: intent.id,
         });
+        // Booking is now Confirmed — email the guest (best-effort, never throws).
+        await notifyHomeBookingConfirmed(Number(bookingId));
       } else {
         logger.warn("stripe_intent_unknown_kind", { kind, intentId: intent.id });
       }
@@ -1220,6 +1223,8 @@ export async function verifyBookingPayment(input: unknown) {
       bookingId: payment.bookingId,
       adminId: session.user.id,
     });
+    // Reference payment approved → Booking Confirmed — email the guest.
+    await notifyHomeBookingConfirmed(payment.bookingId);
   } else {
     await db.bookingPayment.update({
       where: { id: payment.id },
