@@ -191,13 +191,9 @@ const nextConfig: NextConfig = {
       { source: '/home', destination: '/', permanent: true },
       { source: '/signin', destination: '/login', permanent: true },
       { source: '/signup', destination: '/register', permanent: true },
-      // Epic 3.4: Unify /search and /searching into canonical /listings.
-      // 308 preserves query params; both legacy routes loaded all listings
-      // into memory and filtered client-side — /listings is the canonical
-      // server-filtered path. Use a regex-constrained `:lang` param to avoid
-      // catching /api/search/... (where `api` would match `:lang` otherwise).
-      { source: '/:lang(en|ar)/search/:path*', destination: '/:lang/listings/:path*', permanent: true },
-      { source: '/:lang(en|ar)/search', destination: '/:lang/listings', permanent: true },
+      // /searching remains redirected to /listings; /search is restored as a
+      // standalone, server-filtered route (reads through searchListings, same
+      // as /listings — see src/app/[lang]/search/page.tsx).
       { source: '/:lang(en|ar)/searching/:path*', destination: '/:lang/listings/:path*', permanent: true },
       { source: '/:lang(en|ar)/searching', destination: '/:lang/listings', permanent: true },
     ];

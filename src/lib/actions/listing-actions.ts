@@ -184,8 +184,9 @@ export async function createListing(data: unknown = {}) {
 
     revalidatePath("/hosting/listings");
     // Bust the searchListings cache so new/updated listings appear on the
-    // public /listings page without waiting for the 60s revalidate window.
-    // (`/search` is not a real route — invalidation flows through the tag.)
+    // public /listings and /search pages without waiting for the revalidate
+    // window. Both routes read through searchListings, so the shared
+    // "listings" tag invalidates both.
     updateTag("listings");
 
     return { success: true, listing };
