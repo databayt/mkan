@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import type { Locale } from "@/components/internationalization/config";
+import { shouldOfferCardPayment } from "@/lib/geo";
 import CheckoutContent from "./content";
 
 export async function generateMetadata({
@@ -19,6 +20,8 @@ export async function generateMetadata({
   });
 }
 
-export default function CheckoutPage() {
-  return <CheckoutContent />;
+export default async function CheckoutPage() {
+  // Stripe can't serve Sudan — only offer the card rail to diaspora (non-SD geo).
+  const showCard = await shouldOfferCardPayment();
+  return <CheckoutContent showCard={showCard} />;
 }

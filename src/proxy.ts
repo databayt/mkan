@@ -106,20 +106,26 @@ function buildCsp(options: { isDev: boolean }): string {
     ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://api.mapbox.com https://js.stripe.com"
     : "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://api.mapbox.com https://js.stripe.com";
 
-  return [
+  const directives = [
     "default-src 'self'",
     scriptSrc,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.mapbox.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://api.mapbox.com https://*.imagekit.io https://api.stripe.com https://translation.googleapis.com",
+    // Mapbox GL spawns its render worker from a blob: URL; without worker-src
+    // this falls back to default-src 'self' and is blocked under enforced CSP.
+    "worker-src 'self' blob:",
+    "connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://*.imagekit.io https://api.stripe.com https://translation.googleapis.com",
     "frame-src 'self' https://www.google.com https://js.stripe.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
-    "upgrade-insecure-requests",
-  ].join('; ');
+  ];
+  // upgrade-insecure-requests is ignored in report-only mode (browsers warn),
+  // so only emit it for the enforced production policy.
+  if (!options.isDev) directives.push("upgrade-insecure-requests");
+  return directives.join('; ');
 }
 
 function addSecurityHeaders(response: NextResponse) {

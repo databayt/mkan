@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getBooking } from "@/lib/actions/booking-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
+import { shouldOfferCardPayment } from "@/lib/geo";
 import BookingCheckoutContent from "./content";
 
 export default async function BookingCheckoutPage({
@@ -21,12 +22,15 @@ export default async function BookingCheckoutPage({
   if (!booking) notFound();
 
   const dict = await getDictionary(lang as "en" | "ar");
+  // Stripe can't serve Sudan — only offer the card rail to diaspora (non-SD geo).
+  const showCard = await shouldOfferCardPayment();
 
   return (
     <BookingCheckoutContent
       lang={lang}
       booking={booking as unknown as BookingPayload}
       dict={dict as unknown as Record<string, Record<string, string>>}
+      showCard={showCard}
     />
   );
 }

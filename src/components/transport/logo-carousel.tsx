@@ -18,15 +18,15 @@ interface LogoDef {
 // ── Logo data ───────────────────────────────────────────────────────
 
 const LOGOS: LogoDef[] = [
-  { name: "Lantern", src: "/brands/lantern.svg", url: "https://withlantern.com", width: 186, height: 40 },
-  { name: "Sim", src: "/brands/sim.svg", url: "https://sim.ai", width: 84, height: 41 },
-  { name: "Langbase", src: "/brands/langbase.svg", url: "https://langbase.com", width: 202, height: 40 },
-  { name: "AgentMail", src: "/brands/agentmail.svg", url: "https://agentmail.to", width: 219, height: 40 },
-  { name: "Dot", src: "/brands/dot.svg", url: "https://bydot.studio", width: 114, height: 40 },
-  { name: "Fontface", src: "/brands/fontface.svg", url: "https://fontface.ai", width: 169, height: 40 },
-  { name: "Tesseract", src: "/brands/tesseract.svg", url: "https://x.com/usetesseract", width: 180, height: 50 },
-  { name: "Someone", src: "/brands/someone.svg", url: "https://someo.ne", width: 176, height: 30 },
-  { name: "Parrychain", src: "/brands/parrychain.svg", url: "https://parrychain.ai", width: 211, height: 25 },
+  { name: "Tirhal", src: "/brands/transport/tirhal.svg", url: "", width: 180, height: 50 },
+  { name: "Musafir", src: "/brands/transport/musafir.svg", url: "", width: 180, height: 50 },
+  { name: "Jamal El-Din", src: "/brands/transport/jamal-el-din.svg", url: "", width: 220, height: 50 },
+  { name: "MCV", src: "/brands/transport/mcv.svg", url: "", width: 140, height: 50 },
+  { name: "Igbalco", src: "/brands/transport/igbalco.svg", url: "", width: 180, height: 50 },
+  { name: "Marshal", src: "/brands/transport/marshal.svg", url: "", width: 180, height: 50 },
+  { name: "Abu Amer", src: "/brands/transport/abu-amer.svg", url: "", width: 200, height: 50 },
+  { name: "Rodeena", src: "/brands/transport/rodeena.svg", url: "", width: 180, height: 50 },
+  { name: "Al-Rifai", src: "/brands/transport/al-rifai.svg", url: "", width: 180, height: 50 },
 ];
 
 // ── Constants ───────────────────────────────────────────────────────
@@ -273,7 +273,7 @@ export function LogoCarousel({
     <motion.div
       role="region"
       aria-roledescription="carousel"
-      aria-label="Companies we've partnered with"
+      aria-label="Trusted transport operators on Mkan"
       initial={{ opacity: 0 }}
       animate={{ opacity: allLoaded ? 1 : 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}

@@ -1,8 +1,28 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+
+function AlertTriangle({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+    </svg>
+  );
+}
 
 export default function Error({
   error,
@@ -60,19 +80,20 @@ export default function Error({
         </div>
 
         <div className="flex gap-3 justify-center">
-          <Button
+          <button
+            type="button"
             onClick={reset}
-            size="lg"
+            className="inline-flex items-center justify-center rounded-md bg-gray-900 px-6 py-3 text-sm font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2"
           >
             Try again
-          </Button>
-          <Button
-            onClick={() => window.location.href = '/'}
-            variant="outline"
-            size="lg"
+          </button>
+          <button
+            type="button"
+            onClick={() => (window.location.href = '/')}
+            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-6 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2"
           >
             Go home
-          </Button>
+          </button>
         </div>
 
         <p className="text-xs text-gray-500">

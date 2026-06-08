@@ -46,14 +46,18 @@ interface Props {
   lang: string;
   booking: BookingPayload;
   dict: Record<string, Record<string, string>>;
+  /** Whether to offer the Stripe card rail (diaspora only — hidden in Sudan). */
+  showCard: boolean;
 }
 
-export default function BookingCheckoutContent({ lang, booking, dict }: Props) {
+export default function BookingCheckoutContent({ lang, booking, dict, showCard }: Props) {
   const t = dict.booking ?? {};
   const currency = dict.common?.currency ?? "$";
   const router = useRouter();
 
-  const [method, setMethod] = useState<PaymentMethod>("card");
+  // Default to the card rail only when it's offered; otherwise start on Bankak
+  // (the dominant Sudanese digital wallet) so the first option is payable.
+  const [method, setMethod] = useState<PaymentMethod>(showCard ? "card" : "bankak");
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
@@ -87,7 +91,9 @@ export default function BookingCheckoutContent({ lang, booking, dict }: Props) {
               value={method}
               onValueChange={(v) => setMethod(v as PaymentMethod)}
             >
-              <MethodRow id="method-card" value="card" label={t.card ?? "Credit / Debit card (Stripe)"} method={method} />
+              {showCard && (
+                <MethodRow id="method-card" value="card" label={t.card ?? "Credit / Debit card (Stripe)"} method={method} />
+              )}
               <MethodRow id="method-bankak" value="bankak" label={t.bankak ?? "Bankak"} method={method} />
               <MethodRow id="method-cashi" value="cashi" label={t.cashi ?? "Cashi"} method={method} />
               <MethodRow id="method-mobile" value="mobile_money" label={t.mobileMoney ?? "Mobile money"} method={method} />

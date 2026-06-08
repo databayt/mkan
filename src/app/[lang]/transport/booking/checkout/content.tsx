@@ -28,7 +28,7 @@ type PaymentMethod = 'MobileMoney' | 'CreditCard' | 'BankTransfer' | 'CashOnArri
 
 type BookingDetails = NonNullable<Awaited<ReturnType<typeof getBooking>>>;
 
-function CheckoutInner() {
+function CheckoutInner({ showCard }: { showCard: boolean }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -49,7 +49,7 @@ function CheckoutInner() {
     { id: 'CreditCard' as PaymentMethod, name: pm?.creditCard?.name ?? "Credit/Debit Card", description: pm?.creditCard?.description ?? "Visa, Mastercard", icon: CreditCard },
     { id: 'BankTransfer' as PaymentMethod, name: pm?.bankTransfer?.name ?? "Bank Transfer", description: pm?.bankTransfer?.description ?? "Direct bank transfer", icon: Building2 },
     { id: 'CashOnArrival' as PaymentMethod, name: pm?.cashOnArrival?.name ?? "Cash on Arrival", description: pm?.cashOnArrival?.description ?? "Pay at the office", icon: Banknote },
-  ];
+  ].filter((m) => showCard || m.id !== 'CreditCard'); // Stripe can't serve Sudan — hide card for non-diaspora.
 
   const [booking, setBooking] = useState<BookingDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -274,10 +274,10 @@ function CheckoutFallback() {
   );
 }
 
-export default function CheckoutContent() {
+export default function CheckoutContent({ showCard }: { showCard: boolean }) {
   return (
     <Suspense fallback={<CheckoutFallback />}>
-      <CheckoutInner />
+      <CheckoutInner showCard={showCard} />
     </Suspense>
   );
 }

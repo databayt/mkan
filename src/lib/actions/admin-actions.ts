@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { UserRole } from "@prisma/client";
+import { UserRole, BookingPaymentStatus } from "@prisma/client";
 
 import { auth, isAdminOrSuper, isSuperAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -423,4 +423,43 @@ export async function listAllTransportPaymentsAdmin({
     db.transportPayment.count(),
   ]);
   return { payments, total, page, pageSize };
+}
+
+// Short-term Booking payments — the reference rails (Bankak / Cashi / mobile
+// money / bank transfer) park at PendingVerification until an admin reconciles
+// via verifyBookingPayment. This powers the "Bookings" tab on /admin/payments,
+// the only surface where a Sudanese guest's reference payment can be confirmed.
+// PendingVerification rows sort first so the actionable queue is at the top.
+export async function listAllBookingPaymentsAdmin({
+  page = 1,
+  pageSize = 25,
+}: { page?: number; pageSize?: number } = {}) {
+  await requireAdminSession();
+  const [payments, total, pendingCount] = await Promise.all([
+    db.bookingPayment.findMany({
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: {
+        booking: {
+          select: {
+            id: true,
+            guest: { select: { id: true, email: true, username: true } },
+            listing: { select: { id: true, title: true } },
+          },
+        },
+      },
+    }),
+    db.bookingPayment.count(),
+    db.bookingPayment.count({
+      where: { status: BookingPaymentStatus.PendingVerification },
+    }),
+  ]);
+  // Surface the actionable rows first regardless of enum sort order.
+  const ordered = [...payments].sort((a, b) => {
+    const aPending = a.status === BookingPaymentStatus.PendingVerification ? 0 : 1;
+    const bPending = b.status === BookingPaymentStatus.PendingVerification ? 0 : 1;
+    return aPending - bPending;
+  });
+  return { payments: ordered, total, pendingCount, page, pageSize };
 }

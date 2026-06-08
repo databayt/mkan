@@ -10,13 +10,25 @@ import BigSearch from "@/components/template/search/big-search";
 import SmallSearch from "@/components/template/search/small-search";
 import useSearchHeaderStore from "@/hooks/useSearchHeaderStore";
 
-// Airbnb-ish spring: stiff enough to feel responsive, damped enough to not wobble.
+// Soft spring for layout motion (height, transform). Damping sits just shy of
+// critical so the row settles without bounce — feels poised, not springy.
+// Used everywhere except opacity; springs on opacity produce a subtle
+// luminance wobble the eye reads as flicker.
 const SPRING = {
   type: "spring" as const,
-  stiffness: 380,
-  damping: 38,
-  mass: 0.9,
-};
+  stiffness: 320,
+  damping: 40,
+  mass: 1,
+  restDelta: 0.001,
+} as const;
+
+// Opacity rides a plain tween. The curve is the iOS standard ease —
+// gentle accel/decel that matches the spring's perceived rhythm without
+// fighting it. Duration is asymmetric: faster on collapse so the page
+// feels responsive when you scroll down, slower on expand so the search
+// feels deliberate when you scroll back up.
+const FADE_IN = { duration: 0.26, ease: [0.32, 0.72, 0, 1] as const };
+const FADE_OUT = { duration: 0.18, ease: [0.32, 0.72, 0, 1] as const };
 
 // Hysteresis band prevents flicker when the user hovers near the threshold.
 // Collapse once we pass COLLAPSE_AT, re-expand only after we come back under EXPAND_AT.
@@ -143,8 +155,12 @@ const ListingsHeader = () => {
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Top row - Logo, Nav/SmallSearch, User */}
-          <div className="relative flex items-center h-14 pt-4 min-h-[56px]">
+          {/* Top row — Logo, Nav/SmallSearch, User. Height was h-14 (56px)
+              with only top-padding, which crammed the small-search against
+              the row border in the collapsed state. Bumping to min-h-[80px]
+              with symmetric py-4 gives the small-search the breathing room
+              it needs once the BigSearch row collapses away. */}
+          <div className="relative flex items-center min-h-[80px] py-4">
             {/* Left side - Logo - Fixed Position */}
             <div className="flex items-center w-1/3">
               <Link
@@ -172,16 +188,24 @@ const ListingsHeader = () => {
 
             {/* Center slot — both nav and small-search stay mounted and crossfade.
                 Keeping them mounted avoids AnimatePresence remount lag during
-                quick scroll reversals (user scrolls down then back up). */}
+                quick scroll reversals (user scrolls down then back up).
+                Transforms ride SPRING, opacity rides a tween, and the
+                *incoming* element gets a small delay so the two never
+                overlap at half-alpha (which reads as a muddy frame). */}
             <div className="flex-1 flex justify-center items-center relative h-12">
               <motion.nav
                 className="flex space-x-8 absolute"
                 initial={false}
                 animate={{
                   opacity: isExpanded ? 1 : 0,
-                  y: isExpanded ? 0 : -8,
+                  y: isExpanded ? 0 : -10,
                 }}
-                transition={SPRING}
+                transition={{
+                  y: SPRING,
+                  opacity: isExpanded
+                    ? { ...FADE_IN, delay: 0.08 }
+                    : FADE_OUT,
+                }}
                 style={{
                   pointerEvents: isExpanded ? "auto" : "none",
                   willChange: "transform, opacity",
@@ -210,9 +234,15 @@ const ListingsHeader = () => {
                 animate={{
                   opacity: isExpanded ? 0 : 1,
                   scale: isExpanded ? 0.94 : 1,
-                  y: isExpanded ? 8 : 0,
+                  y: isExpanded ? 10 : 0,
                 }}
-                transition={SPRING}
+                transition={{
+                  y: SPRING,
+                  scale: SPRING,
+                  opacity: isExpanded
+                    ? FADE_OUT
+                    : { ...FADE_IN, delay: 0.08 },
+                }}
                 style={{
                   pointerEvents: isExpanded ? "none" : "auto",
                   willChange: "transform, opacity",
@@ -236,10 +266,13 @@ const ListingsHeader = () => {
           </div>
         </div>
 
-        {/* Second Row - Big Search. Height animates from auto↔0 so content below
-            doesn't jump when the header collapses on scroll. Overflow is only
-            hidden during the animation so dropdowns (which live inside
-            BigSearch and position with top-full) aren't clipped when open. */}
+        {/* Second Row — Big Search. Height animates from auto↔0 so content
+            below doesn't jump when the header collapses on scroll. Overflow
+            is only hidden during the animation so dropdowns (positioned
+            top-full inside BigSearch) aren't clipped while open. The
+            transform-origin pins the collapse to the top edge so the row
+            visually retracts *upward* into the top row above it, rather
+            than fading out in place. */}
         <motion.div
           initial={false}
           animate={{
@@ -248,10 +281,13 @@ const ListingsHeader = () => {
           }}
           transition={{
             height: SPRING,
-            opacity: { duration: isExpanded ? 0.22 : 0.14, ease: "easeInOut" },
+            opacity: isExpanded
+              ? { ...FADE_IN, delay: 0.04 }
+              : FADE_OUT,
           }}
           style={{
             overflow: rowOverflowVisible ? "visible" : "hidden",
+            transformOrigin: "top center",
             willChange: "height, opacity",
           }}
           onAnimationStart={() => setRowOverflowVisible(false)}

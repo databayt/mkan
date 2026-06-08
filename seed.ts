@@ -219,7 +219,7 @@ async function main() {
       amenities: [Amenity.WiFi, Amenity.HighSpeedInternet, Amenity.WasherDryer],
       highlights: [Highlight.HighSpeedInternetAccess, Highlight.CloseToTransit],
       photoUrls: [
-        'https://images.unsplash.com/photo-1555854877-bab0e5b6856c?w=800'
+        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800'
       ],
       location: {
         address: '200 College Avenue, Room 3A',

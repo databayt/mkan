@@ -27,10 +27,21 @@ const nextConfig: NextConfig = {
     'date-fns',
   ],
 
-  // Externalize ESM-only server packages to avoid Next 16's
-  // `require() of ES Module` runtime crashes on Vercel.
+  // Externalize server-only / ESM-only / native packages so the bundler
+  // `require()`s them at runtime instead of bundling them — avoids Next 16's
+  // `require() of ES Module` crashes and native-binary breakage on Vercel.
   serverExternalPackages: [
     '@react-pdf/renderer',
+    // Prisma 7 + Neon serverless driver stack (server-only, native/ws deps)
+    '@prisma/client',
+    '@prisma/adapter-pg',
+    '@prisma/adapter-neon',
+    '@neondatabase/serverless',
+    'pg',
+    'ws',
+    // Other server-only packages with native or heavy transitive deps
+    'bcryptjs',
+    'sanitize-html',
   ],
 
   experimental: {

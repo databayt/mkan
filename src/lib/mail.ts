@@ -4,12 +4,18 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const domain = process.env.NEXT_PUBLIC_APP_URL;
 
+// Single sender for every transactional email. The Resend sandbox address
+// (`onboarding@resend.dev`) only delivers to the account owner, so auth mail
+// (verify/reset/2FA) silently failed for real users until this was unified.
+// Production MUST set EMAIL_FROM to a verified domain (SPF/DKIM/DMARC).
+const EMAIL_FROM = process.env.EMAIL_FROM ?? "onboarding@resend.dev";
+
 export const sendTwoFactorTokenEmail = async (
   email: string,
   token: string
 ) => {
   await resend.emails.send({
-    from: "onboarding@resend.dev",
+    from: EMAIL_FROM,
     to: email,
     subject: "2FA Code",
     html: `<p>Your 2FA code: ${token}</p>`
@@ -23,7 +29,7 @@ export const sendPasswordResetEmail = async (
   const resetLink = `${domain}/new-password?token=${token}`
 
   await resend.emails.send({
-    from: "onboarding@resend.dev",
+    from: EMAIL_FROM,
     to: email,
     subject: "Reset your password",
     html: `<p>Click <a href="${resetLink}">here</a> to reset password.</p>`
@@ -37,7 +43,7 @@ export const sendVerificationEmail = async (
   const confirmLink = `${domain}/new-verification?token=${token}`;
 
   await resend.emails.send({
-    from: "onboarding@resend.dev",
+    from: EMAIL_FROM,
     to: email,
     subject: "Confirm your email",
     html: `<p>Click <a href="${confirmLink}">here</a> to confirm email.</p>`
@@ -55,7 +61,7 @@ export const sendTripCancelledEmail = async (
   },
 ) => {
   await resend.emails.send({
-    from: process.env.EMAIL_FROM ?? "onboarding@resend.dev",
+    from: EMAIL_FROM,
     to: email,
     subject: `Your trip ${data.origin} → ${data.destination} has been cancelled`,
     html: `
@@ -89,7 +95,7 @@ export const sendHomeBookingConfirmationEmail = async (
   },
 ) => {
   await resend.emails.send({
-    from: process.env.EMAIL_FROM ?? "onboarding@resend.dev",
+    from: EMAIL_FROM,
     to: email,
     subject: `Booking confirmed — ${data.propertyTitle}`,
     html: `
@@ -119,7 +125,7 @@ export const sendBookingConfirmationEmail = async (
   },
 ) => {
   await resend.emails.send({
-    from: process.env.EMAIL_FROM ?? "onboarding@resend.dev",
+    from: EMAIL_FROM,
     to: email,
     subject: `Booking confirmed — ${data.origin} → ${data.destination}`,
     html: `

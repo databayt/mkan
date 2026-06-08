@@ -1,5 +1,4 @@
 import React from 'react';
-import Image from 'next/image';
 
 interface AirbnbIconProps {
   name: string;
@@ -8,6 +7,9 @@ interface AirbnbIconProps {
   style?: React.CSSProperties;
 }
 
+// Plain <img> is intentional: these are static decorative SVGs in /public/assets.
+// next/image collides with Tailwind preflight (`img { height: auto }`) and the
+// attribute-based sizing it relies on, producing aspect-ratio warnings.
 const AirbnbIcon: React.FC<AirbnbIconProps> = ({
   name,
   className = "",
@@ -17,13 +19,13 @@ const AirbnbIcon: React.FC<AirbnbIconProps> = ({
   const iconPath = `/assets/${name}.svg`;
 
   return (
-    <Image
+    <img
       src={iconPath}
       alt={name}
       width={size}
       height={size}
       className={`inline-block ${className}`}
-      style={style}
+      style={{ width: `${size}px`, height: `${size}px`, ...style }}
     />
   );
 };
