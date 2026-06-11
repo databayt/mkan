@@ -9,50 +9,42 @@ import { getNextStep } from '@/components/hosting/listing/listing-progress';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { formatCurrency } from '@/lib/i18n/formatters';
+import { PublishToggleButton } from './publish-toggle-button';
 
 interface ListingCardProps {
   listing: Listing;
   viewType: 'grid' | 'list';
 }
 
+type StatusKey = 'published' | 'inProgress' | 'actionRequired';
+
 const ListingCard: React.FC<ListingCardProps> = ({ listing, viewType }) => {
   const router = useRouter();
   const { locale } = useLocale();
   const dict = useDictionary();
+  const statusLabels =
+    (dict.hostingListings as { status?: Record<StatusKey, string> } | undefined)?.status ?? {
+      published: 'Published',
+      inProgress: 'In progress',
+      actionRequired: 'Action required',
+    };
 
-  const getListingStatus = (listing: Listing) => {
+  const getListingStatus = (listing: Listing): { key: StatusKey; circleColor: string } => {
     if (!listing.draft && listing.isPublished) {
-      return { 
-        label: 'Published', 
-        circleColor: 'bg-green-500'
-      };
+      return { key: 'published', circleColor: 'bg-green-500' };
     } else if (listing.draft && !listing.isPublished) {
-      // Check if listing has basic info filled (title, description, etc.)
       const hasBasicInfo = listing.title && listing.description && listing.pricePerNight;
       const hasLocation = listing.location;
       const hasPhotos = listing.photoUrls && listing.photoUrls.length > 0;
-      
+
       if (hasBasicInfo && hasLocation && hasPhotos) {
-        return { 
-          label: 'Action required', 
-          circleColor: 'bg-red-500'
-        };
-      } else {
-        return { 
-          label: 'In progress', 
-          circleColor: 'bg-orange-500'
-        };
+        return { key: 'actionRequired', circleColor: 'bg-red-500' };
       }
+      return { key: 'inProgress', circleColor: 'bg-orange-500' };
     } else if (listing.draft && listing.isPublished) {
-      return { 
-        label: 'Action required', 
-        circleColor: 'bg-red-500'
-      };
+      return { key: 'actionRequired', circleColor: 'bg-red-500' };
     } else {
-      return { 
-        label: 'In progress', 
-        circleColor: 'bg-orange-500'
-      };
+      return { key: 'inProgress', circleColor: 'bg-orange-500' };
     }
   };
 
@@ -85,12 +77,8 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewType }) => {
 
   const handleCardClick = () => {
     const status = getListingStatus(listing);
-    
-    if (status.label === 'Published') {
-      // Navigate to photo-tour for published listings
-      router.push(`/hosting/listings/editor/${listing.id}/details/photo-tour`);
-    } else if (status.label === 'Action required') {
-      // Navigate to photo-tour for action required
+
+    if (status.key === 'published' || status.key === 'actionRequired') {
       router.push(`/hosting/listings/editor/${listing.id}/details/photo-tour`);
     } else {
       // Navigate to the next step for in progress listings
@@ -127,30 +115,32 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewType }) => {
             }}
           />
         </div>
-        <div className="absolute top-3 left-3 sm:top-5 sm:left-5">
+        <div className="absolute top-3 start-3 sm:top-5 sm:start-5">
           <Badge className="flex items-center gap-1 bg-muted text-foreground text-xs sm:text-sm">
             <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${status.circleColor}`}></div>
-            {status.label}
+            {statusLabels[status.key]}
           </Badge>
         </div>
       </div>
-      
+
       <div className="p-2 sm:p-3 flex-1">
         <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-1 truncate">
           {title}
         </h3>
-        
+
         <p className="text-xs sm:text-sm text-gray-600 mb-2 overflow-hidden text-ellipsis" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
           {description}
         </p>
-        
+
         {listing.pricePerNight && (
           <p className="text-xs sm:text-sm font-medium text-gray-900">
             {formatCurrency(listing.pricePerNight, locale)}/{dict.rental?.listing?.perNight ?? "night"}
           </p>
         )}
-        
 
+        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+          <PublishToggleButton listing={listing} />
+        </div>
       </div>
     </div>
   );

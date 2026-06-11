@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import { useSession } from "next-auth/react";
+import { addFavoriteProperty, removeFavoriteProperty } from "@/lib/actions/user-actions";
 import AirbnbPropertyHeader from "@/components/atom/property-header";
 import AirbnbImages from "@/components/atom/property-images";
-import AirbnbReviews from "@/components/atom/reviews";
 import AirbnbReserve from "@/components/atom/property-reserve";
 import AmenityViewer from "@/components/listings/amenity-viewer";
 import { Badge } from "@/components/ui/badge";
@@ -11,20 +12,28 @@ import { MapPin, Bed, Bath, Users, Square } from "lucide-react";
 import { Listing } from "@/types/listing";
 import PropertyGallery from "@/components/atom/property-gallery";
 import AirbnbInfo from "./atom/property-info";
-import Review from "./listings/review";
 import HostedBy from "./listings/hosted-by";
-import MeetHost from "./listings/meet-host";
 
 interface ListingDetailsClientProps {
     listing: Listing;
+    /**
+     * Reviews are rendered server-side and threaded in as children so the
+     * client island doesn't have to re-fetch on hydrate.
+     */
+    reviewsSlot?: React.ReactNode;
+    /** Same pattern for the host detail card. */
+    meetHostSlot?: React.ReactNode;
+    /** Server-computed: is this listing in the signed-in tenant's favorites? */
+    initialIsSaved?: boolean;
 }
 
-export default function ListingDetailsClient({ listing }: ListingDetailsClientProps) {
-    // Local-only saved state for the v1.0 ship; persistence (User.savedListings)
-    // is tracked in Story 8.1 follow-up. We use localStorage so the heart icon
-    // remembers across reloads on the same device — good enough for launch.
+export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlot, initialIsSaved = false }: ListingDetailsClientProps) {
+    const { data: session } = useSession();
+    // Signed-in users persist the heart to the tenant's favorites; signed-out
+    // users fall back to localStorage so the heart still remembers on-device.
     const storageKey = `mkan:saved:${listing.id ?? "anon"}`;
     const [isSaved, setIsSaved] = useState<boolean>(() => {
+        if (initialIsSaved) return true;
         if (typeof window === "undefined") return false;
         return window.localStorage.getItem(storageKey) === "1";
     });
@@ -45,9 +54,24 @@ export default function ListingDetailsClient({ listing }: ListingDetailsClientPr
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         const next = !isSaved;
         setIsSaved(next);
+
+        if (session?.user?.id && typeof listing.id === "number") {
+            try {
+                if (next) {
+                    await addFavoriteProperty(session.user.id, listing.id);
+                } else {
+                    await removeFavoriteProperty(session.user.id, listing.id);
+                }
+            } catch {
+                // Roll back the optimistic flip — e.g. user has no tenant profile.
+                setIsSaved(!next);
+            }
+            return;
+        }
+
         if (typeof window !== "undefined") {
             if (next) window.localStorage.setItem(storageKey, "1");
             else window.localStorage.removeItem(storageKey);
@@ -175,7 +199,7 @@ export default function ListingDetailsClient({ listing }: ListingDetailsClientPr
                                 </div>
                             )}
                         </div>
-                        <HostedBy />
+                        <HostedBy host={listing.host ?? null} />
 
                         <AirbnbInfo />
 
@@ -201,15 +225,11 @@ export default function ListingDetailsClient({ listing }: ListingDetailsClientPr
 
                 </div>
 
-                {/* Reviews */}
-                <AirbnbReviews
-                    overallRating={listing.averageRating || 4.5}
-                    totalReviews={listing.numberOfReviews || 0}
-                    className="border-b border-gray-200 pb-8"
-                />
-
-                <Review />
-                <MeetHost />
+                {/* Reviews — real data via the server-rendered slot. The old
+                    AirbnbReviews atom fabricated a 98%-five-star breakdown, so
+                    it's gone until getReviewSummary feeds it real numbers. */}
+                {reviewsSlot}
+                {meetHostSlot}
 
                 {/* Host Information */}
                 {/* <div className="border-b border-gray-200 pb-8">

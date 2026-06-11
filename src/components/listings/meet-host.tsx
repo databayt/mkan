@@ -6,9 +6,35 @@ import { Button } from "@/components/ui/button"
 import { IdentityVerified, Building, Chat, SuperhostSimple } from "@/components/atom/icons"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
 
-export default function MeetHost() {
+interface MeetHostUser {
+  username: string | null;
+  email?: string | null;
+  image?: string | null;
+}
+
+interface MeetHostProps {
+  hostUser?: MeetHostUser | null;
+  reviewsCount?: number;
+  averageRating?: number;
+  hostingMonths?: number;
+  superhost?: boolean;
+}
+
+const FALLBACK_AVATAR =
+  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=48&h=48&fit=crop";
+
+export default function MeetHost({
+  hostUser,
+  reviewsCount,
+  averageRating,
+  hostingMonths,
+  superhost = false,
+}: MeetHostProps) {
   const dict = useDictionary()
   const host = dict.rental?.host as Record<string, any> | undefined
+  const displayName =
+    hostUser?.username ?? hostUser?.email?.split("@")[0] ?? host?.hostFallback ?? "Host";
+  const avatar = hostUser?.image ?? FALLBACK_AVATAR;
   return (
     <div className="max-w-6xl mx-auto py-6 bg-white">
       <h1 className="text-3xl font-semibold text-gray-900 mb-8">{host?.meetYourHost}</h1>
@@ -23,44 +49,54 @@ export default function MeetHost() {
                 <div className="relative mb-4">
                   <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-200 relative">
                     <Image
-                      src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=48&h=48&fit=crop"
-                      alt="Host Faisal"
+                      src={avatar}
+                      alt={displayName}
                       width={80}
                       height={80}
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#e31c5f] rounded-full flex items-center justify-center">
+                  <div className="absolute -bottom-1 -end-1 w-7 h-7 bg-[#e31c5f] rounded-full flex items-center justify-center">
                     <IdentityVerified className="w-4 h-4 text-white" />
                   </div>
                 </div>
-                <h2 className="text-3xl font-semibold text-gray-900 ">Faisal</h2>
-                <div className="flex items-center gap-1 text-gray-600">
-                  <SuperhostSimple className=" " />
-                  <span className="text-xs">{host?.superhost}</span>
-                </div>
+                <h2 className="text-3xl font-semibold text-gray-900 ">{displayName}</h2>
+                {superhost && (
+                  <div className="flex items-center gap-1 text-gray-600">
+                    <SuperhostSimple className=" " />
+                    <span className="text-xs">{host?.superhost}</span>
+                  </div>
+                )}
               </div>
 
               {/* Right div - Statistics with dividers */}
               <div className="flex flex-col  gap-2 flex-1">
-                <div className="">
-                  <strong className="text-xl font-bold">75</strong>
-                  <p className="text-xs -mt-1">{host?.reviews}</p>
-                </div>
+                {typeof reviewsCount === "number" && (
+                  <>
+                    <div>
+                      <strong className="text-xl font-bold">{reviewsCount}</strong>
+                      <p className="text-xs -mt-1">{host?.reviews}</p>
+                    </div>
+                    <div className="w-24 h-[1px] bg-gray-300 " />
+                  </>
+                )}
 
-                <div className="w-24 h-[1px] bg-gray-300 "></div>
+                {typeof averageRating === "number" && averageRating > 0 && (
+                  <>
+                    <div className="leading-none">
+                      <strong className="text-xl font-bold ">{averageRating.toFixed(1)}</strong>
+                      <p className="text-xs -mt-1">{host?.rating}</p>
+                    </div>
+                    <div className="w-24 h-[1px] bg-gray-300 " />
+                  </>
+                )}
 
-                <div className="leading-none">
-                  <strong className="text-xl font-bold ">5.0</strong>
-                  <p className="text-xs -mt-1">{host?.rating}</p>
-                </div>
-
-                <div className="w-24 h-[1px] bg-gray-300 "></div>
-
-                <div className="leading-none">
-                  <strong className="text-xl font-bold ">9</strong>
-                  <p className="text-xs -mt-1">{host?.monthsHosting}</p>
-                </div>
+                {typeof hostingMonths === "number" && (
+                  <div className="leading-none">
+                    <strong className="text-xl font-bold ">{hostingMonths}</strong>
+                    <p className="text-xs -mt-1">{host?.monthsHosting}</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -84,12 +120,14 @@ export default function MeetHost() {
 
         {/* Right side - Host details */}
         <div className="space-y-4">
-          <div>
-            <h5 className="mb-2">{host?.isSuperhost?.replace('{name}', 'Faisal')}</h5>
-            <p className="text-sm leading-relaxed">
-              {host?.superhostDescription}
-            </p>
-          </div>
+          {superhost && (
+            <div>
+              <h5 className="mb-2">{host?.isSuperhost?.replace('{name}', displayName)}</h5>
+              <p className="text-sm leading-relaxed">
+                {host?.superhostDescription}
+              </p>
+            </div>
+          )}
 
           <div>
             <h5 className="mb-2">{host?.hostDetails}</h5>

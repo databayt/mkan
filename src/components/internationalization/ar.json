@@ -1207,7 +1207,9 @@
       "responseRate": "معدل الاستجابة: 100%",
       "respondsWithin": "يستجيب خلال ساعة",
       "messageHost": "مراسلة المضيف",
-      "paymentProtection": "لحماية مدفوعاتك، استخدم دائماً مكان لإرسال الأموال والتواصل مع المضيفين."
+      "paymentProtection": "لحماية مدفوعاتك، استخدم دائماً مكان لإرسال الأموال والتواصل مع المضيفين.",
+      "hostedBy": "يستضيفك {name}",
+      "hostFallback": "المضيف"
     },
     "searchPage": {
       "luxeStays": "إقامات مكان الفاخرة",
@@ -1231,6 +1233,12 @@
       "tryAdjusting": "حاول تعديل بحثك بتغيير التواريخ أو إزالة الفلاتر أو البحث في موقع مختلف.",
       "guestSingular": "ضيف",
       "guestPlural": "ضيوف"
+    },
+    "reviewsList": {
+      "heading": "ما يقوله الضيوف",
+      "subhead": "اقرأ تقييمات الضيوف الأخيرين",
+      "empty": "لا توجد تقييمات بعد — كن أول من يشاركها.",
+      "learnMore": "تعرّف على آلية التقييمات"
     }
   },
   "dashboard": {
@@ -4324,5 +4332,20 @@
         }
       }
     }
+  },
+  "hostingListings": {
+    "status": {
+      "published": "منشور",
+      "inProgress": "قيد التنفيذ",
+      "actionRequired": "إجراء مطلوب"
+    },
+    "publish": "نشر",
+    "unpublish": "إلغاء النشر",
+    "publishing": "جاري النشر...",
+    "unpublishing": "جاري إلغاء النشر...",
+    "publishSuccess": "تم نشر العقار",
+    "unpublishSuccess": "تم إلغاء نشر العقار",
+    "publishCannotYet": "أكمل الإعداد قبل النشر",
+    "publishUnknownError": "تعذر النشر — حاول مجدداً"
   }
 }

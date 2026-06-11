@@ -20,15 +20,15 @@ interface DetailCardProps {
 }
 
 export default function DetailCard({
-  title = "Bordeaux Getaway",
-  location = "Entire home in Bordeaux",
-  guests = "4-6 guests",
-  beds = "5 beds",
-  baths = "3 bath",
-  amenities = "Wifi · Kitchen · Free Parking",
-  rating = "5.0",
-  reviews = "318",
-  price = "$325",
+  title = "",
+  location = "",
+  guests = "",
+  beds = "",
+  baths = "",
+  amenities = "",
+  rating = "",
+  reviews = "",
+  price = "",
   image = "/placeholder.svg?height=200&width=300",
   isFavorited = false
 }: DetailCardProps) {

@@ -8,8 +8,13 @@ import DetailsHeader from "@/components/listings/detials-header";
 import MobileListingDetails from "@/components/listings/mobile-listing-details";
 import MobileReserve from "@/components/listings/mobile-reserve";
 import MobileReviews from "@/components/listings/mobile-reviews";
+import MobileMap from "@/components/listings/mobile-map";
+import Review from "@/components/listings/review";
+import MeetHost from "@/components/listings/meet-host";
 import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
+import { getListingReviews } from "@/lib/actions/review-actions";
+import { auth } from "@/lib/auth";
 import type { Locale } from "@/components/internationalization/config";
 
 interface ListingPageProps {
@@ -87,7 +92,31 @@ export default async function ListingPage({ params }: ListingPageProps) {
   // Serialize the listing data to avoid Prisma serialization issues
   const serializedListing = JSON.parse(JSON.stringify(listing));
 
-  const d = await getDictionary(lang);
+  const [d, mobileReviewsResult, session] = await Promise.all([
+    getDictionary(lang),
+    getListingReviews(listingId, { take: 8 }).catch(() => ({ reviews: [], total: 0 })),
+    auth(),
+  ]);
+
+  // Heart state comes from the tenant's persisted favorites, not localStorage.
+  let initialIsSaved = false;
+  if (session?.user?.id) {
+    const tenant = await db.tenant
+      .findUnique({
+        where: { userId: session.user.id },
+        select: { favorites: { where: { id: listingId }, select: { id: true } } },
+      })
+      .catch(() => null);
+    initialIsSaved = (tenant?.favorites.length ?? 0) > 0;
+  }
+
+  const mobileReviewItems = mobileReviewsResult.reviews.map((r) => ({
+    id: r.id,
+    author: r.reviewer?.username ?? r.reviewer?.id?.slice(0, 8) ?? "Guest",
+    rating: r.rating,
+    createdAt: r.createdAt as unknown as Date,
+    comment: r.comment ?? null,
+  }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -97,10 +126,27 @@ export default async function ListingPage({ params }: ListingPageProps) {
           <DetailsHeader />
         </Suspense>
         <Suspense fallback={<div>{d.rental?.listing?.loadingDetails}</div>}>
-          <ListingDetailsClient listing={serializedListing} />
+          <ListingDetailsClient
+            listing={serializedListing}
+            initialIsSaved={initialIsSaved}
+            reviewsSlot={<Review listingId={listingId} lang={lang} />}
+            meetHostSlot={
+              <MeetHost
+                hostUser={serializedListing.host ?? null}
+                reviewsCount={serializedListing.numberOfReviews ?? undefined}
+                averageRating={serializedListing.averageRating ?? undefined}
+              />
+            }
+          />
         </Suspense>
         <Suspense fallback={<div>{d.rental?.listing?.loadingMap}</div>}>
-          <Location />
+          <Location
+            latitude={serializedListing.location?.latitude}
+            longitude={serializedListing.location?.longitude}
+            city={serializedListing.location?.city}
+            state={serializedListing.location?.state}
+            country={serializedListing.location?.country}
+          />
         </Suspense>
       </div>
 
@@ -113,7 +159,20 @@ export default async function ListingPage({ params }: ListingPageProps) {
           />
         </Suspense>
         <Suspense fallback={<div>{d.rental?.listing?.loadingReviews}</div>}>
-          <MobileReviews />
+          <MobileReviews
+            reviews={mobileReviewItems}
+            averageRating={serializedListing.averageRating ?? undefined}
+            totalReviews={mobileReviewsResult.total}
+          />
+        </Suspense>
+        <Suspense fallback={<div>{d.rental?.listing?.loadingMap}</div>}>
+          <MobileMap
+            latitude={serializedListing.location?.latitude}
+            longitude={serializedListing.location?.longitude}
+            city={serializedListing.location?.city}
+            state={serializedListing.location?.state}
+            country={serializedListing.location?.country}
+          />
         </Suspense>
         <Suspense fallback={<div>{d.rental?.listing?.loading}</div>}>
           <MobileReserve

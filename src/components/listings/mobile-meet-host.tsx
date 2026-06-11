@@ -6,9 +6,35 @@ import { Button } from "@/components/ui/button"
 import { IdentityVerified, Building, Chat, SuperhostSimple } from "@/components/atom/icons"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
 
-export default function MobileMeetHost() {
+interface MobileMeetHostUser {
+  username: string | null;
+  email?: string | null;
+  image?: string | null;
+}
+
+interface MobileMeetHostProps {
+  hostUser?: MobileMeetHostUser | null;
+  reviewsCount?: number;
+  averageRating?: number;
+  hostingMonths?: number;
+  superhost?: boolean;
+}
+
+const FALLBACK_AVATAR =
+  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=48&h=48&fit=crop";
+
+export default function MobileMeetHost({
+  hostUser,
+  reviewsCount,
+  averageRating,
+  hostingMonths,
+  superhost = false,
+}: MobileMeetHostProps) {
   const dict = useDictionary()
   const host = dict.rental?.host as Record<string, any> | undefined
+  const displayName =
+    hostUser?.username ?? hostUser?.email?.split("@")[0] ?? host?.hostFallback ?? "Host";
+  const avatar = hostUser?.image ?? FALLBACK_AVATAR;
   return (
     <div className="md:hidden px-4 py-6 space-y-6">
       <h1 className="text-2xl font-semibold text-gray-900">{host?.meetYourHost}</h1>
@@ -20,41 +46,49 @@ export default function MobileMeetHost() {
           <div className="relative">
             <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 relative">
               <Image
-                src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=48&h=48&fit=crop"
-                alt="Host Faisal"
+                src={avatar}
+                alt={displayName}
                 width={64}
                 height={64}
                 className="w-full h-full object-cover"
               />
             </div>
-            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#e31c5f] rounded-full flex items-center justify-center">
+            <div className="absolute -bottom-1 -end-1 w-6 h-6 bg-[#e31c5f] rounded-full flex items-center justify-center">
               <IdentityVerified className="w-3 h-3 text-white" />
             </div>
           </div>
 
           {/* Host name and superhost status */}
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-gray-900">Faisal</h2>
-            <div className="flex items-center gap-1 text-gray-600">
-              <SuperhostSimple className="w-4 h-4" />
-              <span className="text-xs">{host?.superhost}</span>
-            </div>
+            <h2 className="text-xl font-semibold text-gray-900">{displayName}</h2>
+            {superhost && (
+              <div className="flex items-center gap-1 text-gray-600">
+                <SuperhostSimple className="w-4 h-4" />
+                <span className="text-xs">{host?.superhost}</span>
+              </div>
+            )}
           </div>
 
           {/* Host stats */}
           <div className="text-end space-y-1">
-            <div>
-              <strong className="text-lg font-bold">75</strong>
-              <p className="text-xs text-gray-600">{host?.reviews}</p>
-            </div>
-            <div>
-              <strong className="text-lg font-bold">5.0</strong>
-              <p className="text-xs text-gray-600">{host?.rating}</p>
-            </div>
-            <div>
-              <strong className="text-lg font-bold">9</strong>
-              <p className="text-xs text-gray-600">{host?.months}</p>
-            </div>
+            {typeof reviewsCount === "number" && (
+              <div>
+                <strong className="text-lg font-bold">{reviewsCount}</strong>
+                <p className="text-xs text-gray-600">{host?.reviews}</p>
+              </div>
+            )}
+            {typeof averageRating === "number" && averageRating > 0 && (
+              <div>
+                <strong className="text-lg font-bold">{averageRating.toFixed(1)}</strong>
+                <p className="text-xs text-gray-600">{host?.rating}</p>
+              </div>
+            )}
+            {typeof hostingMonths === "number" && (
+              <div>
+                <strong className="text-lg font-bold">{hostingMonths}</strong>
+                <p className="text-xs text-gray-600">{host?.months}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -77,12 +111,14 @@ export default function MobileMeetHost() {
 
       {/* Host details */}
       <div className="space-y-4">
-        <div>
-          <h5 className="mb-2 text-sm font-medium">{host?.isSuperhost?.replace('{name}', 'Faisal')}</h5>
-          <p className="text-sm leading-relaxed text-gray-600">
-            {host?.superhostDescription}
-          </p>
-        </div>
+        {superhost && (
+          <div>
+            <h5 className="mb-2 text-sm font-medium">{host?.isSuperhost?.replace('{name}', displayName)}</h5>
+            <p className="text-sm leading-relaxed text-gray-600">
+              {host?.superhostDescription}
+            </p>
+          </div>
+        )}
 
         <div>
           <h5 className="mb-2 text-sm font-medium">{host?.hostDetails}</h5>
