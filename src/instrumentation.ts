@@ -7,7 +7,31 @@
 // `serverExternalPackages` in next.config.ts for ESM-only SDKs.
 
 export async function register() {
-  // No SDK to boot yet. Kept so adding one later is a one-file change.
+  // Env validation at boot — logs every invalid/missing var once per cold
+  // start instead of failing silently at first use. Node runtime only;
+  // the edge runtime gets a separate, dependency-free pass.
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { validateEnv } = await import("@/lib/env-check");
+    validateEnv();
+
+    // Rate limiting silently no-ops without Redis (fail-open). That's fine
+    // in dev; in production it means brute-force protection is OFF — make
+    // that impossible to miss in the logs.
+    if (
+      process.env.NODE_ENV === "production" &&
+      (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN)
+    ) {
+      console.error(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          level: "error",
+          msg: "rate_limit_disabled",
+          detail:
+            "UPSTASH_REDIS_REST_URL/TOKEN not set — all rate limiting fails open in production. Configure Upstash before public launch.",
+        }),
+      );
+    }
+  }
 }
 
 type RequestErrorContext = {

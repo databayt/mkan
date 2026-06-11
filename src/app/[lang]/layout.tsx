@@ -5,6 +5,8 @@ import { DictionaryProvider } from '@/components/internationalization/dictionary
 import { type Locale, localeConfig, i18n } from '@/components/internationalization/config';
 import { Providers } from '../providers';
 import { Toaster } from 'sonner';
+import { CookieBanner } from '@/components/consent/cookie-banner';
+import { ConsentAwareAnalytics } from '@/components/consent/consent-aware-analytics';
 import '../globals.css';
 
 // Enable ISR with 1-hour revalidation
@@ -77,6 +79,8 @@ export default async function LocaleLayout({
           <DictionaryProvider dictionary={dictionary}>
             {children}
             <Toaster richColors />
+            <CookieBanner />
+            <ConsentAwareAnalytics />
           </DictionaryProvider>
         </Providers>
       </body>

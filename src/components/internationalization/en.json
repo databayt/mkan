@@ -4347,5 +4347,12 @@
     "unpublishSuccess": "Listing unpublished",
     "publishCannotYet": "Finish setup before publishing",
     "publishUnknownError": "Could not publish — try again"
+  },
+  "cookieConsent": {
+    "title": "We use cookies",
+    "description": "We use cookies for sign-in, security, and to understand how the site is used. You can accept everything, only the essentials, or customize.",
+    "acceptAll": "Accept all",
+    "rejectNonEssential": "Reject non-essential",
+    "learnMore": "Learn more"
   }
 }
