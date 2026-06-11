@@ -24,8 +24,10 @@ describe("sendTwoFactorTokenEmail", () => {
   it("sends 2FA code email with correct params", async () => {
     await sendTwoFactorTokenEmail("user@test.com", "123456");
 
+    // Sender comes from EMAIL_FROM (tests/setup.ts pins it to test@example.com);
+    // the resend.dev sandbox sender is only the dev fallback.
     expect(mockSend).toHaveBeenCalledWith({
-      from: "onboarding@resend.dev",
+      from: "test@example.com",
       to: "user@test.com",
       subject: "2FA Code",
       html: expect.stringContaining("123456"),
