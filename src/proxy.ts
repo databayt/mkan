@@ -128,7 +128,10 @@ function buildCsp(options: { isDev: boolean }): string {
   return directives.join('; ');
 }
 
-function addSecurityHeaders(response: NextResponse) {
+function addSecurityHeaders(response: NextResponse, requestId?: string) {
+  // Request-id correlation: every response carries the id; downstream logs
+  // (instrumentation onRequestError) read it back off the request headers.
+  if (requestId) response.headers.set('X-Request-Id', requestId);
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -182,13 +185,20 @@ function getLocale(request: NextRequest) {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // One id per request, honored if a load balancer already assigned one.
+  const requestId = request.headers.get('x-request-id') ?? crypto.randomUUID();
+  // Forward the id to route handlers / server components via request headers.
+  const forwardHeaders = new Headers(request.headers);
+  forwardHeaders.set('x-request-id', requestId);
+  const passThrough = () => NextResponse.next({ request: { headers: forwardHeaders } });
+
   // Origin/Host check runs for every state-changing request, including API
   // routes. NextAuth's own endpoints handle CSRF via rotating tokens, so we
   // skip them here to avoid double-rejecting legitimate OAuth callbacks.
   if (!pathname.startsWith(apiAuthPrefix) && isOriginMismatch(request)) {
     return new NextResponse('Forbidden: cross-origin request blocked', {
       status: 403,
-      headers: { 'X-Mw-Ran': '1' },
+      headers: { 'X-Mw-Ran': '1', 'X-Request-Id': requestId },
     });
   }
 
@@ -199,7 +209,9 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/api') ||
     pathname.includes('.')
   ) {
-    return NextResponse.next();
+    const response = passThrough();
+    response.headers.set('X-Request-Id', requestId);
+    return response;
   }
 
   // --- Locale handling ---------------------------------------------------
@@ -226,7 +238,7 @@ export function proxy(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
     });
 
-    addSecurityHeaders(response);
+    addSecurityHeaders(response, requestId);
     return response;
   }
 
@@ -240,18 +252,18 @@ export function proxy(request: NextRequest) {
     if (loggedIn) {
       request.nextUrl.pathname = `/${locale}${DEFAULT_LOGIN_REDIRECT}`;
       const response = NextResponse.redirect(request.nextUrl);
-      addSecurityHeaders(response);
+      addSecurityHeaders(response, requestId);
       return response;
     }
-    const response = NextResponse.next();
-    addSecurityHeaders(response);
+    const response = passThrough();
+    addSecurityHeaders(response, requestId);
     return response;
   }
 
   // Public routes: always accessible
   if (isPublicRoute(path)) {
-    const response = NextResponse.next();
-    addSecurityHeaders(response);
+    const response = passThrough();
+    addSecurityHeaders(response, requestId);
     return response;
   }
 
@@ -265,14 +277,14 @@ export function proxy(request: NextRequest) {
     request.nextUrl.pathname = `/${locale}/login`;
     request.nextUrl.search = `?callbackUrl=${callbackUrl}`;
     const response = NextResponse.redirect(request.nextUrl);
-    addSecurityHeaders(response);
+    addSecurityHeaders(response, requestId);
     return response;
   }
 
   // Everything else (authenticated users on any route, anonymous users on
   // unknown paths, etc.) — let through so the app router can resolve.
-  const response = NextResponse.next();
-  addSecurityHeaders(response);
+  const response = passThrough();
+  addSecurityHeaders(response, requestId);
   return response;
 }
 

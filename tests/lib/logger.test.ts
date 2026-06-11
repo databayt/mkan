@@ -22,13 +22,29 @@ describe("logger", () => {
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining("INFO: test message"));
   });
 
-  it("warn always logs", async () => {
+  it("warn always logs (single-line JSON in production)", async () => {
     process.env.NODE_ENV = "production";
     vi.resetModules();
     const { logger } = await import("@/lib/logger");
 
     logger.warn("warning message");
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("WARN: warning message"));
+    const line = (console.warn as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const parsed = JSON.parse(line);
+    expect(parsed.level).toBe("warn");
+    expect(parsed.msg).toBe("warning message");
+  });
+
+  it("info logs in production and redacts sensitive keys", async () => {
+    process.env.NODE_ENV = "production";
+    vi.resetModules();
+    const { logger } = await import("@/lib/logger");
+
+    logger.info("payment event", { bookingId: 7, token: "secret-value" });
+    const line = (console.log as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const parsed = JSON.parse(line);
+    expect(parsed.bookingId).toBe(7);
+    expect(parsed.token).toBe("[redacted]");
+    expect(line).not.toContain("secret-value");
   });
 
   it("error logs with error details", async () => {
@@ -81,9 +97,10 @@ describe("logger", () => {
 
     // Should not throw even if Sentry is not installed
     expect(() => logger.error("production failure", err)).not.toThrow();
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("ERROR: production failure")
-    );
+    const line = (console.error as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const parsed = JSON.parse(line);
+    expect(parsed.msg).toBe("production failure");
+    expect(parsed.errorMessage).toBe("prod error");
   });
 
   it("error in production with non-Error value does not crash", async () => {

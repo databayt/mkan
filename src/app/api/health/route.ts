@@ -121,6 +121,21 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const detailed = searchParams.get('detailed') === 'true';
 
+  // Liveness probe — `?probe=live` answers "can this process serve traffic"
+  // (process up + DB reachable) without touching Redis/ImageKit, so uptime
+  // monitors and deploy gates don't flap on optional dependencies.
+  if (searchParams.get('probe') === 'live') {
+    try {
+      await db.$queryRaw`SELECT 1`;
+      return NextResponse.json(
+        { status: 'live', uptime: Math.round(process.uptime()) },
+        { headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' } },
+      );
+    } catch {
+      return NextResponse.json({ status: 'dead' }, { status: 503 });
+    }
+  }
+
   const healthData = {
     status: 'healthy' as 'healthy' | 'degraded' | 'unhealthy',
     timestamp: new Date().toISOString(),
@@ -167,6 +182,24 @@ export async function GET(request: NextRequest) {
   // Update checks based on service status
   if (healthData.services.database) {
     healthData.checks.database = healthData.services.database.status;
+  }
+
+  // Booking liveness — surfaces "no booking traffic in N hours" so on-call
+  // can spot a silent regression in the booking flow before users report it.
+  // Informational only; never fails the health check.
+  if (healthData.checks.database) {
+    try {
+      const last = await db.booking.findFirst({
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      });
+      const ageHours = last
+        ? Math.floor((Date.now() - last.createdAt.getTime()) / (1000 * 60 * 60))
+        : null;
+      healthData.services.lastBooking = { status: true, latency: ageHours ?? -1 };
+    } catch {
+      // already covered by the database check above; don't double-fail
+    }
   }
 
   // Add detailed metrics if requested
