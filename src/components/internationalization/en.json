@@ -1947,7 +1947,11 @@
       "upcoming": "Upcoming",
       "todayIllustration": "Today illustration",
       "noReservations": "You don't have any reservations",
-      "noUpcomingReservations": "You don't have any upcoming reservations"
+      "noUpcomingReservations": "You don't have any upcoming reservations",
+      "statusConfirmed": "Confirmed",
+      "statusPending": "Pending",
+      "guestsSuffix": "guests",
+      "manageListings": "Manage your listings"
     },
     "listingsPage": {
       "title": "Your listings",

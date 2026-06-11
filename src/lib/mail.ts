@@ -1,6 +1,36 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy + null-safe: `new Resend(undefined)` throws at module load, which
+// took down every route that transitively imports this file (the Stripe
+// webhook failed `next build` page-data collection). Without a key we log
+// and skip the send instead — email is best-effort, never load-bearing.
+let _resend: Resend | null | undefined;
+function getResend(): Resend | null {
+  if (_resend !== undefined) return _resend;
+  const key = process.env.RESEND_API_KEY;
+  _resend = key ? new Resend(key) : null;
+  return _resend;
+}
+
+const resend = {
+  emails: {
+    async send(payload: Parameters<Resend["emails"]["send"]>[0]) {
+      const client = getResend();
+      if (!client) {
+        console.warn(
+          JSON.stringify({
+            level: "warn",
+            msg: "email_skipped_no_api_key",
+            to: "[redacted]",
+            subject: (payload as { subject?: string }).subject,
+          }),
+        );
+        return { data: null, error: null };
+      }
+      return client.emails.send(payload);
+    },
+  },
+};
 
 const domain = process.env.NEXT_PUBLIC_APP_URL;
 

@@ -1947,7 +1947,11 @@
       "upcoming": "القادم",
       "todayIllustration": "رسم توضيحي لليوم",
       "noReservations": "ليس لديك أي حجوزات",
-      "noUpcomingReservations": "ليس لديك أي حجوزات قادمة"
+      "noUpcomingReservations": "ليس لديك أي حجوزات قادمة",
+      "statusConfirmed": "مؤكد",
+      "statusPending": "قيد الانتظار",
+      "guestsSuffix": "ضيوف",
+      "manageListings": "إدارة عقاراتك"
     },
     "listingsPage": {
       "title": "قوائمك",

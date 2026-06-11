@@ -1,16 +1,37 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
-import NotificationCard from '@/components/hosting/notification-card';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import Loading from '@/components/atom/loading';
+import { Badge } from '@/components/ui/badge';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { formatDate } from '@/lib/i18n/formatters';
+import type { Locale } from '@/components/internationalization/config';
 
-export default function HostingContent() {
-  const router = useRouter();
+export interface HostReservation {
+  id: number;
+  status: string;
+  checkIn: string;
+  checkOut: string;
+  guestCount: number;
+  totalPrice: number;
+  listingTitle: string;
+  listingPhoto: string | null;
+  guestName: string;
+  guestImage: string | null;
+}
+
+export default function HostingContent({
+  reservations = [],
+}: {
+  reservations?: HostReservation[];
+}) {
   const dict = useDictionary();
+  const params = useParams();
+  const lang = (params?.lang as Locale) ?? 'ar';
   const { session, status } = useAuthRedirect();
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming'>('today');
 
@@ -24,17 +45,24 @@ export default function HostingContent() {
     return null; // Will redirect in useEffect
   }
 
+  const t = dict.hosting?.content;
+
+  // "Today" = guests arriving, staying, or departing today; "Upcoming"
+  // = stays that start after today.
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+  const todayReservations = reservations.filter(
+    (r) => new Date(r.checkIn) <= endOfToday,
+  );
+  const upcomingReservations = reservations.filter(
+    (r) => new Date(r.checkIn) > endOfToday,
+  );
+  const visible = activeTab === 'today' ? todayReservations : upcomingReservations;
+
   return (
     <>
-      {/* Notification Row */}
-      {/* <NotificationCard
-            subtitle="hello mkan"
-            title="Confirm a few key details"
-            description="Required to publish"
-          /> */}
-
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Toggle Buttons */}
         <div className="flex justify-center items-center space-x-4 mb-8 sm:mb-16">
           <button
@@ -45,7 +73,8 @@ export default function HostingContent() {
                 : 'bg-white text-gray-600 border-gray-300 hover:text-gray-900 hover:border-gray-400'
             }`}
           >
-            {dict.hosting?.content?.today ?? "Today"}
+            {t?.today ?? "Today"}
+            {todayReservations.length > 0 ? ` (${todayReservations.length})` : ''}
           </button>
           <button
             onClick={() => setActiveTab('upcoming')}
@@ -55,31 +84,68 @@ export default function HostingContent() {
                 : 'bg-white text-gray-600 border-gray-300 hover:text-gray-900 hover:border-gray-400'
             }`}
           >
-            {dict.hosting?.content?.upcoming ?? "Upcoming"}
+            {t?.upcoming ?? "Upcoming"}
+            {upcomingReservations.length > 0 ? ` (${upcomingReservations.length})` : ''}
           </button>
         </div>
 
-        {/* Content Area */}
-        <div className="flex flex-col items-center justify-center ">
-          {/* Today Image */}
-          <div className="">
+        {visible.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {visible.map((r) => (
+              <div key={r.id} className="border rounded-xl overflow-hidden bg-card">
+                <div className="relative h-36 bg-muted">
+                  {r.listingPhoto ? (
+                    <Image
+                      src={r.listingPhoto}
+                      alt={r.listingTitle}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : null}
+                  <Badge
+                    variant={r.status === 'Confirmed' ? 'default' : 'secondary'}
+                    className="absolute top-2 start-2"
+                  >
+                    {r.status === 'Confirmed'
+                      ? (t?.statusConfirmed ?? 'Confirmed')
+                      : (t?.statusPending ?? 'Pending')}
+                  </Badge>
+                </div>
+                <div className="p-4 space-y-1">
+                  <p className="font-medium truncate">{r.listingTitle}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {r.guestName} · {r.guestCount} {t?.guestsSuffix ?? 'guests'}
+                  </p>
+                  <p className="text-sm text-muted-foreground" dir="ltr">
+                    {formatDate(new Date(r.checkIn), lang)} → {formatDate(new Date(r.checkOut), lang)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center">
             <Image
               src="/hosting/today.png"
-              alt={dict.hosting?.content?.todayIllustration ?? "Today illustration"}
+              alt={t?.todayIllustration ?? "Today illustration"}
               width={150}
               height={150}
               className="object-contain sm:w-[200px] sm:h-[200px]"
             />
+            <div className="text-center">
+              <p className="text-gray-500 text-base sm:text-lg">
+                {activeTab === 'today'
+                  ? (t?.noReservations ?? 'You don\'t have any reservations')
+                  : (t?.noUpcomingReservations ?? 'You don\'t have any upcoming reservations')}
+              </p>
+            </div>
           </div>
+        )}
 
-          {/* Empty State Text */}
-          <div className="text-center">
-            <p className="text-gray-500 text-base sm:text-lg">
-              {activeTab === 'today'
-                ? (dict.hosting?.content?.noReservations ?? 'You don\'t have any reservations')
-                : (dict.hosting?.content?.noUpcomingReservations ?? 'You don\'t have any upcoming reservations')}
-            </p>
-          </div>
+        <div className="mt-10 text-center">
+          <Link href={`/${lang}/hosting/listings`} className="text-sm underline text-muted-foreground">
+            {t?.manageListings ?? 'Manage your listings'}
+          </Link>
         </div>
       </div>
     </>

@@ -68,7 +68,7 @@ A **v1.0 was shipped 2026-04-25** (PR #2 `425d393` → `main`, Vercel `dpl_7TuHG
 
 ### 1.2 Remaining launch blockers ("do not call it production-ready until")
 
-1. **Money path: Homes ✅, Transport ⬜, refund-on-cancel ⬜** — Homes booking takes card (Stripe), reference, or cash and persists `BookingPayment` rows; webhook flips Booking → Confirmed. Transport checkout still routes to the honor-system `processPayment`. `cancelBooking` flips status only — no `processRefund` call. *(P1.S5, P3.S3)*
+1. **Money path: Homes ✅, Transport ✅, refund-on-cancel ✅** *(closed 2026-06-11)* — Homes booking takes card (Stripe), reference, or cash and persists `BookingPayment` rows; webhook flips Booking → Confirmed. Transport mirrors it: `createTransportPaymentIntent` card path, reference claims pending operator `verifyPayment`, per-office bank/momo details, no fabricated TXN. `cancelBooking` computes the policy refund (`src/lib/refund.ts`) and fires the Stripe refund; transport cancel refunds per 24h/6h policy. *(P1.S5, P3.S3)*
 2. **Refunds & cancellation policy not enforced** — `cancelBooking` flips status only; no `Refunded` enum; policy not persisted from editor. *(P3)*
 3. **Fake data on listing detail** — hardcoded reviews, "Hosted by Faisal", static map; the real review API has zero callers. *(H4, H6)*
 4. **No transactional emails** for booking/payment/application (helpers exist, uncalled; auth mail from sandbox sender). *(N1)*
@@ -179,7 +179,7 @@ Done: ✅ S3 (`requireRole` at /hosting,/managers,/tenants,/offices,/admin layou
 ### Epic F3 — Observability · P0 · ⬜ 0/8
 | Story | St | Detail |
 |---|---|---|
-| F3.S1 APM via `instrumentation.ts` (externalise OTel ESM) | ⬜ | now: no `instrumentation.ts`; Sentry removed (`next.config.ts:191`). **(launch blocker)** |
+| F3.S1 APM via `instrumentation.ts` (externalise OTel ESM) | 🟡 | 2026-06-11: `src/instrumentation.ts` ships `onRequestError` → structured JSON to Vercel logs + boot-time env validation; dedicated APM SDK still unchosen. |
 | F3.S2 Structured JSON logger + PII redaction | ⬜ | now: `logger.ts:3` plain strings. |
 | F3.S3 Request-id (ULID) via AsyncLocalStorage | ⬜ | now: none in `src`. |
 | F3.S4 `withMetrics` HOF on top actions | ⬜ | |
@@ -191,7 +191,7 @@ Done: ✅ S3 (`requireRole` at /hosting,/managers,/tenants,/offices,/admin layou
 ### Epic F4 — Legal, privacy & GDPR · P0 · ⬜ 0/7
 | Story | St | Detail |
 |---|---|---|
-| F4.S1 Cookie-consent banner (EN+AR, scoped) | ⬜ | now: none. **(launch blocker)** |
+| F4.S1 Cookie-consent banner (EN+AR, scoped) | ✅ | 2026-06-11: `consent/cookie-banner.tsx` + consent-gated Vercel Analytics. |
 | F4.S2 GDPR data-export | ⬜ | now: none; no `User.deletedAt`. |
 | F4.S3 GDPR delete/anonymise account | ⬜ | |
 | F4.S4 Rewrite privacy/terms/cookies (governing law, etc.) | 🟡 | now: ~47-line skeletons. |
@@ -238,7 +238,7 @@ Done: ✅ `createStripePaymentIntent` (`payment-actions.ts:651`), ✅ `handleStr
 
 | Story | St | Detail |
 |---|---|---|
-| P1.S5 Transport checkout = real card path | ⬜ | now: routes to honor-system `processPayment`. **(launch blocker)** |
+| P1.S5 Transport checkout = real card path | ✅ | 2026-06-11: `createTransportPaymentIntent` + `TransportCardCheckout`; webhook confirms booking + seats; fake TXN removed. |
 | P1.S6 Idempotency-Key in `createBooking` | ⬜ | now: no idempotency. (Note: webhook itself is idempotent via Stripe event_id semantics + `$transaction`.) |
 | P1.S7 3-D Secure verified | 🟡 | `confirmPayment({ redirect: 'if_required' })` handles SCA in-page. Needs a test-card matrix run. |
 | P1.S8 Test/live env switch; never log card meta | 🟡 | server keys switch; verify in CI. |
@@ -248,7 +248,7 @@ Done (2026-05-24): ✅ S1 `BookingPaymentMethod`/`BookingPaymentStatus` enums + 
 
 | Story | St | Detail |
 |---|---|---|
-| P2.S5b Per-host bank details (drop hardcoded `1234567890`) | ⬜ | now: transport checkout (`transport/booking/checkout/content.tsx:258`) hardcoded; Homes reference form shows generic instruction. Needs `Listing.payoutDetails` (or per-host model). |
+| P2.S5b Per-host bank details (drop hardcoded `1234567890`) | 🟡 | 2026-06-11: transport checkout reads office `bankName/bankAccount/bankHolder/momoNumber`; operators edit them on office-info. Homes reference form still generic. |
 | P2.S6 Cash-on-arrival operator confirm + reminder | 🟡 | Booking cash path persisted ✅ (`createBookingCashPayment`); host-confirms-receipt action + SMS reminder still ⬜. |
 | P2.S7 Admin verification **UI** | ⬜ | server action exists; `/admin/payments` is still a read-only ledger — needs a "Pending verification" tab + Approve/Reject buttons calling `verifyBookingPayment`. |
 | P2.S2/S3 Real Bankak/MTN provider clients | ⬜ | (no public API — reference flow is the design.) |
@@ -260,7 +260,7 @@ Done: ✅ `processRefund` (`payment-actions.ts:789`, admin-gated, real `stripe.r
 |---|---|---|
 | P3.S1 Add `Refunded` to `PaymentStatus` enum | ⬜ | now: enum is Pending/Paid/PartiallyPaid/Overdue; webhook `charge.refunded` sets lease back to `Pending` as a hack (`:770`). |
 | P3.S2 Persist `Listing.cancellationPolicy` from editor | 🟡 | now: column+enum exist; editor uses local `useState` + a save button calling **no action**. |
-| P3.S3 Compute refund eligibility in `cancelBooking` | ⬜ | now: `booking-actions.ts:470` flips status only. **(launch blocker)** |
+| P3.S3 Compute refund eligibility in `cancelBooking` | ✅ | 2026-06-11: `src/lib/refund.ts` policy calculator + automatic Stripe refund against the paid card intent. |
 | P3.S4 Transport cancellation policy + refund | ⬜ | |
 | P3.S5 Capture `cancellationReason`/`cancelledBy` | ⬜ | |
 | P3.S6 Cancellation email/notification both sides | ⬜ | depends N1/N3. |
@@ -323,11 +323,11 @@ Done: ✅ Real Mapbox search map (`listings/search-map.tsx`).
 Done: ✅ `/listings/[id]/photos` route exists.
 | Story | St | Detail |
 |---|---|---|
-| H4.S1 Reviews from `getListingReviews`/`getReviewSummary` | ⬜ | now: `atom/reviews.tsx` hardcoded (4.85, cleanliness 4.9…). **(launch blocker — fake data)** |
+| H4.S1 Reviews from `getListingReviews`/`getReviewSummary` | ✅ | 2026-06-11: server-rendered `Review` slot + real MobileReviews; fabricated `atom/reviews.tsx` breakdown removed from detail page. |
 | H4.S2 Real `listing.host` (not "Faisal") | ⬜ | now: `hosted-by.tsx` hardcoded Faisal + Unsplash. |
 | H4.S3 Computed `isSuperhost` | 🟡 | derived proxy, not a program. |
 | H4.S4 `isSaved` from server | 🟡 | from localStorage. |
-| H4.S5 `handleSave` → `addFavoriteProperty` | 🟡 | now: writes localStorage, doesn't call the (existing) action `user-actions.ts:528`. |
+| H4.S5 `handleSave` → `addFavoriteProperty` | ✅ | 2026-06-11: optimistic DB favorite for signed-in users (+`initialIsSaved` from server); localStorage only when anonymous. |
 | H4.S6 Photo lightbox modal | 🟡 | now: `listing-details-client.tsx:57` scrolls instead. |
 | H4.S8 Share button | ⬜ | |
 | H4.S9 "Report this listing" → moderation | ⬜ | depends A2. |
@@ -369,7 +369,7 @@ Done: ✅ S1 trips cancel uses correct action per type (stays→`cancelBooking`;
 ### Epic H9 — Host dashboard & calendar · P0 · ⬜ 0/8  ·  *(BMAD Epic 5 — ship-readiness marked 🟢, actually stubs)*
 | Story | St | Detail |
 |---|---|---|
-| H9.S1 Today page: real check-ins via `getHostBookings` | ⬜ | now: `hosting/content.tsx` static illustration. **(launch blocker)** |
+| H9.S1 Today page: real check-ins via `getHostBookings` | ✅ | 2026-06-11: `/hosting` queries live Pending/Confirmed bookings, partitions Today/Upcoming, renders cards; empty state kept. |
 | H9.S2 Multi-listing calendar (drag-to-block) | ⬜ | now: `hosting/calendar/page.tsx:43` hardcoded 35-cell grid. |
 | H9.S3 Bookings list page | ⬜ | action exists, unconsumed. |
 | H9.S4 Earnings page + CSV | ⬜ | no route. |
@@ -391,7 +391,7 @@ Done: ✅ S1 trips cancel uses correct action per type (stays→`cancelBooking`;
 ### Epic T1 — Operator onboarding & verification · P0 · ⬜ 0/7
 | Story | St | Detail |
 |---|---|---|
-| T1.S1 `verifyTransportOffice` admin action | ⬜ | now: only `forceUnpublishOffice`/`adminDeleteOffice`. **(launch blocker)** |
+| T1.S1 `verifyTransportOffice` admin action | ✅ | 2026-06-11: `verifyOffice`/`unverifyOffice` + admin button; `searchTrips` gates on `office.isVerified`. |
 | T1.S2 Exclude `isVerified=false` from search/public | ⬜ | now: `getOffices` filters `isActive` only; `isVerified` drives a badge. |
 | T1.S3 License-doc upload before review | ⬜ | now: `licenseNumber` free-text. |
 | T1.S4 Defer office row creation | ⬜ | now: `transport-host/overview:23` creates placeholder on entry. |
