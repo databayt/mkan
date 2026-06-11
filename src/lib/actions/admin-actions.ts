@@ -246,6 +246,95 @@ export async function adminDeleteOffice(officeId: unknown) {
   return { success: true };
 }
 
+/**
+ * Mark a transport office as verified. Admin-only. Verification is the
+ * gating signal for public search — `searchTrips` filters by
+ * `route.office.isVerified=true` so unverified operators stay invisible
+ * even if they're active.
+ */
+export async function verifyOffice(officeId: unknown) {
+  const session = await requireAdminSession();
+  const id = officeIdSchema.parse(officeId);
+
+  const office = await db.transportOffice.update({
+    where: { id },
+    data: { isVerified: true, isActive: true },
+    select: { id: true, name: true, ownerId: true },
+  });
+  audit("office.verify", session.user!.id!, { officeId: id });
+
+  revalidatePath("/admin/transport");
+  revalidatePath(`/admin/transport/${id}`);
+  revalidatePath("/transport/offices");
+  revalidatePath("/transport/search");
+  return { success: true, office };
+}
+
+export async function unverifyOffice(officeId: unknown, reason?: string) {
+  const session = await requireAdminSession();
+  const id = officeIdSchema.parse(officeId);
+
+  await db.transportOffice.update({
+    where: { id },
+    data: { isVerified: false },
+  });
+  audit("office.unverify", session.user!.id!, { officeId: id, reason });
+
+  revalidatePath("/admin/transport");
+  revalidatePath(`/admin/transport/${id}`);
+  revalidatePath("/transport/offices");
+  revalidatePath("/transport/search");
+  return { success: true };
+}
+
+// ============================================
+// PLATFORM SETTINGS
+// ============================================
+
+const platformSettingsSchema = z.object({
+  platformFeePct: z.number().min(0).max(1),
+  defaultCancellationPolicy: z.enum([
+    "Flexible",
+    "Moderate",
+    "Firm",
+    "Strict",
+    "NonRefundable",
+  ]),
+  supportedCurrencies: z.string().max(200),
+  payoutScheduleDays: z.number().int().min(0).max(365),
+  emailFrom: z.string().max(200),
+  supportEmail: z.string().max(200),
+});
+
+/**
+ * Read the singleton PlatformSetting row, lazily creating id=1 on first
+ * call so the rest of the app can rely on it always existing.
+ */
+export async function getPlatformSettings() {
+  await requireAdminSession();
+  const existing = await db.platformSetting.findUnique({ where: { id: 1 } });
+  if (existing) return existing;
+  return db.platformSetting.create({ data: { id: 1 } });
+}
+
+export async function updatePlatformSettings(input: unknown) {
+  const session = await requireAdminSession();
+  const parsed = platformSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: "invalid", issues: parsed.error.issues };
+  }
+
+  const updated = await db.platformSetting.upsert({
+    where: { id: 1 },
+    create: { id: 1, ...parsed.data },
+    update: parsed.data,
+  });
+  audit("platform.settings.update", session.user!.id!, parsed.data);
+
+  revalidatePath("/admin/settings");
+  return { ok: true as const, settings: updated };
+}
+
 export async function listAllListingsAdmin({
   q,
   page = 1,
