@@ -4,10 +4,12 @@ import { z } from "zod";
 import { auth, canOverride } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath, updateTag } from "next/cache";
-import { BookingStatus } from "@prisma/client";
+import { BookingPaymentStatus, BookingStatus } from "@prisma/client";
 import { logger } from "@/lib/logger";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { notifyHomeBookingConfirmed } from "@/lib/notifications/booking";
+import { computeRefundAmount } from "@/lib/refund";
+import { getStripe } from "@/lib/stripe";
 
 // ============================================
 // SCHEMAS
@@ -488,7 +490,10 @@ export async function cancelBooking(id: unknown) {
       where: { id: parsedId.data },
       include: {
         listing: {
-          select: { hostId: true },
+          select: { hostId: true, cancellationPolicy: true },
+        },
+        payments: {
+          where: { status: BookingPaymentStatus.Paid },
         },
       },
     });
@@ -510,6 +515,22 @@ export async function cancelBooking(id: unknown) {
       throw new Error("Completed bookings cannot be cancelled");
     }
 
+    // What is the guest owed back? Policy semantics live in the pure
+    // calculator; totalPaid is what actually cleared, not the quoted price.
+    const totalPaid = booking.payments.reduce((sum, p) => sum + p.amount, 0);
+    const hoursBeforeCheckIn = Math.floor(
+      (booking.checkIn.getTime() - Date.now()) / (1000 * 60 * 60),
+    );
+    const refundQuote = computeRefundAmount({
+      policy: booking.listing.cancellationPolicy,
+      totalPaid,
+      cleaningFee: booking.cleaningFee,
+      hoursBeforeCheckIn,
+    });
+
+    // Cancel first, refund second: a cancelled booking with a pending manual
+    // refund is recoverable (admin payments page), a refunded-but-active
+    // booking is not.
     const updated = await db.booking.update({
       where: { id: parsedId.data },
       data: {
@@ -518,10 +539,46 @@ export async function cancelBooking(id: unknown) {
       },
     });
 
+    // Fire the Stripe refund for the card payment, best-effort. The
+    // charge.refunded webhook flips BookingPayment to Refunded with the
+    // actual amount, so we don't mutate the row here. Non-card payments
+    // (cash, bank reference) have no intent — those stay refundIssued:false
+    // and are settled manually by the operator/admin.
+    let refundIssued = false;
+    if (refundQuote.refundAmount > 0) {
+      const cardPayment = booking.payments.find((p) => p.intentId);
+      if (cardPayment?.intentId) {
+        try {
+          const cardShare = Math.min(refundQuote.refundAmount, cardPayment.amount);
+          await getStripe().refunds.create({
+            payment_intent: cardPayment.intentId,
+            amount: Math.round(cardShare * 100),
+            reason: "requested_by_customer",
+          });
+          refundIssued = true;
+        } catch (err) {
+          logger.error("booking_cancel_refund_failed", {
+            bookingId: parsedId.data,
+            intentId: cardPayment.intentId,
+            error: String(err),
+          });
+        }
+      }
+    }
+
+    logger.info("booking_cancelled", {
+      bookingId: parsedId.data,
+      hoursBeforeCheckIn,
+      totalPaid,
+      refundAmount: refundQuote.refundAmount,
+      refundIssued,
+      policy: booking.listing.cancellationPolicy ?? "Flexible",
+    });
+
     revalidatePath("/bookings");
     revalidatePath("/hosting/bookings");
 
-    return { success: true, booking: updated };
+    return { success: true, booking: updated, refund: { ...refundQuote, refundIssued } };
   } catch (error) {
     logger.error("Error cancelling booking:", error);
     throw new Error(

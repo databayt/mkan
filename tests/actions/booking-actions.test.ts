@@ -17,6 +17,14 @@ vi.mock("@prisma/client", () => ({
     Completed: "Completed",
     Declined: "Declined",
   },
+  BookingPaymentStatus: {
+    Pending: "Pending",
+    PendingVerification: "PendingVerification",
+    Paid: "Paid",
+    Failed: "Failed",
+    Refunded: "Refunded",
+    PartiallyRefunded: "PartiallyRefunded",
+  },
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -488,7 +496,10 @@ describe("cancelBooking", () => {
       id: 1,
       guestId: "guest-1",
       status: BookingStatus.Confirmed,
-      listing: { hostId: "host-1" },
+      checkIn: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      cleaningFee: 0,
+      listing: { hostId: "host-1", cancellationPolicy: "Flexible" },
+      payments: [],
     } as never);
     mockDb.booking.update.mockResolvedValue({ id: 1, status: BookingStatus.Cancelled } as never);
 
@@ -508,13 +519,17 @@ describe("cancelBooking", () => {
       id: 1,
       guestId: "guest-1",
       status: BookingStatus.Pending,
-      listing: { hostId: "host-1" },
+      checkIn: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      cleaningFee: 0,
+      listing: { hostId: "host-1", cancellationPolicy: "Flexible" },
+      payments: [],
     } as never);
     mockDb.booking.update.mockResolvedValue({ id: 1, status: BookingStatus.Cancelled } as never);
 
     const result = await cancelBooking(1);
 
     expect(result).toHaveProperty("success", true);
+    expect(result).toHaveProperty("refund");
   });
 });
 
