@@ -41,6 +41,7 @@ import type {
 } from '@/lib/schemas/transport-schemas';
 import { sanitizeInput, sanitizeEmail, sanitizePhone } from "@/lib/sanitization";
 import { logger } from "@/lib/logger";
+import { getStripe } from "@/lib/stripe";
 
 const idSchema = z.number().int().positive();
 
@@ -1351,6 +1352,17 @@ export async function releaseExpiredSeatHolds() {
   return { success: true, released: seatIds.length, bookingsCancelled: bookingIds.length };
 }
 
+/**
+ * Transport refund policy: full refund 24h+ before departure, 50% between
+ * 24h and 6h, nothing within 6 hours. Pure so it's testable with a fixed
+ * clock.
+ */
+export async function computeTransportRefund(totalPaid: number, hoursBeforeDeparture: number) {
+  if (totalPaid <= 0 || hoursBeforeDeparture < 6) return 0;
+  if (hoursBeforeDeparture >= 24) return totalPaid;
+  return Math.round(totalPaid * 0.5 * 100) / 100;
+}
+
 export async function cancelBooking(id: number) {
   const session = await auth();
 
@@ -1362,6 +1374,7 @@ export async function cancelBooking(id: number) {
     where: { id },
     include: {
       seats: true,
+      payments: true,
       trip: { include: { route: { include: { office: true } } } },
     },
   });
@@ -1375,6 +1388,15 @@ export async function cancelBooking(id: number) {
   const isOperatorOrAdmin = canOverride(session, booking.trip.route.office.ownerId);
   if (!isOwner && !isOperatorOrAdmin) {
     throw new Error('Not authorized to cancel this booking');
+  }
+
+  // Idempotency: a second cancel must not release seats again or increment
+  // availableSeats twice.
+  if (booking.status === 'Cancelled') {
+    return { success: true, booking, refundAmount: 0 };
+  }
+  if (booking.status === 'Completed') {
+    throw new Error('Completed bookings cannot be cancelled');
   }
 
   // Release seats
@@ -1405,8 +1427,42 @@ export async function cancelBooking(id: number) {
     },
   });
 
+  // Refund what actually cleared, per the transport policy (full 24h+
+  // before departure, 50% 24–6h, none <6h). Card payments carry a Stripe
+  // intent id in transactionId — those refund automatically and the
+  // charge.refunded webhook flips the TransportPayment row. Cash/transfer
+  // payments are settled manually by the operator.
+  const paidCard = booking.payments.find(
+    (p) => p.status === 'Paid' && p.transactionId?.startsWith('pi_'),
+  );
+  let refundAmount = 0;
+  if (paidCard?.transactionId) {
+    const departure = new Date(booking.trip.departureDate);
+    const [h, m] = (booking.trip.departureTime ?? '00:00').split(':').map(Number);
+    departure.setHours(h || 0, m || 0, 0, 0);
+    const hoursBeforeDeparture = (departure.getTime() - Date.now()) / (1000 * 60 * 60);
+    refundAmount = await computeTransportRefund(paidCard.amount, hoursBeforeDeparture);
+
+    if (refundAmount > 0) {
+      try {
+        await getStripe().refunds.create({
+          payment_intent: paidCard.transactionId,
+          amount: Math.round(refundAmount * 100),
+          reason: 'requested_by_customer',
+        });
+      } catch (err) {
+        logger.error('transport_cancel_refund_failed', {
+          bookingId: id,
+          intentId: paidCard.transactionId,
+          error: String(err),
+        });
+        refundAmount = 0;
+      }
+    }
+  }
+
   revalidatePath('/[lang]/transport');
-  return { success: true, booking: updatedBooking };
+  return { success: true, booking: updatedBooking, refundAmount };
 }
 
 export async function getBooking(id: number) {
@@ -1635,28 +1691,56 @@ export async function processPayment(bookingId: number, data: PaymentFormData) {
     throw new Error('Not authorized to process payment for this booking');
   }
 
-  // Create payment record
+  // Card payments go through Stripe (createTransportPaymentIntent +
+  // webhook confirmation) — never through this manual path.
+  if (data.method === 'CreditCard' || data.method === 'DebitCard') {
+    throw new Error('Card payments must use the card checkout');
+  }
+
+  // No money moves through this action. MobileMoney and BankTransfer record
+  // the payer's claim (their transfer/wallet reference) and wait for the
+  // operator to verify it via verifyPayment; CashOnArrival waits for the
+  // passenger at the office. Nothing is marked Paid and nothing is
+  // auto-confirmed here — that was the honor-system hole that fabricated
+  // TXN-{ts}-{rand} ids and confirmed unpaid bookings.
+  const reference =
+    data.method === 'MobileMoney'
+      ? (data.bankReference || data.mobileMoneyNumber || null)
+      : data.method === 'BankTransfer'
+        ? data.bankReference || null
+        : null;
+
+  if (data.method === 'BankTransfer' && !reference) {
+    throw new Error('A transfer reference is required for bank transfer payments');
+  }
+  if (data.method === 'MobileMoney' && !reference) {
+    throw new Error('A mobile money number or transaction reference is required');
+  }
+
   const payment = await db.transportPayment.create({
     data: {
       bookingId,
       amount: booking.totalAmount,
       method: data.method,
-      status: data.method === 'CashOnArrival' ? 'Pending' : 'Paid',
-      paidAt: data.method === 'CashOnArrival' ? null : new Date(),
-      transactionId:
-        data.method === 'CashOnArrival'
-          ? null
-          : `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      status: 'Pending',
+      transactionId: reference,
     },
   });
 
-  // If payment is successful (not cash on arrival), confirm booking
+  // A submitted payment claim earns a longer seat hold than the 30-minute
+  // checkout TTL, so the sweeper doesn't release seats the passenger
+  // already paid for while the operator verifies the reference. Cash
+  // bookings keep the short hold — the copy tells passengers to arrive
+  // early and pay at the office.
   if (data.method !== 'CashOnArrival') {
-    await confirmBooking(bookingId);
+    await db.seat.updateMany({
+      where: { bookingId, status: 'Reserved' },
+      data: { reservedUntil: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+    });
   }
 
   revalidatePath('/[lang]/transport');
-  return { success: true, payment };
+  return { success: true, payment, pendingVerification: data.method !== 'CashOnArrival' };
 }
 
 export async function verifyPayment(paymentId: number) {

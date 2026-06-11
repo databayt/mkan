@@ -30,6 +30,11 @@ const OfficeInfoPage = () => {
         description: z.string().optional(),
         descriptionAr: z.string().optional(),
         licenseNumber: z.string().optional(),
+        bankName: z.string().optional(),
+        bankAccount: z.string().optional(),
+        bankHolder: z.string().optional(),
+        momoNumber: z.string().optional(),
+        momoProvider: z.string().optional(),
       }),
     [t]
   );
@@ -52,6 +57,11 @@ const OfficeInfoPage = () => {
       description: '',
       descriptionAr: '',
       licenseNumber: '',
+      bankName: '',
+      bankAccount: '',
+      bankHolder: '',
+      momoNumber: '',
+      momoProvider: '',
     },
   });
 
@@ -65,6 +75,11 @@ const OfficeInfoPage = () => {
         description: office.description || '',
         descriptionAr: office.descriptionAr || '',
         licenseNumber: office.licenseNumber || '',
+        bankName: office.bankName || '',
+        bankAccount: office.bankAccount || '',
+        bankHolder: office.bankHolder || '',
+        momoNumber: office.momoNumber || '',
+        momoProvider: office.momoProvider || '',
       });
     }
   }, [office, reset]);
@@ -90,6 +105,11 @@ const OfficeInfoPage = () => {
           description: watchedValues.description || null,
           descriptionAr: watchedValues.descriptionAr || null,
           licenseNumber: watchedValues.licenseNumber || null,
+          bankName: watchedValues.bankName || '',
+          bankAccount: watchedValues.bankAccount || '',
+          bankHolder: watchedValues.bankHolder || '',
+          momoNumber: watchedValues.momoNumber || '',
+          momoProvider: watchedValues.momoProvider || '',
         });
       }
     }, 500);
@@ -187,6 +207,44 @@ const OfficeInfoPage = () => {
               rows={4}
               dir="rtl"
             />
+          </div>
+
+          {/* Payment instructions surfaced on the booking checkout. Leaving a
+              section blank hides that payment rail for this office. */}
+          <div className="space-y-4 border-t pt-6">
+            <div>
+              <h4 className="font-medium">{t?.paymentTitle ?? "Payment details"}</h4>
+              <p className="text-sm text-muted-foreground">
+                {t?.paymentSubtitle ??
+                  "Travelers paying by bank transfer or mobile money send to these accounts. Leave blank to hide a method."}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bankName">{t?.bankNameLabel ?? "Bank name"}</Label>
+                <Input id="bankName" {...register('bankName')} placeholder={t?.bankNamePlaceholder ?? "e.g., Bank of Khartoum"} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bankAccount">{t?.bankAccountLabel ?? "Account number"}</Label>
+                <Input id="bankAccount" {...register('bankAccount')} dir="ltr" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bankHolder">{t?.bankHolderLabel ?? "Account holder name"}</Label>
+              <Input id="bankHolder" {...register('bankHolder')} />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="momoProvider">{t?.momoProviderLabel ?? "Mobile money provider"}</Label>
+                <Input id="momoProvider" {...register('momoProvider')} placeholder={t?.momoProviderPlaceholder ?? "e.g., Bankak, MTN MoMo"} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="momoNumber">{t?.momoNumberLabel ?? "Wallet number"}</Label>
+                <Input id="momoNumber" {...register('momoNumber')} dir="ltr" />
+              </div>
+            </div>
           </div>
       </div>
     </HostStepLayout>

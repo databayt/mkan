@@ -20,6 +20,11 @@ export interface TransportOfficeData {
   email: string;
   licenseNumber?: string | null;
   assemblyPointId?: number | null;
+  bankName?: string;
+  bankAccount?: string;
+  bankHolder?: string;
+  momoNumber?: string;
+  momoProvider?: string;
   isVerified?: boolean;
   isActive?: boolean;
   createdAt?: Date;

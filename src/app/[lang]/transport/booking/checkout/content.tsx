@@ -22,6 +22,7 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { getBooking, processPayment } from '@/lib/actions/transport-actions';
+import { TransportCardCheckout } from '@/components/transport/card-checkout';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 type PaymentMethod = 'MobileMoney' | 'CreditCard' | 'BankTransfer' | 'CashOnArrival';
@@ -56,6 +57,7 @@ function CheckoutInner({ showCard }: { showCard: boolean }) {
   const [processing, setProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('MobileMoney');
   const [mobileNumber, setMobileNumber] = useState('');
+  const [bankReference, setBankReference] = useState('');
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -82,10 +84,16 @@ function CheckoutInner({ showCard }: { showCard: boolean }) {
       const result = await processPayment(booking.id, {
         method: paymentMethod,
         mobileMoneyNumber: paymentMethod === 'MobileMoney' ? mobileNumber : undefined,
+        bankReference: bankReference || undefined,
       });
 
       if (result.success) {
-        toast.success(t?.bookingPage?.paymentSuccess ?? "Payment successful");
+        toast.success(
+          result.pendingVerification
+            ? (c?.submittedForVerification ??
+                "Payment submitted — the operator will verify it and confirm your booking.")
+            : (t?.bookingPage?.paymentSuccess ?? "Payment successful")
+        );
         router.push(`/${locale}/transport/booking/${booking.id}`);
       } else {
         toast.error(t?.bookingPage?.paymentFailed ?? "Payment failed. Please try again.");
@@ -97,6 +105,12 @@ function CheckoutInner({ showCard }: { showCard: boolean }) {
       setProcessing(false);
     }
   };
+
+  // Per-operator payment instructions live on the office row — empty
+  // strings mean the operator hasn't published details yet.
+  const office = booking?.trip.route.office;
+  const hasBankDetails = Boolean(office?.bankName && office?.bankAccount);
+  const hasMomoDetails = Boolean(office?.momoNumber);
 
   if (loading) {
     return (
@@ -164,13 +178,31 @@ function CheckoutInner({ showCard }: { showCard: boolean }) {
             <Card>
               <CardHeader>
                 <CardTitle>{c?.mobileMoneyDetails ?? "Mobile Money Details"}</CardTitle>
-                <CardDescription>{c?.enterMobileNumber ?? "Enter your mobile money number"}</CardDescription>
+                <CardDescription>
+                  {hasMomoDetails
+                    ? (c?.momoSendTo ?? "Send the total to the operator's wallet, then enter your number below")
+                    : (c?.enterMobileNumber ?? "Enter your mobile money number")}
+                </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {hasMomoDetails && office && (
+                  <div className="bg-muted p-4 rounded-lg space-y-2">
+                    {office.momoProvider ? (
+                      <div className="flex justify-between"><span className="text-muted-foreground">{c?.momoProviderLabel ?? "Provider"}</span><span className="font-medium">{office.momoProvider}</span></div>
+                    ) : null}
+                    <div className="flex justify-between"><span className="text-muted-foreground">{c?.momoNumberLabel ?? "Wallet number"}</span><span className="font-medium font-mono" dir="ltr">{office.momoNumber}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">{c?.reference ?? "Reference"}</span><span className="font-medium font-mono" dir="ltr">{booking.bookingReference}</span></div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="mobile">{c?.mobileNumber ?? "Mobile Number"}</Label>
                   <Input id="mobile" value={mobileNumber} onChange={(e) => setMobileNumber(e.target.value)} placeholder="e.g., 0912345678" dir="ltr" />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="momo-ref">{c?.transferReference ?? "Transaction reference (optional)"}</Label>
+                  <Input id="momo-ref" value={bankReference} onChange={(e) => setBankReference(e.target.value)} placeholder={c?.transferReferencePlaceholder ?? "e.g., MM-20260611-1234"} dir="ltr" />
+                </div>
+                <p className="text-sm text-muted-foreground">{c?.verificationNote ?? "Your booking is confirmed once the operator verifies the payment."}</p>
               </CardContent>
             </Card>
           )}
@@ -182,13 +214,52 @@ function CheckoutInner({ showCard }: { showCard: boolean }) {
                 <CardDescription>{c?.transferTo ?? "Transfer to the following account"}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="bg-muted p-4 rounded-lg space-y-2">
-                  <div className="flex justify-between"><span className="text-muted-foreground">{c?.bankName ?? "Bank Name"}</span><span className="font-medium">Bank of Khartoum</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">{c?.accountName ?? "Account Name"}</span><span className="font-medium">Mkan Transport Services</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">{c?.accountNumber ?? "Account Number"}</span><span className="font-medium font-mono" dir="ltr">1234567890</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">{c?.reference ?? "Reference"}</span><span className="font-medium font-mono" dir="ltr">{booking.bookingReference}</span></div>
-                </div>
-                <p className="text-sm text-muted-foreground">{c?.includeReference ?? "Please include the booking reference in your transfer description. Your booking will be confirmed once payment is verified."}</p>
+                {hasBankDetails && office ? (
+                  <>
+                    <div className="bg-muted p-4 rounded-lg space-y-2">
+                      <div className="flex justify-between"><span className="text-muted-foreground">{c?.bankName ?? "Bank Name"}</span><span className="font-medium">{office.bankName}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">{c?.accountName ?? "Account Name"}</span><span className="font-medium">{office.bankHolder || office.name}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">{c?.accountNumber ?? "Account Number"}</span><span className="font-medium font-mono" dir="ltr">{office.bankAccount}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">{c?.reference ?? "Reference"}</span><span className="font-medium font-mono" dir="ltr">{booking.bookingReference}</span></div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bank-ref">{c?.transferReference ?? "Your transfer reference"}</Label>
+                      <Input id="bank-ref" value={bankReference} onChange={(e) => setBankReference(e.target.value)} placeholder={c?.transferReferencePlaceholder ?? "e.g., MM-20260611-1234"} dir="ltr" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">{c?.includeReference ?? "Please include the booking reference in your transfer description. Your booking will be confirmed once payment is verified."}</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {c?.noBankDetails ?? "This operator hasn't published bank transfer details yet. Please pick another payment method or contact the office."}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {paymentMethod === 'CreditCard' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{c?.cardDetails ?? "Card Payment"}</CardTitle>
+                <CardDescription>{c?.cardSubtitle ?? "Pay securely with your card"}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <TransportCardCheckout
+                  bookingId={booking.id}
+                  amount={booking.totalAmount}
+                  currency="SDG"
+                  labels={{
+                    pay: c?.pay ?? "Pay",
+                    processing: c?.processing ?? "Processing...",
+                    loading: c?.cardLoading ?? "Preparing secure payment...",
+                    configMissing: c?.cardConfigMissing ?? "Card payments are not available right now.",
+                    errorPrefix: c?.cardError ?? "Payment error",
+                  }}
+                  onSuccess={() => {
+                    toast.success(t?.bookingPage?.paymentSuccess ?? "Payment successful");
+                    router.push(`/${locale}/transport/booking/${booking.id}`);
+                  }}
+                />
               </CardContent>
             </Card>
           )}
@@ -207,9 +278,24 @@ function CheckoutInner({ showCard }: { showCard: boolean }) {
             </Card>
           )}
 
-          <Button className="w-full" size="lg" onClick={handlePayment} disabled={processing || (paymentMethod === 'MobileMoney' && !mobileNumber)}>
-            {processing ? (c?.processing ?? "Processing...") : `${c?.pay ?? "Pay"} SDG ${booking.totalAmount.toLocaleString()}`}
-          </Button>
+          {paymentMethod !== 'CreditCard' && (
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handlePayment}
+              disabled={
+                processing ||
+                (paymentMethod === 'MobileMoney' && !mobileNumber) ||
+                (paymentMethod === 'BankTransfer' && (!hasBankDetails || !bankReference))
+              }
+            >
+              {processing
+                ? (c?.processing ?? "Processing...")
+                : paymentMethod === 'CashOnArrival'
+                  ? (c?.reserveSeats ?? "Reserve seats")
+                  : `${c?.pay ?? "Pay"} SDG ${booking.totalAmount.toLocaleString()}`}
+            </Button>
+          )}
 
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Shield className="h-4 w-4" />

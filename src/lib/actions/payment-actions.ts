@@ -701,10 +701,29 @@ export async function handleStripeWebhook(payload: string, signature: string) {
     return { ok: false as const, error: "invalid_signature" };
   }
 
-  // Idempotency: skip if event already processed.
-  // We use Payment.transactionId / TransportPayment.transactionId as the
-  // store of the Stripe charge id. A second delivery of the same event
-  // is a no-op.
+  // Idempotency: insert into WebhookEvent by `eventId @unique`. A duplicate
+  // delivery hits the unique constraint, we catch P2002, and return ok
+  // without re-running side effects. Other DB errors surface so Stripe
+  // retries the delivery.
+  try {
+    await db.webhookEvent.create({
+      data: {
+        provider: "stripe",
+        eventId: event.id,
+        eventType: event.type,
+        payload: JSON.parse(JSON.stringify(event)),
+      },
+    });
+  } catch (err) {
+    const code = (err as { code?: string })?.code;
+    if (code === "P2002" || (err instanceof Error && err.message.includes("P2002"))) {
+      logger.info("stripe_webhook_duplicate", { eventId: event.id, type: event.type });
+      return { ok: true as const };
+    }
+    logger.error("stripe_webhook_log_failed", { eventId: event.id, error: String(err) });
+    throw err;
+  }
+
   switch (event.type) {
     case "payment_intent.succeeded": {
       const intent = event.data.object;
@@ -725,15 +744,46 @@ export async function handleStripeWebhook(payload: string, signature: string) {
         });
         logger.info("stripe_lease_payment_paid", { paymentId, intentId: intent.id });
       } else if (kind === "transport_booking" && transportPaymentId) {
-        await db.transportPayment.update({
-          where: { id: Number(transportPaymentId) },
-          data: {
-            status: "Paid",
-            transactionId: intent.id,
-            paidAt: new Date(),
-          },
+        // Resolve the booking id from metadata when present (new intents)
+        // or from the payment row (legacy intents created before the
+        // confirm-on-webhook upgrade).
+        const transportBookingId = intent.metadata?.transportBookingId
+          ? Number(intent.metadata.transportBookingId)
+          : (
+              await db.transportPayment.findUnique({
+                where: { id: Number(transportPaymentId) },
+                select: { bookingId: true },
+              })
+            )?.bookingId;
+
+        await db.$transaction([
+          db.transportPayment.update({
+            where: { id: Number(transportPaymentId) },
+            data: {
+              status: "Paid",
+              transactionId: intent.id,
+              paidAt: new Date(),
+            },
+          }),
+          ...(transportBookingId
+            ? [
+                db.transportBooking.update({
+                  where: { id: transportBookingId },
+                  data: { status: "Confirmed", confirmedAt: new Date() },
+                }),
+                // The booking is now permanently held — clear the checkout TTL.
+                db.seat.updateMany({
+                  where: { bookingId: transportBookingId },
+                  data: { status: "Booked", reservedUntil: null },
+                }),
+              ]
+            : []),
+        ]);
+        logger.info("stripe_transport_paid", {
+          transportPaymentId,
+          transportBookingId,
+          intentId: intent.id,
         });
-        logger.info("stripe_transport_paid", { transportPaymentId, intentId: intent.id });
       } else if (kind === "booking_payment" && bookingPaymentId && bookingId) {
         // Atomically mark the BookingPayment Paid and flip the Booking to
         // Confirmed. Idempotent: a re-delivered webhook hits the same
@@ -1233,4 +1283,107 @@ export async function verifyBookingPayment(input: unknown) {
   revalidatePath("/admin/payments");
   revalidatePath(`/bookings/${payment.bookingId}`);
   return { ok: true as const };
+}
+
+// ============================================
+// TRANSPORT BOOKING — STRIPE CARD PATH
+// ============================================
+
+const transportPaymentIntentSchema = z.object({
+  bookingId: z.number().int().positive(),
+  currency: z.string().min(3).max(3).default("usd"),
+});
+
+/**
+ * Card path for transport bookings — mirrors createBookingPaymentIntent.
+ * Creates a TransportPayment row first (stable id for Stripe metadata),
+ * then the PaymentIntent. handleStripeWebhook confirms the booking and
+ * flips the seats to Booked when payment_intent.succeeded arrives with
+ * metadata.kind === "transport_booking".
+ */
+export async function createTransportPaymentIntent(input: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "unauthorized" };
+  }
+
+  const parsed = transportPaymentIntentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: "invalid", issues: parsed.error.issues };
+  }
+
+  const booking = await db.transportBooking.findUnique({
+    where: { id: parsed.data.bookingId },
+    include: {
+      trip: { include: { route: { include: { office: { select: { ownerId: true } } } } } },
+      payments: true,
+    },
+  });
+  if (!booking) {
+    return { ok: false as const, error: "not_found" };
+  }
+  const isOwner = booking.userId === session.user.id;
+  if (!isOwner && !canOverride(session, booking.trip.route.office.ownerId)) {
+    return { ok: false as const, error: "forbidden" };
+  }
+  if (
+    booking.status === "Confirmed" ||
+    booking.status === "Completed" ||
+    booking.payments.some((p) => p.status === "Paid")
+  ) {
+    return { ok: false as const, error: "already_paid" as const };
+  }
+
+  const transportPayment = await db.transportPayment.create({
+    data: {
+      bookingId: booking.id,
+      amount: booking.totalAmount,
+      method: "CreditCard",
+      status: "Pending",
+    },
+  });
+
+  try {
+    const stripe = getStripe();
+    const intent = await stripe.paymentIntents.create({
+      amount: Math.round(booking.totalAmount * 100),
+      currency: parsed.data.currency,
+      metadata: {
+        kind: "transport_booking",
+        transportPaymentId: String(transportPayment.id),
+        transportBookingId: String(booking.id),
+      },
+      automatic_payment_methods: { enabled: true },
+    });
+
+    await db.transportPayment.update({
+      where: { id: transportPayment.id },
+      data: { transactionId: intent.id },
+    });
+
+    logger.info("stripe_transport_intent_created", {
+      bookingId: booking.id,
+      transportPaymentId: transportPayment.id,
+      intentId: intent.id,
+      amount: booking.totalAmount,
+    });
+
+    return {
+      ok: true as const,
+      clientSecret: intent.client_secret,
+      transportPaymentId: transportPayment.id,
+      intentId: intent.id,
+    };
+  } catch (err) {
+    await db.transportPayment.update({
+      where: { id: transportPayment.id },
+      data: { status: "Failed" },
+    });
+    logger.error("stripe_transport_intent_failed", {
+      bookingId: booking.id,
+      transportPaymentId: transportPayment.id,
+      error: String(err),
+    });
+    return { ok: false as const, error: "stripe_error" };
+  }
 }

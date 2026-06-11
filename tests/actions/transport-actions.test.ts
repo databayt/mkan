@@ -993,7 +993,9 @@ describe("cancelBooking", () => {
       id: 1,
       tripId: 5,
       userId: "user-1",
+      status: "Confirmed",
       seats: [{ id: 10 }, { id: 11 }],
+      payments: [],
       trip: { route: { office: { ownerId: "user-1" } } },
     };
     mockDb.transportBooking.findUnique.mockResolvedValue(booking as never);
@@ -1107,36 +1109,70 @@ describe("processPayment", () => {
     const result = await processPayment(1, {
       method: "CashOnArrival",
     } as never);
-    expect(result).toEqual({ success: true, payment });
+    expect(result).toEqual({ success: true, payment, pendingVerification: false });
     // Should NOT call confirmBooking flow
     expect(mockDb.transportBooking.update).not.toHaveBeenCalled();
   });
 
-  it("creates Paid payment for CreditCard and confirms booking", async () => {
+  it("rejects card methods — those must use the Stripe intent flow", async () => {
     mockAuth.mockResolvedValue(session as never);
-    // First lookup for processPayment + second lookup (owner check inside
-    // confirmBooking) — both must include nested office.
     mockDb.transportBooking.findUnique.mockResolvedValue({
       id: 1,
       userId: "user-1",
       totalAmount: 200,
       trip: { route: { office: { ownerId: "user-1" } } },
     } as never);
-    const payment = { id: 1, status: "Paid" };
-    mockDb.transportPayment.create.mockResolvedValue(payment as never);
-    // confirmBooking will call these:
-    mockDb.transportBooking.update.mockResolvedValue({
+
+    await expect(
+      processPayment(1, { method: "CreditCard" } as never)
+    ).rejects.toThrow("card checkout");
+    expect(mockDb.transportPayment.create).not.toHaveBeenCalled();
+  });
+
+  it("records a Pending bank-transfer claim with the user reference, never Paid", async () => {
+    mockAuth.mockResolvedValue(session as never);
+    mockDb.transportBooking.findUnique.mockResolvedValue({
       id: 1,
-      status: "Confirmed",
+      userId: "user-1",
+      totalAmount: 200,
+      trip: { route: { office: { ownerId: "user-1" } } },
     } as never);
+    const payment = { id: 2, status: "Pending" };
+    mockDb.transportPayment.create.mockResolvedValue(payment as never);
     mockDb.seat.updateMany.mockResolvedValue({ count: 2 } as never);
 
     const result = await processPayment(1, {
-      method: "CreditCard",
+      method: "BankTransfer",
+      bankReference: "BOK-123456",
     } as never);
-    expect(result).toEqual({ success: true, payment });
-    // confirmBooking should have been called
-    expect(mockDb.transportBooking.update).toHaveBeenCalled();
+
+    expect(result).toEqual({ success: true, payment, pendingVerification: true });
+    expect(mockDb.transportPayment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "Pending",
+          transactionId: "BOK-123456",
+        }),
+      })
+    );
+    // No fake TXN, no auto-confirm.
+    expect(mockDb.transportBooking.update).not.toHaveBeenCalled();
+    // Seat hold extended past the 30-minute checkout TTL.
+    expect(mockDb.seat.updateMany).toHaveBeenCalled();
+  });
+
+  it("requires a transfer reference for bank transfers", async () => {
+    mockAuth.mockResolvedValue(session as never);
+    mockDb.transportBooking.findUnique.mockResolvedValue({
+      id: 1,
+      userId: "user-1",
+      totalAmount: 200,
+      trip: { route: { office: { ownerId: "user-1" } } },
+    } as never);
+
+    await expect(
+      processPayment(1, { method: "BankTransfer" } as never)
+    ).rejects.toThrow("reference");
   });
 });
 

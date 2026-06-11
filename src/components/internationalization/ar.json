@@ -2298,7 +2298,21 @@
       "seats": "المقاعد",
       "total": "الإجمالي",
       "processing": "جاري المعالجة...",
-      "pay": "ادفع"
+      "pay": "ادفع",
+      "submittedForVerification": "تم إرسال الدفعة — سيتحقق المكتب منها ويؤكد حجزك.",
+      "verificationNote": "يتم تأكيد حجزك بمجرد تحقق المكتب من الدفعة.",
+      "momoSendTo": "حوّل المبلغ إلى محفظة المكتب ثم أدخل رقمك أدناه",
+      "momoProviderLabel": "المزود",
+      "momoNumberLabel": "رقم المحفظة",
+      "transferReference": "مرجع التحويل الخاص بك",
+      "transferReferencePlaceholder": "مثال: MM-20260611-1234",
+      "noBankDetails": "لم ينشر هذا المكتب تفاصيل التحويل البنكي بعد. الرجاء اختيار طريقة دفع أخرى أو التواصل مع المكتب.",
+      "cardDetails": "الدفع بالبطاقة",
+      "cardSubtitle": "ادفع بأمان باستخدام بطاقتك",
+      "cardLoading": "جارٍ تجهيز الدفع الآمن...",
+      "cardConfigMissing": "الدفع بالبطاقة غير متاح حالياً.",
+      "cardError": "خطأ في الدفع",
+      "reserveSeats": "حجز المقاعد"
     },
     "paymentMethods": {
       "mobileMoney": {
@@ -4039,7 +4053,16 @@
         "nameMin": "يجب أن يتكوّن الاسم من حرفين على الأقل",
         "phoneInvalid": "يرجى إدخال رقم هاتف صحيح",
         "emailInvalid": "يرجى إدخال بريد إلكتروني صحيح"
-      }
+      },
+      "paymentTitle": "تفاصيل الدفع",
+      "paymentSubtitle": "المسافرون الذين يدفعون بالتحويل البنكي أو المحفظة يحولون إلى هذه الحسابات. اتركه فارغاً لإخفاء الطريقة.",
+      "bankNameLabel": "اسم البنك",
+      "bankNamePlaceholder": "مثال: بنك الخرطوم",
+      "bankAccountLabel": "رقم الحساب",
+      "bankHolderLabel": "اسم صاحب الحساب",
+      "momoProviderLabel": "مزود المحفظة الإلكترونية",
+      "momoProviderPlaceholder": "مثال: بنكك، MTN MoMo",
+      "momoNumberLabel": "رقم المحفظة"
     },
     "assemblyPoint": {
       "title": "اختر نقطة التجمع الخاصة بك",

@@ -2298,7 +2298,21 @@
       "seats": "Seats",
       "total": "Total",
       "processing": "Processing...",
-      "pay": "Pay"
+      "pay": "Pay",
+      "submittedForVerification": "Payment submitted — the operator will verify it and confirm your booking.",
+      "verificationNote": "Your booking is confirmed once the operator verifies the payment.",
+      "momoSendTo": "Send the total to the operator's wallet, then enter your number below",
+      "momoProviderLabel": "Provider",
+      "momoNumberLabel": "Wallet number",
+      "transferReference": "Your transfer reference",
+      "transferReferencePlaceholder": "e.g., MM-20260611-1234",
+      "noBankDetails": "This operator hasn't published bank transfer details yet. Please pick another payment method or contact the office.",
+      "cardDetails": "Card Payment",
+      "cardSubtitle": "Pay securely with your card",
+      "cardLoading": "Preparing secure payment...",
+      "cardConfigMissing": "Card payments are not available right now.",
+      "cardError": "Payment error",
+      "reserveSeats": "Reserve seats"
     },
     "paymentMethods": {
       "mobileMoney": {
@@ -4039,7 +4053,16 @@
         "nameMin": "Name must be at least 2 characters",
         "phoneInvalid": "Please enter a valid phone number",
         "emailInvalid": "Please enter a valid email"
-      }
+      },
+      "paymentTitle": "Payment details",
+      "paymentSubtitle": "Travelers paying by bank transfer or mobile money send to these accounts. Leave blank to hide a method.",
+      "bankNameLabel": "Bank name",
+      "bankNamePlaceholder": "e.g., Bank of Khartoum",
+      "bankAccountLabel": "Account number",
+      "bankHolderLabel": "Account holder name",
+      "momoProviderLabel": "Mobile money provider",
+      "momoProviderPlaceholder": "e.g., Bankak, MTN MoMo",
+      "momoNumberLabel": "Wallet number"
     },
     "assemblyPoint": {
       "title": "Select your assembly point",

@@ -32,6 +32,13 @@ export const transportOfficeSchema = z.object({
   licenseNumber: z.string().optional(),
   assemblyPointId: z.number().positive('Please select an assembly point').optional(),
   logoUrl: z.string().url().optional().or(z.literal('')),
+  // Per-office payment instructions shown on the booking checkout. Empty
+  // strings hide the corresponding payment rail for this operator.
+  bankName: z.string().max(120).optional(),
+  bankAccount: z.string().max(60).optional(),
+  bankHolder: z.string().max(120).optional(),
+  momoNumber: z.string().max(30).optional(),
+  momoProvider: z.string().max(60).optional(),
 });
 
 export type TransportOfficeFormData = z.infer<typeof transportOfficeSchema>;
