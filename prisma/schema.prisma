@@ -821,3 +821,14 @@ enum BookingPaymentStatus {
   Refunded
   PartiallyRefunded
 }
+
+/// Fixed-window rate-limit counters — the Postgres fallback used when
+/// Upstash Redis isn't configured. Key = "tier:identifier:windowStart";
+/// rows expire with the window and are swept opportunistically.
+model RateLimitCounter {
+  key       String   @id
+  count     Int      @default(1)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}

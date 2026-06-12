@@ -237,9 +237,10 @@ describe("rateLimit", () => {
     vi.unstubAllEnvs();
   });
 
-  it("returns null when Redis is not configured", async () => {
-    // Without UPSTASH env vars, redis will be null, so the module
-    // already returns null from the redis check
+  it("falls back to the Postgres window when Redis is not configured", async () => {
+    // Without UPSTASH env vars, production enforces limits through
+    // pgRateLimit. With the db import unavailable in this test, the
+    // fallback fails open but still reports the tier's real limit.
     vi.stubEnv("NODE_ENV", "production");
     // Reset modules so rate-limit re-evaluates env
     vi.resetModules();
@@ -271,7 +272,9 @@ describe("rateLimit", () => {
     } as unknown as import("next/server").NextRequest;
 
     const result = await mod.rateLimit(request);
-    expect(result).toBeNull();
+    expect(result).not.toBeNull();
+    expect(result?.success).toBe(true);
+    expect(result?.limit).toBe(10); // the "api" tier limit, not fail-open's fake 100
     vi.unstubAllEnvs();
   });
 });
@@ -283,7 +286,7 @@ describe("rateLimitWithFallback", () => {
     vi.resetModules();
   });
 
-  it("returns success fallback when Redis is not configured", async () => {
+  it("uses the Postgres window when Redis is not configured", async () => {
     delete process.env.UPSTASH_REDIS_REST_URL;
     delete process.env.UPSTASH_REDIS_REST_TOKEN;
 
@@ -312,8 +315,7 @@ describe("rateLimitWithFallback", () => {
 
     const result = await mod.rateLimitWithFallback(request);
     expect(result.success).toBe(true);
-    expect(result.limit).toBe(100);
-    expect(result.remaining).toBe(99);
+    expect(result.limit).toBe(10); // "api" tier config flows through the pg path
     expect(result.reset).toBeGreaterThan(Date.now());
   });
 });

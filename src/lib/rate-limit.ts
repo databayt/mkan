@@ -79,6 +79,59 @@ export const rateLimiters = {
   }) : null,
 };
 
+// ─── Postgres fallback ───────────────────────────────────────────────────────
+// When Upstash isn't configured, production rate limiting falls back to a
+// fixed-window counter in Postgres instead of failing open. One upsert per
+// guarded request; the window start is part of the key so a window rollover
+// naturally starts a fresh row. DB errors fail open — rate limiting must
+// never be the thing that takes the API down.
+
+const TIER_CONFIG: Record<keyof typeof rateLimiters, { limit: number; windowMs: number }> = {
+  api: { limit: 10, windowMs: 10_000 },
+  auth: { limit: 5, windowMs: 600_000 },
+  upload: { limit: 5, windowMs: 60_000 },
+  search: { limit: 30, windowMs: 10_000 },
+  payment: { limit: 3, windowMs: 3_600_000 },
+  mutation: { limit: 10, windowMs: 60_000 },
+  report: { limit: 5, windowMs: 600_000 },
+  "report-tenant": { limit: 30, windowMs: 3_600_000 },
+};
+
+async function pgRateLimit(
+  tier: keyof typeof rateLimiters,
+  identifier: string
+): Promise<{ success: boolean; limit: number; remaining: number; reset: number }> {
+  const { limit, windowMs } = TIER_CONFIG[tier];
+  const windowStart = Math.floor(Date.now() / windowMs) * windowMs;
+  const reset = windowStart + windowMs;
+
+  try {
+    // Lazy import keeps pg/Prisma out of any future edge bundle of this module.
+    const { db } = await import("@/lib/db");
+    const key = `${tier}:${identifier}:${windowStart}`;
+    const rows = await db.$queryRaw<{ count: number }[]>`
+      INSERT INTO "RateLimitCounter" ("key", "count", "expiresAt")
+      VALUES (${key}, 1, ${new Date(reset)})
+      ON CONFLICT ("key") DO UPDATE SET "count" = "RateLimitCounter"."count" + 1
+      RETURNING "count"`;
+    const count = Number(rows[0]?.count ?? 1);
+
+    // Opportunistic sweep of expired windows (~1 in 50 calls).
+    if (Math.random() < 0.02) {
+      db.$executeRaw`DELETE FROM "RateLimitCounter" WHERE "expiresAt" < now()`.catch(() => {});
+    }
+
+    return {
+      success: count <= limit,
+      limit,
+      remaining: Math.max(0, limit - count),
+      reset,
+    };
+  } catch {
+    return { success: true, limit, remaining: limit, reset };
+  }
+}
+
 // Get client identifier for rate limiting
 export async function getClientId(request?: NextRequest): Promise<string> {
   if (request) {
@@ -110,9 +163,16 @@ export async function rateLimit(
   request: NextRequest,
   limiterType: keyof typeof rateLimiters = "api"
 ): Promise<{ success: boolean; limit?: number; remaining?: number; reset?: number } | null> {
-  // Skip rate limiting in development or if Redis not configured
-  if (process.env.NODE_ENV === "development" || !redis) {
+  // Skip rate limiting in development
+  if (process.env.NODE_ENV === "development") {
     return null;
+  }
+
+  const identifier = await getClientId(request);
+
+  // Without Redis, production still enforces limits via the Postgres window.
+  if (!redis) {
+    return pgRateLimit(limiterType, identifier);
   }
 
   const limiter = rateLimiters[limiterType];
@@ -120,7 +180,6 @@ export async function rateLimit(
     return null;
   }
 
-  const identifier = await getClientId(request);
   const result = await limiter.limit(identifier);
 
   return {
@@ -219,15 +278,18 @@ export async function rateLimitWithFallback(
     };
   }
 
-  // In Edge Runtime or when Redis is not available, skip rate limiting
-  // In-memory rate limiting doesn't work well in serverless/edge environments
-  // since each request may hit a different instance
-  return {
-    success: true,
-    limit: 100,
-    remaining: 99,
-    reset: Date.now() + 60000,
-  };
+  // Development fails open; production without Redis enforces via Postgres.
+  if (process.env.NODE_ENV === "development") {
+    return {
+      success: true,
+      limit: 100,
+      remaining: 99,
+      reset: Date.now() + 60000,
+    };
+  }
+
+  const identifier = await getClientId(request);
+  return pgRateLimit(limiterType, identifier);
 }
 
 // ─── Server-action rate limiting ─────────────────────────────────────────────
@@ -256,7 +318,17 @@ export async function assertRateLimit(
   limiterType: keyof typeof rateLimiters,
   identifier: string
 ): Promise<void> {
-  if (process.env.NODE_ENV === "development" || !redis) return;
+  if (process.env.NODE_ENV === "development") return;
+
+  // No Redis → Postgres fixed-window fallback, same throw contract.
+  if (!redis) {
+    const res = await pgRateLimit(limiterType, identifier);
+    if (!res.success) {
+      throw new RateLimitError(Math.max(1, Math.ceil((res.reset - Date.now()) / 1000)));
+    }
+    return;
+  }
+
   const limiter = rateLimiters[limiterType];
   if (!limiter) return;
   const res = await limiter.limit(identifier);

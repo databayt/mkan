@@ -14,20 +14,21 @@ export async function register() {
     const { validateEnv } = await import("@/lib/env-check");
     validateEnv();
 
-    // Rate limiting silently no-ops without Redis (fail-open). That's fine
-    // in dev; in production it means brute-force protection is OFF — make
-    // that impossible to miss in the logs.
+    // Without Redis, production rate limiting falls back to the Postgres
+    // fixed-window counter (see src/lib/rate-limit.ts). Functional, but
+    // each guarded request costs a DB round-trip — note it at boot so the
+    // switch to Upstash isn't forgotten.
     if (
       process.env.NODE_ENV === "production" &&
       (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN)
     ) {
-      console.error(
+      console.warn(
         JSON.stringify({
           ts: new Date().toISOString(),
-          level: "error",
-          msg: "rate_limit_disabled",
+          level: "warn",
+          msg: "rate_limit_pg_fallback",
           detail:
-            "UPSTASH_REDIS_REST_URL/TOKEN not set — all rate limiting fails open in production. Configure Upstash before public launch.",
+            "UPSTASH_REDIS_REST_URL/TOKEN not set — rate limiting uses the Postgres fallback. Configure Upstash to take the per-request DB hop off the hot path.",
         }),
       );
     }

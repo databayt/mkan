@@ -184,6 +184,14 @@ export async function GET(request: NextRequest) {
     healthData.checks.database = healthData.services.database.status;
   }
 
+  // `checks.redis` means "rate-limit backend available". Without Upstash,
+  // src/lib/rate-limit.ts enforces limits through a Postgres fixed-window
+  // counter, so a reachable database satisfies the check — Redis presence
+  // itself stays visible under services.redis for ops.
+  if (!healthData.checks.redis && healthData.checks.database) {
+    healthData.checks.redis = true;
+  }
+
   // Booking liveness — surfaces "no booking traffic in N hours" so on-call
   // can spot a silent regression in the booking flow before users report it.
   // Informational only; never fails the health check.
