@@ -1,10 +1,10 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
+import { useState } from "react";
 import { Loader2, MapPin } from "lucide-react";
 import { type LocationSuggestion } from "@/lib/schemas/search-schema";
-import { FALLBACK_RECOMMENDATIONS } from "./constant";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { useLocale } from "@/components/internationalization/use-locale";
 
 interface LocationProps {
   searchQuery: string;
@@ -16,6 +16,139 @@ interface LocationProps {
   onLocationSelect: (location: LocationSuggestion | null) => void;
 }
 
+const SUGGESTED_DESTINATIONS = {
+  en: [
+    {
+      city: "Nearby",
+      state: "",
+      country: "",
+      displayName: "Nearby",
+      description: "Find what's around you",
+      backgroundColor: "#e8f4fd",
+      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/ea5e5ee3-e9d8-48a1-b7e9-1003bf6fe850.png",
+    },
+    {
+      city: "Dubai",
+      state: "Dubai",
+      country: "United Arab Emirates",
+      displayName: "Dubai, United Arab Emirates",
+      description: "Popular beach destination",
+      backgroundColor: "#eaf7ec",
+      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/c98f58bf-8512-43e3-af54-6c1f0b2c8a23.png",
+    },
+    {
+      city: "Al Madīnah al Munawwarah",
+      state: "Madinah Province",
+      country: "Saudi Arabia",
+      displayName: "Al Madīnah al Munawwarah, Saudi Arabia",
+      description: "For sights like Al-Masjid an-Nabawi",
+      backgroundColor: "#fdf2e9",
+      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/e6abaebf-f910-42e2-b891-d8f262b6ee1d.png",
+    },
+    {
+      city: "Jeddah",
+      state: "Makkah Province",
+      country: "Saudi Arabia",
+      displayName: "Jeddah, Saudi Arabia",
+      description: "For its stunning architecture",
+      backgroundColor: "#fef5e7",
+      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/5d2ff9e9-9e15-45b9-bfb2-d3f192198eca.png",
+    },
+    {
+      city: "Riyadh",
+      state: "Riyadh Province",
+      country: "Saudi Arabia",
+      displayName: "Riyadh, Saudi Arabia",
+      description: "For a trip abroad",
+      backgroundColor: "#f3e8ff",
+      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/ed75c050-042b-44ba-a991-54044d93a91b.png",
+    },
+    {
+      city: "New Cairo",
+      state: "Cairo Governorate",
+      country: "Egypt",
+      displayName: "New Cairo, Egypt",
+      description: "A hidden gem",
+      backgroundColor: "#fdedec",
+      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/2cab2315-eab8-4e3b-8ffa-1411745515f3.png",
+    },
+    {
+      city: "Addis Ababa",
+      state: "Addis Ababa",
+      country: "Ethiopia",
+      displayName: "Addis Ababa, Ethiopia",
+      description: "For a trip abroad",
+      backgroundColor: "#e8f8f5",
+      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/5c0fde14-6f8e-43c4-b78f-6baae5df0c7c.png",
+    },
+  ],
+  ar: [
+    {
+      city: "Nearby",
+      state: "",
+      country: "",
+      displayName: "قريب من هنا",
+      description: "استكشف الأماكن المحيطة بك",
+      backgroundColor: "#e8f4fd",
+      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/ea5e5ee3-e9d8-48a1-b7e9-1003bf6fe850.png",
+    },
+    {
+      city: "Dubai",
+      state: "Dubai",
+      country: "United Arab Emirates",
+      displayName: "دبي، الإمارات العربية المتحدة",
+      description: "وجهة شاطئية شهيرة",
+      backgroundColor: "#eaf7ec",
+      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/c98f58bf-8512-43e3-af54-6c1f0b2c8a23.png",
+    },
+    {
+      city: "Al Madīnah al Munawwarah",
+      state: "Madinah Province",
+      country: "Saudi Arabia",
+      displayName: "المدينة المنورة، المملكة العربية السعودية",
+      description: "لمشاهدة معالم مثل المسجد النبوي",
+      backgroundColor: "#fdf2e9",
+      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/e6abaebf-f910-42e2-b891-d8f262b6ee1d.png",
+    },
+    {
+      city: "Jeddah",
+      state: "Makkah Province",
+      country: "Saudi Arabia",
+      displayName: "جدة، المملكة العربية السعودية",
+      description: "بهندستها المعمارية المذهلة",
+      backgroundColor: "#fef5e7",
+      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/5d2ff9e9-9e15-45b9-bfb2-d3f192198eca.png",
+    },
+    {
+      city: "Riyadh",
+      state: "Riyadh Province",
+      country: "Saudi Arabia",
+      displayName: "الرياض، المملكة العربية السعودية",
+      description: "لرحلة خارج البلاد",
+      backgroundColor: "#f3e8ff",
+      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/ed75c050-042b-44ba-a991-54044d93a91b.png",
+    },
+    {
+      city: "New Cairo",
+      state: "Cairo Governorate",
+      country: "Egypt",
+      displayName: "القاهرة الجديدة، مصر",
+      description: "جوهرة خفية",
+      backgroundColor: "#fdedec",
+      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/2cab2315-eab8-4e3b-8ffa-1411745515f3.png",
+    },
+    {
+      city: "Addis Ababa",
+      state: "Addis Ababa",
+      country: "Ethiopia",
+      displayName: "أديس أبابا، إثيوبيا",
+      description: "لرحلة خارج البلاد",
+      backgroundColor: "#e8f8f5",
+      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/5c0fde14-6f8e-43c4-b78f-6baae5df0c7c.png",
+    },
+  ],
+} as const;
+
 export default function LocationDropdown({
   searchQuery,
   suggestions,
@@ -26,18 +159,12 @@ export default function LocationDropdown({
   onLocationSelect,
 }: LocationProps) {
   const dict = useDictionary();
+  const { locale, isRTL } = useLocale();
+  const [isGeolocating, setIsGeolocating] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
-  const displayLocations = searchQuery.trim()
-    ? suggestions
-    : popularLocations.length > 0
-      ? popularLocations
-      : FALLBACK_RECOMMENDATIONS;
-
-  const title = searchQuery.trim()
-    ? (dict.search?.searchResults ?? "Search results")
-    : popularLocations.length > 0
-      ? (dict.search?.popularDestinations ?? "Popular destinations")
-      : (dict.search?.recommendedDestinations ?? "Recommended destinations");
+  const activeLocale = (locale === "ar" ? "ar" : "en") as "en" | "ar";
+  const suggestedDestinations = SUGGESTED_DESTINATIONS[activeLocale];
 
   const handleKeyDown = (
     e: React.KeyboardEvent,
@@ -49,75 +176,238 @@ export default function LocationDropdown({
     }
   };
 
+  const handleSelectSuggested = async (dest: typeof suggestedDestinations[number]) => {
+    if (dest.city === "Nearby") {
+      if (!navigator.geolocation) {
+        onLocationSelect({
+          city: "",
+          state: "",
+          country: "",
+          displayName: dest.displayName,
+          listingCount: 0,
+        });
+        return;
+      }
+
+      setIsGeolocating(true);
+      setGeoError(null);
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            // Use Nominatim reverse geocoding API
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`,
+              {
+                headers: {
+                  "Accept-Language": activeLocale,
+                },
+              }
+            );
+            if (!response.ok) throw new Error();
+            const data = await response.json();
+            
+            const city =
+              data.address?.city ||
+              data.address?.town ||
+              data.address?.village ||
+              data.address?.suburb ||
+              data.address?.county ||
+              data.address?.state ||
+              "";
+              
+            const state = data.address?.state || "";
+            const country = data.address?.country || "";
+            
+            const displayName =
+              city && country
+                ? `${city}, ${country}`
+                : city || country || dest.displayName;
+
+            onLocationSelect({
+              city: city || displayName,
+              state,
+              country,
+              displayName,
+              listingCount: 0,
+            });
+          } catch (err) {
+            // Fallback to "Nearby" search
+            onLocationSelect({
+              city: "",
+              state: "",
+              country: "",
+              displayName: dest.displayName,
+              listingCount: 0,
+            });
+          } finally {
+            setIsGeolocating(false);
+          }
+        },
+        () => {
+          // Geolocation permission denied or failed
+          onLocationSelect({
+            city: "",
+            state: "",
+            country: "",
+            displayName: dest.displayName,
+            listingCount: 0,
+          });
+          setIsGeolocating(false);
+        },
+        { timeout: 6000 }
+      );
+    } else {
+      onLocationSelect({
+        city: dest.city,
+        state: dest.state,
+        country: dest.country,
+        displayName: dest.displayName,
+        listingCount: 0,
+      });
+    }
+  };
+
+  const resultsTitle = dict.search?.searchResults ?? "Search results";
+  const suggestedTitle =
+    dict.search?.suggestedDestinations ??
+    (locale === "ar" ? "الوجهات المقترحة" : "Suggested destinations");
+
   return (
-    <div role="combobox" aria-expanded="true" aria-haspopup="listbox" aria-controls="location-listbox">
-      <h3 className="text-lg font-semibold mb-4">{dict.search?.whereTo ?? "Where to?"}</h3>
-
-      {/* Search input */}
-      <div className="mb-4 relative">
-        <Input
-          placeholder={dict.search?.searchDestinations ?? "Search destinations..."}
-          value={searchQuery}
-          onChange={(e) => onSearchQueryChange(e.target.value)}
-          className="w-full h-10 border-0 border-none rounded-lg focus:outline-none focus:border-0 shadow-none text-black caret-black pe-10"
-          autoFocus
-          aria-label={dict.search?.searchLocation ?? "Search for a location"}
-          aria-autocomplete="list"
-          aria-controls="location-listbox"
-        />
-        {isLoading && (
-          <Loader2 className="absolute right-3 top-2.5 h-5 w-5 animate-spin text-gray-400" />
-        )}
-      </div>
-
-      {/* Error message */}
-      {error && (
-        <div
-          className="text-red-500 text-sm mb-4 p-2 bg-red-50 rounded"
-          role="alert"
-        >
-          {error}
+    <div
+      role="combobox"
+      aria-expanded="true"
+      aria-haspopup="listbox"
+      aria-controls="location-listbox"
+      className="flex flex-col h-full"
+    >
+      {/* Geolocating Loader overlay/feedback */}
+      {isGeolocating && (
+        <div className="flex items-center gap-3 py-3 px-4 mb-3 bg-[#f0f7ff] rounded-2xl border border-[#d2e7ff] text-sm text-[#0066cc] animate-pulse">
+          <Loader2 className="h-4.5 w-4.5 animate-spin flex-shrink-0" />
+          <span>
+            {locale === "ar"
+              ? "جاري تحديد موقعك الحالي..."
+              : "Finding your current location..."}
+          </span>
         </div>
       )}
 
-      {/* Results */}
+      {/* Error message */}
+      {(error || geoError) && (
+        <div
+          className="text-red-500 text-sm mb-4 p-3 bg-red-50 rounded-xl border border-red-100"
+          role="alert"
+        >
+          {error || geoError}
+        </div>
+      )}
+
+      {/* Results / Suggestions Container */}
       <div
-        className="space-y-1 max-h-80 overflow-y-auto no-scrollbar"
+        className="space-y-1 max-h-[340px] overflow-y-auto no-scrollbar scroll-smooth"
         role="listbox"
         id="location-listbox"
-        aria-label={title}
+        aria-label={searchQuery.trim() ? resultsTitle : suggestedTitle}
       >
-        {displayLocations.length > 0 ? (
-          <>
-            <p className="text-xs text-gray-500 uppercase tracking-wide px-3 mb-2">
-              {title}
-            </p>
-            {displayLocations.map((location, index) => (
-              <div
-                key={`${location.city}-${location.state}-${index}`}
-                className="py-1 rounded-lg hover:bg-gray-50 cursor-pointer flex items-center gap-3 transition-colors"
-                onClick={() => onLocationSelect(location)}
-                role="option"
-                aria-selected="false"
-                tabIndex={0}
-                onKeyDown={(e) => handleKeyDown(e, location)}
-              >
-                <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <MapPin className="w-5 h-5 text-gray-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">
-                    {location.city}
+        {searchQuery.trim() ? (
+          // Dynamic database search autocomplete results
+          suggestions.length > 0 ? (
+            <>
+              <div className="flex items-center justify-between px-2 mb-2">
+                <p className="text-[13px] font-normal text-[#222222]">
+                  {resultsTitle}
+                </p>
+                {isLoading && (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />
+                )}
+              </div>
+              {suggestions.map((location, index) => (
+                <div
+                  key={`${location.city}-${location.state}-${index}`}
+                  className="py-2 px-2 rounded-2xl hover:bg-[#F7F7F7] active:scale-[0.99] transition-all cursor-pointer flex items-center gap-3.5"
+                  onClick={() => onLocationSelect(location)}
+                  role="option"
+                  aria-selected="false"
+                  tabIndex={0}
+                  onKeyDown={(e) => handleKeyDown(e, location)}
+                >
+                  <div className="w-12 h-12 bg-[#f7f7f7] border border-[#ebebeb] rounded-xl flex items-center justify-center flex-shrink-0 text-[#222222]">
+                    <MapPin className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[15px] font-medium text-[#222222] truncate">
+                      {location.city}
+                    </div>
+                    {(location.state || location.country) && (
+                      <div className="text-sm text-[#6a6a6a] truncate mt-0.5">
+                        {[location.state, location.country]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </>
+          ) : !isLoading ? (
+            <div className="text-center text-gray-400 py-8 text-sm">
+              {(
+                dict.search?.noDestinationsFound ??
+                'No destinations found for "{query}"'
+              ).replace("{query}", searchQuery)}
+            </div>
+          ) : null
+        ) : (
+          // Predefined Suggested destinations from Airbnb
+          <>
+            <p className="text-[13px] font-normal text-[#222222] px-2 mb-2">
+              {suggestedTitle}
+            </p>
+            <div className="space-y-0.5">
+              {suggestedDestinations.map((dest) => (
+                <div
+                  key={dest.displayName}
+                  className="py-2 px-2 rounded-2xl hover:bg-[#F7F7F7] active:scale-[0.99] transition-all cursor-pointer flex items-center gap-3.5"
+                  onClick={() => handleSelectSuggested(dest)}
+                  role="option"
+                  aria-selected="false"
+                  tabIndex={0}
+                  onKeyDown={(e) =>
+                    handleKeyDown(e, {
+                      city: dest.city,
+                      state: dest.state,
+                      country: dest.country,
+                      displayName: dest.displayName,
+                      listingCount: 0,
+                    })
+                  }
+                >
+                  {/* The colored rounded square is baked into the original
+                      Airbnb PNG — render it bare (no wrapper tint). The inline
+                      backgroundColor only shows through while the image loads,
+                      preventing an empty-box flash. */}
+                  <img
+                    src={dest.imageSrc}
+                    alt=""
+                    loading="lazy"
+                    style={{ backgroundColor: dest.backgroundColor }}
+                    className="h-14 w-14 flex-shrink-0 rounded-xl object-cover"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[15px] font-medium text-[#222222] truncate">
+                      {dest.displayName}
+                    </div>
+                    <div className="text-sm text-[#6a6a6a] mt-0.5 font-normal truncate">
+                      {dest.description}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </>
-        ) : searchQuery && !isLoading ? (
-          <div className="text-center text-gray-500 py-4">
-            {(dict.search?.noDestinationsFound ?? "No destinations found for \"{query}\"").replace("{query}", searchQuery)}
-          </div>
-        ) : null}
+        )}
       </div>
     </div>
   );

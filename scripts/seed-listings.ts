@@ -13,37 +13,19 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-const DEMO_PASSWORD = '123456';
+const DEMO_PASSWORD = '1234';
 
 // ─── Hosts ──────────────────────────────────────────────────────────────────
-// 20 real-sounding Sudanese hosts. Username = slug. All anchored at Port Sudan.
-interface HostRow {
-  slug: string;
-  displayName: string;
-}
-
-const HOSTS: HostRow[] = [
-  { slug: 'ahmed-altayeb',       displayName: 'Ahmed Al-Tayeb' },
-  { slug: 'fatima-abdallah',     displayName: 'Fatima Abdallah' },
-  { slug: 'mohammed-osman',      displayName: 'Mohammed Osman' },
-  { slug: 'aisha-elmahdi',       displayName: 'Aisha El-Mahdi' },
-  { slug: 'omar-bashir',         displayName: 'Omar Bashir' },
-  { slug: 'zainab-hassan',       displayName: 'Zainab Hassan' },
-  { slug: 'ibrahim-awad',        displayName: 'Ibrahim Awad' },
-  { slug: 'khadija-nur',         displayName: 'Khadija Nur' },
-  { slug: 'abdelrahman-sheikh',  displayName: 'Abdelrahman Sheikh' },
-  { slug: 'maryam-salim',        displayName: 'Maryam Salim' },
-  { slug: 'yasir-alamin',        displayName: 'Yasir Al-Amin' },
-  { slug: 'noor-ali',            displayName: 'Noor Ali' },
-  { slug: 'tariq-saeed',         displayName: 'Tariq Saeed' },
-  { slug: 'huda-musa',           displayName: 'Huda Musa' },
-  { slug: 'hisham-eltom',        displayName: 'Hisham El-Tom' },
-  { slug: 'safia-omer',          displayName: 'Safia Omer' },
-  { slug: 'walid-khalifa',       displayName: 'Walid Khalifa' },
-  { slug: 'amira-abdelrahim',    displayName: 'Amira Abdelrahim' },
-  { slug: 'salah-mahmoud',       displayName: 'Salah Mahmoud' },
-  { slug: 'leila-hassan',        displayName: 'Leila Hassan' },
-];
+// Pre-provisioned numbered host slots: 0001@mkan.org … 0020@mkan.org.
+// Username == the 4-digit number, so a home owner signs in with just
+// "0001" / "1234" (login accepts username OR email) — no email to type.
+// Identity starts blank; the field team hands a number to an owner, who
+// personalizes the profile on first login. A churned slot can be reset
+// (password back to "1234") and reassigned to the next owner.
+const HOST_COUNT = 20;
+const HOST_NUMBERS: string[] = Array.from({ length: HOST_COUNT }, (_, i) =>
+  String(i + 1).padStart(4, '0'),
+);
 
 const GUEST_COUNT = 5;
 
@@ -162,19 +144,19 @@ async function main() {
 
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
-  // 2. Upsert 20 host users
-  //    Email localpart drops hyphens — `ahmed-altayeb` → `ahmedaltayeb@mkan.org`.
-  //    Username keeps the slug with hyphens so login still works with either form.
-  console.log('👥 Upserting hosts...');
+  // 2. Upsert 20 numbered host slots — 0001@mkan.org … 0020@mkan.org.
+  //    Username == the number so the owner can log in with "0001" / "1234".
+  //    Re-running resets each slot's password back to the bootstrap "1234".
+  console.log('👥 Upserting host slots...');
   const hostUsers = await Promise.all(
-    HOSTS.map((h) => {
-      const email = `${h.slug.replace(/-/g, '')}@mkan.org`;
+    HOST_NUMBERS.map((num) => {
+      const email = `${num}@mkan.org`;
       return prisma.user.upsert({
         where: { email },
-        update: { username: h.slug, password: passwordHash, role: 'MANAGER', emailVerified: new Date() },
+        update: { username: num, password: passwordHash, role: 'MANAGER', emailVerified: new Date() },
         create: {
           email,
-          username: h.slug,
+          username: num,
           password: passwordHash,
           role: 'MANAGER',
           emailVerified: new Date(),
@@ -182,7 +164,7 @@ async function main() {
       });
     }),
   );
-  console.log(`✅ ${hostUsers.length} hosts ready\n`);
+  console.log(`✅ ${hostUsers.length} host slots ready\n`);
 
   // 3. Upsert 5 guest users for bookings
   console.log('🧳 Upserting guests...');
@@ -408,10 +390,11 @@ async function main() {
   console.log(`   • ${listings.length} blocked-date windows`);
   console.log('');
   console.log(`🔐 Demo credentials (password for ALL: "${DEMO_PASSWORD}")`);
-  console.log(`   ${'Username'.padEnd(22)} ${'Email'.padEnd(40)} Display name`);
-  console.log(`   ${'─'.repeat(22)} ${'─'.repeat(40)} ${'─'.repeat(22)}`);
-  for (const h of HOSTS) {
-    console.log(`   ${h.slug.padEnd(22)} ${`${h.slug.replace(/-/g, '')}@mkan.org`.padEnd(40)} ${h.displayName}`);
+  console.log(`   Log in with the number alone — e.g. "0001" / "${DEMO_PASSWORD}".`);
+  console.log(`   ${'Login (username)'.padEnd(22)} Email`);
+  console.log(`   ${'─'.repeat(22)} ${'─'.repeat(40)}`);
+  for (const num of HOST_NUMBERS) {
+    console.log(`   ${num.padEnd(22)} ${num}@mkan.org`);
   }
   console.log('');
   console.log(`🌐 Test URLs:`);

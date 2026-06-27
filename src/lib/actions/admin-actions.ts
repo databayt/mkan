@@ -1,7 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import bcrypt from "bcryptjs";
 import { UserRole, BookingPaymentStatus } from "@prisma/client";
 
 import { auth, isAdminOrSuper, isSuperAdmin } from "@/lib/auth";
@@ -168,21 +169,73 @@ export async function toggleUserSuspension(input: unknown) {
   }
 
   const nextSuspended = !target.isSuspended;
-  await db.user.update({
-    where: { id: userId },
-    data: {
-      isSuspended: nextSuspended,
-      suspendedAt: nextSuspended ? new Date() : null,
-      suspensionReason: nextSuspended ? (reason ?? null) : null,
-    },
+
+  // Suspend = archive: hide the host's live listings so a suspended owner's
+  // homes stop taking bookings. Unsuspend does NOT auto-republish — the owner
+  // (or an admin) republishes intentionally, so nothing silently re-lists.
+  let archivedListings = 0;
+  await db.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        isSuspended: nextSuspended,
+        suspendedAt: nextSuspended ? new Date() : null,
+        suspensionReason: nextSuspended ? (reason ?? null) : null,
+      },
+    });
+    if (nextSuspended) {
+      const res = await tx.listing.updateMany({
+        where: { hostId: userId, isPublished: true },
+        data: { isPublished: false },
+      });
+      archivedListings = res.count;
+    }
   });
   audit(nextSuspended ? "user.suspend" : "user.unsuspend", session.user!.id!, {
     userId,
     reason,
+    archivedListings,
   });
 
   revalidatePath("/admin/users");
-  return { success: true, suspended: nextSuspended };
+  if (archivedListings > 0) {
+    // Drop the archived homes from public search/listings immediately.
+    updateTag("listings");
+    revalidatePath("/listings");
+    revalidatePath("/search");
+  }
+  return { success: true, suspended: nextSuspended, archivedListings };
+}
+
+// Bootstrap password for handed-out numbered host slots — mirrors DEMO_PASSWORD
+// in scripts/seed-listings.ts. "Reset" hands the owner back a known login (their
+// number + this), since they don't control the @mkan.org inbox and so can't use
+// the normal email password-reset flow.
+const BOOTSTRAP_PASSWORD = "1234";
+
+const resetPasswordSchema = z.object({ userId: z.string().min(1) });
+
+export async function resetHostPassword(input: unknown) {
+  const session = await requireAdminSession();
+  const { userId } = resetPasswordSchema.parse(input);
+
+  const target = await db.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+  if (!target) throw new Error("User not found");
+
+  // A non-super admin cannot reset a super admin's password (takeover guard).
+  if (target.role === UserRole.SUPER_ADMIN && !isSuperAdmin(session)) {
+    throw new Error("Only a super admin can reset another super admin's password");
+  }
+
+  const hashed = await bcrypt.hash(BOOTSTRAP_PASSWORD, 10);
+  await db.user.update({ where: { id: userId }, data: { password: hashed } });
+  audit("user.resetPassword", session.user!.id!, { userId });
+
+  revalidatePath("/admin/users");
+  return { success: true };
 }
 
 const listingIdSchema = z.coerce.number().int().positive();

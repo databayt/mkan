@@ -23,6 +23,7 @@ interface PropertyCardProps {
   onFavoriteToggle?: (id: string, isFavorite: boolean) => void
   onCardClick?: (id: string) => void
   className?: string
+  priority?: boolean
 }
 
 export function PropertyCard({
@@ -37,7 +38,8 @@ export function PropertyCard({
   isFavorite = false,
   onFavoriteToggle,
   onCardClick,
-  className
+  className,
+  priority = false
 }: PropertyCardProps) {
   const dict = useDictionary()
   const { locale } = useLocale()
@@ -82,7 +84,7 @@ export function PropertyCard({
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
-            priority={false}
+            priority={priority}
           />
 
           {/* Favorite Button */}

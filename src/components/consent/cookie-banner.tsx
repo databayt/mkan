@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 
-import { Button } from "@/components/ui/button";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { useLocale } from "@/components/internationalization/use-locale";
 
@@ -25,10 +25,7 @@ function writeCookie(name: string, value: string, maxAge: number) {
 }
 
 /**
- * Bottom-anchored consent banner. Renders only when no choice has been
- * recorded yet. Notifies the rest of the page via a `cookieconsent`
- * window event so analytics islands can subscribe and only fire when
- * the user has accepted.
+ * Airbnb-styled centered floating consent banner.
  */
 export function CookieBanner() {
   const dict = useDictionary();
@@ -49,34 +46,69 @@ export function CookieBanner() {
     }
   };
 
-  if (!open) return null;
+  const desc = t.description ?? "";
+  const policyText = t.policyText ?? "cookie policy";
+  const parts = desc.split("{policyLink}");
 
   return (
-    <div
-      role="dialog"
-      aria-live="polite"
-      aria-label={t.title ?? "Cookie consent"}
-      className="fixed inset-x-2 bottom-2 sm:inset-x-auto sm:bottom-4 sm:end-4 sm:max-w-md z-50 rounded-xl border bg-background/95 backdrop-blur shadow-lg p-4 print:hidden"
-    >
-      <h2 className="text-sm font-semibold mb-1">{t.title ?? "We use cookies"}</h2>
-      <p className="text-xs text-muted-foreground mb-3">
-        {t.description ??
-          "We use cookies for sign-in, security, and to understand how the site is used."}
-      </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={() => decide("all")}>
-          {t.acceptAll ?? "Accept all"}
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => decide("essential")}>
-          {t.rejectNonEssential ?? "Reject non-essential"}
-        </Button>
-        <Link
-          href={`/${locale}/cookies`}
-          className="text-xs underline text-muted-foreground ms-auto"
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0, y: 50, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.95 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          role="dialog"
+          aria-live="polite"
+          aria-label={t.title ?? "Cookie consent"}
+          className="fixed bottom-6 left-6 right-6 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[680px] z-[9999] rounded-2xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white dark:bg-neutral-900 p-6 md:p-8 shadow-[0_8px_28px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.4)] print:hidden"
         >
-          {t.learnMore ?? "Learn more"}
-        </Link>
-      </div>
-    </div>
+          <h2 className="text-neutral-900 dark:text-neutral-50 font-semibold text-lg md:text-[22px] leading-tight md:leading-[26px] tracking-tight text-start">
+            {t.title ?? "Help us improve your experience"}
+          </h2>
+          
+          <p className="text-neutral-600 dark:text-neutral-300 text-xs md:text-[14px] leading-relaxed md:leading-[20px] mt-3 font-normal text-start">
+            {parts.length > 1 ? (
+              <>
+                {parts[0]}
+                <Link
+                  href={`/${locale}/cookies`}
+                  className="underline font-semibold text-neutral-950 dark:text-white hover:text-black dark:hover:text-neutral-200 transition"
+                >
+                  {policyText}
+                </Link>
+                {parts[1]}
+              </>
+            ) : (
+              desc || "We use cookies and other technologies to personalize content."
+            )}
+          </p>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 md:mt-8 w-full">
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <button
+                onClick={() => decide("all")}
+                className="w-full sm:w-auto bg-[#222222] dark:bg-neutral-100 hover:bg-black dark:hover:bg-white text-white dark:text-neutral-900 font-semibold py-3 px-6 rounded-lg text-sm transition-all duration-200 cursor-pointer shadow-sm text-center active:scale-[0.98]"
+              >
+                {t.acceptAll ?? "Accept all"}
+              </button>
+              <button
+                onClick={() => decide("essential")}
+                className="w-full sm:w-auto bg-[#222222] dark:bg-neutral-100 hover:bg-black dark:hover:bg-white text-white dark:text-neutral-900 font-semibold py-3 px-6 rounded-lg text-sm transition-all duration-200 cursor-pointer shadow-sm text-center active:scale-[0.98]"
+              >
+                {t.rejectNonEssential ?? "Only necessary"}
+              </button>
+            </div>
+            
+            <Link
+              href={`/${locale}/cookies`}
+              className="underline font-semibold text-neutral-950 dark:text-white hover:text-black dark:hover:text-neutral-200 text-sm whitespace-nowrap text-center sm:text-start transition"
+            >
+              {t.learnMore ?? "Manage preferences"}
+            </Link>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

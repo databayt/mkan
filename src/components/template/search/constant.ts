@@ -7,6 +7,7 @@ export const GUEST_LIMITS = {
   adults: { min: 0, max: 16 },
   children: { min: 0, max: 10 },
   infants: { min: 0, max: 5 },
+  pets: { min: 0, max: 5 },
 } as const;
 
 // Mobile breakpoint

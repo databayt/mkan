@@ -190,6 +190,23 @@ function buildSearchWhere(
     };
   }
 
+  // Map-viewport filter ("search as I move the map"). Only applied when the
+  // full bounding box is present. Merges onto any existing location relation
+  // (AND semantics) so a text location + bounds can co-exist, though in
+  // practice the map drives bounds without a location string.
+  if (
+    f.minLat !== undefined &&
+    f.maxLat !== undefined &&
+    f.minLng !== undefined &&
+    f.maxLng !== undefined
+  ) {
+    where.location = {
+      ...(where.location as Prisma.LocationWhereInput | undefined),
+      latitude: { gte: f.minLat, lte: f.maxLat },
+      longitude: { gte: f.minLng, lte: f.maxLng },
+    };
+  }
+
   const totalGuests = f.guests || (f.adults || 0) + (f.children || 0);
   if (totalGuests > 0) {
     where.guestCount = { gte: totalGuests };

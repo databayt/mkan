@@ -1040,7 +1040,9 @@
         "night": "night",
         "noImage": "No Image Available",
         "entireHome": "Entire Home",
-        "reviews": "reviews"
+        "reviews": "reviews",
+        "addToWishlist": "Add to wishlist",
+        "removeFromWishlist": "Remove from wishlist"
       },
       "types": {
         "Rooms": "Rooms",
@@ -1232,7 +1234,16 @@
       "noExactMatches": "No exact matches",
       "tryAdjusting": "Try adjusting your search by changing your dates, removing filters, or searching for a different location.",
       "guestSingular": "guest",
-      "guestPlural": "guests"
+      "guestPlural": "guests",
+      "homes": "homes",
+      "home": "home",
+      "pricesIncludeFees": "Prices include all fees",
+      "searchAsIMove": "Search as I move the map",
+      "forNights": "for {count} nights",
+      "bedroom": "bedroom",
+      "bedrooms": "bedrooms",
+      "bath": "bath",
+      "baths": "baths"
     },
     "reviewsList": {
       "heading": "What guests are saying",
@@ -2758,12 +2769,21 @@
     "children": "children",
     "infant": "infant",
     "infants": "infants",
+    "guest": "guest",
+    "guests": "guests",
+    "pet": "pet",
+    "pets": "pets",
     "anywhere": "Anywhere",
     "anyWeek": "Any week",
     "searchHowTos": "Search how-tos and more",
     "whereTo": "Where to?",
     "searchDestinations": "Search destinations",
     "searchLocation": "Search for a location",
+    "homes": "Homes",
+    "experiences": "Experiences",
+    "services": "Services",
+    "newBadge": "NEW",
+    "suggestedDestinations": "Suggested destinations",
     "searchResults": "Search results",
     "popularDestinations": "Popular destinations",
     "recommendedDestinations": "Recommended destinations",
@@ -2775,6 +2795,8 @@
     "childrenAge": "Ages 2-12",
     "infantsLabel": "Infants",
     "infantsAge": "Under 2",
+    "petsLabel": "Pets",
+    "petsAge": "Bringing a service animal?",
     "startSearch": "Start your search",
     "editSearch": "Edit your search",
     "whenTraveling": "When are you traveling?",
@@ -3164,8 +3186,12 @@
     "actions": "Actions",
     "suspend": "Suspend",
     "unsuspend": "Unsuspend",
+    "resetPasswordShort": "Reset to 1234",
+    "resetPasswordConfirmTitle": "Reset password?",
+    "resetPasswordConfirmBody": "Sets this account's password back to 1234 (the bootstrap login). The owner can change it again from settings.",
+    "resetPasswordToast": "Password reset to 1234",
     "suspendConfirmTitle": "Confirm action",
-    "suspendConfirmBody": "Suspended users cannot log in until unsuspended.",
+    "suspendConfirmBody": "Suspended users cannot log in, and their listings are hidden from search until they are restored.",
     "suspendReason": "Reason (optional)",
     "confirm": "Confirm",
     "cancel": "Cancel",
@@ -4350,13 +4376,18 @@
     "publishSuccess": "Listing published",
     "unpublishSuccess": "Listing unpublished",
     "publishCannotYet": "Finish setup before publishing",
-    "publishUnknownError": "Could not publish — try again"
+    "publishUnknownError": "Could not publish — try again",
+    "available": "Available",
+    "busy": "Busy",
+    "availableSuccess": "Your place is now available",
+    "busySuccess": "Your place is now marked busy"
   },
   "cookieConsent": {
-    "title": "We use cookies",
-    "description": "We use cookies for sign-in, security, and to understand how the site is used. You can accept everything, only the essentials, or customize.",
+    "title": "Help us improve your experience",
+    "description": "We use cookies and other technologies to personalize content, measure ads, and provide an optimized experience. Some cookies are required for the site to function, and cannot be turned off. By accepting, you agree to the {policyLink}. You can update your preferences any time.",
+    "policyText": "cookie policy",
     "acceptAll": "Accept all",
-    "rejectNonEssential": "Reject non-essential",
-    "learnMore": "Learn more"
+    "rejectNonEssential": "Only necessary",
+    "learnMore": "Manage preferences"
   }
 }

@@ -36,21 +36,17 @@ import bcrypt from "bcryptjs";
 // selection and connection pool config the running app uses.
 import { db as prisma } from "@/lib/db";
 
-const DEMO_PASSWORD = "123456";
+const DEMO_PASSWORD = "1234";
 
 // ─── Hosts ──────────────────────────────────────────────────────────────────
-// Reuse the same Sudanese hosts as scripts/seed-listings.ts. Upsert by email,
-// so this script is safe to run before, after, or instead of seed-listings.
-// We need a small pool — one host per ~6 listings keeps the data plausible.
-const SEED_HOSTS = [
-  { slug: "ahmed-altayeb",      displayName: "Ahmed Al-Tayeb" },
-  { slug: "fatima-abdallah",    displayName: "Fatima Abdallah" },
-  { slug: "mohammed-osman",     displayName: "Mohammed Osman" },
-  { slug: "aisha-elmahdi",      displayName: "Aisha El-Mahdi" },
-  { slug: "omar-bashir",        displayName: "Omar Bashir" },
-  { slug: "zainab-hassan",      displayName: "Zainab Hassan" },
-  { slug: "ibrahim-awad",       displayName: "Ibrahim Awad" },
-] as const;
+// Reuse the same numbered host slots as scripts/seed-listings.ts (0001…0020).
+// Upsert by email, so this script is safe to run before, after, or instead of
+// seed-listings. We only need a small slice — one host per ~6 listings keeps
+// the data plausible — so take the first 7 slots (0001…0007).
+const SEED_HOST_NUMBERS: readonly string[] = Array.from(
+  { length: 7 },
+  (_, i) => String(i + 1).padStart(4, "0"),
+);
 
 // ─── Cities ─────────────────────────────────────────────────────────────────
 // Real Sudanese cities + states + plausible neighborhoods + lat/lng
@@ -284,14 +280,14 @@ async function main() {
   console.log("👥 Upserting hosts...");
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   const hosts = await Promise.all(
-    SEED_HOSTS.map((h) => {
-      const email = `${h.slug.replace(/-/g, "")}@mkan.org`;
+    SEED_HOST_NUMBERS.map((num) => {
+      const email = `${num}@mkan.org`;
       return prisma.user.upsert({
         where: { email },
-        update: { username: h.slug, role: "MANAGER" },
+        update: { username: num, role: "MANAGER" },
         create: {
           email,
-          username: h.slug,
+          username: num,
           password: passwordHash,
           role: "MANAGER",
           emailVerified: new Date(),

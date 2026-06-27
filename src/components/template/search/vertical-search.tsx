@@ -49,6 +49,10 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
     infants: vf?.infants ?? "infants",
     selectCheckIn: vf?.selectCheckIn ?? "Select check-in date",
     selectCheckOut: vf?.selectCheckOut ?? "Select check-out date",
+    guest: dict.search?.guest ?? "guest",
+    guestsText: dict.search?.guests ?? "guests",
+    pet: dict.search?.pet ?? "pet",
+    pets: dict.search?.pets ?? "pets",
   };
   const [activeField, setActiveField] = useState<ActiveField>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -62,6 +66,7 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
       adults: 0,
       children: 0,
       infants: 0,
+      pets: 0,
     },
   });
 
@@ -180,19 +185,31 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
 
   // Add guest counter handlers
   const handleGuestChange = (
-    type: "adults" | "children" | "infants",
+    type: "adults" | "children" | "infants" | "pets",
     operation: "increment" | "decrement"
   ) => {
-    setFormData((prev) => ({
-      ...prev,
-      guests: {
-        ...prev.guests,
-        [type]:
-          operation === "increment"
-            ? Math.min(prev.guests[type] + 1, GUEST_LIMITS[type].max)
-            : Math.max(GUEST_LIMITS[type].min, prev.guests[type] - 1),
-      },
-    }));
+    setFormData((prev) => {
+      const currentVal = prev.guests[type] ?? 0;
+      const nextVal =
+        operation === "increment"
+          ? Math.min(currentVal + 1, GUEST_LIMITS[type].max)
+          : Math.max(GUEST_LIMITS[type].min, currentVal - 1);
+
+      let nextAdults = prev.guests.adults;
+      // Airbnb rule: if we add a child, infant, or pet, we must have at least 1 adult
+      if (operation === "increment" && type !== "adults" && prev.guests.adults === 0) {
+        nextAdults = 1;
+      }
+
+      return {
+        ...prev,
+        guests: {
+          ...prev.guests,
+          [type]: nextVal,
+          adults: nextAdults,
+        },
+      };
+    });
   };
 
   // Helper function to get total guests
@@ -204,25 +221,36 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
     );
   };
 
-  // Helper function to get guest display text
+  // Helper function to get guest display text (combining adults + children as guests, infants and pets separate)
   const getGuestDisplayText = () => {
-    const total = getTotalGuests();
-    if (total === 0) return t.addGuests;
+    const totalGuests = formData.guests.adults + formData.guests.children;
+    const totalInfants = formData.guests.infants;
+    const totalPets = formData.guests.pets;
+
+    if (totalGuests === 0 && totalInfants === 0 && totalPets === 0) {
+      return t.addGuests;
+    }
 
     const parts = [];
-    if (formData.guests.adults > 0) {
+    if (totalGuests > 0) {
       parts.push(
-        `${formData.guests.adults} ${formData.guests.adults > 1 ? t.adults : t.adult}`
+        `${totalGuests} ${
+          totalGuests > 1 ? t.guestsText : t.guest
+        }`
       );
     }
-    if (formData.guests.children > 0) {
+    if (totalInfants > 0) {
       parts.push(
-        `${formData.guests.children} ${formData.guests.children > 1 ? t.children : t.child}`
+        `${totalInfants} ${
+          totalInfants > 1 ? t.infants : t.infant
+        }`
       );
     }
-    if (formData.guests.infants > 0) {
+    if (totalPets > 0) {
       parts.push(
-        `${formData.guests.infants} ${formData.guests.infants > 1 ? t.infants : t.infant}`
+        `${totalPets} ${
+          totalPets > 1 ? t.pets : t.pet
+        }`
       );
     }
 
@@ -251,11 +279,14 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
     if (formData.checkOut) {
       searchParams.set("checkOut", formData.checkOut);
     }
-    if (getTotalGuests() > 0) {
+    if (getTotalGuests() > 0 || formData.guests.pets > 0) {
       searchParams.set("guests", getTotalGuests().toString());
       searchParams.set("adults", formData.guests.adults.toString());
       searchParams.set("children", formData.guests.children.toString());
       searchParams.set("infants", formData.guests.infants.toString());
+      if (formData.guests.pets > 0) {
+        searchParams.set("pets", formData.guests.pets.toString());
+      }
     }
 
     // Get current locale from pathname
@@ -671,7 +702,7 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
         {/* Desktop-only Side Dropdowns - Positioned beside form */}
         {activeField === "location" && (
           <div
-            className="hidden md:block absolute top-0 start-full ms-4 w-80 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10 overflow-hidden"
+            className="hidden md:block absolute top-0 start-full ms-4 w-[394px] bg-white rounded-[32px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 p-8 z-10 overflow-hidden"
             style={{ height: formHeight ? `${formHeight}px` : 'auto' }}
             onMouseLeave={() => setActiveField(null)}
           >
@@ -697,7 +728,7 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
 
         {(activeField === "checkin" || activeField === "checkout") && (
           <div
-            className="hidden md:block absolute top-0 start-full ms-4 w-fit bg-white rounded-2xl shadow-lg border border-[#e5e7eb] z-10 overflow-hidden p-8 flex items-center justify-center"
+            className="hidden md:block absolute top-0 start-full ms-4 w-fit bg-white rounded-[32px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 z-10 overflow-hidden p-8 flex items-center justify-center"
             style={{ height: formHeight ? `${formHeight}px` : "auto" }}
             onMouseLeave={() => setActiveField(null)}
           >
@@ -752,7 +783,7 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
 
         {activeField === "guests" && (
           <div
-            className="hidden md:block absolute top-0 start-full ms-4 w-80 bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-6 z-10 overflow-hidden"
+            className="hidden md:block absolute top-0 start-full ms-4 w-[394px] bg-white rounded-[32px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 p-8 z-10 overflow-hidden"
             style={{ height: formHeight ? `${formHeight}px` : 'auto' }}
             onMouseLeave={() => setActiveField(null)}
           >

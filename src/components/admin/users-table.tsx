@@ -33,7 +33,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { toggleUserSuspension, updateUserRole } from "@/lib/actions/admin-actions";
+import { resetHostPassword, toggleUserSuspension, updateUserRole } from "@/lib/actions/admin-actions";
 
 type AdminUser = {
   id: string;
@@ -69,6 +69,10 @@ type Labels = {
   roleUpdated: string;
   suspendedToast: string;
   unsuspendedToast: string;
+  resetPassword: string;
+  resetConfirmTitle: string;
+  resetConfirmBody: string;
+  resetToast: string;
   error: string;
 };
 
@@ -143,6 +147,17 @@ function UserRow({
     });
   }
 
+  function onResetConfirm() {
+    startTransition(async () => {
+      try {
+        await resetHostPassword({ userId: user.id });
+        toast.success(labels.resetToast);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : labels.error);
+      }
+    });
+  }
+
   return (
     <TableRow>
       <TableCell>
@@ -181,39 +196,61 @@ function UserRow({
         {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : "—"}
       </TableCell>
       <TableCell className="text-right">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant={user.isSuspended ? "outline" : "destructive"}
-              size="sm"
-              disabled={isPending}
-            >
-              {user.isSuspended ? labels.unsuspend : labels.suspend}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{labels.suspendConfirmTitle}</AlertDialogTitle>
-              <AlertDialogDescription>{labels.suspendConfirmBody}</AlertDialogDescription>
-            </AlertDialogHeader>
-            {!user.isSuspended ? (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{labels.suspendReasonLabel}</label>
-                <Input
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  maxLength={500}
-                />
-              </div>
-            ) : null}
-            <AlertDialogFooter>
-              <AlertDialogCancel>{labels.cancel}</AlertDialogCancel>
-              <AlertDialogAction onClick={onSuspendConfirm}>
-                {labels.suspendConfirmAction}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <div className="flex items-center justify-end gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" disabled={isPending}>
+                {labels.resetPassword}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{labels.resetConfirmTitle}</AlertDialogTitle>
+                <AlertDialogDescription>{labels.resetConfirmBody}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{labels.cancel}</AlertDialogCancel>
+                <AlertDialogAction onClick={onResetConfirm}>
+                  {labels.suspendConfirmAction}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant={user.isSuspended ? "outline" : "destructive"}
+                size="sm"
+                disabled={isPending}
+              >
+                {user.isSuspended ? labels.unsuspend : labels.suspend}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{labels.suspendConfirmTitle}</AlertDialogTitle>
+                <AlertDialogDescription>{labels.suspendConfirmBody}</AlertDialogDescription>
+              </AlertDialogHeader>
+              {!user.isSuspended ? (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{labels.suspendReasonLabel}</label>
+                  <Input
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    maxLength={500}
+                  />
+                </div>
+              ) : null}
+              <AlertDialogFooter>
+                <AlertDialogCancel>{labels.cancel}</AlertDialogCancel>
+                <AlertDialogAction onClick={onSuspendConfirm}>
+                  {labels.suspendConfirmAction}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </TableCell>
     </TableRow>
   );

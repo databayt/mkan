@@ -70,7 +70,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
   }
 
   // Transform properties to match PropertyCard interface
-  const transformedProperties = properties.map(property => ({
+  const transformedProperties = properties.map((property, index) => ({
     id: property.id.toString(),
     images: property.photoUrls ?? [],
     title: property.title ?? "Property",
@@ -82,6 +82,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
     isFavorite: localFavorites.has(property.id),
     onFavoriteToggle: handleFavoriteToggle,
     onCardClick: handleCardClick,
+    priority: index < 4,
   }))
 
   return (
@@ -103,7 +104,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
         </div>
       ) : (
         <div className="p-4 space-y-4">
-          {transformedProperties.map((property) => (
+          {transformedProperties.map((property, index) => (
             <div key={property.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
               <div className="flex gap-4">
                 <div className="w-48 h-32 bg-gray-200 rounded-lg overflow-hidden relative">
@@ -114,6 +115,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
                       width={192}
                       height={128}
                       className="w-full h-full object-cover"
+                      priority={index < 4}
                     />
                   )}
                 </div>

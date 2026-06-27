@@ -142,6 +142,15 @@ export interface SearchFilters {
   baths?: number;
   propertyType?: PropertyType;
   amenities?: Amenity[];
+  /**
+   * Geographic viewport bounds from the search map. When all four are set,
+   * results are constrained to listings whose location falls inside the box —
+   * this is what powers "Search as I move the map".
+   */
+  minLat?: number;
+  maxLat?: number;
+  minLng?: number;
+  maxLng?: number;
   take?: number;
   skip?: number;
 }
@@ -166,6 +175,12 @@ export const listingFilterSchema = z.object({
   baths: z.number().min(0).max(SEARCH_CONFIG.MAX_BATHS).optional(),
   propertyType: z.enum(PropertyType).optional(),
   amenities: z.array(z.enum(Amenity)).max(30).optional(),
+  // Map viewport bounds (decimal degrees). Latitudes ∈ [-90, 90],
+  // longitudes ∈ [-180, 180]. Applied only when all four are present.
+  minLat: z.number().min(-90).max(90).optional(),
+  maxLat: z.number().min(-90).max(90).optional(),
+  minLng: z.number().min(-180).max(180).optional(),
+  maxLng: z.number().min(-180).max(180).optional(),
   take: z.number().int().min(1).max(SEARCH_CONFIG.MAX_PAGE_SIZE).optional(),
   skip: z.number().int().min(0).optional(),
 });

@@ -56,7 +56,8 @@ export default async function AdminUsersPage({
             unsuspend: a.unsuspend ?? "Unsuspend",
             suspendConfirmTitle: a.suspendConfirmTitle ?? "Confirm",
             suspendConfirmBody:
-              a.suspendConfirmBody ?? "Suspended users cannot log in until unsuspended.",
+              a.suspendConfirmBody ??
+              "Suspended users cannot log in, and their listings are hidden from search until they are restored.",
             suspendConfirmAction: a.confirm ?? "Confirm",
             cancel: a.cancel ?? "Cancel",
             suspendReasonLabel: a.suspendReason ?? "Reason (optional)",
@@ -65,6 +66,12 @@ export default async function AdminUsersPage({
             roleUpdated: a.roleUpdated ?? "Role updated",
             suspendedToast: a.suspendedToast ?? "User suspended",
             unsuspendedToast: a.unsuspendedToast ?? "User restored",
+            resetPassword: a.resetPasswordShort ?? "Reset to 1234",
+            resetConfirmTitle: a.resetPasswordConfirmTitle ?? a.suspendConfirmTitle ?? "Confirm",
+            resetConfirmBody:
+              a.resetPasswordConfirmBody ??
+              "Sets this account's password back to 1234 (the bootstrap login). The owner can change it again from settings.",
+            resetToast: a.resetPasswordToast ?? "Password reset to 1234",
             error: a.actionError ?? "Action failed",
           }}
         />

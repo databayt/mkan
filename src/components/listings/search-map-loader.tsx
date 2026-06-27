@@ -10,8 +10,13 @@ import type SearchMap from "./search-map";
 const SearchMapClient = dynamic(() => import("./search-map"), {
   ssr: false,
   loading: () => (
-    <div className="w-[430px] border-s border-gray-200">
-      <div className="sticky top-16 h-[calc(100vh-64px)] bg-gray-100 animate-pulse" />
+    <div className="h-full w-full border-s border-gray-200">
+      <div
+        className="sticky bg-background p-2"
+        style={{ top: 64, height: "calc(100vh - 64px)" }}
+      >
+        <div className="h-full w-full bg-gray-200 rounded-2xl animate-pulse" />
+      </div>
     </div>
   ),
 });

@@ -11,8 +11,9 @@ interface CredentialsPageProps {
 
 /**
  * Dev-only credentials listing. Hidden in production.
- * Password for every seeded account is the value of DEMO_PASSWORD in
- * scripts/seed-transport.ts and scripts/seed-listings.ts (currently "123456").
+ * Homes hosts & guests use "1234" (DEMO_PASSWORD in scripts/seed-listings.ts);
+ * transport offices use "123456" (DEMO_PASSWORD in scripts/seed-transport.ts).
+ * Homes host login = the 4-digit number (their username), e.g. "0001" / "1234".
  */
 export default async function CredentialsPage({ params }: CredentialsPageProps) {
   if (process.env.NODE_ENV === 'production') {
@@ -59,9 +60,10 @@ export default async function CredentialsPage({ params }: CredentialsPageProps) 
           {isAr ? 'بيانات تجريبية' : 'Demo credentials'}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {isAr
-            ? 'كلمة السر لجميع الحسابات:'
-            : 'Every seeded account uses this password:'}{' '}
+          {isAr ? 'مضيفو المنازل والضيوف:' : 'Homes hosts & guests:'}{' '}
+          <code className="rounded bg-muted px-1.5 py-0.5 font-mono">1234</code>
+          {' — '}
+          {isAr ? 'مكاتب النقل:' : 'Transport offices:'}{' '}
           <code className="rounded bg-muted px-1.5 py-0.5 font-mono">123456</code>
         </p>
         <p className="mt-2 text-xs text-muted-foreground">

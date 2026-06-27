@@ -52,3 +52,6 @@ next-env.d.ts
 /compose-*.mjs
 /hard-refresh.mjs
 /scratch/
+
+# clone skill scratch snapshots
+.clone/

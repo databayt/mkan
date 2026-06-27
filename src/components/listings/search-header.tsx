@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { MoreHorizontal, Menu } from 'lucide-react';
 import SmallSearch from '@/components/template/search/small-search';
+import { SearchFilters } from '@/components/listings/search-filters';
 
 const SearchHeader = () => {
   const pathname = usePathname();
@@ -45,9 +46,10 @@ const SearchHeader = () => {
             </Link>
           </div>
 
-          {/* Center - Small Search */}
-          <div className="flex items-center justify-center flex-1 max-w-md mx-8">
+          {/* Center - Small Search + Filters pill (SmallSearch itself untouched) */}
+          <div className="flex items-center justify-center flex-1 mx-8 gap-3">
             <SmallSearch />
+            <SearchFilters />
           </div>
 
           {/* Right side - User Controls */}

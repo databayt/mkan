@@ -1040,7 +1040,9 @@
         "night": "ليلة",
         "noImage": "لا تتوفر صورة",
         "entireHome": "منزل كامل",
-        "reviews": "تقييم"
+        "reviews": "تقييم",
+        "addToWishlist": "أضف إلى المفضلة",
+        "removeFromWishlist": "إزالة من المفضلة"
       },
       "types": {
         "Rooms": "غرف",
@@ -1232,7 +1234,16 @@
       "noExactMatches": "لا توجد نتائج مطابقة",
       "tryAdjusting": "حاول تعديل بحثك بتغيير التواريخ أو إزالة الفلاتر أو البحث في موقع مختلف.",
       "guestSingular": "ضيف",
-      "guestPlural": "ضيوف"
+      "guestPlural": "ضيوف",
+      "homes": "منزل",
+      "home": "منزل",
+      "pricesIncludeFees": "الأسعار شاملة جميع الرسوم",
+      "searchAsIMove": "ابحث أثناء تحريك الخريطة",
+      "forNights": "لمدة {count} ليالٍ",
+      "bedroom": "غرفة نوم",
+      "bedrooms": "غرف نوم",
+      "bath": "حمام",
+      "baths": "حمامات"
     },
     "reviewsList": {
       "heading": "ما يقوله الضيوف",
@@ -2758,12 +2769,21 @@
     "children": "أطفال",
     "infant": "رضيع",
     "infants": "رضع",
+    "guest": "ضيف",
+    "guests": "ضيوف",
+    "pet": "حيوان أليف",
+    "pets": "حيوانات أليفة",
     "anywhere": "أي مكان",
     "anyWeek": "أي أسبوع",
     "searchHowTos": "ابحث عن الإرشادات والمزيد",
     "whereTo": "إلى أين؟",
     "searchDestinations": "ابحث عن وجهات",
     "searchLocation": "ابحث عن موقع",
+    "homes": "أماكن إقامة",
+    "experiences": "تجارب",
+    "services": "خدمات",
+    "newBadge": "جديد",
+    "suggestedDestinations": "الوجهات المقترحة",
     "searchResults": "نتائج البحث",
     "popularDestinations": "وجهات شائعة",
     "recommendedDestinations": "وجهات مقترحة",
@@ -2775,6 +2795,8 @@
     "childrenAge": "2-12 سنة",
     "infantsLabel": "رضّع",
     "infantsAge": "أقل من سنتين",
+    "petsLabel": "الحيوانات الأليفة",
+    "petsAge": "هل تصطحب حيوان خدمة؟",
     "startSearch": "ابدأ البحث",
     "editSearch": "تعديل البحث",
     "whenTraveling": "متى تسافر؟",
@@ -3164,8 +3186,12 @@
     "actions": "إجراءات",
     "suspend": "إيقاف",
     "unsuspend": "استعادة",
+    "resetPasswordShort": "إعادة التعيين إلى 1234",
+    "resetPasswordConfirmTitle": "إعادة تعيين كلمة المرور؟",
+    "resetPasswordConfirmBody": "يعيد كلمة مرور هذا الحساب إلى 1234 (كلمة الدخول الأولية). يمكن للمالك تغييرها لاحقاً من الإعدادات.",
+    "resetPasswordToast": "تمت إعادة تعيين كلمة المرور إلى 1234",
     "suspendConfirmTitle": "تأكيد الإجراء",
-    "suspendConfirmBody": "لن يتمكن المستخدم الموقوف من تسجيل الدخول حتى يعاد تفعيله.",
+    "suspendConfirmBody": "لن يتمكن المستخدم الموقوف من تسجيل الدخول، وتُخفى إعلاناته من البحث حتى تتم استعادته.",
     "suspendReason": "السبب (اختياري)",
     "confirm": "تأكيد",
     "cancel": "إلغاء",
@@ -4350,13 +4376,18 @@
     "publishSuccess": "تم نشر العقار",
     "unpublishSuccess": "تم إلغاء نشر العقار",
     "publishCannotYet": "أكمل الإعداد قبل النشر",
-    "publishUnknownError": "تعذر النشر — حاول مجدداً"
+    "publishUnknownError": "تعذر النشر — حاول مجدداً",
+    "available": "متاح",
+    "busy": "مشغول",
+    "availableSuccess": "مكانك متاح الآن",
+    "busySuccess": "تم تعليم مكانك كمشغول"
   },
   "cookieConsent": {
-    "title": "نستخدم ملفات تعريف الارتباط",
-    "description": "نستخدم ملفات الارتباط لتسجيل الدخول والأمان وفهم استخدام الموقع. يمكنك قبول الكل أو الضرورية فقط أو تخصيصها.",
+    "title": "ساعدنا في تحسين تجربتك",
+    "description": "نحن نستخدم ملفات تعريف الارتباط والتقنيات الأخرى لتخصيص المحتوى، وقياس الإعلانات، وتقديم تجربة محسنة. بعض ملفات تعريف الارتباط مطلوبة ليعمل الموقع ولا يمكن إيقاف تشغيلها. بقبولك، فإنك توافق على {policyLink}. يمكنك تحديث تفضيلاتك في أي وقت.",
+    "policyText": "سياسة ملفات تعريف الارتباط",
     "acceptAll": "قبول الكل",
-    "rejectNonEssential": "رفض غير الضروري",
-    "learnMore": "اعرف المزيد"
+    "rejectNonEssential": "الضرورية فقط",
+    "learnMore": "إدارة التفضيلات"
   }
 }
