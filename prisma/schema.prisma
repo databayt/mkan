@@ -637,6 +637,7 @@ model User {
   email                 String                 @unique
   emailVerified         DateTime?
   image                 String?
+  phoneNumber           String?
   password              String?
   role                  UserRole               @default(USER)
   isTwoFactorEnabled    Boolean                @default(false)

@@ -165,7 +165,7 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                 price={listing.pricePerNight || 0}
                 rating={listing.averageRating || 4.5}
                 reviewCount={listing.numberOfReviews || 0}
-                ownerPhone={listing.host?.email || "+249123456789"}
+                ownerPhone={listing.host?.phoneNumber || "+249915494649"}
                 reserveElement={reserveRef}
                 onCallButtonMerge={setIsCallButtonInHeader}
             />

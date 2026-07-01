@@ -171,7 +171,7 @@ export default function SiteFooter() {
 					<div className='flex flex-col gap-4 sm:gap-6 lg:flex-row justify-between items-start lg:items-center'>
 						{/* Left side - Copyright and legal links */}
 						<div className='flex flex-wrap items-center gap-4 text-sm text-muted-foreground'>
-							<p>{dict.siteFooter?.copyright ?? "\u00A9 2024 Mkan"}</p>
+							<p>{dict.siteFooter?.copyright ?? "\u00A9 2026 Mkan"}</p>
 							<span>·</span>
 							<Link href='#' className='hover:underline'>
 								{dict.siteFooter?.privacy ?? "Privacy"}

@@ -66,6 +66,7 @@ async function getListingById(id: number, lang: Locale) {
         select: {
           id: true,
           email: true,
+          phoneNumber: true,
           username: true,
         }
       },
@@ -246,7 +247,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
         <Suspense fallback={<div>{d.rental?.listing?.loading}</div>}>
           <MobileReserve
             pricePerNight={serializedListing.pricePerNight || 700}
-            hostEmail={serializedListing.host?.email || "+249915494649"}
+            hostEmail={serializedListing.host?.phoneNumber || "+249915494649"}
           />
         </Suspense>
       </div>

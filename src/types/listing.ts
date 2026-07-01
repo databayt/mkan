@@ -37,6 +37,7 @@ export interface Listing {
   host: {
     id: string;
     email: string;
+    phoneNumber: string | null;
     username: string | null;
   };
 } 

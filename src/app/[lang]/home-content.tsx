@@ -126,7 +126,7 @@ export default function HomeContent({ listings, locale }: HomeContentProps) {
   return (
     <div className="min-h-screen">
 
-      <HeroSection onSearch={scrollToResults} />
+      <HeroSection />
 
       <div className="sticky top-0 z-40 bg-white border-b">
         <div className="layout-container">

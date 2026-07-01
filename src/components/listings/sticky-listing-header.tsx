@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Phone, X } from "lucide-react";
+import { Phone } from "lucide-react";
 
 interface StickyListingHeaderProps {
   price: number;
@@ -17,7 +17,7 @@ export default function StickyListingHeader({
   price,
   rating,
   reviewCount,
-  ownerPhone = "+249123456789",
+  ownerPhone = "+249915494649",
   reserveElement,
   onCallButtonMerge,
 }: StickyListingHeaderProps) {
@@ -25,7 +25,6 @@ export default function StickyListingHeader({
   const [showCallButton, setShowCallButton] = useState(false);
   const [callButtonOpacity, setCallButtonOpacity] = useState(0);
   const [activeTab, setActiveTab] = useState("photos");
-  const [showPhonePrompt, setShowPhonePrompt] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -73,17 +72,6 @@ export default function StickyListingHeader({
     { id: "location", label: "Location" },
   ];
 
-  const handleCallClick = () => {
-    if (ownerPhone) {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
-        window.location.href = `tel:${ownerPhone}`;
-      } else {
-        setShowPhonePrompt(true);
-      }
-    }
-  };
-
   return (
     <>
       {/* Sticky header with tabs + call button (merges later) */}
@@ -114,57 +102,20 @@ export default function StickyListingHeader({
                 ))}
               </div>
 
-              {/* Right: Call button appears when reserve card merges */}
+              {/* Right: Call button appears when reserve card merges — single press dials directly */}
               {showCallButton && (
-                <button
-                  onClick={handleCallClick}
+                <a
+                  href={`tel:${ownerPhone}`}
                   className="flex-shrink-0 inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#E61E4D] via-[#E31C5F] to-[#D70466] px-4 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:shadow-lg active:scale-95"
                   style={{
                     opacity: callButtonOpacity,
                   }}
-                  title="Call owner"
+                  title={`Call ${ownerPhone}`}
                 >
                   <Phone className="h-4 w-4 flex-shrink-0" />
                   <span>Call</span>
-                </button>
+                </a>
               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Phone prompt modal */}
-      {showPhonePrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <h3 className="text-lg font-semibold text-[#222222]">
-                Contact Owner
-              </h3>
-              <button
-                onClick={() => setShowPhonePrompt(false)}
-                className="rounded-lg p-1 transition-colors hover:bg-[#F7F7F7]"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <p className="mb-4 text-sm text-[#6A6A6A]">
-              Call the property owner about this listing:
-            </p>
-            <div className="space-y-3">
-              <a
-                href={`tel:${ownerPhone}`}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#E61E4D] to-[#D70466] px-4 py-3 font-medium text-white transition-all hover:shadow-lg active:scale-95"
-              >
-                <Phone className="h-4 w-4" />
-                {ownerPhone}
-              </a>
-              <button
-                onClick={() => setShowPhonePrompt(false)}
-                className="w-full rounded-lg border border-[#DDDDDD] px-4 py-2.5 font-medium text-[#222222] transition-colors hover:bg-[#F7F7F7]"
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>

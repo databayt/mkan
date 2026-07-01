@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
 
 interface MobileReserveProps {
   pricePerNight?: number;
@@ -16,10 +15,6 @@ const MobileReserve: React.FC<MobileReserveProps> = ({
   onReserve,
   hostEmail = "+249915494649"
 }) => {
-  const handleCall = () => {
-    window.location.href = `tel:${hostEmail}`;
-  };
-
   return (
     <div className={`md:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-gray-200 p-4 ${className}`}>
       <div className="flex items-center justify-between">
@@ -33,13 +28,13 @@ const MobileReserve: React.FC<MobileReserveProps> = ({
           </span>
         </div>
 
-        {/* Call Button */}
-        <Button
-          onClick={handleCall}
-          className="bg-[#E91E63] hover:bg-[#D81B60] text-white font-medium px-8 py-4 rounded-lg"
+        {/* Call Button — native click-to-call, single tap dials directly */}
+        <a
+          href={`tel:${hostEmail}`}
+          className="inline-flex items-center justify-center bg-[#E91E63] hover:bg-[#D81B60] text-white font-medium px-8 py-4 rounded-lg"
         >
           Call
-        </Button>
+        </a>
       </div>
     </div>
   );

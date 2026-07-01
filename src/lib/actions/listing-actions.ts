@@ -211,6 +211,7 @@ export async function createListing(data: unknown = {}) {
           select: {
             id: true,
             email: true,
+            phoneNumber: true,
             username: true,
             image: true,
           },
@@ -253,6 +254,7 @@ export async function getListing(id: unknown) {
           select: {
             id: true,
             email: true,
+            phoneNumber: true,
             username: true,
             image: true,
           },
@@ -372,6 +374,7 @@ export async function getListings(filters?: ListingFilters) {
           select: {
             id: true,
             email: true,
+            phoneNumber: true,
             username: true,
             image: true,
           },
@@ -413,6 +416,7 @@ export async function getHostListings(hostId?: string) {
           select: {
             id: true,
             email: true,
+            phoneNumber: true,
             username: true,
             image: true,
           },
@@ -572,6 +576,7 @@ export async function updateListing(id: unknown, data: unknown) {
           select: {
             id: true,
             email: true,
+            phoneNumber: true,
             username: true,
             image: true,
           },
@@ -720,6 +725,7 @@ export async function publishListing(id: unknown) {
           select: {
             id: true,
             email: true,
+            phoneNumber: true,
             username: true,
             image: true,
           },
@@ -781,6 +787,7 @@ export async function unpublishListing(id: unknown) {
           select: {
             id: true,
             email: true,
+            phoneNumber: true,
             username: true,
             image: true,
           },
@@ -900,6 +907,7 @@ export async function searchListings(params: {
             select: {
               id: true,
               email: true,
+              phoneNumber: true,
               username: true,
               image: true,
             },

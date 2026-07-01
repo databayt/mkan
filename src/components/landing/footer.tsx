@@ -74,7 +74,7 @@ const FooterSection = () => {
           </div>
         </div>
         <div className="mt-8 text-center text-sm text-gray-500 flex justify-center space-x-4 rtl:space-x-reverse">
-          <span>{dict.landing?.footer?.copyright ?? "\u00A9 2024 Mkan. All rights reserved."}</span>
+          <span>{dict.landing?.footer?.copyright ?? "\u00A9 2026 Mkan. All rights reserved."}</span>
           <Link href="/privacy">{dict.landing?.footer?.privacyPolicy ?? "Privacy Policy"}</Link>
           <Link href="/terms">{dict.landing?.footer?.termsOfService ?? "Terms of Service"}</Link>
           <Link href="/cookies">{dict.landing?.footer?.cookiePolicy ?? "Cookie Policy"}</Link>

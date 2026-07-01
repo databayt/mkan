@@ -487,7 +487,7 @@ export function SearchFilters() {
               {/* Panel — anchored to the top, springs from BAR_H down to 85vh. */}
               <motion.div
                 key="panel"
-                className="fixed inset-x-0 top-0 z-[61] overflow-hidden rounded-b-2xl bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)] flex flex-col"
+                className="fixed inset-x-0 top-0 z-[61] overflow-hidden rounded-b-[28px] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)] flex flex-col"
                 initial={{ height: BAR_H }}
                 animate={{ height: sheetH }}
                 exit={{ height: BAR_H }}
