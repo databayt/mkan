@@ -52,7 +52,7 @@ export default function Footer() {
   ];
 
   return (
-    <footer className="relative z-10 bg-gray-100 border-t border-gray-200">
+    <footer className="relative z-10 bg-[#F7F7F7]">
       {/* Main Footer Content */}
       <div className="layout-container py-12">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -79,7 +79,7 @@ export default function Footer() {
       </div>
 
       {/* Bottom Bar */}
-      <div className="border-t border-gray-200">
+      <div>
         <div className="layout-container py-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             {/* Left side - Copyright */}

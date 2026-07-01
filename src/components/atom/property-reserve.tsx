@@ -167,19 +167,20 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
   const money = (n: number) => `${currency}${n.toLocaleString()}`;
 
   return (
+    <>
     <div
       className={`rounded-xl border border-[#DDDDDD] bg-white p-6 shadow-[0_6px_16px_rgba(0,0,0,0.12)] ${className}`}
     >
-      {/* Price headline — 22px/600 like the live reserve card */}
+      {/* Price headline — 22px/500 unit price + qualifier, like the live card */}
       <div className="mb-5 flex items-baseline gap-1.5">
-        <span className="text-[22px] font-semibold text-[#222222]">
+        <span className="text-[22px] font-medium text-[#222222]">
           {money(pricePerNight || 0)}
         </span>
-        <span className="text-base text-[#222222]">{t.perNight ?? "night"}</span>
+        <span className="text-sm text-[#222222]">{t.perNight ?? "night"}</span>
       </div>
 
-      {/* Date + guests — single rounded box with hairline internal dividers */}
-      <div className="mb-4 overflow-hidden rounded-lg border border-[#B0B0B0]">
+      {/* Date + guests — single 12px-radius box with hairline internal dividers */}
+      <div className="mb-4 overflow-hidden rounded-[12px] border border-[#B0B0B0]">
         <Popover>
           <PopoverTrigger asChild>
             <button type="button" className="grid w-full grid-cols-2 text-start">
@@ -221,7 +222,7 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
             <select
               value={guests}
               onChange={(e) => setGuests(Number(e.target.value))}
-              className="w-full bg-transparent text-sm text-[#222222] outline-none"
+              className="w-full appearance-none bg-transparent text-sm text-[#222222] outline-none"
             >
               {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
                 <option key={n} value={n}>
@@ -238,9 +239,9 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
         <p className="mb-2 text-sm text-destructive">{availabilityError}</p>
       )}
 
-      {/* Reserve — Airbnb's Rausch gradient pill */}
+      {/* Reserve — Airbnb's Rausch gradient pill, 12px radius */}
       <Button
-        className="h-12 w-full rounded-lg border-0 text-base font-semibold text-white hover:opacity-95"
+        className="h-12 w-full rounded-[12px] border-0 text-base font-semibold text-white hover:opacity-95"
         style={{
           background:
             "linear-gradient(to right, #E61E4D 0%, #E31C5F 50%, #D70466 100%)",
@@ -288,6 +289,19 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
         </div>
       )}
     </div>
+
+    {/* Report this listing — mirrors Airbnb's REPORT_TO_AIRBNB row below the
+        book-it card: centered, muted, flag icon. */}
+    <button
+      type="button"
+      className="mx-auto mt-2 flex items-center gap-2 text-sm text-[#6A6A6A] underline underline-offset-2 hover:text-[#222222]"
+    >
+      <svg viewBox="0 0 16 16" aria-hidden="true" style={{ display: "block", height: 16, width: 16, fill: "currentColor" }}>
+        <path d="m7.5011 1c.5272 0 .9591.40794.99725.92537l.00275.07463v1h5.5c.31265 0 .5435.281645.4935.581075l-.01275.056285-.96125 3.36264.96125 3.36265c.08055.2818-.0967.5625-.36775.62465l-.0554.00945-.0576.00325h-5.5c-.5272 0-.9591-.40795-.99725-.92535l-.00275-.07465v-1h-5v6h-1v-14zm1 3h-1v4h1z" />
+      </svg>
+      {t.reportListing ?? "Report this listing"}
+    </button>
+    </>
   );
 };
 

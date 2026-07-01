@@ -13,7 +13,7 @@ export default function SiteFooter() {
 	const dict = useDictionary();
 
 	return (
-		<div className='bg-muted border-t border-border'>
+		<div className='bg-[#F7F7F7]'>
 			<div className='max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12'>
 				{/* Main footer content */}
 				<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-6 sm:mb-8 justify-items-center'>
@@ -167,7 +167,7 @@ export default function SiteFooter() {
 				</div>
 
 				{/* Bottom section */}
-				<div className='border-t border-border pt-4 sm:pt-6 px-2 sm:px-6'>
+				<div className='pt-4 sm:pt-6 px-2 sm:px-6'>
 					<div className='flex flex-col gap-4 sm:gap-6 lg:flex-row justify-between items-start lg:items-center'>
 						{/* Left side - Copyright and legal links */}
 						<div className='flex flex-wrap items-center gap-4 text-sm text-muted-foreground'>

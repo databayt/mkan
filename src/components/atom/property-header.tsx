@@ -40,7 +40,7 @@ const AirbnbPropertyHeader: React.FC<AirbnbPropertyHeaderProps> = ({
   };
 
   return (
-    <div className={`w-full ${className}`}>
+    <div className={`w-full px-6 lg:px-0 ${className}`}>
       {/* Main Header */}
       <div className="flex flex-col space-y-1">
         {/* Title Row */}
