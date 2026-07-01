@@ -1,184 +1,55 @@
 "use client";
+export const dynamic = "force-dynamic";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { Calendar, Info, CheckCircle } from 'lucide-react';
-import { useDictionary } from '@/components/internationalization/dictionary-context';
+import React from "react";
+import { CancellationPolicy } from "@prisma/client";
+import { EditorSection, SaveBar } from "@/components/hosting/listing/editor-section";
+import {
+  useEditorField,
+  OptionCard,
+} from "@/components/hosting/listing/editor-controls";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
-const policies = [
-  {
-    id: 'flexible',
-    keyPrefix: 'flexible',
-    name: 'Flexible',
-    description: 'Full refund 1 day prior to arrival',
-    details: [
-      'Full refund for cancellations made at least 24 hours before check-in',
-      'If cancelled less than 24 hours before check-in, the first night is non-refundable',
-      'Cleaning fees are always refunded if the guest did not check in',
-    ],
-    recommended: true,
-  },
-  {
-    id: 'moderate',
-    keyPrefix: 'moderate',
-    name: 'Moderate',
-    description: 'Full refund 5 days prior to arrival',
-    details: [
-      'Full refund for cancellations made at least 5 days before check-in',
-      'If cancelled less than 5 days before check-in, 50% refund of nightly rate',
-      'Cleaning fees are always refunded if the guest did not check in',
-    ],
-    recommended: false,
-  },
-  {
-    id: 'firm',
-    keyPrefix: 'firm',
-    name: 'Firm',
-    description: 'Full refund 30 days prior to arrival',
-    details: [
-      'Full refund for cancellations made at least 30 days before check-in',
-      'If cancelled less than 30 days before check-in, 50% refund of nightly rate',
-      'If cancelled less than 7 days before check-in, no refund',
-    ],
-    recommended: false,
-  },
-  {
-    id: 'strict',
-    keyPrefix: 'strict',
-    name: 'Strict',
-    description: '50% refund up to 1 week prior to arrival',
-    details: [
-      '50% refund for cancellations made at least 7 days before check-in',
-      'No refund for cancellations made less than 7 days before check-in',
-      'Cleaning fees are always refunded if the guest did not check in',
-    ],
-    recommended: false,
-  },
-  {
-    id: 'non-refundable',
-    keyPrefix: 'nonRefundable',
-    name: 'Non-refundable',
-    description: 'Guests pay 10% less, no refund',
-    details: [
-      'No refunds at any time',
-      'Guests get a 10% discount on their booking',
-      'Best for hosts who want to minimize cancellations',
-    ],
-    recommended: false,
-  },
-];
-
-const CancellationPolicyPage = () => {
-  const router = useRouter();
+export default function CancellationPolicyPage() {
   const dict = useDictionary();
-  const t = dict?.listingEditor?.cancellationPolicy as Record<string, string> | undefined;
-  const [selectedPolicy, setSelectedPolicy] = useState('flexible');
+  const nav = dict?.listingEditor?.nav;
+  const cp = dict?.listingEditor?.cancellationPolicy;
+  const { value, setValue, dirty, saving, save } = useEditorField(
+    (l) => (l.cancellationPolicy as CancellationPolicy | null) ?? CancellationPolicy.Flexible,
+    CancellationPolicy.Flexible
+  );
 
-  const policyName = (p: typeof policies[number]) => t?.[`${p.keyPrefix}Name`] ?? p.name;
-  const policyDesc = (p: typeof policies[number]) => t?.[`${p.keyPrefix}Desc`] ?? p.description;
-  const policyDetail = (p: typeof policies[number], i: number) =>
-    t?.[`${p.keyPrefix}D${i + 1}`] ?? p.details[i];
-
-  const selected = policies.find(p => p.id === selectedPolicy);
+  const policies: { id: CancellationPolicy; name?: string; desc?: string }[] = [
+    { id: CancellationPolicy.Flexible, name: cp?.flexibleName, desc: cp?.flexibleDesc },
+    { id: CancellationPolicy.Moderate, name: cp?.moderateName, desc: cp?.moderateDesc },
+    { id: CancellationPolicy.Firm, name: cp?.firmName, desc: cp?.firmDesc },
+    { id: CancellationPolicy.Strict, name: cp?.strictName, desc: cp?.strictDesc },
+    { id: CancellationPolicy.NonRefundable, name: cp?.nonRefundableName, desc: cp?.nonRefundableDesc },
+  ];
 
   return (
-    <div className="lg:col-span-2">
-      <div className="max-w-3xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">{t?.heading ?? "Cancellation policy"}</h1>
-          <p className="text-muted-foreground">
-            {t?.subtitle ?? "Choose a policy that works for you. This determines when guests can cancel and get a refund."}
-          </p>
-        </div>
-
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="size-5" />
-              {t?.cardTitle ?? "Select your policy"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RadioGroup value={selectedPolicy} onValueChange={setSelectedPolicy}>
-              <div className="space-y-4">
-                {policies.map((policy) => (
-                  <div
-                    key={policy.id}
-                    onClick={() => setSelectedPolicy(policy.id)}
-                    className={`flex items-start gap-4 p-4 border rounded-lg cursor-pointer transition-colors ${
-                      selectedPolicy === policy.id
-                        ? 'border-black bg-gray-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <RadioGroupItem value={policy.id} id={policy.id} className="mt-1" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor={policy.id} className="text-base font-medium cursor-pointer">
-                          {policyName(policy)}
-                        </Label>
-                        {policy.recommended && (
-                          <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
-                            {t?.recommended ?? "Recommended"}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">{policyDesc(policy)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </RadioGroup>
-          </CardContent>
-        </Card>
-
-        {selected && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>{policyName(selected)} {t?.policyDetailsSuffix ?? "policy details"}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3">
-                {selected.details.map((detail, index) => (
-                  <li key={index} className="flex items-start gap-3">
-                    <CheckCircle className="size-5 text-green-600 mt-0.5 shrink-0" />
-                    <span className="text-sm">{policyDetail(selected, index)}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <Info className="size-5 text-blue-600 mt-0.5" />
-              <div>
-                <h4 className="font-medium text-blue-900">{t?.chooseTitle ?? "Choosing the right policy"}</h4>
-                <p className="text-sm text-blue-700 mt-1">
-                  {t?.chooseText ?? "Flexible policies tend to get more bookings because guests feel more comfortable booking. Stricter policies give you more protection against last-minute cancellations."}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="mt-8 flex justify-between">
-          <Button variant="outline" onClick={() => router.back()}>
-            {dict?.common?.back ?? "Back"}
-          </Button>
-          <Button>
-            {dict?.common?.save ?? "Save"}
-          </Button>
-        </div>
+    <EditorSection
+      title={nav?.cancellationPolicy ?? "Cancellation policy"}
+      subtitle={cp?.subtitle ?? "Choose how flexible your cancellation terms are."}
+    >
+      <div className="space-y-3">
+        {policies.map((p) => (
+          <OptionCard
+            key={p.id}
+            selected={value === p.id}
+            onClick={() => setValue(p.id)}
+            title={p.name ?? p.id}
+            description={p.desc}
+          />
+        ))}
       </div>
-    </div>
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        onSave={() => save({ cancellationPolicy: value })}
+        saveLabel={nav?.save}
+        savingLabel={nav?.saving}
+      />
+    </EditorSection>
   );
-};
-
-export default CancellationPolicyPage;
+}

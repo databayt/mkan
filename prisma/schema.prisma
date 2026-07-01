@@ -91,10 +91,11 @@ model Booking {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  listing  Listing          @relation(fields: [listingId], references: [id])
-  guest    User             @relation(fields: [guestId], references: [id])
-  review   Review?
-  payments BookingPayment[]
+  listing      Listing          @relation(fields: [listingId], references: [id])
+  guest        User             @relation(fields: [guestId], references: [id])
+  review       Review?
+  payments     BookingPayment[]
+  conversation Conversation?
 
   @@index([listingId])
   @@index([guestId])
@@ -158,6 +159,48 @@ model SeasonalPricing {
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([listingId, startDate, endDate])
+}
+
+// Host ⇄ guest message thread (Airbnb /hosting/messages). A thread optionally
+// pins to a listing and/or a booking; read state is tracked per side via
+// hostReadAt / guestReadAt so the inbox can show unread counts.
+model Conversation {
+  id            Int       @id @default(autoincrement())
+  hostId        String
+  guestId       String
+  listingId     Int?
+  bookingId     Int?      @unique
+  subject       String?
+  lastMessageAt DateTime  @default(now())
+  hostReadAt    DateTime?
+  guestReadAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  host     User      @relation("ConversationHost", fields: [hostId], references: [id], onDelete: Cascade)
+  guest    User      @relation("ConversationGuest", fields: [guestId], references: [id], onDelete: Cascade)
+  listing  Listing?  @relation(fields: [listingId], references: [id])
+  booking  Booking?  @relation(fields: [bookingId], references: [id])
+  messages Message[]
+
+  @@index([hostId, lastMessageAt])
+  @@index([guestId, lastMessageAt])
+  @@index([listingId])
+}
+
+model Message {
+  id             Int       @id @default(autoincrement())
+  conversationId Int
+  senderId       String
+  body           String    @db.Text
+  createdAt      DateTime  @default(now())
+  readAt         DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
 }
 
 model Bus {
@@ -233,6 +276,7 @@ model Listing {
   checkOutTime       String?
   checkInMethod      CheckInMethod?
   houseRules         Json?
+  guideInfo          Json?
   minStay            Int?                @default(1)
   maxStay            Int?                @default(365)
   advanceNotice      Int?                @default(1)
@@ -251,6 +295,7 @@ model Listing {
   reviews         Review[]
   blockedDates    BlockedDate[]
   seasonalPricing SeasonalPricing[]
+  conversations   Conversation[]
 
   @@index([hostId])
   @@index([hostId, isPublished])
@@ -614,6 +659,39 @@ model User {
   // Rides
   rideDriver            RideDriver?
   ridesAsPassenger      Ride[]                 @relation("RidePassenger")
+  profile               Profile?
+  // Messaging (host inbox)
+  conversationsAsHost   Conversation[]         @relation("ConversationHost")
+  conversationsAsGuest  Conversation[]         @relation("ConversationGuest")
+  messagesSent          Message[]              @relation("MessageSender")
+}
+
+// Host/guest "About" profile (clone of airbnb.com/users/profile/about). 1:1 with
+// User; every prompt field optional — an empty Profile is the "complete your
+// profile" empty-state. Field names mirror the PromptKey union in
+// src/components/profile/prompt-icons.tsx.
+model Profile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  bio             String?
+  decadeBorn      String?
+  whereWantedToGo String?
+  work            String?
+  pets            String?
+  school          String?
+  spendTime       String?
+  song            String?
+  funFact         String?
+  uselessSkill    String?
+  obsessedWith    String?
+  bioTitle        String?
+  whereILive      String?
+  languages       String[]
+  interests       String[]
+  showPastTrips   Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -831,4 +909,27 @@ model RateLimitCounter {
   expiresAt DateTime
 
   @@index([expiresAt])
+}
+
+/// On-demand translation cache for dynamic DB content (listing titles,
+/// descriptions, addresses…). Content is stored single-language (Arabic) and
+/// the viewer's locale decides what they see — resolved LRU → this table →
+/// Google Translate v2 (see src/components/translation/). Global (mkan is not
+/// multi-tenant); manual rows (provider="manual") are never overwritten.
+model Translation {
+  id             String   @id @default(cuid())
+  sourceText     String   @db.Text
+  sourceLanguage String // "ar" | "en"
+  targetLanguage String // "ar" | "en"
+  translatedText String   @db.Text
+  provider       String   @default("google")
+  hitCount       Int      @default(0)
+  lastAccessedAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([sourceText, sourceLanguage, targetLanguage])
+  @@index([sourceLanguage, targetLanguage])
+  @@index([lastAccessedAt])
+  @@map("translation_cache")
 }

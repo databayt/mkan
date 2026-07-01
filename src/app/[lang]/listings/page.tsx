@@ -23,10 +23,10 @@ export async function generateMetadata({
 import { getListings } from "@/components/host/actions";
 import ListingsHeader from "@/components/listings/listings-header";
 import MobileListingsHeader from "@/components/listings/mobile-listings-header";
-import { PropertyContent } from "@/components/listings/property/content";
-import { ListingsPagination } from "@/components/listings/pagination";
+import { InfiniteListings } from "@/components/listings/infinite-listings";
 import { Listing } from "@/types/listing";
 import { type SearchFilters } from "@/lib/schemas/search-schema";
+import Footer from "@/components/site/footer";
 
 const PAGE_SIZE = 20;
 
@@ -70,8 +70,12 @@ function toInt(v: string | undefined, max?: number) {
   return max !== undefined ? Math.min(n, max) : n;
 }
 
-async function getFilteredListings(searchParams: ListingsPageProps["searchParams"]) {
+async function getFilteredListings(
+  searchParams: ListingsPageProps["searchParams"],
+  pageParams?: Promise<{ lang: "en" | "ar" }>,
+) {
   const params = await searchParams;
+  const lang = pageParams ? (await pageParams).lang : undefined;
 
   // Normalize amenities param — it can arrive as "a,b" or ["a","b"].
   const rawAmenities = Array.isArray(params.amenities)
@@ -120,16 +124,21 @@ async function getFilteredListings(searchParams: ListingsPageProps["searchParams
     skip: (page - 1) * PAGE_SIZE,
   };
 
-  const result = await searchListings(filters);
+  // Filters re-sent to the client for the infinite-scroll fetches. take/skip
+  // are stripped because the InfiniteListings component owns paging — it
+  // supplies a fresh `skip` per page based on how many rows are already loaded.
+  const { take: _take, skip: _skip, ...clientFilters } = filters;
+
+  const result = await searchListings(filters, lang);
 
   if (!result.success) {
     console.error("Search error:", result.error);
     try {
       const listings = await getListings({ publishedOnly: true });
-      return { listings: listings as Listing[], total: listings.length, page };
+      return { listings: listings as Listing[], total: listings.length, page, filters: clientFilters };
     } catch (error) {
       console.error("Error fetching listings:", error);
-      return { listings: [] as Listing[], total: 0, page };
+      return { listings: [] as Listing[], total: 0, page, filters: clientFilters };
     }
   }
 
@@ -137,12 +146,13 @@ async function getFilteredListings(searchParams: ListingsPageProps["searchParams
     listings: result.data as Listing[],
     total: result.total ?? result.data.length,
     page,
+    filters: clientFilters,
   };
 }
 
 function PropertySkeleton() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
       {[...Array(8)].map((_, i) => (
         <div key={i} className="animate-pulse">
           <div className="aspect-square bg-gray-200 rounded-lg" />
@@ -160,12 +170,11 @@ export default async function ListingsPage({ searchParams, params: pageParams }:
   // intentionally hidden on this page; URL filters still work because the
   // server action reads them directly from `searchParams`.
   const [listingsResult, params, { lang }] = await Promise.all([
-    getFilteredListings(searchParams),
+    getFilteredListings(searchParams, pageParams),
     searchParams,
     pageParams,
   ]);
-  const { listings, total: totalListings, page: currentPage } = listingsResult;
-  const totalPages = Math.max(1, Math.ceil(totalListings / PAGE_SIZE));
+  const { listings, total: totalListings, filters: clientFilters } = listingsResult;
   const d = await getDictionary(lang);
 
   // Build search summary for display. `q`/`query` get a quoted-keyword
@@ -199,7 +208,7 @@ export default async function ListingsPage({ searchParams, params: pageParams }:
         {searchSummary.length > 0 && (
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-gray-900">
-              {listings.length} {listings.length === 1
+              {totalListings} {totalListings === 1
                 ? (d.rental?.searchPage?.placeSingular ?? "place")
                 : (d.rental?.searchPage?.placePlural ?? "places")}
               {params.location && ` ${(d.rental?.searchPage?.inLocation ?? "in {location}").replace("{location}", params.location)}`}
@@ -224,21 +233,21 @@ export default async function ListingsPage({ searchParams, params: pageParams }:
 
         <div>
           <Suspense fallback={<PropertySkeleton />}>
-            <PropertyContent properties={listings} />
+            {/* Infinite scroll: the first page is server-rendered, then the
+                client appends pages as the user nears the bottom — replacing
+                the old prev/next pager. `key` resets the accumulated list
+                whenever the active filters change. */}
+            <InfiniteListings
+              key={JSON.stringify(clientFilters)}
+              initialListings={listings}
+              total={totalListings}
+              pageSize={PAGE_SIZE}
+              filters={clientFilters}
+            />
           </Suspense>
-          <ListingsPagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            lang={lang}
-            baseParams={params}
-            dict={{
-              previous: d.common?.previous ?? "Previous",
-              next: d.common?.next ?? "Next",
-              pageOf: d.listings?.pagination?.pageOf ?? "Page {current} of {total}",
-            }}
-          />
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

@@ -44,50 +44,76 @@ const OnboardingStepsOverview: React.FC<OnboardingStepsOverviewProps> = ({
 
   const defaultHeadline = dict.onboarding?.headline ?? "It's easy to get started on Mkan";
 
+  const renderHeadline = (text: React.ReactNode) => {
+    if (typeof text === 'string') {
+      if (text === "It's easy to get started on Mkan") {
+        return (
+          <>
+            It&apos;s easy to get started
+            <br />
+            on Mkan
+          </>
+        );
+      }
+      if (text === "من السهل البدء على مكان") {
+        return (
+          <>
+            من السهل البدء
+            <br />
+            على مكان
+          </>
+        );
+      }
+    }
+    return text;
+  };
+
   return (
     <div className={cn("h-full flex flex-col px-6 md:px-20", className)}>
       <div className="flex-1">
         <div className="h-full max-w-7xl mx-auto flex flex-col">
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-12 items-start py-12">
-            {/* Left Side - Title */}
-            <div>
-              <h2>
-                {config.headline || defaultHeadline}
-              </h2>
-              {config.subheadline && (
-                <p className="mt-4 text-muted-foreground">
-                  {config.subheadline}
-                </p>
-              )}
-            </div>
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-12 items-start py-12">
+              {/* Left Side - Title */}
+              <div className="text-start">
+                <h2 className="text-start leading-tight">
+                  {renderHeadline(config.headline || defaultHeadline)}
+                </h2>
+                {config.subheadline && (
+                  <p className="mt-4 text-muted-foreground text-start">
+                    {config.subheadline}
+                  </p>
+                )}
+              </div>
 
-            {/* Right Side - Steps */}
-            <div className="space-y-6">
-              {config.steps.map((step) => {
-                const translated = translateStep(step);
-                return (
-                <div key={step.number} className="flex gap-6 items-start">
-                  <div className="flex gap-3 flex-1">
-                    <div className="flex-shrink-0">
-                      <h4 className="text-foreground">
-                        {step.number}
-                      </h4>
+              {/* Right Side - Steps */}
+              <div className="space-y-6">
+                {config.steps.map((step) => {
+                  const translated = translateStep(step);
+                  return (
+                  <div key={step.number} className="flex gap-6 items-start">
+                    <div className="flex gap-3 flex-1">
+                      <div className="flex-shrink-0">
+                        <h4 className="text-foreground">
+                          {step.number}
+                        </h4>
+                      </div>
+                      <div>
+                        <h4 className="mb-1">
+                          {translated.title}
+                        </h4>
+                        <p>
+                          {translated.description}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="mb-1">
-                        {translated.title}
-                      </h4>
-                      <p>
-                        {translated.description}
-                      </p>
+                    <div className="flex-shrink-0 hidden md:flex items-center justify-center w-24 h-24">
+                      {step.illustration}
                     </div>
                   </div>
-                  <div className="flex-shrink-0 hidden md:flex items-center justify-center w-24 h-24">
-                    {step.illustration}
-                  </div>
-                </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
 

@@ -21,6 +21,15 @@ interface AirbnbReserveProps {
   rating?: number;
   reviewCount?: number;
   className?: string;
+  /**
+   * Controlled booking range. When `onRangeChange` is supplied the component is
+   * controlled (the listing page lifts this so the inline availability calendar
+   * and this card stay in sync); otherwise it keeps its own internal range.
+   */
+  range?: DateRange;
+  onRangeChange?: (range: DateRange | undefined) => void;
+  /** Pre-expanded blocked dates from the parent; falls back to its own fetch. */
+  blockedDates?: Date[];
 }
 
 const DEFAULT_SERVICE_FEE_PCT = 0.12;
@@ -42,6 +51,9 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
   serviceFeePct = DEFAULT_SERVICE_FEE_PCT,
   maxGuests = 10,
   className = "",
+  range: controlledRange,
+  onRangeChange,
+  blockedDates: controlledBlocked,
 }) => {
   const dict = useDictionary() as unknown as Record<string, Record<string, string>>;
   const params = useParams();
@@ -50,16 +62,23 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
   const t = dict.booking ?? {};
   const currency = dict.common?.currency ?? "$";
 
-  const [range, setRange] = useState<DateRange | undefined>();
+  // Controlled when the parent passes onRangeChange; otherwise self-managed.
+  const isControlled = onRangeChange !== undefined;
+  const [internalRange, setInternalRange] = useState<DateRange | undefined>();
+  const range = isControlled ? controlledRange : internalRange;
+  const setRange = onRangeChange ?? setInternalRange;
+
   const [guests, setGuests] = useState(1);
-  const [blockedDates, setBlockedDates] = useState<Date[]>([]);
+  const [internalBlocked, setInternalBlocked] = useState<Date[]>([]);
+  const blockedDates = controlledBlocked ?? internalBlocked;
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // Load blocked dates for the listing so users can't pick conflicting ranges.
+  // Skipped when the parent already provides them (controlled blocked dates).
   useEffect(() => {
-    if (!listingId) return;
+    if (!listingId || controlledBlocked) return;
     getBlockedDates(listingId)
       .then((ranges) => {
         const dates: Date[] = [];
@@ -70,13 +89,13 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
             dates.push(new Date(d));
           }
         }
-        setBlockedDates(dates);
+        setInternalBlocked(dates);
       })
       .catch(() => {
         // Soft-fail — user can still attempt a booking and server-side
         // availability check will catch conflicts.
       });
-  }, [listingId]);
+  }, [listingId, controlledBlocked]);
 
   // Verify availability whenever the range changes to give early feedback.
   // Both setState calls are intentional: clearing the error when range
@@ -145,42 +164,39 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
     });
   };
 
+  const money = (n: number) => `${currency}${n.toLocaleString()}`;
+
   return (
-    <div className={`rounded-xl border bg-background p-4 max-w-xs ${className}`}>
-      <div className="flex items-baseline justify-between mb-4">
-        <div>
-          <span className="text-lg font-bold">
-            {currency}
-            {pricePerNight || 0}
-          </span>
-          <span className="text-muted-foreground text-sm ms-1">
-            {t.perNight ?? "/ night"}
-          </span>
-        </div>
+    <div
+      className={`rounded-xl border border-[#DDDDDD] bg-white p-6 shadow-[0_6px_16px_rgba(0,0,0,0.12)] ${className}`}
+    >
+      {/* Price headline — 22px/600 like the live reserve card */}
+      <div className="mb-5 flex items-baseline gap-1.5">
+        <span className="text-[22px] font-semibold text-[#222222]">
+          {money(pricePerNight || 0)}
+        </span>
+        <span className="text-base text-[#222222]">{t.perNight ?? "night"}</span>
       </div>
 
-      {/* Date range picker */}
-      <div className="border rounded-md mb-3">
+      {/* Date + guests — single rounded box with hairline internal dividers */}
+      <div className="mb-4 overflow-hidden rounded-lg border border-[#B0B0B0]">
         <Popover>
           <PopoverTrigger asChild>
-            <button
-              type="button"
-              className="grid grid-cols-2 w-full text-start"
-            >
-              <div className="p-2 border-e">
-                <div className="text-[10px] font-medium uppercase tracking-wide">
+            <button type="button" className="grid w-full grid-cols-2 text-start">
+              <div className="border-e border-[#B0B0B0] px-3 py-2.5">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-[#222222]">
                   {t.checkIn ?? "Check-in"}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {formatDate(range?.from) || "—"}
+                <div className="text-sm text-[#222222]">
+                  {formatDate(range?.from) || (t.addDate ?? "Add date")}
                 </div>
               </div>
-              <div className="p-2">
-                <div className="text-[10px] font-medium uppercase tracking-wide">
+              <div className="px-3 py-2.5">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-[#222222]">
                   {t.checkOut ?? "Check-out"}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {formatDate(range?.to) || "—"}
+                <div className="text-sm text-[#222222]">
+                  {formatDate(range?.to) || (t.addDate ?? "Add date")}
                 </div>
               </div>
             </button>
@@ -190,22 +206,22 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
               mode="range"
               selected={range}
               onSelect={setRange}
-              numberOfMonths={1}
+              numberOfMonths={2}
               disabled={[{ before: new Date() }, ...blockedDates]}
             />
           </PopoverContent>
         </Popover>
 
         {/* Guest picker */}
-        <div className="border-t p-2 flex items-center justify-between">
-          <div>
-            <div className="text-[10px] font-medium uppercase tracking-wide">
+        <div className="flex items-center justify-between border-t border-[#B0B0B0] px-3 py-2.5">
+          <div className="flex-1">
+            <div className="text-[10px] font-bold uppercase tracking-wide text-[#222222]">
               {t.guests ?? "Guests"}
             </div>
             <select
               value={guests}
               onChange={(e) => setGuests(Number(e.target.value))}
-              className="text-xs bg-transparent outline-none"
+              className="w-full bg-transparent text-sm text-[#222222] outline-none"
             >
               {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
                 <option key={n} value={n}>
@@ -214,66 +230,60 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
               ))}
             </select>
           </div>
-          <ChevronDown className="w-3 h-3 text-muted-foreground" />
+          <ChevronDown className="h-4 w-4 text-[#222222]" />
         </div>
       </div>
 
       {availabilityError && (
-        <p className="text-xs text-destructive mb-2">{availabilityError}</p>
+        <p className="mb-2 text-sm text-destructive">{availabilityError}</p>
       )}
 
+      {/* Reserve — Airbnb's Rausch gradient pill */}
       <Button
-        className="w-full bg-[#E91E63] hover:bg-[#D81B60] text-white font-medium h-10 mb-3 text-sm"
-        size="sm"
+        className="h-12 w-full rounded-lg border-0 text-base font-semibold text-white hover:opacity-95"
+        style={{
+          background:
+            "linear-gradient(to right, #E61E4D 0%, #E31C5F 50%, #D70466 100%)",
+        }}
         disabled={!canReserve || isPending}
         onClick={onReserve}
       >
         {isPending ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           t.reserve ?? "Reserve"
         )}
       </Button>
 
-      <p className="text-center text-xs text-muted-foreground mb-4">
+      <p className="mt-3 text-center text-sm text-[#6A6A6A]">
         {t.notChargedYet ?? "You won't be charged yet"}
       </p>
 
       {nights > 0 && (
-        <div className="space-y-2 text-xs">
+        <div className="mt-5 space-y-3 text-base text-[#222222]">
           <div className="flex justify-between">
             <span className="underline">
-              {currency}
-              {pricePerNight} × {nights} {nights === 1 ? (t.nightSingular ?? "night") : (t.nightsPlural ?? "nights")}
+              {money(pricePerNight)} × {nights}{" "}
+              {nights === 1
+                ? (t.nightSingular ?? "night")
+                : (t.nightsPlural ?? "nights")}
             </span>
-            <span>
-              {currency}
-              {subtotal}
-            </span>
+            <span>{money(subtotal)}</span>
           </div>
           {cleaning > 0 && (
             <div className="flex justify-between">
               <span className="underline">{t.cleaningFee ?? "Cleaning fee"}</span>
-              <span>
-                {currency}
-                {cleaning}
-              </span>
+              <span>{money(cleaning)}</span>
             </div>
           )}
           <div className="flex justify-between">
             <span className="underline">{t.serviceFee ?? "Service fee"}</span>
-            <span>
-              {currency}
-              {serviceFee}
-            </span>
+            <span>{money(serviceFee)}</span>
           </div>
-          <hr className="my-2" />
-          <div className="flex justify-between font-medium">
+          <hr className="my-3 border-[#DDDDDD]" />
+          <div className="flex justify-between font-semibold">
             <span>{t.total ?? "Total"}</span>
-            <span>
-              {currency}
-              {total}
-            </span>
+            <span>{money(total)}</span>
           </div>
         </div>
       )}

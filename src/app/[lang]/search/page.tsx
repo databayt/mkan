@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import SearchHeader from "@/components/listings/search-header"
 import { SearchProvider } from "@/components/listings/search-provider"
 import { SearchResultsArea } from "@/components/listings/search-results-area"
+import HotelCreditDialog from "@/components/template/search/hotel-credit-dialog"
 import Footer from "@/components/site/footer"
 import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
@@ -55,12 +56,15 @@ function resolveDates(
   return { nights, label };
 }
 
-async function getInitialListings(searchParams?: {
-  location?: string
-  checkIn?: string
-  checkOut?: string
-  guests?: string
-}): Promise<{ listings: Listing[]; total: number }> {
+async function getInitialListings(
+  searchParams?: {
+    location?: string
+    checkIn?: string
+    checkOut?: string
+    guests?: string
+  },
+  lang?: "en" | "ar",
+): Promise<{ listings: Listing[]; total: number }> {
   const filters: SearchFilters = {
     location: searchParams?.location,
     checkIn: searchParams?.checkIn,
@@ -69,7 +73,7 @@ async function getInitialListings(searchParams?: {
     take: 50,
     skip: 0,
   };
-  const result = await searchListings(filters);
+  const result = await searchListings(filters, lang);
   return {
     listings: (result.success ? result.data : []) as Listing[],
     total: result.success ? result.total ?? result.data.length : 0,
@@ -90,7 +94,7 @@ export default async function SearchPage({
 }) {
   const { lang } = await pageParams;
   const resolvedSearchParams = await searchParams;
-  const { listings, total } = await getInitialListings(resolvedSearchParams);
+  const { listings, total } = await getInitialListings(resolvedSearchParams, lang);
   const { nights, label: datesLabel } = resolveDates(
     resolvedSearchParams?.checkIn,
     resolvedSearchParams?.checkOut,
@@ -123,6 +127,9 @@ export default async function SearchPage({
         <SearchResultsArea />
 
         <Footer />
+
+        {/* Airbnb-style hotel-credit promo — auto-surfaces once per browser. */}
+        <HotelCreditDialog />
       </SearchProvider>
     </div>
   )

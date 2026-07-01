@@ -76,11 +76,21 @@ export function SearchResults({
 
   return (
     <div
-      className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2"
-      style={{ columnGap: "24px", rowGap: "32px" }}
+      className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 gap-x-4 sm:gap-x-6 gap-y-10"
     >
       {properties.map((l, index) => {
         const price = l.pricePerNight ?? 0
+        // Length-of-stay discount (weekly ≥ 7 nights, monthly ≥ 28), as a percent.
+        // Drives Airbnb's struck-through "was" price when a trip total applies.
+        const discountPct =
+          nights && nights >= 28
+            ? l.monthlyDiscount ?? 0
+            : nights && nights >= 7
+            ? l.weeklyDiscount ?? 0
+            : 0
+        const baseTotal = nights ? price * nights : price
+        const discountedTotal =
+          discountPct > 0 ? Math.round(baseTotal * (1 - discountPct / 100)) : baseTotal
         return (
           <SearchCard
             key={l.id}
@@ -95,7 +105,8 @@ export function SearchResults({
             specs={buildSpecs(l)}
             dates={datesLabel}
             pricePerNight={price}
-            totalPrice={nights ? price * nights : undefined}
+            totalPrice={nights ? discountedTotal : undefined}
+            originalPrice={nights && discountPct > 0 ? baseTotal : undefined}
             nights={nights}
             rating={l.averageRating}
             reviewsCount={l.numberOfReviews ?? 0}

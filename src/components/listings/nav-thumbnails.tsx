@@ -30,13 +30,17 @@ export default function NavThumbnails({
         >
           <div className="relative w-30 h-20 overflow-hidden shadow-md">
             <Image
-              src={section.photos[0] ?? '/placeholder.svg?height=80&width=120'}
+              src={section.photos[0] ?? '/property-placeholder.svg'}
               alt={section.label}
               fill
-              className={`object-cover transition-all duration-200 ${
+              className={`transition-all duration-200 ${
                 selectedSection === section.id
                   ? 'ring-2 ring-black'
                   : 'hover:opacity-80'
+              } ${
+                !section.photos[0]
+                  ? 'object-contain p-2 bg-muted/40'
+                  : 'object-cover'
               }`}
             />
           </div>

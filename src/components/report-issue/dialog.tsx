@@ -49,7 +49,7 @@ const REPORT_CATEGORIES = [
 
 const SEVERITIES = ["low", "medium", "high", "critical"] as const;
 
-const MIN_DESCRIPTION = 30;
+const MIN_DESCRIPTION = 2;
 const MAX_DESCRIPTION = 2000;
 const COOLDOWN_MS = 60_000;
 
@@ -76,6 +76,8 @@ export interface ReportIssueSubmitResult {
 export interface ReportIssueDialogProps {
   /** "text" = underlined link, "icon" = bug icon button. Default "text". */
   variant?: "text" | "icon";
+  iconClassName?: string;
+  iconStrokeWidth?: number;
   /**
    * Active language. Retained for API parity with the portable dialog; the
    * displayed strings now come from the central dictionary provider, so this
@@ -101,6 +103,8 @@ export function ReportIssueDialog({
   onSubmit,
   turnstileSiteKey,
   signInHref = "/login",
+  iconClassName,
+  iconStrokeWidth,
 }: ReportIssueDialogProps): React.JSX.Element {
   const dict = useDictionary();
   const r = dict?.reportIssue;
@@ -145,36 +149,24 @@ export function ReportIssueDialog({
   };
 
   const [open, setOpen] = React.useState(false);
-  const [category, setCategory] = React.useState<(typeof REPORT_CATEGORIES)[number]>("other");
+  const [category] = React.useState<(typeof REPORT_CATEGORIES)[number]>("other");
   const [description, setDescription] = React.useState("");
-  const [showDetails, setShowDetails] = React.useState(false);
-  const [reproSteps, setReproSteps] = React.useState("");
-  const [expected, setExpected] = React.useState("");
-  const [actual, setActual] = React.useState("");
-  const [severity, setSeverity] = React.useState<(typeof SEVERITIES)[number] | "">("");
-  const [captchaToken, setCaptchaToken] = React.useState<string | null>(null);
   const [status, setStatus] = React.useState<"idle" | "loading" | "success" | "error">("idle");
   const [issueNumber, setIssueNumber] = React.useState<number | undefined>(undefined);
   const [lastSubmitAt, setLastSubmitAt] = React.useState<number | null>(null);
 
   const cooldownActive = lastSubmitAt !== null && Date.now() - lastSubmitAt < COOLDOWN_MS;
-  const needsCaptcha = !hasSession && Boolean(turnstileSiteKey);
   const charCount = description.trim().length;
   const minMet = charCount >= MIN_DESCRIPTION;
 
   async function handleSubmit() {
     if (!minMet || cooldownActive) return;
-    if (needsCaptcha && !captchaToken) return;
     setStatus("loading");
 
     const payload: ReportIssueSubmitInput = {
       description,
       pageUrl: typeof window !== "undefined" ? window.location.href : "",
       category,
-      reproSteps: reproSteps.trim() || undefined,
-      expected: expected.trim() || undefined,
-      actual: actual.trim() || undefined,
-      severityHint: severity || undefined,
       viewport:
         typeof window !== "undefined"
           ? `${window.innerWidth}x${window.innerHeight}`
@@ -185,7 +177,6 @@ export function ReportIssueDialog({
           : "ltr",
       browser: typeof navigator !== "undefined" ? navigator.userAgent : "",
       hasScreenshot: false,
-      captchaToken: captchaToken ?? undefined,
     };
 
     try {
@@ -195,13 +186,6 @@ export function ReportIssueDialog({
         setIssueNumber(res.issueNumber);
         setLastSubmitAt(Date.now());
         setDescription("");
-        setReproSteps("");
-        setExpected("");
-        setActual("");
-        setCategory("other");
-        setSeverity("");
-        setCaptchaToken(null);
-        setShowDetails(false);
         setTimeout(() => {
           setOpen(false);
           setStatus("idle");
@@ -226,6 +210,8 @@ export function ReportIssueDialog({
         label={t.triggerText}
         ariaLabel={t.triggerAriaLabel}
         onClick={() => setOpen(true)}
+        iconClassName={iconClassName}
+        iconStrokeWidth={iconStrokeWidth}
       />
 
       <Dialog
@@ -243,19 +229,6 @@ export function ReportIssueDialog({
             <DialogTitle>{t.title}</DialogTitle>
           </DialogHeader>
 
-          <select
-            className={inputClass}
-            value={category}
-            onChange={(e) => setCategory(e.target.value as (typeof REPORT_CATEGORIES)[number])}
-            aria-label={t.categoryPlaceholder}
-          >
-            {REPORT_CATEGORIES.map((key) => (
-              <option key={key} value={key}>
-                {cats[key]}
-              </option>
-            ))}
-          </select>
-
           <textarea
             className={`${inputClass} min-h-[120px]`}
             placeholder={t.descriptionPlaceholder}
@@ -264,69 +237,6 @@ export function ReportIssueDialog({
             minLength={MIN_DESCRIPTION}
             maxLength={MAX_DESCRIPTION}
           />
-          <p className="text-xs text-muted-foreground">
-            {t.descriptionHint.replace("{count}", String(charCount))}
-          </p>
-
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowDetails((v) => !v)}
-              className="text-sm underline underline-offset-4"
-              aria-expanded={showDetails}
-            >
-              {t.addDetails}
-            </button>
-            {showDetails && (
-              <div className="space-y-2 pt-2">
-                <textarea
-                  className={`${inputClass} min-h-[80px]`}
-                  placeholder={t.reproPlaceholder}
-                  value={reproSteps}
-                  onChange={(e) => setReproSteps(e.target.value)}
-                  maxLength={1000}
-                />
-                <textarea
-                  className={`${inputClass} min-h-[60px]`}
-                  placeholder={t.expectedPlaceholder}
-                  value={expected}
-                  onChange={(e) => setExpected(e.target.value)}
-                  maxLength={500}
-                />
-                <textarea
-                  className={`${inputClass} min-h-[60px]`}
-                  placeholder={t.actualPlaceholder}
-                  value={actual}
-                  onChange={(e) => setActual(e.target.value)}
-                  maxLength={500}
-                />
-                <select
-                  className={inputClass}
-                  value={severity}
-                  onChange={(e) =>
-                    setSeverity(e.target.value as (typeof SEVERITIES)[number] | "")
-                  }
-                  aria-label={t.severityLabel}
-                >
-                  <option value="">{t.severityLabel}</option>
-                  <option value="low">{t.severityLow}</option>
-                  <option value="medium">{t.severityMedium}</option>
-                  <option value="high">{t.severityHigh}</option>
-                  <option value="critical">{t.severityCritical}</option>
-                </select>
-              </div>
-            )}
-          </div>
-
-          {needsCaptcha && (
-            <TurnstileSlot
-              siteKey={turnstileSiteKey as string}
-              onSuccess={setCaptchaToken}
-              hint={t.captchaHint}
-              linkText={t.captchaLink}
-              linkHref={signInHref}
-            />
-          )}
 
           {status === "error" && <p className="text-destructive text-sm">{t.error}</p>}
           {cooldownActive && status !== "success" && (
@@ -337,12 +247,13 @@ export function ReportIssueDialog({
             <p className="text-sm text-green-600">{successMessage}</p>
           ) : (
             <Button
+              variant="black"
+              className="w-full"
               onClick={handleSubmit}
               disabled={
                 !minMet ||
                 status === "loading" ||
-                cooldownActive ||
-                (needsCaptcha && !captchaToken)
+                cooldownActive
               }
             >
               {status === "loading" ? t.submitting : t.submit}
@@ -361,11 +272,15 @@ function TriggerButton({
   label,
   ariaLabel,
   onClick,
+  iconClassName,
+  iconStrokeWidth,
 }: {
   variant: "text" | "icon";
   label: string;
   ariaLabel: string;
   onClick: () => void;
+  iconClassName?: string;
+  iconStrokeWidth?: number;
 }) {
   if (variant === "icon") {
     return (
@@ -373,9 +288,9 @@ function TriggerButton({
         type="button"
         onClick={onClick}
         aria-label={ariaLabel}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-accent"
+        className={iconClassName ? "inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-accent/50" : "inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-accent"}
       >
-        <Bug className="h-4 w-4" />
+        <Bug className={iconClassName || "h-4 w-4"} strokeWidth={iconStrokeWidth} />
       </button>
     );
   }
@@ -390,49 +305,3 @@ function TriggerButton({
   );
 }
 
-interface TurnstileSlotProps {
-  siteKey: string;
-  onSuccess: (token: string) => void;
-  hint: string;
-  linkText: string;
-  linkHref: string;
-}
-
-/**
- * Turnstile widget mounts inside this slot. The @marsidev/react-turnstile
- * package is lazy-imported so the marketing footer's bundle stays slim for
- * visitors who never open the dialog.
- */
-function TurnstileSlot({
-  siteKey,
-  onSuccess,
-  hint,
-  linkText,
-  linkHref,
-}: TurnstileSlotProps) {
-  const Turnstile = React.useMemo(
-    () =>
-      React.lazy(async () => {
-        const mod = await import("@marsidev/react-turnstile");
-        return { default: mod.Turnstile };
-      }),
-    []
-  );
-  return (
-    <div className="space-y-2">
-      <React.Suspense fallback={<div className="h-16" />}>
-        <Turnstile
-          siteKey={siteKey}
-          onSuccess={onSuccess}
-          options={{ size: "flexible", theme: "auto" }}
-        />
-      </React.Suspense>
-      <p className="text-xs text-muted-foreground">
-        {hint}{" "}
-        <a className="underline" href={linkHref}>
-          {linkText}
-        </a>
-      </p>
-    </div>
-  );
-}

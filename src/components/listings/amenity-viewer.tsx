@@ -43,28 +43,28 @@ const AmenityViewer: React.FC<AmenityViewerProps> = ({
   return (
     <div className={cn('space-y-6', className)}>
       {/* Heading */}
-      <h3 className="text-xl font-semibold text-foreground">
+      <h3 className="text-[22px] font-medium leading-[26px] tracking-[-0.44px] text-[#222222]">
         What this place offers
       </h3>
 
       {/* Amenities Grid */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-x-12 gap-y-4 md:grid-cols-2">
         {staticAmenities.map((amenity) => (
-          <div key={amenity.id} className="flex items-center space-x-3">
+          <div key={amenity.id} className="flex items-center gap-4">
             <div className="flex-shrink-0">
               <SvgIcon src={amenity.icon} alt={amenity.alt} size={24} />
             </div>
-            <span className="text-sm text-foreground leading-relaxed">
+            <span className="text-base text-[#222222]">
               {amenity.label}
             </span>
           </div>
         ))}
       </div>
 
-      {/* Show all amenities button */}
-      <Button 
-        variant="outline" 
-        className="w-auto bg-muted border-0 text-gray-700 hover:bg-gray-50"
+      {/* Show all amenities button — Airbnb's bordered secondary button */}
+      <Button
+        variant="outline"
+        className="h-auto w-auto rounded-lg border border-[#222222] bg-transparent px-6 py-3.5 text-base font-semibold text-[#222222] hover:bg-[#F7F7F7]"
       >
         Show all 23 amenities
       </Button>

@@ -20,6 +20,9 @@ const CONTROL_BG = "rgba(255,255,255,0.925)";
 export interface SearchMapMarker {
   id: number | string;
   price: number | null;
+  /** Pre-formatted price in the listing currency (e.g. "SDG 185") — matches the
+      cards. Falls back to the raw price if absent. */
+  priceLabel?: string | null;
   lat: number;
   lng: number;
   title?: string;
@@ -138,7 +141,8 @@ export default function SearchMap({
       el.className =
         "flex items-center h-8 rounded-full px-3 text-sm font-semibold bg-white border border-black/10 shadow-md cursor-pointer hover:scale-105 hover:border-black/40 hover:z-10 transition";
       el.style.color = "#222222";
-      el.textContent = marker.price != null ? `$${marker.price}` : "—";
+      el.textContent =
+        marker.priceLabel ?? (marker.price != null ? `${marker.price}` : "—");
       if (marker.title) el.title = marker.title;
 
       const mb = new mapboxgl.Marker({ element: el })
@@ -170,9 +174,9 @@ export default function SearchMap({
   // can travel the whole scroll; without it the wrapper shrink-wraps to the map
   // height and the map unpins immediately.
   return (
-    <div className="h-full w-full border-s border-gray-200">
+    <div className="h-full w-full">
       <div
-        className="sticky w-full bg-background p-2"
+        className="sticky w-full bg-background"
         style={{ top: stickyTop, height: `calc(100vh - ${stickyTop}px)` }}
       >
         <div className="relative h-full w-full rounded-2xl overflow-hidden">

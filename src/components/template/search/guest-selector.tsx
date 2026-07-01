@@ -15,6 +15,9 @@ interface GuestSelectorProps {
     type: "adults" | "children" | "infants" | "pets",
     operation: "increment" | "decrement"
   ) => void
+  // Experiences hides the Pets row (airbnb.com/experiences "Who" only offers
+  // Adults / Children / Infants); Homes keeps it.
+  hidePets?: boolean
 }
 
 interface GuestCounterProps {
@@ -73,6 +76,7 @@ function GuestCounter({
 export default function GuestSelectorDropdown({
   guests,
   onGuestChange,
+  hidePets = false,
 }: GuestSelectorProps) {
   const dict = useDictionary()
 
@@ -123,8 +127,12 @@ export default function GuestSelectorDropdown({
         />
       </div>
 
-      {/* Infants Row */}
-      <div className="flex items-center justify-between py-6 border-b border-[#f0f0f0]">
+      {/* Infants Row — last row (no border) when Pets is hidden (Experiences). */}
+      <div
+        className={`flex items-center justify-between py-6 ${
+          hidePets ? "last:pb-0" : "border-b border-[#f0f0f0]"
+        }`}
+      >
         <div>
           <div className="font-semibold text-[16px] text-[#222222] leading-5">
             {dict.search?.infantsLabel ?? "Infants"}
@@ -142,7 +150,8 @@ export default function GuestSelectorDropdown({
         />
       </div>
 
-      {/* Pets Row */}
+      {/* Pets Row — hidden on the Experiences tab. */}
+      {!hidePets && (
       <div className="flex items-center justify-between py-6 last:pb-0">
         <div>
           <div className="font-semibold text-[16px] text-[#222222] leading-5">
@@ -167,6 +176,7 @@ export default function GuestSelectorDropdown({
           max={GUEST_LIMITS.pets.max}
         />
       </div>
+      )}
     </div>
   )
 }

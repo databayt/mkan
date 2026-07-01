@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Heart, Star, Sparkles, Home, MapPin, Users } from 'lucide-react';
+import Image from 'next/image';
 import { useListing } from '@/components/host/use-listing';
 import { useHostValidation } from '@/context/onboarding-validation-context';
 import { Highlight } from '@prisma/client';
@@ -123,12 +123,12 @@ const DescriptionPageContent = ({ params }: DescriptionPageProps) => {
   }, [currentStep, selectedHighlights, description, id]);
 
   const highlights = [
-    { id: '1', title: dict.hosting.pages.description.peaceful, icon: Heart },
-    { id: '2', title: dict.hosting.pages.description.unique, icon: Star },
-    { id: '3', title: dict.hosting.pages.description.familyFriendly, icon: Users },
-    { id: '4', title: dict.hosting.pages.description.stylish, icon: Sparkles },
-    { id: '5', title: dict.hosting.pages.description.central, icon: MapPin },
-    { id: '6', title: dict.hosting.pages.description.spacious, icon: Home }
+    { id: '1', title: dict.hosting.pages.description.peaceful, iconSrc: '/highlights/Peaceful.svg' },
+    { id: '2', title: dict.hosting.pages.description.unique, iconSrc: '/highlights/Unique.svg' },
+    { id: '3', title: dict.hosting.pages.description.familyFriendly, iconSrc: '/highlights/Family-friendly.svg' },
+    { id: '4', title: dict.hosting.pages.description.stylish, iconSrc: '/highlights/Stylish.svg' },
+    { id: '5', title: dict.hosting.pages.description.central, iconSrc: '/highlights/Central.svg' },
+    { id: '6', title: dict.hosting.pages.description.spacious, iconSrc: '/highlights/Spacious.svg' }
   ];
 
   const toggleHighlight = (highlightId: string) => {
@@ -151,8 +151,8 @@ const DescriptionPageContent = ({ params }: DescriptionPageProps) => {
   };
 
   return (
-    <div className="">
-      <div className="">
+    <div className="w-full">
+      <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-20 items-start">
           {/* Left side - Text content */}
           <div className="space-y-3 sm:space-y-4">
@@ -172,23 +172,26 @@ const DescriptionPageContent = ({ params }: DescriptionPageProps) => {
           <div>
             {currentStep === 'highlights' ? (
               <div className="flex flex-wrap gap-2 sm:gap-3">
-                {highlights.map((highlight) => {
-                  const Icon = highlight.icon;
-                  return (
-                    <button
-                      key={highlight.id}
-                      onClick={() => toggleHighlight(highlight.id)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all whitespace-nowrap text-sm sm:text-base ${
-                        selectedHighlights.includes(highlight.id)
-                          ? 'border-foreground bg-accent'
-                          : 'border-border hover:border-foreground/50'
-                      }`}
-                    >
-                      <Icon size={16} className="text-foreground sm:w-4.5 sm:h-4.5" />
-                      <span>{highlight.title}</span>
-                    </button>
-                  );
-                })}
+                {highlights.map((highlight) => (
+                  <button
+                    key={highlight.id}
+                    onClick={() => toggleHighlight(highlight.id)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all whitespace-nowrap text-sm sm:text-base ${
+                      selectedHighlights.includes(highlight.id)
+                        ? 'border-foreground bg-accent'
+                        : 'border-border hover:border-foreground/50'
+                    }`}
+                  >
+                    <Image
+                      src={highlight.iconSrc}
+                      alt=""
+                      width={22}
+                      height={22}
+                      className="object-contain"
+                    />
+                    <span>{highlight.title}</span>
+                  </button>
+                ))}
               </div>
             ) : (
               <div>

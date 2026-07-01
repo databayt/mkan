@@ -29,11 +29,14 @@ export interface FilterState {
   priceMax?: number
   beds?: number
   baths?: number
-  propertyType?: PropertyType
+  /** Multi-select structures — drives both "Type of place" and "Property type". */
+  propertyTypes: PropertyType[]
   amenities: Amenity[]
+  instantBook?: boolean
+  petsAllowed?: boolean
 }
 
-export const EMPTY_FILTERS: FilterState = { amenities: [] }
+export const EMPTY_FILTERS: FilterState = { propertyTypes: [], amenities: [] }
 
 interface SearchContextValue {
   listings: Listing[]
@@ -69,8 +72,10 @@ function countFilters(f: FilterState): number {
   if (f.priceMin !== undefined || f.priceMax !== undefined) n++
   if (f.beds !== undefined) n++
   if (f.baths !== undefined) n++
-  if (f.propertyType) n++
+  if (f.propertyTypes.length) n++
   n += f.amenities.length
+  if (f.instantBook) n++
+  if (f.petsAllowed) n++
   return n
 }
 
@@ -138,8 +143,10 @@ export function SearchProvider({
         priceMax: next.priceMax,
         beds: next.beds,
         baths: next.baths,
-        propertyType: next.propertyType,
+        propertyTypes: next.propertyTypes.length ? next.propertyTypes : undefined,
         amenities: next.amenities.length ? next.amenities : undefined,
+        instantBook: next.instantBook || undefined,
+        petsAllowed: next.petsAllowed || undefined,
         ...(bounds ?? {}),
         take: 50,
       }

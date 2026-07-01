@@ -9,7 +9,7 @@ const GithubButton = ({ url }: GithubButtonProps) => {
     return (
         <Link
             href={url} 
-            className='absolute top-8 right-10 reveal-less'>
+            className='absolute top-8 end-10 reveal-less'>
             <Github size={30} />
         </Link>
     )

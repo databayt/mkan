@@ -25,9 +25,9 @@ export default function Loading() {
             <Skeleton className="rounded-s-xl" />
             <div className="grid grid-cols-2 gap-2">
               <Skeleton />
-              <Skeleton className="rounded-tr-xl" />
+              <Skeleton className="rounded-se-xl" />
               <Skeleton />
-              <Skeleton className="rounded-br-xl" />
+              <Skeleton className="rounded-ee-xl" />
             </div>
           </div>
 

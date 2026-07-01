@@ -1,84 +1,54 @@
+"use client";
+export const dynamic = "force-dynamic";
+
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { KeyRound } from "lucide-react";
-import { getDictionary } from "@/components/internationalization/dictionaries";
-import type { Locale } from "@/components/internationalization/config";
+import { CheckInMethod } from "@prisma/client";
+import { EditorSection, SaveBar } from "@/components/hosting/listing/editor-section";
+import {
+  useEditorField,
+  OptionCard,
+} from "@/components/hosting/listing/editor-controls";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
-interface PageProps {
-  params: Promise<{ id: string; lang: string }>;
-}
+export default function CheckInMethodPage() {
+  const dict = useDictionary();
+  const nav = dict?.listingEditor?.nav;
+  const cm = dict?.listingEditor?.checkInMethod;
+  const { value, setValue, dirty, saving, save } = useEditorField(
+    (l) => (l.checkInMethod as CheckInMethod | null) ?? null,
+    null as CheckInMethod | null
+  );
 
-const CheckInMethodPage = async ({ params }: PageProps) => {
-  const { lang } = await params;
-  const dict = await getDictionary(lang as Locale);
-  const t = dict?.listingEditor?.checkInMethod;
-
-  const methods = [
-    { id: "smart_lock", label: t?.smartLock ?? "Smart lock", hint: t?.smartLockHint ?? "Code-based entry" },
-    { id: "lockbox", label: t?.lockbox ?? "Lockbox", hint: t?.lockboxHint ?? "Key inside a coded box" },
-    { id: "in_person", label: t?.inPerson ?? "In person", hint: t?.inPersonHint ?? "You greet the guest" },
-    { id: "doorman", label: t?.doorman ?? "Doorman", hint: t?.doormanHint ?? "Front-desk hands over key" },
-    { id: "self_check_in", label: t?.selfCheckIn ?? "Self check-in", hint: t?.selfCheckInHint ?? "Guest opens with code only" },
+  const methods: { id: CheckInMethod; name?: string; hint?: string }[] = [
+    { id: CheckInMethod.SmartLock, name: cm?.smartLock, hint: cm?.smartLockHint },
+    { id: CheckInMethod.Lockbox, name: cm?.lockbox, hint: cm?.lockboxHint },
+    { id: CheckInMethod.InPerson, name: cm?.inPerson, hint: cm?.inPersonHint },
+    { id: CheckInMethod.SelfCheckIn, name: cm?.selfCheckIn, hint: cm?.selfCheckInHint },
   ];
 
   return (
-    <div className="lg:col-span-2">
-      <div className="max-w-3xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">{t?.heading ?? "Check-in method"}</h1>
-          <p className="text-muted-foreground">
-            {t?.subtitle ?? "How will your guests get inside? Pick a method and add custom instructions."}
-          </p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <KeyRound className="size-5" />
-              {t?.pickTitle ?? "Pick a method"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {methods.map((m) => (
-              <label
-                key={m.id}
-                className="flex items-start gap-3 p-3 rounded-md border hover:bg-muted/30 cursor-pointer"
-              >
-                <input type="radio" name="checkin" value={m.id} className="mt-1" />
-                <div>
-                  <p className="font-medium">{m.label}</p>
-                  <p className="text-sm text-muted-foreground">{m.hint}</p>
-                </div>
-              </label>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>{t?.customTitle ?? "Custom instructions"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Label htmlFor="instructions">{t?.instructionsLabel ?? "Instructions for guests"}</Label>
-            <Textarea
-              id="instructions"
-              className="mt-2"
-              rows={5}
-              placeholder={t?.instructionsPlaceholder ?? "Sample: The lockbox is to the left of the front door. Code is 1234."}
-            />
-          </CardContent>
-        </Card>
-
-        <div className="mt-8 flex justify-between">
-          <Button variant="outline">{dict?.common?.back ?? "Back"}</Button>
-          <Button>{dict?.common?.save ?? "Save"}</Button>
-        </div>
+    <EditorSection
+      title={nav?.checkInMethod ?? "Check-in method"}
+      subtitle={cm?.subtitle ?? "How will guests get into your place?"}
+    >
+      <div className="space-y-3">
+        {methods.map((m) => (
+          <OptionCard
+            key={m.id}
+            selected={value === m.id}
+            onClick={() => setValue(m.id)}
+            title={m.name ?? m.id}
+            description={m.hint}
+          />
+        ))}
       </div>
-    </div>
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        onSave={() => save({ checkInMethod: value })}
+        saveLabel={nav?.save}
+        savingLabel={nav?.saving}
+      />
+    </EditorSection>
   );
-};
-
-export default CheckInMethodPage;
+}

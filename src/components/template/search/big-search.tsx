@@ -7,13 +7,15 @@ import { useRouter, usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import LocationDropdown from "./location";
 import BigSearchDatePicker, { pickerTranslations } from "./big-search-date-picker";
+import ExperiencesDatePicker from "./experiences-date-picker";
 import GuestSelectorDropdown from "./guest-selector";
+import ServiceTypeDropdown from "./service-type";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { useLocationSuggestions } from "./hooks/use-location-suggestions";
 import { useSearchValidation } from "@/hooks/useSearchValidation";
 import { type LocationSuggestion } from "@/lib/schemas/search-schema";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
-import { type SearchSegment } from "@/hooks/useSearchHeaderStore";
+import useSearchHeaderStore, { type SearchSegment } from "@/hooks/useSearchHeaderStore";
 
 // Slide-and-fade downward when a dropdown first opens / fully closes — gives
 // the impression that the panel is emerging from beneath the search bar,
@@ -26,20 +28,59 @@ const dropdownMotion = {
   exit: { opacity: 0, y: -8, scale: 0.985 },
 };
 
-// Segment-switch motion. Real airbnb.com moves the active pill and the open
-// dropdown between Where→When→Who with NO transition — they snap to the new
-// segment instantly (verified on the live site: the pill's computed
-// transition-duration is 0s and getAnimations() is empty mid-switch). We
-// mirror that exactly: duration 0 makes the shared `layoutId` pill and the
-// `layout` panel jump rather than glide, and the panel content swaps with no
-// cross-fade. The panel's open/close fade (DROPDOWN_TRANSITION) is a separate
-// concern and stays. To restore a smooth glide instead, swap this for a
-// spring, e.g. { type: "spring", stiffness: 520, damping: 44 }.
-const SWITCH_TRANSITION = { duration: 0 } as const;
+// Segment-switch motion (Where ⇄ When ⇄ Who). The white active pill is a shared
+// `layoutId` element and the dropdown is a single `layout` container, so a spring
+// here makes BOTH glide between segments: the pill slides and stretches to the new
+// segment's width while the panel smoothly re-anchors and resizes (e.g. 420px →
+// full-width moving Where → When, then → 394px for Who). Tuned for a smooth,
+// lightly-eased settle (~0.4s, no bounce) — the "very smooth" glide the live site
+// actually snaps through, but which reads better here. Panel CONTENT crossfades on
+// its own short tween (SWITCH_FADE) instead of this spring, since a spring on
+// opacity wobbles.
+const SWITCH_TRANSITION = {
+  type: "spring" as const,
+  stiffness: 480,
+  damping: 42,
+  mass: 1,
+} as const;
+
+// Content crossfade for the panel body as it swaps Where → When → Who. Short and
+// eased so the outgoing body dissolves as the incoming one resolves, in step with
+// the panel's spring resize above.
+const SWITCH_FADE = { duration: 0.2, ease: [0.32, 0.72, 0, 1] as const };
 
 // Captured from airbnb.com: the elevated active-segment pill shadow.
 const PILL_SHADOW =
   "rgba(0,0,0,0.1) 0px 3px 12px 0px, rgba(0,0,0,0.08) 0px 1px 2px 0px";
+
+// The white active-segment fill, as ONE shared element. Every active segment
+// renders it with the same `layoutId`, so Framer interpolates its position AND
+// width as the active segment changes — the pill GLIDES Where→When→Who (same
+// trick as the tabs underline) instead of three backgrounds cross-fading.
+//
+// MUST live at module scope: when this was a closure defined inside BigSearch,
+// every render produced a fresh component identity, so React remounted the
+// motion.div on each render and Framer's layout projection reset — the pill
+// snapped between segments instead of gliding. Hoisting it makes the identity
+// stable so the shared-layout hand-off animates. zIndex:-1 keeps it above the
+// grey hover pseudo (-z-10) but below the segment text; pointer-events-none so
+// it never eats clicks.
+function ActivePill() {
+  return (
+    <motion.div
+      layoutId="searchActivePill"
+      transition={SWITCH_TRANSITION}
+      aria-hidden
+      className="absolute inset-0 rounded-full bg-white pointer-events-none"
+      // The active (focused) segment gets a 1px outline in the SAME #DDDDDD as
+      // the outer search bar's border, so the focused pill reads as a mini of
+      // the outer component. Inline (not a Tailwind arbitrary) so it always
+      // renders in dev — Turbopack's incremental scan sometimes drops brand-new
+      // arbitrary border utilities.
+      style={{ zIndex: -1, boxShadow: PILL_SHADOW, border: "1px solid #DDDDDD" }}
+    />
+  );
+}
 
 type ActiveButton = "location" | "dates" | "guests" | null;
 
@@ -58,8 +99,18 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
   const pathname = usePathname();
   const dict = useDictionary();
   const { locale } = useLocale();
+  // Active category tab (Homes/Experiences/Services) drives per-tab fields:
+  // Experiences changes the "Where" placeholder; Services swaps the third
+  // segment from Who/guests to "Type of service".
+  const activeTab = useSearchHeaderStore((s) => s.activeTab);
+  const isServices = activeTab === "services";
+  const isExperiences = activeTab === "experiences";
+  // Experiences and Services share the new single-month + quick-cards "When"
+  // picker; only Homes keeps the two-month Dates/Flexible picker.
+  const usesActivityDatePicker = isExperiences || isServices;
   const [activeButton, setActiveButton] = useState<ActiveButton>(null);
   const [hoveredButton, setHoveredButton] = useState<ActiveButton>(null);
+  const [selectedService, setSelectedService] = useState<string>("");
   const searchBarRef = useRef<HTMLDivElement>(null);
 
   const [searchMode, setSearchMode] = useState<"dates" | "flexible">("dates");
@@ -89,8 +140,12 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
     }
   }, [isActive, openTo]);
 
-  // Selected location state
+  // Selected location state. `selectedLocation` is the localized label shown
+  // in the pill; `selectedLocationQuery` is the canonical (English) token sent
+  // as the `location` URL param so the query matches the English-stored data
+  // regardless of the display locale.
   const [selectedLocation, setSelectedLocation] = useState("");
+  const [selectedLocationQuery, setSelectedLocationQuery] = useState("");
 
   // Use the location suggestions hook
   const {
@@ -130,6 +185,9 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
   const handleLocationSelect = (location: LocationSuggestion | null) => {
     if (location) {
       setSelectedLocation(location.displayName);
+      setSelectedLocationQuery(
+        location.searchValue || location.city || location.displayName
+      );
       setActiveButton("dates"); // Move to next field
     } else {
       setActiveButton(null);
@@ -218,6 +276,13 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
       if (dateRange.from && dateRange.to) {
         const fromStr = formatDate(dateRange.from);
         const toStr = formatDate(dateRange.to);
+        // A single-day pick (quick cards "Today"/"Tomorrow", or a same-day
+        // experience) shows just the one date instead of "Jun 29 – Jun 29".
+        const sameDay =
+          dateRange.from.getFullYear() === dateRange.to.getFullYear() &&
+          dateRange.from.getMonth() === dateRange.to.getMonth() &&
+          dateRange.from.getDate() === dateRange.to.getDate();
+        if (sameDay) return fromStr;
         const flexText = dateFlexibility !== "exact" 
           ? ` (± ${dateFlexibility} ${locale === "ar" ? "يوم" : "day"}${dateFlexibility === "1" ? "" : "s"})` 
           : "";
@@ -365,6 +430,13 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
       // Another segment is active: blend into the bar's #EBEBEB, darken on hover.
       bgClass = isHovered ? "before:bg-[#DDDDDD]" : "";
     } else if (isHovered) {
+      // Hover fill ONLY — a soft #EBEBEB pill, matching airbnb.com whose search
+      // segments get a plain grey fill on hover with NO border ring.
+      // The old `before:border before:border-[#DDDDDD]` ring was removed because
+      // it caused a one-second black-outline flash: an unset border-color
+      // defaults to `currentColor` (≈#222), so `before:transition-colors`
+      // animated the ring from black → #DDDDDD on every hover. No border ⇒
+      // nothing to transition ⇒ no flash (and it's closer to the live site).
       bgClass = "before:bg-[#EBEBEB]";
     }
 
@@ -405,23 +477,29 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
     const searchParams = new URLSearchParams();
 
     if (selectedLocation) {
-      searchParams.set("location", selectedLocation);
+      searchParams.set("location", selectedLocationQuery || selectedLocation);
     }
+
+    // Format a Date as YYYY-MM-DD from LOCAL components. Using toISOString()
+    // converts to UTC first, which shifts the calendar day by ±1 in non-UTC
+    // timezones (e.g. a local Jul 12 became "2026-07-11" in the URL).
+    const toLocalISODate = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
     let finalCheckIn = "";
     let finalCheckOut = "";
 
     if (searchMode === "dates") {
       if (dateRange.from) {
-        finalCheckIn = dateRange.from.toISOString().split("T")[0] || "";
+        finalCheckIn = toLocalISODate(dateRange.from);
       }
       if (dateRange.to) {
-        finalCheckOut = dateRange.to.toISOString().split("T")[0] || "";
+        finalCheckOut = toLocalISODate(dateRange.to);
       }
     } else {
       const flexRange = getFlexibleDateRange(flexibleMonths);
-      finalCheckIn = flexRange.from.toISOString().split("T")[0] || "";
-      finalCheckOut = flexRange.to.toISOString().split("T")[0] || "";
+      finalCheckIn = toLocalISODate(flexRange.from);
+      finalCheckOut = toLocalISODate(flexRange.to);
     }
 
     if (finalCheckIn) {
@@ -454,21 +532,18 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
     }
   };
 
-  // The white active-segment fill, as ONE shared element. Because every active
-  // segment renders it with the same layoutId, Framer interpolates its position
-  // AND width as the active segment changes — the pill glides Where→When→Who
-  // (same technique as the tabs underline) instead of three backgrounds
-  // cross-fading. zIndex:-1 keeps it above the grey hover pseudo (-z-10) but
-  // below the segment's own text; pointer-events-none so it never eats clicks.
-  const ActivePill = () => (
-    <motion.div
-      layoutId="searchActivePill"
-      transition={SWITCH_TRANSITION}
-      aria-hidden
-      className="absolute inset-0 rounded-full bg-white pointer-events-none"
-      style={{ zIndex: -1, boxShadow: PILL_SHADOW }}
-    />
-  );
+  // Per-tab field copy (mirrors airbnb.com): Experiences renames the "Where"
+  // placeholder; Services swaps the third segment to "Type of service".
+  const wherePlaceholder =
+    activeTab === "experiences"
+      ? (dict.search?.searchByCityOrLandmark ?? "Search by city or landmark")
+      : (dict.search?.searchDestinations ?? "Search destinations");
+  const thirdLabel = isServices
+    ? (dict.search?.typeOfService ?? "Type of service")
+    : (dict.search?.who ?? "Who");
+  const thirdValue = isServices
+    ? selectedService || (dict.search?.addService ?? "Add service")
+    : getGuestDisplayText();
 
   return (
     <div className="relative w-full mx-auto" style={{ maxWidth: 850 }} ref={searchBarRef}>
@@ -495,10 +570,16 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
             </div>
             <input
               type="text"
-              placeholder={dict.search?.searchDestinations ?? "Search destinations"}
+              placeholder={wherePlaceholder}
               value={searchQuery}
               onChange={(e) => searchLocations(e.target.value)}
-              className="w-full bg-transparent border-0 border-none p-0 text-sm leading-[18px] text-[#222222] placeholder-[#6a6a6a] focus:outline-none focus:ring-0 focus:border-none focus-visible:ring-0 outline-none p-0 m-0 h-[18px]"
+              /* Height/line-height set inline: the arbitrary `h-[18px]`/
+                 `leading-[18px]` utilities silently fail under Turbopack, so the
+                 input fell back to its default (taller) height — which enlarged
+                 the active "Where" pill and pushed the label up. Pinning 18px
+                 here keeps the segment the same height as When/Who. */
+              style={{ display: "block", height: 18, lineHeight: "18px", fontSize: 14, padding: 0, margin: 0, boxSizing: "border-box" }}
+              className="w-full bg-transparent border-0 border-none text-[#222222] placeholder-[#6a6a6a] focus:outline-none focus:ring-0 focus:border-none focus-visible:ring-0 outline-none"
               autoFocus
             />
           </div>
@@ -514,7 +595,7 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
               {dict.search?.where ?? "Where"}
             </div>
             <div className="text-sm leading-[18px] text-[#6a6a6a] truncate">
-              {selectedLocation || (dict.search?.searchDestinations ?? "Search destinations")}
+              {selectedLocation || wherePlaceholder}
             </div>
           </button>
         )}
@@ -549,22 +630,25 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
           }`}
         ></div>
 
-        {/* Guests Button + Search Button Container */}
+        {/* Guests / Type-of-service segment + Search Button Container.
+            The search button stays INSIDE this container (unchanged). Only the
+            label/value are tab-driven (Who/guests, or "Type of service" on the
+            Services tab). */}
         <div
           className={`flex-[1.15] min-w-0 flex items-center ${getButtonStyling("guests")}`}
           onMouseEnter={() => setHoveredButton("guests")}
           onMouseLeave={() => setHoveredButton(null)}
         >
           {activeButton === "guests" && <ActivePill />}
-          {/* Guests Button */}
+          {/* Guests / service button */}
           <div
             className="flex-1 px-6 py-4 text-start"
             onClick={() => handleButtonClick("guests")}
           >
             <div style={{ fontSize: 12, fontWeight: 500, lineHeight: '16px', color: '#222222', marginBottom: 2 }} className="whitespace-nowrap">
-              {dict.search?.who ?? "Who"}
+              {thirdLabel}
             </div>
-            <div className="text-sm leading-[18px] text-[#6a6a6a]">{getGuestDisplayText()}</div>
+            <div className="text-sm leading-[18px] text-[#6a6a6a] truncate">{thirdValue}</div>
           </div>
 
           {/* Search Button. 48×48px circle; expands with label when a segment
@@ -606,13 +690,37 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
             animate={dropdownMotion.animate}
             exit={dropdownMotion.exit}
             transition={{ ...DROPDOWN_TRANSITION, layout: SWITCH_TRANSITION }}
-            style={{ transformOrigin: "top center", willChange: "transform, opacity" }}
+            style={{
+              transformOrigin: "top center",
+              willChange: "transform, opacity",
+              // Experiences/Services "When" panel is CENTERED under the bar — the
+              // "When" segment is the bar's midpoint, and airbnb.com/experiences
+              // hangs this panel centered (cx≈bar centre), not left-anchored.
+              // Centred via inline left+marginLeft, NOT a `-translate-x-1/2`
+              // class: this is a Framer motion.div and Framer owns `transform`
+              // (it animates y/scale), so a translate utility would be clobbered.
+              // left:50% + marginLeft -300 (half the 600px width) lands the
+              // centre on the bar centre in BOTH LTR and RTL (the midpoint is
+              // direction-agnostic), which also fixes the RTL mirror.
+              ...(activeButton === "dates" && usesActivityDatePicker
+                ? { left: "50%", marginLeft: -300 }
+                : {}),
+            }}
             className={`absolute top-full mt-3 bg-white rounded-[32px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 z-10 overflow-hidden ${
               activeButton === "location"
                 ? "start-0 w-[420px] max-w-[calc(100vw-2rem)] p-6"
                 : activeButton === "dates"
-                  ? "inset-x-0 w-full p-8"
-                  : "end-0 w-[394px] p-6"
+                  ? // Experiences/Services: 600px panel centred under the bar
+                    // (positioning via the inline left+marginLeft above). Homes:
+                    // full-width two-month, anchored across the bar.
+                    usesActivityDatePicker
+                    ? "w-[600px] max-w-[calc(100vw-2rem)] p-6"
+                    : "inset-x-0 w-full p-8"
+                  : // Third segment: Services type-of-service is a wide pill grid;
+                    // Homes/Experiences guests panel stays narrow + end-anchored.
+                    isServices
+                    ? "end-0 w-[560px] max-w-[calc(100vw-2rem)] p-6"
+                    : "end-0 w-[394px] p-6"
             }`}
           >
             <AnimatePresence mode="popLayout" initial={false}>
@@ -621,7 +729,7 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={SWITCH_TRANSITION}
+                transition={SWITCH_FADE}
               >
                 {activeButton === "location" && (
                   <LocationDropdown
@@ -634,25 +742,43 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
                     onLocationSelect={handleLocationSelect}
                   />
                 )}
-                {activeButton === "dates" && (
-                  <BigSearchDatePicker
-                    dateRange={dateRange}
-                    onDateChange={handleDateChange}
-                    searchMode={searchMode}
-                    setSearchMode={setSearchMode}
-                    flexibleDuration={flexibleDuration}
-                    setFlexibleDuration={setFlexibleDuration}
-                    flexibleMonths={flexibleMonths}
-                    setFlexibleMonths={setFlexibleMonths}
-                    dateFlexibility={dateFlexibility}
-                    setDateFlexibility={setDateFlexibility}
-                  />
-                )}
+                {activeButton === "dates" &&
+                  (usesActivityDatePicker ? (
+                    <ExperiencesDatePicker
+                      dateRange={dateRange}
+                      onDateChange={handleDateChange}
+                    />
+                  ) : (
+                    <BigSearchDatePicker
+                      dateRange={dateRange}
+                      onDateChange={handleDateChange}
+                      searchMode={searchMode}
+                      setSearchMode={setSearchMode}
+                      flexibleDuration={flexibleDuration}
+                      setFlexibleDuration={setFlexibleDuration}
+                      flexibleMonths={flexibleMonths}
+                      setFlexibleMonths={setFlexibleMonths}
+                      dateFlexibility={dateFlexibility}
+                      setDateFlexibility={setDateFlexibility}
+                    />
+                  ))}
                 {activeButton === "guests" && (
-                  <GuestSelectorDropdown
-                    guests={guests}
-                    onGuestChange={handleGuestChange}
-                  />
+                  isServices ? (
+                    <ServiceTypeDropdown
+                      selected={selectedService}
+                      locale={locale === "ar" ? "ar" : "en"}
+                      onSelect={(label) => {
+                        setSelectedService(label);
+                        setActiveButton(null);
+                      }}
+                    />
+                  ) : (
+                    <GuestSelectorDropdown
+                      guests={guests}
+                      onGuestChange={handleGuestChange}
+                      hidePets={isExperiences}
+                    />
+                  )
                 )}
               </motion.div>
             </AnimatePresence>

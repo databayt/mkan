@@ -80,7 +80,7 @@ const AppSidebar = () => {
   return (
     <Sidebar
       collapsible="icon"
-      className="fixed left-0 bg-white shadow-lg"
+      className="fixed start-0 bg-white shadow-lg"
       style={{
         top: `${NAVBAR_HEIGHT}px`,
         height: `calc(100vh - ${NAVBAR_HEIGHT}px)`,

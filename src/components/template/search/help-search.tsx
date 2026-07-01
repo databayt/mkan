@@ -18,7 +18,7 @@ export default function HelpSearch() {
           />
           <SearchButton
             size="small"
-            className="absolute right-2 h-10 w-10 focus-visible:ring-2 focus-visible:ring-[#de3151] focus-visible:ring-offset-2"
+            className="absolute end-2 h-10 w-10 focus-visible:ring-2 focus-visible:ring-[#de3151] focus-visible:ring-offset-2"
           />
         </div>
       </div>

@@ -243,7 +243,9 @@
     "referencePlaceholder": "مثال: TXN-2026-049238",
     "referenceSubmit": "إرسال المرجع",
     "referenceSuccess": "تم تسجيل المرجع. سنتحقق منه خلال 24 ساعة ونؤكد حجزك.",
-    "referenceTooShort": "يجب أن يحتوي المرجع على 3 أحرف على الأقل."
+    "referenceTooShort": "يجب أن يحتوي المرجع على 3 أحرف على الأقل.",
+    "cancelled": "تم إلغاء الحجز",
+    "couldNotCancel": "تعذّر إلغاء الحجز"
   },
   "auth": {
     "signIn": "دخول",
@@ -1243,7 +1245,9 @@
       "bedroom": "غرفة نوم",
       "bedrooms": "غرف نوم",
       "bath": "حمام",
-      "baths": "حمامات"
+      "baths": "حمامات",
+      "map": "الخريطة",
+      "list": "القائمة"
     },
     "reviewsList": {
       "heading": "ما يقوله الضيوف",
@@ -1273,7 +1277,8 @@
       "approved": "موافق عليها",
       "denied": "مرفوضة",
       "viewDetails": "عرض التفاصيل",
-      "noApplications": "لا توجد طلبات حتى الآن"
+      "noApplications": "لا توجد طلبات حتى الآن",
+      "couldNotUpdate": "تعذّر التحديث"
     },
     "tenants": {
       "title": "مستأجريني",
@@ -1816,6 +1821,7 @@
         "subtitle": "يمكنك إضافة المزيد من المرافق بعد نشر إعلانك.",
         "guestFavorites": "ماذا عن مفضلات الضيوف هذه؟",
         "standoutAmenities": "هل لديك أي مرافق مميزة؟",
+        "safetyItems": "هل لديك أي من عناصر السلامة هذه؟",
         "wifi": "واي فاي",
         "tv": "تلفزيون",
         "kitchen": "مطبخ",
@@ -1827,7 +1833,21 @@
         "pool": "مسبح",
         "hotTub": "جاكوزي",
         "patio": "فناء",
-        "bbqGrill": "شواية"
+        "bbqGrill": "شواية",
+        "outdoorDining": "منطقة طعام خارجية",
+        "firePit": "موقد نار",
+        "poolTable": "طاولة بلياردو",
+        "indoorFireplace": "مدفأة داخلية",
+        "piano": "بيانو",
+        "exerciseEquipment": "معدات تمارين",
+        "lakeAccess": "الوصول إلى البحيرة",
+        "beachAccess": "الوصول إلى الشاطئ",
+        "skiInOut": "تزلج مباشر",
+        "outdoorShower": "دش خارجي",
+        "smokeAlarm": "جهاز إنذار الدخان",
+        "firstAidKit": "حقيبة إسعافات أولية",
+        "fireExtinguisher": "طفاية حريق",
+        "carbonMonoxideAlarm": "جهاز إنذار أول أكسيد الكربون"
       },
       "description": {
         "highlightsTitle": "بعد ذلك، دعنا نصف منزلك",
@@ -1893,7 +1913,8 @@
         "title": "أضف بعض صور منزلك",
         "subtitle": "ستحتاج إلى 5 صور للبدء. يمكنك إضافة المزيد أو إجراء تغييرات لاحقاً.",
         "uploading": "جارٍ الرفع...",
-        "addPhotos": "أضف صوراً"
+        "addPhotos": "أضف صوراً",
+        "uploadFailed": "فشل رفع الصورة"
       },
       "price": {
         "title": "الآن، حدد سعراً أساسياً",
@@ -1938,7 +1959,8 @@
       },
       "dashboard": {
         "welcomeBack": "مرحباً بعودتك، {name}",
-        "finishYourListing": "أكمل إعلانك"
+        "finishYourListing": "أكمل إعلانك",
+        "untitledListing": "إعلان بدون عنوان"
       },
       "listingCard": {
         "started": "بدأ {date}"
@@ -1951,7 +1973,17 @@
       "messages": "الرسائل",
       "logo": "شعار مكان",
       "brandName": "مكان",
-      "switchToTraveling": "التبديل إلى وضع المسافر"
+      "switchToTraveling": "التبديل إلى وضع المسافر",
+      "menu": {
+        "ariaLabel": "قائمة الاستضافة",
+        "createListing": "إنشاء قائمة جديدة",
+        "referHost": "إحالة مضيف",
+        "findCoHost": "البحث عن مضيف مشارك",
+        "giftCards": "بطاقات الهدايا",
+        "helpCenter": "زيارة مركز المساعدة",
+        "account": "الحساب",
+        "logout": "تسجيل الخروج"
+      }
     },
     "content": {
       "today": "اليوم",
@@ -1962,7 +1994,9 @@
       "statusConfirmed": "مؤكد",
       "statusPending": "قيد الانتظار",
       "guestsSuffix": "ضيوف",
-      "manageListings": "إدارة عقاراتك"
+      "manageListings": "إدارة عقاراتك",
+      "noReservationsSubtitle": "لتصلك الحجوزات، عليك إكمال قائمتك ونشرها.",
+      "completeListing": "أكمل قائمتك"
     },
     "listingsPage": {
       "title": "قوائمك",
@@ -1971,6 +2005,66 @@
       "noListings": "لا توجد قوائم بعد",
       "noListingsDescription": "ابدأ بإنشاء قائمتك الأولى.",
       "createListing": "إنشاء قائمة"
+    },
+    "calendar": {
+      "title": "التقويم",
+      "subtitle": "الحجوزات والتواريخ المحجوبة عبر إعلاناتك.",
+      "prevMonth": "الشهر السابق",
+      "nextMonth": "الشهر التالي",
+      "allListings": "جميع الإعلانات",
+      "available": "متاح",
+      "booked": "محجوز",
+      "blocked": "محجوب",
+      "weekdays": [
+        "ح",
+        "ن",
+        "ث",
+        "ر",
+        "خ",
+        "ج",
+        "س"
+      ]
+    },
+    "multicalendar": {
+      "title": "التقويم",
+      "subtitle": "إدارة الإتاحة والأسعار",
+      "today": "اليوم",
+      "prevMonth": "الشهر السابق",
+      "nextMonth": "الشهر التالي",
+      "available": "متاح",
+      "blocked": "محجوب",
+      "reserved": "محجوز",
+      "open": "فتح",
+      "pricePerNight": "سعر الليلة",
+      "save": "حفظ",
+      "saving": "جارٍ الحفظ…",
+      "close": "إغلاق",
+      "minNights": "أدنى {n} ليالٍ",
+      "reservedBy": "محجوز بواسطة {name}",
+      "nightsSelected": "{n} ليالٍ محددة",
+      "nightSelected": "ليلة واحدة محددة",
+      "guests": "الضيوف",
+      "total": "الإجمالي"
+    },
+    "messages": {
+      "title": "الرسائل",
+      "all": "الكل",
+      "unread": "غير المقروءة",
+      "search": "بحث",
+      "writeMessage": "اكتب رسالة…",
+      "send": "إرسال",
+      "back": "رجوع",
+      "selectConversation": "اختر محادثة",
+      "selectHint": "اختر رسالة من القائمة لقراءتها والرد عليها.",
+      "noConversations": "لا توجد رسائل بعد",
+      "noConversationsHint": "ستظهر رسائل الضيوف هنا.",
+      "details": "التفاصيل",
+      "reservation": "الحجز",
+      "checkIn": "تسجيل الوصول",
+      "checkOut": "تسجيل المغادرة",
+      "guests": "الضيوف",
+      "total": "الإجمالي",
+      "viewListing": "عرض القائمة"
     }
   },
   "application": {
@@ -2566,7 +2660,8 @@
       "ticketIdLabel": "رقم التذكرة",
       "share": "مشاركة",
       "download": "تحميل التذكرة"
-    }
+    },
+    "bookingFailedRetry": "تعذّر إنشاء الحجز. يرجى المحاولة مرة أخرى."
   },
   "siteFooter": {
     "support": "الدعم",
@@ -2680,7 +2775,7 @@
   },
   "home": {
     "sections": {
-      "popular": "منازل شائعة في الخرطوم",
+      "popular": "منازل شائعة في بورتسودان",
       "recent": "أضيفت مؤخراً",
       "topRated": "الأعلى تقييماً"
     },
@@ -2783,6 +2878,9 @@
     "experiences": "تجارب",
     "services": "خدمات",
     "newBadge": "جديد",
+    "searchByCityOrLandmark": "ابحث بالمدينة أو المعلم",
+    "typeOfService": "نوع الخدمة",
+    "addService": "أضف خدمة",
     "suggestedDestinations": "الوجهات المقترحة",
     "searchResults": "نتائج البحث",
     "popularDestinations": "وجهات شائعة",
@@ -2853,7 +2951,12 @@
       "infants": "رضع",
       "selectCheckIn": "اختر تاريخ الوصول",
       "selectCheckOut": "اختر تاريخ المغادرة"
-    }
+    },
+    "today": "اليوم",
+    "tomorrow": "غداً",
+    "thisWeekend": "نهاية هذا الأسبوع",
+    "chooseServiceType": "اختر نوع الخدمة",
+    "clearAll": "مسح الكل"
   },
   "filters": {
     "allFilters": "جميع الفلاتر",
@@ -2980,7 +3083,28 @@
       "castle": "قلعة",
       "cave": "كهف",
       "container": "حاوية",
-      "cycladicHome": "منزل سيكلادي"
+      "cycladicHome": "منزل سيكلادي",
+      "dammuso": "داموسو",
+      "dome": "قبة",
+      "earthHome": "منزل ترابي",
+      "farm": "مزرعة",
+      "guestTower": "برج ضيوف",
+      "guesthouse": "منزل ضيافة",
+      "hotel": "فندق",
+      "houseboat": "منزل عائم",
+      "huts": "أكواخ",
+      "minsu": "مينسو",
+      "riad": "رياض",
+      "ryokan": "ريوكان",
+      "shepherdsHut": "كوخ راعي",
+      "tent": "خيمة",
+      "tinyHome": "منزل صغير",
+      "tipi": "تيبي",
+      "trullo": "ترولو",
+      "tower": "برج",
+      "treehouse": "بيت الشجرة",
+      "windmill": "طاحونة هواء",
+      "yurt": "يورت"
     },
     "stepNavigation": {
       "next": "التالي",
@@ -3381,14 +3505,17 @@
       "heading": "والآن، حدّد سعرك",
       "subtitle": "يمكنك تغييره في أي وقت. اطّلع على إعلانات مشابهة في منطقتك لتختار السعر المناسب.",
       "cardTitle": "السعر الأساسي",
-      "label": "السعر لكل ليلة (دولار أمريكي)",
+      "label": "السعر لكل ليلة",
       "pricePlaceholder": "0",
       "tipTitle": "نصيحة حول السعر",
       "tipText": "معظم المضيفين في منطقتك يتقاضون بين 85 و130 دولارًا في الليلة. فكّر في البدء بسعر تنافسي لجذب أول ضيوفك وتقييماتك.",
       "breakdownTitle": "تفاصيل السعر للضيف",
       "breakdownNights": "100$ × ليلة واحدة",
       "serviceFee": "رسوم خدمة مكان",
-      "total": "الإجمالي"
+      "total": "الإجمالي",
+      "cleaningFee": "رسوم التنظيف",
+      "weeklyDiscount": "خصم أسبوعي",
+      "monthlyDiscount": "خصم شهري"
     },
     "houseRules": {
       "heading": "حدّد قواعد المنزل",
@@ -3617,7 +3744,8 @@
       "visibilityTitle": "ظهور أفضل",
       "visibilityText": "تظهر إعلانات الحجز الفوري في مرتبة أعلى في نتائج البحث",
       "protectedTitle": "تبقى محميًا",
-      "protectedText": "حتى مع الحجز الفوري، لا يزال بإمكانك تحديد متطلبات للضيوف (مثل الهوية الموثّقة) ويمكنك الإلغاء دون غرامة إذا لم يستوفِ الضيف متطلباتك."
+      "protectedText": "حتى مع الحجز الفوري، لا يزال بإمكانك تحديد متطلبات للضيوف (مثل الهوية الموثّقة) ويمكنك الإلغاء دون غرامة إذا لم يستوفِ الضيف متطلباتك.",
+      "toggleDescription": "يمكن للضيوف الحجز تلقائيًا دون طلب الموافقة."
     },
     "availability": {
       "heading": "إعدادات التوفر",
@@ -3656,7 +3784,9 @@
       "bathroom": "الحمام",
       "additional": "صور إضافية",
       "addPhotos": "إضافة صور",
-      "photosCount": "{count} صور"
+      "photosCount": "{count} صور",
+      "coverPhoto": "صورة الغلاف",
+      "uploading": "جارٍ الرفع…"
     },
     "checkInMethod": {
       "heading": "طريقة تسجيل الوصول",
@@ -3777,6 +3907,52 @@
       "passwordPlaceholder": "أدخل كلمة مرور الواي فاي",
       "instructionsTitle": "تعليمات للضيوف",
       "instructionsText": "تتم مشاركة هذه التفاصيل مع الضيوف بعد تسجيل وصولهم. تأكد من أن معلومات الواي فاي دقيقة ومحدّثة."
+    },
+    "nav": {
+      "yourSpace": "مساحتك",
+      "arrivalGuide": "دليل الوصول",
+      "listingEditor": "محرّر القائمة",
+      "completeSteps": "أكمل الخطوات المطلوبة",
+      "completeStepsBody": "أنجز هذه المهام الأخيرة لنشر قائمتك والبدء في تلقّي الحجوزات.",
+      "photoTour": "جولة الصور",
+      "title": "العنوان",
+      "propertyType": "نوع العقار",
+      "pricing": "التسعير",
+      "availability": "التوفّر",
+      "numberOfGuests": "عدد الضيوف",
+      "description": "الوصف",
+      "amenities": "وسائل الراحة",
+      "accessibility": "إمكانية الوصول",
+      "location": "الموقع",
+      "host": "المضيف",
+      "coHosts": "المضيفون المشاركون",
+      "instantBook": "الحجز الفوري",
+      "houseRules": "قواعد المنزل",
+      "guestSafety": "سلامة الضيوف",
+      "cancellationPolicy": "سياسة الإلغاء",
+      "customLink": "رابط مخصّص",
+      "checkInOut": "تسجيل الوصول والمغادرة",
+      "directions": "الاتجاهات",
+      "checkInMethod": "طريقة تسجيل الوصول",
+      "wifiDetails": "تفاصيل الواي فاي",
+      "houseManual": "دليل المنزل",
+      "travelHouseRules": "قواعد المنزل",
+      "checkoutInstructions": "تعليمات المغادرة",
+      "guidebooks": "أدلّة إرشادية",
+      "interactionPreferences": "تفضيلات التفاعل",
+      "valuePerNight": "{price} لكل ليلة",
+      "valueGuests": "{count} ضيوف",
+      "valueBedBath": "{bedrooms} غرفة نوم · {beds} سرير · {bathrooms} حمّام",
+      "valueAmenities": "{count} وسائل راحة",
+      "valueEntirePlace": "مكان بالكامل · {type}",
+      "notSet": "لم يُحدّد",
+      "aboutYou": "نبذة عنك",
+      "manageCohosts": "إدارة المضيفين المشاركين",
+      "on": "مفعّل",
+      "off": "معطّل",
+      "save": "حفظ",
+      "saving": "جارٍ الحفظ…",
+      "valueNightStay": "{min}–{max} ليلة"
     }
   },
   "atom": {
@@ -4389,5 +4565,55 @@
     "acceptAll": "قبول الكل",
     "rejectNonEssential": "الضرورية فقط",
     "learnMore": "إدارة التفضيلات"
+  },
+  "profile": {
+    "profile": "الملف الشخصي",
+    "aboutMe": "نبذة عني",
+    "pastTrips": "الرحلات السابقة",
+    "connections": "جهات الاتصال",
+    "edit": "تعديل",
+    "host": "مضيف",
+    "completeYourProfile": "أكمل ملفك الشخصي",
+    "completeProfileBody": "ملفك الشخصي في مكان جزء مهم من كل حجز. أكمله لمساعدة المضيفين والضيوف الآخرين على التعرف عليك.",
+    "getStarted": "ابدأ الآن",
+    "showReviewsWritten": "عرض التقييمات التي كتبتها",
+    "back": "رجوع",
+    "myProfile": "ملفي الشخصي",
+    "myProfileBody": "يمكن للمضيفين والضيوف رؤية ملفك الشخصي وقد يظهر عبر مكان لمساعدتنا في بناء الثقة في مجتمعنا.",
+    "learnMore": "اعرف المزيد",
+    "add": "إضافة",
+    "done": "تم",
+    "changePhoto": "تغيير الصورة",
+    "aboutMeSection": "نبذة عني",
+    "writeIntroPlaceholder": "اكتب شيئًا ممتعًا وجذابًا.",
+    "addIntro": "إضافة نبذة",
+    "whereIveBeen": "الأماكن التي زرتها",
+    "whereIveBeenBody": "اختر الطوابع التي تريد أن يراها الآخرون في ملفك الشخصي.",
+    "nextDestination": "الوجهة التالية",
+    "editTravelStamps": "تعديل طوابع السفر",
+    "myInterests": "اهتماماتي",
+    "myInterestsBody": "اعثر على القواسم المشتركة مع الضيوف والمضيفين الآخرين بإضافة اهتماماتك إلى ملفك الشخصي.",
+    "addInterests": "إضافة اهتمامات",
+    "metaTitleView": "الملف الشخصي",
+    "metaTitleEdit": "تعديل الملف الشخصي",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "selectDecade": "اختر العقد",
+    "addTagPlaceholder": "اكتب ثم اضغط Enter",
+    "prompts": {
+      "decadeBorn": "العقد الذي وُلدت فيه",
+      "whereWantedToGo": "المكان الذي طالما أردت زيارته",
+      "work": "عملي",
+      "pets": "الحيوانات الأليفة",
+      "school": "المدرسة التي درست فيها",
+      "spendTime": "أقضي وقتًا طويلاً في",
+      "song": "أغنيتي المفضلة في المدرسة الثانوية",
+      "funFact": "حقيقة طريفة عني",
+      "uselessSkill": "أكثر مهاراتي عديمة الفائدة",
+      "obsessedWith": "أنا مهووس بـ",
+      "languages": "اللغات التي أتحدثها",
+      "bioTitle": "عنوان سيرتي الذاتية سيكون",
+      "whereILive": "المكان الذي أعيش فيه"
+    }
   }
 }

@@ -99,7 +99,7 @@ export function PhotosForm() {
                     <button
                       type="button"
                       onClick={() => removePhoto(index)}
-                      className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      className="absolute top-2 end-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                     >
                       <X className="w-4 h-4" />
                     </button>

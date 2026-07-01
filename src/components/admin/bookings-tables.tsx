@@ -64,7 +64,7 @@ export function HomeBookingsTable({
           <TableHead>{labels.checkIn}</TableHead>
           <TableHead>{labels.checkOut}</TableHead>
           <TableHead>{labels.status}</TableHead>
-          <TableHead className="text-right">{labels.total}</TableHead>
+          <TableHead className="text-end">{labels.total}</TableHead>
           <TableHead>{labels.created}</TableHead>
         </TableRow>
       </TableHeader>
@@ -85,7 +85,7 @@ export function HomeBookingsTable({
             <TableCell>
               <Badge variant="outline">{b.status}</Badge>
             </TableCell>
-            <TableCell className="text-right text-sm">
+            <TableCell className="text-end text-sm">
               ${b.totalPrice.toFixed(0)}
             </TableCell>
             <TableCell className="text-xs text-muted-foreground">
@@ -113,7 +113,7 @@ export function TransportBookingsTable({
           <TableHead>{labels.office}</TableHead>
           <TableHead>{labels.reference}</TableHead>
           <TableHead>{labels.status}</TableHead>
-          <TableHead className="text-right">{labels.total}</TableHead>
+          <TableHead className="text-end">{labels.total}</TableHead>
           <TableHead>{labels.created}</TableHead>
         </TableRow>
       </TableHeader>
@@ -129,7 +129,7 @@ export function TransportBookingsTable({
             <TableCell>
               <Badge variant="outline">{b.status}</Badge>
             </TableCell>
-            <TableCell className="text-right text-sm">
+            <TableCell className="text-end text-sm">
               ${b.totalAmount.toFixed(0)}
             </TableCell>
             <TableCell className="text-xs text-muted-foreground">

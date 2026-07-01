@@ -7,8 +7,6 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from '@/components/ui/carousel';
 
 interface IconItem {
@@ -48,7 +46,7 @@ const PropertyFilter: React.FC<PropertyFilterProps> = ({
 
   return (
     <div className={`w-full ${className}`}>
-      {/* Desktop Layout */}
+      {/* Desktop Layout (Unchanged) */}
       <div className="hidden md:flex items-start justify-between py-1">
         {AIRBNB_ICONS.map((icon) => (
           <div
@@ -102,7 +100,7 @@ const PropertyFilter: React.FC<PropertyFilterProps> = ({
         ))}
       </div>
 
-      {/* Mobile Layout with Carousel */}
+      {/* Mobile Layout with Carousel (Bigger, scrollable, hidden arrows) */}
       <div className="md:hidden relative">
         <Carousel
           opts={{
@@ -119,10 +117,10 @@ const PropertyFilter: React.FC<PropertyFilterProps> = ({
                   className="flex flex-col items-center cursor-pointer group transition-all duration-200 px-2 py-1"
                 >
                   {/* Icon Container */}
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-lg">
                     <AirbnbIcon 
                       name={icon.filename} 
-                      size={20}
+                      size={24}
                       className={`transition-all duration-200 ${
                         selectedIcon === icon.filename 
                           ? 'brightness-0 saturate-0' 
@@ -134,7 +132,7 @@ const PropertyFilter: React.FC<PropertyFilterProps> = ({
                   {/* Label */}
                   <div className="-mt-1 text-center">
                     <div 
-                      className={`text-xs font-normal transition-colors duration-200 inline-block ${
+                      className={`text-xs font-medium transition-colors duration-200 inline-block whitespace-nowrap ${
                         selectedIcon === icon.filename
                           ? 'text-black'
                           : 'text-gray-700 group-hover:text-black'
@@ -145,7 +143,7 @@ const PropertyFilter: React.FC<PropertyFilterProps> = ({
                     
                     {/* Optional Description */}
                     {showDescriptions && filter?.desc?.[icon.labelKey] && (
-                      <div className="text-[10px] text-gray-700">
+                      <div className="text-[10px] text-gray-700 whitespace-nowrap">
                         {filter?.desc?.[icon.labelKey] ?? icon.labelKey}
                       </div>
                     )}
@@ -158,20 +156,16 @@ const PropertyFilter: React.FC<PropertyFilterProps> = ({
                         ? 'opacity-100'
                         : 'opacity-0'
                     }`}
-                    style={{ width: 'fit-content', minWidth: '16px' }}
+                    style={{ width: 'fit-content', minWidth: '20px' }}
                   />
                 </div>
               </CarouselItem>
             ))}
           </CarouselContent>
-          
-          {/* Navigation Arrows - Only show if needed */}
-          <CarouselPrevious className="left-2 h-8 w-8" />
-          <CarouselNext className="right-2 h-8 w-8" />
         </Carousel>
       </div>
     </div>
   );
 };
 
-export default PropertyFilter; 
+export default PropertyFilter;

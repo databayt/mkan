@@ -4,7 +4,14 @@ import { z } from "zod";
 import { auth, canOverride } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath, updateTag } from "next/cache";
-import { Amenity, Highlight, PropertyType, Prisma } from "@prisma/client";
+import {
+  Amenity,
+  Highlight,
+  PropertyType,
+  CancellationPolicy,
+  CheckInMethod,
+  Prisma,
+} from "@prisma/client";
 import { sanitizeInput, sanitizeHtml } from "@/lib/sanitization";
 import { logger } from "@/lib/logger";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -35,6 +42,35 @@ const listingFormDataSchema = z.object({
   postalCode: z.string().max(20).optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
+  // Pricing extras (Homes vertical)
+  cleaningFee: z.number().min(0).optional(),
+  weeklyDiscount: z.number().min(0).max(100).optional(),
+  monthlyDiscount: z.number().min(0).max(100).optional(),
+  // Stay / availability windows
+  minStay: z.number().int().min(1).optional(),
+  maxStay: z.number().int().min(1).optional(),
+  advanceNotice: z.number().int().min(0).optional(),
+  preparationTime: z.number().int().min(0).optional(),
+  availabilityWindow: z.number().int().min(0).optional(),
+  // Arrival guide
+  cancellationPolicy: z.enum(CancellationPolicy).optional(),
+  checkInTime: z.string().max(20).optional(),
+  checkOutTime: z.string().max(20).optional(),
+  checkInMethod: z.enum(CheckInMethod).optional(),
+  houseRules: z
+    .object({
+      petsAllowed: z.boolean().optional(),
+      eventsAllowed: z.boolean().optional(),
+      smokingAllowed: z.boolean().optional(),
+      commercialPhotographyAllowed: z.boolean().optional(),
+      quietHoursEnabled: z.boolean().optional(),
+      quietHoursStart: z.string().max(20).optional(),
+      quietHoursEnd: z.string().max(20).optional(),
+      additionalRules: z.string().max(5000).optional(),
+    })
+    .optional(),
+  // Free-text arrival-guide bag (directions, wifi, house manual, guidebooks, …)
+  guideInfo: z.record(z.string(), z.unknown()).optional(),
   draft: z.boolean().optional(),
   isPublished: z.boolean().optional(),
 }).partial();
@@ -501,6 +537,24 @@ export async function updateListing(id: unknown, data: unknown) {
       ...(d.amenities !== undefined && { amenities: d.amenities }),
       ...(d.highlights !== undefined && { highlights: d.highlights }),
       ...(d.photoUrls !== undefined && { photoUrls: d.photoUrls }),
+      ...(d.cleaningFee !== undefined && { cleaningFee: d.cleaningFee }),
+      ...(d.weeklyDiscount !== undefined && { weeklyDiscount: d.weeklyDiscount }),
+      ...(d.monthlyDiscount !== undefined && { monthlyDiscount: d.monthlyDiscount }),
+      ...(d.minStay !== undefined && { minStay: d.minStay }),
+      ...(d.maxStay !== undefined && { maxStay: d.maxStay }),
+      ...(d.advanceNotice !== undefined && { advanceNotice: d.advanceNotice }),
+      ...(d.preparationTime !== undefined && { preparationTime: d.preparationTime }),
+      ...(d.availabilityWindow !== undefined && { availabilityWindow: d.availabilityWindow }),
+      ...(d.cancellationPolicy !== undefined && { cancellationPolicy: d.cancellationPolicy }),
+      ...(d.checkInTime !== undefined && { checkInTime: d.checkInTime }),
+      ...(d.checkOutTime !== undefined && { checkOutTime: d.checkOutTime }),
+      ...(d.checkInMethod !== undefined && { checkInMethod: d.checkInMethod }),
+      ...(d.houseRules !== undefined && {
+        houseRules: d.houseRules as Prisma.InputJsonValue,
+      }),
+      ...(d.guideInfo !== undefined && {
+        guideInfo: d.guideInfo as Prisma.InputJsonValue,
+      }),
       ...(d.draft !== undefined && { draft: d.draft }),
       ...(d.isPublished !== undefined && {
         isPublished: d.isPublished,

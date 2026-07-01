@@ -1,207 +1,143 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Search, MapPin, Calendar, Users, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useDictionary } from '@/components/internationalization/dictionary-context';
+import React, { useCallback, useEffect, useState } from "react";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
+import { useLocale } from "@/components/internationalization/use-locale";
+import SmallSearch from "@/components/template/search/small-search";
+import VerticalSearch from "@/components/template/search/vertical-search";
 
-interface SearchState {
-  where: string;
-  checkIn: string;
-  checkOut: string;
-  guests: string;
-}
+// ───────────────────────────────────────────────────────────────────────────
+// Mobile listings header (/listings, mobile only — the desktop header is a
+// separate component and is intentionally untouched).
+//
+// COLLAPSED: the exact same compact "Anywhere · Any week · Guests" SmallSearch
+// pill used on /search — no category tabs (Homes / Experiences / Services are
+// hidden here). Tapping it expands the SHEET.
+//
+// SHEET: the search command expands top-down into one continuous panel that
+// springs from the collapsed bar height down to 85% of the screen. It hosts the
+// SAME mobile search flow as the homepage hero (VerticalSearch) opened straight
+// on the Where step. There is no close icon — a grabber line sits at the bottom
+// (tap to dismiss). Two Framer shared-layout morphs tie it together: the pill's
+// red search circle morphs into the sheet's Search button (CTA_ID), and the
+// height spring carries the command open into the sheet.
+// ───────────────────────────────────────────────────────────────────────────
+
+// Collapsed bar height — the panel springs from here, so the bar appears to
+// morph into the sheet as one piece.
+const BAR_H = 64;
+
+// Shared-layout id linking the collapsed pill's red circle ↔ the sheet's
+// Search button. Both carry it; Framer morphs one into the other.
+const CTA_ID = "listings-search-cta";
+
+// Single morph spring drives the top-down expand + collapse (matches the
+// desktop header's morph feel: smooth, no bounce).
+const SPRING = {
+  type: "spring" as const,
+  stiffness: 280,
+  damping: 34,
+  mass: 1,
+} as const;
 
 const MobileListingsHeader = () => {
-  const dict = useDictionary();
+  const { locale } = useLocale();
+  const isAr = locale === "ar";
+
   const [isOpen, setIsOpen] = useState(false);
-  const [currentStep, setCurrentStep] = useState<'where' | 'checkIn' | 'checkOut' | 'guests'>('where');
-  const [searchState, setSearchState] = useState<SearchState>({
-    where: dict.search?.anywhere ?? 'Anywhere',
-    checkIn: dict.search?.checkIn ?? 'Check in',
-    checkOut: dict.search?.checkOut ?? 'Check out',
-    guests: dict.search?.addGuests ?? 'Add guests'
-  });
+  // Target sheet height in px, captured at open time (85% of the viewport).
+  // Pixels (not "85vh") so Framer can interpolate the height spring.
+  const [sheetH, setSheetH] = useState(0);
 
-  const handleStepComplete = (step: keyof SearchState, value: string) => {
-    setSearchState(prev => ({ ...prev, [step]: value }));
-    
-    // Auto-advance to next step
-    switch (step) {
-      case 'where':
-        setCurrentStep('checkIn');
-        break;
-      case 'checkIn':
-        setCurrentStep('checkOut');
-        break;
-      case 'checkOut':
-        setCurrentStep('guests');
-        break;
-      case 'guests':
-        setIsOpen(false);
-        break;
-    }
-  };
+  const openSheet = useCallback(() => {
+    setSheetH(Math.round(window.innerHeight * 0.92));
+    setIsOpen(true);
+  }, []);
 
-  const handleSearch = () => {
-    // Handle search logic here
-    console.log('Search with:', searchState);
-    setIsOpen(false);
-  };
+  const closeSheet = useCallback(() => setIsOpen(false), []);
+
+  // Lock body scroll + allow Escape-to-close while the sheet is open.
+  useEffect(() => {
+    if (!isOpen) return;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [isOpen]);
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 md:hidden">
-      <div className="flex items-center justify-center p-4 pt-6">
-        <div className="relative w-full max-w-sm">
-          <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-            <DropdownMenuTrigger asChild>
-              <div className="relative flex items-center">
-                <div className="w-full h-14 ps-6 pe-16 text-base border rounded-full shadow-lg bg-[#ffffff] placeholder:text-[#6b7280] focus-visible:ring-2 focus-visible:ring-[#de3151] focus-visible:ring-offset-0 flex items-center cursor-pointer">
-                  <span className="text-[#6b7280]">{dict.search?.startSearch ?? "Start your search"}</span>
-                </div>
-                <Button
-                  size="icon"
-                  className="absolute right-2 h-10 w-10 rounded-full bg-[#de3151] hover:bg-[#c42a47] focus-visible:ring-2 focus-visible:ring-[#de3151] focus-visible:ring-offset-2"
-                >
-                  <Search className="h-5 w-5 text-[#ffffff]" />
-                  <span className="sr-only">{dict.search?.startSearch ?? "Start your search"}</span>
-                </Button>
-              </div>
-            </DropdownMenuTrigger>
-            
-            <DropdownMenuContent 
-            className="w-screen h-screen max-w-none rounded-none border-0 shadow-none bg-white p-0"
-            side="bottom"
-            align="start"
-            sideOffset={0}
+    <LayoutGroup>
+      {/* ── Collapsed bar — same SmallSearch pill as /search, centered ──── */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 md:hidden">
+        <div className="px-4">
+          <div
+            className="flex items-center justify-center"
+            style={{ height: BAR_H }}
           >
-            <div className="flex flex-col h-full">
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">{dict.search?.editSearch ?? "Edit your search"}</h2>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsOpen(false)}
-                  className="h-8 w-8"
-                  aria-label="Close search"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto">
-                {/* Where Section */}
-                {currentStep === 'where' && (
-                  <div className="p-4">
-                    <h3 className="text-lg font-semibold mb-4">{dict.search?.whereTo ?? "Where to?"}</h3>
-                    <div className="space-y-3">
-                      {(dict.search?.locations ?? ['Anywhere', "I'm flexible", 'United States', 'Europe', 'Asia', 'Africa']
-                      ).map((location: string) => (
-                        <button
-                          key={location}
-                          onClick={() => handleStepComplete('where', location)}
-                          className="w-full text-start p-3 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <MapPin className="w-5 h-5 text-gray-600" />
-                            <span className="font-medium">{location}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Check-in Section */}
-                {currentStep === 'checkIn' && (
-                  <div className="p-4">
-                    <h3 className="text-lg font-semibold mb-4">{dict.search?.whenTraveling ?? "When are you traveling?"}</h3>
-                    <div className="space-y-3">
-                      {(dict.search?.dates ?? ["I'm flexible", 'This weekend', 'Next week', 'Next month', 'Summer 2024']
-                      ).map((date: string) => (
-                        <button
-                          key={date}
-                          onClick={() => handleStepComplete('checkIn', date)}
-                          className="w-full text-start p-3 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <Calendar className="w-5 h-5 text-gray-600" />
-                            <span className="font-medium">{date}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Check-out Section */}
-                {currentStep === 'checkOut' && (
-                  <div className="p-4">
-                    <h3 className="text-lg font-semibold mb-4">{dict.search?.howLongStaying ?? "How long are you staying?"}</h3>
-                    <div className="space-y-3">
-                      {(dict.search?.durations ?? ['1 night', '2 nights', '3 nights', '1 week', '2 weeks', '1 month']
-                      ).map((duration: string) => (
-                        <button
-                          key={duration}
-                          onClick={() => handleStepComplete('checkOut', duration)}
-                          className="w-full text-start p-3 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <Calendar className="w-5 h-5 text-gray-600" />
-                            <span className="font-medium">{duration}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Guests Section */}
-                {currentStep === 'guests' && (
-                  <div className="p-4">
-                    <h3 className="text-lg font-semibold mb-4">{dict.search?.whoComing ?? "Who's coming?"}</h3>
-                    <div className="space-y-3">
-                      {(dict.search?.guestOptions ?? ['1 guest', '2 guests', '3 guests', '4 guests', '5+ guests', "I'm flexible"]
-                      ).map((guest: string) => (
-                        <button
-                          key={guest}
-                          onClick={() => handleStepComplete('guests', guest)}
-                          className="w-full text-start p-3 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <Users className="w-5 h-5 text-gray-600" />
-                            <span className="font-medium">{guest}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="p-4 border-t border-gray-200">
-                <Button
-                  onClick={handleSearch}
-                  className="w-full bg-[#de3151] hover:bg-[#de3151]/90 text-white"
-                >
-                  {dict.search?.searchButton ?? "Search"}
-                </Button>
-              </div>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <SmallSearch onExpand={() => openSheet()} ctaLayoutId={CTA_ID} />
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* ── Sheet — the command expands top-down into one continuous panel ── */}
+      <AnimatePresence>
+        {isOpen && (
+          <React.Fragment>
+            {/* Scrim */}
+            <motion.div
+              key="scrim"
+              className="fixed inset-0 z-[60] bg-black/40 md:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              onClick={closeSheet}
+              aria-hidden="true"
+            />
+
+            {/* Panel — anchored to the top, springs from BAR_H down to 92vh. */}
+            <motion.div
+              key="panel"
+              className="fixed inset-x-0 top-0 z-[61] md:hidden overflow-hidden rounded-b-2xl bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+              initial={{ height: BAR_H }}
+              animate={{ height: sheetH }}
+              exit={{ height: BAR_H }}
+              transition={SPRING}
+              role="dialog"
+              aria-modal="true"
+            >
+              {/* Mobile home-page search flow, opened straight on the Where step.
+                  Its floating Search button is the shared-layout twin of the
+                  collapsed pill's red circle (CTA_ID). */}
+              <VerticalSearch
+                variant="sheet"
+                initialField="location"
+                onSearch={closeSheet}
+                ctaLayoutId={CTA_ID}
+              />
+
+              {/* Bottom grabber — replaces the close icon. Centered so it never
+                  overlaps the bottom-end Search button; tap (or pull intent) to
+                  dismiss. */}
+              <button
+                type="button"
+                onClick={closeSheet}
+                aria-label={isAr ? "إغلاق" : "Close"}
+                className="absolute bottom-0 left-1/2 z-40 flex h-12 w-20 -translate-x-1/2 items-end justify-center pb-3"
+              >
+                <span className="h-1 w-9 rounded-full bg-gray-300" />
+              </button>
+            </motion.div>
+          </React.Fragment>
+        )}
+      </AnimatePresence>
+    </LayoutGroup>
   );
 };
 
-export default MobileListingsHeader; 
+export default MobileListingsHeader;

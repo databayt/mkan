@@ -1,16 +1,21 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type CSSProperties } from "react";
+import { motion } from "framer-motion";
 import { useRouter, usePathname } from "next/navigation";
+import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Counter } from "@/components/atom/counter";
 import { format, addDays } from "date-fns";
+import { ar, enUS } from "date-fns/locale";
 import { useClickOutside } from "./use-click";
 import { GUEST_LIMITS, MOBILE_BREAKPOINT } from "./constant";
 import LocationDropdown from "./location";
 import GuestSelectorDropdown from "./guest-selector";
+import BigSearchDatePicker from "./big-search-date-picker";
 import { Calendar } from "@/components/ui/calendar";
+import { Command, CommandInput } from "@/components/ui/command";
 import { useLocationSuggestions } from "./hooks/use-location-suggestions";
 import { useSearchValidation } from "@/hooks/useSearchValidation";
 import { type LocationSuggestion, SEARCH_CONFIG } from "@/lib/schemas/search-schema";
@@ -22,12 +27,32 @@ type ActiveField = "location" | "checkin" | "checkout" | "guests" | null;
 
 interface VerticalSearchProps {
   onSearch?: () => void;
+  // "hero" (default) keeps the absolutely-positioned card that floats over the
+  // homepage hero image. "sheet" makes the mobile card fill its parent so it can
+  // be embedded inside the /listings mobile bottom-sheet (it drops the absolute
+  // positioning + fixed height and the card's own rounding/shadow, which the
+  // sheet already provides). Desktop rendering is identical in both variants.
+  variant?: "hero" | "sheet";
+  // Which step the mobile card opens on. Default (null) opens the idle form
+  // (heading + all fields), as on the homepage hero. The /listings sheet passes
+  // "location" so the Where step is shown immediately.
+  initialField?: ActiveField;
+  // When set, the mobile floating Search button becomes a Framer shared-layout
+  // element with this id so it can morph from the collapsed pill's search circle
+  // (and back). Undefined on the hero → plain button, hero is unaffected.
+  ctaLayoutId?: string;
 }
 
-export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
+export default function VerticalSearch({
+  onSearch,
+  variant = "hero",
+  initialField = null,
+  ctaLayoutId,
+}: VerticalSearchProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isRTL } = useLocale();
+  const { isRTL, locale } = useLocale();
+  const isAr = locale === "ar";
   const dict = useDictionary();
   const vf = dict?.search?.verticalForm;
   const t = {
@@ -54,12 +79,15 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
     pet: dict.search?.pet ?? "pet",
     pets: dict.search?.pets ?? "pets",
   };
-  const [activeField, setActiveField] = useState<ActiveField>(null);
+  const [activeField, setActiveField] = useState<ActiveField>(initialField);
   const [isMobile, setIsMobile] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
     location: "",
+    // Canonical (English) token sent as the `location` param; `location` above
+    // stays the localized label shown in the field.
+    locationQuery: "",
     checkIn: "",
     checkOut: "",
     guests: {
@@ -69,10 +97,6 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
       pets: 0,
     },
   });
-
-  // Track search form height for dropdown matching
-  const [formHeight, setFormHeight] = useState<number | null>(null);
-  const searchFormRef = useRef<HTMLDivElement>(null);
 
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
@@ -90,6 +114,15 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
     from: undefined,
     to: undefined,
   });
+
+  // "When" picker state — mirrors the /listings BigSearch so the hero opens the
+  // SAME date picker (Dates / Flexible tabs, flexibility pills).
+  const [searchMode, setSearchMode] = useState<"dates" | "flexible">("dates");
+  const [flexibleDuration, setFlexibleDuration] = useState<
+    "weekend" | "week" | "month"
+  >("week");
+  const [flexibleMonths, setFlexibleMonths] = useState<string[]>([]);
+  const [dateFlexibility, setDateFlexibility] = useState<string>("exact");
 
   // Use the location suggestions hook
   const {
@@ -116,41 +149,45 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Track search form height dynamically for desktop dropdowns
-  useEffect(() => {
-    if (!isMobile && searchFormRef.current) {
-      const updateHeight = () => {
-        const height = searchFormRef.current?.offsetHeight;
-        if (height) {
-          setFormHeight(height);
-        }
-      };
-
-      // Initial measurement
-      updateHeight();
-
-      // Update on window resize
-      window.addEventListener("resize", updateHeight);
-
-      // Observe form size changes (when fields expand/collapse)
-      const resizeObserver = new ResizeObserver(updateHeight);
-      resizeObserver.observe(searchFormRef.current);
-
-      return () => {
-        window.removeEventListener("resize", updateHeight);
-        resizeObserver.disconnect();
-      };
-    }
-    return undefined;
-  }, [isMobile, activeField]); // Re-measure when active field changes
-
   const handleFieldClick = (field: ActiveField) => {
     setActiveField(activeField === field ? null : field);
   };
 
+  // ── Mobile step navigation ─────────────────────────────────────────────
+  // The prev/next arrows walk four steps — Where (0) → Check-in (1) →
+  // Check-out (2) → Who (3). Check-in and check-out are distinct steps so the
+  // next arrow flips check-in → check-out (instead of skipping to Who).
+  const fieldStep = (field: ActiveField): number => {
+    if (field === "location") return 0;
+    if (field === "checkin") return 1;
+    if (field === "checkout") return 2;
+    if (field === "guests") return 3;
+    return -1;
+  };
+  const stepToField = (step: number): ActiveField =>
+    step === 0
+      ? "location"
+      : step === 1
+        ? "checkin"
+        : step === 2
+          ? "checkout"
+          : "guests";
+  const goPrevField = () => {
+    const s = fieldStep(activeField);
+    if (s > 0) setActiveField(stepToField(s - 1));
+  };
+  const goNextField = () => {
+    const s = fieldStep(activeField);
+    if (s >= 0 && s < 3) setActiveField(stepToField(s + 1));
+  };
+
   const handleDateRangeChange = (
     from: Date | undefined,
-    to: Date | undefined
+    to: Date | undefined,
+    // ms to wait before advancing check-out → guests. Mobile passes a small
+    // delay so the completed range is visible for a beat before the Who panel
+    // slides in; desktop advances immediately (0).
+    advanceDelay = 0
   ) => {
     // Detect which date was just selected
     const fromChanged = from?.getTime() !== prevDateRange.from?.getTime();
@@ -170,16 +207,85 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
       setActiveField("checkout");
     } else if (toChanged && from && to) {
       // User just selected check-out → auto-advance to guests
-      setActiveField("guests");
+      if (advanceDelay > 0) {
+        setTimeout(() => setActiveField("guests"), advanceDelay);
+      } else {
+        setActiveField("guests");
+      }
     }
 
     // Track for next comparison
     setPrevDateRange({ from, to });
   };
 
+  // Format a Date as YYYY-MM-DD from LOCAL components (avoids the UTC day-shift
+  // that toISOString() introduces in non-UTC timezones).
+  const toLocalISODate = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate()
+    ).padStart(2, "0")}`;
+
+  // Turn the Flexible tab's selected months into a concrete check-in/check-out
+  // span (first day of the earliest month → last day of the latest month),
+  // matching the BigSearch flexible→range conversion.
+  const getFlexibleDateRange = (months: string[]) => {
+    const sorted = [...months].sort();
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    if (!first || !last) {
+      const from = new Date();
+      const to = new Date();
+      to.setMonth(to.getMonth() + 6);
+      return { from, to };
+    }
+    const [fy, fm] = first.split("-");
+    const [ly, lm] = last.split("-");
+    const from = new Date(parseInt(fy || "0", 10), parseInt(fm || "1", 10) - 1, 1);
+    const to = new Date(parseInt(ly || "0", 10), parseInt(lm || "1", 10), 0);
+    return { from, to };
+  };
+
+  // Keep the two visible CHECK-IN / CHECK-OUT fields coherent while in Flexible
+  // mode: derive a concrete range from the chosen months so the fields always
+  // show real dates instead of going blank.
+  const syncFlexibleToDateRange = (months: string[]) => {
+    if (months.length === 0) {
+      setDateRange({ from: undefined, to: undefined });
+      setFormData((prev) => ({ ...prev, checkIn: "", checkOut: "" }));
+      return;
+    }
+    const range = getFlexibleDateRange(months);
+    setDateRange(range);
+    setFormData((prev) => ({
+      ...prev,
+      checkIn: range.from ? toLocalISODate(range.from) : "",
+      checkOut: range.to ? toLocalISODate(range.to) : "",
+    }));
+  };
+
+  // Wrapped setters passed to BigSearchDatePicker so a Flexible selection also
+  // refreshes the derived range (the picker itself only owns flexible state).
+  const handleFlexibleMonths = (
+    updater: string[] | ((prev: string[]) => string[])
+  ) => {
+    const next =
+      typeof updater === "function" ? updater(flexibleMonths) : updater;
+    setFlexibleMonths(next);
+    syncFlexibleToDateRange(next);
+  };
+
+  const handleSearchMode = (mode: "dates" | "flexible") => {
+    setSearchMode(mode);
+    if (mode === "flexible") syncFlexibleToDateRange(flexibleMonths);
+  };
+
   // Handle location selection
   const selectLocation = (location: LocationSuggestion) => {
-    setFormData((prev) => ({ ...prev, location: location.displayName }));
+    setFormData((prev) => ({
+      ...prev,
+      location: location.displayName,
+      locationQuery: location.searchValue || location.city || location.displayName,
+    }));
     setActiveField("checkin");
   };
 
@@ -261,8 +367,10 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
   useClickOutside(formRef, () => setActiveField(null));
 
   const handleSearch = () => {
-    // Validate dates before search
-    if (dateRange.from && dateRange.to && !isDateValid) {
+    // Validate dates before search (only in exact-dates mode — a Flexible
+    // selection legitimately spans a whole month, which the night-count
+    // validation would otherwise reject).
+    if (searchMode === "dates" && dateRange.from && dateRange.to && !isDateValid) {
       // Show validation errors by opening the date picker
       setActiveField("checkin");
       return;
@@ -271,7 +379,7 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
     const searchParams = new URLSearchParams();
 
     if (formData.location) {
-      searchParams.set("location", formData.location);
+      searchParams.set("location", formData.locationQuery || formData.location);
     }
     if (formData.checkIn) {
       searchParams.set("checkIn", formData.checkIn);
@@ -319,120 +427,124 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
   };
 
   if (isMobile) {
+    const step = fieldStep(activeField);
+    const isSheet = variant === "sheet";
     return (
       <div
-        className="absolute top-[53%] start-4 md:start-8 transform -translate-y-1/2 z-20 w-[calc(100%-2rem)] md:w-auto max-h-[80vh] overflow-auto"
+        className={
+          isSheet
+            ? "relative h-full w-full"
+            : "absolute top-[53%] start-4 transform -translate-y-1/2 z-20 w-[calc(100%-2rem)]"
+        }
         ref={formRef}
       >
-        <div className="bg-white rounded-xs px-4 md:px-6 py-6 md:py-4 shadow-md w-full md:w-80">
-          {/* Header - Show heading or back arrow */}
+        <div
+          className={`relative bg-white w-full overflow-hidden ${
+            isSheet ? "h-full" : "rounded-xs shadow-md"
+          }`}
+          // Hero: constant height across every state (idle + Where / When / Who)
+          // so the card never grows when a menu opens — set inline so Turbopack
+          // can't drop it as a brand-new arbitrary utility from its dev scan.
+          // Sheet: the card fills the bottom-sheet body (h-full above) instead.
+          style={isSheet ? undefined : { height: "min(82vh, 600px)" }}
+        >
+          {/* Body — branches by panel so the Where search input can stay fixed
+              while its list scrolls behind it. Idle + When/Who use one
+              full-height scroll area; Where is a flex column (fixed input +
+              scrolling list). The floating arrows (top) and Search button
+              (bottom) overlay all states. pt clears the arrows, pb the button. */}
           {!activeField ? (
-            /* Show main heading when no field is active */
-            <h1 className="text-lg md:text-xl font-medium text-[#6b6b6b] mb-4 md:mb-3 leading-tight whitespace-pre-line">
-              {t.heading}
-            </h1>
-          ) : (
-            /* Show back arrow when dropdown is active */
-            <div className="flex items-center mb-4 md:mb-3">
-              <button
-                onClick={() => setActiveField(null)}
-                className="flex items-center text-[#6b6b6b] hover:text-black transition-colors"
-              >
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className={isRTL ? "rotate-180" : ""}
-                >
-                  <path d="m15 18-6-6 6-6" />
-                </svg>
-                <span className="ms-2 text-sm font-medium">{t.back}</span>
-              </button>
-            </div>
-          )}
-
-          {/* Mobile: Show form or dropdown content */}
-          {!activeField ? (
-            /* Show complete form when no field is active */
-            <div className="space-y-4 md:space-y-3">
-              {/* Location field */}
-              <div>
-                <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
-                  {t.where}
-                </Label>
-                <button
-                  className={`w-full h-12 text-start px-3 border border-gray-300 rounded-xs ${getFieldStyling("location")}`}
-                  onClick={() => handleFieldClick("location")}
-                >
-                  <span
-                    className={`text-sm ${formData.location ? "text-black" : "text-[#c0c0c0]"}`}
-                  >
-                    {formData.location || t.anywhere}
-                  </span>
-                </button>
-              </div>
-
-              {/* Date fields */}
-              <div>
-                <div className="grid grid-cols-2">
-                  <div>
-                    <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
-                      {t.checkIn}
-                    </Label>
-                  </div>
-                  <div>
-                    <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
-                      {t.checkOut}
-                    </Label>
-                  </div>
-                </div>
-                <div className="flex">
+            <div className="h-full overflow-y-auto no-scrollbar px-6 pt-9 pb-24">
+              <h1 className="text-2xl font-semibold text-[#484848] mb-7 leading-snug whitespace-pre-line">
+                {t.heading}
+              </h1>
+              <div className="space-y-5">
+                {/* Location field */}
+                <div>
+                  <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1.5 block">
+                    {t.where}
+                  </Label>
                   <button
-                    className={`flex-1 h-12 text-start px-3 border border-gray-300 rounded-s-xs rounded-e-none ${getFieldStyling("checkin")}`}
-                    onClick={() => handleFieldClick("checkin")}
+                    className={`w-full h-14 text-start px-4 border border-gray-300 rounded-xs ${getFieldStyling("location")}`}
+                    onClick={() => handleFieldClick("location")}
                   >
-                    <span className={`text-sm ${dateRange.from ? "text-black" : "text-[#c0c0c0]"}`}>
-                      {dateRange.from ? format(dateRange.from, "MMM dd") : t.addDate}
-                    </span>
-                  </button>
-                  <button
-                    className={`flex-1 h-12 text-start px-3 border border-gray-300 border-s-0 rounded-e-xs rounded-s-none ${getFieldStyling("checkout")}`}
-                    onClick={() => handleFieldClick("checkout")}
-                  >
-                    <span className={`text-sm ${dateRange.to ? "text-black" : "text-[#c0c0c0]"}`}>
-                      {dateRange.to ? format(dateRange.to, "MMM dd") : t.addDate}
+                    <span
+                      className={`text-sm ${formData.location ? "text-black" : "text-[#c0c0c0]"}`}
+                    >
+                      {formData.location || t.anywhere}
                     </span>
                   </button>
                 </div>
-              </div>
 
-              {/* Guests field */}
-              <div>
-                <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
-                  {t.guests}
-                </Label>
-                <button
-                  className={`w-full h-12 text-start px-3 border border-gray-300 rounded-xs ${getFieldStyling("guests")}`}
-                  onClick={() => handleFieldClick("guests")}
-                >
-                  <span
-                    className={`text-sm ${getTotalGuests() > 0 ? "text-black" : "text-[#c0c0c0]"}`}
+                {/* Date fields */}
+                <div>
+                  <div className="grid grid-cols-2">
+                    <div>
+                      <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1.5 block">
+                        {t.checkIn}
+                      </Label>
+                    </div>
+                    <div>
+                      <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1.5 block">
+                        {t.checkOut}
+                      </Label>
+                    </div>
+                  </div>
+                  <div className="flex">
+                    <button
+                      className={`flex-1 h-14 text-start px-4 border border-gray-300 rounded-s-xs rounded-e-none ${getFieldStyling("checkin")}`}
+                      onClick={() => handleFieldClick("checkin")}
+                    >
+                      <span className={`text-sm ${dateRange.from ? "text-black" : "text-[#c0c0c0]"}`}>
+                        {dateRange.from ? format(dateRange.from, "MMM dd") : t.addDate}
+                      </span>
+                    </button>
+                    <button
+                      className={`flex-1 h-14 text-start px-4 border border-gray-300 border-s-0 rounded-e-xs rounded-s-none ${getFieldStyling("checkout")}`}
+                      onClick={() => handleFieldClick("checkout")}
+                    >
+                      <span className={`text-sm ${dateRange.to ? "text-black" : "text-[#c0c0c0]"}`}>
+                        {dateRange.to ? format(dateRange.to, "MMM dd") : t.addDate}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Guests field */}
+                <div>
+                  <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1.5 block">
+                    {t.guests}
+                  </Label>
+                  <button
+                    className={`w-full h-14 text-start px-4 border border-gray-300 rounded-xs ${getFieldStyling("guests")}`}
+                    onClick={() => handleFieldClick("guests")}
                   >
-                    {getGuestDisplayText()}
-                  </span>
-                </button>
+                    <span
+                      className={`text-sm ${getTotalGuests() > 0 ? "text-black" : "text-[#c0c0c0]"}`}
+                    >
+                      {getGuestDisplayText()}
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
-          ) : (
-            /* Show dropdown content when a field is active */
-            <div className="min-h-[200px] max-h-[60vh] overflow-y-auto">
-              {activeField === "location" && (
+          ) : activeField === "location" ? (
+            <div className="flex h-full flex-col px-6 pt-16">
+              {/* Fixed search command — stays put; the list scrolls behind it. */}
+              <Command shouldFilter={false} className="h-auto shrink-0 overflow-visible bg-transparent mb-3">
+                <CommandInput
+                  value={searchQuery}
+                  onValueChange={searchLocations}
+                  placeholder={dict.search?.searchDestinations ?? "Search destinations"}
+                  className="h-11"
+                />
+              </Command>
+              {/* Scrolling list — items hide behind the fixed input above and
+                  clear the floating Search button via pb. fillHeight renders the
+                  list naturally so this container does the scrolling. */}
+              <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar pb-24">
                 <LocationDropdown
+                  fillHeight
                   searchQuery={searchQuery}
                   suggestions={suggestions}
                   popularLocations={popularLocations}
@@ -447,71 +559,144 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
                     }
                   }}
                 />
-              )}
-
+              </div>
+            </div>
+          ) : (
+            <div className="h-full overflow-y-auto no-scrollbar px-6 pt-16 pb-24">
+              {/* When — a focused Check-in / Check-out picker (replaces the
+                  Dates / Flexible toggle). The active field is a black
+                  (foreground) pill; the single-month calendar selects check-in
+                  first, then check-out. Picking check-in auto-flips the toggle
+                  to Check-out and picking check-out advances to Who — both via
+                  handleDateRangeChange, which drives `activeField`. */}
               {(activeField === "checkin" || activeField === "checkout") && (
                 <div className="flex flex-col">
-                  {/* FIELD SWITCHER TABS - Mobile only */}
-                  <div className="w-full mb-3">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setActiveField("checkin")}
-                        className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                          activeField === "checkin"
-                            ? "bg-gray-900 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
-                      >
-                        {t.checkIn}
-                      </button>
-                      <button
-                        onClick={() => setActiveField("checkout")}
-                        disabled={!dateRange.from}
-                        className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                          activeField === "checkout"
-                            ? "bg-gray-900 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                      >
-                        {t.checkOut}
-                      </button>
+                  {/* Check-in / Check-out toggle — simple segmented control (same
+                      style as the big-search Dates/Flexible pills): active = white
+                      pill, labels only (no date shown). */}
+                  <div className="mb-5 flex justify-center">
+                    <div className="inline-flex rounded-full bg-[#ebebeb] p-0.5 border border-gray-200/55">
+                      {(["checkin", "checkout"] as const).map((field) => {
+                        const active = activeField === field;
+                        return (
+                          <button
+                            key={field}
+                            type="button"
+                            onClick={() => setActiveField(field)}
+                            className={`px-4 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 ${
+                              active
+                                ? "bg-white text-[#222222] shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-[#DDDDDD]"
+                                : "text-[#717171] hover:text-[#222222]"
+                            }`}
+                          >
+                            {field === "checkin" ? t.checkIn : t.checkOut}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
-                  {/* On mobile the calendar uses ~10vw cells (typically
-                      ~36-44px on a phone) and fills the full panel width
-                      so the rightmost column doesn't get clipped. */}
-                  <div className="flex justify-center w-full">
+                  {/* Single-month calendar. Wrapped in a div that overrides the
+                      theme `--primary` to black so the selected check-in/out
+                      endpoints render foreground/black (not brand red). */}
+                  <div
+                    className="flex justify-center"
+                    style={
+                      {
+                        "--primary": "#222222",
+                        "--color-primary": "#222222",
+                        "--primary-foreground": "#ffffff",
+                        "--color-primary-foreground": "#ffffff",
+                      } as CSSProperties
+                    }
+                  >
                     <Calendar
                       mode="range"
-                      defaultMonth={dateRange.from || new Date()}
-                      selected={dateRange}
-                      onSelect={(range: DateRange | undefined) => {
-                        if (range) {
-                          handleDateRangeChange(range.from, range.to);
-                        } else {
-                          handleDateRangeChange(undefined, undefined);
-                        }
-                      }}
+                      min={1}
                       numberOfMonths={1}
-                      className="[--cell-size:2.5rem] p-0"
-                      classNames={{
-                        month: "w-[calc(var(--cell-size)*7)]",
-                        day: "size-(--cell-size) p-0 text-center select-none",
-                      }}
+                      defaultMonth={dateRange.from ?? new Date()}
+                      locale={isAr ? ar : enUS}
+                      selected={dateRange as DateRange}
+                      onSelect={(range: DateRange | undefined) =>
+                        handleDateRangeChange(range?.from, range?.to, 450)
+                      }
                       disabled={(date) => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        if (date < today) return true;
-                        const maxDate = addDays(today, SEARCH_CONFIG.DEFAULT_MAX_NIGHTS);
-                        if (date > maxDate) return true;
-                        if (dateRange.from && !dateRange.to) {
-                          const maxCheckout = addDays(dateRange.from, SEARCH_CONFIG.DEFAULT_MAX_NIGHTS);
-                          if (date > maxCheckout) return true;
-                        }
-                        return false;
+                        const t0 = new Date();
+                        t0.setHours(0, 0, 0, 0);
+                        return date < t0;
+                      }}
+                      showOutsideDays={false}
+                      // Cell size via inline style (lands on the day-picker root,
+                      // beating the base className default) so it reliably fits
+                      // the px-6 panel without a brand-new arbitrary utility.
+                      style={
+                        {
+                          "--cell-size": "42px",
+                          "--cell-radius": "21px",
+                        } as CSSProperties
+                      }
+                      className="p-0"
+                      classNames={{
+                        root: "p-0",
+                        months: "relative flex flex-row",
+                        month: "flex flex-col gap-1.5",
+                        month_grid: "w-auto",
+                        week: "mt-0",
+                        month_caption:
+                          "h-9 mb-1 flex w-full items-center justify-center px-(--cell-size)",
+                        caption_label: "text-base font-medium text-[#222222]",
+                        button_previous: "size-9 text-[#222222]",
+                        button_next: "size-9 text-[#222222]",
+                        weekday:
+                          "w-(--cell-size) h-7 flex items-center justify-center text-xs font-normal text-[#6a6a6a] select-none",
+                        day: "size-(--cell-size) p-0 relative focus-within:relative focus-within:z-20 rounded-full hover:bg-gray-100 transition-all duration-150",
+                        range_start: "bg-[#f7f7f7] after:bg-[#f7f7f7] rounded-s-full",
+                        range_middle: "bg-[#f7f7f7] rounded-none",
+                        range_end: "bg-[#f7f7f7] after:bg-[#f7f7f7] rounded-e-full",
+                        today: "bg-transparent",
+                      }}
+                      formatters={{
+                        formatWeekdayName: (date, options) =>
+                          date.toLocaleDateString(options?.locale?.code ?? "default", {
+                            weekday: "narrow",
+                          }),
                       }}
                     />
+                  </div>
+
+                  {/* Selected range summary — from → to. Auto-mirrors in RTL
+                      (check-in lands on the start side); a neutral dash avoids a
+                      direction-specific arrow. */}
+                  <div className="mt-5 flex items-center justify-center gap-2.5 text-sm">
+                    <span
+                      className={
+                        dateRange.from
+                          ? "font-semibold text-[#222222]"
+                          : "text-[#9a9a9a]"
+                      }
+                    >
+                      {dateRange.from
+                        ? dateRange.from.toLocaleDateString(isAr ? "ar" : "en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : t.checkIn}
+                    </span>
+                    <span className="text-[#9a9a9a]">–</span>
+                    <span
+                      className={
+                        dateRange.to
+                          ? "font-semibold text-[#222222]"
+                          : "text-[#9a9a9a]"
+                      }
+                    >
+                      {dateRange.to
+                        ? dateRange.to.toLocaleDateString(isAr ? "ar" : "en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : t.checkOut}
+                    </span>
                   </div>
                 </div>
               )}
@@ -525,15 +710,55 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
             </div>
           )}
 
-          {/* Fixed Search button - always visible */}
-          <div className="pt-3 md:pt-2 flex justify-end">
+          {/* Floating step arrows (active only) — plain line arrows, no outline
+              or background, so the full-width content scrolls freely behind
+              them. Walk Where → When → Who instead of a single Back. */}
+          {activeField && (
+            <div className="absolute top-5 start-4 z-30 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={goPrevField}
+                disabled={step <= 0}
+                aria-label={t.back}
+                className="flex h-7 w-7 items-center justify-center text-[#222222] transition-opacity hover:opacity-60 disabled:opacity-25 disabled:cursor-not-allowed"
+              >
+                <ArrowLeft className={`h-5 w-5 ${isRTL ? "rotate-180" : ""}`} strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                onClick={goNextField}
+                disabled={step >= 3}
+                aria-label={dict.common?.next ?? "Next"}
+                className="flex h-7 w-7 items-center justify-center text-[#222222] transition-opacity hover:opacity-60 disabled:opacity-25 disabled:cursor-not-allowed"
+              >
+                <ArrowRight className={`h-5 w-5 ${isRTL ? "rotate-180" : ""}`} strokeWidth={2} />
+              </button>
+            </div>
+          )}
+
+          {/* Floating Search button — pinned to the bottom-end, on top of the
+              scrolling body, so it stays reachable in every state. In the sheet
+              (ctaLayoutId set) it's a Framer shared-layout twin of the collapsed
+              pill's red search circle, so the circle morphs into this pill. */}
+          {ctaLayoutId ? (
+            <motion.button
+              layoutId={ctaLayoutId}
+              type="button"
+              onClick={handleSearch}
+              className="absolute bottom-5 end-4 z-30 flex h-12 items-center gap-2 rounded-full px-6 text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_6px_20px_rgba(222,49,81,0.4)]"
+            >
+              <Search className="h-4 w-4" strokeWidth={2.5} />
+              {t.search}
+            </motion.button>
+          ) : (
             <Button
               onClick={handleSearch}
-              className="px-8 py-2 md:py-1 h-12 md:h-10 text-sm font-medium bg-[#de3151] hover:bg-[#de3151]/90 text-white rounded-xs"
+              className="absolute bottom-5 end-4 z-30 h-12 gap-2 rounded-full px-6 text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_6px_20px_rgba(222,49,81,0.4)]"
             >
+              <Search className="h-4 w-4" strokeWidth={2.5} />
               {t.search}
             </Button>
-          </div>
+          )}
         </div>
       </div>
     );
@@ -546,10 +771,7 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
       ref={formRef}
     >
       <div className="relative">
-        <div
-          ref={searchFormRef}
-          className="bg-white rounded-xs px-4 md:px-6 py-6 md:py-4 shadow-md w-full md:w-[340px]"
-        >
+        <div className="bg-white rounded-xs px-4 md:px-6 py-6 md:py-4 shadow-md w-full md:w-[340px]">
           {/* Main heading */}
           <h1 className="text-lg md:text-xl font-medium text-[#6b6b6b] mb-4 md:mb-3 leading-tight whitespace-pre-line">
             {t.heading}
@@ -702,97 +924,78 @@ export default function VerticalSearch({ onSearch }: VerticalSearchProps) {
         {/* Desktop-only Side Dropdowns - Positioned beside form */}
         {activeField === "location" && (
           <div
-            className="hidden md:block absolute top-0 start-full ms-4 w-[394px] bg-white rounded-[32px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 p-8 z-10 overflow-hidden"
-            style={{ height: formHeight ? `${formHeight}px` : 'auto' }}
+            className="hidden md:block absolute top-0 start-full ms-4 w-[420px] max-w-[calc(100vw-2rem)] bg-white rounded-[32px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 p-6 z-10"
             onMouseLeave={() => setActiveField(null)}
           >
-            <div className="h-full overflow-y-auto">
-              <LocationDropdown
-                searchQuery={searchQuery}
-                suggestions={suggestions}
-                popularLocations={popularLocations}
-                isLoading={isLoadingLocations}
-                error={locationError}
-                onSearchQueryChange={searchLocations}
-                onLocationSelect={(location) => {
-                  if (location) {
-                    selectLocation(location);
-                  } else {
-                    setActiveField(null);
-                  }
-                }}
+            {/* Search command — type to search destinations (drives the same
+                location autocomplete the /listings BigSearch bar uses). */}
+            <Command shouldFilter={false} className="overflow-visible bg-transparent mb-3">
+              <CommandInput
+                value={searchQuery}
+                onValueChange={searchLocations}
+                placeholder={dict.search?.searchDestinations ?? "Search destinations"}
+                className="h-11"
               />
-            </div>
+            </Command>
+            <LocationDropdown
+              searchQuery={searchQuery}
+              suggestions={suggestions}
+              popularLocations={popularLocations}
+              isLoading={isLoadingLocations}
+              error={locationError}
+              onSearchQueryChange={searchLocations}
+              onLocationSelect={(location) => {
+                if (location) {
+                  selectLocation(location);
+                } else {
+                  setActiveField(null);
+                }
+              }}
+            />
           </div>
         )}
 
         {(activeField === "checkin" || activeField === "checkout") && (
           <div
-            className="hidden md:block absolute top-0 start-full ms-4 w-fit bg-white rounded-[32px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 z-10 overflow-hidden p-8 flex items-center justify-center"
-            style={{ height: formHeight ? `${formHeight}px` : "auto" }}
+            // Fixed 850px width (matching the /listings BigSearch dropdown) so the
+            // Flexible-tab month carousel has a definite width to scroll within —
+            // otherwise (w-auto) the carousel expands to fit all chips and the
+            // prev/next arrows never appear. Width set inline because Turbopack
+            // can drop a brand-new arbitrary `w-[850px]` utility from the dev scan.
+            className="hidden md:block absolute top-0 start-full ms-4 max-w-[calc(100vw-2rem)] bg-white rounded-[32px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 z-10 p-8"
+            style={{ width: 850 }}
             onMouseLeave={() => setActiveField(null)}
           >
-            {/* Mirror shadcn's canonical CalendarRange pattern. The
-                `classNames.month` override pins each month to `cell-size * 7`
-                (28 × 7 = 196px) so the calendar renders at the compact size
-                shown in shadcn's docs — without it, the body font-size and
-                max-content cell calculation inflate cells to ~50px wide.
-                The dropdown card matches the search form's measured height
-                (formHeight) and centers the compact calendar vertically so
-                both cards visually align on the desktop hero. */}
-            <Calendar
-              mode="range"
-              defaultMonth={dateRange.from || new Date()}
-              selected={dateRange}
-              onSelect={(range: DateRange | undefined) => {
-                if (range) {
-                  handleDateRangeChange(range.from, range.to);
-                } else {
-                  handleDateRangeChange(undefined, undefined);
-                }
-              }}
-              numberOfMonths={2}
-              // No `--cell-size` override — uses the calendar.tsx default
-              // (`--spacing(7)` = 28px) to keep the range calendar compact
-              // like the canonical shadcn radix-nova docs example. The
-              // dropdown card's p-8 padding gives the breathing room.
-              classNames={{
-                // Pin each month and every day cell to the (--cell-size)
-                // grid so the calendar matches shadcn's compact look. With
-                // mkan's 16px body font, the natural `aspect-square h-full
-                // w-full` on the day td inflates rows to ~49px tall and
-                // overflows the 196px month container.
-                month: "w-[calc(var(--cell-size)*7)]",
-                day: "size-(--cell-size) p-0 text-center select-none",
-              }}
-              disabled={(date) => {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                if (date < today) return true;
-                const maxDate = addDays(today, SEARCH_CONFIG.DEFAULT_MAX_NIGHTS);
-                if (date > maxDate) return true;
-                if (dateRange.from && !dateRange.to) {
-                  const maxCheckout = addDays(dateRange.from, SEARCH_CONFIG.DEFAULT_MAX_NIGHTS);
-                  if (date > maxCheckout) return true;
-                }
-                return false;
-              }}
+            {/* Same date picker as the /listings BigSearch — Dates / Flexible
+                tabs, two-month calendar, and ± flexibility pills. The hero's
+                two CHECK-IN / CHECK-OUT fields both open this one picker; it
+                owns the range internally and reports it via onDateChange. */}
+            <BigSearchDatePicker
+              dateRange={dateRange}
+              onDateChange={handleDateRangeChange}
+              searchMode={searchMode}
+              setSearchMode={handleSearchMode}
+              flexibleDuration={flexibleDuration}
+              setFlexibleDuration={setFlexibleDuration}
+              flexibleMonths={flexibleMonths}
+              setFlexibleMonths={handleFlexibleMonths}
+              dateFlexibility={dateFlexibility}
+              setDateFlexibility={setDateFlexibility}
             />
           </div>
         )}
 
         {activeField === "guests" && (
           <div
-            className="hidden md:block absolute top-0 start-full ms-4 w-[394px] bg-white rounded-[32px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 p-8 z-10 overflow-hidden"
-            style={{ height: formHeight ? `${formHeight}px` : 'auto' }}
+            className="hidden md:block absolute top-0 start-full ms-4 w-[394px] max-w-[calc(100vw-2rem)] bg-white rounded-[32px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 p-6 z-10"
             onMouseLeave={() => setActiveField(null)}
           >
-            <div className="h-full overflow-y-auto">
-              <GuestSelectorDropdown
-                guests={formData.guests}
-                onGuestChange={handleGuestChange}
-              />
-            </div>
+            {/* Same guest selector as the /listings BigSearch (Adults /
+                Children / Infants / Pets), rendered full-height. */}
+            <GuestSelectorDropdown
+              guests={formData.guests}
+              onGuestChange={handleGuestChange}
+            />
           </div>
         )}
       </div>

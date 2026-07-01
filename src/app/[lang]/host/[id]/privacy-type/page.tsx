@@ -4,11 +4,11 @@ export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Home, DoorOpen, Building } from 'lucide-react';
 import HostStepLayout from '@/components/host/host-step-layout';
 import SelectionCard from '@/components/host/selection-card';
 import { useHostValidation } from '@/context/onboarding-validation-context';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { EntirePlaceIcon, RoomIcon, HostelIcon } from '@/components/host/privacy-type-icons';
 
 interface PrivacyTypePageProps {
   params: Promise<{ id: string }>;
@@ -38,19 +38,19 @@ const PrivacyTypePage = ({ params }: PrivacyTypePageProps) => {
       id: 'entire-place',
       title: dict.hosting.pages.privacyType.entirePlace,
       description: dict.hosting.pages.privacyType.entirePlaceDescription,
-      icon: Home,
+      icon: EntirePlaceIcon,
     },
     {
       id: 'room',
       title: dict.hosting.pages.privacyType.room,
       description: dict.hosting.pages.privacyType.roomDescription,
-      icon: DoorOpen,
+      icon: RoomIcon,
     },
     {
       id: 'shared-room',
       title: dict.hosting.pages.privacyType.sharedRoom,
       description: dict.hosting.pages.privacyType.sharedRoomDescription,
-      icon: Building,
+      icon: HostelIcon,
     },
   ];
 
@@ -67,7 +67,7 @@ const PrivacyTypePage = ({ params }: PrivacyTypePageProps) => {
             id={type.id}
             title={type.title}
             description={type.description}
-            icon={<type.icon size={24} />}
+            icon={<type.icon size={35} />}
             isSelected={selectedType === type.id}
             onClick={setSelectedType}
           />

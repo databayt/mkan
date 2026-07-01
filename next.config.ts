@@ -154,7 +154,7 @@ const nextConfig: NextConfig = {
 
   // Headers configuration for security and caching
   async headers() {
-    return [
+    const headersList = [
       {
         source: '/(.*)',
         headers: [
@@ -184,7 +184,10 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      {
+    ];
+
+    if (process.env.NODE_ENV === "production") {
+      headersList.push({
         source: '/_next/static/(.*)',
         headers: [
           {
@@ -192,8 +195,10 @@ const nextConfig: NextConfig = {
             value: 'public, max-age=31536000, immutable',
           },
         ],
-      },
-    ];
+      });
+    }
+
+    return headersList;
   },
 
   // Redirects for common patterns

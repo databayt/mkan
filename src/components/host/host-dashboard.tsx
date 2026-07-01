@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
 import ListingCard from './listing-card';
 import NewListingOptions from './new-listing-options';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
@@ -22,26 +21,12 @@ interface HostDashboardProps {
 }
 
 const HostDashboard: React.FC<HostDashboardProps> = ({
-  hostName = "Abdout",
-  listings = [
-    {
-      id: "1",
-      title: "Your House listing started June 7, 2025",
-      startDate: "June 7, 2025",
-      type: "house"
-    },
-    {
-      id: "2", 
-      title: "Your listing started June 7, 2025",
-      startDate: "June 7, 2025",
-      type: "listing"
-    }
-  ],
+  hostName = "Host",
+  listings = [],
   onListingClick,
   onCreateNew,
   onCreateFromExisting
 }) => {
-  const pathname = usePathname();
   const dict = useDictionary();
 
   return (
@@ -53,25 +38,27 @@ const HostDashboard: React.FC<HostDashboardProps> = ({
         </h3>
       </div>
 
-      {/* Finish your listing section */}
-      <div className="space-y-2 sm:space-y-3">
-        <h5 className="text-base sm:text-lg font-semibold">
-          {dict.hosting.components.dashboard.finishYourListing}
-        </h5>
-        
-        <div className="space-y-2">
-          {listings.map((listing) => (
-            <ListingCard
-              key={listing.id}
-              id={listing.id}
-              title={listing.title}
-              startDate={listing.startDate}
-              type={listing.type}
-              onClick={onListingClick}
-            />
-          ))}
+      {/* Finish your listing — only shown when there are in-progress listings */}
+      {listings.length > 0 && (
+        <div className="space-y-2 sm:space-y-3">
+          <h5 className="text-base sm:text-lg font-semibold">
+            {dict.hosting.components.dashboard.finishYourListing}
+          </h5>
+
+          <div className="space-y-2">
+            {listings.map((listing) => (
+              <ListingCard
+                key={listing.id}
+                id={listing.id}
+                title={listing.title || dict.hosting.components.dashboard.untitledListing}
+                startDate={listing.startDate}
+                type={listing.type}
+                onClick={onListingClick}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Start a new listing section */}
       <NewListingOptions
@@ -82,4 +69,4 @@ const HostDashboard: React.FC<HostDashboardProps> = ({
   );
 };
 
-export default HostDashboard; 
+export default HostDashboard;

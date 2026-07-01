@@ -51,7 +51,7 @@ const SiteHeader = () => {
 
   return (
     <div
-      className={`top-0 left-0 w-full z-50 ${
+      className={`top-0 start-0 w-full z-50 ${
         isLandingPage ? "bg-transparent" : "bg-white"
       }`}
       style={{ height: `${NAVBAR_HEIGHT}px` }}

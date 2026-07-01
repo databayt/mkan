@@ -2,6 +2,7 @@ import { UserRole } from "@prisma/client"
 import { requireRole } from "@/lib/auth-guard"
 import HostingHeader from '@/components/hosting/hosting-header'
 import NotificationCard from '@/components/hosting/notification-card'
+import { ReportIssueFooter } from '@/components/report-issue/footer'
 
 export default async function HostingLayout({
   children,
@@ -27,6 +28,7 @@ export default async function HostingLayout({
       <HostingHeader />
       <main id="main-content" className="px-4 sm:px-6 lg:px-8">
         {children}
+        <ReportIssueFooter />
       </main>
     </div>
   )

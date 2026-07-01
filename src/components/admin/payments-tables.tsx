@@ -67,8 +67,8 @@ export function HomePaymentsTable({
         <TableRow>
           <TableHead>{labels.listing}</TableHead>
           <TableHead>{labels.tenant}</TableHead>
-          <TableHead className="text-right">{labels.due}</TableHead>
-          <TableHead className="text-right">{labels.paid}</TableHead>
+          <TableHead className="text-end">{labels.due}</TableHead>
+          <TableHead className="text-end">{labels.paid}</TableHead>
           <TableHead>{labels.dueDate}</TableHead>
           <TableHead>{labels.paidAt}</TableHead>
           <TableHead>{labels.status}</TableHead>
@@ -81,8 +81,8 @@ export function HomePaymentsTable({
               {p.lease.listing.title ?? `#${p.lease.listing.id}`}
             </TableCell>
             <TableCell className="text-sm">{p.lease.tenant?.name ?? "—"}</TableCell>
-            <TableCell className="text-right text-sm">${p.amountDue.toFixed(0)}</TableCell>
-            <TableCell className="text-right text-sm">${p.amountPaid.toFixed(0)}</TableCell>
+            <TableCell className="text-end text-sm">${p.amountDue.toFixed(0)}</TableCell>
+            <TableCell className="text-end text-sm">${p.amountPaid.toFixed(0)}</TableCell>
             <TableCell className="text-xs text-muted-foreground">
               {new Date(p.dueDate).toLocaleDateString()}
             </TableCell>
@@ -112,7 +112,7 @@ export function TransportPaymentsTable({
         <TableRow>
           <TableHead>{labels.office}</TableHead>
           <TableHead>{labels.user}</TableHead>
-          <TableHead className="text-right">{labels.amount}</TableHead>
+          <TableHead className="text-end">{labels.amount}</TableHead>
           <TableHead>{labels.method}</TableHead>
           <TableHead>{labels.status}</TableHead>
           <TableHead>{labels.created}</TableHead>
@@ -123,7 +123,7 @@ export function TransportPaymentsTable({
           <TableRow key={p.id}>
             <TableCell className="text-sm">{p.booking.office.name}</TableCell>
             <TableCell className="text-sm">{p.booking.user.email}</TableCell>
-            <TableCell className="text-right text-sm">${p.amount.toFixed(0)}</TableCell>
+            <TableCell className="text-end text-sm">${p.amount.toFixed(0)}</TableCell>
             <TableCell className="text-sm">{p.method}</TableCell>
             <TableCell>
               <Badge variant="outline">{p.status}</Badge>

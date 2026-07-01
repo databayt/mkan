@@ -125,6 +125,7 @@ export default function HomeContent({ listings, locale }: HomeContentProps) {
 
   return (
     <div className="min-h-screen">
+
       <HeroSection onSearch={scrollToResults} />
 
       <div className="sticky top-0 z-40 bg-white border-b">
@@ -142,7 +143,7 @@ export default function HomeContent({ listings, locale }: HomeContentProps) {
         ) : (
           <div className="space-y-12">
             <ListingCarouselSection
-              title={sections?.popular ?? "Popular homes in Khartoum"}
+              title={sections?.popular ?? "Popular homes in Portsudan"}
               href={`/${locale}/listings`}
               listings={listings.slice(0, 12)}
             />

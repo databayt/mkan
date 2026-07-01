@@ -1,35 +1,26 @@
-"use client";
-
-import React from 'react';
-import ListingSidebar from '@/components/hosting/listing/listing-sidebar';
-import { useDictionary } from '@/components/internationalization/dictionary-context';
+import React from "react";
+import { EditorProvider } from "@/components/hosting/listing/editor-context";
+import ListingSidebar from "@/components/hosting/listing/listing-sidebar";
 
 interface LayoutProps {
   children: React.ReactNode;
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; lang: string }>;
 }
 
-const Layout = ({ children, params }: LayoutProps) => {
-  // Subscribe so child pages can rely on dictionary-context being available.
-  useDictionary();
-  const [listingId, setListingId] = React.useState<string>('');
-
-  React.useEffect(() => {
-    params.then((resolvedParams) => {
-      setListingId(resolvedParams.id);
-    });
-  }, [params]);
+export default async function EditorLayout({ children, params }: LayoutProps) {
+  const { id } = await params;
+  const listingId = Number(id);
 
   return (
-    <div className="min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <ListingSidebar listingId={listingId} />
-          {children}
+    <EditorProvider listingId={listingId}>
+      <div className="mx-auto max-w-7xl py-4">
+        <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">
+          <aside className="w-full lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:w-[22rem] lg:shrink-0 lg:overflow-y-auto lg:pe-1">
+            <ListingSidebar />
+          </aside>
+          <main className="min-w-0 flex-1 lg:pt-2">{children}</main>
         </div>
       </div>
-    </div>
+    </EditorProvider>
   );
-};
-
-export default Layout;
+}

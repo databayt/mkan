@@ -2,6 +2,7 @@ import { Mail, MapPin, PhoneCall } from "lucide-react";
 import Image from "next/image";
 import React, { useState } from "react";
 import { ApplicationWithDetails } from "@/lib/actions/application-actions";
+import { PropertyImageFallback } from "@/components/atom/property-image-fallback";
 
 interface ApplicationCardProps {
   application: ApplicationWithDetails;
@@ -14,9 +15,9 @@ const ApplicationCard = ({
   userType,
   children,
 }: ApplicationCardProps) => {
-  const [imgSrc, setImgSrc] = useState(
-    application.listing.photoUrls?.[0] || "/placeholder.jpg"
-  );
+  const firstPhoto = application.listing.photoUrls?.[0];
+  const [errored, setErrored] = useState(false);
+  const showFallback = !firstPhoto || errored;
 
   const statusColor =
     application.status === "Approved"
@@ -32,15 +33,25 @@ const ApplicationCard = ({
       <div className="flex flex-col lg:flex-row  items-start lg:items-center justify-between px-6 md:px-4 py-6 gap-6 lg:gap-4">
         {/* Property Info Section */}
         <div className="flex flex-col lg:flex-row gap-5 w-full lg:w-auto">
-          <Image
-            src={imgSrc}
-            alt={application.listing.title || "Property"}
-            width={200}
-            height={150}
-            className="rounded-xl object-cover w-full lg:w-[200px] h-[150px]"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            onError={() => setImgSrc("/placeholder.jpg")}
-          />
+          {showFallback ? (
+            <div className="relative rounded-xl overflow-hidden w-full lg:w-[200px] h-[150px]">
+              <PropertyImageFallback
+                seed={String(application.listing.id ?? application.listing.title ?? "listing")}
+                alt={application.listing.title || "Property"}
+                sizes="(max-width: 768px) 100vw, 200px"
+              />
+            </div>
+          ) : (
+            <Image
+              src={firstPhoto}
+              alt={application.listing.title || "Property"}
+              width={200}
+              height={150}
+              className="rounded-xl object-cover w-full lg:w-[200px] h-[150px]"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              onError={() => setErrored(true)}
+            />
+          )}
           <div className="flex flex-col justify-between">
             <div>
               <h2 className="text-xl font-bold my-2">

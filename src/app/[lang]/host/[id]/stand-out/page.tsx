@@ -40,7 +40,7 @@ const StandOutPage = ({ params }: StandOutPageProps) => {
   }, []);
 
   const illustration = (
-    <div className="w-full sm:w-3/4 max-w-xl mx-auto bg-gradient-to-br from-orange-50 to-pink-50 rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden h-[300px] sm:aspect-video">
+    <div className="w-full max-w-2xl mx-auto bg-gradient-to-br from-orange-50 to-pink-50 rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden aspect-[770/674]">
       <video
         ref={videoRef}
         className="w-full h-full object-cover"
@@ -66,7 +66,7 @@ const StandOutPage = ({ params }: StandOutPageProps) => {
   );
 
   return (
-    <div className="">
+    <div className="w-full">
       <div className="w-full">
         <StepHeader
           stepNumber={2}

@@ -304,7 +304,7 @@ function FilterControls({
                   updateUrl({ when: active ? undefined : tw.key })
                 }
                 className={cn(
-                  "rounded-lg border px-3 py-2 text-left text-xs transition-colors",
+                  "rounded-lg border px-3 py-2 text-start text-xs transition-colors",
                   active
                     ? "border-primary bg-primary/5 text-foreground"
                     : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground",

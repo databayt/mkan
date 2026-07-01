@@ -96,7 +96,7 @@ function Modal({ content, sm = false, big = false }: Props) {
                 <Button
                   size='icon'
                   variant='outline'
-                  className="rounded-full absolute top-4 right-4"
+                  className="rounded-full absolute top-4 end-4"
                   onClick={closeModal}
                   aria-label={closeLabel}
                 >

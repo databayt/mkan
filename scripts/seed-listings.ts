@@ -2,7 +2,6 @@ import { config } from 'dotenv';
 config();
 
 import {
-  PrismaClient,
   PropertyType,
   Amenity,
   Highlight,
@@ -10,8 +9,9 @@ import {
   BookingStatus,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-
-const prisma = new PrismaClient();
+// Prisma 7 requires a driver adapter — reuse the app's adapter-configured client
+// (same as scripts/seed-sudan-cities.ts) instead of a raw `new PrismaClient()`.
+import { db as prisma } from '@/lib/db';
 
 const DEMO_PASSWORD = '1234';
 
@@ -185,16 +185,18 @@ async function main() {
   );
   console.log(`✅ ${guestUsers.length} guests ready\n`);
 
-  // 4. Create 100 Locations + Listings (5 per host)
+  // 4. Create 110 Locations + Listings (~5-6 per host; idx 101-110 wrap back to
+  //    the first hosts). 110 mirrors airbnb.com/s/homes?location_search=NEARBY,
+  //    which surfaces "110 homes".
   console.log('🏠 Creating locations + listings...');
   const listings: { id: number; type: PropertyType; price: number; cleaningFee: number }[] = [];
 
-  for (let idx = 1; idx <= 100; idx++) {
+  for (let idx = 1; idx <= 110; idx++) {
     const district = DISTRICTS[(idx - 1) % DISTRICTS.length]!;
     const adj = ADJECTIVES[(idx - 1) % ADJECTIVES.length]!;
     const type = PROPERTY_CYCLE[(idx - 1) % PROPERTY_CYCLE.length]!;
     const spec = specFor(type, idx);
-    const host = hostUsers[Math.floor((idx - 1) / 5)]!;
+    const host = hostUsers[Math.floor((idx - 1) / 5) % HOST_COUNT]!;
 
     const photoSlice = [
       PHOTO_POOL[(idx - 1) % PHOTO_POOL.length]!,

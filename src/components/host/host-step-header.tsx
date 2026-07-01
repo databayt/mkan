@@ -30,17 +30,17 @@ const HostStepHeader: React.FC<HostStepHeaderProps> = ({
         {/* Left Side - Content */}
         <div className="space-y-4 sm:space-y-6">
           {stepNumber && (
-            <h6 className="text-sm sm:text-base font-medium text-muted-foreground">
+            <h6 className="text-base sm:text-lg font-semibold text-muted-foreground">
               {dict.hosting.components.stepHeader.step.replace('{number}', String(stepNumber))}
             </h6>
           )}
           
-          <h2 className="leading-tight text-xl sm:text-2xl lg:text-3xl font-semibold">
+          <h2 className="leading-tight text-2xl sm:text-3xl lg:text-4xl font-semibold text-foreground">
             {title}
           </h2>
           
           {description && (
-            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
               {description}
             </p>
           )}

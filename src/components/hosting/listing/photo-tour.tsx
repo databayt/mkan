@@ -1,133 +1,239 @@
 "use client";
 
-import React from 'react';
-import Image from 'next/image';
-import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useDictionary } from '@/components/internationalization/dictionary-context';
+import React from "react";
+import Image from "next/image";
+import { useParams } from "next/navigation";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useEditor } from "@/components/hosting/listing/editor-context";
+import { EditorSection } from "@/components/hosting/listing/editor-section";
+import {
+  PhotosGridIcon,
+  PlusIcon,
+  TrashIcon,
+  EllipsisIcon,
+} from "@/components/hosting/listing/editor-icons";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { uploadListingPhoto } from "@/lib/image-upload-client";
+import { cn } from "@/lib/utils";
 
-interface PhotoTourProps {
-  listingId: string;
-}
-
-// Hoist out of the component body so it isn't recreated on every render —
-// `react-hooks/static-components` flags inline component definitions.
-const PhotoOverlayIcon = () => (
-  <svg
-    viewBox="0 0 32 32"
-    xmlns="http://www.w3.org/2000/svg"
-    style={{display: 'block', fill: 'none', height: '16px', width: '16px', stroke: 'currentColor', strokeWidth: 3, overflow: 'visible'}}
-    aria-hidden="true"
-    role="presentation"
-    focusable="false"
-  >
-    <g>
-      <path d="m9.37059905 10.0233417c.18293611-1.03748223.45734027-2.59370556.82321245-4.66866999.383613-2.17557722 2.4582465-3.62825127 4.6338238-3.24463831l11.817693 2.08377814c2.1755772.38361296 3.6282513 2.4582465 3.2446383 4.63382372l-2.0837781 11.81769304c-.383613 2.1755772-2.4582465 3.6282513-4.6338238 3.2446383-.5125818-.090382-.8970182-.1581685-1.1533092-.2033595"></path>
-      <path d="m6 10h12c2.209139 0 4 1.790861 4 4v12c0 2.209139-1.790861 4-4 4h-12c-2.209139 0-4-1.790861-4-4v-12c0-2.209139 1.790861-4 4-4z"></path>
-    </g>
-  </svg>
-);
-
-const ROOMS = [
-  {
-    id: 'bedroom',
-    nameKey: 'bedroom',
-    fallbackName: 'Bedroom',
-    status: 'add-photos',
-    photoCount: 0,
-    image: '/hosting/bedroom.png',
-  },
-  {
-    id: 'bathroom',
-    nameKey: 'bathroom',
-    fallbackName: 'Bathroom',
-    status: 'add-photos',
-    photoCount: 0,
-    image: '/hosting/bathroom.png',
-  },
-  {
-    id: 'additional',
-    nameKey: 'additional',
-    fallbackName: 'Additional photos',
-    status: 'has-photos',
-    photoCount: 5,
-    image: null,
-  },
+// Authentic Airbnb empty-state room suggestions (3D illustrations live in /public/hosting).
+const ROOM_SUGGESTIONS = [
+  { key: "bedroom", fallback: "Bedroom", image: "/hosting/bedroom.png" },
+  { key: "bathroom", fallback: "Bathroom", image: "/hosting/bathroom.png" },
+  { key: "additional", fallback: "Additional photos", image: null },
 ] as const;
 
-const PhotoTour = ({ listingId }: PhotoTourProps) => {
+const PhotoTour = () => {
   const dict = useDictionary();
   const t = dict?.listingEditor?.photoTour;
-  const rooms = ROOMS;
+  const params = useParams<{ id: string }>();
+  const { listing, save, saving } = useEditor();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = React.useState(false);
+  const [allOpen, setAllOpen] = React.useState(false);
+
+  const photos = listing?.photoUrls ?? [];
+  const numericId = listing?.id ?? Number(params?.id);
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const file of Array.from(files)) {
+        try {
+          const res = await uploadListingPhoto(file, { listingId: numericId });
+          uploaded.push(res.url);
+        } catch (err) {
+          toast.error(
+            err instanceof Error ? `${file.name}: ${err.message}` : `Could not upload ${file.name}`
+          );
+        }
+      }
+      if (uploaded.length > 0) {
+        // updateListing overwrites photoUrls, so the merged array is the source of truth.
+        await save({ photoUrls: [...photos, ...uploaded] });
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removePhoto = async (url: string) => {
+    await save({ photoUrls: photos.filter((p) => p !== url) });
+  };
+
+  const openPicker = () => fileInputRef.current?.click();
+
+  const busy = uploading || saving;
+
+  const headerAction = (
+    <>
+      <button
+        type="button"
+        onClick={() => setAllOpen(true)}
+        className="inline-flex items-center gap-2 rounded-full bg-muted px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted/70"
+      >
+        <PhotosGridIcon size={16} strokeWidth={3} />
+        <span>{t?.allPhotos ?? "All photos"}</span>
+      </button>
+      <button
+        type="button"
+        onClick={openPicker}
+        disabled={busy}
+        aria-label={t?.addPhotoAria ?? "Add photo"}
+        className="inline-flex size-10 items-center justify-center rounded-full border border-border text-foreground transition hover:border-foreground disabled:opacity-50"
+      >
+        <PlusIcon size={16} />
+      </button>
+    </>
+  );
 
   return (
-    <div className="lg:col-span-2">
-      <div className="flex items-center justify-between mb-8">
-        <h3>{t?.heading ?? "Photo tour"}</h3>
-        <div className="flex items-center space-x-4 rtl:space-x-reverse">
-          <Button variant="default" className="gap-2 rounded-full bg-muted text-primary">
-            <PhotoOverlayIcon />
-            <span>{t?.allPhotos ?? "All photos"}</span>
-          </Button>
-          <Button variant="outline" size="icon" className="rounded-full" aria-label={t?.addPhotoAria ?? "Add photo"}>
-            <Plus className="size-4" />
-          </Button>
-        </div>
-      </div>
+    <EditorSection
+      title={t?.heading ?? "Photo tour"}
+      subtitle={
+        t?.description ??
+        "Manage photos and add details. Guests will only see your tour if every room has a photo."
+      }
+      headerAction={headerAction}
+      maxWidth="xl"
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          handleFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
 
-      <p className="mb-8">
-        {t?.description ?? "Manage photos and add details. Guests will only see your tour if every room has a photo."}
-      </p>
-
-      {/* Rooms Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {rooms.map((room) => {
-          const roomName =
-            (t && (t as Record<string, string>)[room.nameKey]) || room.fallbackName;
-          const photosTemplate = t?.photosCount ?? "{count} photos";
-          const photosLabel = photosTemplate.replace("{count}", String(room.photoCount));
-
-          return (
-            <div key={room.id} className="">
-              {/* Image */}
-              <div className="aspect-square bg-muted flex items-center justify-center relative overflow-hidden rounded-xl">
-                {room.image ? (
-                  <Image
-                    src={room.image}
-                    alt={roomName}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                ) : (
-                  <Avatar className="size-16">
-                    <AvatarFallback className="text-2xl">
-                      👤
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-              </div>
-
-              {/* Room name */}
-              <h5>{roomName}</h5>
-
-              {/* Action button/badge */}
-              {room.status === 'add-photos' ? (
-                <Button variant="link" size="sm" className="self-start">
-                  {t?.addPhotos ?? "Add photos"}
-                </Button>
-              ) : (
-                <Badge variant="secondary" className="self-start">
-                  {photosLabel}
-                </Badge>
+      {photos.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {photos.map((url, i) => (
+            <figure
+              key={url}
+              className={cn(
+                "group relative overflow-hidden rounded-2xl bg-muted",
+                i === 0 ? "sm:col-span-2 aspect-[3/2]" : "aspect-[4/3]"
               )}
+            >
+              <Image
+                src={url}
+                alt=""
+                fill
+                sizes="(max-width: 640px) 100vw, 50vw"
+                className="object-cover"
+              />
+              {/* hover controls */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/15 to-transparent opacity-0 transition group-hover:opacity-100" />
+              <button
+                type="button"
+                onClick={() => removePhoto(url)}
+                disabled={busy}
+                aria-label="Remove photo"
+                className="absolute end-3 top-3 inline-flex size-9 items-center justify-center rounded-full bg-background text-foreground opacity-0 shadow-md transition group-hover:opacity-100 hover:scale-105 disabled:opacity-50"
+              >
+                <TrashIcon size={16} />
+              </button>
+              {i === 0 ? (
+                <span className="absolute start-3 top-3 rounded-md bg-background/90 px-2.5 py-1 text-xs font-semibold">
+                  {t?.coverPhoto ?? "Cover photo"}
+                </span>
+              ) : null}
+            </figure>
+          ))}
+
+          {/* add tile */}
+          <button
+            type="button"
+            onClick={openPicker}
+            disabled={busy}
+            className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border text-muted-foreground transition hover:border-foreground hover:text-foreground disabled:opacity-50"
+          >
+            <PlusIcon size={22} />
+            <span className="text-sm font-semibold">{busy ? (t?.uploading ?? "Uploading…") : (t?.addPhotos ?? "Add photos")}</span>
+          </button>
+        </div>
+      ) : (
+        // Empty state — Airbnb's suggested room cards.
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+          {ROOM_SUGGESTIONS.map((room) => {
+            const name =
+              (t && (t as Record<string, string>)[room.key]) || room.fallback;
+            return (
+              <button
+                key={room.key}
+                type="button"
+                onClick={openPicker}
+                disabled={busy}
+                className="text-start disabled:opacity-50"
+              >
+                <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl bg-muted">
+                  {room.image ? (
+                    <Image
+                      src={room.image}
+                      alt={name}
+                      fill
+                      sizes="(max-width: 640px) 100vw, 33vw"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <PlusIcon size={28} className="text-muted-foreground" />
+                  )}
+                </div>
+                <p className="mt-3 font-semibold">{name}</p>
+                <span className="text-sm font-medium text-primary underline-offset-2 hover:underline">
+                  {busy ? (t?.uploading ?? "Uploading…") : (t?.addPhotos ?? "Add photos")}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* All photos modal */}
+      <Dialog open={allOpen} onOpenChange={setAllOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{t?.allPhotos ?? "All photos"}</DialogTitle>
+          </DialogHeader>
+          {photos.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              {photos.map((url) => (
+                <div key={url} className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted">
+                  <Image src={url} alt="" fill sizes="50vw" className="object-cover" />
+                </div>
+              ))}
             </div>
-          );
-        })}
-      </div>
-    </div>
+          ) : (
+            <div className="flex flex-col items-center gap-4 py-10 text-center">
+              <EllipsisIcon size={24} className="text-muted-foreground" />
+              <p className="text-muted-foreground">{t?.description ?? "No photos yet"}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setAllOpen(false);
+                  openPicker();
+                }}
+                className="rounded-lg bg-foreground px-5 py-2.5 text-sm font-semibold text-background"
+              >
+                {t?.addPhotos ?? "Add photos"}
+              </button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </EditorSection>
   );
 };
 

@@ -3,7 +3,7 @@
 import React, { useEffect, useCallback, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, HelpCircle, LogOut } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useLocale } from "@/components/internationalization/use-locale";
 import {
@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
 import BigSearch from "@/components/template/search/big-search";
 import SmallSearch from "@/components/template/search/small-search";
@@ -23,6 +24,7 @@ import useSearchHeaderStore, { type SearchSegment } from "@/hooks/useSearchHeade
 const dropdownTranslations = {
   en: {
     becomeHost: "Become a host",
+    switchToHosting: "Switch to hosting",
     helpCenter: "Help Center",
     becomeHostDesc: "It's easy to start hosting and earn extra income.",
     referHost: "Refer a Host",
@@ -32,12 +34,15 @@ const dropdownTranslations = {
     logout: "Log out",
     messages: "Messages",
     trips: "Trips",
+    wishlists: "Wishlists",
     favorites: "Favorites",
+    profile: "Profile",
     manageListings: "Manage listings",
     account: "Account",
   },
   ar: {
     becomeHost: "كن مضيفاً",
+    switchToHosting: "التبديل إلى الاستضافة",
     helpCenter: "مركز المساعدة",
     becomeHostDesc: "من السهل البدء في الاستضافة وكسب دخل إضافي.",
     referHost: "إحالة مضيف",
@@ -47,33 +52,35 @@ const dropdownTranslations = {
     logout: "تسجيل الخروج",
     messages: "الرسائل",
     trips: "الرحلات",
+    wishlists: "قوائم الرغبات",
     favorites: "المفضلة",
+    profile: "الملف الشخصي",
     manageListings: "إدارة العقارات",
     account: "الحساب",
   }
 } as const;
 
-// Layout/transform spring tuned to Airbnb's own "fast" motion token
-// (stiffness 320 / damping 36 / mass 1 → damping ratio ≈ 1.0, ~0.33s settle):
-// critically damped, so the row morphs crisply between big and small with no
-// bounce, a touch snappier than before to match Airbnb's brisk feel. Used
-// everywhere except opacity; springs on opacity produce a subtle luminance
-// wobble the eye reads as flicker.
+// ONE unified morph spring drives every transform in the small↔big transition —
+// the small pill's bloom, the tab row's rise, the big bar's unfold, and the
+// second-row height — so scrolling reads as a SINGLE cohesive gesture instead of
+// two elements crossfading past each other. Softened from the old 320/36 to
+// 280/34 (damping ratio ≈ 1.0, ~0.42s settle): smooth and beautiful, no bounce.
+// Opacity is excluded — springs on opacity produce a luminance wobble the eye
+// reads as flicker.
 const SPRING = {
   type: "spring" as const,
-  stiffness: 320,
-  damping: 36,
+  stiffness: 280,
+  damping: 34,
   mass: 1,
   restDelta: 0.001,
 } as const;
 
-// Opacity rides a plain tween. The curve is the iOS standard ease —
-// gentle accel/decel that matches the spring's perceived rhythm without
-// fighting it. Duration is asymmetric: faster on collapse so the page
-// feels responsive when you scroll down, slower on expand so the search
-// feels deliberate when you scroll back up.
-const FADE_IN = { duration: 0.24, ease: [0.32, 0.72, 0, 1] as const };
-const FADE_OUT = { duration: 0.16, ease: [0.32, 0.72, 0, 1] as const };
+// Opacity rides a plain tween (iOS standard ease). Asymmetric on purpose: the
+// OUTGOING layer fades fast while the INCOMING layer fades a touch later (small
+// delay at the call sites) so the two never sit together at half-alpha — that
+// overlap is exactly what reads as a muddy crossfade rather than a clean morph.
+const FADE_IN = { duration: 0.22, ease: [0.32, 0.72, 0, 1] as const };
+const FADE_OUT = { duration: 0.14, ease: [0.32, 0.72, 0, 1] as const };
 
 // Hysteresis band prevents flicker when the user hovers near the threshold.
 // Collapse once we pass COLLAPSE_AT, re-expand only after we come back under EXPAND_AT.
@@ -94,10 +101,115 @@ const MENU_CARD_STYLE = {
   boxShadow: "0 2px 16px rgba(0,0,0,0.12)",
 } as const;
 
-const ListingsHeader = () => {
+// Account-menu icons, all drawn in Airbnb's exact DLS convention measured from
+// the live site (airbnb.com): viewBox "0 0 32 32", fill:none, stroke:currentColor,
+// stroke-width 2, round caps/joins — rendered at one uniform 20px so every row's
+// glyph has identical optical weight and size (the earlier lucide mix used a 24
+// viewBox with different internal padding, which is why they looked off-px).
+//
+// WishlistGlyph is Airbnb's literal "Save to wishlist" heart lifted verbatim from
+// their listing cards. Trips/Profile/Account/Logout are login-gated on Airbnb so
+// they're redrawn in the same 32-grid DLS style to match the heart's weight.
+const ICON_PX = 20;
+const StrokeGlyph = ({ children }: { children: React.ReactNode }) => (
+  <svg
+    viewBox="0 0 32 32"
+    aria-hidden="true"
+    role="presentation"
+    focusable="false"
+    className="flex-shrink-0"
+    style={{
+      display: "block",
+      height: ICON_PX,
+      width: ICON_PX,
+      fill: "none",
+      stroke: "currentColor",
+      strokeWidth: 2,
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+      overflow: "visible",
+    }}
+  >
+    {children}
+  </svg>
+);
+const WishlistGlyph = () => (
+  <StrokeGlyph>
+    <path d="m15.9998 28.6668c7.1667-4.8847 14.3334-10.8844 14.3334-18.1088 0-1.84951-.6993-3.69794-2.0988-5.10877-1.3996-1.4098-3.2332-2.11573-5.0679-2.11573-1.8336 0-3.6683.70593-5.0668 2.11573l-2.0999 2.11677-2.0988-2.11677c-1.3995-1.4098-3.2332-2.11573-5.06783-2.11573-1.83364 0-3.66831.70593-5.06683 2.11573-1.39955 1.41083-2.09984 3.25926-2.09984 5.10877 0 7.2244 7.16667 13.2241 14.3333 18.1088z" />
+  </StrokeGlyph>
+);
+const TripsGlyph = () => (
+  <StrokeGlyph>
+    <path d="M7 11h18a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V13a2 2 0 0 1 2-2z" />
+    <path d="M11 11V8a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3" />
+    <path d="M16 16v6" />
+  </StrokeGlyph>
+);
+const ProfileGlyph = () => (
+  <StrokeGlyph>
+    <circle cx="16" cy="11" r="5.5" />
+    <path d="M5.5 27a10.5 10.5 0 0 1 21 0" />
+  </StrokeGlyph>
+);
+const AccountGlyph = () => (
+  <StrokeGlyph>
+    <path d="M5 11h12" />
+    <path d="M22 11h5" />
+    <circle cx="19.5" cy="11" r="2.6" />
+    <path d="M5 21h5" />
+    <path d="M15 21h12" />
+    <circle cx="12.5" cy="21" r="2.6" />
+  </StrokeGlyph>
+);
+const LogoutGlyph = () => (
+  <StrokeGlyph>
+    <path d="M12 6H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4" />
+    <path d="M20 21l5-5-5-5" />
+    <path d="M25 16H11" />
+  </StrokeGlyph>
+);
+// Help "?" — authentic Airbnb glyph (fill, viewBox 0 0 16 16) lifted verbatim
+// from the live guest menu; rendered at 18px so its solid disc reads the same
+// optical size as the 20px stroke glyphs above.
+const HelpGlyph = () => (
+  <svg
+    viewBox="0 0 16 16"
+    aria-hidden="true"
+    role="presentation"
+    focusable="false"
+    className="flex-shrink-0"
+    style={{ display: "block", height: 18, width: 18, fill: "currentColor" }}
+  >
+    <path d="m8 0c4.4183 0 8 3.58172 8 8 0 4.4183-3.5817 8-8 8-4.41828 0-8-3.5817-8-8 0-4.41828 3.58172-8 8-8zm0 1.5c-3.58985 0-6.5 2.91015-6.5 6.5 0 3.5899 2.91015 6.5 6.5 6.5 3.5899 0 6.5-2.9101 6.5-6.5 0-3.58985-2.9101-6.5-6.5-6.5zm0 9.25c.55229 0 1 .4477 1 1s-.44771 1-1 1c-.55228 0-1-.4477-1-1s.44772-1 1-1zm.06473-7.58398c1.52426 0 2.97397 1.05548 2.97397 2.83411 0 1.65987-1.22457 2.54665-2.28686 2.96686l-.00274 1.03511-1.49999-.00395.00567-2.14403.55088-.15046c.98777-.26979 1.73306-.83193 1.73306-1.70353 0-.78691-.60484-1.33411-1.47399-1.33411-.71208 0-1.32461.47156-1.52734 1.17921l-1.44199-.41312c.37855-1.32132 1.55747-2.26609 2.96933-2.26609z" />
+  </svg>
+);
+
+interface ListingsHeaderProps {
+  /**
+   * When true (listing-detail / secondary pages) the header renders the compact
+   * search pill at ALL times and only unfolds into the big search when the user
+   * actively clicks it — there is no scroll-driven expand/collapse. On /listings
+   * this stays false so the big search shows at the top of the page and morphs
+   * down to the pill as the user scrolls.
+   */
+  disableScrollExpand?: boolean;
+}
+
+const ListingsHeader = ({ disableScrollExpand = false }: ListingsHeaderProps) => {
   const { data: session, status } = useSession();
   const { locale } = useLocale();
   const labels = dropdownTranslations[locale] || dropdownTranslations.en;
+
+  // Signed-in identity drives the right-side cluster: the "Become a host" link
+  // flips to "Switch to hosting", and the globe (language/currency) is replaced
+  // by the account avatar. `initial` is the avatar fallback when there's no
+  // profile photo (mirrors the host header's avatar).
+  const isAuthed = !!session?.user;
+  const initial = (
+    session?.user?.name?.[0] ??
+    session?.user?.email?.[0] ??
+    "A"
+  ).toUpperCase();
 
   const handleSignOut = async () => {
     await signOut({
@@ -107,13 +219,20 @@ const ListingsHeader = () => {
   };
 
   const {
-    isExpanded,
+    isExpanded: isExpandedRaw,
     isOverlayActive,
     initialSegment,
     setScrollExpanded,
     expandFromSmallSearch,
     collapse,
   } = useSearchHeaderStore();
+
+  // On detail/secondary pages (disableScrollExpand) the big search must never
+  // appear from scroll or the shared store's default — only when the user opens
+  // it (overlay active). Deriving "expanded" from the overlay alone keeps the
+  // compact pill on first paint (no flash) and feeds every animation below. On
+  // /listings it tracks the store exactly as before.
+  const isExpanded = disableScrollExpand ? isOverlayActive : isExpandedRaw;
 
   // Guard against dropdowns being clipped by the height-animating wrapper.
   // During the collapse/expand animation we keep overflow:hidden so the
@@ -136,6 +255,10 @@ const ListingsHeader = () => {
   }, [isOverlayActive]);
 
   useEffect(() => {
+    // Detail header: no scroll-driven expand/collapse — the pill stays put and
+    // only the user's click opens the big search.
+    if (disableScrollExpand) return;
+
     let ticking = false;
     let wasExpanded = window.scrollY < COLLAPSE_AT;
 
@@ -166,7 +289,7 @@ const ListingsHeader = () => {
 
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [setScrollExpanded]);
+  }, [setScrollExpanded, disableScrollExpand]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -188,17 +311,26 @@ const ListingsHeader = () => {
         window.innerWidth - document.documentElement.clientWidth;
       document.body.style.overflow = "hidden";
       if (scrollbarWidth > 0) {
-        document.body.style.paddingRight = `${scrollbarWidth}px`;
+        document.body.style.paddingInlineEnd = `${scrollbarWidth}px`;
       }
     } else {
       document.body.style.overflow = "";
-      document.body.style.paddingRight = "";
+      document.body.style.paddingInlineEnd = "";
     }
     return () => {
       document.body.style.overflow = "";
-      document.body.style.paddingRight = "";
+      document.body.style.paddingInlineEnd = "";
     };
   }, [isOverlayActive]);
+
+  // The search store is a module-level singleton shared by every header
+  // instance, so an overlay left open while the user navigates (e.g. clicks the
+  // logo or a result with the big search expanded) would otherwise carry its
+  // active scrim onto the next page. Collapse on unmount to hand the next route
+  // a clean, pill-only state.
+  useEffect(() => {
+    return () => collapse();
+  }, [collapse]);
 
   const handleSmallSearchClick = useCallback(
     (segment?: SearchSegment) => {
@@ -276,12 +408,12 @@ const ListingsHeader = () => {
                 initial={false}
                 animate={{
                   opacity: isExpanded ? 1 : 0,
-                  y: isExpanded ? 0 : -8,
+                  y: isExpanded ? 0 : -6,
                 }}
                 transition={{
                   y: SPRING,
                   opacity: isExpanded
-                    ? { ...FADE_IN, delay: 0.06 }
+                    ? { ...FADE_IN, delay: 0.05 }
                     : FADE_OUT,
                 }}
                 style={{
@@ -293,20 +425,25 @@ const ListingsHeader = () => {
                 <SearchTabs />
               </motion.div>
 
+              {/* Small pill — on EXPAND it blooms: scales just past 1 and lifts a
+                  few px as it fades, so it reads as opening *into* the big bar
+                  rather than shrinking away. On COLLAPSE it settles 1.06→1 while
+                  fading in, condensing out of the bar that's retracting upward.
+                  The pill leads, the bar follows — they meet in the middle. */}
               <motion.div
                 className="absolute"
                 initial={false}
                 animate={{
                   opacity: isExpanded ? 0 : 1,
-                  scale: isExpanded ? 0.97 : 1,
-                  y: isExpanded ? 6 : 0,
+                  scale: isExpanded ? 1.06 : 1,
+                  y: isExpanded ? -4 : 0,
                 }}
                 transition={{
                   y: SPRING,
                   scale: SPRING,
                   opacity: isExpanded
                     ? FADE_OUT
-                    : { ...FADE_IN, delay: 0.06 },
+                    : { ...FADE_IN, delay: 0.05 },
                 }}
                 style={{
                   pointerEvents: isExpanded ? "none" : "auto",
@@ -320,16 +457,34 @@ const ListingsHeader = () => {
 
             {/* Right side - User Controls - Fixed Position */}
             <div className="flex items-center justify-end gap-3 w-1/3">
-              {/* Become a host link */}
+              {/* Right-side text link — "Become a host" for guests, flips to
+                  "Switch to hosting" once signed in (→ the host dashboard). */}
               <Link
-                href={`/${locale}/host`}
+                href={isAuthed ? `/${locale}/hosting` : `/${locale}/host`}
                 className="text-sm font-semibold text-gray-800 hover:bg-gray-100/50 px-4 py-2.5 rounded-full transition-colors hidden sm:inline-block whitespace-nowrap"
               >
-                {labels.becomeHost}
+                {isAuthed ? labels.switchToHosting : labels.becomeHost}
               </Link>
 
-              {/* Globe — opens the language & currency dialog */}
-              <LocaleCurrencyDialog />
+              {/* Guest → globe (language & currency dialog).
+                  Signed in → account avatar linking to the profile/account page
+                  (40px circle to match the globe + hamburger footprint). */}
+              {isAuthed ? (
+                <Link
+                  href={`/${locale}/profile/about`}
+                  aria-label={labels.account}
+                  className="rounded-full outline-none transition-opacity hover:opacity-90"
+                >
+                  <Avatar className="size-10">
+                    <AvatarImage src={session?.user?.image || ""} alt={labels.account} />
+                    <AvatarFallback className="bg-gray-900 text-white text-sm font-medium">
+                      {initial}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
+              ) : (
+                <LocaleCurrencyDialog />
+              )}
 
               {/* User Dropdown Trigger — 40px circle, #f2f2f2≈gray-100, 16px
                   hamburger (Airbnb's logged-out account button). */}
@@ -350,14 +505,48 @@ const ListingsHeader = () => {
                   className="bg-white p-0 py-3 border-0 overflow-hidden z-[100]"
                   style={MENU_CARD_STYLE}
                 >
-                  {/* Help Center — ? icon leading, then label (icon-left, regular
-                      weight, #222) exactly as on the live menu. */}
-                  <DropdownMenuItem asChild>
-                    <Link href={`/${locale}/help`} className={MENU_ROW}>
-                      <HelpCircle size={16} className="text-[#222222] flex-shrink-0" />
-                      <span>{labels.helpCenter}</span>
-                    </Link>
-                  </DropdownMenuItem>
+                  {/* Top section mirrors the live menu: when SIGNED IN, Airbnb
+                      surfaces the traveler's personal links here (Wishlists,
+                      Trips, Profile, Account); when SIGNED OUT it leads with the
+                      Help Center promo. The shared host/discovery rows below are
+                      identical in both states — only this top block swaps. */}
+                  {isAuthed ? (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/${locale}/tenants/favorites`} className={MENU_ROW}>
+                          <WishlistGlyph />
+                          <span>{labels.wishlists}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/${locale}/tenants/trips`} className={MENU_ROW}>
+                          <TripsGlyph />
+                          <span>{labels.trips}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/${locale}/profile/about`} className={MENU_ROW}>
+                          <ProfileGlyph />
+                          <span>{labels.profile}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/${locale}/tenants/settings`} className={MENU_ROW}>
+                          <AccountGlyph />
+                          <span>{labels.account}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    /* Help Center — authentic Airbnb "?" glyph leading, then
+                       label (icon-left, regular weight, #222) as on the live menu. */
+                    <DropdownMenuItem asChild>
+                      <Link href={`/${locale}/help`} className={MENU_ROW}>
+                        <HelpGlyph />
+                        <span>{labels.helpCenter}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
 
                   <DropdownMenuSeparator className="h-px" style={MENU_SEP_STYLE} />
 
@@ -419,33 +608,32 @@ const ListingsHeader = () => {
 
                   <DropdownMenuSeparator className="h-px" style={MENU_SEP_STYLE} />
 
-                  {/* Auth section */}
-                  {status === "loading" ? null : session?.user ? (
+                  {/* Help Center — for signed-in users it lives down here (the
+                      personal links took the top slot); guests already saw it at
+                      the top, so it's only rendered in the authed branch. */}
+                  {isAuthed && (
                     <>
                       <DropdownMenuItem asChild>
-                        <Link href={`/${locale}/hosting/listings`} className={MENU_ROW}>
-                          <span>{labels.manageListings}</span>
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/${locale}/tenants/trips`} className={MENU_ROW}>
-                          <span>{labels.trips}</span>
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/${locale}/tenants/favorites`} className={MENU_ROW}>
-                          <span>{labels.favorites}</span>
+                        <Link href={`/${locale}/help`} className={MENU_ROW}>
+                          <HelpGlyph />
+                          <span>{labels.helpCenter}</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator className="h-px" style={MENU_SEP_STYLE} />
-                      <DropdownMenuItem
-                        onClick={handleSignOut}
-                        className={MENU_ROW}
-                      >
-                        <LogOut size={16} className="text-[#222222] flex-shrink-0" />
-                        <span>{labels.logout}</span>
-                      </DropdownMenuItem>
                     </>
+                  )}
+
+                  {/* Auth section — sign-out (logged in) or log in / sign up
+                      (logged out). The signed-in personal links now live at the
+                      top of the menu, mirroring Airbnb. */}
+                  {status === "loading" ? null : session?.user ? (
+                    <DropdownMenuItem
+                      onClick={handleSignOut}
+                      className={MENU_ROW}
+                    >
+                      <LogoutGlyph />
+                      <span>{labels.logout}</span>
+                    </DropdownMenuItem>
                   ) : (
                     <DropdownMenuItem asChild>
                       <Link href={`/${locale}/login`} className={MENU_ROW}>
@@ -492,13 +680,13 @@ const ListingsHeader = () => {
             initial={false}
             animate={{
               opacity: isExpanded ? 1 : 0,
-              scale: isExpanded ? 1 : 0.97,
-              y: isExpanded ? 0 : -8,
+              scale: isExpanded ? 1 : 0.96,
+              y: isExpanded ? 0 : -12,
             }}
             transition={{
               scale: SPRING,
               y: SPRING,
-              opacity: isExpanded ? { ...FADE_IN, delay: 0.03 } : FADE_OUT,
+              opacity: isExpanded ? { ...FADE_IN, delay: 0.04 } : FADE_OUT,
             }}
             style={{
               transformOrigin: "top center",

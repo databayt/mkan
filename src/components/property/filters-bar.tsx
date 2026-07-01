@@ -131,7 +131,7 @@ const FiltersBar = () => {
 
           {/* Quick location suggestions */}
           {searchInput === '' && (
-            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 w-48">
+            <div className="absolute top-full start-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 w-48">
               <div className="p-2 text-xs text-gray-500 border-b">{dict.filters?.availableCities ?? "Available cities:"}</div>
               <button
                 className="w-full text-start px-3 py-2 text-sm hover:bg-blue-50 text-blue-600 font-medium"

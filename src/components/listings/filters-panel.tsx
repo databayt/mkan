@@ -254,7 +254,7 @@ function FilterControls({
             type="button"
             onClick={() => setPropertyType(undefined)}
             className={cn(
-              "rounded-lg border px-3 py-2 text-left text-xs transition-colors",
+              "rounded-lg border px-3 py-2 text-start text-xs transition-colors",
               !current.propertyType
                 ? "border-primary bg-primary/5 text-foreground"
                 : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground",
@@ -272,7 +272,7 @@ function FilterControls({
                 type="button"
                 onClick={() => setPropertyType(active ? undefined : value)}
                 className={cn(
-                  "rounded-lg border px-3 py-2 text-left text-xs transition-colors flex items-center gap-2",
+                  "rounded-lg border px-3 py-2 text-start text-xs transition-colors flex items-center gap-2",
                   active
                     ? "border-primary bg-primary/5 text-foreground"
                     : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground",

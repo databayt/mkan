@@ -32,7 +32,7 @@ export default function CancelBookingButton({ bookingId, lang, dict }: Props) {
         // updated list even if this page's Cancelled badge isn't enough.
         router.push(`/${lang}/tenants/trips`);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Could not cancel");
+        toast.error(err instanceof Error ? err.message : (t.couldNotCancel ?? "Could not cancel"));
       }
     });
   };

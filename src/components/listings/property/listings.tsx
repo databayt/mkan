@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useGlobalStore } from '@/state/filters'
 import { PropertyCard } from './card'
+import { PropertyImageFallback } from '@/components/atom/property-image-fallback'
 import { Listing } from '@/types/listing'
 import { useLocale } from '@/components/internationalization/use-locale'
 import { useDictionary } from '@/components/internationalization/dictionary-context'
@@ -96,7 +97,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
       
       {viewMode === 'grid' ? (
         <div className="">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {transformedProperties.map((property) => (
               <PropertyCard key={property.id} {...property} />
             ))}
@@ -108,7 +109,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
             <div key={property.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
               <div className="flex gap-4">
                 <div className="w-48 h-32 bg-gray-200 rounded-lg overflow-hidden relative">
-                  {property.images.length > 0 && property.images[0] && (
+                  {property.images.length > 0 && property.images[0] ? (
                     <Image
                       src={property.images[0]}
                       alt={property.title}
@@ -117,6 +118,8 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
                       className="w-full h-full object-cover"
                       priority={index < 4}
                     />
+                  ) : (
+                    <PropertyImageFallback seed={property.id || property.title} alt={property.title} />
                   )}
                 </div>
                 <div className="flex-1">

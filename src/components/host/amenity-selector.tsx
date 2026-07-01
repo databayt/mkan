@@ -1,17 +1,26 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import SelectionCard from './selection-card';
 import { cn } from '@/lib/utils';
 import { Amenity } from '@prisma/client';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useLocale } from '@/components/internationalization/use-locale';
 
 interface AmenityOption {
   id: string;
   label: string;
-  icon: () => React.ReactNode;
+  iconSrc: string;
+  iconAlt: string;
+}
+
+interface AmenitySection {
+  id: string;
+  heading: string;
+  items: AmenityOption[];
 }
 
 interface AmenitySelectorProps {
@@ -20,108 +29,216 @@ interface AmenitySelectorProps {
   className?: string;
 }
 
-// Custom component for SVG amenity icons
-const SvgIcon = ({ src, alt, size = 24 }: { src: string; alt: string; size?: number }) => (
-  <Image
-    src={src}
-    alt={alt}
-    width={size}
-    height={size}
-    className="object-contain"
-  />
+// Original Airbnb amenity icons (45×45, #3C3C3C) shipped in /public/amenities.
+const SvgIcon = ({ src, alt, size = 28 }: { src: string; alt: string; size?: number }) => (
+  <Image src={src} alt={alt} width={size} height={size} className="object-contain" />
 );
 
-// Mapping function to convert UI amenity IDs to Prisma enum values
+// Map UI amenity ids to the closest Prisma Amenity enum value so selections
+// persist against the existing listing schema. The enum is narrower than the
+// full Airbnb amenity set, so several ids intentionally collapse to the nearest
+// available match.
 export const mapAmenityToPrisma = (amenityId: string): Amenity => {
   const mapping: Record<string, Amenity> = {
     'wifi': Amenity.WiFi,
-    'tv': Amenity.HighSpeedInternet, // Assuming TV is mapped to HighSpeedInternet
-    'kitchen': Amenity.Dishwasher, // Assuming kitchen is mapped to Dishwasher
+    'tv': Amenity.HighSpeedInternet,
+    'kitchen': Amenity.Dishwasher,
     'washer': Amenity.WasherDryer,
     'free-parking': Amenity.Parking,
     'paid-parking': Amenity.Parking,
     'air-conditioning': Amenity.AirConditioning,
-    'dedicated-workspace': Amenity.HighSpeedInternet, // Assuming workspace is mapped to HighSpeedInternet
+    'dedicated-workspace': Amenity.HighSpeedInternet,
     'pool': Amenity.Pool,
-    'hot-tub': Amenity.Pool, // Assuming hot tub is mapped to Pool
-    'patio': Amenity.HardwoodFloors, // Assuming patio is mapped to HardwoodFloors
-    'bbq-grill': Amenity.HardwoodFloors, // Assuming BBQ grill is mapped to HardwoodFloors
+    'hot-tub': Amenity.Pool,
+    'patio': Amenity.HardwoodFloors,
+    'bbq-grill': Amenity.HardwoodFloors,
+    'outdoor-dining': Amenity.HardwoodFloors,
+    'fire-pit': Amenity.HardwoodFloors,
+    'pool-table': Amenity.Gym,
+    'indoor-fireplace': Amenity.HardwoodFloors,
+    'piano': Amenity.HardwoodFloors,
+    'exercise-equipment': Amenity.Gym,
+    'lake-access': Amenity.HardwoodFloors,
+    'beach-access': Amenity.HardwoodFloors,
+    'ski-in-out': Amenity.HardwoodFloors,
+    'outdoor-shower': Amenity.HardwoodFloors,
+    'smoke-alarm': Amenity.HardwoodFloors,
+    'first-aid-kit': Amenity.HardwoodFloors,
+    'fire-extinguisher': Amenity.HardwoodFloors,
+    'carbon-monoxide-alarm': Amenity.HardwoodFloors,
   };
-  
-  return mapping[amenityId] || Amenity.WiFi; // Default to WiFi if not found
+
+  return mapping[amenityId] || Amenity.WiFi;
 };
+
+// Airbnb-style ease; matches the smooth glide used elsewhere in the app.
+const SWITCH_TRANSITION = { duration: 0.28, ease: [0.32, 0.72, 0, 1] as [number, number, number, number] };
 
 const AmenitySelector: React.FC<AmenitySelectorProps> = ({
   selectedAmenities,
   onToggle,
   className,
 }) => {
-  const pathname = usePathname();
   const dict = useDictionary();
+  const { isRTL } = useLocale();
+  const a = dict.hosting.pages.amenities;
 
-  const guestFavorites: AmenityOption[] = [
-    { id: 'wifi', label: dict.hosting.pages.amenities.wifi, icon: () => <SvgIcon src="/amenities/Wifi.svg" alt="Wifi" /> },
-    { id: 'tv', label: dict.hosting.pages.amenities.tv, icon: () => <SvgIcon src="/amenities/TV.svg" alt="TV" /> },
-    { id: 'kitchen', label: dict.hosting.pages.amenities.kitchen, icon: () => <SvgIcon src="/amenities/Kitchen.svg" alt="Kitchen" /> },
-    { id: 'washer', label: dict.hosting.pages.amenities.washer, icon: () => <SvgIcon src="/amenities/Washing machine.svg" alt="Washing machine" /> },
-    { id: 'free-parking', label: dict.hosting.pages.amenities.freeParking, icon: () => <SvgIcon src="/amenities/Parking.svg" alt="Free parking" /> },
-    { id: 'paid-parking', label: dict.hosting.pages.amenities.paidParking, icon: () => <SvgIcon src="/amenities/Paid parking.svg" alt="Paid parking" /> },
-    { id: 'air-conditioning', label: dict.hosting.pages.amenities.ac, icon: () => <SvgIcon src="/amenities/Air conditioning.svg" alt="Air conditioning" /> },
-    { id: 'dedicated-workspace', label: dict.hosting.pages.amenities.workspace, icon: () => <SvgIcon src="/amenities/Workspace.svg" alt="Workspace" /> },
-  ];
+  const sections: AmenitySection[] = useMemo(() => [
+    {
+      id: 'guest-favorites',
+      heading: a.guestFavorites,
+      items: [
+        { id: 'wifi', label: a.wifi, iconSrc: '/amenities/Wifi.svg', iconAlt: 'Wifi' },
+        { id: 'tv', label: a.tv, iconSrc: '/amenities/TV.svg', iconAlt: 'TV' },
+        { id: 'kitchen', label: a.kitchen, iconSrc: '/amenities/Kitchen.svg', iconAlt: 'Kitchen' },
+        { id: 'washer', label: a.washer, iconSrc: '/amenities/Washing machine.svg', iconAlt: 'Washer' },
+        { id: 'free-parking', label: a.freeParking, iconSrc: '/amenities/Parking.svg', iconAlt: 'Free parking' },
+        { id: 'paid-parking', label: a.paidParking, iconSrc: '/amenities/Paid parking.svg', iconAlt: 'Paid parking' },
+        { id: 'air-conditioning', label: a.ac, iconSrc: '/amenities/Air conditioning.svg', iconAlt: 'Air conditioning' },
+        { id: 'dedicated-workspace', label: a.workspace, iconSrc: '/amenities/Workspace.svg', iconAlt: 'Workspace' },
+      ],
+    },
+    {
+      id: 'standout',
+      heading: a.standoutAmenities,
+      items: [
+        { id: 'pool', label: a.pool, iconSrc: '/amenities/Pool.svg', iconAlt: 'Pool' },
+        { id: 'hot-tub', label: a.hotTub, iconSrc: '/amenities/Hot tub.svg', iconAlt: 'Hot tub' },
+        { id: 'patio', label: a.patio, iconSrc: '/amenities/Patio.svg', iconAlt: 'Patio' },
+        { id: 'bbq-grill', label: a.bbqGrill, iconSrc: '/amenities/BBQ grill.svg', iconAlt: 'BBQ grill' },
+        { id: 'outdoor-dining', label: a.outdoorDining, iconSrc: '/amenities/Outdoor dining.svg', iconAlt: 'Outdoor dining area' },
+        { id: 'fire-pit', label: a.firePit, iconSrc: '/amenities/Fire pit.svg', iconAlt: 'Fire pit' },
+        { id: 'pool-table', label: a.poolTable, iconSrc: '/amenities/Pool table.svg', iconAlt: 'Pool table' },
+        { id: 'indoor-fireplace', label: a.indoorFireplace, iconSrc: '/amenities/Fireplace.svg', iconAlt: 'Indoor fireplace' },
+        { id: 'piano', label: a.piano, iconSrc: '/amenities/Piano.svg', iconAlt: 'Piano' },
+        { id: 'exercise-equipment', label: a.exerciseEquipment, iconSrc: '/amenities/Gym.svg', iconAlt: 'Exercise equipment' },
+        { id: 'lake-access', label: a.lakeAccess, iconSrc: '/amenities/Lake area.svg', iconAlt: 'Lake access' },
+        { id: 'beach-access', label: a.beachAccess, iconSrc: '/amenities/Beach area.svg', iconAlt: 'Beach access' },
+        { id: 'ski-in-out', label: a.skiInOut, iconSrc: '/amenities/Ski.svg', iconAlt: 'Ski-in/ski-out' },
+        { id: 'outdoor-shower', label: a.outdoorShower, iconSrc: '/amenities/Shower.svg', iconAlt: 'Outdoor shower' },
+      ],
+    },
+    {
+      id: 'safety',
+      heading: a.safetyItems,
+      items: [
+        { id: 'smoke-alarm', label: a.smokeAlarm, iconSrc: '/amenities/Smoke alarm.svg', iconAlt: 'Smoke alarm' },
+        { id: 'first-aid-kit', label: a.firstAidKit, iconSrc: '/amenities/First aid kit.svg', iconAlt: 'First aid kit' },
+        { id: 'fire-extinguisher', label: a.fireExtinguisher, iconSrc: '/amenities/Fire extinguisher.svg', iconAlt: 'Fire extinguisher' },
+        { id: 'carbon-monoxide-alarm', label: a.carbonMonoxideAlarm, iconSrc: '/amenities/Carbon monoxide alarm.svg', iconAlt: 'Carbon monoxide alarm' },
+      ],
+    },
+  ], [a]);
 
-  const standoutAmenities: AmenityOption[] = [
-    { id: 'pool', label: dict.hosting.pages.amenities.pool, icon: () => <SvgIcon src="/amenities/Pool.svg" alt="Pool" /> },
-    { id: 'hot-tub', label: dict.hosting.pages.amenities.hotTub, icon: () => <SvgIcon src="/amenities/Hot tub.svg" alt="Hot tub" /> },
-    { id: 'patio', label: dict.hosting.pages.amenities.patio, icon: () => <SvgIcon src="/amenities/Patio.svg" alt="Patio" /> },
-    { id: 'bbq-grill', label: dict.hosting.pages.amenities.bbqGrill, icon: () => <SvgIcon src="/amenities/BBQ grill.svg" alt="BBQ grill" /> },
-  ];
+  const [active, setActive] = useState(0);
+  const [direction, setDirection] = useState(0);
+
+  const goTo = (next: number, dir: number) => {
+    if (next < 0 || next > sections.length - 1) return;
+    setDirection(dir);
+    setActive(next);
+  };
+
+  const section = sections[active];
+  if (!section) return null;
+
+  const slide = isRTL ? -1 : 1;
+
+  const variants = {
+    enter: (dir: number) => ({ opacity: 0, x: dir * slide * 28 }),
+    center: { opacity: 1, x: 0 },
+    exit: (dir: number) => ({ opacity: 0, x: dir * slide * -28 }),
+  };
+
+  const selectedInSection = section.items.filter((i) => selectedAmenities.includes(i.id)).length;
+
+  const navButton =
+    'flex h-9 w-9 items-center justify-center rounded-full border border-foreground/40 text-foreground transition ' +
+    'hover:border-foreground hover:bg-accent ' +
+    'disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-foreground/40 disabled:hover:bg-transparent';
 
   return (
-    <div className={cn('space-y-4 sm:space-y-4', className)}>
-      {/* Guest Favorites */}
-      <div>
-        <h5 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
-          {dict.hosting.pages.amenities.guestFavorites}
-        </h5>
-        <div className="grid grid-cols-4 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 pt-2 ">
-          {guestFavorites.map((amenity) => (
-            <SelectionCard
-              key={amenity.id}
-              id={amenity.id}
-              title={amenity.label}
-              icon={<amenity.icon />}
-              isSelected={selectedAmenities.includes(amenity.id)}
-              onClick={onToggle}
-              compact={true}
-              className="p-2 sm:p-3"
+    <div className={cn('flex flex-col', className)}>
+      <div className="relative overflow-hidden">
+        <AnimatePresence mode="wait" custom={direction} initial={false}>
+          <motion.div
+            key={section.id}
+            custom={direction}
+            variants={variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={SWITCH_TRANSITION}
+          >
+            <div className="mb-4 flex items-baseline justify-between gap-3">
+              <h5 className="text-lg sm:text-xl font-semibold">{section.heading}</h5>
+              {selectedInSection > 0 && (
+                <span dir="ltr" className="shrink-0 text-xs text-muted-foreground">
+                  {selectedInSection} / {section.items.length}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+              {section.items.map((amenity) => (
+                <SelectionCard
+                  key={amenity.id}
+                  id={amenity.id}
+                  title={amenity.label}
+                  icon={<SvgIcon src={amenity.iconSrc} alt={amenity.iconAlt} />}
+                  isSelected={selectedAmenities.includes(amenity.id)}
+                  onClick={onToggle}
+                  compact
+                  className="p-2 sm:p-3"
+                />
+              ))}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Tab navigation: progress dots at the start, flip arrows pinned to the end */}
+      <div className="mt-6 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          {sections.map((s, i) => (
+            <button
+              key={s.id}
+              type="button"
+              aria-label={s.heading}
+              aria-current={i === active}
+              onClick={() => goTo(i, i > active ? 1 : -1)}
+              className={cn(
+                'h-1.5 rounded-full transition-all duration-200',
+                i === active
+                  ? 'w-5 bg-foreground'
+                  : 'w-1.5 bg-muted-foreground/40 hover:bg-muted-foreground/70'
+              )}
             />
           ))}
         </div>
-      </div>
 
-      {/* Standout Amenities */}
-      <div>
-        <h5 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
-          {dict.hosting.pages.amenities.standoutAmenities}
-        </h5>
-        <div className="grid grid-cols-4 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 pt-2">
-          {standoutAmenities.map((amenity) => (
-            <SelectionCard
-              key={amenity.id}
-              id={amenity.id}
-              title={amenity.label}
-              icon={<amenity.icon />}
-              isSelected={selectedAmenities.includes(amenity.id)}
-              onClick={onToggle}
-              compact={true}
-              className="p-2 sm:p-3"
-            />
-          ))}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-label="Previous section"
+            disabled={active === 0}
+            onClick={() => goTo(active - 1, -1)}
+            className={navButton}
+          >
+            <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
+          </button>
+          <button
+            type="button"
+            aria-label="Next section"
+            disabled={active === sections.length - 1}
+            onClick={() => goTo(active + 1, 1)}
+            className={navButton}
+          >
+            <ChevronRight className="h-4 w-4 rtl:rotate-180" />
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-export default AmenitySelector; 
+export default AmenitySelector;

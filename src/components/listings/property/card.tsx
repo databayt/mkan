@@ -9,6 +9,7 @@ import Image from 'next/image'
 import { useDictionary } from '@/components/internationalization/dictionary-context'
 import { useLocale } from '@/components/internationalization/use-locale'
 import { formatCurrency, formatNumber } from '@/lib/i18n/formatters'
+import { PropertyImageFallback } from '@/components/atom/property-image-fallback'
 
 interface PropertyCardProps {
   id: string
@@ -61,15 +62,13 @@ export function PropertyCard({
     setCurrentImageIndex(index)
   }
 
-  // Use provided images or fallback to default
-  const displayImages = images && images.length > 0
-    ? images
-    : ['/images/default-property.svg']
+  // No photos → branded fallback (not a stand-in image src).
+  const hasPhotos = !!(images && images.length > 0)
 
   return (
     <div
       className={cn(
-        "w-full max-w-sm cursor-pointer group",
+        "w-full max-w-none sm:max-w-sm cursor-pointer group",
         className
       )}
       onClick={handleCardClick}
@@ -77,19 +76,23 @@ export function PropertyCard({
       {/* Image Container */}
       <div className="relative mb-3">
         {/* Main Image */}
-        <div className="relative w-full h-52 bg-gray-200 rounded-md overflow-hidden">
-          <Image
-            src={displayImages[currentImageIndex] || '/images/default-property.svg'}
-            alt={title}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            priority={priority}
-          />
+        <div className="relative w-full aspect-[4/3] bg-gray-200 rounded-md overflow-hidden">
+          {hasPhotos ? (
+            <Image
+              src={images[currentImageIndex] ?? images[0]!}
+              alt={title}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              priority={priority}
+            />
+          ) : (
+            <PropertyImageFallback seed={id || title} alt={title} />
+          )}
 
           {/* Favorite Button */}
           <button
-            className="absolute top-3 right-3.5 w-6 h-6 backdrop-blur-sm bg-white/20 hover:bg-white/30 rounded-full border border-white/20 flex items-center justify-center transition-colors"
+            className="absolute top-3 end-3.5 w-6 h-6 backdrop-blur-sm bg-white/20 hover:bg-white/30 rounded-full border border-white/20 flex items-center justify-center transition-colors"
             onClick={handleFavoriteClick}
           >
             <Heart
@@ -104,16 +107,16 @@ export function PropertyCard({
           {isSuperhostBadge && (
             <Badge
               variant="secondary"
-              className="absolute top-3 left-3 bg-white text-gray-800 text-xs font-medium"
+              className="absolute top-3 start-3 bg-white text-gray-800 text-xs font-medium"
             >
               {dict.rental?.property?.card?.superhost}
             </Badge>
           )}
 
           {/* Image Navigation Dots */}
-          {displayImages.length > 1 && (
+          {hasPhotos && images.length > 1 && (
             <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex space-x-1">
-              {displayImages.map((_, index) => (
+              {images.map((_, index) => (
                 <button
                   key={index}
                   className={cn(
@@ -177,7 +180,7 @@ export function PropertyGrid({
 }) {
   return (
     <div className={cn(
-      "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6",
+      "grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-6",
       className
     )}>
       {properties.map((property) => (

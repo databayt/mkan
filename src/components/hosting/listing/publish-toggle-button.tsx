@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -29,7 +29,11 @@ export function PublishToggleButton({ listing }: PublishToggleButtonProps) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  const isPublished = listing.isPublished ?? false;
+  // Local optimistic state: this card renders from a client-side fetch in the
+  // parent that router.refresh() doesn't re-run, so we hold the toggled value
+  // here (useOptimistic would snap back to the stale parent prop after the
+  // action settles).
+  const [isPublished, setIsPublished] = useState(listing.isPublished ?? false);
   const ready = !!(
     listing.title &&
     listing.description &&
@@ -39,6 +43,7 @@ export function PublishToggleButton({ listing }: PublishToggleButtonProps) {
   );
 
   const handleToggle = (next: boolean) => {
+    setIsPublished(next); // optimistic
     startTransition(async () => {
       try {
         if (next) {
@@ -50,6 +55,7 @@ export function PublishToggleButton({ listing }: PublishToggleButtonProps) {
         }
         router.refresh();
       } catch (err) {
+        setIsPublished(!next); // revert on failure
         const message =
           err instanceof Error ? err.message : (t.publishUnknownError ?? "Could not update");
         toast.error(message);

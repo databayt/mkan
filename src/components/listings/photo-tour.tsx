@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import NavThumbnails from "./nav-thumbnails"
+import { PropertyImageFallback } from "@/components/atom/property-image-fallback"
 
 interface PhotoSection {
   id: string
@@ -65,6 +66,18 @@ export default function PhotoTour({ sections = mockSections }: PhotoTourProps) {
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' })
     }
+  }
+
+  const hasPhotos = sections.some((section) => section.photos && section.photos.length > 0)
+
+  if (!hasPhotos) {
+    return (
+      <div className="px-6 md:px-20 py-8 flex flex-col items-center justify-center min-h-[50vh]">
+        <div className="relative w-full max-w-2xl aspect-[4/3] bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+          <PropertyImageFallback className="object-contain p-6 bg-muted/40" />
+        </div>
+      </div>
+    )
   }
 
   return (

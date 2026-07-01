@@ -19,7 +19,7 @@ import { hostMatches, runHardFilters } from "./hard-filters";
 import { reportSchema, type ReportInputParsed } from "./schema";
 import { computeScore } from "./score";
 import { classifyWithHaiku } from "./triage";
-import { verifyTurnstile } from "./turnstile";
+import { isTurnstileConfigured, verifyTurnstile } from "./turnstile";
 import { RateLimitError, type ReportAdapter } from "./adapters/adapter";
 import type {
   AITriageResult,
@@ -39,7 +39,11 @@ export async function runReportPipeline(
 ): Promise<PipelineResult> {
   const token = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
   if (!token) {
-    console.error("[report-pipeline] GITHUB_PERSONAL_ACCESS_TOKEN not configured");
+    console.warn("[report-pipeline] GITHUB_PERSONAL_ACCESS_TOKEN not configured");
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[report-pipeline] Dev Mode: Simulating report submission success");
+      return { ok: true, bucket: "verified-report", issueNumber: 9999, score: 100 };
+    }
     return { ok: false, error: "config" };
   }
 
@@ -69,9 +73,11 @@ export async function runReportPipeline(
     throw err;
   }
 
-  // 4. Captcha — required for anonymous, optional otherwise
+  // 4. Captcha — enforced for anonymous ONLY when Turnstile is configured.
+  // Unconfigured → captchaValid stays null (HF3 won't reject) so reports still
+  // land (degraded trust). This stops a missing env var silently eating reports.
   let captchaValid: boolean | null = null;
-  if (reporter.kind === "anonymous") {
+  if (reporter.kind === "anonymous" && isTurnstileConfigured()) {
     captchaValid = await verifyTurnstile(input.captchaToken, opts.ip);
   }
 

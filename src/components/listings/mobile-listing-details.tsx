@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ShareIcon, HeartIcon, Superhost } from '@/components/atom/icons';
 import { useRouter } from 'next/navigation';
-import MobileMap from './mobile-map';
 import MobileInfo from './mobile-info';
 import MobileAmenities from './mobile-amenities';
 // import MobileReviewsDetail from './mobile-reviews-detail';
 import MobileMeetHost from './mobile-meet-host';
 import HostedBy from './hosted-by';
+import { PropertyImageFallback } from '@/components/atom/property-image-fallback';
 
 interface MobileListingDetailsProps {
   listing: any;
@@ -82,12 +82,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
   };
 
   // If no images, use placeholder
-  const displayImages = images && images.length > 0 ? images : ['/placeholder.svg?height=500&width=600'];
-  
-  // Debug logging
-  console.log('Mobile Listing Details - Images:', images);
-  console.log('Mobile Listing Details - Display Images:', displayImages);
-  console.log('Mobile Listing Details - Current Index:', currentImageIndex);
+  const displayImages = images && images.length > 0 ? images : ['/property-placeholder.svg'];
 
   // Safely format location string
   const getLocationString = () => {
@@ -123,26 +118,29 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
          onTouchMove={onTouchMove}
          onTouchEnd={onTouchEnd}
        >
-        {/* Current Image */}
-        <Image
-          src={displayImages[currentImageIndex] ?? '/placeholder.svg?height=500&width=600'}
-          alt={`Property image ${currentImageIndex + 1}`}
-          fill
-          className="object-cover"
-          priority
-          onError={(e) => {
-            console.error('Image failed to load:', displayImages[currentImageIndex]);
-            // Fallback to placeholder if image fails
-            const target = e.target as HTMLImageElement;
-            target.src = '/placeholder.svg?height=500&width=600';
-          }}
-        />
+        {images && images.length > 0 ? (
+          <Image
+            src={displayImages[currentImageIndex] ?? displayImages[0]!}
+            alt={`Property image ${currentImageIndex + 1}`}
+            fill
+            className="object-cover"
+            priority
+            onError={(e) => {
+              console.error('Image failed to load:', displayImages[currentImageIndex]);
+              const target = e.target as HTMLImageElement;
+              target.src = '/property-placeholder.svg';
+              target.className = 'object-contain p-6 bg-muted/40';
+            }}
+          />
+        ) : (
+          <PropertyImageFallback className="object-contain p-6 bg-muted/40" />
+        )}
 
         {/* Overlay Gradient */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
 
                  {/* Top Navigation Bar */}
-         <div className="absolute top-0 left-0 right-0 z-10 p-4">
+         <div className="absolute top-0 inset-x-0 z-10 p-4">
            <div className="flex items-center justify-between">
              {/* Left Side - Back Button */}
              <Button
@@ -182,7 +180,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
 
                  {/* Image Counter */}
          {displayImages.length > 1 && (
-           <div className="absolute bottom-4 right-4">
+           <div className="absolute bottom-4 end-4">
              <div className="bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm">
                {currentImageIndex + 1} / {displayImages.length}
              </div>
@@ -285,9 +283,6 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
 
                  {/* Hosted By */}
          <HostedBy host={listing?.host ?? null} />
-
-                   {/* Mobile Map */}
-          <MobileMap />
 
           {/* Mobile Info */}
           <MobileInfo />

@@ -28,7 +28,7 @@ export function PriceForm() {
             error={form.formState.errors.pricePerNight?.message}
           >
             <div className="relative">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+              <span className="absolute start-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
                 $
               </span>
               <input
@@ -49,7 +49,7 @@ export function PriceForm() {
             error={form.formState.errors.securityDeposit?.message}
           >
             <div className="relative">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+              <span className="absolute start-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
                 $
               </span>
               <input
@@ -69,7 +69,7 @@ export function PriceForm() {
             error={form.formState.errors.applicationFee?.message}
           >
             <div className="relative">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+              <span className="absolute start-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
                 $
               </span>
               <input

@@ -84,10 +84,10 @@ export function HomesTable({
           <TableHead>{labels.listing}</TableHead>
           <TableHead>{labels.host}</TableHead>
           <TableHead>{labels.location}</TableHead>
-          <TableHead className="text-right">{labels.price}</TableHead>
+          <TableHead className="text-end">{labels.price}</TableHead>
           <TableHead>{labels.status}</TableHead>
           <TableHead className="text-center">{labels.bookings}</TableHead>
-          <TableHead className="text-right">{labels.actions}</TableHead>
+          <TableHead className="text-end">{labels.actions}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -149,14 +149,14 @@ function HomeRow({
       <TableCell className="text-sm">
         {listing.location ? `${listing.location.city}, ${listing.location.country}` : "—"}
       </TableCell>
-      <TableCell className="text-right text-sm">
+      <TableCell className="text-end text-sm">
         ${(listing.pricePerNight ?? 0).toFixed(0)}
       </TableCell>
       <TableCell>
         <StatusBadge listing={listing} labels={labels} />
       </TableCell>
       <TableCell className="text-center">{listing._count.bookings}</TableCell>
-      <TableCell className="text-right space-x-2">
+      <TableCell className="text-end space-x-2">
         <Button variant="outline" size="sm" asChild>
           <Link href={`/${lang}/listings/${listing.id}`} target="_blank">
             {labels.view}

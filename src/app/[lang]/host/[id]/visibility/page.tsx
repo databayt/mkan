@@ -38,8 +38,8 @@ const VisibilityPage = ({ params }: VisibilityPageProps) => {
   ];
 
   return (
-    <div className="">
-      <div className="">
+    <div className="w-full">
+      <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-16 items-start">
           {/* Left column - Title and description */}
           <div className="lg:col-span-2 space-y-3 sm:space-y-4">

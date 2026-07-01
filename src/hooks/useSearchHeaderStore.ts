@@ -7,6 +7,11 @@ import { create } from "zustand";
 // `activeButton`, so the store value can be handed straight to it.
 export type SearchSegment = "location" | "dates" | "guests";
 
+// The search category tabs (mirrors airbnb.com). Switching tabs changes the
+// BigSearch fields/menus: Experiences shows a different "Where" placeholder,
+// Services swaps the third segment from "Who/guests" to "Type of service".
+export type SearchTab = "homes" | "experiences" | "services";
+
 interface SearchHeaderStore {
   // View state
   isExpanded: boolean; // BigSearch is visible (either from scroll top or user click)
@@ -17,16 +22,21 @@ interface SearchHeaderStore {
   // page) and should open with no dropdown active.
   initialSegment: SearchSegment | null;
 
+  // Active category tab — drives which fields/menus BigSearch renders.
+  activeTab: SearchTab;
+
   // Actions
   setScrollExpanded: (expanded: boolean) => void; // Scroll-triggered
   expandFromSmallSearch: (segment?: SearchSegment) => void; // User clicked SmallSearch
   collapse: () => void; // Close BigSearch (from overlay click or escape)
+  setActiveTab: (tab: SearchTab) => void; // Switch Homes/Experiences/Services
 }
 
 const useSearchHeaderStore = create<SearchHeaderStore>((set) => ({
   isExpanded: true,
   isOverlayActive: false,
   initialSegment: null,
+  activeTab: "homes",
 
   setScrollExpanded: (expanded) =>
     set((state) => ({
@@ -49,6 +59,11 @@ const useSearchHeaderStore = create<SearchHeaderStore>((set) => ({
       isExpanded: false,
       isOverlayActive: false,
       initialSegment: null,
+    }),
+
+  setActiveTab: (tab) =>
+    set({
+      activeTab: tab,
     }),
 }));
 

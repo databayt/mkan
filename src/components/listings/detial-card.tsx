@@ -29,7 +29,7 @@ export default function DetailCard({
   rating = "",
   reviews = "",
   price = "",
-  image = "/placeholder.svg?height=200&width=300",
+  image = "/property-placeholder.svg",
   isFavorited = false
 }: DetailCardProps) {
   const dict = useDictionary()
@@ -37,14 +37,25 @@ export default function DetailCard({
   return (
     <div className="flex gap-6">
       {/* Property Image */}
-      <div className="relative flex-shrink-0">
-        <Image
-          src={image}
-          alt={title}
-          width={250}
-          height={170}
-          className="w-[250px] h-[170px] object-cover rounded-xl border border-gray-200"
-        />
+      <div className="relative flex-shrink-0 w-[250px] h-[170px] overflow-hidden rounded-xl border border-gray-200">
+        {image === "/property-placeholder.svg" || !image ? (
+          <div className="absolute inset-0 bg-muted/40 flex items-center justify-center p-4">
+            <Image
+              src="/property-placeholder.svg"
+              alt="No image available"
+              fill
+              unoptimized
+              className="object-contain"
+            />
+          </div>
+        ) : (
+          <Image
+            src={image}
+            alt={title}
+            fill
+            className="object-cover"
+          />
+        )}
       </div>
 
       {/* Property Details */}

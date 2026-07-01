@@ -24,8 +24,11 @@ function HostLayoutContent({ children }: HostLayoutClientProps) {
 
   return (
     <div className="px-4 sm:px-6 md:px-12 lg:px-20 bg-background min-h-screen">
-      {/* Main content with padding to account for fixed footer */}
-      <main id="main-content" className="h-screen pt-16 sm:pt-20">
+      {/* Main content with padding to account for fixed footer. min-h-screen (not
+          h-screen) so a step taller than the viewport — common on short phones or
+          with zoomed text — expands and scrolls instead of being clipped with no
+          way to reach it. Content that fits still centers exactly as before. */}
+      <main id="main-content" className="min-h-screen pt-16 sm:pt-20 pb-20 sm:pb-24 flex items-center justify-center">
         {children}
       </main>
 

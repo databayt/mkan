@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { UserRole } from "@prisma/client";
 import { toast } from "sonner";
 
@@ -96,7 +97,7 @@ export function UsersTable({
           <TableHead>{labels.status}</TableHead>
           <TableHead>{labels.joined}</TableHead>
           <TableHead>{labels.lastLogin}</TableHead>
-          <TableHead className="text-right">{labels.actions}</TableHead>
+          <TableHead className="text-end">{labels.actions}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -119,6 +120,7 @@ function UserRow({
 }) {
   const [isPending, startTransition] = useTransition();
   const [reason, setReason] = useState("");
+  const router = useRouter();
 
   function onRoleChange(next: UserRole) {
     if (next === user.role) return;
@@ -126,6 +128,7 @@ function UserRow({
       try {
         await updateUserRole({ userId: user.id, role: next });
         toast.success(labels.roleUpdated);
+        router.refresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : labels.error);
       }
@@ -141,6 +144,7 @@ function UserRow({
         });
         toast.success(result.suspended ? labels.suspendedToast : labels.unsuspendedToast);
         setReason("");
+        router.refresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : labels.error);
       }
@@ -152,6 +156,7 @@ function UserRow({
       try {
         await resetHostPassword({ userId: user.id });
         toast.success(labels.resetToast);
+        router.refresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : labels.error);
       }
@@ -195,7 +200,7 @@ function UserRow({
       <TableCell className="text-xs text-muted-foreground">
         {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : "—"}
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell className="text-end">
         <div className="flex items-center justify-end gap-2">
           <AlertDialog>
             <AlertDialogTrigger asChild>

@@ -137,7 +137,7 @@ const AirbnbFilter: React.FC<AirbnbFilterProps> = ({
             {activeCount > 0 && (
               <Badge
                 variant="default"
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center"
+                className="absolute -top-2 -end-2 h-6 w-6 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center"
               >
                 {activeCount}
               </Badge>

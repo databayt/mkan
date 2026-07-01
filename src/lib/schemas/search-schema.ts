@@ -116,6 +116,14 @@ export interface LocationSuggestion {
   country: string;
   displayName: string;
   listingCount: number;
+  /**
+   * Canonical (English) token to send as the `location` URL param, decoupled
+   * from the localized `displayName` shown in the UI. Lets an Arabic label
+   * like "بورتسودان" still query the English-stored city "Port Sudan", and
+   * lets a district label ("Coral Coast") narrow to that part of town.
+   * Consumers fall back to `city` → `displayName` when this is absent.
+   */
+  searchValue?: string;
 }
 
 // Search filters type for server action. Keep in sync with `listingFilterSchema`
@@ -141,7 +149,18 @@ export interface SearchFilters {
   beds?: number;
   baths?: number;
   propertyType?: PropertyType;
+  /**
+   * Multi-select structure filter (Apartment, Villa, ...). When non-empty it
+   * supersedes the single `propertyType` and is applied as an `IN (...)` set —
+   * this is what backs the dialog's "Type of place" segmented control (room
+   * vs. entire-home groups) and the multi-select "Property type" section.
+   */
+  propertyTypes?: PropertyType[];
   amenities?: Amenity[];
+  /** Booking option — only listings with instant booking enabled. */
+  instantBook?: boolean;
+  /** Booking option — only listings whose host allows pets. */
+  petsAllowed?: boolean;
   /**
    * Geographic viewport bounds from the search map. When all four are set,
    * results are constrained to listings whose location falls inside the box —
@@ -174,7 +193,10 @@ export const listingFilterSchema = z.object({
   beds: z.number().int().min(0).max(SEARCH_CONFIG.MAX_BEDS).optional(),
   baths: z.number().min(0).max(SEARCH_CONFIG.MAX_BATHS).optional(),
   propertyType: z.enum(PropertyType).optional(),
+  propertyTypes: z.array(z.enum(PropertyType)).max(6).optional(),
   amenities: z.array(z.enum(Amenity)).max(30).optional(),
+  instantBook: z.boolean().optional(),
+  petsAllowed: z.boolean().optional(),
   // Map viewport bounds (decimal degrees). Latitudes ∈ [-90, 90],
   // longitudes ∈ [-180, 180]. Applied only when all four are present.
   minLat: z.number().min(-90).max(90).optional(),

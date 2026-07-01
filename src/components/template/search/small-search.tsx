@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Search } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { type SearchSegment } from "@/hooks/useSearchHeaderStore";
@@ -16,6 +17,11 @@ interface SmallSearchProps {
     dates?: string;
     guests?: string;
   };
+  // When set, the red search circle becomes a Framer shared-layout element with
+  // this id so it can morph into a matching element elsewhere (the /listings
+  // mobile sheet's Search button). Undefined everywhere else → plain button, so
+  // /search + the desktop header are unaffected.
+  ctaLayoutId?: string;
 }
 
 type Seg = "where" | "when" | "who";
@@ -23,6 +29,7 @@ type Seg = "where" | "when" | "who";
 export default function SmallSearch({
   onExpand,
   searchValues,
+  ctaLayoutId,
 }: SmallSearchProps) {
   const dict = useDictionary();
   const [hovered, setHovered] = useState<Seg | null>(null);
@@ -116,17 +123,34 @@ export default function SmallSearch({
           </span>
         </button>
 
-        <Button
-          size="icon"
-          className="ms-1 h-8 w-8 rounded-[100px] bg-[#FF385C] text-white hover:bg-[#E31C5F]"
-          onClick={(e) => {
-            e.stopPropagation();
-            expand("location");
-          }}
-          aria-label="Search"
-        >
-          <Search className="h-[16px] w-[16px]" />
-        </Button>
+        {ctaLayoutId ? (
+          // Shared-layout twin of the /listings sheet's Search button — Framer
+          // morphs this circle into that pill (and back) via the matching id.
+          <motion.button
+            layoutId={ctaLayoutId}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              expand("location");
+            }}
+            aria-label="Search"
+            className="ms-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#FF385C] text-white transition-colors hover:bg-[#E31C5F]"
+          >
+            <Search className="h-[16px] w-[16px]" />
+          </motion.button>
+        ) : (
+          <Button
+            size="icon"
+            className="ms-1 h-8 w-8 rounded-[100px] bg-[#FF385C] text-white hover:bg-[#E31C5F]"
+            onClick={(e) => {
+              e.stopPropagation();
+              expand("location");
+            }}
+            aria-label="Search"
+          >
+            <Search className="h-[16px] w-[16px]" />
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -12,6 +12,9 @@ import {
   type SearchFilters,
   type SearchResult,
 } from "@/lib/schemas/search-schema";
+import { localize } from "@/components/translation/localize";
+import { getDisplayLang } from "@/components/translation/locale";
+import type { Lang } from "@/components/translation/types";
 
 // Cache tags used to invalidate search results when listings change.
 // Mutations in listing-actions.ts call `revalidateTag('listings')` on
@@ -181,12 +184,26 @@ function buildSearchWhere(
   };
 
   if (f.location) {
+    // A selected suggestion arrives as a human label that may carry several
+    // comma-separated parts ("Port Sudan, Red Sea", "Coral Coast, Port Sudan").
+    // Matching the whole comma-joined string against any single column never
+    // hits — no column equals "Port Sudan, Red Sea" — so the search silently
+    // returned zero. Split into parts and match each against
+    // city/state/country/address. `address` is included so district / landmark
+    // tokens ("Coral Coast", "Marina District") narrow to their part of town
+    // instead of falling through to nothing.
+    const terms = f.location
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+    const matchTerms = terms.length > 0 ? terms : [f.location.trim()];
     where.location = {
-      OR: [
-        { city: { contains: f.location, mode: "insensitive" } },
-        { state: { contains: f.location, mode: "insensitive" } },
-        { country: { contains: f.location, mode: "insensitive" } },
-      ],
+      OR: matchTerms.flatMap((term) => [
+        { city: { contains: term, mode: "insensitive" } },
+        { state: { contains: term, mode: "insensitive" } },
+        { country: { contains: term, mode: "insensitive" } },
+        { address: { contains: term, mode: "insensitive" } },
+      ]),
     };
   }
 
@@ -221,11 +238,20 @@ function buildSearchWhere(
 
   if (f.beds !== undefined) where.bedrooms = { gte: f.beds };
   if (f.baths !== undefined) where.bathrooms = { gte: f.baths };
-  if (f.propertyType) where.propertyType = f.propertyType;
+  // A multi-select structure set (IN ...) supersedes the single propertyType.
+  if (f.propertyTypes && f.propertyTypes.length > 0) {
+    where.propertyType = { in: f.propertyTypes };
+  } else if (f.propertyType) {
+    where.propertyType = f.propertyType;
+  }
 
   if (f.amenities && f.amenities.length > 0) {
     where.amenities = { hasEvery: f.amenities };
   }
+
+  // Booking options (backed by real Listing columns).
+  if (f.instantBook) where.instantBook = true;
+  if (f.petsAllowed) where.isPetsAllowed = true;
 
   if (f.checkIn && f.checkOut) {
     where.bookings = {
@@ -386,7 +412,8 @@ const cachedListingCount = unstable_cache(
  * populate the cache with empty error responses.
  */
 export async function searchListings(
-  filters: SearchFilters
+  filters: SearchFilters,
+  lang?: Lang
 ): Promise<SearchResult<Prisma.ListingGetPayload<{ select: typeof SEARCH_LISTING_SELECT }>[]>> {
   // Use the query-level schema so price/beds/type/amenities are actually
   // validated. `searchFormSchema` is form-level (rejects past dates), not
@@ -418,10 +445,17 @@ export async function searchListings(
       cachedListingCount(countKey),
     ]);
 
+    // Localize Arabic listing copy for the viewer's locale. `lang` comes from
+    // server pages (params.lang); client re-queries omit it, so fall back to
+    // the ambient NEXT_LOCALE cookie. No-op when translation is disabled or
+    // the text is already in `lang`.
+    const displayLang = lang ?? (await getDisplayLang());
+    const data = await localize(listings, ["title", "description"], displayLang);
+
     return {
       success: true,
-      data: listings,
-      count: listings.length,
+      data,
+      count: data.length,
       total,
     };
   } catch {

@@ -17,7 +17,7 @@ const HostStepLayout: React.FC<HostStepLayoutProps> = ({
   className,
 }) => {
   return (
-    <div className={cn('', className)}>
+    <div className={cn('w-full', className)}>
       <div className="items-center justify-center">
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-12">
           {/* Left div - Title and subtitle */}

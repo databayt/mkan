@@ -1,8 +1,8 @@
 "use client"
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react'
+import React, { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ListingFormData, createListing, updateListing, getListing } from './actions'
+import { ListingFormData, updateListing, getListing } from './actions'
 
 // Types
 export interface Listing extends ListingFormData {
@@ -12,13 +12,55 @@ export interface Listing extends ListingFormData {
   postedDate?: Date | null
 }
 
+// The Prisma payload returned by the listing actions. createListing,
+// getListing and updateListing all use the same `include: { location, host }`,
+// so deriving the mapper's input from getListing keeps it in lockstep with the
+// server contract — add a field server-side and the type surfaces it here.
+type ListingPayload = Awaited<ReturnType<typeof getListing>>
+
+/**
+ * Single source of truth for the Prisma listing → client `Listing` mapping.
+ * This block used to be copy-pasted in create/load/update; a new field had to
+ * be added in three places or it silently vanished from the onboarding UI.
+ */
+function mapPrismaListingToClient(src: ListingPayload): Listing {
+  return {
+    id: src.id,
+    title: src.title ?? undefined,
+    description: src.description ?? undefined,
+    pricePerNight: src.pricePerNight ?? undefined,
+    securityDeposit: src.securityDeposit ?? undefined,
+    applicationFee: src.applicationFee ?? undefined,
+    bedrooms: src.bedrooms ?? undefined,
+    bathrooms: src.bathrooms ?? undefined,
+    squareFeet: src.squareFeet ?? undefined,
+    guestCount: src.guestCount ?? undefined,
+    propertyType: src.propertyType ?? undefined,
+    isPetsAllowed: src.isPetsAllowed ?? undefined,
+    isParkingIncluded: src.isParkingIncluded ?? undefined,
+    instantBook: src.instantBook ?? undefined,
+    amenities: src.amenities ?? undefined,
+    highlights: src.highlights ?? undefined,
+    photoUrls: src.photoUrls ?? undefined,
+    draft: src.draft ?? undefined,
+    isPublished: src.isPublished ?? undefined,
+    // Location data (flattened from the related Location row)
+    address: src.location?.address ?? undefined,
+    city: src.location?.city ?? undefined,
+    state: src.location?.state ?? undefined,
+    country: src.location?.country ?? undefined,
+    postalCode: src.location?.postalCode ?? undefined,
+    latitude: src.location?.latitude ?? undefined,
+    longitude: src.location?.longitude ?? undefined,
+  }
+}
+
 interface ListingContextType {
   listing: Listing | null
   isLoading: boolean
   error: string | null
   setListing: (listing: Listing | null) => void
   updateListingData: (data: Partial<ListingFormData>) => Promise<void>
-  createNewListing: (data?: Partial<ListingFormData>) => Promise<number | null>
   loadListing: (id: number) => Promise<void>
   clearError: () => void
 }
@@ -35,162 +77,54 @@ export function ListingProvider({ children, initialListing = null }: ListingProv
   const [listing, setListing] = useState<Listing | null>(initialListing)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
+
+  // Dedupe loads. The host layout loads the listing once on mount, and every
+  // step page also calls loadListing on its own mount — without a guard that is
+  // N+1 identical getListing round-trips per onboarding session. Track the id
+  // already loaded (or in flight) and skip repeat fetches for the same id.
+  const loadedIdRef = useRef<number | null>(initialListing?.id ?? null)
+  const inFlightIdRef = useRef<number | null>(null)
 
   const clearError = useCallback(() => {
     setError(null)
   }, [])
 
-  const createNewListing = useCallback(async (data: Partial<ListingFormData> = {}) => {
-    setIsLoading(true)
-    setError(null)
-    
-    try {
-      console.log('🎯 Creating new listing with data:', data)
-      const result = await createListing({ draft: true, ...data })
-      
-      if (result.success && result.listing) {
-        const newListing: Listing = {
-          id: result.listing.id,
-          title: result.listing.title ?? undefined,
-          description: result.listing.description ?? undefined,
-          pricePerNight: result.listing.pricePerNight ?? undefined,
-          securityDeposit: result.listing.securityDeposit ?? undefined,
-          applicationFee: result.listing.applicationFee ?? undefined,
-          bedrooms: result.listing.bedrooms ?? undefined,
-          bathrooms: result.listing.bathrooms ?? undefined,
-          squareFeet: result.listing.squareFeet ?? undefined,
-          guestCount: result.listing.guestCount ?? undefined,
-          propertyType: result.listing.propertyType ?? undefined,
-          isPetsAllowed: result.listing.isPetsAllowed ?? undefined,
-          isParkingIncluded: result.listing.isParkingIncluded ?? undefined,
-          instantBook: result.listing.instantBook ?? undefined,
-          amenities: result.listing.amenities ?? undefined,
-          highlights: result.listing.highlights ?? undefined,
-          photoUrls: result.listing.photoUrls ?? undefined,
-          draft: result.listing.draft ?? undefined,
-          isPublished: result.listing.isPublished ?? undefined,
-          // Location data
-          address: result.listing.location?.address ?? undefined,
-          city: result.listing.location?.city ?? undefined,
-          state: result.listing.location?.state ?? undefined,
-          country: result.listing.location?.country ?? undefined,
-          postalCode: result.listing.location?.postalCode ?? undefined,
-          latitude: result.listing.location?.latitude ?? undefined,
-          longitude: result.listing.location?.longitude ?? undefined,
-        }
-        
-        setListing(newListing)
-        console.log('✅ New listing created:', newListing.id)
-        return newListing.id!
-      }
-      
-      throw new Error('Failed to create listing')
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
-      console.error('❌ Error creating listing:', errorMessage)
-      setError(errorMessage)
-      return null
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
   const loadListing = useCallback(async (id: number) => {
+    // Already have this listing in context, or a load for it is already running.
+    if (loadedIdRef.current === id || inFlightIdRef.current === id) return
+
+    inFlightIdRef.current = id
     setIsLoading(true)
     setError(null)
-    
+
     try {
-      console.log('📥 Loading listing:', id)
       const result = await getListing(id)
-      
-      const loadedListing: Listing = {
-        id: result.id,
-        title: result.title ?? undefined,
-        description: result.description ?? undefined,
-        pricePerNight: result.pricePerNight ?? undefined,
-        securityDeposit: result.securityDeposit ?? undefined,
-        applicationFee: result.applicationFee ?? undefined,
-        bedrooms: result.bedrooms ?? undefined,
-        bathrooms: result.bathrooms ?? undefined,
-        squareFeet: result.squareFeet ?? undefined,
-        guestCount: result.guestCount ?? undefined,
-        propertyType: result.propertyType ?? undefined,
-        isPetsAllowed: result.isPetsAllowed ?? undefined,
-        isParkingIncluded: result.isParkingIncluded ?? undefined,
-        instantBook: result.instantBook ?? undefined,
-        amenities: result.amenities ?? undefined,
-        highlights: result.highlights ?? undefined,
-        photoUrls: result.photoUrls ?? undefined,
-        draft: result.draft ?? undefined,
-        isPublished: result.isPublished ?? undefined,
-        // Location data
-        address: result.location?.address ?? undefined,
-        city: result.location?.city ?? undefined,
-        state: result.location?.state ?? undefined,
-        country: result.location?.country ?? undefined,
-        postalCode: result.location?.postalCode ?? undefined,
-        latitude: result.location?.latitude ?? undefined,
-        longitude: result.location?.longitude ?? undefined,
-      }
-      
-      setListing(loadedListing)
-      console.log('✅ Listing loaded successfully')
+      setListing(mapPrismaListingToClient(result))
+      loadedIdRef.current = id
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load listing'
-      console.error('❌ Error loading listing:', errorMessage)
       setError(errorMessage)
     } finally {
+      if (inFlightIdRef.current === id) inFlightIdRef.current = null
       setIsLoading(false)
     }
   }, [])
 
   const updateListingData = useCallback(async (data: Partial<ListingFormData>) => {
-    if (!listing?.id) {
-      console.warn('⚠️ No listing ID available for update')
-      return
-    }
+    const id = listing?.id
+    if (!id) return
 
     setIsLoading(true)
     setError(null)
-    
+
     try {
-      console.log('🔄 Updating listing:', listing.id, 'with data:', data)
-      const result = await updateListing(listing.id, data)
-      
+      const result = await updateListing(id, data)
+
       if (result.success && result.listing) {
-        const updatedListing: Listing = {
-          id: result.listing.id,
-          title: result.listing.title ?? undefined,
-          description: result.listing.description ?? undefined,
-          pricePerNight: result.listing.pricePerNight ?? undefined,
-          securityDeposit: result.listing.securityDeposit ?? undefined,
-          applicationFee: result.listing.applicationFee ?? undefined,
-          bedrooms: result.listing.bedrooms ?? undefined,
-          bathrooms: result.listing.bathrooms ?? undefined,
-          squareFeet: result.listing.squareFeet ?? undefined,
-          guestCount: result.listing.guestCount ?? undefined,
-          propertyType: result.listing.propertyType ?? undefined,
-          isPetsAllowed: result.listing.isPetsAllowed ?? undefined,
-          isParkingIncluded: result.listing.isParkingIncluded ?? undefined,
-          instantBook: result.listing.instantBook ?? undefined,
-          amenities: result.listing.amenities ?? undefined,
-          highlights: result.listing.highlights ?? undefined,
-          photoUrls: result.listing.photoUrls ?? undefined,
-          draft: result.listing.draft ?? undefined,
-          isPublished: result.listing.isPublished ?? undefined,
-          // Location data
-          address: result.listing.location?.address ?? undefined,
-          city: result.listing.location?.city ?? undefined,
-          state: result.listing.location?.state ?? undefined,
-          country: result.listing.location?.country ?? undefined,
-          postalCode: result.listing.location?.postalCode ?? undefined,
-          latitude: result.listing.location?.latitude ?? undefined,
-          longitude: result.listing.location?.longitude ?? undefined,
-        }
-        
-        setListing(updatedListing)
-        console.log('✅ Listing updated successfully')
+        setListing(mapPrismaListingToClient(result.listing))
+        // The mutation already returned fresh data — mark it loaded so a step
+        // page mounting afterwards doesn't re-fetch and clobber it.
+        loadedIdRef.current = id
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update listing'
@@ -199,7 +133,7 @@ export function ListingProvider({ children, initialListing = null }: ListingProv
     } finally {
       setIsLoading(false)
     }
-  }, [listing])
+  }, [listing?.id])
 
   // Memoize context value so consumers don't re-render on unrelated parent renders.
   const contextValue = useMemo<ListingContextType>(
@@ -209,11 +143,10 @@ export function ListingProvider({ children, initialListing = null }: ListingProv
       error,
       setListing,
       updateListingData,
-      createNewListing,
       loadListing,
       clearError,
     }),
-    [listing, isLoading, error, updateListingData, createNewListing, loadListing, clearError]
+    [listing, isLoading, error, updateListingData, loadListing, clearError]
   )
 
   return (

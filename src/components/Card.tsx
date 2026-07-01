@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
+import { PropertyImageFallback } from "@/components/atom/property-image-fallback";
 
 const Card = ({
   property,
@@ -17,22 +18,31 @@ const Card = ({
 }: CardProps) => {
   const { locale } = useLocale();
   const dict = useDictionary();
-  const [imgSrc, setImgSrc] = useState(
-    property.photoUrls?.[0] || "/placeholder.jpg"
-  );
+  const firstPhoto = property.photoUrls?.[0];
+  // Show the branded fallback when there's no photo *or* the URL fails to load.
+  const [errored, setErrored] = useState(false);
+  const showFallback = !firstPhoto || errored;
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-lg w-full mb-5">
       <div className="relative">
         <div className="w-full h-48 relative">
-          <Image
-            src={imgSrc}
-            alt={property.name}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            onError={() => setImgSrc("/placeholder.jpg")}
-          />
+          {showFallback ? (
+            <PropertyImageFallback
+              seed={String(property.id) || property.name}
+              alt={property.name}
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          ) : (
+            <Image
+              src={firstPhoto}
+              alt={property.name}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              onError={() => setErrored(true)}
+            />
+          )}
         </div>
         {/* Bottom-start badges — `start-4` mirrors in RTL so Arabic users see
             them on the right, matching the logical reading order. */}

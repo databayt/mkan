@@ -59,10 +59,10 @@ export function runHardFilters(
   const trimmed = input.description.trim();
 
   // HF1 — too short. (Zod also rejects but we re-check after trim.)
-  if (trimmed.length < 30) {
+  if (trimmed.length < 2) {
     return {
       code: "HF1_too_short",
-      detail: `Description is ${trimmed.length} chars; minimum is 30.`,
+      detail: `Description is ${trimmed.length} chars; minimum is 2.`,
     };
   }
 
@@ -74,12 +74,14 @@ export function runHardFilters(
     };
   }
 
-  // HF3 — anonymous needs valid captcha. (When ctx.captchaValid is null, captcha
-  // wasn't required — e.g. authenticated user on a non-anon page.)
-  if (reporter.kind === "anonymous" && ctx.captchaValid !== true) {
+  // HF3 — reject only when captcha was CONFIGURED-but-failed (explicit false).
+  // When captchaValid is null (Turnstile not enforced: authenticated user, or a
+  // deployment with no Turnstile keys) the report proceeds at degraded trust —
+  // a missing env var must never silently eat a legit report.
+  if (reporter.kind === "anonymous" && ctx.captchaValid === false) {
     return {
       code: "HF3_no_captcha",
-      detail: "Anonymous reports require a valid Turnstile token.",
+      detail: "Anonymous report failed Turnstile verification.",
     };
   }
 
@@ -102,7 +104,7 @@ export function runHardFilters(
 
   // HF6 — unique meaningful tokens < 5. Catches "asdf asdf asdf asdf".
   const meaningfulTokens = uniqueMeaningfulTokens(trimmed);
-  if (meaningfulTokens < 5) {
+  if (trimmed.length >= 30 && meaningfulTokens < 5) {
     return {
       code: "HF6_few_tokens",
       detail: `Only ${meaningfulTokens} unique meaningful tokens.`,

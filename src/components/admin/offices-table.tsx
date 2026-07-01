@@ -89,7 +89,7 @@ export function OfficesTable({
           <TableHead className="text-center">{labels.buses}</TableHead>
           <TableHead className="text-center">{labels.routes}</TableHead>
           <TableHead className="text-center">{labels.bookings}</TableHead>
-          <TableHead className="text-right">{labels.actions}</TableHead>
+          <TableHead className="text-end">{labels.actions}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -163,7 +163,7 @@ function OfficeRow({
       <TableCell className="text-center">{office._count.buses}</TableCell>
       <TableCell className="text-center">{office._count.routes}</TableCell>
       <TableCell className="text-center">{office._count.bookings}</TableCell>
-      <TableCell className="text-right space-x-2">
+      <TableCell className="text-end space-x-2">
         <Button variant="outline" size="sm" asChild>
           <Link href={`/${lang}/transport/offices/${office.id}`} target="_blank">
             {labels.view}

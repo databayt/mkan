@@ -119,7 +119,7 @@ const FloorPlanPageContent = ({ params }: FloorPlanPageProps) => {
   );
 
   return (
-    <div className="">
+    <div className="w-full">
       <div className="items-center justify-center">
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-12">
           {/* Left div - Title */}

@@ -30,7 +30,7 @@ function TransportHostLayoutContent({ children }: TransportHostLayoutClientProps
     <div className="px-4 sm:px-6 md:px-12 lg:px-20 bg-background min-h-screen">
       <main
         id="main-content"
-        className="h-screen pt-16 sm:pt-20 pb-24"
+        className="min-h-screen pt-16 sm:pt-20 pb-24"
         aria-label={mainAriaLabel}
       >
         {children}

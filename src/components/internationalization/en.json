@@ -243,7 +243,9 @@
     "referencePlaceholder": "e.g. TXN-2026-049238",
     "referenceSubmit": "Submit reference",
     "referenceSuccess": "Reference recorded. We verify within 24 hours and confirm your booking.",
-    "referenceTooShort": "Reference must be at least 3 characters."
+    "referenceTooShort": "Reference must be at least 3 characters.",
+    "cancelled": "Booking cancelled",
+    "couldNotCancel": "Could not cancel"
   },
   "auth": {
     "signIn": "Login",
@@ -1243,7 +1245,9 @@
       "bedroom": "bedroom",
       "bedrooms": "bedrooms",
       "bath": "bath",
-      "baths": "baths"
+      "baths": "baths",
+      "map": "Map",
+      "list": "List"
     },
     "reviewsList": {
       "heading": "What guests are saying",
@@ -1273,7 +1277,8 @@
       "approved": "Approved",
       "denied": "Denied",
       "viewDetails": "View Details",
-      "noApplications": "No applications yet"
+      "noApplications": "No applications yet",
+      "couldNotUpdate": "Could not update"
     },
     "tenants": {
       "title": "My Tenants",
@@ -1816,6 +1821,7 @@
         "subtitle": "You can add more amenities after you publish your listing.",
         "guestFavorites": "What about these guest favorites?",
         "standoutAmenities": "Do you have any standout amenities?",
+        "safetyItems": "Do you have any of these safety items?",
         "wifi": "Wifi",
         "tv": "TV",
         "kitchen": "Kitchen",
@@ -1827,7 +1833,21 @@
         "pool": "Pool",
         "hotTub": "Hot tub",
         "patio": "Patio",
-        "bbqGrill": "BBQ grill"
+        "bbqGrill": "BBQ grill",
+        "outdoorDining": "Outdoor dining area",
+        "firePit": "Fire pit",
+        "poolTable": "Pool table",
+        "indoorFireplace": "Indoor fireplace",
+        "piano": "Piano",
+        "exerciseEquipment": "Exercise equipment",
+        "lakeAccess": "Lake access",
+        "beachAccess": "Beach access",
+        "skiInOut": "Ski-in/ski-out",
+        "outdoorShower": "Outdoor shower",
+        "smokeAlarm": "Smoke alarm",
+        "firstAidKit": "First aid kit",
+        "fireExtinguisher": "Fire extinguisher",
+        "carbonMonoxideAlarm": "Carbon monoxide alarm"
       },
       "description": {
         "highlightsTitle": "Next, let's describe your house",
@@ -1893,7 +1913,8 @@
         "title": "Add some photos of your house",
         "subtitle": "You'll need 5 photos to get started. You can add more or make changes later.",
         "uploading": "Uploading...",
-        "addPhotos": "Add photos"
+        "addPhotos": "Add photos",
+        "uploadFailed": "Upload failed"
       },
       "price": {
         "title": "Now, set a base price",
@@ -1938,7 +1959,8 @@
       },
       "dashboard": {
         "welcomeBack": "Welcome back, {name}",
-        "finishYourListing": "Finish your listing"
+        "finishYourListing": "Finish your listing",
+        "untitledListing": "Untitled listing"
       },
       "listingCard": {
         "started": "Started {date}"
@@ -1951,7 +1973,17 @@
       "messages": "Messages",
       "logo": "Mkan Logo",
       "brandName": "Mkan",
-      "switchToTraveling": "Switch to traveling"
+      "switchToTraveling": "Switch to traveling",
+      "menu": {
+        "ariaLabel": "Hosting menu",
+        "createListing": "Create a new listing",
+        "referHost": "Refer a Host",
+        "findCoHost": "Find a co-host",
+        "giftCards": "Gift cards",
+        "helpCenter": "Visit the Help Center",
+        "account": "Account",
+        "logout": "Log out"
+      }
     },
     "content": {
       "today": "Today",
@@ -1962,7 +1994,9 @@
       "statusConfirmed": "Confirmed",
       "statusPending": "Pending",
       "guestsSuffix": "guests",
-      "manageListings": "Manage your listings"
+      "manageListings": "Manage your listings",
+      "noReservationsSubtitle": "To get booked, you'll need to complete and publish your listing.",
+      "completeListing": "Complete your listing"
     },
     "listingsPage": {
       "title": "Your listings",
@@ -1971,6 +2005,66 @@
       "noListings": "No listings yet",
       "noListingsDescription": "Get started by creating your first listing.",
       "createListing": "Create Listing"
+    },
+    "calendar": {
+      "title": "Calendar",
+      "subtitle": "Bookings and blocked dates across your listings.",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month",
+      "allListings": "All listings",
+      "available": "Available",
+      "booked": "Booked",
+      "blocked": "Blocked",
+      "weekdays": [
+        "S",
+        "M",
+        "T",
+        "W",
+        "T",
+        "F",
+        "S"
+      ]
+    },
+    "multicalendar": {
+      "title": "Calendar",
+      "subtitle": "Manage availability and pricing",
+      "today": "Today",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month",
+      "available": "Available",
+      "blocked": "Blocked",
+      "reserved": "Reserved",
+      "open": "Open",
+      "pricePerNight": "Per-night price",
+      "save": "Save",
+      "saving": "Saving…",
+      "close": "Close",
+      "minNights": "Min {n} nights",
+      "reservedBy": "Reserved by {name}",
+      "nightsSelected": "{n} nights selected",
+      "nightSelected": "1 night selected",
+      "guests": "Guests",
+      "total": "Total"
+    },
+    "messages": {
+      "title": "Messages",
+      "all": "All",
+      "unread": "Unread",
+      "search": "Search",
+      "writeMessage": "Write a message…",
+      "send": "Send",
+      "back": "Back",
+      "selectConversation": "Select a conversation",
+      "selectHint": "Choose a message on the left to read and reply.",
+      "noConversations": "No messages yet",
+      "noConversationsHint": "Messages from guests will appear here.",
+      "details": "Details",
+      "reservation": "Reservation",
+      "checkIn": "Check-in",
+      "checkOut": "Check-out",
+      "guests": "Guests",
+      "total": "Total",
+      "viewListing": "View listing"
     }
   },
   "application": {
@@ -2566,7 +2660,8 @@
       "ticketIdLabel": "Ticket ID",
       "share": "Share",
       "download": "Download Ticket"
-    }
+    },
+    "bookingFailedRetry": "Failed to create booking. Please try again."
   },
   "siteFooter": {
     "support": "Support",
@@ -2680,7 +2775,7 @@
   },
   "home": {
     "sections": {
-      "popular": "Popular homes in Khartoum",
+      "popular": "Popular homes in Portsudan",
       "recent": "Recently added",
       "topRated": "Top rated"
     },
@@ -2783,6 +2878,9 @@
     "experiences": "Experiences",
     "services": "Services",
     "newBadge": "NEW",
+    "searchByCityOrLandmark": "Search by city or landmark",
+    "typeOfService": "Type of service",
+    "addService": "Add service",
     "suggestedDestinations": "Suggested destinations",
     "searchResults": "Search results",
     "popularDestinations": "Popular destinations",
@@ -2853,7 +2951,12 @@
       "infants": "infants",
       "selectCheckIn": "Select check-in date",
       "selectCheckOut": "Select check-out date"
-    }
+    },
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "thisWeekend": "This weekend",
+    "chooseServiceType": "Choose a service type",
+    "clearAll": "Clear all"
   },
   "filters": {
     "allFilters": "All Filters",
@@ -2980,7 +3083,28 @@
       "castle": "Castle",
       "cave": "Cave",
       "container": "Container",
-      "cycladicHome": "Cycladic Home"
+      "cycladicHome": "Cycladic Home",
+      "dammuso": "Dammuso",
+      "dome": "Dome",
+      "earthHome": "Earth home",
+      "farm": "Farm",
+      "guestTower": "Guest tower",
+      "guesthouse": "Guesthouse",
+      "hotel": "Hotel",
+      "houseboat": "Houseboat",
+      "huts": "Huts",
+      "minsu": "Minsu",
+      "riad": "Riad",
+      "ryokan": "Ryokan",
+      "shepherdsHut": "Shepherd's hut",
+      "tent": "Tent",
+      "tinyHome": "Tiny home",
+      "tipi": "Tipi",
+      "trullo": "Trullo",
+      "tower": "Tower",
+      "treehouse": "Treehouse",
+      "windmill": "Windmill",
+      "yurt": "Yurt"
     },
     "stepNavigation": {
       "next": "Next",
@@ -3381,14 +3505,17 @@
       "heading": "Now, set your price",
       "subtitle": "You can change it anytime. Research similar listings in your area to help you pick the right price.",
       "cardTitle": "Base price",
-      "label": "Price per night (USD)",
+      "label": "Price per night",
       "pricePlaceholder": "0",
       "tipTitle": "Price tip",
       "tipText": "Most hosts in your area charge $85–$130 per night. Consider starting with a competitive price to attract your first guests and reviews.",
       "breakdownTitle": "Guest price breakdown",
       "breakdownNights": "$100 x 1 night",
       "serviceFee": "Mkan service fee",
-      "total": "Total"
+      "total": "Total",
+      "cleaningFee": "Cleaning fee",
+      "weeklyDiscount": "Weekly discount",
+      "monthlyDiscount": "Monthly discount"
     },
     "houseRules": {
       "heading": "Set your house rules",
@@ -3617,7 +3744,8 @@
       "visibilityTitle": "Better visibility",
       "visibilityText": "Instant Book listings appear higher in search results",
       "protectedTitle": "You're still protected",
-      "protectedText": "Even with Instant Book, you can still set requirements for guests (like verified ID) and can cancel penalty-free if a guest doesn't meet your requirements."
+      "protectedText": "Even with Instant Book, you can still set requirements for guests (like verified ID) and can cancel penalty-free if a guest doesn't meet your requirements.",
+      "toggleDescription": "Guests can book automatically without requesting approval."
     },
     "availability": {
       "heading": "Availability settings",
@@ -3656,7 +3784,9 @@
       "bathroom": "Bathroom",
       "additional": "Additional photos",
       "addPhotos": "Add photos",
-      "photosCount": "{count} photos"
+      "photosCount": "{count} photos",
+      "coverPhoto": "Cover photo",
+      "uploading": "Uploading…"
     },
     "checkInMethod": {
       "heading": "Check-in method",
@@ -3777,6 +3907,52 @@
       "passwordPlaceholder": "Enter wifi password",
       "instructionsTitle": "Guest instructions",
       "instructionsText": "These details will be shared with guests after they check in. Make sure your wifi information is accurate and up to date."
+    },
+    "nav": {
+      "yourSpace": "Your space",
+      "arrivalGuide": "Arrival guide",
+      "listingEditor": "Listing editor",
+      "completeSteps": "Complete required steps",
+      "completeStepsBody": "Finish these final tasks to publish your listing and start getting booked.",
+      "photoTour": "Photo tour",
+      "title": "Title",
+      "propertyType": "Property type",
+      "pricing": "Pricing",
+      "availability": "Availability",
+      "numberOfGuests": "Number of guests",
+      "description": "Description",
+      "amenities": "Amenities",
+      "accessibility": "Accessibility features",
+      "location": "Location",
+      "host": "Host",
+      "coHosts": "Co-hosts",
+      "instantBook": "Instant Book",
+      "houseRules": "House rules",
+      "guestSafety": "Guest safety",
+      "cancellationPolicy": "Cancellation policy",
+      "customLink": "Custom link",
+      "checkInOut": "Check-in and checkout",
+      "directions": "Directions",
+      "checkInMethod": "Check-in method",
+      "wifiDetails": "Wifi details",
+      "houseManual": "House manual",
+      "travelHouseRules": "House rules",
+      "checkoutInstructions": "Checkout instructions",
+      "guidebooks": "Guidebooks",
+      "interactionPreferences": "Interaction preferences",
+      "valuePerNight": "{price} per night",
+      "valueGuests": "{count} guests",
+      "valueBedBath": "{bedrooms} bedroom · {beds} bed · {bathrooms} bath",
+      "valueAmenities": "{count} amenities",
+      "valueEntirePlace": "Entire place · {type}",
+      "notSet": "Not set",
+      "aboutYou": "About you",
+      "manageCohosts": "Manage co-hosts",
+      "on": "On",
+      "off": "Off",
+      "save": "Save",
+      "saving": "Saving…",
+      "valueNightStay": "{min}–{max} night stay"
     }
   },
   "atom": {
@@ -4389,5 +4565,55 @@
     "acceptAll": "Accept all",
     "rejectNonEssential": "Only necessary",
     "learnMore": "Manage preferences"
+  },
+  "profile": {
+    "profile": "Profile",
+    "aboutMe": "About me",
+    "pastTrips": "Past trips",
+    "connections": "Connections",
+    "edit": "Edit",
+    "host": "Host",
+    "completeYourProfile": "Complete your profile",
+    "completeProfileBody": "Your Mkan profile is an important part of every reservation. Complete yours to help other hosts and guests get to know you.",
+    "getStarted": "Get started",
+    "showReviewsWritten": "Show reviews I’ve written",
+    "back": "Back",
+    "myProfile": "My profile",
+    "myProfileBody": "Hosts and guests can see your profile and it may appear across Mkan to help us build trust in our community.",
+    "learnMore": "Learn more",
+    "add": "Add",
+    "done": "Done",
+    "changePhoto": "Change photo",
+    "aboutMeSection": "About me",
+    "writeIntroPlaceholder": "Write something fun and punchy.",
+    "addIntro": "Add intro",
+    "whereIveBeen": "Where I’ve been",
+    "whereIveBeenBody": "Pick the stamps you want other people to see on your profile.",
+    "nextDestination": "Next destination",
+    "editTravelStamps": "Edit travel stamps",
+    "myInterests": "My interests",
+    "myInterestsBody": "Find common ground with other guests and hosts by adding interests to your profile.",
+    "addInterests": "Add interests",
+    "metaTitleView": "Profile",
+    "metaTitleEdit": "Edit profile",
+    "save": "Save",
+    "cancel": "Cancel",
+    "selectDecade": "Select a decade",
+    "addTagPlaceholder": "Type and press Enter",
+    "prompts": {
+      "decadeBorn": "Decade I was born",
+      "whereWantedToGo": "Where I’ve always wanted to go",
+      "work": "My work",
+      "pets": "Pets",
+      "school": "Where I went to school",
+      "spendTime": "I spend too much time",
+      "song": "My favorite song in high school",
+      "funFact": "My fun fact",
+      "uselessSkill": "My most useless skill",
+      "obsessedWith": "I’m obsessed with",
+      "languages": "Languages I speak",
+      "bioTitle": "My biography title would be",
+      "whereILive": "Where I live"
+    }
   }
 }

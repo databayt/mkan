@@ -1,17 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ShareIcon, HeartIcon } from "@/components/atom/icons"
 import { useRouter, useParams } from "next/navigation"
 import PhotoTour from "@/components/listings/photo-tour"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
+import { getListing } from "@/lib/actions/listing-actions"
+import { Loader2 } from "lucide-react"
 
 export default function PhotoTourPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const dict = useDictionary()
   const [isSaved, setIsSaved] = useState(false)
+  const [photos, setPhotos] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
 
   const handleBack = () => {
     router.back()
@@ -33,6 +37,36 @@ export default function PhotoTourPage() {
       navigator.clipboard.writeText(window.location.href)
     }
   }
+
+  useEffect(() => {
+    if (!params?.id) return;
+    const listingId = parseInt(params.id);
+    if (isNaN(listingId)) {
+      setLoading(false);
+      return;
+    }
+
+    getListing(listingId)
+      .then((listing) => {
+        if (listing && listing.photoUrls) {
+          setPhotos(listing.photoUrls);
+        }
+      })
+      .catch((err) => {
+        console.error("Error fetching listing photos:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [params?.id]);
+
+  const sections = [
+    {
+      id: "all-photos",
+      label: (dict?.rental?.listing as any)?.allPhotos ?? "All photos",
+      photos: photos
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-white pb-10">
@@ -78,7 +112,13 @@ export default function PhotoTourPage() {
 
       {/* Photo Tour Content */}
       <div className="pt-4">
-        <PhotoTour />
+        {loading ? (
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
+          </div>
+        ) : (
+          <PhotoTour sections={sections} />
+        )}
       </div>
     </div>
   )

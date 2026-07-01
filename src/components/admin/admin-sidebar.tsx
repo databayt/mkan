@@ -59,7 +59,7 @@ export function AdminSidebar({ lang, labels }: AdminSidebarProps) {
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r bg-white"
+      className="border-e bg-white"
       style={{
         top: `${NAVBAR_HEIGHT}px`,
         height: `calc(100vh - ${NAVBAR_HEIGHT}px)`,

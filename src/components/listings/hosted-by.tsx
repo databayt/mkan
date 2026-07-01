@@ -30,14 +30,14 @@ export default function HostedBy({ host, hostingMonths, superhost = false }: Hos
   const headline = (t?.hostedBy ?? "Hosted by {name}").replace("{name}", displayName);
 
   return (
-    <div className="flex items-center gap-4 py-8">
+    <div className="flex items-center gap-4 py-6">
       <div className="relative">
-        <div className="w-11 h-11 rounded-full overflow-hidden relative">
+        <div className="w-10 h-10 rounded-full overflow-hidden relative">
           <Image
             src={avatar}
             alt={displayName}
-            width={44}
-            height={44}
+            width={40}
+            height={40}
             className="w-full h-full object-cover"
           />
         </div>
@@ -48,9 +48,9 @@ export default function HostedBy({ host, hostingMonths, superhost = false }: Hos
         )}
       </div>
       <div className="flex flex-col">
-        <h5 className="text-lg font-semibold">{headline}</h5>
+        <h5 className="text-base font-medium leading-5 text-[#222222]">{headline}</h5>
         {(superhost || typeof hostingMonths === "number") && (
-          <p>
+          <p className="text-sm leading-[18px] text-[#6A6A6A]">
             {[
               superhost ? t?.superhost ?? "Superhost" : null,
               typeof hostingMonths === "number"

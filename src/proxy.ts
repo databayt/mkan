@@ -128,7 +128,7 @@ function buildCsp(options: { isDev: boolean }): string {
   return directives.join('; ');
 }
 
-function addSecurityHeaders(response: NextResponse, requestId?: string) {
+function addSecurityHeaders(response: NextResponse, requestId?: string, persistLocale?: string) {
   // Request-id correlation: every response carries the id; downstream logs
   // (instrumentation onRequestError) read it back off the request headers.
   if (requestId) response.headers.set('X-Request-Id', requestId);
@@ -157,6 +157,20 @@ function addSecurityHeaders(response: NextResponse, requestId?: string) {
       'Content-Security-Policy-Report-Only',
       buildCsp({ isDev: true })
     );
+  }
+
+  // Persist the active locale so a later no-locale redirect — notably the
+  // post-login DEFAULT_LOGIN_REDIRECT ("/hosting/listings"), which carries no
+  // locale prefix — resolves to the language the user is actually viewing
+  // instead of falling back to Accept-Language or the default locale. Without
+  // this, a first-request deep link to /en/login can land the user in /ar after
+  // login. Mirrors the cookie the add-locale redirect already sets.
+  if (persistLocale) {
+    response.cookies.set('NEXT_LOCALE', persistLocale, {
+      maxAge: 365 * 24 * 60 * 60,
+      sameSite: 'lax',
+      secure: isProduction,
+    });
   }
 }
 
@@ -238,7 +252,7 @@ export function proxy(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
     });
 
-    addSecurityHeaders(response, requestId);
+    addSecurityHeaders(response, requestId, locale);
     return response;
   }
 
@@ -247,23 +261,36 @@ export function proxy(request: NextRequest) {
   const path = getPathWithoutLocale(pathname);
   const loggedIn = isAuthenticated(request);
 
-  // Auth routes: if already logged in, redirect away from login/join pages
+  // Auth routes: if already logged in, redirect away from login/join pages.
+  // Honor the callbackUrl the login flow carried (e.g. /host onboarding) so we
+  // return the user where they were headed instead of the generic dashboard.
+  // Only same-origin internal paths are accepted, to avoid an open redirect.
   if (isAuthRoute(path)) {
     if (loggedIn) {
-      request.nextUrl.pathname = `/${locale}${DEFAULT_LOGIN_REDIRECT}`;
-      const response = NextResponse.redirect(request.nextUrl);
-      addSecurityHeaders(response, requestId);
+      const callbackUrl = request.nextUrl.searchParams.get('callbackUrl');
+      const isSafeInternalPath =
+        !!callbackUrl &&
+        callbackUrl.startsWith('/') &&
+        !callbackUrl.startsWith('//') &&
+        !callbackUrl.startsWith('/\\');
+      const destination = isSafeInternalPath
+        ? callbackUrl
+        : `/${locale}${DEFAULT_LOGIN_REDIRECT}`;
+      const response = NextResponse.redirect(
+        new URL(destination, request.nextUrl.origin)
+      );
+      addSecurityHeaders(response, requestId, locale);
       return response;
     }
     const response = passThrough();
-    addSecurityHeaders(response, requestId);
+    addSecurityHeaders(response, requestId, locale);
     return response;
   }
 
   // Public routes: always accessible
   if (isPublicRoute(path)) {
     const response = passThrough();
-    addSecurityHeaders(response, requestId);
+    addSecurityHeaders(response, requestId, locale);
     return response;
   }
 
@@ -277,14 +304,14 @@ export function proxy(request: NextRequest) {
     request.nextUrl.pathname = `/${locale}/login`;
     request.nextUrl.search = `?callbackUrl=${callbackUrl}`;
     const response = NextResponse.redirect(request.nextUrl);
-    addSecurityHeaders(response, requestId);
+    addSecurityHeaders(response, requestId, locale);
     return response;
   }
 
   // Everything else (authenticated users on any route, anonymous users on
   // unknown paths, etc.) — let through so the app router can resolve.
   const response = passThrough();
-  addSecurityHeaders(response, requestId);
+  addSecurityHeaders(response, requestId, locale);
   return response;
 }
 

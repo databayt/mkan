@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
 import { useLocale } from "@/components/internationalization/use-locale"
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters"
+import { PropertyImageFallback } from "@/components/atom/property-image-fallback"
 
 // Exact Airbnb palette (measured from the live /s/homes search cards):
 //   title / price / rating  → #222222
@@ -30,6 +31,9 @@ export interface SearchCardProps {
   /** When a date range is active, the trip total + its night count render as
       "{total} for {nights} nights" instead of the per-night price. */
   totalPrice?: number
+  /** Pre-discount price (per-night or trip total). When higher than the shown
+      price it renders struck-through before it, like Airbnb's discounted cards. */
+  originalPrice?: number
   nights?: number
   /** Average rating; null/0 hides the rating cluster (matches Airbnb). */
   rating?: number | null
@@ -49,6 +53,7 @@ export function SearchCard({
   dates,
   pricePerNight,
   totalPrice,
+  originalPrice,
   nights,
   rating,
   reviewsCount = 0,
@@ -65,9 +70,12 @@ export function SearchCard({
   const [index, setIndex] = useState(0)
   const [liked, setLiked] = useState(isFavorite)
 
-  const photos = images.length > 0 ? images : ["/images/default-property.svg"]
+  const hasPhotos = images.length > 0
+  const photos = hasPhotos ? images : []
   const dotCount = Math.min(photos.length, 5)
   const hasRating = rating != null && reviewsCount > 0
+  // Airbnb shows "New" (with a star) on listings that have no reviews yet.
+  const newLabel = sp?.new ?? "New"
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -89,22 +97,32 @@ export function SearchCard({
     nights && totalPrice != null
       ? (sp?.forNights ?? "for {count} nights").replace("{count}", String(nights))
       : (card?.night ?? "night")
+  // Struck-through pre-discount price (only when it genuinely exceeds the shown price).
+  const shownPrice = nights && totalPrice != null ? totalPrice : pricePerNight
+  const originalNumber =
+    originalPrice != null && originalPrice > shownPrice
+      ? formatCurrency(originalPrice, locale)
+      : null
 
   return (
     <div className="group cursor-pointer" onClick={() => onCardClick?.(id)}>
       {/* Image — 4:3, 12px radius (Airbnb measured 307×230). */}
       <div
-        className="relative w-full overflow-hidden rounded-xl bg-muted"
-        style={{ aspectRatio: "4 / 3" }}
+        className="relative w-full overflow-hidden bg-muted"
+        style={{ aspectRatio: "4 / 3", borderRadius: 20 }}
       >
-        <Image
-          src={photos[index] || "/images/default-property.svg"}
-          alt={title}
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-          className="object-cover"
-          priority={priority}
-        />
+        {hasPhotos ? (
+          <Image
+            src={photos[index] ?? photos[0]!}
+            alt={title}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            className="object-cover"
+            priority={priority}
+          />
+        ) : (
+          <PropertyImageFallback seed={id || title} alt={title} />
+        )}
 
         {/* Heart — 32×32, inset ~12px from the top-end corner. */}
         <button
@@ -183,7 +201,7 @@ export function SearchCard({
           >
             {title}
           </h3>
-          {hasRating && (
+          {hasRating ? (
             <div
               className="flex shrink-0 items-center gap-1"
               style={{ fontSize: 15, lineHeight: "19px", color: DARK }}
@@ -196,6 +214,14 @@ export function SearchCard({
                 })}
                 {reviewsCount > 0 && ` (${formatNumber(reviewsCount, locale)})`}
               </span>
+            </div>
+          ) : (
+            <div
+              className="flex shrink-0 items-center gap-1"
+              style={{ fontSize: 15, lineHeight: "19px", color: DARK }}
+            >
+              <Star className="h-3 w-3 shrink-0" style={{ fill: DARK, color: DARK }} />
+              <span>{newLabel}</span>
             </div>
           )}
         </div>
@@ -221,8 +247,15 @@ export function SearchCard({
           </p>
         )}
 
-        {/* Row 5 — price */}
+        {/* Row 5 — price (optional struck-through original, then the discounted/underlined price) */}
         <p className="mt-1" style={{ fontSize: 15, lineHeight: "19px", color: DARK }}>
+          {originalNumber && (
+            <>
+              <span style={{ color: GRAY, textDecorationLine: "line-through" }}>
+                {originalNumber}
+              </span>{" "}
+            </>
+          )}
           <span className="font-medium underline underline-offset-2">{priceNumber}</span>{" "}
           <span style={{ color: GRAY }}>{priceSuffix}</span>
         </p>

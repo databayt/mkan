@@ -1,137 +1,220 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Settings, Eye } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+import React from "react";
+import Image from "next/image";
+import { useParams, usePathname, useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { useEditor } from "@/components/hosting/listing/editor-context";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
+import type { Locale } from "@/components/internationalization/config";
+import {
+  ChevronLeftIcon,
+  GearIcon,
+  PhotosGridIcon,
+} from "@/components/hosting/listing/editor-icons";
 
-interface ListingSidebarProps {
-  listingId: string;
-}
+type Section = { slug: string; label: string; value: string };
 
-const ListingSidebar = ({ listingId }: ListingSidebarProps) => {
+const fill = (tpl: string, vars: Record<string, string | number>) =>
+  Object.entries(vars).reduce(
+    (acc, [k, v]) => acc.replace(`{${k}}`, String(v)),
+    tpl
+  );
+
+const ListingSidebar = () => {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'details' | 'travel'>('details');
+  const pathname = usePathname() ?? "";
+  const params = useParams<{ lang: string; id: string }>();
+  const lang = (params?.lang ?? "en") as Locale;
+  const id = params?.id ?? "";
+  const dict = useDictionary();
+  const nav = dict?.listingEditor?.nav;
+  const { listing } = useEditor();
 
-  const detailsLinks = [
-    { title: 'Photo tour', path: `/hosting/listings/editor/${listingId}/details/photo-tour`, description: '1 bedroom • 1 bed • 1 bath' },
-    { title: 'Title', path: `/hosting/listings/editor/${listingId}/details/title`, description: 'hello makan' },
-    { title: 'Property type', path: `/hosting/listings/editor/${listingId}/details/property-type`, description: 'Entire place • House' },
-    { title: 'Pricing', path: `/hosting/listings/editor/${listingId}/details/pricing`, description: 'SDG 100 per night' },
-    { title: 'Availability', path: `/hosting/listings/editor/${listingId}/details/availability`, description: 'Calendar and availability' },
-    { title: 'Number of guests', path: `/hosting/listings/editor/${listingId}/details/number-of-guests`, description: 'Guest capacity' },
-    { title: 'Description', path: `/hosting/listings/editor/${listingId}/details/description`, description: 'About your space' },
-    { title: 'Amenities', path: `/hosting/listings/editor/${listingId}/details/amenities`, description: 'What you offer' },
-    { title: 'Accessibility', path: `/hosting/listings/editor/${listingId}/details/accessibility`, description: 'Accessibility features' },
-    { title: 'Location', path: `/hosting/listings/editor/${listingId}/details/location`, description: 'Where you\'re located' },
-    { title: 'Host', path: `/hosting/listings/editor/${listingId}/details/host`, description: 'About you' },
-    { title: 'Co-hosts', path: `/hosting/listings/editor/${listingId}/details/co-hosts`, description: 'Manage co-hosts' },
-    { title: 'Instant book', path: `/hosting/listings/editor/${listingId}/details/instant-book`, description: 'Booking settings' },
-    { title: 'House rules', path: `/hosting/listings/editor/${listingId}/details/house-rules`, description: 'Rules for guests' },
-    { title: 'Guest safety', path: `/hosting/listings/editor/${listingId}/details/guest-safety`, description: 'Safety information' },
-    { title: 'Cancellation policy', path: `/hosting/listings/editor/${listingId}/details/cancellation-policy`, description: 'Cancellation terms' },
-    { title: 'Custom link', path: `/hosting/listings/editor/${listingId}/details/custom-link`, description: 'Custom booking link' },
+  const [tab, setTab] = React.useState<"details" | "travel">(() =>
+    pathname.includes("/travel/") ? "travel" : "details"
+  );
+
+  const base = `/${lang}/hosting/listings/editor/${id}`;
+  const t = (k: string, fallback: string) =>
+    (nav?.[k as keyof typeof nav] as string) ?? fallback;
+
+  // ---- value sub-lines derived from the real listing ----
+  const notSet = t("notSet", "Not set");
+  const price =
+    listing?.pricePerNight != null
+      ? fill(t("valuePerNight", "{price} per night"), {
+          price: formatCurrency(listing.pricePerNight, lang),
+        })
+      : notSet;
+  const guests =
+    listing?.guestCount != null
+      ? fill(t("valueGuests", "{count} guests"), { count: formatNumber(listing.guestCount, lang) })
+      : notSet;
+  const bedBath = fill(t("valueBedBath", "{bedrooms} bedroom · {beds} bed · {bathrooms} bath"), {
+    bedrooms: formatNumber(listing?.bedrooms ?? 1, lang),
+    beds: formatNumber(listing?.bedrooms ?? 1, lang),
+    bathrooms: formatNumber(listing?.bathrooms ?? 1, lang),
+  });
+  const amenities = fill(t("valueAmenities", "{count} amenities"), {
+    count: listing?.amenities?.length ?? 0,
+  });
+  const propertyType = listing?.propertyType
+    ? fill(t("valueEntirePlace", "Entire place · {type}"), {
+        type: listing.propertyType,
+      })
+    : notSet;
+  const locationValue = listing?.location
+    ? [listing.location.city, listing.location.country]
+        .filter(Boolean)
+        .join(", ") || notSet
+    : notSet;
+
+  const detailSections: Section[] = [
+    { slug: "details/title", label: t("title", "Title"), value: listing?.title || notSet },
+    { slug: "details/property-type", label: t("propertyType", "Property type"), value: propertyType },
+    { slug: "details/pricing", label: t("pricing", "Pricing"), value: price },
+    { slug: "details/availability", label: t("availability", "Availability"), value: listing?.minStay ? fill(t("valueNightStay", "{min}–{max} night stay"), { min: formatNumber(listing.minStay, lang), max: formatNumber(listing.maxStay ?? listing.minStay, lang) }) : notSet },
+    { slug: "details/number-of-guests", label: t("numberOfGuests", "Number of guests"), value: guests },
+    { slug: "details/description", label: t("description", "Description"), value: listing?.description ? listing.description.slice(0, 48) : notSet },
+    { slug: "details/amenities", label: t("amenities", "Amenities"), value: amenities },
+    { slug: "details/accessibility", label: t("accessibility", "Accessibility features"), value: notSet },
+    { slug: "details/location", label: t("location", "Location"), value: locationValue },
+    { slug: "details/host", label: t("host", "Host"), value: listing?.host?.username || t("aboutYou", "About you") },
+    { slug: "details/co-hosts", label: t("coHosts", "Co-hosts"), value: t("manageCohosts", "Manage co-hosts") },
+    { slug: "details/instant-book", label: t("instantBook", "Instant Book"), value: listing?.instantBook ? t("on", "On") : t("off", "Off") },
+    { slug: "details/house-rules", label: t("houseRules", "House rules"), value: notSet },
+    { slug: "details/guest-safety", label: t("guestSafety", "Guest safety"), value: notSet },
+    { slug: "details/cancellation-policy", label: t("cancellationPolicy", "Cancellation policy"), value: listing?.cancellationPolicy || notSet },
+    { slug: "details/custom-link", label: t("customLink", "Custom link"), value: notSet },
   ];
 
-  const travelLinks = [
-    { title: 'Check-in and checkout', path: `/hosting/listings/editor/${listingId}/travel/check-in-out`, description: 'Check-in times' },
-    { title: 'Directions', path: `/hosting/listings/editor/${listingId}/travel/directions`, description: 'Getting there' },
-    { title: 'Check-in method', path: `/hosting/listings/editor/${listingId}/travel/check-in-method`, description: 'How guests check in' },
-    { title: 'Wifi details', path: `/hosting/listings/editor/${listingId}/travel/wifi-details`, description: 'Network information' },
-    { title: 'House manual', path: `/hosting/listings/editor/${listingId}/travel/house-manual`, description: 'How things work' },
-    { title: 'House rules', path: `/hosting/listings/editor/${listingId}/travel/house-rules`, description: 'Rules for guests' },
-    { title: 'Checkout instructions', path: `/hosting/listings/editor/${listingId}/travel/checkout-instructions`, description: 'Checkout process' },
-    { title: 'Guidebooks', path: `/hosting/listings/editor/${listingId}/travel/guidebooks`, description: 'Local recommendations' },
-    { title: 'Interaction preferences', path: `/hosting/listings/editor/${listingId}/travel/interaction-preferences`, description: 'How you interact' },
+  const travelSections: Section[] = [
+    { slug: "travel/check-in-out", label: t("checkInOut", "Check-in and checkout"), value: listing?.checkInTime ? `${listing.checkInTime} – ${listing.checkOutTime ?? ""}` : notSet },
+    { slug: "travel/directions", label: t("directions", "Directions"), value: notSet },
+    { slug: "travel/check-in-method", label: t("checkInMethod", "Check-in method"), value: listing?.checkInMethod || notSet },
+    { slug: "travel/wifi-details", label: t("wifiDetails", "Wifi details"), value: notSet },
+    { slug: "travel/house-manual", label: t("houseManual", "House manual"), value: notSet },
+    { slug: "travel/house-rules", label: t("travelHouseRules", "House rules"), value: notSet },
+    { slug: "travel/checkout-instructions", label: t("checkoutInstructions", "Checkout instructions"), value: notSet },
+    { slug: "travel/guidebooks", label: t("guidebooks", "Guidebooks"), value: notSet },
+    { slug: "travel/interaction-preferences", label: t("interactionPreferences", "Interaction preferences"), value: notSet },
   ];
 
-  const currentLinks = activeTab === 'details' ? detailsLinks : travelLinks;
+  const sections = tab === "details" ? detailSections : travelSections;
+  const isActive = (slug: string) => pathname.includes(`/editor/${id}/${slug}`);
+  const photos = listing?.photoUrls ?? [];
 
   return (
-    <div className="lg:col-span-1 lg:max-w-80 h-[calc(100vh-2rem)] overflow-y-auto">
-      <Button
-        variant="ghost"
-        onClick={() => router.push('/hosting/listings')}
-        className="gap-2 mb-6 p-0 h-auto"
+    <nav aria-label={t("listingEditor", "Listing editor")} className="pb-8">
+      {/* Back */}
+      <button
+        type="button"
+        onClick={() => router.push(`/${lang}/hosting/listings`)}
+        className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-foreground hover:opacity-70"
       >
-        <ArrowLeft className="size-5 rtl:rotate-180" />
-        <span>Listing editor</span>
-      </Button>
+        <ChevronLeftIcon size={16} className="rtl:rotate-180" />
+        <span>{t("listingEditor", "Listing editor")}</span>
+      </button>
 
-      {/* Navigation Tabs */}
-      <div className="flex space-x-6 mb-8">
-        <button 
-          onClick={() => setActiveTab('details')}
-          className={cn(
-            "font-medium border-b-2 pb-2 transition-colors",
-            activeTab === 'details' 
-              ? "text-foreground border-foreground" 
-              : "text-muted-foreground border-transparent hover:text-foreground"
-          )}
+      {/* Tabs */}
+      <div className="mb-6 flex items-center gap-6 border-b border-border">
+        {(["details", "travel"] as const).map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            className={cn(
+              "-mb-px border-b-2 pb-3 text-[15px] font-medium transition-colors",
+              tab === key
+                ? "border-foreground text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {key === "details" ? t("yourSpace", "Your space") : t("arrivalGuide", "Arrival guide")}
+          </button>
+        ))}
+        <button
+          type="button"
+          aria-label="Settings"
+          className="ms-auto pb-3 text-muted-foreground hover:text-foreground"
         >
-          Your space
+          <GearIcon size={18} />
         </button>
-        <button 
-          onClick={() => setActiveTab('travel')}
-          className={cn(
-            "font-medium border-b-2 pb-2 transition-colors",
-            activeTab === 'travel' 
-              ? "text-foreground border-foreground" 
-              : "text-muted-foreground border-transparent hover:text-foreground"
-          )}
-        >
-          Arrival guide
-        </button>
-        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground pb-2 p-0 h-auto">
-          <Settings className="size-4" />
-        </Button>
       </div>
 
-      {/* Required Steps - Common to both tabs */}
-      <Card 
-        onClick={() => router.push(`/verify-listing/${listingId}`)} 
-        className="mb-6 cursor-pointer hover:shadow-md transition-shadow"
-      >
-        <CardHeader>
+      {/* Complete required steps (only while unpublished) */}
+      {listing && !listing.isPublished ? (
+        <button
+          type="button"
+          onClick={() => router.push(`/${lang}/verify-listing/${id}`)}
+          className="mb-4 block w-full rounded-2xl border border-border p-4 text-start transition hover:border-foreground hover:shadow-sm"
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-destructive rounded-full"></div>
-              <CardTitle className="text-lg">Complete required steps</CardTitle>
+              <span className="size-2 rounded-full bg-destructive" />
+              <span className="font-semibold">{t("completeSteps", "Complete required steps")}</span>
             </div>
-            <Button variant="ghost" size="sm" className="p-0 h-auto">
-              <ArrowLeft className="size-4 rotate-180 rtl:rotate-180" />
-            </Button>
+            <ChevronLeftIcon size={14} className="rotate-180 rtl:rotate-0 text-muted-foreground" />
           </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Finish these final tasks to publish your listing and start getting booked.
+          <p className="mt-2 text-sm text-muted-foreground">
+            {t("completeStepsBody", "Finish these final tasks to publish your listing and start getting booked.")}
           </p>
-        </CardContent>
-      </Card>
+        </button>
+      ) : null}
 
-      {/* Dynamic Links based on active tab */}
-      <div className="space-y-4">
-        {currentLinks.map((link, index) => (
-          <Card 
-            key={index}
-            onClick={() => router.push(link.path)} 
-            className="cursor-pointer hover:shadow-md transition-shadow"
+      {/* Photo tour card (only on the "Your space" tab) */}
+      {tab === "details" ? (
+        <button
+          type="button"
+          onClick={() => router.push(`${base}/details/photo-tour`)}
+          data-active={isActive("details/photo-tour")}
+          className="mb-4 block w-full rounded-2xl border border-border p-3 text-start transition hover:border-foreground hover:shadow-sm data-[active=true]:border-foreground"
+        >
+          <div className="grid grid-cols-2 gap-1.5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="relative aspect-[4/3] overflow-hidden rounded-lg bg-muted"
+              >
+                {photos[i] ? (
+                  <Image
+                    src={photos[i]}
+                    alt=""
+                    fill
+                    sizes="160px"
+                    className="object-cover"
+                  />
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 px-1">
+            <p className="font-semibold">{t("photoTour", "Photo tour")}</p>
+            <p className="text-sm text-muted-foreground">{bedBath}</p>
+          </div>
+        </button>
+      ) : null}
+
+      {/* Section cards */}
+      <div className="space-y-3">
+        {sections.map((s) => (
+          <button
+            key={s.slug}
+            type="button"
+            onClick={() => router.push(`${base}/${s.slug}`)}
+            data-active={isActive(s.slug)}
+            className="block w-full rounded-2xl border border-border p-4 text-start transition hover:border-foreground hover:shadow-sm data-[active=true]:border-foreground"
           >
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">{link.title}</CardTitle>
-              {link.description && (
-                <p className="text-sm text-muted-foreground">{link.description}</p>
-              )}
-            </CardHeader>
-          </Card>
+            <p className="font-semibold leading-snug">{s.label}</p>
+            {s.value ? (
+              <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{s.value}</p>
+            ) : null}
+          </button>
         ))}
       </div>
-    </div>
+    </nav>
   );
 };
 

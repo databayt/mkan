@@ -87,7 +87,7 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
           await updateListingData({ photoUrls: updatedPhotos });
         }
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Upload failed');
+        toast.error(error instanceof Error ? error.message : dict.hosting.pages.photos.uploadFailed);
       } finally {
         setIsUploading(false);
       }
@@ -109,7 +109,7 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
 
         await updateListingData({ photoUrls: updatedPhotos });
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Upload failed');
+        toast.error(error instanceof Error ? error.message : dict.hosting.pages.photos.uploadFailed);
       } finally {
         setIsUploading(false);
       }
@@ -155,7 +155,7 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
             />
             <button
               onClick={() => removePhoto(i)}
-              className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-2 end-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
             >
               ×
             </button>

@@ -124,7 +124,7 @@ export default function HostingContent({
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center justify-center pt-2 sm:pt-6">
             <Image
               src="/hosting/today.png"
               alt={t?.todayIllustration ?? "Today illustration"}
@@ -132,21 +132,30 @@ export default function HostingContent({
               height={150}
               className="object-contain sm:w-[200px] sm:h-[200px]"
             />
-            <div className="text-center">
-              <p className="text-gray-500 text-base sm:text-lg">
-                {activeTab === 'today'
-                  ? (t?.noReservations ?? 'You don\'t have any reservations')
-                  : (t?.noUpcomingReservations ?? 'You don\'t have any upcoming reservations')}
-              </p>
-            </div>
+            <h2 className="mt-2 max-w-xs text-center text-2xl font-semibold leading-tight text-foreground sm:text-[32px] sm:leading-9">
+              {activeTab === 'today'
+                ? (t?.noReservations ?? 'You don\'t have any reservations')
+                : (t?.noUpcomingReservations ?? 'You don\'t have any upcoming reservations')}
+            </h2>
+            <p className="mt-3 max-w-sm text-center text-sm text-muted-foreground sm:text-base">
+              {t?.noReservationsSubtitle ?? "To get booked, you'll need to complete and publish your listing."}
+            </p>
+            <Link
+              href={`/${lang}/hosting/listings`}
+              className="mt-7 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-muted px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/70"
+            >
+              {t?.completeListing ?? 'Complete your listing'}
+            </Link>
           </div>
         )}
 
-        <div className="mt-10 text-center">
-          <Link href={`/${lang}/hosting/listings`} className="text-sm underline text-muted-foreground">
-            {t?.manageListings ?? 'Manage your listings'}
-          </Link>
-        </div>
+        {visible.length > 0 && (
+          <div className="mt-10 text-center">
+            <Link href={`/${lang}/hosting/listings`} className="text-sm underline text-muted-foreground">
+              {t?.manageListings ?? 'Manage your listings'}
+            </Link>
+          </div>
+        )}
       </div>
     </>
   );

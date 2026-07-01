@@ -63,7 +63,7 @@ export function PropertyCard({
   return (
     <div
       className={cn(
-        "w-full max-w-sm cursor-pointer group",
+        "w-full max-w-none sm:max-w-sm cursor-pointer group",
         className
       )}
       onClick={handleCardClick}
@@ -71,7 +71,7 @@ export function PropertyCard({
       {/* Image Container */}
       <div className="relative mb-3">
         {/* Main Image */}
-        <div className="relative w-full h-52 bg-gray-200 rounded-md overflow-hidden">
+        <div className="relative w-full aspect-[4/3] bg-gray-200 rounded-md overflow-hidden">
           <Image
             src={displayImages[currentImageIndex] ?? '/api/placeholder/303/287'}
             alt={title}
@@ -84,7 +84,7 @@ export function PropertyCard({
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-3 right-3.5 w-6 h-6 backdrop-blur-sm rounded-full"
+            className="absolute top-3 end-3.5 w-6 h-6 backdrop-blur-sm rounded-full"
             onClick={handleFavoriteClick}
             aria-label={isLiked ? (t?.removeFavorite ?? "Remove from favorites") : (t?.addFavorite ?? "Add to favorites")}
           >
@@ -100,7 +100,7 @@ export function PropertyCard({
           {isSuperhostBadge && (
             <Badge
               variant="secondary"
-              className="absolute top-3 left-3 bg-white text-gray-800 text-xs font-medium"
+              className="absolute top-3 start-3 bg-white text-gray-800 text-xs font-medium"
             >
               {t?.superhost ?? "Superhost"}
             </Badge>
@@ -173,7 +173,7 @@ export function PropertyGrid({
 }) {
   return (
     <div className={cn(
-      "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6",
+      "grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-6",
       className
     )}>
       {properties.map((property) => (

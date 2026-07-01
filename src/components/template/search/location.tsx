@@ -14,70 +14,90 @@ interface LocationProps {
   error: string | null;
   onSearchQueryChange: (query: string) => void;
   onLocationSelect: (location: LocationSuggestion | null) => void;
+  // fillHeight = stretch the results list to fill the parent's height (and add
+  // bottom clearance for a floating action button) instead of the fixed
+  // `max-h-[340px]` used by the desktop popover. Used by the mobile hero card.
+  fillHeight?: boolean;
 }
 
+// Mkan's live catalog is 100% in Port Sudan on the Red Sea coast, so the
+// "Where" suggestions are tuned to that city and its districts — every entry
+// returns real listings (the foreign cities they replaced returned zero).
+//
+// `searchValue` is the English token actually sent to the server: the city
+// name returns the whole catalog, while a district token ("Coral Coast")
+// narrows to that part of town via the address match. `displayName` is the
+// localized label shown in the list, so Arabic users see "بورتسودان" while
+// the query stays the English "Port Sudan" the database stores.
 const SUGGESTED_DESTINATIONS = {
   en: [
     {
       city: "Nearby",
       state: "",
       country: "",
+      searchValue: "",
       displayName: "Nearby",
       description: "Find what's around you",
       backgroundColor: "#e8f4fd",
       imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/ea5e5ee3-e9d8-48a1-b7e9-1003bf6fe850.png",
     },
     {
-      city: "Dubai",
-      state: "Dubai",
-      country: "United Arab Emirates",
-      displayName: "Dubai, United Arab Emirates",
-      description: "Popular beach destination",
+      city: "Port Sudan",
+      state: "Red Sea",
+      country: "Sudan",
+      searchValue: "Port Sudan",
+      displayName: "Port Sudan",
+      description: "Stays along the Red Sea coast",
       backgroundColor: "#eaf7ec",
       imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/c98f58bf-8512-43e3-af54-6c1f0b2c8a23.png",
     },
     {
-      city: "Al Madīnah al Munawwarah",
-      state: "Madinah Province",
-      country: "Saudi Arabia",
-      displayName: "Al Madīnah al Munawwarah, Saudi Arabia",
-      description: "For sights like Al-Masjid an-Nabawi",
+      city: "Port Sudan",
+      state: "Red Sea",
+      country: "Sudan",
+      searchValue: "Coral Coast",
+      displayName: "Coral Coast",
+      description: "Beachfront stays on the Red Sea",
       backgroundColor: "#fdf2e9",
       imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/e6abaebf-f910-42e2-b891-d8f262b6ee1d.png",
     },
     {
-      city: "Jeddah",
-      state: "Makkah Province",
-      country: "Saudi Arabia",
-      displayName: "Jeddah, Saudi Arabia",
-      description: "For its stunning architecture",
+      city: "Port Sudan",
+      state: "Red Sea",
+      country: "Sudan",
+      searchValue: "Marina District",
+      displayName: "Marina District",
+      description: "By the harbour and seafront",
       backgroundColor: "#fef5e7",
       imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/5d2ff9e9-9e15-45b9-bfb2-d3f192198eca.png",
     },
     {
-      city: "Riyadh",
-      state: "Riyadh Province",
-      country: "Saudi Arabia",
-      displayName: "Riyadh, Saudi Arabia",
-      description: "For a trip abroad",
+      city: "Port Sudan",
+      state: "Red Sea",
+      country: "Sudan",
+      searchValue: "Suakin Island",
+      displayName: "Suakin Island",
+      description: "Historic coral-stone old town",
       backgroundColor: "#f3e8ff",
       imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/ed75c050-042b-44ba-a991-54044d93a91b.png",
     },
     {
-      city: "New Cairo",
-      state: "Cairo Governorate",
-      country: "Egypt",
-      displayName: "New Cairo, Egypt",
-      description: "A hidden gem",
+      city: "Port Sudan",
+      state: "Red Sea",
+      country: "Sudan",
+      searchValue: "Airport District",
+      displayName: "Airport District",
+      description: "Handy for arrivals and departures",
       backgroundColor: "#fdedec",
       imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/2cab2315-eab8-4e3b-8ffa-1411745515f3.png",
     },
     {
-      city: "Addis Ababa",
-      state: "Addis Ababa",
-      country: "Ethiopia",
-      displayName: "Addis Ababa, Ethiopia",
-      description: "For a trip abroad",
+      city: "Port Sudan",
+      state: "Red Sea",
+      country: "Sudan",
+      searchValue: "Red Sea University Area",
+      displayName: "Red Sea University",
+      description: "Central and walkable",
       backgroundColor: "#e8f8f5",
       imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/5c0fde14-6f8e-43c4-b78f-6baae5df0c7c.png",
     },
@@ -87,62 +107,69 @@ const SUGGESTED_DESTINATIONS = {
       city: "Nearby",
       state: "",
       country: "",
+      searchValue: "",
       displayName: "قريب من هنا",
       description: "استكشف الأماكن المحيطة بك",
       backgroundColor: "#e8f4fd",
       imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/ea5e5ee3-e9d8-48a1-b7e9-1003bf6fe850.png",
     },
     {
-      city: "Dubai",
-      state: "Dubai",
-      country: "United Arab Emirates",
-      displayName: "دبي، الإمارات العربية المتحدة",
-      description: "وجهة شاطئية شهيرة",
+      city: "Port Sudan",
+      state: "Red Sea",
+      country: "Sudan",
+      searchValue: "Port Sudan",
+      displayName: "بورتسودان",
+      description: "إقامات على ساحل البحر الأحمر",
       backgroundColor: "#eaf7ec",
       imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/c98f58bf-8512-43e3-af54-6c1f0b2c8a23.png",
     },
     {
-      city: "Al Madīnah al Munawwarah",
-      state: "Madinah Province",
-      country: "Saudi Arabia",
-      displayName: "المدينة المنورة، المملكة العربية السعودية",
-      description: "لمشاهدة معالم مثل المسجد النبوي",
+      city: "Port Sudan",
+      state: "Red Sea",
+      country: "Sudan",
+      searchValue: "Coral Coast",
+      displayName: "ساحل المرجان",
+      description: "إقامات على شاطئ البحر الأحمر",
       backgroundColor: "#fdf2e9",
       imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/e6abaebf-f910-42e2-b891-d8f262b6ee1d.png",
     },
     {
-      city: "Jeddah",
-      state: "Makkah Province",
-      country: "Saudi Arabia",
-      displayName: "جدة، المملكة العربية السعودية",
-      description: "بهندستها المعمارية المذهلة",
+      city: "Port Sudan",
+      state: "Red Sea",
+      country: "Sudan",
+      searchValue: "Marina District",
+      displayName: "حي المارينا",
+      description: "بجوار الميناء والواجهة البحرية",
       backgroundColor: "#fef5e7",
       imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/5d2ff9e9-9e15-45b9-bfb2-d3f192198eca.png",
     },
     {
-      city: "Riyadh",
-      state: "Riyadh Province",
-      country: "Saudi Arabia",
-      displayName: "الرياض، المملكة العربية السعودية",
-      description: "لرحلة خارج البلاد",
+      city: "Port Sudan",
+      state: "Red Sea",
+      country: "Sudan",
+      searchValue: "Suakin Island",
+      displayName: "جزيرة سواكن",
+      description: "المدينة القديمة المرجانية التاريخية",
       backgroundColor: "#f3e8ff",
       imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/ed75c050-042b-44ba-a991-54044d93a91b.png",
     },
     {
-      city: "New Cairo",
-      state: "Cairo Governorate",
-      country: "Egypt",
-      displayName: "القاهرة الجديدة، مصر",
-      description: "جوهرة خفية",
+      city: "Port Sudan",
+      state: "Red Sea",
+      country: "Sudan",
+      searchValue: "Airport District",
+      displayName: "حي المطار",
+      description: "قريب من الوصول والمغادرة",
       backgroundColor: "#fdedec",
       imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/2cab2315-eab8-4e3b-8ffa-1411745515f3.png",
     },
     {
-      city: "Addis Ababa",
-      state: "Addis Ababa",
-      country: "Ethiopia",
-      displayName: "أديس أبابا، إثيوبيا",
-      description: "لرحلة خارج البلاد",
+      city: "Port Sudan",
+      state: "Red Sea",
+      country: "Sudan",
+      searchValue: "Red Sea University Area",
+      displayName: "حي جامعة البحر الأحمر",
+      description: "في المركز وقريب من كل شيء",
       backgroundColor: "#e8f8f5",
       imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/5c0fde14-6f8e-43c4-b78f-6baae5df0c7c.png",
     },
@@ -157,6 +184,7 @@ export default function LocationDropdown({
   error,
   onSearchQueryChange,
   onLocationSelect,
+  fillHeight = false,
 }: LocationProps) {
   const dict = useDictionary();
   const { locale, isRTL } = useLocale();
@@ -263,6 +291,7 @@ export default function LocationDropdown({
         city: dest.city,
         state: dest.state,
         country: dest.country,
+        searchValue: dest.searchValue,
         displayName: dest.displayName,
         listingCount: 0,
       });
@@ -280,7 +309,7 @@ export default function LocationDropdown({
       aria-expanded="true"
       aria-haspopup="listbox"
       aria-controls="location-listbox"
-      className="flex flex-col h-full"
+      className={`flex flex-col ${fillHeight ? "" : "h-full"}`}
     >
       {/* Geolocating Loader overlay/feedback */}
       {isGeolocating && (
@@ -304,9 +333,14 @@ export default function LocationDropdown({
         </div>
       )}
 
-      {/* Results / Suggestions Container */}
+      {/* Results / Suggestions Container — fixed-height own scroll for the
+          desktop popover; in fillHeight mode it renders naturally and lets the
+          mobile card's full-height scroll area do the scrolling (no nested
+          scroll, so the list fills all the space). */}
       <div
-        className="space-y-1 max-h-[340px] overflow-y-auto no-scrollbar scroll-smooth"
+        className={`space-y-1 ${
+          fillHeight ? "" : "max-h-[340px] overflow-y-auto no-scrollbar scroll-smooth"
+        }`}
         role="listbox"
         id="location-listbox"
         aria-label={searchQuery.trim() ? resultsTitle : suggestedTitle}
@@ -379,6 +413,7 @@ export default function LocationDropdown({
                       city: dest.city,
                       state: dest.state,
                       country: dest.country,
+                      searchValue: dest.searchValue,
                       displayName: dest.displayName,
                       listingCount: 0,
                     })

@@ -101,7 +101,7 @@ export function TransportHostHero({ lang, className, dictionary = defaultDiction
             </div>
 
             {/* Floating Stats Card */}
-            <div className="absolute bottom-4 left-4 right-4 lg:bottom-6 lg:left-6 lg:right-auto lg:max-w-64">
+            <div className="absolute bottom-4 start-4 end-4 lg:bottom-6 lg:start-6 lg:end-auto lg:max-w-64">
               <div className="bg-background/95 backdrop-blur-sm rounded-xl p-4 shadow-lg border">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">

@@ -16,7 +16,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
   return (
     <div className="relative h-screen w-full overflow-hidden">
       {/* Transparent Navbar Overlay */}
-      <div className="absolute top-0 left-0 w-full z-50">
+      <div className="absolute top-0 start-0 w-full z-50">
         <SiteHeader />
       </div>
 

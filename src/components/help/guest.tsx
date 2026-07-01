@@ -58,7 +58,7 @@ export default function Guest() {
                 {t?.reservationDetails?.description ?? "Your Trips tab has full details, receipts, and Host contact info for each of your reservations."}
               </p>
             </CardContent>
-            <div className="absolute bottom-0 left-0 right-0">
+            <div className="absolute bottom-0 inset-x-0">
               <div className="border-t border-gray-200 "></div>
               <Button  className="bg-transparent w-full justify-between text-start h-12 hover:rounded-lg hover:bg-gray-50 border-0">
                 <span className="font-semibold text-sm text-gray-900">{t?.reservationDetails?.goToTrips ?? "Go to Trips"}</span>

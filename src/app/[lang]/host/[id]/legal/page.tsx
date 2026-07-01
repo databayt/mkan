@@ -82,8 +82,8 @@ const LegalAndCreatePage = ({ params }: LegalAndCreatePageProps) => {
   const isFormValid = hostingType && safetyFeatures.length >= 0; // At least hosting type selected
 
   return (
-    <div className="">
-      <div className="">
+    <div className="w-full">
+      <div className="max-w-6xl mx-auto">
         {/* Title at the top */}
         <div className="mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-2xl lg:text-4xl font-medium text-foreground">

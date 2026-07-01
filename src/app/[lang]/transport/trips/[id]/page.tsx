@@ -110,7 +110,7 @@ export default function TripDetailsPage() {
       if (result.success && result.booking) {
         router.push(`/${lang}/transport/booking/checkout?bookingId=${result.booking.id}`);
       } else {
-        toast.error('Failed to create booking. Please try again.');
+        toast.error(t.bookingFailedRetry ?? 'Failed to create booking. Please try again.');
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Booking failed';

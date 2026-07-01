@@ -36,7 +36,7 @@ const SelectionCard: React.FC<SelectionCardProps> = ({
   return (
     <Card
       className={cn(
-        'cursor-pointer transition-all duration-200 border hover:border-foreground/50 min-h-[50px] sm:min-h-[60px]',
+        'group cursor-pointer transition-all duration-200 border hover:border-foreground/50 min-h-[50px] sm:min-h-[60px]',
         isSelected && 'border-foreground bg-accent',
         disabled && 'cursor-not-allowed opacity-50',
         compact ? 'p-2 sm:p-3' : 'p-4 sm:p-4',

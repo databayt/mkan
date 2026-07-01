@@ -36,7 +36,7 @@ export default function ApplicationActions({ applicationId, lang, dict }: Props)
         );
         router.refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Could not update");
+        toast.error(err instanceof Error ? err.message : (t.couldNotUpdate ?? "Could not update"));
       }
     });
   };

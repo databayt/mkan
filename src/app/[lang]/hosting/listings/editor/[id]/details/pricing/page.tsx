@@ -1,95 +1,116 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { DollarSign, Info } from 'lucide-react';
-import { getDictionary } from '@/components/internationalization/dictionaries';
-import type { Locale } from '@/components/internationalization/config';
+"use client";
+export const dynamic = "force-dynamic";
 
-interface PageProps {
-  params: Promise<{ id: string; lang: string }>;
-}
+import React from "react";
+import { useParams } from "next/navigation";
+import { EditorSection, SaveBar } from "@/components/hosting/listing/editor-section";
+import {
+  useEditorField,
+  TextField,
+} from "@/components/hosting/listing/editor-controls";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { formatCurrency } from "@/lib/i18n/formatters";
+import type { Locale } from "@/components/internationalization/config";
 
-const PricingPage = async ({ params }: PageProps) => {
-  const { lang } = await params;
-  const dict = await getDictionary(lang as Locale);
-  const t = dict?.listingEditor?.pricing;
-
-  return (
-    <div className="lg:col-span-2">
-      <div className="max-w-3xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">{t?.heading ?? "Now, set your price"}</h1>
-          <p className="text-muted-foreground">
-            {t?.subtitle ?? "You can change it anytime. Research similar listings in your area to help you pick the right price."}
-          </p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="size-5" />
-              {t?.cardTitle ?? "Base price"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div>
-              <Label htmlFor="price">{t?.label ?? "Price per night (USD)"}</Label>
-              <div className="relative mt-2">
-                <span className="absolute start-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
-                <Input
-                  id="price"
-                  type="number"
-                  placeholder={t?.pricePlaceholder ?? "0"}
-                  className="ps-8"
-                />
-              </div>
-            </div>
-
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="flex items-start gap-3">
-                <Info className="size-5 text-blue-600 mt-0.5" />
-                <div>
-                  <h4 className="font-medium text-blue-900">{t?.tipTitle ?? "Price tip"}</h4>
-                  <p className="text-sm text-blue-700 mt-1">
-                    {t?.tipText ?? "Most hosts in your area charge $85–$130 per night. Consider starting with a competitive price to attract your first guests and reviews."}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t pt-4">
-              <h4 className="font-medium mb-3">{t?.breakdownTitle ?? "Guest price breakdown"}</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>{t?.breakdownNights ?? "$100 x 1 night"}</span>
-                  <span>$100</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>{t?.serviceFee ?? "Mkan service fee"}</span>
-                  <span>$14</span>
-                </div>
-                <div className="flex justify-between font-medium border-t pt-2">
-                  <span>{t?.total ?? "Total"}</span>
-                  <span>$114</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="mt-8 flex justify-between">
-          <Button variant="outline">
-            {dict?.common?.back ?? "Back"}
-          </Button>
-          <Button>
-            {dict?.common?.next ?? "Next"}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
+type PriceForm = {
+  price: number;
+  cleaning: number;
+  weekly: number;
+  monthly: number;
 };
 
-export default PricingPage;
+export default function PricingPage() {
+  const dict = useDictionary();
+  const nav = dict?.listingEditor?.nav;
+  const pp = dict?.listingEditor?.pricing;
+  const params = useParams<{ lang: string }>();
+  const lang = (params?.lang ?? "en") as Locale;
+  const currency = lang === "ar" ? "ج.س" : "SDG";
+
+  const { value, setValue, dirty, saving, save } = useEditorField<PriceForm>(
+    (l) => ({
+      price: l.pricePerNight ?? 0,
+      cleaning: l.cleaningFee ?? 0,
+      weekly: l.weeklyDiscount ?? 0,
+      monthly: l.monthlyDiscount ?? 0,
+    }),
+    { price: 0, cleaning: 0, weekly: 0, monthly: 0 }
+  );
+
+  const set = (k: keyof PriceForm) => (v: string) =>
+    setValue({ ...value, [k]: Number(v) || 0 });
+
+  const onSave = () =>
+    save({
+      pricePerNight: value.price,
+      cleaningFee: value.cleaning,
+      weeklyDiscount: value.weekly,
+      monthlyDiscount: value.monthly,
+    });
+
+  // Estimated guest price preview (base + cleaning).
+  const guestTotal = value.price + value.cleaning;
+
+  return (
+    <EditorSection
+      title={nav?.pricing ?? "Pricing"}
+      subtitle={pp?.subtitle ?? "Set a base price and adjust fees and discounts."}
+    >
+      <div className="space-y-6">
+        <div>
+          <label className="mb-2 block font-medium">
+            {pp?.label ?? "Per-night price"}
+          </label>
+          <TextField
+            type="number"
+            value={String(value.price)}
+            onChange={set("price")}
+            prefix={currency}
+            placeholder="0"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <div>
+            <label className="mb-2 block font-medium">{pp?.cleaningFee ?? "Cleaning fee"}</label>
+            <TextField type="number" value={String(value.cleaning)} onChange={set("cleaning")} prefix={currency} placeholder="0" />
+          </div>
+          <div>
+            <label className="mb-2 block font-medium">{pp?.weeklyDiscount ?? "Weekly discount"}</label>
+            <TextField type="number" value={String(value.weekly)} onChange={set("weekly")} prefix="%" placeholder="0" />
+          </div>
+          <div>
+            <label className="mb-2 block font-medium">{pp?.monthlyDiscount ?? "Monthly discount"}</label>
+            <TextField type="number" value={String(value.monthly)} onChange={set("monthly")} prefix="%" placeholder="0" />
+          </div>
+        </div>
+
+        {/* Guest price preview */}
+        <div className="rounded-2xl border border-border p-5">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">{pp?.label ?? "Per-night price"}</span>
+            <span>{formatCurrency(value.price, lang)}</span>
+          </div>
+          {value.cleaning > 0 ? (
+            <div className="mt-2 flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">{pp?.cleaningFee ?? "Cleaning fee"}</span>
+              <span>{formatCurrency(value.cleaning, lang)}</span>
+            </div>
+          ) : null}
+          <div className="mt-3 flex items-center justify-between border-t border-border pt-3 font-semibold">
+            <span>{pp?.total ?? "Guest price before taxes"}</span>
+            <span>{formatCurrency(guestTotal, lang)}</span>
+          </div>
+        </div>
+      </div>
+
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        onSave={onSave}
+        saveLabel={nav?.save}
+        savingLabel={nav?.saving}
+      />
+    </EditorSection>
+  );
+}

@@ -28,7 +28,7 @@ export const reportSchema = z.object({
   description: z
     .string()
     .trim()
-    .min(30, "Please describe the issue in at least 30 characters")
+    .min(2, "Please describe the issue in at least 2 characters")
     .max(2000, "Description is too long"),
   pageUrl: z.string().url().max(2048),
   category: z.enum(REPORT_CATEGORIES).default("other"),

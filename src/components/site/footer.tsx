@@ -2,6 +2,7 @@
 
 import { Globe } from "lucide-react";
 import Link from "next/link";
+import { ReportIssue } from "@/components/report-issue";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 export default function Footer() {
@@ -51,7 +52,7 @@ export default function Footer() {
   ];
 
   return (
-    <footer className="bg-gray-100 border-t border-gray-200">
+    <footer className="relative z-10 bg-gray-100 border-t border-gray-200">
       {/* Main Footer Content */}
       <div className="layout-container py-12">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -82,8 +83,10 @@ export default function Footer() {
         <div className="layout-container py-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             {/* Left side - Copyright */}
-            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-sm text-gray-600">
+            <div className="flex flex-wrap items-center gap-2 md:gap-4 text-sm text-gray-600">
               <span>{f.copyright ?? "© 2026 Mkan, Inc."}</span>
+              <span className="hidden md:inline">·</span>
+              <ReportIssue />
             </div>
 
             {/* Right side - Language and currency */}

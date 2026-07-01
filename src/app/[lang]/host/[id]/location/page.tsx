@@ -33,7 +33,7 @@ const LocationPageContent = ({ params }: LocationPageProps) => {
   }, [params, loadListing]);
 
   return (
-    <div className="">
+    <div className="w-full">
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-start">
           {/* Left side - Text content */}

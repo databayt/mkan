@@ -1,10 +1,11 @@
 "use client"
 
+import { useRef, useState, useCallback, useEffect } from "react"
 import { ar, enUS } from "date-fns/locale"
 import { type DateRange } from "react-day-picker"
 import { Calendar } from "@/components/ui/calendar"
 import { useLocale } from "@/components/internationalization/use-locale"
-import { CalendarDays } from "lucide-react"
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react"
 
 export const pickerTranslations = {
   en: {
@@ -20,6 +21,8 @@ export const pickerTranslations = {
     weekend: "Weekend",
     week: "Week",
     month: "Month",
+    goAnytime: "Go anytime",
+    goIn: "Go in",
     whenGo: "When do you want to go?",
     monthsName: {
       "0": "January", "1": "February", "2": "March", "3": "April", "4": "May", "5": "June",
@@ -39,6 +42,8 @@ export const pickerTranslations = {
     weekend: "عطلة نهاية الأسبوع",
     week: "أسبوع",
     month: "شهر",
+    goAnytime: "اذهب في أي وقت",
+    goIn: "اذهب في",
     whenGo: "متى تريد الذهاب؟",
     monthsName: {
       "0": "يناير", "1": "فبراير", "2": "مارس", "3": "أبريل", "4": "مايو", "5": "يونيو",
@@ -61,6 +66,10 @@ interface BigSearchDatePickerProps {
   setFlexibleMonths: (months: string[] | ((prev: string[]) => string[])) => void
   dateFlexibility: string
   setDateFlexibility: (flex: string) => void
+  // Compact = the mobile variant: a single-month calendar at 44px cells with no
+  // fixed 700px minimum, so the hero's mobile card can reuse this exact picker
+  // (Dates / Flexible tabs, ± flexibility pills, month carousel) at phone width.
+  compact?: boolean
 }
 
 export default function BigSearchDatePicker({
@@ -74,9 +83,11 @@ export default function BigSearchDatePicker({
   setFlexibleMonths,
   dateFlexibility,
   setDateFlexibility,
+  compact = false,
 }: BigSearchDatePickerProps) {
   const { locale } = useLocale()
-  const t = pickerTranslations[locale === "ar" ? "ar" : "en"]
+  const isAr = locale === "ar"
+  const t = pickerTranslations[isAr ? "ar" : "en"]
 
   const handleDateSelect = (range: DateRange | undefined) => {
     if (range) {
@@ -84,16 +95,16 @@ export default function BigSearchDatePicker({
     }
   }
 
-  // Generate the next 6 months from the current date
+  // Generate 12 months from the current month forward — Airbnb's Flexible tab
+  // shows a full year of month chips in one horizontally-scrollable row.
   const generateMonths = () => {
     const months = []
     const start = new Date()
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 12; i++) {
       const d = new Date(start.getFullYear(), start.getMonth() + i, 1)
       const year = d.getFullYear()
       const monthNum = String(d.getMonth() + 1).padStart(2, "0")
       const key = `${year}-${monthNum}`
-      
       const monthIdx = d.getMonth()
       const name = t.monthsName[monthIdx.toString() as keyof typeof t.monthsName]
       months.push({ key, name, year })
@@ -113,6 +124,24 @@ export default function BigSearchDatePicker({
     })
   }
 
+  // Dynamic month-section heading: "Go anytime" with nothing picked, else
+  // "Go in July" / "Go in July & August" — mirrors airbnb.com.
+  const selectedMonthNames = () => {
+    const sorted = [...flexibleMonths].sort()
+    const names = sorted.map((k) => {
+      const monthStr = k.split("-")[1] ?? "1"
+      const idx = (parseInt(monthStr, 10) - 1).toString()
+      return t.monthsName[idx as keyof typeof t.monthsName]
+    })
+    if (names.length === 0) return ""
+    if (names.length === 1) return names[0]
+    if (isAr) return names.join(" و ")
+    if (names.length === 2) return `${names[0]} & ${names[1]}`
+    return `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`
+  }
+  const monthHeading =
+    flexibleMonths.length === 0 ? t.goAnytime : `${t.goIn} ${selectedMonthNames()}`
+
   const dateAdjustmentPills = [
     { value: "exact", label: t.exactDates },
     { value: "1", label: t.plusMinus1Day },
@@ -122,18 +151,52 @@ export default function BigSearchDatePicker({
     { value: "14", label: t.plusMinus14Days },
   ]
 
+  // ---- Month-chip carousel scrolling (Flexible tab) ----
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [canPrev, setCanPrev] = useState(false)
+  const [canNext, setCanNext] = useState(true)
+
+  const updateArrows = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const max = el.scrollWidth - el.clientWidth
+    const pos = Math.abs(el.scrollLeft) // abs handles RTL (negative in Chrome)
+    setCanPrev(pos > 4)
+    setCanNext(pos < max - 4)
+  }, [])
+
+  useEffect(() => {
+    if (searchMode !== "flexible") return undefined
+    // measure after the row paints
+    const id = requestAnimationFrame(updateArrows)
+    return () => cancelAnimationFrame(id)
+  }, [searchMode, updateArrows])
+
+  const step = (dir: -1 | 1) => {
+    const el = scrollRef.current
+    if (!el) return
+    const delta = (isAr ? -1 : 1) * dir * 280
+    el.scrollBy({ left: delta, behavior: "smooth" })
+  }
+
   return (
-    <div className="flex flex-col w-full min-w-[700px] select-none text-[#222222]">
+    <div
+      className={`flex flex-col w-full select-none text-[#222222] ${
+        compact ? "" : "min-w-[700px]"
+      }`}
+    >
       {/* Segmented Control Header */}
-      <div className="flex justify-center mb-6">
+      <div className={`flex justify-center ${compact ? "mb-4" : "mb-5"}`}>
         <div className="inline-flex bg-[#ebebeb] p-1 rounded-full border border-gray-200/55">
           <button
             type="button"
             onClick={() => setSearchMode("dates")}
-            className={`px-8 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
+            className={`${
+              compact ? "px-8" : "px-10"
+            } py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
               searchMode === "dates"
-                ? "bg-white text-[#222222] shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
-                : "text-[#717171] hover:text-[#222222] hover:bg-gray-200/50 rounded-full"
+                ? "bg-white text-[#222222] shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-[#DDDDDD]"
+                : "text-[#717171] hover:text-[#222222] rounded-full"
             }`}
           >
             {t.dates}
@@ -141,10 +204,12 @@ export default function BigSearchDatePicker({
           <button
             type="button"
             onClick={() => setSearchMode("flexible")}
-            className={`px-8 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
+            className={`${
+              compact ? "px-8" : "px-10"
+            } py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
               searchMode === "flexible"
-                ? "bg-white text-[#222222] shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
-                : "text-[#717171] hover:text-[#222222] hover:bg-gray-200/50 rounded-full"
+                ? "bg-white text-[#222222] shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-[#DDDDDD]"
+                : "text-[#717171] hover:text-[#222222] rounded-full"
             }`}
           >
             {t.flexible}
@@ -153,27 +218,75 @@ export default function BigSearchDatePicker({
       </div>
 
       {searchMode === "dates" ? (
-        <div className="flex flex-col items-center">
-          {/* Calendars Container */}
-          <div className="w-full flex justify-center py-2">
+        <div className="flex flex-col">
+          {/* Calendar — two-month full-width on desktop; a single centred month
+              at 44px cells on mobile (compact). Both share the same black
+              range styling and select check-in first, then check-out (min=1 so
+              the first click leaves `to` undefined and the panel stays open).
+              p-0 kills the shadcn Calendar's default padding so the panel
+              height stays tight. */}
+          <div className={compact ? "w-full flex justify-center" : "w-full"}>
             <Calendar
               mode="range"
+              min={1}
               defaultMonth={dateRange?.from ?? new Date()}
-              locale={locale === "ar" ? ar : enUS}
+              locale={isAr ? ar : enUS}
               selected={dateRange}
               onSelect={handleDateSelect}
-              numberOfMonths={2}
+              numberOfMonths={compact ? 1 : 2}
               disabled={{ before: new Date() }}
               showOutsideDays={false}
-              className="[--cell-size:40px] [--cell-radius:20px]"
-              classNames={{
-                month_caption: "font-semibold text-[16px] text-[#222222] mb-3 text-center",
-                weekday: "text-[12px] font-semibold text-[#717171] uppercase select-none w-10 h-10 flex items-center justify-center",
-                day: "w-10 h-10 p-0 relative focus-within:relative focus-within:z-20 data-[selected-single=true]:bg-[#222222] data-[selected-single=true]:text-white data-[range-start=true]:bg-[#222222] data-[range-start=true]:text-white data-[range-end=true]:bg-[#222222] data-[range-end=true]:text-white data-[range-middle=true]:bg-[#f7f7f7] data-[range-middle=true]:text-[#222222] rounded-full hover:bg-gray-100 transition-all duration-150",
-                range_start: "bg-[#f7f7f7] after:bg-[#f7f7f7] rounded-s-full",
-                range_middle: "bg-[#f7f7f7] rounded-none",
-                range_end: "bg-[#f7f7f7] after:bg-[#f7f7f7] rounded-e-full",
-              }}
+              className={
+                compact
+                  ? "[--cell-size:44px] [--cell-radius:22px] p-0"
+                  : "[--cell-size:52px] [--cell-radius:26px] w-full p-0"
+              }
+              classNames={
+                compact
+                  ? {
+                      root: "p-0",
+                      months: "relative flex flex-row",
+                      month: "flex flex-col gap-1.5",
+                      month_grid: "w-auto",
+                      week: "mt-0",
+                      month_caption:
+                        "h-9 mb-1 flex w-full items-center justify-center px-(--cell-size)",
+                      caption_label: "text-base font-medium text-[#222222]",
+                      button_previous: "size-9 text-[#222222]",
+                      button_next: "size-9 text-[#222222]",
+                      weekday:
+                        "w-(--cell-size) h-7 flex items-center justify-center text-xs font-normal text-[#6a6a6a] select-none",
+                      day: "size-(--cell-size) p-0 relative focus-within:relative focus-within:z-20 data-[selected-single=true]:bg-[#222222] data-[selected-single=true]:text-white data-[range-start=true]:bg-[#222222] data-[range-start=true]:text-white data-[range-end=true]:bg-[#222222] data-[range-end=true]:text-white data-[range-middle=true]:bg-[#f7f7f7] data-[range-middle=true]:text-[#222222] rounded-full hover:bg-gray-100 transition-all duration-150",
+                      range_start: "bg-[#f7f7f7] after:bg-[#f7f7f7] rounded-s-full",
+                      range_middle: "bg-[#f7f7f7] rounded-none",
+                      range_end: "bg-[#f7f7f7] after:bg-[#f7f7f7] rounded-e-full",
+                      today: "bg-transparent",
+                    }
+                  : {
+                      root: "w-full p-0",
+                      months: "relative flex w-full flex-row",
+                      month: "flex-1 flex flex-col items-center gap-1.5",
+                      month_grid: "w-auto",
+                      week: "mt-0",
+                      // Caption row shrunk from h-(--cell-size)=52px to h-9 (36px),
+                      // and the nav buttons matched to size-9 so the arrows stay
+                      // on the same line as the month label.
+                      month_caption:
+                        "h-9 mb-1 flex w-full items-center justify-center px-(--cell-size)",
+                      caption_label: "text-base font-medium text-[#222222]",
+                      button_previous: "size-9 text-[#222222]",
+                      button_next: "size-9 text-[#222222]",
+                      // Weekday band shrunk from 52px to 28px (h-7); width kept
+                      // at --cell-size so columns stay aligned with the day grid.
+                      weekday:
+                        "w-(--cell-size) h-7 flex items-center justify-center text-xs font-normal text-[#6a6a6a] uppercase select-none",
+                      day: "size-(--cell-size) p-0 relative focus-within:relative focus-within:z-20 data-[selected-single=true]:bg-[#222222] data-[selected-single=true]:text-white data-[range-start=true]:bg-[#222222] data-[range-start=true]:text-white data-[range-end=true]:bg-[#222222] data-[range-end=true]:text-white data-[range-middle=true]:bg-[#f7f7f7] data-[range-middle=true]:text-[#222222] rounded-full hover:bg-gray-100 transition-all duration-150",
+                      range_start: "bg-[#f7f7f7] after:bg-[#f7f7f7] rounded-s-full",
+                      range_middle: "bg-[#f7f7f7] rounded-none",
+                      range_end: "bg-[#f7f7f7] after:bg-[#f7f7f7] rounded-e-full",
+                      today: "bg-transparent",
+                    }
+              }
               formatters={{
                 formatWeekdayName: (date, options) => {
                   return date.toLocaleDateString(options?.locale?.code ?? "default", { weekday: "narrow" })
@@ -182,8 +295,17 @@ export default function BigSearchDatePicker({
             />
           </div>
 
-          {/* Date Flexibility Pills */}
-          <div className="w-full border-t border-gray-100 mt-6 pt-6 flex flex-wrap justify-center gap-2.5">
+          {/* Date Flexibility Pills — wrap to multiple rows on desktop; on
+              mobile (compact) stay in a single horizontally-scrollable row so
+              the panel height never grows. */}
+          <div
+            className={`w-full border-t border-gray-100 gap-2.5 ${
+              compact
+                ? "mt-4 pt-4 flex flex-nowrap overflow-x-auto pb-1"
+                : "mt-5 pt-5 flex flex-wrap justify-start"
+            }`}
+            style={compact ? { scrollbarWidth: "none", msOverflowStyle: "none" } : undefined}
+          >
             {dateAdjustmentPills.map((pill) => {
               const isActive = dateFlexibility === pill.value
               return (
@@ -191,7 +313,7 @@ export default function BigSearchDatePicker({
                   key={pill.value}
                   type="button"
                   onClick={() => setDateFlexibility(pill.value)}
-                  className={`py-2 px-5 rounded-full text-xs font-semibold border transition-all duration-150 cursor-pointer ${
+                  className={`shrink-0 whitespace-nowrap py-2 px-5 rounded-full text-xs font-semibold border transition-all duration-150 cursor-pointer ${
                     isActive
                       ? "border-[#222222] border-2 bg-white text-[#222222]"
                       : "border-gray-200 text-[#222222] bg-white hover:border-[#222222]"
@@ -204,12 +326,15 @@ export default function BigSearchDatePicker({
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center py-4 px-2">
+        <div className={`flex flex-col items-center ${compact ? "pt-3 pb-4" : "pt-7 pb-8"}`}>
           {/* Duration Selector */}
-          <div className="text-center font-medium text-base text-[#222222] mb-4">
+          <div
+            className={`text-center font-medium text-[#222222] ${compact ? "mb-3" : "mb-4"}`}
+            style={{ fontSize: 18, lineHeight: "24px" }}
+          >
             {t.howLongStay}
           </div>
-          <div className="flex justify-center gap-3 mb-8">
+          <div className={`flex justify-center gap-3 ${compact ? "mb-7" : "mb-12"}`}>
             {(["weekend", "week", "month"] as const).map((duration) => {
               const label = duration === "weekend" ? t.weekend : duration === "week" ? t.week : t.month
               const isActive = flexibleDuration === duration
@@ -218,9 +343,9 @@ export default function BigSearchDatePicker({
                   key={duration}
                   type="button"
                   onClick={() => setFlexibleDuration(duration)}
-                  className={`py-2.5 px-6 rounded-full text-sm font-semibold border transition-all duration-150 cursor-pointer ${
+                  className={`py-2.5 px-6 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer ${
                     isActive
-                      ? "border-[#222222] border-2 bg-[#f7f7f7] text-[#222222]"
+                      ? "border-[#222222] border-2 bg-white text-[#222222]"
                       : "border-gray-200 text-[#222222] bg-white hover:border-[#222222]"
                   }`}
                 >
@@ -230,32 +355,71 @@ export default function BigSearchDatePicker({
             })}
           </div>
 
-          {/* Month Selector */}
-          <div className="text-center font-medium text-base text-[#222222] mb-5">
-            {t.whenGo}
+          {/* Month Selector heading — "Go anytime" / "Go in July" */}
+          <div
+            className={`text-center font-medium text-[#222222] ${compact ? "mb-4" : "mb-6"}`}
+            style={{ fontSize: 18, lineHeight: "24px" }}
+          >
+            {monthHeading}
           </div>
-          <div className="grid grid-cols-6 gap-3 w-full">
-            {monthsList.map((month) => {
-              const isSelected = flexibleMonths.includes(month.key)
-              return (
-                <button
-                  key={month.key}
-                  type="button"
-                  onClick={() => toggleMonth(month.key)}
-                  className={`flex flex-col items-center justify-center p-4 border rounded-2xl aspect-[4/5] transition-all duration-150 cursor-pointer ${
-                    isSelected
-                      ? "border-[#222222] border-2 bg-[#f7f7f7] shadow-sm font-semibold"
-                      : "border-gray-200 bg-white hover:border-[#222222]"
-                  }`}
-                >
-                  <CalendarDays className={`w-6 h-6 mb-3 transition-colors ${
-                    isSelected ? "text-[#222222]" : "text-gray-400"
-                  }`} />
-                  <div className="text-xs font-semibold">{month.name}</div>
-                  <div className="text-[10px] text-gray-500 mt-1">{month.year}</div>
-                </button>
-              )
-            })}
+
+          {/* Month chip carousel — horizontally scrollable row of 12 chips,
+              each 122×136 like airbnb.com, with prev/next chevrons. */}
+          <div className="relative w-full">
+            <div
+              ref={scrollRef}
+              onScroll={updateArrows}
+              className="flex gap-2 overflow-x-auto pb-1 px-px"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              {monthsList.map((month) => {
+                const isSelected = flexibleMonths.includes(month.key)
+                return (
+                  <button
+                    key={month.key}
+                    type="button"
+                    onClick={() => toggleMonth(month.key)}
+                    style={{ width: 122, height: 136 }}
+                    className={`shrink-0 flex flex-col items-center justify-center gap-2 rounded-2xl border transition-all duration-150 cursor-pointer ${
+                      isSelected
+                        ? "border-[#222222] border-2 bg-[#f7f7f7]"
+                        : "border-gray-200 bg-white hover:border-[#222222]"
+                    }`}
+                  >
+                    <CalendarIcon
+                      className={`w-7 h-7 transition-colors ${
+                        isSelected ? "text-[#222222]" : "text-[#6a6a6a]"
+                      }`}
+                      strokeWidth={1.5}
+                    />
+                    <div className="font-medium leading-tight" style={{ fontSize: 15 }}>{month.name}</div>
+                    <div className="text-[#6a6a6a] leading-tight" style={{ fontSize: 13 }}>{month.year}</div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Prev / Next chevrons (Airbnb-style circular buttons) */}
+            {canPrev && (
+              <button
+                type="button"
+                aria-label="Previous months"
+                onClick={() => step(-1)}
+                className="absolute start-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full bg-white border border-gray-300 shadow-[0_2px_6px_rgba(0,0,0,0.18)] hover:scale-105 transition-transform"
+              >
+                <ChevronLeft className="w-4 h-4 text-[#222222] rtl:rotate-180" />
+              </button>
+            )}
+            {canNext && (
+              <button
+                type="button"
+                aria-label="Next months"
+                onClick={() => step(1)}
+                className="absolute end-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full bg-white border border-gray-300 shadow-[0_2px_6px_rgba(0,0,0,0.18)] hover:scale-105 transition-transform"
+              >
+                <ChevronRight className="w-4 h-4 text-[#222222] rtl:rotate-180" />
+              </button>
+            )}
           </div>
         </div>
       )}
