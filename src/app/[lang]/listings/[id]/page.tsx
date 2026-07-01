@@ -178,9 +178,10 @@ export default async function ListingPage({ params }: ListingPageProps) {
           search pill expands into the big search (opening the clicked segment),
           and the hamburger menu + avatar behave identically. disableScrollExpand
           keeps it pill-only here so the big bar never occupies the detail page
-          until the user opens it. */}
+          until the user opens it. NOTE: Header is NOT fixed here — it scrolls away
+          so the sticky reserve header can appear and animate smoothly. */}
       <div className="hidden md:block">
-        <div className="sticky top-0 z-50">
+        <div>
           <ListingsHeader disableScrollExpand />
         </div>
         {/* Listing column capped at 1120px (px-8 → 1120 content at 1440), the
@@ -245,6 +246,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
         <Suspense fallback={<div>{d.rental?.listing?.loading}</div>}>
           <MobileReserve
             pricePerNight={serializedListing.pricePerNight || 700}
+            hostEmail={serializedListing.host?.email || "+249915494649"}
           />
         </Suspense>
       </div>

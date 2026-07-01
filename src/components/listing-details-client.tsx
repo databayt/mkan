@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { type DateRange } from "react-day-picker";
+import { Phone } from "lucide-react";
 import { addFavoriteProperty, removeFavoriteProperty } from "@/lib/actions/user-actions";
 import { getBlockedDates } from "@/lib/actions/booking-actions";
 import AirbnbPropertyHeader from "@/components/atom/property-header";
@@ -16,6 +17,7 @@ import WhereYouSleep from "./listings/where-you-sleep";
 import ThingsToKnow from "./listings/things-to-know";
 import GuestFavoriteCard from "./listings/guest-favorite-card";
 import AvailabilityCalendar from "./listings/availability-calendar";
+import StickyListingHeader from "./listings/sticky-listing-header";
 
 interface ListingDetailsClientProps {
     listing: Listing;
@@ -53,6 +55,8 @@ function PriceTagIcon() {
 
 export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlot, initialIsSaved = false }: ListingDetailsClientProps) {
     const { data: session } = useSession();
+    const reserveRef = React.useRef<HTMLDivElement>(null);
+    const [isCallButtonInHeader, setIsCallButtonInHeader] = useState(false);
     // Signed-in users persist the heart to the tenant's favorites; signed-out
     // users fall back to localStorage so the heart still remembers on-device.
     const storageKey = `mkan:saved:${listing.id ?? "anon"}`;
@@ -156,7 +160,16 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
     };
 
     return (
-        <div className="py-8">
+        <>
+            <StickyListingHeader
+                price={listing.pricePerNight || 0}
+                rating={listing.averageRating || 4.5}
+                reviewCount={listing.numberOfReviews || 0}
+                ownerPhone={listing.host?.email || "+249123456789"}
+                reserveElement={reserveRef}
+                onCallButtonMerge={setIsCallButtonInHeader}
+            />
+            <div className="py-8">
             {/* Property Header — PRESERVED title block (title · rating · reviews ·
                 location · Share · Save) per the clone scope. The whole listing
                 column is capped at 1120px by the page wrapper (mirrors the live
@@ -234,7 +247,7 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                 </div>
 
                 {/* Reservation column — Airbnb pushes it right of a flexible gap */}
-                <div className="w-full flex-shrink-0 lg:w-[372px]">
+                <div ref={reserveRef} className="w-full flex-shrink-0 lg:w-[372px]" data-reserve-section>
                     <div className="sticky top-28 space-y-4">
                         {/* "Prices include all fees" promo card above the reserve box */}
                         <div className="flex items-center justify-center gap-2 rounded-xl border border-[#DDDDDD] py-4">
@@ -255,6 +268,8 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                             onRangeChange={setRange}
                             blockedDates={blockedDates}
                             className="w-full"
+                            buttonText="Call"
+                            hideButton={isCallButtonInHeader}
                         />
                     </div>
                 </div>
@@ -274,6 +289,7 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                 maxGuests={listing.guestCount}
                 petsAllowed={listing.isPetsAllowed}
             />
-        </div>
+            </div>
+        </>
     );
 }

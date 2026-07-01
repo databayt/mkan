@@ -87,7 +87,7 @@ const SearchHeader = () => {
             </div>
 
             {/* Center - Small Search & Filters */}
-            <div className="flex items-center justify-center flex-1 sm:mx-8 gap-2 sm:gap-4">
+            <div className="flex items-center justify-center flex-1 sm:mx-8 gap-2 min-w-0">
               <SmallSearch onExpand={openSheet} ctaLayoutId={CTA_ID} />
               <SearchFilters />
             </div>

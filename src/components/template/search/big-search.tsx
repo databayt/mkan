@@ -2,7 +2,7 @@
 
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import LocationDropdown from "./location";
@@ -99,6 +99,14 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
   const pathname = usePathname();
   const dict = useDictionary();
   const { locale } = useLocale();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
   // Active category tab (Homes/Experiences/Services) drives per-tab fields:
   // Experiences changes the "Where" placeholder; Services swaps the third
   // segment from Who/guests to "Type of service".
@@ -525,7 +533,7 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
     const locale = pathParts[1] || "ar";
 
     const searchUrl = `/${locale}/search${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
-    router.push(searchUrl);
+    router.push(searchUrl, { scroll: false });
 
     if (onClose) {
       onClose();
@@ -547,10 +555,10 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
 
   return (
     <div className="relative w-full mx-auto" style={{ maxWidth: 850 }} ref={searchBarRef}>
-      {/* Pill — h-[66px] via inline style because Tailwind v4 CSS scan may not
+      {/* Pill — h-[66px] desktop, h-[56px] mobile via inline style because Tailwind v4 CSS scan may not
           include arbitrary-value utilities that weren't in the initial scan. */}
       <div
-        style={{ height: 66 }}
+        style={{ height: isMobile ? 56 : 66 }}
         className={`flex items-center rounded-full border transition-all duration-200 ${
           activeButton
             ? "bg-[#EBEBEB] border-[#DDDDDD] shadow-[rgba(0,0,0,0.02)_0px_0px_0px_1px,rgba(0,0,0,0.1)_0px_8px_24px_0px]"
@@ -560,7 +568,7 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
         {/* Where Button */}
         {activeButton === "location" ? (
           <div
-            className={`flex-1 min-w-0 ps-8 pe-8 py-4 text-start cursor-default ${getButtonStyling("location")}`}
+            className={`flex-1 min-w-0 ps-8 pe-8 text-start cursor-default transition-all duration-200 ${isMobile ? "py-3" : "py-4"} ${getButtonStyling("location")}`}
             onMouseEnter={() => setHoveredButton("location")}
             onMouseLeave={() => setHoveredButton(null)}
           >
@@ -586,7 +594,7 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
         ) : (
           <button
             type="button"
-            className={`flex-1 min-w-0 ps-8 pe-8 py-4 text-start ${getButtonStyling("location")}`}
+            className={`flex-1 min-w-0 ps-8 pe-8 text-start transition-all duration-200 ${isMobile ? "py-3" : "py-4"} ${getButtonStyling("location")}`}
             onMouseEnter={() => setHoveredButton("location")}
             onMouseLeave={() => setHoveredButton(null)}
             onClick={() => handleButtonClick("location")}
@@ -609,7 +617,7 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
 
         {/* When Button (combined dates) */}
         <button
-          className={`flex-1 min-w-0 px-6 py-4 ${getButtonStyling("dates")}`}
+          className={`flex-1 min-w-0 px-6 transition-all duration-200 ${isMobile ? "py-3" : "py-4"} ${getButtonStyling("dates")}`}
           onMouseEnter={() => setHoveredButton("dates")}
           onMouseLeave={() => setHoveredButton(null)}
           onClick={() => handleButtonClick("dates")}
@@ -642,7 +650,7 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
           {activeButton === "guests" && <ActivePill />}
           {/* Guests / service button */}
           <div
-            className="flex-1 px-6 py-4 text-start"
+            className={`flex-1 px-6 text-start transition-all duration-200 ${isMobile ? "py-3" : "py-4"}`}
             onClick={() => handleButtonClick("guests")}
           >
             <div style={{ fontSize: 12, fontWeight: 500, lineHeight: '16px', color: '#222222', marginBottom: 2 }} className="whitespace-nowrap">
@@ -658,8 +666,9 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
             <Button
               onClick={handleSearch}
               size="icon"
-              className={`rounded-full bg-[#FF385C] hover:bg-[#E31C5F] text-white h-12 transition-[width,padding] duration-300 ${
-                activeButton ? "w-28 px-4" : "w-12"
+              style={{ height: isMobile ? 40 : 48 }}
+              className={`rounded-full bg-[#FF385C] hover:bg-[#E31C5F] text-white transition-[width,padding] duration-300 ${
+                activeButton ? "w-28 px-4" : isMobile ? "w-10" : "w-12"
               }`}
             >
               <Search className="w-4 h-4" />

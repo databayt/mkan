@@ -30,6 +30,10 @@ interface AirbnbReserveProps {
   onRangeChange?: (range: DateRange | undefined) => void;
   /** Pre-expanded blocked dates from the parent; falls back to its own fetch. */
   blockedDates?: Date[];
+  /** Custom button text (default: "Reserve") */
+  buttonText?: string;
+  /** Hide button when merged to header */
+  hideButton?: boolean;
 }
 
 const DEFAULT_SERVICE_FEE_PCT = 0.12;
@@ -48,6 +52,8 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
   listingId,
   pricePerNight = 0,
   cleaningFee = 0,
+  buttonText,
+  hideButton = false,
   serviceFeePct = DEFAULT_SERVICE_FEE_PCT,
   maxGuests = 10,
   className = "",
@@ -241,18 +247,20 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
 
       {/* Reserve — Airbnb's Rausch gradient pill, 12px radius */}
       <Button
-        className="h-12 w-full rounded-[12px] border-0 text-base font-semibold text-white hover:opacity-95"
+        className="h-12 w-full rounded-[12px] border-0 text-base font-semibold text-white hover:opacity-95 transition-opacity duration-300"
         style={{
           background:
             "linear-gradient(to right, #E61E4D 0%, #E31C5F 50%, #D70466 100%)",
+          opacity: hideButton ? 0 : 1,
+          pointerEvents: hideButton ? "none" : "auto",
         }}
-        disabled={!canReserve || isPending}
+        disabled={!canReserve || isPending || hideButton}
         onClick={onReserve}
       >
         {isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          t.reserve ?? "Reserve"
+          buttonText ?? t.reserve ?? "Reserve"
         )}
       </Button>
 

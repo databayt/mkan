@@ -453,8 +453,8 @@ export function SearchFilters() {
 
         <button
           type="button"
-          className="relative flex shrink-0 items-center gap-2 rounded-full bg-background px-4 text-sm font-medium text-foreground transition-colors hover:border-foreground"
-          style={{ height: 40, border: `1px solid ${C.border}` }}
+          className="relative flex shrink-0 items-center justify-center rounded-full bg-background text-sm font-medium text-foreground transition-colors hover:border-foreground"
+          style={{ height: 40, width: 40, border: `1px solid ${C.border}` }}
           onClick={() => {
             setSheetH(Math.round(window.innerHeight * 0.85))
             setOpen(true)
@@ -462,7 +462,6 @@ export function SearchFilters() {
           aria-label={t.filters}
         >
           <SlidersHorizontal className="h-4 w-4" />
-          <span>{t.filters}</span>
           {filterCount > 0 && (
             <span className="absolute -end-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1 text-[11px] font-semibold text-background">
               {formatNumber(filterCount, locale)}

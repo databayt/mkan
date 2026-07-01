@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,17 @@ import { useDictionary } from "@/components/internationalization/dictionary-cont
 const HeroSection = () => {
   const setFilters = useGlobalStore((s) => s.setFilters);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const dict = useDictionary();
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   const handleLocationSearch = async () => {
     try {
@@ -42,7 +50,7 @@ const HeroSection = () => {
           lat: lat.toString(),
           lng: lng,
         });
-        router.push(`/search?${params.toString()}`);
+        router.push(`/search?${params.toString()}`, { scroll: false });
       }
     } catch (error) {
       console.error("error search location:", error);
@@ -89,11 +97,13 @@ const HeroSection = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={dict.hero?.searchPlaceholder ?? "Search by city, neighborhood or address"}
-              className="w-full max-w-lg rounded-none rounded-s-xl rtl:rounded-s-none rtl:rounded-e-xl border-none bg-white h-12"
+              style={{ height: isMobile ? 44 : 48 }}
+              className="w-full max-w-lg rounded-none rounded-s-xl rtl:rounded-s-none rtl:rounded-e-xl border-none bg-white"
             />
             <Button
               onClick={handleLocationSearch}
-              className="bg-secondary-500 text-white rounded-none rounded-e-xl rtl:rounded-e-none rtl:rounded-s-xl border-none hover:bg-secondary-600 h-12"
+              style={{ height: isMobile ? 44 : 48 }}
+              className="bg-secondary-500 text-white rounded-none rounded-e-xl rtl:rounded-e-none rtl:rounded-s-xl border-none hover:bg-secondary-600"
             >
               {dict.hero?.searchButton ?? "Search"}
             </Button>

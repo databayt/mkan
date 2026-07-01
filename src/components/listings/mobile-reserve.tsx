@@ -7,13 +7,19 @@ interface MobileReserveProps {
   pricePerNight?: number;
   className?: string;
   onReserve?: () => void;
+  hostEmail?: string;
 }
 
 const MobileReserve: React.FC<MobileReserveProps> = ({
   pricePerNight = 700,
   className = "",
-  onReserve
+  onReserve,
+  hostEmail = "+249915494649"
 }) => {
+  const handleCall = () => {
+    window.location.href = `tel:${hostEmail}`;
+  };
+
   return (
     <div className={`md:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-gray-200 p-4 ${className}`}>
       <div className="flex items-center justify-between">
@@ -27,12 +33,12 @@ const MobileReserve: React.FC<MobileReserveProps> = ({
           </span>
         </div>
 
-        {/* Reserve Button */}
-        <Button 
-          onClick={onReserve}
-          className="bg-[#E91E63] hover:bg-[#D81B60] text-white font-medium px-8 py-3 rounded-lg"
+        {/* Call Button */}
+        <Button
+          onClick={handleCall}
+          className="bg-[#E91E63] hover:bg-[#D81B60] text-white font-medium px-8 py-4 rounded-lg"
         >
-          Reserve
+          Call
         </Button>
       </div>
     </div>
