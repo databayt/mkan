@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BusFront } from 'lucide-react';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,8 @@ import {
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import { createMetadata } from "@/lib/metadata";
 import type { Locale } from '@/components/internationalization/config';
+import { cityLabel } from '@/components/transport/city-names';
+import { formatNumber } from '@/lib/i18n/formatters';
 
 export async function generateMetadata({
   params,
@@ -96,14 +98,12 @@ export default async function SearchPage({
 
   const originLabel = parsed.originId
     ? assemblyPoints.find((p) => p.id === parsed.originId)?.[lang === 'ar' ? 'nameAr' : 'name']
-      ?? parsed.origin
-      ?? ''
-    : parsed.origin ?? '';
+      ?? cityLabel(parsed.origin ?? '', lang)
+    : cityLabel(parsed.origin ?? '', lang);
   const destinationLabel = parsed.destinationId
     ? assemblyPoints.find((p) => p.id === parsed.destinationId)?.[lang === 'ar' ? 'nameAr' : 'name']
-      ?? parsed.destination
-      ?? ''
-    : parsed.destination ?? '';
+      ?? cityLabel(parsed.destination ?? '', lang)
+    : cityLabel(parsed.destination ?? '', lang);
 
   // Filter dictionary sourced from the central transport namespace.
   const filterDict = {
@@ -143,13 +143,15 @@ export default async function SearchPage({
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-center gap-4 mb-6">
             <Link href={`/${lang}/transport`}>
-              <Button variant="ghost" size="icon" aria-label="Go back">
+              <Button variant="ghost" size="icon" aria-label={dictionary?.common?.back ?? "Go back"}>
                 <ArrowLeft className="h-5 w-5 rtl:rotate-180" />
               </Button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold">
-                {originLabel} → {destinationLabel}
+              <h1 className="text-2xl font-bold flex items-center gap-2 flex-wrap">
+                <span>{originLabel}</span>
+                <ArrowRight className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
+                <span>{destinationLabel}</span>
               </h1>
               <p className="text-muted-foreground">
                 {format(searchDate, 'EEEE, MMMM d, yyyy', { locale: dateLocale })}
@@ -192,7 +194,7 @@ export default async function SearchPage({
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-6">
               <p className="text-muted-foreground">
-                {(t?.search?.tripsFound ?? t?.searchPage?.tripsCountFallback ?? "{count} trip(s) found").replace('{count}', String(total))}
+                {(t?.search?.tripsFound ?? t?.searchPage?.tripsCountFallback ?? "{count} trip(s) found").replace('{count}', formatNumber(total, lang))}
               </p>
             </div>
 
@@ -229,10 +231,12 @@ export default async function SearchPage({
                 )}
               </>
             ) : (
-              <div className="text-center py-16">
-                <div className="text-6xl mb-4">🚌</div>
+              <div className="text-center py-16 px-4">
+                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                  <BusFront className="h-8 w-8 text-muted-foreground" />
+                </div>
                 <h2 className="text-xl font-semibold mb-2">{t?.search?.noResults ?? "No trips found"}</h2>
-                <p className="text-muted-foreground mb-6">
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                   {t?.search?.noResultsDescription ?? "There are no available trips for this route on the selected date. Try a different date or route."}
                 </p>
                 <Link href={`/${lang}/transport`}>

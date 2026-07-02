@@ -2287,7 +2287,9 @@
       "selectSeats": "Select Seats",
       "seatsAvailable": "seats available",
       "duration": "Duration",
-      "perSeat": "per seat"
+      "perSeat": "per seat",
+      "hoursShort": "h",
+      "minutesShort": "m"
     },
     "office": {
       "title": "Transport Offices",

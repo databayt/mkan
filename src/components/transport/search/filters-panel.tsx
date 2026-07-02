@@ -3,20 +3,8 @@
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { BusAmenity } from "@prisma/client";
-import {
-  Armchair,
-  Check,
-  Clock,
-  Coffee,
-  Filter,
-  Luggage,
-  MonitorPlay,
-  Plug,
-  Snowflake,
-  Toilet,
-  Wifi,
-  X,
-} from "lucide-react";
+import { Check, Clock, Filter } from "lucide-react";
+import { busAmenityIcon } from "@/components/transport/amenity-icons";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -48,18 +36,6 @@ import {
   type SortOption,
   type TimeOfDay,
 } from "./url-state";
-
-const AMENITY_ICON: Record<BusAmenity, React.ComponentType<{ className?: string }>> = {
-  AirConditioning: Snowflake,
-  WiFi: Wifi,
-  USB: Plug,
-  LegRoom: Armchair,
-  Toilet: Toilet,
-  Refreshments: Coffee,
-  Entertainment: MonitorPlay,
-  Luggage: Luggage,
-  Reclining: Armchair,
-};
 
 // Fallback time-range labels (used only if the dictionary entry is missing).
 const TIME_WINDOWS: { key: TimeOfDay; rangeFallback: string }[] = [
@@ -359,7 +335,7 @@ function FilterControls({
         <Label className="text-sm font-medium">{dict.amenitiesLabel}</Label>
         <div className="space-y-2">
           {Object.values(BusAmenity).map((amenity) => {
-            const Icon = AMENITY_ICON[amenity];
+            const Icon = busAmenityIcon(amenity);
             const checked = current.amenities?.includes(amenity) ?? false;
             const label = dict.amenities?.[amenity] ?? amenity;
             return (

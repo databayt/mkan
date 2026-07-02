@@ -2287,7 +2287,9 @@
       "selectSeats": "اختر المقاعد",
       "seatsAvailable": "مقاعد متاحة",
       "duration": "المدة",
-      "perSeat": "للمقعد"
+      "perSeat": "للمقعد",
+      "hoursShort": "س",
+      "minutesShort": "د"
     },
     "office": {
       "title": "مكاتب النقل",
