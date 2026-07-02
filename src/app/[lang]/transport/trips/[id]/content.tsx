@@ -226,13 +226,10 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
             </CardContent>
           </Card>
 
-          {/* Seat Picker — the shared component (legend + driver + selected chips) */}
+          {/* Seat Picker — the shared component owns its header (title + live count),
+              legend, driver marker and selected-seat chips */}
           <Card>
-            <CardHeader>
-              <CardTitle>{t.booking.selectSeats}</CardTitle>
-              <CardDescription>{t.booking.clickToSelect}</CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <SeatPicker
                 seats={pickerSeats}
                 selectedSeats={selectedSeats}
