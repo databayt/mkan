@@ -4190,7 +4190,13 @@
       "description": "Keep your availability current so guests only reach you about homes you can actually host.",
       "stillAvailable": "Still available",
       "markBusy": "Mark busy",
-      "done": "Done"
+      "done": "Done",
+      "questionOne": "Is this home still available?",
+      "counter": "{current} of {total}",
+      "hiddenNote": "Homes marked busy are hidden from guests until you turn them back on.",
+      "later": "Not now",
+      "allSet": "You're all set",
+      "allSetBody": "Thanks — guests will only see homes you can host."
     },
     "applicationModal": {
       "title": "Submit Application for this Property",

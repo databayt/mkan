@@ -3,9 +3,6 @@ import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import type { Locale } from "@/components/internationalization/config";
 import HostingListingsContent from "./content";
-import { getStaleAvailabilityListings } from "@/lib/actions/listing-actions";
-import { AvailabilityCheck } from "@/components/hosting/availability-check";
-import { PHASE1 } from "@/config/phase-flags";
 
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
@@ -27,17 +24,8 @@ export async function generateMetadata({
   });
 }
 
+// The availability nudge is mounted globally in the locale layout
+// (AvailabilityPrompt), so this page only renders the listings themselves.
 export default async function HostingListingsPage() {
-  // Availability freshness nudge (phase 1): surface homes the owner hasn't
-  // reconfirmed lately so guests only reach available listings.
-  const staleListings = await getStaleAvailabilityListings(PHASE1.availabilityReminderDays);
-  return (
-    <>
-      <HostingListingsContent />
-      <AvailabilityCheck
-        staleListings={staleListings}
-        periodDays={PHASE1.availabilityReminderDays}
-      />
-    </>
-  );
+  return <HostingListingsContent />;
 }

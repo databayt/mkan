@@ -845,7 +845,7 @@ export async function confirmAvailability(
  */
 export async function getStaleAvailabilityListings(
   days: number
-): Promise<{ id: number; title: string }[]> {
+): Promise<{ id: number; title: string; photoUrl: string | null; city: string | null }[]> {
   const session = await auth();
   if (!session?.user?.id) return [];
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -859,11 +859,21 @@ export async function getStaleAvailabilityListings(
         { lastAvailabilityConfirmedAt: { lt: cutoff } },
       ],
     },
-    select: { id: true, title: true },
+    select: {
+      id: true,
+      title: true,
+      photoUrls: true,
+      location: { select: { city: true } },
+    },
     orderBy: { lastAvailabilityConfirmedAt: { sort: "asc", nulls: "first" } },
     take: 20,
   });
-  return rows.map((r) => ({ id: r.id, title: r.title ?? `#${r.id}` }));
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title ?? `#${r.id}`,
+    photoUrl: r.photoUrls?.[0] ?? null,
+    city: r.location?.city ?? null,
+  }));
 }
 
 // ============================================
