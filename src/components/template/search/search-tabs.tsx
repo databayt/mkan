@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import useSearchHeaderStore, { type SearchTab } from "@/hooks/useSearchHeaderStore";
+import { cdn } from "@/lib/cdn";
 
 interface SearchTabsProps {
   className?: string;
@@ -33,8 +34,7 @@ const UNDERLINE_SPRING = {
 } as const;
 
 const prefersReducedMotion = () =>
-  typeof window !== "undefined" &&
-  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /**
  * One tab. Owns its <video> ref so it can replay the twirl on hover and when
@@ -147,9 +147,7 @@ function TabButton({
       <span
         style={{ fontSize: 14, lineHeight: "18px" }}
         className={`relative z-10 whitespace-nowrap font-medium transition-colors duration-200 ${
-          isActive
-            ? "text-[#222222]"
-            : "text-[#6a6a6a] group-hover:text-[#222222]"
+          isActive ? "text-[#222222]" : "text-[#6a6a6a] group-hover:text-[#222222]"
         }`}
       >
         {tab.label}
@@ -180,21 +178,21 @@ export default function SearchTabs({ className = "" }: SearchTabsProps) {
     {
       id: "homes",
       label: dict.search?.homes ?? "Homes",
-      poster: "/images/search/homes.png",
-      webm: "/images/search/homes.webm",
+      poster: cdn.vendor("airbnb", "homes.png"),
+      webm: cdn.vendor("airbnb", "homes.webm"),
     },
     {
       id: "experiences",
       label: dict.search?.experiences ?? "Experiences",
-      poster: "/images/search/experiences.png",
-      webm: "/images/search/experiences.webm",
+      poster: cdn.vendor("airbnb", "experiences.png"),
+      webm: cdn.vendor("airbnb", "experiences.webm"),
       isNew: true,
     },
     {
       id: "services",
       label: dict.search?.services ?? "Services",
-      poster: "/images/search/services.png",
-      webm: "/images/search/services.webm",
+      poster: cdn.vendor("airbnb", "services.png"),
+      webm: cdn.vendor("airbnb", "services.webm"),
       isNew: true,
     },
   ];

@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
@@ -165,7 +166,7 @@ const PropertyManagement = () => {
                     <TableCell>
                       <div className="flex items-center space-x-3">
                         <Image
-                          src="/landing-i1.png"
+                          src={cdn.product("landing-i1.png")}
                           alt={lease.tenant?.name || lease.tenantId}
                           width={40}
                           height={40}

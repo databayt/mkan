@@ -1,4 +1,5 @@
 "use client"
+import { cdn } from "@/lib/cdn";
 
 import { useState } from "react"
 import Image from "next/image"
@@ -30,7 +31,7 @@ export default function NavThumbnails({
         >
           <div className="relative w-30 h-20 overflow-hidden shadow-md">
             <Image
-              src={section.photos[0] ?? '/property-placeholder.svg'}
+              src={section.photos[0] ?? cdn.product("property-placeholder.svg")}
               alt={section.label}
               fill
               className={`transition-all duration-200 ${

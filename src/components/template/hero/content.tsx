@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import Image from "next/image";
 import React, { useState, useEffect } from "react";
@@ -67,7 +68,7 @@ const HeroSection = () => {
       {/* Hero Background Image */}
       <div className="relative h-full w-full">
         <Image
-          src="/hero.png"
+          src={cdn.product("hero.png")}
           alt={dict.hero?.heroAlt ?? "Mkan Rental Platform Hero Section"}
           fill
           className="object-cover object-center"

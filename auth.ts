@@ -45,7 +45,7 @@ export const {
         sameSite: isProduction ? "strict" : "lax",
         path: "/",
         secure: isProduction,
-        maxAge: 30 * 24 * 60 * 60, // 30 days
+        maxAge: 365 * 24 * 60 * 60, // 1 year — owners "log in once, stay logged in" (phase 1)
       },
     },
     callbackUrl: {
@@ -180,8 +180,12 @@ export const {
   adapter: PrismaAdapter(db),
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-    updateAge: 24 * 60 * 60, // 24 hours
+    maxAge: 365 * 24 * 60 * 60, // 1 year — owners "log in once, stay logged in" (phase 1)
+    updateAge: 24 * 60 * 60, // 24 hours (sliding refresh)
+  },
+  // JWT lifetime pinned to the session so the token never expires before it.
+  jwt: {
+    maxAge: 365 * 24 * 60 * 60, // 1 year
   },
   // Enable debug mode only in development
   debug: isDevelopment,

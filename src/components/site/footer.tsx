@@ -4,6 +4,7 @@ import { Globe } from "lucide-react";
 import Link from "next/link";
 import { ReportIssue } from "@/components/report-issue";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { PHASE1 } from "@/config/phase-flags";
 
 export default function Footer() {
   const dict = useDictionary();
@@ -91,13 +92,19 @@ export default function Footer() {
 
             {/* Right side - Language and currency */}
             <div className="flex items-center gap-4 text-sm text-gray-900">
-              <button className="flex items-center gap-2 hover:underline">
-                <Globe className="w-4 h-4" />
-                <span>{f.englishUS ?? "English (US)"}</span>
-              </button>
-              <button className="hover:underline">
-                {f.currencyUSD ?? "$ USD"}
-              </button>
+              {/* Phase 1: locale/currency switcher hidden — non-functional buttons; locale is
+                  driven by the URL prefix and prices are already SDG. See phase-flags. */}
+              {PHASE1.showFooterLocaleSwitcher && (
+                <>
+                  <button className="flex items-center gap-2 hover:underline">
+                    <Globe className="w-4 h-4" />
+                    <span>{f.englishUS ?? "English"}</span>
+                  </button>
+                  <button className="hover:underline">
+                    {f.currencyUSD ?? "SDG"}
+                  </button>
+                </>
+              )}
               {/* Social Links */}
               <div className="flex items-center gap-3">
                 <Link href="https://facebook.com" className="hover:opacity-70" aria-label="Facebook">

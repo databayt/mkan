@@ -1,13 +1,14 @@
 "use client";
 // Disable static generation for this page
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import React from 'react';
-import { usePathname } from 'next/navigation';
-import StepHeader from '@/components/host/step-header';
-import { useHostValidation } from '@/context/onboarding-validation-context';
-import { ListingProvider, useListing } from '@/components/host/use-listing';
-import { useDictionary } from '@/components/internationalization/dictionary-context';
+import React from "react";
+import { usePathname } from "next/navigation";
+import StepHeader from "@/components/host/step-header";
+import { useHostValidation } from "@/context/onboarding-validation-context";
+import { ListingProvider, useListing } from "@/components/host/use-listing";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { cdn } from "@/lib/cdn";
 
 interface FinishSetupPageProps {
   params: Promise<{ id: string }>;
@@ -16,7 +17,7 @@ interface FinishSetupPageProps {
 const FinishSetupPageContent = ({ params }: FinishSetupPageProps) => {
   const pathname = usePathname();
   const dict = useDictionary();
-  const [id, setId] = React.useState<string>('');
+  const [id, setId] = React.useState<string>("");
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const { enableNext } = useHostValidation();
   const { listing, loadListing } = useListing();
@@ -41,7 +42,7 @@ const FinishSetupPageContent = ({ params }: FinishSetupPageProps) => {
   React.useEffect(() => {
     if (videoRef.current) {
       videoRef.current.play().catch((error) => {
-        console.log('Auto-play was prevented:', error);
+        console.log("Auto-play was prevented:", error);
       });
     }
   }, []);
@@ -59,15 +60,12 @@ const FinishSetupPageContent = ({ params }: FinishSetupPageProps) => {
           // Ensure video plays after loading
           if (videoRef.current) {
             videoRef.current.play().catch((error) => {
-              console.log('Video play failed:', error);
+              console.log("Video play failed:", error);
             });
           }
         }}
       >
-        <source
-          src="https://stream.media.muscache.com/KeNKUpa01dRaT5g00SSBV95FqXYkqf01DJdzn01F1aT00vCI.mp4?v_q=high"
-          type="video/mp4"
-        />
+        <source src={cdn.vendor("airbnb", "host-finish-setup.mp4")} type="video/mp4" />
       </video>
     </div>
   );
@@ -94,4 +92,4 @@ const FinishSetupPage = ({ params }: FinishSetupPageProps) => {
   );
 };
 
-export default FinishSetupPage; 
+export default FinishSetupPage;

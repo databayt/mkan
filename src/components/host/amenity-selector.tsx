@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
-import Image from 'next/image';
-import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import SelectionCard from './selection-card';
-import { cn } from '@/lib/utils';
-import { Amenity } from '@prisma/client';
-import { useDictionary } from '@/components/internationalization/dictionary-context';
-import { useLocale } from '@/components/internationalization/use-locale';
+import React, { useMemo, useState } from "react";
+import Image from "next/image";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import SelectionCard from "./selection-card";
+import { cn } from "@/lib/utils";
+import { Amenity } from "@prisma/client";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { useLocale } from "@/components/internationalization/use-locale";
+import { cdn } from "@/lib/cdn";
 
 interface AmenityOption {
   id: string;
@@ -40,39 +41,42 @@ const SvgIcon = ({ src, alt, size = 28 }: { src: string; alt: string; size?: num
 // available match.
 export const mapAmenityToPrisma = (amenityId: string): Amenity => {
   const mapping: Record<string, Amenity> = {
-    'wifi': Amenity.WiFi,
-    'tv': Amenity.HighSpeedInternet,
-    'kitchen': Amenity.Dishwasher,
-    'washer': Amenity.WasherDryer,
-    'free-parking': Amenity.Parking,
-    'paid-parking': Amenity.Parking,
-    'air-conditioning': Amenity.AirConditioning,
-    'dedicated-workspace': Amenity.HighSpeedInternet,
-    'pool': Amenity.Pool,
-    'hot-tub': Amenity.Pool,
-    'patio': Amenity.HardwoodFloors,
-    'bbq-grill': Amenity.HardwoodFloors,
-    'outdoor-dining': Amenity.HardwoodFloors,
-    'fire-pit': Amenity.HardwoodFloors,
-    'pool-table': Amenity.Gym,
-    'indoor-fireplace': Amenity.HardwoodFloors,
-    'piano': Amenity.HardwoodFloors,
-    'exercise-equipment': Amenity.Gym,
-    'lake-access': Amenity.HardwoodFloors,
-    'beach-access': Amenity.HardwoodFloors,
-    'ski-in-out': Amenity.HardwoodFloors,
-    'outdoor-shower': Amenity.HardwoodFloors,
-    'smoke-alarm': Amenity.HardwoodFloors,
-    'first-aid-kit': Amenity.HardwoodFloors,
-    'fire-extinguisher': Amenity.HardwoodFloors,
-    'carbon-monoxide-alarm': Amenity.HardwoodFloors,
+    wifi: Amenity.WiFi,
+    tv: Amenity.HighSpeedInternet,
+    kitchen: Amenity.Dishwasher,
+    washer: Amenity.WasherDryer,
+    "free-parking": Amenity.Parking,
+    "paid-parking": Amenity.Parking,
+    "air-conditioning": Amenity.AirConditioning,
+    "dedicated-workspace": Amenity.HighSpeedInternet,
+    pool: Amenity.Pool,
+    "hot-tub": Amenity.Pool,
+    patio: Amenity.HardwoodFloors,
+    "bbq-grill": Amenity.HardwoodFloors,
+    "outdoor-dining": Amenity.HardwoodFloors,
+    "fire-pit": Amenity.HardwoodFloors,
+    "pool-table": Amenity.Gym,
+    "indoor-fireplace": Amenity.HardwoodFloors,
+    piano: Amenity.HardwoodFloors,
+    "exercise-equipment": Amenity.Gym,
+    "lake-access": Amenity.HardwoodFloors,
+    "beach-access": Amenity.HardwoodFloors,
+    "ski-in-out": Amenity.HardwoodFloors,
+    "outdoor-shower": Amenity.HardwoodFloors,
+    "smoke-alarm": Amenity.HardwoodFloors,
+    "first-aid-kit": Amenity.HardwoodFloors,
+    "fire-extinguisher": Amenity.HardwoodFloors,
+    "carbon-monoxide-alarm": Amenity.HardwoodFloors,
   };
 
   return mapping[amenityId] || Amenity.WiFi;
 };
 
 // Airbnb-style ease; matches the smooth glide used elsewhere in the app.
-const SWITCH_TRANSITION = { duration: 0.28, ease: [0.32, 0.72, 0, 1] as [number, number, number, number] };
+const SWITCH_TRANSITION = {
+  duration: 0.28,
+  ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+};
 
 const AmenitySelector: React.FC<AmenitySelectorProps> = ({
   selectedAmenities,
@@ -83,52 +87,170 @@ const AmenitySelector: React.FC<AmenitySelectorProps> = ({
   const { isRTL } = useLocale();
   const a = dict.hosting.pages.amenities;
 
-  const sections: AmenitySection[] = useMemo(() => [
-    {
-      id: 'guest-favorites',
-      heading: a.guestFavorites,
-      items: [
-        { id: 'wifi', label: a.wifi, iconSrc: '/amenities/Wifi.svg', iconAlt: 'Wifi' },
-        { id: 'tv', label: a.tv, iconSrc: '/amenities/TV.svg', iconAlt: 'TV' },
-        { id: 'kitchen', label: a.kitchen, iconSrc: '/amenities/Kitchen.svg', iconAlt: 'Kitchen' },
-        { id: 'washer', label: a.washer, iconSrc: '/amenities/Washing machine.svg', iconAlt: 'Washer' },
-        { id: 'free-parking', label: a.freeParking, iconSrc: '/amenities/Parking.svg', iconAlt: 'Free parking' },
-        { id: 'paid-parking', label: a.paidParking, iconSrc: '/amenities/Paid parking.svg', iconAlt: 'Paid parking' },
-        { id: 'air-conditioning', label: a.ac, iconSrc: '/amenities/Air conditioning.svg', iconAlt: 'Air conditioning' },
-        { id: 'dedicated-workspace', label: a.workspace, iconSrc: '/amenities/Workspace.svg', iconAlt: 'Workspace' },
-      ],
-    },
-    {
-      id: 'standout',
-      heading: a.standoutAmenities,
-      items: [
-        { id: 'pool', label: a.pool, iconSrc: '/amenities/Pool.svg', iconAlt: 'Pool' },
-        { id: 'hot-tub', label: a.hotTub, iconSrc: '/amenities/Hot tub.svg', iconAlt: 'Hot tub' },
-        { id: 'patio', label: a.patio, iconSrc: '/amenities/Patio.svg', iconAlt: 'Patio' },
-        { id: 'bbq-grill', label: a.bbqGrill, iconSrc: '/amenities/BBQ grill.svg', iconAlt: 'BBQ grill' },
-        { id: 'outdoor-dining', label: a.outdoorDining, iconSrc: '/amenities/Outdoor dining.svg', iconAlt: 'Outdoor dining area' },
-        { id: 'fire-pit', label: a.firePit, iconSrc: '/amenities/Fire pit.svg', iconAlt: 'Fire pit' },
-        { id: 'pool-table', label: a.poolTable, iconSrc: '/amenities/Pool table.svg', iconAlt: 'Pool table' },
-        { id: 'indoor-fireplace', label: a.indoorFireplace, iconSrc: '/amenities/Fireplace.svg', iconAlt: 'Indoor fireplace' },
-        { id: 'piano', label: a.piano, iconSrc: '/amenities/Piano.svg', iconAlt: 'Piano' },
-        { id: 'exercise-equipment', label: a.exerciseEquipment, iconSrc: '/amenities/Gym.svg', iconAlt: 'Exercise equipment' },
-        { id: 'lake-access', label: a.lakeAccess, iconSrc: '/amenities/Lake area.svg', iconAlt: 'Lake access' },
-        { id: 'beach-access', label: a.beachAccess, iconSrc: '/amenities/Beach area.svg', iconAlt: 'Beach access' },
-        { id: 'ski-in-out', label: a.skiInOut, iconSrc: '/amenities/Ski.svg', iconAlt: 'Ski-in/ski-out' },
-        { id: 'outdoor-shower', label: a.outdoorShower, iconSrc: '/amenities/Shower.svg', iconAlt: 'Outdoor shower' },
-      ],
-    },
-    {
-      id: 'safety',
-      heading: a.safetyItems,
-      items: [
-        { id: 'smoke-alarm', label: a.smokeAlarm, iconSrc: '/amenities/Smoke alarm.svg', iconAlt: 'Smoke alarm' },
-        { id: 'first-aid-kit', label: a.firstAidKit, iconSrc: '/amenities/First aid kit.svg', iconAlt: 'First aid kit' },
-        { id: 'fire-extinguisher', label: a.fireExtinguisher, iconSrc: '/amenities/Fire extinguisher.svg', iconAlt: 'Fire extinguisher' },
-        { id: 'carbon-monoxide-alarm', label: a.carbonMonoxideAlarm, iconSrc: '/amenities/Carbon monoxide alarm.svg', iconAlt: 'Carbon monoxide alarm' },
-      ],
-    },
-  ], [a]);
+  const sections: AmenitySection[] = useMemo(
+    () => [
+      {
+        id: "guest-favorites",
+        heading: a.guestFavorites,
+        items: [
+          { id: "wifi", label: a.wifi, iconSrc: cdn.vendor("airbnb", "wifi.svg"), iconAlt: "Wifi" },
+          { id: "tv", label: a.tv, iconSrc: cdn.vendor("airbnb", "tv.svg"), iconAlt: "TV" },
+          {
+            id: "kitchen",
+            label: a.kitchen,
+            iconSrc: cdn.vendor("airbnb", "kitchen.svg"),
+            iconAlt: "Kitchen",
+          },
+          {
+            id: "washer",
+            label: a.washer,
+            iconSrc: cdn.vendor("airbnb", "washer.svg"),
+            iconAlt: "Washer",
+          },
+          {
+            id: "free-parking",
+            label: a.freeParking,
+            iconSrc: cdn.vendor("airbnb", "free-parking.svg"),
+            iconAlt: "Free parking",
+          },
+          {
+            id: "paid-parking",
+            label: a.paidParking,
+            iconSrc: cdn.vendor("airbnb", "paid-street-parking.svg"),
+            iconAlt: "Paid parking",
+          },
+          {
+            id: "air-conditioning",
+            label: a.ac,
+            iconSrc: cdn.vendor("airbnb", "air-conditioning.svg"),
+            iconAlt: "Air conditioning",
+          },
+          {
+            id: "dedicated-workspace",
+            label: a.workspace,
+            iconSrc: cdn.vendor("airbnb", "dedicated-workspace.svg"),
+            iconAlt: "Workspace",
+          },
+        ],
+      },
+      {
+        id: "standout",
+        heading: a.standoutAmenities,
+        items: [
+          { id: "pool", label: a.pool, iconSrc: cdn.vendor("airbnb", "pool.svg"), iconAlt: "Pool" },
+          {
+            id: "hot-tub",
+            label: a.hotTub,
+            iconSrc: cdn.vendor("airbnb", "hot-tub.svg"),
+            iconAlt: "Hot tub",
+          },
+          {
+            id: "patio",
+            label: a.patio,
+            iconSrc: cdn.vendor("airbnb", "private-patio-or-balcony.svg"),
+            iconAlt: "Patio",
+          },
+          {
+            id: "bbq-grill",
+            label: a.bbqGrill,
+            iconSrc: cdn.vendor("airbnb", "bbq-grill.svg"),
+            iconAlt: "BBQ grill",
+          },
+          {
+            id: "outdoor-dining",
+            label: a.outdoorDining,
+            iconSrc: cdn.vendor("airbnb", "outdoor-dining.svg"),
+            iconAlt: "Outdoor dining area",
+          },
+          {
+            id: "fire-pit",
+            label: a.firePit,
+            iconSrc: cdn.vendor("airbnb", "fire-pit.svg"),
+            iconAlt: "Fire pit",
+          },
+          {
+            id: "pool-table",
+            label: a.poolTable,
+            iconSrc: cdn.vendor("airbnb", "pool-table.svg"),
+            iconAlt: "Pool table",
+          },
+          {
+            id: "indoor-fireplace",
+            label: a.indoorFireplace,
+            iconSrc: cdn.vendor("airbnb", "indoor-fireplace.svg"),
+            iconAlt: "Indoor fireplace",
+          },
+          {
+            id: "piano",
+            label: a.piano,
+            iconSrc: cdn.vendor("airbnb", "piano.svg"),
+            iconAlt: "Piano",
+          },
+          {
+            id: "exercise-equipment",
+            label: a.exerciseEquipment,
+            iconSrc: cdn.vendor("airbnb", "gym.svg"),
+            iconAlt: "Exercise equipment",
+          },
+          {
+            id: "lake-access",
+            label: a.lakeAccess,
+            iconSrc: cdn.vendor("airbnb", "waterfront.svg"),
+            iconAlt: "Lake access",
+          },
+          {
+            id: "beach-access",
+            label: a.beachAccess,
+            iconSrc: cdn.vendor("airbnb", "beachfront.svg"),
+            iconAlt: "Beach access",
+          },
+          {
+            id: "ski-in-out",
+            label: a.skiInOut,
+            iconSrc: cdn.vendor("airbnb", "ski-in-ski-out.svg"),
+            iconAlt: "Ski-in/ski-out",
+          },
+          {
+            id: "outdoor-shower",
+            label: a.outdoorShower,
+            iconSrc: cdn.vendor("airbnb", "outdoor-shower.svg"),
+            iconAlt: "Outdoor shower",
+          },
+        ],
+      },
+      {
+        id: "safety",
+        heading: a.safetyItems,
+        items: [
+          {
+            id: "smoke-alarm",
+            label: a.smokeAlarm,
+            iconSrc: cdn.vendor("airbnb", "smoke-alarm.svg"),
+            iconAlt: "Smoke alarm",
+          },
+          {
+            id: "first-aid-kit",
+            label: a.firstAidKit,
+            iconSrc: cdn.vendor("airbnb", "first-aid-kit.svg"),
+            iconAlt: "First aid kit",
+          },
+          {
+            id: "fire-extinguisher",
+            label: a.fireExtinguisher,
+            iconSrc: cdn.vendor("airbnb", "fire-extinguisher.svg"),
+            iconAlt: "Fire extinguisher",
+          },
+          {
+            id: "carbon-monoxide-alarm",
+            label: a.carbonMonoxideAlarm,
+            iconSrc: cdn.vendor("airbnb", "carbon-monoxide-alarm.svg"),
+            iconAlt: "Carbon monoxide alarm",
+          },
+        ],
+      },
+    ],
+    [a],
+  );
 
   const [active, setActive] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -153,12 +275,12 @@ const AmenitySelector: React.FC<AmenitySelectorProps> = ({
   const selectedInSection = section.items.filter((i) => selectedAmenities.includes(i.id)).length;
 
   const navButton =
-    'flex h-9 w-9 items-center justify-center rounded-full border border-foreground/40 text-foreground transition ' +
-    'hover:border-foreground hover:bg-accent ' +
-    'disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-foreground/40 disabled:hover:bg-transparent';
+    "flex h-9 w-9 items-center justify-center rounded-full border border-foreground/40 text-foreground transition " +
+    "hover:border-foreground hover:bg-accent " +
+    "disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-foreground/40 disabled:hover:bg-transparent";
 
   return (
-    <div className={cn('flex flex-col', className)}>
+    <div className={cn("flex flex-col", className)}>
       <div className="relative overflow-hidden">
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
@@ -207,10 +329,10 @@ const AmenitySelector: React.FC<AmenitySelectorProps> = ({
               aria-current={i === active}
               onClick={() => goTo(i, i > active ? 1 : -1)}
               className={cn(
-                'h-1.5 rounded-full transition-all duration-200',
+                "h-1.5 rounded-full transition-all duration-200",
                 i === active
-                  ? 'w-5 bg-foreground'
-                  : 'w-1.5 bg-muted-foreground/40 hover:bg-muted-foreground/70'
+                  ? "w-5 bg-foreground"
+                  : "w-1.5 bg-muted-foreground/40 hover:bg-muted-foreground/70",
               )}
             />
           ))}

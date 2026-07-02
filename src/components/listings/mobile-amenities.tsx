@@ -1,66 +1,38 @@
 "use client";
 
 import React from 'react';
-import Image from 'next/image';
-import { Button } from '@/components/ui/button';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { AMENITY_ICONS, featureIcon, featureLabel } from './feature-icons';
 
-interface AmenityItem {
-  id: string;
-  label: string;
-  icon: string;
-  alt: string;
+interface MobileAmenitiesProps {
+  /** Real Prisma `Amenity` enum values for this listing. */
+  amenities?: string[];
 }
 
-// Custom component for SVG amenity icons
-const SvgIcon = ({ src, alt, size = 20 }: { src: string; alt: string; size?: number }) => (
-  <Image
-    src={src}
-    alt={alt}
-    width={size}
-    height={size}
-    className="object-contain"
-  />
-);
+export default function MobileAmenities({ amenities = [] }: MobileAmenitiesProps) {
+  const dict = useDictionary();
+  const labels = dict?.rental?.property?.amenities as Record<string, string> | undefined;
 
-export default function MobileAmenities() {
-  // Static amenities data matching the image exactly
-  const staticAmenities: AmenityItem[] = [
-    { id: 'wifi', label: 'Wifi', icon: '/amenities/Wifi.svg', alt: 'Wifi' },
-    { id: 'tv', label: 'TV', icon: '/amenities/TV.svg', alt: 'TV' },
-    { id: 'kitchen', label: 'Kitchen', icon: '/amenities/Kitchen.svg', alt: 'Kitchen' },
-    { id: 'free-parking', label: 'Free parking on premises', icon: '/amenities/Parking.svg', alt: 'Free parking' },
-    { id: 'air-conditioning', label: 'Air conditioning', icon: '/amenities/Air conditioning.svg', alt: 'Air conditioning' },
-    { id: 'smoke-alarm', label: 'Smoke alarm', icon: '/amenities/Smoke alarm.svg', alt: 'Smoke alarm' },
-  ];
+  // Honest-info rule: no amenities → render nothing (never an empty block).
+  if (!amenities || amenities.length === 0) return null;
 
   return (
     <div className="md:hidden px-4 py-6 space-y-4">
-      {/* Heading */}
       <h3 className="text-lg font-semibold text-foreground">
-        What this place offers
+        {dict?.property?.sections?.amenities ?? 'What this place offers'}
       </h3>
 
-      {/* Amenities Grid */}
       <div className="grid grid-cols-1 gap-3">
-        {staticAmenities.map((amenity) => (
-          <div key={amenity.id} className="flex items-center space-x-3">
-            <div className="flex-shrink-0">
-              <SvgIcon src={amenity.icon} alt={amenity.alt} size={20} />
+        {amenities.map((a) => {
+          const Icon = featureIcon(AMENITY_ICONS, a);
+          return (
+            <div key={a} className="flex items-center gap-3">
+              <Icon className="h-5 w-5 flex-shrink-0 text-foreground" strokeWidth={1.5} />
+              <span className="text-sm text-foreground leading-relaxed">{featureLabel(labels, a)}</span>
             </div>
-            <span className="text-sm text-foreground leading-relaxed">
-              {amenity.label}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
-
-      {/* Show all amenities button */}
-      <Button 
-        variant="outline" 
-        className="w-auto bg-muted border-0 text-gray-700 hover:bg-gray-50 text-sm"
-      >
-        Show all 23 amenities
-      </Button>
     </div>
   );
-} 
+}

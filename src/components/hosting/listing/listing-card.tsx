@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import React from 'react';
 import Image from 'next/image';
@@ -50,9 +51,9 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewType }) => {
 
   const getListingImage = (listing: Listing): string => {
     if (listing.photoUrls && listing.photoUrls.length > 0) {
-      return listing.photoUrls[0] ?? '/assets/hero.jpg';
+      return listing.photoUrls[0] ?? cdn.product("assets/hero.jpg");
     }
-    return '/assets/hero.jpg'; // Default fallback image
+    return cdn.product("assets/hero.jpg"); // Default fallback image
   };
 
   const getListingTitle = (listing: Listing) => {
@@ -111,7 +112,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewType }) => {
             className="w-full h-full object-cover rounded-lg"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = '/assets/hero.jpg';
+              target.src = cdn.product("assets/hero.jpg");
             }}
           />
         </div>

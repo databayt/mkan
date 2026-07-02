@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import React from "react";
 import Image from "next/image";
@@ -24,8 +25,8 @@ import { cn } from "@/lib/utils";
 
 // Authentic Airbnb empty-state room suggestions (3D illustrations live in /public/hosting).
 const ROOM_SUGGESTIONS = [
-  { key: "bedroom", fallback: "Bedroom", image: "/hosting/bedroom.png" },
-  { key: "bathroom", fallback: "Bathroom", image: "/hosting/bathroom.png" },
+  { key: "bedroom", fallback: "Bedroom", image: cdn.product("hosting/bedroom.png") },
+  { key: "bathroom", fallback: "Bathroom", image: cdn.product("hosting/bathroom.png") },
   { key: "additional", fallback: "Additional photos", image: null },
 ] as const;
 

@@ -1,11 +1,12 @@
+import { cdn } from "@/lib/cdn";
 /**
  * Image utility functions for handling image URLs and fallbacks
  */
 
 // Default fallback images
 export const DEFAULT_IMAGES = {
-  property: '/images/default-property.jpg',
-  avatar: '/images/default-avatar.png',
+  property: cdn.product("images/default-property.svg"),
+  avatar: cdn.product("images/default-avatar.svg"),
   placeholder: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2U1ZTdlYiIvPjx0ZXh0IHRleHQtYW5jaG9yPSJtaWRkbGUiIHg9IjIwMCIgeT0iMTUwIiBzdHlsZT0iZmlsbDojOTNhM2IzO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1zaXplOjIwcHg7Zm9udC1mYW1pbHk6QXJpYWwsSGVsdmV0aWNhLHNhbnMtc2VyaWY7ZG9taW5hbnQtYmFzZWxpbmU6Y2VudHJhbCI+SW1hZ2UgTm90IEF2YWlsYWJsZTwvdGV4dD48L3N2Zz4=',
 };
 

@@ -1,3 +1,4 @@
+import { cdn } from "@/lib/cdn";
 import { Suspense } from 'react';
 import { MapPin, Clock, Shield, Ticket, Building2, ArrowRight } from 'lucide-react';
 import type { Metadata } from 'next';
@@ -83,7 +84,7 @@ export default async function TransportPage({ params }: TransportPageProps) {
             playsInline
             className="absolute inset-0 w-full h-full object-cover"
           >
-            <source src="/videos/hero-bg.mp4" type="video/mp4" />
+            <source src={cdn.product("videos/hero-bg.mp4")} type="video/mp4" />
           </video>
           {/* Dark overlay for text readability */}
           <div className="absolute inset-0 bg-black/40" />

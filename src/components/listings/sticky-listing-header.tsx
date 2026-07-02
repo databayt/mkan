@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Phone } from "lucide-react";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 interface StickyListingHeaderProps {
   price: number;
@@ -21,6 +22,7 @@ export default function StickyListingHeader({
   reserveElement,
   onCallButtonMerge,
 }: StickyListingHeaderProps) {
+  const dict = useDictionary();
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
   const [showCallButton, setShowCallButton] = useState(false);
   const [callButtonOpacity, setCallButtonOpacity] = useState(0);
@@ -66,10 +68,10 @@ export default function StickyListingHeader({
   }, [showCallButton, onCallButtonMerge]);
 
   const tabs = [
-    { id: "photos", label: "Photos" },
-    { id: "amenities", label: "Amenities" },
-    { id: "reviews", label: "Reviews" },
-    { id: "location", label: "Location" },
+    { id: "photos", label: dict?.property?.tabs?.photos ?? "Photos" },
+    { id: "amenities", label: dict?.property?.tabs?.amenities ?? "Amenities" },
+    { id: "reviews", label: dict?.property?.tabs?.reviews ?? "Reviews" },
+    { id: "location", label: dict?.property?.tabs?.location ?? "Location" },
   ];
 
   return (
@@ -110,10 +112,10 @@ export default function StickyListingHeader({
                   style={{
                     opacity: callButtonOpacity,
                   }}
-                  title={`Call ${ownerPhone}`}
+                  title={`${dict?.property?.contactHost?.call ?? "Call"} ${ownerPhone}`}
                 >
                   <Phone className="h-4 w-4 flex-shrink-0" />
-                  <span>Call</span>
+                  <span>{dict?.property?.contactHost?.call ?? "Call"}</span>
                 </a>
               )}
             </div>

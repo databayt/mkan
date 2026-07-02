@@ -18,6 +18,10 @@ import ThingsToKnow from "./listings/things-to-know";
 import GuestFavoriteCard from "./listings/guest-favorite-card";
 import AvailabilityCalendar from "./listings/availability-calendar";
 import StickyListingHeader from "./listings/sticky-listing-header";
+import { PHASE1 } from "@/config/phase-flags";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { useLocale } from "@/components/internationalization/use-locale";
+import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
 
 interface ListingDetailsClientProps {
     listing: Listing;
@@ -55,6 +59,11 @@ function PriceTagIcon() {
 
 export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlot, initialIsSaved = false }: ListingDetailsClientProps) {
     const { data: session } = useSession();
+    const dict = useDictionary();
+    const { locale } = useLocale();
+    // Phase 1 is contact-only: the guest calls the host. Falls back to the
+    // market support line when a host has no phone on file.
+    const ownerPhone = listing.host?.phoneNumber || "+249915494649";
     const reserveRef = React.useRef<HTMLDivElement>(null);
     const [isCallButtonInHeader, setIsCallButtonInHeader] = useState(false);
     // Signed-in users persist the heart to the tenant's favorites; signed-out
@@ -94,23 +103,26 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
 
     const locationString = listing.location
         ? `${listing.location.city}, ${listing.location.state}`
-        : "Location not available";
+        : (dict?.property?.detail?.locationUnavailable ?? "Location not available");
 
-    // Airbnb overview line: "Entire {type} in {city}, {country}". Falls back to
-    // just the type when a listing has no location row.
-    const typeLabel = (listing.propertyType ?? "place").toLowerCase();
+    // Airbnb overview line: "Entire {type} in {city}, {country}". Type label is
+    // localized via the shared propertyType enum map; falls back to just the type.
+    const typeLabels = dict?.rental?.property?.types as Record<string, string> | undefined;
+    const typeLabel = (listing.propertyType && typeLabels?.[listing.propertyType]) || (listing.propertyType ?? "place");
     const overviewTitle = listing.location
-        ? `Entire ${typeLabel} in ${listing.location.city}, ${listing.location.country}`
-        : `Entire ${typeLabel}`;
+        ? (dict?.property?.detail?.entireIn ?? "Entire {type} in {location}")
+            .replace("{type}", typeLabel)
+            .replace("{location}", `${listing.location.city}, ${listing.location.country}`)
+        : (dict?.property?.detail?.entire ?? "Entire {type}").replace("{type}", typeLabel);
 
     // Specs line mirrors the reference order: guests · bedrooms · bathrooms.
-    // The Listing model has no per-bed count, so "beds" is omitted (vs Airbnb's
-    // guests · bedrooms · beds · baths).
-    const plural = (n: number, s: string) => `${n} ${s}${n === 1 ? "" : "s"}`;
+    // The Listing model has no per-bed count, so "beds" is omitted.
+    const spec = (n: number, key: "guests" | "bedrooms" | "bathrooms") =>
+        (dict?.property?.detail?.[key] ?? `{count} ${key}`).replace("{count}", formatNumber(n, locale));
     const specs = [
-        typeof listing.guestCount === "number" ? plural(listing.guestCount, "guest") : null,
-        typeof listing.bedrooms === "number" ? plural(listing.bedrooms, "bedroom") : null,
-        typeof listing.bathrooms === "number" ? plural(listing.bathrooms, "bathroom") : null,
+        typeof listing.guestCount === "number" ? spec(listing.guestCount, "guests") : null,
+        typeof listing.bedrooms === "number" ? spec(listing.bedrooms, "bedrooms") : null,
+        typeof listing.bathrooms === "number" ? spec(listing.bathrooms, "bathrooms") : null,
     ].filter(Boolean).join(" · ");
 
     // Superhost is a rating+volume proxy at v1.0 (no separate program yet).
@@ -165,7 +177,7 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                 price={listing.pricePerNight || 0}
                 rating={listing.averageRating || 4.5}
                 reviewCount={listing.numberOfReviews || 0}
-                ownerPhone={listing.host?.phoneNumber || "+249915494649"}
+                ownerPhone={ownerPhone}
                 reserveElement={reserveRef}
                 onCallButtonMerge={setIsCallButtonInHeader}
             />
@@ -213,6 +225,9 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                                 <GuestFavoriteCard
                                     rating={listing.averageRating || 4.5}
                                     reviewCount={listing.numberOfReviews || 0}
+                                    label={dict?.property?.guestFavorite?.title ?? "Guest favorite"}
+                                    blurb={dict?.property?.guestFavorite?.blurb ?? "One of the most loved homes on Mkan, according to guests"}
+                                    reviewsLabel={dict?.property?.guestFavorite?.reviews ?? "Reviews"}
                                 />
                             </div>
                         )}
@@ -223,10 +238,12 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                         <HostedBy host={listing.host ?? null} superhost={isSuperhost} />
                     </div>
 
-                    {/* Highlights */}
-                    <section className="border-b border-[#DDDDDD] py-8">
-                        <AirbnbInfo />
-                    </section>
+                    {/* Highlights — real listing.highlights, hidden when empty */}
+                    {PHASE1.showListingHighlights && (listing.highlights?.length ?? 0) > 0 && (
+                        <section className="border-b border-[#DDDDDD] py-8">
+                            <AirbnbInfo highlights={listing.highlights} />
+                        </section>
+                    )}
 
                     {/* Description */}
                     {listing.description && (
@@ -237,58 +254,92 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                         </section>
                     )}
 
-                    {/* Where you'll sleep */}
-                    <WhereYouSleep bedrooms={listing.bedrooms} />
+                    {/* Where you'll sleep — hidden in phase 1 (fabricated per-room beds); see phase-flags */}
+                    {PHASE1.showWhereYouSleep && <WhereYouSleep bedrooms={listing.bedrooms} />}
 
-                    {/* Amenities */}
-                    <section className="border-b border-[#DDDDDD] py-12">
-                        <AmenityViewer />
-                    </section>
+                    {/* Amenities — real listing.amenities, hidden when empty */}
+                    {PHASE1.showListingAmenities && (listing.amenities?.length ?? 0) > 0 && (
+                        <section className="border-b border-[#DDDDDD] py-12">
+                            <AmenityViewer amenities={listing.amenities} />
+                        </section>
+                    )}
                 </div>
 
                 {/* Reservation column — Airbnb pushes it right of a flexible gap */}
                 <div ref={reserveRef} className="w-full flex-shrink-0 lg:w-[372px]" data-reserve-section>
                     <div className="sticky top-28 space-y-4">
-                        {/* "Prices include all fees" promo card above the reserve box */}
-                        <div className="flex items-center justify-center gap-2 rounded-xl border border-[#DDDDDD] py-4">
-                            <PriceTagIcon />
-                            <span className="text-sm font-medium text-[#222222]">
-                                Prices include all fees
-                            </span>
-                        </div>
+                        {PHASE1.enableOnlineBooking ? (
+                          <>
+                            {/* "Prices include all fees" promo card above the reserve box */}
+                            <div className="flex items-center justify-center gap-2 rounded-xl border border-[#DDDDDD] py-4">
+                                <PriceTagIcon />
+                                <span className="text-sm font-medium text-[#222222]">
+                                    Prices include all fees
+                                </span>
+                            </div>
 
-                        <AirbnbReserve
-                            listingId={listing.id}
-                            pricePerNight={listing.pricePerNight || 0}
-                            cleaningFee={listing.cleaningFee ?? null}
-                            maxGuests={listing.guestCount ?? 10}
-                            rating={listing.averageRating || 4.5}
-                            reviewCount={listing.numberOfReviews || 0}
-                            range={range}
-                            onRangeChange={setRange}
-                            blockedDates={blockedDates}
-                            className="w-full"
-                            buttonText="Call"
-                            hideButton={isCallButtonInHeader}
-                        />
+                            <AirbnbReserve
+                                listingId={listing.id}
+                                pricePerNight={listing.pricePerNight || 0}
+                                cleaningFee={listing.cleaningFee ?? null}
+                                maxGuests={listing.guestCount ?? 10}
+                                rating={listing.averageRating || 4.5}
+                                reviewCount={listing.numberOfReviews || 0}
+                                range={range}
+                                onRangeChange={setRange}
+                                blockedDates={blockedDates}
+                                className="w-full"
+                                buttonText="Call"
+                                hideButton={isCallButtonInHeader}
+                            />
+                          </>
+                        ) : (
+                            /* Phase 1: contact-only. The booking widget is flagged off; the
+                               guest calls the host directly (see phase-flags). */
+                            <div className="rounded-2xl border border-[#DDDDDD] p-6 shadow-[0_6px_16px_rgba(0,0,0,0.12)]">
+                                <div className="mb-4 flex items-baseline gap-1.5">
+                                    <span className="text-[22px] font-semibold text-[#222222]">
+                                        {formatCurrency(listing.pricePerNight || 0, locale)}
+                                    </span>
+                                    <span className="text-base text-[#222222]">
+                                        {dict?.property?.contactHost?.perNight ?? "per night"}
+                                    </span>
+                                </div>
+                                <a
+                                    href={`tel:${ownerPhone}`}
+                                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#E61E4D] via-[#E31C5F] to-[#D70466] px-6 py-3.5 text-base font-medium text-white transition-all duration-200 hover:shadow-lg active:scale-[0.99]"
+                                    title={`${dict?.property?.contactHost?.callHost ?? "Call host"} ${ownerPhone}`}
+                                >
+                                    <Phone className="h-5 w-5 flex-shrink-0" />
+                                    <span>{dict?.property?.contactHost?.callHost ?? "Call host"}</span>
+                                </a>
+                                <p className="mt-3 text-center text-xs text-[#6A6A6A]">
+                                    {dict?.property?.contactHost?.availabilityNote ?? "Call to check availability & book"}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Full-width sections below the fold — inline calendar, reviews,
                 host, things to know. Real review data flows through the slot. */}
-            <AvailabilityCalendar
-                city={listing.location?.city ?? ""}
-                range={range}
-                onRangeChange={setRange}
-                blockedDates={blockedDates}
-            />
+            {PHASE1.enableOnlineBooking && (
+                <AvailabilityCalendar
+                    city={listing.location?.city ?? ""}
+                    range={range}
+                    onRangeChange={setRange}
+                    blockedDates={blockedDates}
+                />
+            )}
             {reviewsSlot}
             {meetHostSlot}
-            <ThingsToKnow
-                maxGuests={listing.guestCount}
-                petsAllowed={listing.isPetsAllowed}
-            />
+            {PHASE1.showThingsToKnow && (
+                <ThingsToKnow
+                    maxGuests={listing.guestCount}
+                    petsAllowed={listing.isPetsAllowed}
+                />
+            )}
             </div>
         </>
     );

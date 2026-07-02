@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import React, { useEffect, useCallback, useState } from "react";
 import Link from "next/link";
@@ -380,7 +381,7 @@ const ListingsHeader = ({ disableScrollExpand = false }: ListingsHeaderProps) =>
               >
                 <div className="flex items-center gap-2">
                   <Image
-                    src="/tent.png"
+                    src={cdn.product("tent.png")}
                     alt="Mkan Logo"
                     width={20}
                     height={20}
@@ -573,7 +574,7 @@ const ListingsHeader = ({ disableScrollExpand = false }: ListingsHeaderProps) =>
                       </div>
                       <div className="relative w-12 h-12 flex-shrink-0">
                         <Image
-                          src="/images/host_waving.png"
+                          src={cdn.product("images/host_waving.png")}
                           alt="Waving host"
                           fill
                           sizes="48px"

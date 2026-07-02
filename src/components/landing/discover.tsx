@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import React from "react";
 import { motion } from "framer-motion";
@@ -46,17 +47,17 @@ const DiscoverSection = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 xl:gap-16 text-center">
           {[
             {
-              imageSrc: "/landing-icon-wand.png",
+              imageSrc: cdn.product("landing-icon-wand.png"),
               title: dict.landing?.discover?.searchProperties ?? "Search for Properties",
               description: dict.landing?.discover?.searchPropertiesDesc ?? "Browse through our extensive collection of rental properties in your desired location.",
             },
             {
-              imageSrc: "/landing-icon-calendar.png",
+              imageSrc: cdn.product("landing-icon-calendar.png"),
               title: dict.landing?.discover?.bookRental ?? "Book Your Rental",
               description: dict.landing?.discover?.bookRentalDesc ?? "Once you've found the perfect rental property, easily book it online with just a few clicks.",
             },
             {
-              imageSrc: "/landing-icon-heart.png",
+              imageSrc: cdn.product("landing-icon-heart.png"),
               title: dict.landing?.discover?.enjoyHome ?? "Enjoy your New Home",
               description: dict.landing?.discover?.enjoyHomeDesc ?? "Move into your new rental property and start enjoying your dream home.",
             },

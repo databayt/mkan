@@ -70,7 +70,7 @@ async function getInitialListings(
     checkIn: searchParams?.checkIn,
     checkOut: searchParams?.checkOut,
     guests: toInt(searchParams?.guests, 16),
-    take: 50,
+    take: 24,
     skip: 0,
   };
   const result = await searchListings(filters, lang);

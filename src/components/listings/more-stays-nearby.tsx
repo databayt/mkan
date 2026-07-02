@@ -6,6 +6,8 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PropertyImageFallback } from "@/components/atom/property-image-fallback";
 import RatingStar from "./rating-star";
+import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
+import type { Locale } from "@/components/internationalization/config";
 
 export interface NearbyStay {
   id: number;
@@ -34,7 +36,6 @@ export default function MoreStaysNearby({
   lang,
   heading = "More stays nearby",
   perNight = "night",
-  currency = "$",
 }: MoreStaysNearbyProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
 
@@ -99,14 +100,13 @@ export default function MoreStaysNearby({
               {s.rating > 0 && (
                 <span className="flex flex-shrink-0 items-center gap-1 text-sm text-[#222222]">
                   <RatingStar size={12} />
-                  {s.rating.toFixed(1)}
+                  {formatNumber(s.rating, lang as Locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                 </span>
               )}
             </div>
             <p className="mt-0.5 text-sm text-[#6A6A6A]">
               <span className="font-semibold text-[#222222]">
-                {currency}
-                {s.price.toLocaleString()}
+                {formatCurrency(s.price, lang as Locale)}
               </span>{" "}
               {perNight}
             </p>

@@ -1,4 +1,5 @@
 "use client"
+import { cdn } from "@/lib/cdn";
 
 import Image from "next/image"
 import { Heart, Star } from "lucide-react"
@@ -29,7 +30,7 @@ export default function DetailCard({
   rating = "",
   reviews = "",
   price = "",
-  image = "/property-placeholder.svg",
+  image = cdn.product("property-placeholder.svg"),
   isFavorited = false
 }: DetailCardProps) {
   const dict = useDictionary()
@@ -38,10 +39,10 @@ export default function DetailCard({
     <div className="flex gap-6">
       {/* Property Image */}
       <div className="relative flex-shrink-0 w-[250px] h-[170px] overflow-hidden rounded-xl border border-gray-200">
-        {image === "/property-placeholder.svg" || !image ? (
+        {image === cdn.product("property-placeholder.svg") || !image ? (
           <div className="absolute inset-0 bg-muted/40 flex items-center justify-center p-4">
             <Image
-              src="/property-placeholder.svg"
+              src={cdn.product("property-placeholder.svg")}
               alt="No image available"
               fill
               unoptimized

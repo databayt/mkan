@@ -16,13 +16,13 @@ import { db as prisma } from '@/lib/db';
 const DEMO_PASSWORD = '1234';
 
 // ─── Hosts ──────────────────────────────────────────────────────────────────
-// Pre-provisioned numbered host slots: 0001@mkan.org … 0020@mkan.org.
+// Pre-provisioned numbered host slots: 0001@mkan.org … 0100@mkan.org.
 // Username == the 4-digit number, so a home owner signs in with just
 // "0001" / "1234" (login accepts username OR email) — no email to type.
 // Identity starts blank; the field team hands a number to an owner, who
 // personalizes the profile on first login. A churned slot can be reset
 // (password back to "1234") and reassigned to the next owner.
-const HOST_COUNT = 20;
+const HOST_COUNT = 100;
 const HOST_NUMBERS: string[] = Array.from({ length: HOST_COUNT }, (_, i) =>
   String(i + 1).padStart(4, '0'),
 );
@@ -185,13 +185,13 @@ async function main() {
   );
   console.log(`✅ ${guestUsers.length} guests ready\n`);
 
-  // 4. Create 110 Locations + Listings (~5-6 per host; idx 101-110 wrap back to
-  //    the first hosts). 110 mirrors airbnb.com/s/homes?location_search=NEARBY,
-  //    which surfaces "110 homes".
+  // 4. Create 500 Locations + Listings (5 per host across 100 hosts) — phase-1
+  //    launch scale for Port Sudan. Each has real amenities + highlights so the
+  //    wired detail sections populate.
   console.log('🏠 Creating locations + listings...');
   const listings: { id: number; type: PropertyType; price: number; cleaningFee: number }[] = [];
 
-  for (let idx = 1; idx <= 110; idx++) {
+  for (let idx = 1; idx <= 500; idx++) {
     const district = DISTRICTS[(idx - 1) % DISTRICTS.length]!;
     const adj = ADJECTIVES[(idx - 1) % ADJECTIVES.length]!;
     const type = PROPERTY_CYCLE[(idx - 1) % PROPERTY_CYCLE.length]!;

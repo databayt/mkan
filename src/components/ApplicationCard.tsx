@@ -1,3 +1,4 @@
+import { cdn } from "@/lib/cdn";
 import { Mail, MapPin, PhoneCall } from "lucide-react";
 import Image from "next/image";
 import React, { useState } from "react";
@@ -113,7 +114,7 @@ const ApplicationCard = ({
           <div className="flex gap-4">
             <div>
               <Image
-                src="/landing-i1.png"
+                src={cdn.product("landing-i1.png")}
                 alt={contactPerson.name}
                 width={40}
                 height={40}

@@ -6,6 +6,7 @@ import { Map as MapIcon, List as ListIcon } from "lucide-react"
 import { useSearch } from "./search-provider"
 import { SearchResults } from "./search-results"
 import SearchMapLoader from "./search-map-loader"
+import { PHASE1 } from "@/config/phase-flags"
 import { useIsDesktop } from "@/hooks/use-is-desktop"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
 import { useLocale } from "@/components/internationalization/use-locale"
@@ -69,16 +70,32 @@ export function SearchResultsArea() {
           the mapbox instance inside is JS-gated (`!isDesktop`) so it only mounts
           on mobile. Tapping it opens the full map. */}
       <div className="lg:hidden sticky" style={{ top: 64, height: "42vh", zIndex: 0 }}>
-        {!isDesktop && (
-          <SearchMapMobile
-            variant="preview"
-            listings={listings}
-            nights={nights}
-            datesLabel={datesLabel}
-            onExpand={() => setMobileView("map")}
-            expandLabel={sp?.map}
-          />
-        )}
+        {!isDesktop &&
+          (PHASE1.deferSearchMapMobile ? (
+            // Low-bandwidth: don't ship mapbox-gl (~200 KB+) to every mobile
+            // visitor. Show a static tappable placeholder; the real map mounts
+            // only when the user taps it (or the floating "Map" toggle).
+            <button
+              type="button"
+              onClick={() => setMobileView("map")}
+              aria-label={sp?.map ?? "Show map"}
+              className="flex h-full w-full items-center justify-center bg-muted"
+            >
+              <span className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-medium text-[#222222] shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
+                <MapIcon className="h-4 w-4" />
+                {sp?.map ?? "Show map"}
+              </span>
+            </button>
+          ) : (
+            <SearchMapMobile
+              variant="preview"
+              listings={listings}
+              nights={nights}
+              datesLabel={datesLabel}
+              onExpand={() => setMobileView("map")}
+              expandLabel={sp?.map}
+            />
+          ))}
       </div>
 
       {/* Results "sheet" — opaque + rounded-top on mobile so it slides up over the

@@ -322,6 +322,29 @@ const SEARCH_LISTING_SELECT = {
 } as const satisfies Prisma.ListingSelect;
 
 /**
+ * Homepage listings — a cached, narrow-select reader for the featured carousels.
+ * Reuses SEARCH_LISTING_SELECT (card fields only — no host phone/PII over-fetch)
+ * and caches for 5 min, tagged LISTINGS_TAG so publish/unpublish invalidates it.
+ * localize() is per-locale and MUST run outside this cache — call it on the result.
+ */
+export const getHomeListings = unstable_cache(
+  async (limit: number = 36) => {
+    try {
+      return await db.listing.findMany({
+        where: { isPublished: true, draft: false },
+        select: SEARCH_LISTING_SELECT,
+        orderBy: { id: "desc" },
+        take: limit,
+      });
+    } catch {
+      return [];
+    }
+  },
+  ["home-listings"],
+  { revalidate: 300, tags: [LISTINGS_TAG] }
+);
+
+/**
  * Title/description full-text search via the existing
  * `idx_listing_fulltext` GIN(to_tsvector(...)) index.
  *

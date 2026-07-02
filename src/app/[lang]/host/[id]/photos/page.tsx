@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
@@ -216,7 +217,7 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
                 <div className="">
                   <div className="relative w-20 h-20 sm:w-32 sm:h-32 mx-auto">
                     <Image
-                      src="/assets/camera.avif"
+                      src={cdn.product("assets/camera.avif")}
                       alt="Camera"
                       fill
                       className="object-contain"

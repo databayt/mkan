@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import React from 'react';
 import Image from 'next/image';
@@ -96,7 +97,7 @@ export const HOST_OVERVIEW_CONFIG: StepsOverviewConfig = {
       illustration: (
         <div className="relative w-24 h-24 overflow-hidden">
           <Image
-            src="/assets/place.webp"
+            src={cdn.product("assets/place.webp")}
             alt="Place illustration"
             fill
             className="object-contain"
@@ -111,7 +112,7 @@ export const HOST_OVERVIEW_CONFIG: StepsOverviewConfig = {
       illustration: (
         <div className="relative w-24 h-24 overflow-hidden">
           <Image
-            src="/assets/stand-out.webp"
+            src={cdn.product("assets/stand-out.webp")}
             alt="Stand out illustration"
             fill
             className="object-contain"
@@ -126,7 +127,7 @@ export const HOST_OVERVIEW_CONFIG: StepsOverviewConfig = {
       illustration: (
         <div className="relative w-24 h-24 overflow-hidden">
           <Image
-            src="/assets/publish.png"
+            src={cdn.product("assets/publish.png")}
             alt="Publish illustration"
             fill
             className="object-contain"

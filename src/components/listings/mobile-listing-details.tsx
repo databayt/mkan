@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import React, { useState, useRef, TouchEvent } from 'react';
 import Image from 'next/image';
@@ -13,6 +14,10 @@ import MobileAmenities from './mobile-amenities';
 import MobileMeetHost from './mobile-meet-host';
 import HostedBy from './hosted-by';
 import { PropertyImageFallback } from '@/components/atom/property-image-fallback';
+import { PHASE1 } from '@/config/phase-flags';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useLocale } from '@/components/internationalization/use-locale';
+import { formatNumber } from '@/lib/i18n/formatters';
 
 interface MobileListingDetailsProps {
   listing: any;
@@ -30,6 +35,8 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
   onShare
 }) => {
   const router = useRouter();
+  const dict = useDictionary();
+  const { locale } = useLocale();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -82,7 +89,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
   };
 
   // If no images, use placeholder
-  const displayImages = images && images.length > 0 ? images : ['/property-placeholder.svg'];
+  const displayImages = images && images.length > 0 ? images : [cdn.product("property-placeholder.svg")];
 
   // Safely format location string
   const getLocationString = () => {
@@ -128,7 +135,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             onError={(e) => {
               console.error('Image failed to load:', displayImages[currentImageIndex]);
               const target = e.target as HTMLImageElement;
-              target.src = '/property-placeholder.svg';
+              target.src = cdn.product("property-placeholder.svg");
               target.className = 'object-contain p-6 bg-muted/40';
             }}
           />
@@ -196,11 +203,17 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             {listing?.title || 'Beautiful Property'}
           </h1>
           
-          <div className="flex items-center space-x-2 text-gray-600 mb-4">
-            <span className="text-sm">★ 4.8</span>
-            <span className="text-sm">·</span>
-            <span className="text-sm underline">128 reviews</span>
-            <span className="text-sm">·</span>
+          <div className="flex items-center gap-2 text-gray-600 mb-4">
+            {(listing?.numberOfReviews ?? 0) > 0 && (
+              <>
+                <span className="text-sm">★ {formatNumber(listing?.averageRating ?? 0, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+                <span className="text-sm">·</span>
+                <span className="text-sm underline">
+                  {(dict?.property?.detail?.reviews ?? "{count} reviews").replace("{count}", formatNumber(listing?.numberOfReviews ?? 0, locale))}
+                </span>
+                <span className="text-sm">·</span>
+              </>
+            )}
             <span className="text-sm underline">
               {getLocationString()}
             </span>
@@ -228,30 +241,30 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
           {/* Property Stats */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             {listing?.bedrooms && (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 <Bed className="w-5 h-5 text-gray-600" />
                 <span className="text-sm text-gray-700">
-                  {listing.bedrooms} bedroom{listing.bedrooms !== 1 ? 's' : ''}
+                  {(dict?.property?.detail?.bedrooms ?? "{count} bedrooms").replace("{count}", formatNumber(listing.bedrooms, locale))}
                 </span>
               </div>
             )}
             {listing?.bathrooms && (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 <Bath className="w-5 h-5 text-gray-600" />
                 <span className="text-sm text-gray-700">
-                  {listing.bathrooms} bathroom{listing.bathrooms !== 1 ? 's' : ''}
+                  {(dict?.property?.detail?.bathrooms ?? "{count} bathrooms").replace("{count}", formatNumber(listing.bathrooms, locale))}
                 </span>
               </div>
             )}
             {listing?.guestCount && (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-gray-600" />
                 <span className="text-sm text-gray-700">
-                  Up to {listing.guestCount} guests
+                  {(dict?.property?.detail?.guestsMax ?? "Up to {count} guests").replace("{count}", formatNumber(listing.guestCount, locale))}
                 </span>
               </div>
             )}
-            {listing?.squareFeet && (
+            {PHASE1.showSqFt && listing?.squareFeet && (
               <div className="flex items-center space-x-2">
                 <Square className="w-5 h-5 text-gray-600" />
                 <span className="text-sm text-gray-700">
@@ -284,11 +297,11 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                  {/* Hosted By */}
          <HostedBy host={listing?.host ?? null} />
 
-          {/* Mobile Info */}
-          <MobileInfo />
+          {/* Mobile Info — hidden in phase 1 (fabricated wifi/parking/cancellation); see phase-flags */}
+          {PHASE1.showMobileInfoCards && <MobileInfo />}
 
-          {/* Mobile Amenities */}
-          <MobileAmenities />
+          {/* Mobile Amenities — real listing.amenities, hidden when empty */}
+          {PHASE1.showListingAmenities && <MobileAmenities amenities={listing.amenities} />}
 
           {/* Mobile Reviews Detail */}
           {/* <MobileReviewsDetail /> */}

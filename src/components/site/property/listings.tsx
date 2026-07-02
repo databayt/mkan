@@ -8,6 +8,8 @@ import { PropertyCard } from './card'
 import { Listing } from '@/types/listing'
 import Link from 'next/link'
 import { useLocale } from '@/components/internationalization/use-locale'
+import { useDictionary } from '@/components/internationalization/dictionary-context'
+import { formatCurrency } from '@/lib/i18n/formatters'
 import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-actions'
 import { useSession } from 'next-auth/react'
 
@@ -19,6 +21,7 @@ interface PropertyListingsProps {
 export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListingsProps) => {
   const router = useRouter()
   const { locale } = useLocale()
+  const dict = useDictionary()
   const { data: session } = useSession()
   const viewMode = useGlobalStore((s) => s.viewMode)
   const filters = useGlobalStore((s) => s.filters)
@@ -92,8 +95,8 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
         </span>
       </h3> */}
       <Link href={`/${locale}/search`} className="text-xl font-bold mb-6 flex items-center gap-1 hover:text-gray-700 transition-colors">
-        Popular homes in Khartoum
-        <svg className="w-3 h-3 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        {dict?.home?.sections?.popular ?? 'Popular homes in Portsudan'}
+        <svg className="w-3 h-3 mt-1 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M9 5l7 7-7 7" />
         </svg>
       </Link>
@@ -125,7 +128,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg mb-2">{property.title}</h3>
                   <p className="text-gray-600 mb-2">{property.location}</p>
-                  <p className="font-semibold text-lg">${property.price}/night</p>
+                  <p className="font-semibold text-lg">{formatCurrency(property.price, locale)}/{dict?.rental?.property?.card?.night ?? 'night'}</p>
                 </div>
               </div>
             </div>

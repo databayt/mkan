@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import Image from "next/image"
 import { ChevronRight } from "lucide-react"
@@ -50,7 +51,7 @@ export default function Guides() {
             <CardContent className="p-0">
               <div className="relative overflow-hidden rounded-xl">
                 <Image
-                  src={guide.image || "/placeholder.svg"}
+                  src={guide.image || cdn.product("placeholder.svg")}
                   alt={guide.title}
                   width={400}
                   height={300}

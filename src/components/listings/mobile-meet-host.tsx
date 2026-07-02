@@ -5,6 +5,7 @@ import { Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { IdentityVerified, Building, Chat, SuperhostSimple } from "@/components/atom/icons"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
+import { PHASE1 } from "@/config/phase-flags"
 
 interface MobileMeetHostUser {
   username: string | null;
@@ -128,6 +129,8 @@ export default function MobileMeetHost({
           </div>
         </div>
 
+        {/* Message host — inert in phase 1 (no handler); hidden until wired. See phase-flags. */}
+        {PHASE1.showMessageHost && (
         <div>
           <Button
             className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 px-6 py-3 rounded-lg font-medium flex items-center justify-center gap-2"
@@ -135,8 +138,10 @@ export default function MobileMeetHost({
             {host?.messageHost}
           </Button>
         </div>
+        )}
 
-        {/* Security notice */}
+        {/* Payment-protection notice — hidden in contact-only phase 1 (no online payment). See phase-flags. */}
+        {PHASE1.enableOnlineBooking && (
         <div className="pt-4 border-t border-gray-200">
           <div className="flex items-start gap-3">
             <Shield className="w-6 h-6 text-[#e31c5f] flex-shrink-0 mt-0.5" />
@@ -145,6 +150,7 @@ export default function MobileMeetHost({
             </p>
           </div>
         </div>
+        )}
       </div>
     </div>
   )

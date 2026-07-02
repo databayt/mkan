@@ -1,3 +1,4 @@
+import { cdn } from "@/lib/cdn";
 import * as React from "react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
@@ -29,7 +30,7 @@ export function PropertyImageFallback({
       className={cn("absolute inset-0 bg-muted/40", className)}
     >
       <Image
-        src="/property-placeholder.svg"
+        src={cdn.product("property-placeholder.svg")}
         alt="No image available"
         fill
         // Served straight from /public — the image optimizer rejects SVG

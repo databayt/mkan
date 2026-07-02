@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
@@ -18,15 +19,15 @@ interface LogoDef {
 // ── Logo data ───────────────────────────────────────────────────────
 
 const LOGOS: LogoDef[] = [
-  { name: "Tirhal", src: "/brands/transport/tirhal.svg", url: "", width: 180, height: 50 },
-  { name: "Musafir", src: "/brands/transport/musafir.svg", url: "", width: 180, height: 50 },
-  { name: "Jamal El-Din", src: "/brands/transport/jamal-el-din.svg", url: "", width: 220, height: 50 },
-  { name: "MCV", src: "/brands/transport/mcv.svg", url: "", width: 140, height: 50 },
-  { name: "Igbalco", src: "/brands/transport/igbalco.svg", url: "", width: 180, height: 50 },
-  { name: "Marshal", src: "/brands/transport/marshal.svg", url: "", width: 180, height: 50 },
-  { name: "Abu Amer", src: "/brands/transport/abu-amer.svg", url: "", width: 200, height: 50 },
-  { name: "Rodeena", src: "/brands/transport/rodeena.svg", url: "", width: 180, height: 50 },
-  { name: "Al-Rifai", src: "/brands/transport/al-rifai.svg", url: "", width: 180, height: 50 },
+  { name: "Tirhal", src: cdn.product("brands/transport/tirhal.svg"), url: "", width: 180, height: 50 },
+  { name: "Musafir", src: cdn.product("brands/transport/musafir.svg"), url: "", width: 180, height: 50 },
+  { name: "Jamal El-Din", src: cdn.product("brands/transport/jamal-el-din.svg"), url: "", width: 220, height: 50 },
+  { name: "MCV", src: cdn.product("brands/transport/mcv.svg"), url: "", width: 140, height: 50 },
+  { name: "Igbalco", src: cdn.product("brands/transport/igbalco.svg"), url: "", width: 180, height: 50 },
+  { name: "Marshal", src: cdn.product("brands/transport/marshal.svg"), url: "", width: 180, height: 50 },
+  { name: "Abu Amer", src: cdn.product("brands/transport/abu-amer.svg"), url: "", width: 200, height: 50 },
+  { name: "Rodeena", src: cdn.product("brands/transport/rodeena.svg"), url: "", width: 180, height: 50 },
+  { name: "Al-Rifai", src: cdn.product("brands/transport/al-rifai.svg"), url: "", width: 180, height: 50 },
 ];
 
 // ── Constants ───────────────────────────────────────────────────────

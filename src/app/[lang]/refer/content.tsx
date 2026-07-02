@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import { useState } from "react";
 import Image from "next/image";
@@ -57,9 +58,9 @@ export default function ReferContent() {
   const [copied, setCopied] = useState(false);
 
   const cards = [
-    { key: "home", title: labels.home, earn: labels.homeEarn, img: "/refer/home.png" },
-    { key: "experience", title: labels.experience, earn: labels.experienceEarn, img: "/refer/experience.png" },
-    { key: "service", title: labels.service, earn: labels.serviceEarn, img: "/refer/service.png" },
+    { key: "home", title: labels.home, earn: labels.homeEarn, img: cdn.product("refer/home.png") },
+    { key: "experience", title: labels.experience, earn: labels.experienceEarn, img: cdn.product("refer/experience.png") },
+    { key: "service", title: labels.service, earn: labels.serviceEarn, img: cdn.product("refer/service.png") },
   ];
 
   const handleShare = async () => {

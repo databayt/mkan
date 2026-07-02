@@ -1,13 +1,14 @@
 "use client";
 // Disable static generation for this page
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import React from 'react';
-import { usePathname } from 'next/navigation';
-import HostStepHeader from '@/components/host/host-step-header';
-import { useHostValidation } from '@/context/onboarding-validation-context';
-import { ListingProvider, useListing } from '@/components/host/use-listing';
-import { useDictionary } from '@/components/internationalization/dictionary-context';
+import React from "react";
+import { usePathname } from "next/navigation";
+import HostStepHeader from "@/components/host/host-step-header";
+import { useHostValidation } from "@/context/onboarding-validation-context";
+import { ListingProvider, useListing } from "@/components/host/use-listing";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { cdn } from "@/lib/cdn";
 
 interface AboutPlaceProps {
   params: Promise<{ id: string }>;
@@ -16,7 +17,7 @@ interface AboutPlaceProps {
 const AboutPlaceContent = ({ params }: AboutPlaceProps) => {
   const pathname = usePathname();
   const dict = useDictionary();
-  const [id, setId] = React.useState<string>('');
+  const [id, setId] = React.useState<string>("");
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const { enableNext } = useHostValidation();
   const { loadListing } = useListing();
@@ -41,7 +42,7 @@ const AboutPlaceContent = ({ params }: AboutPlaceProps) => {
   React.useEffect(() => {
     if (videoRef.current) {
       videoRef.current.play().catch((error) => {
-        console.log('Auto-play was prevented:', error);
+        console.log("Auto-play was prevented:", error);
       });
     }
   }, []);
@@ -59,15 +60,12 @@ const AboutPlaceContent = ({ params }: AboutPlaceProps) => {
           // Ensure video plays after loading
           if (videoRef.current) {
             videoRef.current.play().catch((error) => {
-              console.log('Video play failed:', error);
+              console.log("Video play failed:", error);
             });
           }
         }}
       >
-        <source
-          src="https://stream.media.muscache.com/zFaydEaihX6LP01x8TSCl76WHblb01Z01RrFELxyCXoNek.mp4?v_q=high"
-          type="video/mp4"
-        />
+        <source src={cdn.vendor("airbnb", "host-about-place.mp4")} type="video/mp4" />
         {/* Fallback for browsers that don't support video */}
         {/* <div className="w-full h-full bg-gradient-to-br from-orange-500 to-pink-500 rounded-2xl flex items-center justify-center">
           <div className="text-center text-white">
@@ -104,4 +102,4 @@ const AboutPlace = ({ params }: AboutPlaceProps) => {
   );
 };
 
-export default AboutPlace; 
+export default AboutPlace;

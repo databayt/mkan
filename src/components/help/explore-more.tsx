@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -25,7 +26,7 @@ export default function ExploreMore() {
                   <CardContent className="p-0">
                     <div className="aspect-[4/3] relative">
                       <Image
-                        src="/assets/help-one.png"
+                        src={cdn.product("assets/help-one.png")}
                         alt={t?.communityPolicies?.imageAlt ?? "Team collaboration and discussion in office setting"}
                         fill
                         className="object-cover"
@@ -43,7 +44,7 @@ export default function ExploreMore() {
                   <CardContent className="p-0">
                     <div className="aspect-[4/3] relative">
                       <Image
-                        src="/assets/help-two.png"
+                        src={cdn.product("assets/help-two.png")}
                         alt={t?.safetyTips?.imageAlt ?? "Father and son preparing for outdoor activity with life vests"}
                         fill
                         className="object-cover"

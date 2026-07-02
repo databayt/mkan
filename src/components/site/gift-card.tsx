@@ -1,4 +1,5 @@
 "use client"
+import { cdn } from "@/lib/cdn";
 
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
@@ -25,7 +26,7 @@ export default function GiftCard() {
         <div className="flex-1 relative lg:ms-16 flex justify-center items-center order-1 lg:order-2 w-full max-w-lg lg:max-w-2xl">
           <div className="w-full">
             <Image
-              src="/assets/gift-cards.png"
+              src={cdn.product("assets/gift-cards.png")}
               alt={dict.home?.giftCard?.altText}
               width={800}
               height={400}

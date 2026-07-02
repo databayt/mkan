@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import { NAVBAR_HEIGHT } from "@/lib/constants";
 import Image from "next/image";
@@ -70,7 +71,7 @@ const SiteHeader = () => {
           >
             <div className="flex items-center gap-2">
               <Image
-                src="/tent.png"
+                src={cdn.product("tent.png")}
                 alt={dict.navigation?.logoAlt ?? "Mkan Logo"}
                 width={20}
                 height={20}

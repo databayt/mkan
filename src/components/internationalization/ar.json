@@ -2697,8 +2697,8 @@
     "emergencyStays": "إقامات طارئة",
     "accessibility": "إمكانية الوصول",
     "mkanYourHome": "استضف منزلك على مكان",
-    "englishUS": "العربية (السعودية)",
-    "currencyUSD": "ر.س SAR"
+    "englishUS": "العربية",
+    "currencyUSD": "ج.س"
   },
   "hero": {
     "title": "ابدأ رحلتك لإيجاد المكان المثالي لتسميه وطنك",
@@ -4131,6 +4131,44 @@
       "in": "في",
       "night": "ليلة",
       "currency": "ج.س"
+    },
+    "contactHost": {
+      "callHost": "اتصل بالمضيف",
+      "call": "اتصال",
+      "perNight": "لليلة",
+      "availabilityNote": "اتصل للتحقق من التوفر والحجز"
+    },
+    "sections": {
+      "amenities": "ما يقدمه هذا المكان",
+      "highlights": "أبرز المميزات"
+    },
+    "detail": {
+      "entireIn": "{type} كامل في {location}",
+      "entire": "{type} كامل",
+      "locationUnavailable": "الموقع غير متوفر",
+      "guests": "{count} ضيوف",
+      "bedrooms": "{count} غرف نوم",
+      "bathrooms": "{count} حمامات",
+      "guestsMax": "حتى {count} ضيف",
+      "reviews": "{count} تقييم"
+    },
+    "tabs": {
+      "photos": "الصور",
+      "amenities": "المرافق",
+      "reviews": "التقييمات",
+      "location": "الموقع"
+    },
+    "guestFavorite": {
+      "title": "المفضّل لدى الضيوف",
+      "blurb": "من أكثر المنازل المحبوبة على مكان، بحسب الضيوف",
+      "reviews": "التقييمات"
+    },
+    "availabilityCheck": {
+      "title": "هل ما زالت هذه المنازل متاحة؟",
+      "description": "حافظ على تحديث التوفر ليتواصل معك الضيوف حول المنازل التي يمكنك استضافتها فعلاً.",
+      "stillAvailable": "ما زالت متاحة",
+      "markBusy": "وضع كمشغول",
+      "done": "تم"
     },
     "applicationModal": {
       "title": "قدّم طلبًا لهذا العقار",

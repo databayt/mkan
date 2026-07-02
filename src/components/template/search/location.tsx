@@ -5,6 +5,7 @@ import { Loader2, MapPin } from "lucide-react";
 import { type LocationSuggestion } from "@/lib/schemas/search-schema";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { useLocale } from "@/components/internationalization/use-locale";
+import { cdn } from "@/lib/cdn";
 
 interface LocationProps {
   searchQuery: string;
@@ -39,7 +40,7 @@ const SUGGESTED_DESTINATIONS = {
       displayName: "Nearby",
       description: "Find what's around you",
       backgroundColor: "#e8f4fd",
-      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/ea5e5ee3-e9d8-48a1-b7e9-1003bf6fe850.png",
+      imageSrc: cdn.vendor("airbnb", "destinations/nearby.png"),
     },
     {
       city: "Port Sudan",
@@ -49,7 +50,7 @@ const SUGGESTED_DESTINATIONS = {
       displayName: "Port Sudan",
       description: "Stays along the Red Sea coast",
       backgroundColor: "#eaf7ec",
-      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/c98f58bf-8512-43e3-af54-6c1f0b2c8a23.png",
+      imageSrc: cdn.vendor("airbnb", "destinations/port-sudan.png"),
     },
     {
       city: "Port Sudan",
@@ -59,7 +60,7 @@ const SUGGESTED_DESTINATIONS = {
       displayName: "Coral Coast",
       description: "Beachfront stays on the Red Sea",
       backgroundColor: "#fdf2e9",
-      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/e6abaebf-f910-42e2-b891-d8f262b6ee1d.png",
+      imageSrc: cdn.vendor("airbnb", "destinations/coral-coast.png"),
     },
     {
       city: "Port Sudan",
@@ -69,7 +70,7 @@ const SUGGESTED_DESTINATIONS = {
       displayName: "Marina District",
       description: "By the harbour and seafront",
       backgroundColor: "#fef5e7",
-      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/5d2ff9e9-9e15-45b9-bfb2-d3f192198eca.png",
+      imageSrc: cdn.vendor("airbnb", "destinations/marina.png"),
     },
     {
       city: "Port Sudan",
@@ -79,7 +80,7 @@ const SUGGESTED_DESTINATIONS = {
       displayName: "Suakin Island",
       description: "Historic coral-stone old town",
       backgroundColor: "#f3e8ff",
-      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/ed75c050-042b-44ba-a991-54044d93a91b.png",
+      imageSrc: cdn.vendor("airbnb", "destinations/suakin.png"),
     },
     {
       city: "Port Sudan",
@@ -89,7 +90,7 @@ const SUGGESTED_DESTINATIONS = {
       displayName: "Airport District",
       description: "Handy for arrivals and departures",
       backgroundColor: "#fdedec",
-      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/2cab2315-eab8-4e3b-8ffa-1411745515f3.png",
+      imageSrc: cdn.vendor("airbnb", "destinations/airport.png"),
     },
     {
       city: "Port Sudan",
@@ -99,7 +100,7 @@ const SUGGESTED_DESTINATIONS = {
       displayName: "Red Sea University",
       description: "Central and walkable",
       backgroundColor: "#e8f8f5",
-      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/5c0fde14-6f8e-43c4-b78f-6baae5df0c7c.png",
+      imageSrc: cdn.vendor("airbnb", "destinations/red-sea-university.png"),
     },
   ],
   ar: [
@@ -111,7 +112,7 @@ const SUGGESTED_DESTINATIONS = {
       displayName: "قريب من هنا",
       description: "استكشف الأماكن المحيطة بك",
       backgroundColor: "#e8f4fd",
-      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/ea5e5ee3-e9d8-48a1-b7e9-1003bf6fe850.png",
+      imageSrc: cdn.vendor("airbnb", "destinations/nearby.png"),
     },
     {
       city: "Port Sudan",
@@ -121,7 +122,7 @@ const SUGGESTED_DESTINATIONS = {
       displayName: "بورتسودان",
       description: "إقامات على ساحل البحر الأحمر",
       backgroundColor: "#eaf7ec",
-      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/c98f58bf-8512-43e3-af54-6c1f0b2c8a23.png",
+      imageSrc: cdn.vendor("airbnb", "destinations/port-sudan.png"),
     },
     {
       city: "Port Sudan",
@@ -131,7 +132,7 @@ const SUGGESTED_DESTINATIONS = {
       displayName: "ساحل المرجان",
       description: "إقامات على شاطئ البحر الأحمر",
       backgroundColor: "#fdf2e9",
-      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/e6abaebf-f910-42e2-b891-d8f262b6ee1d.png",
+      imageSrc: cdn.vendor("airbnb", "destinations/coral-coast.png"),
     },
     {
       city: "Port Sudan",
@@ -141,7 +142,7 @@ const SUGGESTED_DESTINATIONS = {
       displayName: "حي المارينا",
       description: "بجوار الميناء والواجهة البحرية",
       backgroundColor: "#fef5e7",
-      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/5d2ff9e9-9e15-45b9-bfb2-d3f192198eca.png",
+      imageSrc: cdn.vendor("airbnb", "destinations/marina.png"),
     },
     {
       city: "Port Sudan",
@@ -151,7 +152,7 @@ const SUGGESTED_DESTINATIONS = {
       displayName: "جزيرة سواكن",
       description: "المدينة القديمة المرجانية التاريخية",
       backgroundColor: "#f3e8ff",
-      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/ed75c050-042b-44ba-a991-54044d93a91b.png",
+      imageSrc: cdn.vendor("airbnb", "destinations/suakin.png"),
     },
     {
       city: "Port Sudan",
@@ -161,7 +162,7 @@ const SUGGESTED_DESTINATIONS = {
       displayName: "حي المطار",
       description: "قريب من الوصول والمغادرة",
       backgroundColor: "#fdedec",
-      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-1/original/2cab2315-eab8-4e3b-8ffa-1411745515f3.png",
+      imageSrc: cdn.vendor("airbnb", "destinations/airport.png"),
     },
     {
       city: "Port Sudan",
@@ -171,7 +172,7 @@ const SUGGESTED_DESTINATIONS = {
       displayName: "حي جامعة البحر الأحمر",
       description: "في المركز وقريب من كل شيء",
       backgroundColor: "#e8f8f5",
-      imageSrc: "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-hawaii-autosuggest-destination-icons-2/original/5c0fde14-6f8e-43c4-b78f-6baae5df0c7c.png",
+      imageSrc: cdn.vendor("airbnb", "destinations/red-sea-university.png"),
     },
   ],
 } as const;
@@ -194,17 +195,14 @@ export default function LocationDropdown({
   const activeLocale = (locale === "ar" ? "ar" : "en") as "en" | "ar";
   const suggestedDestinations = SUGGESTED_DESTINATIONS[activeLocale];
 
-  const handleKeyDown = (
-    e: React.KeyboardEvent,
-    location: LocationSuggestion
-  ) => {
+  const handleKeyDown = (e: React.KeyboardEvent, location: LocationSuggestion) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onLocationSelect(location);
     }
   };
 
-  const handleSelectSuggested = async (dest: typeof suggestedDestinations[number]) => {
+  const handleSelectSuggested = async (dest: (typeof suggestedDestinations)[number]) => {
     if (dest.city === "Nearby") {
       if (!navigator.geolocation) {
         onLocationSelect({
@@ -231,11 +229,11 @@ export default function LocationDropdown({
                 headers: {
                   "Accept-Language": activeLocale,
                 },
-              }
+              },
             );
             if (!response.ok) throw new Error();
             const data = await response.json();
-            
+
             const city =
               data.address?.city ||
               data.address?.town ||
@@ -244,14 +242,12 @@ export default function LocationDropdown({
               data.address?.county ||
               data.address?.state ||
               "";
-              
+
             const state = data.address?.state || "";
             const country = data.address?.country || "";
-            
+
             const displayName =
-              city && country
-                ? `${city}, ${country}`
-                : city || country || dest.displayName;
+              city && country ? `${city}, ${country}` : city || country || dest.displayName;
 
             onLocationSelect({
               city: city || displayName,
@@ -284,7 +280,7 @@ export default function LocationDropdown({
           });
           setIsGeolocating(false);
         },
-        { timeout: 6000 }
+        { timeout: 6000 },
       );
     } else {
       onLocationSelect({
@@ -316,9 +312,7 @@ export default function LocationDropdown({
         <div className="flex items-center gap-3 py-3 px-4 mb-3 bg-[#f0f7ff] rounded-2xl border border-[#d2e7ff] text-sm text-[#0066cc] animate-pulse">
           <Loader2 className="h-4.5 w-4.5 animate-spin flex-shrink-0" />
           <span>
-            {locale === "ar"
-              ? "جاري تحديد موقعك الحالي..."
-              : "Finding your current location..."}
+            {locale === "ar" ? "جاري تحديد موقعك الحالي..." : "Finding your current location..."}
           </span>
         </div>
       )}
@@ -350,12 +344,8 @@ export default function LocationDropdown({
           suggestions.length > 0 ? (
             <>
               <div className="flex items-center justify-between px-2 mb-2">
-                <p className="text-[13px] font-normal text-[#222222]">
-                  {resultsTitle}
-                </p>
-                {isLoading && (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />
-                )}
+                <p className="text-[13px] font-normal text-[#222222]">{resultsTitle}</p>
+                {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
               </div>
               {suggestions.map((location, index) => (
                 <div
@@ -376,9 +366,7 @@ export default function LocationDropdown({
                     </div>
                     {(location.state || location.country) && (
                       <div className="text-sm text-[#6a6a6a] truncate mt-0.5">
-                        {[location.state, location.country]
-                          .filter(Boolean)
-                          .join(", ")}
+                        {[location.state, location.country].filter(Boolean).join(", ")}
                       </div>
                     )}
                   </div>
@@ -387,18 +375,16 @@ export default function LocationDropdown({
             </>
           ) : !isLoading ? (
             <div className="text-center text-gray-400 py-8 text-sm">
-              {(
-                dict.search?.noDestinationsFound ??
-                'No destinations found for "{query}"'
-              ).replace("{query}", searchQuery)}
+              {(dict.search?.noDestinationsFound ?? 'No destinations found for "{query}"').replace(
+                "{query}",
+                searchQuery,
+              )}
             </div>
           ) : null
         ) : (
           // Predefined Suggested destinations from Airbnb
           <>
-            <p className="text-[13px] font-normal text-[#222222] px-2 mb-2">
-              {suggestedTitle}
-            </p>
+            <p className="text-[13px] font-normal text-[#222222] px-2 mb-2">{suggestedTitle}</p>
             <div className="space-y-0.5">
               {suggestedDestinations.map((dest) => (
                 <div

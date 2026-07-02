@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { getListings } from "@/components/host/actions";
+import { getHomeListings } from "@/lib/actions/search-actions";
 import { createMetadata } from "@/lib/metadata";
 import { Listing } from "@/types/listing";
 import HomeContent from "./home-content";
@@ -22,7 +22,7 @@ export async function generateMetadata({
 
 async function getPublishedListings(lang: "en" | "ar"): Promise<Listing[]> {
   try {
-    const listings = await getListings({ publishedOnly: true });
+    const listings = await getHomeListings();
     if (!Array.isArray(listings)) return [];
     // Translate Arabic-stored listing copy (title/description) into the viewer's
     // locale, the same way the search and detail pages do. Runs on the raw

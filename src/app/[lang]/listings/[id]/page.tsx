@@ -110,10 +110,30 @@ export default async function ListingPage({ params }: ListingPageProps) {
   // Serialize the listing data to avoid Prisma serialization issues
   const serializedListing = JSON.parse(JSON.stringify(listing));
 
-  const [d, mobileReviewsResult, session] = await Promise.all([
+  const [d, mobileReviewsResult, session, nearbyRaw] = await Promise.all([
     getDictionary(lang),
     getListingReviews(listingId, { take: 8 }).catch(() => ({ reviews: [], total: 0 })),
     auth(),
+    // Nearby stays only need the already-loaded listing's city, so they run in
+    // this wave instead of a later sequential round-trip (fewer stacked latencies).
+    db.listing
+      .findMany({
+        where: {
+          isPublished: true,
+          id: { not: listingId },
+          ...(listing.location?.city ? { location: { city: listing.location.city } } : {}),
+        },
+        select: {
+          id: true,
+          title: true,
+          photoUrls: true,
+          pricePerNight: true,
+          averageRating: true,
+        },
+        take: 12,
+        orderBy: { id: "asc" },
+      })
+      .catch(() => []),
   ]);
 
   // Heart state comes from the tenant's persisted favorites, not localStorage.
@@ -136,26 +156,10 @@ export default async function ListingPage({ params }: ListingPageProps) {
     comment: r.comment ?? null,
   }));
 
-  // "More stays nearby" — other published listings in the same city, localized
-  // for the viewer's locale. Soft-fails to an empty carousel (which renders null).
+  // "More stays nearby" — localize the pre-fetched rows for the viewer's locale.
+  // Soft-fails to an empty carousel (which renders null).
   let nearbyStays: NearbyStay[] = [];
   try {
-    const nearbyRaw = await db.listing.findMany({
-      where: {
-        isPublished: true,
-        id: { not: listingId },
-        ...(listing.location?.city ? { location: { city: listing.location.city } } : {}),
-      },
-      select: {
-        id: true,
-        title: true,
-        photoUrls: true,
-        pricePerNight: true,
-        averageRating: true,
-      },
-      take: 12,
-      orderBy: { id: "asc" },
-    });
     const localizedNearby = await localize(nearbyRaw, ["title"], lang);
     nearbyStays = localizedNearby.map((l) => ({
       id: l.id,

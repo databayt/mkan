@@ -718,6 +718,7 @@ export async function publishListing(id: unknown) {
         draft: false,
         isPublished: true,
         postedDate: new Date(),
+        lastAvailabilityConfirmedAt: new Date(),
       },
       include: {
         location: true,
@@ -780,6 +781,7 @@ export async function unpublishListing(id: unknown) {
       where: { id: parsedId.data },
       data: {
         isPublished: false,
+        lastAvailabilityConfirmedAt: new Date(),
       },
       include: {
         location: true,
@@ -808,6 +810,60 @@ export async function unpublishListing(id: unknown) {
       `Failed to unpublish listing: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
+}
+
+/**
+ * Lightweight "still available" confirmation for the availability nudge — stamps
+ * lastAvailabilityConfirmedAt without changing publish state (the owner is
+ * telling us the home is still bookable).
+ */
+export async function confirmAvailability(
+  id: unknown
+): Promise<{ success: boolean; error?: string }> {
+  const parsedId = z.coerce.number().int().positive().safeParse(id);
+  if (!parsedId.success) return { success: false, error: "Invalid id" };
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const owned = await db.listing.findFirst({
+    where: { id: parsedId.data, hostId: session.user.id },
+    select: { id: true },
+  });
+  if (!owned) return { success: false, error: "Not found" };
+  await db.listing.update({
+    where: { id: parsedId.data },
+    data: { lastAvailabilityConfirmedAt: new Date() },
+  });
+  revalidatePath("/hosting/listings");
+  updateTag("listings");
+  return { success: true };
+}
+
+/**
+ * Host's published homes whose availability hasn't been reconfirmed in `days`
+ * days (or never) — drives the Availability Check reminder dialog. Scoped to the
+ * signed-in host.
+ */
+export async function getStaleAvailabilityListings(
+  days: number
+): Promise<{ id: number; title: string }[]> {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const rows = await db.listing.findMany({
+    where: {
+      hostId: session.user.id,
+      isPublished: true,
+      draft: false,
+      OR: [
+        { lastAvailabilityConfirmedAt: null },
+        { lastAvailabilityConfirmedAt: { lt: cutoff } },
+      ],
+    },
+    select: { id: true, title: true },
+    orderBy: { lastAvailabilityConfirmedAt: { sort: "asc", nulls: "first" } },
+    take: 20,
+  });
+  return rows.map((r) => ({ id: r.id, title: r.title ?? `#${r.id}` }));
 }
 
 // ============================================

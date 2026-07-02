@@ -197,7 +197,7 @@
     "signIn": "Login",
     "signUp": "Sign Up",
     "logout": "Logout",
-    "currency": "$"
+    "currency": "SDG"
   },
   "booking": {
     "checkIn": "Check-in",
@@ -2697,8 +2697,8 @@
     "emergencyStays": "Emergency stays",
     "accessibility": "Accessibility",
     "mkanYourHome": "Mkan your home",
-    "englishUS": "English (US)",
-    "currencyUSD": "$ USD"
+    "englishUS": "English",
+    "currencyUSD": "SDG"
   },
   "hero": {
     "title": "Start your journey to finding the perfect place to call home",
@@ -4131,6 +4131,44 @@
       "in": "in",
       "night": "night",
       "currency": "SDG"
+    },
+    "contactHost": {
+      "callHost": "Call host",
+      "call": "Call",
+      "perNight": "per night",
+      "availabilityNote": "Call to check availability & book"
+    },
+    "sections": {
+      "amenities": "What this place offers",
+      "highlights": "Highlights"
+    },
+    "detail": {
+      "entireIn": "Entire {type} in {location}",
+      "entire": "Entire {type}",
+      "locationUnavailable": "Location not available",
+      "guests": "{count} guests",
+      "bedrooms": "{count} bedrooms",
+      "bathrooms": "{count} bathrooms",
+      "guestsMax": "Up to {count} guests",
+      "reviews": "{count} reviews"
+    },
+    "tabs": {
+      "photos": "Photos",
+      "amenities": "Amenities",
+      "reviews": "Reviews",
+      "location": "Location"
+    },
+    "guestFavorite": {
+      "title": "Guest favorite",
+      "blurb": "One of the most loved homes on Mkan, according to guests",
+      "reviews": "Reviews"
+    },
+    "availabilityCheck": {
+      "title": "Are these homes still available?",
+      "description": "Keep your availability current so guests only reach you about homes you can actually host.",
+      "stillAvailable": "Still available",
+      "markBusy": "Mark busy",
+      "done": "Done"
     },
     "applicationModal": {
       "title": "Submit Application for this Property",

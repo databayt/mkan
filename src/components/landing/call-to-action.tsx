@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import Image from "next/image";
 import React from "react";
@@ -12,7 +13,7 @@ const CallToActionSection = () => {
   return (
     <div className="relative py-24">
       <Image
-        src="/landing-call-to-action.jpg"
+        src={cdn.product("landing-call-to-action.jpg")}
         alt={dict.landing?.callToAction?.bgAlt ?? "Mkan Search Section Background"}
         fill
         className="object-cover object-center"

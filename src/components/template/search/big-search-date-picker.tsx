@@ -239,7 +239,7 @@ export default function BigSearchDatePicker({
               className={
                 compact
                   ? "[--cell-size:44px] [--cell-radius:22px] p-0"
-                  : "[--cell-size:52px] [--cell-radius:26px] w-full p-0"
+                  : "[--cell-size:46px] [--cell-radius:23px] w-full p-0"
               }
               classNames={
                 compact

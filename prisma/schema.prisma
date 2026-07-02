@@ -260,6 +260,7 @@ model Listing {
   guestCount         Int                 @default(2)
   propertyType       PropertyType?
   postedDate         DateTime?
+  lastAvailabilityConfirmedAt DateTime? // owner last reconfirmed Available/Busy (phase-1 nudge)
   averageRating      Float?              @default(0)
   numberOfReviews    Int?                @default(0)
   draft              Boolean             @default(true)

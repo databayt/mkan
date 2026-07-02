@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import { useState } from "react";
 import Image from "next/image";
@@ -110,7 +111,7 @@ export default function CoHostsContent() {
             style={{ width: 240, height: 216, borderRadius: 16 }}
           >
             <Image
-              src="/co-hosts/find-a-cohost.png"
+              src={cdn.product("co-hosts/find-a-cohost.png")}
               alt=""
               fill
               sizes="240px"

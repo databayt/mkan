@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import React from 'react';
 import Image from 'next/image';
@@ -27,7 +28,7 @@ const defaultDestinations: Destination[] = [
     titleAr: 'الخرطوم',
     distance: 'Capital city',
     distanceAr: 'العاصمة',
-    image: '/assets/Rectangle 1.svg',
+    image: cdn.product("assets/rectangle-1.svg"),
     backgroundColor: '#CC2D4A'
   },
   {
@@ -36,7 +37,7 @@ const defaultDestinations: Destination[] = [
     titleAr: 'بورتسودان',
     distance: 'Red Sea coast',
     distanceAr: 'ساحل البحر الأحمر',
-    image: '/assets/Rectangle 1 (2).svg',
+    image: cdn.product("assets/rectangle-1-2.svg"),
     backgroundColor: '#BC1A6E'
   },
   {
@@ -45,7 +46,7 @@ const defaultDestinations: Destination[] = [
     titleAr: 'أم درمان',
     distance: 'Historic city',
     distanceAr: 'مدينة تاريخية',
-    image: '/assets/Rectangle 1 (3).svg',
+    image: cdn.product("assets/rectangle-1-3.svg"),
     backgroundColor: '#DE3151'
   },
   {
@@ -54,7 +55,7 @@ const defaultDestinations: Destination[] = [
     titleAr: 'جوبا',
     distance: 'Southern region',
     distanceAr: 'المنطقة الجنوبية',
-    image: '/assets/Rectangle 1.svg',
+    image: cdn.product("assets/rectangle-1.svg"),
     backgroundColor: '#D93B30'
   }
 ];

@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -126,7 +127,7 @@ export default function HostingContent({
         ) : (
           <div className="flex flex-col items-center justify-center pt-2 sm:pt-6">
             <Image
-              src="/hosting/today.png"
+              src={cdn.product("hosting/today.png")}
               alt={t?.todayIllustration ?? "Today illustration"}
               width={150}
               height={150}

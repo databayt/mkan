@@ -1,4 +1,5 @@
 "use client";
+import { cdn } from "@/lib/cdn";
 
 import Image from "next/image";
 import React from "react";
@@ -23,7 +24,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
       {/* Hero Background Image */}
       <div className="relative h-full w-full">
         <Image
-          src="/hero.png"
+          src={cdn.product("hero.png")}
           alt={dict.home?.hero?.altText}
           fill
           className="object-cover object-center"

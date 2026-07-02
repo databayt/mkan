@@ -1,4 +1,5 @@
 "use client"
+import { cdn } from "@/lib/cdn";
 
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
@@ -11,7 +12,7 @@ export default function Ask() {
       {/* Background Image */}
       <div className="absolute inset-0">
         <Image
-          src="/assets/julia.png"
+          src={cdn.product("assets/julia.png")}
           alt="Smiling woman in red dress with green foliage background"
           fill
           className="object-cover"

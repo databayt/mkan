@@ -767,7 +767,7 @@ export default function VerticalSearch({
   // Desktop version
   return (
     <div
-      className="absolute top-[53%] start-4 md:start-8 transform -translate-y-1/2 z-20 w-[calc(100%-2rem)] md:w-auto"
+      className="absolute top-[46%] start-4 md:start-8 transform -translate-y-1/2 z-20 w-[calc(100%-2rem)] md:w-auto"
       ref={formRef}
     >
       <div className="relative">
