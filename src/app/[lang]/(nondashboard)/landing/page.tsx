@@ -56,11 +56,11 @@ const Landing = () => {
       />
       <AirbnbImages 
         images={[
-          "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&h=600&fit=crop",
-          "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&h=300&fit=crop",
-          "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=400&h=300&fit=crop",
-          "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=300&fit=crop",
-          "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=400&h=300&fit=crop"
+          "https://cdn.databayt.org/mkan/stock/photo-1564013799919-ab600027ffc6.jpg",
+          "https://cdn.databayt.org/mkan/stock/photo-1502672260266-1c1ef2d93688.jpg",
+          "https://cdn.databayt.org/mkan/stock/photo-1484154218962-a197022b5858.jpg",
+          "https://cdn.databayt.org/mkan/stock/photo-1522708323590-d24dbb6b0267.jpg",
+          "https://cdn.databayt.org/mkan/stock/photo-1571896349842-33c89424de2d.jpg"
         ]}
       />
       <AirbnbReserve />

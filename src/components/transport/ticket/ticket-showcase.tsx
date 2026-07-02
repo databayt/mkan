@@ -74,7 +74,7 @@ export function TicketShowcase({ lang }: TicketShowcaseProps) {
         {/* Banner Image — top on mobile, left column on desktop */}
         <div className="relative aspect-[5/3] md:aspect-auto md:w-[240px] shrink-0 overflow-hidden rounded-t-2xl md:rounded-t-none md:rounded-s-2xl">
           <Image
-            src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=600&q=80"
+            src="https://cdn.databayt.org/mkan/stock/photo-1544620347-c4fd4a3d5957.jpg"
             alt="Bus transport"
             fill
             className="object-cover"

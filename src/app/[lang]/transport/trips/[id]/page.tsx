@@ -26,6 +26,8 @@ import { ar, enUS } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { getTripDetails, createBooking } from '@/lib/actions/transport-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useLocale } from '@/components/internationalization/use-locale';
+import { formatCurrency } from '@/lib/i18n/formatters';
 import { cn } from '@/lib/utils';
 
 interface Seat {
@@ -51,6 +53,7 @@ export default function TripDetailsPage() {
   const lang = params.lang as string;
   const dateLocale = lang === 'ar' ? ar : enUS;
   const tripId = Number(params.id);
+  const { locale } = useLocale();
 
   const [trip, setTrip] = useState<TripDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -211,7 +214,7 @@ export default function TripDetailsPage() {
                 </div>
                 <div className="text-end">
                   <div className="text-2xl font-bold text-primary">
-                    SDG {trip.price.toLocaleString()}
+                    {formatCurrency(trip.price, locale)}
                   </div>
                   <div className="text-sm text-muted-foreground">{t.trip.perSeat}</div>
                 </div>
@@ -418,7 +421,7 @@ export default function TripDetailsPage() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>{t.booking.pricePerSeat}</span>
-                      <span>SDG {trip.price.toLocaleString()}</span>
+                      <span>{formatCurrency(trip.price, locale)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>{t.booking.numberOfSeats}</span>
@@ -430,7 +433,7 @@ export default function TripDetailsPage() {
 
                   <div className="flex justify-between font-bold text-lg">
                     <span>{t.booking.total}</span>
-                    <span>SDG {totalAmount.toLocaleString()}</span>
+                    <span>{formatCurrency(totalAmount, locale)}</span>
                   </div>
 
                   <Button

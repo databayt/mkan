@@ -17,6 +17,8 @@ import {
 import { useTransportOffice } from "@/context/transport-office-context";
 import { getOfficeDashboardStats } from "@/lib/actions/transport-actions";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { useLocale } from "@/components/internationalization/use-locale";
+import { formatCurrency } from "@/lib/i18n/formatters";
 
 type Stats = Awaited<ReturnType<typeof getOfficeDashboardStats>>;
 
@@ -28,7 +30,7 @@ export default function TransportHostOverviewPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const dict = useDictionary();
   const t = dict?.transportHost?.overview;
-  const tCommon = dict?.transportHost?.common;
+  const { locale } = useLocale();
 
   useEffect(() => {
     if (!officeId) return;
@@ -60,7 +62,7 @@ export default function TransportHostOverviewPage() {
           label={t?.totalRevenue ?? "Total revenue"}
           value={
             stats?.totalRevenue != null
-              ? `${(stats.totalRevenue as number).toLocaleString()} ${tCommon?.sdg ?? "SDG"}`
+              ? formatCurrency(stats.totalRevenue as number, locale)
               : "—"
           }
         />

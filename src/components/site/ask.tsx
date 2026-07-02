@@ -12,11 +12,11 @@ export default function Ask() {
       {/* Background Image */}
       <div className="absolute inset-0">
         <Image
-          src={cdn.product("assets/julia.png")}
+          src={cdn.product("assets/julia.jpg")}
           alt="Smiling woman in red dress with green foliage background"
           fill
           className="object-cover"
-          priority
+          sizes="100vw"
         />
         {/* Optional overlay for better text readability */}
         <div className="absolute inset-0 bg-black/10" />

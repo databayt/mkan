@@ -139,6 +139,9 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [360, 640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    // Allow per-image quality below the 75 default — card grids ship q65,
+    // which reads identically at card size but cuts ~25% more bytes.
+    qualities: [50, 65, 75],
     minimumCacheTTL: 2678400,
     // Amenity/highlight glyphs on the CDN are SVG served through next/image;
     // allow it, locked down by CSP (no scripts, inline styles only).

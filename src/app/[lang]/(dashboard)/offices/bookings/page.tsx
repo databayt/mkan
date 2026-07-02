@@ -44,6 +44,8 @@ import Loading from '@/components/Loading';
 import { usePathname } from 'next/navigation';
 import { getAuthUser } from '@/lib/actions/user-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useLocale } from '@/components/internationalization/use-locale';
+import { formatCurrency } from '@/lib/i18n/formatters';
 import {
   getMyTransportOffices,
   getOfficeBookings,
@@ -83,6 +85,7 @@ const BookingsPage = () => {
   const isAr = pathname?.startsWith("/ar");
   const dateLocale = isAr ? ar : enUS;
   const dict = useDictionary();
+  const { locale } = useLocale();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
   const [offices, setOffices] = useState<Array<{ id: number; name: string }>>([]);
@@ -267,7 +270,7 @@ const BookingsPage = () => {
                     {booking.seats.map((s) => s.seatNumber).join(', ')}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {booking.totalAmount.toLocaleString()} SDG
+                    {formatCurrency(booking.totalAmount, locale)}
                   </TableCell>
                   <TableCell>
                     <Badge className={statusColors[booking.status]}>
@@ -344,7 +347,7 @@ const BookingsPage = () => {
                       {dict.dashboard.common.seats}: {selectedBooking.seats.map((s) => s.seatNumber).join(', ')}
                     </p>
                     <p className="font-bold">
-                      {selectedBooking.totalAmount.toLocaleString()} SDG
+                      {formatCurrency(selectedBooking.totalAmount, locale)}
                     </p>
                   </div>
                   <Badge className={statusColors[selectedBooking.status]}>

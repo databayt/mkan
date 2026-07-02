@@ -14,19 +14,19 @@ export default function Guides() {
   const guides = [
     {
       title: items?.gettingStarted ?? "Getting started on Mkan",
-      image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop&crop=center",
+      image: "https://cdn.databayt.org/mkan/stock/photo-1566073771259-6a8506099945.jpg",
     },
     {
       title: items?.findingStay ?? "Finding a stay that's right for you",
-      image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=300&fit=crop&crop=center",
+      image: "https://cdn.databayt.org/mkan/stock/photo-1522708323590-d24dbb6b0267.jpg",
     },
     {
       title: items?.airCover ?? "AirCover for guests",
-      image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&crop=center",
+      image: "https://cdn.databayt.org/mkan/stock/photo-1558618666-fcd25c85cd64.jpg",
     },
     {
       title: items?.settingUpAccount ?? "Setting up your Mkan account",
-      image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop&crop=center",
+      image: "https://cdn.databayt.org/mkan/stock/photo-1556742049-0cfed4f6a45d.jpg",
     },
   ]
 

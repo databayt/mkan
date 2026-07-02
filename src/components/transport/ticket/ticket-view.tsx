@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { formatCurrency } from '@/lib/i18n/formatters';
 
 interface Booking {
   id: number;
@@ -337,7 +338,7 @@ export function TicketView({
         <div className="text-end">
           <p className="text-xs text-muted-foreground">{dictionaryResolved.total}</p>
           <p className="text-xl font-bold">
-            {booking.totalAmount.toLocaleString()} SDG
+            {formatCurrency(booking.totalAmount, locale)}
           </p>
         </div>
       </div>

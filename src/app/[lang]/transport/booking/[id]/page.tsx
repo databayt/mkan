@@ -23,6 +23,8 @@ import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { getBooking } from '@/lib/actions/transport-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useLocale } from '@/components/internationalization/use-locale';
+import { formatCurrency } from '@/lib/i18n/formatters';
 
 type BookingDetails = NonNullable<Awaited<ReturnType<typeof getBooking>>>;
 
@@ -35,6 +37,7 @@ export default function BookingConfirmationPage() {
   const [booking, setBooking] = useState<BookingDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const t = useDictionary().transport;
+  const { locale } = useLocale();
   // Locale for date-fns — gives Arabic users "الثلاثاء، ١٥ أبريل" instead of
   // "Tue, Apr 15". All `format()` calls in this file must pass this.
   const dateLocale = lang === 'ar' ? ar : enUS;
@@ -253,7 +256,7 @@ export default function BookingConfirmationPage() {
         <CardContent>
           <div className="flex justify-between items-center">
             <span>{t.booking.totalPaid}</span>
-            <span className="text-xl font-bold">SDG {booking.totalAmount.toLocaleString()}</span>
+            <span className="text-xl font-bold">{formatCurrency(booking.totalAmount, locale)}</span>
           </div>
           {booking.payments.length > 0 && booking.payments[0] && (
             <div className="mt-2 text-sm text-muted-foreground">

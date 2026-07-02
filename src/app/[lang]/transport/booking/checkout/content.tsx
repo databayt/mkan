@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { getBooking, processPayment } from '@/lib/actions/transport-actions';
 import { TransportCardCheckout } from '@/components/transport/card-checkout';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { formatCurrency } from '@/lib/i18n/formatters';
 
 type PaymentMethod = 'MobileMoney' | 'CreditCard' | 'BankTransfer' | 'CashOnArrival';
 
@@ -293,7 +294,7 @@ function CheckoutInner({ showCard }: { showCard: boolean }) {
                 ? (c?.processing ?? "Processing...")
                 : paymentMethod === 'CashOnArrival'
                   ? (c?.reserveSeats ?? "Reserve seats")
-                  : `${c?.pay ?? "Pay"} SDG ${booking.totalAmount.toLocaleString()}`}
+                  : `${c?.pay ?? "Pay"} ${formatCurrency(booking.totalAmount, locale)}`}
             </Button>
           )}
 
@@ -339,7 +340,7 @@ function CheckoutInner({ showCard }: { showCard: boolean }) {
 
               <div className="flex justify-between font-bold">
                 <span>{c?.total ?? "Total"}</span>
-                <span dir="ltr">SDG {booking.totalAmount.toLocaleString()}</span>
+                <span dir={locale === 'ar' ? 'rtl' : 'ltr'}>{formatCurrency(booking.totalAmount, locale)}</span>
               </div>
             </CardContent>
           </Card>

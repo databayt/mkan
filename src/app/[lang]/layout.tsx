@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { preconnect } from 'react-dom';
 import { Inter, Rubik } from 'next/font/google';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import { DictionaryProvider } from '@/components/internationalization/dictionary-context';
@@ -63,6 +64,10 @@ export default async function LocaleLayout({
   const config = localeConfig[lang] || localeConfig['ar'];
   const isRTL = config.dir === 'rtl';
   const dictionary = await getDictionary(lang);
+
+  // Videos, glyph SVGs, and posters load straight from the CDN (not via
+  // /_next/image) — open the connection early, it matters on high-RTT links.
+  preconnect(`https://${process.env.NEXT_PUBLIC_CDN_DOMAIN?.trim() || 'cdn.databayt.org'}`);
 
   return (
     <html lang={lang} dir={config.dir} suppressHydrationWarning>

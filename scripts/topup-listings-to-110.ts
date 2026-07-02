@@ -53,18 +53,18 @@ const PROPERTY_CYCLE: PropertyType[] = [
 ];
 
 const PHOTO_POOL = [
-  'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800',
-  'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
-  'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
-  'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800',
-  'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
-  'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
-  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
-  'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800',
-  'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800',
-  'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=800',
-  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
-  'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800',
+  'https://cdn.databayt.org/mkan/stock/photo-1545324418-cc1a3fa10c00.jpg',
+  'https://cdn.databayt.org/mkan/stock/photo-1502672260266-1c1ef2d93688.jpg',
+  'https://cdn.databayt.org/mkan/stock/photo-1560448204-e02f11c3d0e2.jpg',
+  'https://cdn.databayt.org/mkan/stock/photo-1571896349842-33c89424de2d.jpg',
+  'https://cdn.databayt.org/mkan/stock/photo-1502672260266-1c1ef2d93688.jpg',
+  'https://cdn.databayt.org/mkan/stock/photo-1613490493576-7fde63acd811.jpg',
+  'https://cdn.databayt.org/mkan/stock/photo-1600596542815-ffad4c1539a9.jpg',
+  'https://cdn.databayt.org/mkan/stock/photo-1568605114967-8130f3a36994.jpg',
+  'https://cdn.databayt.org/mkan/stock/photo-1570129477492-45c003edd2be.jpg',
+  'https://cdn.databayt.org/mkan/stock/photo-1499793983690-e29da59ef1c2.jpg',
+  'https://cdn.databayt.org/mkan/stock/photo-1600607687939-ce8a6c25118c.jpg',
+  'https://cdn.databayt.org/mkan/stock/photo-1600566753190-17f0baa2a6c3.jpg',
 ];
 
 function specFor(type: PropertyType, idx: number) {

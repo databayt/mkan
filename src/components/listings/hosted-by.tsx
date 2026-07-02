@@ -18,7 +18,7 @@ interface HostedByProps {
 }
 
 const FALLBACK_AVATAR =
-  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=48&h=48&fit=crop";
+  "https://cdn.databayt.org/mkan/stock/photo-1506905925346-21bda4d32df4.jpg";
 
 export default function HostedBy({ host, hostingMonths, superhost = false }: HostedByProps) {
   const dict = useDictionary();

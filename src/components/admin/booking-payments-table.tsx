@@ -22,6 +22,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { verifyBookingPayment } from "@/lib/actions/payment-actions";
+import { useLocale } from "@/components/internationalization/use-locale";
+import { formatCurrency } from "@/lib/i18n/formatters";
 
 type BookingPaymentRow = {
   id: number;
@@ -61,6 +63,7 @@ export function BookingPaymentsTable({
   labels: Labels;
 }) {
   const router = useRouter();
+  const { locale } = useLocale();
   const [pending, startTransition] = useTransition();
   const [actingId, setActingId] = useState<number | null>(null);
 
@@ -109,7 +112,7 @@ export function BookingPaymentsTable({
                 {p.booking.guest.username ?? p.booking.guest.email}
               </TableCell>
               <TableCell className="text-end text-sm">
-                {p.amount.toLocaleString()} SDG
+                {formatCurrency(p.amount, locale)}
               </TableCell>
               <TableCell className="text-sm">{p.method}</TableCell>
               <TableCell className="font-mono text-xs text-muted-foreground">

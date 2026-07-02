@@ -73,8 +73,8 @@ async function main() {
       amenities: [Amenity.AirConditioning, Amenity.Gym, Amenity.Pool, Amenity.WiFi, Amenity.Parking],
       highlights: [Highlight.GreatView, Highlight.RecentlyRenovated, Highlight.HighSpeedInternetAccess],
       photoUrls: [
-        'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800',
-        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800'
+        'https://cdn.databayt.org/mkan/stock/photo-1545324418-cc1a3fa10c00.jpg',
+        'https://cdn.databayt.org/mkan/stock/photo-1502672260266-1c1ef2d93688.jpg'
       ],
       location: {
         address: '100 Main Street, Suite 3001',
@@ -102,8 +102,8 @@ async function main() {
       amenities: [Amenity.WiFi, Amenity.WasherDryer, Amenity.HardwoodFloors, Amenity.PetsAllowed],
       highlights: [Highlight.GreatView, Highlight.QuietNeighborhood, Highlight.CloseToTransit],
       photoUrls: [
-        'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=800',
-        'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800'
+        'https://cdn.databayt.org/mkan/stock/photo-1499793983690-e29da59ef1c2.jpg',
+        'https://cdn.databayt.org/mkan/stock/photo-1571896349842-33c89424de2d.jpg'
       ],
       location: {
         address: '25 Seaside Drive',
@@ -131,8 +131,8 @@ async function main() {
       amenities: [Amenity.AirConditioning, Amenity.WasherDryer, Amenity.Dishwasher, Amenity.WalkInClosets, Amenity.PetsAllowed, Amenity.Parking],
       highlights: [Highlight.RecentlyRenovated, Highlight.QuietNeighborhood, Highlight.SprinklerSystem],
       photoUrls: [
-        'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
-        'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800'
+        'https://cdn.databayt.org/mkan/stock/photo-1613490493576-7fde63acd811.jpg',
+        'https://cdn.databayt.org/mkan/stock/photo-1600596542815-ffad4c1539a9.jpg'
       ],
       location: {
         address: '789 Maple Avenue',
@@ -160,7 +160,7 @@ async function main() {
       amenities: [Amenity.WiFi, Amenity.HardwoodFloors, Amenity.HighSpeedInternet],
       highlights: [Highlight.HighSpeedInternetAccess, Highlight.CloseToTransit, Highlight.GreatView],
       photoUrls: [
-        'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800'
+        'https://cdn.databayt.org/mkan/stock/photo-1586023492125-27b2c045efd7.jpg'
       ],
       location: {
         address: '456 Art Street, Unit 2B',
@@ -188,8 +188,8 @@ async function main() {
       amenities: [Amenity.AirConditioning, Amenity.WasherDryer, Amenity.Dishwasher, Amenity.WalkInClosets, Amenity.Parking],
       highlights: [Highlight.RecentlyRenovated, Highlight.Intercom, Highlight.SprinklerSystem, Highlight.QuietNeighborhood],
       photoUrls: [
-        'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800',
-        'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800'
+        'https://cdn.databayt.org/mkan/stock/photo-1568605114967-8130f3a36994.jpg',
+        'https://cdn.databayt.org/mkan/stock/photo-1570129477492-45c003edd2be.jpg'
       ],
       location: {
         address: '321 Executive Row',
@@ -217,7 +217,7 @@ async function main() {
       amenities: [Amenity.WiFi, Amenity.PetsAllowed],
       highlights: [Highlight.QuietNeighborhood, Highlight.GreatView],
       photoUrls: [
-        'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800'
+        'https://cdn.databayt.org/mkan/stock/photo-1449824913935-59a10b8d2000.jpg'
       ],
       location: {
         address: '15 Green Valley Road',
@@ -245,7 +245,7 @@ async function main() {
       amenities: [Amenity.WiFi, Amenity.HighSpeedInternet, Amenity.WasherDryer],
       highlights: [Highlight.HighSpeedInternetAccess, Highlight.CloseToTransit],
       photoUrls: [
-        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800'
+        'https://cdn.databayt.org/mkan/stock/photo-1502672260266-1c1ef2d93688.jpg'
       ],
       location: {
         address: '200 College Avenue, Room 3A',
@@ -273,8 +273,8 @@ async function main() {
       amenities: [Amenity.AirConditioning, Amenity.Pool, Amenity.Gym, Amenity.WiFi, Amenity.Parking, Amenity.Dishwasher],
       highlights: [Highlight.GreatView, Highlight.Intercom, Highlight.HighSpeedInternetAccess, Highlight.CloseToTransit],
       photoUrls: [
-        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'
+        'https://cdn.databayt.org/mkan/stock/photo-1502672260266-1c1ef2d93688.jpg',
+        'https://cdn.databayt.org/mkan/stock/photo-1560448204-e02f11c3d0e2.jpg'
       ],
       location: {
         address: '888 Financial Plaza, Floor 25',

@@ -28,6 +28,8 @@ import {
 import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useLocale } from '@/components/internationalization/use-locale';
+import { formatCurrency } from '@/lib/i18n/formatters';
 import {
   createTrip,
   deleteTrip,
@@ -57,6 +59,7 @@ const SchedulePage = () => {
   const { office } = useTransportOffice();
   const dict = useDictionary();
   const t = dict.transport.host;
+  const { locale } = useLocale();
   const [trips, setTrips] = useState<TripData[]>([]);
   const [routes, setRoutes] = useState<RouteData[]>([]);
   const [buses, setBuses] = useState<BusData[]>([]);
@@ -390,7 +393,7 @@ const SchedulePage = () => {
                                       {trip.availableSeats} {t.seats}
                                     </Badge>
                                     <span className="text-sm font-medium text-primary">
-                                      {trip.price.toLocaleString()} SDG
+                                      {formatCurrency(trip.price, locale)}
                                     </span>
                                   </div>
                                 </div>

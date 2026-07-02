@@ -28,7 +28,7 @@ const defaultDestinations: Destination[] = [
     titleAr: 'الخرطوم',
     distance: 'Capital city',
     distanceAr: 'العاصمة',
-    image: cdn.product("assets/rectangle-1.svg"),
+    image: cdn.product("destinations/khartoum.jpg"),
     backgroundColor: '#CC2D4A'
   },
   {
@@ -37,7 +37,7 @@ const defaultDestinations: Destination[] = [
     titleAr: 'بورتسودان',
     distance: 'Red Sea coast',
     distanceAr: 'ساحل البحر الأحمر',
-    image: cdn.product("assets/rectangle-1-2.svg"),
+    image: cdn.product("destinations/port-sudan.jpg"),
     backgroundColor: '#BC1A6E'
   },
   {
@@ -46,7 +46,7 @@ const defaultDestinations: Destination[] = [
     titleAr: 'أم درمان',
     distance: 'Historic city',
     distanceAr: 'مدينة تاريخية',
-    image: cdn.product("assets/rectangle-1-3.svg"),
+    image: cdn.product("destinations/omdurman.jpg"),
     backgroundColor: '#DE3151'
   },
   {
@@ -55,7 +55,7 @@ const defaultDestinations: Destination[] = [
     titleAr: 'جوبا',
     distance: 'Southern region',
     distanceAr: 'المنطقة الجنوبية',
-    image: cdn.product("assets/rectangle-1.svg"),
+    image: cdn.product("destinations/khartoum.jpg"),
     backgroundColor: '#D93B30'
   }
 ];

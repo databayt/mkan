@@ -81,6 +81,7 @@ export function PropertyCard({
               alt={title}
               width={303}
               height={287}
+              quality={65}
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
           ) : (

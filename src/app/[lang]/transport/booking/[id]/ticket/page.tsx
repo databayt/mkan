@@ -21,6 +21,8 @@ import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { getBooking } from '@/lib/actions/transport-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useLocale } from '@/components/internationalization/use-locale';
+import { formatCurrency } from '@/lib/i18n/formatters';
 import QRCode from 'qrcode';
 
 type BookingDetails = NonNullable<Awaited<ReturnType<typeof getBooking>>>;
@@ -32,6 +34,7 @@ export default function TicketViewPage() {
   const lang = params.lang as string;
   const bookingId = Number(params.id);
   const tv = useDictionary()?.transport?.ticketView;
+  const { locale } = useLocale();
 
   const [booking, setBooking] = useState<BookingDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -229,7 +232,7 @@ export default function TicketViewPage() {
           {/* Footer */}
           <div className="p-3 bg-muted text-center text-xs text-muted-foreground">
             <div>{tv?.busLabel ?? "Bus"}: {booking.trip.bus.model || booking.trip.bus.plateNumber}</div>
-            <div className="mt-1">{tv?.totalLabel ?? "Total"}: SDG {booking.totalAmount.toLocaleString()}</div>
+            <div className="mt-1">{tv?.totalLabel ?? "Total"}: {formatCurrency(booking.totalAmount, locale)}</div>
           </div>
         </CardContent>
       </Card>

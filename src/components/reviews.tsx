@@ -12,7 +12,7 @@ interface ReviewsProps {
 }
 
 const FALLBACK_AVATAR =
-  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop&crop=face"
+  "https://cdn.databayt.org/mkan/stock/photo-1534528741775-53994a69daeb.jpg"
 
 // Authentic Airbnb rating star (viewBox 0 0 32 32, fill #222222) — lifted from
 // the live reviews block; rendered tiny (≈10px) in the card meta rows.

@@ -91,7 +91,7 @@ export function TransportHostHero({ lang, className, dictionary = defaultDiction
           <div className="order-1 lg:order-2 relative">
             <div className="relative aspect-[4/3] lg:aspect-square rounded-2xl overflow-hidden shadow-2xl">
               <Image
-                src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=1200&h=900&fit=crop"
+                src="https://cdn.databayt.org/mkan/stock/photo-1544620347-c4fd4a3d5957.jpg"
                 alt="Transport office managing bookings on Mkan"
                 fill
                 className="object-cover"

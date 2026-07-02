@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import type { Locale } from '@/components/internationalization/config';
 import { createMetadata } from '@/lib/metadata';
+import { formatCurrency } from '@/lib/i18n/formatters';
 
 // ISR: Revalidate every 10 minutes (assembly points rarely change)
 export const dynamic = 'force-dynamic';
@@ -82,9 +83,11 @@ export default async function TransportPage({ params }: TransportPageProps) {
             muted
             loop
             playsInline
+            preload="metadata"
+            poster={cdn.product("videos/hero-bg-poster.jpg")}
             className="absolute inset-0 w-full h-full object-cover"
           >
-            <source src={cdn.product("videos/hero-bg.mp4")} type="video/mp4" />
+            <source src={cdn.product("videos/hero-bg-720.mp4")} type="video/mp4" />
           </video>
           {/* Dark overlay for text readability */}
           <div className="absolute inset-0 bg-black/40" />
@@ -281,7 +284,7 @@ export default async function TransportPage({ params }: TransportPageProps) {
                       {(t?.home?.hoursSuffix ?? "{hours}h").replace('{hours}', String(hours))}
                     </span>
                     <span className="font-medium text-primary">
-                      {t?.routes?.pricePrefix ?? "From"} {route.basePrice.toLocaleString()} {t?.home?.currency ?? "SDG"}
+                      {t?.routes?.pricePrefix ?? "From"} {formatCurrency(route.basePrice, lang)}
                     </span>
                   </div>
                 </Link>

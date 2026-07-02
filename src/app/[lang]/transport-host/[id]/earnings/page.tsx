@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Wallet, Download } from "lucide-react";
 import { getOfficeDashboardStats } from "@/lib/actions/transport-actions";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { useLocale } from "@/components/internationalization/use-locale";
+import { formatCurrency } from "@/lib/i18n/formatters";
 
 type Stats = Awaited<ReturnType<typeof getOfficeDashboardStats>>;
 
@@ -18,7 +20,7 @@ export default function TransportHostEarningsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const dict = useDictionary();
   const t = dict?.transportHost?.earnings;
-  const tCommon = dict?.transportHost?.common;
+  const { locale } = useLocale();
 
   useEffect(() => {
     if (!officeId) return;
@@ -74,7 +76,9 @@ export default function TransportHostEarningsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-semibold">
-              {(stats?.totalRevenue as number | undefined)?.toLocaleString() ?? "—"} {tCommon?.sdg ?? "SDG"}
+              {stats?.totalRevenue != null
+                ? formatCurrency(stats.totalRevenue as number, locale)
+                : "—"}
             </div>
             <div className="text-sm text-muted-foreground mt-1">
               {(stats?.confirmedBookings as number | undefined) ?? 0}{" "}

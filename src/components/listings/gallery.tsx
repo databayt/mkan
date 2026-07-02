@@ -19,38 +19,38 @@ const mockSections: PhotoSection[] = [
     id: "living-room",
     label: "Living room",
     photos: [
-      "https://images.unsplash.com/photo-1560448204-6032e02f11c3?w=800&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&h=600&fit=crop"
+      "https://cdn.databayt.org/mkan/stock/photo-1560448204-e02f11c3d0e2.jpg",
+      "https://cdn.databayt.org/mkan/stock/photo-1560448204-e02f11c3d0e2.jpg",
+      "https://cdn.databayt.org/mkan/stock/photo-1556909114-f6e7ad7d3136.jpg",
+      "https://cdn.databayt.org/mkan/stock/photo-1552321554-5fefe8c9ef14.jpg"
     ]
   },
   {
     id: "kitchen",
     label: "Full kitchen",
     photos: [
-      "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&h=600&fit=crop"
+      "https://cdn.databayt.org/mkan/stock/photo-1556909114-f6e7ad7d3136.jpg",
+      "https://cdn.databayt.org/mkan/stock/photo-1560448204-e02f11c3d0e2.jpg",
+      "https://cdn.databayt.org/mkan/stock/photo-1552321554-5fefe8c9ef14.jpg"
     ]
   },
   {
     id: "bedroom",
     label: "Bedroom",
     photos: [
-      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1560448204-6032e02f11c3?w=800&h=600&fit=crop"
+      "https://cdn.databayt.org/mkan/stock/photo-1560448204-e02f11c3d0e2.jpg",
+      "https://cdn.databayt.org/mkan/stock/photo-1556909114-f6e7ad7d3136.jpg",
+      "https://cdn.databayt.org/mkan/stock/photo-1552321554-5fefe8c9ef14.jpg",
+      "https://cdn.databayt.org/mkan/stock/photo-1560448204-e02f11c3d0e2.jpg"
     ]
   },
   {
     id: "bathroom",
     label: "Full bathroom",
     photos: [
-      "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=600&fit=crop"
+      "https://cdn.databayt.org/mkan/stock/photo-1552321554-5fefe8c9ef14.jpg",
+      "https://cdn.databayt.org/mkan/stock/photo-1560448204-e02f11c3d0e2.jpg",
+      "https://cdn.databayt.org/mkan/stock/photo-1556909114-f6e7ad7d3136.jpg"
     ]
   }
 ]

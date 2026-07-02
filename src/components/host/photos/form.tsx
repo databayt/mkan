@@ -31,9 +31,9 @@ export function PhotosForm() {
 
   const addSamplePhotos = () => {
     const sampleUrls = [
-      'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop',
+      'https://cdn.databayt.org/mkan/stock/photo-1570129477492-45c003edd2be.jpg',
+      'https://cdn.databayt.org/mkan/stock/photo-1560448204-e02f11c3d0e2.jpg',
+      'https://cdn.databayt.org/mkan/stock/photo-1502672260266-1c1ef2d93688.jpg',
     ]
     
     sampleUrls.forEach(url => {

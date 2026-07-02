@@ -13,6 +13,8 @@ import {
   updateBookingStatus,
 } from "@/lib/actions/transport-actions";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { useLocale } from "@/components/internationalization/use-locale";
+import { formatCurrency } from "@/lib/i18n/formatters";
 
 type BookingsResult = Awaited<ReturnType<typeof getOfficeBookings>>;
 type Booking = BookingsResult extends { bookings: infer B } ? (B extends Array<infer I> ? I : never) : never;
@@ -25,7 +27,7 @@ export default function TransportHostBookingsPage() {
   const [filter, setFilter] = useState<string>("");
   const dict = useDictionary();
   const t = dict?.transportHost?.bookings;
-  const tCommon = dict?.transportHost?.common;
+  const { locale } = useLocale();
 
   useEffect(() => {
     if (!officeId) return;
@@ -122,7 +124,7 @@ export default function TransportHostBookingsPage() {
                   </div>
                 </div>
                 <div className="text-sm font-medium">
-                  {Number(b.totalAmount).toLocaleString()} {tCommon?.sdg ?? "SDG"}
+                  {formatCurrency(Number(b.totalAmount), locale)}
                 </div>
                 <Badge variant={b.status === "Confirmed" ? "default" : "outline"}>
                   {statusLabel(b.status)}

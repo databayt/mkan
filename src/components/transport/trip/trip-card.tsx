@@ -12,6 +12,8 @@ import {
   CardFooter,
   CardHeader,
 } from '@/components/ui/card';
+import { useLocale } from '@/components/internationalization/use-locale';
+import { formatCurrency } from '@/lib/i18n/formatters';
 
 type BusAmenity =
   | 'AirConditioning'
@@ -102,6 +104,8 @@ export const TripCard = memo(function TripCard({
     verified: 'Verified',
   },
 }: TripCardProps) {
+  const { locale } = useLocale();
+
   // Memoize formatDuration function
   const formatDuration = useCallback((minutes: number) => {
     const hours = Math.floor(minutes / 60);
@@ -126,8 +130,8 @@ export const TripCard = memo(function TripCard({
 
   // Memoize formatted price
   const formattedPrice = useMemo(() => {
-    return trip.price.toLocaleString();
-  }, [trip.price]);
+    return formatCurrency(trip.price, locale);
+  }, [trip.price, locale]);
 
   // Memoize seats warning class
   const seatsClassName = useMemo(() => {
@@ -224,7 +228,7 @@ export const TripCard = memo(function TripCard({
       <CardFooter className="flex items-center justify-between pt-3 border-t">
         <div>
           <p className="text-2xl font-bold">
-            {formattedPrice} <span className="text-sm">SDG</span>
+            {formattedPrice}
           </p>
           <p className="text-xs text-muted-foreground">per seat</p>
         </div>

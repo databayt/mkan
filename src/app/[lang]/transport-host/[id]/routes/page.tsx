@@ -27,6 +27,8 @@ import {
 import { useTransportHostValidation } from '@/context/onboarding-validation-context';
 import { useTransportOffice } from '@/context/transport-office-context';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useLocale } from '@/components/internationalization/use-locale';
+import { formatCurrency } from '@/lib/i18n/formatters';
 import {
   createRoute,
   updateRoute,
@@ -56,6 +58,7 @@ const RoutesPage = () => {
   const { office } = useTransportOffice();
   const dict = useDictionary();
   const t = dict.transport.host;
+  const { locale } = useLocale();
   const [routes, setRoutes] = useState<RouteData[]>([]);
   const [assemblyPoints, setAssemblyPoints] = useState<AssemblyPoint[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -336,7 +339,7 @@ const RoutesPage = () => {
                         {route.distance && ` • ${route.distance} km`}
                       </p>
                       <p className="text-sm font-medium text-primary mt-1">
-                        {route.basePrice.toLocaleString()} SDG
+                        {formatCurrency(route.basePrice, locale)}
                       </p>
                     </div>
                     <div className="flex gap-2">

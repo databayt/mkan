@@ -31,6 +31,8 @@ import {
   getOfficeDashboardStats,
 } from '@/lib/actions/transport-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useLocale } from '@/components/internationalization/use-locale';
+import { formatCurrency } from '@/lib/i18n/formatters';
 
 interface OfficeStats {
   totalBookings: number;
@@ -61,6 +63,7 @@ const OfficeDashboard = () => {
   const pathname = usePathname();
   const isAr = pathname?.startsWith("/ar");
   const dict = useDictionary();
+  const { locale } = useLocale();
   const [authUser, setAuthUser] = useState<any>(null);
   const [offices, setOffices] = useState<TransportOffice[]>([]);
   const [selectedOfficeId, setSelectedOfficeId] = useState<number | null>(null);
@@ -185,7 +188,7 @@ const OfficeDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {`${(stats?.totalRevenue || 0).toLocaleString()} ${dict.dashboard.offices.currencySDG}`}
+              {formatCurrency(stats?.totalRevenue || 0, locale)}
             </div>
             <p className="text-xs text-muted-foreground">{dict.dashboard.offices.totalEarnings}</p>
           </CardContent>

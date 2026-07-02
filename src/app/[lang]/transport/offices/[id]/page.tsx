@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { getTransportOffice, getOfficeTrips } from '@/lib/actions/transport-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useLocale } from '@/components/internationalization/use-locale';
+import { formatCurrency } from '@/lib/i18n/formatters';
 import { format, addDays } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 
@@ -34,6 +36,7 @@ export default function OfficeDetailsPage() {
   const lang = params.lang as string;
   const dateLocale = lang === 'ar' ? ar : enUS;
   const officeId = Number(params.id);
+  const { locale } = useLocale();
 
   const [office, setOffice] = useState<OfficeDetails | null>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -201,7 +204,7 @@ export default function OfficeDetailsPage() {
                       </div>
                       <div className="text-end">
                         <div className="font-bold text-primary">
-                          SDG {route.basePrice.toLocaleString()}
+                          {formatCurrency(route.basePrice, locale)}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {route.duration} {t.office.hours}
@@ -244,7 +247,7 @@ export default function OfficeDetailsPage() {
                         </div>
                       </div>
                       <div className="text-end">
-                        <div className="font-bold">SDG {trip.price.toLocaleString()}</div>
+                        <div className="font-bold">{formatCurrency(trip.price, locale)}</div>
                         <div className="text-xs text-muted-foreground">
                           {trip.availableSeats} {t.office.seatsLeft}
                         </div>
