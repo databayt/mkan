@@ -74,18 +74,25 @@ export default function HostingListingsContent() {
   return (
     <>
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 space-y-4 sm:space-y-0">
-          <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">{dict.hosting?.listingsPage?.title ?? "Your listings"}</h1>
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            <button className="p-3 sm:p-2 bg-muted rounded-full hover:bg-muted/80 transition-colors min-h-[44px] sm:min-h-[32px] min-w-[44px] sm:min-w-[32px]">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-6 sm:py-8">
+        {/* Airbnb host header — big serifless title start-aligned, 40px circle
+            actions trailing on the SAME row (mobile keeps title + [search, plus]
+            like the Airbnb app; the grid/list toggle is desktop-only). */}
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+          <h1 className="text-[26px] sm:text-3xl font-semibold tracking-tight text-gray-900">{dict.hosting?.listingsPage?.title ?? "Your listings"}</h1>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              aria-label={dict.hosting?.listingsPage?.search ?? "Search"}
+              className="flex size-10 items-center justify-center bg-muted rounded-full hover:bg-muted/80 transition-colors"
+            >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
             <button
               onClick={toggleViewType}
-              className="p-3 sm:p-2 bg-muted rounded-full hover:bg-muted/80 transition-colors min-h-[44px] sm:min-h-[32px] min-w-[44px] sm:min-w-[32px]"
+              aria-label={dict.hosting?.listingsPage?.toggleView ?? "Toggle view"}
+              className="hidden sm:flex size-10 items-center justify-center bg-muted rounded-full hover:bg-muted/80 transition-colors"
             >
               {viewType === 'grid' ? (
                 <ListView size={16} />
@@ -95,7 +102,8 @@ export default function HostingListingsContent() {
             </button>
             <button
               onClick={() => router.push('/host/overview')}
-              className="p-3 sm:p-2 bg-muted rounded-full hover:bg-muted/80 transition-colors min-h-[44px] sm:min-h-[32px] min-w-[44px] sm:min-w-[32px]"
+              aria-label={dict.hosting?.listingsPage?.createListing ?? "Create listing"}
+              className="flex size-10 items-center justify-center bg-muted rounded-full hover:bg-muted/80 transition-colors"
             >
               <Plus size={16} />
             </button>
@@ -126,7 +134,7 @@ export default function HostingListingsContent() {
 
         {/* Listings Grid */}
         {listings.length > 0 && (
-          <div className={`grid ${viewType === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1'} gap-3 sm:gap-4`}>
+          <div className={`grid ${viewType === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1'} gap-8 sm:gap-4`}>
             {listings.map((listing) => (
               <ListingCard
                 key={listing.id}

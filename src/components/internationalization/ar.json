@@ -2005,7 +2005,9 @@
       "tryAgain": "حاول مرة أخرى",
       "noListings": "لا توجد قوائم بعد",
       "noListingsDescription": "ابدأ بإنشاء قائمتك الأولى.",
-      "createListing": "إنشاء قائمة"
+      "createListing": "إنشاء قائمة",
+      "search": "بحث",
+      "toggleView": "تبديل العرض"
     },
     "calendar": {
       "title": "التقويم",

@@ -2005,7 +2005,9 @@
       "tryAgain": "Try Again",
       "noListings": "No listings yet",
       "noListingsDescription": "Get started by creating your first listing.",
-      "createListing": "Create Listing"
+      "createListing": "Create Listing",
+      "search": "Search",
+      "toggleView": "Toggle view"
     },
     "calendar": {
       "title": "Calendar",

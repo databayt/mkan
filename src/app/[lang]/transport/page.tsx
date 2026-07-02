@@ -18,6 +18,7 @@ import type { Locale } from '@/components/internationalization/config';
 import { createMetadata } from '@/lib/metadata';
 import { formatCurrency } from '@/lib/i18n/formatters';
 import { PHASE1 } from '@/config/phase-flags';
+import { cityLabel } from '@/components/transport/city-names';
 
 // ISR: Revalidate every 10 minutes (assembly points rarely change)
 export const revalidate = 600;
@@ -259,9 +260,20 @@ export default async function TransportPage({ params }: TransportPageProps) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {popularRoutes.map((route) => {
-              const fromLabel = lang === 'ar' ? (route.origin.nameAr ?? route.origin.city) : route.origin.city;
-              const toLabel = lang === 'ar' ? (route.destination.nameAr ?? route.destination.city) : route.destination.city;
+            {popularRoutes
+              // Several operators run the same city pair — the card names no
+              // operator, so show each pair once (most-trips-first order).
+              .filter(
+                (route, i, all) =>
+                  all.findIndex(
+                    (r) =>
+                      r.origin.city === route.origin.city &&
+                      r.destination.city === route.destination.city,
+                  ) === i,
+              )
+              .map((route) => {
+              const fromLabel = cityLabel(route.origin.city, lang);
+              const toLabel = cityLabel(route.destination.city, lang);
               const hours = Math.round(route.duration / 60);
               const query = new URLSearchParams({
                 originId: String(route.originId),

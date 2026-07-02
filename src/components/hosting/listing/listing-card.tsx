@@ -5,7 +5,6 @@ import React from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Listing } from '@/types/listing';
-import { Badge } from '@/components/ui/badge';
 import { getNextStep } from '@/components/hosting/listing/listing-progress';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
@@ -102,34 +101,40 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewType }) => {
       className={`cursor-pointer ${viewType === 'list' ? 'flex' : ''}`}
       onClick={handleCardClick}
     >
-      <div className="relative p-2 sm:p-2">
-        <div className={`${viewType === 'list' ? 'w-48 h-28' : 'aspect-[4/3]'} bg-gray-200 overflow-hidden rounded-lg`}>
-          <Image 
-            src={image} 
+      {/* Airbnb host card: full-bleed near-square photo with 12px radius on
+          mobile (no gutter padding), white status pill floating top-start.
+          Desktop keeps the tighter 4:3 grid look. */}
+      <div className={`relative ${viewType === 'list' ? 'p-2' : 'p-0 sm:p-2'}`}>
+        <div className={`${viewType === 'list' ? 'w-48 h-28' : 'aspect-square sm:aspect-[4/3]'} bg-gray-200 overflow-hidden rounded-xl`}>
+          <Image
+            src={image}
             alt={title}
-            width={viewType === 'list' ? 192 : 300}
-            height={viewType === 'list' ? 112 : 225}
-            className="w-full h-full object-cover rounded-lg"
+            width={viewType === 'list' ? 192 : 600}
+            height={viewType === 'list' ? 112 : 600}
+            className="w-full h-full object-cover"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.src = cdn.product("assets/hero.jpg");
             }}
           />
         </div>
-        <div className="absolute top-3 start-3 sm:top-5 sm:start-5">
-          <Badge className="flex items-center gap-1 bg-muted text-foreground text-xs sm:text-sm">
-            <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${status.circleColor}`}></div>
+        <div className={`absolute ${viewType === 'list' ? 'top-4 start-4' : 'top-3 start-3 sm:top-5 sm:start-5'}`}>
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#222222]"
+            style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.18)" }}
+          >
+            <span className={`size-2 rounded-full ${status.circleColor}`}></span>
             {statusLabels[status.key]}
-          </Badge>
+          </span>
         </div>
       </div>
 
-      <div className="p-2 sm:p-3 flex-1">
-        <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-1 truncate">
+      <div className={`flex-1 ${viewType === 'list' ? 'p-3' : 'p-0 pt-3 sm:p-3 sm:pt-3'}`}>
+        <h3 className="text-[15px] sm:text-base font-medium text-gray-900 mb-0.5 truncate">
           {title}
         </h3>
 
-        <p className="text-xs sm:text-sm text-gray-600 mb-2 overflow-hidden text-ellipsis" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+        <p className="text-sm text-gray-500 mb-2 truncate">
           {description}
         </p>
 

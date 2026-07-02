@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useEditor } from "@/components/hosting/listing/editor-context";
+import { useEditorPane } from "@/components/hosting/listing/editor-shell";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
 import type { Locale } from "@/components/internationalization/config";
@@ -31,6 +32,14 @@ const ListingSidebar = () => {
   const dict = useDictionary();
   const nav = dict?.listingEditor?.nav;
   const { listing } = useEditor();
+  const pane = useEditorPane();
+
+  // Navigate to a section AND flip the mobile shell to the content pane —
+  // needed for re-tapping the already-active section (no pathname change).
+  const goToSection = (path: string) => {
+    pane.openContent();
+    router.push(path);
+  };
 
   const [tab, setTab] = React.useState<"details" | "travel">(() =>
     pathname.includes("/travel/") ? "travel" : "details"
@@ -168,7 +177,7 @@ const ListingSidebar = () => {
       {tab === "details" ? (
         <button
           type="button"
-          onClick={() => router.push(`${base}/details/photo-tour`)}
+          onClick={() => goToSection(`${base}/details/photo-tour`)}
           data-active={isActive("details/photo-tour")}
           className="mb-4 block w-full rounded-2xl border border-border p-3 text-start transition hover:border-foreground hover:shadow-sm data-[active=true]:border-foreground"
         >
@@ -203,7 +212,7 @@ const ListingSidebar = () => {
           <button
             key={s.slug}
             type="button"
-            onClick={() => router.push(`${base}/${s.slug}`)}
+            onClick={() => goToSection(`${base}/${s.slug}`)}
             data-active={isActive(s.slug)}
             className="block w-full rounded-2xl border border-border p-4 text-start transition hover:border-foreground hover:shadow-sm data-[active=true]:border-foreground"
           >

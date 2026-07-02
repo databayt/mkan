@@ -31,7 +31,11 @@ export function TransportMap({ assemblyPoints, lang = 'ar' }: TransportMapProps)
   useEffect(() => {
     if (!mapContainerRef.current || assemblyPoints.length === 0) return;
 
-    const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+    // Same token the homes search map uses; the old ACCESS_TOKEN name is kept
+    // as a fallback for envs that still define it.
+    const token =
+      process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
+      process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
     if (!token) {
       setLoadError(true);
       return;
@@ -122,14 +126,16 @@ export function TransportMap({ assemblyPoints, lang = 'ar' }: TransportMapProps)
   }
 
   return (
-    <div className="relative">
+    <div className="relative h-[400px] md:h-[450px]">
+      {/* Fallback overlays the fixed-height box — the height lives on the
+          wrapper so the pill list never bleeds over the section heading. */}
       {loadError && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-muted/80 rounded-xl">
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-muted/80 rounded-xl px-4">
           <MapPin className="h-8 w-8 text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">
             {m?.unavailable ?? "Assembly points map unavailable"}
           </p>
-          <div className="mt-4 flex flex-wrap gap-2 justify-center max-w-lg">
+          <div className="mt-4 flex flex-wrap gap-2 justify-center max-w-lg overflow-y-auto">
             {assemblyPoints.map((p) => (
               <span key={p.id} className="text-xs bg-background px-2 py-1 rounded-full border">
                 {lang === 'ar' && p.nameAr ? p.nameAr : p.name}
@@ -140,8 +146,8 @@ export function TransportMap({ assemblyPoints, lang = 'ar' }: TransportMapProps)
       )}
       <div
         ref={mapContainerRef}
-        className="w-full h-[400px] md:h-[450px] rounded-xl overflow-hidden border"
-        style={loadError ? { visibility: 'hidden', height: 0 } : undefined}
+        className="w-full h-full rounded-xl overflow-hidden border"
+        style={loadError ? { visibility: 'hidden' } : undefined}
       />
     </div>
   );

@@ -65,7 +65,12 @@ interface SaveBarProps {
   className?: string;
 }
 
-/** Bottom-left black Save button — disabled (greyed) until the section is dirty. */
+/**
+ * Black Save button — disabled (greyed) until the section is dirty.
+ * Desktop: inline bottom-start (unchanged). Mobile: pinned to the viewport
+ * bottom as a full-width bar (Airbnb host-app save), with a hairline top
+ * border so it reads as a bar while content scrolls beneath it.
+ */
 export function SaveBar({
   dirty,
   saving,
@@ -75,13 +80,19 @@ export function SaveBar({
   className,
 }: SaveBarProps) {
   return (
-    <div className={cn("mt-10 flex", className)}>
+    <div
+      className={cn(
+        "sticky bottom-0 z-10 mt-8 flex border-t border-border bg-background py-3",
+        "lg:static lg:mt-10 lg:border-0 lg:bg-transparent lg:py-0",
+        className
+      )}
+    >
       <button
         type="button"
         onClick={onSave}
         disabled={!dirty || saving}
         className={cn(
-          "inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-semibold transition-colors",
+          "inline-flex w-full items-center justify-center rounded-lg px-6 py-3 text-sm font-semibold transition-colors lg:w-auto",
           "bg-foreground text-background hover:bg-foreground/90",
           "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
         )}
