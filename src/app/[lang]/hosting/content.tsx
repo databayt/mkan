@@ -117,7 +117,7 @@ export default function HostingContent({
                   <p className="text-sm text-muted-foreground">
                     {r.guestName} · {r.guestCount} {t?.guestsSuffix ?? 'guests'}
                   </p>
-                  <p className="text-sm text-muted-foreground" dir="ltr">
+                  <p className="text-sm text-muted-foreground" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
                     {formatDate(new Date(r.checkIn), lang)} → {formatDate(new Date(r.checkOut), lang)}
                   </p>
                 </div>

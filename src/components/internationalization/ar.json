@@ -1176,7 +1176,8 @@
       "noProperties": "لا توجد عقارات",
       "adjustFilters": "حاول تعديل فلاتر البحث لرؤية المزيد من النتائج.",
       "perMonth": "شهر",
-      "perNight": "ليلة"
+      "perNight": "ليلة",
+      "moreStaysNearby": "أماكن إقامة قريبة أخرى"
     },
     "map": {
       "whereYoullBe": "أين ستكون",

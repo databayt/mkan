@@ -1176,7 +1176,8 @@
       "noProperties": "No properties found",
       "adjustFilters": "Try adjusting your search filters to see more results.",
       "perMonth": "month",
-      "perNight": "night"
+      "perNight": "night",
+      "moreStaysNearby": "More stays nearby"
     },
     "map": {
       "whereYoullBe": "Where you'll be",

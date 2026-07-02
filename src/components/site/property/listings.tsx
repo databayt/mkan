@@ -59,12 +59,12 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
     return (
       <div className="w-full p-4">
         <h3 className="text-sm px-4 font-bold">
-          0 <span className="text-gray-700 font-normal">Properties Available</span>
+          0 <span className="text-gray-700 font-normal">{dict?.rental?.listing?.propertiesAvailable ?? "Properties Available"}</span>
         </h3>
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No properties found</h3>
-            <p className="text-gray-600">Try adjusting your search filters to see more results.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{dict?.rental?.listing?.noProperties ?? "No properties found"}</h3>
+            <p className="text-gray-600">{dict?.rental?.listing?.adjustFilters ?? "Try adjusting your search filters to see more results."}</p>
           </div>
         </div>
       </div>

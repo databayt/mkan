@@ -218,6 +218,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
           <MoreStaysNearby
             stays={nearbyStays}
             lang={lang}
+            heading={d.rental?.listing?.moreStaysNearby ?? "More stays nearby"}
             perNight={dictStrings.booking?.perNight ?? "night"}
             currency={dictStrings.common?.currency ?? "$"}
           />

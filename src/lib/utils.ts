@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { toast } from "sonner"
+import type { Locale } from '@/components/internationalization/config';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -23,17 +24,20 @@ export const formatEnumString = (enumValue: string): string => {
     .trim(); // Remove any leading/trailing spaces
 };
 
-export const formatPriceValue = (price: number | null | undefined, isMin: boolean): string => {
+export const formatPriceValue = (
+  price: number | null | undefined,
+  isMin: boolean,
+  locale: Locale = 'en',
+  labels?: { anyMin?: string; anyMax?: string }
+): string => {
   if (!price || price === 0) {
-    return isMin ? "Any Min Price" : "Any Max Price";
+    return isMin ? (labels?.anyMin ?? "Any Min Price") : (labels?.anyMax ?? "Any Max Price");
   }
-  
-  if (price >= 1000) {
-    const kValue = price / 1000;
-    return isMin ? `$${kValue}k+` : `<$${kValue}k`;
-  }
-  
-  return isMin ? `$${price}+` : `<$${price}`;
+
+  const currency = locale === 'ar' ? 'ج.س' : 'SDG';
+  const value = price >= 1000 ? `${price / 1000}k` : `${price}`;
+
+  return isMin ? `${currency} ${value}+` : `< ${currency} ${value}`;
 };
 
 export const withToast = async (

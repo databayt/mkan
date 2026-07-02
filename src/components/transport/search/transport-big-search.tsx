@@ -349,7 +349,7 @@ export default function TransportBigSearch({
             <div className="text-sm font-semibold text-white mb-1">
               {dictionary.date}
             </div>
-            <div className="text-sm text-white/70" dir="ltr">{formatDate(date)}</div>
+            <div className="text-sm text-white/70" dir={isRTL ? "rtl" : "ltr"}>{formatDate(date)}</div>
           </div>
 
           {/* Search Button */}
@@ -416,7 +416,7 @@ export default function TransportBigSearch({
           <div className={cn("flex justify-between items-center", isRTL && "flex-row-reverse")}>
             <div className={cn(isRTL ? "text-end" : "text-start")}>
               <div className="text-xs text-[#6b7280]">{dictionary.date}</div>
-              <div className="text-sm font-medium text-black" dir="ltr">
+              <div className="text-sm font-medium text-black" dir={isRTL ? "rtl" : "ltr"}>
                 {formatDate(date)}
               </div>
             </div>

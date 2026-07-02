@@ -10,6 +10,7 @@ import { Plus, MapPin, DollarSign } from 'lucide-react'
 import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import type { Locale } from "@/components/internationalization/config";
+import { formatCurrency } from "@/lib/i18n/formatters";
 
 export async function generateMetadata({
   params,
@@ -112,7 +113,7 @@ export default async function PropertiesPage({
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-2">
                   <DollarSign className="w-4 h-4 text-green-600" />
-                  <span className="font-medium">${property.pricePerNight?.toLocaleString() ?? 0}/night</span>
+                  <span className="font-medium">{formatCurrency(property.pricePerNight ?? 0, lang as Locale)}/{d.rental?.listing?.perNight ?? 'night'}</span>
                 </div>
                 
                 <Badge variant="secondary">

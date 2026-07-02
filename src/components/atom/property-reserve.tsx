@@ -9,6 +9,8 @@ import "react-day-picker/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { useLocale } from "@/components/internationalization/use-locale";
+import { formatCurrency, formatDate } from "@/lib/i18n/formatters";
 import { checkAvailability, createBooking, getBlockedDates } from "@/lib/actions/booking-actions";
 import { toast } from "sonner";
 
@@ -38,11 +40,6 @@ interface AirbnbReserveProps {
 
 const DEFAULT_SERVICE_FEE_PCT = 0.12;
 
-function formatDate(d: Date | undefined): string {
-  if (!d) return "";
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
 function diffNights(from: Date, to: Date): number {
   const ms = to.getTime() - from.getTime();
   return Math.max(0, Math.round(ms / (1000 * 60 * 60 * 24)));
@@ -65,8 +62,8 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
   const params = useParams();
   const router = useRouter();
   const lang = (params?.lang as string) ?? "ar";
+  const { locale } = useLocale();
   const t = dict.booking ?? {};
-  const currency = dict.common?.currency ?? "$";
 
   // Controlled when the parent passes onRangeChange; otherwise self-managed.
   const isControlled = onRangeChange !== undefined;
@@ -170,7 +167,9 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
     });
   };
 
-  const money = (n: number) => `${currency}${n.toLocaleString()}`;
+  const money = (n: number) => formatCurrency(n, locale);
+  const fmtDay = (d: Date | undefined) =>
+    d ? formatDate(d, locale, { year: undefined, month: "short", day: "numeric" }) : "";
 
   return (
     <>
@@ -195,7 +194,7 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
                   {t.checkIn ?? "Check-in"}
                 </div>
                 <div className="text-sm text-[#222222]">
-                  {formatDate(range?.from) || (t.addDate ?? "Add date")}
+                  {fmtDay(range?.from) || (t.addDate ?? "Add date")}
                 </div>
               </div>
               <div className="px-3 py-2.5">
@@ -203,7 +202,7 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
                   {t.checkOut ?? "Check-out"}
                 </div>
                 <div className="text-sm text-[#222222]">
-                  {formatDate(range?.to) || (t.addDate ?? "Add date")}
+                  {fmtDay(range?.to) || (t.addDate ?? "Add date")}
                 </div>
               </div>
             </button>

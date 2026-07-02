@@ -274,7 +274,7 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                             <div className="flex items-center justify-center gap-2 rounded-xl border border-[#DDDDDD] py-4">
                                 <PriceTagIcon />
                                 <span className="text-sm font-medium text-[#222222]">
-                                    Prices include all fees
+                                    {dict?.rental?.searchPage?.pricesIncludeFees ?? "Prices include all fees"}
                                 </span>
                             </div>
 
@@ -289,7 +289,7 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                                 onRangeChange={setRange}
                                 blockedDates={blockedDates}
                                 className="w-full"
-                                buttonText="Call"
+                                buttonText={dict?.property?.contactHost?.call ?? "Call"}
                                 hideButton={isCallButtonInHeader}
                             />
                           </>

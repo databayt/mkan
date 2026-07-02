@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { PropertyTypeIcons } from "@/lib/constants";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { useLocale } from "@/components/internationalization/use-locale";
 
 const FiltersBar = () => {
   const router = useRouter();
@@ -28,6 +29,7 @@ const FiltersBar = () => {
   const toggleFiltersFullOpen = useGlobalStore((s) => s.toggleFiltersFullOpen);
   const setViewMode = useGlobalStore((s) => s.setViewMode);
   const dict = useDictionary();
+  const { locale } = useLocale();
   const [searchInput, setSearchInput] = useState(filters.location);
 
   const updateURL = debounce((newFilters: FiltersState) => {
@@ -169,14 +171,14 @@ const FiltersBar = () => {
           >
             <SelectTrigger className="w-22 rounded-xl border-primary-400">
               <SelectValue>
-                {formatPriceValue(filters.priceRange[0] ?? undefined, true)}
+                {formatPriceValue(filters.priceRange[0] ?? undefined, true, locale, { anyMin: dict.filters?.anyMinPrice, anyMax: dict.filters?.anyMaxPrice })}
               </SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-white">
               <SelectItem value="any">{dict.filters?.anyMinPrice ?? "Any Min Price"}</SelectItem>
               {[500, 1000, 1500, 2000, 3000, 5000, 10000].map((price) => (
                 <SelectItem key={price} value={price.toString()}>
-                  ${price / 1000}k+
+                  {locale === 'ar' ? 'ج.س' : 'SDG'} {price / 1000}k+
                 </SelectItem>
               ))}
             </SelectContent>
@@ -191,14 +193,14 @@ const FiltersBar = () => {
           >
             <SelectTrigger className="w-22 rounded-xl border-primary-400">
               <SelectValue>
-                {formatPriceValue(filters.priceRange[1] ?? undefined, false)}
+                {formatPriceValue(filters.priceRange[1] ?? undefined, false, locale, { anyMin: dict.filters?.anyMinPrice, anyMax: dict.filters?.anyMaxPrice })}
               </SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-white">
               <SelectItem value="any">{dict.filters?.anyMaxPrice ?? "Any Max Price"}</SelectItem>
               {[1000, 2000, 3000, 5000, 10000].map((price) => (
                 <SelectItem key={price} value={price.toString()}>
-                  &lt;${price / 1000}k
+                  &lt; {locale === 'ar' ? 'ج.س' : 'SDG'} {price / 1000}k
                 </SelectItem>
               ))}
             </SelectContent>
