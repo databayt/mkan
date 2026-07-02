@@ -58,6 +58,19 @@ export const PHASE1 = {
    *  of no availability confirmation (§5 D2 — the Availability Check dialog). */
   availabilityReminderDays: 14,
 
+  // ── Transport vertical ──────────────────────────────────────────────────
+
+  /** Transport landing testimonials. Fabricated reviewers with full names, routes and
+   *  quotes, under "Thousands of travelers trust Mkan". Phase 2: wire real traveler
+   *  reviews once completed bookings generate them. */
+  showTransportTestimonials: false,
+
+  /** Transport landing operator-logo carousel. The 9 brands shown (Tirhal, Musafir, …)
+   *  are NOT the operators seeded/onboarded on the platform, the caption claims
+   *  "trusted operators on our platform", and every logo links to a dead `?ref=arc`.
+   *  Phase 2: rebuild from real verified TransportOffice logos, or sign partnerships. */
+  showTransportOperatorLogos: false,
+
   // NOTE: reviews are gated on REAL data, not a flag — render the rating/reviews chip only
   // when `numberOfReviews > 0` (never the fabricated "★ 4.8 · 128 reviews").
 } as const;

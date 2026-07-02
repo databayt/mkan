@@ -17,9 +17,10 @@ import { getDictionary } from '@/components/internationalization/dictionaries';
 import type { Locale } from '@/components/internationalization/config';
 import { createMetadata } from '@/lib/metadata';
 import { formatCurrency } from '@/lib/i18n/formatters';
+import { PHASE1 } from '@/config/phase-flags';
 
 // ISR: Revalidate every 10 minutes (assembly points rarely change)
-export const dynamic = 'force-dynamic';
+export const revalidate = 600;
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
@@ -131,17 +132,19 @@ export default async function TransportPage({ params }: TransportPageProps) {
         </div>
       </section>
 
-      {/* Logo Carousel */}
-      <section className="py-12 px-4 md:px-8 bg-background">
-        <div className="max-w-6xl mx-auto">
-          <p className="text-center text-sm text-muted-foreground mb-8">
-            {t?.home?.operatorsCaption ?? "Trusted transport operators on our platform"}
-          </p>
-          <div className="flex justify-center">
-            <LogoCarousel />
+      {/* Logo Carousel — gated: shown brands are not onboarded operators (see phase-flags) */}
+      {PHASE1.showTransportOperatorLogos && (
+        <section className="py-12 px-4 md:px-8 bg-background">
+          <div className="max-w-6xl mx-auto">
+            <p className="text-center text-sm text-muted-foreground mb-8">
+              {t?.home?.operatorsCaption ?? "Trusted transport operators on our platform"}
+            </p>
+            <div className="flex justify-center">
+              <LogoCarousel />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* How It Works */}
       <section className="py-16 px-4 md:px-8 bg-background">
@@ -235,8 +238,8 @@ export default async function TransportPage({ params }: TransportPageProps) {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <TransportTestimonials lang={lang} />
+      {/* Testimonials — gated: fabricated reviewers (see phase-flags) */}
+      {PHASE1.showTransportTestimonials && <TransportTestimonials lang={lang} />}
 
       {/* Popular Routes */}
       <section className="py-16 px-4 md:px-8 bg-muted/30">

@@ -2144,7 +2144,7 @@
         },
         "etickets": {
           "title": "E-Tickets",
-          "description": "Receive your ticket instantly via PDF with QR code for easy boarding."
+          "description": "Receive your e-ticket instantly with a QR code for easy boarding."
         },
         "verified": {
           "title": "Verified Offices",
@@ -2370,7 +2370,7 @@
       },
       "step3": {
         "title": "Pay",
-        "description": "Pay securely with mobile money, card, or cash on arrival"
+        "description": "Pay securely with mobile money, bank transfer, or cash on arrival"
       },
       "step4": {
         "title": "Travel",
