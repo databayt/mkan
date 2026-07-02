@@ -15,6 +15,10 @@ interface PricePageProps {
   params: Promise<{ id: string }>;
 }
 
+// Nightly rates are Sudanese pounds app-wide (cards, editor, checkout render
+// "SDG …" / "… ج.س"); the input keeps a plain latin prefix in both locales.
+const CURRENCY_PREFIX = "SDG ";
+
 const PricePageContent = ({ params }: PricePageProps) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -22,7 +26,9 @@ const PricePageContent = ({ params }: PricePageProps) => {
   const [id, setId] = React.useState<string>('');
   const { enableNext } = useHostValidation();
   const { listing, updateListingData, loadListing } = useListing();
-  const [price, setPrice] = useState<number>(158);
+  // SDG default in a Port-Sudan-sane range (the old hardcoded "SR158" was the
+  // wrong currency and off by orders of magnitude for SDG nightly rates).
+  const [price, setPrice] = useState<number>(25000);
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -69,10 +75,10 @@ const PricePageContent = ({ params }: PricePageProps) => {
   }, [price, isFocused]);
 
   const handlePriceChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace('SR', '');
-    const numValue = parseInt(value) || 0;
+    // Strip everything but digits so edits anywhere in "SDG 25000" parse clean.
+    const numValue = parseInt(e.target.value.replace(/[^\d]/g, ''), 10) || 0;
     setPrice(numValue);
-    
+
     // Update backend data with debouncing
     try {
       await updateListingData({
@@ -83,7 +89,9 @@ const PricePageContent = ({ params }: PricePageProps) => {
     }
   };
 
-  const guestPriceBeforeTaxes = price + 22; // Adding estimated fees
+  // Phase 1 is contact-only with no platform fees — the guest sees exactly the
+  // nightly price (the old "+22" was a fabricated fee estimate).
+  const guestPriceBeforeTaxes = price;
 
   return (
     <HostStepLayout
@@ -97,30 +105,32 @@ const PricePageContent = ({ params }: PricePageProps) => {
             <input
               ref={inputRef}
               type="text"
-              value={`SR${price}`}
+              value={`${CURRENCY_PREFIX}${price}`}
               onChange={handlePriceChange}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               onKeyDown={(e) => {
-                // Prevent cursor from moving before "SR"
+                // Prevent cursor from moving before the currency prefix
                 if (e.key === 'ArrowLeft' || e.key === 'Home') {
                   const selectionStart = e.currentTarget.selectionStart || 0;
-                  if (selectionStart <= 2) {
+                  if (selectionStart <= CURRENCY_PREFIX.length) {
                     e.preventDefault();
-                    e.currentTarget.setSelectionRange(2, 2);
+                    e.currentTarget.setSelectionRange(CURRENCY_PREFIX.length, CURRENCY_PREFIX.length);
                   }
                 }
               }}
               onClick={(e) => {
-                // Ensure cursor doesn't go before "SR"
+                // Ensure cursor doesn't go before the currency prefix
                 const selectionStart = e.currentTarget.selectionStart || 0;
-                if (selectionStart < 2) {
-                  e.currentTarget.setSelectionRange(2, 2);
+                if (selectionStart < CURRENCY_PREFIX.length) {
+                  e.currentTarget.setSelectionRange(CURRENCY_PREFIX.length, CURRENCY_PREFIX.length);
                 }
               }}
               className="display text-foreground border-none outline-none text-center w-auto min-w-0 bg-transparent"
-              style={{ 
-                width: `${(`SR${price}`).length * 0.6}em`,
+              style={{
+                // 0.66em/char: wide enough for the caps "SDG " prefix — the old
+                // 0.6 estimate clipped the first glyph at display size.
+                width: `${(`${CURRENCY_PREFIX}${price}`).length * 0.66}em`,
                 caretColor: 'var(--foreground)'
               }}
             />

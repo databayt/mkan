@@ -5,6 +5,7 @@ import React from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Listing } from '@/types/listing';
+import { PropertyImageFallback } from '@/components/atom/property-image-fallback';
 import { getNextStep } from '@/components/hosting/listing/listing-progress';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
@@ -16,44 +17,47 @@ interface ListingCardProps {
   viewType: 'grid' | 'list';
 }
 
-type StatusKey = 'published' | 'inProgress' | 'actionRequired';
+type StatusKey = 'published' | 'unlisted' | 'inProgress' | 'actionRequired';
 
 const ListingCard: React.FC<ListingCardProps> = ({ listing, viewType }) => {
   const router = useRouter();
   const { locale } = useLocale();
   const dict = useDictionary();
-  const statusLabels =
-    (dict.hostingListings as { status?: Record<StatusKey, string> } | undefined)?.status ?? {
-      published: 'Published',
-      inProgress: 'In progress',
-      actionRequired: 'Action required',
-    };
+  const defaultStatusLabels: Record<StatusKey, string> = {
+    published: 'Published',
+    unlisted: 'Unlisted',
+    inProgress: 'In progress',
+    actionRequired: 'Action required',
+  };
+  const statusLabels = {
+    ...defaultStatusLabels,
+    ...(dict.hostingListings as { status?: Partial<Record<StatusKey, string>> } | undefined)
+      ?.status,
+  };
 
   const getListingStatus = (listing: Listing): { key: StatusKey; circleColor: string } => {
-    if (!listing.draft && listing.isPublished) {
-      return { key: 'published', circleColor: 'bg-green-500' };
-    } else if (listing.draft && !listing.isPublished) {
-      const hasBasicInfo = listing.title && listing.description && listing.pricePerNight;
-      const hasLocation = listing.location;
-      const hasPhotos = listing.photoUrls && listing.photoUrls.length > 0;
-
-      if (hasBasicInfo && hasLocation && hasPhotos) {
-        return { key: 'actionRequired', circleColor: 'bg-red-500' };
-      }
-      return { key: 'inProgress', circleColor: 'bg-orange-500' };
-    } else if (listing.draft && listing.isPublished) {
+    // Non-draft = onboarding is DONE: the home is either live (published) or
+    // deliberately hidden (busy/unlisted). Neither should ever route back to
+    // the onboarding wizard.
+    if (!listing.draft) {
+      return listing.isPublished
+        ? { key: 'published', circleColor: 'bg-green-500' }
+        : { key: 'unlisted', circleColor: 'bg-gray-400' };
+    }
+    if (listing.isPublished) {
       return { key: 'actionRequired', circleColor: 'bg-red-500' };
-    } else {
-      return { key: 'inProgress', circleColor: 'bg-orange-500' };
     }
+    // Draft: complete enough to publish (photos optional in phase 1) →
+    // action required; otherwise still in progress.
+    const hasBasicInfo = listing.title && listing.description && listing.pricePerNight;
+    if (hasBasicInfo && listing.location) {
+      return { key: 'actionRequired', circleColor: 'bg-red-500' };
+    }
+    return { key: 'inProgress', circleColor: 'bg-orange-500' };
   };
 
-  const getListingImage = (listing: Listing): string => {
-    if (listing.photoUrls && listing.photoUrls.length > 0) {
-      return listing.photoUrls[0] ?? cdn.product("assets/hero.jpg");
-    }
-    return cdn.product("assets/hero.jpg"); // Default fallback image
-  };
+  const getListingImage = (listing: Listing): string | null =>
+    listing.photoUrls && listing.photoUrls.length > 0 ? (listing.photoUrls[0] ?? null) : null;
 
   const getListingTitle = (listing: Listing) => {
     if (listing.title) {
@@ -78,16 +82,18 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewType }) => {
   const handleCardClick = () => {
     const status = getListingStatus(listing);
 
-    if (status.key === 'published' || status.key === 'actionRequired') {
-      router.push(`/hosting/listings/editor/${listing.id}/details/photo-tour`);
-    } else {
-      // Navigate to the next step for in progress listings
+    // Only genuinely-in-progress drafts resume the onboarding wizard; every
+    // finished home (published, busy/unlisted, or complete-but-unpublished)
+    // opens the editor.
+    if (status.key === 'inProgress') {
       const nextStep = getNextStep(listing);
       if (nextStep === 'photo-tour') {
         router.push(`/hosting/listings/editor/${listing.id}/details/photo-tour`);
       } else {
         router.push(`/host/${listing.id}/${nextStep}`);
       }
+    } else {
+      router.push(`/hosting/listings/editor/${listing.id}/details/photo-tour`);
     }
   };
 
@@ -105,18 +111,24 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewType }) => {
           mobile (no gutter padding), white status pill floating top-start.
           Desktop keeps the tighter 4:3 grid look. */}
       <div className={`relative ${viewType === 'list' ? 'p-2' : 'p-0 sm:p-2'}`}>
-        <div className={`${viewType === 'list' ? 'w-48 h-28' : 'aspect-square sm:aspect-[4/3]'} bg-gray-200 overflow-hidden rounded-xl`}>
-          <Image
-            src={image}
-            alt={title}
-            width={viewType === 'list' ? 192 : 600}
-            height={viewType === 'list' ? 112 : 600}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = cdn.product("assets/hero.jpg");
-            }}
-          />
+        <div className={`relative ${viewType === 'list' ? 'w-48 h-28' : 'aspect-square sm:aspect-[4/3]'} bg-gray-200 overflow-hidden rounded-xl`}>
+          {image ? (
+            <Image
+              src={image}
+              alt={title}
+              width={viewType === 'list' ? 192 : 600}
+              height={viewType === 'list' ? 112 : 600}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = cdn.product("property-placeholder.svg");
+              }}
+            />
+          ) : (
+            /* Same branded "No Image Available" placeholder as the homepage
+               and /listings cards. */
+            <PropertyImageFallback seed={title} alt={title} />
+          )}
         </div>
         <div className={`absolute ${viewType === 'list' ? 'top-4 start-4' : 'top-3 start-3 sm:top-5 sm:start-5'}`}>
           <span

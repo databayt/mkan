@@ -153,8 +153,10 @@ const ListingSidebar = () => {
         </button>
       </div>
 
-      {/* Complete required steps (only while unpublished) */}
-      {listing && !listing.isPublished ? (
+      {/* Complete required steps — drafts only. A busy/unlisted home already
+          finished onboarding; nudging it to "complete steps" was the bug that
+          bounced owners back into the wizard. */}
+      {listing && !listing.isPublished && listing.draft ? (
         <button
           type="button"
           onClick={() => router.push(`/${lang}/verify-listing/${id}`)}

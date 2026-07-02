@@ -29,8 +29,8 @@ const stepValidations = {
   'floor-plan': (listing: Listing) => !!listing.location,
   'stand-out': (listing: Listing) => !!listing.guestCount,
   'amenities': (listing: Listing) => !!listing.guestCount,
-  'photos': (listing: Listing) => true, // Can be done anytime
-  'title': (listing: Listing) => listing.photoUrls && listing.photoUrls.length >= 5,
+  'photos': (listing: Listing) => true, // Photos are optional (phase 1)
+  'title': (listing: Listing) => !!listing.title,
   'description': (listing: Listing) => !!listing.description,
   'finish-setup': (listing: Listing) => !!listing.description,
   'instant-book': (listing: Listing) => !!listing.description,

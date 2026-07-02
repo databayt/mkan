@@ -707,9 +707,10 @@ export async function publishListing(id: unknown) {
       throw new Error("Cannot publish listing. Location is required");
     }
 
-    if (!existingListing.photoUrls || existingListing.photoUrls.length === 0) {
-      throw new Error("Cannot publish listing. At least one photo is required");
-    }
+    // NOTE: photos are deliberately NOT required to publish (phase 1) — many
+    // Port Sudan owners list without photos; cards render the branded
+    // placeholder instead. Without this, a photo-less home marked Busy could
+    // never be toggled back to Available.
 
     // Publish the listing
     const publishedListing = await db.listing.update({

@@ -1919,8 +1919,8 @@
       },
       "price": {
         "title": "Now, set a base price",
-        "subtitle": "Tip: SR158. You may set a weekend price later.",
-        "guestPriceBeforeTaxes": "Guest price before taxes SR{price}",
+        "subtitle": "Tip: SDG 25,000. You may set a weekend price later.",
+        "guestPriceBeforeTaxes": "Guest price before taxes SDG {price}",
         "viewSimilarListings": "View similar listings",
         "learnMoreAboutPricing": "Learn more about pricing"
       },
@@ -4611,7 +4611,8 @@
     "status": {
       "published": "Published",
       "inProgress": "In progress",
-      "actionRequired": "Action required"
+      "actionRequired": "Action required",
+      "unlisted": "Unlisted"
     },
     "publish": "Publish",
     "unpublish": "Unpublish",

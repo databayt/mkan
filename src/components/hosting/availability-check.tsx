@@ -5,7 +5,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { confirmAvailability, unpublishListing } from "@/lib/actions/listing-actions";
-import { cdn } from "@/lib/cdn";
+import { PropertyImageFallback } from "@/components/atom/property-image-fallback";
 
 export type StaleListing = {
   id: number;
@@ -182,13 +182,17 @@ export function AvailabilityCheck({
                 {/* The home in question — one at a time */}
                 <div className="mt-3 flex items-center gap-3">
                   <div className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-neutral-100">
-                    <Image
-                      src={current.photoUrl || cdn.product("assets/hero.jpg")}
-                      alt=""
-                      fill
-                      sizes="48px"
-                      className="object-cover"
-                    />
+                    {current.photoUrl ? (
+                      <Image
+                        src={current.photoUrl}
+                        alt=""
+                        fill
+                        sizes="48px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <PropertyImageFallback seed={current.title} />
+                    )}
                   </div>
                   <div className="min-w-0 text-start">
                     <p className="truncate text-sm font-medium text-[#222222]">{current.title}</p>

@@ -50,6 +50,21 @@ const FloorPlanPageContent = ({ params }: FloorPlanPageProps) => {
     }
   }, [listing]);
 
+  // Persist the DISPLAYED defaults once. A host who accepts "1 bedroom · 1
+  // bath" without tapping +/- previously left bedrooms/bathrooms NULL in the
+  // DB — and publishListing requires them, so publish failed at the very end.
+  const defaultsPersisted = React.useRef(false);
+  React.useEffect(() => {
+    if (!listing || defaultsPersisted.current) return;
+    defaultsPersisted.current = true;
+    const patch: Record<string, number> = {};
+    if (listing.bedrooms == null) patch.bedrooms = 1;
+    if (listing.bathrooms == null) patch.bathrooms = 1;
+    if (Object.keys(patch).length > 0) {
+      updateListingData(patch).catch(console.error);
+    }
+  }, [listing, updateListingData]);
+
   // Enable next button since we have default values
   React.useEffect(() => {
     enableNext();

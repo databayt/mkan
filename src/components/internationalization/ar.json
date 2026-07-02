@@ -1919,8 +1919,8 @@
       },
       "price": {
         "title": "الآن، حدد سعراً أساسياً",
-        "subtitle": "نصيحة: ر.س١٥٨. يمكنك تحديد سعر عطلة نهاية الأسبوع لاحقاً.",
-        "guestPriceBeforeTaxes": "سعر الضيف قبل الضرائب ر.س{price}",
+        "subtitle": "نصيحة: ٢٥٬٠٠٠ ج.س. يمكنك تحديد سعر عطلة نهاية الأسبوع لاحقاً.",
+        "guestPriceBeforeTaxes": "سعر الضيف قبل الضرائب {price} ج.س",
         "viewSimilarListings": "عرض إعلانات مشابهة",
         "learnMoreAboutPricing": "تعرف على المزيد عن التسعير"
       },
@@ -4611,7 +4611,8 @@
     "status": {
       "published": "منشور",
       "inProgress": "قيد التنفيذ",
-      "actionRequired": "إجراء مطلوب"
+      "actionRequired": "إجراء مطلوب",
+      "unlisted": "غير منشور"
     },
     "publish": "نشر",
     "unpublish": "إلغاء النشر",

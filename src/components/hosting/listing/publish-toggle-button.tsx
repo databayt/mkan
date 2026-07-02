@@ -34,12 +34,13 @@ export function PublishToggleButton({ listing }: PublishToggleButtonProps) {
   // here (useOptimistic would snap back to the stale parent prop after the
   // action settles).
   const [isPublished, setIsPublished] = useState(listing.isPublished ?? false);
+  // Photos are NOT required (phase 1) — mirrors publishListing's server-side
+  // validation so Busy → Available always works on photo-less homes.
   const ready = !!(
     listing.title &&
     listing.description &&
     listing.pricePerNight &&
-    listing.location &&
-    (listing.photoUrls?.length ?? 0) > 0
+    listing.location
   );
 
   const handleToggle = (next: boolean) => {
