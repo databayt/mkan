@@ -133,7 +133,7 @@ export default function MobileMeetHost({
         {PHASE1.showMessageHost && (
         <div>
           <Button
-            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 px-6 py-3 rounded-lg font-medium flex items-center justify-center gap-2"
+            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 px-6 py-2 rounded-lg font-medium flex items-center justify-center gap-2"
           >
             {host?.messageHost}
           </Button>
