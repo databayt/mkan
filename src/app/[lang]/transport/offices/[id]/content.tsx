@@ -214,7 +214,8 @@ export function OfficeContent({ office, trips, lang, dictionary }: OfficeContent
                           {formatCurrency(route.basePrice, lang)}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {formatNumber(route.duration, lang)} {t.office.hours}
+                          {/* route.duration is stored in MINUTES */}
+                          {formatNumber(Math.round(route.duration / 60), lang)} {t.office.hours}
                         </div>
                       </div>
                     </div>

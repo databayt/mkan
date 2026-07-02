@@ -104,7 +104,8 @@ export function TicketContent({ booking, qrCodeUrl, lang }: TicketContentProps) 
                   <ArrowRight className="h-4 w-4 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-primary bg-white rtl:rotate-180" />
                 </div>
                 <div className="text-center text-xs text-muted-foreground mt-1">
-                  {formatNumber(booking.trip.route.duration, locale)} {tv?.hrs ?? "hrs"}
+                  {/* route.duration is stored in MINUTES */}
+                  {formatNumber(Math.round(booking.trip.route.duration / 60), locale)} {tv?.hrs ?? "hrs"}
                 </div>
               </div>
               <div className="text-center">
