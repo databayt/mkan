@@ -48,6 +48,7 @@ Single source of truth for what's visible this phase. Each hidden section is `{P
 9. **Low-bandwidth perf**: AVIF images + trimmed sizes (`next.config.ts`); cached narrow-select `getHomeListings`; `/search` mobile-map deferral (flag); detail-page query parallelized; `/search` initial 50→24.
 10. **Arabic-first guard tests** (`tests/i18n/`): dictionary-parity + RTL-physical-class (71 checks).
 11. **Production build green** (`pnpm build` exit 0).
+12. **All assets on cdn.databayt.org** (CloudFront, `max-age=31536000 immutable`): Airbnb-derived assets on `/airbnb`, mkan media on `/mkan` via `src/lib/cdn.ts`. Listing photos (seed + **live DB**, 1,960 refs) serve from `/mkan/stock` — zero third-party image hosts in the hot path (unsplash fully retired). Heavy-media diet: transport hero video 38MB→1.4MB 720p + poster, homepage inspiration 3MB SVG-wrapped rasters→90KB jpgs, julia 1.3MB→98KB. `qualities:[50,65,75]` + `quality={65}` on card grids; CDN `preconnect` in the `[lang]` layout. Verify inventory anytime: every `cdn.*()` call site HEAD-checked 200 (91 keys).
 
 ## 🔜 Deferred to phase 2 (documented, flagged off — nothing lost)
 Wire each still-`false` flag above to real data. Plus: web/browser push for the availability nudge (service-worker + VAPID + cron), full homepage server-component refactor, content-shaped loading skeletons, hardcoded-string ratchet test, and gating the card `averageRating || 4.5` fallback on `numberOfReviews > 0` for unreviewed homes.
@@ -59,5 +60,6 @@ Wire each still-`false` flag above to real data. Plus: web/browser push for the 
 - **Owner login:** number-only, e.g. `0001` / `1234` (username or email accepted). Lands on `/hosting/listings`.
 - **Availability migration:** `Listing.lastAvailabilityConfirmedAt` was added via Neon MCP `run_sql` (project `solitary-water-49503410`) — `prisma db execute` is broken in this Prisma-7/pg-adapter setup. `prisma/schema.prisma` carries the field; re-run `prisma generate` after pulls.
 - **After a production build on a running dev server, clear `.next` + restart dev** — a mixed build/dev `.next` cache glitches rendering.
+- **CDN uploads:** stage files in `codebase/public/cdn/mkan/` (gitignored — S3 is source of truth), then `pnpm cdn:sync --prefix=mkan` with a **clean env** (`env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY …` — codebase `.env` has empty AWS vars that override the working `~/.aws` default profile). Refresh `src/registry/cdn-manifest.json` via `pnpm cdn:manifest` (file is skip-worktree; `git update-index --no-skip-worktree` before committing).
 
 **Key files:** `src/config/phase-flags.ts` · `src/components/listings/feature-icons.ts` · `src/components/hosting/availability-check.tsx` · `src/components/internationalization/{en,ar}.json` · `scripts/seed-listings.ts` · `tests/i18n/`
