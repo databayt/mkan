@@ -2243,7 +2243,8 @@
       "paidVia": "تم الدفع عبر",
       "viewTicket": "عرض التذكرة",
       "share": "مشاركة",
-      "viewAllTrips": "عرض جميع رحلاتي"
+      "viewAllTrips": "عرض جميع رحلاتي",
+      "linkCopied": "تم نسخ الرابط"
     },
     "payment": {
       "title": "الدفع",
@@ -2289,7 +2290,17 @@
       "duration": "المدة",
       "perSeat": "للمقعد",
       "hoursShort": "س",
-      "minutesShort": "د"
+      "minutesShort": "د",
+      "notFound": "الرحلة غير موجودة",
+      "cancelled": "تم إلغاء هذه الرحلة",
+      "departed": "غادرت هذه الرحلة بالفعل",
+      "soldOut": "اكتمل حجز هذه الرحلة",
+      "cancelledHint": "ألغى المكتب هذه الرحلة. ابحث عن رحلة بديلة أدناه.",
+      "departedHint": "ابحث عن رحلة قادمة على نفس الخط.",
+      "soldOutHint": "جميع المقاعد محجوزة. جرّب رحلة أخرى على هذا الخط.",
+      "findAnother": "ابحث عن رحلة أخرى",
+      "departs": "الإقلاع",
+      "bus": "الحافلة"
     },
     "office": {
       "title": "مكاتب النقل",
@@ -2314,7 +2325,9 @@
       "location": "الموقع",
       "notFound": "المكتب غير موجود",
       "backToOffices": "العودة إلى المكاتب",
-      "hours": "ساعات"
+      "hours": "ساعات",
+      "callOffice": "اتصل بالمكتب",
+      "seats": "مقاعد"
     },
     "seat": {
       "available": "متاح",

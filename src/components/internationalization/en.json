@@ -2243,7 +2243,8 @@
       "paidVia": "Paid via",
       "viewTicket": "View Ticket",
       "share": "Share",
-      "viewAllTrips": "View all my trips"
+      "viewAllTrips": "View all my trips",
+      "linkCopied": "Link copied"
     },
     "payment": {
       "title": "Payment",
@@ -2289,7 +2290,17 @@
       "duration": "Duration",
       "perSeat": "per seat",
       "hoursShort": "h",
-      "minutesShort": "m"
+      "minutesShort": "m",
+      "notFound": "Trip not found",
+      "cancelled": "This trip was cancelled",
+      "departed": "This trip has already departed",
+      "soldOut": "This trip is fully booked",
+      "cancelledHint": "The operator cancelled this trip. Search for an alternative below.",
+      "departedHint": "Search for an upcoming departure on the same route.",
+      "soldOutHint": "All seats are taken. Try another trip on this route.",
+      "findAnother": "Find another trip",
+      "departs": "Departs",
+      "bus": "Bus"
     },
     "office": {
       "title": "Transport Offices",
@@ -2314,7 +2325,9 @@
       "location": "Location",
       "notFound": "Office not found",
       "backToOffices": "Back to Offices",
-      "hours": "hours"
+      "hours": "hours",
+      "callOffice": "Call office",
+      "seats": "seats"
     },
     "seat": {
       "available": "Available",

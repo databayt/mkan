@@ -1,7 +1,10 @@
 'use client';
 
-import React, { Suspense, useState, useEffect } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+// Client content for checkout (mirror pattern) — the booking arrives from the
+// server page; this file owns the payment-method interaction only.
+
+import React, { useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,27 +21,35 @@ import {
   Banknote,
   ArrowRight,
   Shield,
+  Phone,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { ar, enUS } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { getBooking, processPayment } from '@/lib/actions/transport-actions';
+import { processPayment, type getBooking } from '@/lib/actions/transport-actions';
 import { TransportCardCheckout } from '@/components/transport/card-checkout';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { formatCurrency } from '@/lib/i18n/formatters';
+import { cityLabel } from '@/components/transport/city-names';
 
 type PaymentMethod = 'MobileMoney' | 'CreditCard' | 'BankTransfer' | 'CashOnArrival';
 
 type BookingDetails = NonNullable<Awaited<ReturnType<typeof getBooking>>>;
 
-function CheckoutInner({ showCard }: { showCard: boolean }) {
-  const searchParams = useSearchParams();
+function CheckoutInner({
+  showCard,
+  booking,
+}: {
+  showCard: boolean;
+  booking: BookingDetails | null;
+}) {
   const router = useRouter();
   const pathname = usePathname();
-  const bookingId = Number(searchParams.get('bookingId'));
 
   // Locale string drives the post-payment redirect path (not display text).
   const pathParts = pathname.split('/');
   const locale = pathParts[1] === 'ar' ? 'ar' : 'en';
+  const dateLocale = locale === 'ar' ? ar : enUS;
 
   const dict = useDictionary();
   const t = dict?.transport;
@@ -53,29 +64,10 @@ function CheckoutInner({ showCard }: { showCard: boolean }) {
     { id: 'CashOnArrival' as PaymentMethod, name: pm?.cashOnArrival?.name ?? "Cash on Arrival", description: pm?.cashOnArrival?.description ?? "Pay at the office", icon: Banknote },
   ].filter((m) => showCard || m.id !== 'CreditCard'); // Stripe can't serve Sudan — hide card for non-diaspora.
 
-  const [booking, setBooking] = useState<BookingDetails | null>(null);
-  const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('MobileMoney');
   const [mobileNumber, setMobileNumber] = useState('');
   const [bankReference, setBankReference] = useState('');
-
-  useEffect(() => {
-    const fetchBooking = async () => {
-      try {
-        const data = await getBooking(bookingId);
-        setBooking(data);
-      } catch (error) {
-        console.error('Failed to fetch booking:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (bookingId) {
-      fetchBooking();
-    }
-  }, [bookingId]);
 
   const handlePayment = async () => {
     if (!booking) return;
@@ -112,17 +104,6 @@ function CheckoutInner({ showCard }: { showCard: boolean }) {
   const office = booking?.trip.route.office;
   const hasBankDetails = Boolean(office?.bankName && office?.bankAccount);
   const hasMomoDetails = Boolean(office?.momoNumber);
-
-  if (loading) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-64 bg-muted rounded" />
-          <div className="h-96 bg-muted rounded" />
-        </div>
-      </div>
-    );
-  }
 
   if (!booking) {
     return (
@@ -314,13 +295,13 @@ function CheckoutInner({ showCard }: { showCard: boolean }) {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2 font-medium">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
-                  {booking.trip.route.origin.city}
+                  {cityLabel(booking.trip.route.origin.city, locale)}
                   <ArrowRight className="h-3 w-3 rtl:rotate-180" />
-                  {booking.trip.route.destination.city}
+                  {cityLabel(booking.trip.route.destination.city, locale)}
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span dir="ltr">{format(new Date(booking.trip.departureDate), 'EEE, MMM d, yyyy')}</span>
+                  <span>{format(new Date(booking.trip.departureDate), 'EEE, MMM d, yyyy', { locale: dateLocale })}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
@@ -342,6 +323,20 @@ function CheckoutInner({ showCard }: { showCard: boolean }) {
                 <span>{c?.total ?? "Total"}</span>
                 <span dir={locale === 'ar' ? 'rtl' : 'ltr'}>{formatCurrency(booking.totalAmount, locale)}</span>
               </div>
+
+              {/* Contact-first: any payment question is a phone call away */}
+              {office?.phone && (
+                <>
+                  <Separator />
+                  <a
+                    href={`tel:${office.phone}`}
+                    className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
+                  >
+                    <Phone className="h-4 w-4" />
+                    {t?.office?.callOffice ?? "Call office"}
+                  </a>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -350,21 +345,12 @@ function CheckoutInner({ showCard }: { showCard: boolean }) {
   );
 }
 
-function CheckoutFallback() {
-  return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="animate-pulse space-y-4">
-        <div className="h-8 w-64 bg-muted rounded" />
-        <div className="h-96 bg-muted rounded" />
-      </div>
-    </div>
-  );
-}
-
-export default function CheckoutContent({ showCard }: { showCard: boolean }) {
-  return (
-    <Suspense fallback={<CheckoutFallback />}>
-      <CheckoutInner showCard={showCard} />
-    </Suspense>
-  );
+export default function CheckoutContent({
+  showCard,
+  booking,
+}: {
+  showCard: boolean;
+  booking: BookingDetails | null;
+}) {
+  return <CheckoutInner showCard={showCard} booking={booking} />;
 }

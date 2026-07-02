@@ -3,6 +3,7 @@ import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import type { Locale } from "@/components/internationalization/config";
 import { shouldOfferCardPayment } from "@/lib/geo";
+import { getBooking } from "@/lib/actions/transport-actions";
 import CheckoutContent from "./content";
 
 export async function generateMetadata({
@@ -20,8 +21,22 @@ export async function generateMetadata({
   });
 }
 
-export default async function CheckoutPage() {
+interface CheckoutPageProps {
+  searchParams: Promise<{ bookingId?: string }>;
+}
+
+export default async function CheckoutPage({ searchParams }: CheckoutPageProps) {
+  const { bookingId } = await searchParams;
+  const id = Number(bookingId);
+
   // Stripe can't serve Sudan — only offer the card rail to diaspora (non-SD geo).
-  const showCard = await shouldOfferCardPayment();
-  return <CheckoutContent showCard={showCard} />;
+  // getBooking enforces auth + ownership server-side.
+  const [showCard, booking] = await Promise.all([
+    shouldOfferCardPayment(),
+    Number.isFinite(id) && id > 0
+      ? getBooking(id).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+
+  return <CheckoutContent showCard={showCard} booking={booking} />;
 }
