@@ -112,6 +112,10 @@ function buildCsp(options: { isDev: boolean }): string {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.mapbox.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https: blob:",
+    // Nav-tab twirl webms, the transport hero video, and its poster stream
+    // straight from the CDN (not via /_next/image); without media-src they
+    // fall back to default-src 'self' and are blocked under enforced CSP.
+    "media-src 'self' https://cdn.databayt.org",
     // Mapbox GL spawns its render worker from a blob: URL; without worker-src
     // this falls back to default-src 'self' and is blocked under enforced CSP.
     "worker-src 'self' blob:",
