@@ -12,7 +12,7 @@ import {
   type SearchFilters,
   type SearchResult,
 } from "@/lib/schemas/search-schema";
-import { localize } from "@/components/translation/localize";
+import { localize, localizeNested } from "@/components/translation/localize";
 import { getDisplayLang } from "@/components/translation/locale";
 import type { Lang } from "@/components/translation/types";
 
@@ -473,7 +473,10 @@ export async function searchListings(
     // the ambient NEXT_LOCALE cookie. No-op when translation is disabled or
     // the text is already in `lang`.
     const displayLang = lang ?? (await getDisplayLang());
-    const data = await localize(listings, ["title", "description"], displayLang);
+    let data = await localize(listings, ["title", "description"], displayLang);
+    // City/state/country show on every card — localize the nested location the
+    // same way (curated cache rows: Port Sudan ⇄ بورتسودان etc.).
+    data = await localizeNested(data, "location", ["city", "state", "country"], displayLang);
 
     return {
       success: true,

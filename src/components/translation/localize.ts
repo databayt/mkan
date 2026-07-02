@@ -145,3 +145,36 @@ export async function localizeOne<T extends Record<string, unknown>>(
   const [out] = await localize([row], fields, lang);
   return out ?? row;
 }
+
+/**
+ * Localize string fields on a nested object (e.g. `listing.location`) across
+ * rows: collects the sub-objects, batch-resolves them through localize() (one
+ * cache round-trip), and returns new row copies with the localized sub-object
+ * reattached. Rows without the key pass through untouched.
+ */
+export async function localizeNested<T extends Record<string, unknown>>(
+  rows: T[],
+  key: string,
+  fields: readonly string[],
+  lang: Lang,
+): Promise<T[]> {
+  const subs: Record<string, unknown>[] = [];
+  const idx: number[] = [];
+  rows.forEach((r, i) => {
+    const v = r[key];
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      subs.push(v as Record<string, unknown>);
+      idx.push(i);
+    }
+  });
+  if (subs.length === 0) return rows;
+  const localized = await localize(subs, fields, lang);
+  let out: T[] | null = null;
+  localized.forEach((sub, j) => {
+    if (sub === subs[j]) return;
+    if (out === null) out = [...rows];
+    const at = idx[j]!;
+    out[at] = { ...out[at]!, [key]: sub };
+  });
+  return out ?? rows;
+}

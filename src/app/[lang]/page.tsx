@@ -4,7 +4,7 @@ import { createMetadata } from "@/lib/metadata";
 import { Listing } from "@/types/listing";
 import HomeContent from "./home-content";
 import { getDictionary } from "@/components/internationalization/dictionaries";
-import { localize } from "@/components/translation/localize";
+import { localize, localizeNested } from "@/components/translation/localize";
 
 export async function generateMetadata({
   params,
@@ -31,7 +31,9 @@ async function getPublishedListings(lang: "en" | "ar"): Promise<Listing[]> {
     // falls back to the source text when no translation exists. Without this the
     // homepage cards rendered Arabic titles on `/en`.
     const localized = await localize(listings, ["title", "description"], lang);
-    return localized as Listing[];
+    // City/state/country show on every card — localize the nested location too.
+    const withLocation = await localizeNested(localized, "location", ["city", "state", "country"], lang);
+    return withLocation as Listing[];
   } catch {
     return [];
   }

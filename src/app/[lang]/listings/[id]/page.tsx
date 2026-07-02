@@ -18,7 +18,7 @@ import { getDictionary } from "@/components/internationalization/dictionaries";
 import { getListingReviews } from "@/lib/actions/review-actions";
 import { auth } from "@/lib/auth";
 import type { Locale } from "@/components/internationalization/config";
-import { localize, getText } from "@/components/translation/localize";
+import { localize, localizeNested, getText } from "@/components/translation/localize";
 
 interface ListingPageProps {
   params: Promise<{
@@ -76,13 +76,10 @@ async function getListingById(id: number, lang: Locale) {
 
   // Localize dynamic content (Arabic source) for the viewer's locale. No-op
   // when translation is disabled or the text is already in `lang`.
-  const localized = (await localize([listing], ["title", "description"], lang))[0] ?? listing;
-  if (localized.location?.address) {
-    localized.location = {
-      ...localized.location,
-      address: await getText(localized.location.address, lang),
-    };
-  }
+  let localized = (await localize([listing], ["title", "description"], lang))[0] ?? listing;
+  // The detail page shows the full location line (address + city/state/country)
+  // — localize the nested object through the same cache.
+  localized = (await localizeNested([localized], "location", ["address", "city", "state", "country"], lang))[0] ?? localized;
   return localized;
 }
 
