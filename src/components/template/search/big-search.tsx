@@ -2,7 +2,7 @@
 
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import LocationDropdown from "./location";
@@ -177,9 +177,10 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
   // Use the search validation hook
   const { isValid: isDateValid } = useSearchValidation(dateRange);
 
-  // Guest state
+  // Guest state — adults start at 2 (the typical booking party) so a search
+  // is one tap away; the pill still reads "Add guests" only when total is 0.
   const [guests, setGuests] = useState({
-    adults: 0,
+    adults: 2,
     children: 0,
     infants: 0,
     pets: 0,
@@ -305,8 +306,9 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
     }
   };
 
-  // Handle guest change
-  const handleGuestChange = (
+  // Handle guest change — stable identity (functional update, no deps) so the
+  // memoized GuestSelectorDropdown skips re-rendering untouched rows.
+  const handleGuestChange = useCallback((
     type: "adults" | "children" | "infants" | "pets",
     operation: "increment" | "decrement"
   ) => {
@@ -327,7 +329,7 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
         adults: nextAdults,
       };
     });
-  };
+  }, []);
 
   // Get guest display text formatted like Airbnb (combining adults + children as guests, infants and pets separate)
   const getGuestDisplayText = () => {

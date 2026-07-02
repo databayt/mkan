@@ -1,13 +1,14 @@
 "use client";
 import { cdn } from "@/lib/cdn";
 
-import React, { useState, useRef, TouchEvent } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { ArrowLeft, MapPin, Bed, Bath, Users, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ShareIcon, HeartIcon, Superhost } from '@/components/atom/icons';
 import { useRouter } from 'next/navigation';
+import { useFavorites } from '@/components/favorites/favorites-context';
 import MobileInfo from './mobile-info';
 import MobileAmenities from './mobile-amenities';
 // import MobileReviewsDetail from './mobile-reviews-detail';
@@ -37,52 +38,25 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
   const router = useRouter();
   const dict = useDictionary();
   const { locale } = useLocale();
+  const fav = useFavorites();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
-  const handlePrevious = () => {
-    setCurrentImageIndex((prev) => 
-      prev === 0 ? displayImages.length - 1 : prev - 1
-    );
-  };
-
-  const handleNext = () => {
-    setCurrentImageIndex((prev) => 
-      prev === displayImages.length - 1 ? 0 : prev + 1
-    );
-  };
-
-  // Touch handlers for swipe
-  const onTouchStart = (e: TouchEvent) => {
-    setTouchEnd(null);
-    const touch = e.targetTouches[0];
-    if (touch) {
-      setTouchStart(touch.clientX);
-    }
-  };
-
-  const onTouchMove = (e: TouchEvent) => {
-    const touch = e.targetTouches[0];
-    if (touch) {
-      setTouchEnd(touch.clientX);
-    }
-  };
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-
-    if (isLeftSwipe) {
-      handleNext();
-    }
-    if (isRightSwipe) {
-      handlePrevious();
-    }
-  };
+  // The gallery is a native scroll-snap strip — the image tracks the finger
+  // 1:1 with platform momentum/rubber-banding, instead of the old jump-cut on
+  // touchend. We only listen to scroll (rAF-throttled) to keep the counter in
+  // sync; |scrollLeft| handles RTL's negative offsets.
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  const scrollRafRef = useRef<number | null>(null);
+  const handleStripScroll = useCallback(() => {
+    if (scrollRafRef.current !== null) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      const el = stripRef.current;
+      if (!el || el.clientWidth === 0) return;
+      const idx = Math.round(Math.abs(el.scrollLeft) / el.clientWidth);
+      setCurrentImageIndex((prev) => (prev === idx ? prev : idx));
+    });
+  }, []);
 
   const handleBack = () => {
     router.back();
@@ -111,40 +85,51 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
     }
   };
 
-  // Handle save functionality
+  // Heart state lives in the shared favorites provider (server-persisted when
+  // signed in, on-device for guests) — same source every card reads.
+  const listingIdNum = typeof listing?.id === 'number' ? listing.id : Number(listing?.id);
+  const savedNow = Number.isFinite(listingIdNum)
+    ? fav.isFavorite(listingIdNum)
+    : isSaved;
   const handleSave = () => {
-    console.log("Save listing:", listing.id);
+    if (Number.isFinite(listingIdNum)) fav.toggle(listingIdNum);
+    onSave?.();
   };
 
   return (
     <div className="md:hidden">
-             {/* Full Screen Image Gallery */}
-       <div 
-         className="relative w-full h-[50vh] bg-black"
-         onTouchStart={onTouchStart}
-         onTouchMove={onTouchMove}
-         onTouchEnd={onTouchEnd}
-       >
+             {/* Full Screen Image Gallery — native scroll-snap strip */}
+       <div className="relative w-full h-[50vh] bg-black">
         {images && images.length > 0 ? (
-          <Image
-            src={displayImages[currentImageIndex] ?? displayImages[0]!}
-            alt={`Property image ${currentImageIndex + 1}`}
-            fill
-            className="object-cover"
-            priority
-            onError={(e) => {
-              console.error('Image failed to load:', displayImages[currentImageIndex]);
-              const target = e.target as HTMLImageElement;
-              target.src = cdn.product("property-placeholder.svg");
-              target.className = 'object-contain p-6 bg-muted/40';
-            }}
-          />
+          <div
+            ref={stripRef}
+            onScroll={handleStripScroll}
+            className="no-scrollbar flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
+          >
+            {displayImages.map((src, i) => (
+              <div key={`${src}-${i}`} className="relative h-full w-full flex-none snap-center">
+                <Image
+                  src={src}
+                  alt={`Property image ${i + 1}`}
+                  fill
+                  sizes="100vw"
+                  className="object-cover"
+                  priority={i === 0}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = cdn.product("property-placeholder.svg");
+                    target.className = 'object-contain p-6 bg-muted/40';
+                  }}
+                />
+              </div>
+            ))}
+          </div>
         ) : (
           <PropertyImageFallback className="object-contain p-6 bg-muted/40" />
         )}
 
-        {/* Overlay Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
+        {/* Overlay Gradient — pointer-events-none so it never eats the strip's swipe */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
 
                  {/* Top Navigation Bar */}
          <div className="absolute top-0 inset-x-0 z-10 p-4">
@@ -177,9 +162,9 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                  size="icon"
                  onClick={handleSave}
                  className="h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white"
-                 aria-label={isSaved ? "Remove from saved" : "Save listing"}
+                 aria-label={savedNow ? "Remove from saved" : "Save listing"}
                >
-                 <HeartIcon className={`w-5 h-5 ${isSaved ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
+                 <HeartIcon className={`w-5 h-5 ${savedNow ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
                </Button>
              </div>
            </div>
@@ -188,8 +173,8 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                  {/* Image Counter */}
          {displayImages.length > 1 && (
            <div className="absolute bottom-4 end-4">
-             <div className="bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm">
-               {currentImageIndex + 1} / {displayImages.length}
+             <div className="bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm tabular-nums">
+               {formatNumber(currentImageIndex + 1, locale)} / {formatNumber(displayImages.length, locale)}
              </div>
            </div>
          )}

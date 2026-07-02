@@ -35,11 +35,6 @@ const SearchGlyph = () => (
     <path d="m24.0002 12.6668c0 6.2593-5.0741 11.3334-11.3334 11.3334-6.2592 0-11.3333-5.0741-11.3333-11.3334 0-6.2592 5.0741-11.3333 11.3333-11.3333 6.2593 0 11.3334 5.0741 11.3334 11.3333z" fill="none" />
   </svg>
 );
-const SettingsGlyph = () => (
-  <svg viewBox="0 0 32 32" aria-hidden="true" style={{ display: "block", height: 20, width: 20, fill: "none", stroke: "#222222", strokeWidth: 3.2, overflow: "visible" }}>
-    <path fill="none" d="M19.38 27a4.14 4.14 0 0 1 3.05-2.54 4.06 4.06 0 0 1 3.17.71 1 1 0 0 0 1.47-.33l2.11-3.64a1 1 0 0 0-.46-1.44 4.1 4.1 0 0 1 0-7.48 1 1 0 0 0 .46-1.44l-2.11-3.66a1 1 0 0 0-1.47-.33 4.07 4.07 0 0 1-3.17.71A4.14 4.14 0 0 1 19.38 5a4 4 0 0 1-.27-1.87 1 1 0 0 0-1-1.15h-4.2a1 1 0 0 0-1 1.15 4.11 4.11 0 0 1-3.34 4.43 4.06 4.06 0 0 1-3.17-.71 1 1 0 0 0-1.47.33l-2.11 3.64a1 1 0 0 0 .46 1.44 4.1 4.1 0 0 1 0 7.48 1 1 0 0 0 .46 1.44l2.11 3.64a1 1 0 0 0 1.47.33 4.06 4.06 0 0 1 3.17-.71 4.1 4.1 0 0 1 3 2.53 4 4 0 0 1 .28 1.88 1 1 0 0 0 1 1.15h4.18a1 1 0 0 0 1-1.15 4 4 0 0 1 .35-1.85zM12 16a4 4 0 1 1 4 4 4 4 0 0 1-4-4z" />
-  </svg>
-);
 const FullscreenGlyph = () => (
   <svg viewBox="0 0 32 32" aria-hidden="true" style={{ display: "block", height: 16, width: 16, fill: "none", stroke: "#222222", strokeWidth: 3, overflow: "visible" }}>
     <g fill="none">
@@ -134,11 +129,6 @@ export default function ListingMap({
       {/* Search (top-start) */}
       <button type="button" aria-label="Find a place on the map" className={`absolute top-4 start-4 z-[1] ${CIRCLE_BTN}`}>
         <SearchGlyph />
-      </button>
-
-      {/* Settings (top-end, left of the fullscreen/zoom column) */}
-      <button type="button" aria-label="Map settings" className={`absolute top-4 end-[72px] z-[1] ${CIRCLE_BTN}`}>
-        <SettingsGlyph />
       </button>
 
       {/* Fullscreen + Zoom (top-end column) */}

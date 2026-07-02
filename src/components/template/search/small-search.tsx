@@ -22,6 +22,10 @@ interface SmallSearchProps {
   // mobile sheet's Search button). Undefined everywhere else → plain button, so
   // /search + the desktop header are unaffected.
   ctaLayoutId?: string;
+  // Slightly tighter segment padding so the pill leaves room for the filter
+  // button beside it on narrow screens. Only the /search mobile header passes
+  // this; the desktop collapsed-header pill keeps the full-size spacing.
+  compact?: boolean;
 }
 
 type Seg = "where" | "when" | "who";
@@ -30,6 +34,7 @@ export default function SmallSearch({
   onExpand,
   searchValues,
   ctaLayoutId,
+  compact = false,
 }: SmallSearchProps) {
   const dict = useDictionary();
   const [hovered, setHovered] = useState<Seg | null>(null);
@@ -42,8 +47,7 @@ export default function SmallSearch({
   const dividerHidden = (left: Seg, right: Seg) =>
     hovered === left || hovered === right;
 
-  const segClass =
-    "rounded-[100px] px-4 py-2 text-start transition-colors duration-200 hover:bg-[#EBEBEB]";
+  const segClass = `rounded-[100px] ${compact ? "px-3" : "px-4"} py-2 text-start transition-colors duration-200 hover:bg-[#EBEBEB]`;
 
   return (
     <div

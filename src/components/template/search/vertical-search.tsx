@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef, type CSSProperties } from "react";
+import { useState, useEffect, useRef, useCallback, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import { useRouter, usePathname } from "next/navigation";
 import { ArrowLeft, ArrowRight, Search } from "lucide-react";
@@ -91,7 +91,8 @@ export default function VerticalSearch({
     checkIn: "",
     checkOut: "",
     guests: {
-      adults: 0,
+      // Adults start at 2 — the typical booking party.
+      adults: 2,
       children: 0,
       infants: 0,
       pets: 0,
@@ -289,8 +290,9 @@ export default function VerticalSearch({
     setActiveField("checkin");
   };
 
-  // Add guest counter handlers
-  const handleGuestChange = (
+  // Add guest counter handlers — stable identity (functional update, no deps)
+  // so the memoized GuestSelectorDropdown skips re-rendering untouched rows.
+  const handleGuestChange = useCallback((
     type: "adults" | "children" | "infants" | "pets",
     operation: "increment" | "decrement"
   ) => {
@@ -316,7 +318,7 @@ export default function VerticalSearch({
         },
       };
     });
-  };
+  }, []);
 
   // Helper function to get total guests
   const getTotalGuests = () => {

@@ -4,6 +4,7 @@ import React, { useState } from "react"
 import Image from "next/image"
 import { Heart, Star, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useFavorites } from "@/components/favorites/favorites-context"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
 import { useLocale } from "@/components/internationalization/use-locale"
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters"
@@ -68,7 +69,9 @@ export function SearchCard({
   const card = dict.rental?.property?.card as Record<string, string> | undefined
 
   const [index, setIndex] = useState(0)
-  const [liked, setLiked] = useState(isFavorite)
+  // Shared favorites provider — one heart state across cards/detail/mobile.
+  const fav = useFavorites()
+  const liked = fav.ready ? fav.isFavorite(id) : isFavorite
 
   const hasPhotos = images.length > 0
   const photos = hasPhotos ? images : []
@@ -79,7 +82,7 @@ export function SearchCard({
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setLiked((v) => !v)
+    fav.toggle(id)
     onFavoriteToggle?.(id, !liked)
   }
 

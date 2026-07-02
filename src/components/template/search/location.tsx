@@ -204,7 +204,18 @@ export default function LocationDropdown({
 
   const handleSelectSuggested = async (dest: (typeof suggestedDestinations)[number]) => {
     if (dest.city === "Nearby") {
-      if (!navigator.geolocation) {
+      const geoFailedMsg =
+        activeLocale === "ar"
+          ? "تعذر تحديد موقعك — اختر مدينة من القائمة."
+          : "Couldn't get your location — pick a city from the list.";
+      const geoDeniedMsg =
+        activeLocale === "ar"
+          ? "الوصول إلى الموقع مرفوض — فعّله من إعدادات المتصفح أو اختر مدينة."
+          : "Location access is blocked — enable it in your browser settings, or pick a city.";
+
+      if (!navigator.geolocation || !window.isSecureContext) {
+        // No geolocation at all (or plain-http webview): degrade to an
+        // unscoped "Nearby" search — every listing is Port Sudan anyway.
         onLocationSelect({
           city: "",
           state: "",
@@ -215,11 +226,41 @@ export default function LocationDropdown({
         return;
       }
 
+      // Chrome/Android never re-prompts after a deny — it fails silently.
+      // Surface that state up front instead of a spinner that goes nowhere.
+      try {
+        const perm = await navigator.permissions?.query?.({ name: "geolocation" });
+        if (perm?.state === "denied") {
+          setGeoError(geoDeniedMsg);
+          return;
+        }
+      } catch {
+        // Permissions API missing (older WebViews) — proceed to the request.
+      }
+
       setIsGeolocating(true);
       setGeoError(null);
 
+      // Some Android WebViews (MIUI browser among them) can drop BOTH
+      // callbacks when the system location service is off. A safety timer
+      // guarantees the UI never sticks on "Finding your location…".
+      let settled = false;
+      const settle = () => {
+        settled = true;
+        clearTimeout(safetyTimer);
+        setIsGeolocating(false);
+      };
+      const safetyTimer = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          setIsGeolocating(false);
+          setGeoError(geoFailedMsg);
+        }
+      }, 12_000);
+
       navigator.geolocation.getCurrentPosition(
         async (position) => {
+          if (settled) return;
           try {
             const { latitude, longitude } = position.coords;
             // Use Nominatim reverse geocoding API
@@ -256,8 +297,9 @@ export default function LocationDropdown({
               displayName,
               listingCount: 0,
             });
-          } catch (err) {
-            // Fallback to "Nearby" search
+          } catch {
+            // Reverse-geocode failed (network) — still honor the tap with an
+            // unscoped Nearby search rather than erroring after a good fix.
             onLocationSelect({
               city: "",
               state: "",
@@ -266,21 +308,20 @@ export default function LocationDropdown({
               listingCount: 0,
             });
           } finally {
-            setIsGeolocating(false);
+            settle();
           }
         },
-        () => {
-          // Geolocation permission denied or failed
-          onLocationSelect({
-            city: "",
-            state: "",
-            country: "",
-            displayName: dest.displayName,
-            listingCount: 0,
-          });
-          setIsGeolocating(false);
+        (err) => {
+          if (settled) return;
+          settle();
+          // Keep the panel open with a legible reason — silently "selecting"
+          // nothing is what read as "Nearby is broken" on Android.
+          setGeoError(err.code === err.PERMISSION_DENIED ? geoDeniedMsg : geoFailedMsg);
         },
-        { timeout: 6000 },
+        // maximumAge reuses the OS's recent fix (instant on most phones);
+        // 10s timeout because Android's network-location path can be slow;
+        // coarse accuracy is plenty for a city-level search.
+        { timeout: 10_000, maximumAge: 600_000, enableHighAccuracy: false },
       );
     } else {
       onLocationSelect({

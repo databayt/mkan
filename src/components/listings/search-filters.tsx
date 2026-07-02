@@ -187,6 +187,7 @@ function RoundBtn({
         color: disabled ? C.border : C.text,
         backgroundColor: "#ffffff",
         cursor: disabled ? "not-allowed" : "pointer",
+        touchAction: "manipulation",
       }}
     >
       {children}
@@ -454,7 +455,9 @@ export function SearchFilters() {
         <button
           type="button"
           className="relative flex shrink-0 items-center justify-center rounded-full bg-background text-sm font-medium text-foreground transition-colors hover:border-foreground"
-          style={{ height: 40, width: 40, border: `1px solid ${C.border}` }}
+          // 48px matches the SmallSearch pill's rendered box (measured: content
+          // + padding + border) so the two read as one row on /search mobile.
+          style={{ height: 48, width: 48, border: `1px solid ${C.border}`, touchAction: "manipulation" }}
           onClick={() => {
             setSheetH(Math.round(window.innerHeight * 0.85))
             setOpen(true)

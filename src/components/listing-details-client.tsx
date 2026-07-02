@@ -1,10 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 import { type DateRange } from "react-day-picker";
 import { Phone } from "lucide-react";
-import { addFavoriteProperty, removeFavoriteProperty } from "@/lib/actions/user-actions";
+import { useFavorites } from "@/components/favorites/favorites-context";
 import { getBlockedDates } from "@/lib/actions/booking-actions";
 import AirbnbPropertyHeader from "@/components/atom/property-header";
 import AirbnbReserve from "@/components/atom/property-reserve";
@@ -58,7 +57,6 @@ function PriceTagIcon() {
 }
 
 export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlot, initialIsSaved = false }: ListingDetailsClientProps) {
-    const { data: session } = useSession();
     const dict = useDictionary();
     const { locale } = useLocale();
     // Phase 1 is contact-only: the guest calls the host. Falls back to the
@@ -66,14 +64,13 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
     const ownerPhone = listing.host?.phoneNumber || "+249915494649";
     const reserveRef = React.useRef<HTMLDivElement>(null);
     const [isCallButtonInHeader, setIsCallButtonInHeader] = useState(false);
-    // Signed-in users persist the heart to the tenant's favorites; signed-out
-    // users fall back to localStorage so the heart still remembers on-device.
-    const storageKey = `mkan:saved:${listing.id ?? "anon"}`;
-    const [isSaved, setIsSaved] = useState<boolean>(() => {
-        if (initialIsSaved) return true;
-        if (typeof window === "undefined") return false;
-        return window.localStorage.getItem(storageKey) === "1";
-    });
+    // Heart state lives in the shared favorites provider (server-persisted
+    // when signed in — with Tenant upsert — on-device for guests). The server
+    // seed keeps the first paint correct until the provider hydrates.
+    const fav = useFavorites();
+    const isSaved = fav.ready && typeof listing.id === "number"
+        ? fav.isFavorite(listing.id)
+        : initialIsSaved;
     const [, setGalleryOpen] = useState(false);
 
     // Booking date range is lifted here so the inline availability calendar and
@@ -139,28 +136,8 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
         }
     };
 
-    const handleSave = async () => {
-        const next = !isSaved;
-        setIsSaved(next);
-
-        if (session?.user?.id && typeof listing.id === "number") {
-            try {
-                if (next) {
-                    await addFavoriteProperty(session.user.id, listing.id);
-                } else {
-                    await removeFavoriteProperty(session.user.id, listing.id);
-                }
-            } catch {
-                // Roll back the optimistic flip — e.g. user has no tenant profile.
-                setIsSaved(!next);
-            }
-            return;
-        }
-
-        if (typeof window !== "undefined") {
-            if (next) window.localStorage.setItem(storageKey, "1");
-            else window.localStorage.removeItem(storageKey);
-        }
+    const handleSave = () => {
+        if (typeof listing.id === "number") fav.toggle(listing.id);
     };
 
     const handleShowAllPhotos = () => {

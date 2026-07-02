@@ -1,11 +1,32 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { Listing } from "@/types/listing";
 import { PropertyContent } from "./property/content";
 import { searchListings } from "@/lib/actions/search-actions";
 import { type SearchFilters } from "@/lib/schemas/search-schema";
+
+/** How long the dots stay visible once shown, so a fast fetch still reads as
+ * "more is loading" instead of a sub-frame flicker. Content is never delayed —
+ * rows append the moment they arrive; only the indicator lingers. */
+const DOTS_MIN_VISIBLE_MS = 600;
+
+/** Airbnb-style three-dot loading indicator (staggered pulse). Uses the core
+ * `animate-bounce` keyframes — brand-new arbitrary animations can be dropped
+ * by the dev scanner, core utilities can't. */
+function LoadingDots() {
+  return (
+    <div className="flex items-center gap-1.5" role="status" aria-label="Loading more">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="h-2 w-2 rounded-full bg-foreground/50 animate-bounce"
+          style={{ animationDelay: `${i * 0.15}s`, animationDuration: "0.9s" }}
+        />
+      ))}
+    </div>
+  );
+}
 
 interface InfiniteListingsProps {
   /** First page already rendered on the server. */
@@ -36,18 +57,29 @@ export function InfiniteListings({
   filters,
 }: InfiniteListingsProps) {
   const [items, setItems] = useState<Listing[]>(initialListings);
-  const [loading, setLoading] = useState(false);
-  // Mirror `loading` in a ref so the observer callback can bail on an
+  // `showDots` drives the indicator, decoupled from the fetch itself: it turns
+  // on with the fetch but never turns off before DOTS_MIN_VISIBLE_MS, so the
+  // user always catches at least one pulse.
+  const [showDots, setShowDots] = useState(false);
+  // Mirror the in-flight flag in a ref so the observer callback can bail on an
   // in-flight fetch without re-subscribing on every state change.
   const loadingRef = useRef(false);
+  const dotsShownAtRef = useRef(0);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => () => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+  }, []);
 
   const hasMore = items.length < total;
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current || items.length >= total) return;
     loadingRef.current = true;
-    setLoading(true);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    dotsShownAtRef.current = Date.now();
+    setShowDots(true);
     try {
       const result = await searchListings({
         ...filters,
@@ -65,7 +97,15 @@ export function InfiniteListings({
       }
     } finally {
       loadingRef.current = false;
-      setLoading(false);
+      const shownFor = Date.now() - dotsShownAtRef.current;
+      if (shownFor >= DOTS_MIN_VISIBLE_MS) {
+        setShowDots(false);
+      } else {
+        hideTimerRef.current = setTimeout(
+          () => setShowDots(false),
+          DOTS_MIN_VISIBLE_MS - shownFor
+        );
+      }
     }
   }, [filters, items.length, pageSize, total]);
 
@@ -94,9 +134,7 @@ export function InfiniteListings({
           aria-hidden
           className="flex items-center justify-center py-10"
         >
-          {loading && (
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          )}
+          {showDots && <LoadingDots />}
         </div>
       )}
     </div>

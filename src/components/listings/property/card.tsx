@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Image from 'next/image'
+import { useFavorites } from "@/components/favorites/favorites-context"
 import { useDictionary } from '@/components/internationalization/dictionary-context'
 import { useLocale } from '@/components/internationalization/use-locale'
 import { formatCurrency, formatNumber } from '@/lib/i18n/formatters'
@@ -45,11 +46,13 @@ export function PropertyCard({
   const dict = useDictionary()
   const { locale } = useLocale()
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
-  const [isLiked, setIsLiked] = useState(isFavorite)
+  // Shared favorites provider — one heart state across cards/detail/mobile.
+  const fav = useFavorites()
+  const isLiked = fav.ready ? fav.isFavorite(id) : isFavorite
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setIsLiked(!isLiked)
+    fav.toggle(id)
     onFavoriteToggle?.(id, !isLiked)
   }
 

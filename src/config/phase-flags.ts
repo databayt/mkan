@@ -51,8 +51,9 @@ export const PHASE1 = {
   showFooterLocaleSwitcher: false,
 
   /** `/search` mobile map mounts on "Map" tap instead of on page load (saves shipping
-   *  mapbox-gl ~200 KB+ to every mobile visitor). Reversible. */
-  deferSearchMapMobile: false,
+   *  mapbox-gl ~200 KB+ to every mobile visitor). Also prevents the map-canvas flash
+   *  when navigating back from a listing (reported 2026-07-02). Reversible. */
+  deferSearchMapMobile: true,
 
   /** Owners are nudged to reconfirm each home's Available/Busy status after this many days
    *  of no availability confirmation (§5 D2 — the Availability Check dialog). */

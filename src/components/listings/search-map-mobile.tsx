@@ -282,18 +282,21 @@ export default function SearchMapMobile({
 
         {/* "Search as I move the map" toggle (functional) — full map only */}
         {isFull && (
-        <div className="absolute top-3 left-1/2 z-10 -translate-x-1/2">
+        <div className="absolute top-3 left-1/2 z-10 -translate-x-1/2 w-max max-w-[calc(100vw-16px)]">
           <label
             htmlFor="search-as-move-mobile"
-            className="flex cursor-pointer items-center gap-2.5 rounded-full bg-white px-3.5 py-2.5 shadow-md"
+            className="flex cursor-pointer items-center gap-2 rounded-full bg-white px-3.5 py-2.5 shadow-md"
           >
             <Checkbox
               id="search-as-move-mobile"
               checked={searchAsMove}
               onCheckedChange={(v) => onSearchAsMoveChange?.(v === true)}
-              className="h-4 w-4 border-gray-500 data-[state=checked]:border-black data-[state=checked]:bg-black"
+              className="h-4 w-4 shrink-0 border-gray-500 data-[state=checked]:border-black data-[state=checked]:bg-black"
             />
-            <span className="text-sm font-medium text-gray-800">{searchAsIMoveLabel}</span>
+            {/* One line always — the label wrapping under the checkbox read as
+                broken; 13px keeps the longest (Arabic) copy inside a 360px
+                viewport with room to spare. */}
+            <span className="whitespace-nowrap text-[13px] font-medium text-gray-800">{searchAsIMoveLabel}</span>
           </label>
         </div>
         )}

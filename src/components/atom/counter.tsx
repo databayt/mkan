@@ -13,7 +13,9 @@ interface CounterProps {
   sm?: boolean
 }
 
-export function Counter({
+// Memoized + touch-action: manipulation — same tap-delay fix as the search
+// guest counter; a stepper must react on the very first tap.
+export const Counter = React.memo(function Counter({
   value,
   onIncrement,
   onDecrement,
@@ -31,6 +33,7 @@ export function Counter({
         type="button"
         onClick={onDecrement}
         disabled={isDecrementDisabled}
+        style={{ touchAction: 'manipulation' }}
         className={`
           ${sm 
             ? 'w-8 h-8 min-h-[32px]' 
@@ -53,6 +56,7 @@ export function Counter({
         type="button"
         onClick={onIncrement}
         disabled={isIncrementDisabled}
+        style={{ touchAction: 'manipulation' }}
         className={`
           ${sm 
             ? 'w-8 h-8 min-h-[32px]' 
@@ -68,4 +72,4 @@ export function Counter({
       </button>
     </div>
   )
-} 
+})
