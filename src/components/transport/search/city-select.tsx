@@ -1,8 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { useParams } from 'next/navigation';
 import { Check, ChevronsUpDown, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { cityLabel } from '@/components/transport/city-names';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -35,9 +38,13 @@ interface CitySelectProps {
 export function CitySelect({
   value,
   onChange,
-  placeholder = 'Select city',
+  placeholder,
   assemblyPoints = [],
 }: CitySelectProps) {
+  const params = useParams();
+  const lang = (params?.lang as string) ?? 'en';
+  const dict = useDictionary();
+  const tc = dict?.transport?.citySelect;
   const [open, setOpen] = useState(false);
 
   // Group assembly points by city
@@ -93,16 +100,16 @@ export function CitySelect({
         >
           <div className="flex items-center">
             <MapPin className="me-2 h-4 w-4 text-muted-foreground" />
-            {value || placeholder}
+            {value ? cityLabel(value, lang) : (placeholder ?? tc?.selectCity ?? 'Select city')}
           </div>
           <ChevronsUpDown className="ms-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[300px] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Search city..." className="h-10" />
+          <CommandInput placeholder={tc?.searchCity ?? 'Search city...'} className="h-10" />
           <CommandList>
-            <CommandEmpty>No city found.</CommandEmpty>
+            <CommandEmpty>{tc?.noCityFound ?? 'No city found.'}</CommandEmpty>
             <CommandGroup>
               {displayCities.map((city) => (
                 <CommandItem
@@ -121,11 +128,13 @@ export function CitySelect({
                     )}
                   />
                   <MapPin className="me-2 h-4 w-4 text-muted-foreground" />
-                  {city}
+                  {cityLabel(city, lang)}
                   {citiesMap[city] && (
                     <span className="ms-auto text-xs text-muted-foreground">
-                      {citiesMap[city].length} point
-                      {citiesMap[city].length !== 1 ? 's' : ''}
+                      {citiesMap[city].length}{' '}
+                      {citiesMap[city].length === 1
+                        ? (tc?.point ?? 'point')
+                        : (tc?.points ?? 'points')}
                     </span>
                   )}
                 </CommandItem>

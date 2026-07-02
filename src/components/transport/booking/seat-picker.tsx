@@ -2,6 +2,7 @@
 
 import { memo, useMemo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { SeatLegend } from './seat-legend';
 
 interface Seat {
@@ -85,13 +86,16 @@ export function SeatPicker({
   onSeatSelect,
   onSeatDeselect,
   maxSeats = 5,
-  dictionary = {
-    selectSeats: 'Select Your Seats',
-    seatSelected: 'seat selected',
-    seatsSelected: 'seats selected',
-    maxReached: 'Maximum seats reached',
-  },
+  dictionary,
 }: SeatPickerProps) {
+  const dict = useDictionary();
+  const tsp = dict?.transport?.seatPicker;
+  const labels = dictionary ?? {
+    selectSeats: tsp?.selectSeats ?? 'Select Your Seats',
+    seatSelected: tsp?.seatSelected ?? 'seat selected',
+    seatsSelected: tsp?.seatsSelected ?? 'seats selected',
+    maxReached: tsp?.maxReached ?? 'Maximum seats reached',
+  };
   // Memoize selected seats as a Set for O(1) lookup
   const selectedSeatsSet = useMemo(
     () => new Set(selectedSeats),
@@ -157,15 +161,15 @@ export function SeatPicker({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">{dictionary.selectSeats}</h3>
+        <h3 className="text-lg font-semibold">{labels.selectSeats}</h3>
         <p className="text-sm text-muted-foreground">
           {selectedSeats.length}{' '}
           {selectedSeats.length === 1
-            ? dictionary.seatSelected
-            : dictionary.seatsSelected}
+            ? labels.seatSelected
+            : labels.seatsSelected}
           {isMaxReached && (
             <span className="text-amber-600 ms-2">
-              ({dictionary.maxReached})
+              ({labels.maxReached})
             </span>
           )}
         </p>
@@ -177,7 +181,7 @@ export function SeatPicker({
           {/* Driver Area */}
           <div className="flex justify-end mb-6 pe-4">
             <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
-              Driver
+              {tsp?.driver ?? 'Driver'}
             </div>
           </div>
 
@@ -243,7 +247,7 @@ export function SeatPicker({
       {/* Selected Seats Summary */}
       {selectedSeats.length > 0 && (
         <div className="bg-primary/5 rounded-lg p-4">
-          <p className="text-sm font-medium">Selected Seats:</p>
+          <p className="text-sm font-medium">{tsp?.selectedSeats ?? 'Selected Seats'}:</p>
           <div className="flex flex-wrap gap-2 mt-2">
             {selectedSeats.map((seatNumber) => (
               <span

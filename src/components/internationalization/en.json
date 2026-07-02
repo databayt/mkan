@@ -2544,14 +2544,20 @@
     },
     "seatPicker": {
       "driver": "Driver",
-      "selectedSeats": "Selected Seats"
+      "selectedSeats": "Selected Seats",
+      "selectSeats": "Select Your Seats",
+      "seatSelected": "seat selected",
+      "seatsSelected": "seats selected",
+      "maxReached": "Maximum seats reached"
     },
     "citySelect": {
       "selectCity": "Select city",
       "searchCity": "Search city...",
       "noCityFound": "No city found.",
       "point": "point",
-      "points": "points"
+      "points": "points",
+      "popularDestinations": "Popular destinations",
+      "noCitiesFound": "No cities found"
     },
     "ticketView": {
       "ticketNotFound": "Ticket not found",

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useDeferredValue, useCallback } from "react";
+import { useParams } from "next/navigation";
 import { Search, ChevronUp, ChevronDown } from "lucide-react";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { CITY_AR, cityLabel } from "@/components/transport/city-names";
 
 interface AssemblyPoint {
   id: number;
@@ -45,8 +48,12 @@ export default function TransportCityDropdown({
   value,
   onChange,
   assemblyPoints = [],
-  placeholder = "Search city...",
+  placeholder,
 }: TransportCityDropdownProps) {
+  const params = useParams();
+  const lang = (params?.lang as string) ?? "en";
+  const dict = useDictionary();
+  const tc = dict?.transport?.citySelect;
   const [searchQuery, setSearchQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -79,15 +86,18 @@ export default function TransportCityDropdown({
       : defaultCities;
   }, [citiesMap]);
 
-  // Memoize filtered cities - uses deferred search query for debouncing
+  // Memoize filtered cities - uses deferred search query for debouncing.
+  // Matches the English name and, for Arabic users, the Arabic label too.
   const filteredCities = useMemo(() => {
     if (deferredSearchQuery.trim() === "") {
       return allCities.slice(0, 6); // Show first 6 cities
     }
 
     const searchLower = deferredSearchQuery.toLowerCase();
-    const filtered = allCities.filter((city) =>
-      city.toLowerCase().includes(searchLower)
+    const filtered = allCities.filter(
+      (city) =>
+        city.toLowerCase().includes(searchLower) ||
+        (CITY_AR[city] ?? "").includes(deferredSearchQuery.trim())
     );
     return filtered.slice(0, 8); // Max 8 results
   }, [deferredSearchQuery, allCities]);
@@ -146,7 +156,7 @@ export default function TransportCityDropdown({
           type="text"
           value={searchQuery}
           onChange={handleSearchChange}
-          placeholder={placeholder}
+          placeholder={placeholder ?? tc?.searchCity ?? "Search city..."}
           className="w-full ps-10 pe-4 py-3 text-sm border border-[#e5e7eb] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
         />
       </div>
@@ -171,13 +181,13 @@ export default function TransportCityDropdown({
         >
           {filteredCities.length === 0 ? (
             <div className="text-sm text-muted-foreground text-center py-4">
-              No cities found
+              {tc?.noCitiesFound ?? "No cities found"}
             </div>
           ) : (
             <div className="space-y-1">
               {isShowingPopular && (
                 <div className="text-xs font-medium text-muted-foreground px-2 py-1">
-                  Popular destinations
+                  {tc?.popularDestinations ?? "Popular destinations"}
                 </div>
               )}
               {filteredCities.map((city) => {
@@ -196,11 +206,13 @@ export default function TransportCityDropdown({
                     }`}
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm">{city}</div>
+                      <div className="font-medium text-sm">{cityLabel(city, lang)}</div>
                       {cityPoints && (
                         <div className="text-xs text-muted-foreground">
-                          {cityPoints.length} assembly point
-                          {cityPoints.length !== 1 ? "s" : ""}
+                          {cityPoints.length}{" "}
+                          {cityPoints.length === 1
+                            ? (tc?.point ?? "point")
+                            : (tc?.points ?? "points")}
                         </div>
                       )}
                     </div>

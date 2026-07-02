@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/sheet";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/i18n/formatters";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import {
   mergeSearchParams,
@@ -347,12 +348,8 @@ function FilterControls({
             />
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>
-              {priceRange[0].toLocaleString()} {dict.price.currency}
-            </span>
-            <span>
-              {priceRange[1].toLocaleString()} {dict.price.currency}
-            </span>
+            <span>{formatCurrency(priceRange[0], lang)}</span>
+            <span>{formatCurrency(priceRange[1], lang)}</span>
           </div>
         </div>
       )}

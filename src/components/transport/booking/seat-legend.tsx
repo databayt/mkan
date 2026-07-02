@@ -1,5 +1,7 @@
 'use client';
 
+import { useDictionary } from '@/components/internationalization/dictionary-context';
+
 interface SeatLegendProps {
   dictionary?: {
     available: string;
@@ -9,14 +11,15 @@ interface SeatLegendProps {
   };
 }
 
-export function SeatLegend({
-  dictionary = {
-    available: 'Available',
-    selected: 'Selected',
-    booked: 'Booked',
-    blocked: 'Not Available',
-  },
-}: SeatLegendProps) {
+export function SeatLegend({ dictionary: dictionaryProp }: SeatLegendProps) {
+  const dict = useDictionary();
+  const ts = dict?.transport?.seat;
+  const dictionary = dictionaryProp ?? {
+    available: ts?.available ?? 'Available',
+    selected: ts?.selected ?? 'Selected',
+    booked: ts?.booked ?? 'Booked',
+    blocked: ts?.blocked ?? 'Not Available',
+  };
   const legendItems = [
     {
       key: 'available',

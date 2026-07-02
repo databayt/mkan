@@ -10,6 +10,7 @@ import TransportCityDropdown from "./transport-city-dropdown";
 import TransportDatePicker from "./transport-date-picker";
 import { isRTL as checkRTL, type Locale } from "@/components/internationalization/config";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { cityLabel } from "@/components/transport/city-names";
 
 // Motion mirrors the listings BigSearch so the two search bars feel identical to
 // operate; only the surface (glass over the dark video, vs. solid white) differs.
@@ -295,7 +296,7 @@ export default function TransportBigSearch({
               {dictionary.from}
             </div>
             <div className="text-sm text-white/70 truncate">
-              {origin || dictionary.selectCity}
+              {origin ? cityLabel(origin, lang) : dictionary.selectCity}
             </div>
           </div>
         </button>
@@ -321,7 +322,7 @@ export default function TransportBigSearch({
               {dictionary.to}
             </div>
             <div className="text-sm text-white/70 truncate">
-              {destination || dictionary.selectCity}
+              {destination ? cityLabel(destination, lang) : dictionary.selectCity}
             </div>
           </div>
         </button>
@@ -385,7 +386,7 @@ export default function TransportBigSearch({
             <div className={cn(isRTL ? "text-end" : "text-start")}>
               <div className="text-xs text-[#6b7280]">{dictionary.from}</div>
               <div className="text-sm font-medium text-black">
-                {origin || dictionary.selectCity}
+                {origin ? cityLabel(origin, lang) : dictionary.selectCity}
               </div>
             </div>
             <ChevronDown className="h-4 w-4 text-[#6b7280]" />
@@ -401,7 +402,7 @@ export default function TransportBigSearch({
             <div className={cn(isRTL ? "text-end" : "text-start")}>
               <div className="text-xs text-[#6b7280]">{dictionary.to}</div>
               <div className="text-sm font-medium text-black">
-                {destination || dictionary.selectCity}
+                {destination ? cityLabel(destination, lang) : dictionary.selectCity}
               </div>
             </div>
             <ChevronDown className="h-4 w-4 text-[#6b7280]" />

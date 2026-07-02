@@ -2544,14 +2544,20 @@
     },
     "seatPicker": {
       "driver": "السائق",
-      "selectedSeats": "المقاعد المحددة"
+      "selectedSeats": "المقاعد المحددة",
+      "selectSeats": "اختر مقاعدك",
+      "seatSelected": "مقعد محدد",
+      "seatsSelected": "مقاعد محددة",
+      "maxReached": "وصلت للحد الأقصى من المقاعد"
     },
     "citySelect": {
       "selectCity": "اختر المدينة",
       "searchCity": "ابحث عن مدينة...",
       "noCityFound": "لم يتم العثور على مدينة.",
       "point": "نقطة",
-      "points": "نقاط"
+      "points": "نقاط",
+      "popularDestinations": "وجهات شائعة",
+      "noCitiesFound": "لم يتم العثور على مدن"
     },
     "ticketView": {
       "ticketNotFound": "التذكرة غير موجودة",

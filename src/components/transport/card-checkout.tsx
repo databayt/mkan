@@ -10,6 +10,7 @@
 // with metadata.kind === "transport_booking".
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import {
   Elements,
   PaymentElement,
@@ -21,6 +22,8 @@ import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { createTransportPaymentIntent } from "@/lib/actions/payment-actions";
+import { formatCurrency } from "@/lib/i18n/formatters";
+import type { Locale } from "@/components/internationalization/config";
 
 const stripePromise: Promise<Stripe | null> | null = (() => {
   const key = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY;
@@ -96,6 +99,8 @@ export function TransportCardCheckout(props: TransportCardCheckoutProps) {
 }
 
 function CardForm(props: TransportCardCheckoutProps) {
+  const params = useParams();
+  const locale = ((params?.lang as string) ?? "en") as Locale;
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
@@ -144,7 +149,7 @@ function CardForm(props: TransportCardCheckoutProps) {
           </>
         ) : (
           <>
-            {props.labels.pay} {props.currency} {props.amount.toLocaleString()}
+            {props.labels.pay} {formatCurrency(props.amount, locale, props.currency)}
           </>
         )}
       </Button>
