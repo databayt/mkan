@@ -65,3 +65,38 @@ Wire each still-`false` flag above to real data. Plus: web/browser push for the 
 - **CSP:** any *new* origin the browser touches directly must be allow-listed in `src/proxy.ts` `buildCsp()` — the enforced prod policy blocked CDN `<video>` until `media-src 'self' https://cdn.databayt.org` was added. Images are exempt only because they proxy through same-origin `/_next/image`.
 
 **Key files:** `src/config/phase-flags.ts` · `src/components/listings/feature-icons.ts` · `src/components/hosting/availability-check.tsx` · `src/components/internationalization/{en,ar}.json` · `scripts/seed-listings.ts` · `tests/i18n/`
+
+---
+
+# Transport — Phase 1 (same playbook, 2026-07-02)
+
+**Status:** ✅ Delivered & verified locally (en+ar × mobile 390 / desktop 1440) · `tsc` 0 · build green · i18n parity 71/71.
+
+The transport vertical now follows the same honest / Arabic-first / mobile-first principles, keeping its own identity (glass hero search, timetable trip cards, seat picker, printable QR ticket).
+
+## Hide / Visible register additions (`src/config/phase-flags.ts`)
+
+| Flag | Phase 1 | Hides | Phase 2 to turn on |
+|---|---|---|---|
+| `showTransportTestimonials` | `false` | Fabricated reviewers ("Thousands of travelers trust Mkan") | Real traveler reviews from completed bookings |
+| `showTransportOperatorLogos` | `false` | Logo carousel of brands NOT on the platform (dead `?ref=arc` links) | Real verified office logos or signed partnerships |
+
+## Delivered
+
+1. **Honesty pass** — testimonials + operator carousel gated off; "PDF ticket" and "card payment" claims corrected in both dictionaries (card is geo-gated to diaspora).
+2. **Arabic-first sweep** — new `src/components/transport/city-names.ts` (28 cities, EN canonical values / AR display); seat picker, city dropdowns, filters, trip cards, all detail pages consume the dictionary; Arabic-Indic digits via `formatNumber`; SDG everywhere via `formatCurrency` (card-checkout + filter bounds fixed).
+3. **Homes-maturity boost** — shared `src/components/transport/amenity-icons.ts` (BusAmenity→lucide, mirrors `feature-icons.ts`); trip card polish (BadgeCheck verified chip, rating gated on real >0, RTL-safe timeline); designed BusFront empty state; RTL route arrows; Popular Routes deduped by city pair with concise city labels.
+4. **Mirror-pattern refactor** — trips/[id], offices/[id], booking/[id], ticket, checkout all converted from `'use client'`+useEffect waterfalls to server page + client content; offices/[id] fully server; trip page reuses the shared `SeatPicker` (duplicate codepath killed); ticket QR renders server-side.
+5. **Contact-first** — `tel:` call-office CTAs on office header, trip detail, checkout summary, booking confirmation (office phone from DB). Share button wired to `navigator.share`/clipboard.
+6. **Landing map fixed** — read `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` (never set) instead of the project's `NEXT_PUBLIC_MAPBOX_TOKEN`; was silently falling back to a pill list that also bled over the heading. Now a real Mapbox map, fallback contained.
+7. **Trips data** — all 1,722 seeded trips had expired (search always empty!). New **`scripts/topup-transport-trips.ts`**: non-destructive, idempotent 14-day trip+seat top-up on existing routes. Ran live: 1,722 trips + 81,270 seats.
+8. **Schema drift healed** — `Seat.reservedUntil` existed in `schema.prisma` but not the DB (crashed `getTripDetails`); added via Neon MCP `run_sql`.
+9. Landing `force-dynamic` → ISR 600s.
+
+## Ops notes (transport)
+- **Trips expire**: re-run `npx tsx scripts/topup-transport-trips.ts` (env: `set -a && source .env && set +a`) before trips run out — consider a weekly cron. Idempotent.
+- **`getPopularRoutes` caches 1h** (`unstable_cache`) — after a fresh trip top-up the landing may show stale/empty routes for up to an hour.
+- The old `seed-transport.ts` **wipes bookings/payments** — never run it against live data again; use the top-up.
+
+## Deferred (transport phase 2)
+Wire the two new flags to real data; convert `offices` list page (still client-fetch, dictionary-wired); localize departure clock digits (currently western in ar, like homes); hero video asset is a generic clip (VR headset) — consider a bus/travel clip; ticket PDF + email delivery (helper exists, uncalled).
