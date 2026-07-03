@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Plane, Users } from "lucide-react"
+import { ArrowLeft, Luggage, Users } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -71,7 +71,7 @@ export function ProfileView({ user, lang, profile }: ProfileViewProps) {
             </Avatar>
             <span className="text-base font-medium text-foreground">{t?.aboutMe ?? "About me"}</span>
           </div>
-          <SidebarItem icon={<Plane className="size-6" strokeWidth={1.6} />} label={t?.pastTrips ?? "Past trips"} />
+          <SidebarItem icon={<Luggage className="size-6" strokeWidth={1.6} />} label={t?.pastTrips ?? "Past trips"} />
           <SidebarItem icon={<Users className="size-6" strokeWidth={1.6} />} label={t?.connections ?? "Connections"} />
         </aside>
 
