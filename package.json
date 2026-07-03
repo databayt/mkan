@@ -35,6 +35,7 @@
     "crm:rehost": "tsx scripts/crm/photo-rehost.ts",
     "crm:import": "tsx scripts/crm/mkan-import.ts",
     "crm:outreach": "tsx scripts/crm/outreach.ts",
+    "crm:publish": "tsx scripts/crm/wave-publish.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

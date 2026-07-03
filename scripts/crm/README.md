@@ -19,6 +19,7 @@ Tooling that materializes the [Growth Engine](../../docs/growth.md) CRM design i
 | `mkan-import.ts` | **G1.5** — provisions `1000@`+ MANAGER accounts + imports trusted homes into the mkan DB as **Busy** (Listing+Location). Writes to mkan (Prisma). |
 | `outreach-templates.ts` | **G1.6** — pure AR/EN message templates (first-touch, handover, follow-up), verbatim from docs §5.4. |
 | `outreach.ts` | **G1.6** — drafts personalized host messages → outbox (human-send default) or sends via OpenClaw (`--apply`). |
+| `wave-publish.ts` | **G1.7** — flips imported listings Busy→Available through the trust gate, per city (the final step). Writes to mkan (Prisma). |
 
 ## Run
 
@@ -185,12 +186,30 @@ no phone (Airbnb hides it) → drafts land as `needs-contact-hunt` until a Whats
 the host; then `--apply` sends. Full CRM Activity logging awaits the Note/Task fields (below);
 OpenClaw's outbound API varies by deployment — adjust the payload in `sendViaOpenClaw`.
 
-## Still to add (later G1 steps)
+## Wave publish (G1.7)
+
+The last step — flip imported listings **Busy → Available** through the trust gate, rolled
+out **per city** (Port Sudan first). A listing goes live only when it's `publishReady` (band
+passes + host replied + price confirmed + photos re-hosted + no hard gate) and matches the
+wave's city.
+
+```bash
+npx tsx scripts/crm/wave-publish.ts --city=PORT_SUDAN              # dry plan
+FORCE_SEED=1 npx tsx scripts/crm/wave-publish.ts --city=PORT_SUDAN --apply
+```
+
+Flags: `--in=<scored>` · `--ledger=<import ledger>` · `--city=<CITY|all>` ·
+`--min-band=<AUTO_ONBOARD|MANUAL_REVIEW>` · `--limit=<N>` · `--apply`. Reads eligibility
+(`publishReady`/`trustBand`/`city`) from the scored file and the mkan listing id from the
+import ledger; `--apply` sets `isPublished:true` + `lastAvailabilityConfirmedAt` on the mkan
+Listing (prod-guarded). Only imported + eligible listings flip — verified the gate blocks
+scrape-only homes and the per-city filter holds back other-city inventory.
+
+## Still to add
 
 - The `Note` / `Task` (Activity) custom fields — `channel`, `host`, `home` (§2.6). Small;
-  unlocks logging each outreach touch as a CRM Activity.
-- **G1.7 — wave publish**: the trust-gated flip of imported listings from Busy → Available,
-  per city, per trust band (`docs/growth.md` §5.5, §7). The last step — lights up inventory.
+  unlocks logging each outreach touch as a CRM Activity. **This is the only remaining piece —
+  G1.1–G1.7 are all built.**
 
 ## Full pipeline
 
@@ -203,4 +222,5 @@ pnpm crm:score        --apply   # G1.3 trust scores + bands
 pnpm crm:outreach               # G1.6 draft host WhatsApp (human-send) → contact + get agreement
 pnpm crm:rehost --fx-rate=<r> --apply             # G1.4 photos → CDN + SR→SDG
 pnpm crm:import --in=.data/airbnb-rehosted.json --apply   # G1.5 → mkan (Busy, agreed hosts only)
+pnpm crm:publish --city=PORT_SUDAN --apply        # G1.7 trust-gated Busy→Available, per city
 ```
