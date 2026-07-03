@@ -11,9 +11,11 @@ Mirrors the proven hogwarts pattern (`catalog/image.ts`, `cloudfront-url.ts`,
 > `NEXT_PUBLIC_USE_CDN_VARIANTS=true` + AWS creds set in prod — homes photos
 > serve pre-made WebP straight from `cdn.databayt.org/mkan/stock/*-{sm,md,lg}.webp`
 > (off Vercel), and uploads are configured (`checks.storage: true`). Verified on
-> `mk.databayt.org`. **Follow-up (hardening):** the runtime creds are the shared
-> `hogwarts-s3-uploader` IAM user (broad `databayt-cdn` write); replace with an
-> mkan-scoped user limited to `mkan/uploads/*`.
+> `mk.databayt.org`. **IAM hardened:** mkan's runtime uses a dedicated
+> least-privilege user **`mkan`** (only `s3:PutObject`/`s3:DeleteObject` on
+> `databayt-cdn/mkan/uploads/*`); the shared uploader was renamed **`hogwarts`**
+> and pared from `AdministratorAccess` to `s3:*` on `hogwarts-databayt` +
+> `databayt-cdn` plus `cloudfront:CreateInvalidation` — no more account admin.
 
 ## CDN namespace (databayt convention)
 
