@@ -2621,7 +2621,11 @@
       "browseOffices": "Browse Offices",
       "browseAllOffices": "Browse all offices",
       "hoursSuffix": "{hours}h",
-      "currency": "SDG"
+      "currency": "SDG",
+      "popularFrom": "Popular routes from {city}",
+      "moreRoutes": "More routes across Sudan",
+      "perSeat": "per seat",
+      "hoursFrom": "{hours}h from {city}"
     },
     "searchPage": {
       "previous": "Previous",

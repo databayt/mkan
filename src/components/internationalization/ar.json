@@ -2621,7 +2621,11 @@
       "browseOffices": "تصفح المكاتب",
       "browseAllOffices": "تصفح جميع المكاتب",
       "hoursSuffix": "{hours} ساعة",
-      "currency": "ج.س"
+      "currency": "ج.س",
+      "popularFrom": "رحلات رائجة من {city}",
+      "moreRoutes": "المزيد من الوجهات في السودان",
+      "perSeat": "للمقعد",
+      "hoursFrom": "{hours} ساعة من {city}"
     },
     "searchPage": {
       "previous": "السابق",

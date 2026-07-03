@@ -32,7 +32,10 @@ const SiteHeader = () => {
 
   const isDashboardPage =
     pathname.includes("/managers") || pathname.includes("/tenants") || pathname.includes("/offices");
-  const isLandingPage = pathname === "/" || pathname === "/en" || pathname === "/ar";
+  // The transport landing overlays this header on its dark hero exactly like
+  // the homes landing does, so it gets the same transparent white-text look.
+  const isTransportLanding = /^\/(en|ar)\/transport\/?$/.test(pathname ?? "");
+  const isLandingPage = pathname === "/" || pathname === "/en" || pathname === "/ar" || isTransportLanding;
   const currentLocale = pathname.startsWith('/ar') ? 'ar' : 'en';
   const dict = useDictionary();
 
