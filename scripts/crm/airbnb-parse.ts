@@ -112,7 +112,7 @@ export function parseBedInfo(primaryLine: any[]): { bedrooms: number | null; bed
   };
   return {
     bedrooms: grab(/([\d.]+)\s+bedroom/i),
-    beds: grab(/([\d.]+)\s+bed\b/i),
+    beds: grab(/([\d.]+)\s+beds?\b/i),
     bathrooms: grab(/([\d.]+)\s+(?:private\s+|shared\s+)?bath/i),
   };
 }

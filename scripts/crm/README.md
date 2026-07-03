@@ -12,6 +12,7 @@ Tooling that materializes the [Growth Engine](../../docs/growth.md) CRM design i
 | `seed-twenty-views.ts` | Idempotent seeder — creates the Views. Run **after** the objects seeder. |
 | `airbnb-parse.ts` | **G1.2** — pure parsers over Airbnb's deferred-state JSON → normalized `HomeRecord`/`HostRecord` (field names match the schema). Unit-testable. |
 | `airbnb-scrape.ts` | **G1.2** — the scraper: search sweep → PDP enrich (all photos + full data) → writes normalized records to a JSON file. |
+| `twenty-upsert.ts` | **G1.2** — reads the scraped file → upserts Home/Host + one Opportunity per new host into Twenty via the REST data API (dedup by external id). |
 
 ## Run
 
@@ -76,11 +77,26 @@ bedrooms/beds/baths, guests, full amenity list, **all gallery photos** (single-f
 avatar-filtered), nightly SR price, rating/reviews; per host — id, name, superhost, avatar,
 portfolio counts.
 
+## Upsert into Twenty (G1.2 step 4)
+
+Reads the scraped file → dedups by external id → creates `Host` + `Home` records + one
+`Opportunity` per **new** host, via Twenty's REST data API. Run **after**
+`crm:seed-objects --apply` (objects must exist) with the backend up.
+
+```bash
+npx tsx scripts/crm/twenty-upsert.ts                 # dry run — prints the exact bodies
+TWENTY_API_URL=http://localhost:3000 TWENTY_API_KEY=… \
+  pnpm crm:upsert --apply                            # write to Twenty
+```
+
+Flags: `--in=<path>` · `--limit=<N>` · `--apply`. Composite fields use Twenty's verified
+write shapes (LINKS `{primaryLinkUrl, secondaryLinks}`, ADDRESS `{addressCity/State/Country/
+Lat/Lng}`, CURRENCY `{amountMicros, currencyCode}`); to-one relations are the FK `hostId`.
+Raw amenities are mapped to the `mkanAmenities` enum on the way in. Idempotent (existing
+records skipped). The full chain: `crm:scrape` → `crm:upsert --apply`.
+
 ## Still to add (later G1 steps)
 
-- **Upsert the scraped records into Twenty** (design §4.1 step 4) — reads
-  `.data/airbnb-scrape.json`, dedups by external id, creates Home/Host + one Opportunity per
-  new host. Needs the backend up + the G1.1 objects applied; build it next.
 - The `Note` / `Task` (Activity) custom fields — `channel`, `host`, `home` (§2.6). Small;
   the "Follow-ups due" view already works on standard Task fields without them.
 - Then: `docs/growth.md` §7 — G1.3 trust scoring · G1.4 photo re-host + SR→SDG ·

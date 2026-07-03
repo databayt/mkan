@@ -30,6 +30,7 @@
     "crm:seed-objects": "tsx scripts/crm/seed-twenty-objects.ts",
     "crm:seed-views": "tsx scripts/crm/seed-twenty-views.ts",
     "crm:scrape": "tsx scripts/crm/airbnb-scrape.ts",
+    "crm:upsert": "tsx scripts/crm/twenty-upsert.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
