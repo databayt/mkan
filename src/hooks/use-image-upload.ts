@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import type { ProcessServerConfigFunction, RevertServerConfigFunction } from 'filepond';
-import { validateImageFile } from '@/lib/imagekit';
+import { validateImageFile } from '@/lib/upload-config';
+import { uploadListingPhoto } from '@/lib/image-upload-client';
 
 export interface UploadOptions {
   listingId?: number;
@@ -33,88 +34,28 @@ export function useImageUpload(options: UploadOptions = {}) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Get upload authentication
-  const getUploadAuth = useCallback(async () => {
-    try {
-      const response = await fetch('/api/upload/auth');
-      if (!response.ok) {
-        throw new Error('Failed to get upload credentials');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Auth error:', error);
-      throw error;
-    }
-  }, []);
-
-  // Upload file to ImageKit
+  // Upload a file: optimize → presigned PUT → S3 → attach to listing.
+  // (Bytes go straight to S3; nothing streams through the Vercel function.)
   const uploadFile = useCallback(async (file: File) => {
     try {
       setUploading(true);
       setError(null);
 
-      // Validate file
       const validation = validateImageFile(file);
       if (!validation.valid) {
         throw new Error(validation.error);
       }
 
-      // Get authentication parameters
-      const auth = await getUploadAuth();
-
-      // Create form data
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('publicKey', auth.publicKey);
-      formData.append('signature', auth.signature);
-      formData.append('expire', auth.expire);
-      formData.append('token', auth.token);
-      formData.append('fileName', file.name);
-      formData.append('useUniqueFileName', 'true');
-      
-      if (options.folder) {
-        formData.append('folder', options.folder);
-      }
-
-      // Upload to ImageKit
-      const uploadResponse = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
-        method: 'POST',
-        body: formData,
+      const { url, key } = await uploadListingPhoto(file, {
+        listingId: options.listingId,
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const uploadData = await uploadResponse.json();
-
-      // Save reference in our database
-      const saveResponse = await fetch('/api/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fileId: uploadData.fileId,
-          url: uploadData.url,
-          filePath: uploadData.filePath,
-          listingId: options.listingId,
-          type: options.type || 'listing',
-        }),
-      });
-
-      if (!saveResponse.ok) {
-        throw new Error('Failed to save image reference');
-      }
-
-      const savedData = await saveResponse.json();
-      
       const uploadedFile: UploadedFile = {
-        fileId: uploadData.fileId,
-        url: uploadData.url,
-        name: uploadData.name,
-        size: uploadData.size,
-        filePath: uploadData.filePath,
+        fileId: key,
+        url,
+        name: file.name,
+        size: file.size,
+        filePath: key,
       };
 
       setUploadedFiles(prev => [...prev, uploadedFile]);
@@ -130,14 +71,14 @@ export function useImageUpload(options: UploadOptions = {}) {
       setUploading(false);
       setProgress({ loaded: 0, total: 0, percentage: 0 });
     }
-  }, [options, getUploadAuth]);
+  }, [options]);
 
-  // Delete uploaded file
+  // Delete an uploaded file (removes from the listing + best-effort S3 delete).
   const deleteFile = useCallback(async (fileId: string, url: string) => {
     try {
       const params = new URLSearchParams({
-        fileId,
         url,
+        ...(fileId && { key: fileId }),
         ...(options.listingId && { listingId: options.listingId.toString() }),
       });
 
@@ -168,15 +109,10 @@ export function useImageUpload(options: UploadOptions = {}) {
     abort
   ) => {
     try {
-      // Update progress
-      const progressHandler = (loaded: number, total: number) => {
-        const percentage = Math.round((loaded / total) * 100);
-        setProgress({ loaded, total, percentage });
-        progress(true, loaded, total);
-      };
-
-      // Start upload
-      progressHandler(0, (file as File).size);
+      // FilePond exposes no real progress for our fetch-based upload; report
+      // start then completion so the UI still animates.
+      setProgress({ loaded: 0, total: (file as File).size, percentage: 0 });
+      progress(true, 0, (file as File).size);
 
       const uploadedFile = await uploadFile(file as File);
       load(uploadedFile.fileId);

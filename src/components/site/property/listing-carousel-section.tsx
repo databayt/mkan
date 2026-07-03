@@ -21,6 +21,8 @@ interface ListingCarouselSectionProps {
   listings: Listing[]
   className?: string
   favoriteIds?: number[]
+  /** Preload the first N cards (LCP) — set only on the first, above-fold row. */
+  priorityCount?: number
 }
 
 export function ListingCarouselSection({
@@ -29,6 +31,7 @@ export function ListingCarouselSection({
   listings,
   className,
   favoriteIds = [],
+  priorityCount = 0,
 }: ListingCarouselSectionProps) {
   const router = useRouter()
   const { locale } = useLocale()
@@ -124,12 +127,12 @@ export function ListingCarouselSection({
         className="w-full"
       >
         <CarouselContent className="-ms-4">
-          {transformedListings.map((property) => (
+          {transformedListings.map((property, i) => (
             <CarouselItem
               key={property.id}
               className="ps-4 basis-[85%] sm:basis-1/2 lg:basis-1/4"
             >
-              <PropertyCard {...property} />
+              <PropertyCard {...property} priority={i < priorityCount} />
             </CarouselItem>
           ))}
         </CarouselContent>

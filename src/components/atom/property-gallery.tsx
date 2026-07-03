@@ -1,10 +1,10 @@
 "use client"
 
-import Image from "next/image"
 import { useParams, useRouter } from "next/navigation"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
 
 import { PropertyImageFallback } from "@/components/atom/property-image-fallback"
+import { PropertyImage } from "@/components/atom/property-image"
 
 interface PropertyGalleryProps {
   images?: string[];
@@ -87,12 +87,10 @@ export default function PropertyGallery({
           onClick={handleShowAllPhotos}
           aria-label={t?.viewAllPhotos ?? "View all property photos"}
         >
-          <Image
+          <PropertyImage
             src={mainImage}
             alt={t?.mainImageAlt ?? "Property main image"}
-            fill
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            className="object-cover"
+            variant="hero"
             priority
           />
         </button>
@@ -107,12 +105,10 @@ export default function PropertyGallery({
               onClick={handleShowAllPhotos}
               aria-label={i === 3 ? (t?.viewAllPhotos ?? "View all property photos") : viewPhotoN(i + 2)}
             >
-              <Image
+              <PropertyImage
                 src={thumbnailImages[i] || mainImage}
                 alt={imageAlt(i + 2)}
-                fill
-                sizes="25vw"
-                className="object-cover"
+                variant="thumb"
               />
               {/* "Show all photos" pill — only on the bottom-right cell */}
               {i === 3 && (

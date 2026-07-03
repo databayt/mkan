@@ -51,7 +51,7 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
     enableNext();
   }, [enableNext]);
 
-  // Uploads the file directly to ImageKit and returns its persistent URL.
+  // Uploads the file to S3 (via a presigned PUT) and returns its persistent URL.
   // Rejects non-image types and >10MB files before hitting the server.
   const uploadFile = async (file: File): Promise<string> => {
     const uploaded = await uploadListingPhoto(file, { listingId: id });

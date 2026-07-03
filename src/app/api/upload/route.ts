@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, canOverride } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { validateImageFile } from '@/lib/imagekit';
+import { deleteObjectByUrl } from '@/lib/s3';
 import { rateLimitWithFallback, rateLimitResponse } from '@/lib/rate-limit';
 
-// Handle image upload completion
-// This is called after successful upload to ImageKit
+// Attach an uploaded image URL to a listing (or profile). The bytes were
+// already PUT directly to S3 via a presigned URL (see /api/upload/presign);
+// this endpoint only records the resulting CloudFront/CDN URL.
 export async function POST(request: NextRequest) {
   try {
     // Rate limiting
@@ -17,27 +18,25 @@ export async function POST(request: NextRequest) {
     // Check authentication
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    const { fileId, url, filePath, listingId, type = 'listing' } = body;
+    const { url, listingId, type = 'listing' } = body as {
+      url?: string;
+      key?: string;
+      listingId?: number | string;
+      type?: string;
+    };
 
-    if (!fileId || !url || !filePath) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+    if (!url) {
+      return NextResponse.json({ error: 'Missing image url' }, { status: 400 });
     }
 
     // Store image reference based on type
     if (type === 'listing' && listingId) {
-      // Update listing with new image
       const listing = await db.listing.findUnique({
-        where: { id: parseInt(listingId) },
+        where: { id: parseInt(String(listingId)) },
         select: { hostId: true, photoUrls: true },
       });
 
@@ -49,67 +48,43 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Add image to listing
       const updatedListing = await db.listing.update({
-        where: { id: parseInt(listingId) },
-        data: {
-          photoUrls: {
-            push: url,
-          },
-        },
+        where: { id: parseInt(String(listingId)) },
+        data: { photoUrls: { push: url } },
       });
 
-      return NextResponse.json({
-        success: true,
-        data: updatedListing,
-      });
+      return NextResponse.json({ success: true, data: updatedListing });
     } else if (type === 'profile') {
-      // Update user profile image
       const updatedUser = await db.user.update({
         where: { id: session.user.id },
-        data: {
-          image: url,
-        },
+        data: { image: url },
       });
 
-      return NextResponse.json({
-        success: true,
-        data: updatedUser,
-      });
+      return NextResponse.json({ success: true, data: updatedUser });
     }
 
-    return NextResponse.json({
-      success: true,
-      data: { fileId, url, filePath },
-    });
+    return NextResponse.json({ success: true, data: { url } });
   } catch (error) {
     console.error('Upload handler error:', error);
-    return NextResponse.json(
-      { error: 'Failed to process upload' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to process upload' }, { status: 500 });
   }
 }
 
-// Delete uploaded image
+// Remove an uploaded image from a listing + best-effort delete from S3.
 export async function DELETE(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-    const fileId = searchParams.get('fileId');
     const listingId = searchParams.get('listingId');
     const imageUrl = searchParams.get('url');
 
-    if (!fileId || !imageUrl) {
+    if (!imageUrl) {
       return NextResponse.json(
-        { error: 'Missing required parameters' },
+        { error: 'Missing required parameter: url' },
         { status: 400 }
       );
     }
@@ -129,34 +104,17 @@ export async function DELETE(request: NextRequest) {
         );
       }
 
-      // Remove image from listing
-      const updatedPhotoUrls = listing.photoUrls.filter(url => url !== imageUrl);
-      
+      const updatedPhotoUrls = listing.photoUrls.filter(u => u !== imageUrl);
       await db.listing.update({
         where: { id: parseInt(listingId) },
-        data: {
-          photoUrls: updatedPhotoUrls,
-        },
+        data: { photoUrls: updatedPhotoUrls },
       });
     }
 
-    // Best-effort ImageKit delete. We extract the fileId from the URL when
-    // possible; if extraction fails we still report success to the client
-    // because the listing reference has been removed (the orphan asset is
-    // garbage-collected by ImageKit's TTL on unreferenced uploads).
-    try {
-      const m = imageUrl.match(/\/([^/]+?)(?:_[^_]+)?\.[a-z0-9]+(?:\?|$)/i);
-      const fileId = m?.[1];
-      if (fileId && process.env.IMAGEKIT_PRIVATE_KEY) {
-        const auth = Buffer.from(`${process.env.IMAGEKIT_PRIVATE_KEY}:`).toString("base64");
-        await fetch(`https://api.imagekit.io/v1/files/${fileId}`, {
-          method: "DELETE",
-          headers: { Authorization: `Basic ${auth}` },
-        }).catch(() => undefined);
-      }
-    } catch {
-      // Non-fatal: orphan asset will be cleaned up by ImageKit retention.
-    }
+    // Best-effort S3 delete — guarded to the `uploads/` prefix inside
+    // deleteObjectByUrl, so shared `stock/` images can never be removed.
+    // No-ops when S3 is unconfigured.
+    await deleteObjectByUrl(imageUrl);
 
     return NextResponse.json({
       success: true,

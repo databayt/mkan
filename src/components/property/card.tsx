@@ -5,7 +5,7 @@ import { Heart, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import Image from 'next/image'
+import { PropertyImage } from '@/components/atom/property-image'
 import { useDictionary } from '@/components/internationalization/dictionary-context'
 
 interface PropertyCardProps {
@@ -72,13 +72,12 @@ export function PropertyCard({
       <div className="relative mb-3">
         {/* Main Image */}
         <div className="relative w-full aspect-[4/3] bg-gray-200 rounded-md overflow-hidden">
-          <Image
-            src={displayImages[currentImageIndex] ?? '/api/placeholder/303/287'}
+          <PropertyImage
+            src={images.length > 0 ? (images[currentImageIndex] ?? images[0]) : undefined}
             alt={title}
-            width={303}
-            height={287}
-            quality={65}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            variant="card"
+            seed={id || title}
+            className="transition-transform duration-300 group-hover:scale-105"
           />
 
           {/* Favorite Button */}

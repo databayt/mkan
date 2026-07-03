@@ -119,7 +119,7 @@ function buildCsp(options: { isDev: boolean }): string {
     // Mapbox GL spawns its render worker from a blob: URL; without worker-src
     // this falls back to default-src 'self' and is blocked under enforced CSP.
     "worker-src 'self' blob:",
-    "connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://*.imagekit.io https://api.stripe.com https://translation.googleapis.com",
+    "connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://*.amazonaws.com https://api.stripe.com https://translation.googleapis.com",
     "frame-src 'self' https://www.google.com https://js.stripe.com",
     "object-src 'none'",
     "base-uri 'self'",

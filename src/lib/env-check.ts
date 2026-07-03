@@ -43,10 +43,12 @@ const envSchema = z.object({
   UPSTASH_REDIS_REST_URL: optionalUrl,
   UPSTASH_REDIS_REST_TOKEN: optionalString,
 
-  // Optional: ImageKit
-  NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY: optionalString,
-  IMAGEKIT_PRIVATE_KEY: optionalString,
-  NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT: optionalUrl,
+  // Optional: AWS S3 + CloudFront (image storage/serving; uploads need creds + bucket)
+  AWS_ACCESS_KEY_ID: optionalString,
+  AWS_SECRET_ACCESS_KEY: optionalString,
+  AWS_REGION: optionalString,
+  AWS_S3_BUCKET: optionalString,
+  CLOUDFRONT_DOMAIN: optionalString,
 
   // Optional: Email Service
   RESEND_API_KEY: optionalString,
@@ -148,10 +150,10 @@ export function validateEnvWithLogging(): Env {
  * Check if optional services are configured
  */
 export const serviceStatus = {
-  imageKit: Boolean(
-    process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY &&
-    process.env.IMAGEKIT_PRIVATE_KEY &&
-    process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT
+  s3: Boolean(
+    process.env.AWS_ACCESS_KEY_ID &&
+    process.env.AWS_SECRET_ACCESS_KEY &&
+    process.env.AWS_S3_BUCKET
   ),
   email: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM),
   googleOAuth: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),

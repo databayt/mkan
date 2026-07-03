@@ -2,7 +2,6 @@
 import { cdn } from "@/lib/cdn";
 
 import React, { useState, useRef, useCallback } from 'react';
-import Image from 'next/image';
 import { ArrowLeft, MapPin, Bed, Bath, Users, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +14,7 @@ import MobileAmenities from './mobile-amenities';
 import MobileMeetHost from './mobile-meet-host';
 import HostedBy from './hosted-by';
 import { PropertyImageFallback } from '@/components/atom/property-image-fallback';
+import { PropertyImage } from '@/components/atom/property-image';
 import { PHASE1 } from '@/config/phase-flags';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { useLocale } from '@/components/internationalization/use-locale';
@@ -108,18 +108,12 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
           >
             {displayImages.map((src, i) => (
               <div key={`${src}-${i}`} className="relative h-full w-full flex-none snap-center">
-                <Image
+                <PropertyImage
                   src={src}
                   alt={`Property image ${i + 1}`}
-                  fill
+                  variant="full"
                   sizes="100vw"
-                  className="object-cover"
                   priority={i === 0}
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = cdn.product("property-placeholder.svg");
-                    target.className = 'object-contain p-6 bg-muted/40';
-                  }}
                 />
               </div>
             ))}

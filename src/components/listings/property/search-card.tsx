@@ -1,14 +1,13 @@
 "use client"
 
 import React, { useState } from "react"
-import Image from "next/image"
 import { Heart, Star, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useFavorites } from "@/components/favorites/favorites-context"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
 import { useLocale } from "@/components/internationalization/use-locale"
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters"
-import { PropertyImageFallback } from "@/components/atom/property-image-fallback"
+import { PropertyImage } from "@/components/atom/property-image"
 
 // Exact Airbnb palette (measured from the live /s/homes search cards):
 //   title / price / rating  → #222222
@@ -114,19 +113,13 @@ export function SearchCard({
         className="relative w-full overflow-hidden bg-muted"
         style={{ aspectRatio: "4 / 3", borderRadius: 20 }}
       >
-        {hasPhotos ? (
-          <Image
-            src={photos[index] ?? photos[0]!}
-            alt={title}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-            quality={65}
-            className="object-cover"
-            priority={priority}
-          />
-        ) : (
-          <PropertyImageFallback seed={id || title} alt={title} />
-        )}
+        <PropertyImage
+          src={hasPhotos ? (photos[index] ?? photos[0]) : undefined}
+          alt={title}
+          variant="card"
+          priority={priority}
+          seed={id || title}
+        />
 
         {/* Heart — 32×32, inset ~12px from the top-end corner. */}
         <button

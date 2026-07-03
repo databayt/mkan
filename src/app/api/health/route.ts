@@ -82,26 +82,25 @@ async function checkExternalServices() {
     );
   }
 
-  // Check ImageKit endpoint
-  if (process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT) {
-    checks.push(
-      (async () => {
-        try {
-          const start = Date.now();
-          const response = await fetch(process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT!, {
-            method: 'HEAD',
-          });
-          const latency = Date.now() - start;
-          services.imagekit = { status: response.ok, latency };
-        } catch (error) {
-          services.imagekit = {
-            status: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
-          };
-        }
-      })()
-    );
-  }
+  // Check the CDN (CloudFront) image origin — HEAD a known static asset.
+  const cdnDomain = process.env.NEXT_PUBLIC_CDN_DOMAIN?.trim() || 'cdn.databayt.org';
+  checks.push(
+    (async () => {
+      try {
+        const start = Date.now();
+        const response = await fetch(`https://${cdnDomain}/mkan/property-placeholder.svg`, {
+          method: 'HEAD',
+        });
+        const latency = Date.now() - start;
+        services.cdn = { status: response.ok, latency };
+      } catch (error) {
+        services.cdn = {
+          status: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
+    })()
+  );
 
   await Promise.all(checks);
 
@@ -122,7 +121,7 @@ export async function GET(request: NextRequest) {
   const detailed = searchParams.get('detailed') === 'true';
 
   // Liveness probe — `?probe=live` answers "can this process serve traffic"
-  // (process up + DB reachable) without touching Redis/ImageKit, so uptime
+  // (process up + DB reachable) without touching Redis/CDN, so uptime
   // monitors and deploy gates don't flap on optional dependencies.
   if (searchParams.get('probe') === 'live') {
     try {
@@ -145,7 +144,7 @@ export async function GET(request: NextRequest) {
     checks: {
       database: false,
       redis: false,
-      imagekit: false,
+      storage: false,
       auth: false,
       env: false,
     },
@@ -165,10 +164,10 @@ export async function GET(request: NextRequest) {
     process.env.NODE_ENV
   );
 
-  healthData.checks.imagekit = !!(
-    process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY &&
-    process.env.IMAGEKIT_PRIVATE_KEY &&
-    process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT
+  healthData.checks.storage = !!(
+    process.env.AWS_ACCESS_KEY_ID &&
+    process.env.AWS_SECRET_ACCESS_KEY &&
+    process.env.AWS_S3_BUCKET
   );
 
   healthData.checks.redis = !!(

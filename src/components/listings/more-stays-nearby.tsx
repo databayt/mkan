@@ -2,9 +2,8 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { PropertyImageFallback } from "@/components/atom/property-image-fallback";
+import { PropertyImage } from "@/components/atom/property-image";
 import RatingStar from "./rating-star";
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
 import type { Locale } from "@/components/internationalization/config";
@@ -83,17 +82,13 @@ export default function MoreStaysNearby({
               className="relative aspect-square w-full overflow-hidden bg-muted"
               style={{ borderRadius: 20 }}
             >
-              {s.image ? (
-                <Image
-                  src={s.image}
-                  alt={s.title}
-                  fill
-                  sizes="200px"
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-              ) : (
-                <PropertyImageFallback className="object-contain p-6 bg-muted/40" />
-              )}
+              <PropertyImage
+                src={s.image}
+                alt={s.title}
+                variant="nearby"
+                seed={String(s.id)}
+                className="transition-transform duration-300 group-hover:scale-105"
+              />
             </div>
             <div className="mt-2 flex items-start justify-between gap-2">
               <h3 className="truncate text-sm font-medium text-[#222222]">{s.title}</h3>

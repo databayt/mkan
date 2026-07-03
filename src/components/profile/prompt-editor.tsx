@@ -191,7 +191,7 @@ export function ProfileEditorDialog({
   )
 }
 
-/** Avatar photo picker — uploads via ImageKit, persists on save. */
+/** Avatar photo picker — uploads to S3, persists on save. */
 export function PhotoEditorDialog({
   open,
   onOpenChange,

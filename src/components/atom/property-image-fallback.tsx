@@ -33,8 +33,9 @@ export function PropertyImageFallback({
         src={cdn.product("property-placeholder.svg")}
         alt="No image available"
         fill
-        // Served straight from /public — the image optimizer rejects SVG
-        // unless `dangerouslyAllowSVG` is enabled, which it isn't here.
+        // Static vector placeholder served straight from the CDN. We keep
+        // `unoptimized` on purpose: rasterizing an SVG through the optimizer
+        // would add a needless /_next/image round-trip for zero size benefit.
         unoptimized
         className="object-contain p-3"
       />

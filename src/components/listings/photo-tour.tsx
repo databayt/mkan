@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
 import NavThumbnails from "./nav-thumbnails"
 import { PropertyImageFallback } from "@/components/atom/property-image-fallback"
+import { PropertyImage } from "@/components/atom/property-image"
 
 interface PhotoSection {
   id: string
@@ -112,11 +112,11 @@ export default function PhotoTour({ sections = mockSections }: PhotoTourProps) {
                    key={index}
                    className="relative aspect-[4/3] overflow-hidden cursor-pointer group"
                  >
-                   <Image
+                   <PropertyImage
                      src={photo}
                      alt={`${section.label} photo ${index + 1}`}
-                     fill
-                     className="object-cover transition-transform duration-300 group-hover:scale-105"
+                     variant="full"
+                     className="transition-transform duration-300 group-hover:scale-105"
                    />
                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
                  </div>

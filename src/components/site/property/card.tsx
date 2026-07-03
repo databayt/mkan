@@ -5,12 +5,11 @@ import { Heart, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import Image from 'next/image'
 import { useFavorites } from "@/components/favorites/favorites-context"
 import { useDictionary } from '@/components/internationalization/dictionary-context'
 import { useLocale } from '@/components/internationalization/use-locale'
 import { formatCurrency, formatNumber } from '@/lib/i18n/formatters'
-import { PropertyImageFallback } from '@/components/atom/property-image-fallback'
+import { PropertyImage } from '@/components/atom/property-image'
 
 interface PropertyCardProps {
   id: string
@@ -25,6 +24,7 @@ interface PropertyCardProps {
   onFavoriteToggle?: (id: string, isFavorite: boolean) => void
   onCardClick?: (id: string) => void
   className?: string
+  priority?: boolean
 }
 
 export function PropertyCard({
@@ -39,7 +39,8 @@ export function PropertyCard({
   isFavorite = false,
   onFavoriteToggle,
   onCardClick,
-  className
+  className,
+  priority = false
 }: PropertyCardProps) {
   const dict = useDictionary()
   const { locale } = useLocale()
@@ -78,18 +79,14 @@ export function PropertyCard({
       <div className="relative mb-3">
         {/* Main Image */}
         <div className="relative w-full aspect-[4/3] bg-gray-200 rounded-md overflow-hidden">
-          {hasPhotos ? (
-            <Image
-              src={images[currentImageIndex] ?? images[0]!}
-              alt={title}
-              width={303}
-              height={287}
-              quality={65}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-            />
-          ) : (
-            <PropertyImageFallback seed={id || title} alt={title} />
-          )}
+          <PropertyImage
+            src={hasPhotos ? (images[currentImageIndex] ?? images[0]) : undefined}
+            alt={title}
+            variant="card"
+            priority={priority}
+            seed={id || title}
+            className="transition-transform duration-300 group-hover:scale-105"
+          />
 
           {/* Favorite Button */}
           <button
