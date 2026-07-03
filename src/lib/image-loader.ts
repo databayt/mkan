@@ -31,9 +31,13 @@ export default function cdnVariantLoader({
   if (!src.includes(CDN_HOST)) return src;
 
   const base = variantBaseKey(src);
+  // Only the stock pool has pre-made `-{size}.webp` variants (produced by
+  // scripts/process-stock-images.ts). User uploads are already optimized to a
+  // single WebP at upload time, so they serve as-is; anything else too.
+  if (!base.includes("mkan/stock/")) return src;
   // Already a variant key — don't double-suffix.
   if (/-(sm|md|lg|original)$/.test(base)) {
-    return src.replace(/^https?:\/\/[^/]+\//, `https://${CDN_HOST}/`);
+    return `https://${CDN_HOST}/${base}.webp`;
   }
   return `https://${CDN_HOST}/${base}-${pickSuffix(width)}.webp`;
 }
