@@ -27,6 +27,7 @@
     "seed:sudan": "tsx scripts/seed-sudan-cities.ts",
     "seed:test-user": "tsx scripts/seed-test-user.ts",
     "seed:transport": "tsx scripts/seed-transport.ts",
+    "crm:seed-objects": "tsx scripts/crm/seed-twenty-objects.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
