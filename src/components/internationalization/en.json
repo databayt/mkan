@@ -4692,6 +4692,10 @@
       "languages": "Languages I speak",
       "bioTitle": "My biography title would be",
       "whereILive": "Where I live"
-    }
+    },
+    "aboutProfile": "About your profile",
+    "aboutProfileIntro": "Your profile is how you introduce yourself on Mkan.",
+    "aboutProfileVisibility": "Hosts and other guests can see your profile when you book, join a trip, or leave a review.",
+    "createYourProfile": "Create your profile"
   }
 }

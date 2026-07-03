@@ -6,6 +6,7 @@ import { requireAuth } from "@/lib/auth-guard"
 import { db } from "@/lib/db"
 import { ProfileEdit } from "@/components/profile/profile-edit"
 import { ProfileView } from "@/components/profile/profile-view"
+import { AboutProfileDialog } from "@/components/profile/about-profile-dialog"
 import { EMPTY_PROFILE, toProfileData, type ProfileUser } from "@/components/profile/types"
 
 // Authenticated, per-user, query-param driven (?editMode=true) — always dynamic.
@@ -71,6 +72,9 @@ export default async function ProfileAboutPage({
   return editMode === "true" ? (
     <ProfileEdit user={user} lang={lang} initialProfile={profile} />
   ) : (
-    <ProfileView user={user} lang={lang} profile={profile} />
+    <>
+      <ProfileView user={user} lang={lang} profile={profile} />
+      <AboutProfileDialog />
+    </>
   )
 }
