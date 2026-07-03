@@ -2871,6 +2871,11 @@
     "metadata": {
       "title": "Mkan - Rentals & Housing",
       "description": "Discover the best properties and furnished apartments for rent"
+    },
+    "priceTransparency": {
+      "body": "Now you'll see one price for your trip, all fees included.",
+      "gotIt": "Got it",
+      "close": "Close"
     }
   },
   "search": {

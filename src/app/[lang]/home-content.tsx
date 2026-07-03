@@ -12,6 +12,7 @@ import AirbnbInspiration from "@/components/site/inspiration";
 import GiftCard from "@/components/site/gift-card";
 import Ask from "@/components/site/ask";
 import Footer from "@/components/site/footer";
+import { PriceTransparencyDialog } from "@/components/site/price-transparency-dialog";
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   Islands: ["island", "private island", "tropical", "paradise", "exotic"],
@@ -125,6 +126,7 @@ export default function HomeContent({ listings, locale }: HomeContentProps) {
 
   return (
     <div className="min-h-screen">
+      <PriceTransparencyDialog />
 
       <HeroSection />
 
