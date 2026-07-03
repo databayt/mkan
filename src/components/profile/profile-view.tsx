@@ -19,7 +19,7 @@ const DETAIL_ORDER: PromptKey[] = [
   "pets", "spendTime", "song", "funFact", "uselessSkill", "obsessedWith", "bioTitle",
 ]
 
-const AVATAR_TINT = { backgroundColor: "#ede9fb", color: "#503eb2" } as const
+const AVATAR_TINT = { backgroundColor: "#e0f1e2", color: "#275e24" } as const
 
 interface ProfileViewProps {
   user: ProfileUser

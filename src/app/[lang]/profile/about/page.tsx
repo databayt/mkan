@@ -7,6 +7,7 @@ import { db } from "@/lib/db"
 import { ProfileEdit } from "@/components/profile/profile-edit"
 import { ProfileView } from "@/components/profile/profile-view"
 import { AboutProfileDialog } from "@/components/profile/about-profile-dialog"
+import SiteHeader from "@/components/template/header/header"
 import { EMPTY_PROFILE, toProfileData, type ProfileUser } from "@/components/profile/types"
 
 // Authenticated, per-user, query-param driven (?editMode=true) — always dynamic.
@@ -69,12 +70,17 @@ export default async function ProfileAboutPage({
 
   const profile = dbUser?.profile ? toProfileData(dbUser.profile) : EMPTY_PROFILE
 
-  return editMode === "true" ? (
-    <ProfileEdit user={user} lang={lang} initialProfile={profile} />
-  ) : (
+  return (
     <>
-      <ProfileView user={user} lang={lang} profile={profile} />
-      <AboutProfileDialog />
+      <SiteHeader />
+      {editMode === "true" ? (
+        <ProfileEdit user={user} lang={lang} initialProfile={profile} />
+      ) : (
+        <>
+          <ProfileView user={user} lang={lang} profile={profile} />
+          <AboutProfileDialog />
+        </>
+      )}
     </>
   )
 }
