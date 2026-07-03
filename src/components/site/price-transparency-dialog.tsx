@@ -14,50 +14,23 @@ import {
 // Gated by a localStorage flag so it shows a single time, like the original.
 const SEEN_KEY = "mkan_price_transparency_seen";
 
-// Airbnb's pricing-transparency mark: a glossy 3D price tag. The live original
-// is a Lottie (pink vertical gradient + soft drop-shadow + white eyelet) that
-// can't be cleanly inlined, so this reuses the house recreation from the search
-// results header — same tag path and exact gradient stops (#F65C86 → #EF366C →
-// #E0124E, measured from the capture) — composed as the dialog's stacked pair
-// (a lighter tag behind the gradient one). Un-mirrored in RTL: a tag reads fine
-// either way.
-const TAG_PATH =
-  "M3.5 12.6 11.4 20.5a2 2 0 0 0 2.83 0l6.27-6.27a2 2 0 0 0 .58-1.5l-.26-6.92a1.85 1.85 0 0 0-1.78-1.78l-6.92-.26a2 2 0 0 0-1.5.58L3.5 9.77a2 2 0 0 0 0 2.83Z";
-
+// Airbnb's pricing-transparency mark — a glossy 3D price tag (pink gradient
+// front tag, cream back tag, brass eyelet, braided cord). The live original is
+// a Lottie whose SVG can't be cleanly inlined (shared gradient/filter ids), so
+// we serve the captured vector as a static asset and render it 1:1 at its
+// native 120px. Decorative — the dialog's aria-label already carries the copy.
 function PriceTagIcon() {
   return (
-    <svg
-      width="112"
-      height="112"
-      viewBox="0 0 30 30"
-      fill="none"
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/icons/price-transparency-tag.svg"
+      alt=""
       aria-hidden="true"
-      role="presentation"
-      focusable="false"
-      style={{ display: "block", overflow: "visible" }}
-    >
-      <defs>
-        <linearGradient id="mkanFeesTagDialog" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#F65C86" />
-          <stop offset="55%" stopColor="#EF366C" />
-          <stop offset="100%" stopColor="#E0124E" />
-        </linearGradient>
-      </defs>
-      {/* back tag — light tint, offset toward the upper-start corner */}
-      <g transform="translate(-0.5 -1)">
-        <path d={TAG_PATH} fill="#FCE0E8" stroke="#F7BFCE" strokeWidth="0.5" />
-        <circle cx="16.2" cy="7.8" r="1.7" fill="#FFFFFF" stroke="#F7BFCE" strokeWidth="0.5" />
-      </g>
-      {/* front tag — house gradient + soft drop-shadow + white eyelet */}
-      <g transform="translate(5 5)">
-        <path
-          d={TAG_PATH}
-          fill="url(#mkanFeesTagDialog)"
-          style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.18))" }}
-        />
-        <circle cx="16.2" cy="7.8" r="1.7" fill="#FFFFFF" />
-      </g>
-    </svg>
+      width={120}
+      height={120}
+      draggable={false}
+      className="block h-[120px] w-[120px] select-none"
+    />
   );
 }
 
@@ -111,7 +84,7 @@ export function PriceTransparencyDialog() {
       <DialogContent
         showCloseButton={false}
         aria-describedby={undefined}
-        className="w-[calc(100%-2rem)] max-w-[380px] gap-0 rounded-[32px] border-0 bg-white p-0 shadow-[0_8px_28px_rgba(0,0,0,0.28)] sm:max-w-[380px]"
+        className="w-[calc(100%-2rem)] max-w-[393px] gap-0 rounded-[32px] border-0 bg-white p-0 shadow-[0_8px_28px_rgba(0,0,0,0.28)] sm:max-w-[393px]"
       >
         <button
           type="button"
