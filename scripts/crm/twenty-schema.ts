@@ -220,6 +220,41 @@ export const HOST: ObjectDef = {
 /** Objects the seeder creates, in dependency order (home + host first; relations wired last). */
 export const OBJECTS: ObjectDef[] = [HOST, HOME];
 
+// ── Opportunity (standard object) — custom fields for the onboarding funnel ───
+// One Opportunity per host. The funnel lives in `onboardingStage`; the standard
+// `stage` field is kept as a coarse mirror (NEW/QUALIFIED/PROPOSAL/WON/LOST).
+export const OPPORTUNITY_FIELDS: FieldDef[] = [
+  { name: 'onboardingStage', label: 'Onboarding stage', type: 'SELECT', icon: 'IconProgressCheck',
+    options: ['SCRAPED', 'CONTACT_HUNT', 'CONTACTED', 'IN_CONVERSATION', 'ONBOARDING', 'TRUST_REVIEW', 'LIVE', 'DECLINED', 'UNREACHABLE', 'DUPLICATE', 'REJECTED_LOW_TRUST'],
+    description: 'The onboarding funnel — the Kanban group field.' },
+  { name: 'stageChangedAt', label: 'Stage changed', type: 'DATE_TIME' },
+  { name: 'hostTrustBand', label: 'Host trust band', type: 'SELECT', icon: 'IconShieldCheck',
+    options: ['TRUSTED', 'PROMISING', 'HOLD', 'LOW', 'UNSCORED'],
+    description: "Denormalized copy so cards/filters show trust (views can't join)." },
+  { name: 'homesCount', label: 'Homes', type: 'NUMBER' },
+  { name: 'publishReadyHomes', label: 'Ready homes', type: 'NUMBER' },
+  { name: 'liveHomes', label: 'Live homes', type: 'NUMBER' },
+  { name: 'outreachChannel', label: 'Outreach channel', type: 'SELECT', options: ['WHATSAPP', 'CALL', 'FACEBOOK', 'IN_PERSON', 'OTHER'] },
+  { name: 'outreachAttempts', label: 'Outreach attempts', type: 'NUMBER' },
+  { name: 'firstContactedAt', label: 'First contacted', type: 'DATE_TIME' },
+  { name: 'lastOutreachAt', label: 'Last outreach', type: 'DATE_TIME' },
+  { name: 'repliedAt', label: 'Replied', type: 'DATE_TIME', description: 'First host reply — the big trust unlock.' },
+  { name: 'nextFollowUpAt', label: 'Next follow-up', type: 'DATE_TIME' },
+  { name: 'declineReason', label: 'Decline reason', type: 'SELECT',
+    options: ['NOT_INTERESTED', 'ALREADY_BOOKED_FULL', 'PRICE_DISAGREEMENT', 'DISTRUSTS_PLATFORM', 'PROPERTY_UNAVAILABLE', 'WAR_DISPLACEMENT', 'OTHER'] },
+  { name: 'host', label: 'Host', type: 'RELATION', icon: 'IconUserCheck',
+    relation: { target: 'host', type: 'MANY_TO_ONE', targetFieldLabel: 'Onboarding', targetFieldIcon: 'IconTargetArrow' } },
+];
+
+/** Custom fields added to EXISTING standard objects (resolved by nameSingular). */
+export interface StandardFieldSet {
+  object: string;
+  fields: FieldDef[];
+}
+export const STANDARD_FIELD_SETS: StandardFieldSet[] = [
+  { object: 'opportunity', fields: OPPORTUNITY_FIELDS },
+];
+
 /**
  * Twenty tag colors (subset) cycled across SELECT/MULTI_SELECT options.
  * From twentyhq/twenty `FieldMetadataOptions.ts` TagColor.

@@ -1,5 +1,6 @@
 /**
- * Seed the Twenty CRM `Home` + `Host` objects + fields (Epic G1.1).
+ * Seed the Twenty CRM `Home` + `Host` objects + fields, and the custom fields on
+ * the standard `Opportunity` object (Epic G1.1).
  *
  * Targets the LIVE Twenty metadata GraphQL API. **Dry-run by default** (prints the
  * plan, makes no network calls — safe to run while the backend is down). Pass
@@ -11,7 +12,8 @@
  *
  * Idempotent: existing objects/fields are detected and skipped, so re-runs only
  * add what's missing. Order: objects → scalar/select fields → relation fields
- * (targets must exist first).
+ * (targets must exist first). Custom fields on standard objects (Opportunity)
+ * are added the same way — the standard object already exists.
  *
  * Requires the Twenty BACKEND to be reachable (NestJS server on the local box).
  * `TWENTY_API_URL` is the server base URL; the API key comes from Twenty →
@@ -22,7 +24,7 @@
  *   createOneObject(input: { object: CreateObjectInput })
  *   createOneField(input: { field: CreateFieldInput })  // options: JSON, relationCreationPayload: JSON
  */
-import { OBJECTS, toOption, type ObjectDef, type FieldDef } from './twenty-schema';
+import { OBJECTS, STANDARD_FIELD_SETS, toOption, type ObjectDef, type FieldDef } from './twenty-schema';
 
 const APPLY = process.argv.includes('--apply');
 const API_URL = (process.env.TWENTY_API_URL ?? '').replace(/\/+$/, '');
@@ -30,6 +32,15 @@ const API_KEY = process.env.TWENTY_API_KEY ?? '';
 const METADATA_ENDPOINT = `${API_URL}/metadata`;
 
 type ObjNode = { id: string; nameSingular: string; fieldsList: { id: string; name: string }[] };
+
+/** All targets that receive fields: our custom objects + field-only standard objects. */
+const FIELD_TARGETS: { nameSingular: string; fields: FieldDef[] }[] = [
+  ...OBJECTS.map((o) => ({ nameSingular: o.nameSingular, fields: o.fields })),
+  ...STANDARD_FIELD_SETS.map((s) => ({ nameSingular: s.object, fields: s.fields })),
+];
+const scalars = (fields: FieldDef[]) => fields.filter((f) => f.type !== 'RELATION');
+const relations = (fields: FieldDef[]) => fields.filter((f) => f.type === 'RELATION');
+const totalFields = FIELD_TARGETS.reduce((n, t) => n + t.fields.length, 0);
 
 async function metaGraphQL<T = any>(query: string, variables: Record<string, unknown>): Promise<T> {
   const res = await fetch(METADATA_ENDPOINT, {
@@ -97,14 +108,11 @@ async function createField(input: Record<string, unknown>): Promise<void> {
   );
 }
 
-const scalarsOf = (o: ObjectDef) => o.fields.filter((f) => f.type !== 'RELATION');
-const relationsOf = (o: ObjectDef) => o.fields.filter((f) => f.type === 'RELATION');
-const totalFields = OBJECTS.reduce((n, o) => n + o.fields.length, 0);
-
 function printPlan() {
-  for (const o of OBJECTS) {
-    console.log(`\n▸ object ${o.nameSingular} (${o.labelPlural})  —  ${o.fields.length} fields`);
-    for (const f of o.fields) {
+  for (const t of FIELD_TARGETS) {
+    const std = STANDARD_FIELD_SETS.some((s) => s.object === t.nameSingular);
+    console.log(`\n▸ ${std ? 'standard object' : 'object'} ${t.nameSingular}${std ? ' (+custom fields)' : ''}  —  ${t.fields.length} fields`);
+    for (const f of t.fields) {
       const extra =
         f.type === 'RELATION'
           ? ` → ${f.relation!.target} (${f.relation!.type})`
@@ -117,12 +125,12 @@ function printPlan() {
 }
 
 async function main() {
-  console.log('\n🏗  Twenty CRM — seed Home/Host objects (Epic G1.1)');
+  console.log('\n🏗  Twenty CRM — seed Home/Host objects + Opportunity fields (Epic G1.1)');
 
   if (!APPLY) {
     console.log('mode: DRY RUN (no network, no changes)');
     printPlan();
-    console.log(`\nDRY RUN complete — ${OBJECTS.length} objects, ${totalFields} fields planned.`);
+    console.log(`\nDRY RUN complete — ${OBJECTS.length} custom objects, ${totalFields} fields planned.`);
     console.log('To apply:  TWENTY_API_URL=<backend-url> TWENTY_API_KEY=<key> \\');
     console.log('           npx tsx scripts/crm/seed-twenty-objects.ts --apply\n');
     return;
@@ -133,7 +141,7 @@ async function main() {
   }
   console.log(`mode: APPLY → ${METADATA_ENDPOINT}`);
 
-  // 1) Objects (idempotent).
+  // 1) Custom objects (idempotent).
   let existing = await fetchObjects();
   const objectId = new Map<string, string>();
   for (const o of OBJECTS) {
@@ -147,52 +155,48 @@ async function main() {
     }
   }
 
-  // Refresh: pick up fieldsList for created/existing objects + standard targets (e.g. person).
+  // Refresh: pick up fieldsList for created/existing objects + standard targets (opportunity, person).
   existing = await fetchObjects();
   for (const [name, node] of existing) if (!objectId.has(name)) objectId.set(name, node.id);
   const fieldExists = (obj: string, field: string) =>
     (existing.get(obj)?.fieldsList ?? []).some((f) => f.name === field);
 
-  // 2) Scalar / select fields.
-  for (const o of OBJECTS) {
-    const id = objectId.get(o.nameSingular)!;
-    for (const f of scalarsOf(o)) {
-      if (fieldExists(o.nameSingular, f.name)) {
-        console.log(`  = ${o.nameSingular}.${f.name} exists — skip`);
+  const runFields = async (predicate: (f: FieldDef) => boolean, resolveTarget: boolean) => {
+    for (const t of FIELD_TARGETS) {
+      const id = objectId.get(t.nameSingular);
+      if (!id) {
+        console.warn(`  ! object ${t.nameSingular} not found — skipping its fields`);
         continue;
       }
-      try {
-        await createField(fieldInput(f, id));
-        console.log(`  + ${o.nameSingular}.${f.name} (${f.type})`);
-      } catch (e) {
-        console.warn(`  ! ${o.nameSingular}.${f.name} failed: ${(e as Error).message}`);
+      for (const f of t.fields.filter(predicate)) {
+        if (fieldExists(t.nameSingular, f.name)) {
+          console.log(`  = ${t.nameSingular}.${f.name} exists — skip`);
+          continue;
+        }
+        let targetId: string | undefined;
+        if (resolveTarget) {
+          targetId = objectId.get(f.relation!.target);
+          if (!targetId) {
+            console.warn(`  ! ${t.nameSingular}.${f.name} skipped — target "${f.relation!.target}" not found`);
+            continue;
+          }
+        }
+        try {
+          await createField(fieldInput(f, id, targetId));
+          console.log(`  + ${t.nameSingular}.${f.name}${resolveTarget ? ` → ${f.relation!.target}` : ` (${f.type})`}`);
+        } catch (e) {
+          console.warn(`  ! ${t.nameSingular}.${f.name} failed: ${(e as Error).message}`);
+        }
       }
     }
-  }
+  };
 
-  // 3) Relation fields (targets now exist).
-  for (const o of OBJECTS) {
-    const id = objectId.get(o.nameSingular)!;
-    for (const f of relationsOf(o)) {
-      if (fieldExists(o.nameSingular, f.name)) {
-        console.log(`  = ${o.nameSingular}.${f.name} exists — skip`);
-        continue;
-      }
-      const targetId = objectId.get(f.relation!.target);
-      if (!targetId) {
-        console.warn(`  ! ${o.nameSingular}.${f.name} skipped — target "${f.relation!.target}" not found`);
-        continue;
-      }
-      try {
-        await createField(fieldInput(f, id, targetId));
-        console.log(`  + ${o.nameSingular}.${f.name} → ${f.relation!.target}`);
-      } catch (e) {
-        console.warn(`  ! ${o.nameSingular}.${f.name} failed: ${(e as Error).message}`);
-      }
-    }
-  }
+  // 2) Scalar / select fields, then 3) relation fields (targets now exist).
+  await runFields((f) => f.type !== 'RELATION', false);
+  await runFields((f) => f.type === 'RELATION', true);
 
-  console.log('\n✅ Done. Verify in Twenty → Settings → Data Model.\n');
+  console.log('\n✅ Done. Verify in Twenty → Settings → Data Model.');
+  console.log('   Next: npx tsx scripts/crm/seed-twenty-views.ts --apply  (creates the saved Views)\n');
 }
 
 main().catch((e) => {
