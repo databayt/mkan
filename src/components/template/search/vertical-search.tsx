@@ -219,6 +219,15 @@ export default function VerticalSearch({
     setPrevDateRange({ from, to });
   };
 
+  // Short "MMM dd" shown in the CHECK-IN / CHECK-OUT fields — locale-aware so
+  // Arabic renders the month name + digits in Arabic (matching the calendar
+  // range summary below), instead of the always-English date-fns format().
+  const fmtShortDate = (d: Date) =>
+    d.toLocaleDateString(isAr ? "ar" : "en-US", {
+      month: "short",
+      day: "numeric",
+    });
+
   // Format a Date as YYYY-MM-DD from LOCAL components (avoids the UTC day-shift
   // that toISOString() introduces in non-UTC timezones).
   const toLocalISODate = (d: Date) =>
@@ -303,20 +312,15 @@ export default function VerticalSearch({
           ? Math.min(currentVal + 1, GUEST_LIMITS[type].max)
           : Math.max(GUEST_LIMITS[type].min, currentVal - 1);
 
-      let nextAdults = prev.guests.adults;
-      // Airbnb rule: if we add a child, infant, or pet, we must have at least 1 adult
-      if (operation === "increment" && type !== "adults" && prev.guests.adults === 0) {
-        nextAdults = 1;
+      const nextGuests = { ...prev.guests, [type]: nextVal };
+      // Airbnb rule: if we add a child, infant, or pet, we must have at least
+      // 1 adult. Applied only for non-adult rows — a trailing `adults:` entry
+      // in the literal above would clobber an adults increment/decrement.
+      if (operation === "increment" && type !== "adults" && nextGuests.adults === 0) {
+        nextGuests.adults = 1;
       }
 
-      return {
-        ...prev,
-        guests: {
-          ...prev.guests,
-          [type]: nextVal,
-          adults: nextAdults,
-        },
-      };
+      return { ...prev, guests: nextGuests };
     });
   }, []);
 
@@ -498,7 +502,7 @@ export default function VerticalSearch({
                       onClick={() => handleFieldClick("checkin")}
                     >
                       <span className={`text-sm ${dateRange.from ? "text-black" : "text-[#c0c0c0]"}`}>
-                        {dateRange.from ? format(dateRange.from, "MMM dd") : t.addDate}
+                        {dateRange.from ? fmtShortDate(dateRange.from) : t.addDate}
                       </span>
                     </button>
                     <button
@@ -506,7 +510,7 @@ export default function VerticalSearch({
                       onClick={() => handleFieldClick("checkout")}
                     >
                       <span className={`text-sm ${dateRange.to ? "text-black" : "text-[#c0c0c0]"}`}>
-                        {dateRange.to ? format(dateRange.to, "MMM dd") : t.addDate}
+                        {dateRange.to ? fmtShortDate(dateRange.to) : t.addDate}
                       </span>
                     </button>
                   </div>
@@ -747,7 +751,7 @@ export default function VerticalSearch({
               layoutId={ctaLayoutId}
               type="button"
               onClick={handleSearch}
-              className="absolute bottom-5 end-4 z-30 flex h-12 items-center gap-2 rounded-full px-6 text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_6px_20px_rgba(222,49,81,0.4)]"
+              className={`absolute bottom-5 end-4 z-30 flex h-12 items-center gap-2 rounded-full ${isAr ? "px-8" : "px-6"} text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_6px_20px_rgba(222,49,81,0.4)]`}
             >
               <Search className="h-4 w-4" strokeWidth={2.5} />
               {t.search}
@@ -755,7 +759,7 @@ export default function VerticalSearch({
           ) : (
             <Button
               onClick={handleSearch}
-              className="absolute bottom-5 end-4 z-30 h-12 gap-2 rounded-full px-6 text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_6px_20px_rgba(222,49,81,0.4)]"
+              className={`absolute bottom-5 end-4 z-30 h-12 gap-2 rounded-full ${isAr ? "px-8" : "px-6"} text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_6px_20px_rgba(222,49,81,0.4)]`}
             >
               <Search className="h-4 w-4" strokeWidth={2.5} />
               {t.search}
@@ -818,7 +822,7 @@ export default function VerticalSearch({
                   onClick={() => handleFieldClick("checkin")}
                 >
                   <span className={`text-sm ${dateRange.from ? "text-black" : "text-[#c0c0c0]"}`}>
-                    {dateRange.from ? format(dateRange.from, "MMM dd") : t.addDate}
+                    {dateRange.from ? fmtShortDate(dateRange.from) : t.addDate}
                   </span>
                 </button>
                 <button
@@ -826,7 +830,7 @@ export default function VerticalSearch({
                   onClick={() => handleFieldClick("checkout")}
                 >
                   <span className={`text-sm ${dateRange.to ? "text-black" : "text-[#c0c0c0]"}`}>
-                    {dateRange.to ? format(dateRange.to, "MMM dd") : t.addDate}
+                    {dateRange.to ? fmtShortDate(dateRange.to) : t.addDate}
                   </span>
                 </button>
               </div>

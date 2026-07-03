@@ -317,17 +317,15 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
       const nextVal =
         operation === "increment" ? currentVal + 1 : Math.max(0, currentVal - 1);
 
-      let nextAdults = prev.adults;
-      // Airbnb rule: if we add a child, infant, or pet, we must have at least 1 adult
-      if (operation === "increment" && type !== "adults" && prev.adults === 0) {
-        nextAdults = 1;
+      const next = { ...prev, [type]: nextVal };
+      // Airbnb rule: if we add a child, infant, or pet, we must have at least
+      // 1 adult. Applied only for non-adult rows — a trailing `adults:` entry
+      // in the literal above would clobber an adults increment/decrement.
+      if (operation === "increment" && type !== "adults" && next.adults === 0) {
+        next.adults = 1;
       }
 
-      return {
-        ...prev,
-        [type]: nextVal,
-        adults: nextAdults,
-      };
+      return next;
     });
   }, []);
 
