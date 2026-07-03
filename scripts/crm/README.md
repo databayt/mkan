@@ -13,6 +13,8 @@ Tooling that materializes the [Growth Engine](../../docs/growth.md) CRM design i
 | `airbnb-parse.ts` | **G1.2** — pure parsers over Airbnb's deferred-state JSON → normalized `HomeRecord`/`HostRecord` (field names match the schema). Unit-testable. |
 | `airbnb-scrape.ts` | **G1.2** — the scraper: search sweep → PDP enrich (all photos + full data) → writes normalized records to a JSON file. |
 | `twenty-upsert.ts` | **G1.2** — reads the scraped file → upserts Home/Host + one Opportunity per new host into Twenty via the REST data API (dedup by external id). |
+| `trust-score.ts` | **G1.3** — pure rubric: host + home scores, derived checks, overall blend, hard gates (docs/growth.md §3). Unit-testable. |
+| `score-trust.ts` | **G1.3** — worker: scores the local scraped file (default) or re-scores Twenty records (`--apply`). |
 
 ## Run
 
@@ -95,9 +97,29 @@ Lat/Lng}`, CURRENCY `{amountMicros, currencyCode}`); to-one relations are the FK
 Raw amenities are mapped to the `mkanAmenities` enum on the way in. Idempotent (existing
 records skipped). The full chain: `crm:scrape` → `crm:upsert --apply`.
 
+## Trust scoring (G1.3)
+
+Computes the host + home trust scores, the derived checks (location / hotel-agency /
+data-completeness / price-sanity / duplicate), the blended overall, and the trust band
+(with hard gates), per `docs/growth.md` §3.
+
+```bash
+npx tsx scripts/crm/score-trust.ts                   # score the local scraped file → .data/airbnb-scored.json
+TWENTY_API_URL=http://localhost:3000 TWENTY_API_KEY=… \
+  pnpm crm:score --apply                             # re-score Twenty records + patch back
+```
+
+Local mode reflects the **scrape-only ceiling** — hosts stay `LOW` and homes land
+`HOLD`/`REJECT` until a host is contacted and replies (outreach engagement is worth 25 of
+the host's 100). Hotels and shared rooms hit the hotel-exclusion gate → `REJECT`; a
+great listing whose host replied + confirmed price + has re-hosted photos reaches
+`AUTO_ONBOARD` + `publishReady`. `--apply` re-scores against live CRM state and writes back
+`homeTrustScore`/`overallTrustScore`/`trustBand`/`publishReady` + checks on Home,
+`hostTrustScore`/`hostTrustBand` on Host, and the denormalized `hostTrustBand` on Opportunity.
+
 ## Still to add (later G1 steps)
 
 - The `Note` / `Task` (Activity) custom fields — `channel`, `host`, `home` (§2.6). Small;
   the "Follow-ups due" view already works on standard Task fields without them.
-- Then: `docs/growth.md` §7 — G1.3 trust scoring · G1.4 photo re-host + SR→SDG ·
-  G1.5 provision/import · G1.6 OpenClaw outreach · G1.7 wave publish.
+- Then: `docs/growth.md` §7 — G1.4 photo re-host + SR→SDG · G1.5 provision/import ·
+  G1.6 OpenClaw outreach · G1.7 wave publish.
