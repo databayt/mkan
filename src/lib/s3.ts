@@ -84,6 +84,29 @@ export async function presignUpload(opts: {
   return { presignedUrl, finalUrl: publicUrlForKey(opts.key), key: opts.key };
 }
 
+/**
+ * Server-side upload of bytes to S3 (no browser round-trip). Used by back-office
+ * jobs — e.g. re-hosting scraped photos into `uploads/`. Returns the public CDN
+ * URL, or null when S3 is unconfigured. Do not call from client code.
+ */
+export async function putObject(opts: {
+  key: string;
+  body: Uint8Array | Buffer;
+  contentType: string;
+}): Promise<string | null> {
+  const s3 = getS3Client();
+  if (!s3) return null;
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: process.env.AWS_S3_BUCKET!,
+      Key: opts.key,
+      Body: opts.body,
+      ContentType: opts.contentType,
+    }),
+  );
+  return publicUrlForKey(opts.key);
+}
+
 /** Extract the S3 key from a stored CDN/S3 URL (pathname sans leading slash). */
 export function keyFromUrl(url: string): string | null {
   try {

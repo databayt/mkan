@@ -15,6 +15,7 @@ Tooling that materializes the [Growth Engine](../../docs/growth.md) CRM design i
 | `twenty-upsert.ts` | **G1.2** — reads the scraped file → upserts Home/Host + one Opportunity per new host into Twenty via the REST data API (dedup by external id). |
 | `trust-score.ts` | **G1.3** — pure rubric: host + home scores, derived checks, overall blend, hard gates (docs/growth.md §3). Unit-testable. |
 | `score-trust.ts` | **G1.3** — worker: scores the local scraped file (default) or re-scores Twenty records (`--apply`). |
+| `photo-rehost.ts` | **G1.4** — downloads scraped Airbnb photos → re-uploads to mkan S3/CloudFront (`cdn.databayt.org`) + converts price SR→SDG. |
 | `mkan-import.ts` | **G1.5** — provisions `1000@`+ MANAGER accounts + imports trusted homes into the mkan DB as **Busy** (Listing+Location). Writes to mkan (Prisma). |
 
 ## Run
@@ -118,6 +119,25 @@ great listing whose host replied + confirmed price + has re-hosted photos reache
 `homeTrustScore`/`overallTrustScore`/`trustBand`/`publishReady` + checks on Home,
 `hostTrustScore`/`hostTrustBand` on Host, and the denormalized `hostTrustBand` on Opportunity.
 
+## Photo re-host + SR→SDG (G1.4)
+
+Airbnb's muscache photo URLs can't be hot-linked (mkan's `next.config` only allows
+`cdn.databayt.org` / S3 / CloudFront), so before a home can carry real images this worker
+downloads every scraped photo and re-uploads it to `cdn.databayt.org/mkan/uploads/<listingId>/`,
+and converts the nightly SR price to SDG at a **per-home stored rate** (never hardcoded).
+
+```bash
+npx tsx scripts/crm/photo-rehost.ts --fx-rate=160                 # dry plan
+npx tsx scripts/crm/photo-rehost.ts --fx-rate=160 --apply         # re-host to S3 + convert
+```
+
+Flags: `--in=<scored>` · `--out=<enriched>` · `--fx-rate=<SAR→SDG>` · `--limit=<N>` ·
+`--apply`. Enriches the scored file → `.data/airbnb-rehosted.json` with `photosRehosted:true`,
+CDN `photoUrls`, `priceNightSdg` + `fxRateSarSdg` + `fxRateDate`; idempotent (re-hosted homes
+skipped). Uses the server-side `putObject` in `src/lib/s3.ts`; AWS creds already live in `.env`.
+**Verified live**: re-hosted a listing's 21 photos → they serve `200 image/jpeg` from CloudFront.
+Feed the enriched file to the import (`mkan-import.ts --in=…/airbnb-rehosted.json`).
+
 ## Provision + import into mkan (G1.5)
 
 The payoff: real hosts get accounts and their listings pre-loaded. Reads the scored file →
@@ -149,7 +169,17 @@ MANUAL_REVIEW) · `--fx-rate=<SAR→SDG>` · `--limit=<N>` · `--apply` · `--ou
 
 - The `Note` / `Task` (Activity) custom fields — `channel`, `host`, `home` (§2.6). Small;
   the "Follow-ups due" view already works on standard Task fields without them.
-- **G1.4** — re-host scraped photos to `cdn.databayt.org` (so imports have real images) +
-  proper SR→SDG conversion. This unblocks full-quality G1.5 imports.
 - Then `docs/growth.md` §7 — G1.6 OpenClaw outreach · G1.7 wave publish (flip Busy→Available
   per city, per trust).
+
+## Full pipeline
+
+```bash
+pnpm crm:seed-objects --apply   # G1.1 objects + Opportunity fields
+pnpm crm:seed-views   --apply   # G1.1 views
+pnpm crm:scrape                 # G1.2 Airbnb → .data/airbnb-scrape.json
+pnpm crm:upsert       --apply   # G1.2 → Twenty
+pnpm crm:score        --apply   # G1.3 trust scores + bands
+pnpm crm:rehost --fx-rate=<r> --apply             # G1.4 photos → CDN + SR→SDG
+pnpm crm:import --in=.data/airbnb-rehosted.json --apply   # G1.5 → mkan (Busy)
+```
