@@ -2068,6 +2068,13 @@
       "guests": "Guests",
       "total": "Total",
       "viewListing": "View listing"
+    },
+    "nav": {
+      "today": "Today",
+      "calendar": "Calendar",
+      "listings": "Listings",
+      "messages": "Messages",
+      "menu": "Menu"
     }
   },
   "application": {

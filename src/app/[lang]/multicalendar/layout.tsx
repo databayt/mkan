@@ -1,6 +1,7 @@
 import { UserRole } from "@prisma/client";
 import { requireRole } from "@/lib/auth-guard";
 import HostingHeader from "@/components/hosting/hosting-header";
+import { HostingBottomNav } from "@/components/hosting/hosting-bottom-nav";
 
 // The multicalendar is a full-screen grid (Airbnb's /multicalendar), so it gets
 // its own shell: the host header on top, then a flex-fill main with no page
@@ -22,9 +23,10 @@ export default async function MulticalendarLayout({
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden">
       <HostingHeader />
-      <main id="main-content" className="min-h-0 flex-1">
+      <main id="main-content" className="min-h-0 flex-1 pb-16 lg:pb-0">
         {children}
       </main>
+      <HostingBottomNav />
     </div>
   );
 }

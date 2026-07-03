@@ -2068,6 +2068,13 @@
       "guests": "الضيوف",
       "total": "الإجمالي",
       "viewListing": "عرض القائمة"
+    },
+    "nav": {
+      "today": "اليوم",
+      "calendar": "التقويم",
+      "listings": "الإعلانات",
+      "messages": "الرسائل",
+      "menu": "القائمة"
     }
   },
   "application": {

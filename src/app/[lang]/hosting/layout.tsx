@@ -2,6 +2,7 @@ import { UserRole } from "@prisma/client"
 import { requireRole } from "@/lib/auth-guard"
 import HostingHeader from '@/components/hosting/hosting-header'
 import { ReportIssueFooter } from '@/components/report-issue/footer'
+import { HostingBottomNav } from '@/components/hosting/hosting-bottom-nav'
 
 export default async function HostingLayout({
   children,
@@ -23,10 +24,11 @@ export default async function HostingLayout({
           was hardcoded English noise on every hosting page — the targeted,
           snoozable AvailabilityPrompt (locale layout) replaces that job. */}
       <HostingHeader />
-      <main id="main-content" className="px-4 sm:px-6 lg:px-8">
+      <main id="main-content" className="px-4 pb-20 sm:px-6 lg:px-8 lg:pb-0">
         {children}
         <ReportIssueFooter />
       </main>
+      <HostingBottomNav />
     </div>
   )
 }
