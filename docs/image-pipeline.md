@@ -7,6 +7,14 @@ not by ImageKit and not by Vercel's optimizer. ImageKit has been fully retired.
 Mirrors the proven hogwarts pattern (`catalog/image.ts`, `cloudfront-url.ts`,
 `api/blob/presign`, `use-image-optimization`).
 
+> **Status: ✅ LIVE (2026-07-03).** Stock variants uploaded to `databayt-cdn`,
+> `NEXT_PUBLIC_USE_CDN_VARIANTS=true` + AWS creds set in prod — homes photos
+> serve pre-made WebP straight from `cdn.databayt.org/mkan/stock/*-{sm,md,lg}.webp`
+> (off Vercel), and uploads are configured (`checks.storage: true`). Verified on
+> `mk.databayt.org`. **Follow-up (hardening):** the runtime creds are the shared
+> `hogwarts-s3-uploader` IAM user (broad `databayt-cdn` write); replace with an
+> mkan-scoped user limited to `mkan/uploads/*`.
+
 ## CDN namespace (databayt convention)
 
 `cdn.ts` classifies every asset by its first path segment (codebase
