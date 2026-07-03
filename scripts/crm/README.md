@@ -17,6 +17,8 @@ Tooling that materializes the [Growth Engine](../../docs/growth.md) CRM design i
 | `score-trust.ts` | **G1.3** — worker: scores the local scraped file (default) or re-scores Twenty records (`--apply`). |
 | `photo-rehost.ts` | **G1.4** — downloads scraped Airbnb photos → re-uploads to mkan S3/CloudFront (`cdn.databayt.org`) + converts price SR→SDG. |
 | `mkan-import.ts` | **G1.5** — provisions `1000@`+ MANAGER accounts + imports trusted homes into the mkan DB as **Busy** (Listing+Location). Writes to mkan (Prisma). |
+| `outreach-templates.ts` | **G1.6** — pure AR/EN message templates (first-touch, handover, follow-up), verbatim from docs §5.4. |
+| `outreach.ts` | **G1.6** — drafts personalized host messages → outbox (human-send default) or sends via OpenClaw (`--apply`). |
 
 ## Run
 
@@ -165,12 +167,30 @@ MANUAL_REVIEW) · `--fx-rate=<SAR→SDG>` · `--limit=<N>` · `--apply` · `--ou
   **Busy** — going Available is the trust-gate flip, never done here.
 - Numbering verified live: 0 existing `≥1000` accounts → next is `1000` (clear of the demo pool).
 
+## Host outreach (G1.6)
+
+Drafts the personalized WhatsApp message per host (AR primary / EN — verbatim §5.4 copy) and
+writes an **outbox**. The design's safe default is **human-send** (a person reviews + sends);
+`--apply` sends via **OpenClaw** for hosts whose number is known.
+
+```bash
+npx tsx scripts/crm/outreach.ts                            # draft first-touch (human-send)
+npx tsx scripts/crm/outreach.ts --type=handover --ledger=.data/mkan-import-ledger.json
+OPENCLAW_URL=… OPENCLAW_TOKEN=… pnpm crm:outreach --apply  # automate via OpenClaw
+```
+
+Flags: `--in=<scored/rehosted>` · `--type=<first-touch|handover|follow-up>` · `--lang=<AR|EN>` ·
+`--ledger=<import ledger>` · `--limit=<N>` · `--out=<outbox>` · `--apply`. Scraped hosts have
+no phone (Airbnb hides it) → drafts land as `needs-contact-hunt` until a WhatsApp number is on
+the host; then `--apply` sends. Full CRM Activity logging awaits the Note/Task fields (below);
+OpenClaw's outbound API varies by deployment — adjust the payload in `sendViaOpenClaw`.
+
 ## Still to add (later G1 steps)
 
 - The `Note` / `Task` (Activity) custom fields — `channel`, `host`, `home` (§2.6). Small;
-  the "Follow-ups due" view already works on standard Task fields without them.
-- Then `docs/growth.md` §7 — G1.6 OpenClaw outreach · G1.7 wave publish (flip Busy→Available
-  per city, per trust).
+  unlocks logging each outreach touch as a CRM Activity.
+- **G1.7 — wave publish**: the trust-gated flip of imported listings from Busy → Available,
+  per city, per trust band (`docs/growth.md` §5.5, §7). The last step — lights up inventory.
 
 ## Full pipeline
 
@@ -180,6 +200,7 @@ pnpm crm:seed-views   --apply   # G1.1 views
 pnpm crm:scrape                 # G1.2 Airbnb → .data/airbnb-scrape.json
 pnpm crm:upsert       --apply   # G1.2 → Twenty
 pnpm crm:score        --apply   # G1.3 trust scores + bands
+pnpm crm:outreach               # G1.6 draft host WhatsApp (human-send) → contact + get agreement
 pnpm crm:rehost --fx-rate=<r> --apply             # G1.4 photos → CDN + SR→SDG
-pnpm crm:import --in=.data/airbnb-rehosted.json --apply   # G1.5 → mkan (Busy)
+pnpm crm:import --in=.data/airbnb-rehosted.json --apply   # G1.5 → mkan (Busy, agreed hosts only)
 ```
