@@ -569,6 +569,13 @@ Neon restore drill, off-site `pg_dump`, retention crons (AuditLog/EmailLog/Notif
 
 ---
 
+## 11G. Growth (post-launch)
+
+### Epic G1 — Airbnb→mkan seeding & CRM lead-gen · P2 · ⬜ 0/8
+Scrape real Sudan homes/hosts (Airbnb + fb pages / wa groups / other rentals) → vet in the **Twenty CRM** by a trust rubric → provision real-host accounts (`1000@mkan.org`+, MANAGER) → hand over pre-loaded listings via **OpenClaw/WhatsApp** → follow up → publish only trusted homes in **per-city waves** (Port Sudan first). **Full design + runbook: [docs/growth.md](./docs/growth.md).** Stories: G1.1 CRM data model · G1.2 scraper+ingest · G1.3 trust scoring · G1.4 photo re-host + SR→SDG · G1.5 provision/import scripts · G1.6 OpenClaw outreach · G1.7 wave publish · G1.8 other sources.
+
+---
+
 ## 12. Cross-epic dependency graph
 
 ```

@@ -20,6 +20,16 @@ How the demo/launch accounts are provisioned. See [LAUNCH.md](./LAUNCH.md) for t
 
 > ⚠️ **0001 and 0002 are REAL — keep them real.** Their homes are genuine Port Sudan properties. If you ever re-run the full `seed:listings` (which wipes ALL listings and rebuilds generic ones), **re-run `seed:heirs` AND `seed:daqna` afterward** to restore them. Order: full seed first, then the two scoped real seeds.
 
+## Real scraped hosts (`1000@mkan.org`+)
+Real owners onboarded from Airbnb (and later fb pages / wa groups / other rental sites) via the **[Growth Engine](./docs/growth.md)** get accounts **starting at `1000`** — `1000, 1001, …`, role `MANAGER`, `emailVerified`, username == the number, **mint-forward (never recycled)**, kept clear of the demo pool. Their homes import **Busy** (`isPublished:false`) and go **Available only through the CRM trust gate** (host confirmed + trust band passes). `0101–0999` stays reserved for demo growth. Full flow: [docs/growth.md](./docs/growth.md) §5 + §8.
+
+| Range | Meaning |
+|---|---|
+| `0001–0002` | Real Port Sudan homes (heirs, Daqna) — keep real. |
+| `0003–0100` | Demo/synthetic hosts (`seed:listings`). |
+| `0101–0999` | Reserved for demo growth. |
+| **`1000+`** | **Real scraped hosts** (Growth Engine) — Busy until the trust gate. |
+
 ## Re-seeding
 Both scripts import the DB client before dotenv loads, so **pre-load the env** (bare `pnpm seed:*` fails `DatabaseDoesNotExist`):
 
