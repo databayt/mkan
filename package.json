@@ -32,6 +32,7 @@
     "crm:scrape": "tsx scripts/crm/airbnb-scrape.ts",
     "crm:upsert": "tsx scripts/crm/twenty-upsert.ts",
     "crm:score": "tsx scripts/crm/score-trust.ts",
+    "crm:import": "tsx scripts/crm/mkan-import.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

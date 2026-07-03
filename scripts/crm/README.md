@@ -15,6 +15,7 @@ Tooling that materializes the [Growth Engine](../../docs/growth.md) CRM design i
 | `twenty-upsert.ts` | **G1.2** — reads the scraped file → upserts Home/Host + one Opportunity per new host into Twenty via the REST data API (dedup by external id). |
 | `trust-score.ts` | **G1.3** — pure rubric: host + home scores, derived checks, overall blend, hard gates (docs/growth.md §3). Unit-testable. |
 | `score-trust.ts` | **G1.3** — worker: scores the local scraped file (default) or re-scores Twenty records (`--apply`). |
+| `mkan-import.ts` | **G1.5** — provisions `1000@`+ MANAGER accounts + imports trusted homes into the mkan DB as **Busy** (Listing+Location). Writes to mkan (Prisma). |
 
 ## Run
 
@@ -117,9 +118,38 @@ great listing whose host replied + confirmed price + has re-hosted photos reache
 `homeTrustScore`/`overallTrustScore`/`trustBand`/`publishReady` + checks on Home,
 `hostTrustScore`/`hostTrustBand` on Host, and the denormalized `hostTrustBand` on Opportunity.
 
+## Provision + import into mkan (G1.5)
+
+The payoff: real hosts get accounts and their listings pre-loaded. Reads the scored file →
+provisions `1000@mkan.org`+ MANAGER accounts (mint-forward, `emailVerified`, random
+bootstrap password) → imports each trusted home into the **mkan DB** as **Busy**
+(`Listing` + `Location`, `isPublished:false`). This is the one step that writes to mkan.
+
+```bash
+npx tsx scripts/crm/mkan-import.ts --min-band=HOLD              # dry plan (no writes)
+FORCE_SEED=1 npx tsx scripts/crm/mkan-import.ts --apply         # write Busy listings to mkan
+```
+
+Flags: `--in=<scored file>` · `--min-band=<AUTO_ONBOARD|MANUAL_REVIEW|HOLD>` (default
+MANUAL_REVIEW) · `--fx-rate=<SAR→SDG>` · `--limit=<N>` · `--apply` · `--out=<ledger>`.
+
+- **Consent gate:** only homes that are NOT hard-gated (hotel/duplicate/location-fail) and
+  meet `--min-band` import. In real operation the CRM marks a home ready at the ONBOARDING
+  stage (host agreed); `--min-band` is the manual override for a vetted batch. **Do not
+  `--apply` for hosts who haven't agreed to join.**
+- **Idempotent** via a ledger (`.data/mkan-import-ledger.json`) — mkan `Listing`/`User` have
+  no external-id column, so the ledger maps `airbnbListingId`→`mkanListingId` and
+  `airbnbHostId`→account; re-runs skip what's imported. Prod-guarded (`FORCE_SEED`).
+- **Photos** import empty (app placeholder) until **G1.4** re-hosts them; **price** imports
+  only if SDG is known or `--fx-rate` is given (proper SR→SDG is **G1.4**). Everything stays
+  **Busy** — going Available is the trust-gate flip, never done here.
+- Numbering verified live: 0 existing `≥1000` accounts → next is `1000` (clear of the demo pool).
+
 ## Still to add (later G1 steps)
 
 - The `Note` / `Task` (Activity) custom fields — `channel`, `host`, `home` (§2.6). Small;
   the "Follow-ups due" view already works on standard Task fields without them.
-- Then: `docs/growth.md` §7 — G1.4 photo re-host + SR→SDG · G1.5 provision/import ·
-  G1.6 OpenClaw outreach · G1.7 wave publish.
+- **G1.4** — re-host scraped photos to `cdn.databayt.org` (so imports have real images) +
+  proper SR→SDG conversion. This unblocks full-quality G1.5 imports.
+- Then `docs/growth.md` §7 — G1.6 OpenClaw outreach · G1.7 wave publish (flip Busy→Available
+  per city, per trust).
