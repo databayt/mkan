@@ -5,6 +5,10 @@ import { getDictionary } from "@/components/internationalization/dictionaries";
 import type { Locale } from "@/components/internationalization/config";
 import HeroSection from "@/components/site/HeroSection";
 
+// Rendered on-demand: the landing page fetches listings from the DB, and the
+// CI build has no reachable database, so it must not be prerendered at build.
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({
   params,
 }: {

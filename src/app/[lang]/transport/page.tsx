@@ -22,8 +22,10 @@ import { createMetadata } from '@/lib/metadata';
 import { PHASE1 } from '@/config/phase-flags';
 import { cityLabel } from '@/components/transport/city-names';
 
-// ISR: Revalidate every 10 minutes (assembly points rarely change)
-export const revalidate = 600;
+// Rendered on-demand: this page queries the DB (assembly points / popular
+// routes) at render time, and the CI build environment has no reachable
+// database, so it must not be prerendered/ISR-generated at build time.
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
