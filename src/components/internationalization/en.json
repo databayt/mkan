@@ -2081,7 +2081,11 @@
       "checkOut": "Check-out",
       "guests": "Guests",
       "total": "Total",
-      "viewListing": "View listing"
+      "viewListing": "View listing",
+      "traveling": "Traveling",
+      "support": "Support",
+      "emptyTraveling": "Messages from your trips will appear here.",
+      "emptySupport": "Messages with support will appear here."
     },
     "nav": {
       "today": "Today",

@@ -150,13 +150,16 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewType }) => {
           {description}
         </p>
 
+        {/* The live mobile card stops at title + subtitle; price and the
+            publish toggle are desktop-only (mobile manages them in the
+            editor / availability prompt). */}
         {listing.pricePerNight && (
-          <p className="text-xs sm:text-sm font-medium text-gray-900">
+          <p className="hidden text-xs font-medium text-gray-900 sm:text-sm lg:block">
             {formatCurrency(listing.pricePerNight, locale)}/{dict.rental?.listing?.perNight ?? "night"}
           </p>
         )}
 
-        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+        <div className="mt-3 hidden lg:block" onClick={(e) => e.stopPropagation()}>
           <PublishToggleButton listing={listing} />
         </div>
       </div>

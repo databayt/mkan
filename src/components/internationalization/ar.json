@@ -2081,7 +2081,11 @@
       "checkOut": "تسجيل المغادرة",
       "guests": "الضيوف",
       "total": "الإجمالي",
-      "viewListing": "عرض القائمة"
+      "viewListing": "عرض القائمة",
+      "traveling": "السفر",
+      "support": "الدعم",
+      "emptyTraveling": "ستظهر رسائل رحلاتك هنا.",
+      "emptySupport": "ستظهر رسائل الدعم هنا."
     },
     "nav": {
       "today": "اليوم",

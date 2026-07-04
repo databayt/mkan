@@ -12,12 +12,12 @@ import {
   BookOpen,
   HelpCircle,
   UserPlus,
-  HousePlus,
+  Plus,
   Users,
-  LogOut,
+  DoorOpen,
   ChevronRight,
   ChevronLeft,
-  ArrowLeftRight,
+  Repeat,
 } from "lucide-react";
 import type { Locale } from "@/components/internationalization/config";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -89,13 +89,13 @@ export default function HostingMenuContent({
     ],
     [
       { key: "cohost", icon: UserPlus, label: t.findCoHost ?? "Find a co-host", href: `/${lang}/co-hosts` },
-      { key: "create", icon: HousePlus, label: t.createListing ?? "Create a new listing", href: `/${lang}/host` },
+      { key: "create", icon: Plus, label: t.createListing ?? "Create a new listing", href: `/${lang}/host` },
       { key: "refer", icon: Users, label: t.referHost ?? "Refer a host", href: `/${lang}/refer` },
     ],
     [
       {
         key: "logout",
-        icon: LogOut,
+        icon: DoorOpen,
         label: t.logout ?? "Log out",
         onClick: () => signOut({ callbackUrl: `/${lang}`, redirect: true }),
       },
@@ -138,19 +138,19 @@ export default function HostingMenuContent({
         {t.title ?? "Menu"}
       </h1>
 
-      {/* promo card */}
+      {/* promo card — warm beige, 20px radius, 24/14 padding (measured) */}
       <div
-        className="mt-12 flex flex-col items-center bg-muted px-6 py-8 text-center"
-        style={{ borderRadius: 20 }}
+        className="mt-12 mb-10 flex flex-col items-center px-3.5 py-6 text-center"
+        style={{ borderRadius: 20, backgroundColor: "#F4F2EC" }}
       >
         <Image
           src={cdn.product("hosting/today.png")}
           alt=""
-          width={132}
-          height={132}
+          width={150}
+          height={150}
           className="object-contain"
         />
-        <h2 className="mt-4 text-lg font-medium leading-6 text-foreground">
+        <h2 className="mt-3 text-lg font-medium leading-6 text-foreground">
           {t.newToHosting ?? "New to hosting?"}
         </h2>
         <p className="mt-1 max-w-[260px] text-sm leading-5 text-muted-foreground">
@@ -158,14 +158,14 @@ export default function HostingMenuContent({
         </p>
         <Link
           href={`/${lang}/help`}
-          className="mt-6 rounded-lg bg-background px-5 py-[11px] text-sm font-medium leading-[18px] text-foreground transition-colors hover:bg-background/80"
+          className="mt-6 rounded-lg bg-white px-5 py-[11px] text-sm font-medium leading-[18px] text-foreground transition-colors hover:bg-white/80"
         >
           {t.getStarted ?? "Get started"}
         </Link>
       </div>
 
       {/* row groups */}
-      <nav className="mt-6">
+      <nav>
         {groups.map((group, gi) => (
           <ul
             key={gi}
@@ -219,13 +219,14 @@ export default function HostingMenuContent({
         </p>
       </div>
 
-      {/* floating "Switch to traveling" pill — sits above the tab bar */}
+      {/* floating "Switch to traveling" pill — sits above the tab bar; the
+          live pill routes to the guest homepage */}
       <div className="pointer-events-none fixed inset-x-0 bottom-20 z-40 flex justify-center lg:hidden">
         <Link
-          href={`/${lang}/listings`}
+          href={`/${lang}`}
           className="pointer-events-auto flex h-12 items-center gap-2 rounded-full bg-foreground px-5 text-sm font-medium text-background shadow-lg transition-transform active:scale-95"
         >
-          <ArrowLeftRight className="size-4" />
+          <Repeat className="size-4" />
           {t.switchToTraveling ?? "Switch to traveling"}
         </Link>
       </div>

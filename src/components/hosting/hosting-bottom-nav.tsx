@@ -87,14 +87,22 @@ export function HostingBottomNav() {
       <ul className="flex items-stretch">
         {ITEMS.map(({ key, href, Icon, match }) => {
           const active = match(pathname);
+          // Every tab navigates — airbnb mobile web routes "Menu" to its own
+          // /hosting/menu page (the account-sheet variant lives unused in
+          // hosting-menu-sheet.tsx pending a product call).
           return (
             <li key={key} className="flex-1">
               <Link
                 href={`/${lang}${href}`}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex flex-col items-center gap-1 pt-2 pb-1.5 text-[10px] font-medium",
-                  active ? "text-[#E31C5F]" : "text-[#222222]"
+                  // Airbnb bottom-nav tab (measured from the live app): 24px
+                  // icon, 10px label, active #DA1249 / weight 500, inactive
+                  // #6A6A6A / weight 400 — icon colour follows via currentColor.
+                  "flex flex-col items-center gap-1 pt-2 pb-1.5 text-[10px]",
+                  active
+                    ? "text-[#DA1249] font-medium"
+                    : "text-[#6A6A6A] font-normal"
                 )}
               >
                 <Icon className="size-6" />

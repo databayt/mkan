@@ -139,29 +139,28 @@ export default function MobileCalendar({
 
   return (
     <div className="flex h-full flex-col bg-background">
-      {/* sticky header: month label + circle actions + weekday row */}
+      {/* sticky header — measured stack: circle actions on their own row,
+          then the 32px month label (52px row), then the weekday letters */}
       <div className="px-4 pb-0 pt-2">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[32px] font-semibold leading-9 text-foreground">{headerLabel}</h1>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPickerOpen(true)}
-              aria-label={t.changeView ?? "Change calendar view"}
-              className="flex size-10 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70"
-            >
-              <CalendarRange className="size-4" />
-            </button>
-            <Link
-              href={`/${lang}/hosting/listings/editor/${listing.id}/details/availability`}
-              aria-label={t.settings ?? "Settings"}
-              className="flex size-10 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70"
-            >
-              <Settings className="size-4" />
-            </Link>
-          </div>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            aria-label={t.changeView ?? "Change calendar view"}
+            className="flex size-10 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70"
+          >
+            <CalendarRange className="size-4" />
+          </button>
+          <Link
+            href={`/${lang}/hosting/listings/editor/${listing.id}/details/availability`}
+            aria-label={t.settings ?? "Settings"}
+            className="flex size-10 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70"
+          >
+            <Settings className="size-4" />
+          </Link>
         </div>
-        <div className="grid grid-cols-7 pb-2 pt-3 text-center text-xs font-medium text-muted-foreground">
+        <h1 className="py-2 text-[32px] font-semibold leading-9 text-foreground">{headerLabel}</h1>
+        <div className="grid grid-cols-7 pb-2 text-center text-xs font-medium text-muted-foreground">
           {weekdays.map((w, i) => (
             <span key={i}>{w}</span>
           ))}
@@ -327,7 +326,7 @@ const MonthSection = React.forwardRef<
 
   return (
     <section ref={ref}>
-      <h3 className="pb-3 pt-6 text-[22px] font-semibold leading-7 text-foreground">{label}</h3>
+      <h3 className="pb-6 pt-8 text-[22px] font-semibold leading-[26px] text-foreground">{label}</h3>
       <div className="grid grid-cols-7">
         {Array.from({ length: leading }, (_, i) => (
           <span key={`b${i}`} />
@@ -342,7 +341,9 @@ const MonthSection = React.forwardRef<
               type="button"
               key={+day}
               onClick={() => onDayClick(day)}
-              className={`relative flex min-h-[64px] flex-col items-center gap-1 rounded-lg pb-2 pt-2 outline-none ${
+              // 92px week pitch measured on the live grid
+              style={{ minHeight: 88 }}
+              className={`relative flex flex-col items-center gap-1.5 rounded-lg pb-3 pt-2.5 outline-none ${
                 selected ? "ring-2 ring-inset ring-foreground" : ""
               } ${info.type === "reserved" ? "bg-foreground/[0.06]" : ""}`}
             >

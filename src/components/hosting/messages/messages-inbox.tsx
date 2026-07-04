@@ -15,6 +15,7 @@ import {
   ChevronRight,
   ChevronLeft,
   MessageSquare,
+  MessagesSquare,
 } from "lucide-react";
 import type { Locale } from "@/components/internationalization/config";
 import { useIsDesktop } from "@/hooks/use-is-desktop";
@@ -31,6 +32,10 @@ interface MessagesDict {
   title?: string;
   all?: string;
   unread?: string;
+  traveling?: string;
+  support?: string;
+  emptyTraveling?: string;
+  emptySupport?: string;
   search?: string;
   writeMessage?: string;
   send?: string;
@@ -80,7 +85,7 @@ export default function MessagesInbox({
   const BackArrow = isRTL ? ArrowRight : ArrowLeft;
   const DetailChevron = isRTL ? ChevronLeft : ChevronRight;
 
-  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [filter, setFilter] = useState<"all" | "unread" | "traveling" | "support">("all");
   const [query, setQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [messages, setMessages] = useState<ThreadMessage[]>(selected?.messages ?? []);
@@ -108,6 +113,10 @@ export default function MessagesInbox({
     () =>
       conversations.filter((c) => {
         if (filter === "unread" && !c.unread) return false;
+        // Host inbox only carries guest-stay threads today; the traveling and
+        // support tabs mirror the live chip row and stay empty until those
+        // message sources exist.
+        if (filter === "traveling" || filter === "support") return false;
         if (query) {
           const hay = `${c.guestName} ${c.lastMessage} ${c.listingTitle ?? ""}`.toLowerCase();
           if (!hay.includes(query.toLowerCase())) return false;
@@ -180,12 +189,31 @@ export default function MessagesInbox({
           </div>
         </div>
 
-        {/* filter pills */}
+        {/* filter pills — mobile mirrors the live All/Traveling/Support row;
+            desktop keeps its original All/Unread pair */}
         <div className="flex items-center gap-2 px-4 py-3 sm:px-6">
           <FilterPill active={filter === "all"} onClick={() => setFilter("all")}>
             {t.all ?? "All"}
           </FilterPill>
-          <FilterPill active={filter === "unread"} onClick={() => setFilter("unread")}>
+          <FilterPill
+            className="lg:hidden"
+            active={filter === "traveling"}
+            onClick={() => setFilter("traveling")}
+          >
+            {t.traveling ?? "Traveling"}
+          </FilterPill>
+          <FilterPill
+            className="lg:hidden"
+            active={filter === "support"}
+            onClick={() => setFilter("support")}
+          >
+            {t.support ?? "Support"}
+          </FilterPill>
+          <FilterPill
+            className="hidden lg:inline-flex"
+            active={filter === "unread"}
+            onClick={() => setFilter("unread")}
+          >
             {t.unread ?? "Unread"}
           </FilterPill>
         </div>
@@ -206,10 +234,20 @@ export default function MessagesInbox({
         {/* rows */}
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4 sm:px-3">
           {filtered.length === 0 ? (
-            <div className="px-4 py-10 text-center">
-              <p className="text-sm font-medium text-foreground">{t.noConversations ?? "No messages yet"}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t.noConversationsHint ?? "Messages from guests will appear here."}
+            <div className="px-4 pb-10 pt-24 text-center lg:pt-10">
+              <MessagesSquare
+                className="mx-auto mb-4 size-9 text-foreground lg:hidden"
+                strokeWidth={1.2}
+              />
+              <p className="text-base font-semibold text-foreground lg:text-sm lg:font-medium">
+                {t.noConversations ?? "No messages yet"}
+              </p>
+              <p className="mx-auto mt-1 max-w-[260px] text-sm text-muted-foreground">
+                {filter === "traveling"
+                  ? (t.emptyTraveling ?? "Messages from your trips will appear here.")
+                  : filter === "support"
+                    ? (t.emptySupport ?? "Messages with support will appear here.")
+                    : (t.noConversationsHint ?? "Messages from guests will appear here.")}
               </p>
             </div>
           ) : (
@@ -448,10 +486,12 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 function FilterPill({
   active,
   onClick,
+  className = "",
   children,
 }: {
   active: boolean;
   onClick: () => void;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -464,7 +504,7 @@ function FilterPill({
         active
           ? "bg-foreground text-background"
           : "bg-muted text-foreground hover:bg-muted/70 lg:border lg:border-border lg:bg-transparent lg:hover:bg-muted"
-      }`}
+      } ${className}`}
     >
       {children}
     </button>

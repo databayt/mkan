@@ -66,7 +66,10 @@ const HostingHeader = () => {
   ).toUpperCase();
 
   return (
-    <header className="bg-muted px-10">
+    // Desktop only. On mobile airbnb.com/hosting has NO top header — the
+    // HostingBottomNav (lg:hidden) carries navigation and the "Menu" tab holds
+    // the account actions. Header shows at lg+ where the bottom nav hides.
+    <header className="hidden lg:block bg-muted px-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative flex items-center justify-between h-16">
           {/* Left side - Logo */}
