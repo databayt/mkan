@@ -119,6 +119,26 @@ async function runApply() {
   console.log(`\n⚖️  Trust scoring (apply) → ${REST}\n`);
 
   const homes = listOf(await rest('GET', 'homes?limit=200&depth=1'), 'homes');
+  // Twenty returns CURRENCY fields as { amountMicros, currencyCode } composites,
+  // but the scorer's HomeLike reads priceNightSar/Sdg as plain numbers. Without
+  // this, market medians + priceSanityRatio go NaN/null and silently drag every
+  // score toward REJECT. Normalize the composite back to a number at the boundary.
+  // A CURRENCY composite always collapses to number-or-null — note an unset price
+  // comes back as { amountMicros: null }, which must become null (NOT the object),
+  // else `priceNightSdg ?? priceNightSar` picks the truthy {} and medians go NaN.
+  const toAmount = (v: any) =>
+    v && typeof v === 'object'
+      ? (v.amountMicros != null ? v.amountMicros / 1_000_000 : null)
+      : (v ?? null);
+  for (const h of homes) {
+    h.priceNightSar = toAmount(h.priceNightSar);
+    h.priceNightSdg = toAmount(h.priceNightSdg);
+    // Coords round-trip inside the ADDRESS composite (homeAddress.addressLat/Lng),
+    // but the scorer reads flat latitude/longitude — lift them back or locationCheck
+    // is stuck UNCHECKED and every home silently loses its location points.
+    h.latitude = h.latitude ?? h.homeAddress?.addressLat ?? null;
+    h.longitude = h.longitude ?? h.homeAddress?.addressLng ?? null;
+  }
   const hosts = listOf(await rest('GET', 'hosts?limit=200'), 'hosts');
   const opps = listOf(await rest('GET', 'opportunities?limit=200&depth=1'), 'opportunities');
   const hostById = new Map(hosts.map((h: any) => [h.id, h]));

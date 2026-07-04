@@ -107,7 +107,8 @@ export const HOME: ObjectDef = {
     { name: 'roomType', label: 'Room type', type: 'SELECT', options: ['ENTIRE_HOME', 'PRIVATE_ROOM', 'SHARED_ROOM', 'HOTEL_ROOM'] },
     { name: 'airbnbCategory', label: 'Airbnb category', type: 'TEXT', description: 'Raw category, e.g. "Entire villa".' },
     { name: 'city', label: 'City', type: 'SELECT', options: ['KHARTOUM', 'OMDURMAN', 'BAHRI', 'EAST_NILE', 'PORT_SUDAN', 'OTHER'], icon: 'IconBuildingCommunity', description: 'Normalized city (wave-rollout key).' },
-    { name: 'address', label: 'Address', type: 'ADDRESS', icon: 'IconMapPin', description: 'Full geocoded location (incl. lat/lng subfields) → mkan Location.' },
+    // NB: "address" is a reserved field name in Twenty — must use a prefixed name.
+    { name: 'homeAddress', label: 'Address', type: 'ADDRESS', icon: 'IconMapPin', description: 'Full geocoded location (incl. lat/lng subfields) → mkan Location.' },
     { name: 'bedrooms', label: 'Bedrooms', type: 'NUMBER' },
     { name: 'beds', label: 'Beds', type: 'NUMBER' },
     { name: 'bathrooms', label: 'Bathrooms', type: 'NUMBER' },

@@ -103,7 +103,8 @@ function homeBody(h: HomeRecord, hostId: string | null) {
     roomType: h.roomType ?? undefined,
     airbnbCategory: h.airbnbCategory ?? undefined,
     city: h.city,
-    address: address(h),
+    homeAddress: address(h), // "address" is reserved in Twenty; field is homeAddress
+
     bedrooms: h.bedrooms ?? undefined,
     beds: h.beds ?? undefined,
     bathrooms: h.bathrooms ?? undefined,
