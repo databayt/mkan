@@ -21,6 +21,7 @@
 import { config } from 'dotenv';
 import { readFileSync } from 'node:fs';
 import type { HomeRecord, HostRecord } from './airbnb-parse';
+import { toUpperSnake } from './twenty-schema'; // SELECT values must match the seeded options (UPPER_SNAKE)
 
 config({ override: true }); // load central .env (TWENTY_API_URL / TWENTY_API_KEY)
 
@@ -108,7 +109,7 @@ function homeBody(h: HomeRecord, hostId: string | null) {
     bathrooms: h.bathrooms ?? undefined,
     guestCapacity: h.guestCapacity ?? undefined,
     amenitiesRaw: h.amenitiesRaw.length ? h.amenitiesRaw : undefined,
-    mkanAmenities: amen.length ? amen : undefined,
+    mkanAmenities: amen.length ? amen.map(toUpperSnake) : undefined,
     petsAllowed: h.amenitiesRaw.some((a) => /pets? allowed/i.test(a)) || undefined,
     parkingIncluded: h.amenitiesRaw.some((a) => /free parking/i.test(a)) || undefined,
     photoUrls: linkMany(h.photoUrls),
@@ -118,7 +119,7 @@ function homeBody(h: HomeRecord, hostId: string | null) {
     priceNightSar: currency(h.priceNightSar, 'SAR'),
     avgRating: h.avgRating ?? undefined,
     reviewCount: h.reviewCount ?? undefined,
-    mkanPropertyType: h.mkanPropertyType ?? undefined,
+    mkanPropertyType: h.mkanPropertyType ? toUpperSnake(h.mkanPropertyType) : undefined,
     homeStatus: 'SCRAPED',
     mkanPublishState: 'NOT_IMPORTED',
     trustBand: 'UNSCORED',
