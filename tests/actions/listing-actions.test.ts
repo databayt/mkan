@@ -342,7 +342,10 @@ describe("publishListing", () => {
     await expect(publishListing(1)).rejects.toThrow("Location is required");
   });
 
-  it("throws when listing has no photos", async () => {
+  it("publishes even when the listing has no photos (phase 1 — branded placeholder)", async () => {
+    // Photos are deliberately NOT required to publish: many Port Sudan owners
+    // list without them, and a photo-less Busy home must still be flippable to
+    // Available by the CRM wave-publish step. See publishListing() in the source.
     mockAuth.mockResolvedValue(authenticatedSession as never);
     mockDb.listing.findUnique.mockResolvedValueOnce({
       id: 1,
@@ -356,8 +359,11 @@ describe("publishListing", () => {
       location: { id: 1 },
       photoUrls: [],
     } as never);
+    mockDb.listing.update.mockResolvedValue({ id: 1, isPublished: true } as never);
 
-    await expect(publishListing(1)).rejects.toThrow("photo is required");
+    const result = await publishListing(1);
+
+    expect(result).toHaveProperty("success", true);
   });
 
   it("publishes valid listing", async () => {

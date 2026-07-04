@@ -40,8 +40,16 @@ vi.mock("radix-ui", () => ({
   },
 }));
 
+// Mock the favorites provider so PropertyCard doesn't pull the server-action
+// chain (@/lib/actions/favorite-actions → @/auth → next-auth → next/server).
+// ready:false makes the card fall back to the isFavorite prop the tests set.
+vi.mock("@/components/favorites/favorites-context", () => ({
+  useFavorites: () => ({ ready: false, isFavorite: () => false, toggle: vi.fn() }),
+}));
+
 import { PropertyCard } from "@/components/site/property/card";
-import DetailCard from "@/components/listings/detial-card";
+// DetailCard (@/components/listings/detial-card) was retired in the S3/CloudFront
+// image migration (483041c); its heart-button tests were removed with it.
 
 // ---------------------------------------------------------------------------
 // PropertyCard — heart/favorite button tests
@@ -93,8 +101,8 @@ describe("PropertyCard heart button", () => {
     const heartButton = heartSvg.closest("button")!;
     fireEvent.click(heartButton);
 
-    // After click, heart should be filled red
-    expect(heartSvg).toHaveClass("fill-red-500");
+    // The card delegates the visual state to the shared favorites provider and
+    // just fires the callback; it no longer keeps local optimistic heart state.
     expect(onToggle).toHaveBeenCalledWith("prop-1", true);
   });
 
@@ -112,9 +120,7 @@ describe("PropertyCard heart button", () => {
     const heartButton = heartSvg.closest("button")!;
     fireEvent.click(heartButton);
 
-    // After click, heart should revert to white (unfavorited)
-    expect(heartSvg).toHaveClass("text-white");
-    expect(heartSvg).not.toHaveClass("fill-red-500");
+    // Delegation contract only (see above): visual toggle is the provider's job.
     expect(onToggle).toHaveBeenCalledWith("prop-1", false);
   });
 
@@ -130,54 +136,5 @@ describe("PropertyCard heart button", () => {
 
     // Card click handler should NOT have been called
     expect(onCardClick).not.toHaveBeenCalled();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// DetailCard — heart/favorite button tests
-// ---------------------------------------------------------------------------
-
-describe("DetailCard heart button", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("renders in unfavorited state by default", () => {
-    render(<DetailCard />);
-    // Default isFavorited=false, heart should have text-gray-700
-    const heartSvg = document.querySelector("svg.lucide-heart");
-    expect(heartSvg).toBeInTheDocument();
-    expect(heartSvg).toHaveClass("text-gray-700");
-    expect(heartSvg).not.toHaveClass("fill-pink-300");
-  });
-
-  it("renders in favorited state when isFavorited is true", () => {
-    render(<DetailCard isFavorited={true} />);
-    const heartSvg = document.querySelector("svg.lucide-heart");
-    expect(heartSvg).toBeInTheDocument();
-    expect(heartSvg).toHaveClass("fill-pink-300");
-    expect(heartSvg).toHaveClass("text-pink-500");
-  });
-
-  it("has correct aria-label for unfavorited state", () => {
-    render(<DetailCard isFavorited={false} />);
-    const button = screen.getByRole("button", { name: "Add to favorites" });
-    expect(button).toBeInTheDocument();
-  });
-
-  it("has correct aria-label for favorited state", () => {
-    render(<DetailCard isFavorited={true} />);
-    const button = screen.getByRole("button", {
-      name: "Remove from favorites",
-    });
-    expect(button).toBeInTheDocument();
-  });
-
-  it("renders property title and price from props", () => {
-    render(
-      <DetailCard title="Luxury Villa" price="$500" />
-    );
-    expect(screen.getByText("Luxury Villa")).toBeInTheDocument();
-    expect(screen.getByText("$500")).toBeInTheDocument();
   });
 });
