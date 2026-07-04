@@ -122,7 +122,7 @@ export default function HostingContent({
   const visible = activeTab === 'today' ? todayReservations : upcomingReservations;
 
   const firstName = (session.user?.name ?? session.user?.email ?? '')
-    .split(/[@\s]/)[0];
+    .split(/[@\s]/)[0] ?? '';
 
   const CHIPS: { key: BucketKey; label: string; empty: string }[] = [
     { key: 'checkingOut', label: t.checkingOut ?? 'Checking out', empty: t.emptyCheckingOut ?? "You don’t have any guests checking out today or tomorrow." },

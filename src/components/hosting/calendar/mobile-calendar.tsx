@@ -52,7 +52,7 @@ export default function MobileCalendar({
   const today = useMemo(() => startOfDay(new Date()), []);
 
   const [listings, setListings] = useState<CalendarListing[]>(data.listings);
-  const [activeId, setActiveId] = useState<number>(() => data.focusId ?? data.listings[0]?.id);
+  const [activeId, setActiveId] = useState<number>(() => data.focusId ?? data.listings[0]?.id ?? -1);
   const [selection, setSelection] = useState<{ anchor: string; end: string } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [headerMonth, setHeaderMonth] = useState(0); // index into months
@@ -323,7 +323,7 @@ const MonthSection = React.forwardRef<
     month: "long",
     ...(anchor.getFullYear() !== today.getFullYear() ? { year: "numeric" } : {}),
   });
-  const leading = days[0].getDay(); // Sunday-first offset
+  const leading = days[0]?.getDay() ?? 0; // Sunday-first offset
 
   return (
     <section ref={ref}>
