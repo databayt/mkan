@@ -24,7 +24,10 @@
  *   createOneObject(input: { object: CreateObjectInput })
  *   createOneField(input: { field: CreateFieldInput })  // options: JSON, relationCreationPayload: JSON
  */
+import { config } from 'dotenv';
 import { OBJECTS, STANDARD_FIELD_SETS, toOption, type ObjectDef, type FieldDef } from './twenty-schema';
+
+config({ override: true }); // load central .env (TWENTY_API_URL / TWENTY_API_KEY)
 
 const APPLY = process.argv.includes('--apply');
 const API_URL = (process.env.TWENTY_API_URL ?? '').replace(/\/+$/, '');

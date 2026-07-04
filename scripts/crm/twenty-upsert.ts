@@ -18,8 +18,11 @@
  * ADDRESS {addressCity/State/Country/Lat/Lng}, CURRENCY {amountMicros, currencyCode}.
  * To-one relations are written as the FK `<field>Id` (e.g. hostId).
  */
+import { config } from 'dotenv';
 import { readFileSync } from 'node:fs';
 import type { HomeRecord, HostRecord } from './airbnb-parse';
+
+config({ override: true }); // load central .env (TWENTY_API_URL / TWENTY_API_KEY)
 
 const APPLY = process.argv.includes('--apply');
 const arg = (n: string, d?: string) => {

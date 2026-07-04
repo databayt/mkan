@@ -16,7 +16,10 @@
  * Verified against twentyhq/twenty metadata API: createView / createViewField /
  * createViewSort / createViewFilter, getViews(objectMetadataId).
  */
+import { config } from 'dotenv';
 import { VIEWS, type ViewDef } from './twenty-views';
+
+config({ override: true }); // load central .env (TWENTY_API_URL / TWENTY_API_KEY)
 
 const APPLY = process.argv.includes('--apply');
 const API_URL = (process.env.TWENTY_API_URL ?? '').replace(/\/+$/, '');

@@ -17,12 +17,15 @@
  *
  * Flags: --in=<path>  --out=<path>  --limit=<N>  --apply
  */
+import { config } from 'dotenv';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import {
   scoreOne, hostScore, hostBand, priceMedians, priceBucketKey, duplicateSuspects,
   RUBRIC_VERSION, type HomeLike, type HostLike, type Engagement,
 } from './trust-score';
+
+config({ override: true }); // load central .env (TWENTY_API_URL / TWENTY_API_KEY)
 
 const APPLY = process.argv.includes('--apply');
 const arg = (n: string, d?: string) => {
