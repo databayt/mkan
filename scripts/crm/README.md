@@ -1,8 +1,12 @@
-# CRM seeding — Twenty objects & views (Epic G1.1)
+# CRM growth pipeline (Epic G1)
 
-Tooling that materializes the [Growth Engine](../../docs/growth.md) CRM design in the live
-**Twenty** workspace (`mkan.crm.databayt.org`): the `Home` / `Host` custom objects, the
-`Opportunity` onboarding fields, and the 10 saved Views.
+The full Airbnb→CRM→mkan flywheel from the [Growth Engine](../../docs/growth.md) design:
+scrape → upsert → score → outreach → re-host → import → publish. Every step is a
+`pnpm crm:*` command, dry-run by default with `--apply` to execute.
+
+> **▶ Running it?** Follow **[HANDOFF.md](./HANDOFF.md)** — the operator runbook (env, run
+> order, safety). Run it **on the Twenty machine**, where the backend + OpenClaw are
+> reachable at `localhost` (the Twenty API is not at the Vercel frontend domain).
 
 | File | What |
 | --- | --- |
