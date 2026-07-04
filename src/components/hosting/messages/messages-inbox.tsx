@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import {
   Search,
   SlidersHorizontal,
+  Settings as SettingsIcon,
   ArrowLeft,
   ArrowRight,
   ArrowUp,
@@ -142,31 +143,39 @@ export default function MessagesInbox({
 
   return (
     <div
-      className="-mx-4 flex border-t border-border sm:-mx-6 lg:-mx-8"
-      style={{ height: "calc(100dvh - 8rem)" }}
+      className="-mx-4 flex border-border sm:-mx-6 lg:-mx-8 lg:border-t"
+      // Mobile has no top header and the tab bar is ~3.5rem; desktop keeps the
+      // 4rem header + breathing room it was measured against.
+      style={{ height: isDesktop ? "calc(100dvh - 8rem)" : "calc(100dvh - 3.5rem)" }}
     >
       {/* ---------------- inbox list ---------------- */}
       <aside
         className={`${!isDesktop && selected ? "hidden" : "flex"} w-full flex-col border-e border-border`}
         style={isDesktop ? { width: 400, flexShrink: 0 } : undefined}
       >
-        <div className="flex items-center justify-between gap-2 px-4 pt-5 sm:px-6">
-          <h1 className="text-xl font-semibold text-foreground">{t.title ?? "Messages"}</h1>
+        {/* Airbnb mobile inbox header: 26px/500 title, 40px #F7F7F7 circles
+            (search + gear). Desktop keeps the original 20px title + 36px
+            circles + filter icon. */}
+        <div className="flex items-center justify-between gap-2 px-4 pt-6 sm:px-6 lg:pt-5">
+          <h1 className="text-[26px] font-medium leading-8 text-foreground lg:text-xl lg:font-semibold lg:leading-7">
+            {t.title ?? "Messages"}
+          </h1>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setShowSearch((s) => !s)}
               aria-label={t.search ?? "Search"}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70 lg:h-9 lg:w-9"
             >
               <Search className="size-4" />
             </button>
             <button
               type="button"
               aria-label="Filters"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70 lg:h-9 lg:w-9"
             >
-              <SlidersHorizontal className="size-4" />
+              <SettingsIcon className="size-4 lg:hidden" />
+              <SlidersHorizontal className="hidden size-4 lg:block" />
             </button>
           </div>
         </div>
@@ -449,10 +458,12 @@ function FilterPill({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+      // Mobile chips are borderless muted pills (Airbnb); desktop keeps the
+      // original outlined style.
+      className={`rounded-full px-4 py-2.5 text-sm font-medium transition-colors lg:py-2 ${
         active
           ? "bg-foreground text-background"
-          : "border border-border text-foreground hover:bg-muted"
+          : "bg-muted text-foreground hover:bg-muted/70 lg:border lg:border-border lg:bg-transparent lg:hover:bg-muted"
       }`}
     >
       {children}
