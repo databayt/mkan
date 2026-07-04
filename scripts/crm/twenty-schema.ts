@@ -264,7 +264,24 @@ export const TAG_COLORS = [
   'yellow', 'pink', 'gray', 'violet', 'amber', 'lime', 'crimson',
 ];
 
-/** Expand a raw value into a Twenty SELECT option object. */
+/**
+ * Normalize any raw value to Twenty's required SELECT option format: UPPER_SNAKE_CASE.
+ * Recent Twenty releases reject option values that aren't `^[A-Z][A-Z0-9_]*$`, so the
+ * PascalCase mkan-enum spellings (WasherDryer, Apartment) must be converted before they
+ * reach the metadata API. Idempotent for values that are already upper-snake
+ * (PORT_SUDAN → PORT_SUDAN). Both the schema options AND twenty-upsert's record writes
+ * must use this so the stored option and the written value stay byte-identical.
+ */
+export function toUpperSnake(raw: string): string {
+  return raw
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2') // WasherDryer → Washer_Dryer
+    .replace(/[\s-]+/g, '_') // spaces / hyphens → _
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+    .toUpperCase();
+}
+
+/** Expand a raw value into a Twenty SELECT option object (label human-readable, value UPPER_SNAKE). */
 export function toOption(value: string, position: number) {
   const label = value
     .replace(/([a-z])([A-Z])/g, '$1 $2') // split camelCase / PascalCase: WasherDryer → "Washer Dryer"
@@ -272,5 +289,5 @@ export function toOption(value: string, position: number) {
     .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' '); // PORT_SUDAN → "Port Sudan"
-  return { label, value, color: TAG_COLORS[position % TAG_COLORS.length], position };
+  return { label, value: toUpperSnake(value), color: TAG_COLORS[position % TAG_COLORS.length], position };
 }
