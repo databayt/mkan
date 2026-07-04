@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { Dialog as DialogPrimitive } from "radix-ui"
 import { SlidersHorizontal, X, Minus, Plus, ChevronDown } from "lucide-react"
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion"
@@ -302,10 +303,14 @@ export function SearchFilters() {
   const [typeOpen, setTypeOpen] = useState(false)
   const [sheetH, setSheetH] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
+  // Client-mount guard so the mobile sheet can portal to <body> (below) only
+  // after hydration — createPortal needs a real DOM node.
+  const [mounted, setMounted] = useState(false)
   const reqRef = useRef(0)
 
   // Track responsive state
   useEffect(() => {
+    setMounted(true)
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768)
     }
@@ -479,7 +484,14 @@ export function SearchFilters() {
           )}
         </button>
 
-        <AnimatePresence>
+        {/* Portal the sheet to <body> so `position: fixed` anchors to the
+            VIEWPORT, not the header's `will-change: transform` container (which
+            would otherwise become the containing block and inset the panel by
+            the header's margins — the "not edge to edge" bug). This is why the
+            search sheet, rendered at the top level, was already flush. */}
+        {mounted &&
+          createPortal(
+            <AnimatePresence>
           {open && (
             <React.Fragment>
               {/* Scrim */}
@@ -505,18 +517,17 @@ export function SearchFilters() {
                 role="dialog"
                 aria-modal="true"
               >
-                {/* Header */}
-                <div className="relative flex shrink-0 items-center justify-center border-b" style={{ height: 64, borderColor: "#ebebeb" }}>
-                  <span style={{ fontSize: 16, fontWeight: 600, color: C.text }}>
-                    {t.filters}
-                  </span>
-                </div>
+                {/* No title bar — the sheet opens straight into the filter
+                    content and is dismissed via the bottom grabber, consistent
+                    with the mobile SEARCH sheet (search-header.tsx). The body's
+                    top padding gives the first section clean breathing room from
+                    the sheet's flush top edge. */}
 
                 {/* Body — matches Airbnb's mobile Filters sheet, which (unlike
                     desktop) opens straight on "Type of place"; there is no
                     "Recommended for you" grid on mobile. */}
                 <AnyLabelContext.Provider value={t.any}>
-                  <div className="flex-1 overflow-y-auto no-scrollbar" style={{ padding: "24px", paddingBottom: "120px" }}>
+                  <div className="flex-1 overflow-y-auto no-scrollbar" style={{ padding: "24px", paddingTop: "40px", paddingBottom: "104px" }}>
                     {/* Type of place */}
                     <section>
                       <h2 style={{ ...sectionTitle, marginBottom: 16 }}>{t.typeOfPlace}</h2>
@@ -702,8 +713,19 @@ export function SearchFilters() {
                   </div>
                 </AnyLabelContext.Provider>
 
-                {/* Footer */}
-                <div className="absolute bottom-9 inset-x-0 bg-white flex shrink-0 items-center justify-between border-t" style={{ padding: "16px 24px", height: 72, borderColor: "#ebebeb" }}>
+                {/* Footer — a solid bar pinned flush to the sheet's bottom edge,
+                    layered in FRONT of the scrolling body (own z-index + a soft
+                    top border) so content slides underneath it instead of
+                    bleeding past. Mirrors Airbnb's mobile Filters footer; unlike
+                    the search sheet's transparent floating CTA, this stays an
+                    opaque, always-visible bar. */}
+                <div
+                  className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-between bg-white"
+                  style={{
+                    padding: "16px 24px 24px",
+                    borderTop: "1px solid #ebebeb",
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() => setDraft(EMPTY_FILTERS)}
@@ -730,19 +752,23 @@ export function SearchFilters() {
                   </button>
                 </div>
 
-                {/* Bottom grabber — replaces the close icon. */}
+                {/* Bottom grabber — the dismiss handle, same as the mobile search
+                    sheet; sits centered on top of the footer, in the empty gap
+                    between "Clear all" and the Show button. */}
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
                   aria-label={isAr ? "إغلاق" : "Close"}
-                  className="absolute bottom-0 left-1/2 z-40 flex h-9 w-20 -translate-x-1/2 items-center justify-center"
+                  className="absolute bottom-0 left-1/2 z-40 flex h-8 w-20 -translate-x-1/2 items-end justify-center pb-2.5"
                 >
                   <span className="h-1 w-9 rounded-full bg-gray-300" />
                 </button>
               </motion.div>
             </React.Fragment>
           )}
-        </AnimatePresence>
+            </AnimatePresence>,
+            document.body,
+          )}
       </LayoutGroup>
     )
   }
