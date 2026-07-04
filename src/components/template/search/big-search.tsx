@@ -177,10 +177,11 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
   // Use the search validation hook
   const { isValid: isDateValid } = useSearchValidation(dateRange);
 
-  // Guest state — adults start at 2 (the typical booking party) so a search
-  // is one tap away; the pill still reads "Add guests" only when total is 0.
+  // Guest state — all zero by default (mirrors Airbnb): the Who segment reads
+  // "Add guests" until the user picks a party size, and a guest-less search
+  // sends no guest params at all.
   const [guests, setGuests] = useState({
-    adults: 2,
+    adults: 0,
     children: 0,
     infants: 0,
     pets: 0,

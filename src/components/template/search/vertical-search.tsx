@@ -91,8 +91,9 @@ export default function VerticalSearch({
     checkIn: "",
     checkOut: "",
     guests: {
-      // Adults start at 2 — the typical booking party.
-      adults: 2,
+      // All zero by default (mirrors Airbnb) — the field reads "Add guests"
+      // until the user picks a party size.
+      adults: 0,
       children: 0,
       infants: 0,
       pets: 0,
