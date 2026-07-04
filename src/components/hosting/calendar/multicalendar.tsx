@@ -16,7 +16,7 @@ import {
 } from "@/lib/actions/calendar-actions";
 
 // ---------- dict ----------
-interface MulticalDict {
+export interface MulticalDict {
   title?: string;
   subtitle?: string;
   today?: string;
@@ -37,48 +37,51 @@ interface MulticalDict {
   perNight?: string;
   guests?: string;
   total?: string;
+  changeView?: string;
+  settings?: string;
+  chooseListing?: string;
 }
 
 // ---------- date helpers (never mutate inputs) ----------
-function startOfDay(d: Date): Date {
+export function startOfDay(d: Date): Date {
   const c = new Date(d);
   c.setHours(0, 0, 0, 0);
   return c;
 }
-function addDays(d: Date, n: number): Date {
+export function addDays(d: Date, n: number): Date {
   const c = new Date(d);
   c.setDate(c.getDate() + n);
   return c;
 }
-function startOfMonth(d: Date): Date {
+export function startOfMonth(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), 1);
 }
-function addMonths(d: Date, n: number): Date {
+export function addMonths(d: Date, n: number): Date {
   return new Date(d.getFullYear(), d.getMonth() + n, 1);
 }
-function daysOfMonth(anchor: Date): Date[] {
+export function daysOfMonth(anchor: Date): Date[] {
   const y = anchor.getFullYear();
   const m = anchor.getMonth();
   const last = new Date(y, m + 1, 0).getDate();
   return Array.from({ length: last }, (_, i) => new Date(y, m, i + 1));
 }
-function sameDay(a: Date, b: Date): boolean {
+export function sameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 /** night `day` is covered by half-open range [startISO, endISO) at day granularity. */
-function covers(day: Date, startISO: string, endISO: string): boolean {
+export function covers(day: Date, startISO: string, endISO: string): boolean {
   const d = +startOfDay(day);
   return d >= +startOfDay(new Date(startISO)) && d < +startOfDay(new Date(endISO));
 }
 
-type CellType = "open" | "blocked" | "reserved";
-interface CellInfo {
+export type CellType = "open" | "blocked" | "reserved";
+export interface CellInfo {
   type: CellType;
   price: number;
   booking: CalendarBooking | null;
   isCheckIn: boolean;
 }
-function cellInfo(listing: CalendarListing, day: Date): CellInfo {
+export function cellInfo(listing: CalendarListing, day: Date): CellInfo {
   const booking = listing.bookings.find((b) => covers(day, b.checkIn, b.checkOut)) ?? null;
   const blocked = listing.blocked.find((b) => covers(day, b.startDate, b.endDate));
   const priceRow = listing.pricing.find((p) => covers(day, p.startDate, p.endDate));
@@ -383,7 +386,7 @@ function LegendDot({ className, label }: { className: string; label: string }) {
 }
 
 // ============================================================
-function SidePanel({
+export function SidePanel({
   listing,
   start,
   end,

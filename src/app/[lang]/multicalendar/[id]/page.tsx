@@ -6,6 +6,7 @@ import { getDictionary } from "@/components/internationalization/dictionaries";
 import type { Locale } from "@/components/internationalization/config";
 import { getMulticalendar } from "@/lib/actions/calendar-actions";
 import Multicalendar from "@/components/hosting/calendar/multicalendar";
+import MobileCalendar from "@/components/hosting/calendar/mobile-calendar";
 
 export const dynamic = "force-dynamic";
 
@@ -35,9 +36,11 @@ export default async function MulticalendarPage({
 
   const focusId = Number(id);
   const now = new Date();
-  // One month at a time: the grid refetches per-month navigation client-side.
+  const MONTHS_AHEAD = 6;
+  // Fetch the mobile month-stack's whole window up front; the desktop grid
+  // still renders one month at a time and refetches per-month client-side.
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + MONTHS_AHEAD, 1);
 
   const data = await getMulticalendar({
     start,
@@ -51,11 +54,24 @@ export default async function MulticalendarPage({
   const dict = await getDictionary(lang as Locale);
 
   return (
-    <Multicalendar
-      data={data}
-      lang={lang as Locale}
-      dict={dict?.hosting?.multicalendar ?? null}
-      monthStartISO={start.toISOString()}
-    />
+    <>
+      <div className="hidden h-full lg:block">
+        <Multicalendar
+          data={data}
+          lang={lang as Locale}
+          dict={dict?.hosting?.multicalendar ?? null}
+          monthStartISO={start.toISOString()}
+        />
+      </div>
+      <div className="h-full lg:hidden">
+        <MobileCalendar
+          data={data}
+          lang={lang as Locale}
+          dict={dict?.hosting?.multicalendar ?? null}
+          monthStartISO={start.toISOString()}
+          monthsAhead={MONTHS_AHEAD}
+        />
+      </div>
+    </>
   );
 }
