@@ -257,28 +257,28 @@ describe("serviceStatus", () => {
     process.env = { ...originalEnv };
   });
 
-  it("detects imageKit as configured when all vars present", async () => {
-    process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY = "pub_key";
-    process.env.IMAGEKIT_PRIVATE_KEY = "priv_key";
-    process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT = "https://ik.io/test";
+  it("detects s3 as configured when all vars present", async () => {
+    process.env.AWS_ACCESS_KEY_ID = "akia_test";
+    process.env.AWS_SECRET_ACCESS_KEY = "secret_test";
+    process.env.AWS_S3_BUCKET = "test-bucket";
 
     // Suppress console.log from module-level logging
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const { serviceStatus } = await import("@/lib/env-check");
 
-    expect(serviceStatus.imageKit).toBe(true);
+    expect(serviceStatus.s3).toBe(true);
     logSpy.mockRestore();
   });
 
-  it("detects imageKit as not configured when vars missing", async () => {
-    delete process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY;
-    delete process.env.IMAGEKIT_PRIVATE_KEY;
-    delete process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT;
+  it("detects s3 as not configured when vars missing", async () => {
+    delete process.env.AWS_ACCESS_KEY_ID;
+    delete process.env.AWS_SECRET_ACCESS_KEY;
+    delete process.env.AWS_S3_BUCKET;
 
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const { serviceStatus } = await import("@/lib/env-check");
 
-    expect(serviceStatus.imageKit).toBe(false);
+    expect(serviceStatus.s3).toBe(false);
     logSpy.mockRestore();
   });
 

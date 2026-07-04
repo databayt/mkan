@@ -68,13 +68,17 @@ describe("formatPriceValue", () => {
   });
 
   it("formats thousands with k suffix", () => {
-    expect(formatPriceValue(1000, true)).toBe("$1k+");
-    expect(formatPriceValue(5000, false)).toBe("<$5k");
+    expect(formatPriceValue(1000, true)).toBe("SDG 1k+");
+    expect(formatPriceValue(5000, false)).toBe("< SDG 5k");
   });
 
   it("formats sub-thousand values", () => {
-    expect(formatPriceValue(500, true)).toBe("$500+");
-    expect(formatPriceValue(250, false)).toBe("<$250");
+    expect(formatPriceValue(500, true)).toBe("SDG 500+");
+    expect(formatPriceValue(250, false)).toBe("< SDG 250");
+  });
+
+  it("uses the Arabic currency symbol for the ar locale", () => {
+    expect(formatPriceValue(1000, true, "ar")).toBe("ج.س 1k+");
   });
 });
 
