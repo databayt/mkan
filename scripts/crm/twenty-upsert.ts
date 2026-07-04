@@ -132,12 +132,29 @@ const oppBody = (host: HostRecord, hostId: string, homesCount: number) =>
   clean({ name: `Onboard ${host.name ?? host.airbnbHostId} — ${homesCount} home${homesCount === 1 ? '' : 's'}`, onboardingStage: 'SCRAPED', homesCount, hostId });
 
 // ── REST client ──────────────────────────────────────────────────────────────
-async function rest(method: 'GET' | 'POST', path: string, body?: unknown): Promise<any> {
+// Twenty REST is rate-limited to 100 requests / 60s. Space every call ≥700ms
+// (~85/min, safely under) and retry on 429 with escalating backoff so a large
+// batch drains through the window instead of erroring out mid-run.
+const MIN_GAP_MS = 700;
+let lastCallAt = 0;
+async function throttle() {
+  const wait = lastCallAt + MIN_GAP_MS - Date.now();
+  if (wait > 0) await sleep(wait);
+  lastCallAt = Date.now();
+}
+async function rest(method: 'GET' | 'POST', path: string, body?: unknown, attempt = 0): Promise<any> {
+  await throttle();
   const res = await fetch(`${REST}/${path}`, {
     method,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (res.status === 429 && attempt < 8) {
+    const backoff = 15_000 * (attempt + 1);
+    console.warn(`  … 429 rate limit — waiting ${backoff / 1000}s then retrying (attempt ${attempt + 1})`);
+    await sleep(backoff);
+    return rest(method, path, body, attempt + 1);
+  }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`REST ${method} ${path} → ${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
   return json;
@@ -219,18 +236,20 @@ async function main() {
     await sleep(150);
   }
 
-  // 3) One Opportunity per NEW host.
+  // 3) One Opportunity per host that doesn't already have one. Keyed on existence
+  //    (not "created this run") so a resumed/partial run backfills opps for hosts
+  //    whose opportunity failed earlier — otherwise they'd never get one.
+  void newHosts; // retained for readability; opp creation is now existence-based
   for (const host of hosts) {
-    if (!newHosts.has(host.airbnbHostId)) continue;
     const id = hostRecId.get(host.airbnbHostId);
     if (!id) continue;
     try {
+      if (await findId('opportunities', 'hostId', id)) continue; // already has one
       await rest('POST', 'opportunities', oppBody(host, id, homesPerHost.get(host.airbnbHostId) ?? 0));
       console.log(`+ opportunity for host ${host.airbnbHostId}`);
     } catch (e) {
       console.warn(`! opportunity for ${host.airbnbHostId} failed: ${(e as Error).message}`);
     }
-    await sleep(150);
   }
 
   console.log('\n✅ Upsert done. Verify in the Twenty workspace.\n');

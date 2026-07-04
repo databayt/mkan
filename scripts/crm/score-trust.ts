@@ -97,12 +97,29 @@ function runLocal() {
 }
 
 // ── apply mode (against Twenty) ──────────────────────────────────────────────
-async function rest(method: 'GET' | 'PATCH', path: string, body?: unknown): Promise<any> {
+// Twenty REST is rate-limited to 100 requests / 60s. --apply PATCHes every home,
+// host and opportunity, so space calls ≥700ms and retry on 429 with backoff.
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const MIN_GAP_MS = 700;
+let lastCallAt = 0;
+async function throttle() {
+  const wait = lastCallAt + MIN_GAP_MS - Date.now();
+  if (wait > 0) await sleep(wait);
+  lastCallAt = Date.now();
+}
+async function rest(method: 'GET' | 'PATCH', path: string, body?: unknown, attempt = 0): Promise<any> {
+  await throttle();
   const res = await fetch(`${REST}/${path}`, {
     method,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (res.status === 429 && attempt < 8) {
+    const backoff = 15_000 * (attempt + 1);
+    console.warn(`  … 429 rate limit — waiting ${backoff / 1000}s then retrying (attempt ${attempt + 1})`);
+    await sleep(backoff);
+    return rest(method, path, body, attempt + 1);
+  }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`REST ${method} ${path} → ${res.status}: ${JSON.stringify(json).slice(0, 200)}`);
   return json;
@@ -113,6 +130,21 @@ const listOf = (res: any, plural: string): any[] => {
   if (Array.isArray(v?.edges)) return v.edges.map((e: any) => e.node);
   return [];
 };
+
+// Twenty returns PHONES/LINKS as empty-but-truthy composites
+// ({ primaryPhoneNumber: "" } / { primaryLinkUrl: "" }). hostScore reads
+// host.phone/whatsapp/facebookUrl as truthy "has-contact" signals, so an empty
+// composite would wrongly add points (+8) that the scrape (undefined) never does.
+// Collapse empty composites to null so apply matches the scrape-only ceiling.
+function normHost(h: any): any {
+  if (!h) return h;
+  const phone = (v: any) => (v && typeof v === 'object' ? (v.primaryPhoneNumber || null) : (v ?? null));
+  const link = (v: any) => (v && typeof v === 'object' ? (v.primaryLinkUrl || null) : (v ?? null));
+  h.phone = phone(h.phone);
+  h.whatsapp = phone(h.whatsapp);
+  h.facebookUrl = link(h.facebookUrl);
+  return h;
+}
 
 async function runApply() {
   if (!API_URL || !API_KEY) throw new Error('APPLY needs TWENTY_API_URL + TWENTY_API_KEY (backend up).');
@@ -138,8 +170,10 @@ async function runApply() {
     // is stuck UNCHECKED and every home silently loses its location points.
     h.latitude = h.latitude ?? h.homeAddress?.addressLat ?? null;
     h.longitude = h.longitude ?? h.homeAddress?.addressLng ?? null;
+    if (h.host) normHost(h.host); // depth=1 nested host used for the overall blend
   }
   const hosts = listOf(await rest('GET', 'hosts?limit=200'), 'hosts');
+  for (const h of hosts) normHost(h);
   const opps = listOf(await rest('GET', 'opportunities?limit=200&depth=1'), 'opportunities');
   const hostById = new Map(hosts.map((h: any) => [h.id, h]));
   const engByHostId = new Map<string, Engagement>();
