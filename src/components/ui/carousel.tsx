@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useLocale } from "@/components/internationalization/use-locale"
 
 type CarouselApi = UseEmblaCarouselType[1]
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>
@@ -51,8 +52,14 @@ function Carousel({
   children,
   ...props
 }: React.ComponentProps<"div"> & CarouselProps) {
+  // Embla needs to be told the page is RTL — otherwise it measures/scrolls in
+  // LTR while the flex track (logical -ms/ps utilities) lays items out
+  // right-to-left, so drag + scroll snapping break under Arabic. An explicit
+  // `direction` in opts still wins.
+  const { isRTL } = useLocale()
   const [carouselRef, api] = useEmblaCarousel(
     {
+      direction: isRTL ? "rtl" : "ltr",
       ...opts,
       axis: orientation === "horizontal" ? "x" : "y",
     },

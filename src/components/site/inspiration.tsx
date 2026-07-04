@@ -3,6 +3,7 @@ import { cdn } from "@/lib/cdn";
 
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 
@@ -74,12 +75,17 @@ const AirbnbInspiration: React.FC<AirbnbInspirationProps> = ({
         {dict.home?.inspiration?.title}
       </h2>
 
-      {/* Destination Cards Grid */}
+      {/* Destination Cards Grid — each card navigates to /search scoped to that
+          city. The city's ENGLISH name is the canonical URL token (matches the
+          DB `location.city` the search action filters on); display stays
+          localized. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {destinations.map((destination) => (
-          <div
+          <Link
             key={destination.id}
-            className="cursor-pointer rounded-sm overflow-hidden flex flex-col h-80"
+            href={`/${locale}/search?location=${encodeURIComponent(destination.title)}`}
+            aria-label={locale === 'ar' ? destination.titleAr : destination.title}
+            className="cursor-pointer rounded-sm overflow-hidden flex flex-col h-80 transition-transform duration-200 hover:-translate-y-0.5"
           >
             {/* Image Section */}
             <div className="relative h-40 overflow-hidden">
@@ -104,7 +110,7 @@ const AirbnbInspiration: React.FC<AirbnbInspirationProps> = ({
                 {locale === 'ar' ? destination.distanceAr : destination.distance}
               </p>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>
