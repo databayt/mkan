@@ -28,13 +28,11 @@ function writeCookie(name: string, value: string, maxAgeSec: number) {
 const fill = (tpl: string, vars: Record<string, string | number>) =>
   Object.entries(vars).reduce((acc, [k, v]) => acc.replace(`{${k}}`, String(v)), tpl);
 
-// Airbnb "one price, all fees included" banner anatomy: floating white card,
-// 16px radius, single-layer soft shadow — full-width with margins on mobile
-// (cookie-banner style), pinned bottom-start on desktop.
-const CARD_STYLE = {
-  borderRadius: "16px",
-  boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
-} as const;
+// Airbnb "one price, all fees included" mobile dialog anatomy: on mobile a
+// full-bleed bottom sheet — flush to bottom/left/right edges, rounded top
+// corners only (rounded-t 32px). On desktop it detaches into a floating
+// bottom-start card (16px radius, single-layer soft shadow). Radius + shadow
+// live in responsive classes so the two breakpoints can differ.
 
 /**
  * Availability Check — a calibrated, Airbnb-banner-styled nudge for passive
@@ -125,8 +123,7 @@ export function AvailabilityCheck({
           role="dialog"
           aria-live="polite"
           aria-label={t.questionOne ?? "Is this home still available?"}
-          className="fixed inset-x-3 bottom-3 z-[9980] bg-white p-5 md:inset-x-auto md:bottom-6 md:start-6 md:w-[384px] md:p-6 print:hidden"
-          style={CARD_STYLE}
+          className="fixed inset-x-0 bottom-0 z-[9980] bg-white p-5 rounded-t-[32px] rounded-b-none shadow-[0_-4px_24px_rgba(0,0,0,0.12)] md:inset-x-auto md:bottom-6 md:start-6 md:w-[384px] md:p-6 md:rounded-2xl md:shadow-[0_6px_20px_rgba(0,0,0,0.2)] print:hidden"
         >
           {/* Close / snooze — quiet X, Airbnb desktop-banner style */}
           {!done && (

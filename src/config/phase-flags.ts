@@ -50,10 +50,15 @@ export const PHASE1 = {
    *  OFF until they actually switch. Currency/locale already work via the URL locale prefix. */
   showFooterLocaleSwitcher: false,
 
-  /** `/search` mobile map mounts on "Map" tap instead of on page load (saves shipping
-   *  mapbox-gl ~200 KB+ to every mobile visitor). Also prevents the map-canvas flash
-   *  when navigating back from a listing (reported 2026-07-02). Reversible. */
-  deferSearchMapMobile: true,
+  /** `/search` mobile map: when TRUE the top-strip preview map is replaced by a gray
+   *  "Show map" placeholder and the real map mounts only on tap (saves shipping
+   *  mapbox-gl ~200 KB+ to every mobile visitor, and avoids a map-canvas flash when
+   *  navigating back from a listing — reported 2026-07-02).
+   *  Set back to FALSE on 2026-07-04 per owner request: the top-section preview map
+   *  (the one the homes list scrolls up over) had disappeared and is wanted back.
+   *  Trade-off accepted: mapbox-gl loads on every mobile /search again, and the
+   *  back-nav canvas flash may return (address separately if it regresses). */
+  deferSearchMapMobile: false,
 
   /** Owners are nudged to reconfirm each home's Available/Busy status after this many days
    *  of no availability confirmation (§5 D2 — the Availability Check dialog). */

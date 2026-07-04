@@ -84,7 +84,11 @@ export function PriceTransparencyDialog() {
       <DialogContent
         showCloseButton={false}
         aria-describedby={undefined}
-        className="w-[calc(100%-2rem)] max-w-[393px] gap-0 rounded-[32px] border-0 bg-white p-0 shadow-[0_8px_28px_rgba(0,0,0,0.28)] sm:max-w-[393px]"
+        // Mobile: full-bleed bottom sheet — flush to bottom/start/end edges,
+        // rounded top corners only (Airbnb's live mobile dialog: rounded-t 32px,
+        // square bottom, 0 8px 28px .28 shadow). Desktop (sm+): the centered
+        // 393px rounded card. Overrides shadcn DialogContent's default centering.
+        className="grid gap-0 border-0 bg-white p-0 shadow-[0_8px_28px_rgba(0,0,0,0.28)] top-auto bottom-0 start-0 end-0 w-full max-w-none translate-x-0 rtl:translate-x-0 translate-y-0 rounded-t-[32px] rounded-b-none sm:top-[50%] sm:bottom-auto sm:start-[50%] sm:end-auto sm:w-[calc(100%-2rem)] sm:max-w-[393px] sm:translate-x-[-50%] sm:rtl:-translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-[32px] sm:rounded-b-[32px]"
       >
         <button
           type="button"

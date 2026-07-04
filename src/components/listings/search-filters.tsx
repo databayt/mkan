@@ -166,11 +166,12 @@ function Pill({
 }
 
 function RoundBtn({
-  disabled, onClick, ariaLabel, children,
+  disabled, onClick, ariaLabel, size = 32, children,
 }: {
   disabled: boolean
   onClick: () => void
   ariaLabel: string
+  size?: number
   children: React.ReactNode
 }) {
   return (
@@ -181,8 +182,8 @@ function RoundBtn({
       aria-label={ariaLabel}
       className="flex items-center justify-center rounded-full transition-colors"
       style={{
-        width: 32,
-        height: 32,
+        width: size,
+        height: size,
         border: `1px solid ${disabled ? C.border : C.borderStrong}`,
         color: disabled ? C.border : C.text,
         backgroundColor: "#ffffff",
@@ -196,19 +197,22 @@ function RoundBtn({
 }
 
 function Stepper({
-  label, value, onChange,
+  label, value, onChange, big = false,
 }: {
   label: string
   value: number | undefined // undefined == "Any"
   onChange: (v: number | undefined) => void
+  big?: boolean // Airbnb's mobile filter uses larger 40px steppers
 }) {
   const anyLabel = useAnyLabel()
   const display = value === undefined ? anyLabel : value >= STEPPER_MAX ? `${STEPPER_MAX}+` : String(value)
+  const btn = big ? 40 : 32
   return (
-    <div className="flex items-center justify-between" style={{ padding: "12px 0" }}>
+    <div className="flex items-center justify-between" style={{ padding: big ? "16px 0" : "12px 0" }}>
       <span style={{ fontSize: 16, color: C.text }}>{label}</span>
-      <div className="flex items-center" style={{ gap: 12 }}>
+      <div className="flex items-center" style={{ gap: big ? 16 : 12 }}>
         <RoundBtn
+          size={btn}
           disabled={value === undefined}
           ariaLabel={`decrease ${label}`}
           onClick={() => onChange(value === undefined ? undefined : value <= 1 ? undefined : value - 1)}
@@ -217,6 +221,7 @@ function Stepper({
         </RoundBtn>
         <span style={{ fontSize: 16, color: C.text, minWidth: 44, textAlign: "center" }}>{display}</span>
         <RoundBtn
+          size={btn}
           disabled={value !== undefined && value >= STEPPER_MAX}
           ariaLabel={`increase ${label}`}
           onClick={() => onChange(value === undefined ? 1 : Math.min(STEPPER_MAX, value + 1))}
@@ -459,7 +464,9 @@ export function SearchFilters() {
           // + padding + border) so the two read as one row on /search mobile.
           style={{ height: 48, width: 48, border: `1px solid ${C.border}`, touchAction: "manipulation" }}
           onClick={() => {
-            setSheetH(Math.round(window.innerHeight * 0.85))
+            // 0.92 == the mobile search sheet (mobile-listings-header.tsx), so
+            // the Filters sheet and the search sheet open to the same height.
+            setSheetH(Math.round(window.innerHeight * 0.92))
             setOpen(true)
           }}
           aria-label={t.filters}
@@ -505,48 +512,11 @@ export function SearchFilters() {
                   </span>
                 </div>
 
-                {/* Body */}
+                {/* Body — matches Airbnb's mobile Filters sheet, which (unlike
+                    desktop) opens straight on "Type of place"; there is no
+                    "Recommended for you" grid on mobile. */}
                 <AnyLabelContext.Provider value={t.any}>
                   <div className="flex-1 overflow-y-auto no-scrollbar" style={{ padding: "24px", paddingBottom: "120px" }}>
-                    {/* Recommended for you */}
-                    <section>
-                      <h2 style={{ ...sectionTitle, marginBottom: 16 }}>{t.recommended}</h2>
-                      <div className="grid grid-cols-4" style={{ gap: 12 }}>
-                        {RECOMMENDED.map((a) => {
-                          const meta = AMENITY_META[a]
-                          const active = draft.amenities.includes(a)
-                          return (
-                            <button
-                              key={a}
-                              type="button"
-                              onClick={() => toggleAmenity(a)}
-                              aria-pressed={active}
-                              className="flex flex-col items-center"
-                              style={{ gap: 8 }}
-                            >
-                              <span
-                                className="flex w-full items-center justify-center transition-colors"
-                                style={{
-                                  height: 92,
-                                  borderRadius: 12,
-                                  border: `1px solid ${active ? C.text : C.border}`,
-                                  boxShadow: active ? `inset 0 0 0 1px ${C.text}` : "none",
-                                  backgroundColor: active ? C.selBg : "#ffffff",
-                                }}
-                              >
-                                <FilterIcon name={meta.icon} size={30} style={{ color: C.text }} />
-                              </span>
-                              <span style={{ fontSize: 14, color: C.text, textAlign: "center" }}>
-                                {meta[locale === "ar" ? "ar" : "en"]}
-                              </span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </section>
-
-                    <Divider />
-
                     {/* Type of place */}
                     <section>
                       <h2 style={{ ...sectionTitle, marginBottom: 16 }}>{t.typeOfPlace}</h2>
@@ -644,8 +614,8 @@ export function SearchFilters() {
                     {/* Rooms and beds */}
                     <section>
                       <h2 style={{ ...sectionTitle, marginBottom: 8 }}>{t.roomsAndBeds}</h2>
-                      <Stepper label={t.bedrooms} value={draft.beds} onChange={(v) => setDraft((d) => ({ ...d, beds: v }))} />
-                      <Stepper label={t.bathrooms} value={draft.baths} onChange={(v) => setDraft((d) => ({ ...d, baths: v }))} />
+                      <Stepper big label={t.bedrooms} value={draft.beds} onChange={(v) => setDraft((d) => ({ ...d, beds: v }))} />
+                      <Stepper big label={t.bathrooms} value={draft.baths} onChange={(v) => setDraft((d) => ({ ...d, baths: v }))} />
                     </section>
 
                     <Divider />

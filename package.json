@@ -22,6 +22,7 @@
     "seed:admin": "tsx scripts/seed-admin.ts",
     "seed:heirs": "tsx scripts/seed-heirs-homes.ts",
     "seed:daqna": "tsx scripts/seed-daqna-homes.ts",
+    "seed:hussein": "tsx scripts/seed-hussein-homes.ts",
     "seed:listings": "tsx scripts/seed-listings.ts",
     "seed:conversations": "tsx scripts/seed-conversations.ts",
     "seed:sudan": "tsx scripts/seed-sudan-cities.ts",

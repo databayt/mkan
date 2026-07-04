@@ -61,7 +61,7 @@ export function CookieBanner() {
           role="dialog"
           aria-live="polite"
           aria-label={t.title ?? "Cookie consent"}
-          className="fixed bottom-0 left-0 right-0 md:bottom-6 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[680px] z-[9999] rounded-t-[28px] rounded-b-none md:rounded-2xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white dark:bg-neutral-900 p-6 md:p-8 shadow-[0_8px_28px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.4)] print:hidden"
+          className="fixed bottom-0 left-0 right-0 md:bottom-6 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[680px] z-[9999] rounded-t-[32px] rounded-b-none md:rounded-2xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white dark:bg-neutral-900 p-6 md:p-8 shadow-[0_8px_28px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.4)] print:hidden"
         >
           <h2 className="text-neutral-900 dark:text-neutral-50 font-semibold text-lg md:text-[22px] leading-tight md:leading-[26px] tracking-tight text-start">
             {t.title ?? "Help us improve your experience"}

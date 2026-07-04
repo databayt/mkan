@@ -94,6 +94,34 @@ export default function ListingMap({
       .setLngLat([longitude, latitude])
       .addTo(map);
 
+    // Clicking the map — or the pin — opens the location in Google Maps in a new
+    // tab. A mapbox "click" is distinct from a drag, so panning the map never
+    // triggers this, and the zoom / fullscreen controls live in their own DOM
+    // layer above the canvas so they keep working. `search/?api=1&query=lat,lng`
+    // deep-links to the Maps app on mobile and drops a pin on the web.
+    const openInGoogleMaps = () =>
+      window.open(
+        `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    map.on("click", openInGoogleMaps);
+    // Signal the map is clickable (re-assert after a drag, which mapbox resets
+    // back to the grab cursor).
+    const setPointer = () => {
+      map.getCanvas().style.cursor = "pointer";
+    };
+    setPointer();
+    map.on("mouseup", setPointer);
+    map.on("dragend", setPointer);
+    // The pin is its own DOM element above the canvas, so a tap on it never
+    // reaches the map's click handler — wire it directly.
+    el.style.cursor = "pointer";
+    el.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openInGoogleMaps();
+    });
+
     mapRef.current = map;
     const resizeObserver = new ResizeObserver(() => map.resize());
     resizeObserver.observe(containerRef.current);
