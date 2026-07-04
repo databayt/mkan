@@ -22,7 +22,10 @@ export default async function MulticalendarLayout({
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden">
-      <HostingHeader />
+      {/* No top bar on mobile — the month-stack view carries its own header. */}
+      <div className="hidden lg:block">
+        <HostingHeader />
+      </div>
       <main id="main-content" className="min-h-0 flex-1 pb-16 lg:pb-0">
         {children}
       </main>

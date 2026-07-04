@@ -1997,7 +1997,18 @@
       "guestsSuffix": "ضيوف",
       "manageListings": "إدارة عقاراتك",
       "noReservationsSubtitle": "لتصلك الحجوزات، عليك إكمال قائمتك ونشرها.",
-      "completeListing": "أكمل قائمتك"
+      "completeListing": "أكمل قائمتك",
+      "welcome": "أهلًا بك يا {name}!",
+      "checkingOut": "المغادرون",
+      "currentlyHosting": "الضيوف الحاليون",
+      "arrivingSoon": "الواصلون قريبًا",
+      "pendingReview": "بانتظار التقييم",
+      "allReservations": "جميع الحجوزات",
+      "emptyCheckingOut": "ليس لديك ضيوف يغادرون اليوم أو غدًا.",
+      "emptyCurrentlyHosting": "لا تستضيف أي ضيوف حاليًا.",
+      "emptyArrivingSoon": "ليس لديك ضيوف يصلون اليوم أو غدًا.",
+      "emptyUpcoming": "ليس لديك حجوزات قادمة.",
+      "emptyPendingReview": "ليس لديك تقييمات ضيوف لكتابتها."
     },
     "listingsPage": {
       "title": "قوائمك",
@@ -2047,7 +2058,10 @@
       "nightsSelected": "{n} ليالٍ محددة",
       "nightSelected": "ليلة واحدة محددة",
       "guests": "الضيوف",
-      "total": "الإجمالي"
+      "total": "الإجمالي",
+      "changeView": "تغيير عرض التقويم",
+      "settings": "الإعدادات",
+      "chooseListing": "اختر إعلانًا"
     },
     "messages": {
       "title": "الرسائل",
@@ -2075,6 +2089,26 @@
       "listings": "الإعلانات",
       "messages": "الرسائل",
       "menu": "القائمة"
+    },
+    "menuPage": {
+      "title": "القائمة",
+      "newToHosting": "جديد في الاستضافة؟",
+      "newToHostingSubtitle": "نصائح وموارد تساعدك على التجهيز واستقبال الحجوزات.",
+      "getStarted": "ابدأ الآن",
+      "accountSettings": "إعدادات الحساب",
+      "languages": "اللغات والعملة",
+      "hostingResources": "موارد الاستضافة",
+      "getHelp": "احصل على المساعدة",
+      "findCoHost": "ابحث عن مضيف مشارك",
+      "createListing": "أنشئ إعلانًا جديدًا",
+      "referHost": "رشّح مضيفًا",
+      "logout": "تسجيل الخروج",
+      "switchToTraveling": "التبديل إلى السفر",
+      "notifications": "الإشعارات",
+      "profile": "الملف الشخصي",
+      "terms": "شروط الخدمة",
+      "privacy": "سياسة الخصوصية",
+      "copyright": "© {year} مكان. جميع الحقوق محفوظة."
     }
   },
   "application": {

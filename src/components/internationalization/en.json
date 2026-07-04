@@ -1997,7 +1997,18 @@
       "guestsSuffix": "guests",
       "manageListings": "Manage your listings",
       "noReservationsSubtitle": "To get booked, you'll need to complete and publish your listing.",
-      "completeListing": "Complete your listing"
+      "completeListing": "Complete your listing",
+      "welcome": "Welcome, {name}!",
+      "checkingOut": "Checking out",
+      "currentlyHosting": "Currently hosting",
+      "arrivingSoon": "Arriving soon",
+      "pendingReview": "Pending review",
+      "allReservations": "All reservations",
+      "emptyCheckingOut": "You don’t have any guests checking out today or tomorrow.",
+      "emptyCurrentlyHosting": "You aren’t hosting any guests right now.",
+      "emptyArrivingSoon": "You don’t have any guests arriving today or tomorrow.",
+      "emptyUpcoming": "You don’t have any upcoming reservations.",
+      "emptyPendingReview": "You don’t have any guest reviews to write."
     },
     "listingsPage": {
       "title": "Your listings",
@@ -2047,7 +2058,10 @@
       "nightsSelected": "{n} nights selected",
       "nightSelected": "1 night selected",
       "guests": "Guests",
-      "total": "Total"
+      "total": "Total",
+      "changeView": "Change calendar view",
+      "settings": "Settings",
+      "chooseListing": "Choose a listing"
     },
     "messages": {
       "title": "Messages",
@@ -2075,6 +2089,26 @@
       "listings": "Listings",
       "messages": "Messages",
       "menu": "Menu"
+    },
+    "menuPage": {
+      "title": "Menu",
+      "newToHosting": "New to hosting?",
+      "newToHostingSubtitle": "Tips and resources to help you get set up and booked.",
+      "getStarted": "Get started",
+      "accountSettings": "Account settings",
+      "languages": "Languages & currency",
+      "hostingResources": "Hosting resources",
+      "getHelp": "Get help",
+      "findCoHost": "Find a co-host",
+      "createListing": "Create a new listing",
+      "referHost": "Refer a host",
+      "logout": "Log out",
+      "switchToTraveling": "Switch to traveling",
+      "notifications": "Notifications",
+      "profile": "Profile",
+      "terms": "Terms of Service",
+      "privacy": "Privacy Policy",
+      "copyright": "© {year} Mkan. All rights reserved."
     }
   },
   "application": {
