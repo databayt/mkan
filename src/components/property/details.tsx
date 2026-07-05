@@ -2,9 +2,9 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AmenityIcons, HighlightIcons, AmenityEnum, HighlightEnum } from "@/lib/constants";
-import { formatEnumString } from "@/lib/utils";
 import { useGetPropertyQuery } from "@/state/api";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { featureLabel } from "@/components/listings/feature-icons";
 import { HelpCircle } from "lucide-react";
 import React from "react";
 
@@ -16,6 +16,8 @@ const PropertyDetails = ({ propertyId }: PropertyDetailsProps) => {
   const dict = useDictionary();
   const t = dict?.property?.details;
   const tCommon = dict?.property?.common;
+  const amenityLabels = dict?.rental?.property?.amenities as Record<string, string> | undefined;
+  const highlightLabels = dict?.rental?.property?.highlights as Record<string, string> | undefined;
   const {
     data: property,
     isError,
@@ -43,7 +45,7 @@ const PropertyDetails = ({ propertyId }: PropertyDetailsProps) => {
               >
                 <Icon className="w-8 h-8 mb-2 text-gray-700" />
                 <span className="text-sm text-center text-gray-700">
-                  {formatEnumString(amenity)}
+                  {featureLabel(amenityLabels, amenity)}
                 </span>
               </div>
             );
@@ -67,7 +69,7 @@ const PropertyDetails = ({ propertyId }: PropertyDetailsProps) => {
               >
                 <Icon className="w-8 h-8 mb-2 text-primary-600 dark:text-primary-300" />
                 <span className="text-sm text-center text-primary-600 dark:text-primary-300">
-                  {formatEnumString(highlight)}
+                  {featureLabel(highlightLabels, highlight)}
                 </span>
               </div>
             );

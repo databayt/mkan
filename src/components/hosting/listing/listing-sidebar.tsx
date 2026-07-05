@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useEditor } from "@/components/hosting/listing/editor-context";
 import { useEditorPane } from "@/components/hosting/listing/editor-shell";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { featureLabel } from "@/components/listings/feature-icons";
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
 import type { Locale } from "@/components/internationalization/config";
 import {
@@ -31,6 +32,9 @@ const ListingSidebar = () => {
   const id = params?.id ?? "";
   const dict = useDictionary();
   const nav = dict?.listingEditor?.nav;
+  const typeLabels = dict?.rental?.property?.types as Record<string, string> | undefined;
+  const cancelLabels = dict?.rental?.property?.cancellation as Record<string, string> | undefined;
+  const checkInLabels = dict?.rental?.property?.checkIn as Record<string, string> | undefined;
   const { listing } = useEditor();
   const pane = useEditorPane();
 
@@ -71,7 +75,7 @@ const ListingSidebar = () => {
   });
   const propertyType = listing?.propertyType
     ? fill(t("valueEntirePlace", "Entire place · {type}"), {
-        type: listing.propertyType,
+        type: featureLabel(typeLabels, listing.propertyType),
       })
     : notSet;
   const locationValue = listing?.location
@@ -95,14 +99,14 @@ const ListingSidebar = () => {
     { slug: "details/instant-book", label: t("instantBook", "Instant Book"), value: listing?.instantBook ? t("on", "On") : t("off", "Off") },
     { slug: "details/house-rules", label: t("houseRules", "House rules"), value: notSet },
     { slug: "details/guest-safety", label: t("guestSafety", "Guest safety"), value: notSet },
-    { slug: "details/cancellation-policy", label: t("cancellationPolicy", "Cancellation policy"), value: listing?.cancellationPolicy || notSet },
+    { slug: "details/cancellation-policy", label: t("cancellationPolicy", "Cancellation policy"), value: listing?.cancellationPolicy ? featureLabel(cancelLabels, listing.cancellationPolicy) : notSet },
     { slug: "details/custom-link", label: t("customLink", "Custom link"), value: notSet },
   ];
 
   const travelSections: Section[] = [
     { slug: "travel/check-in-out", label: t("checkInOut", "Check-in and checkout"), value: listing?.checkInTime ? `${listing.checkInTime} – ${listing.checkOutTime ?? ""}` : notSet },
     { slug: "travel/directions", label: t("directions", "Directions"), value: notSet },
-    { slug: "travel/check-in-method", label: t("checkInMethod", "Check-in method"), value: listing?.checkInMethod || notSet },
+    { slug: "travel/check-in-method", label: t("checkInMethod", "Check-in method"), value: listing?.checkInMethod ? featureLabel(checkInLabels, listing.checkInMethod) : notSet },
     { slug: "travel/wifi-details", label: t("wifiDetails", "Wifi details"), value: notSet },
     { slug: "travel/house-manual", label: t("houseManual", "House manual"), value: notSet },
     { slug: "travel/house-rules", label: t("travelHouseRules", "House rules"), value: notSet },

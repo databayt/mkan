@@ -1056,6 +1056,19 @@
         "Townhouse": "تاون هاوس",
         "Cottage": "كوخ"
       },
+      "cancellation": {
+        "Flexible": "مرنة",
+        "Moderate": "معتدلة",
+        "Firm": "حازمة",
+        "Strict": "صارمة",
+        "NonRefundable": "غير قابلة للاسترداد"
+      },
+      "checkIn": {
+        "SelfCheckIn": "تسجيل وصول ذاتي",
+        "InPerson": "شخصيًا",
+        "Lockbox": "صندوق مفاتيح",
+        "SmartLock": "قفل ذكي"
+      },
       "amenities": {
         "WasherDryer": "غسالة/مجفف",
         "AirConditioning": "تكييف هواء",
@@ -2219,14 +2232,14 @@
       "swap": "تبديل المدن",
       "where": "إلى أين",
       "when": "متى",
-      "passengers": "الركاب",
-      "addPassengers": "أضف الركاب",
+      "passengers": "الضيوف",
+      "addPassengers": "أضف الضيوف",
       "adults": "البالغون",
       "adultsAge": "13 سنة فأكثر",
       "children": "الأطفال",
       "childrenAge": "من 2 إلى 12 سنة",
-      "passenger": "راكب",
-      "passengersPlural": "ركاب",
+      "passenger": "ضيف",
+      "passengersPlural": "ضيوف",
       "selectCity": "أضف المدينة",
       "noResults": "لا توجد رحلات",
       "noResultsDescription": "لا توجد رحلات متاحة لهذا المسار في التاريخ المحدد. جرب تاريخاً أو مساراً مختلفاً.",
@@ -2353,6 +2366,8 @@
       "seatsAvailable": "مقاعد متاحة",
       "duration": "المدة",
       "perSeat": "للمقعد",
+      "direct": "مباشر",
+      "seatsLeft": "بقي {count} فقط",
       "hoursShort": "س",
       "minutesShort": "د",
       "notFound": "الرحلة غير موجودة",

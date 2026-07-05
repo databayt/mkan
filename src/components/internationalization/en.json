@@ -1056,6 +1056,19 @@
         "Townhouse": "Townhouse",
         "Cottage": "Cottage"
       },
+      "cancellation": {
+        "Flexible": "Flexible",
+        "Moderate": "Moderate",
+        "Firm": "Firm",
+        "Strict": "Strict",
+        "NonRefundable": "Non-refundable"
+      },
+      "checkIn": {
+        "SelfCheckIn": "Self check-in",
+        "InPerson": "In person",
+        "Lockbox": "Lockbox",
+        "SmartLock": "Smart lock"
+      },
       "amenities": {
         "WasherDryer": "Washer/Dryer",
         "AirConditioning": "Air Conditioning",
@@ -2219,14 +2232,14 @@
       "swap": "Swap cities",
       "where": "Where",
       "when": "When",
-      "passengers": "Passengers",
-      "addPassengers": "Add passengers",
+      "passengers": "Guests",
+      "addPassengers": "Add guests",
       "adults": "Adults",
       "adultsAge": "Ages 13+",
       "children": "Children",
       "childrenAge": "Ages 2–12",
-      "passenger": "passenger",
-      "passengersPlural": "passengers",
+      "passenger": "guest",
+      "passengersPlural": "guests",
       "selectCity": "Add city",
       "noResults": "No trips found",
       "noResultsDescription": "There are no available trips for this route on the selected date. Try a different date or route.",
@@ -2353,6 +2366,8 @@
       "seatsAvailable": "seats available",
       "duration": "Duration",
       "perSeat": "per seat",
+      "direct": "Direct",
+      "seatsLeft": "Only {count} left",
       "hoursShort": "h",
       "minutesShort": "m",
       "notFound": "Trip not found",

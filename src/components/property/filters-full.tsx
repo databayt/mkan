@@ -4,7 +4,8 @@ import { FiltersState, initialFilters, useGlobalStore } from "@/state/filters";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { debounce } from "lodash";
-import { cleanParams, cn, formatEnumString } from "@/lib/utils";
+import { cleanParams, cn } from "@/lib/utils";
+import { featureLabel } from "@/components/listings/feature-icons";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
@@ -250,7 +251,7 @@ const FiltersFull = () => {
               >
                 <Icon className="w-5 h-5 hover:cursor-pointer" />
                 <Label className="hover:cursor-pointer">
-                  {formatEnumString(amenity)}
+                  {featureLabel(dict?.rental?.property?.amenities as Record<string, string> | undefined, amenity)}
                 </Label>
               </div>
             ))}
