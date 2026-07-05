@@ -141,9 +141,22 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
 
         .c1yo0219 {
             display: block;
+            position: relative;
+            z-index: 10;
+            margin-top: -24px;
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+            background-color: var(--background, #ffffff);
+            padding-top: 24px;
+            padding-bottom: 20px;
+            padding-left: 24px;
+            padding-right: 24px;
+            text-align: center;
         }
         ._1a6d9c4 {
-            display: block;
+            display: flex !important;
+            justify-content: center !important;
+            width: 100% !important;
         }
         .plmw1e5 {
             display: block;
@@ -156,13 +169,18 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             display: block;
         }
         .tuj3gk2 {
-            display: block;
+            display: flex !important;
+            justify-content: center !important;
         }
         .tq9gyrs {
             display: block;
+            width: 100%;
         }
         .tglziin {
-            display: block;
+            display: flex !important;
+            justify-content: center !important;
+            text-align: center !important;
+            width: 100%;
         }
 
         .hpipapi {
@@ -173,6 +191,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             font-weight: var(--dls19-pdp-listing-title-weight);
             letter-spacing: -0.02em;
             margin: 0;
+            text-align: center !important;
         }
 
         .atm_7l_1kw7nm4 {
@@ -458,56 +477,55 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
         )}
       </div>
 
-      {/* Property Info */}
-      <div className="px-4 py-6 space-y-6">
-        {/* Title and Rating */}
-        <div>
-          <div data-pageslot="true" className="c1yo0219 atm_9s_1txwivl_vmtskl atm_92_1yyfdc7_vmtskl atm_9s_1txwivl_9in345 atm_92_1yyfdc7_9in345 dir dir-ltr">
-            <div style={{ "--gp-section-max-width": "1120px" } as React.CSSProperties}>
-              <div className="_1a6d9c4">
-                <div className="plmw1e5 atm_e2_1osqo2v atm_gz_1wugsn5 atm_h0_1wugsn5 atm_vy_1osqo2v mq5rv0q atm_j3_1v7vjkn dir dir-ltr" style={{ "--maxWidth": "1120px" } as React.CSSProperties}>
-                  <div data-plugin-in-point-id="TITLE_DEFAULT" data-section-id="TITLE_DEFAULT">
-                    <div className="c1htwjs0 atm_lo_1tcgj5g atm_le_exct8b atm_le_idpfg4__oggzyc dir dir-ltr">
-                      <section>
-                        <div className="tuj3gk2 atm_h_esu3gu atm_9s_1txwivl atm_fc_1yb4nlp atm_cx_ftgil2 dir dir-ltr">
-                          <div className="tq9gyrs atm_ax_kb7nvz atm_r3_1h6ojuz atm_by_1d54pid atm_r3_18uv5lq__oggzyc atm_by_18uv5lq__oggzyc dir dir-ltr">
-                            <div className="tglziin atm_c8_1nvkso5 atm_g3_gtd3qd atm_cs_1ho43yb atm_w4_1hnarqo atm_9s_1nu9bjl dir dir-ltr">
-                              <h1
-                                tabIndex={-1}
-                                role="heading"
-                                aria-level={1}
-                                className="hpipapi atm_7l_1kw7nm4 atm_c8_1x4eueo atm_cs_1kw7nm4 atm_g3_1kw7nm4 atm_gi_idpfg4 atm_l8_idpfg4 atm_kd_idpfg4_pfnrn2 i1pmzyw7 atm_9s_1nu9bjl dir dir-ltr"
-                                {...{ elementtiming: "LCP-target" }}
-                              >
-                                {listing?.title || 'Beautiful Property'}
-                              </h1>
-                            </div>
-                          </div>
+      {/* Title and Rating Section */}
+      <div data-pageslot="true" className="c1yo0219 atm_9s_1txwivl_vmtskl atm_92_1yyfdc7_vmtskl atm_9s_1txwivl_9in345 atm_92_1yyfdc7_9in345 dir dir-ltr">
+        <div style={{ "--gp-section-max-width": "1120px" } as React.CSSProperties}>
+          <div className="_1a6d9c4">
+            <div className="plmw1e5 atm_e2_1osqo2v atm_gz_1wugsn5 atm_h0_1wugsn5 atm_vy_1osqo2v mq5rv0q atm_j3_1v7vjkn dir dir-ltr" style={{ "--maxWidth": "1120px" } as React.CSSProperties}>
+              <div data-plugin-in-point-id="TITLE_DEFAULT" data-section-id="TITLE_DEFAULT">
+                <div className="c1htwjs0 atm_lo_1tcgj5g atm_le_exct8b atm_le_idpfg4__oggzyc dir dir-ltr">
+                  <section>
+                    <div className="tuj3gk2 atm_h_esu3gu atm_9s_1txwivl atm_fc_1yb4nlp atm_cx_ftgil2 dir dir-ltr">
+                      <div className="tq9gyrs atm_ax_kb7nvz atm_r3_1h6ojuz atm_by_1d54pid atm_r3_18uv5lq__oggzyc atm_by_18uv5lq__oggzyc dir dir-ltr">
+                        <div className="tglziin atm_c8_1nvkso5 atm_g3_gtd3qd atm_cs_1ho43yb atm_w4_1hnarqo atm_9s_1nu9bjl dir dir-ltr">
+                          <h1
+                            tabIndex={-1}
+                            role="heading"
+                            aria-level={1}
+                            className="hpipapi atm_7l_1kw7nm4 atm_c8_1x4eueo atm_cs_1kw7nm4 atm_g3_1kw7nm4 atm_gi_idpfg4 atm_l8_idpfg4 atm_kd_idpfg4_pfnrn2 i1pmzyw7 atm_9s_1nu9bjl dir dir-ltr"
+                            {...{ elementtiming: "LCP-target" }}
+                          >
+                            {listing?.title || 'Beautiful Property'}
+                          </h1>
                         </div>
-                      </section>
+                      </div>
                     </div>
-                  </div>
+                  </section>
                 </div>
               </div>
             </div>
           </div>
-          
-          <div className="flex items-center gap-1.5 text-[14px] text-[#222222]">
-            {(listing?.numberOfReviews ?? 0) > 0 ? (
-              <>
-                <span className="font-semibold">★ {formatNumber(listing?.averageRating ?? 0, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
-                <span className="text-[#6A6A6A]">·</span>
-                <span className="underline font-semibold cursor-pointer">
-                  {(dict?.property?.detail?.reviews ?? "{count} reviews").replace("{count}", formatNumber(listing?.numberOfReviews ?? 0, locale))}
-                </span>
-                <span className="text-[#6A6A6A]">·</span>
-              </>
-            ) : null}
-            <span className="underline font-semibold cursor-pointer">
-              {getLocationString()}
-            </span>
-          </div>
         </div>
+        
+        <div className="flex items-center justify-center gap-1.5 text-[14px] text-[#222222] mt-3">
+          {(listing?.numberOfReviews ?? 0) > 0 ? (
+            <>
+              <span className="font-semibold">★ {formatNumber(listing?.averageRating ?? 0, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+              <span className="text-[#6A6A6A]">·</span>
+              <span className="underline font-semibold cursor-pointer">
+                {(dict?.property?.detail?.reviews ?? "{count} reviews").replace("{count}", formatNumber(listing?.numberOfReviews ?? 0, locale))}
+              </span>
+              <span className="text-[#6A6A6A]">·</span>
+            </>
+          ) : null}
+          <span className="underline font-semibold cursor-pointer">
+            {getLocationString()}
+          </span>
+        </div>
+      </div>
+
+      {/* Property Info */}
+      <div className="px-4 py-6 space-y-6">
 
         {/* Guest Favorite Card */}
         {(listing?.numberOfReviews ?? 0) > 0 && (
