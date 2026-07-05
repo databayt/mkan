@@ -34,6 +34,7 @@
     "crm:upsert": "tsx scripts/crm/twenty-upsert.ts",
     "crm:score": "tsx scripts/crm/score-trust.ts",
     "crm:rehost": "tsx scripts/crm/photo-rehost.ts",
+    "crm:sync-photos": "tsx scripts/crm/sync-rehosted-photos.ts",
     "crm:import": "tsx scripts/crm/mkan-import.ts",
     "crm:outreach": "tsx scripts/crm/outreach.ts",
     "crm:publish": "tsx scripts/crm/wave-publish.ts",
