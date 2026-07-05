@@ -112,6 +112,11 @@ export default async function ListingPage({ params }: ListingPageProps) {
   // Serialize the listing data to avoid Prisma serialization issues
   const serializedListing = JSON.parse(JSON.stringify(listing));
 
+  const isSuperhost = (serializedListing.averageRating ?? 0) >= 4.8 && (serializedListing.numberOfReviews ?? 0) >= 10;
+  const start = new Date(serializedListing.host?.createdAt || new Date());
+  const end = new Date();
+  const hostingMonths = Math.max(1, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()));
+
   const [d, mobileReviewsResult, session, nearbyRaw] = await Promise.all([
     getDictionary(lang),
     getListingReviews(listingId, { take: 8 }).catch(() => ({ reviews: [], total: 0 })),
@@ -204,6 +209,8 @@ export default async function ListingPage({ params }: ListingPageProps) {
                   hostUser={serializedListing.host ?? null}
                   reviewsCount={serializedListing.numberOfReviews ?? undefined}
                   averageRating={serializedListing.averageRating ?? undefined}
+                  superhost={isSuperhost}
+                  hostingMonths={hostingMonths}
                 />
               }
             />
@@ -261,6 +268,8 @@ export default async function ListingPage({ params }: ListingPageProps) {
           hostUser={serializedListing.host ?? null}
           reviewsCount={serializedListing.numberOfReviews ?? undefined}
           averageRating={serializedListing.averageRating ?? undefined}
+          superhost={isSuperhost}
+          hostingMonths={hostingMonths}
         />
         <MobileThingsToKnow maxGuests={serializedListing.guestCount ?? undefined} />
         <div className="px-4">
