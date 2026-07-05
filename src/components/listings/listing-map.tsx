@@ -18,6 +18,13 @@ interface ListingMapProps {
   /** Tooltip text over the pin (e.g. "Exact location provided after booking"). */
   pinLabel?: string;
   className?: string;
+  /**
+   * Disable one-finger drag-panning. On mobile the inline map otherwise
+   * swallows the vertical swipe and blocks the page from scrolling — pass this
+   * so a swipe over the map scrolls the page instead (tap still opens Maps, and
+   * the zoom buttons still work). Scroll/wheel zoom is always disabled.
+   */
+  disablePan?: boolean;
 }
 
 // Airbnb's dark-circle "your stay" marker (48×48 #222222) with the white house
@@ -67,6 +74,7 @@ export default function ListingMap({
   longitude,
   pinLabel,
   className,
+  disablePan,
 }: ListingMapProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -95,6 +103,13 @@ export default function ListingMap({
       return;
     }
     map.addControl(new mapboxgl.AttributionControl({ compact: true }));
+
+    // Never hijack the page's scroll: wheel/two-finger scrolling over the map
+    // pans the page, it doesn't zoom the map (matches Airbnb — zoom via the
+    // +/- buttons). On mobile, also release one-finger drag so a vertical swipe
+    // scrolls the page instead of panning the map (tap still deep-links to Maps).
+    map.scrollZoom.disable();
+    if (disablePan) map.dragPan.disable();
 
     // Airbnb dark-circle house marker — listings only reveal the precise
     // address after booking, so it marks the general area, not an exact pin.

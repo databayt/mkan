@@ -52,7 +52,7 @@ const MobileReviews: React.FC<MobileReviewsProps> = ({
   const countLabel = formatNumber(count, locale);
 
   return (
-    <div className={`md:hidden border-t border-[#DDDDDD] ${className}`}>
+    <div className={`md:hidden relative before:content-[''] before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-[#DDDDDD] ${className}`}>
       {/* Guest-favorite laurel hero (REVIEWS_DEFAULT) */}
       {isGuestFavorite ? (
         <div className="flex flex-col items-center px-4 pt-10 pb-4 text-center">

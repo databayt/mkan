@@ -138,29 +138,40 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             --palette-bg-secondary-core: #222222;
             --typography-titles-semibold_26_30-line-height: 30px;
             --typography-titles-semibold_26_30-font-size: 26px;
-            --dls19-pdp-listing-title-line-height: var(--typography-titles-semibold_26_30-line-height);
+            --dls19-pdp-listing-title-line-height: 28px;
             --dls19-pdp-listing-title-size: var(--typography-titles-semibold_26_30-font-size);
             --dls19-pdp-listing-title-weight: var(--typography-weight-medium500);
         }
 
         .c1yo0219 {
             display: block;
+            position: relative;
             background-color: var(--background, #ffffff);
             padding-top: 24px;
             padding-bottom: 24px;
             padding-left: 24px;
             padding-right: 24px;
             text-align: center;
-            border-bottom: 1px solid #DDDDDD;
+        }
+        /* Section divider — inset from the screen edges (not full-bleed) */
+        .c1yo0219::after {
+            content: "";
+            position: absolute;
+            left: 24px;
+            right: 24px;
+            bottom: 0;
+            height: 1px;
+            background: #DDDDDD;
         }
         .c1yo0219--first {
-            position: relative;
             z-index: 10;
             margin-top: -24px;
             padding-bottom: 8px;
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
-            border-bottom: none !important;
+        }
+        .c1yo0219--first::after {
+            display: none;
         }
         /* Overview sits tight under the title, mirroring Airbnb (title→subtitle ≈14px) */
         .c1yo0219--ov {
@@ -1098,7 +1109,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
 
         {/* Highlights Section */}
         {PHASE1.showListingHighlights && (listing?.highlights?.length ?? 0) > 0 && (
-          <div className="border-t border-[#DDDDDD] -mx-4 px-4 pt-6 mt-6">
+          <div className="border-t border-[#DDDDDD] pt-6 mt-6">
             <AirbnbInfo
               highlights={listing.highlights}
               heading={locale === "ar" ? "أبرز مميزات المكان" : "Listing highlights"}
@@ -1108,7 +1119,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
 
         {/* Description Section (DESCRIPTION_DEFAULT) — no heading on live; clamp + "Show more" */}
         {listing?.description && (
-          <div className="border-t border-[#DDDDDD] -mx-4 px-4 pt-6 mt-6">
+          <div className="border-t border-[#DDDDDD] pt-6 mt-6">
             <p className={`whitespace-pre-line text-base leading-[22px] text-[#222222] font-normal ${listing.description.length > 280 && !descExpanded ? "line-clamp-6" : ""}`}>
               {listing.description}
             </p>
@@ -1128,14 +1139,14 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
 
         {/* Mobile Info — hidden in phase 1 (fabricated wifi/parking/cancellation); see phase-flags */}
         {PHASE1.showMobileInfoCards && (
-          <div className="border-t border-[#DDDDDD] -mx-4 px-4 pt-6 mt-6">
+          <div className="border-t border-[#DDDDDD] pt-6 mt-6">
             <MobileInfo />
           </div>
         )}
 
         {/* Mobile Amenities — real listing.amenities, hidden when empty */}
         {PHASE1.showListingAmenities && (listing?.amenities?.length ?? 0) > 0 && (
-          <div className="border-t border-[#DDDDDD] -mx-4 px-4 pt-6 mt-6">
+          <div className="border-t border-[#DDDDDD] pt-6 mt-6">
             <MobileAmenities amenities={listing.amenities} />
           </div>
         )}

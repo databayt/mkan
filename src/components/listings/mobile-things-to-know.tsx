@@ -128,7 +128,7 @@ export default function MobileThingsToKnow({
   ];
 
   return (
-    <section className="px-4 py-8 border-t border-[#DDDDDD] space-y-6">
+    <section className="px-4 py-8 space-y-6 relative before:content-[''] before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-[#DDDDDD]">
       <h2 className="text-[22px] font-semibold leading-[26px] tracking-[-0.44px] text-[#222222]">
         {headingText}
       </h2>
