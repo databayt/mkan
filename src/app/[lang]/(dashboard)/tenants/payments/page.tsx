@@ -4,6 +4,7 @@ import { CreditCard, Home, Clock, Check, AlertCircle } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { getUserPayments } from "@/lib/actions/payment-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
+import { localizeListings } from "@/components/translation/localize";
 import {
   Table,
   TableBody,
@@ -57,6 +58,16 @@ export default async function TenantPaymentsPage({
     payments = result?.payments ?? [];
   } catch {
     payments = [];
+  }
+
+  // Localize each payment's nested listing free-text (title + location) for the
+  // viewer's locale — one batched cache round-trip across all rows.
+  if (payments.length > 0) {
+    const listings = payments.map((p) => p.lease.listing as unknown as Record<string, unknown>);
+    const localized = await localizeListings(listings, lang as "en" | "ar");
+    payments.forEach((p, i) => {
+      (p.lease as unknown as { listing: unknown }).listing = localized[i];
+    });
   }
 
   const now = new Date();

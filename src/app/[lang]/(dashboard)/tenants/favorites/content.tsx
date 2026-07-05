@@ -5,6 +5,7 @@ import { Heart, MapPin } from "lucide-react";
 import Header from "@/components/Header";
 import { getTenantFavorites } from "@/lib/actions/user-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
+import { localizeListings } from "@/components/translation/localize";
 
 interface FavoritesContentProps {
   lang: string;
@@ -21,7 +22,8 @@ export default async function FavoritesContent({ lang }: FavoritesContentProps) 
   const dict = (await getDictionary(lang as "en" | "ar")) as unknown as Record<string, Record<string, string>>;
   const t = (dict.dashboard as Record<string, Record<string, string>> | undefined)?.favorites ?? {};
   const currency = dict.common?.currency ?? "$";
-  const favorites = (await getTenantFavorites()) as Array<{
+  const rawFavorites = (await getTenantFavorites()) as unknown as Array<Record<string, unknown>>;
+  const favorites = (await localizeListings(rawFavorites, lang as "en" | "ar")) as unknown as Array<{
     id: number;
     title: string | null;
     pricePerNight: number | null;

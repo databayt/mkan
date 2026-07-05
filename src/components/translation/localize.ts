@@ -147,6 +147,41 @@ export async function localizeOne<T extends Record<string, unknown>>(
 }
 
 /**
+ * Canonical free-text fields that must localize for a listing to display fully
+ * in the viewer's language. Kept here as the ONE source of truth so every
+ * surface (cards, detail, bookings, favorites, checkout, messaging) localizes
+ * the same set — the i18n guard asserts listing-rendering server files call one
+ * of these helpers.
+ */
+export const LISTING_TEXT_FIELDS = ["title", "description"] as const;
+export const LOCATION_TEXT_FIELDS = ["address", "city", "state", "country"] as const;
+
+/**
+ * Localize an array of listing rows for `lang`: title/description on each row +
+ * the nested `location` (address/city/state/country). One batched cache
+ * round-trip per field-group. Pass the RAW Prisma payload (a closed `Listing`
+ * interface without an index signature won't satisfy `Record<string,unknown>` —
+ * localize before any `as Listing[]` cast).
+ */
+export async function localizeListings<T extends Record<string, unknown>>(
+  listings: T[],
+  lang: Lang,
+): Promise<T[]> {
+  if (listings.length === 0) return listings;
+  const withText = await localize(listings, LISTING_TEXT_FIELDS, lang);
+  return localizeNested(withText, "location", LOCATION_TEXT_FIELDS, lang);
+}
+
+/** Localize a single listing (title/description + nested location) for `lang`. */
+export async function localizeListing<T extends Record<string, unknown>>(
+  listing: T,
+  lang: Lang,
+): Promise<T> {
+  const [out] = await localizeListings([listing], lang);
+  return out ?? listing;
+}
+
+/**
  * Localize string fields on a nested object (e.g. `listing.location`) across
  * rows: collects the sub-objects, batch-resolves them through localize() (one
  * cache round-trip), and returns new row copies with the localized sub-object

@@ -4,6 +4,8 @@ import { z } from "zod";
 import { auth, canOverride } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath, updateTag } from "next/cache";
+import { localizeListing } from "@/components/translation/localize";
+import { getDisplayLang } from "@/components/translation/locale";
 import {
   Amenity,
   Highlight,
@@ -266,7 +268,12 @@ export async function getListing(id: unknown) {
       throw new Error("Listing not found");
     }
 
-    return listing;
+    // Localize stored free-text (title/description + location) for the viewer's
+    // locale (cookie-derived — reliable on client re-queries via RTK).
+    return (await localizeListing(
+      listing as unknown as Record<string, unknown>,
+      await getDisplayLang(),
+    )) as unknown as typeof listing;
   } catch (error) {
     logger.error("Error fetching listing:", error);
     throw new Error(

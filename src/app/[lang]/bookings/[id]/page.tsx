@@ -5,6 +5,7 @@ import { Check, Clock, MapPin, Users } from "lucide-react";
 
 import { getBooking } from "@/lib/actions/booking-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
+import { getText } from "@/components/translation/localize";
 import CancelBookingButton from "./cancel-button";
 
 export default async function BookingConfirmationPage({
@@ -48,6 +49,11 @@ export default async function BookingConfirmationPage({
   const isCancelled = b.status === "Cancelled";
   const isConfirmed = b.status === "Confirmed";
 
+  // Localize the listing's stored free-text for the viewer's locale.
+  const listingTitle = await getText(b.listing.title, lang as "en" | "ar");
+  const locCity = await getText(b.listing.location?.city, lang as "en" | "ar");
+  const locCountry = await getText(b.listing.location?.country, lang as "en" | "ar");
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
       <div className="mb-6">
@@ -85,7 +91,7 @@ export default async function BookingConfirmationPage({
           <div className="relative w-full aspect-[16/9]">
             <Image
               src={b.listing.photoUrls[0]}
-              alt={b.listing.title ?? ""}
+              alt={listingTitle}
               fill
               sizes="(max-width: 768px) 100vw, 768px"
               className="object-cover"
@@ -93,11 +99,11 @@ export default async function BookingConfirmationPage({
           </div>
         )}
         <div className="p-4 space-y-3">
-          <div className="text-lg font-medium">{b.listing.title}</div>
+          <div className="text-lg font-medium">{listingTitle}</div>
           {b.listing.location && (
             <div className="flex items-center text-sm text-muted-foreground">
               <MapPin className="w-4 h-4 me-1" />
-              {b.listing.location.city}, {b.listing.location.country}
+              {locCity}, {locCountry}
             </div>
           )}
           <div className="grid grid-cols-3 gap-4 pt-3 border-t">

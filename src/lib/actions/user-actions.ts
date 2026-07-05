@@ -7,6 +7,8 @@ import { revalidatePath } from "next/cache";
 import { UserRole } from "@prisma/client";
 import { sanitizeInput, sanitizeEmail, sanitizePhone } from "@/lib/sanitization";
 import { logger } from "@/lib/logger";
+import { localizeListings } from "@/components/translation/localize";
+import { getDisplayLang } from "@/components/translation/locale";
 
 const userIdSchema = z.string().min(1);
 const propertyIdSchema = z.number().int().positive();
@@ -416,7 +418,13 @@ export async function getCurrentResidences(userId: unknown) {
       },
     });
 
-    return leases.map(lease => lease.listing);
+    // Localize each residence's stored free-text (title/description + location)
+    // for the viewer's locale (cookie-derived — reliable on client re-queries).
+    const listings = leases.map((lease) => lease.listing);
+    return (await localizeListings(
+      listings as unknown as Array<Record<string, unknown>>,
+      await getDisplayLang(),
+    )) as unknown as typeof listings;
   } catch (error) {
     logger.error("Error fetching current residences:", error);
     throw new Error("Failed to fetch current residences");
