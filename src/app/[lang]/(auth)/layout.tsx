@@ -1,4 +1,7 @@
 import { ReportIssue } from "@/components/report-issue";
+import { NOINDEX_METADATA } from "@/lib/metadata";
+
+export const metadata = NOINDEX_METADATA;
 
 const AuthLayout = ({
   children

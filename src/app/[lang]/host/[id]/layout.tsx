@@ -3,6 +3,9 @@ import { requireAuth } from "@/lib/auth-guard"
 import { canOverride } from "@/lib/auth"
 import { db } from "@/lib/db"
 import HostLayoutClient from "./layout-client"
+import { NOINDEX_METADATA } from "@/lib/metadata"
+
+export const metadata = NOINDEX_METADATA;
 
 export default async function HostLayout({
   children,

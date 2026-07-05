@@ -47,9 +47,6 @@ export async function generateMetadata({
         [locale]: `/${locale}`,
       }), { 'x-default': '/ar' }),
     },
-    other: {
-      'accept-language': lang,
-    },
   };
 }
 

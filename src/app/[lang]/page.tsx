@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { getHomeListings } from "@/lib/actions/search-actions";
 import { createMetadata } from "@/lib/metadata";
+import { JsonLd, organizationJsonLd, webSiteJsonLd } from "@/components/seo/json-ld";
 import { Listing } from "@/types/listing";
 import HomeContent from "./home-content";
 import { getDictionary } from "@/components/internationalization/dictionaries";
@@ -47,5 +48,11 @@ export default async function HomePage({
   const { lang } = await params;
   const listings = await getPublishedListings(lang);
 
-  return <HomeContent listings={listings} locale={lang} />;
+  return (
+    <>
+      <JsonLd data={organizationJsonLd()} />
+      <JsonLd data={webSiteJsonLd(lang)} />
+      <HomeContent listings={listings} locale={lang} />
+    </>
+  );
 }

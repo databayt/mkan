@@ -7,6 +7,9 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { NAVBAR_HEIGHT } from "@/lib/constants";
 import { requireRole } from "@/lib/auth-guard";
 import { getDictionary } from "@/components/internationalization/dictionaries";
+import { NOINDEX_METADATA } from "@/lib/metadata";
+
+export const metadata = NOINDEX_METADATA;
 
 export default async function AdminLayout({
   children,

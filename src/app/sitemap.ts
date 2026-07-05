@@ -1,29 +1,48 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
+import { SITE_URL } from "@/lib/metadata";
 
-const SITE_URL = process.env.NEXTAUTH_URL || "https://mkan.io";
+// Regenerate hourly so newly published listings/offices surface without a
+// redeploy (the file otherwise prerenders once at build).
+export const revalidate = 3600;
+
+// Per-URL hreflang: tells crawlers /en/... and /ar/... are the same page in
+// two languages instead of two competing pages.
+function languageAlternates(path: string) {
+  return {
+    languages: {
+      en: `${SITE_URL}/en${path}`,
+      ar: `${SITE_URL}/ar${path}`,
+    },
+  };
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Static pages
+  // Static public pages (locale-prefixed). Auth, dashboards, and checkout
+  // surfaces are intentionally excluded — they're noindexed/disallowed.
   const staticPages = [
     "",
     "/listings",
+    "/search",
     "/transport",
     "/transport/offices",
     "/transport/search",
-    // /login + /register intentionally excluded — auth pages must not be indexed.
+    "/help",
+    "/co-hosts",
+    "/refer",
+    "/giftcards",
     "/privacy",
     "/terms",
     "/cookies",
     "/accessibility",
   ];
 
-  const staticEntries = staticPages.flatMap((path) =>
-    ["en", "ar"].map((locale) => ({
+  const staticEntries: MetadataRoute.Sitemap = staticPages.flatMap((path) =>
+    (["en", "ar"] as const).map((locale) => ({
       url: `${SITE_URL}/${locale}${path}`,
-      lastModified: new Date(),
       changeFrequency: "weekly" as const,
       priority: path === "" ? 1.0 : 0.8,
+      alternates: languageAlternates(path),
     }))
   );
 
@@ -36,11 +55,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
 
     listingEntries = listings.flatMap((listing) =>
-      ["en", "ar"].map((locale) => ({
+      (["en", "ar"] as const).map((locale) => ({
         url: `${SITE_URL}/${locale}/listings/${listing.id}`,
         lastModified: listing.updatedAt,
         changeFrequency: "daily" as const,
         priority: 0.7,
+        alternates: languageAlternates(`/listings/${listing.id}`),
       }))
     );
   } catch {
@@ -56,11 +76,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
 
     officeEntries = offices.flatMap((office) =>
-      ["en", "ar"].map((locale) => ({
+      (["en", "ar"] as const).map((locale) => ({
         url: `${SITE_URL}/${locale}/transport/offices/${office.id}`,
         lastModified: office.updatedAt,
         changeFrequency: "weekly" as const,
         priority: 0.6,
+        alternates: languageAlternates(`/transport/offices/${office.id}`),
       }))
     );
   } catch {

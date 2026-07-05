@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const SITE_URL = process.env.NEXTAUTH_URL || "https://mkan.io";
+import { SITE_URL } from "@/lib/metadata";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -16,8 +15,18 @@ export default function robots(): MetadataRoute.Robots {
           "/*/hosting/",
           "/*/host/",
           "/*/transport-host/",
+          "/*/admin/",
+          "/*/bookings/",
+          "/*/multicalendar/",
+          "/*/profile/",
+          "/*/dev/",
+          "/*/transport/booking/",
           "/*/login",
           "/*/register",
+          "/*/join",
+          "/*/reset",
+          "/*/new-password",
+          "/*/new-verification",
           "/*/error",
           "/*/verify-listing/",
         ],

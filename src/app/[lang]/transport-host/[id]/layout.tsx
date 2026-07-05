@@ -17,6 +17,7 @@ export async function generateMetadata({
   return {
     title: t?.title ?? "Transport Host",
     description: t?.description ?? "Manage your transport offices and bookings",
+    robots: { index: false, follow: false },
   }
 }
 

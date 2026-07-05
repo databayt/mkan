@@ -16,7 +16,8 @@ import MoreStaysNearby, { type NearbyStay } from "@/components/listings/more-sta
 import Review from "@/components/listings/review";
 import MeetHost from "@/components/listings/meet-host";
 import Footer from "@/components/site/footer";
-import { createMetadata } from "@/lib/metadata";
+import { createMetadata, SITE_URL } from "@/lib/metadata";
+import { JsonLd, listingJsonLd, breadcrumbJsonLd } from "@/components/seo/json-ld";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { getListingReviews } from "@/lib/actions/review-actions";
 import { auth } from "@/lib/auth";
@@ -46,17 +47,30 @@ export async function generateMetadata({
   }
   const listing = await db.listing.findUnique({
     where: { id: listingId },
-    select: { title: true, description: true },
+    select: {
+      title: true,
+      description: true,
+      photoUrls: true,
+      isPublished: true,
+      location: { select: { city: true } },
+    },
   });
-  const [title, description] = await Promise.all([
+  const [title, description, city] = await Promise.all([
     getText(listing?.title, lang),
     getText(listing?.description, lang),
+    getText(listing?.location?.city, lang),
   ]);
   return createMetadata({
-    title: title || d.rental?.listing?.details,
+    // "<name> - <city>" mirrors how stay pages title themselves; the city is
+    // the query most seekers actually type.
+    title: [title || d.rental?.listing?.details, city].filter(Boolean).join(" - "),
     description: description || d.rental?.listing?.viewDetails,
     locale: lang,
     path: `/listings/${id}`,
+    image: listing?.photoUrls?.[0],
+    // Unpublished/draft listings 404 in the page itself; keep any crawler
+    // that raced the transition from indexing the URL.
+    noIndex: !listing?.isPublished,
   });
 }
 
@@ -184,8 +198,33 @@ export default async function ListingPage({ params }: ListingPageProps) {
   // common copy is read via this flat cast (same pattern as the reserve card).
   const dictStrings = d as unknown as Record<string, Record<string, string>>;
 
+  const listingUrl = `${SITE_URL}/${lang}/listings/${listingId}`;
+
   return (
     <div className="min-h-screen bg-background">
+      <JsonLd
+        data={listingJsonLd({
+          id: listingId,
+          title: serializedListing.title ?? "Listing",
+          description: serializedListing.description ?? "",
+          url: listingUrl,
+          locale: lang,
+          photoUrls: serializedListing.photoUrls ?? [],
+          propertyType: serializedListing.propertyType,
+          bedrooms: serializedListing.bedrooms,
+          bathrooms: serializedListing.bathrooms,
+          guestCount: serializedListing.guestCount,
+          isPetsAllowed: serializedListing.isPetsAllowed,
+          location: serializedListing.location,
+        })}
+      />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: lang === "ar" ? "الرئيسية" : "Home", url: `${SITE_URL}/${lang}` },
+          { name: lang === "ar" ? "العقارات" : "Listings", url: `${SITE_URL}/${lang}/listings` },
+          { name: serializedListing.title ?? "Listing", url: listingUrl },
+        ])}
+      />
       {/* Desktop Layout - Preserved. Header matches /listings: the compact
           search pill expands into the big search (opening the clicked segment),
           and the hamburger menu + avatar behave identically. disableScrollExpand

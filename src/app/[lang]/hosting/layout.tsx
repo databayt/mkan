@@ -3,6 +3,9 @@ import { requireRole } from "@/lib/auth-guard"
 import HostingHeader from '@/components/hosting/hosting-header'
 import { ReportIssueFooter } from '@/components/report-issue/footer'
 import { HostingBottomNav } from '@/components/hosting/hosting-bottom-nav'
+import { NOINDEX_METADATA } from '@/lib/metadata'
+
+export const metadata = NOINDEX_METADATA;
 
 export default async function HostingLayout({
   children,

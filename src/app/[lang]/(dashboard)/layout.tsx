@@ -4,6 +4,9 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import Sidebar from "@/components/AppSidebar";
 import { NAVBAR_HEIGHT } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth-guard";
+import { NOINDEX_METADATA } from "@/lib/metadata";
+
+export const metadata = NOINDEX_METADATA;
 
 export default async function DashboardLayout({
   children,

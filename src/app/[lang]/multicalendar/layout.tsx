@@ -2,6 +2,9 @@ import { UserRole } from "@prisma/client";
 import { requireRole } from "@/lib/auth-guard";
 import HostingHeader from "@/components/hosting/hosting-header";
 import { HostingBottomNav } from "@/components/hosting/hosting-bottom-nav";
+import { NOINDEX_METADATA } from "@/lib/metadata";
+
+export const metadata = NOINDEX_METADATA;
 
 // The multicalendar is a full-screen grid (Airbnb's /multicalendar), so it gets
 // its own shell: the host header on top, then a flex-fill main with no page

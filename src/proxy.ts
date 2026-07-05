@@ -23,6 +23,11 @@ import {
 const locales: readonly string[] = i18n.locales;
 const defaultLocale = i18n.defaultLocale;
 
+// Canonical production host (matches NEXTAUTH_URL) and the stale aliases
+// that must permanently redirect to it. Edge runtime — keep this static.
+const CANONICAL_HOST = 'mk.databayt.org';
+const STALE_HOSTS = new Set(['mkan.databayt.org', 'www.mk.databayt.org']);
+
 // ---------------------------------------------------------------------------
 // Auth helpers
 // ---------------------------------------------------------------------------
@@ -202,6 +207,20 @@ function getLocale(request: NextRequest) {
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // --- Host canonicalization ----------------------------------------------
+  // Stale domain aliases serve identical content and split ranking signals
+  // across hosts. 308 (permanent, method-preserving) to the canonical host.
+  // Explicit allowlist so preview *.vercel.app deploys and localhost are
+  // never touched.
+  const host = request.headers.get('host') ?? '';
+  if (STALE_HOSTS.has(host)) {
+    const url = request.nextUrl.clone();
+    url.protocol = 'https';
+    url.host = CANONICAL_HOST;
+    url.port = '';
+    return NextResponse.redirect(url, 308);
+  }
 
   // One id per request, honored if a load balancer already assigned one.
   const requestId = request.headers.get('x-request-id') ?? crypto.randomUUID();
