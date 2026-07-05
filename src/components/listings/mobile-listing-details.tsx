@@ -157,10 +157,15 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
         .c1yo0219--first {
             position: relative;
             z-index: 10;
-            margin-top: -28px;
+            margin-top: -24px;
+            padding-bottom: 8px;
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
             border-bottom: none !important;
+        }
+        /* Overview sits tight under the title, mirroring Airbnb (title→subtitle ≈14px) */
+        .c1yo0219--ov {
+            padding-top: 8px;
         }
         ._1a6d9c4 {
             display: flex !important;
@@ -198,7 +203,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             font-size: var(--dls19-pdp-listing-title-size);
             line-height: var(--dls19-pdp-listing-title-line-height);
             font-weight: var(--dls19-pdp-listing-title-weight);
-            letter-spacing: -0.02em;
+            letter-spacing: normal;
             margin: 0;
             text-align: center !important;
         }
@@ -208,7 +213,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             text-align: center;
         }
         .o1sio90k {
-            margin-top: 8px;
+            margin-top: 4px;
         }
         .lgx66tx {
             display: flex;
@@ -218,12 +223,21 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             padding: 0;
             margin: 0;
         }
+        .ov-subtitle {
+            font-family: var(--typography-font-family-cereal-font-family);
+            font-size: 14px;
+            line-height: 18px;
+            font-weight: 400;
+            color: #6a6a6a;
+            text-align: center;
+            margin: 0;
+        }
         .l7n4lsf {
             display: inline-flex;
             align-items: center;
-            font-size: 16px;
-            line-height: 20px;
-            color: #222222;
+            font-size: 14px;
+            line-height: 18px;
+            color: #6a6a6a;
         }
         .axjq0r, .pen26si {
             display: inline-block;
@@ -531,9 +545,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
         }
         .s1emndxt {
             display: block;
-            border-bottom: 1px solid var(--border, #DDDDDD);
-            padding-bottom: 24px;
-            margin-top: 16px;
+            margin-top: 24px;
             width: 100%;
         }
         .s159e3yo {
@@ -557,7 +569,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
         }
         .d1rieilq {
             width: 1px;
-            height: 36px;
+            height: 32px;
             background-color: var(--border, #DDDDDD);
             margin: 0 8px;
             flex-shrink: 0;
@@ -571,14 +583,14 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             color: var(--foreground, #222222);
         }
         .l1xqscq2 {
-            font-size: 15px;
-            font-weight: 700;
+            font-size: 14px;
+            font-weight: 500;
             color: var(--foreground, #222222);
             line-height: 16px;
             margin: 0 4px;
             text-align: center;
             white-space: pre-line;
-            letter-spacing: -0.02em;
+            letter-spacing: normal;
         }
         .ccutbh9 {
             display: flex;
@@ -587,18 +599,16 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
         }
         .rqlvfu0 {
             font-size: 18px;
-            font-weight: 700;
+            font-weight: 500;
             color: var(--foreground, #222222);
-            line-height: 22px;
+            line-height: 24px;
         }
         .rr9m0ar {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--foreground, #717171);
-            opacity: 0.8;
-            line-height: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--foreground, #222222);
+            line-height: 16px;
             margin-top: 2px;
-            text-decoration: underline;
         }
         .a8jt5op {
             border: 0 !important;
@@ -658,9 +668,6 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             <PropertyImageFallback className="object-contain p-6 bg-muted/40" />
           </div>
         )}
-
-        {/* Overlay Gradient — pointer-events-none so it never eats the strip's swipe */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
 
         {/* Top Navigation Bar */}
         <div className="_1o8y6fw9">
@@ -777,11 +784,11 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
       </div>
 
       {/* Overview Section (OVERVIEW_DEFAULT_V2) */}
-      <div data-pageslot="true" className="c1yo0219 atm_9s_1txwivl_vmtskl atm_92_1yyfdc7_vmtskl atm_9s_1txwivl_9in345 atm_92_1yyfdc7_9in345 dir dir-ltr">
+      <div data-pageslot="true" className="c1yo0219 c1yo0219--ov atm_9s_1txwivl_vmtskl atm_92_1yyfdc7_vmtskl atm_9s_1txwivl_9in345 atm_92_1yyfdc7_9in345 dir dir-ltr">
         <div style={{ "--gp-section-max-width": "1120px" } as React.CSSProperties}>
           <div className="_1a6d9c4">
             <div className="plmw1e5 atm_e2_1osqo2v atm_gz_1wugsn5 atm_h0_1wugsn5 atm_vy_1osqo2v mq5rv0q atm_j3_1v7vjkn dir dir-ltr" style={{ "--maxWidth": "1120px" } as React.CSSProperties}>
-              <div data-plugin-in-point-id="OVERVIEW_DEFAULT_V2" data-section-id="OVERVIEW_DEFAULT_V2" style={{ paddingBottom: "24px" }}>
+              <div data-plugin-in-point-id="OVERVIEW_DEFAULT_V2" data-section-id="OVERVIEW_DEFAULT_V2" style={{ paddingBottom: "12px" }}>
                 <div style={{ display: "contents" }}>
                   <section className="m4x54cm atm_c8_1u0fjfs atm_g3_kyllue atm_fr_1qxn676 atm_cs_hfq2vn atm_r3_1h6ojuz atm_7l_gyfspu dir dir-ltr">
                     <div>
@@ -789,7 +796,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                         tabIndex={-1}
                         role="heading"
                         aria-level={2}
-                        className="hpipapi atm_7l_1kw7nm4 atm_c8_1x4eueo atm_cs_1kw7nm4 atm_g3_1kw7nm4 atm_gi_idpfg4 atm_l8_idpfg4 atm_kd_idpfg4_pfnrn2 dir dir-ltr"
+                        className="ov-subtitle dir dir-ltr"
                         {...{ elementtiming: "LCP-target" }}
                       >
                         {overviewTitle}
@@ -798,41 +805,22 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                     {specs && (
                       <div className="o1sio90k atm_c8_1h3mmnw atm_g3_1vnrj90 atm_fr_b3emyl atm_h3_1y44olf atm_c8_3w7ag0__oggzyc atm_g3_1emqlh9__oggzyc atm_fr_helst__oggzyc dir dir-ltr">
                         <ol className="lgx66tx atm_gi_idpfg4 atm_l8_idpfg4 dir dir-ltr">
-                          {listing.guestCount !== undefined && (
-                            <li className="l7n4lsf atm_9s_1o8liyq_keqd55 dir dir-ltr">
-                              {spec(listing.guestCount, "guests")}
-                              {listing.bedrooms !== undefined || listing.bathrooms !== undefined ? (
-                                <span className="axjq0r atm_9s_glywfm dir dir-ltr">
-                                  <span className="s1b4clln atm_mj_glywfm atm_vb_glywfm atm_vv_1jtmq4 atm_lk_idpfg4 atm_ll_idpfg4 dir dir-ltr" aria-hidden="true"> · </span>
-                                </span>
-                              ) : null}
-                            </li>
-                          )}
-                          {listing.bedrooms !== undefined && (
-                            <li className="l7n4lsf atm_9s_1o8liyq_keqd55 dir dir-ltr">
-                              {listing.guestCount !== undefined ? (
-                                <span className="pen26si dir dir-ltr">
-                                  <span className="s1b4clln atm_mj_glywfm atm_vb_glywfm atm_vv_1jtmq4 atm_lk_idpfg4 atm_ll_idpfg4 dir dir-ltr" aria-hidden="true"> · </span>
-                                </span>
-                              ) : null}
-                              {spec(listing.bedrooms, "bedrooms")}
-                              {listing.bathrooms !== undefined ? (
-                                <span className="axjq0r atm_9s_glywfm dir dir-ltr">
-                                  <span className="s1b4clln atm_mj_glywfm atm_vb_glywfm atm_vv_1jtmq4 atm_lk_idpfg4 atm_ll_idpfg4 dir dir-ltr" aria-hidden="true"> · </span>
-                                </span>
-                              ) : null}
-                            </li>
-                          )}
-                          {listing.bathrooms !== undefined && (
-                            <li className="l7n4lsf atm_9s_1o8liyq_keqd55 dir dir-ltr">
-                              {listing.bedrooms !== undefined || listing.guestCount !== undefined ? (
-                                <span className="pen26si dir dir-ltr">
-                                  <span className="s1b4clln atm_mj_glywfm atm_vb_glywfm atm_vv_1jtmq4 atm_lk_idpfg4 atm_ll_idpfg4 dir dir-ltr" aria-hidden="true"> · </span>
-                                </span>
-                              ) : null}
-                              {spec(listing.bathrooms, "bathrooms")}
-                            </li>
-                          )}
+                          {[
+                            typeof listing?.guestCount === "number" ? spec(listing.guestCount, "guests") : null,
+                            typeof listing?.bedrooms === "number" ? spec(listing.bedrooms, "bedrooms") : null,
+                            typeof listing?.bathrooms === "number" ? spec(listing.bathrooms, "bathrooms") : null,
+                          ]
+                            .filter(Boolean)
+                            .map((label, i) => (
+                              <li key={i} className="l7n4lsf atm_9s_1o8liyq_keqd55 dir dir-ltr">
+                                {i > 0 && (
+                                  <span className="pen26si dir dir-ltr">
+                                    <span className="s1b4clln atm_mj_glywfm atm_vb_glywfm atm_vv_1jtmq4 atm_lk_idpfg4 atm_ll_idpfg4 dir dir-ltr" aria-hidden="true"> · </span>
+                                  </span>
+                                )}
+                                {label}
+                              </li>
+                            ))}
                         </ol>
                       </div>
                     )}
@@ -853,7 +841,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                             <span className="a8jt5op atm_3f_idpfg4 atm_7h_hxbz6r atm_7i_ysn8ba atm_e2_t94yts atm_ks_zryt35 atm_l8_idpfg4 atm_mk_stnw88 atm_vv_1q9ccgz atm_vy_t94yts dir dir-ltr">
                               {`Rated ${formatNumber(listing?.averageRating ?? 0, locale, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} out of 5 stars.`}
                             </span>
-                            <div className="rqlvfu0 font-bold" aria-hidden="true">
+                            <div className="rqlvfu0" aria-hidden="true">
                               {formatNumber(listing?.averageRating ?? 0, locale, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
                             </div>
                             <div className="ccutbh9 atm_9s_1txwivl dir dir-ltr" style={{ gap: "0.125rem" }}>
@@ -941,23 +929,14 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                             <span className="a8jt5op atm_3f_idpfg4 atm_7h_hxbz6r atm_7i_ysn8ba atm_e2_t94yts atm_ks_zryt35 atm_l8_idpfg4 atm_mk_stnw88 atm_vv_1q9ccgz atm_vy_t94yts dir dir-ltr">
                               {`${formatNumber(listing?.numberOfReviews ?? 0, locale)} reviews`}
                             </span>
-                            <div className="rqlvfu0 font-bold" aria-hidden="true">
+                            <div className="rqlvfu0" aria-hidden="true">
                               {formatNumber(listing?.numberOfReviews ?? 0, locale)}
                             </div>
-                            <div className="rr9m0ar font-semibold" aria-hidden="true">
+                            <div className="rr9m0ar" aria-hidden="true">
                               {locale === "ar" ? "تقييمات" : "Reviews"}
                             </div>
                           </button>
                         </div>
-
-                        {/* Highlight: Free Cancellation */}
-                        <ul className="cchlee2 atm_9s_1txwivl atm_be_1g80g66 atm_fc_1h6ojuz atm_gb_glywfm atm_h3_1tcgj5g atm_gq_idpfg4 atm_l8_idpfg4 atm_cx_i2wt44 dir dir-ltr">
-                          <li>
-                            <span className="p10iyp1o atm_l8_1gon2vb atm_fc_1h6ojuz atm_h_1h6ojuz atm_5j_i2wt44 atm_jd_1n0tmlx atm_vy_1ns9ob4 atm_c8_1skhajo atm_cs_1mexzig atm_g3_o7aogt atm_ks_15vqwwr atm_sq_1l2sidv atm_9s_cj1kg8 atm_6w_1e54zos atm_fy_kb7nvz atm_j3_1osqo2v atm_26_54yaag atm_7l_gyfspu atm_ks_zryt35__1rgatj2 dir dir-ltr">
-                              {locale === "ar" ? "إلغاء مجاني" : "Free cancellation"}
-                            </span>
-                          </li>
-                        </ul>
                       </div>
                     )}
                   </section>
