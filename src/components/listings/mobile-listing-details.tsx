@@ -1098,7 +1098,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
 
         {/* Highlights Section */}
         {PHASE1.showListingHighlights && (listing?.highlights?.length ?? 0) > 0 && (
-          <div className="border-t border-[#DDDDDD] pt-6 mt-6">
+          <div className="border-t border-[#DDDDDD] -mx-4 px-4 pt-6 mt-6">
             <AirbnbInfo
               highlights={listing.highlights}
               heading={locale === "ar" ? "أبرز مميزات المكان" : "Listing highlights"}
@@ -1108,7 +1108,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
 
         {/* Description Section (DESCRIPTION_DEFAULT) — no heading on live; clamp + "Show more" */}
         {listing?.description && (
-          <div className="border-t border-[#DDDDDD] pt-6 mt-6">
+          <div className="border-t border-[#DDDDDD] -mx-4 px-4 pt-6 mt-6">
             <p className={`whitespace-pre-line text-base leading-[22px] text-[#222222] font-normal ${listing.description.length > 280 && !descExpanded ? "line-clamp-6" : ""}`}>
               {listing.description}
             </p>
@@ -1128,14 +1128,14 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
 
         {/* Mobile Info — hidden in phase 1 (fabricated wifi/parking/cancellation); see phase-flags */}
         {PHASE1.showMobileInfoCards && (
-          <div className="border-t border-[#DDDDDD] pt-6 mt-6">
+          <div className="border-t border-[#DDDDDD] -mx-4 px-4 pt-6 mt-6">
             <MobileInfo />
           </div>
         )}
 
         {/* Mobile Amenities — real listing.amenities, hidden when empty */}
         {PHASE1.showListingAmenities && (listing?.amenities?.length ?? 0) > 0 && (
-          <div className="border-t border-[#DDDDDD] pt-6 mt-6">
+          <div className="border-t border-[#DDDDDD] -mx-4 px-4 pt-6 mt-6">
             <MobileAmenities amenities={listing.amenities} />
           </div>
         )}
