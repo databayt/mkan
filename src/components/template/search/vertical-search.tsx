@@ -752,7 +752,7 @@ export default function VerticalSearch({
               layoutId={ctaLayoutId}
               type="button"
               onClick={handleSearch}
-              className={`absolute bottom-5 end-4 z-30 flex h-12 items-center gap-2 rounded-full ${isAr ? "px-8" : "px-6"} text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_6px_20px_rgba(222,49,81,0.4)]`}
+              className={`absolute bottom-5 end-6 z-30 flex h-12 items-center gap-2 rounded-sm ${isAr ? "px-6" : "px-4"} text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_2px_8px_rgba(222,49,81,0.25)]`}
             >
               <Search className="h-4 w-4" strokeWidth={2.5} />
               {t.search}
@@ -765,8 +765,8 @@ export default function VerticalSearch({
               // silently collapsed to 12px. Set the horizontal padding inline
               // (logical → RTL-safe) so it actually applies and the Search pill
               // reads as a proper wide button (wider in Arabic to balance "بحث").
-              style={{ paddingInline: isAr ? 40 : 32 }}
-              className={`absolute bottom-5 end-4 z-30 h-12 gap-2 rounded-full text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_6px_20px_rgba(222,49,81,0.4)]`}
+              style={{ paddingInline: isAr ? 24 : 16 }}
+              className={`absolute bottom-5 end-6 z-30 h-12 gap-2 rounded-sm text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_2px_8px_rgba(222,49,81,0.25)]`}
             >
               <Search className="h-4 w-4" strokeWidth={2.5} />
               {t.search}
