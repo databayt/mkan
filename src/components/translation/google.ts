@@ -28,7 +28,37 @@ function reportTranslationDegraded(reason: string): void {
   }
 }
 
+// Circuit breaker. When the flag is ON but Google keeps failing — a quota-blocked
+// key (403 userRateLimitExceeded), billing not yet enabled, or an outage — we
+// must NOT pay a 2.5s timeout per uncached string on the render path. After a few
+// consecutive failures the breaker opens: requests fail instantly (→ source-text
+// fallback) for a short cooldown, then it probes again. This makes turning
+// ENABLE_CONTENT_TRANSLATION on safe even before the billing fix has propagated.
+// State is per server instance (fine on serverless — each resets on cold start).
+const BREAKER_THRESHOLD = 3;
+const BREAKER_COOLDOWN_MS = 60_000;
+let consecutiveFailures = 0;
+let breakerOpenUntil = 0;
+
+function recordTranslateSuccess(): void {
+  consecutiveFailures = 0;
+  breakerOpenUntil = 0;
+}
+function recordTranslateFailure(): void {
+  consecutiveFailures += 1;
+  if (consecutiveFailures >= BREAKER_THRESHOLD) {
+    breakerOpenUntil = Date.now() + BREAKER_COOLDOWN_MS;
+    reportTranslationDegraded(
+      `circuit open — ${consecutiveFailures} consecutive failures; serving source for ${BREAKER_COOLDOWN_MS / 1000}s`,
+    );
+  }
+}
+
 async function requestTranslate(params: URLSearchParams): Promise<TranslateResponse> {
+  // Breaker open → fail fast without a network round-trip (caller uses source).
+  if (Date.now() < breakerOpenUntil) {
+    throw new GoogleTranslateError("Google Translate circuit open", { transient: true });
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   let response: Response;
@@ -39,6 +69,7 @@ async function requestTranslate(params: URLSearchParams): Promise<TranslateRespo
     });
   } catch (err) {
     const aborted = controller.signal.aborted || (err instanceof Error && err.name === "AbortError");
+    recordTranslateFailure();
     if (aborted) {
       reportTranslationDegraded(`Google Translate timeout after ${TIMEOUT_MS}ms`);
       throw new GoogleTranslateError("Google Translate timeout", { transient: true });
@@ -51,6 +82,7 @@ async function requestTranslate(params: URLSearchParams): Promise<TranslateRespo
 
   if (!response.ok) {
     const error = await response.text();
+    recordTranslateFailure();
     reportTranslationDegraded(`Google Translate API ${response.status}: ${error.slice(0, 200)}`);
     const isRateLimit403 = response.status === 403 && /rateLimitExceeded/i.test(error);
     const transient = response.status === 429 || response.status >= 500 || isRateLimit403;
@@ -59,6 +91,7 @@ async function requestTranslate(params: URLSearchParams): Promise<TranslateRespo
       transient,
     });
   }
+  recordTranslateSuccess();
   return (await response.json()) as TranslateResponse;
 }
 
