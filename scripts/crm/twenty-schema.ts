@@ -151,6 +151,11 @@ export const HOME: ObjectDef = {
     { name: 'scoredAt', label: 'Scored at', type: 'DATE_TIME' },
     { name: 'rubricVersion', label: 'Rubric version', type: 'TEXT' },
 
+    // Curation labels (the filter chips: origin + quality + review state).
+    // MULTI_SELECT so one home can carry several — e.g. [MANUAL, HIGH] or [SCRAPED].
+    // MANUAL/SCRAPED = origin; HIGH = high overall trust; REVIEWED = human-checked (manual toggle).
+    { name: 'labels', label: 'Labels', type: 'MULTI_SELECT', icon: 'IconTag', options: ['MANUAL', 'SCRAPED', 'HIGH', 'REVIEWED'], description: 'Filter chips: MANUAL vs SCRAPED origin · HIGH trust · REVIEWED by a human.' },
+
     // mkan integration & status
     { name: 'homeStatus', label: 'Home status', type: 'SELECT', icon: 'IconProgressCheck', options: ['SCRAPED', 'SCORED', 'READY_FOR_IMPORT', 'IMPORTED_BUSY', 'LIVE', 'REJECTED', 'DUPLICATE', 'DELISTED'] },
     { name: 'mkanPropertyType', label: 'mkan property type', type: 'SELECT', options: MKAN_PROPERTY_TYPE },
@@ -206,8 +211,8 @@ export const HOST: ObjectDef = {
     { name: 'hostTrustScore', label: 'Host trust score', type: 'NUMBER' },
     { name: 'hostTrustBand', label: 'Host trust band', type: 'SELECT', options: ['TRUSTED', 'PROMISING', 'HOLD', 'LOW', 'UNSCORED'], icon: 'IconShieldCheck' },
     { name: 'hostScoredAt', label: 'Scored at', type: 'DATE_TIME' },
-    { name: 'mkanAccountEmail', label: 'mkan account', type: 'EMAILS', description: 'e.g. 1000@mkan.org (real-host range starts at 1000).' },
-    { name: 'mkanUsername', label: 'mkan username', type: 'TEXT', description: 'e.g. 1000 — username == the number.' },
+    { name: 'mkanAccountEmail', label: 'mkan account', type: 'EMAILS', description: 'e.g. 0001@mkan.org. Real hand-curated hosts use 0001-0003 (abdout/degna/hussein); scraped hosts get the 1000+ range.' },
+    { name: 'mkanUsername', label: 'mkan username', type: 'TEXT', description: 'e.g. 0001 — username == the account number (real 0001-0003, scraped 1000+).' },
     { name: 'mkanUserId', label: 'mkan user ID', type: 'TEXT' },
     { name: 'accountProvisionedAt', label: 'Account provisioned', type: 'DATE_TIME' },
     { name: 'credentialsSentAt', label: 'Credentials sent', type: 'DATE_TIME' },
