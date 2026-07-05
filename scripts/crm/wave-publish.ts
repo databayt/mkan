@@ -11,7 +11,13 @@
  *   FORCE_SEED=1 npx tsx scripts/crm/wave-publish.ts --city=PORT_SUDAN --apply
  *
  * Flags: --in=<scored/rehosted> --ledger=<import ledger> --city=<CITY|all>
- *        --min-band=<AUTO_ONBOARD|MANUAL_REVIEW> --limit=<N> --apply
+ *        --min-band=<AUTO_ONBOARD|MANUAL_REVIEW> --limit=<N> --apply --force
+ *
+ * `--force` publishes an operator-authorized batch that hasn't passed the soft
+ * trust gate: it skips the `publishReady` + `min-band` checks (so imported HOLD
+ * homes with no host reply can go Available). Hard gates still hold — a
+ * `gateNote` (hotel/duplicate/location-fail) and the city filter are never
+ * bypassed, and only imported listings flip. Use for a human-vetted wave.
  *
  * Reads eligibility from the scored file (`publishReady`, `trustBand`, `city`) and
  * the mkan listing id from the import ledger. `--apply` sets `isPublished:true` +
@@ -26,6 +32,7 @@ import { readFileSync, existsSync } from 'node:fs';
 let prisma: (typeof import('@/lib/db'))['db'];
 
 const APPLY = process.argv.includes('--apply');
+const FORCE = process.argv.includes('--force'); // operator override: skip the soft trust gate (keeps hard gates)
 const argv = (n: string, d = ''): string => {
   const h = process.argv.find((a) => a.startsWith(`--${n}=`));
   return h ? h.split('=').slice(1).join('=') : d;
@@ -52,11 +59,14 @@ async function main(): Promise<void> {
     const mkanListingId = ledger.homes?.[h.airbnbListingId]?.mkanListingId ?? null;
     const cityOk = CITY === 'ALL' || h.city === CITY;
     let eligible = true, why = 'eligible';
+    // Hard gates (never bypassed): must be imported, in-wave, and not hard-gated.
     if (mkanListingId == null) { eligible = false; why = 'not imported'; }
     else if (!cityOk) { eligible = false; why = `city≠${CITY}`; }
     else if (h.gateNote) { eligible = false; why = `gate:${h.gateNote}`; }
-    else if (!h.publishReady) { eligible = false; why = 'not publish-ready'; }
-    else if ((BAND_RANK[h.trustBand] ?? 0) < minRank) { eligible = false; why = `${h.trustBand}<${MIN_BAND}`; }
+    // Soft trust gate (skipped under --force for an operator-authorized wave).
+    else if (!FORCE && !h.publishReady) { eligible = false; why = 'not publish-ready'; }
+    else if (!FORCE && (BAND_RANK[h.trustBand] ?? 0) < minRank) { eligible = false; why = `${h.trustBand}<${MIN_BAND}`; }
+    else if (FORCE) { why = 'eligible (forced)'; }
     return { h, mkanListingId, eligible, why };
   });
   if (LIMIT) rows = rows.slice(0, LIMIT);
