@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { Locale } from "@/components/internationalization/config";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { HostingFooter } from "@/components/hosting/hosting-footer";
 
 interface MenuDict {
   title?: string;
@@ -101,8 +102,6 @@ export default function HostingMenuContent({
       },
     ],
   ];
-
-  const year = new Date().getFullYear();
 
   return (
     <div className="mx-auto w-full max-w-2xl px-2 pb-10 lg:py-10">
@@ -204,20 +203,7 @@ export default function HostingMenuContent({
       </nav>
 
       {/* footer */}
-      <div className="mt-8 pb-16 text-center lg:pb-0">
-        <p className="text-xs text-foreground">
-          <Link href={`/${lang}/terms`} className="underline">
-            {t.terms ?? "Terms of Service"}
-          </Link>
-          <span className="mx-1.5">·</span>
-          <Link href={`/${lang}/privacy`} className="underline">
-            {t.privacy ?? "Privacy Policy"}
-          </Link>
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {(t.copyright ?? "© {year} Mkan. All rights reserved.").replace("{year}", String(year))}
-        </p>
-      </div>
+      <HostingFooter lang={lang} className="pb-16 lg:pb-0" />
 
       {/* floating "Switch to traveling" pill — sits above the tab bar; the
           live pill routes to the guest homepage */}

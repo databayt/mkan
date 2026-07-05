@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import Loading from '@/components/atom/loading';
 import { Badge } from '@/components/ui/badge';
+import { HostingFooter } from '@/components/hosting/hosting-footer';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { formatDate } from '@/lib/i18n/formatters';
 import type { Locale } from '@/components/internationalization/config';
@@ -66,12 +67,15 @@ export default function HostingContent({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Toggle Buttons */}
         <div className="flex justify-center items-center space-x-4 mb-8 sm:mb-16">
+          {/* Reference chips: 40px tall, #222 fill when active, white with
+              #DDD hairline and DARK text when inactive (not gray). Desktop
+              keeps its compact 32px sizing. */}
           <button
             onClick={() => setActiveTab('today')}
-            className={`px-6 py-3 sm:px-4 sm:py-2 rounded-full text-sm font-medium transition-all border min-h-[44px] sm:min-h-[32px] ${
+            className={`inline-flex h-10 items-center justify-center rounded-full border px-5 text-sm font-medium transition-all sm:h-auto sm:min-h-[32px] sm:px-4 sm:py-2 ${
               activeTab === 'today'
-                ? 'bg-gray-900 text-white border-gray-900'
-                : 'bg-white text-gray-600 border-gray-300 hover:text-gray-900 hover:border-gray-400'
+                ? 'bg-[#222222] text-white border-[#222222]'
+                : 'bg-white text-[#222222] border-[#DDDDDD] hover:border-[#222222]'
             }`}
           >
             {t?.today ?? "Today"}
@@ -79,10 +83,10 @@ export default function HostingContent({
           </button>
           <button
             onClick={() => setActiveTab('upcoming')}
-            className={`px-6 py-3 sm:px-4 sm:py-2 rounded-full text-sm font-medium transition-all border min-h-[44px] sm:min-h-[32px] ${
+            className={`inline-flex h-10 items-center justify-center rounded-full border px-5 text-sm font-medium transition-all sm:h-auto sm:min-h-[32px] sm:px-4 sm:py-2 ${
               activeTab === 'upcoming'
-                ? 'bg-gray-900 text-white border-gray-900'
-                : 'bg-white text-gray-600 border-gray-300 hover:text-gray-900 hover:border-gray-400'
+                ? 'bg-[#222222] text-white border-[#222222]'
+                : 'bg-white text-[#222222] border-[#DDDDDD] hover:border-[#222222]'
             }`}
           >
             {t?.upcoming ?? "Upcoming"}
@@ -133,7 +137,9 @@ export default function HostingContent({
               height={150}
               className="object-contain sm:w-[200px] sm:h-[200px]"
             />
-            <h2 className="mt-2 max-w-xs text-center text-2xl font-semibold leading-tight text-foreground sm:text-[32px] sm:leading-9">
+            {/* mobile heading uses the house Airbnb title scale
+                (22/26, −0.44 tracking, #222); desktop stays 32px */}
+            <h2 className="mt-2 max-w-xs text-center text-[22px] font-semibold leading-[26px] tracking-[-0.44px] text-[#222222] sm:text-[32px] sm:leading-9 sm:tracking-normal">
               {activeTab === 'today'
                 ? (t?.noReservations ?? 'You don\'t have any reservations')
                 : (t?.noUpcomingReservations ?? 'You don\'t have any upcoming reservations')}
@@ -157,6 +163,9 @@ export default function HostingContent({
             </Link>
           </div>
         )}
+
+        {/* legal footer — mobile only, like the live hosting surface */}
+        <HostingFooter lang={lang} className="mt-12 lg:hidden" />
       </div>
     </>
   );
