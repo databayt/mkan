@@ -34,6 +34,7 @@
     "crm:seed-objects": "tsx scripts/crm/seed-twenty-objects.ts",
     "crm:seed-views": "tsx scripts/crm/seed-twenty-views.ts",
     "crm:scrape": "tsx scripts/crm/airbnb-scrape.ts",
+    "crm:scrape-sudan": "tsx scripts/crm/scrape-sudan.ts",
     "crm:upsert": "tsx scripts/crm/twenty-upsert.ts",
     "crm:score": "tsx scripts/crm/score-trust.ts",
     "crm:rehost": "tsx scripts/crm/photo-rehost.ts",
