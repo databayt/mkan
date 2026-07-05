@@ -306,9 +306,11 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             width: 40px !important;
             height: 40px !important;
             border-radius: 50% !important;
-            background-color: rgba(255, 255, 255, 0.9) !important;
-            border: 1px solid rgba(0, 0, 0, 0.08) !important;
-            box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.18) !important;
+            background-color: rgba(250, 250, 250, 0.72) !important;
+            border: none !important;
+            box-shadow: none !important;
+            -webkit-backdrop-filter: blur(24px) saturate(1.6) !important;
+            backdrop-filter: blur(24px) saturate(1.6) !important;
             color: #222222 !important;
             cursor: pointer !important;
             padding: 0 !important;
@@ -317,7 +319,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
         }
         .l1ovpqvx:active {
             transform: scale(0.96) !important;
-            background-color: #ffffff !important;
+            background-color: rgba(250, 250, 250, 0.9) !important;
         }
         .b164l090 {
             display: flex !important;
