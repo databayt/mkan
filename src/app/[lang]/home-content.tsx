@@ -126,6 +126,11 @@ export default function HomeContent({ listings, locale }: HomeContentProps) {
 
   return (
     <div className="min-h-screen">
+      {/* The visual hero is imagery + search with no heading element; give
+          crawlers and screen readers the page's one h1 without altering it. */}
+      <h1 className="sr-only">
+        {dict?.home?.metadata?.title ?? "Mkan - Rentals & Housing"}
+      </h1>
       <PriceTransparencyDialog />
 
       <HeroSection />
