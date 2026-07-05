@@ -20,11 +20,37 @@ const I18N_DIR = join(
 )
 const EN_PATH = join(I18N_DIR, "en.json")
 const AR_PATH = join(I18N_DIR, "ar.json")
+const SCHEMA_PATH = join(process.cwd(), "prisma", "schema.prisma")
 
 const args = process.argv.slice(2)
 const FIX = args.includes("--fix")
 
 type Json = Record<string, unknown>
+
+/**
+ * Prisma enums that render as user-facing labels, each paired with the
+ * dictionary map that must carry a label for EVERY value in BOTH locales. This
+ * is the "once and for good" contract: add an enum value and forget the label,
+ * and CI fails here instead of shipping a raw enum string on /ar or /en.
+ */
+const ENUM_LABEL_MAPS: Array<{ enum: string; path: string }> = [
+  { enum: "Amenity", path: "rental.property.amenities" },
+  { enum: "Highlight", path: "rental.property.highlights" },
+  { enum: "PropertyType", path: "rental.property.types" },
+  { enum: "CancellationPolicy", path: "rental.property.cancellation" },
+  { enum: "CheckInMethod", path: "rental.property.checkIn" },
+  { enum: "BusAmenity", path: "transport.host.amenityLabels" },
+]
+
+/** Extract an enum's member names from schema.prisma (dependency-free). */
+function parseEnumValues(schema: string, name: string): string[] {
+  const block = schema.match(new RegExp(`enum\\s+${name}\\s*\\{([^}]*)\\}`))
+  if (!block) return []
+  return block[1]
+    .split("\n")
+    .map((l) => l.replace(/\/\/.*$/, "").trim())
+    .filter((l) => l.length > 0 && /^[A-Za-z]/.test(l))
+}
 
 /** Deep-flatten an object to dotted leaf paths (arrays are treated as leaves). */
 function getAllKeys(obj: unknown, prefix = ""): string[] {
@@ -79,36 +105,73 @@ function main() {
   console.log(`  en keys: ${enKeys.size}`)
   console.log(`  ar keys: ${arKeys.size}`)
 
-  if (missingInEn.length === 0 && missingInAr.length === 0) {
+  let parityOk = missingInEn.length === 0 && missingInAr.length === 0
+  if (parityOk) {
     console.log("✓ All keys are in sync.")
+  } else {
+    if (missingInEn.length > 0) {
+      console.log(`\nMissing in en.json (${missingInEn.length}):`)
+      missingInEn.forEach((k) => console.log(`  - ${k}`))
+    }
+    if (missingInAr.length > 0) {
+      console.log(`\nMissing in ar.json (${missingInAr.length}):`)
+      missingInAr.forEach((k) => console.log(`  - ${k}`))
+    }
+    if (FIX) {
+      for (const key of missingInEn) {
+        setNestedValue(en, key, `[EN] ${String(getNestedValue(ar, key))}`)
+      }
+      for (const key of missingInAr) {
+        setNestedValue(ar, key, `[AR] ${String(getNestedValue(en, key))}`)
+      }
+      writeFileSync(EN_PATH, JSON.stringify(en, null, 2) + "\n")
+      writeFileSync(AR_PATH, JSON.stringify(ar, null, 2) + "\n")
+      console.log(
+        `\nAdded ${missingInEn.length + missingInAr.length} placeholder(s). Replace the [EN]/[AR] markers with real translations.`
+      )
+      parityOk = true // placeholders injected — re-run after translating
+    }
+  }
+
+  // --- Enum-label coverage: every Prisma enum value has a label in both locales ---
+  console.log("\nenum-label coverage — schema.prisma vs dict")
+  let enumOk = true
+  let schema = ""
+  try {
+    schema = readFileSync(SCHEMA_PATH, "utf-8")
+  } catch {
+    console.log("  ⚠ could not read schema.prisma — skipping enum check")
+  }
+  if (schema) {
+    for (const { enum: enumName, path } of ENUM_LABEL_MAPS) {
+      const values = parseEnumValues(schema, enumName)
+      if (values.length === 0) {
+        console.log(`  ⚠ enum ${enumName} not found in schema — skipping`)
+        continue
+      }
+      const enMap = getNestedValue(en, path)
+      const arMap = getNestedValue(ar, path)
+      const missing: string[] = []
+      for (const v of values) {
+        if (!(enMap && typeof enMap === "object" && (enMap as Json)[v] != null)) missing.push(`en ${path}.${v}`)
+        if (!(arMap && typeof arMap === "object" && (arMap as Json)[v] != null)) missing.push(`ar ${path}.${v}`)
+      }
+      if (missing.length > 0) {
+        enumOk = false
+        console.log(`  ✗ ${enumName} → ${path} — ${missing.length} missing label(s):`)
+        missing.forEach((m) => console.log(`      - ${m}`))
+      } else {
+        console.log(`  ✓ ${enumName} → ${path} (${values.length} values)`)
+      }
+    }
+  }
+
+  if (parityOk && enumOk) {
+    console.log("\n✓ i18n guard passed.")
     process.exit(0)
   }
-
-  if (missingInEn.length > 0) {
-    console.log(`\nMissing in en.json (${missingInEn.length}):`)
-    missingInEn.forEach((k) => console.log(`  - ${k}`))
-  }
-  if (missingInAr.length > 0) {
-    console.log(`\nMissing in ar.json (${missingInAr.length}):`)
-    missingInAr.forEach((k) => console.log(`  - ${k}`))
-  }
-
-  if (FIX) {
-    for (const key of missingInEn) {
-      setNestedValue(en, key, `[EN] ${String(getNestedValue(ar, key))}`)
-    }
-    for (const key of missingInAr) {
-      setNestedValue(ar, key, `[AR] ${String(getNestedValue(en, key))}`)
-    }
-    writeFileSync(EN_PATH, JSON.stringify(en, null, 2) + "\n")
-    writeFileSync(AR_PATH, JSON.stringify(ar, null, 2) + "\n")
-    console.log(
-      `\nAdded ${missingInEn.length + missingInAr.length} placeholder(s). Replace the [EN]/[AR] markers with real translations.`
-    )
-    process.exit(0)
-  }
-
-  console.log("\nRun `pnpm i18n:sync` to add placeholder keys, then translate them.")
+  if (!parityOk) console.log("\nRun `pnpm i18n:sync` to add placeholder keys, then translate them.")
+  if (!enumOk) console.log("Add the missing enum labels to BOTH en.json and ar.json.")
   process.exit(1)
 }
 
