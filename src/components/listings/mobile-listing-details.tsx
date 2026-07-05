@@ -141,17 +141,21 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
 
         .c1yo0219 {
             display: block;
+            background-color: var(--background, #ffffff);
+            padding-top: 24px;
+            padding-bottom: 24px;
+            padding-left: 24px;
+            padding-right: 24px;
+            text-align: center;
+            border-bottom: 1px solid #DDDDDD;
+        }
+        .c1yo0219--first {
             position: relative;
             z-index: 10;
             margin-top: -28px;
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
-            background-color: var(--background, #ffffff);
-            padding-top: 24px;
-            padding-bottom: 20px;
-            padding-left: 24px;
-            padding-right: 24px;
-            text-align: center;
+            border-bottom: none !important;
         }
         ._1a6d9c4 {
             display: flex !important;
@@ -192,6 +196,80 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             letter-spacing: -0.02em;
             margin: 0;
             text-align: center !important;
+        }
+
+        .m4x54cm {
+            display: block;
+            text-align: center;
+        }
+        .o1sio90k {
+            margin-top: 8px;
+        }
+        .lgx66tx {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .l7n4lsf {
+            display: inline-flex;
+            align-items: center;
+            font-size: 16px;
+            line-height: 20px;
+            color: #222222;
+        }
+        .axjq0r, .pen26si {
+            display: inline-block;
+        }
+        .s1b4clln {
+            margin: 0 4px;
+            color: #6a6a6a;
+        }
+        .rnzkkgj {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 12px;
+            font-size: 16px;
+            line-height: 20px;
+            color: #222222;
+            gap: 4px;
+        }
+        .r12esahm {
+            font-weight: 600;
+        }
+        .cchlee2 {
+            display: flex;
+            justify-content: center;
+            list-style: none;
+            padding: 0;
+            margin: 16px 0 0 0;
+        }
+        .p10iyp1o {
+            display: inline-flex;
+            align-items: center;
+            background-color: var(--palette-bg-secondary-core-hover, #F7F7F7);
+            border-radius: 100px;
+            padding: 6px 12px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #222222;
+        }
+        .l1ovpqvx_link {
+            background: none;
+            border: none;
+            padding: 0;
+            font: inherit;
+            color: inherit;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .mub1mg3 {
+            display: inline-flex;
+            align-items: center;
+            color: #222222;
         }
 
         .atm_7l_1kw7nm4 {
@@ -477,8 +555,8 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
         )}
       </div>
 
-      {/* Title and Rating Section */}
-      <div data-pageslot="true" className="c1yo0219 atm_9s_1txwivl_vmtskl atm_92_1yyfdc7_vmtskl atm_9s_1txwivl_9in345 atm_92_1yyfdc7_9in345 dir dir-ltr">
+      {/* Title Section (TITLE_DEFAULT) */}
+      <div data-pageslot="true" className="c1yo0219 c1yo0219--first atm_9s_1txwivl_vmtskl atm_92_1yyfdc7_vmtskl atm_9s_1txwivl_9in345 atm_92_1yyfdc7_9in345 dir dir-ltr">
         <div style={{ "--gp-section-max-width": "1120px" } as React.CSSProperties}>
           <div className="_1a6d9c4">
             <div className="plmw1e5 atm_e2_1osqo2v atm_gz_1wugsn5 atm_h0_1wugsn5 atm_vy_1osqo2v mq5rv0q atm_j3_1v7vjkn dir dir-ltr" style={{ "--maxWidth": "1120px" } as React.CSSProperties}>
@@ -506,21 +584,108 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             </div>
           </div>
         </div>
-        
-        <div className="flex items-center justify-center gap-1.5 text-[14px] text-[#222222] mt-3">
-          {(listing?.numberOfReviews ?? 0) > 0 ? (
-            <>
-              <span className="font-semibold">★ {formatNumber(listing?.averageRating ?? 0, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
-              <span className="text-[#6A6A6A]">·</span>
-              <span className="underline font-semibold cursor-pointer">
-                {(dict?.property?.detail?.reviews ?? "{count} reviews").replace("{count}", formatNumber(listing?.numberOfReviews ?? 0, locale))}
-              </span>
-              <span className="text-[#6A6A6A]">·</span>
-            </>
-          ) : null}
-          <span className="underline font-semibold cursor-pointer">
-            {getLocationString()}
-          </span>
+      </div>
+
+      {/* Overview Section (OVERVIEW_DEFAULT_V2) */}
+      <div data-pageslot="true" className="c1yo0219 atm_9s_1txwivl_vmtskl atm_92_1yyfdc7_vmtskl atm_9s_1txwivl_9in345 atm_92_1yyfdc7_9in345 dir dir-ltr">
+        <div style={{ "--gp-section-max-width": "1120px" } as React.CSSProperties}>
+          <div className="_1a6d9c4">
+            <div className="plmw1e5 atm_e2_1osqo2v atm_gz_1wugsn5 atm_h0_1wugsn5 atm_vy_1osqo2v mq5rv0q atm_j3_1v7vjkn dir dir-ltr" style={{ "--maxWidth": "1120px" } as React.CSSProperties}>
+              <div data-plugin-in-point-id="OVERVIEW_DEFAULT_V2" data-section-id="OVERVIEW_DEFAULT_V2" style={{ paddingBottom: "24px" }}>
+                <div style={{ display: "contents" }}>
+                  <section className="m4x54cm atm_c8_1u0fjfs atm_g3_kyllue atm_fr_1qxn676 atm_cs_hfq2vn atm_r3_1h6ojuz atm_7l_gyfspu dir dir-ltr">
+                    <div>
+                      <h2
+                        tabIndex={-1}
+                        role="heading"
+                        aria-level={2}
+                        className="hpipapi atm_7l_1kw7nm4 atm_c8_1x4eueo atm_cs_1kw7nm4 atm_g3_1kw7nm4 atm_gi_idpfg4 atm_l8_idpfg4 atm_kd_idpfg4_pfnrn2 dir dir-ltr"
+                        {...{ elementtiming: "LCP-target" }}
+                      >
+                        {overviewTitle}
+                      </h2>
+                    </div>
+                    {specs && (
+                      <div className="o1sio90k atm_c8_1h3mmnw atm_g3_1vnrj90 atm_fr_b3emyl atm_h3_1y44olf atm_c8_3w7ag0__oggzyc atm_g3_1emqlh9__oggzyc atm_fr_helst__oggzyc dir dir-ltr">
+                        <ol className="lgx66tx atm_gi_idpfg4 atm_l8_idpfg4 dir dir-ltr">
+                          {listing.guestCount !== undefined && (
+                            <li className="l7n4lsf atm_9s_1o8liyq_keqd55 dir dir-ltr">
+                              {spec(listing.guestCount, "guests")}
+                              {listing.bedrooms !== undefined || listing.bathrooms !== undefined ? (
+                                <span className="axjq0r atm_9s_glywfm dir dir-ltr">
+                                  <span className="s1b4clln atm_mj_glywfm atm_vb_glywfm atm_vv_1jtmq4 atm_lk_idpfg4 atm_ll_idpfg4 dir dir-ltr" aria-hidden="true"> · </span>
+                                </span>
+                              ) : null}
+                            </li>
+                          )}
+                          {listing.bedrooms !== undefined && (
+                            <li className="l7n4lsf atm_9s_1o8liyq_keqd55 dir dir-ltr">
+                              {listing.guestCount !== undefined ? (
+                                <span className="pen26si dir dir-ltr">
+                                  <span className="s1b4clln atm_mj_glywfm atm_vb_glywfm atm_vv_1jtmq4 atm_lk_idpfg4 atm_ll_idpfg4 dir dir-ltr" aria-hidden="true"> · </span>
+                                </span>
+                              ) : null}
+                              {spec(listing.bedrooms, "bedrooms")}
+                              {listing.bathrooms !== undefined ? (
+                                <span className="axjq0r atm_9s_glywfm dir dir-ltr">
+                                  <span className="s1b4clln atm_mj_glywfm atm_vb_glywfm atm_vv_1jtmq4 atm_lk_idpfg4 atm_ll_idpfg4 dir dir-ltr" aria-hidden="true"> · </span>
+                                </span>
+                              ) : null}
+                            </li>
+                          )}
+                          {listing.bathrooms !== undefined && (
+                            <li className="l7n4lsf atm_9s_1o8liyq_keqd55 dir dir-ltr">
+                              {listing.bedrooms !== undefined || listing.guestCount !== undefined ? (
+                                <span className="pen26si dir dir-ltr">
+                                  <span className="s1b4clln atm_mj_glywfm atm_vb_glywfm atm_vv_1jtmq4 atm_lk_idpfg4 atm_ll_idpfg4 dir dir-ltr" aria-hidden="true"> · </span>
+                                </span>
+                              ) : null}
+                              {spec(listing.bathrooms, "bathrooms")}
+                            </li>
+                          )}
+                        </ol>
+                      </div>
+                    )}
+                    
+                    {(listing?.numberOfReviews ?? 0) > 0 && (
+                      <div className="rnzkkgj atm_g3_1vnrj90 atm_fr_b3emyl atm_9s_1txwivl atm_h_1h6ojuz atm_g3_1emqlh9__oggzyc atm_fr_helst__oggzyc mp7k1xw atm_h3_f6fqlb atm_cx_i2wt44 atm_fc_1h6ojuz atm_7l_14zl091 atm_c8_1fwxnve atm_cs_1dh25pa dir dir-ltr">
+                        <div className="mub1mg3 atm_h3_t94yts dir dir-ltr">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-hidden="true" role="presentation" focusable="false" style={{ display: "block", height: "8px", width: "8px", fill: "currentColor" }}>
+                            <path fillRule="evenodd" d="m15.1 1.58-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
+                          </svg>
+                        </div>
+                        <span className="a8jt5op atm_3f_idpfg4 atm_7h_hxbz6r atm_7i_ysn8ba atm_e2_t94yts atm_ks_zryt35 atm_l8_idpfg4 atm_mk_stnw88 atm_vv_1q9ccgz atm_vy_t94yts dir dir-ltr">
+                          {`Rated ${formatNumber(listing?.averageRating ?? 0, locale, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} out of 5 stars.`}
+                        </span>
+                        <div className="r12esahm m1wsx7n9 atm_c8_1kw7nm4 atm_gz_myb0kj dir dir-ltr" aria-hidden="true">
+                          {formatNumber(listing?.averageRating ?? 0, locale, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
+                        </div>
+                        <span aria-hidden="true">·</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const el = document.querySelector("#mobile-reviews-section");
+                            el?.scrollIntoView({ behavior: "smooth" });
+                          }}
+                          className="l1ovpqvx_link underline font-semibold"
+                        >
+                          {(dict?.property?.detail?.reviews ?? "{count} reviews").replace("{count}", formatNumber(listing?.numberOfReviews ?? 0, locale))}
+                        </button>
+                      </div>
+                    )}
+                    
+                    <ul className="cchlee2 atm_9s_1txwivl atm_be_1g80g66 atm_fc_1h6ojuz atm_gb_glywfm atm_h3_1tcgj5g atm_gq_idpfg4 atm_l8_idpfg4 atm_cx_i2wt44 dir dir-ltr">
+                      <li>
+                        <span className="p10iyp1o atm_l8_1gon2vb atm_fc_1h6ojuz atm_h_1h6ojuz atm_5j_i2wt44 atm_jd_1n0tmlx atm_vy_1ns9ob4 atm_c8_1skhajo atm_cs_1mexzig atm_g3_o7aogt atm_ks_15vqwwr atm_sq_1l2sidv atm_9s_cj1kg8 atm_6w_1e54zos atm_fy_kb7nvz atm_j3_1osqo2v atm_26_54yaag atm_7l_gyfspu atm_ks_zryt35__1rgatj2 dir dir-ltr">
+                          {locale === "ar" ? "إلغاء مجاني" : "Free cancellation"}
+                        </span>
+                      </li>
+                    </ul>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -539,36 +704,6 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             />
           </div>
         )}
-
-        {/* Overview & Host Row */}
-        <div className="border-t border-[#DDDDDD] pt-6 mt-6">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-[22px] font-medium leading-[26px] tracking-[-0.44px] text-[#222222]">
-                {overviewTitle}
-              </h2>
-              {specs && (
-                <p className="text-[16px] leading-[20px] text-[#222222] font-normal">
-                  {specs}
-                </p>
-              )}
-            </div>
-            <div className="relative flex-shrink-0">
-              <div className="w-[40px] h-[40px] rounded-full overflow-hidden relative">
-                <img
-                  src={listing?.host?.image || FALLBACK_AVATAR}
-                  alt={displayName}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              {isSuperhost && (
-                <div className="absolute -bottom-0.5 -end-[5px]">
-                  <Superhost className="w-4 h-4" />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
 
         {/* Highlights Section */}
         {PHASE1.showListingHighlights && (listing?.highlights?.length ?? 0) > 0 && (

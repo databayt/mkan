@@ -231,11 +231,13 @@ export default async function ListingPage({ params }: ListingPageProps) {
           />
         </Suspense>
         <Suspense fallback={<div>{d.rental?.listing?.loadingReviews}</div>}>
-          <MobileReviews
-            reviews={mobileReviewItems}
-            averageRating={serializedListing.averageRating ?? undefined}
-            totalReviews={mobileReviewsResult.total}
-          />
+          <div id="mobile-reviews-section">
+            <MobileReviews
+              reviews={mobileReviewItems}
+              averageRating={serializedListing.averageRating ?? undefined}
+              totalReviews={mobileReviewsResult.total}
+            />
+          </div>
         </Suspense>
         <Suspense fallback={<div>{d.rental?.listing?.loadingMap}</div>}>
           <MobileMap
