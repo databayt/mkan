@@ -3524,6 +3524,26 @@
     "officeUnverifiedToast": "تمت إزالة التوثيق — أصبح مخفياً من البحث العام"
   },
   "listingEditor": {
+    "finishSetup": {
+      "liveTitle": "تهانينا! قائمتك الآن منشورة",
+      "liveSubtitle": "يمكن للضيوف الآن اكتشاف مكانك وحجزه.",
+      "redirecting": "جارٍ التحويل إلى لوحة تحكم المضيف...",
+      "reviewTitle": "راجع قائمتك",
+      "reviewSubtitle": "هذا ما سنعرضه للضيوف. تأكد من أن كل شيء يبدو جيدًا.",
+      "untitled": "قائمة بدون عنوان",
+      "typeInLocation": "{type} في {city}، {state}",
+      "perNight": "{price} / الليلة",
+      "guests": "الضيوف",
+      "bedrooms": "غرف النوم",
+      "bathrooms": "الحمامات",
+      "amenities": "المرافق",
+      "moreCount": "+{count} أخرى",
+      "completeSteps": "أكمل هذه الخطوات للنشر",
+      "saveDraft": "حفظ كمسودة",
+      "publishing": "جارٍ النشر...",
+      "publish": "نشر القائمة",
+      "editLater": "يمكنك دائمًا تعديل قائمتك بعد النشر"
+    },
     "common": {
       "next": "التالي",
       "save": "حفظ",

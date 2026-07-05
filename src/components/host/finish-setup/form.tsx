@@ -3,9 +3,17 @@
 import { useFinishSetup } from './use-finish-setup'
 import { StepWrapper } from '../step-wrapper'
 import { Check, AlertCircle, Clock } from 'lucide-react'
+import { useParams } from 'next/navigation'
+import { useDictionary } from '@/components/internationalization/dictionary-context'
+import { featureLabel } from '@/components/listings/feature-icons'
+import { formatCurrency } from '@/lib/i18n/formatters'
+import type { Locale } from '@/components/internationalization/config'
+
+const fill = (tpl: string, vars: Record<string, string | number>) =>
+  Object.entries(vars).reduce((acc, [k, v]) => acc.replace(`{${k}}`, String(v)), tpl)
 
 export function FinishSetupForm() {
-  const { 
+  const {
     listing,
     publishNow,
     saveDraft,
@@ -17,6 +25,13 @@ export function FinishSetupForm() {
     isPublishing
   } = useFinishSetup()
 
+  const params = useParams<{ lang: string }>()
+  const lang = (params?.lang ?? 'en') as Locale
+  const dict = useDictionary()
+  const t = dict?.listingEditor?.finishSetup
+  const typeLabels = dict?.rental?.property?.types as Record<string, string> | undefined
+  const amenityLabels = dict?.rental?.property?.amenities as Record<string, string> | undefined
+
   if (isPublished) {
     return (
       <StepWrapper>
@@ -24,19 +39,19 @@ export function FinishSetupForm() {
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
             <Check className="w-10 h-10 text-green-600" />
           </div>
-          
+
           <div>
             <h2 className="text-2xl font-medium mb-2">
-              Congratulations! Your listing is now live
+              {t?.liveTitle ?? 'Congratulations! Your listing is now live'}
             </h2>
             <p className="text-muted-foreground">
-              Guests can now discover and book your place.
+              {t?.liveSubtitle ?? 'Guests can now discover and book your place.'}
             </p>
           </div>
 
           <div className="bg-muted/50 p-4 rounded-lg">
             <p className="text-sm">
-              Redirecting to your host dashboard...
+              {t?.redirecting ?? 'Redirecting to your host dashboard...'}
             </p>
           </div>
         </div>
@@ -49,10 +64,10 @@ export function FinishSetupForm() {
       <div className="space-y-8">
         <div className="text-center">
           <h2 className="text-2xl font-medium mb-4">
-            Review your listing
+            {t?.reviewTitle ?? 'Review your listing'}
           </h2>
           <p className="text-muted-foreground">
-            Here's what we'll show to guests. Make sure everything looks good.
+            {t?.reviewSubtitle ?? "Here's what we'll show to guests. Make sure everything looks good."}
           </p>
         </div>
 
@@ -62,43 +77,49 @@ export function FinishSetupForm() {
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="text-lg font-medium">
-                  {listing.title || 'Untitled Listing'}
+                  {listing.title || (t?.untitled ?? 'Untitled listing')}
                 </h3>
                 <p className="text-muted-foreground">
-                  {listing.propertyType} in {listing.city}, {listing.state}
+                  {fill(t?.typeInLocation ?? '{type} in {city}, {state}', {
+                    type: featureLabel(typeLabels, listing.propertyType ?? '') || '',
+                    city: listing.city ?? '',
+                    state: listing.state ?? '',
+                  })}
                 </p>
               </div>
               <div className="text-end">
                 <p className="text-lg font-medium">
-                  ${listing.pricePerNight || 0}/night
+                  {fill(t?.perNight ?? '{price} / night', {
+                    price: formatCurrency(listing.pricePerNight || 0, lang),
+                  })}
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
-                <span className="text-muted-foreground">Guests:</span> {listing.guestCount || 0}
+                <span className="text-muted-foreground">{t?.guests ?? 'Guests'}:</span> {listing.guestCount || 0}
               </div>
               <div>
-                <span className="text-muted-foreground">Bedrooms:</span> {listing.bedrooms || 0}
+                <span className="text-muted-foreground">{t?.bedrooms ?? 'Bedrooms'}:</span> {listing.bedrooms || 0}
               </div>
               <div>
-                <span className="text-muted-foreground">Bathrooms:</span> {listing.bathrooms || 0}
+                <span className="text-muted-foreground">{t?.bathrooms ?? 'Bathrooms'}:</span> {listing.bathrooms || 0}
               </div>
             </div>
 
             {listing.amenities && listing.amenities.length > 0 && (
               <div>
-                <p className="text-sm text-muted-foreground mb-2">Amenities:</p>
+                <p className="text-sm text-muted-foreground mb-2">{t?.amenities ?? 'Amenities'}:</p>
                 <div className="flex flex-wrap gap-2">
                   {listing.amenities.slice(0, 5).map((amenity) => (
                     <span key={amenity} className="px-2 py-1 bg-background rounded text-xs">
-                      {amenity.replace(/([A-Z])/g, ' $1').trim()}
+                      {featureLabel(amenityLabels, amenity)}
                     </span>
                   ))}
                   {listing.amenities.length > 5 && (
                     <span className="text-xs text-muted-foreground">
-                      +{listing.amenities.length - 5} more
+                      {fill(t?.moreCount ?? '+{count} more', { count: listing.amenities.length - 5 })}
                     </span>
                   )}
                 </div>
@@ -114,7 +135,7 @@ export function FinishSetupForm() {
               <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5" />
               <div>
                 <h4 className="font-medium text-orange-900 mb-2">
-                  Complete these steps to publish
+                  {t?.completeSteps ?? 'Complete these steps to publish'}
                 </h4>
                 <ul className="text-sm text-orange-800 space-y-1">
                   {missingRequirements.map((requirement) => (
@@ -141,7 +162,7 @@ export function FinishSetupForm() {
           >
             <div className="flex items-center justify-center gap-2">
               <Clock className="w-4 h-4" />
-              Save as draft
+              {t?.saveDraft ?? 'Save as draft'}
             </div>
           </button>
 
@@ -156,14 +177,14 @@ export function FinishSetupForm() {
               }
             `}
           >
-            {isPublishing ? 'Publishing...' : 'Publish listing'}
+            {isPublishing ? (t?.publishing ?? 'Publishing...') : (t?.publish ?? 'Publish listing')}
           </button>
         </div>
 
         <div className="text-center text-sm text-muted-foreground">
-          You can always edit your listing after publishing
+          {t?.editLater ?? 'You can always edit your listing after publishing'}
         </div>
       </div>
     </StepWrapper>
   )
-} 
+}

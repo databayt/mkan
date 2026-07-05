@@ -3524,6 +3524,26 @@
     "officeUnverifiedToast": "Verification removed — hidden from public search"
   },
   "listingEditor": {
+    "finishSetup": {
+      "liveTitle": "Congratulations! Your listing is now live",
+      "liveSubtitle": "Guests can now discover and book your place.",
+      "redirecting": "Redirecting to your host dashboard...",
+      "reviewTitle": "Review your listing",
+      "reviewSubtitle": "Here's what we'll show to guests. Make sure everything looks good.",
+      "untitled": "Untitled listing",
+      "typeInLocation": "{type} in {city}, {state}",
+      "perNight": "{price} / night",
+      "guests": "Guests",
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "amenities": "Amenities",
+      "moreCount": "+{count} more",
+      "completeSteps": "Complete these steps to publish",
+      "saveDraft": "Save as draft",
+      "publishing": "Publishing...",
+      "publish": "Publish listing",
+      "editLater": "You can always edit your listing after publishing"
+    },
     "common": {
       "next": "Next",
       "save": "Save",
