@@ -148,6 +148,54 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
         .atm_jp_sm7xtg {
             object-fit: cover;
         }
+        ._1o8y6fw9 {
+            -webkit-box-align: center !important;
+            display: flex !important;
+            align-items: center !important;
+            z-index: 10 !important;
+            background: none !important;
+            left: 0px !important;
+            padding: 16px 13px 25px !important;
+            position: absolute !important;
+            right: 0px !important;
+            top: 0px !important;
+            height: 68px !important;
+        }
+        ._kv14gss {
+            display: flex !important;
+            align-items: center !important;
+        }
+        .c1oqql2t {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            margin-left: auto !important;
+        }
+        .l1ovpqvx {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 40px !important;
+            height: 40px !important;
+            border-radius: 50% !important;
+            background-color: rgba(255, 255, 255, 0.9) !important;
+            border: 1px solid rgba(0, 0, 0, 0.08) !important;
+            box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.18) !important;
+            color: #222222 !important;
+            cursor: pointer !important;
+            padding: 0 !important;
+            transition: transform 0.2s ease, background-color 0.2s ease !important;
+            outline: none !important;
+        }
+        .l1ovpqvx:active {
+            transform: scale(0.96) !important;
+            background-color: #ffffff !important;
+        }
+        .b164l090 {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
       `}} />
 
       {/* Full Screen Image Gallery — Airbnb Aspect Ratio aspect-[100/95] container */}
@@ -201,40 +249,71 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
 
         {/* Top Navigation Bar */}
-        <div className="absolute top-0 inset-x-0 z-10 p-4">
-          <div className="flex items-center justify-between">
-            {/* Left Side - Back Button */}
-            <Button
-              variant="ghost"
-              size="icon"
+        <div className="_1o8y6fw9">
+          {/* Left Side - Back Button */}
+          <div className="_kv14gss" role="presentation">
+            <button
+              aria-label="Back"
+              data-testid="back-button"
+              data-material-type="regular"
+              data-material-content-layer="true"
+              type="button"
               onClick={handleBack}
-              className="h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white"
-              aria-label="Go back"
+              className="l1ovpqvx dir dir-ltr"
+              style={{
+                "--dls-button-or-anchor-width-px": "40",
+                "--dls-button-or-anchor-height-px": "40"
+              } as React.CSSProperties}
             >
-              <BackArrowIcon className="w-5 h-5 text-gray-700 rtl:rotate-180" />
-            </Button>
+              <span data-button-content="true" className="b164l090 dir dir-ltr">
+                <div>
+                  <div>
+                    <BackArrowIcon className="rtl:rotate-180" />
+                  </div>
+                  <div className="_378jbf"></div>
+                </div>
+              </span>
+            </button>
+          </div>
 
-            {/* Right Side - Share and Love */}
-            <div className="flex items-center space-x-3">
-              <Button
-                variant="ghost"
-                size="icon"
+          {/* Right Side - Share and Love */}
+          <div className="c1oqql2t dir dir-ltr">
+            <div>
+              <button
+                aria-label="Share"
+                data-material-type="regular"
+                data-material-content-layer="true"
+                type="button"
                 onClick={handleShare}
-                className="h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white"
-                aria-label="Share listing"
+                className="l1ovpqvx dir dir-ltr"
+                style={{
+                  "--dls-button-or-anchor-width-px": "40",
+                  "--dls-button-or-anchor-height-px": "40"
+                } as React.CSSProperties}
               >
-                <ShareIcon className="w-5 h-5 text-gray-700" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
+                <span data-button-content="true" className="b164l090 dir dir-ltr">
+                  <ShareIcon />
+                </span>
+              </button>
+            </div>
+            <div className="s5pd5eb sjx59nb atm_gz_1fwxnve dir dir-ltr">
+              <button
+                aria-label={savedNow ? "Remove from wishlist" : "Save to wishlist"}
+                data-testid={savedNow ? "pdp-save-button-saved" : "pdp-save-button-unsaved"}
+                data-material-type="regular"
+                data-material-content-layer="true"
+                type="button"
                 onClick={handleSave}
-                className="h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white"
-                aria-label={savedNow ? "Remove from saved" : "Save listing"}
+                className="l1ovpqvx dir dir-ltr"
+                style={{
+                  "--dls-button-or-anchor-width-px": "40",
+                  "--dls-button-or-anchor-height-px": "40"
+                } as React.CSSProperties}
               >
-                <HeartIcon className={`w-5 h-5 ${savedNow ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
-              </Button>
+                <span data-button-content="true" className="b164l090 dir dir-ltr">
+                  <HeartIcon className={savedNow ? 'fill-[#FF385C] text-[#FF385C]' : ''} />
+                </span>
+              </button>
             </div>
           </div>
         </div>
