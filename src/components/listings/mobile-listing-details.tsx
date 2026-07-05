@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useFavorites } from '@/components/favorites/favorites-context';
 import MobileInfo from './mobile-info';
 import MobileAmenities from './mobile-amenities';
+import Laurel from './laurel';
 import AirbnbInfo from '@/components/atom/property-info';
 import HostedBy from './hosted-by';
 import { PropertyImageFallback } from '@/components/atom/property-image-fallback';
@@ -608,6 +609,42 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             line-height: 16px;
             margin-top: 2px;
         }
+        /* Guest-favorite BADGE — shown when a listing is a curated favorite but has
+           no reviews yet, so no rating/review numbers are rendered (honest, no fake
+           stats). The full rating·laurel·reviews banner above takes over once real
+           reviews exist. */
+        .gf-badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        .gf-badge-mark {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+        }
+        .gf-badge-label {
+            font-size: 18px;
+            font-weight: 500;
+            line-height: 20px;
+            color: var(--foreground, #222222);
+            text-align: center;
+            white-space: pre-line;
+            letter-spacing: normal;
+            margin: 0 2px;
+        }
+        .gf-badge-blurb {
+            font-size: 14px;
+            line-height: 18px;
+            font-weight: 400;
+            color: #6a6a6a;
+            text-align: center;
+            margin-top: 8px;
+            max-width: 280px;
+        }
         .a8jt5op {
             border: 0 !important;
             clip: rect(0, 0, 0, 0) !important;
@@ -823,7 +860,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                       </div>
                     )}
                     
-                    {(listing?.numberOfReviews ?? 0) > 0 && (
+                    {(listing?.numberOfReviews ?? 0) > 0 ? (
                       <div className="s1emndxt atm_40_iod1ro atm_le_1vi7ecw dir dir-ltr">
                         <div className="s159e3yo atm_h_1h6ojuz atm_9s_11p5wf0 atm_dz_1mnjxsr atm_cs_1mexzig atm_cx_1y44olf atm_l8_816mvl atm_gi_idpfg4 dir dir-ltr">
                           {/* Rating Button Column */}
@@ -936,7 +973,28 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                           </button>
                         </div>
                       </div>
-                    )}
+                    ) : listing?.isGuestFavorite ? (
+                      <div className="s1emndxt atm_40_iod1ro atm_le_1vi7ecw dir dir-ltr">
+                        <div className="gf-badge">
+                          <div
+                            className="gf-badge-mark"
+                            role="img"
+                            aria-label={locale === "ar" ? "المفضّل لدى الضيوف" : "Guest favorite"}
+                          >
+                            <Laurel side="left" size={36} />
+                            <div className="gf-badge-label" aria-hidden="true">
+                              {locale === "ar" ? "المفضّل\nلدى الضيوف" : "Guest\nfavorite"}
+                            </div>
+                            <Laurel side="right" size={36} />
+                          </div>
+                          <p className="gf-badge-blurb">
+                            {locale === "ar"
+                              ? "من أكثر المنازل المحبوبة على مكان"
+                              : "One of the most loved homes on Mkan"}
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
                   </section>
                 </div>
               </div>
@@ -946,79 +1004,87 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
       </div>
 
       {/* Host Section page-slot */}
-      <div data-pageslot="true" className="c1yo0219 atm_9s_1txwivl_vmtskl atm_92_1yyfdc7_vmtskl atm_9s_1txwivl_9in345 atm_92_1yyfdc7_9in345 dir dir-ltr">
-        <div style={{ display: "contents" }}>
-          <div className="cuspirs atm_9s_1txwivl atm_cx_exct8b atm_cx_1tcgj5g__oggzyc m1wx0491 atm_l8_1av1627 dir dir-ltr">
-            <div className="c17nk5xs atm_9s_1ulexfb atm_mk_h2mmj6 dir dir-ltr" style={{ height: 40, width: 40 }}>
-              <button
-                aria-label={isSuperhost ? `${displayName} is a superhost. Learn more about ${displayName}.` : `View ${displayName}'s profile.`}
-                type="button"
-                className="_1t82b7sc l1ovpqvx atm_npmupv_14b5rvc_10saat9 atm_4s4swg_18xq13z_10saat9 atm_u9em2p_1r3889l_10saat9 atm_1ezpcqw_1u41vd9_10saat9 atm_fyjbsv_c4n71i_10saat9 atm_1rna0z7_1uk391_10saat9 dir dir-ltr"
-              >
-                <div className="i1j4t3kq atm_26_1guaqub atm_ks_15vqwwr atm_mk_h2mmj6 dir dir-ltr" style={{ height: 40, width: 40, borderRadius: "50%" }}>
-                  <div
-                    className="i1y91qbp atm_mk_h2mmj6 atm_1w_1xbheko atm_e2_jngzkn atm_vy_4hg7yc atm_5j_nw3v2p atm_vh_yfq0k3 dir dir-ltr"
-                    role="img"
-                    aria-busy="false"
-                    aria-label="Host profile picture"
-                    style={{
-                      "--AirImage-height": "100%",
-                      "--AirImage-width": "100%",
-                      "--AirImage-background-image": "none",
-                    } as React.CSSProperties}
-                  >
-                    <img
-                      className="i11046vh atm_e2_1osqo2v atm_vy_1osqo2v atm_jp_sm7xtg atm_jr_xm9jbw atm_5j_nw3v2p atm_vh_yfq0k3 dir dir-ltr"
-                      aria-hidden="true"
-                      alt="Host profile picture"
-                      decoding="async"
-                      {...{ elementtiming: "LCP-target" }}
-                      loading="lazy"
-                      src={avatar}
-                      width="100%"
-                      height="100%"
-                    />
+      <div style={{ "--gp-section-max-width": "1120px" } as React.CSSProperties}>
+        <div className="_1a6d9c4">
+          <div className="plmw1e5 atm_e2_1osqo2v atm_gz_1wugsn5 atm_h0_1wugsn5 atm_vy_1osqo2v mq5rv0q atm_j3_1v7vjkn dir dir-ltr" style={{ "--maxWidth": "1120px" } as React.CSSProperties}>
+            <div data-plugin-in-point-id="HOST_OVERVIEW_DEFAULT" data-section-id="HOST_OVERVIEW_DEFAULT">
+              <div data-pageslot="true" className="c1yo0219 atm_9s_1txwivl_vmtskl atm_92_1yyfdc7_vmtskl atm_9s_1txwivl_9in345 atm_92_1yyfdc7_9in345 dir dir-ltr">
+                <div style={{ display: "contents" }}>
+                  <div className="cuspirs atm_9s_1txwivl atm_cx_exct8b atm_cx_1tcgj5g__oggzyc m1wx0491 atm_l8_1av1627 dir dir-ltr">
+                    <div className="c17nk5xs atm_9s_1ulexfb atm_mk_h2mmj6 dir dir-ltr" style={{ height: 40, width: 40 }}>
+                      <button
+                        aria-label={isSuperhost ? `${displayName} is a superhost. Learn more about ${displayName}.` : `View ${displayName}'s profile.`}
+                        type="button"
+                        className="_1t82b7sc l1ovpqvx atm_npmupv_14b5rvc_10saat9 atm_4s4swg_18xq13z_10saat9 atm_u9em2p_1r3889l_10saat9 atm_1ezpcqw_1u41vd9_10saat9 atm_fyjbsv_c4n71i_10saat9 atm_1rna0z7_1uk391_10saat9 dir dir-ltr"
+                      >
+                        <div className="i1j4t3kq atm_26_1guaqub atm_ks_15vqwwr atm_mk_h2mmj6 dir dir-ltr" style={{ height: 40, width: 40, borderRadius: "50%" }}>
+                          <div
+                            className="i1y91qbp atm_mk_h2mmj6 atm_1w_1xbheko atm_e2_jngzkn atm_vy_4hg7yc atm_5j_nw3v2p atm_vh_yfq0k3 dir dir-ltr"
+                            role="img"
+                            aria-busy="false"
+                            aria-label="Host profile picture"
+                            style={{
+                              "--AirImage-height": "100%",
+                              "--AirImage-width": "100%",
+                              "--AirImage-background-image": "none",
+                            } as React.CSSProperties}
+                          >
+                            <img
+                              className="i11046vh atm_e2_1osqo2v atm_vy_1osqo2v atm_jp_sm7xtg atm_jr_xm9jbw atm_5j_nw3v2p atm_vh_yfq0k3 dir dir-ltr"
+                              aria-hidden="true"
+                              alt="Host profile picture"
+                              decoding="async"
+                              {...{ elementtiming: "LCP-target" }}
+                              loading="lazy"
+                              src={avatar}
+                              width="100%"
+                              height="100%"
+                            />
+                          </div>
+                        </div>
+                      </button>
+                      {isSuperhost && (
+                        <div className="bf5onxa atm_mk_stnw88 atm_6i_12gsa0d atm_n3_myb0kj dir dir-ltr">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 14" aria-hidden="true" role="presentation" focusable="false" style={{ display: "block", height: 20, width: 20 }}>
+                            <linearGradient id="a" x1="8.5%" x2="92.18%" y1="17.16%" y2="17.16%">
+                              <stop offset="0" stopColor="#e61e4d"></stop>
+                              <stop offset=".5" stopColor="#e31c5f"></stop>
+                              <stop offset="1" stopColor="#d70466"></stop>
+                            </linearGradient>
+                            <path fill="#fff" d="M9.93 0c.88 0 1.6.67 1.66 1.52l.01.15v2.15c0 .54-.26 1.05-.7 1.36l-.13.08-3.73 2.17a3.4 3.4 0 1 1-2.48 0L.83 5.26A1.67 1.67 0 0 1 0 3.96L0 3.82V1.67C0 .79.67.07 1.52 0L1.67 0z"></path>
+                            <path fill="url(#a)" d="M5.8 8.2a2.4 2.4 0 0 0-.16 4.8h.32a2.4 2.4 0 0 0-.16-4.8zM9.93 1H1.67a.67.67 0 0 0-.66.57l-.01.1v2.15c0 .2.1.39.25.52l.08.05L5.46 6.8c.1.06.2.09.29.1h.1l.1-.02.1-.03.09-.05 4.13-2.4c.17-.1.3-.29.32-.48l.01-.1V1.67a.67.67 0 0 0-.57-.66z"></path>
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    <div className="t1nltagi atm_9s_1txwivl atm_ar_1bp4okc atm_fc_1h6ojuz atm_cx_1y44olf dir dir-ltr">
+                      <div className="t1avz7ro atm_c8_3w7ag0 atm_g3_1emqlh9 atm_fr_helst atm_cs_1mexzig dir dir-ltr">
+                        {locale === "ar" ? `يستضيفك ${displayName}` : `Hosted by ${displayName}`}
+                      </div>
+                      <div className="sxfuxpq atm_c8_1h3mmnw atm_g3_1vnrj90 atm_fr_b3emyl atm_7l_1kkyeqd dir dir-ltr">
+                        <ol className="lgx66tx atm_gi_idpfg4 atm_l8_idpfg4 dir dir-ltr">
+                          {isSuperhost && (
+                            <li className="l7n4lsf atm_9s_1o8liyq_keqd55 dir dir-ltr">
+                              {locale === "ar" ? "مضيف متميز" : "Superhost"}
+                              {yearsHosting > 0 && (
+                                <span className="axjq0r atm_9s_glywfm dir dir-ltr">
+                                  <span className="s1b4clln atm_mj_glywfm atm_vb_glywfm atm_vv_1jtmq4 atm_lk_idpfg4 atm_ll_idpfg4 dir dir-ltr" aria-hidden="true"> · </span>
+                                </span>
+                              )}
+                            </li>
+                          )}
+                          {yearsHosting > 0 && (
+                            <li className="l7n4lsf atm_9s_1o8liyq_keqd55 dir dir-ltr">
+                              {locale === "ar"
+                                ? `${yearsHosting} ${yearsHosting === 1 ? "عام" : yearsHosting === 2 ? "عامين" : "أعوام"} من الاستضافة`
+                                : `${yearsHosting} ${yearsHosting === 1 ? "year" : "years"} hosting`}
+                            </li>
+                          )}
+                        </ol>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </button>
-              {isSuperhost && (
-                <div className="bf5onxa atm_mk_stnw88 atm_6i_12gsa0d atm_n3_myb0kj dir dir-ltr">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 14" aria-hidden="true" role="presentation" focusable="false" style={{ display: "block", height: 20, width: 20 }}>
-                    <linearGradient id="a" x1="8.5%" x2="92.18%" y1="17.16%" y2="17.16%">
-                      <stop offset="0" stopColor="#e61e4d"></stop>
-                      <stop offset=".5" stopColor="#e31c5f"></stop>
-                      <stop offset="1" stopColor="#d70466"></stop>
-                    </linearGradient>
-                    <path fill="#fff" d="M9.93 0c.88 0 1.6.67 1.66 1.52l.01.15v2.15c0 .54-.26 1.05-.7 1.36l-.13.08-3.73 2.17a3.4 3.4 0 1 1-2.48 0L.83 5.26A1.67 1.67 0 0 1 0 3.96L0 3.82V1.67C0 .79.67.07 1.52 0L1.67 0z"></path>
-                    <path fill="url(#a)" d="M5.8 8.2a2.4 2.4 0 0 0-.16 4.8h.32a2.4 2.4 0 0 0-.16-4.8zM9.93 1H1.67a.67.67 0 0 0-.57-.66z"></path>
-                  </svg>
-                </div>
-              )}
-            </div>
-            <div className="t1nltagi atm_9s_1txwivl atm_ar_1bp4okc atm_fc_1h6ojuz atm_cx_1y44olf dir dir-ltr">
-              <div className="t1avz7ro atm_c8_3w7ag0 atm_g3_1emqlh9 atm_fr_helst atm_cs_1mexzig dir dir-ltr">
-                {locale === "ar" ? `يستضيفك ${displayName}` : `Hosted by ${displayName}`}
-              </div>
-              <div className="sxfuxpq atm_c8_1h3mmnw atm_g3_1vnrj90 atm_fr_b3emyl atm_7l_1kkyeqd dir dir-ltr">
-                <ol className="lgx66tx atm_gi_idpfg4 atm_l8_idpfg4 dir dir-ltr">
-                  {isSuperhost && (
-                    <li className="l7n4lsf atm_9s_1o8liyq_keqd55 dir dir-ltr">
-                      {locale === "ar" ? "مضيف متميز" : "Superhost"}
-                      {yearsHosting > 0 && (
-                        <span className="axjq0r atm_9s_glywfm dir dir-ltr">
-                          <span className="s1b4clln atm_mj_glywfm atm_vb_glywfm atm_vv_1jtmq4 atm_lk_idpfg4 atm_ll_idpfg4 dir dir-ltr" aria-hidden="true"> · </span>
-                        </span>
-                      )}
-                    </li>
-                  )}
-                  {yearsHosting > 0 && (
-                    <li className="l7n4lsf atm_9s_1o8liyq_keqd55 dir dir-ltr">
-                      {locale === "ar"
-                        ? `${yearsHosting} ${yearsHosting === 1 ? "عام" : yearsHosting === 2 ? "عامين" : "أعوام"} من الاستضافة`
-                        : `${yearsHosting} ${yearsHosting === 1 ? "year" : "years"} hosting`}
-                    </li>
-                  )}
-                </ol>
               </div>
             </div>
           </div>
