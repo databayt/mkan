@@ -2,10 +2,10 @@
 import { cdn } from "@/lib/cdn";
 
 import React, { useState, useRef, useCallback } from 'react';
-import { ArrowLeft, MapPin, Bed, Bath, Users, Square } from 'lucide-react';
+import { MapPin, Bed, Bath, Users, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ShareIcon, HeartIcon, Superhost } from '@/components/atom/icons';
+import { ShareIcon, HeartIcon, Superhost, BackArrowIcon } from '@/components/atom/icons';
 import { useRouter } from 'next/navigation';
 import { useFavorites } from '@/components/favorites/favorites-context';
 import MobileInfo from './mobile-info';
@@ -211,7 +211,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
               className="h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white"
               aria-label="Go back"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-700 rtl:rotate-180" />
+              <BackArrowIcon className="w-5 h-5 text-gray-700 rtl:rotate-180" />
             </Button>
 
             {/* Right Side - Share and Love */}
