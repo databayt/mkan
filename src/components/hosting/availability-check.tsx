@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { confirmAvailability, unpublishListing } from "@/lib/actions/listing-actions";
 import { PropertyImageFallback } from "@/components/atom/property-image-fallback";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 export type StaleListing = {
   id: number;
@@ -28,19 +29,17 @@ function writeCookie(name: string, value: string, maxAgeSec: number) {
 const fill = (tpl: string, vars: Record<string, string | number>) =>
   Object.entries(vars).reduce((acc, [k, v]) => acc.replace(`{${k}}`, String(v)), tpl);
 
-// Airbnb "one price, all fees included" mobile dialog anatomy: on mobile a
-// full-bleed bottom sheet — flush to bottom/left/right edges, rounded top
-// corners only (rounded-t 32px). On desktop it detaches into a floating
-// bottom-start card (16px radius, single-layer soft shadow). Radius + shadow
-// live in responsive classes so the two breakpoints can differ.
-
 /**
- * Availability Check — a calibrated, Airbnb-banner-styled nudge for passive
- * owners. Shows ONE home at a time (photo + title) with one-tap
- * "Still available" / "Mark busy"; answering advances to the next stale home.
- * Dismissing snoozes for a fraction of the reminder period (gentle, not gone),
- * and finishing the queue shows a brief "all set" state. Keeps seeded/listed
- * homes honest without owner effort — "not too much, not too little".
+ * Availability Check — a passive-owner nudge that keeps listed homes honest.
+ * Shows ONE stale home at a time (photo + title + "N of M" counter) with a
+ * one-tap Busy / Available choice; answering advances to the next home, and the
+ * queue ends on a brief "all set" state that auto-closes. Closing early snoozes
+ * for a fraction of the reminder period (gentle, not gone).
+ *
+ * Presentation deliberately mirrors the price-transparency dialog: a white
+ * modal card (shadcn Dialog + scrim) — centered 393px on desktop, a full-bleed
+ * rounded-top bottom sheet on mobile — so the two read as siblings. Keep the
+ * DialogContent shell below in sync with `site/price-transparency-dialog.tsx`.
  */
 export function AvailabilityCheck({
   staleListings,
@@ -58,7 +57,8 @@ export function AvailabilityCheck({
   const [done, setDone] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Gentle entrance: wait a beat after load (Airbnb banners never pop instantly).
+  // Gentle entrance: wait a beat after load (the prompt loader has already
+  // gated us on cookie consent, session, and the snooze cookie).
   useEffect(() => {
     if (staleListings.length === 0 || readCookie(AVAILABILITY_SNOOZE_COOKIE)) return;
     const id = setTimeout(() => setOpen(true), 900);
@@ -72,8 +72,8 @@ export function AvailabilityCheck({
     []
   );
 
-  // "Not now" — snooze for a quarter of the reminder period (min 1 day) so the
-  // nudge returns sooner than the full cycle but never nags within a session.
+  // Closing without finishing snoozes for a quarter of the reminder period
+  // (min 1 day) so the nudge returns sooner than the full cycle, never nagging.
   const snooze = () => {
     const days = Math.max(1, Math.round(periodDays / 4));
     writeCookie(AVAILABILITY_SNOOZE_COOKIE, "1", days * 24 * 60 * 60);
@@ -113,32 +113,48 @@ export function AvailabilityCheck({
       : null;
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0, y: 28, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 16, scale: 0.97 }}
-          transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-          role="dialog"
-          aria-live="polite"
-          aria-label={t.questionOne ?? "Is this home still available?"}
-          className="fixed inset-x-0 bottom-0 z-[9980] bg-white p-5 rounded-t-[32px] rounded-b-none shadow-[0_-4px_24px_rgba(0,0,0,0.12)] md:inset-x-auto md:bottom-6 md:start-6 md:w-[384px] md:p-6 md:rounded-2xl md:shadow-[0_6px_20px_rgba(0,0,0,0.2)] print:hidden"
-        >
-          {/* Close / snooze — quiet X, Airbnb desktop-banner style */}
-          {!done && (
-            <button
-              type="button"
-              onClick={snooze}
-              aria-label={t.later ?? "Not now"}
-              className="absolute end-3 top-3 flex size-8 items-center justify-center rounded-full text-[#222222] transition-colors hover:bg-neutral-100"
-            >
-              <svg viewBox="0 0 32 32" aria-hidden="true" style={{ display: "block", height: 12, width: 12, stroke: "currentColor", strokeWidth: 3, fill: "none" }}>
-                <path d="m6 6 20 20M26 6 6 26" />
-              </svg>
-            </button>
-          )}
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        // Escape / scrim close snoozes — unless the queue already finished.
+        if (o) return;
+        if (done) setOpen(false);
+        else snooze();
+      }}
+    >
+      <DialogContent
+        showCloseButton={false}
+        aria-describedby={undefined}
+        // Identical shell to price-transparency-dialog: mobile full-bleed bottom
+        // sheet (rounded-top 32px, flush to bottom/start/end), desktop centered
+        // 393px rounded-32 white card.
+        className="grid gap-0 border-0 bg-white p-0 shadow-[0_8px_28px_rgba(0,0,0,0.28)] top-auto bottom-0 start-0 end-0 w-full max-w-none translate-x-0 rtl:translate-x-0 translate-y-0 rounded-t-[32px] rounded-b-none sm:top-[50%] sm:bottom-auto sm:start-[50%] sm:end-auto sm:w-[calc(100%-2rem)] sm:max-w-[393px] sm:translate-x-[-50%] sm:rtl:-translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-[32px] sm:rounded-b-[32px]"
+      >
+        {/* Persistent accessible name — the visible headings swap with the queue. */}
+        <DialogTitle className="sr-only">
+          {t.title ?? "Are these homes still available?"}
+        </DialogTitle>
 
+        {/* Close / snooze — quiet X, hidden while the "all set" state auto-closes. */}
+        {!done && (
+          <button
+            type="button"
+            onClick={snooze}
+            aria-label={t.later ?? "Not now"}
+            className="absolute end-4 top-4 z-10 grid size-8 place-items-center rounded-full text-[#222222] transition-colors hover:bg-black/5"
+          >
+            <svg
+              viewBox="0 0 32 32"
+              className="size-4"
+              style={{ fill: "none", stroke: "currentColor", strokeWidth: 4 }}
+              aria-hidden="true"
+            >
+              <path d="m6 6 20 20M26 6 6 26" />
+            </svg>
+          </button>
+        )}
+
+        <div className="flex w-full flex-col items-center px-6 pb-7 pt-12">
           <AnimatePresence mode="wait" initial={false}>
             {done ? (
               <motion.div
@@ -147,21 +163,23 @@ export function AvailabilityCheck({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25, ease: "easeOut" }}
-                className="flex items-center gap-3 py-1"
+                className="flex flex-col items-center py-2 text-center"
               >
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f7f7f7]">
-                  <svg viewBox="0 0 32 32" aria-hidden="true" style={{ display: "block", height: 18, width: 18, stroke: "#008a05", strokeWidth: 3, fill: "none", strokeLinecap: "round", strokeLinejoin: "round" }}>
+                <span className="flex size-14 items-center justify-center rounded-full bg-[#f7f7f7]">
+                  <svg
+                    viewBox="0 0 32 32"
+                    aria-hidden="true"
+                    style={{ display: "block", height: 22, width: 22, stroke: "#008a05", strokeWidth: 3, fill: "none", strokeLinecap: "round", strokeLinejoin: "round" }}
+                  >
                     <path d="m5 17 7 7L27 9" />
                   </svg>
                 </span>
-                <div className="text-start">
-                  <p className="text-[15px] font-semibold leading-tight text-[#222222]">
-                    {t.allSet ?? "You're all set"}
-                  </p>
-                  <p className="mt-0.5 text-[13px] leading-snug text-[#6a6a6a]">
-                    {t.allSetBody ?? "Thanks — guests will only see homes you can host."}
-                  </p>
-                </div>
+                <p className="mt-4 text-[18px] font-semibold leading-tight text-[#222222]">
+                  {t.allSet ?? "You're all set"}
+                </p>
+                <p className="mt-1.5 text-[14px] leading-snug text-[#6a6a6a]">
+                  {t.allSetBody ?? "Thanks — guests will only see homes you can host."}
+                </p>
               </motion.div>
             ) : current ? (
               <motion.div
@@ -170,21 +188,22 @@ export function AvailabilityCheck({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.22, ease: "easeOut" }}
+                className="flex w-full flex-col items-center"
               >
-                {/* Bold lead — the banner sentence */}
-                <h2 className="pe-8 text-start text-base font-semibold leading-tight tracking-tight text-[#222222]">
+                {/* Question — same scale as the price dialog's title */}
+                <p className="px-2 text-center text-[22px] font-semibold leading-[26px] text-[#222222]">
                   {t.questionOne ?? "Is this home still available?"}
-                </h2>
+                </p>
 
                 {/* The home in question — one at a time */}
-                <div className="mt-3 flex items-center gap-3">
-                  <div className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-neutral-100">
+                <div className="mt-6 flex w-full items-center justify-center gap-3">
+                  <div className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
                     {current.photoUrl ? (
                       <Image
                         src={current.photoUrl}
                         alt=""
                         fill
-                        sizes="48px"
+                        sizes="64px"
                         className="object-cover"
                       />
                     ) : (
@@ -192,43 +211,46 @@ export function AvailabilityCheck({
                     )}
                   </div>
                   <div className="min-w-0 text-start">
-                    <p className="truncate text-sm font-medium text-[#222222]">{current.title}</p>
-                    <p className="mt-0.5 truncate text-xs text-[#6a6a6a]">
-                      {[current.city, counter].filter(Boolean).join(" · ")}
+                    <p className="truncate text-[15px] font-medium text-[#222222]">
+                      {current.title}
                     </p>
+                    {(current.city || counter) && (
+                      <p className="mt-0.5 truncate text-[13px] text-[#6a6a6a]">
+                        {[current.city, counter].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {/* One-tap answers */}
-                <div className="mt-4 grid grid-cols-2 gap-2">
+                {/* One-tap answers — Busy (secondary) / Available (primary #222) */}
+                <div className="mt-7 grid w-full grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => handle("busy")}
                     disabled={pending !== null}
-                    className="h-11 rounded-lg border bg-white text-sm font-semibold text-[#222222] transition hover:bg-neutral-50 active:scale-[0.98] disabled:opacity-50"
-                    style={{ borderColor: "#222222" }}
+                    className="h-12 rounded-lg border border-[#222222] bg-white text-[15px] font-semibold text-[#222222] transition hover:bg-neutral-50 active:scale-[0.98] disabled:opacity-50"
                   >
-                    {pending === "busy" ? "…" : t.markBusy ?? "Mark busy"}
+                    {pending === "busy" ? "…" : t.busy ?? "Busy"}
                   </button>
                   <button
                     type="button"
                     onClick={() => handle("confirm")}
                     disabled={pending !== null}
-                    className="h-11 rounded-lg bg-[#222222] text-sm font-semibold text-white transition hover:bg-black active:scale-[0.98] disabled:opacity-50"
+                    className="h-12 rounded-lg bg-[#222222] text-[15px] font-semibold text-white transition hover:bg-black active:scale-[0.98] disabled:opacity-50"
                   >
-                    {pending === "confirm" ? "…" : t.stillAvailable ?? "Still available"}
+                    {pending === "confirm" ? "…" : t.available ?? "Available"}
                   </button>
                 </div>
 
-                <p className="mt-3 text-start text-xs leading-snug text-[#6a6a6a]">
+                <p className="mt-5 text-center text-[13px] leading-snug text-[#6a6a6a]">
                   {t.hiddenNote ??
                     "Homes marked busy are hidden from guests until you turn them back on."}
                 </p>
               </motion.div>
             ) : null}
           </AnimatePresence>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

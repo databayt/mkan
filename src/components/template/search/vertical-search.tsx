@@ -447,13 +447,13 @@ export default function VerticalSearch({
       >
         <div
           className={`relative bg-white w-full overflow-hidden ${
-            isSheet ? "h-full" : "rounded-xs shadow-md"
+            isSheet ? "h-full" : "rounded-none shadow-sm"
           }`}
           // Hero: constant height across every state (idle + Where / When / Who)
           // so the card never grows when a menu opens — set inline so Turbopack
           // can't drop it as a brand-new arbitrary utility from its dev scan.
           // Sheet: the card fills the bottom-sheet body (h-full above) instead.
-          style={isSheet ? undefined : { height: "min(82vh, 600px)" }}
+          style={isSheet ? undefined : { height: "min(78vh, 560px)" }}
         >
           {/* Body — branches by panel so the Where search input can stay fixed
               while its list scrolls behind it. Idle + When/Who use one
@@ -784,7 +784,7 @@ export default function VerticalSearch({
       ref={formRef}
     >
       <div className="relative">
-        <div className="bg-white rounded-xs px-4 md:px-6 py-6 md:py-4 shadow-md w-full md:w-[340px]">
+        <div className="bg-white rounded-none px-4 md:px-5 py-6 md:py-3 shadow-sm w-full md:w-[340px]">
           {/* Main heading */}
           <h1 className="text-lg md:text-xl font-medium text-[#6b6b6b] mb-4 md:mb-3 leading-tight whitespace-pre-line">
             {t.heading}

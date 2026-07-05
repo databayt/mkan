@@ -30,7 +30,13 @@ export default async function HostingLayout({
       </div>
       <main id="main-content" className="px-4 pb-20 sm:px-6 lg:px-8 lg:pb-0">
         {children}
-        <ReportIssueFooter />
+        {/* Report-issue footer is the fallback for app surfaces without a site
+            footer. Mobile hosting pages either carry the full site footer now
+            (Today) or intentionally end at the bottom nav (Airbnb-clone), so it
+            renders on desktop only to avoid stacking under the site footer. */}
+        <div className="hidden lg:block">
+          <ReportIssueFooter />
+        </div>
       </main>
       <HostingBottomNav />
     </div>

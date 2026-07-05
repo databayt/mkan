@@ -34,6 +34,7 @@ export interface FilterState {
   amenities: Amenity[]
   instantBook?: boolean
   petsAllowed?: boolean
+  selfCheckIn?: boolean
 }
 
 export const EMPTY_FILTERS: FilterState = { propertyTypes: [], amenities: [] }
@@ -76,6 +77,7 @@ function countFilters(f: FilterState): number {
   n += f.amenities.length
   if (f.instantBook) n++
   if (f.petsAllowed) n++
+  if (f.selfCheckIn) n++
   return n
 }
 
@@ -147,6 +149,7 @@ export function SearchProvider({
         amenities: next.amenities.length ? next.amenities : undefined,
         instantBook: next.instantBook || undefined,
         petsAllowed: next.petsAllowed || undefined,
+        selfCheckIn: next.selfCheckIn || undefined,
         ...(bounds ?? {}),
         take: 50,
       }

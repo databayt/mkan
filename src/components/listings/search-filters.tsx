@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { Dialog as DialogPrimitive } from "radix-ui"
-import { SlidersHorizontal, X, Minus, Plus, ChevronDown } from "lucide-react"
+import { X, Minus, Plus, ChevronDown } from "lucide-react"
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion"
 import { PropertyType, Amenity } from "@prisma/client"
 import { Slider } from "@/components/ui/slider"
@@ -80,21 +80,80 @@ const AMENITY_META: Record<Amenity, { icon: FilterIconName; en: string; ar: stri
 }
 
 // First-shown amenities (all backed by seed data) then the "Show more" tail.
+// Ordered to mirror Airbnb's mobile Filters sheet (Wifi first, then Washer,
+// Air conditioning, …) — every one maps to a real Listing `amenities` value.
 const AMENITY_PRIMARY: Amenity[] = [
-  "AirConditioning", "WiFi", "Parking", "Pool", "WasherDryer", "Dishwasher",
+  "WiFi", "WasherDryer", "AirConditioning", "Parking", "Pool", "Dishwasher",
 ]
 const AMENITY_MORE: Amenity[] = ["Refrigerator", "Gym", "HighSpeedInternet"]
 // "Recommended for you" quick cards.
 const RECOMMENDED: Amenity[] = ["AirConditioning", "Parking", "WiFi", "WasherDryer"]
 
+// ── Airbnb-mobile parity data ──────────────────────────────────────────────
+// The mobile Filters sheet mirrors Airbnb's live sheet section-for-section.
+// Controls backed by a real Listing column are wired; the rest (marked with no
+// `amenity`) are faithful cosmetic controls so the visual matches exactly
+// without sending values our schema can't honor.
+
+// "Recommended for you" — Airbnb shows Kitchen / Free parking / Wifi. Each maps
+// to a real Mkan amenity so the quick cards actually filter.
+const RECOMMENDED_MOBILE: { img: string; en: string; ar: string; amenity: Amenity }[] = [
+  { img: "/filter/kitchen.png", en: "Kitchen", ar: "مطبخ", amenity: "Dishwasher" },
+  { img: "/filter/free-parking.png", en: "Free parking", ar: "موقف مجاني", amenity: "Parking" },
+  { img: "/filter/wifi.png", en: "Wifi", ar: "واي فاي", amenity: "WiFi" },
+]
+
+// Airbnb's first amenities row (before "Show more"). AC → real AirConditioning,
+// Dryer → real WasherDryer; TV/Heating/Iron/Hair dryer have no Mkan column and
+// stay cosmetic (kept for exact visual parity, authentic glyphs).
+const AMENITY_MOBILE: { icon: FilterIconName; en: string; ar: string; amenity?: Amenity }[] = [
+  { icon: "airConditioning", en: "Air conditioning", ar: "تكييف", amenity: "AirConditioning" },
+  { icon: "tv", en: "TV", ar: "تلفاز" },
+  { icon: "dryer", en: "Dryer", ar: "مجفف", amenity: "WasherDryer" },
+  { icon: "heating", en: "Heating", ar: "تدفئة" },
+  { icon: "iron", en: "Iron", ar: "مكواة" },
+  { icon: "hairDryer", en: "Hair dryer", ar: "مجفف شعر" },
+]
+// "Show more" reveals Mkan's remaining real amenities so working filters stay
+// reachable under the Airbnb-styled first row.
+const AMENITY_MOBILE_MORE: Amenity[] = ["WiFi", "Parking", "Pool", "Dishwasher", "Refrigerator", "Gym"]
+
+// "Standout stays" — Guest favorite / Luxe. Mkan's ratings are uniform, so these
+// can't discriminate; rendered as faithful cosmetic cards.
+const STANDOUT: { key: string; icon: FilterIconName; en: string; ar: string; subEn: string; subAr: string }[] = [
+  { key: "guestFavorite", icon: "guestFavorite", en: "Guest favorite", ar: "المفضّل لدى الضيوف", subEn: "The most loved homes on Mkan", subAr: "المنازل الأكثر تفضيلاً على مكان" },
+  { key: "luxe", icon: "luxe", en: "Luxe", ar: "لوكس", subEn: "Luxury homes with elevated design", subAr: "منازل فاخرة بتصميم راقٍ" },
+]
+
+// Collapsible cosmetic sections (no backing data yet) — expand to authentic
+// option lists to complete the visual parity with Airbnb.
+const ACCESS_FEATURES: { en: string; ar: string }[] = [
+  { en: "Step-free guest entrance", ar: "مدخل بدون درجات" },
+  { en: "Guest entrance wider than 32 inches", ar: "مدخل أوسع من 81 سم" },
+  { en: "Step-free path to the guest entrance", ar: "مسار بدون درجات إلى المدخل" },
+  { en: "Accessible parking spot", ar: "موقف مخصص لذوي الإعاقة" },
+]
+const HOST_LANGS: { en: string; ar: string }[] = [
+  { en: "English", ar: "الإنجليزية" },
+  { en: "Arabic", ar: "العربية" },
+  { en: "French", ar: "الفرنسية" },
+  { en: "Spanish", ar: "الإسبانية" },
+  { en: "German", ar: "الألمانية" },
+  { en: "Chinese", ar: "الصينية" },
+]
+
 const STEPPER_MAX = 8
 const BAR_H = 64
-const SPRING = {
+// Mobile sheet choreography — gentle spring open, feather-landing close, panel
+// dissolving into the header bar as it lands. Kept in lockstep with the mobile
+// SEARCH sheet (search-header.tsx) so the two sheets breathe identically.
+const SHEET_OPEN = {
   type: "spring" as const,
-  stiffness: 280,
-  damping: 34,
+  stiffness: 240,
+  damping: 28,
   mass: 1,
 } as const
+const SHEET_CLOSE = { duration: 0.38, ease: [0.32, 0.72, 0, 1] as const }
 
 const T = {
   en: {
@@ -104,10 +163,14 @@ const T = {
     anyType: "Any type", room: "Room", entireHome: "Entire home",
     priceRange: "Price range", priceHint: "Trip price, includes all fees",
     minimum: "Minimum", maximum: "Maximum", currency: "SDG",
-    roomsAndBeds: "Rooms and beds", bedrooms: "Bedrooms", bathrooms: "Bathrooms", any: "Any",
+    roomsAndBeds: "Rooms and beds", bedrooms: "Bedrooms", beds: "Beds", bathrooms: "Bathrooms", any: "Any",
     amenities: "Amenities", showMore: "Show more", showLess: "Show less",
-    bookingOptions: "Booking options", instantBook: "Instant Book", allowsPets: "Allows pets",
+    bookingOptions: "Booking options", instantBook: "Instant Book", selfCheckIn: "Self check-in", allowsPets: "Allows pets",
+    standoutStays: "Standout stays",
+    guestFavorite: "Guest favorite", guestFavoriteSub: "The most loved homes on Mkan",
+    luxe: "Luxe", luxeSub: "Luxury homes with elevated design",
     propertyType: "Property type",
+    accessibility: "Accessibility features", hostLanguage: "Host language",
     clearAll: "Clear all", show: "Show", places: "places", place: "place", close: "Close",
   },
   ar: {
@@ -117,10 +180,14 @@ const T = {
     anyType: "أي نوع", room: "غرفة", entireHome: "منزل كامل",
     priceRange: "نطاق السعر", priceHint: "سعر الرحلة، شامل جميع الرسوم",
     minimum: "الحد الأدنى", maximum: "الحد الأقصى", currency: "ج.س",
-    roomsAndBeds: "الغرف والأسرّة", bedrooms: "غرف النوم", bathrooms: "الحمامات", any: "الكل",
+    roomsAndBeds: "الغرف والأسرّة", bedrooms: "غرف النوم", beds: "الأسرّة", bathrooms: "الحمامات", any: "الكل",
     amenities: "وسائل الراحة", showMore: "عرض المزيد", showLess: "عرض أقل",
-    bookingOptions: "خيارات الحجز", instantBook: "الحجز الفوري", allowsPets: "يسمح بالحيوانات الأليفة",
+    bookingOptions: "خيارات الحجز", instantBook: "الحجز الفوري", selfCheckIn: "تسجيل وصول ذاتي", allowsPets: "يسمح بالحيوانات الأليفة",
+    standoutStays: "إقامات مميزة",
+    guestFavorite: "المفضّل لدى الضيوف", guestFavoriteSub: "المنازل الأكثر تفضيلاً على مكان",
+    luxe: "لوكس", luxeSub: "منازل فاخرة بتصميم راقٍ",
     propertyType: "نوع العقار",
+    accessibility: "ميزات إمكانية الوصول", hostLanguage: "لغة المضيف",
     clearAll: "مسح الكل", show: "عرض", places: "أماكن", place: "مكان", close: "إغلاق",
   },
 } as const
@@ -150,7 +217,7 @@ function Pill({
       className="inline-flex items-center whitespace-nowrap transition-colors"
       style={{
         height: 48,
-        gap: 8,
+        gap: icon ? 8 : 0,
         padding: "0 16px",
         borderRadius: 28,
         fontSize: 14,
@@ -160,7 +227,7 @@ function Pill({
         boxShadow: active ? `inset 0 0 0 1px ${C.text}` : "none",
       }}
     >
-      <span className="inline-flex shrink-0" style={{ color: C.text }}>{icon}</span>
+      {icon && <span className="inline-flex shrink-0" style={{ color: C.text }}>{icon}</span>}
       {children}
     </button>
   )
@@ -286,6 +353,25 @@ function formatNumberPlain(n: number): string {
   return new Intl.NumberFormat("en-US").format(n)
 }
 
+/** Airbnb's exact "adjustments" filter glyph (stroked sliders with knobs). */
+function FilterTriggerIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 32 32"
+      width={size}
+      height={size}
+      aria-hidden="true"
+      focusable="false"
+      style={{ display: "block", fill: "none", stroke: "currentColor", strokeWidth: 2.5, overflow: "visible" }}
+    >
+      <path
+        fill="none"
+        d="M7 16H3m26 0H15M29 6h-4m-8 0H3m26 20h-4M7 16a4 4 0 1 0 8 0 4 4 0 0 0-8 0zM17 6a4 4 0 1 0 8 0 4 4 0 0 0-8 0zm0 20a4 4 0 1 0 8 0 4 4 0 0 0-8 0zm0 0H3"
+      />
+    </svg>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Main dialog
 // ---------------------------------------------------------------------------
@@ -301,6 +387,12 @@ export function SearchFilters() {
   const [preview, setPreview] = useState<number | null>(null)
   const [amenExpanded, setAmenExpanded] = useState(false)
   const [typeOpen, setTypeOpen] = useState(false)
+  const [accessOpen, setAccessOpen] = useState(false)
+  const [langOpen, setLangOpen] = useState(false)
+  // Cosmetic-only selections (Beds + data-less pills) — kept out of FilterState
+  // so the server contract and "Show N places" count stay honest.
+  const [bedsCount, setBedsCount] = useState<number | undefined>(undefined)
+  const [cosmetic, setCosmetic] = useState<Set<string>>(() => new Set())
   const [sheetH, setSheetH] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
   // Client-mount guard so the mobile sheet can portal to <body> (below) only
@@ -385,6 +477,7 @@ export function SearchFilters() {
         amenities: draft.amenities.length ? draft.amenities : undefined,
         instantBook: draft.instantBook || undefined,
         petsAllowed: draft.petsAllowed || undefined,
+        selfCheckIn: draft.selfCheckIn || undefined,
         ...(bounds ?? {}),
         take: 1,
       })
@@ -420,6 +513,19 @@ export function SearchFilters() {
         : [...d.propertyTypes, pt],
     }))
 
+  const toggleCosmetic = (key: string) =>
+    setCosmetic((prev) => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+
+  const clearAll = () => {
+    setDraft(EMPTY_FILTERS)
+    setBedsCount(undefined)
+    setCosmetic(new Set())
+  }
+
   const kind: "any" | "room" | "entire" | "custom" = (() => {
     const ts = draft.propertyTypes
     if (ts.length === 0) return "any"
@@ -443,7 +549,7 @@ export function SearchFilters() {
     draft.priceMin !== undefined || draft.priceMax !== undefined ||
     draft.beds !== undefined || draft.baths !== undefined ||
     draft.propertyTypes.length > 0 || draft.amenities.length > 0 ||
-    !!draft.instantBook || !!draft.petsAllowed
+    !!draft.instantBook || !!draft.petsAllowed || !!draft.selfCheckIn
 
   const showLabel =
     preview === null
@@ -464,10 +570,11 @@ export function SearchFilters() {
 
         <button
           type="button"
-          className="relative flex shrink-0 items-center justify-center rounded-full bg-background text-sm font-medium text-foreground transition-colors hover:border-foreground"
-          // 48px matches the SmallSearch pill's rendered box (measured: content
-          // + padding + border) so the two read as one row on /search mobile.
-          style={{ height: 48, width: 48, border: `1px solid ${C.border}`, touchAction: "manipulation" }}
+          className="relative flex shrink-0 items-center justify-center rounded-full bg-background text-sm font-medium text-foreground outline-none transition-colors"
+          // No border ring — Airbnb's mobile /search filter control is the bare
+          // sliders glyph. Narrow width keeps it close to the search pill; height
+          // 48 keeps vertical alignment.
+          style={{ height: 48, width: 32, touchAction: "manipulation" }}
           onClick={() => {
             // 0.92 == the mobile search sheet (mobile-listings-header.tsx), so
             // the Filters sheet and the search sheet open to the same height.
@@ -476,7 +583,7 @@ export function SearchFilters() {
           }}
           aria-label={t.filters}
         >
-          <SlidersHorizontal className="h-4 w-4" />
+          <FilterTriggerIcon />
           {filterCount > 0 && (
             <span className="absolute -end-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1 text-[11px] font-semibold text-background">
               {formatNumber(filterCount, locale)}
@@ -494,26 +601,44 @@ export function SearchFilters() {
             <AnimatePresence>
           {open && (
             <React.Fragment>
-              {/* Scrim */}
+              {/* Scrim — fades over the FULL close travel so the room never
+                  brightens while the sheet is still tucking away. */}
               <motion.div
                 key="scrim"
                 className="fixed inset-0 z-[60] bg-black/40"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
+                exit={{ opacity: 0, transition: { duration: 0.4, ease: "easeOut" } }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
                 onClick={() => setOpen(false)}
                 aria-hidden="true"
               />
 
-              {/* Panel — anchored to the top, springs from BAR_H down to 85vh. */}
+              {/* Panel — anchored to the top: breathes open from BAR_H down to
+                  92vh on a gentle spring, lands back on a feather ease while
+                  dissolving into the (identical-height) header bar beneath it.
+                  Not flex — the body owns its height (see below) so the panel's
+                  animated height only CLIPS content instead of reflowing it. */}
               <motion.div
                 key="panel"
-                className="fixed inset-x-0 top-0 z-[61] overflow-hidden rounded-b-[28px] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)] flex flex-col"
-                initial={{ height: BAR_H }}
-                animate={{ height: sheetH }}
-                exit={{ height: BAR_H }}
-                transition={SPRING}
+                className="fixed inset-x-0 top-0 z-[61] overflow-hidden rounded-b-[28px] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+                initial={{ height: BAR_H, opacity: 0 }}
+                animate={{
+                  height: sheetH,
+                  opacity: 1,
+                  transition: {
+                    height: SHEET_OPEN,
+                    opacity: { duration: 0.16, ease: "easeOut" },
+                  },
+                }}
+                exit={{
+                  height: BAR_H,
+                  opacity: 0,
+                  transition: {
+                    height: SHEET_CLOSE,
+                    opacity: { duration: 0.14, delay: 0.26, ease: "easeIn" },
+                  },
+                }}
                 role="dialog"
                 aria-modal="true"
               >
@@ -523,11 +648,73 @@ export function SearchFilters() {
                     top padding gives the first section clean breathing room from
                     the sheet's flush top edge. */}
 
-                {/* Body — matches Airbnb's mobile Filters sheet, which (unlike
-                    desktop) opens straight on "Type of place"; there is no
-                    "Recommended for you" grid on mobile. */}
+                {/* Body — a section-for-section clone of Airbnb's live mobile
+                    Filters sheet (Recommended → Type of place → Price → Rooms
+                    and beds → Amenities → Booking options → Standout stays →
+                    Property type → Accessibility → Host language). */}
                 <AnyLabelContext.Provider value={t.any}>
-                  <div className="flex-1 overflow-y-auto no-scrollbar" style={{ padding: "24px", paddingTop: "40px", paddingBottom: "104px" }}>
+                  {/* Body — FIXED pixel height (not flex-1): laid out once at
+                      final size so the panel's height animation never reflows
+                      these hundreds of nodes per frame (the jank source). It
+                      rises in a beat behind the panel and evaporates first on
+                      close, so the sheet empties before tucking away. */}
+                  <motion.div
+                    className="overflow-y-auto no-scrollbar"
+                    style={{ height: sheetH, padding: "24px", paddingTop: "40px", paddingBottom: "104px" }}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      transition: { delay: 0.06, duration: 0.32, ease: "easeOut" },
+                    }}
+                    exit={{ opacity: 0, transition: { duration: 0.14, ease: "easeIn" } }}
+                  >
+                    {/* Recommended for you */}
+                    <section>
+                      <h2 style={{ ...sectionTitle, marginBottom: 16 }}>{t.recommended}</h2>
+                      <div className="grid grid-cols-3" style={{ gap: 12 }}>
+                        {RECOMMENDED_MOBILE.map((r) => {
+                          const active = draft.amenities.includes(r.amenity)
+                          return (
+                            <button
+                              key={r.en}
+                              type="button"
+                              onClick={() => toggleAmenity(r.amenity)}
+                              aria-pressed={active}
+                              className="flex flex-col items-center"
+                              style={{ gap: 8 }}
+                            >
+                              <span
+                                className="flex w-full items-center justify-center transition-colors"
+                                style={{
+                                  height: 84,
+                                  borderRadius: 12,
+                                  border: `1px solid ${active ? C.text : C.border}`,
+                                  boxShadow: active ? `inset 0 0 0 1px ${C.text}` : "none",
+                                  backgroundColor: active ? C.selBg : "#ffffff",
+                                }}
+                              >
+                                {/* Authentic Airbnb recommended-filter illustration
+                                    (downloaded to /public/filter). */}
+                                <img
+                                  src={r.img}
+                                  alt=""
+                                  width={44}
+                                  height={44}
+                                  style={{ width: 44, height: 44, objectFit: "contain" }}
+                                />
+                              </span>
+                              <span style={{ fontSize: 13, color: C.text, textAlign: "center" }}>
+                                {r[locale === "ar" ? "ar" : "en"]}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </section>
+
+                    <Divider />
+
                     {/* Type of place */}
                     <section>
                       <h2 style={{ ...sectionTitle, marginBottom: 16 }}>{t.typeOfPlace}</h2>
@@ -622,29 +809,48 @@ export function SearchFilters() {
 
                     <Divider />
 
-                    {/* Rooms and beds */}
+                    {/* Rooms and beds — Bedrooms + Bathrooms filter real columns;
+                        Beds mirrors Airbnb's sheet but has no Listing column, so
+                        it's a cosmetic stepper. */}
                     <section>
                       <h2 style={{ ...sectionTitle, marginBottom: 8 }}>{t.roomsAndBeds}</h2>
                       <Stepper big label={t.bedrooms} value={draft.beds} onChange={(v) => setDraft((d) => ({ ...d, beds: v }))} />
+                      <Stepper big label={t.beds} value={bedsCount} onChange={setBedsCount} />
                       <Stepper big label={t.bathrooms} value={draft.baths} onChange={(v) => setDraft((d) => ({ ...d, baths: v }))} />
                     </section>
 
                     <Divider />
 
-                    {/* Amenities */}
+                    {/* Amenities — Airbnb's exact first row (AC, TV, Dryer,
+                        Heating, Iron, Hair dryer). "Show more" reveals Mkan's
+                        remaining real amenities. */}
                     <section>
                       <h2 style={{ ...sectionTitle, marginBottom: 16 }}>{t.amenities}</h2>
                       <div className="flex flex-wrap" style={{ gap: 12 }}>
-                        {amenityList.map((a) => (
-                          <Pill
-                            key={a}
-                            active={draft.amenities.includes(a)}
-                            onClick={() => toggleAmenity(a)}
-                            icon={<FilterIcon name={AMENITY_META[a].icon} size={20} />}
-                          >
-                            {AMENITY_META[a][locale === "ar" ? "ar" : "en"]}
-                          </Pill>
-                        ))}
+                        {AMENITY_MOBILE.map((a) => {
+                          const active = a.amenity ? draft.amenities.includes(a.amenity) : cosmetic.has(`am:${a.en}`)
+                          return (
+                            <Pill
+                              key={a.en}
+                              active={active}
+                              onClick={() => (a.amenity ? toggleAmenity(a.amenity) : toggleCosmetic(`am:${a.en}`))}
+                              icon={<FilterIcon name={a.icon} size={20} />}
+                            >
+                              {a[locale === "ar" ? "ar" : "en"]}
+                            </Pill>
+                          )
+                        })}
+                        {amenExpanded &&
+                          AMENITY_MOBILE_MORE.map((a) => (
+                            <Pill
+                              key={a}
+                              active={draft.amenities.includes(a)}
+                              onClick={() => toggleAmenity(a)}
+                              icon={<FilterIcon name={AMENITY_META[a].icon} size={20} />}
+                            >
+                              {AMENITY_META[a][locale === "ar" ? "ar" : "en"]}
+                            </Pill>
+                          ))}
                       </div>
                       <button
                         type="button"
@@ -673,12 +879,58 @@ export function SearchFilters() {
                           {t.instantBook}
                         </Pill>
                         <Pill
+                          active={!!draft.selfCheckIn}
+                          onClick={() => setDraft((d) => ({ ...d, selfCheckIn: !d.selfCheckIn }))}
+                          icon={<FilterIcon name="selfCheckIn" size={20} />}
+                        >
+                          {t.selfCheckIn}
+                        </Pill>
+                        <Pill
                           active={!!draft.petsAllowed}
                           onClick={() => setDraft((d) => ({ ...d, petsAllowed: !d.petsAllowed }))}
                           icon={<FilterIcon name="pets" size={20} />}
                         >
                           {t.allowsPets}
                         </Pill>
+                      </div>
+                    </section>
+
+                    <Divider />
+
+                    {/* Standout stays — Guest favorite / Luxe. Cosmetic cards
+                        (uniform ratings can't discriminate). */}
+                    <section>
+                      <h2 style={{ ...sectionTitle, marginBottom: 16 }}>{t.standoutStays}</h2>
+                      <div className="grid grid-cols-2" style={{ gap: 12 }}>
+                        {STANDOUT.map((s) => {
+                          const active = cosmetic.has(`so:${s.key}`)
+                          return (
+                            <button
+                              key={s.key}
+                              type="button"
+                              onClick={() => toggleCosmetic(`so:${s.key}`)}
+                              aria-pressed={active}
+                              className="flex flex-col text-start transition-colors"
+                              style={{
+                                gap: 4,
+                                padding: 16,
+                                borderRadius: 16,
+                                minHeight: 128,
+                                border: `1px solid ${active ? C.text : C.border}`,
+                                boxShadow: active ? `inset 0 0 0 1px ${C.text}` : "none",
+                                backgroundColor: active ? C.selBg : "#ffffff",
+                              }}
+                            >
+                              <FilterIcon name={s.icon} size={30} style={{ color: C.text, marginBottom: 8 }} />
+                              <span style={{ fontSize: 15, fontWeight: 500, color: C.text }}>
+                                {s[locale === "ar" ? "ar" : "en"]}
+                              </span>
+                              <span style={{ fontSize: 12, color: C.sub, lineHeight: "16px" }}>
+                                {locale === "ar" ? s.subAr : s.subEn}
+                              </span>
+                            </button>
+                          )
+                        })}
                       </div>
                     </section>
 
@@ -710,7 +962,65 @@ export function SearchFilters() {
                         </div>
                       )}
                     </section>
-                  </div>
+
+                    <Divider />
+
+                    {/* Accessibility features (collapsible) — cosmetic pills. */}
+                    <section>
+                      <button
+                        type="button"
+                        onClick={() => setAccessOpen((o) => !o)}
+                        aria-expanded={accessOpen}
+                        className="flex w-full items-center justify-between"
+                      >
+                        <span style={sectionTitle}>{t.accessibility}</span>
+                        <ChevronDown size={20} style={{ color: C.text, transform: accessOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+                      </button>
+                      {accessOpen && (
+                        <div className="mt-4 flex flex-wrap" style={{ gap: 12 }}>
+                          {ACCESS_FEATURES.map((f) => (
+                            <Pill
+                              key={f.en}
+                              active={cosmetic.has(`ax:${f.en}`)}
+                              onClick={() => toggleCosmetic(`ax:${f.en}`)}
+                              icon={null}
+                            >
+                              {f[locale === "ar" ? "ar" : "en"]}
+                            </Pill>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+
+                    <Divider />
+
+                    {/* Host language (collapsible) — cosmetic pills. */}
+                    <section>
+                      <button
+                        type="button"
+                        onClick={() => setLangOpen((o) => !o)}
+                        aria-expanded={langOpen}
+                        className="flex w-full items-center justify-between"
+                      >
+                        <span style={sectionTitle}>{t.hostLanguage}</span>
+                        <ChevronDown size={20} style={{ color: C.text, transform: langOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+                      </button>
+                      {langOpen && (
+                        <div className="mt-4 flex flex-wrap" style={{ gap: 12 }}>
+                          {HOST_LANGS.map((l) => (
+                            <Pill
+                              key={l.en}
+                              active={cosmetic.has(`lang:${l.en}`)}
+                              onClick={() => toggleCosmetic(`lang:${l.en}`)}
+                              icon={null}
+                            >
+                              {l[locale === "ar" ? "ar" : "en"]}
+                            </Pill>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  </motion.div>
                 </AnyLabelContext.Provider>
 
                 {/* Footer — a solid bar pinned flush to the sheet's bottom edge,
@@ -728,11 +1038,11 @@ export function SearchFilters() {
                 >
                   <button
                     type="button"
-                    onClick={() => setDraft(EMPTY_FILTERS)}
+                    onClick={clearAll}
                     style={{
                       fontSize: 14,
                       fontWeight: 500,
-                      color: hasDraft ? C.text : C.muted,
+                      color: hasDraft || bedsCount !== undefined || cosmetic.size > 0 ? C.text : C.muted,
                       textDecoration: "underline",
                       textUnderlineOffset: 2,
                     }}
@@ -782,7 +1092,7 @@ export function SearchFilters() {
           style={{ height: 40, border: `1px solid ${C.border}` }}
           aria-label={t.filters}
         >
-          <SlidersHorizontal className="h-4 w-4" />
+          <FilterTriggerIcon />
           <span className="hidden sm:inline">{t.filters}</span>
           {filterCount > 0 && (
             <span className="absolute -end-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1 text-[11px] font-semibold text-background">

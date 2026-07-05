@@ -132,7 +132,7 @@ export default async function TransportPage({ params }: TransportPageProps) {
           under the headline. */}
       <section className="relative h-svh md:h-[75vh] md:min-h-[600px] w-full overflow-hidden bg-[#1a1a2e]">
         <Image
-          src="https://cdn.databayt.org/mkan/stock/photo-1544620347-c4fd4a3d5957.jpg"
+          src="https://cdn.databayt.org/mkan/transport/hero-buses-dusk.jpg"
           alt={t?.hero?.title ?? "Travel between cities in Sudan"}
           fill
           priority
@@ -148,34 +148,37 @@ export default async function TransportPage({ params }: TransportPageProps) {
           <SiteHeader />
         </div>
 
-        {/* Content overlay */}
-        <div className="relative z-20 h-full flex flex-col items-center justify-center px-4 pt-14">
-          <div className="text-center max-w-3xl mx-auto mb-10">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white">
-              <span className="block">{t?.hero?.titleLine1 ?? "Travel Between"}</span>
-              <span className="block">{t?.hero?.titleLine2 ?? "Cities in Sudan"}</span>
-            </h1>
-            <p className="mt-4 text-white/85 text-base md:text-lg max-w-xl mx-auto hidden sm:block">
-              {t?.hero?.subtitle ?? "Book your bus tickets online. Choose your seat, pay securely, and receive your e-ticket instantly."}
-            </p>
-          </div>
-
-          <div className="w-full max-w-4xl">
+        {/* Content overlay — homepage hero pattern: a left-anchored white
+            search card carrying the title inside it, floating over the photo. */}
+        <div className="relative z-20 h-full">
+          <div className="absolute top-[52%] md:top-1/2 start-4 md:start-8 -translate-y-1/2 w-[calc(100%-2rem)] md:w-auto">
             <Suspense
               fallback={
-                <div className="h-16 bg-white/20 animate-pulse rounded-full max-w-4xl mx-auto" />
+                <div className="h-[440px] w-full md:w-[340px] bg-white/20 animate-pulse" />
               }
             >
               <TransportBigSearch
                 assemblyPoints={assemblyPoints}
                 lang={lang}
                 dictionary={{
+                  title: `${t?.hero?.titleLine1 ?? "Travel Between"}\n${t?.hero?.titleLine2 ?? "Cities in Sudan"}`,
+                  where: t?.search?.where ?? "Where",
                   from: t?.search?.from ?? "From",
                   to: t?.search?.to ?? "To",
+                  when: t?.search?.when ?? "When",
                   date: t?.search?.date ?? "Travel Date",
-                  search: t?.search?.search ?? "Search Trips",
-                  selectCity: dictionary?.common?.search ?? "Search",
-                  selectDate: t?.search?.date ?? "Travel Date",
+                  search: dictionary?.common?.search ?? "Search",
+                  selectCity: t?.search?.selectCity ?? "Add city",
+                  selectDate: t?.search?.pickDate ?? "Add date",
+                  swap: t?.search?.swap ?? "Swap cities",
+                  passengers: t?.search?.passengers ?? "Passengers",
+                  addPassengers: t?.search?.addPassengers ?? "Add passengers",
+                  adults: t?.search?.adults ?? "Adults",
+                  adultsAge: t?.search?.adultsAge ?? "Ages 13+",
+                  children: t?.search?.children ?? "Children",
+                  childrenAge: t?.search?.childrenAge ?? "Ages 2–12",
+                  passenger: t?.search?.passenger ?? "passenger",
+                  passengersPlural: t?.search?.passengersPlural ?? "passengers",
                 }}
               />
             </Suspense>

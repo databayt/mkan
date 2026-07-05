@@ -1,75 +1,36 @@
 "use client";
 
-import { Search, ChevronDown } from "lucide-react";
+import { Search, ArrowUpDown, ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef } from "react";
+import { Label } from "@/components/ui/label";
+import { Counter } from "@/components/atom/counter";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
-import { cn } from "@/lib/utils";
 import TransportCityDropdown from "./transport-city-dropdown";
 import TransportDatePicker from "./transport-date-picker";
+import { MOBILE_BREAKPOINT } from "@/components/template/search/constant";
 import { isRTL as checkRTL, type Locale } from "@/components/internationalization/config";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { cityLabel } from "@/components/transport/city-names";
 
-// Motion mirrors the listings BigSearch so the two search bars feel identical to
-// operate; only the surface (glass over the dark video, vs. solid white) differs.
-
-// Slide-and-fade downward when the dropdown first opens / fully closes — the panel
-// appears to emerge from beneath the bar without the bar itself shifting.
-const DROPDOWN_TRANSITION = { duration: 0.2, ease: [0.32, 0.72, 0, 1] as const };
-const dropdownMotion = {
-  initial: { opacity: 0, y: -8, scale: 0.985 },
-  animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: -8, scale: 0.985 },
-};
-
-// Segment-switch motion (From ⇄ To ⇄ Date). The frosted active pill is a shared
-// `layoutId` element and the dropdown is a single `layout` container, so a spring
-// here makes BOTH glide: the pill slides/stretches to the new segment while the
-// panel re-anchors and resizes. Tuned for a smooth, no-bounce settle.
-const SWITCH_TRANSITION = {
-  type: "spring" as const,
-  stiffness: 480,
-  damping: 42,
-  mass: 1,
-} as const;
-
-// Content crossfade for the panel body as it swaps From → To → Date. A spring on
-// opacity wobbles, so the body uses this short tween instead.
-const SWITCH_FADE = { duration: 0.2, ease: [0.32, 0.72, 0, 1] as const };
-
-// The frosted active-segment fill, as ONE shared element. Every active segment
-// renders it with the same `layoutId`, so Framer interpolates its position AND
-// width as the active segment changes — the pill GLIDES From→To→Date instead of
-// three glass fills cross-fading (the listings big-search trick).
+// Transport hero search — mirrors the homepage hero card (VerticalSearch): a
+// left-anchored white card that carries the title inside it, with stacked
+// fields and a red Search pill. Adapted for buses: the location pair is a
+// joined From/To with a swap circle on the seam, and "Guests" becomes a
+// Passengers stepper (adults + children → the `seats` search filter).
 //
-// MUST live at module scope: defined as a closure inside the component it would
-// remount on every render and Framer's layout projection would reset, so the pill
-// would snap between segments instead of gliding.
-//
-// Glass flavor preserved: a translucent white fill + backdrop-blur over the dark
-// video, rather than the listings pill's solid-white #DDDDDD-bordered fill.
-// zIndex:-1 keeps it above the grey hover pseudo (-z-10) but below the segment
-// text; pointer-events-none so it never eats clicks.
-function ActivePill() {
-  return (
-    <motion.div
-      layoutId="transportSearchPill"
-      transition={SWITCH_TRANSITION}
-      aria-hidden
-      className="absolute inset-0 rounded-full bg-white/30 backdrop-blur-md pointer-events-none"
-      style={{
-        zIndex: -1,
-        boxShadow:
-          "0 4px 24px -1px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.4)",
-        border: "1px solid rgba(255,255,255,0.3)",
-      }}
-    />
-  );
-}
+// Two layouts, same as the homepage:
+//   • Desktop (≥md): the card stays put and each field opens a panel that
+//     floats beside it.
+//   • Mobile (<md): a fixed-height card whose BODY switches to the active
+//     step (Where / When / Who) in place — no dropdown drops below the fields.
+//     Floating prev/next arrows sit at the top and the Search pill floats at
+//     the bottom, exactly like the homepage mobile flow.
 
-type ActiveButton = "origin" | "destination" | "date" | null;
+type ActiveButton = "origin" | "destination" | "date" | "passengers" | null;
+
+// Step order the mobile prev/next arrows walk.
+const STEP_ORDER = ["origin", "destination", "date", "passengers"] as const;
 
 interface AssemblyPoint {
   id: number;
@@ -78,32 +39,114 @@ interface AssemblyPoint {
   city: string;
 }
 
+interface Passengers {
+  adults: number;
+  children: number;
+}
+
+interface TransportSearchDictionary {
+  title: string;
+  where: string;
+  from: string;
+  to: string;
+  when: string;
+  date: string;
+  search: string;
+  selectCity: string;
+  selectDate: string;
+  swap: string;
+  passengers: string;
+  addPassengers: string;
+  adults: string;
+  adultsAge: string;
+  children: string;
+  childrenAge: string;
+  passenger: string;
+  passengersPlural: string;
+}
+
 interface TransportBigSearchProps {
   assemblyPoints?: AssemblyPoint[];
-  dictionary?: {
-    from: string;
-    to: string;
-    date: string;
-    search: string;
-    selectCity: string;
-    selectDate: string;
-  };
+  dictionary?: TransportSearchDictionary;
   initialOrigin?: string;
   initialDestination?: string;
   initialDate?: Date;
   lang?: string;
 }
 
+const DEFAULT_DICTIONARY: TransportSearchDictionary = {
+  title: "Travel Between\nCities in Sudan",
+  where: "Where",
+  from: "From",
+  to: "To",
+  when: "When",
+  date: "Travel Date",
+  search: "Search",
+  selectCity: "Add city",
+  selectDate: "Add date",
+  swap: "Swap cities",
+  passengers: "Passengers",
+  addPassengers: "Add passengers",
+  adults: "Adults",
+  adultsAge: "Ages 13+",
+  children: "Children",
+  childrenAge: "Ages 2–12",
+  passenger: "passenger",
+  passengersPlural: "passengers",
+};
+
+// Compact adults/children stepper — the transport equivalent of the homepage
+// GuestSelector. Two rows only (no infants/pets); each row uses the shared
+// Counter atom in its small variant so it fits the narrow card / side panel.
+function PassengerSelector({
+  passengers,
+  onChange,
+  dict,
+}: {
+  passengers: Passengers;
+  onChange: (type: keyof Passengers, op: "increment" | "decrement") => void;
+  dict: TransportSearchDictionary;
+}) {
+  // A child can't travel without an adult, so the adults minus is floored at 1
+  // while any children are selected (mirrors the homepage guest rule).
+  const minAdults = passengers.children > 0 ? 1 : 0;
+  return (
+    <div className="flex flex-col">
+      <div className="flex items-center justify-between py-4 border-b border-[#f0f0f0] first:pt-0">
+        <div>
+          <div className="font-semibold text-[15px] text-[#222222] leading-5">{dict.adults}</div>
+          <div className="text-sm text-muted-foreground font-normal mt-0.5">{dict.adultsAge}</div>
+        </div>
+        <Counter
+          value={passengers.adults}
+          onIncrement={() => onChange("adults", "increment")}
+          onDecrement={() => onChange("adults", "decrement")}
+          min={minAdults}
+          max={9}
+          sm
+        />
+      </div>
+      <div className="flex items-center justify-between py-4 last:pb-0">
+        <div>
+          <div className="font-semibold text-[15px] text-[#222222] leading-5">{dict.children}</div>
+          <div className="text-sm text-muted-foreground font-normal mt-0.5">{dict.childrenAge}</div>
+        </div>
+        <Counter
+          value={passengers.children}
+          onIncrement={() => onChange("children", "increment")}
+          onDecrement={() => onChange("children", "decrement")}
+          min={0}
+          max={9}
+          sm
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function TransportBigSearch({
   assemblyPoints = [],
-  dictionary = {
-    from: "From",
-    to: "To",
-    date: "Travel Date",
-    search: "Search",
-    selectCity: "Select city",
-    selectDate: "Select date",
-  },
+  dictionary = DEFAULT_DICTIONARY,
   initialOrigin = "",
   initialDestination = "",
   initialDate,
@@ -113,50 +156,79 @@ export default function TransportBigSearch({
   const dict = useDictionary();
   const isRTL = checkRTL(lang as Locale);
   const [activeButton, setActiveButton] = useState<ActiveButton>(null);
-  const [hoveredButton, setHoveredButton] = useState<ActiveButton>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const searchBarRef = useRef<HTMLDivElement>(null);
 
   // Form state
   const [origin, setOrigin] = useState(initialOrigin);
   const [destination, setDestination] = useState(initialDestination);
   const [date, setDate] = useState<Date | undefined>(initialDate);
+  const [passengers, setPassengers] = useState<Passengers>({ adults: 0, children: 0 });
+
+  // Track viewport so mobile gets the in-place step flow and desktop the
+  // beside-the-card panels (same split as the homepage VerticalSearch).
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const handleButtonClick = (button: ActiveButton) => {
     setActiveButton(activeButton === button ? null : button);
   };
 
-  // Handle origin selection
   const handleOriginSelect = (city: string) => {
     setOrigin(city);
-    setActiveButton("destination"); // Move to destination
+    setActiveButton("destination");
   };
 
-  // Handle destination selection
   const handleDestinationSelect = (city: string) => {
     setDestination(city);
-    setActiveButton("date"); // Move to date
+    setActiveButton("date");
   };
 
-  // Handle date selection
   const handleDateChange = (selectedDate: Date | undefined) => {
     setDate(selectedDate);
-    if (selectedDate) {
-      setActiveButton(null); // Close dropdown
-    }
+    if (selectedDate) setActiveButton("passengers");
   };
 
-  // Format date for display
-  const formatDate = (date: Date | undefined) => {
-    if (!date) return dictionary.selectDate;
-    const locale = lang === 'ar' ? 'ar-SA' : 'en-US';
-    return date.toLocaleDateString(locale, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+  // Swap origin ⇄ destination in place (the classic From/To flip).
+  const handleSwap = () => {
+    setOrigin(destination);
+    setDestination(origin);
   };
 
-  // Handle search
+  const handlePassengerChange = useCallback(
+    (type: keyof Passengers, op: "increment" | "decrement") => {
+      setPassengers((prev) => {
+        const current = prev[type];
+        const next =
+          op === "increment" ? Math.min(current + 1, 9) : Math.max(0, current - 1);
+        const updated = { ...prev, [type]: next };
+        // Adding a child requires at least one adult.
+        if (op === "increment" && type === "children" && updated.adults === 0) {
+          updated.adults = 1;
+        }
+        return updated;
+      });
+    },
+    []
+  );
+
+  const totalPassengers = passengers.adults + passengers.children;
+
+  const passengerText = () => {
+    if (totalPassengers === 0) return dictionary.addPassengers;
+    return `${totalPassengers} ${totalPassengers > 1 ? dictionary.passengersPlural : dictionary.passenger}`;
+  };
+
+  const formatDate = (d: Date | undefined) => {
+    if (!d) return dictionary.selectDate;
+    const locale = lang === "ar" ? "ar-SA" : "en-US";
+    return d.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
+  };
+
   const handleSearch = () => {
     if (!origin || !destination || !date) return;
 
@@ -166,7 +238,7 @@ export default function TransportBigSearch({
       assemblyPoints.find(
         (p) =>
           p.city.toLowerCase() === label.toLowerCase() ||
-          p.name.toLowerCase() === label.toLowerCase(),
+          p.name.toLowerCase() === label.toLowerCase()
       );
 
     const originMatch = resolveCity(origin);
@@ -176,357 +248,267 @@ export default function TransportBigSearch({
     if (destinationMatch) searchParams.set("destinationId", String(destinationMatch.id));
     searchParams.set("origin", origin);
     searchParams.set("destination", destination);
-    searchParams.set("date", date.toISOString().split("T")[0] ?? '');
+    searchParams.set("date", date.toISOString().split("T")[0] ?? "");
+    if (totalPassengers > 0) searchParams.set("seats", String(totalPassengers));
 
     router.push(`/${lang}/transport/search?${searchParams.toString()}`);
   };
 
-  // Helper function to get button styling.
-  //
-  // The HOVER fill lives on a `before:` pseudo-element (not the button itself) so
-  // a hovered neighbor can extend its fill *under* the active frosted pill. This
-  // prevents a lighter gap at the seam between two rounded pills. The ACTIVE fill
-  // is no longer a pseudo — it's the shared sliding `ActivePill` (above), which is
-  // why the isActive branch emits no background here.
-  //
-  // Glass colors (white-transparent + backdrop-blur) are kept for the dark video
-  // background behind the search bar.
-  const getButtonStyling = (button: ActiveButton) => {
+  // Field surface styling — same three-state treatment as the homepage card:
+  // active field turns solid white with a darker border; the rest dim to
+  // gray-50 while any field is open.
+  const getFieldStyling = (button: ActiveButton) => {
     const isActive = activeButton === button;
-    const isHovered = hoveredButton === button;
-    const hasActiveButton = activeButton !== null;
-
-    // Stacking: active segment sits above its neighbors so the sliding pill (and
-    // its content) paint over their extended hover fills.
-    const z = isActive ? "z-20" : "z-10";
-
-    // Pseudo background color by state — glass effect colors.
-    let bgClass = "";
-    if (isActive) {
-      // Frosted fill is painted by the shared sliding ActivePill; pseudo stays clear.
-      bgClass = "";
-    } else if (hasActiveButton) {
-      bgClass = isHovered ? "before:bg-white/30" : "";
-    } else if (isHovered) {
-      bgClass = "before:bg-white/20 before:backdrop-blur-md";
-    }
-
-    // Seam fill: when a neighbor of the active pill is hovered, stretch its pseudo
-    // past the cap radius toward the active side AND square off the edge that tucks
-    // under the active pill. A rounded edge would recede at the top/bottom corners
-    // and leave a lighter notch; squaring it fills the full height while the square
-    // edge stays hidden under the active pill.
-    const order: Exclude<ActiveButton, null>[] = ["origin", "destination", "date"];
-    let insetStart = "before:start-0";
-    let insetEnd = "before:end-0";
-    let roundClass = "before:rounded-full";
-    if (activeButton !== null && !isActive && isHovered && button !== null) {
-      const activeIdx = order.indexOf(activeButton);
-      const buttonIdx = order.indexOf(button);
-      if (buttonIdx === activeIdx + 1) {
-        // Active is to my left → extend left under it, square the left edge.
-        insetStart = "before:-start-10";
-        roundClass = "before:rounded-e-full before:rounded-s-none";
-      } else if (buttonIdx === activeIdx - 1) {
-        // Active is to my right → extend right under it, square the right edge.
-        insetEnd = "before:-end-10";
-        roundClass = "before:rounded-s-full before:rounded-e-none";
-      }
-    }
-
-    return `relative ${z} before:absolute before:inset-y-0 ${insetStart} ${insetEnd} before:-z-10 ${roundClass} before:transition-colors before:duration-200 before:content-[''] ${bgClass} transition-all duration-200`;
+    const hasActive = activeButton !== null;
+    let styleClass = "bg-transparent";
+    if (isActive) styleClass = "bg-white !border-gray-400";
+    else if (hasActive) styleClass = "bg-gray-50";
+    return `${styleClass} transition-all duration-200`;
   };
 
-  // Click outside to reset
+  // ── Mobile step navigation (prev/next arrows) ─────────────────────────────
+  const step = activeButton ? STEP_ORDER.indexOf(activeButton) : -1;
+  const goPrev = () => {
+    const prev = step > 0 ? STEP_ORDER[step - 1] : undefined;
+    if (prev) setActiveButton(prev);
+  };
+  const goNext = () => {
+    const next = step >= 0 && step < STEP_ORDER.length - 1 ? STEP_ORDER[step + 1] : undefined;
+    if (next) setActiveButton(next);
+  };
+
+  // Click outside to close the active field. The side/inline dropdowns live
+  // inside this ref, so selecting within them is not treated as "outside".
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        searchBarRef.current &&
-        !searchBarRef.current.contains(event.target as Node)
-      ) {
+      if (searchBarRef.current && !searchBarRef.current.contains(event.target as Node)) {
         setActiveButton(null);
-        setHoveredButton(null);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Check if divider should be hidden
-  const isLineHidden = (position: "origin-destination" | "destination-date") => {
-    switch (position) {
-      case "origin-destination":
-        return (
-          hoveredButton === "origin" ||
-          hoveredButton === "destination" ||
-          activeButton === "origin" ||
-          activeButton === "destination"
-        );
-      case "destination-date":
-        return (
-          hoveredButton === "destination" ||
-          hoveredButton === "date" ||
-          activeButton === "destination" ||
-          activeButton === "date"
-        );
-      default:
-        return false;
-    }
-  };
+  const canSearch = Boolean(origin && destination && date);
 
-  const canSearch = origin && destination && date;
-
-  return (
-    <div className="relative w-full max-w-4xl mx-auto" ref={searchBarRef}>
-      {/* Desktop Layout */}
-      <div className="hidden md:flex items-center rounded-full shadow-sm transition-colors liquid-glass">
-        {/* Origin Button */}
-        <button
-          className={`flex-[1.5] px-6 py-3 ${getButtonStyling("origin")}`}
-          onMouseEnter={() => setHoveredButton("origin")}
-          onMouseLeave={() => setHoveredButton(null)}
-          onClick={() => handleButtonClick("origin")}
-        >
-          {activeButton === "origin" && <ActivePill />}
-          <div className="text-start">
-            <div className="text-sm font-semibold text-white mb-1">
-              {dictionary.from}
-            </div>
-            <div className="text-sm text-white/70 truncate">
-              {origin ? cityLabel(origin, lang) : dictionary.selectCity}
-            </div>
-          </div>
-        </button>
-
-        {/* Divider 1 */}
-        <div
-          className={cn(
-            "w-px h-8 bg-white/30 transition-opacity duration-200",
-            isLineHidden("origin-destination") ? "opacity-0" : "opacity-100"
-          )}
-        />
-
-        {/* Destination Button */}
-        <button
-          className={`flex-[1.5] px-6 py-3 ${getButtonStyling("destination")}`}
-          onMouseEnter={() => setHoveredButton("destination")}
-          onMouseLeave={() => setHoveredButton(null)}
-          onClick={() => handleButtonClick("destination")}
-        >
-          {activeButton === "destination" && <ActivePill />}
-          <div className="text-start">
-            <div className="text-sm font-semibold text-white mb-1">
-              {dictionary.to}
-            </div>
-            <div className="text-sm text-white/70 truncate">
-              {destination ? cityLabel(destination, lang) : dictionary.selectCity}
-            </div>
-          </div>
-        </button>
-
-        {/* Divider 2 */}
-        <div
-          className={cn(
-            "w-px h-8 bg-white/30 transition-opacity duration-200",
-            isLineHidden("destination-date") ? "opacity-0" : "opacity-100"
-          )}
-        />
-
-        {/* Date + Search Button Container */}
-        <div
-          className={`flex-[2] flex items-center ${getButtonStyling("date")}`}
-          onMouseEnter={() => setHoveredButton("date")}
-          onMouseLeave={() => setHoveredButton(null)}
-        >
-          {activeButton === "date" && <ActivePill />}
-          {/* Date Button */}
-          <div
-            className="flex-1 px-6 py-3 text-start cursor-pointer"
-            onClick={() => handleButtonClick("date")}
+  // The stacked From / To / Date / Passengers fields — shared by the desktop
+  // card and the mobile idle screen.
+  const renderFieldStack = () => (
+    <div className="space-y-4 md:space-y-3">
+      {/* Where — From / To joined vertical pair (styled like the homepage
+          check-in/check-out fields, stacked instead of side-by-side) with a
+          swap circle straddling the seam. In-field labels keep the swap from
+          colliding with a stacked label row. */}
+      <div>
+        <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
+          {dictionary.where}
+        </Label>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => handleButtonClick("origin")}
+            className={`w-full h-14 text-start px-3 border border-gray-300 rounded-t-xs ${getFieldStyling("origin")}`}
           >
-            <div className="text-sm font-semibold text-white mb-1">
-              {dictionary.date}
-            </div>
-            <div className="text-sm text-white/70" dir={isRTL ? "rtl" : "ltr"}>{formatDate(date)}</div>
-          </div>
-
-          {/* Search Button */}
-          <div className="pe-2">
-            <Button
-              onClick={handleSearch}
-              disabled={!canSearch}
-              size="icon"
-              className={`rounded-full bg-[#de3151] hover:bg-[#de3151]/90 text-white transition-[width,padding] duration-300 disabled:opacity-50 disabled:cursor-not-allowed h-12 ${
-                activeButton ? "w-28 px-4" : "w-12"
-              }`}
-            >
-              <Search className="w-4 h-4" />
-              {activeButton && (
-                <span className="ms-2 text-sm font-medium">
-                  {dict?.common?.search ?? "Search"}
-                </span>
-              )}
-              <span className="sr-only">{dictionary.search}</span>
-            </Button>
-          </div>
+            <span className="block text-[11px] font-medium text-[#6b6b6b] leading-none">
+              {dictionary.from}
+            </span>
+            <span className={`block text-sm mt-1 truncate ${origin ? "text-black" : "text-[#c0c0c0]"}`}>
+              {origin ? cityLabel(origin, lang) : ""}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleButtonClick("destination")}
+            className={`w-full h-14 text-start px-3 border border-gray-300 border-t-0 rounded-b-xs ${getFieldStyling("destination")}`}
+          >
+            <span className="block text-[11px] font-medium text-[#6b6b6b] leading-none">
+              {dictionary.to}
+            </span>
+            <span className={`block text-sm mt-1 truncate ${destination ? "text-black" : "text-[#c0c0c0]"}`}>
+              {destination ? cityLabel(destination, lang) : ""}
+            </span>
+          </button>
+          {/* Swap circle — pinned to the trailing edge, centered on the seam. */}
+          <button
+            type="button"
+            onClick={handleSwap}
+            aria-label={dictionary.swap}
+            title={dictionary.swap}
+            className="absolute end-3 top-1/2 -translate-y-1/2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 bg-white text-[#484848] shadow-sm transition-colors hover:border-gray-500 hover:text-black active:scale-95"
+          >
+            <ArrowUpDown className="h-4 w-4" strokeWidth={2} />
+          </button>
         </div>
       </div>
 
-      {/* Mobile Layout */}
-      <div className="md:hidden bg-white rounded-2xl shadow-lg border border-[#e5e7eb] p-4 space-y-3">
-        {/* Origin */}
+      {/* When */}
+      <div>
+        <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
+          {dictionary.when}
+        </Label>
         <button
-          onClick={() => handleButtonClick(activeButton === "origin" ? null : "origin")}
-          className="w-full p-3 rounded-xl border border-[#e5e7eb] hover:border-[#de3151] transition-colors"
+          type="button"
+          onClick={() => handleButtonClick("date")}
+          className={`w-full h-14 md:h-12 text-start px-3 border border-gray-300 rounded-xs ${getFieldStyling("date")}`}
         >
-          <div className={cn("flex justify-between items-center", isRTL && "flex-row-reverse")}>
-            <div className={cn(isRTL ? "text-end" : "text-start")}>
-              <div className="text-xs text-[#6b7280]">{dictionary.from}</div>
-              <div className="text-sm font-medium text-black">
-                {origin ? cityLabel(origin, lang) : dictionary.selectCity}
-              </div>
-            </div>
-            <ChevronDown className="h-4 w-4 text-[#6b7280]" />
-          </div>
+          <span
+            className={`text-sm ${date ? "text-black" : "text-[#c0c0c0]"}`}
+            dir={isRTL ? "rtl" : "ltr"}
+          >
+            {formatDate(date)}
+          </span>
         </button>
+      </div>
 
-        {/* Destination */}
+      {/* Passengers */}
+      <div>
+        <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
+          {dictionary.passengers}
+        </Label>
         <button
-          onClick={() => handleButtonClick(activeButton === "destination" ? null : "destination")}
-          className="w-full p-3 rounded-xl border border-[#e5e7eb] hover:border-[#de3151] transition-colors"
+          type="button"
+          onClick={() => handleButtonClick("passengers")}
+          className={`w-full h-14 md:h-12 text-start px-3 border border-gray-300 rounded-xs ${getFieldStyling("passengers")}`}
         >
-          <div className={cn("flex justify-between items-center", isRTL && "flex-row-reverse")}>
-            <div className={cn(isRTL ? "text-end" : "text-start")}>
-              <div className="text-xs text-[#6b7280]">{dictionary.to}</div>
-              <div className="text-sm font-medium text-black">
-                {destination ? cityLabel(destination, lang) : dictionary.selectCity}
-              </div>
-            </div>
-            <ChevronDown className="h-4 w-4 text-[#6b7280]" />
-          </div>
+          <span className={`text-sm ${totalPassengers > 0 ? "text-black" : "text-[#c0c0c0]"}`}>
+            {passengerText()}
+          </span>
         </button>
+      </div>
+    </div>
+  );
 
-        {/* Date */}
-        <button
-          onClick={() => handleButtonClick(activeButton === "date" ? null : "date")}
-          className="w-full p-3 rounded-xl border border-[#e5e7eb] hover:border-[#de3151] transition-colors"
+  // ── Mobile: fixed-height card with in-place steps ─────────────────────────
+  if (isMobile) {
+    return (
+      <div className="relative w-full" ref={searchBarRef}>
+        <div
+          className="relative bg-white w-full overflow-hidden shadow-sm"
+          // Constant height across idle + every step so the card never grows
+          // when a step opens (inline so Turbopack can't drop it as a brand-new
+          // arbitrary utility from its dev scan).
+          style={{ height: "min(78vh, 560px)" }}
         >
-          <div className={cn("flex justify-between items-center", isRTL && "flex-row-reverse")}>
-            <div className={cn(isRTL ? "text-end" : "text-start")}>
-              <div className="text-xs text-[#6b7280]">{dictionary.date}</div>
-              <div className="text-sm font-medium text-black" dir={isRTL ? "rtl" : "ltr"}>
-                {formatDate(date)}
-              </div>
+          {/* Body — swaps by step; the floating arrows (top) and Search pill
+              (bottom) overlay every state. pt clears the arrows, pb the pill. */}
+          {!activeButton ? (
+            <div className="h-full overflow-y-auto no-scrollbar px-5 pt-8 pb-24">
+              <h1 className="text-2xl font-semibold text-[#484848] mb-6 leading-snug whitespace-pre-line">
+                {dictionary.title}
+              </h1>
+              {renderFieldStack()}
             </div>
-            <ChevronDown className="h-4 w-4 text-[#6b7280]" />
-          </div>
-        </button>
+          ) : activeButton === "origin" || activeButton === "destination" ? (
+            <div className="h-full overflow-y-auto no-scrollbar px-5 pt-16 pb-24">
+              <TransportCityDropdown
+                value={activeButton === "origin" ? origin : destination}
+                onChange={activeButton === "origin" ? handleOriginSelect : handleDestinationSelect}
+                assemblyPoints={assemblyPoints}
+              />
+            </div>
+          ) : activeButton === "date" ? (
+            <div className="h-full overflow-y-auto no-scrollbar px-5 pt-16 pb-24 flex justify-center">
+              <TransportDatePicker date={date} onDateChange={handleDateChange} />
+            </div>
+          ) : (
+            <div className="h-full overflow-y-auto no-scrollbar px-5 pt-16 pb-24">
+              <PassengerSelector passengers={passengers} onChange={handlePassengerChange} dict={dictionary} />
+            </div>
+          )}
 
-        {/* Search Button */}
+          {/* Floating step arrows (active only) — plain line arrows that walk
+              Where → When → Who, matching the homepage mobile flow. */}
+          {activeButton && (
+            <div className="absolute top-5 start-4 z-30 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={goPrev}
+                disabled={step <= 0}
+                aria-label={dict?.common?.back ?? "Back"}
+                className="flex h-7 w-7 items-center justify-center text-[#222222] transition-opacity hover:opacity-60 disabled:opacity-25 disabled:cursor-not-allowed"
+              >
+                <ArrowLeft className={`h-5 w-5 ${isRTL ? "rotate-180" : ""}`} strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                onClick={goNext}
+                disabled={step >= STEP_ORDER.length - 1}
+                aria-label={dict?.common?.next ?? "Next"}
+                className="flex h-7 w-7 items-center justify-center text-[#222222] transition-opacity hover:opacity-60 disabled:opacity-25 disabled:cursor-not-allowed"
+              >
+                <ArrowRight className={`h-5 w-5 ${isRTL ? "rotate-180" : ""}`} strokeWidth={2} />
+              </button>
+            </div>
+          )}
+
+          {/* Floating Search pill — pinned bottom-end, on top of the body, so
+              it stays reachable in every step. */}
+          <Button
+            onClick={handleSearch}
+            disabled={!canSearch}
+            style={{ paddingInline: 28 }}
+            className="absolute bottom-5 end-4 z-30 h-12 gap-2 rounded-full text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_6px_20px_rgba(222,49,81,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Search className="h-4 w-4" strokeWidth={2.5} />
+            {dictionary.search}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Desktop: the card stays put; each field opens a panel beside it ───────
+  return (
+    <div className="relative w-full md:w-[340px]" ref={searchBarRef}>
+      <div className="relative bg-white shadow-sm px-5 pt-4 pb-20 w-full">
+        {/* Title within the form — homepage hero pattern. */}
+        <h1 className="text-xl font-medium text-[#6b6b6b] mb-3 leading-tight whitespace-pre-line">
+          {dictionary.title}
+        </h1>
+
+        {renderFieldStack()}
+
+        {/* Floating Search pill — same style as the mobile flow (rounded-full,
+            drop shadow, Search icon) pinned to the card's bottom-end. */}
         <Button
           onClick={handleSearch}
           disabled={!canSearch}
-          className="w-full bg-[#de3151] hover:bg-[#de3151]/90 text-white rounded-xl h-12 disabled:opacity-50"
+          style={{ paddingInline: 24 }}
+          className="absolute bottom-4 end-4 z-30 h-11 gap-2 rounded-full text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_6px_20px_rgba(222,49,81,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Search className="w-4 h-4" />
-          <span className="ms-2">{dictionary.search}</span>
+          <Search className="h-4 w-4" strokeWidth={2.5} />
+          {dictionary.search}
         </Button>
       </div>
 
-      {/* Desktop Dropdown — ONE container that re-anchors between segments
-          (From↔To↔Date). It only enters/exits (fade + rise) on the first open and
-          the full close; on a segment switch the `layout` spring glides it to the
-          new position/width and the body crossfades. This replaces the previous
-          three absolutely-positioned dropdowns (and the brittle ref-offset inline
-          positioning for the middle one). Anchors: From→leading edge, Date→trailing
-          edge, To→centred under the bar (left:50% + marginLeft is RTL-safe because
-          the bar midpoint is direction-agnostic). Glass surface preserved. */}
-      <AnimatePresence>
-        {activeButton && (
-          <motion.div
-            key="transport-search-dropdown"
-            layout
-            initial={dropdownMotion.initial}
-            animate={dropdownMotion.animate}
-            exit={dropdownMotion.exit}
-            transition={{ ...DROPDOWN_TRANSITION, layout: SWITCH_TRANSITION }}
-            style={{
-              transformOrigin: "top center",
-              willChange: "transform, opacity",
-              width: activeButton === "date" ? 368 : 384,
-              ...(activeButton === "destination"
-                ? { left: "50%", marginLeft: -192 }
-                : {}),
-            }}
-            className={cn(
-              "hidden md:block absolute top-full mt-2 bg-white/20 backdrop-blur-xl rounded-2xl shadow-xl border border-white/30 z-50 overflow-hidden",
-              activeButton === "origin" && "start-0 p-6",
-              activeButton === "destination" && "p-6",
-              activeButton === "date" && "end-0 p-4"
-            )}
-          >
-            <AnimatePresence mode="popLayout" initial={false}>
-              <motion.div
-                key={activeButton}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={SWITCH_FADE}
-              >
-                {activeButton === "origin" && (
-                  <TransportCityDropdown
-                    value={origin}
-                    onChange={handleOriginSelect}
-                    assemblyPoints={assemblyPoints}
-                    placeholder={dictionary.selectCity}
-                  />
-                )}
-                {activeButton === "destination" && (
-                  <TransportCityDropdown
-                    value={destination}
-                    onChange={handleDestinationSelect}
-                    assemblyPoints={assemblyPoints}
-                    placeholder={dictionary.selectCity}
-                  />
-                )}
-                {activeButton === "date" && (
-                  <TransportDatePicker date={date} onDateChange={handleDateChange} />
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Mobile Dropdown Menus */}
+      {/* Side dropdowns — float to the trailing side of the card, same as the
+          homepage hero. */}
       {activeButton === "origin" && (
-        <div className="md:hidden absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-200 p-2 z-50">
+        <div className="absolute top-0 start-full ms-4 w-[360px] max-w-[calc(100vw-2rem)] bg-white rounded-[24px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 p-4 z-50">
           <TransportCityDropdown
             value={origin}
             onChange={handleOriginSelect}
             assemblyPoints={assemblyPoints}
-            placeholder={dictionary.selectCity}
           />
         </div>
       )}
-
       {activeButton === "destination" && (
-        <div className="md:hidden absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-200 p-2 z-50">
+        <div className="absolute top-0 start-full ms-4 w-[360px] max-w-[calc(100vw-2rem)] bg-white rounded-[24px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 p-4 z-50">
           <TransportCityDropdown
             value={destination}
             onChange={handleDestinationSelect}
             assemblyPoints={assemblyPoints}
-            placeholder={dictionary.selectCity}
           />
         </div>
       )}
-
       {activeButton === "date" && (
-        <div className="md:hidden absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-2xl shadow-xl border border-gray-200 p-4 z-50">
+        <div className="absolute top-0 start-full ms-4 w-[360px] max-w-[calc(100vw-2rem)] bg-white rounded-[24px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 p-5 z-50">
           <TransportDatePicker date={date} onDateChange={handleDateChange} />
+        </div>
+      )}
+      {activeButton === "passengers" && (
+        <div className="absolute top-0 start-full ms-4 w-[360px] max-w-[calc(100vw-2rem)] bg-white rounded-[24px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 p-6 z-50">
+          <PassengerSelector passengers={passengers} onChange={handlePassengerChange} dict={dictionary} />
         </div>
       )}
     </div>

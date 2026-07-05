@@ -161,6 +161,8 @@ export interface SearchFilters {
   instantBook?: boolean;
   /** Booking option — only listings whose host allows pets. */
   petsAllowed?: boolean;
+  /** Booking option — only listings whose check-in method is self check-in. */
+  selfCheckIn?: boolean;
   /**
    * Geographic viewport bounds from the search map. When all four are set,
    * results are constrained to listings whose location falls inside the box —
@@ -197,6 +199,7 @@ export const listingFilterSchema = z.object({
   amenities: z.array(z.enum(Amenity)).max(30).optional(),
   instantBook: z.boolean().optional(),
   petsAllowed: z.boolean().optional(),
+  selfCheckIn: z.boolean().optional(),
   // Map viewport bounds (decimal degrees). Latitudes ∈ [-90, 90],
   // longitudes ∈ [-180, 180]. Applied only when all four are present.
   minLat: z.number().min(-90).max(90).optional(),

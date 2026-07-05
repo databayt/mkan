@@ -21,7 +21,10 @@ export default async function MulticalendarLayout({
   ]);
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden">
+    // Inline height, not `h-[100dvh]` — the arbitrary utility silently fails to
+    // emit under Turbopack in dev, collapsing the container so the whole page
+    // scrolls and the mobile header can't pin. Inline keeps the internal scroll.
+    <div className="flex flex-col overflow-hidden" style={{ height: "100dvh" }}>
       {/* No top bar on mobile — the month-stack view carries its own header. */}
       <div className="hidden lg:block">
         <HostingHeader />

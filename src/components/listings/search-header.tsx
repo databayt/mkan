@@ -26,6 +26,17 @@ const SPRING = {
 // header so the two expansions feel identical.
 const FADE_IN = { duration: 0.22, ease: [0.32, 0.72, 0, 1] as const };
 const FADE_OUT = { duration: 0.14, ease: [0.32, 0.72, 0, 1] as const };
+// Mobile sheet choreography — gentle spring on the way down, feather-landing
+// ease curve on the way up, with the panel dissolving into the header bar as
+// it lands so the unmount never pops. Mirrored in search-filters.tsx so the
+// search and filter sheets breathe identically.
+const SHEET_OPEN = {
+  type: "spring" as const,
+  stiffness: 240,
+  damping: 28,
+  mass: 1,
+} as const;
+const SHEET_CLOSE = { duration: 0.38, ease: [0.32, 0.72, 0, 1] as const };
 
 const SearchHeader = () => {
   const pathname = usePathname();
@@ -125,7 +136,7 @@ const SearchHeader = () => {
 
       <header
         className={`bg-white sticky top-0 z-50 transition-shadow duration-300 ${
-          deskOpen ? "shadow-xl" : "border-b"
+          deskOpen ? "shadow-xl" : "md:border-b"
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-22">
@@ -157,7 +168,7 @@ const SearchHeader = () => {
                 fades — opening *into* the bar below, mirroring /listings);
                 kept mounted so quick open/close never remounts it. */}
             <motion.div
-              className="flex items-center justify-center flex-1 sm:mx-8 gap-2 min-w-0"
+              className="flex items-center justify-center flex-1 sm:mx-8 gap-0.5 sm:gap-2 min-w-0"
               initial={false}
               animate={{
                 opacity: deskOpen ? 0 : 1,
@@ -242,38 +253,63 @@ const SearchHeader = () => {
       <AnimatePresence>
         {isOpen && (
           <React.Fragment>
-            {/* Scrim */}
+            {/* Scrim — fades over the FULL close travel (not shorter), so the
+                room never brightens while the sheet is still tucking away. */}
             <motion.div
               key="scrim"
               className="fixed inset-0 z-[60] bg-black/40 md:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
+              exit={{ opacity: 0, transition: { duration: 0.4, ease: "easeOut" } }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
               onClick={closeSheet}
               aria-hidden="true"
             />
 
-            {/* Panel — anchored to the top, springs from BAR_H down to 92vh. */}
+            {/* Panel — anchored to the top: breathes open from BAR_H down to
+                92vh on a gentle spring, and lands back on a feather ease while
+                dissolving into the (identical-height) header bar beneath it. */}
             <motion.div
               key="panel"
               className="fixed inset-x-0 top-0 z-[61] md:hidden overflow-hidden rounded-b-[28px] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
-              initial={{ height: BAR_H }}
-              animate={{ height: sheetH }}
-              exit={{ height: BAR_H }}
-              transition={SPRING}
+              initial={{ height: BAR_H, opacity: 0 }}
+              animate={{
+                height: sheetH,
+                opacity: 1,
+                transition: {
+                  height: SHEET_OPEN,
+                  opacity: { duration: 0.16, ease: "easeOut" },
+                },
+              }}
+              exit={{
+                height: BAR_H,
+                opacity: 0,
+                transition: {
+                  height: SHEET_CLOSE,
+                  opacity: { duration: 0.14, delay: 0.26, ease: "easeIn" },
+                },
+              }}
               role="dialog"
               aria-modal="true"
             >
               {/* Mobile home-page search flow, opened straight on the Where step.
                   Its floating Search button is the shared-layout twin of the
-                  collapsed pill's red circle (CTA_ID). */}
-              <VerticalSearch
-                variant="sheet"
-                initialField="location"
-                onSearch={closeSheet}
-                ctaLayoutId={CTA_ID}
-              />
+                  collapsed pill's red circle (CTA_ID). Content fades in a beat
+                  behind the expanding panel (opacity only — a transform here
+                  would skew the CTA's shared-layout morph path). */}
+              <motion.div
+                className="h-full"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.06, duration: 0.3, ease: "easeOut" }}
+              >
+                <VerticalSearch
+                  variant="sheet"
+                  initialField="location"
+                  onSearch={closeSheet}
+                  ctaLayoutId={CTA_ID}
+                />
+              </motion.div>
 
               {/* Bottom grabber — replaces the close icon. Centered so it never
                   overlaps the bottom-end Search button; tap (or pull intent) to

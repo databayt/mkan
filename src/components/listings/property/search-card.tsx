@@ -1,13 +1,13 @@
 "use client"
 
-import React, { useState } from "react"
-import { Heart, Star, ChevronLeft, ChevronRight } from "lucide-react"
+import React from "react"
+import { Heart, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useFavorites } from "@/components/favorites/favorites-context"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
 import { useLocale } from "@/components/internationalization/use-locale"
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters"
-import { PropertyImage } from "@/components/atom/property-image"
+import { ImageCarousel } from "./image-carousel"
 
 // Exact Airbnb palette (measured from the live /s/homes search cards):
 //   title / price / rating  → #222222
@@ -67,14 +67,10 @@ export function SearchCard({
   const sp = dict.rental?.searchPage as Record<string, string> | undefined
   const card = dict.rental?.property?.card as Record<string, string> | undefined
 
-  const [index, setIndex] = useState(0)
   // Shared favorites provider — one heart state across cards/detail/mobile.
   const fav = useFavorites()
   const liked = fav.ready ? fav.isFavorite(id) : isFavorite
 
-  const hasPhotos = images.length > 0
-  const photos = hasPhotos ? images : []
-  const dotCount = Math.min(photos.length, 5)
   const hasRating = rating != null && reviewsCount > 0
   // Airbnb shows "New" (with a star) on listings that have no reviews yet.
   const newLabel = sp?.new ?? "New"
@@ -83,11 +79,6 @@ export function SearchCard({
     e.stopPropagation()
     fav.toggle(id)
     onFavoriteToggle?.(id, !liked)
-  }
-
-  const go = (e: React.MouseEvent, dir: -1 | 1) => {
-    e.stopPropagation()
-    setIndex((i) => Math.min(Math.max(i + dir, 0), photos.length - 1))
   }
 
   // Price line: trip total when dates are set, otherwise per-night.
@@ -108,19 +99,16 @@ export function SearchCard({
 
   return (
     <div className="group cursor-pointer" onClick={() => onCardClick?.(id)}>
-      {/* Image — 4:3, 12px radius (Airbnb measured 307×230). */}
-      <div
-        className="relative w-full overflow-hidden bg-muted"
-        style={{ aspectRatio: "4 / 3", borderRadius: 20 }}
+      {/* Image — 4:3, swipeable strip with the exact Airbnb dots. */}
+      <ImageCarousel
+        images={images}
+        alt={title}
+        seed={id || title}
+        priority={priority}
+        radius={20}
+        prevLabel={card?.previousPhoto ?? "Previous photo"}
+        nextLabel={card?.nextPhoto ?? "Next photo"}
       >
-        <PropertyImage
-          src={hasPhotos ? (photos[index] ?? photos[0]) : undefined}
-          alt={title}
-          variant="card"
-          priority={priority}
-          seed={id || title}
-        />
-
         {/* Heart — 32×32, inset ~12px from the top-end corner. */}
         <button
           type="button"
@@ -130,7 +118,7 @@ export function SearchCard({
               ? (card?.removeFromWishlist ?? "Remove from wishlist")
               : (card?.addToWishlist ?? "Add to wishlist")
           }
-          className="absolute top-3 end-3 grid h-8 w-8 place-items-center transition-transform hover:scale-110 active:scale-95"
+          className="absolute top-3 end-3 z-10 grid h-8 w-8 place-items-center transition-transform hover:scale-110 active:scale-95"
         >
           <Heart
             className="h-6 w-6"
@@ -142,51 +130,7 @@ export function SearchCard({
             strokeWidth={2}
           />
         </button>
-
-        {/* Carousel arrows — appear on hover, hidden at the ends (Airbnb). */}
-        {photos.length > 1 && (
-          <>
-            {index > 0 && (
-              <button
-                type="button"
-                onClick={(e) => go(e, -1)}
-                aria-label="Previous photo"
-                className="absolute start-2 top-1/2 hidden h-7 w-7 -translate-y-1/2 place-items-center rounded-full bg-white/90 shadow-md transition hover:scale-105 hover:bg-white group-hover:grid"
-              >
-                <ChevronLeft className="h-4 w-4 text-gray-800 rtl:rotate-180" />
-              </button>
-            )}
-            {index < photos.length - 1 && (
-              <button
-                type="button"
-                onClick={(e) => go(e, 1)}
-                aria-label="Next photo"
-                className="absolute end-2 top-1/2 hidden h-7 w-7 -translate-y-1/2 place-items-center rounded-full bg-white/90 shadow-md transition hover:scale-105 hover:bg-white group-hover:grid"
-              >
-                <ChevronRight className="h-4 w-4 text-gray-800 rtl:rotate-180" />
-              </button>
-            )}
-
-            {/* Dots — centered ~18px above the image bottom. */}
-            <div className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5">
-              {Array.from({ length: dotCount }).map((_, i) => (
-                <span
-                  key={i}
-                  className="rounded-full transition-all"
-                  style={{
-                    width: 6,
-                    height: 6,
-                    backgroundColor:
-                      i === Math.min(index, dotCount - 1)
-                        ? "#ffffff"
-                        : "rgba(255,255,255,0.6)",
-                  }}
-                />
-              ))}
-            </div>
-          </>
-        )}
-      </div>
+      </ImageCarousel>
 
       {/* Text block. Top margin pulls row 1 tight to the image (Airbnb: -3px). */}
       <div className="mt-2">

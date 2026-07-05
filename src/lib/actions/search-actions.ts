@@ -252,6 +252,7 @@ function buildSearchWhere(
   // Booking options (backed by real Listing columns).
   if (f.instantBook) where.instantBook = true;
   if (f.petsAllowed) where.isPetsAllowed = true;
+  if (f.selfCheckIn) where.checkInMethod = "SelfCheckIn";
 
   if (f.checkIn && f.checkOut) {
     where.bookings = {

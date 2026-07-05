@@ -3,7 +3,7 @@
 import React, { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowUp, CalendarRange, Check, Settings, X } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, Settings, X } from "lucide-react";
 import type { Locale } from "@/components/internationalization/config";
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
 import {
@@ -26,10 +26,12 @@ import {
 } from "./multicalendar";
 
 // Airbnb's mobile /multicalendar: one listing at a time as a vertical stack of
-// month grids — sticky 32px month label + S·M·T·W·T·F·S row on top, 40px
-// circle actions (listing switcher + availability settings), price under each
-// day, a floating "Today" pill, and the bottom-sheet range editor. The desktop
-// listings×days grid stays in multicalendar.tsx (this component renders <lg).
+// month grids. Sticky top carries the listing selector (thumbnail + name +
+// chevron → switcher) with a 40px settings circle on the end, then the
+// S·M·T·W·T·F·S weekday row. Each month scrolls in as its own "Jul 2025"
+// section of 88px day cells (date circle + price), with a floating "Today"
+// pill and the bottom-sheet range editor. The desktop listings×days grid stays
+// in multicalendar.tsx (this component renders <lg).
 export default function MobileCalendar({
   data,
   lang,
@@ -55,7 +57,6 @@ export default function MobileCalendar({
   const [activeId, setActiveId] = useState<number>(() => data.focusId ?? data.listings[0]?.id ?? -1);
   const [selection, setSelection] = useState<{ anchor: string; end: string } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [headerMonth, setHeaderMonth] = useState(0); // index into months
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -101,18 +102,6 @@ export default function MobileCalendar({
     return d >= +sel.start && d <= +sel.end;
   }
 
-  // header month label follows the topmost visible month section
-  function onScroll() {
-    const el = scrollRef.current;
-    if (!el) return;
-    const top = el.scrollTop + 8;
-    let idx = 0;
-    sectionRefs.current.forEach((sec, i) => {
-      if (sec && sec.offsetTop <= top) idx = i;
-    });
-    if (idx !== headerMonth) setHeaderMonth(idx);
-  }
-
   function scrollToToday() {
     const i = months.findIndex(
       (m) => m.getFullYear() === today.getFullYear() && m.getMonth() === today.getMonth(),
@@ -130,37 +119,36 @@ export default function MobileCalendar({
     );
   }, [lang]);
 
-  const headerLabel = months[headerMonth]?.toLocaleDateString(lang === "ar" ? "ar" : "en-US", {
-    month: "long",
-    ...(months[headerMonth]?.getFullYear() !== today.getFullYear() ? { year: "numeric" } : {}),
-  });
-
   if (!listing) return null;
 
   return (
     <div className="flex h-full flex-col bg-background">
-      {/* sticky header — measured stack: circle actions on their own row,
-          then the 32px month label (52px row), then the weekday letters */}
+      {/* sticky top: listing selector (→ switcher) + settings, weekday letters */}
       <div className="px-4 pb-0 pt-2">
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            aria-label={t.changeView ?? "Change calendar view"}
-            className="flex size-10 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70"
+            className="flex min-w-0 items-center gap-2 rounded-full py-1.5 pe-2 text-start"
           >
-            <CalendarRange className="size-4" />
+            <span className="sr-only">{t.chooseListing ?? "Change listings"}</span>
+            <span className="relative size-8 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+              {listing.photo ? (
+                <Image src={listing.photo} alt="" fill sizes="32px" className="object-cover" />
+              ) : null}
+            </span>
+            <span className="truncate text-base font-medium text-foreground">{listing.title}</span>
+            <ChevronDown className="size-4 flex-shrink-0 text-foreground" />
           </button>
           <Link
             href={`/${lang}/hosting/listings/editor/${listing.id}/details/availability`}
             aria-label={t.settings ?? "Settings"}
-            className="flex size-10 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70"
+            className="flex size-10 flex-shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70"
           >
             <Settings className="size-4" />
           </Link>
         </div>
-        <h1 className="py-2 text-[32px] font-semibold leading-9 text-foreground">{headerLabel}</h1>
-        <div className="grid grid-cols-7 pb-2 text-center text-xs font-medium text-muted-foreground">
+        <div className="grid grid-cols-7 pb-2 pt-3 text-center text-xs font-medium text-muted-foreground">
           {weekdays.map((w, i) => (
             <span key={i}>{w}</span>
           ))}
@@ -169,11 +157,7 @@ export default function MobileCalendar({
       <div className="h-px bg-border" />
 
       {/* month stack */}
-      <div
-        ref={scrollRef}
-        onScroll={onScroll}
-        className="min-h-0 flex-1 overflow-y-auto px-4 pb-28"
-      >
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 pb-28">
         {months.map((anchor, i) => (
           <MonthSection
             key={+anchor}
@@ -190,12 +174,17 @@ export default function MobileCalendar({
         ))}
       </div>
 
-      {/* floating Today pill */}
+      {/* floating Today pill — inline bottom/inset: the `bottom-20`/`end-4`
+          utilities don't emit under Turbopack dev, dropping it to the top */}
       <button
         type="button"
         onClick={scrollToToday}
-        className="fixed bottom-20 end-4 z-30 flex h-12 items-center gap-2 rounded-full bg-background px-5 text-sm font-medium text-foreground"
-        style={{ boxShadow: "0 6px 16px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04)" }}
+        className="fixed z-30 flex h-12 items-center gap-2 rounded-full bg-background px-5 text-sm font-medium text-foreground"
+        style={{
+          bottom: "5rem",
+          insetInlineEnd: "1rem",
+          boxShadow: "0 6px 16px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04)",
+        }}
       >
         <ArrowUp className="size-4" />
         {t.today ?? "Today"}
@@ -318,14 +307,15 @@ const MonthSection = React.forwardRef<
   }
 >(function MonthSection({ anchor, listing, lang, today, isSelected, onDayClick }, ref) {
   const days = daysOfMonth(anchor);
-  const label = anchor.toLocaleDateString(lang === "ar" ? "ar" : "en-US", {
-    month: "long",
-    ...(anchor.getFullYear() !== today.getFullYear() ? { year: "numeric" } : {}),
-  });
+  const locale = lang === "ar" ? "ar" : "en-US";
+  // Airbnb shows the abbreviated "Jul 2025" label; the section keeps the full
+  // "July 2025" as its accessible name.
+  const label = anchor.toLocaleDateString(locale, { month: "short", year: "numeric" });
+  const fullLabel = anchor.toLocaleDateString(locale, { month: "long", year: "numeric" });
   const leading = days[0]?.getDay() ?? 0; // Sunday-first offset
 
   return (
-    <section ref={ref}>
+    <section ref={ref} aria-label={fullLabel}>
       <h3 className="pb-6 pt-8 text-[22px] font-semibold leading-[26px] text-foreground">{label}</h3>
       <div className="grid grid-cols-7">
         {Array.from({ length: leading }, (_, i) => (
@@ -348,7 +338,7 @@ const MonthSection = React.forwardRef<
               } ${info.type === "reserved" ? "bg-foreground/[0.06]" : ""}`}
             >
               <span
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-sm ${
+                className={`flex h-6 w-6 items-center justify-center rounded-full text-sm ${
                   isToday
                     ? "bg-foreground font-semibold text-background"
                     : isPast

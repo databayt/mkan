@@ -75,8 +75,13 @@ export function SearchResults({
   }
 
   return (
+    // Airbnb's /s/homes feed is a SINGLE full-width column on phones (measured
+    // live: a 342px card = 390px viewport − 24px gutters, 4:3 image, same 15px
+    // card type as desktop). Only ≥640px fans out to a multi-column grid, and at
+    // ≥1024 it drops back to 2-up beside the sticky map. Card anatomy is shared
+    // across every breakpoint — the grid is the only thing that changes.
     <div
-      className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 gap-x-4 sm:gap-x-6 gap-y-10"
+      className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 gap-x-4 sm:gap-x-6 gap-y-10"
     >
       {properties.map((l, index) => {
         const price = l.pricePerNight ?? 0

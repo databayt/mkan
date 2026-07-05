@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef, useMemo, useDeferredValue, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { Search, ChevronUp, ChevronDown } from "lucide-react";
+import { Search } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { CITY_AR, cityLabel } from "@/components/transport/city-names";
+import { cdn } from "@/lib/cdn";
 
 interface AssemblyPoint {
   id: number;
@@ -44,6 +45,29 @@ const defaultCities = [
   "Berber",
 ];
 
+// Reuse the homepage "Where" destination arts (the colorful Airbnb
+// illustrations on the CDN) for the city rows, so the transport picker matches
+// the homes-search visual pattern instead of a flat pin icon.
+const CITY_ARTS = [
+  { src: cdn.vendor("airbnb", "destinations/port-sudan.png"), bg: "#eaf7ec" },
+  { src: cdn.vendor("airbnb", "destinations/coral-coast.png"), bg: "#fdf2e9" },
+  { src: cdn.vendor("airbnb", "destinations/marina.png"), bg: "#fef5e7" },
+  { src: cdn.vendor("airbnb", "destinations/suakin.png"), bg: "#f3e8ff" },
+  { src: cdn.vendor("airbnb", "destinations/airport.png"), bg: "#fdedec" },
+  { src: cdn.vendor("airbnb", "destinations/red-sea-university.png"), bg: "#e8f8f5" },
+  { src: cdn.vendor("airbnb", "destinations/nearby.png"), bg: "#e8f4fd" },
+];
+
+// Stable per-city art so a given city always shows the same illustration.
+function cityArt(city: string): (typeof CITY_ARTS)[number] {
+  let hash = 0;
+  for (let i = 0; i < city.length; i++) hash = (hash * 31 + city.charCodeAt(i)) >>> 0;
+  return CITY_ARTS[hash % CITY_ARTS.length]!;
+}
+
+// Mirrors the homepage "Where" step (LocationDropdown): a search input above a
+// scrolling list whose rows are a rounded-square destination art + city name +
+// a light subtitle. Data comes from the transport assembly points.
 export default function TransportCityDropdown({
   value,
   onChange,
@@ -56,9 +80,6 @@ export default function TransportCityDropdown({
   const tc = dict?.transport?.citySelect;
   const [searchQuery, setSearchQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [canScrollUp, setCanScrollUp] = useState(false);
-  const [canScrollDown, setCanScrollDown] = useState(false);
 
   // Debounce search query using useDeferredValue
   const deferredSearchQuery = useDeferredValue(searchQuery);
@@ -107,32 +128,6 @@ export default function TransportCityDropdown({
     inputRef.current?.focus();
   }, []);
 
-  // Check scroll position to show/hide chevron buttons
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const checkScroll = () => {
-      setCanScrollUp(container.scrollTop > 0);
-      setCanScrollDown(
-        container.scrollTop < container.scrollHeight - container.clientHeight - 1
-      );
-    };
-
-    checkScroll();
-    container.addEventListener("scroll", checkScroll);
-    return () => container.removeEventListener("scroll", checkScroll);
-  }, [filteredCities]);
-
-  // Scroll handlers
-  const scrollUp = useCallback(() => {
-    scrollContainerRef.current?.scrollBy({ top: -100, behavior: "smooth" });
-  }, []);
-
-  const scrollDown = useCallback(() => {
-    scrollContainerRef.current?.scrollBy({ top: 100, behavior: "smooth" });
-  }, []);
-
   // Memoize city select handler
   const handleCitySelect = useCallback((city: string) => {
     onChange(city);
@@ -147,7 +142,7 @@ export default function TransportCityDropdown({
   const isShowingPopular = deferredSearchQuery.trim() === "";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Search Input */}
       <div className="relative">
         <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -157,81 +152,71 @@ export default function TransportCityDropdown({
           value={searchQuery}
           onChange={handleSearchChange}
           placeholder={placeholder ?? tc?.searchCity ?? "Search city..."}
-          className="w-full ps-10 pe-4 py-3 text-sm border border-[#e5e7eb] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          className="w-full ps-10 pe-4 h-11 text-sm border border-[#dddddd] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
         />
       </div>
 
-      {/* City List with Scroll Indicators */}
-      <div className="relative">
-        {/* Scroll Up Button */}
-        {canScrollUp && (
-          <button
-            type="button"
-            onClick={scrollUp}
-            className="flex w-full items-center justify-center py-1 cursor-pointer hover:bg-accent/50 transition-colors rounded-t-lg"
-          >
-            <ChevronUp className="size-4 opacity-50" />
-          </button>
-        )}
-
-        {/* Scrollable Container */}
-        <div
-          ref={scrollContainerRef}
-          className="max-h-64 overflow-y-auto no-scrollbar"
-        >
-          {filteredCities.length === 0 ? (
-            <div className="text-sm text-muted-foreground text-center py-4">
-              {tc?.noCitiesFound ?? "No cities found"}
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {isShowingPopular && (
-                <div className="text-xs font-medium text-muted-foreground px-2 py-1">
-                  {tc?.popularDestinations ?? "Popular destinations"}
-                </div>
-              )}
+      {/* City List — Where-step row style (icon + name + subtitle) */}
+      <div className="max-h-[320px] overflow-y-auto no-scrollbar scroll-smooth" role="listbox">
+        {filteredCities.length === 0 ? (
+          <div className="text-sm text-muted-foreground text-center py-8">
+            {tc?.noCitiesFound ?? "No cities found"}
+          </div>
+        ) : (
+          <>
+            {isShowingPopular && (
+              <p className="text-[13px] font-normal text-[#222222] px-2 mb-2">
+                {tc?.popularDestinations ?? "Popular destinations"}
+              </p>
+            )}
+            <div className="space-y-0.5">
               {filteredCities.map((city) => {
                 const cityPoints = citiesMap[city];
-                const isSelected = value === city;
+                const count = cityPoints?.length ?? 0;
+                const subtitle =
+                  count > 0
+                    ? `${count} ${count === 1 ? (tc?.point ?? "point") : (tc?.points ?? "points")}`
+                    : null;
+                const art = cityArt(city);
 
                 return (
-                  <button
+                  <div
                     key={city}
-                    type="button"
+                    role="option"
+                    aria-selected={value === city}
+                    tabIndex={0}
                     onClick={() => handleCitySelect(city)}
-                    className={`w-full flex items-center px-3 py-2.5 rounded-xl text-start transition-colors ${
-                      isSelected
-                        ? "bg-primary/10 text-primary"
-                        : "hover:bg-gray-50"
-                    }`}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleCitySelect(city);
+                      }
+                    }}
+                    className="py-2 px-2 rounded-2xl hover:bg-[#F7F7F7] active:scale-[0.99] transition-all cursor-pointer flex items-center gap-3.5"
                   >
+                    {/* Colored rounded square is baked into the original Airbnb
+                        PNG — render it bare; the inline backgroundColor only
+                        shows through while the image loads. */}
+                    <img
+                      src={art.src}
+                      alt=""
+                      loading="lazy"
+                      style={{ backgroundColor: art.bg }}
+                      className="w-12 h-12 flex-shrink-0 rounded-xl object-cover"
+                    />
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm">{cityLabel(city, lang)}</div>
-                      {cityPoints && (
-                        <div className="text-xs text-muted-foreground">
-                          {cityPoints.length}{" "}
-                          {cityPoints.length === 1
-                            ? (tc?.point ?? "point")
-                            : (tc?.points ?? "points")}
-                        </div>
+                      <div className="text-[15px] font-medium text-[#222222] truncate">
+                        {cityLabel(city, lang)}
+                      </div>
+                      {subtitle && (
+                        <div className="text-sm text-[#6a6a6a] truncate mt-0.5">{subtitle}</div>
                       )}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
-          )}
-        </div>
-
-        {/* Scroll Down Button */}
-        {canScrollDown && (
-          <button
-            type="button"
-            onClick={scrollDown}
-            className="flex w-full items-center justify-center py-1 cursor-pointer hover:bg-accent/50 transition-colors rounded-b-lg"
-          >
-            <ChevronDown className="size-4 opacity-50" />
-          </button>
+          </>
         )}
       </div>
     </div>

@@ -5,7 +5,10 @@ import type { Locale } from "@/components/internationalization/config";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { BookingStatus } from "@prisma/client";
-import HostingContent, { type HostReservation } from "./content";
+import HostingContent, {
+  type HostReservation,
+  type HostingAttention,
+} from "./content";
 
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
@@ -32,6 +35,7 @@ export default async function HostingPage() {
   // renders the client-side auth redirect inside HostingContent.
   const session = await auth();
   let reservations: HostReservation[] = [];
+  let attention: HostingAttention | null = null;
 
   if (session?.user?.id) {
     const startOfToday = new Date();
@@ -65,7 +69,52 @@ export default async function HostingPage() {
       guestName: b.guest.username ?? "Guest",
       guestImage: b.guest.image ?? null,
     }));
+
+    // "Actions need your attention" bottom card: count the required-to-publish
+    // steps still missing on the host's in-progress drafts, using the same
+    // gate as publishListing() (photos deliberately excluded — phase 1).
+    const drafts = await db.listing
+      .findMany({
+        where: { hostId: session.user.id, draft: true, isPublished: false },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          pricePerNight: true,
+          propertyType: true,
+          bedrooms: true,
+          bathrooms: true,
+          photoUrls: true,
+          locationId: true,
+        },
+        orderBy: { id: "desc" },
+        take: 10,
+      })
+      .catch(() => []);
+
+    const required = [
+      "title",
+      "description",
+      "pricePerNight",
+      "propertyType",
+      "bedrooms",
+      "bathrooms",
+    ] as const;
+    const count = drafts.reduce(
+      (sum, d) =>
+        sum +
+        required.filter((f) => !d[f]).length +
+        (d.locationId ? 0 : 1),
+      0,
+    );
+
+    if (drafts.length > 0 && count > 0) {
+      attention = {
+        count,
+        photos: drafts.slice(0, 2).map((d) => d.photoUrls?.[0] ?? null),
+      };
+    }
   }
 
-  return <HostingContent reservations={reservations} />;
+  return <HostingContent reservations={reservations} attention={attention} />;
 }

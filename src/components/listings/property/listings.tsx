@@ -4,14 +4,14 @@ import React from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useGlobalStore } from '@/state/filters'
-import { PropertyCard } from './card'
+import { SearchCard } from './search-card'
 import { PropertyImageFallback } from '@/components/atom/property-image-fallback'
 import { Listing } from '@/types/listing'
 import { useLocale } from '@/components/internationalization/use-locale'
 import { useDictionary } from '@/components/internationalization/dictionary-context'
 import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-actions'
 import { useSession } from 'next-auth/react'
-import { formatCurrency } from '@/lib/i18n/formatters'
+import { formatCurrency, formatNumber } from '@/lib/i18n/formatters'
 
 interface PropertyListingsProps {
   properties: Listing[]
@@ -22,10 +22,25 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
   const router = useRouter()
   const { locale } = useLocale()
   const dict = useDictionary()
+  const sp = dict.rental?.searchPage as Record<string, string> | undefined
   const { data: session } = useSession()
   const viewMode = useGlobalStore((s) => s.viewMode)
   const filters = useGlobalStore((s) => s.filters)
   const [localFavorites, setLocalFavorites] = React.useState<Set<number>>(new Set(favoriteIds))
+
+  // Gray specs line, mirroring /search: "{n} bedroom(s) · {m} bath(s)" (Airbnb).
+  const buildSpecs = (l: Listing): string => {
+    const parts: string[] = []
+    if (l.bedrooms != null) {
+      const label = l.bedrooms === 1 ? (sp?.bedroom ?? 'bedroom') : (sp?.bedrooms ?? 'bedrooms')
+      parts.push(`${formatNumber(l.bedrooms, locale)} ${label}`)
+    }
+    if (l.bathrooms != null) {
+      const label = l.bathrooms === 1 ? (sp?.bath ?? 'bath') : (sp?.baths ?? 'baths')
+      parts.push(`${formatNumber(l.bathrooms, locale)} ${label}`)
+    }
+    return parts.join(' · ')
+  }
 
   const handleFavoriteToggle = async (propertyId: string, isFavorite: boolean) => {
     if (!session?.user?.id) return
@@ -70,7 +85,9 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
     )
   }
 
-  // Transform properties to match PropertyCard interface
+  // Flattened shape consumed by the list-view branch below. (The grid branch
+  // renders SearchCard directly from the raw Listing so it can read city,
+  // bedrooms/bathrooms, and review counts.)
   const transformedProperties = properties.map((property, index) => ({
     id: property.id.toString(),
     images: property.photoUrls ?? [],
@@ -97,9 +114,30 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
       
       {viewMode === 'grid' ? (
         <div className="">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {transformedProperties.map((property) => (
-              <PropertyCard key={property.id} {...property} />
+          {/* Airbnb home-card grid: 2-up on phones, 4-up on laptop. Cards are
+              the shared, pixel-measured SearchCard so /listings and /search read
+              identically. Vertical gutter is wider than horizontal (Airbnb). */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-6 sm:gap-y-10">
+            {properties.map((l, index) => (
+              <SearchCard
+                key={l.id}
+                id={l.id.toString()}
+                images={l.photoUrls ?? []}
+                title={l.title ?? ''}
+                subtitle={
+                  l.location?.city
+                    ? `${sp?.entireHome ?? 'Entire home in'} ${l.location.city}`
+                    : undefined
+                }
+                specs={buildSpecs(l)}
+                pricePerNight={l.pricePerNight ?? 0}
+                rating={l.averageRating}
+                reviewsCount={l.numberOfReviews ?? 0}
+                isFavorite={localFavorites.has(l.id)}
+                onFavoriteToggle={handleFavoriteToggle}
+                onCardClick={handleCardClick}
+                priority={index < 4}
+              />
             ))}
           </div>
         </div>
