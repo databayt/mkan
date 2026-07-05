@@ -40,8 +40,9 @@ export function AttentionCard({ count, photos }: AttentionCardProps) {
   const tile = (src: string | null, offset: React.CSSProperties, seed: string) => (
     <div
       aria-hidden
-      className="absolute h-8 w-8 overflow-hidden rounded-md border-2 border-white"
-      style={{ backgroundColor: "#F7F7F7", ...offset }}
+      className="absolute h-8 w-8 overflow-hidden border-2 border-white"
+      // 6px exact (the theme remaps rounded-md to 8px)
+      style={{ backgroundColor: "#F7F7F7", borderRadius: 6, ...offset }}
     >
       <PropertyImage src={src} alt="" sizes="32px" quality={50} seed={seed} />
     </div>
@@ -54,9 +55,9 @@ export function AttentionCard({ count, photos }: AttentionCardProps) {
       className="fixed inset-x-0 bottom-0 z-40 flex items-center bg-white lg:hidden"
       style={{
         borderRadius: "24px 24px 0 0",
-        // 16px top / 24px sides; the bottom edge extends under the 57px tab
+        // 16px top / 24px sides; the bottom edge extends under the 58px tab
         // bar + 16px breathing room (ref: calc(var(--tab-bar-height) + 16px)).
-        padding: "16px 24px 73px",
+        padding: "16px 24px 74px",
         marginBottom: "env(safe-area-inset-bottom)",
         boxShadow:
           "0px 0px 0px 1px rgba(0,0,0,0.02), 0px 8px 24px 0px rgba(0,0,0,0.10)",
