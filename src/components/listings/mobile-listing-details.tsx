@@ -121,6 +121,134 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
   return (
     <div className="md:hidden">
       <style dangerouslySetInnerHTML={{__html: `
+        :root {
+            --typography-font-family-cereal-font-family: Circular, -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+            --typography-weight-book400: 400;
+            --typography-weight-medium500: 500;
+            --typography-body-text_16_20-line-height: 20px;
+            --typography-body-text_16_20-font-size: 16px;
+            --typography-body-text_16_20-letter-spacing: normal;
+            --palette-hof: #222222;
+            --palette-bg-primary-core: #DE3151;
+            --palette-bg-secondary-core-hover: #F7F7F7;
+            --palette-bg-secondary-core: #222222;
+            --typography-titles-semibold_26_30-line-height: 30px;
+            --typography-titles-semibold_26_30-font-size: 26px;
+            --dls19-pdp-listing-title-line-height: var(--typography-titles-semibold_26_30-line-height);
+            --dls19-pdp-listing-title-size: var(--typography-titles-semibold_26_30-font-size);
+            --dls19-pdp-listing-title-weight: var(--typography-weight-medium500);
+        }
+
+        .c1yo0219 {
+            display: block;
+        }
+        ._1a6d9c4 {
+            display: block;
+        }
+        .plmw1e5 {
+            display: block;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            max-width: var(--maxWidth, 1120px);
+        }
+        .c1htwjs0 {
+            display: block;
+        }
+        .tuj3gk2 {
+            display: block;
+        }
+        .tq9gyrs {
+            display: block;
+        }
+        .tglziin {
+            display: block;
+        }
+
+        .hpipapi {
+            font-family: var(--typography-font-family-cereal-font-family);
+            color: var(--palette-hof);
+            font-size: var(--dls19-pdp-listing-title-size);
+            line-height: var(--dls19-pdp-listing-title-line-height);
+            font-weight: var(--dls19-pdp-listing-title-weight);
+            letter-spacing: -0.02em;
+            margin: 0;
+        }
+
+        .atm_7l_1kw7nm4 {
+            color: var(--palette-hof) !important;
+        }
+        .atm_c8_1x4eueo {
+            font-size: var(--dls19-pdp-listing-title-size) !important;
+        }
+        .atm_cs_1kw7nm4 {
+            font-weight: var(--dls19-pdp-listing-title-weight) !important;
+        }
+        .atm_g3_1kw7nm4 {
+            line-height: var(--dls19-pdp-listing-title-line-height) !important;
+        }
+        .atm_9s_1nu9bjl {
+            display: block !important;
+        }
+
+        .atm_bx_nm7nsd {
+            font-family: var(--typography-font-family-cereal-font-family) !important;
+        }
+        .atm_cs_1dh25pa {
+            font-weight: var(--typography-weight-book400) !important;
+        }
+        .atm_g3_1emqlh9 {
+            line-height: var(--typography-body-text_16_20-line-height) !important;
+        }
+        .atm_c8_3w7ag0 {
+            font-size: var(--typography-body-text_16_20-font-size) !important;
+        }
+        .atm_1mt8aov_fyhuej {
+            --gp-section-standard-padding: 48px;
+        }
+        .atm_ptdwod_1vi7ecw {
+            --gp-section-compact-padding: 32px;
+        }
+        .atm_18hoyap_1tcgj5g {
+            --gp-section-standard-padding-condensed: 24px;
+        }
+        .atm_1zp5ph_exct8b {
+            --gp-section-compact-padding-condensed: 16px;
+        }
+        .atm_7l_1dmvgf5 {
+            color: var(--palette-hof) !important;
+        }
+        .atm_fr_helst {
+            letter-spacing: var(--typography-body-text_16_20-letter-spacing) !important;
+        }
+        .atm_bmoam2_qrjoh0 {
+            --dls19-brand-gradient-accent: var(--palette-bg-primary-core);
+        }
+        .atm_vvc489_1as5f3p {
+            --dls19-brand-gradient-radial: var(--palette-bg-secondary-core-hover);
+        }
+        .atm_1strswt_x1skbv {
+            --dls19-brand-gradient: var(--palette-bg-secondary-core);
+        }
+        .atm_ff14j6_1svvj8d {
+            --dls19-pdp-listing-title-line-height: var(--typography-titles-semibold_26_30-line-height) !important;
+        }
+        .atm_n738wd_s4nkmm {
+            --dls19-pdp-listing-title-size: var(--typography-titles-semibold_26_30-font-size) !important;
+        }
+        .atm_nmhd1s_1mexzig {
+            --dls19-pdp-listing-title-weight: var(--typography-weight-medium500) !important;
+        }
+        .atm_m4qiaa_1dmvgf5 {
+            --dls19-ui-brand-color: var(--palette-hof) !important;
+        }
+        .atm_1htbn05_qrjoh0 {
+            --dls19-brand-color: var(--palette-bg-primary-core) !important;
+        }
+        .atm_1gwwzir_u29brm {
+            --header_v2_height-px: 80px;
+        }
+
         .dir.atm_5j_nw3v2p {
             border-radius: var(--AirImage-border-radius, var(--dls-liteimage-border-radius, 0px));
         }
@@ -311,7 +439,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                 } as React.CSSProperties}
               >
                 <span data-button-content="true" className="b164l090 dir dir-ltr">
-                  <HeartIcon className={savedNow ? 'fill-[#FF385C] text-[#FF385C]' : ''} />
+                  <HeartIcon fill={savedNow ? '#FF385C' : 'none'} className={savedNow ? 'text-[#FF385C]' : ''} />
                 </span>
               </button>
             </div>
@@ -332,9 +460,35 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
       <div className="px-4 py-6 space-y-6">
         {/* Title and Rating */}
         <div>
-          <h1 className="text-[26px] font-semibold leading-[30px] tracking-[-0.0325rem] text-[#222222] mb-3">
-            {listing?.title || 'Beautiful Property'}
-          </h1>
+          <div data-pageslot="true" className="c1yo0219 atm_9s_1txwivl_vmtskl atm_92_1yyfdc7_vmtskl atm_9s_1txwivl_9in345 atm_92_1yyfdc7_9in345 dir dir-ltr">
+            <div style={{ "--gp-section-max-width": "1120px" } as React.CSSProperties}>
+              <div className="_1a6d9c4">
+                <div className="plmw1e5 atm_e2_1osqo2v atm_gz_1wugsn5 atm_h0_1wugsn5 atm_vy_1osqo2v mq5rv0q atm_j3_1v7vjkn dir dir-ltr" style={{ "--maxWidth": "1120px" } as React.CSSProperties}>
+                  <div data-plugin-in-point-id="TITLE_DEFAULT" data-section-id="TITLE_DEFAULT">
+                    <div className="c1htwjs0 atm_lo_1tcgj5g atm_le_exct8b atm_le_idpfg4__oggzyc dir dir-ltr">
+                      <section>
+                        <div className="tuj3gk2 atm_h_esu3gu atm_9s_1txwivl atm_fc_1yb4nlp atm_cx_ftgil2 dir dir-ltr">
+                          <div className="tq9gyrs atm_ax_kb7nvz atm_r3_1h6ojuz atm_by_1d54pid atm_r3_18uv5lq__oggzyc atm_by_18uv5lq__oggzyc dir dir-ltr">
+                            <div className="tglziin atm_c8_1nvkso5 atm_g3_gtd3qd atm_cs_1ho43yb atm_w4_1hnarqo atm_9s_1nu9bjl dir dir-ltr">
+                              <h1
+                                tabIndex={-1}
+                                role="heading"
+                                aria-level={1}
+                                className="hpipapi atm_7l_1kw7nm4 atm_c8_1x4eueo atm_cs_1kw7nm4 atm_g3_1kw7nm4 atm_gi_idpfg4 atm_l8_idpfg4 atm_kd_idpfg4_pfnrn2 i1pmzyw7 atm_9s_1nu9bjl dir dir-ltr"
+                                {...{ elementtiming: "LCP-target" }}
+                              >
+                                {listing?.title || 'Beautiful Property'}
+                              </h1>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
           
           <div className="flex items-center gap-1.5 text-[14px] text-[#222222]">
             {(listing?.numberOfReviews ?? 0) > 0 ? (
