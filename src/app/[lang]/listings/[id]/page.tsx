@@ -9,6 +9,9 @@ import MobileListingDetails from "@/components/listings/mobile-listing-details";
 import MobileReserve from "@/components/listings/mobile-reserve";
 import MobileReviews from "@/components/listings/mobile-reviews";
 import MobileMap from "@/components/listings/mobile-map";
+import MobileCalendar from "@/components/listings/mobile-calendar";
+import MobileMeetHost from "@/components/listings/mobile-meet-host";
+import MobileThingsToKnow from "@/components/listings/mobile-things-to-know";
 import MoreStaysNearby, { type NearbyStay } from "@/components/listings/more-stays-nearby";
 import Review from "@/components/listings/review";
 import MeetHost from "@/components/listings/meet-host";
@@ -224,7 +227,10 @@ export default async function ListingPage({ params }: ListingPageProps) {
         </div>
       </div>
 
-      {/* Mobile Layout — pb-24 clears the fixed MobileReserve bar */}
+      {/* Mobile Layout — section order mirrors the live Airbnb PDP:
+          overview/highlights/description/amenities (MobileListingDetails) →
+          reviews → location → calendar → meet-your-host → things-to-know →
+          similar listings → fixed reserve bar. pb-24 clears the reserve bar. */}
       <div className="md:hidden pb-24">
         <Suspense fallback={<div>{d.rental?.listing?.loading}</div>}>
           <MobileListingDetails
@@ -237,7 +243,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
             <MobileReviews
               reviews={mobileReviewItems}
               averageRating={serializedListing.averageRating ?? undefined}
-              totalReviews={mobileReviewsResult.total}
+              totalReviews={serializedListing.numberOfReviews ?? mobileReviewsResult.total}
             />
           </div>
         </Suspense>
@@ -250,6 +256,22 @@ export default async function ListingPage({ params }: ListingPageProps) {
             country={serializedListing.location?.country}
           />
         </Suspense>
+        <MobileCalendar city={serializedListing.location?.city ?? undefined} />
+        <MobileMeetHost
+          hostUser={serializedListing.host ?? null}
+          reviewsCount={serializedListing.numberOfReviews ?? undefined}
+          averageRating={serializedListing.averageRating ?? undefined}
+        />
+        <MobileThingsToKnow maxGuests={serializedListing.guestCount ?? undefined} />
+        <div className="px-4">
+          <MoreStaysNearby
+            stays={nearbyStays}
+            lang={lang}
+            heading={d.rental?.listing?.moreStaysNearby ?? "More stays nearby"}
+            perNight={dictStrings.booking?.perNight ?? "night"}
+            currency={dictStrings.common?.currency ?? "$"}
+          />
+        </div>
         <Suspense fallback={<div>{d.rental?.listing?.loading}</div>}>
           <MobileReserve
             pricePerNight={serializedListing.pricePerNight || 700}

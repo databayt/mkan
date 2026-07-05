@@ -52,12 +52,15 @@ export default function MobileMap({
   }, [nearViewport])
 
   return (
-    <div className="md:hidden px-4 py-6">
-      <h1 className="text-xl font-semibold mb-4">{dict.rental?.map?.whereYoullBe}</h1>
+    <div className="md:hidden px-4 py-8 border-t border-[#DDDDDD]">
+      <h2 className="text-[22px] font-semibold leading-[26px] tracking-[-0.44px] text-[#222222]">
+        {dict.rental?.map?.whereYoullBe}
+      </h2>
+      {placeLine ? <p className="mt-2 text-sm text-[#6C6C6C]">{placeLine}</p> : null}
 
       {/* bg-muted behind the canvas: any repaint (route transition, canvas
           restore) shows neutral grey instead of a white flash. */}
-      <div ref={holderRef} className="relative w-full h-[250px] mb-4 rounded-lg overflow-hidden border border-border bg-muted">
+      <div ref={holderRef} className="relative w-full h-[420px] mt-4 rounded-[16px] overflow-hidden bg-muted">
         {hasCoords && nearViewport ? (
           <ListingMap
             latitude={latitude}
@@ -73,8 +76,6 @@ export default function MobileMap({
           </div>
         )}
       </div>
-
-      {placeLine ? <h2 className="text-base font-medium">{placeLine}</h2> : null}
     </div>
   )
 }

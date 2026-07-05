@@ -37,8 +37,8 @@ export default function MobileMeetHost({
     hostUser?.username ?? hostUser?.email?.split("@")[0] ?? host?.hostFallback ?? "Host";
   const avatar = hostUser?.image ?? FALLBACK_AVATAR;
   return (
-    <div className="md:hidden px-4 py-6 space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900">{host?.meetYourHost}</h1>
+    <div className="md:hidden px-4 py-8 space-y-6 border-t border-[#DDDDDD]">
+      <h2 className="text-[22px] font-medium leading-[26px] tracking-[-0.44px] text-[#222222]">{host?.meetYourHost}</h2>
 
       {/* Host profile card */}
       <div className="border rounded-xl px-6 py-6 shadow-sm">

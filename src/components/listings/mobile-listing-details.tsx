@@ -10,9 +10,6 @@ import { useRouter } from 'next/navigation';
 import { useFavorites } from '@/components/favorites/favorites-context';
 import MobileInfo from './mobile-info';
 import MobileAmenities from './mobile-amenities';
-// import MobileReviewsDetail from './mobile-reviews-detail';
-import MobileMeetHost from './mobile-meet-host';
-import GuestFavoriteCard from './guest-favorite-card';
 import AirbnbInfo from '@/components/atom/property-info';
 import HostedBy from './hosted-by';
 import { PropertyImageFallback } from '@/components/atom/property-image-fallback';
@@ -42,6 +39,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
   const { locale } = useLocale();
   const fav = useFavorites();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   const FALLBACK_AVATAR = "https://cdn.databayt.org/mkan/stock/photo-1506905925346-21bda4d32df4.jpg";
   const isSuperhost = (listing?.averageRating ?? 0) >= 4.8 && (listing?.numberOfReviews ?? 0) >= 10;
@@ -1027,38 +1025,38 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
         </div>
       </div>
 
-      {/* Property Info */}
+      {/* Property Info — order mirrors the live PDP: highlights → description →
+          amenities. Reviews / location / calendar / meet-host / things-to-know /
+          similar follow as sibling sections composed in the page (see page.tsx). */}
       <div className="px-4 py-6 space-y-6">
-
-        {/* Guest Favorite Card */}
-        {(listing?.numberOfReviews ?? 0) > 0 && (
-          <div className="pt-2">
-            <GuestFavoriteCard
-              rating={listing?.averageRating ?? 0}
-              reviewCount={listing?.numberOfReviews ?? 0}
-              label={dict?.property?.guestFavorite?.title ?? "Guest favorite"}
-              blurb={dict?.property?.guestFavorite?.blurb ?? "One of the most loved homes on Mkan, according to guests"}
-              reviewsLabel={dict?.property?.guestFavorite?.reviews ?? "Reviews"}
-            />
-          </div>
-        )}
 
         {/* Highlights Section */}
         {PHASE1.showListingHighlights && (listing?.highlights?.length ?? 0) > 0 && (
           <div className="border-t border-[#DDDDDD] pt-6 mt-6">
-            <AirbnbInfo highlights={listing.highlights} />
+            <AirbnbInfo
+              highlights={listing.highlights}
+              heading={locale === "ar" ? "أبرز مميزات المكان" : "Listing highlights"}
+            />
           </div>
         )}
 
-        {/* Description Section */}
+        {/* Description Section (DESCRIPTION_DEFAULT) — no heading on live; clamp + "Show more" */}
         {listing?.description && (
-          <div className="border-t border-[#DDDDDD] pt-6 mt-6 space-y-3">
-            <h3 className="text-[22px] font-medium leading-[26px] tracking-[-0.44px] text-[#222222]">
-              {locale === "ar" ? "عن هذا المكان" : "About this space"}
-            </h3>
-            <p className="whitespace-pre-line text-base leading-6 text-[#222222] font-normal">
+          <div className="border-t border-[#DDDDDD] pt-6 mt-6">
+            <p className={`whitespace-pre-line text-base leading-[22px] text-[#222222] font-normal ${listing.description.length > 280 && !descExpanded ? "line-clamp-6" : ""}`}>
               {listing.description}
             </p>
+            {listing.description.length > 280 && (
+              <button
+                type="button"
+                onClick={() => setDescExpanded((v) => !v)}
+                className="mt-4 flex h-12 w-full items-center justify-center rounded-[12px] bg-[#F2F2F2] text-base font-medium text-[#222222]"
+              >
+                {descExpanded
+                  ? (locale === "ar" ? "عرض أقل" : "Show less")
+                  : (locale === "ar" ? "عرض المزيد" : "Show more")}
+              </button>
+            )}
           </div>
         )}
 
@@ -1075,15 +1073,6 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             <MobileAmenities amenities={listing.amenities} />
           </div>
         )}
-
-        {/* Mobile Meet Host */}
-        <div className="border-t border-[#DDDDDD] pt-6 mt-6">
-          <MobileMeetHost
-            hostUser={listing?.host ?? null}
-            reviewsCount={listing?.numberOfReviews}
-            averageRating={listing?.averageRating}
-          />
-        </div>
       </div>
     </div>
   );
