@@ -68,6 +68,8 @@ async function getListingById(id: number, lang: Locale) {
           email: true,
           phoneNumber: true,
           username: true,
+          image: true,
+          createdAt: true,
         }
       },
     }
