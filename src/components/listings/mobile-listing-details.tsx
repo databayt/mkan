@@ -143,7 +143,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             display: block;
             position: relative;
             z-index: 10;
-            margin-top: -24px;
+            margin-top: -28px;
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
             background-color: var(--background, #ffffff);
@@ -469,7 +469,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
 
         {/* Image Counter */}
         {displayImages.length > 1 && (
-          <div className="absolute bottom-4 end-4">
+          <div className="absolute bottom-10 end-4 z-10">
             <div className="bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm tabular-nums">
               {formatNumber(currentImageIndex + 1, locale)} / {formatNumber(displayImages.length, locale)}
             </div>
