@@ -423,6 +423,45 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             align-items: center !important;
             justify-content: center !important;
         }
+        .o18020l1 {
+            position: absolute !important;
+            bottom: 0px !important;
+            right: 0px !important;
+            left: 0px !important;
+            top: 0px !important;
+            background-color: rgba(0, 0, 0, 0) !important;
+            display: flex !important;
+            align-items: flex-end !important;
+            justify-content: flex-end !important;
+            pointer-events: none !important;
+        }
+        .ckfv83h {
+            display: block !important;
+            background-color: rgba(34, 34, 34, 0.66) !important;
+            color: rgb(255, 255, 255) !important;
+            border-radius: 4px !important;
+            padding: 3px 10px !important;
+            font-size: 12px !important;
+            font-weight: 500 !important;
+            line-height: 16px !important;
+            margin: 0px 12px 40px 0px !important;
+        }
+        [dir="rtl"] .o18020l1 {
+            justify-content: flex-start !important;
+        }
+        [dir="rtl"] .ckfv83h {
+            margin: 0px 0px 40px 12px !important;
+        }
+        .a8jt5op {
+            border: 0 !important;
+            clip: rect(0, 0, 0, 0) !important;
+            height: 1px !important;
+            margin: -1px !important;
+            overflow: hidden !important;
+            padding: 0 !important;
+            position: absolute !important;
+            width: 1px !important;
+        }
       `}} />
 
       {/* Full Screen Image Gallery — Airbnb Aspect Ratio aspect-[100/95] container */}
@@ -547,8 +586,11 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
 
         {/* Image Counter */}
         {displayImages.length > 1 && (
-          <div className="absolute bottom-10 end-4 z-10">
-            <div className="bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm tabular-nums">
+          <div className="o18020l1 dir dir-ltr">
+            <span className="a8jt5op dir dir-ltr" aria-atomic="true" aria-live="polite">
+              Showing photo {currentImageIndex + 1} of {displayImages.length}
+            </span>
+            <div aria-hidden="true" className="ckfv83h dir dir-ltr">
               {formatNumber(currentImageIndex + 1, locale)} / {formatNumber(displayImages.length, locale)}
             </div>
           </div>
