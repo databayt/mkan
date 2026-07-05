@@ -73,7 +73,7 @@ const MobileListingsHeader = () => {
   return (
     <LayoutGroup>
       {/* ── Collapsed bar — same SmallSearch pill as /search, centered ──── */}
-      <header className="bg-white sticky top-0 z-50 md:hidden">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 md:hidden">
         <div className="px-4">
           <div
             className="flex items-center justify-center"
