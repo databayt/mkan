@@ -6,7 +6,7 @@
 // map. mapbox-gl touches `window` at import time, so this component must only be
 // loaded through next/dynamic({ ssr: false }) — see map.tsx / mobile-map.tsx.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -71,17 +71,29 @@ export default function ListingMap({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  // Mapbox needs WebGL; `new mapboxgl.Map()` throws "Failed to initialize WebGL"
+  // on devices/browsers without it. Contain that failure here (→ static fallback)
+  // so it never bubbles to the route error boundary and blanks the whole listing.
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current || !mapboxgl.accessToken) return;
 
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: "mapbox://styles/mapbox/streets-v12",
-      center: [longitude, latitude],
-      zoom: 13,
-      attributionControl: false,
-    });
+    let map: mapboxgl.Map;
+    try {
+      map = new mapboxgl.Map({
+        container: containerRef.current,
+        style: "mapbox://styles/mapbox/streets-v12",
+        center: [longitude, latitude],
+        zoom: 13,
+        attributionControl: false,
+      });
+    } catch (err) {
+      // WebGL init / context-creation failure — degrade gracefully.
+      console.warn("ListingMap: map init failed, showing static fallback", err);
+      setFailed(true);
+      return;
+    }
     map.addControl(new mapboxgl.AttributionControl({ compact: true }));
 
     // Airbnb dark-circle house marker — listings only reveal the precise
@@ -142,10 +154,26 @@ export default function ListingMap({
     else node.requestFullscreen?.();
   };
 
-  if (!mapboxgl.accessToken) {
+  // Static fallback when the map can't render — no token, or WebGL unavailable.
+  // Still useful: shows the pin label and deep-links the coords to Google Maps,
+  // so a missing/unsupported map never breaks the listing page.
+  if (!mapboxgl.accessToken || failed) {
     return (
-      <div className={className ?? "w-full h-full bg-muted flex items-center justify-center"}>
-        <p className="text-sm text-muted-foreground">{pinLabel ?? "Map unavailable"}</p>
+      <div className={`relative bg-muted ${className ?? "w-full h-full"}`}>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center">
+          <svg viewBox="0 0 16 16" width="28" height="28" aria-hidden="true" className="fill-muted-foreground/70">
+            <path d="m8.94959955 1.13115419 5.71719515 4.68049298c.2120231.18970472.3332053.46073893.3332053.74524138v7.94311145c0 .2761424-.2238576.5-.5.5h-4.5v-5.5c0-.24545989-.17687516-.44960837-.41012437-.49194433l-.08987563-.00805567h-3c-.27614237 0-.5.22385763-.5.5v5.5h-4.5c-.27614237 0-.5-.2238576-.5-.5v-7.95162536c0-.28450241.12118221-.55553661.3502077-.75978249l5.70008742-4.65820288c.55265671-.45163993 1.34701168-.45132001 1.89930443.00076492z" />
+          </svg>
+          <p className="text-sm text-muted-foreground">{pinLabel ?? "Map preview unavailable"}</p>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium underline underline-offset-4 hover:text-foreground"
+          >
+            View on Google Maps
+          </a>
+        </div>
       </div>
     );
   }
