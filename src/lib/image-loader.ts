@@ -22,9 +22,21 @@ function pickSuffix(width: number): string {
   return "original";
 }
 
+/**
+ * Vercel's optimizer endpoint — the exact URL shape next/image's default
+ * loader emits. Used for CDN images with no pre-made variants (user uploads,
+ * CRM-rehosted photos): they're arbitrary-size JPEG/PNG originals, and serving
+ * them untouched shipped full-resolution files into ~300px card slots
+ * (~700 kB of waste on the homepage alone).
+ */
+function vercelOptimizedUrl({ src, width, quality }: ImageLoaderProps): string {
+  return `/_next/image?url=${encodeURIComponent(src)}&w=${width}&q=${quality ?? 75}`;
+}
+
 export default function cdnVariantLoader({
   src,
   width,
+  quality,
 }: ImageLoaderProps): string {
   // Non-transformable sources render as-is.
   if (src.startsWith("data:") || /\.svg(\?.*)?$/i.test(src)) return src;
@@ -32,9 +44,12 @@ export default function cdnVariantLoader({
 
   const base = variantBaseKey(src);
   // Only the stock pool has pre-made `-{size}.webp` variants (produced by
-  // scripts/process-stock-images.ts). User uploads are already optimized to a
-  // single WebP at upload time, so they serve as-is; anything else too.
-  if (!base.includes("mkan/stock/")) return src;
+  // scripts/process-stock-images.ts). Everything else on the CDN (uploads,
+  // rehosted photos) goes through Vercel's optimizer for resize + AVIF until
+  // an offline script produces variants for those pools too.
+  if (!base.includes("mkan/stock/")) {
+    return vercelOptimizedUrl({ src, width, quality });
+  }
   // Already a variant key — don't double-suffix.
   if (/-(sm|md|lg|original)$/.test(base)) {
     return `https://${CDN_HOST}/${base}.webp`;

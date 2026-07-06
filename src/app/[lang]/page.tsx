@@ -12,6 +12,13 @@ import { localize, localizeNested } from "@/components/translation/localize";
 // unstable_cache. Serving the homepage from the CDN instead of per-request
 // origin compute is the difference between ~100ms and ~500-1000ms TTFB.
 export const revalidate = 300;
+// Assert static: without this Next auto-classified the route dynamic (ƒ) and
+// every visit paid origin compute. Nothing here may read cookies()/headers()/
+// searchParams — the HTML is identical for every visitor (session, favorites,
+// and ?category deep-links all resolve client-side). "error" (not
+// "force-static") so a future dynamic-API regression fails the build loudly
+// instead of silently un-caching the homepage.
+export const dynamic = "error";
 
 export async function generateMetadata({
   params,
