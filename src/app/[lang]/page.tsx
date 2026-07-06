@@ -7,6 +7,12 @@ import HomeContent from "./home-content";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { localize, localizeNested } from "@/components/translation/localize";
 
+// ISR: prerender /en + /ar (params from the layout's generateStaticParams) and
+// regenerate at most every 5 minutes — the same window as getHomeListings'
+// unstable_cache. Serving the homepage from the CDN instead of per-request
+// origin compute is the difference between ~100ms and ~500-1000ms TTFB.
+export const revalidate = 300;
+
 export async function generateMetadata({
   params,
 }: {

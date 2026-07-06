@@ -284,6 +284,13 @@ export function proxy(request: NextRequest) {
   const path = getPathWithoutLocale(pathname);
   const loggedIn = isAuthenticated(request);
 
+  // Only (re)persist the locale cookie when the client's copy is missing or
+  // different. A Set-Cookie header on every page response marks the response
+  // uncacheable at the CDN, forcing each visit to origin compute — steady-state
+  // visitors already carry the right cookie and should get cacheable pages.
+  const cookieLocale = request.cookies.get('NEXT_LOCALE')?.value;
+  const persistLocale = cookieLocale === locale ? undefined : locale;
+
   // Auth routes: if already logged in, redirect away from login/join pages.
   // Honor the callbackUrl the login flow carried (e.g. /host onboarding) so we
   // return the user where they were headed instead of the generic dashboard.
@@ -302,18 +309,18 @@ export function proxy(request: NextRequest) {
       const response = NextResponse.redirect(
         new URL(destination, request.nextUrl.origin)
       );
-      addSecurityHeaders(response, requestId, locale);
+      addSecurityHeaders(response, requestId, persistLocale);
       return response;
     }
     const response = passThrough();
-    addSecurityHeaders(response, requestId, locale);
+    addSecurityHeaders(response, requestId, persistLocale);
     return response;
   }
 
   // Public routes: always accessible
   if (isPublicRoute(path)) {
     const response = passThrough();
-    addSecurityHeaders(response, requestId, locale);
+    addSecurityHeaders(response, requestId, persistLocale);
     return response;
   }
 
@@ -327,14 +334,14 @@ export function proxy(request: NextRequest) {
     request.nextUrl.pathname = `/${locale}/login`;
     request.nextUrl.search = `?callbackUrl=${callbackUrl}`;
     const response = NextResponse.redirect(request.nextUrl);
-    addSecurityHeaders(response, requestId, locale);
+    addSecurityHeaders(response, requestId, persistLocale);
     return response;
   }
 
   // Everything else (authenticated users on any route, anonymous users on
   // unknown paths, etc.) — let through so the app router can resolve.
   const response = passThrough();
-  addSecurityHeaders(response, requestId, locale);
+  addSecurityHeaders(response, requestId, persistLocale);
   return response;
 }
 

@@ -1,18 +1,30 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import HeroSection from "@/components/site/HeroSection";
 import { PropertyContent } from "@/components/site/property/content";
 import { ListingCarouselSection } from "@/components/site/property/listing-carousel-section";
 import PropertyFilter from "@/components/site/property-filter";
 import { Listing } from "@/types/listing";
-import AirbnbInspiration from "@/components/site/inspiration";
-import GiftCard from "@/components/site/gift-card";
-import Ask from "@/components/site/ask";
 import Footer from "@/components/site/footer";
-import { PriceTransparencyDialog } from "@/components/site/price-transparency-dialog";
+
+// Below-fold marketing sections and the once-per-user pricing popup are split
+// out of the page's initial chunk — they still server-render (SEO), but their
+// JS downloads after the hero/grid instead of competing with hydration.
+const AirbnbInspiration = dynamic(() => import("@/components/site/inspiration"));
+const GiftCard = dynamic(() => import("@/components/site/gift-card"));
+const Ask = dynamic(() => import("@/components/site/ask"));
+const PriceTransparencyDialog = dynamic(
+  () =>
+    import("@/components/site/price-transparency-dialog").then(
+      (m) => m.PriceTransparencyDialog
+    ),
+  // Renders nothing until its own consent/localStorage logic opens it — no SSR
+  // output to preserve, so keep it fully client-side and off the critical path.
+  { ssr: false }
+);
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   Islands: ["island", "private island", "tropical", "paradise", "exotic"],
@@ -43,7 +55,6 @@ interface HomeContentProps {
 }
 
 export default function HomeContent({ listings, locale }: HomeContentProps) {
-  const searchParams = useSearchParams();
   const dict = useDictionary();
   const sections = dict?.home?.sections;
   const [filteredListings, setFilteredListings] = useState<Listing[]>(listings);
@@ -99,6 +110,11 @@ export default function HomeContent({ listings, locale }: HomeContentProps) {
   };
 
   useEffect(() => {
+    // Read the query string off window instead of useSearchParams(): the hook
+    // opts a statically-rendered page out of prerendering (CSR bailout), which
+    // would strip the hero from the HTML. Deep-linked ?category/?location
+    // arrivals are full page loads, so a mount-time read covers them.
+    const searchParams = new URLSearchParams(window.location.search);
     const location = searchParams.get("location");
     const guests = searchParams.get("guests");
     const category = searchParams.get("category");
@@ -113,7 +129,7 @@ export default function HomeContent({ listings, locale }: HomeContentProps) {
     } else {
       setFilteredListings(listings);
     }
-  }, [searchParams, listings]);
+  }, [listings]);
 
   const handleCategorySelect = (category: string) => {
     setSelectedCategory(category);

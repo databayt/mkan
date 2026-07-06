@@ -1,24 +1,46 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef, useCallback, type CSSProperties } from "react";
+import { useState, useRef, useCallback, type CSSProperties } from "react";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { useRouter, usePathname } from "next/navigation";
 import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { Counter } from "@/components/atom/counter";
-import { format, addDays } from "date-fns";
-import { ar, enUS } from "date-fns/locale";
 import { useClickOutside } from "./use-click";
-import { GUEST_LIMITS, MOBILE_BREAKPOINT } from "./constant";
-import LocationDropdown from "./location";
-import GuestSelectorDropdown from "./guest-selector";
-import BigSearchDatePicker from "./big-search-date-picker";
-import { Calendar } from "@/components/ui/calendar";
+import { GUEST_LIMITS } from "./constant";
 import { Command, CommandInput } from "@/components/ui/command";
+
+// The Where / When / Who panels only appear after the user opens a field, so
+// their code (react-day-picker + date-fns locale data, the month carousel,
+// the guest rows) is split out of the hero's initial bundle and fetched on
+// first use. Server HTML therefore carries just the idle card — which is what
+// paints — while the panels hydrate on demand.
+const panelFallback = () => (
+  <div className="h-40 animate-pulse rounded-2xl bg-gray-100" aria-hidden="true" />
+);
+const calendarFallback = () => (
+  <div className="h-[340px] animate-pulse rounded-2xl bg-gray-100" aria-hidden="true" />
+);
+const LocationDropdown = dynamic(() => import("./location"), {
+  ssr: false,
+  loading: panelFallback,
+});
+const GuestSelectorDropdown = dynamic(() => import("./guest-selector"), {
+  ssr: false,
+  loading: panelFallback,
+});
+const BigSearchDatePicker = dynamic(() => import("./big-search-date-picker"), {
+  ssr: false,
+  loading: calendarFallback,
+});
+const HeroCalendar = dynamic(() => import("./hero-calendar"), {
+  ssr: false,
+  loading: calendarFallback,
+});
 import { useLocationSuggestions } from "./hooks/use-location-suggestions";
 import { useSearchValidation } from "@/hooks/useSearchValidation";
-import { type LocationSuggestion, SEARCH_CONFIG } from "@/lib/schemas/search-schema";
+import { type LocationSuggestion } from "@/lib/schemas/search-schema";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { type DateRange } from "react-day-picker";
@@ -80,7 +102,6 @@ export default function VerticalSearch({
     pets: dict.search?.pets ?? "pets",
   };
   const [activeField, setActiveField] = useState<ActiveField>(initialField);
-  const [isMobile, setIsMobile] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
@@ -140,17 +161,6 @@ export default function VerticalSearch({
   const { isValid: isDateValid, errors: dateErrors } =
     useSearchValidation(dateRange);
 
-  // Check if mobile on mount and resize
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-    };
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
   const handleFieldClick = (field: ActiveField) => {
     setActiveField(activeField === field ? null : field);
   };
@@ -199,8 +209,8 @@ export default function VerticalSearch({
     setDateRange({ from, to });
     setFormData((prev) => ({
       ...prev,
-      checkIn: from ? format(from, "yyyy-MM-dd") : "",
-      checkOut: to ? format(to, "yyyy-MM-dd") : "",
+      checkIn: from ? toLocalISODate(from) : "",
+      checkOut: to ? toLocalISODate(to) : "",
     }));
 
     // AUTO-ADVANCE: location → checkin → checkout → guests → (close on outside-click)
@@ -433,17 +443,21 @@ export default function VerticalSearch({
     return `${styleClass} transition-all duration-200`;
   };
 
-  if (isMobile) {
-    const step = fieldStep(activeField);
-    const isSheet = variant === "sheet";
-    return (
+  const step = fieldStep(activeField);
+  const isSheet = variant === "sheet";
+
+  // Mobile card — hero: floats over the hero image; sheet: fills the /listings
+  // bottom-sheet body. Built unconditionally (the old `useState(false)` +
+  // resize-effect gate meant the server always emitted the desktop tree, so on
+  // phones nothing above the fold could paint until every byte of JS had
+  // executed). Now the card is part of the server HTML and paints immediately.
+  const mobileCard = (
       <div
         className={
           isSheet
             ? "relative h-full w-full"
             : "absolute top-[53%] start-4 transform -translate-y-1/2 z-20 w-[calc(100%-2rem)]"
         }
-        ref={formRef}
       >
         <div
           className={`relative bg-white w-full overflow-hidden ${
@@ -462,9 +476,11 @@ export default function VerticalSearch({
               (bottom) overlay all states. pt clears the arrows, pb the button. */}
           {!activeField ? (
             <div className="h-full overflow-y-auto no-scrollbar px-6 pt-9 pb-24">
-              <h1 className="text-2xl font-semibold text-[#484848] mb-7 leading-snug whitespace-pre-line">
+              {/* p, not h1 — the page h1 is the sr-only one in home-content,
+                  and both viewport trees mount so a heading here would double. */}
+              <p className="text-2xl font-semibold text-[#484848] mb-7 leading-tight whitespace-pre-line">
                 {t.heading}
-              </h1>
+              </p>
               <div className="space-y-5">
                 {/* Location field */}
                 <div>
@@ -617,12 +633,12 @@ export default function VerticalSearch({
                       } as CSSProperties
                     }
                   >
-                    <Calendar
+                    <HeroCalendar
+                      isAr={isAr}
                       mode="range"
                       min={1}
                       numberOfMonths={1}
                       defaultMonth={dateRange.from ?? new Date()}
-                      locale={isAr ? ar : enUS}
                       selected={dateRange as DateRange}
                       onSelect={(range: DateRange | undefined) =>
                         handleDateRangeChange(range?.from, range?.to, 450)
@@ -774,21 +790,37 @@ export default function VerticalSearch({
           )}
         </div>
       </div>
+  );
+
+  // The /listings bottom-sheet embeds the mobile flow directly (the sheet only
+  // exists below md) — same single-tree render as before.
+  if (isSheet) {
+    return (
+      <div ref={formRef} className="contents">
+        {mobileCard}
+      </div>
     );
   }
 
-  // Desktop version
+  // Hero: both trees live in the DOM, CSS-gated at md (768px — the old JS
+  // breakpoint). The server can't know the viewport, so shipping both and
+  // letting CSS pick means the right card paints on every device before any
+  // JS runs. State is shared; only one tree is ever visible. The wrapper is
+  // display:contents so the absolute positioning of each card still resolves
+  // against the hero, and one ref serves the click-outside hook for both.
   return (
+    <div ref={formRef} className="contents">
+    <div className="md:hidden">{mobileCard}</div>
+    <div className="hidden md:block">
     <div
       className="absolute top-[46%] start-4 md:start-8 transform -translate-y-1/2 z-20 w-[calc(100%-2rem)] md:w-auto"
-      ref={formRef}
     >
       <div className="relative">
         <div className="bg-white rounded-none px-4 md:px-5 py-6 md:py-3 shadow-sm w-full md:w-[340px]">
           {/* Main heading */}
-          <h1 className="text-lg md:text-xl font-medium text-[#6b6b6b] mb-4 md:mb-3 leading-tight whitespace-pre-line">
+          <p className="text-lg md:text-xl font-medium text-[#6b6b6b] mb-4 md:mb-3 leading-tight whitespace-pre-line">
             {t.heading}
-          </h1>
+          </p>
 
           {/* Desktop: All fields visible */}
           <div className="space-y-4 md:space-y-3">
@@ -860,67 +892,10 @@ export default function VerticalSearch({
               </button>
             </div>
 
-            {/* Mobile-only Inline Dropdowns - appear below fields when active */}
-            {activeField === "location" && (
-              <div className="md:hidden pt-3 border-t border-gray-200">
-                <LocationDropdown
-                  searchQuery={searchQuery}
-                  suggestions={suggestions}
-                  popularLocations={popularLocations}
-                  isLoading={isLoadingLocations}
-                  error={locationError}
-                  onSearchQueryChange={searchLocations}
-                  onLocationSelect={(location) => {
-                    if (location) {
-                      selectLocation(location);
-                    } else {
-                      setActiveField(null);
-                    }
-                  }}
-                />
-              </div>
-            )}
-
-            {(activeField === "checkin" || activeField === "checkout") && (
-              <div className="md:hidden pt-3 border-t border-gray-200">
-                <div className="flex justify-center overflow-hidden -mx-2">
-                  <Calendar
-                    mode="range"
-                    defaultMonth={dateRange.from || new Date()}
-                    selected={dateRange}
-                    onSelect={(range: DateRange | undefined) => {
-                      if (range) {
-                        handleDateRangeChange(range.from, range.to);
-                      } else {
-                        handleDateRangeChange(undefined, undefined);
-                      }
-                    }}
-                    numberOfMonths={1}
-                    disabled={(date) => {
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      if (date < today) return true;
-                      const maxDate = addDays(today, SEARCH_CONFIG.DEFAULT_MAX_NIGHTS);
-                      if (date > maxDate) return true;
-                      if (dateRange.from && !dateRange.to) {
-                        const maxCheckout = addDays(dateRange.from, SEARCH_CONFIG.DEFAULT_MAX_NIGHTS);
-                        if (date > maxCheckout) return true;
-                      }
-                      return false;
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {activeField === "guests" && (
-              <div className="md:hidden pt-3 border-t border-gray-200">
-                <GuestSelectorDropdown
-                  guests={formData.guests}
-                  onGuestChange={handleGuestChange}
-                />
-              </div>
-            )}
+            {/* (The old `md:hidden` inline dropdowns lived here for when this
+                desktop tree was served to narrow viewports. The tree itself is
+                now wrapped in `hidden md:block`, so they could never show —
+                the mobile card owns every sub-md interaction.) */}
 
             {/* Search button */}
             <div className="pt-3 md:pt-2 flex justify-end">
@@ -1012,6 +987,8 @@ export default function VerticalSearch({
           </div>
         )}
       </div>
+    </div>
+    </div>
     </div>
   );
 }

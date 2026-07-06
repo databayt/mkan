@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
   // Strict mode for better React development
   reactStrictMode: true,
 
+  // Optional out-of-tree build dir (e.g. NEXT_DIST_DIR=.next-perf) so a
+  // verification/analyze build can run while `next dev` owns .next.
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
+
   // PoweredByHeader removal for security
   poweredByHeader: false,
 
