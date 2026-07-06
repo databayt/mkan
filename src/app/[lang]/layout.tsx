@@ -14,16 +14,23 @@ import '../globals.css';
 // Enable ISR with 1-hour revalidation
 export const revalidate = 3600;
 
+// display:'optional' (not 'swap'): on slow connections the webfont arrives
+// seconds after first paint, and the swap re-inflated the text ~30% — which
+// re-set LCP to font-arrival time (~10s on Slow 4G) and caused the only CLS
+// on the page. With 'optional' the first slow visit keeps next/font's
+// size-adjusted system fallback (no reflow, no late LCP entry) and the font,
+// cached in the background, applies from the second view on. Fast connections
+// still get it on first paint.
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
-  display: 'swap'
+  display: 'optional'
 });
 
 const rubik = Rubik({
   subsets: ['arabic', 'latin'],
   variable: '--font-rubik',
-  display: 'swap'
+  display: 'optional'
 });
 
 export async function generateMetadata({
