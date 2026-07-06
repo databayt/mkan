@@ -79,7 +79,7 @@ export default async function LocaleLayout({
           {dictionary?.common?.skipToContent ?? 'Skip to main content'}
         </a>
         <Providers>
-          <DictionaryProvider dictionary={dictionary}>
+          <DictionaryProvider lang={lang}>
             {children}
             <Toaster richColors />
             <CookieBanner />
