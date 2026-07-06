@@ -72,6 +72,19 @@ export default async function LocaleLayout({
       <body
         className={`${isRTL ? rubik.className : inter.className} ${inter.variable} ${rubik.variable} antialiased`}
       >
+        {/* Pre-paint consent gate: the cookie banner is part of the server
+            HTML so it paints with the page (a post-hydration mount made it
+            the LCP element at ~10s on slow phones). This parser-blocking
+            pair hides it before first paint for visitors who already chose —
+            no flash in either direction. <html> carries
+            suppressHydrationWarning, so the stamped attribute is benign. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(document.cookie.indexOf('cookieConsent=')!==-1)document.documentElement.setAttribute('data-consent','1')}catch(e){}",
+          }}
+        />
+        <style>{`html[data-consent="1"] [data-cookie-banner]{display:none}`}</style>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background focus:text-foreground focus:border focus:border-border focus:rounded-md focus:m-2"

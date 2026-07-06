@@ -31,11 +31,18 @@ export function CookieBanner() {
   const dict = useDictionary();
   const { locale } = useLocale();
   const t = (dict.cookieConsent as Record<string, string> | undefined) ?? {};
-  const [open, setOpen] = useState(false);
+  // Open by default so the banner is part of the server HTML and paints with
+  // the page's first paint — as a client-gated mount it only appeared after
+  // full hydration (~10s on a slow phone) and, being the largest text block,
+  // set the page's measured LCP to that moment. Visitors who already
+  // consented never see it: the layout's inline pre-paint script stamps
+  // `data-consent` on <html> and a CSS rule display:nones the banner before
+  // anything renders; the effect below then unmounts it for real.
+  const [open, setOpen] = useState(true);
 
   useEffect(() => {
     const existing = readCookie(COOKIE_KEY);
-    if (!existing) setOpen(true);
+    if (existing) setOpen(false);
   }, []);
 
   const decide = (choice: Choice) => {
@@ -51,9 +58,13 @@ export function CookieBanner() {
   const parts = desc.split("{policyLink}");
 
   return (
-    <AnimatePresence>
+    // initial={false}: the banner is already in the server HTML — animating it
+    // in at hydration would blink content that has been visible for seconds.
+    // Exit (after a choice) still animates.
+    <AnimatePresence initial={false}>
       {open && (
         <motion.div
+          data-cookie-banner
           initial={{ opacity: 0, y: 50, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
