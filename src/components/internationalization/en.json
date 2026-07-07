@@ -143,6 +143,18 @@
     "thinking": "I'm thinking..."
   },
   "common": {
+    "a11y": {
+      "previousSlide": "Previous slide",
+      "nextSlide": "Next slide",
+      "close": "Close",
+      "sidebar": "Sidebar",
+      "sidebarDescription": "Displays the mobile sidebar.",
+      "toggleSidebar": "Toggle Sidebar"
+    },
+    "imageUpload": {
+      "uploadedImages": "Uploaded Images ({count})",
+      "imageAlt": "Upload {number}"
+    },
     "loading": "Loading...",
     "error": "Something went wrong",
     "success": "Success",
@@ -197,7 +209,9 @@
     "signIn": "Login",
     "signUp": "Sign Up",
     "logout": "Logout",
-    "currency": "SDG"
+    "currency": "SDG",
+    "mainMenu": "Main menu",
+    "wavingHostAlt": "Host waving"
   },
   "booking": {
     "checkIn": "Check-in",
@@ -248,6 +262,15 @@
     "couldNotCancel": "Could not cancel"
   },
   "auth": {
+    "userInfo": {
+      "id": "ID",
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "twoFactor": "2FA",
+      "on": "ON",
+      "off": "OFF"
+    },
     "signIn": "Login",
     "signUp": "Sign Up",
     "signOut": "Logout",
@@ -1217,6 +1240,7 @@
       "reviews": "Reviews",
       "rating": "Rating",
       "monthsHosting": "Months hosting",
+      "yearsHosting": "Years hosting",
       "months": "Months",
       "myWork": "My work: Architect",
       "speaksLanguages": "Speaks Arabic and English",
@@ -1270,7 +1294,14 @@
       "heading": "What guests are saying",
       "subhead": "Read reviews from recent guests",
       "empty": "No reviews yet — be the first to share your experience.",
-      "learnMore": "Learn how reviews work"
+      "learnMore": "Learn how reviews work",
+      "reviewsCount": "{n} reviews",
+      "guestFavorite": "Guest favorite",
+      "guestFavoriteDesc": "This home is a guest favorite based on ratings, reviews, and reliability",
+      "overallRating": "Overall rating",
+      "showAll": "Show all {n} reviews",
+      "onAirbnb": "Guest on Mkan",
+      "guestAuthor": "Guest"
     }
   },
   "dashboard": {
@@ -1285,7 +1316,8 @@
       "publish": "Publish",
       "unpublish": "Unpublish",
       "manage": "Manage",
-      "view": "View"
+      "view": "View",
+      "noManagedProperties": "You don't manage any properties"
     },
     "applications": {
       "title": "Applications",
@@ -1467,7 +1499,31 @@
       "state": "State",
       "postalCode": "Postal Code",
       "country": "Country",
-      "createProperty": "Create Property"
+      "createProperty": "Create Property",
+      "formTitle": "Create New Property Listing",
+      "fillTestData": "Fill Test Data",
+      "resetForm": "Reset Form",
+      "monthlyRent": "Monthly Rent",
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "selectType": "Select type",
+      "location": "Location",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "addPhotoUrl": "Add Photo URL",
+      "fixErrors": "Please fix the following errors:",
+      "creating": "Creating...",
+      "createSuccess": "Property created successfully!",
+      "createFailed": "Property creation failed - no success response",
+      "createError": "Failed to create property: {error}",
+      "unknownError": "Unknown error",
+      "namePlaceholder": "Beautiful Downtown Apartment",
+      "descriptionPlaceholder": "Describe your property...",
+      "addressPlaceholder": "123 Main Street",
+      "cityPlaceholder": "Los Angeles",
+      "statePlaceholder": "CA",
+      "countryPlaceholder": "United States",
+      "photoUrlPlaceholder": "https://example.com/photo.jpg"
     },
     "sidebar": {
       "properties": "Properties",
@@ -1593,7 +1649,7 @@
       "title": "My Trips",
       "subtitle": "View and manage all your bookings",
       "stays": "Stays",
-      "transport": "Transport",
+      "transport": "Travel",
       "rentalStays": "Rental Stays",
       "rentalStaysSubtitle": "Your property rental bookings",
       "noRentalStays": "No rental stays yet",
@@ -1864,7 +1920,9 @@
         "smokeAlarm": "Smoke alarm",
         "firstAidKit": "First aid kit",
         "fireExtinguisher": "Fire extinguisher",
-        "carbonMonoxideAlarm": "Carbon monoxide alarm"
+        "carbonMonoxideAlarm": "Carbon monoxide alarm",
+        "prevSection": "Previous section",
+        "nextSection": "Next section"
       },
       "description": {
         "highlightsTitle": "Next, let's describe your house",
@@ -1931,7 +1989,9 @@
         "subtitle": "You'll need 5 photos to get started. You can add more or make changes later.",
         "uploading": "Uploading...",
         "addPhotos": "Add photos",
-        "uploadFailed": "Upload failed"
+        "uploadFailed": "Upload failed",
+        "photoAlt": "Photo {number}",
+        "cameraAlt": "Camera"
       },
       "price": {
         "title": "Now, set a base price",
@@ -1999,8 +2059,10 @@
         "giftCards": "Gift cards",
         "helpCenter": "Visit the Help Center",
         "account": "Account",
-        "logout": "Log out"
-      }
+        "logout": "Log out",
+        "close": "Close"
+      },
+      "avatarAlt": "Avatar"
     },
     "content": {
       "today": "Today",
@@ -2080,7 +2142,9 @@
       "total": "Total",
       "changeView": "Change calendar view",
       "settings": "Settings",
-      "chooseListing": "Choose a listing"
+      "chooseListing": "Choose a listing",
+      "listingCount": "1 listing",
+      "listingsCount": "{n} listings"
     },
     "messages": {
       "title": "Messages",
@@ -2104,14 +2168,17 @@
       "traveling": "Traveling",
       "support": "Support",
       "emptyTraveling": "Messages from your trips will appear here.",
-      "emptySupport": "Messages with support will appear here."
+      "emptySupport": "Messages with support will appear here.",
+      "filters": "Filters",
+      "attach": "Attach"
     },
     "nav": {
       "today": "Today",
       "calendar": "Calendar",
       "listings": "Listings",
       "messages": "Messages",
-      "menu": "Menu"
+      "menu": "Menu",
+      "ariaLabel": "Hosting"
     },
     "menuPage": {
       "title": "Menu",
@@ -2156,6 +2223,24 @@
       "position": "Position",
       "monthlyIncome": "Monthly Income",
       "message": "Additional Message"
+    },
+    "card": {
+      "locationNotSpecified": "Location not specified",
+      "status": "Status",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "leaseId": "Lease ID",
+      "tenant": "Tenant",
+      "manager": "Manager"
+    },
+    "statusButtons": {
+      "approvedSuccess": "Application approved successfully!",
+      "deniedSuccess": "Application denied successfully!",
+      "updateError": "Failed to update application status",
+      "updating": "Updating...",
+      "approve": "Approve",
+      "deny": "Deny",
+      "contactUser": "Contact User"
     }
   },
   "settings": {
@@ -2185,15 +2270,30 @@
       "minLength": "Minimum {min} characters",
       "maxLength": "Maximum {max} characters",
       "invalidFormat": "Invalid format"
-    }
+    },
+    "removeItem": "Remove item",
+    "addItem": "Add Item"
   },
-  "transport": {
-    "title": "Transportation",
+  "travel": {
+    "title": "Travel",
     "subtitle": "Book intercity bus tickets",
+    "listings": {
+      "title": "Browse trips",
+      "subtitle": "Browse upcoming intercity bus trips across Sudan",
+      "count": "{count} upcoming trips",
+      "empty": "No upcoming trips",
+      "emptyHint": "There are no upcoming trips right now. Check back soon.",
+      "backToTravel": "Back to travel",
+      "loadingMore": "Loading more..."
+    },
+    "logoCarousel": {
+      "opensInNewTab": "{name} (opens in new tab)",
+      "operators": "Trusted transport operators on Mkan"
+    },
     "hero": {
-      "title": "Travel Between Cities in Sudan",
-      "titleLine1": "Travel Between",
-      "titleLine2": "Cities in Sudan",
+      "title": "Book unique\nadventures and\ntickets.",
+      "titleLine1": "Book unique",
+      "titleLine2": "adventures and\ntickets.",
       "subtitle": "Book your bus tickets online. Choose your seat, pay securely, and receive your e-ticket instantly.",
       "badge": "Intercity Bus Booking"
     },
@@ -2230,6 +2330,11 @@
       "date": "Travel Date",
       "search": "Search Trips",
       "swap": "Swap cities",
+      "whereTo": "Where to?",
+      "anywhere": "Anywhere",
+      "anyDate": "Any date",
+      "seats": "seats",
+      "seat": "seat",
       "where": "Where",
       "when": "When",
       "passengers": "Guests",
@@ -2359,7 +2464,8 @@
       "showcaseTitle": "Your Digital Ticket",
       "showcaseSubtitle": "Book online and receive your e-ticket instantly with QR code for easy boarding.",
       "office": "Transport Office",
-      "assemblyPoint": "Assembly Point"
+      "assemblyPoint": "Assembly Point",
+      "qrAlt": "Ticket QR Code"
     },
     "trip": {
       "selectSeats": "Select Seats",
@@ -2445,6 +2551,13 @@
       "bookings": "Bookings",
       "analytics": "Analytics",
       "settings": "Settings",
+      "schedule": {
+        "previousWeek": "Previous week",
+        "nextWeek": "Next week",
+        "booking": "booking",
+        "bookings": "bookings",
+        "deleteTrip": "Delete trip"
+      },
       "stats": {
         "totalBookings": "Total Bookings",
         "revenue": "Revenue",
@@ -2571,12 +2684,16 @@
       "editBus": "Edit Bus",
       "addNewBus": "Add New Bus",
       "plateNumber": "Plate Number",
+      "plateNumberPlaceholder": "e.g., ABC 1234",
       "manufacturer": "Manufacturer",
+      "manufacturerPlaceholder": "e.g., Mercedes",
       "model": "Model",
+      "modelPlaceholder": "e.g., Travego",
       "year": "Year",
       "capacity": "Capacity",
       "amenities": "Amenities",
       "saveChanges": "Save Changes",
+      "deleteBus": "Delete bus",
       "seats": "seats",
       "more": "more",
       "noBusesYet": "No buses added yet",
@@ -2593,6 +2710,10 @@
       "basePriceSDG": "Base Price (SDG)",
       "durationMinutes": "Duration (minutes)",
       "distanceKm": "Distance (km)",
+      "km": "km",
+      "deleteRoute": "Delete route",
+      "tip": "Tip:",
+      "deleteTrip": "Delete trip",
       "noRoutesYet": "No routes added yet",
       "addAtLeastOneRoute": "Add at least one route to continue",
       "setupSchedule": "Set up your schedule",
@@ -2668,7 +2789,8 @@
       "passengerLabel": "Passenger",
       "seatLabel": "Seat(s)",
       "busLabel": "Bus",
-      "totalLabel": "Total"
+      "totalLabel": "Total",
+      "qrAlt": "Ticket QR Code"
     },
     "bookingPage": {
       "dateLabel": "Date",
@@ -2682,9 +2804,9 @@
       "paymentFailed": "Payment failed. Please try again."
     },
     "meta": {
-      "title": "Bus Transport",
+      "title": "Bus Travel",
       "description": "Book intercity bus trips across Sudan",
-      "searchTitle": "Transport Search",
+      "searchTitle": "Travel Search",
       "searchDescription": "Search for available transport trips",
       "checkoutTitle": "Checkout",
       "checkoutDescription": "Complete your booking and pay",
@@ -2746,7 +2868,10 @@
           "content": "The seat picker shows exactly which seats are free. I always book the front row. No more arriving at 4 AM to get a good seat.",
           "rating": 5
         }
-      ]
+      ],
+      "previous": "Previous testimonial",
+      "next": "Next testimonial",
+      "goTo": "Go to testimonial {number}"
     },
     "ticketShowcase": {
       "route": "Khartoum → Port Sudan",
@@ -2764,7 +2889,9 @@
       "placeLabel": "Boarding Point",
       "ticketIdLabel": "Ticket ID",
       "share": "Share",
-      "download": "Download Ticket"
+      "download": "Download Ticket",
+      "busImageAlt": "Bus transport",
+      "qrAlt": "QR Code"
     },
     "bookingFailedRetry": "Failed to create booking. Please try again."
   },
@@ -2956,6 +3083,14 @@
     }
   },
   "search": {
+    "map": {
+      "viewOnGoogleMaps": "View on Google Maps",
+      "findPlace": "Find a place on the map",
+      "showFullscreen": "Show fullscreen map",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "unavailable": "Map unavailable — set NEXT_PUBLIC_MAPBOX_TOKEN"
+    },
     "location": "Location",
     "where": "Where",
     "when": "When",
@@ -3066,7 +3201,12 @@
     "tomorrow": "Tomorrow",
     "thisWeekend": "This weekend",
     "chooseServiceType": "Choose a service type",
-    "clearAll": "Clear all"
+    "clearAll": "Clear all",
+    "openSearch": "Open search",
+    "selectDates": "Select dates",
+    "previousMonths": "Previous months",
+    "nextMonths": "Next months",
+    "searchCategories": "Search categories"
   },
   "filters": {
     "allFilters": "All Filters",
@@ -3107,8 +3247,41 @@
     "failedToLoad": "Failed to fetch properties",
     "perMonth": "/month",
     "month": "month",
+    "loadingMore": "Loading more...",
     "pagination": {
       "pageOf": "Page {current} of {total}"
+    },
+    "detail": {
+      "propertyImageAlt": "Property image {number}",
+      "saveToWishlist": "Save to wishlist",
+      "showingPhotoOf": "Showing photo {current} of {total}",
+      "ratedOutOf5": "Rated {rating} out of 5 stars.",
+      "guestFavoriteListing": "Guest Favorite Listing.",
+      "ratedFromReviews": "Rated {rating} out of 5 stars from {count} reviews.",
+      "superhostAria": "{name} is a superhost. Learn more about {name}.",
+      "viewProfileAria": "View {name}'s profile.",
+      "hostProfilePicture": "Host profile picture"
+    },
+    "photoTour": {
+      "heading": "Photo tour",
+      "photoAlt": "{label} photo {number}"
+    },
+    "thingsToKnow": {
+      "checkInAfter": "Check-in after 3:00 PM",
+      "checkoutBefore": "Checkout before 11:00 AM",
+      "guestsMaximum": "{count} guests maximum",
+      "petsAllowed": "Pets allowed",
+      "noPets": "No pets",
+      "carbonMonoxideAlarmNotReported": "Carbon monoxide alarm not reported",
+      "smokeAlarm": "Smoke alarm",
+      "exteriorCameras": "Exterior security cameras on property",
+      "freeCancellationBeforeCheckIn": "Free cancellation before check-in.",
+      "reviewFullPolicy": "Review the Host's full cancellation policy which applies even if you cancel for illness or disruptions.",
+      "showMore": "Show more",
+      "heading": "Things to know",
+      "houseRules": "House rules",
+      "safetyProperty": "Safety & property",
+      "cancellationPolicy": "Cancellation policy"
     }
   },
   "landing": {
@@ -3161,9 +3334,63 @@
       "privacyPolicy": "Privacy Policy",
       "termsOfService": "Terms of Service",
       "cookiePolicy": "Cookie Policy"
+    },
+    "demo": {
+      "title": "Luxury Downtown"
     }
   },
   "host": {
+    "header": {
+      "help": "Help",
+      "saveProgress": "Save progress"
+    },
+    "aboutPlace": {
+      "typeLabel": "What type of place will you host?"
+    },
+    "amenities": {
+      "description": "Choose all that apply. You can add more amenities after you publish your listing.",
+      "essential": "Essential",
+      "features": "Features",
+      "selectedCount": "{count} amenities selected"
+    },
+    "description": {
+      "placeholder": "Describe your space, what makes it unique, what guests will love about it, and what's nearby...",
+      "tip1": "Mention what makes your place special",
+      "tip2": "Describe the space and amenities",
+      "tip3": "Highlight the neighborhood"
+    },
+    "floorPlan": {
+      "bedroomsDesc": "How many bedrooms can guests use?",
+      "bathroomsDesc": "How many bathrooms can guests use?",
+      "guestsDesc": "How many guests can your place accommodate?"
+    },
+    "photos": {
+      "label": "Add some photos of your place",
+      "description": "You'll need at least 1 photo to get started. You can add more or make changes later.",
+      "urlPlaceholder": "https://example.com/photo.jpg",
+      "addSample": "Add sample photos for demo",
+      "photoAlt": "Photo {number}",
+      "firstPhotoPrompt": "Add your first photo to get started",
+      "photoCount": "{count}/30 photos",
+      "readyToContinue": "Ready to continue",
+      "addAtLeastOne": "Add at least 1 photo"
+    },
+    "price": {
+      "baseLabel": "Base price per night",
+      "baseDescription": "This is your base price. You can adjust it for specific dates or seasons.",
+      "depositLabel": "Security deposit (optional)",
+      "depositDescription": "A refundable amount to cover potential damages.",
+      "feeLabel": "Application fee (optional)",
+      "feeDescription": "A one-time fee for processing applications.",
+      "breakdownTitle": "Price breakdown",
+      "deposit": "Security deposit",
+      "fee": "Application fee",
+      "total": "Total for 1 night"
+    },
+    "title": {
+      "placeholder": "Bright, cozy apartment with great view",
+      "hint": "Great titles are short and memorable"
+    },
     "location": {
       "streetAddress": "Street address",
       "streetAddressPlaceholder": "123 Main Street",
@@ -3218,7 +3445,8 @@
     },
     "stepNavigation": {
       "next": "Next",
-      "back": "Back"
+      "back": "Back",
+      "saving": "Saving..."
     },
     "stepHeader": {
       "step": "Step {number}"
@@ -3353,6 +3581,9 @@
     "publishOffice": "Publish office",
     "getStarted": "Get started",
     "headline": "It's easy to get started on Mkan",
+    "saveProgress": "Save progress",
+    "headlineLine1": "It's easy to get started",
+    "headlineLine2": "on Mkan",
     "steps": {
       "tellAboutPlace": {
         "title": "Tell us about your place",
@@ -3386,7 +3617,7 @@
     "overview": "Overview",
     "users": "Users",
     "homes": "Homes",
-    "transport": "Transport",
+    "transport": "Travel",
     "bookings": "Bookings",
     "payments": "Payments",
     "settings": "Settings",
@@ -3479,7 +3710,7 @@
     "description": "Description",
     "assemblyPoint": "Assembly point",
     "tabHomes": "Homes",
-    "tabTransport": "Transport",
+    "tabTransport": "Travel",
     "guest": "Guest",
     "checkIn": "Check in",
     "checkOut": "Check out",
@@ -3521,7 +3752,10 @@
     "unverifyOffice": "Remove verification",
     "verifying": "Working...",
     "officeVerifiedToast": "Office verified — now visible in public search",
-    "officeUnverifiedToast": "Verification removed — hidden from public search"
+    "officeUnverifiedToast": "Verification removed — hidden from public search",
+    "settingsCurrenciesPlaceholder": "SDG,USD,SAR",
+    "settingsEmailFromPlaceholder": "hello@mkan.databayt.org",
+    "settingsSupportEmailPlaceholder": "support@mkan.databayt.org"
   },
   "listingEditor": {
     "finishSetup": {
@@ -3548,7 +3782,9 @@
       "next": "Next",
       "save": "Save",
       "back": "Back",
-      "remove": "Remove"
+      "remove": "Remove",
+      "savedToast": "Changes saved",
+      "saveFailedToast": "Could not save changes"
     },
     "title": {
       "heading": "Now, let's give your place a title",
@@ -3916,7 +4152,8 @@
       "addPhotos": "Add photos",
       "photosCount": "{count} photos",
       "coverPhoto": "Cover photo",
-      "uploading": "Uploading…"
+      "uploading": "Uploading…",
+      "removePhoto": "Remove photo"
     },
     "checkInMethod": {
       "heading": "Check-in method",
@@ -4082,7 +4319,17 @@
       "off": "Off",
       "save": "Save",
       "saving": "Saving…",
-      "valueNightStay": "{min}–{max} night stay"
+      "valueNightStay": "{min}–{max} night stay",
+      "settings": "Settings"
+    },
+    "placeholder": {
+      "configTitle": "{title} Configuration",
+      "intro": "Configure your {title} settings for this listing.",
+      "fromSection": "From this section you can:",
+      "li1": "Configure {title} settings",
+      "li2": "Save and update your preferences",
+      "li3": "Preview how it appears to guests",
+      "li4": "Get recommendations and tips"
     }
   },
   "atom": {
@@ -4224,7 +4471,8 @@
     },
     "iconLabels": {
       "listView": "Change to List view",
-      "gridView": "Change to grid view"
+      "gridView": "Change to grid view",
+      "identityVerified": "Identity verified"
     },
     "modal": {
       "closeModal": "Close modal"
@@ -4358,6 +4606,46 @@
       "noPropertiesTitle": "No properties found",
       "noPropertiesDescription": "Try adjusting your search filters to see more results.",
       "perMonth": "/month"
+    },
+    "verifyListing": {
+      "backToEditor": "Back to listing editor",
+      "completedBadge": "{completed}/{total} completed",
+      "subtitle": "Finish these steps to publish your listing and start welcoming guests.",
+      "completedLabel": "Completed",
+      "readyTitle": "Ready to publish?",
+      "readyBody": "Once you complete all required steps, you can publish your listing and start receiving bookings.",
+      "steps": {
+        "addPhotos": {
+          "title": "Add at least 5 photos",
+          "description": "Show guests what your place looks like",
+          "action": "Add photos"
+        },
+        "addTitle": {
+          "title": "Create a title",
+          "description": "Help guests find your listing",
+          "action": "Add title"
+        },
+        "addDescription": {
+          "title": "Write a description",
+          "description": "Share what makes your place special",
+          "action": "Add description"
+        },
+        "setPrice": {
+          "title": "Set your price",
+          "description": "Decide how much to charge per night",
+          "action": "Set price"
+        },
+        "checkInInstructions": {
+          "title": "Add check-in instructions",
+          "description": "Help guests access your place",
+          "action": "Add instructions"
+        },
+        "verifyPhone": {
+          "title": "Verify your phone number",
+          "description": "Required for account security",
+          "action": "Verify"
+        }
+      }
     }
   },
   "transportHost": {

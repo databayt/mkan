@@ -138,7 +138,7 @@ import {
   validateTicket,
   getOfficeDashboardStats,
   updateBookingStatus,
-} from "@/lib/actions/transport-actions";
+} from "@/lib/actions/travel-actions";
 
 const mockAuth = vi.mocked(auth);
 const mockDb = vi.mocked(db);

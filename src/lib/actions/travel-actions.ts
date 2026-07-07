@@ -29,7 +29,7 @@ import {
   tripSchema,
   bookingSchema as transportBookingSchema,
   paymentSchema as transportPaymentSchema,
-} from '@/lib/schemas/transport-schemas';
+} from '@/lib/schemas/travel-schemas';
 import type {
   TransportOfficeFormData,
   TransportOfficeDraftData,
@@ -38,7 +38,7 @@ import type {
   TripFormData,
   BookingFormData,
   PaymentFormData,
-} from '@/lib/schemas/transport-schemas';
+} from '@/lib/schemas/travel-schemas';
 import { sanitizeInput, sanitizeEmail, sanitizePhone } from "@/lib/sanitization";
 import { logger } from "@/lib/logger";
 import { getStripe } from "@/lib/stripe";
@@ -126,7 +126,7 @@ export async function createTransportOffice(data: unknown) {
     },
   });
 
-  revalidatePath('/[lang]/transport-host');
+  revalidatePath('/[lang]/travel-host');
   return { success: true, office };
 }
 
@@ -165,7 +165,7 @@ export async function updateTransportOffice(
     data: parsed.data,
   });
 
-  revalidatePath('/[lang]/transport-host');
+  revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
   return { success: true, office };
 }
@@ -225,8 +225,8 @@ export async function publishOffice(id: number) {
     data: { isActive: true },
   });
 
-  revalidatePath('/[lang]/transport');
-  revalidatePath('/[lang]/transport-host');
+  revalidatePath('/[lang]/travel');
+  revalidatePath('/[lang]/travel-host');
   return { success: true, office };
 }
 
@@ -302,7 +302,7 @@ export async function createBus(data: BusFormData & { officeId: number }) {
     },
   });
 
-  revalidatePath('/[lang]/transport-host');
+  revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
   return bus;
 }
@@ -339,7 +339,7 @@ export async function updateBus(id: unknown, data: unknown) {
     data: parsed.data,
   });
 
-  revalidatePath('/[lang]/transport-host');
+  revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
   return bus;
 }
@@ -370,7 +370,7 @@ export async function deleteBus(id: unknown) {
     where: { id: parsedId.data },
   });
 
-  revalidatePath('/[lang]/transport-host');
+  revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
   return { success: true };
 }
@@ -418,7 +418,7 @@ export async function createRoute(data: RouteFormData & { officeId: number }) {
     },
   });
 
-  revalidatePath('/[lang]/transport-host');
+  revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
   return route;
 }
@@ -459,7 +459,7 @@ export async function updateRoute(id: unknown, data: unknown) {
     },
   });
 
-  revalidatePath('/[lang]/transport-host');
+  revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
   return route;
 }
@@ -490,7 +490,7 @@ export async function deleteRoute(id: unknown) {
     where: { id: parsedId.data },
   });
 
-  revalidatePath('/[lang]/transport-host');
+  revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
   return { success: true };
 }
@@ -518,7 +518,7 @@ const searchTripsInput = z.object({
   destinationId: z.coerce.number().int().positive().optional(),
   origin: z.string().trim().min(1).optional(),
   destination: z.string().trim().min(1).optional(),
-  date: z.coerce.date(),
+  date: z.coerce.date().optional(),
   when: z.enum(['morning', 'afternoon', 'evening', 'night']).optional(),
   priceMin: z.coerce.number().nonnegative().optional(),
   priceMax: z.coerce.number().nonnegative().optional(),
@@ -554,10 +554,8 @@ function whenClause(
 }
 
 function buildTripWhere(input: SearchTripsInput): Prisma.TripWhereInput {
-  const { gte: dayStart, lt: dayEnd } = dayWindow(input.date);
-
   // Public search must hide unverified operators. Admin can still browse
-  // them via /admin/transport, but a guest never sees their trips.
+  // them via /admin/travel, but a guest never sees their trips.
   const routeFilter: Prisma.RouteWhereInput = {
     isActive: true,
     office: { isVerified: true, isActive: true },
@@ -596,9 +594,17 @@ function buildTripWhere(input: SearchTripsInput): Prisma.TripWhereInput {
   const where: Prisma.TripWhereInput = {
     isActive: true,
     isCancelled: false,
-    departureDate: { gte: dayStart, lt: dayEnd },
     route: routeFilter,
   };
+
+  if (input.date) {
+    const { gte: dayStart, lt: dayEnd } = dayWindow(input.date);
+    where.departureDate = { gte: dayStart, lt: dayEnd };
+  } else {
+    // If no date is provided, show upcoming trips (today onwards)
+    const { gte: dayStart } = dayWindow(new Date());
+    where.departureDate = { gte: dayStart };
+  }
 
   if (input.priceMin != null || input.priceMax != null) {
     where.price = {
@@ -745,6 +751,72 @@ export async function searchTrips(input: unknown) {
 }
 
 export type SearchTripsResult = Awaited<ReturnType<typeof searchTrips>>;
+
+/**
+ * Browse ALL upcoming trips (no origin/destination) for the /travel/listings
+ * grid — the homes-/listings equivalent for buses. Public read; only verified,
+ * active operators surface. Same `include` shape as searchTrips so `TripCard`
+ * renders the rows unchanged. Paginated for the infinite-scroll client.
+ */
+export async function browseTrips(input: { page?: number; limit?: number } = {}) {
+  const page = Math.max(1, input.page ?? 1);
+  const limit = Math.min(50, Math.max(1, input.limit ?? 20));
+  // Start-of-today (Khartoum) onward — today's not-yet-departed trips still show.
+  const { gte } = dayWindow(new Date());
+
+  const where: Prisma.TripWhereInput = {
+    isActive: true,
+    isCancelled: false,
+    departureDate: { gte },
+    route: { isActive: true, office: { isVerified: true, isActive: true } },
+  };
+
+  const [total, trips] = await Promise.all([
+    db.trip.count({ where }),
+    db.trip.findMany({
+      where,
+      // `id` is the stable tiebreaker: many trips share a departureDate +
+      // departureTime, and without it Postgres returns ties in an arbitrary
+      // order that shifts between the page-1 and page-2 queries — overlapping
+      // pages (and silently skipping trips) under infinite scroll.
+      orderBy: [{ departureDate: 'asc' }, { departureTime: 'asc' }, { id: 'asc' }],
+      take: limit,
+      skip: (page - 1) * limit,
+      include: {
+        route: {
+          include: {
+            origin: true,
+            destination: true,
+            office: { include: { assemblyPoint: true } },
+          },
+        },
+        bus: {
+          select: {
+            id: true,
+            plateNumber: true,
+            model: true,
+            manufacturer: true,
+            year: true,
+            capacity: true,
+            photoUrls: true,
+            amenities: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  return {
+    trips,
+    total,
+    page,
+    pageCount: Math.max(1, Math.ceil(total / limit)),
+    limit,
+  };
+}
+
+export type BrowseTripsResult = Awaited<ReturnType<typeof browseTrips>>;
+export type BrowseTripRow = BrowseTripsResult['trips'][number];
 
 /**
  * Legacy signature retained for backwards-compat with existing callers.
@@ -972,7 +1044,7 @@ export async function createTrip(data: TripFormData) {
     data: seats.slice(0, bus.capacity),
   });
 
-  revalidatePath('/[lang]/transport-host');
+  revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
   return trip;
 }
@@ -1025,7 +1097,7 @@ export async function updateTrip(id: number, data: Partial<TripFormData>) {
     data,
   });
 
-  revalidatePath('/[lang]/transport-host');
+  revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
   return { success: true, trip };
 }
@@ -1093,7 +1165,7 @@ export async function cancelTrip(id: number) {
       ),
   );
 
-  revalidatePath('/[lang]/transport');
+  revalidatePath('/[lang]/travel');
   revalidatePath('/[lang]/(dashboard)/offices');
   return { success: true, trip, notified: affectedBookings.length };
 }
@@ -1257,7 +1329,7 @@ export async function createBooking(data: unknown) {
     return newBooking;
   });
 
-  revalidatePath('/[lang]/transport');
+  revalidatePath('/[lang]/travel');
   return { success: true, booking };
 }
 
@@ -1295,7 +1367,7 @@ export async function confirmBooking(id: number) {
     data: { status: 'Booked', reservedUntil: null },
   });
 
-  revalidatePath('/[lang]/transport');
+  revalidatePath('/[lang]/travel');
   return { success: true, booking };
 }
 
@@ -1461,7 +1533,7 @@ export async function cancelBooking(id: number) {
     }
   }
 
-  revalidatePath('/[lang]/transport');
+  revalidatePath('/[lang]/travel');
   return { success: true, booking: updatedBooking, refundAmount };
 }
 
@@ -1558,7 +1630,7 @@ export async function getMyBookings(params?: { page?: number; limit?: number; st
           },
         },
         _count: { select: { seats: true } },
-        office: { select: { name: true, phone: true } },
+        office: { select: { name: true, nameAr: true, phone: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip,
@@ -1739,7 +1811,7 @@ export async function processPayment(bookingId: number, data: PaymentFormData) {
     });
   }
 
-  revalidatePath('/[lang]/transport');
+  revalidatePath('/[lang]/travel');
   return { success: true, payment, pendingVerification: data.method !== 'CashOnArrival' };
 }
 
@@ -1777,7 +1849,7 @@ export async function verifyPayment(paymentId: number) {
   // Confirm the booking
   await confirmBooking(payment.bookingId);
 
-  revalidatePath('/[lang]/transport');
+  revalidatePath('/[lang]/travel');
   return { success: true, payment };
 }
 

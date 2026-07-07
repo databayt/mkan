@@ -3,22 +3,22 @@ import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { ArrowLeft, ArrowRight, BusFront } from 'lucide-react';
+import { BusFront } from 'lucide-react';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
-import { SearchWidget } from '@/components/transport/search/search-widget';
-import { FiltersPanel } from '@/components/transport/search/filters-panel';
-import { TripCard } from '@/components/transport/trip/trip-card';
-import { parseSearchParams } from '@/components/transport/search/url-state';
+import TravelSearchHeader from '@/components/travel/search/travel-search-header';
+import { FiltersPanel } from '@/components/travel/search/filters-panel';
+import { TripCard } from '@/components/travel/trip/trip-card';
+import { parseSearchParams } from '@/components/travel/search/url-state';
 import {
   getAssemblyPoints,
   searchTrips,
-} from '@/lib/actions/transport-actions';
+} from '@/lib/actions/travel-actions';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import { createMetadata } from "@/lib/metadata";
 import type { Locale } from '@/components/internationalization/config';
-import { cityLabel } from '@/components/transport/city-names';
+import { cityLabel } from '@/components/travel/city-names';
 import { formatNumber } from '@/lib/i18n/formatters';
 
 export async function generateMetadata({
@@ -28,12 +28,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await params;
   const dict = await getDictionary(lang as Locale);
-  const t = dict?.transport;
+  const t = dict?.travel;
   return createMetadata({
     title: t?.meta?.searchTitle ?? "Transport Search",
     description: t?.meta?.searchDescription ?? "Search for available transport trips",
     locale: lang,
-    path: "/transport/search",
+    path: "/travel/search",
   });
 }
 
@@ -59,14 +59,7 @@ export default async function SearchPage({
   const { lang } = await params;
   const spObject = flatten(await searchParams);
 
-  // Must have origin (id or string) + destination + date
-  const hasOrigin = spObject.originId || spObject.origin;
-  const hasDestination = spObject.destinationId || spObject.destination;
-  if (!hasOrigin || !hasDestination || !spObject.date) {
-    redirect(`/${lang}/transport`);
-  }
-
-  const searchDate = parseISO(spObject.date);
+  const searchDate = spObject.date ? parseISO(spObject.date) : undefined;
 
   const parsed = parseSearchParams(spObject);
 
@@ -91,19 +84,27 @@ export default async function SearchPage({
     getAssemblyPoints(),
   ]);
 
-  const t = dictionary?.transport;
+  const t = dictionary?.travel;
   const { trips, total, page, pageCount, facets } = result;
 
   const dateLocale = lang === 'ar' ? ar : undefined;
 
+  const anywhereLabel = t?.search?.anywhere ?? (lang === 'ar' ? 'أي مكان' : 'Anywhere');
+  const anydateLabel = t?.search?.anyDate ?? (lang === 'ar' ? 'أي تاريخ' : 'Any date');
+
   const originLabel = parsed.originId
     ? assemblyPoints.find((p) => p.id === parsed.originId)?.[lang === 'ar' ? 'nameAr' : 'name']
       ?? cityLabel(parsed.origin ?? '', lang)
-    : cityLabel(parsed.origin ?? '', lang);
+    : parsed.origin
+      ? cityLabel(parsed.origin, lang)
+      : anywhereLabel;
+
   const destinationLabel = parsed.destinationId
     ? assemblyPoints.find((p) => p.id === parsed.destinationId)?.[lang === 'ar' ? 'nameAr' : 'name']
       ?? cityLabel(parsed.destination ?? '', lang)
-    : cityLabel(parsed.destination ?? '', lang);
+    : parsed.destination
+      ? cityLabel(parsed.destination, lang)
+      : anywhereLabel;
 
   // Filter dictionary sourced from the central transport namespace.
   const filterDict = {
@@ -136,49 +137,28 @@ export default async function SearchPage({
     mobileTriggerLabel: t?.search?.filters?.title ?? "Filters",
   };
 
+  const seatsCount = spObject.seats ? Number.parseInt(spObject.seats, 10) || 0 : 0;
+  const searchSummary = {
+    route: `${originLabel} → ${destinationLabel}`,
+    date: searchDate ? format(searchDate, 'MMM d', { locale: dateLocale }) : anydateLabel,
+    passengers:
+      seatsCount > 0
+        ? `${formatNumber(seatsCount, lang)} ${seatsCount > 1 ? (t?.search?.seats ?? 'seats') : (t?.search?.seat ?? 'seat')}`
+        : undefined,
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-4 mb-6">
-            <Link href={`/${lang}/transport`}>
-              <Button variant="ghost" size="icon" aria-label={dictionary?.common?.back ?? "Go back"}>
-                <ArrowLeft className="h-5 w-5 rtl:rotate-180" />
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2 flex-wrap">
-                <span>{originLabel}</span>
-                <ArrowRight className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
-                <span>{destinationLabel}</span>
-              </h1>
-              <p className="text-muted-foreground">
-                {format(searchDate, 'EEEE, MMMM d, yyyy', { locale: dateLocale })}
-              </p>
-            </div>
-          </div>
-
-          {/* Search Widget */}
-          <Suspense fallback={null}>
-            <SearchWidget
-              initialOrigin={parsed.origin ?? originLabel}
-              initialDestination={parsed.destination ?? destinationLabel}
-              initialOriginId={parsed.originId}
-              initialDestinationId={parsed.destinationId}
-              initialDate={searchDate}
-              assemblyPoints={assemblyPoints}
-              dictionary={{
-                from: t?.search?.from ?? "From",
-                to: t?.search?.to ?? "To",
-                date: t?.search?.date ?? "Travel Date",
-                search: t?.search?.search ?? "Search Trips",
-                swap: t?.search?.swap ?? "Swap cities",
-              }}
-            />
-          </Suspense>
-        </div>
-      </div>
+      {/* Search header — homes-style expanding pill (route · date · seats) that
+          blooms into the full TransportBigSearch fields with the same motion. */}
+      <TravelSearchHeader
+        lang={lang}
+        assemblyPoints={assemblyPoints}
+        initialOrigin={parsed.origin ?? originLabel}
+        initialDestination={parsed.destination ?? destinationLabel}
+        initialDate={searchDate}
+        searchSummary={searchSummary}
+      />
 
       {/* Results layout */}
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -239,7 +219,7 @@ export default async function SearchPage({
                 <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                   {t?.search?.noResultsDescription ?? "There are no available trips for this route on the selected date. Try a different date or route."}
                 </p>
-                <Link href={`/${lang}/transport`}>
+                <Link href={`/${lang}/travel`}>
                   <Button>{t?.search?.searchAgain ?? "Search Again"}</Button>
                 </Link>
               </div>
@@ -270,7 +250,7 @@ function Pagination({
       if (v !== undefined && k !== 'page') qs.set(k, v);
     }
     if (p > 1) qs.set('page', String(p));
-    return `/${lang}/transport/search?${qs.toString()}`;
+    return `/${lang}/travel/search?${qs.toString()}`;
   };
 
   return (

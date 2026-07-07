@@ -66,9 +66,9 @@ describe("revalidateTransportOffice", () => {
   it("revalidates transport and transport-host pages", () => {
     revalidateTransportOffice();
 
-    expect(mockRevalidate).toHaveBeenCalledWith("/[lang]/transport", "page");
+    expect(mockRevalidate).toHaveBeenCalledWith("/[lang]/travel", "page");
     expect(mockRevalidate).toHaveBeenCalledWith(
-      "/[lang]/transport-host",
+      "/[lang]/travel-host",
       "page"
     );
   });
@@ -77,15 +77,15 @@ describe("revalidateTransportOffice", () => {
     revalidateTransportOffice(42);
 
     expect(mockRevalidate).toHaveBeenCalledWith(
-      "/[lang]/transport-host/42",
+      "/[lang]/travel-host/42",
       "layout"
     );
     expect(mockRevalidate).toHaveBeenCalledWith(
-      "/[lang]/transport-host/42/overview",
+      "/[lang]/travel-host/42/overview",
       "page"
     );
     expect(mockRevalidate).toHaveBeenCalledWith(
-      "/[lang]/transport-host/42/trips",
+      "/[lang]/travel-host/42/trips",
       "page"
     );
   });
@@ -94,7 +94,7 @@ describe("revalidateTransportOffice", () => {
     revalidateTransportOffice();
 
     expect(mockRevalidate).not.toHaveBeenCalledWith(
-      expect.stringContaining("/transport-host/"),
+      expect.stringContaining("/travel-host/"),
       "layout"
     );
   });
@@ -105,13 +105,13 @@ describe("revalidateTransportTrip", () => {
   it("revalidates transport search and specific trip page", () => {
     revalidateTransportTrip(99);
 
-    expect(mockRevalidate).toHaveBeenCalledWith("/[lang]/transport", "page");
+    expect(mockRevalidate).toHaveBeenCalledWith("/[lang]/travel", "page");
     expect(mockRevalidate).toHaveBeenCalledWith(
-      "/[lang]/transport/search",
+      "/[lang]/travel/search",
       "page"
     );
     expect(mockRevalidate).toHaveBeenCalledWith(
-      "/[lang]/transport/trip/99",
+      "/[lang]/travel/trip/99",
       "page"
     );
   });
@@ -159,7 +159,7 @@ describe("revalidateBookings", () => {
     revalidateBookings("user-1");
 
     expect(mockRevalidate).toHaveBeenCalledWith(
-      "/[lang]/transport/bookings",
+      "/[lang]/travel/bookings",
       "page"
     );
     expect(mockRevalidate).toHaveBeenCalledWith("/[lang]/dashboard", "page");
@@ -169,11 +169,11 @@ describe("revalidateBookings", () => {
     revalidateBookings("user-1", 55);
 
     expect(mockRevalidate).toHaveBeenCalledWith(
-      "/[lang]/transport/trip/55",
+      "/[lang]/travel/trip/55",
       "page"
     );
     expect(mockRevalidate).toHaveBeenCalledWith(
-      "/[lang]/transport/trip/55/seats",
+      "/[lang]/travel/trip/55/seats",
       "page"
     );
   });

@@ -143,6 +143,18 @@
     "thinking": "أنا أفكر..."
   },
   "common": {
+    "a11y": {
+      "previousSlide": "الشريحة السابقة",
+      "nextSlide": "الشريحة التالية",
+      "close": "إغلاق",
+      "sidebar": "الشريط الجانبي",
+      "sidebarDescription": "يعرض الشريط الجانبي للجوال.",
+      "toggleSidebar": "تبديل الشريط الجانبي"
+    },
+    "imageUpload": {
+      "uploadedImages": "الصور المرفوعة ({count})",
+      "imageAlt": "صورة مرفوعة {number}"
+    },
     "loading": "جاري التحميل...",
     "error": "حدث خطأ ما",
     "success": "نجح",
@@ -197,7 +209,9 @@
     "signIn": "تسجيل الدخول",
     "signUp": "إنشاء حساب",
     "logout": "تسجيل الخروج",
-    "currency": "ج.س"
+    "currency": "ج.س",
+    "mainMenu": "القائمة الرئيسية",
+    "wavingHostAlt": "المضِيف يلوح بيده"
   },
   "booking": {
     "checkIn": "الوصول",
@@ -248,6 +262,15 @@
     "couldNotCancel": "تعذّر إلغاء الحجز"
   },
   "auth": {
+    "userInfo": {
+      "id": "الرقم التعريفي",
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "role": "الدور",
+      "twoFactor": "التحقق الثنائي",
+      "on": "مفعل",
+      "off": "معطل"
+    },
     "signIn": "دخول",
     "signUp": "إنشاء حساب",
     "signOut": "خروج",
@@ -1217,6 +1240,7 @@
       "reviews": "تقييمات",
       "rating": "التقييم",
       "monthsHosting": "أشهر الاستضافة",
+      "yearsHosting": "سنوات الاستضافة",
       "months": "أشهر",
       "myWork": "عملي: مهندس معماري",
       "speaksLanguages": "يتحدث العربية والإنجليزية",
@@ -1270,7 +1294,14 @@
       "heading": "ما يقوله الضيوف",
       "subhead": "اقرأ تقييمات الضيوف الأخيرين",
       "empty": "لا توجد تقييمات بعد — كن أول من يشاركها.",
-      "learnMore": "تعرّف على آلية التقييمات"
+      "learnMore": "تعرّف على آلية التقييمات",
+      "reviewsCount": "{n} تقييمات",
+      "guestFavorite": "المفضّل لدى الضيوف",
+      "guestFavoriteDesc": "هذا المنزل من المفضّلة لدى الضيوف بناءً على التقييمات والمراجعات والموثوقية",
+      "overallRating": "التقييم العام",
+      "showAll": "عرض كل التقييمات ({n})",
+      "onAirbnb": "ضيف على مكان",
+      "guestAuthor": "ضيف"
     }
   },
   "dashboard": {
@@ -1285,7 +1316,8 @@
       "publish": "نشر",
       "unpublish": "إلغاء النشر",
       "manage": "إدارة",
-      "view": "عرض"
+      "view": "عرض",
+      "noManagedProperties": "لا تدير أي عقارات"
     },
     "applications": {
       "title": "الطلبات",
@@ -1467,7 +1499,31 @@
       "state": "الولاية",
       "postalCode": "الرمز البريدي",
       "country": "الدولة",
-      "createProperty": "إنشاء العقار"
+      "createProperty": "إنشاء العقار",
+      "formTitle": "إنشاء إعلان عقار جديد",
+      "fillTestData": "تعبئة بيانات تجريبية",
+      "resetForm": "إعادة تعيين النموذج",
+      "monthlyRent": "الإيجار الشهري",
+      "bedrooms": "غرف النوم",
+      "bathrooms": "دورات المياه",
+      "selectType": "اختر النوع",
+      "location": "الموقع",
+      "latitude": "خط العرض",
+      "longitude": "خط الطول",
+      "addPhotoUrl": "إضافة رابط صورة",
+      "fixErrors": "يرجى تصحيح الأخطاء التالية:",
+      "creating": "جارٍ الإنشاء...",
+      "createSuccess": "تم إنشاء العقار بنجاح!",
+      "createFailed": "تعذر إنشاء العقار — لم يصل تأكيد بالنجاح",
+      "createError": "تعذر إنشاء العقار: {error}",
+      "unknownError": "خطأ غير معروف",
+      "namePlaceholder": "شقة جميلة وسط المدينة",
+      "descriptionPlaceholder": "صِف عقارك...",
+      "addressPlaceholder": "123 شارع النيل",
+      "cityPlaceholder": "بورتسودان",
+      "statePlaceholder": "البحر الأحمر",
+      "countryPlaceholder": "السودان",
+      "photoUrlPlaceholder": "https://example.com/photo.jpg"
     },
     "sidebar": {
       "properties": "العقارات",
@@ -1593,7 +1649,7 @@
       "title": "رحلاتي",
       "subtitle": "عرض وإدارة جميع حجوزاتك",
       "stays": "الإقامات",
-      "transport": "النقل",
+      "transport": "السفر",
       "rentalStays": "الإقامات المستأجرة",
       "rentalStaysSubtitle": "حجوزات استئجار العقارات",
       "noRentalStays": "لا توجد إقامات بعد",
@@ -1864,7 +1920,9 @@
         "smokeAlarm": "جهاز إنذار الدخان",
         "firstAidKit": "حقيبة إسعافات أولية",
         "fireExtinguisher": "طفاية حريق",
-        "carbonMonoxideAlarm": "جهاز إنذار أول أكسيد الكربون"
+        "carbonMonoxideAlarm": "جهاز إنذار أول أكسيد الكربون",
+        "prevSection": "القسم السابق",
+        "nextSection": "القسم التالي"
       },
       "description": {
         "highlightsTitle": "بعد ذلك، دعنا نصف منزلك",
@@ -1931,7 +1989,9 @@
         "subtitle": "ستحتاج إلى 5 صور للبدء. يمكنك إضافة المزيد أو إجراء تغييرات لاحقاً.",
         "uploading": "جارٍ الرفع...",
         "addPhotos": "أضف صوراً",
-        "uploadFailed": "فشل رفع الصورة"
+        "uploadFailed": "فشل رفع الصورة",
+        "photoAlt": "الصورة {number}",
+        "cameraAlt": "كاميرا"
       },
       "price": {
         "title": "الآن، حدد سعراً أساسياً",
@@ -1999,8 +2059,10 @@
         "giftCards": "بطاقات الهدايا",
         "helpCenter": "زيارة مركز المساعدة",
         "account": "الحساب",
-        "logout": "تسجيل الخروج"
-      }
+        "logout": "تسجيل الخروج",
+        "close": "إغلاق"
+      },
+      "avatarAlt": "الصورة الرمزية"
     },
     "content": {
       "today": "اليوم",
@@ -2080,7 +2142,9 @@
       "total": "الإجمالي",
       "changeView": "تغيير عرض التقويم",
       "settings": "الإعدادات",
-      "chooseListing": "اختر إعلانًا"
+      "chooseListing": "اختر إعلانًا",
+      "listingCount": "إعلان واحد",
+      "listingsCount": "{n} إعلانات"
     },
     "messages": {
       "title": "الرسائل",
@@ -2104,14 +2168,17 @@
       "traveling": "السفر",
       "support": "الدعم",
       "emptyTraveling": "ستظهر رسائل رحلاتك هنا.",
-      "emptySupport": "ستظهر رسائل الدعم هنا."
+      "emptySupport": "ستظهر رسائل الدعم هنا.",
+      "filters": "عوامل التصفية",
+      "attach": "إرفاق"
     },
     "nav": {
       "today": "اليوم",
       "calendar": "التقويم",
       "listings": "الإعلانات",
       "messages": "الرسائل",
-      "menu": "القائمة"
+      "menu": "القائمة",
+      "ariaLabel": "الاستضافة"
     },
     "menuPage": {
       "title": "القائمة",
@@ -2156,6 +2223,24 @@
       "position": "المنصب",
       "monthlyIncome": "الدخل الشهري",
       "message": "رسالة إضافية"
+    },
+    "card": {
+      "locationNotSpecified": "الموقع غير محدد",
+      "status": "الحالة",
+      "startDate": "تاريخ البدء",
+      "endDate": "تاريخ الانتهاء",
+      "leaseId": "رقم عقد الإيجار",
+      "tenant": "المستأجر",
+      "manager": "المدير"
+    },
+    "statusButtons": {
+      "approvedSuccess": "تمت الموافقة على الطلب بنجاح!",
+      "deniedSuccess": "تم رفض الطلب بنجاح!",
+      "updateError": "تعذر تحديث حالة الطلب",
+      "updating": "جارٍ التحديث...",
+      "approve": "موافقة",
+      "deny": "رفض",
+      "contactUser": "التواصل مع المستخدم"
     }
   },
   "settings": {
@@ -2185,15 +2270,30 @@
       "minLength": "الحد الأدنى {min} أحرف",
       "maxLength": "الحد الأقصى {max} أحرف",
       "invalidFormat": "تنسيق غير صالح"
-    }
+    },
+    "removeItem": "إزالة العنصر",
+    "addItem": "إضافة عنصر"
   },
-  "transport": {
-    "title": "النقل",
+  "travel": {
+    "title": "السفر",
     "subtitle": "احجز تذاكر الباص بين المدن",
+    "listings": {
+      "title": "تصفّح الرحلات",
+      "subtitle": "تصفّح رحلات الحافلات القادمة بين مدن السودان",
+      "count": "{count} رحلة قادمة",
+      "empty": "لا توجد رحلات قادمة",
+      "emptyHint": "لا توجد رحلات قادمة حالياً. تحقّق لاحقاً.",
+      "backToTravel": "العودة إلى السفر",
+      "loadingMore": "جاري تحميل المزيد..."
+    },
+    "logoCarousel": {
+      "opensInNewTab": "{name} (يفتح في علامة تبويب جديدة)",
+      "operators": "شركات النقل الموثوقة على مكان"
+    },
     "hero": {
-      "title": "السفر بين مدن السودان",
-      "titleLine1": "السفر بين",
-      "titleLine2": "مدن السودان",
+      "title": "احجز مغامرات\nوتذاكر\nفريدة",
+      "titleLine1": "احجز مغامرات",
+      "titleLine2": "وتذاكر\nفريدة",
       "subtitle": "احجز تذاكر الباص عبر الإنترنت. اختر مقعدك، ادفع بأمان، واستلم تذكرتك الإلكترونية فوراً.",
       "badge": "حجز الباصات بين المدن"
     },
@@ -2230,6 +2330,11 @@
       "date": "تاريخ السفر",
       "search": "البحث عن رحلات",
       "swap": "تبديل المدن",
+      "whereTo": "إلى أين؟",
+      "anywhere": "أي مكان",
+      "anyDate": "أي تاريخ",
+      "seats": "مقاعد",
+      "seat": "مقعد",
       "where": "إلى أين",
       "when": "متى",
       "passengers": "الضيوف",
@@ -2359,7 +2464,8 @@
       "showcaseTitle": "تذكرتك الرقمية",
       "showcaseSubtitle": "احجز عبر الإنترنت واحصل على تذكرتك الإلكترونية فوراً مع رمز QR لصعود سهل.",
       "office": "مكتب النقل",
-      "assemblyPoint": "نقطة التجمع"
+      "assemblyPoint": "نقطة التجمع",
+      "qrAlt": "رمز استجابة سريعة للذكرة"
     },
     "trip": {
       "selectSeats": "اختر المقاعد",
@@ -2445,6 +2551,13 @@
       "bookings": "الحجوزات",
       "analytics": "التحليلات",
       "settings": "الإعدادات",
+      "schedule": {
+        "previousWeek": "الأسبوع السابق",
+        "nextWeek": "الأسبوع التالي",
+        "booking": "حجز",
+        "bookings": "حجوزات",
+        "deleteTrip": "حذف الرحلة"
+      },
       "stats": {
         "totalBookings": "إجمالي الحجوزات",
         "revenue": "الإيرادات",
@@ -2571,12 +2684,16 @@
       "editBus": "تعديل الباص",
       "addNewBus": "إضافة باص جديد",
       "plateNumber": "رقم اللوحة",
+      "plateNumberPlaceholder": "مثال: أ ب ج 1234",
       "manufacturer": "الشركة المصنعة",
+      "manufacturerPlaceholder": "مثال: مرسيدس",
       "model": "الموديل",
+      "modelPlaceholder": "مثال: ترافيكو",
       "year": "السنة",
       "capacity": "السعة",
       "amenities": "المرافق",
       "saveChanges": "حفظ التغييرات",
+      "deleteBus": "حذف الحافلة",
       "seats": "مقاعد",
       "more": "أخرى",
       "noBusesYet": "لم تُضف باصات بعد",
@@ -2593,6 +2710,10 @@
       "basePriceSDG": "السعر الأساسي (ج.س)",
       "durationMinutes": "المدة (دقائق)",
       "distanceKm": "المسافة (كم)",
+      "km": "كم",
+      "deleteRoute": "حذف المسار",
+      "tip": "نصيحة:",
+      "deleteTrip": "حذف الرحلة",
       "noRoutesYet": "لم تُضف مسارات بعد",
       "addAtLeastOneRoute": "أضف مساراً واحداً على الأقل للمتابعة",
       "setupSchedule": "أنشئ جدول رحلاتك",
@@ -2668,7 +2789,8 @@
       "passengerLabel": "المسافر",
       "seatLabel": "المقعد/المقاعد",
       "busLabel": "الباص",
-      "totalLabel": "الإجمالي"
+      "totalLabel": "الإجمالي",
+      "qrAlt": "رمز استجابة سريعة للذكرة"
     },
     "bookingPage": {
       "dateLabel": "التاريخ",
@@ -2682,9 +2804,9 @@
       "paymentFailed": "فشل الدفع. يرجى المحاولة مرة أخرى."
     },
     "meta": {
-      "title": "النقل البري",
+      "title": "السفر البري",
       "description": "احجز رحلات الحافلات بين المدن السودانية",
-      "searchTitle": "بحث النقل",
+      "searchTitle": "بحث السفر",
       "searchDescription": "ابحث عن رحلات النقل المتاحة",
       "checkoutTitle": "الدفع",
       "checkoutDescription": "أكمل حجزك وادفع",
@@ -2746,7 +2868,10 @@
           "content": "يعرض محدد المقاعد بالضبط أي المقاعد متاحة. أحجز دائماً الصف الأمامي. لا مزيد من الوصول في الرابعة فجراً للحصول على مقعد جيد.",
           "rating": 5
         }
-      ]
+      ],
+      "previous": "الشهادة السابقة",
+      "next": "الشهادة التالية",
+      "goTo": "الذهاب إلى التقييم {number}"
     },
     "ticketShowcase": {
       "route": "الخرطوم → بورتسودان",
@@ -2764,7 +2889,9 @@
       "placeLabel": "نقطة التجمع",
       "ticketIdLabel": "رقم التذكرة",
       "share": "مشاركة",
-      "download": "تحميل التذكرة"
+      "download": "تحميل التذكرة",
+      "busImageAlt": "نقل الحافلات",
+      "qrAlt": "رمز استجابة سريعة"
     },
     "bookingFailedRetry": "تعذّر إنشاء الحجز. يرجى المحاولة مرة أخرى."
   },
@@ -2956,6 +3083,14 @@
     }
   },
   "search": {
+    "map": {
+      "viewOnGoogleMaps": "عرض على خرائط Google",
+      "findPlace": "البحث عن مكان على الخريطة",
+      "showFullscreen": "عرض الخريطة بملء الشاشة",
+      "zoomIn": "تكبير",
+      "zoomOut": "تصغير",
+      "unavailable": "الخريطة غير متوفرة - قم بتعيين NEXT_PUBLIC_MAPBOX_TOKEN"
+    },
     "location": "الموقع",
     "where": "أين",
     "when": "متى",
@@ -3066,7 +3201,12 @@
     "tomorrow": "غداً",
     "thisWeekend": "نهاية هذا الأسبوع",
     "chooseServiceType": "اختر نوع الخدمة",
-    "clearAll": "مسح الكل"
+    "clearAll": "مسح الكل",
+    "openSearch": "فتح البحث",
+    "selectDates": "اختيار التواريخ",
+    "previousMonths": "الأشهر السابقة",
+    "nextMonths": "الأشهر التالية",
+    "searchCategories": "فئات البحث"
   },
   "filters": {
     "allFilters": "جميع الفلاتر",
@@ -3107,8 +3247,41 @@
     "failedToLoad": "فشل تحميل العقارات",
     "perMonth": "/شهر",
     "month": "شهر",
+    "loadingMore": "جاري تحميل المزيد...",
     "pagination": {
       "pageOf": "الصفحة {current} من {total}"
+    },
+    "detail": {
+      "propertyImageAlt": "صورة العقار {number}",
+      "saveToWishlist": "حفظ في المفضلة",
+      "showingPhotoOf": "عرض الصورة {current} من {total}",
+      "ratedOutOf5": "مكيّم بـ {rating} من أصل 5 نجوم.",
+      "guestFavoriteListing": "مفضلة الضيوف.",
+      "ratedFromReviews": "مكيّم بـ {rating} من أصل 5 نجوم من {count} من التقييمات.",
+      "superhostAria": "{name} هو مضيف متميز. تعرف على المزيد حول {name}.",
+      "viewProfileAria": "عرض الملف الشخصي لـ {name}.",
+      "hostProfilePicture": "صورة الملف الشخصي للمضيف"
+    },
+    "photoTour": {
+      "heading": "جولة الصور",
+      "photoAlt": "صورة {label} رقم {number}"
+    },
+    "thingsToKnow": {
+      "checkInAfter": "تسجيل الوصول بعد 3:00 م",
+      "checkoutBefore": "المغادرة قبل 11:00 ص",
+      "guestsMaximum": "الحد الأقصى للضيوف: {count}",
+      "petsAllowed": "مسموح بالحيوانات الأليفة",
+      "noPets": "غير مسموح بالحيوانات الأليفة",
+      "carbonMonoxideAlarmNotReported": "لم يتم الإبلاغ عن وجود جهاز إنذار غاز أحادي أكسيد الكربون",
+      "smokeAlarm": "أجهزة إنذار الدخان",
+      "exteriorCameras": "كاميرات أمنية خارجية في العقار",
+      "freeCancellationBeforeCheckIn": "إلغاء مجاني قبل تسجيل الوصول.",
+      "reviewFullPolicy": "راجع سياسة الإلغاء الكاملة للمضيف والتي تسري حتى لو ألغيت بسبب المرض أو الاضطرابات.",
+      "showMore": "عرض المزيد",
+      "heading": "أشياء يجب معرفتها",
+      "houseRules": "قواعد البيت",
+      "safetyProperty": "السلامة والأمان",
+      "cancellationPolicy": "سياسة الإلغاء"
     }
   },
   "landing": {
@@ -3161,9 +3334,63 @@
       "privacyPolicy": "سياسة الخصوصية",
       "termsOfService": "شروط الخدمة",
       "cookiePolicy": "سياسة ملفات تعريف الارتباط"
+    },
+    "demo": {
+      "title": "إقامة فاخرة وسط المدينة"
     }
   },
   "host": {
+    "header": {
+      "help": "مساعدة",
+      "saveProgress": "حفظ التقدم"
+    },
+    "aboutPlace": {
+      "typeLabel": "ما نوع العقار الذي ستستضيفه؟"
+    },
+    "amenities": {
+      "description": "اختر كل ما ينطبق. يمكنك إضافة المزيد من المرافق بعد نشر إعلانك.",
+      "essential": "أساسي",
+      "features": "الميزات",
+      "selectedCount": "تم اختيار {count} من المرافق"
+    },
+    "description": {
+      "placeholder": "صف مساحتك، ما الذي يجعلها فريدة، ما الذي سيحبه الضيوف فيها، وما القريب منها...",
+      "tip1": "اذكر ما الذي يجعل مكانك مميزاً",
+      "tip2": "صف المساحة والمرافق",
+      "tip3": "سلط الضوء على الحي"
+    },
+    "floorPlan": {
+      "bedroomsDesc": "كم عدد غرف النوم المتاحة للضيوف؟",
+      "bathroomsDesc": "كم عدد دورات المياه المتاحة للضيوف؟",
+      "guestsDesc": "كم عدد الضيوف الذين يمكن أن يتسع لهم مكانك؟"
+    },
+    "photos": {
+      "label": "أضف بعض الصور لمكانك",
+      "description": "ستحتاج إلى صورة واحدة على الأقل للبدء. يمكنك إضافة المزيد أو إجراء تغييرات لاحقاً.",
+      "urlPlaceholder": "https://example.com/photo.jpg",
+      "addSample": "إضافة صور تجريبية للعرض",
+      "photoAlt": "صورة {number}",
+      "firstPhotoPrompt": "أضف صورتك الأولى للبدء",
+      "photoCount": "{count}/30 صور",
+      "readyToContinue": "جاهز للمتابعة",
+      "addAtLeastOne": "أضف صورة واحدة على الأقل"
+    },
+    "price": {
+      "baseLabel": "السعر الأساسي لكل ليلة",
+      "baseDescription": "هذا هو السعر الأساسي الخاص بك. يمكنك تعديله لتواريخ أو مواسم محددة.",
+      "depositLabel": "مبلغ التأمين (اختياري)",
+      "depositDescription": "مبلغ مسترد لتغطية الأضرار المحتملة.",
+      "feeLabel": "رسوم الطلب (اختياري)",
+      "feeDescription": "رسوم تدفع لمرة واحدة لمعالجة الطلبات.",
+      "breakdownTitle": "تفاصيل السعر",
+      "deposit": "مبلغ التأمين",
+      "fee": "رسوم الطلب",
+      "total": "الإجمالي لليلة واحدة"
+    },
+    "title": {
+      "placeholder": "شقة مشرقة ومريحة مع إطلالة رائعة",
+      "hint": "العناوين الرائعة قصيرة وسهلة التذكر"
+    },
     "location": {
       "streetAddress": "عنوان الشارع",
       "streetAddressPlaceholder": "١٢٣ شارع الرئيسي",
@@ -3218,7 +3445,8 @@
     },
     "stepNavigation": {
       "next": "التالي",
-      "back": "السابق"
+      "back": "السابق",
+      "saving": "جاري الحفظ..."
     },
     "stepHeader": {
       "step": "الخطوة {number}"
@@ -3353,6 +3581,9 @@
     "publishOffice": "نشر المكتب",
     "getStarted": "ابدأ الآن",
     "headline": "من السهل البدء على مكان",
+    "saveProgress": "حفظ التقدم",
+    "headlineLine1": "من السهل البدء",
+    "headlineLine2": "على مكان",
     "steps": {
       "tellAboutPlace": {
         "title": "أخبرنا عن مكانك",
@@ -3386,7 +3617,7 @@
     "overview": "نظرة عامة",
     "users": "المستخدمون",
     "homes": "المنازل",
-    "transport": "النقل",
+    "transport": "السفر",
     "bookings": "الحجوزات",
     "payments": "المدفوعات",
     "settings": "الإعدادات",
@@ -3479,7 +3710,7 @@
     "description": "الوصف",
     "assemblyPoint": "نقطة التجمع",
     "tabHomes": "المنازل",
-    "tabTransport": "النقل",
+    "tabTransport": "السفر",
     "guest": "الضيف",
     "checkIn": "تسجيل الدخول",
     "checkOut": "تسجيل الخروج",
@@ -3521,7 +3752,10 @@
     "unverifyOffice": "إزالة التوثيق",
     "verifying": "جارٍ التنفيذ...",
     "officeVerifiedToast": "تم توثيق المكتب — أصبح ظاهراً في البحث العام",
-    "officeUnverifiedToast": "تمت إزالة التوثيق — أصبح مخفياً من البحث العام"
+    "officeUnverifiedToast": "تمت إزالة التوثيق — أصبح مخفياً من البحث العام",
+    "settingsCurrenciesPlaceholder": "SDG,USD,SAR",
+    "settingsEmailFromPlaceholder": "hello@mkan.databayt.org",
+    "settingsSupportEmailPlaceholder": "support@mkan.databayt.org"
   },
   "listingEditor": {
     "finishSetup": {
@@ -3548,7 +3782,9 @@
       "next": "التالي",
       "save": "حفظ",
       "back": "رجوع",
-      "remove": "إزالة"
+      "remove": "إزالة",
+      "savedToast": "تم حفظ التغييرات",
+      "saveFailedToast": "تعذر حفظ التغييرات"
     },
     "title": {
       "heading": "والآن، لنضع عنوانًا لمكانك",
@@ -3916,7 +4152,8 @@
       "addPhotos": "إضافة صور",
       "photosCount": "{count} صور",
       "coverPhoto": "صورة الغلاف",
-      "uploading": "جارٍ الرفع…"
+      "uploading": "جارٍ الرفع…",
+      "removePhoto": "إزالة الصورة"
     },
     "checkInMethod": {
       "heading": "طريقة تسجيل الوصول",
@@ -4082,7 +4319,17 @@
       "off": "معطّل",
       "save": "حفظ",
       "saving": "جارٍ الحفظ…",
-      "valueNightStay": "{min}–{max} ليلة"
+      "valueNightStay": "{min}–{max} ليلة",
+      "settings": "الإعدادات"
+    },
+    "placeholder": {
+      "configTitle": "إعدادات {title}",
+      "intro": "قم بضبط إعدادات {title} لهذا الإعلان.",
+      "fromSection": "من هذا القسم يمكنك:",
+      "li1": "ضبط إعدادات {title}",
+      "li2": "حفظ وتحديث تفضيلاتك",
+      "li3": "معاينة كيف تظهر للضيوف",
+      "li4": "الحصول على توصيات ونصائح"
     }
   },
   "atom": {
@@ -4224,7 +4471,8 @@
     },
     "iconLabels": {
       "listView": "التغيير إلى عرض القائمة",
-      "gridView": "التغيير إلى عرض الشبكة"
+      "gridView": "التغيير إلى عرض الشبكة",
+      "identityVerified": "تم التحقق من الهوية"
     },
     "modal": {
       "closeModal": "إغلاق النافذة"
@@ -4358,6 +4606,46 @@
       "noPropertiesTitle": "لا توجد عقارات",
       "noPropertiesDescription": "حاول تعديل فلاتر البحث لرؤية المزيد من النتائج.",
       "perMonth": "/شهر"
+    },
+    "verifyListing": {
+      "backToEditor": "العودة إلى محرر الإعلان",
+      "completedBadge": "اكتمل {completed} من {total}",
+      "subtitle": "أكمل هذه الخطوات لنشر إعلانك والبدء في استقبال الضيوف.",
+      "completedLabel": "مكتمل",
+      "readyTitle": "هل أنت جاهز للنشر؟",
+      "readyBody": "بمجرد إكمال جميع الخطوات المطلوبة، يمكنك نشر إعلانك والبدء في استقبال الحجوزات.",
+      "steps": {
+        "addPhotos": {
+          "title": "أضف 5 صور على الأقل",
+          "description": "أرِ الضيوف كيف يبدو مكانك",
+          "action": "إضافة صور"
+        },
+        "addTitle": {
+          "title": "أنشئ عنوانًا",
+          "description": "ساعد الضيوف في العثور على إعلانك",
+          "action": "إضافة عنوان"
+        },
+        "addDescription": {
+          "title": "اكتب وصفًا",
+          "description": "شارك ما يميز مكانك",
+          "action": "إضافة وصف"
+        },
+        "setPrice": {
+          "title": "حدد سعرك",
+          "description": "قرر المبلغ الذي تتقاضاه لليلة الواحدة",
+          "action": "تحديد السعر"
+        },
+        "checkInInstructions": {
+          "title": "أضف تعليمات تسجيل الوصول",
+          "description": "ساعد الضيوف في الوصول إلى مكانك",
+          "action": "إضافة التعليمات"
+        },
+        "verifyPhone": {
+          "title": "وثّق رقم هاتفك",
+          "description": "مطلوب لأمان الحساب",
+          "action": "توثيق"
+        }
+      }
     }
   },
   "transportHost": {
