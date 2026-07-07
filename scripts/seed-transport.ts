@@ -1,7 +1,6 @@
-import { config } from 'dotenv';
-config();
+import 'dotenv/config';
 
-import { PrismaClient, BusAmenity, SeatStatus } from '@prisma/client';
+import { BusAmenity, SeatStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import {
   ASSEMBLY_POINTS,
@@ -10,9 +9,8 @@ import {
   CITY_ALIASES,
   type FleetTier,
   type SudanOperatorData,
-} from '../src/lib/constants/transport-data';
-
-const prisma = new PrismaClient();
+} from '../src/lib/constants/travel-data';
+import { db as prisma } from '../src/lib/db';
 
 // ─── Demo constants ──────────────────────────────────────────────────────────
 const DEMO_PASSWORD = '123456';
@@ -425,8 +423,8 @@ async function main() {
   }
   console.log('');
   console.log(`🌐 Test URLs:`);
-  console.log(`   Public search:  /en/transport`);
-  console.log(`   Host dashboard: /en/transport-host`);
+  console.log(`   Public search:  /en/travel`);
+  console.log(`   Host dashboard: /en/travel-host`);
   console.log(`   Demo logins:    /en/dev/credentials`);
 }
 

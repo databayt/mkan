@@ -7,10 +7,10 @@ export const publicRoutes = [
   "/",
   "/listings",
   "/search",
-  "/transport",
-  "/transport/search",
-  "/transport/offices",
-  "/transport/trips",
+  "/travel",
+  "/travel/search",
+  "/travel/offices",
+  "/travel/trips",
   "/accessibility",
   "/cookies",
   "/privacy",
@@ -18,7 +18,7 @@ export const publicRoutes = [
   "/help",
   "/landing",
   "/host",
-  "/transport-host",
+  "/travel-host",
   "/dev/credentials",
   "/new-verification",
 ];
@@ -52,7 +52,7 @@ export const protectedPrefixes = [
   "/offices",
   "/hosting",
   "/host/",
-  "/transport-host/",
+  "/travel-host/",
   "/verify-listing",
 ];
 
