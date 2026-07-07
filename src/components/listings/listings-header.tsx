@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Menu } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useLocale } from "@/components/internationalization/use-locale";
+import { useDictionary } from "@/components/internationalization/use-dictionary";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -127,6 +128,7 @@ interface ListingsHeaderProps {
 const ListingsHeader = ({ disableScrollExpand = false }: ListingsHeaderProps) => {
   const { data: session, status } = useSession();
   const { locale } = useLocale();
+  const dict = useDictionary();
   const labels = dropdownTranslations[locale] || dropdownTranslations.en;
 
   // Signed-in identity drives the right-side cluster: the "Become a host" link
@@ -309,17 +311,15 @@ const ListingsHeader = ({ disableScrollExpand = false }: ListingsHeaderProps) =>
               >
                 <div className="flex items-center gap-2">
                   <Image
-                    src={cdn.product("tent.png")}
-                    alt="Mkan Logo"
+                    src="/logo.svg"
+                    alt={dict?.navigation?.logoAlt ?? "Mkan Logo"}
                     width={20}
                     height={20}
                     className="w-5 h-5"
                   />
                   <div className="text-xl font-bold text-gray-900">
-                    Mk
-                    <span className="font-light hover:text-gray-700 text-gray-600">
-                      an
-                    </span>
+                    {/* i18n-exempt — brand wordmark */}
+                    Mk<span className="font-light hover:text-gray-700 text-gray-600">an</span>
                   </div>
                 </div>
               </Link>
@@ -420,7 +420,7 @@ const ListingsHeader = ({ disableScrollExpand = false }: ListingsHeaderProps) =>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    aria-label="Main navigation menu"
+                    aria-label={dict?.navigation?.mainMenu ?? "Main navigation menu"}
                     className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors cursor-pointer outline-none"
                   >
                     <Menu size={16} className="text-[#222222]" />
@@ -503,7 +503,7 @@ const ListingsHeader = ({ disableScrollExpand = false }: ListingsHeaderProps) =>
                       <div className="relative w-12 h-12 flex-shrink-0">
                         <Image
                           src={cdn.product("images/host_waving.png")}
-                          alt="Waving host"
+                          alt={dict?.navigation?.wavingHostAlt ?? "Waving host"}
                           fill
                           sizes="48px"
                           className="object-contain"

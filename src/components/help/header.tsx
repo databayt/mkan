@@ -1,5 +1,4 @@
 "use client";
-import { cdn } from "@/lib/cdn";
 
 import React from 'react';
 import Link from 'next/link';
@@ -20,7 +19,7 @@ export default function HelpHeader() {
             <Link href="/" className="cursor-pointer hover:text-gray-700" scroll={false}>
               <div className="flex items-center gap-2">
                 <Image
-                  src={cdn.product("tent.png")}
+                  src="/logo.svg"
                   alt={t?.logoAlt ?? "Mkan Logo"}
                   width={20}
                   height={20}

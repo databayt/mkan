@@ -1,5 +1,4 @@
 "use client";
-import { cdn } from "@/lib/cdn";
 
 import React from 'react';
 import Link from 'next/link';
@@ -77,7 +76,7 @@ const HostingHeader = () => {
             <Link href={`/${locale}/hosting`} className="cursor-pointer hover:text-gray-700" scroll={false}>
               <div className="flex items-center gap-2">
                 <Image
-                  src={cdn.product("tent.png")}
+                  src="/logo.svg"
                   alt={header?.logo ?? 'Mkan Logo'}
                   width={20}
                   height={20}
@@ -87,7 +86,7 @@ const HostingHeader = () => {
                   {locale === 'ar' ? (
                     header?.brandName ?? 'مكان'
                   ) : (
-                    <>Mk<span className="font-light hover:text-gray-700 text-gray-600">an</span></>
+                    <>{(header?.brandName ?? 'Mkan').slice(0, 2)}<span className="font-light hover:text-gray-700 text-gray-600">{(header?.brandName ?? 'Mkan').slice(2)}</span></>
                   )}
                 </div>
               </div>
@@ -130,7 +129,7 @@ const HostingHeader = () => {
               className="rounded-full outline-none transition-opacity hover:opacity-90"
             >
               <Avatar className="w-8 h-8">
-                <AvatarImage src={session?.user?.image || ""} alt="Avatar" />
+                <AvatarImage src={session?.user?.image || ""} alt={header?.avatarAlt ?? "Avatar"} />
                 <AvatarFallback className="bg-gray-900 text-white text-sm font-medium">
                   {initial}
                 </AvatarFallback>

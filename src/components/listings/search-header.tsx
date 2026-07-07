@@ -1,5 +1,4 @@
 "use client";
-import { cdn } from "@/lib/cdn";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -8,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { MoreHorizontal, Menu } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useLocale } from '@/components/internationalization/use-locale';
+import { useDictionary } from '@/components/internationalization/use-dictionary';
 import SmallSearch from '@/components/template/search/small-search';
 import { SearchFilters } from '@/components/listings/search-filters';
 import VerticalSearch from '@/components/template/search/vertical-search';
@@ -41,6 +41,7 @@ const SHEET_CLOSE = { duration: 0.38, ease: [0.32, 0.72, 0, 1] as const };
 const SearchHeader = () => {
   const pathname = usePathname();
   const { locale } = useLocale();
+  const dict = useDictionary();
   const isAr = locale === 'ar';
 
   const [isOpen, setIsOpen] = useState(false);
@@ -147,17 +148,15 @@ const SearchHeader = () => {
               <Link href="/" className="cursor-pointer hover:text-gray-700" scroll={false}>
                 <div className="flex items-center gap-2">
                   <Image
-                    src={cdn.product("tent.png")}
-                    alt="Mkan Logo"
+                    src="/logo.svg"
+                    alt={dict?.navigation?.logoAlt ?? "Mkan Logo"}
                     width={20}
                     height={20}
                     className="w-5 h-5"
                   />
                   <div className="text-xl font-bold text-gray-900">
-                    Mk
-                    <span className="font-light hover:text-gray-700 text-gray-600">
-                      an
-                    </span>
+                    {/* i18n-exempt — brand wordmark */}
+                    Mk<span className="font-light hover:text-gray-700 text-gray-600">an</span>
                   </div>
                 </div>
               </Link>

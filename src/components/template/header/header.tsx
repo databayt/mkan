@@ -1,5 +1,4 @@
 "use client";
-import { cdn } from "@/lib/cdn";
 
 import { NAVBAR_HEIGHT } from "@/lib/constants";
 import Image from "next/image";
@@ -34,7 +33,7 @@ const SiteHeader = () => {
     pathname.includes("/managers") || pathname.includes("/tenants") || pathname.includes("/offices");
   // The transport landing overlays this header on its dark hero exactly like
   // the homes landing does, so it gets the same transparent white-text look.
-  const isTransportLanding = /^\/(en|ar)\/transport\/?$/.test(pathname ?? "");
+  const isTransportLanding = /^\/(en|ar)\/travel\/?$/.test(pathname ?? "");
   const isLandingPage = pathname === "/" || pathname === "/en" || pathname === "/ar" || isTransportLanding;
   const currentLocale = pathname.startsWith('/ar') ? 'ar' : 'en';
   const dict = useDictionary();
@@ -74,7 +73,7 @@ const SiteHeader = () => {
           >
             <div className="flex items-center gap-2">
               <Image
-                src={cdn.product("tent.png")}
+                src="/logo.svg"
                 alt={dict.navigation?.logoAlt ?? "Mkan Logo"}
                 width={20}
                 height={20}
@@ -83,9 +82,8 @@ const SiteHeader = () => {
               <div className={`text-xl font-bold ${
                 isLandingPage ? "text-white" : "text-primary-700"
               }`}>
-                {currentLocale === 'ar' ? (dict.navigation?.brandName ?? "مكان") : (<>Mk<span className={`font-light hover:!text-primary-300 ${
-                  isLandingPage ? "text-white" : "text-secondary-500"
-                }`}>an</span></>)}
+                {/* i18n-exempt — brand wordmark */}
+                {currentLocale === 'ar' ? (dict.navigation?.brandName ?? "مكان") : (<>Mk<span className={`font-light hover:!text-primary-300 ${isLandingPage ? "text-white" : "text-secondary-500"}`}>an</span></>)}
               </div>
             </div>
           </Link>

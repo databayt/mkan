@@ -1,5 +1,4 @@
 "use client";
-import { cdn } from "@/lib/cdn";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -28,9 +27,10 @@ export default function MenuPageHeader({ actions, compact }: PageHeaderProps) {
     <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
       <div className="mx-auto flex h-16 max-w-screen-xl items-center justify-between px-6 md:px-12">
         <Link href={`/${locale}`} className="flex items-center gap-2" scroll={false}>
-          <Image src={cdn.product("tent.png")} alt="Mkan" width={22} height={22} className="h-[22px] w-[22px]" />
+          <Image src="/logo.svg" alt="Mkan" width={22} height={22} className="h-[22px] w-[22px]" />
           {!compact && (
             <span className="text-xl font-bold text-gray-900">
+              {/* i18n-exempt — brand wordmark */}
               Mk<span className="font-light text-gray-600">an</span>
             </span>
           )}
