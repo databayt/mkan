@@ -6,6 +6,7 @@ import { Listing } from "@/types/listing";
 import HomeContent from "./home-content";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { localize, localizeNested } from "@/components/translation/localize";
+import { LoadingWrapper } from "@/components/home-loader";
 
 // ISR: prerender /en + /ar (params from the layout's generateStaticParams) and
 // regenerate at most every 5 minutes — the same window as getHomeListings'
@@ -65,7 +66,9 @@ export default async function HomePage({
     <>
       <JsonLd data={organizationJsonLd()} />
       <JsonLd data={webSiteJsonLd(lang)} />
-      <HomeContent listings={listings} locale={lang} />
+      <LoadingWrapper>
+        <HomeContent listings={listings} locale={lang} />
+      </LoadingWrapper>
     </>
   );
 }
