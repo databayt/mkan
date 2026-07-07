@@ -1,17 +1,18 @@
 "use client";
 
 import { Search, ArrowUpDown, ArrowLeft, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Counter } from "@/components/atom/counter";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import TransportCityDropdown from "./transport-city-dropdown";
-import TransportDatePicker from "./transport-date-picker";
+import TransportCityDropdown from "./travel-city-dropdown";
+import TransportDatePicker from "./travel-date-picker";
 import { MOBILE_BREAKPOINT } from "@/components/template/search/constant";
 import { isRTL as checkRTL, type Locale } from "@/components/internationalization/config";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
-import { cityLabel } from "@/components/transport/city-names";
+import { cityLabel } from "@/components/travel/city-names";
 
 // Transport hero search — mirrors the homepage hero card (VerticalSearch): a
 // left-anchored white card that carries the title inside it, with stacked
@@ -72,10 +73,26 @@ interface TransportBigSearchProps {
   initialDestination?: string;
   initialDate?: Date;
   lang?: string;
+  /**
+   * `hero` (default) — the left-anchored landing card that carries its own
+   * title. `header` — the same fields hosted inside the expanding search
+   * header: the internal title is dropped (the header frames it) and, on
+   * mobile, the card fills the sheet height instead of the fixed hero height.
+   */
+  variant?: "hero" | "header";
+  /** Open straight onto a field (deep-link from the collapsed pill segment). */
+  initialField?: ActiveButton;
+  /** Called after a successful search push — lets the header collapse/close. */
+  onSearch?: () => void;
+  /**
+   * When set, the mobile floating Search button becomes a Framer shared-layout
+   * twin (morphs to/from the collapsed pill's red circle via this id).
+   */
+  ctaLayoutId?: string;
 }
 
 const DEFAULT_DICTIONARY: TransportSearchDictionary = {
-  title: "Travel Between\nCities in Sudan",
+  title: "Book unique\nadventures and\ntickets.",
   where: "Where",
   from: "From",
   to: "To",
@@ -151,11 +168,16 @@ export default function TransportBigSearch({
   initialDestination = "",
   initialDate,
   lang = "ar",
+  variant = "hero",
+  initialField = null,
+  onSearch,
+  ctaLayoutId,
 }: TransportBigSearchProps) {
   const router = useRouter();
   const dict = useDictionary();
   const isRTL = checkRTL(lang as Locale);
-  const [activeButton, setActiveButton] = useState<ActiveButton>(null);
+  const inHeader = variant === "header";
+  const [activeButton, setActiveButton] = useState<ActiveButton>(initialField);
   const [isMobile, setIsMobile] = useState(false);
   const searchBarRef = useRef<HTMLDivElement>(null);
 
@@ -230,28 +252,29 @@ export default function TransportBigSearch({
   };
 
   const handleSearch = () => {
-    if (!origin || !destination || !date) return;
-
     const searchParams = new URLSearchParams();
 
-    const resolveCity = (label: string) =>
-      assemblyPoints.find(
+    const resolveCity = (label: string) => {
+      if (!label) return undefined;
+      return assemblyPoints.find(
         (p) =>
           p.city.toLowerCase() === label.toLowerCase() ||
           p.name.toLowerCase() === label.toLowerCase()
       );
+    };
 
     const originMatch = resolveCity(origin);
     const destinationMatch = resolveCity(destination);
 
     if (originMatch) searchParams.set("originId", String(originMatch.id));
     if (destinationMatch) searchParams.set("destinationId", String(destinationMatch.id));
-    searchParams.set("origin", origin);
-    searchParams.set("destination", destination);
-    searchParams.set("date", date.toISOString().split("T")[0] ?? "");
+    if (origin) searchParams.set("origin", origin);
+    if (destination) searchParams.set("destination", destination);
+    if (date) searchParams.set("date", date.toISOString().split("T")[0] ?? "");
     if (totalPassengers > 0) searchParams.set("seats", String(totalPassengers));
 
-    router.push(`/${lang}/transport/search?${searchParams.toString()}`);
+    router.push(`/${lang}/travel/search?${searchParams.toString()}`);
+    onSearch?.();
   };
 
   // Field surface styling — same three-state treatment as the homepage card:
@@ -381,26 +404,29 @@ export default function TransportBigSearch({
   // ── Mobile: fixed-height card with in-place steps ─────────────────────────
   if (isMobile) {
     return (
-      <div className="relative w-full" ref={searchBarRef}>
+      <div className={`relative w-full ${inHeader ? "h-full" : ""}`} ref={searchBarRef}>
         <div
-          className="relative bg-white w-full overflow-hidden shadow-sm"
+          className={`relative bg-white w-full overflow-hidden ${inHeader ? "" : "shadow-sm"}`}
           // Constant height across idle + every step so the card never grows
           // when a step opens (inline so Turbopack can't drop it as a brand-new
-          // arbitrary utility from its dev scan).
-          style={{ height: "min(78vh, 560px)" }}
+          // arbitrary utility from its dev scan). Inside the header sheet it
+          // fills the panel instead of the fixed hero height.
+          style={{ height: inHeader ? "100%" : "min(78vh, 560px)" }}
         >
           {/* Body — swaps by step; the floating arrows (top) and Search pill
               (bottom) overlay every state. pt clears the arrows, pb the pill. */}
           {!activeButton ? (
             <div className="h-full overflow-y-auto no-scrollbar px-5 pt-8 pb-24">
-              <h1 className="text-2xl font-semibold text-[#484848] mb-6 leading-snug whitespace-pre-line">
+              <h1 className="text-2xl font-semibold text-[#484848] mb-6 leading-tight whitespace-pre-line">
                 {dictionary.title}
               </h1>
               {renderFieldStack()}
             </div>
           ) : activeButton === "origin" || activeButton === "destination" ? (
-            <div className="h-full overflow-y-auto no-scrollbar px-5 pt-16 pb-24">
+            <div className="flex h-full flex-col px-5 pt-16">
               <TransportCityDropdown
+                key={activeButton}
+                fillHeight
                 value={activeButton === "origin" ? origin : destination}
                 onChange={activeButton === "origin" ? handleOriginSelect : handleDestinationSelect}
                 assemblyPoints={assemblyPoints}
@@ -442,16 +468,29 @@ export default function TransportBigSearch({
           )}
 
           {/* Floating Search pill — pinned bottom-end, on top of the body, so
-              it stays reachable in every step. */}
-          <Button
-            onClick={handleSearch}
-            disabled={!canSearch}
-            style={{ paddingInline: 28 }}
-            className="absolute bottom-5 end-4 z-30 h-12 gap-2 rounded-full text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_6px_20px_rgba(222,49,81,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Search className="h-4 w-4" strokeWidth={2.5} />
-            {dictionary.search}
-          </Button>
+              it stays reachable in every step. Inside the header sheet it is a
+              shared-layout twin of the collapsed pill's red circle (ctaLayoutId)
+              so the two morph into each other as the sheet opens/closes. */}
+          {ctaLayoutId ? (
+            <motion.button
+              layoutId={ctaLayoutId}
+              onClick={handleSearch}
+              style={{ paddingInline: lang === "ar" ? 24 : 16 }}
+              className="absolute bottom-5 end-6 z-30 flex h-12 items-center gap-2 rounded-sm text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_2px_8px_rgba(222,49,81,0.25)]"
+            >
+              <Search className="h-4 w-4" strokeWidth={2.5} />
+              {dictionary.search}
+            </motion.button>
+          ) : (
+            <Button
+              onClick={handleSearch}
+              style={{ paddingInline: lang === "ar" ? 24 : 16 }}
+              className="absolute bottom-5 end-6 z-30 h-12 gap-2 rounded-sm text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_2px_8px_rgba(222,49,81,0.25)]"
+            >
+              <Search className="h-4 w-4" strokeWidth={2.5} />
+              {dictionary.search}
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -460,25 +499,26 @@ export default function TransportBigSearch({
   // ── Desktop: the card stays put; each field opens a panel beside it ───────
   return (
     <div className="relative w-full md:w-[340px]" ref={searchBarRef}>
-      <div className="relative bg-white shadow-sm px-5 pt-4 pb-20 w-full">
-        {/* Title within the form — homepage hero pattern. */}
-        <h1 className="text-xl font-medium text-[#6b6b6b] mb-3 leading-tight whitespace-pre-line">
-          {dictionary.title}
-        </h1>
+      <div className={`relative bg-white px-5 pt-4 pb-5 w-full ${inHeader ? "" : "shadow-sm"}`}>
+        {/* Title within the form — homepage hero pattern; dropped in the header
+            where the sticky bar already frames the search. */}
+        {!inHeader && (
+          <h1 className="text-xl font-medium text-[#6b6b6b] mb-3 leading-tight whitespace-pre-line">
+            {dictionary.title}
+          </h1>
+        )}
 
         {renderFieldStack()}
 
-        {/* Floating Search pill — same style as the mobile flow (rounded-full,
-            drop shadow, Search icon) pinned to the card's bottom-end. */}
-        <Button
-          onClick={handleSearch}
-          disabled={!canSearch}
-          style={{ paddingInline: 24 }}
-          className="absolute bottom-4 end-4 z-30 h-11 gap-2 rounded-full text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_6px_20px_rgba(222,49,81,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Search className="h-4 w-4" strokeWidth={2.5} />
-          {dictionary.search}
-        </Button>
+        {/* Search button */}
+        <div className="pt-3 md:pt-2 flex justify-end">
+          <Button
+            onClick={handleSearch}
+            className="px-8 py-2 md:py-1 h-12 md:h-10 text-sm font-medium bg-[#de3151] hover:bg-[#de3151]/90 text-white rounded-xs"
+          >
+            {dictionary.search}
+          </Button>
+        </div>
       </div>
 
       {/* Side dropdowns — float to the trailing side of the card, same as the
