@@ -3,13 +3,10 @@ import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { BusFront } from 'lucide-react';
-import Link from 'next/link';
 
-import { Button } from '@/components/ui/button';
 import TravelSearchHeader from '@/components/travel/search/travel-search-header';
 import { FiltersPanel } from '@/components/travel/search/filters-panel';
-import { TripCard } from '@/components/travel/trip/trip-card';
+import { TravelSearchResultsArea } from '@/components/travel/search/travel-search-results-area';
 import { parseSearchParams } from '@/components/travel/search/url-state';
 import {
   getAssemblyPoints,
@@ -86,6 +83,7 @@ export default async function SearchPage({
 
   const t = dictionary?.travel;
   const { trips, total, page, pageCount, facets } = result;
+  const minDuration = trips.length > 0 ? Math.min(...trips.map((t) => t.route.duration)) : 0;
 
   const dateLocale = lang === 'ar' ? ar : undefined;
 
@@ -139,7 +137,8 @@ export default async function SearchPage({
 
   const seatsCount = spObject.seats ? Number.parseInt(spObject.seats, 10) || 0 : 0;
   const searchSummary = {
-    route: `${originLabel} → ${destinationLabel}`,
+    origin: originLabel,
+    destination: destinationLabel,
     date: searchDate ? format(searchDate, 'MMM d', { locale: dateLocale }) : anydateLabel,
     passengers:
       seatsCount > 0
@@ -148,7 +147,7 @@ export default async function SearchPage({
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#ebedf1] dark:bg-background">
       {/* Search header — homes-style expanding pill (route · date · seats) that
           blooms into the full TransportBigSearch fields with the same motion. */}
       <TravelSearchHeader
@@ -158,11 +157,7 @@ export default async function SearchPage({
         initialDestination={parsed.destination ?? destinationLabel}
         initialDate={searchDate}
         searchSummary={searchSummary}
-      />
-
-      {/* Results layout */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex flex-col lg:flex-row gap-6">
+        filters={
           <Suspense fallback={null}>
             <FiltersPanel
               facets={facets}
@@ -170,113 +165,23 @@ export default async function SearchPage({
               dict={filterDict}
             />
           </Suspense>
+        }
+      />
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-6">
-              <p className="text-muted-foreground">
-                {(t?.search?.tripsFound ?? t?.searchPage?.tripsCountFallback ?? "{count} trip(s) found").replace('{count}', formatNumber(total, lang))}
-              </p>
-            </div>
-
-            {trips.length > 0 ? (
-              <>
-                <div className="grid gap-4">
-                  {trips.map((trip) => (
-                    <TripCard
-                      key={trip.id}
-                      trip={trip}
-                      lang={lang}
-                      dictionary={{
-                        selectSeats: t?.trip?.selectSeats ?? "Select Seats",
-                        seatsAvailable: t?.trip?.seatsAvailable ?? "seats available",
-                        duration: t?.trip?.duration ?? "Duration",
-                        verified: t?.office?.verified ?? "Verified",
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {pageCount > 1 && (
-                  <Pagination
-                    page={page}
-                    pageCount={pageCount}
-                    lang={lang}
-                    searchParams={spObject}
-                    labels={{
-                      previous: t?.searchPage?.previous ?? "Previous",
-                      next: t?.searchPage?.next ?? "Next",
-                      pageOf: t?.searchPage?.pageOf ?? "Page {page} of {pageCount}",
-                    }}
-                  />
-                )}
-              </>
-            ) : (
-              <div className="text-center py-16 px-4">
-                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                  <BusFront className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h2 className="text-xl font-semibold mb-2">{t?.search?.noResults ?? "No trips found"}</h2>
-                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                  {t?.search?.noResultsDescription ?? "There are no available trips for this route on the selected date. Try a different date or route."}
-                </p>
-                <Link href={`/${lang}/travel`}>
-                  <Button>{t?.search?.searchAgain ?? "Search Again"}</Button>
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Pagination({
-  page,
-  pageCount,
-  lang,
-  searchParams,
-  labels,
-}: {
-  page: number;
-  pageCount: number;
-  lang: string;
-  searchParams: Record<string, string | undefined>;
-  labels: { previous: string; next: string; pageOf: string };
-}) {
-  const buildHref = (p: number) => {
-    const qs = new URLSearchParams();
-    for (const [k, v] of Object.entries(searchParams)) {
-      if (v !== undefined && k !== 'page') qs.set(k, v);
-    }
-    if (p > 1) qs.set('page', String(p));
-    return `/${lang}/travel/search?${qs.toString()}`;
-  };
-
-  return (
-    <div className="mt-8 flex items-center justify-center gap-2">
-      <Link
-        href={page > 1 ? buildHref(page - 1) : '#'}
-        aria-disabled={page <= 1}
-        tabIndex={page <= 1 ? -1 : 0}
-        className="pointer-events-auto"
-      >
-        <Button variant="outline" size="sm" disabled={page <= 1}>
-          {labels.previous}
-        </Button>
-      </Link>
-      <span className="text-sm text-muted-foreground mx-3">
-        {labels.pageOf.replace('{page}', String(page)).replace('{pageCount}', String(pageCount))}
-      </span>
-      <Link
-        href={page < pageCount ? buildHref(page + 1) : '#'}
-        aria-disabled={page >= pageCount}
-        tabIndex={page >= pageCount ? -1 : 0}
-      >
-        <Button variant="outline" size="sm" disabled={page >= pageCount}>
-          {labels.next}
-        </Button>
-      </Link>
+      {/* Results layout */}
+      <TravelSearchResultsArea
+        trips={trips}
+        total={total}
+        lang={lang}
+        page={page}
+        pageCount={pageCount}
+        searchParams={spObject}
+        assemblyPoints={assemblyPoints}
+        originId={parsed.originId}
+        destinationId={parsed.destinationId}
+        t={t}
+        minDuration={minDuration}
+      />
     </div>
   );
 }
