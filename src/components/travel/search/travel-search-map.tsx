@@ -8,8 +8,8 @@ import { useDictionary } from "@/components/internationalization/dictionary-cont
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
-// Khartoum — fallback/default view when there are no selected routes.
-const FALLBACK_CENTER: [number, number] = [32.5599, 15.5007];
+// Khartoum & Port Sudan midpoint view.
+const FALLBACK_CENTER: [number, number] = [34.89, 17.55];
 
 // Shadows and background matching the listing map styling
 const FS_SHADOW = "0 0 0 1px rgba(0,0,0,0.02), 0 8px 24px rgba(0,0,0,0.1)";
@@ -66,7 +66,7 @@ export default function TravelSearchMap({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v12",
       center: originAp ? [originAp.longitude, originAp.latitude] : destAp ? [destAp.longitude, destAp.latitude] : FALLBACK_CENTER,
-      zoom: (originAp || destAp) ? 12 : 5.5,
+      zoom: (originAp || destAp) ? 12 : 5.2,
       attributionControl: false,
     });
     map.addControl(new mapboxgl.AttributionControl({ compact: true }));
@@ -161,7 +161,7 @@ export default function TravelSearchMap({
 
     // Center on Khartoum if no origin/destination is set
     if (!originAp && !destAp) {
-      map.flyTo({ center: FALLBACK_CENTER, zoom: 5.5, duration: 0 });
+      map.flyTo({ center: FALLBACK_CENTER, zoom: 5.2, duration: 0 });
     } else if ((originAp && !destAp) || (!originAp && destAp)) {
       const single = originAp || destAp;
       if (single) {
