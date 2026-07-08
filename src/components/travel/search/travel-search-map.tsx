@@ -8,8 +8,8 @@ import { useDictionary } from "@/components/internationalization/dictionary-cont
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
-// Port Sudan — fallback view when there are no geolocated routes.
-const FALLBACK_CENTER: [number, number] = [37.2164, 19.6175];
+// Khartoum — fallback/default view when there are no selected routes.
+const FALLBACK_CENTER: [number, number] = [32.5599, 15.5007];
 
 // Shadows and background matching the listing map styling
 const FS_SHADOW = "0 0 0 1px rgba(0,0,0,0.02), 0 8px 24px rgba(0,0,0,0.1)";
@@ -62,12 +62,11 @@ export default function TravelSearchMap({
       return;
     }
 
-    const first = originAp || destAp || assemblyPoints[0];
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v12",
-      center: first ? [first.longitude, first.latitude] : FALLBACK_CENTER,
-      zoom: first ? 11 : 9,
+      center: originAp ? [originAp.longitude, originAp.latitude] : destAp ? [destAp.longitude, destAp.latitude] : FALLBACK_CENTER,
+      zoom: (originAp || destAp) ? 12 : 7,
       attributionControl: false,
     });
     map.addControl(new mapboxgl.AttributionControl({ compact: true }));
@@ -160,11 +159,9 @@ export default function TravelSearchMap({
       markerRefs.current.push(marker);
     });
 
-    // Fit bounds if no origin/destination is set
-    if (!originAp && !destAp && assemblyPoints.length > 0) {
-      const bounds = new mapboxgl.LngLatBounds();
-      assemblyPoints.forEach((ap) => bounds.extend([ap.longitude, ap.latitude]));
-      map.fitBounds(bounds, { padding: 60, maxZoom: 10, duration: 0 });
+    // Center on Khartoum if no origin/destination is set
+    if (!originAp && !destAp) {
+      map.flyTo({ center: FALLBACK_CENTER, zoom: 7, duration: 0 });
     } else if ((originAp && !destAp) || (!originAp && destAp)) {
       const single = originAp || destAp;
       if (single) {
