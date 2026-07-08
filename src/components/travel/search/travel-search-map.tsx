@@ -66,7 +66,7 @@ export default function TravelSearchMap({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v12",
       center: originAp ? [originAp.longitude, originAp.latitude] : destAp ? [destAp.longitude, destAp.latitude] : FALLBACK_CENTER,
-      zoom: (originAp || destAp) ? 12 : 11.5,
+      zoom: (originAp || destAp) ? 12 : 9,
       attributionControl: false,
     });
     map.addControl(new mapboxgl.AttributionControl({ compact: true }));
@@ -161,7 +161,7 @@ export default function TravelSearchMap({
 
     // Center on Khartoum if no origin/destination is set
     if (!originAp && !destAp) {
-      map.flyTo({ center: FALLBACK_CENTER, zoom: 11.5, duration: 0 });
+      map.flyTo({ center: FALLBACK_CENTER, zoom: 9, duration: 0 });
     } else if ((originAp && !destAp) || (!originAp && destAp)) {
       const single = originAp || destAp;
       if (single) {
