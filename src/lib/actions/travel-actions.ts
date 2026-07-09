@@ -1509,9 +1509,10 @@ export async function cancelBooking(id: number) {
   );
   let refundAmount = 0;
   if (paidCard?.transactionId) {
-    const departure = new Date(booking.trip.departureDate);
+    const departureZoned = toZonedTime(new Date(booking.trip.departureDate), MARKET_TZ);
     const [h, m] = (booking.trip.departureTime ?? '00:00').split(':').map(Number);
-    departure.setHours(h || 0, m || 0, 0, 0);
+    departureZoned.setHours(h || 0, m || 0, 0, 0);
+    const departure = fromZonedTime(departureZoned, MARKET_TZ);
     const hoursBeforeDeparture = (departure.getTime() - Date.now()) / (1000 * 60 * 60);
     refundAmount = await computeTransportRefund(paidCard.amount, hoursBeforeDeparture);
 

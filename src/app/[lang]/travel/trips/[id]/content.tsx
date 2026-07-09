@@ -23,14 +23,17 @@ import {
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
-import { createBooking, type getTripDetails } from '@/lib/actions/transport-actions';
+const MARKET_TZ = 'Africa/Khartoum';
+
+import { createBooking, type getTripDetails } from '@/lib/actions/travel-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { formatCurrency, formatNumber } from '@/lib/i18n/formatters';
-import { busAmenityIcon, busAmenityLabel } from '@/components/transport/amenity-icons';
-import { cityLabel } from '@/components/transport/city-names';
-import { SeatPicker } from '@/components/transport/booking/seat-picker';
+import { busAmenityIcon, busAmenityLabel } from '@/components/travel/amenity-icons';
+import { cityLabel } from '@/components/travel/city-names';
+import { SeatPicker } from '@/components/travel/booking/seat-picker';
 
 type TripDetails = NonNullable<Awaited<ReturnType<typeof getTripDetails>>>;
 
@@ -50,7 +53,7 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
   const [passengerEmail, setPassengerEmail] = useState('');
   const [booking, setBooking] = useState(false);
   const dict = useDictionary();
-  const t = dict.transport;
+  const t = dict.travel;
   const amenityLabels = t?.host?.amenityLabels as Partial<Record<string, string>> | undefined;
 
   const handleBooking = async () => {
@@ -69,7 +72,7 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
       });
 
       if (result.success && result.booking) {
-        router.push(`/${lang}/transport/booking/checkout?bookingId=${result.booking.id}`);
+        router.push(`/${lang}/travel/booking/checkout?bookingId=${result.booking.id}`);
       } else {
         toast.error(t.bookingFailedRetry ?? 'Failed to create booking. Please try again.');
       }
@@ -96,7 +99,11 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
   // cancelled / departed / fully-booked trip never lands a user in the
   // booking form with no way forward.
   const now = new Date();
-  const hasDeparted = new Date(trip.departureDate) < now;
+  const departureZoned = toZonedTime(new Date(trip.departureDate), MARKET_TZ);
+  const [h, m] = (trip.departureTime ?? '00:00').split(':').map(Number);
+  departureZoned.setHours(h || 0, m || 0, 0, 0);
+  const departureDateTime = fromZonedTime(departureZoned, MARKET_TZ);
+  const hasDeparted = departureDateTime < now;
   const isCancelled = Boolean((trip as { isCancelled?: boolean }).isCancelled);
   const isSoldOut = (trip.availableSeats ?? 0) <= 0 && !isCancelled && !hasDeparted;
 
@@ -119,7 +126,7 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
           <Button variant="outline" onClick={() => router.back()}>
             {dict.common?.back ?? 'Back'}
           </Button>
-          <Button onClick={() => router.push(`/${lang}/transport`)}>
+          <Button onClick={() => router.push(`/${lang}/travel`)}>
             {t.trip.findAnother}
           </Button>
         </div>
@@ -191,7 +198,7 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
               <div className="grid sm:grid-cols-3 gap-4">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{format(new Date(trip.departureDate), 'EEE, MMM d, yyyy', { locale: dateLocale })}</span>
+                  <span>{format(toZonedTime(new Date(trip.departureDate), MARKET_TZ), 'EEE, MMM d, yyyy', { locale: dateLocale })}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
@@ -307,7 +314,7 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>{t.booking.date}</span>
-                  <span>{format(new Date(trip.departureDate), 'MMM d, yyyy', { locale: dateLocale })}</span>
+                  <span>{format(toZonedTime(new Date(trip.departureDate), MARKET_TZ), 'MMM d, yyyy', { locale: dateLocale })}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>{t.booking.time}</span>
