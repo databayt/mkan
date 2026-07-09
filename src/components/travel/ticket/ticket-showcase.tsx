@@ -31,6 +31,7 @@ const FALLBACK = {
   download: 'Download Ticket',
   busImageAlt: 'Bus transport',
   qrAlt: 'QR Code',
+  operator: 'Marshal',
 };
 
 export function TicketShowcase({ lang }: TicketShowcaseProps) {
@@ -57,6 +58,7 @@ export function TicketShowcase({ lang }: TicketShowcaseProps) {
     download: ts?.download ?? FALLBACK.download,
     busImageAlt: ts?.busImageAlt ?? FALLBACK.busImageAlt,
     qrAlt: ts?.qrAlt ?? FALLBACK.qrAlt,
+    operator: ts?.operator ?? FALLBACK.operator,
   };
 
   useEffect(() => {
@@ -77,6 +79,18 @@ export function TicketShowcase({ lang }: TicketShowcaseProps) {
       <div className="bg-card rounded-2xl shadow-lg border flex flex-col md:flex-row">
         {/* Info Section — title, grid, place */}
         <div className="flex-1 min-w-0 px-5 pt-5 pb-4 md:py-5">
+          {/* Operator Brand */}
+          <div className="flex items-center gap-2 mb-3.5 pb-2.5 border-b border-border/60">
+            <img
+              src="/brands/transport/marshal.svg"
+              alt={d.operator}
+              className="h-6 w-auto max-w-[80px] object-contain dark:invert"
+            />
+            <span className="text-sm font-semibold text-foreground">
+              {d.operator}
+            </span>
+          </div>
+
           <div className="flex items-center gap-2 md:gap-3 flex-wrap">
             {(() => {
               const parts = d.route.split('→').map((s) => s.trim());

@@ -2469,6 +2469,7 @@
     },
     "trip": {
       "selectSeats": "Select Seats",
+      "viewStops": "View stops",
       "seatsAvailable": "seats available",
       "duration": "Duration",
       "perSeat": "per seat",
@@ -2891,7 +2892,8 @@
       "share": "Share",
       "download": "Download Ticket",
       "busImageAlt": "Bus transport",
-      "qrAlt": "QR Code"
+      "qrAlt": "QR Code",
+      "operator": "Marshal"
     },
     "bookingFailedRetry": "Failed to create booking. Please try again."
   },
@@ -3045,6 +3047,12 @@
       "title": "Shop Mkan\ngift cards",
       "button": "Learn more",
       "altText": "Three Mkan gift cards overlapping at angles"
+    },
+    "whereToNext": {
+      "title": "Where to next in Sudan?",
+      "text": "Discover destinations across Sudan on our travel map.",
+      "button": "Explore the map",
+      "altText": "Scenic view of the Pyramids of Meroe in Sudan under sunset"
     },
     "filter": {
       "Islands": "Islands",
