@@ -4,23 +4,24 @@ import { MapPin, Clock, Shield, Ticket } from 'lucide-react';
 import type { Metadata } from 'next';
 
 import SiteHeader from '@/components/template/header/header';
-import TransportBigSearch from '@/components/transport/search/transport-big-search';
-import { RouteCarouselSection } from '@/components/transport/home/route-carousel-section';
-import { TransportInspiration } from '@/components/transport/home/transport-inspiration';
-import { TransportHostBanner } from '@/components/transport/home/host-banner';
-import type { PopularRoute } from '@/components/transport/home/route-utils';
-import { TicketShowcase } from '@/components/transport/ticket/ticket-showcase';
-import { LogoCarousel } from '@/components/transport/logo-carousel';
-import { TransportTestimonials } from '@/components/transport/transport-testimonials';
-import { TransportMap } from '@/components/transport/transport-map';
+import TransportBigSearch from '@/components/travel/search/travel-big-search';
+import { RouteCarouselSection } from '@/components/travel/home/route-carousel-section';
+import { TransportInspiration } from '@/components/travel/home/travel-inspiration';
+import { TransportHostBanner } from '@/components/travel/home/host-banner';
+import type { PopularRoute } from '@/components/travel/home/route-utils';
+import { TicketShowcase } from '@/components/travel/ticket/ticket-showcase';
+import { LogoCarousel } from '@/components/travel/logo-carousel';
+import { TransportTestimonials } from '@/components/travel/travel-testimonials';
+import { TransportMap } from '@/components/travel/travel-map';
 import Footer from '@/components/site/footer';
-import { getAssemblyPoints, getPopularRoutes } from '@/lib/actions/transport-actions';
+import WhereToNext from '@/components/site/where-to-next';
+import { getAssemblyPoints, getPopularRoutes } from '@/lib/actions/travel-actions';
 import { format } from 'date-fns';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import type { Locale } from '@/components/internationalization/config';
 import { createMetadata } from '@/lib/metadata';
 import { PHASE1 } from '@/config/phase-flags';
-import { cityLabel } from '@/components/transport/city-names';
+import { cityLabel } from '@/components/travel/city-names';
 
 // Rendered on-demand: this page queries the DB (assembly points / popular
 // routes) at render time, and the CI build environment has no reachable
@@ -30,21 +31,32 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
   const dict = await getDictionary(lang as Locale);
-  const t = dict?.transport;
+  const t = dict?.travel;
   return createMetadata({
     title: t?.meta?.title ?? "Bus Transport",
     description: t?.meta?.description ?? "Book intercity bus trips across Sudan",
     locale: lang,
-    path: "/transport",
+    path: "/travel",
   });
 }
 
 interface TransportPageProps {
   params: Promise<{ lang: Locale }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function TransportPage({ params }: TransportPageProps) {
+function flatten(sp: Record<string, string | string[] | undefined>): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {};
+  for (const [k, v] of Object.entries(sp)) {
+    out[k] = Array.isArray(v) ? v[0] : v;
+  }
+  return out;
+}
+
+export default async function TransportPage({ params, searchParams }: TransportPageProps) {
   const { lang } = await params;
+  const spObject = flatten(await searchParams);
+  const initialField = spObject.step as "origin" | "destination" | "date" | "passengers" | undefined;
 
   // Parallelize independent data fetches
   const [dictionary, assemblyPoints, popularRoutes] = await Promise.all([
@@ -52,7 +64,7 @@ export default async function TransportPage({ params }: TransportPageProps) {
     getAssemblyPoints(),
     getPopularRoutes(),
   ]);
-  const t = dictionary?.transport;
+  const t = dictionary?.travel;
   const todayIso = format(new Date(), 'yyyy-MM-dd');
 
   // Several operators run the same city pair — the cards name no operator,
@@ -66,8 +78,8 @@ export default async function TransportPage({ params }: TransportPageProps) {
           r.destination.city === route.destination.city,
       ) === i,
   ) as PopularRoute[];
-  const khartoumRoutes = dedupedRoutes.filter((r) => r.origin.city === 'Khartoum');
-  const otherRoutes = dedupedRoutes.filter((r) => r.origin.city !== 'Khartoum');
+  const portsudanRoutes = dedupedRoutes.filter((r) => r.origin.city === 'Port Sudan');
+  const otherRoutes = dedupedRoutes.filter((r) => r.origin.city !== 'Port Sudan');
 
   const cardDictionary = {
     pricePrefix: t?.routes?.pricePrefix ?? 'From',
@@ -78,7 +90,7 @@ export default async function TransportPage({ params }: TransportPageProps) {
 
   const popularFromTitle = (t?.home?.popularFrom ?? 'Popular routes from {city}').replace(
     '{city}',
-    cityLabel('Khartoum', lang),
+    cityLabel('Port Sudan', lang),
   );
   const moreRoutesTitle = t?.home?.moreRoutes ?? 'More routes across Sudan';
 
@@ -115,7 +127,7 @@ export default async function TransportPage({ params }: TransportPageProps) {
     {
       icon: <Ticket className="h-6 w-6" />,
       title: t?.features?.items?.etickets?.title ?? "E-Tickets",
-      description: t?.features?.items?.etickets?.description ?? "Receive your ticket instantly via PDF with QR code for easy boarding.",
+      description: t?.features?.items?.etickets?.description ?? "Receive your e-ticket instantly with a QR code for easy boarding.",
     },
     {
       icon: <Shield className="h-6 w-6" />,
@@ -160,8 +172,10 @@ export default async function TransportPage({ params }: TransportPageProps) {
               <TransportBigSearch
                 assemblyPoints={assemblyPoints}
                 lang={lang}
+                initialField={initialField}
+                key={initialField || "default"}
                 dictionary={{
-                  title: `${t?.hero?.titleLine1 ?? "Travel Between"}\n${t?.hero?.titleLine2 ?? "Cities in Sudan"}`,
+                  title: `${t?.hero?.titleLine1 ?? "Book unique"}\n${t?.hero?.titleLine2 ?? "adventures and\ntickets."}`,
                   where: t?.search?.where ?? "Where",
                   from: t?.search?.from ?? "From",
                   to: t?.search?.to ?? "To",
@@ -189,14 +203,14 @@ export default async function TransportPage({ params }: TransportPageProps) {
       {/* Route rails — Airbnb listing-card carousels over real routes */}
       <div className="layout-container pt-10 pb-2 space-y-12">
         <RouteCarouselSection
-          title={khartoumRoutes.length > 0 ? popularFromTitle : (t?.routes?.title ?? 'Popular Routes')}
-          href={`/${lang}/transport/offices`}
-          routes={khartoumRoutes.length > 0 ? khartoumRoutes : dedupedRoutes}
+          title={portsudanRoutes.length > 0 ? popularFromTitle : (t?.routes?.title ?? 'Popular Routes')}
+          href={`/${lang}/travel/offices`}
+          routes={portsudanRoutes.length > 0 ? portsudanRoutes : dedupedRoutes}
           lang={lang}
           dateIso={todayIso}
           dictionary={cardDictionary}
         />
-        {khartoumRoutes.length > 0 && otherRoutes.length > 0 && (
+        {portsudanRoutes.length > 0 && otherRoutes.length > 0 && (
           <RouteCarouselSection
             title={moreRoutesTitle}
             routes={otherRoutes}
@@ -228,6 +242,11 @@ export default async function TransportPage({ params }: TransportPageProps) {
           title={dictionary?.home?.inspiration?.title ?? 'Inspiration for your next trip in Sudan'}
           hoursFrom={t?.home?.hoursFrom ?? '{hours}h from {city}'}
         />
+      </div>
+
+      {/* Where to next? Exploration Banner */}
+      <div className="layout-container py-12">
+        <WhereToNext />
       </div>
 
       {/* Digital ticket + how booking works, one two-column story */}
@@ -271,14 +290,44 @@ export default async function TransportPage({ params }: TransportPageProps) {
         </Suspense>
       </div>
 
-      {/* Value props — flat marketplace strip, not SaaS cards */}
-      <div className="layout-container py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10 border-t pt-12">
+      {/* Value props — Premium polished marketplace features */}
+      <div className="layout-container py-16 sm:py-24 border-t border-border/60">
+        {/* Section Header */}
+        <div className="text-center max-w-2xl mx-auto mb-16">
+          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            {t?.features?.title ?? "Why Book With Us"}
+          </h2>
+          <p className="mt-4 text-base sm:text-lg text-muted-foreground">
+            {lang === 'ar' 
+              ? "نحن نجعل السفر بين المدن في السودان بسيطاً، آمناً، وموثوقاً." 
+              : "We make intercity travel in Sudan simple, safe, and reliable."}
+          </p>
+        </div>
+
+        {/* Feature Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {features.map((feature) => (
-            <div key={feature.title}>
-              <div className="text-gray-900">{feature.icon}</div>
-              <h3 className="font-medium text-sm mt-4">{feature.title}</h3>
-              <p className="text-sm text-muted-foreground mt-1">{feature.description}</p>
+            <div 
+              key={feature.title}
+              className="group relative flex flex-col items-start p-6 sm:p-8 rounded-2xl border border-border/80 bg-card hover:bg-accent/40 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/20 hover:-translate-y-1 transition-all duration-300 ease-out overflow-hidden"
+            >
+              {/* Subtle bottom-right gradient glow */}
+              <div className="absolute -right-10 -bottom-10 w-28 h-28 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all duration-500" />
+              
+              {/* Premium Icon Container */}
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary transition-all duration-300 group-hover:bg-primary group-hover:text-white group-hover:scale-110 group-hover:rotate-3 shadow-sm">
+                {feature.icon}
+              </div>
+
+              {/* Title */}
+              <h3 className="font-semibold text-base text-foreground mt-6 group-hover:text-primary transition-colors duration-300">
+                {feature.title}
+              </h3>
+
+              {/* Description */}
+              <p className="text-sm text-muted-foreground mt-3 leading-relaxed text-start">
+                {feature.description}
+              </p>
             </div>
           ))}
         </div>
