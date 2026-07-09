@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import Image from 'next/image';
-import { MapPin, Clock, Shield, Ticket } from 'lucide-react';
 import type { Metadata } from 'next';
+import { cdn } from '@/lib/cdn';
 
 import SiteHeader from '@/components/template/header/header';
 import TransportBigSearch from '@/components/travel/search/travel-big-search';
@@ -117,22 +117,22 @@ export default async function TransportPage({ params, searchParams }: TransportP
 
   const features = [
     {
-      icon: <MapPin className="h-6 w-6" />,
+      artUrl: cdn.vendor("airbnb", "destinations/port-sudan.png"),
       title: t?.features?.items?.destinations?.title ?? "Multiple Destinations",
       description: t?.features?.items?.destinations?.description ?? "Book tickets to cities across Sudan from major assembly points.",
     },
     {
-      icon: <Clock className="h-6 w-6" />,
+      artUrl: cdn.vendor("airbnb", "destinations/airport.png"),
       title: t?.features?.items?.departures?.title ?? "Daily Departures",
       description: t?.features?.items?.departures?.description ?? "Regular morning departures at 5:00 AM, 7 days a week.",
     },
     {
-      icon: <Ticket className="h-6 w-6" />,
+      artUrl: cdn.vendor("airbnb", "destinations/nearby.png"),
       title: t?.features?.items?.etickets?.title ?? "E-Tickets",
       description: t?.features?.items?.etickets?.description ?? "Receive your e-ticket instantly with a QR code for easy boarding.",
     },
     {
-      icon: <Shield className="h-6 w-6" />,
+      artUrl: cdn.vendor("airbnb", "destinations/red-sea-university.png"),
       title: t?.features?.items?.verified?.title ?? "Verified Offices",
       description: t?.features?.items?.verified?.description ?? "All transport offices are verified for your safety and comfort.",
     },
@@ -307,27 +307,30 @@ export default async function TransportPage({ params, searchParams }: TransportP
         </div>
 
         {/* Feature Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-12">
           {features.map((feature) => (
             <div 
               key={feature.title}
-              className="group relative flex flex-col items-start p-6 sm:p-8 rounded-2xl border border-border/80 bg-card hover:bg-accent/40 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/20 hover:-translate-y-1 transition-all duration-300 ease-out overflow-hidden"
+              className="flex flex-col items-start"
             >
-              {/* Subtle bottom-right gradient glow */}
-              <div className="absolute -right-10 -bottom-10 w-28 h-28 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all duration-500" />
-              
-              {/* Premium Icon Container */}
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary transition-all duration-300 group-hover:bg-primary group-hover:text-white group-hover:scale-110 group-hover:rotate-3 shadow-sm">
-                {feature.icon}
+              {/* Airbnb Illustration Art */}
+              <div className="relative w-12 h-12 rounded-xl overflow-hidden shadow-sm border border-border/20 mb-4 bg-muted">
+                <Image
+                  src={feature.artUrl}
+                  alt={feature.title}
+                  fill
+                  className="object-cover"
+                  sizes="48px"
+                />
               </div>
 
               {/* Title */}
-              <h3 className="font-semibold text-base text-foreground mt-6 group-hover:text-primary transition-colors duration-300">
+              <h3 className="font-semibold text-base text-foreground mt-2">
                 {feature.title}
               </h3>
 
               {/* Description */}
-              <p className="text-sm text-muted-foreground mt-3 leading-relaxed text-start">
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed text-start max-w-md">
                 {feature.description}
               </p>
             </div>
