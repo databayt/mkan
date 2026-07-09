@@ -29,13 +29,15 @@ const FALLBACK = {
   ticketIdLabel: 'Ticket ID',
   share: 'Share',
   download: 'Download Ticket',
+  busImageAlt: 'Bus transport',
+  qrAlt: 'QR Code',
 };
 
 export function TicketShowcase({ lang }: TicketShowcaseProps) {
   void lang;
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const dict = useDictionary();
-  const ts = dict?.transport?.ticketShowcase;
+  const ts = dict?.travel?.ticketShowcase;
   const d = {
     route: ts?.route ?? FALLBACK.route,
     name: ts?.name ?? FALLBACK.name,
@@ -53,6 +55,8 @@ export function TicketShowcase({ lang }: TicketShowcaseProps) {
     ticketIdLabel: ts?.ticketIdLabel ?? FALLBACK.ticketIdLabel,
     share: ts?.share ?? FALLBACK.share,
     download: ts?.download ?? FALLBACK.download,
+    busImageAlt: ts?.busImageAlt ?? FALLBACK.busImageAlt,
+    qrAlt: ts?.qrAlt ?? FALLBACK.qrAlt,
   };
 
   useEffect(() => {
@@ -71,20 +75,38 @@ export function TicketShowcase({ lang }: TicketShowcaseProps) {
   return (
     <div className="max-w-sm md:max-w-3xl mx-auto">
       <div className="bg-card rounded-2xl shadow-lg border flex flex-col md:flex-row">
-        {/* Banner Image — top on mobile, left column on desktop */}
-        <div className="relative aspect-[5/3] md:aspect-auto md:w-[240px] shrink-0 overflow-hidden rounded-t-2xl md:rounded-t-none md:rounded-s-2xl">
-          <Image
-            src="https://cdn.databayt.org/mkan/stock/photo-1544620347-c4fd4a3d5957.jpg"
-            alt="Bus transport"
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 240px"
-          />
-        </div>
-
         {/* Info Section — title, grid, place */}
         <div className="flex-1 min-w-0 px-5 pt-5 pb-4 md:py-5">
-          <h3 className="text-xl font-bold leading-tight">{d.route}</h3>
+          <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+            {(() => {
+              const parts = d.route.split('→').map((s) => s.trim());
+              if (parts.length === 2) {
+                return (
+                  <>
+                    <span className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">
+                      {parts[0]}
+                    </span>
+                    <div className="flex items-center justify-center flex-none rtl:rotate-180">
+                      <img
+                        className="md:hidden w-[22px] h-[5px] opacity-80 brightness-[0.3] dark:brightness-100 dark:invert object-fill"
+                        src="https://ak-d.tripcdn.com/images/1op4d12000dxd9xgx2479.webp"
+                        alt=""
+                      />
+                      <img
+                        className="hidden md:block w-20 h-6 opacity-40 dark:invert"
+                        src="https://ak-d.tripcdn.com/images/1op1v12000e0dofvsD8DE.webp"
+                        alt=""
+                      />
+                    </div>
+                    <span className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">
+                      {parts[1]}
+                    </span>
+                  </>
+                );
+              }
+              return <h3 className="text-xl font-bold leading-tight">{d.route}</h3>;
+            })()}
+          </div>
 
           <div className="mt-3 grid grid-cols-2 gap-y-3 gap-x-4">
             <div>
@@ -141,7 +163,7 @@ export function TicketShowcase({ lang }: TicketShowcaseProps) {
             {qrCodeUrl ? (
               <Image
                 src={qrCodeUrl}
-                alt="QR Code"
+                alt={d.qrAlt}
                 width={108}
                 height={108}
                 unoptimized
