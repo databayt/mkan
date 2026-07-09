@@ -8,8 +8,8 @@ import { useDictionary } from "@/components/internationalization/dictionary-cont
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
-// Khartoum & Port Sudan midpoint view.
-const FALLBACK_CENTER: [number, number] = [34.89, 17.55];
+// Khartoum & Port Sudan midpoint view shifted up/north.
+const FALLBACK_CENTER: [number, number] = [34.89, 18.2];
 
 // Shadows and background matching the listing map styling
 const FS_SHADOW = "0 0 0 1px rgba(0,0,0,0.02), 0 8px 24px rgba(0,0,0,0.1)";
@@ -66,7 +66,7 @@ export default function TravelSearchMap({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v12",
       center: originAp ? [originAp.longitude, originAp.latitude] : destAp ? [destAp.longitude, destAp.latitude] : FALLBACK_CENTER,
-      zoom: (originAp || destAp) ? 12 : 5.2,
+      zoom: (originAp || destAp) ? 12 : 4.6,
       attributionControl: false,
     });
     map.addControl(new mapboxgl.AttributionControl({ compact: true }));
@@ -161,7 +161,7 @@ export default function TravelSearchMap({
 
     // Center on Khartoum if no origin/destination is set
     if (!originAp && !destAp) {
-      map.flyTo({ center: FALLBACK_CENTER, zoom: 5.2, duration: 0 });
+      map.flyTo({ center: FALLBACK_CENTER, zoom: 4.6, duration: 0 });
     } else if ((originAp && !destAp) || (!originAp && destAp)) {
       const single = originAp || destAp;
       if (single) {
@@ -253,7 +253,7 @@ export default function TravelSearchMap({
         className="sticky w-full bg-background"
         style={{ top: stickyTop, height: `calc(100vh - ${stickyTop}px)` }}
       >
-        <div className="relative h-full w-full rounded-2xl overflow-hidden">
+        <div className="relative h-full w-full overflow-hidden">
           <div ref={mapContainerRef} className="h-full w-full" />
 
           {!mapboxgl.accessToken && (

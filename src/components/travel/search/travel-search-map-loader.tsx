@@ -12,7 +12,7 @@ const TravelSearchMapClient = dynamic(() => import("./travel-search-map"), {
         className="sticky w-full bg-background"
         style={{ top: 128, height: "calc(100vh - 128px)" }}
       >
-        <div className="h-full w-full bg-gray-200 rounded-2xl animate-pulse" />
+        <div className="h-full w-full bg-gray-200 animate-pulse" />
       </div>
     </div>
   ),
