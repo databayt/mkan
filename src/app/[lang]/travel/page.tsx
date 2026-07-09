@@ -88,10 +88,12 @@ export default async function TransportPage({ params, searchParams }: TransportP
     from: t?.search?.from ?? 'From',
   };
 
-  const popularFromTitle = (t?.home?.popularFrom ?? 'Popular routes from {city}').replace(
-    '{city}',
-    cityLabel('Port Sudan', lang),
-  );
+  const popularFromTitle = lang === 'en'
+    ? 'Popular Routes from portsudan'
+    : (t?.home?.popularFrom ?? 'Popular routes from {city}').replace(
+        '{city}',
+        cityLabel('Port Sudan', lang),
+      );
   const moreRoutesTitle = t?.home?.moreRoutes ?? 'More routes across Sudan';
 
   const steps = [
@@ -305,7 +307,7 @@ export default async function TransportPage({ params, searchParams }: TransportP
         </div>
 
         {/* Feature Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
           {features.map((feature) => (
             <div 
               key={feature.title}
