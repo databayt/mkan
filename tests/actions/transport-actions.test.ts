@@ -356,13 +356,13 @@ describe("publishOffice", () => {
 });
 
 describe("getTransportOffices", () => {
-  it("returns only active offices", async () => {
+  it("returns only active and verified offices", async () => {
     mockDb.transportOffice.findMany.mockResolvedValue([] as never);
 
     await getTransportOffices();
     expect(mockDb.transportOffice.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { isActive: true },
+        where: { isActive: true, isVerified: true },
       })
     );
   });

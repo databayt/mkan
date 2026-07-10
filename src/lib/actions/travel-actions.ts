@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { auth, canOverride } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { BusAmenity, Prisma, TransportBookingStatus } from '@prisma/client';
-import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
+import { revalidatePath, updateTag, unstable_cache } from 'next/cache';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { startOfDay, endOfDay } from 'date-fns';
 
@@ -49,26 +49,31 @@ const idSchema = z.number().int().positive();
 const TAG_ASSEMBLY_POINTS = 'transport:assembly-points';
 const TAG_CITIES = 'transport:cities';
 const TAG_POPULAR_ROUTES = 'transport:popular-routes';
+const TAG_TRIPS = 'transport:trips';
 
 // ============================================
 // ASSEMBLY POINT ACTIONS
 // ============================================
 
-export async function getAssemblyPoints(city?: string) {
-  try {
-    const where = city ? { city, isActive: true } : { isActive: true };
+export const getAssemblyPoints = unstable_cache(
+  async (city?: string) => {
+    try {
+      const where = city ? { city, isActive: true } : { isActive: true };
 
-    const assemblyPoints = await db.assemblyPoint.findMany({
-      where,
-      orderBy: { name: 'asc' },
-    });
+      const assemblyPoints = await db.assemblyPoint.findMany({
+        where,
+        orderBy: { name: 'asc' },
+      });
 
-    return assemblyPoints;
-  } catch (error) {
-    logger.error('Failed to fetch assembly points', { error });
-    return [];
-  }
-}
+      return assemblyPoints;
+    } catch (error) {
+      logger.error('Failed to fetch assembly points', { error });
+      return [];
+    }
+  },
+  ['transport:getAssemblyPoints'],
+  { tags: [TAG_ASSEMBLY_POINTS], revalidate: 3600 },
+);
 
 export const getCities = unstable_cache(
   async () => {
@@ -227,12 +232,13 @@ export async function publishOffice(id: number) {
 
   revalidatePath('/[lang]/travel');
   revalidatePath('/[lang]/travel-host');
+  updateTag(TAG_TRIPS);
   return { success: true, office };
 }
 
 export async function getTransportOffices() {
   const offices = await db.transportOffice.findMany({
-    where: { isActive: true },
+    where: { isActive: true, isVerified: true },
     include: {
       assemblyPoint: {
         select: { name: true, city: true },
@@ -420,6 +426,8 @@ export async function createRoute(data: RouteFormData & { officeId: number }) {
 
   revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
+  updateTag(TAG_TRIPS);
+  updateTag(TAG_POPULAR_ROUTES);
   return route;
 }
 
@@ -461,6 +469,8 @@ export async function updateRoute(id: unknown, data: unknown) {
 
   revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
+  updateTag(TAG_TRIPS);
+  updateTag(TAG_POPULAR_ROUTES);
   return route;
 }
 
@@ -492,6 +502,8 @@ export async function deleteRoute(id: unknown) {
 
   revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
+  updateTag(TAG_TRIPS);
+  updateTag(TAG_POPULAR_ROUTES);
   return { success: true };
 }
 
@@ -643,6 +655,84 @@ function buildOrderBy(
   }
 }
 
+const getCachedTrips = unstable_cache(
+  async (serializedData: string) => {
+    const data = JSON.parse(serializedData) as SearchTripsInput;
+    const where = buildTripWhere(data);
+    const orderBy = buildOrderBy(data.sort);
+
+    const facetWhere = buildTripWhere({
+      ...data,
+      priceMin: undefined,
+      priceMax: undefined,
+      amenities: undefined,
+      officeId: undefined,
+      officeIds: undefined,
+    });
+
+    const [total, rows, priceAgg, officeRows] = await Promise.all([
+      db.trip.count({ where }),
+      db.trip.findMany({
+        where,
+        orderBy,
+        take: data.limit,
+        skip: (data.page - 1) * data.limit,
+        include: {
+          route: {
+            include: {
+              origin: true,
+              destination: true,
+              office: { include: { assemblyPoint: true } },
+            },
+          },
+          bus: {
+            select: {
+              id: true,
+              plateNumber: true,
+              model: true,
+              manufacturer: true,
+              year: true,
+              capacity: true,
+              photoUrls: true,
+              amenities: true,
+            },
+          },
+        },
+      }),
+      db.trip.aggregate({
+        where: facetWhere,
+        _min: { price: true },
+        _max: { price: true },
+      }),
+      db.trip.findMany({
+        where: facetWhere,
+        distinct: ['routeId'],
+        select: {
+          route: {
+            select: {
+              officeId: true,
+              office: { select: { id: true, name: true, nameAr: true } },
+            },
+          },
+        },
+        take: 50,
+      }),
+    ]);
+
+    return {
+      total,
+      rows,
+      priceAgg: {
+        _min: { price: priceAgg._min.price },
+        _max: { price: priceAgg._max.price }
+      },
+      officeRows,
+    };
+  },
+  ['transport:searchTrips'],
+  { tags: [TAG_TRIPS], revalidate: 300 }
+);
+
 /**
  * Unified transport search. Returns trips (not routes) so price/time/amenity
  * filters apply at the trip level. Facets expose price bounds and operators
@@ -662,92 +752,45 @@ export async function searchTrips(input: unknown) {
     };
   }
   const data = parsed.data;
-  const where = buildTripWhere(data);
-  const orderBy = buildOrderBy(data.sort);
 
-  // Compute "facet where" by dropping price and amenity filters so sliders
-  // and checkboxes show the full range of options for the current day/route.
-  const facetWhere = buildTripWhere({
-    ...data,
-    priceMin: undefined,
-    priceMax: undefined,
-    amenities: undefined,
-    officeId: undefined,
-    officeIds: undefined,
-  });
+  try {
+    const pageKey = JSON.stringify(data);
+    const { total, rows, priceAgg, officeRows } = await getCachedTrips(pageKey);
 
-  const [total, rows, priceAgg, officeRows] = await Promise.all([
-    db.trip.count({ where }),
-    db.trip.findMany({
-      where,
-      orderBy,
-      take: data.limit,
-      skip: (data.page - 1) * data.limit,
-      include: {
-        route: {
-          include: {
-            origin: true,
-            destination: true,
-            office: { include: { assemblyPoint: true } },
-          },
-        },
-        bus: {
-          select: {
-            id: true,
-            plateNumber: true,
-            model: true,
-            manufacturer: true,
-            year: true,
-            capacity: true,
-            photoUrls: true,
-            amenities: true,
-          },
-        },
-      },
-    }),
-    db.trip.aggregate({
-      where: facetWhere,
-      _min: { price: true },
-      _max: { price: true },
-    }),
-    db.trip.findMany({
-      where: facetWhere,
-      distinct: ['routeId'],
-      select: {
-        route: {
-          select: {
-            officeId: true,
-            office: { select: { id: true, name: true, nameAr: true } },
-          },
-        },
-      },
-      take: 50,
-    }),
-  ]);
-
-  const seen = new Set<number>();
-  const offices: { id: number; name: string; nameAr: string | null }[] = [];
-  for (const row of officeRows) {
-    const o = row.route?.office;
-    if (o && !seen.has(o.id)) {
-      seen.add(o.id);
-      offices.push({ id: o.id, name: o.name, nameAr: o.nameAr });
+    const seen = new Set<number>();
+    const offices: { id: number; name: string; nameAr: string | null }[] = [];
+    for (const row of officeRows) {
+      const o = row.route?.office;
+      if (o && !seen.has(o.id)) {
+        seen.add(o.id);
+        offices.push({ id: o.id, name: o.name, nameAr: o.nameAr });
+      }
     }
-  }
-  offices.sort((a, b) => a.name.localeCompare(b.name));
+    offices.sort((a, b) => a.name.localeCompare(b.name));
 
-  return {
-    trips: rows,
-    total,
-    page: data.page,
-    pageCount: Math.max(1, Math.ceil(total / data.limit)),
-    limit: data.limit,
-    facets: {
-      priceMin: priceAgg._min.price ?? 0,
-      priceMax: priceAgg._max.price ?? 0,
-      offices,
-    },
-  };
+    return {
+      trips: rows,
+      total,
+      page: data.page,
+      pageCount: Math.max(1, Math.ceil(total / data.limit)),
+      limit: data.limit,
+      facets: {
+        priceMin: priceAgg._min.price ?? 0,
+        priceMax: priceAgg._max.price ?? 0,
+        offices,
+      },
+    };
+  } catch (error) {
+    logger.error('Failed to search trips', { error, input });
+    return {
+      trips: [],
+      total: 0,
+      page: data.page,
+      pageCount: 0,
+      limit: data.limit,
+      facets: { priceMin: 0, priceMax: 0, offices: [] },
+    };
+  }
 }
 
 export type SearchTripsResult = Awaited<ReturnType<typeof searchTrips>>;
@@ -889,7 +932,7 @@ export async function searchOffices(input: unknown) {
   }
   const { q, city, page, limit } = parsed.data;
 
-  const where: Prisma.TransportOfficeWhereInput = { isActive: true };
+  const where: Prisma.TransportOfficeWhereInput = { isActive: true, isVerified: true };
   const and: Prisma.TransportOfficeWhereInput[] = [];
 
   if (q) {
@@ -958,6 +1001,35 @@ export const getPopularRoutes = unstable_cache(
     return routes;
   },
   ['transport:getPopularRoutes'],
+  { tags: [TAG_POPULAR_ROUTES], revalidate: 3600 },
+);
+
+export const getPopularRoutesByOrigin = unstable_cache(
+  async (originCity: string) => {
+    const thirtyDaysOut = new Date();
+    thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
+
+    const routes = await db.route.findMany({
+      where: {
+        isActive: true,
+        origin: { city: originCity },
+        trips: {
+          some: {
+            departureDate: { gte: new Date(), lt: thirtyDaysOut },
+            isActive: true,
+            isCancelled: false,
+          },
+        },
+      },
+      include: {
+        origin: true,
+        destination: true,
+      },
+    });
+
+    return routes;
+  },
+  ['transport:getPopularRoutesByOrigin'],
   { tags: [TAG_POPULAR_ROUTES], revalidate: 3600 },
 );
 
@@ -1046,6 +1118,8 @@ export async function createTrip(data: TripFormData) {
 
   revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
+  updateTag(TAG_TRIPS);
+  updateTag(TAG_POPULAR_ROUTES);
   return trip;
 }
 
@@ -1099,6 +1173,8 @@ export async function updateTrip(id: number, data: Partial<TripFormData>) {
 
   revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
+  updateTag(TAG_TRIPS);
+  updateTag(TAG_POPULAR_ROUTES);
   return { success: true, trip };
 }
 
@@ -1167,6 +1243,8 @@ export async function cancelTrip(id: number) {
 
   revalidatePath('/[lang]/travel');
   revalidatePath('/[lang]/(dashboard)/offices');
+  updateTag(TAG_TRIPS);
+  updateTag(TAG_POPULAR_ROUTES);
   return { success: true, trip, notified: affectedBookings.length };
 }
 
@@ -1270,14 +1348,26 @@ export async function createBooking(data: unknown) {
       throw new Error('Trip not found');
     }
 
-    // Verify seats are available
-    const seats = await tx.seat.findMany({
-      where: {
-        tripId: validData.tripId,
-        seatNumber: { in: validData.seatNumbers },
-        status: 'Available',
-      },
-    });
+    // Verify seats are available, acquiring a pessimistic lock (FOR UPDATE)
+    // on the target seats in the database to prevent double bookings.
+    let seats: any[] = [];
+    if (typeof tx.$queryRaw === 'function') {
+      seats = await tx.$queryRaw<any[]>`
+        SELECT id, status FROM "Seat"
+        WHERE "tripId" = ${validData.tripId}
+          AND "seatNumber" IN (${Prisma.join(validData.seatNumbers)})
+          AND "status" = 'Available'
+        FOR UPDATE
+      `;
+    } else {
+      seats = await tx.seat.findMany({
+        where: {
+          tripId: validData.tripId,
+          seatNumber: { in: validData.seatNumbers },
+          status: 'Available',
+        },
+      });
+    }
 
     if (seats.length !== validData.seatNumbers.length) {
       throw new Error('Some selected seats are no longer available');
@@ -1330,6 +1420,7 @@ export async function createBooking(data: unknown) {
   });
 
   revalidatePath('/[lang]/travel');
+  updateTag(TAG_TRIPS);
   return { success: true, booking };
 }
 
@@ -1368,6 +1459,7 @@ export async function confirmBooking(id: number) {
   });
 
   revalidatePath('/[lang]/travel');
+  updateTag(TAG_TRIPS);
   return { success: true, booking };
 }
 
@@ -1421,6 +1513,7 @@ export async function releaseExpiredSeatHolds() {
     ),
   ]);
 
+  updateTag(TAG_TRIPS);
   return { success: true, released: seatIds.length, bookingsCancelled: bookingIds.length };
 }
 
@@ -1535,6 +1628,7 @@ export async function cancelBooking(id: number) {
   }
 
   revalidatePath('/[lang]/travel');
+  updateTag(TAG_TRIPS);
   return { success: true, booking: updatedBooking, refundAmount };
 }
 
@@ -1975,6 +2069,7 @@ export async function deleteTransportOffice(id: number) {
   });
 
   revalidatePath('/[lang]/(dashboard)/offices');
+  updateTag(TAG_TRIPS);
   return { success: true };
 }
 
@@ -2121,6 +2216,8 @@ export async function deleteTrip(id: number) {
   await db.trip.delete({ where: { id } });
 
   revalidatePath('/[lang]/(dashboard)/offices');
+  updateTag(TAG_TRIPS);
+  updateTag(TAG_POPULAR_ROUTES);
   return { success: true };
 }
 
@@ -2180,5 +2277,6 @@ export async function updateBookingStatus(
   }
 
   revalidatePath('/[lang]/(dashboard)/offices');
+  updateTag(TAG_TRIPS);
   return { success: true, booking: updatedBooking };
 }

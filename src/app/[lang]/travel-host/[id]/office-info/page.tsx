@@ -10,13 +10,20 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useTransportHostValidation } from '@/context/onboarding-validation-context';
-import { useTransportOffice } from '@/context/transport-office-context';
+import { useTransportOffice } from '@/context/travel-office-context';
 import HostStepLayout from '@/components/host/host-step-layout';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useParams, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 const OfficeInfoPage = () => {
-  const { enableNext, disableNext } = useTransportHostValidation();
-  const { office, updateOfficeData, isLoading } = useTransportOffice();
+  const router = useRouter();
+  const params = useParams();
+  const idStr = params.id as string;
+  const lang = (params.lang as string) ?? 'en';
+
+  const { enableNext, disableNext, setCustomNavigation } = useTransportHostValidation();
+  const { office, updateOfficeData, createNewOffice, isLoading } = useTransportOffice();
   const dict = useDictionary();
   const t = dict?.transportHost?.officeInfo;
 
@@ -116,6 +123,45 @@ const OfficeInfoPage = () => {
 
     return () => clearTimeout(debounceTimer);
   }, [watchedValues, office, isValid, updateOfficeData]);
+
+  useEffect(() => {
+    if (idStr === 'new') {
+      setCustomNavigation({
+        onNext: async () => {
+          try {
+            const formValues = watch();
+            const newId = await createNewOffice({
+              name: formValues.name,
+              nameAr: formValues.nameAr || null,
+              phone: formValues.phone,
+              email: formValues.email,
+              description: formValues.description || null,
+              descriptionAr: formValues.descriptionAr || null,
+              licenseNumber: formValues.licenseNumber || null,
+            });
+            if (newId) {
+              const { updateTransportOffice } = await import('@/lib/actions/travel-actions');
+              await updateTransportOffice(newId, {
+                bankName: formValues.bankName || '',
+                bankAccount: formValues.bankAccount || '',
+                bankHolder: formValues.bankHolder || '',
+                momoNumber: formValues.momoNumber || '',
+                momoProvider: formValues.momoProvider || '',
+              });
+              router.push(`/${lang}/travel-host/${newId}/assembly-point`);
+            } else {
+              toast.error('Failed to create office');
+            }
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to create office');
+          }
+        }
+      });
+    } else {
+      setCustomNavigation(undefined);
+    }
+    return () => setCustomNavigation(undefined);
+  }, [idStr, setCustomNavigation, createNewOffice, watch, router, lang]);
 
   return (
     <HostStepLayout

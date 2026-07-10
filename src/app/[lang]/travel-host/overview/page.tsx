@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import OnboardingStepsOverview from '@/components/onboarding/onboarding-steps-overview';
 import { TRANSPORT_OVERVIEW_CONFIG } from '@/components/onboarding/configs';
-import { createTransportOffice } from '@/lib/actions/transport-actions';
+import { createTransportOffice } from '@/lib/actions/travel-actions';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import Loading from '@/components/atom/loading';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
@@ -20,25 +20,8 @@ const TransportOverviewPage = () => {
   const dict = useDictionary();
   const t = dict?.transportHost?.onboardingLanding;
 
-  const handleGetStarted = async () => {
-    if (isLoading) return;
-
-    setIsLoading(true);
-    try {
-      const result = await createTransportOffice({
-        name: t?.creatingOfficeName ?? 'New Transport Office',
-      });
-
-      if (result.success && result.office) {
-        router.push(`/${lang}/transport-host/${result.office.id}/office-info`);
-      } else {
-        console.error('Failed to create office');
-      }
-    } catch (error) {
-      console.error('Error creating office:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleGetStarted = () => {
+    router.push(`/${lang}/travel-host/new/office-info`);
   };
 
   if (status === 'loading') {

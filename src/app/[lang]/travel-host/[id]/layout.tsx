@@ -35,15 +35,17 @@ export default async function TransportHostLayout({
   // ANY authenticated user view another operator's office dashboard. Mirror
   // the action-level canOverride(session, office.ownerId) check (operators
   // have no dedicated role — ownership is tracked via TransportOffice.ownerId).
-  const officeId = Number(id)
-  const office = Number.isFinite(officeId)
-    ? await db.transportOffice.findUnique({
-        where: { id: officeId },
-        select: { ownerId: true },
-      })
-    : null
-  if (!office || !canOverride(session, office.ownerId)) {
-    redirect(`/${lang}`)
+  if (id !== "new") {
+    const officeId = Number(id)
+    const office = Number.isFinite(officeId)
+      ? await db.transportOffice.findUnique({
+          where: { id: officeId },
+          select: { ownerId: true },
+        })
+      : null
+    if (!office || !canOverride(session, office.ownerId)) {
+      redirect(`/${lang}`)
+    }
   }
 
   return <TransportHostLayoutClient>{children}</TransportHostLayoutClient>

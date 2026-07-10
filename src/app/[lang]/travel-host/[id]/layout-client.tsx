@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import OnboardingFooter from '@/components/onboarding/onboarding-footer'
 import { TRANSPORT_FOOTER_CONFIG } from '@/components/onboarding/configs'
 import { TransportHostValidationProvider, useTransportHostValidation } from '@/context/onboarding-validation-context'
-import { TransportOfficeProvider, useTransportOffice } from '@/context/transport-office-context'
+import { TransportOfficeProvider, useTransportOffice } from '@/context/travel-office-context'
 import { useDictionary } from '@/components/internationalization/dictionary-context'
 
 interface TransportHostLayoutClientProps {
@@ -15,7 +15,7 @@ interface TransportHostLayoutClientProps {
 function TransportHostLayoutContent({ children }: TransportHostLayoutClientProps) {
   const params = useParams()
   const { loadOffice } = useTransportOffice()
-  const officeId = params.id ? parseInt(params.id as string, 10) : null
+  const officeId = params.id && params.id !== 'new' ? parseInt(params.id as string, 10) : null
   const dict = useDictionary()
   // Aria label sourced from dict so screen-reader text follows the active locale
   const mainAriaLabel = dict?.transportHost?.metadata?.title ?? "Transport Host"

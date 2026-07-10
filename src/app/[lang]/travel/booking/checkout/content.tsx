@@ -26,11 +26,11 @@ import {
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { processPayment, type getBooking } from '@/lib/actions/transport-actions';
-import { TransportCardCheckout } from '@/components/transport/card-checkout';
+import { processPayment, type getBooking } from '@/lib/actions/travel-actions';
+import { TransportCardCheckout } from '@/components/travel/card-checkout';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { formatCurrency } from '@/lib/i18n/formatters';
-import { cityLabel } from '@/components/transport/city-names';
+import { cityLabel } from '@/components/travel/city-names';
 
 type PaymentMethod = 'MobileMoney' | 'CreditCard' | 'BankTransfer' | 'CashOnArrival';
 
@@ -52,7 +52,7 @@ function CheckoutInner({
   const dateLocale = locale === 'ar' ? ar : enUS;
 
   const dict = useDictionary();
-  const t = dict?.transport;
+  const t = dict?.travel;
   const c = t?.checkout;
   const pm = t?.paymentMethods;
 
@@ -62,7 +62,12 @@ function CheckoutInner({
     { id: 'CreditCard' as PaymentMethod, name: pm?.creditCard?.name ?? "Credit/Debit Card", description: pm?.creditCard?.description ?? "Visa, Mastercard", icon: CreditCard },
     { id: 'BankTransfer' as PaymentMethod, name: pm?.bankTransfer?.name ?? "Bank Transfer", description: pm?.bankTransfer?.description ?? "Direct bank transfer", icon: Building2 },
     { id: 'CashOnArrival' as PaymentMethod, name: pm?.cashOnArrival?.name ?? "Cash on Arrival", description: pm?.cashOnArrival?.description ?? "Pay at the office", icon: Banknote },
-  ].filter((m) => showCard || m.id !== 'CreditCard'); // Stripe can't serve Sudan — hide card for non-diaspora.
+  ].filter((m) => {
+    if (m.id === 'CreditCard') return showCard;
+    if (m.id === 'BankTransfer') return hasBankDetails;
+    if (m.id === 'MobileMoney') return hasMomoDetails;
+    return true;
+  });
 
   const [processing, setProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('MobileMoney');
@@ -87,7 +92,7 @@ function CheckoutInner({
                 "Payment submitted — the operator will verify it and confirm your booking.")
             : (t?.bookingPage?.paymentSuccess ?? "Payment successful")
         );
-        router.push(`/${locale}/transport/booking/${booking.id}`);
+        router.push(`/${locale}/travel/booking/${booking.id}`);
       } else {
         toast.error(t?.bookingPage?.paymentFailed ?? "Payment failed. Please try again.");
       }
@@ -109,7 +114,7 @@ function CheckoutInner({
     return (
       <div className="container mx-auto py-8 px-4 text-center">
         <h1 className="text-2xl font-bold">{c?.bookingNotFound ?? "Booking not found"}</h1>
-        <Button onClick={() => router.push(`/${locale}/transport`)} className="mt-4">
+        <Button onClick={() => router.push(`/${locale}/travel`)} className="mt-4">
           {c?.backToTransport ?? "Back to Transport"}
         </Button>
       </div>
@@ -239,7 +244,7 @@ function CheckoutInner({
                   }}
                   onSuccess={() => {
                     toast.success(t?.bookingPage?.paymentSuccess ?? "Payment successful");
-                    router.push(`/${locale}/transport/booking/${booking.id}`);
+                    router.push(`/${locale}/travel/booking/${booking.id}`);
                   }}
                 />
               </CardContent>
