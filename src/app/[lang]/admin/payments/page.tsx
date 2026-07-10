@@ -46,7 +46,7 @@ export default async function AdminPaymentsPage({
             {a.tabHomes ?? "Homes"} ({homes.total})
           </TabsTrigger>
           <TabsTrigger value="transport">
-            {a.tabTransport ?? "Transport"} ({transport.total})
+            {a.tabTransport ?? "Travel"} ({transport.total})
           </TabsTrigger>
         </TabsList>
         <TabsContent value="bookings">
@@ -98,6 +98,11 @@ export default async function AdminPaymentsPage({
                 method: a.method ?? "Method",
                 status: a.status ?? "Status",
                 created: a.created ?? "Created",
+                actions: a.actions ?? "Actions",
+                approve: a.approve ?? "Approve",
+                reject: a.reject ?? "Reject",
+                approved: a.paymentApproved ?? "Payment approved — booking confirmed.",
+                rejected: a.paymentRejected ?? "Payment rejected.",
               }}
             />
           </div>

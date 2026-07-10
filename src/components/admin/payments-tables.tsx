@@ -1,3 +1,12 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { verifyPayment } from "@/lib/actions/travel-actions";
+import { useLocale } from "@/components/internationalization/use-locale";
+import { formatCurrency } from "@/lib/i18n/formatters";
 import {
   Table,
   TableBody,
@@ -52,6 +61,11 @@ type TransportLabels = {
   method: string;
   status: string;
   created: string;
+  actions: string;
+  approve: string;
+  reject: string;
+  approved: string;
+  rejected: string;
 };
 
 export function HomePaymentsTable({
@@ -106,6 +120,34 @@ export function TransportPaymentsTable({
   payments: TransportPayment[];
   labels: TransportLabels;
 }) {
+  const router = useRouter();
+  const { locale } = useLocale();
+  const [pending, startTransition] = useTransition();
+  const [actingId, setActingId] = useState<number | null>(null);
+
+  function handleVerify(paymentId: number, approve: boolean) {
+    setActingId(paymentId);
+    startTransition(async () => {
+      try {
+        const res = await verifyPayment(paymentId, approve);
+        if (res.success) {
+          toast.success(approve ? labels.approved : labels.rejected);
+          router.refresh();
+        } else {
+          toast.error("Action failed");
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Error verifying payment");
+      } finally {
+        setActingId(null);
+      }
+    });
+  }
+
+  if (payments.length === 0) {
+    return <p className="p-6 text-sm text-muted-foreground">{labels.actions === "Actions" ? "No travel payments yet." : "لا توجد مدفوعات رحلات بعد."}</p>;
+  }
+
   return (
     <Table>
       <TableHeader>
@@ -116,23 +158,56 @@ export function TransportPaymentsTable({
           <TableHead>{labels.method}</TableHead>
           <TableHead>{labels.status}</TableHead>
           <TableHead>{labels.created}</TableHead>
+          <TableHead className="text-end">{labels.actions}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {payments.map((p) => (
-          <TableRow key={p.id}>
-            <TableCell className="text-sm">{p.booking.office.name}</TableCell>
-            <TableCell className="text-sm">{p.booking.user.email}</TableCell>
-            <TableCell className="text-end text-sm">${p.amount.toFixed(0)}</TableCell>
-            <TableCell className="text-sm">{p.method}</TableCell>
-            <TableCell>
-              <Badge variant="outline">{p.status}</Badge>
-            </TableCell>
-            <TableCell className="text-xs text-muted-foreground">
-              {new Date(p.createdAt).toLocaleDateString()}
-            </TableCell>
-          </TableRow>
-        ))}
+        {payments.map((p) => {
+          const isPending = p.status === "Pending";
+          const busy = pending && actingId === p.id;
+          return (
+            <TableRow key={p.id}>
+              <TableCell className="text-sm">{p.booking.office.name}</TableCell>
+              <TableCell className="text-sm">{p.booking.user.email}</TableCell>
+              <TableCell className="text-end text-sm">
+                {formatCurrency(p.amount, locale)}
+              </TableCell>
+              <TableCell className="text-sm">{p.method}</TableCell>
+              <TableCell>
+                <Badge variant={isPending ? "secondary" : "outline"}>
+                  {p.status}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-xs text-muted-foreground">
+                {new Date(p.createdAt).toLocaleDateString()}
+              </TableCell>
+              <TableCell className="text-end">
+                {isPending ? (
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => handleVerify(p.id, true)}
+                    >
+                      {labels.approve}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() => handleVerify(p.id, false)}
+                    >
+                      {labels.reject}
+                    </Button>
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );

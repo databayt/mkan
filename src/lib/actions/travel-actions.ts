@@ -1910,7 +1910,7 @@ export async function processPayment(bookingId: number, data: PaymentFormData) {
   return { success: true, payment, pendingVerification: data.method !== 'CashOnArrival' };
 }
 
-export async function verifyPayment(paymentId: number) {
+export async function verifyPayment(paymentId: number, approve: boolean = true) {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -1933,19 +1933,63 @@ export async function verifyPayment(paymentId: number) {
     throw new Error('Not authorized to verify this payment');
   }
 
-  const payment = await db.transportPayment.update({
-    where: { id: paymentId },
-    data: {
-      status: 'Paid',
-      paidAt: new Date(),
-    },
-  });
+  if (approve) {
+    const payment = await db.transportPayment.update({
+      where: { id: paymentId },
+      data: {
+        status: 'Paid',
+        paidAt: new Date(),
+      },
+    });
 
-  // Confirm the booking
-  await confirmBooking(payment.bookingId);
+    // Confirm the booking
+    await confirmBooking(payment.bookingId);
 
-  revalidatePath('/[lang]/travel');
-  return { success: true, payment };
+    revalidatePath('/[lang]/travel');
+    return { success: true, payment };
+  } else {
+    const payment = await db.transportPayment.update({
+      where: { id: paymentId },
+      data: {
+        status: 'Failed',
+      },
+    });
+
+    // Cancel the booking
+    await db.transportBooking.update({
+      where: { id: payment.bookingId },
+      data: {
+        status: 'Cancelled',
+        cancelledAt: new Date(),
+      },
+    });
+
+    // Release seats immediately back to Available
+    const booking = await db.transportBooking.findUnique({
+      where: { id: payment.bookingId },
+      include: { seats: true },
+    });
+
+    if (booking) {
+      await db.seat.updateMany({
+        where: { bookingId: booking.id },
+        data: { status: 'Available', bookingId: null, reservedUntil: null },
+      });
+
+      // Increment available seats count
+      await db.trip.update({
+        where: { id: booking.tripId },
+        data: {
+          availableSeats: {
+            increment: booking.seats.length,
+          },
+        },
+      });
+    }
+
+    revalidatePath('/[lang]/travel');
+    return { success: true, payment };
+  }
 }
 
 // ============================================

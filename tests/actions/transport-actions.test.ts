@@ -1208,6 +1208,46 @@ describe("verifyPayment", () => {
     const result = await verifyPayment(1);
     expect(result.success).toBe(true);
   });
+
+  it("sets payment to Failed and cancels the booking when rejected", async () => {
+    mockAuth.mockResolvedValue(session as never);
+    mockDb.transportPayment.findUnique = vi.fn().mockResolvedValue({
+      id: 1,
+      bookingId: 5,
+      booking: {
+        trip: { route: { office: { ownerId: "user-1" } } },
+      },
+    } as never) as never;
+    mockDb.transportPayment.update.mockResolvedValue({
+      id: 1,
+      bookingId: 5,
+    } as never);
+    mockDb.transportBooking.findUnique.mockResolvedValue({
+      id: 5,
+      tripId: 10,
+      seats: [{}, {}],
+      userId: "user-1",
+      trip: { route: { office: { ownerId: "user-1" } } },
+    } as never);
+    mockDb.transportBooking.update.mockResolvedValue({} as never);
+    mockDb.seat.updateMany.mockResolvedValue({} as never);
+    mockDb.trip.update.mockResolvedValue({} as never);
+
+    const result = await verifyPayment(1, false);
+    expect(result.success).toBe(true);
+    expect(mockDb.transportPayment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 1 },
+        data: { status: "Failed" },
+      })
+    );
+    expect(mockDb.transportBooking.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 5 },
+        data: expect.objectContaining({ status: "Cancelled" }),
+      })
+    );
+  });
 });
 
 // ============================================
