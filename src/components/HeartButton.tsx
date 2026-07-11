@@ -1,16 +1,19 @@
 // Stub component for unused row components
 "use client";
 
+import { useDictionary } from "@/components/internationalization/use-dictionary";
+
 interface HeartButtonProps {
   listingId?: string | number;
   currentUser?: any;
 }
 
 const HeartButton: React.FC<HeartButtonProps> = ({ listingId, currentUser }) => {
+  const dict = useDictionary();
   return (
     <button
       className="relative hover:opacity-80 transition cursor-pointer"
-      aria-label="Add to favorites"
+      aria-label={dict?.propertyCard?.addFavorite ?? "Add to favorites"}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

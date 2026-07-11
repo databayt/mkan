@@ -100,9 +100,11 @@ export function SearchResultsArea() {
 
       {/* Results "sheet" — opaque + rounded-top on mobile so it slides up over the
           preview map on scroll. No desktop media rule → desktop is unchanged. */}
+      {/* i18n-exempt — layout CSS, not user-facing copy */}
       <style>{`@media(max-width:1023px){[data-results-sheet]{position:relative;z-index:10;border-top-left-radius:18px;border-top-right-radius:18px;margin-top:-18px}}`}</style>
       <div data-results-sheet className="bg-background">
 
+      {/* i18n-exempt — layout CSS, not user-facing copy */}
       <style>{`@media(min-width:1024px){[data-search-split]{grid-template-columns:638px minmax(0,1fr);column-gap:48px}}`}</style>
       <div className="px-6 lg:px-12">
       <div data-search-split className="grid grid-cols-1">

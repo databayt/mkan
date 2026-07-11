@@ -11,6 +11,7 @@ import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import type { Locale } from "@/components/internationalization/config";
 import { formatCurrency } from "@/lib/i18n/formatters";
+import { localizeListings } from "@/components/translation/localize";
 
 export async function generateMetadata({
   params,
@@ -44,7 +45,7 @@ export default async function PropertiesPage({
     redirect(`/${lang}/login`);
   }
 
-  const properties = await db.listing.findMany({
+  const propertiesRaw = await db.listing.findMany({
     where: {
       hostId: session.user.id,
     },
@@ -61,6 +62,12 @@ export default async function PropertiesPage({
       id: 'desc'
     }
   });
+
+  // Localize stored listing free-text (title + location) for the viewer's locale.
+  const properties = (await localizeListings(
+    propertiesRaw as unknown as Array<Record<string, unknown>>,
+    lang as "en" | "ar",
+  )) as unknown as typeof propertiesRaw;
 
   return (
     <div className="p-6 space-y-6">

@@ -4,7 +4,7 @@ import { addDays } from 'date-fns';
 import {
   getTransportOffice,
   getOfficeTrips,
-} from '@/lib/actions/transport-actions';
+} from '@/lib/actions/travel-actions';
 import { db } from '@/lib/db';
 import { createMetadata, SITE_URL } from '@/lib/metadata';
 import { JsonLd, transportOfficeJsonLd } from '@/components/seo/json-ld';
@@ -21,9 +21,9 @@ export async function generateMetadata({
 }: OfficePageProps): Promise<Metadata> {
   const { lang, id } = await params;
   const d = await getDictionary(lang);
-  const fallbackTitle = d.transport?.office?.title ?? 'Transport Office';
+  const fallbackTitle = d.travel?.office?.title ?? 'Transport Office';
   const fallbackDescription =
-    d.transport?.meta?.description ??
+    d.travel?.meta?.description ??
     'Book intercity bus trips with trusted transport offices.';
   const officeId = Number(id);
   if (!Number.isFinite(officeId)) {
@@ -31,7 +31,7 @@ export async function generateMetadata({
       title: fallbackTitle,
       description: fallbackDescription,
       locale: lang,
-      path: `/transport/offices/${id}`,
+      path: `/travel/offices/${id}`,
       noIndex: true,
     });
   }
@@ -56,7 +56,7 @@ export async function generateMetadata({
     title: name || fallbackTitle,
     description: description || fallbackDescription,
     locale: lang,
-    path: `/transport/offices/${id}`,
+    path: `/travel/offices/${id}`,
     image: office?.logoUrl ?? undefined,
     noIndex: !office?.isActive,
   });
@@ -83,7 +83,7 @@ export default async function OfficeDetailsPage({ params }: OfficePageProps) {
             description:
               (lang === 'ar' ? office.descriptionAr : office.description) ||
               office.description,
-            url: `${SITE_URL}/${lang}/transport/offices/${office.id}`,
+            url: `${SITE_URL}/${lang}/travel/offices/${office.id}`,
             phone: office.phone,
             logoUrl: office.logoUrl,
             rating: office.rating,

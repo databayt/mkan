@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MapPin } from 'lucide-react';
 import type { Map as MapboxMapType } from 'mapbox-gl';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { cityLabel } from '@/components/travel/city-names';
 
 interface AssemblyPoint {
   id: number;
@@ -22,7 +23,7 @@ interface TransportMapProps {
 
 export function TransportMap({ assemblyPoints, lang = 'ar' }: TransportMapProps) {
   const dict = useDictionary();
-  const m = dict?.transport?.map;
+  const m = dict?.travel?.map;
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMapType | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -82,11 +83,13 @@ export function TransportMap({ assemblyPoints, lang = 'ar' }: TransportMapProps)
             el.className = 'flex items-center justify-center w-8 h-8 rounded-full bg-primary shadow-md cursor-pointer hover:scale-110 transition-transform';
             el.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3" fill="white" stroke="none"/></svg>';
 
+            const pointName =
+              lang === 'ar' ? (point.nameAr ?? point.name) : point.name;
             const popup = new mapboxgl.default.Popup({ offset: 25, closeButton: false })
               .setHTML(`
                 <div style="font-family: system-ui, sans-serif; padding: 4px 0;">
-                  <div style="font-weight: 600; font-size: 14px;">${point.name}</div>
-                  <div style="color: #6b7280; font-size: 12px;">${point.city}</div>
+                  <div style="font-weight: 600; font-size: 14px;">${pointName}</div>
+                  <div style="color: #6b7280; font-size: 12px;">${cityLabel(point.city, lang)}</div>
                   <div style="color: #9ca3af; font-size: 11px; margin-top: 2px;">${point.address}</div>
                 </div>
               `);
@@ -115,7 +118,7 @@ export function TransportMap({ assemblyPoints, lang = 'ar' }: TransportMapProps)
         mapRef.current = null;
       }
     };
-  }, [assemblyPoints]);
+  }, [assemblyPoints, lang]);
 
   if (assemblyPoints.length === 0) {
     return (

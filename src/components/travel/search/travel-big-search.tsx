@@ -1,7 +1,7 @@
 "use client";
 
 import { Search, ArrowUpDown, ArrowLeft, ArrowRight } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Counter } from "@/components/atom/counter";
@@ -14,23 +14,8 @@ import { isRTL as checkRTL, type Locale } from "@/components/internationalizatio
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { cityLabel } from "@/components/travel/city-names";
 
-// Transport hero search — mirrors the homepage hero card (VerticalSearch): a
-// left-anchored white card that carries the title inside it, with stacked
-// fields and a red Search pill. Adapted for buses: the location pair is a
-// joined From/To with a swap circle on the seam, and "Guests" becomes a
-// Passengers stepper (adults + children → the `seats` search filter).
-//
-// Two layouts, same as the homepage:
-//   • Desktop (≥md): the card stays put and each field opens a panel that
-//     floats beside it.
-//   • Mobile (<md): a fixed-height card whose BODY switches to the active
-//     step (Where / When / Who) in place — no dropdown drops below the fields.
-//     Floating prev/next arrows sit at the top and the Search pill floats at
-//     the bottom, exactly like the homepage mobile flow.
-
 type ActiveButton = "origin" | "destination" | "date" | "passengers" | null;
 
-// Step order the mobile prev/next arrows walk.
 const STEP_ORDER = ["origin", "destination", "date", "passengers"] as const;
 
 interface AssemblyPoint {
@@ -73,21 +58,9 @@ interface TransportBigSearchProps {
   initialDestination?: string;
   initialDate?: Date;
   lang?: string;
-  /**
-   * `hero` (default) — the left-anchored landing card that carries its own
-   * title. `header` — the same fields hosted inside the expanding search
-   * header: the internal title is dropped (the header frames it) and, on
-   * mobile, the card fills the sheet height instead of the fixed hero height.
-   */
   variant?: "hero" | "header";
-  /** Open straight onto a field (deep-link from the collapsed pill segment). */
   initialField?: ActiveButton;
-  /** Called after a successful search push — lets the header collapse/close. */
   onSearch?: () => void;
-  /**
-   * When set, the mobile floating Search button becomes a Framer shared-layout
-   * twin (morphs to/from the collapsed pill's red circle via this id).
-   */
   ctaLayoutId?: string;
 }
 
@@ -112,9 +85,37 @@ const DEFAULT_DICTIONARY: TransportSearchDictionary = {
   passengersPlural: "passengers",
 };
 
-// Compact adults/children stepper — the transport equivalent of the homepage
-// GuestSelector. Two rows only (no infants/pets); each row uses the shared
-// Counter atom in its small variant so it fits the narrow card / side panel.
+// Motion transitions mirroring homes BigSearch
+const DROPDOWN_TRANSITION = { duration: 0.2, ease: [0.32, 0.72, 0, 1] as const };
+const dropdownMotion = {
+  initial: { opacity: 0, y: -8, scale: 0.985 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -8, scale: 0.985 },
+};
+
+const SWITCH_TRANSITION = {
+  type: "spring" as const,
+  stiffness: 480,
+  damping: 42,
+  mass: 1,
+} as const;
+
+const SWITCH_FADE = { duration: 0.2, ease: [0.32, 0.72, 0, 1] as const };
+
+const PILL_SHADOW = "rgba(0,0,0,0.1) 0px 3px 12px 0px, rgba(0,0,0,0.08) 0px 1px 2px 0px";
+
+function ActivePill() {
+  return (
+    <motion.div
+      layoutId="searchActivePill"
+      transition={SWITCH_TRANSITION}
+      aria-hidden
+      className="absolute inset-0 rounded-full bg-white pointer-events-none"
+      style={{ zIndex: -1, boxShadow: PILL_SHADOW, border: "1px solid #DDDDDD" }}
+    />
+  );
+}
+
 function PassengerSelector({
   passengers,
   onChange,
@@ -124,8 +125,6 @@ function PassengerSelector({
   onChange: (type: keyof Passengers, op: "increment" | "decrement") => void;
   dict: TransportSearchDictionary;
 }) {
-  // A child can't travel without an adult, so the adults minus is floored at 1
-  // while any children are selected (mirrors the homepage guest rule).
   const minAdults = passengers.children > 0 ? 1 : 0;
   return (
     <div className="flex flex-col">
@@ -178,6 +177,7 @@ export default function TransportBigSearch({
   const isRTL = checkRTL(lang as Locale);
   const inHeader = variant === "header";
   const [activeButton, setActiveButton] = useState<ActiveButton>(initialField);
+  const [hoveredButton, setHoveredButton] = useState<ActiveButton>(null);
   const [isMobile, setIsMobile] = useState(false);
   const searchBarRef = useRef<HTMLDivElement>(null);
 
@@ -187,8 +187,6 @@ export default function TransportBigSearch({
   const [date, setDate] = useState<Date | undefined>(initialDate);
   const [passengers, setPassengers] = useState<Passengers>({ adults: 0, children: 0 });
 
-  // Track viewport so mobile gets the in-place step flow and desktop the
-  // beside-the-card panels (same split as the homepage VerticalSearch).
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     check();
@@ -215,7 +213,6 @@ export default function TransportBigSearch({
     if (selectedDate) setActiveButton("passengers");
   };
 
-  // Swap origin ⇄ destination in place (the classic From/To flip).
   const handleSwap = () => {
     setOrigin(destination);
     setDestination(origin);
@@ -228,7 +225,6 @@ export default function TransportBigSearch({
         const next =
           op === "increment" ? Math.min(current + 1, 9) : Math.max(0, current - 1);
         const updated = { ...prev, [type]: next };
-        // Adding a child requires at least one adult.
         if (op === "increment" && type === "children" && updated.adults === 0) {
           updated.adults = 1;
         }
@@ -277,19 +273,69 @@ export default function TransportBigSearch({
     onSearch?.();
   };
 
-  // Field surface styling — same three-state treatment as the homepage card:
-  // active field turns solid white with a darker border; the rest dim to
-  // gray-50 while any field is open.
-  const getFieldStyling = (button: ActiveButton) => {
-    const isActive = activeButton === button;
-    const hasActive = activeButton !== null;
-    let styleClass = "bg-transparent";
-    if (isActive) styleClass = "bg-white !border-gray-400";
-    else if (hasActive) styleClass = "bg-gray-50";
-    return `${styleClass} transition-all duration-200`;
+  const isLineHidden = (position: "origin-destination" | "destination-date" | "date-passengers") => {
+    switch (position) {
+      case "origin-destination":
+        return (
+          hoveredButton === "origin" ||
+          hoveredButton === "destination" ||
+          activeButton === "origin" ||
+          activeButton === "destination"
+        );
+      case "destination-date":
+        return (
+          hoveredButton === "destination" ||
+          hoveredButton === "date" ||
+          activeButton === "destination" ||
+          activeButton === "date"
+        );
+      case "date-passengers":
+        return (
+          hoveredButton === "date" ||
+          hoveredButton === "passengers" ||
+          activeButton === "date" ||
+          activeButton === "passengers"
+        );
+      default:
+        return false;
+    }
   };
 
-  // ── Mobile step navigation (prev/next arrows) ─────────────────────────────
+  const getButtonStyling = (button: ActiveButton) => {
+    const isActive = activeButton === button;
+    const isHovered = hoveredButton === button;
+    const hasActiveButton = activeButton !== null;
+
+    const z = isActive ? "z-20" : "z-10";
+
+    let bgClass = "";
+    if (isActive) {
+      bgClass = "";
+    } else if (hasActiveButton) {
+      bgClass = isHovered ? "before:bg-[#DDDDDD]" : "";
+    } else if (isHovered) {
+      bgClass = "before:bg-[#EBEBEB]";
+    }
+
+    const order: Exclude<ActiveButton, null>[] = ["origin", "destination", "date", "passengers"];
+    let insetStart = "before:start-0";
+    let insetEnd = "before:end-0";
+    let roundClass = "before:rounded-full";
+    if (activeButton !== null && !isActive && isHovered && button !== null) {
+      const activeIdx = order.indexOf(activeButton);
+      const buttonIdx = order.indexOf(button);
+      if (buttonIdx === activeIdx + 1) {
+        insetStart = "before:-start-10";
+        roundClass = "before:rounded-e-full before:rounded-s-none";
+      } else if (buttonIdx === activeIdx - 1) {
+        insetEnd = "before:-end-10";
+        roundClass = "before:rounded-s-full before:rounded-e-none";
+      }
+    }
+
+    return `relative ${z} before:absolute before:inset-y-0 ${insetStart} ${insetEnd} before:-z-10 ${roundClass} before:transition-colors before:duration-200 before:content-[''] ${bgClass} transition-all duration-200`;
+  };
+
   const step = activeButton ? STEP_ORDER.indexOf(activeButton) : -1;
   const goPrev = () => {
     const prev = step > 0 ? STEP_ORDER[step - 1] : undefined;
@@ -300,28 +346,19 @@ export default function TransportBigSearch({
     if (next) setActiveButton(next);
   };
 
-  // Click outside to close the active field. The side/inline dropdowns live
-  // inside this ref, so selecting within them is not treated as "outside".
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchBarRef.current && !searchBarRef.current.contains(event.target as Node)) {
         setActiveButton(null);
+        setHoveredButton(null);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const canSearch = Boolean(origin && destination && date);
-
-  // The stacked From / To / Date / Passengers fields — shared by the desktop
-  // card and the mobile idle screen.
   const renderFieldStack = () => (
     <div className="space-y-4 md:space-y-3">
-      {/* Where — From / To joined vertical pair (styled like the homepage
-          check-in/check-out fields, stacked instead of side-by-side) with a
-          swap circle straddling the seam. In-field labels keep the swap from
-          colliding with a stacked label row. */}
       <div>
         <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
           {dictionary.where}
@@ -330,7 +367,7 @@ export default function TransportBigSearch({
           <button
             type="button"
             onClick={() => handleButtonClick("origin")}
-            className={`w-full h-14 text-start px-3 border border-gray-300 rounded-t-xs ${getFieldStyling("origin")}`}
+            className={`w-full h-14 text-start px-3 border border-gray-300 rounded-t-xs bg-transparent`}
           >
             <span className="block text-[11px] font-medium text-[#6b6b6b] leading-none">
               {dictionary.from}
@@ -342,7 +379,7 @@ export default function TransportBigSearch({
           <button
             type="button"
             onClick={() => handleButtonClick("destination")}
-            className={`w-full h-14 text-start px-3 border border-gray-300 border-t-0 rounded-b-xs ${getFieldStyling("destination")}`}
+            className={`w-full h-14 text-start px-3 border border-gray-300 border-t-0 rounded-b-xs bg-transparent`}
           >
             <span className="block text-[11px] font-medium text-[#6b6b6b] leading-none">
               {dictionary.to}
@@ -351,7 +388,6 @@ export default function TransportBigSearch({
               {destination ? cityLabel(destination, lang) : ""}
             </span>
           </button>
-          {/* Swap circle — pinned to the trailing edge, centered on the seam. */}
           <button
             type="button"
             onClick={handleSwap}
@@ -364,7 +400,6 @@ export default function TransportBigSearch({
         </div>
       </div>
 
-      {/* When */}
       <div>
         <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
           {dictionary.when}
@@ -372,7 +407,7 @@ export default function TransportBigSearch({
         <button
           type="button"
           onClick={() => handleButtonClick("date")}
-          className={`w-full h-14 md:h-12 text-start px-3 border border-gray-300 rounded-xs ${getFieldStyling("date")}`}
+          className={`w-full h-14 md:h-12 text-start px-3 border border-gray-300 rounded-xs bg-transparent`}
         >
           <span
             className={`text-sm ${date ? "text-black" : "text-[#c0c0c0]"}`}
@@ -383,7 +418,6 @@ export default function TransportBigSearch({
         </button>
       </div>
 
-      {/* Passengers */}
       <div>
         <Label className="text-[11px] font-medium text-[#6b6b6b] mb-1 block">
           {dictionary.passengers}
@@ -391,7 +425,7 @@ export default function TransportBigSearch({
         <button
           type="button"
           onClick={() => handleButtonClick("passengers")}
-          className={`w-full h-14 md:h-12 text-start px-3 border border-gray-300 rounded-xs ${getFieldStyling("passengers")}`}
+          className={`w-full h-14 md:h-12 text-start px-3 border border-gray-300 rounded-xs bg-transparent`}
         >
           <span className={`text-sm ${totalPassengers > 0 ? "text-black" : "text-[#c0c0c0]"}`}>
             {passengerText()}
@@ -401,20 +435,14 @@ export default function TransportBigSearch({
     </div>
   );
 
-  // ── Mobile: fixed-height card with in-place steps ─────────────────────────
+  // ── Mobile Step Flow ─────────────────────────────────────────────────────
   if (isMobile) {
     return (
       <div className={`relative w-full ${inHeader ? "h-full" : ""}`} ref={searchBarRef}>
         <div
           className={`relative bg-white w-full overflow-hidden ${inHeader ? "" : "shadow-sm"}`}
-          // Constant height across idle + every step so the card never grows
-          // when a step opens (inline so Turbopack can't drop it as a brand-new
-          // arbitrary utility from its dev scan). Inside the header sheet it
-          // fills the panel instead of the fixed hero height.
           style={{ height: inHeader ? "100%" : "min(78vh, 560px)" }}
         >
-          {/* Body — swaps by step; the floating arrows (top) and Search pill
-              (bottom) overlay every state. pt clears the arrows, pb the pill. */}
           {!activeButton ? (
             <div className="h-full overflow-y-auto no-scrollbar px-5 pt-8 pb-24">
               <h1 className="text-2xl font-semibold text-[#484848] mb-6 leading-tight whitespace-pre-line">
@@ -442,8 +470,6 @@ export default function TransportBigSearch({
             </div>
           )}
 
-          {/* Floating step arrows (active only) — plain line arrows that walk
-              Where → When → Who, matching the homepage mobile flow. */}
           {activeButton && (
             <div className="absolute top-5 start-4 z-30 flex items-center gap-3">
               <button
@@ -467,10 +493,6 @@ export default function TransportBigSearch({
             </div>
           )}
 
-          {/* Floating Search pill — pinned bottom-end, on top of the body, so
-              it stays reachable in every step. Inside the header sheet it is a
-              shared-layout twin of the collapsed pill's red circle (ctaLayoutId)
-              so the two morph into each other as the sheet opens/closes. */}
           {ctaLayoutId ? (
             <motion.button
               layoutId={ctaLayoutId}
@@ -496,61 +518,202 @@ export default function TransportBigSearch({
     );
   }
 
-  // ── Desktop: the card stays put; each field opens a panel beside it ───────
+  // ── Desktop Horizontal Search Bar ────────────────────────────────────────
   return (
-    <div className="relative w-full md:w-[340px]" ref={searchBarRef}>
-      <div className={`relative bg-white px-5 pt-4 pb-5 w-full ${inHeader ? "" : "shadow-sm"}`}>
-        {/* Title within the form — homepage hero pattern; dropped in the header
-            where the sticky bar already frames the search. */}
-        {!inHeader && (
-          <h1 className="text-xl font-medium text-[#6b6b6b] mb-3 leading-tight whitespace-pre-line">
-            {dictionary.title}
-          </h1>
-        )}
+    <div className="relative w-full mx-auto" style={{ maxWidth: 850 }} ref={searchBarRef}>
+      <div
+        style={{ height: 66 }}
+        className={`flex items-center rounded-full border transition-all duration-200 ${
+          activeButton
+            ? "bg-[#EBEBEB] border-[#DDDDDD] shadow-[rgba(0,0,0,0.02)_0px_0px_0px_1px,rgba(0,0,0,0.1)_0px_8px_24px_0px]"
+            : "bg-white border-[#DDDDDD] shadow-[rgba(0,0,0,0.02)_0px_0px_0px_1px,rgba(0,0,0,0.1)_0px_8px_24px_0px] hover:shadow-[rgba(0,0,0,0.02)_0px_0px_0px_1px,rgba(0,0,0,0.18)_0px_8px_24px_0px]"
+        }`}
+      >
+        {/* From Segment */}
+        <button
+          type="button"
+          className={`flex-1 min-w-0 ps-8 pe-6 text-start transition-all duration-200 py-4 ${getButtonStyling("origin")}`}
+          onMouseEnter={() => setHoveredButton("origin")}
+          onMouseLeave={() => setHoveredButton(null)}
+          onClick={() => handleButtonClick("origin")}
+        >
+          {activeButton === "origin" && <ActivePill />}
+          <div style={{ fontSize: 12, fontWeight: 500, lineHeight: '16px', color: '#222222', marginBottom: 2 }} className="whitespace-nowrap">
+            {dictionary.from}
+          </div>
+          <div className={`text-sm leading-[18px] truncate ${origin ? "text-[#222222]" : "text-[#6a6a6a]"}`}>
+            {origin ? cityLabel(origin, lang) : dictionary.selectCity}
+          </div>
+        </button>
 
-        {renderFieldStack()}
+        {/* Divider 1 */}
+        <div
+          className={`w-px h-8 bg-[#DDDDDD] transition-opacity duration-200 ${
+            isLineHidden("origin-destination") ? "opacity-0" : "opacity-100"
+          }`}
+        />
 
-        {/* Search button */}
-        <div className="pt-3 md:pt-2 flex justify-end">
-          <Button
-            onClick={handleSearch}
-            className="px-8 py-2 md:py-1 h-12 md:h-10 text-sm font-medium bg-[#de3151] hover:bg-[#de3151]/90 text-white rounded-xs"
+        {/* To Segment */}
+        <button
+          type="button"
+          className={`flex-1 min-w-0 ps-8 pe-6 text-start transition-all duration-200 py-4 ${getButtonStyling("destination")}`}
+          onMouseEnter={() => setHoveredButton("destination")}
+          onMouseLeave={() => setHoveredButton(null)}
+          onClick={() => handleButtonClick("destination")}
+        >
+          {activeButton === "destination" && <ActivePill />}
+          <div style={{ fontSize: 12, fontWeight: 500, lineHeight: '16px', color: '#222222', marginBottom: 2 }} className="whitespace-nowrap">
+            {dictionary.to}
+          </div>
+          <div className={`text-sm leading-[18px] truncate ${destination ? "text-[#222222]" : "text-[#6a6a6a]"}`}>
+            {destination ? cityLabel(destination, lang) : dictionary.selectCity}
+          </div>
+        </button>
+
+        {/* Swap Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleSwap();
+          }}
+          className="absolute left-[25%] -translate-x-1/2 z-30 flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 bg-white text-[#484848] shadow-sm transition-colors hover:border-gray-500 hover:text-black active:scale-95"
+          style={{ top: "50%", transform: "translate(-50%, -50%)" }}
+          aria-label={dictionary.swap}
+          title={dictionary.swap}
+        >
+          <ArrowUpDown className="h-4 w-4 rotate-90" strokeWidth={2} />
+        </button>
+
+        {/* Divider 2 */}
+        <div
+          className={`w-px h-8 bg-[#DDDDDD] transition-opacity duration-200 ${
+            isLineHidden("destination-date") ? "opacity-0" : "opacity-100"
+          }`}
+        />
+
+        {/* When Segment */}
+        <button
+          type="button"
+          className={`flex-1 min-w-0 px-6 text-start transition-all duration-200 py-4 ${getButtonStyling("date")}`}
+          onMouseEnter={() => setHoveredButton("date")}
+          onMouseLeave={() => setHoveredButton(null)}
+          onClick={() => handleButtonClick("date")}
+        >
+          {activeButton === "date" && <ActivePill />}
+          <div style={{ fontSize: 12, fontWeight: 500, lineHeight: '16px', color: '#222222', marginBottom: 2 }} className="whitespace-nowrap">
+            {dictionary.when}
+          </div>
+          <div className={`text-sm leading-[18px] truncate ${date ? "text-[#222222]" : "text-[#6a6a6a]"}`}>
+            {date ? formatDate(date) : dictionary.selectDate}
+          </div>
+        </button>
+
+        {/* Divider 3 */}
+        <div
+          className={`w-px h-8 bg-[#DDDDDD] transition-opacity duration-200 ${
+            isLineHidden("date-passengers") ? "opacity-0" : "opacity-100"
+          }`}
+        />
+
+        {/* Guests Segment */}
+        <div
+          className={`flex-[1.15] min-w-0 flex items-center ${getButtonStyling("passengers")}`}
+          onMouseEnter={() => setHoveredButton("passengers")}
+          onMouseLeave={() => setHoveredButton(null)}
+        >
+          {activeButton === "passengers" && <ActivePill />}
+          <div
+            className="flex-1 px-6 text-start cursor-pointer transition-all duration-200 py-4"
+            onClick={() => handleButtonClick("passengers")}
           >
-            {dictionary.search}
-          </Button>
+            <div style={{ fontSize: 12, fontWeight: 500, lineHeight: '16px', color: '#222222', marginBottom: 2 }} className="whitespace-nowrap">
+              {dictionary.passengers}
+            </div>
+            <div className={`text-sm leading-[18px] truncate ${totalPassengers > 0 ? "text-[#222222]" : "text-[#6a6a6a]"}`}>
+              {passengerText()}
+            </div>
+          </div>
+
+          {/* Search Button */}
+          <div className="pe-2.5">
+            <Button
+              onClick={handleSearch}
+              size="icon"
+              style={{ height: 48 }}
+              className={`rounded-full bg-[#FF385C] hover:bg-[#E31C5F] text-white transition-[width,padding] duration-300 ${
+                activeButton ? "w-28 px-4" : "w-12"
+              }`}
+            >
+              <Search className="w-4 h-4" />
+              {activeButton && (
+                <span className="ms-2 text-sm font-medium">{dictionary.search}</span>
+              )}
+              <span className="sr-only">{dictionary.search}</span>
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Side dropdowns — float to the trailing side of the card, same as the
-          homepage hero. */}
-      {activeButton === "origin" && (
-        <div className="absolute top-0 start-full ms-4 w-[360px] max-w-[calc(100vw-2rem)] bg-white rounded-[24px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 p-4 z-50">
-          <TransportCityDropdown
-            value={origin}
-            onChange={handleOriginSelect}
-            assemblyPoints={assemblyPoints}
-          />
-        </div>
-      )}
-      {activeButton === "destination" && (
-        <div className="absolute top-0 start-full ms-4 w-[360px] max-w-[calc(100vw-2rem)] bg-white rounded-[24px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 p-4 z-50">
-          <TransportCityDropdown
-            value={destination}
-            onChange={handleDestinationSelect}
-            assemblyPoints={assemblyPoints}
-          />
-        </div>
-      )}
-      {activeButton === "date" && (
-        <div className="absolute top-0 start-full ms-4 w-[360px] max-w-[calc(100vw-2rem)] bg-white rounded-[24px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 p-5 z-50">
-          <TransportDatePicker date={date} onDateChange={handleDateChange} />
-        </div>
-      )}
-      {activeButton === "passengers" && (
-        <div className="absolute top-0 start-full ms-4 w-[360px] max-w-[calc(100vw-2rem)] bg-white rounded-[24px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 p-6 z-50">
-          <PassengerSelector passengers={passengers} onChange={handlePassengerChange} dict={dictionary} />
-        </div>
-      )}
+      {/* Dropdown Container */}
+      <AnimatePresence>
+        {activeButton && (
+          <motion.div
+            key="search-dropdown"
+            layout
+            initial={dropdownMotion.initial}
+            animate={dropdownMotion.animate}
+            exit={dropdownMotion.exit}
+            transition={{ ...DROPDOWN_TRANSITION, layout: SWITCH_TRANSITION }}
+            style={{
+              transformOrigin: "top center",
+              willChange: "transform, opacity",
+            }}
+            className={`absolute top-full mt-3 bg-white rounded-[32px] shadow-[rgba(0,0,0,0.15)_0px_10px_37px] border border-gray-200/50 z-10 overflow-hidden ${
+              activeButton === "origin"
+                ? "start-0 w-[420px] max-w-[calc(100vw-2rem)] p-6"
+                : activeButton === "destination"
+                  ? "start-[20%] w-[420px] max-w-[calc(100vw-2rem)] p-6"
+                  : activeButton === "date"
+                    ? "left-1/2 -translate-x-1/2 w-[394px] max-w-[calc(100vw-2rem)] p-6"
+                    : "end-0 w-[394px] p-6"
+            }`}
+          >
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.div
+                key={activeButton}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={SWITCH_FADE}
+              >
+                {activeButton === "origin" && (
+                  <TransportCityDropdown
+                    value={origin}
+                    onChange={handleOriginSelect}
+                    assemblyPoints={assemblyPoints}
+                  />
+                )}
+                {activeButton === "destination" && (
+                  <TransportCityDropdown
+                    value={destination}
+                    onChange={handleDestinationSelect}
+                    assemblyPoints={assemblyPoints}
+                  />
+                )}
+                {activeButton === "date" && (
+                  <div className="flex justify-center">
+                    <TransportDatePicker date={date} onDateChange={handleDateChange} />
+                  </div>
+                )}
+                {activeButton === "passengers" && (
+                  <PassengerSelector passengers={passengers} onChange={handlePassengerChange} dict={dictionary} />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

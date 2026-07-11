@@ -3,50 +3,67 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Circle, ArrowLeft, AlertCircle } from 'lucide-react';
+import { getDictionary } from '@/components/internationalization/dictionaries';
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ lang: string; id: string }>;
 }
 
+type VerifyStepCopy = { title?: string; description?: string; action?: string };
+type VerifyListingCopy = {
+  backToEditor?: string;
+  completedBadge?: string;
+  subtitle?: string;
+  completedLabel?: string;
+  readyTitle?: string;
+  readyBody?: string;
+  steps?: Record<string, VerifyStepCopy>;
+};
+
 const VerifyListingPage = async ({ params }: PageProps) => {
-  const { id } = await params;
-  
+  const { lang, id } = await params;
+  const dict = await getDictionary(lang as 'en' | 'ar');
+  const v =
+    (dict as unknown as { property?: { verifyListing?: VerifyListingCopy } }).property
+      ?.verifyListing ?? {};
+  const steps = v.steps ?? {};
+
   const requiredSteps = [
-    { 
-      title: 'Add at least 5 photos', 
-      completed: false, 
-      description: 'Show guests what your place looks like',
-      action: 'Add photos'
+    {
+      title: steps.addPhotos?.title ?? 'Add at least 5 photos',
+      completed: false,
+      description: steps.addPhotos?.description ?? 'Show guests what your place looks like',
+      action: steps.addPhotos?.action ?? 'Add photos'
     },
-    { 
-      title: 'Create a title', 
-      completed: true, 
-      description: 'Help guests find your listing',
-      action: 'Add title'
+    {
+      title: steps.addTitle?.title ?? 'Create a title',
+      completed: true,
+      description: steps.addTitle?.description ?? 'Help guests find your listing',
+      action: steps.addTitle?.action ?? 'Add title'
     },
-    { 
-      title: 'Write a description', 
-      completed: false, 
-      description: 'Share what makes your place special',
-      action: 'Add description'
+    {
+      title: steps.addDescription?.title ?? 'Write a description',
+      completed: false,
+      description: steps.addDescription?.description ?? 'Share what makes your place special',
+      action: steps.addDescription?.action ?? 'Add description'
     },
-    { 
-      title: 'Set your price', 
-      completed: false, 
-      description: 'Decide how much to charge per night',
-      action: 'Set price'
+    {
+      title: steps.setPrice?.title ?? 'Set your price',
+      completed: false,
+      description: steps.setPrice?.description ?? 'Decide how much to charge per night',
+      action: steps.setPrice?.action ?? 'Set price'
     },
-    { 
-      title: 'Add check-in instructions', 
-      completed: false, 
-      description: 'Help guests access your place',
-      action: 'Add instructions'
+    {
+      title: steps.checkInInstructions?.title ?? 'Add check-in instructions',
+      completed: false,
+      description: steps.checkInInstructions?.description ?? 'Help guests access your place',
+      action: steps.checkInInstructions?.action ?? 'Add instructions'
     },
-    { 
-      title: 'Verify your phone number', 
-      completed: false, 
-      description: 'Required for account security',
-      action: 'Verify'
+    {
+      title: steps.verifyPhone?.title ?? 'Verify your phone number',
+      completed: false,
+      description: steps.verifyPhone?.description ?? 'Required for account security',
+      action: steps.verifyPhone?.action ?? 'Verify'
     },
   ];
 
@@ -62,18 +79,22 @@ const VerifyListingPage = async ({ params }: PageProps) => {
           className="gap-2 mb-6 p-0 h-auto"
         >
           <ArrowLeft className="size-5 rtl:rotate-180" />
-          <span>Back to listing editor</span>
+          <span>{v.backToEditor ?? "Back to listing editor"}</span>
         </Button>
 
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <h1 className="text-3xl font-semibold">Complete your listing</h1>
+            <h1 className="text-3xl font-semibold">
+              {dict.hosting?.content?.completeListing ?? "Complete your listing"}
+            </h1>
             <Badge variant="secondary">
-              {completedCount}/{totalSteps} completed
+              {(v.completedBadge ?? "{completed}/{total} completed")
+                .replace("{completed}", String(completedCount))
+                .replace("{total}", String(totalSteps))}
             </Badge>
           </div>
           <p className="text-muted-foreground">
-            Finish these steps to publish your listing and start welcoming guests.
+            {v.subtitle ?? "Finish these steps to publish your listing and start welcoming guests."}
           </p>
         </div>
 
@@ -102,7 +123,7 @@ const VerifyListingPage = async ({ params }: PageProps) => {
                     size="sm"
                     disabled={step.completed}
                   >
-                    {step.completed ? 'Completed' : step.action}
+                    {step.completed ? (v.completedLabel ?? 'Completed') : step.action}
                   </Button>
                 </div>
               </CardHeader>
@@ -114,12 +135,12 @@ const VerifyListingPage = async ({ params }: PageProps) => {
           <div className="flex items-start gap-3">
             <Circle className="size-5 text-blue-600 mt-0.5" />
             <div>
-              <h3 className="font-medium text-blue-900 mb-2">Ready to publish?</h3>
+              <h3 className="font-medium text-blue-900 mb-2">{v.readyTitle ?? "Ready to publish?"}</h3>
               <p className="text-sm text-blue-700 mb-4">
-                Once you complete all required steps, you can publish your listing and start receiving bookings.
+                {v.readyBody ?? "Once you complete all required steps, you can publish your listing and start receiving bookings."}
               </p>
               <Button disabled={completedCount !== totalSteps}>
-                Publish listing
+                {dict.listingEditor?.finishSetup?.publish ?? "Publish listing"}
               </Button>
             </div>
           </div>

@@ -45,7 +45,7 @@ export default function ErrorPage({
       </p>
       {error.digest && (
         <p className="text-xs text-muted-foreground mb-4">
-          {t?.title ? `${tCommon?.errorId ?? "Error ID"}: ${error.digest}` : `Error ID: ${error.digest}`}
+          {`${tCommon?.errorId ?? "Error ID"}: ${error.digest}`}
         </p>
       )}
       <div className="flex gap-3">

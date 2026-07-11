@@ -1,3 +1,7 @@
+"use client";
+
+import { useDictionary } from "@/components/internationalization/use-dictionary";
+
 // Commit
 export const Commit = ({ className = "" }: { className?: string }) => (
   <svg className={className + " h-5 w-5 text-[#8B949E]"} viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -226,11 +230,14 @@ export const AirbnbWindmill = ({ className = "" }: { className?: string }) => (
 );
 
 // Identity Verified Icon
-export const IdentityVerified = ({ className = "" }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-label="Identity verified" role="img" focusable="false" style={{ display: 'block', height: '16px', width: '16px', fill: 'currentColor' }}>
-    <path d="m16 .8.56.37C20.4 3.73 24.2 5 28 5h1v12.5C29 25.57 23.21 31 16 31S3 25.57 3 17.5V5h1c3.8 0 7.6-1.27 11.45-3.83L16 .8zm7 9.08-9.5 9.5-4.5-4.5L6.88 17l6.62 6.62L25.12 12 23 9.88z"></path>
-  </svg>
-);
+export const IdentityVerified = ({ className = "" }: { className?: string }) => {
+  const dict = useDictionary();
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-label={dict?.atom?.iconLabels?.identityVerified ?? "Identity verified"} role="img" focusable="false" style={{ display: 'block', height: '16px', width: '16px', fill: 'currentColor' }}>
+      <path d="m16 .8.56.37C20.4 3.73 24.2 5 28 5h1v12.5C29 25.57 23.21 31 16 31S3 25.57 3 17.5V5h1c3.8 0 7.6-1.27 11.45-3.83L16 .8zm7 9.08-9.5 9.5-4.5-4.5L6.88 17l6.62 6.62L25.12 12 23 9.88z"></path>
+    </svg>
+  );
+};
 
 // Location Pin Icon
 export const LocationPin = ({ className = "" }: { className?: string }) => (

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { PropertyImage } from '@/components/atom/property-image'
+import GuestFavoriteBadge from '@/components/listings/guest-favorite-badge'
 import { useDictionary } from '@/components/internationalization/dictionary-context'
 
 interface PropertyCardProps {
@@ -17,6 +18,8 @@ interface PropertyCardProps {
   price: number
   rating: number
   isSuperhostBadge?: boolean
+  /** "Guest favorite" pill on the image's top-start corner (Airbnb). */
+  isGuestFavorite?: boolean
   isFavorite?: boolean
   onFavoriteToggle?: (id: string, isFavorite: boolean) => void
   onCardClick?: (id: string) => void
@@ -32,6 +35,7 @@ export function PropertyCard({
   price,
   rating,
   isSuperhostBadge = false,
+  isGuestFavorite = false,
   isFavorite = false,
   onFavoriteToggle,
   onCardClick,
@@ -39,6 +43,8 @@ export function PropertyCard({
 }: PropertyCardProps) {
   const dict = useDictionary()
   const t = dict?.property?.card
+  const guestFavoriteLabel =
+    (dict.property?.guestFavorite as Record<string, string> | undefined)?.title ?? 'Guest favorite'
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isLiked, setIsLiked] = useState(isFavorite)
 
@@ -96,8 +102,13 @@ export function PropertyCard({
             />
           </Button>
 
+          {/* Guest favorite pill — owns the top-start corner over superhost */}
+          {isGuestFavorite && (
+            <GuestFavoriteBadge label={guestFavoriteLabel} />
+          )}
+
           {/* Superhost Badge */}
-          {isSuperhostBadge && (
+          {!isGuestFavorite && isSuperhostBadge && (
             <Badge
               variant="secondary"
               className="absolute top-3 start-3 bg-white text-gray-800 text-xs font-medium"

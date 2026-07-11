@@ -302,6 +302,7 @@ const SEARCH_LISTING_SELECT = {
   postedDate: true,
   averageRating: true,
   numberOfReviews: true,
+  isGuestFavorite: true,
   draft: true,
   isPublished: true,
   instantBook: true,

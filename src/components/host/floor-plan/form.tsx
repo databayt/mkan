@@ -5,6 +5,7 @@ import { StepWrapper } from '../step-wrapper'
 import { StepNavigation } from '../step-navigation'
 import { FormField } from '../form-field'
 import { Counter } from '../../atom/counter'
+import { useDictionary } from '@/components/internationalization/use-dictionary'
 
 export function FloorPlanForm() {
   const { 
@@ -20,14 +21,15 @@ export function FloorPlanForm() {
     bathrooms,
     guestCount
   } = useFloorPlan()
+  const dict = useDictionary()
 
   return (
     <StepWrapper>
       <form onSubmit={onSubmit} className="space-y-8">
         <div className="space-y-6">
           <FormField
-            label="Bedrooms"
-            description="How many bedrooms can guests use?"
+            label={dict?.hosting?.pages?.floorPlan?.bedrooms ?? "Bedrooms"}
+            description={dict?.host?.floorPlan?.bedroomsDesc ?? "How many bedrooms can guests use?"}
           >
             <Counter
               value={bedrooms}
@@ -39,8 +41,8 @@ export function FloorPlanForm() {
           </FormField>
 
           <FormField
-            label="Bathrooms"
-            description="How many bathrooms can guests use?"
+            label={dict?.hosting?.pages?.floorPlan?.bathrooms ?? "Bathrooms"}
+            description={dict?.host?.floorPlan?.bathroomsDesc ?? "How many bathrooms can guests use?"}
           >
             <Counter
               value={bathrooms}
@@ -53,8 +55,8 @@ export function FloorPlanForm() {
           </FormField>
 
           <FormField
-            label="Guests"
-            description="How many guests can your place accommodate?"
+            label={dict?.hosting?.pages?.floorPlan?.guests ?? "Guests"}
+            description={dict?.host?.floorPlan?.guestsDesc ?? "How many guests can your place accommodate?"}
           >
             <Counter
               value={guestCount}
@@ -76,7 +78,7 @@ export function FloorPlanForm() {
           onNext={onSubmit}
           onPrevious={onBack}
           isNextDisabled={!isFormValid || isLoading}
-          nextLabel={isLoading ? 'Saving...' : 'Next'}
+          nextLabel={isLoading ? (dict?.host?.stepNavigation?.saving ?? 'Saving...') : (dict?.host?.stepNavigation?.next ?? 'Next')}
           showPrevious={true}
         />
       </form>

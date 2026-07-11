@@ -141,7 +141,7 @@ const PhotoTour = () => {
                 type="button"
                 onClick={() => removePhoto(url)}
                 disabled={busy}
-                aria-label="Remove photo"
+                aria-label={t?.removePhoto ?? "Remove photo"}
                 className="absolute end-3 top-3 inline-flex size-9 items-center justify-center rounded-full bg-background text-foreground opacity-0 shadow-md transition group-hover:opacity-100 hover:scale-105 disabled:opacity-50"
               >
                 <TrashIcon size={16} />

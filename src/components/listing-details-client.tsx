@@ -15,6 +15,8 @@ import HostedBy from "./listings/hosted-by";
 import WhereYouSleep from "./listings/where-you-sleep";
 import ThingsToKnow from "./listings/things-to-know";
 import GuestFavoriteCard from "./listings/guest-favorite-card";
+import RatingStar from "./listings/rating-star";
+import { qualifiesAsGuestFavorite } from "@/lib/guest-favorite";
 import AvailabilityCalendar from "./listings/availability-calendar";
 import StickyListingHeader from "./listings/sticky-listing-header";
 import { PHASE1 } from "@/config/phase-flags";
@@ -197,23 +199,112 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                         {specs && (
                             <p className="mt-1 text-base leading-5 text-[#222222]">{specs}</p>
                         )}
-                        {(listing.numberOfReviews ?? 0) > 0 && (
+                        {/* Guest-favorite slot — mirrors Airbnb's GUEST_FAVORITE_BANNER:
+                            the laurel card renders ONLY for qualifying homes (curated flag
+                            or ≥4.9 across ≥5 reviews); everything else with reviews gets
+                            the plain "★ 4.75 · 4 reviews" row, and the slot stays empty
+                            otherwise (probed live on rooms 40938334 / 1562136998451248859). */}
+                        {qualifiesAsGuestFavorite(listing) ? (
                             <div className="mt-6">
-                                <GuestFavoriteCard
-                                    rating={listing.averageRating || 4.5}
-                                    reviewCount={listing.numberOfReviews || 0}
-                                    label={dict?.property?.guestFavorite?.title ?? "Guest favorite"}
-                                    blurb={dict?.property?.guestFavorite?.blurb ?? "One of the most loved homes on Mkan, according to guests"}
-                                    reviewsLabel={dict?.property?.guestFavorite?.reviews ?? "Reviews"}
-                                />
+                                {(listing.numberOfReviews ?? 0) > 0 ? (
+                                    <GuestFavoriteCard
+                                        rating={listing.averageRating ?? 0}
+                                        reviewCount={listing.numberOfReviews ?? 0}
+                                        label={dict?.property?.guestFavorite?.title ?? "Guest favorite"}
+                                        blurb={dict?.property?.guestFavorite?.blurb ?? "One of the most loved homes on Mkan, according to guests"}
+                                        reviewsLabel={dict?.property?.guestFavorite?.reviews ?? "Reviews"}
+                                    />
+                                ) : (
+                                    <GuestFavoriteCard
+                                        badgeOnly
+                                        label={dict?.property?.guestFavorite?.title ?? "Guest favorite"}
+                                        blurb={locale === "ar" ? "من أكثر المنازل المحبوبة على مكان" : "One of the most loved homes on Mkan"}
+                                    />
+                                )}
                             </div>
-                        )}
+                        ) : (listing.numberOfReviews ?? 0) > 0 ? (
+                            <div className="mt-2 flex items-center gap-1.5 text-base font-medium text-[#222222]">
+                                <RatingStar size={14} />
+                                <span>
+                                    {formatNumber(listing.averageRating ?? 0, locale, {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    })}
+                                </span>
+                                <span aria-hidden>·</span>
+                                <span className="underline underline-offset-2">
+                                    {(dict?.rental?.reviewsList?.reviewsCount ?? "{n} reviews").replace(
+                                        "{n}",
+                                        formatNumber(listing.numberOfReviews ?? 0, locale)
+                                    )}
+                                </span>
+                            </div>
+                        ) : null}
                     </section>
 
                     {/* Host row */}
                     <div className="border-b border-[#DDDDDD]">
                         <HostedBy host={listing.host ?? null} superhost={isSuperhost} />
                     </div>
+
+                    {/* About this room Section (only for Rooms property type) */}
+                    {listing.propertyType === "Rooms" && (
+                        <section className="border-b border-[#DDDDDD] py-8">
+                            <h2 className="text-[22px] font-semibold leading-[26px] tracking-[-0.44px] text-[#222222] mb-4">
+                                {locale === "ar" ? "عن هذه الغرفة" : "About this room"}
+                            </h2>
+                            <div className="grid grid-cols-3 gap-3">
+                                {/* Bedroom details */}
+                                <div className="flex flex-col justify-between gap-6 rounded-xl border border-[#DDDDDD] p-4 text-start">
+                                    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="presentation" focusable="false" className="h-6 w-6 text-[#222222]" style={{ display: "block", fill: "none", stroke: "currentColor", strokeWidth: "2.5" }}>
+                                        <path d="M2 26V6h4v14h20V6h4v20M6 12h10m4 0h6m-20 4v4m20-4v4" />
+                                    </svg>
+                                    <div>
+                                        <div className="text-sm font-semibold text-[#222222] leading-tight">
+                                            {locale === "ar" ? "غرفة النوم" : "Bedroom"}
+                                        </div>
+                                        <div className="text-[13px] text-[#6A6A6A] mt-1 leading-tight">
+                                            {typeof listing.bedrooms === 'number' && listing.bedrooms > 0
+                                                ? (locale === 'ar' ? `${listing.bedrooms} غرفة` : `${listing.bedrooms} bedroom`)
+                                                : (locale === 'ar' ? 'سرير مزدوج' : '1 double bed')}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Bathroom details */}
+                                <div className="flex flex-col justify-between gap-6 rounded-xl border border-[#DDDDDD] p-4 text-start">
+                                    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="presentation" focusable="false" className="h-6 w-6 text-[#222222]" style={{ display: "block", fill: "none", stroke: "currentColor", strokeWidth: "2.5" }}>
+                                        <path d="M26 6a3 3 0 0 1 3 3v19H3V9a3 3 0 0 1 3-3zm1 20V9a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v17" />
+                                        <circle cx="16" cy="14" r="3" />
+                                    </svg>
+                                    <div>
+                                        <div className="text-sm font-semibold text-[#222222] leading-tight">
+                                            {locale === "ar" ? "الحمام" : "Bathroom"}
+                                        </div>
+                                        <div className="text-[13px] text-[#6A6A6A] mt-1 leading-tight">
+                                            {locale === "ar" ? "حمام خاص" : "Private"}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Room Privacy details */}
+                                <div className="flex flex-col justify-between gap-6 rounded-xl border border-[#DDDDDD] p-4 text-start">
+                                    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="presentation" focusable="false" className="h-6 w-6 text-[#222222]" style={{ display: "block", fill: "none", stroke: "currentColor", strokeWidth: "2.5" }}>
+                                        <rect x="6" y="14" width="20" height="14" rx="4" />
+                                        <path d="M10 14V9a6 6 0 0 1 12 0v5" />
+                                    </svg>
+                                    <div>
+                                        <div className="text-sm font-semibold text-[#222222] leading-tight">
+                                            {locale === "ar" ? "خصوصية الغرفة" : "Room privacy"}
+                                        </div>
+                                        <div className="text-[13px] text-[#6A6A6A] mt-1 leading-tight">
+                                            {locale === "ar" ? "قفل على الباب" : "Lock on door"}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    )}
 
                     {/* Highlights — real listing.highlights, hidden when empty */}
                     {PHASE1.showListingHighlights && (listing.highlights?.length ?? 0) > 0 && (

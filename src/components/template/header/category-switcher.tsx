@@ -20,12 +20,12 @@ const categories = [
     patterns: ['/', '/listing', '/search'],
   },
   {
-    id: 'transport',
-    label: 'Transport',
-    labelAr: 'النقل',
+    id: 'travel',
+    label: 'Travel',
+    labelAr: 'السفر',
     icon: Bus,
-    href: '/transport',
-    patterns: ['/transport'],
+    href: '/travel',
+    patterns: ['/travel'],
   },
 ];
 

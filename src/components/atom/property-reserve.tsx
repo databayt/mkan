@@ -259,7 +259,7 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
         {isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          buttonText ?? t.reserve ?? "Reserve"
+          buttonText ?? (t.reserve ?? "Reserve")
         )}
       </Button>
 

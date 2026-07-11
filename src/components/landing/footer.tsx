@@ -53,21 +53,25 @@ const FooterSection = () => {
             </a>
             <a
               href="#"
+              // i18n-exempt — brand name
               aria-label="Instagram"
               className="hover:text-primary-600"
             >
               <Instagram className="h-6 w-6" />
             </a>
+            {/* i18n-exempt — brand name */}
             <a href="#" aria-label="Twitter" className="hover:text-primary-600">
               <Twitter className="h-6 w-6" />
             </a>
             <a
               href="#"
+              // i18n-exempt — brand name
               aria-label="Linkedin"
               className="hover:text-primary-600"
             >
               <LinkedIn className="h-6 w-6" />
             </a>
+            {/* i18n-exempt — brand name */}
             <a href="#" aria-label="Youtube" className="hover:text-primary-600">
               <YouTube className="h-6 w-6" />
             </a>

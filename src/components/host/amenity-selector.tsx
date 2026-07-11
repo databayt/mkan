@@ -341,7 +341,7 @@ const AmenitySelector: React.FC<AmenitySelectorProps> = ({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            aria-label="Previous section"
+            aria-label={a?.prevSection ?? "Previous section"}
             disabled={active === 0}
             onClick={() => goTo(active - 1, -1)}
             className={navButton}
@@ -350,7 +350,7 @@ const AmenitySelector: React.FC<AmenitySelectorProps> = ({
           </button>
           <button
             type="button"
-            aria-label="Next section"
+            aria-label={a?.nextSection ?? "Next section"}
             disabled={active === sections.length - 1}
             onClick={() => goTo(active + 1, 1)}
             className={navButton}

@@ -30,15 +30,15 @@ export function revalidateListings(hostId?: string) {
  */
 export function revalidateTransportOffice(officeId?: number) {
   // Revalidate transport search page
-  revalidatePath('/[lang]/transport', 'page');
+  revalidatePath('/[lang]/travel', 'page');
 
   // Revalidate transport host pages
-  revalidatePath('/[lang]/transport-host', 'page');
+  revalidatePath('/[lang]/travel-host', 'page');
 
   if (officeId) {
-    revalidatePath(`/[lang]/transport-host/${officeId}`, 'layout'); // All office pages
-    revalidatePath(`/[lang]/transport-host/${officeId}/overview`, 'page');
-    revalidatePath(`/[lang]/transport-host/${officeId}/trips`, 'page');
+    revalidatePath(`/[lang]/travel-host/${officeId}`, 'layout'); // All office pages
+    revalidatePath(`/[lang]/travel-host/${officeId}/overview`, 'page');
+    revalidatePath(`/[lang]/travel-host/${officeId}/trips`, 'page');
   }
 }
 
@@ -48,11 +48,11 @@ export function revalidateTransportOffice(officeId?: number) {
  */
 export function revalidateTransportTrip(tripId: number) {
   // Revalidate transport search and office pages
-  revalidatePath('/[lang]/transport', 'page');
-  revalidatePath('/[lang]/transport/search', 'page');
+  revalidatePath('/[lang]/travel', 'page');
+  revalidatePath('/[lang]/travel/search', 'page');
 
   // Revalidate specific trip page
-  revalidatePath(`/[lang]/transport/trip/${tripId}`, 'page');
+  revalidatePath(`/[lang]/travel/trip/${tripId}`, 'page');
 }
 
 /**
@@ -80,13 +80,13 @@ export function revalidateApplications(propertyId?: number, tenantId?: string) {
  */
 export function revalidateBookings(userId: string, tripId?: number) {
   // Revalidate user bookings page
-  revalidatePath('/[lang]/transport/bookings', 'page');
+  revalidatePath('/[lang]/travel/bookings', 'page');
   revalidatePath('/[lang]/dashboard', 'page');
 
   // Revalidate trip availability if tripId provided
   if (tripId) {
-    revalidatePath(`/[lang]/transport/trip/${tripId}`, 'page');
-    revalidatePath(`/[lang]/transport/trip/${tripId}/seats`, 'page');
+    revalidatePath(`/[lang]/travel/trip/${tripId}`, 'page');
+    revalidatePath(`/[lang]/travel/trip/${tripId}/seats`, 'page');
   }
 }
 

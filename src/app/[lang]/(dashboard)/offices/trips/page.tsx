@@ -47,7 +47,7 @@ import {
   getBusesByOffice,
   createTrip,
   deleteTrip,
-} from '@/lib/actions/transport-actions';
+} from '@/lib/actions/travel-actions';
 
 interface Trip {
   id: number;
@@ -252,7 +252,7 @@ const TripsPage = () => {
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => handleDateChange(-7)} aria-label="Previous week">
+          <Button variant="outline" size="icon" onClick={() => handleDateChange(-7)} aria-label={dict?.travel?.dashboard?.schedule?.previousWeek ?? "Previous week"}>
             <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
           </Button>
           <div className="flex gap-1">
@@ -271,7 +271,7 @@ const TripsPage = () => {
               </Button>
             ))}
           </div>
-          <Button variant="outline" size="icon" onClick={() => handleDateChange(7)} aria-label="Next week">
+          <Button variant="outline" size="icon" onClick={() => handleDateChange(7)} aria-label={dict?.travel?.dashboard?.schedule?.nextWeek ?? "Next week"}>
             <ChevronRight className="h-4 w-4 rtl:rotate-180" />
           </Button>
         </div>
@@ -434,7 +434,7 @@ const TripsPage = () => {
                         </span>
                       </div>
                       {trip.isCancelled && (
-                        <Badge variant="destructive">Cancelled</Badge>
+                        <Badge variant="destructive">{dict.dashboard.bookings.cancelled}</Badge>
                       )}
                     </div>
 
@@ -460,8 +460,10 @@ const TripsPage = () => {
                   <div className="flex items-center gap-2">
                     {trip._count && trip._count.bookings > 0 && (
                       <Badge variant="secondary">
-                        {trip._count.bookings} booking
-                        {trip._count.bookings !== 1 ? 's' : ''}
+                        {trip._count.bookings}{' '}
+                        {trip._count.bookings !== 1
+                          ? (dict?.travel?.dashboard?.schedule?.bookings ?? 'bookings')
+                          : (dict?.travel?.dashboard?.schedule?.booking ?? 'booking')}
                       </Badge>
                     )}
                     <Button
@@ -469,7 +471,7 @@ const TripsPage = () => {
                       size="icon"
                       onClick={() => handleDeleteTrip(trip.id)}
                       disabled={trip._count && trip._count.bookings > 0}
-                      aria-label="Delete trip"
+                      aria-label={dict?.travel?.dashboard?.schedule?.deleteTrip ?? "Delete trip"}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>

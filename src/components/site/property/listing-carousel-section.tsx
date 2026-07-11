@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/carousel'
 import { cn } from '@/lib/utils'
 import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-actions'
+import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite'
 import { useSession } from 'next-auth/react'
 
 interface ListingCarouselSectionProps {
@@ -79,6 +80,7 @@ export function ListingCarouselSection({
     price: listing.pricePerNight || 0,
     rating: listing.averageRating || 4.5,
     isSuperhostBadge: false,
+    isGuestFavorite: qualifiesAsGuestFavorite(listing),
     isFavorite: localFavorites.has(listing.id),
     onFavoriteToggle: handleFavoriteToggle,
     onCardClick: handleCardClick,

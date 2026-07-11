@@ -101,7 +101,7 @@ export function SearchWidget({
       page: 1,
     });
 
-    router.push(`/${lang}/transport/search?${qs.toString()}`);
+    router.push(`/${lang}/travel/search?${qs.toString()}`);
   };
 
   return (
@@ -163,7 +163,7 @@ export function SearchWidget({
                 )}
               >
                 <CalendarIcon className="me-2 h-4 w-4" />
-                {date ? formatDate(date, lang) : <span>{dict?.transport?.search?.pickDate ?? "Pick a date"}</span>}
+                {date ? formatDate(date, lang) : <span>{dict?.travel?.search?.pickDate ?? "Pick a date"}</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">

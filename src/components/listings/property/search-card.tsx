@@ -7,6 +7,7 @@ import { useFavorites } from "@/components/favorites/favorites-context"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
 import { useLocale } from "@/components/internationalization/use-locale"
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters"
+import GuestFavoriteBadge from "@/components/listings/guest-favorite-badge"
 import { ImageCarousel } from "./image-carousel"
 
 // Exact Airbnb palette (measured from the live /s/homes search cards):
@@ -38,6 +39,8 @@ export interface SearchCardProps {
   /** Average rating; null/0 hides the rating cluster (matches Airbnb). */
   rating?: number | null
   reviewsCount?: number
+  /** "Guest favorite" pill on the image's top-start corner (Airbnb). */
+  isGuestFavorite?: boolean
   isFavorite?: boolean
   onFavoriteToggle?: (id: string, isFavorite: boolean) => void
   onCardClick?: (id: string) => void
@@ -57,6 +60,7 @@ export function SearchCard({
   nights,
   rating,
   reviewsCount = 0,
+  isGuestFavorite = false,
   isFavorite = false,
   onFavoriteToggle,
   onCardClick,
@@ -66,6 +70,7 @@ export function SearchCard({
   const { locale } = useLocale()
   const sp = dict.rental?.searchPage as Record<string, string> | undefined
   const card = dict.rental?.property?.card as Record<string, string> | undefined
+  const guestFavorite = dict.property?.guestFavorite as Record<string, string> | undefined
 
   // Shared favorites provider — one heart state across cards/detail/mobile.
   const fav = useFavorites()
@@ -109,6 +114,12 @@ export function SearchCard({
         prevLabel={card?.previousPhoto ?? "Previous photo"}
         nextLabel={card?.nextPhoto ?? "Next photo"}
       >
+        {/* "Guest favorite" pill — top-start corner, per the live card. */}
+        {isGuestFavorite && (
+          <GuestFavoriteBadge
+            label={guestFavorite?.title ?? "Guest favorite"}
+          />
+        )}
         {/* Heart — 32×32, inset ~12px from the top-end corner. */}
         <button
           type="button"

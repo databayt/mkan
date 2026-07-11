@@ -8,6 +8,8 @@ import { UserRole, BookingPaymentStatus } from "@prisma/client";
 import { auth, isAdminOrSuper, isSuperAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { localizeListings } from "@/components/translation/localize";
+import { getDisplayLang } from "@/components/translation/locale";
 
 async function requireAdminSession() {
   const session = await auth();
@@ -281,9 +283,9 @@ export async function forceUnpublishOffice(officeId: unknown, reason?: string) {
   });
   audit("office.forceUnpublish", session.user!.id!, { officeId: id, reason });
 
-  revalidatePath("/admin/transport");
-  revalidatePath(`/admin/transport/${id}`);
-  revalidatePath("/transport/offices");
+  revalidatePath("/admin/travel");
+  revalidatePath(`/admin/travel/${id}`);
+  revalidatePath("/travel/offices");
   return { success: true };
 }
 
@@ -294,8 +296,8 @@ export async function adminDeleteOffice(officeId: unknown) {
   await db.transportOffice.delete({ where: { id } });
   audit("office.delete", session.user!.id!, { officeId: id });
 
-  revalidatePath("/admin/transport");
-  revalidatePath("/transport/offices");
+  revalidatePath("/admin/travel");
+  revalidatePath("/travel/offices");
   return { success: true };
 }
 
@@ -316,10 +318,10 @@ export async function verifyOffice(officeId: unknown) {
   });
   audit("office.verify", session.user!.id!, { officeId: id });
 
-  revalidatePath("/admin/transport");
-  revalidatePath(`/admin/transport/${id}`);
-  revalidatePath("/transport/offices");
-  revalidatePath("/transport/search");
+  revalidatePath("/admin/travel");
+  revalidatePath(`/admin/travel/${id}`);
+  revalidatePath("/travel/offices");
+  revalidatePath("/travel/search");
   return { success: true, office };
 }
 
@@ -333,10 +335,10 @@ export async function unverifyOffice(officeId: unknown, reason?: string) {
   });
   audit("office.unverify", session.user!.id!, { officeId: id, reason });
 
-  revalidatePath("/admin/transport");
-  revalidatePath(`/admin/transport/${id}`);
-  revalidatePath("/transport/offices");
-  revalidatePath("/transport/search");
+  revalidatePath("/admin/travel");
+  revalidatePath(`/admin/travel/${id}`);
+  revalidatePath("/travel/offices");
+  revalidatePath("/travel/search");
   return { success: true };
 }
 
@@ -430,7 +432,14 @@ export async function listAllListingsAdmin({
     db.listing.count({ where }),
   ]);
 
-  return { listings, total, page, pageSize };
+  // Localize listing titles + locations for the admin's display language
+  // (cookie-derived — this bare action has no lang param).
+  const localized = (await localizeListings(
+    listings as unknown as Array<Record<string, unknown>>,
+    await getDisplayLang(),
+  )) as unknown as typeof listings;
+
+  return { listings: localized, total, page, pageSize };
 }
 
 export async function listAllOfficesAdmin({
@@ -462,6 +471,9 @@ export async function listAllOfficesAdmin({
       select: {
         id: true,
         name: true,
+        // Brand name with a curated Arabic column — render sites pick nameAr
+        // for ar (never machine-translate brand names).
+        nameAr: true,
         isActive: true,
         isVerified: true,
         phone: true,

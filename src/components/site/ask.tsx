@@ -13,7 +13,8 @@ export default function Ask() {
       <div className="absolute inset-0">
         <Image
           src={cdn.product("assets/julia.jpg")}
-          alt="Smiling woman in red dress with green foliage background"
+          alt=""
+          aria-hidden="true"
           fill
           className="object-cover"
           sizes="100vw"

@@ -4,6 +4,7 @@ import Image from "next/image";
 import React, { useState } from "react";
 import { ApplicationWithDetails } from "@/lib/actions/application-actions";
 import { PropertyImageFallback } from "@/components/atom/property-image-fallback";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 interface ApplicationCardProps {
   application: ApplicationWithDetails;
@@ -16,6 +17,8 @@ const ApplicationCard = ({
   userType,
   children,
 }: ApplicationCardProps) => {
+  const dict = useDictionary();
+  const t = (dict.application as unknown as { card?: Record<string, string> })?.card;
   const firstPhoto = application.listing.photoUrls?.[0];
   const [errored, setErrored] = useState(false);
   const showFallback = !firstPhoto || errored;
@@ -60,12 +63,12 @@ const ApplicationCard = ({
               </h2>
               <div className="flex items-center mb-2">
                 <MapPin className="w-5 h-5 me-1" />
-                <span>{application.listing.location ? `${application.listing.location.city}, ${application.listing.location.country}` : 'Location not specified'}</span>
+                <span>{application.listing.location ? `${application.listing.location.city}, ${application.listing.location.country}` : (t?.locationNotSpecified ?? 'Location not specified')}</span>
               </div>
             </div>
             <div className="text-xl font-semibold">
               ${application.listing.pricePerNight}{" "}
-              <span className="text-sm font-normal">/ night</span>
+              <span className="text-sm font-normal">{dict.booking?.perNight ?? "/ night"}</span>
             </div>
           </div>
         </div>
@@ -77,7 +80,7 @@ const ApplicationCard = ({
         <div className="flex flex-col justify-between w-full lg:basis-2/12 lg:h-48 py-2 gap-3 lg:gap-0">
           <div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-500">Status:</span>
+              <span className="text-gray-500">{t?.status ?? "Status"}:</span>
               <span
                 className={`px-2 py-1 ${statusColor} text-white rounded-full text-sm`}
               >
@@ -87,15 +90,15 @@ const ApplicationCard = ({
             <hr className="mt-3" />
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">Start Date:</span>{" "}
+            <span className="text-gray-500">{t?.startDate ?? "Start Date"}:</span>{" "}
             {application.lease?.startDate ? new Date(application.lease.startDate).toLocaleDateString() : 'N/A'}
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">End Date:</span>{" "}
+            <span className="text-gray-500">{t?.endDate ?? "End Date"}:</span>{" "}
             {application.lease?.endDate ? new Date(application.lease.endDate).toLocaleDateString() : 'N/A'}
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">Lease ID:</span>{" "}
+            <span className="text-gray-500">{t?.leaseId ?? "Lease ID"}:</span>{" "}
             {application.lease?.id ?? 'N/A'}
           </div>
         </div>
@@ -107,7 +110,7 @@ const ApplicationCard = ({
         <div className="flex flex-col justify-start gap-5 w-full lg:basis-3/12 lg:h-48 py-2">
           <div>
             <div className="text-lg font-semibold">
-              {userType === "manager" ? "Tenant" : "Manager"}
+              {userType === "manager" ? (t?.tenant ?? "Tenant") : (t?.manager ?? "Manager")}
             </div>
             <hr className="mt-3" />
           </div>

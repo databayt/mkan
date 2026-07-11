@@ -561,6 +561,7 @@ export function SearchFilters() {
   if (isMobile) {
     return (
       <LayoutGroup>
+        {/* i18n-exempt — scoped CSS, not user-facing copy */}
         <style>{`
           .ab-price-slider [data-slot=slider-track]{height:2px;background:${C.border};}
           .ab-price-slider [data-slot=slider-range]{background:${C.text};}
@@ -1120,6 +1121,7 @@ export function SearchFilters() {
         >
           {/* Scoped CSS so the Radix slider matches Airbnb exactly (avoids the
               Tailwind-arbitrary-variant dev HMR pitfall). */}
+          {/* i18n-exempt — scoped CSS, not user-facing copy */}
           <style>{`
             .ab-price-slider [data-slot=slider-track]{height:2px;background:${C.border};}
             .ab-price-slider [data-slot=slider-range]{background:${C.text};}

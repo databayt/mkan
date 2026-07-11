@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { auth, isAdminOrSuper } from "@/lib/auth";
 import { getDictionary } from "@/components/internationalization/dictionaries";
+import { localizeListing } from "@/components/translation/localize";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -19,7 +20,7 @@ export default async function AdminListingDetailPage({
   const listingId = Number(id);
   if (!Number.isInteger(listingId) || listingId <= 0) notFound();
 
-  const listing = await db.listing.findUnique({
+  const listingRaw = await db.listing.findUnique({
     where: { id: listingId },
     include: {
       host: { select: { id: true, email: true, username: true, image: true } },
@@ -27,7 +28,14 @@ export default async function AdminListingDetailPage({
       _count: { select: { bookings: true, reviews: true, applications: true } },
     },
   });
-  if (!listing) notFound();
+  if (!listingRaw) notFound();
+
+  // Localize the listing's stored free-text (title/description + location
+  // address/city/country) for the admin's viewing language.
+  const listing = (await localizeListing(
+    listingRaw as unknown as Record<string, unknown>,
+    lang as "en" | "ar",
+  )) as unknown as NonNullable<typeof listingRaw>;
 
   const dict = await getDictionary(lang as "en" | "ar");
   const a = (dict as { admin?: Record<string, string> }).admin ?? {};

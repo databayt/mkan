@@ -38,15 +38,18 @@ export default function GuestSafetyPage() {
     >
       <h2 className="mb-2 text-lg font-semibold">{gs?.devicesTitle ?? "Safety devices"}</h2>
       <div className="rounded-2xl border border-border px-6">
-        {DEVICE_IDS.map((id) => (
-          <ToggleRow
-            key={id}
-            label={devices[id] ?? id}
-            description={devices[`${id}Desc`]}
-            checked={!!safety[id]}
-            onChange={(v) => setSafety({ ...safety, [id]: v })}
-          />
-        ))}
+        {DEVICE_IDS.map((id) => {
+          const desc = devices[`${id}Desc`];
+          return (
+            <ToggleRow
+              key={id}
+              label={devices[id] ?? id}
+              description={desc}
+              checked={!!safety[id]}
+              onChange={(v) => setSafety({ ...safety, [id]: v })}
+            />
+          );
+        })}
       </div>
 
       <div className="mt-6">

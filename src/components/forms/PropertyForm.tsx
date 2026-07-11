@@ -15,6 +15,7 @@ import { createListing, ListingFormData } from '@/components/host/actions'
 import { Amenity, Highlight, PropertyType } from '@prisma/client'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
+import { useDictionary } from '@/components/internationalization/dictionary-context'
 
 const propertySchema = z.object({
   name: z.string().min(1, 'Property name is required').max(100, 'Name too long'),
@@ -60,7 +61,9 @@ const propertyTypeOptions = Object.values(PropertyType).map(type => ({
 
 export function PropertyForm() {
   console.log('🚀 PropertyForm component rendered')
-  
+
+  const dict = useDictionary()
+  const t = dict.dashboard?.newProperty as unknown as Record<string, string> | undefined
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [photoUrls, setPhotoUrls] = useState<string[]>([''])
@@ -200,12 +203,12 @@ export function PropertyForm() {
       
       if (result.success) {
         console.log('🎉 Property created successfully!')
-        toast.success('Property created successfully!')
+        toast.success(t?.createSuccess ?? 'Property created successfully!')
         console.log('🔄 Redirecting to dashboard...')
         router.push('/dashboard/properties')
       } else {
         console.log('❌ Property creation failed - no success flag')
-        toast.error('Property creation failed - no success response')
+        toast.error(t?.createFailed ?? 'Property creation failed - no success response')
       }
     } catch (error) {
       console.error('💥 Error creating property:', error)
@@ -215,7 +218,12 @@ export function PropertyForm() {
         type: typeof error,
         error
       })
-      toast.error(`Failed to create property: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error(
+        (t?.createError ?? 'Failed to create property: {error}').replace(
+          '{error}',
+          error instanceof Error ? error.message : (t?.unknownError ?? 'Unknown error')
+        )
+      )
     } finally {
       console.log('🏁 Setting isSubmitting to false')
       setIsSubmitting(false)
@@ -262,7 +270,7 @@ export function PropertyForm() {
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       <Card>
         <CardHeader>
-          <CardTitle>Create New Property Listing</CardTitle>
+          <CardTitle>{t?.formTitle ?? "Create New Property Listing"}</CardTitle>
           <div className="flex gap-2 mt-4">
             <Button 
               type="button" 
@@ -270,7 +278,7 @@ export function PropertyForm() {
               onClick={fillTestData}
               className="bg-blue-100 hover:bg-blue-200 text-blue-800"
             >
-              🧪 Fill Test Data
+              🧪 {t?.fillTestData ?? "Fill Test Data"}
             </Button>
             <Button 
               type="button" 
@@ -283,7 +291,7 @@ export function PropertyForm() {
               }}
               className="bg-gray-100 hover:bg-gray-200 text-gray-800"
             >
-              🔄 Reset Form
+              🔄 {t?.resetForm ?? "Reset Form"}
             </Button>
           </div>
         </CardHeader>
@@ -304,24 +312,24 @@ export function PropertyForm() {
           >
             {/* Basic Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Basic Information</h3>
-              
+              <h3 className="text-lg font-semibold">{t?.basicInformation ?? "Basic Information"}</h3>
+
               <div>
-                <Label htmlFor="name">Property Name *</Label>
+                <Label htmlFor="name">{t?.propertyName ?? "Property Name"} *</Label>
                 <Input
                   id="name"
                   {...register('name')}
-                  placeholder="Beautiful Downtown Apartment"
+                  placeholder={t?.namePlaceholder ?? "Beautiful Downtown Apartment"}
                 />
                 {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
               </div>
 
               <div>
-                <Label htmlFor="description">Description *</Label>
+                <Label htmlFor="description">{t?.description ?? "Description"} *</Label>
                 <Textarea
                   id="description"
                   {...register('description')}
-                  placeholder="Describe your property..."
+                  placeholder={t?.descriptionPlaceholder ?? "Describe your property..."}
                   rows={4}
                 />
                 {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>}
@@ -329,7 +337,7 @@ export function PropertyForm() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="pricePerMonth">Monthly Rent ($) *</Label>
+                  <Label htmlFor="pricePerMonth">{t?.monthlyRent ?? "Monthly Rent"} ($) *</Label>
                   <Input
                     id="pricePerMonth"
                     type="number"
@@ -340,7 +348,7 @@ export function PropertyForm() {
                 </div>
 
                 <div>
-                  <Label htmlFor="securityDeposit">Security Deposit ($)</Label>
+                  <Label htmlFor="securityDeposit">{t?.securityDeposit ?? "Security Deposit"} ($)</Label>
                   <Input
                     id="securityDeposit"
                     type="number"
@@ -351,7 +359,7 @@ export function PropertyForm() {
                 </div>
 
                 <div>
-                  <Label htmlFor="applicationFee">Application Fee ($)</Label>
+                  <Label htmlFor="applicationFee">{t?.applicationFee ?? "Application Fee"} ($)</Label>
                   <Input
                     id="applicationFee"
                     type="number"
@@ -365,11 +373,11 @@ export function PropertyForm() {
 
             {/* Property Details */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Property Details</h3>
-              
+              <h3 className="text-lg font-semibold">{t?.propertyDetails ?? "Property Details"}</h3>
+
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <Label htmlFor="beds">Bedrooms *</Label>
+                  <Label htmlFor="beds">{t?.bedrooms ?? "Bedrooms"} *</Label>
                   <Input
                     id="beds"
                     type="number"
@@ -380,7 +388,7 @@ export function PropertyForm() {
                 </div>
 
                 <div>
-                  <Label htmlFor="baths">Bathrooms *</Label>
+                  <Label htmlFor="baths">{t?.bathrooms ?? "Bathrooms"} *</Label>
                   <Input
                     id="baths"
                     type="number"
@@ -392,7 +400,7 @@ export function PropertyForm() {
                 </div>
 
                 <div>
-                  <Label htmlFor="squareFeet">Square Feet *</Label>
+                  <Label htmlFor="squareFeet">{t?.squareFeet ?? "Square Feet"} *</Label>
                   <Input
                     id="squareFeet"
                     type="number"
@@ -403,10 +411,10 @@ export function PropertyForm() {
                 </div>
 
                 <div>
-                  <Label htmlFor="propertyType">Property Type *</Label>
+                  <Label htmlFor="propertyType">{t?.propertyType ?? "Property Type"} *</Label>
                   <Select onValueChange={(value) => setValue('propertyType', value as PropertyType)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
+                      <SelectValue placeholder={t?.selectType ?? "Select type"} />
                     </SelectTrigger>
                     <SelectContent>
                       {propertyTypeOptions.map((option) => (
@@ -426,7 +434,7 @@ export function PropertyForm() {
                     id="isPetsAllowed"
                     {...register('isPetsAllowed')}
                   />
-                  <Label htmlFor="isPetsAllowed">Pets Allowed</Label>
+                  <Label htmlFor="isPetsAllowed">{t?.petsAllowed ?? "Pets Allowed"}</Label>
                 </div>
 
                 <div className="flex items-center space-x-2">
@@ -434,48 +442,48 @@ export function PropertyForm() {
                     id="isParkingIncluded"
                     {...register('isParkingIncluded')}
                   />
-                  <Label htmlFor="isParkingIncluded">Parking Included</Label>
+                  <Label htmlFor="isParkingIncluded">{t?.parkingIncluded ?? "Parking Included"}</Label>
                 </div>
               </div>
             </div>
 
             {/* Location */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Location</h3>
-              
+              <h3 className="text-lg font-semibold">{t?.location ?? "Location"}</h3>
+
               <div>
-                <Label htmlFor="address">Address *</Label>
+                <Label htmlFor="address">{t?.address ?? "Address"} *</Label>
                 <Input
                   id="address"
                   {...register('address')}
-                  placeholder="123 Main Street"
+                  placeholder={t?.addressPlaceholder ?? "123 Main Street"}
                 />
                 {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="lg:col-span-2">
-                  <Label htmlFor="city">City *</Label>
+                  <Label htmlFor="city">{t?.city ?? "City"} *</Label>
                   <Input
                     id="city"
                     {...register('city')}
-                    placeholder="Los Angeles"
+                    placeholder={t?.cityPlaceholder ?? "Los Angeles"}
                   />
                   {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>}
                 </div>
 
                 <div>
-                  <Label htmlFor="state">State *</Label>
+                  <Label htmlFor="state">{t?.state ?? "State"} *</Label>
                   <Input
                     id="state"
                     {...register('state')}
-                    placeholder="CA"
+                    placeholder={t?.statePlaceholder ?? "CA"}
                   />
                   {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state.message}</p>}
                 </div>
 
                 <div>
-                  <Label htmlFor="postalCode">Postal Code *</Label>
+                  <Label htmlFor="postalCode">{t?.postalCode ?? "Postal Code"} *</Label>
                   <Input
                     id="postalCode"
                     {...register('postalCode')}
@@ -485,11 +493,11 @@ export function PropertyForm() {
                 </div>
 
                 <div>
-                  <Label htmlFor="country">Country *</Label>
+                  <Label htmlFor="country">{t?.country ?? "Country"} *</Label>
                   <Input
                     id="country"
                     {...register('country')}
-                    placeholder="United States"
+                    placeholder={t?.countryPlaceholder ?? "United States"}
                   />
                   {errors.country && <p className="text-red-500 text-sm mt-1">{errors.country.message}</p>}
                 </div>
@@ -497,7 +505,7 @@ export function PropertyForm() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="latitude">Latitude</Label>
+                  <Label htmlFor="latitude">{t?.latitude ?? "Latitude"}</Label>
                   <Input
                     id="latitude"
                     type="number"
@@ -509,7 +517,7 @@ export function PropertyForm() {
                 </div>
 
                 <div>
-                  <Label htmlFor="longitude">Longitude</Label>
+                  <Label htmlFor="longitude">{t?.longitude ?? "Longitude"}</Label>
                   <Input
                     id="longitude"
                     type="number"
@@ -524,12 +532,12 @@ export function PropertyForm() {
 
             {/* Photos */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Property Photos</h3>
-              
+              <h3 className="text-lg font-semibold">{t?.propertyPhotos ?? "Property Photos"}</h3>
+
               {photoUrls.map((url, index) => (
                 <div key={index} className="flex gap-2">
                   <Input
-                    placeholder="https://example.com/photo.jpg"
+                    placeholder={t?.photoUrlPlaceholder ?? "https://example.com/photo.jpg"}
                     value={url}
                     onChange={(e) => updatePhotoUrl(index, e.target.value)}
                     className="flex-1"
@@ -540,19 +548,19 @@ export function PropertyForm() {
                     onClick={() => removePhotoUrl(index)}
                     disabled={photoUrls.length === 1}
                   >
-                    Remove
+                    {dict.listingEditor?.common?.remove ?? "Remove"}
                   </Button>
                 </div>
               ))}
               
               <Button type="button" variant="outline" onClick={addPhotoUrl}>
-                Add Photo URL
+                {t?.addPhotoUrl ?? "Add Photo URL"}
               </Button>
             </div>
 
             {/* Amenities */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Amenities</h3>
+              <h3 className="text-lg font-semibold">{t?.amenities ?? "Amenities"}</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                 {amenityOptions.map((amenity) => (
                   <div key={amenity.value} className="flex items-center space-x-2">
@@ -571,7 +579,7 @@ export function PropertyForm() {
 
             {/* Highlights */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Highlights</h3>
+              <h3 className="text-lg font-semibold">{t?.highlights ?? "Highlights"}</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                 {highlightOptions.map((highlight) => (
                   <div key={highlight.value} className="flex items-center space-x-2">
@@ -591,7 +599,7 @@ export function PropertyForm() {
             {/* Form Validation Summary */}
             {Object.keys(errors).length > 0 && (
               <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                <h4 className="text-red-800 font-medium mb-2">Please fix the following errors:</h4>
+                <h4 className="text-red-800 font-medium mb-2">{t?.fixErrors ?? "Please fix the following errors:"}</h4>
                 <ul className="text-red-700 text-sm space-y-1">
                   {Object.entries(errors).map(([field, error]) => (
                     <li key={field}>
@@ -605,7 +613,7 @@ export function PropertyForm() {
             {/* Submit Button */}
             <div className="flex justify-end space-x-4">
               <Button type="button" variant="outline" onClick={() => router.back()}>
-                Cancel
+                {dict.forms?.cancel ?? "Cancel"}
               </Button>
               <Button 
                 type="submit" 
@@ -619,7 +627,7 @@ export function PropertyForm() {
                   console.log('🔘 Current form values:', watch())
                 }}
               >
-                {isSubmitting ? '⏳ Creating...' : '✨ Create Property'}
+                {isSubmitting ? <>⏳ {t?.creating ?? 'Creating...'}</> : <>✨ {t?.createProperty ?? 'Create Property'}</>}
               </Button>
             </div>
           </form>

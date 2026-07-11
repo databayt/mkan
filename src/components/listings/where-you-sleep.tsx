@@ -45,6 +45,14 @@ interface WhereYouSleepProps {
   bedLabel?: string;
   bedroomLabel?: string;
   studioLabel?: string;
+  /** Override the <section> chrome. Desktop keeps its own border/padding; the
+   *  mobile PDP passes its sibling-block wrapper classes instead. */
+  className?: string;
+  /** Override the heading classes — mobile PDP headings are semibold (600). */
+  headingClassName?: string;
+  /** Override the per-room card classes. Live mobile cards are 163px / 8px
+   *  radius (two fill the phone width); desktop keeps its wider 232px card. */
+  cardClassName?: string;
 }
 
 export default function WhereYouSleep({
@@ -53,6 +61,9 @@ export default function WhereYouSleep({
   bedLabel = "1 bed",
   bedroomLabel = "Bedroom",
   studioLabel = "Living room",
+  className = "border-b border-[#DDDDDD] py-12",
+  headingClassName = "mb-6 text-[22px] font-medium leading-[26px] tracking-[-0.44px] text-[#222222]",
+  cardClassName = "flex w-[232px] flex-none flex-col gap-2 rounded-xl border border-[#DDDDDD] p-6",
 }: WhereYouSleepProps) {
   const count = Math.max(0, bedrooms ?? 0);
   // 0 bedrooms (studio) → a single living-room card; otherwise one card per room.
@@ -64,15 +75,15 @@ export default function WhereYouSleep({
         }));
 
   return (
-    <section className="border-b border-[#DDDDDD] py-12">
-      <h2 className="mb-6 text-[22px] font-medium leading-[26px] tracking-[-0.44px] text-[#222222]">
+    <section className={className}>
+      <h2 className={headingClassName}>
         {heading}
       </h2>
       <div className="flex gap-4 overflow-x-auto pb-1">
         {rooms.map((room, i) => (
           <div
             key={i}
-            className="flex w-[232px] flex-none flex-col gap-2 rounded-xl border border-[#DDDDDD] p-6"
+            className={cardClassName}
           >
             <span className="text-[#222222]">
               <BedGlyph />

@@ -12,6 +12,7 @@ import { useDictionary } from '@/components/internationalization/dictionary-cont
 import { formatCurrency } from '@/lib/i18n/formatters'
 import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-actions'
 import { useSession } from 'next-auth/react'
+import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite'
 
 interface PropertyListingsProps {
   properties: Listing[]
@@ -81,6 +82,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
     price: property.pricePerNight || 0,
     rating: property.averageRating || 4.5, // Default rating
     isSuperhostBadge: false, // You can add logic for this
+    isGuestFavorite: qualifiesAsGuestFavorite(property),
     isFavorite: localFavorites.has(property.id),
     onFavoriteToggle: handleFavoriteToggle,
     onCardClick: handleCardClick,

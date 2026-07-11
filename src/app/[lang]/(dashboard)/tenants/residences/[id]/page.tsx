@@ -38,6 +38,9 @@ import {
 import { useParams } from "next/navigation";
 import React from "react";
 
+// Demo card data (mock billing contact) — data, not translatable copy.
+const BILLING_EMAIL = "billing@baseclub.com";
+
 const PaymentMethod = () => {
   const dict = useDictionary();
   const t = dict?.dashboard?.tenants?.residenceDetail?.paymentMethod;
@@ -68,7 +71,7 @@ const PaymentMethod = () => {
               </div>
               <div className="text-sm text-gray-500 flex items-center">
                 <Mail className="w-4 h-4 me-1" />
-                <span>billing@baseclub.com</span>
+                <span>{BILLING_EMAIL}</span>
               </div>
             </div>
           </div>

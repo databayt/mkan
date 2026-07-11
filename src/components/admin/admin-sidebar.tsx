@@ -50,7 +50,7 @@ export function AdminSidebar({ lang, labels }: AdminSidebarProps) {
     { icon: BarChart3, label: labels.overview, href: base },
     { icon: Users, label: labels.users, href: `${base}/users` },
     { icon: Building2, label: labels.homes, href: `${base}/homes` },
-    { icon: Bus, label: labels.transport, href: `${base}/transport` },
+    { icon: Bus, label: labels.transport, href: `${base}/travel` },
     { icon: CalendarRange, label: labels.bookings, href: `${base}/bookings` },
     { icon: CreditCard, label: labels.payments, href: `${base}/payments` },
     { icon: Settings, label: labels.settings, href: `${base}/settings` },

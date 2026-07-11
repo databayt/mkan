@@ -10,12 +10,12 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
-  const t = (await getDictionary(lang as Locale))?.transport;
+  const t = (await getDictionary(lang as Locale))?.travel;
   return createMetadata({
     title: t?.meta?.officesTitle ?? "Transport Offices",
     description: t?.meta?.officesDescription ?? "Browse available transport offices",
     locale: lang,
-    path: "/transport/offices",
+    path: "/travel/offices",
   });
 }
 

@@ -10,8 +10,9 @@ import { Home, Bus, Calendar, MapPin, Clock, Download, Eye } from 'lucide-react'
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import Link from 'next/link';
-import { getMyBookings } from '@/lib/actions/transport-actions';
+import { getMyBookings } from '@/lib/actions/travel-actions';
 import { getGuestBookings, cancelBooking } from '@/lib/actions/booking-actions';
+import { cityLabel } from '@/components/travel/city-names';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { useParams } from 'next/navigation';
@@ -43,6 +44,7 @@ interface TransportBooking {
   };
   office: {
     name: string;
+    nameAr?: string | null;
     phone?: string;
   };
   _count: { seats: number };
@@ -163,7 +165,7 @@ const TripsPage = () => {
           </TabsTrigger>
           <TabsTrigger value="transport" className="flex items-center gap-2">
             <Bus className="h-4 w-4" />
-            {dict.dashboard?.tenantTrips?.transport ?? "Transport"}
+            {dict.dashboard?.tenantTrips?.transport ?? "Travel"}
           </TabsTrigger>
         </TabsList>
 
@@ -245,7 +247,7 @@ const TripsPage = () => {
                   <Bus className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>{dict.dashboard?.tenantTrips?.noUpcomingTrips ?? "No upcoming trips"}</p>
                   <Button asChild className="mt-4">
-                    <Link href="/transport">{dict.dashboard?.tenantTrips?.bookATrip ?? "Book a Trip"}</Link>
+                    <Link href="/travel">{dict.dashboard?.tenantTrips?.bookATrip ?? "Book a Trip"}</Link>
                   </Button>
                 </div>
               ) : (
@@ -322,7 +324,7 @@ const HomeBookingCard = ({ booking, lang, dict, getStatusColor, isPast, onCancel
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="text-xl font-bold">
-            {(dict.common as Record<string, string> | undefined)?.currency ?? "$"}
+            {(dict.common as any)?.currency ?? "$"}
             {booking.totalPrice.toLocaleString()}
           </div>
           <div className="flex gap-2">
@@ -371,9 +373,9 @@ const TransportBookingCard = ({ booking, getStatusColor, isPast }: TransportBook
 
           <div className="flex items-center gap-2 text-lg font-medium">
             <MapPin className="h-4 w-4 text-gray-400" />
-            <span>{booking.trip.route.origin.city}</span>
+            <span>{cityLabel(booking.trip.route.origin.city, locale)}</span>
             <span className="text-gray-400">→</span>
-            <span>{booking.trip.route.destination.city}</span>
+            <span>{cityLabel(booking.trip.route.destination.city, locale)}</span>
           </div>
 
           <div className="flex flex-wrap gap-4 text-sm text-gray-600">
@@ -391,7 +393,7 @@ const TransportBookingCard = ({ booking, getStatusColor, isPast }: TransportBook
           </div>
 
           <div className="text-sm text-gray-500">
-            {booking.office.name} • {booking.trip.bus.plateNumber}
+            {locale === 'ar' ? booking.office.nameAr ?? booking.office.name : booking.office.name} • {booking.trip.bus.plateNumber}
           </div>
         </div>
 
@@ -399,14 +401,14 @@ const TransportBookingCard = ({ booking, getStatusColor, isPast }: TransportBook
           <div className="text-xl font-bold">{`${booking.totalAmount.toLocaleString()} ${dict.dashboard?.tenantTrips?.currencySDG ?? "SDG"}`}</div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/transport/booking/${booking.id}`}>
+              <Link href={`/travel/booking/${booking.id}`}>
                 <Eye className="h-4 w-4 me-1" />
                 {dict.dashboard?.common?.view ?? "View"}
               </Link>
             </Button>
             {!isPast && booking.status === 'Confirmed' && (
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/transport/booking/${booking.id}/ticket`}>
+                <Link href={`/travel/booking/${booking.id}/ticket`}>
                   <Download className="h-4 w-4 me-1" />
                   {dict.dashboard?.tenantTrips?.ticket ?? "Ticket"}
                 </Link>

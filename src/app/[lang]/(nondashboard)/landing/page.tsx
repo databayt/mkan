@@ -41,7 +41,10 @@ import AirbnbReviews from "@/components/atom/reviews";
 
 import PropertyContentComponent from "@/components/property/content";
 
-const Landing = () => {
+const Landing = async ({ params }: { params: Promise<{ lang: string }> }) => {
+  const { lang } = await params;
+  const dict = await getDictionary(lang as Locale);
+  const demo = (dict as unknown as { landing?: { demo?: { title?: string } } }).landing?.demo;
   return (
     <div>
       <HeroSection />
@@ -51,8 +54,8 @@ const Landing = () => {
       <PropertyContentComponent searchParams={Promise.resolve({})} />
       
       
-      <AirbnbPropertyHeader 
-        title="Luxury Downtown"
+      <AirbnbPropertyHeader
+        title={demo?.title ?? "Luxury Downtown"}
         location="Manhattan, New York"
         rating={4.8}
         reviewCount={127}

@@ -7,6 +7,9 @@ import { revalidatePath } from "next/cache";
 import { sanitizeInput, sanitizeHtml } from "@/lib/sanitization";
 import { logger } from "@/lib/logger";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { localize } from "@/components/translation/localize";
+import { getDisplayLang } from "@/components/translation/locale";
+import type { Lang } from "@/components/translation/types";
 
 // ============================================
 // SCHEMAS
@@ -38,6 +41,8 @@ const listingReviewsFilterSchema = z.object({
   take: z.number().int().min(1).max(100).optional().default(20),
   skip: z.number().int().min(0).optional().default(0),
 });
+
+const langSchema = z.enum(["en", "ar"]);
 
 // ============================================
 // TYPES
@@ -186,7 +191,7 @@ export async function createReview(data: unknown) {
 // GET LISTING REVIEWS
 // ============================================
 
-export async function getListingReviews(listingId: unknown, filters?: unknown) {
+export async function getListingReviews(listingId: unknown, filters?: unknown, lang?: unknown) {
   const parsedId = listingIdSchema.safeParse(listingId);
   if (!parsedId.success) {
     throw new Error("Invalid listing ID");
@@ -202,6 +207,11 @@ export async function getListingReviews(listingId: unknown, filters?: unknown) {
   }
 
   const { take, skip } = parsedFilters.data;
+
+  // Viewer display language: explicit `lang` from route-aware callers, else the
+  // NEXT_LOCALE cookie (client-triggered re-queries without a route param).
+  const parsedLang = langSchema.safeParse(lang);
+  const displayLang: Lang = parsedLang.success ? parsedLang.data : await getDisplayLang();
 
   try {
     const [reviews, total] = await Promise.all([
@@ -225,12 +235,58 @@ export async function getListingReviews(listingId: unknown, filters?: unknown) {
       }),
     ]);
 
-    return { reviews, total, take, skip };
+    // Guest comments / host replies are stored in whichever language they were
+    // written — localize for the viewer (cache-first; falls back to source).
+    // Reviewer names are intentionally NOT translated.
+    const localizedReviews = await localize(reviews, ["comment", "hostReply"], displayLang);
+
+    return { reviews: localizedReviews, total, take, skip };
   } catch (error) {
     logger.error("Error fetching listing reviews:", error);
     throw new Error(
       `Failed to fetch reviews: ${error instanceof Error ? error.message : "Unknown error"}`
     );
+  }
+}
+
+// ============================================
+// HOST REVIEWS ELSEWHERE (empty-state helper)
+// ============================================
+
+/**
+ * Count reviews the listing's host has earned on their *other* places, and
+ * return their id + display name. Powers the "No reviews (yet)" empty state,
+ * which links guests to the rest of the host's reviewed listings — mirroring
+ * Airbnb's REVIEWS_EMPTY_DEFAULT block. Returns a zeroed shape on any error.
+ */
+export async function getHostOtherReviewCount(
+  listingId: unknown
+): Promise<{ count: number; hostId: string | null; hostName: string | null }> {
+  const parsedId = listingIdSchema.safeParse(listingId);
+  if (!parsedId.success) {
+    return { count: 0, hostId: null, hostName: null };
+  }
+
+  try {
+    const listing = await db.listing.findUnique({
+      where: { id: parsedId.data },
+      select: { hostId: true, host: { select: { username: true } } },
+    });
+    if (!listing?.hostId) {
+      return { count: 0, hostId: null, hostName: null };
+    }
+
+    const count = await db.review.count({
+      where: {
+        listingId: { not: parsedId.data },
+        listing: { hostId: listing.hostId },
+      },
+    });
+
+    return { count, hostId: listing.hostId, hostName: listing.host?.username ?? null };
+  } catch (error) {
+    logger.error("Error counting host reviews:", error);
+    return { count: 0, hostId: null, hostName: null };
   }
 }
 

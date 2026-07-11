@@ -30,7 +30,7 @@ export interface OnboardingFooterConfig {
   stepGroups: Record<number, string[]>;
   /** Labels for each progress bar phase */
   stepLabels: string[];
-  /** Base route path (e.g., '/host' or '/transport-host') */
+  /** Base route path (e.g., '/host' or '/travel-host') */
   routeBase: string;
   /** The final step slug that triggers the final action */
   finalStep: string;

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useDeferredValue, useCallback } from "react";
+import { useState, useMemo, useDeferredValue, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { Search } from "lucide-react";
+import { Command, CommandInput } from "@/components/ui/command";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
-import { CITY_AR, cityLabel } from "@/components/transport/city-names";
+import { CITY_AR, cityLabel } from "@/components/travel/city-names";
 import { cdn } from "@/lib/cdn";
 
 interface AssemblyPoint {
@@ -19,6 +19,11 @@ interface TransportCityDropdownProps {
   onChange: (value: string) => void;
   assemblyPoints?: AssemblyPoint[];
   placeholder?: string;
+  // fillHeight = stretch the list to fill the parent's height (with bottom
+  // clearance for the floating Search pill), keeping the search command fixed
+  // at the top — used by the mobile step. Off = the fixed max-height list for
+  // the desktop side panel.
+  fillHeight?: boolean;
 }
 
 // Sudan cities as fallback
@@ -65,21 +70,33 @@ function cityArt(city: string): (typeof CITY_ARTS)[number] {
   return CITY_ARTS[hash % CITY_ARTS.length]!;
 }
 
-// Mirrors the homepage "Where" step (LocationDropdown): a search input above a
-// scrolling list whose rows are a rounded-square destination art + city name +
-// a light subtitle. Data comes from the transport assembly points.
+// Mirrors the homepage "Where" step: a cmdk search command fixed at the top,
+// above a scrolling list whose rows are a rounded-square destination art +
+// city name + a light subtitle. Data comes from the transport assembly points.
 export default function TransportCityDropdown({
   value,
   onChange,
   assemblyPoints = [],
   placeholder,
+  fillHeight = false,
 }: TransportCityDropdownProps) {
   const params = useParams();
   const lang = (params?.lang as string) ?? "en";
   const dict = useDictionary();
-  const tc = dict?.transport?.citySelect;
-  const [searchQuery, setSearchQuery] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const tc = dict?.travel?.citySelect;
+
+  const anywhereLabel = dict?.travel?.search?.anywhere ?? (lang === "ar" ? "أي مكان" : "Anywhere");
+  const isAnywhere = (val?: string) => {
+    if (!val) return true;
+    const lower = val.trim().toLowerCase();
+    return lower === "anywhere" || lower === "أي مكان" || val === anywhereLabel;
+  };
+
+  // Seed the search command with the already-selected city so reopening the
+  // field shows the current From/To value.
+  const [searchQuery, setSearchQuery] = useState(() =>
+    value && !isAnywhere(value) ? cityLabel(value, lang) : ""
+  );
 
   // Debounce search query using useDeferredValue
   const deferredSearchQuery = useDeferredValue(searchQuery);
@@ -118,46 +135,46 @@ export default function TransportCityDropdown({
     const filtered = allCities.filter(
       (city) =>
         city.toLowerCase().includes(searchLower) ||
+        cityLabel(city, lang).toLowerCase().includes(searchLower) ||
         (CITY_AR[city] ?? "").includes(deferredSearchQuery.trim())
     );
     return filtered.slice(0, 8); // Max 8 results
-  }, [deferredSearchQuery, allCities]);
-
-  // Autofocus input
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+  }, [deferredSearchQuery, allCities, lang]);
 
   // Memoize city select handler
   const handleCitySelect = useCallback((city: string) => {
     onChange(city);
   }, [onChange]);
 
-  // Memoize search change handler
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  }, []);
-
   // Check if showing popular or search results
   const isShowingPopular = deferredSearchQuery.trim() === "";
 
   return (
-    <div className="space-y-3">
-      {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input
-          ref={inputRef}
-          type="text"
+    <div className={`flex flex-col ${fillHeight ? "h-full" : ""}`}>
+      {/* Search command — cmdk input fixed at the top (same as the homepage
+          "Where" step). */}
+      <Command
+        shouldFilter={false}
+        className="h-auto shrink-0 overflow-visible bg-transparent mb-3"
+      >
+        <CommandInput
           value={searchQuery}
-          onChange={handleSearchChange}
-          placeholder={placeholder ?? tc?.searchCity ?? "Search city..."}
-          className="w-full ps-10 pe-4 h-11 text-sm border border-[#dddddd] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          onValueChange={setSearchQuery}
+          placeholder={placeholder ?? (tc?.searchCity ?? "Search city...")}
+          className="h-11"
+          autoFocus
         />
-      </div>
+      </Command>
 
-      {/* City List — Where-step row style (icon + name + subtitle) */}
-      <div className="max-h-[320px] overflow-y-auto no-scrollbar scroll-smooth" role="listbox">
+      {/* City List — Where-step row style (art + name + subtitle). */}
+      <div
+        className={
+          fillHeight
+            ? "flex-1 min-h-0 overflow-y-auto no-scrollbar pb-24"
+            : "max-h-[320px] overflow-y-auto no-scrollbar scroll-smooth"
+        }
+        role="listbox"
+      >
         {filteredCities.length === 0 ? (
           <div className="text-sm text-muted-foreground text-center py-8">
             {tc?.noCitiesFound ?? "No cities found"}

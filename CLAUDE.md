@@ -32,11 +32,22 @@ pnpm seed:listings         # Seed listings data (tsx scripts/seed-listings.ts)
 The application supports multiple languages with custom i18n implementation:
 - **Supported locales**: English (en, LTR), Arabic (ar, RTL)
 - **Default locale**: English (en)
-- Language files: `src/components/local/en.json`, `src/components/local/ar.json`
-- Configuration: `src/components/local/config.ts` (includes RTL/LTR settings, date formats, currency)
+- Language files: `src/components/internationalization/{en,ar}.json`
 - Middleware handles locale detection and automatic routing with locale prefix
 - All non-API routes get locale prefix (e.g., `/en/dashboard`, `/ar/login`)
-- Uses custom hooks (`use-locale.ts`) and dictionaries system
+- Server components: `getDictionary(lang)`; client components: `useDictionary()` (context-first, safe anywhere)
+
+#### i18n enforcement — build-gated, do not bypass
+`pnpm i18n:check` (runs inside `pnpm build`) enforces three contracts:
+1. **Key parity** — every dictionary key exists in BOTH en.json and ar.json (`scripts/dev-i18n-sync.ts`)
+2. **Enum-label coverage** — every user-facing Prisma enum value has a label in both locales (same script)
+3. **No hardcoded strings** — `scripts/i18n-scan-hardcoded.ts` (AST scan) fails the build on user-facing literals in JSX (text nodes, placeholder/alt/aria-label/title attrs, toast calls) above `scripts/i18n-hardcoded-baseline.json`
+
+Rules for new UI text:
+- Every user-facing string goes in the dictionary, rendered as `{dict?.ns?.key ?? "English fallback"}` — the `??` fallback behind a dict chain is house style and NOT flagged; a bare literal IS flagged and breaks the build
+- Genuine exceptions (brand names, locale-neutral tokens): `// i18n-exempt` comment on/above the line, or `i18n-exempt-file` in a header comment for dev-only files
+- Dynamic DB free-text (listing title/description, location, reviews) must pass through `localizeListing`/`localizeListings`/`getText` (`src/components/translation/localize.ts`); transport office/assembly names use their `nameAr` columns, cities use `cityLabel()` from `src/components/travel/city-names.ts`
+- After ANY seed: `pnpm i18n:backfill`
 
 ## Architecture & Project Structure
 

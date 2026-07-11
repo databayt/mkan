@@ -99,7 +99,7 @@ export const sendTripCancelledEmail = async (
       <p>${data.operatorName} has cancelled your trip on ${data.departureDate}.</p>
       <p><strong>Booking reference:</strong> ${data.bookingReference}</p>
       <p>Your booking has been marked cancelled. If you paid online, the refund is being processed.</p>
-      <p>You can rebook on mkan at <a href="${domain}/transport">mkan transport</a>.</p>
+      <p>You can rebook on mkan at <a href="${domain}/travel">mkan transport</a>.</p>
     `,
   });
 };

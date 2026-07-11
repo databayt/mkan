@@ -1,5 +1,5 @@
-import Loading from "@/components/atom/loading";
+import { WizardSkeleton } from "@/components/atom/skeletons";
 
 export default function HostLoading() {
-  return <Loading variant="fullscreen" text="Loading..." />;
-} 
+  return <WizardSkeleton />;
+}

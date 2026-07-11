@@ -7,6 +7,7 @@ import { FormField } from '../form-field'
 import { ALL_AMENITIES, ESSENTIAL_AMENITIES, FEATURE_AMENITIES, KITCHEN_AMENITIES } from '../constants'
 import { Check } from 'lucide-react'
 import { Amenity } from '@prisma/client'
+import { useDictionary } from '@/components/internationalization/use-dictionary'
 
 interface AmenityCardProps {
   amenity: Amenity
@@ -49,8 +50,9 @@ export function AmenitiesForm() {
     selectedAmenities,
     isLoading, 
     error, 
-    isFormValid 
+    isFormValid
   } = useAmenities()
+  const dict = useDictionary()
 
   const renderAmenitySection = (title: string, amenities: typeof ESSENTIAL_AMENITIES) => (
     <div className="space-y-3">
@@ -73,13 +75,13 @@ export function AmenitiesForm() {
     <StepWrapper>
       <form onSubmit={onSubmit} className="space-y-8">
         <FormField
-          label="What amenities do you offer?"
-          description="Choose all that apply. You can add more amenities after you publish your listing."
+          label={dict?.hosting?.onboarding?.amenities?.subtitle ?? "What amenities do you offer?"}
+          description={dict?.host?.amenities?.description ?? "Choose all that apply. You can add more amenities after you publish your listing."}
         >
           <div className="space-y-8">
-            {renderAmenitySection("Essential", ESSENTIAL_AMENITIES)}
-            {renderAmenitySection("Features", FEATURE_AMENITIES)}
-            {renderAmenitySection("Kitchen", KITCHEN_AMENITIES)}
+            {renderAmenitySection(dict?.host?.amenities?.essential ?? "Essential", ESSENTIAL_AMENITIES)}
+            {renderAmenitySection(dict?.host?.amenities?.features ?? "Features", FEATURE_AMENITIES)}
+            {renderAmenitySection(dict?.hosting?.pages?.amenities?.kitchen ?? "Kitchen", KITCHEN_AMENITIES)}
           </div>
         </FormField>
 
@@ -90,14 +92,14 @@ export function AmenitiesForm() {
         )}
 
         <div className="text-sm text-muted-foreground">
-          {selectedAmenities.length} amenities selected
+          {(dict?.host?.amenities?.selectedCount ?? "{count} amenities selected").replace("{count}", String(selectedAmenities.length))}
         </div>
 
         <StepNavigation
           onNext={onSubmit}
           onPrevious={onBack}
           isNextDisabled={isLoading}
-          nextLabel={isLoading ? 'Saving...' : 'Next'}
+          nextLabel={isLoading ? (dict?.host?.stepNavigation?.saving ?? 'Saving...') : (dict?.host?.stepNavigation?.next ?? 'Next')}
           showPrevious={true}
         />
       </form>

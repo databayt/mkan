@@ -55,7 +55,7 @@ export default function SmallSearch({
       onClick={() => expand("location")}
       role="button"
       tabIndex={0}
-      aria-label="Open search"
+      aria-label={dict?.search?.openSearch ?? "Open search"}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -67,7 +67,7 @@ export default function SmallSearch({
       <button
         type="button"
         className={segClass}
-        aria-label="Search location"
+        aria-label={dict?.search?.searchLocation ?? "Search location"}
         onMouseEnter={() => setHovered("where")}
         onMouseLeave={() => setHovered(null)}
         onClick={(e) => {
@@ -90,7 +90,7 @@ export default function SmallSearch({
       <button
         type="button"
         className={segClass}
-        aria-label="Select dates"
+        aria-label={dict?.search?.selectDates ?? "Select dates"}
         onMouseEnter={() => setHovered("when")}
         onMouseLeave={() => setHovered(null)}
         onClick={(e) => {
@@ -114,7 +114,7 @@ export default function SmallSearch({
         <button
           type="button"
           className={segClass}
-          aria-label="Add guests"
+          aria-label={dict?.search?.addGuests ?? "Add guests"}
           onMouseEnter={() => setHovered("who")}
           onMouseLeave={() => setHovered(null)}
           onClick={(e) => {
@@ -137,7 +137,7 @@ export default function SmallSearch({
               e.stopPropagation();
               expand("location");
             }}
-            aria-label="Search"
+            aria-label={dict?.search?.searchButton ?? "Search"}
             className="ms-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#FF385C] text-white transition-colors hover:bg-[#E31C5F]"
           >
             <Search className="h-[16px] w-[16px]" />
@@ -150,7 +150,7 @@ export default function SmallSearch({
               e.stopPropagation();
               expand("location");
             }}
-            aria-label="Search"
+            aria-label={dict?.search?.searchButton ?? "Search"}
           >
             <Search className="h-[16px] w-[16px]" />
           </Button>

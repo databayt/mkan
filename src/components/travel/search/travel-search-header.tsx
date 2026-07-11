@@ -12,8 +12,6 @@ import TravelSmallSearch, {
   type TravelSearchField,
 } from "@/components/travel/search/travel-small-search";
 
-// Motion constants lifted verbatim from the homes search-header so the travel
-// expand feels identical to /search. Keep in lockstep with that file.
 const BAR_H = 64;
 const CTA_ID = "travel-search-cta";
 const SPRING = { type: "spring" as const, stiffness: 280, damping: 34, mass: 1 } as const;
@@ -36,18 +34,11 @@ interface TravelSearchHeaderProps {
   initialDate?: Date;
   lang?: string;
   /** Summary text for the collapsed pill segments (route / date / seats). */
-  searchSummary?: { route?: string; date?: string; passengers?: string };
+  searchSummary?: { origin?: string; destination?: string; date?: string; passengers?: string };
   /** Rendered beside the pill on desktop (the travel FiltersPanel). */
   filters?: ReactNode;
 }
 
-/**
- * The travel search header — the homes `/search` expanding header, adapted for
- * buses. A collapsed route·date·seats pill blooms into the `TransportBigSearch`
- * fields: on desktop a second header row springs open under a page scrim; on
- * mobile a top-anchored sheet breathes down from the bar. Same spring/scrim/
- * body-lock/shared-layout choreography as `components/listings/search-header`.
- */
 export default function TravelSearchHeader({
   assemblyPoints = [],
   initialOrigin = "",
@@ -61,8 +52,6 @@ export default function TravelSearchHeader({
   const isAr = locale === "ar";
   const dict = useDictionary();
 
-  // Localised labels for the embedded TransportBigSearch — mirrors the
-  // construction on the /travel landing so the header fields read in Arabic.
   const ts = dict?.travel?.search;
   const bigSearchDict = {
     title: `${dict?.travel?.hero?.titleLine1 ?? "Travel Between"}\n${dict?.travel?.hero?.titleLine2 ?? "Cities in Sudan"}`,
@@ -100,11 +89,11 @@ export default function TravelSearchHeader({
 
   const handleExpand = useCallback(
     (field?: TravelSearchField) => {
+      setDeskField(field ?? "origin");
       if (window.innerWidth < 768) {
         openSheet();
         return;
       }
-      setDeskField(field ?? "origin");
       setDeskOpen(true);
     },
     [openSheet],
@@ -174,15 +163,14 @@ export default function TravelSearchHeader({
                 <div className="flex items-center gap-2">
                   <Image src="/logo.svg" alt="Mkan" width={20} height={20} className="w-5 h-5" />
                   <div className="text-xl font-bold text-gray-900">
-                    {/* i18n-exempt — "Mkan" brand wordmark, split for styling */}
+                    {/* i18n-exempt */}
                     Mk<span className="font-light text-gray-600">an</span>
                   </div>
                 </div>
               </Link>
             </div>
 
-            {/* Center — collapsed pill + filters. Blooms out as the desktop
-                BigSearch row opens (scales past 1 and lifts while fading). */}
+            {/* Center — collapsed pill + filters. */}
             <motion.div
               className="flex items-center justify-center flex-1 sm:mx-8 gap-0.5 sm:gap-2 min-w-0"
               initial={false}
@@ -240,6 +228,7 @@ export default function TravelSearchHeader({
                 initialDestination={initialDestination}
                 initialDate={initialDate}
                 initialField={deskField}
+                key={deskField || "default"}
                 onSearch={collapseDesk}
                 dictionary={bigSearchDict}
                 lang={lang}
@@ -292,6 +281,8 @@ export default function TravelSearchHeader({
                   initialOrigin={initialOrigin}
                   initialDestination={initialDestination}
                   initialDate={initialDate}
+                  initialField={deskField}
+                  key={deskField || "default"}
                   onSearch={closeSheet}
                   ctaLayoutId={CTA_ID}
                   dictionary={bigSearchDict}

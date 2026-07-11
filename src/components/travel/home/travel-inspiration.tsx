@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { cdn } from "@/lib/cdn";
-import { cityLabel } from "@/components/transport/city-names";
+import { cityLabel } from "@/components/travel/city-names";
 import { routeSearchHref, type PopularRoute } from "./route-utils";
 import type { Locale } from "@/components/internationalization/config";
 

@@ -77,7 +77,7 @@ export function HostingBottomNav() {
 
   return (
     <nav
-      aria-label="Hosting"
+      aria-label={navDict?.ariaLabel ?? "Hosting"}
       className={cn(
         "fixed inset-x-0 bottom-0 z-50 border-t border-border bg-white transition-transform duration-300 ease-out lg:hidden",
         hidden ? "translate-y-full" : "translate-y-0"

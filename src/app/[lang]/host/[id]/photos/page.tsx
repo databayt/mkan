@@ -150,7 +150,7 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
           <div className="relative w-full h-full group">
             <Image
               src={photoUrl}
-              alt={`Photo ${i + 1}`}
+              alt={(dict?.hosting?.pages?.photos?.photoAlt ?? "Photo {number}").replace("{number}", String(i + 1))}
               fill
               className="object-cover rounded-lg"
             />
@@ -218,7 +218,7 @@ const PhotosPageContent = ({ params }: PhotosPageProps) => {
                   <div className="relative w-20 h-20 sm:w-32 sm:h-32 mx-auto">
                     <Image
                       src={cdn.product("assets/camera.avif")}
-                      alt="Camera"
+                      alt={dict?.hosting?.pages?.photos?.cameraAlt ?? "Camera"}
                       fill
                       className="object-contain"
                     />

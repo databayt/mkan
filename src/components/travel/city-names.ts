@@ -3,7 +3,7 @@
  *
  * Search params, DB rows and URL state keep the ENGLISH city string as the
  * canonical value — this map localizes display only. Mirrors the
- * `city`/`cityAr` pairs in `src/lib/constants/transport-data.ts` without
+ * `city`/`cityAr` pairs in `src/lib/constants/travel-data.ts` without
  * importing the full data file into the client bundle.
  */
 export const CITY_AR: Record<string, string> = {

@@ -5,6 +5,7 @@ import { Listing } from "@/types/listing";
 import { PropertyContent } from "./property/content";
 import { searchListings } from "@/lib/actions/search-actions";
 import { type SearchFilters } from "@/lib/schemas/search-schema";
+import { useDictionary } from "@/components/internationalization/use-dictionary";
 
 /** How long the dots stay visible once shown, so a fast fetch still reads as
  * "more is loading" instead of a sub-frame flicker. Content is never delayed —
@@ -15,8 +16,9 @@ const DOTS_MIN_VISIBLE_MS = 600;
  * `animate-bounce` keyframes — brand-new arbitrary animations can be dropped
  * by the dev scanner, core utilities can't. */
 function LoadingDots() {
+  const dict = useDictionary();
   return (
-    <div className="flex items-center gap-1.5" role="status" aria-label="Loading more">
+    <div className="flex items-center gap-1.5" role="status" aria-label={dict?.listings?.loadingMore ?? "Loading more"}>
       {[0, 1, 2].map((i) => (
         <span
           key={i}

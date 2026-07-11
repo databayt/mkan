@@ -1,11 +1,9 @@
 import { config } from 'dotenv';
 config({ path: '.env.local' });
 
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-
-const prisma = new PrismaClient();
+import { db as prisma } from '../src/lib/db';
 
 async function main() {
   console.log('🌱 Seeding test user...');

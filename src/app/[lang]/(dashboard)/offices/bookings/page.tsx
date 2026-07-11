@@ -50,7 +50,7 @@ import {
   getMyTransportOffices,
   getOfficeBookings,
   updateBookingStatus,
-} from '@/lib/actions/transport-actions';
+} from '@/lib/actions/travel-actions';
 
 interface Booking {
   id: number;

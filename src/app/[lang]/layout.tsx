@@ -91,6 +91,7 @@ export default async function LocaleLayout({
               "try{if(document.cookie.indexOf('cookieConsent=')!==-1)document.documentElement.setAttribute('data-consent','1')}catch(e){}",
           }}
         />
+        {/* i18n-exempt — CSS rule for the consent gate, not user-facing copy */}
         <style>{`html[data-consent="1"] [data-cookie-banner]{display:none}`}</style>
         <a
           href="#main-content"

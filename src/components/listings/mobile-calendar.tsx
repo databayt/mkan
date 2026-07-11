@@ -72,11 +72,33 @@ const CAL_STYLES = `
   font-weight: 500;
 }
 .mkan-mobile-cal .rdp-selected { font-weight: 600; font-size: inherit; }
+.mkan-mobile-cal .rdp-today:not(.rdp-selected) .rdp-day_button { font-weight: 600; }
+.mkan-mobile-cal .rdp-disabled:not(.mkan-cal-blocked) .rdp-day_button {
+  color: #DDDDDD;
+}
+/* Airbnb nav layout: prev arrow hugs the start, next hugs the end, and the
+   month label sits centered between them on the same row. react-day-picker
+   defaults to cramming both arrows at the far end, so we stretch .rdp-nav
+   full-width with space-between and center the caption under it. */
+.mkan-mobile-cal .rdp-month { position: relative; }
+.mkan-mobile-cal .rdp-nav {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  width: 100%;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 .mkan-mobile-cal .rdp-month_caption {
-  font-size: 18px;
+  height: 2.5rem;
+  margin-bottom: 8px;
+  justify-content: center;
+  align-items: center;
+  padding-inline: 44px;
+  font-size: 16px;
   font-weight: 600;
-  padding-inline-start: 2px;
-  padding-bottom: 8px;
 }
 .mkan-mobile-cal .rdp-weekday {
   font-size: 12px;
@@ -122,6 +144,9 @@ export default function MobileCalendar({
   const to = range?.to;
   const nights = from && to ? diffNights(from, to) : 0;
 
+  // Airbnb's inline calendar walks the heading through three states: no dates →
+  // "Select check-in date"; check-in but no checkout → "Select checkout date";
+  // a full range → "{N} nights in {city}".
   const heading =
     nights > 0
       ? nightsLabel
@@ -129,13 +154,21 @@ export default function MobileCalendar({
         : isAr
           ? `${nights} ${nights === 1 ? "ليلة" : "ليالٍ"} في ${city}`
           : `${nights} ${nights === 1 ? "night" : "nights"} in ${city}`
-      : isAr
-        ? "اختر التواريخ"
-        : "Select dates";
+      : from && !to
+        ? isAr
+          ? "اختر تاريخ المغادرة"
+          : "Select checkout date"
+        : isAr
+          ? "اختر تاريخ الوصول"
+          : "Select check-in date";
 
+  // Airbnb spells both endpoints out with the year and a spaced hyphen —
+  // "Jul 5, 2026 - Jul 10, 2026" — rather than collapsing the shared parts.
+  const fmtDate = (d: Date) =>
+    new Intl.DateTimeFormat(intlLocale, { month: "short", day: "numeric", year: "numeric" }).format(d);
   const subtitle =
     from && to
-      ? new Intl.DateTimeFormat(intlLocale, { month: "short", day: "numeric" }).formatRange(from, to)
+      ? `${fmtDate(from)} - ${fmtDate(to)}`
       : isAr
         ? "أضف تواريخ رحلتك للحصول على السعر الدقيق"
         : "Add your travel dates for exact pricing";
@@ -143,7 +176,7 @@ export default function MobileCalendar({
   const hasRange = Boolean(from || to);
 
   return (
-    <section className="px-4 py-8 relative before:content-[''] before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-[#DDDDDD]">
+    <section className="px-6 py-8 relative before:content-[''] before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-[#DDDDDD]">
       <h2 className="text-[22px] font-semibold leading-[26px] tracking-[-0.44px] text-[#222222]">
         {heading}
       </h2>
@@ -156,6 +189,7 @@ export default function MobileCalendar({
           numberOfMonths={1}
           weekStartsOn={0}
           showOutsideDays={false}
+          startMonth={new Date()}
           selected={range}
           onSelect={handleSelect}
           disabled={[{ before: new Date() }, ...blockedDates]}

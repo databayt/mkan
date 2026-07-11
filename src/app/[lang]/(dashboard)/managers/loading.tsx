@@ -1,5 +1,9 @@
-import Loading from "@/components/atom/loading";
+import { TableSkeleton } from "@/components/atom/skeletons";
 
 export default function ManagersLoading() {
-  return <Loading variant="fullscreen" text="Loading manager dashboard..." />;
-} 
+  return (
+    <div className="p-6 lg:p-8">
+      <TableSkeleton />
+    </div>
+  );
+}

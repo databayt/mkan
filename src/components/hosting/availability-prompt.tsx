@@ -21,7 +21,7 @@ const BLOCKED: RegExp[] = [
   /\/host(\/|$)/, // become-a-host onboarding wizard (NOT /hosting)
   /\/admin(\/|$)/,
   /\/dev(\/|$)/,
-  /\/transport/,
+  /\/travel/,
   /\/verify-listing\//,
   /\/multicalendar/,
   /\/clone-preview/,

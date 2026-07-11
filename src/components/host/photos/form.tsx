@@ -6,6 +6,7 @@ import { StepWrapper } from '../step-wrapper'
 import { StepNavigation } from '../step-navigation'
 import { FormField } from '../form-field'
 import { X, Plus, Image as ImageIcon } from 'lucide-react'
+import { useDictionary } from '@/components/internationalization/use-dictionary'
 
 export function PhotosForm() {
   const { 
@@ -19,6 +20,8 @@ export function PhotosForm() {
     error, 
     isFormValid
   } = usePhotos()
+  const dict = useDictionary()
+  const t = dict?.host?.photos
 
   const [newPhotoUrl, setNewPhotoUrl] = useState('')
 
@@ -47,8 +50,8 @@ export function PhotosForm() {
     <StepWrapper>
       <form onSubmit={onSubmit} className="space-y-8">
         <FormField
-          label="Add some photos of your place"
-          description="You'll need at least 1 photo to get started. You can add more or make changes later."
+          label={t?.label ?? "Add some photos of your place"}
+          description={t?.description ?? "You'll need at least 1 photo to get started. You can add more or make changes later."}
           error={form.formState.errors.photoUrls?.message}
         >
           <div className="space-y-4">
@@ -58,7 +61,7 @@ export function PhotosForm() {
                 type="url"
                 value={newPhotoUrl}
                 onChange={(e) => setNewPhotoUrl(e.target.value)}
-                placeholder="https://example.com/photo.jpg"
+                placeholder={t?.urlPlaceholder ?? "https://example.com/photo.jpg"}
                 className="flex-1 p-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               />
               <button
@@ -78,7 +81,7 @@ export function PhotosForm() {
                 onClick={addSamplePhotos}
                 className="text-sm text-primary hover:underline"
               >
-                Add sample photos for demo
+                {t?.addSample ?? "Add sample photos for demo"}
               </button>
             </div>
 
@@ -90,7 +93,7 @@ export function PhotosForm() {
                     {/* eslint-disable-next-line @next/next/no-img-element -- user-provided URL with unknown dimensions and dynamic onError fallback */}
                     <img
                       src={url}
-                      alt={`Photo ${index + 1}`}
+                      alt={(t?.photoAlt ?? "Photo {number}").replace("{number}", String(index + 1))}
                       className="w-full h-full object-cover rounded-lg border"
                       onError={(e) => {
                         e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA3NEgxMTNWODdIMTAwVjEwMEg4N1Y3NFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+'
@@ -110,13 +113,13 @@ export function PhotosForm() {
               <div className="border-2 border-dashed border-border rounded-lg p-12 text-center">
                 <ImageIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" aria-hidden="true" />
                 <p className="text-muted-foreground">
-                  Add your first photo to get started
+                  {t?.firstPhotoPrompt ?? "Add your first photo to get started"}
                 </p>
               </div>
             )}
 
             <div className="text-sm text-muted-foreground">
-              {photoUrls.length}/30 photos • {photoUrls.length >= 1 ? 'Ready to continue' : 'Add at least 1 photo'}
+              {(t?.photoCount ?? "{count}/30 photos").replace("{count}", String(photoUrls.length))} • {photoUrls.length >= 1 ? (t?.readyToContinue ?? 'Ready to continue') : (t?.addAtLeastOne ?? 'Add at least 1 photo')}
             </div>
           </div>
         </FormField>
@@ -131,7 +134,7 @@ export function PhotosForm() {
           onNext={onSubmit}
           onPrevious={onBack}
           isNextDisabled={!isFormValid || isLoading}
-          nextLabel={isLoading ? 'Saving...' : 'Next'}
+          nextLabel={isLoading ? (dict?.host?.stepNavigation?.saving ?? 'Saving...') : (dict?.host?.stepNavigation?.next ?? 'Next')}
           showPrevious={true}
         />
       </form>

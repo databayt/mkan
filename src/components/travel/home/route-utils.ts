@@ -37,7 +37,7 @@ export function routeSearchHref(
     destination: route.destination.city,
     date: dateIso,
   });
-  return `/${lang}/transport/search?${query.toString()}`;
+  return `/${lang}/travel/search?${query.toString()}`;
 }
 
 // ─── Static route-map thumbnails (Mapbox Static Images API) ─────────────────

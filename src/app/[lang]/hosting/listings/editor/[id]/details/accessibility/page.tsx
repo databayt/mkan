@@ -40,6 +40,7 @@ export default function AccessibilityPage() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {FEATURE_IDS.map((id) => {
           const selected = value.includes(id);
+          const desc = feats[`${id}Desc`];
           return (
             <button
               key={id}
@@ -52,8 +53,8 @@ export default function AccessibilityPage() {
               )}
             >
               <p className="font-medium">{feats[id] ?? id}</p>
-              {feats[`${id}Desc`] ? (
-                <p className="mt-0.5 text-sm text-muted-foreground">{feats[`${id}Desc`]}</p>
+              {desc ? (
+                <p className="mt-0.5 text-sm text-muted-foreground">{desc}</p>
               ) : null}
               {selected ? (
                 <span className="absolute end-3 top-3 flex size-5 items-center justify-center rounded-full bg-foreground text-background">

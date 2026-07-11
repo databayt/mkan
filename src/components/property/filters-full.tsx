@@ -229,8 +229,8 @@ const FiltersFull = () => {
             className="[&>.bar]:bg-primary-700"
           />
           <div className="flex justify-between mt-2">
-            <span>{localFilters.squareFeet[0] ?? 0} sq ft</span>
-            <span>{localFilters.squareFeet[1] ?? 5000} sq ft</span>
+            <span>{localFilters.squareFeet[0] ?? 0} {dict.propertyCard?.sqft ?? "sq ft"}</span>
+            <span>{localFilters.squareFeet[1] ?? 5000} {dict.propertyCard?.sqft ?? "sq ft"}</span>
           </div>
         </div>
 

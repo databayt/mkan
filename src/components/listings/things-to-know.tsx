@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useDictionary } from "@/components/internationalization/use-dictionary";
 
 /**
  * "Things to know" — the three-column block that closes the Airbnb room page:
@@ -51,38 +52,44 @@ function Column({
 export default function ThingsToKnow({
   maxGuests,
   petsAllowed = false,
-  heading = "Things to know",
+  heading,
 }: ThingsToKnowProps) {
+  const dict = useDictionary();
+  const t = dict?.listings?.thingsToKnow;
+
   const houseRules = [
-    "Check-in after 3:00 PM",
-    "Checkout before 11:00 AM",
-    `${maxGuests ?? 2} guests maximum`,
-    petsAllowed ? "Pets allowed" : "No pets",
+    t?.checkInAfter ?? "Check-in after 3:00 PM",
+    t?.checkoutBefore ?? "Checkout before 11:00 AM",
+    (t?.guestsMaximum ?? "{count} guests maximum").replace("{count}", String(maxGuests ?? 2)),
+    petsAllowed ? (t?.petsAllowed ?? "Pets allowed") : (t?.noPets ?? "No pets"),
   ];
 
   const safety = [
-    "Carbon monoxide alarm not reported",
-    "Smoke alarm",
-    "Exterior security cameras on property",
+    t?.carbonMonoxideAlarmNotReported ?? "Carbon monoxide alarm not reported",
+    t?.smokeAlarm ?? "Smoke alarm",
+    t?.exteriorCameras ?? "Exterior security cameras on property",
   ];
 
   const cancellation = [
-    "Free cancellation before check-in.",
-    "Review the Host's full cancellation policy which applies even if you cancel for illness or disruptions.",
+    t?.freeCancellationBeforeCheckIn ?? "Free cancellation before check-in.",
+    t?.reviewFullPolicy ??
+      "Review the Host's full cancellation policy which applies even if you cancel for illness or disruptions.",
   ];
+
+  const showMore = t?.showMore ?? "Show more";
 
   return (
     <section className="border-b border-[#DDDDDD] py-12">
       <h2 className="mb-8 text-[22px] font-semibold leading-[26px] tracking-[-0.44px] text-[#222222]">
-        {heading}
+        {heading ?? (t?.heading ?? "Things to know")}
       </h2>
       <div className="grid grid-cols-1 gap-x-4 gap-y-8 md:grid-cols-3">
-        <Column title="House rules" rows={houseRules} showMore="Show more" />
-        <Column title="Safety & property" rows={safety} showMore="Show more" />
+        <Column title={t?.houseRules ?? "House rules"} rows={houseRules} showMore={showMore} />
+        <Column title={t?.safetyProperty ?? "Safety & property"} rows={safety} showMore={showMore} />
         <Column
-          title="Cancellation policy"
+          title={t?.cancellationPolicy ?? "Cancellation policy"}
           rows={cancellation}
-          showMore="Show more"
+          showMore={showMore}
         />
       </div>
     </section>

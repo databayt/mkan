@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { useTransportHostValidation } from '@/context/onboarding-validation-context';
-import { useTransportOffice } from '@/context/transport-office-context';
+import { useTransportOffice } from '@/context/travel-office-context';
 import HostStepLayout from '@/components/host/host-step-layout';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 

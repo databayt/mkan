@@ -1,5 +1,9 @@
-import Loading from '@/components/Loading';
+import { TableSkeleton } from "@/components/atom/skeletons";
 
 export default function OfficesLoading() {
-  return <Loading />;
+  return (
+    <div className="p-6 lg:p-8">
+      <TableSkeleton />
+    </div>
+  );
 }

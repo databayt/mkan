@@ -40,6 +40,8 @@ export interface MulticalDict {
   changeView?: string;
   settings?: string;
   chooseListing?: string;
+  listingCount?: string;
+  listingsCount?: string;
 }
 
 // ---------- date helpers (never mutate inputs) ----------
@@ -239,7 +241,9 @@ export default function Multicalendar({
               className="sticky top-0 z-30 flex items-end border-b border-e border-border bg-background px-4 py-2 text-xs font-medium text-muted-foreground"
               style={{ insetInlineStart: 0 }}
             >
-              {listings.length} {listings.length === 1 ? "listing" : "listings"}
+              {listings.length === 1
+                ? (t.listingCount ?? "1 listing")
+                : (t.listingsCount ?? "{n} listings").replace("{n}", String(listings.length))}
             </div>
             {/* date headers */}
             {days.map((day) => {

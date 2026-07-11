@@ -1,7 +1,10 @@
+"use client";
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Settings, ArrowLeft } from 'lucide-react';
+import { useDictionary } from '@/components/internationalization/use-dictionary';
 
 interface GenericPlaceholderProps {
   title: string;
@@ -10,6 +13,8 @@ interface GenericPlaceholderProps {
 }
 
 const GenericPlaceholder = ({ title, description, section }: GenericPlaceholderProps) => {
+  const dict = useDictionary();
+  const pl = dict?.listingEditor?.placeholder;
   return (
     <div className="lg:col-span-2">
       <div className="max-w-3xl">
@@ -24,7 +29,7 @@ const GenericPlaceholder = ({ title, description, section }: GenericPlaceholderP
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="size-5" />
-              {title} Configuration
+              {(pl?.configTitle ?? "{title} Configuration").replace("{title}", title)}
             </CardTitle>
           </CardHeader>
           <CardContent className="py-12">
@@ -34,15 +39,15 @@ const GenericPlaceholder = ({ title, description, section }: GenericPlaceholderP
               </div>
               <h3 className="text-lg font-medium mb-2">{title}</h3>
               <p className="text-muted-foreground mb-6">
-                Configure your {title.toLowerCase()} settings for this listing.
+                {(pl?.intro ?? "Configure your {title} settings for this listing.").replace("{title}", title.toLowerCase())}
               </p>
               <div className="bg-muted/30 p-4 rounded-lg text-start">
-                <h4 className="font-medium mb-2">From this section you can:</h4>
+                <h4 className="font-medium mb-2">{pl?.fromSection ?? "From this section you can:"}</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Configure {title.toLowerCase()} settings</li>
-                  <li>• Save and update your preferences</li>
-                  <li>• Preview how it appears to guests</li>
-                  <li>• Get recommendations and tips</li>
+                  <li>• {(pl?.li1 ?? "Configure {title} settings").replace("{title}", title.toLowerCase())}</li>
+                  <li>• {pl?.li2 ?? "Save and update your preferences"}</li>
+                  <li>• {pl?.li3 ?? "Preview how it appears to guests"}</li>
+                  <li>• {pl?.li4 ?? "Get recommendations and tips"}</li>
                 </ul>
               </div>
             </div>
@@ -51,10 +56,10 @@ const GenericPlaceholder = ({ title, description, section }: GenericPlaceholderP
 
         <div className="mt-8 flex justify-between">
           <Button variant="outline">
-            Back
+            {dict?.listingEditor?.common?.back ?? "Back"}
           </Button>
           <Button>
-            Next
+            {dict?.listingEditor?.common?.next ?? "Next"}
           </Button>
         </div>
       </div>

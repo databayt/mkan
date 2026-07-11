@@ -50,7 +50,7 @@ export function BecomeHostMenu({ isLandingPage = false, className }: BecomeHostM
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href={`/${currentLocale}/transport-host`} className="flex items-center gap-3 cursor-pointer">
+          <Link href={`/${currentLocale}/travel-host`} className="flex items-center gap-3 cursor-pointer">
             <Bus className="h-4 w-4" />
             <div>
               <div className="font-medium">

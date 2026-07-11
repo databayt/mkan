@@ -74,9 +74,9 @@ export default async function AdminHomesPage({
         />
       </div>
       <p className="text-sm text-muted-foreground">
-        {a.pageOf
-          ? a.pageOf.replace("{page}", String(page)).replace("{count}", String(pageCount))
-          : `Page ${page} of ${pageCount}`}{" "}
+        {(a.pageOf ?? "Page {page} of {count}")
+          .replace("{page}", String(page))
+          .replace("{count}", String(pageCount))}{" "}
         · {total} {a.total ?? "total"}
       </p>
     </div>

@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { formatCurrency } from '@/lib/i18n/formatters';
+import { cityLabel } from '@/components/travel/city-names';
 
 interface Booking {
   id: number;
@@ -34,6 +35,7 @@ interface Booking {
         name: string;
         assemblyPoint: {
           name: string;
+          nameAr?: string | null;
           address: string;
         };
       };
@@ -80,7 +82,9 @@ export function TicketView({
 
   // Resolve labels: explicit prop wins, then the central transport.ticket
   // namespace, then an English fallback.
-  const tk = useDictionary()?.transport?.ticket;
+  const travelDict = useDictionary()?.travel;
+  const tk = travelDict?.ticket;
+  const statusLabels = (travelDict?.status ?? {}) as Record<string, string>;
   const dictionaryResolved = {
     title: dictionary?.title ?? tk?.title ?? 'E-Ticket',
     reference: dictionary?.reference ?? tk?.reference ?? 'Booking Reference',
@@ -97,6 +101,7 @@ export function TicketView({
     assemblyPoint: dictionary?.assemblyPoint ?? tk?.assemblyPoint ?? 'Assembly Point',
     status: dictionary?.status ?? tk?.status ?? 'Status',
     total: dictionary?.total ?? tk?.total ?? 'Total Amount',
+    qrAlt: tk?.qrAlt ?? 'Ticket QR Code',
   };
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
@@ -184,14 +189,14 @@ export function TicketView({
             <p className="font-mono font-bold">{booking.bookingReference}</p>
           </div>
           <Badge className={statusColors[booking.status]}>
-            {booking.status}
+            {statusLabels[booking.status] ?? booking.status}
           </Badge>
         </div>
         <div className="flex items-center gap-4">
           <div>
             <p className="font-bold text-lg">{booking.trip.departureTime}</p>
             <p className="text-sm text-muted-foreground">
-              {booking.trip.route.origin.city}
+              {cityLabel(booking.trip.route.origin.city, locale)}
             </p>
           </div>
           <div className="flex-1 border-t border-dashed" />
@@ -200,7 +205,7 @@ export function TicketView({
               {booking.trip.arrivalTime || '--:--'}
             </p>
             <p className="text-sm text-muted-foreground">
-              {booking.trip.route.destination.city}
+              {cityLabel(booking.trip.route.destination.city, locale)}
             </p>
           </div>
         </div>
@@ -222,7 +227,7 @@ export function TicketView({
         {qrCodeUrl ? (
           <Image
             src={qrCodeUrl}
-            alt="Ticket QR Code"
+            alt={dictionaryResolved.qrAlt}
             width={160}
             height={160}
             unoptimized
@@ -254,7 +259,7 @@ export function TicketView({
             <p className="text-2xl font-bold">{booking.trip.departureTime}</p>
             <p className="text-sm flex items-center gap-1">
               <MapPin className="h-3 w-3" />
-              {booking.trip.route.origin.city}
+              {cityLabel(booking.trip.route.origin.city, locale)}
             </p>
           </div>
           <div className="flex-1 px-4">
@@ -275,7 +280,7 @@ export function TicketView({
             </p>
             <p className="text-sm flex items-center gap-1 justify-end">
               <MapPin className="h-3 w-3" />
-              {booking.trip.route.destination.city}
+              {cityLabel(booking.trip.route.destination.city, locale)}
             </p>
           </div>
         </div>
@@ -320,7 +325,10 @@ export function TicketView({
           {dictionaryResolved.assemblyPoint}
         </p>
         <p className="font-medium">
-          {booking.trip.route.office.assemblyPoint.name}
+          {locale === 'ar'
+            ? (booking.trip.route.office.assemblyPoint.nameAr ??
+              booking.trip.route.office.assemblyPoint.name)
+            : booking.trip.route.office.assemblyPoint.name}
         </p>
         <p className="text-sm text-muted-foreground">
           {booking.trip.route.office.assemblyPoint.address}
@@ -332,7 +340,7 @@ export function TicketView({
         <div>
           <p className="text-xs text-muted-foreground">{dictionaryResolved.status}</p>
           <Badge className={statusColors[booking.status]}>
-            {booking.status}
+            {statusLabels[booking.status] ?? booking.status}
           </Badge>
         </div>
         <div className="text-end">
@@ -350,7 +358,7 @@ export function TicketView({
             <Download className="h-4 w-4 me-2" />
             {dictionaryResolved.download}
           </Button>
-          <Button variant="outline" size="icon" onClick={handleShare} aria-label="Share ticket">
+          <Button variant="outline" size="icon" onClick={handleShare} aria-label={dictionaryResolved.share}>
             <Share2 className="h-4 w-4" />
           </Button>
         </div>

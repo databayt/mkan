@@ -12,6 +12,7 @@ import MobileInfo from './mobile-info';
 import MobileAmenities from './mobile-amenities';
 import Laurel from './laurel';
 import AirbnbInfo from '@/components/atom/property-info';
+import WhereYouSleep from './where-you-sleep';
 import HostedBy from './hosted-by';
 import { PropertyImageFallback } from '@/components/atom/property-image-fallback';
 import { PropertyImage } from '@/components/atom/property-image';
@@ -19,6 +20,7 @@ import { PHASE1 } from '@/config/phase-flags';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { formatNumber } from '@/lib/i18n/formatters';
+import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite';
 
 interface MobileListingDetailsProps {
   listing: any;
@@ -44,6 +46,9 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
 
   const FALLBACK_AVATAR = "https://cdn.databayt.org/mkan/stock/photo-1506905925346-21bda4d32df4.jpg";
   const isSuperhost = (listing?.averageRating ?? 0) >= 4.8 && (listing?.numberOfReviews ?? 0) >= 10;
+  // Airbnb's GUEST_FAVORITE_BANNER only renders for qualifying homes; other
+  // reviewed homes get the plain "★ 4.75 · 4 reviews" row (probed live).
+  const isGuestFavorite = qualifiesAsGuestFavorite(listing ?? {});
   const displayName = listing?.host?.username ?? listing?.host?.email?.split("@")[0] ?? "Host";
   const avatar = listing?.host?.image ?? FALLBACK_AVATAR;
   const hostCreatedDate = listing?.host?.createdAt ? new Date(listing.host.createdAt) : null;
@@ -206,7 +211,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             text-align: center !important;
             width: 100%;
         }
-
+ 
         .hpipapi {
             font-family: var(--typography-font-family-cereal-font-family);
             color: var(--palette-hof);
@@ -217,13 +222,13 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             margin: 0;
             text-align: center !important;
         }
-
+ 
         .m4x54cm {
             display: block;
             text-align: center;
         }
         .o1sio90k {
-            margin-top: 4px;
+            margin-top: -2px !important;
         }
         .lgx66tx {
             display: flex;
@@ -236,7 +241,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
         .ov-subtitle {
             font-family: var(--typography-font-family-cereal-font-family);
             font-size: 14px;
-            line-height: 18px;
+            line-height: 14px;
             font-weight: 400;
             color: #6a6a6a;
             text-align: center;
@@ -246,7 +251,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             display: inline-flex;
             align-items: center;
             font-size: 14px;
-            line-height: 18px;
+            line-height: 14px;
             color: #6a6a6a;
         }
         .axjq0r, .pen26si {
@@ -680,9 +685,9 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
               <div key={`${src}-${i}`} className="relative h-full w-full flex-none snap-center">
                 <div 
                   className="i1y91qbp atm_mk_h2mmj6 atm_1w_1xbheko atm_e2_jngzkn atm_vy_4hg7yc atm_5j_nw3v2p atm_vh_yfq0k3 dir dir-ltr w-full h-full"
-                  role="img" 
-                  aria-busy="false" 
-                  aria-label={`Property image ${i + 1}`}
+                  role="img"
+                  aria-busy="false"
+                  aria-label={(dict?.listings?.detail?.propertyImageAlt ?? "Property image {number}").replace("{number}", String(i + 1))}
                   style={{
                     "--AirImage-height": "100%",
                     "--AirImage-width": "100%",
@@ -694,8 +699,8 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                     <source srcSet={`${src}?im_w=320 1x, ${src}?im_w=720 2x`} media="(min-width: 0px)" />
                     <img 
                       className="i11046vh atm_e2_1osqo2v atm_vy_1osqo2v atm_jp_sm7xtg atm_jr_xm9jbw atm_5j_nw3v2p atm_vh_yfq0k3 iekrptg atm_8w_1t7jgwy dir dir-ltr w-full h-full object-cover" 
-                      aria-hidden="true" 
-                      alt={`Property image ${i + 1}`}
+                      aria-hidden="true"
+                      alt={(dict?.listings?.detail?.propertyImageAlt ?? "Property image {number}").replace("{number}", String(i + 1))}
                       {...{ elementtiming: "FMP-target" }}
                       id={`FMP-target-${i}`}
                       src={`${src}?im_w=720`} 
@@ -720,7 +725,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
           {/* Left Side - Back Button */}
           <div className="_kv14gss" role="presentation">
             <button
-              aria-label="Back"
+              aria-label={dict?.common?.back ?? "Back"}
               data-testid="back-button"
               data-material-type="regular"
               data-material-content-layer="true"
@@ -747,7 +752,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
           <div className="c1oqql2t dir dir-ltr">
             <div>
               <button
-                aria-label="Share"
+                aria-label={dict?.rental?.listing?.share ?? "Share"}
                 data-material-type="regular"
                 data-material-content-layer="true"
                 type="button"
@@ -765,7 +770,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             </div>
             <div className="s5pd5eb sjx59nb atm_gz_1fwxnve dir dir-ltr">
               <button
-                aria-label={savedNow ? "Remove from wishlist" : "Save to wishlist"}
+                aria-label={savedNow ? (dict?.rental?.property?.card?.removeFromWishlist ?? "Remove from wishlist") : (dict?.listings?.detail?.saveToWishlist ?? "Save to wishlist")}
                 data-testid={savedNow ? "pdp-save-button-saved" : "pdp-save-button-unsaved"}
                 data-material-type="regular"
                 data-material-content-layer="true"
@@ -789,7 +794,9 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
         {displayImages.length > 1 && (
           <div className="o18020l1 dir dir-ltr">
             <span className="a8jt5op dir dir-ltr" aria-atomic="true" aria-live="polite">
-              Showing photo {currentImageIndex + 1} of {displayImages.length}
+              {(dict?.listings?.detail?.showingPhotoOf ?? "Showing photo {current} of {total}")
+                .replace("{current}", String(currentImageIndex + 1))
+                .replace("{total}", String(displayImages.length))}
             </span>
             <div aria-hidden="true" className="ckfv83h dir dir-ltr">
               {formatNumber(currentImageIndex + 1, locale)} / {formatNumber(displayImages.length, locale)}
@@ -871,7 +878,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                       </div>
                     )}
                     
-                    {(listing?.numberOfReviews ?? 0) > 0 ? (
+                    {isGuestFavorite && (listing?.numberOfReviews ?? 0) > 0 ? (
                       <div className="s1emndxt atm_40_iod1ro atm_le_1vi7ecw dir dir-ltr">
                         <div className="s159e3yo atm_h_1h6ojuz atm_9s_11p5wf0 atm_dz_1mnjxsr atm_cs_1mexzig atm_cx_1y44olf atm_l8_816mvl atm_gi_idpfg4 dir dir-ltr">
                           {/* Rating Button Column */}
@@ -885,7 +892,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                             data-testid="pdp-reviews-highlight-banner-host-rating"
                           >
                             <span className="a8jt5op atm_3f_idpfg4 atm_7h_hxbz6r atm_7i_ysn8ba atm_e2_t94yts atm_ks_zryt35 atm_l8_idpfg4 atm_mk_stnw88 atm_vv_1q9ccgz atm_vy_t94yts dir dir-ltr">
-                              {`Rated ${formatNumber(listing?.averageRating ?? 0, locale, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} out of 5 stars.`}
+                              {(dict?.listings?.detail?.ratedOutOf5 ?? "Rated {rating} out of 5 stars.").replace("{rating}", formatNumber(listing?.averageRating ?? 0, locale, { minimumFractionDigits: 1, maximumFractionDigits: 2 }))}
                             </span>
                             <div className="rqlvfu0" aria-hidden="true">
                               {formatNumber(listing?.averageRating ?? 0, locale, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
@@ -911,7 +918,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                           <div className="d1rieilq atm_2d_1guaqub atm_vy_t94yts atm_e2_1vi7ecw atm_e2_1ylpe5n__qky54b dir dir-ltr"></div>
 
                           {/* Guest Favorite Column */}
-                          <div className="g1421erf atm_c8_3w7ag0 atm_fr_helst atm_by_4iukzz atm_g3_exct8b atm_9s_1txwivl atm_h_1h6ojuz atm_fc_1h6ojuz atm_vv_qvpr2i dir dir-ltr" role="img" aria-label="Guest Favorite Listing.">
+                          <div className="g1421erf atm_c8_3w7ag0 atm_fr_helst atm_by_4iukzz atm_g3_exct8b atm_9s_1txwivl atm_h_1h6ojuz atm_fc_1h6ojuz atm_vv_qvpr2i dir dir-ltr" role="img" aria-label={dict?.listings?.detail?.guestFavoriteListing ?? "Guest Favorite Listing."}>
                             <div className="c139f2ip atm_h_1h6ojuz atm_9s_1txwivl atm_cs_1mexzig atm_cx_yh40bf atm_fc_1h6ojuz atm_r3_1h6ojuz dir dir-ltr">
                               <div style={{ width: "auto", height: "32px" }}>
                                 <svg viewBox="0 0 20 32" fill="none" xmlns="http://www.w3.org/2000/svg" height="32" style={{ display: "block" }}>
@@ -973,7 +980,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                             data-testid="pdp-reviews-highlight-banner-host-review"
                           >
                             <span className="a8jt5op atm_3f_idpfg4 atm_7h_hxbz6r atm_7i_ysn8ba atm_e2_t94yts atm_ks_zryt35 atm_l8_idpfg4 atm_mk_stnw88 atm_vv_1q9ccgz atm_vy_t94yts dir dir-ltr">
-                              {`${formatNumber(listing?.numberOfReviews ?? 0, locale)} reviews`}
+                              {(dict?.rental?.reviewsList?.reviewsCount ?? "{n} reviews").replace("{n}", formatNumber(listing?.numberOfReviews ?? 0, locale))}
                             </span>
                             <div className="rqlvfu0" aria-hidden="true">
                               {formatNumber(listing?.numberOfReviews ?? 0, locale)}
@@ -984,7 +991,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                           </button>
                         </div>
                       </div>
-                    ) : listing?.isGuestFavorite ? (
+                    ) : isGuestFavorite ? (
                       <div className="s1emndxt atm_40_iod1ro atm_le_1vi7ecw dir dir-ltr">
                         <div className="gf-badge">
                           <div
@@ -1005,6 +1012,45 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                           </p>
                         </div>
                       </div>
+                    ) : (listing?.numberOfReviews ?? 0) > 0 ? (
+                      /* Non-favorite with reviews — Airbnb's compact rating row */
+                      <div className="s1emndxt atm_40_iod1ro atm_le_1vi7ecw dir dir-ltr">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const el = document.querySelector("#mobile-reviews-section");
+                            el?.scrollIntoView({ behavior: "smooth" });
+                          }}
+                          className="flex items-center gap-1.5"
+                          style={{ fontSize: 14, lineHeight: "18px", fontWeight: 500, color: "#222222" }}
+                        >
+                          <span className="a8jt5op atm_3f_idpfg4 atm_7h_hxbz6r atm_7i_ysn8ba atm_e2_t94yts atm_ks_zryt35 atm_l8_idpfg4 atm_mk_stnw88 atm_vv_1q9ccgz atm_vy_t94yts dir dir-ltr">
+                            {(dict?.listings?.detail?.ratedFromReviews ?? "Rated {rating} out of 5 stars from {count} reviews.")
+                              .replace("{rating}", formatNumber(listing?.averageRating ?? 0, locale, { minimumFractionDigits: 1, maximumFractionDigits: 2 }))
+                              .replace("{count}", formatNumber(listing?.numberOfReviews ?? 0, locale))}
+                          </span>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 32 32"
+                            aria-hidden="true"
+                            role="presentation"
+                            focusable="false"
+                            style={{ display: "block", height: 12, width: 12, fill: "currentColor" }}
+                          >
+                            <path fillRule="evenodd" d="m15.1 1.58-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
+                          </svg>
+                          <span aria-hidden="true">
+                            {formatNumber(listing?.averageRating ?? 0, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                          <span aria-hidden="true"> · </span>
+                          <span aria-hidden="true" className="underline underline-offset-2">
+                            {(dict?.rental?.reviewsList?.reviewsCount ?? "{n} reviews").replace(
+                              "{n}",
+                              formatNumber(listing?.numberOfReviews ?? 0, locale)
+                            )}
+                          </span>
+                        </button>
+                      </div>
                     ) : null}
                   </section>
                 </div>
@@ -1024,7 +1070,9 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                   <div className="cuspirs atm_9s_1txwivl atm_cx_exct8b atm_cx_1tcgj5g__oggzyc m1wx0491 atm_l8_1av1627 dir dir-ltr">
                     <div className="c17nk5xs atm_9s_1ulexfb atm_mk_h2mmj6 dir dir-ltr" style={{ height: 40, width: 40 }}>
                       <button
-                        aria-label={isSuperhost ? `${displayName} is a superhost. Learn more about ${displayName}.` : `View ${displayName}'s profile.`}
+                        aria-label={isSuperhost
+                          ? (dict?.listings?.detail?.superhostAria ?? "{name} is a superhost. Learn more about {name}.").split("{name}").join(displayName)
+                          : (dict?.listings?.detail?.viewProfileAria ?? "View {name}'s profile.").replace("{name}", displayName)}
                         type="button"
                         className="_1t82b7sc l1ovpqvx atm_npmupv_14b5rvc_10saat9 atm_4s4swg_18xq13z_10saat9 atm_u9em2p_1r3889l_10saat9 atm_1ezpcqw_1u41vd9_10saat9 atm_fyjbsv_c4n71i_10saat9 atm_1rna0z7_1uk391_10saat9 dir dir-ltr"
                       >
@@ -1033,7 +1081,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                             className="i1y91qbp atm_mk_h2mmj6 atm_1w_1xbheko atm_e2_jngzkn atm_vy_4hg7yc atm_5j_nw3v2p atm_vh_yfq0k3 dir dir-ltr"
                             role="img"
                             aria-busy="false"
-                            aria-label="Host profile picture"
+                            aria-label={dict?.listings?.detail?.hostProfilePicture ?? "Host profile picture"}
                             style={{
                               "--AirImage-height": "100%",
                               "--AirImage-width": "100%",
@@ -1043,7 +1091,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                             <img
                               className="i11046vh atm_e2_1osqo2v atm_vy_1osqo2v atm_jp_sm7xtg atm_jr_xm9jbw atm_5j_nw3v2p atm_vh_yfq0k3 dir dir-ltr"
                               aria-hidden="true"
-                              alt="Host profile picture"
+                              alt={dict?.listings?.detail?.hostProfilePicture ?? "Host profile picture"}
                               decoding="async"
                               {...{ elementtiming: "LCP-target" }}
                               loading="lazy"
@@ -1102,17 +1150,81 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
         </div>
       </div>
 
-      {/* Property Info — order mirrors the live PDP: highlights → description →
-          amenities. Reviews / location / calendar / meet-host / things-to-know /
-          similar follow as sibling sections composed in the page (see page.tsx). */}
-      <div className="px-4 py-6 space-y-6">
+      {/* Property Info — order mirrors the live PDP (room 40938334): highlights →
+          description → where-you-sleep → amenities. Location / calendar / reviews /
+          meet-host / things-to-know / similar follow as sibling sections composed
+          in the page (see page.tsx). */}
+      <div className="px-6 py-6 space-y-6">
 
-        {/* Highlights Section */}
+        {/* Highlights Section — the live mobile PDP shows the icon rows with NO
+            visible section title (the heading is a11y-only), so hide it via
+            sr-only. Rows stay title-only: our enum highlights carry no subtitle
+            copy and we don't fabricate it. */}
+        {/* About this room Section (only for Rooms property type) */}
+        {listing.propertyType === "Rooms" && (
+          <div className="pb-6">
+            <h2 className="text-[22px] font-semibold leading-[26px] tracking-[-0.44px] text-[#222222] mb-4">
+              {locale === "ar" ? "عن هذه الغرفة" : "About this room"}
+            </h2>
+            <div className="grid grid-cols-3 gap-3">
+              {/* Bedroom details */}
+              <div className="flex flex-col justify-between gap-6 rounded-xl border border-[#DDDDDD] p-4 text-start">
+                <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="presentation" focusable="false" className="h-6 w-6 text-[#222222]" style={{ display: "block", fill: "none", stroke: "currentColor", strokeWidth: "2.5" }}>
+                  <path d="M2 26V6h4v14h20V6h4v20M6 12h10m4 0h6m-20 4v4m20-4v4" />
+                </svg>
+                <div>
+                  <div className="text-sm font-semibold text-[#222222] leading-tight">
+                    {locale === "ar" ? "غرفة النوم" : "Bedroom"}
+                  </div>
+                  <div className="text-[13px] text-[#6A6A6A] mt-1 leading-tight">
+                    {typeof listing.bedrooms === 'number' && listing.bedrooms > 0
+                      ? (locale === 'ar' ? `${listing.bedrooms} غرفة` : `${listing.bedrooms} bedroom`)
+                      : (locale === 'ar' ? 'سرير مزدوج' : '1 double bed')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bathroom details */}
+              <div className="flex flex-col justify-between gap-6 rounded-xl border border-[#DDDDDD] p-4 text-start">
+                <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="presentation" focusable="false" className="h-6 w-6 text-[#222222]" style={{ display: "block", fill: "none", stroke: "currentColor", strokeWidth: "2.5" }}>
+                  <path d="M26 6a3 3 0 0 1 3 3v19H3V9a3 3 0 0 1 3-3zm1 20V9a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v17" />
+                  <circle cx="16" cy="14" r="3" />
+                </svg>
+                <div>
+                  <div className="text-sm font-semibold text-[#222222] leading-tight">
+                    {locale === "ar" ? "الحمام" : "Bathroom"}
+                  </div>
+                  <div className="text-[13px] text-[#6A6A6A] mt-1 leading-tight">
+                    {locale === "ar" ? "حمام خاص" : "Private"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Room Privacy details */}
+              <div className="flex flex-col justify-between gap-6 rounded-xl border border-[#DDDDDD] p-4 text-start">
+                <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="presentation" focusable="false" className="h-6 w-6 text-[#222222]" style={{ display: "block", fill: "none", stroke: "currentColor", strokeWidth: "2.5" }}>
+                  <rect x="6" y="14" width="20" height="14" rx="4" />
+                  <path d="M10 14V9a6 6 0 0 1 12 0v5" />
+                </svg>
+                <div>
+                  <div className="text-sm font-semibold text-[#222222] leading-tight">
+                    {locale === "ar" ? "خصوصية الغرفة" : "Room privacy"}
+                  </div>
+                  <div className="text-[13px] text-[#6A6A6A] mt-1 leading-tight">
+                    {locale === "ar" ? "قفل على الباب" : "Lock on door"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {PHASE1.showListingHighlights && (listing?.highlights?.length ?? 0) > 0 && (
           <div className="border-t border-[#DDDDDD] pt-6 mt-6">
             <AirbnbInfo
               highlights={listing.highlights}
               heading={locale === "ar" ? "أبرز مميزات المكان" : "Listing highlights"}
+              headingClassName="sr-only"
             />
           </div>
         )}
@@ -1120,7 +1232,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
         {/* Description Section (DESCRIPTION_DEFAULT) — no heading on live; clamp + "Show more" */}
         {listing?.description && (
           <div className="border-t border-[#DDDDDD] pt-6 mt-6">
-            <p className={`whitespace-pre-line text-base leading-[22px] text-[#222222] font-normal ${listing.description.length > 280 && !descExpanded ? "line-clamp-6" : ""}`}>
+            <p className={`whitespace-pre-line text-base leading-[20px] text-[#222222] font-normal ${listing.description.length > 280 && !descExpanded ? "line-clamp-6" : ""}`}>
               {listing.description}
             </p>
             {listing.description.length > 280 && (
@@ -1135,6 +1247,24 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
               </button>
             )}
           </div>
+        )}
+
+        {/* Where you'll sleep (SLEEPING_ARRANGEMENT_WITH_IMAGES) — one card per
+            bedroom. The live PDP shows per-room photos; our Listing model has no
+            per-room images, so (like the desktop sibling) each room renders an
+            honest bed-glyph card in a horizontal scroll row. Headings are
+            semibold (600) on mobile, matching the live section-title canon. */}
+        {(listing?.bedrooms ?? 0) > 0 && (
+          <WhereYouSleep
+            bedrooms={listing.bedrooms}
+            heading={locale === "ar" ? "أين ستنام" : "Where you'll sleep"}
+            bedroomLabel={locale === "ar" ? "غرفة النوم" : "Bedroom"}
+            bedLabel={locale === "ar" ? "سرير واحد" : "1 bed"}
+            studioLabel={locale === "ar" ? "غرفة المعيشة" : "Living room"}
+            className="border-t border-[#DDDDDD] pt-6 mt-6"
+            headingClassName="mb-6 text-[22px] font-semibold leading-[26px] tracking-[-0.44px] text-[#222222]"
+            cardClassName="flex w-[163px] flex-none flex-col gap-2 rounded-[8px] border border-[#DDDDDD] p-4"
+          />
         )}
 
         {/* Mobile Info — hidden in phase 1 (fabricated wifi/parking/cancellation); see phase-flags */}

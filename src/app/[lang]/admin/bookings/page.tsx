@@ -37,7 +37,7 @@ export default async function AdminBookingsPage({
             {a.tabHomes ?? "Homes"} ({homes.total})
           </TabsTrigger>
           <TabsTrigger value="transport">
-            {a.tabTransport ?? "Transport"} ({transport.total})
+            {a.tabTransport ?? "Travel"} ({transport.total})
           </TabsTrigger>
         </TabsList>
         <TabsContent value="homes">

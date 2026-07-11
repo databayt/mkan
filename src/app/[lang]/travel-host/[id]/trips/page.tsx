@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Route as RouteIcon } from "lucide-react";
-import { getTripsByOffice } from "@/lib/actions/transport-actions";
+import { getTripsByOffice } from "@/lib/actions/travel-actions";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 type Trip = Awaited<ReturnType<typeof getTripsByOffice>>[number];

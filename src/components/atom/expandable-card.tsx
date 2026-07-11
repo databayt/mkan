@@ -1,4 +1,6 @@
 "use client";
+// i18n-exempt-file — unrouted Aceternity demo component (zero importers in src/);
+// the card entries below are vendor sample data, not app copy.
 import Image from "next/image";
 import React, { useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";

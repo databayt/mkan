@@ -1,7 +1,7 @@
 /**
  * BusAmenity enum → lucide icon map — single source for every transport
  * surface (trip cards, filters, trip detail, office fleet). Labels stay in
- * the dictionary (`transport.host.amenityLabels.*`); this file owns icons
+ * the dictionary (`travel.host.amenityLabels.*`); this file owns icons
  * only. Mirrors the homes pattern in `src/components/listings/feature-icons.ts`.
  */
 import {
@@ -34,7 +34,7 @@ export function busAmenityIcon(value: string): LucideIcon {
   return BUS_AMENITY_ICONS[value] ?? Check;
 }
 
-/** Label from the dictionary slice (`transport.host.amenityLabels`); falls back to the enum value. */
+/** Label from the dictionary slice (`travel.host.amenityLabels`); falls back to the enum value. */
 export function busAmenityLabel(
   labels: Partial<Record<string, string>> | undefined,
   value: string,

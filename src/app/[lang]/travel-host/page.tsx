@@ -17,7 +17,7 @@ export async function generateMetadata({
     title: t?.title ?? "Transport Host",
     description: t?.description ?? "Manage your transport offices and bookings",
     locale: lang,
-    path: "/transport-host",
+    path: "/travel-host",
   });
 }
 

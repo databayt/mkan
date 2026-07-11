@@ -7,7 +7,7 @@
 //
 // It now also anchors the shared "Report an issue" footer on every transport
 // sub-page (search, offices, booking, checkout, trips, ticket). The bare
-// /transport landing is skipped — it renders the full site footer, which
+// /travel landing is skipped — it renders the full site footer, which
 // already carries the Report-an-issue link, so mounting it here too would
 // double up.
 "use client";
@@ -22,7 +22,7 @@ export default function TransportLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isLanding = /\/transport\/?$/.test(pathname ?? "");
+  const isLanding = /\/travel\/?$/.test(pathname ?? "");
 
   return (
     <>

@@ -40,7 +40,7 @@ import {
   getMyTransportOffices,
   updateTransportOffice,
   deleteTransportOffice,
-} from '@/lib/actions/transport-actions';
+} from '@/lib/actions/travel-actions';
 
 const settingsSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),

@@ -98,7 +98,7 @@ const PropertyManagement = () => {
   }, [propertyId]);
 
   if (isLoading) return <Loading />;
-  if (error) return <div className="text-red-500">Error: {error}</div>;
+  if (error) return <div className="text-red-500">{dict.dashboard.common.error}: {error}</div>;
 
   const getCurrentMonthPaymentStatus = (leaseId: number) => {
     const currentDate = new Date();

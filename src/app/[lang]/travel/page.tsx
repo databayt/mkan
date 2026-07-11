@@ -15,7 +15,7 @@ import { TransportTestimonials } from '@/components/travel/travel-testimonials';
 import { TransportMap } from '@/components/travel/travel-map';
 import Footer from '@/components/site/footer';
 import WhereToNext from '@/components/site/where-to-next';
-import { getAssemblyPoints, getPopularRoutes } from '@/lib/actions/travel-actions';
+import { getAssemblyPoints, getPopularRoutes, getPopularRoutesByOrigin } from '@/lib/actions/travel-actions';
 import { format } from 'date-fns';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import type { Locale } from '@/components/internationalization/config';
@@ -57,12 +57,12 @@ export default async function TransportPage({ params, searchParams }: TransportP
   const { lang } = await params;
   const spObject = flatten(await searchParams);
   const initialField = spObject.step as "origin" | "destination" | "date" | "passengers" | undefined;
-
   // Parallelize independent data fetches
-  const [dictionary, assemblyPoints, popularRoutes] = await Promise.all([
+  const [dictionary, assemblyPoints, popularRoutes, dbPortSudanRoutes] = await Promise.all([
     getDictionary(lang),
     getAssemblyPoints(),
     getPopularRoutes(),
+    getPopularRoutesByOrigin('Port Sudan'),
   ]);
   const t = dictionary?.travel;
   const todayIso = format(new Date(), 'yyyy-MM-dd');
@@ -78,7 +78,17 @@ export default async function TransportPage({ params, searchParams }: TransportP
           r.destination.city === route.destination.city,
       ) === i,
   ) as PopularRoute[];
-  const portsudanRoutes = dedupedRoutes.filter((r) => r.origin.city === 'Port Sudan');
+  
+  // For the Port Sudan rail, we deduplicate by city pair from the database query directly
+  const portsudanRoutes = (dbPortSudanRoutes.filter(
+    (route, i, all) =>
+      all.findIndex(
+        (r) =>
+          r.origin.city === route.origin.city &&
+          r.destination.city === route.destination.city,
+      ) === i,
+  ).slice(0, 8) as unknown) as PopularRoute[];
+
   const otherRoutes = dedupedRoutes.filter((r) => r.origin.city !== 'Port Sudan');
 
   const cardDictionary = {
@@ -206,7 +216,7 @@ export default async function TransportPage({ params, searchParams }: TransportP
       <div className="layout-container pt-10 pb-2 space-y-12">
         <RouteCarouselSection
           title={portsudanRoutes.length > 0 ? popularFromTitle : (t?.routes?.title ?? 'Popular Routes')}
-          href={`/${lang}/travel/offices`}
+          href={`/${lang}/travel/listings`}
           routes={portsudanRoutes.length > 0 ? portsudanRoutes : dedupedRoutes}
           lang={lang}
           dateIso={todayIso}

@@ -38,7 +38,9 @@ export default async function AdminOfficeDetailPage({
       <header className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs text-muted-foreground uppercase">{a.office ?? "Office"}</p>
-          <h1 className="text-2xl font-semibold">{office.name}</h1>
+          <h1 className="text-2xl font-semibold">
+            {lang === "ar" ? office.nameAr ?? office.name : office.name}
+          </h1>
           <div className="flex items-center gap-2 mt-2">
             <Badge variant={office.isActive ? "secondary" : "outline"}>
               {office.isActive
@@ -67,7 +69,7 @@ export default async function AdminOfficeDetailPage({
             }}
           />
           <Link
-            href={`/${lang}/transport/offices/${office.id}`}
+            href={`/${lang}/travel/offices/${office.id}`}
             target="_blank"
             className="text-sm underline text-muted-foreground"
           >

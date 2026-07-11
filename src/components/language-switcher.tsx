@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useSwitchLocaleHref, useLocale } from '@/components/internationalization/use-locale';
 import { i18n, localeConfig, type Locale } from '@/components/internationalization/config';
+import { useDictionary } from '@/components/internationalization/use-dictionary';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +25,7 @@ export function LanguageSwitcher({
 }: LanguageSwitcherProps) {
   const getSwitchLocaleHref = useSwitchLocaleHref();
   const { locale: currentLocale, isRTL } = useLocale();
+  const dict = useDictionary();
 
   // Text variant - simple text showing native language name, clicks to switch
   if (variant === "text") {
@@ -54,7 +56,7 @@ export function LanguageSwitcher({
       >
         <Link href={getSwitchLocaleHref(nextLocale)}>
           <Languages className="h-4 w-4" />
-          <span className="sr-only">Switch language</span>
+          <span className="sr-only">{dict?.navigation?.switchLanguage ?? "Switch language"}</span>
         </Link>
       </Button>
     );
@@ -96,7 +98,7 @@ export function LanguageSwitcher({
           className={cn("h-9 w-9", className)}
         >
           <Languages className="h-4 w-4" />
-          <span className="sr-only">Switch language</span>
+          <span className="sr-only">{dict?.navigation?.switchLanguage ?? "Switch language"}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align={isRTL ? "start" : "end"}>

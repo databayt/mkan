@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { releaseExpiredSeatHolds } from "@/lib/actions/transport-actions";
+import { releaseExpiredSeatHolds } from "@/lib/actions/travel-actions";
 
 /**
  * 5-minute cron — releases seat holds whose reservedUntil TTL has

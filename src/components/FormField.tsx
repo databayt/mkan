@@ -30,6 +30,7 @@ import "filepond/dist/filepond.min.css";
 import FilePondPluginImagePreview from "filepond-plugin-image-preview";
 import FilePondPluginImageExifOrientation from "filepond-plugin-image-exif-orientation";
 import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 registerPlugin(FilePondPluginImageExifOrientation, FilePondPluginImagePreview);
 
@@ -223,6 +224,8 @@ const MultiInputField: React.FC<MultiInputFieldProps> = ({
   placeholder,
   inputClassName,
 }) => {
+  const dict = useDictionary();
+  const f = dict.forms as unknown as Record<string, string> | undefined;
   const { fields, append, remove } = useFieldArray({
     control,
     name,
@@ -251,7 +254,7 @@ const MultiInputField: React.FC<MultiInputFieldProps> = ({
             variant="ghost"
             size="icon"
             className="text-customgreys-dirtyGrey"
-            aria-label="Remove item"
+            aria-label={f?.removeItem ?? "Remove item"}
           >
             <X className="w-4 h-4" />
           </Button>
@@ -265,7 +268,7 @@ const MultiInputField: React.FC<MultiInputFieldProps> = ({
         className="mt-2 text-customgreys-dirtyGrey"
       >
         <Plus className="w-4 h-4 me-2" />
-        Add Item
+        {f?.addItem ?? "Add Item"}
       </Button>
     </div>
   );

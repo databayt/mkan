@@ -89,7 +89,7 @@ export function SeatPicker({
   dictionary,
 }: SeatPickerProps) {
   const dict = useDictionary();
-  const tsp = dict?.transport?.seatPicker;
+  const tsp = dict?.travel?.seatPicker;
   const labels = dictionary ?? {
     selectSeats: tsp?.selectSeats ?? 'Select Your Seats',
     seatSelected: tsp?.seatSelected ?? 'seat selected',

@@ -112,6 +112,7 @@ export function TravelSearchResultsArea({
 
       {/* Results sheet */}
       {/* Dynamic styling for responsive side-by-side or sliding mobile views */}
+      {/* i18n-exempt */}
       <style>{`
         @media(max-width:1023px) {
           [data-results-sheet] {
@@ -130,7 +131,7 @@ export function TravelSearchResultsArea({
         }
       `}</style>
 
-      <div data-results-sheet className="bg-background">
+      <div data-results-sheet className="bg-[#F7F7F7] min-h-screen">
         <div className="px-6 lg:px-12 py-8">
           <div data-search-split className="grid grid-cols-1">
             {/* Left Column: Trips list and pagination */}

@@ -6,6 +6,7 @@ import HostDashboard from '@/components/host/host-dashboard';
 import { getHostListings } from '@/components/host/actions';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import Loading from '@/components/atom/loading';
+import { useDictionary } from '@/components/internationalization/use-dictionary';
 
 type HostListing = Awaited<ReturnType<typeof getHostListings>>[number];
 
@@ -14,6 +15,7 @@ export default function BecomeAHostContent() {
   const pathname = usePathname();
   const currentLocale = pathname.startsWith('/ar') ? 'ar' : 'en';
   const { session, status } = useAuthRedirect();
+  const dict = useDictionary();
   const [backendListings, setBackendListings] = useState<HostListing[]>([]);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -87,7 +89,7 @@ export default function BecomeAHostContent() {
 
   // Show loading while checking session
   if (status === 'loading') {
-    return <Loading variant="fullscreen" text="Loading..." />;
+    return <Loading variant="fullscreen" text={dict?.common?.loading ?? "Loading..."} />;
   }
 
   // Don't render if not authenticated

@@ -206,7 +206,7 @@ export default async function CredentialsPage({ params }: CredentialsPageProps) 
           {isAr ? 'تسجيل الدخول' : 'Go to login'}
         </Link>
         <Link
-          href={`/${lang}/transport`}
+          href={`/${lang}/travel`}
           className="rounded-lg border px-4 py-2 text-sm hover:bg-muted"
         >
           {isAr ? 'صفحة النقل' : 'Transport home'}

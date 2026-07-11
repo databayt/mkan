@@ -20,14 +20,14 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useTransportHostValidation } from '@/context/onboarding-validation-context';
-import { useTransportOffice } from '@/context/transport-office-context';
+import { useTransportOffice } from '@/context/travel-office-context';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import {
   publishTransportOffice,
   getRoutesByOffice,
   getBusesByOffice,
   getTripsByOffice,
-} from '@/lib/actions/transport-actions';
+} from '@/lib/actions/travel-actions';
 
 interface StepStatus {
   name: string;
@@ -43,7 +43,7 @@ const FinishPage = () => {
   const { enableNext, disableNext, setCustomNavigation } = useTransportHostValidation();
   const { office, loadOffice } = useTransportOffice();
   const dict = useDictionary();
-  const t = dict.transport.host;
+  const t = dict.travel.host;
   const [steps, setSteps] = useState<StepStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -77,14 +77,14 @@ const FinishPage = () => {
             link: 'assembly-point',
           },
           {
-            name: dict.transport.onboarding.steps.buses,
+            name: dict.travel.onboarding.steps.buses,
             icon: <Bus className="h-5 w-5" />,
             completed: buses.length > 0,
             required: true,
             link: 'buses',
           },
           {
-            name: dict.transport.onboarding.steps.routes,
+            name: dict.travel.onboarding.steps.routes,
             icon: <Route className="h-5 w-5" />,
             completed: routes.length > 0,
             required: true,
@@ -159,7 +159,7 @@ const FinishPage = () => {
   };
 
   const handleStepClick = (link: string) => {
-    router.push(`/transport-host/${params.id}/${link}`);
+    router.push(`/travel-host/${params.id}/${link}`);
   };
 
   if (isLoading) {

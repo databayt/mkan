@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -177,6 +178,7 @@ function LogoSlot({
   variant?: CarouselVariant;
 }) {
   const reducedMotion = useReducedMotion();
+  const lc = useDictionary()?.travel?.logoCarousel;
   const { current: logo, hasCycled } = useLogoCycle(
     logos,
     INITIAL_DELAY + slotIndex * SLOT_STAGGER,
@@ -237,7 +239,10 @@ function LogoSlot({
               href={`${logo.url}?ref=arc`}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={`${logo.name} (opens in new tab)`}
+              aria-label={(lc?.opensInNewTab ?? "{name} (opens in new tab)").replace(
+                "{name}",
+                logo.name,
+              )}
             >
               {imgEl}
             </Link>
@@ -261,6 +266,7 @@ export function LogoCarousel({
 }) {
   const allLoaded = useImagesPreloaded(LOGO_SRCS);
   const slotCount = useSlotCount();
+  const lc = useDictionary()?.travel?.logoCarousel;
 
   const slotLogos = useMemo(
     () =>
@@ -274,7 +280,7 @@ export function LogoCarousel({
     <motion.div
       role="region"
       aria-roledescription="carousel"
-      aria-label="Trusted transport operators on Mkan"
+      aria-label={lc?.operators ?? "Trusted transport operators on Mkan"}
       initial={{ opacity: 0 }}
       animate={{ opacity: allLoaded ? 1 : 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}

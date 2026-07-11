@@ -38,7 +38,7 @@ export function TransportHostBanner({ lang, title, cta }: TransportHostBannerPro
             size="lg"
             className="bg-white text-gray-800 hover:bg-gray-100 text-base sm:text-lg px-8 py-6 rounded-lg font-semibold transition-colors duration-200 w-fit"
           >
-            <Link href={`/${lang}/transport-host`}>{cta}</Link>
+            <Link href={`/${lang}/travel-host`}>{cta}</Link>
           </Button>
         </div>
       </div>

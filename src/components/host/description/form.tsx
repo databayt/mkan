@@ -4,6 +4,7 @@ import { useDescription } from './use-description'
 import { StepWrapper } from '../step-wrapper'
 import { StepNavigation } from '../step-navigation'
 import { FormField } from '../form-field'
+import { useDictionary } from '@/components/internationalization/use-dictionary'
 
 export function DescriptionForm() {
   const { 
@@ -17,18 +18,19 @@ export function DescriptionForm() {
     characterCount,
     remainingCharacters
   } = useDescription()
+  const dict = useDictionary()
 
   return (
     <StepWrapper>
       <form onSubmit={onSubmit} className="space-y-8">
         <FormField
-          label="Create your description"
-          description="Share what makes your place special."
+          label={dict?.hosting?.pages?.description?.descriptionTitle ?? "Create your description"}
+          description={dict?.hosting?.pages?.description?.descriptionSubtitle ?? "Share what makes your place special."}
           error={form.formState.errors.description?.message}
         >
           <textarea
             {...form.register('description')}
-            placeholder="Describe your space, what makes it unique, what guests will love about it, and what's nearby..."
+            placeholder={dict?.host?.description?.placeholder ?? "Describe your space, what makes it unique, what guests will love about it, and what's nearby..."}
             rows={8}
             className="w-full p-4 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
           />
@@ -36,9 +38,9 @@ export function DescriptionForm() {
           <div className="flex justify-between items-center mt-2">
             <div className="text-sm text-muted-foreground">
               <div className="space-y-1">
-                <div>• Mention what makes your place special</div>
-                <div>• Describe the space and amenities</div>
-                <div>• Highlight the neighborhood</div>
+                <div>• {dict?.host?.description?.tip1 ?? "Mention what makes your place special"}</div>
+                <div>• {dict?.host?.description?.tip2 ?? "Describe the space and amenities"}</div>
+                <div>• {dict?.host?.description?.tip3 ?? "Highlight the neighborhood"}</div>
               </div>
             </div>
             <div className={`text-sm ${remainingCharacters < 50 ? 'text-orange-600' : 'text-muted-foreground'}`}>
@@ -50,7 +52,7 @@ export function DescriptionForm() {
         {/* Description Preview */}
         {description && (
           <div className="bg-muted/50 p-6 rounded-lg">
-            <h3 className="text-lg font-medium mb-2">Preview</h3>
+            <h3 className="text-lg font-medium mb-2">{dict?.listingEditor?.description?.previewTitle ?? "Preview"}</h3>
             <div className="bg-white p-4 rounded border">
               <p className="text-sm leading-relaxed">{description}</p>
             </div>
@@ -67,7 +69,7 @@ export function DescriptionForm() {
           onNext={onSubmit}
           onPrevious={onBack}
           isNextDisabled={!isFormValid || isLoading}
-          nextLabel={isLoading ? 'Saving...' : 'Next'}
+          nextLabel={isLoading ? (dict?.host?.stepNavigation?.saving ?? 'Saving...') : (dict?.host?.stepNavigation?.next ?? 'Next')}
           showPrevious={true}
         />
       </form>

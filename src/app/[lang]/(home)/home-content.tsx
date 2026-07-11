@@ -49,6 +49,15 @@ const getTopRatedListings = (listings: Listing[], limit: number) =>
     .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
     .slice(0, limit);
 
+const getPopularPortsudanListings = (listings: Listing[], limit: number) =>
+  [...listings]
+    .filter((l) => {
+      const city = l.location?.city?.toLowerCase() || "";
+      return city === "port sudan" || city === "portsudan" || city === "بورتسودان";
+    })
+    .slice(0, limit);
+
+
 interface HomeContentProps {
   listings: Listing[];
   locale: string;
@@ -167,8 +176,8 @@ export default function HomeContent({ listings, locale }: HomeContentProps) {
           <div className="space-y-12">
             <ListingCarouselSection
               title={sections?.popular ?? "Popular homes in Portsudan"}
-              href={`/${locale}/listings`}
-              listings={listings.slice(0, 12)}
+              href={`/${locale}/listings?location=Port+Sudan`}
+              listings={getPopularPortsudanListings(listings, 12)}
               priorityCount={4}
             />
             <ListingCarouselSection

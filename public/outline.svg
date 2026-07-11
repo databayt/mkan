@@ -1,0 +1,32 @@
+<svg width="80" height="84" viewBox="0 0 80 84" xmlns="http://www.w3.org/2000/svg">
+
+    <!-- Outer -->
+    <path
+            d="
+      M27.8778 6.99986
+      C33.2664 -2.33328 46.7372 -2.33329 52.1259 6.99986
+      L78.1073 51.9999
+      C83.4957 61.3332 76.7594 72.9999 65.9823 72.9999
+      H14.0214
+      C3.24422 72.9999 -3.49208 61.3332 1.89636 51.9999
+      L27.8778 6.99986
+      Z"
+            fill="none"
+            stroke="#FF385C"
+            stroke-width="4"
+            stroke-linecap="round"
+            stroke-linejoin="round"/>
+
+    <!-- Inner (open) — feet lifted off the base so no bottom line reads -->
+    <path
+            d="
+      M25.5667 62
+      L40 40
+      L54.4333 62"
+            fill="none"
+            stroke="#FF385C"
+            stroke-width="4"
+            stroke-linecap="round"
+            stroke-linejoin="round"/>
+
+</svg>

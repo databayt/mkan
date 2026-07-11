@@ -19,9 +19,9 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useTransportHostValidation } from '@/context/onboarding-validation-context';
-import { useTransportOffice } from '@/context/transport-office-context';
+import { useTransportOffice } from '@/context/travel-office-context';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
-import { createBus, updateBus, deleteBus, getBusesByOffice } from '@/lib/actions/transport-actions';
+import { createBus, updateBus, deleteBus, getBusesByOffice } from '@/lib/actions/travel-actions';
 import { BusAmenity } from '@prisma/client';
 import HostStepLayout from '@/components/host/host-step-layout';
 
@@ -54,7 +54,7 @@ const BusesPage = () => {
   const { enableNext, disableNext } = useTransportHostValidation();
   const { office } = useTransportOffice();
   const dict = useDictionary();
-  const t = dict.transport.host;
+  const t = dict.travel.host;
   const [buses, setBuses] = useState<BusData[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBus, setEditingBus] = useState<BusData | null>(null);
@@ -194,7 +194,7 @@ const BusesPage = () => {
                   <Input
                     id="plateNumber"
                     {...register('plateNumber')}
-                    placeholder="e.g., ABC 1234"
+                    placeholder={t.plateNumberPlaceholder ?? 'e.g., ABC 1234'}
                   />
                   {errors.plateNumber && (
                     <p className="text-sm text-destructive">
@@ -209,7 +209,7 @@ const BusesPage = () => {
                     <Input
                       id="manufacturer"
                       {...register('manufacturer')}
-                      placeholder="e.g., Mercedes"
+                      placeholder={t.manufacturerPlaceholder ?? 'e.g., Mercedes'}
                     />
                   </div>
                   <div className="space-y-2">
@@ -217,7 +217,7 @@ const BusesPage = () => {
                     <Input
                       id="model"
                       {...register('model')}
-                      placeholder="e.g., Travego"
+                      placeholder={t.modelPlaceholder ?? 'e.g., Travego'}
                     />
                   </div>
                 </div>
@@ -336,7 +336,7 @@ const BusesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(bus)}
-                        aria-label="Edit bus"
+                        aria-label={t.editBus}
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -344,7 +344,7 @@ const BusesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(bus.id)}
-                        aria-label="Delete bus"
+                        aria-label={t.deleteBus ?? 'Delete bus'}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

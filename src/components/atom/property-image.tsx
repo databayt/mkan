@@ -96,6 +96,7 @@ export function PropertyImage({
       sizes={sizes ?? v.sizes}
       quality={quality ?? v.quality}
       priority={priority}
+      // i18n-exempt — next/image API token, not user-facing copy
       placeholder="blur"
       blurDataURL={blurDataURL ?? STOCK_BLUR[src] ?? SHIMMER}
       loader={USE_CDN_VARIANTS ? cdnVariantLoader : undefined}

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useDictionary } from "@/components/internationalization/use-dictionary";
 import type { MapBounds } from "./search-provider";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
@@ -48,6 +49,7 @@ export default function SearchMap({
   onSearchAsMoveChange,
   stickyTop = 64,
 }: SearchMapProps) {
+  const dict = useDictionary();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRefs = useRef<mapboxgl.Marker[]>([]);
@@ -185,7 +187,7 @@ export default function SearchMap({
 
           {!mapboxgl.accessToken && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-xs text-gray-500">
-              Map unavailable — set NEXT_PUBLIC_MAPBOX_TOKEN
+              {dict?.search?.map?.unavailable ?? "Map unavailable — set NEXT_PUBLIC_MAPBOX_TOKEN"}
             </div>
           )}
 
@@ -212,7 +214,7 @@ export default function SearchMap({
             <button
               type="button"
               onClick={handleFullscreen}
-              aria-label="Show fullscreen map"
+              aria-label={dict?.search?.map?.showFullscreen ?? "Show fullscreen map"}
               className="flex h-10 w-10 items-center justify-center rounded-full text-gray-800 transition hover:bg-white"
               style={{ backgroundColor: CONTROL_BG, boxShadow: FS_SHADOW }}
             >
@@ -243,7 +245,7 @@ export default function SearchMap({
               <button
                 type="button"
                 onClick={handleZoomIn}
-                aria-label="Zoom in"
+                aria-label={dict?.search?.map?.zoomIn ?? "Zoom in"}
                 className="flex h-10 w-10 items-center justify-center text-gray-800 transition-colors hover:bg-gray-100/70"
               >
                 <svg viewBox="0 0 16 16" height="16" width="16" fill="currentColor" aria-hidden="true">
@@ -255,7 +257,7 @@ export default function SearchMap({
               <button
                 type="button"
                 onClick={handleZoomOut}
-                aria-label="Zoom out"
+                aria-label={dict?.search?.map?.zoomOut ?? "Zoom out"}
                 className="flex h-10 w-10 items-center justify-center text-gray-800 transition-colors hover:bg-gray-100/70"
               >
                 <svg viewBox="0 0 16 16" height="16" width="16" fill="currentColor" aria-hidden="true">

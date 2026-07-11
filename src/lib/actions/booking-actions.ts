@@ -10,6 +10,8 @@ import { assertRateLimit } from "@/lib/rate-limit";
 import { notifyHomeBookingConfirmed } from "@/lib/notifications/booking";
 import { computeRefundAmount } from "@/lib/refund";
 import { getStripe } from "@/lib/stripe";
+import { localizeListings } from "@/components/translation/localize";
+import { getDisplayLang } from "@/components/translation/locale";
 
 // ============================================
 // SCHEMAS
@@ -329,6 +331,7 @@ export async function getGuestBookings(filters?: unknown) {
               title: true,
               photoUrls: true,
               pricePerNight: true,
+              location: { select: { city: true, country: true } },
             },
           },
         },
@@ -339,7 +342,20 @@ export async function getGuestBookings(filters?: unknown) {
       db.booking.count({ where }),
     ]);
 
-    return { bookings, total };
+    // Localize each booking's listing free-text (title + location city/country)
+    // for the viewer's locale (cookie-derived — this action is called from
+    // client pages that can't pass a lang param).
+    const listings = bookings.map((b) => b.listing);
+    const localized = await localizeListings(
+      listings as unknown as Array<Record<string, unknown>>,
+      await getDisplayLang(),
+    );
+    const localizedBookings = bookings.map((b, i) => ({
+      ...b,
+      listing: (localized[i] ?? b.listing) as (typeof bookings)[number]["listing"],
+    }));
+
+    return { bookings: localizedBookings, total };
   } catch (error) {
     logger.error("Error fetching guest bookings:", error);
     throw new Error(

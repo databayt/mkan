@@ -4,6 +4,7 @@ import { usePrice } from './use-price'
 import { StepWrapper } from '../step-wrapper'
 import { StepNavigation } from '../step-navigation'
 import { FormField } from '../form-field'
+import { useDictionary } from '@/components/internationalization/use-dictionary'
 
 export function PriceForm() {
   const { 
@@ -17,14 +18,16 @@ export function PriceForm() {
     securityDeposit,
     applicationFee
   } = usePrice()
+  const dict = useDictionary()
+  const t = dict?.host?.price
 
   return (
     <StepWrapper>
       <form onSubmit={onSubmit} className="space-y-8">
         <div className="space-y-6">
           <FormField
-            label="Base price per night"
-            description="This is your base price. You can adjust it for specific dates or seasons."
+            label={t?.baseLabel ?? "Base price per night"}
+            description={t?.baseDescription ?? "This is your base price. You can adjust it for specific dates or seasons."}
             error={form.formState.errors.pricePerNight?.message}
           >
             <div className="relative">
@@ -44,8 +47,8 @@ export function PriceForm() {
           </FormField>
 
           <FormField
-            label="Security deposit (optional)"
-            description="A refundable amount to cover potential damages."
+            label={t?.depositLabel ?? "Security deposit (optional)"}
+            description={t?.depositDescription ?? "A refundable amount to cover potential damages."}
             error={form.formState.errors.securityDeposit?.message}
           >
             <div className="relative">
@@ -64,8 +67,8 @@ export function PriceForm() {
           </FormField>
 
           <FormField
-            label="Application fee (optional)"
-            description="A one-time fee for processing applications."
+            label={t?.feeLabel ?? "Application fee (optional)"}
+            description={t?.feeDescription ?? "A one-time fee for processing applications."}
             error={form.formState.errors.applicationFee?.message}
           >
             <div className="relative">
@@ -86,27 +89,27 @@ export function PriceForm() {
 
         {/* Price Preview */}
         <div className="bg-muted/50 p-6 rounded-lg">
-          <h3 className="text-lg font-medium mb-4">Price breakdown</h3>
+          <h3 className="text-lg font-medium mb-4">{t?.breakdownTitle ?? "Price breakdown"}</h3>
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span>Base price per night</span>
+              <span>{t?.baseLabel ?? "Base price per night"}</span>
               <span>${pricePerNight || 0}</span>
             </div>
             {(securityDeposit ?? 0) > 0 && (
               <div className="flex justify-between">
-                <span>Security deposit</span>
+                <span>{t?.deposit ?? "Security deposit"}</span>
                 <span>${securityDeposit}</span>
               </div>
             )}
             {(applicationFee ?? 0) > 0 && (
               <div className="flex justify-between">
-                <span>Application fee</span>
+                <span>{t?.fee ?? "Application fee"}</span>
                 <span>${applicationFee}</span>
               </div>
             )}
             <div className="border-t pt-2 mt-2">
               <div className="flex justify-between font-medium">
-                <span>Total for 1 night</span>
+                <span>{t?.total ?? "Total for 1 night"}</span>
                 <span>${(pricePerNight || 0) + (securityDeposit || 0) + (applicationFee || 0)}</span>
               </div>
             </div>
@@ -123,7 +126,7 @@ export function PriceForm() {
           onNext={onSubmit}
           onPrevious={onBack}
           isNextDisabled={!isFormValid || isLoading}
-          nextLabel={isLoading ? 'Saving...' : 'Next'}
+          nextLabel={isLoading ? (dict?.host?.stepNavigation?.saving ?? 'Saving...') : (dict?.host?.stepNavigation?.next ?? 'Next')}
           showPrevious={true}
         />
       </form>

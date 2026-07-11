@@ -210,6 +210,7 @@ export default function SiteFooter() {
 									size='icon'
 									className='w-8 h-8 text-muted-foreground hover:bg-background'>
 									<Twitter className='w-4 h-4' />
+									{/* i18n-exempt — brand name */}
 									<span className='sr-only'>Twitter</span>
 								</Button>
 								<Button
@@ -217,6 +218,7 @@ export default function SiteFooter() {
 									size='icon'
 									className='w-8 h-8 text-muted-foreground hover:bg-background'>
 									<Instagram className='w-4 h-4' />
+									{/* i18n-exempt — brand name */}
 									<span className='sr-only'>Instagram</span>
 								</Button>
 							</div>

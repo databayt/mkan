@@ -14,8 +14,8 @@ import {
   Route as RouteIcon,
   ArrowRight,
 } from "lucide-react";
-import { useTransportOffice } from "@/context/transport-office-context";
-import { getOfficeDashboardStats } from "@/lib/actions/transport-actions";
+import { useTransportOffice } from "@/context/travel-office-context";
+import { getOfficeDashboardStats } from "@/lib/actions/travel-actions";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { formatCurrency } from "@/lib/i18n/formatters";
@@ -75,19 +75,19 @@ export default function TransportHostOverviewPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <QuickAction
-          href={`/${lang}/transport-host/${officeId}/bookings`}
+          href={`/${lang}/travel-host/${officeId}/bookings`}
           icon={<ListChecks className="size-5" />}
           title={t?.bookingsTitle ?? "Bookings"}
           subtitle={t?.bookingsSubtitle ?? "Manage upcoming and past bookings"}
         />
         <QuickAction
-          href={`/${lang}/transport-host/${officeId}/trips`}
+          href={`/${lang}/travel-host/${officeId}/trips`}
           icon={<RouteIcon className="size-5" />}
           title={t?.tripsTitle ?? "Trips"}
           subtitle={t?.tripsSubtitle ?? "Schedule and run your trips"}
         />
         <QuickAction
-          href={`/${lang}/transport-host/${officeId}/earnings`}
+          href={`/${lang}/travel-host/${officeId}/earnings`}
           icon={<Wallet className="size-5" />}
           title={t?.earningsTitle ?? "Earnings"}
           subtitle={t?.earningsSubtitle ?? "Revenue per route and per month"}

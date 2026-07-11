@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { useDictionary } from "@/components/internationalization/use-dictionary";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
@@ -76,6 +77,7 @@ export default function ListingMap({
   className,
   disablePan,
 }: ListingMapProps) {
+  const dict = useDictionary();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -186,7 +188,7 @@ export default function ListingMap({
             rel="noopener noreferrer"
             className="text-sm font-medium underline underline-offset-4 hover:text-foreground"
           >
-            View on Google Maps
+            {dict?.search?.map?.viewOnGoogleMaps ?? "View on Google Maps"}
           </a>
         </div>
       </div>
@@ -198,20 +200,20 @@ export default function ListingMap({
       <div ref={containerRef} className="h-full w-full" />
 
       {/* Search (top-start) */}
-      <button type="button" aria-label="Find a place on the map" className={`absolute top-4 start-4 z-[1] ${CIRCLE_BTN}`}>
+      <button type="button" aria-label={dict?.search?.map?.findPlace ?? "Find a place on the map"} className={`absolute top-4 start-4 z-[1] ${CIRCLE_BTN}`}>
         <SearchGlyph />
       </button>
 
       {/* Fullscreen + Zoom (top-end column) */}
       <div className="absolute top-4 end-4 z-[1] flex flex-col gap-4">
-        <button type="button" aria-label="Show fullscreen map" onClick={toggleFullscreen} className={CIRCLE_BTN}>
+        <button type="button" aria-label={dict?.search?.map?.showFullscreen ?? "Show fullscreen map"} onClick={toggleFullscreen} className={CIRCLE_BTN}>
           <FullscreenGlyph />
         </button>
         <div className="flex w-10 flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.16),0_3px_8px_rgba(0,0,0,0.12)]">
-          <button type="button" aria-label="Zoom in" onClick={() => mapRef.current?.zoomIn()} className="flex h-10 w-10 items-center justify-center border-b border-[#DDDDDD] transition-colors hover:bg-[#F7F7F7]">
+          <button type="button" aria-label={dict?.search?.map?.zoomIn ?? "Zoom in"} onClick={() => mapRef.current?.zoomIn()} className="flex h-10 w-10 items-center justify-center border-b border-[#DDDDDD] transition-colors hover:bg-[#F7F7F7]">
             <PlusGlyph />
           </button>
-          <button type="button" aria-label="Zoom out" onClick={() => mapRef.current?.zoomOut()} className="flex h-10 w-10 items-center justify-center transition-colors hover:bg-[#F7F7F7]">
+          <button type="button" aria-label={dict?.search?.map?.zoomOut ?? "Zoom out"} onClick={() => mapRef.current?.zoomOut()} className="flex h-10 w-10 items-center justify-center transition-colors hover:bg-[#F7F7F7]">
             <MinusGlyph />
           </button>
         </div>

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import Loading from '@/components/atom/loading';
-import { getMyTransportOffices } from '@/lib/actions/transport-actions';
+import { getMyTransportOffices } from '@/lib/actions/travel-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 type TransportOffice = Awaited<ReturnType<typeof getMyTransportOffices>>[number];
@@ -19,7 +19,7 @@ export default function TransportHostContent() {
   const currentLocale = pathname.startsWith('/ar') ? 'ar' : 'en';
   const { session, status } = useAuthRedirect();
   const dict = useDictionary();
-  const t = dict.transport.host;
+  const t = dict.travel.host;
   const tHub = dict?.transportHost?.hub;
   const [offices, setOffices] = useState<TransportOffice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,11 +41,11 @@ export default function TransportHostContent() {
   }, [session]);
 
   const handleOfficeClick = (id: number) => {
-    router.push(`/${currentLocale}/transport-host/${id}/office-info`);
+    router.push(`/${currentLocale}/travel-host/${id}/office-info`);
   };
 
   const handleCreateNew = () => {
-    router.push(`/${currentLocale}/transport-host/overview`);
+    router.push(`/${currentLocale}/travel-host/overview`);
   };
 
   if (status === 'loading' || isLoading) {

@@ -1,10 +1,31 @@
 "use client";
 
 import { useRouter, useSearchParams, useParams } from "next/navigation";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useEffect, useTransition } from "react";
 import { BusAmenity } from "@prisma/client";
-import { Check, Clock, Filter } from "lucide-react";
-import { busAmenityIcon } from "@/components/transport/amenity-icons";
+import { Check, Clock, XIcon } from "lucide-react";
+import { busAmenityIcon } from "@/components/travel/amenity-icons";
+import { motion, AnimatePresence } from "framer-motion";
+import { Dialog as DialogPrimitive } from "radix-ui";
+import { createPortal } from "react-dom";
+
+function FilterTriggerIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 32 32"
+      width={size}
+      height={size}
+      aria-hidden="true"
+      focusable="false"
+      style={{ display: "block", fill: "none", stroke: "currentColor", strokeWidth: 2.5, overflow: "visible" }}
+    >
+      <path
+        fill="none"
+        d="M7 16H3m26 0H15M29 6h-4m-8 0H3m26 20h-4M7 16a4 4 0 1 0 8 0 4 4 0 0 0-8 0zM17 6a4 4 0 1 0 8 0 4 4 0 0 0-8 0zm0 20a4 4 0 1 0 8 0 4 4 0 0 0-8 0zm0 0H3"
+      />
+    </svg>
+  );
+}
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,14 +38,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/i18n/formatters";
@@ -85,47 +98,327 @@ interface FiltersPanelProps {
   };
 }
 
-export function FiltersPanel({ facets, totalTrips, dict }: FiltersPanelProps) {
-  return (
-    <>
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:block w-72 flex-shrink-0">
-        <div className="sticky top-4 rounded-xl border bg-card p-5">
-          <FilterControls facets={facets} dict={dict} />
-        </div>
-      </aside>
+const BAR_H = 64;
 
-      {/* Mobile trigger + Sheet */}
-      <div className="lg:hidden">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 me-2" />
-              {dict.mobileTriggerLabel}
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="bottom" className="h-[85vh] p-0 flex flex-col">
-            <SheetHeader className="border-b px-5 py-4">
-              <SheetTitle>{dict.filters.title}</SheetTitle>
-              <SheetDescription className="sr-only">
-                {dict.filters.title}
-              </SheetDescription>
-            </SheetHeader>
-            <ScrollArea className="flex-1 px-5 py-4">
-              <FilterControls facets={facets} dict={dict} />
-            </ScrollArea>
-            <div className="border-t px-5 py-3">
-              <p className="text-sm text-muted-foreground text-center">
-                {dict.filters.showResults.replace(
-                  "{count}",
-                  String(totalTrips),
-                )}
-              </p>
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
-    </>
+const SHEET_OPEN = {
+  type: "spring" as const,
+  stiffness: 420,
+  damping: 38,
+  mass: 1,
+} as const;
+
+const SHEET_CLOSE = { duration: 0.32, ease: [0.32, 0.72, 0, 1] } as const;
+
+export function FiltersPanel({ facets, totalTrips, dict }: FiltersPanelProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [sheetH, setSheetH] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Lock body scroll + allow Escape-to-close while mobile sheet is open.
+  useEffect(() => {
+    if (!isOpen || !isMobile) return;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [isOpen, isMobile]);
+
+  const searchParams = useSearchParams();
+  const current = useMemo(
+    () => parseSearchParams(searchParams),
+    [searchParams],
+  );
+
+  const hasPriceFilter = current.priceMin != null || current.priceMax != null;
+  const hasAnyFilter =
+    !!current.when ||
+    hasPriceFilter ||
+    (current.amenities && current.amenities.length > 0) ||
+    (current.officeIds && current.officeIds.length > 0) ||
+    current.sort !== undefined;
+
+  const filterCount = useMemo(() => {
+    let count = 0;
+    if (current.priceMin != null || current.priceMax != null) count++;
+    if (current.when != null) count++;
+    if (current.amenities && current.amenities.length > 0) count += current.amenities.length;
+    if (current.officeIds && current.officeIds.length > 0) count += current.officeIds.length;
+    if (current.sort !== undefined) count++;
+    return count;
+  }, [current]);
+
+  const router = useRouter();
+  const params = useParams<{ lang: string }>();
+  const lang = params?.lang === "ar" ? "ar" : "en";
+  const isRTL = lang === "ar";
+
+  const clearAll = () => {
+    const qs = new URLSearchParams();
+    if (current.originId) qs.set("originId", String(current.originId));
+    if (current.destinationId) qs.set("destinationId", String(current.destinationId));
+    if (current.origin) qs.set("origin", current.origin);
+    if (current.destination) qs.set("destination", current.destination);
+    if (current.date) qs.set("date", current.date);
+    router.replace(`?${qs.toString()}`, { scroll: false });
+  };
+
+  const MobileTrigger = (
+    <button
+      type="button"
+      className="relative flex shrink-0 items-center justify-center rounded-full bg-background text-sm font-medium text-foreground outline-none transition-colors"
+      style={{ height: 48, width: 32, touchAction: "manipulation" }}
+      onClick={() => {
+        setSheetH(Math.round(window.innerHeight * 0.92));
+        setIsOpen(true);
+      }}
+      aria-label={dict.filters.title}
+    >
+      <FilterTriggerIcon />
+      {filterCount > 0 && (
+        <span className="absolute -end-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1 text-[11px] font-semibold text-background">
+          {filterCount}
+        </span>
+      )}
+    </button>
+  );
+
+  const DesktopTrigger = (
+    <button
+      type="button"
+      className="relative flex shrink-0 items-center gap-2 rounded-full bg-background px-4 text-sm font-medium text-foreground transition-colors hover:border-foreground"
+      style={{ height: 48, border: "1px solid #DDDDDD", borderRadius: "100px" }}
+      aria-label={dict.filters.title}
+    >
+      <FilterTriggerIcon />
+      <span>{dict.filters.title}</span>
+      {filterCount > 0 && (
+        <span className="absolute -end-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1 text-[11px] font-semibold text-background">
+          {filterCount}
+        </span>
+      )}
+    </button>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        {MobileTrigger}
+        {mounted &&
+          createPortal(
+            <AnimatePresence>
+              {isOpen && (
+                <>
+                  {/* Scrim */}
+                  <motion.div
+                    key="scrim"
+                    className="fixed inset-0 z-[100] bg-black/40"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0, transition: { duration: 0.4, ease: "easeOut" } }}
+                    transition={{ duration: 0.35, ease: "easeOut" }}
+                    onClick={() => setIsOpen(false)}
+                    aria-hidden="true"
+                  />
+
+                  {/* Top Dropdown Panel */}
+                  <motion.div
+                    key="panel"
+                    className="fixed inset-x-0 top-0 z-[101] overflow-hidden rounded-b-[28px] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+                    initial={{ height: BAR_H, opacity: 0 }}
+                    animate={{
+                      height: sheetH,
+                      opacity: 1,
+                      transition: {
+                        height: SHEET_OPEN,
+                        opacity: { duration: 0.16, ease: "easeOut" },
+                      },
+                    }}
+                    exit={{
+                      height: BAR_H,
+                      opacity: 0,
+                      transition: {
+                        height: SHEET_CLOSE,
+                        opacity: { duration: 0.14, delay: 0.26, ease: "easeIn" },
+                      },
+                    }}
+                    role="dialog"
+                    aria-modal="true"
+                  >
+                    <motion.div
+                      className="overflow-y-auto no-scrollbar"
+                      style={{ height: sheetH, padding: "24px", paddingTop: "40px", paddingBottom: "104px" }}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{
+                        opacity: 1,
+                        y: 0,
+                        transition: { delay: 0.06, duration: 0.32, ease: "easeOut" },
+                      }}
+                      exit={{ opacity: 0, transition: { duration: 0.14, ease: "easeIn" } }}
+                    >
+                      <FilterControls facets={facets} dict={dict} />
+                    </motion.div>
+
+                    {/* Footer */}
+                    <div
+                      className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-between bg-white"
+                      style={{
+                        padding: "16px 24px 24px",
+                        borderTop: "1px solid #ebebeb",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={clearAll}
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 500,
+                          color: hasAnyFilter ? "#222222" : "#c1c1c1",
+                          textDecoration: "underline",
+                          textUnderlineOffset: 2,
+                        }}
+                      >
+                        {dict.filters.clearAll}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsOpen(false)}
+                        className="transition-colors"
+                        style={{
+                          height: 48,
+                          padding: "0 24px",
+                          borderRadius: 12,
+                          backgroundColor: "#222222",
+                          color: "#ffffff",
+                          fontSize: 16,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {dict.filters.showResults.replace(
+                          "{count}",
+                          String(totalTrips),
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Bottom dismiss grabber */}
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(false)}
+                      // i18n-exempt
+                      aria-label="Close"
+                      className="absolute bottom-0 left-1/2 z-40 flex h-8 w-20 -translate-x-1/2 items-end justify-center pb-2.5"
+                    >
+                      <span className="h-1 w-9 rounded-full bg-gray-300" />
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>,
+            document.body,
+          )}
+      </>
+    );
+  }
+
+  return (
+    <DialogPrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
+      <DialogPrimitive.Trigger asChild>
+        {DesktopTrigger}
+      </DialogPrimitive.Trigger>
+      {mounted &&
+        createPortal(
+          <DialogPrimitive.Portal>
+            <DialogPrimitive.Overlay
+              className="fixed inset-0 z-[100] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 bg-black/50"
+              style={{ backgroundColor: "rgba(0,0,0,0.48)" }}
+            />
+            <DialogPrimitive.Content
+              dir={isRTL ? "rtl" : "ltr"}
+              aria-describedby={undefined}
+              className="fixed start-[50%] top-[50%] z-[100] flex w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] rtl:translate-x-[50%] flex-col overflow-hidden bg-white duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+              style={{
+                maxWidth: 568,
+                maxHeight: "min(90vh, 880px)",
+                borderRadius: 32,
+                boxShadow: "rgba(0,0,0,0.28) 0px 8px 28px 0px",
+              }}
+            >
+              {/* Header */}
+              <div className="relative flex shrink-0 items-center justify-center" style={{ height: 64, borderBottom: `1px solid #ebebeb` }}>
+                <DialogPrimitive.Title style={{ fontSize: 16, fontWeight: 600, color: "#222222" }}>
+                  {dict.filters.title}
+                </DialogPrimitive.Title>
+                <DialogPrimitive.Close
+                  // i18n-exempt
+                  aria-label="Close"
+                  className="absolute flex items-center justify-center rounded-full transition-colors hover:bg-gray-100 outline-none"
+                  style={{ insetInlineEnd: 16, width: 32, height: 32 }}
+                >
+                  <XIcon size={16} style={{ color: "#222222" }} />
+                </DialogPrimitive.Close>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto" style={{ padding: "24px" }}>
+                <FilterControls facets={facets} dict={dict} />
+              </div>
+
+              {/* Footer */}
+              <div className="border-t px-6 py-4 flex items-center justify-between bg-white" style={{ borderTop: "1px solid #ebebeb" }}>
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: hasAnyFilter ? "#222222" : "#c1c1c1",
+                    textDecoration: "underline",
+                    textUnderlineOffset: 2,
+                  }}
+                >
+                  {dict.filters.clearAll}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="transition-colors"
+                  style={{
+                    height: 48,
+                    padding: "0 24px",
+                    borderRadius: 12,
+                    backgroundColor: "#222222",
+                    color: "#ffffff",
+                    fontSize: 16,
+                    fontWeight: 500,
+                  }}
+                >
+                  {dict.filters.showResults.replace(
+                    "{count}",
+                    String(totalTrips),
+                  )}
+                </button>
+              </div>
+            </DialogPrimitive.Content>
+          </DialogPrimitive.Portal>,
+          document.body,
+        )}
+    </DialogPrimitive.Root>
   );
 }
 
@@ -138,7 +431,7 @@ function FilterControls({
   const params = useParams<{ lang: string }>();
   const lang = params?.lang === "ar" ? "ar" : "en";
   const dictionary = useDictionary();
-  const timeRanges = dictionary?.transport?.search?.timeOfDay;
+  const timeRanges = dictionary?.travel?.search?.timeOfDay;
   const [isPending, startTransition] = useTransition();
 
   const current = useMemo(
@@ -158,6 +451,13 @@ function FilterControls({
     current.priceMax ?? maxBound,
   ]);
 
+  useEffect(() => {
+    setPriceRange([
+      current.priceMin ?? minBound,
+      current.priceMax ?? maxBound,
+    ]);
+  }, [current.priceMin, current.priceMax, minBound, maxBound]);
+
   const updateUrl = useCallback(
     (updates: Partial<SearchParamsShape>) => {
       const qs = mergeSearchParams(current, updates);
@@ -168,19 +468,6 @@ function FilterControls({
     },
     [current, router],
   );
-
-  const clearAll = () => {
-    setPriceRange([minBound, maxBound]);
-    const qs = new URLSearchParams();
-    if (current.originId) qs.set("originId", String(current.originId));
-    if (current.destinationId) qs.set("destinationId", String(current.destinationId));
-    if (current.origin) qs.set("origin", current.origin);
-    if (current.destination) qs.set("destination", current.destination);
-    if (current.date) qs.set("date", current.date);
-    startTransition(() => {
-      router.replace(`?${qs.toString()}`, { scroll: false });
-    });
-  };
 
   const toggleAmenity = (amenity: BusAmenity) => {
     const existing = new Set(current.amenities ?? []);
@@ -196,35 +483,12 @@ function FilterControls({
     updateUrl({ officeIds: Array.from(existing) });
   };
 
-  const hasPriceFilter =
-    current.priceMin != null || current.priceMax != null;
-  const hasAnyFilter =
-    !!current.when ||
-    hasPriceFilter ||
-    (current.amenities && current.amenities.length > 0) ||
-    (current.officeIds && current.officeIds.length > 0) ||
-    current.sort !== undefined;
-
   const currentSort: SortOption = current.sort ?? "departure-asc";
 
   return (
     <div
       className={cn("space-y-6", isPending && "opacity-70 pointer-events-none")}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold">{dict.filters.title}</h3>
-        {hasAnyFilter && (
-          <button
-            type="button"
-            onClick={clearAll}
-            className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-          >
-            {dict.filters.clearAll}
-          </button>
-        )}
-      </div>
-
       {/* Sort */}
       <div className="space-y-2">
         <Label htmlFor="filter-sort" className="text-sm font-medium">

@@ -174,7 +174,7 @@ const OnboardingFooter: React.FC<OnboardingFooterProps> = ({
             type="button"
             onClick={onHelp}
             className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-accent/50"
-            aria-label="Help"
+            aria-label={dict.navigation?.help ?? "Help"}
           >
             <HelpCircle className="h-6 w-6" strokeWidth={0.75} />
           </button>
@@ -182,7 +182,7 @@ const OnboardingFooter: React.FC<OnboardingFooterProps> = ({
             type="button"
             onClick={onSave}
             className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-accent/50"
-            aria-label="Save progress"
+            aria-label={dict.onboarding?.saveProgress ?? "Save progress"}
           >
             <Bookmark className="h-6 w-6" strokeWidth={0.75} />
           </button>

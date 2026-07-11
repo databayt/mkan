@@ -13,7 +13,7 @@ interface SeatLegendProps {
 
 export function SeatLegend({ dictionary: dictionaryProp }: SeatLegendProps) {
   const dict = useDictionary();
-  const ts = dict?.transport?.seat;
+  const ts = dict?.travel?.seat;
   const dictionary = dictionaryProp ?? {
     available: ts?.available ?? 'Available',
     selected: ts?.selected ?? 'Selected',

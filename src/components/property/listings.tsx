@@ -9,6 +9,7 @@ import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-
 import { useSession } from 'next-auth/react'
 import { useDictionary } from '@/components/internationalization/dictionary-context'
 import { useLocale } from '@/components/internationalization/use-locale'
+import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite'
 
 interface ListingsProps {
   properties: any[]
@@ -91,6 +92,7 @@ const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
     price: property.pricePerMonth,
     rating: property.averageRating || 4.5, // Default rating
     isSuperhostBadge: false, // You can add logic for this
+    isGuestFavorite: qualifiesAsGuestFavorite(property),
     isFavorite: localFavorites.has(property.id),
     onFavoriteToggle: handleFavoriteToggle,
     onCardClick: handleCardClick,

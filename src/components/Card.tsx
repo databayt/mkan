@@ -22,6 +22,8 @@ const Card = ({
   // Show the branded fallback when there's no photo *or* the URL fails to load.
   const [errored, setErrored] = useState(false);
   const showFallback = !firstPhoto || errored;
+  const parkingLabel =
+    dict.filters?.parkingIncluded ?? dict.propertyCard?.ParkingIncluded ?? "Parking Included";
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-lg w-full mb-5">
@@ -54,7 +56,7 @@ const Card = ({
           )}
           {property.isParkingIncluded && (
             <span className="bg-white/80 text-black text-xs font-semibold px-2 py-1 rounded-full">
-              {dict.filters?.parkingIncluded ?? dict.propertyCard?.ParkingIncluded ?? "Parking Included"}
+              {parkingLabel}
             </span>
           )}
         </div>

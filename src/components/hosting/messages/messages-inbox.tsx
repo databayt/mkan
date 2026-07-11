@@ -51,6 +51,8 @@ interface MessagesDict {
   guests?: string;
   total?: string;
   viewListing?: string;
+  filters?: string;
+  attach?: string;
 }
 
 function shortDate(iso: string, locale: Locale): string {
@@ -180,7 +182,7 @@ export default function MessagesInbox({
             </button>
             <button
               type="button"
-              aria-label="Filters"
+              aria-label={t.filters ?? "Filters"}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70 lg:h-9 lg:w-9"
             >
               <SettingsIcon className="size-4 lg:hidden" />
@@ -332,7 +334,7 @@ export default function MessagesInbox({
               <div className="flex items-end gap-2 rounded-2xl border border-border px-3 py-2 transition-colors focus-within:border-foreground">
                 <button
                   type="button"
-                  aria-label="Attach"
+                  aria-label={t.attach ?? "Attach"}
                   className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
                 >
                   <ImagePlus className="size-5" />

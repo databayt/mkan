@@ -46,21 +46,15 @@ const OnboardingStepsOverview: React.FC<OnboardingStepsOverviewProps> = ({
 
   const renderHeadline = (text: React.ReactNode) => {
     if (typeof text === 'string') {
-      if (text === "It's easy to get started on Mkan") {
+      if (
+        text === "It's easy to get started on Mkan" ||
+        text === "من السهل البدء على مكان"
+      ) {
         return (
           <>
-            It&apos;s easy to get started
+            {dict.onboarding?.headlineLine1 ?? "It's easy to get started"}
             <br />
-            on Mkan
-          </>
-        );
-      }
-      if (text === "من السهل البدء على مكان") {
-        return (
-          <>
-            من السهل البدء
-            <br />
-            على مكان
+            {dict.onboarding?.headlineLine2 ?? "on Mkan"}
           </>
         );
       }

@@ -5,6 +5,7 @@ import { ar, enUS } from "date-fns/locale"
 import { type DateRange } from "react-day-picker"
 import { Calendar } from "@/components/ui/calendar"
 import { useLocale } from "@/components/internationalization/use-locale"
+import { useDictionary } from "@/components/internationalization/use-dictionary"
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react"
 
 export const pickerTranslations = {
@@ -86,6 +87,7 @@ export default function BigSearchDatePicker({
   compact = false,
 }: BigSearchDatePickerProps) {
   const { locale } = useLocale()
+  const dict = useDictionary()
   const isAr = locale === "ar"
   const t = pickerTranslations[isAr ? "ar" : "en"]
 
@@ -403,7 +405,7 @@ export default function BigSearchDatePicker({
             {canPrev && (
               <button
                 type="button"
-                aria-label="Previous months"
+                aria-label={dict?.search?.previousMonths ?? "Previous months"}
                 onClick={() => step(-1)}
                 className="absolute start-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full bg-white border border-gray-300 shadow-[0_2px_6px_rgba(0,0,0,0.18)] hover:scale-105 transition-transform"
               >
@@ -413,7 +415,7 @@ export default function BigSearchDatePicker({
             {canNext && (
               <button
                 type="button"
-                aria-label="Next months"
+                aria-label={dict?.search?.nextMonths ?? "Next months"}
                 onClick={() => step(1)}
                 className="absolute end-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full bg-white border border-gray-300 shadow-[0_2px_6px_rgba(0,0,0,0.18)] hover:scale-105 transition-transform"
               >

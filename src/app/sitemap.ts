@@ -24,9 +24,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "",
     "/listings",
     "/search",
-    "/transport",
-    "/transport/offices",
-    "/transport/search",
+    "/travel",
+    "/travel/offices",
+    "/travel/search",
     "/help",
     "/co-hosts",
     "/refer",
@@ -77,11 +77,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     officeEntries = offices.flatMap((office) =>
       (["en", "ar"] as const).map((locale) => ({
-        url: `${SITE_URL}/${locale}/transport/offices/${office.id}`,
+        url: `${SITE_URL}/${locale}/travel/offices/${office.id}`,
         lastModified: office.updatedAt,
         changeFrequency: "weekly" as const,
         priority: 0.6,
-        alternates: languageAlternates(`/transport/offices/${office.id}`),
+        alternates: languageAlternates(`/travel/offices/${office.id}`),
       }))
     );
   } catch {

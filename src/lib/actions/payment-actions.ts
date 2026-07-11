@@ -1031,7 +1031,7 @@ export async function generateInvoice(paymentId: unknown) {
 // ============================================
 // BOOKING PAYMENT (short-term stay checkout)
 // ============================================
-// Mirrors the lease/transport flows but targets the Booking model. The card
+// Mirrors the lease/travel flows but targets the Booking model. The card
 // path creates a Stripe PaymentIntent; handleStripeWebhook (above) flips
 // BookingPayment.status to Paid and Booking.status to Confirmed on
 // `payment_intent.succeeded` with metadata.kind === "booking_payment".

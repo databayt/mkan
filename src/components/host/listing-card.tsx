@@ -42,7 +42,10 @@ const ListingCard: React.FC<ListingCardProps> = ({
             <h5 className="text-xs sm:text-sm font-medium truncate">
               {title}
             </h5>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground
+
+
+             mt-0.5">
               {dict.hosting.components.listingCard.started.replace('{date}', startDate)}
             </p>
           </div>

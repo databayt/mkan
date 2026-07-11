@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useTransportHostValidation } from '@/context/onboarding-validation-context';
-import { useTransportOffice } from '@/context/transport-office-context';
+import { useTransportOffice } from '@/context/travel-office-context';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { formatCurrency } from '@/lib/i18n/formatters';
@@ -35,7 +35,7 @@ import {
   deleteRoute,
   getRoutesByOffice,
   getAssemblyPoints,
-} from '@/lib/actions/transport-actions';
+} from '@/lib/actions/travel-actions';
 import HostStepLayout from '@/components/host/host-step-layout';
 
 const routeSchema = z.object({
@@ -57,7 +57,7 @@ const RoutesPage = () => {
   const { enableNext, disableNext } = useTransportHostValidation();
   const { office } = useTransportOffice();
   const dict = useDictionary();
-  const t = dict.transport.host;
+  const t = dict.travel.host;
   const { locale } = useLocale();
   const [routes, setRoutes] = useState<RouteData[]>([]);
   const [assemblyPoints, setAssemblyPoints] = useState<AssemblyPoint[]>([]);
@@ -336,7 +336,7 @@ const RoutesPage = () => {
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
                         {formatDuration(route.duration)}
-                        {route.distance && ` • ${route.distance} km`}
+                        {route.distance && ` • ${route.distance} ${t.km ?? 'km'}`}
                       </p>
                       <p className="text-sm font-medium text-primary mt-1">
                         {formatCurrency(route.basePrice, locale)}
@@ -347,7 +347,7 @@ const RoutesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(route)}
-                        aria-label="Edit route"
+                        aria-label={t.editRoute}
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -355,7 +355,7 @@ const RoutesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(route.id)}
-                        aria-label="Delete route"
+                        aria-label={t.deleteRoute ?? 'Delete route'}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

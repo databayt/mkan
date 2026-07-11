@@ -8,6 +8,9 @@
 import { config as loadEnv } from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaNeon } from "@prisma/adapter-neon";
+import { neonConfig } from "@neondatabase/serverless";
+import ws from "ws";
 
 loadEnv();
 
@@ -21,8 +24,19 @@ async function main() {
   }
 
   const started = Date.now();
+  const adapterKind = (process.env.DATABASE_URL_ADAPTER ?? "pg").toLowerCase();
+  let adapter;
+  if (adapterKind === "neon") {
+    if (typeof WebSocket === "undefined") {
+      neonConfig.webSocketConstructor = ws;
+    }
+    adapter = new PrismaNeon({ connectionString: url });
+  } else {
+    adapter = new PrismaPg({ connectionString: url });
+  }
+
   const client = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: url }),
+    adapter,
     log: ["error"],
   });
 
@@ -42,14 +56,18 @@ async function main() {
     const message = err instanceof Error ? err.message : String(err);
     console.log(`[wake-db] skipped (${elapsed}ms): ${message}`);
   } finally {
-    await client.$disconnect().catch(() => {});
+    client.$disconnect().catch(() => {});
   }
 }
 
-main().catch((err) => {
-  // Never block the parent command.
-  console.log(
-    `[wake-db] unexpected error: ${err instanceof Error ? err.message : String(err)}`
-  );
-  process.exit(0);
-});
+main()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch((err) => {
+    // Never block the parent command.
+    console.log(
+      `[wake-db] unexpected error: ${err instanceof Error ? err.message : String(err)}`
+    );
+    process.exit(0);
+  });

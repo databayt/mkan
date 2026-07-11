@@ -10,6 +10,7 @@ import { useDictionary } from '@/components/internationalization/dictionary-cont
 import { useLocale } from '@/components/internationalization/use-locale'
 import { formatCurrency, formatNumber } from '@/lib/i18n/formatters'
 import { PropertyImage } from '@/components/atom/property-image'
+import GuestFavoriteBadge from '@/components/listings/guest-favorite-badge'
 
 interface PropertyCardProps {
   id: string
@@ -20,6 +21,8 @@ interface PropertyCardProps {
   price: number
   rating: number
   isSuperhostBadge?: boolean
+  /** "Guest favorite" pill on the image's top-start corner (Airbnb). */
+  isGuestFavorite?: boolean
   isFavorite?: boolean
   onFavoriteToggle?: (id: string, isFavorite: boolean) => void
   onCardClick?: (id: string) => void
@@ -36,6 +39,7 @@ export function PropertyCard({
   price,
   rating,
   isSuperhostBadge = false,
+  isGuestFavorite = false,
   isFavorite = false,
   onFavoriteToggle,
   onCardClick,
@@ -44,6 +48,8 @@ export function PropertyCard({
 }: PropertyCardProps) {
   const dict = useDictionary()
   const { locale } = useLocale()
+  const guestFavoriteLabel =
+    (dict.property?.guestFavorite as Record<string, string> | undefined)?.title ?? 'Guest favorite'
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   // Shared favorites provider — one heart state across cards/detail/mobile.
   const fav = useFavorites()
@@ -101,8 +107,13 @@ export function PropertyCard({
             />
           </button>
 
+          {/* Guest favorite pill — owns the top-start corner over superhost */}
+          {isGuestFavorite && (
+            <GuestFavoriteBadge label={guestFavoriteLabel} />
+          )}
+
           {/* Superhost Badge */}
-          {isSuperhostBadge && (
+          {!isGuestFavorite && isSuperhostBadge && (
             <Badge
               variant="secondary"
               className="absolute top-3 start-3 bg-white text-gray-800 text-xs font-medium"
@@ -132,33 +143,33 @@ export function PropertyCard({
       </div>
 
       {/* Content */}
-      <div className="space-y-1">
+      <div className="space-y-1 leading-tight">
         {/* Title and Location Row */}
-        <div className="flex items-center gap-2">
-          <h5 className="text-gray-900 font-normal text-sm truncate">
+        <div className="flex items-center gap-2 leading-tight">
+          <h5 className="text-gray-900 font-normal text-sm truncate leading-tight">
             {title}
           </h5>
-          <span className="text-gray-900 font-normal text-sm truncate">
+          <span className="text-gray-900 font-normal text-sm truncate leading-tight">
             {dict.rental?.property?.card?.in} {location}
           </span>
         </div>
 
         {/* Dates */}
         {dates && (
-          <div className="text-gray-500 text-xs">
+          <div className="text-gray-500 text-xs leading-tight">
             <span>{dates}</span>
           </div>
         )}
 
         {/* Price and Rating Row */}
-        <div className="flex items-center gap-2">
-          <div className="text-gray-500 text-xs">
-            <span className="font-medium">{formatCurrency(price, locale)}</span>
-            <span className="text-gray-500 text-xs"> {dict.rental?.property?.card?.night}</span>
+        <div className="flex items-center gap-2 leading-tight">
+          <div className="text-gray-500 text-xs leading-tight">
+            <span className="font-medium text-gray-900 leading-tight">{formatCurrency(price, locale)}</span>
+            <span className="text-gray-500 text-xs leading-tight"> {dict.rental?.property?.card?.night}</span>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center leading-tight">
             <Star className="w-3 h-3 text-gray-500 fill-current" />
-            <span className="ms-1 text-xs font-medium text-gray-500">
+            <span className="ms-1 text-xs font-medium text-gray-500 leading-tight">
               {formatNumber(rating, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>

@@ -16,7 +16,7 @@ import {
   Search,
   CheckCircle,
 } from 'lucide-react';
-import { getTransportOffices } from '@/lib/actions/transport-actions';
+import { getTransportOffices } from '@/lib/actions/travel-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 type TransportOffice = Awaited<ReturnType<typeof getTransportOffices>>[number];
@@ -27,7 +27,7 @@ export default function OfficesListContent() {
   const [offices, setOffices] = useState<TransportOffice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const t = useDictionary().transport;
+  const t = useDictionary().travel;
 
   useEffect(() => {
     const fetchOffices = async () => {
@@ -95,7 +95,7 @@ export default function OfficesListContent() {
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredOffices.map((office) => (
-            <Link key={office.id} href={`/${lang}/transport/offices/${office.id}`}>
+            <Link key={office.id} href={`/${lang}/travel/offices/${office.id}`}>
               <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader>
                   <div className="flex items-start justify-between">

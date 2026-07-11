@@ -7,7 +7,7 @@ import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Wallet, Download } from "lucide-react";
-import { getOfficeDashboardStats } from "@/lib/actions/transport-actions";
+import { getOfficeDashboardStats } from "@/lib/actions/travel-actions";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { formatCurrency } from "@/lib/i18n/formatters";

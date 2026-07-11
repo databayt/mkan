@@ -98,7 +98,7 @@ export function HostingMenuSheet({
             <button
               type="button"
               onClick={close}
-              aria-label="Close"
+              aria-label={menu?.close ?? "Close"}
               className="-me-2 flex size-10 items-center justify-center rounded-full text-[#222222] transition-colors hover:bg-neutral-100"
             >
               <svg

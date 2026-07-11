@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { canOverride } from "@/lib/auth";
 import { getDictionary } from "@/components/internationalization/dictionaries";
+import { localizeListing } from "@/components/translation/localize";
 import ApplicationActions from "./actions";
 
 /**
@@ -51,6 +52,12 @@ export default async function ManagerApplicationDetailPage({
 
   // Ownership: only the listing's host or an admin may read this page.
   if (!canOverride(session, application.listing.hostId)) notFound();
+
+  // Localize the listing's stored free-text (title + location) for the viewer's locale.
+  const listing = (await localizeListing(
+    application.listing as unknown as Record<string, unknown>,
+    lang as "en" | "ar",
+  )) as unknown as typeof application.listing;
 
   const dict = (await getDictionary(lang as "en" | "ar")) as unknown as Record<string, Record<string, string>>;
   const t = (dict.dashboard as Record<string, Record<string, string>> | undefined)?.applications ?? {};
@@ -148,7 +155,7 @@ export default async function ManagerApplicationDetailPage({
             <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden">
               <Image
                 src={cover}
-                alt={application.listing.title ?? ""}
+                alt={listing.title ?? ""}
                 fill
                 sizes="320px"
                 className="object-cover"
@@ -160,12 +167,12 @@ export default async function ManagerApplicationDetailPage({
               href={`/${lang}/listings/${application.listing.id}`}
               className="text-sm font-medium hover:underline"
             >
-              {application.listing.title}
+              {listing.title}
             </Link>
-            {application.listing.location && (
+            {listing.location && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                 <MapPin className="w-4 h-4" />
-                {application.listing.location.city}, {application.listing.location.country}
+                {listing.location.city}, {listing.location.country}
               </div>
             )}
           </div>

@@ -3,7 +3,7 @@ import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import type { Locale } from "@/components/internationalization/config";
 import { shouldOfferCardPayment } from "@/lib/geo";
-import { getBooking } from "@/lib/actions/transport-actions";
+import { getBooking } from "@/lib/actions/travel-actions";
 import CheckoutContent from "./content";
 
 export async function generateMetadata({
@@ -12,12 +12,12 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
-  const t = (await getDictionary(lang as Locale))?.transport;
+  const t = (await getDictionary(lang as Locale))?.travel;
   return createMetadata({
     title: t?.meta?.checkoutTitle ?? "Checkout",
     description: t?.meta?.checkoutDescription ?? "Complete your booking and pay",
     locale: lang,
-    path: "/transport/booking/checkout",
+    path: "/travel/booking/checkout",
   });
 }
 

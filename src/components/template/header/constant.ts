@@ -1,7 +1,7 @@
 // Alternative: Single array approach
 export const ALL_NAVIGATION_ITEMS = [
   { type: "display", href: "/host", label: "Become a host", labelAr: "كن مضيفًا" },
-  { type: "display", href: "/transport", label: "Create your experience", labelAr: "أنشئ تجربتك" },
+  { type: "display", href: "/travel", label: "Create your experience", labelAr: "أنشئ تجربتك" },
   { type: "display", href: "/help", label: "Help", labelAr: "المساعدة" },
   { type: "display", href: "/login", label: "Login", labelAr: "تسجيل الدخول" },
   { type: "display", href: "/join", label: "Join", labelAr: "انضم" },
@@ -10,7 +10,7 @@ export const ALL_NAVIGATION_ITEMS = [
 // Current approach: Separate arrays
 export const NAVIGATION_LINKS = [
   { href: "/host", label: "Become a host", labelAr: "كن مضيفًا" },
-  { href: "/transport", label: "Create your experience", labelAr: "أنشئ تجربتك" },
+  { href: "/travel", label: "Create your experience", labelAr: "أنشئ تجربتك" },
   { href: "/help", label: "Help", labelAr: "المساعدة" },
 ];
 

@@ -6,8 +6,8 @@ import {
   createTransportOffice,
   updateTransportOffice,
   getTransportOffice,
-} from '@/lib/actions/transport-actions';
-import type { TransportOfficeFormData } from '@/lib/schemas/transport-schemas';
+} from '@/lib/actions/travel-actions';
+import type { TransportOfficeFormData } from '@/lib/schemas/travel-schemas';
 
 export interface TransportOfficeData {
   id?: number;
@@ -221,7 +221,7 @@ export function useTransportHostNavigation(currentStep: string) {
     if (!office?.id) {
       return;
     }
-    router.push(`/transport-host/${office.id}/${step}`);
+    router.push(`/travel-host/${office.id}/${step}`);
   }, [office, router]);
 
   const goToNextStep = useCallback((nextStep: string) => {
@@ -233,7 +233,7 @@ export function useTransportHostNavigation(currentStep: string) {
   }, [goToStep]);
 
   const goToOverview = useCallback(() => {
-    router.push('/transport-host');
+    router.push('/travel-host');
   }, [router]);
 
   return {

@@ -29,7 +29,7 @@ import { usePathname } from 'next/navigation';
 import {
   getMyTransportOffices,
   getOfficeDashboardStats,
-} from '@/lib/actions/transport-actions';
+} from '@/lib/actions/travel-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { formatCurrency } from '@/lib/i18n/formatters';
@@ -133,7 +133,7 @@ const OfficeDashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <Button onClick={() => router.push('/transport-host')}>
+            <Button onClick={() => router.push('/travel-host')}>
               <Plus className="h-4 w-4 me-2" />
               {dict.dashboard.offices.createOffice}
             </Button>
@@ -251,7 +251,7 @@ const OfficeDashboard = () => {
               variant="outline"
               className="w-full justify-between"
               onClick={() =>
-                router.push(`/transport-host/${selectedOfficeId}/buses`)
+                router.push(`/travel-host/${selectedOfficeId}/buses`)
               }
             >
               <span className="flex items-center gap-2">

@@ -3,20 +3,26 @@
 import React from "react";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { useLocale } from "@/components/internationalization/use-locale";
+import {
+  CancellationPolicyIcon,
+  HouseRulesIcon,
+  SafetyPropertyIcon,
+  ChevronForwardIcon,
+} from "./things-to-know-icons";
 
 /**
  * Mobile "Things to know" (POLICIES_DEFAULT) — the closing section of the
- * Airbnb room PDP. Adapted from the desktop `things-to-know.tsx`: the desktop
- * lays the three groups out in a 3-column grid; the mobile clone STACKS them
- * vertically (House rules → Safety & property → Cancellation policy), each a
- * bold 16px sub-label over a short stack of 14px body rows and a "Show more"
- * text link (non-functional, mirroring the desktop affordance).
+ * Airbnb room PDP. On mobile Airbnb renders the three groups as full-width
+ * clickable rows: a 24px leading glyph, the title over a short stack of 14px
+ * body rows, and a trailing 16px chevron (ground truth
+ * `.clone/airbnb-room-mobile/sections/14-POLICIES_DEFAULT.html`). Order matches
+ * Airbnb: Cancellation policy → House rules → Safety & property.
  *
- * Content comes from the desktop component: the Listing model supplies guest
- * count and pet policy; the rest are the platform-standard defaults Airbnb
- * shows when a host hasn't overridden them (check-in/checkout windows, alarms,
- * partial-refund cancellation). Bilingual en/ar inline — none of this copy has
- * dictionary keys yet, so it follows the house `locale === "ar" ? … : …` idiom.
+ * Content: the Listing model supplies guest count and pet policy; the rest are
+ * the platform-standard defaults Airbnb shows when a host hasn't overridden
+ * them. Bilingual en/ar inline — none of this copy has dictionary keys yet, so
+ * it follows the house `locale === "ar" ? … : …` idiom. The chevron mirrors
+ * under RTL.
  */
 
 interface MobileThingsToKnowProps {
@@ -27,39 +33,41 @@ interface MobileThingsToKnowProps {
 
 interface Row {
   text: string;
-  /** Muted secondary line (#6C6C6C) vs. primary body (#222222). */
-  muted?: boolean;
 }
 
-function Group({
+function GroupRow({
+  icon,
   title,
   rows,
-  showMore,
+  chevronFlip,
 }: {
+  icon: React.ReactNode;
   title: string;
   rows: Row[];
-  showMore: string;
+  chevronFlip: boolean;
 }) {
   return (
-    <div className="flex flex-col">
-      <h3 className="mb-3 text-base font-medium text-[#222222]">{title}</h3>
-      <ul className="flex flex-col gap-2">
+    <button
+      type="button"
+      className="flex w-full items-center gap-4 text-start hover:opacity-80"
+    >
+      <span className="shrink-0 text-[#222222]">{icon}</span>
+      <span className="flex flex-1 flex-col">
+        <span className="mb-1 text-base font-medium text-[#222222]">
+          {title}
+        </span>
         {rows.map((r, i) => (
-          <li
-            key={i}
-            className={`text-sm leading-6 ${r.muted ? "text-[#6C6C6C]" : "text-[#222222]"}`}
-          >
+          <span key={i} className="text-sm leading-[18px] text-[#6C6C6C]">
             {r.text}
-          </li>
+          </span>
         ))}
-      </ul>
-      <button
-        type="button"
-        className="mt-3 w-fit text-start text-sm font-medium text-[#222222] underline underline-offset-2 hover:opacity-80"
+      </span>
+      <span
+        className={`shrink-0 text-[#6a6a6a] ${chevronFlip ? "-scale-x-100" : ""}`}
       >
-        {showMore}
-      </button>
-    </div>
+        <ChevronForwardIcon />
+      </span>
+    </button>
   );
 }
 
@@ -81,8 +89,20 @@ export default function MobileThingsToKnow({
     heading ??
     sections?.thingsToKnow ??
     (isAr ? "معلومات يجب معرفتها" : "Things to know");
-  const showMore = isAr ? "عرض المزيد" : "Show more";
   const guests = maxGuests ?? 2;
+
+  const cancellation: Row[] = [
+    {
+      text: isAr
+        ? "إلغاء مجاني قبل تسجيل الوصول."
+        : "Free cancellation before check-in.",
+    },
+    {
+      text: isAr
+        ? "راجع سياسة الإلغاء الكاملة الخاصة بالمضيف للتفاصيل."
+        : "Review this host's full policy for details.",
+    },
+  ];
 
   const houseRules: Row[] = [
     { text: isAr ? "تسجيل الوصول بعد الساعة 3:00 مساءً" : "Check-in after 3:00 PM" },
@@ -105,48 +125,39 @@ export default function MobileThingsToKnow({
         ? "لم يتم الإبلاغ عن جهاز إنذار أول أكسيد الكربون"
         : "Carbon monoxide alarm not reported",
     },
-    { text: isAr ? "جهاز إنذار الدخان" : "Smoke alarm" },
     {
       text: isAr
         ? "كاميرات مراقبة خارجية في العقار"
         : "Exterior security cameras on property",
     },
-  ];
-
-  const cancellation: Row[] = [
-    {
-      text: isAr
-        ? "إلغاء مجاني قبل تسجيل الوصول."
-        : "Free cancellation before check-in.",
-    },
-    {
-      text: isAr
-        ? "راجع سياسة الإلغاء الكاملة الخاصة بالمضيف والتي تنطبق حتى لو ألغيت الحجز بسبب المرض أو الاضطرابات."
-        : "Review the Host's full cancellation policy which applies even if you cancel for illness or disruptions.",
-      muted: true,
-    },
+    { text: isAr ? "جهاز إنذار الدخان" : "Smoke alarm" },
   ];
 
   return (
-    <section className="px-4 py-8 space-y-6 relative before:content-[''] before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-[#DDDDDD]">
+    <section className="px-6 py-8 space-y-6 relative before:content-[''] before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-[#DDDDDD]">
       <h2 className="text-[22px] font-semibold leading-[26px] tracking-[-0.44px] text-[#222222]">
         {headingText}
       </h2>
-      <Group
-        title={isAr ? "قواعد المنزل" : "House rules"}
-        rows={houseRules}
-        showMore={showMore}
-      />
-      <Group
-        title={isAr ? "السلامة والممتلكات" : "Safety & property"}
-        rows={safety}
-        showMore={showMore}
-      />
-      <Group
-        title={isAr ? "سياسة الإلغاء" : "Cancellation policy"}
-        rows={cancellation}
-        showMore={showMore}
-      />
+      <div className="flex flex-col gap-6">
+        <GroupRow
+          icon={<CancellationPolicyIcon />}
+          title={isAr ? "سياسة الإلغاء" : "Cancellation policy"}
+          rows={cancellation}
+          chevronFlip={isAr}
+        />
+        <GroupRow
+          icon={<HouseRulesIcon />}
+          title={isAr ? "قواعد المنزل" : "House rules"}
+          rows={houseRules}
+          chevronFlip={isAr}
+        />
+        <GroupRow
+          icon={<SafetyPropertyIcon />}
+          title={isAr ? "السلامة والممتلكات" : "Safety & property"}
+          rows={safety}
+          chevronFlip={isAr}
+        />
+      </div>
     </section>
   );
 }

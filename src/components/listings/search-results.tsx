@@ -9,6 +9,7 @@ import { useLocale } from "@/components/internationalization/use-locale"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
 import { formatNumber } from "@/lib/i18n/formatters"
 import { addFavoriteProperty, removeFavoriteProperty } from "@/lib/actions/user-actions"
+import { qualifiesAsGuestFavorite } from "@/lib/guest-favorite"
 
 interface SearchResultsProps {
   properties: Listing[]
@@ -115,6 +116,7 @@ export function SearchResults({
             nights={nights}
             rating={l.averageRating}
             reviewsCount={l.numberOfReviews ?? 0}
+            isGuestFavorite={qualifiesAsGuestFavorite(l)}
             isFavorite={favorites.has(l.id)}
             onFavoriteToggle={handleFavoriteToggle}
             onCardClick={handleCardClick}

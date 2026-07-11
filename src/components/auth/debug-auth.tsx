@@ -1,4 +1,6 @@
 "use client"
+// i18n-exempt-file — dev-only auth debug panel (returns null in production);
+// never shown to end users.
 
 import { useSession } from "next-auth/react"
 import { useEffect, useState } from "react"

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { updatePlatformSettings } from "@/lib/actions/admin-actions";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 interface SettingsLabels {
   feeTitle: string;
@@ -68,6 +69,8 @@ export default function AdminSettingsContent({
   initial: PlatformSettingsValue;
   labels: SettingsLabels;
 }) {
+  const dict = useDictionary();
+  const a = (dict as unknown as { admin?: Record<string, string> }).admin ?? {};
   const [pending, start] = useTransition();
   const [v, setV] = useState<PlatformSettingsValue>(initial);
 
@@ -157,7 +160,7 @@ export default function AdminSettingsContent({
               id="currencies"
               value={v.supportedCurrencies}
               onChange={(e) => setV({ ...v, supportedCurrencies: e.target.value })}
-              placeholder="SDG,USD,SAR"
+              placeholder={a.settingsCurrenciesPlaceholder ?? "SDG,USD,SAR"}
               dir="ltr"
             />
           </div>
@@ -200,7 +203,7 @@ export default function AdminSettingsContent({
               type="email"
               value={v.emailFrom}
               onChange={(e) => setV({ ...v, emailFrom: e.target.value })}
-              placeholder="hello@mkan.databayt.org"
+              placeholder={a.settingsEmailFromPlaceholder ?? "hello@mkan.databayt.org"}
               dir="ltr"
             />
           </div>
@@ -211,7 +214,7 @@ export default function AdminSettingsContent({
               type="email"
               value={v.supportEmail}
               onChange={(e) => setV({ ...v, supportEmail: e.target.value })}
-              placeholder="support@mkan.databayt.org"
+              placeholder={a.settingsSupportEmailPlaceholder ?? "support@mkan.databayt.org"}
               dir="ltr"
             />
           </div>

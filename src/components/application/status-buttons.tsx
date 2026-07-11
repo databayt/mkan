@@ -5,6 +5,7 @@ import { ApplicationStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useDictionary } from "@/components/internationalization/dictionary-context";
 
 interface ApplicationStatusButtonsProps {
   applicationId: number;
@@ -15,6 +16,8 @@ export function ApplicationStatusButtons({
   applicationId, 
   currentStatus 
 }: ApplicationStatusButtonsProps) {
+  const dict = useDictionary();
+  const t = (dict.application as unknown as { statusButtons?: Record<string, string> })?.statusButtons;
   const [isUpdating, setIsUpdating] = useState(false);
   const router = useRouter();
 
@@ -24,11 +27,15 @@ export function ApplicationStatusButtons({
     setIsUpdating(true);
     try {
       await updateApplicationStatus(applicationId, status);
-      toast.success(`Application ${status.toLowerCase()} successfully!`);
+      toast.success(
+        status === "Approved"
+          ? (t?.approvedSuccess ?? "Application approved successfully!")
+          : (t?.deniedSuccess ?? "Application denied successfully!")
+      );
       router.refresh();
     } catch (error) {
       console.error("Error updating application status:", error);
-      toast.error("Failed to update application status");
+      toast.error(t?.updateError ?? "Failed to update application status");
     } finally {
       setIsUpdating(false);
     }
@@ -42,14 +49,14 @@ export function ApplicationStatusButtons({
           onClick={() => handleStatusChange("Approved")}
           disabled={isUpdating}
         >
-          {isUpdating ? "Updating..." : "Approve"}
+          {isUpdating ? (t?.updating ?? "Updating...") : (t?.approve ?? "Approve")}
         </button>
         <button
           className="px-4 py-2 text-sm text-white bg-red-600 rounded hover:bg-red-500 disabled:opacity-50"
           onClick={() => handleStatusChange("Denied")}
           disabled={isUpdating}
         >
-          {isUpdating ? "Updating..." : "Deny"}
+          {isUpdating ? (t?.updating ?? "Updating...") : (t?.deny ?? "Deny")}
         </button>
       </>
     );
@@ -61,7 +68,7 @@ export function ApplicationStatusButtons({
         className={`bg-gray-800 text-white py-2 px-4 rounded-md flex items-center
         justify-center hover:bg-secondary-500 hover:text-primary-50`}
       >
-        Contact User
+        {t?.contactUser ?? "Contact User"}
       </button>
     );
   }

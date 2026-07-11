@@ -19,6 +19,7 @@ import React, {
 } from "react";
 import { toast } from "sonner";
 import { getListing, updateListing } from "@/lib/actions/listing-actions";
+import { useDictionary } from "@/components/internationalization/use-dictionary";
 
 export type EditorListing = Awaited<ReturnType<typeof getListing>>;
 export type ListingPatch = Record<string, unknown>;
@@ -47,6 +48,7 @@ export function EditorProvider({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const dict = useDictionary();
 
   const load = useCallback(async () => {
     if (!listingId || Number.isNaN(listingId)) return;
@@ -74,21 +76,21 @@ export function EditorProvider({
         const res = await updateListing(listingId, patch);
         if (res?.success && res.listing) {
           setListing(res.listing as EditorListing);
-          toast.success("Changes saved");
+          toast.success(dict?.listingEditor?.common?.savedToast ?? "Changes saved");
           return true;
         }
-        toast.error("Could not save changes");
+        toast.error(dict?.listingEditor?.common?.saveFailedToast ?? "Could not save changes");
         return false;
       } catch (err) {
         toast.error(
-          err instanceof Error ? err.message : "Could not save changes"
+          err instanceof Error ? err.message : (dict?.listingEditor?.common?.saveFailedToast ?? "Could not save changes")
         );
         return false;
       } finally {
         setSaving(false);
       }
     },
-    [listingId]
+    [listingId, dict]
   );
 
   const value = useMemo<EditorContextValue>(

@@ -211,7 +211,7 @@ export default function SearchTabs({ className = "" }: SearchTabsProps) {
       style={{ gap: 32 }}
       className={`flex items-center ${className}`}
       role="tablist"
-      aria-label="Search categories"
+      aria-label={dict?.search?.searchCategories ?? "Search categories"}
     >
       {tabs.map((tab) => (
         <TabButton

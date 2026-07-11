@@ -8,6 +8,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { useEditor, type EditorListing } from "./editor-context";
+import { useDictionary } from "@/components/internationalization/use-dictionary";
 
 /**
  * Tracks local edits against the server value. Resets automatically when the
@@ -48,6 +49,7 @@ export function Stepper({
   label: string;
   hint?: string;
 }) {
+  const dict = useDictionary();
   return (
     <div className="flex items-center justify-between gap-4 border-b border-border py-6 last:border-b-0">
       <div>
@@ -57,7 +59,7 @@ export function Stepper({
       <div className="flex shrink-0 items-center gap-4">
         <button
           type="button"
-          aria-label={`Decrease ${label}`}
+          aria-label={(dict?.listingEditor?.numberOfGuests?.decreaseLabel ?? "Decrease {label}").replace("{label}", label)}
           onClick={() => onChange(Math.max(min, value - 1))}
           disabled={value <= min}
           className="flex size-8 items-center justify-center rounded-full border border-input text-foreground transition hover:border-foreground disabled:cursor-not-allowed disabled:opacity-30"
@@ -69,7 +71,7 @@ export function Stepper({
         <span className="w-6 text-center tabular-nums font-medium">{value}</span>
         <button
           type="button"
-          aria-label={`Increase ${label}`}
+          aria-label={(dict?.listingEditor?.numberOfGuests?.increaseLabel ?? "Increase {label}").replace("{label}", label)}
           onClick={() => onChange(Math.min(max, value + 1))}
           disabled={value >= max}
           className="flex size-8 items-center justify-center rounded-full border border-input text-foreground transition hover:border-foreground disabled:cursor-not-allowed disabled:opacity-30"

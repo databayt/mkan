@@ -13,6 +13,7 @@ import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css';
 
 import { useImageUpload } from '@/hooks/use-image-upload';
 import { cn } from '@/lib/utils';
+import { useDictionary } from '@/components/internationalization/use-dictionary';
 
 // Register FilePond plugins
 registerPlugin(
@@ -40,6 +41,7 @@ export function ImageUpload({
   onImagesChange,
   className,
 }: ImageUploadProps) {
+  const dict = useDictionary();
   const [files, setFiles] = useState<FilePondFile[]>([]);
   const [imageUrls, setImageUrls] = useState<string[]>(existingImages);
 
@@ -88,7 +90,7 @@ export function ImageUpload({
       {imageUrls.length > 0 && (
         <div className="mt-4">
           <h4 className="text-sm font-medium text-gray-700 mb-2">
-            Uploaded Images ({imageUrls.length})
+            {(dict?.common?.imageUpload?.uploadedImages ?? "Uploaded Images ({count})").replace("{count}", String(imageUrls.length))}
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {imageUrls.map((url, index) => (
@@ -96,7 +98,7 @@ export function ImageUpload({
                 {/* eslint-disable-next-line @next/next/no-img-element -- user-uploaded URL with unknown dimensions */}
                 <img
                   src={url}
-                  alt={`Upload ${index + 1}`}
+                  alt={(dict?.common?.imageUpload?.imageAlt ?? "Upload {number}").replace("{number}", String(index + 1))}
                   className="w-full h-32 object-cover rounded-lg"
                 />
                 <button

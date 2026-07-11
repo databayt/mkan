@@ -1,4 +1,4 @@
-import { getTripDetails } from '@/lib/actions/transport-actions';
+import { getTripDetails } from '@/lib/actions/travel-actions';
 import type { Locale } from '@/components/internationalization/config';
 import { TripDetailsContent } from './content';
 

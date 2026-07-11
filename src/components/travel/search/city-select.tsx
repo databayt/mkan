@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { Check, ChevronsUpDown, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
-import { cityLabel } from '@/components/transport/city-names';
+import { cityLabel } from '@/components/travel/city-names';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -44,7 +44,7 @@ export function CitySelect({
   const params = useParams();
   const lang = (params?.lang as string) ?? 'en';
   const dict = useDictionary();
-  const tc = dict?.transport?.citySelect;
+  const tc = dict?.travel?.citySelect;
   const [open, setOpen] = useState(false);
 
   // Group assembly points by city
@@ -100,7 +100,7 @@ export function CitySelect({
         >
           <div className="flex items-center">
             <MapPin className="me-2 h-4 w-4 text-muted-foreground" />
-            {value ? cityLabel(value, lang) : (placeholder ?? tc?.selectCity ?? 'Select city')}
+            {value ? cityLabel(value, lang) : (placeholder ?? (tc?.selectCity ?? 'Select city'))}
           </div>
           <ChevronsUpDown className="ms-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>

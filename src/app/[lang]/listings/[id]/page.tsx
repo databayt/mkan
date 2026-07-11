@@ -9,9 +9,10 @@ import MobileListingDetails from "@/components/listings/mobile-listing-details";
 import MobileReserve from "@/components/listings/mobile-reserve";
 import MobileReviews from "@/components/listings/mobile-reviews";
 import MobileMap from "@/components/listings/mobile-map";
-import MobileCalendar from "@/components/listings/mobile-calendar";
+import { MobileBookingProvider, MobileBookingCalendar } from "@/components/listings/mobile-booking";
 import MobileMeetHost from "@/components/listings/mobile-meet-host";
 import MobileThingsToKnow from "@/components/listings/mobile-things-to-know";
+import MobileReportListing from "@/components/listings/mobile-report-listing";
 import MoreStaysNearby, { type NearbyStay } from "@/components/listings/more-stays-nearby";
 import Review from "@/components/listings/review";
 import MeetHost from "@/components/listings/meet-host";
@@ -19,7 +20,7 @@ import Footer from "@/components/site/footer";
 import { createMetadata, SITE_URL } from "@/lib/metadata";
 import { JsonLd, listingJsonLd, breadcrumbJsonLd } from "@/components/seo/json-ld";
 import { getDictionary } from "@/components/internationalization/dictionaries";
-import { getListingReviews } from "@/lib/actions/review-actions";
+import { getListingReviews, getHostOtherReviewCount } from "@/lib/actions/review-actions";
 import { auth } from "@/lib/auth";
 import type { Locale } from "@/components/internationalization/config";
 import { localize, localizeNested, getText } from "@/components/translation/localize";
@@ -29,6 +30,21 @@ interface ListingPageProps {
     id: string;
     lang: Locale;
   }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}
+
+// Booking dates arrive as ?checkIn=yyyy-mm-dd (our /search convention) or
+// Airbnb-style ?check_in — accepted so shared links land with the footer
+// already priced. Anything malformed is dropped here; the client re-validates.
+function pickDateParam(
+  sp: Record<string, string | string[] | undefined>,
+  ...keys: string[]
+): string | undefined {
+  for (const key of keys) {
+    const v = sp[key];
+    if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  }
+  return undefined;
 }
 
 export async function generateMetadata({
@@ -102,9 +118,12 @@ async function getListingById(id: number, lang: Locale) {
   return localized;
 }
 
-export default async function ListingPage({ params }: ListingPageProps) {
+export default async function ListingPage({ params, searchParams }: ListingPageProps) {
   const resolvedParams = await params;
   const { id, lang } = resolvedParams;
+  const sp = (await searchParams) ?? {};
+  const initialCheckIn = pickDateParam(sp, "checkIn", "check_in");
+  const initialCheckOut = pickDateParam(sp, "checkOut", "check_out");
   const listingId = parseInt(id);
 
   if (isNaN(listingId)) {
@@ -131,9 +150,10 @@ export default async function ListingPage({ params }: ListingPageProps) {
   const end = new Date();
   const hostingMonths = Math.max(1, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()));
 
-  const [d, mobileReviewsResult, session, nearbyRaw] = await Promise.all([
+  const [d, mobileReviewsResult, hostOtherReviews, session, nearbyRaw] = await Promise.all([
     getDictionary(lang),
-    getListingReviews(listingId, { take: 8 }).catch(() => ({ reviews: [], total: 0 })),
+    getListingReviews(listingId, { take: 8 }, lang).catch(() => ({ reviews: [], total: 0 })),
+    getHostOtherReviewCount(listingId).catch(() => ({ count: 0, hostId: null, hostName: null })),
     auth(),
     // Nearby stays only need the already-loaded listing's city, so they run in
     // this wave instead of a later sequential round-trip (fewer stacked latencies).
@@ -171,7 +191,10 @@ export default async function ListingPage({ params }: ListingPageProps) {
 
   const mobileReviewItems = mobileReviewsResult.reviews.map((r) => ({
     id: r.id,
-    author: r.reviewer?.username ?? r.reviewer?.id?.slice(0, 8) ?? "Guest",
+    author:
+      r.reviewer?.username ??
+      r.reviewer?.id?.slice(0, 8) ??
+      ((d.rental?.reviewsList as Record<string, string> | undefined)?.guestAuthor ?? "Guest"),
     rating: r.rating,
     createdAt: r.createdAt as unknown as Date,
     comment: r.comment ?? null,
@@ -193,10 +216,6 @@ export default async function ListingPage({ params }: ListingPageProps) {
   } catch {
     nearbyStays = [];
   }
-
-  // The Dictionary type doesn't expose every leaf as a string; the booking/
-  // common copy is read via this flat cast (same pattern as the reserve card).
-  const dictStrings = d as unknown as Record<string, Record<string, string>>;
 
   const listingUrl = `${SITE_URL}/${lang}/listings/${listingId}`;
 
@@ -242,7 +261,13 @@ export default async function ListingPage({ params }: ListingPageProps) {
             <ListingDetailsClient
               listing={serializedListing}
               initialIsSaved={initialIsSaved}
-              reviewsSlot={<Review listingId={listingId} lang={lang} />}
+              reviewsSlot={
+                <Review
+                  listingId={listingId}
+                  lang={lang}
+                  curatedGuestFavorite={serializedListing.isGuestFavorite ?? false}
+                />
+              }
               meetHostSlot={
                 <MeetHost
                   hostUser={serializedListing.host ?? null}
@@ -267,31 +292,38 @@ export default async function ListingPage({ params }: ListingPageProps) {
             stays={nearbyStays}
             lang={lang}
             heading={d.rental?.listing?.moreStaysNearby ?? "More stays nearby"}
-            perNight={dictStrings.booking?.perNight ?? "night"}
-            currency={dictStrings.common?.currency ?? "$"}
+            newLabel={d.rental?.searchPage?.new ?? "New"}
           />
         </div>
       </div>
 
-      {/* Mobile Layout — section order mirrors the live Airbnb PDP:
-          overview/highlights/description/amenities (MobileListingDetails) →
-          reviews → location → calendar → meet-your-host → things-to-know →
-          similar listings → fixed reserve bar. pb-24 clears the reserve bar. */}
-      <div className="md:hidden pb-24">
+      {/* Mobile Layout — section order mirrors the live Airbnb PDP (room 40938334):
+          overview/highlights/description/where-you-sleep/amenities
+          (MobileListingDetails) → location → calendar → reviews → meet-your-host →
+          things-to-know → similar listings → report → fixed reserve bar. The
+          reviews block keeps id="mobile-reviews-section" so the overview rating
+          banner still scroll-jumps to it. The site footer below is the last
+          scrollable content and its own pb-24 clears the fixed reserve bar, so
+          this only needs a small tail after the report row (not the full bar
+          height). MobileBookingProvider keeps the inline calendar and the fixed
+          footer on one date range, Airbnb-style. */}
+      <div className="md:hidden pb-10">
+        <MobileBookingProvider
+          listingId={listingId}
+          pricePerNight={serializedListing.pricePerNight || 700}
+          cleaningFee={serializedListing.cleaningFee ?? 0}
+          city={serializedListing.location?.city ?? ""}
+          phone={serializedListing.host?.phoneNumber || "+249915494649"}
+          rating={serializedListing.averageRating ?? 0}
+          reviewsCount={serializedListing.numberOfReviews ?? 0}
+          initialCheckIn={initialCheckIn}
+          initialCheckOut={initialCheckOut}
+        >
         <Suspense fallback={<div>{d.rental?.listing?.loading}</div>}>
           <MobileListingDetails
             listing={serializedListing}
             images={serializedListing.photoUrls || []}
           />
-        </Suspense>
-        <Suspense fallback={<div>{d.rental?.listing?.loadingReviews}</div>}>
-          <div id="mobile-reviews-section">
-            <MobileReviews
-              reviews={mobileReviewItems}
-              averageRating={serializedListing.averageRating ?? undefined}
-              totalReviews={serializedListing.numberOfReviews ?? mobileReviewsResult.total}
-            />
-          </div>
         </Suspense>
         <Suspense fallback={<div>{d.rental?.listing?.loadingMap}</div>}>
           <MobileMap
@@ -302,7 +334,19 @@ export default async function ListingPage({ params }: ListingPageProps) {
             country={serializedListing.location?.country}
           />
         </Suspense>
-        <MobileCalendar city={serializedListing.location?.city ?? undefined} />
+        <MobileBookingCalendar />
+        <Suspense fallback={<div>{d.rental?.listing?.loadingReviews}</div>}>
+          <div id="mobile-reviews-section">
+            <MobileReviews
+              reviews={mobileReviewItems}
+              averageRating={serializedListing.averageRating ?? undefined}
+              totalReviews={serializedListing.numberOfReviews ?? mobileReviewsResult.total}
+              hostReviewCount={hostOtherReviews.count}
+              hostId={hostOtherReviews.hostId ?? undefined}
+              curatedGuestFavorite={serializedListing.isGuestFavorite ?? false}
+            />
+          </div>
+        </Suspense>
         <MobileMeetHost
           hostUser={serializedListing.host ?? null}
           reviewsCount={serializedListing.numberOfReviews ?? undefined}
@@ -311,24 +355,22 @@ export default async function ListingPage({ params }: ListingPageProps) {
           hostingMonths={hostingMonths}
         />
         <MobileThingsToKnow maxGuests={serializedListing.guestCount ?? undefined} />
-        <div className="px-4">
+        <div className="px-6">
           <MoreStaysNearby
             stays={nearbyStays}
             lang={lang}
             heading={d.rental?.listing?.moreStaysNearby ?? "More stays nearby"}
-            perNight={dictStrings.booking?.perNight ?? "night"}
-            currency={dictStrings.common?.currency ?? "$"}
+            newLabel={d.rental?.searchPage?.new ?? "New"}
           />
         </div>
-        <Suspense fallback={<div>{d.rental?.listing?.loading}</div>}>
-          <MobileReserve
-            pricePerNight={serializedListing.pricePerNight || 700}
-            hostEmail={serializedListing.host?.phoneNumber || "+249915494649"}
-          />
-        </Suspense>
+        {/* REPORT_TO_AIRBNB — the closing row of the live mobile PDP (report →
+            seo). Opens the reason → detail → confirmation report flow. */}
+        <MobileReportListing listingId={listingId} />
+        <MobileReserve />
+        </MobileBookingProvider>
       </div>
 
-      <div className="pb-24 md:pb-0 bg-gray-100">
+      <div className="pb-32 md:pb-0 bg-gray-100">
         <Footer />
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { getBooking } from '@/lib/actions/transport-actions';
+import { getBooking } from '@/lib/actions/travel-actions';
 import type { Locale } from '@/components/internationalization/config';
 import { BookingConfirmationContent } from './content';
 

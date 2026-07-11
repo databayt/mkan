@@ -11,6 +11,7 @@ const t = {
   en: {
     heading: "Refer a host, earn cash",
     yourReferrals: "Your referrals",
+    moreWays: "More ways to share",
     share: "Share referral link",
     copied: "Link copied",
     home: "Home",
@@ -27,6 +28,7 @@ const t = {
   ar: {
     heading: "أحِل مضيفاً، واكسب نقوداً",
     yourReferrals: "إحالاتك",
+    moreWays: "طرق أخرى للمشاركة",
     share: "مشاركة رابط الإحالة",
     copied: "تم نسخ الرابط",
     home: "منزل",
@@ -89,7 +91,7 @@ export default function ReferContent() {
             </button>
             {/* "More ways to share" — 40px circle with the 3-dot overflow icon. */}
             <button
-              aria-label="More ways to share"
+              aria-label={labels.moreWays}
               className="flex h-10 w-10 items-center justify-center rounded-full transition-colors"
               style={{ backgroundColor: "#f2f2f2", color: "#222222" }}
             >

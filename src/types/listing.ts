@@ -21,6 +21,7 @@ export interface Listing {
   postedDate: Date | null;
   averageRating?: number | null;
   numberOfReviews?: number | null;
+  isGuestFavorite?: boolean;
   draft: boolean;
   isPublished: boolean;
   instantBook?: boolean;

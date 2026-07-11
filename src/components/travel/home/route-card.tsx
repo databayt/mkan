@@ -2,15 +2,44 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { cityLabel } from "@/components/transport/city-names";
+import { cityLabel } from "@/components/travel/city-names";
 import { formatCurrency } from "@/lib/i18n/formatters";
 import type { Locale } from "@/components/internationalization/config";
 import { PropertyImageFallback } from "@/components/atom/property-image-fallback";
 import {
-  routeMapThumbUrl,
   routeSearchHref,
   type PopularRoute,
 } from "./route-utils";
+
+export function getCityPhotoUrl(cityName: string): string {
+  const normalized = cityName.trim();
+  if (normalized === "Khartoum") return "/destinations/khartoum.jpg";
+  if (normalized === "Omdurman") return "/destinations/omdurman.jpg";
+  if (normalized === "Port Sudan" || normalized === "Portsudan") return "/destinations/port-sudan.jpg";
+  if (normalized === "Atbara") return "/destinations/atbara.jpg";
+  if (normalized === "Kassala") return "/destinations/kassala.jpg";
+  if (normalized === "Wad Madani" || normalized === "Madani") return "/destinations/wad-madani.jpg";
+  if (normalized === "Dongola") return "/destinations/dongola.jpg";
+  if (normalized === "Gedaref") return "/destinations/gedaref.jpg";
+
+  // Fallback cycle based on name hash
+  const allPhotos = [
+    "/destinations/port-sudan.jpg",
+    "/destinations/khartoum.jpg",
+    "/destinations/omdurman.jpg",
+    "/destinations/atbara.jpg",
+    "/destinations/kassala.jpg",
+    "/destinations/wad-madani.jpg",
+    "/destinations/dongola.jpg",
+    "/destinations/gedaref.jpg",
+  ];
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i++) {
+    hash = normalized.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % allPhotos.length;
+  return allPhotos[index]!;
+}
 
 export interface RouteCardDictionary {
   /** e.g. "From" — price prefix. */
@@ -33,7 +62,7 @@ interface RouteCardProps {
 
 /**
  * Airbnb listing-card anatomy applied to an intercity bus route: 4/3 image
- * (a static route map), pill badge over the image, then the three text rows
+ * (a photo of the destination city), pill badge over the image, then the three text rows
  * — title, caption, price — mirroring `site/property/card.tsx` so the
  * transport landing reads as the same marketplace as homes.
  */
@@ -47,7 +76,7 @@ export function RouteCard({
   const fromLabel = cityLabel(route.origin.city, lang);
   const toLabel = cityLabel(route.destination.city, lang);
   const hours = Math.max(1, Math.round(route.duration / 60));
-  const thumb = routeMapThumbUrl(route);
+  const thumb = getCityPhotoUrl(route.destination.city);
   const boardingPoint =
     lang === "ar" ? (route.origin.nameAr ?? route.origin.name) : route.origin.name;
 
@@ -65,7 +94,7 @@ export function RouteCard({
               alt={`${fromLabel} → ${toLabel}`}
               fill
               unoptimized
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              className="object-cover"
               sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 85vw"
             />
           ) : (
@@ -81,21 +110,14 @@ export function RouteCard({
 
       {/* Content */}
       <div className="space-y-1">
-        <div className="flex items-center gap-1.5 text-sm text-gray-900">
-          <span className="truncate font-normal">{fromLabel}</span>
-          <ArrowRight className="h-3.5 w-3.5 shrink-0 text-gray-500 rtl:rotate-180" />
-          <span className="truncate font-normal">{toLabel}</span>
-        </div>
-
-        <div className="text-gray-500 text-xs truncate">
-          {dictionary.from} {boardingPoint}
+        <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+          <span className="truncate">{toLabel}</span>
         </div>
 
         <div className="text-xs">
           <span className="font-medium text-gray-900">
             {dictionary.pricePrefix} {formatCurrency(route.basePrice, lang)}
           </span>
-          <span className="text-gray-500"> {dictionary.perSeat}</span>
         </div>
       </div>
     </Link>

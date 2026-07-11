@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { localize, getText } from "@/components/translation/localize";
+import { getDisplayLang } from "@/components/translation/locale";
 
 // ============================================
 // Host ⇄ guest messaging (Airbnb /hosting/messages). The inbox is host-centric
@@ -75,7 +77,7 @@ export async function getConversations(): Promise<ConversationListItem[]> {
     },
   });
 
-  return convos.map((c) => ({
+  const items: ConversationListItem[] = convos.map((c) => ({
     id: c.id,
     guestName: c.guest.username ?? "Guest",
     guestImage: c.guest.image ?? null,
@@ -86,6 +88,14 @@ export async function getConversations(): Promise<ConversationListItem[]> {
     unread: !c.hostReadAt || c.hostReadAt < c.lastMessageAt,
     subject: c.subject,
   }));
+
+  // Localize the host-authored listing title for the viewer's display language
+  // (cookie-derived). Message bodies/previews are private chat — kept verbatim.
+  return (await localize(
+    items as unknown as Array<Record<string, unknown>>,
+    ["listingTitle"],
+    await getDisplayLang(),
+  )) as unknown as ConversationListItem[];
 }
 
 // ---------- detail (one thread) ----------
@@ -128,7 +138,11 @@ export async function getConversation(id: unknown): Promise<ConversationDetail |
     guestName: c.guest.username ?? "Guest",
     guestImage: c.guest.image ?? null,
     listingId: c.listingId,
-    listingTitle: c.listing?.title ?? null,
+    // Listing title is host-authored content — localize for the viewer.
+    // Messages and subject stay verbatim (private user-to-user chat).
+    listingTitle: c.listing?.title
+      ? await getText(c.listing.title, await getDisplayLang())
+      : null,
     listingPhoto: c.listing?.photoUrls?.[0] ?? null,
     bookingId: c.bookingId,
     subject: c.subject,

@@ -4,6 +4,7 @@ import { useState } from "react"
 import NavThumbnails from "./nav-thumbnails"
 import { PropertyImageFallback } from "@/components/atom/property-image-fallback"
 import { PropertyImage } from "@/components/atom/property-image"
+import { useDictionary } from "@/components/internationalization/use-dictionary"
 
 interface PhotoSection {
   id: string
@@ -58,6 +59,7 @@ const mockSections: PhotoSection[] = [
 ]
 
 export default function PhotoTour({ sections = mockSections }: PhotoTourProps) {
+  const dict = useDictionary()
   const [selectedSection, setSelectedSection] = useState<string>(sections[0]?.id || "")
 
   const scrollToSection = (sectionId: string) => {
@@ -83,7 +85,7 @@ export default function PhotoTour({ sections = mockSections }: PhotoTourProps) {
   return (
     <div className=" px-20">
       {/* Title */}
-      <h3 className="text-2xl mb-8">Photo tour</h3>
+      <h3 className="text-2xl mb-8">{dict?.listings?.photoTour?.heading ?? "Photo tour"}</h3>
 
              {/* Navigation Thumbnails */}
        <NavThumbnails
@@ -114,7 +116,9 @@ export default function PhotoTour({ sections = mockSections }: PhotoTourProps) {
                  >
                    <PropertyImage
                      src={photo}
-                     alt={`${section.label} photo ${index + 1}`}
+                     alt={(dict?.listings?.photoTour?.photoAlt ?? "{label} photo {number}")
+                       .replace("{label}", section.label)
+                       .replace("{number}", String(index + 1))}
                      variant="full"
                      className="transition-transform duration-300 group-hover:scale-105"
                    />

@@ -47,7 +47,7 @@ const FALLBACK_TESTIMONIALS: Testimonial[] = [
 export function TransportTestimonials({ lang = 'ar' }: { lang?: string }) {
   void lang;
   const dict = useDictionary();
-  const td = dict?.transport?.testimonials;
+  const td = dict?.travel?.testimonials;
   const testimonials: Testimonial[] = (td?.items as Testimonial[] | undefined) ?? FALLBACK_TESTIMONIALS;
 
   const [current, setCurrent] = useState(0);
@@ -91,14 +91,14 @@ export function TransportTestimonials({ lang = 'ar' }: { lang?: string }) {
                 <button
                   onClick={prev}
                   className="w-9 h-9 rounded-full border hover:bg-muted flex items-center justify-center transition-colors"
-                  aria-label="Previous testimonial"
+                  aria-label={td?.previous ?? "Previous testimonial"}
                 >
                   <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
                 </button>
                 <button
                   onClick={next}
                   className="w-9 h-9 rounded-full border hover:bg-muted flex items-center justify-center transition-colors"
-                  aria-label="Next testimonial"
+                  aria-label={td?.next ?? "Next testimonial"}
                 >
                   <ChevronRight className="h-4 w-4 rtl:rotate-180" />
                 </button>
@@ -115,7 +115,10 @@ export function TransportTestimonials({ lang = 'ar' }: { lang?: string }) {
                     'w-2 h-2 rounded-full transition-all',
                     i === current ? 'bg-primary w-6' : 'bg-muted-foreground/30'
                   )}
-                  aria-label={`Go to testimonial ${i + 1}`}
+                  aria-label={(td?.goTo ?? "Go to testimonial {number}").replace(
+                    "{number}",
+                    String(i + 1)
+                  )}
                 />
               ))}
             </div>

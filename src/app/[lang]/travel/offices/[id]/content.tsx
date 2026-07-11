@@ -22,12 +22,12 @@ import { ar, enUS } from 'date-fns/locale';
 import type {
   getTransportOffice,
   getOfficeTrips,
-} from '@/lib/actions/transport-actions';
+} from '@/lib/actions/travel-actions';
 import type { Dictionary } from '@/components/internationalization/dictionaries';
 import type { Locale } from '@/components/internationalization/config';
 import { formatCurrency, formatNumber } from '@/lib/i18n/formatters';
-import { busAmenityIcon, busAmenityLabel } from '@/components/transport/amenity-icons';
-import { cityLabel } from '@/components/transport/city-names';
+import { busAmenityIcon, busAmenityLabel } from '@/components/travel/amenity-icons';
+import { cityLabel } from '@/components/travel/city-names';
 
 type OfficeDetails = Awaited<ReturnType<typeof getTransportOffice>>;
 type Trips = Awaited<ReturnType<typeof getOfficeTrips>>;
@@ -40,7 +40,7 @@ interface OfficeContentProps {
 }
 
 export function OfficeContent({ office, trips, lang, dictionary }: OfficeContentProps) {
-  const t = dictionary.transport;
+  const t = dictionary.travel;
   const dateLocale = lang === 'ar' ? ar : enUS;
   const amenityLabels = t?.host?.amenityLabels as Partial<Record<string, string>> | undefined;
 
@@ -49,7 +49,7 @@ export function OfficeContent({ office, trips, lang, dictionary }: OfficeContent
       <div className="container mx-auto py-8 px-4 text-center">
         <h1 className="text-2xl font-bold">{t.office.notFound}</h1>
         <Button asChild className="mt-4">
-          <Link href={`/${lang}/transport/offices`}>{t.office.backToOffices}</Link>
+          <Link href={`/${lang}/travel/offices`}>{t.office.backToOffices}</Link>
         </Button>
       </div>
     );
@@ -240,7 +240,7 @@ export function OfficeContent({ office, trips, lang, dictionary }: OfficeContent
                   {trips.slice(0, 5).map((trip) => (
                     <Link
                       key={trip.id}
-                      href={`/${lang}/transport/trips/${trip.id}`}
+                      href={`/${lang}/travel/trips/${trip.id}`}
                       className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                     >
                       <div>

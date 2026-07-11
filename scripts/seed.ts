@@ -1,7 +1,6 @@
 import crypto from 'crypto'
-import { PrismaClient, PropertyType, Amenity, Highlight } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { PropertyType, Amenity, Highlight } from '@prisma/client'
+import { db as prisma } from '../src/lib/db'
 
 async function main() {
   console.log('🌱 Starting seed process...')

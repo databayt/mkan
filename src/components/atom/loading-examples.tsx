@@ -1,4 +1,6 @@
 "use client";
+// i18n-exempt-file — internal Loading-component showcase; not imported by any
+// route or component (zero importers in src/), never user-facing.
 
 import React, { useState } from "react";
 import Loading from "./loading";

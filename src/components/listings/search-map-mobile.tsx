@@ -264,7 +264,7 @@ export default function SearchMapMobile({
 
         {!hasToken && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-xs text-gray-500">
-            Map unavailable — set NEXT_PUBLIC_MAPBOX_TOKEN
+            {dict?.search?.map?.unavailable ?? "Map unavailable — set NEXT_PUBLIC_MAPBOX_TOKEN"}
           </div>
         )}
 

@@ -29,7 +29,7 @@ export default async function AdminLayout({
     overview: adminDict.overview ?? "Overview",
     users: adminDict.users ?? "Users",
     homes: adminDict.homes ?? "Homes",
-    transport: adminDict.transport ?? "Transport",
+    transport: adminDict.transport ?? "Travel",
     bookings: adminDict.bookings ?? "Bookings",
     payments: adminDict.payments ?? "Payments",
     settings: adminDict.settings ?? "Settings",

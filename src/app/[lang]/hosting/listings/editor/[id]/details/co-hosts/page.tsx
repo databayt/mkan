@@ -73,7 +73,7 @@ export default function CoHostsPage() {
               </div>
               <button
                 type="button"
-                aria-label="Remove"
+                aria-label={dict?.listingEditor?.common?.remove ?? "Remove"}
                 onClick={() => setValue(value.filter((x) => x !== e))}
                 className="text-muted-foreground hover:text-foreground"
               >

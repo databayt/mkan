@@ -8,6 +8,7 @@ import TravelSearchHeader from '@/components/travel/search/travel-search-header'
 import { FiltersPanel } from '@/components/travel/search/filters-panel';
 import { TravelSearchResultsArea } from '@/components/travel/search/travel-search-results-area';
 import { parseSearchParams } from '@/components/travel/search/url-state';
+import Footer from '@/components/site/footer';
 import {
   getAssemblyPoints,
   searchTrips,
@@ -147,7 +148,7 @@ export default async function SearchPage({
   };
 
   return (
-    <div className="min-h-screen bg-[#ebedf1] dark:bg-background">
+    <div className="min-h-screen bg-[#F7F7F7] dark:bg-background">
       {/* Search header — homes-style expanding pill (route · date · seats) that
           blooms into the full TransportBigSearch fields with the same motion. */}
       <TravelSearchHeader
@@ -182,6 +183,7 @@ export default async function SearchPage({
         t={t}
         minDuration={minDuration}
       />
+      <Footer />
     </div>
   );
 }

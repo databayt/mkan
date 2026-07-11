@@ -31,7 +31,7 @@ export function PropertyImageFallback({
     >
       <Image
         src={cdn.product("property-placeholder.svg")}
-        alt="No image available"
+        alt=""
         fill
         // Static vector placeholder served straight from the CDN. We keep
         // `unoptimized` on purpose: rasterizing an SVG through the optimizer

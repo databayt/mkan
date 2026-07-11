@@ -150,7 +150,7 @@ const ListingSidebar = () => {
         ))}
         <button
           type="button"
-          aria-label="Settings"
+          aria-label={t("settings", "Settings")}
           className="ms-auto pb-3 text-muted-foreground hover:text-foreground"
         >
           <GearIcon size={18} />

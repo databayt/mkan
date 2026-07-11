@@ -451,8 +451,8 @@ export const ListView: React.FC<IconProps> = ({
   <svg
     viewBox="0 0 32 32"
     xmlns="http://www.w3.org/2000/svg"
-    aria-label="Change to List view"
-    role="img"
+    aria-hidden="true"
+    role="presentation"
     focusable="false"
     style={{ display: 'block', fill: 'none', height: `${size}px`, width: `${size}px`, stroke: fill, strokeWidth: 2, overflow: 'visible' }}
     className={className}
@@ -469,8 +469,8 @@ export const GridView: React.FC<IconProps> = ({
   <svg
     viewBox="0 0 32 32"
     xmlns="http://www.w3.org/2000/svg"
-    aria-label="Change to grid view"
-    role="img"
+    aria-hidden="true"
+    role="presentation"
     focusable="false"
     style={{ display: 'block', fill: 'none', height: `${size}px`, width: `${size}px`, stroke: fill, strokeWidth: 2, overflow: 'visible' }}
     className={className}
