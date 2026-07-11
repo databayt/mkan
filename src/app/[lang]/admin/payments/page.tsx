@@ -103,6 +103,7 @@ export default async function AdminPaymentsPage({
                 reject: a.reject ?? "Reject",
                 approved: a.paymentApproved ?? "Payment approved — booking confirmed.",
                 rejected: a.paymentRejected ?? "Payment rejected.",
+                actionFailed: a.actionError ?? "Action failed",
               }}
             />
           </div>

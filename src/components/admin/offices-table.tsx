@@ -28,11 +28,14 @@ import {
 import {
   adminDeleteOffice,
   forceUnpublishOffice,
+  verifyOffice,
+  unverifyOffice,
 } from "@/lib/actions/admin-actions";
 
 type AdminOffice = {
   id: number;
   name: string;
+  nameAr?: string | null;
   isActive: boolean;
   isVerified: boolean;
   phone: string;
@@ -67,6 +70,10 @@ type Labels = {
   deactivatedToast: string;
   deletedToast: string;
   error: string;
+  verify: string;
+  unverify: string;
+  verifiedToast: string;
+  unverifiedToast: string;
 };
 
 export function OfficesTable({
@@ -134,14 +141,32 @@ function OfficeRow({
     });
   }
 
+  // Verification gates marketplace visibility (searchTrips filters on
+  // office.isVerified) — this is the admin's approve/revoke switch (T-OB.1).
+  function onToggleVerify() {
+    startTransition(async () => {
+      try {
+        if (office.isVerified) {
+          await unverifyOffice(office.id);
+          toast.success(labels.unverifiedToast);
+        } else {
+          await verifyOffice(office.id);
+          toast.success(labels.verifiedToast);
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : labels.error);
+      }
+    });
+  }
+
   return (
     <TableRow>
       <TableCell>
         <Link
-          href={`/${lang}/admin/transport/${office.id}`}
+          href={`/${lang}/admin/travel/${office.id}`}
           className="text-sm font-medium hover:underline"
         >
-          {office.name}
+          {lang === "ar" ? office.nameAr ?? office.name : office.name}
         </Link>
       </TableCell>
       <TableCell>
@@ -164,8 +189,16 @@ function OfficeRow({
       <TableCell className="text-center">{office._count.routes}</TableCell>
       <TableCell className="text-center">{office._count.bookings}</TableCell>
       <TableCell className="text-end space-x-2">
+        <Button
+          variant={office.isVerified ? "outline" : "default"}
+          size="sm"
+          disabled={isPending}
+          onClick={onToggleVerify}
+        >
+          {office.isVerified ? labels.unverify : labels.verify}
+        </Button>
         <Button variant="outline" size="sm" asChild>
-          <Link href={`/${lang}/transport/offices/${office.id}`} target="_blank">
+          <Link href={`/${lang}/travel/offices/${office.id}`} target="_blank">
             {labels.view}
           </Link>
         </Button>

@@ -150,10 +150,10 @@ const OfficeInfoPage = () => {
               });
               router.push(`/${lang}/travel-host/${newId}/assembly-point`);
             } else {
-              toast.error('Failed to create office');
+              toast.error(t?.createFailed ?? 'Failed to create office');
             }
           } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to create office');
+            toast.error(error instanceof Error ? error.message : (t?.createFailed ?? 'Failed to create office'));
           }
         }
       });

@@ -6,11 +6,13 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Calendar, Plus, Trash2, Clock, Bus as BusIcon } from 'lucide-react';
+import { Calendar, Plus, Trash2, Clock, Bus as BusIcon, ArrowRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -26,27 +28,38 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useTransportHostValidation } from '@/context/onboarding-validation-context';
-import { useTransportOffice } from '@/context/transport-office-context';
+import { useTransportOffice } from '@/context/travel-office-context';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { useLocale } from '@/components/internationalization/use-locale';
-import { formatCurrency } from '@/lib/i18n/formatters';
+import { formatCurrency, formatNumber } from '@/lib/i18n/formatters';
+import { cityLabel } from '@/components/travel/city-names';
 import {
-  createTrip,
+  createTripsBulk,
   deleteTrip,
   getTripsByOffice,
   getRoutesByOffice,
   getBusesByOffice,
-} from '@/lib/actions/transport-actions';
+} from '@/lib/actions/travel-actions';
 import { format, addDays } from 'date-fns';
+import { ar, enUS } from 'date-fns/locale';
 import HostStepLayout from '@/components/host/host-step-layout';
 
-const tripSchema = z.object({
-  routeId: z.number().min(1, 'Route is required'),
-  busId: z.number().min(1, 'Bus is required'),
-  departureDate: z.string().min(1, 'Date is required'),
-  departureTime: z.string().min(1, 'Time is required'),
-  price: z.number().min(1, 'Price is required'),
-});
+const tripSchema = z
+  .object({
+    routeId: z.number().min(1, 'Route is required'),
+    busId: z.number().min(1, 'Bus is required'),
+    departureDate: z.string().min(1, 'Date is required'),
+    departureTime: z.string().min(1, 'Time is required'),
+    price: z.number().min(1, 'Price is required'),
+    repeat: z.enum(['once', 'daily']),
+    endDate: z.string().optional(),
+    bothDirections: z.boolean(),
+    returnTime: z.string().optional(),
+  })
+  .refine((data) => data.repeat === 'once' || Boolean(data.endDate), {
+    message: 'End date is required for daily repeats',
+    path: ['endDate'],
+  });
 
 type TripFormData = z.infer<typeof tripSchema>;
 
@@ -58,13 +71,20 @@ const SchedulePage = () => {
   const { enableNext } = useTransportHostValidation();
   const { office } = useTransportOffice();
   const dict = useDictionary();
-  const t = dict.transport.host;
+  const t = dict.travel.host;
   const { locale } = useLocale();
   const [trips, setTrips] = useState<TripData[]>([]);
   const [routes, setRoutes] = useState<RouteData[]>([]);
   const [buses, setBuses] = useState<BusData[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const formDefaults = {
+    departureTime: '05:00',
+    departureDate: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
+    repeat: 'once' as const,
+    bothDirections: false,
+  };
 
   const {
     register,
@@ -75,14 +95,13 @@ const SchedulePage = () => {
     formState: { errors },
   } = useForm<TripFormData>({
     resolver: zodResolver(tripSchema),
-    defaultValues: {
-      departureTime: '05:00',
-      departureDate: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
-    },
+    defaultValues: formDefaults,
   });
 
   const selectedRouteId = watch('routeId');
   const selectedRoute = routes.find((r) => r.id === selectedRouteId);
+  const repeat = watch('repeat');
+  const bothDirections = watch('bothDirections');
 
   useEffect(() => {
     async function loadData() {
@@ -115,16 +134,6 @@ const SchedulePage = () => {
     }
   }, [selectedRoute, setValue]);
 
-  const calculateArrivalTime = (departureTime: string, durationMinutes: number) => {
-    const parts = departureTime.split(':').map(Number);
-    const hours = parts[0] ?? 0;
-    const minutes = parts[1] ?? 0;
-    const totalMinutes = hours * 60 + minutes + durationMinutes;
-    const arrivalHours = Math.floor(totalMinutes / 60) % 24;
-    const arrivalMins = totalMinutes % 60;
-    return `${arrivalHours.toString().padStart(2, '0')}:${arrivalMins.toString().padStart(2, '0')}`;
-  };
-
   const onSubmit = async (data: TripFormData) => {
     if (!office?.id) return;
 
@@ -133,27 +142,40 @@ const SchedulePage = () => {
     if (!route || !bus) return;
 
     try {
-      const tripData = {
+      // One code path for single and recurring: a one-off is just a
+      // one-day range. The server skips slots that already exist.
+      const result = await createTripsBulk({
         routeId: data.routeId,
         busId: data.busId,
-        departureDate: new Date(data.departureDate),
+        startDate: data.departureDate,
+        endDate: data.repeat === 'daily' ? (data.endDate ?? data.departureDate) : data.departureDate,
         departureTime: data.departureTime,
-        arrivalTime: calculateArrivalTime(data.departureTime, route.duration),
         price: data.price,
-        availableSeats: bus.capacity,
-      };
+        bothDirections: data.bothDirections,
+        returnTime: data.bothDirections ? data.returnTime || undefined : undefined,
+      });
 
-      const created = (await createTrip(tripData)) as TripData | null;
-      if (created) {
-        setTrips((prev) => [...prev, created]);
+      const createdTpl = t.tripsCreated ?? '{count} trips scheduled';
+      toast.success(createdTpl.replace('{count}', formatNumber(result.created, locale)));
+      if (result.skipped > 0) {
+        const skippedTpl = t.tripsSkipped ?? '{count} already-scheduled slots were skipped';
+        toast.info(skippedTpl.replace('{count}', formatNumber(result.skipped, locale)));
+      }
+      if (result.reverseRouteMissing) {
+        toast.warning(
+          t.reverseRouteMissing ??
+            'No opposite-direction route exists yet — only this direction was scheduled.',
+        );
       }
 
+      const officeTrips = await getTripsByOffice(office.id);
+      setTrips(officeTrips);
+
       setIsDialogOpen(false);
-      reset({
-        departureTime: '05:00',
-        departureDate: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
-      });
+      reset(formDefaults);
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to schedule trips';
+      toast.error(message);
       console.error('Error creating trip:', error);
     }
   };
@@ -169,10 +191,7 @@ const SchedulePage = () => {
 
   const handleDialogClose = () => {
     setIsDialogOpen(false);
-    reset({
-      departureTime: '05:00',
-      departureDate: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
-    });
+    reset(formDefaults);
   };
 
   const groupedTrips = trips.reduce((acc, trip) => {
@@ -194,7 +213,7 @@ const SchedulePage = () => {
           </p>
           <div className="p-4 bg-muted/50 rounded-lg">
             <p className="text-sm text-muted-foreground">
-              <strong>Tip:</strong> {t.scheduleTip}
+              <strong>{t.tip ?? 'Tip:'}</strong> {t.scheduleTip}
             </p>
           </div>
         </div>
@@ -241,7 +260,11 @@ const SchedulePage = () => {
                               key={route.id}
                               value={route.id.toString()}
                             >
-                              {route.origin.city} → {route.destination.city}
+                              <span className="inline-flex items-center gap-1">
+                                {cityLabel(route.origin.city, locale)}
+                                <ArrowRight className="h-3 w-3 rtl:rotate-180" />
+                                {cityLabel(route.destination.city, locale)}
+                              </span>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -268,7 +291,7 @@ const SchedulePage = () => {
                             <SelectItem key={bus.id} value={bus.id.toString()}>
                               {bus.plateNumber}
                               {bus.model && ` - ${bus.model}`} ({bus.capacity}{' '}
-                              seats)
+                              {t.seats})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -325,6 +348,71 @@ const SchedulePage = () => {
                       )}
                     </div>
 
+                    {/* Recurrence — one dialog schedules a whole month (T-FL.2) */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>{t.repeat ?? 'Repeat'}</Label>
+                        <Select
+                          value={repeat}
+                          onValueChange={(value) =>
+                            setValue('repeat', value as 'once' | 'daily')
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="once">{t.repeatOnce ?? 'One time'}</SelectItem>
+                            <SelectItem value="daily">{t.repeatDaily ?? 'Daily'}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {repeat === 'daily' && (
+                        <div className="space-y-2">
+                          <Label htmlFor="endDate">{t.untilDate ?? 'Until'} *</Label>
+                          <Input
+                            id="endDate"
+                            type="date"
+                            {...register('endDate')}
+                            min={format(new Date(), 'yyyy-MM-dd')}
+                          />
+                          {errors.endDate && (
+                            <p className="text-sm text-destructive">
+                              {errors.endDate.message}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Return leg on the opposite route (T-FL.3) */}
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={bothDirections}
+                          onCheckedChange={(checked) =>
+                            setValue('bothDirections', checked === true)
+                          }
+                        />
+                        {t.bothDirections ?? 'Also schedule the return direction'}
+                      </label>
+                      {bothDirections && (
+                        <div className="space-y-2">
+                          <Label htmlFor="returnTime">{t.returnTime ?? 'Return departure time'}</Label>
+                          <Input
+                            id="returnTime"
+                            type="time"
+                            {...register('returnTime')}
+                            placeholder="05:00"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            {t.returnTimeHint ??
+                              'Leave empty to reuse the outbound time. Requires a route in the opposite direction.'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex gap-2 pt-4">
                       <Button
                         type="button"
@@ -358,7 +446,9 @@ const SchedulePage = () => {
                     .map(([date, dateTrips]) => (
                       <div key={date}>
                         <h3 className="text-sm font-medium text-muted-foreground mb-3">
-                          {format(new Date(date), 'EEEE, MMMM d, yyyy')}
+                          {format(new Date(date), 'EEEE, MMMM d, yyyy', {
+                            locale: locale === 'ar' ? ar : enUS,
+                          })}
                         </h3>
                         <div className="space-y-3">
                           {dateTrips.map((trip) => (
@@ -370,19 +460,18 @@ const SchedulePage = () => {
                                 <div>
                                   <div className="flex items-center gap-2">
                                     <Clock className="h-4 w-4 text-muted-foreground" />
-                                    <span className="font-medium">
+                                    <span className="font-medium" dir="ltr">
                                       {trip.departureTime}
                                     </span>
-                                    <span className="text-muted-foreground">
-                                      →
-                                    </span>
-                                    <span className="text-muted-foreground">
+                                    <ArrowRight className="h-3 w-3 text-muted-foreground rtl:rotate-180" />
+                                    <span className="text-muted-foreground" dir="ltr">
                                       {trip.arrivalTime || '--:--'}
                                     </span>
                                   </div>
-                                  <p className="text-sm mt-1">
-                                    {trip.route.origin.city} →{' '}
-                                    {trip.route.destination.city}
+                                  <p className="text-sm mt-1 inline-flex items-center gap-1">
+                                    {cityLabel(trip.route.origin.city, locale)}
+                                    <ArrowRight className="h-3 w-3 rtl:rotate-180" />
+                                    {cityLabel(trip.route.destination.city, locale)}
                                   </p>
                                   <div className="flex items-center gap-2 mt-2">
                                     <Badge variant="outline" className="text-xs">
@@ -401,7 +490,7 @@ const SchedulePage = () => {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleDelete(trip.id)}
-                                  aria-label="Delete trip"
+                                  aria-label={t.deleteTrip ?? 'Delete trip'}
                                 >
                                   <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>

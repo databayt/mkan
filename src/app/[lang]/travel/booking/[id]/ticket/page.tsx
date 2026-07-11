@@ -1,41 +1,52 @@
 import QRCode from 'qrcode';
 
-import { getBooking } from '@/lib/actions/transport-actions';
+import { generateTicketData } from '@/lib/actions/travel-actions';
 import type { Locale } from '@/components/internationalization/config';
-import { TicketContent } from './content';
+import { TicketContent, type PassengerTicket } from './content';
 
 interface TicketPageProps {
   params: Promise<{ lang: Locale; id: string }>;
 }
 
+const QR_RENDER_OPTIONS = {
+  width: 200,
+  margin: 2,
+  color: { dark: '#000000', light: '#ffffff' },
+};
+
 export default async function TicketViewPage({ params }: TicketPageProps) {
   const { lang, id } = await params;
   const bookingId = Number(id);
 
-  // getBooking enforces auth + ownership server-side.
+  // generateTicketData enforces auth + ownership via getBooking, signs the
+  // QR payloads (HMAC), and persists the booking-level QR for validation.
   let booking = null;
+  let qrCodeUrl = '';
+  let passengerTickets: PassengerTicket[] = [];
   try {
-    booking = Number.isFinite(bookingId) ? await getBooking(bookingId) : null;
+    if (Number.isFinite(bookingId)) {
+      const ticket = await generateTicketData(bookingId);
+      booking = ticket.booking;
+      qrCodeUrl = await QRCode.toDataURL(ticket.qrData, QR_RENDER_OPTIONS);
+      passengerTickets = await Promise.all(
+        ticket.passengerTickets.map(async (pt) => ({
+          name: pt.passenger.name,
+          seatNumber: pt.passenger.seatNumber,
+          idCard: pt.passenger.idCard,
+          qrCodeUrl: await QRCode.toDataURL(pt.qrData, QR_RENDER_OPTIONS),
+        })),
+      );
+    }
   } catch {
     booking = null;
   }
 
-  // The QR payload mirrors what validateTicket scans for.
-  let qrCodeUrl = '';
-  if (booking) {
-    qrCodeUrl = await QRCode.toDataURL(
-      JSON.stringify({
-        ref: booking.bookingReference,
-        passenger: booking.passengerName,
-        seats: booking.seats.map((s) => s.seatNumber).join(','),
-      }),
-      {
-        width: 200,
-        margin: 2,
-        color: { dark: '#000000', light: '#ffffff' },
-      },
-    );
-  }
-
-  return <TicketContent booking={booking} qrCodeUrl={qrCodeUrl} lang={lang} />;
+  return (
+    <TicketContent
+      booking={booking}
+      qrCodeUrl={qrCodeUrl}
+      passengerTickets={passengerTickets}
+      lang={lang}
+    />
+  );
 }

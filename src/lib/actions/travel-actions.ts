@@ -42,8 +42,103 @@ import type {
 import { sanitizeInput, sanitizeEmail, sanitizePhone } from "@/lib/sanitization";
 import { logger } from "@/lib/logger";
 import { getStripe } from "@/lib/stripe";
+import { sendBookingConfirmationEmail } from "@/lib/mail";
+import { createHmac, timingSafeEqual } from "crypto";
 
 const idSchema = z.number().int().positive();
+
+// ============================================
+// TICKET SIGNING (HMAC-SHA256)
+// ============================================
+// QR payloads carry an HMAC so a gate agent's scan proves the ticket was
+// issued by us — plain-JSON QRs could be typed up by anyone. The secret
+// falls back to NEXTAUTH_SECRET so signing works without extra env setup.
+
+function ticketSecret(): string {
+  const secret = process.env.TICKET_QR_SECRET || process.env.NEXTAUTH_SECRET;
+  if (!secret) throw new Error('Ticket signing secret is not configured');
+  return secret;
+}
+
+function ticketSignature(ref: string, seat: string): string {
+  return createHmac('sha256', ticketSecret())
+    .update(`MKAN-TKT|${ref}|${seat}`)
+    .digest('base64url');
+}
+
+/** Signed QR payload for one booking (seat '' = whole-booking ticket). */
+function buildSignedQrPayload(ref: string, seat = ''): string {
+  return JSON.stringify({ v: 1, ref, ...(seat ? { seat } : {}), sig: ticketSignature(ref, seat) });
+}
+
+function verifyQrSignature(ref: string, seat: string, sig: string): boolean {
+  try {
+    const expected = Buffer.from(ticketSignature(ref, seat));
+    const actual = Buffer.from(String(sig));
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
+  } catch {
+    return false;
+  }
+}
+
+// ============================================
+// SEAT GRID GENERATION
+// ============================================
+// Bus.seatLayout (JSON, optional) drives the grid when present:
+//   { "rows": 12, "columns": 4, "blocked": ["A1"] }
+// Anything missing or malformed falls back to the classic 4-across layout.
+
+type ParsedSeatLayout = { rows: number; columns: number; blocked: Set<string> };
+
+function parseSeatLayout(seatLayout: unknown, capacity: number): ParsedSeatLayout {
+  const fallback: ParsedSeatLayout = {
+    rows: Math.ceil(capacity / 4),
+    columns: 4,
+    blocked: new Set<string>(),
+  };
+  if (!seatLayout || typeof seatLayout !== 'object') return fallback;
+  const layout = seatLayout as { rows?: unknown; columns?: unknown; blocked?: unknown };
+  const columns = Number(layout.columns);
+  const rows = Number(layout.rows);
+  if (!Number.isInteger(columns) || columns < 2 || columns > 6) return fallback;
+  const effectiveRows =
+    Number.isInteger(rows) && rows > 0 ? rows : Math.ceil(capacity / columns);
+  const blocked = new Set<string>(
+    Array.isArray(layout.blocked) ? layout.blocked.filter((b): b is string => typeof b === 'string') : [],
+  );
+  return { rows: effectiveRows, columns, blocked };
+}
+
+function buildSeatRows(tripId: number, capacity: number, seatLayout: unknown) {
+  const { rows, columns, blocked } = parseSeatLayout(seatLayout, capacity);
+  const seats: Array<{
+    tripId: number;
+    seatNumber: string;
+    row: number;
+    column: number;
+    seatType: string;
+    status: 'Available' | 'Blocked';
+  }> = [];
+  let available = 0;
+  for (let row = 1; row <= rows && available < capacity; row++) {
+    for (let col = 1; col <= columns && available < capacity; col++) {
+      const seatNumber = `${String.fromCharCode(64 + row)}${col}`;
+      const isBlocked = blocked.has(seatNumber);
+      const seatType =
+        col === 1 || col === columns ? 'window' : columns > 3 && col === 2 ? 'aisle' : 'middle';
+      seats.push({
+        tripId,
+        seatNumber,
+        row,
+        column: col,
+        seatType,
+        status: isBlocked ? 'Blocked' : 'Available',
+      });
+      if (!isBlocked) available++;
+    }
+  }
+  return seats;
+}
 
 // Cache tags for transport-wide reactive invalidation
 const TAG_ASSEMBLY_POINTS = 'transport:assembly-points';
@@ -1049,7 +1144,7 @@ export async function createTrip(data: TripFormData) {
   const [bus, route] = await Promise.all([
     db.bus.findUnique({
       where: { id: data.busId },
-      select: { capacity: true, officeId: true, office: { select: { ownerId: true } } },
+      select: { capacity: true, officeId: true, seatLayout: true, office: { select: { ownerId: true } } },
     }),
     db.route.findUnique({
       where: { id: data.routeId },
@@ -1091,36 +1186,184 @@ export async function createTrip(data: TripFormData) {
     },
   });
 
-  // Generate seats for the trip
-  const rows = Math.ceil(bus.capacity / 4); // Assuming 4 seats per row
-  const seats = [];
+  // Seat grid honours Bus.seatLayout (columns/rows/blocked) when configured.
+  const seats = buildSeatRows(trip.id, bus.capacity, bus.seatLayout);
+  await db.seat.createMany({ data: seats });
 
-  for (let row = 1; row <= rows; row++) {
-    for (let col = 1; col <= 4; col++) {
-      const seatNumber = `${String.fromCharCode(64 + row)}${col}`;
-      const seatType =
-        col === 1 || col === 4 ? 'window' : col === 2 ? 'aisle' : 'middle';
-
-      seats.push({
-        tripId: trip.id,
-        seatNumber,
-        row,
-        column: col,
-        seatType,
-        status: 'Available' as const,
-      });
-    }
+  // Blocked layout seats never sell — keep the trip counter honest.
+  const sellable = seats.filter((s) => s.status === 'Available').length;
+  if (sellable !== bus.capacity) {
+    await db.trip.update({ where: { id: trip.id }, data: { availableSeats: sellable } });
   }
-
-  await db.seat.createMany({
-    data: seats.slice(0, bus.capacity),
-  });
 
   revalidatePath('/[lang]/travel-host');
   revalidatePath('/[lang]/(dashboard)/offices');
   updateTag(TAG_TRIPS);
   updateTag(TAG_POPULAR_ROUTES);
   return trip;
+}
+
+const bulkTripsSchema = z.object({
+  routeId: z.number().int().positive(),
+  busId: z.number().int().positive(),
+  startDate: z.string().min(1),
+  endDate: z.string().min(1),
+  departureTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  price: z.number().positive(),
+  bothDirections: z.boolean().optional(),
+  returnTime: z
+    .string()
+    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .optional(),
+});
+
+// Guardrail: one bulk call covers at most ~2 months of daily departures.
+const MAX_BULK_TRIPS = 62;
+
+/**
+ * Recurring scheduler (T-FL.2/3): create a daily departure for every date in
+ * [startDate, endDate], optionally mirrored on the office's opposite route
+ * ("both directions"). Skips date+time slots that already have a trip on the
+ * same route so re-running is idempotent, and reports what happened so the
+ * UI can tell the operator.
+ */
+export async function createTripsBulk(data: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error('Unauthorized');
+  }
+
+  const parsed = bulkTripsSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error('Invalid schedule data');
+  }
+  const input = parsed.data;
+
+  const [bus, route] = await Promise.all([
+    db.bus.findUnique({
+      where: { id: input.busId },
+      select: { capacity: true, officeId: true, seatLayout: true, office: { select: { ownerId: true } } },
+    }),
+    db.route.findUnique({
+      where: { id: input.routeId },
+      select: {
+        officeId: true,
+        duration: true,
+        originId: true,
+        destinationId: true,
+        office: { select: { ownerId: true } },
+      },
+    }),
+  ]);
+  if (!bus) throw new Error('Bus not found');
+  if (!route) throw new Error('Route not found');
+  if (bus.officeId !== route.officeId) {
+    throw new Error('Bus and route must belong to the same office');
+  }
+  if (!canOverride(session, route.office.ownerId)) {
+    throw new Error('Not authorized to create trips for this office');
+  }
+
+  // Expand the date range in the market timezone.
+  const dates: Date[] = [];
+  {
+    const start = dayWindow(input.startDate).gte;
+    const end = dayWindow(input.endDate).gte;
+    if (end < start) throw new Error('End date must be after the start date');
+    for (
+      let cursor = new Date(start);
+      cursor <= end && dates.length < MAX_BULK_TRIPS;
+      cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000)
+    ) {
+      dates.push(new Date(cursor));
+    }
+  }
+
+  // "Both directions" mirrors the schedule on the same office's opposite
+  // route when one exists — operators almost always run A→B and B→A.
+  let reverseRoute: { id: number; duration: number } | null = null;
+  if (input.bothDirections) {
+    reverseRoute = await db.route.findFirst({
+      where: {
+        officeId: route.officeId,
+        originId: route.destinationId,
+        destinationId: route.originId,
+        isActive: true,
+      },
+      select: { id: true, duration: true },
+    });
+  }
+
+  const addMinutes = (time: string, minutes: number) => {
+    const [hh = 0, mm = 0] = time.split(':').map(Number);
+    const total = hh * 60 + mm + minutes;
+    const h = Math.floor(total / 60) % 24;
+    const m = total % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  };
+
+  const plans: Array<{ routeId: number; date: Date; time: string; duration: number }> = [];
+  for (const date of dates) {
+    plans.push({ routeId: input.routeId, date, time: input.departureTime, duration: route.duration });
+    if (reverseRoute) {
+      plans.push({
+        routeId: reverseRoute.id,
+        date,
+        time: input.returnTime || input.departureTime,
+        duration: reverseRoute.duration,
+      });
+    }
+  }
+
+  // Idempotency: skip slots that already carry a trip for the route+date+time.
+  const existing = await db.trip.findMany({
+    where: {
+      routeId: { in: [input.routeId, ...(reverseRoute ? [reverseRoute.id] : [])] },
+      departureDate: { gte: plans[0]!.date, lte: plans[plans.length - 1]!.date },
+    },
+    select: { routeId: true, departureDate: true, departureTime: true },
+  });
+  const taken = new Set(
+    existing.map((t) => `${t.routeId}|${t.departureDate.toISOString().slice(0, 10)}|${t.departureTime}`),
+  );
+
+  let created = 0;
+  let skipped = 0;
+  for (const plan of plans) {
+    const key = `${plan.routeId}|${plan.date.toISOString().slice(0, 10)}|${plan.time}`;
+    if (taken.has(key)) {
+      skipped++;
+      continue;
+    }
+    const trip = await db.trip.create({
+      data: {
+        routeId: plan.routeId,
+        busId: input.busId,
+        departureDate: plan.date,
+        departureTime: plan.time,
+        arrivalTime: addMinutes(plan.time, plan.duration),
+        price: input.price,
+        availableSeats: bus.capacity,
+      },
+    });
+    const seats = buildSeatRows(trip.id, bus.capacity, bus.seatLayout);
+    await db.seat.createMany({ data: seats });
+    const sellable = seats.filter((s) => s.status === 'Available').length;
+    if (sellable !== bus.capacity) {
+      await db.trip.update({ where: { id: trip.id }, data: { availableSeats: sellable } });
+    }
+    created++;
+  }
+
+  revalidatePath('/[lang]/travel-host');
+  updateTag(TAG_TRIPS);
+  updateTag(TAG_POPULAR_ROUTES);
+  return {
+    success: true,
+    created,
+    skipped,
+    reverseRouteMissing: Boolean(input.bothDirections && !reverseRoute),
+  };
 }
 
 export async function updateTrip(id: number, data: Partial<TripFormData>) {
@@ -1275,6 +1518,14 @@ export async function getTrips(routeId?: number, date?: Date) {
 }
 
 export async function getTripDetails(id: number) {
+  // Same inline healing as getTripSeats — this powers the booking page's
+  // seat map, where a stale hold directly blocks a sale.
+  try {
+    await releaseExpiredSeatHolds(id);
+  } catch (error) {
+    logger.warn('Inline seat-hold healing failed', { tripId: id, error });
+  }
+
   const trip = await db.trip.findUnique({
     where: { id },
     include: {
@@ -1300,6 +1551,14 @@ export async function getTripDetails(id: number) {
 }
 
 export async function getTripSeats(tripId: number) {
+  // Heal expired checkout holds inline so the seat map reflects sellable
+  // inventory immediately (the cron sweep only runs daily on hobby plan).
+  try {
+    await releaseExpiredSeatHolds(tripId);
+  } catch (error) {
+    logger.warn('Inline seat-hold healing failed', { tripId, error });
+  }
+
   const seats = await db.seat.findMany({
     where: { tripId },
     orderBy: [{ row: 'asc' }, { column: 'asc' }],
@@ -1330,6 +1589,15 @@ export async function createBooking(data: unknown) {
     passengerPhone: sanitizePhone(parsed.data.passengerPhone),
     passengerEmail: parsed.data.passengerEmail ? sanitizeEmail(parsed.data.passengerEmail) : undefined,
   };
+
+  // Release any lapsed checkout holds on this trip first — otherwise a seat
+  // abandoned 31 minutes ago still reads Reserved and the sale fails until
+  // the daily cron sweep.
+  try {
+    await releaseExpiredSeatHolds(validData.tripId);
+  } catch (error) {
+    logger.warn('Inline seat-hold healing failed', { tripId: validData.tripId, error });
+  }
 
   const booking = await db.$transaction(async (tx) => {
     // Get trip details
@@ -1390,6 +1658,20 @@ export async function createBooking(data: unknown) {
       },
     });
 
+    // One Passenger row per seat when the group form supplied them; a
+    // missing array (legacy client) keeps the booking-level identity only.
+    if (validData.passengers?.length) {
+      await tx.passenger.createMany({
+        data: validData.passengers.map((p) => ({
+          bookingId: newBooking.id,
+          name: sanitizeInput(p.name),
+          phone: p.phone ? sanitizePhone(p.phone) : null,
+          idCard: p.idCard ? sanitizeInput(p.idCard) : null,
+          seatNumber: p.seatNumber,
+        })),
+      });
+    }
+
     // Reserve seats with a 30-minute TTL. `/api/cron/release-seats` sweeps
     // stale reservations back to Available, so abandoned checkouts don't
     // permanently lock inventory. confirmBooking clears this TTL.
@@ -1422,6 +1704,52 @@ export async function createBooking(data: unknown) {
   revalidatePath('/[lang]/travel');
   updateTag(TAG_TRIPS);
   return { success: true, booking };
+}
+
+/**
+ * Best-effort ticket email after a booking is confirmed. Never throws —
+ * email is a courtesy on top of the in-app ticket, and RESEND_API_KEY may
+ * be absent in some environments (mail.ts no-ops without it).
+ */
+async function sendTravelConfirmationEmailSafe(bookingId: number) {
+  try {
+    const booking = await db.transportBooking.findUnique({
+      where: { id: bookingId },
+      select: {
+        bookingReference: true,
+        passengerEmail: true,
+        totalAmount: true,
+        seats: { select: { seatNumber: true } },
+        trip: {
+          select: {
+            departureDate: true,
+            departureTime: true,
+            route: {
+              select: {
+                origin: { select: { city: true } },
+                destination: { select: { city: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!booking?.passengerEmail) return;
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
+    await sendBookingConfirmationEmail(booking.passengerEmail, {
+      bookingReference: booking.bookingReference,
+      origin: booking.trip.route.origin.city,
+      destination: booking.trip.route.destination.city,
+      departureDate: booking.trip.departureDate.toISOString().slice(0, 10),
+      departureTime: booking.trip.departureTime,
+      seats: booking.seats.map((s) => s.seatNumber),
+      totalAmount: booking.totalAmount,
+      ticketUrl: `${appUrl}/ar/travel/booking/${bookingId}/ticket`,
+    });
+  } catch (error) {
+    logger.warn('Booking confirmation email failed', { bookingId, error });
+  }
 }
 
 export async function confirmBooking(id: number) {
@@ -1458,6 +1786,9 @@ export async function confirmBooking(id: number) {
     data: { status: 'Booked', reservedUntil: null },
   });
 
+  // Ticket by email the moment payment clears (T-TK.2).
+  await sendTravelConfirmationEmailSafe(id);
+
   revalidatePath('/[lang]/travel');
   updateTag(TAG_TRIPS);
   return { success: true, booking };
@@ -1472,16 +1803,20 @@ export async function confirmBooking(id: number) {
  * Skips auth because the caller is the cron job, which authenticates via
  * the CRON_SECRET header on the route.
  */
-export async function releaseExpiredSeatHolds() {
+export async function releaseExpiredSeatHolds(tripId?: number) {
   const now = new Date();
 
   // Find bookings whose seats all point to a stale TTL. We cancel the
   // booking, release the seats, and bump the trip's availableSeats.
+  // Vercel hobby crons fire only daily, so reads (getTripSeats) and
+  // createBooking call this with a tripId to heal inline — abandoned
+  // holds must not block sales until 3am.
   const stale = await db.seat.findMany({
     where: {
       status: 'Reserved',
       reservedUntil: { lt: now },
       bookingId: { not: null },
+      ...(tripId ? { tripId } : {}),
     },
     select: { id: true, bookingId: true, tripId: true },
   });
@@ -1570,6 +1905,7 @@ export async function cancelBooking(id: number) {
     data: {
       status: 'Available',
       bookingId: null,
+      reservedUntil: null,
     },
   });
 
@@ -1632,6 +1968,87 @@ export async function cancelBooking(id: number) {
   return { success: true, booking: updatedBooking, refundAmount };
 }
 
+/**
+ * Partial cancellation (T-MP.4): release specific seats from a group booking
+ * while the rest of the party keeps travelling. Cancelling every remaining
+ * seat delegates to cancelBooking so status/refund logic stays in one place.
+ * Money already collected for manual payments is settled by the operator
+ * off-platform — this recalculates what the booking is worth, it does not
+ * move funds.
+ */
+export async function cancelBookingSeats(bookingId: number, seatNumbers: string[]) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error('Unauthorized');
+  }
+  if (!Array.isArray(seatNumbers) || seatNumbers.length === 0) {
+    throw new Error('Select at least one seat to cancel');
+  }
+
+  const booking = await db.transportBooking.findUnique({
+    where: { id: bookingId },
+    include: {
+      seats: true,
+      passengers: true,
+      trip: { include: { route: { include: { office: true } } } },
+    },
+  });
+  if (!booking) throw new Error('Booking not found');
+
+  const isOwner = booking.userId === session.user.id;
+  const isOperatorOrAdmin = canOverride(session, booking.trip.route.office.ownerId);
+  if (!isOwner && !isOperatorOrAdmin) {
+    throw new Error('Not authorized to modify this booking');
+  }
+  if (booking.status === 'Cancelled' || booking.status === 'Completed') {
+    throw new Error('This booking can no longer be modified');
+  }
+
+  const bookedSeatNumbers = new Set(booking.seats.map((s) => s.seatNumber));
+  const targets = [...new Set(seatNumbers)].filter((s) => bookedSeatNumbers.has(s));
+  if (targets.length === 0) {
+    throw new Error('Those seats are not part of this booking');
+  }
+
+  // Releasing everything is a full cancellation.
+  if (targets.length >= booking.seats.length) {
+    return cancelBooking(bookingId);
+  }
+
+  const remainingCount = booking.seats.length - targets.length;
+  const newTotal = booking.trip.price * remainingCount;
+  const cancelledPassengers = booking.passengers.filter((p) =>
+    targets.includes(p.seatNumber),
+  );
+
+  await db.$transaction([
+    db.seat.updateMany({
+      where: { bookingId, seatNumber: { in: targets } },
+      data: { status: 'Available', bookingId: null, reservedUntil: null },
+    }),
+    db.trip.update({
+      where: { id: booking.tripId },
+      data: { availableSeats: { increment: targets.length } },
+    }),
+    db.transportBooking.update({
+      where: { id: bookingId },
+      data: { totalAmount: newTotal },
+    }),
+    ...(cancelledPassengers.length
+      ? [db.passenger.deleteMany({ where: { id: { in: cancelledPassengers.map((p) => p.id) } } })]
+      : []),
+  ]);
+
+  revalidatePath('/[lang]/travel');
+  updateTag(TAG_TRIPS);
+  return {
+    success: true,
+    cancelledSeats: targets,
+    remainingSeats: remainingCount,
+    newTotal,
+  };
+}
+
 export async function getBooking(id: number) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -1659,6 +2076,7 @@ export async function getBooking(id: number) {
       },
       seats: true,
       payments: true,
+      passengers: { orderBy: { id: 'asc' } },
       user: {
         select: {
           id: true,
@@ -1797,14 +2215,16 @@ export async function getOfficeBookings(
             departureTime: true,
             route: {
               select: {
-                origin: { select: { name: true } },
-                destination: { select: { name: true } },
+                origin: { select: { name: true, city: true } },
+                destination: { select: { name: true, city: true } },
               },
             },
             bus: { select: { plateNumber: true } },
           },
         },
         user: { select: { email: true, username: true } },
+        seats: { select: { seatNumber: true, status: true } },
+        passengers: { select: { name: true, seatNumber: true, checkedInAt: true } },
         _count: { select: { seats: true, payments: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -2003,14 +2423,16 @@ export async function generateTicketData(bookingId: number) {
     throw new Error('Booking not found');
   }
 
-  // Generate QR code data (booking reference)
-  const qrData = JSON.stringify({
-    ref: booking.bookingReference,
-    passenger: booking.passengerName,
-    seats: booking.seats.map((s) => s.seatNumber),
-    date: booking.trip.departureDate,
-    time: booking.trip.departureTime,
-  });
+  // Booking-level signed QR (T-TK.3) — the stored copy also authenticates
+  // legacy unsigned scans via exact-match fallback in validateTicket.
+  const qrData = buildSignedQrPayload(booking.bookingReference);
+
+  // Per-passenger signed QRs: each seat gets its own boarding document so a
+  // group of 4 can arrive (and board) separately.
+  const passengerTickets = booking.passengers.map((p) => ({
+    passenger: p,
+    qrData: buildSignedQrPayload(booking.bookingReference, p.seatNumber),
+  }));
 
   // Update booking with QR code
   await db.transportBooking.update({
@@ -2021,40 +2443,176 @@ export async function generateTicketData(bookingId: number) {
   return {
     booking,
     qrData,
+    passengerTickets,
   };
 }
 
+/**
+ * Gate-side scan validation. Operator-only: accepts a signed QR payload or
+ * a plain booking reference typed by the agent (camera-less fallback).
+ * Seat-scoped QRs report that passenger's check-in state so each member of
+ * a group boards exactly once.
+ */
 export async function validateTicket(qrCode: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { valid: false as const, message: 'auth' };
+  }
+
+  let ref = '';
+  let seat = '';
+  let sig = '';
+  let isSigned = false;
+
+  const raw = qrCode.trim();
   try {
-    const data = JSON.parse(qrCode);
-    const booking = await db.transportBooking.findUnique({
-      where: { bookingReference: data.ref },
-      include: {
-        trip: true,
-        seats: true,
-      },
+    const data = JSON.parse(raw) as { ref?: unknown; seat?: unknown; sig?: unknown };
+    ref = typeof data.ref === 'string' ? data.ref : '';
+    seat = typeof data.seat === 'string' ? data.seat : '';
+    sig = typeof data.sig === 'string' ? data.sig : '';
+    isSigned = Boolean(sig);
+  } catch {
+    // Not JSON — treat the input as a manually entered booking reference.
+    ref = raw.toUpperCase();
+  }
+
+  if (!ref) {
+    return { valid: false as const, message: 'invalid' };
+  }
+
+  const booking = await db.transportBooking.findUnique({
+    where: { bookingReference: ref },
+    include: {
+      trip: { include: { route: { include: { origin: true, destination: true, office: true } } } },
+      seats: true,
+      passengers: true,
+    },
+  });
+
+  if (!booking) {
+    return { valid: false as const, message: 'notFound' };
+  }
+
+  // Only the operator whose trip this is (or an admin) can validate scans —
+  // gate agents authenticate as the office owner.
+  if (!canOverride(session, booking.trip.route.office.ownerId)) {
+    return { valid: false as const, message: 'auth' };
+  }
+
+  // Forgery check: signed payloads must verify; unsigned JSON payloads are
+  // only trusted when they byte-match the QR we stored for this booking
+  // (i.e. a ticket issued before signing shipped).
+  if (isSigned) {
+    if (!verifyQrSignature(ref, seat, sig)) {
+      return { valid: false as const, message: 'forged' };
+    }
+  } else if (raw !== ref && booking.qrCode !== raw) {
+    return { valid: false as const, message: 'forged' };
+  }
+
+  if (booking.status === 'Cancelled') {
+    return { valid: false as const, message: 'cancelled' };
+  }
+  if (booking.status === 'Completed') {
+    return { valid: false as const, message: 'used' };
+  }
+  if (booking.status === 'Pending') {
+    return { valid: false as const, message: 'unpaid' };
+  }
+
+  const passenger = seat
+    ? booking.passengers.find((p) => p.seatNumber === seat) ?? null
+    : null;
+  if (seat && passenger?.checkedInAt) {
+    return { valid: false as const, message: 'used' };
+  }
+
+  return {
+    valid: true as const,
+    message: 'valid',
+    ticket: {
+      bookingId: booking.id,
+      reference: booking.bookingReference,
+      status: booking.status,
+      passengerName: passenger?.name ?? booking.passengerName,
+      seat: seat || booking.seats.map((s) => s.seatNumber).join(', '),
+      seatScoped: Boolean(seat),
+      origin: booking.trip.route.origin.city,
+      destination: booking.trip.route.destination.city,
+      departureDate: booking.trip.departureDate.toISOString(),
+      departureTime: booking.trip.departureTime,
+      passengers: booking.passengers.map((p) => ({
+        name: p.name,
+        seatNumber: p.seatNumber,
+        checkedIn: Boolean(p.checkedInAt),
+      })),
+    },
+  };
+}
+
+/**
+ * Board a scanned passenger. Seat-scoped tickets check in one Passenger row;
+ * booking-level tickets (legacy / single traveller) complete the whole
+ * booking. When the last passenger of a group boards, the booking flips to
+ * Completed so a re-scan of any of its tickets reads "already used".
+ */
+export async function checkInTicket(bookingId: number, seatNumber?: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error('Unauthorized');
+  }
+
+  const booking = await db.transportBooking.findUnique({
+    where: { id: bookingId },
+    include: {
+      trip: { include: { route: { include: { office: true } } } },
+      passengers: true,
+    },
+  });
+  if (!booking) throw new Error('Booking not found');
+  if (!canOverride(session, booking.trip.route.office.ownerId)) {
+    throw new Error('Not authorized to check in this booking');
+  }
+  if (booking.status !== 'Confirmed') {
+    throw new Error('Only confirmed bookings can be checked in');
+  }
+
+  const now = new Date();
+
+  if (seatNumber && booking.passengers.length > 0) {
+    const passenger = booking.passengers.find((p) => p.seatNumber === seatNumber);
+    if (!passenger) throw new Error('No passenger on that seat');
+    if (passenger.checkedInAt) throw new Error('Passenger already checked in');
+
+    await db.passenger.update({
+      where: { id: passenger.id },
+      data: { checkedInAt: now },
     });
 
-    if (!booking) {
-      return { valid: false, message: 'Booking not found' };
+    const remaining = booking.passengers.filter(
+      (p) => p.id !== passenger.id && !p.checkedInAt,
+    ).length;
+    if (remaining === 0) {
+      await db.transportBooking.update({
+        where: { id: bookingId },
+        data: { status: 'Completed' },
+      });
     }
-
-    if (booking.status === 'Cancelled') {
-      return { valid: false, message: 'Booking was cancelled' };
-    }
-
-    if (booking.status === 'Completed') {
-      return { valid: false, message: 'Ticket already used' };
-    }
-
-    return {
-      valid: true,
-      booking,
-      message: 'Valid ticket',
-    };
-  } catch {
-    return { valid: false, message: 'Invalid QR code' };
+    return { success: true, boarded: passenger.name, remaining };
   }
+
+  // Booking-level check-in: everyone boards at once.
+  await db.$transaction([
+    db.passenger.updateMany({
+      where: { bookingId, checkedInAt: null },
+      data: { checkedInAt: now },
+    }),
+    db.transportBooking.update({
+      where: { id: bookingId },
+      data: { status: 'Completed' },
+    }),
+  ]);
+  return { success: true, boarded: booking.passengerName, remaining: 0 };
 }
 
 // ============================================
@@ -2301,11 +2859,13 @@ export async function updateBookingStatus(
     },
   });
 
-  // Update seats based on status
+  // Update seats based on status. reservedUntil clears in both directions —
+  // a Booked seat must never look like a sweepable checkout hold, and a
+  // released seat must not carry a stale TTL into its next reservation.
   if (status === 'Cancelled') {
     await db.seat.updateMany({
       where: { bookingId },
-      data: { status: 'Available', bookingId: null },
+      data: { status: 'Available', bookingId: null, reservedUntil: null },
     });
 
     // Restore available seats count
@@ -2316,8 +2876,9 @@ export async function updateBookingStatus(
   } else if (status === 'Confirmed') {
     await db.seat.updateMany({
       where: { bookingId },
-      data: { status: 'Booked' },
+      data: { status: 'Booked', reservedUntil: null },
     });
+    await sendTravelConfirmationEmailSafe(bookingId);
   }
 
   revalidatePath('/[lang]/(dashboard)/offices');

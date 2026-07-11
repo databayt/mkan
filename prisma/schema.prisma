@@ -263,6 +263,7 @@ model Listing {
   lastAvailabilityConfirmedAt DateTime? // owner last reconfirmed Available/Busy (phase-1 nudge)
   averageRating      Float?              @default(0)
   numberOfReviews    Int?                @default(0)
+  isGuestFavorite    Boolean             @default(false) // curated "Guest favorite" badge (operator-set, independent of reviews)
   draft              Boolean             @default(true)
   isPublished        Boolean             @default(false)
   instantBook        Boolean             @default(false)
@@ -503,11 +504,29 @@ model TransportBooking {
   trip             Trip                   @relation(fields: [tripId], references: [id])
   user             User                   @relation(fields: [userId], references: [id])
   payments         TransportPayment[]
+  passengers       Passenger[]
   ride             Ride?
 
   @@index([userId])
   @@index([status])
   @@index([tripId])
+}
+
+// One row per seat in a group booking — distinct traveller identities so each
+// passenger gets their own named ticket + QR and can be cancelled individually.
+// Bookings created before this model exists have zero rows and fall back to
+// the booking-level passengerName/qrCode (legacy single-ticket path).
+model Passenger {
+  id          Int              @id @default(autoincrement())
+  bookingId   Int
+  name        String
+  phone       String?
+  idCard      String?
+  seatNumber  String
+  checkedInAt DateTime?
+  booking     TransportBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
 }
 
 model TransportOffice {

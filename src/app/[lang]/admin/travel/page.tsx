@@ -21,7 +21,7 @@ export default async function AdminTransportPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">{a.transport ?? "Transport"}</h1>
+        <h1 className="text-2xl font-semibold">{a.transport ?? "Travel"}</h1>
         <p className="text-sm text-muted-foreground">
           {a.transportDescription ?? "All transport offices across the platform."}
         </p>
@@ -73,13 +73,17 @@ export default async function AdminTransportPage({
             deactivatedToast: a.deactivatedToast ?? "Office deactivated",
             deletedToast: a.officeDeletedToast ?? "Office deleted",
             error: a.actionError ?? "Action failed",
+            verify: a.verifyOffice ?? "Verify",
+            unverify: a.unverifyOffice ?? "Unverify",
+            verifiedToast: a.officeVerifiedToast ?? "Office verified — now visible in search",
+            unverifiedToast: a.officeUnverifiedToast ?? "Office unverified — hidden from search",
           }}
         />
       </div>
       <p className="text-sm text-muted-foreground">
-        {a.pageOf
-          ? a.pageOf.replace("{page}", String(page)).replace("{count}", String(pageCount))
-          : `Page ${page} of ${pageCount}`}{" "}
+        {(a.pageOf ?? "Page {page} of {count}")
+          .replace("{page}", String(page))
+          .replace("{count}", String(pageCount))}{" "}
         · {total} {a.total ?? "total"}
       </p>
     </div>

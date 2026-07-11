@@ -2426,7 +2426,13 @@
       "viewTicket": "عرض التذكرة",
       "share": "مشاركة",
       "viewAllTrips": "عرض جميع رحلاتي",
-      "linkCopied": "تم نسخ الرابط"
+      "linkCopied": "تم نسخ الرابط",
+      "leadPassengerSeat": "المسافر الرئيسي — مقعد {seat}",
+      "passengerForSeat": "مسافر — مقعد {seat}",
+      "idCardOptional": "رقم الهوية (اختياري)",
+      "idCardPlaceholder": "مثال: 123-456-789",
+      "namePerSeatHint": "أدخل اسمًا لكل مقعد — كل مسافر يحصل على تذكرته الخاصة.",
+      "allPassengers": "جميع المسافرين"
     },
     "payment": {
       "title": "الدفع",
@@ -2756,7 +2762,17 @@
         "Entertainment": "ترفيه",
         "Luggage": "تخزين الأمتعة",
         "Reclining": "مقاعد قابلة للإمالة"
-      }
+      },
+      "repeat": "التكرار",
+      "repeatOnce": "مرة واحدة",
+      "repeatDaily": "يوميًا",
+      "untilDate": "حتى",
+      "bothDirections": "جدولة الاتجاه المعاكس أيضًا",
+      "returnTime": "وقت مغادرة العودة",
+      "returnTimeHint": "اتركه فارغًا لاستخدام نفس وقت الذهاب. يتطلب وجود خط في الاتجاه المعاكس.",
+      "tripsCreated": "تمت جدولة {count} رحلة",
+      "tripsSkipped": "تم تخطي {count} موعدًا مجدولاً مسبقًا",
+      "reverseRouteMissing": "لا يوجد خط في الاتجاه المعاكس بعد — تمت جدولة هذا الاتجاه فقط."
     },
     "seatPicker": {
       "driver": "السائق",
@@ -2791,7 +2807,9 @@
       "seatLabel": "المقعد/المقاعد",
       "busLabel": "الباص",
       "totalLabel": "الإجمالي",
-      "qrAlt": "رمز استجابة سريعة للذكرة"
+      "qrAlt": "رمز استجابة سريعة للذكرة",
+      "ticketOf": "تذكرة {n} من {total}",
+      "groupTicketsHint": "لكل مسافر تذكرته ورمز QR الخاص به — اطبعها أو شاركها جميعًا."
     },
     "bookingPage": {
       "dateLabel": "التاريخ",
@@ -2895,7 +2913,39 @@
       "qrAlt": "رمز استجابة سريعة",
       "operator": "مارشال"
     },
-    "bookingFailedRetry": "تعذّر إنشاء الحجز. يرجى المحاولة مرة أخرى."
+    "bookingFailedRetry": "تعذّر إنشاء الحجز. يرجى المحاولة مرة أخرى.",
+    "scanner": {
+      "title": "ماسح التذاكر",
+      "subtitle": "امسح رموز QR للمسافرين عند الصعود، أو اكتب مرجع الحجز.",
+      "scanTitle": "مسح تذكرة",
+      "startCamera": "تشغيل الكاميرا",
+      "stopCamera": "إيقاف الكاميرا",
+      "cameraUnsupported": "مسح الكاميرا غير مدعوم على هذا المتصفح — أدخل مرجع الحجز أدناه.",
+      "manualPlaceholder": "مثال: BK-1751234567-AB12CD",
+      "validate": "تحقق",
+      "checking": "جارٍ التحقق…",
+      "scanFailed": "تعذر التحقق من التذكرة. حاول مرة أخرى.",
+      "validTicket": "تذكرة صالحة",
+      "invalidTicket": "تذكرة غير صالحة",
+      "passenger": "المسافر",
+      "seat": "المقعد",
+      "route": "الخط",
+      "departure": "المغادرة",
+      "reference": "المرجع",
+      "groupBooking": "حجز جماعي",
+      "checkInPassenger": "تسجيل صعود هذا المسافر",
+      "checkInAll": "تسجيل صعود الحجز",
+      "checkedIn": "تم تسجيل الصعود",
+      "boardedToast": "تم تسجيل صعود {name}",
+      "scanAnother": "مسح تذكرة أخرى",
+      "reasonNotFound": "لا يوجد حجز مطابق لهذه التذكرة",
+      "reasonForged": "فشل التحقق من التوقيع — هذه التذكرة لم تصدر منا",
+      "reasonCancelled": "تم إلغاء هذا الحجز",
+      "reasonUsed": "التذكرة مستخدمة بالفعل",
+      "reasonUnpaid": "لم يتم تأكيد الدفع بعد — تحقق من الدفع أولاً",
+      "reasonAuth": "لست مخولاً للتحقق من هذه التذكرة",
+      "reasonInvalid": "تذكرة غير صالحة"
+    }
   },
   "siteFooter": {
     "support": "الدعم",
@@ -4748,7 +4798,8 @@
       "bankHolderLabel": "اسم صاحب الحساب",
       "momoProviderLabel": "مزود المحفظة الإلكترونية",
       "momoProviderPlaceholder": "مثال: بنكك، MTN MoMo",
-      "momoNumberLabel": "رقم المحفظة"
+      "momoNumberLabel": "رقم المحفظة",
+      "createFailed": "فشل إنشاء المكتب"
     },
     "assemblyPoint": {
       "title": "اختر نقطة التجمع الخاصة بك",
@@ -4772,7 +4823,12 @@
       "confirm": "تأكيد",
       "statusPending": "قيد الانتظار",
       "statusConfirmed": "مؤكد",
-      "statusCancelled": "ملغى"
+      "statusCancelled": "ملغى",
+      "scanTickets": "مسح التذاكر",
+      "statusCompleted": "مكتمل",
+      "cancelSeat": "إلغاء المقعد {seat}",
+      "cancelSeatConfirm": "تحرير المقعد {seat} من الحجز {ref}؟ سيتم تخفيض إجمالي الأجرة.",
+      "seatCancelled": "تم تحرير المقعد {seat}"
     },
     "earnings": {
       "title": "الإيرادات",

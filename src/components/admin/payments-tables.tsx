@@ -66,6 +66,7 @@ type TransportLabels = {
   reject: string;
   approved: string;
   rejected: string;
+  actionFailed?: string;
 };
 
 export function HomePaymentsTable({
@@ -134,10 +135,10 @@ export function TransportPaymentsTable({
           toast.success(approve ? labels.approved : labels.rejected);
           router.refresh();
         } else {
-          toast.error("Action failed");
+          toast.error(labels.actionFailed ?? "Action failed");
         }
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Error verifying payment");
+        toast.error(error instanceof Error ? error.message : (labels.actionFailed ?? "Action failed"));
       } finally {
         setActingId(null);
       }

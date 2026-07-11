@@ -2426,7 +2426,13 @@
       "viewTicket": "View Ticket",
       "share": "Share",
       "viewAllTrips": "View all my trips",
-      "linkCopied": "Link copied"
+      "linkCopied": "Link copied",
+      "leadPassengerSeat": "Lead passenger — seat {seat}",
+      "passengerForSeat": "Passenger — seat {seat}",
+      "idCardOptional": "ID number (optional)",
+      "idCardPlaceholder": "e.g., 123-456-789",
+      "namePerSeatHint": "Enter a name for every seat — each passenger gets their own ticket.",
+      "allPassengers": "All passengers"
     },
     "payment": {
       "title": "Payment",
@@ -2756,7 +2762,17 @@
         "Entertainment": "Entertainment",
         "Luggage": "Luggage Storage",
         "Reclining": "Reclining Seats"
-      }
+      },
+      "repeat": "Repeat",
+      "repeatOnce": "One time",
+      "repeatDaily": "Daily",
+      "untilDate": "Until",
+      "bothDirections": "Also schedule the return direction",
+      "returnTime": "Return departure time",
+      "returnTimeHint": "Leave empty to reuse the outbound time. Requires a route in the opposite direction.",
+      "tripsCreated": "{count} trips scheduled",
+      "tripsSkipped": "{count} already-scheduled slots were skipped",
+      "reverseRouteMissing": "No opposite-direction route exists yet — only this direction was scheduled."
     },
     "seatPicker": {
       "driver": "Driver",
@@ -2791,7 +2807,9 @@
       "seatLabel": "Seat(s)",
       "busLabel": "Bus",
       "totalLabel": "Total",
-      "qrAlt": "Ticket QR Code"
+      "qrAlt": "Ticket QR Code",
+      "ticketOf": "Ticket {n} of {total}",
+      "groupTicketsHint": "Each passenger has their own ticket and QR code — print or share all of them."
     },
     "bookingPage": {
       "dateLabel": "Date",
@@ -2895,7 +2913,39 @@
       "qrAlt": "QR Code",
       "operator": "Marshal"
     },
-    "bookingFailedRetry": "Failed to create booking. Please try again."
+    "bookingFailedRetry": "Failed to create booking. Please try again.",
+    "scanner": {
+      "title": "Ticket scanner",
+      "subtitle": "Scan passenger QR codes at boarding, or type the booking reference.",
+      "scanTitle": "Scan a ticket",
+      "startCamera": "Start camera",
+      "stopCamera": "Stop camera",
+      "cameraUnsupported": "Camera scanning isn't supported on this browser — enter the booking reference below.",
+      "manualPlaceholder": "e.g., BK-1751234567-AB12CD",
+      "validate": "Validate",
+      "checking": "Checking…",
+      "scanFailed": "Could not validate the ticket. Try again.",
+      "validTicket": "Valid ticket",
+      "invalidTicket": "Invalid ticket",
+      "passenger": "Passenger",
+      "seat": "Seat",
+      "route": "Route",
+      "departure": "Departure",
+      "reference": "Reference",
+      "groupBooking": "Group booking",
+      "checkInPassenger": "Check in this passenger",
+      "checkInAll": "Check in booking",
+      "checkedIn": "Checked in",
+      "boardedToast": "{name} checked in",
+      "scanAnother": "Scan another ticket",
+      "reasonNotFound": "No booking matches this ticket",
+      "reasonForged": "Signature check failed — this ticket was not issued by us",
+      "reasonCancelled": "This booking was cancelled",
+      "reasonUsed": "Ticket already used",
+      "reasonUnpaid": "Payment not confirmed yet — verify payment first",
+      "reasonAuth": "You are not authorized to validate this ticket",
+      "reasonInvalid": "Invalid ticket"
+    }
   },
   "siteFooter": {
     "support": "Support",
@@ -4748,7 +4798,8 @@
       "bankHolderLabel": "Account holder name",
       "momoProviderLabel": "Mobile money provider",
       "momoProviderPlaceholder": "e.g., Bankak, MTN MoMo",
-      "momoNumberLabel": "Wallet number"
+      "momoNumberLabel": "Wallet number",
+      "createFailed": "Failed to create office"
     },
     "assemblyPoint": {
       "title": "Select your assembly point",
@@ -4772,7 +4823,12 @@
       "confirm": "Confirm",
       "statusPending": "Pending",
       "statusConfirmed": "Confirmed",
-      "statusCancelled": "Cancelled"
+      "statusCancelled": "Cancelled",
+      "scanTickets": "Scan tickets",
+      "statusCompleted": "Completed",
+      "cancelSeat": "Cancel seat {seat}",
+      "cancelSeatConfirm": "Release seat {seat} from booking {ref}? The fare total is reduced.",
+      "seatCancelled": "Seat {seat} released"
     },
     "earnings": {
       "title": "Earnings",

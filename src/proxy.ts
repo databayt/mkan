@@ -317,8 +317,11 @@ export function proxy(request: NextRequest) {
     return response;
   }
 
-  // Public routes: always accessible
-  if (isPublicRoute(path)) {
+  // Public routes: always accessible — unless the path also falls under a
+  // protected prefix. "/host" and "/travel-host" are public landings, but
+  // isPublicRoute's prefix expansion would otherwise open "/host/123/…" and
+  // "/travel-host/123/…" (the whole operator area) to anonymous visitors.
+  if (isPublicRoute(path) && !isProtectedRoute(path)) {
     const response = passThrough();
     addSecurityHeaders(response, requestId, persistLocale);
     return response;

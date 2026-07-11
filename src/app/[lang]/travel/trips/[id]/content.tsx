@@ -51,13 +51,30 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
   const [passengerName, setPassengerName] = useState('');
   const [passengerPhone, setPassengerPhone] = useState('');
   const [passengerEmail, setPassengerEmail] = useState('');
+  // Extra travellers keyed by seat — the lead passenger covers the first
+  // selected seat, every other seat needs its own named passenger (T-MP.2).
+  const [extraPassengers, setExtraPassengers] = useState<
+    Record<string, { name: string; idCard: string }>
+  >({});
   const [booking, setBooking] = useState(false);
   const dict = useDictionary();
   const t = dict.travel;
   const amenityLabels = t?.host?.amenityLabels as Partial<Record<string, string>> | undefined;
 
+  const extraSeats = selectedSeats.slice(1);
+  const allPassengersNamed =
+    Boolean(passengerName && passengerPhone) &&
+    extraSeats.every((seat) => (extraPassengers[seat]?.name ?? '').trim().length >= 2);
+
+  const setExtraPassenger = (seat: string, patch: Partial<{ name: string; idCard: string }>) => {
+    setExtraPassengers((prev) => ({
+      ...prev,
+      [seat]: { name: '', idCard: '', ...prev[seat], ...patch },
+    }));
+  };
+
   const handleBooking = async () => {
-    if (!trip || selectedSeats.length === 0 || !passengerName || !passengerPhone) {
+    if (!trip || selectedSeats.length === 0 || !allPassengersNamed) {
       return;
     }
 
@@ -69,6 +86,15 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
         passengerName,
         passengerPhone,
         passengerEmail: passengerEmail || undefined,
+        passengers: selectedSeats.map((seat, index) =>
+          index === 0
+            ? { name: passengerName, phone: passengerPhone, seatNumber: seat }
+            : {
+                name: extraPassengers[seat]?.name ?? '',
+                idCard: extraPassengers[seat]?.idCard || undefined,
+                seatNumber: seat,
+              },
+        ),
       });
 
       if (result.success && result.booking) {
@@ -245,15 +271,21 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
                     prev.length >= 5 ? prev : [...prev, seatNumber],
                   )
                 }
-                onSeatDeselect={(seatNumber) =>
-                  setSelectedSeats((prev) => prev.filter((s) => s !== seatNumber))
-                }
+                onSeatDeselect={(seatNumber) => {
+                  setSelectedSeats((prev) => prev.filter((s) => s !== seatNumber));
+                  setExtraPassengers((prev) => {
+                    if (!(seatNumber in prev)) return prev;
+                    const next = { ...prev };
+                    delete next[seatNumber];
+                    return next;
+                  });
+                }}
                 maxSeats={5}
               />
             </CardContent>
           </Card>
 
-          {/* Passenger Info */}
+          {/* Passenger Info — one identity per seat */}
           {selectedSeats.length > 0 && (
             <Card>
               <CardHeader>
@@ -261,6 +293,14 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
                 <CardDescription>{t.booking.enterDetails}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {selectedSeats.length > 1 && (
+                  <div className="text-sm font-medium text-muted-foreground">
+                    {(t.booking.leadPassengerSeat ?? "Lead passenger — seat {seat}").replace(
+                      '{seat}',
+                      selectedSeats[0] ?? '',
+                    )}
+                  </div>
+                )}
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">{t.booking.fullName} *</Label>
@@ -291,6 +331,43 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
                     placeholder={t.booking.emailPlaceholder}
                   />
                 </div>
+
+                {extraSeats.map((seat) => (
+                  <div key={seat} className="pt-4 border-t space-y-4">
+                    <div className="text-sm font-medium text-muted-foreground">
+                      {(t.booking.passengerForSeat ?? "Passenger — seat {seat}").replace('{seat}', seat)}
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor={`pax-name-${seat}`}>{t.booking.fullName} *</Label>
+                        <Input
+                          id={`pax-name-${seat}`}
+                          value={extraPassengers[seat]?.name ?? ''}
+                          onChange={(e) => setExtraPassenger(seat, { name: e.target.value })}
+                          placeholder={t.booking.fullNamePlaceholder}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`pax-id-${seat}`}>
+                          {t.booking.idCardOptional ?? "ID number (optional)"}
+                        </Label>
+                        <Input
+                          id={`pax-id-${seat}`}
+                          value={extraPassengers[seat]?.idCard ?? ''}
+                          onChange={(e) => setExtraPassenger(seat, { idCard: e.target.value })}
+                          placeholder={t.booking.idCardPlaceholder ?? "e.g., 123-456-789"}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {selectedSeats.length > 1 && !allPassengersNamed && (
+                  <p className="text-sm text-muted-foreground">
+                    {t.booking.namePerSeatHint ??
+                      "Enter a name for every seat — each passenger gets their own ticket."}
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}
@@ -352,7 +429,7 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
                     className="w-full"
                     size="lg"
                     onClick={handleBooking}
-                    disabled={booking || !passengerName || !passengerPhone}
+                    disabled={booking || !allPassengersNamed}
                   >
                     {booking ? t.booking.processing : t.booking.continueToPayment}
                   </Button>

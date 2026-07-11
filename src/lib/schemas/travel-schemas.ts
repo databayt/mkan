@@ -118,14 +118,36 @@ export type TripFormData = z.infer<typeof tripSchema>;
 // BOOKING SCHEMAS
 // ============================================
 
-export const bookingSchema = z.object({
-  tripId: z.number().positive('Trip is required'),
-  seatNumbers: z.array(z.string()).min(1, 'Please select at least one seat'),
-  passengerName: z.string().min(2, 'Name must be at least 2 characters'),
-  passengerPhone: z.string().min(9, 'Phone number must be at least 9 digits'),
-  passengerEmail: z.string().email().optional().or(z.literal('')),
+// One entry per selected seat. The lead passenger (index 0) doubles as the
+// booking contact; extra passengers only need a name (phone/ID optional).
+export const bookingPassengerSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  phone: z.string().optional().or(z.literal('')),
+  idCard: z.string().max(40).optional().or(z.literal('')),
+  seatNumber: z.string().min(1),
 });
 
+export const bookingSchema = z
+  .object({
+    tripId: z.number().positive('Trip is required'),
+    seatNumbers: z.array(z.string()).min(1, 'Please select at least one seat'),
+    passengerName: z.string().min(2, 'Name must be at least 2 characters'),
+    passengerPhone: z.string().min(9, 'Phone number must be at least 9 digits'),
+    passengerEmail: z.string().email().optional().or(z.literal('')),
+    // Optional for backward compatibility — when present it must cover every
+    // selected seat exactly once so each ticket maps to a named traveller.
+    passengers: z.array(bookingPassengerSchema).optional(),
+  })
+  .refine(
+    (data) =>
+      !data.passengers ||
+      (data.passengers.length === data.seatNumbers.length &&
+        new Set(data.passengers.map((p) => p.seatNumber)).size === data.seatNumbers.length &&
+        data.passengers.every((p) => data.seatNumbers.includes(p.seatNumber))),
+    { message: 'Each selected seat needs exactly one passenger', path: ['passengers'] },
+  );
+
+export type BookingPassengerData = z.infer<typeof bookingPassengerSchema>;
 export type BookingFormData = z.infer<typeof bookingSchema>;
 
 // ============================================

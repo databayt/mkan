@@ -26,11 +26,11 @@ import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { toast } from 'sonner';
 
-import type { getBooking } from '@/lib/actions/transport-actions';
+import type { getBooking } from '@/lib/actions/travel-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { formatCurrency } from '@/lib/i18n/formatters';
-import { cityLabel } from '@/components/transport/city-names';
+import { cityLabel } from '@/components/travel/city-names';
 
 type BookingDetails = NonNullable<Awaited<ReturnType<typeof getBooking>>>;
 
@@ -42,7 +42,7 @@ interface BookingConfirmationContentProps {
 export function BookingConfirmationContent({ booking, lang }: BookingConfirmationContentProps) {
   const router = useRouter();
   const dict = useDictionary();
-  const t = dict.transport;
+  const t = dict.travel;
   const { locale } = useLocale();
   // Locale for date-fns — gives Arabic users "الثلاثاء، ١٥ أبريل" instead of
   // "Tue, Apr 15". All `format()` calls in this file must pass this.
@@ -81,7 +81,7 @@ export function BookingConfirmationContent({ booking, lang }: BookingConfirmatio
     return (
       <div className="container mx-auto py-8 px-4 text-center">
         <h1 className="text-2xl font-bold">{t.booking.notFound}</h1>
-        <Button onClick={() => router.push(`/${lang}/transport`)} className="mt-4">
+        <Button onClick={() => router.push(`/${lang}/travel`)} className="mt-4">
           {t.booking.backToTransport}
         </Button>
       </div>
@@ -221,6 +221,23 @@ export function BookingConfirmationContent({ booking, lang }: BookingConfirmatio
               <span className="font-medium">{booking.passengerEmail}</span>
             </div>
           )}
+
+          {/* Group bookings list every traveller with their seat */}
+          {booking.passengers.length > 1 && (
+            <div className="pt-3 mt-3 border-t space-y-2">
+              <div className="text-sm text-muted-foreground">
+                {t.booking.allPassengers ?? "All passengers"}
+              </div>
+              {booking.passengers.map((p) => (
+                <div key={p.id} className="flex justify-between text-sm">
+                  <span className="font-medium">{p.name}</span>
+                  <span className="text-muted-foreground" dir="ltr">
+                    {p.seatNumber}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -239,7 +256,10 @@ export function BookingConfirmationContent({ booking, lang }: BookingConfirmatio
               : booking.trip.route.office.name}
           </div>
           <div className="text-sm text-muted-foreground">
-            {booking.trip.route.office.assemblyPoint?.name}
+            {lang === 'ar'
+              ? (booking.trip.route.office.assemblyPoint?.nameAr ??
+                booking.trip.route.office.assemblyPoint?.name)
+              : booking.trip.route.office.assemblyPoint?.name}
           </div>
           <div className="text-sm text-muted-foreground">
             {booking.trip.route.office.assemblyPoint?.address}
@@ -295,7 +315,7 @@ export function BookingConfirmationContent({ booking, lang }: BookingConfirmatio
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-3">
         <Button asChild className="flex-1">
-          <Link href={`/${lang}/transport/booking/${booking.id}/ticket`}>
+          <Link href={`/${lang}/travel/booking/${booking.id}/ticket`}>
             <Download className="h-4 w-4 me-2" />
             {t.booking.viewTicket}
           </Link>
