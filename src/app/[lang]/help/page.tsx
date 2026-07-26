@@ -4,8 +4,11 @@ import { getDictionary } from "@/components/internationalization/dictionaries";
 import type { Locale } from "@/components/internationalization/config";
 import HelpContent from "./content";
 
-// Disable static generation for this page
-export const dynamic = 'force-dynamic';
+// Static prose/marketing shells — prerender both locales, refresh hourly.
+// dynamic = "error" turns any accidental dynamic-API use into a build error
+// instead of silently degrading the page back to per-request rendering.
+export const revalidate = 3600;
+export const dynamic = "error";
 
 export async function generateMetadata({
   params,

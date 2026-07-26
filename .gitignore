@@ -17,6 +17,8 @@
 
 # next.js
 /.next/
+# out-of-tree verification/analyze builds (NEXT_DIST_DIR=.next-*)
+/.next-*/
 /out/
 /package-lock.json
 

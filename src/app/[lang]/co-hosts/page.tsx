@@ -2,7 +2,11 @@ import { Metadata } from "next";
 import { createMetadata } from "@/lib/metadata";
 import CoHostsContent from "./content";
 
-export const dynamic = "force-dynamic";
+// Static prose/marketing shells — prerender both locales, refresh hourly.
+// dynamic = "error" turns any accidental dynamic-API use into a build error
+// instead of silently degrading the page back to per-request rendering.
+export const revalidate = 3600;
+export const dynamic = "error";
 
 export async function generateMetadata({
   params,

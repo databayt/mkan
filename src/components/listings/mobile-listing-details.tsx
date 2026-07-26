@@ -16,6 +16,7 @@ import WhereYouSleep from './where-you-sleep';
 import HostedBy from './hosted-by';
 import { PropertyImageFallback } from '@/components/atom/property-image-fallback';
 import { PropertyImage } from '@/components/atom/property-image';
+import cdnVariantLoader from '@/lib/image-loader';
 import { PHASE1 } from '@/config/phase-flags';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { useLocale } from '@/components/internationalization/use-locale';
@@ -696,18 +697,29 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                   } as React.CSSProperties}
                 >
                   <picture className="p1lr305w atm_vy_1osqo2v atm_e2_1osqo2v dir dir-ltr w-full h-full block">
-                    <source srcSet={`${src}?im_w=320 1x, ${src}?im_w=720 2x`} media="(min-width: 0px)" />
-                    <img 
-                      className="i11046vh atm_e2_1osqo2v atm_vy_1osqo2v atm_jp_sm7xtg atm_jr_xm9jbw atm_5j_nw3v2p atm_vh_yfq0k3 iekrptg atm_8w_1t7jgwy dir dir-ltr w-full h-full object-cover" 
+                    {/* ?im_w= is an Airbnb/ImageKit param our CDN ignores — these
+                        URLs shipped the full-size original for every slide. Route
+                        through the shared loader (pre-made stock variants, or the
+                        Vercel optimizer for uploads) at real 1x/2x widths, and lazy
+                        the off-screen slides so only the first one loads eagerly. */}
+                    <source
+                      srcSet={`${cdnVariantLoader({ src, width: 640 })} 1x, ${cdnVariantLoader({ src, width: 828 })} 2x`}
+                      media="(min-width: 0px)"
+                    />
+                    <img
+                      className="i11046vh atm_e2_1osqo2v atm_vy_1osqo2v atm_jp_sm7xtg atm_jr_xm9jbw atm_5j_nw3v2p atm_vh_yfq0k3 iekrptg atm_8w_1t7jgwy dir dir-ltr w-full h-full object-cover"
                       aria-hidden="true"
                       alt={(dict?.listings?.detail?.propertyImageAlt ?? "Property image {number}").replace("{number}", String(i + 1))}
                       {...{ elementtiming: "FMP-target" }}
                       id={`FMP-target-${i}`}
-                      src={`${src}?im_w=720`} 
-                      data-original-uri={src} 
-                      data-shared-element-id={`listing-${listing?.id}-hero-image-${i}`} 
-                      width="100%" 
-                      height="100%" 
+                      src={cdnVariantLoader({ src, width: 828 })}
+                      loading={i === 0 ? "eager" : "lazy"}
+                      fetchPriority={i === 0 ? "high" : undefined}
+                      decoding="async"
+                      data-original-uri={src}
+                      data-shared-element-id={`listing-${listing?.id}-hero-image-${i}`}
+                      width="100%"
+                      height="100%"
                     />
                   </picture>
                 </div>
