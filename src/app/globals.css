@@ -14,7 +14,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  /* Self-reference: the font-sans utility emits var(--font-sans), resolved
+     from the cascade — :root below, overridden per-direction for Arabic. */
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -53,6 +55,11 @@
 
 :root {
   --radius: 0.625rem;
+  /* next/font variable classes sit on <html> ([lang]/layout.tsx), so these
+     var() references resolve at :root. */
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -84,6 +91,14 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+}
+
+/* Arabic UI face — Thmanyah serif text (خط ثمانية), mirrored from hogwarts.
+   Self-contained fallbacks only — the chain must stay valid even where the
+   next/font variable is missing (error pages render their own <html>). */
+:root[dir="rtl"] {
+  --font-sans:
+    var(--font-thmanyah-text), ui-serif, Georgia, "Times New Roman", serif;
 }
 
 .dark {

@@ -7,10 +7,10 @@
   },
   "packageManager": "pnpm@10.24.0",
   "scripts": {
-    "predev": "tsx scripts/wake-db.ts",
+    "predev": "node scripts/fetch-thmanyah.mjs && tsx scripts/wake-db.ts",
     "dev": "next dev --turbopack -p 3000",
     "dev:kill": "lsof -ti:3000 | xargs kill -9 2>/dev/null; pnpm dev",
-    "build": "node scripts/maybe-migrate.mjs && prisma generate && tsx scripts/dev-i18n-sync.ts && tsx scripts/i18n-scan-hardcoded.ts && tsx scripts/wake-db.ts && next build --webpack",
+    "build": "node scripts/fetch-thmanyah.mjs && node scripts/maybe-migrate.mjs && prisma generate && tsx scripts/dev-i18n-sync.ts && tsx scripts/i18n-scan-hardcoded.ts && tsx scripts/wake-db.ts && next build --webpack",
     "migrate:deploy": "prisma migrate deploy",
     "start": "next start -p 3000",
     "lint": "eslint .",
