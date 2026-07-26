@@ -20,13 +20,21 @@ import { format } from 'date-fns';
 import { getDictionary } from '@/components/internationalization/dictionaries';
 import type { Locale } from '@/components/internationalization/config';
 import { createMetadata } from '@/lib/metadata';
+import { prerenderSafe } from '@/lib/prerender-safe';
 import { PHASE1 } from '@/config/phase-flags';
 import { cityLabel } from '@/components/travel/city-names';
 
-// Rendered on-demand: this page queries the DB (assembly points / popular
-// routes) at render time, and the CI build environment has no reachable
-// database, so it must not be prerendered/ISR-generated at build time.
-export const dynamic = 'force-dynamic';
+// ISR, matching the homepage: prerender /en + /ar and regenerate at most every
+// 5 minutes. Every read here is already behind unstable_cache, so per-request
+// origin compute bought nothing but a CDN miss on every visit. The reads go
+// through prerenderSafe so a build without a reachable database emits the
+// shell instead of failing.
+export const revalidate = 300;
+// Assert static: nothing here may read cookies()/headers()/searchParams. The
+// `?step=` deep link resolves client-side (TransportBigSearch's deepLinkStep).
+// "error" rather than "force-static" so a future dynamic-API regression fails
+// the build loudly instead of silently un-caching the page.
+export const dynamic = 'error';
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
@@ -42,27 +50,16 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 
 interface TransportPageProps {
   params: Promise<{ lang: Locale }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-function flatten(sp: Record<string, string | string[] | undefined>): Record<string, string | undefined> {
-  const out: Record<string, string | undefined> = {};
-  for (const [k, v] of Object.entries(sp)) {
-    out[k] = Array.isArray(v) ? v[0] : v;
-  }
-  return out;
-}
-
-export default async function TransportPage({ params, searchParams }: TransportPageProps) {
+export default async function TransportPage({ params }: TransportPageProps) {
   const { lang } = await params;
-  const spObject = flatten(await searchParams);
-  const initialField = spObject.step as "origin" | "destination" | "date" | "passengers" | undefined;
   // Parallelize independent data fetches
   const [dictionary, assemblyPoints, popularRoutes, dbPortSudanRoutes] = await Promise.all([
     getDictionary(lang),
-    getAssemblyPoints(),
-    getPopularRoutes(),
-    getPopularRoutesByOrigin('Port Sudan'),
+    prerenderSafe(getAssemblyPoints(), []),
+    prerenderSafe(getPopularRoutes(), []),
+    prerenderSafe(getPopularRoutesByOrigin('Port Sudan'), []),
   ]);
   const t = dictionary?.travel;
   const todayIso = format(new Date(), 'yyyy-MM-dd');
@@ -184,8 +181,7 @@ export default async function TransportPage({ params, searchParams }: TransportP
               <TransportBigSearch
                 assemblyPoints={assemblyPoints}
                 lang={lang}
-                initialField={initialField}
-                key={initialField || "default"}
+                deepLinkStep
                 dictionary={{
                   title: `${t?.hero?.titleLine1 ?? "Book unique"}\n${t?.hero?.titleLine2 ?? "adventures and\ntickets."}`,
                   where: t?.search?.where ?? "Where",

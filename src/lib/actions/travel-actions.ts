@@ -896,61 +896,87 @@ export type SearchTripsResult = Awaited<ReturnType<typeof searchTrips>>;
  * active operators surface. Same `include` shape as searchTrips so `TripCard`
  * renders the rows unchanged. Paginated for the infinite-scroll client.
  */
+/**
+ * Exactly the columns TripCard renders. The previous `include` pulled every
+ * column of trip + route + origin + destination + office + assemblyPoint +
+ * bus, so each of the 20 cards carried coordinates, addresses, plate numbers
+ * and photo arrays that nothing displays — all of it serialized into the RSC
+ * payload and into every infinite-scroll response.
+ */
+const BROWSE_TRIP_SELECT = {
+  id: true,
+  departureDate: true,
+  departureTime: true,
+  arrivalTime: true,
+  price: true,
+  availableSeats: true,
+  route: {
+    select: {
+      duration: true,
+      origin: { select: { name: true, nameAr: true, city: true } },
+      destination: { select: { name: true, nameAr: true, city: true } },
+      office: {
+        select: {
+          name: true,
+          nameAr: true,
+          rating: true,
+          isVerified: true,
+          logoUrl: true,
+        },
+      },
+    },
+  },
+  bus: { select: { model: true, amenities: true } },
+} satisfies Prisma.TripSelect;
+
+const browseTripsCached = unstable_cache(
+  async (page: number, limit: number) => {
+    // Start-of-today (Khartoum) onward — today's not-yet-departed trips still show.
+    const { gte } = dayWindow(new Date());
+
+    const where: Prisma.TripWhereInput = {
+      isActive: true,
+      isCancelled: false,
+      departureDate: { gte },
+      route: { isActive: true, office: { isVerified: true, isActive: true } },
+    };
+
+    const [total, trips] = await Promise.all([
+      db.trip.count({ where }),
+      db.trip.findMany({
+        where,
+        // `id` is the stable tiebreaker: many trips share a departureDate +
+        // departureTime, and without it Postgres returns ties in an arbitrary
+        // order that shifts between the page-1 and page-2 queries — overlapping
+        // pages (and silently skipping trips) under infinite scroll.
+        orderBy: [{ departureDate: 'asc' }, { departureTime: 'asc' }, { id: 'asc' }],
+        take: limit,
+        skip: (page - 1) * limit,
+        select: BROWSE_TRIP_SELECT,
+      }),
+    ]);
+
+    return {
+      trips,
+      total,
+      page,
+      pageCount: Math.max(1, Math.ceil(total / limit)),
+      limit,
+    };
+  },
+  ['transport:browseTrips'],
+  { tags: [TAG_TRIPS], revalidate: 300 },
+);
+
+/**
+ * Kept as a plain exported action (not the cached fn itself) so the
+ * 'use server' boundary stays a normal async function — infinite scroll calls
+ * this straight from the client.
+ */
 export async function browseTrips(input: { page?: number; limit?: number } = {}) {
   const page = Math.max(1, input.page ?? 1);
   const limit = Math.min(50, Math.max(1, input.limit ?? 20));
-  // Start-of-today (Khartoum) onward — today's not-yet-departed trips still show.
-  const { gte } = dayWindow(new Date());
-
-  const where: Prisma.TripWhereInput = {
-    isActive: true,
-    isCancelled: false,
-    departureDate: { gte },
-    route: { isActive: true, office: { isVerified: true, isActive: true } },
-  };
-
-  const [total, trips] = await Promise.all([
-    db.trip.count({ where }),
-    db.trip.findMany({
-      where,
-      // `id` is the stable tiebreaker: many trips share a departureDate +
-      // departureTime, and without it Postgres returns ties in an arbitrary
-      // order that shifts between the page-1 and page-2 queries — overlapping
-      // pages (and silently skipping trips) under infinite scroll.
-      orderBy: [{ departureDate: 'asc' }, { departureTime: 'asc' }, { id: 'asc' }],
-      take: limit,
-      skip: (page - 1) * limit,
-      include: {
-        route: {
-          include: {
-            origin: true,
-            destination: true,
-            office: { include: { assemblyPoint: true } },
-          },
-        },
-        bus: {
-          select: {
-            id: true,
-            plateNumber: true,
-            model: true,
-            manufacturer: true,
-            year: true,
-            capacity: true,
-            photoUrls: true,
-            amenities: true,
-          },
-        },
-      },
-    }),
-  ]);
-
-  return {
-    trips,
-    total,
-    page,
-    pageCount: Math.max(1, Math.ceil(total / limit)),
-    limit,
-  };
+  return browseTripsCached(page, limit);
 }
 
 export type BrowseTripsResult = Awaited<ReturnType<typeof browseTrips>>;

@@ -8,13 +8,18 @@ import { InfiniteTrips } from "@/components/travel/listings/infinite-trips";
 import { getAssemblyPoints, browseTrips } from "@/lib/actions/travel-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { createMetadata } from "@/lib/metadata";
+import { prerenderSafe } from "@/lib/prerender-safe";
 import type { Locale } from "@/components/internationalization/config";
 import { formatNumber } from "@/lib/i18n/formatters";
 import Footer from "@/components/site/footer";
 
-// Queries the DB at render time; the CI build has no reachable database, so it
-// must not be prerendered.
-export const dynamic = "force-dynamic";
+// ISR like /travel and the homepage: page 1 is the same for every visitor and
+// both reads sit behind unstable_cache, so serving it from the CDN and
+// regenerating every 5 minutes beats per-request origin compute. Pages 2+ come
+// from the infinite-scroll action, which is unaffected.
+export const revalidate = 300;
+// Assert static — nothing here reads cookies()/headers()/searchParams.
+export const dynamic = "error";
 
 const PAGE_SIZE = 20;
 
@@ -43,8 +48,14 @@ export default async function TravelListingsPage({ params }: TravelListingsPageP
 
   const [dictionary, assemblyPoints, result] = await Promise.all([
     getDictionary(lang),
-    getAssemblyPoints(),
-    browseTrips({ page: 1, limit: PAGE_SIZE }),
+    prerenderSafe(getAssemblyPoints(), []),
+    prerenderSafe(browseTrips({ page: 1, limit: PAGE_SIZE }), {
+      trips: [],
+      total: 0,
+      page: 1,
+      pageCount: 1,
+      limit: PAGE_SIZE,
+    }),
   ]);
 
   const t = dictionary?.travel;

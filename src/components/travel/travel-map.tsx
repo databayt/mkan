@@ -28,8 +28,34 @@ export function TransportMap({ assemblyPoints, lang = 'ar' }: TransportMapProps)
   const mapRef = useRef<MapboxMapType | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
+  // The map sits ~5 sections below the fold on /travel, but mapbox-gl is
+  // ~800 kB of JS + CSS plus a burst of tile requests. Hold the import until
+  // the container is about to enter the viewport so visitors who never scroll
+  // that far never pay for it.
+  const [inView, setInView] = useState(false);
 
   useEffect(() => {
+    const el = mapContainerRef.current;
+    if (!el || inView) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setInView(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "400px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [inView]);
+
+  useEffect(() => {
+    if (!inView) return;
     if (!mapContainerRef.current || assemblyPoints.length === 0) return;
 
     // Same token the homes search map uses; the old ACCESS_TOKEN name is kept
@@ -118,7 +144,7 @@ export function TransportMap({ assemblyPoints, lang = 'ar' }: TransportMapProps)
         mapRef.current = null;
       }
     };
-  }, [assemblyPoints, lang]);
+  }, [inView, assemblyPoints, lang]);
 
   if (assemblyPoints.length === 0) {
     return (

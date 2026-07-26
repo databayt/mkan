@@ -7,12 +7,23 @@ import { Label } from "@/components/ui/label";
 import { Counter } from "@/components/atom/counter";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import TransportCityDropdown from "./travel-city-dropdown";
-import TransportDatePicker from "./travel-date-picker";
-import { MOBILE_BREAKPOINT } from "@/components/template/search/constant";
+import dynamic from "next/dynamic";
 import { isRTL as checkRTL, type Locale } from "@/components/internationalization/config";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { cityLabel } from "@/components/travel/city-names";
+
+// The two panels only ever render after a tap on a field, but statically
+// imported they rode in the hero's first-load chunk: the city list drags in
+// cmdk, the picker drags in react-day-picker plus both date-fns locales.
+// Split them out so the hero paints without either.
+const TransportCityDropdown = dynamic(() => import("./travel-city-dropdown"), {
+  ssr: false,
+  loading: () => <div className="min-h-[280px]" />,
+});
+const TransportDatePicker = dynamic(() => import("./travel-date-picker"), {
+  ssr: false,
+  loading: () => <div className="min-h-[340px]" />,
+});
 
 type ActiveButton = "origin" | "destination" | "date" | "passengers" | null;
 
@@ -60,6 +71,12 @@ interface TransportBigSearchProps {
   lang?: string;
   variant?: "hero" | "header";
   initialField?: ActiveButton;
+  /**
+   * Read the `?step=` deep link on mount instead of taking it as a prop.
+   * Keeps `searchParams` out of the /travel page so the route can stay
+   * statically rendered (ISR) — the deep link resolves client-side.
+   */
+  deepLinkStep?: boolean;
   onSearch?: () => void;
   ctaLayoutId?: string;
 }
@@ -169,6 +186,7 @@ export default function TransportBigSearch({
   lang = "ar",
   variant = "hero",
   initialField = null,
+  deepLinkStep = false,
   onSearch,
   ctaLayoutId,
 }: TransportBigSearchProps) {
@@ -178,7 +196,6 @@ export default function TransportBigSearch({
   const inHeader = variant === "header";
   const [activeButton, setActiveButton] = useState<ActiveButton>(initialField);
   const [hoveredButton, setHoveredButton] = useState<ActiveButton>(null);
-  const [isMobile, setIsMobile] = useState(false);
   const searchBarRef = useRef<HTMLDivElement>(null);
 
   // Form state
@@ -187,12 +204,16 @@ export default function TransportBigSearch({
   const [date, setDate] = useState<Date | undefined>(initialDate);
   const [passengers, setPassengers] = useState<Passengers>({ adults: 0, children: 0 });
 
+  // `?step=origin` opens the flow on a given field. Read here rather than from
+  // the page's searchParams so the route stays statically rendered; a deep link
+  // is a full page load, so a mount-time read is soon enough.
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
+    if (!deepLinkStep) return;
+    const step = new URLSearchParams(window.location.search).get("step");
+    if (step && (STEP_ORDER as readonly string[]).includes(step)) {
+      setActiveButton(step as ActiveButton);
+    }
+  }, [deepLinkStep]);
 
   const handleButtonClick = (button: ActiveButton) => {
     setActiveButton(activeButton === button ? null : button);
@@ -436,9 +457,8 @@ export default function TransportBigSearch({
   );
 
   // ── Mobile Step Flow ─────────────────────────────────────────────────────
-  if (isMobile) {
-    return (
-      <div className={`relative w-full ${inHeader ? "h-full" : ""}`} ref={searchBarRef}>
+  const mobileTree = (
+      <div className={`relative w-full md:hidden ${inHeader ? "h-full" : ""}`}>
         <div
           className={`relative bg-white w-full overflow-hidden ${inHeader ? "" : "shadow-sm"}`}
           style={{ height: inHeader ? "100%" : "min(78vh, 560px)" }}
@@ -515,12 +535,11 @@ export default function TransportBigSearch({
           )}
         </div>
       </div>
-    );
-  }
+  );
 
   // ── Desktop Horizontal Search Bar ────────────────────────────────────────
-  return (
-    <div className="relative w-full mx-auto" style={{ maxWidth: 850 }} ref={searchBarRef}>
+  const desktopTree = (
+    <div className="relative w-full mx-auto hidden md:block" style={{ maxWidth: 850 }}>
       <div
         style={{ height: 66 }}
         className={`flex items-center rounded-full border transition-all duration-200 ${
@@ -714,6 +733,20 @@ export default function TransportBigSearch({
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+
+  // Both trees ship in the HTML, CSS-gated at md (768 — the old JS
+  // breakpoint). The server can't know the viewport, so letting CSS pick means
+  // phones paint the step card at first paint instead of waiting for
+  // hydration to flip a resize-driven flag. State is shared; only one tree is
+  // ever visible. The wrapper is display:contents so each tree's absolute
+  // positioning and `h-full` still resolve against the real parent, and one
+  // ref serves the click-outside handler for both.
+  return (
+    <div ref={searchBarRef} className="contents">
+      {mobileTree}
+      {desktopTree}
     </div>
   );
 }
