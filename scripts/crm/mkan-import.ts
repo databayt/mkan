@@ -32,6 +32,8 @@ import { dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { Amenity, PropertyType } from '@prisma/client';
+import { mapAmenities as mapAmenityNames } from './amenity-map';
+import { cityNameEn, stateNameEn, stateOfCity, type CityCode } from './sudan-places';
 
 // Deferred until after env loads (only used with --apply) — avoids the
 // db-before-dotenv "DatabaseDoesNotExist" trap.
@@ -49,21 +51,18 @@ const FX = parseFloat(argv('fx-rate', '0')) || 0;
 const LIMIT = parseInt(argv('limit', '0'), 10) || 0;
 
 const BAND_RANK: Record<string, number> = { REJECT: 0, HOLD: 1, MANUAL_REVIEW: 2, AUTO_ONBOARD: 3 };
-const cityLabel = (c: string): string => c.split('_').map((w) => w[0] + w.slice(1).toLowerCase()).join(' ');
-const STATE_OF: Record<string, string> = { KHARTOUM: 'Khartoum', OMDURMAN: 'Khartoum', BAHRI: 'Khartoum', EAST_NILE: 'Khartoum', PORT_SUDAN: 'Red Sea' };
 const POSTAL_OF: Record<string, string> = { PORT_SUDAN: '33311' };
 
-const AMENITY_RULES: [RegExp, Amenity][] = [
-  [/wi-?fi/i, Amenity.WiFi], [/fast wifi|\d+\s*mbps/i, Amenity.HighSpeedInternet], [/air ?condition/i, Amenity.AirConditioning],
-  [/washer|dryer|washing machine/i, Amenity.WasherDryer], [/dishwasher/i, Amenity.Dishwasher], [/microwave/i, Amenity.Microwave],
-  [/fridge|refrigerator/i, Amenity.Refrigerator], [/pool/i, Amenity.Pool], [/gym|exercise equipment/i, Amenity.Gym],
-  [/parking/i, Amenity.Parking], [/pets? allowed/i, Amenity.PetsAllowed], [/walk-?in closet/i, Amenity.WalkInClosets], [/hardwood/i, Amenity.HardwoodFloors],
-];
-const mapAmenities = (raw: string[]): Amenity[] => {
-  const set = new Set<Amenity>();
-  for (const a of raw) for (const [re, v] of AMENITY_RULES) if (re.test(a)) set.add(v);
-  return [...set];
+// City/state names and the amenity table are shared — they used to be copied
+// here and into twenty-upsert.ts, which is how the CRM and the app ended up
+// able to disagree about the same listing.
+const cityLabel = (c: string): string => cityNameEn(c as CityCode);
+const stateLabel = (c: string): string => {
+  const s = stateOfCity(c as CityCode);
+  return s === 'UNKNOWN' ? '' : stateNameEn(s);
 };
+const mapAmenities = (raw: string[]): Amenity[] =>
+  mapAmenityNames(raw).map((n) => Amenity[n as keyof typeof Amenity]).filter(Boolean);
 const mapPropertyType = (v: string | null | undefined): PropertyType | undefined =>
   v && v in PropertyType ? PropertyType[v as keyof typeof PropertyType] : undefined;
 
@@ -123,7 +122,7 @@ function locationData(home: ScoredHome): Record<string, unknown> {
   return {
     address: cityLabel(home.city),
     city: cityLabel(home.city),
-    state: STATE_OF[home.city] ?? '',
+    state: stateLabel(home.city),
     country: 'Sudan',
     postalCode: POSTAL_OF[home.city] ?? '11111',
     latitude: home.latitude ?? 0,

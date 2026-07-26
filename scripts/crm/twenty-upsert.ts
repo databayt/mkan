@@ -22,6 +22,8 @@ import { config } from 'dotenv';
 import { readFileSync } from 'node:fs';
 import type { HomeRecord, HostRecord } from './airbnb-parse';
 import { toUpperSnake } from './twenty-schema'; // SELECT values must match the seeded options (UPPER_SNAKE)
+import { mapAmenities } from './amenity-map';
+import { cityNameEn, stateNameEn, stateOfCity, type CityCode } from './sudan-places';
 
 config({ override: true }); // load central .env (TWENTY_API_URL / TWENTY_API_KEY)
 
@@ -46,29 +48,20 @@ const linkMany = (urls: string[]) =>
 const currency = (amount: number | null, code: string) =>
   amount != null ? { amountMicros: Math.round(amount * 1_000_000), currencyCode: code } : undefined;
 
-const STATE_OF: Record<string, string> = { KHARTOUM: 'Khartoum', OMDURMAN: 'Khartoum', BAHRI: 'Khartoum', EAST_NILE: 'Khartoum', PORT_SUDAN: 'Red Sea' };
-const cityLabel = (c: string) => c.split('_').map((w) => w[0] + w.slice(1).toLowerCase()).join(' ');
+// City/state names and the amenity table come from the shared modules; both
+// used to be duplicated here and in mkan-import.ts.
+const stateLabel = (c: string) => {
+  const s = stateOfCity(c as CityCode);
+  return s === 'UNKNOWN' ? '' : stateNameEn(s);
+};
 const address = (h: HomeRecord) => ({
   addressStreet1: '',
-  addressCity: cityLabel(h.city),
-  addressState: STATE_OF[h.city] ?? '',
+  addressCity: cityNameEn(h.city as CityCode),
+  addressState: stateLabel(h.city),
   addressCountry: 'Sudan',
   addressLat: h.latitude ?? undefined,
   addressLng: h.longitude ?? undefined,
 });
-
-// raw amenity strings → mkan Amenity enum subset (docs/growth.md §4.4)
-const AMENITY_RULES: [RegExp, string][] = [
-  [/wi-?fi/i, 'WiFi'], [/fast wifi|\d+\s*mbps/i, 'HighSpeedInternet'], [/air ?condition/i, 'AirConditioning'],
-  [/washer|dryer|washing machine/i, 'WasherDryer'], [/dishwasher/i, 'Dishwasher'], [/microwave/i, 'Microwave'],
-  [/fridge|refrigerator/i, 'Refrigerator'], [/pool/i, 'Pool'], [/gym|exercise equipment/i, 'Gym'],
-  [/parking/i, 'Parking'], [/pets? allowed/i, 'PetsAllowed'], [/walk-?in closet/i, 'WalkInClosets'], [/hardwood/i, 'HardwoodFloors'],
-];
-const mapAmenities = (raw: string[]) => {
-  const set = new Set<string>();
-  for (const a of raw) for (const [re, v] of AMENITY_RULES) if (re.test(a)) set.add(v);
-  return [...set];
-};
 
 /** Drop undefined/null so Twenty doesn't reject empty composites. */
 const clean = <T extends Record<string, unknown>>(o: T): Partial<T> =>

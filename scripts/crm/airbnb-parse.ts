@@ -117,16 +117,12 @@ export function parseBedInfo(primaryLine: any[]): { bedrooms: number | null; bed
   };
 }
 
-/** Normalize the mkan `city` SELECT from the Airbnb title suffix ("… in Port Sudan"). */
-export function deriveCity(title: string | null | undefined): string {
-  const s = (title ?? '').toLowerCase();
-  if (/port\s*sudan/.test(s)) return 'PORT_SUDAN';
-  if (/khartoum\s*north|bahri/.test(s)) return 'BAHRI';
-  if (/omdurman/.test(s)) return 'OMDURMAN';
-  if (/east\s*nile/.test(s)) return 'EAST_NILE';
-  if (/khartoum/.test(s)) return 'KHARTOUM';
-  return 'OTHER';
-}
+// City derivation moved to `sudan-places.ts`. The version that lived here knew
+// five cities and matched on the English title suffix, so a national sweep
+// could not be expressed even once the crawl found the listings — and it had no
+// way to tell a Sudanese listing from a foreign one. Use `checkPlace()`, which
+// weighs coordinates against the place named in the card category.
+export { deriveCityFromTitle, checkPlace, classifyPoint } from './sudan-places';
 
 export function mapRoomType(raw: string | null | undefined, category: string | null | undefined): HomeRecord['roomType'] {
   const s = `${raw ?? ''} ${category ?? ''}`.toLowerCase();

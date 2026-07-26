@@ -23,13 +23,13 @@ import { dirname } from 'node:path';
 import {
   parseSearchResult,
   parsePdp,
-  findSearchResults,
-  deriveCity,
   mapRoomType,
   mapPropertyType,
   type HomeRecord,
   type HostRecord,
 } from './airbnb-parse';
+import { paginateSearch } from './airbnb-paginate';
+import { checkPlace } from './sudan-places';
 
 const arg = (name: string, def?: string) => {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -90,33 +90,44 @@ async function main() {
   }
   const preexisting = new Set(homes.keys()); // known before this run → skip re-enrich
 
-  // 1) Search pages (paginate via pageCursors) → partial Homes, deduped by id.
-  let cursor: string | undefined;
-  for (let p = 0; p < MAX_PAGES; p++) {
-    const url = cursor ? `${SEARCH_BASE}?cursor=${encodeURIComponent(cursor)}` : SEARCH_BASE;
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-    await page.waitForTimeout(7000);
-    const json = await readDeferredState(page);
-    const found = json && findSearchResults(json);
-    if (!found) {
-      console.warn(`  ! page ${p + 1}: no search results parsed`);
-      break;
+  // 1) Search pages → partial Homes, deduped by id.
+  //
+  // Pagination lives in `airbnb-paginate.ts` because the loop that used to be
+  // here stopped as soon as a page produced no *new* ids — which under --merge
+  // is page 1 of every already-scraped region. That is why the 30-region sweep
+  // netted one listing. Loop control now depends only on what Airbnb returned.
+  const before = homes.size;
+  const search = await paginateSearch(page, SEARCH_BASE, {
+    maxPages: MAX_PAGES,
+    maxElements: MAX || undefined,
+    onPage: ({ page: p, results, declaredPages }) =>
+      console.log(`  · page ${p}: ${results} results (Airbnb declares ${declaredPages} page(s))`),
+  });
+
+  let skippedForeign = 0;
+  for (const el of search.elements) {
+    const e = el as { title?: string };
+    const home = parseSearchResult(el, 'OTHER');
+    if (!home || homes.has(home.airbnbListingId)) continue;
+    // Only Sudan. Coordinates plus the place named in the card category, because
+    // neither alone is sufficient — see checkPlace() in sudan-places.ts.
+    const place = checkPlace(home.latitude, home.longitude, e?.title ?? home.airbnbCategory);
+    if (place.agreement === 'SUSPECT_FOREIGN') {
+      skippedForeign++;
+      continue;
     }
-    let added = 0;
-    for (const el of found.searchResults) {
-      const home = parseSearchResult(el, deriveCity(el?.title));
-      if (home && !homes.has(home.airbnbListingId)) {
-        homes.set(home.airbnbListingId, home);
-        added++;
-      }
-    }
-    console.log(`  · page ${p + 1}: +${added} (total ${homes.size})`);
-    const cursors: unknown = found.paginationInfo?.pageCursors;
-    const next = Array.isArray(cursors) ? cursors[p + 1] : undefined;
-    if (added === 0 || typeof next !== 'string' || (MAX && homes.size >= MAX)) break;
-    cursor = next;
-    await sleep(1200);
+    home.city = place.city;
+    homes.set(home.airbnbListingId, home);
   }
+  console.log(
+    `  → ${search.outcome}: ${search.elements.length} results over ${search.pagesFetched} page(s), ` +
+      `+${homes.size - before} new${skippedForeign ? `, ${skippedForeign} skipped (not Sudan)` : ''}`,
+  );
+  if (search.outcome === 'SATURATED') {
+    console.warn(`  ! this query is truncated at Airbnb's ${search.declaredPages}-page ceiling — it is hiding`);
+    console.warn('    listings. Use the map crawler (pnpm crm:bbox) for exhaustive coverage.');
+  }
+  if (search.error) console.warn(`  ! ${search.error}`);
 
   let homeList = [...homes.values()];
   if (MAX) homeList = homeList.slice(0, MAX);
