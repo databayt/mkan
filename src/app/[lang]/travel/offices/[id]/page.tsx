@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
+import { cache } from 'react';
 import { addDays } from 'date-fns';
 
 import {
   getTransportOffice,
   getOfficeTrips,
 } from '@/lib/actions/travel-actions';
-import { db } from '@/lib/db';
 import { createMetadata, SITE_URL } from '@/lib/metadata';
 import { JsonLd, transportOfficeJsonLd } from '@/components/seo/json-ld';
 import { getDictionary } from '@/components/internationalization/dictionaries';
@@ -15,6 +15,13 @@ import { OfficeContent } from './content';
 interface OfficePageProps {
   params: Promise<{ lang: Locale; id: string }>;
 }
+
+// React cache() dedupes across generateMetadata and the page body — the
+// metadata block previously issued its own narrower findUnique for the same
+// office row every request.
+const fetchOffice = cache(async (officeId: number) =>
+  getTransportOffice(officeId)
+);
 
 export async function generateMetadata({
   params,
@@ -35,19 +42,7 @@ export async function generateMetadata({
       noIndex: true,
     });
   }
-  const office = await db.transportOffice
-    .findUnique({
-      where: { id: officeId },
-      select: {
-        name: true,
-        nameAr: true,
-        description: true,
-        descriptionAr: true,
-        logoUrl: true,
-        isActive: true,
-      },
-    })
-    .catch(() => null);
+  const office = await fetchOffice(officeId).catch(() => null);
   const name = (lang === 'ar' ? office?.nameAr : office?.name) || office?.name;
   const description =
     (lang === 'ar' ? office?.descriptionAr : office?.description) ||
@@ -68,7 +63,7 @@ export default async function OfficeDetailsPage({ params }: OfficePageProps) {
 
   const [dictionary, office, trips] = await Promise.all([
     getDictionary(lang),
-    Number.isFinite(officeId) ? getTransportOffice(officeId) : null,
+    Number.isFinite(officeId) ? fetchOffice(officeId) : null,
     Number.isFinite(officeId)
       ? getOfficeTrips(officeId, new Date(), addDays(new Date(), 7))
       : [],

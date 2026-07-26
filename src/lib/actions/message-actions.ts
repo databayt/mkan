@@ -122,7 +122,10 @@ export async function getConversation(id: unknown): Promise<ConversationDetail |
         select: { checkIn: true, checkOut: true, guestCount: true, status: true, totalPrice: true },
       },
       messages: {
-        orderBy: { createdAt: "asc" },
+        // Newest 200, re-sorted ascending below — an unbounded thread would
+        // reload its entire history on every visit.
+        orderBy: { createdAt: "desc" },
+        take: 200,
         select: { id: true, body: true, senderId: true, createdAt: true },
       },
     },
@@ -155,13 +158,16 @@ export async function getConversation(id: unknown): Promise<ConversationDetail |
           totalPrice: c.booking.totalPrice,
         }
       : null,
-    messages: c.messages.map((m) => ({
-      id: m.id,
-      body: m.body,
-      senderId: m.senderId,
-      isHost: m.senderId === c.hostId,
-      createdAt: m.createdAt.toISOString(),
-    })),
+    messages: c.messages
+      .slice()
+      .reverse()
+      .map((m) => ({
+        id: m.id,
+        body: m.body,
+        senderId: m.senderId,
+        isHost: m.senderId === c.hostId,
+        createdAt: m.createdAt.toISOString(),
+      })),
   };
 }
 

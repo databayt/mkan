@@ -428,28 +428,27 @@ export async function getReviewSummary(listingId: unknown) {
   }
 
   try {
-    const [aggregate, reviews] = await Promise.all([
-      db.review.aggregate({
-        where: { listingId: parsedId.data },
-        _avg: { rating: true },
-        _count: { rating: true },
-      }),
-      db.review.findMany({
-        where: { listingId: parsedId.data },
-        select: { rating: true },
-      }),
-    ]);
+    // One indexed aggregate instead of hauling every review row over the
+    // wire just to bucket-count it — average derives from the same groups.
+    const grouped = await db.review.groupBy({
+      by: ["rating"],
+      where: { listingId: parsedId.data },
+      _count: { rating: true },
+    });
 
-    // Build rating distribution
     const ratingDistribution: RatingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    for (const review of reviews) {
-      const r = review.rating as 1 | 2 | 3 | 4 | 5;
-      ratingDistribution[r]++;
+    let totalReviews = 0;
+    let ratingSum = 0;
+    for (const group of grouped) {
+      const r = group.rating as 1 | 2 | 3 | 4 | 5;
+      ratingDistribution[r] = group._count.rating;
+      totalReviews += group._count.rating;
+      ratingSum += group.rating * group._count.rating;
     }
 
     return {
-      averageRating: aggregate._avg.rating ?? 0,
-      totalReviews: aggregate._count.rating,
+      averageRating: totalReviews > 0 ? ratingSum / totalReviews : 0,
+      totalReviews,
       ratingDistribution,
     } satisfies ReviewSummary;
   } catch (error) {

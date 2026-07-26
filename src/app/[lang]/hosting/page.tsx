@@ -41,21 +41,42 @@ export default async function HostingPage() {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    const bookings = await db.booking
-      .findMany({
-        where: {
-          listing: { hostId: session.user.id },
-          status: { in: [BookingStatus.Pending, BookingStatus.Confirmed] },
-          checkOut: { gte: startOfToday },
-        },
-        include: {
-          listing: { select: { id: true, title: true, photoUrls: true } },
-          guest: { select: { id: true, username: true, image: true } },
-        },
-        orderBy: { checkIn: "asc" },
-        take: 50,
-      })
-      .catch(() => []);
+    // Reservations and draft-attention queries are independent — one wave.
+    const [bookings, drafts] = await Promise.all([
+      db.booking
+        .findMany({
+          where: {
+            listing: { hostId: session.user.id },
+            status: { in: [BookingStatus.Pending, BookingStatus.Confirmed] },
+            checkOut: { gte: startOfToday },
+          },
+          include: {
+            listing: { select: { id: true, title: true, photoUrls: true } },
+            guest: { select: { id: true, username: true, image: true } },
+          },
+          orderBy: { checkIn: "asc" },
+          take: 50,
+        })
+        .catch(() => []),
+      db.listing
+        .findMany({
+          where: { hostId: session.user.id, draft: true, isPublished: false },
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            pricePerNight: true,
+            propertyType: true,
+            bedrooms: true,
+            bathrooms: true,
+            photoUrls: true,
+            locationId: true,
+          },
+          orderBy: { id: "desc" },
+          take: 10,
+        })
+        .catch(() => []),
+    ]);
 
     reservations = bookings.map((b) => ({
       id: b.id,
@@ -73,25 +94,6 @@ export default async function HostingPage() {
     // "Actions need your attention" bottom card: count the required-to-publish
     // steps still missing on the host's in-progress drafts, using the same
     // gate as publishListing() (photos deliberately excluded — phase 1).
-    const drafts = await db.listing
-      .findMany({
-        where: { hostId: session.user.id, draft: true, isPublished: false },
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          pricePerNight: true,
-          propertyType: true,
-          bedrooms: true,
-          bathrooms: true,
-          photoUrls: true,
-          locationId: true,
-        },
-        orderBy: { id: "desc" },
-        take: 10,
-      })
-      .catch(() => []);
-
     const required = [
       "title",
       "description",

@@ -154,32 +154,33 @@ export async function createBooking(data: unknown) {
       throw new Error("Guest count exceeds listing capacity");
     }
 
-    // Check for overlapping confirmed bookings
-    const overlapping = await db.booking.findFirst({
-      where: {
-        listingId,
-        status: { in: [BookingStatus.Confirmed, BookingStatus.Pending] },
-        AND: [
-          { checkIn: { lt: checkOut } },
-          { checkOut: { gt: checkIn } },
-        ],
-      },
-    });
+    // Overlapping-booking and blocked-date guards are independent — run
+    // them in one round trip instead of two stacked latencies.
+    const [overlapping, blocked] = await Promise.all([
+      db.booking.findFirst({
+        where: {
+          listingId,
+          status: { in: [BookingStatus.Confirmed, BookingStatus.Pending] },
+          AND: [
+            { checkIn: { lt: checkOut } },
+            { checkOut: { gt: checkIn } },
+          ],
+        },
+      }),
+      db.blockedDate.findFirst({
+        where: {
+          listingId,
+          AND: [
+            { startDate: { lt: checkOut } },
+            { endDate: { gt: checkIn } },
+          ],
+        },
+      }),
+    ]);
 
     if (overlapping) {
       throw new Error("Dates are not available — overlapping booking exists");
     }
-
-    // Check for blocked dates in range
-    const blocked = await db.blockedDate.findFirst({
-      where: {
-        listingId,
-        AND: [
-          { startDate: { lt: checkOut } },
-          { endDate: { gt: checkIn } },
-        ],
-      },
-    });
 
     if (blocked) {
       throw new Error("Some dates in the range are blocked by the host");
@@ -616,32 +617,33 @@ export async function checkAvailability(data: unknown) {
   const { listingId, checkIn, checkOut } = parsed.data;
 
   try {
-    // Check overlapping bookings
-    const overlapping = await db.booking.findFirst({
-      where: {
-        listingId,
-        status: { in: [BookingStatus.Confirmed, BookingStatus.Pending] },
-        AND: [
-          { checkIn: { lt: checkOut } },
-          { checkOut: { gt: checkIn } },
-        ],
-      },
-    });
+    // Both guards are independent — one round trip, hit every time a guest
+    // opens the reserve widget.
+    const [overlapping, blocked] = await Promise.all([
+      db.booking.findFirst({
+        where: {
+          listingId,
+          status: { in: [BookingStatus.Confirmed, BookingStatus.Pending] },
+          AND: [
+            { checkIn: { lt: checkOut } },
+            { checkOut: { gt: checkIn } },
+          ],
+        },
+      }),
+      db.blockedDate.findFirst({
+        where: {
+          listingId,
+          AND: [
+            { startDate: { lt: checkOut } },
+            { endDate: { gt: checkIn } },
+          ],
+        },
+      }),
+    ]);
 
     if (overlapping) {
       return { available: false, reason: "Dates overlap with an existing booking" };
     }
-
-    // Check blocked dates
-    const blocked = await db.blockedDate.findFirst({
-      where: {
-        listingId,
-        AND: [
-          { startDate: { lt: checkOut } },
-          { endDate: { gt: checkIn } },
-        ],
-      },
-    });
 
     if (blocked) {
       return { available: false, reason: "Some dates are blocked by the host" };

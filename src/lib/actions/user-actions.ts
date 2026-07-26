@@ -518,9 +518,17 @@ export async function getTenantFavorites() {
   try {
     const tenant = await db.tenant.findUnique({
       where: { userId: session.user.id },
-      include: {
+      select: {
         favorites: {
-          include: { location: true },
+          // Card fields only — the grid renders photo/title/price/city; a
+          // full row would also drag descriptions and policy JSON per favorite.
+          select: {
+            id: true,
+            title: true,
+            pricePerNight: true,
+            photoUrls: true,
+            location: { select: { city: true, country: true } },
+          },
           orderBy: { postedDate: "desc" },
         },
       },

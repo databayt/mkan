@@ -15,6 +15,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import { sanitizeInput, sanitizeHtml } from "@/lib/sanitization";
+import { SEARCH_LISTING_SELECT } from "@/lib/listing-select";
 import { logger } from "@/lib/logger";
 import { assertRateLimit } from "@/lib/rate-limit";
 
@@ -373,20 +374,11 @@ export async function getListings(filters?: ListingFilters) {
     const take = filters?.take ?? 50;
     const skip = filters?.skip ?? 0;
 
+    // Card-level select shared with search — a full Listing row also drags
+    // houseRules/guideInfo JSON and policy fields no list surface renders.
     const listings = await db.listing.findMany({
       where,
-      include: {
-        location: true,
-        host: {
-          select: {
-            id: true,
-            email: true,
-            phoneNumber: true,
-            username: true,
-            image: true,
-          },
-        },
-      },
+      select: SEARCH_LISTING_SELECT,
       orderBy: {
         createdAt: "desc",
       },

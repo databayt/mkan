@@ -13,6 +13,7 @@ import {
   type SearchResult,
 } from "@/lib/schemas/search-schema";
 import { localize, localizeNested } from "@/components/translation/localize";
+import { SEARCH_LISTING_SELECT } from "@/lib/listing-select";
 import { getDisplayLang } from "@/components/translation/locale";
 import type { Lang } from "@/components/translation/types";
 
@@ -279,49 +280,8 @@ function buildSearchWhere(
 // Keep this list in sync with `Listing` in src/types/listing.ts. The
 // Prisma payload type below derives from this select, so a typo here
 // surfaces immediately as a tsc error in pages that consume it.
-const SEARCH_LISTING_SELECT = {
-  id: true,
-  title: true,
-  description: true,
-  pricePerNight: true,
-  securityDeposit: true,
-  applicationFee: true,
-  cleaningFee: true,
-  weeklyDiscount: true,
-  monthlyDiscount: true,
-  photoUrls: true,
-  amenities: true,
-  highlights: true,
-  isPetsAllowed: true,
-  isParkingIncluded: true,
-  bedrooms: true,
-  bathrooms: true,
-  squareFeet: true,
-  guestCount: true,
-  propertyType: true,
-  postedDate: true,
-  averageRating: true,
-  numberOfReviews: true,
-  isGuestFavorite: true,
-  draft: true,
-  isPublished: true,
-  instantBook: true,
-  location: {
-    select: {
-      id: true,
-      address: true,
-      city: true,
-      state: true,
-      country: true,
-      postalCode: true,
-      latitude: true,
-      longitude: true,
-    },
-  },
-  host: {
-    select: { id: true, email: true, username: true },
-  },
-} as const satisfies Prisma.ListingSelect;
+// Moved to src/lib/listing-select.ts so non-search readers (getListings,
+// the published API) share the same card-level row shape.
 
 /**
  * Homepage listings — a cached, narrow-select reader for the featured carousels.

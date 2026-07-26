@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, cache } from "react";
 import ListingDetailsClient from "@/components/listing-details-client";
 import Location from "@/components/listings/map";
 import ListingsHeader from "@/components/listings/listings-header";
@@ -61,16 +61,9 @@ export async function generateMetadata({
       path: `/listings/${id}`,
     });
   }
-  const listing = await db.listing.findUnique({
-    where: { id: listingId },
-    select: {
-      title: true,
-      description: true,
-      photoUrls: true,
-      isPublished: true,
-      location: { select: { city: true } },
-    },
-  });
+  // Same cached fetch the page body uses — one Prisma round trip per request
+  // instead of a separate metadata-only query.
+  const listing = await fetchListing(listingId);
   const [title, description, city] = await Promise.all([
     getText(listing?.title, lang),
     getText(listing?.description, lang),
@@ -90,8 +83,10 @@ export async function generateMetadata({
   });
 }
 
-async function getListingById(id: number, lang: Locale) {
-  const listing = await db.listing.findUnique({
+// React cache() dedupes across generateMetadata and the page body within a
+// single request — both consume the same row, so it runs once.
+const fetchListing = cache(async (id: number) =>
+  db.listing.findUnique({
     where: { id },
     include: {
       location: true,
@@ -106,7 +101,11 @@ async function getListingById(id: number, lang: Locale) {
         }
       },
     }
-  });
+  })
+);
+
+async function getListingById(id: number, lang: Locale) {
+  const listing = await fetchListing(id);
   if (!listing) return listing;
 
   // Localize dynamic content (Arabic source) for the viewer's locale. No-op
@@ -150,11 +149,25 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
   const end = new Date();
   const hostingMonths = Math.max(1, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()));
 
-  const [d, mobileReviewsResult, hostOtherReviews, session, nearbyRaw] = await Promise.all([
+  // Heart state chains off the session promise inside the same wave — it used
+  // to run as a separate awaited round trip after this Promise.all.
+  const sessionPromise = auth();
+  const savedTenantPromise = sessionPromise
+    .then((s) =>
+      s?.user?.id
+        ? db.tenant.findUnique({
+            where: { userId: s.user.id },
+            select: { favorites: { where: { id: listingId }, select: { id: true } } },
+          })
+        : null
+    )
+    .catch(() => null);
+
+  const [d, mobileReviewsResult, hostOtherReviews, session, nearbyRaw, savedTenant] = await Promise.all([
     getDictionary(lang),
     getListingReviews(listingId, { take: 8 }, lang).catch(() => ({ reviews: [], total: 0 })),
     getHostOtherReviewCount(listingId).catch(() => ({ count: 0, hostId: null, hostName: null })),
-    auth(),
+    sessionPromise,
     // Nearby stays only need the already-loaded listing's city, so they run in
     // this wave instead of a later sequential round-trip (fewer stacked latencies).
     db.listing
@@ -175,19 +188,11 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
         orderBy: { id: "asc" },
       })
       .catch(() => []),
+    savedTenantPromise,
   ]);
 
   // Heart state comes from the tenant's persisted favorites, not localStorage.
-  let initialIsSaved = false;
-  if (session?.user?.id) {
-    const tenant = await db.tenant
-      .findUnique({
-        where: { userId: session.user.id },
-        select: { favorites: { where: { id: listingId }, select: { id: true } } },
-      })
-      .catch(() => null);
-    initialIsSaved = (tenant?.favorites.length ?? 0) > 0;
-  }
+  const initialIsSaved = (savedTenant?.favorites.length ?? 0) > 0;
 
   const mobileReviewItems = mobileReviewsResult.reviews.map((r) => ({
     id: r.id,

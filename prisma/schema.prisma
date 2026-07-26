@@ -103,6 +103,7 @@ model Booking {
   @@index([listingId, status])
   @@index([listingId, checkIn, checkOut])
   @@index([checkIn, checkOut])
+  @@index([guestId, createdAt])
 }
 
 model Review {
@@ -301,6 +302,7 @@ model Listing {
 
   @@index([hostId])
   @@index([hostId, isPublished])
+  @@index([hostId, isPublished, lastAvailabilityConfirmedAt])
   @@index([isPublished, draft])
   @@index([isPublished, draft, postedDate])
   @@index([isPublished, draft, pricePerNight])
