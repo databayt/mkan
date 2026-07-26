@@ -18,7 +18,7 @@
  *        --out=<path>  --pdp-delay=<ms>  --max-pages=<N>  --cdp=<url>
  */
 import { chromium, type Page } from 'playwright';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import {
   parseSearchResult,
@@ -41,6 +41,11 @@ const QUERY = arg('query', 'Sudan')!;
 const MAX = parseInt(arg('max', '0')!, 10); // 0 = no cap
 const MAX_PAGES = parseInt(arg('max-pages', '10')!, 10);
 const NO_PDP = flag('no-pdp');
+// --merge: accumulate into an existing OUT instead of overwriting. Prior homes
+// (already PDP-enriched) are kept and NOT re-fetched — only listings new to this
+// run's search get enriched. This is what makes a multi-region Sudan sweep
+// (run once per city into the same file) cheap and exhaustive.
+const MERGE = flag('merge');
 const PDP_DELAY = parseInt(arg('pdp-delay', '1500')!, 10);
 const CDP = arg('cdp', 'http://127.0.0.1:9222')!;
 const OUT = arg('out', 'scripts/crm/.data/airbnb-scrape.json')!;
@@ -70,8 +75,22 @@ async function main() {
   const ctx = browser.contexts()[0] ?? (await browser.newContext());
   const page = await ctx.newPage();
 
-  // 1) Search pages (paginate via pageCursors) → partial Homes, deduped by id.
+  // Seed from the existing file when merging, so a region sweep accumulates.
   const homes = new Map<string, HomeRecord>();
+  const hosts = new Map<string, HostRecord>();
+  if (MERGE && existsSync(OUT)) {
+    try {
+      const prior = JSON.parse(readFileSync(OUT, 'utf8')) as { homes?: HomeRecord[]; hosts?: HostRecord[] };
+      for (const h of prior.homes ?? []) homes.set(h.airbnbListingId, h);
+      for (const h of prior.hosts ?? []) hosts.set(h.airbnbHostId, h);
+      console.log(`  ↺ merge: loaded ${homes.size} homes, ${hosts.size} hosts from ${OUT}`);
+    } catch (e) {
+      console.warn(`  ! merge: couldn't read ${OUT} (${(e as Error).message}) — starting fresh`);
+    }
+  }
+  const preexisting = new Set(homes.keys()); // known before this run → skip re-enrich
+
+  // 1) Search pages (paginate via pageCursors) → partial Homes, deduped by id.
   let cursor: string | undefined;
   for (let p = 0; p < MAX_PAGES; p++) {
     const url = cursor ? `${SEARCH_BASE}?cursor=${encodeURIComponent(cursor)}` : SEARCH_BASE;
@@ -101,13 +120,14 @@ async function main() {
 
   let homeList = [...homes.values()];
   if (MAX) homeList = homeList.slice(0, MAX);
-  console.log(`\n  ${homeList.length} listings from search.${NO_PDP ? '' : ' Enriching via PDP…'}`);
+  // Only enrich listings new to this run (merge keeps prior homes already done).
+  const toEnrich = homeList.filter((h) => !preexisting.has(h.airbnbListingId));
+  console.log(`\n  ${homeList.length} listings total (${toEnrich.length} new this run).${NO_PDP ? '' : ' Enriching new via PDP…'}`);
 
   // 2) PDP enrichment (all photos + description + amenities + host).
-  const hosts = new Map<string, HostRecord>();
   if (!NO_PDP) {
-    for (let i = 0; i < homeList.length; i++) {
-      const home = homeList[i];
+    for (let i = 0; i < toEnrich.length; i++) {
+      const home = toEnrich[i];
       try {
         await page.goto(home.airbnbUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(6000);
@@ -145,13 +165,15 @@ async function main() {
             }
           }
         }
-        console.log(`  ✓ ${i + 1}/${homeList.length}  ${home.city.padEnd(11)} ${home.photoCount} photos  ${(home.title ?? '').slice(0, 34)}`);
+        console.log(`  ✓ ${i + 1}/${toEnrich.length}  ${home.city.padEnd(11)} ${home.photoCount} photos  ${(home.title ?? '').slice(0, 34)}`);
       } catch (e) {
-        console.warn(`  ! ${i + 1}/${homeList.length} PDP failed for ${home.airbnbListingId}: ${(e as Error).message}`);
+        console.warn(`  ! ${i + 1}/${toEnrich.length} PDP failed for ${home.airbnbListingId}: ${(e as Error).message}`);
       }
       await sleep(PDP_DELAY);
     }
-    // Tally each host's scraped listing count.
+    // Re-tally every host's scraped listing count from scratch (merge-safe:
+    // counting over the full merged homeList, not just this run's additions).
+    for (const host of hosts.values()) host.airbnbListingsCount = 0;
     for (const h of homeList) if (h.hostAirbnbId && hosts.has(h.hostAirbnbId)) {
       const host = hosts.get(h.hostAirbnbId)!;
       host.airbnbListingsCount = (host.airbnbListingsCount ?? 0) + 1;
