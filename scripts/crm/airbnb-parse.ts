@@ -231,50 +231,157 @@ export function extractPdpPhotos(raw: string, _listingId?: string): string[] {
   return best;
 }
 
-/** PDP JSON + raw → enrichment fields (photos, description, amenities, roomType, host). */
-export function parsePdp(json: any, raw: string, listingId: string): {
+/**
+ * The PDP's named sections, keyed by `sectionId`.
+ *
+ * Reading by section id instead of walking the whole document is what keeps
+ * `SIMILAR_LISTINGS_CAROUSEL` — which carries other listings and their hosts —
+ * from contaminating this listing's fields.
+ */
+export function pdpSections(json: any): Record<string, any> {
+  const container = findByKey(
+    json,
+    (o) => Array.isArray(o.sections) && o.sections.some((s: any) => typeof s?.sectionId === 'string' && s?.section),
+  );
+  const out: Record<string, any> = {};
+  for (const s of container?.sections ?? []) {
+    if (typeof s?.sectionId === 'string' && s.section && !out[s.sectionId]) out[s.sectionId] = s.section;
+  }
+  return out;
+}
+
+/**
+ * Airbnb's own analytics payload. Authoritative for the fields it carries —
+ * notably `descriptionLanguage`, which states outright which language the host
+ * wrote in, and so which side of an AR/EN pair is machine translation.
+ */
+export function pdpEventData(json: any): any | null {
+  return findByKey(json, (o) => o.__typename === 'PdpEventData' && typeof o.listingId === 'string');
+}
+
+export type HostSource = 'MEET_YOUR_HOST' | 'EVENT_DATA' | 'HEURISTIC' | null;
+
+export interface PdpParse {
   description: string | null;
+  title: string | null;
   roomType: string | null;
   amenities: string[];
   guestCapacity: number | null;
   photos: string[];
   host: Partial<HostRecord> | null;
-} {
-  const hostObj = findByKey(json, (o) => o.isSuperhost !== undefined && (o.userId !== undefined || o.name !== undefined));
-  const amenObj = findByKey(json, (o) => Array.isArray(o.seeAllAmenityGroups)) ?? findByKey(json, (o) => Array.isArray(o.previewAmenitiesGroups));
-  const descObj = findByKey(json, (o) => o.htmlDescription && typeof o.htmlDescription.htmlText === 'string');
-  const rtObj = findByKey(json, (o) => typeof o.roomType === 'string');
-  const capObj = findByKey(json, (o) => typeof o.personCapacity === 'number');
+  /** Which rule resolved the host. HEURISTIC results are not safe to import. */
+  hostSource: HostSource;
+  coHostIds: string[];
+  /** Free-text host bio — the richest contact-hunt surface on the page. */
+  hostAbout: string | null;
+  /** "Port Sudan, Red Sea, Sudan" — Airbnb's own geocoded place string. */
+  locationSubtitle: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  houseRules: string[];
+  /** ISO 639-1 language the host authored the description in, per Airbnb. */
+  descriptionLanguage: string | null;
+  /** True when Airbnb is showing a translation with a "show original" toggle. */
+  machineTranslated: boolean | null;
+}
 
-  const groups = amenObj?.seeAllAmenityGroups ?? amenObj?.previewAmenitiesGroups ?? [];
-  const amenities = groups
-    .flatMap((g: any) => (g?.amenities ?? []).map((a: any) => a?.title))
-    .filter((t: any): t is string => typeof t === 'string' && t.length > 0);
+/** PDP JSON + raw → every field worth having, read by section rather than walked. */
+export function parsePdp(json: any, raw: string, listingId: string): PdpParse {
+  const S = pdpSections(json);
+  const ev = pdpEventData(json);
+
+  const meetYourHost = S.MEET_YOUR_HOST ?? null;
+  const descSection = S.DESCRIPTION_DEFAULT ?? null;
+  const locSection = S.LOCATION_DEFAULT ?? null;
+  const policies = S.POLICIES_DEFAULT ?? null;
+
+  // ── host, in order of trustworthiness ──────────────────────────────────────
+  // The old rule was a first-match walk for `isSuperhost`, which has no idea
+  // which section it landed in: a co-host or a carousel listing's host could
+  // win on key order alone, and silently own the import.
+  let hostCard = meetYourHost?.cardData ?? null;
+  let hostSource: HostSource = hostCard ? 'MEET_YOUR_HOST' : null;
+  if (!hostCard) {
+    const fallback = findByKey(
+      json,
+      (o) => o.__typename === 'PassportCardData' && (o.userId !== undefined || o.name !== undefined),
+    );
+    if (fallback) {
+      hostCard = fallback;
+      hostSource = 'HEURISTIC';
+    }
+  }
 
   let host: Partial<HostRecord> | null = null;
-  if (hostObj) {
-    const stats: any[] = Array.isArray(hostObj.stats) ? hostObj.stats : [];
-    const respStat = stats.find((s) => /response rate/i.test(`${s?.label ?? ''}`));
-    const respRate = respStat ? parseInt(String(respStat.value).replace(/[^\d]/g, ''), 10) : null;
+  if (hostCard) {
+    const stats: any[] = Array.isArray(hostCard.stats) ? hostCard.stats : [];
+    const detailText = [
+      ...(Array.isArray(meetYourHost?.hostDetails) ? meetYourHost.hostDetails : []),
+      ...stats.map((s) => `${s?.label ?? ''} ${s?.value ?? ''}`),
+      hostCard.titleText ?? '',
+    ].join(' · ');
+    const respMatch = detailText.match(/response rate[:\s]*(\d+)/i);
+
+    // `timeAsHost` is structured; the old code parsed it out of display text.
+    const t = hostCard.timeAsHost;
+    const months = t ? (Number(t.years) || 0) * 12 + (Number(t.months) || 0) : null;
+    const since = months != null ? new Date() : null;
+    if (since && months != null) since.setMonth(since.getMonth() - months);
+
     host = {
-      airbnbHostId: decodeAirbnbId(hostObj.userId) ?? undefined,
-      name: hostObj.name ?? null,
-      avatarUrl: hostObj.profilePictureUrl ?? null,
-      superhost: !!hostObj.isSuperhost,
-      hostSince: hostSinceFromTitle(hostObj.titleText),
-      responseRate: Number.isFinite(respRate as number) ? (respRate as number) : null,
-      portfolioReviewsTotal: typeof hostObj.ratingCount === 'number' ? hostObj.ratingCount : null,
-      portfolioAvgRating: typeof hostObj.ratingAverage === 'number' ? hostObj.ratingAverage : null,
+      airbnbHostId: decodeAirbnbId(hostCard.userId) ?? undefined,
+      name: hostCard.name ?? null,
+      avatarUrl: hostCard.profilePictureUrl ?? null,
+      superhost: !!hostCard.isSuperhost,
+      hostSince: since ? since.toISOString().slice(0, 10) : hostSinceFromTitle(hostCard.titleText),
+      responseRate: respMatch ? parseInt(respMatch[1], 10) : null,
+      portfolioReviewsTotal: typeof hostCard.ratingCount === 'number' ? hostCard.ratingCount : null,
+      portfolioAvgRating: typeof hostCard.ratingAverage === 'number' ? hostCard.ratingAverage : null,
     };
   }
 
+  const coHostIds: string[] = (Array.isArray(meetYourHost?.cohosts) ? meetYourHost.cohosts : [])
+    .map((c: any) => decodeAirbnbId(c?.userId ?? c?.id))
+    .filter((v: string | null): v is string => !!v);
+
+  // ── amenities ──────────────────────────────────────────────────────────────
+  const amenObj =
+    findByKey(json, (o) => Array.isArray(o.seeAllAmenityGroups)) ??
+    findByKey(json, (o) => Array.isArray(o.previewAmenitiesGroups));
+  const amenities: string[] = (amenObj?.seeAllAmenityGroups ?? amenObj?.previewAmenitiesGroups ?? [])
+    .flatMap((g: any) => (g?.amenities ?? []).map((a: any) => a?.title))
+    .filter((t: any): t is string => typeof t === 'string' && t.length > 0);
+
+  // ── house rules ────────────────────────────────────────────────────────────
+  const houseRules: string[] = [
+    ...(Array.isArray(policies?.houseRules) ? policies.houseRules : []).map((r: any) => r?.title),
+    ...(Array.isArray(policies?.additionalHouseRules) ? policies.additionalHouseRules : []).map(
+      (r: any) => (typeof r === 'string' ? r : r?.title),
+    ),
+  ].filter((t: any): t is string => typeof t === 'string' && t.length > 0);
+
+  // A "show original" toggle means what we are reading is Airbnb's translation.
+  const machineTranslated = descSection
+    ? !!(descSection.ugcTranslationButton || descSection.htmlDescription?.showOriginalButton)
+    : null;
+
   return {
-    description: descObj?.htmlDescription?.htmlText ?? null,
-    roomType: rtObj?.roomType ?? null,
+    description: descSection?.htmlDescription?.htmlText ?? null,
+    title: S.TITLE_DEFAULT?.title ?? null,
+    roomType: ev?.roomType ?? findByKey(json, (o) => typeof o.roomType === 'string')?.roomType ?? null,
     amenities,
-    guestCapacity: capObj?.personCapacity ?? null,
+    guestCapacity: typeof ev?.personCapacity === 'number' ? ev.personCapacity : null,
     photos: extractPdpPhotos(raw, listingId),
     host,
+    hostSource,
+    coHostIds,
+    hostAbout: typeof meetYourHost?.about === 'string' && meetYourHost.about.trim() ? meetYourHost.about : null,
+    locationSubtitle: typeof locSection?.subtitle === 'string' ? locSection.subtitle : null,
+    latitude: typeof locSection?.lat === 'number' ? locSection.lat : (ev?.listingLat ?? null),
+    longitude: typeof locSection?.lng === 'number' ? locSection.lng : (ev?.listingLng ?? null),
+    houseRules,
+    descriptionLanguage: typeof ev?.descriptionLanguage === 'string' ? ev.descriptionLanguage : null,
+    machineTranslated,
   };
 }
 

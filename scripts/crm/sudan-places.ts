@@ -395,9 +395,36 @@ export function checkPlace(
   lat: number | null | undefined,
   lng: number | null | undefined,
   titleOrCategory: string | null | undefined,
+  /** The PDP's `LOCATION_DEFAULT.subtitle`, e.g. "Port Sudan, Red Sea, Sudan".
+   *  Airbnb's own geocoding — when present it outranks everything else. */
+  locationSubtitle?: string | null,
 ): PlaceCheck {
   const hit = classifyPoint(lat, lng);
   const titleCity = deriveCityFromTitle(titleOrCategory);
+
+  if (locationSubtitle) {
+    const country = locationSubtitle.split(',').pop()?.trim().toLowerCase() ?? '';
+    if (country && !/^sudan$/.test(country)) {
+      return {
+        ...hit,
+        titleCity,
+        agreement: 'SUSPECT_FOREIGN',
+        note: `Airbnb places this listing in ${locationSubtitle}`,
+      };
+    }
+    if (/^sudan$/.test(country)) {
+      // Airbnb says Sudan. Prefer the city its own subtitle names.
+      const fromSubtitle = deriveCityFromTitle(locationSubtitle);
+      return {
+        ...hit,
+        city: fromSubtitle !== 'OTHER' ? fromSubtitle : hit.city,
+        verdict: hit.verdict === 'OUTSIDE' ? 'BORDERLINE' : hit.verdict,
+        titleCity,
+        agreement: 'CONFIRMED',
+        note: hit.verdict === 'OUTSIDE' ? `coordinates disagree; trusting Airbnb's "${locationSubtitle}"` : null,
+      };
+    }
+  }
 
   if (hit.verdict === 'OUTSIDE') {
     return { ...hit, titleCity, agreement: 'SUSPECT_FOREIGN', note: 'coordinates fall outside Sudan' };

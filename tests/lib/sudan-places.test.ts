@@ -170,6 +170,26 @@ describe("checkPlace", () => {
   it("rejects anything whose coordinates fall outside the border", () => {
     expect(checkPlace(9.03, 38.74, "Home in Addis Ababa").agreement).toBe("SUSPECT_FOREIGN");
   });
+
+  it("lets Airbnb's own geocoded subtitle overrule everything else", () => {
+    // LOCATION_DEFAULT.subtitle is "City, State, Country" straight from Airbnb.
+    // It settles the Hikkaduwa case outright, without needing the coordinates.
+    const sriLanka = checkPlace(12.8637, 30.2164, "Apartment in Hikkaduwa", "Hikkaduwa, Southern Province, Sri Lanka");
+    expect(sriLanka.agreement).toBe("SUSPECT_FOREIGN");
+    expect(sriLanka.note).toMatch(/Sri Lanka/);
+
+    const portSudan = checkPlace(19.6014, 37.20647, "Hotel in Port Sudan", "Port Sudan, Red Sea, Sudan");
+    expect(portSudan.agreement).toBe("CONFIRMED");
+    expect(portSudan.city).toBe("PORT_SUDAN");
+  });
+
+  it("trusts the subtitle over coordinates the polygon would reject", () => {
+    // A real Sudanese listing whose placeholder coordinates land abroad should
+    // survive — Airbnb naming Sudan is better evidence than our simplified border.
+    const hit = checkPlace(9.03, 38.74, "Room", "Kassala, Kassala, Sudan");
+    expect(hit.agreement).toBe("CONFIRMED");
+    expect(hit.city).toBe("KASSALA");
+  });
 });
 
 describe("gazetteer integrity", () => {

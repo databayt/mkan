@@ -63,6 +63,12 @@ const FRONTIER = arg('frontier', 'scripts/crm/.data/airbnb-bbox-frontier.json')!
 /** ~1.1 km. Below this we stop splitting and report the cell as a known hole. */
 const MIN_SPAN_DEG = 0.01;
 
+/** Retries and backoff for transient network failures — see TRANSIENT below. */
+const NET_RETRIES = 4;
+const NET_BACKOFF_MS = 20_000;
+/** Consecutive network-failed cells before we stop rather than burn the frontier. */
+const NET_ABORT_STREAK = 3;
+
 type CellStatus = 'PENDING' | 'COMPLETE' | 'SATURATED' | 'EMPTY' | 'CAPPED' | 'FAILED' | 'SKIPPED_FOREIGN';
 
 interface Cell {
@@ -216,9 +222,24 @@ function loadFrontier(): Frontier {
   };
 }
 
+/**
+ * Transient enough to be worth waiting out rather than burning the cell.
+ * The LAN resolver here intermittently fails to resolve, and a run that treats
+ * that as a permanent cell failure marks the whole remaining frontier FAILED in
+ * a couple of minutes — which is exactly what happened on the first full crawl.
+ */
+const TRANSIENT = /ERR_NAME_NOT_RESOLVED|ERR_INTERNET_DISCONNECTED|ERR_NETWORK_CHANGED|ERR_CONNECTION_(?:RESET|CLOSED|TIMED_OUT)|ERR_TIMED_OUT|Timeout \d+ms exceeded/i;
+
 /** Fetch one cell, merge its listings, and decide whether it must be split. */
 async function crawlCell(page: Page, cell: Cell, store: Store): Promise<void> {
-  const result = await paginateSearch(page, cellUrl(cell), { delayMs: DELAY });
+  let result = await paginateSearch(page, cellUrl(cell), { delayMs: DELAY });
+
+  for (let attempt = 1; attempt <= NET_RETRIES && result.outcome === 'FAILED' && TRANSIENT.test(result.error ?? ''); attempt++) {
+    const backoff = NET_BACKOFF_MS * attempt;
+    console.log(`      … network error, waiting ${backoff / 1000}s before retry ${attempt}/${NET_RETRIES}`);
+    await sleep(backoff);
+    result = await paginateSearch(page, cellUrl(cell), { delayMs: DELAY });
+  }
 
   let inside = 0;
   let outside = 0;
@@ -369,6 +390,7 @@ async function main() {
   const page = await ctx.newPage();
 
   let visited = 0;
+  let netStreak = 0;
   // Breadth-first: a whole level completes before the next one starts, so an
   // interrupted run leaves uniform coverage rather than one deep spike.
   for (;;) {
@@ -382,6 +404,26 @@ async function main() {
     const cell = queue[0];
     await crawlCell(page, cell, store);
     visited++;
+
+    // A sustained outage must stop the run, not race through the frontier
+    // marking everything FAILED — those cells then look investigated when they
+    // were never opened.
+    if (cell.status === 'FAILED' && TRANSIENT.test(cell.error ?? '')) {
+      netStreak++;
+      if (netStreak >= NET_ABORT_STREAK) {
+        frontier.updatedAt = new Date().toISOString();
+        writeAtomic(FRONTIER, frontier);
+        saveStore(store);
+        console.error(
+          `\n❌ ${netStreak} consecutive network failures — the connection is down. Stopping so the` +
+            '\n   remaining cells stay PENDING rather than being marked failed. Rerun when it is back:' +
+            '\n     pnpm crm:bbox --retry-failed\n',
+        );
+        break;
+      }
+    } else {
+      netStreak = 0;
+    }
 
     const mark =
       cell.status === 'COMPLETE' ? '✓' : cell.status === 'SATURATED' ? '↳' : cell.status === 'EMPTY' ? '·' : '!';
