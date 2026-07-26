@@ -18,9 +18,34 @@
  *   npx tsx scripts/crm/probe-caps.ts                    # all four
  *   npx tsx scripts/crm/probe-caps.ts --only=caps,locale
  *   npx tsx scripts/crm/probe-caps.ts --room=1475219497357463082
+ *   npx tsx scripts/crm/probe-caps.ts --only=caps --cell=19.55,37.15,19.68,37.28
  *
  * Flags: --only=<session,caps,locale,ugc>  --room=<listingId>  --max-pages=<N>
- *        --cdp=<url>  --out=<path>
+ *        --cell=<swLat,swLng,neLat,neLng>  --cdp=<url>  --out=<path>
+ *
+ * ── FINDINGS, measured 2026-07-26 ───────────────────────────────────────────
+ *
+ * caps — `paginationInfo.pageCursors` is Airbnb's DECLARED page count for the
+ *   viewport, not a sliding window, and it saturates at 15 (× 18 = 270):
+ *     whole Sudan  (15.2° × 17.5°)  declared 15 pages, 263 unique  → CAPPED
+ *     Khartoum metro (0.35° × 0.30°) declared  6 pages, 106 unique  → complete
+ *     Port Sudan tight (0.13°)       declared  1 page,    6 unique  → complete
+ *   So the split test is `declaredPages >= 15`, and the whole-country query the
+ *   old scraper used was truncating all along. `nextPageCursor` was never
+ *   populated in any run — `pageCursors[i+1]` is the only way forward.
+ *   Khartoum metro alone holds 106 listings against a 117-listing total scrape,
+ *   which is the measure of how much the slug sweep was missing.
+ *
+ * locale — `?locale=ar` returns Arabic and is NOT sticky (a bare URL right
+ *   after it returns Latin again). Still pass an explicit `?locale=` on every
+ *   PDP fetch and assert the returned script: cheap, and the failure it guards
+ *   against is silent.
+ *
+ * ugc — `translate_ugc=false` IS honoured and returns the host's ORIGINAL text.
+ *   That gives real provenance per listing: fetch `?locale=<x>&translate_ugc=false`
+ *   once, detect the script, and you know which language the host actually wrote
+ *   in — the other language is then Airbnb's machine translation. On the sample
+ *   room the original was English, so its Arabic is Airbnb MT, not host prose.
  */
 import { chromium, type Browser, type Page } from 'playwright';
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
@@ -38,8 +63,24 @@ const OUT = arg('out', 'scripts/crm/.data/probe-caps.json')!;
 const ONLY = (arg('only', 'session,caps,locale,ugc')!).split(',').map((s) => s.trim());
 const SCRAPE_FILE = 'scripts/crm/.data/airbnb-scrape.json';
 
+// Measured 2026-07-26 against the whole-Sudan viewport: Airbnb never declares
+// more than 15 pages × 18 results, however dense the area. A viewport whose
+// declared page count reaches this is truncated, not exhausted.
+const OBSERVED_PAGE_CAP = 15;
+
 // Post-secession Sudan, the same box the bbox crawler will use.
-const SUDAN = { swLat: 8.0, swLng: 21.5, neLat: 23.2, neLng: 39.0 };
+const SUDAN_BBOX = { swLat: 8.0, swLng: 21.5, neLat: 23.2, neLng: 39.0 };
+
+/** --cell=swLat,swLng,neLat,neLng overrides the box `caps` paginates. */
+function cellArg() {
+  const raw = arg('cell');
+  if (!raw) return SUDAN_BBOX;
+  const [swLat, swLng, neLat, neLng] = raw.split(',').map(Number);
+  if ([swLat, swLng, neLat, neLng].some((n) => !Number.isFinite(n))) {
+    throw new Error(`--cell must be swLat,swLng,neLat,neLng — got "${raw}"`);
+  }
+  return { swLat, swLng, neLat, neLng };
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -115,14 +156,25 @@ async function probeSession(page: Page) {
 // ── 2. caps ──────────────────────────────────────────────────────────────────
 
 /**
- * Paginate the whole-Sudan bbox until Airbnb stops handing out cursors, and
- * report where it stopped and why. Everything the quadtree needs — PAGE_CAP,
+ * Paginate a map viewport until Airbnb stops handing out cursors, and report
+ * where it stopped and why. Everything the quadtree needs — PAGE_CAP,
  * RESULT_CAP, and which cursor field is authoritative — falls out of this.
+ *
+ * The distinction that matters, and that is easy to get wrong: running out of
+ * cursors is NOT the same as running out of listings. Airbnb hands back a
+ * fixed-length `pageCursors` window; a dense viewport exhausts that window with
+ * data still behind it (SATURATED — must be split), while a sparse one returns
+ * a short window and genuinely ends (COMPLETE). Compare `pageCursorsLength`
+ * against `pagesFetched` to tell them apart.
  */
 async function probeCaps(page: Page) {
+  const cell = cellArg();
+  const span = Math.max(cell.neLat - cell.swLat, cell.neLng - cell.swLng);
+  const zoom = Math.min(16, Math.max(5, Math.round(Math.log2(360 / span))));
   const base =
-    `https://www.airbnb.com/s/Sudan/homes?ne_lat=${SUDAN.neLat}&ne_lng=${SUDAN.neLng}` +
-    `&sw_lat=${SUDAN.swLat}&sw_lng=${SUDAN.swLng}&zoom=5&search_by_map=true`;
+    `https://www.airbnb.com/s/Sudan/homes?ne_lat=${cell.neLat}&ne_lng=${cell.neLng}` +
+    `&sw_lat=${cell.swLat}&sw_lng=${cell.swLng}&zoom=${zoom}&search_by_map=true`;
+  console.log(`\n② caps     → bbox ${JSON.stringify(cell)} @ zoom ${zoom}`);
 
   const unique = new Set<string>();
   const pages: Array<Record<string, unknown>> = [];
@@ -180,23 +232,37 @@ async function probeCaps(page: Page) {
       (typeof pi.nextPageCursor === 'string' && pi.nextPageCursor) ||
       (idx >= 0 ? cursorList[idx + 1] : undefined);
     if (typeof next !== 'string' || next === cursor) {
-      stopReason = 'no further cursor (natural exhaustion)';
+      stopReason = `ran out of cursors after ${pages.length} page(s), window length ${cursorList.length}`;
       break;
     }
     cursor = next;
     await sleep(1200);
   }
 
+  // `pageCursors` is Airbnb's DECLARED page count for the viewport, not a
+  // sliding window — a 6-result cell reports length 1, a dense one reports 15.
+  // So the ceiling shows up as the window itself pinning at its maximum.
+  const window = (pages[pages.length - 1]?.pageCursorsLength as number) ?? 0;
+  const capped = window >= OBSERVED_PAGE_CAP;
   const result = {
-    bbox: SUDAN,
+    bbox: cell,
+    zoom,
     pagesFetched: pages.length,
     uniqueResults: unique.size,
+    declaredPages: window,
+    capped,
     stopReason,
     perPage: pages,
     firstPageCountFields: firstPageCounts,
   };
-  console.log(`\n② caps     → ${pages.length} pages, ${unique.size} unique listings, stopped: ${stopReason}`);
-  console.log(`   ⇒ PAGE_CAP = ${pages.length}, RESULT_CAP = ${unique.size}  (pin these in airbnb-bbox.ts)`);
+  console.log(`\n   ${pages.length} page(s), ${unique.size} unique — Airbnb declared ${window} page(s)`);
+  if (capped) {
+    console.log(`   ⇒ SATURATED. Declared pages pinned at the ${OBSERVED_PAGE_CAP}-page ceiling`);
+    console.log('     (~270 results). This viewport is hiding listings and must be split.');
+  } else {
+    console.log(`   ⇒ COMPLETE. Airbnb offered ${window} page(s) — fewer than the ceiling, so this`);
+    console.log(`     viewport genuinely holds ${unique.size} listing(s) and needs no split.`);
+  }
   const declared = Object.entries(firstPageCounts).filter(([k]) => /total|resultsCount|nbHits/i.test(k));
   if (declared.length) console.log(`   declared-total candidates: ${JSON.stringify(Object.fromEntries(declared))}`);
   return result;
