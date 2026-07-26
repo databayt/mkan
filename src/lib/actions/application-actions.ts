@@ -1,5 +1,8 @@
 "use server";
 
+// LONG-TERM RENTAL flow (Application→Lease→Payment). Not the short-term
+// Booking/BookingPayment stay flow — see docs/booking-vs-application.md.
+
 import { z } from "zod";
 import { auth, canOverride } from "@/lib/auth";
 import { db } from "@/lib/db";

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { preconnect } from 'react-dom';
 import { Inter } from 'next/font/google';
 import localFont from 'next/font/local';
@@ -14,6 +14,11 @@ import '../globals.css';
 
 // Enable ISR with 1-hour revalidation
 export const revalidate = 3600;
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
 
 // display:'optional' (not 'swap'): on slow connections the webfont arrives
 // seconds after first paint, and the swap re-inflated the text ~30% — which

@@ -1,5 +1,8 @@
 "use server";
 
+// SHORT-TERM STAY flow (Airbnb-style Booking/BookingPayment). Not the
+// long-term Application→Lease→Payment flow — see docs/booking-vs-application.md.
+
 import { z } from "zod";
 import { auth, canOverride } from "@/lib/auth";
 import { db } from "@/lib/db";
