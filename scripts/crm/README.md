@@ -8,8 +8,42 @@ scrape → upsert → score → outreach → re-host → import → publish. Eve
 > order, safety). Run it **on the Twenty machine**, where the backend + OpenClaw are
 > reachable at `localhost` (the Twenty API is not at the Vercel frontend domain).
 
+## How much inventory Sudan actually has (measured 2026-07-26)
+
+Worth knowing before planning around this pipeline: **Sudan has roughly 120 Airbnb listings
+in total**, held by 67 hosts. That is the whole national market, not a sample.
+
+The quadtree crawl (`pnpm crm:bbox`) now proves it. Every one of the 64 seed cells either
+paginated to exhaustion or is empty — no cell hit Airbnb's 15-page ceiling, so nothing is
+hidden behind a truncated result set:
+
+| | |
+| --- | --- |
+| cells | 64 — 10 with listings, 48 empty, 6 entirely outside Sudan |
+| saturated / failed | 0 / 0 |
+| results seen | 338 inside viewports |
+| rejected as foreign | 219 — Airbnb pads a Sudan search with listings from its neighbours |
+| homes kept | 121 |
+
+Two independent checks agree: the crawl's Khartoum cell (86) plus its Omdurman cell (22)
+comes to 108 against a separate Khartoum-metro probe's 106, and a direct re-probe of the
+Nyala cell confirms Darfur really does hold zero listings.
+
+So the earlier 117-listing dataset was already near-complete — not because the region sweep
+worked (it was breaking on page one; see `airbnb-paginate.ts`), but because the market is
+tiny. **Coverage is not the constraint on this business; inventory is.** Growth has to come
+from onboarding hosts who are not on Airbnb at all, and the pipeline should be judged on
+conversion rather than on scrape counts.
+
 | File | What |
 | --- | --- |
+| `probe-caps.ts` | Measures the facts the crawler depends on — Airbnb's pagination ceiling, whether `?locale=ar` works and is sticky, and whether `translate_ugc=false` returns the host's original text. Re-run it if Airbnb changes shape. |
+| `sudan-places.ts` | The gazetteer — Sudan's border polygon, 18 states, ~50 towns with Arabic names, the river geometry that separates Khartoum/Omdurman/Bahri, and `checkPlace()`, which decides whether a listing is really in Sudan. |
+| `airbnb-paginate.ts` | One correct pass over a search result set, shared by the slug scraper and the map crawler. Encodes what `pageCursors` means and why `declaredPages >= 15` marks a truncated viewport. |
+| `airbnb-bbox.ts` | **G1.2** — exhaustive discovery by map-viewport quadtree. Resumable via a frontier file; reports provable coverage and names its holes. |
+| `airbnb-pdp.ts` | **G1.2** — PDP enrichment, one locale per pass (`--locale=en` / `--locale=ar`), recording which language the host actually authored in. |
+| `amenity-map.ts` | Airbnb amenity strings → the mkan `Amenity` enum, in English and Arabic. |
+| `contact-extract.ts` | **G1.6** — pulls phones/WhatsApp/email/socials out of listing text. See its header for the measured yield, which is zero. |
 | `twenty-schema.ts` | Source of truth — `Home` (55 fields) + `Host` (32 fields) objects and the `Opportunity` custom fields (14), with Twenty `FieldMetadataType`s, SELECT options, and relations. Mirrors `docs/growth.md` §2.3–§2.5. |
 | `twenty-views.ts` | The 10 saved Views (object, type, kanban group-by, columns, sorts, filters). Mirrors §2.8. |
 | `seed-twenty-objects.ts` | Idempotent seeder — creates the objects + all fields (incl. the Opportunity fields on the standard object) via Twenty's metadata GraphQL API. |
