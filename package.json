@@ -37,6 +37,7 @@
     "crm:scrape": "tsx scripts/crm/airbnb-scrape.ts",
     "crm:scrape-sudan": "tsx scripts/crm/scrape-sudan.ts",
     "crm:bbox": "tsx scripts/crm/airbnb-bbox.ts",
+    "crm:pdp": "tsx scripts/crm/airbnb-pdp.ts",
     "crm:probe": "tsx scripts/crm/probe-caps.ts",
     "crm:upsert": "tsx scripts/crm/twenty-upsert.ts",
     "crm:score": "tsx scripts/crm/score-trust.ts",
