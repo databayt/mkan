@@ -6,7 +6,6 @@ import Image from "next/image";
 import { Menu } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { cdn } from "@/lib/cdn";
@@ -88,20 +87,30 @@ interface MobileNavProps {
 
 const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
   const [open, setOpen] = React.useState(false);
+  // Two-phase close so the sheet can fade/slide out via CSS before unmount —
+  // replaces the framer-motion AnimatePresence exit (the animation engine was
+  // the heaviest chunk shipping with the home header for a one-shot fade).
+  const [closing, setClosing] = React.useState(false);
   const { data: session, status } = useSession();
   const pathname = usePathname();
   const locale = pathname?.startsWith("/ar") ? "ar" : "en";
   const t = translations[locale];
   const isAuthed = status === "authenticated" && !!session?.user;
 
-  const close = React.useCallback(() => setOpen(false), []);
+  const close = React.useCallback(() => {
+    setClosing(true);
+    window.setTimeout(() => {
+      setOpen(false);
+      setClosing(false);
+    }, 200);
+  }, []);
 
   // Lock body scroll + Escape-to-close while the sheet is open.
   React.useEffect(() => {
     if (!open) return;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") close();
     };
     document.addEventListener("keydown", onKey);
     return () => {
@@ -136,18 +145,13 @@ const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
         <span className="sr-only">{t.menu}</span>
       </Button>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
+      {open && (
+          <div
             key="menu-sheet"
-            initial={{ opacity: 0, y: -16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
             role="dialog"
             aria-modal="true"
             aria-label={t.menu}
-            className="fixed inset-0 z-[100] flex flex-col bg-background/90 backdrop-blur md:hidden"
+            className={`fixed inset-0 z-[100] flex flex-col bg-background/90 backdrop-blur md:hidden transition-all duration-200 ease-out animate-in fade-in slide-in-from-top-4 ${closing ? "opacity-0 -translate-y-3" : ""}`}
           >
             {/* Sheet header — title start, quiet X end */}
             <div className="flex h-[52px] shrink-0 items-center justify-between px-6">
@@ -247,9 +251,8 @@ const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
                 </Link>
               )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+      )}
     </>
   );
 };

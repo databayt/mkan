@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Download, Send } from 'lucide-react';
-import QRCode from 'qrcode';
 
 import { Button } from '@/components/ui/button';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
@@ -63,12 +62,18 @@ export function TicketShowcase({ lang }: TicketShowcaseProps) {
 
   useEffect(() => {
     let mounted = true;
-    QRCode.toDataURL(
-      JSON.stringify({ ref: 'MKN-32212', passenger: 'Ahmed', seat: 'A12' }),
-      { width: 140, margin: 2, color: { dark: '#000000', light: '#ffffff' } }
-    ).then((url) => {
-      if (mounted) setQrCodeUrl(url);
-    });
+    // qrcode loads lazily — this showcase QR is decorative, and the library
+    // shouldn't sit in the /travel landing's initial bundle.
+    import('qrcode')
+      .then((m) =>
+        m.default.toDataURL(
+          JSON.stringify({ ref: 'MKN-32212', passenger: 'Ahmed', seat: 'A12' }),
+          { width: 140, margin: 2, color: { dark: '#000000', light: '#ffffff' } }
+        )
+      )
+      .then((url) => {
+        if (mounted) setQrCodeUrl(url);
+      });
     return () => {
       mounted = false;
     };

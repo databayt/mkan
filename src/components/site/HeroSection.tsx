@@ -29,6 +29,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
           fill
           className="object-cover object-center"
           priority
+          fetchPriority="high"
           sizes="100vw"
         />
         <BookingForm onSearch={onSearch} />

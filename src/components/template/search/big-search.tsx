@@ -3,19 +3,48 @@
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import LocationDropdown from "./location";
-import BigSearchDatePicker, { pickerTranslations } from "./big-search-date-picker";
-import ExperiencesDatePicker from "./experiences-date-picker";
-import GuestSelectorDropdown from "./guest-selector";
-import ServiceTypeDropdown from "./service-type";
+import { pickerTranslations } from "./picker-translations";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { useLocationSuggestions } from "./hooks/use-location-suggestions";
 import { useSearchValidation } from "@/hooks/useSearchValidation";
 import { type LocationSuggestion } from "@/lib/schemas/search-schema";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import useSearchHeaderStore, { type SearchSegment } from "@/hooks/useSearchHeaderStore";
+
+// The five dropdown panels only exist after a segment is clicked, so their
+// code (react-day-picker + date-fns locales, the month carousel, guest rows,
+// service grid) is split out of the header's initial bundle on /listings,
+// /listings/[id] and /search and fetched on first open — the same treatment
+// vertical-search.tsx gives the hero panels.
+const panelFallback = () => (
+  <div className="h-40 animate-pulse rounded-2xl bg-gray-100" aria-hidden="true" />
+);
+const calendarFallback = () => (
+  <div className="h-[340px] animate-pulse rounded-2xl bg-gray-100" aria-hidden="true" />
+);
+const LocationDropdown = dynamic(() => import("./location"), {
+  ssr: false,
+  loading: panelFallback,
+});
+const BigSearchDatePicker = dynamic(() => import("./big-search-date-picker"), {
+  ssr: false,
+  loading: calendarFallback,
+});
+const ExperiencesDatePicker = dynamic(() => import("./experiences-date-picker"), {
+  ssr: false,
+  loading: calendarFallback,
+});
+const GuestSelectorDropdown = dynamic(() => import("./guest-selector"), {
+  ssr: false,
+  loading: panelFallback,
+});
+const ServiceTypeDropdown = dynamic(() => import("./service-type"), {
+  ssr: false,
+  loading: panelFallback,
+});
 
 // Slide-and-fade downward when a dropdown first opens / fully closes — gives
 // the impression that the panel is emerging from beneath the search bar,

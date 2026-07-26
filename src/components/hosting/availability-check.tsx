@@ -7,15 +7,12 @@ import { useDictionary } from "@/components/internationalization/dictionary-cont
 import { confirmAvailability, unpublishListing } from "@/lib/actions/listing-actions";
 import { PropertyImageFallback } from "@/components/atom/property-image-fallback";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  AVAILABILITY_SNOOZE_COOKIE,
+  type StaleListing,
+} from "./availability-shared";
 
-export type StaleListing = {
-  id: number;
-  title: string;
-  photoUrl: string | null;
-  city: string | null;
-};
-
-export const AVAILABILITY_SNOOZE_COOKIE = "availabilityCheckDismissed";
+export { AVAILABILITY_SNOOZE_COOKIE, type StaleListing };
 
 function readCookie(name: string): string | undefined {
   if (typeof document === "undefined") return undefined;

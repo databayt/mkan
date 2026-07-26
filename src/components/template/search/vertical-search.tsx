@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useCallback, type CSSProperties } from "react";
 import dynamic from "next/dynamic";
-import { motion } from "framer-motion";
 import { useRouter, usePathname } from "next/navigation";
 import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -37,6 +36,12 @@ const BigSearchDatePicker = dynamic(() => import("./big-search-date-picker"), {
 const HeroCalendar = dynamic(() => import("./hero-calendar"), {
   ssr: false,
   loading: calendarFallback,
+});
+// Framer shared-layout CTA — only rendered inside the mobile search sheet
+// (ctaLayoutId set), never on the home hero, so it must not pull the
+// framer-motion engine into this module's (home-critical) chunk.
+const MotionSearchCta = dynamic(() => import("./vertical-search-motion-cta"), {
+  ssr: false,
 });
 import { useLocationSuggestions } from "./hooks/use-location-suggestions";
 import { useSearchValidation } from "@/hooks/useSearchValidation";
@@ -764,15 +769,12 @@ export default function VerticalSearch({
               (ctaLayoutId set) it's a Framer shared-layout twin of the collapsed
               pill's red search circle, so the circle morphs into this pill. */}
           {ctaLayoutId ? (
-            <motion.button
+            <MotionSearchCta
               layoutId={ctaLayoutId}
-              type="button"
               onClick={handleSearch}
-              className={`absolute bottom-5 end-6 z-30 flex h-12 items-center gap-2 rounded-sm ${isAr ? "px-6" : "px-4"} text-sm font-semibold bg-[#de3151] hover:bg-[#de3151]/90 text-white shadow-[0_2px_8px_rgba(222,49,81,0.25)]`}
-            >
-              <Search className="h-4 w-4" strokeWidth={2.5} />
-              {t.search}
-            </motion.button>
+              label={t.search}
+              isAr={isAr}
+            />
           ) : (
             <Button
               onClick={handleSearch}

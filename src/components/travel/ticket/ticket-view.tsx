@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { Download, Share2, MapPin, Clock, User, Phone, Bus } from 'lucide-react';
-import QRCode from 'qrcode';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -126,6 +125,8 @@ export function TicketView({
 
     const generateQR = async () => {
       try {
+        // Lazy-load qrcode so the ticket page's initial chunk stays lean.
+        const { default: QRCode } = await import('qrcode');
         const url = await QRCode.toDataURL(qrData, {
           width: 200,
           margin: 2,

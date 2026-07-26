@@ -1,15 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { PHASE1 } from "@/config/phase-flags";
 import { getStaleAvailabilityListings } from "@/lib/actions/listing-actions";
 import {
-  AvailabilityCheck,
   AVAILABILITY_SNOOZE_COOKIE,
   type StaleListing,
-} from "./availability-check";
+} from "./availability-shared";
+
+// The dialog (framer-motion + Radix Dialog subtree) loads only for the rare
+// visitor it actually applies to — an authenticated host with a stale
+// listing — instead of shipping with every route via the locale layout.
+const AvailabilityCheck = dynamic(
+  () => import("./availability-check").then((m) => m.AvailabilityCheck),
+  { ssr: false },
+);
 
 // Surfaces where a floating owner-nudge would be rude or in the way: auth,
 // checkout, wizards/editors, admin tooling, and the transport vertical.

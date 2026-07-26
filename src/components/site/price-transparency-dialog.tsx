@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import {
   Dialog,
@@ -107,13 +106,18 @@ export function PriceTransparencyDialog() {
         </button>
 
         <div className="flex flex-col items-center px-6 pb-6 pt-10">
-          <motion.div
-            initial={{ scale: 0.6, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.1 }}
+          {/* One-shot pop-in. Was a framer-motion spring — a back-out bezier
+              keyframe reads the same and keeps the animation engine out of
+              the home page's chunks. */}
+          <div
+            className="animate-in fade-in zoom-in-50 duration-300 fill-mode-both"
+            style={{
+              animationTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+              animationDelay: "100ms",
+            }}
           >
             <PriceTagIcon />
-          </motion.div>
+          </div>
 
           <DialogTitle asChild>
             <p className="mt-4 px-2 text-center text-[22px] font-semibold leading-[26px] text-[#222222]">

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
 
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { useLocale } from "@/components/internationalization/use-locale";
@@ -39,6 +38,11 @@ export function CookieBanner() {
   // `data-consent` on <html> and a CSS rule display:nones the banner before
   // anything renders; the effect below then unmounts it for real.
   const [open, setOpen] = useState(true);
+  // Two-phase close: CSS transition runs (fade + drop), then unmount. This
+  // used to be a framer-motion AnimatePresence exit — the CSS version keeps
+  // the identical 350ms ease-out feel without shipping the animation engine
+  // to every route (the banner sits in the root layout).
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     const existing = readCookie(COOKIE_KEY);
@@ -47,7 +51,8 @@ export function CookieBanner() {
 
   const decide = (choice: Choice) => {
     writeCookie(COOKIE_KEY, choice, COOKIE_MAX_AGE);
-    setOpen(false);
+    setClosing(true);
+    window.setTimeout(() => setOpen(false), 350);
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("cookieconsent", { detail: { choice } }));
     }
@@ -57,23 +62,19 @@ export function CookieBanner() {
   const policyText = t.policyText ?? "cookie policy";
   const parts = desc.split("{policyLink}");
 
+  if (!open) return null;
+
   return (
-    // initial={false}: the banner is already in the server HTML — animating it
-    // in at hydration would blink content that has been visible for seconds.
-    // Exit (after a choice) still animates.
-    <AnimatePresence initial={false}>
-      {open && (
-        <motion.div
-          data-cookie-banner
-          initial={{ opacity: 0, y: 50, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          transition={{ duration: 0.35, ease: "easeOut" }}
-          role="dialog"
-          aria-live="polite"
-          aria-label={t.title ?? "Cookie consent"}
-          className="fixed bottom-0 left-0 right-0 md:bottom-6 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[680px] z-[9999] rounded-t-[32px] rounded-b-none md:rounded-2xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white dark:bg-neutral-900 p-6 md:p-8 shadow-[0_8px_28px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.4)] print:hidden"
-        >
+    // The banner is already in the server HTML — no entrance animation (it
+    // would blink content that has been visible for seconds). Exit (after a
+    // choice) transitions via the `closing` classes before unmounting.
+    <div
+      data-cookie-banner
+      role="dialog"
+      aria-live="polite"
+      aria-label={t.title ?? "Cookie consent"}
+      className={`fixed bottom-0 left-0 right-0 md:bottom-6 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[680px] z-[9999] rounded-t-[32px] rounded-b-none md:rounded-2xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white dark:bg-neutral-900 p-6 md:p-8 shadow-[0_8px_28px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.4)] print:hidden transition-all duration-300 ease-out ${closing ? "opacity-0 translate-y-5 scale-95 pointer-events-none" : ""}`}
+    >
           <h2 className="text-neutral-900 dark:text-neutral-50 font-semibold text-lg md:text-[22px] leading-tight md:leading-[26px] tracking-tight text-start">
             {t.title ?? "Help us improve your experience"}
           </h2>
@@ -118,8 +119,6 @@ export function CookieBanner() {
               {t.learnMore ?? "Manage preferences"}
             </Link>
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    </div>
   );
 }
