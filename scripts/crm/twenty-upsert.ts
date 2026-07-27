@@ -115,6 +115,7 @@ function hostBody(h: EnrichedHost) {
 /** What the PDP and profile stages add on top of what discovery captures. */
 type EnrichedHome = HomeRecord & {
   homeState?: StateCode;
+  stillListed?: boolean;
   hostSource?: string | null;
   locationSubtitle?: string | null;
   pdpError?: string | null;
@@ -154,6 +155,11 @@ function homeBody(h: EnrichedHome, hostId: string | null) {
     avgRating: h.avgRating ?? undefined,
     reviewCount: h.reviewCount ?? undefined,
     mkanPropertyType: h.mkanPropertyType ? toUpperSnake(h.mkanPropertyType) : undefined,
+    // A re-scrape that 404s means the host took the listing down. It must
+    // reach the CRM, because a delisted home should never be imported or
+    // published — and the flag defaults true rather than undefined so an
+    // existing record cannot keep a stale false.
+    stillListed: h.stillListed ?? true,
     homeStatus: 'SCRAPED',
     mkanPublishState: 'NOT_IMPORTED',
     trustBand: 'UNSCORED',
@@ -253,7 +259,7 @@ async function main() {
     'amenitiesRaw', 'mkanAmenities', 'petsAllowed', 'parkingIncluded',
     'photoUrls', 'photoCount', 'coverPhotoUrl',
     'priceNightSar', 'avgRating', 'reviewCount', 'mkanPropertyType',
-    'airbnbUrl', 'hostId',
+    'airbnbUrl', 'hostId', 'stillListed',
   ] as const;
   const HOST_REFRESHABLE = [
     'name', 'airbnbProfileUrl', 'avatarUrl', 'superhost', 'hostSince',
