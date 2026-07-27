@@ -21,6 +21,9 @@ export const publicRoutes = [
   "/travel-host",
   "/dev/credentials",
   "/new-verification",
+  // A host claiming a pre-provisioned account has, by definition, no way to log
+  // in yet — the claim token is the only credential that exists for it.
+  "/claim",
 ];
 
 /**

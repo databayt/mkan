@@ -13,11 +13,21 @@
  * Flags: --in=<scored/rehosted> --ledger=<import ledger> --city=<CITY|all>
  *        --min-band=<AUTO_ONBOARD|MANUAL_REVIEW> --limit=<N> --apply --force
  *
- * `--force` publishes an operator-authorized batch that hasn't passed the soft
- * trust gate: it skips the `publishReady` + `min-band` checks (so imported HOLD
- * homes with no host reply can go Available). Hard gates still hold — a
- * `gateNote` (hotel/duplicate/location-fail) and the city filter are never
- * bypassed, and only imported listings flip. Use for a human-vetted wave.
+ * `--force` publishes an operator-authorized batch that hasn't cleared the trust
+ * *band* threshold. It does not, and cannot, publish an unclaimed listing.
+ *
+ * That distinction is the whole point. These listings are other people's
+ * property, photos and words, scraped without their knowledge, and
+ * `Listing.claimedAt` is the only record that the owner has seen them and
+ * agreed. A flag that skipped it would let one operator publish a stranger's
+ * home — which is what `--force` used to do, since it bypassed `publishReady`,
+ * and `publishReady` was where "the host replied" was encoded.
+ *
+ * So the gate is now read from the database, not from a scored JSON file, and
+ * it sits above the `--force` branch with the other hard gates: a `gateNote`
+ * (hotel/duplicate/location-fail), the city filter, and being imported at all.
+ * Publishing unclaimed inventory remains possible, but only as a deliberate
+ * code change someone has to argue for — not a flag.
  *
  * Reads eligibility from the scored file (`publishReady`, `trustBand`, `city`) and
  * the mkan listing id from the import ledger. `--apply` sets `isPublished:true` +
@@ -54,15 +64,25 @@ async function main(): Promise<void> {
   const ledger = existsSync(LEDGER) ? JSON.parse(readFileSync(LEDGER, 'utf8')) : { homes: {} };
   const minRank = BAND_RANK[MIN_BAND] ?? 2;
 
+  // Consent is read from the DB even in dry-run: a plan that says "would
+  // publish" while the owner has not claimed the listing is a plan that lies
+  // about the only thing worth checking.
+  prisma = (await import('@/lib/db')).db;
+  const claimed = new Set(
+    (await prisma.listing.findMany({ where: { claimedAt: { not: null } }, select: { id: true } })).map((l) => l.id),
+  );
+
   type Row = { h: ScoredHome; mkanListingId: number | null; eligible: boolean; why: string };
   let rows: Row[] = (payload.homes ?? []).map((h) => {
     const mkanListingId = ledger.homes?.[h.airbnbListingId]?.mkanListingId ?? null;
     const cityOk = CITY === 'ALL' || h.city === CITY;
     let eligible = true, why = 'eligible';
-    // Hard gates (never bypassed): must be imported, in-wave, and not hard-gated.
+    // Hard gates (never bypassed): must be imported, in-wave, not hard-gated,
+    // and claimed by its owner.
     if (mkanListingId == null) { eligible = false; why = 'not imported'; }
     else if (!cityOk) { eligible = false; why = `city≠${CITY}`; }
     else if (h.gateNote) { eligible = false; why = `gate:${h.gateNote}`; }
+    else if (!claimed.has(mkanListingId)) { eligible = false; why = 'not claimed by its owner'; }
     // Soft trust gate (skipped under --force for an operator-authorized wave).
     else if (!FORCE && !h.publishReady) { eligible = false; why = 'not publish-ready'; }
     else if (!FORCE && (BAND_RANK[h.trustBand] ?? 0) < minRank) { eligible = false; why = `${h.trustBand}<${MIN_BAND}`; }
@@ -87,7 +107,6 @@ async function main(): Promise<void> {
 
   if (!eligible.length) { console.log('\nNothing eligible to publish. Done.\n'); return; }
   if (process.env.NODE_ENV === 'production' && !process.env.FORCE_SEED) throw new Error('refusing to publish in production without FORCE_SEED=1');
-  prisma = (await import('@/lib/db')).db;
 
   let flipped = 0;
   for (const r of eligible) {

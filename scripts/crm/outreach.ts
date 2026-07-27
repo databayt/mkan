@@ -22,6 +22,9 @@
  * Full CRM Activity logging needs the Note/Task fields (docs §2.6, not yet added);
  * until then --apply sends + records to the outbox, and logging is a no-op TODO.
  */
+import { config } from 'dotenv';
+config({ override: true });
+
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { draftMessage, type MsgType, type Lang } from './outreach-templates';
@@ -38,6 +41,7 @@ const LANG_OVERRIDE = argv('lang') as Lang | '';
 const LEDGER = argv('ledger', 'scripts/crm/.data/mkan-import-ledger.json');
 const LIMIT = parseInt(argv('limit', '0'), 10) || 0;
 
+const BASE_URL = (argv('base-url', process.env.NEXT_PUBLIC_APP_URL ?? 'https://mkan.databayt.org')).replace(/\/+$/, '');
 const OPENCLAW_URL = (process.env.OPENCLAW_URL ?? '').replace(/\/+$/, '');
 const OPENCLAW_TOKEN = process.env.OPENCLAW_TOKEN ?? '';
 
@@ -73,19 +77,55 @@ async function main(): Promise<void> {
   let hosts = payload.hosts.filter((h) => homesByHost.has(h.airbnbHostId));
   if (LIMIT) hosts = hosts.slice(0, LIMIT);
 
-  const outbox: OutboxEntry[] = hosts.map((host) => {
+  // A handover message is nothing but a claim link, so the live, unused tokens
+  // are read from the DB rather than invented. Hosts without one are reported
+  // instead of being given a message that cannot work.
+  const claimUrlByHost = new Map<string, string>();
+  if (TYPE === 'handover') {
+    const prisma = (await import('@/lib/db')).db;
+    const users = await prisma.user.findMany({
+      where: { sourceHostId: { in: hosts.map((h) => h.airbnbHostId) } },
+      select: {
+        sourceHostId: true,
+        claimTokens: {
+          where: { usedAt: null, expiresAt: { gt: new Date() } },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { token: true },
+        },
+      },
+    });
+    for (const u of users) {
+      const token = u.claimTokens[0]?.token;
+      if (u.sourceHostId && token) claimUrlByHost.set(u.sourceHostId, `${BASE_URL}/ar/claim/${token}`);
+    }
+  }
+
+  const outbox: OutboxEntry[] = [];
+  const noClaimLink: string[] = [];
+  for (const host of hosts) {
     const homes = homesByHost.get(host.airbnbHostId) ?? [];
     const lang: Lang = LANG_OVERRIDE || host.preferredLanguage || 'AR';
     const acct = ledger.hosts?.[host.airbnbHostId];
+    const claimUrl = claimUrlByHost.get(host.airbnbHostId);
+    if (TYPE === 'handover' && !claimUrl) {
+      noClaimLink.push(`${host.name ?? '?'} (${host.airbnbHostId})`);
+      continue;
+    }
     const message = draftMessage({
       type: TYPE, lang, name: host.name ?? '', city: homes[0]?.city, homeCount: homes.length,
-      account: TYPE === 'handover' && acct ? { number: acct.mkanUsername, password: acct.password ?? '<from provisioning>', url: 'https://mkan.databayt.org' } : undefined,
+      account: TYPE === 'handover' ? { number: acct?.mkanUsername ?? '', claimUrl: claimUrl! } : undefined,
     });
-    return {
+    outbox.push({
       airbnbHostId: host.airbnbHostId, name: host.name ?? '', whatsapp: host.whatsapp ?? null,
       lang, type: TYPE, message, status: host.whatsapp ? 'ready' : 'needs-contact-hunt',
-    };
-  });
+    });
+  }
+  if (noClaimLink.length) {
+    console.log(`\n  ⚠ ${noClaimLink.length} host(s) skipped — no live claim link:`);
+    console.log(`     ${noClaimLink.slice(0, 8).join(', ')}${noClaimLink.length > 8 ? '…' : ''}`);
+    console.log('     Mint them with:  pnpm crm:claim-token --all --apply');
+  }
 
   console.log(`\n📨 Outreach — ${outbox.length} hosts · ${TYPE} · ${APPLY ? 'SEND (OpenClaw)' : 'draft (human-send)'}`);
 
