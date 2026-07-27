@@ -40,6 +40,7 @@ const ENUM_LABEL_MAPS: Array<{ enum: string; path: string }> = [
   { enum: "CancellationPolicy", path: "rental.property.cancellation" },
   { enum: "CheckInMethod", path: "rental.property.checkIn" },
   { enum: "BusAmenity", path: "travel.host.amenityLabels" },
+  { enum: "SeatStatus", path: "travel.seat.status" },
 ]
 
 /** Extract an enum's member names from schema.prisma (dependency-free). */

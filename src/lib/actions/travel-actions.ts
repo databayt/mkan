@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { auth, canOverride } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { BusAmenity, Prisma, TransportBookingStatus } from '@prisma/client';
+import { BusAmenity, Prisma, SeatStatus, TransportBookingStatus } from '@prisma/client';
 import { revalidatePath, updateTag, unstable_cache } from 'next/cache';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { startOfDay, endOfDay } from 'date-fns';
@@ -1576,7 +1576,25 @@ export async function getTripDetails(id: number) {
   return trip;
 }
 
-export async function getTripSeats(tripId: number) {
+/** Public shape of a seat — everything the map draws, nothing more. */
+export type PublicSeat = {
+  id: number;
+  seatNumber: string;
+  row: number;
+  column: number;
+  seatType: string | null;
+  status: SeatStatus;
+};
+
+/**
+ * Seat map for a trip, safe to hand to the browser. Powers the booking
+ * page's live-availability refresh, so it deliberately omits `bookingId`
+ * and `reservedUntil` — a rider only needs to know a seat is gone, not who
+ * holds it or until when.
+ */
+export async function getTripSeats(tripId: number): Promise<PublicSeat[]> {
+  if (!Number.isInteger(tripId)) return [];
+
   // Heal expired checkout holds inline so the seat map reflects sellable
   // inventory immediately (the cron sweep only runs daily on hobby plan).
   try {
@@ -1585,17 +1603,37 @@ export async function getTripSeats(tripId: number) {
     logger.warn('Inline seat-hold healing failed', { tripId, error });
   }
 
-  const seats = await db.seat.findMany({
+  return db.seat.findMany({
     where: { tripId },
+    select: {
+      id: true,
+      seatNumber: true,
+      row: true,
+      column: true,
+      seatType: true,
+      status: true,
+    },
     orderBy: [{ row: 'asc' }, { column: 'asc' }],
   });
-
-  return seats;
 }
 
 // ============================================
 // BOOKING ACTIONS
 // ============================================
+
+/**
+ * Raised inside the booking transaction when the rider's seats went to
+ * someone else between page load and submit. Carried out of the tx as a
+ * typed failure rather than a thrown error: Next redacts Server Action
+ * error messages in production, so a `throw` would reach the rider as an
+ * untranslatable "an error occurred".
+ */
+class SeatsUnavailableError extends Error {
+  constructor(readonly seats: string[]) {
+    super('SEATS_UNAVAILABLE');
+    this.name = 'SeatsUnavailableError';
+  }
+}
 
 export async function createBooking(data: unknown) {
   const session = await auth();
@@ -1625,7 +1663,7 @@ export async function createBooking(data: unknown) {
     logger.warn('Inline seat-hold healing failed', { tripId: validData.tripId, error });
   }
 
-  const booking = await db.$transaction(async (tx) => {
+  const runBooking = () => db.$transaction(async (tx) => {
     // Get trip details
     const trip = await tx.trip.findUnique({
       where: { id: validData.tripId },
@@ -1644,10 +1682,10 @@ export async function createBooking(data: unknown) {
 
     // Verify seats are available, acquiring a pessimistic lock (FOR UPDATE)
     // on the target seats in the database to prevent double bookings.
-    let seats: any[] = [];
+    let seats: Array<{ seatNumber: string }> = [];
     if (typeof tx.$queryRaw === 'function') {
-      seats = await tx.$queryRaw<any[]>`
-        SELECT id, status FROM "Seat"
+      seats = await tx.$queryRaw<Array<{ seatNumber: string }>>`
+        SELECT "seatNumber" FROM "Seat"
         WHERE "tripId" = ${validData.tripId}
           AND "seatNumber" IN (${Prisma.join(validData.seatNumbers)})
           AND "status" = 'Available'
@@ -1660,11 +1698,17 @@ export async function createBooking(data: unknown) {
           seatNumber: { in: validData.seatNumbers },
           status: 'Available',
         },
+        select: { seatNumber: true },
       });
     }
 
     if (seats.length !== validData.seatNumbers.length) {
-      throw new Error('Some selected seats are no longer available');
+      // Name the seats that went, so the booking page can strike exactly
+      // those off the rider's selection instead of clearing everything.
+      const stillFree = new Set(seats.map((s) => s.seatNumber));
+      throw new SeatsUnavailableError(
+        validData.seatNumbers.filter((seatNumber) => !stillFree.has(seatNumber)),
+      );
     }
 
     const totalAmount = trip.price * validData.seatNumbers.length;
@@ -1727,9 +1771,23 @@ export async function createBooking(data: unknown) {
     return newBooking;
   });
 
+  let booking: Awaited<ReturnType<typeof runBooking>>;
+  try {
+    booking = await runBooking();
+  } catch (error) {
+    if (error instanceof SeatsUnavailableError) {
+      return {
+        success: false as const,
+        error: 'SEATS_UNAVAILABLE' as const,
+        unavailableSeats: error.seats,
+      };
+    }
+    throw error;
+  }
+
   revalidatePath('/[lang]/travel');
   updateTag(TAG_TRIPS);
-  return { success: true, booking };
+  return { success: true as const, booking };
 }
 
 /**

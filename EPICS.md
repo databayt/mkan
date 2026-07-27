@@ -117,7 +117,7 @@ A **v1.0 was shipped 2026-04-25** (PR #2 `425d393` → `main`, Vercel `dpl_7TuHG
 | **H10** | Reconcile Booking vs Lease | P0 | 0 / 3 | 🟡 |
 | **T1** | Operator Onboarding & Verification | P0 | 0 / 7 | ⬜ |
 | **T2** | Fleet, Routes, Trip Scheduling | P0 | 2 / 12 | 🟡 |
-| **T3** | Trip Search & Seat Selection | P1 | 0 / 7 | ⬜ |
+| **T3** | Trip Search & Seat Selection | P1 | 3 / 7 | 🟡 |
 | **T4** | Multi-passenger Booking | P0 | 0 / 6 | ⬜ |
 | **T5** | Ticket Delivery (PDF/Email/SMS/QR) | P0 | 0 / 7 | ⬜ |
 | **T6** | Operator Dashboard & Manifest | P0 | 2 / 7 | 🟡 |
@@ -403,7 +403,7 @@ Done: ✅ S1 trips cancel uses correct action per type (stays→`cancelBooking`;
 Done: ✅ S9 `cancelTrip` notifies passengers + emails (`transport-actions.ts:1052`), ✅ S11 TZ helper (`MARKET_TZ`/`dayWindow`).
 | Story | St | Detail |
 |---|---|---|
-| T2.S1 Use `Bus.seatLayout` JSON in `createTrip` | ⬜ | now: hardcoded `ceil(capacity/4)` rows (`:945`); add seat-layout editor. |
+| T2.S1 Use `Bus.seatLayout` JSON in `createTrip` | 🟡 | `buildSeatRows`/`parseSeatLayout` honour `{rows, columns, blocked}` (2–6 cols) and the picker derives the aisle from `columns`; still no seat-layout **editor** — operators can't author the JSON. |
 | T2.S3/S4 Bulk + recurring trip creator | ⬜ | now: single `createTrip` only — ~420 clicks/operator-month. |
 | T2.S5 "Both directions" shortcut | ⬜ | |
 | T2.S8 Trip update regenerates seats safely | 🟡 | ownership re-check only. |
@@ -411,12 +411,13 @@ Done: ✅ S9 `cancelTrip` notifies passengers + emails (`transport-actions.ts:10
 | T2.S12 `revalidateTag` on mutations | ⬜ | now: tags defined but never invalidated → stale cache. |
 | T2.S2/S6/S7 Bus photos / route toggle / soft-delete | ⬜ | |
 
-### Epic T3 — Trip search & seat selection · P1 · ⬜ 0/7
+### Epic T3 — Trip search & seat selection · P1 · 🟡 3/7
+Done: ✅ S1 one codepath, ✅ S2 race-safe reservation, ✅ S3 live availability.
 | Story | St | Detail |
 |---|---|---|
-| T3.S1 One SeatPicker codepath | ⬜ | now: standalone component + embedded picker in `trips/[id]/page.tsx:57`. |
-| T3.S2 Race-safe reservation (`FOR UPDATE`/advisory lock) | ⬜ | now: `createBooking` plain `findMany`+`updateMany` in a Read-Committed tx (`:1196`). |
-| T3.S3 Live availability (SSE/poll) | ⬜ | |
+| T3.S1 One SeatPicker codepath | ✅ | `components/travel/booking/seat-picker.tsx` is the only map; `trips/[id]/page.tsx` is a thin server wrapper. State/aisle styling lives in `seat-styles.ts` so the legend can't drift from the seats. |
+| T3.S2 Race-safe reservation (`FOR UPDATE`/advisory lock) | ✅ | `createBooking` locks the target rows with `SELECT … FOR UPDATE` inside the tx and returns a typed `SEATS_UNAVAILABLE` naming the lost seats (a `throw` would reach the rider redacted in prod). |
+| T3.S3 Live availability (SSE/poll) | ✅ | 20 s poll + `visibilitychange` refresh on the trip page; a seat sold elsewhere greys out, drops itself from the selection, and updates the "seats available" count. Poll, not SSE — no long-lived connection on the hobby plan. |
 | T3.S4–S7 Sort options / fuzzy / alt-dates / cache | ⬜ | |
 
 ### Epic T4 — Multi-passenger booking · P0 · ⬜ 0/6

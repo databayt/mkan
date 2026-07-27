@@ -2525,7 +2525,18 @@
       "available": "Available",
       "selected": "Selected",
       "booked": "Booked",
-      "blocked": "Not Available"
+      "blocked": "Not Available",
+      "status": {
+        "Available": "Available",
+        "Reserved": "On hold",
+        "Booked": "Booked",
+        "Blocked": "Not available"
+      },
+      "type": {
+        "window": "Window",
+        "aisle": "Aisle",
+        "middle": "Middle"
+      }
     },
     "status": {
       "Pending": "Pending",
@@ -2780,7 +2791,21 @@
       "selectSeats": "Select Your Seats",
       "seatSelected": "seat selected",
       "seatsSelected": "seats selected",
-      "maxReached": "Maximum seats reached"
+      "maxReached": "Maximum seats reached",
+      "none": "No seat chosen yet",
+      "front": "Front of bus",
+      "door": "Door",
+      "hint": "Tap a seat to choose it. Grey seats are already taken.",
+      "maxHint": "You can book up to {count} seats in one go.",
+      "capHit": "That's the most seats you can book in one booking.",
+      "removeSeat": "Remove seat {seat}",
+      "seatAria": "Seat {seat}, {type}, {status}",
+      "seatAriaPlain": "Seat {seat}, {status}",
+      "announceSelected": "Seat {seat} selected",
+      "announceDeselected": "Seat {seat} removed",
+      "refreshing": "Checking availability…",
+      "justTaken": "Seat {seats} was just taken by someone else — we removed it from your selection.",
+      "justTakenPlural": "Seats {seats} were just taken by someone else — we removed them from your selection."
     },
     "citySelect": {
       "selectCity": "Select city",

@@ -2525,7 +2525,18 @@
       "available": "متاح",
       "selected": "محدد",
       "booked": "محجوز",
-      "blocked": "غير متاح"
+      "blocked": "غير متاح",
+      "status": {
+        "Available": "متاح",
+        "Reserved": "محجوز مؤقتاً",
+        "Booked": "محجوز",
+        "Blocked": "غير متاح"
+      },
+      "type": {
+        "window": "نافذة",
+        "aisle": "ممر",
+        "middle": "أوسط"
+      }
     },
     "status": {
       "Pending": "قيد الانتظار",
@@ -2780,7 +2791,21 @@
       "selectSeats": "اختر مقاعدك",
       "seatSelected": "مقعد محدد",
       "seatsSelected": "مقاعد محددة",
-      "maxReached": "وصلت للحد الأقصى من المقاعد"
+      "maxReached": "وصلت للحد الأقصى من المقاعد",
+      "none": "لم تختر مقعداً بعد",
+      "front": "مقدمة الحافلة",
+      "door": "الباب",
+      "hint": "اضغط على مقعد لاختياره. المقاعد الرمادية محجوزة بالفعل.",
+      "maxHint": "يمكنك حجز حتى {count} مقاعد في المرة الواحدة.",
+      "capHit": "هذا أقصى عدد مقاعد في الحجز الواحد.",
+      "removeSeat": "إزالة المقعد {seat}",
+      "seatAria": "المقعد {seat}، {type}، {status}",
+      "seatAriaPlain": "المقعد {seat}، {status}",
+      "announceSelected": "تم اختيار المقعد {seat}",
+      "announceDeselected": "تمت إزالة المقعد {seat}",
+      "refreshing": "جارٍ التحقق من التوفر…",
+      "justTaken": "المقعد {seats} حجزه شخص آخر للتو — أزلناه من اختيارك.",
+      "justTakenPlural": "المقاعد {seats} حجزها أشخاص آخرون للتو — أزلناها من اختيارك."
     },
     "citySelect": {
       "selectCity": "اختر المدينة",

@@ -3,7 +3,7 @@
 // Client content for the trip page (mirror pattern) — data arrives from the
 // server page; this file owns only the interactive seat selection + booking.
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,11 @@ import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 const MARKET_TZ = 'Africa/Khartoum';
 
-import { createBooking, type getTripDetails } from '@/lib/actions/travel-actions';
+import {
+  createBooking,
+  getTripSeats,
+  type getTripDetails,
+} from '@/lib/actions/travel-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { formatCurrency, formatNumber } from '@/lib/i18n/formatters';
@@ -40,6 +44,61 @@ type TripDetails = NonNullable<Awaited<ReturnType<typeof getTripDetails>>>;
 interface TripDetailsContentProps {
   trip: TripDetails | null;
   lang: string;
+}
+
+/** One booking covers at most this many riders — the picker and the page
+ *  must agree, so the cap lives here and nowhere else. */
+const MAX_SEATS_PER_BOOKING = 5;
+
+/** How often we re-read the seat map while a rider is choosing. Long enough
+ *  to stay cheap, short enough that a seat taken elsewhere greys out before
+ *  they reach the payment step. */
+const SEAT_POLL_MS = 20_000;
+
+type PickerSeat = {
+  id: number;
+  seatNumber: string;
+  row: number;
+  column: number;
+  seatType: string | null;
+  status: 'Available' | 'Reserved' | 'Booked' | 'Blocked';
+};
+
+type RawSeat = {
+  id: number;
+  seatNumber: string;
+  row: number;
+  column: number;
+  seatType?: string | null;
+  status: string;
+};
+
+/** Adapt Prisma seat rows to the shared SeatPicker shape. */
+function toPickerSeats(rows: readonly RawSeat[]): PickerSeat[] {
+  return rows.map((s) => ({
+    id: s.id,
+    seatNumber: s.seatNumber,
+    row: s.row,
+    column: s.column,
+    seatType: s.seatType ?? null,
+    status:
+      s.status === 'Available' ||
+      s.status === 'Reserved' ||
+      s.status === 'Booked' ||
+      s.status === 'Blocked'
+        ? s.status
+        : 'Blocked',
+  }));
+}
+
+/** True when two seat maps are identical for rendering purposes — lets a
+ *  poll that found no change skip the re-render entirely. */
+function sameSeatStates(a: readonly PickerSeat[] | null, b: readonly PickerSeat[]): boolean {
+  if (!a || a.length !== b.length) return false;
+  return a.every((seat, i) => {
+    const other = b[i];
+    return other && seat.seatNumber === other.seatNumber && seat.status === other.status;
+  });
 }
 
 export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
@@ -60,6 +119,81 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
   const dict = useDictionary();
   const t = dict.travel;
   const amenityLabels = t?.host?.amenityLabels as Partial<Record<string, string>> | undefined;
+
+  // Seat map: the server render seeds it, the poll below keeps it honest.
+  const tripId = trip?.id;
+  const serverSeats = useMemo(() => toPickerSeats(trip?.seats ?? []), [trip?.seats]);
+  const [liveSeats, setLiveSeats] = useState<PickerSeat[] | null>(null);
+  const [isRefreshingSeats, setIsRefreshingSeats] = useState(false);
+  const seatRows = liveSeats ?? serverSeats;
+  // Once the booking lands our own seats flip to Reserved; without this the
+  // next poll would tell the rider someone stole the seats they just bought.
+  const bookingLandedRef = useRef(false);
+
+  const dropSeats = useCallback((gone: readonly string[]) => {
+    const goneSet = new Set(gone);
+    setSelectedSeats((prev) => prev.filter((s) => !goneSet.has(s)));
+    setExtraPassengers((prev) => {
+      const next = { ...prev };
+      for (const seat of gone) delete next[seat];
+      return next;
+    });
+  }, []);
+
+  const seatsTakenMessage = useCallback(
+    (gone: readonly string[]) => {
+      const template =
+        gone.length === 1
+          ? (t?.seatPicker?.justTaken ??
+            'Seat {seats} was just taken by someone else — we removed it from your selection.')
+          : (t?.seatPicker?.justTakenPlural ??
+            'Seats {seats} were just taken by someone else — we removed them from your selection.');
+      return template.replace('{seats}', gone.join(', '));
+    },
+    [t?.seatPicker?.justTaken, t?.seatPicker?.justTakenPlural],
+  );
+
+  // Live availability — a seat sold while the rider is still choosing greys
+  // out in place instead of failing at the payment step.
+  useEffect(() => {
+    if (!tripId) return;
+    let cancelled = false;
+
+    const refresh = async () => {
+      if (document.visibilityState !== 'visible' || bookingLandedRef.current) return;
+      setIsRefreshingSeats(true);
+      try {
+        const fresh = toPickerSeats(await getTripSeats(tripId));
+        if (!cancelled) {
+          setLiveSeats((prev) => (sameSeatStates(prev, fresh) ? prev : fresh));
+        }
+      } catch {
+        // Transient — the next tick retries, and submit re-checks anyway.
+      } finally {
+        if (!cancelled) setIsRefreshingSeats(false);
+      }
+    };
+
+    const interval = setInterval(refresh, SEAT_POLL_MS);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [tripId]);
+
+  // Reconcile the rider's picks against whatever the map now says.
+  useEffect(() => {
+    if (bookingLandedRef.current || selectedSeats.length === 0) return;
+    const gone = selectedSeats.filter((seatNumber) => {
+      const row = seatRows.find((r) => r.seatNumber === seatNumber);
+      return row != null && row.status !== 'Available';
+    });
+    if (gone.length === 0) return;
+    dropSeats(gone);
+    toast.warning(seatsTakenMessage(gone));
+  }, [seatRows, selectedSeats, dropSeats, seatsTakenMessage]);
 
   const extraSeats = selectedSeats.slice(1);
   const allPassengersNamed =
@@ -97,14 +231,20 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
         ),
       });
 
-      if (result.success && result.booking) {
+      if (result.success) {
+        bookingLandedRef.current = true;
         router.push(`/${lang}/travel/booking/checkout?bookingId=${result.booking.id}`);
-      } else {
-        toast.error(t.bookingFailedRetry ?? 'Failed to create booking. Please try again.');
+        return;
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Booking failed';
-      toast.error(message);
+
+      // Someone else got there first. Strike exactly those seats and leave
+      // the rest of the rider's selection — and their typed-in passengers —
+      // intact so they only have to re-pick what they lost.
+      dropSeats(result.unavailableSeats);
+      setLiveSeats(toPickerSeats(await getTripSeats(trip.id)));
+      toast.warning(seatsTakenMessage(result.unavailableSeats));
+    } catch {
+      toast.error(t.bookingFailedRetry ?? 'Failed to create booking. Please try again.');
     } finally {
       setBooking(false);
     }
@@ -168,20 +308,11 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
       ? trip.route.office.nameAr
       : trip.route.office.name;
 
-  // Adapt Prisma seat rows to the shared SeatPicker shape.
-  const pickerSeats = trip.seats.map((s) => ({
-    id: s.id,
-    seatNumber: s.seatNumber,
-    row: s.row,
-    column: s.column,
-    seatType: (s as { seatType?: string | null }).seatType ?? null,
-    status: (s.status === 'Available' ||
-    s.status === 'Reserved' ||
-    s.status === 'Booked' ||
-    s.status === 'Blocked'
-      ? s.status
-      : 'Blocked') as 'Available' | 'Reserved' | 'Booked' | 'Blocked',
-  }));
+  // Prefer the polled count over the server render — the map next to it is
+  // already live, and the two disagreeing is worse than either being stale.
+  const seatsLeft = liveSeats
+    ? liveSeats.filter((s) => s.status === 'Available').length
+    : trip.availableSeats;
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -232,7 +363,7 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <span>{formatNumber(trip.availableSeats, locale)} {t.trip.seatsAvailable}</span>
+                  <span>{formatNumber(seatsLeft, locale)} {t.trip.seatsAvailable}</span>
                 </div>
               </div>
 
@@ -264,23 +395,22 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
           <Card>
             <CardContent className="pt-6">
               <SeatPicker
-                seats={pickerSeats}
+                seats={seatRows}
                 selectedSeats={selectedSeats}
                 onSeatSelect={(seatNumber) =>
                   setSelectedSeats((prev) =>
-                    prev.length >= 5 ? prev : [...prev, seatNumber],
+                    prev.length >= MAX_SEATS_PER_BOOKING ? prev : [...prev, seatNumber],
                   )
                 }
-                onSeatDeselect={(seatNumber) => {
-                  setSelectedSeats((prev) => prev.filter((s) => s !== seatNumber));
-                  setExtraPassengers((prev) => {
-                    if (!(seatNumber in prev)) return prev;
-                    const next = { ...prev };
-                    delete next[seatNumber];
-                    return next;
-                  });
-                }}
-                maxSeats={5}
+                onSeatDeselect={(seatNumber) => dropSeats([seatNumber])}
+                onMaxReached={() =>
+                  toast.info(
+                    t?.seatPicker?.capHit ??
+                      "That's the most seats you can book in one booking.",
+                  )
+                }
+                maxSeats={MAX_SEATS_PER_BOOKING}
+                isRefreshing={isRefreshingSeats}
               />
             </CardContent>
           </Card>
