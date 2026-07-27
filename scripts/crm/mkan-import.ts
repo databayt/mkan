@@ -27,7 +27,7 @@
 import { config } from 'dotenv';
 config({ override: true });
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
@@ -87,11 +87,31 @@ interface ScoredHome {
   mkanPropertyType: string | null;
   trustBand: string;
   gateNote: string | null;
+  scrapedAt?: string | null;
+  canonicalLocale?: string | null;
+  authoredLocale?: string | null;
+  /** Which PDP rule resolved the host — see airbnb-parse.ts. */
+  hostSource?: string | null;
 }
 interface ScoredHost { airbnbHostId: string; name: string | null }
 interface Ledger {
   hosts: Record<string, { mkanUserId: string; mkanAccountEmail: string; mkanUsername: string }>;
   homes: Record<string, { mkanListingId: number; mkanUserId: string }>;
+}
+
+/**
+ * Write the ledger atomically, after every host and every home.
+ *
+ * It used to be written once after the whole loop, which meant a crash — or a
+ * Ctrl-C — orphaned every row already created: the DB had the listings, nothing
+ * recorded which Airbnb id they came from. Provenance now lives in Postgres, so
+ * this file is only a report, but a stale report is still worth avoiding.
+ */
+function flushLedger(ledger: Ledger): void {
+  mkdirSync(dirname(OUT), { recursive: true });
+  const tmp = `${OUT}.tmp`;
+  writeFileSync(tmp, JSON.stringify(ledger, null, 2));
+  renameSync(tmp, OUT);
 }
 
 function listingData(home: ScoredHome): Record<string, unknown> {
@@ -139,6 +159,11 @@ async function main(): Promise<void> {
   const skipped: string[] = [];
   let importable = payload.homes.filter((h) => {
     if (!h.hostAirbnbId) { skipped.push(`${h.airbnbListingId} (no host)`); return false; }
+    // A HEURISTIC host came from a whole-document key walk that a co-host or a
+    // "similar listings" card can win. Provisioning an account for the wrong
+    // person and telling them "your listings are ready" is the worst outreach
+    // outcome available, so these go to manual review instead.
+    if (h.hostSource === 'HEURISTIC') { skipped.push(`${h.airbnbListingId} (host attribution HEURISTIC)`); return false; }
     if (h.gateNote) { skipped.push(`${h.airbnbListingId} (gate:${h.gateNote})`); return false; }
     if ((BAND_RANK[h.trustBand] ?? 0) < minRank) { skipped.push(`${h.airbnbListingId} (${h.trustBand} < ${MIN_BAND})`); return false; }
     return true;
@@ -178,41 +203,93 @@ async function main(): Promise<void> {
   if (process.env.NODE_ENV === 'production' && !process.env.FORCE_SEED) throw new Error('refusing to write in production without FORCE_SEED=1');
   prisma = (await import('@/lib/db')).db;
 
+  // Idempotency lives in the DB, not the ledger. If the provenance columns are
+  // empty while the ledger says 74 homes were imported, the backfill has not
+  // run — every listing would look new and we would create 74 duplicates.
+  const alreadySourced = await prisma.listing.count({ where: { sourceListingId: { not: null } } });
+  if (Object.keys(ledger.homes).length && alreadySourced === 0) {
+    throw new Error(
+      `${Object.keys(ledger.homes).length} homes in the ledger but no Listing carries a sourceListingId.\n` +
+        '   Run `pnpm crm:backfill-source --apply` first, or this import would duplicate every one of them.',
+    );
+  }
+
   // Mint-forward account number: max existing numeric username ≥ 1000, + 1.
   const users = await prisma.user.findMany({ where: { username: { not: null } }, select: { username: true } });
   let nextNum = Math.max(999, ...users.map((u) => parseInt(u.username ?? '', 10)).filter((n) => Number.isFinite(n) && n >= 1000)) + 1;
 
   let provisioned = 0, imported = 0;
   for (const [hid, homes] of byHost) {
-    // Provision (idempotent by ledger).
+    // Provision — idempotent on User.sourceHostId, with the ledger as a hint
+    // only. The DB is authoritative so a lost ledger cannot re-provision a host.
     let acct = ledger.hosts[hid];
+    const existingUser = await prisma.user.findUnique({
+      where: { sourceHostId: hid },
+      select: { id: true, email: true, username: true },
+    });
+    if (existingUser) {
+      acct = { mkanUserId: existingUser.id, mkanAccountEmail: existingUser.email, mkanUsername: existingUser.username ?? '' };
+      ledger.hosts[hid] = acct;
+    }
     if (!acct) {
       const num = String(nextNum++);
       const email = `${num}@mkan.org`;
       const bootstrapPw = randomBytes(4).toString('hex');
       const user = await prisma.user.upsert({
         where: { email },
-        update: { username: num, role: 'MANAGER', emailVerified: new Date() },
-        create: { email, username: num, password: await bcrypt.hash(bootstrapPw, 10), role: 'MANAGER', emailVerified: new Date() },
+        update: { username: num, role: 'MANAGER', emailVerified: new Date(), sourceHostId: hid },
+        create: { email, username: num, password: await bcrypt.hash(bootstrapPw, 10), role: 'MANAGER', emailVerified: new Date(), sourceHostId: hid },
       });
       acct = { mkanUserId: user.id, mkanAccountEmail: email, mkanUsername: num };
       ledger.hosts[hid] = acct;
       provisioned++;
-      console.log(`+ account ${email}  pw ${bootstrapPw}  (host ${hid} — ${hostName.get(hid) ?? '?'})  ← relay via WhatsApp`);
+      // The bootstrap password is printed once and stored nowhere. That is
+      // deliberate now — the handover path is the claim link (crm:claim-token),
+      // not this string. Losing it costs nothing.
+      console.log(`+ account ${email}  pw ${bootstrapPw}  (host ${hid} — ${hostName.get(hid) ?? '?'})  ← superseded by the claim link`);
+      flushLedger(ledger);
     }
-    // Import homes (idempotent by ledger).
+    // Import homes — idempotent on Listing.sourceListingId.
     for (const h of homes) {
-      if (ledger.homes[h.airbnbListingId]) { console.log(`  = ${h.airbnbListingId} already imported`); continue; }
-      const location = await prisma.location.create({ data: locationData(h) as never });
-      const listing = await prisma.listing.create({ data: { ...listingData(h), locationId: location.id, hostId: acct.mkanUserId } as never });
+      const already = await prisma.listing.findUnique({
+        where: { sourceListingId: h.airbnbListingId },
+        select: { id: true, hostId: true },
+      });
+      if (already) {
+        ledger.homes[h.airbnbListingId] = { mkanListingId: already.id, mkanUserId: already.hostId };
+        console.log(`  = ${h.airbnbListingId} already imported (listing #${already.id})`);
+        continue;
+      }
+
+      // One transaction: a crash between the two used to leave an orphan
+      // Location behind with nothing pointing at it.
+      const listing = await prisma.$transaction(async (tx) => {
+        const location = await tx.location.create({ data: locationData(h) as never });
+        return tx.listing.create({
+          data: {
+            ...listingData(h),
+            locationId: location.id,
+            hostId: acct!.mkanUserId,
+            source: 'AIRBNB',
+            sourceListingId: h.airbnbListingId,
+            sourceUrl: `https://www.airbnb.com/rooms/${h.airbnbListingId}`,
+            sourceHostId: hid,
+            sourceCapturedAt: h.scrapedAt ? new Date(h.scrapedAt) : new Date(),
+            canonicalLocale: h.canonicalLocale ?? h.authoredLocale ?? null,
+          } as never,
+        });
+      });
+
       ledger.homes[h.airbnbListingId] = { mkanListingId: listing.id, mkanUserId: acct.mkanUserId };
       imported++;
       console.log(`  + listing #${listing.id}  ${(h.title ?? '').slice(0, 40)}  (Busy)`);
+      // Written after every home, not once at the end: a crash here used to
+      // orphan every row already created.
+      flushLedger(ledger);
     }
   }
 
-  mkdirSync(dirname(OUT), { recursive: true });
-  writeFileSync(OUT, JSON.stringify(ledger, null, 2));
+  flushLedger(ledger);
   console.log(`\n✅ provisioned ${provisioned} accounts, imported ${imported} homes (Busy). Ledger → ${OUT}`);
   console.log('   Sync mkanUserId/mkanListingId back to Twenty, then flip Available via the trust gate.\n');
 }

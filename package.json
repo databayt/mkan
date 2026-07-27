@@ -46,6 +46,7 @@
     "crm:sync-photos": "tsx scripts/crm/sync-rehosted-photos.ts",
     "crm:manual-import": "tsx scripts/crm/manual-import.ts",
     "crm:sync-import": "tsx scripts/crm/sync-import-to-twenty.ts",
+    "crm:backfill-source": "tsx scripts/crm/backfill-source-ids.ts",
     "crm:import": "tsx scripts/crm/mkan-import.ts",
     "crm:outreach": "tsx scripts/crm/outreach.ts",
     "crm:publish": "tsx scripts/crm/wave-publish.ts",

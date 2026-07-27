@@ -270,6 +270,18 @@ model Listing {
   instantBook        Boolean             @default(false)
   locationId         Int?
   hostId             String
+  // Provenance — where an imported listing came from, and whether its owner has
+  // taken it over. `.data/mkan-import-ledger.json` used to be the only bridge
+  // between an Airbnb id and the row it became; it is gitignored and written
+  // once after the whole import loop, so a crash or a lost file made 74
+  // listings permanently unattributable. The join key belongs here.
+  source             ListingSource?
+  sourceListingId    String?             @unique // external id, e.g. the Airbnb room id
+  sourceUrl          String?
+  sourceHostId       String? // external host id — pairs with User.sourceHostId
+  sourceCapturedAt   DateTime?
+  canonicalLocale    String? // "ar" | "en" — which language Listing.title/description hold
+  claimedAt          DateTime? // the host proved ownership; the hard gate on publishing
   // Homes vertical fields
   cleaningFee        Float?              @default(0)
   weeklyDiscount     Float?              @default(0)
@@ -309,6 +321,14 @@ model Listing {
   @@index([propertyType])
   @@index([pricePerNight])
   @@index([guestCount])
+  @@index([source, claimedAt])
+}
+
+/** How a Listing entered mkan. Absent for listings a host created themselves. */
+enum ListingSource {
+  AIRBNB
+  FACEBOOK
+  MANUAL
 }
 
 model Location {
@@ -653,9 +673,31 @@ model TwoFactorToken {
   @@unique([email, token])
 }
 
+/// A one-time link handing a pre-provisioned host account to its real owner.
+///
+/// The 49 accounts the import already created have no recoverable password —
+/// the bootstrap ones were only printed to a terminal that is long gone — so a
+/// claim link is not the nicer option, it is the only way to hand them over.
+/// Tokens are stored here and nowhere else: the plaintext exists only in the
+/// message a human sends.
+model HostClaimToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
 model User {
   id                    String                 @id @default(cuid())
   username              String?                @unique
+  // External host id for a pre-provisioned account (e.g. the Airbnb host this
+  // placeholder stands for). The stable key outreach and the claim flow join on.
+  sourceHostId          String?                @unique
   email                 String                 @unique
   emailVerified         DateTime?
   image                 String?
@@ -684,6 +726,7 @@ model User {
   ridesAsPassenger      Ride[]                 @relation("RidePassenger")
   profile               Profile?
   // Messaging (host inbox)
+  claimTokens           HostClaimToken[]
   conversationsAsHost   Conversation[]         @relation("ConversationHost")
   conversationsAsGuest  Conversation[]         @relation("ConversationGuest")
   messagesSent          Message[]              @relation("MessageSender")
