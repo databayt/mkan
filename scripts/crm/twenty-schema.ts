@@ -220,6 +220,12 @@ export const HOST: ObjectDef = {
     { name: 'identityVerified', label: 'Identity verified', type: 'SELECT', options: ['UNVERIFIED', 'NAME_MATCHED', 'OWNERSHIP_CLAIMED', 'ID_SEEN'] },
     { name: 'crossSourceCorroborated', label: 'Cross-source corroboration', type: 'SELECT', options: ['NONE', 'PARTIAL', 'CONFIRMED'] },
     { name: 'agencySuspected', label: 'Agency suspected', type: 'BOOLEAN', defaultValue: false },
+    // 37 of the 55 hosts who state a location live outside Sudan — mostly the
+    // UK, the Gulf and Egypt. That decides which number to expect, which
+    // language to write in, and which community to search for them in.
+    { name: 'livesIn', label: 'Lives in', type: 'TEXT', icon: 'IconWorldPin', description: "Where the host says they live, e.g. \"Riyadh, Saudi Arabia\". Diaspora hosts will not have a +249 number." },
+    { name: 'hostWork', label: 'Work', type: 'TEXT', description: 'The Airbnb "My work" prompt — often names the agency directly.' },
+    { name: 'hostAbout', label: 'About (Airbnb)', type: 'TEXT', description: "The host's own profile blurb." },
     { name: 'notes', label: 'Notes', type: 'TEXT' },
 
     // Contact hunt (Epic G1.6). Airbnb publishes no host phone, so every channel

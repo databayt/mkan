@@ -21,6 +21,7 @@
 import { config } from 'dotenv';
 import { readFileSync } from 'node:fs';
 import type { HomeRecord, HostRecord } from './airbnb-parse';
+import type { StateCode } from './sudan-places';
 import { toUpperSnake } from './twenty-schema'; // SELECT values must match the seeded options (UPPER_SNAKE)
 import { mapAmenities } from './amenity-map';
 import { cityNameEn, stateNameEn, stateOfCity, type CityCode } from './sudan-places';
@@ -28,6 +29,16 @@ import { cityNameEn, stateNameEn, stateOfCity, type CityCode } from './sudan-pla
 config({ override: true }); // load central .env (TWENTY_API_URL / TWENTY_API_KEY)
 
 const APPLY = process.argv.includes('--apply');
+/**
+ * Also PATCH records that already exist, so a re-scrape reaches the CRM.
+ *
+ * Without this the upsert only ever creates: the bilingual text, corrected
+ * cities, states, host attribution and real photo counts from the enrichment
+ * passes all stayed in the JSON file while Twenty kept showing what the very
+ * first scrape found. Only scrape-derived fields are refreshed — see
+ * HOME_REFRESHABLE / HOST_REFRESHABLE.
+ */
+const REFRESH = process.argv.includes('--refresh');
 const arg = (n: string, d?: string) => {
   const h = process.argv.find((a) => a.startsWith(`--${n}=`));
   return h ? h.split('=').slice(1).join('=') : d;
@@ -67,7 +78,17 @@ const address = (h: HomeRecord) => ({
 const clean = <T extends Record<string, unknown>>(o: T): Partial<T> =>
   Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null && !(Array.isArray(v) && v.length === 0))) as Partial<T>;
 
-function hostBody(h: HostRecord) {
+/** What the profile pass adds on top of what the PDP captures. */
+type EnrichedHost = HostRecord & {
+  livesIn?: string | null;
+  work?: string | null;
+  about?: string | null;
+  agencySuspected?: boolean;
+  preferredLanguage?: 'AR' | 'EN' | null;
+  profileListingsCount?: number | null;
+};
+
+function hostBody(h: EnrichedHost) {
   return clean({
     source: h.source,
     airbnbHostId: h.airbnbHostId,
@@ -77,14 +98,29 @@ function hostBody(h: HostRecord) {
     superhost: h.superhost,
     hostSince: h.hostSince ?? undefined,
     responseRate: h.responseRate ?? undefined,
-    airbnbListingsCount: h.airbnbListingsCount ?? undefined,
+    // The profile page's count is the true portfolio size; our own tally only
+    // sees the listings inside this dataset.
+    airbnbListingsCount: h.profileListingsCount ?? h.airbnbListingsCount ?? undefined,
     portfolioReviewsTotal: h.portfolioReviewsTotal ?? undefined,
     portfolioAvgRating: h.portfolioAvgRating ?? undefined,
+    agencySuspected: h.agencySuspected ?? undefined,
+    preferredLanguage: h.preferredLanguage ?? undefined,
+    livesIn: h.livesIn ?? undefined,
+    hostWork: h.work ?? undefined,
+    hostAbout: h.about ?? undefined,
     hostTrustBand: 'UNSCORED',
   });
 }
 
-function homeBody(h: HomeRecord, hostId: string | null) {
+/** What the PDP and profile stages add on top of what discovery captures. */
+type EnrichedHome = HomeRecord & {
+  homeState?: StateCode;
+  hostSource?: string | null;
+  locationSubtitle?: string | null;
+  pdpError?: string | null;
+};
+
+function homeBody(h: EnrichedHome, hostId: string | null) {
   const amen = mapAmenities(h.amenitiesRaw);
   return clean({
     source: h.source,
@@ -96,7 +132,11 @@ function homeBody(h: HomeRecord, hostId: string | null) {
     roomType: h.roomType ?? undefined,
     airbnbCategory: h.airbnbCategory ?? undefined,
     city: h.city,
+    homeState: h.homeState ?? undefined,
     homeAddress: address(h), // "address" is reserved in Twenty; field is homeAddress
+    // Which rule resolved the host. The import refuses HEURISTIC, so surfacing
+    // it here is how a human sees why a home is being held back.
+    hostAttribution: h.hostSource ?? 'NONE',
 
     bedrooms: h.bedrooms ?? undefined,
     beds: h.beds ?? undefined,
@@ -117,6 +157,9 @@ function homeBody(h: HomeRecord, hostId: string | null) {
     homeStatus: 'SCRAPED',
     mkanPublishState: 'NOT_IMPORTED',
     trustBand: 'UNSCORED',
+    // Airbnb's own geocoded place string, kept verbatim — it is the evidence
+    // behind the city and the "is this Sudan" verdict.
+    locationCheck: h.pdpError ? 'FAIL' : h.locationSubtitle ? 'PASS' : 'UNCHECKED',
     hostId: hostId ?? undefined,
   });
 }
@@ -135,7 +178,7 @@ async function throttle() {
   if (wait > 0) await sleep(wait);
   lastCallAt = Date.now();
 }
-async function rest(method: 'GET' | 'POST', path: string, body?: unknown, attempt = 0): Promise<any> {
+async function rest(method: 'GET' | 'POST' | 'PATCH', path: string, body?: unknown, attempt = 0): Promise<any> {
   await throttle();
   const res = await fetch(`${REST}/${path}`, {
     method,
@@ -194,6 +237,33 @@ async function main() {
   if (!API_URL || !API_KEY) throw new Error('APPLY needs TWENTY_API_URL + TWENTY_API_KEY (backend up, objects created).');
   console.log(`mode: APPLY → ${REST}\n`);
 
+  // Fields a re-scrape is allowed to refresh on a record that already exists.
+  //
+  // Everything here is a fact about the Airbnb listing, so the newest scrape is
+  // by definition the most correct value. Everything NOT here is either a human
+  // judgement (photoQuality, trustBandOverride, overrideReason, labels,
+  // publishReady, priceConfirmedByHost) or pipeline state owned by a later
+  // stage (homeStatus, mkanPublishState, mkanListingId, trustBand, importedAt,
+  // photosRehosted) — refreshing those would silently undo somebody's work or
+  // walk a listing backwards through the funnel.
+  const HOME_REFRESHABLE = [
+    'title', 'name', 'description', 'roomType', 'airbnbCategory',
+    'city', 'homeState', 'homeAddress', 'hostAttribution', 'locationCheck',
+    'bedrooms', 'beds', 'bathrooms', 'guestCapacity',
+    'amenitiesRaw', 'mkanAmenities', 'petsAllowed', 'parkingIncluded',
+    'photoUrls', 'photoCount', 'coverPhotoUrl',
+    'priceNightSar', 'avgRating', 'reviewCount', 'mkanPropertyType',
+    'airbnbUrl', 'hostId',
+  ] as const;
+  const HOST_REFRESHABLE = [
+    'name', 'airbnbProfileUrl', 'avatarUrl', 'superhost', 'hostSince',
+    'responseRate', 'airbnbListingsCount', 'portfolioReviewsTotal',
+    'portfolioAvgRating', 'agencySuspected', 'preferredLanguage',
+    'livesIn', 'hostWork', 'hostAbout',
+  ] as const;
+  const pick = (body: Record<string, unknown>, keys: readonly string[]) =>
+    Object.fromEntries(Object.entries(body).filter(([k]) => keys.includes(k)));
+
   // 1) Hosts (dedup → id map; remember which were newly created).
   const hostRecId = new Map<string, string>(); // airbnbHostId → Twenty id
   const newHosts = new Set<string>();
@@ -201,7 +271,12 @@ async function main() {
     try {
       let id = await findId('hosts', 'airbnbHostId', host.airbnbHostId);
       if (id) {
-        console.log(`= host ${host.airbnbHostId} (${host.name}) exists`);
+        if (REFRESH) {
+          await rest('PATCH', `hosts/${id}`, pick(hostBody(host), HOST_REFRESHABLE));
+          console.log(`~ host ${host.airbnbHostId} (${host.name}) refreshed`);
+        } else {
+          console.log(`= host ${host.airbnbHostId} (${host.name}) exists`);
+        }
       } else {
         id = createdId(await rest('POST', 'hosts', hostBody(host)));
         newHosts.add(host.airbnbHostId);
@@ -217,8 +292,15 @@ async function main() {
   // 2) Homes (dedup → link to host).
   for (const home of homes) {
     try {
-      if (await findId('homes', 'airbnbListingId', home.airbnbListingId)) {
-        console.log(`= home ${home.airbnbListingId} exists`);
+      const existingHomeId = await findId('homes', 'airbnbListingId', home.airbnbListingId);
+      if (existingHomeId) {
+        if (REFRESH) {
+          const body = homeBody(home, home.hostAirbnbId ? hostRecId.get(home.hostAirbnbId) ?? null : null);
+          await rest('PATCH', `homes/${existingHomeId}`, pick(body, HOME_REFRESHABLE));
+          console.log(`~ home ${home.airbnbListingId} refreshed (${(home.title ?? '').slice(0, 30)})`);
+        } else {
+          console.log(`= home ${home.airbnbListingId} exists`);
+        }
       } else {
         await rest('POST', 'homes', homeBody(home, home.hostAirbnbId ? hostRecId.get(home.hostAirbnbId) ?? null : null));
         console.log(`+ home ${home.airbnbListingId} (${(home.title ?? '').slice(0, 32)})`);

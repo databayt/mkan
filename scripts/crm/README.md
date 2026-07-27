@@ -35,6 +35,32 @@ tiny. **Coverage is not the constraint on this business; inventory is.** Growth 
 from onboarding hosts who are not on Airbnb at all, and the pipeline should be judged on
 conversion rather than on scrape counts.
 
+## What the enrichment passes established (2026-07-27)
+
+The bilingual PDP passes, the host-profile pass and the contact hunt have all now run over
+the full set. Four results worth carrying forward:
+
+**Airbnb translates descriptions, never titles.** Across the 110 listings captured verifiably
+in both locales, all 110 descriptions differ between `ar` and `en` and all 110 titles are
+byte-identical. So "the same text as Airbnb, in both languages" is real for descriptions —
+305 rows are seeded into `translation_cache` with `provider:'airbnb'` — and does not exist
+for titles. Titles keep falling through to Google at render time, which is correct.
+
+**Host attribution is solid.** 119 of 121 homes resolve through the `MEET_YOUR_HOST` section;
+none fall back to the heuristic key walk that a co-host or a "similar listings" card could
+win. `mkan-import.ts` refuses `HEURISTIC` anyway.
+
+**Most of these hosts do not live in Sudan.** Of the 55 with a stated location, 37 are
+abroad — 8 UK, 6 UAE, 4 Saudi, 4 Qatar, 3 Egypt, the rest scattered. This is a diaspora
+market, and it means their contact number will not be +249 and searching them against a
+Sudanese city alone will miss them.
+
+**There are no contacts in anything Airbnb publishes.** The extractor has now been run over
+every field — titles, descriptions, house rules, host bios — in both languages, for all 72
+hosts: 136,842 characters containing exactly four runs of six or more consecutive digits,
+all of them the same electricity meter ID. The answer is zero, and it is not a tooling gap.
+Reaching these hosts needs `contact-hunt --worksheet` and a human with a normal browser.
+
 | File | What |
 | --- | --- |
 | `probe-caps.ts` | Measures the facts the crawler depends on — Airbnb's pagination ceiling, whether `?locale=ar` works and is sticky, and whether `translate_ugc=false` returns the host's original text. Re-run it if Airbnb changes shape. |
@@ -44,6 +70,13 @@ conversion rather than on scrape counts.
 | `airbnb-pdp.ts` | **G1.2** — PDP enrichment, one locale per pass (`--locale=en` / `--locale=ar`), recording which language the host actually authored in. |
 | `amenity-map.ts` | Airbnb amenity strings → the mkan `Amenity` enum, in English and Arabic. |
 | `contact-extract.ts` | **G1.6** — pulls phones/WhatsApp/email/socials out of listing text. See its header for the measured yield, which is zero. |
+| `contact-hunt.ts` | **G1.6** — runs the extractor over every published field in both locales (pass 1, offline), then emits a per-host operator worksheet of ranked searches (`--worksheet`). Reverse-image first, because hosts cross-post the same photos to Facebook. |
+| `sync-contacts-to-twenty.ts` | **G1.6** — writes found channels to Twenty. Fill-empty-never-replace-populated; a conflict becomes a dated note rather than an overwrite. |
+| `airbnb-host-profile.ts` | **G1.3** — one visit per host profile: true portfolio size, where they live, languages, verifications, agency suspicion. |
+| `sync-twenty-options.ts` | Grows SELECT option lists on live Twenty fields. Refuses removal — options are Postgres enum values, and dropping one strands every record holding it. |
+| `backfill-source-ids.ts` | **G1.5** — one-shot: moves the Airbnb↔mkan join key out of the ledger file and into `Listing.sourceListingId` / `User.sourceHostId`. |
+| `seed-listing-translations.ts` | **G1.7** — seeds `translation_cache` from Airbnb's own AR/EN so every `localize()` call site renders it with no render-path change. |
+| `claim-tokens.ts` | **G1.8** — mints one-time claim links. The 49 provisioned accounts have no recoverable password; this is the only way to hand them over. |
 | `twenty-schema.ts` | Source of truth — `Home` (55 fields) + `Host` (32 fields) objects and the `Opportunity` custom fields (14), with Twenty `FieldMetadataType`s, SELECT options, and relations. Mirrors `docs/growth.md` §2.3–§2.5. |
 | `twenty-views.ts` | The 10 saved Views (object, type, kanban group-by, columns, sorts, filters). Mirrors §2.8. |
 | `seed-twenty-objects.ts` | Idempotent seeder — creates the objects + all fields (incl. the Opportunity fields on the standard object) via Twenty's metadata GraphQL API. |
@@ -83,6 +116,12 @@ pnpm crm:seed-views   --apply     # then the views (need the field ids)
   the Vercel frontend URL.
 - **Idempotent:** re-runs skip objects/fields/views that already exist, so it's safe to run
   again after editing the schema.
+- **Growing a SELECT is a different job.** The seeder skips fields that already exist, so it
+  can add a field but never change one. `pnpm crm:sync-options` diffs declared options
+  against live ones and appends the new ones, passing every existing option back
+  byte-identical. It refuses to remove one: Twenty backs each option with a Postgres enum
+  value on the record table (`_home.city` is of type `_home_city_enum`), so appending is
+  `ALTER TYPE … ADD VALUE` but dropping strands every record holding it.
 
 ## Notes & caveats
 
