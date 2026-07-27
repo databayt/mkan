@@ -33,6 +33,7 @@
     "seed:test-user": "tsx scripts/seed-test-user.ts",
     "seed:transport": "tsx scripts/seed-transport.ts",
     "crm:seed-objects": "tsx scripts/crm/seed-twenty-objects.ts",
+    "crm:sync-options": "tsx scripts/crm/sync-twenty-options.ts",
     "crm:seed-views": "tsx scripts/crm/seed-twenty-views.ts",
     "crm:scrape": "tsx scripts/crm/airbnb-scrape.ts",
     "crm:scrape-sudan": "tsx scripts/crm/scrape-sudan.ts",

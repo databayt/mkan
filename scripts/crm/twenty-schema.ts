@@ -15,6 +15,8 @@
  * convention); human `label`s carry the readable text.
  */
 
+import { CITY_OPTIONS, STATE_OPTIONS } from './sudan-places';
+
 export type TwentyFieldType =
   | 'TEXT'
   | 'NUMBER'
@@ -84,6 +86,13 @@ const MKAN_HIGHLIGHTS = [
 ];
 const MKAN_PROPERTY_TYPE = ['Apartment', 'Villa', 'Townhouse', 'Cottage', 'Tinyhouse', 'Rooms'];
 
+// Cities and states come from the gazetteer so the CRM, the scraper and the
+// importer can never disagree about what "Kassala" is. The declared order here
+// is only a starting position — `sync-twenty-options.ts` preserves whatever
+// positions the live workspace already assigned.
+const SUDAN_CITIES = CITY_OPTIONS.map((c) => c.value);
+const SUDAN_STATES = STATE_OPTIONS.map((s) => s.value);
+
 // ── Home ─────────────────────────────────────────────────────────────────────
 export const HOME: ObjectDef = {
   nameSingular: 'home',
@@ -106,7 +115,8 @@ export const HOME: ObjectDef = {
     { name: 'description', label: 'Description', type: 'TEXT' },
     { name: 'roomType', label: 'Room type', type: 'SELECT', options: ['ENTIRE_HOME', 'PRIVATE_ROOM', 'SHARED_ROOM', 'HOTEL_ROOM'] },
     { name: 'airbnbCategory', label: 'Airbnb category', type: 'TEXT', description: 'Raw category, e.g. "Entire villa".' },
-    { name: 'city', label: 'City', type: 'SELECT', options: ['KHARTOUM', 'OMDURMAN', 'BAHRI', 'EAST_NILE', 'PORT_SUDAN', 'OTHER'], icon: 'IconBuildingCommunity', description: 'Normalized city (wave-rollout key).' },
+    { name: 'city', label: 'City', type: 'SELECT', options: SUDAN_CITIES, icon: 'IconBuildingCommunity', description: 'Normalized city (wave-rollout key). Grown by sync-twenty-options.ts, never by the seeder.' },
+    { name: 'homeState', label: 'State', type: 'SELECT', options: SUDAN_STATES, icon: 'IconMap2', description: 'Sudanese state (wilaya) — the coarse filter above city.' },
     // NB: "address" is a reserved field name in Twenty — must use a prefixed name.
     { name: 'homeAddress', label: 'Address', type: 'ADDRESS', icon: 'IconMapPin', description: 'Full geocoded location (incl. lat/lng subfields) → mkan Location.' },
     { name: 'bedrooms', label: 'Bedrooms', type: 'NUMBER' },
@@ -141,6 +151,11 @@ export const HOME: ObjectDef = {
     { name: 'locationCheck', label: 'Location check', type: 'SELECT', options: ['PASS', 'SUDAN_ONLY', 'FAIL', 'UNCHECKED'] },
     { name: 'duplicateCheck', label: 'Duplicate check', type: 'SELECT', options: ['NONE', 'SUSPECTED', 'CONFIRMED', 'UNCHECKED'] },
     { name: 'hotelAgencyCheck', label: 'Hotel/agency check', type: 'SELECT', options: ['PASS', 'LARGE_PORTFOLIO', 'HOTEL', 'UNCHECKED'] },
+    // How confidently we know WHOSE listing this is. HEURISTIC means the host
+    // came from a whole-document key walk that a co-host or a "similar listings"
+    // card can win — those must never be imported, because provisioning an
+    // account for the wrong person is the worst outreach outcome available.
+    { name: 'hostAttribution', label: 'Host attribution', type: 'SELECT', icon: 'IconUserQuestion', options: ['MEET_YOUR_HOST', 'EVENT_DATA', 'HEURISTIC', 'NONE'], description: 'Which rule resolved the host. Only MEET_YOUR_HOST / EVENT_DATA are import-safe.' },
 
     // Trust (computed)
     { name: 'homeTrustScore', label: 'Home trust score', type: 'NUMBER' },
@@ -206,6 +221,17 @@ export const HOST: ObjectDef = {
     { name: 'crossSourceCorroborated', label: 'Cross-source corroboration', type: 'SELECT', options: ['NONE', 'PARTIAL', 'CONFIRMED'] },
     { name: 'agencySuspected', label: 'Agency suspected', type: 'BOOLEAN', defaultValue: false },
     { name: 'notes', label: 'Notes', type: 'TEXT' },
+
+    // Contact hunt (Epic G1.6). Airbnb publishes no host phone, so every channel
+    // here is inferred or hand-found. `contactCandidates` keeps the full,
+    // un-adjudicated list so a human can pick in the CRM without losing the
+    // rejected options; the flat phone/whatsapp/email fields hold only what was
+    // actually chosen. `contactVerifiedByHuman` is the write-lock the sync
+    // script honours — once set, no script overwrites that host's channels.
+    { name: 'contactCandidates', label: 'Contact candidates', type: 'RAW_JSON', icon: 'IconAddressBook', description: 'Every channel found, with source + confidence. Human adjudicates here.' },
+    { name: 'contactHuntedAt', label: 'Contact hunted at', type: 'DATE_TIME' },
+    { name: 'contactConfidence', label: 'Contact confidence', type: 'SELECT', options: ['HIGH', 'MEDIUM', 'LOW', 'NONE'], icon: 'IconShieldQuestion' },
+    { name: 'contactVerifiedByHuman', label: 'Contact verified by human', type: 'BOOLEAN', defaultValue: false, description: 'Write-lock: sync-contacts-to-twenty.ts never touches a host with this set.' },
 
     // Trust & mkan account
     { name: 'hostTrustScore', label: 'Host trust score', type: 'NUMBER' },
