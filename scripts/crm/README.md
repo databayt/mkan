@@ -40,11 +40,18 @@ conversion rather than on scrape counts.
 The bilingual PDP passes, the host-profile pass and the contact hunt have all now run over
 the full set. Four results worth carrying forward:
 
-**Airbnb translates descriptions, never titles.** Across the 110 listings captured verifiably
-in both locales, all 110 descriptions differ between `ar` and `en` and all 110 titles are
-byte-identical. So "the same text as Airbnb, in both languages" is real for descriptions —
-305 rows are seeded into `translation_cache` with `provider:'airbnb'` — and does not exist
-for titles. Titles keep falling through to Google at render time, which is correct.
+**Airbnb serves both the title and the description in Arabic.** Both are captured verbatim
+and seeded into `translation_cache` with `provider:'airbnb'`, so `/ar` and `/en` render
+Airbnb's own wording with no change to the render path.
+
+> Corrected 2026-07-27. An earlier pass here concluded that Airbnb never translates titles,
+> because all 110 captured titles were byte-identical across locales. That was an artefact of
+> `parsePdp` reading `TITLE_DEFAULT.title`, which is null on every PDP — so the stage fell
+> back to the search-page title and stored the same English string in both passes. The
+> translated title is carried on the availability-calendar sections:
+> "Luxury 3bed apartment Khartoum" → "شقة فاخرة بثلاث غرف نوم في الخرطوم". If a field looks
+> like it is never populated, check that the field is the right one before concluding
+> anything about the source.
 
 **Host attribution is solid.** 119 of 121 homes resolve through the `MEET_YOUR_HOST` section;
 none fall back to the heuristic key walk that a co-host or a "similar listings" card could
