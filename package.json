@@ -40,6 +40,7 @@
     "crm:bbox": "tsx scripts/crm/airbnb-bbox.ts",
     "crm:pdp": "tsx scripts/crm/airbnb-pdp.ts",
     "crm:probe": "tsx scripts/crm/probe-caps.ts",
+    "crm:host-profile": "tsx scripts/crm/airbnb-host-profile.ts",
     "crm:upsert": "tsx scripts/crm/twenty-upsert.ts",
     "crm:score": "tsx scripts/crm/score-trust.ts",
     "crm:rehost": "tsx scripts/crm/photo-rehost.ts",
