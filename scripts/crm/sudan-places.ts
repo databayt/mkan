@@ -106,7 +106,7 @@ export const PLACES: SudanPlace[] = [
   { code: 'EAST_NILE',  nameEn: 'East Nile',       nameAr: 'شرق النيل',      state: 'KHARTOUM',   lat: 15.6000, lng: 32.6800, radiusKm: 14, aliases: ['east nile', 'sharq al nil', 'haj yousif'] },
 
   // Red Sea
-  { code: 'PORT_SUDAN', nameEn: 'Port Sudan',      nameAr: 'بورتسودان',      state: 'RED_SEA',    lat: 19.6158, lng: 37.2164, radiusKm: 25, aliases: ['port sudan', 'portsudan', 'bur sudan'] },
+  { code: 'PORT_SUDAN', nameEn: 'Port Sudan',      nameAr: 'بورتسودان',      state: 'RED_SEA',    lat: 19.6158, lng: 37.2164, radiusKm: 25, aliases: ['port sudan', 'portsudan', 'bur sudan', 'بور سودان'] },
   { code: 'SUAKIN',     nameEn: 'Suakin',          nameAr: 'سواكن',          state: 'RED_SEA',    lat: 19.1059, lng: 37.3321, radiusKm: 20, aliases: ['suakin', 'sawakin'] },
   { code: 'TOKAR',      nameEn: 'Tokar',           nameAr: 'طوكر',           state: 'RED_SEA',    lat: 18.4264, lng: 37.7292, radiusKm: 20, aliases: ['tokar'] },
   { code: 'SINKAT',     nameEn: 'Sinkat',          nameAr: 'سنكات',          state: 'RED_SEA',    lat: 18.8333, lng: 36.8333, radiusKm: 20, aliases: ['sinkat'] },
@@ -403,8 +403,14 @@ export function checkPlace(
   const titleCity = deriveCityFromTitle(titleOrCategory);
 
   if (locationSubtitle) {
-    const country = locationSubtitle.split(',').pop()?.trim().toLowerCase() ?? '';
-    if (country && !/^sudan$/.test(country)) {
+    // Airbnb returns this string in whatever locale was requested, so the
+    // Arabic pass yields "الخرطوم، Khartoum، السودان" — separated by the Arabic
+    // comma U+060C, not the ASCII one, and ending in the Arabic country name.
+    // Splitting on ASCII alone left the entire string as the "country" and
+    // matching only /sudan/ then rejected genuine Khartoum listings as foreign.
+    const country = locationSubtitle.split(/[,،]/).pop()?.trim().toLowerCase() ?? '';
+    const isSudan = /^sudan$/.test(country) || /^ال?سودان$/.test(country);
+    if (country && !isSudan) {
       return {
         ...hit,
         titleCity,
@@ -412,16 +418,34 @@ export function checkPlace(
         note: `Airbnb places this listing in ${locationSubtitle}`,
       };
     }
-    if (/^sudan$/.test(country)) {
-      // Airbnb says Sudan. Prefer the city its own subtitle names.
+    if (isSudan) {
+      // "Airbnb says Sudan" is not on its own good enough, because in the ar
+      // locale Airbnb says it about places that are not: the two known ringers
+      // in this dataset render as "Hikkaduwa، Southern Province، السودان" and
+      // "Sioux Falls، South Dakota، السودان", and both carry placeholder
+      // coordinates that land in empty North Kordofan. Taken at face value they
+      // would import as Sudanese homes.
+      //
+      // So the claim has to be corroborated by something: either the subtitle
+      // names a place we know is Sudanese, or the coordinates land in a town we
+      // know. If neither does, fall through to the checks below, which reject
+      // exactly this shape.
       const fromSubtitle = deriveCityFromTitle(locationSubtitle);
+      if (fromSubtitle !== 'OTHER' || hit.city !== 'OTHER') {
+        return {
+          ...hit,
+          city: hit.city !== 'OTHER' ? hit.city : fromSubtitle,
+          verdict: hit.verdict === 'OUTSIDE' ? 'BORDERLINE' : hit.verdict,
+          titleCity,
+          agreement: 'CONFIRMED',
+          note: hit.verdict === 'OUTSIDE' ? `coordinates disagree; trusting Airbnb's "${locationSubtitle}"` : null,
+        };
+      }
       return {
         ...hit,
-        city: fromSubtitle !== 'OTHER' ? fromSubtitle : hit.city,
-        verdict: hit.verdict === 'OUTSIDE' ? 'BORDERLINE' : hit.verdict,
         titleCity,
-        agreement: 'CONFIRMED',
-        note: hit.verdict === 'OUTSIDE' ? `coordinates disagree; trusting Airbnb's "${locationSubtitle}"` : null,
+        agreement: 'SUSPECT_FOREIGN',
+        note: `Airbnb says Sudan but "${locationSubtitle}" names no Sudanese place and the coordinates match no town`,
       };
     }
   }
@@ -455,13 +479,43 @@ export function checkPlace(
 }
 
 /** Coordinates are authoritative; this is the fallback when they are missing. */
+/**
+ * Fold the spelling variation Arabic text actually arrives in.
+ *
+ * Diacritics are optional, the alef carries three interchangeable hamza forms,
+ * final ya and alef-maqsura are written both ways, and ta-marbuta is often
+ * typed as ha. Without this, "بورتسودان" from Airbnb fails to match the
+ * gazetteer's "بورتسودان" the moment either side is spelled slightly
+ * differently. Spaces go too, so "بور سودان" and "بورتسودان" are one word.
+ */
+function foldArabic(s: string): string {
+  return s
+    .replace(/[ً-ْٰـ]/g, '') // harakat, dagger alef, tatweel
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/\s+/g, '');
+}
+
 export function deriveCityFromTitle(title: string | null | undefined): CityCode {
-  const s = (title ?? '').toLowerCase();
-  if (!s) return 'OTHER';
-  // Longest alias first so "khartoum north" cannot be won by "khartoum".
-  const byLength = PLACES.flatMap((p) => (p.aliases ?? []).map((a) => ({ alias: a, code: p.code })))
-    .sort((a, b) => b.alias.length - a.alias.length);
-  for (const { alias, code } of byLength) if (s.includes(alias)) return code;
+  const raw = (title ?? '').toLowerCase();
+  if (!raw) return 'OTHER';
+  const folded = foldArabic(raw);
+
+  // Every name a place goes by, in either language. The Arabic names were
+  // present on every entry but were never searched, so an Arabic subtitle —
+  // which is what the ar PDP pass produces — matched nothing at all.
+  const names = PLACES.flatMap((p) =>
+    [p.nameEn.toLowerCase(), p.nameAr, ...(p.aliases ?? [])].map((n) => ({ name: n, code: p.code })),
+  )
+    // Longest first so "khartoum north" cannot be won by "khartoum".
+    .sort((a, b) => b.name.length - a.name.length);
+
+  for (const { name, code } of names) {
+    if (raw.includes(name)) return code;
+    const f = foldArabic(name);
+    if (f && folded.includes(f)) return code;
+  }
   return 'OTHER';
 }
 

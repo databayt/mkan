@@ -97,6 +97,8 @@ export interface EnrichedHome extends HomeRecord {
   hostSource?: string | null;
   coHostIds?: string[];
   locationSubtitle?: string | null;
+  /** Sudanese state, derived alongside city so a wave can be planned by region. */
+  homeState?: string;
   houseRules?: string[];
   pdpFetchedAt?: string;
   pdpError?: string | null;
@@ -217,20 +219,24 @@ async function main() {
         home.latitude = pdp.latitude;
         home.longitude = pdp.longitude;
       }
-      if (pdp.locationSubtitle) {
+      // Classify every home, not only the ones Airbnb gave a subtitle for —
+      // otherwise a listing with coordinates but no subtitle keeps whatever
+      // coarse city the search page guessed and never gets a state at all.
+      // The English subtitle is the one worth keeping. Airbnb's ar locale
+      // localizes the country field wrongly — a Sri Lankan and a South Dakotan
+      // listing both come back as "…، السودان" — so letting the ar pass
+      // overwrite it replaces a checkable string with a false one.
+      if (pdp.locationSubtitle && (LOCALE === 'en' || !home.locationSubtitle)) {
         home.locationSubtitle = pdp.locationSubtitle;
-        // Airbnb's own geocoding is the best "is this Sudan" evidence we get.
-        const place = checkPlace(home.latitude, home.longitude, home.airbnbCategory, pdp.locationSubtitle);
-        home.city = place.city;
-        if (place.agreement === 'SUSPECT_FOREIGN') {
-          home.pdpError = `not Sudan: ${place.note}`;
-        }
       }
+      const place = checkPlace(home.latitude, home.longitude, home.airbnbCategory, home.locationSubtitle);
+      home.city = place.city;
+      home.homeState = place.state;
+      home.pdpError = place.agreement === 'SUSPECT_FOREIGN' ? `not Sudan: ${place.note}` : null;
       home.houseRules = pdp.houseRules;
       home.hostSource = pdp.hostSource;
       home.coHostIds = pdp.coHostIds;
       home.pdpFetchedAt = new Date().toISOString();
-      home.pdpError = home.pdpError ?? null;
 
       // Only the canonical locale's text goes in the flat fields, so a
       // mismatched or translated capture cannot quietly become the listing.

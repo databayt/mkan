@@ -233,3 +233,117 @@ describe("gazetteer integrity", () => {
     }
   });
 });
+
+describe("checkPlace with an Arabic locationSubtitle", () => {
+  // The AR PDP pass overwrites locationSubtitle with Airbnb's Arabic string,
+  // which uses the Arabic comma U+060C and the Arabic country name. Splitting
+  // on the ASCII comma alone left the whole string as the "country" and every
+  // genuine Khartoum listing came back SUSPECT_FOREIGN.
+  it("accepts Airbnb's Arabic rendering of a Sudanese place", () => {
+    const r = checkPlace(15.55, 32.53, "Apartment", "الخرطوم، Khartoum، السودان");
+    expect(r.agreement).toBe("CONFIRMED");
+    expect(r.note).toBeNull();
+  });
+
+  it("accepts the Arabic subtitle for Port Sudan too", () => {
+    const r = checkPlace(19.617, 37.216, "Apartment", "بورتسودان، البحر الاحمر، السودان");
+    expect(r.agreement).toBe("CONFIRMED");
+  });
+
+  it("still rejects a genuinely foreign place written in Arabic", () => {
+    const r = checkPlace(15.55, 32.53, "Apartment", "القاهرة، مصر");
+    expect(r.agreement).toBe("SUSPECT_FOREIGN");
+  });
+
+  it("still rejects a foreign place written in English", () => {
+    const r = checkPlace(15.55, 32.53, "Apartment", "Hikkaduwa, Southern Province, Sri Lanka");
+    expect(r.agreement).toBe("SUSPECT_FOREIGN");
+  });
+});
+
+describe("the tri-city survives Airbnb's coarse geocoding", () => {
+  // Airbnb labels every address in greater Khartoum "Khartoum, Khartoum, Sudan",
+  // including ones across the Nile. Letting that subtitle win collapsed Bahri,
+  // Omdurman and East Nile into Khartoum — which is exactly the distinction
+  // classifyGreaterKhartoum exists to make, and which locals do observe.
+  it("keeps Bahri when the coordinates are north of the Blue Nile", () => {
+    const r = checkPlace(15.65, 32.53, "Apartment", "الخرطوم، Khartoum، السودان");
+    expect(r.city).toBe("BAHRI");
+    expect(r.agreement).toBe("CONFIRMED");
+  });
+
+  it("keeps Omdurman when the coordinates are west of the Nile", () => {
+    const r = checkPlace(15.64, 32.45, "Apartment", "Khartoum, Khartoum, Sudan");
+    expect(r.city).toBe("OMDURMAN");
+  });
+
+  it("still says Khartoum when the coordinates actually are Khartoum", () => {
+    expect(checkPlace(15.55, 32.55, "Apartment", "Khartoum, Khartoum, Sudan").city).toBe("KHARTOUM");
+  });
+
+  it("falls back to the subtitle when there are no coordinates at all", () => {
+    const r = checkPlace(null, null, "Apartment", "Kassala, Kassala, Sudan");
+    expect(r.city).toBe("KASSALA");
+  });
+
+  it("trusts coordinates over a subtitle that names a town 1000km away", () => {
+    // 21km from El Fasher. Airbnb saying "Kassala" does not move a building.
+    expect(checkPlace(13.5, 25.5, "Apartment", "Kassala, Kassala, Sudan").city).toBe("EL_FASHER");
+  });
+});
+
+describe("Airbnb's Arabic locale claims Sudan for places that are not", () => {
+  // Measured 2026-07-27: in the ar locale Airbnb renders the country field of
+  // these two real listings as السودان. Both carry near-identical placeholder
+  // coordinates 200m apart in empty North Kordofan. Trusting the country claim
+  // alone would import a Sri Lankan beach villa and a South Dakota house as
+  // Sudanese homes.
+  it("rejects Hikkaduwa even when Airbnb writes السودان", () => {
+    const r = checkPlace(12.8637, 30.2164, "Villa", "Hikkaduwa، Southern Province، السودان");
+    expect(r.agreement).toBe("SUSPECT_FOREIGN");
+  });
+
+  it("rejects Sioux Falls even when Airbnb writes السودان", () => {
+    const r = checkPlace(12.8653, 30.2173, "Home", "Sioux Falls، South Dakota، السودان");
+    expect(r.agreement).toBe("SUSPECT_FOREIGN");
+  });
+
+  it("still accepts a real Sudanese place in the same Arabic form", () => {
+    // Corroborated twice over: the subtitle names Port Sudan and the
+    // coordinates are in it.
+    expect(checkPlace(19.617, 37.216, "Apartment", "بورتسودان، البحر الاحمر، السودان").agreement).toBe("CONFIRMED");
+  });
+
+  it("accepts a real Sudanese place whose coordinates match no town", () => {
+    // Corroboration from the subtitle alone is enough — this is a genuine
+    // Sudanese town, just outside any centroid radius.
+    expect(checkPlace(null, null, "Apartment", "Dongola، Northern، السودان").agreement).toBe("CONFIRMED");
+  });
+});
+
+describe("deriveCityFromTitle reads Arabic place names", () => {
+  // Every PLACES entry carried a nameAr that was never searched — only the
+  // English aliases were. So the ar PDP pass, whose subtitles are entirely
+  // Arabic, matched nothing, and two genuine Red Sea listings were rejected as
+  // foreign for naming Port Sudan in Arabic.
+  it("matches the Arabic name", () => {
+    expect(deriveCityFromTitle("بورتسودان، البحر الاحمر، السودان")).toBe("PORT_SUDAN");
+    expect(deriveCityFromTitle("الخرطوم")).toBe("KHARTOUM");
+    expect(deriveCityFromTitle("أم درمان")).toBe("OMDURMAN");
+  });
+
+  it("tolerates the spelling variation Arabic actually arrives in", () => {
+    // hamza forms, ta-marbuta written as ha, and stray spaces
+    expect(deriveCityFromTitle("بور سودان")).toBe("PORT_SUDAN");
+    expect(deriveCityFromTitle("ام درمان")).toBe("OMDURMAN");
+  });
+
+  it("still matches English names and aliases", () => {
+    expect(deriveCityFromTitle("Apartment in Port Sudan")).toBe("PORT_SUDAN");
+    expect(deriveCityFromTitle("Kassala, Kassala, Sudan")).toBe("KASSALA");
+  });
+
+  it("does not match a foreign place", () => {
+    expect(deriveCityFromTitle("Hikkaduwa, Southern Province, Sri Lanka")).toBe("OTHER");
+  });
+});
