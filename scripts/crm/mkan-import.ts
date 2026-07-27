@@ -34,6 +34,7 @@ import bcrypt from 'bcryptjs';
 import { Amenity, PropertyType } from '@prisma/client';
 import { mapAmenities as mapAmenityNames } from './amenity-map';
 import { cityNameEn, stateNameEn, stateOfCity, type CityCode } from './sudan-places';
+import { parseHouseRules, toListingHouseRules } from './house-rules';
 
 // Deferred until after env loads (only used with --apply) — avoids the
 // db-before-dotenv "DatabaseDoesNotExist" trap.
@@ -88,6 +89,8 @@ interface ScoredHome {
   trustBand: string;
   gateNote: string | null;
   scrapedAt?: string | null;
+  houseRules?: string[];
+  i18n?: { en?: { houseRules?: string[] }; ar?: { houseRules?: string[] } };
   canonicalLocale?: string | null;
   authoredLocale?: string | null;
   /** Which PDP rule resolved the host — see airbnb-parse.ts. */
@@ -134,6 +137,21 @@ function listingData(home: ScoredHome): Record<string, unknown> {
     averageRating: home.avgRating ?? 0,
     numberOfReviews: home.reviewCount ?? 0,
     postedDate: new Date(),
+    // Airbnb's rules are machine-generated from structure, so they parse back
+    // into mkan's own fields. Storing the strings instead would leave the host
+    // with Airbnb's phrasing on a listing they now own, untranslatable and
+    // uneditable — the structured form renders from mkan's own dictionary,
+    // which is already bilingual.
+    ...(() => {
+      const parsed = parseHouseRules(home.i18n?.en?.houseRules ?? home.houseRules);
+      const json = toListingHouseRules(parsed);
+      return {
+        ...(parsed.checkInTime ? { checkInTime: parsed.checkInTime } : {}),
+        ...(parsed.checkOutTime ? { checkOutTime: parsed.checkOutTime } : {}),
+        ...(parsed.checkInMethod ? { checkInMethod: parsed.checkInMethod } : {}),
+        ...(json ? { houseRules: json } : {}),
+      };
+    })(),
     draft: false,
     isPublished: false, // BUSY — the trust gate flips this to Available later
   };
