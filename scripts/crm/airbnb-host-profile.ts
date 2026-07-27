@@ -44,7 +44,14 @@ const CHECKPOINT_EVERY = 5;
  * this catches most of them — but it is a flag for a human, never a decision.
  */
 const AGENCY_NAME =
-  /شرك[ةه]|للعقارات|العقاري|للاستثمار|للسياحة|مجموعة|apartments?\b|suites?\b|hotel|hostel|residence|rentals?\b|property|properties|management|lettings?\b|group\b|co\.|ltd/i;
+  /شرك[ةه]|للعقارات|العقاري|للاستثمار|للسياحة|للخدمات|مجموعة|apartments?\b|suites?\b|hotel|hostel|residence|rentals?\b|tourism|travel\b|services\b|property|properties|management|lettings?\b|group\b|\bco\b|\bltd\b|\bllc\b|\binc\b/i;
+/**
+ * The "My work" prompt names an employer, so it needs a narrower test than the
+ * account name: "Educational Management" is a job, not a letting agency, and
+ * matching the broad list against it made the flag noisy enough to ignore.
+ */
+const AGENCY_WORK =
+  /عقار|للعقارات|تأجير|سياح|apartments?\b|real ?estate|letting|rental|hospitality|hotel|tourism|property manage|short.?stay|airbnb/i;
 /** Portfolio size at which "individual host" stops being a safe assumption. */
 const AGENCY_LISTING_COUNT = 5;
 
@@ -54,6 +61,10 @@ export interface HostProfile {
   about: string | null;
   languages: string[];
   verifications: string[];
+  /** "Riyadh, Saudi Arabia" — where the host says they live. */
+  livesIn: string | null;
+  /** The "My work" prompt; often names the agency directly. */
+  work: string | null;
   agencySuspected: boolean;
   agencyReason: string | null;
   profileFetchedAt: string;
@@ -75,9 +86,17 @@ function writeAtomic(path: string, data: unknown): void {
   renameSync(tmp, path);
 }
 
-async function readDeferredState(page: Page): Promise<unknown> {
+/**
+ * The profile page ships its state under `data-injector-instances`, not the
+ * `data-deferred-state` the listing pages use — reading the listing key here
+ * returned null for every host and silently produced empty profiles.
+ */
+async function readProfilePayload(page: Page): Promise<unknown> {
   const text = await page.evaluate(() => {
-    const s = [...document.querySelectorAll('script')].find((x) => (x.id || '').startsWith('data-deferred-state'));
+    const all = [...document.querySelectorAll('script')];
+    const s =
+      all.find((x) => x.id === 'data-injector-instances') ??
+      all.find((x) => (x.id || '').startsWith('data-deferred-state'));
     return s ? s.textContent : null;
   });
   if (!text) return null;
@@ -117,34 +136,53 @@ function valueByKey(root: unknown, keys: string[]): unknown {
 }
 
 /**
- * Airbnb has reshaped the profile payload repeatedly, so every field is read by
- * searching for its key rather than by walking a fixed path, and anything not
- * found stays null instead of guessing.
+ * Read the profile.
+ *
+ * Keys verified against a live profile payload on 2026-07-27 rather than
+ * guessed: `managedListingsTotalCount` is the true portfolio size, `location`
+ * is where the host says they live, `identityVerificationTypes` is the badge
+ * list, and the spoken languages appear only in the rendered text ("Speaks
+ * Arabic and English"), not as a field.
  */
 function parseProfile(json: unknown, pageText: string): Omit<HostProfile, 'agencySuspected' | 'agencyReason' | 'profileFetchedAt'> {
   const about = asString(valueByKey(json, ['about', 'userProfileDescription', 'aboutText']));
 
-  // "12 listings" / "قائمة 12" on the profile header. The JSON key moves; the
-  // rendered string is the more stable of the two.
-  let count: number | null = null;
-  const fromJson = valueByKey(json, ['listingsCount', 'totalListingsCount']);
-  if (typeof fromJson === 'number') count = fromJson;
-  if (count == null) {
-    const m = pageText.match(/(\d{1,4})\s+listings?\b/i) ?? pageText.match(/(\d{1,4})\s+(?:إعلان|عقار)/);
-    if (m) count = parseInt(m[1], 10);
-  }
+  const rawCount = valueByKey(json, ['managedListingsTotalCount', 'listingsCount', 'totalListingsCount']);
+  const profileListingsCount = typeof rawCount === 'number' ? rawCount : null;
 
-  const langsRaw = valueByKey(json, ['languages', 'spokenLanguages']);
-  const languages = Array.isArray(langsRaw) ? langsRaw.filter((x): x is string => typeof x === 'string') : [];
+  // "Speaks Arabic and English" — a rendered sentence, in the page locale.
+  const languages: string[] = [];
+  const speaks = pageText.match(/Speaks ([^\n]+)/i)?.[1] ?? pageText.match(/يتحدث ([^\n]+)/)?.[1];
+  if (speaks) languages.push(...speaks.split(/,| and | و /).map((l) => l.trim()).filter(Boolean));
 
-  const verRaw = valueByKey(json, ['verifications', 'identityVerifications']);
+  const verRaw = valueByKey(json, ['identityVerificationTypes', 'verifications']);
   const verifications = Array.isArray(verRaw) ? verRaw.filter((x): x is string => typeof x === 'string') : [];
 
-  return { profileListingsCount: count, about, languages, verifications };
+  // Where the host says they live. A large share of Sudanese hosts have been
+  // abroad since the war, and "Lives in Riyadh, Saudi Arabia" is both a real
+  // lead on how to reach them and a reason their number will not be +249.
+  const livesIn = asString(valueByKey(json, ['location'])) ?? asString(pageText.match(/Lives in ([^\n]+)/i)?.[1]);
+
+  // The "My work" prompt names an employer, which is often the agency itself.
+  const prompts = valueByKey(json, ['displayProfilePrompts']);
+  let work: string | null = null;
+  if (Array.isArray(prompts)) {
+    const w = prompts.find((p: any) => p?.fieldId === 'WORK');
+    work = asString(w?.subtitle) ?? asString(pageText.match(/My work:\s*([^\n]+)/i)?.[1]);
+  } else {
+    work = asString(pageText.match(/My work:\s*([^\n]+)/i)?.[1]);
+  }
+
+  return { profileListingsCount, about, languages, verifications, livesIn, work };
 }
 
-function judgeAgency(name: string | null, count: number | null): { suspected: boolean; reason: string | null } {
-  if (name && AGENCY_NAME.test(name)) return { suspected: true, reason: `name matches "${name}"` };
+function judgeAgency(
+  name: string | null,
+  count: number | null,
+  work: string | null,
+): { suspected: boolean; reason: string | null } {
+  if (name && AGENCY_NAME.test(name)) return { suspected: true, reason: `name "${name}" reads as a company` };
+  if (work && AGENCY_WORK.test(work)) return { suspected: true, reason: `works at "${work}"` };
   if (count != null && count >= AGENCY_LISTING_COUNT) return { suspected: true, reason: `${count} listings on Airbnb` };
   return { suspected: false, reason: null };
 }
@@ -194,12 +232,14 @@ async function main() {
         timeout: 45000,
       });
       await page.waitForTimeout(5000);
-      const json = await readDeferredState(page);
+      const json = await readProfilePayload(page);
       const pageText = await page.evaluate(() => document.body?.innerText ?? '');
       if (!json && !pageText) throw new Error('empty profile page');
 
       const parsed = parseProfile(json, pageText);
-      const judged = judgeAgency(host.name, parsed.profileListingsCount);
+      // If the profile withholds a count, fall back to what our own scrape saw
+      // rather than treating "unknown" as "small".
+      const judged = judgeAgency(host.name, parsed.profileListingsCount ?? host.airbnbListingsCount ?? null, parsed.work);
       Object.assign(host, {
         ...parsed,
         agencySuspected: judged.suspected,
@@ -218,7 +258,8 @@ async function main() {
       console.log(
         `  ✓ ${String(done).padStart(3)}/${queue.length} ${flag} ${(host.name ?? '?').padEnd(20)} ` +
           `${String(parsed.profileListingsCount ?? '?').padStart(3)} listings (we saw ${host.airbnbListingsCount ?? '?'})` +
-          `${parsed.about ? `  about ${parsed.about.length}ch` : ''}`,
+          `${parsed.livesIn ? `  · ${parsed.livesIn}` : ''}` +
+          `${parsed.about ? `  · about ${parsed.about.length}ch` : ''}`,
       );
     } catch (e) {
       failures++;
