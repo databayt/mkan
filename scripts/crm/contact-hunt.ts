@@ -69,6 +69,10 @@ interface Host {
   name: string | null;
   airbnbProfileUrl?: string;
   about?: string | null;
+  /** From the profile pass — "Riyadh, Saudi Arabia". */
+  livesIn?: string | null;
+  work?: string | null;
+  agencySuspected?: boolean;
 }
 
 interface HostHunt {
@@ -90,7 +94,12 @@ function writeAtomic(path: string, data: string): void {
 
 /** Every field Airbnb publishes that a host could have leaked a number into. */
 function fieldsFor(host: Host, homes: Home[]): Array<[string, string | null | undefined]> {
-  const fields: Array<[string, string | null | undefined]> = [['host.about', host.about]];
+  // The profile pass filled `about` and `work`; both are free text a host can
+  // and does put a number into.
+  const fields: Array<[string, string | null | undefined]> = [
+    ['host.about', host.about],
+    ['host.work', host.work],
+  ];
   for (const home of homes) {
     const id = home.airbnbListingId;
     fields.push([`${id}.title`, home.title], [`${id}.description`, home.description]);
@@ -124,10 +133,15 @@ function worksheetFor(hunt: HostHunt, host: Host, homes: Home[]): string {
     .filter((t) => t.length > 18 && !/^(rental unit|home|apartment|condo|place to stay) in /i.test(t))
     .sort((a, b) => b.length - a.length)[0];
 
+  const abroad = host.livesIn && !/sudan/i.test(host.livesIn);
+
   const lines: string[] = [];
   lines.push(`### ${name || '(no name)'} — host \`${host.airbnbHostId}\``);
   lines.push('');
   lines.push(`- ${hunt.homeCount} listing(s) in ${cityEn} · confidence from listing text: **${hunt.confidence}**`);
+  if (host.livesIn) lines.push(`- Lives in **${host.livesIn}**${abroad ? ' — diaspora; expect a foreign number, not +249' : ''}`);
+  if (host.work) lines.push(`- Work: ${host.work}`);
+  if (host.agencySuspected) lines.push('- ⚑ **Agency suspected** — confirm this is a person before offering them an account');
   if (host.airbnbProfileUrl) lines.push(`- Airbnb profile: ${host.airbnbProfileUrl}`);
   if (hunt.candidates.length) {
     lines.push(`- Already found: ${hunt.candidates.map((c) => `${c.kind} ${c.value} (${c.confidence})`).join(', ')}`);
@@ -138,6 +152,12 @@ function worksheetFor(hunt: HostHunt, host: Host, homes: Home[]): string {
   if (name) {
     lines.push(`2. Name + rentals, Arabic: ${q(`"${name}" ${cityAr} شقق OR إيجار OR للإيجار واتساب`)}`);
     lines.push(`3. Name on Facebook: ${q(`site:facebook.com "${name}" ${cityAr}`)}`);
+    // Searching a London-based owner against "Khartoum" buries them. Their own
+    // city, and the Sudanese-community groups there, is the better query.
+    if (abroad) {
+      const where = host.livesIn!.split(',')[0].trim();
+      lines.push(`3b. Where they actually live: ${q(`"${name}" ${where} sudanese OR سوداني`)}`);
+    }
   }
   if (distinctive) lines.push(`4. Distinctive listing title: ${q(`"${distinctive}"`)}`);
   lines.push('');
@@ -213,6 +233,14 @@ function main() {
     doc.push('');
     doc.push('Open these searches in a **normal browser**, not the vault Chrome — a Google');
     doc.push('captcha there costs the logged-in Airbnb session the whole pipeline runs on.');
+    doc.push('');
+    const abroadCount = hunts.filter((x) => {
+      const h = hosts.find((y) => y.airbnbHostId === x.airbnbHostId);
+      return h?.livesIn && !/sudan/i.test(h.livesIn);
+    }).length;
+    doc.push(`Note: ${abroadCount} of these hosts state they live outside Sudan — mostly the UK,`);
+    doc.push('the Gulf and Egypt. Their contact number will not be +249, and searching them');
+    doc.push('against a Sudanese city alone will miss them.');
     doc.push('');
     for (const h of ordered) {
       const host = hosts.find((x) => x.airbnbHostId === h.airbnbHostId)!;
