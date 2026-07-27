@@ -115,6 +115,7 @@ export const HOME: ObjectDef = {
     { name: 'description', label: 'Description', type: 'TEXT' },
     { name: 'roomType', label: 'Room type', type: 'SELECT', options: ['ENTIRE_HOME', 'PRIVATE_ROOM', 'SHARED_ROOM', 'HOTEL_ROOM'] },
     { name: 'airbnbCategory', label: 'Airbnb category', type: 'TEXT', description: 'Raw category, e.g. "Entire villa".' },
+    { name: 'airbnbCategoryAr', label: 'Airbnb category (AR)', type: 'TEXT', description: 'Airbnb\'s own Arabic label, e.g. "وحدة للإيجار بالكامل".' },
     { name: 'city', label: 'City', type: 'SELECT', options: SUDAN_CITIES, icon: 'IconBuildingCommunity', description: 'Normalized city (wave-rollout key). Grown by sync-twenty-options.ts, never by the seeder.' },
     { name: 'homeState', label: 'State', type: 'SELECT', options: SUDAN_STATES, icon: 'IconMap2', description: 'Sudanese state (wilaya) — the coarse filter above city.' },
     // NB: "address" is a reserved field name in Twenty — must use a prefixed name.

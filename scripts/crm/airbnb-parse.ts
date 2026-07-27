@@ -259,6 +259,20 @@ export function pdpEventData(json: any): any | null {
   return findByKey(json, (o) => o.__typename === 'PdpEventData' && typeof o.listingId === 'string');
 }
 
+/**
+ * The property-type label in whichever locale was requested — "Entire rental
+ * unit" / "وحدة للإيجار بالكامل".
+ *
+ * `sharingConfig` sits on the page metadata rather than inside a section, which
+ * makes it the most stable place to read this from: the same string also
+ * appears on the availability-calendar and photo-tour sections, and those move
+ * position between renders.
+ */
+export function pdpCategory(json: any): string | null {
+  const cfg = findByKey(json, (o) => typeof o.propertyType === 'string' && typeof o.title === 'string');
+  return typeof cfg?.propertyType === 'string' && cfg.propertyType.trim() ? cfg.propertyType.trim() : null;
+}
+
 export type HostSource = 'MEET_YOUR_HOST' | 'EVENT_DATA' | 'HEURISTIC' | null;
 
 export interface PdpParse {
@@ -276,6 +290,8 @@ export interface PdpParse {
   hostAbout: string | null;
   /** "Port Sudan, Red Sea, Sudan" — Airbnb's own geocoded place string. */
   locationSubtitle: string | null;
+  /** Localized property-type label, e.g. "Entire rental unit". */
+  category: string | null;
   latitude: number | null;
   longitude: number | null;
   houseRules: string[];
@@ -382,6 +398,7 @@ export function parsePdp(json: any, raw: string, listingId: string): PdpParse {
   return {
     description: descSection?.htmlDescription?.htmlText ?? null,
     title: localizedTitle,
+    category: pdpCategory(json),
     roomType: ev?.roomType ?? findByKey(json, (o) => typeof o.roomType === 'string')?.roomType ?? null,
     amenities,
     guestCapacity: typeof ev?.personCapacity === 'number' ? ev.personCapacity : null,

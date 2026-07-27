@@ -118,6 +118,7 @@ type EnrichedHome = HomeRecord & {
   stillListed?: boolean;
   hostSource?: string | null;
   locationSubtitle?: string | null;
+  airbnbCategoryAr?: string | null;
   pdpError?: string | null;
 };
 
@@ -132,6 +133,7 @@ function homeBody(h: EnrichedHome, hostId: string | null) {
     description: h.description ?? undefined,
     roomType: h.roomType ?? undefined,
     airbnbCategory: h.airbnbCategory ?? undefined,
+    airbnbCategoryAr: h.airbnbCategoryAr ?? undefined,
     city: h.city,
     homeState: h.homeState ?? undefined,
     homeAddress: address(h), // "address" is reserved in Twenty; field is homeAddress
@@ -255,6 +257,7 @@ async function main() {
   const HOME_REFRESHABLE = [
     'title', 'name', 'description', 'roomType', 'airbnbCategory',
     'city', 'homeState', 'homeAddress', 'hostAttribution', 'locationCheck',
+    'airbnbCategoryAr',
     'bedrooms', 'beds', 'bathrooms', 'guestCapacity',
     'amenitiesRaw', 'mkanAmenities', 'petsAllowed', 'parkingIncluded',
     'photoUrls', 'photoCount', 'coverPhotoUrl',

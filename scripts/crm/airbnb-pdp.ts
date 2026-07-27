@@ -77,6 +77,8 @@ const scriptOf = (s: string | null | undefined): 'ar' | 'latin' | 'none' => {
 
 export interface LocaleCapture {
   title: string | null;
+  /** Localized property-type label — "Entire rental unit" / "وحدة للإيجار بالكامل". */
+  category: string | null;
   description: string | null;
   amenities: string[];
   houseRules: string[];
@@ -99,6 +101,8 @@ export interface EnrichedHome extends HomeRecord {
   locationSubtitle?: string | null;
   /** Sudanese state, derived alongside city so a wave can be planned by region. */
   homeState?: string;
+  /** Airbnb's own Arabic property-type label. */
+  airbnbCategoryAr?: string | null;
   houseRules?: string[];
   pdpFetchedAt?: string;
   pdpError?: string | null;
@@ -188,6 +192,7 @@ async function main() {
 
       const capture: LocaleCapture = {
         title: pdp.title ?? home.title,
+        category: pdp.category,
         description: pdp.description,
         amenities: pdp.amenities,
         houseRules: pdp.houseRules,
@@ -243,6 +248,10 @@ async function main() {
       } else if (!home.houseRules?.length) {
         home.houseRules = pdp.houseRules;
       }
+      // The Arabic label is what a CRM user reads; the flat English
+      // airbnbCategory keeps its search-page form because mapPropertyType
+      // parses it and changing that would reclassify existing homes.
+      if (LOCALE === 'ar' && pdp.category) home.airbnbCategoryAr = pdp.category;
       home.hostSource = pdp.hostSource;
       home.coHostIds = pdp.coHostIds;
       home.pdpFetchedAt = new Date().toISOString();
