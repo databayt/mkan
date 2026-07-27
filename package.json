@@ -50,6 +50,7 @@
     "crm:backfill-source": "tsx scripts/crm/backfill-source-ids.ts",
     "crm:import": "tsx scripts/crm/mkan-import.ts",
     "crm:contact-hunt": "tsx scripts/crm/contact-hunt.ts",
+    "crm:sync-contacts": "tsx scripts/crm/sync-contacts-to-twenty.ts",
     "crm:outreach": "tsx scripts/crm/outreach.ts",
     "crm:seed-i18n": "tsx scripts/crm/seed-listing-translations.ts",
     "crm:claim-token": "tsx scripts/crm/claim-tokens.ts",
