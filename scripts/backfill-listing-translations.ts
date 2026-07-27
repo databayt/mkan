@@ -108,8 +108,12 @@ async function main(): Promise<void> {
   db = (await import("@/lib/db")).db;
 
   // 1. Every free-text string across published listings + their locations.
+  //    Imported Airbnb listings are held Busy (isPublished:false) until their
+  //    host claims them, so a published-only filter made all 74 of them
+  //    invisible here — their AR/EN gap was never even reported, and they would
+  //    have gone live rendering English on /ar.
   const listings = await db.listing.findMany({
-    where: { isPublished: true },
+    where: { OR: [{ isPublished: true }, { source: "AIRBNB" }] },
     select: {
       title: true,
       description: true,
@@ -130,6 +134,9 @@ async function main(): Promise<void> {
   });
   const key = (from: string, to: string, s: string): string => `${from} ${to} ${s}`;
   const have = new Set(existing.map((r) => key(r.sourceLanguage, r.targetLanguage, r.sourceText)));
+  // Anything that already has a row is left entirely alone, which is what keeps
+  // the Airbnb-sourced rows (provider "airbnb", written by crm:seed-i18n) and
+  // curated manual rows safe from this script — it only ever fills gaps.
   const gaps: Gap[] = [];
   for (const s of strings) {
     const from = detectScript(s);

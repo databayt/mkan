@@ -49,6 +49,7 @@
     "crm:backfill-source": "tsx scripts/crm/backfill-source-ids.ts",
     "crm:import": "tsx scripts/crm/mkan-import.ts",
     "crm:outreach": "tsx scripts/crm/outreach.ts",
+    "crm:seed-i18n": "tsx scripts/crm/seed-listing-translations.ts",
     "crm:publish": "tsx scripts/crm/wave-publish.ts",
     "test": "vitest run",
     "test:watch": "vitest",

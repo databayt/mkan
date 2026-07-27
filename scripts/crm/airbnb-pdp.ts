@@ -53,9 +53,27 @@ const IN = arg('in', 'scripts/crm/.data/airbnb-scrape.json')!;
  *  whole loop — is the mistake this exists to avoid repeating. */
 const CHECKPOINT_EVERY = 10;
 
-const AR_RE = /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/;
-const scriptOf = (s: string | null | undefined): 'ar' | 'latin' | 'none' =>
-  !s || !s.trim() ? 'none' : AR_RE.test(s) ? 'ar' : 'latin';
+const AR_CHARS = /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/g;
+const LATIN_CHARS = /[A-Za-z]/g;
+
+/**
+ * Which script a captured string is *predominantly* in.
+ *
+ * The app's own detectScript answers a different question — "does this need
+ * translating for this viewer" — and any single Arabic character is enough to
+ * say yes. That rule is wrong here. Hosts leave Arabic street names in English
+ * copy ("شارع35" inside 751 characters of English) and Latin brand names in
+ * Arabic copy, and a first-hit test reads those as a locale failure. Requiring
+ * a majority asks the question this stage actually cares about: did Airbnb
+ * serve the locale we asked for?
+ */
+const scriptOf = (s: string | null | undefined): 'ar' | 'latin' | 'none' => {
+  if (!s || !s.trim()) return 'none';
+  const arabic = (s.match(AR_CHARS) ?? []).length;
+  const latin = (s.match(LATIN_CHARS) ?? []).length;
+  if (arabic === 0 && latin === 0) return 'none';
+  return arabic > latin ? 'ar' : 'latin';
+};
 
 export interface LocaleCapture {
   title: string | null;
