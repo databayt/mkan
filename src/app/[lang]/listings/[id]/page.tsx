@@ -359,7 +359,15 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
           superhost={isSuperhost}
           hostingMonths={hostingMonths}
         />
-        <MobileThingsToKnow maxGuests={serializedListing.guestCount ?? undefined} />
+        <MobileThingsToKnow
+          maxGuests={serializedListing.guestCount ?? undefined}
+          petsAllowed={serializedListing.isPetsAllowed ?? false}
+          checkInTime={serializedListing.checkInTime}
+          checkOutTime={serializedListing.checkOutTime}
+          checkInMethod={serializedListing.checkInMethod}
+          houseRules={serializedListing.houseRules}
+          cancellationPolicy={serializedListing.cancellationPolicy}
+        />
         <div className="px-6">
           <MoreStaysNearby
             stays={nearbyStays}
