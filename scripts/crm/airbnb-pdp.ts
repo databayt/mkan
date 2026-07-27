@@ -233,7 +233,16 @@ async function main() {
       home.city = place.city;
       home.homeState = place.state;
       home.pdpError = place.agreement === 'SUSPECT_FOREIGN' ? `not Sudan: ${place.note}` : null;
-      home.houseRules = pdp.houseRules;
+      // Flat fields hold ONE language, and the rule everywhere else is "the
+      // language the host authored in". House rules were being overwritten by
+      // whichever pass ran last, so the whole set ended up Arabic while
+      // amenitiesRaw beside it stayed English — the per-locale copies live in
+      // `i18n`, which is where anything needing a specific language should read.
+      if (verified === 'ok' && (!home.authoredLocale || home.authoredLocale === LOCALE)) {
+        home.houseRules = pdp.houseRules;
+      } else if (!home.houseRules?.length) {
+        home.houseRules = pdp.houseRules;
+      }
       home.hostSource = pdp.hostSource;
       home.coHostIds = pdp.coHostIds;
       home.pdpFetchedAt = new Date().toISOString();
