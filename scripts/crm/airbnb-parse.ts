@@ -295,6 +295,20 @@ export function parsePdp(json: any, raw: string, listingId: string): PdpParse {
   const locSection = S.LOCATION_DEFAULT ?? null;
   const policies = S.POLICIES_DEFAULT ?? null;
 
+  // The localized listing title.
+  //
+  // TITLE_DEFAULT.title is null on every PDP measured — reading it meant
+  // `title` was always null, the PDP stage silently kept the search-page title
+  // instead, and both locale passes therefore stored the same English string.
+  // That is why the dataset appeared to show that Airbnb never translates
+  // titles. It does: the translated title is carried on the availability
+  // calendar sections, of all places.
+  const localizedTitle =
+    (typeof S.AVAILABILITY_CALENDAR_DEFAULT?.listingTitle === 'string' && S.AVAILABILITY_CALENDAR_DEFAULT.listingTitle) ||
+    (typeof S.AVAILABILITY_CALENDAR_INLINE?.listingTitle === 'string' && S.AVAILABILITY_CALENDAR_INLINE.listingTitle) ||
+    (typeof S.TITLE_DEFAULT?.title === 'string' && S.TITLE_DEFAULT.title) ||
+    null;
+
   // ── host, in order of trustworthiness ──────────────────────────────────────
   // The old rule was a first-match walk for `isSuperhost`, which has no idea
   // which section it landed in: a co-host or a carousel listing's host could
@@ -367,7 +381,7 @@ export function parsePdp(json: any, raw: string, listingId: string): PdpParse {
 
   return {
     description: descSection?.htmlDescription?.htmlText ?? null,
-    title: S.TITLE_DEFAULT?.title ?? null,
+    title: localizedTitle,
     roomType: ev?.roomType ?? findByKey(json, (o) => typeof o.roomType === 'string')?.roomType ?? null,
     amenities,
     guestCapacity: typeof ev?.personCapacity === 'number' ? ev.personCapacity : null,
