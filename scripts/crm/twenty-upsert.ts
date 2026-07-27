@@ -119,6 +119,7 @@ type EnrichedHome = HomeRecord & {
   hostSource?: string | null;
   locationSubtitle?: string | null;
   airbnbCategoryAr?: string | null;
+  placeCheck?: 'OK' | 'SUSPECT_FOREIGN';
   pdpError?: string | null;
 };
 
@@ -167,7 +168,8 @@ function homeBody(h: EnrichedHome, hostId: string | null) {
     trustBand: 'UNSCORED',
     // Airbnb's own geocoded place string, kept verbatim — it is the evidence
     // behind the city and the "is this Sudan" verdict.
-    locationCheck: h.pdpError ? 'FAIL' : h.locationSubtitle ? 'PASS' : 'UNCHECKED',
+    locationCheck:
+      h.placeCheck === 'SUSPECT_FOREIGN' ? 'FAIL' : h.placeCheck === 'OK' ? 'PASS' : 'UNCHECKED',
     hostId: hostId ?? undefined,
   });
 }

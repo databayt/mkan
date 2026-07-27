@@ -48,6 +48,8 @@ const LIMIT = parseInt(arg('limit', '0')!, 10);
 const DELAY = parseInt(arg('pdp-delay', '1500')!, 10);
 const CDP = arg('cdp', 'http://127.0.0.1:9222')!;
 const IN = arg('in', 'scripts/crm/.data/airbnb-scrape.json')!;
+/** Comma-separated listing ids, for retrying the handful a run dropped. */
+const ONLY = (arg('only', '') || '').split(',').map((x) => x.trim()).filter(Boolean);
 
 /** Checkpoint cadence. The ledger bug in mkan-import.ts — one write after the
  *  whole loop — is the mistake this exists to avoid repeating. */
@@ -101,6 +103,17 @@ export interface EnrichedHome extends HomeRecord {
   locationSubtitle?: string | null;
   /** Sudanese state, derived alongside city so a wave can be planned by region. */
   homeState?: string;
+  /**
+   * Whether this listing is really in Sudan.
+   *
+   * Kept apart from `pdpError` deliberately. Both used to write to `pdpError`,
+   * so a transient "no deferred state" on one fetch made a genuine Khartoum
+   * home read as rejected-for-being-foreign and quietly dropped it from every
+   * downstream count. A network hiccup and a geography verdict are not the
+   * same fact and must not share a field.
+   */
+  placeCheck?: 'OK' | 'SUSPECT_FOREIGN';
+  placeNote?: string | null;
   /** Airbnb's own Arabic property-type label. */
   airbnbCategoryAr?: string | null;
   houseRules?: string[];
@@ -141,6 +154,7 @@ async function main() {
   const hosts = new Map<string, HostRecord>((payload.hosts ?? []).map((h) => [h.airbnbHostId, h]));
 
   let queue = homes.filter((h) => {
+    if (ONLY.length) return ONLY.includes(h.airbnbListingId);
     if (REFRESH) return true;
     if (ONLY_MISSING) return !h.i18n?.[LOCALE]?.capturedAt;
     return true;
@@ -237,7 +251,8 @@ async function main() {
       const place = checkPlace(home.latitude, home.longitude, home.airbnbCategory, home.locationSubtitle);
       home.city = place.city;
       home.homeState = place.state;
-      home.pdpError = place.agreement === 'SUSPECT_FOREIGN' ? `not Sudan: ${place.note}` : null;
+      home.placeCheck = place.agreement === 'SUSPECT_FOREIGN' ? 'SUSPECT_FOREIGN' : 'OK';
+      home.placeNote = place.agreement === 'SUSPECT_FOREIGN' ? place.note : null;
       // Flat fields hold ONE language, and the rule everywhere else is "the
       // language the host authored in". House rules were being overwritten by
       // whichever pass ran last, so the whole set ended up Arabic while
@@ -255,6 +270,7 @@ async function main() {
       home.hostSource = pdp.hostSource;
       home.coHostIds = pdp.coHostIds;
       home.pdpFetchedAt = new Date().toISOString();
+      home.pdpError = null;
 
       // Only the canonical locale's text goes in the flat fields, so a
       // mismatched or translated capture cannot quietly become the listing.
