@@ -11,6 +11,7 @@ import { useLocale } from "@/components/internationalization/use-locale";
 import { useLocationSuggestions } from "./hooks/use-location-suggestions";
 import { useSearchValidation } from "@/hooks/useSearchValidation";
 import { type LocationSuggestion } from "@/lib/schemas/search-schema";
+import { type Coords } from "@/lib/distance";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import useSearchHeaderStore, { type SearchSegment } from "@/hooks/useSearchHeaderStore";
 
@@ -183,6 +184,9 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
   // regardless of the display locale.
   const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedLocationQuery, setSelectedLocationQuery] = useState("");
+  // Set only by the "Nearby" row. A position has no canonical name to match on,
+  // so it travels as lat/lng and suppresses the text `location` param entirely.
+  const [selectedCoords, setSelectedCoords] = useState<Coords | null>(null);
 
   // Use the location suggestions hook
   const {
@@ -224,8 +228,14 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
   const handleLocationSelect = (location: LocationSuggestion | null) => {
     if (location) {
       setSelectedLocation(location.displayName);
+      setSelectedCoords(location.coords ?? null);
+      // A coordinate selection has no text query. Falling through to
+      // `|| displayName` here is what sent the literal label "Nearby" as the
+      // location filter, which matches no city/state/country/address row.
       setSelectedLocationQuery(
-        location.searchValue || location.city || location.displayName
+        location.coords
+          ? ""
+          : location.searchValue || location.city || location.displayName
       );
       setActiveButton("dates"); // Move to next field
     } else {
@@ -514,7 +524,12 @@ export default function BigSearch({ onClose, isActive = true, openTo = null }: B
 
     const searchParams = new URLSearchParams();
 
-    if (selectedLocation) {
+    if (selectedCoords) {
+      // Nearby: a radius query around the device position. The label stays out
+      // of the URL — it's display text, not a searchable value.
+      searchParams.set("lat", String(selectedCoords.lat));
+      searchParams.set("lng", String(selectedCoords.lng));
+    } else if (selectedLocation) {
       searchParams.set("location", selectedLocationQuery || selectedLocation);
     }
 

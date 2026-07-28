@@ -53,7 +53,10 @@ interface SearchContextValue {
   /** Current map viewport (read from a ref) — used by the Filters preview count. */
   getBounds: () => MapBounds | null
   /** URL-derived base filters (location/dates/guests) shared with the dialog preview. */
-  baseFilters: Pick<SearchFilters, "location" | "checkIn" | "checkOut" | "guests">
+  baseFilters: Pick<
+    SearchFilters,
+    "location" | "checkIn" | "checkOut" | "guests" | "lat" | "lng"
+  >
   lang: "en" | "ar"
   nights?: number
   datesLabel?: string
@@ -93,7 +96,10 @@ export function SearchProvider({
   initialListings: Listing[]
   initialTotal: number
   /** URL-derived filters (location/checkIn/checkOut/guests) applied beneath the dialog filters. */
-  baseFilters: Pick<SearchFilters, "location" | "checkIn" | "checkOut" | "guests">
+  baseFilters: Pick<
+    SearchFilters,
+    "location" | "checkIn" | "checkOut" | "guests" | "lat" | "lng"
+  >
   lang: "en" | "ar"
   nights?: number
   datesLabel?: string
@@ -136,9 +142,12 @@ export function SearchProvider({
     async (next: FilterState, bounds: MapBounds | null) => {
       const id = ++reqIdRef.current
       setLoading(true)
-      // When the map drives the query, drop the named location (the viewport
-      // replaces it) but keep dates/guests.
-      const { location, ...datesGuests } = baseFilters
+      // When the map drives the query, drop the spatial intent the user
+      // arrived with — the named location AND any Nearby centre — because the
+      // viewport now expresses where they're looking. Keeping the radius while
+      // they pan away from their own position would return nothing and read as
+      // a broken map. Dates/guests survive either way.
+      const { location, lat, lng, ...datesGuests } = baseFilters
       const query: SearchFilters = {
         ...(bounds ? datesGuests : baseFilters),
         priceMin: next.priceMin,

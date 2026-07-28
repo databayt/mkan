@@ -235,8 +235,18 @@ describe("proxy — security headers", () => {
   it("sets Permissions-Policy header", () => {
     const res = proxy(createRequest("/en/listings"));
     expect(res!.headers.get("Permissions-Policy")).toBe(
-      "camera=(), microphone=(), geolocation=()"
+      "camera=(), microphone=(), geolocation=(self)"
     );
+  });
+
+  // Regression guard: `geolocation=()` disables the API for every origin
+  // INCLUDING self, which silently broke the "Nearby" search row and the host
+  // address picker. Own-origin geolocation must stay allowed.
+  it("allows own-origin geolocation in Permissions-Policy", () => {
+    const res = proxy(createRequest("/en/listings"));
+    const policy = res!.headers.get("Permissions-Policy")!;
+    expect(policy).toContain("geolocation=(self)");
+    expect(policy).not.toContain("geolocation=()");
   });
 
   it("sets X-Mw-Ran sanity marker on every response", () => {

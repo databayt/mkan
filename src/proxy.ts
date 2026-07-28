@@ -145,7 +145,12 @@ function addSecurityHeaders(response: NextResponse, requestId?: string, persistL
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('X-XSS-Protection', '1; mode=block');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // geolocation=(self), NOT geolocation=() — an empty allowlist disables the
+  // feature for every origin including our own, so `getCurrentPosition` fired
+  // PERMISSION_DENIED no matter what the user granted. That silently broke the
+  // "Nearby" search row and the host address picker. Camera and microphone stay
+  // fully disabled; nothing in the app uses them.
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
   // Sanity marker — integration tests assert this to confirm the proxy
   // actually executed on a given response.
   response.headers.set('X-Mw-Ran', '1');

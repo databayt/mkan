@@ -2,9 +2,13 @@
 
 import { useState, useMemo, useDeferredValue, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { Command, CommandInput } from "@/components/ui/command";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { CITY_AR, cityLabel } from "@/components/travel/city-names";
+import { cityCoords } from "@/components/travel/city-coords";
+import { useNearby, nearbyErrorMessage } from "@/hooks/use-nearby";
+import { nearestBy } from "@/lib/distance";
 import { cdn } from "@/lib/cdn";
 
 interface AssemblyPoint {
@@ -146,6 +150,26 @@ export default function TransportCityDropdown({
     onChange(city);
   }, [onChange]);
 
+  // "Near me" — resolve a device position to the closest city we actually run
+  // buses from. Travel search is city-to-city, so unlike the homes search there
+  // is nothing sensible to do with a raw coordinate: the nearest served origin
+  // IS the answer. Distance is computed locally against CITY_COORDS, so this
+  // needs no reverse-geocoding service (and no third-party origin in the CSP).
+  const { isLocating, errorCode, locate } = useNearby();
+  const nearbyDict = dict?.search?.nearby;
+  const geoError = errorCode ? nearbyErrorMessage(errorCode, nearbyDict, lang) : null;
+
+  const handleNearMe = useCallback(async () => {
+    const coords = await locate();
+    if (!coords) return; // keep the panel open showing `geoError`
+
+    const nearest = nearestBy(coords, allCities, (city) => cityCoords(city));
+    // Only cities in CITY_COORDS can win; if an operator adds an assembly point
+    // in a city we have no coordinate for, we simply don't offer it here rather
+    // than guessing.
+    if (nearest) handleCitySelect(nearest.item);
+  }, [locate, allCities, handleCitySelect]);
+
   // Check if showing popular or search results
   const isShowingPopular = deferredSearchQuery.trim() === "";
 
@@ -166,6 +190,26 @@ export default function TransportCityDropdown({
         />
       </Command>
 
+      {/* Locating feedback — mirrors the homes "Where" step. */}
+      {isLocating && (
+        <div className="flex items-center gap-3 py-3 px-4 mb-3 bg-[#f0f7ff] rounded-2xl border border-[#d2e7ff] text-sm text-[#0066cc] animate-pulse">
+          <Loader2 className="h-4.5 w-4.5 animate-spin flex-shrink-0" />
+          <span>
+            {nearbyDict?.locating ??
+              (lang === "ar" ? "جاري تحديد موقعك الحالي..." : "Finding your current location...")}
+          </span>
+        </div>
+      )}
+
+      {geoError && (
+        <div
+          className="text-red-500 text-sm mb-3 p-3 bg-red-50 rounded-xl border border-red-100"
+          role="alert"
+        >
+          {geoError}
+        </div>
+      )}
+
       {/* City List — Where-step row style (art + name + subtitle). */}
       <div
         className={
@@ -175,6 +219,51 @@ export default function TransportCityDropdown({
         }
         role="listbox"
       >
+        {/* "Near me" sits above the list and only while browsing (a typed query
+            means the user already knows where they're going). Same row shape as
+            a city so it reads as one list, not a bolted-on control. */}
+        {isShowingPopular && (
+          <div
+            role="option"
+            aria-selected={false}
+            aria-busy={isLocating}
+            tabIndex={0}
+            onClick={() => {
+              if (!isLocating) void handleNearMe();
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" && e.key !== " ") return;
+              e.preventDefault();
+              if (!isLocating) void handleNearMe();
+            }}
+            className={`py-2 px-2 mb-1 rounded-2xl transition-all flex items-center gap-3.5 ${
+              isLocating
+                ? "cursor-wait opacity-60"
+                : "hover:bg-[#F7F7F7] active:scale-[0.99] cursor-pointer"
+            }`}
+          >
+            <img
+              src={cdn.vendor("airbnb", "destinations/nearby.png")}
+              alt=""
+              loading="lazy"
+              style={{ backgroundColor: "#e8f4fd" }}
+              className="w-12 h-12 flex-shrink-0 rounded-xl object-cover"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-[15px] font-medium text-[#222222] truncate">
+                {tc?.nearMe ?? (lang === "ar" ? "قريب مني" : "Near me")}
+              </div>
+              <div className="text-sm text-[#6a6a6a] truncate mt-0.5">
+                {tc?.nearMeDesc ??
+                  (lang === "ar" ? "أقرب مدينة إلى موقعك" : "The closest city to you")}
+              </div>
+            </div>
+            {isLocating && (
+              <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin text-[#6a6a6a]" />
+            )}
+          </div>
+        )}
+
         {filteredCities.length === 0 ? (
           <div className="text-sm text-muted-foreground text-center py-8">
             {tc?.noCitiesFound ?? "No cities found"}

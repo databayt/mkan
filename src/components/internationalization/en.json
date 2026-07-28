@@ -2842,7 +2842,9 @@
       "point": "point",
       "points": "points",
       "popularDestinations": "Popular destinations",
-      "noCitiesFound": "No cities found"
+      "noCitiesFound": "No cities found",
+      "nearMe": "Near me",
+      "nearMeDesc": "The closest city to you"
     },
     "ticketView": {
       "ticketNotFound": "Ticket not found",
@@ -3242,6 +3244,12 @@
     "popularDestinations": "Popular destinations",
     "recommendedDestinations": "Recommended destinations",
     "noDestinationsFound": "No destinations found for \"{query}\"",
+    "nearby": {
+      "locating": "Finding your current location...",
+      "denied": "Location access is blocked — enable it in your browser settings, or pick a city.",
+      "unsupported": "This browser can't share your location — pick a city from the list.",
+      "failed": "Couldn't get your location — pick a city from the list."
+    },
     "whosComing": "Who's coming?",
     "adultsLabel": "Adults",
     "adultsAge": "Ages 13 or above",

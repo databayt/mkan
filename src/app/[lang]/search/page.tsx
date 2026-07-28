@@ -8,6 +8,7 @@ import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { searchListings } from "@/lib/actions/search-actions";
 import { type SearchFilters } from "@/lib/schemas/search-schema";
+import { parseCoords } from "@/lib/distance";
 import { Listing } from "@/types/listing"
 
 export async function generateMetadata({
@@ -62,14 +63,21 @@ async function getInitialListings(
     checkIn?: string
     checkOut?: string
     guests?: string
+    lat?: string
+    lng?: string
   },
   lang?: "en" | "ar",
 ): Promise<{ listings: Listing[]; total: number }> {
+  // "Nearby" arrives as a coordinate pair, not a place name. parseCoords
+  // returns null unless BOTH halves are valid, so a truncated link degrades to
+  // an ordinary unscoped search instead of a nonsense band around a latitude.
+  const coords = parseCoords(searchParams?.lat, searchParams?.lng);
   const filters: SearchFilters = {
     location: searchParams?.location,
     checkIn: searchParams?.checkIn,
     checkOut: searchParams?.checkOut,
     guests: toInt(searchParams?.guests, 16),
+    ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
     take: 24,
     skip: 0,
   };
@@ -90,6 +98,8 @@ export default async function SearchPage({
     checkIn?: string
     checkOut?: string
     guests?: string
+    lat?: string
+    lng?: string
   }>
 }) {
   const { lang } = await pageParams;
@@ -101,11 +111,20 @@ export default async function SearchPage({
     lang
   );
 
-  const baseFilters: Pick<SearchFilters, "location" | "checkIn" | "checkOut" | "guests"> = {
+  const coords = parseCoords(resolvedSearchParams?.lat, resolvedSearchParams?.lng);
+
+  // Carried in baseFilters so the Filters dialog and "search as I move the map"
+  // re-queries stay inside the Nearby radius instead of silently widening back
+  // to the whole catalog on the first filter change.
+  const baseFilters: Pick<
+    SearchFilters,
+    "location" | "checkIn" | "checkOut" | "guests" | "lat" | "lng"
+  > = {
     location: resolvedSearchParams?.location,
     checkIn: resolvedSearchParams?.checkIn,
     checkOut: resolvedSearchParams?.checkOut,
     guests: toInt(resolvedSearchParams?.guests, 16),
+    ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
   };
 
   return (

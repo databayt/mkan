@@ -16,6 +16,12 @@ import { localize, localizeNested } from "@/components/translation/localize";
 import { SEARCH_LISTING_SELECT } from "@/lib/listing-select";
 import { getDisplayLang } from "@/components/translation/locale";
 import type { Lang } from "@/components/translation/types";
+import {
+  boundingBox,
+  haversineKm,
+  DEFAULT_NEARBY_RADIUS_KM,
+  type Coords,
+} from "@/lib/distance";
 
 // Cache tags used to invalidate search results when listings change.
 // Mutations in listing-actions.ts call `revalidateTag('listings')` on
@@ -174,6 +180,78 @@ export const getPopularLocations = unstable_cache(
  * load. Mutations in `listing-actions.ts` call `revalidateTag('listings')`
  * for immediate invalidation when editing.
  */
+/**
+ * The proximity centre for a filter set, or null when this isn't a Nearby
+ * search. Both halves are required — a lone `lat` is a malformed request, and
+ * treating it as a centre would silently search a band around a latitude.
+ */
+function nearbyCentre(f: ReturnType<typeof listingFilterSchema.parse>): Coords | null {
+  if (f.lat === undefined || f.lng === undefined) return null;
+  return { lat: f.lat, lng: f.lng };
+}
+
+/**
+ * Ceiling on the coordinate rows pulled in to rank a Nearby search.
+ *
+ * Ordering by haversine can't be pushed into Prisma's `orderBy`, so ranking
+ * happens in the application. To keep that cheap the ranking pass fetches only
+ * `{ id, latitude, longitude }` — three columns, no card payload — which is why
+ * this can sit far above any realistic in-radius count instead of truncating
+ * (500 was already too low: 500 of the catalog's 580 published stays fall
+ * within the default radius of Port Sudan). Full card rows are then fetched for
+ * the page window alone, at most `take` of them.
+ *
+ * If a catalog ever does exceed this inside one radius, the honest fix is a
+ * `$queryRaw` with an ORDER BY on the distance expression, not a bigger number.
+ */
+const NEARBY_CANDIDATE_CAP = 5000;
+
+/** Ranking-pass projection: the minimum needed to sort by distance. */
+const NEARBY_RANK_SELECT = {
+  id: true,
+  location: { select: { latitude: true, longitude: true } },
+} as const satisfies Prisma.ListingSelect;
+
+/**
+ * IDs of the listings inside `radiusKm` of `centre`, nearest first.
+ *
+ * Shared by the page and count paths so the two can't disagree about which
+ * stays are "nearby" — a mismatch there shows up as a header promising more
+ * results than paging can reach.
+ */
+async function rankNearbyIds(
+  where: Prisma.ListingWhereInput,
+  centre: Coords,
+  radiusKm: number
+): Promise<number[]> {
+  const rows = await db.listing.findMany({
+    where,
+    select: NEARBY_RANK_SELECT,
+    // Deterministic tiebreak so equidistant stays keep a stable page order
+    // across requests (two listings at the same address are common).
+    orderBy: { id: "asc" },
+    take: NEARBY_CANDIDATE_CAP,
+  });
+
+  return rows
+    .flatMap((row) =>
+      row.location
+        ? [
+            {
+              id: row.id,
+              distanceKm: haversineKm(centre, {
+                lat: row.location.latitude,
+                lng: row.location.longitude,
+              }),
+            },
+          ]
+        : []
+    )
+    .filter((row) => row.distanceKm <= radiusKm)
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+    .map((row) => row.id);
+}
+
 // Build the Prisma where clause from a normalized filters object. Shared
 // by the findMany and count paths so they can't drift apart.
 function buildSearchWhere(
@@ -208,6 +286,22 @@ function buildSearchWhere(
     };
   }
 
+  // Proximity prefilter ("Nearby"). A circle can't be expressed as a range
+  // scan, so we narrow to the smallest box containing it — which the existing
+  // @@index([latitude, longitude]) serves directly — and let the caller drop
+  // the corner rows with a real haversine pass. Applied before the viewport
+  // filter so that panning the map while Nearby is active intersects the two
+  // rather than replacing one with the other.
+  const near = nearbyCentre(f);
+  if (near) {
+    const box = boundingBox(near, f.radiusKm ?? DEFAULT_NEARBY_RADIUS_KM);
+    where.location = {
+      ...(where.location as Prisma.LocationWhereInput | undefined),
+      latitude: { gte: box.minLat, lte: box.maxLat },
+      longitude: { gte: box.minLng, lte: box.maxLng },
+    };
+  }
+
   // Map-viewport filter ("search as I move the map"). Only applied when the
   // full bounding box is present. Merges onto any existing location relation
   // (AND semantics) so a text location + bounds can co-exist, though in
@@ -218,10 +312,21 @@ function buildSearchWhere(
     f.minLng !== undefined &&
     f.maxLng !== undefined
   ) {
+    const existing = where.location as Prisma.LocationWhereInput | undefined;
+    // Intersect with any Nearby box rather than overwriting it — the tighter
+    // of the two bounds on each edge wins.
+    const prevLat = existing?.latitude as Prisma.FloatFilter | undefined;
+    const prevLng = existing?.longitude as Prisma.FloatFilter | undefined;
     where.location = {
-      ...(where.location as Prisma.LocationWhereInput | undefined),
-      latitude: { gte: f.minLat, lte: f.maxLat },
-      longitude: { gte: f.minLng, lte: f.maxLng },
+      ...existing,
+      latitude: {
+        gte: Math.max(f.minLat, (prevLat?.gte as number) ?? -90),
+        lte: Math.min(f.maxLat, (prevLat?.lte as number) ?? 90),
+      },
+      longitude: {
+        gte: Math.max(f.minLng, (prevLng?.gte as number) ?? -180),
+        lte: Math.min(f.maxLng, (prevLng?.lte as number) ?? 180),
+      },
     };
   }
 
@@ -357,6 +462,32 @@ const cachedListingSearch = unstable_cache(
       where.id = { in: ids };
     }
 
+    // Nearby branch: rank by true distance instead of recency, in two phases.
+    // Phase 1 ranks on coordinates alone (cheap); phase 2 loads full card rows
+    // for just this page's window. Doing it in one pass would mean fetching the
+    // whole card payload for every in-radius listing only to discard all but
+    // `take` of them.
+    const near = nearbyCentre(f);
+    if (near) {
+      const rankedIds = await rankNearbyIds(
+        where,
+        near,
+        f.radiusKm ?? DEFAULT_NEARBY_RADIUS_KM
+      );
+      const pageIds = rankedIds.slice(skip, skip + take);
+      if (pageIds.length === 0) return [];
+
+      const rows = await db.listing.findMany({
+        where: { id: { in: pageIds } },
+        select: SEARCH_LISTING_SELECT,
+      });
+
+      // `IN (...)` returns rows in whatever order Postgres likes, so restore
+      // the distance ranking the ids already encode.
+      const order = new Map(pageIds.map((id, index) => [id, index]));
+      return rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    }
+
     return db.listing.findMany({
       where,
       select: SEARCH_LISTING_SELECT,
@@ -382,6 +513,20 @@ const cachedListingCount = unstable_cache(
       const ids = await getFullTextMatchingIds(parsed.query);
       if (ids.length === 0) return 0;
       where.id = { in: ids };
+    }
+
+    // A Nearby search can't use COUNT(*): the where-clause covers the bounding
+    // box, so counting it would include the corner rows the page query drops —
+    // the header would promise more stays than paging could ever reach. Reuse
+    // the page's own ranking pass so the total is exactly the set being paged.
+    const near = nearbyCentre(parsed);
+    if (near) {
+      const rankedIds = await rankNearbyIds(
+        where,
+        near,
+        parsed.radiusKm ?? DEFAULT_NEARBY_RADIUS_KM
+      );
+      return rankedIds.length;
     }
 
     return db.listing.count({ where });

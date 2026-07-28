@@ -2842,7 +2842,9 @@
       "point": "نقطة",
       "points": "نقاط",
       "popularDestinations": "وجهات شائعة",
-      "noCitiesFound": "لم يتم العثور على مدن"
+      "noCitiesFound": "لم يتم العثور على مدن",
+      "nearMe": "قريب مني",
+      "nearMeDesc": "أقرب مدينة إلى موقعك"
     },
     "ticketView": {
       "ticketNotFound": "التذكرة غير موجودة",
@@ -3242,6 +3244,12 @@
     "popularDestinations": "وجهات شائعة",
     "recommendedDestinations": "وجهات مقترحة",
     "noDestinationsFound": "لم يتم العثور على وجهات لـ \"{query}\"",
+    "nearby": {
+      "locating": "جاري تحديد موقعك الحالي...",
+      "denied": "الوصول إلى الموقع مرفوض — فعّله من إعدادات المتصفح أو اختر مدينة.",
+      "unsupported": "هذا المتصفح لا يدعم مشاركة موقعك — اختر مدينة من القائمة.",
+      "failed": "تعذر تحديد موقعك — اختر مدينة من القائمة."
+    },
     "whosComing": "من سيحضر؟",
     "adultsLabel": "بالغون",
     "adultsAge": "13 سنة فأكثر",

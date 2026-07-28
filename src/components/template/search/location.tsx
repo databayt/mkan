@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { Loader2, MapPin } from "lucide-react";
 import { type LocationSuggestion } from "@/lib/schemas/search-schema";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { useLocale } from "@/components/internationalization/use-locale";
+import { useNearby, nearbyErrorMessage } from "@/hooks/use-nearby";
+import { roundCoord } from "@/lib/distance";
 import { cdn } from "@/lib/cdn";
 
 interface LocationProps {
@@ -188,12 +189,13 @@ export default function LocationDropdown({
   fillHeight = false,
 }: LocationProps) {
   const dict = useDictionary();
-  const { locale, isRTL } = useLocale();
-  const [isGeolocating, setIsGeolocating] = useState(false);
-  const [geoError, setGeoError] = useState<string | null>(null);
+  const { locale } = useLocale();
+  const { isLocating, errorCode, locate } = useNearby();
 
   const activeLocale = (locale === "ar" ? "ar" : "en") as "en" | "ar";
   const suggestedDestinations = SUGGESTED_DESTINATIONS[activeLocale];
+  const nearbyDict = dict.search?.nearby;
+  const geoError = errorCode ? nearbyErrorMessage(errorCode, nearbyDict, activeLocale) : null;
 
   const handleKeyDown = (e: React.KeyboardEvent, location: LocationSuggestion) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -203,127 +205,7 @@ export default function LocationDropdown({
   };
 
   const handleSelectSuggested = async (dest: (typeof suggestedDestinations)[number]) => {
-    if (dest.city === "Nearby") {
-      const geoFailedMsg =
-        activeLocale === "ar"
-          ? "تعذر تحديد موقعك — اختر مدينة من القائمة."
-          : "Couldn't get your location — pick a city from the list.";
-      const geoDeniedMsg =
-        activeLocale === "ar"
-          ? "الوصول إلى الموقع مرفوض — فعّله من إعدادات المتصفح أو اختر مدينة."
-          : "Location access is blocked — enable it in your browser settings, or pick a city.";
-
-      if (!navigator.geolocation || !window.isSecureContext) {
-        // No geolocation at all (or plain-http webview): degrade to an
-        // unscoped "Nearby" search — every listing is Port Sudan anyway.
-        onLocationSelect({
-          city: "",
-          state: "",
-          country: "",
-          displayName: dest.displayName,
-          listingCount: 0,
-        });
-        return;
-      }
-
-      // Chrome/Android never re-prompts after a deny — it fails silently.
-      // Surface that state up front instead of a spinner that goes nowhere.
-      try {
-        const perm = await navigator.permissions?.query?.({ name: "geolocation" });
-        if (perm?.state === "denied") {
-          setGeoError(geoDeniedMsg);
-          return;
-        }
-      } catch {
-        // Permissions API missing (older WebViews) — proceed to the request.
-      }
-
-      setIsGeolocating(true);
-      setGeoError(null);
-
-      // Some Android WebViews (MIUI browser among them) can drop BOTH
-      // callbacks when the system location service is off. A safety timer
-      // guarantees the UI never sticks on "Finding your location…".
-      let settled = false;
-      const settle = () => {
-        settled = true;
-        clearTimeout(safetyTimer);
-        setIsGeolocating(false);
-      };
-      const safetyTimer = setTimeout(() => {
-        if (!settled) {
-          settled = true;
-          setIsGeolocating(false);
-          setGeoError(geoFailedMsg);
-        }
-      }, 12_000);
-
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          if (settled) return;
-          try {
-            const { latitude, longitude } = position.coords;
-            // Use Nominatim reverse geocoding API
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`,
-              {
-                headers: {
-                  "Accept-Language": activeLocale,
-                },
-              },
-            );
-            if (!response.ok) throw new Error();
-            const data = await response.json();
-
-            const city =
-              data.address?.city ||
-              data.address?.town ||
-              data.address?.village ||
-              data.address?.suburb ||
-              data.address?.county ||
-              data.address?.state ||
-              "";
-
-            const state = data.address?.state || "";
-            const country = data.address?.country || "";
-
-            const displayName =
-              city && country ? `${city}, ${country}` : city || country || dest.displayName;
-
-            onLocationSelect({
-              city: city || displayName,
-              state,
-              country,
-              displayName,
-              listingCount: 0,
-            });
-          } catch {
-            // Reverse-geocode failed (network) — still honor the tap with an
-            // unscoped Nearby search rather than erroring after a good fix.
-            onLocationSelect({
-              city: "",
-              state: "",
-              country: "",
-              displayName: dest.displayName,
-              listingCount: 0,
-            });
-          } finally {
-            settle();
-          }
-        },
-        (err) => {
-          if (settled) return;
-          settle();
-          // Keep the panel open with a legible reason — silently "selecting"
-          // nothing is what read as "Nearby is broken" on Android.
-          setGeoError(err.code === err.PERMISSION_DENIED ? geoDeniedMsg : geoFailedMsg);
-        },
-        // maximumAge reuses the OS's recent fix (instant on most phones);
-        // 10s timeout because Android's network-location path can be slow;
-        // coarse accuracy is plenty for a city-level search.
-        { timeout: 10_000, maximumAge: 600_000, enableHighAccuracy: false },
-      );
-    } else {
+    if (dest.city !== "Nearby") {
       onLocationSelect({
         city: dest.city,
         state: dest.state,
@@ -332,7 +214,34 @@ export default function LocationDropdown({
         displayName: dest.displayName,
         listingCount: 0,
       });
+      return;
     }
+
+    // "Nearby" resolves to a position, not a place name. It used to reverse-
+    // geocode the fix through Nominatim and search for the resulting city
+    // string — which meant a third-party round trip that production CSP blocks
+    // outright, and a text match that returned nothing whenever the user wasn't
+    // standing in a city we have listings for. Passing the coordinates straight
+    // through makes the search an actual radius query and drops the dependency.
+    const coords = await locate();
+
+    // On failure keep the panel open showing `geoError`. Selecting nothing is
+    // deliberate: the previous "graceful degradation" handed the caller a
+    // suggestion whose only usable field was the label, so the search ran for
+    // the literal word "Nearby" and came back empty — a silent wrong answer is
+    // worse than a visible reason.
+    if (!coords) return;
+
+    onLocationSelect({
+      city: "",
+      state: "",
+      country: "",
+      displayName: dest.displayName,
+      listingCount: 0,
+      // Trimmed to ~11 m — full GPS precision in a shareable URL is needlessly
+      // identifying and fragments the search cache for no behavioural gain.
+      coords: { lat: roundCoord(coords.lat), lng: roundCoord(coords.lng) },
+    });
   };
 
   const resultsTitle = dict.search?.searchResults ?? "Search results";
@@ -349,11 +258,12 @@ export default function LocationDropdown({
       className={`flex flex-col ${fillHeight ? "" : "h-full"}`}
     >
       {/* Geolocating Loader overlay/feedback */}
-      {isGeolocating && (
+      {isLocating && (
         <div className="flex items-center gap-3 py-3 px-4 mb-3 bg-[#f0f7ff] rounded-2xl border border-[#d2e7ff] text-sm text-[#0066cc] animate-pulse">
           <Loader2 className="h-4.5 w-4.5 animate-spin flex-shrink-0" />
           <span>
-            {locale === "ar" ? "جاري تحديد موقعك الحالي..." : "Finding your current location..."}
+            {nearbyDict?.locating ??
+              (locale === "ar" ? "جاري تحديد موقعك الحالي..." : "Finding your current location...")}
           </span>
         </div>
       )}
@@ -427,46 +337,61 @@ export default function LocationDropdown({
           <>
             <p className="text-[13px] font-normal text-[#222222] px-2 mb-2">{suggestedTitle}</p>
             <div className="space-y-0.5">
-              {suggestedDestinations.map((dest) => (
-                <div
-                  key={dest.displayName}
-                  className="py-2 px-2 rounded-2xl hover:bg-[#F7F7F7] active:scale-[0.99] transition-all cursor-pointer flex items-center gap-3.5"
-                  onClick={() => handleSelectSuggested(dest)}
-                  role="option"
-                  aria-selected="false"
-                  tabIndex={0}
-                  onKeyDown={(e) =>
-                    handleKeyDown(e, {
-                      city: dest.city,
-                      state: dest.state,
-                      country: dest.country,
-                      searchValue: dest.searchValue,
-                      displayName: dest.displayName,
-                      listingCount: 0,
-                    })
-                  }
-                >
-                  {/* The colored rounded square is baked into the original
-                      Airbnb PNG — render it bare (no wrapper tint). The inline
-                      backgroundColor only shows through while the image loads,
-                      preventing an empty-box flash. */}
-                  <img
-                    src={dest.imageSrc}
-                    alt=""
-                    loading="lazy"
-                    style={{ backgroundColor: dest.backgroundColor }}
-                    className="h-14 w-14 flex-shrink-0 rounded-xl object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[15px] font-medium text-[#222222] truncate">
-                      {dest.displayName}
+              {suggestedDestinations.map((dest) => {
+                const isNearbyRow = dest.city === "Nearby";
+                const rowBusy = isNearbyRow && isLocating;
+                return (
+                  <div
+                    key={dest.displayName}
+                    className={`py-2 px-2 rounded-2xl transition-all flex items-center gap-3.5 ${
+                      rowBusy
+                        ? "cursor-wait opacity-60"
+                        : "hover:bg-[#F7F7F7] active:scale-[0.99] cursor-pointer"
+                    }`}
+                    onClick={() => {
+                      if (rowBusy) return;
+                      void handleSelectSuggested(dest);
+                    }}
+                    role="option"
+                    aria-selected="false"
+                    aria-busy={rowBusy}
+                    tabIndex={0}
+                    // Routed through handleSelectSuggested, NOT the generic
+                    // handleKeyDown: that shortcut called onLocationSelect with
+                    // the row's label directly, so a keyboard user picking
+                    // "Nearby" searched for the literal word and got nothing.
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter" && e.key !== " ") return;
+                      e.preventDefault();
+                      if (rowBusy) return;
+                      void handleSelectSuggested(dest);
+                    }}
+                  >
+                    {/* The colored rounded square is baked into the original
+                        Airbnb PNG — render it bare (no wrapper tint). The inline
+                        backgroundColor only shows through while the image loads,
+                        preventing an empty-box flash. */}
+                    <img
+                      src={dest.imageSrc}
+                      alt=""
+                      loading="lazy"
+                      style={{ backgroundColor: dest.backgroundColor }}
+                      className="h-14 w-14 flex-shrink-0 rounded-xl object-cover"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[15px] font-medium text-[#222222] truncate">
+                        {dest.displayName}
+                      </div>
+                      <div className="text-sm text-[#6a6a6a] mt-0.5 font-normal truncate">
+                        {dest.description}
+                      </div>
                     </div>
-                    <div className="text-sm text-[#6a6a6a] mt-0.5 font-normal truncate">
-                      {dest.description}
-                    </div>
+                    {rowBusy && (
+                      <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin text-[#6a6a6a]" />
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}

@@ -46,6 +46,7 @@ const MotionSearchCta = dynamic(() => import("./vertical-search-motion-cta"), {
 import { useLocationSuggestions } from "./hooks/use-location-suggestions";
 import { useSearchValidation } from "@/hooks/useSearchValidation";
 import { type LocationSuggestion } from "@/lib/schemas/search-schema";
+import { type Coords } from "@/lib/distance";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { type DateRange } from "react-day-picker";
@@ -114,6 +115,9 @@ export default function VerticalSearch({
     // Canonical (English) token sent as the `location` param; `location` above
     // stays the localized label shown in the field.
     locationQuery: "",
+    // Set only by the "Nearby" row. A device position has no name to match on,
+    // so it travels as lat/lng and suppresses the text `location` param.
+    locationCoords: null as Coords | null,
     checkIn: "",
     checkOut: "",
     guests: {
@@ -310,7 +314,13 @@ export default function VerticalSearch({
     setFormData((prev) => ({
       ...prev,
       location: location.displayName,
-      locationQuery: location.searchValue || location.city || location.displayName,
+      // A coordinate selection has no text query. Falling through to
+      // `|| displayName` here is what sent the literal label "Nearby" (or
+      // "قريب من هنا") as the location filter, matching no row in the catalog.
+      locationQuery: location.coords
+        ? ""
+        : location.searchValue || location.city || location.displayName,
+      locationCoords: location.coords ?? null,
     }));
     setActiveField("checkin");
   };
@@ -400,7 +410,12 @@ export default function VerticalSearch({
 
     const searchParams = new URLSearchParams();
 
-    if (formData.location) {
+    if (formData.locationCoords) {
+      // Nearby: a radius query around the device position. The label stays out
+      // of the URL — it's display text, not a searchable value.
+      searchParams.set("lat", String(formData.locationCoords.lat));
+      searchParams.set("lng", String(formData.locationCoords.lng));
+    } else if (formData.location) {
       searchParams.set("location", formData.locationQuery || formData.location);
     }
     if (formData.checkIn) {

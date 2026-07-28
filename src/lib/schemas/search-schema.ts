@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { PropertyType, Amenity } from "@prisma/client";
+import { MAX_NEARBY_RADIUS_KM, type Coords } from "@/lib/distance";
 
 // Centralized search configuration
 export const SEARCH_CONFIG = {
@@ -124,6 +125,14 @@ export interface LocationSuggestion {
    * Consumers fall back to `city` → `displayName` when this is absent.
    */
   searchValue?: string;
+  /**
+   * Set only by the "Nearby" row, which resolves to a device position rather
+   * than a place name. When present the search travels as `lat`/`lng` and the
+   * text `location` param is omitted entirely — the label ("Nearby", "قريب من
+   * هنا") is display-only and matches no column, so sending it as a search term
+   * is what previously returned zero results.
+   */
+  coords?: Coords;
 }
 
 // Search filters type for server action. Keep in sync with `listingFilterSchema`
@@ -172,6 +181,20 @@ export interface SearchFilters {
   maxLat?: number;
   minLng?: number;
   maxLng?: number;
+  /**
+   * Proximity search ("Nearby"). When `lat` and `lng` are both present the
+   * results are restricted to `radiusKm` around that point and ordered
+   * nearest-first, instead of the default newest-first.
+   *
+   * This is a genuine distance filter over `Location.latitude/longitude` —
+   * distinct from the four `min/max` bounds above, which describe a map
+   * viewport the user dragged. The two compose: pan the map while a Nearby
+   * search is active and the viewport narrows it further.
+   */
+  lat?: number;
+  lng?: number;
+  /** Search radius in km. Defaults to DEFAULT_NEARBY_RADIUS_KM when omitted. */
+  radiusKm?: number;
   take?: number;
   skip?: number;
 }
@@ -206,6 +229,11 @@ export const listingFilterSchema = z.object({
   maxLat: z.number().min(-90).max(90).optional(),
   minLng: z.number().min(-180).max(180).optional(),
   maxLng: z.number().min(-180).max(180).optional(),
+  // Proximity centre + radius. The radius is capped server-side so a crafted
+  // request can't turn "Nearby" into an unbounded scan of the whole table.
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  radiusKm: z.number().positive().max(MAX_NEARBY_RADIUS_KM).optional(),
   take: z.number().int().min(1).max(SEARCH_CONFIG.MAX_PAGE_SIZE).optional(),
   skip: z.number().int().min(0).optional(),
 });

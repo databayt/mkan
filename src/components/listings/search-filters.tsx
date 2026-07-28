@@ -482,7 +482,11 @@ export function SearchFilters() {
     const handle = setTimeout(async () => {
       const id = ++reqRef.current
       const bounds = getBounds()
-      const { location, ...datesGuests } = baseFilters
+      // Mirror `run()` in search-provider exactly: when a viewport is active it
+      // supersedes BOTH the named location and any Nearby centre. Dropping only
+      // `location` here would make the preview count a different query than the
+      // one Apply then runs.
+      const { location, lat, lng, ...datesGuests } = baseFilters
       const res = await searchListings({
         ...(bounds ? datesGuests : baseFilters),
         priceMin: draft.priceMin,
