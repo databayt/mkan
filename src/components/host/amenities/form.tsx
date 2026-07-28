@@ -4,7 +4,7 @@ import { useAmenities } from './use-amenities'
 import { StepWrapper } from '../step-wrapper'
 import { StepNavigation } from '../step-navigation'
 import { FormField } from '../form-field'
-import { ALL_AMENITIES, ESSENTIAL_AMENITIES, FEATURE_AMENITIES, KITCHEN_AMENITIES } from '../constants'
+import { ALL_AMENITIES, ESSENTIAL_AMENITIES, FEATURE_AMENITIES, KITCHEN_AMENITIES, SAFETY_AMENITIES } from '../constants'
 import { Check } from 'lucide-react'
 import { Amenity } from '@prisma/client'
 import { useDictionary } from '@/components/internationalization/use-dictionary'
@@ -82,6 +82,7 @@ export function AmenitiesForm() {
             {renderAmenitySection(dict?.host?.amenities?.essential ?? "Essential", ESSENTIAL_AMENITIES)}
             {renderAmenitySection(dict?.host?.amenities?.features ?? "Features", FEATURE_AMENITIES)}
             {renderAmenitySection(dict?.hosting?.pages?.amenities?.kitchen ?? "Kitchen", KITCHEN_AMENITIES)}
+            {renderAmenitySection(dict?.hosting?.pages?.amenities?.safetyItems ?? "Safety", SAFETY_AMENITIES)}
           </div>
         </FormField>
 

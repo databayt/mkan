@@ -48,6 +48,7 @@
     "crm:manual-import": "tsx scripts/crm/manual-import.ts",
     "crm:sync-import": "tsx scripts/crm/sync-import-to-twenty.ts",
     "crm:backfill-source": "tsx scripts/crm/backfill-source-ids.ts",
+    "crm:backfill-facts": "tsx scripts/crm/backfill-listing-facts.ts",
     "crm:import": "tsx scripts/crm/mkan-import.ts",
     "crm:contact-hunt": "tsx scripts/crm/contact-hunt.ts",
     "crm:sync-contacts": "tsx scripts/crm/sync-contacts-to-twenty.ts",

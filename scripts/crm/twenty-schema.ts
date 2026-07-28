@@ -75,9 +75,17 @@ export interface ObjectDef {
 const SOURCE = ['AIRBNB', 'FACEBOOK', 'WHATSAPP', 'REFERRAL', 'FIELD_SCOUT', 'OTHER'];
 
 // mkan enums (exact spellings — the import job maps these straight onto Prisma enums).
+// Appended in the same order as the Prisma enum. `crm:sync-options` grows the
+// live MULTI_SELECT append-only and refuses to drop a value, because Twenty
+// stores the option's `value` on the record — exactly like Postgres does.
 const MKAN_AMENITIES = [
   'WasherDryer', 'AirConditioning', 'Dishwasher', 'HighSpeedInternet', 'HardwoodFloors',
   'WalkInClosets', 'Microwave', 'Refrigerator', 'Pool', 'Gym', 'Parking', 'PetsAllowed', 'WiFi',
+  'Kitchen', 'TV', 'DedicatedWorkspace', 'Elevator', 'PatioOrBalcony', 'Backyard', 'HotTub',
+  'Bathtub', 'BbqGrill', 'OutdoorDining', 'OutdoorShower', 'FirePit', 'IndoorFireplace',
+  'PoolTable', 'Piano', 'BeachAccess', 'LakeAccess', 'EVCharger', 'Crib', 'Breakfast',
+  'HairDryer', 'LuggageDropoff', 'BedroomLock', 'SmokeAlarm', 'CarbonMonoxideAlarm',
+  'FireExtinguisher', 'FirstAidKit', 'SecurityCameras',
 ];
 const MKAN_HIGHLIGHTS = [
   'HighSpeedInternetAccess', 'WasherDryer', 'AirConditioning', 'Heating', 'SmokeFree',

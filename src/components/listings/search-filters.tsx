@@ -63,7 +63,13 @@ const TYPE_META: Record<PropertyType, { id: string; en: string; ar: string }> = 
 }
 
 // Each amenity → an authentic Airbnb interface glyph (see filter-icons.tsx).
-const AMENITY_META: Record<Amenity, { icon: FilterIconName; en: string; ar: string }> = {
+//
+// Deliberately a subset of the `Amenity` enum, not a total map: the sheet
+// shows what people actually filter on, and the enum carries 40+ values. The
+// `satisfies` keeps every key checked against the enum while letting the keys
+// stay exact, so `FilterAmenity` below is derived from this object and the
+// curated lists cannot name an amenity that has no glyph.
+const AMENITY_META = {
   AirConditioning: { icon: "airConditioning", en: "Air conditioning", ar: "تكييف" },
   WiFi: { icon: "wifi", en: "Wifi", ar: "واي فاي" },
   Parking: { icon: "parking", en: "Free parking", ar: "موقف مجاني" },
@@ -77,17 +83,27 @@ const AMENITY_META: Record<Amenity, { icon: FilterIconName; en: string; ar: stri
   HardwoodFloors: { icon: "kitchen", en: "Hardwood floors", ar: "أرضيات خشبية" },
   WalkInClosets: { icon: "kitchen", en: "Walk-in closet", ar: "خزانة ملابس" },
   PetsAllowed: { icon: "pets", en: "Pets allowed", ar: "يسمح بالحيوانات" },
-}
+  // The two most common amenities in the dataset (111 and 110 of 121 homes),
+  // which had no enum value to filter on until now.
+  Kitchen: { icon: "kitchen", en: "Kitchen", ar: "مطبخ" },
+  TV: { icon: "tv", en: "TV", ar: "تلفزيون" },
+  DedicatedWorkspace: { icon: "wifi", en: "Dedicated workspace", ar: "مساحة مخصصة للعمل" },
+  HairDryer: { icon: "hairDryer", en: "Hair dryer", ar: "مجفف شعر" },
+} satisfies Partial<Record<Amenity, { icon: FilterIconName; en: string; ar: string }>>
+
+type FilterAmenity = keyof typeof AMENITY_META
 
 // First-shown amenities (all backed by seed data) then the "Show more" tail.
 // Ordered to mirror Airbnb's mobile Filters sheet (Wifi first, then Washer,
 // Air conditioning, …) — every one maps to a real Listing `amenities` value.
-const AMENITY_PRIMARY: Amenity[] = [
-  "WiFi", "WasherDryer", "AirConditioning", "Parking", "Pool", "Dishwasher",
+const AMENITY_PRIMARY: FilterAmenity[] = [
+  "WiFi", "WasherDryer", "AirConditioning", "Parking", "Kitchen", "TV",
 ]
-const AMENITY_MORE: Amenity[] = ["Refrigerator", "Gym", "HighSpeedInternet"]
+const AMENITY_MORE: FilterAmenity[] = [
+  "Pool", "Dishwasher", "Refrigerator", "Gym", "HighSpeedInternet", "DedicatedWorkspace",
+]
 // "Recommended for you" quick cards.
-const RECOMMENDED: Amenity[] = ["AirConditioning", "Parking", "WiFi", "WasherDryer"]
+const RECOMMENDED: FilterAmenity[] = ["AirConditioning", "Parking", "WiFi", "Kitchen"]
 
 // ── Airbnb-mobile parity data ──────────────────────────────────────────────
 // The mobile Filters sheet mirrors Airbnb's live sheet section-for-section.
@@ -116,7 +132,7 @@ const AMENITY_MOBILE: { icon: FilterIconName; en: string; ar: string; amenity?: 
 ]
 // "Show more" reveals Mkan's remaining real amenities so working filters stay
 // reachable under the Airbnb-styled first row.
-const AMENITY_MOBILE_MORE: Amenity[] = ["WiFi", "Parking", "Pool", "Dishwasher", "Refrigerator", "Gym"]
+const AMENITY_MOBILE_MORE: FilterAmenity[] = ["WiFi", "Parking", "Kitchen", "TV", "Pool", "Dishwasher", "Refrigerator", "Gym"]
 
 // "Standout stays" — Guest favorite / Luxe. Mkan's ratings are uniform, so these
 // can't discriminate; rendered as faithful cosmetic cards.

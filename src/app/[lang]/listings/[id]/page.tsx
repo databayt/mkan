@@ -367,6 +367,7 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
           checkInMethod={serializedListing.checkInMethod}
           houseRules={serializedListing.houseRules}
           cancellationPolicy={serializedListing.cancellationPolicy}
+          amenities={serializedListing.amenities}
         />
         <div className="px-6">
           <MoreStaysNearby

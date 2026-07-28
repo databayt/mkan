@@ -771,6 +771,13 @@ model VerificationToken {
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
 
+// The original 13 values could not say "kitchen", "TV" or "smoke alarm" — the
+// three most common facts in the Sudan dataset — so 57% of every listing's
+// amenities were discarded on import, and the host editor mapped 12 of its own
+// checkboxes onto whatever value was nearest (a host ticking "Carbon monoxide
+// alarm" got "Hardwood Floors"). The values below are appended, never
+// reordered: Postgres stores the label on the row, so moving one rewrites what
+// existing listings claim.
 enum Amenity {
   WasherDryer
   AirConditioning
@@ -785,6 +792,34 @@ enum Amenity {
   Parking
   PetsAllowed
   WiFi
+  Kitchen
+  TV
+  DedicatedWorkspace
+  Elevator
+  PatioOrBalcony
+  Backyard
+  HotTub
+  Bathtub
+  BbqGrill
+  OutdoorDining
+  OutdoorShower
+  FirePit
+  IndoorFireplace
+  PoolTable
+  Piano
+  BeachAccess
+  LakeAccess
+  EVCharger
+  Crib
+  Breakfast
+  HairDryer
+  LuggageDropoff
+  BedroomLock
+  SmokeAlarm
+  CarbonMonoxideAlarm
+  FireExtinguisher
+  FirstAidKit
+  SecurityCameras
 }
 
 enum ApplicationStatus {

@@ -211,10 +211,35 @@ export const FEATURE_AMENITIES: AmenityOption[] = [
     id: Amenity.WalkInClosets,
     title: 'Walk-in closets',
     category: 'features'
+  },
+  {
+    id: Amenity.TV,
+    title: 'TV',
+    category: 'features'
+  },
+  {
+    id: Amenity.DedicatedWorkspace,
+    title: 'Dedicated workspace',
+    category: 'features'
+  },
+  {
+    id: Amenity.PatioOrBalcony,
+    title: 'Patio or balcony',
+    category: 'features'
+  },
+  {
+    id: Amenity.Elevator,
+    title: 'Elevator',
+    category: 'features'
   }
 ]
 
 export const KITCHEN_AMENITIES: AmenityOption[] = [
+  {
+    id: Amenity.Kitchen,
+    title: 'Kitchen',
+    category: 'essential'
+  },
   {
     id: Amenity.Dishwasher,
     title: 'Dishwasher',
@@ -232,8 +257,40 @@ export const KITCHEN_AMENITIES: AmenityOption[] = [
   }
 ]
 
+// Empty until the `Amenity` enum could name a smoke alarm — which is why this
+// section rendered nowhere and hosts had no way to state the safety equipment
+// guests ask about most.
 export const SAFETY_AMENITIES: AmenityOption[] = [
-  // Add safety amenities if any exist in your enum
+  {
+    id: Amenity.SmokeAlarm,
+    title: 'Smoke alarm',
+    category: 'safety'
+  },
+  {
+    id: Amenity.CarbonMonoxideAlarm,
+    title: 'Carbon monoxide alarm',
+    category: 'safety'
+  },
+  {
+    id: Amenity.FireExtinguisher,
+    title: 'Fire extinguisher',
+    category: 'safety'
+  },
+  {
+    id: Amenity.FirstAidKit,
+    title: 'First aid kit',
+    category: 'safety'
+  },
+  {
+    id: Amenity.BedroomLock,
+    title: 'Lock on bedroom door',
+    category: 'safety'
+  },
+  {
+    id: Amenity.SecurityCameras,
+    title: 'Exterior security cameras on property',
+    category: 'safety'
+  }
 ]
 
 // All amenities grouped

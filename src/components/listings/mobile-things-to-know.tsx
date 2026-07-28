@@ -19,11 +19,12 @@ import {
  * Airbnb: Cancellation policy → House rules → Safety & property.
  *
  * Content comes from the listing itself: check-in/checkout times, the
- * house-rules JSON, check-in method, guest count and pet policy. Every row
- * falls back to Airbnb's platform-standard default only when the host has
- * genuinely set nothing — previously the whole block was hardcoded, so every
- * listing claimed "Check-in after 3:00 PM / Checkout before 11:00 AM / No
- * pets" no matter what its host had actually chosen.
+ * house-rules JSON, check-in method, guest count, pet policy and the amenity
+ * list. Every row falls back to Airbnb's platform-standard default only when
+ * the host has genuinely set nothing — previously the whole block was
+ * hardcoded, so every listing claimed "Check-in after 3:00 PM / Checkout
+ * before 11:00 AM / No pets", and reported both exterior security cameras and
+ * a missing carbon monoxide alarm, no matter what its host actually had.
  *
  * The rules are rendered from structure rather than from stored text, which is
  * what keeps them bilingual: the scraper parses Airbnb's rule strings back into
@@ -56,6 +57,8 @@ interface MobileThingsToKnowProps {
   checkInMethod?: string | null;
   houseRules?: ListingHouseRules | null;
   cancellationPolicy?: string | null;
+  /** Listing.amenities — the `Amenity` enum values, used for the safety group. */
+  amenities?: string[] | null;
   heading?: string;
 }
 
@@ -131,6 +134,7 @@ export default function MobileThingsToKnow({
   checkInMethod,
   houseRules,
   cancellationPolicy,
+  amenities,
   heading,
 }: MobileThingsToKnowProps) {
   const dict = useDictionary();
@@ -228,19 +232,48 @@ export default function MobileThingsToKnow({
   const firstExtraRule = houseRules?.additionalRules?.trim().split("\n")[0]?.trim();
   if (firstExtraRule) rules.push({ text: firstExtraRule });
 
-  const safety: Row[] = [
-    {
+  // Safety & property, from the listing's own amenities. This block used to be
+  // three fixed lines, so every listing claimed exterior security cameras and
+  // simultaneously reported no carbon monoxide alarm — on the same page, for
+  // the same property, regardless of what the host had.
+  //
+  // "not reported" is said only for the two detectors, and only when the
+  // amenity list is present and does not contain them: Airbnb states these
+  // explicitly, so their absence from a captured list is itself information a
+  // guest wants. Nothing is said about equipment we were never told about.
+  const has = (a: string) => amenities?.includes(a) ?? false;
+  const knowsAmenities = (amenities?.length ?? 0) > 0;
+  const safety: Row[] = [];
+  if (has("SmokeAlarm")) {
+    safety.push({ text: isAr ? "جهاز الكشف عن الدخان" : "Smoke alarm" });
+  } else if (knowsAmenities) {
+    safety.push({
+      text: isAr ? "لم يتم الإبلاغ عن جهاز الكشف عن الدخان" : "Smoke alarm not reported",
+    });
+  }
+  if (has("CarbonMonoxideAlarm")) {
+    safety.push({
+      text: isAr ? "جهاز الكشف عن أول أكسيد الكربون" : "Carbon monoxide alarm",
+    });
+  } else if (knowsAmenities) {
+    safety.push({
       text: isAr
-        ? "لم يتم الإبلاغ عن جهاز إنذار أول أكسيد الكربون"
+        ? "لم يتم الإبلاغ عن جهاز الكشف عن أول أكسيد الكربون"
         : "Carbon monoxide alarm not reported",
-    },
-    {
+    });
+  }
+  if (has("FireExtinguisher")) safety.push({ text: isAr ? "طفاية حريق" : "Fire extinguisher" });
+  if (has("FirstAidKit")) safety.push({ text: isAr ? "حقيبة إسعافات أولية" : "First aid kit" });
+  if (has("BedroomLock")) {
+    safety.push({ text: isAr ? "قفل لباب غرفة النوم" : "Lock on bedroom door" });
+  }
+  if (has("SecurityCameras")) {
+    safety.push({
       text: isAr
-        ? "كاميرات مراقبة خارجية في العقار"
+        ? "كاميرات المراقبة الخارجية للعقار"
         : "Exterior security cameras on property",
-    },
-    { text: isAr ? "جهاز إنذار الدخان" : "Smoke alarm" },
-  ];
+    });
+  }
 
   return (
     <section className="px-6 py-8 space-y-6 relative before:content-[''] before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-[#DDDDDD]">
@@ -260,12 +293,14 @@ export default function MobileThingsToKnow({
           rows={rules}
           chevronFlip={isAr}
         />
-        <GroupRow
-          icon={<SafetyPropertyIcon />}
-          title={isAr ? "السلامة والممتلكات" : "Safety & property"}
-          rows={safety}
-          chevronFlip={isAr}
-        />
+        {safety.length > 0 && (
+          <GroupRow
+            icon={<SafetyPropertyIcon />}
+            title={isAr ? "السلامة والممتلكات" : "Safety & property"}
+            rows={safety}
+            chevronFlip={isAr}
+          />
+        )}
       </div>
     </section>
   );

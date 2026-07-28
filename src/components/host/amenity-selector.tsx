@@ -35,42 +35,48 @@ const SvgIcon = ({ src, alt, size = 28 }: { src: string; alt: string; size?: num
   <Image src={src} alt={alt} width={size} height={size} className="object-contain" />
 );
 
-// Map UI amenity ids to the closest Prisma Amenity enum value so selections
-// persist against the existing listing schema. The enum is narrower than the
-// full Airbnb amenity set, so several ids intentionally collapse to the nearest
-// available match.
-export const mapAmenityToPrisma = (amenityId: string): Amenity => {
-  const mapping: Record<string, Amenity> = {
-    wifi: Amenity.WiFi,
-    tv: Amenity.HighSpeedInternet,
-    kitchen: Amenity.Dishwasher,
-    washer: Amenity.WasherDryer,
-    "free-parking": Amenity.Parking,
-    "paid-parking": Amenity.Parking,
-    "air-conditioning": Amenity.AirConditioning,
-    "dedicated-workspace": Amenity.HighSpeedInternet,
-    pool: Amenity.Pool,
-    "hot-tub": Amenity.Pool,
-    patio: Amenity.HardwoodFloors,
-    "bbq-grill": Amenity.HardwoodFloors,
-    "outdoor-dining": Amenity.HardwoodFloors,
-    "fire-pit": Amenity.HardwoodFloors,
-    "pool-table": Amenity.Gym,
-    "indoor-fireplace": Amenity.HardwoodFloors,
-    piano: Amenity.HardwoodFloors,
-    "exercise-equipment": Amenity.Gym,
-    "lake-access": Amenity.HardwoodFloors,
-    "beach-access": Amenity.HardwoodFloors,
-    "ski-in-out": Amenity.HardwoodFloors,
-    "outdoor-shower": Amenity.HardwoodFloors,
-    "smoke-alarm": Amenity.HardwoodFloors,
-    "first-aid-kit": Amenity.HardwoodFloors,
-    "fire-extinguisher": Amenity.HardwoodFloors,
-    "carbon-monoxide-alarm": Amenity.HardwoodFloors,
-  };
-
-  return mapping[amenityId] || Amenity.WiFi;
+// Map the picker's ids onto the Prisma `Amenity` enum.
+//
+// This table used to collapse 12 of these onto whatever value was nearest,
+// because the enum had nowhere to put them: a host ticking "Carbon monoxide
+// alarm" saved *Hardwood Floors*, ticking "TV" saved *High Speed Internet*,
+// ticking "Kitchen" saved *Dishwasher*, and anything unrecognised fell through
+// `|| Amenity.WiFi` and claimed wifi. Every one of those wrote a fact the host
+// had not stated onto their own listing. The enum now covers the full picker,
+// so each id maps to itself and nothing is invented.
+//
+// Returns null for an unknown id rather than guessing — see the caller, which
+// drops nulls instead of persisting a wrong value.
+const PICKER_TO_AMENITY: Record<string, Amenity> = {
+  wifi: Amenity.WiFi,
+  tv: Amenity.TV,
+  kitchen: Amenity.Kitchen,
+  washer: Amenity.WasherDryer,
+  "free-parking": Amenity.Parking,
+  "paid-parking": Amenity.Parking,
+  "air-conditioning": Amenity.AirConditioning,
+  "dedicated-workspace": Amenity.DedicatedWorkspace,
+  pool: Amenity.Pool,
+  "hot-tub": Amenity.HotTub,
+  patio: Amenity.PatioOrBalcony,
+  "bbq-grill": Amenity.BbqGrill,
+  "outdoor-dining": Amenity.OutdoorDining,
+  "fire-pit": Amenity.FirePit,
+  "pool-table": Amenity.PoolTable,
+  "indoor-fireplace": Amenity.IndoorFireplace,
+  piano: Amenity.Piano,
+  "exercise-equipment": Amenity.Gym,
+  "lake-access": Amenity.LakeAccess,
+  "beach-access": Amenity.BeachAccess,
+  "outdoor-shower": Amenity.OutdoorShower,
+  "smoke-alarm": Amenity.SmokeAlarm,
+  "first-aid-kit": Amenity.FirstAidKit,
+  "fire-extinguisher": Amenity.FireExtinguisher,
+  "carbon-monoxide-alarm": Amenity.CarbonMonoxideAlarm,
 };
+
+export const mapAmenityToPrisma = (amenityId: string): Amenity | null =>
+  PICKER_TO_AMENITY[amenityId] ?? null;
 
 // Airbnb-style ease; matches the smooth glide used elsewhere in the app.
 const SWITCH_TRANSITION = {
@@ -204,12 +210,9 @@ const AmenitySelector: React.FC<AmenitySelectorProps> = ({
             iconSrc: cdn.vendor("airbnb", "beachfront.svg"),
             iconAlt: "Beach access",
           },
-          {
-            id: "ski-in-out",
-            label: a.skiInOut,
-            iconSrc: cdn.vendor("airbnb", "ski-in-ski-out.svg"),
-            iconAlt: "Ski-in/ski-out",
-          },
+          // Ski-in/ski-out is dropped rather than given an enum value: mkan
+          // lists Sudan, where no property can truthfully offer it, so the
+          // checkbox could only ever record something false.
           {
             id: "outdoor-shower",
             label: a.outdoorShower,

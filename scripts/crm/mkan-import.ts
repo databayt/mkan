@@ -32,7 +32,7 @@ import { dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { Amenity, PropertyType } from '@prisma/client';
-import { mapAmenities as mapAmenityNames } from './amenity-map';
+import { mapAmenities as mapAmenityNames, smokingFromAmenities } from './amenity-map';
 import { cityNameEn, stateNameEn, stateOfCity, type CityCode } from './sudan-places';
 import { parseHouseRules, toListingHouseRules } from './house-rules';
 
@@ -62,8 +62,8 @@ const stateLabel = (c: string): string => {
   const s = stateOfCity(c as CityCode);
   return s === 'UNKNOWN' ? '' : stateNameEn(s);
 };
-const mapAmenities = (raw: string[]): Amenity[] =>
-  mapAmenityNames(raw).map((n) => Amenity[n as keyof typeof Amenity]).filter(Boolean);
+const mapAmenities = (...groups: Array<string[] | null | undefined>): Amenity[] =>
+  mapAmenityNames(...groups).map((n) => Amenity[n as keyof typeof Amenity]).filter(Boolean);
 const mapPropertyType = (v: string | null | undefined): PropertyType | undefined =>
   v && v in PropertyType ? PropertyType[v as keyof typeof PropertyType] : undefined;
 
@@ -118,7 +118,14 @@ function flushLedger(ledger: Ledger): void {
 }
 
 function listingData(home: ScoredHome): Record<string, unknown> {
-  const amenities = mapAmenities(home.amenitiesRaw);
+  // Both locale captures, not just the authored one: Airbnb's Arabic list
+  // sometimes names an amenity its English list omits, and vice versa. The
+  // mapper returns a set, so feeding it both can only add facts.
+  const amenities = mapAmenities(
+    home.amenitiesRaw,
+    home.i18n?.en?.amenities,
+    home.i18n?.ar?.amenities
+  );
   const price = home.priceNightSdg ?? (FX && home.priceNightSar ? Math.round(home.priceNightSar * FX) : null);
   const photos = home.photosRehosted ? home.photoUrls : []; // empty → app placeholder until G1.4
   return {
@@ -144,6 +151,17 @@ function listingData(home: ScoredHome): Record<string, unknown> {
     // which is already bilingual.
     ...(() => {
       const parsed = parseHouseRules(home.i18n?.en?.houseRules ?? home.houseRules);
+      // Airbnb files "Smoking allowed" under amenities, not rules. mkan owns
+      // smoking in houseRules, so it is folded in here rather than given an
+      // `Amenity` value — two places to state one fact is how a listing ends
+      // up contradicting itself. An explicit rule still wins.
+      if (parsed.smokingAllowed === null) {
+        parsed.smokingAllowed = smokingFromAmenities(
+          home.amenitiesRaw,
+          home.i18n?.en?.amenities,
+          home.i18n?.ar?.amenities
+        );
+      }
       const json = toListingHouseRules(parsed);
       return {
         ...(parsed.checkInTime ? { checkInTime: parsed.checkInTime } : {}),

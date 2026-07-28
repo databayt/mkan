@@ -53,13 +53,19 @@ const AmenitiesPageContent = ({ params }: AmenitiesPageProps) => {
     
     setSelectedAmenities(newSelectedAmenities);
 
-    // Update backend data using the mapping function
+    // Convert the picker's ids to enum values. An id the map doesn't know
+    // yields null and is dropped — persisting a guess would put an amenity on
+    // the listing that the host never selected. Dedupe because two ids can
+    // share a value (free and paid parking are both Parking).
     try {
-      // Convert frontend amenity IDs to backend enum values
-      const backendAmenities = newSelectedAmenities.map(amenityId => 
-        mapAmenityToPrisma(amenityId)
-      );
-      
+      const backendAmenities = [
+        ...new Set(
+          newSelectedAmenities
+            .map(mapAmenityToPrisma)
+            .filter((a): a is NonNullable<typeof a> => a !== null)
+        ),
+      ];
+
       await updateListingData({
         amenities: backendAmenities
       });

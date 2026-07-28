@@ -52,7 +52,10 @@ const PROPERTY_TYPES: { value: PropertyType; icon: React.ComponentType<{ classNa
   { value: PropertyType.Tinyhouse, icon: Home },
 ];
 
-const AMENITY_ICON: Record<Amenity, React.ComponentType<{ className?: string }>> = {
+// Partial by design: the panel filters on a curated subset of the `Amenity`
+// enum, and the lookup at the call site already falls back for anything absent.
+// A total Record would mean every new enum value broke the build here.
+const AMENITY_ICON: Partial<Record<Amenity, React.ComponentType<{ className?: string }>>> = {
   AirConditioning: Snowflake,
   WiFi: Wifi,
   Parking: Car,

@@ -94,3 +94,42 @@ describe("MobileThingsToKnow — Arabic", () => {
     expect(screen.getByText("إلغاء مجاني حتى 24 ساعة قبل تسجيل الوصول.")).toBeInTheDocument();
   });
 });
+
+describe("MobileThingsToKnow — safety comes from the listing's amenities", () => {
+  it("reports the equipment the listing actually has", () => {
+    // The bug this replaces: every listing simultaneously claimed exterior
+    // security cameras and reported no carbon monoxide alarm, on the same page.
+    renderAt("en", { amenities: ["SmokeAlarm", "CarbonMonoxideAlarm", "FireExtinguisher"] });
+    expect(screen.getByText("Smoke alarm")).toBeInTheDocument();
+    expect(screen.getByText("Carbon monoxide alarm")).toBeInTheDocument();
+    expect(screen.getByText("Fire extinguisher")).toBeInTheDocument();
+    expect(screen.queryByText(/security cameras/i)).not.toBeInTheDocument();
+  });
+
+  it("says a detector is unreported only when the amenity list is known", () => {
+    // Airbnb states both detectors explicitly, so their absence from a captured
+    // list is itself information — but only if we captured a list at all.
+    renderAt("en", { amenities: ["WiFi", "Kitchen"] });
+    expect(screen.getByText("Smoke alarm not reported")).toBeInTheDocument();
+    expect(screen.getByText("Carbon monoxide alarm not reported")).toBeInTheDocument();
+  });
+
+  it("stays silent about a listing whose amenities we never captured", () => {
+    renderAt("en", { checkInTime: "3:00 PM", amenities: [] });
+    expect(screen.queryByText(/not reported/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Safety & property")).not.toBeInTheDocument();
+    // The rest of the section still renders.
+    expect(screen.getByText("Check-in after 3:00 PM")).toBeInTheDocument();
+  });
+
+  it("renders the safety group in Arabic", () => {
+    renderAt("ar", { amenities: ["SmokeAlarm", "SecurityCameras", "BedroomLock"] });
+    expect(screen.getByText("السلامة والممتلكات")).toBeInTheDocument();
+    expect(screen.getByText("جهاز الكشف عن الدخان")).toBeInTheDocument();
+    expect(screen.getByText("كاميرات المراقبة الخارجية للعقار")).toBeInTheDocument();
+    expect(screen.getByText("قفل لباب غرفة النوم")).toBeInTheDocument();
+    expect(
+      screen.getByText("لم يتم الإبلاغ عن جهاز الكشف عن أول أكسيد الكربون"),
+    ).toBeInTheDocument();
+  });
+});
