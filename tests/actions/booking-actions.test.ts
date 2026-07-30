@@ -76,6 +76,16 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
+// Guest bookings render the listing title and city in the viewer's language,
+// which goes through the translation cache. Stubbed as a pass-through so these
+// stay tests of pagination and ownership, not of the localizer.
+vi.mock("@/components/translation/localize", () => ({
+  localizeListings: vi.fn(async (listings: unknown[]) => listings),
+}));
+vi.mock("@/components/translation/locale", () => ({
+  getDisplayLang: vi.fn(async () => "en"),
+}));
+
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import {

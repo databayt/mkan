@@ -923,9 +923,15 @@ describe("createBooking", () => {
       return fn(tx);
     });
 
-    await expect(createBooking(bookingInput)).rejects.toThrow(
-      "Some selected seats are no longer available"
-    );
+    // No longer a throw: losing a seat race is an ordinary outcome, not an
+    // exception, so the action names the seats that went and lets the picker
+    // highlight them instead of dumping the whole selection on an error page.
+    const result = await createBooking(bookingInput);
+    expect(result).toEqual({
+      success: false,
+      error: "SEATS_UNAVAILABLE",
+      unavailableSeats: ["A2"],
+    });
   });
 
   it("throws when trip not found in transaction", async () => {
@@ -1010,7 +1016,8 @@ describe("cancelBooking", () => {
     expect(result.success).toBe(true);
     expect(mockDb.seat.updateMany).toHaveBeenCalledWith({
       where: { bookingId: 1 },
-      data: { status: "Available", bookingId: null },
+      // `reservedUntil` clears too — a released seat must not keep a stale hold.
+      data: { status: "Available", bookingId: null, reservedUntil: null },
     });
     expect(mockDb.trip.update).toHaveBeenCalledWith({
       where: { id: 5 },
@@ -1255,43 +1262,159 @@ describe("verifyPayment", () => {
 // ============================================
 
 describe("validateTicket", () => {
-  it("returns invalid for malformed QR code", async () => {
-    const result = await validateTicket("not json");
-    expect(result).toEqual({ valid: false, message: "Invalid QR code" });
+  // Gate scanning gained an operator auth check, forgery detection and i18n
+  // message codes in the phase-1 hardening pass. `message` is now a key the
+  // scanner UI translates ('notFound', 'cancelled', …), not an English string.
+  const OWNER = "user-1"; // matches `session.user.id`, so canOverride passes
+
+  // The action reads deep through trip → route → office/origin/destination, so
+  // a bare `{ status }` stub throws before it reaches any of the assertions.
+  const bookingFor = (over: Record<string, unknown> = {}) => ({
+    id: 1,
+    bookingReference: "BK-1",
+    status: "Confirmed",
+    passengerName: "Test Passenger",
+    // Unsigned payloads are only trusted when they byte-match the QR we
+    // issued, so the default stub carries the exact payload the tests scan.
+    qrCode: JSON.stringify({ ref: "BK-1" }),
+    seats: [{ seatNumber: "A1" }],
+    passengers: [],
+    trip: {
+      departureDate: new Date("2026-08-01T06:00:00.000Z"),
+      departureTime: "06:00",
+      route: {
+        office: { ownerId: OWNER },
+        origin: { city: "Khartoum" },
+        destination: { city: "Port Sudan" },
+      },
+    },
+    ...over,
   });
 
-  it("returns invalid when booking not found", async () => {
+  beforeEach(() => {
+    mockAuth.mockResolvedValue(session as never);
+  });
+
+  it("refuses an unauthenticated scan before touching the database", async () => {
+    mockAuth.mockResolvedValue(null as never);
+
+    const result = await validateTicket(JSON.stringify({ ref: "BK-1" }));
+    expect(result).toEqual({ valid: false, message: "auth" });
+    expect(mockDb.transportBooking.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("refuses an operator scanning another office's ticket", async () => {
+    // A gate agent authenticates as the office owner; anyone else scanning
+    // this booking is reading a stranger's passenger manifest.
+    mockDb.transportBooking.findUnique.mockResolvedValue(
+      bookingFor({ trip: { ...bookingFor().trip, route: { ...bookingFor().trip.route, office: { ownerId: "someone-else" } } } }) as never
+    );
+
+    const result = await validateTicket(JSON.stringify({ ref: "BK-1" }));
+    expect(result).toEqual({ valid: false, message: "auth" });
+  });
+
+  it("treats a non-JSON scan as a manually typed booking reference", async () => {
+    // Camera-less fallback: the agent types the ref, which is upper-cased.
+    mockDb.transportBooking.findUnique.mockResolvedValue(bookingFor() as never);
+
+    const result = await validateTicket("bk-1");
+    expect(mockDb.transportBooking.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { bookingReference: "BK-1" } })
+    );
+    expect(result.valid).toBe(true);
+  });
+
+  it("accepts a manually typed reference in any case", async () => {
+    // Regression: the forgery check compared the raw input, not the
+    // upper-cased ref, so "bk-1" normalised to "BK-1" for the lookup and was
+    // then rejected as 'forged'. The camera-less fallback only worked if the
+    // agent happened to type in uppercase.
+    mockDb.transportBooking.findUnique.mockResolvedValue(bookingFor() as never);
+
+    for (const typed of ["bk-1", "BK-1", "Bk-1", " bk-1 "]) {
+      const result = await validateTicket(typed);
+      expect(result.valid, `typing "${typed}" should board`).toBe(true);
+    }
+  });
+
+  it("returns invalid for an empty reference", async () => {
+    const result = await validateTicket(JSON.stringify({ ref: "" }));
+    expect(result).toEqual({ valid: false, message: "invalid" });
+  });
+
+  it("returns notFound when the booking does not exist", async () => {
     mockDb.transportBooking.findUnique.mockResolvedValue(null as never);
 
     const result = await validateTicket(JSON.stringify({ ref: "BK-999" }));
-    expect(result).toEqual({ valid: false, message: "Booking not found" });
+    expect(result).toEqual({ valid: false, message: "notFound" });
   });
 
-  it("returns invalid for cancelled booking", async () => {
-    mockDb.transportBooking.findUnique.mockResolvedValue({
-      status: "Cancelled",
-    } as never);
+  it("rejects an unsigned JSON payload that does not match the stored QR", async () => {
+    // Forgery guard: unsigned payloads are only trusted when they byte-match
+    // the QR we issued, so a hand-crafted {"ref":"BK-1"} cannot board.
+    mockDb.transportBooking.findUnique.mockResolvedValue(
+      bookingFor({ qrCode: JSON.stringify({ ref: "BK-1", seat: "A1" }) }) as never
+    );
 
     const result = await validateTicket(JSON.stringify({ ref: "BK-1" }));
-    expect(result).toEqual({ valid: false, message: "Booking was cancelled" });
+    expect(result).toEqual({ valid: false, message: "forged" });
   });
 
-  it("returns invalid for completed (already used) booking", async () => {
-    mockDb.transportBooking.findUnique.mockResolvedValue({
-      status: "Completed",
-    } as never);
+  it("returns cancelled for a cancelled booking", async () => {
+    mockDb.transportBooking.findUnique.mockResolvedValue(
+      bookingFor({ status: "Cancelled" }) as never
+    );
 
     const result = await validateTicket(JSON.stringify({ ref: "BK-1" }));
-    expect(result).toEqual({ valid: false, message: "Ticket already used" });
+    expect(result).toEqual({ valid: false, message: "cancelled" });
   });
 
-  it("returns valid for confirmed booking", async () => {
-    const booking = { status: "Confirmed", bookingReference: "BK-1" };
-    mockDb.transportBooking.findUnique.mockResolvedValue(booking as never);
+  it("returns used for a completed (already boarded) booking", async () => {
+    mockDb.transportBooking.findUnique.mockResolvedValue(
+      bookingFor({ status: "Completed" }) as never
+    );
+
+    const result = await validateTicket(JSON.stringify({ ref: "BK-1" }));
+    expect(result).toEqual({ valid: false, message: "used" });
+  });
+
+  it("returns unpaid rather than boarding a pending booking", async () => {
+    mockDb.transportBooking.findUnique.mockResolvedValue(
+      bookingFor({ status: "Pending" }) as never
+    );
+
+    const result = await validateTicket(JSON.stringify({ ref: "BK-1" }));
+    expect(result).toEqual({ valid: false, message: "unpaid" });
+  });
+
+  it("returns the ticket for a confirmed booking", async () => {
+    mockDb.transportBooking.findUnique.mockResolvedValue(bookingFor() as never);
 
     const result = await validateTicket(JSON.stringify({ ref: "BK-1" }));
     expect(result.valid).toBe(true);
-    expect(result.message).toBe("Valid ticket");
+    expect(result.message).toBe("valid");
+    expect(result.ticket).toMatchObject({
+      reference: "BK-1",
+      origin: "Khartoum",
+      destination: "Port Sudan",
+      seat: "A1",
+      seatScoped: false,
+    });
+  });
+
+  it("will not board the same group member twice", async () => {
+    // Seat-scoped QRs report that passenger's own check-in state, so each
+    // member of a group boards exactly once.
+    mockDb.transportBooking.findUnique.mockResolvedValue(
+      bookingFor({
+        qrCode: JSON.stringify({ ref: "BK-1", seat: "A1" }),
+        passengers: [{ name: "Amna", seatNumber: "A1", checkedInAt: new Date() }],
+      }) as never
+    );
+
+    const result = await validateTicket(JSON.stringify({ ref: "BK-1", seat: "A1" }));
+    expect(result).toEqual({ valid: false, message: "used" });
   });
 });
 
@@ -1383,7 +1506,8 @@ describe("updateBookingStatus", () => {
     expect(result.success).toBe(true);
     expect(mockDb.seat.updateMany).toHaveBeenCalledWith({
       where: { bookingId: 1 },
-      data: { status: "Available", bookingId: null },
+      // `reservedUntil` clears too — a released seat must not keep a stale hold.
+      data: { status: "Available", bookingId: null, reservedUntil: null },
     });
     expect(mockDb.trip.update).toHaveBeenCalledWith({
       where: { id: 5 },
@@ -1411,7 +1535,9 @@ describe("updateBookingStatus", () => {
     expect(result.success).toBe(true);
     expect(mockDb.seat.updateMany).toHaveBeenCalledWith({
       where: { bookingId: 1 },
-      data: { status: "Booked" },
+      // A confirmed seat is owned outright, so the temporary hold is dropped —
+      // leaving `reservedUntil` set would let the lock sweeper reclaim a paid seat.
+      data: { status: "Booked", reservedUntil: null },
     });
   });
 });

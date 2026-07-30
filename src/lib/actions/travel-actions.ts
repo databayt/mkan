@@ -2547,6 +2547,7 @@ export async function validateTicket(qrCode: string) {
   let seat = '';
   let sig = '';
   let isSigned = false;
+  let isManualEntry = false;
 
   const raw = qrCode.trim();
   try {
@@ -2556,6 +2557,7 @@ export async function validateTicket(qrCode: string) {
     sig = typeof data.sig === 'string' ? data.sig : '';
     isSigned = Boolean(sig);
   } catch {
+    isManualEntry = true;
     // Not JSON — treat the input as a manually entered booking reference.
     ref = raw.toUpperCase();
   }
@@ -2590,7 +2592,11 @@ export async function validateTicket(qrCode: string) {
     if (!verifyQrSignature(ref, seat, sig)) {
       return { valid: false as const, message: 'forged' };
     }
-  } else if (raw !== ref && booking.qrCode !== raw) {
+  } else if (!isManualEntry && booking.qrCode !== raw) {
+    // Was `raw !== ref`, which defeated the `toUpperCase()` two lines up: an
+    // agent typing "bk-1" made raw ≠ ref, fell into the QR byte-match, and got
+    // 'forged' — so the camera-less fallback only worked in exact uppercase.
+    // Manual entry is trusted on the operator auth check above, not on bytes.
     return { valid: false as const, message: 'forged' };
   }
 

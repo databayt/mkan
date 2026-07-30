@@ -10,6 +10,7 @@ vi.mock("@/lib/db", () => ({
       delete: vi.fn(),
       count: vi.fn(),
       aggregate: vi.fn(),
+      groupBy: vi.fn(),
     },
     listing: {
       update: vi.fn(),
@@ -430,23 +431,20 @@ describe("getReviewSummary", () => {
     await expect(getReviewSummary("abc")).rejects.toThrow("Invalid listing ID");
   });
 
+  // The summary switched from findMany-then-count-in-JS to a single indexed
+  // groupBy, so the average now derives from the same groups as the histogram
+  // rather than from a separate aggregate — the two can no longer disagree.
   it("returns summary with rating distribution", async () => {
-    mockDb.review.aggregate.mockResolvedValue({
-      _avg: { rating: 4.2 },
-      _count: { rating: 5 },
-    } as never);
-    mockDb.review.findMany.mockResolvedValue([
-      { rating: 5 },
-      { rating: 5 },
-      { rating: 4 },
-      { rating: 3 },
-      { rating: 4 },
+    mockDb.review.groupBy.mockResolvedValue([
+      { rating: 3, _count: { rating: 1 } },
+      { rating: 4, _count: { rating: 2 } },
+      { rating: 5, _count: { rating: 2 } },
     ] as never);
 
     const result = await getReviewSummary(1);
 
-    expect(result.averageRating).toBe(4.2);
     expect(result.totalReviews).toBe(5);
+    expect(result.averageRating).toBe(4.2); // (3 + 4·2 + 5·2) / 5
     expect(result.ratingDistribution).toEqual({
       1: 0,
       2: 0,
@@ -457,11 +455,7 @@ describe("getReviewSummary", () => {
   });
 
   it("returns zeroes for listing with no reviews", async () => {
-    mockDb.review.aggregate.mockResolvedValue({
-      _avg: { rating: null },
-      _count: { rating: 0 },
-    } as never);
-    mockDb.review.findMany.mockResolvedValue([] as never);
+    mockDb.review.groupBy.mockResolvedValue([] as never);
 
     const result = await getReviewSummary(1);
 
@@ -477,17 +471,12 @@ describe("getReviewSummary", () => {
   });
 
   it("does not require authentication (public endpoint)", async () => {
-    mockDb.review.aggregate.mockResolvedValue({
-      _avg: { rating: 4.0 },
-      _count: { rating: 3 },
-    } as never);
-    mockDb.review.findMany.mockResolvedValue([
-      { rating: 4 },
-      { rating: 4 },
-      { rating: 4 },
+    mockDb.review.groupBy.mockResolvedValue([
+      { rating: 4, _count: { rating: 3 } },
     ] as never);
 
     const result = await getReviewSummary(1);
     expect(result.totalReviews).toBe(3);
+    expect(mockAuth).not.toHaveBeenCalled();
   });
 });
