@@ -19,6 +19,18 @@
  * first; their drafts are written to the outbox as `needs-contact-hunt`. Once a
  * WhatsApp number is on the host, --apply can send.
  *
+ * ── Where the number comes from ────────────────────────────────────────────
+ *
+ * Twenty, not the scored file. Contacts are found by `crm:contact-hunt` or by a
+ * human working the worksheet, and both land in the CRM via
+ * `crm:sync-contacts`. Nothing writes a contact back into
+ * `.data/airbnb-scored.json` — so reading `host.whatsapp` from that file, as
+ * this script used to, meant every draft stayed `needs-contact-hunt` forever no
+ * matter how many numbers had been found. The CRM is the source of truth for
+ * contact, the same way it is for publish state.
+ *
+ * `--offline` keeps the old file-only behaviour for drafting without a CRM.
+ *
  * Full CRM Activity logging needs the Note/Task fields (docs §2.6, not yet added);
  * until then --apply sends + records to the outbox, and logging is a no-op TODO.
  */
@@ -28,8 +40,11 @@ config({ override: true });
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { draftMessage, type MsgType, type Lang } from './outreach-templates';
+import { twentyClient, phoneOf, type Phones } from './twenty-rest';
 
 const APPLY = process.argv.includes('--apply');
+// Draft without consulting the CRM (no TWENTY_API_* needed).
+const OFFLINE = process.argv.includes('--offline');
 const argv = (n: string, d = ''): string => {
   const h = process.argv.find((a) => a.startsWith(`--${n}=`));
   return h ? h.split('=').slice(1).join('=') : d;
@@ -101,6 +116,29 @@ async function main(): Promise<void> {
     }
   }
 
+  // Contacts live in the CRM. Pull them once, keyed on airbnbHostId, and let
+  // them win over whatever the local file happens to carry.
+  const crmContact = new Map<string, string>();
+  if (!OFFLINE) {
+    try {
+      const twenty = twentyClient();
+      const crmHosts = (await twenty.all('hosts')) as unknown as Array<{
+        airbnbHostId?: string | null; whatsapp?: Phones | null; phone?: Phones | null;
+      }>;
+      for (const h of crmHosts) {
+        const id = h.airbnbHostId?.trim();
+        if (!id) continue;
+        const number = phoneOf(h.whatsapp) ?? phoneOf(h.phone);
+        if (number) crmContact.set(id, number);
+      }
+      console.log(`   ${crmContact.size} of ${crmHosts.length} CRM hosts have a reachable number`);
+    } catch (e) {
+      // A CRM that is down must not block drafting — say so and carry on.
+      console.warn(`   ⚠ could not read contacts from the CRM (${(e as Error).message.slice(0, 80)})`);
+      console.warn('     drafting from the local file only — numbers may be missing.');
+    }
+  }
+
   const outbox: OutboxEntry[] = [];
   const noClaimLink: string[] = [];
   for (const host of hosts) {
@@ -116,9 +154,10 @@ async function main(): Promise<void> {
       type: TYPE, lang, name: host.name ?? '', city: homes[0]?.city, homeCount: homes.length,
       account: TYPE === 'handover' ? { number: acct?.mkanUsername ?? '', claimUrl: claimUrl! } : undefined,
     });
+    const whatsapp = crmContact.get(host.airbnbHostId) ?? host.whatsapp ?? null;
     outbox.push({
-      airbnbHostId: host.airbnbHostId, name: host.name ?? '', whatsapp: host.whatsapp ?? null,
-      lang, type: TYPE, message, status: host.whatsapp ? 'ready' : 'needs-contact-hunt',
+      airbnbHostId: host.airbnbHostId, name: host.name ?? '', whatsapp,
+      lang, type: TYPE, message, status: whatsapp ? 'ready' : 'needs-contact-hunt',
     });
   }
   if (noClaimLink.length) {
