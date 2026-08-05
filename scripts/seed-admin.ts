@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
 // Prisma 7 requires a driver adapter — reuse the app's adapter-configured client
-// (same as scripts/seed-listings.ts) instead of a raw `new PrismaClient()`.
+// instead of a raw `new PrismaClient()`.
 import { db as prisma } from "@/lib/db";
 
 const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "super@mkan.org";

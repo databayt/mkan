@@ -19,8 +19,7 @@
  *     الشقة الثالثة — غرفة وصالة ومطبخ وحمام      (غرفة)
  *
  * Scope is deliberately narrow: this ONLY touches host 0003 — it deletes
- * whatever listings 0003 currently owns (the seed-listings mock data) and
- * replaces them with these 6. No other host is queried or modified. The numeric
+ * whatever listings 0003 currently owns and replaces them with these 6. No other host is queried or modified. The numeric
  * username "0003" is preserved so the owner keeps logging in with just the
  * number; حسين is documented here in the owner records, not shown as the host
  * display name (matches the seed-daqna-homes precedent).
@@ -136,7 +135,9 @@ async function main(): Promise<void> {
   });
   if (!host) {
     throw new Error(
-      `Host ${HOST_EMAIL} not found. Run \`pnpm seed:listings\` first to create the numbered host slots.`,
+      `Host ${HOST_EMAIL} not found. It is a real owner's account — create it ` +
+        `deliberately rather than regenerating it; there is no longer a script that ` +
+        `mints the numbered slots in bulk.`,
     );
   }
   await prisma.user.update({ where: { id: host.id }, data: { phoneNumber: HOST_PHONE } });

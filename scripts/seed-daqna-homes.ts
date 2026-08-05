@@ -133,7 +133,9 @@ async function main(): Promise<void> {
   });
   if (!host) {
     throw new Error(
-      `Host ${HOST_EMAIL} not found. Run \`pnpm seed:listings\` first to create the numbered host slots.`,
+      `Host ${HOST_EMAIL} not found. It is a real owner's account — create it ` +
+        `deliberately rather than regenerating it; there is no longer a script that ` +
+        `mints the numbered slots in bulk.`,
     );
   }
   await prisma.user.update({ where: { id: host.id }, data: { phoneNumber: HOST_PHONE } });

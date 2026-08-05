@@ -209,8 +209,8 @@ export async function toggleUserSuspension(input: unknown) {
   return { success: true, suspended: nextSuspended, archivedListings };
 }
 
-// Bootstrap password for handed-out numbered host slots — mirrors DEMO_PASSWORD
-// in scripts/seed-listings.ts. "Reset" hands the owner back a known login (their
+// Bootstrap password for handed-out numbered host slots. "Reset" hands the
+// owner back a known login (their
 // number + this), since they don't control the @mkan.org inbox and so can't use
 // the normal email password-reset flow.
 const BOOTSTRAP_PASSWORD = "1234";

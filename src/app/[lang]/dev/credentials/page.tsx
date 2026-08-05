@@ -11,8 +11,9 @@ interface CredentialsPageProps {
 
 /**
  * Dev-only credentials listing. Hidden in production.
- * Homes hosts & guests use "1234" (DEMO_PASSWORD in scripts/seed-listings.ts);
- * transport offices use "123456" (DEMO_PASSWORD in scripts/seed-transport.ts).
+ * Homes hosts use the bootstrap password "1234" (BOOTSTRAP_PASSWORD in
+ * src/lib/actions/admin-actions.ts); transport offices use "123456"
+ * (DEMO_PASSWORD in scripts/seed-transport.ts).
  * Homes host login = the 4-digit number (their username), e.g. "0001" / "1234".
  */
 export default async function CredentialsPage({ params }: CredentialsPageProps) {
@@ -157,9 +158,11 @@ export default async function CredentialsPage({ params }: CredentialsPageProps) 
         </div>
         {hostedListings.length === 0 && (
           <p className="mt-3 text-sm text-muted-foreground">
-            {isAr ? 'لا يوجد مضيفون محمّلون. شغّل' : 'No hosts seeded yet. Run'}{' '}
-            <code className="rounded bg-muted px-1.5 py-0.5 font-mono">pnpm seed:listings</code>
-            {isAr ? ' لتعبئة البيانات.' : ' to populate.'}
+            {isAr
+              ? 'لا يوجد مضيفون. المضيفون الحقيقيون يأتون من سكربتات الملاك أو من '
+              : 'No hosts. Real hosts come from the owner seeds or from '}
+            <code className="rounded bg-muted px-1.5 py-0.5 font-mono">pnpm crm:import</code>
+            {isAr ? '.' : '.'}
           </p>
         )}
       </section>

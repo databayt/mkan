@@ -588,7 +588,7 @@ Two tsx scripts, following the repo's proven env pattern.
 driver adapter from `process.env.DATABASE_URL` at module-eval time, and ESM hoists imports,
 so a top-level `import { db }` evaluates **before** `config()` → `DatabaseDoesNotExist`. Use
 the proven pattern (as in `seed-heirs-homes.ts` / `seed-daqna-homes.ts` /
-`topup-listings-to-110.ts`):
+`purge-synthetic.ts`):
 
 ```ts
 import { config } from 'dotenv'
@@ -605,9 +605,9 @@ Or invoke with env pre-loaded: `set -a && source .env && set +a && npx tsx scrip
 **Guardrails**
 
 - **Prod guard:** `if (process.env.NODE_ENV === 'production' && !process.env.FORCE_SEED) throw`.
-- **Non-destructive:** unlike `seed-listings.ts` (which wipes all homes), these scripts
-  **only insert/update** their own imported rows — never touch the `0001–0100` demo pool or
-  the real `0001`/`0002` homes.
+- **Non-destructive:** these scripts **only insert/update** their own imported rows —
+  never the real `0001`/`0002`/`0003` homes. (The demo pool they used to have to avoid no
+  longer exists; it was purged 2026-08-05.)
 - **Busy-until-verified:** always import `isPublished:false`. The flip to Available is a
   **separate, human-gated** action (§5.5), never done in bulk by the import script.
 - **`photoUrls`:** only CDN URLs (post re-host). Empty `photoUrls` falls back to the
@@ -644,9 +644,8 @@ Extends [ACCOUNTS.md](../ACCOUNTS.md):
 
 | Range | Meaning |
 | --- | --- |
-| `0001–0002` | **Real** Port Sudan homes (heirs, Daqna) — keep real. |
-| `0003–0100` | Demo/synthetic hosts (`seed:listings`). |
-| `0101–0999` | Reserved for demo growth. |
+| `0001–0003` | **Real** Port Sudan homes (heirs, Daqna, Hussein) — keep real. |
+| `0004–0999` | Free. Was the demo pool; purged 2026-08-05 (`pnpm purge:synthetic`). |
 | **`1000+`** | **Real scraped hosts** onboarded via this engine — MANAGER, `emailVerified`, username == number, mint-forward, never recycled. Their homes import **Busy** and go Available only through the trust gate (§5.5). |
 
 ---

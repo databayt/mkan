@@ -44,7 +44,7 @@ Single source of truth for what's visible this phase. Each hidden section is `{P
 5. **Contact-only**: booking gated off; localized **"Call the host"** card (SDG + `tel:`) on desktop; mobile call bar already wired.
 6. **~1-year owner login** (`auth.ts` session/jwt/cookie maxAge).
 7. **Availability Check** — cookie-dialog-style nudge on `/hosting/listings` listing stale homes with one-tap Available/Busy (`src/components/hosting/availability-check.tsx` + `confirmAvailability`/`getStaleAvailabilityListings` in `listing-actions.ts`).
-8. **Seeded ~500 homes / ~100 hosts** with amenities+highlights (`scripts/seed-listings.ts`).
+8. **Real catalogue only** — 74 Airbnb homes imported via the Growth Engine plus 23 belonging to the three Port Sudan owners. The 486 generated listings were purged 2026-08-05 (`pnpm purge:synthetic`).
 9. **Low-bandwidth perf**: AVIF images + trimmed sizes (`next.config.ts`); cached narrow-select `getHomeListings`; `/search` mobile-map deferral (flag); detail-page query parallelized; `/search` initial 50→24.
 10. **Arabic-first guard tests** (`tests/i18n/`): dictionary-parity + RTL-physical-class (71 checks).
 11. **Production build green** (`pnpm build` exit 0).
@@ -56,7 +56,7 @@ Wire each still-`false` flag above to real data. Plus: web/browser push for the 
 ---
 
 ## Ops notes
-- **Seed homes:** `set -a && source .env && set +a && npx tsx scripts/seed-listings.ts` (bare `pnpm seed:listings` fails `DatabaseDoesNotExist` — the script imports the DB client before dotenv loads).
+- **Seed homes:** the real-owner scripts only (`seed-heirs-homes.ts` / `seed-daqna-homes.ts` / `seed-hussein-homes.ts`), each scoped to its own host. Pre-load the env — `set -a && source .env && set +a && npx tsx …` — because they import the DB client before dotenv loads. Airbnb homes arrive via `pnpm crm:import`, not a seed.
 - **Owner login:** number-only, e.g. `0001` / `1234` (username or email accepted). Lands on `/hosting/listings`.
 - **Availability migration:** `Listing.lastAvailabilityConfirmedAt` was added via Neon MCP `run_sql` (project `solitary-water-49503410`) — `prisma db execute` is broken in this Prisma-7/pg-adapter setup. `prisma/schema.prisma` carries the field; re-run `prisma generate` after pulls.
 - **After a production build on a running dev server, clear `.next` + restart dev** — a mixed build/dev `.next` cache glitches rendering.
@@ -64,7 +64,7 @@ Wire each still-`false` flag above to real data. Plus: web/browser push for the 
 - **Domain (fixed 2026-07-02):** `mkan.databayt.org` was never bound to the mkan Vercel project — it fell through to the `*.databayt.org` wildcard (hogwarts) and served a school-404. Bound via `vercel domains add mkan.databayt.org` (DNS already pointed at Vercel). Auth is unaffected (`trustHost: true`).
 - **CSP:** any *new* origin the browser touches directly must be allow-listed in `src/proxy.ts` `buildCsp()` — the enforced prod policy blocked CDN `<video>` until `media-src 'self' https://cdn.databayt.org` was added. Images are exempt only because they proxy through same-origin `/_next/image`.
 
-**Key files:** `src/config/phase-flags.ts` · `src/components/listings/feature-icons.ts` · `src/components/hosting/availability-check.tsx` · `src/components/internationalization/{en,ar}.json` · `scripts/seed-listings.ts` · `tests/i18n/`
+**Key files:** `src/config/phase-flags.ts` · `src/components/listings/feature-icons.ts` · `src/components/hosting/availability-check.tsx` · `src/components/internationalization/{en,ar}.json` · `scripts/crm/` · `tests/i18n/`
 
 ---
 
