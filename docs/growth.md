@@ -568,6 +568,24 @@ price** (`price_confirmed_by_host`), photos are **re-hosted**, the **trust band 
 (AUTO_ONBOARD, or MANUAL_REVIEW after a human look), and **no hard gate fails**. This is
 the `TRUST_REVIEW` stage decision; until then the listing stays Busy and invisible.
 
+**As actually operated (2026-08-05).** The gate above is the default path and still runs
+when `crm:publish` is invoked without flags. It is not what the live catalogue went through.
+All 97 listings were published under `--force`, which bypasses both the trust band and the
+claim requirement, because the first 74 had already gone live unclaimed — so enforcing it on
+the remainder would have held back inventory without protecting anyone whose home was
+already up. Two consequences worth keeping in view:
+
+- **Consent is obtained by outreach (§5.4) and recorded by the claim flow, not enforced by
+  the publish step.** `Listing.claimedAt` is still the only record that an owner has seen
+  their listing; it is now a fact to chase rather than a precondition.
+- **`hotel-excluded` covers two unrelated things.** `trust-score.ts:108-110` files a
+  `HOTEL_ROOM`/`SHARED_ROOM` and a plain apartment whose host holds >15 listings under the
+  same note. The second is a statement about the host being an agency, not about the home.
+  18 of the 24 gated homes were that second kind and are ordinary apartments.
+
+If the policy tightens again, the lever is removing `--force` from the publish run — the
+default gate is intact underneath it.
+
 ---
 
 ## 6. Seeding runbook (Epic G1 implementation — to build)
