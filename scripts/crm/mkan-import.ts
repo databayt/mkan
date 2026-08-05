@@ -49,6 +49,22 @@ const argv = (n: string, d = ''): string => {
 const IN = argv('in', 'scripts/crm/.data/airbnb-scored.json');
 const OUT = argv('out', 'scripts/crm/.data/mkan-import-ledger.json');
 const MIN_BAND = argv('min-band', 'MANUAL_REVIEW');
+/**
+ * Import homes the trust gate would otherwise hold back.
+ *
+ * The gate conflates two very different findings under one `hotel-excluded`
+ * note (`trust-score.ts:108-110`). A `HOTEL_ROOM` or `SHARED_ROOM` really is a
+ * different product from a home rental. But a plain apartment whose host
+ * happens to hold more than 15 listings is flagged for exactly one reason —
+ * the host looks like an agency rather than an individual — and says nothing
+ * about the home. For a marketplace that wants inventory, an agency with
+ * eighteen real Khartoum apartments is supply, not a problem.
+ *
+ * So the override exists, and it is loud: it prints every gated home it is
+ * about to let through, grouped by reason, so the decision is visible in the
+ * log rather than buried in a flag.
+ */
+const INCLUDE_GATED = process.argv.includes('--include-gated');
 const FX = parseFloat(argv('fx-rate', '0')) || 0;
 const LIMIT = parseInt(argv('limit', '0'), 10) || 0;
 
@@ -206,8 +222,8 @@ async function main(): Promise<void> {
     // person and telling them "your listings are ready" is the worst outreach
     // outcome available, so these go to manual review instead.
     if (h.hostSource === 'HEURISTIC') { skipped.push(`${h.airbnbListingId} (host attribution HEURISTIC)`); return false; }
-    if (h.gateNote) { skipped.push(`${h.airbnbListingId} (gate:${h.gateNote})`); return false; }
-    if ((BAND_RANK[h.trustBand] ?? 0) < minRank) { skipped.push(`${h.airbnbListingId} (${h.trustBand} < ${MIN_BAND})`); return false; }
+    if (h.gateNote && !INCLUDE_GATED) { skipped.push(`${h.airbnbListingId} (gate:${h.gateNote})`); return false; }
+    if ((BAND_RANK[h.trustBand] ?? 0) < minRank && !INCLUDE_GATED) { skipped.push(`${h.airbnbListingId} (${h.trustBand} < ${MIN_BAND})`); return false; }
     return true;
   });
   if (LIMIT) importable = importable.slice(0, LIMIT);
@@ -221,6 +237,23 @@ async function main(): Promise<void> {
 
   console.log(`\n🏠 mkan import — ${importable.length} importable homes across ${byHost.size} hosts (min-band ${MIN_BAND})`);
   console.log(`   ${skipped.length} skipped${skipped.length ? ': ' + skipped.slice(0, 6).join(', ') + (skipped.length > 6 ? '…' : '') : ''}`);
+
+  if (INCLUDE_GATED) {
+    const forced = importable.filter((h) => h.gateNote || (BAND_RANK[h.trustBand] ?? 0) < minRank);
+    if (forced.length) {
+      console.log(`\n   ⚠️  --include-gated: importing ${forced.length} homes the trust gate would have held back`);
+      const rooms = forced.filter((h) => h.roomType === 'HOTEL_ROOM' || h.roomType === 'SHARED_ROOM');
+      const agency = forced.filter((h) => h.roomType !== 'HOTEL_ROOM' && h.roomType !== 'SHARED_ROOM');
+      if (agency.length) {
+        console.log(`      ${agency.length} whole homes flagged only because their host holds a large portfolio:`);
+        for (const h of agency) console.log(`        · ${(h.title ?? '').slice(0, 52)}`);
+      }
+      if (rooms.length) {
+        console.log(`      ${rooms.length} hotel or shared rooms — a different product from a home rental:`);
+        for (const h of rooms) console.log(`        · [${h.roomType}] ${(h.title ?? '').slice(0, 46)}`);
+      }
+    }
+  }
 
   const ledger: Ledger = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : { hosts: {}, homes: {} };
 

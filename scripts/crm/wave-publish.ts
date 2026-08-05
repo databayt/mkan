@@ -13,21 +13,33 @@
  * Flags: --in=<scored/rehosted> --ledger=<import ledger> --city=<CITY|all>
  *        --min-band=<AUTO_ONBOARD|MANUAL_REVIEW> --limit=<N> --apply --force
  *
- * `--force` publishes an operator-authorized batch that hasn't cleared the trust
- * *band* threshold. It does not, and cannot, publish an unclaimed listing.
+ * ── What `--force` bypasses, and the decision behind it ────────────────────
  *
- * That distinction is the whole point. These listings are other people's
- * property, photos and words, scraped without their knowledge, and
- * `Listing.claimedAt` is the only record that the owner has seen them and
- * agreed. A flag that skipped it would let one operator publish a stranger's
- * home — which is what `--force` used to do, since it bypassed `publishReady`,
- * and `publishReady` was where "the host replied" was encoded.
+ * `--force` publishes an operator-authorized batch: it skips the trust *band*
+ * threshold, the `publishReady` flag, the `gateNote` hard gate, and — this is
+ * the part worth reading — the requirement that the owner has claimed the
+ * listing.
  *
- * So the gate is now read from the database, not from a scored JSON file, and
- * it sits above the `--force` branch with the other hard gates: a `gateNote`
- * (hotel/duplicate/location-fail), the city filter, and being imported at all.
- * Publishing unclaimed inventory remains possible, but only as a deliberate
- * code change someone has to argue for — not a flag.
+ * This file used to argue, at length, that the claim gate could never be a
+ * flag. The argument was: these are other people's property, photos and words,
+ * scraped without their knowledge, and `Listing.claimedAt` is the only record
+ * that the owner has seen them and agreed; a flag that skipped it would let one
+ * operator publish a stranger's home.
+ *
+ * That argument is still true, and it lost to a fact on the ground. The 74
+ * homes already live on mkan.sd were published unclaimed, so the gate was
+ * describing an intention rather than the state of the site, and holding the
+ * remaining inventory behind it protected nobody while making the catalogue
+ * arbitrarily incomplete. The operator's call (2026-08-05) is to publish the
+ * whole scraped set on the same terms as the 74, and to treat host consent as
+ * something outreach obtains and the claim flow records — not as something the
+ * publish step can wait for.
+ *
+ * So the gate is now bypassable, but never quietly: `--force` requires
+ * FORCE_SEED, and it prints every unclaimed listing and every gated home it is
+ * about to publish, grouped by reason. If that list is ever surprising, stop.
+ *
+ * Without `--force` the behaviour is unchanged: claimed and trust-passing only.
  *
  * Reads eligibility from the scored file (`publishReady`, `trustBand`, `city`) and
  * the mkan listing id from the import ledger. `--apply` sets `isPublished:true` +
@@ -77,12 +89,15 @@ async function main(): Promise<void> {
     const mkanListingId = ledger.homes?.[h.airbnbListingId]?.mkanListingId ?? null;
     const cityOk = CITY === 'ALL' || h.city === CITY;
     let eligible = true, why = 'eligible';
-    // Hard gates (never bypassed): must be imported, in-wave, not hard-gated,
-    // and claimed by its owner.
+    // Structural gates, never bypassed: a listing that was never imported has
+    // no row to publish, and a wave is scoped to its city by definition.
     if (mkanListingId == null) { eligible = false; why = 'not imported'; }
     else if (!cityOk) { eligible = false; why = `city≠${CITY}`; }
-    else if (h.gateNote) { eligible = false; why = `gate:${h.gateNote}`; }
-    else if (!claimed.has(mkanListingId)) { eligible = false; why = 'not claimed by its owner'; }
+    // The trust gate and the consent gate. Both are bypassable under --force,
+    // which is an operator saying "publish this wave anyway" — see the note at
+    // the top of this file for what that means and when it is defensible.
+    else if (!FORCE && h.gateNote) { eligible = false; why = `gate:${h.gateNote}`; }
+    else if (!FORCE && !claimed.has(mkanListingId)) { eligible = false; why = 'not claimed by its owner'; }
     // Soft trust gate (skipped under --force for an operator-authorized wave).
     else if (!FORCE && !h.publishReady) { eligible = false; why = 'not publish-ready'; }
     else if (!FORCE && (BAND_RANK[h.trustBand] ?? 0) < minRank) { eligible = false; why = `${h.trustBand}<${MIN_BAND}`; }
@@ -93,6 +108,23 @@ async function main(): Promise<void> {
   const eligible = rows.filter((r) => r.eligible);
 
   console.log(`\n🚀 Wave publish — city=${CITY}, min-band=${MIN_BAND} · ${eligible.length}/${rows.length} eligible to go Available`);
+
+  // Nothing that --force waves through gets published without being named. The
+  // whole safety of a bypassable consent gate rests on the bypass being visible.
+  if (FORCE && eligible.length) {
+    const unclaimed = eligible.filter((r) => !claimed.has(r.mkanListingId!));
+    const gated = eligible.filter((r) => r.h.gateNote);
+    console.log(`\n   ⚠️  --force is bypassing the trust and consent gates.`);
+    if (unclaimed.length) {
+      console.log(`      ${unclaimed.length} listing(s) NOT claimed by their owner will go live:`);
+      for (const r of unclaimed) console.log(`        · #${r.mkanListingId} ${(r.h.title ?? '').slice(0, 48)}`);
+    }
+    if (gated.length) {
+      console.log(`      ${gated.length} listing(s) the trust gate held back will go live:`);
+      for (const r of gated) console.log(`        · #${r.mkanListingId} [${r.h.gateNote}] ${(r.h.title ?? '').slice(0, 40)}`);
+    }
+    console.log('      If either list is surprising, stop and re-read the note at the top of this file.');
+  }
   for (const r of rows) {
     const mark = r.eligible ? '✓' : '·';
     console.log(`  ${mark} ${(r.h.title ?? '').slice(0, 34).padEnd(34)} ${r.h.city.padEnd(11)} ${r.h.trustBand.padEnd(13)} ${r.eligible ? `→ publish (listing #${r.mkanListingId})` : r.why}`);
@@ -107,6 +139,11 @@ async function main(): Promise<void> {
 
   if (!eligible.length) { console.log('\nNothing eligible to publish. Done.\n'); return; }
   if (process.env.NODE_ENV === 'production' && !process.env.FORCE_SEED) throw new Error('refusing to publish in production without FORCE_SEED=1');
+  // --force can publish someone's home without their claim on record. That is
+  // not something to arrive at by autocompleting a flag.
+  if (FORCE && !process.env.FORCE_SEED) {
+    throw new Error('--force bypasses the consent gate — re-run with FORCE_SEED=1 to confirm you mean it');
+  }
 
   let flipped = 0;
   for (const r of eligible) {
