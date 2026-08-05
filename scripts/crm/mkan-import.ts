@@ -35,6 +35,7 @@ import { Amenity, PropertyType } from '@prisma/client';
 import { mapAmenities as mapAmenityNames, smokingFromAmenities } from './amenity-map';
 import { cityNameEn, stateNameEn, stateOfCity, type CityCode } from './sudan-places';
 import { parseHouseRules, toListingHouseRules } from './house-rules';
+import { detectScript } from '@/components/translation/util';
 
 // Deferred until after env loads (only used with --apply) — avoids the
 // db-before-dotenv "DatabaseDoesNotExist" trap.
@@ -90,7 +91,12 @@ interface ScoredHome {
   gateNote: string | null;
   scrapedAt?: string | null;
   houseRules?: string[];
-  i18n?: { en?: { houseRules?: string[] }; ar?: { houseRules?: string[] } };
+  // Both locale captures carry amenities as well as rules — `listingData()`
+  // merges all three amenity groups, so the type has to admit them.
+  i18n?: {
+    en?: { houseRules?: string[]; amenities?: string[] };
+    ar?: { houseRules?: string[]; amenities?: string[] };
+  };
   canonicalLocale?: string | null;
   authoredLocale?: string | null;
   /** Which PDP rule resolved the host — see airbnb-parse.ts. */
@@ -311,7 +317,11 @@ async function main(): Promise<void> {
             sourceUrl: `https://www.airbnb.com/rooms/${h.airbnbListingId}`,
             sourceHostId: hid,
             sourceCapturedAt: h.scrapedAt ? new Date(h.scrapedAt) : new Date(),
-            canonicalLocale: h.canonicalLocale ?? h.authoredLocale ?? null,
+            // The script of the title we are actually storing, not the locale
+            // the host authored in — `listingData` takes `h.title`, which is
+            // Airbnb's English capture even for a host who wrote in Arabic.
+            // Same function the renderer uses, so the two cannot disagree.
+            canonicalLocale: detectScript(h.title ?? h.description),
           } as never,
         });
       });
