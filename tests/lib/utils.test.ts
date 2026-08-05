@@ -77,8 +77,20 @@ describe("formatPriceValue", () => {
     expect(formatPriceValue(250, false)).toBe("< SDG 250");
   });
 
+  it("rounds the k form to one decimal", () => {
+    // 36,750 used to render as "36.75k" — precision nobody reads on a filter.
+    expect(formatPriceValue(36750, true)).toBe("SDG 36.8k+");
+    expect(formatPriceValue(17500, true)).toBe("SDG 17.5k+");
+    expect(formatPriceValue(150000, false)).toBe("< SDG 150k");
+  });
+
   it("uses the Arabic currency symbol for the ar locale", () => {
     expect(formatPriceValue(1000, true, "ar")).toBe("ج.س 1k+");
+  });
+
+  it("uses a word rather than '<' for the Arabic maximum", () => {
+    // A latin "<" lands on the wrong side of the number in RTL.
+    expect(formatPriceValue(50000, false, "ar")).toBe("حتى ج.س 50k");
   });
 });
 

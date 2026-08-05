@@ -612,6 +612,15 @@ export async function searchListings(
  * 1-hour TTL is generous because price bounds change rarely (only when
  * a host raises/lowers the cheapest or priciest listing in the catalog).
  */
+/**
+ * Slider ceiling when the aggregate is unavailable or the catalogue is empty.
+ *
+ * SDG per night. The old value was 1,000, which is below the cheapest real
+ * listing — so on any aggregate failure the filter rendered a range that
+ * excluded the entire catalogue rather than degrading to "show everything".
+ */
+const FALLBACK_MAX_PRICE = 500_000;
+
 export const getPriceBounds = unstable_cache(
   async (): Promise<{ min: number; max: number }> => {
     try {
@@ -622,13 +631,13 @@ export const getPriceBounds = unstable_cache(
       });
       return {
         min: agg._min.pricePerNight ?? 0,
-        max: agg._max.pricePerNight ?? 1000,
+        max: agg._max.pricePerNight ?? FALLBACK_MAX_PRICE,
       };
     } catch {
       // If the aggregate fails, fall back to safe defaults so the filter
       // slider still renders. The listings query has its own try/catch
       // so this can't bring the page down.
-      return { min: 0, max: 1000 };
+      return { min: 0, max: FALLBACK_MAX_PRICE };
     }
   },
   ["listings-price-bounds"],

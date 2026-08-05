@@ -9,6 +9,7 @@ import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-
 import { useSession } from 'next-auth/react'
 import { useDictionary } from '@/components/internationalization/dictionary-context'
 import { useLocale } from '@/components/internationalization/use-locale'
+import { formatCurrency } from '@/lib/i18n/formatters'
 import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite'
 
 interface ListingsProps {
@@ -89,7 +90,9 @@ const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
       ? `${property.location.city}, ${property.location.state}`
       : "",
     dates: undefined, // You can add availability dates logic here
-    price: property.pricePerMonth,
+    // `pricePerMonth` is not a column — this read was undefined, so the card
+    // rendered "$undefined/month". mkan prices per night.
+    price: property.pricePerNight,
     rating: property.averageRating || 4.5, // Default rating
     isSuperhostBadge: false, // You can add logic for this
     isGuestFavorite: qualifiesAsGuestFavorite(property),
@@ -134,7 +137,10 @@ const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg mb-2">{property.title}</h3>
                   <p className="text-gray-600 mb-2">{property.location}</p>
-                  <p className="font-semibold text-lg">${property.price}{t?.perMonth ?? "/month"}</p>
+                  <p className="font-semibold text-lg">
+                    {formatCurrency(property.price ?? 0, locale)}
+                    <span className="text-gray-600 font-normal"> / {t?.night ?? "night"}</span>
+                  </p>
                 </div>
               </div>
             </div>

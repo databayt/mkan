@@ -3350,7 +3350,7 @@
     "location": "Location",
     "enterLocation": "Enter location",
     "propertyType": "Property Type",
-    "priceRangeMonthly": "Price Range (Monthly)",
+    "priceRangePerNight": "Price range (per night)",
     "squareFeet": "Square Feet",
     "amenities": "Amenities",
     "availableFrom": "Available From",
@@ -4724,7 +4724,7 @@
       "placesIn": "Places in {location}",
       "noPropertiesTitle": "No properties found",
       "noPropertiesDescription": "Try adjusting your search filters to see more results.",
-      "perMonth": "/month"
+      "night": "night"
     },
     "verifyListing": {
       "backToEditor": "Back to listing editor",

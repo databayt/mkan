@@ -27,6 +27,9 @@ import {
   UtensilsCrossed
 } from 'lucide-react';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
+import { useLocale } from '@/components/internationalization/use-locale';
+import { formatCurrency } from '@/lib/i18n/formatters';
+import { PRICE_SLIDER_MIN, PRICE_SLIDER_MAX, PRICE_SLIDER_STEP } from '@/lib/price-filter';
 
 interface FilterState {
   priceRange: [number, number];
@@ -47,6 +50,7 @@ const AirbnbFilter: React.FC<AirbnbFilterProps> = ({
   className = ""
 }) => {
   const dict = useDictionary();
+  const { locale } = useLocale();
   const t = dict?.atom?.propertyFilter;
 
   const PROPERTY_TYPES = [
@@ -65,7 +69,7 @@ const AirbnbFilter: React.FC<AirbnbFilterProps> = ({
 
   const [open, setOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
-    priceRange: [50, 500],
+    priceRange: [PRICE_SLIDER_MIN, PRICE_SLIDER_MAX],
     propertyTypes: [],
     amenities: [],
     instantBook: false,
@@ -87,7 +91,7 @@ const AirbnbFilter: React.FC<AirbnbFilterProps> = ({
 
   const clearFilters = () => {
     const clearedFilters = {
-      priceRange: [50, 500] as [number, number],
+      priceRange: [PRICE_SLIDER_MIN, PRICE_SLIDER_MAX] as [number, number],
       propertyTypes: [],
       amenities: [],
       instantBook: false,
@@ -99,7 +103,7 @@ const AirbnbFilter: React.FC<AirbnbFilterProps> = ({
 
   const getActiveFiltersCount = () => {
     let count = 0;
-    if (filters.priceRange[0] > 50 || filters.priceRange[1] < 500) count++;
+    if (filters.priceRange[0] > PRICE_SLIDER_MIN || filters.priceRange[1] < PRICE_SLIDER_MAX) count++;
     if (filters.propertyTypes.length > 0) count++;
     if (filters.amenities.length > 0) count++;
     if (filters.instantBook) count++;
@@ -159,15 +163,15 @@ const AirbnbFilter: React.FC<AirbnbFilterProps> = ({
                   <Slider
                     value={tempFilters.priceRange}
                     onValueChange={(value) => updateTempFilters({ priceRange: value as [number, number] })}
-                    max={1000}
-                    min={0}
-                    step={10}
+                    max={PRICE_SLIDER_MAX}
+                    min={PRICE_SLIDER_MIN}
+                    step={PRICE_SLIDER_STEP}
                     className="w-full"
                   />
                 </div>
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>${tempFilters.priceRange[0]}</span>
-                  <span>${tempFilters.priceRange[1]}+</span>
+                  <span>{formatCurrency(tempFilters.priceRange[0], locale)}</span>
+                  <span>{formatCurrency(tempFilters.priceRange[1], locale)}+</span>
                 </div>
               </div>
             </div>

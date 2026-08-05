@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PropertyTypeIcons } from "@/lib/constants";
+import { PRICE_FILTER_MIN_STEPS, PRICE_FILTER_MAX_STEPS } from "@/lib/price-filter";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { useLocale } from "@/components/internationalization/use-locale";
 
@@ -176,9 +177,9 @@ const FiltersBar = () => {
             </SelectTrigger>
             <SelectContent className="bg-white">
               <SelectItem value="any">{dict.filters?.anyMinPrice ?? "Any Min Price"}</SelectItem>
-              {[500, 1000, 1500, 2000, 3000, 5000, 10000].map((price) => (
+              {PRICE_FILTER_MIN_STEPS.map((price) => (
                 <SelectItem key={price} value={price.toString()}>
-                  {locale === 'ar' ? 'ج.س' : 'SDG'} {price / 1000}k+
+                  {formatPriceValue(price, true, locale)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -198,9 +199,9 @@ const FiltersBar = () => {
             </SelectTrigger>
             <SelectContent className="bg-white">
               <SelectItem value="any">{dict.filters?.anyMaxPrice ?? "Any Max Price"}</SelectItem>
-              {[1000, 2000, 3000, 5000, 10000].map((price) => (
+              {PRICE_FILTER_MAX_STEPS.map((price) => (
                 <SelectItem key={price} value={price.toString()}>
-                  &lt; {locale === 'ar' ? 'ج.س' : 'SDG'} {price / 1000}k
+                  {formatPriceValue(price, false, locale)}
                 </SelectItem>
               ))}
             </SelectContent>

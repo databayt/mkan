@@ -35,9 +35,19 @@ export const formatPriceValue = (
   }
 
   const currency = locale === 'ar' ? 'ج.س' : 'SDG';
-  const value = price >= 1000 ? `${price / 1000}k` : `${price}`;
+  // Round the abbreviated form: SDG prices are five and six figures now, and
+  // 36,750 rendered as "36.75k" — three digits of precision nobody reads on a
+  // filter option. One decimal keeps 17,500 as "17.5k" and collapses the rest.
+  const thousands = price / 1000;
+  const value =
+    price >= 1000
+      ? `${Number.isInteger(thousands) ? thousands : Math.round(thousands * 10) / 10}k`
+      : `${price}`;
 
-  return isMin ? `${currency} ${value}+` : `< ${currency} ${value}`;
+  if (isMin) return `${currency} ${value}+`;
+  // "<" ahead of Arabic text lands on the wrong side of the number under the
+  // bidi algorithm, so Arabic gets the word instead of the symbol.
+  return locale === 'ar' ? `حتى ${currency} ${value}` : `< ${currency} ${value}`;
 };
 
 export const withToast = async (

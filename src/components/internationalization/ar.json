@@ -3350,7 +3350,7 @@
     "location": "الموقع",
     "enterLocation": "أدخل الموقع",
     "propertyType": "نوع العقار",
-    "priceRangeMonthly": "نطاق السعر (شهرياً)",
+    "priceRangePerNight": "نطاق السعر (لليلة)",
     "squareFeet": "المساحة (قدم مربع)",
     "amenities": "المرافق",
     "availableFrom": "متاح من",
@@ -4724,7 +4724,7 @@
       "placesIn": "أماكن في {location}",
       "noPropertiesTitle": "لا توجد عقارات",
       "noPropertiesDescription": "حاول تعديل فلاتر البحث لرؤية المزيد من النتائج.",
-      "perMonth": "/شهر"
+      "night": "ليلة"
     },
     "verifyListing": {
       "backToEditor": "العودة إلى محرر الإعلان",

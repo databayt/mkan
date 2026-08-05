@@ -451,12 +451,20 @@ export function SearchFilters() {
   }, [open, isMobile])
 
   // Histogram + slider ceiling derived from the loaded results (real prices).
+  //
+  // Prices are SDG per night, and a night in Khartoum runs 7,000–426,000 — so
+  // the old clamp (`Math.min(5000, …)`) pinned the slider ceiling at 5,000 and
+  // hid essentially the whole catalogue behind a filter nobody could widen. The
+  // bounds are data-derived precisely so they track the real market; the clamp
+  // is only there to stop a single absurd outlier from flattening the histogram.
   const ceil = useMemo(() => {
     const prices = listings.map((l) => l.pricePerNight ?? 0).filter((p) => p > 0)
-    const maxP = prices.length ? Math.max(...prices) : 500
-    return Math.min(5000, Math.max(200, Math.ceil(maxP / 50) * 50))
+    const maxP = prices.length ? Math.max(...prices) : 100_000
+    return Math.min(1_000_000, Math.max(50_000, Math.ceil(maxP / 5_000) * 5_000))
   }, [listings])
-  const step = ceil <= 600 ? 5 : 10
+  // A 1,000-SDG step over a ~450,000 range is ~450 notches — fine to drag, and
+  // fine-grained enough that the cheapest listings stay individually reachable.
+  const step = ceil <= 100_000 ? 500 : 1_000
   const bins = useMemo(() => {
     const N = 30
     const prices = listings.map((l) => l.pricePerNight ?? 0).filter((p) => p > 0)

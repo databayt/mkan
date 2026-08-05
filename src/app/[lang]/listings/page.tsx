@@ -4,6 +4,7 @@ import { Metadata } from "next";
 import { Suspense } from "react";
 import { createMetadata } from "@/lib/metadata";
 import { searchListings } from "@/lib/actions/search-actions";
+import { SEARCH_CONFIG } from "@/lib/schemas/search-schema";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 
 export async function generateMetadata({
@@ -114,8 +115,11 @@ async function getFilteredListings(
     adults: toInt(params.adults, 16),
     children: toInt(params.children, 10),
     infants: toInt(params.infants, 5),
-    priceMin: toInt(params.priceMin ?? legacyPriceMin, 100000),
-    priceMax: toInt(params.priceMax ?? legacyPriceMax, 100000),
+    // Ceiling from SEARCH_CONFIG rather than a second copy of the number —
+    // when the two drifted, this one silently clamped filters the schema
+    // would have accepted.
+    priceMin: toInt(params.priceMin ?? legacyPriceMin, SEARCH_CONFIG.MAX_PRICE),
+    priceMax: toInt(params.priceMax ?? legacyPriceMax, SEARCH_CONFIG.MAX_PRICE),
     beds: toInt(params.beds, 20),
     baths: toInt(params.baths, 20),
     propertyType: params.propertyType as SearchFilters["propertyType"],

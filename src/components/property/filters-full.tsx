@@ -20,6 +20,9 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { useLocale } from "@/components/internationalization/use-locale";
+import { formatCurrency } from "@/lib/i18n/formatters";
+import { PRICE_SLIDER_MIN, PRICE_SLIDER_MAX, PRICE_SLIDER_STEP } from "@/lib/price-filter";
 
 const FiltersFull = () => {
   const router = useRouter();
@@ -28,6 +31,7 @@ const FiltersFull = () => {
   const isFiltersFullOpen = useGlobalStore((s) => s.isFiltersFullOpen);
   const setFilters = useGlobalStore((s) => s.setFilters);
   const dict = useDictionary();
+  const { locale } = useLocale();
   const [localFilters, setLocalFilters] = useState(initialFilters);
 
   const updateURL = debounce((newFilters: FiltersState) => {
@@ -144,14 +148,14 @@ const FiltersFull = () => {
 
         {/* Price Range */}
         <div>
-          <h4 className="font-bold mb-2">{dict.filters?.priceRangeMonthly ?? "Price Range (Monthly)"}</h4>
+          <h4 className="font-bold mb-2">{dict.filters?.priceRangePerNight ?? "Price range (per night)"}</h4>
           <Slider
-            min={0}
-            max={10000}
-            step={100}
+            min={PRICE_SLIDER_MIN}
+            max={PRICE_SLIDER_MAX}
+            step={PRICE_SLIDER_STEP}
             value={[
-              localFilters.priceRange[0] ?? 0,
-              localFilters.priceRange[1] ?? 10000,
+              localFilters.priceRange[0] ?? PRICE_SLIDER_MIN,
+              localFilters.priceRange[1] ?? PRICE_SLIDER_MAX,
             ]}
             onValueChange={(value: any) =>
               setLocalFilters((prev) => ({
@@ -161,8 +165,8 @@ const FiltersFull = () => {
             }
           />
           <div className="flex justify-between mt-2">
-            <span>${localFilters.priceRange[0] ?? 0}</span>
-            <span>${localFilters.priceRange[1] ?? 10000}</span>
+            <span>{formatCurrency(localFilters.priceRange[0] ?? PRICE_SLIDER_MIN, locale)}</span>
+            <span>{formatCurrency(localFilters.priceRange[1] ?? PRICE_SLIDER_MAX, locale)}</span>
           </div>
         </div>
 

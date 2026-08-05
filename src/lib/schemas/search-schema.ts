@@ -15,7 +15,11 @@ export const SEARCH_CONFIG = {
   DEFAULT_POPULAR_LOCATIONS_COUNT: 3,
   DEFAULT_PAGE_SIZE: 20,
   MAX_PAGE_SIZE: 50,
-  MAX_PRICE: 100000,
+  // SDG per night. The published catalogue runs 7,000–426,000, so the old
+  // 100,000 ceiling silently clamped any filter above it — a guest asking for
+  // "up to 200,000" was answered with "up to 100,000" and shown the wrong
+  // results. Headroom for a currency that has moved a long way in a year.
+  MAX_PRICE: 2_000_000,
   MAX_BEDS: 20,
   MAX_BATHS: 20,
 } as const;
