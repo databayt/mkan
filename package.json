@@ -48,6 +48,7 @@
     "crm:backfill-facts": "tsx scripts/crm/backfill-listing-facts.ts",
     "crm:import": "tsx scripts/crm/mkan-import.ts",
     "crm:contact-hunt": "tsx scripts/crm/contact-hunt.ts",
+    "crm:recover-profiles": "tsx scripts/crm/recover-host-profiles.ts",
     "crm:sync-contacts": "tsx scripts/crm/sync-contacts-to-twenty.ts",
     "crm:outreach": "tsx scripts/crm/outreach.ts",
     "crm:seed-i18n": "tsx scripts/crm/seed-listing-translations.ts",

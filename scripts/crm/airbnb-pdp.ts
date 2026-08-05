@@ -282,7 +282,21 @@ async function main() {
       if (pdp.host?.airbnbHostId) {
         home.hostAirbnbId = pdp.host.airbnbHostId;
         const existing = hosts.get(pdp.host.airbnbHostId);
+        // Spread `existing` first, then overwrite only what this pass knows.
+        //
+        // This used to build a fresh literal listing every field by hand, each
+        // falling back to `existing?.x`. That reads as careful preservation and
+        // is the opposite: any field the PDP pass does not know about — `about`,
+        // `work`, `livesIn`, `languages`, `verifications`, `agencySuspected`,
+        // `profileFetchedAt` — was silently dropped on every run.
+        //
+        // Those come from `airbnb-host-profile.ts`, and they are the only place
+        // a host writes free text that could carry a phone number, so the wipe
+        // destroyed the one contact surface still worth searching. It took
+        // `livesIn` from 55 hosts to 2 between the 08:00 worksheet and the 13:05
+        // PDP re-run on 2026-07-27, along with the diaspora breakdown built on it.
         hosts.set(pdp.host.airbnbHostId, {
+          ...existing,
           source: 'AIRBNB',
           airbnbHostId: pdp.host.airbnbHostId,
           airbnbProfileUrl: `https://www.airbnb.com/users/show/${pdp.host.airbnbHostId}`,
