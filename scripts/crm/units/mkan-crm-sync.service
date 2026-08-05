@@ -1,0 +1,27 @@
+[Unit]
+Description=Reconcile the mkan CRM (Twenty) and mkan.sd in both directions
+# Twenty's REST API is only reachable on the machine hosting it, so this unit is
+# only meaningful there. docker.service because the CRM runs in containers.
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/mkan
+# Without this the Prisma client logs every query (src/lib/db.ts gates on it),
+# which buries the three lines of actual report under a wall of SQL in the
+# journal — four times a day, forever. It also picks up the connection-limit and
+# pool-timeout settings that suit a Neon connection. None of the three steps in
+# the loop are seeders, so no FORCE_SEED guard is affected by it.
+Environment=NODE_ENV=production
+# --apply is the point: a dry run on a timer would report drift to a log nobody
+# reads and fix none of it. Every step is individually idempotent and the whole
+# loop converges to a no-op, so a run that finds nothing costs three API reads.
+ExecStart=/usr/bin/env pnpm crm:sync --apply
+# The loop makes one throttled Twenty call per changed record at 700ms apart. A
+# full first run over ~150 records is a couple of minutes; this is the ceiling
+# before a hang is treated as a hang.
+TimeoutStartSec=1800
+# Never leave the site half-reconciled because the CRM was briefly unreachable.
+Restart=on-failure
+RestartSec=5min

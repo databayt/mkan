@@ -1,0 +1,15 @@
+[Unit]
+Description=Reconcile the mkan CRM and mkan.sd every few hours
+
+[Timer]
+# Every 6 hours. The work being tracked is human-paced — an operator confirms a
+# price, marks a home LIVE, records that a host declined — so minutes of latency
+# buy nothing, and a tighter loop only adds writes against a rate-limited API.
+OnCalendar=*-*-* 00,06,12,18:00:00
+# This machine is not always on. Without this a missed slot is simply skipped and
+# the board can sit stale for a day.
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

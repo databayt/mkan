@@ -289,6 +289,52 @@ import ledger; `--apply` sets `isPublished:true` + `lastAvailabilityConfirmedAt`
 Listing (prod-guarded). Only imported + eligible listings flip — verified the gate blocks
 scrape-only homes and the per-city filter holds back other-city inventory.
 
+## Keeping the CRM and the site in step
+
+Everything above is a one-way push *into* Twenty. That left the board and the site
+free to drift: an operator confirming a price or marking a home REJECT was writing
+into a system mkan.sd never read, and a home that went live weeks ago still showed
+as `IMPORTED_BUSY` on the board. Three commands close the loop.
+
+```bash
+pnpm crm:sync                 # the whole loop, dry run
+pnpm crm:sync --apply         # backfill-facts → sync-down → sync-up
+```
+
+| Step | Direction | Owns |
+|---|---|---|
+| `crm:backfill-facts` | scrape → site | amenities, house rules, check-in/out, canonical locale |
+| `crm:sync-down` | **Twenty → site** | publish state, price, title/description, host contact |
+| `crm:sync-up` | site → Twenty | `mkanPublishState`, `photoCount`, `mkanListingUrl`, `publishedAt`, `mkanAmenities` |
+
+Order is deliberate: down before up, so a decision taken in the CRM this morning
+reaches the site before the site reports back what it is showing.
+
+**Field ownership is exclusive, and that is what makes the loop converge.** Amenities
+travel *up* only — they are a derivation from the scrape through `amenity-map.ts`, and
+the CRM's `mkanAmenities` is a mirror of it. When sync-down also pushed them, backfill
+derived 11 from the scrape, sync-down overwrote with the CRM's older 10, and the next
+run started again — an endless write loop over the same rows. Anything an operator
+decides travels *down*; anything derived travels *up*. Running the loop twice in a row
+must report "nothing to do" on the second pass; if it does not, two steps are claiming
+the same field.
+
+A listing with `claimedAt` set belongs to its host. sync-down will still take it *off*
+the site when Airbnb delists it or the trust band says REJECT, because those are about
+whether it may be shown at all — but it will not touch the host's title, price or
+description, and it counts what it declined to do.
+
+**On a schedule** (only on the machine hosting Twenty — the REST API is bound to
+localhost there):
+
+```bash
+bash scripts/crm/units/install.sh            # systemd user timer, every 6h
+bash scripts/crm/units/install.sh --status
+```
+
+A fresh **scrape** is deliberately not in the loop: it needs a logged-in browser over
+CDP, and it is the one step that invents records rather than reconciling them.
+
 ## Still to add
 
 - The `Note` / `Task` (Activity) custom fields — `channel`, `host`, `home` (§2.6). Small;
