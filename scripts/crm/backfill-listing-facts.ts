@@ -240,8 +240,18 @@ async function main() {
   }
   if (updates.length > 10) console.log(`     … ${updates.length - 10} more`);
 
-  if (!updates.length) { console.log('\nNothing to do.\n'); process.exit(0); }
-  if (!APPLY) { console.log('\nDRY RUN — re-run with --apply.\n'); process.exit(0); }
+  // The locale pass runs on every path — it needs no scrape capture, so
+  // "nothing to re-derive" is not a reason to skip it.
+  if (!updates.length) {
+    console.log('\nNothing to re-derive.\n');
+    await backfillLocales();
+    process.exit(0);
+  }
+  if (!APPLY) {
+    console.log('\nDRY RUN — re-run with --apply.\n');
+    await backfillLocales();
+    process.exit(0);
+  }
 
   let written = 0;
   for (const u of updates) {
@@ -250,7 +260,34 @@ async function main() {
   }
 
   console.log(`\n✅ ${written} listings updated · ${amenitiesBefore} → ${amenitiesAfter} amenity values\n`);
+  await backfillLocales();
   process.exit(0);
+}
+
+/**
+ * `canonicalLocale` for every listing, not just the scraped ones.
+ *
+ * Everything else here needs a matching capture in the scrape. This does not:
+ * the column records which language the stored title is written in, so it is
+ * derivable from the row alone. Scoping it to `source = 'AIRBNB'` left the
+ * three real owners' 23 Arabic-titled homes permanently NULL for no reason
+ * other than which script had happened to claim the field.
+ */
+async function backfillLocales(): Promise<void> {
+  const all = await prisma.listing.findMany({
+    select: { id: true, title: true, description: true, canonicalLocale: true },
+  });
+  const wrong = all
+    .map((l) => ({ id: l.id, want: detectScript(l.title ?? l.description), has: l.canonicalLocale }))
+    .filter((l) => l.want !== l.has);
+
+  if (!wrong.length) { console.log('   canonicalLocale: all listings already correct\n'); return; }
+  console.log(`   canonicalLocale: ${wrong.length} listing(s) to set`);
+  if (!APPLY) { console.log('   (dry run)\n'); return; }
+  for (const l of wrong) {
+    await prisma.listing.update({ where: { id: l.id }, data: { canonicalLocale: l.want } });
+  }
+  console.log(`   ✅ canonicalLocale set on ${wrong.length} listing(s)\n`);
 }
 
 main().catch((e) => {

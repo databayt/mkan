@@ -258,7 +258,14 @@ async function main(): Promise<void> {
   const ledger: Ledger = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : { hosts: {}, homes: {} };
 
   if (!APPLY) {
-    let simNum = 1000;
+    // Mint from the highest number already handed out, the same way the apply
+    // path does below. Starting at a flat 1000 made the preview show a *new*
+    // host being given an address an existing host already holds — the exact
+    // collision an operator reads this output to rule out.
+    const taken = Object.values(ledger.hosts)
+      .map((a) => parseInt(a.mkanUsername ?? '', 10))
+      .filter((n) => Number.isFinite(n) && n >= 1000);
+    let simNum = Math.max(999, ...taken) + 1;
     for (const [hid, homes] of byHost) {
       const existing = ledger.hosts[hid];
       const email = existing?.mkanAccountEmail ?? `${String(simNum).padStart(4, '0')}@mkan.org`;

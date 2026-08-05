@@ -24,8 +24,8 @@
  * still apply, because both are statements about whether the home may be shown
  * at all rather than about its content:
  *
- *   stillListed = false   the home is gone from Airbnb
- *   trustBand   = REJECT  it failed the trust gate (hotel, agency, duplicate)
+ *   stillListed = false          the home is gone from Airbnb
+ *   trustBandOverride = REJECT   an operator took it down by hand
  *
  * Everything else is skipped and counted, so the run reports exactly what it
  * declined to do. This is the same "fill empty, never replace populated" rule
@@ -67,8 +67,21 @@ interface CrmHost {
   contactVerifiedByHuman: boolean | null;
 }
 
-/** The band an operator's override wins over the scored one. */
-const effectiveBand = (h: CrmHome): string | null => h.trustBandOverride ?? h.trustBand;
+/**
+ * Only an operator's explicit override takes a listing down — never the scored
+ * band.
+ *
+ * `trustBand` is computed by `score-trust.ts` from the scrape, so it is a
+ * derivation, and derivations do not travel down (same rule as amenities). It
+ * also files two unrelated findings under REJECT: an actual hotel or shared
+ * bed, and a plain apartment whose host holds more than 15 listings. Reading it
+ * as a publish decision unpublished 41 homes the operator had deliberately put
+ * live minutes earlier, and would have done it again after every re-publish.
+ *
+ * `trustBandOverride` is the field a human sets by hand. That one is a decision,
+ * and it is honoured.
+ */
+const overriddenReject = (h: CrmHome): boolean => h.trustBandOverride === 'REJECT';
 
 async function main(): Promise<void> {
   console.log(`\n⬇️  Twenty → mkan.sd  (${APPLY ? 'APPLY' : 'dry run'})\n`);
@@ -125,10 +138,10 @@ async function main(): Promise<void> {
 
     // ── Signals that apply even to a claimed listing ──────────────────────
     const delisted = home.stillListed === false;
-    const rejected = effectiveBand(home) === 'REJECT';
+    const rejected = overriddenReject(home);
     if ((delisted || rejected) && listing.isPublished) {
       set('isPublished', false);
-      fields[fields.length - 1] = `isPublished=false (${delisted ? 'delisted on Airbnb' : 'trust REJECT'})`;
+      fields[fields.length - 1] = `isPublished=false (${delisted ? 'delisted on Airbnb' : 'operator set trustBandOverride=REJECT'})`;
     }
 
     if (listing.claimedAt) {
