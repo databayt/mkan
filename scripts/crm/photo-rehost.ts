@@ -15,7 +15,18 @@
  *   npx tsx scripts/crm/photo-rehost.ts --fx-rate=160 --apply         # re-host + convert
  *   npx tsx scripts/crm/photo-rehost.ts --fx-rate=160 --apply --limit=1
  *
- * Flags: --in=<scored> --out=<enriched> --fx-rate=<SAR→SDG> --limit=<N> --apply
+ * Flags: --in=<scored> --out=<enriched> --merge=<previous enriched>
+ *        --fx-rate=<SAR→SDG> --limit=<N> --apply
+ *
+ * ── `--merge` ──────────────────────────────────────────────────────────────
+ *
+ * The scored file is regenerated from scratch whenever the scrape is re-scored,
+ * and it carries no `photosRehosted` flag — so without this, a re-run would
+ * re-download and re-upload every photo of every home that was already done,
+ * for no change in the result. `--merge` reads a previous enriched file and
+ * carries its photo results forward, leaving only genuinely new homes to
+ * upload. The FX conversion still runs for anything missing a SDG price, so a
+ * fresh rate reaches the homes that need one.
  *
  * `--apply` uploads to S3 (needs AWS creds in .env — already live) and writes the
  * enriched file. FX rate is required to convert (never hardcoded); it's stamped
@@ -24,7 +35,7 @@
 import { config } from 'dotenv';
 config({ override: true });
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const APPLY = process.argv.includes('--apply');
@@ -34,6 +45,7 @@ const argv = (n: string, d = ''): string => {
 };
 const IN = argv('in', 'scripts/crm/.data/airbnb-scored.json');
 const OUT = argv('out', 'scripts/crm/.data/airbnb-rehosted.json');
+const MERGE = argv('merge', '');
 const FX = parseFloat(argv('fx-rate', process.env.MKAN_SAR_SDG ?? '0')) || 0;
 const LIMIT = parseInt(argv('limit', '0'), 10) || 0;
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -57,6 +69,28 @@ interface Home {
 async function main(): Promise<void> {
   const payload = JSON.parse(readFileSync(IN, 'utf8')) as { homes: Home[]; hosts: unknown[] };
   let homes = payload.homes ?? [];
+
+  // Carry forward photos already on the CDN, so a re-scored file does not mean
+  // re-uploading everything. Only the photo result is merged: the price is left
+  // to the conversion below, so a fresh --fx-rate still reaches every home that
+  // has no SDG price yet.
+  if (MERGE) {
+    if (!existsSync(MERGE)) throw new Error(`--merge file not found: ${MERGE}`);
+    const prev = (JSON.parse(readFileSync(MERGE, 'utf8')) as { homes: Home[] }).homes ?? [];
+    const done = new Map(prev.filter((h) => h.photosRehosted).map((h) => [h.airbnbListingId, h]));
+    let carried = 0;
+    for (const h of homes) {
+      const was = done.get(h.airbnbListingId);
+      if (!was || h.photosRehosted) continue;
+      h.photoUrls = was.photoUrls;
+      h.coverPhotoUrl = was.coverPhotoUrl;
+      h.photoCount = was.photoCount;
+      h.photosRehosted = true;
+      carried++;
+    }
+    console.log(`\n♻️  merged ${carried} already re-hosted homes from ${MERGE}`);
+  }
+
   if (LIMIT) homes = homes.slice(0, LIMIT);
 
   const s3 = APPLY ? await import('@/lib/s3') : null;
