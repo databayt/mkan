@@ -3,7 +3,7 @@
 // Client content for checkout (mirror pattern) — the booking arrives from the
 // server page; this file owns the payment-method interaction only.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,6 +56,18 @@ function CheckoutInner({
   const c = t?.checkout;
   const pm = t?.paymentMethods;
 
+  // Per-operator payment instructions live on the office row — empty
+  // strings mean the operator hasn't published details yet.
+  //
+  // These must be declared BEFORE paymentMethods: the .filter() below runs
+  // during render, so reading them from further down the component body threw
+  // a temporal-dead-zone ReferenceError and took the whole checkout with it.
+  // tsc does not catch this — the reference sits inside a callback, which it
+  // treats as deferred even though .filter() invokes it synchronously.
+  const office = booking?.trip.route.office;
+  const hasBankDetails = Boolean(office?.bankName && office?.bankAccount);
+  const hasMomoDetails = Boolean(office?.momoNumber);
+
   // Build payment methods with translated content
   const paymentMethods = [
     { id: 'MobileMoney' as PaymentMethod, name: pm?.mobileMoney?.name ?? "Mobile Money", description: pm?.mobileMoney?.description ?? "Pay with MTN or Bankak", icon: Smartphone },
@@ -70,9 +82,30 @@ function CheckoutInner({
   });
 
   const [processing, setProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('MobileMoney');
+  // Start on a method the operator actually accepts. Hardcoding 'MobileMoney'
+  // meant that for any office without a wallet configured the radio list showed
+  // nothing selected, the Mobile Money panel rendered for an option that wasn't
+  // on offer, and the Pay button sat permanently disabled waiting for a number
+  // the rider had no reason to type — checkout was a dead end even though Cash
+  // on Arrival was right there.
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
+    () => paymentMethods[0]?.id ?? 'CashOnArrival',
+  );
   const [mobileNumber, setMobileNumber] = useState('');
   const [bankReference, setBankReference] = useState('');
+
+  // showCard is resolved asynchronously (geo-gated Stripe availability), so the
+  // offered set can change after mount. If the current pick drops out of it,
+  // fall back to the first one that remains rather than leaving the form
+  // pointing at a method that is no longer on the page.
+  const offeredIds = paymentMethods.map((m) => m.id).join(',');
+  useEffect(() => {
+    const ids = offeredIds ? (offeredIds.split(',') as PaymentMethod[]) : [];
+    const first = ids[0];
+    if (first && !ids.includes(paymentMethod)) {
+      setPaymentMethod(first);
+    }
+  }, [offeredIds, paymentMethod]);
 
   const handlePayment = async () => {
     if (!booking) return;
@@ -103,12 +136,6 @@ function CheckoutInner({
       setProcessing(false);
     }
   };
-
-  // Per-operator payment instructions live on the office row — empty
-  // strings mean the operator hasn't published details yet.
-  const office = booking?.trip.route.office;
-  const hasBankDetails = Boolean(office?.bankName && office?.bankAccount);
-  const hasMomoDetails = Boolean(office?.momoNumber);
 
   if (!booking) {
     return (
