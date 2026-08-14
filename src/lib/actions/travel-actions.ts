@@ -2405,7 +2405,27 @@ export async function processPayment(bookingId: number, data: PaymentFormData) {
     throw new Error('Unauthorized');
   }
 
-  await assertRateLimit('payment', `travel-pay:${session.user.id}`);
+  // The `payment` tier is 3/hour — right for a card gateway, wrong here. This
+  // is the manual-payment path (Bankak / mobile money / cash), which is every
+  // sale while Stripe keys are not live. A rider who mistypes a transfer
+  // reference twice and hits one network flake would be locked out of paying
+  // for an hour. The generous mutation tier still stops a scripted loop.
+  //
+  // Reported, not thrown, for the same reason createBooking reports
+  // SEATS_UNAVAILABLE: Next redacts Server Action error messages in production,
+  // so a throw reaches the rider as an untranslatable "an error occurred".
+  try {
+    await assertRateLimit('mutation', `travel-pay:${session.user.id}`);
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return {
+        success: false as const,
+        error: 'RATE_LIMITED' as const,
+        retryAfter: error.retryAfter,
+      };
+    }
+    throw error;
+  }
 
   const booking = await db.transportBooking.findUnique({
     where: { id: bookingId },

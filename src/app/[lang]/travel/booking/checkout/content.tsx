@@ -126,6 +126,15 @@ function CheckoutInner({
             : (t?.bookingPage?.paymentSuccess ?? "Payment successful")
         );
         router.push(`/${locale}/travel/booking/${booking.id}`);
+      } else if (result.error === 'RATE_LIMITED') {
+        // Throttled, not declined — nothing was charged and the booking still
+        // holds its seats. Say so with the wait, instead of the generic
+        // "Payment failed" that would send a rider off to re-book.
+        toast.error(
+          (t?.booking?.rateLimited ??
+            'Too many attempts. Try again in {seconds} seconds.')
+            .replace('{seconds}', String(result.retryAfter)),
+        );
       } else {
         toast.error(t?.bookingPage?.paymentFailed ?? "Payment failed. Please try again.");
       }
