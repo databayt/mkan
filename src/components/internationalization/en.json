@@ -198,6 +198,8 @@
     "browseRentals": "Browse Rentals",
     "becomeHost": "Become a host",
     "help": "Help",
+    "travel": "Travel",
+    "travelDesc": "Book intercity bus tickets",
     "hostYourSpace": "Host your space",
     "listProperty": "List a property for rent",
     "hostTransportation": "Host transportation",

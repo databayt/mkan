@@ -20,6 +20,7 @@ import {
   CoHostGlyph,
   GiftCardGlyph,
   HelpGlyph,
+  BusGlyph,
 } from "./menu-glyphs";
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -52,6 +53,8 @@ const translations = {
     profile: "Profile",
     account: "Account",
     language: "Language",
+    travel: "Travel",
+    travelDesc: "Book intercity bus tickets",
   },
   ar: {
     menu: "القائمة",
@@ -70,6 +73,8 @@ const translations = {
     profile: "الملف الشخصي",
     account: "الحساب",
     language: "اللغة",
+    travel: "السفر",
+    travelDesc: "احجز تذاكر الباص بين المدن",
   },
 } as const;
 
@@ -184,6 +189,11 @@ const MobileNav = ({ isLandingPage = false }: MobileNavProps) => {
               ) : (
                 row("/help", <HelpGlyph size={22} />, t.helpCenter)
               )}
+
+              {/* Travel — the intercity bus vertical. It's a peer product to
+                  homes, not a discovery link, so it rides high in the sheet
+                  rather than down with refer / co-host / gift cards. */}
+              {row("/travel", <BusGlyph size={24} />, t.travel)}
 
               <Divider />
 

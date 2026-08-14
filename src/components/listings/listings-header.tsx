@@ -41,6 +41,7 @@ const dropdownTranslations = {
     profile: "Profile",
     manageListings: "Manage listings",
     account: "Account",
+    travel: "Travel",
   },
   ar: {
     becomeHost: "كن مضيفاً",
@@ -59,6 +60,7 @@ const dropdownTranslations = {
     profile: "الملف الشخصي",
     manageListings: "إدارة العقارات",
     account: "الحساب",
+    travel: "السفر",
   }
 } as const;
 
@@ -112,6 +114,7 @@ import {
   AccountGlyph,
   LogoutGlyph,
   HelpGlyph,
+  BusGlyph,
 } from "@/components/template/header/menu-glyphs";
 
 interface ListingsHeaderProps {
@@ -476,6 +479,17 @@ const ListingsHeader = ({ disableScrollExpand = false }: ListingsHeaderProps) =>
                       </Link>
                     </DropdownMenuItem>
                   )}
+
+                  {/* Travel — the intercity bus vertical. A peer product to
+                      homes rather than a discovery link, so it sits in the top
+                      block instead of down with refer / co-host / gift cards.
+                      Mirrors the row in the mobile menu sheet. */}
+                  <DropdownMenuItem asChild>
+                    <Link href={`/${locale}/travel`} className={MENU_ROW}>
+                      <BusGlyph />
+                      <span>{labels.travel}</span>
+                    </Link>
+                  </DropdownMenuItem>
 
                   <DropdownMenuSeparator className="h-px" style={MENU_SEP_STYLE} />
 

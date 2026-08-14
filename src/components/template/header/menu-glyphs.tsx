@@ -132,3 +132,19 @@ export const HelpGlyph = ({ size = 18 }: { size?: number }) => (
     <path d="m8 0c4.4183 0 8 3.58172 8 8 0 4.4183-3.5817 8-8 8-4.41828 0-8-3.5817-8-8 0-4.41828 3.58172-8 8-8zm0 1.5c-3.58985 0-6.5 2.91015-6.5 6.5 0 3.5899 2.91015 6.5 6.5 6.5 3.5899 0 6.5-2.9101 6.5-6.5 0-3.58985-2.9101-6.5-6.5-6.5zm0 9.25c.55229 0 1 .4477 1 1s-.44771 1-1 1c-.55228 0-1-.4477-1-1s.44772-1 1-1zm.06473-7.58398c1.52426 0 2.97397 1.05548 2.97397 2.83411 0 1.65987-1.22457 2.54665-2.28686 2.96686l-.00274 1.03511-1.49999-.00395.00567-2.14403.55088-.15046c.98777-.26979 1.73306-.83193 1.73306-1.70353 0-.78691-.60484-1.33411-1.47399-1.33411-.71208 0-1.32461.47156-1.52734 1.17921l-1.44199-.41312c.37855-1.32132 1.55747-2.26609 2.96933-2.26609z" />
   </svg>
 );
+
+// Bus — the Travel vertical's row in both menus. Redrawn on the same 32-grid
+// as the stroke glyphs above (Airbnb has no transport equivalent to lift), so
+// its optical weight matches Wishlists/Trips/Gift cards sitting beside it:
+// a windscreen-split body, two wheels, and the destination board.
+export const BusGlyph = ({ size = 20 }: { size?: number }) => (
+  <StrokeGlyph size={size}>
+    <path d="M6 6h20a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" />
+    <path d="M4 13h24" />
+    <path d="M16 6v7" />
+    <path d="M9 24v2.5" />
+    <path d="M23 24v2.5" />
+    <path d="M8.5 19h1" />
+    <path d="M22.5 19h1" />
+  </StrokeGlyph>
+);

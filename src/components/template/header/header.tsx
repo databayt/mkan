@@ -131,7 +131,13 @@ const SiteHeader = () => {
           {filteredNavItems.map((item, index) => {
             const commonClasses = `text-sm font-light ${isLandingPage ? "text-white" : "text-gray-700"} hover:opacity-80`;
             const currentLocale = pathname?.startsWith("/ar") ? "ar" : "en";
-            const label = currentLocale === "ar" ? (item.labelAr || item.label) : item.label;
+            // Dictionary first, constant pair as the fallback — so a nav label
+            // is translated the same way every other string on the page is.
+            const label =
+              (item.dictKey
+                ? (dict.navigation as Record<string, string> | undefined)?.[item.dictKey]
+                : undefined) ??
+              (currentLocale === "ar" ? item.labelAr || item.label : item.label);
 
             // If item has href, render as Link
             if (item.href) {
