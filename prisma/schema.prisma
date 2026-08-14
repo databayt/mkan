@@ -311,6 +311,8 @@ model Listing {
   blockedDates    BlockedDate[]
   seasonalPricing SeasonalPricing[]
   conversations   Conversation[]
+  events          ListingEvent[]
+  visits          ListingVisit[]
 
   @@index([hostId])
   @@index([hostId, isPublished])
@@ -730,6 +732,9 @@ model User {
   conversationsAsHost   Conversation[]         @relation("ConversationHost")
   conversationsAsGuest  Conversation[]         @relation("ConversationGuest")
   messagesSent          Message[]              @relation("MessageSender")
+  // Analytics
+  listingEvents         ListingEvent[]         @relation("ListingEventUser")
+  listingVisits         ListingVisit[]         @relation("ListingVisitGuest")
 }
 
 // Host/guest "About" profile (clone of airbnb.com/users/profile/about). 1:1 with
@@ -1033,4 +1038,105 @@ model Translation {
   @@index([sourceLanguage, targetLanguage])
   @@index([lastAccessedAt])
   @@map("translation_cache")
+}
+
+// ─── Marketplace analytics ──────────────────────────────────────────────────
+
+/// One row per (listing, event type, visitor, day) — a raw event table and a
+/// daily rollup at the same time.
+///
+/// Why not one row per event: the funnel needs "how many people looked at this
+/// home", not "how many times a tab was refreshed". Collapsing on the day means
+/// a refresh bumps `hits` instead of inventing a second visitor, unique-visitor
+/// counts fall out of a plain COUNT, and storage is bounded by
+/// (listings × visitors × days) rather than by raw traffic. Weekly/monthly
+/// aggregation is a `date_trunc` over `day` with no fan-out.
+///
+/// `visitorHash` is sha256(dailySalt ‖ ip ‖ user-agent) where the salt is
+/// DERIVED (HMAC of a server secret and the date), never random and never
+/// stored — see src/lib/analytics/visitor.ts for why a random salt breaks on
+/// serverless. It carries no cookie, so it needs no consent gate; it is still
+/// pseudonymous personal data and rows are pruned after 90 days.
+///
+/// `cityKey`/`zoneKey` are denormalised from the listing's Location at write
+/// time so zone rollups never have to join through Listing → Location.
+model ListingEvent {
+  id          Int              @id @default(autoincrement())
+  listingId   Int
+  type        ListingEventType
+  /// Date-only bucket (UTC). The unit of deduplication.
+  day         DateTime         @db.Date
+  visitorHash String
+  /// Set when the visitor was signed in. Null for anonymous traffic, which is
+  /// most of it — anonymous visitors still count, they just can't be attributed.
+  userId      String?
+  /// Raw occurrences within the day. `hits` is depth; the row itself is reach.
+  hits        Int              @default(1)
+  firstAt     DateTime         @default(now())
+  lastAt      DateTime         @default(now())
+  cityKey     String?
+  zoneKey     String?
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user    User?   @relation("ListingEventUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([listingId, type, day, visitorHash])
+  @@index([type, day])
+  @@index([listingId, type, day])
+  @@index([cityKey, type, day])
+  @@index([zoneKey, type, day])
+  @@index([day])
+}
+
+/// A physical property viewing, recorded by the host or an admin after it is
+/// arranged — mkan is contact-only this phase, so visits are agreed over the
+/// phone and logged afterwards rather than self-served by the guest. Unlike
+/// ListingEvent this is stateful (it has an outcome), so it gets its own model.
+model ListingVisit {
+  id           Int          @id @default(autoincrement())
+  listingId    Int
+  /// Set when the visitor has an account; most phase-1 visits will be a name
+  /// and a phone number taken over a call.
+  guestUserId  String?
+  contactName  String?
+  contactPhone String?
+  scheduledFor DateTime
+  occurredAt   DateTime?
+  outcome      VisitOutcome @default(Scheduled)
+  notes        String?
+  /// Host or admin who logged it. Loose ref, no FK — mirrors
+  /// BookingPayment.verifiedBy.
+  recordedById String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  guestUser User?   @relation("ListingVisitGuest", fields: [guestUserId], references: [id], onDelete: SetNull)
+
+  @@index([listingId])
+  @@index([listingId, outcome])
+  @@index([outcome, scheduledFor])
+  @@index([scheduledFor])
+}
+
+/// Funnel event types. APPEND-ONLY, like every other enum here — Postgres
+/// stores the label on the row, so reordering rewrites history.
+///
+/// The CONTACT_* values are all "inquiry" for funnel purposes but are kept
+/// distinct so the dashboard can show which channel actually works. Today only
+/// CONTACT_PHONE_CLICK fires in volume (the product is contact-only); the
+/// others exist so the series is continuous when those paths open up.
+enum ListingEventType {
+  VIEW
+  CONTACT_PHONE_REVEAL
+  CONTACT_PHONE_CLICK
+  CONTACT_MESSAGE
+  CONTACT_APPLICATION
+}
+
+enum VisitOutcome {
+  Scheduled
+  Completed
+  NoShow
+  Cancelled
 }

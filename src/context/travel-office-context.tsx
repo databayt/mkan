@@ -31,6 +31,58 @@ export interface TransportOfficeData {
   updatedAt?: Date;
 }
 
+/**
+ * Prisma office row → the context's office shape.
+ *
+ * Both loadOffice and updateOfficeData used to spell this mapping out by hand,
+ * and both forgot the five payment columns. That omission silently wiped an
+ * operator's bank and mobile-money details: the office-info form resets itself
+ * from this object whenever it changes, so a save wrote the values, the rebuilt
+ * object dropped them, the form blanked, and the next debounced write pushed
+ * the blanks back to the database. Every seeded office ended up with empty
+ * payment details — and an office with no payment details offers travellers
+ * nothing but cash on arrival. One mapper, so the two paths cannot drift again.
+ */
+function toOfficeData(row: {
+  id: number;
+  name: string;
+  nameAr: string | null;
+  description: string | null;
+  descriptionAr: string | null;
+  logoUrl: string | null;
+  phone: string;
+  email: string;
+  licenseNumber: string | null;
+  assemblyPointId: number | null;
+  bankName?: string;
+  bankAccount?: string;
+  bankHolder?: string;
+  momoNumber?: string;
+  momoProvider?: string;
+  isVerified: boolean;
+  isActive: boolean;
+}): TransportOfficeData {
+  return {
+    id: row.id,
+    name: row.name,
+    nameAr: row.nameAr,
+    description: row.description,
+    descriptionAr: row.descriptionAr,
+    logoUrl: row.logoUrl,
+    phone: row.phone,
+    email: row.email,
+    licenseNumber: row.licenseNumber,
+    assemblyPointId: row.assemblyPointId,
+    bankName: row.bankName ?? '',
+    bankAccount: row.bankAccount ?? '',
+    bankHolder: row.bankHolder ?? '',
+    momoNumber: row.momoNumber ?? '',
+    momoProvider: row.momoProvider ?? '',
+    isVerified: row.isVerified,
+    isActive: row.isActive,
+  };
+}
+
 interface TransportOfficeContextType {
   office: TransportOfficeData | null;
   isLoading: boolean;
@@ -117,22 +169,7 @@ export function TransportOfficeProvider({ children, initialOffice = null }: Tran
       const result = await getTransportOffice(id);
 
       if (result) {
-        const loadedOffice: TransportOfficeData = {
-          id: result.id,
-          name: result.name,
-          nameAr: result.nameAr,
-          description: result.description,
-          descriptionAr: result.descriptionAr,
-          logoUrl: result.logoUrl,
-          phone: result.phone,
-          email: result.email,
-          licenseNumber: result.licenseNumber,
-          assemblyPointId: result.assemblyPointId,
-          isVerified: result.isVerified,
-          isActive: result.isActive,
-        };
-
-        setOffice(loadedOffice);
+        setOffice(toOfficeData(result));
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load office';
@@ -158,22 +195,7 @@ export function TransportOfficeProvider({ children, initialOffice = null }: Tran
       const result = await updateTransportOffice(office.id, sanitizedData);
 
       if (result?.success && result.office) {
-        const updatedOffice: TransportOfficeData = {
-          id: result.office.id,
-          name: result.office.name,
-          nameAr: result.office.nameAr,
-          description: result.office.description,
-          descriptionAr: result.office.descriptionAr,
-          logoUrl: result.office.logoUrl,
-          phone: result.office.phone,
-          email: result.office.email,
-          licenseNumber: result.office.licenseNumber,
-          assemblyPointId: result.office.assemblyPointId,
-          isVerified: result.office.isVerified,
-          isActive: result.office.isActive,
-        };
-
-        setOffice(updatedOffice);
+        setOffice(toOfficeData(result.office));
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update office';
