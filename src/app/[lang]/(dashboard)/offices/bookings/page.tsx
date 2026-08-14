@@ -274,7 +274,9 @@ const BookingsPage = () => {
                   </TableCell>
                   <TableCell>
                     <Badge className={statusColors[booking.status]}>
-                      {booking.status}
+                      {(dict.travel?.status as Record<string, string> | undefined)?.[
+                        booking.status
+                      ] ?? booking.status}
                     </Badge>
                   </TableCell>
                 </TableRow>

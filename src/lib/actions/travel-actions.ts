@@ -2482,16 +2482,38 @@ export async function processPayment(bookingId: number, data: PaymentFormData) {
   });
 
   // A submitted payment claim earns a longer seat hold than the 30-minute
-  // checkout TTL, so the sweeper doesn't release seats the passenger
-  // already paid for while the operator verifies the reference. Cash
-  // bookings keep the short hold — the copy tells passengers to arrive
-  // early and pay at the office.
-  if (data.method !== 'CashOnArrival') {
-    await db.seat.updateMany({
-      where: { bookingId, status: 'Reserved' },
-      data: { reservedUntil: new Date(Date.now() + 24 * 60 * 60 * 1000) },
-    });
+  // checkout TTL, so the sweeper doesn't release seats out from under a
+  // passenger who has already committed.
+  //
+  // Cash on arrival needs this MORE than the others, not less. It used to keep
+  // the short hold — so a rider who booked a bus leaving next Saturday had
+  // their seats released and the booking auto-cancelled thirty minutes later,
+  // while the confirmation page showed them a reference, a ticket link, and a
+  // place in "Upcoming trips". Nobody reaches the office in half an hour; the
+  // 30-minute TTL is for ABANDONED checkouts, and this checkout completed.
+  // Cash is a primary rail in this market, not a leftover.
+  //
+  // So: hold a cash seat until six hours before departure — the same cutoff
+  // the refund policy treats as the point of no return — which leaves the
+  // operator time to resell a seat nobody turned up to pay for. Floored at the
+  // normal checkout window so a genuinely last-minute booking still gets one.
+  let reservedUntil: Date;
+  if (data.method === 'CashOnArrival') {
+    const departureZoned = toZonedTime(new Date(booking.trip.departureDate), MARKET_TZ);
+    const [h, m] = (booking.trip.departureTime ?? '00:00').split(':').map(Number);
+    departureZoned.setHours(h || 0, m || 0, 0, 0);
+    const departure = fromZonedTime(departureZoned, MARKET_TZ);
+    const cutoff = new Date(departure.getTime() - 6 * 60 * 60 * 1000);
+    const floor = new Date(Date.now() + 30 * 60 * 1000);
+    reservedUntil = cutoff > floor ? cutoff : floor;
+  } else {
+    reservedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
   }
+
+  await db.seat.updateMany({
+    where: { bookingId, status: 'Reserved' },
+    data: { reservedUntil },
+  });
 
   revalidatePath('/[lang]/travel');
   return { success: true, payment, pendingVerification: data.method !== 'CashOnArrival' };

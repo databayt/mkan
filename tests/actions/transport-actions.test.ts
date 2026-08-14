@@ -1162,6 +1162,7 @@ describe("processPayment", () => {
     } as never);
     const payment = { id: 1, status: "Pending" };
     mockDb.transportPayment.create.mockResolvedValue(payment as never);
+    mockDb.seat.updateMany.mockResolvedValue({ count: 1 } as never);
 
     const result = await processPayment(1, {
       method: "CashOnArrival",
@@ -1169,6 +1170,65 @@ describe("processPayment", () => {
     expect(result).toEqual({ success: true, payment, pendingVerification: false });
     // Should NOT call confirmBooking flow
     expect(mockDb.transportBooking.update).not.toHaveBeenCalled();
+  });
+
+  it("holds a cash seat until 6h before departure, not the 30-minute checkout TTL", async () => {
+    // A cash booking used to keep the abandoned-checkout hold, so a rider who
+    // booked a bus leaving days later had their seats swept and the booking
+    // auto-cancelled half an hour after checkout — while the confirmation page
+    // showed them a reference and a ticket link.
+    mockAuth.mockResolvedValue(session as never);
+    const departureDate = new Date("2026-12-20T00:00:00.000Z");
+    mockDb.transportBooking.findUnique.mockResolvedValue({
+      id: 1,
+      userId: "user-1",
+      totalAmount: 200,
+      trip: {
+        departureDate,
+        departureTime: "06:00",
+        route: { office: { ownerId: "user-1" } },
+      },
+    } as never);
+    mockDb.transportPayment.create.mockResolvedValue({ id: 9, status: "Pending" } as never);
+    mockDb.seat.updateMany.mockResolvedValue({ count: 1 } as never);
+
+    await processPayment(1, { method: "CashOnArrival" } as never);
+
+    expect(mockDb.seat.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { bookingId: 1, status: "Reserved" } }),
+    );
+    const call = mockDb.seat.updateMany.mock.calls.at(-1)?.[0] as {
+      data: { reservedUntil: Date };
+    };
+    const held = call.data.reservedUntil;
+    // Months away, so far beyond any checkout window — and short of departure.
+    expect(held.getTime()).toBeGreaterThan(Date.now() + 24 * 60 * 60 * 1000);
+    expect(held.getTime()).toBeLessThan(departureDate.getTime() + 24 * 60 * 60 * 1000);
+  });
+
+  it("floors the cash hold at the checkout window for a last-minute booking", async () => {
+    // Departure already inside the 6h cutoff — the rider still gets a normal
+    // checkout window rather than a hold that expired before it was set.
+    mockAuth.mockResolvedValue(session as never);
+    mockDb.transportBooking.findUnique.mockResolvedValue({
+      id: 1,
+      userId: "user-1",
+      totalAmount: 200,
+      trip: {
+        departureDate: new Date(Date.now() + 60 * 60 * 1000),
+        departureTime: "06:00",
+        route: { office: { ownerId: "user-1" } },
+      },
+    } as never);
+    mockDb.transportPayment.create.mockResolvedValue({ id: 10, status: "Pending" } as never);
+    mockDb.seat.updateMany.mockResolvedValue({ count: 1 } as never);
+
+    await processPayment(1, { method: "CashOnArrival" } as never);
+
+    const call = mockDb.seat.updateMany.mock.calls.at(-1)?.[0] as {
+      data: { reservedUntil: Date };
+    };
+    expect(call.data.reservedUntil.getTime()).toBeGreaterThan(Date.now());
   });
 
   it("rejects card methods — those must use the Stripe intent flow", async () => {

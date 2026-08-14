@@ -247,7 +247,7 @@ const TripsPage = () => {
                   <Bus className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>{dict.dashboard?.tenantTrips?.noUpcomingTrips ?? "No upcoming trips"}</p>
                   <Button asChild className="mt-4">
-                    <Link href="/travel">{dict.dashboard?.tenantTrips?.bookATrip ?? "Book a Trip"}</Link>
+                    <Link href={`/${lang}/travel`}>{dict.dashboard?.tenantTrips?.bookATrip ?? "Book a Trip"}</Link>
                   </Button>
                 </div>
               ) : (
@@ -367,7 +367,13 @@ const TransportBookingCard = ({ booking, getStatusColor, isPast }: TransportBook
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Badge className={getStatusColor(booking.status)}>{booking.status}</Badge>
+            <Badge className={getStatusColor(booking.status)}>
+              {/* The transport status enum is user-facing — render its
+                  dictionary label, not the raw Prisma value, or an Arabic
+                  reader sees "Cancelled" sitting in an RTL page. */}
+              {(dict.travel?.status as Record<string, string> | undefined)?.[booking.status]
+                ?? booking.status}
+            </Badge>
             <span className="text-sm text-gray-500">{dict.dashboard?.tenantTrips?.ref ?? "Ref"}: {booking.bookingReference}</span>
           </div>
 
@@ -401,14 +407,14 @@ const TransportBookingCard = ({ booking, getStatusColor, isPast }: TransportBook
           <div className="text-xl font-bold">{`${booking.totalAmount.toLocaleString()} ${dict.dashboard?.tenantTrips?.currencySDG ?? "SDG"}`}</div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/travel/booking/${booking.id}`}>
+              <Link href={`/${locale}/travel/booking/${booking.id}`}>
                 <Eye className="h-4 w-4 me-1" />
                 {dict.dashboard?.common?.view ?? "View"}
               </Link>
             </Button>
             {!isPast && booking.status === 'Confirmed' && (
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/travel/booking/${booking.id}/ticket`}>
+                <Link href={`/${locale}/travel/booking/${booking.id}/ticket`}>
                   <Download className="h-4 w-4 me-1" />
                   {dict.dashboard?.tenantTrips?.ticket ?? "Ticket"}
                 </Link>

@@ -295,7 +295,7 @@ function CheckoutInner({
               </CardHeader>
               <CardContent>
                 <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 rounded-lg">
-                  <p className="text-sm text-amber-800 dark:text-amber-200">{c?.cashWarning ?? "Your seats will be reserved for 30 minutes. Please arrive at the office early to complete payment and collect your tickets."}</p>
+                  <p className="text-sm text-amber-800 dark:text-amber-200">{c?.cashWarning ?? "Your seats are held until 6 hours before departure. Pay at the office before then to collect your tickets."}</p>
                 </div>
               </CardContent>
             </Card>

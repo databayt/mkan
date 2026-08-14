@@ -41,6 +41,10 @@ const ENUM_LABEL_MAPS: Array<{ enum: string; path: string }> = [
   { enum: "CheckInMethod", path: "rental.property.checkIn" },
   { enum: "BusAmenity", path: "travel.host.amenityLabels" },
   { enum: "SeatStatus", path: "travel.seat.status" },
+  // Rendered on the traveller's trips list and the operator's bookings table.
+  // Added after an Arabic page was caught printing a raw "Cancelled": a
+  // user-facing enum with no entry here is a leak nothing else catches.
+  { enum: "TransportBookingStatus", path: "travel.status" },
 ]
 
 /** Extract an enum's member names from schema.prisma (dependency-free). */

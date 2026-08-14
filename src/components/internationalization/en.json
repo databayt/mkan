@@ -2679,7 +2679,7 @@
       "includeReference": "Please include the booking reference in your transfer description. Your booking will be confirmed once payment is verified.",
       "cashTitle": "Cash on Arrival",
       "cashSubtitle": "Pay at the transport office",
-      "cashWarning": "Your seats will be reserved for 30 minutes. Please arrive at the office early to complete payment and collect your tickets.",
+      "cashWarning": "Your seats are held until 6 hours before departure. Pay at the office before then to collect your tickets.",
       "passenger": "Passenger",
       "seats": "Seats",
       "total": "Total",
