@@ -44,11 +44,12 @@ export async function recordListingEvent(args: RecordArgs): Promise<RecordResult
     // marketplace demand. This mirrors the PDP's own 404 condition.
     const listing = await db.listing.findFirst({
       where: { id: args.listingId, isPublished: true },
-      select: { id: true, location: { select: { city: true } } },
+      select: { id: true, location: { select: { city: true, zoneKey: true } } },
     });
     if (!listing) return { recorded: false, reason: "unknown-listing" };
 
     const cityKey = listing.location?.city?.trim() || null;
+    const zoneKey = listing.location?.zoneKey ?? null;
 
     await db.listingEvent.upsert({
       where: {
@@ -66,6 +67,7 @@ export async function recordListingEvent(args: RecordArgs): Promise<RecordResult
         visitorHash: args.visitorHash,
         userId: args.userId ?? null,
         cityKey,
+        zoneKey,
         firstAt: now,
         lastAt: now,
       },

@@ -342,6 +342,19 @@ model Location {
   postalCode String
   latitude   Float
   longitude  Float
+  /// Marketplace zone, derived from (latitude, longitude) by
+  /// `classifyPoint` in src/lib/geo/sudan-places.ts. A plain String rather
+  /// than an enum on purpose: the gazetteer gains places over time and an
+  /// enum would need a migration for each one (and enum values here are
+  /// append-only forever — see the Amenity comment).
+  ///
+  /// Denormalised because the classification is JS (the greater-Khartoum rule
+  /// interpolates the Nile meridian) and cannot run inside a GROUP BY.
+  ///
+  /// Worth knowing: `city` disagrees with this for 20% of live listings —
+  /// 16 rows filed as Khartoum are across the Blue Nile in Bahri and 10 are
+  /// in Omdurman. Zone reporting uses this column, not `city`.
+  zoneKey    String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   listings   Listing[]
@@ -349,6 +362,7 @@ model Location {
   @@index([city, state])
   @@index([country])
   @@index([latitude, longitude])
+  @@index([zoneKey])
 }
 
 model PasswordResetToken {

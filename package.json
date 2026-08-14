@@ -62,7 +62,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "analyze": "ANALYZE=true next build --webpack"
+    "analyze": "ANALYZE=true next build --webpack",
+    "backfill:zones": "tsx scripts/backfill-zone-keys.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",

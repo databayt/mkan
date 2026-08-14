@@ -21,6 +21,13 @@ import {
   diagnose,
 } from "@/lib/analytics/diagnose";
 import { PHASE1 } from "@/config/phase-flags";
+import {
+  type Quadrant,
+  type ZoneStats,
+  ZONE_THRESHOLDS,
+  acquisitionTargets,
+  classifyZones,
+} from "@/lib/analytics/zones";
 
 /**
  * Read side of the marketplace funnel.
@@ -106,6 +113,26 @@ export interface ListingPerformance {
   inquiries: number;
 }
 
+export interface ZoneRow_Public {
+  key: string;
+  listings: number;
+  views: number;
+  inquiries: number;
+  rentals: number;
+  viewsPerListing: number | null;
+  inquiriesPerListing: number | null;
+  viewToInquiry: number | null;
+  quadrant: Quadrant;
+  acquisitionScore: number;
+}
+
+export interface ZoneReport {
+  zones: ZoneRow_Public[];
+  targets: ZoneRow_Public[];
+  medianViewsPerListing: number | null;
+  thresholds: { healthySupply: number; highDemandVsMedian: number; minViewsToClassify: number };
+}
+
 export interface MarketplaceAnalytics {
   period: { from: string; to: string; days: number; clamped: boolean; rangeKey: RangeKey };
   epoch: string;
@@ -142,6 +169,7 @@ export interface MarketplaceAnalytics {
   topListings: ListingPerformance[];
   zeroInquiryListings: ListingPerformance[];
   diagnosis: Diagnosis;
+  zoneReport: ZoneReport;
 }
 
 // ── Aggregates ──────────────────────────────────────────────────────────────
@@ -278,6 +306,55 @@ function buildTrend(rows: DayRow[], p: Period): TrendPoint[] {
   return out;
 }
 
+interface ZoneRow {
+  zoneKey: string | null;
+  listings: bigint | number;
+  views: bigint | number;
+  inquiries: bigint | number;
+  rentals: bigint | number;
+}
+
+/**
+ * Per-zone supply and demand.
+ *
+ * Events are collapsed to per-listing totals in a subquery BEFORE the join, so
+ * joining them onto listings can't multiply the listing count — the classic
+ * fan-out bug where a home with 10 views would be counted as 10 homes.
+ * Transaction counts are epoch-clamped like everywhere else.
+ */
+async function zoneRows(p: Period): Promise<ZoneRow[]> {
+  const floor = p.from > ANALYTICS_EPOCH ? p.from : ANALYTICS_EPOCH;
+  return db.$queryRaw<ZoneRow[]>`
+    WITH ev AS (
+      SELECT
+        "listingId",
+        count(*) FILTER (WHERE type = 'VIEW')              AS views,
+        count(*) FILTER (WHERE type::text LIKE 'CONTACT%') AS inquiries
+      FROM "ListingEvent"
+      WHERE day >= ${p.from} AND day < ${p.to}
+      GROUP BY "listingId"
+    ),
+    rn AS (
+      SELECT b."listingId", count(*) AS rentals
+      FROM "Booking" b
+      WHERE b.status = 'Completed'
+        AND b."checkedOutAt" >= ${floor} AND b."checkedOutAt" < ${p.to}
+      GROUP BY b."listingId"
+    )
+    SELECT
+      l."zoneKey"                     AS "zoneKey",
+      count(li.id)                    AS listings,
+      coalesce(sum(ev.views), 0)      AS views,
+      coalesce(sum(ev.inquiries), 0)  AS inquiries,
+      coalesce(sum(rn.rentals), 0)    AS rentals
+    FROM "Listing" li
+    JOIN "Location" l   ON l.id = li."locationId"
+    LEFT JOIN ev ON ev."listingId" = li.id
+    LEFT JOIN rn ON rn."listingId" = li.id
+    WHERE li."isPublished" AND NOT li.draft
+    GROUP BY l."zoneKey"`;
+}
+
 // ── Entry point ─────────────────────────────────────────────────────────────
 
 export async function getMarketplaceAnalytics(input: {
@@ -309,6 +386,7 @@ export async function getMarketplaceAnalytics(input: {
     rentalsPerArea,
     series,
     rentals,
+    zones,
   ] = await Promise.all([
     db.listing.count({ where: livePredicate }),
     db.listing.count({ where: { ...livePredicate, createdAt: { gte: period.from, lt: period.to } } }),
@@ -327,7 +405,43 @@ export async function getMarketplaceAnalytics(input: {
     rentalsByArea(period),
     dailySeries(period),
     completedRentals(period),
+    zoneRows(period),
   ]);
+
+  // Zone classification is pure once the rows are in hand.
+  const zoneMetrics = zones.map((z) => ({
+    key: z.zoneKey ?? "UNZONED",
+    listings: n(z.listings),
+    views: n(z.views),
+    inquiries: n(z.inquiries),
+    rentals: n(z.rentals),
+  }));
+  const { stats: zoneStats, medianViewsPerListing } = classifyZones(zoneMetrics);
+  const toPublic = (z: ZoneStats) => ({
+    key: z.key,
+    listings: z.listings,
+    views: z.views,
+    inquiries: z.inquiries,
+    rentals: z.rentals,
+    viewsPerListing: z.viewsPerListing,
+    inquiriesPerListing: z.inquiriesPerListing,
+    viewToInquiry: z.viewToInquiry,
+    quadrant: z.quadrant,
+    acquisitionScore: z.acquisitionScore,
+  });
+  const zoneReport: ZoneReport = {
+    zones: zoneStats
+      .slice()
+      .sort((a, b) => b.listings - a.listings || b.views - a.views)
+      .map(toPublic),
+    targets: acquisitionTargets(zoneStats).map(toPublic),
+    medianViewsPerListing,
+    thresholds: {
+      healthySupply: ZONE_THRESHOLDS.healthySupply,
+      highDemandVsMedian: ZONE_THRESHOLDS.highDemandVsMedian,
+      minViewsToClassify: ZONE_THRESHOLDS.minViewsToClassify,
+    },
+  };
 
   const [counts, previousCounts] = await Promise.all([
     funnelCounts(period, activeListings),
@@ -403,5 +517,6 @@ export async function getMarketplaceAnalytics(input: {
     // the page, because each row is one listing a human can go fix today.
     zeroInquiryListings: perfRows.filter((r) => r.inquiries === 0 && r.views > 0).slice(0, 10),
     diagnosis: diagnose(counts),
+    zoneReport,
   };
 }

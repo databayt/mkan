@@ -17,6 +17,7 @@ import {
 import { sanitizeInput, sanitizeHtml } from "@/lib/sanitization";
 import { SEARCH_LISTING_SELECT } from "@/lib/listing-select";
 import { logger } from "@/lib/logger";
+import { zoneKeyFor } from "@/lib/geo/zone";
 import { assertRateLimit } from "@/lib/rate-limit";
 
 const listingIdSchema = z.number().int().positive();
@@ -177,6 +178,7 @@ export async function createListing(data: unknown = {}) {
           postalCode: validData.postalCode || "",
           latitude: validData.latitude || 0,
           longitude: validData.longitude || 0,
+          zoneKey: zoneKeyFor(validData.latitude, validData.longitude),
         },
       });
       locationId = location.id;
@@ -503,6 +505,11 @@ export async function updateListing(id: unknown, data: unknown) {
             ...(d.postalCode && { postalCode: d.postalCode }),
             ...(d.latitude !== undefined && { latitude: d.latitude }),
             ...(d.longitude !== undefined && { longitude: d.longitude }),
+            // Moving a pin can move the listing to another zone, so the derived
+            // key is recomputed alongside the coordinates rather than going stale.
+            ...(d.latitude !== undefined && d.longitude !== undefined
+              ? { zoneKey: zoneKeyFor(d.latitude, d.longitude) }
+              : {}),
           },
         });
       } else if (d.address && d.city && d.state && d.country) {
@@ -516,6 +523,7 @@ export async function updateListing(id: unknown, data: unknown) {
             postalCode: d.postalCode || "",
             latitude: d.latitude || 0,
             longitude: d.longitude || 0,
+            zoneKey: zoneKeyFor(d.latitude, d.longitude),
           },
         });
         locationUpdate = { location: { connect: { id: location.id } } };

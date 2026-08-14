@@ -7,6 +7,7 @@ import { FunnelStrip } from "@/components/admin/analytics/funnel-strip";
 import { KpiCards } from "@/components/admin/analytics/kpi-cards";
 import { RangeTabs } from "@/components/admin/analytics/range-tabs";
 import { TrendChart } from "@/components/admin/analytics/trend-chart";
+import { ZoneTable } from "@/components/admin/analytics/zone-table";
 import { fill, type AnalyticsLabels } from "@/components/admin/analytics/types";
 
 /**
@@ -56,6 +57,7 @@ export default async function AdminAnalyticsPage({
       <FunnelStrip {...section} />
       <KpiCards {...section} />
       <TrendChart trend={data.trend} labels={labels} locale={locale} />
+      <ZoneTable data={data} labels={labels} locale={locale} />
       <Breakdowns {...section} lang={lang} typeLabels={typeLabels} />
 
       {/* States plainly that transaction counts start at the epoch, so nobody
