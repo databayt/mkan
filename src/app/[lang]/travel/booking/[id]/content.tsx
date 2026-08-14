@@ -48,6 +48,11 @@ export function BookingConfirmationContent({ booking, lang }: BookingConfirmatio
   // "Tue, Apr 15". All `format()` calls in this file must pass this.
   const dateLocale = lang === 'ar' ? ar : enUS;
 
+  // Money is only "paid" when a payment row says Paid. Manual claims sit at
+  // Pending until the operator confirms receipt, and cash-on-arrival is paid at
+  // the desk — neither has reached anyone yet.
+  const hasClearedPayment = booking?.payments?.some((p) => p.status === 'Paid') ?? false;
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'confirmed':
@@ -284,12 +289,19 @@ export function BookingConfirmationContent({ booking, lang }: BookingConfirmatio
         </CardHeader>
         <CardContent>
           <div className="flex justify-between items-center">
-            <span>{t.booking.totalPaid}</span>
+            {/* "Total paid" only once the money actually cleared. A bank
+                transfer awaiting the operator's check, and cash-on-arrival that
+                is paid at the desk by definition, are both amounts DUE — telling
+                a rider they have paid when they have not is how someone turns up
+                at the gate with no ticket and no idea why. */}
+            <span>{hasClearedPayment ? t.booking.totalPaid : (t.booking?.totalDue ?? 'Amount due')}</span>
             <span className="text-xl font-bold">{formatCurrency(booking.totalAmount, locale)}</span>
           </div>
           {booking.payments.length > 0 && booking.payments[0] && (
             <div className="mt-2 text-sm text-muted-foreground">
-              {t.booking.paidVia}{' '}
+              {hasClearedPayment
+                ? t.booking.paidVia
+                : (t.booking?.payingVia ?? 'Paying by')}{' '}
               {(() => {
                 const method = booking.payments[0].method;
                 const key = (

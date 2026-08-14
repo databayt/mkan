@@ -2472,7 +2472,9 @@
       "idCardPlaceholder": "مثال: 123-456-789",
       "namePerSeatHint": "أدخل اسمًا لكل مقعد — كل مسافر يحصل على تذكرته الخاصة.",
       "allPassengers": "جميع المسافرين",
-      "rateLimited": "محاولات حجز كثيرة. حاول مرة أخرى بعد {seconds} ثانية."
+      "rateLimited": "محاولات حجز كثيرة. حاول مرة أخرى بعد {seconds} ثانية.",
+      "totalDue": "المبلغ المستحق",
+      "payingVia": "الدفع عبر"
     },
     "payment": {
       "title": "الدفع",

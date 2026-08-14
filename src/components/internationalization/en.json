@@ -2472,7 +2472,9 @@
       "idCardPlaceholder": "e.g., 123-456-789",
       "namePerSeatHint": "Enter a name for every seat — each passenger gets their own ticket.",
       "allPassengers": "All passengers",
-      "rateLimited": "Too many booking attempts. Try again in {seconds} seconds."
+      "rateLimited": "Too many booking attempts. Try again in {seconds} seconds.",
+      "totalDue": "Amount due",
+      "payingVia": "Paying by"
     },
     "payment": {
       "title": "Payment",
