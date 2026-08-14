@@ -27,6 +27,7 @@ export default async function AdminLayout({
     header: adminDict.header ?? "Admin console",
     platform: adminDict.platform ?? "Platform",
     overview: adminDict.overview ?? "Overview",
+    analytics: adminDict.analytics ?? "Marketplace",
     users: adminDict.users ?? "Users",
     homes: adminDict.homes ?? "Homes",
     transport: adminDict.transport ?? "Travel",

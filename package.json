@@ -116,6 +116,7 @@
     "react-select": "^5.10.2",
     "react-spinners": "^0.17.0",
     "react-world-flags": "^1.6.0",
+    "recharts": "3.8.0",
     "resend": "^6.12.2",
     "sanitize-html": "^2.17.3",
     "sharp": "^0.35.3",
