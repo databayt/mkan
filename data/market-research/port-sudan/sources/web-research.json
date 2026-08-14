@@ -1,0 +1,401 @@
+{
+ "_source": "Curated findings from web search + page fetches run 2026-08-14.",
+ "_rule": "Every entry below was seen literally in a search-result title/URL or in a page fetched this session. Nothing here is recalled from model memory. Where a fact could not be verified it is null, never guessed.",
+ "_why_curated": "Search is not scriptable, so this hand-checked file IS the reproducibility record for the search layer — same pattern as the hand-curated gazetteer in scripts/crm/sudan-places.ts. The generator reads it; it is never machine-overwritten.",
+ "_fetched_at": "2026-08-14",
+ "businesses": [
+  {
+   "key": "prestige-hotel-apartments",
+   "name_primary": "Prestige hotel apartments",
+   "name_ar": null,
+   "category": "furnished_apartment",
+   "area": null,
+   "phone": [],
+   "website": null,
+   "facebook": "https://www.facebook.com/people/Prestige-hotel-apartments/100063608287235/",
+   "note": "Page fetched: title reads 'Prestige hotel apartments | Port Sudan'. No address, phone, category or website was exposed on the public page. Named by the brief as a known operator; confirmed to exist, contact NOT recoverable without a logged-in session or a field call.",
+   "sources": [
+    "https://www.facebook.com/people/Prestige-hotel-apartments/100063608287235/"
+   ]
+  },
+  {
+   "key": "mirak",
+   "name_primary": "Mirak Furnished Suites",
+   "name_ar": "ميراك للشقق الفندقية",
+   "aliases": [
+    "Mirak Hotel Suites",
+    "Mirak Hotels",
+    "ميراك للشق الفندقية"
+   ],
+   "category": "hotel_apartment",
+   "area": "Port Sudan",
+   "phone": [
+    "+249 90 113 2695"
+   ],
+   "website": "www.mirakhotels.com",
+   "website_status": "DEAD — mirakhotels.com does not resolve in DNS (checked 2026-08-14)",
+   "facebook": "https://www.facebook.com/mirakhotels/",
+   "tripadvisor": "https://www.tripadvisor.com/Hotel_Review-g677545-d16649895-Reviews-Mirak_Hotel_Suites-Port_Sudan_Red_Sea_State.html",
+   "trip_com": "https://www.trip.com/hotels/port-sudan-hotel-detail-42376688/mirak-hotel-suites/",
+   "note": "Named by the brief. Multi-source confirmed. Appears on TripAdvisor's Port Sudan roster; sd.arabplaces.com carries the phone and a 4.9/8 Google rating. Its own domain is dead — no working digital channel.",
+   "sources": [
+    "https://sd.arabplaces.com/al-bahr-al-ahmar/mirak-furnished-suites-341689",
+    "https://www.tripadvisor.com/Hotel_Review-g677545-d16649895-Reviews-Mirak_Hotel_Suites-Port_Sudan_Red_Sea_State.html",
+    "https://www.trip.com/hotels/port-sudan-hotel-detail-42376688/mirak-hotel-suites/",
+    "https://www.facebook.com/mirakhotels/"
+   ]
+  },
+  {
+   "key": "seif-furnished-apartments",
+   "name_primary": "سيف للشقق المفروشة",
+   "name_en": "Seif Furnished Apartments",
+   "category": "furnished_apartment",
+   "area": "Port Sudan",
+   "phone": [],
+   "website": null,
+   "google_place_id": "ChIJcaLL4z9T1xURYnkFlXqxkfQ",
+   "note": "Named by the brief. Confirmed as a real mapped place: Waze publishes a directions page for it under sd/red-sea/port-sudan carrying the Google place_id above. Coordinates and phone are NOT public on that page — the place_id is the only hard identifier recovered.",
+   "sources": [
+    "https://www.waze.com/live-map/directions/sd/red-sea/port-sudan/syf-llshqq-almfrwshh?to=place.ChIJcaLL4z9T1xURYnkFlXqxkfQ"
+   ]
+  },
+  {
+   "key": "al-swahili",
+   "name_primary": "السواحلي للشقق الفندقية",
+   "name_en": "Al Swahili Hotel Apartments",
+   "aliases": [
+    "Al Swahili Hotel"
+   ],
+   "category": "hotel_apartment",
+   "area": "Engineers St, Port Sudan",
+   "phone": [
+    "+249 90 448 5000"
+   ],
+   "note": "Named by the brief. Found independently in the directory sweep. Two directory records ('السواحلي للشقق الفندقية' and 'Al Swahili Hotel') sit ~10m apart and are almost certainly the same operator — merged, kept as aliases.",
+   "sources": [
+    "https://sd.arabplaces.com/al-bahr-al-ahmar/hotel"
+   ]
+  },
+  {
+   "key": "al-sultan-hotel-apartments",
+   "name_primary": "السلطان للشقق الفندقية",
+   "name_en": "Al-Sultan Hotel Apartments",
+   "category": "hotel_apartment",
+   "area": "Port Sudan",
+   "phone": [],
+   "facebook": "https://www.facebook.com/p/%D8%A7%D9%84%D8%B3%D9%84%D8%B7%D8%A7%D9%86-%D9%84%D9%84%D8%B4%D9%82%D9%82-%D8%A7%D9%84%D9%81%D9%86%D8%AF%D9%82%D9%8A%D8%A9-100054517808458/",
+   "note": "Facebook business page titled 'السلطان للشقق الفندقية | Port Sudan'. Corroborated by an OpenStreetMap node named 'Al-Sultan' tagged tourism=apartment at 19.6256,37.1999 — treated as the same business, flagged for human confirmation.",
+   "sources": [
+    "https://www.facebook.com/p/%D8%A7%D9%84%D8%B3%D9%84%D8%B7%D8%A7%D9%86-%D9%84%D9%84%D8%B4%D9%82%D9%82-%D8%A7%D9%84%D9%81%D9%86%D8%AF%D9%82%D9%8A%D8%A9-100054517808458/"
+   ]
+  },
+  {
+   "key": "al-narjis-hotel-apartments",
+   "name_primary": "شقق النرجس الفندقية",
+   "name_en": "Al-Narjis Hotel Apartments",
+   "category": "hotel_apartment",
+   "area": "Port Sudan",
+   "phone": [],
+   "note": "Surfaced as a TikTok topic page titled 'شقق النرجس الفندقية بورتسودان'. Name is confirmed; no contact, address or coordinates recovered. Needs a field call before it can be worked.",
+   "sources": [
+    "https://www.tiktok.com/discover/%D8%B4%D9%82%D9%82-%D8%A7%D9%84%D9%86%D8%B1%D8%AC%D8%B3-%D8%A7%D9%84%D9%81%D9%86%D8%AF%D9%82%D9%8A%D8%A9-%D8%A8%D9%88%D8%B1%D8%AA%D8%B3%D9%88%D8%AF%D8%A7%D9%86"
+   ]
+  },
+  {
+   "key": "flora-hotel",
+   "name_primary": "Flora Hotel",
+   "category": "hotel",
+   "area": "Port Sudan",
+   "phone": [],
+   "tripadvisor_rating": 5.0,
+   "tripadvisor_reviews": 1,
+   "note": "On TripAdvisor's Port Sudan apartment-hotel roster. Not present in the Google-Business directory sweep and not in OpenStreetMap — single-source.",
+   "sources": [
+    "https://www.tripadvisor.com/Hotels-g677545-c3-zff28-Port_Sudan_Red_Sea_State-Hotels.html"
+   ]
+  },
+  {
+   "key": "mercure-port-sudan",
+   "name_primary": "Mercure Port Sudan",
+   "category": "hotel",
+   "area": "Port Sudan",
+   "phone": [],
+   "tripadvisor_rating": 4.0,
+   "tripadvisor_reviews": 1,
+   "note": "International chain brand (Accor). Listed on TripAdvisor's Port Sudan roster. Chain-managed inventory is a poor Mkan supply target — recorded for completeness, scored low.",
+   "sources": [
+    "https://www.tripadvisor.com/Hotels-g677545-c3-zff28-Port_Sudan_Red_Sea_State-Hotels.html"
+   ]
+  },
+  {
+   "key": "samarmaz-hotel",
+   "name_primary": "Samarmaz Hotel",
+   "category": "hotel",
+   "area": "Port Sudan",
+   "phone": [],
+   "tripadvisor_rating": 3.0,
+   "tripadvisor_reviews": 1,
+   "note": "On TripAdvisor's Port Sudan roster. Single-source.",
+   "sources": [
+    "https://www.tripadvisor.com/Hotels-g677545-c3-zff28-Port_Sudan_Red_Sea_State-Hotels.html"
+   ]
+  },
+  {
+   "key": "sudan-red-sea-resort",
+   "name_primary": "Sudan Red Sea Resort",
+   "aliases": [
+    "Red Sea Resort"
+   ],
+   "category": "resort",
+   "area": "coast north of Port Sudan",
+   "phone": [
+    "+249 91 246 5650"
+   ],
+   "tripadvisor_rating": 3.3,
+   "tripadvisor_reviews": 36,
+   "note": "Directory record 'Red Sea Resort' sits at 19.8955,37.2343 — ~31 km north of the city centre, i.e. outside Port Sudan proper. Same business as TripAdvisor's 'Sudan Red Sea Resort' on name + market.",
+   "sources": [
+    "https://www.tripadvisor.com/Hotels-g677545-c3-zff28-Port_Sudan_Red_Sea_State-Hotels.html",
+    "https://sd.arabplaces.com/al-bahr-al-ahmar/hotel"
+   ]
+  },
+  {
+   "key": "baasher-palace-hotel",
+   "name_primary": "Baasher Palace Hotel",
+   "category": "hotel",
+   "area": "Port Sudan city centre",
+   "phone": [],
+   "tripadvisor_rating": 3.1,
+   "tripadvisor_reviews": 15,
+   "lat": 19.6112975,
+   "lng": 37.2216517,
+   "note": "Two-source: TripAdvisor roster + an OpenStreetMap node tagged tourism=hotel. Coordinates are OSM's.",
+   "sources": [
+    "https://www.tripadvisor.com/Hotels-g677545-c3-zff28-Port_Sudan_Red_Sea_State-Hotels.html",
+    "https://www.openstreetmap.org/node/1401481881"
+   ]
+  },
+  {
+   "key": "amlak-real-estate",
+   "name_primary": "أملاك العقارية",
+   "name_en": "Amlak Real Estate",
+   "category": "real_estate_office",
+   "area": "Khartoum-based; advertises Port Sudan inventory (حي المطار)",
+   "phone": [
+    "0123450028",
+    "0912341087",
+    "0912348586"
+   ],
+   "facebook": "https://www.facebook.com/share/15oYnAmcJ6/",
+   "instagram": "https://www.instagram.com/amlak_real_estae_in_sudan_khar",
+   "tiktok": "https://www.tiktok.com/@amlakrealestate6",
+   "youtube": "https://www.youtube.com/@amlakrealestate8598",
+   "note": "A real brokerage actively marketing Port Sudan furnished apartments (Airport district, daily/monthly/yearly terms, viewing videos on request). Phones and socials are published verbatim in its own post captions. IMPORTANT: the account is Khartoum-based and its hashtags are Khartoum/Omdurman/Bahri first — it is an inventory CHANNEL into Port Sudan, not a Port Sudan office. Classified honestly as such.",
+   "sources": [
+    "https://www.tiktok.com/@amlakrealestate6/video/7494888944006466822",
+    "https://www.tiktok.com/@amlakrealestate6/video/7571680176594062604"
+   ]
+  },
+  {
+   "key": "stylish-port-sudan",
+   "name_primary": "Stylish Port Sudan",
+   "category": "unknown",
+   "area": "Port Sudan",
+   "phone": [],
+   "note": "Appeared only as a detail-page URL in the directory's own search results (slug 'stylish-port-sudan-1240786' under the Red Sea state path). The detail page could NOT be fetched — the site began returning HTTP 403 mid-sweep. Name is inferred from the URL slug, category is unknown. Flagged review_required rather than dropped, because the URL is hard evidence the record exists.",
+   "sources": [
+    "https://sd.arabplaces.com/search/?text=%D8%A8%D9%88%D8%B1%D8%AA%D8%B3%D9%88%D8%AF%D8%A7%D9%86"
+   ]
+  }
+ ],
+ "channels": [
+  {
+   "kind": "facebook_group",
+   "name": "شقق مفروشة بورتسودان",
+   "url": "https://www.facebook.com/groups/915632539905129/"
+  },
+  {
+   "kind": "facebook_group",
+   "name": "شقق بورتسودان المفروشة",
+   "url": "https://www.facebook.com/groups/245942231471705/"
+  },
+  {
+   "kind": "facebook_group",
+   "name": "فنادق وشقق بورتسودان",
+   "url": "https://www.facebook.com/groups/1597610583947465/"
+  },
+  {
+   "kind": "facebook_group",
+   "name": "ايجارات بورتسودان بيوت وشقق وسط المدينة والديوم الشرقية",
+   "url": "https://www.facebook.com/groups/461219642303625/"
+  },
+  {
+   "kind": "classifieds",
+   "name": "السوق المفتوح (OpenSooq) — Red Sea / Port Sudan property",
+   "url": "https://sd.opensooq.com/ar/%D8%A7%D9%84%D8%A8%D8%AD%D8%B1-%D8%A7%D9%84%D8%A3%D8%AD%D9%85%D8%B1/%D8%A8%D9%88%D8%B1%D8%AA-%D8%B3%D9%88%D8%AF%D8%A7%D9%86/%D8%B9%D9%82%D8%A7%D8%B1%D8%A7%D8%AA/%D8%B4%D9%82%D9%82-%D9%84%D9%84%D8%A7%D9%8A%D8%AC%D8%A7%D8%B1"
+  },
+  {
+   "kind": "classifieds",
+   "name": "alsoug.com — Port Sudan apartments for rent",
+   "url": "https://www.alsoug.com/en/adverts/%D8%A7%D9%84%D8%B3%D9%88%D8%AF%D8%A7%D9%86/%D8%A8%D9%88%D8%B1%D8%AA%D8%B3%D9%88%D8%AF%D8%A7%D9%86/%D8%B9%D9%82%D8%A7%D8%B1%D8%A7%D8%AA/%D8%B4%D9%82%D9%82-%D9%84%D9%84%D8%A7%D9%8A%D8%AC%D8%A7%D8%B1"
+  },
+  {
+   "kind": "classifieds",
+   "name": "عقارك (aqaraksd.com) — Port Sudan",
+   "url": "https://aqaraksd.com/ar/properties/city/bortsodan",
+   "note": "Returns HTTP 403 to automated fetch."
+  },
+  {
+   "kind": "classifieds",
+   "name": "نــفّاج (naffaj.com)",
+   "url": "https://www.naffaj.com/en/properties/apartment/shqh-mfrwshh-stydyw-bwrtswdn-2525.html"
+  },
+  {
+   "kind": "classifieds",
+   "name": "beldo.com — Red Sea / Port Sudan property",
+   "url": "https://www.beldo.com/"
+  }
+ ],
+ "areas_observed": [
+  {
+   "ar": "حي المطار",
+   "en": "Airport district",
+   "note": "Named repeatedly across classifieds as the furnished-apartment cluster."
+  },
+  {
+   "ar": "ديم المدينة / الديوم الشرقية",
+   "en": "Deim / Eastern Deim"
+  },
+  {
+   "ar": "سلالاب",
+   "en": "Salalab"
+  },
+  {
+   "ar": "الخليج",
+   "en": "Al-Khalij",
+   "note": "Corroborated by an OSM POI named شقق الخليج المفروشة."
+  },
+  {
+   "ar": "ترانزيت / ترانسيت",
+   "en": "Transit"
+  },
+  {
+   "ar": "شارع الاذاعة والتلفزيون",
+   "en": "Radio & TV Street",
+   "note": "Address of مجمع الربوة السياحي."
+  },
+  {
+   "ar": "شارع المهندسين",
+   "en": "Engineers Street",
+   "note": "Address of Al Swahili Hotel."
+  },
+  {
+   "ar": "النهضة",
+   "en": "Al-Nahda"
+  }
+ ],
+ "negative_results": [
+  {
+   "finding": "Booking.com has NO bookable Port Sudan properties",
+   "source": "https://www.booking.com/searchresults.html?city=-12794"
+  },
+  {
+   "finding": "Trip.com's Port Sudan airport-hotels page returns 'no accommodations matching your search'",
+   "source": "https://sa.trip.com/hotels/port-sudan-port-sudan-new-international-airport/hotels-c5698a4327087/"
+  },
+  {
+   "finding": "mirakhotels.com, aag-sd.com and coral-portsudan.com all fail DNS resolution — three businesses whose listed website is dead",
+   "source": "DNS check 2026-08-14"
+  },
+  {
+   "finding": "sudan.worldplaces.me returns HTTP 511 human-verification; top-rated.online returns Cloudflare HTTP 403 — both gated to automated fetch",
+   "source": "fetch attempt 2026-08-14"
+  }
+ ],
+ "_alias_bridges_why": "Cross-script duplicates cannot be matched algorithmically — 'فندق اوكير' and 'Okere Hotel' share no characters. These pairs were each confirmed by hand against coordinates and category before being written here. The generator merges ONLY on this list plus hard signals (same phone / same domain); anything else that merely looks close is soft-linked for a human, never merged.",
+ "alias_bridges": [
+  {
+   "canonical": "Mirak Furnished Suites",
+   "aliases": [
+    "Mirak Hotel Suites",
+    "Mirak Hotels",
+    "ميراك للشقق الفندقية",
+    "ميراك للشق الفندقية"
+   ],
+   "evidence": "Same operator across TripAdvisor, Trip.com, Facebook and the directory; directory record carries the Arabic form as its alt-name."
+  },
+  {
+   "canonical": "Okere Hotel",
+   "aliases": [
+    "Okier Hotel",
+    "فندق اوكير",
+    "فندق أوكير"
+   ],
+   "evidence": "OSM guest_house 'Okere Hotel' (19.6123,37.2171) and OSM hotel 'فندق اوكير' (19.6120,37.2166) are 60 m apart; the directory record 'Okere Hotel' (19.6122,37.2170) carries alt-name 'فندق أوكير'. TripAdvisor spells it 'Okier'."
+  },
+  {
+   "canonical": "Bohein Hotel",
+   "aliases": [
+    "Bohaen Hotel"
+   ],
+   "evidence": "OSM 'Bohein Hotel' 19.6116,37.2204 vs directory 'Bohaen Hotel' 19.6117,37.2204 — 11 m apart, one transliteration apart."
+  },
+  {
+   "canonical": "مجمع الربوة السياحي",
+   "aliases": [
+    "فندق الربوة",
+    "منتجع الربوة السياحي",
+    "Al-Rabwa Tourist Complex"
+   ],
+   "evidence": "Three records inside 150 m at 19.634,37.209 all naming الربوة; the directory record gives the address شارع الاذاعة والتلفزيون."
+  },
+  {
+   "canonical": "السواحلي للشقق الفندقية",
+   "aliases": [
+    "Al Swahili Hotel",
+    "Al Swahili Hotel Apartments"
+   ],
+   "evidence": "Directory records 19.6203,37.2177 and 19.6203,37.2178 — 11 m apart, same operator name in two languages."
+  },
+  {
+   "canonical": "السلطان للشقق الفندقية",
+   "aliases": [
+    "Al-Sultan",
+    "Al-Sultan Hotel Apartments"
+   ],
+   "evidence": "Facebook business page 'السلطان للشقق الفندقية | Port Sudan' and OSM node 'Al-Sultan' tagged tourism=apartment at 19.6256,37.1999."
+  },
+  {
+   "canonical": "Sudan Red Sea Resort",
+   "aliases": [
+    "Red Sea Resort"
+   ],
+   "evidence": "TripAdvisor 'Sudan Red Sea Resort' (36 reviews) and the directory's 'Red Sea Resort' (12 reviews) are the same coastal resort north of the city."
+  },
+  {
+   "canonical": "Coral Port Sudan",
+   "aliases": [
+    "Coral Port Sudan Hotel",
+    "فندق كورال"
+   ],
+   "evidence": "OSM node 19.6127,37.2245 with phone +249 311 83 9800 and the directory record 19.6126,37.2245 with alt-name فندق كورال."
+  }
+ ],
+ "_generic_names_out_of_scope": [
+  "منزل",
+  "استراحة",
+  "resort"
+ ],
+ "suspected_duplicates": [
+  {
+   "a": "Marina Hotel Port Sudan",
+   "b": "مارينا للشقق الفندقية",
+   "why": "Same brand word in two scripts, but 0.8 km apart (19.6130,37.2244 vs 19.6085,37.2179) and the directory holds a phone for only one. Could be one operator with two buildings, or two unrelated businesses. NOT merged — a five-minute phone call settles it."
+  },
+  {
+   "a": "Okere Hotel",
+   "b": "فندق علا",
+   "why": "Directory records 40 m apart (19.6122,37.2170 vs 19.6118,37.2167). Different names, and فندق علا publishes no phone, so nothing proves they are distinct."
+  }
+ ]
+}

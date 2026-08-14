@@ -1,0 +1,350 @@
+{
+ "_source": "sd.arabplaces.com — public directory mirroring Google Business listings (Red Sea state / ولاية البحر الأحمر)",
+ "_fetched_at": "2026-08-14",
+ "_method": "category index /al-bahr-al-ahmar/hotel pages 1-2 (23 listed) + /hostel, then one detail page per place for phone/website/rating/coords. 17 other category slugs were swept and returned only Egyptian Red Sea Governorate backfill — rejected.",
+ "_rejected_foreign": 179,
+ "_caveat": "The directory only indexes businesses that have reviews, so this is a floor, not a census. A follow-up /search/?text= sweep was rate-limited (HTTP 403) before completion — see discovery-log.md.",
+ "_robots": "robots.txt carries the content-signal boilerplate with NO directive set and no Disallow rules.",
+ "places": [
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/239157",
+   "name": "مجمع الربوة السياحي",
+   "alt_name": null,
+   "address": "شارع الاذاعة والتلفزيون , بورتسودان‎،، بورتسودان‎،, Port Sudan, Sudan",
+   "phone": "+249 10 069 2656",
+   "website_listed": null,
+   "rating": 4.2,
+   "review_count": 12,
+   "lat": 19.634255,
+   "lng": 37.209274,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "فندق 5 نجوم ويوجد به كافتريا واطلاله بحريه واستقبال وخدمة غرفIt's 5 stars hotel with beautiful view, restaurant, room service and reception."
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/mirak-furnished-suites-341689",
+   "name": "Mirak Furnished Suites",
+   "alt_name": "ميراك للشق الفندقية",
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 90 113 2695",
+   "website_listed": "www.mirakhotels.com/ar",
+   "rating": 4.9,
+   "review_count": 8,
+   "lat": 19.622745,
+   "lng": 37.221092,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "The best managed hotel in the region. Very efficient and polite staff and great value for money services."
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/red-sea-resort-187859",
+   "name": "Red Sea Resort",
+   "alt_name": null,
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 91 246 5650",
+   "website_listed": null,
+   "rating": 4.4,
+   "review_count": 12,
+   "lat": 19.895476,
+   "lng": 37.234278,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "Very pleasant resort, nice artistic accommodation, friendly and helpful personal Visit that place as you are in Sudan! Green greetings Rens..."
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/grand-hotel-elsahil-1210224",
+   "name": "Grand Hotel Elsahil",
+   "alt_name": null,
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 12 365 3100",
+   "website_listed": "www.grandsahil.com",
+   "rating": 5.0,
+   "review_count": 2,
+   "lat": 19.586306,
+   "lng": 37.217889,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "فندق Grand Hotel هو عنوان الفخامة والحداثة والتميز بكل معنى الكلمة! يتميز بموقعه الرائع الذي يضعك في قلب الجمال والراحة، مما يجعله خيارًا مثاليًا..."
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/1107485",
+   "name": "السواحلي للشقق الفندقية",
+   "alt_name": null,
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 90 448 5000",
+   "website_listed": null,
+   "rating": 4.5,
+   "review_count": 2,
+   "lat": 19.62032,
+   "lng": 37.217678,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "شغل علي طراز فخم. شقق فندقية - سويت و استوديوخدمات متكاملةصيدلية. كافتريا و سوبر ماركت"
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/al-taher-mohamed-saleh-hotel-apartments-999040",
+   "name": "Al Taher Mohamed Saleh Hotel Apartments",
+   "alt_name": "الطاهر محمد صالح للغرف الفندقيه",
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 91 304 5131",
+   "website_listed": null,
+   "rating": 5.0,
+   "review_count": 1,
+   "lat": 19.622602,
+   "lng": 37.219938,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "ممتاز شكرا الطاقم العامل ممتازين و الطابق الاخير غرف جديدةالفندق نظيف"
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/295219",
+   "name": "باير للشقق الفندقيه",
+   "alt_name": null,
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 91 780 1350",
+   "website_listed": null,
+   "rating": 5.0,
+   "review_count": 1,
+   "lat": 19.598274,
+   "lng": 37.220188,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "Nice clean quite hotel Helpful Staff. احلى مكان للعرسان وأرقى موظفين. منطقه هادئه وشقق نظيفه."
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/1190004",
+   "name": "فندق علا",
+   "alt_name": null,
+   "address": "Port Sudan, Sudan",
+   "phone": null,
+   "website_listed": null,
+   "rating": 5.0,
+   "review_count": 2,
+   "lat": 19.611813,
+   "lng": 37.216718,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "Very nice showroom. Deserve to be visited by all. You can find there whatsoever you missed any where else. Whenever you pads by, you will revisit it to see..."
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/al-swahili-hotel-1239720",
+   "name": "Al Swahili Hotel",
+   "alt_name": null,
+   "address": "Engineers St, Port Sudan, Sudan",
+   "phone": null,
+   "website_listed": null,
+   "rating": 4.5,
+   "review_count": 2,
+   "lat": 19.620321,
+   "lng": 37.217774,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "شغل علي طراز فخم. شقق فندقية - سويت و استوديوخدمات متكاملةصيدلية. كافتريا و سوبر ماركت"
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/palace-palace-hotel-40335",
+   "name": "Palace Palace Hotel",
+   "alt_name": "فندق بلس بورتسودان",
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 91 233 4201",
+   "website_listed": null,
+   "rating": 3.5,
+   "review_count": 11,
+   "lat": 19.611389,
+   "lng": 37.221667,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "Well located, courteous staff and good food. Plenty of restaurants around. Good aesthetics, with lots of date palms full of dates and crow nests."
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/610362",
+   "name": "منتجع جبل الست / Jebel Al-Sit resort",
+   "alt_name": null,
+   "address": "Port Sudan،, Sudan",
+   "phone": "+249 12 337 3737",
+   "website_listed": null,
+   "rating": 3.3,
+   "review_count": 4,
+   "lat": 18.774042,
+   "lng": 37.109096,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "يعد منتجع جبل الست اضافة حقيقية للبنية التحتية للسياحة بمنطقة اركويت والتي تتمتع بجو اكثر من رائع ولكنها تحتاج الي اهتمام اكثر حتي تكون علي المستوي المطلوب..."
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/basiri-plaza-hotel-40336",
+   "name": "Basiri Plaza Hotel",
+   "alt_name": "فندق البصيري بلازا",
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 91 213 3278",
+   "website_listed": "m.facebook.com/BasiriPlaza",
+   "rating": 3.5,
+   "review_count": 22,
+   "lat": 19.613743,
+   "lng": 37.219458,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "التكييف غير جيد والأسعار عالية ويضاف اليها ضرائب ، هناك استغلال باسم النظام وهذا يجعلني اغير سكني عندما أعود لبورتسودان."
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/marina-hotel-port-sudan-1265615",
+   "name": "Marina Hotel Port Sudan",
+   "alt_name": null,
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 91 232 3232",
+   "website_listed": null,
+   "rating": 2.5,
+   "review_count": 2,
+   "lat": 19.61298,
+   "lng": 37.224398,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "This is fantastic! I'm obsessed with learning more about Sudan. It's a country with so many mysteries yet to be discovered! Let's go! I invite..."
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/1101222",
+   "name": "فندق سبا",
+   "alt_name": null,
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 91 285 1977",
+   "website_listed": null,
+   "rating": 1.0,
+   "review_count": 1,
+   "lat": 19.611859,
+   "lng": 37.21898,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "التعامل غير جميل وسيء جداً، اتصلت اسأل من الحجز اللي رد علي كان بصرخ ويتكلم بشكل عصبي وما تقبل اي سؤال وقفل الخط ولحسن الحظ تلفوني بسجل المكالمات..."
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/okere-hotel-649286",
+   "name": "Okere Hotel",
+   "alt_name": "فندق أوكير",
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 91 229 3026",
+   "website_listed": null,
+   "rating": 3.3,
+   "review_count": 4,
+   "lat": 19.612171,
+   "lng": 37.216994,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "من حيث المبنى حلو جدا ، والاسعار مناسبه كمقارنه بالبقيه ، وقريب من السوق ، الكورنيش ، تصميم الغرف جدا حلوه ،الاثاثات قديمه وغير مواكبه لعصر الفندقه..."
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/294886",
+   "name": "فندق التعاون",
+   "alt_name": null,
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 90 126 2003",
+   "website_listed": null,
+   "rating": 2.0,
+   "review_count": 1,
+   "lat": 19.612644,
+   "lng": 37.213796,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "Comparing to PortSudan hotels, this place is good for budget planning with moderate comfort. (A/C, TV, 75%Quite, Bathroom, Cupboard.) no laundry or restaurant..."
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/coral-port-sudan-11240",
+   "name": "Coral Port Sudan",
+   "alt_name": "فندق كورال",
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 18 377 4100",
+   "website_listed": "www.hmhhotelgroup.com/en/hotel/coral-port-sudan-hotel",
+   "rating": 3.1,
+   "review_count": 23,
+   "lat": 19.612593,
+   "lng": 37.224477,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "Very comfortable, well situated hotel across the road from the Red Sea. Good facilities and staff very willing to help. Good value for money"
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/dongla-hotel-866335",
+   "name": "Dongla Hotel",
+   "alt_name": "فندق دنقلا",
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 91 386 1868",
+   "website_listed": null,
+   "rating": 1.7,
+   "review_count": 3,
+   "lat": 19.612049,
+   "lng": 37.21668,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "ههههههههخههخ اسم راكوبة كتيرة عليهو بنصح اي زول يمشي ديم مدينة او حي الخليج يأجر شقة زي الناس"
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/bohaen-hotel-145480",
+   "name": "Bohaen Hotel",
+   "alt_name": null,
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 92 283 5200",
+   "website_listed": null,
+   "rating": 2.3,
+   "review_count": 7,
+   "lat": 19.611668,
+   "lng": 37.220373,
+   "categories": [
+    "Hotel"
+   ],
+   "emails": [],
+   "roster_snippet": "فندق جيد من حيث الإقامة القصيرة و أهم شيء توفير الكهرباء والمياه وفي مكان جيد و بة قسمان الغرف و الشقق السكنية المفروشة"
+  },
+  {
+   "url": "https://sd.arabplaces.com/al-bahr-al-ahmar/101749",
+   "name": "فندق منة",
+   "alt_name": "",
+   "address": "Port Sudan, Sudan",
+   "phone": "+249 91 235 5523",
+   "website_listed": null,
+   "rating": 2.7,
+   "review_count": 3,
+   "lat": 19.6145,
+   "lng": 37.206695,
+   "categories": [
+    "Hostel"
+   ],
+   "emails": [],
+   "roster_snippet": "Good and clean.did not find room there but the building is new.available one and two room furnished flats with sitting rooms and kitchen"
+  }
+ ]
+}

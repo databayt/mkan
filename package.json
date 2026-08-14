@@ -57,6 +57,7 @@
     "crm:sync-up": "tsx scripts/crm/sync-up.ts",
     "crm:claim-token": "tsx scripts/crm/claim-tokens.ts",
     "crm:publish": "tsx scripts/crm/wave-publish.ts",
+    "crm:ps-discover": "tsx scripts/crm/port-sudan-discover.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
