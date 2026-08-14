@@ -23,6 +23,7 @@ import { PHASE1 } from "@/config/phase-flags";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
+import { trackEvent } from "@/lib/analytics/beacon";
 
 interface ListingDetailsClientProps {
     listing: Listing;
@@ -157,6 +158,7 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                 rating={listing.averageRating || 4.5}
                 reviewCount={listing.numberOfReviews || 0}
                 ownerPhone={ownerPhone}
+                listingId={listing.id}
                 reserveElement={reserveRef}
                 onCallButtonMerge={setIsCallButtonInHeader}
             />
@@ -375,6 +377,7 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                                 </div>
                                 <a
                                     href={`tel:${ownerPhone}`}
+                                    onClick={() => trackEvent(listing.id, "CONTACT_PHONE_CLICK")}
                                     className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#E61E4D] via-[#E31C5F] to-[#D70466] px-6 py-3.5 text-base font-medium text-white transition-all duration-200 hover:shadow-lg active:scale-[0.99]"
                                     title={`${dict?.property?.contactHost?.callHost ?? "Call host"} ${ownerPhone}`}
                                 >

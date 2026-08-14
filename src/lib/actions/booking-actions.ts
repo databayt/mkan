@@ -789,3 +789,57 @@ export async function getBlockedDates(listingId: unknown) {
     return [];
   }
 }
+
+// ---------- completion ----------
+//
+// `BookingStatus.Completed` existed from the beginning and nothing ever wrote
+// it. Every reference in the homes vertical was a read-side guard — "completed
+// bookings cannot be cancelled", "you can only review a completed stay" — so
+// the terminal state was unreachable, the marketplace funnel could never close,
+// and `createReview` was permanently gated off. (Only the travel vertical
+// transitioned to Completed, via QR check-in.)
+//
+// A stay is complete when the guest was confirmed and the checkout date has
+// passed. That is knowable without anyone doing anything, so it runs on a
+// schedule rather than waiting on a host to remember.
+
+/**
+ * Flips Confirmed bookings whose checkout has passed to Completed.
+ *
+ * Idempotent by construction: the `status: Confirmed` filter means a second run
+ * over the same rows matches nothing. Safe to re-run, safe to run twice
+ * concurrently.
+ *
+ * Deliberately does NOT touch Pending bookings — those were never confirmed by
+ * a host, so they expired rather than completed, and counting them as completed
+ * rentals would overstate the one number the business cares most about.
+ */
+export async function completeElapsedBookings(
+  now: Date = new Date(),
+): Promise<{ success: true; completedCount: number }> {
+  try {
+    const result = await db.booking.updateMany({
+      where: {
+        status: BookingStatus.Confirmed,
+        checkOut: { lt: now },
+      },
+      data: {
+        status: BookingStatus.Completed,
+        checkedOutAt: now,
+      },
+    });
+
+    if (result.count > 0) {
+      logger.info("completeElapsedBookings", { completed: result.count });
+      revalidatePath("/hosting");
+      revalidatePath("/bookings");
+    }
+
+    return { success: true, completedCount: result.count };
+  } catch (error) {
+    logger.error("completeElapsedBookings failed", { error: String(error) });
+    throw new Error(
+      `Failed to complete elapsed bookings: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
+}

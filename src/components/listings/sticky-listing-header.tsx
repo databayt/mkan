@@ -4,12 +4,15 @@ import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Phone } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { trackEvent } from "@/lib/analytics/beacon";
 
 interface StickyListingHeaderProps {
   price: number;
   rating: number;
   reviewCount: number;
   ownerPhone?: string;
+  /** Attributes a header call tap to the listing. */
+  listingId: number;
   reserveElement?: React.RefObject<HTMLDivElement | null>;
   onCallButtonMerge?: (isMerged: boolean) => void;
 }
@@ -19,6 +22,7 @@ export default function StickyListingHeader({
   rating,
   reviewCount,
   ownerPhone = "+249915494649",
+  listingId,
   reserveElement,
   onCallButtonMerge,
 }: StickyListingHeaderProps) {
@@ -108,6 +112,7 @@ export default function StickyListingHeader({
               {showCallButton && (
                 <a
                   href={`tel:${ownerPhone}`}
+                  onClick={() => trackEvent(listingId, "CONTACT_PHONE_CLICK")}
                   className="flex-shrink-0 inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#E61E4D] via-[#E31C5F] to-[#D70466] px-4 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:shadow-lg active:scale-95"
                   style={{
                     opacity: callButtonOpacity,

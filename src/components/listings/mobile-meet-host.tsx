@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { IdentityVerified, Building, Chat, SuperhostSimple } from "@/components/atom/icons"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
 import { PHASE1 } from "@/config/phase-flags"
+import ContactHostDialog from "./contact-host-dialog"
 
 interface MobileMeetHostUser {
   username: string | null;
@@ -15,6 +16,8 @@ interface MobileMeetHostUser {
 }
 
 interface MobileMeetHostProps {
+  /** Needed to open an inquiry thread against this listing. */
+  listingId: number;
   hostUser?: MobileMeetHostUser | null;
   reviewsCount?: number;
   averageRating?: number;
@@ -40,6 +43,7 @@ function RatingStar() {
 }
 
 export default function MobileMeetHost({
+  listingId,
   hostUser,
   reviewsCount,
   averageRating,
@@ -163,14 +167,13 @@ export default function MobileMeetHost({
           </div>
         </div>
 
-        {/* Message host — inert in phase 1 (no handler); hidden until wired. See phase-flags. */}
+        {/* Message host — wired to createConversation (message-actions.ts). */}
         {PHASE1.showMessageHost && (
         <div>
-          <Button
+          <ContactHostDialog
+            listingId={listingId}
             className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 px-6 py-2 rounded-lg font-medium flex items-center justify-center gap-2"
-          >
-            {host?.messageHost}
-          </Button>
+          />
         </div>
         )}
 

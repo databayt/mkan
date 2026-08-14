@@ -24,6 +24,7 @@ import { getListingReviews, getHostOtherReviewCount } from "@/lib/actions/review
 import { auth } from "@/lib/auth";
 import type { Locale } from "@/components/internationalization/config";
 import { localize, localizeNested, getText } from "@/components/translation/localize";
+import TrackView from "@/components/analytics/track-view";
 
 interface ListingPageProps {
   params: Promise<{
@@ -249,6 +250,11 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
           { name: serializedListing.title ?? "Listing", url: listingUrl },
         ])}
       />
+      {/* Funnel: one VIEW per visitor per day. Mounted here, not inside the
+          desktop/mobile trees below — both render on every request and are
+          hidden with CSS, so a tracker inside them would double-count one
+          human visit. */}
+      <TrackView listingId={listing.id} />
       {/* Desktop Layout - Preserved. Header matches /listings: the compact
           search pill expands into the big search (opening the clicked segment),
           and the hamburger menu + avatar behave identically. disableScrollExpand
@@ -275,6 +281,7 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
               }
               meetHostSlot={
                 <MeetHost
+                  listingId={listing.id}
                   hostUser={serializedListing.host ?? null}
                   reviewsCount={serializedListing.numberOfReviews ?? undefined}
                   averageRating={serializedListing.averageRating ?? undefined}
@@ -353,6 +360,7 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
           </div>
         </Suspense>
         <MobileMeetHost
+          listingId={listing.id}
           hostUser={serializedListing.host ?? null}
           reviewsCount={serializedListing.numberOfReviews ?? undefined}
           averageRating={serializedListing.averageRating ?? undefined}

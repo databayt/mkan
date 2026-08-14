@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/topup-trips",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/complete-bookings",
+      "schedule": "0 5 * * *"
     }
   ]
 }

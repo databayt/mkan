@@ -7,10 +7,11 @@ import { z } from "zod";
 import { auth, canOverride } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { ApplicationStatus } from "@prisma/client";
+import { ApplicationStatus, ListingEventType } from "@prisma/client";
 import { sanitizeInput, sanitizeEmail, sanitizePhone } from "@/lib/sanitization";
 import { logger } from "@/lib/logger";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { trackListingEvent } from "@/lib/analytics/events";
 
 // Shared type for consumers that need typed application data
 export type ApplicationWithDetails = {
@@ -230,6 +231,20 @@ export async function createApplication(data: unknown) {
         },
       });
     });
+
+    // Funnel: an application is an inquiry. Isolated in its own try/catch
+    // because the row is already committed by this point — letting an analytics
+    // failure reach the outer catch would report "Failed to create application"
+    // for an application that exists, which is strictly worse than not counting it.
+    try {
+      await trackListingEvent({
+        listingId: application.propertyId,
+        type: ListingEventType.CONTACT_APPLICATION,
+        userId: session.user.id,
+      });
+    } catch (trackError) {
+      logger.warn("Failed to record application funnel event", { error: String(trackError) });
+    }
 
     revalidatePath("/tenants/applications");
     revalidatePath("/managers/applications");

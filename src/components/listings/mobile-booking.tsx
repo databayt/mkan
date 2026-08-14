@@ -29,6 +29,8 @@ import { getBlockedDates } from "@/lib/actions/booking-actions";
 export type MobileBookingState = "noDates" | "blocked" | "ready";
 
 interface MobileBookingValue {
+  /** Needed by the footer CTAs so a phone tap can be attributed to the listing. */
+  listingId: number;
   range: DateRange | undefined;
   setRange: (range: DateRange | undefined) => void;
   blockedDates: Date[];
@@ -141,6 +143,7 @@ export function MobileBookingProvider({
     }
 
     return {
+      listingId,
       range,
       setRange,
       blockedDates,
@@ -153,7 +156,7 @@ export function MobileBookingProvider({
       rating,
       reviewsCount,
     };
-  }, [range, blockedDates, pricePerNight, cleaningFee, city, phone, rating, reviewsCount]);
+  }, [listingId, range, blockedDates, pricePerNight, cleaningFee, city, phone, rating, reviewsCount]);
 
   return <MobileBookingContext.Provider value={value}>{children}</MobileBookingContext.Provider>;
 }

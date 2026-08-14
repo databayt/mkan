@@ -7,6 +7,7 @@ import { useDictionary } from "@/components/internationalization/dictionary-cont
 import { formatCurrency } from "@/lib/i18n/formatters";
 import { RatingStar } from "./rating-star";
 import { useMobileBooking, MOBILE_CALENDAR_ANCHOR } from "./mobile-booking";
+import { trackEvent } from "@/lib/analytics/beacon";
 
 /**
  * Fixed booking footer — Airbnb's BOOK_IT_FLOATING_FOOTER on the phone room
@@ -56,7 +57,7 @@ const MobileReserve = ({ className = "" }: { className?: string }) => {
   const { locale } = useLocale();
   const dict = useDictionary();
   const isAr = locale === "ar";
-  const { range, state, nights, total, phone, rating, reviewsCount } = useMobileBooking();
+  const { listingId, range, state, nights, total, phone, rating, reviewsCount } = useMobileBooking();
 
   const t = {
     addDates: isAr ? "أضف التواريخ لعرض الأسعار" : "Add dates for prices",
@@ -173,6 +174,7 @@ const MobileReserve = ({ className = "" }: { className?: string }) => {
                 href={`tel:${phone}`}
                 className={`${CTA_CLASS} flex-1`}
                 style={{ background: BRAND_GRADIENT }}
+                onClick={() => trackEvent(listingId, "CONTACT_PHONE_CLICK")}
               >
                 {t.call}
               </a>
@@ -216,6 +218,7 @@ const MobileReserve = ({ className = "" }: { className?: string }) => {
                 href={`tel:${phone}`}
                 className={`${CTA_CLASS} shrink-0`}
                 style={{ background: BRAND_GRADIENT, minWidth: 112 }}
+                onClick={() => trackEvent(listingId, "CONTACT_PHONE_CLICK")}
               >
                 {t.call}
               </a>

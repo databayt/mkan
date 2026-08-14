@@ -1283,7 +1283,16 @@
       "messageHost": "مراسلة المضيف",
       "paymentProtection": "لحماية مدفوعاتك، استخدم دائماً مكان لإرسال الأموال والتواصل مع المضيفين.",
       "hostedBy": "يستضيفك {name}",
-      "hostFallback": "المضيف"
+      "hostFallback": "المضيف",
+      "messageDialogTitle": "راسل المضيف",
+      "messageDialogDescription": "اسأل عن التوفر أو الحي أو أي شيء آخر تود معرفته.",
+      "messagePlaceholder": "مرحباً! هل هذا المكان متاح في التواريخ التي أحتاجها؟",
+      "messageSend": "إرسال الرسالة",
+      "messageSending": "جارٍ الإرسال…",
+      "messageSent": "تم إرسال الرسالة. سيرد المضيف في صندوق الوارد.",
+      "messageError": "تعذّر إرسال رسالتك. حاول مرة أخرى.",
+      "messageSignIn": "سجّل الدخول لمراسلة المضيف",
+      "messageCancel": "إلغاء"
     },
     "searchPage": {
       "luxeStays": "إقامات مكان الفاخرة",

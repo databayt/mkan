@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { IdentityVerified, Building, Chat, SuperhostSimple } from "@/components/atom/icons"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
 import { PHASE1 } from "@/config/phase-flags"
+import ContactHostDialog from "./contact-host-dialog"
 
 interface MeetHostUser {
   username: string | null;
@@ -14,6 +15,8 @@ interface MeetHostUser {
 }
 
 interface MeetHostProps {
+  /** Needed to open an inquiry thread against this listing. */
+  listingId: number;
   hostUser?: MeetHostUser | null;
   reviewsCount?: number;
   averageRating?: number;
@@ -25,6 +28,7 @@ const FALLBACK_AVATAR =
   "https://cdn.databayt.org/mkan/stock/photo-1506905925346-21bda4d32df4.jpg";
 
 export default function MeetHost({
+  listingId,
   hostUser,
   reviewsCount,
   averageRating,
@@ -138,16 +142,11 @@ export default function MeetHost({
             </div>
           </div>
 
-          {/* Message host — inert in phase 1 (no handler); hidden until wired. See phase-flags. */}
+          {/* Message host — wired to createConversation (message-actions.ts).
+              Until that action existed a guest could not open a thread at all. */}
           {PHASE1.showMessageHost && (
           <div>
-            <Button
-              className="bg-gray-100 hover:bg-gray-200 text-gray-900 px-6 py-3 rounded-lg font-medium flex items-center gap-2"
-              
-            >
-              
-              {host?.messageHost}
-            </Button>
+            <ContactHostDialog listingId={listingId} />
           </div>
           )}
 

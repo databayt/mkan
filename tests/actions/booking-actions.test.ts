@@ -35,6 +35,7 @@ vi.mock("@/lib/db", () => ({
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       count: vi.fn(),
     },
     listing: {
@@ -98,6 +99,7 @@ import {
   checkAvailability,
   addBlockedDates,
   removeBlockedDates,
+  completeElapsedBookings,
 } from "@/lib/actions/booking-actions";
 
 const mockAuth = vi.mocked(auth);
@@ -675,5 +677,60 @@ describe("removeBlockedDates", () => {
         where: { id: { in: [1, 2] }, listingId: 1 },
       })
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// completeElapsedBookings
+//
+// Nothing in the homes vertical ever wrote BookingStatus.Completed — every
+// reference was a read-side guard — so the terminal state was unreachable, the
+// marketplace funnel could not close, and createReview (which requires a
+// completed stay) was permanently gated off. These tests pin the two decisions
+// that make the transition safe: only Confirmed stays complete, and running it
+// twice is a no-op.
+// ---------------------------------------------------------------------------
+describe("completeElapsedBookings", () => {
+  const now = new Date("2026-08-14T05:00:00.000Z");
+
+  beforeEach(() => {
+    vi.mocked(mockDb.booking.updateMany).mockResolvedValue({ count: 0 } as never);
+  });
+
+  it("completes only Confirmed bookings whose checkout has passed", async () => {
+    vi.mocked(mockDb.booking.updateMany).mockResolvedValue({ count: 3 } as never);
+
+    const result = await completeElapsedBookings(now);
+
+    expect(result).toEqual({ success: true, completedCount: 3 });
+    const arg = vi.mocked(mockDb.booking.updateMany).mock.calls[0][0];
+    expect(arg.where).toEqual({
+      status: BookingStatus.Confirmed,
+      checkOut: { lt: now },
+    });
+    expect(arg.data).toEqual({
+      status: BookingStatus.Completed,
+      checkedOutAt: now,
+    });
+  });
+
+  it("never completes a Pending booking — those expired, they did not happen", async () => {
+    await completeElapsedBookings(now);
+    const where = vi.mocked(mockDb.booking.updateMany).mock.calls[0][0].where as {
+      status: string;
+    };
+    // A host never confirmed these; counting them as completed rentals would
+    // overstate the single number the business cares most about.
+    expect(where.status).toBe(BookingStatus.Confirmed);
+    expect(where.status).not.toBe(BookingStatus.Pending);
+  });
+
+  it("is idempotent — a second run matches nothing", async () => {
+    vi.mocked(mockDb.booking.updateMany)
+      .mockResolvedValueOnce({ count: 2 } as never)
+      .mockResolvedValueOnce({ count: 0 } as never);
+
+    expect(await completeElapsedBookings(now)).toEqual({ success: true, completedCount: 2 });
+    expect(await completeElapsedBookings(now)).toEqual({ success: true, completedCount: 0 });
   });
 });

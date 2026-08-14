@@ -1283,7 +1283,16 @@
       "messageHost": "Message host",
       "paymentProtection": "To help protect your payment, always use Mkan to send money and communicate with hosts.",
       "hostedBy": "Hosted by {name}",
-      "hostFallback": "Host"
+      "hostFallback": "Host",
+      "messageDialogTitle": "Message the host",
+      "messageDialogDescription": "Ask about availability, the neighbourhood, or anything else you want to know.",
+      "messagePlaceholder": "Hi! Is this place available on the dates I need?",
+      "messageSend": "Send message",
+      "messageSending": "Sending…",
+      "messageSent": "Message sent. The host will reply in your inbox.",
+      "messageError": "Couldn't send your message. Please try again.",
+      "messageSignIn": "Sign in to message the host",
+      "messageCancel": "Cancel"
     },
     "searchPage": {
       "luxeStays": "Mkan Luxe stays",

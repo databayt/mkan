@@ -42,9 +42,11 @@ export const PHASE1 = {
    *  Phase 2: convert to m² if the data is populated. */
   showSqFt: false,
 
-  /** "Message host" buttons (desktop + mobile). Inert today (no handler). Phase 2: wire the
-   *  existing `message-actions.ts` inquiry path. */
-  showMessageHost: false,
+  /** "Message host" buttons (desktop + mobile). WIRED as of 2026-08-14: `createConversation`
+   *  in `message-actions.ts` opens a guest-initiated thread (one per guest x listing) and
+   *  records a CONTACT_MESSAGE funnel event. Before it existed only a seed script could
+   *  create a Conversation, so this button had nothing to call. */
+  showMessageHost: true,
 
   /** Footer currency/language switcher buttons. Non-functional (no onClick) and mislabelled.
    *  OFF until they actually switch. Currency/locale already work via the URL locale prefix. */

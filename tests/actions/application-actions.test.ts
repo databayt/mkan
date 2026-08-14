@@ -8,6 +8,13 @@ const ApplicationStatus = {
 } as const;
 
 vi.mock("@prisma/client", () => ({
+  ListingEventType: {
+    VIEW: "VIEW",
+    CONTACT_PHONE_REVEAL: "CONTACT_PHONE_REVEAL",
+    CONTACT_PHONE_CLICK: "CONTACT_PHONE_CLICK",
+    CONTACT_MESSAGE: "CONTACT_MESSAGE",
+    CONTACT_APPLICATION: "CONTACT_APPLICATION",
+  },
   ApplicationStatus: {
     Pending: "Pending",
     Denied: "Denied",
@@ -69,6 +76,11 @@ vi.mock("@/lib/sanitization", () => ({
   sanitizeInput: vi.fn((s: string) => s.trim()),
   sanitizeEmail: vi.fn((s: string) => s.toLowerCase().trim()),
   sanitizePhone: vi.fn((s: string) => s.trim()),
+}));
+
+// These tests are about application creation, not about the funnel.
+vi.mock("@/lib/analytics/events", () => ({
+  trackListingEvent: vi.fn(async () => ({ recorded: true, created: true })),
 }));
 
 vi.mock("@/lib/logger", () => ({

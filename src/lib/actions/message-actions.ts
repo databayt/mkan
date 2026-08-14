@@ -8,6 +8,8 @@ import { logger } from "@/lib/logger";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { localize, getText } from "@/components/translation/localize";
 import { getDisplayLang } from "@/components/translation/locale";
+import { trackListingEvent } from "@/lib/analytics/events";
+import { ListingEventType } from "@prisma/client";
 
 // ============================================
 // Host ⇄ guest messaging (Airbnb /hosting/messages). The inbox is host-centric
@@ -249,4 +251,90 @@ export async function markConversationRead(id: unknown): Promise<{ ok: boolean }
 
   revalidatePath("/hosting/messages");
   return { ok: true };
+}
+
+// ---------- start a thread (guest → host) ----------
+//
+// Until this existed, `Conversation` rows could only be created by a seed
+// script: `sendMessage` requires a `conversationId` and 403s without one, so a
+// guest had no way to open a thread at all and the "Inquiries" stage of the
+// marketplace funnel was structurally unreachable. Every other piece of the
+// messaging system — the host inbox, the thread view, read receipts — was
+// already built and waiting on this one action.
+
+const createConversationSchema = z.object({
+  listingId: z.coerce.number().int().positive(),
+  body: z.string().trim().min(1).max(5000),
+});
+
+export async function createConversation(
+  input: unknown,
+): Promise<{ ok: true; conversationId: number } | { ok: false; error: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, error: "Unauthenticated" };
+
+  const parsed = createConversationSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Message can't be empty" };
+
+  const uid = session.user.id;
+  await assertRateLimit("mutation", `inquiry:${uid}`);
+
+  const listing = await db.listing.findFirst({
+    where: { id: parsed.data.listingId, isPublished: true },
+    select: { id: true, hostId: true, title: true },
+  });
+  if (!listing) return { ok: false, error: "Listing not found" };
+  if (listing.hostId === uid) return { ok: false, error: "You can't message your own listing" };
+
+  try {
+    const now = new Date();
+
+    // One open thread per (guest, listing) — a guest clicking "Message host"
+    // twice should land back in the conversation they already started, not
+    // fragment the host's inbox into duplicates. Booking-scoped threads
+    // (bookingId set) are a separate concern and never reused here.
+    const existing = await db.conversation.findFirst({
+      where: { hostId: listing.hostId, guestId: uid, listingId: listing.id, bookingId: null },
+      select: { id: true },
+    });
+
+    const conversationId =
+      existing?.id ??
+      (
+        await db.conversation.create({
+          data: {
+            hostId: listing.hostId,
+            guestId: uid,
+            listingId: listing.id,
+            subject: listing.title ?? null,
+            lastMessageAt: now,
+            guestReadAt: now,
+          },
+          select: { id: true },
+        })
+      ).id;
+
+    await db.message.create({
+      data: { conversationId, senderId: uid, body: parsed.data.body },
+    });
+    await db.conversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: now, guestReadAt: now },
+    });
+
+    // Funnel: this is an inquiry. Recorded server-side rather than from the
+    // browser so it can't be lost to a navigation, and deduped per day by the
+    // same rule as every other event.
+    await trackListingEvent({
+      listingId: listing.id,
+      type: ListingEventType.CONTACT_MESSAGE,
+      userId: uid,
+    });
+
+    revalidatePath("/hosting/messages");
+    return { ok: true, conversationId };
+  } catch (error) {
+    logger.error("createConversation failed", { error: String(error), listingId: parsed.data.listingId });
+    return { ok: false, error: "Could not send message" };
+  }
 }

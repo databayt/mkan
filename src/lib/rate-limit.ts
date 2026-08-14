@@ -77,6 +77,19 @@ export const rateLimiters = {
     analytics: true,
     prefix: "@upstash/ratelimit/report-tenant",
   }) : null,
+
+  // Analytics beacons. Deliberately the loosest tier: one fires per listing
+  // page view, a browsing session hits many listings a minute, and Sudanese
+  // mobile traffic is heavily CGNAT-ed, so a whole neighbourhood can share one
+  // IP. Too tight here would silently delete real demand data — the failure
+  // mode is undercounting, which is invisible. Still bounded so a single host
+  // cannot flood the table.
+  track: redis ? new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(300, "1 m"),
+    analytics: true,
+    prefix: "@upstash/ratelimit/track",
+  }) : null,
 };
 
 // ─── Postgres fallback ───────────────────────────────────────────────────────
@@ -95,6 +108,7 @@ const TIER_CONFIG: Record<keyof typeof rateLimiters, { limit: number; windowMs: 
   mutation: { limit: 10, windowMs: 60_000 },
   report: { limit: 5, windowMs: 600_000 },
   "report-tenant": { limit: 30, windowMs: 3_600_000 },
+  track: { limit: 300, windowMs: 60_000 },
 };
 
 async function pgRateLimit(
