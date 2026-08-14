@@ -2909,10 +2909,20 @@ export async function getOfficeDashboardStats(officeId: number) {
   const now = new Date();
   const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
+  // Revenue counts Confirmed AND Completed — a bus that has arrived earned its
+  // fare. `confirmedBookings` is literally Confirmed, so it must never be shown
+  // as the count behind the revenue figure: the earnings page paired them and
+  // read "SDG 161,837 from 0 confirmed bookings", because the one booking had
+  // completed. Left alone, an operator's booking count falls back to zero every
+  // time a bus arrives while the money keeps climbing. `revenueBookings` is the
+  // count that matches the sum.
+  const REVENUE_STATUSES = ['Confirmed', 'Completed'] as const;
+
   const [
     totalBookings,
     pendingBookings,
     confirmedBookings,
+    revenueBookings,
     revenueData,
     upcomingTrips,
     totalBuses,
@@ -2921,8 +2931,11 @@ export async function getOfficeDashboardStats(officeId: number) {
     db.transportBooking.count({ where: { officeId } }),
     db.transportBooking.count({ where: { officeId, status: 'Pending' } }),
     db.transportBooking.count({ where: { officeId, status: 'Confirmed' } }),
+    db.transportBooking.count({
+      where: { officeId, status: { in: [...REVENUE_STATUSES] } },
+    }),
     db.transportBooking.aggregate({
-      where: { officeId, status: { in: ['Confirmed', 'Completed'] } },
+      where: { officeId, status: { in: [...REVENUE_STATUSES] } },
       _sum: { totalAmount: true },
     }),
     db.trip.count({
@@ -2941,6 +2954,7 @@ export async function getOfficeDashboardStats(officeId: number) {
     totalBookings,
     pendingBookings,
     confirmedBookings,
+    revenueBookings,
     totalRevenue: revenueData._sum.totalAmount || 0,
     upcomingTrips,
     totalBuses,

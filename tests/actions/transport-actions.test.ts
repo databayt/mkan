@@ -1544,7 +1544,8 @@ describe("getOfficeDashboardStats", () => {
     mockDb.transportBooking.count
       .mockResolvedValueOnce(10 as never) // total
       .mockResolvedValueOnce(3 as never) // pending
-      .mockResolvedValueOnce(5 as never); // confirmed
+      .mockResolvedValueOnce(5 as never) // confirmed
+      .mockResolvedValueOnce(7 as never); // earning revenue (Confirmed + Completed)
     mockDb.transportBooking.aggregate.mockResolvedValue({
       _sum: { totalAmount: 5000 },
     } as never);
@@ -1557,11 +1558,43 @@ describe("getOfficeDashboardStats", () => {
       totalBookings: 10,
       pendingBookings: 3,
       confirmedBookings: 5,
+      revenueBookings: 7,
       totalRevenue: 5000,
       upcomingTrips: 2,
       totalBuses: 4,
       totalRoutes: 3,
     });
+  });
+
+  it("counts revenue bookings on the same filter the revenue sum uses", async () => {
+    // The earnings page prints this count directly under the revenue figure.
+    // While it used the literal Confirmed count, an office whose only booking
+    // had completed read "SDG 161,837 from 0 confirmed bookings" — and every
+    // operator's count would fall back toward zero as their buses arrived.
+    mockAuth.mockResolvedValue(session as never);
+    mockDb.transportBooking.count.mockResolvedValue(0 as never);
+    mockDb.transportBooking.aggregate.mockResolvedValue({
+      _sum: { totalAmount: 161837 },
+    } as never);
+    mockDb.trip.count.mockResolvedValue(0 as never);
+    mockDb.bus.count.mockResolvedValue(0 as never);
+    mockDb.route.count.mockResolvedValue(0 as never);
+
+    await getOfficeDashboardStats(1);
+
+    const countCalls = mockDb.transportBooking.count.mock.calls.map(
+      (c) => (c[0] as { where?: Record<string, unknown> })?.where,
+    );
+    const aggregateWhere = (
+      mockDb.transportBooking.aggregate.mock.calls.at(-1)?.[0] as {
+        where?: Record<string, unknown>;
+      }
+    )?.where;
+
+    // One of the counts must carry exactly the aggregate's status filter.
+    expect(countCalls).toContainEqual(
+      expect.objectContaining({ status: aggregateWhere?.status }),
+    );
   });
 });
 

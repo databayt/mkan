@@ -4919,8 +4919,8 @@
       "pending": "Pending",
       "awaitingConfirmation": "bookings awaiting confirmation",
       "notesTitle": "Notes",
-      "notesRevenueRule": "Revenue counts only Confirmed bookings. Pending and Cancelled are excluded.",
-      "notesReferencePayments": "Reference-based payments (Bankak, Cashi, etc.) appear after admin verifies them.",
+      "notesRevenueRule": "Revenue counts Confirmed and Completed bookings. Pending and Cancelled are excluded.",
+      "notesReferencePayments": "Reference-based payments (Bankak, Cashi, etc.) count once the booking is confirmed.",
       "csvHeaders": {
         "metric": "Metric",
         "value": "Value",
@@ -4930,8 +4930,10 @@
         "totalRevenueSdg": "Total revenue (SDG)",
         "upcomingTrips": "Upcoming trips",
         "totalBuses": "Total buses",
-        "totalRoutes": "Total routes"
-      }
+        "totalRoutes": "Total routes",
+        "earningBookings": "Bookings earning revenue"
+      },
+      "earningBookingsSuffix": "bookings earning revenue"
     },
     "photos": {
       "title": "Add photos",

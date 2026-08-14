@@ -35,6 +35,7 @@ export default function TransportHostEarningsPage() {
       [h?.metric ?? "Metric", h?.value ?? "Value"],
       [h?.totalBookings ?? "Total bookings", stats?.totalBookings ?? 0],
       [h?.confirmedBookings ?? "Confirmed bookings", stats?.confirmedBookings ?? 0],
+      [h?.earningBookings ?? "Bookings earning revenue", stats?.revenueBookings ?? 0],
       [h?.pendingBookings ?? "Pending bookings", stats?.pendingBookings ?? 0],
       [h?.totalRevenueSdg ?? "Total revenue (SDG)", stats?.totalRevenue ?? 0],
       [h?.upcomingTrips ?? "Upcoming trips", stats?.upcomingTrips ?? 0],
@@ -81,8 +82,12 @@ export default function TransportHostEarningsPage() {
                 : "—"}
             </div>
             <div className="text-sm text-muted-foreground mt-1">
-              {(stats?.confirmedBookings as number | undefined) ?? 0}{" "}
-              {t?.confirmedBookingsSuffix ?? "confirmed bookings"}
+              {/* The count under the revenue figure must use the SAME filter as
+                  the revenue — Confirmed AND Completed. Pairing it with the
+                  literal Confirmed count read "SDG 161,837 from 0 confirmed
+                  bookings" the moment a bus arrived. */}
+              {(stats?.revenueBookings as number | undefined) ?? 0}{" "}
+              {t?.earningBookingsSuffix ?? "bookings earning revenue"}
             </div>
           </CardContent>
         </Card>
@@ -111,11 +116,11 @@ export default function TransportHostEarningsPage() {
         <CardContent className="text-sm text-muted-foreground space-y-2">
           <p>
             {t?.notesRevenueRule ??
-              "Revenue counts only Confirmed bookings. Pending and Cancelled are excluded."}
+              "Revenue counts Confirmed and Completed bookings. Pending and Cancelled are excluded."}
           </p>
           <p>
             {t?.notesReferencePayments ??
-              "Reference-based payments (Bankak, Cashi, etc.) appear after admin verifies them."}
+              "Reference-based payments (Bankak, Cashi, etc.) count once the booking is confirmed."}
           </p>
         </CardContent>
       </Card>
