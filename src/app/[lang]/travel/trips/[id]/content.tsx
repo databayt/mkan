@@ -237,6 +237,17 @@ export function TripDetailsContent({ trip, lang }: TripDetailsContentProps) {
         return;
       }
 
+      // Throttled: too many booking attempts from this account. Nothing was
+      // reserved, so the rider's selection stays exactly as it is — they just
+      // have to wait out the window and press Reserve again.
+      if (result.error === 'RATE_LIMITED') {
+        toast.error(
+          (t.booking?.rateLimited ?? 'Too many booking attempts. Try again in {seconds} seconds.')
+            .replace('{seconds}', String(result.retryAfter)),
+        );
+        return;
+      }
+
       // Someone else got there first. Strike exactly those seats and leave
       // the rest of the rider's selection — and their typed-in passengers —
       // intact so they only have to re-pick what they lost.

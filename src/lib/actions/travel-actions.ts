@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 import { auth, canOverride } from '@/lib/auth';
+import { assertRateLimit, RateLimitError } from '@/lib/rate-limit';
 import { db } from '@/lib/db';
 import { BusAmenity, Prisma, SeatStatus, TransportBookingStatus } from '@prisma/client';
 import { revalidatePath, updateTag, unstable_cache } from 'next/cache';
@@ -195,6 +196,8 @@ export async function createTransportOffice(data: unknown) {
     throw new Error('Unauthorized');
   }
 
+  await assertRateLimit('mutation', `travel-office-create:${session.user.id}`);
+
   const parsed = transportOfficeDraftSchema.safeParse(data);
   if (!parsed.success) {
     throw new Error('Invalid office data');
@@ -239,6 +242,8 @@ export async function updateTransportOffice(
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
+
+  await assertRateLimit('mutation', `travel-office-update:${session.user.id}`);
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success) {
@@ -320,6 +325,8 @@ export async function publishOffice(id: number) {
     throw new Error('Unauthorized');
   }
 
+  await assertRateLimit('mutation', `travel-office-publish:${session.user.id}`);
+
   const office = await db.transportOffice.update({
     where: { id, ownerId: session.user.id },
     data: { isActive: true },
@@ -384,6 +391,8 @@ export async function createBus(data: BusFormData & { officeId: number }) {
     throw new Error('Unauthorized');
   }
 
+  await assertRateLimit('mutation', `travel-bus-create:${session.user.id}`);
+
   const { officeId, ...busData } = data;
 
   // Verify office ownership
@@ -414,6 +423,8 @@ export async function updateBus(id: unknown, data: unknown) {
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
+
+  await assertRateLimit('mutation', `travel-bus-update:${session.user.id}`);
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success) {
@@ -451,6 +462,8 @@ export async function deleteBus(id: unknown) {
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
+
+  await assertRateLimit('mutation', `travel-bus-delete:${session.user.id}`);
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success) {
@@ -496,6 +509,8 @@ export async function createRoute(data: RouteFormData & { officeId: number }) {
     throw new Error('Unauthorized');
   }
 
+  await assertRateLimit('mutation', `travel-route-create:${session.user.id}`);
+
   const { officeId, ...routeData } = data;
 
   // Verify office ownership
@@ -532,6 +547,8 @@ export async function updateRoute(id: unknown, data: unknown) {
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
+
+  await assertRateLimit('mutation', `travel-route-update:${session.user.id}`);
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success) {
@@ -575,6 +592,8 @@ export async function deleteRoute(id: unknown) {
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
+
+  await assertRateLimit('mutation', `travel-route-delete:${session.user.id}`);
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success) {
@@ -1165,6 +1184,8 @@ export async function createTrip(data: TripFormData) {
     throw new Error('Unauthorized');
   }
 
+  await assertRateLimit('mutation', `travel-trip-create:${session.user.id}`);
+
   // Verify both route and bus belong to an office the caller owns.
   // Prevents operator A from creating trips on operator B's fleet.
   const [bus, route] = await Promise.all([
@@ -1258,6 +1279,8 @@ export async function createTripsBulk(data: unknown) {
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
+
+  await assertRateLimit('mutation', `travel-trip-bulk:${session.user.id}`);
 
   const parsed = bulkTripsSchema.safeParse(data);
   if (!parsed.success) {
@@ -1399,6 +1422,8 @@ export async function updateTrip(id: number, data: Partial<TripFormData>) {
     throw new Error('Unauthorized');
   }
 
+  await assertRateLimit('mutation', `travel-trip-update:${session.user.id}`);
+
   // Ownership: trip belongs to a route belongs to an office; verify caller owns the office.
   const existing = await db.trip.findUnique({
     where: { id },
@@ -1453,6 +1478,8 @@ export async function cancelTrip(id: number) {
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
+
+  await assertRateLimit('mutation', `travel-trip-cancel:${session.user.id}`);
 
   const existing = await db.trip.findUnique({
     where: { id },
@@ -1640,6 +1667,24 @@ export async function createBooking(data: unknown) {
 
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
+  }
+
+  // Seat holds last 30 minutes, so an unthrottled booking loop is a
+  // denial-of-inventory: a script could park every seat on every trip and
+  // release nothing. Returned as a typed failure rather than thrown because
+  // Next redacts Server Action error messages in production — the same reason
+  // SEATS_UNAVAILABLE is a result and not an exception.
+  try {
+    await assertRateLimit('mutation', `travel-booking:${session.user.id}`);
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return {
+        success: false as const,
+        error: 'RATE_LIMITED' as const,
+        retryAfter: error.retryAfter,
+      };
+    }
+    throw error;
   }
 
   const parsed = transportBookingSchema.safeParse(data);
@@ -1843,6 +1888,8 @@ export async function confirmBooking(id: number) {
     throw new Error('Unauthorized');
   }
 
+  await assertRateLimit('mutation', `travel-confirm:${session.user.id}`);
+
   // Ownership: booking owner, office owner, or admin may confirm.
   const existing = await db.transportBooking.findUnique({
     where: { id },
@@ -1880,9 +1927,11 @@ export async function confirmBooking(id: number) {
 
 /**
  * Cron-safe sweeper: any seat still in "Reserved" whose reservedUntil is
- * in the past is released back to Available. Called by
- * `/api/cron/release-seats` every 5 minutes. Also marks the associated
- * booking Cancelled so analytics/operator views match reality.
+ * in the past is released back to Available. Called with a tripId inline by
+ * getTripDetails / getTripSeats / createBooking (that is what actually
+ * enforces the 30-minute TTL), and without one by the daily
+ * `/api/cron/release-seats` backstop. Also marks the associated booking
+ * Cancelled so analytics/operator views match reality.
  *
  * Skips auth because the caller is the cron job, which authenticates via
  * the CRON_SECRET header on the route.
@@ -1954,6 +2003,8 @@ export async function cancelBooking(id: number) {
     throw new Error('Unauthorized');
   }
 
+  await assertRateLimit('mutation', `travel-cancel:${session.user.id}`);
+
   const booking = await db.transportBooking.findUnique({
     where: { id },
     include: {
@@ -1974,43 +2025,51 @@ export async function cancelBooking(id: number) {
     throw new Error('Not authorized to cancel this booking');
   }
 
-  // Idempotency: a second cancel must not release seats again or increment
-  // availableSeats twice.
-  if (booking.status === 'Cancelled') {
-    return { success: true, booking, refundAmount: 0 };
-  }
   if (booking.status === 'Completed') {
     throw new Error('Completed bookings cannot be cancelled');
   }
 
-  // Release seats
-  await db.seat.updateMany({
-    where: { bookingId: id },
-    data: {
-      status: 'Available',
-      bookingId: null,
-      reservedUntil: null,
-    },
-  });
+  // Idempotency is a compare-and-swap, not a read-then-write: claim the
+  // cancellation by flipping the status only if it is still un-cancelled, and
+  // let the row count decide who won. A plain `if (status === 'Cancelled')`
+  // guard above the writes lets two concurrent cancels of the same booking
+  // both pass the read — and each one then releases the seats, increments
+  // availableSeats, and fires its own Stripe refund. Doing the release inside
+  // the same transaction means the loser touches nothing.
+  const claimed = await db.$transaction(async (tx) => {
+    const { count } = await tx.transportBooking.updateMany({
+      where: { id, status: { not: 'Cancelled' } },
+      data: { status: 'Cancelled', cancelledAt: new Date() },
+    });
+    if (count === 0) return null;
 
-  // Update booking status
-  const updatedBooking = await db.transportBooking.update({
-    where: { id },
-    data: {
-      status: 'Cancelled',
-      cancelledAt: new Date(),
-    },
-  });
-
-  // Update available seats count
-  await db.trip.update({
-    where: { id: booking.tripId },
-    data: {
-      availableSeats: {
-        increment: booking.seats.length,
+    await tx.seat.updateMany({
+      where: { bookingId: id },
+      data: {
+        status: 'Available',
+        bookingId: null,
+        reservedUntil: null,
       },
-    },
+    });
+
+    await tx.trip.update({
+      where: { id: booking.tripId },
+      data: {
+        availableSeats: {
+          increment: booking.seats.length,
+        },
+      },
+    });
+
+    return tx.transportBooking.findUniqueOrThrow({ where: { id } });
   });
+
+  // Someone else cancelled it first — their call owns the seat release and
+  // the refund. Report success (the booking IS cancelled) and refund nothing.
+  if (!claimed) {
+    return { success: true, booking, refundAmount: 0 };
+  }
+  const updatedBooking = claimed;
 
   // Refund what actually cleared, per the transport policy (full 24h+
   // before departure, 50% 24–6h, none <6h). Card payments carry a Stripe
@@ -2065,6 +2124,8 @@ export async function cancelBookingSeats(bookingId: number, seatNumbers: string[
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
+
+  await assertRateLimit('mutation', `travel-cancel-seats:${session.user.id}`);
   if (!Array.isArray(seatNumbers) || seatNumbers.length === 0) {
     throw new Error('Select at least one seat to cancel');
   }
@@ -2344,6 +2405,8 @@ export async function processPayment(bookingId: number, data: PaymentFormData) {
     throw new Error('Unauthorized');
   }
 
+  await assertRateLimit('payment', `travel-pay:${session.user.id}`);
+
   const booking = await db.transportBooking.findUnique({
     where: { id: bookingId },
     include: { trip: { include: { route: { include: { office: true } } } } },
@@ -2420,6 +2483,8 @@ export async function verifyPayment(paymentId: number, approve: boolean = true) 
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
+
+  await assertRateLimit('mutation', `travel-verify-pay:${session.user.id}`);
 
   // Only the office owner or an admin may mark a payment as verified.
   const existing = await db.transportPayment.findUnique({
@@ -2543,6 +2608,20 @@ export async function validateTicket(qrCode: string) {
     return { valid: false as const, message: 'auth' };
   }
 
+  // A gate agent scans in bursts, so this rides the generous mutation bucket
+  // rather than a scan-specific one — it exists to stop a scripted loop
+  // hammering the reference lookup, not to pace a real queue. Returned, not
+  // thrown, because every other failure here is a typed result the scanner UI
+  // already knows how to render.
+  try {
+    await assertRateLimit('mutation', `travel-validate:${session.user.id}`);
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return { valid: false as const, message: 'rateLimited' };
+    }
+    throw error;
+  }
+
   let ref = '';
   let seat = '';
   let sig = '';
@@ -2651,6 +2730,8 @@ export async function checkInTicket(bookingId: number, seatNumber?: string) {
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
   }
+
+  await assertRateLimit('mutation', `travel-checkin:${session.user.id}`);
 
   const booking = await db.transportBooking.findUnique({
     where: { id: bookingId },

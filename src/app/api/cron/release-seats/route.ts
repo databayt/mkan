@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { releaseExpiredSeatHolds } from "@/lib/actions/travel-actions";
 
 /**
- * 5-minute cron — releases seat holds whose reservedUntil TTL has
- * expired and cancels the associated Pending bookings. Gated by
+ * Daily backstop cron — releases seat holds whose reservedUntil TTL has
+ * expired and cancels the associated Pending bookings. Daily is all a Vercel
+ * hobby plan allows; the 30-minute TTL is actually enforced inline instead,
+ * by getTripDetails / getTripSeats / createBooking each calling
+ * releaseExpiredSeatHolds(tripId) before they read or sell. This sweep only
+ * catches holds on trips nobody has looked at since. Gated by
  * CRON_SECRET so only Vercel cron or an authorized curl invocation
  * can trigger it. Schedule lives in vercel.json.
  */

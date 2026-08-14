@@ -63,6 +63,8 @@ export default function ScannerPage() {
         return s?.reasonUnpaid ?? "Payment not confirmed yet — verify payment first";
       case "auth":
         return s?.reasonAuth ?? "You are not authorized to validate this ticket";
+      case "rateLimited":
+        return s?.reasonRateLimited ?? "Too many scans too quickly — wait a moment and scan again";
       default:
         return s?.reasonInvalid ?? "Invalid ticket";
     }

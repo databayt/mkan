@@ -993,36 +993,85 @@ describe("cancelBooking", () => {
     await expect(cancelBooking(1)).rejects.toThrow("Booking not found");
   });
 
+  const cancellableBooking = {
+    id: 1,
+    tripId: 5,
+    userId: "user-1",
+    status: "Confirmed",
+    seats: [{ id: 10 }, { id: 11 }],
+    payments: [],
+    trip: { route: { office: { ownerId: "user-1" } } },
+  };
+
+  /**
+   * Stand in for the cancellation transaction. `claimedCount` is what the
+   * compare-and-swap `updateMany` reports back: 1 = this caller won the race
+   * and owns the release, 0 = someone else already cancelled it.
+   */
+  const mockCancelTx = (claimedCount: number) => {
+    const tx = {
+      transportBooking: {
+        updateMany: vi.fn().mockResolvedValue({ count: claimedCount }),
+        findUniqueOrThrow: vi
+          .fn()
+          .mockResolvedValue({ id: 1, status: "Cancelled" }),
+      },
+      seat: { updateMany: vi.fn().mockResolvedValue({ count: 2 }) },
+      trip: { update: vi.fn().mockResolvedValue({}) },
+    };
+    mockDb.$transaction.mockImplementation(async (fn: (t: unknown) => unknown) =>
+      fn(tx),
+    );
+    return tx;
+  };
+
   it("releases seats and increments available seats count", async () => {
     mockAuth.mockResolvedValue(session as never);
-    const booking = {
-      id: 1,
-      tripId: 5,
-      userId: "user-1",
-      status: "Confirmed",
-      seats: [{ id: 10 }, { id: 11 }],
-      payments: [],
-      trip: { route: { office: { ownerId: "user-1" } } },
-    };
-    mockDb.transportBooking.findUnique.mockResolvedValue(booking as never);
-    mockDb.seat.updateMany.mockResolvedValue({ count: 2 } as never);
-    mockDb.transportBooking.update.mockResolvedValue({
-      id: 1,
-      status: "Cancelled",
-    } as never);
-    mockDb.trip.update.mockResolvedValue({} as never);
+    mockDb.transportBooking.findUnique.mockResolvedValue(
+      cancellableBooking as never,
+    );
+    const tx = mockCancelTx(1);
 
     const result = await cancelBooking(1);
     expect(result.success).toBe(true);
-    expect(mockDb.seat.updateMany).toHaveBeenCalledWith({
+    // The status flip is a compare-and-swap, not a blind update — only a
+    // booking that is still un-cancelled may be claimed.
+    expect(tx.transportBooking.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 1, status: { not: "Cancelled" } },
+      }),
+    );
+    expect(tx.seat.updateMany).toHaveBeenCalledWith({
       where: { bookingId: 1 },
       // `reservedUntil` clears too — a released seat must not keep a stale hold.
       data: { status: "Available", bookingId: null, reservedUntil: null },
     });
-    expect(mockDb.trip.update).toHaveBeenCalledWith({
+    expect(tx.trip.update).toHaveBeenCalledWith({
       where: { id: 5 },
       data: { availableSeats: { increment: 2 } },
     });
+  });
+
+  it("a cancel that loses the race releases nothing and refunds nothing", async () => {
+    // Both callers read the booking as Confirmed — that is exactly the window
+    // a read-then-write guard cannot close. The loser's CAS matches 0 rows,
+    // so it must not release the seats a second time, must not increment
+    // availableSeats a second time, and must not fire a second Stripe refund.
+    mockAuth.mockResolvedValue(session as never);
+    mockDb.transportBooking.findUnique.mockResolvedValue({
+      ...cancellableBooking,
+      payments: [
+        { status: "Paid", amount: 500, transactionId: "pi_test_123" },
+      ],
+    } as never);
+    const tx = mockCancelTx(0);
+
+    const result = await cancelBooking(1);
+
+    expect(result.success).toBe(true);
+    expect(result.refundAmount).toBe(0);
+    expect(tx.seat.updateMany).not.toHaveBeenCalled();
+    expect(tx.trip.update).not.toHaveBeenCalled();
   });
 });
 

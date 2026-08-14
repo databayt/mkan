@@ -2462,7 +2462,8 @@
       "idCardOptional": "ID number (optional)",
       "idCardPlaceholder": "e.g., 123-456-789",
       "namePerSeatHint": "Enter a name for every seat — each passenger gets their own ticket.",
-      "allPassengers": "All passengers"
+      "allPassengers": "All passengers",
+      "rateLimited": "Too many booking attempts. Try again in {seconds} seconds."
     },
     "payment": {
       "title": "Payment",
@@ -3001,7 +3002,8 @@
       "reasonUsed": "Ticket already used",
       "reasonUnpaid": "Payment not confirmed yet — verify payment first",
       "reasonAuth": "You are not authorized to validate this ticket",
-      "reasonInvalid": "Invalid ticket"
+      "reasonInvalid": "Invalid ticket",
+      "reasonRateLimited": "Too many scans too quickly — wait a moment and scan again"
     }
   },
   "siteFooter": {

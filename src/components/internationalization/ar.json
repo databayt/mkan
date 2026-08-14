@@ -2462,7 +2462,8 @@
       "idCardOptional": "رقم الهوية (اختياري)",
       "idCardPlaceholder": "مثال: 123-456-789",
       "namePerSeatHint": "أدخل اسمًا لكل مقعد — كل مسافر يحصل على تذكرته الخاصة.",
-      "allPassengers": "جميع المسافرين"
+      "allPassengers": "جميع المسافرين",
+      "rateLimited": "محاولات حجز كثيرة. حاول مرة أخرى بعد {seconds} ثانية."
     },
     "payment": {
       "title": "الدفع",
@@ -3001,7 +3002,8 @@
       "reasonUsed": "التذكرة مستخدمة بالفعل",
       "reasonUnpaid": "لم يتم تأكيد الدفع بعد — تحقق من الدفع أولاً",
       "reasonAuth": "لست مخولاً للتحقق من هذه التذكرة",
-      "reasonInvalid": "تذكرة غير صالحة"
+      "reasonInvalid": "تذكرة غير صالحة",
+      "reasonRateLimited": "عمليات مسح كثيرة بسرعة — انتظر لحظة ثم امسح مرة أخرى"
     }
   },
   "siteFooter": {
