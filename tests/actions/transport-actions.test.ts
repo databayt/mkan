@@ -1019,6 +1019,7 @@ describe("cancelBooking", () => {
       },
       seat: { updateMany: vi.fn().mockResolvedValue({ count: 2 }) },
       trip: { update: vi.fn().mockResolvedValue({}) },
+      transportPayment: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     };
     mockDb.$transaction.mockImplementation(async (fn: (t: unknown) => unknown) =>
       fn(tx),
@@ -1050,6 +1051,12 @@ describe("cancelBooking", () => {
     expect(tx.trip.update).toHaveBeenCalledWith({
       where: { id: 5 },
       data: { availableSeats: { increment: 2 } },
+    });
+    // A claim that never cleared must not outlive the booking in the
+    // operator's verification queue.
+    expect(tx.transportPayment.updateMany).toHaveBeenCalledWith({
+      where: { bookingId: 1, status: "Pending" },
+      data: { status: "Failed" },
     });
   });
 

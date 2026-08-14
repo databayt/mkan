@@ -15,6 +15,7 @@ import {
   Clock,
   Calendar,
   CheckCircle,
+  XCircle,
   Download,
   Share2,
   ArrowRight,
@@ -31,6 +32,7 @@ import { useDictionary } from '@/components/internationalization/dictionary-cont
 import { useLocale } from '@/components/internationalization/use-locale';
 import { formatCurrency } from '@/lib/i18n/formatters';
 import { cityLabel } from '@/components/travel/city-names';
+import CancelTravelBookingButton from './cancel-button';
 
 type BookingDetails = NonNullable<Awaited<ReturnType<typeof getBooking>>>;
 
@@ -52,6 +54,24 @@ export function BookingConfirmationContent({ booking, lang }: BookingConfirmatio
   // Pending until the operator confirms receipt, and cash-on-arrival is paid at
   // the desk — neither has reached anyone yet.
   const hasClearedPayment = booking?.payments?.some((p) => p.status === 'Paid') ?? false;
+
+  // A booking can be cancelled right up to departure. Past that, or once it is
+  // already cancelled or completed, there is nothing to release.
+  const hoursBeforeDeparture = booking
+    ? (new Date(booking.trip.departureDate).setHours(
+        Number(booking.trip.departureTime?.split(':')[0] ?? 0),
+        Number(booking.trip.departureTime?.split(':')[1] ?? 0),
+        0,
+        0,
+      ) -
+        Date.now()) /
+      (1000 * 60 * 60)
+    : 0;
+  const isCancellable =
+    !!booking &&
+    booking.status !== 'Cancelled' &&
+    booking.status !== 'Completed' &&
+    hoursBeforeDeparture > 0;
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -94,6 +114,12 @@ export function BookingConfirmationContent({ booking, lang }: BookingConfirmatio
   }
 
   const isConfirmed = booking.status === 'Confirmed';
+  // The hero used to be a binary — anything that wasn't Confirmed rendered as
+  // "Booking Received / you will receive confirmation shortly". A cancelled
+  // booking landed in that branch, so a rider who had just cancelled (or whose
+  // hold lapsed) was told to wait for a confirmation that will never come,
+  // under a green tick, with the Cancelled badge sitting right below it.
+  const isCancelled = booking.status === 'Cancelled';
   const statusLabels = t.status as Partial<Record<string, string>>;
   const statusLabel = statusLabels?.[booking.status] ?? booking.status;
 
@@ -102,19 +128,30 @@ export function BookingConfirmationContent({ booking, lang }: BookingConfirmatio
       {/* Success Header */}
       <div className="text-center mb-8">
         <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${
-          isConfirmed ? 'bg-green-100' : 'bg-yellow-100'
+          isCancelled ? 'bg-destructive/10' : isConfirmed ? 'bg-green-100' : 'bg-yellow-100'
         }`}>
-          <CheckCircle className={`h-8 w-8 ${
-            isConfirmed ? 'text-green-600' : 'text-yellow-600'
-          }`} />
+          {isCancelled ? (
+            <XCircle className="h-8 w-8 text-destructive" />
+          ) : (
+            <CheckCircle className={`h-8 w-8 ${
+              isConfirmed ? 'text-green-600' : 'text-yellow-600'
+            }`} />
+          )}
         </div>
         <h1 className="text-2xl font-bold mb-2">
-          {isConfirmed ? t.booking.confirmed : t.booking.received}
+          {isCancelled
+            ? (t.booking?.cancelledTitle ?? 'Booking cancelled')
+            : isConfirmed
+              ? t.booking.confirmed
+              : t.booking.received}
         </h1>
         <p className="text-muted-foreground">
-          {isConfirmed
-            ? t.booking.confirmedMessage
-            : t.booking.receivedMessage}
+          {isCancelled
+            ? (t.booking?.cancelledMessage ??
+                'This booking was cancelled and its seats have been released.')
+            : isConfirmed
+              ? t.booking.confirmedMessage
+              : t.booking.receivedMessage}
         </p>
       </div>
 
@@ -336,6 +373,13 @@ export function BookingConfirmationContent({ booking, lang }: BookingConfirmatio
           <Share2 className="h-4 w-4 me-2" />
           {t.booking.share}
         </Button>
+        {isCancellable && (
+          <CancelTravelBookingButton
+            bookingId={booking.id}
+            lang={lang}
+            hoursBeforeDeparture={hoursBeforeDeparture}
+          />
+        )}
       </div>
 
       <div className="mt-6 text-center">

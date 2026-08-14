@@ -2061,6 +2061,16 @@ export async function cancelBooking(id: number) {
       },
     });
 
+    // Fail any manual claim that never cleared, exactly as updateBookingStatus
+    // does on its Cancelled branch. Without this a cancelled booking leaves a
+    // Pending TransportPayment behind forever, and the operator's verification
+    // queue slowly fills with money nobody is ever going to send. Paid rows are
+    // untouched — those are settled by the refund below, not by voiding them.
+    await tx.transportPayment.updateMany({
+      where: { bookingId: id, status: 'Pending' },
+      data: { status: 'Failed' },
+    });
+
     return tx.transportBooking.findUniqueOrThrow({ where: { id } });
   });
 

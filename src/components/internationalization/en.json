@@ -2474,7 +2474,17 @@
       "allPassengers": "All passengers",
       "rateLimited": "Too many booking attempts. Try again in {seconds} seconds.",
       "totalDue": "Amount due",
-      "payingVia": "Paying by"
+      "payingVia": "Paying by",
+      "cancelBooking": "Cancel booking",
+      "cancelling": "Cancelling…",
+      "cancelConfirm": "Cancel this booking? Your seats will be released.",
+      "cancelled": "Booking cancelled",
+      "couldNotCancel": "Could not cancel this booking.",
+      "refundFull": "You are more than 24 hours from departure, so any payment is refunded in full.",
+      "refundHalf": "You are within 24 hours of departure, so half of any payment is refunded.",
+      "refundNone": "You are within 6 hours of departure, so no refund is due.",
+      "cancelledTitle": "Booking cancelled",
+      "cancelledMessage": "This booking was cancelled and its seats have been released."
     },
     "payment": {
       "title": "Payment",
