@@ -2523,7 +2523,8 @@
       "soldOutHint": "جميع المقاعد محجوزة. جرّب رحلة أخرى على هذا الخط.",
       "findAnother": "ابحث عن رحلة أخرى",
       "departs": "الإقلاع",
-      "bus": "الحافلة"
+      "bus": "الحافلة",
+      "title": "رحلة باص"
     },
     "office": {
       "title": "مكاتب النقل",
@@ -2867,7 +2868,8 @@
       "totalLabel": "الإجمالي",
       "qrAlt": "رمز استجابة سريعة للذكرة",
       "ticketOf": "تذكرة {n} من {total}",
-      "groupTicketsHint": "لكل مسافر تذكرته ورمز QR الخاص به — اطبعها أو شاركها جميعًا."
+      "groupTicketsHint": "لكل مسافر تذكرته ورمز QR الخاص به — اطبعها أو شاركها جميعًا.",
+      "title": "تذكرتك"
     },
     "bookingPage": {
       "dateLabel": "التاريخ",
@@ -2878,7 +2880,8 @@
       "emailLabel": "البريد الإلكتروني",
       "totalLabel": "الإجمالي",
       "paymentSuccess": "تم الدفع بنجاح",
-      "paymentFailed": "فشل الدفع. يرجى المحاولة مرة أخرى."
+      "paymentFailed": "فشل الدفع. يرجى المحاولة مرة أخرى.",
+      "title": "حجزك"
     },
     "meta": {
       "title": "السفر البري",
@@ -2888,7 +2891,8 @@
       "checkoutTitle": "الدفع",
       "checkoutDescription": "أكمل حجزك وادفع",
       "officesTitle": "مكاتب النقل",
-      "officesDescription": "تصفح مكاتب النقل المتاحة"
+      "officesDescription": "تصفح مكاتب النقل المتاحة",
+      "tripDescription": "{office} تغادر {origin} إلى {destination} الساعة {time} يوم {date}. اختر مقعدك واحجز عبر الإنترنت."
     },
     "home": {
       "operatorsCaption": "مشغّلو النقل على منصتنا",

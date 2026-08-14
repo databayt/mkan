@@ -1,11 +1,29 @@
+import type { Metadata } from 'next';
 import QRCode from 'qrcode';
 
 import { generateTicketData } from '@/lib/actions/travel-actions';
+import { getDictionary } from '@/components/internationalization/dictionaries';
+import { createMetadata } from '@/lib/metadata';
 import type { Locale } from '@/components/internationalization/config';
 import { TicketContent, type PassengerTicket } from './content';
 
 interface TicketPageProps {
   params: Promise<{ lang: Locale; id: string }>;
+}
+
+// A boarding pass with a signed QR on it. Same reasoning as the booking page,
+// with more at stake: never indexed, and the title carries no passenger detail.
+export async function generateMetadata({ params }: TicketPageProps): Promise<Metadata> {
+  const { lang, id } = await params;
+  const d = await getDictionary(lang);
+  const t = d?.travel;
+  return createMetadata({
+    title: t?.ticketView?.title ?? 'Your ticket',
+    description: t?.meta?.description ?? 'Book intercity bus trips across Sudan',
+    locale: lang,
+    path: `/travel/booking/${id}/ticket`,
+    noIndex: true,
+  });
 }
 
 const QR_RENDER_OPTIONS = {

@@ -2523,7 +2523,8 @@
       "soldOutHint": "All seats are taken. Try another trip on this route.",
       "findAnother": "Find another trip",
       "departs": "Departs",
-      "bus": "Bus"
+      "bus": "Bus",
+      "title": "Bus Trip"
     },
     "office": {
       "title": "Transport Offices",
@@ -2867,7 +2868,8 @@
       "totalLabel": "Total",
       "qrAlt": "Ticket QR Code",
       "ticketOf": "Ticket {n} of {total}",
-      "groupTicketsHint": "Each passenger has their own ticket and QR code — print or share all of them."
+      "groupTicketsHint": "Each passenger has their own ticket and QR code — print or share all of them.",
+      "title": "Your ticket"
     },
     "bookingPage": {
       "dateLabel": "Date",
@@ -2878,7 +2880,8 @@
       "emailLabel": "Email",
       "totalLabel": "Total",
       "paymentSuccess": "Payment successful",
-      "paymentFailed": "Payment failed. Please try again."
+      "paymentFailed": "Payment failed. Please try again.",
+      "title": "Your booking"
     },
     "meta": {
       "title": "Bus Travel",
@@ -2888,7 +2891,8 @@
       "checkoutTitle": "Checkout",
       "checkoutDescription": "Complete your booking and pay",
       "officesTitle": "Transport Offices",
-      "officesDescription": "Browse available transport offices"
+      "officesDescription": "Browse available transport offices",
+      "tripDescription": "{office} departs {origin} for {destination} at {time} on {date}. Pick your seat and book online."
     },
     "home": {
       "operatorsCaption": "Trusted transport operators on our platform",
