@@ -56,6 +56,7 @@ vi.mock("@/lib/db", () => ({
     transportPayment: {
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     $transaction: vi.fn(),
   },
@@ -1587,6 +1588,61 @@ describe("updateBookingStatus", () => {
       // A confirmed seat is owned outright, so the temporary hold is dropped —
       // leaving `reservedUntil` set would let the lock sweeper reclaim a paid seat.
       data: { status: "Booked", reservedUntil: null },
+    });
+  });
+
+  it("settles the pending manual-payment claim on confirmation", async () => {
+    // The operator's Confirm button IS the manual-payment verification: the
+    // money landed in their wallet and they are saying so. Leaving the claim
+    // Pending stranded it in the admin reconciliation queue forever, behind a
+    // passenger who had already travelled.
+    mockAuth.mockResolvedValue(session as never);
+    mockDb.transportBooking.findUnique.mockResolvedValue({
+      id: 1,
+      tripId: 5,
+      office: { ownerId: "user-1" },
+      seats: [{ id: 10 }],
+      confirmedAt: null,
+      cancelledAt: null,
+    } as never);
+    mockDb.transportBooking.update.mockResolvedValue({
+      id: 1,
+      status: "Confirmed",
+    } as never);
+    mockDb.seat.updateMany.mockResolvedValue({ count: 1 } as never);
+
+    await updateBookingStatus(1, "Confirmed");
+
+    expect(mockDb.transportPayment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { bookingId: 1, status: "Pending" },
+        data: expect.objectContaining({ status: "Paid" }),
+      }),
+    );
+  });
+
+  it("fails the pending manual-payment claim on cancellation", async () => {
+    mockAuth.mockResolvedValue(session as never);
+    mockDb.transportBooking.findUnique.mockResolvedValue({
+      id: 1,
+      tripId: 5,
+      office: { ownerId: "user-1" },
+      seats: [{ id: 10 }, { id: 11 }],
+      confirmedAt: null,
+      cancelledAt: null,
+    } as never);
+    mockDb.transportBooking.update.mockResolvedValue({
+      id: 1,
+      status: "Cancelled",
+    } as never);
+    mockDb.seat.updateMany.mockResolvedValue({ count: 2 } as never);
+    mockDb.trip.update.mockResolvedValue({} as never);
+
+    await updateBookingStatus(1, "Cancelled");
+
+    expect(mockDb.transportPayment.updateMany).toHaveBeenCalledWith({
+      where: { bookingId: 1, status: "Pending" },
+      data: { status: "Failed" },
     });
   });
 });

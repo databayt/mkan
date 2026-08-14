@@ -3020,6 +3020,8 @@ export async function updateBookingStatus(
     throw new Error('Unauthorized');
   }
 
+  await assertRateLimit('mutation', `travel-booking-status:${session.user.id}`);
+
   // Update booking
   const updatedBooking = await db.transportBooking.update({
     where: { id: bookingId },
@@ -3050,6 +3052,29 @@ export async function updateBookingStatus(
       data: { status: 'Booked', reservedUntil: null },
     });
     await sendTravelConfirmationEmailSafe(bookingId);
+  }
+
+  // Settle the manual-payment claim in the same breath as the status change.
+  //
+  // A rider paying by Bankak / mobile money / cash files a Pending
+  // TransportPayment claim; the operator whose wallet received the money is
+  // the one who confirms it. That confirmation arrives through THIS action —
+  // the Confirm button on the operator's bookings page — but it used to touch
+  // only the booking and the seats. The claim stayed Pending forever: the
+  // passenger travelled on a confirmed ticket while the admin reconciliation
+  // queue kept a payment that would never clear, burying the claims that
+  // genuinely hadn't been paid. (The admin path is fine — verifyPayment marks
+  // the row Paid before it confirms.)
+  if (status === 'Confirmed') {
+    await db.transportPayment.updateMany({
+      where: { bookingId, status: 'Pending' },
+      data: { status: 'Paid', paidAt: new Date() },
+    });
+  } else if (status === 'Cancelled') {
+    await db.transportPayment.updateMany({
+      where: { bookingId, status: 'Pending' },
+      data: { status: 'Failed' },
+    });
   }
 
   revalidatePath('/[lang]/(dashboard)/offices');
