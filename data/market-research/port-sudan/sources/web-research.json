@@ -223,6 +223,45 @@
    "sources": [
     "https://www.aag-sd.com/ar/hotel.html"
    ]
+  },
+  {
+   "key": "global-real-estate-marketer",
+   "name_primary": "هناء الكاشف — Global Real Estate Marketer",
+   "name_en": "Global Real Estate Marketer (Hana Al-Kashif)",
+   "aliases": [
+    "Hana Abrahim",
+    "هناء الكاشف",
+    "هناء الكاشف [صاحبة شركة تسويق الكتروني]"
+   ],
+   "category": "real_estate_office",
+   "area": "Port Sudan — ديم مدينة غرب, حي المطار, سلالاب غرب, دبايوا, وسط السوق",
+   "phone": [],
+   "website": "https://www.alsoug.com/en/adverts/2097387",
+   "note": "The dominant broker on alsoug's Port Sudan property board: advertiser uid 311171 holds **8 of the 12** Port Sudan real-estate ads listed there. Self-described as 'صاحبة شركة تسويق الكتروني — Global Real Estate Marketer' (owner of a digital-marketing company). Posts under two display names — an older 'Hana Abrahim' and the current Arabic form — but the same numeric account id, which is how they were resolved to one advertiser rather than two. Attribution was verified in-browser: every data-user_name element on an advert page carries that page's own data-advert_id, so this is not a related-ads widget bleeding into the parse. No phone is exposed — alsoug puts contact behind a chat button — so reaching them means the platform's own contact flow or a login. Inventory reaches well beyond apartments: one listing is a 15-room, 8-bathroom two-storey building in ديم مدينة غرب at US$4,000/month.",
+   "sources": [
+    "https://www.alsoug.com/en/adverts/2097387",
+    "https://www.alsoug.com/en/adverts/2097377",
+    "https://www.alsoug.com/en/adverts/2097376",
+    "https://www.alsoug.com/en/adverts/2097375",
+    "https://www.alsoug.com/en/adverts/2097371",
+    "https://www.alsoug.com/en/adverts/2097647"
+   ]
+  },
+  {
+   "key": "coral-port-sudan",
+   "name_primary": "Coral Port Sudan",
+   "name_ar": "فندق كورال",
+   "category": "hotel",
+   "area": "Port Sudan",
+   "phone": [
+    "+249 311 83 9800"
+   ],
+   "website": "www.coral-portsudan.com",
+   "website_status": "DEAD — coral-portsudan.com does not resolve in DNS (checked 2026-08-14)",
+   "note": "Already found in both the OpenStreetMap sweep (node 1401482017, which carries the phone, fax and email tags) and the directory. Added here only to record that its listed website is a dead domain, like Mirak's and فندق حي المطار's.",
+   "sources": [
+    "https://www.openstreetmap.org/node/1401482017"
+   ]
   }
  ],
  "channels": [
@@ -314,6 +353,26 @@
    "ar": "ديم غرب",
    "en": "Deim West",
    "note": "Named in an alsoug furnished-apartment listing."
+  },
+  {
+   "ar": "دبايوا",
+   "en": "Dabaywa",
+   "note": "Named in alsoug Port Sudan property ads."
+  },
+  {
+   "ar": "الواحة (سلالاب غرب)",
+   "en": "Al-Waha, Salalab West",
+   "note": "Named in alsoug Port Sudan property ads."
+  },
+  {
+   "ar": "وسط السوق",
+   "en": "Market centre",
+   "note": "Named in alsoug Port Sudan property ads."
+  },
+  {
+   "ar": "المدينة الصناعية",
+   "en": "Industrial city",
+   "note": "Named in alsoug Port Sudan property ads."
   }
  ],
  "negative_results": [
@@ -336,6 +395,14 @@
   {
    "finding": "alsoug.com publishes neighbourhood-scoped rental indexes for Port Sudan (سلالاب, ترانزيت, حي المطار) — real supply, but individual landlord ads, not businesses. Catalogued as a channel, not crawled ad-by-ad.",
    "source": "https://www.alsoug.com/en/adverts/%D8%A7%D9%84%D8%B3%D9%88%D8%AF%D8%A7%D9%86/%D8%A8%D9%88%D8%B1%D8%AA%D8%B3%D9%88%D8%AF%D8%A7%D9%86/%D8%B3%D9%84%D8%A7%D9%84%D8%A7%D8%A8/%D8%B9%D9%82%D8%A7%D8%B1%D8%A7%D8%AA/%D8%B4%D9%82%D9%82-%D9%84%D9%84%D8%A7%D9%8A%D8%AC%D8%A7%D8%B1"
+  },
+  {
+   "finding": "Demand signal worth carrying: the largest Port Sudan rental ad found is a 15-room building at US$4,000/month advertised explicitly 'لاصحاب الشركات والمنظمات والمؤسسات والمكاتب والمستوصفات' — to companies, NGOs, institutions, offices and clinics. Port Sudan's rental demand is currently organisational relocation, not tourism, and it is priced in USD.",
+   "source": "https://www.alsoug.com/en/adverts/2097387"
+  },
+  {
+   "finding": "The classifieds broker layer is thin and concentrated: of 12 Port Sudan property ads on alsoug, one advertiser holds 8 and the rest are one-off individual sellers (Abu Salem, Nahla Abdalbdea, قباني). Individual sellers were deliberately NOT added as businesses — they are a different unit of work.",
+   "source": "https://www.alsoug.com/en/adverts/%D8%A7%D9%84%D8%B3%D9%88%D8%AF%D8%A7%D9%86/%D8%A8%D9%88%D8%B1%D8%AA%D8%B3%D9%88%D8%AF%D8%A7%D9%86/%D8%B9%D9%82%D8%A7%D8%B1%D8%A7%D8%AA"
   }
  ],
  "_alias_bridges_why": "Cross-script duplicates cannot be matched algorithmically — 'فندق اوكير' and 'Okere Hotel' share no characters. These pairs were each confirmed by hand against coordinates and category before being written here. The generator merges ONLY on this list plus hard signals (same phone / same domain); anything else that merely looks close is soft-linked for a human, never merged.",

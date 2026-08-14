@@ -12,13 +12,13 @@
   "radiusKm": 25
  },
  "_counts": {
-  "total": 51,
-  "business": 42,
+  "total": 52,
+  "business": 43,
   "institutional_out_of_scope": 9,
   "by_priority": {
-   "high": 6,
-   "medium": 6,
-   "low": 19,
+   "high": 7,
+   "medium": 5,
+   "low": 20,
    "review_required": 11,
    "out_of_scope": 9
   },
@@ -27,7 +27,7 @@
    "resort": 3,
    "hotel_apartment": 5,
    "hotel": 21,
-   "real_estate_office": 1,
+   "real_estate_office": 2,
    "chalet": 1,
    "guest_house": 2,
    "unknown": 1
@@ -36,7 +36,7 @@
   "with_coordinates": 33,
   "with_google_rating": 19,
   "with_tripadvisor_rating": 5,
-  "with_website": 5,
+  "with_website": 6,
   "with_social": 4
  },
  "channels": [
@@ -128,6 +128,26 @@
    "ar": "ديم غرب",
    "en": "Deim West",
    "note": "Named in an alsoug furnished-apartment listing."
+  },
+  {
+   "ar": "دبايوا",
+   "en": "Dabaywa",
+   "note": "Named in alsoug Port Sudan property ads."
+  },
+  {
+   "ar": "الواحة (سلالاب غرب)",
+   "en": "Al-Waha, Salalab West",
+   "note": "Named in alsoug Port Sudan property ads."
+  },
+  {
+   "ar": "وسط السوق",
+   "en": "Market centre",
+   "note": "Named in alsoug Port Sudan property ads."
+  },
+  {
+   "ar": "المدينة الصناعية",
+   "en": "Industrial city",
+   "note": "Named in alsoug Port Sudan property ads."
   }
  ],
  "negative_results": [
@@ -150,6 +170,14 @@
   {
    "finding": "alsoug.com publishes neighbourhood-scoped rental indexes for Port Sudan (سلالاب, ترانزيت, حي المطار) — real supply, but individual landlord ads, not businesses. Catalogued as a channel, not crawled ad-by-ad.",
    "source": "https://www.alsoug.com/en/adverts/%D8%A7%D9%84%D8%B3%D9%88%D8%AF%D8%A7%D9%86/%D8%A8%D9%88%D8%B1%D8%AA%D8%B3%D9%88%D8%AF%D8%A7%D9%86/%D8%B3%D9%84%D8%A7%D9%84%D8%A7%D8%A8/%D8%B9%D9%82%D8%A7%D8%B1%D8%A7%D8%AA/%D8%B4%D9%82%D9%82-%D9%84%D9%84%D8%A7%D9%8A%D8%AC%D8%A7%D8%B1"
+  },
+  {
+   "finding": "Demand signal worth carrying: the largest Port Sudan rental ad found is a 15-room building at US$4,000/month advertised explicitly 'لاصحاب الشركات والمنظمات والمؤسسات والمكاتب والمستوصفات' — to companies, NGOs, institutions, offices and clinics. Port Sudan's rental demand is currently organisational relocation, not tourism, and it is priced in USD.",
+   "source": "https://www.alsoug.com/en/adverts/2097387"
+  },
+  {
+   "finding": "The classifieds broker layer is thin and concentrated: of 12 Port Sudan property ads on alsoug, one advertiser holds 8 and the rest are one-off individual sellers (Abu Salem, Nahla Abdalbdea, قباني). Individual sellers were deliberately NOT added as businesses — they are a different unit of work.",
+   "source": "https://www.alsoug.com/en/adverts/%D8%A7%D9%84%D8%B3%D9%88%D8%AF%D8%A7%D9%86/%D8%A8%D9%88%D8%B1%D8%AA%D8%B3%D9%88%D8%AF%D8%A7%D9%86/%D8%B9%D9%82%D8%A7%D8%B1%D8%A7%D8%AA"
   }
  ],
  "leads": [
@@ -681,6 +709,97 @@
    }
   },
   {
+   "id": "ps-coral-port-sudan",
+   "name": {
+    "primary": "Coral Port Sudan",
+    "arabic": "فندق كورال",
+    "english": "Coral Port Sudan",
+    "aliases": [
+     "فندق كورال"
+    ]
+   },
+   "entity_type": "business",
+   "category": "hotel",
+   "rental_type": "unknown",
+   "location": {
+    "address": "Port Sudan, Sudan",
+    "area": "Port Sudan",
+    "latitude": 19.6126576,
+    "longitude": 37.224467,
+    "distance_from_city_centre_km": 0.9
+   },
+   "contact": {
+    "phone": [
+     "+249 311 83 9800",
+     "+249 18 377 4100"
+    ],
+    "website": "www.coral-portsudan.com",
+    "website_status": "DEAD — coral-portsudan.com does not resolve in DNS (checked 2026-08-14)",
+    "email": "info@coral-portsudan.com",
+    "social": {
+     "facebook": null,
+     "instagram": null,
+     "tiktok": null,
+     "other": []
+    }
+   },
+   "google_maps": {
+    "url": null,
+    "place_id": null,
+    "rating": 3.1,
+    "review_count": 23
+   },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
+   "crm": {
+    "lead_status": "new",
+    "source": "openstreetmap+directory(google-business)+web-research",
+    "assigned_to": null,
+    "notes": "Already found in both the OpenStreetMap sweep (node 1401482017, which carries the phone, fax and email tags) and the directory. Added here only to record that its listed website is a dead domain, like Mirak's and فندق حي المطار's. | Merged 3 source records on: verified alias bridge → \"Coral Port Sudan\"; same phone number."
+   },
+   "discovery": {
+    "queries": [
+     "overpass: tourism/office/shop/name sweep of the Port Sudan bbox",
+     "directory: /al-bahr-al-ahmar/hotel + /hostel category index",
+     "web search (AR+EN), see discovery-log.md"
+    ],
+    "sources": [
+     "https://www.openstreetmap.org/node/1401482017",
+     "https://sd.arabplaces.com/al-bahr-al-ahmar/coral-port-sudan-11240"
+    ],
+    "source_layers": [
+     "openstreetmap",
+     "directory(google-business)",
+     "web-research"
+    ],
+    "first_seen": "2026-08-14",
+    "last_verified": "2026-08-14"
+   },
+   "out_of_scope_reason": null,
+   "possible_duplicate_of": [
+    "Marina Hotel Port Sudan (adjacent; different phone — confirmed distinct)"
+   ],
+   "review_reasons": [],
+   "market": {
+    "estimated_inventory": null,
+    "likely_multiple_units": true,
+    "likely_active": true,
+    "mkan_relevance": "medium",
+    "lead_priority": "high",
+    "score": 75,
+    "score_reasons": [
+     "reachable by phone",
+     "mapped",
+     "corroborated across 3 independent sources",
+     "23 public reviews",
+     "multi-unit by category",
+     "international chain — unlikely to self-serve on Mkan"
+    ]
+   }
+  },
+  {
    "id": "ps-al-taher-mohamed-saleh-hotel-apartments",
    "name": {
     "primary": "Al Taher Mohamed Saleh Hotel Apartments",
@@ -1016,95 +1135,6 @@
      "1 public review(s)",
      "multi-unit by category",
      "furnished/serviced apartments — the exact Mkan vertical"
-    ]
-   }
-  },
-  {
-   "id": "ps-coral-port-sudan",
-   "name": {
-    "primary": "Coral Port Sudan",
-    "arabic": "فندق كورال",
-    "english": "Coral Port Sudan",
-    "aliases": [
-     "فندق كورال"
-    ]
-   },
-   "entity_type": "business",
-   "category": "hotel",
-   "rental_type": "unknown",
-   "location": {
-    "address": "Port Sudan, Sudan",
-    "area": null,
-    "latitude": 19.6126576,
-    "longitude": 37.224467,
-    "distance_from_city_centre_km": 0.9
-   },
-   "contact": {
-    "phone": [
-     "+249 311 83 9800",
-     "+249 18 377 4100"
-    ],
-    "website": "www.coral-portsudan.com",
-    "website_status": null,
-    "email": "info@coral-portsudan.com",
-    "social": {
-     "facebook": null,
-     "instagram": null,
-     "tiktok": null,
-     "other": []
-    }
-   },
-   "google_maps": {
-    "url": null,
-    "place_id": null,
-    "rating": 3.1,
-    "review_count": 23
-   },
-   "tripadvisor": {
-    "rating": null,
-    "review_count": null
-   },
-   "crm": {
-    "lead_status": "new",
-    "source": "openstreetmap+directory(google-business)",
-    "assigned_to": null,
-    "notes": "Merged 2 source records on: verified alias bridge → \"Coral Port Sudan\"."
-   },
-   "discovery": {
-    "queries": [
-     "overpass: tourism/office/shop/name sweep of the Port Sudan bbox",
-     "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
-    ],
-    "sources": [
-     "https://www.openstreetmap.org/node/1401482017",
-     "https://sd.arabplaces.com/al-bahr-al-ahmar/coral-port-sudan-11240"
-    ],
-    "source_layers": [
-     "openstreetmap",
-     "directory(google-business)"
-    ],
-    "first_seen": "2026-08-14",
-    "last_verified": "2026-08-14"
-   },
-   "out_of_scope_reason": null,
-   "possible_duplicate_of": [
-    "Marina Hotel Port Sudan (adjacent; different phone — confirmed distinct)"
-   ],
-   "review_reasons": [],
-   "market": {
-    "estimated_inventory": null,
-    "likely_multiple_units": true,
-    "likely_active": true,
-    "mkan_relevance": "medium",
-    "lead_priority": "medium",
-    "score": 65,
-    "score_reasons": [
-     "reachable by phone",
-     "mapped",
-     "corroborated across 2 independent sources",
-     "23 public reviews",
-     "multi-unit by category",
-     "international chain — unlikely to self-serve on Mkan"
     ]
    }
   },
@@ -4198,6 +4228,88 @@
     "likely_multiple_units": false,
     "likely_active": null,
     "mkan_relevance": "low",
+    "lead_priority": "low",
+    "score": 0,
+    "score_reasons": []
+   }
+  },
+  {
+   "id": "ps-global-real-estate-marketer-hana-al-kashif",
+   "name": {
+    "primary": "هناء الكاشف — Global Real Estate Marketer",
+    "arabic": "هناء الكاشف — Global Real Estate Marketer",
+    "english": "Global Real Estate Marketer (Hana Al-Kashif)",
+    "aliases": [
+     "Hana Abrahim",
+     "هناء الكاشف",
+     "هناء الكاشف [صاحبة شركة تسويق الكتروني]",
+     "Global Real Estate Marketer (Hana Al-Kashif)"
+    ]
+   },
+   "entity_type": "business",
+   "category": "real_estate_office",
+   "rental_type": "unknown",
+   "location": {
+    "address": null,
+    "area": "Port Sudan — ديم مدينة غرب, حي المطار, سلالاب غرب, دبايوا, وسط السوق",
+    "latitude": null,
+    "longitude": null,
+    "distance_from_city_centre_km": null
+   },
+   "contact": {
+    "phone": [],
+    "website": "https://www.alsoug.com/en/adverts/2097387",
+    "website_status": null,
+    "email": null,
+    "social": {
+     "facebook": null,
+     "instagram": null,
+     "tiktok": null,
+     "other": []
+    }
+   },
+   "google_maps": {
+    "url": null,
+    "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
+   "crm": {
+    "lead_status": "new",
+    "source": "web-research",
+    "assigned_to": null,
+    "notes": "The dominant broker on alsoug's Port Sudan property board: advertiser uid 311171 holds **8 of the 12** Port Sudan real-estate ads listed there. Self-described as 'صاحبة شركة تسويق الكتروني — Global Real Estate Marketer' (owner of a digital-marketing company). Posts under two display names — an older 'Hana Abrahim' and the current Arabic form — but the same numeric account id, which is how they were resolved to one advertiser rather than two. Attribution was verified in-browser: every data-user_name element on an advert page carries that page's own data-advert_id, so this is not a related-ads widget bleeding into the parse. No phone is exposed — alsoug puts contact behind a chat button — so reaching them means the platform's own contact flow or a login. Inventory reaches well beyond apartments: one listing is a 15-room, 8-bathroom two-storey building in ديم مدينة غرب at US$4,000/month."
+   },
+   "discovery": {
+    "queries": [
+     "web search (AR+EN), see discovery-log.md"
+    ],
+    "sources": [
+     "https://www.alsoug.com/en/adverts/2097387",
+     "https://www.alsoug.com/en/adverts/2097377",
+     "https://www.alsoug.com/en/adverts/2097376",
+     "https://www.alsoug.com/en/adverts/2097375",
+     "https://www.alsoug.com/en/adverts/2097371",
+     "https://www.alsoug.com/en/adverts/2097647"
+    ],
+    "source_layers": [
+     "web-research"
+    ],
+    "first_seen": "2026-08-14",
+    "last_verified": "2026-08-14"
+   },
+   "out_of_scope_reason": null,
+   "possible_duplicate_of": [],
+   "review_reasons": [],
+   "market": {
+    "estimated_inventory": null,
+    "likely_multiple_units": false,
+    "likely_active": null,
+    "mkan_relevance": "medium",
     "lead_priority": "low",
     "score": 0,
     "score_reasons": []

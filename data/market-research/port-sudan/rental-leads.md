@@ -12,18 +12,18 @@
 
 | | |
 | --- | --- |
-| Unique businesses | **42** |
+| Unique businesses | **43** |
 | Mapped places kept but out of scope (NGO/ministry/police housing, unnamed generics) | 9 |
 | With a public phone number | 19 |
 | With coordinates | 33 |
 | With a Google rating | 19 |
 | With a TripAdvisor rating | 5 |
-| With a website | 5 |
+| With a website | 6 |
 | With social presence | 4 |
 
-**By priority** — high: 6 · medium: 6 · low: 19 · review_required: 11 · out_of_scope: 9
+**By priority** — high: 7 · medium: 5 · low: 20 · review_required: 11 · out_of_scope: 9
 
-**By category** — furnished apartment: 8 · resort: 3 · hotel apartment: 5 · hotel: 21 · real estate office: 1 · chalet: 1 · guest house: 2 · unknown: 1
+**By category** — furnished apartment: 8 · resort: 3 · hotel apartment: 5 · hotel: 21 · real estate office: 2 · chalet: 1 · guest house: 2 · unknown: 1
 
 ## Top 20 acquisition targets
 
@@ -38,11 +38,11 @@ public review volume, and how squarely the business sits in Mkan's vertical.
 | 4 | **مجمع الربوة السياحي** | hotel | شارع الاذاعة والتلفزيون , بورتسودان‎،، بورتسودان‎،, Port Sudan | +249 10 069 2656 | 4.2★ Google (12) | — | high (80) | reachable by phone; mapped; corroborated across 2 independent sources; 12 public reviews; multi-unit by category |
 | 5 | **Basiri Plaza Hotel** | hotel | Port Sudan (no finer address published) | +249 91 213 3278 | 3.5★ Google (22) | — | review_required (75) | reachable by phone; mapped; 22 public reviews; multi-unit by category |
 | 6 | **Bohein Hotel** | hotel | Port Sudan (no finer address published) | +249 92 283 5200 | 2.3★ Google (7) | — | high (75) | reachable by phone; mapped; corroborated across 2 independent sources; 7 public reviews; multi-unit by category |
-| 7 | **Al Taher Mohamed Saleh Hotel Apartments** | hotel apartment | Port Sudan (no finer address published) | +249 91 304 5131 | 5★ Google (1) | — | high (70) | reachable by phone; mapped; 1 public review(s); multi-unit by category; furnished/serviced apartments — the exact Mkan vertical |
-| 8 | **Okere Hotel** | hotel | Port Sudan (no finer address published) | +249 91 229 3026 | 3.3★ Google (4) | — | review_required (70) | reachable by phone; mapped; corroborated across 2 independent sources; 4 public review(s); multi-unit by category |
-| 9 | **Palace Palace Hotel** | hotel | Port Sudan (no finer address published) | +249 91 233 4201 | 3.5★ Google (11) | — | review_required (70) | reachable by phone; mapped; 11 public reviews; multi-unit by category |
-| 10 | **باير للشقق الفندقيه** | hotel apartment | Port Sudan (no finer address published) | +249 91 780 1350 | 5★ Google (1) | — | high (70) | reachable by phone; mapped; 1 public review(s); multi-unit by category; furnished/serviced apartments — the exact Mkan vertical |
-| 11 | **Coral Port Sudan** | hotel | Port Sudan (no finer address published) | +249 311 83 9800, +249 18 377 4100 | 3.1★ Google (23) | — | medium (65) | reachable by phone; mapped; corroborated across 2 independent sources; 23 public reviews; multi-unit by category; international chain — unlikely to self-serve on Mkan |
+| 7 | **Coral Port Sudan** | hotel | Port Sudan (no finer address published) | +249 311 83 9800, +249 18 377 4100 | 3.1★ Google (23) | — | high (75) | reachable by phone; mapped; corroborated across 3 independent sources; 23 public reviews; multi-unit by category; international chain — unlikely to self-serve on Mkan |
+| 8 | **Al Taher Mohamed Saleh Hotel Apartments** | hotel apartment | Port Sudan (no finer address published) | +249 91 304 5131 | 5★ Google (1) | — | high (70) | reachable by phone; mapped; 1 public review(s); multi-unit by category; furnished/serviced apartments — the exact Mkan vertical |
+| 9 | **Okere Hotel** | hotel | Port Sudan (no finer address published) | +249 91 229 3026 | 3.3★ Google (4) | — | review_required (70) | reachable by phone; mapped; corroborated across 2 independent sources; 4 public review(s); multi-unit by category |
+| 10 | **Palace Palace Hotel** | hotel | Port Sudan (no finer address published) | +249 91 233 4201 | 3.5★ Google (11) | — | review_required (70) | reachable by phone; mapped; 11 public reviews; multi-unit by category |
+| 11 | **باير للشقق الفندقيه** | hotel apartment | Port Sudan (no finer address published) | +249 91 780 1350 | 5★ Google (1) | — | high (70) | reachable by phone; mapped; 1 public review(s); multi-unit by category; furnished/serviced apartments — the exact Mkan vertical |
 | 12 | **Dongla Hotel** | hotel | Port Sudan (no finer address published) | +249 91 386 1868 | 1.7★ Google (3) | — | review_required (60) | reachable by phone; mapped; 3 public review(s); multi-unit by category |
 | 13 | **Grand Hotel Elsahil** | hotel | Port Sudan (no finer address published) | +249 12 365 3100 | 5★ Google (2) | — | medium (60) | reachable by phone; mapped; 2 public review(s); multi-unit by category |
 | 14 | **Marina Hotel Port Sudan** | hotel | Port Sudan (no finer address published) | +249 91 232 3232 | 2.5★ Google (2) | — | review_required (60) | reachable by phone; mapped; 2 public review(s); multi-unit by category |
@@ -80,9 +80,9 @@ These are the businesses whose inventory maps most directly onto an Mkan listing
 | **مجمع الربوة السياحي** | hotel | شارع الاذاعة والتلفزيون , بورتسودان‎،، بورتسودان‎،, Port Sudan | +249 10 069 2656 | 4.2★ Google (12) | — | high |
 | **Basiri Plaza Hotel** | hotel | Port Sudan (no finer address published) | +249 91 213 3278 | 3.5★ Google (22) | — | review_required |
 | **Bohein Hotel** | hotel | Port Sudan (no finer address published) | +249 92 283 5200 | 2.3★ Google (7) | — | high |
+| **Coral Port Sudan** | hotel | Port Sudan (no finer address published) | +249 311 83 9800, +249 18 377 4100 | 3.1★ Google (23) | — | high |
 | **Okere Hotel** | hotel | Port Sudan (no finer address published) | +249 91 229 3026 | 3.3★ Google (4) | — | review_required |
 | **Palace Palace Hotel** | hotel | Port Sudan (no finer address published) | +249 91 233 4201 | 3.5★ Google (11) | — | review_required |
-| **Coral Port Sudan** | hotel | Port Sudan (no finer address published) | +249 311 83 9800, +249 18 377 4100 | 3.1★ Google (23) | — | medium |
 | **Dongla Hotel** | hotel | Port Sudan (no finer address published) | +249 91 386 1868 | 1.7★ Google (3) | — | review_required |
 | **Grand Hotel Elsahil** | hotel | Port Sudan (no finer address published) | +249 12 365 3100 | 5★ Google (2) | — | medium |
 | **Marina Hotel Port Sudan** | hotel | Port Sudan (no finer address published) | +249 91 232 3232 | 2.5★ Google (2) | — | review_required |
@@ -115,6 +115,7 @@ These are the businesses whose inventory maps most directly onto an Mkan listing
 | Business | Category | Area | Phone | Ratings | Est. units | Priority |
 | --- | --- | --- | --- | --- | --- | --- |
 | **أملاك العقارية** | real estate office | Khartoum-based; actively markets Port Sudan stock across حي المطار, حي الخليج and سلالاب | 0123450028, 0912341087, 0912348586 | — | — | low |
+| **هناء الكاشف — Global Real Estate Marketer** | real estate office | Port Sudan — ديم مدينة غرب, حي المطار, سلالاب غرب, دبايوا, وسط السوق | — | — | — | low |
 
 ## Other / uncategorised
 
@@ -182,6 +183,10 @@ never appear in any directory:
 - **شارع المهندسين** (Engineers Street) — Address of Al Swahili Hotel.
 - **النهضة** (Al-Nahda)
 - **ديم غرب** (Deim West) — Named in an alsoug furnished-apartment listing.
+- **دبايوا** (Dabaywa) — Named in alsoug Port Sudan property ads.
+- **الواحة (سلالاب غرب)** (Al-Waha, Salalab West) — Named in alsoug Port Sudan property ads.
+- **وسط السوق** (Market centre) — Named in alsoug Port Sudan property ads.
+- **المدينة الصناعية** (Industrial city) — Named in alsoug Port Sudan property ads.
 
 ## Negative results worth keeping
 
@@ -190,6 +195,8 @@ never appear in any directory:
 - mirakhotels.com, aag-sd.com and coral-portsudan.com all fail DNS resolution — three businesses whose listed website is dead
 - sudan.worldplaces.me returns HTTP 511 human-verification; top-rated.online returns Cloudflare HTTP 403 — both gated to automated fetch
 - alsoug.com publishes neighbourhood-scoped rental indexes for Port Sudan (سلالاب, ترانزيت, حي المطار) — real supply, but individual landlord ads, not businesses. Catalogued as a channel, not crawled ad-by-ad.
+- Demand signal worth carrying: the largest Port Sudan rental ad found is a 15-room building at US$4,000/month advertised explicitly 'لاصحاب الشركات والمنظمات والمؤسسات والمكاتب والمستوصفات' — to companies, NGOs, institutions, offices and clinics. Port Sudan's rental demand is currently organisational relocation, not tourism, and it is priced in USD.
+- The classifieds broker layer is thin and concentrated: of 12 Port Sudan property ads on alsoug, one advertiser holds 8 and the rest are one-off individual sellers (Abu Salem, Nahla Abdalbdea, قباني). Individual sellers were deliberately NOT added as businesses — they are a different unit of work.
 
 ---
 

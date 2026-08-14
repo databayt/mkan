@@ -164,6 +164,53 @@ Two results:
 ترانزيت and حي المطار. Those are real supply, but they are individual landlord ads rather
 than businesses — catalogued as a channel, deliberately not crawled ad-by-ad (see §7).
 
+### Pass 6 — the classifieds broker layer
+
+The channels catalogued in pass 3 were then opened properly, because the brokerage category
+was the thinnest part of the dataset (OpenStreetMap holds exactly one `office=estate_agent`
+node for the whole city, and it is a public-housing gate).
+
+**alsoug.com serves fine but renders its index in JavaScript**, so the board was read in a
+browser and each advert then fetched directly — advert detail pages *are* server-rendered and
+carry `data-user_id` / `data-user_name` on the advert's own markup.
+
+The Port Sudan property board holds **12 adverts**, and the shape of that is the finding:
+
+| Advertiser | Port Sudan ads |
+| --- | --- |
+| uid `311171` — هناء الكاشف / Global Real Estate Marketer | **8** |
+| uid `999489` — قباني | 2 |
+| uid `2575275` — Abu Salem | 1 |
+| uid `2556373` — Nahla Abdalbdea | 1 |
+
+One broker holds two thirds of the board; the rest is a tail of one-off individual sellers.
+**Only the broker was added as a business** — a person with a single house-sale ad is an
+individual seller, a different unit of work from this dataset.
+
+> **A parse that had to be verified before it could be trusted.** The advertiser regex takes
+> the first `data-user_name` on the page, and advert pages also render related-ads widgets —
+> so a naive read would have credited one broker with other people's inventory. Checked in the
+> browser: every `data-user_name` element on an advert page carries that page's own
+> `data-advert_id`. The attribution holds.
+>
+> The same advertiser also posts under two display names — an older "Hana Abrahim" and the
+> current Arabic form. They resolve to one account only because the numeric `user_id` matches.
+> Name-based grouping would have split one broker into two.
+
+Two things this pass established about the market:
+
+- **Demand is organisational, and priced in USD.** The largest rental ad is a 15-room,
+  8-bathroom building in ديم مدينة غرب at **US$4,000/month**, advertised explicitly
+  *"لاصحاب الشركات والمنظمات والمؤسسات والمكاتب والمستوصفات"* — companies, NGOs, institutions,
+  offices, clinics. Port Sudan's rental market right now is relocated organisations, not
+  tourism.
+- **Four more districts** surfaced from ad titles: دبايوا, الواحة (سلالاب غرب), وسط السوق,
+  المدينة الصناعية.
+
+OpenSooq was also opened. Its `__NEXT_DATA__` carries only category taxonomy — the listings
+themselves load client-side from an API that returns 403 to a direct call — so it was not
+crawled.
+
 ---
 
 ## 4. Deduplication — what merged, and what deliberately did not
@@ -250,23 +297,34 @@ leads.
 
 ## 6. What this found about the market itself
 
-- **41 businesses. 19 reachable by phone.** That is the real working surface.
-- **Three businesses' websites are dead domains** — `mirakhotels.com`, `aag-sd.com`,
-  `coral-portsudan.com` all fail DNS resolution. Only 4 of 41 have any website at all.
+- **43 businesses. 19 reachable by phone.** That is the real working surface.
+- **Three listed websites are dead domains** — `mirakhotels.com`, `aag-sd.com` and
+  `coral-portsudan.com` all fail DNS resolution. Only a handful of these businesses ever had
+  a website, and half of those are already gone.
 - **Booking.com lists zero bookable Port Sudan properties**; Trip.com's airport page returns
   "no accommodations matching your search". The international booking layer has withdrawn
   from this market.
-- **The brokerage layer has almost no mapped presence.** Exactly one `office=estate_agent`
-  node exists in OSM for the whole city, and it is a public-housing gate. Port Sudan's
-  furnished-rental supply trades through **Facebook groups, TikTok accounts and classifieds**
-  — four active Facebook groups and five classifieds portals are listed in
-  `rental-leads.json` under `channels`. That absence is itself the finding: there is no
-  incumbent intermediary holding this inventory.
-- **The one broker found actively marketing Port Sudan stock is Khartoum-based**
-  (أملاك العقارية) — classified honestly as a channel into the city, not an office in it.
+- **The brokerage layer has almost no mapped presence, and what exists is concentrated.**
+  Exactly one `office=estate_agent` node exists in OSM for the whole city, and it is a
+  public-housing gate. Port Sudan's supply trades through **Facebook groups, TikTok accounts
+  and classifieds** — four active Facebook groups and five classifieds portals are listed in
+  `rental-leads.json` under `channels`. On alsoug's Port Sudan property board, **one
+  advertiser holds 8 of 12 ads**; the rest are one-off individual sellers. So there is no
+  incumbent intermediary holding this inventory at scale — the largest single player is one
+  self-employed marketer.
+- **Demand is organisational and dollarised.** The biggest rental ad on the board is a
+  15-room building at **US$4,000/month** offered explicitly to companies, NGOs, institutions
+  and clinics. Port Sudan's rental market today is relocated organisations, not tourism, and
+  the top of it prices in USD rather than SDG. That shapes who Mkan's first paying demand
+  actually is.
+- **Two brokers reach this market, and neither is a Port Sudan office.** أملاك العقارية is
+  Khartoum-based and markets Port Sudan stock by district; هناء الكاشف / Global Real Estate
+  Marketer is a self-employed marketer working the classifieds. Both are classified as
+  channels into the city rather than offices in it, because nothing found confirms a local
+  branch for either.
 - Areas the market names for itself: حي المطار (Airport district, the furnished cluster),
-  ديم المدينة / الديوم الشرقية, سلالاب, الخليج, ترانزيت, شارع الاذاعة والتلفزيون,
-  شارع المهندسين, النهضة.
+  ديم المدينة / ديم غرب / الديوم الشرقية, سلالاب and الواحة, الخليج, ترانزيت, دبايوا,
+  وسط السوق, المدينة الصناعية, شارع الاذاعة والتلفزيون, شارع المهندسين, النهضة.
 
 ---
 
@@ -274,12 +332,15 @@ leads.
 
 Stated plainly, because a silent cap reads as completeness.
 
-1. **Individual landlord ads were not crawled.** `alsoug.com` exposes per-neighbourhood
-   rental indexes (سلالاب, ترانزيت, حي المطار, الخليج) and OpenSooq, aqaraksd, naffaj and
-   beldo carry more. Each ad is one landlord with one flat — genuine Mkan supply, and a
-   different unit of work from the business-level dataset this brief asked for. Crawling
-   them is the obvious next pass, and would need its own de-duplication against the
-   operators already here.
+1. **Individual landlord ads are catalogued, not collected.** alsoug's Port Sudan property
+   board was read in full (pass 6) and its one broker extracted, but the individual sellers
+   on it were deliberately left out, and its per-neighbourhood rental indexes (سلالاب,
+   ترانزيت, حي المطار, الخليج) plus OpenSooq, aqaraksd, naffaj and beldo were not crawled
+   ad-by-ad. Each such ad is one landlord with one flat — genuine Mkan supply, but a
+   different unit of work from the business-level dataset this brief asked for. Collecting
+   them is the obvious next project and would need its own de-duplication against the
+   operators already here. Note both portals rate-limit: alsoug began refusing after ~12
+   rapid fetches.
 2. **The directory's `/search/` endpoint was not swept.** It works and would have widened
    coverage beyond the review-gated category index. The host began returning **HTTP 403**
    partway through the sweep and the block persisted for the rest of the session, so **no
@@ -287,9 +348,13 @@ Stated plainly, because a silent cap reads as completeness.
    before the block — *Stylish Port Sudan* — and is in the dataset flagged
    `review_required` with its category unknown. **Re-run this from a different network**;
    it is the single highest-yield remaining pass.
-3. **Two more Google-Business mirrors are gated**: `sudan.worldplaces.me` returns HTTP 511
-   human-verification, `top-rated.online` returns Cloudflare 403. Both likely carry the same
-   underlying data as layer B, so the marginal yield is probably small, but it is untested.
+3. **Two more Google-Business mirrors actively refuse automation.** `sudan.worldplaces.me`
+   returns HTTP 511 human-verification; `top-rated.online` sits behind a Cloudflare bot
+   challenge that a real headless browser also failed ("Performing security verification").
+   That is the site declining automated access rather than a technical obstacle, so it was
+   not worked around. Both likely mirror the same underlying data as layer B, so the
+   marginal yield is probably small — but it is untested, and a human with a browser could
+   check in a few minutes.
 4. **`aqaraksd.com` returns 403 to automated fetch.**
 5. **Facebook is closed.** The Prestige page fetched cleanly but exposed no phone, address or
    category, and the four Facebook groups cannot be read without a session. A logged-in pass
