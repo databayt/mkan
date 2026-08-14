@@ -12,13 +12,13 @@
   "radiusKm": 25
  },
  "_counts": {
-  "total": 50,
-  "business": 41,
+  "total": 51,
+  "business": 42,
   "institutional_out_of_scope": 9,
   "by_priority": {
    "high": 6,
    "medium": 6,
-   "low": 18,
+   "low": 19,
    "review_required": 11,
    "out_of_scope": 9
   },
@@ -26,7 +26,7 @@
    "furnished_apartment": 8,
    "resort": 3,
    "hotel_apartment": 5,
-   "hotel": 20,
+   "hotel": 21,
    "real_estate_office": 1,
    "chalet": 1,
    "guest_house": 2,
@@ -34,8 +34,9 @@
   },
   "with_phone": 19,
   "with_coordinates": 33,
-  "with_google_rating": 23,
-  "with_website": 4,
+  "with_google_rating": 19,
+  "with_tripadvisor_rating": 5,
+  "with_website": 5,
   "with_social": 4
  },
  "channels": [
@@ -122,6 +123,11 @@
   {
    "ar": "النهضة",
    "en": "Al-Nahda"
+  },
+  {
+   "ar": "ديم غرب",
+   "en": "Deim West",
+   "note": "Named in an alsoug furnished-apartment listing."
   }
  ],
  "negative_results": [
@@ -140,6 +146,10 @@
   {
    "finding": "sudan.worldplaces.me returns HTTP 511 human-verification; top-rated.online returns Cloudflare HTTP 403 — both gated to automated fetch",
    "source": "fetch attempt 2026-08-14"
+  },
+  {
+   "finding": "alsoug.com publishes neighbourhood-scoped rental indexes for Port Sudan (سلالاب, ترانزيت, حي المطار) — real supply, but individual landlord ads, not businesses. Catalogued as a channel, not crawled ad-by-ad.",
+   "source": "https://www.alsoug.com/en/adverts/%D8%A7%D9%84%D8%B3%D9%88%D8%AF%D8%A7%D9%86/%D8%A8%D9%88%D8%B1%D8%AA%D8%B3%D9%88%D8%AF%D8%A7%D9%86/%D8%B3%D9%84%D8%A7%D9%84%D8%A7%D8%A8/%D8%B9%D9%82%D8%A7%D8%B1%D8%A7%D8%AA/%D8%B4%D9%82%D9%82-%D9%84%D9%84%D8%A7%D9%8A%D8%AC%D8%A7%D8%B1"
   }
  ],
  "leads": [
@@ -188,6 +198,10 @@
     "place_id": null,
     "rating": 4.9,
     "review_count": 8
+   },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
    },
    "crm": {
     "lead_status": "new",
@@ -271,6 +285,10 @@
     "url": null,
     "place_id": null,
     "rating": 4.4,
+    "review_count": 12
+   },
+   "tripadvisor": {
+    "rating": 3.3,
     "review_count": 36
    },
    "crm": {
@@ -358,6 +376,10 @@
     "rating": 4.5,
     "review_count": 2
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "directory(google-business)+web-research",
@@ -442,6 +464,10 @@
     "rating": 4.2,
     "review_count": 12
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap+directory(google-business)",
@@ -524,6 +550,10 @@
     "rating": 3.5,
     "review_count": 22
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "directory(google-business)",
@@ -604,6 +634,10 @@
     "place_id": null,
     "rating": 2.3,
     "review_count": 7
+   },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
    },
    "crm": {
     "lead_status": "new",
@@ -686,6 +720,10 @@
     "rating": 5,
     "review_count": 1
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "directory(google-business)",
@@ -764,6 +802,10 @@
     "place_id": null,
     "rating": 3.3,
     "review_count": 4
+   },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
    },
    "crm": {
     "lead_status": "new",
@@ -852,6 +894,10 @@
     "rating": 3.5,
     "review_count": 11
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "directory(google-business)",
@@ -931,6 +977,10 @@
     "rating": 5,
     "review_count": 1
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "directory(google-business)",
@@ -1009,6 +1059,10 @@
     "place_id": null,
     "rating": 3.1,
     "review_count": 23
+   },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
    },
    "crm": {
     "lead_status": "new",
@@ -1094,6 +1148,10 @@
     "rating": 1.7,
     "review_count": 3
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "directory(google-business)",
@@ -1174,6 +1232,10 @@
     "rating": 5,
     "review_count": 2
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "directory(google-business)",
@@ -1248,6 +1310,10 @@
     "place_id": null,
     "rating": 2.5,
     "review_count": 2
+   },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
    },
    "crm": {
     "lead_status": "new",
@@ -1329,6 +1395,10 @@
     "rating": 2,
     "review_count": 1
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "directory(google-business)",
@@ -1403,6 +1473,10 @@
     "place_id": null,
     "rating": 1,
     "review_count": 1
+   },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
    },
    "crm": {
     "lead_status": "new",
@@ -1479,6 +1553,10 @@
     "rating": 2.7,
     "review_count": 3
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "directory(google-business)",
@@ -1554,6 +1632,10 @@
     "rating": 3.3,
     "review_count": 4
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "directory(google-business)",
@@ -1626,6 +1708,10 @@
    "google_maps": {
     "url": null,
     "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
     "rating": 3.1,
     "review_count": 15
    },
@@ -1712,6 +1798,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap+web-research",
@@ -1790,6 +1880,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap",
@@ -1859,6 +1953,10 @@
    "google_maps": {
     "url": null,
     "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
     "rating": null,
     "review_count": null
    },
@@ -1936,6 +2034,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap",
@@ -2005,6 +2107,10 @@
    "google_maps": {
     "url": null,
     "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
     "rating": null,
     "review_count": null
    },
@@ -2080,6 +2186,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap",
@@ -2149,6 +2259,10 @@
    "google_maps": {
     "url": null,
     "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
     "rating": null,
     "review_count": null
    },
@@ -2228,6 +2342,10 @@
     "rating": 5,
     "review_count": 2
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "directory(google-business)",
@@ -2303,6 +2421,10 @@
    "google_maps": {
     "url": null,
     "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
     "rating": null,
     "review_count": null
    },
@@ -2384,6 +2506,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap",
@@ -2458,6 +2584,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap",
@@ -2526,6 +2656,10 @@
    "google_maps": {
     "url": null,
     "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
     "rating": null,
     "review_count": null
    },
@@ -2600,6 +2734,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap",
@@ -2671,6 +2809,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "web-research",
@@ -2721,7 +2863,7 @@
    "rental_type": "unknown",
    "location": {
     "address": null,
-    "area": "Khartoum-based; advertises Port Sudan inventory (حي المطار)",
+    "area": "Khartoum-based; actively markets Port Sudan stock across حي المطار, حي الخليج and سلالاب",
     "latitude": null,
     "longitude": null,
     "distance_from_city_centre_km": null
@@ -2736,7 +2878,7 @@
     "website_status": null,
     "email": null,
     "social": {
-     "facebook": "https://www.facebook.com/share/15oYnAmcJ6/",
+     "facebook": "https://www.facebook.com/sdamhe.sanhesan/",
      "instagram": "https://www.instagram.com/amlak_real_estae_in_sudan_khar",
      "tiktok": "https://www.tiktok.com/@amlakrealestate6",
      "other": [
@@ -2750,11 +2892,15 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "web-research",
     "assigned_to": null,
-    "notes": "A real brokerage actively marketing Port Sudan furnished apartments (Airport district, daily/monthly/yearly terms, viewing videos on request). Phones and socials are published verbatim in its own post captions. IMPORTANT: the account is Khartoum-based and its hashtags are Khartoum/Omdurman/Bahri first — it is an inventory CHANNEL into Port Sudan, not a Port Sudan office. Classified honestly as such."
+    "notes": "A real brokerage actively marketing Port Sudan furnished apartments — daily/monthly/yearly terms, viewing videos on request. Phones and socials are published verbatim in its own post captions. The neighbourhood pass strengthened this materially: its Facebook page (facebook.com/sdamhe.sanhesan, confirmed by fetch to be أملاك العقارية) posts Port Sudan inventory by named district — حي المطار مربع ٤ on شارع السلك, حي الخليج on the main street — and it is listing a four-storey building for sale in سلالاب on alsoug.com. So: headquartered in Khartoum, but genuinely trading Port Sudan stock rather than merely reposting it. Still classified as a channel into the city, not an office in it, until someone confirms a local branch."
    },
    "discovery": {
     "queries": [
@@ -2762,7 +2908,10 @@
     ],
     "sources": [
      "https://www.tiktok.com/@amlakrealestate6/video/7494888944006466822",
-     "https://www.tiktok.com/@amlakrealestate6/video/7571680176594062604"
+     "https://www.tiktok.com/@amlakrealestate6/video/7571680176594062604",
+     "https://www.facebook.com/sdamhe.sanhesan/",
+     "https://www.facebook.com/sdamhe.sanhesan/videos/966140518373123/",
+     "https://www.alsoug.com/adverts/2008484-%D8%B9%D9%85%D8%A7%D8%B1%D9%87-%D9%84%D9%84%D8%A8%D9%8A%D8%B9-%D9%85%D8%A4%D8%B3%D8%B3%D9%87-%D9%84%D9%A4%D8%B7%D9%88%D8%A7%D8%A8%D9%82-%D8%A8%D8%B3%D9%84%D8%A7%D9%84%D8%A7%D8%A8-%D8%A8%D9%88%D8%B1%D8%AA%D8%B3%D9%88%D8%AF%D8%A7%D9%86-%D9%85%D9%86-%D8%A3%D9%85%D9%84%D8%A7%D9%83-%D8%A7%D9%84%D8%B9%D9%82%D8%A7%D8%B1%D9%8A%D8%A9"
     ],
     "source_layers": [
      "web-research"
@@ -2820,6 +2969,10 @@
    "google_maps": {
     "url": null,
     "place_id": "ChIJcaLL4z9T1xURYnkFlXqxkfQ",
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
     "rating": null,
     "review_count": null
    },
@@ -2896,6 +3049,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "web-research",
@@ -2964,6 +3121,10 @@
    "google_maps": {
     "url": null,
     "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
     "rating": 5,
     "review_count": 1
    },
@@ -3035,6 +3196,10 @@
    "google_maps": {
     "url": null,
     "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
     "rating": 3,
     "review_count": 1
    },
@@ -3109,6 +3274,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap",
@@ -3179,6 +3348,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap",
@@ -3246,6 +3419,10 @@
    "google_maps": {
     "url": null,
     "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
     "rating": null,
     "review_count": null
    },
@@ -3320,6 +3497,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap",
@@ -3390,6 +3571,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap",
@@ -3421,6 +3606,82 @@
     "score": 15,
     "score_reasons": [
      "mapped"
+    ]
+   }
+  },
+  {
+   "id": "ps-airport-district-hotel",
+   "name": {
+    "primary": "فندق حي المطار",
+    "arabic": "فندق حي المطار",
+    "english": "Airport District Hotel",
+    "aliases": [
+     "Airport District Hotel"
+    ]
+   },
+   "entity_type": "business",
+   "category": "hotel",
+   "rental_type": "unknown",
+   "location": {
+    "address": null,
+    "area": "حي المطار (Airport district), at the city entrance",
+    "latitude": null,
+    "longitude": null,
+    "distance_from_city_centre_km": null
+   },
+   "contact": {
+    "phone": [],
+    "website": "www.aag-sd.com",
+    "website_status": "DEAD — aag-sd.com does not resolve in DNS (checked 2026-08-14)",
+    "email": null,
+    "social": {
+     "facebook": null,
+     "instagram": null,
+     "tiktok": null,
+     "other": []
+    }
+   },
+   "google_maps": {
+    "url": null,
+    "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
+   "crm": {
+    "lead_status": "new",
+    "source": "web-research",
+    "assigned_to": null,
+    "notes": "Surfaced twice, in two independent neighbourhood searches, as the page title 'فندق حي المطار - بورتسودان' on aag-sd.com. The search snippet describes it as sitting at the city entrance in a quiet spot near Mashaweena cafeteria and Port Sudan Mall, with air-conditioned rooms, a generator, internet and morning tea/coffee. The site itself could NOT be read — the domain no longer resolves — so the name, district and that description are all that is verified. No phone recovered."
+   },
+   "discovery": {
+    "queries": [
+     "web search (AR+EN), see discovery-log.md"
+    ],
+    "sources": [
+     "https://www.aag-sd.com/ar/hotel.html"
+    ],
+    "source_layers": [
+     "web-research"
+    ],
+    "first_seen": "2026-08-14",
+    "last_verified": "2026-08-14"
+   },
+   "out_of_scope_reason": null,
+   "possible_duplicate_of": [],
+   "review_reasons": [],
+   "market": {
+    "estimated_inventory": null,
+    "likely_multiple_units": true,
+    "likely_active": null,
+    "mkan_relevance": "medium",
+    "lead_priority": "low",
+    "score": 15,
+    "score_reasons": [
+     "multi-unit by category"
     ]
    }
   },
@@ -3457,6 +3718,10 @@
    "google_maps": {
     "url": null,
     "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
     "rating": null,
     "review_count": null
    },
@@ -3530,6 +3795,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap",
@@ -3597,6 +3866,10 @@
    "google_maps": {
     "url": null,
     "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
     "rating": null,
     "review_count": null
    },
@@ -3670,6 +3943,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap",
@@ -3740,6 +4017,10 @@
     "rating": null,
     "review_count": null
    },
+   "tripadvisor": {
+    "rating": null,
+    "review_count": null
+   },
    "crm": {
     "lead_status": "new",
     "source": "openstreetmap",
@@ -3807,6 +4088,10 @@
    "google_maps": {
     "url": null,
     "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
     "rating": 4,
     "review_count": 1
    },
@@ -3879,6 +4164,10 @@
    "google_maps": {
     "url": null,
     "place_id": null,
+    "rating": null,
+    "review_count": null
+   },
+   "tripadvisor": {
     "rating": null,
     "review_count": null
    },

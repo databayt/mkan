@@ -45,6 +45,16 @@ Maps URL was never observed, and constructing one from a name would be fabricati
 `place_id` exists — `سيف للشقق المفروشة` — recovered from a Waze directions URL that
 publishes it verbatim.
 
+**Ratings never cross platforms.** TripAdvisor scores live in a separate `tripadvisor`
+object, never in `google_maps`. An earlier build of this dataset merged them, and produced
+two distinct errors worth naming: four businesses (Baasher Palace, Flora, Samarmaz, Mercure)
+carried TripAdvisor scores published as Google ratings, and Sudan Red Sea Resort ended up
+showing **4.4★ with 36 reviews** — Google's rating welded to TripAdvisor's review count, a
+pairing that exists on neither site. Real numbers under a false label are still fabrication.
+Each platform's rating and volume now travel together or not at all; the lead score uses the
+best public review volume across platforms, which is what the phrase "public reviews" in a
+score reason means.
+
 ---
 
 ## 3. Passes, in order, with what each returned
@@ -124,6 +134,35 @@ Port Sudan**, **Samarmaz Hotel**, **Prestige hotel apartments**, **سيف للش
 | **السواحلي للشقق الفندقية** | Found independently in the directory sweep. Phone `+249 90 448 5000`. Merged with its English record "Al Swahili Hotel" (11 m apart). |
 | **سيف للشقق المفروشة** | Confirmed real via a Waze directions page carrying Google place_id `ChIJcaLL4z9T1xURYnkFlXqxkfQ`. No phone or coordinates are public. |
 | **Prestige Apartments** | Confirmed as "Prestige hotel apartments \| Port Sudan" on Facebook. The page exposes no address, phone or category. |
+
+### Pass 5 — neighbourhood-specific searches
+
+The areas surfaced in pass 3 were then searched individually, because this market advertises
+by district rather than by city:
+
+| # | Query |
+| --- | --- |
+| 11 | `شقق مفروشة حي الخليج بورتسودان ايجار` |
+| 12 | `شقق للايجار سلالاب OR ترانزيت OR "ديم المدينة" بورتسودان` |
+| 13 | `فنادق حي المطار بورتسودان شقق فندقية` |
+
+Two results:
+
+- **One new business** — **فندق حي المطار** (Airport District Hotel), which appeared in two
+  of the three searches as a page title on `aag-sd.com`. The site could not be read; the
+  domain no longer resolves. Name, district and a service description are all that is
+  verified, so it enters with no phone and a low score.
+- **One existing lead materially strengthened.** The Facebook page behind several Port Sudan
+  apartment videos (`facebook.com/sdamhe.sanhesan`) was fetched and turns out to be
+  **أملاك العقارية** — already in the dataset. It posts inventory by named district
+  (حي المطار مربع ٤ on شارع السلك, حي الخليج main street) and is listing a four-storey
+  building for sale in سلالاب. That upgrades it from "reposts Port Sudan stock" to
+  "genuinely trades it", though it stays classified as a channel into the city rather than
+  an office in it until a local branch is confirmed.
+
+`alsoug.com` was also found to publish **neighbourhood-scoped rental indexes** for سلالاب,
+ترانزيت and حي المطار. Those are real supply, but they are individual landlord ads rather
+than businesses — catalogued as a channel, deliberately not crawled ad-by-ad (see §7).
 
 ---
 
@@ -235,25 +274,29 @@ leads.
 
 Stated plainly, because a silent cap reads as completeness.
 
-1. **The directory's `/search/` endpoint was not swept.** It works and would have widened
+1. **Individual landlord ads were not crawled.** `alsoug.com` exposes per-neighbourhood
+   rental indexes (سلالاب, ترانزيت, حي المطار, الخليج) and OpenSooq, aqaraksd, naffaj and
+   beldo carry more. Each ad is one landlord with one flat — genuine Mkan supply, and a
+   different unit of work from the business-level dataset this brief asked for. Crawling
+   them is the obvious next pass, and would need its own de-duplication against the
+   operators already here.
+2. **The directory's `/search/` endpoint was not swept.** It works and would have widened
    coverage beyond the review-gated category index. The host began returning **HTTP 403**
    partway through the sweep and the block persisted for the rest of the session, so **no
    records were recovered from it**. One business is known to exist only from a URL seen
    before the block — *Stylish Port Sudan* — and is in the dataset flagged
    `review_required` with its category unknown. **Re-run this from a different network**;
    it is the single highest-yield remaining pass.
-2. **Two more Google-Business mirrors are gated**: `sudan.worldplaces.me` returns HTTP 511
+3. **Two more Google-Business mirrors are gated**: `sudan.worldplaces.me` returns HTTP 511
    human-verification, `top-rated.online` returns Cloudflare 403. Both likely carry the same
    underlying data as layer B, so the marginal yield is probably small, but it is untested.
-3. **`aqaraksd.com` returns 403 to automated fetch**, and OpenSooq / alsoug / naffaj were
-   catalogued as channels but not crawled listing-by-listing. Individual landlords
-   advertising there are real supply and are entirely absent from this dataset.
-4. **Facebook is closed.** The Prestige page fetched cleanly but exposed no phone, address or
+4. **`aqaraksd.com` returns 403 to automated fetch.**
+5. **Facebook is closed.** The Prestige page fetched cleanly but exposed no phone, address or
    category, and the four Facebook groups cannot be read without a session. A logged-in pass
    over those four groups would likely be the richest single source of individual hosts.
-5. **No coverage below the business level.** Per §5 of the brief, no individual units were
+6. **No coverage below the business level.** Per §5 of the brief, no individual units were
    invented; where a business clearly holds many, only `likely_multiple_units` is set.
-6. **Suakin, Sinkat and Tokar were not swept.** Scope was Port Sudan. Two records already
+7. **Suakin, Sinkat and Tokar were not swept.** Scope was Port Sudan. Two records already
    sit outside the 25 km city radius (Sudan Red Sea Resort at ~31 km, Jebel Al-Sit at ~94 km)
    and are flagged as such rather than silently counted as city inventory.
 

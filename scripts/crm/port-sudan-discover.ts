@@ -184,6 +184,7 @@ interface Lead {
   location: { address: string | null; area: string | null; latitude: number | null; longitude: number | null; distance_from_city_centre_km: number | null };
   contact: { phone: string[]; website: string | null; website_status: string | null; email: string | null; social: { facebook: string | null; instagram: string | null; tiktok: string | null; other: string[] } };
   google_maps: { url: string | null; place_id: string | null; rating: number | null; review_count: number | null };
+  tripadvisor: { rating: number | null; review_count: number | null };
   market: { estimated_inventory: number | null; likely_multiple_units: boolean; likely_active: boolean | null; mkan_relevance: 'high' | 'medium' | 'low' | 'none'; lead_priority: 'high' | 'medium' | 'low' | 'review_required' | 'out_of_scope'; score: number };
   crm: { lead_status: 'new'; source: string; assigned_to: null; notes: string };
   discovery: { queries: string[]; sources: string[]; source_layers: string[]; first_seen: string; last_verified: string };
@@ -249,6 +250,7 @@ interface Cand {
   phones: string[]; website: string | null; websiteStatus: string | null;
   email: string | null; fb: string | null; ig: string | null; tt: string | null; other: string[];
   gmUrl: string | null; gmPlaceId: string | null; rating: number | null; reviews: number | null;
+  taRating: number | null; taReviews: number | null;
   sources: string[]; layer: string; notes: string[]; queries: string[];
 }
 
@@ -265,7 +267,7 @@ const build = (): Cand[] => {
       lat: e.lat ?? null, lng: e.lng ?? null,
       phones: [e.phone].filter(Boolean), website: e.website ?? null, websiteStatus: null,
       email: e.email ?? null, fb: e.facebook ?? null, ig: null, tt: null, other: [],
-      gmUrl: null, gmPlaceId: null, rating: null, reviews: null,
+      gmUrl: null, gmPlaceId: null, rating: null, reviews: null, taRating: null, taReviews: null,
       sources: [`https://www.openstreetmap.org/${e.osm}`],
       layer: 'openstreetmap',
       notes: e.operator ? [`OSM operator tag: ${e.operator}`] : [],
@@ -285,7 +287,7 @@ const build = (): Cand[] => {
       phones: [p.phone].filter(Boolean),
       website: p.website_listed ?? null, websiteStatus: null,
       email: p.emails?.[0] ?? null, fb: null, ig: null, tt: null, other: [],
-      gmUrl: null, gmPlaceId: null, rating: p.rating, reviews: p.review_count,
+      gmUrl: null, gmPlaceId: null, rating: p.rating, reviews: p.review_count, taRating: null, taReviews: null,
       sources: [p.url], layer: 'directory(google-business)',
       notes: [], queries: ['directory: /al-bahr-al-ahmar/hotel + /hostel category index'],
     });
@@ -304,7 +306,11 @@ const build = (): Cand[] => {
       phones: b.phone ?? [], website: b.website ?? null, websiteStatus: b.website_status ?? null,
       email: null, fb: b.facebook ?? null, ig: b.instagram ?? null, tt: b.tiktok ?? null, other,
       gmUrl: null, gmPlaceId: b.google_place_id ?? null,
-      rating: b.tripadvisor_rating ?? null, reviews: b.tripadvisor_reviews ?? null,
+      // TripAdvisor's numbers are TripAdvisor's. Writing them into the Google
+      // slots would publish a real figure under a false attribution — a
+      // salesperson citing "Google 3.1" for a score Google never gave.
+      rating: null, reviews: null,
+      taRating: b.tripadvisor_rating ?? null, taReviews: b.tripadvisor_reviews ?? null,
       sources: b.sources ?? [], layer: 'web-research',
       notes: b.note ? [b.note] : [],
       queries: ['web search (AR+EN), see discovery-log.md'],
@@ -414,7 +420,7 @@ const scoreOf = (l: Omit<Lead, 'market'> & { market: Partial<Lead['market']> }, 
   if (l.location.latitude != null) { s += 15; why.push('mapped'); }
   const extra = Math.min(c.layers.size - 1, 2) * 10;
   if (extra) { s += extra; why.push(`corroborated across ${c.layers.size} independent sources`); }
-  const rv = l.google_maps.review_count ?? 0;
+  const rv = Math.max(l.google_maps.review_count ?? 0, l.tripadvisor.review_count ?? 0);
   if (rv >= 20) { s += 20; why.push(`${rv} public reviews`); }
   else if (rv >= 10) { s += 15; why.push(`${rv} public reviews`); }
   else if (rv >= 5) { s += 10; why.push(`${rv} public reviews`); }
@@ -457,8 +463,18 @@ async function main() {
     const sources = [...new Set(all.flatMap((m) => m.sources))];
     const layers = new Set(all.map((m) => m.layer));
     const withCoord = all.find((m) => m.lat != null);
-    const rating = all.map((m) => m.rating).find((r) => r != null) ?? null;
-    const reviews = Math.max(0, ...all.map((m) => m.reviews ?? 0)) || null;
+    // Never blend platforms: taking a rating from one source and a review count
+    // from another once produced "4.4★ / 36 reviews" for Sudan Red Sea Resort —
+    // Google's rating welded to TripAdvisor's volume, a pairing that exists on
+    // neither site. Each platform's pair travels together or not at all.
+    const gm = all.find((m) => m.layer === 'directory(google-business)' && m.rating != null);
+    const rating = gm?.rating ?? null;
+    const reviews = gm?.reviews ?? null;
+    const ta = all.find((m) => m.taRating != null || m.taReviews != null);
+    const taRating = ta?.taRating ?? null;
+    const taReviews = ta?.taReviews ?? null;
+    /** Best public review volume on any platform — what "is this business alive" rests on. */
+    const publicReviews = Math.max(reviews ?? 0, taReviews ?? 0) || null;
     const cat = all.map((m) => m.cat).find((c) => c !== 'unknown') ?? 'unknown';
 
     const dist = withCoord?.lat != null
@@ -512,6 +528,7 @@ async function main() {
         place_id: all.map((m) => m.gmPlaceId).find(Boolean) ?? null,
         rating, review_count: reviews,
       },
+      tripadvisor: { rating: taRating, review_count: taReviews },
       crm: {
         lead_status: 'new',
         source: [...layers].join('+'),
@@ -544,7 +561,7 @@ async function main() {
     partial.market = {
       estimated_inventory: null,                 // never invented — see §5 of the brief
       likely_multiple_units: MULTI_UNIT.includes(cat),
-      likely_active: reviews ? true : null,
+      likely_active: publicReviews ? true : null,
       mkan_relevance: relevance,
       lead_priority: priority,
       score,
@@ -615,6 +632,7 @@ async function main() {
       with_phone: biz.filter((l) => l.contact.phone.length).length,
       with_coordinates: biz.filter((l) => l.location.latitude != null).length,
       with_google_rating: biz.filter((l) => l.google_maps.rating != null).length,
+      with_tripadvisor_rating: biz.filter((l) => l.tripadvisor.rating != null).length,
       with_website: biz.filter((l) => l.contact.website).length,
       with_social: biz.filter((l) => l.contact.social.facebook || l.contact.social.instagram || l.contact.social.tiktok).length,
     },
@@ -642,6 +660,15 @@ const place = (l: Lead) => {
   return esc(t === 'Port Sudan' ? 'Port Sudan (no finer address published)' : t);
 };
 const phoneCell = (l: Lead) => (l.contact.phone.length ? l.contact.phone.join(', ') : '—');
+/** Each platform labelled. A bare "3.1★" would invite the reader to assume Google. */
+const ratings = (l: Lead) => {
+  const parts: string[] = [];
+  if (l.google_maps.rating != null) parts.push(`${l.google_maps.rating}★ Google (${l.google_maps.review_count ?? 0})`);
+  if (l.tripadvisor.rating != null) parts.push(`${l.tripadvisor.rating}★ TripAdvisor (${l.tripadvisor.review_count ?? 0})`);
+  return parts.length ? parts.join(' · ') : '—';
+};
+/** Always "—" today: no source states a unit count, and inventing one is the whole point of not doing it. */
+const units = (l: Lead) => (l.market.estimated_inventory == null ? '—' : String(l.market.estimated_inventory));
 
 function report(p: any): string {
   const L: Lead[] = p.leads;
@@ -649,9 +676,9 @@ function report(p: any): string {
   const byCat = (c: string) => biz.filter((l) => l.category === c);
 
   const table = (rows: Lead[]) => [
-    '| Business | Category | Area | Phone | Google | Priority |',
-    '| --- | --- | --- | --- | --- | --- |',
-    ...rows.map((l) => `| **${esc(l.name.primary)}** | ${l.category.replace(/_/g, ' ')} | ${place(l)} | ${phoneCell(l)} | ${l.google_maps.rating ? `${l.google_maps.rating}★ (${l.google_maps.review_count})` : '—'} | ${l.market.lead_priority} |`),
+    '| Business | Category | Area | Phone | Ratings | Est. units | Priority |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
+    ...rows.map((l) => `| **${esc(l.name.primary)}** | ${l.category.replace(/_/g, ' ')} | ${place(l)} | ${phoneCell(l)} | ${ratings(l)} | ${units(l)} | ${l.market.lead_priority} |`),
   ].join('\n');
 
   const top = biz.filter((l) => l.market.lead_priority !== 'out_of_scope')
@@ -676,6 +703,7 @@ function report(p: any): string {
 | With a public phone number | ${p._counts.with_phone} |
 | With coordinates | ${p._counts.with_coordinates} |
 | With a Google rating | ${p._counts.with_google_rating} |
+| With a TripAdvisor rating | ${p._counts.with_tripadvisor_rating} |
 | With a website | ${p._counts.with_website} |
 | With social presence | ${p._counts.with_social} |
 
@@ -688,9 +716,9 @@ function report(p: any): string {
 Ranked by the transparent rubric in \`discovery-log.md\` — reachability, corroboration,
 public review volume, and how squarely the business sits in Mkan's vertical.
 
-| # | Business | Category | Area | Phone | Score | Why it ranks here |
-| --- | --- | --- | --- | --- | --- | --- |
-${top.map((l, i) => `| ${i + 1} | **${esc(l.name.primary)}** | ${l.category.replace(/_/g, ' ')} | ${place(l)} | ${phoneCell(l)} | ${l.market.score} | ${((l.market as any).score_reasons ?? []).join('; ')} |`).join('\n')}
+| # | Business | Category | Area | Phone | Ratings | Est. units | Priority | Why it ranks here |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+${top.map((l, i) => `| ${i + 1} | **${esc(l.name.primary)}** | ${l.category.replace(/_/g, ' ')} | ${place(l)} | ${phoneCell(l)} | ${ratings(l)} | ${units(l)} | ${l.market.lead_priority} (${l.market.score}) | ${((l.market as any).score_reasons ?? []).join('; ')} |`).join('\n')}
 
 ## Furnished & hotel apartments — the core vertical
 

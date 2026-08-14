@@ -78,8 +78,10 @@ Two relations to add, both many-to-one from the declaring side (Twenty's directi
 | `contact.email` | `psEmail` | EMAILS | One value present in the whole dataset. |
 | `contact.website_status` | `psWebsiteStatus` | TEXT | e.g. "DEAD — does not resolve in DNS (2026-08-14)". |
 | `contact.social.facebook` / `.instagram` / `.tiktok` / `.other[]` | `psSocial` | LINKS | LINKS is multi-value; collapse all channels into it. |
-| `google_maps.rating` | `psGoogleRating` | NUMBER | **NUMBER, not RATING.** Twenty's RATING is 1–5 stars only and would round 4.9 → 5. Same decision `docs/growth.md` §2.1 made for Airbnb's average. |
+| `google_maps.rating` | `psGoogleRating` | NUMBER | **NUMBER, not RATING.** Twenty's RATING is 1–5 stars only and would round 4.9 → 5. Same decision `docs/growth.md` §2.1 made for Airbnb's average. **Populated only from the Google-Business layer** — never from TripAdvisor. |
 | `google_maps.review_count` | `psGoogleReviews` | NUMBER | Volume signal — the strongest "is this business alive" proxy available. |
+| `tripadvisor.rating` | `psTripadvisorRating` | NUMBER | **A separate platform, a separate field.** An earlier build wrote TripAdvisor's numbers into the Google slots, which would have had a salesperson citing "Google 3.1" for Baasher Palace when Google never said that. Five records here have a TripAdvisor score and no Google one; one (Sudan Red Sea Resort) has both, and they disagree — 4.4 vs 3.3. Keep them apart. |
+| `tripadvisor.review_count` | `psTripadvisorReviews` | NUMBER | Never pair one platform's rating with another's volume. |
 | `google_maps.place_id` | `psGooglePlaceId` | TEXT | Populated for exactly one record. |
 | `market.score` | `psLeadScore` | NUMBER | 0–100, rubric in `discovery-log.md` §5. |
 | `market.lead_priority` | `psLeadPriority` | SELECT | `HIGH` · `MEDIUM` · `LOW` · `REVIEW_REQUIRED` · `OUT_OF_SCOPE` — the Kanban group field for the acquisition board. |
@@ -179,6 +181,8 @@ location.address + lat + lng          Company.address           (ADDRESS composi
 location.area                         Company.psArea
 google_maps.rating                    Company.psGoogleRating    (NUMBER — not RATING)
 google_maps.review_count              Company.psGoogleReviews
+tripadvisor.rating                    Company.psTripadvisorRating
+tripadvisor.review_count              Company.psTripadvisorReviews
 google_maps.place_id                  Company.psGooglePlaceId
 google_maps.url                       — never written, always null
 category                              Company.psCategory        (SELECT)
