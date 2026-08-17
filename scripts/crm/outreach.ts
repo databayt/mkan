@@ -56,7 +56,10 @@ const LANG_OVERRIDE = argv('lang') as Lang | '';
 const LEDGER = argv('ledger', 'scripts/crm/.data/mkan-import-ledger.json');
 const LIMIT = parseInt(argv('limit', '0'), 10) || 0;
 
-const BASE_URL = (argv('base-url', process.env.NEXT_PUBLIC_APP_URL ?? 'https://mkan.databayt.org')).replace(/\/+$/, '');
+// NOT mkan.databayt.org: that name was reassigned to the Twenty CRM on 2026-08-16,
+// so every link minted with the old default pointed at the CRM login instead of the
+// listing. Canonical app host is mkan.sd (mk.databayt.org also redirects there).
+const BASE_URL = (argv('base-url', process.env.NEXT_PUBLIC_APP_URL ?? 'https://mkan.sd')).replace(/\/+$/, '');
 const OPENCLAW_URL = (process.env.OPENCLAW_URL ?? '').replace(/\/+$/, '');
 const OPENCLAW_TOKEN = process.env.OPENCLAW_TOKEN ?? '';
 

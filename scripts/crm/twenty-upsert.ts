@@ -7,7 +7,7 @@
  * must exist) and with the backend up.
  *
  *   npx tsx scripts/crm/twenty-upsert.ts                    # dry run (prints bodies)
- *   TWENTY_API_URL=http://localhost:3000 TWENTY_API_KEY=… \
+ *   TWENTY_API_URL=http://localhost:3100 TWENTY_API_KEY=… \
  *     npx tsx scripts/crm/twenty-upsert.ts --apply          # write to Twenty
  *
  * Flags: --in=<path>  --limit=<N>  --apply

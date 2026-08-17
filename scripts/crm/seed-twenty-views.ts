@@ -5,7 +5,7 @@
  * Dry-run by default; `--apply` with TWENTY_API_URL + TWENTY_API_KEY executes.
  *
  *   npx tsx scripts/crm/seed-twenty-views.ts               # dry run (plan only)
- *   TWENTY_API_URL=http://localhost:3000 TWENTY_API_KEY=… \
+ *   TWENTY_API_URL=http://localhost:3100 TWENTY_API_KEY=… \
  *     npx tsx scripts/crm/seed-twenty-views.ts --apply     # create in Twenty
  *
  * Idempotent by (object, view name): a view that already exists is skipped.

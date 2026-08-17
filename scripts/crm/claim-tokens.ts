@@ -41,7 +41,10 @@ const arg = (name: string, def: string) => {
 };
 const HOST = arg('host', '');
 const TTL_DAYS = parseInt(arg('ttl-days', '7'), 10);
-const BASE_URL = (arg('base-url', process.env.NEXT_PUBLIC_APP_URL ?? 'https://mkan.databayt.org')).replace(/\/+$/, '');
+// NOT mkan.databayt.org: that name was reassigned to the Twenty CRM on 2026-08-16,
+// so every link minted with the old default pointed at the CRM login instead of the
+// listing. Canonical app host is mkan.sd (mk.databayt.org also redirects there).
+const BASE_URL = (arg('base-url', process.env.NEXT_PUBLIC_APP_URL ?? 'https://mkan.sd')).replace(/\/+$/, '');
 
 const mintToken = () => randomBytes(32).toString('base64url');
 

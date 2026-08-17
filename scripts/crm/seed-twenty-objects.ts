@@ -7,7 +7,7 @@
  * `--apply` with `TWENTY_API_URL` + `TWENTY_API_KEY` to create them for real.
  *
  *   npx tsx scripts/crm/seed-twenty-objects.ts               # dry run (plan only)
- *   TWENTY_API_URL=http://localhost:3000 TWENTY_API_KEY=… \
+ *   TWENTY_API_URL=http://localhost:3100 TWENTY_API_KEY=… \
  *     npx tsx scripts/crm/seed-twenty-objects.ts --apply     # create in Twenty
  *
  * Idempotent: existing objects/fields are detected and skipped, so re-runs only
