@@ -88,15 +88,24 @@ export function twentyClient(): TwentyClient {
   async function all(plural: string, depth = 0): Promise<Record<string, unknown>[]> {
     const out: Record<string, unknown>[] = [];
     let cursor: string | null = null;
-    // 60 pages × 200 is far beyond any plausible workspace; the bound exists so
-    // a malformed cursor cannot spin forever.
+    // Cursors are OPAQUE (base64 of {"id":…}) and must come from pageInfo.endCursor.
+    // This used to pass the last row's raw id, which Twenty v2.31 rejects outright
+    // with `Invalid cursor`. It never showed up here because no object in this
+    // workspace has exceeded one page yet -- opportunities are at 75 and climbing,
+    // so it would have failed silently-then-loudly the moment they passed 200.
+    // Found while standing the same client up in hogwarts, which has 3k+ companies.
+    // 60 pages x 200 is far beyond any plausible workspace; the bound exists so a
+    // malformed cursor cannot spin forever.
     for (let page = 0; page < 60; page++) {
-      const q = `${plural}?limit=200&depth=${depth}${cursor ? `&starting_after=${cursor}` : ''}`;
-      const batch = unwrap(await rest(  'GET', q), plural);
+      const q = `${plural}?limit=200&depth=${depth}${cursor ? `&starting_after=${encodeURIComponent(cursor)}` : ''}`;
+      const res = (await rest('GET', q)) as {
+        pageInfo?: { endCursor?: string | null; hasNextPage?: boolean };
+      };
+      const batch = unwrap(res, plural);
       out.push(...batch);
-      if (batch.length < 200) break;
-      cursor = String(batch[batch.length - 1]?.id ?? '');
-      if (!cursor) break;
+      const info = res?.pageInfo;
+      if (!info?.hasNextPage || !info?.endCursor) break;
+      cursor = info.endCursor;
     }
     return out;
   }
