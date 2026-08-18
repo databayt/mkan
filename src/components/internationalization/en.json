@@ -3354,7 +3354,14 @@
     "selectDates": "Select dates",
     "previousMonths": "Previous months",
     "nextMonths": "Next months",
-    "searchCategories": "Search categories"
+    "searchCategories": "Search categories",
+    "zoneHomes": {
+      "none": "No homes yet",
+      "one": "1 home",
+      "two": "2 homes",
+      "few": "{count} homes",
+      "many": "{count} homes"
+    }
   },
   "filters": {
     "allFilters": "All Filters",

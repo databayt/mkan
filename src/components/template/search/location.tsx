@@ -7,6 +7,7 @@ import { useLocale } from "@/components/internationalization/use-locale";
 import { useNearby, nearbyErrorMessage } from "@/hooks/use-nearby";
 import { roundCoord } from "@/lib/distance";
 import { cdn } from "@/lib/cdn";
+import { formatNumber } from "@/lib/i18n/formatters";
 
 interface LocationProps {
   searchQuery: string;
@@ -22,6 +23,12 @@ interface LocationProps {
   fillHeight?: boolean;
 }
 
+// The panel opens on the full Port Sudan zone gazetteer, fetched from
+// /api/search/locations?zones=1 and ranked by how many homes each zone holds.
+// The hardcoded list below is the fallback for when that fetch hasn't landed
+// yet or failed (the route sits behind the search rate limiter) — a stale
+// eight rows beats an empty panel.
+//
 // Mkan's live catalog is 100% in Port Sudan on the Red Sea coast, so the
 // "Where" suggestions are tuned to that city and its districts — every entry
 // returns real listings (the foreign cities they replaced returned zero).
@@ -49,59 +56,69 @@ const SUGGESTED_DESTINATIONS = {
       country: "Sudan",
       searchValue: "Port Sudan",
       displayName: "Port Sudan",
-      description: "Stays along the Red Sea coast",
+      description: "All stays along the Red Sea coast",
       backgroundColor: "#eaf7ec",
       imageSrc: cdn.vendor("airbnb", "destinations/port-sudan.png"),
     },
     {
       city: "Port Sudan",
-      state: "Red Sea",
+      state: "East Locality",
       country: "Sudan",
-      searchValue: "Coral Coast",
-      displayName: "Coral Coast",
-      description: "Beachfront stays on the Red Sea",
+      searchValue: "digna",
+      displayName: "Digna District",
+      description: "Seafront corniche & port corridor",
       backgroundColor: "#fdf2e9",
       imageSrc: cdn.vendor("airbnb", "destinations/coral-coast.png"),
     },
     {
       city: "Port Sudan",
-      state: "Red Sea",
+      state: "Central Locality",
       country: "Sudan",
-      searchValue: "Marina District",
-      displayName: "Marina District",
-      description: "By the harbour and seafront",
+      searchValue: "city-centre",
+      displayName: "City Centre",
+      description: "Downtown commercial & city heart",
       backgroundColor: "#fef5e7",
       imageSrc: cdn.vendor("airbnb", "destinations/marina.png"),
     },
     {
       city: "Port Sudan",
-      state: "Red Sea",
+      state: "South Locality",
       country: "Sudan",
-      searchValue: "Suakin Island",
-      displayName: "Suakin Island",
-      description: "Historic coral-stone old town",
-      backgroundColor: "#f3e8ff",
-      imageSrc: cdn.vendor("airbnb", "destinations/suakin.png"),
-    },
-    {
-      city: "Port Sudan",
-      state: "Red Sea",
-      country: "Sudan",
-      searchValue: "Airport District",
+      searchValue: "airport-district",
       displayName: "Airport District",
-      description: "Handy for arrivals and departures",
+      description: "Handy for airport arrivals & departures",
       backgroundColor: "#fdedec",
       imageSrc: cdn.vendor("airbnb", "destinations/airport.png"),
     },
     {
       city: "Port Sudan",
-      state: "Red Sea",
+      state: "Coastal Tourism",
       country: "Sudan",
-      searchValue: "Red Sea University Area",
-      displayName: "Red Sea University",
-      description: "Central and walkable",
+      searchValue: "arous",
+      displayName: "Arous",
+      description: "Coastal resort, beach & diving hub",
+      backgroundColor: "#f3e8ff",
+      imageSrc: cdn.vendor("airbnb", "destinations/suakin.png"),
+    },
+    {
+      city: "Port Sudan",
+      state: "North Expansion",
+      country: "Sudan",
+      searchValue: "hadal",
+      displayName: "Hadal",
+      description: "North-eastern residential expansion",
       backgroundColor: "#e8f8f5",
       imageSrc: cdn.vendor("airbnb", "destinations/red-sea-university.png"),
+    },
+    {
+      city: "Port Sudan",
+      state: "South Locality",
+      country: "Sudan",
+      searchValue: "malaha",
+      displayName: "Al Malaha",
+      description: "Southern marketplace & residential hub",
+      backgroundColor: "#eef2ff",
+      imageSrc: cdn.vendor("airbnb", "destinations/marina.png"),
     },
   ],
   ar: [
@@ -121,62 +138,124 @@ const SUGGESTED_DESTINATIONS = {
       country: "Sudan",
       searchValue: "Port Sudan",
       displayName: "بورتسودان",
-      description: "إقامات على ساحل البحر الأحمر",
+      description: "جميع الإقامات على ساحل البحر الأحمر",
       backgroundColor: "#eaf7ec",
       imageSrc: cdn.vendor("airbnb", "destinations/port-sudan.png"),
     },
     {
       city: "Port Sudan",
-      state: "Red Sea",
+      state: "وحدة شرق",
       country: "Sudan",
-      searchValue: "Coral Coast",
-      displayName: "ساحل المرجان",
-      description: "إقامات على شاطئ البحر الأحمر",
+      searchValue: "digna",
+      displayName: "حي دقنة",
+      description: "كورنيش الواجهة البحرية ومنطقة الميناء",
       backgroundColor: "#fdf2e9",
       imageSrc: cdn.vendor("airbnb", "destinations/coral-coast.png"),
     },
     {
       city: "Port Sudan",
-      state: "Red Sea",
+      state: "وحدة وسط",
       country: "Sudan",
-      searchValue: "Marina District",
-      displayName: "حي المارينا",
-      description: "بجوار الميناء والواجهة البحرية",
+      searchValue: "city-centre",
+      displayName: "وسط المدينة",
+      description: "قلب المدينة والسوق الكبير",
       backgroundColor: "#fef5e7",
       imageSrc: cdn.vendor("airbnb", "destinations/marina.png"),
     },
     {
       city: "Port Sudan",
-      state: "Red Sea",
+      state: "وحدة جنوب",
       country: "Sudan",
-      searchValue: "Suakin Island",
-      displayName: "جزيرة سواكن",
-      description: "المدينة القديمة المرجانية التاريخية",
-      backgroundColor: "#f3e8ff",
-      imageSrc: cdn.vendor("airbnb", "destinations/suakin.png"),
-    },
-    {
-      city: "Port Sudan",
-      state: "Red Sea",
-      country: "Sudan",
-      searchValue: "Airport District",
+      searchValue: "airport-district",
       displayName: "حي المطار",
-      description: "قريب من الوصول والمغادرة",
+      description: "قريب من مطار بورتسودان الدولي",
       backgroundColor: "#fdedec",
       imageSrc: cdn.vendor("airbnb", "destinations/airport.png"),
     },
     {
       city: "Port Sudan",
-      state: "Red Sea",
+      state: "المحور السياحي",
       country: "Sudan",
-      searchValue: "Red Sea University Area",
-      displayName: "حي جامعة البحر الأحمر",
-      description: "في المركز وقريب من كل شيء",
+      searchValue: "arous",
+      displayName: "عروس",
+      description: "شاطئ ومنتجع عروس والغوص الساحلي",
+      backgroundColor: "#f3e8ff",
+      imageSrc: cdn.vendor("airbnb", "destinations/suakin.png"),
+    },
+    {
+      city: "Port Sudan",
+      state: "المربعات الحديثة",
+      country: "Sudan",
+      searchValue: "hadal",
+      displayName: "هدل",
+      description: "الامتداد الشمالي والشقق المفروشة",
       backgroundColor: "#e8f8f5",
       imageSrc: cdn.vendor("airbnb", "destinations/red-sea-university.png"),
     },
+    {
+      city: "Port Sudan",
+      state: "وحدة جنوب",
+      country: "Sudan",
+      searchValue: "malaha",
+      displayName: "الملاحة",
+      description: "السوق التجاري والحي السكني الجنوبي",
+      backgroundColor: "#eef2ff",
+      imageSrc: cdn.vendor("airbnb", "destinations/marina.png"),
+    },
   ],
 } as const;
+
+// Artwork exists for the six zones the original curated list covered. The
+// other thirty-eight render the map-pin tile instead of borrowing a photo of
+// somewhere else — a wrong picture reads as a claim about the place.
+const ZONE_IMAGERY: Record<string, { imageSrc: string; backgroundColor: string }> = {
+  digna: { imageSrc: cdn.vendor("airbnb", "destinations/coral-coast.png"), backgroundColor: "#fdf2e9" },
+  "city-centre": { imageSrc: cdn.vendor("airbnb", "destinations/marina.png"), backgroundColor: "#fef5e7" },
+  "airport-district": { imageSrc: cdn.vendor("airbnb", "destinations/airport.png"), backgroundColor: "#fdedec" },
+  arous: { imageSrc: cdn.vendor("airbnb", "destinations/suakin.png"), backgroundColor: "#f3e8ff" },
+  hadal: { imageSrc: cdn.vendor("airbnb", "destinations/red-sea-university.png"), backgroundColor: "#e8f8f5" },
+  malaha: { imageSrc: cdn.vendor("airbnb", "destinations/marina.png"), backgroundColor: "#eef2ff" },
+};
+
+/**
+ * "8 homes" / "٨ منازل" — Arabic counts take four forms, and picking one by
+ * `count === 1` alone (the usual shortcut) yields "2 منازل" where the dual
+ * "منزلان" belongs. Counts here are small today but the zone list reorders
+ * itself as supply grows, so the form is chosen properly.
+ */
+function homesLabel(
+  count: number,
+  dict: ReturnType<typeof useDictionary>,
+  locale: string
+): string {
+  const d = dict.search?.zoneHomes;
+  const ar = locale === "ar";
+  if (count === 0) return d?.none ?? (ar ? "لا توجد منازل بعد" : "No homes yet");
+  if (count === 1) return d?.one ?? (ar ? "منزل واحد" : "1 home");
+  if (count === 2) return d?.two ?? (ar ? "منزلان" : "2 homes");
+  const template =
+    count <= 10
+      ? (d?.few ?? (ar ? "{count} منازل" : "{count} homes"))
+      : (d?.many ?? (ar ? "{count} منزلاً" : "{count} homes"));
+  // Arabic-Indic digits, so the count reads in the same numerals as the
+  // prices sitting beside it on the same screen.
+  return template.replace("{count}", formatNumber(count, ar ? "ar" : "en"));
+}
+
+// One row of the opening list, whatever produced it — the two client-side
+// rows (Nearby, the city as a whole) and the server-ranked zones share this
+// shape so the markup below can't drift between them.
+interface DestinationRow {
+  key: string;
+  title: string;
+  subtitle: string;
+  imageSrc?: string;
+  backgroundColor?: string;
+  isNearby: boolean;
+  /** A zone with no homes yet — listed, searchable, but visually secondary. */
+  muted: boolean;
+  select: () => void | Promise<void>;
+}
 
 export default function LocationDropdown({
   searchQuery,
@@ -243,6 +322,55 @@ export default function LocationDropdown({
       coords: { lat: roundCoord(coords.lat), lng: roundCoord(coords.lng) },
     });
   };
+
+  // The opening list. "Nearby" and the city-as-a-whole stay client-side —
+  // the first resolves to a device position rather than a place name, the
+  // second searches the whole catalogue — and everything after them is the
+  // server's zone ranking. When the zone fetch hasn't landed (or failed) the
+  // curated eight render instead, so the panel is never blank.
+  const zoneSuggestions = popularLocations.filter((l) => l.zoneSlug);
+  const hasZones = zoneSuggestions.length > 0;
+
+  const destinationRows: DestinationRow[] = [
+    ...(hasZones ? suggestedDestinations.slice(0, 2) : suggestedDestinations).map((dest) => ({
+      key: dest.displayName,
+      title: dest.displayName,
+      subtitle: dest.description,
+      imageSrc: dest.imageSrc,
+      backgroundColor: dest.backgroundColor,
+      isNearby: dest.city === "Nearby",
+      muted: false,
+      select: () => handleSelectSuggested(dest),
+    })),
+    ...zoneSuggestions.map((zone) => {
+      const slug = zone.zoneSlug as string;
+      const art = ZONE_IMAGERY[slug];
+      const title = (activeLocale === "ar" ? zone.nameAr : zone.nameEn) || zone.displayName;
+      const sector = (activeLocale === "ar" ? zone.sectorAr : zone.sectorEn) ?? "";
+      const homes = homesLabel(zone.listingCount, dict, activeLocale);
+      return {
+        key: slug,
+        title,
+        subtitle: sector ? `${homes} · ${sector}` : homes,
+        imageSrc: art?.imageSrc,
+        backgroundColor: art?.backgroundColor,
+        isNearby: false,
+        // A zone we have no homes in yet is still searchable — it's in the
+        // list because the user asked for every zone — but it shouldn't read
+        // as equal to one with eight.
+        muted: zone.listingCount === 0,
+        select: () =>
+          onLocationSelect({
+            city: zone.city,
+            state: zone.state,
+            country: zone.country,
+            displayName: title,
+            searchValue: zone.searchValue ?? slug,
+            listingCount: zone.listingCount,
+          }),
+      };
+    }),
+  ];
 
   const resultsTitle = dict.search?.searchResults ?? "Search results";
   const suggestedTitle =
@@ -333,24 +461,24 @@ export default function LocationDropdown({
             </div>
           ) : null
         ) : (
-          // Predefined Suggested destinations from Airbnb
+          // Opening list: Nearby, the city as a whole, then every Port Sudan
+          // zone ordered by how many homes it holds.
           <>
             <p className="text-[13px] font-normal text-[#222222] px-2 mb-2">{suggestedTitle}</p>
             <div className="space-y-0.5">
-              {suggestedDestinations.map((dest) => {
-                const isNearbyRow = dest.city === "Nearby";
-                const rowBusy = isNearbyRow && isLocating;
+              {destinationRows.map((dest) => {
+                const rowBusy = dest.isNearby && isLocating;
                 return (
                   <div
-                    key={dest.displayName}
+                    key={dest.key}
                     className={`py-2 px-2 rounded-2xl transition-all flex items-center gap-3.5 ${
                       rowBusy
                         ? "cursor-wait opacity-60"
                         : "hover:bg-[#F7F7F7] active:scale-[0.99] cursor-pointer"
-                    }`}
+                    } ${dest.muted && !rowBusy ? "opacity-70" : ""}`}
                     onClick={() => {
                       if (rowBusy) return;
-                      void handleSelectSuggested(dest);
+                      void dest.select();
                     }}
                     role="option"
                     aria-selected="false"
@@ -364,26 +492,32 @@ export default function LocationDropdown({
                       if (e.key !== "Enter" && e.key !== " ") return;
                       e.preventDefault();
                       if (rowBusy) return;
-                      void handleSelectSuggested(dest);
+                      void dest.select();
                     }}
                   >
                     {/* The colored rounded square is baked into the original
                         Airbnb PNG — render it bare (no wrapper tint). The inline
                         backgroundColor only shows through while the image loads,
                         preventing an empty-box flash. */}
-                    <img
-                      src={dest.imageSrc}
-                      alt=""
-                      loading="lazy"
-                      style={{ backgroundColor: dest.backgroundColor }}
-                      className="h-14 w-14 flex-shrink-0 rounded-xl object-cover"
-                    />
+                    {dest.imageSrc ? (
+                      <img
+                        src={dest.imageSrc}
+                        alt=""
+                        loading="lazy"
+                        style={{ backgroundColor: dest.backgroundColor }}
+                        className="h-14 w-14 flex-shrink-0 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className="h-14 w-14 flex-shrink-0 rounded-xl bg-[#f7f7f7] border border-[#ebebeb] flex items-center justify-center text-[#222222]">
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="text-[15px] font-medium text-[#222222] truncate">
-                        {dest.displayName}
+                        {dest.title}
                       </div>
                       <div className="text-sm text-[#6a6a6a] mt-0.5 font-normal truncate">
-                        {dest.description}
+                        {dest.subtitle}
                       </div>
                     </div>
                     {rowBusy && (

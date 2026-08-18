@@ -4,6 +4,7 @@ import { SearchProvider } from "@/components/listings/search-provider"
 import { SearchResultsArea } from "@/components/listings/search-results-area"
 import HotelCreditDialog from "@/components/template/search/hotel-credit-dialog"
 import Footer from "@/components/site/footer"
+import { PHASE1 } from "@/config/phase-flags"
 import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { searchListings } from "@/lib/actions/search-actions";
@@ -129,7 +130,16 @@ export default async function SearchPage({
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Keyed on the resolved query. The provider seeds its listings from
+          `initialListings` with useState, so a search started while already on
+          /search (picking a zone in the "Where" panel, changing dates) pushed
+          new params, re-ran the server query — and then rendered the previous
+          results, because React reuses the instance and the initializer never
+          runs again. Remounting on a genuine query change is what makes the
+          fresh results appear; map panning doesn't touch the URL, so it can't
+          trigger this. */}
       <SearchProvider
+        key={JSON.stringify(baseFilters)}
         initialListings={listings}
         initialTotal={total}
         baseFilters={baseFilters}
@@ -148,7 +158,7 @@ export default async function SearchPage({
         <Footer />
 
         {/* Airbnb-style hotel-credit promo — auto-surfaces once per browser. */}
-        <HotelCreditDialog />
+        {PHASE1.showHotelCreditDialog && <HotelCreditDialog />}
       </SearchProvider>
     </div>
   )

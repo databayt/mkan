@@ -22,6 +22,12 @@ import {
   DEFAULT_NEARBY_RADIUS_KM,
   type Coords,
 } from "@/lib/distance";
+import {
+  PORT_SUDAN_ZONES,
+  searchPortSudanZones,
+  getPortSudanZone,
+  matchPortSudanZoneByText,
+} from "@/lib/geo/portsudan-zones";
 
 // Cache tags used to invalidate search results when listings change.
 // Mutations in listing-actions.ts call `revalidateTag('listings')` on
@@ -90,18 +96,6 @@ export const getLocationSuggestions = unstable_cache(
 
     try {
       const pattern = `%${escapeLike(query)}%`;
-      // Flat query: compute COUNT and MAX(similarity) directly in the
-      // SELECT, GROUP BY (city, state, country), then ORDER BY n + sim
-      // and LIMIT.
-      //
-      // An earlier version wrapped this in a subquery to keep
-      // `similarity(l.city, ...)` out of an aggregate, but that version
-      // shipped a Postgres bug where the outer LIMIT leaked into the
-      // inner COUNT — every result returned `listingCount = limit`
-      // regardless of the true row count. The flat form with MAX() of
-      // the per-row GREATEST is grammatically correct (similarity is a
-      // function of the GROUP BY column, MAX collapses it idempotently)
-      // and avoids the planner pathology.
       const rows = await db.$queryRaw<LocationCountRow[]>`
         SELECT l.city, l.state, l.country,
                COUNT(li.id)::bigint AS n,
@@ -114,15 +108,44 @@ export const getLocationSuggestions = unstable_cache(
         JOIN "Listing" li ON li."locationId" = l.id
         WHERE li."isPublished" = true AND li.draft = false
           AND (
-            l.city    ILIKE ${pattern} OR l.city    % ${query} OR
-            l.state   ILIKE ${pattern} OR l.state   % ${query} OR
-            l.country ILIKE ${pattern} OR l.country % ${query}
+            l.city      ILIKE ${pattern} OR l.city      % ${query} OR
+            l.state     ILIKE ${pattern} OR l.state     % ${query} OR
+            l.country   ILIKE ${pattern} OR l.country   % ${query} OR
+            l."zoneKey" ILIKE ${pattern} OR
+            l.address   ILIKE ${pattern}
           )
         GROUP BY l.city, l.state, l.country
         ORDER BY n DESC, sim DESC
         LIMIT ${limit};
       `;
-      return rows.map(toSuggestion);
+
+      const suggestions = rows.map(toSuggestion);
+      const seenKeys = new Set(suggestions.map((s) => (s.searchValue || s.displayName || s.city).toLowerCase()));
+
+      // Check for matching Port Sudan specific zones if DB returned few results or query is Port Sudan specific
+      const qLower = query.toLowerCase();
+      if (suggestions.length < limit && (rows.length === 0 || qLower.includes("port") || query.includes("بورت") || qLower.includes("sudan") || query.includes("سودان"))) {
+        const matchedZones = searchPortSudanZones(query, "ar", limit);
+        for (const z of matchedZones) {
+          const key = z.slug.toLowerCase();
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            suggestions.push({
+              city: "Port Sudan",
+              state: z.sectorAr,
+              country: "Sudan",
+              displayName: `${z.nameAr}، بورتسودان`,
+              searchValue: z.slug,
+              listingCount: 0,
+              zoneSlug: z.slug,
+              description: z.description,
+            });
+            if (suggestions.length >= limit) break;
+          }
+        }
+      }
+
+      return suggestions;
     } catch {
       return [];
     }
@@ -130,24 +153,15 @@ export const getLocationSuggestions = unstable_cache(
   ["location-suggestions"],
   // Tagged with LISTINGS_TAG so the existing updateTag("listings") calls
   // in listing-actions.ts (create/update/publish/unpublish/delete) bust
-  // the autocomplete cache too. Without this, autocomplete kept serving
-  // pre-mutation results for up to an hour — a deploy that introduced
-  // pg_trgm errors had its empty results cached, and that empty cache
-  // outlived the migration fix.
+  // the autocomplete cache too.
   { revalidate: 3600, tags: [LISTINGS_TAG] }
 );
 
 /**
  * Get popular locations (no search query).
  *
- * Same SQL-side aggregation as `getLocationSuggestions` minus the WHERE
- * filter — returns the cities with the most published listings.
- * Previously fetched the entire Location table and dedup'd in JS, which
- * scaled linearly with row count.
- *
- * Cached for 1 hour. Tagged with LISTINGS_TAG so listing mutations
- * invalidate it (the popular-cities ranking changes whenever a listing
- * is added or removed in a city).
+ * Runs SQL-side aggregation for top cities with published inventory,
+ * augmented with top Port Sudan zones.
  */
 export const getPopularLocations = unstable_cache(
   async (
@@ -163,12 +177,108 @@ export const getPopularLocations = unstable_cache(
         ORDER BY n DESC
         LIMIT ${limit};
       `;
-      return rows.map(toSuggestion);
+
+      const suggestions = rows.map(toSuggestion);
+
+      // If Port Sudan is present, enrich with top Port Sudan zones
+      const hasPortSudan = suggestions.some((s) => s.city.toLowerCase().includes("port sudan"));
+      if (hasPortSudan && suggestions.length < limit) {
+        const topZones = PORT_SUDAN_ZONES
+          .filter((z) => z.slug !== "unknown")
+          .sort((a, b) => b.priorityScore - a.priorityScore);
+
+        for (const z of topZones) {
+          if (suggestions.length >= limit) break;
+          suggestions.push({
+            city: "Port Sudan",
+            state: z.sectorAr,
+            country: "Sudan",
+            displayName: `${z.nameAr}، بورتسودان`,
+            searchValue: z.slug,
+            listingCount: 0,
+            zoneSlug: z.slug,
+            description: z.description,
+          });
+        }
+      }
+
+      return suggestions;
     } catch {
       return [];
     }
   },
   ["popular-locations"],
+  { revalidate: 3600, tags: [LISTINGS_TAG] }
+);
+
+/**
+ * Every Port Sudan zone, ordered by how many homes are actually in it.
+ *
+ * This is what the "Where" panel opens on. The list is the full canonical
+ * gazetteer (data/home/portsudan → `PORT_SUDAN_ZONES`) rather than a
+ * hand-picked handful, so a zone the catalogue has grown into can never be
+ * missing from the menu — `hayy-al-aghareeq` held the second-largest cluster
+ * of published homes while being absent from the old hardcoded eight.
+ *
+ * The count comes from `Location.zoneKey`, which is the same column the
+ * search itself filters on, so the number beside a zone and the number of
+ * cards you land on are the same query. Zones with no homes yet stay in the
+ * list (the request is "all zones") but sink to the bottom — order is homes
+ * DESC, then acquisition priority, then name, so the menu reorders itself as
+ * supply moves instead of being re-curated by hand.
+ *
+ * `unknown` is excluded: it's the gazetteer's "unassigned" bucket, not a place
+ * anyone can search for, and no published listing carries it.
+ */
+export const getZoneSuggestions = unstable_cache(
+  async (): Promise<LocationSuggestion[]> => {
+    let counts = new Map<string, number>();
+
+    try {
+      const rows = await db.$queryRaw<{ zone: string; n: bigint }[]>`
+        SELECT l."zoneKey" AS zone, COUNT(li.id)::bigint AS n
+        FROM "Location" l
+        JOIN "Listing" li ON li."locationId" = l.id
+        WHERE li."isPublished" = true AND li.draft = false
+          AND l."zoneKey" IS NOT NULL
+        GROUP BY l."zoneKey";
+      `;
+      counts = new Map(rows.map((r) => [r.zone.toLowerCase(), Number(r.n)]));
+    } catch {
+      // A failed count degrades to a zero for every zone — the gazetteer is
+      // static, so the menu still lists every place, just unranked.
+      counts = new Map();
+    }
+
+    return PORT_SUDAN_ZONES.filter((z) => z.slug !== "unknown")
+      .map((z) => ({
+        zone: z,
+        count: counts.get(z.slug.toLowerCase()) ?? 0,
+      }))
+      .sort(
+        (a, b) =>
+          b.count - a.count ||
+          b.zone.priorityScore - a.zone.priorityScore ||
+          a.zone.nameEn.localeCompare(b.zone.nameEn)
+      )
+      .map(({ zone, count }) => ({
+        city: "Port Sudan",
+        state: zone.sectorEn,
+        country: "Sudan",
+        // Kept for consumers that read `displayName` blind; the panel prefers
+        // the bilingual pair below so an English viewer isn't shown Arabic.
+        displayName: zone.nameEn,
+        searchValue: zone.slug,
+        listingCount: count,
+        zoneSlug: zone.slug,
+        description: zone.description,
+        nameAr: zone.nameAr,
+        nameEn: zone.nameEn,
+        sectorAr: zone.sectorAr,
+        sectorEn: zone.sectorEn,
+      }));
+  },
+  ["zone-suggestions"],
   { revalidate: 3600, tags: [LISTINGS_TAG] }
 );
 
@@ -263,27 +373,51 @@ function buildSearchWhere(
   };
 
   if (f.location) {
-    // A selected suggestion arrives as a human label that may carry several
-    // comma-separated parts ("Port Sudan, Red Sea", "Coral Coast, Port Sudan").
-    // Matching the whole comma-joined string against any single column never
-    // hits — no column equals "Port Sudan, Red Sea" — so the search silently
-    // returned zero. Split into parts and match each against
-    // city/state/country/address. `address` is included so district / landmark
-    // tokens ("Coral Coast", "Marina District") narrow to their part of town
-    // instead of falling through to nothing.
-    const terms = f.location
-      .split(",")
-      .map((p) => p.trim())
-      .filter(Boolean);
-    const matchTerms = terms.length > 0 ? terms : [f.location.trim()];
-    where.location = {
-      OR: matchTerms.flatMap((term) => [
-        { city: { contains: term, mode: "insensitive" } },
-        { state: { contains: term, mode: "insensitive" } },
-        { country: { contains: term, mode: "insensitive" } },
-        { address: { contains: term, mode: "insensitive" } },
-      ]),
-    };
+    const locLower = f.location.toLowerCase().trim();
+    const matchedZone = getPortSudanZone(f.location) ?? matchPortSudanZoneByText(f.location);
+
+    if (matchedZone) {
+      where.location = {
+        OR: [
+          { zoneKey: { equals: matchedZone.slug, mode: "insensitive" } },
+          { address: { contains: matchedZone.nameAr, mode: "insensitive" } },
+          { address: { contains: matchedZone.nameEn, mode: "insensitive" } },
+          { address: { contains: matchedZone.canonicalName, mode: "insensitive" } },
+          { address: { contains: matchedZone.slug, mode: "insensitive" } },
+        ],
+      };
+    } else if (
+      locLower === "port sudan" ||
+      locLower === "portsudan" ||
+      locLower === "بورتسودان" ||
+      locLower === "بور سودان" ||
+      locLower === "red sea" ||
+      locLower === "البحر الاحمر"
+    ) {
+      where.location = {
+        OR: [
+          { city: { contains: "Port Sudan", mode: "insensitive" } },
+          { state: { contains: "Red Sea", mode: "insensitive" } },
+          { address: { contains: "بورتسودان", mode: "insensitive" } },
+          { zoneKey: { not: null } },
+        ],
+      };
+    } else {
+      const terms = f.location
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean);
+      const matchTerms = terms.length > 0 ? terms : [f.location.trim()];
+      where.location = {
+        OR: matchTerms.flatMap((term) => [
+          { zoneKey: { contains: term, mode: "insensitive" } },
+          { city: { contains: term, mode: "insensitive" } },
+          { state: { contains: term, mode: "insensitive" } },
+          { country: { contains: term, mode: "insensitive" } },
+          { address: { contains: term, mode: "insensitive" } },
+        ]),
+      };
+    }
   }
 
   // Proximity prefilter ("Nearby"). A circle can't be expressed as a range

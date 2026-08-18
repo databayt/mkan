@@ -3354,7 +3354,14 @@
     "selectDates": "اختيار التواريخ",
     "previousMonths": "الأشهر السابقة",
     "nextMonths": "الأشهر التالية",
-    "searchCategories": "فئات البحث"
+    "searchCategories": "فئات البحث",
+    "zoneHomes": {
+      "none": "لا توجد منازل بعد",
+      "one": "منزل واحد",
+      "two": "منزلان",
+      "few": "{count} منازل",
+      "many": "{count} منزلاً"
+    }
   },
   "filters": {
     "allFilters": "جميع الفلاتر",

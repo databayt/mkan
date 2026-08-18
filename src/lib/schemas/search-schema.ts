@@ -137,6 +137,21 @@ export interface LocationSuggestion {
    * is what previously returned zero results.
    */
   coords?: Coords;
+  zoneSlug?: string;
+  description?: string;
+  /**
+   * Bilingual label pair for zone rows. The "Where" panel is a client
+   * component and the 45-zone gazetteer is a 994-line server module — shipping
+   * it to the browser to localize a label would undo the code-splitting the
+   * dropdown was built around. So the server sends both languages in the one
+   * payload the panel already fetches and the panel picks by locale, instead
+   * of baking Arabic into `displayName` regardless of the viewer's language.
+   */
+  nameAr?: string;
+  nameEn?: string;
+  /** Sector ("Central Locality" / "وحدة وسط") — the subtitle for a zone with no homes yet. */
+  sectorAr?: string;
+  sectorEn?: string;
 }
 
 // Search filters type for server action. Keep in sync with `listingFilterSchema`

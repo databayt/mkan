@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getLocationSuggestions,
   getPopularLocations,
+  getZoneSuggestions,
 } from "@/lib/actions/search-actions";
 import { SEARCH_CONFIG } from "@/lib/schemas/search-schema";
 import { rateLimitWithFallback, rateLimitResponse } from "@/lib/rate-limit";
@@ -26,6 +27,12 @@ export async function GET(request: NextRequest) {
 
     if (query.trim()) {
       locations = await getLocationSuggestions(query, limit);
+    } else if (searchParams.get("zones") === "1") {
+      // The "Where" panel's opening list: every Port Sudan zone ranked by how
+      // many homes are in it. Deliberately not subject to the `limit` cap
+      // above — the whole gazetteer is the point, and truncating it to 20
+      // would drop zones the catalogue may grow into.
+      locations = await getZoneSuggestions();
     } else {
       locations = await getPopularLocations(limit);
     }

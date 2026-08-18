@@ -66,6 +66,19 @@ export const PHASE1 = {
    *  of no availability confirmation (§5 D2 — the Availability Check dialog). */
   availabilityReminderDays: 14,
 
+  // ── Global & Marketing Dialogs ──────────────────────────────────────────
+
+  /** Cookie consent banner. Set to false to disable/hide. Flip to true to restore. */
+  showCookieBanner: false,
+
+  /** Price transparency dialog ("Now you'll see one price for your trip, all fees included.").
+   *  Set to false to disable/hide. Flip to true to restore. */
+  showPriceTransparencyDialog: false,
+
+  /** Hotel credit promo dialog ("Get 15% in Mkan credit at hotels").
+   *  Set to false to disable/hide. Flip to true to restore. */
+  showHotelCreditDialog: false,
+
   // ── Transport vertical ──────────────────────────────────────────────────
 
   /** Transport landing testimonials. Fabricated reviewers with full names, routes and

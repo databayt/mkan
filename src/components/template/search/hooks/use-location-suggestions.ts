@@ -40,13 +40,14 @@ export function useLocationSuggestions(
 
   const debouncedQuery = useDebounce(query, debounceMs);
 
-  // Fetch popular locations on mount
+  // Fetch the opening list on mount: every Port Sudan zone, ranked by home
+  // count. Not `limit`-ed — the route's zone mode returns the full gazetteer,
+  // and the old `DEFAULT_POPULAR_LOCATIONS_COUNT` of 3 would have clipped it
+  // to the top three the moment the panel started rendering server data.
   useEffect(() => {
     const fetchPopular = async () => {
       try {
-        const response = await fetch(
-          `/api/search/locations?limit=${SEARCH_CONFIG.DEFAULT_POPULAR_LOCATIONS_COUNT}`
-        );
+        const response = await fetch(`/api/search/locations?zones=1`);
         const data = await response.json();
 
         if (data.success) {
