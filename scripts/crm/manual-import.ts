@@ -31,8 +31,10 @@ const REST = `${API_URL}/rest`;
 const METADATA = `${API_URL}/metadata`;
 const HIGH_TRUST_MIN = 50;
 
-// The three real hosts. Account number (mkan username) → display name.
-const REAL_HOSTS: Record<string, string> = { '0001': 'abdout', '0002': 'degna', '0003': 'hussein' };
+// The three real hosts, keyed by ACCOUNT NUMBER (the email's local part) — not
+// by username, which now holds the owner's real name and is synced from the CRM
+// by sync-host-names.ts. Names here are the display names as of 2026-08-18.
+const REAL_HOSTS: Record<string, string> = { '0001': 'عبدوت', '0002': 'دقنة', '0003': 'حسين' };
 const REAL_EMAILS = Object.keys(REAL_HOSTS).map((n) => `${n}@mkan.org`);
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

@@ -91,6 +91,18 @@ export const VIEWS: ViewDef[] = [
     sorts: [{ field: 'overallTrustScore', direction: 'DESC' }],
   },
   {
+    // Phase 1 is Port Sudan and nothing else — 31 of the 144 homes in the CRM.
+    // Without this the sidebar's only home lists are city-blind, so every
+    // acquisition decision starts by mentally filtering out Khartoum.
+    name: 'Port Sudan',
+    object: 'home',
+    type: 'TABLE',
+    icon: 'IconAnchor',
+    fields: ['host', 'roomType', 'priceNightSdg', 'mkanPublishState', 'trustBand', 'avgRating', 'reviewCount', 'mkanListingUrl'],
+    filters: [{ field: 'city', operand: 'IS', value: ['PORT_SUDAN'] }],
+    sorts: [{ field: 'overallTrustScore', direction: 'DESC' }],
+  },
+  {
     name: 'Duplicates & rejects',
     object: 'home',
     type: 'TABLE',

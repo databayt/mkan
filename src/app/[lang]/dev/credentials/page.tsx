@@ -14,7 +14,10 @@ interface CredentialsPageProps {
  * Homes hosts use the bootstrap password "1234" (BOOTSTRAP_PASSWORD in
  * src/lib/actions/admin-actions.ts); transport offices use "123456"
  * (DEMO_PASSWORD in scripts/seed-transport.ts).
- * Homes host login = the 4-digit number (their username), e.g. "0001" / "1234".
+ * Homes host login = the account number, e.g. "0001" / "1234". The number is
+ * the email's local part, not the username: `username` holds the host's real
+ * name (it is what "Hosted by …" renders), and `getUserByIdentifier` resolves a
+ * bare number through `<number>@mkan.org`. Either the number or the name works.
  */
 export default async function CredentialsPage({ params }: CredentialsPageProps) {
   if (process.env.NODE_ENV === 'production') {
