@@ -149,9 +149,16 @@ export interface LocationSuggestion {
    */
   nameAr?: string;
   nameEn?: string;
-  /** Sector ("Central Locality" / "وحدة وسط") — the subtitle for a zone with no homes yet. */
+  /** Sector ("Central Locality" / "وحدة وسط") — the second half of a zone row's subtitle. */
   sectorAr?: string;
   sectorEn?: string;
+  /**
+   * Sector key ('central' | 'south' | 'east' | 'north_expansion' |
+   * 'coastal_tourism'). Sent alongside the localized labels so the panel can
+   * tint a zone's icon tile by part of town without importing the gazetteer
+   * into the browser.
+   */
+  sector?: string;
 }
 
 // Search filters type for server action. Keep in sync with `listingFilterSchema`

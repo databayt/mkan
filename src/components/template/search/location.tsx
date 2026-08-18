@@ -1,6 +1,34 @@
 "use client";
 
-import { Loader2, MapPin } from "lucide-react";
+import {
+  Anchor,
+  Blocks,
+  Building,
+  Building2,
+  Bus,
+  Compass,
+  Droplets,
+  Fish,
+  GraduationCap,
+  House,
+  HousePlus,
+  Landmark,
+  Loader2,
+  MapPin,
+  Plane,
+  Route,
+  Ship,
+  ShoppingBasket,
+  Store,
+  Sun,
+  TrainFront,
+  TreePalm,
+  Trees,
+  Umbrella,
+  Warehouse,
+  Waves,
+  type LucideIcon,
+} from "lucide-react";
 import { type LocationSuggestion } from "@/lib/schemas/search-schema";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { useLocale } from "@/components/internationalization/use-locale";
@@ -205,17 +233,75 @@ const SUGGESTED_DESTINATIONS = {
   ],
 } as const;
 
-// Artwork exists for the six zones the original curated list covered. The
-// other thirty-eight render the map-pin tile instead of borrowing a photo of
-// somewhere else — a wrong picture reads as a claim about the place.
-const ZONE_IMAGERY: Record<string, { imageSrc: string; backgroundColor: string }> = {
-  digna: { imageSrc: cdn.vendor("airbnb", "destinations/coral-coast.png"), backgroundColor: "#fdf2e9" },
-  "city-centre": { imageSrc: cdn.vendor("airbnb", "destinations/marina.png"), backgroundColor: "#fef5e7" },
-  "airport-district": { imageSrc: cdn.vendor("airbnb", "destinations/airport.png"), backgroundColor: "#fdedec" },
-  arous: { imageSrc: cdn.vendor("airbnb", "destinations/suakin.png"), backgroundColor: "#f3e8ff" },
-  hadal: { imageSrc: cdn.vendor("airbnb", "destinations/red-sea-university.png"), backgroundColor: "#e8f8f5" },
-  malaha: { imageSrc: cdn.vendor("airbnb", "destinations/marina.png"), backgroundColor: "#eef2ff" },
+// Every zone gets a tile that says something about the place — a train for the
+// railway quarter, a plane for the airport district, an anchor for the port
+// corridor. The six Airbnb destination PNGs the curated list used only covered
+// six zones, and a borrowed photo would claim more than we know anyway; a mark
+// chosen from the zone's own character reads honestly at 56px and scales to all
+// 44 zones, so no row can fall back to an anonymous pin.
+const ZONE_ICONS: Record<string, LucideIcon> = {
+  // Central
+  "city-centre": Building2,
+  "railway-district": TrainFront,
+  "hayy-al-aghareeq": Landmark, // the Greek quarter — the old colonnaded town
+  "hayy-al-jamia": GraduationCap,
+  "popular-market": ShoppingBasket,
+  "hayy-al-azama": Building,
+  dabaiwa: Trees,
+  taqaddum: HousePlus,
+  "deim-madina": House,
+  "deim-arab": House,
+  "deim-sijn": House,
+  // South
+  "airport-district": Plane,
+  malaha: Droplets, // الملاحة — the salt flats
+  transit: Route,
+  "souq-libya": Store,
+  "al-kaylo": Warehouse,
+  "hayy-al-shati": Umbrella,
+  "al-mirghaniya": Building,
+  "dar-al-naeem": HousePlus,
+  "dar-al-salam": HousePlus,
+  "al-riyadh": Building,
+  "al-sadaqa": House,
+  "deim-sawakin": House,
+  "deim-jaber": House,
+  "deim-musa": House,
+  kurya: House,
+  philip: House,
+  // East / eastern shore
+  digna: Anchor,
+  "al-askala": Ship,
+  salbona: Waves,
+  "abu-hashish": Waves,
+  flamingo: Fish,
+  "town-station": Bus,
+  "al-qadisiya": Building,
+  "al-thawra": Building,
+  "deim-al-noor": House,
+  "deim-al-tijani": House,
+  // North & north-west expansion
+  hadal: Compass,
+  "tarab-hadal": Blocks,
+  salalab: Blocks,
+  "umm-al-qura": HousePlus,
+  "al-huda": Sun,
+  "bashir-city": Building2,
+  // Coastal tourism
+  arous: TreePalm,
 };
+
+// Tint by part of town, so the list reads as a map before it reads as text:
+// blue along the eastern shore, sand in the centre, terracotta to the south,
+// green in the new northern squares, violet on the tourism coast.
+const SECTOR_TINT: Record<string, { bg: string; fg: string }> = {
+  central: { bg: "#fef5e7", fg: "#8a5a12" },
+  south: { bg: "#fdedec", fg: "#a4453a" },
+  east: { bg: "#e8f4fd", fg: "#0a6ba8" },
+  north_expansion: { bg: "#e8f8f5", fg: "#0f7a63" },
+  coastal_tourism: { bg: "#f3e8ff", fg: "#6b3fa0" },
+};
+const NEUTRAL_TINT = { bg: "#f7f7f7", fg: "#222222" };
 
 /**
  * "8 homes" / "٨ منازل" — Arabic counts take four forms, and picking one by
@@ -249,8 +335,12 @@ interface DestinationRow {
   key: string;
   title: string;
   subtitle: string;
+  /** Illustrated tile — only the two Airbnb-art rows (Nearby, the city). */
   imageSrc?: string;
   backgroundColor?: string;
+  /** Zone rows draw a mark of their own instead: icon + the sector's tint. */
+  Icon?: LucideIcon;
+  tint?: { bg: string; fg: string };
   isNearby: boolean;
   select: () => void | Promise<void>;
 }
@@ -341,7 +431,6 @@ export default function LocationDropdown({
     })),
     ...zoneSuggestions.map((zone) => {
       const slug = zone.zoneSlug as string;
-      const art = ZONE_IMAGERY[slug];
       const title = (activeLocale === "ar" ? zone.nameAr : zone.nameEn) || zone.displayName;
       const sector = (activeLocale === "ar" ? zone.sectorAr : zone.sectorEn) ?? "";
       const homes = homesLabel(zone.listingCount, dict, activeLocale);
@@ -349,8 +438,8 @@ export default function LocationDropdown({
         key: slug,
         title,
         subtitle: sector ? `${homes} · ${sector}` : homes,
-        imageSrc: art?.imageSrc,
-        backgroundColor: art?.backgroundColor,
+        Icon: ZONE_ICONS[slug] ?? MapPin,
+        tint: SECTOR_TINT[zone.sector ?? ""] ?? NEUTRAL_TINT,
         isNearby: false,
         select: () =>
           onLocationSelect({
@@ -501,8 +590,18 @@ export default function LocationDropdown({
                         className="h-14 w-14 flex-shrink-0 rounded-xl object-cover"
                       />
                     ) : (
-                      <div className="h-14 w-14 flex-shrink-0 rounded-xl bg-[#f7f7f7] border border-[#ebebeb] flex items-center justify-center text-[#222222]">
-                        <MapPin className="w-5 h-5" />
+                      <div
+                        className="h-14 w-14 flex-shrink-0 rounded-xl flex items-center justify-center"
+                        style={{
+                          backgroundColor: dest.tint?.bg ?? "#f7f7f7",
+                          color: dest.tint?.fg ?? "#222222",
+                        }}
+                      >
+                        {dest.Icon ? (
+                          <dest.Icon className="h-6 w-6" strokeWidth={1.6} />
+                        ) : (
+                          <MapPin className="h-6 w-6" strokeWidth={1.6} />
+                        )}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">

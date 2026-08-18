@@ -280,6 +280,7 @@ export const getZoneSuggestions = unstable_cache(
         nameEn: zone.nameEn,
         sectorAr: zone.sectorAr,
         sectorEn: zone.sectorEn,
+        sector: zone.sector,
       }));
   },
   ["zone-suggestions"],
