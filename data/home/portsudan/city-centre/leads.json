@@ -1,0 +1,369 @@
+{
+  "zone_slug": "city-centre",
+  "canonical_name": "وسط المدينة",
+  "total_leads": 4,
+  "leads": [
+    {
+      "id": "ps-al-swahili-hotel",
+      "name": {
+        "primary": "السواحلي للشقق الفندقية",
+        "arabic": "السواحلي للشقق الفندقية",
+        "english": "Al Swahili Hotel",
+        "aliases": [
+          "Al Swahili Hotel",
+          "Al Swahili Hotel Apartments"
+        ]
+      },
+      "entity_type": "business",
+      "category": "hotel_apartment",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": "Engineers St, Port Sudan",
+        "latitude": 19.62032,
+        "longitude": 37.217678,
+        "distance_from_city_centre_km": 0.5
+      },
+      "contact": {
+        "phone": [
+          "+249 90 448 5000"
+        ],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 4.5,
+        "review_count": 2
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "directory(google-business)+web-research",
+        "assigned_to": null,
+        "notes": "Named by the brief. Found independently in the directory sweep. Two directory records ('السواحلي للشقق الفندقية' and 'Al Swahili Hotel') sit ~10m apart and are almost certainly the same operator — merged, kept as aliases. | Merged 3 source records on: verified alias bridge → \"السواحلي للشقق الفندقية\"; same phone number."
+      },
+      "discovery": {
+        "queries": [
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index",
+          "web search (AR+EN), see discovery-log.md"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/1107485",
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/al-swahili-hotel-1239720",
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/hotel"
+        ],
+        "source_layers": [
+          "directory(google-business)",
+          "web-research"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "high",
+        "lead_priority": "high",
+        "score": 80,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "corroborated across 2 independent sources",
+          "2 public review(s)",
+          "multi-unit by category",
+          "furnished/serviced apartments — the exact Mkan vertical"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "city-centre",
+        "zoneCanonical": "وسط المدينة",
+        "distKm": 0.784,
+        "confidence": "medium",
+        "ambiguous": false,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-al-taher-mohamed-saleh-hotel-apartments",
+      "name": {
+        "primary": "Al Taher Mohamed Saleh Hotel Apartments",
+        "arabic": "الطاهر محمد صالح للغرف الفندقيه",
+        "english": "Al Taher Mohamed Saleh Hotel Apartments",
+        "aliases": [
+          "الطاهر محمد صالح للغرف الفندقيه"
+        ]
+      },
+      "entity_type": "business",
+      "category": "hotel_apartment",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": null,
+        "latitude": 19.622602,
+        "longitude": 37.219938,
+        "distance_from_city_centre_km": 0.8
+      },
+      "contact": {
+        "phone": [
+          "+249 91 304 5131"
+        ],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 5,
+        "review_count": 1
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "directory(google-business)",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/al-taher-mohamed-saleh-hotel-apartments-999040"
+        ],
+        "source_layers": [
+          "directory(google-business)"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "high",
+        "lead_priority": "high",
+        "score": 70,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "1 public review(s)",
+          "multi-unit by category",
+          "furnished/serviced apartments — the exact Mkan vertical"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "city-centre",
+        "zoneCanonical": "وسط المدينة",
+        "distKm": 1.021,
+        "confidence": "low",
+        "ambiguous": false,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-ranya-hotel",
+      "name": {
+        "primary": "Ranya Hotel",
+        "arabic": "فندق رانيا",
+        "english": null,
+        "aliases": [
+          "رانيا أوتيل",
+          "فندق رانيا"
+        ]
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": null,
+        "latitude": 19.6188235,
+        "longitude": 37.2197858,
+        "distance_from_city_centre_km": 0.5
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/5331605121"
+        ],
+        "source_layers": [
+          "openstreetmap"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": null,
+        "mkan_relevance": "medium",
+        "lead_priority": "low",
+        "score": 30,
+        "score_reasons": [
+          "mapped",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "city-centre",
+        "zoneCanonical": "وسط المدينة",
+        "distKm": 1.036,
+        "confidence": "low",
+        "ambiguous": false,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-global-real-estate-marketer-hana-al-kashif",
+      "name": {
+        "primary": "هناء الكاشف — Global Real Estate Marketer",
+        "arabic": "هناء الكاشف — Global Real Estate Marketer",
+        "english": "Global Real Estate Marketer (Hana Al-Kashif)",
+        "aliases": [
+          "Hana Abrahim",
+          "هناء الكاشف",
+          "هناء الكاشف [صاحبة شركة تسويق الكتروني]",
+          "Global Real Estate Marketer (Hana Al-Kashif)"
+        ]
+      },
+      "entity_type": "business",
+      "category": "real_estate_office",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": "Port Sudan — ديم مدينة غرب, حي المطار, سلالاب غرب, دبايوا, وسط السوق",
+        "latitude": null,
+        "longitude": null,
+        "distance_from_city_centre_km": null
+      },
+      "contact": {
+        "phone": [],
+        "website": "https://www.alsoug.com/en/adverts/2097387",
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "web-research",
+        "assigned_to": null,
+        "notes": "The dominant broker on alsoug's Port Sudan property board: advertiser uid 311171 holds **8 of the 12** Port Sudan real-estate ads listed there. Self-described as 'صاحبة شركة تسويق الكتروني — Global Real Estate Marketer' (owner of a digital-marketing company). Posts under two display names — an older 'Hana Abrahim' and the current Arabic form — but the same numeric account id, which is how they were resolved to one advertiser rather than two. Attribution was verified in-browser: every data-user_name element on an advert page carries that page's own data-advert_id, so this is not a related-ads widget bleeding into the parse. No phone is exposed — alsoug puts contact behind a chat button — so reaching them means the platform's own contact flow or a login. Inventory reaches well beyond apartments: one listing is a 15-room, 8-bathroom two-storey building in ديم مدينة غرب at US$4,000/month."
+      },
+      "discovery": {
+        "queries": [
+          "web search (AR+EN), see discovery-log.md"
+        ],
+        "sources": [
+          "https://www.alsoug.com/en/adverts/2097387",
+          "https://www.alsoug.com/en/adverts/2097377",
+          "https://www.alsoug.com/en/adverts/2097376",
+          "https://www.alsoug.com/en/adverts/2097375",
+          "https://www.alsoug.com/en/adverts/2097371",
+          "https://www.alsoug.com/en/adverts/2097647"
+        ],
+        "source_layers": [
+          "web-research"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": false,
+        "likely_active": null,
+        "mkan_relevance": "medium",
+        "lead_priority": "low",
+        "score": 0,
+        "score_reasons": []
+      },
+      "zone_assignment": {
+        "zoneSlug": "city-centre",
+        "zoneCanonical": "وسط المدينة",
+        "distKm": null,
+        "confidence": "medium",
+        "ambiguous": false,
+        "method": "address_text"
+      }
+    }
+  ]
+}

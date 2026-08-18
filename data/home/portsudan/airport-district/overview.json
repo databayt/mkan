@@ -1,0 +1,72 @@
+{
+  "zone_slug": "airport-district",
+  "canonical_name": "حي المطار",
+  "arabic_name": "حي المطار",
+  "english_name": "Airport District",
+  "sector": "south",
+  "name_type": "commonly_used",
+  "lat": 19.5750337,
+  "lng": 37.2082191,
+  "radius_km": 1.5,
+  "confidence": "high",
+  "description": "Premier southern residential and commercial district beside the historic regional air base. Highly favored by real estate agencies and brokers for upscale furnished apartment blocks and diplomatic residences.",
+  "sources": [
+    "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)",
+    "OpenStreetMap (place=suburb حي المطار)",
+    "Alsoug rental classifieds",
+    "Amlak Real Estate ads"
+  ],
+  "aliases": [
+    "حىى المطار",
+    "Airport district",
+    "حي المطار القديم",
+    "حي المطار مربع 1",
+    "حي المطار مربع 4",
+    "شارع القنصلية المصرية",
+    "مدخل المدينة"
+  ],
+  "metrics": {
+    "total_discovered_businesses": 2,
+    "categories": {
+      "furnished_apartment": 0,
+      "hotel_apartment": 0,
+      "hotel": 1,
+      "resort": 0,
+      "chalet": 0,
+      "guest_house": 0,
+      "real_estate_office": 1,
+      "unknown": 0
+    },
+    "core_apartment_businesses": 0,
+    "phone_reachable_leads": 1,
+    "with_google_rating": 0,
+    "total_public_reviews": 0,
+    "mkan_published_listings": 1,
+    "zone_share_of_discovered_supply": 0.047,
+    "zone_share_of_mkan_listings": 0.034,
+    "demand_telemetry": {
+      "views": null,
+      "inquiries": null,
+      "visits": null,
+      "completed_rentals": null,
+      "views_per_listing": null,
+      "inquiries_per_listing": null,
+      "rentals_per_listing": null,
+      "status": "INSUFFICIENT_DATA",
+      "note": "Telemetry uninstrumented for Port Sudan as of 2026-08-14. Zero production views/bookings logged."
+    },
+    "marketplace_status": "INSUFFICIENT_DATA",
+    "supply_status": "EMERGING_SUPPLY",
+    "acquisition_priority_score": 11,
+    "acquisition_priority": "MONITOR_OPPORTUNITY",
+    "score_breakdown": {
+      "core_apartments_pts": 0,
+      "hotel_resort_pts": 4,
+      "contactability_pts": 5,
+      "mkan_traction_pts": 2,
+      "reviews_pts": 0
+    }
+  },
+  "leads_count": 2,
+  "mkan_clusters_count": 1
+}

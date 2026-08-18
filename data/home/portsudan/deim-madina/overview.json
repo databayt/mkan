@@ -1,0 +1,69 @@
+{
+  "zone_slug": "deim-madina",
+  "canonical_name": "ديم المدينة",
+  "arabic_name": "ديم المدينة",
+  "english_name": "Deim Al-Madina",
+  "sector": "central",
+  "name_type": "commonly_used",
+  "lat": 19.6166255,
+  "lng": 37.2066764,
+  "radius_km": 0.8,
+  "confidence": "high",
+  "description": "Prominent central residential and civic quarter housing Port Sudan Stadium (استاد بورتسودان), the Popular Square (الساحة الشعبية), and its own bustling local market.",
+  "sources": [
+    "https://ar.wikipedia.org/wiki/بورتسودان (وسط المدينة)",
+    "OpenStreetMap (amenity=marketplace سوق ديم المدينة)",
+    "Alsoug ads"
+  ],
+  "aliases": [
+    "ديم مدينة",
+    "Deim Madina",
+    "ديم مدينه غرب",
+    "Deim West",
+    "منطقة الاستاد"
+  ],
+  "metrics": {
+    "total_discovered_businesses": 1,
+    "categories": {
+      "furnished_apartment": 0,
+      "hotel_apartment": 0,
+      "hotel": 1,
+      "resort": 0,
+      "chalet": 0,
+      "guest_house": 0,
+      "real_estate_office": 0,
+      "unknown": 0
+    },
+    "core_apartment_businesses": 0,
+    "phone_reachable_leads": 1,
+    "with_google_rating": 1,
+    "total_public_reviews": 3,
+    "mkan_published_listings": 0,
+    "zone_share_of_discovered_supply": 0.023,
+    "zone_share_of_mkan_listings": 0,
+    "demand_telemetry": {
+      "views": null,
+      "inquiries": null,
+      "visits": null,
+      "completed_rentals": null,
+      "views_per_listing": null,
+      "inquiries_per_listing": null,
+      "rentals_per_listing": null,
+      "status": "INSUFFICIENT_DATA",
+      "note": "Telemetry uninstrumented for Port Sudan as of 2026-08-14. Zero production views/bookings logged."
+    },
+    "marketplace_status": "INSUFFICIENT_DATA",
+    "supply_status": "EMERGING_SUPPLY",
+    "acquisition_priority_score": 9,
+    "acquisition_priority": "LOW_PRIORITY",
+    "score_breakdown": {
+      "core_apartments_pts": 0,
+      "hotel_resort_pts": 4,
+      "contactability_pts": 5,
+      "mkan_traction_pts": 0,
+      "reviews_pts": 0
+    }
+  },
+  "leads_count": 1,
+  "mkan_clusters_count": 0
+}

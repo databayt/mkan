@@ -1,0 +1,715 @@
+{
+  "_what": "Every advert on alsoug.com's Port Sudan real-estate board, fetched ad-by-ad. This is the unit-level layer the business-level discovery log deliberately left uncollected (its gap #1).",
+  "_method": "Index pages 1..3 of /adverts/السودان/بورتسودان/عقارات were walked until no new advert id appeared; every advert detail page was then fetched individually and parsed. Fetches paced at 1.4s from the operator's own browser.",
+  "_collected_at": "2026-08-14",
+  "_counts": {
+    "adverts": 23,
+    "for_rent": 6,
+    "for_sale": 17,
+    "advertisers": 7
+  },
+  "_delta_vs_previous_pass": "The earlier pass recorded 12 adverts / 4 advertisers. This pass: 23 adverts / 7 advertisers. The board grew (two ads were posted on the crawl date itself); it was not previously undercounted.",
+  "_phone_note": "alsoug hides advertiser phones behind a login-gated Contact button. No phone was recovered and none was inferred — every phones[] array is empty.",
+  "_advertiser_identity_note": "uid 311171 renders under two display names (Latin 'Hana Abrahim' and the Arabic 'هناء الكاشف … Global Real Estate Marketer'). They are one account; grouping by display name would split one broker into two.",
+  "adverts": [
+    {
+      "id": "alsoug-2098165",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2098165",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "قطعه ارض للبيع تفتح في الظلط مباشر",
+      "description_ar": "✍ للبيع في بورسودان لاصحاب الاستثمار قطعة ارض في سللاب مربع 6 ناصيه تفتح علي ظلط الأربعين",
+      "price": {
+        "amount": 160000.0,
+        "currency": "SDG",
+        "raw": "160,000 SDG"
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": null,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "311171",
+        "display_name": "Hana Abrahim",
+        "phones": []
+      },
+      "posted_at": "14-08-2026",
+      "expires_at": "14-10-2026"
+    },
+    {
+      "id": "alsoug-2098163",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2098163",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "منزل للبيع بورتسودان الثوره مربع 18",
+      "description_ar": "بيت للبيع الثورة مربع ١٨ بورتسودان المساحة 200 متر بنيان عالي يتكون من غرفتين وصالون هول حمام داخلي وحمام خارجي وغرفه خارجيه ومطبخ",
+      "price": {
+        "amount": 285000000.0,
+        "currency": "SDG",
+        "raw": "285,000,000 SDG"
+      },
+      "rooms": 3,
+      "rooms_raw": "3 Bedroom",
+      "bathrooms": 2,
+      "kitchens": 1,
+      "floor": null,
+      "area_sqm": 200,
+      "building_age": "1-5 years",
+      "advertiser": {
+        "platform_uid": "260308",
+        "display_name": "Elaf Esmat",
+        "phones": []
+      },
+      "posted_at": "14-08-2026",
+      "expires_at": "14-10-2026",
+      "furnished": true
+    },
+    {
+      "id": "alsoug-2097647",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2097647",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "بيت للبيع في بورسودان سلالاب غرب الواحه مربع 5",
+      "description_ar": "✍ للبيع في بورسودان بيت في الواحه سلالاب. غرب مربع 5 المساحه 225 م ناصيه شماليه شرقيه خامس بيت من ظلط الواحة مؤسس بشيل تاني طابقين الارضي ناقص تشطيب",
+      "price": {
+        "amount": 360000000.0,
+        "currency": "SDG",
+        "raw": "360,000,000 SDG"
+      },
+      "rooms": 4,
+      "rooms_raw": "4 Bedroom",
+      "bathrooms": 1,
+      "kitchens": 1,
+      "floor": null,
+      "area_sqm": null,
+      "building_age": "1-11 months",
+      "advertiser": {
+        "platform_uid": "311171",
+        "display_name": "Hana Abrahim",
+        "phones": []
+      },
+      "posted_at": "06-08-2026",
+      "expires_at": "06-10-2026",
+      "furnished": false
+    },
+    {
+      "id": "alsoug-2097641",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2097641",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "للبيع بيت في بورسودان الواحة سلالاب غرب مربع 5",
+      "description_ar": "✍ للبيع في بورسودان بيت في الواحه سلالاب. غرب مربع 5 المساحه 225 م ناصيه شماليه شرقيه خامس بيت من ظلط الواحة مؤسس بشيل تاني طابقين الارضي ناقص تشطيب",
+      "price": {
+        "amount": 360000000.0,
+        "currency": "SDG",
+        "raw": "360,000,000 SDG"
+      },
+      "rooms": 4,
+      "rooms_raw": "4 Bedroom",
+      "bathrooms": 1,
+      "kitchens": 1,
+      "floor": null,
+      "area_sqm": 360,
+      "building_age": "1-11 months",
+      "advertiser": {
+        "platform_uid": "311171",
+        "display_name": "Hana Abrahim",
+        "phones": []
+      },
+      "posted_at": "06-08-2026",
+      "expires_at": "06-10-2026",
+      "furnished": false
+    },
+    {
+      "id": "alsoug-2097387",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2097387",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "للإيجار في بورسودان عمارة في ديم مدينه غرب",
+      "description_ar": "✍ للإيجار في بورسودان عماره في ديم مدينة غرب ارضي + اول 15 غرفة + 8 حمامات العرض شامل مولد 60 kva + المكيفات + بئر مياه حلوه العرض متاح لاصحاب الشركات والمنظمات والمؤسسات والمكاتب والمستوصفات",
+      "price": {
+        "amount": 4000.0,
+        "currency": "USD",
+        "raw": "US$ 4,000"
+      },
+      "rooms": 5,
+      "rooms_raw": "More than 5 Bedrooms",
+      "bathrooms": 5,
+      "kitchens": null,
+      "floor": "1st Floor",
+      "area_sqm": null,
+      "building_age": "6-9 years",
+      "advertiser": {
+        "platform_uid": "311171",
+        "display_name": "هناء الكاشف [صاحبة شركة تسويق الكتروني] Global Real Estate Marketer",
+        "phones": []
+      },
+      "posted_at": "04-08-2026",
+      "expires_at": "04-10-2026",
+      "furnished": false
+    },
+    {
+      "id": "alsoug-2097377",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2097377",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "عمارة للايجار في بورسودان حي المطار",
+      "description_ar": "✍ للإيجار الفاضي في بورسودان ● عمارة في حي المطار مربع 2. موقع مميز تتكون من ارضي + اول كل طابق مكون من 6 غرف وحمامات [إجمالي الغرف 12 غرفه]",
+      "price": {
+        "amount": 4000.0,
+        "currency": "USD",
+        "raw": "US$ 4,000"
+      },
+      "rooms": 5,
+      "rooms_raw": "More than 5 Bedrooms",
+      "bathrooms": 5,
+      "kitchens": null,
+      "floor": "1st Floor",
+      "area_sqm": null,
+      "building_age": "6-9 years",
+      "advertiser": {
+        "platform_uid": "311171",
+        "display_name": "هناء الكاشف [صاحبة شركة تسويق الكتروني] Global Real Estate Marketer",
+        "phones": []
+      },
+      "posted_at": "04-08-2026",
+      "expires_at": "04-10-2026",
+      "furnished": false
+    },
+    {
+      "id": "alsoug-2097376",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2097376",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "شقه في بورسودان وسط السوق موقع ممتاز",
+      "description_ar": "✍ للإيجار المفروش في بورسودان • شقه فخمة في وسط السوق بالقرب من فندق بلاس • غرفتين _ هول _ مطبخ _ حمامين • توجد طاقة شمسية بتشغل عدد 2 مكيف • العرض متاح للموظفين والأسر الصغيرة • مطلوب في الشهر 1300 دولار",
+      "price": {
+        "amount": 1300.0,
+        "currency": "USD",
+        "raw": "US$ 1,300"
+      },
+      "rooms": 2,
+      "rooms_raw": "Two-bedroom",
+      "bathrooms": 2,
+      "kitchens": 1,
+      "floor": "1st Floor",
+      "area_sqm": null,
+      "building_age": "9-15 years",
+      "advertiser": {
+        "platform_uid": "311171",
+        "display_name": "هناء الكاشف [صاحبة شركة تسويق الكتروني] Global Real Estate Marketer",
+        "phones": []
+      },
+      "posted_at": "04-08-2026",
+      "expires_at": "04-10-2026",
+      "furnished": true
+    },
+    {
+      "id": "alsoug-2097375",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2097375",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "للإيجار في بورسودان شقه كبيرة في دبايوا",
+      "description_ar": "✍ للإيجار المفروش في بورسودان شقه كبيرة في دبايوا طابق اول غرفتين . صالون . مطبخ . هول . حمام . بلكونه متوفرة طاقة شمسية بتشغل انارة ومراوح",
+      "price": {
+        "amount": 3500000.0,
+        "currency": "SDG",
+        "raw": "3,500,000 SDG"
+      },
+      "rooms": 3,
+      "rooms_raw": "3 Bedroom",
+      "bathrooms": 1,
+      "kitchens": 1,
+      "floor": "1st Floor",
+      "area_sqm": null,
+      "building_age": "6-9 years",
+      "advertiser": {
+        "platform_uid": "311171",
+        "display_name": "هناء الكاشف [صاحبة شركة تسويق الكتروني] Global Real Estate Marketer",
+        "phones": []
+      },
+      "posted_at": "04-08-2026",
+      "expires_at": "04-10-2026",
+      "furnished": true
+    },
+    {
+      "id": "alsoug-2097372",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2097372",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "للبيع قطعه استثمارية في المدينة الصناعية بورسودان",
+      "description_ar": "✍ للبيع في بورسودان اوالمقايضة قطعة استثمارية في المدينة الصناعية موقع مميز جدآ مساحتها 2750 م تالت قطعة من الظلط الرئيسي وقريبة جدآ من مصنع نسمة",
+      "price": {
+        "amount": 180000000.0,
+        "currency": "SDG",
+        "raw": "180,000,000 SDG"
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": null,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "311171",
+        "display_name": "هناء الكاشف [صاحبة شركة تسويق الكتروني] Global Real Estate Marketer",
+        "phones": []
+      },
+      "posted_at": "04-08-2026",
+      "expires_at": "04-10-2026"
+    },
+    {
+      "id": "alsoug-2097371",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2097371",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "شقه ارضية في بورسودان للايجار الفاضي",
+      "description_ar": "✍ للإيجار الفاضي في بورسودان • شقه ارضية في ديم مدينة غرب موقع مميز قريبة من سوق ديم مدينة • 3 غرف • حمامين • هولين • مطبخ",
+      "price": {
+        "amount": 500.0,
+        "currency": "USD",
+        "raw": "US$ 500"
+      },
+      "rooms": 3,
+      "rooms_raw": "3 Bedroom",
+      "bathrooms": 2,
+      "kitchens": 1,
+      "floor": "Ground Floor",
+      "area_sqm": null,
+      "building_age": "6-9 years",
+      "advertiser": {
+        "platform_uid": "311171",
+        "display_name": "هناء الكاشف [صاحبة شركة تسويق الكتروني]",
+        "phones": []
+      },
+      "posted_at": "04-08-2026",
+      "expires_at": "04-10-2026",
+      "furnished": false
+    },
+    {
+      "id": "alsoug-2096219",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2096219",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "للبيع أرض سكنية ٦٠٠ متر حي المطار مربع ١",
+      "description_ar": "للبيع أرض سكنية ٦٠٠ متر حي المطار مربع ١",
+      "price": {
+        "amount": null,
+        "currency": null,
+        "raw": null
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": 600,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "2575275",
+        "display_name": "Abu Salem",
+        "phones": []
+      },
+      "posted_at": "27-07-2026",
+      "expires_at": "27-09-2026"
+    },
+    {
+      "id": "alsoug-2096040",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2096040",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "بيت ارضي حي المطار مربع 18",
+      "description_ar": "للبيع بيت مربع ١٨ المطار. للبيع المستعجل",
+      "price": {
+        "amount": null,
+        "currency": null,
+        "raw": null
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": 300,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "999489",
+        "display_name": "قباني",
+        "phones": []
+      },
+      "posted_at": "26-07-2026",
+      "expires_at": "26-09-2026"
+    },
+    {
+      "id": "alsoug-2095269",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2095269",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "للبيع المستعجل حي المطار مربع 28",
+      "description_ar": "مساحة 400 م. م حي المطار مربع 28 قريبة لمربع 23 ناصية. شهادة بحث جاهزة.",
+      "price": {
+        "amount": null,
+        "currency": null,
+        "raw": null
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": 400,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "999489",
+        "display_name": "قباني",
+        "phones": []
+      },
+      "posted_at": "18-07-2026",
+      "expires_at": "18-09-2026"
+    },
+    {
+      "id": "alsoug-2095219",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2095219",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "للبيع في بورسودان قطعه في حي المطار مربع 3",
+      "description_ar": "✍ للبيع في بورسودان قطعه في حي المطار مربع 3 مساحة 400م ناصية شرقية جنوبية",
+      "price": {
+        "amount": 350000000.0,
+        "currency": "SDG",
+        "raw": "350,000,000 SDG"
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": 400,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "2556373",
+        "display_name": "Nahla Abdalbdea",
+        "phones": []
+      },
+      "posted_at": "17-07-2026",
+      "expires_at": "17-09-2026"
+    },
+    {
+      "id": "alsoug-2095218",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2095218",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "للبيع في بورسودان قطعه ارض في حي المطار مربع 5 في موقع مميز",
+      "description_ar": "✍ للبيع في بورسودان قطعه ارض في حي المطار مربع 5 في موقع مميز جدآ مساحة 300م ناصية ميدان وعلي بعد 4 قطع من شارع السلك الرئيسي",
+      "price": {
+        "amount": 300000000.0,
+        "currency": "SDG",
+        "raw": "300,000,000 SDG"
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": 300,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "2556373",
+        "display_name": "Nahla Abdalbdea",
+        "phones": []
+      },
+      "posted_at": "17-07-2026",
+      "expires_at": "17-09-2026"
+    },
+    {
+      "id": "alsoug-2094898",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2094898",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "حي المطار اركويت بورتسودان",
+      "description_ar": "للبيع قطعة حي المطار مربع 18. مساحة 300 م م. ثالث ناصية من الشارع الرئيسي.",
+      "price": {
+        "amount": null,
+        "currency": null,
+        "raw": null
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": 300,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "999489",
+        "display_name": "قباني",
+        "phones": []
+      },
+      "posted_at": "15-07-2026",
+      "expires_at": "15-09-2026"
+    },
+    {
+      "id": "alsoug-2094740",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2094740",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "حي المطار ثالث ناصية مربع 18",
+      "description_ar": "للبيع حي المطار مربع 18، ثالث ناصية من الشارع الرئيسي. مساحة 300 م. م",
+      "price": {
+        "amount": null,
+        "currency": null,
+        "raw": null
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": 300,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "999489",
+        "display_name": "قباني",
+        "phones": []
+      },
+      "posted_at": "13-07-2026",
+      "expires_at": "13-09-2026"
+    },
+    {
+      "id": "alsoug-2093485",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2093485",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "للبيع المستعجل قطعه في بورتسودان 600 متر حي المطار",
+      "description_ar": "للبيع المستعجل قطعة في بورتسودان حي المطار مساحه 600 متر مربع 2 ناصيه تفتح في شارع البرهانيه + 5٪ عموله ثابته من المشتري",
+      "price": {
+        "amount": 900000000.0,
+        "currency": "SDG",
+        "raw": "900,000,000 SDG"
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": 600,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "2556373",
+        "display_name": "Nahla Abdalbdea",
+        "phones": []
+      },
+      "posted_at": "29-06-2026",
+      "expires_at": "29-08-2026"
+    },
+    {
+      "id": "alsoug-2093351",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2093351",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "حي المطار مربع ٢٨ بورتسودان",
+      "description_ar": "للبيع قطعة حي المطار مربع 28 مساحة 400 م. م جنوب غرب مسجد السمانية، لا توجد خدمات، لكن قربت تدخل",
+      "price": {
+        "amount": null,
+        "currency": null,
+        "raw": null
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": 400,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "999489",
+        "display_name": "قباني",
+        "phones": []
+      },
+      "posted_at": "27-06-2026",
+      "expires_at": "27-08-2026"
+    },
+    {
+      "id": "alsoug-2092808",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2092808",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "للايجار حوش حي المطار فااضي شارع البرهانية مربع 76",
+      "description_ar": "*للايجار* حوش حي المطار فااضي شارع البرهانية مربع 7 6*4 مسور حجر ايجار مخزن + عموله مكتب من المستأجر 250 بورتسودان",
+      "price": {
+        "amount": 500000.0,
+        "currency": "SDG",
+        "raw": "500,000 SDG"
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": 6,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "351000",
+        "display_name": "ام محمد",
+        "phones": []
+      },
+      "posted_at": "21-06-2026",
+      "expires_at": "21-08-2026"
+    },
+    {
+      "id": "alsoug-2092667",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2092667",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "حي المطار مربع 18 بورتسودان",
+      "description_ar": "للبيع قطعة حي المطار مربع 18 مساحة 300 م. م",
+      "price": {
+        "amount": null,
+        "currency": null,
+        "raw": null
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": 300,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "999489",
+        "display_name": "قباني",
+        "phones": []
+      },
+      "posted_at": "20-06-2026",
+      "expires_at": "20-08-2026"
+    },
+    {
+      "id": "alsoug-2092499",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2092499",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "عرض مغري 600 متر للبيع جوار الكلية الجوية",
+      "description_ar": "إستثمر مالك و وقتك، وفِّر جهدك و أكسب.. للشركات والمنظمات والبنوك و المؤسسات الصحية و التعليمية و المستثمرين في مجال السياحة و الشقق الفندقية و التطوير",
+      "price": {
+        "amount": null,
+        "currency": null,
+        "raw": "0 SDG"
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": null,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "386689",
+        "display_name": "حي المطار",
+        "phones": []
+      },
+      "posted_at": "18-06-2026",
+      "expires_at": "18-08-2026"
+    },
+    {
+      "id": "alsoug-2092417",
+      "source": {
+        "platform": "alsoug.com",
+        "url": "https://www.alsoug.com/en/adverts/2092417",
+        "collected_at": "2026-08-14",
+        "board": "Port Sudan / عقارات"
+      },
+      "title_ar": "للبيع المستعجل حي المطار ناصية شماليةغربية",
+      "description_ar": "ناصية شمالية غربية، مساحة 300 م. م حي المطار مربع 2",
+      "price": {
+        "amount": null,
+        "currency": null,
+        "raw": null
+      },
+      "rooms": null,
+      "rooms_raw": null,
+      "bathrooms": null,
+      "kitchens": null,
+      "floor": null,
+      "area_sqm": 300,
+      "building_age": null,
+      "advertiser": {
+        "platform_uid": "999489",
+        "display_name": "قباني",
+        "phones": []
+      },
+      "posted_at": "17-06-2026",
+      "expires_at": "17-09-2026"
+    }
+  ],
+  "_derived_fields_note": "This file holds RAW observation only. Interpretation — listing_type, property_type, zone, block, amenities, target tenant — is computed by scripts/crm/port-sudan-listings.ts at generation time and deliberately NOT stored here. The first pass did store them, and a classifier bug (ارض 'land' matching inside ارضي 'ground floor', which read ground-floor flats and buildings as land) got baked into this file and survived regeneration. Derived values in a source file are bugs with a long half-life.\n\n`furnished` IS kept: it is alsoug's own Furnished=Yes/No attribute, observed on the advert page, not something this pipeline inferred. It was briefly stripped as 'derived' — wrongly, since removing it silently dropped the furnished flag on all 8 adverts that carried one. Raw platform attributes stay; only computed fields go."
+}

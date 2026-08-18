@@ -50,8 +50,8 @@ let prisma: (typeof import('@/lib/db'))['db'];
 // Location row using its building's coords.
 // ─────────────────────────────────────────────────────────────────────────────
 const LOCATIONS = {
-  A: { address: 'بورتسودان، بالقرب من أبدوت مول', latitude: 19.622237, longitude: 37.2045283 },
-  B: { address: 'بورتسودان، وسط المدينة', latitude: 19.6211875, longitude: 37.2031719 },
+  A: { address: 'بورتسودان، بالقرب من أبدوت مول', latitude: 19.622237, longitude: 37.2045283, zoneKey: 'dabaiwa' },
+  B: { address: 'بورتسودان، وسط المدينة', latitude: 19.6211875, longitude: 37.2031719, zoneKey: 'city-centre' },
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -219,6 +219,7 @@ async function main(): Promise<void> {
         postalCode: String(11111 + i),
         latitude: geo.latitude,
         longitude: geo.longitude,
+        zoneKey: geo.zoneKey,
       },
     });
 

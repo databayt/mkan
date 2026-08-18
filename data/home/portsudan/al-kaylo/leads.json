@@ -1,0 +1,254 @@
+{
+  "zone_slug": "al-kaylo",
+  "canonical_name": "منطقة الكيلو",
+  "total_leads": 3,
+  "leads": [
+    {
+      "id": "ps-الكيلو-منتجع-سياحي",
+      "name": {
+        "primary": "الكيلو منتجع سياحي",
+        "arabic": null,
+        "english": null,
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "resort",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": null,
+        "latitude": 19.5579493,
+        "longitude": 37.2468887,
+        "distance_from_city_centre_km": 7.2
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/13139351995"
+        ],
+        "source_layers": [
+          "openstreetmap"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": null,
+        "mkan_relevance": "low",
+        "lead_priority": "low",
+        "score": 30,
+        "score_reasons": [
+          "mapped",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "al-kaylo",
+        "zoneCanonical": "منطقة الكيلو",
+        "distKm": null,
+        "confidence": "medium",
+        "ambiguous": false,
+        "method": "address_text"
+      }
+    },
+    {
+      "id": "ps-شاليه-الكيلو-بورتسودان",
+      "name": {
+        "primary": "شاليه الكيلو بورتسودان",
+        "arabic": null,
+        "english": null,
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "chalet",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": null,
+        "latitude": 19.5560536,
+        "longitude": 37.2470316,
+        "distance_from_city_centre_km": 7.4
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/5625538224"
+        ],
+        "source_layers": [
+          "openstreetmap"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": false,
+        "likely_active": null,
+        "mkan_relevance": "medium",
+        "lead_priority": "low",
+        "score": 15,
+        "score_reasons": [
+          "mapped"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "al-kaylo",
+        "zoneCanonical": "منطقة الكيلو",
+        "distKm": null,
+        "confidence": "medium",
+        "ambiguous": false,
+        "method": "address_text"
+      }
+    },
+    {
+      "id": "ps-منزل-حميدة-عبد-الرحمن-ود-الغرب",
+      "name": {
+        "primary": "منزل حميدة عبد الرحمن ود الغرب",
+        "arabic": null,
+        "english": null,
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "guest_house",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": null,
+        "latitude": 19.5638795,
+        "longitude": 37.2050538,
+        "distance_from_city_centre_km": 5.9
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/5625538127"
+        ],
+        "source_layers": [
+          "openstreetmap"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": false,
+        "likely_active": null,
+        "mkan_relevance": "medium",
+        "lead_priority": "low",
+        "score": 15,
+        "score_reasons": [
+          "mapped"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "al-kaylo",
+        "zoneCanonical": "منطقة الكيلو",
+        "distKm": 0.825,
+        "confidence": "medium",
+        "ambiguous": false,
+        "method": "coordinates"
+      }
+    }
+  ]
+}

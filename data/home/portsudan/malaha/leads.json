@@ -1,0 +1,378 @@
+{
+  "zone_slug": "malaha",
+  "canonical_name": "الملاحة",
+  "total_leads": 4,
+  "leads": [
+    {
+      "id": "ps-okere-hotel",
+      "name": {
+        "primary": "Okere Hotel",
+        "arabic": "فندق أوكير",
+        "english": "Okere Hotel",
+        "aliases": [
+          "فندق اوكير",
+          "فندق أوكير"
+        ]
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": null,
+        "latitude": 19.612305,
+        "longitude": 37.2170574,
+        "distance_from_city_centre_km": 0.4
+      },
+      "contact": {
+        "phone": [
+          "+249 91 229 3026"
+        ],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 3.3,
+        "review_count": 4
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap+directory(google-business)",
+        "assigned_to": null,
+        "notes": "Merged 3 source records on: verified alias bridge → \"Okere Hotel\"."
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox",
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/7449637785",
+          "https://www.openstreetmap.org/node/11040296606",
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/okere-hotel-649286"
+        ],
+        "source_layers": [
+          "openstreetmap",
+          "directory(google-business)"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [
+        "Dongla Hotel (adjacent; different phone — confirmed distinct)",
+        "فندق علا (hand-flagged)"
+      ],
+      "review_reasons": [
+        "possible duplicate of \"فندق علا\" — Directory records 40 m apart (19.6122,37.2170 vs 19.6118,37.2167). Different names, and فندق علا publishes no phone, so nothing proves they are distinct."
+      ],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "review_required",
+        "score": 70,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "corroborated across 2 independent sources",
+          "4 public review(s)",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "malaha",
+        "zoneCanonical": "الملاحة",
+        "distKm": 0.314,
+        "confidence": "high",
+        "ambiguous": true,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-dongla-hotel",
+      "name": {
+        "primary": "Dongla Hotel",
+        "arabic": "فندق دنقلا",
+        "english": "Dongla Hotel",
+        "aliases": [
+          "فندق دنقلا"
+        ]
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": null,
+        "latitude": 19.612049,
+        "longitude": 37.21668,
+        "distance_from_city_centre_km": 0.4
+      },
+      "contact": {
+        "phone": [
+          "+249 91 386 1868"
+        ],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 1.7,
+        "review_count": 3
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "directory(google-business)",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/dongla-hotel-866335"
+        ],
+        "source_layers": [
+          "directory(google-business)"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [
+        "Okere Hotel (adjacent; different phone — confirmed distinct)",
+        "فندق علا (adjacent; unconfirmed)"
+      ],
+      "review_reasons": [
+        "sits within ~60 m of فندق علا with no distinguishing phone number — confirm these are separate businesses, not one under two names"
+      ],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "review_required",
+        "score": 60,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "3 public review(s)",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "malaha",
+        "zoneCanonical": "الملاحة",
+        "distKm": 0.267,
+        "confidence": "high",
+        "ambiguous": true,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-فندق-التعاون",
+      "name": {
+        "primary": "فندق التعاون",
+        "arabic": "فندق التعاون",
+        "english": null,
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": null,
+        "latitude": 19.612644,
+        "longitude": 37.213796,
+        "distance_from_city_centre_km": 0.4
+      },
+      "contact": {
+        "phone": [
+          "+249 90 126 2003"
+        ],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 2,
+        "review_count": 1
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "directory(google-business)",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/294886"
+        ],
+        "source_layers": [
+          "directory(google-business)"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "medium",
+        "score": 60,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "1 public review(s)",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "malaha",
+        "zoneCanonical": "الملاحة",
+        "distKm": 0.304,
+        "confidence": "high",
+        "ambiguous": false,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-فندق-علا",
+      "name": {
+        "primary": "فندق علا",
+        "arabic": "فندق علا",
+        "english": null,
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": null,
+        "latitude": 19.611813,
+        "longitude": 37.216718,
+        "distance_from_city_centre_km": 0.4
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 5,
+        "review_count": 2
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "directory(google-business)",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/1190004"
+        ],
+        "source_layers": [
+          "directory(google-business)"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [
+        "Dongla Hotel (adjacent; unconfirmed)",
+        "Okere Hotel (hand-flagged)"
+      ],
+      "review_reasons": [
+        "sits within ~60 m of Dongla Hotel with no distinguishing phone number — confirm these are separate businesses, not one under two names",
+        "possible duplicate of \"Okere Hotel\" — Directory records 40 m apart (19.6122,37.2170 vs 19.6118,37.2167). Different names, and فندق علا publishes no phone, so nothing proves they are distinct."
+      ],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "review_required",
+        "score": 35,
+        "score_reasons": [
+          "mapped",
+          "2 public review(s)",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "malaha",
+        "zoneCanonical": "الملاحة",
+        "distKm": 0.25,
+        "confidence": "high",
+        "ambiguous": true,
+        "method": "coordinates"
+      }
+    }
+  ]
+}

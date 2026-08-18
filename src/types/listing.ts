@@ -34,6 +34,7 @@ export interface Listing {
     postalCode: string;
     latitude: number;
     longitude: number;
+    zoneKey?: string | null;
   } | null;
   host: {
     id: string;

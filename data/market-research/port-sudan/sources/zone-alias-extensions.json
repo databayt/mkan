@@ -1,0 +1,34 @@
+{
+  "_what": "Hand-verified district spellings observed in real Port Sudan advert text that the generated zones.json canon does not carry. Consumed by scripts/crm/port-sudan-listings.ts.",
+  "_why_not_edit_zones_json": "zones.json is emitted by `pnpm crm:ps-zones` and would lose hand edits on the next run. This file is a source, so it survives regeneration — the same reason sources/web-research.json exists alongside the generated rental-leads.json.",
+  "_rule": "An alias enters ONLY with the advert it was observed in. A guessed alias silently mis-zones listings, and the zone density map is what the acquisition team plans routes around — a wrong row there is worse than an unplaced one.",
+  "_collected_at": "2026-08-14",
+  "aliases": [
+    {
+      "zone_slug": "al-thawra",
+      "alias": "الثورة",
+      "why": "zones.json carries 'حي الثورة', 'الثورات' and 'الثورة شرق' but not the bare form, which is how adverts actually write it.",
+      "observed_in": "https://www.alsoug.com/en/adverts/2098163",
+      "observed_text": "منزل للبيع بورتسودان الثوره مربع 18"
+    },
+    {
+      "zone_slug": "salalab",
+      "alias": "سللاب",
+      "why": "Single-alef misspelling of سلالاب, used by the broker who holds the largest share of this board.",
+      "observed_in": "https://www.alsoug.com/en/adverts/2098165",
+      "observed_text": "قطعة ارض في سللاب مربع 6 ناصيه تفتح علي ظلط الأربعين"
+    }
+  ],
+  "deliberately_not_aliased": [
+    {
+      "text": "المدينة الصناعية",
+      "why": "Industrial City is a real named area — the discovery log lists it among the districts this market names for itself — but it is not one of the 45 residential zones in the canon. Mapping it to a neighbouring zone would invent a location. Left unplaced until the canon gains an industrial zone.",
+      "observed_in": "https://www.alsoug.com/en/adverts/2097372"
+    },
+    {
+      "text": "جوار الكلية الجوية",
+      "why": "'Next to the Air Force College' is a landmark, not a district, and nothing fetched confirms which of the 45 zones that college sits in. Assigning it to airport-district on the strength of the word 'جوية' would be a guess.",
+      "observed_in": "https://www.alsoug.com/en/adverts/2092499"
+    }
+  ]
+}

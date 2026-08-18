@@ -7,6 +7,7 @@ import { DictionaryProvider } from '@/components/internationalization/dictionary
 import { type Locale, localeConfig, i18n } from '@/components/internationalization/config';
 import { Providers } from '../providers';
 import { Toaster } from 'sonner';
+import { PHASE1 } from '@/config/phase-flags';
 import { CookieBanner } from '@/components/consent/cookie-banner';
 import { ConsentAwareAnalytics } from '@/components/consent/consent-aware-analytics';
 import { AvailabilityPrompt } from '@/components/hosting/availability-prompt';
@@ -110,14 +111,18 @@ export default async function LocaleLayout({
             pair hides it before first paint for visitors who already chose —
             no flash in either direction. <html> carries
             suppressHydrationWarning, so the stamped attribute is benign. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "try{if(document.cookie.indexOf('cookieConsent=')!==-1)document.documentElement.setAttribute('data-consent','1')}catch(e){}",
-          }}
-        />
-        {/* i18n-exempt — CSS rule for the consent gate, not user-facing copy */}
-        <style>{`html[data-consent="1"] [data-cookie-banner]{display:none}`}</style>
+        {PHASE1.showCookieBanner && (
+          <>
+            <script
+              dangerouslySetInnerHTML={{
+                __html:
+                  "try{if(document.cookie.indexOf('cookieConsent=')!==-1)document.documentElement.setAttribute('data-consent','1')}catch(e){}",
+              }}
+            />
+            {/* i18n-exempt — CSS rule for the consent gate, not user-facing copy */}
+            <style>{`html[data-consent="1"] [data-cookie-banner]{display:none}`}</style>
+          </>
+        )}
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background focus:text-foreground focus:border focus:border-border focus:rounded-md focus:m-2"
@@ -128,7 +133,7 @@ export default async function LocaleLayout({
           <DictionaryProvider lang={lang}>
             {children}
             <Toaster richColors />
-            <CookieBanner />
+            {PHASE1.showCookieBanner && <CookieBanner />}
             <AvailabilityPrompt />
             <ConsentAwareAnalytics />
           </DictionaryProvider>

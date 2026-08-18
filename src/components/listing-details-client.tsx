@@ -24,6 +24,7 @@ import { useDictionary } from "@/components/internationalization/dictionary-cont
 import { useLocale } from "@/components/internationalization/use-locale";
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
 import { trackEvent } from "@/lib/analytics/beacon";
+import { zoneLabel } from "@/lib/geo/zone";
 
 interface ListingDetailsClientProps {
     listing: Listing;
@@ -101,18 +102,26 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
             });
     }, [listing.id]);
 
+    const zLabel = listing.location?.zoneKey ? zoneLabel(listing.location.zoneKey, locale) : null;
     const locationString = listing.location
-        ? `${listing.location.city}, ${listing.location.state}`
+        ? zLabel
+            ? `${zLabel}، ${listing.location.city}`
+            : `${listing.location.city}, ${listing.location.state}`
         : (dict?.property?.detail?.locationUnavailable ?? "Location not available");
 
     // Airbnb overview line: "Entire {type} in {city}, {country}". Type label is
     // localized via the shared propertyType enum map; falls back to just the type.
     const typeLabels = dict?.rental?.property?.types as Record<string, string> | undefined;
     const typeLabel = (listing.propertyType && typeLabels?.[listing.propertyType]) || (listing.propertyType ?? "place");
+    const formattedLocation = listing.location
+        ? zLabel
+            ? `${zLabel}، ${listing.location.city}`
+            : `${listing.location.city}, ${listing.location.country}`
+        : "";
     const overviewTitle = listing.location
         ? (dict?.property?.detail?.entireIn ?? "Entire {type} in {location}")
             .replace("{type}", typeLabel)
-            .replace("{location}", `${listing.location.city}, ${listing.location.country}`)
+            .replace("{location}", formattedLocation)
         : (dict?.property?.detail?.entire ?? "Entire {type}").replace("{type}", typeLabel);
 
     // Specs line mirrors the reference order: guests · bedrooms · bathrooms.

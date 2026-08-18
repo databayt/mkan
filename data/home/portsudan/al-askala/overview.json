@@ -1,0 +1,64 @@
+{
+  "zone_slug": "al-askala",
+  "canonical_name": "الأسكلة",
+  "arabic_name": "الأسكلة",
+  "english_name": "Al-Askala",
+  "sector": "east",
+  "name_type": "commonly_used",
+  "lat": 19.623,
+  "lng": 37.225,
+  "radius_km": 0.6,
+  "confidence": "high",
+  "description": "Historic maritime quarter overlooking the inner harbour and shipping docks.",
+  "sources": [
+    "https://ar.wikipedia.org/wiki/بورتسودان (البر الشرقي)"
+  ],
+  "aliases": [
+    "الاسكلة",
+    "Askala Harbour"
+  ],
+  "metrics": {
+    "total_discovered_businesses": 2,
+    "categories": {
+      "furnished_apartment": 2,
+      "hotel_apartment": 0,
+      "hotel": 0,
+      "resort": 0,
+      "chalet": 0,
+      "guest_house": 0,
+      "real_estate_office": 0,
+      "unknown": 0
+    },
+    "core_apartment_businesses": 2,
+    "phone_reachable_leads": 1,
+    "with_google_rating": 1,
+    "total_public_reviews": 8,
+    "mkan_published_listings": 0,
+    "zone_share_of_discovered_supply": 0.047,
+    "zone_share_of_mkan_listings": 0,
+    "demand_telemetry": {
+      "views": null,
+      "inquiries": null,
+      "visits": null,
+      "completed_rentals": null,
+      "views_per_listing": null,
+      "inquiries_per_listing": null,
+      "rentals_per_listing": null,
+      "status": "INSUFFICIENT_DATA",
+      "note": "Telemetry uninstrumented for Port Sudan as of 2026-08-14. Zero production views/bookings logged."
+    },
+    "marketplace_status": "INSUFFICIENT_DATA",
+    "supply_status": "EMERGING_SUPPLY",
+    "acquisition_priority_score": 24,
+    "acquisition_priority": "MEDIUM_EXPANSION",
+    "score_breakdown": {
+      "core_apartments_pts": 14,
+      "hotel_resort_pts": 0,
+      "contactability_pts": 5,
+      "mkan_traction_pts": 0,
+      "reviews_pts": 5
+    }
+  },
+  "leads_count": 2,
+  "mkan_clusters_count": 0
+}

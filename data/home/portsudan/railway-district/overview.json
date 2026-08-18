@@ -1,0 +1,65 @@
+{
+  "zone_slug": "railway-district",
+  "canonical_name": "السكة حديد",
+  "arabic_name": "السكة حديد",
+  "english_name": "Railway District",
+  "sector": "central",
+  "name_type": "landmark_based",
+  "lat": 19.6210458,
+  "lng": 37.2069813,
+  "radius_km": 0.6,
+  "confidence": "high",
+  "description": "Historical quarter centered on the Sudan Railways terminal, locomotive workshops, and administrative offices.",
+  "sources": [
+    "OpenStreetMap (place=neighbourhood السكة حديد + railway=station)"
+  ],
+  "aliases": [
+    "حي السكة حديد",
+    "محطة السكة حديد",
+    "ورش السكة حديد"
+  ],
+  "metrics": {
+    "total_discovered_businesses": 0,
+    "categories": {
+      "furnished_apartment": 0,
+      "hotel_apartment": 0,
+      "hotel": 0,
+      "resort": 0,
+      "chalet": 0,
+      "guest_house": 0,
+      "real_estate_office": 0,
+      "unknown": 0
+    },
+    "core_apartment_businesses": 0,
+    "phone_reachable_leads": 0,
+    "with_google_rating": 0,
+    "total_public_reviews": 0,
+    "mkan_published_listings": 0,
+    "zone_share_of_discovered_supply": 0,
+    "zone_share_of_mkan_listings": 0,
+    "demand_telemetry": {
+      "views": null,
+      "inquiries": null,
+      "visits": null,
+      "completed_rentals": null,
+      "views_per_listing": null,
+      "inquiries_per_listing": null,
+      "rentals_per_listing": null,
+      "status": "INSUFFICIENT_DATA",
+      "note": "Telemetry uninstrumented for Port Sudan as of 2026-08-14. Zero production views/bookings logged."
+    },
+    "marketplace_status": "INSUFFICIENT_DATA",
+    "supply_status": "LOW_SUPPLY_UNEXPLORED",
+    "acquisition_priority_score": 0,
+    "acquisition_priority": "LOW_PRIORITY",
+    "score_breakdown": {
+      "core_apartments_pts": 0,
+      "hotel_resort_pts": 0,
+      "contactability_pts": 0,
+      "mkan_traction_pts": 0,
+      "reviews_pts": 0
+    }
+  },
+  "leads_count": 0,
+  "mkan_clusters_count": 0
+}

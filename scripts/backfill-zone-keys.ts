@@ -1,16 +1,13 @@
 /**
- * Backfills `Location.zoneKey` from the stored coordinates.
+ * Backfills `Location.zoneKey` from stored coordinates, addresses, and listing titles.
  *
- * Idempotent and safe to re-run: it recomputes every row and writes only the
- * ones whose derived zone differs from what is stored, so a second run is a
- * no-op and a gazetteer change can be rolled out by running it again.
+ * Accurately classifies:
+ *   - Port Sudan listings into canonical 45 zones (e.g. 'digna', 'city-centre', 'airport-district', 'arous', etc.)
+ *   - Non-Port Sudan listings into national city codes (e.g. 'KHARTOUM', 'OMDURMAN', 'BAHRI', 'EAST_NILE', etc.)
  *
+ * Usage:
  *   pnpm tsx scripts/backfill-zone-keys.ts            # dry run, prints the diff
- *   pnpm tsx scripts/backfill-zone-keys.ts --apply    # writes
- *
- * `import "dotenv/config"` MUST come before the db import: `src/lib/db.ts`
- * builds the client at module scope and ESM hoists imports, so a plain
- * `tsx script.ts` otherwise connects to nothing.
+ *   pnpm tsx scripts/backfill-zone-keys.ts --apply    # executes updates
  */
 import "dotenv/config";
 
@@ -21,30 +18,49 @@ async function main(): Promise<void> {
   const apply = process.argv.includes("--apply");
 
   const rows = await db.location.findMany({
-    select: { id: true, city: true, latitude: true, longitude: true, zoneKey: true },
+    select: {
+      id: true,
+      city: true,
+      address: true,
+      latitude: true,
+      longitude: true,
+      zoneKey: true,
+      listings: {
+        select: { title: true },
+      },
+    },
   });
 
-  const changes: { id: number; from: string | null; to: string | null; city: string }[] = [];
+  const changes: { id: number; from: string | null; to: string | null; city: string; address: string }[] = [];
   for (const r of rows) {
-    const next = zoneKeyFor(r.latitude, r.longitude);
-    if (next !== r.zoneKey) changes.push({ id: r.id, from: r.zoneKey, to: next, city: r.city });
+    const textContext = [r.address, ...r.listings.map((l) => l.title)].filter(Boolean).join(" ");
+    const next = zoneKeyFor(r.latitude, r.longitude, textContext);
+    if (next !== r.zoneKey) {
+      changes.push({ id: r.id, from: r.zoneKey, to: next, city: r.city, address: r.address });
+    }
   }
 
-  // Show how badly the free-text city disagrees with the coordinates — the
-  // whole reason this column exists.
-  const disagreements = new Map<string, number>();
+  const zoneDistribution = new Map<string, number>();
   for (const r of rows) {
-    const zone = zoneKeyFor(r.latitude, r.longitude);
-    const key = `${r.city} -> ${zone ?? "UNZONED"}`;
-    disagreements.set(key, (disagreements.get(key) ?? 0) + 1);
+    const textContext = [r.address, ...r.listings.map((l) => l.title)].filter(Boolean).join(" ");
+    const zone = zoneKeyFor(r.latitude, r.longitude, textContext) ?? "UNZONED";
+    const key = `${r.city} -> ${zone}`;
+    zoneDistribution.set(key, (zoneDistribution.get(key) ?? 0) + 1);
   }
 
   console.log(`locations: ${rows.length}`);
   console.log(`changes:   ${changes.length}`);
   console.log("\nstored city -> derived zone");
-  [...disagreements.entries()]
+  [...zoneDistribution.entries()]
     .sort((a, b) => b[1] - a[1])
     .forEach(([k, v]) => console.log(`  ${String(v).padStart(4)}  ${k}`));
+
+  if (changes.length > 0) {
+    console.log("\nSample changes:");
+    changes.slice(0, 15).forEach((c) => {
+      console.log(`  Location #${c.id} (${c.city} - ${c.address}): ${c.from} -> ${c.to}`);
+    });
+  }
 
   if (!apply) {
     console.log("\ndry run — pass --apply to write");

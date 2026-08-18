@@ -1,0 +1,118 @@
+{
+  "_what": "New distribution channels and business-contact enrichments found on 2026-08-14 (second pass), beyond the four Facebook groups and five classifieds portals already listed in rental-leads.json under `channels`.",
+  "_collected_at": "2026-08-14",
+  "_rule": "Every entry carries the URL it was observed on. Nothing here was inferred.",
+
+  "new_facebook_groups": [
+    {
+      "name": "عقارات بورتسودان بيع شراء إيجار (شقق+بيوت+أراضي)",
+      "url": "https://www.facebook.com/groups/2116055695554083/",
+      "found_via": "web search: facebook.com/groups بورتسودان ايجار شقق بيوت",
+      "members": null,
+      "read_status": "not_read_login_required"
+    },
+    {
+      "name": "عقارات بورتسودان",
+      "url": "https://www.facebook.com/groups/2039875309423417/",
+      "found_via": "web search: facebook.com/groups بورتسودان ايجار شقق بيوت",
+      "members": null,
+      "read_status": "not_read_login_required"
+    },
+    {
+      "name": "ايجارات بورتسودان للعقارات",
+      "url": "https://www.facebook.com/groups/1190089111796100/",
+      "found_via": "web search: facebook.com/groups بورتسودان ايجار شقق بيوت",
+      "members": null,
+      "read_status": "not_read_login_required"
+    },
+    {
+      "name": "عقارات بورتسودان ايجار معقول",
+      "url": "https://www.facebook.com/groups/877932963795172/",
+      "found_via": "web search: مجموعة واتساب عقارات بورتسودان ايجار شقق",
+      "members": null,
+      "read_status": "not_read_login_required"
+    }
+  ],
+
+  "known_facebook_groups_sized": [
+    {
+      "name": "شقق مفروشة بورتسودان",
+      "url": "https://www.facebook.com/groups/915632539905129/",
+      "members": 126600,
+      "visibility": "Public group — anyone can see who's in it and what they post",
+      "stated_purpose_ar": "١_ايجار شقق مفروشه وغير مفروشة ٢_ايجار فلل وعمارات ٣_ايجار بيوت فاضيه",
+      "read_status": "login_wall — logged-out view renders exactly one post, then a login gate",
+      "sample_post_observed": {
+        "author": "نور سلطان",
+        "age_at_read": "35 minutes",
+        "text_ar": "متوفر شقه استديو الشهر ب ١٢٠٠ في حي المطار مربع ٨",
+        "note": "A studio at 1,200/month in Airport District block 8 — the unit-level supply this dataset is missing. Currency not stated in the post."
+      }
+    }
+  ],
+
+  "business_contact_enrichment": [
+    {
+      "business": "أملاك العقارية",
+      "already_in_dataset": true,
+      "previous_state": "classified as a channel into the city; no phone number was public",
+      "phones_published_by_the_business": ["0123450028", "0912341087", "0912348586"],
+      "phones_note": "Published verbatim by the business in its own public TikTok video captions, each labelled 'إتصال + واتساب' (call + WhatsApp). Not inferred, not enriched from elsewhere.",
+      "channels": {
+        "tiktok": "https://www.tiktok.com/@amlakrealestate6",
+        "youtube": "https://www.youtube.com/@amlakrealestate8598",
+        "facebook": "https://www.facebook.com/share/15oYnAmcJ6/",
+        "instagram": "https://www.instagram.com/amlak_real_estae_in_sudan_khar"
+      },
+      "source_urls": [
+        "https://www.tiktok.com/@amlakrealestate6/video/7494888944006466822",
+        "https://www.tiktok.com/@amlakrealestate6/video/7571680176594062604"
+      ],
+      "port_sudan_inventory_observed": [
+        {
+          "type": "furnished studio, daily let (min 5 nights)",
+          "zone_ar": "حي المطار الدرجة الثانية",
+          "detail_ar": "العمارة بها كافة الخدمات مصعد ومولد وحراسة وجراج سيارات خدمات نظافة دورية، الشقة عبارة استديو به حمام منفصل، مطبخ منفصل، غرفة، منامة كبيرة",
+          "amenities": ["elevator", "generator", "security", "car park", "periodic cleaning"],
+          "note": "A serviced building with daily lets — the closest thing to Mkan's exact product found so far in Port Sudan."
+        },
+        {
+          "type": "furnished apartments, monthly or annual let",
+          "zone_ar": "حي المطار الدرجة الثانية",
+          "detail_ar": "الطابق الاول تتكون من ٣ غرف ٢ حمام هول مطبخ بلكونة، العمارة فيها مولد كهربائي فترة مسائية، مطلوب فقط موظفين او موظفات",
+          "tenant_restriction": "employees only"
+        }
+      ]
+    }
+  ],
+
+  "new_business_candidates": [
+    {
+      "name_ar": "فندق البصيري بلازا",
+      "name_en": "Al-Basiri Plaza Hotel",
+      "city": "Port Sudan",
+      "source_url": "https://www.facebook.com/wasna.adel.33/",
+      "status": "unverified — surfaced as a Facebook place label in search results only; not yet confirmed against a second source",
+      "action": "verify before adding to rental-leads.json"
+    }
+  ],
+
+  "negative_results_this_pass": [
+    {
+      "source": "sd.opensooq.com Port Sudan apartments-for-rent board",
+      "result": "HTTP 403 to automated fetch — unchanged from the previous pass"
+    },
+    {
+      "source": "sd.arabplaces.com /search/ endpoint",
+      "result": "Reachable this session (the earlier 403 block has lifted) but the q parameter is dropped server-side: every query returns \"Sorry, search '' didn't return any results\". The endpoint is not usable as a sweep surface. This closes gap #2 of the discovery log as a negative rather than a yield."
+    },
+    {
+      "source": "aqaraksd.com/ar/properties/city/bortsodan",
+      "result": "Reachable via fetch (the earlier 403 has lifted) but the Port Sudan city page returns Khartoum, Omdurman and Bahri properties — the same foreign/other-city backfill pattern the discovery log warns about for arabplaces. Zero genuine Port Sudan rows on the city page."
+    },
+    {
+      "source": "naffaj.com property board",
+      "result": "21 pages of listings, but page 1 is entirely Khartoum / Omdurman / East Nile. No Port Sudan filter was found. Low expected yield; not swept."
+    }
+  ]
+}

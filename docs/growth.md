@@ -31,7 +31,7 @@ hand it over + their pre-loaded listings → follow up → publish only what we 
 | Surface | Role in the engine |
 | --- | --- |
 | **Airbnb** (+ fb pages, wa groups, other rental sites) | Lead sources — where real homes/hosts are discovered and scraped. |
-| **Twenty CRM** (`mkan.crm.databayt.org`) | The **hub**. Every scraped home/host lands here, gets a **trust score**, and moves through the **onboarding pipeline**. Nothing reaches mkan un-vetted. |
+| **Twenty CRM** (`mkan.databayt.org`) | The **hub**. Every scraped home/host lands here, gets a **trust score**, and moves through the **onboarding pipeline**. Nothing reaches mkan un-vetted. |
 | **mkan app** | The destination. Trusted homes become `Listing`s; real hosts get `MANAGER` accounts and manage their own listings. |
 | **OpenClaw** | The outreach channel — bridges WhatsApp (and Telegram/Slack) to an AI agent that drafts/sends host messages. Self-hosted on the same local box as the Twenty backend. |
 | **Slack** | Team notifications — new high-trust leads, replies received, follow-ups due. |

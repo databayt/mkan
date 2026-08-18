@@ -1,0 +1,195 @@
+{
+  "zone_slug": "al-askala",
+  "canonical_name": "الأسكلة",
+  "total_leads": 2,
+  "leads": [
+    {
+      "id": "ps-mirak-furnished-suites",
+      "name": {
+        "primary": "Mirak Furnished Suites",
+        "arabic": "ميراك للشق الفندقية",
+        "english": "Mirak Furnished Suites",
+        "aliases": [
+          "ميراك للشق الفندقية",
+          "Mirak Hotel Suites",
+          "Mirak Hotels",
+          "ميراك للشقق الفندقية"
+        ]
+      },
+      "entity_type": "business",
+      "category": "furnished_apartment",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": "Port Sudan",
+        "latitude": 19.622745,
+        "longitude": 37.221092,
+        "distance_from_city_centre_km": 0.9
+      },
+      "contact": {
+        "phone": [
+          "+249 90 113 2695"
+        ],
+        "website": "www.mirakhotels.com/ar",
+        "website_status": "DEAD — mirakhotels.com does not resolve in DNS (checked 2026-08-14)",
+        "email": null,
+        "social": {
+          "facebook": "https://www.facebook.com/mirakhotels/",
+          "instagram": null,
+          "tiktok": null,
+          "other": [
+            "https://www.tripadvisor.com/Hotel_Review-g677545-d16649895-Reviews-Mirak_Hotel_Suites-Port_Sudan_Red_Sea_State.html",
+            "https://www.trip.com/hotels/port-sudan-hotel-detail-42376688/mirak-hotel-suites/"
+          ]
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 4.9,
+        "review_count": 8
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "directory(google-business)+web-research",
+        "assigned_to": null,
+        "notes": "Named by the brief. Multi-source confirmed. Appears on TripAdvisor's Port Sudan roster; sd.arabplaces.com carries the phone and a 4.9/8 Google rating. Its own domain is dead — no working digital channel. | Merged 2 source records on: same phone number."
+      },
+      "discovery": {
+        "queries": [
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index",
+          "web search (AR+EN), see discovery-log.md"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/mirak-furnished-suites-341689",
+          "https://www.tripadvisor.com/Hotel_Review-g677545-d16649895-Reviews-Mirak_Hotel_Suites-Port_Sudan_Red_Sea_State.html",
+          "https://www.trip.com/hotels/port-sudan-hotel-detail-42376688/mirak-hotel-suites/",
+          "https://www.facebook.com/mirakhotels/"
+        ],
+        "source_layers": [
+          "directory(google-business)",
+          "web-research"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "high",
+        "lead_priority": "high",
+        "score": 85,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "corroborated across 2 independent sources",
+          "8 public reviews",
+          "multi-unit by category",
+          "furnished/serviced apartments — the exact Mkan vertical"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "al-askala",
+        "zoneCanonical": "الأسكلة",
+        "distKm": 0.41,
+        "confidence": "medium",
+        "ambiguous": false,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-alkapatin",
+      "name": {
+        "primary": "Alkapatin",
+        "arabic": "شقق الكباتن",
+        "english": null,
+        "aliases": [
+          "شقق الكباتن"
+        ]
+      },
+      "entity_type": "business",
+      "category": "furnished_apartment",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": null,
+        "latitude": 19.6190333,
+        "longitude": 37.2250661,
+        "distance_from_city_centre_km": 1
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/6192113788"
+        ],
+        "source_layers": [
+          "openstreetmap"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": null,
+        "mkan_relevance": "high",
+        "lead_priority": "low",
+        "score": 40,
+        "score_reasons": [
+          "mapped",
+          "multi-unit by category",
+          "furnished/serviced apartments — the exact Mkan vertical"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "al-askala",
+        "zoneCanonical": "الأسكلة",
+        "distKm": 0.441,
+        "confidence": "medium",
+        "ambiguous": false,
+        "method": "coordinates"
+      }
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "zone_slug": "hadal",
+  "canonical_name": "هدل",
+  "total_leads": 1,
+  "leads": [
+    {
+      "id": "ps-شقق-الخليج-المفروشة",
+      "name": {
+        "primary": "شقق الخليج المفروشة",
+        "arabic": null,
+        "english": null,
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "furnished_apartment",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": null,
+        "latitude": 19.6415245,
+        "longitude": 37.215726,
+        "distance_from_city_centre_km": 2.9
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/13139668458"
+        ],
+        "source_layers": [
+          "openstreetmap"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": null,
+        "mkan_relevance": "high",
+        "lead_priority": "low",
+        "score": 40,
+        "score_reasons": [
+          "mapped",
+          "multi-unit by category",
+          "furnished/serviced apartments — the exact Mkan vertical"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "hadal",
+        "zoneCanonical": "هدل",
+        "distKm": 0.359,
+        "confidence": "high",
+        "ambiguous": false,
+        "method": "coordinates"
+      }
+    }
+  ]
+}

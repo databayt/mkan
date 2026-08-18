@@ -1,0 +1,1012 @@
+{
+  "zone_slug": "digna",
+  "canonical_name": "حي دقنة",
+  "total_leads": 11,
+  "leads": [
+    {
+      "id": "ps-مجمع-الربوة-السياحي",
+      "name": {
+        "primary": "مجمع الربوة السياحي",
+        "arabic": "مجمع الربوة السياحي",
+        "english": null,
+        "aliases": [
+          "فندق الربوة",
+          "منتجع الربوة السياحي"
+        ]
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": "شارع الاذاعة والتلفزيون , بورتسودان‎،، بورتسودان‎،, Port Sudan, Sudan",
+        "area": null,
+        "latitude": 19.6342648,
+        "longitude": 37.2092161,
+        "distance_from_city_centre_km": 2.2
+      },
+      "contact": {
+        "phone": [
+          "+249 10 069 2656"
+        ],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 4.2,
+        "review_count": 12
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap+directory(google-business)",
+        "assigned_to": null,
+        "notes": "Merged 3 source records on: verified alias bridge → \"مجمع الربوة السياحي\"."
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox",
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/13139699907",
+          "https://www.openstreetmap.org/node/13139699908",
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/239157"
+        ],
+        "source_layers": [
+          "openstreetmap",
+          "directory(google-business)"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "high",
+        "score": 80,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "corroborated across 2 independent sources",
+          "12 public reviews",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "digna",
+        "zoneCanonical": "حي دقنة",
+        "distKm": null,
+        "confidence": "medium",
+        "ambiguous": false,
+        "method": "address_text"
+      }
+    },
+    {
+      "id": "ps-basiri-plaza-hotel",
+      "name": {
+        "primary": "Basiri Plaza Hotel",
+        "arabic": "فندق البصيري بلازا",
+        "english": "Basiri Plaza Hotel",
+        "aliases": [
+          "فندق البصيري بلازا"
+        ]
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": null,
+        "latitude": 19.613743,
+        "longitude": 37.219458,
+        "distance_from_city_centre_km": 0.4
+      },
+      "contact": {
+        "phone": [
+          "+249 91 213 3278"
+        ],
+        "website": "m.facebook.com/BasiriPlaza",
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 3.5,
+        "review_count": 22
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "directory(google-business)",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/basiri-plaza-hotel-40336"
+        ],
+        "source_layers": [
+          "directory(google-business)"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [
+        "Marhaba Hotel (adjacent; unconfirmed)"
+      ],
+      "review_reasons": [
+        "sits within ~60 m of Marhaba Hotel with no distinguishing phone number — confirm these are separate businesses, not one under two names"
+      ],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "review_required",
+        "score": 75,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "22 public reviews",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "digna",
+        "zoneCanonical": "حي دقنة",
+        "distKm": 0.572,
+        "confidence": "medium",
+        "ambiguous": true,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-bohaen-hotel",
+      "name": {
+        "primary": "Bohein Hotel",
+        "arabic": null,
+        "english": "Bohaen Hotel",
+        "aliases": [
+          "Bohaen Hotel"
+        ]
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": null,
+        "latitude": 19.6116293,
+        "longitude": 37.2203852,
+        "distance_from_city_centre_km": 0.6
+      },
+      "contact": {
+        "phone": [
+          "+249 92 283 5200"
+        ],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 2.3,
+        "review_count": 7
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap+directory(google-business)",
+        "assigned_to": null,
+        "notes": "Merged 2 source records on: verified alias bridge → \"Bohein Hotel\"."
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox",
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/6342531124",
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/bohaen-hotel-145480"
+        ],
+        "source_layers": [
+          "openstreetmap",
+          "directory(google-business)"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "high",
+        "score": 75,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "corroborated across 2 independent sources",
+          "7 public reviews",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "digna",
+        "zoneCanonical": "حي دقنة",
+        "distKm": 0.318,
+        "confidence": "high",
+        "ambiguous": true,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-coral-port-sudan",
+      "name": {
+        "primary": "Coral Port Sudan",
+        "arabic": "فندق كورال",
+        "english": "Coral Port Sudan",
+        "aliases": [
+          "فندق كورال"
+        ]
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": "Port Sudan",
+        "latitude": 19.6126576,
+        "longitude": 37.224467,
+        "distance_from_city_centre_km": 0.9
+      },
+      "contact": {
+        "phone": [
+          "+249 311 83 9800",
+          "+249 18 377 4100"
+        ],
+        "website": "www.coral-portsudan.com",
+        "website_status": "DEAD — coral-portsudan.com does not resolve in DNS (checked 2026-08-14)",
+        "email": "info@coral-portsudan.com",
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 3.1,
+        "review_count": 23
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap+directory(google-business)+web-research",
+        "assigned_to": null,
+        "notes": "Already found in both the OpenStreetMap sweep (node 1401482017, which carries the phone, fax and email tags) and the directory. Added here only to record that its listed website is a dead domain, like Mirak's and فندق حي المطار's. | Merged 3 source records on: verified alias bridge → \"Coral Port Sudan\"; same phone number."
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox",
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index",
+          "web search (AR+EN), see discovery-log.md"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/1401482017",
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/coral-port-sudan-11240"
+        ],
+        "source_layers": [
+          "openstreetmap",
+          "directory(google-business)",
+          "web-research"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [
+        "Marina Hotel Port Sudan (adjacent; different phone — confirmed distinct)"
+      ],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "high",
+        "score": 75,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "corroborated across 3 independent sources",
+          "23 public reviews",
+          "multi-unit by category",
+          "international chain — unlikely to self-serve on Mkan"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "digna",
+        "zoneCanonical": "حي دقنة",
+        "distKm": 0.533,
+        "confidence": "medium",
+        "ambiguous": false,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-palace-palace-hotel",
+      "name": {
+        "primary": "Palace Palace Hotel",
+        "arabic": "فندق بلس بورتسودان",
+        "english": "Palace Palace Hotel",
+        "aliases": [
+          "فندق بلس بورتسودان"
+        ]
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": null,
+        "latitude": 19.611389,
+        "longitude": 37.221667,
+        "distance_from_city_centre_km": 0.7
+      },
+      "contact": {
+        "phone": [
+          "+249 91 233 4201"
+        ],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 3.5,
+        "review_count": 11
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "directory(google-business)",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/palace-palace-hotel-40335"
+        ],
+        "source_layers": [
+          "directory(google-business)"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [
+        "Baasher Palace Hotel (adjacent; unconfirmed)"
+      ],
+      "review_reasons": [
+        "sits within ~60 m of Baasher Palace Hotel with no distinguishing phone number — confirm these are separate businesses, not one under two names"
+      ],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "review_required",
+        "score": 70,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "11 public reviews",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "digna",
+        "zoneCanonical": "حي دقنة",
+        "distKm": 0.279,
+        "confidence": "high",
+        "ambiguous": false,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-marina-hotel-port-sudan",
+      "name": {
+        "primary": "Marina Hotel Port Sudan",
+        "arabic": null,
+        "english": "Marina Hotel Port Sudan",
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": null,
+        "latitude": 19.61298,
+        "longitude": 37.224398,
+        "distance_from_city_centre_km": 0.9
+      },
+      "contact": {
+        "phone": [
+          "+249 91 232 3232"
+        ],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 2.5,
+        "review_count": 2
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "directory(google-business)",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/marina-hotel-port-sudan-1265615"
+        ],
+        "source_layers": [
+          "directory(google-business)"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [
+        "Coral Port Sudan (adjacent; different phone — confirmed distinct)",
+        "مارينا للشقق الفندقية (hand-flagged)"
+      ],
+      "review_reasons": [
+        "possible duplicate of \"مارينا للشقق الفندقية\" — Same brand word in two scripts, but 0.8 km apart (19.6130,37.2244 vs 19.6085,37.2179) and the directory holds a phone for only one. Could be one operator with two buildings, or two unrelated businesses. NOT merged — a five-minute phone call settles it."
+      ],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "review_required",
+        "score": 60,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "2 public review(s)",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "digna",
+        "zoneCanonical": "حي دقنة",
+        "distKm": 0.558,
+        "confidence": "medium",
+        "ambiguous": false,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-فندق-سبا",
+      "name": {
+        "primary": "فندق سبا",
+        "arabic": "فندق سبا",
+        "english": null,
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": null,
+        "latitude": 19.611859,
+        "longitude": 37.21898,
+        "distance_from_city_centre_km": 0.5
+      },
+      "contact": {
+        "phone": [
+          "+249 91 285 1977"
+        ],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 1,
+        "review_count": 1
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "directory(google-business)",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/1101222"
+        ],
+        "source_layers": [
+          "directory(google-business)"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "medium",
+        "score": 60,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "1 public review(s)",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "digna",
+        "zoneCanonical": "حي دقنة",
+        "distKm": 0.409,
+        "confidence": "medium",
+        "ambiguous": true,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-baasher-palace-hotel",
+      "name": {
+        "primary": "Baasher Palace Hotel",
+        "arabic": null,
+        "english": "Baasher Palace Hotel",
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": "Port Sudan city centre",
+        "latitude": 19.6112975,
+        "longitude": 37.2216517,
+        "distance_from_city_centre_km": 0.7
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": 3.1,
+        "review_count": 15
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap+web-research",
+        "assigned_to": null,
+        "notes": "Two-source: TripAdvisor roster + an OpenStreetMap node tagged tourism=hotel. Coordinates are OSM's. | Merged 2 source records on: coordinates within 200 m + matching name."
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox",
+          "web search (AR+EN), see discovery-log.md"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/1401481881",
+          "https://www.tripadvisor.com/Hotels-g677545-c3-zff28-Port_Sudan_Red_Sea_State-Hotels.html"
+        ],
+        "source_layers": [
+          "openstreetmap",
+          "web-research"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [
+        "Palace Palace Hotel (adjacent; unconfirmed)"
+      ],
+      "review_reasons": [
+        "sits within ~60 m of Palace Palace Hotel with no distinguishing phone number — confirm these are separate businesses, not one under two names"
+      ],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "review_required",
+        "score": 55,
+        "score_reasons": [
+          "mapped",
+          "corroborated across 2 independent sources",
+          "15 public reviews",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "digna",
+        "zoneCanonical": "حي دقنة",
+        "distKm": 0.269,
+        "confidence": "high",
+        "ambiguous": false,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-مارينا-للشقق-الفندقية",
+      "name": {
+        "primary": "مارينا للشقق الفندقية",
+        "arabic": null,
+        "english": null,
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "hotel_apartment",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": null,
+        "latitude": 19.6084959,
+        "longitude": 37.2178503,
+        "distance_from_city_centre_km": 0.8
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/5631071430"
+        ],
+        "source_layers": [
+          "openstreetmap"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [
+        "Marina Hotel Port Sudan (hand-flagged)"
+      ],
+      "review_reasons": [
+        "possible duplicate of \"Marina Hotel Port Sudan\" — Same brand word in two scripts, but 0.8 km apart (19.6130,37.2244 vs 19.6085,37.2179) and the directory holds a phone for only one. Could be one operator with two buildings, or two unrelated businesses. NOT merged — a five-minute phone call settles it."
+      ],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": null,
+        "mkan_relevance": "high",
+        "lead_priority": "review_required",
+        "score": 40,
+        "score_reasons": [
+          "mapped",
+          "multi-unit by category",
+          "furnished/serviced apartments — the exact Mkan vertical"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "digna",
+        "zoneCanonical": "حي دقنة",
+        "distKm": 0.364,
+        "confidence": "high",
+        "ambiguous": true,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-marhaba-hotel",
+      "name": {
+        "primary": "Marhaba Hotel",
+        "arabic": null,
+        "english": null,
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": null,
+        "latitude": 19.6135867,
+        "longitude": 37.2189839,
+        "distance_from_city_centre_km": 0.4
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/5332744921"
+        ],
+        "source_layers": [
+          "openstreetmap"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [
+        "Basiri Plaza Hotel (adjacent; unconfirmed)"
+      ],
+      "review_reasons": [
+        "sits within ~60 m of Basiri Plaza Hotel with no distinguishing phone number — confirm these are separate businesses, not one under two names"
+      ],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": null,
+        "mkan_relevance": "medium",
+        "lead_priority": "review_required",
+        "score": 30,
+        "score_reasons": [
+          "mapped",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "digna",
+        "zoneCanonical": "حي دقنة",
+        "distKm": 0.575,
+        "confidence": "medium",
+        "ambiguous": true,
+        "method": "coordinates"
+      }
+    },
+    {
+      "id": "ps-your-al-yemen-hotel",
+      "name": {
+        "primary": "Nour al-Yemen",
+        "arabic": "فندق نور اليمن (بورتسودان)",
+        "english": "Your Al Yemen Hotel",
+        "aliases": [
+          "فندق نور اليمن (بورتسودان)",
+          "Your Al Yemen Hotel"
+        ]
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": null,
+        "latitude": 19.6120324,
+        "longitude": 37.220941,
+        "distance_from_city_centre_km": 0.6
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/4937236028"
+        ],
+        "source_layers": [
+          "openstreetmap"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": null,
+        "mkan_relevance": "medium",
+        "lead_priority": "low",
+        "score": 30,
+        "score_reasons": [
+          "mapped",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "digna",
+        "zoneCanonical": "حي دقنة",
+        "distKm": 0.35,
+        "confidence": "high",
+        "ambiguous": true,
+        "method": "coordinates"
+      }
+    }
+  ]
+}

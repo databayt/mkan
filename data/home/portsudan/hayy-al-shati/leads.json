@@ -1,0 +1,94 @@
+{
+  "zone_slug": "hayy-al-shati",
+  "canonical_name": "حي الشاطئ",
+  "total_leads": 1,
+  "leads": [
+    {
+      "id": "ps-grand-hotel-elsahil",
+      "name": {
+        "primary": "Grand Hotel Elsahil",
+        "arabic": null,
+        "english": "Grand Hotel Elsahil",
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": null,
+        "latitude": 19.586306,
+        "longitude": 37.217889,
+        "distance_from_city_centre_km": 3.3
+      },
+      "contact": {
+        "phone": [
+          "+249 12 365 3100"
+        ],
+        "website": "www.grandsahil.com",
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 5,
+        "review_count": 2
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "directory(google-business)",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/grand-hotel-elsahil-1210224"
+        ],
+        "source_layers": [
+          "directory(google-business)"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "medium",
+        "score": 60,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "2 public review(s)",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "hayy-al-shati",
+        "zoneCanonical": "حي الشاطئ",
+        "distKm": 0.189,
+        "confidence": "high",
+        "ambiguous": false,
+        "method": "coordinates"
+      }
+    }
+  ]
+}

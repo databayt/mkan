@@ -1,0 +1,67 @@
+{
+  "zone_slug": "malaha",
+  "canonical_name": "الملاحة",
+  "arabic_name": "الملاحة",
+  "english_name": "Al Malaha",
+  "sector": "south",
+  "name_type": "commonly_used",
+  "lat": 19.6101861,
+  "lng": 37.2150728,
+  "radius_km": 0.8,
+  "confidence": "high",
+  "description": "High-density commercial marketplace quarter and residential district bridging downtown and the southern deims.",
+  "sources": [
+    "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)",
+    "OpenStreetMap (amenity=marketplace \"Al Malaga\")"
+  ],
+  "aliases": [
+    "Al Malaga",
+    "Al Malaja",
+    "الملجة",
+    "سوق الملاحة"
+  ],
+  "metrics": {
+    "total_discovered_businesses": 4,
+    "categories": {
+      "furnished_apartment": 0,
+      "hotel_apartment": 0,
+      "hotel": 4,
+      "resort": 0,
+      "chalet": 0,
+      "guest_house": 0,
+      "real_estate_office": 0,
+      "unknown": 0
+    },
+    "core_apartment_businesses": 0,
+    "phone_reachable_leads": 3,
+    "with_google_rating": 4,
+    "total_public_reviews": 10,
+    "mkan_published_listings": 0,
+    "zone_share_of_discovered_supply": 0.093,
+    "zone_share_of_mkan_listings": 0,
+    "demand_telemetry": {
+      "views": null,
+      "inquiries": null,
+      "visits": null,
+      "completed_rentals": null,
+      "views_per_listing": null,
+      "inquiries_per_listing": null,
+      "rentals_per_listing": null,
+      "status": "INSUFFICIENT_DATA",
+      "note": "Telemetry uninstrumented for Port Sudan as of 2026-08-14. Zero production views/bookings logged."
+    },
+    "marketplace_status": "INSUFFICIENT_DATA",
+    "supply_status": "MODERATE_SUPPLY",
+    "acquisition_priority_score": 36,
+    "acquisition_priority": "MEDIUM_EXPANSION",
+    "score_breakdown": {
+      "core_apartments_pts": 0,
+      "hotel_resort_pts": 16,
+      "contactability_pts": 15,
+      "mkan_traction_pts": 0,
+      "reviews_pts": 5
+    }
+  },
+  "leads_count": 4,
+  "mkan_clusters_count": 0
+}

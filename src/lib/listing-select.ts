@@ -49,6 +49,7 @@ export const SEARCH_LISTING_SELECT = {
       postalCode: true,
       latitude: true,
       longitude: true,
+      zoneKey: true,
     },
   },
   host: {

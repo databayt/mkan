@@ -1,0 +1,5 @@
+# Unit-level listings hold posts by private individuals, not businesses
+# soliciting contact — see README.md, "Privacy posture". Same treatment as
+# scripts/crm/.data/. Regenerate locally with `pnpm crm:ps-listings`.
+listings.json
+listings.md

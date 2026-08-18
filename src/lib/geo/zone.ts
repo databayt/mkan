@@ -1,41 +1,51 @@
 /**
- * Marketplace zones — the unit the supply/acquisition decision is made in.
+ * Marketplace zones — the unit the supply/acquisition and browse decision is made in.
  *
- * A thin wrapper over the Sudan gazetteer rather than a second location system.
- * `Location.city` already exists but is free text written at import time, and
- * measured against the coordinates it is wrong for 20% of live listings: 16
- * rows filed as "Khartoum" sit across the Blue Nile in Bahri, 10 are in
- * Omdurman. Acquisition planned on that column sends the team to the wrong
- * side of the river, so zones are derived from coordinates instead.
- *
- * Granularity is city / metro district (Khartoum, Omdurman, Bahri, East Nile,
- * Port Sudan, …). It is deliberately NOT finer: the gazetteer folds
- * neighbourhoods in as aliases, so sub-city zones would mean inventing
- * centroids for Arkaweet, Amarat and the rest, and a wrong centroid silently
- * misfiles listings while looking authoritative. "Acquire in Omdurman" is a
- * real instruction; a fabricated neighbourhood boundary is not.
+ * Supports Port Sudan's 45 canonical zones (sub-city granularity) and national
+ * metro districts (Khartoum, Omdurman, Bahri, East Nile, Kassala, etc.).
  */
 
 import { classifyPoint, cityNameAr, cityNameEn, type CityCode } from "./sudan-places";
+import {
+  getPortSudanZone,
+  getPortSudanZoneLabel,
+  resolvePortSudanZone,
+  isPortSudanCoords,
+} from "./portsudan-zones";
+
+export {
+  PORT_SUDAN_ZONES,
+  PORT_SUDAN_ZONE_BY_SLUG,
+  getPortSudanZone,
+  getPortSudanZoneLabel,
+  resolvePortSudanZone,
+  searchPortSudanZones,
+  isPortSudanCoords,
+  type PortSudanZone,
+  type PortSudanSector,
+} from "./portsudan-zones";
 
 /** Rows whose coordinates cannot be placed. Reported, never silently dropped. */
 export const UNZONED = "UNZONED" as const;
 
 /**
- * The zone for a coordinate, or null when it cannot be placed.
+ * The zone for a coordinate and optional address/title text, or null when it cannot be placed.
  *
- * Null rather than a catch-all bucket so the caller decides how to present
- * "we don't know" — a zone table that quietly lumps unplaceable listings into
- * a real city would overstate that city's supply.
+ * For Port Sudan listings, resolves to the specific sub-city zone slug (e.g. 'digna',
+ * 'city-centre', 'airport-district', 'malaha', 'hadal', 'arous', etc.).
  */
 export function zoneKeyFor(
   latitude: number | null | undefined,
   longitude: number | null | undefined,
+  addressOrText?: string | null
 ): string | null {
+  // 1. Try Port Sudan resolution first
+  const psZone = resolvePortSudanZone(latitude, longitude, addressOrText);
+  if (psZone) return psZone.slug;
+
   if (latitude == null || longitude == null) return null;
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  // (0, 0) is the Gulf of Guinea and is what the importer writes when Airbnb
-  // returned no coordinate — a real value in the column, not a real place.
+  // (0, 0) is placeholder / unlocated
   if (latitude === 0 && longitude === 0) return null;
 
   const hit = classifyPoint(latitude, longitude);
@@ -45,8 +55,18 @@ export function zoneKeyFor(
   return hit.city;
 }
 
-/** Display name for a stored zone key, in the viewer's language. */
+/** Display name for a stored zone key in the viewer's language (Arabic or English). */
 export function zoneLabel(key: string | null | undefined, locale: string): string | null {
   if (!key || key === UNZONED) return null;
-  return locale === "ar" ? cityNameAr(key as CityCode) : cityNameEn(key as CityCode);
+
+  // 1. Check Port Sudan 45 zones
+  const psLabel = getPortSudanZoneLabel(key, locale);
+  if (psLabel) return psLabel;
+
+  // 2. Check national place codes
+  try {
+    return locale === "ar" ? cityNameAr(key as CityCode) : cityNameEn(key as CityCode);
+  } catch {
+    return key;
+  }
 }

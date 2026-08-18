@@ -9,6 +9,7 @@ import { ListingCarouselSection } from "@/components/site/property/listing-carou
 import PropertyFilter from "@/components/site/property-filter";
 import { Listing } from "@/types/listing";
 import Footer from "@/components/site/footer";
+import { PHASE1 } from "@/config/phase-flags";
 
 // Below-fold marketing sections and the once-per-user pricing popup are split
 // out of the page's initial chunk — they still server-render (SEO), but their
@@ -156,7 +157,7 @@ export default function HomeContent({ listings, locale }: HomeContentProps) {
       <h1 className="sr-only">
         {dict?.home?.metadata?.title ?? "Mkan - Rentals & Housing"}
       </h1>
-      <PriceTransparencyDialog />
+      {PHASE1.showPriceTransparencyDialog && <PriceTransparencyDialog />}
 
       <HeroSection />
 

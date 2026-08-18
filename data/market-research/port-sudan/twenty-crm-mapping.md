@@ -1,7 +1,7 @@
 # Mapping this dataset into Twenty CRM
 
 How each field of [`rental-leads.json`](./rental-leads.json) lands in the live Twenty
-workspace (`mkan.crm.databayt.org`).
+workspace (`mkan.databayt.org`).
 
 > **Nothing in here has been executed.** No Twenty object, field, or record was created or
 > modified. This is the design a future `crm:ps-sync` step would implement.

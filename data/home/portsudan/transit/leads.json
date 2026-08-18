@@ -1,0 +1,95 @@
+{
+  "zone_slug": "transit",
+  "canonical_name": "ترانزيت",
+  "total_leads": 1,
+  "leads": [
+    {
+      "id": "ps-باير-للشقق-الفندقيه",
+      "name": {
+        "primary": "باير للشقق الفندقيه",
+        "arabic": "باير للشقق الفندقيه",
+        "english": null,
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "hotel_apartment",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": null,
+        "latitude": 19.598274,
+        "longitude": 37.220188,
+        "distance_from_city_centre_km": 2
+      },
+      "contact": {
+        "phone": [
+          "+249 91 780 1350"
+        ],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 5,
+        "review_count": 1
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "directory(google-business)",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/295219"
+        ],
+        "source_layers": [
+          "directory(google-business)"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "high",
+        "lead_priority": "high",
+        "score": 70,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "1 public review(s)",
+          "multi-unit by category",
+          "furnished/serviced apartments — the exact Mkan vertical"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "transit",
+        "zoneCanonical": "ترانزيت",
+        "distKm": 0.649,
+        "confidence": "medium",
+        "ambiguous": false,
+        "method": "coordinates"
+      }
+    }
+  ]
+}

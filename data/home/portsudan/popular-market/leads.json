@@ -1,0 +1,98 @@
+{
+  "zone_slug": "popular-market",
+  "canonical_name": "السوق الشعبي",
+  "total_leads": 1,
+  "leads": [
+    {
+      "id": "ps-al-sultan-hotel-apartments",
+      "name": {
+        "primary": "السلطان للشقق الفندقية",
+        "arabic": "السلطان للشقق الفندقية",
+        "english": "Al-Sultan Hotel Apartments",
+        "aliases": [
+          "Al-Sultan",
+          "Al-Sultan Hotel Apartments"
+        ]
+      },
+      "entity_type": "business",
+      "category": "furnished_apartment",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": "Port Sudan",
+        "latitude": 19.6255833,
+        "longitude": 37.1998652,
+        "distance_from_city_centre_km": 2
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": "https://www.facebook.com/p/%D8%A7%D9%84%D8%B3%D9%84%D8%B7%D8%A7%D9%86-%D9%84%D9%84%D8%B4%D9%82%D9%82-%D8%A7%D9%84%D9%81%D9%86%D8%AF%D9%82%D9%8A%D8%A9-100054517808458/",
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap+web-research",
+        "assigned_to": null,
+        "notes": "Facebook business page titled 'السلطان للشقق الفندقية | Port Sudan'. Corroborated by an OpenStreetMap node named 'Al-Sultan' tagged tourism=apartment at 19.6256,37.1999 — treated as the same business, flagged for human confirmation. | Merged 2 source records on: verified alias bridge → \"السلطان للشقق الفندقية\"."
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox",
+          "web search (AR+EN), see discovery-log.md"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/10779644706",
+          "https://www.facebook.com/p/%D8%A7%D9%84%D8%B3%D9%84%D8%B7%D8%A7%D9%86-%D9%84%D9%84%D8%B4%D9%82%D9%82-%D8%A7%D9%84%D9%81%D9%86%D8%AF%D9%82%D9%8A%D8%A9-100054517808458/"
+        ],
+        "source_layers": [
+          "openstreetmap",
+          "web-research"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": null,
+        "mkan_relevance": "high",
+        "lead_priority": "medium",
+        "score": 50,
+        "score_reasons": [
+          "mapped",
+          "corroborated across 2 independent sources",
+          "multi-unit by category",
+          "furnished/serviced apartments — the exact Mkan vertical"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "popular-market",
+        "zoneCanonical": "السوق الشعبي",
+        "distKm": 0.17,
+        "confidence": "high",
+        "ambiguous": true,
+        "method": "coordinates"
+      }
+    }
+  ]
+}

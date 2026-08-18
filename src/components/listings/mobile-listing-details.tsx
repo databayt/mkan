@@ -22,6 +22,7 @@ import { useDictionary } from '@/components/internationalization/dictionary-cont
 import { useLocale } from '@/components/internationalization/use-locale';
 import { formatNumber } from '@/lib/i18n/formatters';
 import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite';
+import { zoneLabel } from '@/lib/geo/zone';
 
 interface MobileListingDetailsProps {
   listing: any;
@@ -59,10 +60,16 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
 
   const typeLabels = dict?.rental?.property?.types as Record<string, string> | undefined;
   const typeLabel = (listing?.propertyType && typeLabels?.[listing?.propertyType]) || (listing?.propertyType ?? "place");
+  const zLabel = listing?.location?.zoneKey ? zoneLabel(listing.location.zoneKey, locale) : null;
+  const formattedLocation = listing?.location
+    ? zLabel
+      ? `${zLabel}، ${listing.location.city || ''}`
+      : `${listing.location.city || ''}, ${listing.location.country || ''}`
+    : '';
   const overviewTitle = listing?.location
     ? (dict?.property?.detail?.entireIn ?? "Entire {type} in {location}")
         .replace("{type}", typeLabel)
-        .replace("{location}", `${listing.location.city || ''}, ${listing.location.country || ''}`)
+        .replace("{location}", formattedLocation)
     : (dict?.property?.detail?.entire ?? "Entire {type}").replace("{type}", typeLabel);
 
   const spec = (n: number, key: "guests" | "bedrooms" | "bathrooms") =>
@@ -101,6 +108,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
   const getLocationString = () => {
     if (!listing?.location) return 'Location';
     if (typeof listing.location === 'string') return listing.location;
+    if (zLabel) return `${zLabel}، ${listing.location.city || ''}`;
     return `${listing.location.city || ''}, ${listing.location.state || ''}`.trim() || 'Location';
   };
 

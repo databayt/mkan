@@ -1,0 +1,54 @@
+{
+ "_what": "Aggregate snapshot of Mkan's OWN live Port Sudan inventory, grouped by coordinate. Read-only; nothing was written to the database.",
+ "_why_snapshot": "The zone generator must be deterministic and runnable without database credentials, so the live query result is checked in rather than re-run. Re-take it with the query below when inventory changes.",
+ "_taken_at": "2026-08-14",
+ "_privacy": "Counts of PUBLISHED listings per coordinate only. No guest, booking, host or contact data is included.",
+ "_query": "SELECT l.latitude, l.longitude, l.address, COUNT(*) listings, SUM(CASE WHEN li.\"isPublished\" THEN 1 ELSE 0 END) published FROM \"Location\" l JOIN \"Listing\" li ON li.\"locationId\" = l.id WHERE l.city = 'Port Sudan' GROUP BY 1,2,3",
+
+ "totals": { "locations": 29, "distinct_coordinates": 12, "listings": 29, "published": 29 },
+
+ "_data_quality_warnings": [
+  {
+   "issue": "PLACEHOLDER COORDINATES",
+   "detail": "6 listings sit at exactly 19.6158, 37.2164 — which is the Port Sudan centroid declared in scripts/crm/sudan-places.ts (PORT_SUDAN lat/lng). These are not locations, they are the city fallback written when no geocode was captured. Assigning them by proximity would invent a 6-listing downtown cluster that does not exist.",
+   "handling": "Forced to zone 'unknown'. The generator asserts that no input coordinate equals the centroid exactly."
+  },
+  {
+   "issue": "MIRAK APPEARS TWICE, 2.6 KM APART",
+   "detail": "An Mkan listing titled 'Mirak Suites' sits at 19.6014, 37.20647, while the discovered business 'Mirak Furnished Suites' sits at 19.622745, 37.221092 (directory + OSM agree). Same brand, 2.6 km apart.",
+   "handling": "Recorded as a data-quality row and left unreconciled. Either the listing is mis-geocoded or it is a second branch; nothing public settles it."
+  },
+  {
+   "issue": "ADDRESS TEXT IS RICHER HERE THAN IN KHARTOUM",
+   "detail": "Four Port Sudan clusters carry a real sub-city address (حي دقنة، وسط المدينة، بالقرب من أبدوت مول), unlike Khartoum where all 95 rows share one address string. So for Port Sudan the address IS usable as a secondary assignment signal — but only for those four."
+  }
+ ],
+
+ "clusters": [
+  { "lat": 19.6089,             "lng": 37.2213,            "listings": 8, "published": 8, "address": "حي دقنة، بورتسودان" },
+  { "lat": 19.6158,             "lng": 37.2164,            "listings": 6, "published": 6, "address": "بورتسودان", "placeholder": true },
+  { "lat": 19.6211875,          "lng": 37.2031719,         "listings": 5, "published": 5, "address": "بورتسودان، وسط المدينة" },
+  { "lat": 19.622237,           "lng": 37.2045283,         "listings": 2, "published": 2, "address": "بورتسودان، بالقرب من أبدوت مول" },
+  { "lat": 20.0024,             "lng": 37.1871,            "listings": 1, "published": 1, "address": "Port Sudan", "note": "مخيم عروس — Arous camp" },
+  { "lat": 19.9978,             "lng": 37.1924,            "listings": 1, "published": 1, "address": "Port Sudan", "note": "srsr iman village / eco lodge ps" },
+  { "lat": 19.64924517864367,   "lng": 37.20160538809173,  "listings": 1, "published": 1, "address": "Port Sudan", "note": "متوفر سكن رجالي مشترك — shared men's housing" },
+  { "lat": 19.639908099007325,  "lng": 37.21819262877334,  "listings": 1, "published": 1, "address": "Port Sudan", "note": "Stylish Staycation Spot" },
+  { "lat": 19.6029,             "lng": 37.1959,            "listings": 1, "published": 1, "address": "Port Sudan", "note": "Bed in cozy room, shared" },
+  { "lat": 19.6014,             "lng": 37.20647,           "listings": 1, "published": 1, "address": "Port Sudan", "note": "Mirak Suites — see data-quality warning" },
+  { "lat": 19.5947,             "lng": 37.2085,            "listings": 1, "published": 1, "address": "Port Sudan", "note": "smart boutique hotel in port sudan" },
+  { "lat": 19.576516764500045,  "lng": 37.205781365630116, "listings": 1, "published": 1, "address": "Port Sudan", "note": "Luxury Studio Apartment with S…" }
+ ],
+
+ "demand": {
+  "_verdict": "ZERO. Port Sudan has no demand signal of any kind as of 2026-08-14.",
+  "listing_events": 0,
+  "listing_events_note": "The ListingEvent table EXISTS but holds 0 rows — instrumentation has landed and no events have flowed yet. This is 'uninstrumented', NOT 'no interest'.",
+  "bookings_port_sudan": 0,
+  "conversations_port_sudan": 0,
+  "applications": 0,
+  "leases": 0,
+  "bookings_all_cities": 35,
+  "bookings_all_cities_note": "All 35 bookings are Khartoum, all created on a single day (2026-07-06), across 3 listings, with 35 matching reviews. This is seed data and must never be read as transactions.",
+  "consequence": "Every demand metric in zone-density.json is null and every zone classifies as INSUFFICIENT_DATA on the demand axis. The acquisition score therefore carries a demand weight of 0, documented in zone-methodology.md."
+ }
+}

@@ -1,0 +1,65 @@
+{
+  "zone_slug": "hayy-al-shati",
+  "canonical_name": "حي الشاطئ",
+  "arabic_name": "حي الشاطئ",
+  "english_name": "Al-Shati / Beach District",
+  "sector": "south",
+  "name_type": "commonly_used",
+  "lat": 19.588,
+  "lng": 37.218,
+  "radius_km": 0.8,
+  "confidence": "high",
+  "description": "Southern coastal quarter enjoying beachfront access, sea views, and residential villas.",
+  "sources": [
+    "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)"
+  ],
+  "aliases": [
+    "الشاطئ",
+    "Beach Quarter",
+    "كورنيش الشاطئ"
+  ],
+  "metrics": {
+    "total_discovered_businesses": 1,
+    "categories": {
+      "furnished_apartment": 0,
+      "hotel_apartment": 0,
+      "hotel": 1,
+      "resort": 0,
+      "chalet": 0,
+      "guest_house": 0,
+      "real_estate_office": 0,
+      "unknown": 0
+    },
+    "core_apartment_businesses": 0,
+    "phone_reachable_leads": 1,
+    "with_google_rating": 1,
+    "total_public_reviews": 2,
+    "mkan_published_listings": 0,
+    "zone_share_of_discovered_supply": 0.023,
+    "zone_share_of_mkan_listings": 0,
+    "demand_telemetry": {
+      "views": null,
+      "inquiries": null,
+      "visits": null,
+      "completed_rentals": null,
+      "views_per_listing": null,
+      "inquiries_per_listing": null,
+      "rentals_per_listing": null,
+      "status": "INSUFFICIENT_DATA",
+      "note": "Telemetry uninstrumented for Port Sudan as of 2026-08-14. Zero production views/bookings logged."
+    },
+    "marketplace_status": "INSUFFICIENT_DATA",
+    "supply_status": "EMERGING_SUPPLY",
+    "acquisition_priority_score": 9,
+    "acquisition_priority": "LOW_PRIORITY",
+    "score_breakdown": {
+      "core_apartments_pts": 0,
+      "hotel_resort_pts": 4,
+      "contactability_pts": 5,
+      "mkan_traction_pts": 0,
+      "reviews_pts": 0
+    }
+  },
+  "leads_count": 1,
+  "mkan_clusters_count": 0
+}

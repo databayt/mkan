@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { useLocale } from "@/components/internationalization/use-locale";
+import { PHASE1 } from "@/config/phase-flags";
 
 const COOKIE_KEY = "cookieConsent";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
@@ -38,6 +39,8 @@ export function CookieBanner() {
   // `data-consent` on <html> and a CSS rule display:nones the banner before
   // anything renders; the effect below then unmounts it for real.
   const [open, setOpen] = useState(true);
+
+  if (!PHASE1.showCookieBanner) return null;
   // Two-phase close: CSS transition runs (fade + drop), then unmount. This
   // used to be a framer-motion AnimatePresence exit — the CSS version keeps
   // the identical 350ms ease-out feel without shipping the animation engine

@@ -1,0 +1,67 @@
+{
+  "zone_slug": "deim-arab",
+  "canonical_name": "ديم عرب",
+  "arabic_name": "ديم عرب",
+  "english_name": "Deim Arab",
+  "sector": "central",
+  "name_type": "commonly_used",
+  "lat": 19.6141667,
+  "lng": 37.2005556,
+  "radius_km": 0.8,
+  "confidence": "high",
+  "description": "Historic cultural and residential quarter known historically as \"Omdurman of the Beja\", vibrant with heritage markets and traditional community life.",
+  "sources": [
+    "https://ar.wikipedia.org/wiki/بورتسودان",
+    "OpenStreetMap (place=village ديم عرب)"
+  ],
+  "aliases": [
+    "Deim Arab",
+    "Soog Deim Arab",
+    "سوق ديم عرب",
+    "أم درمان البجا"
+  ],
+  "metrics": {
+    "total_discovered_businesses": 0,
+    "categories": {
+      "furnished_apartment": 0,
+      "hotel_apartment": 0,
+      "hotel": 0,
+      "resort": 0,
+      "chalet": 0,
+      "guest_house": 0,
+      "real_estate_office": 0,
+      "unknown": 0
+    },
+    "core_apartment_businesses": 0,
+    "phone_reachable_leads": 0,
+    "with_google_rating": 0,
+    "total_public_reviews": 0,
+    "mkan_published_listings": 0,
+    "zone_share_of_discovered_supply": 0,
+    "zone_share_of_mkan_listings": 0,
+    "demand_telemetry": {
+      "views": null,
+      "inquiries": null,
+      "visits": null,
+      "completed_rentals": null,
+      "views_per_listing": null,
+      "inquiries_per_listing": null,
+      "rentals_per_listing": null,
+      "status": "INSUFFICIENT_DATA",
+      "note": "Telemetry uninstrumented for Port Sudan as of 2026-08-14. Zero production views/bookings logged."
+    },
+    "marketplace_status": "INSUFFICIENT_DATA",
+    "supply_status": "LOW_SUPPLY_UNEXPLORED",
+    "acquisition_priority_score": 0,
+    "acquisition_priority": "LOW_PRIORITY",
+    "score_breakdown": {
+      "core_apartments_pts": 0,
+      "hotel_resort_pts": 0,
+      "contactability_pts": 0,
+      "mkan_traction_pts": 0,
+      "reviews_pts": 0
+    }
+  },
+  "leads_count": 0,
+  "mkan_clusters_count": 0
+}

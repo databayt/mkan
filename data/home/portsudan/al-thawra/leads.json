@@ -1,0 +1,89 @@
+{
+  "zone_slug": "al-thawra",
+  "canonical_name": "حي الثورة",
+  "total_leads": 1,
+  "leads": [
+    {
+      "id": "ps-منزل-ابوقرون",
+      "name": {
+        "primary": "منزل ابوقرون",
+        "arabic": null,
+        "english": null,
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "guest_house",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": null,
+        "latitude": 19.6526944,
+        "longitude": 37.2255641,
+        "distance_from_city_centre_km": 4.2
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/5625538123"
+        ],
+        "source_layers": [
+          "openstreetmap"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": false,
+        "likely_active": null,
+        "mkan_relevance": "medium",
+        "lead_priority": "low",
+        "score": 15,
+        "score_reasons": [
+          "mapped"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "al-thawra",
+        "zoneCanonical": "حي الثورة",
+        "distKm": 0.588,
+        "confidence": "medium",
+        "ambiguous": true,
+        "method": "coordinates"
+      }
+    }
+  ]
+}

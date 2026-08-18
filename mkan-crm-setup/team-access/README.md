@@ -8,7 +8,7 @@ one backend + database, so **one login works across all of them** via the worksp
 
 | Workspace | Subdomain | workspaceId | schema |
 |-----------|-----------|-------------|--------|
-| Mkan | mkan.crm.databayt.org | `44d2ae41-beba-4ab4-a2b3-ae04a888585b` | `workspace_42oj8oexbj9f2weuevgy4wq57` |
+| Mkan | mkan.databayt.org | `44d2ae41-beba-4ab4-a2b3-ae04a888585b` | `workspace_42oj8oexbj9f2weuevgy4wq57` |
 | Hogwarts | hogwarts.crm.databayt.org | `d8863cb2-abe1-481b-af60-cb2e1759e226` | `workspace_cth4d39nbagwniv0w1fjcgtnq` |
 | Sijillee | sijillee.crm.databayt.org | `48397dc7-3cdf-460c-89aa-b97b256114fe` | `workspace_49xiz3vugal08hzgbasq64s1q` |
 | Moallimee | moallimee.crm.databayt.org | `c95c60c0-3228-430d-ba4b-eef6a91ff8bd` | `workspace_bx5ohvep01fxpsl2fryy3ohbx` |

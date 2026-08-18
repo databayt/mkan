@@ -1,0 +1,70 @@
+{
+  "zone_slug": "digna",
+  "canonical_name": "حي دقنة",
+  "arabic_name": "حي دقنة",
+  "english_name": "Digna District",
+  "sector": "east",
+  "name_type": "landmark_based",
+  "lat": 19.6089,
+  "lng": 37.2213,
+  "radius_km": 0.9,
+  "confidence": "high",
+  "description": "Prime seafront and port corridor along the corniche. Encompasses Prince Osman Digna Passenger Port, Osman Digna Hospital, and premier waterfront hotel operations (Coral, Bohein, Basiri Plaza).",
+  "sources": [
+    "Mkan Location.address on 8 published listings (\"حي دقنة، بورتسودان\")",
+    "scripts/seed-daqna-homes.ts",
+    "OpenStreetMap (مستشفى دقنة)"
+  ],
+  "aliases": [
+    "دقنة",
+    "Daqna",
+    "Degna",
+    "منطقة الميناء والكورنيش",
+    "كورنيش دقنة",
+    "شارع الاذاعة والتلفزيون"
+  ],
+  "metrics": {
+    "total_discovered_businesses": 11,
+    "categories": {
+      "furnished_apartment": 0,
+      "hotel_apartment": 1,
+      "hotel": 10,
+      "resort": 0,
+      "chalet": 0,
+      "guest_house": 0,
+      "real_estate_office": 0,
+      "unknown": 0
+    },
+    "core_apartment_businesses": 1,
+    "phone_reachable_leads": 7,
+    "with_google_rating": 7,
+    "total_public_reviews": 93,
+    "mkan_published_listings": 8,
+    "zone_share_of_discovered_supply": 0.256,
+    "zone_share_of_mkan_listings": 0.276,
+    "demand_telemetry": {
+      "views": null,
+      "inquiries": null,
+      "visits": null,
+      "completed_rentals": null,
+      "views_per_listing": null,
+      "inquiries_per_listing": null,
+      "rentals_per_listing": null,
+      "status": "INSUFFICIENT_DATA",
+      "note": "Telemetry uninstrumented for Port Sudan as of 2026-08-14. Zero production views/bookings logged."
+    },
+    "marketplace_status": "INSUFFICIENT_DATA",
+    "supply_status": "HIGH_SUPPLY",
+    "acquisition_priority_score": 72,
+    "acquisition_priority": "CRITICAL_IMMEDIATE",
+    "score_breakdown": {
+      "core_apartments_pts": 7,
+      "hotel_resort_pts": 20,
+      "contactability_pts": 25,
+      "mkan_traction_pts": 10,
+      "reviews_pts": 10
+    }
+  },
+  "leads_count": 11,
+  "mkan_clusters_count": 1
+}

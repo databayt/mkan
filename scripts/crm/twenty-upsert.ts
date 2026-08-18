@@ -121,6 +121,16 @@ type EnrichedHome = HomeRecord & {
   airbnbCategoryAr?: string | null;
   placeCheck?: 'OK' | 'SUSPECT_FOREIGN';
   pdpError?: string | null;
+  titleEn?: string | null;
+  titleAr?: string | null;
+  descriptionEn?: string | null;
+  descriptionAr?: string | null;
+  spaceEn?: string | null;
+  spaceAr?: string | null;
+  guestAccessEn?: string | null;
+  guestAccessAr?: string | null;
+  notesEn?: string | null;
+  notesAr?: string | null;
 };
 
 function homeBody(h: EnrichedHome, hostId: string | null) {
@@ -130,8 +140,18 @@ function homeBody(h: EnrichedHome, hostId: string | null) {
     airbnbListingId: h.airbnbListingId,
     airbnbUrl: linkOne(h.airbnbUrl, 'Airbnb'),
     title: h.title ?? undefined,
+    titleEn: h.titleEn ?? h.title ?? undefined,
+    titleAr: h.titleAr ?? undefined,
     name: h.title ?? h.airbnbListingId, // object label
     description: h.description ?? undefined,
+    descriptionEn: h.descriptionEn ?? h.description ?? undefined,
+    descriptionAr: h.descriptionAr ?? undefined,
+    spaceEn: h.spaceEn ?? undefined,
+    spaceAr: h.spaceAr ?? undefined,
+    guestAccessEn: h.guestAccessEn ?? undefined,
+    guestAccessAr: h.guestAccessAr ?? undefined,
+    notesEn: h.notesEn ?? undefined,
+    notesAr: h.notesAr ?? undefined,
     roomType: h.roomType ?? undefined,
     airbnbCategory: h.airbnbCategory ?? undefined,
     airbnbCategoryAr: h.airbnbCategoryAr ?? undefined,
@@ -257,7 +277,9 @@ async function main() {
   // photosRehosted) — refreshing those would silently undo somebody's work or
   // walk a listing backwards through the funnel.
   const HOME_REFRESHABLE = [
-    'title', 'name', 'description', 'roomType', 'airbnbCategory',
+    'title', 'titleEn', 'titleAr', 'name', 'description', 'descriptionEn', 'descriptionAr',
+    'spaceEn', 'spaceAr', 'guestAccessEn', 'guestAccessAr', 'notesEn', 'notesAr',
+    'roomType', 'airbnbCategory',
     'city', 'homeState', 'homeAddress', 'hostAttribution', 'locationCheck',
     'airbnbCategoryAr',
     'bedrooms', 'beds', 'bathrooms', 'guestCapacity',

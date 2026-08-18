@@ -1,0 +1,869 @@
+{
+  "zone_slug": "unknown",
+  "canonical_name": "غير محدد / عام",
+  "total_leads": 10,
+  "leads": [
+    {
+      "id": "ps-red-sea-resort",
+      "name": {
+        "primary": "Sudan Red Sea Resort",
+        "arabic": null,
+        "english": "Red Sea Resort",
+        "aliases": [
+          "Red Sea Resort"
+        ]
+      },
+      "entity_type": "business",
+      "category": "resort",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan, Sudan",
+        "area": "coast north of Port Sudan",
+        "latitude": 19.895476,
+        "longitude": 37.234278,
+        "distance_from_city_centre_km": 31.2
+      },
+      "contact": {
+        "phone": [
+          "+249 91 246 5650"
+        ],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 4.4,
+        "review_count": 12
+      },
+      "tripadvisor": {
+        "rating": 3.3,
+        "review_count": 36
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "directory(google-business)+web-research",
+        "assigned_to": null,
+        "notes": "Directory record 'Red Sea Resort' sits at 19.8955,37.2343 — ~31 km north of the city centre, i.e. outside Port Sudan proper. Same business as TripAdvisor's 'Sudan Red Sea Resort' on name + market. | Merged 2 source records on: same phone number."
+      },
+      "discovery": {
+        "queries": [
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index",
+          "web search (AR+EN), see discovery-log.md"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/red-sea-resort-187859",
+          "https://www.tripadvisor.com/Hotels-g677545-c3-zff28-Port_Sudan_Red_Sea_State-Hotels.html",
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/hotel"
+        ],
+        "source_layers": [
+          "directory(google-business)",
+          "web-research"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [
+        "31.2 km from the Port Sudan centroid — outside the city, classify as Red Sea State"
+      ],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "low",
+        "lead_priority": "review_required",
+        "score": 85,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "corroborated across 2 independent sources",
+          "36 public reviews",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "unknown",
+        "zoneCanonical": "غير محدد / عام",
+        "distKm": null,
+        "confidence": "unknown",
+        "ambiguous": false,
+        "method": "fallback",
+        "reason": "no_geocoding_or_text_match"
+      }
+    },
+    {
+      "id": "ps-منتجع-جبل-الست-jebel-al-sit-resort",
+      "name": {
+        "primary": "منتجع جبل الست / Jebel Al-Sit resort",
+        "arabic": "منتجع جبل الست / Jebel Al-Sit resort",
+        "english": null,
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "resort",
+      "rental_type": "unknown",
+      "location": {
+        "address": "Port Sudan،, Sudan",
+        "area": null,
+        "latitude": 18.774042,
+        "longitude": 37.109096,
+        "distance_from_city_centre_km": 94.3
+      },
+      "contact": {
+        "phone": [
+          "+249 12 337 3737"
+        ],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": 3.3,
+        "review_count": 4
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "directory(google-business)",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "directory: /al-bahr-al-ahmar/hotel + /hostel category index"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/al-bahr-al-ahmar/610362"
+        ],
+        "source_layers": [
+          "directory(google-business)"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [
+        "94.3 km from the Port Sudan centroid — outside the city, classify as Red Sea State"
+      ],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "low",
+        "lead_priority": "review_required",
+        "score": 60,
+        "score_reasons": [
+          "reachable by phone",
+          "mapped",
+          "4 public review(s)",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "unknown",
+        "zoneCanonical": "غير محدد / عام",
+        "distKm": null,
+        "confidence": "unknown",
+        "ambiguous": false,
+        "method": "fallback",
+        "reason": "no_geocoding_or_text_match"
+      }
+    },
+    {
+      "id": "ps-hala-s-house-in-port-sudan",
+      "name": {
+        "primary": "Hala's House in Port-Sudan",
+        "arabic": null,
+        "english": null,
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "furnished_apartment",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": null,
+        "latitude": 19.5952563,
+        "longitude": 37.2218937,
+        "distance_from_city_centre_km": 2.4
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "openstreetmap",
+        "assigned_to": null,
+        "notes": ""
+      },
+      "discovery": {
+        "queries": [
+          "overpass: tourism/office/shop/name sweep of the Port Sudan bbox"
+        ],
+        "sources": [
+          "https://www.openstreetmap.org/node/5615878921"
+        ],
+        "source_layers": [
+          "openstreetmap"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": null,
+        "mkan_relevance": "high",
+        "lead_priority": "low",
+        "score": 40,
+        "score_reasons": [
+          "mapped",
+          "multi-unit by category",
+          "furnished/serviced apartments — the exact Mkan vertical"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "unknown",
+        "zoneCanonical": "غير محدد / عام",
+        "distKm": null,
+        "confidence": "unknown",
+        "ambiguous": false,
+        "method": "fallback",
+        "reason": "no_geocoding_or_text_match"
+      }
+    },
+    {
+      "id": "ps-prestige-hotel-apartments",
+      "name": {
+        "primary": "Prestige hotel apartments",
+        "arabic": null,
+        "english": "Prestige hotel apartments",
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "furnished_apartment",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": null,
+        "latitude": null,
+        "longitude": null,
+        "distance_from_city_centre_km": null
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": "https://www.facebook.com/people/Prestige-hotel-apartments/100063608287235/",
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "web-research",
+        "assigned_to": null,
+        "notes": "Page fetched: title reads 'Prestige hotel apartments | Port Sudan'. No address, phone, category or website was exposed on the public page. Named by the brief as a known operator; confirmed to exist, contact NOT recoverable without a logged-in session or a field call."
+      },
+      "discovery": {
+        "queries": [
+          "web search (AR+EN), see discovery-log.md"
+        ],
+        "sources": [
+          "https://www.facebook.com/people/Prestige-hotel-apartments/100063608287235/"
+        ],
+        "source_layers": [
+          "web-research"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": null,
+        "mkan_relevance": "high",
+        "lead_priority": "low",
+        "score": 25,
+        "score_reasons": [
+          "multi-unit by category",
+          "furnished/serviced apartments — the exact Mkan vertical"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "unknown",
+        "zoneCanonical": "غير محدد / عام",
+        "distKm": null,
+        "confidence": "unknown",
+        "ambiguous": false,
+        "method": "fallback",
+        "reason": "no_geocoding_or_text_match"
+      }
+    },
+    {
+      "id": "ps-seif-furnished-apartments",
+      "name": {
+        "primary": "سيف للشقق المفروشة",
+        "arabic": "سيف للشقق المفروشة",
+        "english": "Seif Furnished Apartments",
+        "aliases": [
+          "Seif Furnished Apartments"
+        ]
+      },
+      "entity_type": "business",
+      "category": "furnished_apartment",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": "Port Sudan",
+        "latitude": null,
+        "longitude": null,
+        "distance_from_city_centre_km": null
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": "ChIJcaLL4z9T1xURYnkFlXqxkfQ",
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "web-research",
+        "assigned_to": null,
+        "notes": "Named by the brief. Confirmed as a real mapped place: Waze publishes a directions page for it under sd/red-sea/port-sudan carrying the Google place_id above. Coordinates and phone are NOT public on that page — the place_id is the only hard identifier recovered."
+      },
+      "discovery": {
+        "queries": [
+          "web search (AR+EN), see discovery-log.md"
+        ],
+        "sources": [
+          "https://www.waze.com/live-map/directions/sd/red-sea/port-sudan/syf-llshqq-almfrwshh?to=place.ChIJcaLL4z9T1xURYnkFlXqxkfQ"
+        ],
+        "source_layers": [
+          "web-research"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": null,
+        "mkan_relevance": "high",
+        "lead_priority": "low",
+        "score": 25,
+        "score_reasons": [
+          "multi-unit by category",
+          "furnished/serviced apartments — the exact Mkan vertical"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "unknown",
+        "zoneCanonical": "غير محدد / عام",
+        "distKm": null,
+        "confidence": "unknown",
+        "ambiguous": false,
+        "method": "fallback",
+        "reason": "no_geocoding_or_text_match"
+      }
+    },
+    {
+      "id": "ps-al-narjis-hotel-apartments",
+      "name": {
+        "primary": "شقق النرجس الفندقية",
+        "arabic": "شقق النرجس الفندقية",
+        "english": "Al-Narjis Hotel Apartments",
+        "aliases": [
+          "Al-Narjis Hotel Apartments"
+        ]
+      },
+      "entity_type": "business",
+      "category": "hotel_apartment",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": "Port Sudan",
+        "latitude": null,
+        "longitude": null,
+        "distance_from_city_centre_km": null
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "web-research",
+        "assigned_to": null,
+        "notes": "Surfaced as a TikTok topic page titled 'شقق النرجس الفندقية بورتسودان'. Name is confirmed; no contact, address or coordinates recovered. Needs a field call before it can be worked."
+      },
+      "discovery": {
+        "queries": [
+          "web search (AR+EN), see discovery-log.md"
+        ],
+        "sources": [
+          "https://www.tiktok.com/discover/%D8%B4%D9%82%D9%82-%D8%A7%D9%84%D9%86%D8%B1%D8%AC%D8%B3-%D8%A7%D9%84%D9%81%D9%86%D8%AF%D9%82%D9%8A%D8%A9-%D8%A8%D9%88%D8%B1%D8%AA%D8%B3%D9%88%D8%AF%D8%A7%D9%86"
+        ],
+        "source_layers": [
+          "web-research"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": null,
+        "mkan_relevance": "high",
+        "lead_priority": "low",
+        "score": 25,
+        "score_reasons": [
+          "multi-unit by category",
+          "furnished/serviced apartments — the exact Mkan vertical"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "unknown",
+        "zoneCanonical": "غير محدد / عام",
+        "distKm": null,
+        "confidence": "unknown",
+        "ambiguous": false,
+        "method": "fallback",
+        "reason": "no_geocoding_or_text_match"
+      }
+    },
+    {
+      "id": "ps-flora-hotel",
+      "name": {
+        "primary": "Flora Hotel",
+        "arabic": null,
+        "english": "Flora Hotel",
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": "Port Sudan",
+        "latitude": null,
+        "longitude": null,
+        "distance_from_city_centre_km": null
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": 5,
+        "review_count": 1
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "web-research",
+        "assigned_to": null,
+        "notes": "On TripAdvisor's Port Sudan apartment-hotel roster. Not present in the Google-Business directory sweep and not in OpenStreetMap — single-source."
+      },
+      "discovery": {
+        "queries": [
+          "web search (AR+EN), see discovery-log.md"
+        ],
+        "sources": [
+          "https://www.tripadvisor.com/Hotels-g677545-c3-zff28-Port_Sudan_Red_Sea_State-Hotels.html"
+        ],
+        "source_layers": [
+          "web-research"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "low",
+        "score": 20,
+        "score_reasons": [
+          "1 public review(s)",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "unknown",
+        "zoneCanonical": "غير محدد / عام",
+        "distKm": null,
+        "confidence": "unknown",
+        "ambiguous": false,
+        "method": "fallback",
+        "reason": "no_geocoding_or_text_match"
+      }
+    },
+    {
+      "id": "ps-samarmaz-hotel",
+      "name": {
+        "primary": "Samarmaz Hotel",
+        "arabic": null,
+        "english": "Samarmaz Hotel",
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": "Port Sudan",
+        "latitude": null,
+        "longitude": null,
+        "distance_from_city_centre_km": null
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": 3,
+        "review_count": 1
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "web-research",
+        "assigned_to": null,
+        "notes": "On TripAdvisor's Port Sudan roster. Single-source."
+      },
+      "discovery": {
+        "queries": [
+          "web search (AR+EN), see discovery-log.md"
+        ],
+        "sources": [
+          "https://www.tripadvisor.com/Hotels-g677545-c3-zff28-Port_Sudan_Red_Sea_State-Hotels.html"
+        ],
+        "source_layers": [
+          "web-research"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "low",
+        "score": 20,
+        "score_reasons": [
+          "1 public review(s)",
+          "multi-unit by category"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "unknown",
+        "zoneCanonical": "غير محدد / عام",
+        "distKm": null,
+        "confidence": "unknown",
+        "ambiguous": false,
+        "method": "fallback",
+        "reason": "no_geocoding_or_text_match"
+      }
+    },
+    {
+      "id": "ps-mercure-port-sudan",
+      "name": {
+        "primary": "Mercure Port Sudan",
+        "arabic": null,
+        "english": "Mercure Port Sudan",
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "hotel",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": "Port Sudan",
+        "latitude": null,
+        "longitude": null,
+        "distance_from_city_centre_km": null
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": 4,
+        "review_count": 1
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "web-research",
+        "assigned_to": null,
+        "notes": "International chain brand (Accor). Listed on TripAdvisor's Port Sudan roster. Chain-managed inventory is a poor Mkan supply target — recorded for completeness, scored low."
+      },
+      "discovery": {
+        "queries": [
+          "web search (AR+EN), see discovery-log.md"
+        ],
+        "sources": [
+          "https://www.tripadvisor.com/Hotels-g677545-c3-zff28-Port_Sudan_Red_Sea_State-Hotels.html"
+        ],
+        "source_layers": [
+          "web-research"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": true,
+        "likely_active": true,
+        "mkan_relevance": "medium",
+        "lead_priority": "low",
+        "score": 0,
+        "score_reasons": [
+          "1 public review(s)",
+          "multi-unit by category",
+          "international chain — unlikely to self-serve on Mkan"
+        ]
+      },
+      "zone_assignment": {
+        "zoneSlug": "unknown",
+        "zoneCanonical": "غير محدد / عام",
+        "distKm": null,
+        "confidence": "unknown",
+        "ambiguous": false,
+        "method": "fallback",
+        "reason": "no_geocoding_or_text_match"
+      }
+    },
+    {
+      "id": "ps-stylish-port-sudan",
+      "name": {
+        "primary": "Stylish Port Sudan",
+        "arabic": null,
+        "english": "Stylish Port Sudan",
+        "aliases": []
+      },
+      "entity_type": "business",
+      "category": "unknown",
+      "rental_type": "unknown",
+      "location": {
+        "address": null,
+        "area": "Port Sudan",
+        "latitude": null,
+        "longitude": null,
+        "distance_from_city_centre_km": null
+      },
+      "contact": {
+        "phone": [],
+        "website": null,
+        "website_status": null,
+        "email": null,
+        "social": {
+          "facebook": null,
+          "instagram": null,
+          "tiktok": null,
+          "other": []
+        }
+      },
+      "google_maps": {
+        "url": null,
+        "place_id": null,
+        "rating": null,
+        "review_count": null
+      },
+      "tripadvisor": {
+        "rating": null,
+        "review_count": null
+      },
+      "crm": {
+        "lead_status": "new",
+        "source": "web-research",
+        "assigned_to": null,
+        "notes": "Appeared only as a detail-page URL in the directory's own search results (slug 'stylish-port-sudan-1240786' under the Red Sea state path). The detail page could NOT be fetched — the site began returning HTTP 403 mid-sweep. Name is inferred from the URL slug, category is unknown. Flagged review_required rather than dropped, because the URL is hard evidence the record exists."
+      },
+      "discovery": {
+        "queries": [
+          "web search (AR+EN), see discovery-log.md"
+        ],
+        "sources": [
+          "https://sd.arabplaces.com/search/?text=%D8%A8%D9%88%D8%B1%D8%AA%D8%B3%D9%88%D8%AF%D8%A7%D9%86"
+        ],
+        "source_layers": [
+          "web-research"
+        ],
+        "first_seen": "2026-08-14",
+        "last_verified": "2026-08-14"
+      },
+      "out_of_scope_reason": null,
+      "possible_duplicate_of": [],
+      "review_reasons": [],
+      "market": {
+        "estimated_inventory": null,
+        "likely_multiple_units": false,
+        "likely_active": null,
+        "mkan_relevance": "low",
+        "lead_priority": "low",
+        "score": 0,
+        "score_reasons": []
+      },
+      "zone_assignment": {
+        "zoneSlug": "unknown",
+        "zoneCanonical": "غير محدد / عام",
+        "distKm": null,
+        "confidence": "unknown",
+        "ambiguous": false,
+        "method": "fallback",
+        "reason": "no_geocoding_or_text_match"
+      }
+    }
+  ]
+}

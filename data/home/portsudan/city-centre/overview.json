@@ -1,0 +1,69 @@
+{
+  "zone_slug": "city-centre",
+  "canonical_name": "وسط المدينة",
+  "arabic_name": "وسط المدينة",
+  "english_name": "City Centre",
+  "sector": "central",
+  "name_type": "official",
+  "lat": 19.6213889,
+  "lng": 37.2102778,
+  "radius_km": 1.2,
+  "confidence": "high",
+  "description": "The primary administrative, commercial, and banking core of Port Sudan. Features major bank headquarters, government ministries, corporate offices, and central hotels.",
+  "sources": [
+    "OpenStreetMap node (place=village, name=وسط المدينة)",
+    "https://ar.wikipedia.org/wiki/بورتسودان (وحدة بورتسودان وسط)"
+  ],
+  "aliases": [
+    "Town Centre",
+    "Downtown",
+    "وسط بورتسودان",
+    "Central Port Sudan",
+    "السوق الكبير",
+    "وسط السوق"
+  ],
+  "metrics": {
+    "total_discovered_businesses": 4,
+    "categories": {
+      "furnished_apartment": 0,
+      "hotel_apartment": 2,
+      "hotel": 1,
+      "resort": 0,
+      "chalet": 0,
+      "guest_house": 0,
+      "real_estate_office": 1,
+      "unknown": 0
+    },
+    "core_apartment_businesses": 2,
+    "phone_reachable_leads": 2,
+    "with_google_rating": 2,
+    "total_public_reviews": 3,
+    "mkan_published_listings": 0,
+    "zone_share_of_discovered_supply": 0.093,
+    "zone_share_of_mkan_listings": 0,
+    "demand_telemetry": {
+      "views": null,
+      "inquiries": null,
+      "visits": null,
+      "completed_rentals": null,
+      "views_per_listing": null,
+      "inquiries_per_listing": null,
+      "rentals_per_listing": null,
+      "status": "INSUFFICIENT_DATA",
+      "note": "Telemetry uninstrumented for Port Sudan as of 2026-08-14. Zero production views/bookings logged."
+    },
+    "marketplace_status": "INSUFFICIENT_DATA",
+    "supply_status": "MODERATE_SUPPLY",
+    "acquisition_priority_score": 28,
+    "acquisition_priority": "MEDIUM_EXPANSION",
+    "score_breakdown": {
+      "core_apartments_pts": 14,
+      "hotel_resort_pts": 4,
+      "contactability_pts": 10,
+      "mkan_traction_pts": 0,
+      "reviews_pts": 0
+    }
+  },
+  "leads_count": 4,
+  "mkan_clusters_count": 0
+}

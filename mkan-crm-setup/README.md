@@ -13,7 +13,7 @@
 > Still current in this directory: **`team-access/`** (the SQL that seeds team logins across
 > the four shared Twenty workspaces). That is unrelated to this object model and still applies.
 
-Setup kit for the **mkan back-office CRM** at `mkan.crm.databayt.org` (a Twenty workspace).
+Setup kit for the **mkan back-office CRM** at `mkan.databayt.org` (a Twenty workspace).
 Use it to gather & refine **apartment owners and their Airbnb-style homes** in Port Sudan with
 your sales team.
 
@@ -30,7 +30,7 @@ sync later.
 
 ## Step 1 — Create the three objects
 
-`mkan.crm.databayt.org` → **Settings → Data Model → + Add object**. Create **Owner**,
+`mkan.databayt.org` → **Settings → Data Model → + Add object**. Create **Owner**,
 **Building**, **Home** (set singular/plural + an icon each).
 
 ## Step 2 — Add fields

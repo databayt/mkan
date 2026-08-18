@@ -13,6 +13,7 @@ import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-
 import { useSession } from 'next-auth/react'
 import { formatCurrency, formatNumber } from '@/lib/i18n/formatters'
 import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite'
+import { zoneLabel } from '@/lib/geo/zone'
 
 interface PropertyListingsProps {
   properties: Listing[]
@@ -28,6 +29,14 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
   const viewMode = useGlobalStore((s) => s.viewMode)
   const filters = useGlobalStore((s) => s.filters)
   const [localFavorites, setLocalFavorites] = React.useState<Set<number>>(new Set(favoriteIds))
+
+  const buildLocationSubtitle = (l: Listing): string | undefined => {
+    if (!l.location) return undefined
+    const prefix = sp?.entireHome ?? (locale === 'ar' ? 'شقة بالكامل في' : 'Entire home in')
+    const zLabel = l.location.zoneKey ? zoneLabel(l.location.zoneKey, locale) : null
+    const place = zLabel && l.location.city ? `${zLabel}، ${l.location.city}` : zLabel || l.location.city || l.location.address
+    return place ? `${prefix} ${place}` : undefined
+  }
 
   // Gray specs line, mirroring /search: "{n} bedroom(s) · {m} bath(s)" (Airbnb).
   const buildSpecs = (l: Listing): string => {
@@ -125,11 +134,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
                 id={l.id.toString()}
                 images={l.photoUrls ?? []}
                 title={l.title ?? ''}
-                subtitle={
-                  l.location?.city
-                    ? `${sp?.entireHome ?? 'Entire home in'} ${l.location.city}`
-                    : undefined
-                }
+                subtitle={buildLocationSubtitle(l)}
                 specs={buildSpecs(l)}
                 pricePerNight={l.pricePerNight ?? 0}
                 rating={l.averageRating}

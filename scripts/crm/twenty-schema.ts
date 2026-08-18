@@ -118,9 +118,19 @@ export const HOME: ObjectDef = {
     { name: 'lastSyncedAt', label: 'Last synced', type: 'DATE_TIME' },
     { name: 'stillListed', label: 'Still on source', type: 'BOOLEAN', defaultValue: true, description: 'Flipped false when a re-scrape 404s.' },
 
-    // Content
+    // Content & Bilingual Airbnb Copywriting
     { name: 'title', label: 'Title', type: 'TEXT' },
+    { name: 'titleEn', label: 'Title (EN)', type: 'TEXT', description: 'Original English title from Airbnb.' },
+    { name: 'titleAr', label: 'Title (AR)', type: 'TEXT', description: 'Arabic title (scraped / translated).' },
     { name: 'description', label: 'Description', type: 'TEXT' },
+    { name: 'descriptionEn', label: 'Description (EN)', type: 'TEXT', description: 'Full English Airbnb description.' },
+    { name: 'descriptionAr', label: 'Description (AR)', type: 'TEXT', description: 'Full Arabic Airbnb description.' },
+    { name: 'spaceEn', label: 'The Space (EN)', type: 'TEXT', description: 'Walkthrough of the space (EN).' },
+    { name: 'spaceAr', label: 'The Space (AR)', type: 'TEXT', description: 'Walkthrough of the space (AR).' },
+    { name: 'guestAccessEn', label: 'Guest Access (EN)', type: 'TEXT', description: 'Guest access permissions (EN).' },
+    { name: 'guestAccessAr', label: 'Guest Access (AR)', type: 'TEXT', description: 'Guest access permissions (AR).' },
+    { name: 'notesEn', label: 'Notes (EN)', type: 'TEXT', description: 'Other things to note (EN).' },
+    { name: 'notesAr', label: 'Notes (AR)', type: 'TEXT', description: 'Other things to note (AR).' },
     { name: 'roomType', label: 'Room type', type: 'SELECT', options: ['ENTIRE_HOME', 'PRIVATE_ROOM', 'SHARED_ROOM', 'HOTEL_ROOM'] },
     { name: 'airbnbCategory', label: 'Airbnb category', type: 'TEXT', description: 'Raw category, e.g. "Entire villa".' },
     { name: 'airbnbCategoryAr', label: 'Airbnb category (AR)', type: 'TEXT', description: 'Airbnb\'s own Arabic label, e.g. "وحدة للإيجار بالكامل".' },
@@ -174,6 +184,12 @@ export const HOME: ObjectDef = {
     { name: 'overrideReason', label: 'Override reason', type: 'TEXT' },
     { name: 'scoredAt', label: 'Scored at', type: 'DATE_TIME' },
     { name: 'rubricVersion', label: 'Rubric version', type: 'TEXT' },
+
+    // Qualification Gate (Epic G1.8 - Pre-Publishing Audit)
+    { name: 'qualificationStatus', label: 'Qualification status', type: 'SELECT', icon: 'IconCheckbox', options: ['QUALIFIED', 'PRICE_ANOMALY', 'MISSING_PHOTOS', 'UNRESOLVED_ZONE', 'UNREACHABLE_HOST', 'AWAITING_CLAIM', 'UNCONFIRMED_AVAILABILITY', 'HELD'] },
+    { name: 'qualificationScore', label: 'Qualification score', type: 'NUMBER', description: '0–100 completeness and readiness score from the 5-Tier Gate.' },
+    { name: 'qualificationDeficiencies', label: 'Deficiencies', type: 'RAW_JSON', description: 'List of exact missing criteria holding this home.' },
+    { name: 'lastQualifiedAt', label: 'Last qualified at', type: 'DATE_TIME' },
 
     // Curation labels (the filter chips: origin + quality + review state).
     // MULTI_SELECT so one home can carry several — e.g. [MANUAL, HIGH] or [SCRAPED].

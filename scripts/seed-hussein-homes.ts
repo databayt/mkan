@@ -54,6 +54,7 @@ const BUILDING = {
   address: 'بورتسودان',
   latitude: 19.6158,
   longitude: 37.2164,
+  zoneKey: 'hayy-al-aghareeq',
 } as const;
 
 let prisma: (typeof import('@/lib/db'))['db'];
@@ -178,6 +179,7 @@ async function main(): Promise<void> {
         postalCode: String(33301 + i),
         latitude: BUILDING.latitude,
         longitude: BUILDING.longitude,
+        zoneKey: BUILDING.zoneKey,
       },
     });
 

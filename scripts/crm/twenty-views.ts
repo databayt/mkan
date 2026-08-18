@@ -146,4 +146,13 @@ export const VIEWS: ViewDef[] = [
     fields: ['host', 'onboardingStage', 'createdAt'],
     sorts: [{ field: 'name', direction: 'ASC' }],
   },
+  {
+    name: 'Qualification — checklist & issues',
+    object: 'home',
+    type: 'TABLE',
+    icon: 'IconCheckbox',
+    fields: ['qualificationStatus', 'qualificationScore', 'city', 'host', 'priceNightSdg', 'photoCount', 'lastQualifiedAt'],
+    filters: [{ field: 'qualificationStatus', operand: 'IS_NOT', value: ['QUALIFIED'] }],
+    sorts: [{ field: 'qualificationScore', direction: 'ASC' }],
+  },
 ];

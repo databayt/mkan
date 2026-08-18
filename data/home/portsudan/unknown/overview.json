@@ -1,0 +1,65 @@
+{
+  "zone_slug": "unknown",
+  "canonical_name": "غير محدد / عام",
+  "arabic_name": "غير محدد / عام",
+  "english_name": "Unassigned / Generic",
+  "sector": "uncertain",
+  "name_type": "uncertain",
+  "lat": null,
+  "lng": null,
+  "radius_km": null,
+  "confidence": "unknown",
+  "description": "Catch-all bucket for city-wide leads or listings with missing or placeholder coordinates.",
+  "sources": [
+    "Mkan data quality audit"
+  ],
+  "aliases": [
+    "unknown",
+    "other",
+    "unassigned"
+  ],
+  "metrics": {
+    "total_discovered_businesses": 10,
+    "categories": {
+      "furnished_apartment": 3,
+      "hotel_apartment": 1,
+      "hotel": 3,
+      "resort": 2,
+      "chalet": 0,
+      "guest_house": 0,
+      "real_estate_office": 0,
+      "unknown": 1
+    },
+    "core_apartment_businesses": 4,
+    "phone_reachable_leads": 2,
+    "with_google_rating": 2,
+    "total_public_reviews": 55,
+    "mkan_published_listings": 6,
+    "zone_share_of_discovered_supply": 0.233,
+    "zone_share_of_mkan_listings": 0.207,
+    "demand_telemetry": {
+      "views": null,
+      "inquiries": null,
+      "visits": null,
+      "completed_rentals": null,
+      "views_per_listing": null,
+      "inquiries_per_listing": null,
+      "rentals_per_listing": null,
+      "status": "INSUFFICIENT_DATA",
+      "note": "Telemetry uninstrumented for Port Sudan as of 2026-08-14. Zero production views/bookings logged."
+    },
+    "marketplace_status": "INSUFFICIENT_DATA",
+    "supply_status": "HIGH_SUPPLY",
+    "acquisition_priority_score": 10,
+    "acquisition_priority": "MONITOR_OPPORTUNITY",
+    "score_breakdown": {
+      "core_apartments_pts": 28,
+      "hotel_resort_pts": 20,
+      "contactability_pts": 10,
+      "mkan_traction_pts": 10,
+      "reviews_pts": 10
+    }
+  },
+  "leads_count": 10,
+  "mkan_clusters_count": 1
+}

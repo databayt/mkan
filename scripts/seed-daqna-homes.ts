@@ -176,6 +176,7 @@ async function main(): Promise<void> {
         postalCode: String(22201 + i),
         latitude: BUILDING.latitude,
         longitude: BUILDING.longitude,
+        zoneKey: 'digna',
       },
     });
 

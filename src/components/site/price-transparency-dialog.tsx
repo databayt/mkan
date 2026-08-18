@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
+import { PHASE1 } from "@/config/phase-flags";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,8 @@ function PriceTagIcon() {
 export function PriceTransparencyDialog() {
   const dict = useDictionary();
   const [open, setOpen] = useState(false);
+
+  if (!PHASE1.showPriceTransparencyDialog) return null;
 
   useEffect(() => {
     try {

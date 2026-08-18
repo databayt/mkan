@@ -57,7 +57,7 @@ export function AvailabilityPrompt() {
   const fetched = useRef(false);
 
   useEffect(() => {
-    if (hasCookie("cookieConsent")) {
+    if (!PHASE1.showCookieBanner || hasCookie("cookieConsent")) {
       setConsentSettled(true);
       return;
     }

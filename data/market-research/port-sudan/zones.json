@@ -1,0 +1,988 @@
+{
+  "_schema": "mkan-port-sudan-zones-v2",
+  "_generated_at": "2026-08-14",
+  "_total_zones": 45,
+  "sectors": {
+    "central": "وحدة بورتسودان وسط (Central Locality)",
+    "south": "وحدة بورتسودان جنوب / الديوم الجنوبية (South Locality)",
+    "east": "وحدة بورتسودان شرق / البر الشرقي (East Locality)",
+    "north_expansion": "المربعات والمخططات السكنية الشمالية والغربية (North/NW Expansion)",
+    "coastal_tourism": "المحور السياحي الساحلي الشمالي (North Red Sea Coast)"
+  },
+  "zones": [
+    {
+      "zone_slug": "city-centre",
+      "canonical_name": "وسط المدينة",
+      "arabic_name": "وسط المدينة",
+      "english_name": "City Centre",
+      "aliases": [
+        "Town Centre",
+        "Downtown",
+        "وسط بورتسودان",
+        "Central Port Sudan",
+        "السوق الكبير",
+        "وسط السوق"
+      ],
+      "sector": "central",
+      "name_type": "official",
+      "lat": 19.6213889,
+      "lng": 37.2102778,
+      "radius_km": 1.2,
+      "confidence": "high",
+      "description": "The primary administrative, commercial, and banking core of Port Sudan. Features major bank headquarters, government ministries, corporate offices, and central hotels.",
+      "sources": [
+        "OpenStreetMap node (place=village, name=وسط المدينة)",
+        "https://ar.wikipedia.org/wiki/بورتسودان (وحدة بورتسودان وسط)"
+      ],
+      "caveat": "OSM tags this node name:en=\"West Town\", which is erroneous. Arabic is canonical."
+    },
+    {
+      "zone_slug": "deim-madina",
+      "canonical_name": "ديم المدينة",
+      "arabic_name": "ديم المدينة",
+      "english_name": "Deim Al-Madina",
+      "aliases": [
+        "ديم مدينة",
+        "Deim Madina",
+        "ديم مدينه غرب",
+        "Deim West",
+        "منطقة الاستاد"
+      ],
+      "sector": "central",
+      "name_type": "commonly_used",
+      "lat": 19.6166255,
+      "lng": 37.2066764,
+      "radius_km": 0.8,
+      "confidence": "high",
+      "description": "Prominent central residential and civic quarter housing Port Sudan Stadium (استاد بورتسودان), the Popular Square (الساحة الشعبية), and its own bustling local market.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (وسط المدينة)",
+        "OpenStreetMap (amenity=marketplace سوق ديم المدينة)",
+        "Alsoug ads"
+      ]
+    },
+    {
+      "zone_slug": "deim-arab",
+      "canonical_name": "ديم عرب",
+      "arabic_name": "ديم عرب",
+      "english_name": "Deim Arab",
+      "aliases": [
+        "Deim Arab",
+        "Soog Deim Arab",
+        "سوق ديم عرب",
+        "أم درمان البجا"
+      ],
+      "sector": "central",
+      "name_type": "commonly_used",
+      "lat": 19.6141667,
+      "lng": 37.2005556,
+      "radius_km": 0.8,
+      "confidence": "high",
+      "description": "Historic cultural and residential quarter known historically as \"Omdurman of the Beja\", vibrant with heritage markets and traditional community life.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان",
+        "OpenStreetMap (place=village ديم عرب)"
+      ]
+    },
+    {
+      "zone_slug": "hayy-al-aghareeq",
+      "canonical_name": "حي الأغاريق",
+      "arabic_name": "حي الأغاريق",
+      "english_name": "Greek Quarter",
+      "aliases": [
+        "الأغاريق",
+        "Greek District",
+        "حي اليونانيين"
+      ],
+      "sector": "central",
+      "name_type": "commonly_used",
+      "lat": 19.6185,
+      "lng": 37.212,
+      "radius_km": 0.6,
+      "confidence": "high",
+      "description": "Historic central upscale quarter originally settled by the Greek and Mediterranean expatriate trading communities; features colonial-era architectural villas and commercial offices.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (وحدة وسط)",
+        "Sudanile historical urban studies"
+      ]
+    },
+    {
+      "zone_slug": "hayy-al-azama",
+      "canonical_name": "حي العظمة",
+      "arabic_name": "حي العظمة",
+      "english_name": "Hayy Al-Azama",
+      "aliases": [
+        "العظمة",
+        "Al-Azama District"
+      ],
+      "sector": "central",
+      "name_type": "commonly_used",
+      "lat": 19.62,
+      "lng": 37.2085,
+      "radius_km": 0.6,
+      "confidence": "high",
+      "description": "Prestigious residential quarter directly adjacent to Port Sudan Stadium and the town center, traditionally home to senior civil servants and prominent merchant families.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (وحدة وسط)",
+        "OpenSooq classifieds"
+      ]
+    },
+    {
+      "zone_slug": "hayy-al-jamia",
+      "canonical_name": "حي الجامعة",
+      "arabic_name": "حي الجامعة",
+      "english_name": "University District",
+      "aliases": [
+        "خور كلاب",
+        "Khor Kilab",
+        "حي جامعة البحر الأحمر"
+      ],
+      "sector": "central",
+      "name_type": "commonly_used",
+      "lat": 19.626,
+      "lng": 37.2115,
+      "radius_km": 0.7,
+      "confidence": "high",
+      "description": "Upscale residential neighborhood surrounding Red Sea University faculties; formerly known as Khor Kilab before being formally renamed.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (وحدة وسط)",
+        "Red Sea University gazetteer"
+      ]
+    },
+    {
+      "zone_slug": "dabaiwa",
+      "canonical_name": "دبايوا",
+      "arabic_name": "دبايوا",
+      "english_name": "Dabaiwa",
+      "aliases": [
+        "حي دبايوا",
+        "Dabaywa",
+        "نادي دبايوا"
+      ],
+      "sector": "central",
+      "name_type": "commonly_used",
+      "lat": 19.624,
+      "lng": 37.202,
+      "radius_km": 0.7,
+      "confidence": "medium",
+      "description": "Active central quarter celebrated for its sporting club and lively commerce; frequently cited in local rental advertisements.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم المركزية)",
+        "Global Real Estate Marketer ads"
+      ]
+    },
+    {
+      "zone_slug": "taqaddum",
+      "canonical_name": "حي التقدم",
+      "arabic_name": "حي التقدم",
+      "english_name": "Al-Taqaddum",
+      "aliases": [
+        "التقدم",
+        "Hayy Al Taqaddum"
+      ],
+      "sector": "central",
+      "name_type": "commonly_used",
+      "lat": 19.618,
+      "lng": 37.205,
+      "radius_km": 0.6,
+      "confidence": "high",
+      "description": "Dense residential neighborhood located in the central core between Deim Al-Madina and the main market.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (وسط المدينة)"
+      ]
+    },
+    {
+      "zone_slug": "deim-sijn",
+      "canonical_name": "ديم سجن",
+      "arabic_name": "ديم سجن",
+      "english_name": "Deim Sijn",
+      "aliases": [
+        "ديم السجن",
+        "Deim Prison"
+      ],
+      "sector": "central",
+      "name_type": "commonly_used",
+      "lat": 19.6175,
+      "lng": 37.209,
+      "radius_km": 0.5,
+      "confidence": "high",
+      "description": "Central quarter housing government administrative facilities and mixed-use commercial properties.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (وسط المدينة)"
+      ]
+    },
+    {
+      "zone_slug": "popular-market",
+      "canonical_name": "السوق الشعبي",
+      "arabic_name": "السوق الشعبي",
+      "english_name": "Popular Market",
+      "aliases": [
+        "Souq Al Shaabi",
+        "السوق الشعبي بورتسودان",
+        "الموقف العام"
+      ],
+      "sector": "central",
+      "name_type": "landmark_based",
+      "lat": 19.6270857,
+      "lng": 37.1995833,
+      "radius_km": 0.6,
+      "confidence": "high",
+      "description": "High-traffic commercial, wholesale, and intercity bus transport nexus in western Port Sudan.",
+      "sources": [
+        "OpenStreetMap (amenity=marketplace السوق الشعبي)"
+      ]
+    },
+    {
+      "zone_slug": "railway-district",
+      "canonical_name": "السكة حديد",
+      "arabic_name": "السكة حديد",
+      "english_name": "Railway District",
+      "aliases": [
+        "حي السكة حديد",
+        "محطة السكة حديد",
+        "ورش السكة حديد"
+      ],
+      "sector": "central",
+      "name_type": "landmark_based",
+      "lat": 19.6210458,
+      "lng": 37.2069813,
+      "radius_km": 0.6,
+      "confidence": "high",
+      "description": "Historical quarter centered on the Sudan Railways terminal, locomotive workshops, and administrative offices.",
+      "sources": [
+        "OpenStreetMap (place=neighbourhood السكة حديد + railway=station)"
+      ]
+    },
+    {
+      "zone_slug": "airport-district",
+      "canonical_name": "حي المطار",
+      "arabic_name": "حي المطار",
+      "english_name": "Airport District",
+      "aliases": [
+        "حىى المطار",
+        "Airport district",
+        "حي المطار القديم",
+        "حي المطار مربع 1",
+        "حي المطار مربع 4",
+        "شارع القنصلية المصرية",
+        "مدخل المدينة"
+      ],
+      "sector": "south",
+      "name_type": "commonly_used",
+      "lat": 19.5750337,
+      "lng": 37.2082191,
+      "radius_km": 1.5,
+      "confidence": "high",
+      "description": "Premier southern residential and commercial district beside the historic regional air base. Highly favored by real estate agencies and brokers for upscale furnished apartment blocks and diplomatic residences.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)",
+        "OpenStreetMap (place=suburb حي المطار)",
+        "Alsoug rental classifieds",
+        "Amlak Real Estate ads"
+      ],
+      "caveat": "Named after the old regional air base at 19.576, 37.215, not the new International Airport situated 16 km south."
+    },
+    {
+      "zone_slug": "malaha",
+      "canonical_name": "الملاحة",
+      "arabic_name": "الملاحة",
+      "english_name": "Al Malaha",
+      "aliases": [
+        "Al Malaga",
+        "Al Malaja",
+        "الملجة",
+        "سوق الملاحة"
+      ],
+      "sector": "south",
+      "name_type": "commonly_used",
+      "lat": 19.6101861,
+      "lng": 37.2150728,
+      "radius_km": 0.8,
+      "confidence": "high",
+      "description": "High-density commercial marketplace quarter and residential district bridging downtown and the southern deims.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)",
+        "OpenStreetMap (amenity=marketplace \"Al Malaga\")"
+      ]
+    },
+    {
+      "zone_slug": "transit",
+      "canonical_name": "ترانزيت",
+      "arabic_name": "ترانزيت",
+      "english_name": "Transit District",
+      "aliases": [
+        "حي ترانزيت",
+        "منطقة الترانزيت",
+        "Transit Quarter"
+      ],
+      "sector": "south",
+      "name_type": "commonly_used",
+      "lat": 19.598,
+      "lng": 37.214,
+      "radius_km": 0.8,
+      "confidence": "high",
+      "description": "Southern district near the port access roads; highly prominent in real estate classifieds for international NGO staff and furnished rentals.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)",
+        "Alsoug rental advertisements"
+      ]
+    },
+    {
+      "zone_slug": "deim-sawakin",
+      "canonical_name": "ديم سواكن",
+      "arabic_name": "ديم سواكن",
+      "english_name": "Deim Sawakin",
+      "aliases": [
+        "Deim Suakin",
+        "ديم سواكن جنوب"
+      ],
+      "sector": "south",
+      "name_type": "commonly_used",
+      "lat": 19.601,
+      "lng": 37.212,
+      "radius_km": 0.8,
+      "confidence": "high",
+      "description": "One of Port Sudan’s oldest southern quarters, historically anchoring the transit corridor toward the ancient port of Suakin.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)",
+        "Marefa encyclopedia"
+      ]
+    },
+    {
+      "zone_slug": "deim-jaber",
+      "canonical_name": "ديم جابر",
+      "arabic_name": "ديم جابر",
+      "english_name": "Deim Jaber",
+      "aliases": [
+        "Deim Gaber"
+      ],
+      "sector": "south",
+      "name_type": "commonly_used",
+      "lat": 19.608,
+      "lng": 37.204,
+      "radius_km": 0.7,
+      "confidence": "high",
+      "description": "Established residential quarter in the south-western residential quadrant.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)"
+      ]
+    },
+    {
+      "zone_slug": "deim-musa",
+      "canonical_name": "ديم موسى",
+      "arabic_name": "ديم موسى",
+      "english_name": "Deim Musa",
+      "aliases": [
+        "Deim Musa",
+        "الديوم الجنوبية"
+      ],
+      "sector": "south",
+      "name_type": "commonly_used",
+      "lat": 19.605,
+      "lng": 37.2113889,
+      "radius_km": 0.8,
+      "confidence": "high",
+      "description": "Southern residential quarter situated between Al Malaha and Kurya.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)",
+        "OpenStreetMap (place=village ديم موسى)"
+      ]
+    },
+    {
+      "zone_slug": "kurya",
+      "canonical_name": "كوريا",
+      "arabic_name": "كوريا",
+      "english_name": "Kurya",
+      "aliases": [
+        "ديم كوريا",
+        "Deim Kurya"
+      ],
+      "sector": "south",
+      "name_type": "commonly_used",
+      "lat": 19.5958333,
+      "lng": 37.1991667,
+      "radius_km": 0.9,
+      "confidence": "high",
+      "description": "Southern residential quarter with detached family homes, private compounds, and expanding rental apartments.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)",
+        "OpenStreetMap (place=village ديم كوريا)"
+      ]
+    },
+    {
+      "zone_slug": "hayy-al-shati",
+      "canonical_name": "حي الشاطئ",
+      "arabic_name": "حي الشاطئ",
+      "english_name": "Al-Shati / Beach District",
+      "aliases": [
+        "الشاطئ",
+        "Beach Quarter",
+        "كورنيش الشاطئ"
+      ],
+      "sector": "south",
+      "name_type": "commonly_used",
+      "lat": 19.588,
+      "lng": 37.218,
+      "radius_km": 0.8,
+      "confidence": "high",
+      "description": "Southern coastal quarter enjoying beachfront access, sea views, and residential villas.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)"
+      ]
+    },
+    {
+      "zone_slug": "al-mirghaniya",
+      "canonical_name": "الميرغنية",
+      "arabic_name": "الميرغنية",
+      "english_name": "Al-Mirghaniya",
+      "aliases": [
+        "حي الميرغنية",
+        "Mirghaniya"
+      ],
+      "sector": "south",
+      "name_type": "commonly_used",
+      "lat": 19.592,
+      "lng": 37.205,
+      "radius_km": 0.7,
+      "confidence": "high",
+      "description": "Established southern residential neighborhood with active community markets.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)"
+      ]
+    },
+    {
+      "zone_slug": "dar-al-naeem",
+      "canonical_name": "دار النعيم",
+      "arabic_name": "دار النعيم",
+      "english_name": "Dar Al-Naeem",
+      "aliases": [
+        "حي دار النعيم"
+      ],
+      "sector": "south",
+      "name_type": "commonly_used",
+      "lat": 19.585,
+      "lng": 37.202,
+      "radius_km": 0.7,
+      "confidence": "high",
+      "description": "Southern residential quarter with growing local rental housing supply.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)"
+      ]
+    },
+    {
+      "zone_slug": "dar-al-salam",
+      "canonical_name": "دار السلام",
+      "arabic_name": "دار السلام",
+      "english_name": "Dar Al-Salam",
+      "aliases": [
+        "حي دار السلام جنوب"
+      ],
+      "sector": "south",
+      "name_type": "commonly_used",
+      "lat": 19.582,
+      "lng": 37.198,
+      "radius_km": 0.7,
+      "confidence": "high",
+      "description": "Southern residential district characterized by family residences and local markets.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)"
+      ]
+    },
+    {
+      "zone_slug": "al-riyadh",
+      "canonical_name": "الرياض",
+      "arabic_name": "الرياض",
+      "english_name": "Al-Riyadh",
+      "aliases": [
+        "حي الرياض بورتسودان",
+        "Riyadh"
+      ],
+      "sector": "south",
+      "name_type": "commonly_used",
+      "lat": 19.579,
+      "lng": 37.204,
+      "radius_km": 0.7,
+      "confidence": "high",
+      "description": "Southern residential quarter situated close to the Airport District and highway exits.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)"
+      ]
+    },
+    {
+      "zone_slug": "philip",
+      "canonical_name": "فلب",
+      "arabic_name": "فلب",
+      "english_name": "Philip",
+      "aliases": [
+        "حي فيليب",
+        "حي فلب"
+      ],
+      "sector": "south",
+      "name_type": "commonly_used",
+      "lat": 19.573,
+      "lng": 37.2,
+      "radius_km": 0.7,
+      "confidence": "high",
+      "description": "Southern residential quarter featuring villa developments and residential compounds.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)",
+        "OpenSooq ads"
+      ]
+    },
+    {
+      "zone_slug": "al-sadaqa",
+      "canonical_name": "الصداقة",
+      "arabic_name": "الصداقة",
+      "english_name": "Al-Sadaqa",
+      "aliases": [
+        "حي الصداقة",
+        "الصداقة مربع 9"
+      ],
+      "sector": "south",
+      "name_type": "commonly_used",
+      "lat": 19.568,
+      "lng": 37.195,
+      "radius_km": 0.9,
+      "confidence": "high",
+      "description": "Modern planned residential quarter organized in numbered grid squares (مربعات).",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)",
+        "OpenSooq classifieds"
+      ]
+    },
+    {
+      "zone_slug": "souq-libya",
+      "canonical_name": "سوق ليبيا",
+      "arabic_name": "سوق ليبيا",
+      "english_name": "Libya Market",
+      "aliases": [
+        "Souq Libya",
+        "سوق ليبيا جنوب"
+      ],
+      "sector": "south",
+      "name_type": "landmark_based",
+      "lat": 19.5789292,
+      "lng": 37.1934267,
+      "radius_km": 0.8,
+      "confidence": "high",
+      "description": "Southern commercial marketplace near the highway access route connecting toward Suakin and national transit.",
+      "sources": [
+        "OpenStreetMap (amenity=marketplace سوق ليبيا)"
+      ]
+    },
+    {
+      "zone_slug": "al-kaylo",
+      "canonical_name": "منطقة الكيلو",
+      "arabic_name": "منطقة الكيلو",
+      "english_name": "Al-Kaylo",
+      "aliases": [
+        "الكيلو",
+        "شاليه الكيلو",
+        "منتجع الكيلو",
+        "الكيلو بورتسودان"
+      ],
+      "sector": "south",
+      "name_type": "landmark_based",
+      "lat": 19.557,
+      "lng": 37.208,
+      "radius_km": 1.2,
+      "confidence": "medium",
+      "description": "Southern highway gateway area known for recreational chalets, wedding event halls, and holiday rest-houses.",
+      "sources": [
+        "Google Business listings (شاليه الكيلو)",
+        "OpenStreetMap POIs"
+      ]
+    },
+    {
+      "zone_slug": "digna",
+      "canonical_name": "حي دقنة",
+      "arabic_name": "حي دقنة",
+      "english_name": "Digna District",
+      "aliases": [
+        "دقنة",
+        "Daqna",
+        "Degna",
+        "منطقة الميناء والكورنيش",
+        "كورنيش دقنة",
+        "شارع الاذاعة والتلفزيون"
+      ],
+      "sector": "east",
+      "name_type": "landmark_based",
+      "lat": 19.6089,
+      "lng": 37.2213,
+      "radius_km": 0.9,
+      "confidence": "high",
+      "description": "Prime seafront and port corridor along the corniche. Encompasses Prince Osman Digna Passenger Port, Osman Digna Hospital, and premier waterfront hotel operations (Coral, Bohein, Basiri Plaza).",
+      "sources": [
+        "Mkan Location.address on 8 published listings (\"حي دقنة، بورتسودان\")",
+        "scripts/seed-daqna-homes.ts",
+        "OpenStreetMap (مستشفى دقنة)"
+      ]
+    },
+    {
+      "zone_slug": "deim-al-noor",
+      "canonical_name": "ديم النور",
+      "arabic_name": "ديم النور",
+      "english_name": "Deim Al-Noor",
+      "aliases": [
+        "Deim El Noor",
+        "ديم النور شرق"
+      ],
+      "sector": "east",
+      "name_type": "commonly_used",
+      "lat": 19.628,
+      "lng": 37.226,
+      "radius_km": 0.8,
+      "confidence": "high",
+      "description": "Dynamic and centrally situated eastern quarter renowned for its proximity to tourist amenities, markets, and municipal services.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (البر الشرقي)",
+        "Marefa encyclopedia"
+      ]
+    },
+    {
+      "zone_slug": "salbona",
+      "canonical_name": "سلبونا",
+      "arabic_name": "سلبونا",
+      "english_name": "Salbona",
+      "aliases": [
+        "السقالة",
+        "سوق السمك السقالة",
+        "Salbona Port"
+      ],
+      "sector": "east",
+      "name_type": "commonly_used",
+      "lat": 19.636,
+      "lng": 37.23,
+      "radius_km": 0.8,
+      "confidence": "high",
+      "description": "Iconic eastern coastal quarter hosting Port Sudan’s celebrated fish market (سوق السمك / السقالة) and coastal maritime dining.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (البر الشرقي)",
+        "Sudanese tourism guides"
+      ]
+    },
+    {
+      "zone_slug": "abu-hashish",
+      "canonical_name": "أبو حشيش",
+      "arabic_name": "أبو حشيش",
+      "english_name": "Abu Hashish",
+      "aliases": [
+        "أبوحشيش",
+        "Abu Hashish District"
+      ],
+      "sector": "east",
+      "name_type": "commonly_used",
+      "lat": 19.642,
+      "lng": 37.228,
+      "radius_km": 0.8,
+      "confidence": "high",
+      "description": "Traditional eastern coastal residential quarter bordering Salbona.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (البر الشرقي)"
+      ]
+    },
+    {
+      "zone_slug": "al-qadisiya",
+      "canonical_name": "القادسية",
+      "arabic_name": "القادسية",
+      "english_name": "Al-Qadisiya",
+      "aliases": [
+        "حي القادسية",
+        "Qadisiya"
+      ],
+      "sector": "east",
+      "name_type": "commonly_used",
+      "lat": 19.648,
+      "lng": 37.225,
+      "radius_km": 0.8,
+      "confidence": "high",
+      "description": "Established eastern residential quarter north of Abu Hashish.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (البر الشرقي)"
+      ]
+    },
+    {
+      "zone_slug": "al-askala",
+      "canonical_name": "الأسكلة",
+      "arabic_name": "الأسكلة",
+      "english_name": "Al-Askala",
+      "aliases": [
+        "الاسكلة",
+        "Askala Harbour"
+      ],
+      "sector": "east",
+      "name_type": "commonly_used",
+      "lat": 19.623,
+      "lng": 37.225,
+      "radius_km": 0.6,
+      "confidence": "high",
+      "description": "Historic maritime quarter overlooking the inner harbour and shipping docks.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (البر الشرقي)"
+      ]
+    },
+    {
+      "zone_slug": "al-thawra",
+      "canonical_name": "حي الثورة",
+      "arabic_name": "حي الثورة",
+      "english_name": "Al-Thawra / Al-Thawrat",
+      "aliases": [
+        "الثورات",
+        "الثورة شرق",
+        "حي الثورة بورتسودان"
+      ],
+      "sector": "east",
+      "name_type": "commonly_used",
+      "lat": 19.652,
+      "lng": 37.22,
+      "radius_km": 0.9,
+      "confidence": "high",
+      "description": "Major eastern residential district with extensive residential plots and community schools.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (البر الشرقي)"
+      ]
+    },
+    {
+      "zone_slug": "deim-al-tijani",
+      "canonical_name": "ديم التيجاني",
+      "arabic_name": "ديم التيجاني",
+      "english_name": "Deim Al-Tijani",
+      "aliases": [
+        "ديم تيجاني",
+        "Deim Tijani"
+      ],
+      "sector": "east",
+      "name_type": "commonly_used",
+      "lat": 19.631,
+      "lng": 37.228,
+      "radius_km": 0.6,
+      "confidence": "high",
+      "description": "Eastern residential quarter located near Deim Al-Noor.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (البر الشرقي)"
+      ]
+    },
+    {
+      "zone_slug": "town-station",
+      "canonical_name": "محطة المدينة",
+      "arabic_name": "محطة المدينة",
+      "english_name": "Town Station",
+      "aliases": [
+        "Town Station",
+        "Mahattat Al-Madina"
+      ],
+      "sector": "east",
+      "name_type": "landmark_based",
+      "lat": 19.6333333,
+      "lng": 37.2333333,
+      "radius_km": 0.9,
+      "confidence": "high",
+      "description": "North-eastern maritime transit and passenger station quarter beside the harbour approaches.",
+      "sources": [
+        "OpenStreetMap (place=village محطة المدينة)"
+      ]
+    },
+    {
+      "zone_slug": "flamingo",
+      "canonical_name": "فلمنغو",
+      "arabic_name": "فلمنغو",
+      "english_name": "Flamingo",
+      "aliases": [
+        "Falamingu",
+        "Flamingo Bay",
+        "ميناء فلمنغو",
+        "خور فلمنغو"
+      ],
+      "sector": "east",
+      "name_type": "commonly_used",
+      "lat": 19.6876,
+      "lng": 37.2401,
+      "radius_km": 1.6,
+      "confidence": "high",
+      "description": "Far-northern coastal locality and sheltered marine inlet hosting specialized naval, commercial, and maritime docking facilities.",
+      "sources": [
+        "OpenStreetMap (place=locality فلمنغو)"
+      ]
+    },
+    {
+      "zone_slug": "salalab",
+      "canonical_name": "سلالاب",
+      "arabic_name": "سلالاب",
+      "english_name": "Salalab",
+      "aliases": [
+        "ديم سلاب",
+        "Deim Salalab",
+        "سلالاب شرق",
+        "سلالاب غرب",
+        "سلالاب مربع 1",
+        "سلالاب مربع 3",
+        "الواحة"
+      ],
+      "sector": "north_expansion",
+      "name_type": "commonly_used",
+      "lat": 19.6350442,
+      "lng": 37.1900278,
+      "radius_km": 1.4,
+      "confidence": "high",
+      "description": "Expansive north-western residential quarter with active multi-story construction, family residences, and mid-term furnished flats.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (سلالاب شرق وغرب)",
+        "OpenStreetMap (place=neighbourhood سلالاب)",
+        "Alsoug rental index"
+      ]
+    },
+    {
+      "zone_slug": "hadal",
+      "canonical_name": "هدل",
+      "arabic_name": "هدل",
+      "english_name": "Hadal",
+      "aliases": [
+        "سوق هدل",
+        "Hadal",
+        "حي الخليج",
+        "شقق الخليج"
+      ],
+      "sector": "north_expansion",
+      "name_type": "commonly_used",
+      "lat": 19.6437057,
+      "lng": 37.2182555,
+      "radius_km": 1,
+      "confidence": "high",
+      "description": "North-eastern corridor on the coastal highway approach; features modern residential buildings and furnished apartment blocks (e.g. Stylish Staycation Spot, Gulf Apartments).",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (البر الشرقي)",
+        "OpenStreetMap (place=neighbourhood هدل)"
+      ]
+    },
+    {
+      "zone_slug": "tarab-hadal",
+      "canonical_name": "حي طراب حدال",
+      "arabic_name": "حي طراب حدال",
+      "english_name": "Hayy Tarab Hadal",
+      "aliases": [
+        "طراب حدال",
+        "Tarab Hadal",
+        "ترب هول"
+      ],
+      "sector": "north_expansion",
+      "name_type": "commonly_used",
+      "lat": 19.6583333,
+      "lng": 37.2072222,
+      "radius_km": 1.1,
+      "confidence": "high",
+      "description": "Northern residential quarter situated north of Salalab and west of Hadal.",
+      "sources": [
+        "OpenStreetMap (place=village حي طراب حدال)"
+      ]
+    },
+    {
+      "zone_slug": "umm-al-qura",
+      "canonical_name": "أم القرى",
+      "arabic_name": "أم القرى",
+      "english_name": "Umm Al-Qura",
+      "aliases": [
+        "Umm Al Qura",
+        "أم القرى شمال"
+      ],
+      "sector": "north_expansion",
+      "name_type": "commonly_used",
+      "lat": 19.6693681,
+      "lng": 37.1892649,
+      "radius_km": 1.3,
+      "confidence": "high",
+      "description": "Northern residential suburb representing newer residential sprawl along the northern exit.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (البر الشرقي)",
+        "OpenStreetMap (place=suburb أم القرى)"
+      ]
+    },
+    {
+      "zone_slug": "al-huda",
+      "canonical_name": "حي الهدى",
+      "arabic_name": "حي الهدى",
+      "english_name": "Al-Huda",
+      "aliases": [
+        "الهدى",
+        "حي الهدى مربع 10"
+      ],
+      "sector": "north_expansion",
+      "name_type": "commonly_used",
+      "lat": 19.655,
+      "lng": 37.198,
+      "radius_km": 0.9,
+      "confidence": "high",
+      "description": "Modern planned residential expansion quarter located in the north-western sector.",
+      "sources": [
+        "OpenSooq property deeds (حي الهدى مربع 10)"
+      ]
+    },
+    {
+      "zone_slug": "bashir-city",
+      "canonical_name": "مدينة البشير السكنية",
+      "arabic_name": "مدينة البشير السكنية",
+      "english_name": "Bashir Residential City",
+      "aliases": [
+        "مدينة البشير",
+        "Bashir City"
+      ],
+      "sector": "north_expansion",
+      "name_type": "commonly_used",
+      "lat": 19.646,
+      "lng": 37.185,
+      "radius_km": 1,
+      "confidence": "high",
+      "description": "Organized residential housing development in the north-western perimeter.",
+      "sources": [
+        "https://ar.wikipedia.org/wiki/بورتسودان (المخططات السكنية)"
+      ]
+    },
+    {
+      "zone_slug": "arous",
+      "canonical_name": "عروس",
+      "arabic_name": "عروس",
+      "english_name": "Arous",
+      "aliases": [
+        "Arous",
+        "Arous Camp",
+        "Arous Red Sea Diving Resort",
+        "مخيم عروس",
+        "قرية إيمان",
+        "Iman Village",
+        "منتجع عروس"
+      ],
+      "sector": "coastal_tourism",
+      "name_type": "commonly_used",
+      "lat": 20.0067461,
+      "lng": 37.1898407,
+      "radius_km": 8,
+      "confidence": "high",
+      "description": "Prestigious Red Sea coastal resort corridor located ~45 km north of Port Sudan, famous worldwide for diving villages, coral reef diving, eco-resorts, and vacation camps.",
+      "sources": [
+        "OpenStreetMap (Arous Red Sea Diving Resort 20.0067,37.1898; Arous Camp 20.0028,37.1927)"
+      ],
+      "caveat": "Situated outside the main urban boundary; tracked as an autonomous coastal tourism zone."
+    },
+    {
+      "zone_slug": "unknown",
+      "canonical_name": "غير محدد / عام",
+      "arabic_name": "غير محدد / عام",
+      "english_name": "Unassigned / Generic",
+      "aliases": [
+        "unknown",
+        "other",
+        "unassigned"
+      ],
+      "sector": "uncertain",
+      "name_type": "uncertain",
+      "lat": null,
+      "lng": null,
+      "radius_km": null,
+      "confidence": "unknown",
+      "description": "Catch-all bucket for city-wide leads or listings with missing or placeholder coordinates.",
+      "sources": [
+        "Mkan data quality audit"
+      ]
+    }
+  ]
+}

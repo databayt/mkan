@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { X } from "lucide-react";
 import { useLocale } from "@/components/internationalization/use-locale";
+import { PHASE1 } from "@/config/phase-flags";
 
 // Airbnb's "Get 15% credit at hotels" promo modal, rebranded to Mkan (the same
 // way the logo, currency and gift-card surfaces were localized). Built on the
@@ -177,6 +178,8 @@ export default function HotelCreditDialog({ forceOpen }: HotelCreditDialogProps)
   const router = useRouter();
   const labels = t[locale] ?? t.en;
   const [open, setOpen] = useState(false);
+
+  if (!PHASE1.showHotelCreditDialog && !forceOpen) return null;
 
   // Surface like a promo shortly after the page paints, once per browser.
   useEffect(() => {

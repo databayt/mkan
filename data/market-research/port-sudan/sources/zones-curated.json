@@ -1,0 +1,167 @@
+{
+ "_what": "Hand-curated Port Sudan zone definitions. The canonical vocabulary the density analysis is built on.",
+ "_rule": "Every zone carries at least one source. Arabic is canonical. No boundary is invented — OSM holds no sub-city polygons for this city, so each zone is a POINT with a documented assignment radius, never a shape.",
+ "_curated_at": "2026-08-14",
+
+ "_official_structure": {
+  "note": "Port Sudan locality is officially divided into three administrative units. These are real and named, but no public source gives their boundaries or coordinates, so they are recorded as context and are NOT assignment targets.",
+  "units": [
+   { "ar": "وحدة بورتسودان وسط", "en": "Port Sudan Central unit" },
+   { "ar": "وحدة بورتسودان جنوب", "en": "Port Sudan South unit" },
+   { "ar": "وحدة بورتسودان شرق", "en": "Port Sudan East unit" }
+  ],
+  "sources": [
+   "https://ar.wikipedia.org/wiki/بورتسودان",
+   "https://guide.opensooq.com/السودان/البحر-الأحمر/دليل-بورت-سودان-في-ولاية-البحر-الأحمر-ا/"
+  ]
+ },
+
+ "_finding_app_vocabulary_is_invented": {
+  "severity": "high",
+  "detail": "src/lib/constants/locations.ts (SUDAN_LOCATIONS) is the app's zone vocabulary. Its Port Sudan entries are 'Al Souq Al Bahri / Shargi / Gharbi / Shamali / Janobi' — and the IDENTICAL five-item directional template is repeated verbatim for 24 of the 26 cities listed, including landlocked El Fasher, Nyala and Kadugli, where 'Al Souq Al Bahri' (the marine market) is meaningless. Only Khartoum and Omdurman carry real neighbourhood names.",
+  "consequence": "None of those five names appears in any public source for Port Sudan, and none is used in this dataset. This file is effectively their replacement.",
+  "action": "Reported as a follow-up. Not fixed here — that is application code and this is a research task."
+ },
+
+ "_assignment_rule": {
+  "method": "nearest zone by distance ÷ zone radius_km, and only if that ratio ≤ 1 (i.e. the point falls inside the zone's radius). Otherwise the record's area/address text is matched against zone names and aliases. Otherwise 'unknown'.",
+  "why_ratio_not_distance": "Radii encode how large a place is. The city centre is genuinely big; a residential ديم is small. Ranking on raw distance alone would let a tightly-drawn residential quarter capture points that plainly belong to the downtown it borders.",
+  "confidence": "high ≤0.4 km · medium ≤0.9 km · low ≤ the zone radius · unknown beyond it. Any record whose runner-up zone is within 350 m of the winner is additionally flagged ambiguous.",
+  "honest_limit": "Port Sudan's downtown quarters sit within a few hundred metres of one another and OSM gives a single point for each. Downtown attributions are therefore indicative, not authoritative — the hotel strip in particular straddles حي دقنة and الملاحة."
+ },
+
+ "zones": [
+  { "canonical_name": "وسط المدينة", "arabic_name": "وسط المدينة", "english_name": "City Centre",
+    "aliases": ["Town Centre", "Downtown", "وسط بورتسودان"], "name_type": "official",
+    "lat": 19.6213889, "lng": 37.2102778, "radius_km": 1.5, "confidence": "high",
+    "description": "The central commercial core. Named as one of the three official administrative units and mapped as a place node.",
+    "sources": ["https://www.openstreetmap.org/node/…(place=village, name=وسط المدينة)", "https://ar.wikipedia.org/wiki/بورتسودان"],
+    "caveat": "OSM tags this node name:en='West Town', which is wrong — وسط المدينة means city centre. The Arabic is canonical." },
+
+  { "canonical_name": "حي دقنة", "arabic_name": "حي دقنة", "english_name": "Digna district",
+    "aliases": ["دقنة", "Daqna", "Degna"], "name_type": "landmark_based",
+    "lat": 19.6089, "lng": 37.2213, "radius_km": 0.9, "confidence": "medium",
+    "description": "Seafront district beside the port and corniche. Named after Osman Digna (عثمان دقنة) — the hospital (مستشفى عثمان دقنة) and the passenger port (ميناء الأمير عثمان دقنة) both carry the name.",
+    "sources": ["Mkan Location.address on 8 published listings: 'حي دقنة، بورتسودان'", "scripts/seed-daqna-homes.ts (host 0002's real Daqna homes)", "https://www.openstreetmap.org/ (مستشفى دقنة / Degna Hospital, 19.622815,37.2164177)"],
+    "caveat": "Arabic Wikipedia's neighbourhood list does NOT include حي دقنة, and a web search suggests دقنة more often denotes the port and hospital than a residential quarter. It is kept because Mkan's own inventory and seed script use it as an area name, but it is landmark-derived, not an established quarter — treat with care." },
+
+  { "canonical_name": "الملاحة", "arabic_name": "الملاحة", "english_name": "Al Malaha",
+    "aliases": ["Al Malaga", "Al Malaja"], "name_type": "commonly_used",
+    "lat": 19.6101239, "lng": 37.2150451, "radius_km": 0.8, "confidence": "medium",
+    "description": "Southern-central quarter by the main market.",
+    "sources": ["https://ar.wikipedia.org/wiki/بورتسودان (listed among الديوم الجنوبية)", "https://www.openstreetmap.org/ (marketplace 'Al Malaga', name:en 'Al Malaja', 19.6101,37.2150)"],
+    "caveat": "The OSM node's Latin spelling 'Al Malaga/Al Malaja' is matched to Wikipedia's الملاحة by transliteration, not by a shared tag. Plausible but inferred." },
+
+  { "canonical_name": "ديم المدينة", "arabic_name": "ديم المدينة", "english_name": "Deim Al-Madina",
+    "aliases": ["ديم مدينة", "Deim Madina", "ديم مدينه غرب", "Deim West"], "name_type": "commonly_used",
+    "lat": 19.6166, "lng": 37.2067, "radius_km": 0.8, "confidence": "high",
+    "description": "Central residential quarter with its own market.",
+    "sources": ["https://ar.wikipedia.org/wiki/بورتسودان (وسط المدينة list)", "https://www.openstreetmap.org/ (amenity=marketplace, سوق ديم المدينة)", "alsoug Port Sudan rental ads naming ديم مدينه غرب"] },
+
+  { "canonical_name": "ديم عرب", "arabic_name": "ديم عرب", "english_name": "Deim Arab",
+    "aliases": ["Deim Arab", "Soog Deim Arab"], "name_type": "commonly_used",
+    "lat": 19.6141667, "lng": 37.2005556, "radius_km": 0.8, "confidence": "high",
+    "description": "One of Port Sudan's oldest quarters.",
+    "sources": ["https://ar.wikipedia.org/wiki/بورتسودان", "https://www.openstreetmap.org/ (place=village, ديم عرب)"] },
+
+  { "canonical_name": "ديم موسى", "arabic_name": "ديم موسى", "english_name": "Deim Musa",
+    "aliases": ["Deim Musa"], "name_type": "commonly_used",
+    "lat": 19.605, "lng": 37.2113889, "radius_km": 0.8, "confidence": "high",
+    "description": "Southern residential quarter.",
+    "sources": ["https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)", "https://www.openstreetmap.org/ (place=village, ديم موسى)"] },
+
+  { "canonical_name": "كوريا", "arabic_name": "كوريا", "english_name": "Kurya",
+    "aliases": ["ديم كوريا", "Deim Kurya"], "name_type": "commonly_used",
+    "lat": 19.5958333, "lng": 37.1991667, "radius_km": 0.9, "confidence": "high",
+    "description": "Southern residential quarter.",
+    "sources": ["https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)", "https://www.openstreetmap.org/ (place=village, ديم كوريا)"] },
+
+  { "canonical_name": "سلالاب", "arabic_name": "سلالاب", "english_name": "Salalab",
+    "aliases": ["ديم سلاب", "Deim Salalab", "سلالاب شرق", "سلالاب غرب", "الواحة"], "name_type": "commonly_used",
+    "lat": 19.6350442, "lng": 37.1900278, "radius_km": 1.3, "confidence": "high",
+    "description": "Large north-western residential area. Wikipedia splits it east/west; the market and OSM treat it as one name. Kept as one zone with the halves as aliases.",
+    "sources": ["https://ar.wikipedia.org/wiki/بورتسودان (سلالاب شرق وغرب)", "https://www.openstreetmap.org/ (place=neighbourhood سلالاب + place=village ديم سلاب)", "alsoug per-neighbourhood rental index for سلالاب"] },
+
+  { "canonical_name": "هدل", "arabic_name": "هدل", "english_name": "Hadal",
+    "aliases": ["سوق هدل", "Hadal"], "name_type": "commonly_used",
+    "lat": 19.6437057, "lng": 37.2182555, "radius_km": 1.0, "confidence": "high",
+    "description": "Northern quarter on the eastern side, with its own market.",
+    "sources": ["https://ar.wikipedia.org/wiki/بورتسودان (البر الشرقي)", "https://www.openstreetmap.org/ (place=neighbourhood هدل + amenity=marketplace سوق هدل)"] },
+
+  { "canonical_name": "أم القرى", "arabic_name": "أم القرى", "english_name": "Umm Al-Qura",
+    "aliases": ["Umm Al Qura"], "name_type": "commonly_used",
+    "lat": 19.6693681, "lng": 37.1892649, "radius_km": 1.3, "confidence": "high",
+    "description": "Northern suburb.",
+    "sources": ["https://ar.wikipedia.org/wiki/بورتسودان (البر الشرقي)", "https://www.openstreetmap.org/ (place=suburb أم القرى)"] },
+
+  { "canonical_name": "حي المطار", "arabic_name": "حي المطار", "english_name": "Airport District",
+    "aliases": ["حىى المطار", "Airport district"], "name_type": "commonly_used",
+    "lat": 19.5750337, "lng": 37.2082191, "radius_km": 1.6, "confidence": "high",
+    "description": "Southern district, and the one the furnished-rental market names most often. Its name comes from the OLD airport — the air base / regional airport at 19.576,37.215 that it sits beside — NOT the new Port Sudan International at 19.4345,37.2351, which is ~16 km further south.",
+    "sources": ["https://ar.wikipedia.org/wiki/بورتسودان (الديوم الجنوبية)", "https://www.openstreetmap.org/ (place=suburb حي المطار)", "alsoug per-neighbourhood rental index for حي المطار", "أملاك العقارية and sdamhe.sanhesan Facebook ads naming حي المطار مربع ٤"],
+    "caveat": "OSM tags this node name:en='South Town', which is not a translation of حي المطار. The Arabic is canonical." },
+
+  { "canonical_name": "السكة حديد", "arabic_name": "السكة حديد", "english_name": "Railway district",
+    "aliases": ["حي السكة حديد"], "name_type": "landmark_based",
+    "lat": 19.6210458, "lng": 37.2069813, "radius_km": 0.6, "confidence": "medium",
+    "description": "Quarter around the railway station (هيئة سكك حديد السودان, 19.6246,37.2141).",
+    "sources": ["https://www.openstreetmap.org/ (place=neighbourhood السكة حديد + railway=station)"],
+    "caveat": "Not in Wikipedia's neighbourhood list — a landmark-derived name mapped in OSM." },
+
+  { "canonical_name": "محطة المدينة", "arabic_name": "محطة المدينة", "english_name": "Town Station",
+    "aliases": ["Town Station"], "name_type": "landmark_based",
+    "lat": 19.6333333, "lng": 37.2333333, "radius_km": 1.0, "confidence": "medium",
+    "description": "North-eastern area by the town station.",
+    "sources": ["https://www.openstreetmap.org/ (place=village محطة المدينة)"] },
+
+  { "canonical_name": "حي طراب حدال", "arabic_name": "حي طراب حدال", "english_name": "Hayy Tarab Hadal",
+    "aliases": ["طراب حدال"], "name_type": "commonly_used",
+    "lat": 19.6583333, "lng": 37.2072222, "radius_km": 1.1, "confidence": "medium",
+    "description": "Northern quarter.",
+    "sources": ["https://www.openstreetmap.org/ (place=village حي طراب حدال)"],
+    "caveat": "Mapped in OSM but absent from Wikipedia's list." },
+
+  { "canonical_name": "فلمنغو", "arabic_name": "فلمنغو", "english_name": "Flamingo",
+    "aliases": ["Falamingu", "Flamingo"], "name_type": "commonly_used",
+    "lat": 19.6876, "lng": 37.2401, "radius_km": 1.6, "confidence": "medium",
+    "description": "Far-northern coastal locality.",
+    "sources": ["https://www.openstreetmap.org/ (place=locality فلمنغو)"] },
+
+  { "canonical_name": "السوق الشعبي", "arabic_name": "السوق الشعبي", "english_name": "Popular Market",
+    "aliases": ["Souq Al Shaabi"], "name_type": "landmark_based",
+    "lat": 19.6271, "lng": 37.1996, "radius_km": 0.6, "confidence": "medium",
+    "description": "Area around the popular market.",
+    "sources": ["https://www.openstreetmap.org/ (amenity=marketplace السوق الشعبي)"] },
+
+  { "canonical_name": "سوق ليبيا", "arabic_name": "سوق ليبيا", "english_name": "Libya Market",
+    "aliases": ["Souq Libya"], "name_type": "landmark_based",
+    "lat": 19.5789, "lng": 37.1934, "radius_km": 0.8, "confidence": "medium",
+    "description": "Southern market area.",
+    "sources": ["https://www.openstreetmap.org/ (amenity=marketplace سوق ليبيا)"] },
+
+  { "canonical_name": "عروس", "arabic_name": "عروس", "english_name": "Arous",
+    "aliases": ["Arous", "Arous Camp", "Arous Red Sea Diving Resort", "مخيم عروس"], "name_type": "commonly_used",
+    "lat": 20.0067461, "lng": 37.1898407, "radius_km": 8.0, "confidence": "high",
+    "description": "Coastal strip roughly 45 km north of the city — the dive-resort area, not part of Port Sudan proper. Kept as its own zone because Mkan already has two listings there and it would otherwise be dumped into 'unknown'.",
+    "sources": ["https://www.openstreetmap.org/ (Arous Red Sea Diving Resort 20.0067,37.1898; Arous Camp 20.0028,37.1927)"],
+    "caveat": "Outside the 25 km Port Sudan city radius. Report it separately from city inventory." }
+ ],
+
+ "_known_zones_without_coordinates": {
+  "note": "Real, sourced Port Sudan quarters that no public source geolocates. They CANNOT receive coordinate assignments and are recorded so the acquisition team recognises the names, and so a later pass does not treat them as new discoveries. ترانزيت and دبايوا matter most — both are named repeatedly by the rental market itself.",
+  "source": "https://ar.wikipedia.org/wiki/بورتسودان",
+  "southern": ["ديم سواكن","ديم جابر","ترانزيت","حي الشاطىء","حي البوستة","حي الشجرة","الميرغنية","دار النعيم","دار السلام","الرياض","منطقة الجنائن","فلب","يثرب","عوج الدرب","الإنقاذ","غرب الزلط","الصداقة","الأندلس","الكسارة","أسوتربة"],
+  "central": ["السوق الكبير","حي التقدم","أونقواب","ديم سجن","حي الأغاريق","حي الجامعة","حي العظمة","دبايوا","حي الإمتداد","حي الأقمار","ديم مايو","الوحدة","شقر","مدينة البشير السكنية","إشلاق الدفاع الجوي","الإسكندرية","الدوحة"],
+  "eastern": ["ديم النور","حي العاملين","الأسكلة","القادسية","أبو حشيش","الثورات","سلبونا","ديم التيجاني"],
+  "market_named_not_in_wikipedia": [
+   { "name": "الخليج", "note": "Named by classifieds and by an OSM POI 'شقق الخليج المفروشة' at 19.6415,37.2157 — that POI is a business, not a place node, so it anchors no zone. Falls inside هدل's radius." }
+  ]
+ },
+
+ "_landmarks_used_in_addresses": [
+  { "name": "شارع الاذاعة والتلفزيون", "en": "Radio & TV Street", "source": "address of مجمع الربوة السياحي in the Google-Business directory" },
+  { "name": "شارع المهندسين", "en": "Engineers Street", "source": "address of Al Swahili Hotel in the Google-Business directory" },
+  { "name": "أبدوت مول", "en": "Abdout Mall", "source": "Mkan Location.address on 2 published listings" },
+  { "name": "كورنيش بورتسودان", "en": "Port Sudan Corniche", "source": "OpenStreetMap" }
+ ]
+}
