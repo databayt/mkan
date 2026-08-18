@@ -11,9 +11,8 @@
   "confidence": "high",
   "description": "Prime seafront and port corridor along the corniche. Encompasses Prince Osman Digna Passenger Port, Osman Digna Hospital, and premier waterfront hotel operations (Coral, Bohein, Basiri Plaza).",
   "sources": [
-    "Mkan Location.address on 8 published listings (\"حي دقنة، بورتسودان\")",
-    "scripts/seed-daqna-homes.ts",
-    "OpenStreetMap (مستشفى دقنة)"
+    "OpenStreetMap (مستشفى دقنة)",
+    "Note 2026-08-18: the 8 listings previously counted here are in السكة حديد (railway-district) — the owner corrected the neighbourhood; see that zone."
   ],
   "aliases": [
     "دقنة",
@@ -39,9 +38,9 @@
     "phone_reachable_leads": 7,
     "with_google_rating": 7,
     "total_public_reviews": 93,
-    "mkan_published_listings": 8,
+    "mkan_published_listings": 0,
     "zone_share_of_discovered_supply": 0.256,
-    "zone_share_of_mkan_listings": 0.276,
+    "zone_share_of_mkan_listings": 0.0,
     "demand_telemetry": {
       "views": null,
       "inquiries": null,
@@ -55,16 +54,16 @@
     },
     "marketplace_status": "INSUFFICIENT_DATA",
     "supply_status": "HIGH_SUPPLY",
-    "acquisition_priority_score": 72,
+    "acquisition_priority_score": 62,
     "acquisition_priority": "CRITICAL_IMMEDIATE",
     "score_breakdown": {
       "core_apartments_pts": 7,
       "hotel_resort_pts": 20,
       "contactability_pts": 25,
-      "mkan_traction_pts": 10,
+      "mkan_traction_pts": 0,
       "reviews_pts": 10
     }
   },
   "leads_count": 11,
-  "mkan_clusters_count": 1
+  "mkan_clusters_count": 0
 }

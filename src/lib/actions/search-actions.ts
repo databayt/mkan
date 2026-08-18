@@ -222,13 +222,16 @@ export const getPopularLocations = unstable_cache(
  *
  * The count comes from `Location.zoneKey`, which is the same column the
  * search itself filters on, so the number beside a zone and the number of
- * cards you land on are the same query. Zones with no homes yet stay in the
- * list (the request is "all zones") but sink to the bottom — order is homes
- * DESC, then acquisition priority, then name, so the menu reorders itself as
- * supply moves instead of being re-curated by hand.
+ * cards you land on are the same query. Order is homes DESC, then acquisition
+ * priority, then name, so the menu reorders itself as supply moves instead of
+ * being re-curated by hand.
  *
- * `unknown` is excluded: it's the gazetteer's "unassigned" bucket, not a place
- * anyone can search for, and no published listing carries it.
+ * A zone with no homes is left out entirely: offering it is offering an empty
+ * result page. It stays reachable by typing — `getLocationSuggestions` matches
+ * the gazetteer by name and alias — so a guest who knows the neighbourhood can
+ * still ask for it, and it reappears here by itself the day it gains a home.
+ * `unknown` is excluded outright, being the gazetteer's unassigned bucket
+ * rather than a place anyone can search for.
  */
 export const getZoneSuggestions = unstable_cache(
   async (): Promise<LocationSuggestion[]> => {
@@ -255,6 +258,7 @@ export const getZoneSuggestions = unstable_cache(
         zone: z,
         count: counts.get(z.slug.toLowerCase()) ?? 0,
       }))
+      .filter(({ count }) => count > 0)
       .sort(
         (a, b) =>
           b.count - a.count ||

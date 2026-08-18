@@ -15,7 +15,7 @@ Canonical directory of all recognized Port Sudan accommodation and residential z
 
 | Zone Slug | Arabic Name | English Name | Sector | Discovered Leads | Live Mkan | Priority Score | Tier |
 | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :--- |
-| [`digna/`](./digna) | **حي دقنة** | Digna District | `east` | **11** | **8** | **72** | `CRITICAL_IMMEDIATE` |
+| [`digna/`](./digna) | **حي دقنة** | Digna District | `east` | **11** | **0** | **62** | `CRITICAL_IMMEDIATE` |
 | [`malaha/`](./malaha) | **الملاحة** | Al Malaha | `south` | **4** | **0** | **36** | `MEDIUM_EXPANSION` |
 | [`city-centre/`](./city-centre) | **وسط المدينة** | City Centre | `central` | **4** | **0** | **28** | `MEDIUM_EXPANSION` |
 | [`al-askala/`](./al-askala) | **الأسكلة** | Al-Askala | `east` | **2** | **0** | **24** | `MEDIUM_EXPANSION` |
@@ -40,7 +40,7 @@ Canonical directory of all recognized Port Sudan accommodation and residential z
 | [`hayy-al-jamia/`](./hayy-al-jamia) | **حي الجامعة** | University District | `central` | **0** | **0** | **0** | `LOW_PRIORITY` |
 | [`taqaddum/`](./taqaddum) | **حي التقدم** | Al-Taqaddum | `central` | **0** | **0** | **0** | `LOW_PRIORITY` |
 | [`deim-sijn/`](./deim-sijn) | **ديم سجن** | Deim Sijn | `central` | **0** | **0** | **0** | `LOW_PRIORITY` |
-| [`railway-district/`](./railway-district) | **السكة حديد** | Railway District | `central` | **0** | **0** | **0** | `LOW_PRIORITY` |
+| [`railway-district/`](./railway-district) | **السكة حديد** | Railway District | `central` | **0** | **8** | **10** | `MONITOR_OPPORTUNITY` |
 | [`deim-jaber/`](./deim-jaber) | **ديم جابر** | Deim Jaber | `south` | **0** | **0** | **0** | `LOW_PRIORITY` |
 | [`deim-musa/`](./deim-musa) | **ديم موسى** | Deim Musa | `south` | **0** | **0** | **0** | `LOW_PRIORITY` |
 | [`dar-al-naeem/`](./dar-al-naeem) | **دار النعيم** | Dar Al-Naeem | `south` | **0** | **0** | **0** | `LOW_PRIORITY` |

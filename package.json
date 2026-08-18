@@ -21,7 +21,7 @@
     "purge:synthetic": "tsx scripts/purge-synthetic.ts",
     "seed:admin": "tsx scripts/seed-admin.ts",
     "seed:heirs": "tsx scripts/seed-heirs-homes.ts",
-    "seed:daqna": "tsx scripts/seed-daqna-homes.ts",
+    "seed:railway": "tsx scripts/seed-railway-homes.ts",
     "seed:hussein": "tsx scripts/seed-hussein-homes.ts",
     "i18n:backfill": "tsx scripts/backfill-listing-translations.ts",
     "i18n:check": "tsx scripts/dev-i18n-sync.ts && tsx scripts/i18n-scan-hardcoded.ts",

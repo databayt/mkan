@@ -12,7 +12,7 @@ Prime seafront and port corridor along the corniche. Encompasses Prince Osman Di
 - **Sector**: `east`
 - **Aliases**: `دقنة`, `Daqna`, `Degna`, `منطقة الميناء والكورنيش`, `كورنيش دقنة`, `شارع الاذاعة والتلفزيون`
 - **Coordinates**: `19.6089, 37.2213` (Radius: 0.9 km)
-- **Sources**: Mkan Location.address on 8 published listings ("حي دقنة، بورتسودان") · scripts/seed-daqna-homes.ts · OpenStreetMap (مستشفى دقنة)
+- **Sources**: OpenStreetMap (مستشفى دقنة) · ⚠️ 2026-08-18: the 8 listings once counted here are in السكة حديد (`railway-district`) — the owner corrected the neighbourhood
 
 
 ---
@@ -26,7 +26,7 @@ Prime seafront and port corridor along the corniche. Encompasses Prince Osman Di
   - Resorts: **0**
   - Real Estate Agencies: **0**
   - Guest Houses / Chalets: **0**
-- **Live Mkan Listings**: **8** (27.6% of city portfolio)
+- **Live Mkan Listings**: **0** (re-zoned to `railway-district` on 2026-08-18)
 - **Phone-Reachable Leads**: **7**
 - **Supply Status**: `HIGH_SUPPLY`
 - **Demand Status**: `INSUFFICIENT_DATA` (*Telemetry uninstrumented*)
@@ -52,8 +52,8 @@ Prime seafront and port corridor along the corniche. Encompasses Prince Osman Di
 
 ---
 
-## Live Mkan Listings Snapshot (8 listings across 1 coordinate clusters)
+## Live Mkan Listings Snapshot (0 listings — the 8 formerly here moved to `railway-district`)
 
 | Coordinates | Published Listings | Address Text | Cluster Note |
 | :--- | :---: | :--- | :--- |
-| `19.6089, 37.2213` | **8** | حي دقنة، بورتسودان | Active listing |
+| — | **0** | — | Re-zoned to `railway-district` 2026-08-18 |

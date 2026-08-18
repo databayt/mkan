@@ -12,7 +12,7 @@ Historical quarter centered on the Sudan Railways terminal, locomotive workshops
 - **Sector**: `central`
 - **Aliases**: `حي السكة حديد`, `محطة السكة حديد`, `ورش السكة حديد`
 - **Coordinates**: `19.6210458, 37.2069813` (Radius: 0.6 km)
-- **Sources**: OpenStreetMap (place=neighbourhood السكة حديد + railway=station)
+- **Sources**: OpenStreetMap (place=neighbourhood السكة حديد + railway=station) · Mkan Location.address on 8 published listings ("السكة حديد، بورتسودان") · scripts/seed-railway-homes.ts
 
 
 ---
@@ -26,11 +26,11 @@ Historical quarter centered on the Sudan Railways terminal, locomotive workshops
   - Resorts: **0**
   - Real Estate Agencies: **0**
   - Guest Houses / Chalets: **0**
-- **Live Mkan Listings**: **0** (0.0% of city portfolio)
+- **Live Mkan Listings**: **8** (27.6% of city portfolio — re-zoned from `digna` on 2026-08-18, the owner corrected the neighbourhood)
 - **Phone-Reachable Leads**: **0**
 - **Supply Status**: `LOW_SUPPLY_UNEXPLORED`
 - **Demand Status**: `INSUFFICIENT_DATA` (*Telemetry uninstrumented*)
-- **Acquisition Priority Score**: **0/100** (`LOW_PRIORITY`)
+- **Acquisition Priority Score**: **10/100** (`MONITOR_OPPORTUNITY`)
 
 ---
 

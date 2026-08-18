@@ -439,7 +439,7 @@ export const PORT_SUDAN_ZONES: PortSudanZone[] = [
     radiusKm: 0.9,
     aliases: ["دقنة", "حي دقنة", "Digna", "Daqna", "Degna", "منطقة الميناء والكورنيش", "كورنيش دقنة", "شارع الاذاعة والتلفزيون", "مستشفى دقنة"],
     description: "Prime seafront and port corridor along the corniche. Encompasses Prince Osman Digna Passenger Port, Osman Digna Hospital, and premier waterfront hotel and apartment operations.",
-    priorityScore: 72,
+    priorityScore: 62,
     tier: "CRITICAL_IMMEDIATE",
   },
   {
@@ -627,8 +627,8 @@ export const PORT_SUDAN_ZONES: PortSudanZone[] = [
     radiusKm: 0.6,
     aliases: ["السكة حديد", "حي السكة حديد", "محطة السكة حديد", "ورش السكة حديد", "Railway District", "سكة حديد"],
     description: "Historical quarter centered on the Sudan Railways terminal, locomotive workshops, and administrative offices.",
-    priorityScore: 0,
-    tier: "LOW_PRIORITY",
+    priorityScore: 10,
+    tier: "MONITOR_OPPORTUNITY",
   },
   {
     slug: "salalab",

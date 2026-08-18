@@ -27,7 +27,7 @@ pnpm prisma db pull        # Pull schema from existing database
 # The catalogue is real homes only — there is no demo seed. The three real
 # owners are re-seedable per host; the Airbnb homes come in via the CRM.
 pnpm seed:heirs            # host 0001's real Port Sudan homes
-pnpm seed:daqna            # host 0002's real Daqna homes
+pnpm seed:railway          # host 0002's real السكة حديد homes
 pnpm seed:hussein          # host 0003's real homes
 pnpm purge:synthetic       # delete generated listings (dry-run by default)
 ```

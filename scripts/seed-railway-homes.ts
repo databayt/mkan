@@ -1,9 +1,16 @@
 /**
- * Seed the real Daqna (دقنة) building onto demo host 0002@mkan.org.
+ * Seed the real السكة حديد (Railway District) building onto host 0002@mkan.org.
  *
- * Source: owner-supplied layout for a multi-floor building in حي دقنة, Port
- * Sudan — 8 apartment units across the first floor, ground floor, second floor,
- * and rooftop. Owner contact 091 284 6648 is set as host 0002's phone so the
+ * Source: owner-supplied layout for a multi-floor building in حي السكة حديد,
+ * Port Sudan — 8 apartment units across the first floor, ground floor, second
+ * floor, and rooftop.
+ *
+ * The building was originally seeded as حي دقنة — wrong neighbourhood, corrected
+ * 2026-08-18 on the owner's word. The two are different parts of town (دقنة is
+ * the eastern seafront/port corridor, السكة حديد the central railway quarter),
+ * so the address, the coordinates, the zone key and the unit names all moved
+ * together. Fix them together or the zone key gets re-derived from stale
+ * coordinates by `pnpm backfill:zones` and the error comes back. Owner contact 091 284 6648 is set as host 0002's phone so the
  * app's click-to-call reaches the real owner.
  *
  * Scope is deliberately narrow: this ONLY touches host 0002 — it deletes
@@ -17,7 +24,7 @@
  *  - PRICES ARE ESTIMATES, proportional to size — the owner did not give rates.
  *    Replace `estNightlySdg` with the real nightly prices and re-run.
  *
- *   set -a && source .env && set +a && npx tsx scripts/seed-daqna-homes.ts
+ *   set -a && source .env && set +a && npx tsx scripts/seed-railway-homes.ts
  *
  * Idempotent: re-running wipes 0002's current listings and rebuilds the 8.
  */
@@ -32,17 +39,19 @@ const HOST_EMAIL = '0002@mkan.org';
 // 091 284 6648 → international E.164 for tel: dialing.
 const HOST_PHONE = '+249912846648';
 
-// One real building in حي دقنة, Port Sudan. Approximate central coords (exact
-// street pin to be refined). Every unit shares the building location.
+// One real building in حي السكة حديد, Port Sudan. Coordinates are the zone
+// centroid from the gazetteer, not a street pin — good enough to place the home
+// in the right neighbourhood on the map, and to keep `backfill:zones` resolving
+// it to `railway-district`. Every unit shares the building location.
 const BUILDING = {
-  address: 'حي دقنة، بورتسودان',
-  latitude: 19.6089,
-  longitude: 37.2213,
+  address: 'السكة حديد، بورتسودان',
+  latitude: 19.6210458,
+  longitude: 37.2069813,
 } as const;
 
 let prisma: (typeof import('@/lib/db'))['db'];
 
-type DaqnaUnit = {
+type BuildingUnit = {
   title: string;
   description: string;
   bedrooms: number;
@@ -50,67 +59,67 @@ type DaqnaUnit = {
   estNightlySdg: number; // ESTIMATE — owner to confirm the real rate
 };
 
-const UNITS: DaqnaUnit[] = [
+const UNITS: BuildingUnit[] = [
   {
-    title: 'شقة واسعة بأربع غرف وصالتين وبلكونة — الطابق الأول، دقنة',
+    title: 'شقة واسعة بأربع غرف وصالتين وبلكونة — الطابق الأول، السكة حديد',
     description:
-      'شقة عائلية رحبة في الطابق الأول بحي دقنة، بورتسودان. أربع غرف وحمّامان وصالتان وبلكونة ومطبخ — مساحة مثالية للعائلات الكبيرة. للحجز والاستفسار يرجى الاتصال بالمضيف مباشرة.',
+      'شقة عائلية رحبة في الطابق الأول بحي السكة حديد، بورتسودان. أربع غرف وحمّامان وصالتان وبلكونة ومطبخ — مساحة مثالية للعائلات الكبيرة. للحجز والاستفسار يرجى الاتصال بالمضيف مباشرة.',
     bedrooms: 4,
     bathrooms: 2,
     estNightlySdg: 120_000,
   },
   {
-    title: 'شقة أرضية بغرفتين وهول — دقنة',
+    title: 'شقة أرضية بغرفتين وهول — السكة حديد',
     description:
-      'شقة في الطابق الأرضي بحي دقنة، بورتسودان. غرفتان وحمّام وهول مريح، بمدخل سهل الوصول دون درج. مناسبة للعائلات الصغيرة وكبار السن. للحجز اتصل بالمضيف.',
+      'شقة في الطابق الأرضي بحي السكة حديد، بورتسودان. غرفتان وحمّام وهول مريح، بمدخل سهل الوصول دون درج. مناسبة للعائلات الصغيرة وكبار السن. للحجز اتصل بالمضيف.',
     bedrooms: 2,
     bathrooms: 1,
     estNightlySdg: 55_000,
   },
   {
-    title: 'شقة أرضية بغرفتين وهول ومطبخ — دقنة',
+    title: 'شقة أرضية بغرفتين وهول ومطبخ — السكة حديد',
     description:
-      'شقة في الطابق الأرضي بحي دقنة، بورتسودان. غرفتان وحمّام وهول ومطبخ مستقل، لإقامة عائلية مريحة وعملية. للحجز اتصل بالمضيف.',
+      'شقة في الطابق الأرضي بحي السكة حديد، بورتسودان. غرفتان وحمّام وهول ومطبخ مستقل، لإقامة عائلية مريحة وعملية. للحجز اتصل بالمضيف.',
     bedrooms: 2,
     bathrooms: 1,
     estNightlySdg: 60_000,
   },
   {
-    title: 'شقة بغرفة ومطبخ وهول — الطابق الثاني (الأولى)، دقنة',
+    title: 'شقة بغرفة ومطبخ وهول — الطابق الثاني (الأولى)، السكة حديد',
     description:
-      'شقة عملية في الطابق الثاني بحي دقنة، بورتسودان: غرفة وحمّام ومطبخ وهول — مثالية للأفراد أو الثنائيات. للحجز اتصل بالمضيف.',
+      'شقة عملية في الطابق الثاني بحي السكة حديد، بورتسودان: غرفة وحمّام ومطبخ وهول — مثالية للأفراد أو الثنائيات. للحجز اتصل بالمضيف.',
     bedrooms: 1,
     bathrooms: 1,
     estNightlySdg: 30_000,
   },
   {
-    title: 'شقة بغرفة ومطبخ وهول — الطابق الثاني (الثانية)، دقنة',
+    title: 'شقة بغرفة ومطبخ وهول — الطابق الثاني (الثانية)، السكة حديد',
     description:
-      'شقة في الطابق الثاني بحي دقنة، بورتسودان: غرفة وحمّام ومطبخ وهول، بتهوية جيّدة وموقع حيوي قريب من الخدمات. للحجز اتصل بالمضيف.',
+      'شقة في الطابق الثاني بحي السكة حديد، بورتسودان: غرفة وحمّام ومطبخ وهول، بتهوية جيّدة وموقع حيوي قريب من الخدمات. للحجز اتصل بالمضيف.',
     bedrooms: 1,
     bathrooms: 1,
     estNightlySdg: 30_000,
   },
   {
-    title: 'شقة بغرفة ومطبخ وهول — الطابق الثاني (الثالثة)، دقنة',
+    title: 'شقة بغرفة ومطبخ وهول — الطابق الثاني (الثالثة)، السكة حديد',
     description:
-      'شقة في الطابق الثاني بحي دقنة، بورتسودان: غرفة وحمّام ومطبخ وهول. مساحة عملية لإقامة هادئة في قلب المدينة. للحجز اتصل بالمضيف.',
+      'شقة في الطابق الثاني بحي السكة حديد، بورتسودان: غرفة وحمّام ومطبخ وهول. مساحة عملية لإقامة هادئة في قلب المدينة. للحجز اتصل بالمضيف.',
     bedrooms: 1,
     bathrooms: 1,
     estNightlySdg: 30_000,
   },
   {
-    title: 'شقة سطوح بغرفة ومطبخ وهول — دقنة (الأولى)',
+    title: 'شقة سطوح بغرفة ومطبخ وهول — السكة حديد (الأولى)',
     description:
-      'شقة في السطوح بحي دقنة، بورتسودان، تنعم بتهوية ممتازة وهدوء بعيدًا عن ضجيج الشارع. غرفة وحمّام ومطبخ وهول. للحجز اتصل بالمضيف.',
+      'شقة في السطوح بحي السكة حديد، بورتسودان، تنعم بتهوية ممتازة وهدوء بعيدًا عن ضجيج الشارع. غرفة وحمّام ومطبخ وهول. للحجز اتصل بالمضيف.',
     bedrooms: 1,
     bathrooms: 1,
     estNightlySdg: 28_000,
   },
   {
-    title: 'شقة سطوح بغرفة ومطبخ وهول — دقنة (الثانية)',
+    title: 'شقة سطوح بغرفة ومطبخ وهول — السكة حديد (الثانية)',
     description:
-      'شقة في السطوح بحي دقنة، بورتسودان: غرفة وحمّام ومطبخ وهول، بإطلالة مفتوحة وتهوية رائعة. مثالية للإقامات الهادئة. للحجز اتصل بالمضيف.',
+      'شقة في السطوح بحي السكة حديد، بورتسودان: غرفة وحمّام ومطبخ وهول، بإطلالة مفتوحة وتهوية رائعة. مثالية للإقامات الهادئة. للحجز اتصل بالمضيف.',
     bedrooms: 1,
     bathrooms: 1,
     estNightlySdg: 28_000,
@@ -124,7 +133,7 @@ async function main(): Promise<void> {
 
   prisma = (await import('@/lib/db')).db;
 
-  console.log(`🏢 Daqna building seed → host ${HOST_EMAIL} (${UNITS.length} units, Port Sudan, SDG)\n`);
+  console.log(`🏢 Railway District building seed → host ${HOST_EMAIL} (${UNITS.length} units, Port Sudan, SDG)\n`);
 
   // 1. Resolve host 0002 and set the owner's real phone (for click-to-call).
   const host = await prisma.user.findUnique({
@@ -176,7 +185,7 @@ async function main(): Promise<void> {
         postalCode: String(22201 + i),
         latitude: BUILDING.latitude,
         longitude: BUILDING.longitude,
-        zoneKey: 'digna',
+        zoneKey: 'railway-district',
       },
     });
 

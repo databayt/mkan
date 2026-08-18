@@ -252,8 +252,6 @@ interface DestinationRow {
   imageSrc?: string;
   backgroundColor?: string;
   isNearby: boolean;
-  /** A zone with no homes yet — listed, searchable, but visually secondary. */
-  muted: boolean;
   select: () => void | Promise<void>;
 }
 
@@ -339,7 +337,6 @@ export default function LocationDropdown({
       imageSrc: dest.imageSrc,
       backgroundColor: dest.backgroundColor,
       isNearby: dest.city === "Nearby",
-      muted: false,
       select: () => handleSelectSuggested(dest),
     })),
     ...zoneSuggestions.map((zone) => {
@@ -355,10 +352,6 @@ export default function LocationDropdown({
         imageSrc: art?.imageSrc,
         backgroundColor: art?.backgroundColor,
         isNearby: false,
-        // A zone we have no homes in yet is still searchable — it's in the
-        // list because the user asked for every zone — but it shouldn't read
-        // as equal to one with eight.
-        muted: zone.listingCount === 0,
         select: () =>
           onLocationSelect({
             city: zone.city,
@@ -475,7 +468,7 @@ export default function LocationDropdown({
                       rowBusy
                         ? "cursor-wait opacity-60"
                         : "hover:bg-[#F7F7F7] active:scale-[0.99] cursor-pointer"
-                    } ${dest.muted && !rowBusy ? "opacity-70" : ""}`}
+                    }`}
                     onClick={() => {
                       if (rowBusy) return;
                       void dest.select();
