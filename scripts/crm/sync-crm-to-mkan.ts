@@ -68,10 +68,10 @@ async function main() {
   // 1. Fetch CRM Port Sudan listings
   const crmRes = await rest('GET', 'portSudans?limit=100&depth=0');
   const crmListings = (crmRes.data?.portSudans ?? crmRes.data ?? [])
-    .filter((r: any) => ['0001', '0002', '0003', '0004'].includes(r.account))
+    .filter((r: any) => Boolean(r.account))
     .sort((a: any, b: any) => a.listingId.localeCompare(b.listingId));
 
-  console.log(`Found ${crmListings.length} manual listings in Twenty CRM for Port Sudan.\n`);
+  console.log(`Found ${crmListings.length} total listings in Twenty CRM for Port Sudan.\n`);
 
   let createdCount = 0;
   let updatedCount = 0;
@@ -86,10 +86,12 @@ async function main() {
       where: { email },
       create: {
         email,
-        username: c.account,
+        username: c.hostName || c.account,
         phoneNumber: phone,
+        role: 'MANAGER',
       },
       update: {
+        username: c.hostName || undefined,
         phoneNumber: phone ?? undefined,
       }
     });
