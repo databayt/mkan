@@ -1,6 +1,37 @@
 {
   "zone_slug": "railway-district",
   "canonical_name": "السكة حديد",
-  "total_leads": 0,
-  "leads": []
+  "total_leads": 1,
+  "leads": [
+    {
+      "id": "ps-sanad-mashghal-dubai",
+      "name": {
+        "primary": "Mashghal Dubai Furnished Apartments (Al-Sanad)",
+        "arabic": "مشغل دبي للشقق المفروشة (السند)",
+        "aliases": [
+          "مشغل دبي",
+          "شقق السند",
+          "السند"
+        ]
+      },
+      "category": "furnished_apartment",
+      "contact": {
+        "phone": [
+          "+249 91 253 8883"
+        ],
+        "whatsapp": "+249912538883"
+      },
+      "location": {
+        "address": "مشغل دبي، سوق سكة حديد، بورتسودان",
+        "area": "سوق سكة حديد",
+        "latitude": 19.6210458,
+        "longitude": 37.2069813
+      },
+      "mkan": {
+        "host_email": "0004@mkan.org",
+        "host_username": "السند",
+        "published_units": 3
+      }
+    }
+  ]
 }

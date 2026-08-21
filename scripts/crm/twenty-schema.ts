@@ -47,8 +47,8 @@ export interface FieldDef {
   icon?: string;
   /** SELECT / MULTI_SELECT choices (raw values). Expanded to Twenty option objects by the seeder. */
   options?: string[];
-  /** JSON-serializable default (booleans only here to stay version-safe). */
-  defaultValue?: boolean;
+  /** JSON-serializable default (e.g. true, 'SUDAN', 'PORT_SUDAN'). */
+  defaultValue?: boolean | string | number;
   /** For RELATION fields only. */
   relation?: {
     /** Target object `nameSingular` (e.g. "host", "home", "person"). */
@@ -101,6 +101,28 @@ const MKAN_PROPERTY_TYPE = ['Apartment', 'Villa', 'Townhouse', 'Cottage', 'Tinyh
 const SUDAN_CITIES = CITY_OPTIONS.map((c) => c.value);
 const SUDAN_STATES = STATE_OPTIONS.map((s) => s.value);
 
+const COUNTRIES = ['SUDAN', 'EGYPT', 'SAUDI_ARABIA', 'UAE', 'OTHER'];
+
+export const PORT_SUDAN_ZONE_OPTIONS = [
+  'ABU_HASHISH', 'AIRPORT_DISTRICT', 'AL_ASKALA', 'AL_HUDA', 'AL_KAYLO', 'AL_MIRGHANIYA',
+  'AL_QADISIYA', 'AL_RIYADH', 'AL_SADAQA', 'AL_THAWRA', 'AROUS', 'BASHIR_CITY',
+  'CITY_CENTRE', 'DABAIWA', 'DAR_AL_NAEEM', 'DAR_AL_SALAM', 'DEIM_AL_NOOR', 'DEIM_AL_TIJANI',
+  'DEIM_ARAB', 'DEIM_JABER', 'DEIM_MADINA', 'DEIM_MUSA', 'DEIM_SAWAKIN', 'DEIM_SIJN',
+  'DIGNA', 'FLAMINGO', 'HADAL', 'HAYY_AL_AGHAREEQ', 'HAYY_AL_AZAMA', 'HAYY_AL_JAMIA',
+  'HAYY_AL_SHATI', 'KURYA', 'MALAHA', 'PHILIP', 'POPULAR_MARKET', 'RAILWAY_DISTRICT',
+  'SALALAB', 'SALBONA', 'SOUQ_LIBYA', 'TAQADDUM', 'TARAB_HADAL', 'TOWN_STATION',
+  'TRANSIT', 'UMM_AL_QURA', 'UNKNOWN',
+];
+
+const PHOTO_STAGES = [
+  'NOT_FOUND',
+  'INCOMPLETE',
+  'POOR_QUALITY',
+  'ACCEPTABLE',
+  'HIGH_QUALITY',
+  'REHOSTED',
+];
+
 // ── Home ─────────────────────────────────────────────────────────────────────
 export const HOME: ObjectDef = {
   nameSingular: 'home',
@@ -118,6 +140,22 @@ export const HOME: ObjectDef = {
     { name: 'lastSyncedAt', label: 'Last synced', type: 'DATE_TIME' },
     { name: 'stillListed', label: 'Still on source', type: 'BOOLEAN', defaultValue: true, description: 'Flipped false when a re-scrape 404s.' },
 
+    // Location & Geography (data/home/portsudan)
+    { name: 'country', label: 'Country', type: 'SELECT', options: COUNTRIES, defaultValue: 'SUDAN', icon: 'IconFlag', description: 'Listing country (default Sudan).' },
+    { name: 'city', label: 'City', type: 'SELECT', options: SUDAN_CITIES, defaultValue: 'PORT_SUDAN', icon: 'IconBuildingCommunity', description: 'Normalized city (wave-rollout key, default Port Sudan).' },
+    { name: 'zone', label: 'Zone', type: 'SELECT', options: PORT_SUDAN_ZONE_OPTIONS, icon: 'IconMapPin2', description: 'Municipal zone / neighborhood (45 Port Sudan zones from data/home).' },
+    { name: 'homeState', label: 'State', type: 'SELECT', options: SUDAN_STATES, icon: 'IconMap2', description: 'Sudanese state (wilaya) — coarse filter above city.' },
+    { name: 'homeAddress', label: 'Address', type: 'ADDRESS', icon: 'IconMapPin', description: 'Full geocoded location (incl. lat/lng subfields) → mkan Location.' },
+    { name: 'googleMapsUrl', label: 'Google Maps', type: 'LINKS', icon: 'IconMapPin', description: 'Direct Google Maps pin / location link.' },
+
+    // Host & Direct Contacts (denormalized for direct table access & filtering)
+    { name: 'account', label: 'Account', type: 'TEXT', icon: 'IconKey', description: 'mkan host login slot / username (e.g. 0001, 1000 with default password 1234).' },
+    { name: 'hostName', label: 'Host name', type: 'TEXT', icon: 'IconUser', description: 'Owner name (denormalized from Host).' },
+    { name: 'hostPhone', label: 'Phone', type: 'PHONES', icon: 'IconPhone', description: 'Host direct phone number.' },
+    { name: 'hostWhatsapp', label: 'WhatsApp', type: 'PHONES', icon: 'IconBrandWhatsapp', description: 'Host direct WhatsApp contact.' },
+    { name: 'helper', label: 'Helper', type: 'TEXT', icon: 'IconUserStar', description: 'On-site housekeeper / helper / clean boy.' },
+    { name: 'helperPhone', label: 'Helper Phone', type: 'PHONES', icon: 'IconPhoneCall', description: 'On-site housekeeper phone for cleaning/availability coordination.' },
+
     // Content & Bilingual Airbnb Copywriting
     { name: 'title', label: 'Title', type: 'TEXT' },
     { name: 'titleEn', label: 'Title (EN)', type: 'TEXT', description: 'Original English title from Airbnb.' },
@@ -125,19 +163,15 @@ export const HOME: ObjectDef = {
     { name: 'description', label: 'Description', type: 'TEXT' },
     { name: 'descriptionEn', label: 'Description (EN)', type: 'TEXT', description: 'Full English Airbnb description.' },
     { name: 'descriptionAr', label: 'Description (AR)', type: 'TEXT', description: 'Full Arabic Airbnb description.' },
-    { name: 'spaceEn', label: 'The Space (EN)', type: 'TEXT', description: 'Walkthrough of the space (EN).' },
-    { name: 'spaceAr', label: 'The Space (AR)', type: 'TEXT', description: 'Walkthrough of the space (AR).' },
+    { name: 'spaceEn', label: 'Space (EN)', type: 'TEXT', description: 'Walkthrough of the space (EN).' },
+    { name: 'spaceAr', label: 'Space (AR)', type: 'TEXT', description: 'Walkthrough of the space (AR).' },
     { name: 'guestAccessEn', label: 'Guest Access (EN)', type: 'TEXT', description: 'Guest access permissions (EN).' },
     { name: 'guestAccessAr', label: 'Guest Access (AR)', type: 'TEXT', description: 'Guest access permissions (AR).' },
     { name: 'notesEn', label: 'Notes (EN)', type: 'TEXT', description: 'Other things to note (EN).' },
     { name: 'notesAr', label: 'Notes (AR)', type: 'TEXT', description: 'Other things to note (AR).' },
     { name: 'roomType', label: 'Room type', type: 'SELECT', options: ['ENTIRE_HOME', 'PRIVATE_ROOM', 'SHARED_ROOM', 'HOTEL_ROOM'] },
-    { name: 'airbnbCategory', label: 'Airbnb category', type: 'TEXT', description: 'Raw category, e.g. "Entire villa".' },
-    { name: 'airbnbCategoryAr', label: 'Airbnb category (AR)', type: 'TEXT', description: 'Airbnb\'s own Arabic label, e.g. "وحدة للإيجار بالكامل".' },
-    { name: 'city', label: 'City', type: 'SELECT', options: SUDAN_CITIES, icon: 'IconBuildingCommunity', description: 'Normalized city (wave-rollout key). Grown by sync-twenty-options.ts, never by the seeder.' },
-    { name: 'homeState', label: 'State', type: 'SELECT', options: SUDAN_STATES, icon: 'IconMap2', description: 'Sudanese state (wilaya) — the coarse filter above city.' },
-    // NB: "address" is a reserved field name in Twenty — must use a prefixed name.
-    { name: 'homeAddress', label: 'Address', type: 'ADDRESS', icon: 'IconMapPin', description: 'Full geocoded location (incl. lat/lng subfields) → mkan Location.' },
+    { name: 'airbnbCategory', label: 'Category', type: 'TEXT', description: 'Raw category, e.g. "Entire villa".' },
+    { name: 'airbnbCategoryAr', label: 'Category (AR)', type: 'TEXT', description: 'Airbnb\'s own Arabic label, e.g. "وحدة للإيجار بالكامل".' },
     { name: 'bedrooms', label: 'Bedrooms', type: 'NUMBER' },
     { name: 'beds', label: 'Beds', type: 'NUMBER' },
     { name: 'bathrooms', label: 'Bathrooms', type: 'NUMBER' },
@@ -145,10 +179,11 @@ export const HOME: ObjectDef = {
 
     // Amenities & photos
     { name: 'amenitiesRaw', label: 'Amenities (raw)', type: 'RAW_JSON', description: 'Lossless scraped amenity list.' },
-    { name: 'mkanAmenities', label: 'mkan amenities', type: 'MULTI_SELECT', options: MKAN_AMENITIES, description: 'Mapped subset of the mkan Amenity enum.' },
-    { name: 'mkanHighlights', label: 'mkan highlights', type: 'MULTI_SELECT', options: MKAN_HIGHLIGHTS, description: 'Mapped subset of the mkan Highlight enum.' },
+    { name: 'amenities', label: 'Amenities', type: 'MULTI_SELECT', options: MKAN_AMENITIES, description: 'Mapped subset of the mkan Amenity enum.' },
+    { name: 'highlights', label: 'Highlights', type: 'MULTI_SELECT', options: MKAN_HIGHLIGHTS, description: 'Mapped subset of the mkan Highlight enum.' },
     { name: 'petsAllowed', label: 'Pets allowed', type: 'BOOLEAN', defaultValue: false },
     { name: 'parkingIncluded', label: 'Parking included', type: 'BOOLEAN', defaultValue: false },
+    { name: 'photoStage', label: 'Stage', type: 'SELECT', options: PHOTO_STAGES, icon: 'IconPhotoSearch', description: 'Curation stage of listing photography (NOT_FOUND, INCOMPLETE, POOR_QUALITY, ACCEPTABLE, HIGH_QUALITY, REHOSTED).' },
     { name: 'photoUrls', label: 'Photo URLs', type: 'LINKS', icon: 'IconPhoto', description: 'ALL scraped photo URLs.' },
     { name: 'photoCount', label: 'Photo count', type: 'NUMBER' },
     { name: 'coverPhotoUrl', label: 'Cover photo', type: 'LINKS' },
@@ -178,7 +213,7 @@ export const HOME: ObjectDef = {
 
     // Trust (computed)
     { name: 'homeTrustScore', label: 'Home trust score', type: 'NUMBER' },
-    { name: 'overallTrustScore', label: 'Overall trust score', type: 'NUMBER', description: 'round(0.45·host + 0.55·home) — denormalized so Home views can filter it.' },
+    { name: 'overallTrustScore', label: 'Score', type: 'NUMBER', description: 'round(0.45·host + 0.55·home) — denormalized so Home views can filter it.' },
     { name: 'trustBand', label: 'Trust band', type: 'SELECT', options: ['AUTO_ONBOARD', 'MANUAL_REVIEW', 'HOLD', 'REJECT', 'UNSCORED'], icon: 'IconShieldCheck' },
     { name: 'trustBandOverride', label: 'Band override', type: 'SELECT', options: ['AUTO_ONBOARD', 'MANUAL_REVIEW', 'HOLD', 'REJECT'] },
     { name: 'overrideReason', label: 'Override reason', type: 'TEXT' },
@@ -198,11 +233,11 @@ export const HOME: ObjectDef = {
 
     // mkan integration & status
     { name: 'homeStatus', label: 'Home status', type: 'SELECT', icon: 'IconProgressCheck', options: ['SCRAPED', 'SCORED', 'READY_FOR_IMPORT', 'IMPORTED_BUSY', 'LIVE', 'REJECTED', 'DUPLICATE', 'DELISTED'] },
-    { name: 'mkanPropertyType', label: 'mkan property type', type: 'SELECT', options: MKAN_PROPERTY_TYPE },
-    { name: 'mkanListingId', label: 'mkan listing ID', type: 'NUMBER' },
-    { name: 'mkanListingUrl', label: 'mkan listing URL', type: 'LINKS' },
+    { name: 'propertyType', label: 'Type', type: 'SELECT', options: MKAN_PROPERTY_TYPE },
+    { name: 'listingId', label: 'Listing ID', type: 'TEXT', icon: 'IconHash', description: 'Structured listing code (e.g. 0001-01, 0004-01).' },
+    { name: 'listingUrl', label: 'Listing URL', type: 'LINKS' },
     { name: 'importedAt', label: 'Imported to mkan', type: 'DATE_TIME' },
-    { name: 'mkanPublishState', label: 'mkan publish state', type: 'SELECT', options: ['NOT_IMPORTED', 'IMPORTED_BUSY', 'LIVE', 'UNPUBLISHED'] },
+    { name: 'publishState', label: 'Status', type: 'SELECT', options: ['NOT_IMPORTED', 'IMPORTED_BUSY', 'LIVE', 'UNPUBLISHED'] },
     { name: 'publishedAt', label: 'Published (live) at', type: 'DATE_TIME' },
     { name: 'publishReady', label: 'Ready to publish', type: 'BOOLEAN', defaultValue: false },
 

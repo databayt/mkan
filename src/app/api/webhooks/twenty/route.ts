@@ -68,20 +68,23 @@ export async function POST(req: Request) {
   });
 
   try {
-    // ── 1. Home Events (Pricing, Status, De-listing) ────────────────────────
-    if (object === 'home') {
+    // ── 1. Home / Port Sudan Events (Pricing, Status, Title, Description) ────────
+    if (object === 'home' || object === 'portSudan' || object === 'portSudans') {
+      const listingIdStr = record.listingId ? String(record.listingId).trim() : null;
       const airbnbListingId = record.airbnbListingId || record.sourceListingId;
-      const mkanListingId = record.mkanListingId ? Number(record.mkanListingId) : null;
+      const mkanListingId = record.mkanListingId ? Number(record.mkanListingId) : (listingIdStr && /^\d+$/.test(listingIdStr) ? Number(listingIdStr) : null);
+      const pubState = record.publishState ?? record.mkanPublishState;
 
-      // Find listing in Mkan DB
-      const listing = mkanListingId
-        ? await db.listing.findUnique({ where: { id: mkanListingId } })
-        : airbnbListingId
-          ? await db.listing.findFirst({ where: { sourceListingId: String(airbnbListingId) } })
-          : null;
+      const listing = listingIdStr && isNaN(Number(listingIdStr))
+        ? await db.listing.findFirst({ where: { sourceListingId: listingIdStr } })
+        : mkanListingId
+          ? await db.listing.findUnique({ where: { id: mkanListingId } })
+          : airbnbListingId
+            ? await db.listing.findFirst({ where: { sourceListingId: String(airbnbListingId) } })
+            : null;
 
       if (!listing) {
-        logger.warn('twenty_webhook_home_not_found', { mkanListingId, airbnbListingId });
+        logger.warn('twenty_webhook_home_not_found', { mkanListingId, airbnbListingId, listingIdStr });
         return NextResponse.json({ received: true, matched: false });
       }
 
@@ -97,17 +100,29 @@ export async function POST(req: Request) {
         updates.isPublished = false;
       }
 
-      // Price update: only if operator confirmed price or if listing had no price
-      if (record.priceConfirmedByHost && record.priceNightSdg?.amountMicros != null) {
+      // Price update
+      if (record.priceNightSdg?.amountMicros != null) {
         updates.pricePerNight = Math.round(record.priceNightSdg.amountMicros / 1_000_000);
       }
 
+      // Title update
+      if (record.titleAr || record.name) {
+        updates.title = record.titleAr || record.name;
+      }
+
+      // Description update
+      if (record.descriptionAr || record.description) {
+        updates.description = record.descriptionAr || record.description;
+      }
+
       // Publish state override from CRM
-      if (record.mkanPublishState === 'LIVE' && listing.claimedAt != null) {
+      if (pubState === 'LIVE') {
         updates.isPublished = true;
+        updates.draft = false;
         updates.lastAvailabilityConfirmedAt = new Date();
-      } else if (record.mkanPublishState === 'UNPUBLISHED') {
+      } else if (pubState === 'UNPUBLISHED' || pubState === 'DRAFT') {
         updates.isPublished = false;
+        updates.draft = true;
       }
 
       if (Object.keys(updates).length > 0) {

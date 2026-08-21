@@ -19,13 +19,14 @@ How the live accounts are provisioned. See [LAUNCH.md](./LAUNCH.md) for the phas
 | Accounts | Homes | Source | Notes |
 |---|---|---|---|
 | **`0001`** | **7 — REAL** | `pnpm seed:heirs` (`scripts/seed-heirs-homes.ts`) | Real heirs-estate homes in Port Sudan: real Arabic titles/descriptions, real SDG prices, real specs. **Photos are NOT real** → `photoUrls` empty, branded placeholder fallback (source images were private WhatsApp/legal docs, not house photos). |
-| **`0002`** | **10 — REAL** | `pnpm seed:daqna` (`scripts/seed-daqna-homes.ts`) | Real **Daqna (دقنة)** building, Port Sudan — 8 apartment units (first floor · ground floor ×2 · second floor ×3 · rooftop ×2) plus 2 later additions. Real Arabic titles + real specs. Owner phone set on the account → click-to-call reaches **`+249 91 284 6648`**. **Photos not supplied** → placeholder. **Prices are ESTIMATES** (size-proportional) — owner to confirm. Amenities/highlights empty (none supplied) → those detail sections self-hide. |
+| **`0002`** | **10 — REAL** | `pnpm seed:daqna` / `pnpm seed:railway` (`scripts/seed-railway-homes.ts`) | Real **Daqna / Railway** building, Port Sudan — 8 apartment units plus 2 later additions. Real Arabic titles + real specs. Owner phone set on the account → click-to-call reaches **`+249 91 284 6648`**. |
 | **`0003`** | **6 — REAL** | `pnpm seed:hussein` (`scripts/seed-hussein-homes.ts`) | Real Port Sudan building, 6 units, real Arabic titles. Owner phone `+249 03 467 930`. Photos not supplied → placeholder. |
+| **`0004`** | **3 — REAL** | `pnpm seed:sanad` (`scripts/seed-sanad-homes.ts`) | Real **مشغل دبي (Mashghal Dubai)** building, **سوق سكة حديد (Railway Market)**, Port Sudan — 3 units: First floor 2-bedroom (7 beds), Second floor 2-bedroom (7 beds), and Studio. Real specs, amenities, majlis + sofa set, east balcony, generator upon agreement. Owner phone `+249 91 253 8883`. |
 | **`1000+`** (49 hosts) | **74 — REAL** | Growth Engine (`pnpm crm:import`) | Airbnb homes: real titles, descriptions, amenities, structured house rules, photos re-hosted on our own CDN, SDG prices. |
 
-**Totals:** 97 listings across 52 hosts. All start with `lastAvailabilityConfirmedAt = null`, so every owner sees the **Availability Check** nudge on first login (see LAUNCH.md).
+**Totals:** 100 listings across 53 hosts. All start with `lastAvailabilityConfirmedAt = null`, so every owner sees the **Availability Check** nudge on first login (see LAUNCH.md).
 
-> ⚠️ **`0001`, `0002` and `0003` are REAL — keep them real.** Their homes are
+> ⚠️ **`0001`, `0002`, `0003` and `0004` are REAL — keep them real.** Their homes are
 > genuine Port Sudan properties. Each seed script is scoped by `hostId`, so it
 > only ever rebuilds its own owner's listings.
 
@@ -34,8 +35,8 @@ Real owners onboarded from Airbnb (and later fb pages / wa groups / other rental
 
 | Range | Meaning |
 |---|---|
-| `0001–0003` | Real Port Sudan homes (heirs, Daqna, Hussein) — keep real. |
-| `0004–0999` | Free. Was the demo pool; purged 2026-08-05. |
+| `0001–0004` | Real Port Sudan homes (heirs, Daqna, Hussein, Sanad) — keep real. |
+| `0005–0999` | Free. Was the demo pool; purged 2026-08-05. |
 | **`1000+`** | **Real scraped hosts** (Growth Engine) — Busy until the trust gate. |
 
 ## Re-seeding
@@ -45,11 +46,14 @@ The real-owner scripts import the DB client before dotenv loads, so **pre-load t
 # 0001's 7 real homes (scoped to host 0001 ONLY — safe for the others)
 set -a && source .env && set +a && npx tsx scripts/seed-heirs-homes.ts
 
-# 0002's real Daqna homes (scoped to host 0002 ONLY)
-set -a && source .env && set +a && npx tsx scripts/seed-daqna-homes.ts
+# 0002's real Daqna / Railway homes (scoped to host 0002 ONLY)
+set -a && source .env && set +a && npx tsx scripts/seed-railway-homes.ts
 
 # 0003's real homes (scoped to host 0003 ONLY)
 set -a && source .env && set +a && npx tsx scripts/seed-hussein-homes.ts
+
+# 0004's real Dubai Workshop / Railway Market homes (scoped to host 0004 ONLY)
+set -a && source .env && set +a && npx tsx scripts/seed-sanad-homes.ts
 ```
 
 Each deletes only its own host's listings (by `hostId`) and rebuilds them —

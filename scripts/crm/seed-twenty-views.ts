@@ -55,12 +55,30 @@ async function fetchObjects() {
   return map;
 }
 
-async function fetchExistingViewKeys(): Promise<Set<string>> {
-  const data = await metaGraphQL<{ getViews: { name: string; objectMetadataId: string }[] }>(
-    `query GetViews { getViews { id name objectMetadataId } }`,
+interface ExistingViewField {
+  id: string;
+  fieldMetadataId: string;
+  isVisible: boolean;
+  position: number;
+}
+
+interface ExistingView {
+  id: string;
+  name: string;
+  objectMetadataId: string;
+  viewFields?: ExistingViewField[];
+}
+
+async function fetchExistingViews(): Promise<Map<string, ExistingView>> {
+  const data = await metaGraphQL<{ getViews: ExistingView[] }>(
+    `query GetViews { getViews { id name objectMetadataId viewFields { id fieldMetadataId isVisible position } } }`,
     {},
   );
-  return new Set(data.getViews.map((v) => `${v.objectMetadataId}::${v.name}`));
+  const map = new Map<string, ExistingView>();
+  for (const v of data.getViews) {
+    map.set(`${v.objectMetadataId}::${v.name}`, v);
+  }
+  return map;
 }
 
 async function main() {
@@ -87,16 +105,12 @@ async function main() {
   console.log(`mode: APPLY → ${METADATA_ENDPOINT}`);
 
   const objects = await fetchObjects();
-  const existingViews = await fetchExistingViewKeys();
+  const existingViews = await fetchExistingViews();
 
   for (const v of VIEWS) {
     const obj = objects.get(v.object);
     if (!obj) {
       console.warn(`! view "${v.name}" skipped — object "${v.object}" not found (seed objects first)`);
-      continue;
-    }
-    if (existingViews.has(`${obj.id}::${v.name}`)) {
-      console.log(`= view "${v.name}" exists — skip`);
       continue;
     }
 
@@ -109,21 +123,34 @@ async function main() {
       }
     }
 
-    // Create the view shell.
     let viewId: string;
-    try {
-      const data = await metaGraphQL<{ createView: { id: string } }>(
-        `mutation CreateView($input: CreateViewInput!) { createView(input: $input) { id } }`,
-        { input: { name: v.name, objectMetadataId: obj.id, type: v.type, icon: v.icon, ...(groupById ? { mainGroupByFieldMetadataId: groupById } : {}) } },
-      );
-      viewId = data.createView.id;
-      console.log(`+ view "${v.name}" (${v.type}, ${v.object})`);
-    } catch (e) {
-      console.warn(`! view "${v.name}" failed: ${(e as Error).message}`);
-      continue;
+    const existing = existingViews.get(`${obj.id}::${v.name}`);
+    if (existing) {
+      viewId = existing.id;
+      console.log(`= view "${v.name}" exists — syncing columns (id: ${viewId})`);
+    } else {
+      // Create the view shell.
+      try {
+        const data = await metaGraphQL<{ createView: { id: string } }>(
+          `mutation CreateView($input: CreateViewInput!) { createView(input: $input) { id } }`,
+          { input: { name: v.name, objectMetadataId: obj.id, type: v.type, icon: v.icon, ...(groupById ? { mainGroupByFieldMetadataId: groupById } : {}) } },
+        );
+        viewId = data.createView.id;
+        console.log(`+ view "${v.name}" (${v.type}, ${v.object})`);
+      } catch (e) {
+        console.warn(`! view "${v.name}" failed: ${(e as Error).message}`);
+        continue;
+      }
     }
 
-    // Visible columns (ordered).
+    // Map fieldMetadataId → existing viewField
+    const existingVfByFieldId = new Map<string, ExistingViewField>();
+    for (const vf of existing?.viewFields ?? []) {
+      existingVfByFieldId.set(vf.fieldMetadataId, vf);
+    }
+
+    // Set visible columns in order
+    const visibleFieldIds = new Set<string>();
     let position = 0;
     for (const fieldName of v.fields) {
       const fieldId = obj.fields.get(fieldName);
@@ -131,13 +158,45 @@ async function main() {
         console.warn(`    ! column "${fieldName}" not found — skipped`);
         continue;
       }
-      try {
-        await metaGraphQL(
-          `mutation CreateViewField($input: CreateViewFieldInput!) { createViewField(input: $input) { id } }`,
-          { input: { viewId, fieldMetadataId: fieldId, isVisible: true, position: position++ } },
-        );
-      } catch (e) {
-        console.warn(`    ! column "${fieldName}" failed: ${(e as Error).message}`);
+      visibleFieldIds.add(fieldId);
+      const existingVf = existingVfByFieldId.get(fieldId);
+      if (existingVf) {
+        if (!existingVf.isVisible || existingVf.position !== position) {
+          try {
+            await metaGraphQL(
+              `mutation UpdateViewField($input: UpdateViewFieldInput!) { updateViewField(input: $input) { id } }`,
+              { input: { id: existingVf.id, update: { isVisible: true, position } } },
+            );
+          } catch (e) {
+            // Best effort
+          }
+        }
+      } else {
+        try {
+          await metaGraphQL(
+            `mutation CreateViewField($input: CreateViewFieldInput!) { createViewField(input: $input) { id } }`,
+            { input: { viewId, fieldMetadataId: fieldId, isVisible: true, position } },
+          );
+        } catch (e) {
+          // Best effort
+        }
+      }
+      position++;
+    }
+
+    // Hide all other columns on table views
+    if (v.type === 'TABLE') {
+      for (const [fieldId, existingVf] of existingVfByFieldId.entries()) {
+        if (!visibleFieldIds.has(fieldId) && existingVf.isVisible) {
+          try {
+            await metaGraphQL(
+              `mutation UpdateViewField($input: UpdateViewFieldInput!) { updateViewField(input: $input) { id } }`,
+              { input: { id: existingVf.id, update: { isVisible: false } } },
+            );
+          } catch (e) {
+            // Best effort
+          }
+        }
       }
     }
 

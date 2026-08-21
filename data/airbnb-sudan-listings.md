@@ -1,6 +1,6 @@
 # Airbnb Sudan Master Bilingual Copywriting Dataset
 
-**Total Scraped Listings:** 121
+**Total Scraped Listings:** 124
 **Schema Sync:** Twenty CRM `Home` Object (`titleEn`, `titleAr`, `descriptionEn`, `descriptionAr`, `spaceEn`, `spaceAr`, `guestAccessEn`, `guestAccessAr`, `notesEn`, `notesAr`)
 **Platform Target:** Mkan (`mkan.sd` / `mkan.databayt.org`)
 **Market Focus:** Port Sudan & Sudan Short-Term Home Rentals
@@ -4103,6 +4103,215 @@ You’ll love sharing photos of this unique place with your friends.
 #### Full Description (`descriptionAr`)
 ```text
 ستحب مشاركة صور هذا المسكن الفريد مع أصدقائك.
+```
+
+---
+
+## 122. Spacious 2BR Furnished Apartment with East Balcony & Majlis — Dubai Workshop (Listing ID: mkan-sanad-unit-1)
+
+- **Mkan / CRM Host**: `0004@mkan.org` (السند — Al-Sanad) | Phone: `+249 91 253 8883`
+- **Location**: Port Sudan, Railway Market / سوق سكة حديد (19.6210458, 37.2069813)
+- **Zone Key**: `railway-district` (Central Sector)
+- **Specs**: 2 Bedroom(s) · 1 Bathroom(s) · 7 Beds · 7 Guests
+- **Price/Night**: 60000 SDG
+- **Amenities**: AirConditioning, WasherDryer, Kitchen, TV, Refrigerator, PatioOrBalcony
+
+### Bilingual Titles (Twenty CRM: `titleEn` / `titleAr`)
+- **English (`titleEn`)**: `Spacious 2BR Furnished Apartment with East Balcony & Majlis — Dubai Workshop`
+- **Arabic (`titleAr`)**: `شقة عائلية مفروشة بغرفتين وبلكونة شرقية ومجلس — مشغل دبي، سوق سكة حديد`
+
+### English Copywriting Sections
+
+#### Full Description (`descriptionEn`)
+```text
+Enjoy a comfortable and fully equipped family stay in the heart of Port Sudan, located at the Dubai Workshop building in the Railway Market. A spacious and fully furnished 1st-floor apartment featuring excellent natural ventilation and a prime central location close to markets, transit, and services.<br /><br /><b>The space</b><br />• 2 comfortable bedrooms equipped with 7 beds, clean linens, and wardrobes.<br />• Generous living room combining a luxury sofa set with a traditional Arabic majlis seating area for warm gatherings.<br />• East-facing private balcony offering pleasant morning breezes and natural light.<br />• Fully equipped kitchen with stove, refrigerator, chilled water cooler, and cookware.<br />• High-efficiency split air conditioning, smart TV, washing machine, and iron with board.<br />• Full bathroom equipped with two toilets and pristine fixtures.<br /><br /><b>Guest access</b><br />Exclusive and private access to the entire apartment, with easy first-floor staircase access.<br /><br /><b>Other things to note</b><br />• Standby power generator available upon agreement for uninterrupted electricity.<br />• Standby backup water tanks ensuring 24/7 water availability.<br />• Prime central location in Railway Market within walking distance of shopping and transport hubs.
+```
+
+#### The Space (`spaceEn`)
+```text
+• 2 comfortable bedrooms equipped with 7 beds, clean linens, and wardrobes.
+• Generous living room combining a luxury sofa set with a traditional Arabic majlis seating area.
+• East-facing private balcony offering pleasant morning breezes and natural light.
+• Fully equipped kitchen with stove, refrigerator, chilled water cooler, and cookware.
+• High-efficiency split air conditioning, smart TV, washing machine, and iron with board.
+• Full bathroom equipped with two toilets and pristine fixtures.
+```
+
+#### Guest Access (`guestAccessEn`)
+```text
+Exclusive and private access to the entire apartment, with easy first-floor staircase access.
+```
+
+#### Other Notes (`notesEn`)
+```text
+• Standby power generator available upon agreement for uninterrupted electricity.
+• Standby backup water tanks ensuring 24/7 water availability.
+```
+
+### Arabic Copywriting Sections
+
+#### Full Description (`descriptionAr`)
+```text
+استمتع بإقامة عائلية مريحة ومتكاملة في قلب بورتسودان، بمبنى مشغل دبي في سوق سكة حديد. شقة فسيحة ومفروشة بالكامل في الطابق الأول، تتميز بتهوية ممتازة وموقع حيوي قريب من كافة الأسواق والخدمات والمواصلات.<br /><br /><b>المسكن</b><br />• غرفتا نوم مجهزتان بـ 7 أسرة مريحة مع مفروشات نظيفة وخزائن ملابس.<br />• صالة استقبال واسعة تجمع بين طقم جلوس كلاسيكي فاخر وطقم عربي أصيل (مجلس) لجلسات عائلية دافئة.<br />• بلكونة شرقية متميزة تنعم بنسمات الصباح والتهوية الطبيعية.<br />• مطبخ متكامل ومجهز بالكامل ببوتاجاز، ثلاجة، كولر مياه باردة، وأواني طهي.<br />• تكييف هواء سبليت عالي الكفاءة، شاشة تلفزيون ذكية، غسالة ملابس، ومكواة مع طاولة كوي.<br />• حمام مقعدين متكامل ونظيف.<br /><br /><b>إمكانية وصول الضيف</b><br />الشقة بالكامل بخصوصية تامة للضيوف، مع مدخل مستقل وسهل الوصول في الطابق الأول.<br /><br /><b>أشياء أخرى يجب ملاحظتها</b><br />• يتوفر مولد كهربائي احتياطي بالاتفاق لضمان استمرارية التيار.<br />• خزانات مياه احتياطية تضمن إمداد المياه على مدار الساعة.<br />• موقع مركزي مميز في سوق سكة حديد بالقرب من المراكز التجارية ووسائل النقل.
+```
+
+#### The Space / المساحة (`spaceAr`)
+```text
+• غرفتا نوم مجهزتان بـ 7 أسرة مريحة مع مفروشات نظيفة وخزائن ملابس.
+• صالة استقبال واسعة تجمع بين طقم جلوس كلاسيكي فاخر وطقم عربي أصيل (مجلس) لجلسات عائلية دافئة.
+• بلكونة شرقية متميزة تنعم بنسمات الصباح والتهوية الطبيعية.
+• مطبخ متكامل ومجهز بالكامل ببوتاجاز، ثلاجة، كولر مياه باردة، وأواني طهي.
+• تكييف هواء سبليت عالي الكفاءة، شاشة تلفزيون ذكية، غسالة ملابس، ومكواة مع طاولة كوي.
+• حمام مقعدين متكامل ونظيف.
+```
+
+#### Guest Access / وصول الضيوف (`guestAccessAr`)
+```text
+الشقة بالكامل بخصوصية تامة للضيوف، مع مدخل مستقل وسهل الوصول في الطابق الأول.
+```
+
+#### Other Notes / ملاحظات إضافية (`notesAr`)
+```text
+• يتوفر مولد كهربائي احتياطي بالاتفاق لضمان استمرارية التيار.
+• خزانات مياه احتياطية تضمن إمداد المياه على مدار الساعة.
+```
+
+---
+
+## 123. Bright 2BR Furnished Apartment with East Balcony & Majlis — 2nd Floor (Listing ID: mkan-sanad-unit-2)
+
+- **Mkan / CRM Host**: `0004@mkan.org` (السند — Al-Sanad) | Phone: `+249 91 253 8883`
+- **Location**: Port Sudan, Railway Market / سوق سكة حديد (19.6210458, 37.2069813)
+- **Zone Key**: `railway-district` (Central Sector)
+- **Specs**: 2 Bedroom(s) · 1 Bathroom(s) · 7 Beds · 7 Guests
+- **Price/Night**: 60000 SDG
+- **Amenities**: AirConditioning, WasherDryer, Kitchen, TV, Refrigerator, PatioOrBalcony
+
+### Bilingual Titles (Twenty CRM: `titleEn` / `titleAr`)
+- **English (`titleEn`)**: `Bright 2BR Furnished Apartment with East Balcony & Majlis — 2nd Floor`
+- **Arabic (`titleAr`)**: `شقة مفروشة راقية بغرفتين وبلكونة شرقية ومجلس — الطابق الثاني، مشغل دبي`
+
+### English Copywriting Sections
+
+#### Full Description (`descriptionEn`)
+```text
+An elegant, fully furnished apartment on the 2nd floor of Dubai Workshop building, offering peaceful comfort, great ventilation, and open eastern views in the Railway Market, Port Sudan. Ideal for families and travel groups seeking privacy and convenience.<br /><br /><b>The space</b><br />• 2 spacious bedrooms with 7 comfortable beds and fresh linens.<br />• Large living hall featuring a contemporary sofa set and traditional Arabic majlis.<br />• East-facing balcony with open views and refreshing sea-breeze ventilation.<br />• Fully equipped kitchen with complete cookware, chilled water cooler, and refrigerator.<br />• Split-unit air conditioning, TV, washing machine, and iron.<br />• Full bathroom with two toilets and complete amenities.<br /><br /><b>Guest access</b><br />Guests have complete, private access to the whole apartment throughout their stay.<br /><br /><b>Other things to note</b><br />• Backup standby generator available upon agreement.<br />• Continuous water supply backed by dedicated storage tanks.<br />• Steps away from Port Sudan's main commercial hubs and transportation.
+```
+
+#### The Space (`spaceEn`)
+```text
+• 2 spacious bedrooms with 7 comfortable beds and fresh linens.
+• Large living hall featuring a contemporary sofa set and traditional Arabic majlis.
+• East-facing balcony with open views and refreshing sea-breeze ventilation.
+• Fully equipped kitchen with complete cookware, chilled water cooler, and refrigerator.
+• Split-unit air conditioning, TV, washing machine, and iron.
+• Full bathroom with two toilets and complete amenities.
+```
+
+#### Guest Access (`guestAccessEn`)
+```text
+Guests have complete, private access to the whole apartment throughout their stay.
+```
+
+#### Other Notes (`notesEn`)
+```text
+• Backup standby generator available upon agreement.
+• Continuous water supply backed by dedicated storage tanks.
+```
+
+### Arabic Copywriting Sections
+
+#### Full Description (`descriptionAr`)
+```text
+شقة أنيقة ومفروشة بالكامل في الطابق الثاني بمبنى مشغل دبي، تمنحك الهدوء والتهوية الرائعة مع إطلالة شرقية مفتوحة في سوق سكة حديد ببورتسودان. مثالية للعائلات والمجموعات الباحثة عن الراحة والخصوصية.<br /><br /><b>المسكن</b><br />• غرفتا نوم واسعتان مجهزتان بـ 7 أسرة مريحة ومفروشات فندقية أنيقة.<br />• صالة معيشة رحبة تضم طقم جلوس عصري ومجلس عربي تقليدي مريح.<br />• بلكونة شرقية بإطلالة مفتوحة وتهوية علوية ممتازة بعيداً عن ضجيج الشارع.<br />• مطبخ مجهز بالكامل بجميع مستلزمات الطهي، كولر مياه، وثلاجة.<br />• تكييف هواء سبليت بارد، شاشة تلفزيون، غسالة ملابس ومكواة.<br />• حمام مقعدين متكامل ونظيف بجميع التجهيزات.<br /><br /><b>إمكانية وصول الضيف</b><br />الشقة بالكامل مخصصة للضيوف للاستمتاع بإقامة مستقلة وهادئة.<br /><br /><b>أشياء أخرى يجب ملاحظتها</b><br />• يتوفر مولد كهربائي احتياطي بالاتفاق.<br />• إمدادات مياه مستمرة عبر خزانات مياه احتياطية.<br />• قريبة جداً من المواقف والأسواق المركزية في بورتسودان.
+```
+
+#### The Space / المساحة (`spaceAr`)
+```text
+• غرفتا نوم واسعتان مجهزتان بـ 7 أسرة مريحة ومفروشات فندقية أنيقة.
+• صالة معيشة رحبة تضم طقم جلوس عصري ومجلس عربي تقليدي مريح.
+• بلكونة شرقية بإطلالة مفتوحة وتهوية علوية ممتازة بعيداً عن ضجيج الشارع.
+• مطبخ مجهز بالكامل بجميع مستلزمات الطهي، كولر مياه، وثلاجة.
+• تكييف هواء سبليت بارد، شاشة تلفزيون، غسالة ملابس ومكواة.
+• حمام مقعدين متكامل ونظيف بجميع التجهيزات.
+```
+
+#### Guest Access / وصول الضيوف (`guestAccessAr`)
+```text
+الشقة بالكامل مخصصة للضيوف للاستمتاع بإقامة مستقلة وهادئة.
+```
+
+#### Other Notes / ملاحظات إضافية (`notesAr`)
+```text
+• يتوفر مولد كهربائي احتياطي بالاتفاق.
+• إمدادات مياه مستمرة عبر خزانات مياه احتياطية.
+```
+
+---
+
+## 124. Modern Fully Equipped Studio Apartment — Dubai Workshop, Railway Market (Listing ID: mkan-sanad-unit-3)
+
+- **Mkan / CRM Host**: `0004@mkan.org` (السند — Al-Sanad) | Phone: `+249 91 253 8883`
+- **Location**: Port Sudan, Railway Market / سوق سكة حديد (19.6210458, 37.2069813)
+- **Zone Key**: `railway-district` (Central Sector)
+- **Specs**: 1 Bedroom(s) · 1 Bathroom(s) · 2 Guests
+- **Price/Night**: 30000 SDG
+- **Amenities**: AirConditioning, Kitchen, TV, Refrigerator
+
+### Bilingual Titles (Twenty CRM: `titleEn` / `titleAr`)
+- **English (`titleEn`)**: `Modern Fully Equipped Studio Apartment — Dubai Workshop, Railway Market`
+- **Arabic (`titleAr`)**: `استوديو عصري مفروش ومجهز بالكامل — مشغل دبي، سوق سكة حديد`
+
+### English Copywriting Sections
+
+#### Full Description (`descriptionEn`)
+```text
+A practical, stylish, and fully equipped studio apartment at the Dubai Workshop building in Railway Market, Port Sudan. Perfect for solo travelers, business professionals, and couples looking for a cozy, peaceful stay in a prime central hub.<br /><br /><b>The space</b><br />• Comfortable bedroom space with fresh linens and a cozy living area.<br />• Equipped kitchenette with essential appliances, refrigerator, and water cooler.<br />• High-quality split air conditioning and flat-screen TV.<br />• Private, sparkling clean full bathroom.<br /><br /><b>Guest access</b><br />Entire studio apartment is exclusively for the guest with full privacy.<br /><br /><b>Other things to note</b><br />• Reliable water and electricity, with generator backup available upon agreement.<br />• Centrally located with fast access to Port Sudan downtown and transit routes.
+```
+
+#### The Space (`spaceEn`)
+```text
+• Comfortable bedroom space with fresh linens and a cozy living area.
+• Equipped kitchenette with essential appliances, refrigerator, and water cooler.
+• High-quality split air conditioning and flat-screen TV.
+• Private, sparkling clean full bathroom.
+```
+
+#### Guest Access (`guestAccessEn`)
+```text
+Entire studio apartment is exclusively for the guest with full privacy.
+```
+
+#### Other Notes (`notesEn`)
+```text
+• Reliable water and electricity, with generator backup available upon agreement.
+• Centrally located with fast access to Port Sudan downtown and transit routes.
+```
+
+### Arabic Copywriting Sections
+
+#### Full Description (`descriptionAr`)
+```text
+استوديو عملي وأنيق مجهز بالكامل في مبنى مشغل دبي بسوق سكة حديد، بورتسودان. خيار مثالي للأفراد، رجال الأعمال، والثنائيات الباحثين عن إقامة مريحة وهادئة في موقع استراتيجي نابض بالحياة.<br /><br /><b>المسكن</b><br />• غرفة نوم مريحة بفرش نظيف وهول استقبال مريح.<br />• مطبخ مجهز بالأجهزة الأساسية، ثلاجة، وكولر مياه.<br />• تكييف هواء سبليت عالي الجودة وشاشة تلفزيون مسطحة.<br />• حمام خاص متكامل ونظيف.<br /><br /><b>إمكانية وصول الضيف</b><br />الاستوديو بالكامل خاص بالضيف بمدخل آمن وخصوصية تامة.<br /><br /><b>أشياء أخرى يجب ملاحظتها</b><br />• إمداد مياه وكهرباء موثوق، مع خيار المولد الاحتياطي بالاتفاق.<br />• موقع مركزي يتيح الوصول السريع لوسط المدينة ومحطات النقل.
+```
+
+#### The Space / المساحة (`spaceAr`)
+```text
+• غرفة نوم مريحة بفرش نظيف وهول استقبال مريح.
+• مطبخ مجهز بالأجهزة الأساسية، ثلاجة، وكولر مياه.
+• تكييف هواء سبليت عالي الجودة وشاشة تلفزيون مسطحة.
+• حمام خاص متكامل ونظيف.
+```
+
+#### Guest Access / وصول الضيوف (`guestAccessAr`)
+```text
+الاستوديو بالكامل خاص بالضيف بمدخل آمن وخصوصية تامة.
+```
+
+#### Other Notes / ملاحظات إضافية (`notesAr`)
+```text
+• إمداد مياه وكهرباء موثوق، مع خيار المولد الاحتياطي بالاتفاق.
+• موقع مركزي يتيح الوصول السريع لوسط المدينة ومحطات النقل.
 ```
 
 ---

@@ -34,7 +34,7 @@ const HIGH_TRUST_MIN = 50;
 // The three real hosts, keyed by ACCOUNT NUMBER (the email's local part) — not
 // by username, which now holds the owner's real name and is synced from the CRM
 // by sync-host-names.ts. Names here are the display names as of 2026-08-18.
-const REAL_HOSTS: Record<string, string> = { '0001': 'عبدوت', '0002': 'دقنة', '0003': 'حسين' };
+const REAL_HOSTS: Record<string, string> = { '0001': 'عبدوت', '0002': 'دقنة', '0003': 'حسين', '0004': 'السند' };
 const REAL_EMAILS = Object.keys(REAL_HOSTS).map((n) => `${n}@mkan.org`);
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -185,7 +185,8 @@ async function main() {
       name: l.title ?? `mkan #${l.id}`,
       title: l.title ?? undefined,
       description: l.description ?? undefined,
-      source: 'OTHER',
+      source: 'MANUAL',
+      country: 'SUDAN',
       city: 'PORT_SUDAN',
       homeAddress: l.location ? {
         addressStreet1: l.location.address ?? '',
@@ -205,10 +206,13 @@ async function main() {
       priceNightSdg: currency(l.pricePerNight, 'SDG'),
       avgRating: l.averageRating ?? undefined,
       reviewCount: l.numberOfReviews ?? undefined,
+      propertyType: l.propertyType ? PROPERTY_TYPE[l.propertyType] : undefined,
       mkanPropertyType: l.propertyType ? PROPERTY_TYPE[l.propertyType] : undefined,
+      listingId: l.id,
       mkanListingId: l.id,
       // Real, owner-known inventory: pre-approved (AUTO_ONBOARD) and already live on mkan.
       homeStatus: live ? 'LIVE' : 'IMPORTED_BUSY',
+      publishState: live ? 'LIVE' : 'IMPORTED_BUSY',
       mkanPublishState: live ? 'LIVE' : 'IMPORTED_BUSY',
       trustBand: 'AUTO_ONBOARD',
       publishReady: true,

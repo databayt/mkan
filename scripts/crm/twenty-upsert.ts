@@ -56,6 +56,8 @@ const linkOne = (url: string | null | undefined, label = '') =>
   url ? { primaryLinkUrl: url, primaryLinkLabel: label, secondaryLinks: [] } : undefined;
 const linkMany = (urls: string[]) =>
   urls.length ? { primaryLinkUrl: urls[0], primaryLinkLabel: '', secondaryLinks: urls.slice(1).map((u) => ({ label: '', url: u })) } : undefined;
+const phone = (num: string | null | undefined) =>
+  num ? { primaryPhoneNumber: num, primaryPhoneCountryCode: '', primaryPhoneCallingCode: '', additionalPhones: [] } : undefined;
 const currency = (amount: number | null, code: string) =>
   amount != null ? { amountMicros: Math.round(amount * 1_000_000), currencyCode: code } : undefined;
 
@@ -133,10 +135,14 @@ type EnrichedHome = HomeRecord & {
   notesAr?: string | null;
 };
 
-function homeBody(h: EnrichedHome, hostId: string | null) {
+function homeBody(h: EnrichedHome, hostId: string | null, host?: HostRecord) {
   const amen = mapAmenities(h.amenitiesRaw);
+  const count = h.photoCount ?? (h.photoUrls?.length ?? 0);
+  const initialPhotoStage =
+    count === 0 ? 'NOT_FOUND' : count < 5 ? 'INCOMPLETE' : count >= 15 ? 'HIGH_QUALITY' : 'ACCEPTABLE';
+
   return clean({
-    source: h.source,
+    source: (h as any).source ?? 'AIRBNB',
     airbnbListingId: h.airbnbListingId,
     airbnbUrl: linkOne(h.airbnbUrl, 'Airbnb'),
     title: h.title ?? undefined,
@@ -155,11 +161,17 @@ function homeBody(h: EnrichedHome, hostId: string | null) {
     roomType: h.roomType ?? undefined,
     airbnbCategory: h.airbnbCategory ?? undefined,
     airbnbCategoryAr: h.airbnbCategoryAr ?? undefined,
+    country: 'SUDAN',
     city: h.city,
+    zone: (h as any).zone ?? undefined,
     homeState: h.homeState ?? undefined,
     homeAddress: address(h), // "address" is reserved in Twenty; field is homeAddress
-    // Which rule resolved the host. The import refuses HEURISTIC, so surfacing
-    // it here is how a human sees why a home is being held back.
+
+    // Host & Contacts (denormalized)
+    account: host?.mkanUsername ?? (host?.mkanAccountEmail ? host.mkanAccountEmail.split('@')[0] : undefined),
+    hostName: host?.name ?? undefined,
+    hostPhone: phone(host?.phone),
+    hostWhatsapp: phone(host?.whatsapp),
     hostAttribution: h.hostSource ?? 'NONE',
 
     bedrooms: h.bedrooms ?? undefined,
@@ -167,9 +179,12 @@ function homeBody(h: EnrichedHome, hostId: string | null) {
     bathrooms: h.bathrooms ?? undefined,
     guestCapacity: h.guestCapacity ?? undefined,
     amenitiesRaw: h.amenitiesRaw.length ? h.amenitiesRaw : undefined,
+    amenities: amen.length ? amen.map(toUpperSnake) : undefined,
     mkanAmenities: amen.length ? amen.map(toUpperSnake) : undefined,
+    highlights: (h as any).mkanHighlights?.length ? (h as any).mkanHighlights.map(toUpperSnake) : undefined,
     petsAllowed: h.amenitiesRaw.some((a) => /pets? allowed/i.test(a)) || undefined,
     parkingIncluded: h.amenitiesRaw.some((a) => /free parking/i.test(a)) || undefined,
+    photoStage: initialPhotoStage,
     photoUrls: linkMany(h.photoUrls),
     photoCount: h.photoCount,
     coverPhotoUrl: linkOne(h.coverPhotoUrl),
@@ -177,6 +192,7 @@ function homeBody(h: EnrichedHome, hostId: string | null) {
     priceNightSar: currency(h.priceNightSar, 'SAR'),
     avgRating: h.avgRating ?? undefined,
     reviewCount: h.reviewCount ?? undefined,
+    propertyType: h.mkanPropertyType ? toUpperSnake(h.mkanPropertyType) : undefined,
     mkanPropertyType: h.mkanPropertyType ? toUpperSnake(h.mkanPropertyType) : undefined,
     // A re-scrape that 404s means the host took the listing down. It must
     // reach the CRM, because a delisted home should never be imported or
@@ -184,6 +200,7 @@ function homeBody(h: EnrichedHome, hostId: string | null) {
     // existing record cannot keep a stale false.
     stillListed: h.stillListed ?? true,
     homeStatus: 'SCRAPED',
+    publishState: 'NOT_IMPORTED',
     mkanPublishState: 'NOT_IMPORTED',
     trustBand: 'UNSCORED',
     // Airbnb's own geocoded place string, kept verbatim — it is the evidence
@@ -273,20 +290,21 @@ async function main() {
   // by definition the most correct value. Everything NOT here is either a human
   // judgement (photoQuality, trustBandOverride, overrideReason, labels,
   // publishReady, priceConfirmedByHost) or pipeline state owned by a later
-  // stage (homeStatus, mkanPublishState, mkanListingId, trustBand, importedAt,
+  // stage (homeStatus, publishState, listingId, trustBand, importedAt,
   // photosRehosted) — refreshing those would silently undo somebody's work or
   // walk a listing backwards through the funnel.
   const HOME_REFRESHABLE = [
     'title', 'titleEn', 'titleAr', 'name', 'description', 'descriptionEn', 'descriptionAr',
     'spaceEn', 'spaceAr', 'guestAccessEn', 'guestAccessAr', 'notesEn', 'notesAr',
     'roomType', 'airbnbCategory',
-    'city', 'homeState', 'homeAddress', 'hostAttribution', 'locationCheck',
+    'country', 'city', 'zone', 'homeState', 'homeAddress',
+    'account', 'hostName', 'hostPhone', 'hostWhatsapp', 'hostAttribution', 'locationCheck',
     'airbnbCategoryAr',
     'bedrooms', 'beds', 'bathrooms', 'guestCapacity',
-    'amenitiesRaw', 'mkanAmenities', 'petsAllowed', 'parkingIncluded',
-    'photoUrls', 'photoCount', 'coverPhotoUrl',
-    'priceNightSar', 'avgRating', 'reviewCount', 'mkanPropertyType',
-    'airbnbUrl', 'hostId', 'stillListed',
+    'amenitiesRaw', 'amenities', 'mkanAmenities', 'highlights', 'petsAllowed', 'parkingIncluded',
+    'photoStage', 'photoUrls', 'photoCount', 'coverPhotoUrl',
+    'priceNightSar', 'avgRating', 'reviewCount', 'propertyType', 'mkanPropertyType',
+    'airbnbUrl', 'hostId', 'stillListed', 'source',
   ] as const;
   const HOST_REFRESHABLE = [
     'name', 'airbnbProfileUrl', 'avatarUrl', 'superhost', 'hostSince',
@@ -296,6 +314,9 @@ async function main() {
   ] as const;
   const pick = (body: Record<string, unknown>, keys: readonly string[]) =>
     Object.fromEntries(Object.entries(body).filter(([k]) => keys.includes(k)));
+
+  const hostMap = new Map<string, HostRecord>();
+  for (const h of hosts) hostMap.set(h.airbnbHostId, h);
 
   // 1) Hosts (dedup → id map; remember which were newly created).
   const hostRecId = new Map<string, string>(); // airbnbHostId → Twenty id
@@ -326,16 +347,18 @@ async function main() {
   for (const home of homes) {
     try {
       const existingHomeId = await findId('homes', 'airbnbListingId', home.airbnbListingId);
+      const hostObj = home.hostAirbnbId ? hostMap.get(home.hostAirbnbId) : undefined;
+      const hostTwentyId = home.hostAirbnbId ? hostRecId.get(home.hostAirbnbId) ?? null : null;
       if (existingHomeId) {
         if (REFRESH) {
-          const body = homeBody(home, home.hostAirbnbId ? hostRecId.get(home.hostAirbnbId) ?? null : null);
+          const body = homeBody(home, hostTwentyId, hostObj);
           await rest('PATCH', `homes/${existingHomeId}`, pick(body, HOME_REFRESHABLE));
           console.log(`~ home ${home.airbnbListingId} refreshed (${(home.title ?? '').slice(0, 30)})`);
         } else {
           console.log(`= home ${home.airbnbListingId} exists`);
         }
       } else {
-        await rest('POST', 'homes', homeBody(home, home.hostAirbnbId ? hostRecId.get(home.hostAirbnbId) ?? null : null));
+        await rest('POST', 'homes', homeBody(home, hostTwentyId, hostObj));
         console.log(`+ home ${home.airbnbListingId} (${(home.title ?? '').slice(0, 32)})`);
       }
     } catch (e) {

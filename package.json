@@ -23,6 +23,7 @@
     "seed:heirs": "tsx scripts/seed-heirs-homes.ts",
     "seed:railway": "tsx scripts/seed-railway-homes.ts",
     "seed:hussein": "tsx scripts/seed-hussein-homes.ts",
+    "seed:sanad": "tsx scripts/seed-sanad-homes.ts",
     "i18n:backfill": "tsx scripts/backfill-listing-translations.ts",
     "i18n:check": "tsx scripts/dev-i18n-sync.ts && tsx scripts/i18n-scan-hardcoded.ts",
     "i18n:scan": "tsx scripts/i18n-scan-hardcoded.ts",

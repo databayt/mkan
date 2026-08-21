@@ -625,7 +625,7 @@ export const PORT_SUDAN_ZONES: PortSudanZone[] = [
     lat: 19.6210458,
     lng: 37.2069813,
     radiusKm: 0.6,
-    aliases: ["السكة حديد", "حي السكة حديد", "محطة السكة حديد", "ورش السكة حديد", "Railway District", "سكة حديد"],
+    aliases: ["السكة حديد", "حي السكة حديد", "محطة السكة حديد", "ورش السكة حديد", "Railway District", "سكة حديد", "سوق سكة حديد"],
     description: "Historical quarter centered on the Sudan Railways terminal, locomotive workshops, and administrative offices.",
     priorityScore: 10,
     tier: "MONITOR_OPPORTUNITY",

@@ -53,8 +53,8 @@ export async function generateMetadata({
 }: ListingPageProps): Promise<Metadata> {
   const { id, lang } = await params;
   const d = await getDictionary(lang);
-  const listingId = parseInt(id);
-  if (isNaN(listingId)) {
+  const listing = await fetchListing(id);
+  if (!listing) {
     return createMetadata({
       title: d.rental?.listing?.details,
       description: d.rental?.listing?.viewDetails,
@@ -62,9 +62,6 @@ export async function generateMetadata({
       path: `/listings/${id}`,
     });
   }
-  // Same cached fetch the page body uses — one Prisma round trip per request
-  // instead of a separate metadata-only query.
-  const listing = await fetchListing(listingId);
   const [title, description, city] = await Promise.all([
     getText(listing?.title, lang),
     getText(listing?.description, lang),
@@ -86,9 +83,15 @@ export async function generateMetadata({
 
 // React cache() dedupes across generateMetadata and the page body within a
 // single request — both consume the same row, so it runs once.
-const fetchListing = cache(async (id: number) =>
-  db.listing.findUnique({
-    where: { id },
+const fetchListing = cache(async (identifier: string) => {
+  const numericId = parseInt(identifier);
+  return db.listing.findFirst({
+    where: {
+      OR: [
+        ...(isNaN(numericId) ? [] : [{ id: numericId }]),
+        { sourceListingId: identifier },
+      ],
+    },
     include: {
       location: true,
       host: {
@@ -102,11 +105,11 @@ const fetchListing = cache(async (id: number) =>
         }
       },
     }
-  })
-);
+  });
+});
 
-async function getListingById(id: number, lang: Locale) {
-  const listing = await fetchListing(id);
+async function getListingById(identifier: string, lang: Locale) {
+  const listing = await fetchListing(identifier);
   if (!listing) return listing;
 
   // Localize dynamic content (Arabic source) for the viewer's locale. No-op
@@ -124,15 +127,10 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
   const sp = (await searchParams) ?? {};
   const initialCheckIn = pickDateParam(sp, "checkIn", "check_in");
   const initialCheckOut = pickDateParam(sp, "checkOut", "check_out");
-  const listingId = parseInt(id);
-
-  if (isNaN(listingId)) {
-    notFound();
-  }
 
   let listing;
   try {
-    listing = await getListingById(listingId, lang);
+    listing = await getListingById(id, lang);
   } catch (error) {
     console.error("Error fetching listing:", error);
     notFound();
@@ -141,6 +139,8 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
   if (!listing || !listing.isPublished) {
     notFound();
   }
+
+  const listingId = listing.id;
 
   // Serialize the listing data to avoid Prisma serialization issues
   const serializedListing = JSON.parse(JSON.stringify(listing));

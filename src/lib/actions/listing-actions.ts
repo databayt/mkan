@@ -245,14 +245,20 @@ export async function createListing(data: unknown = {}) {
 // ============================================
 
 export async function getListing(id: unknown) {
-  const parsedId = listingIdSchema.safeParse(id);
-  if (!parsedId.success) {
+  let whereClause: Prisma.ListingWhereInput;
+  if (typeof id === "number" && !isNaN(id)) {
+    whereClause = { id };
+  } else if (typeof id === "string" && /^\d+$/.test(id.trim())) {
+    whereClause = { id: parseInt(id.trim()) };
+  } else if (typeof id === "string" && id.trim().length > 0) {
+    whereClause = { sourceListingId: id.trim() };
+  } else {
     throw new Error("Invalid listing ID");
   }
 
   try {
-    const listing = await db.listing.findUnique({
-      where: { id: parsedId.data },
+    const listing = await db.listing.findFirst({
+      where: whereClause,
       include: {
         location: true,
         host: {

@@ -91,7 +91,11 @@ function fieldInput(f: FieldDef, objectMetadataId: string, targetId?: string) {
   const input: Record<string, unknown> = { type: f.type, name: f.name, label: f.label, objectMetadataId };
   if (f.description) input.description = f.description;
   if (f.icon) input.icon = f.icon;
-  if (f.defaultValue !== undefined) input.defaultValue = f.defaultValue;
+  if (f.defaultValue !== undefined) {
+    input.defaultValue = typeof f.defaultValue === 'string' && !f.defaultValue.startsWith("'")
+      ? `'${f.defaultValue}'`
+      : f.defaultValue;
+  }
   if (f.options) input.options = f.options.map((v, i) => toOption(v, i));
   if (f.relation && targetId) {
     input.relationCreationPayload = {
