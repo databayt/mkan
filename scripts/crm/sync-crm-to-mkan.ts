@@ -95,7 +95,7 @@ async function main() {
     });
 
     // 2. Create Location
-    const districtName = c.zone === 'RAILWAY_DISTRICT' ? 'السكة حديد' : (c.zone === 'HAYY_AL_AGHAREEQ' ? 'حي الإغريق' : 'بورتسودان');
+    const districtName = c.zone === 'RAILWAY_DISTRICT' ? 'سكة حديد' : (c.zone === 'HAYY_AL_AGHAREEQ' ? 'حي الإغريق' : 'بورتسودان');
     const location = await prisma.location.create({
       data: {
         city: 'Port Sudan',
@@ -105,7 +105,7 @@ async function main() {
         address: `${districtName}، بورتسودان`,
         latitude: lat ?? 19.6145,
         longitude: lng ?? 37.2170,
-        zoneKey: 'portsudan',
+        zoneKey: c.zone === 'RAILWAY_DISTRICT' ? 'railway-district' : 'portsudan',
       }
     });
 

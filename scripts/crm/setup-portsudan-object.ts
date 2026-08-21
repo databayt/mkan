@@ -77,7 +77,7 @@ async function main() {
     { name: 'notesAr', label: 'Notes (AR)', type: 'TEXT' },
     { name: 'notesEn', label: 'Notes (EN)', type: 'TEXT' },
     { name: 'airbnbCategoryAr', label: 'Category (AR)', type: 'TEXT' },
-    { name: 'zone', label: 'Zone', type: 'SELECT', options: PORT_SUDAN_ZONE_OPTIONS.map((v, i) => ({ value: v, label: v === 'RAILWAY_DISTRICT' ? 'السكة حديد (Ska Hadded)' : v, position: i, color: 'blue' })) },
+    { name: 'zone', label: 'Zone', type: 'SELECT', options: PORT_SUDAN_ZONE_OPTIONS.map((v, i) => ({ value: v, label: v === 'RAILWAY_DISTRICT' ? 'Ska Hadded' : v, position: i, color: 'blue' })) },
     { name: 'googleMapsUrl', label: 'Google Maps', type: 'LINKS', icon: 'IconMapPin' },
     { name: 'listingUrl', label: 'Listing URL', type: 'LINKS', icon: 'IconLink' },
     { name: 'bedrooms', label: 'Bedrooms', type: 'NUMBER' },
