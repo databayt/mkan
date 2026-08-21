@@ -14,6 +14,7 @@ import { Prisma } from "@prisma/client";
 // files may only export async functions.
 export const SEARCH_LISTING_SELECT = {
   id: true,
+  sourceListingId: true,
   title: true,
   description: true,
   pricePerNight: true,

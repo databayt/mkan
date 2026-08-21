@@ -10,7 +10,7 @@ import type { Locale } from "@/components/internationalization/config";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 
 export interface NearbyStay {
-  id: number;
+  id: number | string;
   title: string;
   image: string | null;
   price: number;

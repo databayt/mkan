@@ -245,16 +245,20 @@ export async function createListing(data: unknown = {}) {
 // ============================================
 
 export async function getListing(id: unknown) {
-  let whereClause: Prisma.ListingWhereInput;
-  if (typeof id === "number" && !isNaN(id)) {
-    whereClause = { id };
-  } else if (typeof id === "string" && /^\d+$/.test(id.trim())) {
-    whereClause = { id: parseInt(id.trim()) };
-  } else if (typeof id === "string" && id.trim().length > 0) {
-    whereClause = { sourceListingId: id.trim() };
-  } else {
+  if (!id) {
     throw new Error("Invalid listing ID");
   }
+
+  const idStr = String(id).trim();
+  const numericId = parseInt(idStr, 10);
+  const isSafeDbId = !isNaN(numericId) && numericId < 1_000_000 && /^\d+$/.test(idStr);
+
+  const whereClause: Prisma.ListingWhereInput = {
+    OR: [
+      { sourceListingId: idStr },
+      ...(isSafeDbId ? [{ id: numericId }] : []),
+    ],
+  };
 
   try {
     const listing = await db.listing.findFirst({

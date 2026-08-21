@@ -74,7 +74,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
 
   // Transform properties to match PropertyCard interface
   const transformedProperties = properties.map(property => ({
-    id: property.id.toString(),
+    id: (property.sourceListingId || property.id).toString(),
     images: property.photoUrls || [],
     title: property.title || "Property",
     location: `${property.location?.city || ""}, ${property.location?.state || ""}`,

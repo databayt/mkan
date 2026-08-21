@@ -99,7 +99,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
   // renders SearchCard directly from the raw Listing so it can read city,
   // bedrooms/bathrooms, and review counts.)
   const transformedProperties = properties.map((property, index) => ({
-    id: property.id.toString(),
+    id: (property.sourceListingId || property.id).toString(),
     images: property.photoUrls ?? [],
     title: property.title ?? "Property",
     location: `${property.location?.city ?? ""}, ${property.location?.state ?? ""}`,
@@ -131,7 +131,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
             {properties.map((l, index) => (
               <SearchCard
                 key={l.id}
-                id={l.id.toString()}
+                id={(l.sourceListingId || l.id).toString()}
                 images={l.photoUrls ?? []}
                 title={l.title ?? ''}
                 subtitle={buildLocationSubtitle(l)}

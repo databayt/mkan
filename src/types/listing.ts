@@ -1,5 +1,6 @@
 export interface Listing {
   id: number;
+  sourceListingId?: string | null;
   title: string | null;
   description: string | null;
   pricePerNight: number | null;

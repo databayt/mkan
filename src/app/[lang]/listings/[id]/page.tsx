@@ -84,12 +84,13 @@ export async function generateMetadata({
 // React cache() dedupes across generateMetadata and the page body within a
 // single request — both consume the same row, so it runs once.
 const fetchListing = cache(async (identifier: string) => {
-  const numericId = parseInt(identifier);
+  const numericId = parseInt(identifier, 10);
+  const isSafeDbId = !isNaN(numericId) && numericId < 1_000_000 && /^\d+$/.test(identifier);
   return db.listing.findFirst({
     where: {
       OR: [
-        ...(isNaN(numericId) ? [] : [{ id: numericId }]),
         { sourceListingId: identifier },
+        ...(isSafeDbId ? [{ id: numericId }] : []),
       ],
     },
     include: {
@@ -212,7 +213,7 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
   try {
     const localizedNearby = await localize(nearbyRaw, ["title"], lang);
     nearbyStays = localizedNearby.map((l) => ({
-      id: l.id,
+      id: (l as any).sourceListingId || l.id,
       title: l.title ?? "Listing",
       image: l.photoUrls?.[0] ?? null,
       price: l.pricePerNight ?? 0,
@@ -223,7 +224,8 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
     nearbyStays = [];
   }
 
-  const listingUrl = `${SITE_URL}/${lang}/listings/${listingId}`;
+  const canonicalId = listing.sourceListingId || listingId;
+  const listingUrl = `${SITE_URL}/${lang}/listings/${canonicalId}`;
 
   return (
     <div className="min-h-screen bg-background">
