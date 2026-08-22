@@ -77,7 +77,7 @@ export async function findRun(ref: string) {
   const db = await getDb();
   const matches = await db.masteringRun.findMany({
     where: { id: { contains: ref } },
-    include: { listing: { select: { id: true, title: true, hostId: true, photoUrls: true } } },
+    include: { listing: { select: { id: true, title: true, hostId: true, photoUrls: true, isPublished: true } } },
     take: 5,
   });
   if (matches.length === 1) return matches[0];

@@ -84,6 +84,8 @@ pnpm master:dispatch --apply                                # tasks → Slack
 #                 → generate → download → then:
 pnpm master:done <runId>            # eyeball side-by-side → confirm → live
 pnpm master:status                  # where is every image, and why
+# NOTE: unpublished (busy) listings 404 on the public URL — verify those via
+#       master:status / the hosting dashboard; the public page applies once live.
 pnpm master:reconcile --apply       # stall alerts (Hermes cron in Phase 2)
 ```
 

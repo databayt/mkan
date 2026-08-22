@@ -203,7 +203,11 @@ async function main(): Promise<void> {
   console.log(`   after:  ${masteredUrl}`);
   console.log(`   before: ${run.originalUrl} (kept on CDN — master:revert restores it)`);
   console.log(`   ${crmNote}`);
-  console.log(`   check:  https://mkan.sd/ar/listings/${run.listingId}\n`);
+  console.log(
+    run.listing.isPublished
+      ? `   check:  https://mkan.sd/ar/listings/${run.listingId}\n`
+      : '   check:  listing is unpublished (busy) — the public URL 404s; verify via pnpm master:status or the hosting dashboard\n',
+  );
 }
 
 main().catch((e: unknown) => {

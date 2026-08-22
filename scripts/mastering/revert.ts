@@ -59,7 +59,11 @@ async function main(): Promise<void> {
   }
 
   await slackReplySafe(run.slackTs, `:leftwards_arrow_with_hook: ${shortId(run.id)} reverted — the original is live again.`);
-  console.log(`\n✅ original restored — https://mkan.sd/ar/listings/${run.listingId}\n`);
+  console.log(
+    run.listing.isPublished
+      ? `\n✅ original restored — https://mkan.sd/ar/listings/${run.listingId}\n`
+      : '\n✅ original restored (listing unpublished — verify via pnpm master:status)\n',
+  );
 }
 
 main().catch((e: unknown) => {
