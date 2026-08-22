@@ -3,9 +3,14 @@
  *
  *   pnpm master:done h3k9x2                    # newest image in ~/Downloads
  *   pnpm master:done h3k9x2 --file=/path/x.png
+ *   pnpm master:done h3k9x2 --from-slack        # image the human attached in Slack
  *   pnpm master:done h3k9x2 --yes --no-open    # skip eyeball + confirm (CI/auto lane)
  *
- * Flags: --file=<path> --window=<minutes, default 120> --yes --no-open
+ * Flags: --file=<path> --from-slack --window=<minutes, default 120> --yes --no-open
+ *
+ * Return lanes (spec §13): the human returns the render either by attaching
+ * it in the run's Slack thread (--from-slack — the only lane that works from
+ * a phone) or by downloading it on this Mac (~/Downloads, the default).
  *
  * What it does, in order: validate the candidate (decodes, ≥1200px wide, not
  * byte-identical to the original), open original + candidate side-by-side for
@@ -35,10 +40,15 @@ import {
   confirm,
   openFiles,
   slackReplySafe,
+  slackReturns,
+  type SlackReturn,
+  slackDownload,
+  slackReactSafe,
   twentyRollup,
 } from './lib';
 
 const FILE = argv('file');
+const FROM_SLACK = flag('from-slack');
 const WINDOW_MIN = parseInt(argv('window', '120'), 10) || 120;
 const YES = flag('yes');
 const NO_OPEN = flag('no-open');
@@ -65,6 +75,38 @@ function newestDownload(): string {
 
 const sha256 = (buf: Buffer | Uint8Array): string => createHash('sha256').update(buf).digest('hex');
 
+/**
+ * The human's returned image for this run (spec §13). Preference order:
+ *   1. an image attached IN the run's task thread  — unambiguous
+ *   2. an image in the channel whose text names the run — `DONE kbbvvatd`
+ *   3. the newest human image in the channel — only when this run is the sole
+ *      one waiting, otherwise refuse rather than master the wrong photo
+ * The eyeball still owns identity: matching a run is not proof of the room.
+ */
+async function pickSlackReturn(runSlackTs: string | null, runId: string): Promise<SlackReturn> {
+  const returns = await slackReturns(runSlackTs ? [runSlackTs] : []);
+  if (!returns.length) {
+    throw new Error('no human-attached image found in the mastering channel — attach the render in the task thread, or pass --file=');
+  }
+  const short = shortId(runId);
+  const inThread = runSlackTs ? returns.find((r) => r.threadTs === runSlackTs) : undefined;
+  if (inThread) return inThread;
+  const named = returns.find((r) => r.text.toLowerCase().includes(short.toLowerCase()) || r.text.includes(runId));
+  if (named) return named;
+
+  const db = await getDb();
+  const waiting = await db.masteringRun.count({ where: { status: { in: ['QUEUED', 'ASSIGNED'] } } });
+  const newest = returns[0];
+  if (waiting > 1) {
+    throw new Error(
+      `${waiting} runs are waiting and the newest channel image (${newest.name}) names none of them — ` +
+        `reply with the image IN the task thread, or say \`DONE ${short}\` with it, or pass --file=`,
+    );
+  }
+  console.log('  ⚠️  channel-level return (not in the task thread) — this is the only run waiting, so using it');
+  return newest;
+}
+
 async function main(): Promise<void> {
   const run = await findRun(positional());
   if (!['QUEUED', 'ASSIGNED'].includes(run.status)) {
@@ -74,8 +116,21 @@ async function main(): Promise<void> {
     console.log(`  ⚠️  run ${shortId(run.id)} was never dispatched to Slack — proceeding anyway`);
   }
 
-  const candidatePath = FILE || newestDownload();
-  const candidate = readFileSync(candidatePath);
+  let candidatePath: string;
+  let candidate: Buffer;
+  let slackReturn: SlackReturn | null = null;
+  if (FROM_SLACK) {
+    slackReturn = await pickSlackReturn(run.slackTs, run.id);
+    candidate = await slackDownload(slackReturn);
+    const scratchIn = join(tmpdir(), 'mkan-mastering');
+    mkdirSync(scratchIn, { recursive: true });
+    candidatePath = join(scratchIn, `${shortId(run.id)}-slack-${slackReturn.fileId}${extname(slackReturn.name) || '.png'}`);
+    writeFileSync(candidatePath, candidate);
+    console.log(`  ↓ Slack return: ${slackReturn.name} (${(slackReturn.size / 1e6).toFixed(1)} MB) → ${candidatePath}`);
+  } else {
+    candidatePath = FILE || newestDownload();
+    candidate = readFileSync(candidatePath);
+  }
 
   const sharp = (await import('sharp')).default;
   const meta = await sharp(candidate).metadata();
@@ -198,6 +253,7 @@ async function main(): Promise<void> {
     run.slackTs,
     `:white_check_mark: ${shortId(run.id)} mastered and live (attempt ${run.attempt})\nbefore: ${run.originalUrl}\nafter: ${masteredUrl}`,
   );
+  if (slackReturn) await slackReactSafe(slackReturn.ts, 'white_check_mark');
 
   console.log(`\n✅ UPDATED — live in photoUrls slot ${applied.indexOf(masteredUrl) + 1}/${applied.length}`);
   console.log(`   after:  ${masteredUrl}`);

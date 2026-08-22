@@ -200,6 +200,124 @@ export async function slackReplySafe(threadTs: string | null | undefined, text: 
   }
 }
 
+/** GET a Slack Web API method (history/files read paths take query params). */
+async function slackGet<T>(method: string, params: Record<string, string>): Promise<T> {
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(`https://slack.com/api/${method}?${qs}`, {
+    headers: { Authorization: `Bearer ${slackToken()}` },
+  });
+  const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; needed?: string } & T;
+  if (!json.ok) {
+    const err = json.error ?? String(res.status);
+    if (err === 'missing_scope') {
+      throw new Error(
+        `slack ${method} → missing_scope (needs ${json.needed ?? '?'}). The kun bot can post but not read: ` +
+          'add `files:read` + `groups:history` to the app at api.slack.com/apps → OAuth & Permissions → ' +
+          'Bot Token Scopes, then Reinstall to Workspace (docs/image-mastering.md → "Slack return lane").',
+      );
+    }
+    throw new Error(`slack ${method} → ${err}`);
+  }
+  return json;
+}
+
+export type SlackReturn = {
+  fileId: string;
+  name: string;
+  mimetype: string;
+  size: number;
+  downloadUrl: string;
+  user: string;
+  ts: string;
+  threadTs?: string;
+  text: string;
+};
+
+type SlackMessage = {
+  ts: string;
+  thread_ts?: string;
+  text?: string;
+  user?: string;
+  bot_id?: string;
+  subtype?: string;
+  files?: { id: string; name?: string; mimetype?: string; size?: number; url_private_download?: string; url_private?: string }[];
+};
+
+const IMAGE_MIME = /^image\/(png|jpe?g|webp)$/i;
+
+const toReturns = (messages: SlackMessage[]): SlackReturn[] =>
+  messages
+    .filter((m) => !m.bot_id && m.subtype !== 'bot_message') // human returns only
+    .flatMap((m) =>
+      (m.files ?? [])
+        .filter((f) => IMAGE_MIME.test(f.mimetype ?? '') && (f.url_private_download || f.url_private))
+        .map((f) => ({
+          fileId: f.id,
+          name: f.name ?? `${f.id}.png`,
+          mimetype: f.mimetype ?? 'image/png',
+          size: f.size ?? 0,
+          downloadUrl: (f.url_private_download || f.url_private) as string,
+          user: m.user ?? '',
+          ts: m.ts,
+          threadTs: m.thread_ts,
+          text: m.text ?? '',
+        })),
+    )
+    .sort((a, b) => Number(b.ts) - Number(a.ts)); // newest first
+
+/**
+ * Human-uploaded images in the mastering channel — the spec's §13 return lane.
+ * Reads the channel top level AND the replies of the given task threads, so a
+ * return works whether it landed in the run's thread (preferred) or loose in
+ * the channel (what a phone share does).
+ */
+export async function slackReturns(threadTss: string[] = [], limit = 50): Promise<SlackReturn[]> {
+  if (!slackReady()) throw new Error('Slack not configured — set SLACK_MASTERING_CHANNEL (+ SLACK_BOT_TOKEN)');
+  const channel = slackChannel();
+  const top = await slackGet<{ messages: SlackMessage[] }>('conversations.history', {
+    channel,
+    limit: String(limit),
+  });
+  const found = toReturns(top.messages ?? []);
+  for (const ts of threadTss.filter(Boolean)) {
+    try {
+      const thread = await slackGet<{ messages: SlackMessage[] }>('conversations.replies', {
+        channel,
+        ts,
+        limit: '50',
+      });
+      // replies[0] is the parent (already in history) — dedupe by file id below
+      found.push(...toReturns(thread.messages ?? []));
+    } catch (e) {
+      console.warn(`  ! slack thread ${ts} unreadable: ${(e as Error).message}`);
+    }
+  }
+  const seen = new Set<string>();
+  return found.filter((r) => (seen.has(r.fileId) ? false : (seen.add(r.fileId), true)));
+}
+
+/** Download a Slack-hosted file (private URLs need the bot token as Bearer). */
+export async function slackDownload(ret: SlackReturn): Promise<Buffer> {
+  const res = await fetch(ret.downloadUrl, { headers: { Authorization: `Bearer ${slackToken()}` } });
+  if (!res.ok) throw new Error(`slack file download failed (${res.status}) ${ret.name}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  // Slack answers an unauthorized fetch with the HTML sign-in page, 200 OK.
+  if (buf.subarray(0, 15).toString('utf8').trim().toLowerCase().startsWith('<!doctype html')) {
+    throw new Error('slack returned HTML, not the image — the token lacks files:read (see the scope note above)');
+  }
+  return buf;
+}
+
+/** React on the returned message so the channel shows what the loop consumed. */
+export async function slackReactSafe(ts: string, name: string): Promise<void> {
+  if (!slackReady()) return;
+  try {
+    await slackApi('reactions.add', { channel: slackChannel(), timestamp: ts, name });
+  } catch (e) {
+    console.warn(`  ! slack reaction failed: ${(e as Error).message}`);
+  }
+}
+
 // ── Twenty rollup (listing-level mirror — Home stays the ops Kanban) ─────────
 // LINKS composites match twenty-upsert.ts shapes.
 const linkOne = (url: string) => ({ primaryLinkUrl: url, primaryLinkLabel: '', secondaryLinks: [] });

@@ -40,8 +40,11 @@ Twenty Home (photoStage=POOR_QUALITY Kanban)      CLI --listing
    master:queue   → MasteringRun rows (Prisma, QUEUED; prompt v1 FROZEN on the row)
    master:dispatch→ Slack #mkan task (original unfurls + prompt + command) → ASSIGNED
    master:prep    → prompt→clipboard · original revealed in Finder · Gemini opened
-   HUMAN          → drag into Gemini (Nano Banana) → ⌘V → Enter → download  (~20s)
-   master:done    → validate → sharp ≤2048w WebP → S3 mkan/uploads/mastered/<runId>.webp   → MASTERED
+   HUMAN          → Gemini (Nano Banana) → ⌘V → Enter → RETURN the render, either:
+                      a) reply in the run's Slack thread with it attached  (phone-friendly)
+                      b) download it on this Mac                           (~/Downloads)
+   master:done    → (a) --from-slack: pull the thread's image · (b) newest ~/Downloads
+                  → validate → sharp ≤2048w WebP → S3 mkan/uploads/mastered/<runId>.webp   → MASTERED
                   → swap into Listing.photoUrls BY URL MATCH (transaction)                 → UPDATED
                   → Twenty rollup (photosMastered, photoStage, photo URLs) + Slack thread ✅
    master:reject  → REJECTED + fresh attempt row · master:revert → original back live
@@ -107,8 +110,10 @@ pnpm master:queue --listing=1051 --photos=1,2,3,4 --apply   # or --from-twenty
 pnpm master:dispatch --apply                                # tasks → Slack
 pnpm master:prep                    # oldest waiting task: prompt→clipboard,
                                     #   original→Finder, Gemini opens
-# drag the image into Gemini → ⌘V → Enter → download → then:
-pnpm master:done <runId>            # eyeball side-by-side → confirm → live
+# drag the image into Gemini → ⌘V → Enter → then return the render:
+pnpm master:done <runId> --from-slack   # human attached it in the run's Slack thread
+pnpm master:done <runId>                # or: newest image in ~/Downloads
+                                        # both: eyeball side-by-side → confirm → live
 pnpm master:status                  # where is every image, and why
 # NOTE: unpublished (busy) listings 404 on the public URL — verify those via
 #       master:status / the hosting dashboard; the public page applies once live.
@@ -118,6 +123,32 @@ pnpm master:reconcile --apply       # stall alerts (Hermes cron in Phase 2)
 Bad result: `pnpm master:reject <runId> --note="invented a window"` (note is
 mandatory — rejected-because is what improves prompt v2). Undo a live swap:
 `pnpm master:revert <runId>`. Redo a finished photo: `master:queue --force`.
+
+## The return lane (spec §13)
+
+The human returns the render **in Slack** — reply in the run's task thread with
+the image attached — and `master:done --from-slack` pulls it. This is the lane
+the spec asked for ("attach mastered image in Slack → say DONE → automation
+takes over") and the only one that works when the render was made on a phone:
+nothing ever lands in `~/Downloads`. The `~/Downloads` lane stays as the
+Mac-side default.
+
+Matching a returned image to a run, in order:
+
+1. attached **in the run's task thread** — unambiguous, always prefer this;
+2. in the channel with the run id in the message text — `DONE kbbvvatd`;
+3. newest human image in the channel — accepted **only** when exactly one run
+   is waiting; otherwise `done` refuses rather than master the wrong photo.
+
+Matching is not identity: the side-by-side eyeball still owns "is this the
+right room" (the mislabeled-return lesson above).
+
+**Scopes.** The kun bot posts with `chat:write`, but reading the channel and
+downloading a file need **`groups:history`** (private channel) and
+**`files:read`**. Without them `--from-slack` fails with a `missing_scope`
+error naming the fix: api.slack.com/apps → the app behind @kun → OAuth &
+Permissions → Bot Token Scopes → add both → **Reinstall to Workspace**. If the
+reinstall rotates the token, update `~/.hermes/.env` — the gateway shares it.
 
 ## One-time setup (manual checkpoints)
 
@@ -129,6 +160,9 @@ mandatory — rejected-because is what improves prompt v2). Undo a live swap:
    creation, or `/invite @kun`.)
 2. Twenty metadata — **applied** (`photoStage`+`MASTERED`, `photosMastered`,
    `lastMasteredAt`).
+3. Bot scopes for the return lane — `groups:history` + `files:read` on the @kun
+   app, then Reinstall to Workspace (see "The return lane" above). Verify with
+   `curl -H "Authorization: Bearer $SLACK_BOT_TOKEN" 'https://slack.com/api/conversations.history?channel=C0BS2NZE2AY&limit=1'`.
 
 ## Failure playbook
 
@@ -137,6 +171,9 @@ mandatory — rejected-because is what improves prompt v2). Undo a live swap:
 | dispatch: `channel_not_found` | bot not in the private channel | `/invite @kun` in #mkan, re-run |
 | done: "candidate is byte-identical" | grabbed the original, not the render | pass `--file=` |
 | done: "no image newer than 120min" | download older than the window | `--file=` or `--window=480` |
+| done: `missing_scope` (files:read / groups:history) | bot can post but not read Slack | add both scopes + reinstall (see "The return lane") |
+| done --from-slack: "N runs are waiting and the newest image names none" | return landed loose in the channel | reply with it **in the task thread**, or `DONE <runId>`, or `--file=` |
+| done --from-slack: "slack returned HTML, not the image" | download hit the sign-in page — token lacks `files:read` | same scope fix |
 | done: FAILED "CDN upload failed" | S3 creds/network | fix creds, `master:reconcile --requeue-failed --apply` |
 | done: "MASTERED but NOT applied" | host removed that photo mid-run | nothing lost — decide manually |
 | render depicts a different room | wrong original attached in Gemini / mislabeled return | match against `photo-cache/<listingId>/` originals, ingest under the TRUE run |

@@ -40,8 +40,9 @@ function taskMessage(run: TaskRun): string {
     '',
     '*Prompt — copy the whole block:*',
     `${FENCE}${run.prompt}${FENCE}`,
-    '*Do:* open Gemini (Nano Banana) → attach the original image → paste the prompt → generate → download → then run:',
-    `${TICK}pnpm master:done ${shortId(run.id)}${TICK}`,
+    '*Do:* open Gemini (Nano Banana) → attach the original image → paste the prompt → generate.',
+    `*Return it here:* reply *in this thread* with the mastered image attached (works from the phone). Then: ${TICK}pnpm master:done ${shortId(run.id)} --from-slack${TICK}`,
+    `_Or_ download it on the Mac and run ${TICK}pnpm master:done ${shortId(run.id)}${TICK}`,
     `Bad result / blocked: ${TICK}pnpm master:reject ${shortId(run.id)} --note="why"${TICK}`,
   ].join('\n');
 }
