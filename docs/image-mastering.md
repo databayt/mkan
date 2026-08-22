@@ -6,9 +6,14 @@ would have produced in the same room — **same property, same reality,
 dramatically better photography** — with per-image state, a frozen prompt per
 attempt, a Slack cockpit, and no silent failures.
 
-> **Status: 🟢 loop live (2026-08-22), Phase 1 human-in-the-loop.** Four runs
-> for Listing #1051 queued as the acceptance batch. Storage/serving details
-> live in [image-pipeline.md](./image-pipeline.md); the plan of record is
+> **Status: 🟢 loop PROVEN end-to-end (2026-08-22).** Photo 2 of Listing #1051
+> went ORIGINAL → UPDATED through the human Gemini lane: mastered WebP live on
+> the CDN, `photoUrls` slot swapped, Twenty shows 1/5 mastered + new cover,
+> Slack thread carries the before/after. Photos 1/3/4 remain in the acceptance
+> batch. **Phase-3 API billing: deferred by Abdout (2026-08-22)** — until the
+> `/decide` flips it, `master:prep` is the interim floor (~20s of human per
+> photo). Storage/serving details: [image-pipeline.md](./image-pipeline.md);
+> plan of record:
 > `~/.claude/plans/read-downloads-mastering-workflow-txt-do-reflective-wreath.md`.
 
 ## The honesty rule (outranks everything)
@@ -19,6 +24,13 @@ defects; never make the space look bigger, newer, or more luxurious. The
 `master:done` step opens original and candidate side-by-side and asks exactly
 that question before anything goes live. When in doubt, `master:reject`.
 
+**The eyeball also owns IDENTITY, not just fidelity.** `done` proves the
+candidate differs from the run's original (hash) and meets size/ratio — it
+cannot know the render depicts the RIGHT room. The first real return arrived
+labeled "photo 1" but depicted photo 2's living room; the visual match against
+the five originals caught it and it was ingested under its true run. Always
+confirm the render matches THIS run's original before applying.
+
 ## Architecture
 
 ```
@@ -27,7 +39,8 @@ Twenty Home (photoStage=POOR_QUALITY Kanban)      CLI --listing
                      ▼
    master:queue   → MasteringRun rows (Prisma, QUEUED; prompt v1 FROZEN on the row)
    master:dispatch→ Slack #mkan task (original unfurls + prompt + command) → ASSIGNED
-   HUMAN          → Gemini web UI (Nano Banana): attach original, paste prompt, generate, download
+   master:prep    → prompt→clipboard · original revealed in Finder · Gemini opened
+   HUMAN          → drag into Gemini (Nano Banana) → ⌘V → Enter → download  (~20s)
    master:done    → validate → sharp ≤2048w WebP → S3 mkan/uploads/mastered/<runId>.webp   → MASTERED
                   → swap into Listing.photoUrls BY URL MATCH (transaction)                 → UPDATED
                   → Twenty rollup (photosMastered, photoStage, photo URLs) + Slack thread ✅
@@ -51,7 +64,17 @@ Twenty Home (photoStage=POOR_QUALITY Kanban)      CLI --listing
   quota `limit: 0` (kun: "the Google lane is blocked on billing, not a missing
   key"). The automated flip is Phase 3, gated on a billing `/decide` — the
   wired CLI is `kun/scripts/gemini-media.mjs image --ref …`, and only the
-  generate step changes.
+  generate step changes. **Billing deferred by Abdout 2026-08-22**; census
+  prices the whole backlog (779 low photos) at ~$30 on `legacy`, ~$79 on
+  `flash`-2K, ~$134 on `pro`-2K.
+- **Non-API automation, settled 2026-08-22**: there is NO Gemini desktop app
+  to drive. Browser automation of gemini.google.com is technically possible
+  (Playwright profiles + Hermes' browser tool both exist) and deliberately
+  DECLINED: the spec's own rule ("do not automate Nano Banana through an
+  unofficial browser workaround"), consumer-ToS/bot-detection risk on the main
+  Google account carrying the subscription, and UI fragility. Revisit only as
+  a supervised, low-volume prototype on Abdout's explicit override — it dies
+  the day billing flips.
 - **Slack posts directly via the Web API** as the workspace `kun` bot (token:
   env `SLACK_BOT_TOKEN` → Keychain `databayt/SLACK_BOT_TOKEN` → Hermes'
   `~/.hermes/.env`). Hermes' agentic chat lane is NOT in the loop yet (known
@@ -78,10 +101,13 @@ breaches (`MASTERING_STALE_{QUEUED,ASSIGNED,MASTERED}_H` to tune).
 ## Runbook — process a batch
 
 ```bash
+pnpm master:census                  # photo-quality census: REHOST/QUEUE/OK lanes,
+                                    #   artifact .data/photo-census.json + originals cache
 pnpm master:queue --listing=1051 --photos=1,2,3,4 --apply   # or --from-twenty
 pnpm master:dispatch --apply                                # tasks → Slack
-# per Slack task: open Gemini (Nano Banana) → attach original → paste prompt
-#                 → generate → download → then:
+pnpm master:prep                    # oldest waiting task: prompt→clipboard,
+                                    #   original→Finder, Gemini opens
+# drag the image into Gemini → ⌘V → Enter → download → then:
 pnpm master:done <runId>            # eyeball side-by-side → confirm → live
 pnpm master:status                  # where is every image, and why
 # NOTE: unpublished (busy) listings 404 on the public URL — verify those via
@@ -113,6 +139,7 @@ mandatory — rejected-because is what improves prompt v2). Undo a live swap:
 | done: "no image newer than 120min" | download older than the window | `--file=` or `--window=480` |
 | done: FAILED "CDN upload failed" | S3 creds/network | fix creds, `master:reconcile --requeue-failed --apply` |
 | done: "MASTERED but NOT applied" | host removed that photo mid-run | nothing lost — decide manually |
+| render depicts a different room | wrong original attached in Gemini / mislabeled return | match against `photo-cache/<listingId>/` originals, ingest under the TRUE run |
 | Twenty rollup "failed (non-fatal)" | CRM down (laptop asleep, wrong port) | re-run `master:done`? No — rollup repeats on next apply, or PATCH via `crm:sync-photos` idiom |
 | run parked forever | see `master:status` ⏰ flags | `master:reconcile --apply` alerts; act on the thread |
 
@@ -125,10 +152,19 @@ what, when it went live, why it failed, how many attempts — reads off the
 
 ## Phase 2 / 3 (after the 4-image proof)
 
-Phase 2: `/admin/mastering` UI (photo grid, statuses, before/after), Twenty
-webhook auto-queue on `photoStage=POOR_QUALITY`, Hermes operator skill
+Census ground truth (2026-08-22): 147 listings — QUEUE 112 (779 low-quality
+photos), OK 9, NO_PHOTOS 26 (24 of them published — a lane of its own),
+REHOST 0. Next queue after the 1051 proof: **1127** (host 1004) and **1161**
+(host 1006) — both hosts have phones, and `scripts/crm/gift-handover.ts`
+renders its mastered-photos gift line from live `MasteringRun` UPDATED rows.
+Deliberately not queued yet: 1051's reject notes settle prompt v1 vs v2 first
+(the prompt freezes onto each row at queue time).
+
+Phase 2: `/admin/mastering` UI (photo grid, statuses, before/after — the
+census photo cache feeds it), Twenty webhook auto-queue on
+`photoStage=POOR_QUALITY`, Hermes operator skill
 (`~/.hermes/skills/databayt/makan-image-mastering/`) + reconcile cron, kun
-vocabulary spell `mastering`. Phase 3: billing `/decide` with measured Phase-1
-numbers (legacy Nano Banana $0.039/img, flash-2K $0.101, pro-2K $0.134), then
-`master:auto` swaps only the generate step — the human gate becomes
-approve-only, the state machine unchanged.
+vocabulary spell `mastering`. Phase 3 (billing deferred, see status): the
+`/decide` with measured Phase-1 numbers, then `master:auto` swaps only the
+generate step — the human gate becomes approve-only, the state machine
+unchanged.
