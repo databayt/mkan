@@ -26,7 +26,7 @@ Twenty Home (photoStage=POOR_QUALITY Kanban)      CLI --listing
         └────────────┬─────────────────────────────────┘
                      ▼
    master:queue   → MasteringRun rows (Prisma, QUEUED; prompt v1 FROZEN on the row)
-   master:dispatch→ Slack #makan-image-mastering task (original unfurls + prompt + command) → ASSIGNED
+   master:dispatch→ Slack #mkan task (original unfurls + prompt + command) → ASSIGNED
    HUMAN          → Gemini web UI (Nano Banana): attach original, paste prompt, generate, download
    master:done    → validate → sharp ≤2048w WebP → S3 mkan/uploads/mastered/<runId>.webp   → MASTERED
                   → swap into Listing.photoUrls BY URL MATCH (transaction)                 → UPDATED
@@ -95,19 +95,20 @@ mandatory — rejected-because is what improves prompt v2). Undo a live swap:
 
 ## One-time setup (manual checkpoints)
 
-1. Private channel `#makan-image-mastering` — **created** (`C0BRSQ3EFNX`),
-   `SLACK_MASTERING_CHANNEL` set in `.env`.
-2. **`/invite @kun` in that channel** (private channels are invisible to a bot
-   until a member invites it — the one step the API cannot do). Symptom while
-   missing: dispatch fails with `channel_not_found`.
-3. Twenty metadata — **applied** (`photoStage`+`MASTERED`, `photosMastered`,
+1. Private channel **#mkan** (`C0BS2NZE2AY`) — created with the kun bot as a
+   member, `SLACK_MASTERING_CHANNEL` set in `.env`. (First attempt was
+   `#makan-image-mastering`/`C0BRSQ3EFNX` — renamed per Abdout by recreating;
+   the old channel is dead, archive freely. A bot must be a MEMBER of a
+   private channel or dispatch fails `channel_not_found` — invite it at
+   creation, or `/invite @kun`.)
+2. Twenty metadata — **applied** (`photoStage`+`MASTERED`, `photosMastered`,
    `lastMasteredAt`).
 
 ## Failure playbook
 
 | Symptom | Meaning | Move |
 |---|---|---|
-| dispatch: `channel_not_found` | bot not in the private channel | `/invite @kun`, re-run |
+| dispatch: `channel_not_found` | bot not in the private channel | `/invite @kun` in #mkan, re-run |
 | done: "candidate is byte-identical" | grabbed the original, not the render | pass `--file=` |
 | done: "no image newer than 120min" | download older than the window | `--file=` or `--window=480` |
 | done: FAILED "CDN upload failed" | S3 creds/network | fix creds, `master:reconcile --requeue-failed --apply` |
