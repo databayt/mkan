@@ -33,6 +33,19 @@ interface ListingRow {
   photoUrls: string[];
 }
 
+/**
+ * Room hint from the photo's own filename — `…/living-room.webp` → "living
+ * room". Photos named after the room they show (the heirs sets) ground the
+ * prompt for free; anything still on `01.webp` returns null and the prompt
+ * compiles exactly as it always did. Trailing digits are photo order within a
+ * room type, not part of the room's name, so they are stripped.
+ */
+function roomHintFrom(url: string): string | null {
+  const stem = url.split('/').pop()?.replace(/\.[a-z0-9]+$/i, '') ?? '';
+  const words = stem.replace(/-\d+$/, '').replace(/[-_]+/g, ' ').trim();
+  return words && !/^\d+$/.test(words) ? words : null;
+}
+
 async function resolveListings(): Promise<ListingRow[]> {
   const db = await getDb();
   if (LISTING) {
@@ -129,7 +142,7 @@ async function main(): Promise<void> {
           originalUrl: url,
           attempt,
           promptVersion: PROMPT_VERSION,
-          prompt: compilePrompt(),
+          prompt: compilePrompt({ roomHint: roomHintFrom(url) }),
           model: MODEL_HUMAN_WEB,
         },
       });

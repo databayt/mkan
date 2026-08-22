@@ -64,13 +64,20 @@ type Unit = {
   heirsLabel: string;
   video: string;
   /**
-   * Hand-picked frames off the 1-frame-every-3-seconds ladder (`fps=1/3`),
-   * 1-based, COVER SHOT FIRST. Indexes rather than timestamps because that
-   * ladder is what was reviewed frame by frame — every pick is verified to
-   * show no people (these are tenanted homes) and no household clutter, and
-   * plain `-ss <seconds>` seeking lands on different frames than the ladder.
+   * The unit's photo set, COVER SHOT FIRST.
+   *
+   * `frame` indexes the 1-frame-every-3-seconds ladder (`fps=1/3`) — indexes
+   * rather than timestamps because that ladder is what was reviewed frame by
+   * frame (every pick verified to show no people — these are tenanted homes —
+   * and no household clutter), and plain `-ss <seconds>` seeking lands on
+   * different frames than the ladder.
+   *
+   * `name`, when present, becomes the CDN filename and the room hint the
+   * mastering prompt is grounded with. Trailing digits are photo order within
+   * a room type, NOT a claim about how many such rooms the home has. Units
+   * still on bare numbers fall back to `01.webp`, `02.webp`, …
    */
-  frames: number[];
+  shots: Array<{ frame: number; name?: string }>;
   /** Output width — roughly 2× the source, which is phone-video small. */
   width: number;
 };
@@ -81,7 +88,7 @@ const PLAN: Unit[] = [
     titleMatch: "بثلاث غرف وثلاثة حمّامات",
     heirsLabel: "الفرن الدور الأول",
     video: "الفرن الدور الاول.mp4",
-    frames: [8, 5, 2, 10, 19, 13, 16, 22],
+    shots: [8, 5, 2, 10, 19, 13, 16, 22].map((frame) => ({ frame })),
     width: 1536,
   },
   {
@@ -92,7 +99,17 @@ const PLAN: Unit[] = [
     // bathrooms, same floors). We use the "2" pass: the other one was filmed
     // while the tenants were home and shows them and their belongings.
     video: "البيت الكبير الدور الثاني شقة ب 2.mp4",
-    frames: [18, 2, 27, 33, 13, 9, 36, 41, 21],
+    shots: [
+      { frame: 18, name: "living-room" },
+      { frame: 2, name: "bedroom-1" },
+      { frame: 27, name: "bedroom-2" },
+      { frame: 33, name: "bedroom-3" },
+      { frame: 13, name: "bedroom-4" },
+      { frame: 9, name: "bedroom-5" },
+      { frame: 36, name: "kitchen" },
+      { frame: 41, name: "kitchen-2" },
+      { frame: 21, name: "bathroom" },
+    ],
     width: 1280,
   },
   {
@@ -102,7 +119,7 @@ const PLAN: Unit[] = [
     // The other ground-floor clip ("النمرة الكاملة") shows the unrenovated half:
     // unplastered walls, windows not yet fitted, a yard full of building debris.
     video: "البيت الكبير الدور الارضي شقة نص نمرة الا تلاتة دكاكين.mp4",
-    frames: [4, 1, 5, 9, 23],
+    shots: [4, 1, 5, 9, 23].map((frame) => ({ frame })),
     width: 716,
   },
 ];
@@ -171,14 +188,16 @@ async function main(): Promise<void> {
 
   for (const unit of units) {
     const urls: string[] = [];
-    for (let i = 0; i < unit.frames.length; i++) {
+    for (let i = 0; i < unit.shots.length; i++) {
       const n = i + 1;
-      const raw = extract(unit, unit.frames[i]!, n);
-      const webp = join(WORK_DIR, `${unit.slug}-${String(n).padStart(2, "0")}.webp`);
+      const shot = unit.shots[i]!;
+      const stem = shot.name ?? String(n).padStart(2, "0");
+      const raw = extract(unit, shot.frame, n);
+      const webp = join(WORK_DIR, `${unit.slug}-${stem}.webp`);
       const bytes = await encode(raw, unit.width, webp);
       rmSync(raw, { force: true });
 
-      const key = `mkan/uploads/heirs/${unit.slug}/${String(n).padStart(2, "0")}.webp`;
+      const key = `mkan/uploads/heirs/${unit.slug}/${stem}.webp`;
       if (APPLY) {
         const url = await s3!.putObject({
           key,
