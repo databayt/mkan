@@ -121,6 +121,9 @@ const PHOTO_STAGES = [
   'ACCEPTABLE',
   'HIGH_QUALITY',
   'REHOSTED',
+  // AI-mastered and live on the mkan listing (scripts/mastering/ pipeline).
+  // Appended 2026-08-22 — append-only: `pnpm crm:sync-options --apply` grows the live enum.
+  'MASTERED',
 ];
 
 // ── Home ─────────────────────────────────────────────────────────────────────
@@ -188,6 +191,8 @@ export const HOME: ObjectDef = {
     { name: 'photoCount', label: 'Photo count', type: 'NUMBER' },
     { name: 'coverPhotoUrl', label: 'Cover photo', type: 'LINKS' },
     { name: 'photosRehosted', label: 'Photos re-hosted', type: 'BOOLEAN', defaultValue: false, description: 'muscache hotlinks rot — import re-hosts to CDN first.' },
+    { name: 'photosMastered', label: 'Photos mastered', type: 'NUMBER', icon: 'IconSparkles', description: 'How many photos are AI-mastered and live on mkan (MasteringRun UPDATED count — scripts/mastering/).' },
+    { name: 'lastMasteredAt', label: 'Last mastered', type: 'DATE_TIME', description: 'Most recent mastering apply for this home.' },
 
     // Pricing
     { name: 'priceNightSar', label: 'Price / night (SAR)', type: 'CURRENCY', description: 'Scraped nightly price (Airbnb shows SR).' },

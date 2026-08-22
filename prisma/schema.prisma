@@ -313,6 +313,7 @@ model Listing {
   conversations   Conversation[]
   events          ListingEvent[]
   visits          ListingVisit[]
+  masteringRuns   MasteringRun[]
 
   @@index([hostId])
   @@index([hostId, isPublished])
@@ -1153,4 +1154,62 @@ enum VisitOutcome {
   Completed
   NoShow
   Cancelled
+}
+
+/// One attempt at mastering one listing photo — turning a low-quality host
+/// original into a professional real-estate photograph (same property, same
+/// reality, better photography). A photo with NO rows is unprocessed: absence
+/// is the ORIGINAL state. Rows are append-only history — a retry is a new row
+/// with attempt+1, never an overwrite — so "which prompt/model produced the
+/// image now live on listing X, and what happened to attempt 1" stays
+/// answerable forever. Runbook: docs/image-mastering.md.
+model MasteringRun {
+  id         String          @id @default(cuid())
+  listingId  Int
+  /// Position in photoUrls at queue time — display only. The apply step swaps
+  /// by originalUrl match, never by index: hosts mutate the array under us.
+  photoIndex Int
+  originalUrl String
+  status     MasteringStatus @default(QUEUED)
+  attempt    Int             @default(1)
+  /// The prompt is compiled and FROZEN at queue time. The canonical prompt
+  /// will evolve; what a given image was actually asked for must not change
+  /// under it, or the record of why an image looks the way it does is fiction.
+  promptVersion String
+  prompt        String
+  /// Who/what executes the generate step: "nano-banana-web" for the human
+  /// Gemini-app lane, a Gemini API model id once the automated lane is funded.
+  model         String
+  /// Set only together with status MASTERED/UPDATED, never alone.
+  masteredUrl String?
+  /// Slack task message (ts + permalink) in #makan-image-mastering.
+  slackTs  String?
+  slackUrl String?
+  failureReason String?
+  humanNote     String?
+  queuedAt   DateTime  @default(now())
+  assignedAt DateTime?
+  masteredAt DateTime?
+  /// When the mastered URL went live in Listing.photoUrls (status UPDATED).
+  appliedAt  DateTime?
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, originalUrl, attempt])
+  @@index([status, queuedAt])
+  @@index([listingId, status])
+}
+
+/// Mastering lifecycle. UPDATED — not MASTERED — is the finished state:
+/// MASTERED means a validated result exists on the CDN; UPDATED means it is
+/// live in Listing.photoUrls and mirrored to Twenty. There is no stored
+/// STALLED — staleness is computed from state age by master:reconcile, so
+/// there is nothing to forget to un-set. APPEND-ONLY like every enum here.
+enum MasteringStatus {
+  QUEUED
+  ASSIGNED
+  MASTERED
+  UPDATED
+  REJECTED
+  FAILED
 }

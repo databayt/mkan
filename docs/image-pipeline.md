@@ -4,6 +4,9 @@ Home/property images are stored on **S3**, served through **CloudFront**
 (`cdn.databayt.org`), and optimized **AWS-side** (pre-made Sharp WebP variants),
 not by ImageKit and not by Vercel's optimizer. ImageKit has been fully retired.
 
+Sibling doc: [image-mastering.md](./image-mastering.md) — the ORIGINAL →
+professional per-photo mastering loop that writes into `mkan/uploads/mastered/`.
+
 Mirrors the proven hogwarts pattern (`catalog/image.ts`, `cloudfront-url.ts`,
 `api/blob/presign`, `use-image-optimization`).
 
