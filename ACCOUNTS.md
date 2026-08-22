@@ -18,7 +18,7 @@ How the live accounts are provisioned. See [LAUNCH.md](./LAUNCH.md) for the phas
 ## Current state
 | Accounts | Homes | Source | Notes |
 |---|---|---|---|
-| **`0001`** | **7 — REAL** | `pnpm seed:heirs` (`scripts/seed-heirs-homes.ts`) | Real heirs-estate homes in Port Sudan: real Arabic titles/descriptions, real SDG prices, real specs. **Photos are NOT real** → `photoUrls` empty, branded placeholder fallback (source images were private WhatsApp/legal docs, not house photos). |
+| **`0001`** | **7 — REAL** | `pnpm seed:heirs` (`scripts/seed-heirs-homes.ts`) + `pnpm seed:heirs-photos` | Real heirs-estate homes in Port Sudan: real Arabic titles/descriptions, real SDG prices, real specs. **Photos: 3 of 7 are real** (2026-08-22) — stills cut from the owner's walkthrough videos, on our CDN under `mkan/uploads/heirs/<unit>/`. The other 4 keep the placeholder: three have no footage, and الدور الأول شقة ب was filmed mid-renovation. The still images in `~/heirs/public` are WhatsApp screenshots + scanned inheritance documents — never publishable. |
 | **`0002`** | **10 — REAL** | `pnpm seed:daqna` / `pnpm seed:railway` (`scripts/seed-railway-homes.ts`) | Real **Daqna / Railway** building, Port Sudan — 8 apartment units plus 2 later additions. Real Arabic titles + real specs. Owner phone set on the account → click-to-call reaches **`+249 91 284 6648`**. |
 | **`0003`** | **6 — REAL** | `pnpm seed:hussein` (`scripts/seed-hussein-homes.ts`) | Real Port Sudan building, 6 units, real Arabic titles. Owner phone `+249 03 467 930`. Photos not supplied → placeholder. |
 | **`0004`** | **3 — REAL** | `pnpm seed:sanad` (`scripts/seed-sanad-homes.ts`) | Real **مشغل دبي (Mashghal Dubai)** building, **سوق سكة حديد (Railway Market)**, Port Sudan — 3 units: First floor 2-bedroom (7 beds), Second floor 2-bedroom (7 beds), and Studio. Real specs, amenities, majlis + sofa set, east balcony, generator upon agreement. Owner phone `+249 91 253 8883`. |
@@ -43,8 +43,14 @@ Real owners onboarded from Airbnb (and later fb pages / wa groups / other rental
 The real-owner scripts import the DB client before dotenv loads, so **pre-load the env** (bare `pnpm seed:*` fails `DatabaseDoesNotExist`):
 
 ```bash
-# 0001's 7 real homes (scoped to host 0001 ONLY — safe for the others)
+# 0001's 7 real homes (scoped to host 0001 ONLY — safe for the others).
+# Keeps the real photos: the seed reads scripts/data/heirs-photos.json.
 set -a && source .env && set +a && npx tsx scripts/seed-heirs-homes.ts
+
+# 0001's photos only — re-cuts the frames, re-uploads to the CDN, patches the
+# listings IN PLACE (no delete). Add --apply; dry by default.
+npx tsx scripts/seed-heirs-photos.ts --apply
+npx tsx scripts/crm/sync-heirs-photos-twenty.ts --apply   # mirror into Twenty
 
 # 0002's real Daqna / Railway homes (scoped to host 0002 ONLY)
 set -a && source .env && set +a && npx tsx scripts/seed-railway-homes.ts
@@ -67,4 +73,4 @@ current by the CRM sync — see [docs/growth.md](./docs/growth.md).
 Separate from the numbered host slots: an admin/super-admin account exists (`super@mkan.org`) via `scripts/seed-admin.ts`. Not part of the host pool.
 
 ## Key files
-`scripts/purge-synthetic.ts` · `scripts/seed-heirs-homes.ts` · `scripts/seed-daqna-homes.ts` · `scripts/seed-hussein-homes.ts` · `scripts/seed-heirs-translations.ts` · `scripts/crm/`
+`scripts/purge-synthetic.ts` · `scripts/seed-heirs-homes.ts` · `scripts/seed-heirs-photos.ts` · `scripts/seed-daqna-homes.ts` · `scripts/seed-hussein-homes.ts` · `scripts/seed-heirs-translations.ts` · `scripts/crm/`

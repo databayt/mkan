@@ -11,13 +11,16 @@
  * them with these 7. Hosts 0002…0020 and their listings are never queried or
  * modified, and the 0001 User account itself (password/identity) is left as-is.
  *
- * Photos: left intentionally EMPTY for now — real photos come later. The heirs
- * still images in ~/heirs/public are NOT photos of the homes (WhatsApp chat
- * screenshots with a real phone number/names + scanned inheritance/appraisal
- * legal documents), and the only real property visuals are per-property .mp4
- * walkthroughs that mkan's photoUrls can't render. With photoUrls empty, the
- * app's own fallback shows: cards use /placeholder.jpg (Card.tsx) and the
- * detail gallery uses /placeholder.svg (property-gallery.tsx empty-state).
+ * Photos: three of the seven now carry REAL photos, taken as stills from the
+ * owner's .mp4 walkthroughs by `seed-heirs-photos.ts` and re-hosted on our CDN;
+ * this script reads back that script's manifest (scripts/data/heirs-photos.json)
+ * so a re-seed keeps them. The other four stay empty and fall back to the app's
+ * placeholder (cards use /placeholder.jpg, the detail gallery /placeholder.svg)
+ * — either no walkthrough exists or the unit was filmed mid-renovation.
+ *
+ * The heirs STILL images in ~/heirs/public remain unusable and must never be
+ * published: WhatsApp chat screenshots with real names and phone numbers, and
+ * scanned inheritance/appraisal legal documents.
  *
  *   pnpm seed:heirs
  *
@@ -31,12 +34,34 @@ import { config } from 'dotenv';
 // to libpq's default database (the OS username) and erroring out.
 config({ override: true });
 
+import { readFileSync } from 'node:fs';
+
 import {
   Amenity,
   Highlight,
   PropertyType,
   CancellationPolicy,
 } from '@prisma/client';
+
+/**
+ * CDN photos written by `seed-heirs-photos.ts`, keyed by unit slug. Read at
+ * runtime (not imported) so a missing manifest degrades to no photos instead of
+ * breaking the seed. Matched to a home below by `titleMatch` substring.
+ */
+type PhotoManifest = Record<string, { titleMatch: string; photoUrls: string[] }>;
+const PHOTOS: PhotoManifest = (() => {
+  try {
+    return JSON.parse(readFileSync('scripts/data/heirs-photos.json', 'utf8')) as PhotoManifest;
+  } catch {
+    return {};
+  }
+})();
+
+/** Photos for a home, or [] when this unit has no usable footage. */
+function photosFor(title: string): string[] {
+  const hit = Object.values(PHOTOS).find((p) => title.includes(p.titleMatch));
+  return hit?.photoUrls ?? [];
+}
 
 const HOST_EMAIL = '0001@mkan.org';
 
@@ -229,7 +254,7 @@ async function main(): Promise<void> {
         description: h.description,
         pricePerNight: nightly,
         securityDeposit: nightly * 5,
-        photoUrls: [], // real photos added later → app fallback (placeholder.jpg / .svg) shows
+        photoUrls: photosFor(h.title), // empty → app fallback (placeholder.jpg / .svg) shows
         amenities: h.amenities,
         highlights: [Highlight.QuietNeighborhood, Highlight.CloseToTransit, Highlight.GreatView],
         isParkingIncluded: h.amenities.includes(Amenity.Parking),
