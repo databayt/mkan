@@ -19,6 +19,21 @@ import { twentyClient } from '../crm/twenty-rest';
 
 export const trim = (v: string | null | undefined): string => (v ?? '').trim();
 
+// Twenty creds: env first, Keychain fallback (the crm.py precedent) — the
+// mastering scripts must work without TWENTY_* in .env. Port 3100, never 3000:
+// 3000 is hogwarts' dev server and fails silently.
+if (!trim(process.env.TWENTY_API_URL)) process.env.TWENTY_API_URL = 'http://localhost:3100';
+if (!trim(process.env.TWENTY_API_KEY)) {
+  try {
+    process.env.TWENTY_API_KEY = execSync(
+      'security find-generic-password -s databayt-twenty -a mkan -w',
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+    ).trim();
+  } catch {
+    // CRM rollup stays best-effort — mastering never depends on it.
+  }
+}
+
 /** `--name=value` argv helper (crm idiom). */
 export const argv = (n: string, d = ''): string => {
   const h = process.argv.find((a) => a.startsWith(`--${n}=`));
