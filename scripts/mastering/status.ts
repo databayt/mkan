@@ -8,7 +8,7 @@
  * status, attempt, age, stale flag, note/failure. ORIGINAL photos (no run yet)
  * are shown as a count, since absence is that state.
  */
-import { argv, getDb, shortId, ago, hoursAgo, STALE } from './lib';
+import { argv, getDb, isDrifted, shortId, ago, hoursAgo, STALE } from './lib';
 
 const LISTING = parseInt(argv('listing', '0'), 10) || 0;
 
@@ -48,9 +48,10 @@ async function main(): Promise<void> {
       const check = STALE_CHECK[r.status];
       const staleFor = check ? hoursAgo(r[check.at]) : 0;
       const stale = check && staleFor > check.h ? `  ⏰ STALLED ${Math.round(staleFor)}h` : '';
+      const drift = r.status === 'UPDATED' && isDrifted(r.masteredUrl, listing.photoUrls) ? '  🫥 DRIFTED — no longer live' : '';
       const note = r.failureReason ?? r.humanNote ?? '';
       console.log(
-        `   ${shortId(r.id)}  photo ${String(r.photoIndex + 1).padStart(2)}  ${r.status.padEnd(8)} a${r.attempt}  ${ago(r.queuedAt).padStart(4)}${stale}${note ? `  — ${note.slice(0, 60)}` : ''}`,
+        `   ${shortId(r.id)}  photo ${String(r.photoIndex + 1).padStart(2)}  ${r.status.padEnd(8)} a${r.attempt}  ${ago(r.queuedAt).padStart(4)}${stale}${drift}${note ? `  — ${note.slice(0, 60)}` : ''}`,
       );
     }
   }

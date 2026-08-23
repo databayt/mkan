@@ -44,6 +44,7 @@ import {
   type SlackReturn,
   slackDownload,
   slackReactSafe,
+  swapPhoto,
   twentyRollup,
 } from './lib';
 
@@ -200,24 +201,27 @@ async function main(): Promise<void> {
   // MASTERED, then apply: swap by URL match inside one transaction. If the
   // host removed the original meanwhile, stay MASTERED with a note (doc §16).
   const applied = await db.$transaction(async (tx) => {
-    await tx.masteringRun.update({
-      where: { id: run.id },
+    // Conditional claim: a second concurrent `done` (or one racing a reject)
+    // matches zero rows here and rolls back instead of regressing the state.
+    const claimed = await tx.masteringRun.updateMany({
+      where: { id: run.id, status: { in: ['QUEUED', 'ASSIGNED'] } },
       data: { status: 'MASTERED', masteredAt: new Date(), masteredUrl },
     });
+    if (claimed.count === 0) {
+      throw new Error(`run ${shortId(run.id)} was claimed by another process — state unchanged`);
+    }
     const listing = await tx.listing.findUniqueOrThrow({
       where: { id: run.listingId },
       select: { photoUrls: true },
     });
-    const idx = listing.photoUrls.indexOf(run.originalUrl);
-    if (idx === -1) {
+    const next = swapPhoto(listing.photoUrls, run.originalUrl, masteredUrl as string);
+    if (!next) {
       await tx.masteringRun.update({
         where: { id: run.id },
         data: { humanNote: 'original no longer in photoUrls at apply time — mastered but not live' },
       });
       return null;
     }
-    const next = [...listing.photoUrls];
-    next[idx] = masteredUrl as string;
     await tx.listing.update({ where: { id: run.listingId }, data: { photoUrls: next } });
     await tx.masteringRun.update({
       where: { id: run.id },

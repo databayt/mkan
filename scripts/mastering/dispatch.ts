@@ -4,17 +4,19 @@
  *   pnpm master:dispatch                 # dry — print the messages
  *   pnpm master:dispatch --apply         # post to #makan-image-mastering
  *   pnpm master:dispatch --run=h3k9x2 --apply
+ *   pnpm master:dispatch --run=h3k9x2 --repost --apply   # re-post a stale ASSIGNED task
  *
- * Flags: --run=<ref> --limit=<N> --apply
+ * Flags: --run=<ref> --repost --limit=<N> --apply
  *
  * The task message is the whole human handoff (doc §11): the original image
  * (unfurled from its public CDN URL — no file staging), the frozen prompt in a
  * copyable block, and the exact return command. Posted directly via the Slack
  * Web API; Hermes' chat lane is not in this loop (see docs/image-mastering.md).
  */
-import { argv, flag, findRun, getDb, shortId, slackPost, slackReady } from './lib';
+import { argv, flag, findRun, getDb, shortId, slackPost, slackReady, slackReplySafe } from './lib';
 
 const APPLY = flag('apply');
+const REPOST = flag('repost');
 const RUN = argv('run');
 const LIMIT = parseInt(argv('limit', '10'), 10) || 10;
 
@@ -51,8 +53,13 @@ async function main(): Promise<void> {
   const db = await getDb();
   const runs = RUN
     ? [await findRun(RUN)].filter((r) => {
-        if (r.status !== 'QUEUED') throw new Error(`run ${shortId(r.id)} is ${r.status}, not QUEUED`);
-        return true;
+        if (r.status === 'QUEUED') return true;
+        if (REPOST && r.status === 'ASSIGNED') return true;
+        throw new Error(
+          r.status === 'ASSIGNED'
+            ? `run ${shortId(r.id)} is already ASSIGNED — pass --repost to post a fresh task (stale-thread remedy)`
+            : `run ${shortId(r.id)} is ${r.status}, not QUEUED`,
+        );
       })
     : await db.masteringRun.findMany({
         where: { status: 'QUEUED' },
@@ -77,6 +84,11 @@ async function main(): Promise<void> {
       continue;
     }
     const { ts, url } = await slackPost(msg);
+    // A reposted task must not leave a live-looking orphan thread behind —
+    // a return dropped there would never be found by --from-slack.
+    if (run.status === 'ASSIGNED' && run.slackTs && run.slackTs !== ts) {
+      await slackReplySafe(run.slackTs, `:arrows_counterclockwise: task re-posted — continue in the new thread: ${url || ts}`);
+    }
     await db.masteringRun.update({
       where: { id: run.id },
       data: { status: 'ASSIGNED', assignedAt: new Date(), slackTs: ts, slackUrl: url || null },

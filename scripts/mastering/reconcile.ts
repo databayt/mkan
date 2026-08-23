@@ -10,7 +10,7 @@
  * runs still under the attempt cap. Meant to run on a schedule (Hermes cron,
  * Phase 2); safe to run by hand any time.
  */
-import { flag, getDb, shortId, hoursAgo, STALE, MAX_ATTEMPTS, slackPost, slackReady } from './lib';
+import { flag, getDb, isDrifted, roomHintFrom, shortId, hoursAgo, STALE, MAX_ATTEMPTS, slackPost, slackReady } from './lib';
 import { compilePrompt, PROMPT_VERSION, MODEL_HUMAN_WEB } from './prompt';
 
 const APPLY = flag('apply');
@@ -35,11 +35,20 @@ async function main(): Promise<void> {
   }
   const retryable = open.filter((r) => r.status === 'FAILED' && r.attempt < MAX_ATTEMPTS);
 
-  console.log(`\n🕰  Mastering reconcile — ${open.length} open run(s): ${stale.length} stalled, ${retryable.length} retryable FAILED`);
+  // Drift: a run that says UPDATED whose mastered URL left photoUrls (host
+  // wholesale-replace or delete after apply) — the status would lie forever.
+  const updated = await db.masteringRun.findMany({
+    where: { status: 'UPDATED' },
+    include: { listing: { select: { photoUrls: true } } },
+  });
+  const drifted = updated.filter((r) => isDrifted(r.masteredUrl, r.listing.photoUrls));
+
+  console.log(`\n🕰  Mastering reconcile — ${open.length} open run(s): ${stale.length} stalled, ${retryable.length} retryable FAILED, ${drifted.length} drifted`);
   for (const s of stale) console.log(`   ⏰ ${shortId(s.run.id)}  listing #${s.run.listingId}  ${s.why}`);
   for (const r of retryable) console.log(`   🔁 ${shortId(r.id)}  listing #${r.listingId}  FAILED a${r.attempt}: ${r.failureReason ?? '—'}`);
+  for (const r of drifted) console.log(`   🫥 ${shortId(r.id)}  listing #${r.listingId}  UPDATED but the mastered URL left photoUrls — host edit? re-queue or let it stand`);
 
-  if (!stale.length && !retryable.length) {
+  if (!stale.length && !retryable.length && !drifted.length) {
     console.log('   all clear\n');
     return;
   }
@@ -53,7 +62,7 @@ async function main(): Promise<void> {
           originalUrl: r.originalUrl,
           attempt: r.attempt + 1,
           promptVersion: PROMPT_VERSION,
-          prompt: compilePrompt(),
+          prompt: compilePrompt({ roomHint: roomHintFrom(r.originalUrl) }),
           model: MODEL_HUMAN_WEB,
         },
       });
@@ -61,11 +70,14 @@ async function main(): Promise<void> {
     }
   }
 
-  if (APPLY && stale.length && slackReady()) {
-    const lines = stale.map((s) => `• ${shortId(s.run.id)} (listing #${s.run.listingId}): ${s.why}`);
-    await slackPost(`:hourglass_flowing_sand: *Mastering stall report* — ${stale.length} run(s) need a human:\n${lines.join('\n')}\nSee: pnpm master:status`);
+  if (APPLY && (stale.length || drifted.length) && slackReady()) {
+    const lines = [
+      ...stale.map((s) => `• ${shortId(s.run.id)} (listing #${s.run.listingId}): ${s.why}`),
+      ...drifted.map((r) => `• ${shortId(r.id)} (listing #${r.listingId}): UPDATED but no longer live — host edit drift`),
+    ];
+    await slackPost(`:hourglass_flowing_sand: *Mastering stall report* — ${lines.length} run(s) need a human:\n${lines.join('\n')}\nSee: pnpm master:status`);
     console.log(`   📣 stall alert posted to Slack`);
-  } else if (APPLY && stale.length) {
+  } else if (APPLY && (stale.length || drifted.length)) {
     console.log('   (Slack not configured — stall alert printed only)');
   }
   console.log(APPLY ? '' : '\nDRY RUN — re-run with --apply to alert/requeue.\n');

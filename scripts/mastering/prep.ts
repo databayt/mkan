@@ -13,7 +13,7 @@
  * the generate click stays human until the billing /decide flips master:auto.
  */
 import { execSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { positional, findRun, getDb, shortId } from './lib';
@@ -44,6 +44,19 @@ async function main(): Promise<void> {
     if (existsSync(p)) {
       originalPath = p;
       break;
+    }
+  }
+  // The cache is INDEX-named from census time; photoUrls can be reordered or
+  // re-named after it (listing 1180's room-rename did exactly that). Revealing
+  // the wrong original is the identity failure this pipeline exists to
+  // prevent, so trust the cache only when its size matches the live original.
+  if (originalPath) {
+    try {
+      const head = await fetch(run.originalUrl, { method: 'HEAD' });
+      const len = parseInt(head.headers.get('content-length') ?? '0', 10);
+      if (!head.ok || !len || len !== statSync(originalPath).size) originalPath = '';
+    } catch {
+      originalPath = '';
     }
   }
   if (!originalPath) {

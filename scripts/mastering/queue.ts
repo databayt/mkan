@@ -14,7 +14,7 @@
  * re-queueing unless --force, and a URL that IS a mastered output is never
  * re-queued. The prompt is compiled and frozen onto the row here.
  */
-import { argv, flag, isCdnUrl, getDb, shortId, trim } from './lib';
+import { argv, flag, isCdnUrl, getDb, roomHintFrom, shortId, trim } from './lib';
 import { compilePrompt, PROMPT_VERSION, MODEL_HUMAN_WEB } from './prompt';
 import { twentyClient } from '../crm/twenty-rest';
 
@@ -31,19 +31,6 @@ interface ListingRow {
   id: number;
   title: string | null;
   photoUrls: string[];
-}
-
-/**
- * Room hint from the photo's own filename — `…/living-room.webp` → "living
- * room". Photos named after the room they show (the heirs sets) ground the
- * prompt for free; anything still on `01.webp` returns null and the prompt
- * compiles exactly as it always did. Trailing digits are photo order within a
- * room type, not part of the room's name, so they are stripped.
- */
-function roomHintFrom(url: string): string | null {
-  const stem = url.split('/').pop()?.replace(/\.[a-z0-9]+$/i, '') ?? '';
-  const words = stem.replace(/-\d+$/, '').replace(/[-_]+/g, ' ').trim();
-  return words && !/^\d+$/.test(words) ? words : null;
 }
 
 async function resolveListings(): Promise<ListingRow[]> {
@@ -71,10 +58,15 @@ async function resolveListings(): Promise<ListingRow[]> {
       console.log(`  no Twenty homes at photoStage=${STAGE} with an mkanListingId`);
       return [];
     }
-    return db.listing.findMany({
+    const found = await db.listing.findMany({
       where: { id: { in: sliced } },
       select: { id: true, title: true, photoUrls: true },
     });
+    if (found.length < sliced.length) {
+      const missing = sliced.filter((id) => !found.some((l) => l.id === id));
+      console.warn(`  ! ${missing.length} Twenty home(s) reference an mkanListingId with no mkan listing (${missing.join(', ')}) — skipped; fix the CRM pointer`);
+    }
+    return found;
   }
   throw new Error('pass --listing=<id> or --from-twenty (see header for usage)');
 }

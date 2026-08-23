@@ -16,6 +16,10 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { twentyClient } from '../crm/twenty-rest';
+import { masteredKey as masteredKeyNs, toReturns, type SlackMessage, type SlackReturn } from './pure';
+
+export { CDN_HOST, isCdnUrl, roomHintFrom, swapPhoto, isDrifted } from './pure';
+export type { SlackReturn } from './pure';
 
 export const trim = (v: string | null | undefined): string => (v ?? '').trim();
 
@@ -52,19 +56,10 @@ export const STALE = {
 };
 export const MAX_ATTEMPTS = 3;
 
-export const CDN_HOST = 'cdn.databayt.org';
 const NS = trim(process.env.NEXT_PUBLIC_CDN_NAMESPACE) || 'mkan';
 
-/** Mastered output lives beside host uploads — IAM only allows `mkan/uploads/*`. */
-export const masteredKey = (runId: string): string => `${NS}/uploads/mastered/${runId}.webp`;
-
-export const isCdnUrl = (url: string): boolean => {
-  try {
-    return new URL(url).hostname === CDN_HOST;
-  } catch {
-    return false;
-  }
-};
+/** masteredKey with this deployment's CDN namespace applied. */
+export const masteredKey = (runId: string): string => masteredKeyNs(runId, NS);
 
 export const hoursAgo = (d: Date | null | undefined): number =>
   d ? (Date.now() - d.getTime()) / 3_600_000 : 0;
@@ -221,49 +216,6 @@ async function slackGet<T>(method: string, params: Record<string, string>): Prom
   return json;
 }
 
-export type SlackReturn = {
-  fileId: string;
-  name: string;
-  mimetype: string;
-  size: number;
-  downloadUrl: string;
-  user: string;
-  ts: string;
-  threadTs?: string;
-  text: string;
-};
-
-type SlackMessage = {
-  ts: string;
-  thread_ts?: string;
-  text?: string;
-  user?: string;
-  bot_id?: string;
-  subtype?: string;
-  files?: { id: string; name?: string; mimetype?: string; size?: number; url_private_download?: string; url_private?: string }[];
-};
-
-const IMAGE_MIME = /^image\/(png|jpe?g|webp)$/i;
-
-const toReturns = (messages: SlackMessage[]): SlackReturn[] =>
-  messages
-    .filter((m) => !m.bot_id && m.subtype !== 'bot_message') // human returns only
-    .flatMap((m) =>
-      (m.files ?? [])
-        .filter((f) => IMAGE_MIME.test(f.mimetype ?? '') && (f.url_private_download || f.url_private))
-        .map((f) => ({
-          fileId: f.id,
-          name: f.name ?? `${f.id}.png`,
-          mimetype: f.mimetype ?? 'image/png',
-          size: f.size ?? 0,
-          downloadUrl: (f.url_private_download || f.url_private) as string,
-          user: m.user ?? '',
-          ts: m.ts,
-          threadTs: m.thread_ts,
-          text: m.text ?? '',
-        })),
-    )
-    .sort((a, b) => Number(b.ts) - Number(a.ts)); // newest first
 
 /**
  * Human-uploaded images in the mastering channel — the spec's §13 return lane.

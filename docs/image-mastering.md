@@ -117,7 +117,7 @@ pnpm master:done <runId>                # or: newest image in ~/Downloads
 pnpm master:status                  # where is every image, and why
 # NOTE: unpublished (busy) listings 404 on the public URL — verify those via
 #       master:status / the hosting dashboard; the public page applies once live.
-pnpm master:reconcile --apply       # stall alerts (Hermes cron in Phase 2)
+pnpm master:reconcile --apply       # stall + drift alerts (runs daily 10:00 via launchd)
 ```
 
 Bad result: `pnpm master:reject <runId> --note="invented a window"` (note is
@@ -164,6 +164,13 @@ reinstall rotates the token, update `~/.hermes/.env` — the gateway shares it.
    app, then Reinstall to Workspace (see "The return lane" above). Verify with
    `curl -H "Authorization: Bearer $SLACK_BOT_TOKEN" 'https://slack.com/api/conversations.history?channel=C0BS2NZE2AY&limit=1'`.
 
+4. Stall clock — **installed**: launchd `com.databayt.mkan-mastering-reconcile`
+   runs `master:reconcile --apply` daily at 10:00 (log:
+   `~/Library/Logs/mkan-mastering-reconcile.log`); re-install after edits with
+   `bash scripts/mastering/install-reconcile-cron.sh`. Deliberately launchd,
+   not a Hermes agent-cron: the task is deterministic shell, no LLM belongs in
+   it (weekly-digest precedent).
+
 ## Failure playbook
 
 | Symptom | Meaning | Move |
@@ -177,8 +184,19 @@ reinstall rotates the token, update `~/.hermes/.env` — the gateway shares it.
 | done: FAILED "CDN upload failed" | S3 creds/network | fix creds, `master:reconcile --requeue-failed --apply` |
 | done: "MASTERED but NOT applied" | host removed that photo mid-run | nothing lost — decide manually |
 | render depicts a different room | wrong original attached in Gemini / mislabeled return | match against `photo-cache/<listingId>/` originals, ingest under the TRUE run |
+| status/reconcile: 🫥 DRIFTED | host replaced/removed photos AFTER apply — run says UPDATED but isn't live | human call: `master:queue --force` the new photo, or let it stand |
+| ASSIGNED task lost / thread stale | Slack message deleted or buried | `master:dispatch --run=<ref> --repost --apply` (old thread gets a pointer) |
 | Twenty rollup "failed (non-fatal)" | CRM down (laptop asleep, wrong port) | re-run `master:done`? No — rollup repeats on next apply, or PATCH via `crm:sync-photos` idiom |
 | run parked forever | see `master:status` ⏰ flags | `master:reconcile --apply` alerts; act on the thread |
+
+## Invariants under test
+
+`tests/mastering.test.ts` pins the load-bearing pure logic
+(`scripts/mastering/pure.ts`): swap is by VALUE never index, UUID basenames
+never become room "hints" (every scraped re-host is uuid-named), DRIFTED =
+UPDATED-but-not-live, and the Slack return parser trusts only human-attached
+images. `master:done`'s state claim is race-guarded (a concurrent done/reject
+rolls back instead of regressing a finished run). Run: `pnpm test`.
 
 ## Audit (doc §17 answers)
 

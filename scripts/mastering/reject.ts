@@ -9,7 +9,7 @@
  * attempt+1 and a freshly compiled prompt (an improved canonical prompt should
  * reach the retry), capped at MAX_ATTEMPTS.
  */
-import { argv, flag, positional, findRun, getDb, shortId, slackReplySafe, MAX_ATTEMPTS } from './lib';
+import { argv, flag, positional, findRun, getDb, roomHintFrom, shortId, slackReplySafe, MAX_ATTEMPTS } from './lib';
 import { compilePrompt, PROMPT_VERSION, MODEL_HUMAN_WEB } from './prompt';
 
 async function main(): Promise<void> {
@@ -41,7 +41,9 @@ async function main(): Promise<void> {
         originalUrl: run.originalUrl,
         attempt: run.attempt + 1,
         promptVersion: PROMPT_VERSION,
-        prompt: compilePrompt(),
+        // Recompile fresh (an improved canonical prompt should reach the
+        // retry) but keep the filename room grounding attempt 1 had.
+        prompt: compilePrompt({ roomHint: roomHintFrom(run.originalUrl) }),
         model: MODEL_HUMAN_WEB,
       },
     });
