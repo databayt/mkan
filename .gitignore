@@ -62,3 +62,6 @@ next-env.d.ts
 
 # Thmanyah fonts — license forbids redistribution; fetched from the official host by scripts/fetch-thmanyah.mjs
 /src/fonts/thmanyah/
+
+# Mastering inbox — renders dropped here are ingested by master:relay, never committed
+inbox/

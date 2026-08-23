@@ -112,6 +112,7 @@ pnpm master:prep                    # oldest waiting task: prompt→clipboard,
                                     #   original→Finder, Gemini opens
 # drag the image into Gemini → ⌘V → Enter → then return the render:
 pnpm master:done <runId> --from-slack   # human attached it in the run's Slack thread
+pnpm master:relay                       # or: the human saved it into ~/mkan/inbox
 pnpm master:done <runId>                # or: newest image in ~/Downloads
                                         # both: eyeball side-by-side → confirm → live
 pnpm master:status                  # where is every image, and why
@@ -149,6 +150,32 @@ downloading a file need **`groups:history`** (private channel) and
 error naming the fix: api.slack.com/apps → the app behind @kun → OAuth &
 Permissions → Bot Token Scopes → add both → **Reinstall to Workspace**. If the
 reinstall rotates the token, update `~/.hermes/.env` — the gateway shares it.
+
+## The inbox lane — save the file, that is the whole job
+
+`~/mkan/inbox` (gitignored; `$MASTERING_INBOX` moves it). Save the render there
+from Gemini — the browser's "Save image as…" remembers the folder, so after the
+first pick the human's entire remaining job is ⌘S — and a launchd **WatchPaths**
+agent runs `master:relay` the moment the file lands: it resolves the run,
+applies through the same `done` core, and moves the file to `inbox/consumed/`.
+Nothing is deleted; drag a file back out to redo it.
+
+```bash
+bash scripts/mastering/install-relay-watch.sh   # one-time; log: ~/Library/Logs/mkan-mastering-relay.log
+pnpm master:relay --dry                         # what would be ingested, and to which run
+```
+
+**Which run gets the file.** Name it after the run — `kbbvvatd.png` — and it
+goes there. With no hint the relay takes the one waiting run; when several are
+waiting it **refuses**, leaves the file, and says so in #mkan with the run ids
+to choose from. Dropping a file in the inbox stands in for the approve click —
+the human looked at the render in Gemini before saving it — but it never stands
+in for knowing which photo it is: this pipeline's first real return depicted the
+wrong room. Set `MASTERING_RELAY_CONFIRM=1` to keep the side-by-side eyeball;
+the relay then only reports the match and leaves `master:done` to the human.
+
+An ingest that fails leaves the file in the inbox and posts why to #mkan — a
+silent drop is the one outcome this lane must never produce.
 
 ## One-time setup (manual checkpoints)
 
