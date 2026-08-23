@@ -8,6 +8,9 @@
  *
  * Flags: --file=<path> --from-slack --window=<minutes, default 120> --yes --no-open
  *
+ * The run's recorded model is corrected here when the returned file's name
+ * proves a different generator family made it (models.ts → correctedModel).
+ *
  * Return lanes (spec §13): the human returns the render either by attaching
  * it in the run's Slack thread (--from-slack — the only lane that works from
  * a phone) or by downloading it on this Mac (~/Downloads, the default).
@@ -25,7 +28,7 @@
  * A real upload failure marks the run FAILED with the reason (doc §18).
  */
 import { readdirSync, statSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join, extname } from 'node:path';
+import { join, extname, basename } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import {
@@ -47,6 +50,7 @@ import {
   swapPhoto,
   twentyRollup,
 } from './lib';
+import { correctedModel } from './models';
 
 const FILE = argv('file');
 const FROM_SLACK = flag('from-slack');
@@ -198,6 +202,16 @@ async function main(): Promise<void> {
     throw new Error(reason);
   }
 
+  // What actually made this picture. The run's `model` is the plan recorded at
+  // queue time; the returned filename is evidence, and when it names a different
+  // vendor family the evidence wins — a record of "rendered by Nano Banana" for
+  // an image Codex made is fiction, and fiction is what the frozen prompt and
+  // version exist to prevent.
+  const corrected = correctedModel(run.model, basename(candidatePath));
+  if (corrected) {
+    console.log(`  ⓘ recorded model ${run.model} → ${corrected.id} (from the returned filename)`);
+  }
+
   // MASTERED, then apply: swap by URL match inside one transaction. If the
   // host removed the original meanwhile, stay MASTERED with a note (doc §16).
   const applied = await db.$transaction(async (tx) => {
@@ -205,7 +219,12 @@ async function main(): Promise<void> {
     // matches zero rows here and rolls back instead of regressing the state.
     const claimed = await tx.masteringRun.updateMany({
       where: { id: run.id, status: { in: ['QUEUED', 'ASSIGNED'] } },
-      data: { status: 'MASTERED', masteredAt: new Date(), masteredUrl },
+      data: {
+        status: 'MASTERED',
+        masteredAt: new Date(),
+        masteredUrl,
+        ...(corrected ? { model: corrected.id } : {}),
+      },
     });
     if (claimed.count === 0) {
       throw new Error(`run ${shortId(run.id)} was claimed by another process — state unchanged`);

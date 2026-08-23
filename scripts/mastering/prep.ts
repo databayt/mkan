@@ -17,6 +17,7 @@ import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { positional, findRun, getDb, shortId } from './lib';
+import { resolveModel } from './models';
 
 async function main(): Promise<void> {
   const ref = positional();
@@ -68,15 +69,18 @@ async function main(): Promise<void> {
     writeFileSync(originalPath, Buffer.from(await res.arrayBuffer()));
   }
 
+  const model = resolveModel(run.model);
   execSync('pbcopy', { input: run.prompt });
   if (process.platform === 'darwin') {
     spawnSync('open', ['-R', originalPath], { stdio: 'ignore' }); // reveal in Finder for the drag
-    spawnSync('open', ['https://gemini.google.com'], { stdio: 'ignore' });
+    // The run's own generator, not a hardcoded one — an unregistered model has
+    // no app to open, and the human already knows where they are going.
+    if (model.url) spawnSync('open', [model.url], { stdio: 'ignore' });
   }
 
   console.log(`\n🎬 Prepped ${shortId(run.id)} — listing #${run.listingId} «${(run.listing.title ?? '').slice(0, 40)}», photo ${run.photoIndex + 1}, attempt ${run.attempt}`);
-  console.log(`   prompt ${run.promptVersion} → clipboard · original revealed in Finder · Gemini opened`);
-  console.log(`   do: drag the image into Gemini → ⌘V → Enter → download`);
+  console.log(`   prompt ${run.promptVersion} → clipboard · original revealed in Finder${model.url ? ` · ${model.label} opened` : ` · ${model.label} has no web app registered`}`);
+  console.log(`   do: drag the image into ${model.label} → ⌘V → Enter → download`);
   console.log(`   then: pnpm master:done ${shortId(run.id)}\n`);
 }
 

@@ -13,6 +13,7 @@
  * copyable block, and the exact return command. Posted directly via the Slack
  * Web API; Hermes' chat lane is not in this loop (see docs/image-mastering.md).
  */
+import { resolveModel } from './models';
 import { argv, flag, findRun, getDb, shortId, slackPost, slackReady, slackReplySafe } from './lib';
 
 const APPLY = flag('apply');
@@ -30,6 +31,7 @@ interface TaskRun {
   originalUrl: string;
   prompt: string;
   promptVersion: string;
+  model: string;
   listing: { id: number; title: string | null; photoUrls: string[] };
 }
 
@@ -42,7 +44,7 @@ function taskMessage(run: TaskRun): string {
     '',
     '*Prompt — copy the whole block:*',
     `${FENCE}${run.prompt}${FENCE}`,
-    '*Do:* open Gemini (Nano Banana) → attach the original image → paste the prompt → generate.',
+    `*Do:* open ${resolveModel(run.model).label} → attach the original image → paste the prompt → generate.`,
     `*Return it here:* reply *in this thread* with the mastered image attached (works from the phone). Then: ${TICK}pnpm master:done ${shortId(run.id)} --from-slack${TICK}`,
     `_Or_ download it on the Mac and run ${TICK}pnpm master:done ${shortId(run.id)}${TICK}`,
     `Bad result / blocked: ${TICK}pnpm master:reject ${shortId(run.id)} --note="why"${TICK}`,

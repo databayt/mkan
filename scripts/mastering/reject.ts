@@ -10,7 +10,8 @@
  * reach the retry), capped at MAX_ATTEMPTS.
  */
 import { argv, flag, positional, findRun, getDb, roomHintFrom, shortId, slackReplySafe, MAX_ATTEMPTS } from './lib';
-import { compilePrompt, PROMPT_VERSION, MODEL_HUMAN_WEB } from './prompt';
+import { compilePrompt, PROMPT_VERSION } from './prompt';
+import { DEFAULT_MODEL_ID } from './models';
 
 async function main(): Promise<void> {
   const note = argv('note').trim();
@@ -44,7 +45,7 @@ async function main(): Promise<void> {
         // Recompile fresh (an improved canonical prompt should reach the
         // retry) but keep the filename room grounding attempt 1 had.
         prompt: compilePrompt({ roomHint: roomHintFrom(run.originalUrl) }),
-        model: MODEL_HUMAN_WEB,
+        model: run.model || DEFAULT_MODEL_ID, // the retry goes back to the same generator
       },
     });
     requeued = shortId(next.id);

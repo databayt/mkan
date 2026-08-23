@@ -4,10 +4,16 @@
  *   pnpm master:queue --listing=123                      # dry plan, all photos
  *   pnpm master:queue --listing=123 --photos=1,3 --apply # queue photos 1 and 3
  *   pnpm master:queue --from-twenty --limit=2 --apply    # pull POOR_QUALITY homes
+ *   pnpm master:queue --listing=123 --model=chatgpt-image --apply
  *
  * Flags: --listing=<prisma id | sourceListingId> --photos=<1-based,csv>
  *        --from-twenty [--stage=POOR_QUALITY] [--limit=N]
- *        --allow-external --force --apply
+ *        --model=<generator, see models.ts> --allow-external --force --apply
+ *
+ * `--model` picks which tool renders these runs (default $MASTERING_MODEL, else
+ * nano-banana) and is frozen onto the row beside the prompt, so prep opens the
+ * right web app and the record says what was actually asked for. Unregistered
+ * ids are allowed — new tools should not need a code change to be used.
  *
  * Idempotent (doc §6): an active run for the same (listing, originalUrl) is
  * skipped, a finished UPDATED run with the same prompt version blocks
@@ -15,7 +21,8 @@
  * re-queued. The prompt is compiled and frozen onto the row here.
  */
 import { argv, flag, isCdnUrl, getDb, roomHintFrom, shortId, trim } from './lib';
-import { compilePrompt, PROMPT_VERSION, MODEL_HUMAN_WEB } from './prompt';
+import { compilePrompt, PROMPT_VERSION } from './prompt';
+import { resolveModel, modelList } from './models';
 import { twentyClient } from '../crm/twenty-rest';
 
 const APPLY = flag('apply');
@@ -26,6 +33,7 @@ const PHOTOS = argv('photos');
 const FROM_TWENTY = flag('from-twenty');
 const STAGE = argv('stage', 'POOR_QUALITY');
 const LIMIT = parseInt(argv('limit', '0'), 10) || 0;
+const MODEL = resolveModel(argv('model'));
 
 interface ListingRow {
   id: number;
@@ -72,7 +80,8 @@ async function resolveListings(): Promise<ListingRow[]> {
 }
 
 async function main(): Promise<void> {
-  console.log(`\n📸 Mastering queue — prompt ${PROMPT_VERSION}, model ${MODEL_HUMAN_WEB} (${APPLY ? 'APPLY' : 'dry'})`);
+  console.log(`\n📸 Mastering queue — prompt ${PROMPT_VERSION}, model ${MODEL.label} (${APPLY ? 'APPLY' : 'dry'})`);
+  if (!MODEL.url) console.log(`   ⚠️  «${MODEL.id}» is not in the registry — recorded as given, prep has no app to open (known: ${modelList()})`);
   const db = await getDb();
   const listings = await resolveListings();
 
@@ -135,7 +144,7 @@ async function main(): Promise<void> {
           attempt,
           promptVersion: PROMPT_VERSION,
           prompt: compilePrompt({ roomHint: roomHintFrom(url) }),
-          model: MODEL_HUMAN_WEB,
+          model: MODEL.id,
         },
       });
       console.log(`  ✓ ${label}: QUEUED as ${shortId(run.id)} (attempt ${attempt})`);

@@ -11,7 +11,8 @@
  * Phase 2); safe to run by hand any time.
  */
 import { flag, getDb, isDrifted, roomHintFrom, shortId, hoursAgo, STALE, MAX_ATTEMPTS, slackPost, slackReady } from './lib';
-import { compilePrompt, PROMPT_VERSION, MODEL_HUMAN_WEB } from './prompt';
+import { compilePrompt, PROMPT_VERSION } from './prompt';
+import { DEFAULT_MODEL_ID } from './models';
 
 const APPLY = flag('apply');
 const REQUEUE_FAILED = flag('requeue-failed');
@@ -63,7 +64,7 @@ async function main(): Promise<void> {
           attempt: r.attempt + 1,
           promptVersion: PROMPT_VERSION,
           prompt: compilePrompt({ roomHint: roomHintFrom(r.originalUrl) }),
-          model: MODEL_HUMAN_WEB,
+          model: r.model || DEFAULT_MODEL_ID, // the retry goes back to the same generator
         },
       });
       console.log(`   ✓ ${shortId(r.id)} → retry QUEUED as ${shortId(next.id)} (attempt ${r.attempt + 1})`);

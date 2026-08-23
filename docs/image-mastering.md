@@ -151,6 +151,34 @@ error naming the fix: api.slack.com/apps → the app behind @kun → OAuth &
 Permissions → Bot Token Scopes → add both → **Reinstall to Workspace**. If the
 reinstall rotates the token, update `~/.hermes/.env` — the gateway shares it.
 
+## Choosing the generator
+
+Nothing about this loop is Gemini-shaped. Any model that takes an image plus a
+prompt can do the work, they leapfrog each other every few months, and the
+operator picks per run:
+
+```bash
+pnpm master:queue --listing=1180 --photos=2 --model=chatgpt-image --apply
+pnpm master:queue --listing=1180 --model=nano-banana-2 --apply      # whole listing
+MASTERING_MODEL=chatgpt-image pnpm master:queue --listing=1180 --apply   # or set the default
+```
+
+Registry: `scripts/mastering/models.ts` — today `nano-banana`, `nano-banana-2`,
+`chatgpt-image`, `codex`, plus the obvious aliases (`gemini`, `chatgpt`, `nb2`,
+`gpt-image`). **Unregistered ids are accepted**, recorded verbatim, and simply
+have no web app for `prep` to open — a new tool needs a registry entry to be
+*recognised*, never to be *used*. The choice is frozen onto the row beside the
+prompt, so `prep` opens that model's app and the Slack task names it.
+
+**The record follows the file, not the plan.** `model` is what was asked for at
+queue time; the returned filename is what actually happened. When the name
+proves a different vendor family — `Codex Image ….png` against a run queued for
+Gemini — `done` records the generator that really made the picture. Within a
+family it does not second-guess you: a `Gemini_Generated_Image_*` file returned
+against `nano-banana-2` stays `nano-banana-2`, because a filename cannot tell
+the two apart and your declaration is the more specific truth. Run `kbbvvatd`
+is why this exists: queued for Nano Banana, rendered by Codex, corrected by hand.
+
 ## The inbox lane — save the file, that is the whole job
 
 `~/mkan/inbox` (gitignored; `$MASTERING_INBOX` moves it). Save the render there
