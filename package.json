@@ -48,6 +48,7 @@
     "crm:sync-import": "tsx scripts/crm/sync-import-to-twenty.ts",
     "crm:backfill-source": "tsx scripts/crm/backfill-source-ids.ts",
     "crm:backfill-facts": "tsx scripts/crm/backfill-listing-facts.ts",
+    "crm:repair-keys": "tsx scripts/crm/repair-portsudan-keys.ts",
     "crm:import": "tsx scripts/crm/mkan-import.ts",
     "crm:contact-hunt": "tsx scripts/crm/contact-hunt.ts",
     "crm:recover-profiles": "tsx scripts/crm/recover-host-profiles.ts",
