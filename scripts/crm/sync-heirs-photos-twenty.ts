@@ -1,13 +1,13 @@
 /**
  * Mirror host 0001's new heirs photos into Twenty (ops view of the same truth).
  *
- * `seed-heirs-photos.ts` is the source: it cuts stills from the owner's
- * walkthrough videos, re-hosts them on our CDN and writes them onto the mkan
- * listings + `scripts/data/heirs-photos.json`. Twenty then needs to stop saying
- * these homes have no photography. This patches, per covered unit:
+ * mkan Prisma is the source — `Listing.photoUrls` as it stands right now, so a
+ * slot the mastering loop has already swapped mirrors as the MASTERED image
+ * rather than the still it replaced. (It reads the manifest only to know which
+ * units have photos at all.) This patches, per covered unit:
  *
  *   home       → photoUrls, coverPhotoUrl, photoCount, photosRehosted,
- *                photoStage = POOR_QUALITY
+ *                photoStage = POOR_QUALITY, mkanListingId
  *   portSudan  → photoStage = FOUND_POOR     (that object carries no photo links,
  *                and its stage enum is the older one — same meaning, other word)
  *
@@ -18,6 +18,13 @@
  *
  *   npx tsx scripts/crm/sync-heirs-photos-twenty.ts            # dry (prints the plan)
  *   npx tsx scripts/crm/sync-heirs-photos-twenty.ts --apply    # PATCH Twenty
+ *
+ * `mkanListingId` matters more than it looks: it is the ONLY key the mastering
+ * rollup (`scripts/mastering/lib.ts → twentyRollup`) uses to find a home, and
+ * `seed:heirs` mints new listing ids every time it rebuilds — so after a
+ * re-seed the CRM points at ids that no longer exist and every rollup skips
+ * silently with "no Twenty home carries mkanListingId=N". Re-run this after any
+ * re-seed.
  *
  * Needs the CRM backend up (Docker on the Mac, port 3100 — never 3000) and the
  * mkan workspace token in the Keychain (`databayt-twenty` / `mkan`).
@@ -87,7 +94,33 @@ type Manifest = Record<string, { heirsLabel: string; titleMatch: string; photoUr
 
 async function main(): Promise<void> {
   const manifest = JSON.parse(readFileSync(MANIFEST, "utf8")) as Manifest;
-  const units = Object.values(manifest).filter((u) => u.photoUrls.length > 0);
+  const covered = Object.values(manifest).filter((u) => u.photoUrls.length > 0);
+
+  // Live truth for the photos, not the manifest's original stills.
+  const prisma = (await import("@/lib/db")).db;
+  const host = await prisma.user.findUnique({
+    where: { email: `${ACCOUNT}@mkan.org` },
+    select: { id: true },
+  });
+  if (!host) throw new Error(`host ${ACCOUNT}@mkan.org not found`);
+
+  const units: Array<{
+    heirsLabel: string;
+    titleMatch: string;
+    photoUrls: string[];
+    listingId: number;
+  }> = [];
+  for (const u of covered) {
+    const matches = await prisma.listing.findMany({
+      where: { hostId: host.id, title: { contains: u.titleMatch } },
+      select: { id: true, photoUrls: true },
+    });
+    if (matches.length !== 1) {
+      console.warn(`  ! "${u.titleMatch}" matched ${matches.length} mkan listings — skipped`);
+      continue;
+    }
+    units.push({ ...u, photoUrls: matches[0]!.photoUrls, listingId: matches[0]!.id });
+  }
   console.log(
     `\n🔗 Heirs photos → Twenty — account ${ACCOUNT}, ${units.length} unit(s)  (${APPLY ? "APPLY" : "dry"})\n`,
   );
@@ -116,12 +149,14 @@ async function main(): Promise<void> {
       photoCount: unit.photoUrls.length,
       photosRehosted: true,
       photoStage: HOME_STAGE,
+      mkanListingId: unit.listingId,
     };
 
     for (const h of hits) {
       if (APPLY) await rest("PATCH", `homes/${h.id}`, body);
       console.log(
-        `  ${APPLY ? "✓" : "·"} home ${h.listingId} ← ${unit.photoUrls.length} photos  (${unit.heirsLabel})`,
+        `  ${APPLY ? "✓" : "·"} home ${h.listingId} ← ${unit.photoUrls.length} photos · mkanListingId=${unit.listingId}` +
+          `${h.mkanListingId && h.mkanListingId !== unit.listingId ? ` (was ${h.mkanListingId} — stale)` : ""}  (${unit.heirsLabel})`,
       );
     }
     for (const p of portHits) {
