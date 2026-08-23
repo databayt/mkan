@@ -65,6 +65,16 @@ export const MODELS: MasteringModel[] = [
     note: "covered by the ChatGPT subscription",
   },
   {
+    id: "chatgpt-image-2",
+    label: "ChatGPT Image 2.0",
+    family: "openai",
+    url: "https://chatgpt.com",
+    // Same download name as its predecessor — which is exactly why the version
+    // is its own id and detection never overrides within a family.
+    match: [/^ChatGPT Image/i],
+    note: "covered by the ChatGPT subscription — pick the model inside ChatGPT",
+  },
+  {
     id: "codex",
     label: "Codex",
     family: "openai",
@@ -85,9 +95,11 @@ const ALIASES: Record<string, string> = {
   banana2: "nano-banana-2",
   nb2: "nano-banana-2",
   chatgpt: "chatgpt-image",
+  "chatgpt-image-2.0": "chatgpt-image-2",
+  "chatgpt-2": "chatgpt-image-2",
+  "gpt-image-2": "chatgpt-image-2",
   gpt: "chatgpt-image",
   "gpt-image": "chatgpt-image",
-  "chatgpt-image-2": "chatgpt-image",
   openai: "chatgpt-image",
   dalle: "chatgpt-image",
 };

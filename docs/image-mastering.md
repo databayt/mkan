@@ -164,8 +164,11 @@ MASTERING_MODEL=chatgpt-image pnpm master:queue --listing=1180 --apply   # or se
 ```
 
 Registry: `scripts/mastering/models.ts` — today `nano-banana`, `nano-banana-2`,
-`chatgpt-image`, `codex`, plus the obvious aliases (`gemini`, `chatgpt`, `nb2`,
-`gpt-image`). **Unregistered ids are accepted**, recorded verbatim, and simply
+`chatgpt-image`, `chatgpt-image-2`, `codex`, plus the obvious aliases (`gemini`,
+`chatgpt`, `nb2`, `gpt-image`, `gpt-image-2`). Versions get their own id rather
+than an alias — `nano-banana-2` and `chatgpt-image-2` share a download name with
+their predecessors, which is exactly why detection never overrides inside a
+family and the operator's declaration stands. **Unregistered ids are accepted**, recorded verbatim, and simply
 have no web app for `prep` to open — a new tool needs a registry entry to be
 *recognised*, never to be *used*. The choice is frozen onto the row beside the
 prompt, so `prep` opens that model's app and the Slack task names it.
