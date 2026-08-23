@@ -108,6 +108,11 @@ pnpm master:census                  # photo-quality census: REHOST/QUEUE/OK lane
                                     #   artifact .data/photo-census.json + originals cache
 pnpm master:queue --listing=1051 --photos=1,2,3,4 --apply   # or --from-twenty
 pnpm master:dispatch --apply                                # tasks → Slack
+pnpm master:pull --apply            # Twenty→queue: images dropped on a Home record
+                                    #   become runs; originals staged in ~/mkan/inbox/originals/
+pnpm master:prep --setup-chatgpt    # ONE-TIME: print the standing instructions for the
+                                    #   "Makan Mastering" ChatGPT Project — after that,
+                                    #   per image = drag → Enter → save to ~/mkan/inbox/
 pnpm master:prep                    # oldest waiting task: prompt→clipboard,
                                     #   original→Finder, Gemini opens
 # drag the image into Gemini → ⌘V → Enter → then return the render:

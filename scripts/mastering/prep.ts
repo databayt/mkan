@@ -16,10 +16,34 @@ import { execSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { tmpdir } from 'node:os';
-import { positional, findRun, getDb, shortId } from './lib';
+import { flag, positional, findRun, getDb, shortId } from './lib';
+import { compilePrompt, PROMPT_VERSION } from './prompt';
 import { resolveModel } from './models';
 
+/**
+ * Print the standing instructions for a ChatGPT Project (or Gemini Gem) —
+ * paste ONCE into the project, and the per-image job becomes drag → Enter.
+ * Emitted from compilePrompt() so a PROMPT_VERSION bump can never leave a
+ * stale copy behind in a doc. The room hint deliberately stays OUT: it varies
+ * per photo and lives on each run's record.
+ */
+function printChatgptSetup(): void {
+  console.log(`\n═══ Standing instructions for the "Makan Mastering" project (prompt ${PROMPT_VERSION}) ═══\n`);
+  console.log('Create once: ChatGPT → Projects → New project → "Makan Mastering" → Instructions → paste:\n');
+  console.log('---');
+  console.log('Every image I send you is a real listing photo from a homes marketplace. For each one, apply exactly this:\n');
+  console.log(compilePrompt());
+  console.log('\nReturn only the transformed photograph. Never ask follow-up questions.');
+  console.log('---\n');
+  console.log(`Then per image: drag from ~/mkan/inbox/originals/ → Enter → save the render into ~/mkan/inbox/ KEEPING the run-id prefix from the original's filename. The relay ingests it from there.`);
+  console.log(`When the canonical prompt bumps (v2…), re-run this and replace the project instructions once.\n`);
+}
+
 async function main(): Promise<void> {
+  if (flag('setup-chatgpt')) {
+    printChatgptSetup();
+    return;
+  }
   const ref = positional();
   const db = await getDb();
   const run = ref

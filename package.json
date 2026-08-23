@@ -71,6 +71,7 @@
     "master:census": "tsx scripts/mastering/census.ts",
     "master:queue": "tsx scripts/mastering/queue.ts",
     "master:prep": "tsx scripts/mastering/prep.ts",
+    "master:pull": "tsx scripts/mastering/pull.ts",
     "master:dispatch": "tsx scripts/mastering/dispatch.ts",
     "master:done": "tsx scripts/mastering/done.ts",
     "master:reject": "tsx scripts/mastering/reject.ts",
