@@ -26,7 +26,11 @@ import { config } from "dotenv";
 config({ override: true });
 
 const HOST = (process.argv.find((a) => a.startsWith("--host=")) ?? "").split("=")[1] || null;
-const APP = (process.env.NEXT_PUBLIC_APP_URL ?? "https://mkan.sd").replace(/\/+$/, "");
+const envApp = (process.env.NEXT_PUBLIC_APP_URL ?? "").trim();
+// A message leaving the building must never carry a dev origin — localhost in
+// a host's WhatsApp is a dead link that reads as a broken company. The env is
+// the LOCAL value here; the canonical public host is mkan.sd.
+const APP = (/^https?:\/\//.test(envApp) && !/localhost|127\.0\.0\.1/.test(envApp) ? envApp : "https://mkan.sd").replace(/\/+$/, "");
 
 interface HostSheet {
   hostId: string;

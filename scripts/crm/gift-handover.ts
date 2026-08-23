@@ -28,7 +28,11 @@
 import { config } from "dotenv";
 config({ override: true });
 
-const APP = (process.env.NEXT_PUBLIC_APP_URL ?? "https://mkan.sd").replace(/\/+$/, "");
+const envApp = (process.env.NEXT_PUBLIC_APP_URL ?? "").trim();
+// A message leaving the building must never carry a dev origin — localhost in
+// a host's WhatsApp is a dead link that reads as a broken company. The env is
+// the LOCAL value here; the canonical public host is mkan.sd.
+const APP = (/^https?:\/\//.test(envApp) && !/localhost|127\.0\.0\.1/.test(envApp) ? envApp : "https://mkan.sd").replace(/\/+$/, "");
 const ACCOUNT = (process.argv.find((a) => a.startsWith("--account=")) ?? "").split("=")[1] || null;
 
 const ZONE_AR: Record<string, string> = {
@@ -107,7 +111,7 @@ async function main() {
 
     const listing = await db.listing.findFirst({
       where: { sourceListingId: item.listingId },
-      select: { id: true, hostId: true, isPublished: true, claimedAt: true },
+      select: { id: true, hostId: true, isPublished: true, claimedAt: true, host: { select: { sourceHostId: true } } },
     });
 
     let claimUrl: string | null = null;
@@ -123,7 +127,7 @@ async function main() {
         ? "ALREADY CLAIMED — do not send a claim link"
         : token
           ? `live token, expires ${token.expiresAt.toISOString().slice(0, 10)}`
-          : `no live token — mint: pnpm crm:claim-token --host=${item.account} --apply`;
+          : `no live token — mint: pnpm crm:claim-token --host=${listing.host?.sourceHostId ?? '<sourceHostId>'} --apply`;
       mastered = await db.masteringRun.count({
         where: { listingId: listing.id, status: "UPDATED" },
       });
