@@ -18,7 +18,8 @@
  *
  * ── Which run does a dropped file belong to? ──────────────────────────────
  *
- * Name the file after the run (`kbbvvatd.png`) and it goes to that run. With
+ * Prefix the file with the run id (`kbbvvatd Codex Image ….png`) and it goes to
+ * that run — the rest of the name is left alone on purpose, see below. With
  * no hint, the relay takes the single waiting run — and if several are waiting
  * it refuses, leaves the file, and says so in #mkan. That refusal is the point:
  * this pipeline's first real return depicted the WRONG room and only a human
@@ -29,6 +30,11 @@
  * Set MASTERING_RELAY_CONFIRM=1 to keep the eyeball: the relay then only
  * reports what it would ingest and leaves `pnpm master:done <run> --file=…`
  * to the human.
+ *
+ * Keep the tool's own filename when you add the run id — `kbbvvatd Codex Image
+ * ….png`. The generator's download name is the only evidence of what actually
+ * rendered the photo, and renaming to a bare `kbbvvatd.png` throws it away;
+ * the relay reads the signature off the dropped name and asserts it to `done`.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, renameSync, statSync } from "node:fs";
@@ -36,6 +42,7 @@ import { homedir } from "node:os";
 import { extname, join, basename } from "node:path";
 
 import { argv, flag, getDb, shortId, slackPost, slackReady } from "./lib";
+import { detectModel } from "./models";
 
 const DRY = flag("dry");
 const CONFIRM_ONLY = process.env.MASTERING_RELAY_CONFIRM === "1";
@@ -86,7 +93,8 @@ function resolveRun(file: string, waiting: Waiting[]): { run?: Waiting; refuse?:
   return {
     refuse:
       `${waiting.length} runs are waiting and the filename names none of them — ` +
-      `save it as \`<runId>.png\`: ${waiting.map((w) => w.short).join(", ")}`,
+      `PREFIX it with the run id and keep the tool's own name ` +
+      `(\`kbbvvatd Codex Image ….png\`): ${waiting.map((w) => w.short).join(", ")}`,
   };
 }
 
@@ -123,7 +131,14 @@ async function main(): Promise<void> {
       continue;
     }
 
-    const label = `${basename(file)} → run ${run.short} (listing #${run.listingId}, photo ${run.photoIndex + 1})`;
+    // Read the generator off the dropped name BEFORE done sees it: the human
+    // prefixes the run id (or renames outright), which strips the signature.
+    const stripped = basename(file).replace(new RegExp(`^${run.short}[\\s_-]*`, "i"), "");
+    const generator = detectModel(stripped);
+
+    const label =
+      `${basename(file)} → run ${run.short} (listing #${run.listingId}, photo ${run.photoIndex + 1})` +
+      `${generator ? ` · rendered by ${generator.label}` : ""}`;
     if (DRY || CONFIRM_ONLY) {
       console.log(
         `   · ${label}${CONFIRM_ONLY ? "  — MASTERING_RELAY_CONFIRM=1, leaving the eyeball to you" : ""}`,
@@ -138,7 +153,15 @@ async function main(): Promise<void> {
     try {
       execFileSync(
         "npx",
-        ["tsx", "scripts/mastering/done.ts", run.short, `--file=${file}`, "--yes", "--no-open"],
+        [
+          "tsx",
+          "scripts/mastering/done.ts",
+          run.short,
+          `--file=${file}`,
+          ...(generator ? [`--model=${generator.id}`] : []),
+          "--yes",
+          "--no-open",
+        ],
         { stdio: "inherit", cwd: process.cwd() },
       );
     } catch {

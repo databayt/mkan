@@ -75,6 +75,10 @@ export const MODELS: MasteringModel[] = [
 
 /** Shorthands the operator is likely to type. */
 const ALIASES: Record<string, string> = {
+  // Every row queued before the registry existed carries this literal. Without
+  // the alias it reads as an unregistered family, prep has no app to open, and
+  // any return would be "corrected" across a family boundary that isn't real.
+  "nano-banana-web": "nano-banana",
   gemini: "nano-banana",
   "nano-banana-1": "nano-banana",
   banana: "nano-banana",

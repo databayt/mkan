@@ -193,8 +193,11 @@ bash scripts/mastering/install-relay-watch.sh   # one-time; log: ~/Library/Logs/
 pnpm master:relay --dry                         # what would be ingested, and to which run
 ```
 
-**Which run gets the file.** Name it after the run — `kbbvvatd.png` — and it
-goes there. With no hint the relay takes the one waiting run; when several are
+**Which run gets the file.** Prefix it with the run id and leave the tool's own
+name in place — `kbbvvatd Codex Image ….png` — and it goes there. The download
+name is the only evidence of which generator rendered the photo, so the relay
+reads it off the dropped file and asserts it to `done`; renaming to a bare
+`kbbvvatd.png` still works and simply leaves the queued model standing. With no hint the relay takes the one waiting run; when several are
 waiting it **refuses**, leaves the file, and says so in #mkan with the run ids
 to choose from. Dropping a file in the inbox stands in for the approve click —
 the human looked at the render in Gemini before saving it — but it never stands

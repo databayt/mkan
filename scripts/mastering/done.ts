@@ -6,7 +6,8 @@
  *   pnpm master:done h3k9x2 --from-slack        # image the human attached in Slack
  *   pnpm master:done h3k9x2 --yes --no-open    # skip eyeball + confirm (CI/auto lane)
  *
- * Flags: --file=<path> --from-slack --window=<minutes, default 120> --yes --no-open
+ * Flags: --file=<path> --from-slack --model=<generator> --window=<minutes, default 120>
+ *        --yes --no-open
  *
  * The run's recorded model is corrected here when the returned file's name
  * proves a different generator family made it (models.ts → correctedModel).
@@ -50,13 +51,19 @@ import {
   swapPhoto,
   twentyRollup,
 } from './lib';
-import { correctedModel } from './models';
+import { correctedModel, resolveModel } from './models';
 
 const FILE = argv('file');
 const FROM_SLACK = flag('from-slack');
 const WINDOW_MIN = parseInt(argv('window', '120'), 10) || 120;
 const YES = flag('yes');
 const NO_OPEN = flag('no-open');
+/**
+ * What actually rendered this file, when the caller knows better than the
+ * filename does — `master:relay` reads the signature off the dropped name
+ * BEFORE the run-id rename can strip it, and passes it here.
+ */
+const MODEL_ASSERTED = argv('model');
 
 const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp']);
 const MIN_WIDTH = 1200;
@@ -207,9 +214,14 @@ async function main(): Promise<void> {
   // vendor family the evidence wins — a record of "rendered by Nano Banana" for
   // an image Codex made is fiction, and fiction is what the frozen prompt and
   // version exist to prevent.
-  const corrected = correctedModel(run.model, basename(candidatePath));
+  const asserted = MODEL_ASSERTED ? resolveModel(MODEL_ASSERTED) : null;
+  const detected = correctedModel(run.model, basename(candidatePath));
+  const corrected =
+    asserted && asserted.id !== resolveModel(run.model).id ? asserted : detected;
   if (corrected) {
-    console.log(`  ⓘ recorded model ${run.model} → ${corrected.id} (from the returned filename)`);
+    console.log(
+      `  ⓘ recorded model ${run.model} → ${corrected.id} (${asserted ? 'asserted by the caller' : 'from the returned filename'})`,
+    );
   }
 
   // MASTERED, then apply: swap by URL match inside one transaction. If the
