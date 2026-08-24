@@ -152,10 +152,20 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
   }
 
   // One listing, one URL. A visitor who arrived by row id or by Airbnb room id
-  // is moved onto the code — permanently (308), so the index collapses the
-  // duplicates instead of ranking the same room against itself. The query
-  // string rides along: `?checkIn=…` is how a shared link lands already priced,
-  // and dropping it here would silently unprice every one of those.
+  // is moved onto the code, so the index collapses the duplicates instead of
+  // ranking the same room against itself. The query string rides along:
+  // `?checkIn=…` is how a shared link lands already priced, and dropping it
+  // here would silently unprice every one of those.
+  //
+  // It is MEANT to be a 308 and it is not one yet. Measured 2026-08-24: every
+  // `notFound()`/`permanentRedirect()` thrown during render in this app comes
+  // back HTTP 200 — app-wide, reproducible locally, not specific to this route
+  // (routing-layer 404s and `NextResponse.redirect` in proxy.ts are fine). So
+  // this degrades to a client-side hop: a browser lands on the code, a crawler
+  // sees 200. The canonical tag above is what actually collapses the duplicate
+  // for now. Ruled out already: both `loading.tsx` boundaries, hoisting this
+  // above the localization awaits, and moving the whole guard into
+  // `generateMetadata` (which also loses the not-found `noIndex` — net worse).
   const canonicalSegment = listingSegment(listing);
   if (id !== canonicalSegment) {
     const qs = new URLSearchParams();
