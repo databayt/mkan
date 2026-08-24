@@ -145,7 +145,15 @@ async function main(): Promise<void> {
     throw new Error('--force bypasses the consent gate — re-run with FORCE_SEED=1 to confirm you mean it');
   }
 
+  // Minting the code here is what keeps mkan.sd and the CRM addressing the
+  // same listing by the same string. The first eight codes were assigned by a
+  // one-shot migration script and nothing in the pipeline reproduced it, so
+  // the next wave would have published listings whose only public id was an
+  // Airbnb room number — a URL no host recognises and the CRM cannot show.
+  const { ensureListingCode } = await import('@/lib/listing-code-server');
+
   let flipped = 0;
+  let uncoded = 0;
   for (const r of eligible) {
     try {
       await prisma.listing.update({
@@ -153,12 +161,23 @@ async function main(): Promise<void> {
         data: { isPublished: true, lastAvailabilityConfirmedAt: new Date() },
       });
       flipped++;
-      console.log(`+ Available: listing #${r.mkanListingId}  ${(r.h.title ?? '').slice(0, 40)}`);
+      const code = await ensureListingCode(r.mkanListingId!);
+      if (!code) uncoded++;
+      console.log(
+        `+ Available: listing #${r.mkanListingId}  ${code ? code.padEnd(8) : '(no code)'.padEnd(8)} ${(r.h.title ?? '').slice(0, 40)}`,
+      );
     } catch (e) {
       console.warn(`! listing #${r.mkanListingId}: ${(e as Error).message}`);
     }
   }
-  console.log(`\n✅ ${flipped} listing(s) now Available (${CITY} wave). Sync mkanPublishState=LIVE + publishedAt back to Twenty.\n`);
+  console.log(`\n✅ ${flipped} listing(s) now Available (${CITY} wave). Sync mkanPublishState=LIVE + publishedAt back to Twenty.`);
+  if (uncoded) {
+    console.log(
+      `⚠️  ${uncoded} of them have no mkan code — their host has no NNNN@mkan.org account, so there is\n` +
+        `   no account number to build one from. They resolve by row id until that is fixed.`,
+    );
+  }
+  console.log('');
 }
 
 main().catch((e: unknown) => {

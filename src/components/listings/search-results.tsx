@@ -11,6 +11,7 @@ import { formatNumber } from "@/lib/i18n/formatters"
 import { addFavoriteProperty, removeFavoriteProperty } from "@/lib/actions/user-actions"
 import { qualifiesAsGuestFavorite } from "@/lib/guest-favorite"
 import { zoneLabel } from "@/lib/geo/zone"
+import { listingSegment } from "@/lib/listing-code"
 
 interface SearchResultsProps {
   properties: Listing[]
@@ -110,6 +111,7 @@ export function SearchResults({
           <SearchCard
             key={l.id}
             id={l.id.toString()}
+            linkId={listingSegment(l)}
             images={l.photoUrls ?? []}
             title={l.title ?? ""}
             subtitle={buildLocationSubtitle(l)}

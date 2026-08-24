@@ -277,6 +277,16 @@ model Listing {
   // listings permanently unattributable. The join key belongs here.
   source             ListingSource?
   sourceListingId    String?             @unique // external id, e.g. the Airbnb room id
+  // mkan's own public listing code — `NNNN-NN`, where NNNN is the host's
+  // account number (the `NNNN@mkan.org` login) and NN the unit sequence within
+  // that host. This is the id the CRM, the WhatsApp outreach and mkan.sd all
+  // share, and it is the canonical segment of a listing URL.
+  //
+  // It used to live in `sourceListingId`, which is the EXTERNAL id — so the 8
+  // scraped listings that were promoted to a code had their Airbnb room id
+  // overwritten, and `sync-up.ts`'s Airbnb lookup map silently stopped finding
+  // them. One column per meaning; neither borrows the other's.
+  code               String?             @unique
   sourceUrl          String?
   sourceHostId       String? // external host id — pairs with User.sourceHostId
   sourceCapturedAt   DateTime?

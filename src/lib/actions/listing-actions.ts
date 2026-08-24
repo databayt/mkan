@@ -19,6 +19,7 @@ import { SEARCH_LISTING_SELECT } from "@/lib/listing-select";
 import { logger } from "@/lib/logger";
 import { zoneKeyFor } from "@/lib/geo/zone";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { ensureListingCode } from "@/lib/listing-code-server";
 
 const listingIdSchema = z.number().int().positive();
 
@@ -224,6 +225,10 @@ export async function createListing(data: unknown = {}) {
       },
     });
 
+    // A listing that arrives already published needs its code now — it has to
+    // exist by the time the row is publicly reachable.
+    if (listing.isPublished) await ensureListingCode(listing.id);
+
     revalidatePath("/hosting/listings");
     // Bust the searchListings cache so new/updated listings appear on the
     // public /listings and /search pages without waiting for the revalidate
@@ -255,6 +260,9 @@ export async function getListing(id: unknown) {
 
   const whereClause: Prisma.ListingWhereInput = {
     OR: [
+      // Same precedence as the detail page: code first, then the external id
+      // (which carried the code until 2026-08-24), then the row id.
+      { code: idStr },
       { sourceListingId: idStr },
       ...(isSafeDbId ? [{ id: numericId }] : []),
     ],
@@ -601,6 +609,8 @@ export async function updateListing(id: unknown, data: unknown) {
       },
     });
 
+    if (listing.isPublished) await ensureListingCode(listing.id);
+
     revalidatePath("/hosting/listings");
     revalidatePath(`/hosting/listings/editor/${parsedId.data}`);
     revalidatePath(`/listing/${parsedId.data}`);
@@ -751,6 +761,10 @@ export async function publishListing(id: unknown) {
         },
       },
     });
+
+    // The moment the row is publicly reachable it needs the code that the CRM
+    // and the outreach messages address it by.
+    await ensureListingCode(publishedListing.id);
 
     revalidatePath("/hosting/listings");
     revalidatePath(`/listing/${parsedId.data}`);

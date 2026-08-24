@@ -23,6 +23,11 @@ interface PropertyCardProps {
   isFavorite?: boolean
   onFavoriteToggle?: (id: string, isFavorite: boolean) => void
   onCardClick?: (id: string) => void
+  /** URL segment to navigate to — the mkan code (`0001-01`) when the listing
+      has one. Deliberately separate from `id`: `id` is the favourites key and
+      has to stay the numeric row id, because the handlers `parseInt` it and
+      `parseInt("0001-01")` is 1 — one heart on the wrong listing. */
+  linkId?: string
   className?: string
   priority?: boolean
 }
@@ -39,6 +44,7 @@ export function PropertyCard({
   isFavorite = false,
   onFavoriteToggle,
   onCardClick,
+  linkId,
   className,
   priority = false
 }: PropertyCardProps) {
@@ -56,7 +62,7 @@ export function PropertyCard({
   }
 
   const handleCardClick = () => {
-    onCardClick?.(id)
+    onCardClick?.(linkId ?? id)
   }
 
   const handleImageNavigation = (e: React.MouseEvent, index: number) => {

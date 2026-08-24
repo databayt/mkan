@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { db } from "@/lib/db";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Suspense, cache } from "react";
 import ListingDetailsClient from "@/components/listing-details-client";
 import Location from "@/components/listings/map";
@@ -25,6 +25,7 @@ import { auth } from "@/lib/auth";
 import type { Locale } from "@/components/internationalization/config";
 import { localize, localizeNested, getText } from "@/components/translation/localize";
 import TrackView from "@/components/analytics/track-view";
+import { listingSegment } from "@/lib/listing-code";
 
 interface ListingPageProps {
   params: Promise<{
@@ -62,6 +63,10 @@ export async function generateMetadata({
       path: `/listings/${id}`,
     });
   }
+  // Canonical on the code, never on whichever id the visitor arrived with —
+  // otherwise `/listings/1180` and `/listings/0001-01` each declare themselves
+  // canonical and the same room competes with itself in the index.
+  const canonicalPath = `/listings/${listingSegment(listing)}`;
   const [title, description, city] = await Promise.all([
     getText(listing?.title, lang),
     getText(listing?.description, lang),
@@ -73,7 +78,7 @@ export async function generateMetadata({
     title: [title || d.rental?.listing?.details, city].filter(Boolean).join(" - "),
     description: description || d.rental?.listing?.viewDetails,
     locale: lang,
-    path: `/listings/${id}`,
+    path: canonicalPath,
     image: listing?.photoUrls?.[0],
     // Unpublished/draft listings 404 in the page itself; keep any crawler
     // that raced the transition from indexing the URL.
@@ -89,6 +94,11 @@ const fetchListing = cache(async (identifier: string) => {
   return db.listing.findFirst({
     where: {
       OR: [
+        // The mkan code (`0001-01`) is the canonical segment. `sourceListingId`
+        // is kept resolvable because it was the code's home until 2026-08-24 —
+        // links already shared with hosts must not break — and because the
+        // scraped rows that have no code yet are reachable by Airbnb room id.
+        { code: identifier },
         { sourceListingId: identifier },
         ...(isSafeDbId ? [{ id: numericId }] : []),
       ],
@@ -141,6 +151,22 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
     notFound();
   }
 
+  // One listing, one URL. A visitor who arrived by row id or by Airbnb room id
+  // is moved onto the code — permanently (308), so the index collapses the
+  // duplicates instead of ranking the same room against itself. The query
+  // string rides along: `?checkIn=…` is how a shared link lands already priced,
+  // and dropping it here would silently unprice every one of those.
+  const canonicalSegment = listingSegment(listing);
+  if (id !== canonicalSegment) {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(sp)) {
+      if (typeof value === "string") qs.append(key, value);
+      else if (Array.isArray(value)) for (const v of value) qs.append(key, v);
+    }
+    const query = qs.toString();
+    permanentRedirect(`/${lang}/listings/${canonicalSegment}${query ? `?${query}` : ""}`);
+  }
+
   const listingId = listing.id;
 
   // Serialize the listing data to avoid Prisma serialization issues
@@ -181,6 +207,8 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
         },
         select: {
           id: true,
+          code: true,
+          sourceListingId: true,
           title: true,
           photoUrls: true,
           pricePerNight: true,
@@ -213,7 +241,7 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
   try {
     const localizedNearby = await localize(nearbyRaw, ["title"], lang);
     nearbyStays = localizedNearby.map((l) => ({
-      id: (l as any).sourceListingId || l.id,
+      id: listingSegment(l as { code?: string | null; sourceListingId?: string | null; id: number }),
       title: l.title ?? "Listing",
       image: l.photoUrls?.[0] ?? null,
       price: l.pricePerNight ?? 0,
@@ -224,8 +252,7 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
     nearbyStays = [];
   }
 
-  const canonicalId = listing.sourceListingId || listingId;
-  const listingUrl = `${SITE_URL}/${lang}/listings/${canonicalId}`;
+  const listingUrl = `${SITE_URL}/${lang}/listings/${canonicalSegment}`;
 
   return (
     <div className="min-h-screen bg-background">

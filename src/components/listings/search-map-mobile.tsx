@@ -12,6 +12,7 @@ import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
 import { PropertyImageFallback } from "@/components/atom/property-image-fallback";
 import type { MapBounds } from "./search-provider";
 import type { Listing } from "@/types/listing";
+import { listingSegment } from "@/lib/listing-code";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
@@ -344,7 +345,9 @@ export default function SearchMapMobile({
                   key={id}
                   type="button"
                   data-card-id={id}
-                  onClick={() => router.push(`/${locale}/listings/${id}`)}
+                  // `id` here is the row id — it keys the map markers. The
+                  // route wants the code.
+                  onClick={() => router.push(`/${locale}/listings/${listingSegment(l)}`)}
                   className="shrink-0 overflow-hidden rounded-2xl bg-white text-start shadow-lg"
                   style={{
                     flex: "0 0 calc(100% - 48px)",

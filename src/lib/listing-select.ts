@@ -14,6 +14,10 @@ import { Prisma } from "@prisma/client";
 // files may only export async functions.
 export const SEARCH_LISTING_SELECT = {
   id: true,
+  // Both id shapes travel with every card: `code` is the URL the card links to
+  // (see listingSegment), `sourceListingId` the fallback for scraped rows that
+  // have not been published — and so have no code — yet.
+  code: true,
   sourceListingId: true,
   title: true,
   description: true,

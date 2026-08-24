@@ -13,6 +13,7 @@ import { formatCurrency } from '@/lib/i18n/formatters'
 import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-actions'
 import { useSession } from 'next-auth/react'
 import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite'
+import { listingSegment } from '@/lib/listing-code'
 
 interface PropertyListingsProps {
   properties: Listing[]
@@ -74,7 +75,10 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
 
   // Transform properties to match PropertyCard interface
   const transformedProperties = properties.map(property => ({
-    id: (property.sourceListingId || property.id).toString(),
+    // `id` stays the row id — it is the favourites key. Navigation uses the
+    // code via `linkId`.
+    id: property.id.toString(),
+    linkId: listingSegment(property),
     images: property.photoUrls || [],
     title: property.title || "Property",
     location: `${property.location?.city || ""}, ${property.location?.state || ""}`,

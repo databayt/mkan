@@ -44,6 +44,11 @@ export interface SearchCardProps {
   isFavorite?: boolean
   onFavoriteToggle?: (id: string, isFavorite: boolean) => void
   onCardClick?: (id: string) => void
+  /** URL segment to navigate to — the mkan code (`0001-01`) when the listing
+      has one. Deliberately separate from `id`: `id` is the favourites key and
+      has to stay the numeric row id, because the handlers `parseInt` it and
+      `parseInt("0001-01")` is 1 — one heart on the wrong listing. */
+  linkId?: string
   priority?: boolean
 }
 
@@ -64,6 +69,7 @@ export function SearchCard({
   isFavorite = false,
   onFavoriteToggle,
   onCardClick,
+  linkId,
   priority = false,
 }: SearchCardProps) {
   const dict = useDictionary()
@@ -103,7 +109,7 @@ export function SearchCard({
       : null
 
   return (
-    <div className="group cursor-pointer" onClick={() => onCardClick?.(id)}>
+    <div className="group cursor-pointer" onClick={() => onCardClick?.(linkId ?? id)}>
       {/* Image — 4:3, swipeable strip with the exact Airbnb dots. */}
       <ImageCarousel
         images={images}

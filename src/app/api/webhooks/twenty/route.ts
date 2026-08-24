@@ -75,8 +75,14 @@ export async function POST(req: Request) {
       const mkanListingId = record.mkanListingId ? Number(record.mkanListingId) : (listingIdStr && /^\d+$/.test(listingIdStr) ? Number(listingIdStr) : null);
       const pubState = record.publishState ?? record.mkanPublishState;
 
+      // Twenty's `listingId` is the mkan code (`0001-01`). It lived in
+      // `sourceListingId` until 2026-08-24 and moved to its own column, so
+      // both are tried — the old value is still on 26 rows until the backfill
+      // clears them, and a CRM record edited mid-migration must still match.
       const listing = listingIdStr && isNaN(Number(listingIdStr))
-        ? await db.listing.findFirst({ where: { sourceListingId: listingIdStr } })
+        ? await db.listing.findFirst({
+            where: { OR: [{ code: listingIdStr }, { sourceListingId: listingIdStr }] },
+          })
         : mkanListingId
           ? await db.listing.findUnique({ where: { id: mkanListingId } })
           : airbnbListingId
