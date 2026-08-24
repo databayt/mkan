@@ -95,15 +95,23 @@ async function main(): Promise<void> {
 
   const model = resolveModel(run.model);
   execSync('pbcopy', { input: run.prompt });
+  // The run's own generator, not a hardcoded one — an unregistered model has
+  // no app to open, and the human already knows where they are going. Prefer
+  // the desktop app: `open -a` fails loudly when it is not installed, so its
+  // exit status IS the presence check and the URL stays the honest fallback.
+  let openedVia = '';
   if (process.platform === 'darwin') {
     spawnSync('open', ['-R', originalPath], { stdio: 'ignore' }); // reveal in Finder for the drag
-    // The run's own generator, not a hardcoded one — an unregistered model has
-    // no app to open, and the human already knows where they are going.
-    if (model.url) spawnSync('open', [model.url], { stdio: 'ignore' });
+    if (model.app && spawnSync('open', ['-a', model.app], { stdio: 'ignore' }).status === 0) {
+      openedVia = `${model.app} app`;
+    } else if (model.url) {
+      spawnSync('open', [model.url], { stdio: 'ignore' });
+      openedVia = model.url;
+    }
   }
 
   console.log(`\n🎬 Prepped ${shortId(run.id)} — listing #${run.listingId} «${(run.listing.title ?? '').slice(0, 40)}», photo ${run.photoIndex + 1}, attempt ${run.attempt}`);
-  console.log(`   prompt ${run.promptVersion} → clipboard · original revealed in Finder${model.url ? ` · ${model.label} opened` : ` · ${model.label} has no web app registered`}`);
+  console.log(`   prompt ${run.promptVersion} → clipboard · original revealed in Finder${openedVia ? ` · ${model.label} opened (${openedVia})` : ` · ${model.label} has nothing to open`}`);
   console.log(`   do: drag the image into ${model.label} → ⌘V → Enter → download`);
   console.log(`   then: pnpm master:done ${shortId(run.id)}\n`);
 }

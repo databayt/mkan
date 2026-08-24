@@ -34,6 +34,12 @@ export interface MasteringModel {
   family: string;
   /** Web app `master:prep` opens. Empty when there is nothing to open. */
   url: string;
+  /**
+   * macOS app `master:prep` opens in preference to `url`, when it is actually
+   * installed. The desktop app keeps the drag inside one window and remembers
+   * the save folder; the URL stays the fallback for a Mac without it.
+   */
+  app?: string;
   /** Download-filename signatures for detection. */
   match: RegExp[];
   note?: string;
@@ -61,6 +67,7 @@ export const MODELS: MasteringModel[] = [
     label: "ChatGPT Image",
     family: "openai",
     url: "https://chatgpt.com",
+    app: "ChatGPT",
     match: [/^ChatGPT Image/i, /^DALL[·.]?E/i],
     note: "covered by the ChatGPT subscription",
   },
@@ -69,6 +76,7 @@ export const MODELS: MasteringModel[] = [
     label: "ChatGPT Image 2.0",
     family: "openai",
     url: "https://chatgpt.com",
+    app: "ChatGPT",
     // Same download name as its predecessor — which is exactly why the version
     // is its own id and detection never overrides within a family.
     match: [/^ChatGPT Image/i],
@@ -79,6 +87,7 @@ export const MODELS: MasteringModel[] = [
     label: "Codex",
     family: "openai",
     url: "https://chatgpt.com/codex",
+    app: "ChatGPT",
     match: [/^Codex Image/i],
   },
 ];
