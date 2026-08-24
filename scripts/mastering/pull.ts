@@ -74,11 +74,23 @@ function saveState(s: PullState): void {
   writeFileSync(STATE_FILE, JSON.stringify(s, null, 2));
 }
 
+/** One entry of the FILES composite as Twenty v2.31 returns it — `url` is fully signed. */
+interface TwentyFileItem {
+  fileId?: string;
+  label?: string;
+  url?: string;
+}
+
 interface TwentyAttachment {
   id: string;
   name: string;
   fullPath: string;
-  file?: { path?: string; token?: string } | null;
+  /**
+   * Twenty v2.31 returns FILES as an ARRAY carrying a ready-made signed `url`.
+   * Older records expose a `{ path, token }` object instead. Both are read: a
+   * shape assumption here is invisible until a download silently fails.
+   */
+  file?: TwentyFileItem[] | { path?: string; token?: string } | null;
   createdAt: string;
   targetHomeId: string | null;
 }
@@ -89,9 +101,26 @@ async function download(att: TwentyAttachment): Promise<Buffer> {
   const key = trim(process.env.TWENTY_API_KEY);
   // Newer Twenty exposes a `file` composite whose path may carry a signed
   // token; older records only have fullPath. Try the most specific first.
+  // The signed url points at whatever public host Twenty was configured with
+  // (a Tailscale funnel here). Keep its path and token, swap the origin for the
+  // API we already talk to — otherwise every pull round-trips the internet to
+  // reach a container on this same machine.
+  const signed = (Array.isArray(att.file) ? att.file : [])
+    .map((f) => trim(f?.url))
+    .filter(Boolean)
+    .map((u) => {
+      try {
+        const parsed = new URL(u);
+        return `${base}${parsed.pathname}${parsed.search}`;
+      } catch {
+        return u;
+      }
+    });
+  const legacy = Array.isArray(att.file) ? null : att.file;
   const candidates = [
-    att.file?.path && att.file?.token ? `${base}/files/${att.file.path}?token=${att.file.token}` : null,
-    att.file?.path ? `${base}/files/${att.file.path}` : null,
+    ...signed,
+    legacy?.path && legacy?.token ? `${base}/files/${legacy.path}?token=${legacy.token}` : null,
+    legacy?.path ? `${base}/files/${legacy.path}` : null,
     `${base}/files/${att.fullPath}`,
   ].filter(Boolean) as string[];
   let lastErr = 'no candidate URL';

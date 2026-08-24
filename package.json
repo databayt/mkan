@@ -80,6 +80,7 @@
     "master:status": "tsx scripts/mastering/status.ts",
     "master:reconcile": "tsx scripts/mastering/reconcile.ts",
     "master:relay": "tsx scripts/mastering/relay.ts",
+    "master:webhook": "tsx scripts/mastering/webhook.ts",
     "scope:portsudan": "tsx scripts/crm/scope-portsudan-phase.ts",
     "scope:city": "tsx scripts/crm/scope-portsudan-phase.ts",
     "test": "vitest run",
