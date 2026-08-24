@@ -26,6 +26,7 @@ import type { Locale } from "@/components/internationalization/config";
 import { localize, localizeNested, getText } from "@/components/translation/localize";
 import TrackView from "@/components/analytics/track-view";
 import { listingSegment } from "@/lib/listing-code";
+import ListingDetailSkeleton from "@/components/listings/listing-detail-skeleton";
 
 interface ListingPageProps {
   params: Promise<{
@@ -307,7 +308,7 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
         {/* Listing column capped at 1120px (px-8 → 1120 content at 1440), the
             live room page's content width — keeps the gallery at 1120×560. */}
         <div className="mx-auto w-full max-w-[1184px] px-8">
-          <Suspense fallback={<div>{d.rental?.listing?.loadingDetails}</div>}>
+          <Suspense fallback={<ListingDetailSkeleton />}>
             <ListingDetailsClient
               listing={serializedListing}
               initialIsSaved={initialIsSaved}

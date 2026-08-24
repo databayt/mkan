@@ -1,6 +1,16 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function Loading() {
+/**
+ * The listing detail skeleton.
+ *
+ * This used to be `listings/[id]/loading.tsx`. A `loading.tsx` wraps its
+ * segment in a Suspense boundary, and Next flushes that boundary's shell with
+ * a 200 before the page component runs — which means the page's `notFound()`
+ * and `permanentRedirect()` could never set a status (mkan#53). Now it is a
+ * plain component the page renders as its own Suspense fallback, *after* the
+ * guard has had its chance to 404 or redirect.
+ */
+export default function ListingDetailSkeleton() {
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop Layout */}
