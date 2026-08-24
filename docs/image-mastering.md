@@ -111,7 +111,7 @@ pnpm master:dispatch --apply                                # tasks → Slack
 pnpm master:pull --apply            # Twenty→queue: images dropped on a Home record
                                     #   become runs; originals staged in ~/mkan/inbox/originals/
 pnpm master:prep --setup-chatgpt    # ONE-TIME: print the standing instructions for the
-                                    #   "mkan mastering" ChatGPT Project — after that,
+                                    #   "master" ChatGPT Project — after that,
                                     #   per image = drag → Enter → save to ~/mkan/inbox/
 pnpm master:prep                    # oldest waiting task: prompt→clipboard,
                                     #   original→Finder, Gemini opens

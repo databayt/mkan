@@ -266,7 +266,7 @@ async function main(): Promise<void> {
     const digest = [
       `:camera_with_flash: *${runsMade.length} new photo(s) from Twenty queued for mastering*`,
       ...lines,
-      `*Do:* drag them from \`~/mkan/inbox/originals/\` into the ChatGPT *mkan mastering* project (standing prompt — nothing to paste), then save each render into \`~/mkan/inbox/\` keeping the \`<run-id> …\` prefix. The relay does the rest.`,
+      `*Do:* drag them from \`~/mkan/inbox/originals/\` into the ChatGPT *master* project (standing prompt — nothing to paste), then save each render into \`~/mkan/inbox/\` keeping the \`<run-id> …\` prefix. The relay does the rest.`,
       ...(skipped.length ? ['', '*Skipped:*', ...skipped.map((s) => `• ${s}`)] : []),
       ...(givenUp.length ? ['', ':warning: *Given up (needs a human):*', ...givenUp.map((s) => `• ${s}`)] : []),
     ].join('\n');
