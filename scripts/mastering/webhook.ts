@@ -26,7 +26,6 @@
  */
 import { spawn } from "node:child_process";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { appendFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { trim } from "./lib";
@@ -39,14 +38,12 @@ const DEBOUNCE_MS = Number(trim(process.env.MASTERING_WEBHOOK_DEBOUNCE_MS)) || 8
 const REPO = join(homedir(), "mkan");
 const LOG = join(homedir(), "Library", "Logs", "mkan-mastering-webhook.log");
 
+/**
+ * stdout only — launchd redirects it into LOG, and writing to both put every
+ * line in that file twice.
+ */
 function log(msg: string): void {
-  const line = `${new Date().toISOString()} ${msg}\n`;
-  process.stdout.write(line);
-  try {
-    appendFileSync(LOG, line);
-  } catch {
-    // A log we cannot write is not a reason to drop a photo.
-  }
+  process.stdout.write(`${new Date().toISOString()} ${msg}\n`);
 }
 
 let timer: NodeJS.Timeout | null = null;
@@ -78,7 +75,10 @@ function runPull(): void {
     const summary = tail
       .join("")
       .split("\n")
-      .filter((l) => l.includes("Mastering pull") || l.includes("queued") || l.includes("✗"));
+      .map((l) => l.trim())
+      // Only the pull's own report lines. Loose word matching swept in prisma
+      // query logs — "queuedAt" inside an INSERT is not a summary.
+      .filter((l) => /^(📡|✓|✅|!|✗)/.test(l));
     log(`◀ pull exit ${code}${summary.length ? ` — ${summary.join(" | ").slice(0, 300)}` : ""}`);
     if (again) {
       again = false;
@@ -150,6 +150,6 @@ function handle(req: IncomingMessage, res: ServerResponse): void {
 
 createServer(handle).listen(PORT, () => {
   log(
-    `👂 mastering webhook on :${PORT} — secret ${SECRET ? "set" : "MISSING (every delivery will 401)"}`,
+    `👂 mastering webhook on :${PORT} — secret ${SECRET ? "set" : "MISSING (every delivery will 401)"} — log ${LOG}`,
   );
 });
