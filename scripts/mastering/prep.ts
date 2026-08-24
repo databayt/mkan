@@ -16,7 +16,7 @@ import { execSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { tmpdir } from 'node:os';
-import { flag, positional, findRun, getDb, shortId } from './lib';
+import { flag, positional, findRun, getDb, shortId, trim } from './lib';
 import { compilePrompt, PROMPT_VERSION } from './prompt';
 import { resolveModel } from './models';
 
@@ -37,6 +37,27 @@ function printChatgptSetup(): void {
   console.log('---\n');
   console.log(`Then per image: drag from ~/mkan/inbox/originals/ → Enter → save the render into ~/mkan/inbox/ KEEPING the run-id prefix from the original's filename. The relay ingests it from there.`);
   console.log(`When the canonical prompt bumps (v2…), re-run this and replace the project instructions once.\n`);
+}
+
+/**
+ * Put the ORIGINAL photo on the clipboard so the generator takes it with one
+ * ⌘V. ChatGPT.app declares no image document types, so `open -a <app> <file>`
+ * cannot attach a photo — paste is the only lane into the desktop app.
+ *
+ * Normalises through `sips` to PNG first: AppleScript's `read ... as` needs a
+ * coercion that matches the bytes, so a per-extension guess would break the
+ * day an original arrives as webp or heic. One conversion, one coercion.
+ */
+function copyImageToClipboard(path: string): boolean {
+  try {
+    const png = join(tmpdir(), 'mkan-mastering', `clip-${Date.now()}.png`);
+    mkdirSync(join(tmpdir(), 'mkan-mastering'), { recursive: true });
+    if (spawnSync('sips', ['-s', 'format', 'png', path, '--out', png], { stdio: 'ignore' }).status !== 0) return false;
+    const osa = `set the clipboard to (read (POSIX file ${JSON.stringify(png)}) as «class PNGf»)`;
+    return spawnSync('osascript', ['-e', osa], { stdio: 'ignore' }).status === 0;
+  } catch {
+    return false;
+  }
 }
 
 async function main(): Promise<void> {
@@ -94,7 +115,18 @@ async function main(): Promise<void> {
   }
 
   const model = resolveModel(run.model);
-  execSync('pbcopy', { input: run.prompt });
+  // With the standing instructions saved in the generator's project, the prompt
+  // is already there on every message — so the clipboard is free for the thing
+  // that actually has to move, the photo. Without that setup the prompt still
+  // has to travel, and it keeps the clipboard.
+  const standing = flag('standing') || trim(process.env.MASTERING_STANDING_PROMPT) === '1';
+  let onClipboard = 'prompt';
+  if (standing && copyImageToClipboard(originalPath)) {
+    onClipboard = 'photo';
+  } else {
+    if (standing) console.log('   (could not copy the photo — falling back to the prompt)');
+    execSync('pbcopy', { input: run.prompt });
+  }
   // The run's own generator, not a hardcoded one — an unregistered model has
   // no app to open, and the human already knows where they are going. Prefer
   // the desktop app: `open -a` fails loudly when it is not installed, so its
@@ -111,8 +143,12 @@ async function main(): Promise<void> {
   }
 
   console.log(`\n🎬 Prepped ${shortId(run.id)} — listing #${run.listingId} «${(run.listing.title ?? '').slice(0, 40)}», photo ${run.photoIndex + 1}, attempt ${run.attempt}`);
-  console.log(`   prompt ${run.promptVersion} → clipboard · original revealed in Finder${openedVia ? ` · ${model.label} opened (${openedVia})` : ` · ${model.label} has nothing to open`}`);
-  console.log(`   do: drag the image into ${model.label} → ⌘V → Enter → download`);
+  console.log(`   ${onClipboard === 'photo' ? 'photo' : `prompt ${run.promptVersion}`} → clipboard · original revealed in Finder${openedVia ? ` · ${model.label} opened (${openedVia})` : ` · ${model.label} has nothing to open`}`);
+  console.log(
+    onClipboard === 'photo'
+      ? `   do: in ${model.label} → ⌘V → Enter → save the result into the inbox`
+      : `   do: drag the image into ${model.label} → ⌘V the prompt → Enter → save into the inbox`,
+  );
   console.log(`   then: pnpm master:done ${shortId(run.id)}\n`);
 }
 
