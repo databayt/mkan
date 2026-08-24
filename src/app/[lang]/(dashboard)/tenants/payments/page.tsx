@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { PayButton } from "./pay-button";
+import { listingSegment } from "@/lib/listing-code";
 
 // Force dynamic rendering because we depend on the session cookie.
 export const dynamic = "force-dynamic";
@@ -31,6 +32,8 @@ type PaymentWithListing = {
     id: number;
     listing: {
       id: number;
+      code: string | null;
+      sourceListingId: string | null;
       title: string | null;
       location: { city: string; country: string } | null;
     };
@@ -189,7 +192,7 @@ function PaymentsTable({
           <TableRow key={p.id}>
             <TableCell>
               <Link
-                href={`/${lang}/listings/${p.lease.listing.id}`}
+                href={`/${lang}/listings/${listingSegment(p.lease.listing)}`}
                 className="hover:underline font-medium"
               >
                 {p.lease.listing.title ?? "Untitled"}

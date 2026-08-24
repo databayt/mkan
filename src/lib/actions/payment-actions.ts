@@ -257,6 +257,8 @@ export async function getUserPayments(userId?: string) {
             listing: {
               select: {
                 id: true,
+                code: true,
+                sourceListingId: true,
                 title: true,
                 location: {
                   select: {

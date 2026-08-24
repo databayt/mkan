@@ -9,6 +9,7 @@ import { useDictionary } from '@/components/internationalization/dictionary-cont
 import { useHostValidation } from '@/context/onboarding-validation-context';
 import { publishListing } from '@/components/host/actions';
 import { toast } from 'sonner';
+import { listingSegment } from '@/lib/listing-code';
 
 interface LegalAndCreatePageProps {
   params: Promise<{ id: string }>;
@@ -41,12 +42,15 @@ const LegalAndCreatePage = ({ params }: LegalAndCreatePageProps) => {
 
     setIsPublishing(true);
     try {
-      await publishListing(listingId);
+      // publishListing mints the listing's code on the way through, so the
+      // row it hands back is the first place that code exists — land the host
+      // on it rather than on the row id they would then be redirected off.
+      const published = await publishListing(listingId);
       toast.success(
         (dict.hosting?.pages?.legal as Record<string, string>)?.published ??
           'Your listing is live!'
       );
-      router.push(`/${lang}/listings/${listingId}`);
+      router.push(`/${lang}/listings/${listingSegment(published?.listing ?? { id: listingId })}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not publish';
       toast.error(message);

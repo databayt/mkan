@@ -7,6 +7,7 @@ import { getBooking } from "@/lib/actions/booking-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { getText } from "@/components/translation/localize";
 import CancelBookingButton from "./cancel-button";
+import { listingSegment } from "@/lib/listing-code";
 
 export default async function BookingConfirmationPage({
   params,
@@ -39,6 +40,8 @@ export default async function BookingConfirmationPage({
     status: string;
     listing: {
       id: number;
+      code: string | null;
+      sourceListingId: string | null;
       title: string | null;
       photoUrls: string[];
       location: { city: string; country: string; address: string } | null;
@@ -144,7 +147,7 @@ export default async function BookingConfirmationPage({
           <CancelBookingButton bookingId={b.id} lang={lang} dict={dict} />
         )}
         <Link
-          href={`/${lang}/listings/${b.listing.id}`}
+          href={`/${lang}/listings/${listingSegment(b.listing)}`}
           className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm"
         >
           {t.viewListing ?? "View listing"}

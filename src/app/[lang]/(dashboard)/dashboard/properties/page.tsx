@@ -12,6 +12,7 @@ import { getDictionary } from "@/components/internationalization/dictionaries";
 import type { Locale } from "@/components/internationalization/config";
 import { formatCurrency } from "@/lib/i18n/formatters";
 import { localizeListings } from "@/components/translation/localize";
+import { listingSegment } from "@/lib/listing-code";
 
 export async function generateMetadata({
   params,
@@ -129,7 +130,7 @@ export default async function PropertiesPage({
 
                 <div className="flex gap-2 pt-2">
                   <Button variant="outline" size="sm" className="flex-1" asChild>
-                    <Link href={`/${lang}/listings/${property.id}`}>
+                    <Link href={`/${lang}/listings/${listingSegment(property)}`}>
                       {d.dashboard.common.view}
                     </Link>
                   </Button>

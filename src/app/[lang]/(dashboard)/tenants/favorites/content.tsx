@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import { getTenantFavorites } from "@/lib/actions/user-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { localizeListings } from "@/components/translation/localize";
+import { listingSegment } from "@/lib/listing-code";
 
 interface FavoritesContentProps {
   lang: string;
@@ -25,6 +26,8 @@ export default async function FavoritesContent({ lang }: FavoritesContentProps) 
   const rawFavorites = (await getTenantFavorites()) as unknown as Array<Record<string, unknown>>;
   const favorites = (await localizeListings(rawFavorites, lang as "en" | "ar")) as unknown as Array<{
     id: number;
+    code: string | null;
+    sourceListingId: string | null;
     title: string | null;
     pricePerNight: number | null;
     photoUrls: string[];
@@ -59,7 +62,7 @@ export default async function FavoritesContent({ lang }: FavoritesContentProps) 
           {favorites.map((listing) => (
             <Link
               key={listing.id}
-              href={`/${lang}/listings/${listing.id}`}
+              href={`/${lang}/listings/${listingSegment(listing)}`}
               className="group space-y-2"
             >
               <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">

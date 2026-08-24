@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils'
 import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-actions'
 import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite'
+import { listingSegment } from '@/lib/listing-code'
 import { useSession } from 'next-auth/react'
 
 interface ListingCarouselSectionProps {
@@ -72,7 +73,10 @@ export function ListingCarouselSection({
 
   // Transform listings to match PropertyCard interface
   const transformedListings = listings.map(listing => ({
+    // `id` stays the row id — it is the favourites key. Navigation uses the
+    // code via `linkId`.
     id: listing.id.toString(),
+    linkId: listingSegment(listing),
     images: listing.photoUrls || [],
     title: listing.title || "Property",
     location: `${listing.location?.city || ""}, ${listing.location?.state || ""}`,

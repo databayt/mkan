@@ -227,7 +227,10 @@ export async function createListing(data: unknown = {}) {
 
     // A listing that arrives already published needs its code now — it has to
     // exist by the time the row is publicly reachable.
-    if (listing.isPublished) await ensureListingCode(listing.id);
+    if (listing.isPublished) {
+      const mintedCode = await ensureListingCode(listing.id);
+      if (mintedCode) listing.code = mintedCode;
+    }
 
     revalidatePath("/hosting/listings");
     // Bust the searchListings cache so new/updated listings appear on the
@@ -609,7 +612,10 @@ export async function updateListing(id: unknown, data: unknown) {
       },
     });
 
-    if (listing.isPublished) await ensureListingCode(listing.id);
+    if (listing.isPublished) {
+      const mintedCode = await ensureListingCode(listing.id);
+      if (mintedCode) listing.code = mintedCode;
+    }
 
     revalidatePath("/hosting/listings");
     revalidatePath(`/hosting/listings/editor/${parsedId.data}`);
@@ -764,7 +770,11 @@ export async function publishListing(id: unknown) {
 
     // The moment the row is publicly reachable it needs the code that the CRM
     // and the outreach messages address it by.
-    await ensureListingCode(publishedListing.id);
+    // The row was read before the code was written, so merge it back in: the
+    // caller redirects onto this value, and a stale null would send a host to
+    // the row id their own listing no longer canonically uses.
+    const mintedCode = await ensureListingCode(publishedListing.id);
+    if (mintedCode) publishedListing.code = mintedCode;
 
     revalidatePath("/hosting/listings");
     revalidatePath(`/listing/${parsedId.data}`);

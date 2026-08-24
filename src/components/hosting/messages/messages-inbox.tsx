@@ -449,7 +449,7 @@ function DetailsPanel({
   return (
     <div className="space-y-5">
       {selected.listingTitle && (
-        <Link href={`/${lang}/listings/${selected.listingId}`} className="block">
+        <Link href={`/${lang}/listings/${selected.listingHref ?? selected.listingId}`} className="block">
           <div className="relative mb-2 aspect-[3/2] w-full overflow-hidden rounded-xl bg-muted">
             {selected.listingPhoto && (
               <Image src={selected.listingPhoto} alt="" fill sizes="320px" className="object-cover" />

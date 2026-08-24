@@ -524,6 +524,8 @@ export async function getTenantFavorites() {
           // full row would also drag descriptions and policy JSON per favorite.
           select: {
             id: true,
+            code: true,
+            sourceListingId: true,
             title: true,
             pricePerNight: true,
             photoUrls: true,

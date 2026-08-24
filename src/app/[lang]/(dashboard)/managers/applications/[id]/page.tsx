@@ -9,6 +9,7 @@ import { canOverride } from "@/lib/auth";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { localizeListing } from "@/components/translation/localize";
 import ApplicationActions from "./actions";
+import { listingSegment } from "@/lib/listing-code";
 
 /**
  * Manager-facing application detail page. Gives the host all the context
@@ -164,7 +165,7 @@ export default async function ManagerApplicationDetailPage({
           )}
           <div>
             <Link
-              href={`/${lang}/listings/${application.listing.id}`}
+              href={`/${lang}/listings/${listingSegment(application.listing)}`}
               className="text-sm font-medium hover:underline"
             >
               {listing.title}

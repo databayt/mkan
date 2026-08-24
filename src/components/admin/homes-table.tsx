@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { listingSegment } from "@/lib/listing-code";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,8 @@ import {
 
 type AdminListing = {
   id: number;
+  code: string | null;
+  sourceListingId: string | null;
   title: string | null;
   isPublished: boolean;
   draft: boolean;
@@ -158,7 +161,7 @@ function HomeRow({
       <TableCell className="text-center">{listing._count.bookings}</TableCell>
       <TableCell className="text-end space-x-2">
         <Button variant="outline" size="sm" asChild>
-          <Link href={`/${lang}/listings/${listing.id}`} target="_blank">
+          <Link href={`/${lang}/listings/${listingSegment(listing)}`} target="_blank">
             {labels.view}
           </Link>
         </Button>

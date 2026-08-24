@@ -418,6 +418,8 @@ export async function listAllListingsAdmin({
       take: pageSize,
       select: {
         id: true,
+        code: true,
+        sourceListingId: true,
         title: true,
         isPublished: true,
         draft: true,

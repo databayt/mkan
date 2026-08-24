@@ -7,6 +7,7 @@ import { getDictionary } from "@/components/internationalization/dictionaries";
 import { localizeListing } from "@/components/translation/localize";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { listingSegment } from "@/lib/listing-code";
 
 export default async function AdminListingDetailPage({
   params,
@@ -58,7 +59,7 @@ export default async function AdminListingDetailPage({
           </div>
         </div>
         <Link
-          href={`/${lang}/listings/${listing.id}`}
+          href={`/${lang}/listings/${listingSegment(listing)}`}
           target="_blank"
           className="text-sm underline text-muted-foreground"
         >

@@ -25,6 +25,7 @@ import { useLocale } from "@/components/internationalization/use-locale";
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
 import { trackEvent } from "@/lib/analytics/beacon";
 import { zoneLabel } from "@/lib/geo/zone";
+import { listingSegment } from "@/lib/listing-code";
 
 interface ListingDetailsClientProps {
     listing: Listing;
@@ -194,7 +195,7 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                 onSave={handleSave}
                 isSaved={isSaved}
                 onShowAllPhotos={handleShowAllPhotos}
-                listingId={listing.id?.toString()}
+                listingId={listingSegment(listing)}
             />
 
             {/* Two-column fold: left = overview/host/highlights/description/

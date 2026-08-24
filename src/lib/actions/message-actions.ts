@@ -10,6 +10,7 @@ import { localize, getText } from "@/components/translation/localize";
 import { getDisplayLang } from "@/components/translation/locale";
 import { trackListingEvent } from "@/lib/analytics/events";
 import { ListingEventType } from "@prisma/client";
+import { listingSegment } from "@/lib/listing-code";
 
 // ============================================
 // Host ⇄ guest messaging (Airbnb /hosting/messages). The inbox is host-centric
@@ -43,6 +44,8 @@ export interface ConversationDetail {
   guestName: string;
   guestImage: string | null;
   listingId: number | null;
+  /** URL segment for the listing — the mkan code when it has one. */
+  listingHref: string | null;
   listingTitle: string | null;
   listingPhoto: string | null;
   bookingId: number | null;
@@ -74,7 +77,7 @@ export async function getConversations(): Promise<ConversationListItem[]> {
       lastMessageAt: true,
       hostReadAt: true,
       guest: { select: { username: true, image: true } },
-      listing: { select: { title: true, photoUrls: true } },
+      listing: { select: { title: true, photoUrls: true, code: true, sourceListingId: true } },
       messages: { orderBy: { createdAt: "desc" }, take: 1, select: { body: true } },
     },
   });
@@ -119,7 +122,7 @@ export async function getConversation(id: unknown): Promise<ConversationDetail |
       listingId: true,
       bookingId: true,
       guest: { select: { username: true, image: true } },
-      listing: { select: { title: true, photoUrls: true } },
+      listing: { select: { title: true, photoUrls: true, code: true, sourceListingId: true } },
       booking: {
         select: { checkIn: true, checkOut: true, guestCount: true, status: true, totalPrice: true },
       },
@@ -143,6 +146,8 @@ export async function getConversation(id: unknown): Promise<ConversationDetail |
     guestName: c.guest.username ?? "Guest",
     guestImage: c.guest.image ?? null,
     listingId: c.listingId,
+    listingHref:
+      c.listingId != null ? listingSegment({ ...c.listing, id: c.listingId }) : null,
     // Listing title is host-authored content — localize for the viewer.
     // Messages and subject stay verbatim (private user-to-user chat).
     listingTitle: c.listing?.title
