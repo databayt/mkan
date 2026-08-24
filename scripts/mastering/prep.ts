@@ -28,8 +28,8 @@ import { resolveModel } from './models';
  * per photo and lives on each run's record.
  */
 function printChatgptSetup(): void {
-  console.log(`\n═══ Standing instructions for the "Makan Mastering" project (prompt ${PROMPT_VERSION}) ═══\n`);
-  console.log('Create once: ChatGPT → Projects → New project → "Makan Mastering" → Instructions → paste:\n');
+  console.log(`\n═══ Standing instructions for the "mkan mastering" project (prompt ${PROMPT_VERSION}) ═══\n`);
+  console.log('Create once: ChatGPT → Projects → New project → "mkan mastering" → Instructions → paste:\n');
   console.log('---');
   console.log('Every image I send you is a real listing photo from a homes marketplace. For each one, apply exactly this:\n');
   console.log(compilePrompt());
