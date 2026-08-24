@@ -49,6 +49,7 @@ import {
   slackDownload,
   slackReactSafe,
   swapPhoto,
+  trim,
   twentyRollup,
 } from './lib';
 import { correctedModel, resolveModel } from './models';
@@ -291,6 +292,15 @@ async function main(): Promise<void> {
   if (slackReturn) await slackReactSafe(slackReturn.ts, 'white_check_mark');
 
   console.log(`\n✅ UPDATED — live in photoUrls slot ${applied.indexOf(masteredUrl) + 1}/${applied.length}`);
+
+  // Serial mode: this photo is live, so the next one may start. Opt-in, because
+  // the batch lane is still the right shape for a listing someone is working
+  // through in bulk — and a promotion that opens an app should never surprise
+  // an operator who did not ask for it.
+  if (trim(process.env.MASTERING_SERIAL) === '1') {
+    const { promoteNext } = await import('./next');
+    await promoteNext(run.listingId, { prep: trim(process.env.MASTERING_SERIAL_PREP) !== '0', force: false });
+  }
   console.log(`   after:  ${masteredUrl}`);
   console.log(`   before: ${run.originalUrl} (kept on CDN — master:revert restores it)`);
   console.log(`   ${crmNote}`);
