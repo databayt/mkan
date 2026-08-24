@@ -34,12 +34,12 @@ const APP = (/^https?:\/\//.test(envApp) && !/localhost|127\.0\.0\.1/.test(envAp
 
 interface HostSheet {
   hostId: string;
-  account: string | null; // e.g. "0002" — from sourceListingId prefix
+  account: string | null; // e.g. "0002" — from the mkan code prefix
   hostNameAr: string;
   phone: string | null;
   phoneNote?: string;
   phoneSource: "user" | "twenty" | null;
-  listings: Array<{ sourceListingId: string | null; title: string; url: string }>;
+  listings: Array<{ code: string | null; title: string; url: string }>;
   message: string;
   waLink: string | null;
 }
@@ -73,15 +73,15 @@ async function main() {
   const empty = await db.listing.findMany({
     where: { isPublished: true, photoUrls: { isEmpty: true } },
     select: {
-      sourceListingId: true,
+      code: true,
       title: true,
       hostId: true,
       host: { select: { id: true, username: true, phoneNumber: true } },
     },
-    orderBy: { sourceListingId: "asc" },
+    orderBy: { code: "asc" },
   });
 
-  // Group by host; account = the "NNNN" prefix of sourceListingId ("0002-05").
+  // Group by host; account = the "NNNN" prefix of the mkan code ("0002-05").
   const byHost = new Map<string, typeof empty>();
   for (const l of empty) {
     if (!byHost.has(l.hostId)) byHost.set(l.hostId, []);
@@ -114,7 +114,7 @@ async function main() {
 
   const sheets: HostSheet[] = [];
   for (const [hostId, ls] of byHost) {
-    const account = ls[0].sourceListingId?.split("-")[0] ?? null;
+    const account = ls[0].code?.split("-")[0] ?? null;
     if (HOST && account !== HOST) continue;
     const tw = account ? psByAccount.get(account) : undefined;
     const rawPhone = ls[0].host?.phoneNumber?.trim() || tw?.phone || null;
@@ -125,9 +125,9 @@ async function main() {
     const phoneNote = rawPhone && !phone ? ` (INVALID on file: ${rawPhone} — fix the User/Twenty record)` : "";
     const hostNameAr = tw?.name || ls[0].host?.username || "المضيف";
     const listings = ls.map((l) => ({
-      sourceListingId: l.sourceListingId,
-      title: l.title?.trim() || l.sourceListingId || "(untitled)",
-      url: `${APP}/ar/listings/${l.sourceListingId}`,
+      code: l.code,
+      title: l.title?.trim() || l.code || "(untitled)",
+      url: `${APP}/ar/listings/${l.code}`,
     }));
     const message = compilePhotoRequest({ hostNameAr, listings });
     sheets.push({
@@ -155,7 +155,7 @@ async function main() {
     console.log(
       `  phone  ${s.phone ?? "⏳ no valid number" + (s.phoneNote ?? "")}${s.phoneSource && s.phone ? ` (${s.phoneSource})` : ""}`,
     );
-    for (const l of s.listings) console.log(`    · ${l.sourceListingId}  ${l.title.slice(0, 46)}`);
+    for (const l of s.listings) console.log(`    · ${l.code}  ${l.title.slice(0, 46)}`);
     if (s.waLink) console.log(`  📲 ${s.waLink.slice(0, 100)}…`);
     console.log("");
   }

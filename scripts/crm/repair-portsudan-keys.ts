@@ -18,10 +18,13 @@
  *    but an empty `title` (Twenty round-trips absent text as `""`, so they
  *    read blank in any title-keyed view) and no `mkanListingId`.
  *
- * The durable key is the unit code — `Home.listingId` = `Listing.sourceListingId`
- * ("0002-01"). It survives a re-seed; the numeric id does not. Rows are resolved
- * to a site listing by, in order: airbnbListingId → mkanListingId → unit code →
- * normalized title. Rows that resolve to the same listing are one home.
+ * The durable key is the unit code — `Home.listingId` = `Listing.code`
+ * ("0002-01"). It survives a re-seed; the numeric id does not. (The code lived
+ * in `Listing.sourceListingId` until 2026-08-24, which is why that column is
+ * still consulted for the Airbnb id and no longer for the code.) Rows are
+ * resolved to a site listing by, in order: airbnbListingId → mkanListingId →
+ * unit code → normalized title. Rows that resolve to the same listing are one
+ * home.
  *
  * Merging is **fill-empty, never replace-populated** — the same rule that governs
  * `sync-contacts-to-twenty.ts` and `backfill-listing-facts.ts`. The keeper is the
@@ -82,10 +85,11 @@ async function main(): Promise<void> {
   const rows = homes.filter((h) => String(h.city ?? '') === CITY);
 
   const listings = await db.listing.findMany({
-    select: { id: true, title: true, sourceListingId: true, isPublished: true },
+    select: { id: true, title: true, code: true, sourceListingId: true, isPublished: true },
   });
   const byId = new Map(listings.map((l) => [l.id, l]));
   const bySource = new Map(listings.filter((l) => l.sourceListingId).map((l) => [l.sourceListingId!, l]));
+  const byCode = new Map(listings.filter((l) => l.code).map((l) => [l.code!, l]));
   const byTitle = new Map(listings.map((l) => [norm(l.title), l]));
 
   const resolve = (h: Record<string, any>) => {
@@ -93,7 +97,7 @@ async function main(): Promise<void> {
     if (airbnb && bySource.has(airbnb)) return bySource.get(airbnb)!;
     if (h.mkanListingId != null && byId.has(h.mkanListingId)) return byId.get(h.mkanListingId)!;
     const unit = String(h.listingId ?? '').trim();
-    if (unit && bySource.has(unit)) return bySource.get(unit)!;
+    if (unit && byCode.has(unit)) return byCode.get(unit)!;
     const label = norm(h.title) || norm(h.name);
     return label ? byTitle.get(label) : undefined;
   };

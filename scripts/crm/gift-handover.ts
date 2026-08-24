@@ -109,8 +109,10 @@ async function main() {
         ? `+249${item.hostPhone.primaryPhoneNumber}`
         : null;
 
+    // Twenty's `listingId` is the mkan code. It lived in `sourceListingId`
+    // until 2026-08-24 and now has its own column — join on that.
     const listing = await db.listing.findFirst({
-      where: { sourceListingId: item.listingId },
+      where: { code: item.listingId },
       select: { id: true, hostId: true, isPublished: true, claimedAt: true, host: { select: { sourceHostId: true } } },
     });
 
