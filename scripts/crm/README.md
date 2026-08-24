@@ -98,6 +98,26 @@ Reaching these hosts needs `contact-hunt --worksheet` and a human with a normal 
 | `outreach-templates.ts` | **G1.6** — pure AR/EN message templates (first-touch, handover, follow-up), verbatim from docs §5.4. |
 | `outreach.ts` | **G1.6** — drafts personalized host messages → outbox (human-send default) or sends via OpenClaw (`--apply`). |
 | `wave-publish.ts` | **G1.7** — flips imported listings Busy→Available through the trust gate, per city (the final step). Writes to mkan (Prisma). |
+| `sync-listing-urls.ts` | Points every Port Sudan row's **Listing URL** at `mkan.sd/listings/<code>`, demoting the Airbnb link to a secondary link. The column an operator clicks now means one thing on every row. |
+
+## The listing code (`NNNN-NN`)
+
+`0001-01` is the id the CRM shows, the WhatsApp outreach carries, and a host can
+type into mkan.sd. It is `Listing.code` on the site and `portSudan.listingId` in
+Twenty — join on those two and nothing else.
+
+It used to live in `Listing.sourceListingId`, which is the **external** id (the
+Airbnb room id). That overload cost the 8 scraped-then-promoted listings their
+room id, so `sync-up.ts`'s Airbnb lookup silently stopped finding them.
+`scripts/backfill-listing-code.ts` moved the 34 existing codes onto the new
+column and restored those room ids from `sourceUrl` (2026-08-24). Codes are
+minted at publish by `ensureListingCode` (`src/lib/listing-code-server.ts`), so
+`wave-publish` no longer leaves a listing whose only public id is an Airbnb
+room number.
+
+`NNNN` is the host's account number, read from their `NNNN@mkan.org` login. Six
+legacy hosts have none; their listings publish uncoded and the worker says so
+rather than inventing a number.
 
 ## Run
 
