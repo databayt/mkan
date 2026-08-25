@@ -172,6 +172,17 @@ async function messageByTs(ts: string): Promise<SlackMsg | null> {
 // ── state + corpus (gitignored .data) ────────────────────────────────────────
 const DATA_DIR = join(dirname(new URL(import.meta.url).pathname), '.data', 'home-intake');
 const STATE_FILE = join(DATA_DIR, 'state.json');
+interface PendingUnit {
+  index: number;
+  unit: Unit;
+  result: IntakeResult;
+  hostPhone: string | null;
+  hostName: string | null;
+  suspectCode: string | null;
+  suspectId: string | null;
+  text: string;
+  link: string;
+}
 interface ThreadState {
   ts: string;
   codes: string[];
@@ -180,6 +191,8 @@ interface ThreadState {
   account: string | null;
   lastReplyTs: string;
   createdAt: string;
+  /** Units the reader understood but did not create — they looked like homes the host already has. */
+  pending?: PendingUnit[];
 }
 interface State {
   cursor: string | null; // newest top-level ts already processed
@@ -426,14 +439,27 @@ function accountForHost(ctx: Ctx, hostId: string | null, phone: string | null): 
   const accounts = rows.map((h) => h.account as string | null).filter((a): a is string => !!a && /^\d{4}$/.test(a));
   return accounts.sort()[0] ?? null;
 }
-function suspectedDuplicate(ctx: Ctx, phone: string | null, f: HomeFacts): Row | null {
-  if (!phone) return null;
-  return (
-    ctx.homes.find((h) => {
-      const same = normalizeSudanPhone(phoneOf(h.hostPhone as Phones | null)) === phone;
-      return same && (h.bedrooms as number | null) === f.bedrooms && ((h.propertyType as string | null) ?? null) === f.propertyType;
-    }) ?? null
-  );
+/**
+ * A home the host already has that these words may describe again. Ranked by likeness
+ * (type, rooms, bathrooms, beds, a shared title word) and never the same record twice
+ * in one message — a host with three similar flats gets three different answers.
+ */
+function suspectedDuplicate(ctx: Ctx, phone: string | null, hostId: string | null, f: HomeFacts, taken: Set<string>): Row | null {
+  if (!phone && !hostId) return null;
+  const mine = ctx.homes.filter((h) => (hostId && h.hostId === hostId) || (phone && normalizeSudanPhone(phoneOf(h.hostPhone as Phones | null)) === phone));
+  let best: { row: Row; score: number } | null = null;
+  for (const h of mine) {
+    if (taken.has(String(h.id))) continue;
+    let score = 0;
+    if (f.propertyType && (h.propertyType as string | null) === f.propertyType) score += 2;
+    if (f.bedrooms != null && (h.bedrooms as number | null) === f.bedrooms) score += 2;
+    if (f.bathrooms != null && (h.bathrooms as number | null) === f.bathrooms) score += 1;
+    if (f.beds != null && (h.beds as number | null) === f.beds) score += 1;
+    const title = `${h.titleAr ?? ''} ${h.name ?? ''}`;
+    if (f.titleAr && f.titleAr.split(/\s+/).some((w) => w.length > 3 && title.includes(w))) score += 1;
+    if (score >= 4 && (!best || score > best.score)) best = { row: h, score };
+  }
+  return best?.row ?? null;
 }
 
 async function handleMessage(ctx: Ctx, m: SlackMsg): Promise<void> {
@@ -473,13 +499,17 @@ async function handleMessage(ctx: Ctx, m: SlackMsg): Promise<void> {
   const units: { code: string | null; recordUrl: string | null; facts: HomeFacts }[] = [];
   const homeIds: string[] = [];
   const codes: string[] = [];
+  const pending: PendingUnit[] = [];
+  const takenDup = new Set<string>();
   let minted = 0;
   for (const u of r.units) {
     const f = factsFromUnit(u, r, hostPhone);
-    const dup = suspectedDuplicate(ctx, hostPhone, f);
+    const dup = suspectedDuplicate(ctx, hostPhone, hostId, f, takenDup);
     if (dup) {
-      console.log(`  ~ unit ${u.index} looks like ${dup.listingId ?? dup.id} already — not created`);
-      units.push({ code: `≈ ${dup.listingId ?? '?'} (موجود / exists?)`, recordUrl: `${TWENTY_UI}/object/home/${dup.id}`, facts: f });
+      takenDup.add(String(dup.id));
+      console.log(`  ~ unit ${u.index} looks like ${dup.listingId ?? dup.id} already — kept pending`);
+      pending.push({ index: u.index, unit: u, result: r, hostPhone, hostName, suspectCode: (dup.listingId as string | null) ?? null, suspectId: String(dup.id), text, link });
+      units.push({ code: `≈ ${dup.listingId ?? '?'} ؟`, recordUrl: `${TWENTY_UI}/object/home/${dup.id}`, facts: f });
       continue;
     }
     const code = nextListingCode(account, [...taken, ...codes], 0);
@@ -500,15 +530,98 @@ async function handleMessage(ctx: Ctx, m: SlackMsg): Promise<void> {
     }
   }
   void minted;
-  const text2 = buildReply({ hostName, hostPhone, units, promptVersion: INTAKE_PROMPT_VERSION, dryRun: !APPLY });
+  let text2 = buildReply({ hostName, hostPhone, units, promptVersion: INTAKE_PROMPT_VERSION, dryRun: !APPLY });
+  if (pending.length) {
+    const codesList = pending.map((p) => p.suspectCode ?? '?').join(' ');
+    text2 +=
+      `\n\n❓ ${pending.length === 1 ? 'هذه الوحدة تشبه' : 'هذه الوحدات تشبه'} ${codesList} الموجودة عند نفس المضيف. ` +
+      `ردّ بـ \`same ${codesList}\` لدمج كلماتك فيها بالترتيب، أو \`new\` لإنشاء وحدات جديدة.\n` +
+      `(looks like ${codesList}, already this host's — reply \`same ${codesList}\` to merge these words into them in order, or \`new\` to create new homes)`;
+  }
   await reply(m.ts, text2);
-  ctx.state.threads[m.ts] = { ts: m.ts, codes, homeIds, hostId, account, lastReplyTs: m.ts, createdAt: new Date().toISOString() };
+  ctx.state.threads[m.ts] = { ts: m.ts, codes, homeIds, hostId, account, lastReplyTs: m.ts, createdAt: new Date().toISOString(), pending: pending.length ? pending : undefined };
+}
+
+/** The human answered `same …` or `new` about units that looked like existing homes. */
+async function resolvePending(ctx: Ctx, thread: ThreadState, verdict: { same: string[] } | { new: true }, m: SlackMsg): Promise<void> {
+  const pending = thread.pending ?? [];
+  const units: { code: string | null; recordUrl: string | null; facts: HomeFacts }[] = [];
+  const taken = ctx.homes.map((h) => h.listingId as string | null);
+  const account = thread.account ?? nextManualAccount(ctx.homes.map((h) => h.account as string | null));
+  for (let i = 0; i < pending.length; i++) {
+    const p = pending[i];
+    const f = factsFromUnit(p.unit, p.result, p.hostPhone);
+    if ('same' in verdict) {
+      const code = verdict.same[i] ?? verdict.same[verdict.same.length - 1] ?? p.suspectCode;
+      const row = ctx.homes.find((h) => h.listingId === code);
+      if (!row) {
+        await reply(thread.ts, `⚠️ لا أعرف ${code} / no home with code ${code}`);
+        continue;
+      }
+      const before = factsFromRow(row);
+      // the scout's words fill what is empty and add to lists; they never blank a field
+      const patch: Row = clean({
+        titleAr: before.titleAr ? undefined : f.titleAr,
+        descriptionAr: before.descriptionAr ? undefined : f.descriptionAr,
+        propertyType: before.propertyType ? undefined : f.propertyType,
+        bedrooms: before.bedrooms ?? f.bedrooms,
+        bathrooms: before.bathrooms ?? f.bathrooms,
+        beds: f.beds ?? before.beds,
+        guestCapacity: before.guestCapacity ?? f.guestCapacity,
+        priceNightSdg: before.priceNightSdg == null ? currency(f.priceNightSdg) : undefined,
+        zone: before.zone ?? f.zone,
+        googleMapsUrl: before.mapsUrl ? undefined : linkOne(f.mapsUrl, 'Google Maps'),
+        amenities: [...new Set([...before.amenities, ...f.amenities])],
+        amenitiesRaw: [...new Set([...before.rawWords, ...f.rawWords])],
+        notesAr: [row.notesAr as string | null, `[Slack ${new Date().toISOString().slice(0, 10)}] ${p.text}`].filter(Boolean).join('\n'),
+        source: row.source ?? 'FIELD_SCOUT',
+        priceConfirmedByHost: f.priceConfirmed || before.priceConfirmed ? true : undefined,
+      });
+      const after: HomeFacts = { ...before, beds: f.beds ?? before.beds, amenities: patch.amenities as string[], rawWords: patch.amenitiesRaw as string[] };
+      patch.dataCompletenessPct = completenessPct(after);
+      if (APPLY) {
+        await client.rest('PATCH', `homes/${row.id}`, patch);
+        await attachNote(String(row.id), String(row.listingId), p.text, p.link);
+      }
+      console.log(`  ~ merged unit ${p.index} into ${code}`);
+      thread.codes.push(String(row.listingId));
+      thread.homeIds.push(String(row.id));
+      units.push({ code: String(row.listingId), recordUrl: `${TWENTY_UI}/object/home/${row.id}`, facts: after });
+    } else {
+      const code = nextListingCode(account, [...taken, ...thread.codes], 0);
+      const body = homeBody(f, p.result, p.unit, code, account, thread.hostId, p.hostName);
+      if (APPLY) {
+        const created = await client.rest('POST', 'homes', body);
+        const id = createdId(created);
+        await attachNote(id, code, p.text, p.link);
+        thread.codes.push(code);
+        thread.homeIds.push(id);
+        units.push({ code, recordUrl: `${TWENTY_UI}/object/home/${id}`, facts: f });
+        console.log(`  + home ${code} → ${id}`);
+      } else {
+        thread.codes.push(code);
+        units.push({ code, recordUrl: null, facts: f });
+        console.log(`  would create home ${code}:`, JSON.stringify(body));
+      }
+    }
+  }
+  thread.pending = undefined;
+  await reply(thread.ts, buildReply({ hostName: pending[0]?.hostName ?? null, hostPhone: pending[0]?.hostPhone ?? null, units, promptVersion: INTAKE_PROMPT_VERSION, dryRun: !APPLY }));
 }
 
 async function handleReply(ctx: Ctx, thread: ThreadState, m: SlackMsg): Promise<void> {
   const text = plainText(m.text);
   console.log(`\n▶ reply in ${thread.ts} (${thread.codes.join(', ') || 'no homes'}): ${text.slice(0, 80).replace(/\n/g, ' ')}`);
-  if (!text || thread.homeIds.length === 0) return;
+  if (!text) return;
+  if (thread.pending?.length) {
+    const t = toAsciiDigits(text).trim();
+    if (/^(new|جديد|جديدة)\b/iu.test(t)) return resolvePending(ctx, thread, { new: true }, m);
+    const same = /^(same|نفس|نفسها|merge|دمج)\b(.*)$/iu.exec(t);
+    if (same) return resolvePending(ctx, thread, { same: (same[2].match(/\d{4}-\d{2}/g) ?? []) }, m);
+    await reply(thread.ts, `❓ أولاً: \`same ${thread.pending.map((p) => p.suspectCode).join(' ')}\` أو \`new\` — ثم أكمل التفاصيل / first answer same … or new, then add details`);
+    return;
+  }
+  if (thread.homeIds.length === 0) return;
   const live = parseLiveCommand(text);
   if (live) {
     const codes = live.code ? [live.code] : thread.codes;
@@ -705,6 +818,14 @@ async function extract(): Promise<void> {
 async function intakeOne(): Promise<void> {
   const ts = argv('ts');
   if (!ts) throw new Error('give --ts=<slack ts> of the channel message');
+  if (!acquireLock()) throw new Error('a sweep is running — try again in a minute');
+  try {
+    await intakeOneLocked(ts);
+  } finally {
+    releaseLock();
+  }
+}
+async function intakeOneLocked(ts: string): Promise<void> {
   const ctx = await loadCtx();
   const m = await messageByTs(ts);
   if (!m) throw new Error(`no message at ts ${ts} in ${CHANNEL}`);
@@ -717,6 +838,14 @@ async function updateOne(): Promise<void> {
   const code = argv('code');
   const text = argv('text');
   if (!code || !text) throw new Error('give --code=NNNN-NN and --text="…"');
+  if (!acquireLock()) throw new Error('a sweep is running — try again in a minute');
+  try {
+    await updateOneLocked(code, text);
+  } finally {
+    releaseLock();
+  }
+}
+async function updateOneLocked(code: string, text: string): Promise<void> {
   const ctx = await loadCtx();
   const home = ctx.homes.find((h) => h.listingId === code);
   if (!home) throw new Error(`no home with listingId ${code}`);
