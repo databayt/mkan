@@ -32,6 +32,7 @@ cat > "$PLIST" <<PL
   <key>EnvironmentVariables</key><dict>
     <key>PATH</key><string>$(dirname "$PNPM"):$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     <key>HOME</key><string>$HOME</string>
+    <key>FORCE_SEED</key><string>1</string>
   </dict>
   <key>StartInterval</key><integer>120</integer>
   <key>RunAtLoad</key><true/>

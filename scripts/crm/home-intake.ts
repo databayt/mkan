@@ -186,6 +186,25 @@ interface State {
   handled: string[];
   threads: Record<string, ThreadState>;
 }
+const LOCK_FILE = join(DATA_DIR, 'sweep.lock');
+const LOCK_STALE_MS = 5 * 60 * 1000;
+/** Two ears, one brain: Hermes and the launchd timer both call sweep — only one may run at a time. */
+function acquireLock(): boolean {
+  mkdirSync(DATA_DIR, { recursive: true });
+  if (existsSync(LOCK_FILE)) {
+    const age = Date.now() - Number(readFileSync(LOCK_FILE, 'utf8') || 0);
+    if (age < LOCK_STALE_MS) return false;
+  }
+  writeFileSync(LOCK_FILE, String(Date.now()));
+  return true;
+}
+function releaseLock(): void {
+  try {
+    if (existsSync(LOCK_FILE)) writeFileSync(LOCK_FILE, '0');
+  } catch {
+    /* nothing to do */
+  }
+}
 function loadState(): State {
   if (!existsSync(STATE_FILE)) return { cursor: null, handled: [], threads: {} };
   return JSON.parse(readFileSync(STATE_FILE, 'utf8')) as State;
@@ -361,6 +380,19 @@ async function attachNote(homeId: string, code: string, text: string, link: stri
   }
 }
 
+// ── the yes ──────────────────────────────────────────────────────────────────
+/** `live 0005-01` — a human said yes. The site first, then Twenty mirrors; the thread gets the URL. */
+async function goLive(threadTs: string, code: string): Promise<void> {
+  const { publishHome } = await import('./home-publish');
+  const r = await publishHome(code, { apply: APPLY });
+  console.log(`  live ${code}: ${r.ok ? r.url : r.reason}`);
+  if (!r.ok) {
+    await reply(threadTs, `⛔ لم يُنشر ${code} / not published: ${r.reason}`);
+    return;
+  }
+  await reply(threadTs, `🟢 *${code}* ${APPLY ? 'منشور الآن / is live' : 'سيُنشر (تجربة) / would go live'}: ${r.url}${r.pinNote ? `\n_${r.pinNote}_` : ''}`);
+}
+
 // ── handlers ─────────────────────────────────────────────────────────────────
 interface Ctx {
   vocab: Vocab;
@@ -398,7 +430,11 @@ async function handleMessage(ctx: Ctx, m: SlackMsg): Promise<void> {
   if (!text) return;
   const live = parseLiveCommand(text);
   if (live) {
-    await reply(m.ts, `⏳ النشر يأتي في الخطوة التالية من هذا المسار — \`home:publish\` لم يُبنَ بعد / publishing lands in the next step of this lane.`);
+    if (!live.code) {
+      await reply(m.ts, '⚠️ أي وحدة؟ اكتب `live 0005-01` بالكود / which home? write `live` with its code');
+      return;
+    }
+    await goLive(m.ts, live.code);
     return;
   }
   const prompt = buildIntakePrompt({ text, vocab: ctx.vocab, mode: 'message' });
@@ -463,7 +499,12 @@ async function handleReply(ctx: Ctx, thread: ThreadState, m: SlackMsg): Promise<
   if (!text || thread.homeIds.length === 0) return;
   const live = parseLiveCommand(text);
   if (live) {
-    await reply(thread.ts, `⏳ النشر يأتي في الخطوة التالية — \`home:publish\` لم يُبنَ بعد / publishing is the next step of this lane.`);
+    const codes = live.code ? [live.code] : thread.codes;
+    if (!codes.length) {
+      await reply(thread.ts, '⚠️ لا توجد وحدة في هذا الثريد / no home in this thread');
+      return;
+    }
+    for (const c of codes) await goLive(thread.ts, c);
     return;
   }
   const rows: Row[] = [];
@@ -560,6 +601,17 @@ async function handleReply(ctx: Ctx, thread: ThreadState, m: SlackMsg): Promise<
 
 // ── commands ─────────────────────────────────────────────────────────────────
 async function sweep(): Promise<void> {
+  if (!acquireLock()) {
+    console.log('another sweep is running (lock < 5 min old) — nothing to do');
+    return;
+  }
+  try {
+    await sweepLocked();
+  } finally {
+    releaseLock();
+  }
+}
+async function sweepLocked(): Promise<void> {
   const ctx = await loadCtx();
   const bot = await botUserId();
   const limit = Number(argv('limit', '50'));

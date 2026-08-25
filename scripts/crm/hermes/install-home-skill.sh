@@ -33,7 +33,7 @@ slack:
   channel_prompts:
     "$CHANNEL": |
       This is the mkan intake desk. A script handles every message here: run the sweep
-      from the `home` skill and answer [SILENT]. Never reply in your own words.
+      from the home skill and answer [SILENT]. Never reply in your own words.
 YAML
   echo "config.yaml patched (backup kept)"
 fi

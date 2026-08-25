@@ -89,6 +89,7 @@
     "home:intake": "tsx scripts/crm/home-intake.ts intake",
     "home:update": "tsx scripts/crm/home-intake.ts update",
     "home:status": "tsx scripts/crm/home-intake.ts status",
+    "home:publish": "tsx scripts/crm/home-publish.ts",
     "scope:portsudan": "tsx scripts/crm/scope-portsudan-phase.ts",
     "scope:city": "tsx scripts/crm/scope-portsudan-phase.ts",
     "test": "vitest run",

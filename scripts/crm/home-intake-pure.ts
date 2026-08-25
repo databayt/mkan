@@ -317,3 +317,25 @@ export function buildReply(opts: { hostName: string | null; hostPhone: string | 
   out.push('', `_ردّ في هذا الثريد لأي تصحيح أو إضافة · reply in this thread to correct or add · reader ${opts.promptVersion}_`);
   return out.join('\n');
 }
+
+// ── crossing to the site ─────────────────────────────────────────────────────
+/** Twenty's UPPER_SNAKE option → the site's PascalCase Prisma enum name (validated by the caller). */
+export function twentyEnumToPrisma(value: string): string {
+  const special: Record<string, string> = { WI_FI: 'WiFi', TV: 'TV', EVCHARGER: 'EVCharger', BBQ_GRILL: 'BbqGrill' };
+  if (special[value]) return special[value];
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join('');
+}
+
+/** Twenty zone option (AL_THAWRA) → the site's zone slug (al-thawra). */
+export function zoneSlug(zone: string | null | undefined): string | null {
+  return zone ? zone.toLowerCase().replace(/_/g, '-') : null;
+}
+
+/** The public URL a live listing gets. */
+export function liveUrl(code: string, lang = 'ar'): string {
+  return `https://mkan.sd/${lang}/listings/${code}`;
+}

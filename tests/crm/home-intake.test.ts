@@ -151,3 +151,16 @@ describe('the reply and the prompt', () => {
     expect(p).toContain('MODE: a fresh channel message');
   });
 });
+
+describe('crossing to the site', () => {
+  it('maps Twenty option names onto the site\'s enum names', async () => {
+    const { twentyEnumToPrisma, zoneSlug, liveUrl } = await import('../../scripts/crm/home-intake-pure');
+    expect(twentyEnumToPrisma('AIR_CONDITIONING')).toBe('AirConditioning');
+    expect(twentyEnumToPrisma('WI_FI')).toBe('WiFi');
+    expect(twentyEnumToPrisma('TV')).toBe('TV');
+    expect(twentyEnumToPrisma('PATIO_OR_BALCONY')).toBe('PatioOrBalcony');
+    expect(twentyEnumToPrisma('APARTMENT')).toBe('Apartment');
+    expect(zoneSlug('AL_THAWRA')).toBe('al-thawra');
+    expect(liveUrl('0005-01')).toBe('https://mkan.sd/ar/listings/0005-01');
+  });
+});
