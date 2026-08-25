@@ -624,14 +624,40 @@ async function sweep(): Promise<void> {
   }
 }
 async function sweepLocked(): Promise<void> {
-  const ctx = await loadCtx();
+  // Slack first, Twenty only when there is work: this runs every two minutes.
+  const state = loadState();
   const bot = await botUserId();
   const limit = Number(argv('limit', '50'));
   const sinceArg = argv('since');
-  const oldest = ctx.state.cursor ?? sinceArg ?? String(Math.floor(Date.now() / 1000) - 6 * 3600);
-  console.log(`sweep #${CHANNEL} since ${oldest}${APPLY ? '' : ' (dry run)'} · ${ctx.homes.length} homes, ${ctx.hosts.length} hosts in Twenty`);
+  const oldest = state.cursor ?? sinceArg ?? String(Math.floor(Date.now() / 1000) - 6 * 3600);
   const hist = await slackGet<{ messages: SlackMsg[] }>('conversations.history', { channel: CHANNEL, oldest, limit: String(limit) });
-  const fresh = (hist.messages ?? []).filter((m) => m.ts !== ctx.state.cursor && !ctx.state.handled.includes(m.ts)).sort((a, b) => Number(a.ts) - Number(b.ts));
+  const fresh = (hist.messages ?? []).filter((m) => m.ts !== state.cursor && !state.handled.includes(m.ts)).sort((a, b) => Number(a.ts) - Number(b.ts));
+  const threadWork: { t: ThreadState; replies: SlackMsg[] }[] = [];
+  for (const t of Object.values(state.threads)) {
+    try {
+      const r = await slackGet<{ messages: SlackMsg[] }>('conversations.replies', { channel: CHANNEL, ts: t.ts, oldest: t.lastReplyTs, limit: '50' });
+      const replies = (r.messages ?? []).filter((m) => m.ts !== t.ts && Number(m.ts) > Number(t.lastReplyTs) && !state.handled.includes(m.ts)).sort((a, b) => Number(a.ts) - Number(b.ts));
+      if (replies.length) threadWork.push({ t, replies });
+    } catch (e) {
+      console.warn(`  ! thread ${t.ts}: ${(e as Error).message}`);
+    }
+  }
+  const humanFresh = fresh.filter((m) => isHuman(m, bot) && !(m.thread_ts && m.thread_ts !== m.ts));
+  const humanReplies = threadWork.reduce((n, w) => n + w.replies.filter((m) => isHuman(m, bot)).length, 0);
+  if (!humanFresh.length && !humanReplies) {
+    // bookkeeping only: remember what was seen so the window keeps moving
+    for (const m of fresh) {
+      state.handled.push(m.ts);
+      if (Number(m.ts) > Number(state.cursor ?? 0)) state.cursor = m.ts;
+    }
+    for (const w of threadWork) for (const m of w.replies) { state.handled.push(m.ts); w.t.lastReplyTs = m.ts; }
+    saveState(state);
+    console.log(`sweep #${CHANNEL} since ${oldest}${APPLY ? '' : ' (dry run)'} · nothing new from a human`);
+    return;
+  }
+  const ctx = await loadCtx();
+  ctx.state = state;
+  console.log(`sweep #${CHANNEL} since ${oldest}${APPLY ? '' : ' (dry run)'} · ${ctx.homes.length} homes, ${ctx.hosts.length} hosts in Twenty`);
   let acted = 0;
   for (const m of fresh) {
     ctx.state.handled.push(m.ts);
@@ -647,15 +673,7 @@ async function sweepLocked(): Promise<void> {
     }
     saveState(ctx.state);
   }
-  // replies inside the threads this lane opened
-  for (const t of Object.values(ctx.state.threads)) {
-    let replies: SlackMsg[] = [];
-    try {
-      const r = await slackGet<{ messages: SlackMsg[] }>('conversations.replies', { channel: CHANNEL, ts: t.ts, oldest: t.lastReplyTs, limit: '50' });
-      replies = (r.messages ?? []).filter((m) => m.ts !== t.ts && Number(m.ts) > Number(t.lastReplyTs) && !ctx.state.handled.includes(m.ts)).sort((a, b) => Number(a.ts) - Number(b.ts));
-    } catch (e) {
-      console.warn(`  ! thread ${t.ts}: ${(e as Error).message}`);
-    }
+  for (const { t, replies } of threadWork) {
     for (const m of replies) {
       ctx.state.handled.push(m.ts);
       t.lastReplyTs = m.ts;
