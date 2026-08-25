@@ -37,11 +37,11 @@
  * the relay reads the signature off the dropped name and asserts it to `done`.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, renameSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { extname, join, basename } from "node:path";
 
-import { argv, flag, getDb, shortId, slackPost, slackReady } from "./lib";
+import { argv, flag, getDb, shortId, slackPost, slackReady, trim } from "./lib";
 import { detectModel } from "./models";
 
 const DRY = flag("dry");
@@ -175,8 +175,17 @@ async function main(): Promise<void> {
       continue;
     }
 
-    mkdirSync(CONSUMED, { recursive: true });
-    renameSync(file, join(CONSUMED, `${run.short}-${basename(file)}`));
+    // Serial mode keeps the working folders holding only the photo in flight,
+    // so a finished render is removed rather than archived. Nothing is lost:
+    // the mastered image is already on the CDN at `masteredUrl`, and a redo is
+    // `master:queue --force`, never a dig through this folder. Batch mode still
+    // archives, where an accumulating trail is the point.
+    if (trim(process.env.MASTERING_SERIAL) === "1") {
+      rmSync(file, { force: true });
+    } else {
+      mkdirSync(CONSUMED, { recursive: true });
+      renameSync(file, join(CONSUMED, `${run.short}-${basename(file)}`));
+    }
     ingested++;
   }
 

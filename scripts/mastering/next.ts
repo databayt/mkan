@@ -25,7 +25,11 @@
  * REJECTED already spawned its retry row, which is what gets promoted next.
  */
 import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { extname, join } from "node:path";
 import { argv, flag, getDb, shortId, trim } from "./lib";
+import { roomHintFrom } from "./pure";
 
 const LISTING = parseInt(argv("listing", ""), 10);
 const FORCE = flag("force");
@@ -33,6 +37,65 @@ const NO_PREP = flag("no-prep") || trim(process.env.MASTERING_SERIAL_PREP) === "
 
 /** Waiting on a human, or returned but not yet live — either way, the slot is taken. */
 const IN_FLIGHT = ["ASSIGNED", "MASTERED"] as const;
+
+const INBOX = trim(process.env.MASTERING_INBOX) || join(homedir(), "mkan", "inbox");
+const ORIGINALS = join(INBOX, "originals");
+const CONSUMED = join(INBOX, "consumed");
+
+/**
+ * Leave the working folders holding exactly the photo in flight, and nothing
+ * else. In serial mode these folders answer one question — "what am I working
+ * on?" — and an archive of finished work answers it wrongly: a stale original
+ * from a reverted run is indistinguishable from the live task.
+ *
+ * Deleting is safe because neither file is the record. The original lives
+ * forever at `MasteringRun.originalUrl` and the render at `masteredUrl`, both
+ * on the CDN, so anything swept here is one fetch from coming back. What is
+ * never deleted is the CDN object or the run row.
+ */
+function tidyInbox(keepPrefix?: string): number {
+  let removed = 0;
+  for (const dir of [ORIGINALS, CONSUMED]) {
+    if (!existsSync(dir)) continue;
+    for (const name of readdirSync(dir)) {
+      if (name.startsWith(".")) continue;
+      if (keepPrefix && name.startsWith(keepPrefix)) continue;
+      try {
+        rmSync(join(dir, name));
+        removed++;
+      } catch {
+        // A file we cannot remove is clutter, never a reason to stop the loop.
+      }
+    }
+  }
+  return removed;
+}
+
+/**
+ * Put the run's original in `originals/` under the run id, so the human can
+ * drag it straight into the generator and the name carries the id back out on
+ * the render. `prep` only reveals a temp copy — that suits the clipboard lane,
+ * not the drag lane.
+ */
+async function stageOriginal(run: { id: string; photoIndex: number; originalUrl: string }): Promise<string | null> {
+  try {
+    mkdirSync(ORIGINALS, { recursive: true });
+    const hint = roomHintFrom(run.originalUrl) || `photo${run.photoIndex + 1}`;
+    const ext = extname(new URL(run.originalUrl).pathname) || ".jpg";
+    const name = `${shortId(run.id)} ${hint}${ext}`;
+    const res = await fetch(run.originalUrl);
+    if (!res.ok) return null;
+    writeFileSync(join(ORIGINALS, name), Buffer.from(await res.arrayBuffer()));
+    return name;
+  } catch {
+    return null; // the clipboard lane still works; staging is a convenience
+  }
+}
+
+/** Sweep both folders bare — used when a listing has no next photo to promote. */
+export function tidyInboxAll(): number {
+  return tidyInbox();
+}
 
 export async function promoteNext(
   listingId: number,
@@ -59,11 +122,14 @@ export async function promoteNext(
     where: { listingId, status: "QUEUED" },
     // See the header: photo order, then attempt — a retry belongs at the front.
     orderBy: [{ photoIndex: "asc" }, { attempt: "asc" }],
-    select: { id: true, photoIndex: true, attempt: true },
+    select: { id: true, photoIndex: true, attempt: true, originalUrl: true },
   });
   if (!next) {
+    const swept = tidyInbox();
     console.log(
-      `\n✅ #${listingId} — nothing QUEUED. The listing is done, or every photo is already live.\n`,
+      `\n✅ #${listingId} — nothing QUEUED. The listing is done, or every photo is already live.` +
+        (swept ? `\n   inbox tidied (${swept} file(s) removed)` : "") +
+        "\n",
     );
     return null;
   }
@@ -79,6 +145,10 @@ export async function promoteNext(
     console.log(`\n✗ dispatch failed for ${ref} — it stays QUEUED, nothing is lost.\n`);
     return null;
   }
+  const staged = await stageOriginal(next);
+  const swept = tidyInbox(ref);
+  if (staged) console.log(`   staged for the drag: originals/${staged}`);
+  if (swept) console.log(`   inbox tidied (${swept} file(s) removed)`);
   if (opts.prep) spawnSync("pnpm", ["master:prep", "--standing", ref], { stdio: "inherit" });
   return ref;
 }
