@@ -282,6 +282,8 @@ export interface ReplyUnit {
   code: string | null;
   recordUrl: string | null;
   facts: HomeFacts;
+  /** Set when the home is already on the site — the reply says so instead of asking for `live`. */
+  liveUrl?: string | null;
 }
 
 const fmtPrice = (n: number | null) => (n == null ? null : `${Math.round(n).toLocaleString('en-US')} SDG`);
@@ -306,7 +308,9 @@ export function buildReply(opts: { hostName: string | null; hostPhone: string | 
     const head = `*${u.code ?? '—'}*${f.titleAr ? ` ${f.titleAr}` : ''}${u.recordUrl ? ` · <${u.recordUrl}|Twenty>` : ''} · ${pct}%`;
     out.push('', head, `فهمت / got: ${got.length ? got.join(' · ') : '—'}`);
     if (f.rawWords.length) out.push(`كلمات محفوظة / kept as notes: ${f.rawWords.join('، ')}`);
-    if (musts.length) {
+    if (u.liveUrl) {
+      out.push(`🟢 منشور على مكان / already live: ${u.liveUrl}${musts.length ? ` — ناقص / missing: ${musts.map((g) => g.ar).join('، ')}` : ''}`);
+    } else if (musts.length) {
       out.push(`ناقص للنشر / missing before live: ${musts.map((g) => g.ar).join('، ')}`, `(${musts.map((g) => g.en).join(', ')})`);
     } else if (!f.priceConfirmed) {
       out.push('كل الأساسيات موجودة — أكّد السعر مع المضيف واكتب «السعر مؤكد» / all must-haves in — confirm the price with the host and write "price confirmed"');

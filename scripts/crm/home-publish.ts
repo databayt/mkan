@@ -77,8 +77,8 @@ export async function publishHome(code: string, opts: { apply: boolean; force?: 
   const f = factsOf(home);
   const gaps = mustGaps(f);
   const stage = home.pipelineStage as string | null;
-  if (stage === 'LIVE' && home.mkanListingId) {
-    return { ok: true, code, url: liveUrl(code), listingId: Number(home.mkanListingId), reason: 'already live', pinNote: null };
+  if ((stage === 'LIVE' || home.publishState === 'LIVE' || home.mkanPublishState === 'LIVE') && home.mkanListingId) {
+    return { ok: true, code, url: liveUrl(code), listingId: Number(home.mkanListingId), reason: 'already live — the site row is kept in step by crm:sync-down, not re-created', pinNote: null };
   }
   if (!opts.force) {
     if (gaps.length) return { ok: false, code, url: null, listingId: null, reason: `missing: ${gaps.map((g) => g.en).join(', ')} / ناقص: ${gaps.map((g) => g.ar).join('، ')}`, pinNote: null };

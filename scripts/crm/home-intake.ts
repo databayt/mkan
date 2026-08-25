@@ -325,6 +325,13 @@ function factsFromUnit(u: Unit, r: IntakeResult, hostPhone: string | null, extra
     ...extra,
   };
 }
+/** The site URL when the CRM says this home is already live there. */
+function liveUrlOf(h: Row): string | null {
+  const live = h.publishState === 'LIVE' || h.mkanPublishState === 'LIVE';
+  if (!live) return null;
+  const link = ((h.mkanListingUrl as Row | null)?.primaryLinkUrl as string | null) ?? ((h.listingUrl as Row | null)?.primaryLinkUrl as string | null);
+  return link ?? (h.listingId ? `https://mkan.sd/ar/listings/${h.listingId}` : null);
+}
 /** What Twenty holds for a home → the facts shape the level is judged on. */
 function factsFromRow(h: Row): HomeFacts {
   const addr = (h.homeAddress as Row | null) ?? null;
@@ -616,7 +623,7 @@ async function resolvePending(ctx: Ctx, thread: ThreadState, verdict: { same: st
       console.log(`  ~ merged unit ${p.index} into ${code}`);
       thread.codes.push(String(row.listingId));
       thread.homeIds.push(String(row.id));
-      units.push({ code: String(row.listingId), recordUrl: `${TWENTY_UI}/object/home/${row.id}`, facts: after });
+      units.push({ code: String(row.listingId), recordUrl: `${TWENTY_UI}/object/home/${row.id}`, facts: after, liveUrl: liveUrlOf(row) });
     } else {
       const code = nextListingCode(account, [...taken, ...thread.codes], 0);
       const body = homeBody(f, p.result, p.unit, code, account, thread.hostId, p.hostName);
@@ -758,11 +765,11 @@ async function handleReply(ctx: Ctx, thread: ThreadState, m: SlackMsg): Promise<
     };
     patch.dataCompletenessPct = completenessPct(after);
     const eligible = isEligible(after);
-    if (eligible && h.pipelineStage !== 'CLAIMED' && h.pipelineStage !== 'LIVE') patch.pipelineStage = 'CLAIMED';
+    if (eligible && !liveUrlOf(h) && h.pipelineStage !== 'CLAIMED' && h.pipelineStage !== 'LIVE') patch.pipelineStage = 'CLAIMED';
     if (Object.keys(changes).length) appendJsonl('corrections.jsonl', { ts: m.ts, thread: thread.ts, code: h.listingId, changes, text, at: new Date().toISOString() });
     console.log(`  ${h.listingId}: ${Object.keys(changes).join(', ') || 'no field changed'} · ${patch.dataCompletenessPct}%${eligible ? ' · CLAIMED' : ''}`);
     if (APPLY && Object.keys(patch).length) await client.rest('PATCH', `homes/${h.id}`, patch);
-    units.push({ code: h.listingId as string, recordUrl: `${TWENTY_UI}/object/home/${h.id}`, facts: after });
+    units.push({ code: h.listingId as string, recordUrl: `${TWENTY_UI}/object/home/${h.id}`, facts: after, liveUrl: liveUrlOf(h) });
   }
   await reply(thread.ts, buildReply({ hostName: (rows[0].hostName as string | null) ?? r.host.name, hostPhone: units[0]?.facts.hostPhone ?? null, units, promptVersion: INTAKE_PROMPT_VERSION, dryRun: !APPLY }));
 }
