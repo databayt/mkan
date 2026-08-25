@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { parseTwentyEvent, verifyTwentySignature } from '@/lib/twenty-webhook';
+import { ensureListingCode } from '@/lib/listing-code-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -137,6 +138,16 @@ export async function POST(req: Request) {
           data: updates,
         });
         logger.info('twenty_webhook_home_updated', { listingId: listing.id, updates });
+        // Every place that flips isPublished true mints the code (listing-code-server.ts
+        // invariant); this branch had been the one that forgot. Best-effort inside the
+        // 5-second budget — a failed mint is logged, never a failed delivery.
+        if (updates.isPublished === true) {
+          try {
+            await ensureListingCode(listing.id);
+          } catch (e) {
+            logger.warn('twenty_webhook_code_mint_failed', { listingId: listing.id, error: (e as Error).message });
+          }
+        }
       }
 
       return NextResponse.json({ received: true, matched: true, listingId: listing.id, updates });
