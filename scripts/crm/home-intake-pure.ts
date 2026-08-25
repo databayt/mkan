@@ -204,6 +204,7 @@ export function niceGaps(f: HomeFacts): Gap[] {
   if (f.beds == null) g.push({ key: 'beds', ar: 'عدد الأسرّة', en: 'beds' });
   if (f.guestCapacity == null) g.push({ key: 'guests', ar: 'عدد الضيوف', en: 'guests' });
   if (f.amenities.length < 5) g.push({ key: 'amenities', ar: 'المرافق (٥ أو أكثر)', en: 'amenities (5+)' });
+  if (!f.mapsUrl && !(f.latitude != null && f.longitude != null)) g.push({ key: 'pin', ar: 'رابط خريطة للموقع', en: 'a map link' });
   return g;
 }
 

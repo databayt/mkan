@@ -434,7 +434,11 @@ function hostByPhone(ctx: Ctx, phone: string | null): Row | null {
   if (!phone) return null;
   return ctx.hosts.find((h) => normalizeSudanPhone(phoneOf(h.phone as Phones | null)) === phone || normalizeSudanPhone(phoneOf(h.whatsapp as Phones | null)) === phone) ?? null;
 }
+/** The host's account number: the host record's own `mkanUsername` first, then what its homes carry. */
 function accountForHost(ctx: Ctx, hostId: string | null, phone: string | null): string | null {
+  const host = hostId ? ctx.hosts.find((h) => h.id === hostId) : null;
+  const own = (host?.mkanUsername as string | null) ?? null;
+  if (own && /^\d{4}$/.test(own)) return own;
   const rows = ctx.homes.filter((h) => (hostId && h.hostId === hostId) || (phone && normalizeSudanPhone(phoneOf(h.hostPhone as Phones | null)) === phone));
   const accounts = rows.map((h) => h.account as string | null).filter((a): a is string => !!a && /^\d{4}$/.test(a));
   return accounts.sort()[0] ?? null;
@@ -487,6 +491,14 @@ async function handleMessage(ctx: Ctx, m: SlackMsg): Promise<void> {
   const hostName = r.host.name;
   const existingHost = hostByPhone(ctx, hostPhone);
   let hostId = (existingHost?.id as string | undefined) ?? null;
+  if (!hostPhone) {
+    // The phone is the identity anchor: no phone, no account, no code — ask first.
+    const link0 = await permalink(m.ts);
+    const pendingNoPhone: PendingUnit[] = r.units.map((u) => ({ index: u.index, unit: u, result: r, hostPhone: null, hostName, suspectCode: null, suspectId: null, text, link: link0 }));
+    ctx.state.threads[m.ts] = { ts: m.ts, codes: [], homeIds: [], hostId: null, account: null, lastReplyTs: m.ts, createdAt: new Date().toISOString(), pending: pendingNoPhone };
+    await reply(m.ts, `📱 فهمت ${r.units.length} ${r.units.length === 1 ? 'وحدة' : 'وحدات'}${hostName ? ` للمضيف ${hostName}` : ''} — لكن بدون رقم هاتف لا أستطيع فتح حساب ولا كود. ردّ برقم المضيف وسأكمل. / I read ${r.units.length} unit(s) but no host phone — reply with the host's number and I will file them.`);
+    return;
+  }
   const account = accountForHost(ctx, hostId, hostPhone) ?? nextManualAccount(ctx.homes.map((h) => h.account as string | null));
   console.log(`  host: ${hostName ?? '—'} ${hostPhone ?? '(no phone)'} → ${existingHost ? `existing ${hostId}` : 'new'} · account ${account}`);
   if (!existingHost && APPLY && (hostPhone || hostName)) {
@@ -533,6 +545,13 @@ async function handleMessage(ctx: Ctx, m: SlackMsg): Promise<void> {
   let text2 = buildReply({ hostName, hostPhone, units, promptVersion: INTAKE_PROMPT_VERSION, dryRun: !APPLY });
   if (pending.length) {
     const codesList = pending.map((p) => p.suspectCode ?? '?').join(' ');
+    const titles = pending
+      .map((p) => {
+        const row = ctx.homes.find((h) => String(h.id) === p.suspectId);
+        return `• ${p.index} ↔ *${p.suspectCode}* ${String(row?.titleAr ?? row?.name ?? '').slice(0, 70)}`;
+      })
+      .join('\n');
+    text2 += `\n\n${titles}`;
     text2 +=
       `\n\n❓ ${pending.length === 1 ? 'هذه الوحدة تشبه' : 'هذه الوحدات تشبه'} ${codesList} الموجودة عند نفس المضيف. ` +
       `ردّ بـ \`same ${codesList}\` لدمج كلماتك فيها بالترتيب، أو \`new\` لإنشاء وحدات جديدة.\n` +
@@ -564,10 +583,11 @@ async function resolvePending(ctx: Ctx, thread: ThreadState, verdict: { same: st
         titleAr: before.titleAr ? undefined : f.titleAr,
         descriptionAr: before.descriptionAr ? undefined : f.descriptionAr,
         propertyType: before.propertyType ? undefined : f.propertyType,
-        bedrooms: before.bedrooms ?? f.bedrooms,
-        bathrooms: before.bathrooms ?? f.bathrooms,
+        // numbers: the scout's word wins — they were at the door; text: fill what is empty
+        bedrooms: f.bedrooms ?? before.bedrooms,
+        bathrooms: f.bathrooms ?? before.bathrooms,
         beds: f.beds ?? before.beds,
-        guestCapacity: before.guestCapacity ?? f.guestCapacity,
+        guestCapacity: f.guestCapacity ?? before.guestCapacity,
         priceNightSdg: before.priceNightSdg == null ? currency(f.priceNightSdg) : undefined,
         zone: before.zone ?? f.zone,
         googleMapsUrl: before.mapsUrl ? undefined : linkOne(f.mapsUrl, 'Google Maps'),
@@ -577,7 +597,17 @@ async function resolvePending(ctx: Ctx, thread: ThreadState, verdict: { same: st
         source: row.source ?? 'FIELD_SCOUT',
         priceConfirmedByHost: f.priceConfirmed || before.priceConfirmed ? true : undefined,
       });
-      const after: HomeFacts = { ...before, beds: f.beds ?? before.beds, amenities: patch.amenities as string[], rawWords: patch.amenitiesRaw as string[] };
+      const after: HomeFacts = {
+        ...before,
+        bedrooms: f.bedrooms ?? before.bedrooms,
+        bathrooms: f.bathrooms ?? before.bathrooms,
+        beds: f.beds ?? before.beds,
+        guestCapacity: f.guestCapacity ?? before.guestCapacity,
+        amenities: patch.amenities as string[],
+        rawWords: patch.amenitiesRaw as string[],
+      };
+      const changed = (['bedrooms', 'bathrooms', 'beds', 'guestCapacity'] as const).filter((k) => f[k] != null && f[k] !== before[k]).map((k) => `${k} ${before[k] ?? '—'}→${f[k]}`);
+      if (changed.length) appendJsonl('corrections.jsonl', { ts: m.ts, thread: thread.ts, code, kind: 'same-merge', changed, text: p.text, at: new Date().toISOString() });
       patch.dataCompletenessPct = completenessPct(after);
       if (APPLY) {
         await client.rest('PATCH', `homes/${row.id}`, patch);
@@ -613,6 +643,19 @@ async function handleReply(ctx: Ctx, thread: ThreadState, m: SlackMsg): Promise<
   const text = plainText(m.text);
   console.log(`\n▶ reply in ${thread.ts} (${thread.codes.join(', ') || 'no homes'}): ${text.slice(0, 80).replace(/\n/g, ' ')}`);
   if (!text) return;
+  if (thread.pending?.length && !thread.account) {
+    const phone = phonesInText(text)[0] ?? null;
+    if (!phone) {
+      await reply(thread.ts, '📱 ما زلت أحتاج رقم المضيف / still need the host phone number');
+      return;
+    }
+    // re-read the original words with the phone now known, through the normal door
+    const original = await messageByTs(thread.ts);
+    if (!original) return;
+    delete ctx.state.threads[thread.ts];
+    await handleMessage(ctx, { ...original, text: `${original.text ?? ''}\n${phone}` });
+    return;
+  }
   if (thread.pending?.length) {
     const t = toAsciiDigits(text).trim();
     if (/^(new|جديد|جديدة)\b/iu.test(t)) return resolvePending(ctx, thread, { new: true }, m);
@@ -863,13 +906,30 @@ async function status(): Promise<void> {
   }
 }
 
-const HELP = `home-intake — see the header of scripts/crm/home-intake.ts\n  sweep | extract | intake | update | status   (--apply to write)`;
+async function answerOne(): Promise<void> {
+  const ts = argv('ts');
+  const text = argv('text');
+  if (!ts || !text) throw new Error('give --ts=<thread ts> and --text="same 0004-02 0004-03" | "new" | any words');
+  if (!acquireLock()) throw new Error('a sweep is running — try again in a minute');
+  try {
+    const ctx = await loadCtx();
+    const thread = ctx.state.threads[ts];
+    if (!thread) throw new Error(`no intake thread at ${ts}`);
+    await handleReply(ctx, thread, { ts: String(Date.now() / 1000), text, user: 'cli' });
+    saveState(ctx.state);
+  } finally {
+    releaseLock();
+  }
+}
+
+const HELP = `home-intake — see the header of scripts/crm/home-intake.ts\n  sweep | extract | intake | update | answer | status   (--apply to write)`;
 (async () => {
   switch (cmd) {
     case 'sweep': return sweep();
     case 'extract': return extract();
     case 'intake': return intakeOne();
     case 'update': return updateOne();
+    case 'answer': return answerOne();
     case 'status': return status();
     default: console.log(HELP);
   }
