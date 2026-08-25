@@ -48,6 +48,13 @@ const DRY = flag("dry");
 const CONFIRM_ONLY = process.env.MASTERING_RELAY_CONFIRM === "1";
 const INBOX = argv("inbox") || process.env.MASTERING_INBOX || join(homedir(), "mkan", "inbox");
 const CONSUMED = join(INBOX, "consumed");
+/**
+ * A second place a render can land: the browser's own download folder, so the
+ * human never has to choose a folder in the save dialog. Opt-in, because this
+ * folder belongs to the whole machine rather than to this pipeline.
+ */
+const WATCH_DOWNLOADS = trim(process.env.MASTERING_WATCH_DOWNLOADS) === "1";
+const DOWNLOADS = trim(process.env.MASTERING_DOWNLOADS) || join(homedir(), "Downloads");
 
 const IMAGE_EXT = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 /** A file still being written must not be ingested half-formed. */
@@ -56,25 +63,50 @@ const SETTLE_MS = 3_000;
 interface Waiting {
   id: string;
   short: string;
+  status: string;
+  assignedAt: Date | null;
   photoIndex: number;
   listingId: number;
 }
 
-/** Images sitting in the inbox, oldest first, excluding partial writes. */
-function inboxFiles(): string[] {
-  if (!existsSync(INBOX)) return [];
+/** Settled image files in one directory — partial writes excluded. */
+function settledImages(dir: string, accept: (name: string) => boolean): string[] {
+  if (!existsSync(dir)) return [];
   const now = Date.now();
-  return readdirSync(INBOX)
-    .filter((f) => !f.startsWith(".") && IMAGE_EXT.has(extname(f).toLowerCase()))
-    .map((f) => join(INBOX, f))
-    .filter((p) => statSync(p).isFile())
+  return readdirSync(dir)
+    .filter((f) => !f.startsWith(".") && IMAGE_EXT.has(extname(f).toLowerCase()) && accept(f))
+    .map((f) => join(dir, f))
+    .filter((p) => {
+      try {
+        return statSync(p).isFile();
+      } catch {
+        return false; // vanished between readdir and stat
+      }
+    })
     .filter((p) => {
       const st = statSync(p);
       if (now - st.mtimeMs < SETTLE_MS) return false; // still landing
       // Second read: a file growing under us changes size between stats.
       return statSync(p).size === st.size && st.size > 0;
-    })
-    .sort((a, b) => statSync(a).mtimeMs - statSync(b).mtimeMs);
+    });
+}
+
+/**
+ * Renders waiting to be ingested, oldest first.
+ *
+ * The inbox is ours, so anything image-shaped in it is a render meant for us.
+ * `~/Downloads` is NOT ours — it is the whole machine's junk drawer, and the
+ * sole-waiting-run fallback would happily master an unrelated screenshot into
+ * a live listing. So a file there is only considered when its NAME proves a
+ * generator produced it (`ChatGPT Image …`, `Gemini_Generated_Image…`), which
+ * is the same evidence `done` already uses to record which model really ran.
+ */
+function inboxFiles(): string[] {
+  const all = [
+    ...settledImages(INBOX, () => true),
+    ...(WATCH_DOWNLOADS ? settledImages(DOWNLOADS, (f) => detectModel(f) !== null) : []),
+  ];
+  return all.sort((a, b) => statSync(a).mtimeMs - statSync(b).mtimeMs);
 }
 
 /**
@@ -89,12 +121,25 @@ function resolveRun(file: string, waiting: Waiting[]): { run?: Waiting; refuse?:
     return { refuse: `the filename names ${named.length} waiting runs — rename it to exactly one` };
   }
   if (!waiting.length) return { refuse: "no run is waiting (nothing QUEUED or ASSIGNED)" };
-  if (waiting.length === 1) return { run: waiting[0] };
+  // Only a DISPATCHED run can have a render: a QUEUED photo was never handed to
+  // anyone, so nobody could have generated for it. Including QUEUED here made
+  // the unnamed-file fallback useless the moment a listing had a backlog — a
+  // whole queue counted as "waiting" and every drop was refused as ambiguous.
+  // An explicit run id in the filename still wins over all of this, above.
+  const dispatched = waiting.filter((w) => w.status === "ASSIGNED");
+  if (dispatched.length === 1) return { run: dispatched[0] };
+  if (!dispatched.length) {
+    return {
+      refuse:
+        `no run is dispatched — ${waiting.length} are QUEUED but none was handed out. ` +
+        `Promote one (\`pnpm master:next --listing=<id>\`) or name the run in the filename`,
+    };
+  }
   return {
     refuse:
-      `${waiting.length} runs are waiting and the filename names none of them — ` +
+      `${dispatched.length} runs are dispatched and the filename names none of them — ` +
       `PREFIX it with the run id and keep the tool's own name ` +
-      `(\`kbbvvatd Codex Image ….png\`): ${waiting.map((w) => w.short).join(", ")}`,
+      `(\`kbbvvatd Codex Image ….png\`): ${dispatched.map((w) => w.short).join(", ")}`,
   };
 }
 
@@ -119,7 +164,7 @@ async function main(): Promise<void> {
     const runs = await db.masteringRun.findMany({
       where: { status: { in: ["QUEUED", "ASSIGNED"] } },
       orderBy: { queuedAt: "asc" },
-      select: { id: true, photoIndex: true, listingId: true },
+      select: { id: true, photoIndex: true, listingId: true, status: true, assignedAt: true },
     });
     const waiting: Waiting[] = runs.map((r) => ({ ...r, short: shortId(r.id) }));
 
@@ -127,6 +172,21 @@ async function main(): Promise<void> {
     if (!run) {
       await announce(
         `:inbox_tray: Mastering relay left \`${basename(file)}\` in the inbox — ${refuse}.`,
+      );
+      continue;
+    }
+
+    // A render cannot pre-date the task it answers. Without this, a months-old
+    // image sitting in ~/Downloads is a valid candidate for whatever run
+    // happens to be dispatched — which is the wrong-photo-in-the-right-slot
+    // failure this pipeline exists to prevent, arriving automatically. A file
+    // the human explicitly named by run id is trusted regardless: naming it is
+    // a deliberate act.
+    const namedExplicitly = basename(file).toLowerCase().includes(run.short.toLowerCase());
+    if (!namedExplicitly && run.assignedAt && statSync(file).mtimeMs < run.assignedAt.getTime()) {
+      await announce(
+        `:inbox_tray: Mastering relay left \`${basename(file)}\` alone — it is older than run ` +
+          `\`${run.short}\` was dispatched, so it cannot be its render. Prefix it with the run id if it really is.`,
       );
       continue;
     }
