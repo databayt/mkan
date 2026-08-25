@@ -26,7 +26,7 @@ Run exactly this in the terminal, wait for it to finish, and then answer with th
 word `[SILENT]`:
 
 ```bash
-cd /Users/abdout/mkan && FORCE_SEED=1 pnpm -s home:sweep --apply
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"; cd /Users/abdout/mkan && FORCE_SEED=1 pnpm -s home:sweep --apply
 ```
 
 That is the whole job. The script reads the new messages itself straight from Slack,

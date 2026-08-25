@@ -222,12 +222,24 @@ function appendJsonl(name: string, row: unknown): void {
 }
 
 // ── the reader (claude -p on the Max plan) ───────────────────────────────────
+/** The claude CLI, wherever this process was started from (launchd and the Hermes gateway carry a bare PATH). */
+function claudeBin(): string {
+  const candidates = [trim(process.env.CLAUDE_BIN), join(homedir(), '.local/bin/claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude'];
+  for (const c of candidates) if (c && existsSync(c)) return c;
+  return 'claude';
+}
 function runReader(prompt: string, attempt = 0): IntakeResult {
   const started = Date.now();
   const proc = spawnSync(
-    'claude',
+    claudeBin(),
     ['-p', '--no-session-persistence', '--model', READER_MODEL, '--output-format', 'json', '--disallowedTools', 'Bash', 'Read', 'Edit', 'Write', 'Glob', 'Grep', 'WebFetch', 'WebSearch', 'Agent', 'NotebookEdit'],
-    { input: prompt, encoding: 'utf8', timeout: 150_000, maxBuffer: 8 * 1024 * 1024, env: { ...process.env, CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' } },
+    {
+      input: prompt,
+      encoding: 'utf8',
+      timeout: 150_000,
+      maxBuffer: 8 * 1024 * 1024,
+      env: { ...process.env, PATH: `${join(homedir(), '.local/bin')}:/opt/homebrew/bin:/usr/local/bin:${process.env.PATH ?? '/usr/bin:/bin'}`, CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' },
+    },
   );
   if (proc.error) throw new Error(`reader could not start (is the claude CLI installed?): ${proc.error.message}`);
   let envelope: { is_error?: boolean; result?: string; subtype?: string } = {};
