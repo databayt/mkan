@@ -352,12 +352,18 @@ async function main(): Promise<void> {
   console.log(`\n✅ UPDATED — live in photoUrls slot ${applied.indexOf(masteredUrl) + 1}/${applied.length}`);
 
   // Serial mode: this photo is live, so the next one may start. Opt-in, because
-  // the batch lane is still the right shape for a listing someone is working
-  // through in bulk — and a promotion that opens an app should never surprise
-  // an operator who did not ask for it.
+  // a promotion that opens an app should never surprise an operator who did not
+  // ask for it.
+  //
+  // Scope is the QUEUE, not this listing. With every unmastered photo queued,
+  // finishing a home used to end the drain — nothing left to promote here, and
+  // nothing looking anywhere else. It falls back to this listing only when the
+  // listing still has work, so "finish the home you are on" still holds.
   if (trim(process.env.MASTERING_SERIAL) === '1') {
     const { promoteNext } = await import('./next');
-    await promoteNext(run.listingId, { prep: trim(process.env.MASTERING_SERIAL_PREP) !== '0', force: false });
+    const prep = trim(process.env.MASTERING_SERIAL_PREP) !== '0';
+    const here = await db.masteringRun.count({ where: { listingId: run.listingId, status: 'QUEUED' } });
+    await promoteNext(here ? run.listingId : null, { prep, force: false });
   }
   console.log(`   after:  ${masteredUrl}`);
   console.log(`   before: ${run.originalUrl} (kept on CDN — master:revert restores it)`);

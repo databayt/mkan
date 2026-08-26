@@ -1,14 +1,22 @@
 /**
  * Queue listing photos for mastering (state: photo → QUEUED run).
  *
+ *   pnpm master:queue --all --apply                      # every unmastered photo
  *   pnpm master:queue --listing=123                      # dry plan, all photos
  *   pnpm master:queue --listing=123 --photos=1,3 --apply # queue photos 1 and 3
- *   pnpm master:queue --from-twenty --limit=2 --apply    # pull POOR_QUALITY homes
  *   pnpm master:queue --listing=123 --model=chatgpt-image --apply
  *
- * Flags: --listing=<prisma id | sourceListingId> --photos=<1-based,csv>
+ * Flags: --all --listing=<prisma id | sourceListingId> --photos=<1-based,csv>
  *        --from-twenty [--stage=POOR_QUALITY] [--limit=N]
  *        --model=<generator, see models.ts> --allow-external --force --apply
+ *
+ * `--all` is the standing rule: a photo that reached the CRM and has never
+ * been mastered belongs in the queue, and nobody has to decide that it looks
+ * bad first. Judging photo by photo was the wrong shape — it needed an opinion
+ * per image before any work could start, and 1086 of 1095 photos are anonymous
+ * uuid re-hosts nobody has ever looked at. Queue is cheap and idempotent; the
+ * scarce thing is the human at the far end, and the drain rate is what limits
+ * that (see master:next), not the entry criterion.
  *
  * `--model` picks which tool renders these runs (default $MASTERING_MODEL, else
  * nano-banana) and is frozen onto the row beside the prompt, so prep opens the
@@ -31,6 +39,7 @@ const ALLOW_EXTERNAL = flag('allow-external');
 const LISTING = argv('listing');
 const PHOTOS = argv('photos');
 const FROM_TWENTY = flag('from-twenty');
+const ALL = flag('all');
 const STAGE = argv('stage', 'POOR_QUALITY');
 const LIMIT = parseInt(argv('limit', '0'), 10) || 0;
 const MODEL = resolveModel(argv('model'));
@@ -54,6 +63,16 @@ async function resolveListings(): Promise<ListingRow[]> {
     if (!listing) throw new Error(`no listing matches --listing=${LISTING}`);
     return [listing];
   }
+  if (ALL) {
+    // Every listing that has a photo. Ordering by id keeps a partial run
+    // resumable in the same order, and the per-photo skips below do the real
+    // filtering — this is deliberately not a query about quality.
+    return db.listing.findMany({
+      where: { photoUrls: { isEmpty: false } },
+      select: { id: true, title: true, photoUrls: true },
+      orderBy: { id: 'asc' },
+    });
+  }
   if (FROM_TWENTY) {
     // The CRM Kanban is the trigger surface: homes parked at photoStage=STAGE.
     const client = twentyClient();
@@ -76,7 +95,7 @@ async function resolveListings(): Promise<ListingRow[]> {
     }
     return found;
   }
-  throw new Error('pass --listing=<id> or --from-twenty (see header for usage)');
+  throw new Error('pass --all, --listing=<id>, or --from-twenty (see header for usage)');
 }
 
 async function main(): Promise<void> {

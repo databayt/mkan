@@ -1,14 +1,13 @@
 /**
- * Box 2 — the Twenty trigger. The CRM is where mastering starts, both ways.
+ * Box 2 — the Twenty trigger. A photo dropped on a Home becomes a queued run
+ * within seconds, with nothing polling and nobody running a command.
  *
- *   a photo DROPPED on a Home   → attachment.created → master:pull  (ADD)
- *   a Home FLAGGED poor quality → home.updated       → master:queue (REPLACE)
- *
- * Both arrive here, and neither needs anyone to run a command. The split is
- * the one the operator already knows: a photo the listing does not have yet is
- * attached, and a listing whose own photos are bad is flagged. Attaching a
- * photo the listing already shows would append it — the bad original and its
- * replacement side by side — which is exactly why flagging exists.
+ * It briefly also listened for a Home being flagged POOR_QUALITY, so an
+ * operator could point the pipeline at photos a listing already showed. That
+ * lane is gone, and the judgement it carried with it: a photo in the CRM that
+ * has never been mastered is queued because it has never been mastered, not
+ * because someone decided it looked bad. `master:queue --all` sweeps for that,
+ * and this listener is back to one job — getting a dropped photo in fast.
  *
  *   pnpm master:webhook              # foreground, for watching it work
  *   bash scripts/mastering/install-webhook.sh   # launchd + register in Twenty
@@ -95,52 +94,6 @@ function runPull(): void {
   });
 }
 
-/**
- * A Home flagged POOR_QUALITY queues that listing's photos and hands ONE of
- * them to a human.
- *
- * `master:queue` is idempotent — a photo with an active run, or one already
- * mastered under this prompt version, is skipped — so a Home edited five more
- * times after the flag re-runs it five times and changes nothing. That
- * idempotence is load-bearing here, because Twenty sends an event for every
- * edit and the flag stays set afterwards.
- *
- * Then `master:next` promotes exactly one photo: dispatched to Slack, the rest
- * left QUEUED. One flag must not become a mass-queue lever — the pipeline's
- * measured constraint is how many photos survive the human gate, not how many
- * can be queued.
- *
- * `--no-prep` because nothing here has a screen: prep would put a photo on the
- * clipboard of a machine nobody is sitting at and open ChatGPT behind it.
- */
-function runQueue(listingId: number): void {
-  log(`▶ master:queue --listing=${listingId} --apply`);
-  const child = spawn("/bin/zsh", ["-lc",
-    `cd ${REPO} && pnpm master:queue --listing=${listingId} --apply && pnpm master:next --listing=${listingId} --no-prep`,
-  ], { stdio: ["ignore", "pipe", "pipe"] });
-  const tail: string[] = [];
-  const keep = (b: Buffer): void => {
-    tail.push(b.toString());
-    if (tail.length > 40) tail.shift();
-  };
-  child.stdout.on("data", keep);
-  child.stderr.on("data", keep);
-  child.on("close", (code) => {
-    const summary = tail
-      .join("")
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => /^(✓|✅|·|→|✗|!|❌)/.test(l));
-    // A failure with nothing quotable is worse than noise: fall back to the
-    // last thing the command actually said, so the log never reads "exit 1"
-    // and stop. (The first probe did exactly that.)
-    const why = summary.length
-      ? summary.join(" | ")
-      : tail.join("").split("\n").map((l) => l.trim()).filter(Boolean).slice(-1)[0] ?? "";
-    log(`◀ queue exit ${code}${why ? ` — ${why.slice(0, 300)}` : ""}`);
-  });
-}
-
 function schedule(why: string): void {
   if (timer) clearTimeout(timer);
   log(`⏳ ${why} — pulling in ${DEBOUNCE_MS / 1000}s`);
@@ -190,27 +143,7 @@ function handle(req: IncomingMessage, res: ServerResponse): void {
       log("✗ unparseable body (answered 200 — a retry would not help)");
       return;
     }
-    const evt = body as {
-      eventName?: string;
-      updatedFields?: string[];
-      record?: { name?: string; photoStage?: string; mkanListingId?: number | null };
-    };
-
-    // ── the REPLACE lane: a Home flagged poor quality ────────────────────────
-    if (trim(evt?.eventName).startsWith("home.")) {
-      const listingId = evt?.record?.mkanListingId ?? null;
-      const stage = trim(evt?.record?.photoStage);
-      // When Twenty says which fields moved, believe it; when it does not, the
-      // stage value alone decides and queue's idempotence absorbs the repeats.
-      const touched = !evt.updatedFields || evt.updatedFields.includes("photoStage");
-      if (stage === "POOR_QUALITY" && touched && listingId) {
-        runQueue(listingId);
-      } else {
-        log(`· ignored ${evt.eventName} (stage ${stage || "—"}, listing ${listingId ?? "—"})`);
-      }
-      return;
-    }
-
+    const evt = body as { eventName?: string; record?: { name?: string } };
     const name = trim(evt?.record?.name);
     // Only image attachments matter. Everything else is answered and dropped:
     // a note or a PDF on a Home is not this pipeline's business.
