@@ -9,7 +9,14 @@
  *
  * Twenty's limit is 100 requests / 60s, so calls are spaced ≥700ms and a 429
  * backs off progressively. Callers see a plain promise.
+ *
+ * Credentials: env first, macOS Keychain second. `home-intake.ts` and the
+ * mastering scripts each grew their own copy of that fallback because a
+ * scheduled job has no shell profile to read `.env` exports from — and every
+ * script that skipped it simply failed at 10:00 with "needs TWENTY_API_KEY".
+ * It belongs here, at the one place that knows the key is missing.
  */
+import { execSync } from 'node:child_process';
 
 /** Twenty returns CURRENCY fields as {amountMicros, currencyCode}. */
 export interface Currency {
@@ -44,10 +51,23 @@ export interface TwentyClient {
 
 /** Reads TWENTY_API_URL / TWENTY_API_KEY. Throws if either is missing. */
 export function twentyClient(): TwentyClient {
-  const apiUrl = (process.env.TWENTY_API_URL ?? '').replace(/\/+$/, '');
-  const apiKey = process.env.TWENTY_API_KEY ?? '';
+  const apiUrl = ((process.env.TWENTY_API_URL || 'http://localhost:3100') as string).replace(/\/+$/, '');
+  let apiKey = process.env.TWENTY_API_KEY ?? '';
+  if (!apiKey) {
+    try {
+      apiKey = execSync('security find-generic-password -s databayt-twenty -a mkan -w', {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim();
+    } catch {
+      /* fall through to the error below, which says what to set */
+    }
+  }
   if (!apiUrl || !apiKey) {
-    throw new Error('needs TWENTY_API_URL + TWENTY_API_KEY (Settings → APIs & Webhooks)');
+    throw new Error(
+      'needs TWENTY_API_KEY — set it in the environment, or store it in the Keychain as ' +
+        'databayt-twenty/mkan (Twenty → Settings → APIs & Webhooks)',
+    );
   }
   const base = `${apiUrl}/rest`;
 

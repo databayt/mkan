@@ -72,7 +72,12 @@ export interface ObjectDef {
 }
 
 // ── Shared SELECT value lists ────────────────────────────────────────────────
-const SOURCE = ['AIRBNB', 'FACEBOOK', 'WHATSAPP', 'REFERRAL', 'FIELD_SCOUT', 'OTHER'];
+// MKAN_SITE is the one source that is not a discovery at all: the host signed
+// up on mkan.sd and added the home themselves. Before it existed such a home
+// had to be filed as OTHER, which reads on the board as "we found this
+// somewhere and cannot say where" — the opposite of the truth, and the truth
+// an operator most wants (a host who self-serves has already onboarded).
+const SOURCE = ['AIRBNB', 'FACEBOOK', 'WHATSAPP', 'REFERRAL', 'FIELD_SCOUT', 'MKAN_SITE', 'OTHER'];
 
 // mkan enums (exact spellings — the import job maps these straight onto Prisma enums).
 // Appended in the same order as the Prisma enum. `crm:sync-options` grows the
