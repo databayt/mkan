@@ -51,6 +51,15 @@ export const positional = (): string =>
 /** Stale thresholds in hours — reconcile flags anything older (doc §18). */
 export const STALE = {
   QUEUED_H: parseInt(trim(process.env.MASTERING_STALE_QUEUED_H) || '168', 10),
+  /**
+   * A QUEUED run that carries no Slack task was never handed to anyone — the
+   * queue→dispatch step is manual, so a batch can sit invisible while the
+   * seven-day QUEUED clock stays silent. Five runs of listing #1180 sat this
+   * way for two days before anyone noticed. One day is the honest window.
+   */
+  UNDISPATCHED_H: parseInt(trim(process.env.MASTERING_STALE_UNDISPATCHED_H) || '24', 10),
+  /** A render sitting unread in the inbox is work already paid for. */
+  INBOX_H: parseInt(trim(process.env.MASTERING_STALE_INBOX_H) || '2', 10),
   ASSIGNED_H: parseInt(trim(process.env.MASTERING_STALE_ASSIGNED_H) || '48', 10),
   MASTERED_H: parseInt(trim(process.env.MASTERING_STALE_MASTERED_H) || '24', 10),
 };

@@ -9,9 +9,12 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+  impossibleState,
   isCdnUrl,
   isDrifted,
   masteredKey,
+  predatesDispatch,
+  predatesLineage,
   roomHintFrom,
   swapPhoto,
   toReturns,
@@ -86,5 +89,59 @@ describe('toReturns (Slack return parsing)', () => {
   it('carries thread + text so done can match a run', () => {
     expect(out[0].text).toBe('DONE abc');
     expect(out[1].threadTs).toBe('0.5');
+  });
+});
+
+describe('a dropped render that cannot answer its run', () => {
+  // The real sequence that lost a render (run irrpmcb2, 2026-08-25): the human
+  // rendered photo 1 attempt 2 at 01:59Z, then the machine reverted attempt 1
+  // at 02:06Z, queued attempt 2 at 02:07Z and dispatched it at 02:16Z. Judged
+  // against the attempt, a good photo is "impossible"; judged against the
+  // photo's own history, it is obviously fine.
+  const rendered = Date.parse('2026-08-25T01:59:52Z');
+  const lineageStart = new Date('2026-08-22T17:37:46Z'); // photo 1 first queued
+  const assignedAt = new Date('2026-08-25T02:16:54Z');
+
+  it('accepts a render made while the machine was still re-queueing', () => {
+    expect(predatesLineage(rendered, lineageStart)).toBe(false);
+  });
+
+  it('still refuses one made before the photo ever entered the pipeline', () => {
+    expect(predatesLineage(Date.parse('2026-08-01T00:00:00Z'), lineageStart)).toBe(true);
+  });
+
+  it('keeps the strict bar for the machine junk drawer, where nobody chose the file', () => {
+    expect(predatesDispatch(rendered, assignedAt)).toBe(true);
+  });
+
+  it('has nothing to disprove when the run was never dispatched', () => {
+    expect(predatesLineage(rendered, null)).toBe(false);
+    expect(predatesDispatch(rendered, null)).toBe(false);
+  });
+});
+
+describe('impossibleState', () => {
+  const ok = { status: 'ASSIGNED', slackTs: '1787.1', masteredUrl: null, appliedAt: null };
+
+  it('passes states the scripts actually produce', () => {
+    expect(impossibleState(ok)).toBeNull();
+    expect(impossibleState({ status: 'QUEUED', slackTs: null, masteredUrl: null, appliedAt: null })).toBeNull();
+    expect(
+      impossibleState({ status: 'UPDATED', slackTs: '1.1', masteredUrl: 'https://cdn/x.webp', appliedAt: new Date() }),
+    ).toBeNull();
+  });
+
+  it('catches a dispatched run reset to QUEUED — the 2026-08-25 outside write', () => {
+    expect(impossibleState({ ...ok, status: 'QUEUED' })).toMatch(/dispatched, then reset/);
+  });
+
+  it('catches a result that exists before any step could have made one', () => {
+    expect(impossibleState({ ...ok, masteredUrl: 'https://cdn/x.webp' })).toMatch(/already has a mastered URL/);
+  });
+
+  it('catches UPDATED with no apply timestamp', () => {
+    expect(impossibleState({ status: 'UPDATED', slackTs: null, masteredUrl: 'https://cdn/x.webp', appliedAt: null })).toMatch(
+      /without an applied timestamp/,
+    );
   });
 });

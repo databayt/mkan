@@ -105,3 +105,55 @@ export const toReturns = (messages: SlackMessage[]): SlackReturn[] =>
         })),
     )
     .sort((a, b) => Number(b.ts) - Number(a.ts));
+
+// ── When a dropped file cannot be the render it claims to be ────────────────
+
+/**
+ * A file in OUR inbox: the human put it there deliberately, so the only thing
+ * worth disproving is that it existed before the photo did. Compare against
+ * the moment the PHOTO first entered the pipeline (the earliest run over that
+ * original URL), never against the attempt in flight.
+ *
+ * Attempt 2 is queued and dispatched only AFTER the previous attempt is
+ * rejected — while the human, working ahead, has usually already rendered the
+ * replacement. Run irrpmcb2 is the proof: the render was saved at 01:59Z, the
+ * revert/requeue/dispatch cycle ran 02:02–02:16Z, and a guard that compared
+ * against `assignedAt` refused a perfectly good photo. The render sat unread
+ * and was eventually lost. A render genuinely cannot pre-date the first time
+ * we ever asked for that photo; anything tighter punishes working ahead.
+ */
+export const predatesLineage = (fileMtimeMs: number, firstQueuedAt: Date | null | undefined): boolean =>
+  Boolean(firstQueuedAt) && fileMtimeMs < (firstQueuedAt as Date).getTime();
+
+/**
+ * A file from a folder that is NOT ours (~/Downloads, the machine's junk
+ * drawer) gets the strict rule: it must post-date the dispatch it answers.
+ * There the cost of a false accept is mastering an unrelated screenshot into a
+ * live listing, so the burden of proof sits on the file.
+ */
+export const predatesDispatch = (fileMtimeMs: number, assignedAt: Date | null | undefined): boolean =>
+  Boolean(assignedAt) && fileMtimeMs < (assignedAt as Date).getTime();
+
+/**
+ * States the machine can never have produced — the tell that something wrote
+ * these rows outside the scripts. Each pairing is impossible by construction:
+ * `dispatch` sets ASSIGNED with the Slack ts in one update, `done` sets
+ * masteredUrl with MASTERED, and UPDATED is always stamped with appliedAt.
+ *
+ * This exists because it already happened: on 2026-08-25 an ad-hoc write
+ * rewrote the frozen prompt of three dispatched runs from v1 to v2 and reset
+ * their status, leaving Slack tasks quoting one prompt and the database
+ * claiming another. Nothing in the pipeline noticed for a day.
+ */
+export function impossibleState(run: {
+  status: string;
+  slackTs: string | null;
+  masteredUrl: string | null;
+  appliedAt: Date | null;
+}): string | null {
+  if (run.status === 'QUEUED' && run.slackTs) return 'QUEUED but carries a Slack task — dispatched, then reset';
+  if (run.masteredUrl && !['MASTERED', 'UPDATED', 'REJECTED', 'FAILED'].includes(run.status))
+    return `${run.status} but already has a mastered URL`;
+  if (run.status === 'UPDATED' && !run.appliedAt) return 'UPDATED without an applied timestamp';
+  return null;
+}

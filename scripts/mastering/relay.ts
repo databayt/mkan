@@ -39,10 +39,11 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { extname, join, basename } from "node:path";
+import { extname, join, basename, dirname } from "node:path";
 
 import { argv, flag, getDb, shortId, slackPost, slackReady, trim } from "./lib";
 import { detectModel } from "./models";
+import { predatesDispatch, predatesLineage } from "./pure";
 
 const DRY = flag("dry");
 const CONFIRM_ONLY = process.env.MASTERING_RELAY_CONFIRM === "1";
@@ -67,6 +68,7 @@ interface Waiting {
   assignedAt: Date | null;
   photoIndex: number;
   listingId: number;
+  originalUrl: string;
 }
 
 /** Settled image files in one directory — partial writes excluded. */
@@ -164,7 +166,7 @@ async function main(): Promise<void> {
     const runs = await db.masteringRun.findMany({
       where: { status: { in: ["QUEUED", "ASSIGNED"] } },
       orderBy: { queuedAt: "asc" },
-      select: { id: true, photoIndex: true, listingId: true, status: true, assignedAt: true },
+      select: { id: true, photoIndex: true, listingId: true, status: true, assignedAt: true, originalUrl: true },
     });
     const waiting: Waiting[] = runs.map((r) => ({ ...r, short: shortId(r.id) }));
 
@@ -176,19 +178,36 @@ async function main(): Promise<void> {
       continue;
     }
 
-    // A render cannot pre-date the task it answers. Without this, a months-old
-    // image sitting in ~/Downloads is a valid candidate for whatever run
-    // happens to be dispatched — which is the wrong-photo-in-the-right-slot
-    // failure this pipeline exists to prevent, arriving automatically. A file
-    // the human explicitly named by run id is trusted regardless: naming it is
+    // A render cannot pre-date the task it answers — but "the task" means the
+    // PHOTO, not the attempt. The strict rule (older than this attempt's
+    // dispatch) is right only for ~/Downloads, which is the machine's junk
+    // drawer and could hand us a months-old screenshot. In our own inbox the
+    // human placed the file on purpose and routinely renders BEFORE the machine
+    // re-dispatches a retry, so the bar is the first time this photo was ever
+    // queued. A file named with the run id is trusted either way: naming it is
     // a deliberate act.
     const namedExplicitly = basename(file).toLowerCase().includes(run.short.toLowerCase());
-    if (!namedExplicitly && run.assignedAt && statSync(file).mtimeMs < run.assignedAt.getTime()) {
-      await announce(
-        `:inbox_tray: Mastering relay left \`${basename(file)}\` alone — it is older than run ` +
-          `\`${run.short}\` was dispatched, so it cannot be its render. Prefix it with the run id if it really is.`,
-      );
-      continue;
+    const foreignDrawer = dirname(file) === DOWNLOADS;
+    const mtimeMs = statSync(file).mtimeMs;
+    if (!namedExplicitly) {
+      const lineageStart = await db.masteringRun.findFirst({
+        where: { listingId: run.listingId, originalUrl: run.originalUrl },
+        orderBy: { queuedAt: "asc" },
+        select: { queuedAt: true },
+      });
+      const tooOld = foreignDrawer
+        ? predatesDispatch(mtimeMs, run.assignedAt)
+        : predatesLineage(mtimeMs, lineageStart?.queuedAt ?? null);
+      if (tooOld) {
+        await announce(
+          `:inbox_tray: Mastering relay left \`${basename(file)}\` alone — it pre-dates ` +
+            (foreignDrawer
+              ? `run \`${run.short}\` being dispatched, and it came from ~/Downloads rather than the inbox`
+              : `photo ${run.photoIndex + 1} of listing #${run.listingId} ever entering the pipeline`) +
+            `, so it cannot be its render. Prefix it with the run id if it really is.`,
+        );
+        continue;
+      }
     }
 
     // Read the generator off the dropped name BEFORE done sees it: the human
