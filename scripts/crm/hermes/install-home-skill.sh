@@ -3,43 +3,54 @@
 # channel: every message in #mkan wakes Hermes (no @mention), the `home` skill is
 # bound to the channel, and Hermes stays silent while the script answers.
 #
-#   bash scripts/crm/hermes/install-home-skill.sh          # copy skill + patch config
+#   bash scripts/crm/hermes/install-home-skill.sh          # copy skill + rewrite the wiring
 #   hermes gateway restart                                  # then apply
 #
-# The skill is canonical HERE (the repo); ~/.hermes is a deploy target. Re-run after
-# editing SKILL.md. Docs: kun.databayt.org/docs/home.
+# The skill and the channel prompt are canonical HERE (the repo); ~/.hermes is a deploy
+# target. Re-run after editing either. Docs: kun.databayt.org/docs/home.
+#
+# The wiring block is delimited by MARKER below and rewritten in full every run, so the
+# live config cannot drift from the repo. It used to only print a reminder and hope —
+# which is how the channel prompt ended up a version behind the skill it points at.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 HERMES="${HERMES_HOME:-$HOME/.hermes}"
 CHANNEL="${SLACK_HOME_CHANNEL:-C0BS2NZE2AY}"
+CFG="$HERMES/config.yaml"
+MARKER="# ── Slack channel wiring for the mkan intake desk (installed by mkan/scripts/crm/hermes) ──"
+
 mkdir -p "$HERMES/skills/databayt/home"
 cp "$HERE/home/SKILL.md" "$HERMES/skills/databayt/home/SKILL.md"
 echo "skill → $HERMES/skills/databayt/home/SKILL.md"
 
-CFG="$HERMES/config.yaml"
-if grep -q "^slack:" "$CFG"; then
-  echo "config.yaml already has a top-level slack: block — check it carries these keys:"
-else
-  cp "$CFG" "$CFG.bak.$(date +%Y%m%d_%H%M%S)"
-  cat >> "$CFG" <<YAML
+[ -f "$CFG" ] || { echo "no $CFG — run 'hermes gateway setup' first"; exit 1; }
+cp "$CFG" "$CFG.bak.$(date +%Y%m%d_%H%M%S)"
 
-# ── Slack channel wiring for the mkan intake desk (installed by mkan/scripts/crm/hermes) ──
+# Everything before our marker is somebody else's config — keep it byte for byte.
+python3 - "$CFG" "$MARKER" "$HERE/home/CHANNEL_PROMPT.txt" "$CHANNEL" <<'PY'
+import sys
+cfg, marker, prompt_file, channel = sys.argv[1:5]
+body = open(cfg, encoding='utf-8').read()
+head = body.split(marker)[0].rstrip('\n')
+prompt = open(prompt_file, encoding='utf-8').read().rstrip('\n')
+indented = '\n'.join(('      ' + line) if line.strip() else '' for line in prompt.split('\n'))
+block = f'''{marker}
 slack:
   free_response_channels:
-    - "$CHANNEL"        # private #mkan — every message wakes the bot, no @mention
+    - "{channel}"        # private #mkan — every message wakes the bot, no @mention
   channel_skill_bindings:
-    - id: "$CHANNEL"
+    - id: "{channel}"
       skill: home
   channel_prompts:
-    "$CHANNEL": |
-      This is the mkan intake desk. A script handles every message here: run the sweep
-      from the home skill and answer [SILENT]. Never reply in your own words.
-YAML
-  echo "config.yaml patched (backup kept)"
-fi
+    "{channel}": |
+{indented}
+'''
+open(cfg, 'w', encoding='utf-8').write(head + '\n\n' + block)
+print(f'config.yaml wiring rewritten for {channel} (backup kept)')
+PY
+
+python3 -c "import yaml,sys; d=yaml.safe_load(open('$CFG')); s=d.get('slack') or {}; assert '$CHANNEL' in (s.get('channel_prompts') or {}), 'channel prompt missing'; print('yaml parses · prompt', len((s['channel_prompts']['$CHANNEL'])), 'chars · bindings', s.get('channel_skill_bindings'))"
+
 cat <<TXT
-  slack.free_response_channels:  ["$CHANNEL"]
-  slack.channel_skill_bindings:  [{ id: "$CHANNEL", skill: home }]
-  slack.channel_prompts:         { "$CHANNEL": … }
 Now: hermes gateway restart   (bindings load at session start — run /new in the channel if a session is open)
 TXT
