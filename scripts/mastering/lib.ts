@@ -41,6 +41,43 @@ export type { SlackReturn } from './pure';
 
 export const trim = (v: string | null | undefined): string => (v ?? '').trim();
 
+/**
+ * S3 creds for the mastering lane: the machine's own AWS profile, not the app's.
+ *
+ * The app's key is scoped to `mkan/uploads/*`, which is correct — the deployed
+ * app writes host uploads there and nothing else. Mastering writes two paths
+ * outside it: `mkan/temp/…` for an original and `mkan/<code>/<room>.webp` for
+ * the finished photo. Both were AccessDenied, which broke the CRM drop lane
+ * outright the moment the naming scheme landed.
+ *
+ * Widening the app's key would buy the same access by giving the deployed app
+ * a permission it never uses. These scripts run on this Mac, under a person,
+ * beside `~/.aws/credentials` — so they use that, the same way they already
+ * take Twenty's key from the Keychain and Slack's from Hermes' env. The app
+ * stays least-privilege and nothing new becomes deletable: the delete guard in
+ * s3.ts keys on the `uploads/` prefix, not on who is asking.
+ *
+ * Env wins if it is already set, so CI or a different operator can override.
+ */
+if (!trim(process.env.MASTERING_AWS_IGNORE_PROFILE)) {
+  const profile = trim(process.env.MASTERING_AWS_PROFILE) || 'default';
+  try {
+    const creds = readFileSync(join(homedir(), '.aws', 'credentials'), 'utf8');
+    const block = creds.split(/^\[/m).find((b) => b.startsWith(`${profile}]`)) ?? '';
+    const pick = (key: string): string =>
+      block.match(new RegExp(`^\\s*${key}\\s*=\\s*(.+)$`, 'im'))?.[1]?.trim() ?? '';
+    const id = pick('aws_access_key_id');
+    const secret = pick('aws_secret_access_key');
+    if (id && secret) {
+      process.env.AWS_ACCESS_KEY_ID = id;
+      process.env.AWS_SECRET_ACCESS_KEY = secret;
+    }
+  } catch {
+    // No profile on this machine — fall through to whatever .env carries, and
+    // done.ts will name the permission wall if it hits one.
+  }
+}
+
 // Twenty creds: env first, Keychain fallback (the crm.py precedent) — the
 // mastering scripts must work without TWENTY_* in .env. Port 3100, never 3000:
 // 3000 is hogwarts' dev server and fails silently.

@@ -10,13 +10,23 @@
  *        --from-twenty [--stage=POOR_QUALITY] [--limit=N]
  *        --model=<generator, see models.ts> --allow-external --force --apply
  *
- * `--all` is the standing rule: a photo that reached the CRM and has never
- * been mastered belongs in the queue, and nobody has to decide that it looks
- * bad first. Judging photo by photo was the wrong shape — it needed an opinion
- * per image before any work could start, and 1086 of 1095 photos are anonymous
- * uuid re-hosts nobody has ever looked at. Queue is cheap and idempotent; the
- * scarce thing is the human at the far end, and the drain rate is what limits
- * that (see master:next), not the entry criterion.
+ * `--all` is the standing rule: a photo that reached the CRM **in the Port
+ * Sudan book** and has never been mastered belongs in the queue, and nobody
+ * has to decide that it looks bad first. Judging photo by photo was the wrong
+ * shape — it needed an opinion per image before any work could start, and 1086
+ * of 1095 photos are anonymous uuid re-hosts nobody has ever looked at. Queue
+ * is cheap and idempotent; the scarce thing is the human at the far end, and
+ * the drain rate is what limits that (see master:next), not the entry test.
+ *
+ * The book is the `portSudan` object in Twenty — 34 homes with a listing code,
+ * the inventory actually being worked. It is a MEMBERSHIP test, never a quality
+ * one: being in the book is the whole qualification. The first sweep read every
+ * listing mkan holds and queued 1,082 photos, ten times the real scope.
+ *
+ * `--prune` removes queued runs whose listing has since left the book — but
+ * only rows that record nothing: first attempt, never dispatched, no render.
+ * Anything that was handed to a human or produced an image is left alone for a
+ * person to decide about.
  *
  * `--model` picks which tool renders these runs (default $MASTERING_MODEL, else
  * nano-banana) and is frozen onto the row beside the prompt, so prep opens the
@@ -40,6 +50,7 @@ const LISTING = argv('listing');
 const PHOTOS = argv('photos');
 const FROM_TWENTY = flag('from-twenty');
 const ALL = flag('all');
+const PRUNE = flag('prune');
 const STAGE = argv('stage', 'POOR_QUALITY');
 const LIMIT = parseInt(argv('limit', '0'), 10) || 0;
 const MODEL = resolveModel(argv('model'));
@@ -48,6 +59,56 @@ interface ListingRow {
   id: number;
   title: string | null;
   photoUrls: string[];
+}
+
+/**
+ * The listing codes in the Port Sudan book — the pipeline's whole scope.
+ *
+ * Read live rather than cached: a home added to the book this morning should
+ * be swept this hour, and one removed should stop being swept without anyone
+ * editing a script.
+ */
+async function bookCodes(): Promise<string[]> {
+  const client = twentyClient();
+  const rows = (await client.all('portSudans', 0)) as unknown as { listingId?: string | null }[];
+  const codes = [...new Set(rows.map((r) => trim(r.listingId)).filter(Boolean))];
+  if (!codes.length) {
+    throw new Error(
+      'the Port Sudan book is empty (no portSudan record carries a listing code) — ' +
+        'refusing to sweep, because "everything" is not what --all means',
+    );
+  }
+  return codes;
+}
+
+/**
+ * Queued runs on listings that are no longer in the book, and that record
+ * nothing at all: first attempt, no Slack task, no mastered image, no note.
+ * Anything a human has touched stays for a human to decide about.
+ */
+async function pruneOutOfScope(codes: string[]): Promise<void> {
+  const db = await getDb();
+  const inScope = await db.listing.findMany({ where: { code: { in: codes } }, select: { id: true } });
+  const keep = inScope.map((l) => l.id);
+  const where = {
+    status: 'QUEUED' as const,
+    attempt: 1,
+    slackTs: null,
+    masteredUrl: null,
+    humanNote: null,
+    listingId: { notIn: keep },
+  };
+  const doomed = await db.masteringRun.count({ where });
+  if (!doomed) {
+    console.log('   nothing queued outside the book\n');
+    return;
+  }
+  if (!APPLY) {
+    console.log(`   ${doomed} queued run(s) are outside the book and record nothing — --apply removes them\n`);
+    return;
+  }
+  const { count } = await db.masteringRun.deleteMany({ where });
+  console.log(`   🧹 removed ${count} queued run(s) whose listing is not in the book\n`);
 }
 
 async function resolveListings(): Promise<ListingRow[]> {
@@ -64,11 +125,12 @@ async function resolveListings(): Promise<ListingRow[]> {
     return [listing];
   }
   if (ALL) {
-    // Every listing that has a photo. Ordering by id keeps a partial run
-    // resumable in the same order, and the per-photo skips below do the real
-    // filtering — this is deliberately not a query about quality.
+    const codes = await bookCodes();
+    // Ordering by id keeps a partial run resumable in the same order, and the
+    // per-photo skips below do the real filtering — this is deliberately not a
+    // query about quality.
     return db.listing.findMany({
-      where: { photoUrls: { isEmpty: false } },
+      where: { code: { in: codes }, photoUrls: { isEmpty: false } },
       select: { id: true, title: true, photoUrls: true },
       orderBy: { id: 'asc' },
     });
@@ -102,6 +164,7 @@ async function main(): Promise<void> {
   console.log(`\n📸 Mastering queue — prompt ${PROMPT_VERSION}, model ${MODEL.label} (${APPLY ? 'APPLY' : 'dry'})`);
   if (!MODEL.url) console.log(`   ⚠️  «${MODEL.id}» is not in the registry — recorded as given, prep has no app to open (known: ${modelList()})`);
   const db = await getDb();
+  if (PRUNE) await pruneOutOfScope(await bookCodes());
   const listings = await resolveListings();
 
   const wanted = new Set(
