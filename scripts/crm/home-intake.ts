@@ -680,6 +680,12 @@ async function phoneArrived(ctx: Ctx, thread: ThreadState, text: string): Promis
   if (APPLY) {
     await client.rest('PATCH', `hosts/${host.id}`, { phone: phonesComposite(said) });
     for (const id of thread.homeIds) await client.rest('PATCH', `homes/${id}`, { hostPhone: phonesComposite(said) });
+    // The sweep reads Twenty once and works from that copy. Leaving the number off the
+    // in-memory row makes the host look phoneless for the rest of the run: the next reply
+    // writes it again and says so again, and a second thread about the same host fails to
+    // recognise them and opens a second account.
+    host.phone = phonesComposite(said);
+    for (const h of ctx.homes) if (thread.homeIds.includes(String(h.id))) h.hostPhone = phonesComposite(said);
   }
   console.log(`  ☎ phone ${said} → host ${host.id}`);
   await reply(thread.ts, `☎️ سجّلت رقم المضيف ${said} / host phone recorded`);
