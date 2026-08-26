@@ -44,8 +44,8 @@ import {
   getS3,
   listingFolder,
   masteredKey,
+  nameFromOriginal,
   photoSlug,
-  roomHintFrom,
   shortId,
   takenNames,
   confirm,
@@ -208,8 +208,9 @@ async function main(): Promise<void> {
   //
   // Folder: the listing's public code, the same string the CRM and mkan.sd
   // use. Name: the room, in this order — what the operator said (`--name=`),
-  // what the original's own filename said, and failing both `photo-N`, which
-  // is honest about knowing nothing rather than guessing "bedroom".
+  // what the original's own filename said (ordinal and all: the master of
+  // `bedroom-1` is `bedroom-1`, not `bedroom`), and failing both `photo-N`,
+  // which is honest about knowing nothing rather than guessing "bedroom".
   //
   // The name is allocated, never assumed: a second bedroom and a second
   // ATTEMPT at the first one both land on `bedroom-2`. Keys here are written
@@ -217,7 +218,7 @@ async function main(): Promise<void> {
   // reverted photo from the old key for up to a day.
   const folder = listingFolder(run.listing);
   const preferred =
-    photoSlug(NAME) ?? photoSlug(roomHintFrom(run.originalUrl)) ?? `photo-${run.photoIndex + 1}`;
+    photoSlug(NAME) ?? nameFromOriginal(run.originalUrl) ?? `photo-${run.photoIndex + 1}`;
   const siblings = await db.masteringRun.findMany({
     where: { listingId: run.listingId },
     select: { masteredUrl: true },

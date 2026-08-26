@@ -32,6 +32,7 @@ export {
   isDrifted,
   allocateName,
   listingFolder,
+  nameFromOriginal,
   nameFromUrl,
   photoSlug,
   takenNames,

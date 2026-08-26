@@ -87,6 +87,23 @@ export const masteredKey = (folder: string, name: string, ns = 'mkan'): string =
 export const tempKey = (folder: string, name: string, ext: string, ns = 'mkan'): string =>
   `${ns}/temp/${folder}/${name}.${ext.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg'}`;
 
+/**
+ * The name a mastered photo should inherit from its original — `bedroom-1.webp`
+ * → `bedroom-1`, keeping the ordinal the host themselves used.
+ *
+ * `roomHintFrom` deliberately strips that ordinal, because the PROMPT wants a
+ * room type ("light this like a bedroom") and `bedroom-1` is not a kind of
+ * room. A file NAME wants the opposite: it is an identity, and dropping the
+ * ordinal would file the master of `bedroom-1` as plain `bedroom` while the
+ * master of `bedroom-2` kept its number — an off-by-one that quietly implies
+ * `bedroom-2.webp` is the room the host calls bedroom-2 when it might not be.
+ *
+ * The hint is still the gate: it returns null for uuid and numeric basenames,
+ * so a scraped re-host never turns hex into a file name.
+ */
+export const nameFromOriginal = (url: string): string | null =>
+  roomHintFrom(url) ? photoSlug(nameFromUrl(url)) : null;
+
 /** The file name (no extension) a stored URL is using, for collision checks. */
 export function nameFromUrl(url: string): string | null {
   try {

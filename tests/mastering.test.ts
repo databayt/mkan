@@ -15,6 +15,7 @@ import {
   isDrifted,
   listingFolder,
   masteredKey,
+  nameFromOriginal,
   nameFromUrl,
   photoSlug,
   takenNames,
@@ -191,6 +192,15 @@ describe('naming a photo the way a human would', () => {
     ];
     expect([...takenNames('0001-01', urls)].sort()).toEqual(['bedroom', 'kitchen']);
     expect([...takenNames('temp/0001-01', urls)]).toEqual(['hall']);
+  });
+
+  it('inherits the original\'s own name, ordinal and all — the prompt hint drops it, the file name must not', () => {
+    // roomHintFrom says "bedroom" (a room TYPE, for the prompt); the file name
+    // keeps "bedroom-1" (an identity), so masters line up 1:1 with originals.
+    expect(nameFromOriginal('https://cdn.databayt.org/mkan/uploads/heirs/x/bedroom-1.webp')).toBe('bedroom-1');
+    expect(nameFromOriginal('https://cdn.databayt.org/mkan/uploads/heirs/x/living-room.webp')).toBe('living-room');
+    expect(nameFromOriginal('https://cdn.databayt.org/mkan/uploads/40938188/4b47453c-89a8-4067-aa25-55c36b6fa871.jpg')).toBeNull();
+    expect(nameFromOriginal('https://cdn.databayt.org/mkan/uploads/1/01.webp')).toBeNull();
   });
 
   it('reads a name back off a stored URL', () => {

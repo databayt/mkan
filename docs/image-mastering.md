@@ -109,9 +109,19 @@ through the pipeline.
   listings have no code yet (it is minted at publish); those are exactly the
   ones nobody is mastering.
 - **Name**, in order: what the operator said (`master:done <run> --name=kitchen`),
-  then the original's own filename (`roomHintFrom`), then `photo-N`. The last
-  rung is honest about knowing nothing rather than guessing "bedroom" — 1086 of
-  1095 photos are uuid-named today.
+  then the original's own filename **ordinal and all** — the master of
+  `bedroom-1.webp` is `bedroom-1.webp`, not `bedroom.webp` — then `photo-N`. The
+  last rung is honest about knowing nothing rather than guessing "bedroom": 1086
+  of 1095 photos are uuid-named today, and `roomHintFrom` gates the middle rung
+  so hex never becomes a file name.
+
+  The prompt and the file name want opposite things from the same string.
+  `roomHintFrom` strips the ordinal because the *prompt* wants a room TYPE
+  ("light this like a bedroom") and `bedroom-1` is not a kind of room; the file
+  name keeps it because a name is an IDENTITY. Dropping it would file the master
+  of `bedroom-1` as plain `bedroom` while `bedroom-2`'s master kept its number —
+  an off-by-one quietly implying `bedroom-2.webp` is the room the host calls
+  bedroom-2, when it is a different room entirely.
 - **Names are allocated, never assumed.** A second bedroom and a second
   *attempt* at the first one both land on `bedroom-2`, and a freed name is never
   reused. This is not tidiness: these objects carry no `Cache-Control`, so
