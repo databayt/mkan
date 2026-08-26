@@ -46,7 +46,7 @@ Twenty Home (photoStage=POOR_QUALITY Kanban)      CLI --listing
                       a) reply in the run's Slack thread with it attached  (phone-friendly)
                       b) download it on this Mac                           (~/Downloads)
    master:done    → (a) --from-slack: pull the thread's image · (b) newest ~/Downloads
-                  → validate → sharp ≤2048w WebP → S3 mkan/uploads/mastered/<runId>.webp   → MASTERED
+                  → validate → sharp ≤2048w WebP → S3 mkan/<code>/<room>.webp             → MASTERED
                   → swap into Listing.photoUrls BY URL MATCH (transaction)                 → UPDATED
                   → Twenty rollup (photosMastered, photoStage, photo URLs) + Slack thread ✅
    master:reject  → REJECTED + fresh attempt row · master:revert → original back live
@@ -86,7 +86,64 @@ Twenty Home (photoStage=POOR_QUALITY Kanban)      CLI --listing
   gateway bug: chat replies fail while cron/webhook delivery works); Hermes
   gets the operator skill + reconcile cron in Phase 2.
 - Output spec: **4:3 landscape, ≤2048px wide, WebP q82** — the site renders
-  `aspect-[4/3]` + `object-cover` everywhere that matters.
+  `aspect-[4/3]` + `object-cover` everywhere that matters. Where it lands and
+  what it is called: see "Where a photo lives" below.
+
+## Where a photo lives, and what it is called
+
+```
+original   https://cdn.databayt.org/mkan/temp/0001-01/hall.jpg
+mastered   https://cdn.databayt.org/mkan/0001-01/hall.webp
+```
+
+The folder is the listing's **public code** — the same `NNNN-NN` the CRM, the
+WhatsApp outreach and mkan.sd already share — so the photo and the page it
+belongs to read as one thing. The name is the **room**. An original never gets
+that name: it sits in `temp/` under whatever the human called it, and the clean
+path is what mastering **earns**, so the URL alone says whether a photo has been
+through the pipeline.
+
+- **Folder** = `Listing.code`, falling back to the row id. Deliberately *not*
+  `listingSegment`, whose second choice is `sourceListingId` — an external
+  Airbnb room id has no business naming a folder on our own CDN. 113 of 147
+  listings have no code yet (it is minted at publish); those are exactly the
+  ones nobody is mastering.
+- **Name**, in order: what the operator said (`master:done <run> --name=kitchen`),
+  then the original's own filename (`roomHintFrom`), then `photo-N`. The last
+  rung is honest about knowing nothing rather than guessing "bedroom" — 1086 of
+  1095 photos are uuid-named today.
+- **Names are allocated, never assumed.** A second bedroom and a second
+  *attempt* at the first one both land on `bedroom-2`, and a freed name is never
+  reused. This is not tidiness: these objects carry no `Cache-Control`, so
+  overwriting `bedroom.webp` would let CloudFront serve the **reverted** photo
+  for up to a day — the exact image the revert existed to remove. New mastered
+  objects are written `public, max-age=31536000, immutable`, which is safe
+  precisely because the key can never be rewritten.
+- **Forward-only.** Nothing already stored moves. The old shapes
+  (`mkan/uploads/<host>/<uuid>.jpg`, `mkan/uploads/mastered/<runId>.webp`) stay
+  valid forever; the ugly URLs die as photos pass through the pipeline.
+- **`deleteObjectByUrl` is scoped to `uploads/`**, so neither a mastered photo
+  nor a temp original can be deleted by the host UI's photo-delete. That is the
+  intended reading of "originals are immortal", written down rather than
+  inherited.
+
+**One human action gates this:** writing outside `mkan/uploads/*` needs the mkan
+IAM user's S3 policy widened. The bucket and CloudFront already serve such keys
+(verified by probe, 2026-08-26); only that key is blocked.
+
+```
+AWS console → IAM → Users → mkan → its S3 policy → the write Resource
+  "arn:aws:s3:::databayt-cdn/mkan/uploads/*"
+→ "arn:aws:s3:::databayt-cdn/mkan/*"
+```
+
+Until it is clicked, `master:done` refuses with that exact text and **leaves the
+run untouched** — a permissions wall must never burn a render a human already
+made.
+
+Still on the old scheme by choice: the host upload route (`buildUploadKey`) and
+the scraped-photo rehost (`scripts/crm/photo-rehost.ts`). Both feed listings that
+mostly have no code yet; move them when that changes.
 
 ## Lifecycle
 
