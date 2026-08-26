@@ -339,7 +339,7 @@ function factsFromRow(h: Row): HomeFacts {
   const amenities = Array.isArray(h.amenities) ? (h.amenities as string[]) : [];
   const raw = Array.isArray(h.amenitiesRaw) ? (h.amenitiesRaw as string[]) : [];
   return {
-    titleAr: (h.titleAr as string | null) || (h.name as string | null) || null,
+    titleAr: (h.titleAr as string | null) || (h.title as string | null) || null,
     descriptionAr: (h.descriptionAr as string | null) || (h.description as string | null) || null,
     propertyType: (h.propertyType as string | null) ?? null,
     bedrooms: (h.bedrooms as number | null) ?? null,
@@ -362,7 +362,13 @@ function homeBody(f: HomeFacts, r: IntakeResult, u: Unit, code: string, account:
   const pin = latLngFrom(r.area.mapsUrl);
   const addressText = r.area.addressText;
   return clean({
-    name: f.titleAr ?? `${code}${hostName ? ` · ${hostName}` : ''}`,
+    // `name`, `title` and `titleAr` all hold the same sentence on the 147 homes that
+    // came before — `listingId` is what Twenty labels the record with, so `name` is a
+    // duplicate, not the label. It is written when there is a title and left alone when
+    // there is not: a home with no title must read as having no title, and inventing
+    // `0005-01 · الطيب` here made the gate, the reader and the site all believe otherwise.
+    name: f.titleAr ?? undefined,
+    title: f.titleAr,
     titleAr: f.titleAr,
     descriptionAr: f.descriptionAr,
     account,
@@ -594,6 +600,8 @@ async function resolvePending(ctx: Ctx, thread: ThreadState, verdict: { same: st
       // the scout's words fill what is empty and add to lists; they never blank a field
       const patch: Row = clean({
         titleAr: before.titleAr ? undefined : f.titleAr,
+        title: before.titleAr ? undefined : f.titleAr,
+        name: before.titleAr ? undefined : f.titleAr,
         descriptionAr: before.descriptionAr ? undefined : f.descriptionAr,
         propertyType: before.propertyType ? undefined : f.propertyType,
         // numbers: the scout's word wins — they were at the door; text: fill what is empty
@@ -753,7 +761,11 @@ async function handleReply(ctx: Ctx, thread: ThreadState, m: SlackMsg): Promise<
       changes[key] = [was, value];
     };
     if (u) {
+      // the three title columns move together — `name` and `title` carry the same
+      // sentence as `titleAr` on every home that came before this lane
       set('titleAr', u.titleAr, before.titleAr);
+      set('title', u.titleAr, before.titleAr);
+      set('name', u.titleAr, before.titleAr);
       set('descriptionAr', u.descriptionAr, before.descriptionAr);
       set('propertyType', u.propertyType, before.propertyType);
       if (u.propertyType) set('mkanPropertyType', u.propertyType, before.propertyType);

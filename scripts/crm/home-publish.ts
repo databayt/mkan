@@ -50,7 +50,7 @@ export interface PublishResult {
 function factsOf(h: Row): HomeFacts {
   const addr = (h.homeAddress as Row | null) ?? null;
   return {
-    titleAr: (h.titleAr as string | null) || (h.name as string | null) || null,
+    titleAr: (h.titleAr as string | null) || (h.title as string | null) || null,
     descriptionAr: (h.descriptionAr as string | null) || (h.description as string | null) || null,
     propertyType: (h.propertyType as string | null) ?? null,
     bedrooms: (h.bedrooms as number | null) ?? null,
