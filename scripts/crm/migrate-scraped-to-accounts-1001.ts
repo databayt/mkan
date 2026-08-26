@@ -383,7 +383,6 @@ ${item.notesEn}`;
       account: item.account,
       listingId: item.listingId,
       hostName: item.hostName,
-      name: item.titleAr,
       titleEn: item.titleEn,
       titleAr: item.titleAr,
       spaceEn: item.spaceEn,

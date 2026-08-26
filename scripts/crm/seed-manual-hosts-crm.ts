@@ -747,7 +747,7 @@ async function main() {
   for (const h of existingHomes) {
     if (h.listingId) homeByListingId.set(String(h.listingId), h);
     if (h.mkanListingId) homeByListingId.set(String(h.mkanListingId), h);
-    if (h.name) homeByName.set(h.name, h);
+    if (h.titleAr || h.title) homeByName.set((h.titleAr ?? h.title) as string, h);
     if (h.titleAr) homeByName.set(h.titleAr, h);
   }
 

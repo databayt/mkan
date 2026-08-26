@@ -317,7 +317,6 @@ async function createUnseen(
     const state = live ? 'LIVE' : 'IMPORTED_BUSY';
     try {
       await twenty.rest('POST', 'homes', clean({
-        name: l.title ?? `mkan #${l.id}`,
         title: l.title ?? undefined,
         description: l.description ?? undefined,
         // Not a discovery: the host put this here themselves.

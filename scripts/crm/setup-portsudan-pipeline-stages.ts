@@ -129,7 +129,7 @@ async function main() {
     }
 
     await rest('PATCH', `portSudans/${p.id}`, { pipelineStage: stage });
-    console.log(`  [${p.listingId}] Account ${p.account} -> Stage: ${stage} (${p.name?.slice(0, 30)})`);
+    console.log(`  [${p.listingId}] Account ${p.account} -> Stage: ${stage} (${(p.titleAr ?? p.title)?.slice(0, 30)})`);
   }
 
   // Sync to homes table as well

@@ -362,12 +362,8 @@ function homeBody(f: HomeFacts, r: IntakeResult, u: Unit, code: string, account:
   const pin = latLngFrom(r.area.mapsUrl);
   const addressText = r.area.addressText;
   return clean({
-    // `name`, `title` and `titleAr` all hold the same sentence on the 147 homes that
-    // came before — `listingId` is what Twenty labels the record with, so `name` is a
-    // duplicate, not the label. It is written when there is a title and left alone when
-    // there is not: a home with no title must read as having no title, and inventing
-    // `0005-01 · الطيب` here made the gate, the reader and the site all believe otherwise.
-    name: f.titleAr ?? undefined,
+    // `listingId` is what Twenty labels the record with; a home's sentence lives in
+    // `title` / `titleAr` and nowhere else.
     title: f.titleAr,
     titleAr: f.titleAr,
     descriptionAr: f.descriptionAr,
@@ -481,7 +477,7 @@ function suspectedDuplicate(ctx: Ctx, phone: string | null, hostId: string | nul
     if (f.bedrooms != null && (h.bedrooms as number | null) === f.bedrooms) score += 2;
     if (f.bathrooms != null && (h.bathrooms as number | null) === f.bathrooms) score += 1;
     if (f.beds != null && (h.beds as number | null) === f.beds) score += 1;
-    const title = `${h.titleAr ?? ''} ${h.name ?? ''}`;
+    const title = `${h.titleAr ?? ''} ${h.title ?? ''}`;
     if (f.titleAr && f.titleAr.split(/\s+/).some((w) => w.length > 3 && title.includes(w))) score += 1;
     if (score >= 4 && (!best || score > best.score)) best = { row: h, score };
   }
@@ -567,7 +563,7 @@ async function handleMessage(ctx: Ctx, m: SlackMsg): Promise<void> {
     const titles = pending
       .map((p) => {
         const row = ctx.homes.find((h) => String(h.id) === p.suspectId);
-        return `• ${p.index} ↔ *${p.suspectCode}* ${String(row?.titleAr ?? row?.name ?? '').slice(0, 70)}`;
+        return `• ${p.index} ↔ *${p.suspectCode}* ${String(row?.titleAr ?? row?.title ?? '').slice(0, 70)}`;
       })
       .join('\n');
     text2 += `\n\n${titles}`;
@@ -601,7 +597,6 @@ async function resolvePending(ctx: Ctx, thread: ThreadState, verdict: { same: st
       const patch: Row = clean({
         titleAr: before.titleAr ? undefined : f.titleAr,
         title: before.titleAr ? undefined : f.titleAr,
-        name: before.titleAr ? undefined : f.titleAr,
         descriptionAr: before.descriptionAr ? undefined : f.descriptionAr,
         propertyType: before.propertyType ? undefined : f.propertyType,
         // numbers: the scout's word wins — they were at the door; text: fill what is empty
@@ -761,11 +756,9 @@ async function handleReply(ctx: Ctx, thread: ThreadState, m: SlackMsg): Promise<
       changes[key] = [was, value];
     };
     if (u) {
-      // the three title columns move together — `name` and `title` carry the same
-      // sentence as `titleAr` on every home that came before this lane
+      // both title columns move together
       set('titleAr', u.titleAr, before.titleAr);
       set('title', u.titleAr, before.titleAr);
-      set('name', u.titleAr, before.titleAr);
       set('descriptionAr', u.descriptionAr, before.descriptionAr);
       set('propertyType', u.propertyType, before.propertyType);
       if (u.propertyType) set('mkanPropertyType', u.propertyType, before.propertyType);

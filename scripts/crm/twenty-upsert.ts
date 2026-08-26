@@ -148,7 +148,6 @@ function homeBody(h: EnrichedHome, hostId: string | null, host?: HostRecord) {
     title: h.title ?? undefined,
     titleEn: h.titleEn ?? h.title ?? undefined,
     titleAr: h.titleAr ?? undefined,
-    name: h.title ?? h.airbnbListingId, // object label
     description: h.description ?? undefined,
     descriptionEn: h.descriptionEn ?? h.description ?? undefined,
     descriptionAr: h.descriptionAr ?? undefined,

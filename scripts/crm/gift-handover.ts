@@ -137,7 +137,7 @@ async function main() {
 
     const d = {
       hostNameAr: item.hostName || "المضيف",
-      property: item.name || item.titleAr || item.listingId,
+      property: item.titleAr || item.title || item.listingId,
       zoneAr: ZONE_AR[item.zone] ?? "بورتسودان",
       listingUrl: `${APP}/ar/listings/${item.listingId}`,
       claimUrl: claimUrl ?? "<claim link — mint first>",

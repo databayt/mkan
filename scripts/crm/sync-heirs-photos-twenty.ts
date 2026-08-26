@@ -136,7 +136,7 @@ async function main(): Promise<void> {
     // Match on the title substring, and patch EVERY match: account 0001 has
     // duplicate `home` rows for some units (0001-01/03/05), and leaving one
     // copy claiming NOT_FOUND is how a stale view outlives the fix.
-    const hits = homes.filter((h) => String(h.name ?? "").includes(unit.titleMatch));
+    const hits = homes.filter((h) => `${h.titleAr ?? ""} ${h.title ?? ""}`.includes(unit.titleMatch));
     const portHits = ports.filter((p) => String(p.name ?? "").includes(unit.titleMatch));
     if (!hits.length && !portHits.length) {
       console.warn(`  ! "${unit.titleMatch}" matched no Twenty record — skipped`);
