@@ -4,6 +4,7 @@
  *   pnpm home:sweep   [--apply] [--limit=N] [--since=<unix>]   read #mkan since the cursor, act on every new message
  *   pnpm home:extract --text="…" | --ts=<slack ts>            read one message, print the JSON, write nothing
  *   pnpm home:intake  --ts=<slack ts> [--apply]                one channel message → host + home records + thread reply
+ *   pnpm home:message --text="…"                              try words against the whole desk, write nothing
  *   pnpm home:update  --code=0005-01 --text="…" [--apply]      merge more words into one home
  *   pnpm home:status                                           what this lane has seeded, and where each home stands
  *
@@ -38,6 +39,8 @@ import {
   normalizeSudanPhone,
   parseIntakeResult,
   parseLiveCommand,
+  routeMessage,
+  looksLikeCorrection,
   phonesComposite,
   phonesInText,
   saysPriceConfirmed,
@@ -488,19 +491,74 @@ async function handleMessage(ctx: Ctx, m: SlackMsg): Promise<void> {
   const text = plainText(m.text);
   console.log(`\n▶ message ${m.ts}: ${text.slice(0, 80).replace(/\n/g, ' ')}${text.length > 80 ? '…' : ''}`);
   if (!text) return;
-  const live = parseLiveCommand(text);
-  if (live) {
-    if (!live.code) {
+  // What the words address is decided here, in plain code, before the reader is asked
+  // anything. A message that names a home the CRM already has is a correction to that
+  // home — read it as a scout's fresh notes and it becomes a second copy of a flat that
+  // already exists, under an account nobody meant to open.
+  const route = routeMessage(text, ctx.homes.map((h) => h.listingId as string).filter(Boolean));
+  if (route.kind === 'publish') {
+    if (!route.code) {
       await reply(m.ts, '⚠️ أي وحدة؟ اكتب `live 0005-01` بالكود / which home? write `live` with its code');
       return;
     }
-    await goLive(m.ts, live.code);
+    await goLive(m.ts, route.code);
+    return;
+  }
+  if (route.kind === 'update') {
+    const rows = route.codes
+      .map((c) => ctx.homes.find((h) => h.listingId === c))
+      .filter((h): h is Row => Boolean(h));
+    console.log(`  ↳ addresses ${route.codes.join(', ')}${route.bare ? ' (asking, not changing)' : ''}`);
+    ctx.state.threads[m.ts] = {
+      ts: m.ts,
+      codes: route.codes,
+      homeIds: rows.map((h) => String(h.id)),
+      hostId: (rows[0]?.hostId as string | null) ?? null,
+      account: (rows[0]?.account as string | null) ?? null,
+      lastReplyTs: m.ts,
+      createdAt: new Date().toISOString(),
+    };
+    if (route.bare) {
+      // nothing but codes and links: someone is asking where these stand. Answering from
+      // the records costs nothing; running the reader over a bare code would cost 40s and
+      // learn nothing.
+      const units = rows.map((h) => ({
+        code: h.listingId as string,
+        recordUrl: `${TWENTY_UI}/object/home/${h.id}`,
+        facts: factsFromRow(h),
+        liveUrl: liveUrlOf(h),
+      }));
+      await reply(
+        m.ts,
+        buildReply({
+          hostName: (rows[0]?.hostName as string | null) ?? null,
+          hostPhone: units[0]?.facts.hostPhone ?? null,
+          units,
+          promptVersion: INTAKE_PROMPT_VERSION,
+          dryRun: !APPLY,
+          account: (rows[0]?.account as string | null) ?? null,
+        })
+      );
+      return;
+    }
+    await applyUpdateToRows(ctx, rows, text, m.ts, m.ts);
     return;
   }
   const prompt = buildIntakePrompt({ text, vocab: ctx.vocab, mode: 'message' });
   const raw = runReader(prompt);
   const r = enforceVocab(raw, ctx.vocab);
   appendJsonl('corpus.jsonl', { ts: m.ts, text, result: r, promptVersion: INTAKE_PROMPT_VERSION, model: READER_MODEL, at: new Date().toISOString() });
+  if (r.kind === 'update' || (r.kind === 'not_home' && looksLikeCorrection(text))) {
+    // A change rather than a new home, but nothing in the words says which home. Asking
+    // for the code is also how the code gets learned.
+    console.log('  ↳ update with no code — asking which home');
+    await reply(
+      m.ts,
+      '❓ يبدو تعديل — أي وحدة؟ اكتب الكود مع كلامك (مثال `0004-02 الحمامات ثلاثة`) أو ردّ داخل ثريد الوحدة.\n' +
+        '(this reads as a change, not a new home — name the listing code, or reply inside that home\'s thread)'
+    );
+    return;
+  }
   if (r.kind !== 'homes' || r.units.length === 0) {
     console.log(`  ↳ ${r.kind} — nothing to seed`);
     return;
@@ -656,83 +714,21 @@ async function resolvePending(ctx: Ctx, thread: ThreadState, verdict: { same: st
 }
 
 /**
- * A number written down later for a host filed without one. The account is already minted
- * and stays minted — but the phone may turn out to belong to a host who already has an
- * account, and silently welding the two identities together is exactly the mistake the
- * `same` / `new` question exists to prevent. So: write it when it is free, say so when it
- * is not, and never move a home between accounts on a guess.
+ * New words landing on homes that already exist — a correction in a thread, or a message
+ * that named their codes outright. Same machinery either way: the reader is shown what
+ * the record already holds and returns only what these words change, the scout's numbers
+ * win over what was guessed, lists grow and never shrink, and every change is written to
+ * the corrections file because a correction is the only honest test case there is.
  */
-async function phoneArrived(ctx: Ctx, thread: ThreadState, text: string): Promise<void> {
-  if (!thread.hostId) return;
-  const host = ctx.hosts.find((h) => h.id === thread.hostId);
-  if (!host) return;
-  if (normalizeSudanPhone(phoneOf(host.phone as Phones | null))) return; // already has one
-  const said = phonesInText(text)[0] ?? null;
-  if (!said) return;
-  const owner = hostByPhone(ctx, said);
-  if (owner && owner.id !== host.id) {
-    const theirs = (owner.mkanUsername as string | null) ?? accountForHost(ctx, String(owner.id), said) ?? '—';
-    await reply(
-      thread.ts,
-      `⚠️ الرقم ${said} مسجّل عند مضيف آخر (حساب ${theirs}). لم أنقل شيئاً — إن كان نفس الشخص انقل الوحدات إلى حسابه في Twenty.
-` +
-        `(that number already belongs to another host, account ${theirs} — nothing moved; move the homes in Twenty if it is the same person)`
-    );
-    return;
-  }
-  if (APPLY) {
-    await client.rest('PATCH', `hosts/${host.id}`, { phone: phonesComposite(said) });
-    for (const id of thread.homeIds) await client.rest('PATCH', `homes/${id}`, { hostPhone: phonesComposite(said) });
-    // The sweep reads Twenty once and works from that copy. Leaving the number off the
-    // in-memory row makes the host look phoneless for the rest of the run: the next reply
-    // writes it again and says so again, and a second thread about the same host fails to
-    // recognise them and opens a second account.
-    host.phone = phonesComposite(said);
-    for (const h of ctx.homes) if (thread.homeIds.includes(String(h.id))) h.hostPhone = phonesComposite(said);
-  }
-  console.log(`  ☎ phone ${said} → host ${host.id}`);
-  await reply(thread.ts, `☎️ سجّلت رقم المضيف ${said} / host phone recorded`);
-}
-
-async function handleReply(ctx: Ctx, thread: ThreadState, m: SlackMsg): Promise<void> {
-  const text = plainText(m.text);
-  console.log(`\n▶ reply in ${thread.ts} (${thread.codes.join(', ') || 'no homes'}): ${text.slice(0, 80).replace(/\n/g, ' ')}`);
-  if (!text) return;
-  if (thread.pending?.length) {
-    const t = toAsciiDigits(text).trim();
-    if (/^(new|جديد|جديدة)\b/iu.test(t)) return resolvePending(ctx, thread, { new: true }, m);
-    const same = /^(same|نفس|نفسها|merge|دمج)\b(.*)$/iu.exec(t);
-    if (same) return resolvePending(ctx, thread, { same: (same[2].match(/\d{4}-\d{2}/g) ?? []) }, m);
-    await reply(thread.ts, `❓ أولاً: \`same ${thread.pending.map((p) => p.suspectCode).join(' ')}\` أو \`new\` — ثم أكمل التفاصيل / first answer same … or new, then add details`);
-    return;
-  }
-  if (thread.homeIds.length === 0) return;
-  await phoneArrived(ctx, thread, text);
-  const live = parseLiveCommand(text);
-  if (live) {
-    const codes = live.code ? [live.code] : thread.codes;
-    if (!codes.length) {
-      await reply(thread.ts, '⚠️ لا توجد وحدة في هذا الثريد / no home in this thread');
-      return;
-    }
-    for (const c of codes) await goLive(thread.ts, c);
-    return;
-  }
-  const rows: Row[] = [];
-  for (const id of thread.homeIds) {
-    const res = (await client.rest('GET', `homes/${id}`)) as { data?: { home?: Row } };
-    const row = res.data?.home ?? (res as Row);
-    if (row && row.id) rows.push(row);
-  }
-  if (!rows.length) return;
+async function applyUpdateToRows(ctx: Ctx, rows: Row[], text: string, replyTs: string, msgTs: string): Promise<void> {
   const known = rows.map((h, i) => ({ index: i + 1, code: h.listingId, ...factsFromRow(h) }));
   const raw = runReader(buildIntakePrompt({ text, vocab: ctx.vocab, mode: 'reply', known }));
   const r = enforceVocab(raw, ctx.vocab);
-  appendJsonl('corpus.jsonl', { ts: m.ts, thread: thread.ts, text, result: r, promptVersion: INTAKE_PROMPT_VERSION, model: READER_MODEL, at: new Date().toISOString() });
+  appendJsonl('corpus.jsonl', { ts: msgTs, thread: replyTs, text, result: r, promptVersion: INTAKE_PROMPT_VERSION, model: READER_MODEL, at: new Date().toISOString() });
   if (r.kind === 'reject') {
     for (const h of rows) if (APPLY) await client.rest('PATCH', `homes/${h.id}`, { pipelineStage: 'REJECTED' });
-    appendJsonl('corrections.jsonl', { ts: m.ts, thread: thread.ts, kind: 'reject', text, at: new Date().toISOString() });
-    await reply(thread.ts, `❌ فُهم — الوحدة ملغاة (REJECTED) / understood — marked rejected.`);
+    appendJsonl('corrections.jsonl', { ts: msgTs, thread: replyTs, kind: 'reject', text, at: new Date().toISOString() });
+    await reply(replyTs, `❌ فُهم — الوحدة ملغاة (REJECTED) / understood — marked rejected.`);
     return;
   }
   if (r.kind === 'not_home') {
@@ -804,12 +800,85 @@ async function handleReply(ctx: Ctx, thread: ThreadState, m: SlackMsg): Promise<
     patch.dataCompletenessPct = completenessPct(after);
     const eligible = isEligible(after);
     if (eligible && !liveUrlOf(h) && h.pipelineStage !== 'CLAIMED' && h.pipelineStage !== 'LIVE') patch.pipelineStage = 'CLAIMED';
-    if (Object.keys(changes).length) appendJsonl('corrections.jsonl', { ts: m.ts, thread: thread.ts, code: h.listingId, changes, text, at: new Date().toISOString() });
+    if (Object.keys(changes).length) appendJsonl('corrections.jsonl', { ts: msgTs, thread: replyTs, code: h.listingId, changes, text, at: new Date().toISOString() });
     console.log(`  ${h.listingId}: ${Object.keys(changes).join(', ') || 'no field changed'} · ${patch.dataCompletenessPct}%${eligible ? ' · CLAIMED' : ''}`);
     if (APPLY && Object.keys(patch).length) await client.rest('PATCH', `homes/${h.id}`, patch);
     units.push({ code: h.listingId as string, recordUrl: `${TWENTY_UI}/object/home/${h.id}`, facts: after, liveUrl: liveUrlOf(h) });
   }
-  await reply(thread.ts, buildReply({ hostName: (rows[0].hostName as string | null) ?? r.host.name, hostPhone: units[0]?.facts.hostPhone ?? null, units, promptVersion: INTAKE_PROMPT_VERSION, dryRun: !APPLY, account: (rows[0]?.account as string | null) ?? null }));
+  await reply(replyTs, buildReply({ hostName: (rows[0].hostName as string | null) ?? r.host.name, hostPhone: units[0]?.facts.hostPhone ?? null, units, promptVersion: INTAKE_PROMPT_VERSION, dryRun: !APPLY, account: (rows[0]?.account as string | null) ?? null }));
+}
+
+/**
+ * A number written down later for a host filed without one. The account is already minted
+ * and stays minted — but the phone may turn out to belong to a host who already has an
+ * account, and silently welding the two identities together is exactly the mistake the
+ * `same` / `new` question exists to prevent. So: write it when it is free, say so when it
+ * is not, and never move a home between accounts on a guess.
+ */
+async function phoneArrived(ctx: Ctx, thread: ThreadState, text: string): Promise<void> {
+  if (!thread.hostId) return;
+  const host = ctx.hosts.find((h) => h.id === thread.hostId);
+  if (!host) return;
+  if (normalizeSudanPhone(phoneOf(host.phone as Phones | null))) return; // already has one
+  const said = phonesInText(text)[0] ?? null;
+  if (!said) return;
+  const owner = hostByPhone(ctx, said);
+  if (owner && owner.id !== host.id) {
+    const theirs = (owner.mkanUsername as string | null) ?? accountForHost(ctx, String(owner.id), said) ?? '—';
+    await reply(
+      thread.ts,
+      `⚠️ الرقم ${said} مسجّل عند مضيف آخر (حساب ${theirs}). لم أنقل شيئاً — إن كان نفس الشخص انقل الوحدات إلى حسابه في Twenty.
+` +
+        `(that number already belongs to another host, account ${theirs} — nothing moved; move the homes in Twenty if it is the same person)`
+    );
+    return;
+  }
+  if (APPLY) {
+    await client.rest('PATCH', `hosts/${host.id}`, { phone: phonesComposite(said) });
+    for (const id of thread.homeIds) await client.rest('PATCH', `homes/${id}`, { hostPhone: phonesComposite(said) });
+    // The sweep reads Twenty once and works from that copy. Leaving the number off the
+    // in-memory row makes the host look phoneless for the rest of the run: the next reply
+    // writes it again and says so again, and a second thread about the same host fails to
+    // recognise them and opens a second account.
+    host.phone = phonesComposite(said);
+    for (const h of ctx.homes) if (thread.homeIds.includes(String(h.id))) h.hostPhone = phonesComposite(said);
+  }
+  console.log(`  ☎ phone ${said} → host ${host.id}`);
+  await reply(thread.ts, `☎️ سجّلت رقم المضيف ${said} / host phone recorded`);
+}
+
+async function handleReply(ctx: Ctx, thread: ThreadState, m: SlackMsg): Promise<void> {
+  const text = plainText(m.text);
+  console.log(`\n▶ reply in ${thread.ts} (${thread.codes.join(', ') || 'no homes'}): ${text.slice(0, 80).replace(/\n/g, ' ')}`);
+  if (!text) return;
+  if (thread.pending?.length) {
+    const t = toAsciiDigits(text).trim();
+    if (/^(new|جديد|جديدة)\b/iu.test(t)) return resolvePending(ctx, thread, { new: true }, m);
+    const same = /^(same|نفس|نفسها|merge|دمج)\b(.*)$/iu.exec(t);
+    if (same) return resolvePending(ctx, thread, { same: (same[2].match(/\d{4}-\d{2}/g) ?? []) }, m);
+    await reply(thread.ts, `❓ أولاً: \`same ${thread.pending.map((p) => p.suspectCode).join(' ')}\` أو \`new\` — ثم أكمل التفاصيل / first answer same … or new, then add details`);
+    return;
+  }
+  if (thread.homeIds.length === 0) return;
+  await phoneArrived(ctx, thread, text);
+  const live = parseLiveCommand(text);
+  if (live) {
+    const codes = live.code ? [live.code] : thread.codes;
+    if (!codes.length) {
+      await reply(thread.ts, '⚠️ لا توجد وحدة في هذا الثريد / no home in this thread');
+      return;
+    }
+    for (const c of codes) await goLive(thread.ts, c);
+    return;
+  }
+  const rows: Row[] = [];
+  for (const id of thread.homeIds) {
+    const res = (await client.rest('GET', `homes/${id}`)) as { data?: { home?: Row } };
+    const row = res.data?.home ?? (res as Row);
+    if (row && row.id) rows.push(row);
+  }
+  if (!rows.length) return;
+  await applyUpdateToRows(ctx, rows, text, thread.ts, m.ts);
 }
 
 // ── commands ─────────────────────────────────────────────────────────────────
@@ -922,6 +991,22 @@ async function intakeOneLocked(ts: string): Promise<void> {
   saveState(ctx.state);
 }
 
+/**
+ * Try words against the whole desk without posting anything — which job the message is,
+ * and what the answer would be. `--apply` is refused on purpose: this exists to rehearse
+ * a phrasing, and a rehearsal that writes is not a rehearsal.
+ */
+async function messageOne(): Promise<void> {
+  const text = argv('text');
+  if (!text) throw new Error('give --text="…"');
+  if (APPLY) throw new Error('`message` never writes — use `sweep --apply`, or `update --code=… --apply`');
+  const ctx = await loadCtx();
+  const codes = ctx.homes.map((h) => h.listingId as string).filter(Boolean);
+  const route = routeMessage(text, codes);
+  console.log(`route: ${JSON.stringify(route)}`);
+  await handleMessage(ctx, { ts: String(Math.floor(Date.now() / 1000)), text, user: 'cli' });
+}
+
 async function updateOne(): Promise<void> {
   const code = argv('code');
   const text = argv('text');
@@ -967,13 +1052,14 @@ async function answerOne(): Promise<void> {
   }
 }
 
-const HELP = `home-intake — see the header of scripts/crm/home-intake.ts\n  sweep | extract | intake | update | answer | status   (--apply to write)`;
+const HELP = `home-intake — see the header of scripts/crm/home-intake.ts\n  sweep | extract | intake | message | update | answer | status   (--apply to write)`;
 (async () => {
   switch (cmd) {
     case 'sweep': return sweep();
     case 'extract': return extract();
     case 'intake': return intakeOne();
     case 'update': return updateOne();
+    case 'message': return messageOne();
     case 'answer': return answerOne();
     case 'status': return status();
     default: console.log(HELP);

@@ -13,6 +13,8 @@ import {
   mustGaps,
   nextListingCode,
   nextManualAccount,
+  routeMessage,
+  looksLikeCorrection,
   normalizeSudanPhone,
   parseIntakeResult,
   parseLiveCommand,
@@ -134,6 +136,54 @@ describe('identity', () => {
     expect(nextManualAccount(['0005'])).toBe('0006');
     expect(nextListingCode('0006', [])).toBe('0006-01');
     expect(nextListingCode('0006', ['0006-01'])).toBe('0006-02');
+  });
+});
+
+describe('what the words are addressing', () => {
+  const known = ['0004-02', '0004-03', '0005-01'];
+
+  it('a listing code the CRM has means: change that home', () => {
+    const r = routeMessage('0004-02 الحمامات ثلاثة مش اتنين', known);
+    expect(r).toEqual({ kind: 'update', codes: ['0004-02'], bare: false });
+  });
+  it('reads a code written in Arabic-Indic digits', () => {
+    const r = routeMessage('٠٠٠٤-٠٣ السعر بقى ٦٥ الف', known);
+    expect(r).toEqual({ kind: 'update', codes: ['0004-03'], bare: false });
+  });
+  it('keeps several codes in the order they were written', () => {
+    const r = routeMessage('0004-03 و 0004-02 السعر بقى ٦٥ الف للاتنين', known);
+    expect((r as { codes: string[] }).codes).toEqual(['0004-03', '0004-02']);
+  });
+  it('a code the CRM does not have is not a code — a date is just a date', () => {
+    expect(routeMessage('اتفقنا 2026-08 نبدأ', known)).toEqual({ kind: 'intake' });
+    expect(routeMessage('0009-99 whatever', known)).toEqual({ kind: 'intake' });
+  });
+  it('nothing but a code, or a link to one, is a question — not a change', () => {
+    expect(routeMessage('0005-01', known)).toEqual({ kind: 'update', codes: ['0005-01'], bare: true });
+    expect(routeMessage('https://www.mkan.sd/en/listings/0004-02', known)).toEqual({
+      kind: 'update', codes: ['0004-02'], bare: true,
+    });
+  });
+  it('`live` wins over the code it carries', () => {
+    expect(routeMessage('live 0005-01', known)).toEqual({ kind: 'publish', code: '0005-01' });
+    expect(routeMessage('انشر 0004-02', known)).toEqual({ kind: 'publish', code: '0004-02' });
+  });
+  it('a scout\'s notes with no code are notes', () => {
+    expect(routeMessage('احمد ٠٩١٢٣١٠٢٠٥ الشقة الاولي غرفتين', known)).toEqual({ kind: 'intake' });
+  });
+});
+
+describe('a correction that forgot to say which home', () => {
+  it('a fix to a field, with no code, is still a fix', () => {
+    expect(looksLikeCorrection('الحمامات بقت تلاتة مش اتنين')).toBe(true);
+    expect(looksLikeCorrection('السعر غلط، صار ٦٥ الف')).toBe(true);
+    expect(looksLikeCorrection('3 bedrooms not 2')).toBe(true);
+  });
+  it('chatter is chatter and stays silent', () => {
+    expect(looksLikeCorrection('تمام، شكرا')).toBe(false);
+    expect(looksLikeCorrection('الصور بعدين ان شاء الله')).toBe(false);
+    expect(looksLikeCorrection('مش لاقي المفتاح')).toBe(false); // a marker, no field
+    expect(looksLikeCorrection('غرفتين وحمام ومطبخ')).toBe(false); // fields, nothing corrected
   });
 });
 

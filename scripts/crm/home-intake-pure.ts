@@ -273,6 +273,74 @@ export function parseLiveCommand(text: string): { live: true; code: string | nul
   return { live: true, code: m[1] ?? null };
 }
 
+/**
+ * What the words are addressing, decided before any model is asked.
+ *
+ * The channel is one desk with several jobs, and which job a message is arrives in the
+ * words themselves: `live 0005-01` publishes, a listing code addresses that home, and
+ * everything else is a scout's notes about a host. Deciding this deterministically — and
+ * before the reader runs — is what keeps a correction from being read as a new home.
+ *
+ * A code only counts when the CRM actually has it, which is what stops `2026-08` in a
+ * date, or a phone written `0912-34`, from hijacking a message. `bare` marks a message
+ * that is nothing but codes and links: someone asking where a home stands, not changing
+ * it, and worth answering without spending a reader call.
+ */
+export type Route =
+  | { kind: 'publish'; code: string | null }
+  | { kind: 'update'; codes: string[]; bare: boolean }
+  | { kind: 'intake' };
+
+const URL_RE = /https?:\/\/\S+/gu;
+const CODE_RE = /\b(\d{4}-\d{2})\b/gu;
+
+export function routeMessage(text: string, knownCodes: Iterable<string>): Route {
+  const live = parseLiveCommand(text);
+  if (live) return { kind: 'publish', code: live.code };
+
+  const ascii = toAsciiDigits(text);
+  const known = new Set(knownCodes);
+  const codes: string[] = [];
+  for (const m of ascii.matchAll(CODE_RE)) {
+    const code = m[1]!;
+    if (known.has(code) && !codes.includes(code)) codes.push(code);
+  }
+  if (!codes.length) return { kind: 'intake' };
+
+  // what is left once the links and the codes themselves are taken out
+  const rest = ascii
+    .replace(URL_RE, ' ')
+    .replace(CODE_RE, ' ')
+    .replace(/[\s\p{P}\p{S}]+/gu, '')
+    .trim();
+  return { kind: 'update', codes, bare: rest.length === 0 };
+}
+
+/**
+ * Words that are plainly fixing a fact about a home, written without saying which home.
+ *
+ * The reader calls this chatter, and on its own terms it is right — "the bathrooms are
+ * three not two" names no host, no price and no place. But a scout who types that has
+ * just corrected something and is owed an answer, and silence reads as a broken desk.
+ * So: a word that marks a correction, next to a word that names a field. Both, or it is
+ * genuinely chatter and stays silent.
+ */
+// Two things `\b` cannot do here. It is ASCII-only even under /u, so `\bمش\b` matches
+// nothing at all; and Arabic glues its articles on, so a lookbehind for "no letter before"
+// rejects `الحمامات` — the word is ال + حمام, and every field word arrives wearing one
+// prefix or another. So field words match as substrings, which they are distinctive
+// enough to survive, and only `مش` carries a guard — without it it matches inside `مشغل`
+// ("workshop"), a word in the very first real message this desk ever read.
+const AR_MARKER = /(مش(?!\p{L})|ليس|بدل|بق[ىات]|صار|أصبح|صحح|غلط|خط[أا]|تعديل)/u;
+const EN_MARKER = /\b(not|instead|wrong|actually|correction|change|fix)\b/i;
+const AR_FIELD = /(حمام|غرف|سرير|أسرّ?ة|اسر[ةه]|سعر|ضيوف|أشخاص|اشخاص|مطبخ|مكيف|عنوان|وصف)/u;
+const EN_FIELD = /\b(bathrooms?|bedrooms?|beds?|price|guests?|title|description)\b/i;
+
+export function looksLikeCorrection(text: string): boolean {
+  const t = toAsciiDigits(text);
+  return (AR_MARKER.test(t) || EN_MARKER.test(t)) && (AR_FIELD.test(t) || EN_FIELD.test(t));
+}
+
 export function saysPriceConfirmed(text: string): boolean {
   return /السعر\s*مؤكد|سعر\s*مؤكد|price\s*(?:is\s*)?confirmed|confirmed\s*(?:the\s*)?price|agreed/iu.test(text);
 }
