@@ -6,14 +6,16 @@ would have produced in the same room — **same property, same reality,
 dramatically better photography** — with per-image state, a frozen prompt per
 attempt, a Slack cockpit, and no silent failures.
 
-> **Status: 🟢 loop PROVEN end-to-end (2026-08-22).** Photo 2 of Listing #1051
-> went ORIGINAL → UPDATED through the human Gemini lane: mastered WebP live on
-> the CDN, `photoUrls` slot swapped, Twenty shows 1/5 mastered + new cover,
-> Slack thread carries the before/after. Photos 1/3/4 remain in the acceptance
-> batch. **Phase-3 API billing: deferred by Abdout (2026-08-22)** — until the
+> **Status (2026-08-26): 🟢 wiring complete · 🟡 yield unproven.** All six boxes
+> are live and the loop has run end to end. What five days of real runs say:
+> **16 runs, 3 photos ever applied, 2 of them reverted the same day, 1 net live
+> photo** — against a measured backlog of 779. The constraint is no longer
+> plumbing; it is the two things a human still owns, **generating** (the whole
+> throughput ceiling) and **judging** (2 of 3 applied photos came back down).
+> **Phase-3 API billing: still deferred by Abdout (2026-08-22)** — until the
 > `/decide` flips it, `master:prep` is the interim floor (~20s of human per
-> photo). Storage/serving details: [image-pipeline.md](./image-pipeline.md);
-> plan of record:
+> photo, and the same human's attention per photo forever). Storage/serving
+> details: [image-pipeline.md](./image-pipeline.md); plan of record:
 > `~/.claude/plans/read-downloads-mastering-workflow-txt-do-reflective-wreath.md`.
 
 ## The honesty rule (outranks everything)
@@ -126,9 +128,13 @@ pnpm master:status                  # where is every image, and why
 pnpm master:reconcile --apply       # stall + drift alerts (runs daily 10:00 via launchd)
 ```
 
-Bad result: `pnpm master:reject <runId> --note="invented a window"` (note is
-mandatory — rejected-because is what improves prompt v2). Undo a live swap:
-`pnpm master:revert <runId>`. Redo a finished photo: `master:queue --force`.
+Bad result: `pnpm master:reject <runId> --note="invented a window"`. Undo a
+live swap: `pnpm master:revert <runId> --note="why"`. **Both notes are
+mandatory, and the revert note is the one that matters most** — a photo good
+enough to apply and then bad enough to pull back down is the strongest quality
+signal this pipeline can produce. The first two reverts (2026-08-25) recorded
+nothing but a date, and prompt v2 was written with no evidence to work from.
+Redo a finished photo: `master:queue --force`.
 
 ## The return lane (spec §13)
 
@@ -149,12 +155,17 @@ Matching a returned image to a run, in order:
 Matching is not identity: the side-by-side eyeball still owns "is this the
 right room" (the mislabeled-return lesson above).
 
-**Scopes.** The kun bot posts with `chat:write`, but reading the channel and
-downloading a file need **`groups:history`** (private channel) and
-**`files:read`**. Without them `--from-slack` fails with a `missing_scope`
-error naming the fix: api.slack.com/apps → the app behind @kun → OAuth &
-Permissions → Bot Token Scopes → add both → **Reinstall to Workspace**. If the
-reinstall rotates the token, update `~/.hermes/.env` — the gateway shares it.
+**Scopes — resolved (verified 2026-08-26).** The kun bot now holds
+`groups:history` and `files:read` alongside `chat:write`, so `--from-slack`
+works: `conversations.history` and `files.list` both answer `ok:true` on
+`C0BS2NZE2AY`. This blocked the phone lane for three days and every doc said so;
+it no longer does. If a reinstall ever rotates the token, update
+`~/.hermes/.env` — the gateway shares it — and re-verify with:
+
+```bash
+curl -s -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+  'https://slack.com/api/conversations.history?channel=C0BS2NZE2AY&limit=1'
+```
 
 ## Choosing the generator
 
@@ -226,9 +237,9 @@ silent drop is the one outcome this lane must never produce.
    creation, or `/invite @kun`.)
 2. Twenty metadata — **applied** (`photoStage`+`MASTERED`, `photosMastered`,
    `lastMasteredAt`).
-3. Bot scopes for the return lane — `groups:history` + `files:read` on the @kun
-   app, then Reinstall to Workspace (see "The return lane" above). Verify with
-   `curl -H "Authorization: Bearer $SLACK_BOT_TOKEN" 'https://slack.com/api/conversations.history?channel=C0BS2NZE2AY&limit=1'`.
+3. Bot scopes for the return lane — **done** (2026-08-26): `groups:history` +
+   `files:read` are granted on the @kun app and verified live. See "The return
+   lane" above for the re-verification command.
 
 4. Stall clock — **installed**: launchd `com.databayt.mkan-mastering-reconcile`
    runs `master:reconcile --apply` daily at 10:00 (log:
@@ -254,6 +265,11 @@ silent drop is the one outcome this lane must never produce.
 | ASSIGNED task lost / thread stale | Slack message deleted or buried | `master:dispatch --run=<ref> --repost --apply` (old thread gets a pointer) |
 | Twenty rollup "failed (non-fatal)" | CRM down (laptop asleep, wrong port) | re-run `master:done`? No — rollup repeats on next apply, or PATCH via `crm:sync-photos` idiom |
 | run parked forever | see `master:status` ⏰ flags | `master:reconcile --apply` alerts; act on the thread |
+| relay: "it pre-dates photo N ever entering the pipeline" | the file really is older than the photo's first run — a stale download, not this render | re-render, or prefix the file with the run id if you are sure |
+| reconcile: ⏰ "QUEUED Nh with no Slack task" | `queue`/`pull` ran, `dispatch` never did — nobody was ever asked | `pnpm master:dispatch --apply` (or `master:next --listing=N` in serial mode) |
+| reconcile: ⚠️ "dispatched, then reset" / "already has a mastered URL" | a write reached the table from outside the scripts | do not guess — read the run's Slack thread, which carries what actually happened |
+| reconcile: 📥 "Nh in the inbox, never ingested" | a relay refusal that nobody read; the render is paid for and idle | `pnpm master:relay --dry` to see why, then fix the name or the run |
+| any script: "prompt/promptVersion are frozen at queue time" | something tried to rewrite a run's prompt | that is the point — a retry is a NEW row (`master:reject` / `master:queue --force`) |
 
 ## Invariants under test
 
