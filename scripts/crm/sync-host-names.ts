@@ -13,7 +13,7 @@
  * names live, so it is the source and this is the one-way sync down.
  *
  * The account number does not disappear: it is the local part of the host's
- * email, and `getUserByIdentifier` resolves "0001" through `0001@mkan.org`, so
+ * email, and `getUserByIdentifier` resolves "0001" as the address itself, so
  * the owners keep logging in exactly as before.
  *
  * Write rules, deliberately conservative — a wrong name on a live listing is
@@ -40,11 +40,11 @@ const APPLY = process.argv.includes('--apply');
 const API_URL = (process.env.TWENTY_API_URL ?? '').replace(/\/+$/, '');
 const API_KEY = process.env.TWENTY_API_KEY ?? '';
 
-/** mkan account email → the owner's real display name, in their own script. */
+/** mkan account number → the owner's real display name, in their own script. */
 const CANONICAL_NAMES: Record<string, string> = {
-  '0001@mkan.org': 'عبدوت',
-  '0002@mkan.org': 'دقنة',
-  '0003@mkan.org': 'حسين',
+  '0001': 'عبدوت',
+  '0002': 'دقنة',
+  '0003': 'حسين',
 };
 
 const MIN_NAME_LENGTH = 3;

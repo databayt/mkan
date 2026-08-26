@@ -2,7 +2,7 @@
  * Host (homes) onboarding — full create flow.
  *
  * Proves the end-to-end path a real host takes:
- *   1. log in as a RANDOM seeded homes account (0001..0020@mkan.org / 1234),
+ *   1. log in as a RANDOM seeded homes account (0001..0020 / 1234),
  *   2. start a new listing from /host/overview ("Get started"),
  *   3. land in the wizard on a freshly-created draft they OWN,
  *   4. advance through the first step (ownership gate passes for own listing),
@@ -17,10 +17,11 @@
 import { test, expect, type Page } from "@playwright/test";
 import { waitForPageLoad } from "./helpers";
 
-// Seeded "homes" demo hosts: 0001@mkan.org .. 0020@mkan.org, password 1234.
+// Seeded "homes" demo hosts: 0001 .. 0020, password 1234. The account number is the
+// whole identity — there is no address behind it any more.
 const HOMES_ACCOUNTS = Array.from(
   { length: 20 },
-  (_, i) => `${String(i + 1).padStart(4, "0")}@mkan.org`,
+  (_, i) => String(i + 1).padStart(4, "0"),
 );
 const PASSWORD = process.env.HOMES_TEST_PASSWORD ?? "1234";
 

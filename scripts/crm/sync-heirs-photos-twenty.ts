@@ -99,7 +99,7 @@ async function main(): Promise<void> {
   // Live truth for the photos, not the manifest's original stills.
   const prisma = (await import("@/lib/db")).db;
   const host = await prisma.user.findUnique({
-    where: { email: `${ACCOUNT}@mkan.org` },
+    where: { email: ACCOUNT },
     select: { id: true },
   });
   if (!host) throw new Error(`host ${ACCOUNT}@mkan.org not found`);

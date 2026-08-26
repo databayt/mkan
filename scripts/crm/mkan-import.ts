@@ -1,7 +1,7 @@
 /**
  * mkan provision + import (Epic G1.5) — the payoff step.
  *
- * Reads trusted scored homes → provisions `1000@mkan.org`+ MANAGER accounts
+ * Reads trusted scored homes → provisions `1000`+ MANAGER accounts
  * (mint-forward, emailVerified, bootstrap password) → imports their homes into
  * the mkan app as **Busy** (`Listing` + `Location`, `isPublished:false`).
  * Photos import empty until G1.4 re-hosts them (Airbnb muscache URLs can't be
@@ -268,7 +268,7 @@ async function main(): Promise<void> {
     let simNum = Math.max(999, ...taken) + 1;
     for (const [hid, homes] of byHost) {
       const existing = ledger.hosts[hid];
-      const email = existing?.mkanAccountEmail ?? `${String(simNum).padStart(4, '0')}@mkan.org`;
+      const email = existing?.mkanAccountEmail ?? String(simNum).padStart(4, '0');
       if (!existing) simNum++;
       console.log(`\n▸ host ${hid} (${hostName.get(hid) ?? '?'}) → ${email}${existing ? ' [exists]' : ' [new]'}, ${homes.length} home(s)`);
       for (const h of homes) {
@@ -315,7 +315,7 @@ async function main(): Promise<void> {
     }
     if (!acct) {
       const num = String(nextNum++);
-      const email = `${num}@mkan.org`;
+      const email = num; // the account number is the whole identity — no domain behind it
       const bootstrapPw = randomBytes(4).toString('hex');
       const user = await prisma.user.upsert({
         where: { email },

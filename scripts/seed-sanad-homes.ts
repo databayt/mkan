@@ -23,7 +23,7 @@ config({ override: true });
 import bcrypt from 'bcryptjs';
 import { PropertyType, CancellationPolicy, Amenity, Highlight, UserRole } from '@prisma/client';
 
-const HOST_EMAIL = '0004@mkan.org';
+const HOST_EMAIL = '0004'; // the account number IS the address now
 const HOST_USERNAME = 'السند';
 const HOST_PHONE = '+249912538883';
 const HOST_PASSWORD_PLAIN = '1234';

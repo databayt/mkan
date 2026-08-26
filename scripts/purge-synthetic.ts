@@ -177,7 +177,7 @@ async function main(): Promise<void> {
   // had not signed up yet. 0001/0002/0003 went to real owners; the rest only
   // ever held generated listings. Never touch the three real ones — hard-coded,
   // not derived, because getting this wrong deletes a real person's account.
-  const REAL_OWNERS = ['0001@mkan.org', '0002@mkan.org', '0003@mkan.org'];
+  const REAL_OWNERS = ['0001', '0002', '0003'];
   const slotHosts = await prisma.user.findMany({
     where: { role: 'MANAGER', email: { notIn: REAL_OWNERS } },
     select: { id: true, email: true, username: true, _count: { select: { listings: true } } },

@@ -40,7 +40,7 @@ async function main() {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
   const prisma = new PrismaClient({ adapter });
   const updatedUser = await prisma.user.updateMany({
-    where: { email: '0001@mkan.org' },
+    where: { email: '0001' },
     data: { phoneNumber: phoneSD }
   });
   console.log(`1. Prisma DB: Updated ${updatedUser.count} user (0001@mkan.org) phoneNumber to ${phoneSD}`);

@@ -63,7 +63,7 @@ function photosFor(title: string): string[] {
   return hit?.photoUrls ?? [];
 }
 
-const HOST_EMAIL = '0001@mkan.org';
+const HOST_EMAIL = '0001'; // the account number IS the address now
 
 // Assigned inside main() after .env loads (see the deferred import there).
 let prisma: (typeof import('@/lib/db'))['db'];

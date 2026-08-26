@@ -313,7 +313,7 @@ export const HOST: ObjectDef = {
     { name: 'hostTrustScore', label: 'Host trust score', type: 'NUMBER' },
     { name: 'hostTrustBand', label: 'Host trust band', type: 'SELECT', options: ['TRUSTED', 'PROMISING', 'HOLD', 'LOW', 'UNSCORED'], icon: 'IconShieldCheck' },
     { name: 'hostScoredAt', label: 'Scored at', type: 'DATE_TIME' },
-    { name: 'mkanAccountEmail', label: 'mkan account', type: 'EMAILS', description: 'e.g. 0001@mkan.org. Real hand-curated hosts use 0001-0003 (abdout/degna/hussein); scraped hosts get the 1000+ range.' },
+    { name: 'mkanAccountEmail', label: 'mkan account', type: 'EMAILS', description: 'Legacy — the account number is the whole login now (see mkan username). Real hand-curated hosts use 0001-0003 (abdout/degna/hussein); scraped hosts get the 1000+ range.' },
     { name: 'mkanUsername', label: 'mkan username', type: 'TEXT', description: 'e.g. 0001 — username == the account number (real 0001-0003, scraped 1000+).' },
     { name: 'mkanUserId', label: 'mkan user ID', type: 'TEXT' },
     { name: 'accountProvisionedAt', label: 'Account provisioned', type: 'DATE_TIME' },

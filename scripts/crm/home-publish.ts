@@ -125,7 +125,7 @@ export async function publishHome(code: string, opts: { apply: boolean; force?: 
     postedDate: now,
     lastAvailabilityConfirmedAt: now,
   };
-  const plan = { account: `${account}@mkan.org`, location: { addressText, lat, lng, zoneKey: slug }, listing: listingData, pinNote };
+  const plan = { account, location: { addressText, lat, lng, zoneKey: slug }, listing: listingData, pinNote };
   if (!opts.apply) {
     console.log('DRY RUN — would write to the site:\n' + JSON.stringify(plan, null, 2));
     return { ok: true, code, url: liveUrl(code), listingId: null, reason: 'dry run', pinNote };
@@ -134,12 +134,12 @@ export async function publishHome(code: string, opts: { apply: boolean; force?: 
 
   const { db } = await import('../../src/lib/db');
   const { default: bcrypt } = await import('bcryptjs');
-  const email = `${account}@mkan.org`;
-  // What the host types is the account number and the one shared password — never an
-  // address. The `@mkan.org` string is only the unique key `User.email` insists on;
-  // `getUserByIdentifier` resolves a bare "0006" through it, so the host never sees it.
+  // The account number IS the address. `User.email` is a required unique column, so it
+  // holds the number itself rather than a domain nobody was ever told about; the host
+  // types `0006` and the shared password, and that is the whole of what they know.
   // `username` is what a guest reads under "Hosted by", so it is the host's name when
   // that name is still free, and the number only as a fallback.
+  const email = account;
   const hostName = ((home.hostName as string | null) ?? '').trim();
   const nameFree = hostName ? !(await db.user.findUnique({ where: { username: hostName }, select: { id: true } })) : false;
   const user = await db.user.upsert({
@@ -160,9 +160,10 @@ export async function publishHome(code: string, opts: { apply: boolean; force?: 
     : await db.listing.create({ data: { ...listingData, hostId: user.id, locationId } });
   const url = liveUrl(code);
   if (home.hostId) {
+    // `mkan account` (an EMAILS field) is left alone — it was the address, and there is
+    // no address any more. `mkan username` is the account.
     await client.rest('PATCH', `hosts/${home.hostId}`, {
       mkanUsername: account,
-      mkanAccountEmail: { primaryEmail: email, additionalEmails: [] },
       accountProvisionedAt: now.toISOString(),
     });
   }

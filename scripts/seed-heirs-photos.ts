@@ -227,7 +227,7 @@ async function main(): Promise<void> {
   // 0001's listings (and their bookings, leases and reviews) before rebuilding.
   const prisma = (await import("@/lib/db")).db;
   const host = await prisma.user.findUnique({
-    where: { email: "0001@mkan.org" },
+    where: { email: "0001" },
     select: { id: true },
   });
   if (!host) throw new Error("host 0001@mkan.org not found");

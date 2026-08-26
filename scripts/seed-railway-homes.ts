@@ -35,7 +35,7 @@ config({ override: true });
 
 import { PropertyType, CancellationPolicy } from '@prisma/client';
 
-const HOST_EMAIL = '0002@mkan.org';
+const HOST_EMAIL = '0002'; // the account number IS the address now
 // 091 284 6648 → international E.164 for tel: dialing.
 const HOST_PHONE = '+249912846648';
 

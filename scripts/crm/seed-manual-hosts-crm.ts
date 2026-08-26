@@ -80,28 +80,28 @@ const records = (res: any, plural: string): any[] => {
 
 // ── Manual Host Profiles ─────────────────────────────────────────────────────
 const MANUAL_HOST_PROFILES: Record<string, { name: string; username: string; phone?: string; whatsapp?: string; notes: string }> = {
-  '0001@mkan.org': {
+  '0001': {
     name: 'عبدوت',
     username: '0001',
     phone: '+249915494649',
     whatsapp: '+249915494649',
     notes: 'عقارات ورثة تقسيم التركة العائلية (البيت الكبير + عمارة الفرن) — السكة حديد، بورتسودان (هاتف المالك 0915494649).',
   },
-  '0002@mkan.org': {
+  '0002': {
     name: 'دقنة',
     username: '0002',
     phone: '+249912846648',
     whatsapp: '+249912846648',
     notes: 'عمارة حي السكة حديد متعددة الطوابق — بورتسودان (هاتف المالك 0912846648).',
   },
-  '0003@mkan.org': {
+  '0003': {
     name: 'حسين',
     username: '0003',
     phone: '+24903467930',
     whatsapp: '+24903467930',
     notes: 'عمارة حسين في بورتسودان — حي الإغريق (هاتف المالك 0024903467930).',
   },
-  '0004@mkan.org': {
+  '0004': {
     name: 'السند',
     username: '0004',
     phone: '+249912538883',

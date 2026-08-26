@@ -35,7 +35,7 @@ const HIGH_TRUST_MIN = 50;
 // by username, which now holds the owner's real name and is synced from the CRM
 // by sync-host-names.ts. Names here are the display names as of 2026-08-18.
 const REAL_HOSTS: Record<string, string> = { '0001': 'عبدوت', '0002': 'دقنة', '0003': 'حسين', '0004': 'السند' };
-const REAL_EMAILS = Object.keys(REAL_HOSTS).map((n) => `${n}@mkan.org`);
+const REAL_EMAILS = Object.keys(REAL_HOSTS);
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -224,7 +224,7 @@ async function main() {
 
   if (!APPLY) {
     console.log('\nmode: DRY RUN (no writes)\n');
-    const u0 = users.find((u) => u.email === '0001@mkan.org') ?? users[0];
+    const u0 = users.find((u) => u.email === '0001') ?? users[0];
     const l0 = (byHost.get(u0.id) ?? [])[0];
     console.log('sample host body:', JSON.stringify(hostBody(u0), null, 1));
     if (l0) console.log('\nsample home body:', JSON.stringify(homeBody(l0, 'HOST_ID'), null, 1));

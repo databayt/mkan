@@ -91,6 +91,7 @@
     "home:answer": "tsx scripts/crm/home-intake.ts answer",
     "home:status": "tsx scripts/crm/home-intake.ts status",
     "home:publish": "tsx scripts/crm/home-publish.ts",
+    "accounts:simplify": "tsx scripts/crm/simplify-accounts.ts",
     "scope:portsudan": "tsx scripts/crm/scope-portsudan-phase.ts",
     "scope:city": "tsx scripts/crm/scope-portsudan-phase.ts",
     "test": "vitest run",
