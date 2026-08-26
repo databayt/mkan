@@ -36,8 +36,11 @@ export const getUserByIdentifier = async (identifier: string) => {
   if (raw.includes("@")) {
     const byAddress = await getUserByEmail(lower);
     if (byAddress) return byAddress;
-    // "0001@mkan.org" typed from memory, for an account that is now just "0001"
-    return getUserByEmail(lower.split("@")[0] ?? lower);
+    // "0001@mkan.org" typed from memory, for an account that is now just "0001".
+    // Only ever a four-digit local part: retrying every local part would mean a
+    // mistyped domain could sign somebody into an account that is not theirs.
+    const local = lower.split("@")[0] ?? "";
+    return /^\d{4}$/.test(local) ? getUserByEmail(local) : null;
   }
   // `username` is matched exactly — it holds names like "Osman" and "عبدوت", and
   // lowercasing it here would lock every named host out of their own account.
