@@ -73,7 +73,7 @@ except Exception: rows=[]
 rows = rows if isinstance(rows, list) else rows.get('data',{}).get('webhooks',[])
 print(next((w['id'] for w in rows if w.get('targetUrl')=='$TARGET'), ''))" 2>/dev/null || true)"
 
-BODY="$(python3 -c "import json;print(json.dumps({'targetUrl':'$TARGET','operations':['attachment.created'],'description':'mastering — photo dropped on a Home','secret':'''$SECRET'''}))")"
+BODY="$(python3 -c "import json;print(json.dumps({'targetUrl':'$TARGET','operations':['attachment.created','home.updated'],'description':'mastering — photo dropped on a Home, or a Home flagged poor quality','secret':'''$SECRET'''}))")"
 
 if [ -n "$EXISTING" ]; then
   curl -s --max-time 20 -X PATCH "$API/rest/webhooks/$EXISTING" \
