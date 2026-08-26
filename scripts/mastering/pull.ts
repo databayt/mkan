@@ -33,14 +33,20 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { extname, join } from 'node:path';
 import {
+  allocateName,
   argv,
+  cdnNamespace,
   flag,
   getDb,
   getS3,
+  listingFolder,
+  photoSlug,
   roomHintFrom,
   shortId,
   slackPost,
   slackReady,
+  takenNames,
+  tempKey,
   trim,
 } from './lib';
 import { compilePrompt, PROMPT_VERSION } from './prompt';
@@ -189,7 +195,7 @@ async function main(): Promise<void> {
     }
     const listing = await db.listing.findUnique({
       where: { id: mkanListingId },
-      select: { id: true, title: true, photoUrls: true },
+      select: { id: true, code: true, title: true, photoUrls: true },
     });
     if (!listing) {
       skipped.push(`${label}: no mkan listing #${mkanListingId} — fix the CRM pointer`);
@@ -219,11 +225,19 @@ async function main(): Promise<void> {
       continue;
     }
 
-    // Room hint from the HUMAN's filename, before the rehost renames it.
+    // Room hint from the HUMAN's filename — and, now, the file name itself.
     const room = roomHintFrom(att.name);
     const ext = (extname(att.name).slice(1) || 'jpg').toLowerCase().replace('jpeg', 'jpg');
+    // An original lands in `temp/`, keeping the name the human gave it:
+    // `mkan/temp/0001-01/hall.jpg`. The clean `mkan/0001-01/hall.webp` is what
+    // mastering promotes it to, so the URL alone says which one this is. The
+    // rehost used to bury it under a uuid, throwing away the one piece of
+    // human evidence the file carried.
+    const folder = listingFolder(listing);
+    const stem = photoSlug(att.name.replace(/\.[a-z0-9]+$/i, '')) ?? shortId(att.id);
+    const name = allocateName(stem, takenNames(`temp/${folder}`, listing.photoUrls, cdnNamespace()));
     const cdnUrl = await s3.putObject({
-      key: s3.buildUploadKey(String(listing.id), ext),
+      key: tempKey(folder, name, ext),
       body: bytes,
       contentType: ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg',
     });

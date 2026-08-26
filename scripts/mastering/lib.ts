@@ -16,9 +16,26 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { twentyClient } from '../crm/twenty-rest';
-import { masteredKey as masteredKeyNs, toReturns, type SlackMessage, type SlackReturn } from './pure';
+import {
+  masteredKey as masteredKeyNs,
+  tempKey as tempKeyNs,
+  toReturns,
+  type SlackMessage,
+  type SlackReturn,
+} from './pure';
 
-export { CDN_HOST, isCdnUrl, roomHintFrom, swapPhoto, isDrifted } from './pure';
+export {
+  CDN_HOST,
+  isCdnUrl,
+  roomHintFrom,
+  swapPhoto,
+  isDrifted,
+  allocateName,
+  listingFolder,
+  nameFromUrl,
+  photoSlug,
+  takenNames,
+} from './pure';
 export type { SlackReturn } from './pure';
 
 export const trim = (v: string | null | undefined): string => (v ?? '').trim();
@@ -67,8 +84,14 @@ export const MAX_ATTEMPTS = 3;
 
 const NS = trim(process.env.NEXT_PUBLIC_CDN_NAMESPACE) || 'mkan';
 
-/** masteredKey with this deployment's CDN namespace applied. */
-export const masteredKey = (runId: string): string => masteredKeyNs(runId, NS);
+/** `mkan/0001-01/bedroom.webp` — the namespace bound from env. */
+export const masteredKey = (folder: string, name: string): string => masteredKeyNs(folder, name, NS);
+
+/** `mkan/temp/0001-01/hall.jpg` — the namespace bound from env. */
+export const tempKey = (folder: string, name: string, ext: string): string => tempKeyNs(folder, name, ext, NS);
+
+/** The namespace the CDN keys are written under (`mkan`). */
+export const cdnNamespace = (): string => NS;
 
 export const hoursAgo = (d: Date | null | undefined): number =>
   d ? (Date.now() - d.getTime()) / 3_600_000 : 0;
@@ -96,7 +119,7 @@ export async function findRun(ref: string) {
   const db = await getDb();
   const matches = await db.masteringRun.findMany({
     where: { id: { contains: ref } },
-    include: { listing: { select: { id: true, title: true, hostId: true, photoUrls: true, isPublished: true } } },
+    include: { listing: { select: { id: true, code: true, title: true, hostId: true, photoUrls: true, isPublished: true } } },
     take: 5,
   });
   if (matches.length === 1) return matches[0];

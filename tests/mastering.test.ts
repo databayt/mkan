@@ -9,10 +9,16 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+  allocateName,
   impossibleState,
   isCdnUrl,
   isDrifted,
+  listingFolder,
   masteredKey,
+  nameFromUrl,
+  photoSlug,
+  takenNames,
+  tempKey,
   predatesDispatch,
   predatesLineage,
   roomHintFrom,
@@ -63,9 +69,13 @@ describe('cdn helpers', () => {
     expect(isCdnUrl('https://a0.muscache.com/pic.jpg')).toBe(false);
     expect(isCdnUrl('not a url')).toBe(false);
   });
-  it('keeps mastered output inside the IAM-permitted uploads prefix', () => {
-    expect(masteredKey('run1')).toBe('mkan/uploads/mastered/run1.webp');
-    expect(masteredKey('run1', 'other')).toBe('other/uploads/mastered/run1.webp');
+  it('files a mastered photo under the listing code, by room', () => {
+    expect(masteredKey('0001-01', 'bedroom')).toBe('mkan/0001-01/bedroom.webp');
+    expect(masteredKey('0001-01', 'bedroom', 'other')).toBe('other/0001-01/bedroom.webp');
+  });
+  it('leaves an original in temp, under the name it arrived with', () => {
+    expect(tempKey('0001-01', 'hall', 'jpg')).toBe('mkan/temp/0001-01/hall.jpg');
+    expect(tempKey('1051', 'IMG-4821', 'JPEG')).toBe('mkan/temp/1051/IMG-4821.jpeg');
   });
 });
 
@@ -143,5 +153,48 @@ describe('impossibleState', () => {
     expect(impossibleState({ status: 'UPDATED', slackTs: null, masteredUrl: 'https://cdn/x.webp', appliedAt: null })).toMatch(
       /without an applied timestamp/,
     );
+  });
+});
+
+describe('naming a photo the way a human would', () => {
+  it('files under the listing code, and falls back to the row id — never an external id', () => {
+    expect(listingFolder({ code: '0001-01', id: 1180 })).toBe('0001-01');
+    expect(listingFolder({ code: null, id: 1051 })).toBe('1051');
+    expect(listingFolder({ code: '  ', id: 1051 })).toBe('1051');
+  });
+
+  it('turns a room into a file name, and refuses to invent one', () => {
+    expect(photoSlug('living room')).toBe('living-room');
+    expect(photoSlug('Master Bathroom')).toBe('master-bathroom');
+    expect(photoSlug('  ---  ')).toBeNull();
+    expect(photoSlug(null)).toBeNull();
+  });
+
+  it('never hands out a name twice — a second bedroom and a second attempt are the same problem', () => {
+    expect(allocateName('bedroom', [])).toBe('bedroom');
+    expect(allocateName('bedroom', ['bedroom'])).toBe('bedroom-2');
+    expect(allocateName('bedroom', ['bedroom', 'bedroom-2'])).toBe('bedroom-3');
+    // The gap is not reused: a reverted attempt's key stays spoken for, because
+    // CloudFront may still be serving the photo the revert removed.
+    expect(allocateName('bedroom', ['bedroom', 'bedroom-3'])).toBe('bedroom-2');
+  });
+
+  it('reads the taken names out of the URLs the listing actually serves', () => {
+    const urls = [
+      'https://cdn.databayt.org/mkan/0001-01/bedroom.webp',
+      'https://cdn.databayt.org/mkan/0001-01/kitchen.webp',
+      'https://cdn.databayt.org/mkan/temp/0001-01/hall.jpg', // another folder
+      'https://cdn.databayt.org/mkan/0002-01/bedroom.webp', // another listing
+      'https://cdn.databayt.org/mkan/uploads/40938188/4b47453c.jpg', // the old scheme
+      'not a url',
+      null,
+    ];
+    expect([...takenNames('0001-01', urls)].sort()).toEqual(['bedroom', 'kitchen']);
+    expect([...takenNames('temp/0001-01', urls)]).toEqual(['hall']);
+  });
+
+  it('reads a name back off a stored URL', () => {
+    expect(nameFromUrl('https://cdn.databayt.org/mkan/0001-01/living-room.webp')).toBe('living-room');
+    expect(nameFromUrl('nonsense')).toBeNull();
   });
 });

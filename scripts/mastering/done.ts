@@ -19,7 +19,8 @@
  * What it does, in order: validate the candidate (decodes, ≥1200px wide, not
  * byte-identical to the original), open original + candidate side-by-side for
  * the honesty eyeball (same property, same reality — doc §23), normalize with
- * sharp (≤2048px wide, WebP), upload to S3 under mkan/uploads/mastered/, then
+ * sharp (≤2048px wide, WebP), upload to S3 under the listing's own folder —
+ * `mkan/<code>/<room>.webp`, the URL a human would have chosen — then
  * in one transaction mark MASTERED and swap the URL into Listing.photoUrls **by
  * URL match, never by index** (hosts mutate the array under us) → UPDATED.
  * Finally mirror progress to the Twenty home (best-effort) and reply in the
@@ -33,14 +34,20 @@ import { join, extname, basename } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import {
+  allocateName,
   argv,
+  cdnNamespace,
   flag,
   positional,
   findRun,
   getDb,
   getS3,
+  listingFolder,
   masteredKey,
+  photoSlug,
+  roomHintFrom,
   shortId,
+  takenNames,
   confirm,
   openFiles,
   slackReplySafe,
@@ -55,6 +62,8 @@ import {
 import { correctedModel, resolveModel } from './models';
 
 const FILE = argv('file');
+/** Override the room name this photo will be filed under (`--name=living-room`). */
+const NAME = argv('name');
 const FROM_SLACK = flag('from-slack');
 const WINDOW_MIN = parseInt(argv('window', '120'), 10) || 120;
 const YES = flag('yes');
@@ -192,16 +201,64 @@ async function main(): Promise<void> {
   }
 
   const db = await getDb();
+
+  // The name this photo will answer to forever.
+  //
+  //   mkan/0001-01/bedroom.webp
+  //
+  // Folder: the listing's public code, the same string the CRM and mkan.sd
+  // use. Name: the room, in this order — what the operator said (`--name=`),
+  // what the original's own filename said, and failing both `photo-N`, which
+  // is honest about knowing nothing rather than guessing "bedroom".
+  //
+  // The name is allocated, never assumed: a second bedroom and a second
+  // ATTEMPT at the first one both land on `bedroom-2`. Keys here are written
+  // once and never overwritten — CloudFront would otherwise keep serving a
+  // reverted photo from the old key for up to a day.
+  const folder = listingFolder(run.listing);
+  const preferred =
+    photoSlug(NAME) ?? photoSlug(roomHintFrom(run.originalUrl)) ?? `photo-${run.photoIndex + 1}`;
+  const siblings = await db.masteringRun.findMany({
+    where: { listingId: run.listingId },
+    select: { masteredUrl: true },
+  });
+  const taken = takenNames(folder, [...run.listing.photoUrls, ...siblings.map((r) => r.masteredUrl)], cdnNamespace());
+  let name = allocateName(preferred, taken);
+  // S3 is the last word: the database only knows what this app wrote.
+  while (await s3.objectExists(masteredKey(folder, name))) {
+    taken.add(name);
+    name = allocateName(preferred, taken);
+  }
+  const key = masteredKey(folder, name);
+  console.log(`   filing as: ${key}${run.listing.code ? '' : `  (listing #${run.listing.id} has no code yet)`}`);
+
   let masteredUrl: string | null = null;
   try {
     masteredUrl = await s3.putObject({
-      key: masteredKey(run.id),
+      key,
       body: output,
       contentType: 'image/webp',
+      // Written once, never rewritten — see the allocator above.
+      cacheControl: 'public, max-age=31536000, immutable',
     });
     if (!masteredUrl) throw new Error('putObject returned null');
   } catch (e) {
-    const reason = `CDN upload failed: ${(e as Error).message}`;
+    const message = (e as Error).message;
+    // A permissions wall is not a failed run. The mkan IAM user was scoped to
+    // `mkan/uploads/*` when mastered photos lived there; the clean key sits
+    // outside it. Marking the run FAILED would burn a render the human already
+    // made and paid for over a config line nobody has clicked yet — so leave
+    // the state alone and say exactly what to change.
+    if (/AccessDenied|not authorized/i.test(message)) {
+      throw new Error(
+        `S3 refused to write ${key} — state unchanged, the render is still good.\n` +
+          `   The mkan IAM user is scoped to mkan/uploads/*. Widen it once:\n` +
+          `   AWS console → IAM → Users → mkan → its S3 policy → change the write Resource\n` +
+          `     "arn:aws:s3:::databayt-cdn/mkan/uploads/*"  →  "arn:aws:s3:::databayt-cdn/mkan/*"\n` +
+          `   Then re-run: pnpm master:done ${shortId(run.id)} --file=${candidatePath}`,
+      );
+    }
+    const reason = `CDN upload failed: ${message}`;
     await db.masteringRun.update({
       where: { id: run.id },
       data: { status: 'FAILED', failureReason: reason },

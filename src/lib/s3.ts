@@ -13,6 +13,7 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { urlForKey } from "@/lib/cdn";
@@ -93,6 +94,13 @@ export async function putObject(opts: {
   key: string;
   body: Uint8Array | Buffer;
   contentType: string;
+  /**
+   * Set this on any key that is written once and never rewritten — mastered
+   * photos are. Without it the object inherits CloudFront's default TTL and
+   * revalidates by ETag, which is fine for something mutable and wasteful for
+   * something that by construction can never change.
+   */
+  cacheControl?: string;
 }): Promise<string | null> {
   const s3 = getS3Client();
   if (!s3) return null;
@@ -102,9 +110,27 @@ export async function putObject(opts: {
       Key: opts.key,
       Body: opts.body,
       ContentType: opts.contentType,
+      ...(opts.cacheControl ? { CacheControl: opts.cacheControl } : {}),
     }),
   );
   return publicUrlForKey(opts.key);
+}
+
+/**
+ * Does this key already hold an object? The last word before writing a name
+ * that is meant to be unique — the database knows what THIS app wrote, S3
+ * knows what is actually there. Returns false when S3 is unconfigured, which
+ * is the same answer a fresh bucket would give.
+ */
+export async function objectExists(key: string): Promise<boolean> {
+  const s3 = getS3Client();
+  if (!s3) return false;
+  try {
+    await s3.send(new HeadObjectCommand({ Bucket: process.env.AWS_S3_BUCKET!, Key: key }));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Extract the S3 key from a stored CDN/S3 URL (pathname sans leading slash). */

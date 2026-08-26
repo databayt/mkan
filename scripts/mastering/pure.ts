@@ -14,9 +14,109 @@ export const isCdnUrl = (url: string): boolean => {
   }
 };
 
-/** Mastered output lives beside host uploads — IAM only allows `mkan/uploads/*`. */
-export const masteredKey = (runId: string, ns = 'mkan'): string =>
-  `${ns}/uploads/mastered/${runId}.webp`;
+// ── Where an image lives, and what it is called ─────────────────────────────
+//
+// A mastered photo gets the URL a human would have chosen:
+//
+//   https://cdn.databayt.org/mkan/0001-01/bedroom.webp
+//
+// The folder is the listing's own public code — the same `NNNN-NN` the CRM,
+// the WhatsApp outreach and mkan.sd all share — so the photo and the page it
+// belongs to read as one thing. The name is the room.
+//
+// An ORIGINAL never gets that name. It sits in `mkan/temp/<listing>/…` under
+// whatever it was called when it arrived, and it stays there forever: the
+// pretty path is what mastering EARNS, so the URL itself says whether a photo
+// has been through the pipeline. Originals are immortal — nothing here deletes
+// one — they simply stop being what the listing serves.
+//
+// Note: writing outside `mkan/uploads/*` requires the mkan IAM user's S3
+// policy to allow `arn:aws:s3:::databayt-cdn/mkan/*`. The bucket and
+// CloudFront already serve these keys.
+
+/**
+ * The folder a listing's photos live in: its public code when it has one
+ * (`0001-01`), else the row id.
+ *
+ * Deliberately NOT `listingSegment`, which falls back to `sourceListingId` —
+ * an EXTERNAL Airbnb room id has no business naming a folder on our own CDN.
+ * 113 of 147 listings have no code yet (it is minted at publish), and those
+ * are precisely the ones nobody is mastering.
+ */
+export const listingFolder = (listing: { code?: string | null; id: number | string }): string =>
+  (listing.code && listing.code.trim()) || String(listing.id);
+
+/**
+ * A room name turned into a file name: lowercase, dashes, nothing exotic.
+ * Returns null when nothing usable survives, so the caller falls back rather
+ * than writing a file called `-`.
+ */
+export function photoSlug(input: string | null | undefined): string | null {
+  const slug = (input ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug || null;
+}
+
+/**
+ * The first free name in a folder — `bedroom`, then `bedroom-2`, `bedroom-3`.
+ *
+ * Keys are written ONCE and never overwritten, and this is why. Re-mastering
+ * happens after a revert, and objects here carry no Cache-Control: CloudFront
+ * would keep serving the rejected photo from the old key for up to a day —
+ * exactly the image the revert existed to remove. A second bedroom and a
+ * second attempt at the first one are the same problem, and take the same
+ * answer.
+ */
+export function allocateName(preferred: string, taken: Iterable<string>): string {
+  const used = new Set(taken);
+  if (!used.has(preferred)) return preferred;
+  for (let n = 2; n < 1000; n++) {
+    const candidate = `${preferred}-${n}`;
+    if (!used.has(candidate)) return candidate;
+  }
+  throw new Error(`cannot allocate a name for "${preferred}" — 999 already taken`);
+}
+
+/** `mkan/0001-01/bedroom.webp` — what a mastered photo serves from. */
+export const masteredKey = (folder: string, name: string, ns = 'mkan'): string =>
+  `${ns}/${folder}/${name}.webp`;
+
+/** `mkan/temp/0001-01/hall.jpg` — where an original waits to be mastered. */
+export const tempKey = (folder: string, name: string, ext: string, ns = 'mkan'): string =>
+  `${ns}/temp/${folder}/${name}.${ext.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg'}`;
+
+/** The file name (no extension) a stored URL is using, for collision checks. */
+export function nameFromUrl(url: string): string | null {
+  try {
+    const stem = new URL(url).pathname.split('/').pop() ?? '';
+    return stem.replace(/\.[a-z0-9]+$/i, '') || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Names already spoken for in a listing's folder — read off the URLs the
+ * listing actually serves plus every mastered output it has ever produced,
+ * so a reverted attempt's key is never handed out twice.
+ */
+export function takenNames(folder: string, urls: (string | null | undefined)[], ns = 'mkan'): Set<string> {
+  const prefix = `/${ns}/${folder}/`;
+  const out = new Set<string>();
+  for (const url of urls) {
+    if (!url) continue;
+    try {
+      if (!new URL(url).pathname.startsWith(prefix)) continue;
+    } catch {
+      continue;
+    }
+    const name = nameFromUrl(url);
+    if (name) out.add(name);
+  }
+  return out;
+}
 
 /**
  * Room hint from the photo's own filename — `…/living-room.webp` → "living
