@@ -121,6 +121,20 @@ describe('identity', () => {
     expect(nextListingCode('0005', ['0001-01', '0005-01', '0005-02'])).toBe('0005-03');
     expect(nextListingCode('0006', ['0005-01'])).toBe('0006-01');
   });
+  it('counts a number held by a host who has no home yet', () => {
+    // homes' `account` and hosts' `mkanUsername` are two halves of one sequence: a host
+    // filed today may not carry a home until tomorrow, and reading only one side hands
+    // the same number to the next host.
+    const homes = ['0001', '0002', '0003', '0004'];
+    const hosts = ['0001', '0002', '0003', '0004', '0005'];
+    expect(nextManualAccount([...homes, ...hosts])).toBe('0006');
+    expect(nextManualAccount(homes)).toBe('0005');
+  });
+  it('is a sequence, not a fact about the host — a nameless, phoneless host still gets the next number', () => {
+    expect(nextManualAccount(['0005'])).toBe('0006');
+    expect(nextListingCode('0006', [])).toBe('0006-01');
+    expect(nextListingCode('0006', ['0006-01'])).toBe('0006-02');
+  });
 });
 
 describe('the words a human types back', () => {

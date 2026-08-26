@@ -17,10 +17,12 @@ import { config } from 'dotenv';
 config({ override: true });
 
 import { execSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
 import { twentyClient, phoneOf, fromMicros, type Currency, type Phones } from './twenty-rest';
 import { getPortSudanZone } from '../../src/lib/geo/portsudan-zones';
 import { liveUrl, mustGaps, twentyEnumToPrisma, zoneSlug, type HomeFacts } from './home-intake-pure';
+
+/** One password for every provisioned host account — the convention the CRM field records. */
+const DEFAULT_PASSWORD = (process.env.MKAN_DEFAULT_PASSWORD ?? '').trim() || '1234';
 
 type Row = Record<string, unknown>;
 const trim = (v: string | null | undefined): string => (v ?? '').trim();
@@ -133,10 +135,17 @@ export async function publishHome(code: string, opts: { apply: boolean; force?: 
   const { db } = await import('../../src/lib/db');
   const { default: bcrypt } = await import('bcryptjs');
   const email = `${account}@mkan.org`;
+  // What the host types is the account number and the one shared password — never an
+  // address. The `@mkan.org` string is only the unique key `User.email` insists on;
+  // `getUserByIdentifier` resolves a bare "0006" through it, so the host never sees it.
+  // `username` is what a guest reads under "Hosted by", so it is the host's name when
+  // that name is still free, and the number only as a fallback.
+  const hostName = ((home.hostName as string | null) ?? '').trim();
+  const nameFree = hostName ? !(await db.user.findUnique({ where: { username: hostName }, select: { id: true } })) : false;
   const user = await db.user.upsert({
     where: { email },
     update: { role: 'MANAGER', emailVerified: now },
-    create: { email, username: account, password: await bcrypt.hash(randomBytes(8).toString('hex'), 10), role: 'MANAGER', emailVerified: now },
+    create: { email, username: nameFree ? hostName : account, password: await bcrypt.hash(DEFAULT_PASSWORD, 10), role: 'MANAGER', emailVerified: now },
   });
   const existing = await db.listing.findUnique({ where: { code }, select: { id: true, locationId: true } });
   let locationId = existing?.locationId ?? null;
@@ -150,6 +159,13 @@ export async function publishHome(code: string, opts: { apply: boolean; force?: 
     ? await db.listing.update({ where: { id: existing.id }, data: { ...listingData, hostId: user.id, locationId } })
     : await db.listing.create({ data: { ...listingData, hostId: user.id, locationId } });
   const url = liveUrl(code);
+  if (home.hostId) {
+    await client.rest('PATCH', `hosts/${home.hostId}`, {
+      mkanUsername: account,
+      mkanAccountEmail: { primaryEmail: email, additionalEmails: [] },
+      accountProvisionedAt: now.toISOString(),
+    });
+  }
   await client.rest('PATCH', `homes/${home.id}`, {
     publishState: 'LIVE',
     mkanPublishState: 'LIVE',

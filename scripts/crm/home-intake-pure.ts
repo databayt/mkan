@@ -289,10 +289,27 @@ export interface ReplyUnit {
 const fmtPrice = (n: number | null) => (n == null ? null : `${Math.round(n).toLocaleString('en-US')} SDG`);
 
 /** One thread reply for the whole message — Arabic first, English mirrored, Slack mrkdwn. */
-export function buildReply(opts: { hostName: string | null; hostPhone: string | null; units: ReplyUnit[]; promptVersion: string; dryRun?: boolean }): string {
+export function buildReply(opts: {
+  hostName: string | null;
+  hostPhone: string | null;
+  units: ReplyUnit[];
+  promptVersion: string;
+  dryRun?: boolean;
+  /** The host's login slot on mkan.sd — shown so the scout never has to look it up. */
+  account?: string | null;
+  /** True when this message is what opened that account. */
+  newAccount?: boolean;
+}): string {
   const out: string[] = [];
   const hostLine = [opts.hostName, opts.hostPhone].filter(Boolean).join(' · ');
   out.push(`${opts.dryRun ? '🧪 *تجربة — لم يُكتب شيء* / dry run\n' : ''}🏠 ${opts.units.length > 1 ? `${opts.units.length} وحدات` : 'وحدة واحدة'}${hostLine ? ` — ${hostLine}` : ''}`);
+  if (opts.account) {
+    out.push(
+      opts.newAccount
+        ? `🔑 حساب جديد *${opts.account}* — الدخول على mkan.sd باسم \`${opts.account}\` وكلمة المرور الموحّدة / new account ${opts.account}`
+        : `🔑 حساب *${opts.account}*`
+    );
+  }
   for (const u of opts.units) {
     const f = u.facts;
     const got: string[] = [];

@@ -451,6 +451,15 @@ function accountForHost(ctx: Ctx, hostId: string | null, phone: string | null): 
   return accounts.sort()[0] ?? null;
 }
 /**
+ * Every manual account number already spoken for, from both sides of the join. A host can
+ * hold a number before any of their homes do (filed today, first home tomorrow), and a home
+ * can carry one whose host record was never written — read both or the sequence hands the
+ * same number out twice.
+ */
+function takenAccounts(ctx: Ctx): (string | null)[] {
+  return [...ctx.homes.map((h) => h.account as string | null), ...ctx.hosts.map((h) => h.mkanUsername as string | null)];
+}
+/**
  * A home the host already has that these words may describe again. Ranked by likeness
  * (type, rooms, bathrooms, beds, a shared title word) and never the same record twice
  * in one message — a host with three similar flats gets three different answers.
@@ -498,18 +507,15 @@ async function handleMessage(ctx: Ctx, m: SlackMsg): Promise<void> {
   const hostName = r.host.name;
   const existingHost = hostByPhone(ctx, hostPhone);
   let hostId = (existingHost?.id as string | undefined) ?? null;
-  if (!hostPhone) {
-    // The phone is the identity anchor: no phone, no account, no code — ask first.
-    const link0 = await permalink(m.ts);
-    const pendingNoPhone: PendingUnit[] = r.units.map((u) => ({ index: u.index, unit: u, result: r, hostPhone: null, hostName, suspectCode: null, suspectId: null, text, link: link0 }));
-    ctx.state.threads[m.ts] = { ts: m.ts, codes: [], homeIds: [], hostId: null, account: null, lastReplyTs: m.ts, createdAt: new Date().toISOString(), pending: pendingNoPhone };
-    await reply(m.ts, `📱 فهمت ${r.units.length} ${r.units.length === 1 ? 'وحدة' : 'وحدات'}${hostName ? ` للمضيف ${hostName}` : ''} — لكن بدون رقم هاتف لا أستطيع فتح حساب ولا كود. ردّ برقم المضيف وسأكمل. / I read ${r.units.length} unit(s) but no host phone — reply with the host's number and I will file them.`);
-    return;
-  }
-  const account = accountForHost(ctx, hostId, hostPhone) ?? nextManualAccount(ctx.homes.map((h) => h.account as string | null));
+  // The account number is a login slot, not a fact about the host: it is the next free
+  // number in order, and it is minted whether or not a phone was written down. The phone
+  // is still required before `live` (mustGaps), so nothing reaches the site unreachable.
+  const known = accountForHost(ctx, hostId, hostPhone);
+  const account = known ?? nextManualAccount(takenAccounts(ctx));
+  const newAccount = !known;
   console.log(`  host: ${hostName ?? '—'} ${hostPhone ?? '(no phone)'} → ${existingHost ? `existing ${hostId}` : 'new'} · account ${account}`);
-  if (!existingHost && APPLY && (hostPhone || hostName)) {
-    const created = await client.rest('POST', 'hosts', clean({ name: hostName ?? hostPhone, phone: phonesComposite(hostPhone), whatsapp: phonesComposite(r.host.whatsapp), source: 'FIELD_SCOUT', contactFoundVia: 'FIELD_SCOUT', preferredLanguage: r.language === 'en' ? 'EN' : 'AR' }));
+  if (!existingHost && APPLY) {
+    const created = await client.rest('POST', 'hosts', clean({ name: hostName ?? hostPhone ?? account, mkanUsername: account, phone: phonesComposite(hostPhone), whatsapp: phonesComposite(r.host.whatsapp), source: 'FIELD_SCOUT', contactFoundVia: 'FIELD_SCOUT', preferredLanguage: r.language === 'en' ? 'EN' : 'AR' }));
     hostId = createdId(created) || null;
     console.log(`  + host ${hostId}`);
   }
@@ -549,7 +555,7 @@ async function handleMessage(ctx: Ctx, m: SlackMsg): Promise<void> {
     }
   }
   void minted;
-  let text2 = buildReply({ hostName, hostPhone, units, promptVersion: INTAKE_PROMPT_VERSION, dryRun: !APPLY });
+  let text2 = buildReply({ hostName, hostPhone, units, promptVersion: INTAKE_PROMPT_VERSION, dryRun: !APPLY, account, newAccount });
   if (pending.length) {
     const codesList = pending.map((p) => p.suspectCode ?? '?').join(' ');
     const titles = pending
@@ -573,7 +579,7 @@ async function resolvePending(ctx: Ctx, thread: ThreadState, verdict: { same: st
   const pending = thread.pending ?? [];
   const units: { code: string | null; recordUrl: string | null; facts: HomeFacts }[] = [];
   const taken = ctx.homes.map((h) => h.listingId as string | null);
-  const account = thread.account ?? nextManualAccount(ctx.homes.map((h) => h.account as string | null));
+  const account = thread.account ?? nextManualAccount(takenAccounts(ctx));
   for (let i = 0; i < pending.length; i++) {
     const p = pending[i];
     const f = factsFromUnit(p.unit, p.result, p.hostPhone);
@@ -643,26 +649,46 @@ async function resolvePending(ctx: Ctx, thread: ThreadState, verdict: { same: st
     }
   }
   thread.pending = undefined;
-  await reply(thread.ts, buildReply({ hostName: pending[0]?.hostName ?? null, hostPhone: pending[0]?.hostPhone ?? null, units, promptVersion: INTAKE_PROMPT_VERSION, dryRun: !APPLY }));
+  await reply(thread.ts, buildReply({ hostName: pending[0]?.hostName ?? null, hostPhone: pending[0]?.hostPhone ?? null, units, promptVersion: INTAKE_PROMPT_VERSION, dryRun: !APPLY, account }));
+}
+
+/**
+ * A number written down later for a host filed without one. The account is already minted
+ * and stays minted — but the phone may turn out to belong to a host who already has an
+ * account, and silently welding the two identities together is exactly the mistake the
+ * `same` / `new` question exists to prevent. So: write it when it is free, say so when it
+ * is not, and never move a home between accounts on a guess.
+ */
+async function phoneArrived(ctx: Ctx, thread: ThreadState, text: string): Promise<void> {
+  if (!thread.hostId) return;
+  const host = ctx.hosts.find((h) => h.id === thread.hostId);
+  if (!host) return;
+  if (normalizeSudanPhone(phoneOf(host.phone as Phones | null))) return; // already has one
+  const said = phonesInText(text)[0] ?? null;
+  if (!said) return;
+  const owner = hostByPhone(ctx, said);
+  if (owner && owner.id !== host.id) {
+    const theirs = (owner.mkanUsername as string | null) ?? accountForHost(ctx, String(owner.id), said) ?? '—';
+    await reply(
+      thread.ts,
+      `⚠️ الرقم ${said} مسجّل عند مضيف آخر (حساب ${theirs}). لم أنقل شيئاً — إن كان نفس الشخص انقل الوحدات إلى حسابه في Twenty.
+` +
+        `(that number already belongs to another host, account ${theirs} — nothing moved; move the homes in Twenty if it is the same person)`
+    );
+    return;
+  }
+  if (APPLY) {
+    await client.rest('PATCH', `hosts/${host.id}`, { phone: phonesComposite(said) });
+    for (const id of thread.homeIds) await client.rest('PATCH', `homes/${id}`, { hostPhone: phonesComposite(said) });
+  }
+  console.log(`  ☎ phone ${said} → host ${host.id}`);
+  await reply(thread.ts, `☎️ سجّلت رقم المضيف ${said} / host phone recorded`);
 }
 
 async function handleReply(ctx: Ctx, thread: ThreadState, m: SlackMsg): Promise<void> {
   const text = plainText(m.text);
   console.log(`\n▶ reply in ${thread.ts} (${thread.codes.join(', ') || 'no homes'}): ${text.slice(0, 80).replace(/\n/g, ' ')}`);
   if (!text) return;
-  if (thread.pending?.length && !thread.account) {
-    const phone = phonesInText(text)[0] ?? null;
-    if (!phone) {
-      await reply(thread.ts, '📱 ما زلت أحتاج رقم المضيف / still need the host phone number');
-      return;
-    }
-    // re-read the original words with the phone now known, through the normal door
-    const original = await messageByTs(thread.ts);
-    if (!original) return;
-    delete ctx.state.threads[thread.ts];
-    await handleMessage(ctx, { ...original, text: `${original.text ?? ''}\n${phone}` });
-    return;
-  }
   if (thread.pending?.length) {
     const t = toAsciiDigits(text).trim();
     if (/^(new|جديد|جديدة)\b/iu.test(t)) return resolvePending(ctx, thread, { new: true }, m);
@@ -672,6 +698,7 @@ async function handleReply(ctx: Ctx, thread: ThreadState, m: SlackMsg): Promise<
     return;
   }
   if (thread.homeIds.length === 0) return;
+  await phoneArrived(ctx, thread, text);
   const live = parseLiveCommand(text);
   if (live) {
     const codes = live.code ? [live.code] : thread.codes;
@@ -771,7 +798,7 @@ async function handleReply(ctx: Ctx, thread: ThreadState, m: SlackMsg): Promise<
     if (APPLY && Object.keys(patch).length) await client.rest('PATCH', `homes/${h.id}`, patch);
     units.push({ code: h.listingId as string, recordUrl: `${TWENTY_UI}/object/home/${h.id}`, facts: after, liveUrl: liveUrlOf(h) });
   }
-  await reply(thread.ts, buildReply({ hostName: (rows[0].hostName as string | null) ?? r.host.name, hostPhone: units[0]?.facts.hostPhone ?? null, units, promptVersion: INTAKE_PROMPT_VERSION, dryRun: !APPLY }));
+  await reply(thread.ts, buildReply({ hostName: (rows[0].hostName as string | null) ?? r.host.name, hostPhone: units[0]?.facts.hostPhone ?? null, units, promptVersion: INTAKE_PROMPT_VERSION, dryRun: !APPLY, account: (rows[0]?.account as string | null) ?? null }));
 }
 
 // ── commands ─────────────────────────────────────────────────────────────────

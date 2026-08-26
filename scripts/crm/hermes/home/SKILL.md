@@ -40,6 +40,9 @@ reply in the right thread as this same bot.
 - Never write to Twenty yourself (no `crm.py`, no GraphQL, no REST) for a home.
 - Never guess or fill fields. If the script prints an error, run it once more; if it
   fails again, post one line: `⚠️ home intake failed: <the error line>` — and stop.
+- Never say an account number or a listing code. `0006`, `0006-01` and the rest are minted
+  by the script from one sequence read across the whole CRM; a number you invent in a
+  sentence is a number two hosts can end up sharing.
 - Never run the sweep without `--apply` here; a dry run replies to nobody.
 
 ## Why it is shaped this way
