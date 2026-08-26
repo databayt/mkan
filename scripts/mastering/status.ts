@@ -8,7 +8,7 @@
  * status, attempt, age, stale flag, note/failure. ORIGINAL photos (no run yet)
  * are shown as a count, since absence is that state.
  */
-import { argv, getDb, isDrifted, shortId, ago, hoursAgo, STALE } from './lib';
+import { argv, getDb, isDrifted, shortId, ago, hoursAgo, STALE, describeError } from './lib';
 
 const LISTING = parseInt(argv('listing', '0'), 10) || 0;
 
@@ -59,6 +59,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((e: unknown) => {
-  console.error(`\n❌ ${(e as Error).message}\n`);
+  console.error(`\n❌ ${describeError(e)}\n`);
   process.exit(1);
 });

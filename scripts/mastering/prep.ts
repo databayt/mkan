@@ -16,7 +16,7 @@ import { execSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { tmpdir } from 'node:os';
-import { flag, positional, findRun, getDb, shortId, trim } from './lib';
+import { flag, positional, findRun, getDb, shortId, trim, describeError } from './lib';
 import { compilePrompt, PROMPT_VERSION } from './prompt';
 import { resolveModel } from './models';
 
@@ -153,6 +153,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((e: unknown) => {
-  console.error(`\n❌ ${(e as Error).message}\n`);
+  console.error(`\n❌ ${describeError(e)}\n`);
   process.exit(1);
 });

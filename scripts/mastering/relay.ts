@@ -41,7 +41,7 @@ import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from
 import { homedir } from "node:os";
 import { extname, join, basename, dirname } from "node:path";
 
-import { argv, flag, getDb, shortId, slackPost, slackReady, trim } from "./lib";
+import { argv, describeError, flag, getDb, shortId, slackPost, slackReady, trim } from "./lib";
 import { detectModel } from "./models";
 import { predatesDispatch, predatesLineage } from "./pure";
 
@@ -276,6 +276,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((e: unknown) => {
-  console.error(`\n❌ ${(e as Error).message}\n`);
+  console.error(`\n❌ ${describeError(e)}\n`);
   process.exit(1);
 });

@@ -9,7 +9,7 @@
  * attempt+1 and a freshly compiled prompt (an improved canonical prompt should
  * reach the retry), capped at MAX_ATTEMPTS.
  */
-import { argv, flag, positional, findRun, getDb, roomHintFrom, shortId, slackReplySafe, MAX_ATTEMPTS } from './lib';
+import { argv, flag, positional, findRun, getDb, roomHintFrom, shortId, slackReplySafe, MAX_ATTEMPTS, describeError } from './lib';
 import { compilePrompt, PROMPT_VERSION } from './prompt';
 import { DEFAULT_MODEL_ID } from './models';
 
@@ -62,6 +62,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((e: unknown) => {
-  console.error(`\n❌ ${(e as Error).message}\n`);
+  console.error(`\n❌ ${describeError(e)}\n`);
   process.exit(1);
 });

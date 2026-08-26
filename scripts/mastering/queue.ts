@@ -28,7 +28,7 @@
  * re-queueing unless --force, and a URL that IS a mastered output is never
  * re-queued. The prompt is compiled and frozen onto the row here.
  */
-import { argv, flag, isCdnUrl, getDb, roomHintFrom, shortId, trim } from './lib';
+import { argv, flag, isCdnUrl, getDb, roomHintFrom, shortId, trim, describeError } from './lib';
 import { compilePrompt, PROMPT_VERSION } from './prompt';
 import { resolveModel, modelList } from './models';
 import { twentyClient } from '../crm/twenty-rest';
@@ -179,6 +179,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((e: unknown) => {
-  console.error(`\n❌ ${(e as Error).message}\n`);
+  console.error(`\n❌ ${describeError(e)}\n`);
   process.exit(1);
 });

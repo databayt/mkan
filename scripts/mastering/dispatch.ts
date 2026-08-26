@@ -14,7 +14,7 @@
  * Web API; Hermes' chat lane is not in this loop (see docs/image-mastering.md).
  */
 import { resolveModel } from './models';
-import { argv, flag, findRun, getDb, shortId, slackPost, slackReady, slackReplySafe } from './lib';
+import { argv, flag, findRun, getDb, shortId, slackPost, slackReady, slackReplySafe, describeError } from './lib';
 
 const APPLY = flag('apply');
 const REPOST = flag('repost');
@@ -106,6 +106,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((e: unknown) => {
-  console.error(`\n❌ ${(e as Error).message}\n`);
+  console.error(`\n❌ ${describeError(e)}\n`);
   process.exit(1);
 });

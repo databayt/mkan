@@ -103,9 +103,57 @@ export const ago = (d: Date | null | undefined): string => {
 };
 
 // ── lazy app-lib imports (env must load before their module scope runs) ──────
+/**
+ * The app's Prisma client, warmed.
+ *
+ * mkan's database is Neon, whose compute suspends when idle — the repo has
+ * known this since `scripts/wake-db.ts` was written to warm it before a build.
+ * A scheduled job has no such warm-up, and the first query is the one that
+ * pays: the hourly sweep's very first run failed at 10:53 with a connection
+ * error and nothing else to say for itself, then ran clean by hand a minute
+ * later. Nothing was wrong except that nobody had knocked.
+ *
+ * So knock, up to three times, with room for a cold compute to come up. A
+ * failure after that is a real failure and is thrown as one.
+ */
 export async function getDb() {
   const { db } = await import('@/lib/db');
-  return db;
+  let last: unknown;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await db.$queryRaw`SELECT 1`;
+      return db;
+    } catch (e) {
+      last = e;
+      if (attempt < 3) await new Promise((r) => setTimeout(r, attempt * 2_000));
+    }
+  }
+  throw new Error(`database is not answering after 3 tries — ${describeError(last)}`);
+}
+
+/**
+ * What went wrong, in words, always.
+ *
+ * `(e as Error).message` is empty often enough to matter: a Prisma connection
+ * failure printed exactly "❌ " into the sweep's log and left nothing to act
+ * on. An error nobody can read is the same as an error nobody saw.
+ */
+export function describeError(e: unknown): string {
+  if (e instanceof Error) {
+    const parts = [e.message, e.name !== 'Error' ? e.name : '', (e as { code?: string }).code ?? '']
+      .map((x) => String(x).trim())
+      .filter(Boolean);
+    if (parts.length) return parts.join(' · ');
+    return e.stack?.split('\n')[0]?.trim() || 'an Error carrying no message';
+  }
+  if (typeof e === 'string' && e.trim()) return e.trim();
+  try {
+    const json = JSON.stringify(e);
+    if (json && json !== '{}' && json !== 'null') return json.slice(0, 300);
+  } catch {
+    /* fall through */
+  }
+  return `a non-Error value (${typeof e})`;
 }
 export async function getS3() {
   return import('@/lib/s3');

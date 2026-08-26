@@ -57,8 +57,7 @@ import {
   slackReactSafe,
   swapPhoto,
   trim,
-  twentyRollup,
-} from './lib';
+  twentyRollup,, describeError } from './lib';
 import { correctedModel, resolveModel } from './models';
 
 const FILE = argv('file');
@@ -340,7 +339,7 @@ async function main(): Promise<void> {
   try {
     crmNote = await twentyRollup(run.listingId, applied, masteredCount);
   } catch (e) {
-    crmNote = `Twenty rollup failed (non-fatal): ${(e as Error).message}`;
+    crmNote = `Twenty rollup failed (non-fatal): ${describeError(e)}`;
   }
 
   await slackReplySafe(
@@ -376,6 +375,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((e: unknown) => {
-  console.error(`\n❌ ${(e as Error).message}\n`);
+  console.error(`\n❌ ${describeError(e)}\n`);
   process.exit(1);
 });

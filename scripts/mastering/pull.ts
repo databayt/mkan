@@ -47,8 +47,7 @@ import {
   slackReady,
   takenNames,
   tempKey,
-  trim,
-} from './lib';
+  trim,, describeError } from './lib';
 import { compilePrompt, PROMPT_VERSION } from './prompt';
 import { DEFAULT_MODEL_ID } from './models';
 import { twentyClient } from '../crm/twenty-rest';
@@ -292,7 +291,7 @@ async function main(): Promise<void> {
       });
       console.log(`   📣 digest posted — ${runsMade.length} run(s) ASSIGNED`);
     } catch (e) {
-      console.warn(`   ! digest failed (runs stay QUEUED; master:dispatch will carry them): ${(e as Error).message}`);
+      console.warn(`   ! digest failed (runs stay QUEUED; master:dispatch will carry them): ${describeError(e)}`);
     }
   } else if (APPLY && (skipped.length || givenUp.length) && slackReady()) {
     await slackPost(
@@ -309,6 +308,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((e: unknown) => {
-  console.error(`\n❌ ${(e as Error).message}\n`);
+  console.error(`\n❌ ${describeError(e)}\n`);
   process.exit(1);
 });

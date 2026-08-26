@@ -15,7 +15,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { extname, join } from 'node:path';
 
-import { flag, getDb, isDrifted, roomHintFrom, shortId, hoursAgo, trim, STALE, MAX_ATTEMPTS, slackPost, slackReady } from './lib';
+import { flag, getDb, isDrifted, roomHintFrom, shortId, hoursAgo, trim, STALE, MAX_ATTEMPTS, slackPost, slackReady, describeError } from './lib';
 import { impossibleState } from './pure';
 import { compilePrompt, PROMPT_VERSION } from './prompt';
 import { DEFAULT_MODEL_ID } from './models';
@@ -143,6 +143,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((e: unknown) => {
-  console.error(`\n❌ ${(e as Error).message}\n`);
+  console.error(`\n❌ ${describeError(e)}\n`);
   process.exit(1);
 });

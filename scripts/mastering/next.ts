@@ -37,7 +37,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { extname, join } from "node:path";
-import { argv, flag, getDb, shortId, trim } from "./lib";
+import { argv, describeError, flag, getDb, shortId, trim } from "./lib";
 import { PROMPT_VERSION } from "./prompt";
 import { roomHintFrom } from "./pure";
 
@@ -209,7 +209,7 @@ async function main(): Promise<void> {
 // Only run as a CLI — done.ts imports promoteNext directly.
 if (process.argv[1]?.endsWith("next.ts")) {
   main().catch((e: unknown) => {
-    console.error(`\n❌ ${(e as Error).message}\n`);
+    console.error(`\n❌ ${describeError(e)}\n`);
     process.exit(1);
   });
 }

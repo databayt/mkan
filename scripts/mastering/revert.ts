@@ -14,7 +14,7 @@
  * prompt-v2 rewrite that followed therefore had no evidence to work from. A
  * reason that is not written down is a reason the next prompt cannot use.
  */
-import { argv, flag, positional, findRun, getDb, shortId, confirm, slackReplySafe, twentyRollup } from './lib';
+import { argv, flag, positional, findRun, getDb, shortId, confirm, slackReplySafe, twentyRollup, describeError } from './lib';
 
 async function main(): Promise<void> {
   const why = argv('note').trim();
@@ -68,7 +68,7 @@ async function main(): Promise<void> {
   try {
     console.log(`   ${await twentyRollup(run.listingId, applied, masteredCount)}`);
   } catch (e) {
-    console.log(`   Twenty rollup failed (non-fatal): ${(e as Error).message}`);
+    console.log(`   Twenty rollup failed (non-fatal): ${describeError(e)}`);
   }
 
   await slackReplySafe(
@@ -84,6 +84,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((e: unknown) => {
-  console.error(`\n❌ ${(e as Error).message}\n`);
+  console.error(`\n❌ ${describeError(e)}\n`);
   process.exit(1);
 });
