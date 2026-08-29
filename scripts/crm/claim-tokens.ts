@@ -3,6 +3,7 @@
  *
  *   pnpm crm:claim-token --all                 # dry run over every scraped host
  *   pnpm crm:claim-token --host=56622144 --apply
+ *   pnpm crm:claim-token --account=1004 --rotate --ttl-days=14 --apply   # by the number on the sheet
  *   pnpm crm:claim-token --all --rotate --apply
  *
  * ── Why a link, not a password ─────────────────────────────────────────────
@@ -27,6 +28,7 @@
  */
 import { config } from 'dotenv';
 import { randomBytes } from 'node:crypto';
+import { claimUrl, publicAppUrl } from './public-links';
 
 config({ override: true });
 
@@ -40,22 +42,23 @@ const arg = (name: string, def: string) => {
   return hit ? hit.split('=').slice(1).join('=') : def;
 };
 const HOST = arg('host', '');
+// The account number — what the gift-handover sheet shows and what a human types.
+const ACCOUNT = arg('account', '');
 const TTL_DAYS = parseInt(arg('ttl-days', '7'), 10);
-// NOT mkan.databayt.org: that name was reassigned to the Twenty CRM on 2026-08-16,
-// so every link minted with the old default pointed at the CRM login instead of the
-// listing. Canonical app host is mkan.sd (mk.databayt.org also redirects there).
-const BASE_URL = (arg('base-url', process.env.NEXT_PUBLIC_APP_URL ?? 'https://mkan.sd')).replace(/\/+$/, '');
+// The public origin, localhost-guarded (see public-links.ts): the links printed
+// below are the only copy that ever exists, so they must be sendable as printed.
+const BASE_URL = publicAppUrl(arg('base-url', ''));
 
 const mintToken = () => randomBytes(32).toString('base64url');
 
 async function main() {
-  if (!ALL && !HOST) throw new Error('pass --host=<airbnbHostId> or --all');
+  if (!ALL && !HOST && !ACCOUNT) throw new Error('pass --host=<airbnbHostId>, --account=<NNNN> or --all');
   console.log(`\n🔑 Claim links — ${APPLY ? 'APPLY' : 'DRY RUN'}, ttl ${TTL_DAYS}d, base ${BASE_URL}`);
 
   prisma = (await import('@/lib/db')).db;
 
   const users = await prisma.user.findMany({
-    where: HOST ? { sourceHostId: HOST } : { sourceHostId: { not: null } },
+    where: HOST ? { sourceHostId: HOST } : ACCOUNT ? { email: ACCOUNT, sourceHostId: { not: null } } : { sourceHostId: { not: null } },
     select: {
       id: true,
       email: true,
@@ -71,7 +74,14 @@ async function main() {
     },
   });
 
-  if (!users.length) throw new Error(HOST ? `no provisioned account for host ${HOST}` : 'no provisioned accounts — run crm:backfill-source first');
+  if (!users.length)
+    throw new Error(
+      HOST
+        ? `no provisioned account for host ${HOST}`
+        : ACCOUNT
+          ? `no import-provisioned account ${ACCOUNT} — claim links are for scraped hosts (1001+); a site-provisioned account (0001+) uses the shared password: pnpm crm:handover --account=${ACCOUNT}`
+          : 'no provisioned accounts — run crm:backfill-source first',
+    );
   console.log(`   ${users.length} provisioned account(s)\n`);
 
   const expiresAt = new Date(Date.now() + TTL_DAYS * 24 * 60 * 60 * 1000);
@@ -95,7 +105,7 @@ async function main() {
     }
 
     const token = mintToken();
-    const url = `${BASE_URL}/ar/claim/${token}`;
+    const url = claimUrl(token, 'ar', BASE_URL);
     if (APPLY) {
       if (u.claimTokens.length) {
         // Burn the old links first, so a leaked one stops working the moment

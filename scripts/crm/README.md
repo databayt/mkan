@@ -290,6 +290,33 @@ no phone (Airbnb hides it) → drafts land as `needs-contact-hunt` until a Whats
 the host; then `--apply` sends. Full CRM Activity logging awaits the Note/Task fields (below);
 OpenClaw's outbound API varies by deployment — adjust the payload in `sendViaOpenClaw`.
 
+## Host account handover
+
+Two credential models, chosen per account by evidence — never by flag:
+
+| Account | Provisioned by | The key | The sheet |
+|---|---|---|---|
+| `1001+` | the growth import (`crm:import`) — bootstrap password printed once, never stored | a single-use **claim link** (`HostClaimToken`, 7 days by default) | `pnpm crm:gift-handover [--account=1004]` |
+| `0001–0004`, `0005+` | the site (`home:publish` at `live`, the seeds) — `User.email` is the number | the **shared password** (`MKAN_DEFAULT_PASSWORD`) | `pnpm crm:handover --account=0005` · `--all` |
+
+```bash
+pnpm crm:claim-token --account=1004 --apply                          # mint a claim link (dry without --apply)
+pnpm crm:claim-token --account=1004 --rotate --ttl-days=14 --apply   # renew one that would die before the human sends it
+pnpm crm:gift-handover                                               # Port Sudan sheet: listing page + photo gift + claim link + wa.me
+pnpm crm:handover --all                                              # number + password + login + listing links + wa.me, per site account
+pnpm crm:handover --account=0005 --mark-sent --apply                 # after a human sent it: credentialsSentAt + a Note on the Twenty host
+```
+
+Both sheets are read-only; a human sends from the `wa.me` link, and QUEUED is not SENT.
+`home:publish` posts the shared-password message in the `live` thread by itself, so a
+Slack-born host is handed the account in the same thread that put the home on the site —
+until 2026-08-29 nothing composed that message at all. `crm:handover` decides the model by
+verifying the shared password against the stored hash: when it no longer verifies, the host
+set their own and there is nothing to hand over. Every link is built by `public-links.ts`,
+which refuses a localhost origin from `.env` (`claim-tokens.ts` printed
+`http://localhost:3000/ar/claim/…` until the same day). The gift sheet flags a live link
+that expires within 48h — rotate before sending, or the host taps a dead link.
+
 ## Wave publish (G1.7)
 
 The last step — flip imported listings **Busy → Available** through the trust gate, rolled

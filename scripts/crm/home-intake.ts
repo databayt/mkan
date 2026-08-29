@@ -428,6 +428,21 @@ async function goLive(threadTs: string, code: string): Promise<void> {
     return;
   }
   await reply(threadTs, `🟢 *${code}* ${APPLY ? 'منشور الآن / is live' : 'سيُنشر (تجربة) / would go live'}: ${r.url}${r.pinNote ? `\n_${r.pinNote}_` : ''}`);
+  // The account exists from this moment, so this thread is where it gets handed to the
+  // host: the same bot posts the ready-to-send WhatsApp (number, shared password, login
+  // link, listing links) and the wa.me link the scout taps. Best effort — a failure here
+  // must never make a published home read as unpublished; the CLI re-prints it.
+  const account = r.account ?? code.slice(0, 4);
+  if (!APPLY) {
+    console.log(`  (dry) would post the account handover for ${account} in the thread — pnpm crm:handover --account=${account}`);
+    return;
+  }
+  try {
+    const { handoverForAccount, handoverReply } = await import('./host-handover');
+    await reply(threadTs, handoverReply(await handoverForAccount(account)));
+  } catch (e) {
+    console.warn(`  ! handover message failed (${(e as Error).message.slice(0, 120)}) — run: pnpm crm:handover --account=${account}`);
+  }
 }
 
 // ── handlers ─────────────────────────────────────────────────────────────────

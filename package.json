@@ -59,6 +59,8 @@
     "crm:sync-down": "tsx scripts/crm/sync-down.ts",
     "crm:sync-up": "tsx scripts/crm/sync-up.ts",
     "crm:claim-token": "tsx scripts/crm/claim-tokens.ts",
+    "crm:gift-handover": "tsx scripts/crm/gift-handover.ts",
+    "crm:handover": "tsx scripts/crm/host-handover.ts",
     "crm:publish": "tsx scripts/crm/wave-publish.ts",
     "crm:listing-urls": "tsx scripts/crm/sync-listing-urls.ts",
     "backfill:listing-code": "tsx scripts/backfill-listing-code.ts",

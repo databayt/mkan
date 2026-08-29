@@ -1,8 +1,8 @@
 /**
  * Gift handover — the account-claim message, compiled per Port Sudan host.
  *
- *   npx tsx scripts/crm/gift-handover.ts                  # full sheet (dry — this tool never sends)
- *   npx tsx scripts/crm/gift-handover.ts --account=1001   # one host
+ *   pnpm crm:gift-handover                  # full sheet (dry — this tool never sends)
+ *   pnpm crm:gift-handover --account=1001   # one host
  *
  * The v2 of the first-touch message. v1 (`test-host-whatsapp-outreach.ts`) was
  * reply-to-activate: no claim link, no gift. This one carries the funnel's
@@ -21,25 +21,36 @@
  * 2–3 before/after images to the WhatsApp when the gift line is present.
  *
  * READ-ONLY: it mints nothing and sends nothing. Minting is
- * `pnpm crm:claim-token --host=<account> --apply` (— --rotate to replace);
+ * `pnpm crm:claim-token --account=<account> --apply` (--rotate --ttl-days=14 to
+ * replace; a link that expires before the human sends it is flagged here);
  * sending is a human with the wa.me link. Every send gets logged as a Note on
- * the Twenty record by the sender — QUEUED is not SENT.
+ * the Twenty record by the sender — QUEUED is not SENT. Site-provisioned
+ * accounts (0001+, shared password, no token) are `pnpm crm:handover`.
  */
 import { config } from "dotenv";
 config({ override: true });
 
-const envApp = (process.env.NEXT_PUBLIC_APP_URL ?? "").trim();
-// A message leaving the building must never carry a dev origin — localhost in
-// a host's WhatsApp is a dead link that reads as a broken company. The env is
-// the LOCAL value here; the canonical public host is mkan.sd.
-const APP = (/^https?:\/\//.test(envApp) && !/localhost|127\.0\.0\.1/.test(envApp) ? envApp : "https://mkan.sd").replace(/\/+$/, "");
-const ACCOUNT = (process.argv.find((a) => a.startsWith("--account=")) ?? "").split("=")[1] || null;
+import { getPortSudanZone } from "../../src/lib/geo/portsudan-zones";
+import { zoneSlug } from "./home-intake-pure";
+import { claimUrl, listingUrl, publicAppUrl, waLink } from "./public-links";
 
+// A message leaving the building must never carry a dev origin — localhost in
+// a host's WhatsApp is a dead link that reads as a broken company. The guard
+// lives in public-links.ts now, shared with claim-tokens and outreach, which
+// used to print localhost links unguarded.
+const APP = publicAppUrl();
+const ACCOUNT = (process.argv.find((a) => a.startsWith("--account=")) ?? "").split("=")[1] || null;
+// A link that dies before the human gets round to sending it is a dead link too.
+const EXPIRING_SOON_H = 48;
+
+// The 45-zone gazetteer names most zones; these are the ones it does not carry.
 const ZONE_AR: Record<string, string> = {
   AIRPORT_DISTRICT: "حي المطار",
   AL_MIRGHANIYA: "حي الميرغنية",
   AROUS: "منطقة عروس",
 };
+const zoneAr = (zone: string | null | undefined): string =>
+  getPortSudanZone(zoneSlug(zone))?.nameAr ?? (zone ? ZONE_AR[zone] : undefined) ?? "بورتسودان";
 
 interface Sheet {
   account: string;
@@ -51,6 +62,8 @@ interface Sheet {
   listingUrl: string;
   claimUrl: string | null;
   claimNote: string;
+  claimExpiresAt: string | null;
+  expiringSoon: boolean;
   mastered: number;
   published: boolean;
   claimed: boolean;
@@ -116,20 +129,29 @@ async function main() {
       select: { id: true, hostId: true, isPublished: true, claimedAt: true, host: { select: { sourceHostId: true } } },
     });
 
-    let claimUrl: string | null = null;
+    let claimLink: string | null = null;
     let claimNote = "no listing row — cannot resolve host account";
+    let claimExpiresAt: string | null = null;
+    let expiringSoon = false;
     let mastered = 0;
     if (listing) {
       const token = await db.hostClaimToken.findFirst({
         where: { userId: listing.hostId, usedAt: null, expiresAt: { gt: new Date() } },
         orderBy: { createdAt: "desc" },
       });
-      claimUrl = token ? `${APP}/ar/claim/${token.token}` : null;
+      claimLink = token ? claimUrl(token.token, "ar", APP) : null;
+      claimExpiresAt = token?.expiresAt.toISOString() ?? null;
+      const hoursLeft = token ? (token.expiresAt.getTime() - Date.now()) / 3_600_000 : null;
+      expiringSoon = hoursLeft != null && hoursLeft < EXPIRING_SOON_H;
       claimNote = listing.claimedAt
         ? "ALREADY CLAIMED — do not send a claim link"
         : token
-          ? `live token, expires ${token.expiresAt.toISOString().slice(0, 10)}`
-          : `no live token — mint: pnpm crm:claim-token --host=${listing.host?.sourceHostId ?? '<sourceHostId>'} --apply`;
+          ? `live token, expires ${token.expiresAt.toISOString().slice(0, 10)}${
+              expiringSoon
+                ? ` — ⚠ ${Math.max(0, Math.floor(hoursLeft!))}h left: rotate BEFORE sending (pnpm crm:claim-token --account=${item.account} --rotate --ttl-days=14 --apply)`
+                : ""
+            }`
+          : `no live token — mint: pnpm crm:claim-token --account=${item.account} --apply`;
       mastered = await db.masteringRun.count({
         where: { listingId: listing.id, status: "UPDATED" },
       });
@@ -138,9 +160,9 @@ async function main() {
     const d = {
       hostNameAr: item.hostName || "المضيف",
       property: item.titleAr || item.title || item.listingId,
-      zoneAr: ZONE_AR[item.zone] ?? "بورتسودان",
-      listingUrl: `${APP}/ar/listings/${item.listingId}`,
-      claimUrl: claimUrl ?? "<claim link — mint first>",
+      zoneAr: zoneAr(item.zone),
+      listingUrl: listingUrl(item.listingId, "ar", APP),
+      claimUrl: claimLink ?? "<claim link — mint first>",
       mastered,
     };
     const message = compileGiftHandover(d);
@@ -152,15 +174,15 @@ async function main() {
       zoneAr: d.zoneAr,
       phone,
       listingUrl: d.listingUrl,
-      claimUrl,
+      claimUrl: claimLink,
       claimNote,
+      claimExpiresAt,
+      expiringSoon,
       mastered,
       published: listing?.isPublished ?? false,
       claimed: !!listing?.claimedAt,
       message,
-      waLink: phone
-        ? `https://wa.me/${phone.replace(/[^\d]/g, "")}?text=${encodeURIComponent(message)}`
-        : null,
+      waLink: phone ? waLink(phone, message) : null,
     });
   }
 
@@ -172,8 +194,14 @@ async function main() {
     `  ready to send ${ready.length} · needs contact ${noPhone.length} · needs token ${noToken.length} · already claimed ${sheets.filter((s) => s.claimed).length}`,
   );
   console.log(
-    `  gift line: ${sheets.filter((s) => s.mastered > 0).length} host(s) have mastered photos — the rest send WITHOUT the gift line until mastering lands\n`,
+    `  gift line: ${sheets.filter((s) => s.mastered > 0).length} host(s) have mastered photos — the rest send WITHOUT the gift line until mastering lands`,
   );
+  const soon = ready.filter((s) => s.expiringSoon);
+  if (soon.length)
+    console.log(
+      `  ⚠ ${soon.length} ready link(s) expire within ${EXPIRING_SOON_H}h (${soon.map((s) => s.account).join(", ")}) — rotate before sending, or the host taps a dead link`,
+    );
+  console.log("");
 
   for (const s of sheets) {
     console.log(`──── [${s.account}] ${s.listingId} — ${s.property.slice(0, 44)}`);

@@ -12,9 +12,10 @@ import { ClaimSchema } from "./validation";
  *
  * These accounts were created by the growth import with a bootstrap password
  * that was printed once and never stored, so there is no credential to send and
- * no "forgot password" path either — the address on the account is
- * `<number>@mkan.org`, a placeholder nobody can read mail at. The claim token
- * is the only key that exists.
+ * no "forgot password" path either — the account is a bare number (`1004`) with
+ * no mailbox behind it. The claim token is the only key that exists. (Accounts
+ * the site provisions itself — `0001+` — use the shared password instead and are
+ * handed over by `scripts/crm/host-handover.ts`; they never see this page.)
  *
  * Claiming is therefore three things at once, and they must all succeed or none
  * of them: the token is spent, the account gets a password its owner chose, and

@@ -45,6 +45,8 @@ export interface PublishResult {
   listingId: number | null;
   reason: string | null;
   pinNote: string | null;
+  /** The host's account number — the site login the handover message hands over. */
+  account: string | null;
 }
 
 function factsOf(h: Row): HomeFacts {
@@ -75,16 +77,16 @@ export async function publishHome(code: string, opts: { apply: boolean; force?: 
   const client = twentyClient();
   const res = (await client.rest('GET', `homes?filter=listingId[eq]:"${encodeURIComponent(code)}"&limit=1`)) as { data?: { homes?: Row[] } };
   const home = res.data?.homes?.[0];
-  if (!home) return { ok: false, code, url: null, listingId: null, reason: `no home with code ${code} in Twenty`, pinNote: null };
+  if (!home) return { ok: false, code, url: null, listingId: null, reason: `no home with code ${code} in Twenty`, pinNote: null, account: code.slice(0, 4) };
   const f = factsOf(home);
   const gaps = mustGaps(f);
   const stage = home.pipelineStage as string | null;
   if ((stage === 'LIVE' || home.publishState === 'LIVE' || home.mkanPublishState === 'LIVE') && home.mkanListingId) {
-    return { ok: true, code, url: liveUrl(code), listingId: Number(home.mkanListingId), reason: 'already live — the site row is kept in step by crm:sync-down, not re-created', pinNote: null };
+    return { ok: true, code, url: liveUrl(code), listingId: Number(home.mkanListingId), reason: 'already live — the site row is kept in step by crm:sync-down, not re-created', pinNote: null, account: code.slice(0, 4) };
   }
   if (!opts.force) {
-    if (gaps.length) return { ok: false, code, url: null, listingId: null, reason: `missing: ${gaps.map((g) => g.en).join(', ')} / ناقص: ${gaps.map((g) => g.ar).join('، ')}`, pinNote: null };
-    if (stage !== 'CLAIMED') return { ok: false, code, url: null, listingId: null, reason: `stage is ${stage ?? '—'}, not CLAIMED — confirm the price with the host first (السعر مؤكد)`, pinNote: null };
+    if (gaps.length) return { ok: false, code, url: null, listingId: null, reason: `missing: ${gaps.map((g) => g.en).join(', ')} / ناقص: ${gaps.map((g) => g.ar).join('، ')}`, pinNote: null, account: code.slice(0, 4) };
+    if (stage !== 'CLAIMED') return { ok: false, code, url: null, listingId: null, reason: `stage is ${stage ?? '—'}, not CLAIMED — confirm the price with the host first (السعر مؤكد)`, pinNote: null, account: code.slice(0, 4) };
   }
   const account = (home.account as string | null) ?? code.slice(0, 4);
 
@@ -96,7 +98,7 @@ export async function publishHome(code: string, opts: { apply: boolean; force?: 
     lat = zone.lat; lng = zone.lng;
     pinNote = `pin = zone centre (${zone.nameAr}) until a map link arrives`;
   }
-  if (lat == null || lng == null) return { ok: false, code, url: null, listingId: null, reason: 'no pin: send a map link or a known zone', pinNote: null };
+  if (lat == null || lng == null) return { ok: false, code, url: null, listingId: null, reason: 'no pin: send a map link or a known zone', pinNote: null, account: account };
   const addressText = ((home.homeAddress as Row | null)?.addressStreet1 as string | null) || zone?.nameAr || 'بورتسودان';
 
   const { Amenity, Highlight, PropertyType } = await import('@prisma/client');

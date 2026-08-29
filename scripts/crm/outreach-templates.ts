@@ -20,11 +20,13 @@ export interface DraftParams {
    * The claim link handed to a host taking over their pre-provisioned account.
    *
    * There is no password to send: the bootstrap one was printed once during the
-   * import and never stored, and the account's address is a `<number>@mkan.org`
-   * placeholder nobody can receive mail at. `claimUrl` is the only credential
-   * that exists, so `draftMessage` throws rather than emit a handover message
-   * without one — the previous fallback put a literal `<from provisioning>`
-   * into text a human was about to send to a stranger.
+   * import and never stored, and the account is a bare number (`1004`) with no
+   * mailbox behind it (the `@mkan.org` suffix was dropped 2026-08-26). `claimUrl`
+   * is the only credential that exists, so `draftMessage` throws rather than emit
+   * a handover message without one — the previous fallback put a literal
+   * `<from provisioning>` into text a human was about to send to a stranger.
+   * Site-provisioned accounts (0001+, shared password) are a different model —
+   * `host-handover.ts` compiles that message.
    */
   account?: { number: string; claimUrl: string };
 }

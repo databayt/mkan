@@ -40,6 +40,7 @@ config({ override: true });
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { draftMessage, type MsgType, type Lang } from './outreach-templates';
+import { claimUrl, publicAppUrl } from './public-links';
 import { twentyClient, phoneOf, type Phones } from './twenty-rest';
 
 const APPLY = process.argv.includes('--apply');
@@ -56,10 +57,9 @@ const LANG_OVERRIDE = argv('lang') as Lang | '';
 const LEDGER = argv('ledger', 'scripts/crm/.data/mkan-import-ledger.json');
 const LIMIT = parseInt(argv('limit', '0'), 10) || 0;
 
-// NOT mkan.databayt.org: that name was reassigned to the Twenty CRM on 2026-08-16,
-// so every link minted with the old default pointed at the CRM login instead of the
-// listing. Canonical app host is mkan.sd (mk.databayt.org also redirects there).
-const BASE_URL = (argv('base-url', process.env.NEXT_PUBLIC_APP_URL ?? 'https://mkan.sd')).replace(/\/+$/, '');
+// Public origin, localhost-guarded — a `.env` pointing at a dev server must never
+// reach a host's WhatsApp (see public-links.ts).
+const BASE_URL = publicAppUrl(argv('base-url', ''));
 const OPENCLAW_URL = (process.env.OPENCLAW_URL ?? '').replace(/\/+$/, '');
 const OPENCLAW_TOKEN = process.env.OPENCLAW_TOKEN ?? '';
 
@@ -115,7 +115,7 @@ async function main(): Promise<void> {
     });
     for (const u of users) {
       const token = u.claimTokens[0]?.token;
-      if (u.sourceHostId && token) claimUrlByHost.set(u.sourceHostId, `${BASE_URL}/ar/claim/${token}`);
+      if (u.sourceHostId && token) claimUrlByHost.set(u.sourceHostId, claimUrl(token, 'ar', BASE_URL));
     }
   }
 
