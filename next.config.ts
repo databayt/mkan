@@ -5,7 +5,12 @@ const withBundleAnalyzer = withBundleAnalyzerFactory({
   enabled: process.env.ANALYZE === "true",
 });
 
+// Cloudflare Containers lane (scripts/deploy-cloudflare.sh): the standalone
+// server runs in a container, so it needs output: "standalone". Vercel does not.
+const CF_CONTAINER = process.env.CF_CONTAINER === "1"
+
 const nextConfig: NextConfig = {
+  ...(CF_CONTAINER ? { output: "standalone" as const } : {}),
   // Strict mode for better React development
   reactStrictMode: true,
 
