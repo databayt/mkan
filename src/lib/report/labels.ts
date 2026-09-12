@@ -43,6 +43,24 @@ export const REPORT_LABELS = {
     color: "5319e7",
     description: "Multiple independent reports on same page",
   },
+  /** Reporter is a databayt team member (see ReporterContext.isTeam). Sorted first in the queue. */
+  team: {
+    name: "team",
+    color: "0075ca",
+    description: "Reported by a databayt team member",
+  },
+  /** The human gate said yes — Abdout took this one; the report agent may fix it. */
+  accepted: {
+    name: "accepted",
+    color: "0e8a16",
+    description: "Accepted by a human for the auto-fix lane",
+  },
+  /** The report agent could not reproduce it from the description + URL. */
+  cannotReproduce: {
+    name: "cannot-reproduce",
+    color: "e4e669",
+    description: "Could not be reproduced from the report",
+  },
   severityCritical: {
     name: "severity/critical",
     color: "b60205",
@@ -75,9 +93,12 @@ export const REPORT_LABELS = {
   },
 } as const satisfies Record<string, LabelSpec>;
 
-export const ALL_REPORT_LABELS: readonly LabelSpec[] = Object.values(REPORT_LABELS);
+export const ALL_REPORT_LABELS: readonly LabelSpec[] =
+  Object.values(REPORT_LABELS);
 
-export function severityLabel(sev: "critical" | "high" | "medium" | "low"): string {
+export function severityLabel(
+  sev: "critical" | "high" | "medium" | "low",
+): string {
   switch (sev) {
     case "critical":
       return REPORT_LABELS.severityCritical.name;
@@ -90,7 +111,9 @@ export function severityLabel(sev: "critical" | "high" | "medium" | "low"): stri
   }
 }
 
-export function languageLabel(lang: "ar" | "en" | "mixed" | "other"): string | null {
+export function languageLabel(
+  lang: "ar" | "en" | "mixed" | "other",
+): string | null {
   if (lang === "ar") return REPORT_LABELS.langAr.name;
   if (lang === "en") return REPORT_LABELS.langEn.name;
   return null;

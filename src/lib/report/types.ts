@@ -20,18 +20,10 @@ export type Severity = "low" | "medium" | "high" | "critical";
 export type Language = "ar" | "en" | "mixed" | "other";
 
 export type Classification =
-  | "bug"
-  | "feature"
-  | "question"
-  | "spam"
-  | "destructive"
-  | "duplicate";
+  "bug" | "feature" | "question" | "spam" | "destructive" | "duplicate";
 
 export type Bucket =
-  | "silent-reject"
-  | "low-confidence"
-  | "needs-human"
-  | "verified-report";
+  "silent-reject" | "low-confidence" | "needs-human" | "verified-report";
 
 /**
  * Raw input from the client dialog. Validated by {@link reportSchema}.
@@ -69,6 +61,14 @@ export type ReporterContext =
       ipHash: string;
       priorAccepted?: number;
       priorRejected?: number;
+      /**
+       * True when the adapter recognises the reporter as a databayt team
+       * member (kun: any contributor session; hogwarts: DEVELOPER role, a
+       * team email, or an admin session on a databayt-owned tenant such as
+       * demo). Team reports carry the `team` label, score full reputation,
+       * and never sink below `needs-human` — the human gate sees every one.
+       */
+      isTeam?: boolean;
     };
 
 /**
@@ -88,7 +88,12 @@ export interface AITriageResult {
 
 export type DuplicateMatch =
   | { found: false }
-  | { found: true; issueNumber: number; similarity: number; existingScore?: number };
+  | {
+      found: true;
+      issueNumber: number;
+      similarity: number;
+      existingScore?: number;
+    };
 
 export interface ScoringBreakdown {
   R: number; // reputation 0..30
@@ -151,7 +156,24 @@ export interface PipelineEvent {
   issueNumber?: number;
   reporterKind: "anonymous" | "authenticated";
   reporterRole?: string;
+  /** Mirrors ReporterContext.isTeam so logs can be filtered by lane. */
+  isTeam?: boolean;
   ipHash: string;
   host: string;
   path: string;
+  /**
+   * Wall-clock time from pipeline entry to this event, in milliseconds. The
+   * cheap perf proof: grep `[report]` logs for `durationMs` to see where a
+   * submission spends its time.
+   */
+  durationMs?: number;
+  /**
+   * The HF9 dedup ledger key, `user:<id>` or `ip:<hash>`.
+   *
+   * Carried on the event rather than rebuilt in the adapter: the write side
+   * used to derive its own key and picked `user:<ipHash>` while the read side
+   * used `user:<userId>`, so dedup never fired for authenticated reporters.
+   * One value, computed once, used by both.
+   */
+  dedupIdentifier?: string;
 }

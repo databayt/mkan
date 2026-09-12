@@ -3086,8 +3086,8 @@
     "triggerText": "Report an issue",
     "triggerAriaLabel": "Report an issue",
     "categoryPlaceholder": "Category",
-    "descriptionPlaceholder": "Describe the issue in detail (minimum 30 characters)…",
-    "descriptionHint": "{count}/30+ chars",
+    "descriptionPlaceholder": "What went wrong on this page?",
+    "descriptionHint": "{count}/{min} characters",
     "addDetails": "Add steps and expected behavior (optional)",
     "reproPlaceholder": "Steps to reproduce: 1. … 2. … 3. …",
     "expectedPlaceholder": "What did you expect to happen?",
@@ -3110,7 +3110,15 @@
       "auth": "Sign in / Permissions",
       "i18n": "Translation / Language",
       "other": "Other"
-    }
+    },
+    "description": "Tell us what went wrong on this page. The page address and your browser details are attached automatically.",
+    "minHint": "A few more words — at least {min} characters.",
+    "readyHint": "Press ⌘↵ / Ctrl+↵ to send.",
+    "send": "Send report",
+    "close": "Close",
+    "emptyState": "Describe what you saw. Short is fine — where it happened is attached.",
+    "readyHintMobile": "Ready — tap send.",
+    "composerPlaceholder": "What went wrong?"
   },
   "userButton": {
     "logout": "Logout"

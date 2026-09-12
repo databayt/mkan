@@ -24,13 +24,16 @@
  *   classification = duplicate    → handled in pipeline before score
  *   severityHint = critical && score ≥ 60 → force verified
  *   AI failure → caller passes triage=null → A and P dropped → cap at needs-human
+ *   reporter.isTeam → R = 30, never below needs-human, `team` label
+ *
+ * The buckets are SIGNALS for the human gate, not verdicts. Since 2026-09-13
+ * the `report` skill lists every open report and Abdout takes or rejects each
+ * one; only `accepted` (or a genuine verified-report) enters the auto-fix lane.
+ * The scores still matter — they order the list and catch junk — but a
+ * low-confidence team report is a contradiction, hence the team floor.
  */
 
-import {
-  REPORT_LABELS,
-  languageLabel,
-  severityLabel,
-} from "./labels";
+import { REPORT_LABELS, languageLabel, severityLabel } from "./labels";
 import type { ReportInputParsed } from "./schema";
 import type {
   AITriageResult,
@@ -72,7 +75,7 @@ export interface ScoreContext {
  */
 export function computeScore(
   input: ReportInputParsed,
-  ctx: ScoreContext
+  ctx: ScoreContext,
 ): ScoringResult {
   const R = reputationScore(ctx.reporter);
   const Q = contentQualityScore(input, ctx.hostIsProd);
@@ -102,8 +105,23 @@ export function computeScore(
     }
   }
 
-  // AI failure cap
-  if (ctx.triage === null && bucket === "verified-report") {
+  // AI failure handling — when triage is unavailable (no/invalid ANTHROPIC key
+  // or API error) we can't auto-assess, so never silently drop a report that
+  // already cleared the hard filters: cap the top (no auto-fix without AI
+  // confirmation) AND floor the bottom (a human reviews it). Everything that
+  // passed HF lands as needs-human. Mirrors the captcha-degradation principle:
+  // missing infra must never silently eat a legit report.
+  if (ctx.triage === null) {
+    if (bucket === "verified-report") bucket = "needs-human";
+    if (bucket === "silent-reject") bucket = "needs-human";
+  }
+
+  // Team floor — a teammate's report is never junk-binned or agent-skipped.
+  // It still needs the human gate (needs-human), not a free pass to auto-fix:
+  // the team writes the shortest reports of all ("class list empty").
+  const isTeam =
+    ctx.reporter.kind === "authenticated" && ctx.reporter.isTeam === true;
+  if (isTeam && (bucket === "silent-reject" || bucket === "low-confidence")) {
     bucket = "needs-human";
   }
 
@@ -122,7 +140,7 @@ export function computeScore(
     score: total,
     breakdown,
     bucket,
-    labels: labelsFor(bucket, ctx.triage),
+    labels: labelsFor(bucket, ctx.triage, isTeam),
   };
 }
 
@@ -130,6 +148,9 @@ function reputationScore(reporter: ReporterContext): number {
   if (reporter.kind === "anonymous") {
     return 4; // base, only present if captcha already validated
   }
+
+  // Team members are the reporters we trust most — full marks, no bonus math.
+  if (reporter.isTeam) return 30;
 
   const base = ROLE_BASE[reporter.role.toUpperCase()] ?? ROLE_BASE.USER ?? 8;
 
@@ -139,16 +160,25 @@ function reputationScore(reporter: ReporterContext): number {
 
   if (!reporter.emailVerified) bonus -= 2;
 
-  if ((reporter.priorAccepted ?? 0) >= 3 && (reporter.priorRejected ?? 0) === 0) {
+  if (
+    (reporter.priorAccepted ?? 0) >= 3 &&
+    (reporter.priorRejected ?? 0) === 0
+  ) {
     bonus += 5;
-  } else if ((reporter.priorRejected ?? 0) >= 3 && (reporter.priorAccepted ?? 0) <= 1) {
+  } else if (
+    (reporter.priorRejected ?? 0) >= 3 &&
+    (reporter.priorAccepted ?? 0) <= 1
+  ) {
     bonus -= 10; // shadow-ban the noisemaker
   }
 
   return clamp(base + bonus, 0, 30);
 }
 
-function contentQualityScore(input: ReportInputParsed, hostIsProd: boolean): number {
+function contentQualityScore(
+  input: ReportInputParsed,
+  hostIsProd: boolean,
+): number {
   // length: reward up to ~110 chars (every 10 chars past 30 = 1 point, capped 8)
   const len = input.description.trim().length;
   const lenScore = clamp(Math.floor((len - 30) / 10), 0, 8);
@@ -165,7 +195,7 @@ function contentQualityScore(input: ReportInputParsed, hostIsProd: boolean): num
   return clamp(
     lenScore + structureScore + categoryScore + urlScore + screenshotScore,
     0,
-    25
+    25,
   );
 }
 
@@ -176,7 +206,14 @@ function contextScore(input: ReportInputParsed, hostIsProd: boolean): number {
     const [wStr, hStr] = input.viewport.split("x");
     const w = Number(wStr);
     const h = Number(hStr);
-    if (Number.isFinite(w) && Number.isFinite(h) && w >= 320 && w <= 7680 && h >= 240 && h <= 4320) {
+    if (
+      Number.isFinite(w) &&
+      Number.isFinite(h) &&
+      w >= 320 &&
+      w <= 7680 &&
+      h >= 240 &&
+      h <= 4320
+    ) {
       score += 3;
     }
   }
@@ -227,13 +264,20 @@ export function bucketFor(score: number): Bucket {
   return "silent-reject";
 }
 
-function labelsFor(bucket: Bucket, triage: AITriageResult | null): string[] {
+function labelsFor(
+  bucket: Bucket,
+  triage: AITriageResult | null,
+  isTeam = false,
+): string[] {
   if (bucket === "silent-reject") return [];
 
   const labels: string[] = [REPORT_LABELS.report.name];
   if (bucket === "verified-report") labels.push(REPORT_LABELS.verified.name);
   else if (bucket === "needs-human") labels.push(REPORT_LABELS.needsHuman.name);
-  else if (bucket === "low-confidence") labels.push(REPORT_LABELS.lowConfidence.name);
+  else if (bucket === "low-confidence")
+    labels.push(REPORT_LABELS.lowConfidence.name);
+
+  if (isTeam) labels.push(REPORT_LABELS.team.name);
 
   if (triage) {
     labels.push(severityLabel(triage.severity));

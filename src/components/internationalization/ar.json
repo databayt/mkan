@@ -3086,8 +3086,8 @@
     "triggerText": "الإبلاغ عن مشكلة",
     "triggerAriaLabel": "الإبلاغ عن مشكلة",
     "categoryPlaceholder": "التصنيف",
-    "descriptionPlaceholder": "صف المشكلة بالتفصيل (30 حرفاً على الأقل)…",
-    "descriptionHint": "{count}/30+ حرف",
+    "descriptionPlaceholder": "ما الذي حدث في هذه الصفحة؟",
+    "descriptionHint": "{count}/{min} حرف",
     "addDetails": "أضف الخطوات والسلوك المتوقع (اختياري)",
     "reproPlaceholder": "خطوات إعادة الإنتاج: 1. … 2. … 3. …",
     "expectedPlaceholder": "ما الذي توقعت حدوثه؟",
@@ -3110,7 +3110,15 @@
       "auth": "تسجيل الدخول / الصلاحيات",
       "i18n": "ترجمة / لغة",
       "other": "أخرى"
-    }
+    },
+    "description": "أخبرنا بما حدث في هذه الصفحة. يُرفق عنوان الصفحة وبيانات المتصفح تلقائياً.",
+    "minHint": "بضع كلمات إضافية — {min} حرفاً على الأقل.",
+    "readyHint": "اضغط ⌘↵ / Ctrl+↵ للإرسال.",
+    "send": "إرسال البلاغ",
+    "close": "إغلاق",
+    "emptyState": "صف ما رأيته. الاختصار مقبول — مكان حدوثه مُرفق تلقائياً.",
+    "readyHintMobile": "جاهز — اضغط إرسال.",
+    "composerPlaceholder": "ما الذي حدث؟"
   },
   "userButton": {
     "logout": "تسجيل الخروج"
