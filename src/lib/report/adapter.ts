@@ -24,7 +24,7 @@ import { auth } from "@/lib/auth";
 import { assertRateLimit, RateLimitError as MkanRateLimitError } from "@/lib/rate-limit";
 
 import { RateLimitError, type ReportAdapter } from "./adapters/adapter";
-import type { PipelineEvent, ReporterContext, ReportInput } from "./types";
+import type { PipelineEvent, ReporterContext } from "./types";
 
 import { Redis } from "@upstash/redis";
 import { headers } from "next/headers";
@@ -63,7 +63,7 @@ export const mkanReportAdapter: ReportAdapter = {
   ],
   captcha: "optional",
 
-  async getReporter(_input: ReportInput): Promise<ReporterContext> {
+  async getReporter(): Promise<ReporterContext> {
     const ip = await getClientIpFromHeaders();
     const ipHash = hashIp(ip);
 
