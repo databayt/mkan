@@ -65,3 +65,6 @@ next-env.d.ts
 
 # Mastering inbox — renders dropped here are ingested by master:relay, never committed
 inbox/
+
+# one-off migration snapshots (restore points for scripts/*.ts prod writes)
+/.data/
