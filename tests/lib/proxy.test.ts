@@ -278,6 +278,46 @@ describe("proxy — security headers", () => {
   });
 });
 
+describe("proxy — canonical host (the apex→www login bounce)", () => {
+  // Auth.js keeps the session cookie on the host that signed in and redirects
+  // to NEXTAUTH_URL (www). A login on the apex therefore bounced back to
+  // /login — so apex page loads must reach www before anyone signs in.
+  it("308s an apex page load to www, keeping path and query", () => {
+    const res = proxy(
+      createRequest("/ar/login?callbackUrl=%2Far%2Fhosting", { headers: { host: "mkan.sd" } }),
+    );
+    expect(res!.status).toBe(308);
+    expect(getRedirectLocation(res!)).toBe(
+      "https://www.mkan.sd/ar/login?callbackUrl=%2Far%2Fhosting",
+    );
+  });
+
+  it("serves apex API calls in place — webhooks may not follow redirects", () => {
+    const res = proxy(createRequest("/api/health", { headers: { host: "mkan.sd" } }));
+    expect(res!.status).not.toBe(308);
+  });
+
+  it("does not redirect a non-GET request on the apex", () => {
+    const res = proxy(
+      createRequest("/ar/login", { method: "POST", headers: { host: "mkan.sd" } }),
+    );
+    expect(res!.status).not.toBe(308);
+  });
+
+  it("leaves the canonical host and tenant subdomains alone", () => {
+    for (const host of ["www.mkan.sd", "demo.mkan.sd"]) {
+      const res = proxy(createRequest("/ar/login", { headers: { host } }));
+      expect(res!.status, host).not.toBe(308);
+    }
+  });
+
+  it("sends the retired databayt.org aliases to the canonical host", () => {
+    const res = proxy(createRequest("/en", { headers: { host: "mkan.databayt.org" } }));
+    expect(res!.status).toBe(308);
+    expect(getRedirectLocation(res!)).toBe("https://www.mkan.sd/en");
+  });
+});
+
 describe("proxy — Origin/Host CSRF defense", () => {
   it("blocks cross-origin POST to /api/upload", () => {
     const res = proxy(

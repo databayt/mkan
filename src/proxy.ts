@@ -23,10 +23,20 @@ import {
 const locales: readonly string[] = i18n.locales;
 const defaultLocale = i18n.defaultLocale;
 
-// Canonical production host (matches NEXTAUTH_URL) and the stale aliases
-// that must permanently redirect to it. Edge runtime — keep this static.
-const CANONICAL_HOST = 'mk.databayt.org';
-const STALE_HOSTS = new Set(['mkan.databayt.org', 'www.mk.databayt.org']);
+// Canonical production host (MUST match NEXTAUTH_URL) and the aliases that
+// permanently redirect to it. Edge runtime — keep this static.
+// The apex is the alias that matters: Auth.js sets a host-only session cookie
+// and builds its post-login redirect from NEXTAUTH_URL, so a login on mkan.sd
+// stored the cookie on the apex and then sent the browser to www, which never
+// saw it — back to /login. Host WhatsApp links use the apex, so it can't just
+// be dropped; its page loads go to www before anyone signs in.
+const CANONICAL_HOST = 'www.mkan.sd';
+const STALE_HOSTS = new Set([
+  'mkan.sd',
+  'mk.databayt.org',
+  'mkan.databayt.org',
+  'www.mk.databayt.org',
+]);
 
 // ---------------------------------------------------------------------------
 // Auth helpers
@@ -221,10 +231,14 @@ export function proxy(request: NextRequest) {
   // --- Host canonicalization ----------------------------------------------
   // Stale domain aliases serve identical content and split ranking signals
   // across hosts. 308 (permanent, method-preserving) to the canonical host.
-  // Explicit allowlist so preview *.vercel.app deploys and localhost are
-  // never touched.
+  // Explicit allowlist so tenant subdomains, workers.dev and localhost are
+  // never touched. Page loads only: webhook senders and API callers often do
+  // not follow a redirect on a POST, so /api/* and non-GET requests are served
+  // in place on every host.
   const host = request.headers.get('host') ?? '';
-  if (STALE_HOSTS.has(host)) {
+  const isPageLoad =
+    (request.method === 'GET' || request.method === 'HEAD') && !pathname.startsWith('/api/');
+  if (STALE_HOSTS.has(host) && isPageLoad) {
     const url = request.nextUrl.clone();
     url.protocol = 'https';
     url.host = CANONICAL_HOST;
