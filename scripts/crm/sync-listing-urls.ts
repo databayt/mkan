@@ -1,5 +1,5 @@
 /**
- * Point every Port Sudan CRM row's **Listing URL** at mkan.sd.
+ * Point every Port Sudan CRM row's **Listing URL** at www.mkan.sd.
  *
  * 26 of the 34 rows already did. The 8 that came in through the Airbnb scrape
  * kept the Airbnb room link as their primary, so the column an operator clicks
@@ -22,7 +22,10 @@ config({ override: true });
 import { LISTING_CODE_RE } from '@/lib/listing-code';
 
 const APPLY = process.argv.includes('--apply');
-const SITE = 'https://mkan.sd';
+const SITE = 'https://www.mkan.sd';
+// Our own page under an older host (the apex, before www became canonical) is not
+// provenance — it is the same page. Replace it in place instead of keeping it.
+const OWN_SITE = /^https?:\/\/(www\.)?mkan\.sd(\/|$)/;
 
 interface Link {
   primaryLinkLabel?: string | null;
@@ -57,12 +60,13 @@ async function main(): Promise<void> {
     // provenance is the reason the row exists.
     const secondaries = [...(current.secondaryLinks ?? [])];
     const displaced = current.primaryLinkUrl;
-    if (displaced && displaced !== want && !secondaries.some((s) => s.url === displaced)) {
+    const external = !!displaced && displaced !== want && !OWN_SITE.test(displaced);
+    if (external && !secondaries.some((s) => s.url === displaced)) {
       secondaries.push({ label: current.primaryLinkLabel || 'Source listing', url: displaced });
     }
 
     console.log(`   ${code} → ${want}`);
-    if (displaced && displaced !== want) console.log(`             keeps ${displaced} as a secondary link`);
+    if (external) console.log(`             keeps ${displaced} as a secondary link`);
 
     if (APPLY) {
       await t.rest('PATCH', `portSudans/${String(row.id)}`, {

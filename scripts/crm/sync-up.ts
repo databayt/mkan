@@ -70,7 +70,7 @@ const argv = (n: string, d = ''): string => {
 // is http://localhost:3000, and a localhost link written into the shared CRM is
 // worse than no link at all — it is a link that works for exactly one person.
 // Override with --site= when pointing at a preview deployment.
-const SITE = argv('site', 'https://mkan.sd').replace(/\/+$/, '');
+const SITE = argv('site', 'https://www.mkan.sd').replace(/\/+$/, '');
 // The public route is /[lang]/listings/[id] and the default locale is Arabic.
 const listingUrl = (id: number): string => `${SITE}/ar/listings/${id}`;
 

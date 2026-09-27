@@ -427,5 +427,5 @@ export function zoneSlug(zone: string | null | undefined): string | null {
 
 /** The public URL a live listing gets. */
 export function liveUrl(code: string, lang = 'ar'): string {
-  return `https://mkan.sd/${lang}/listings/${code}`;
+  return `https://www.mkan.sd/${lang}/listings/${code}`;
 }

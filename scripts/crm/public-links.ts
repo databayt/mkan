@@ -8,10 +8,12 @@
  * minted link is ever printed — and a human copying it would have handed a host a
  * dead link that reads as a broken company. Measured 2026-08-29 on the real dry run.
  *
- * The canonical public host is mkan.sd. mk.databayt.org redirects there;
- * mkan.databayt.org is the Twenty CRM, not the app (reassigned 2026-08-16).
+ * The canonical public host is www.mkan.sd — it MUST match NEXTAUTH_URL: the session
+ * cookie is host-only, so a host who signs in from a link on any other host lands back
+ * on /login. The apex mkan.sd and mk.databayt.org 308 there; mkan.databayt.org is the
+ * Twenty CRM, not the app (reassigned 2026-08-16).
  */
-const CANONICAL = 'https://mkan.sd';
+const CANONICAL = 'https://www.mkan.sd';
 const LOCAL = /localhost|127\.0\.0\.1|0\.0\.0\.0/i;
 
 /**

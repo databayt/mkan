@@ -225,6 +225,6 @@ describe('crossing to the site', () => {
     expect(twentyEnumToPrisma('PATIO_OR_BALCONY')).toBe('PatioOrBalcony');
     expect(twentyEnumToPrisma('APARTMENT')).toBe('Apartment');
     expect(zoneSlug('AL_THAWRA')).toBe('al-thawra');
-    expect(liveUrl('0005-01')).toBe('https://mkan.sd/ar/listings/0005-01');
+    expect(liveUrl('0005-01')).toBe('https://www.mkan.sd/ar/listings/0005-01');
   });
 });

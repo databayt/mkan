@@ -333,7 +333,7 @@ function liveUrlOf(h: Row): string | null {
   const live = h.publishState === 'LIVE' || h.mkanPublishState === 'LIVE';
   if (!live) return null;
   const link = ((h.mkanListingUrl as Row | null)?.primaryLinkUrl as string | null) ?? ((h.listingUrl as Row | null)?.primaryLinkUrl as string | null);
-  return link ?? (h.listingId ? `https://mkan.sd/ar/listings/${h.listingId}` : null);
+  return link ?? (h.listingId ? `https://www.mkan.sd/ar/listings/${h.listingId}` : null);
 }
 /** What Twenty holds for a home → the facts shape the level is judged on. */
 function factsFromRow(h: Row): HomeFacts {

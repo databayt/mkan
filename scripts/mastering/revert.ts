@@ -78,7 +78,7 @@ async function main(): Promise<void> {
   console.log(`   retry it with: pnpm master:queue --listing=${run.listingId} --photos=${run.photoIndex + 1} --apply`);
   console.log(
     run.listing.isPublished
-      ? `\n✅ original restored — https://mkan.sd/ar/listings/${run.listingId}\n`
+      ? `\n✅ original restored — https://www.mkan.sd/ar/listings/${run.listingId}\n`
       : '\n✅ original restored (listing unpublished — verify via pnpm master:status)\n',
   );
 }

@@ -898,7 +898,7 @@ async function main() {
 
         listingId: structuredListingId,
         mkanListingId: l.id,
-        listingUrl: linkOne(`https://mkan.sd/listings/${structuredListingId}`, `${structuredListingId}`),
+        listingUrl: linkOne(`https://www.mkan.sd/listings/${structuredListingId}`, `${structuredListingId}`),
         googleMapsUrl: linkOne(googleMapsUrl, 'Google Maps'),
 
         source: 'OTHER',

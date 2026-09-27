@@ -98,7 +98,7 @@ Reaching these hosts needs `contact-hunt --worksheet` and a human with a normal 
 | `outreach-templates.ts` | **G1.6** — pure AR/EN message templates (first-touch, handover, follow-up), verbatim from docs §5.4. |
 | `outreach.ts` | **G1.6** — drafts personalized host messages → outbox (human-send default) or sends via OpenClaw (`--apply`). |
 | `wave-publish.ts` | **G1.7** — flips imported listings Busy→Available through the trust gate, per city (the final step). Writes to mkan (Prisma). |
-| `sync-listing-urls.ts` | Points every Port Sudan row's **Listing URL** at `mkan.sd/listings/<code>`, demoting the Airbnb link to a secondary link. The column an operator clicks now means one thing on every row. |
+| `sync-listing-urls.ts` | Points every Port Sudan row's **Listing URL** at `www.mkan.sd/listings/<code>`, demoting the Airbnb link to a secondary link. The column an operator clicks now means one thing on every row. |
 
 ## The listing code (`NNNN-NN`)
 

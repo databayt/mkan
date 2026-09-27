@@ -369,7 +369,7 @@ async function main(): Promise<void> {
   console.log(`   ${crmNote}`);
   console.log(
     run.listing.isPublished
-      ? `   check:  https://mkan.sd/ar/listings/${run.listingId}\n`
+      ? `   check:  https://www.mkan.sd/ar/listings/${run.listingId}\n`
       : '   check:  listing is unpublished (busy) — the public URL 404s; verify via pnpm master:status or the hosting dashboard\n',
   );
 }

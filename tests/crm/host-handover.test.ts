@@ -31,9 +31,9 @@ describe('publicAppUrl', () => {
 
   it('never lets a localhost .env origin into a message', () => {
     vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000');
-    expect(publicAppUrl()).toBe('https://mkan.sd');
+    expect(publicAppUrl()).toBe('https://www.mkan.sd');
     vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://127.0.0.1:3000/');
-    expect(publicAppUrl()).toBe('https://mkan.sd');
+    expect(publicAppUrl()).toBe('https://www.mkan.sd');
   });
 
   it('honours a real public origin from the env, without a trailing slash', () => {
@@ -42,15 +42,15 @@ describe('publicAppUrl', () => {
   });
 
   it('honours an explicit --base-url verbatim, even a dev server (someone testing the claim page means it)', () => {
-    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://mkan.sd');
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://www.mkan.sd');
     expect(publicAppUrl('http://localhost:3000/')).toBe('http://localhost:3000');
   });
 
   it('builds the three links a host receives on the public origin', () => {
     vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000');
-    expect(claimUrl('tok')).toBe('https://mkan.sd/ar/claim/tok');
-    expect(listingUrl('0005-01')).toBe('https://mkan.sd/ar/listings/0005-01');
-    expect(loginUrl()).toBe('https://mkan.sd/ar/login');
+    expect(claimUrl('tok')).toBe('https://www.mkan.sd/ar/claim/tok');
+    expect(listingUrl('0005-01')).toBe('https://www.mkan.sd/ar/listings/0005-01');
+    expect(loginUrl()).toBe('https://www.mkan.sd/ar/login');
   });
 });
 
@@ -64,26 +64,26 @@ describe('waLink', () => {
 });
 
 describe('compileAccountHandover', () => {
-  const base = { hostName: 'الطيب', account: '0005', password: 'pw-1234', loginUrl: 'https://mkan.sd/ar/login' };
+  const base = { hostName: 'الطيب', account: '0005', password: 'pw-1234', loginUrl: 'https://www.mkan.sd/ar/login' };
 
   it('tells the host the three things they need: number, password, where to log in', () => {
     const m = compileAccountHandover({ ...base, listings: [] });
     expect(m).toContain('أستاذ الطيب');
     expect(m).toContain('رقم الحساب: 0005');
     expect(m).toContain('كلمة المرور: pw-1234');
-    expect(m).toContain('https://mkan.sd/ar/login');
+    expect(m).toContain('https://www.mkan.sd/ar/login');
     expect(m).toContain('جاهز لإضافة عقاراتك');
   });
 
   it('links the one listing by name', () => {
-    const m = compileAccountHandover({ ...base, listings: [{ code: '0005-01', title: 'شقة الثورة', url: 'https://mkan.sd/ar/listings/0005-01' }] });
+    const m = compileAccountHandover({ ...base, listings: [{ code: '0005-01', title: 'شقة الثورة', url: 'https://www.mkan.sd/ar/listings/0005-01' }] });
     expect(m).toContain('«شقة الثورة»');
-    expect(m).toContain('🔗 https://mkan.sd/ar/listings/0005-01');
+    expect(m).toContain('🔗 https://www.mkan.sd/ar/listings/0005-01');
     expect(m).not.toContain('عقاراتك (');
   });
 
   it('lists many listings, caps the list and says how many more', () => {
-    const listings = Array.from({ length: 8 }, (_, i) => ({ code: `0002-0${i + 1}`, title: `وحدة ${i + 1}`, url: `https://mkan.sd/ar/listings/0002-0${i + 1}` }));
+    const listings = Array.from({ length: 8 }, (_, i) => ({ code: `0002-0${i + 1}`, title: `وحدة ${i + 1}`, url: `https://www.mkan.sd/ar/listings/0002-0${i + 1}` }));
     const m = compileAccountHandover({ ...base, listings });
     expect(m).toContain('عقاراتك (8)');
     expect(m.match(/🔗 /g)?.length).toBe(6);

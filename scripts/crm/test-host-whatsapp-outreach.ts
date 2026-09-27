@@ -71,7 +71,7 @@ async function main() {
       zoneAr: item.zone === 'AIRPORT_DISTRICT' ? 'حي المطار' : (item.zone === 'AL_MIRGHANIYA' ? 'حي الميرغنية' : (item.zone === 'AROUS' ? 'منطقة عروس' : 'بورتسودان')),
       priceSdg: item.priceNightSdg?.amountMicros ? item.priceNightSdg.amountMicros / 1000000 : 0,
       phone,
-      listingUrl: `https://mkan.sd/ar/listings/${item.listingId}`,
+      listingUrl: `https://www.mkan.sd/ar/listings/${item.listingId}`,
     };
 
     const msg = compileHostFirstMessage(data);

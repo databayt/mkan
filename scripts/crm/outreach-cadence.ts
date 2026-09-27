@@ -174,7 +174,7 @@ export function evaluateCadenceQueue(): { queue: CadenceHost[]; messages: Cadenc
           'from the database before enabling this path.',
       );
     }
-    const claimUrl = `https://mkan.sd/claim?token=PLACEHOLDER_${h.airbnbHostId || h.id}`;
+    const claimUrl = `https://www.mkan.sd/claim?token=PLACEHOLDER_${h.airbnbHostId || h.id}`;
 
     const hostItem: CadenceHost = {
       id: h.airbnbHostId || h.id || 'unknown',
