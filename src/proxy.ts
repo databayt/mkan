@@ -107,9 +107,14 @@ function buildCsp(options: { isDev: boolean }): string {
   // unsafe-inline is retained until Phase 4 ships per-request nonce threading
   // through `next/headers` into inline <script> tags (see plan EPIC F2.S5 and
   // Phase 4 Q3). Removing it prematurely breaks Next.js inline bootstrap.
+  // static.cloudflareinsights.com is the Web Analytics beacon Cloudflare
+  // auto-injects on the proxied zone. It loads from a versioned path
+  // (/beacon.min.js/v…), so allow the host — the exact /beacon.min.js path
+  // Cloudflare's FAQ suggests never matches. It reports to this origin's
+  // /cdn-cgi/rum, which connect-src 'self' already covers.
   const scriptSrc = options.isDev
-    ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://api.mapbox.com https://js.stripe.com"
-    : "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://api.mapbox.com https://js.stripe.com";
+    ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://api.mapbox.com https://js.stripe.com https://static.cloudflareinsights.com"
+    : "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://api.mapbox.com https://js.stripe.com https://static.cloudflareinsights.com";
 
   const directives = [
     "default-src 'self'",

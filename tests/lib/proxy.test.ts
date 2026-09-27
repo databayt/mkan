@@ -261,6 +261,21 @@ describe("proxy — security headers", () => {
     expect(csp).toBeTruthy();
     expect(csp).toContain("default-src 'self'");
   });
+
+  it("lets the Cloudflare Web Analytics beacon load under the enforced policy", () => {
+    // Cloudflare auto-injects the beacon from a versioned path
+    // (/beacon.min.js/v…) and it reports to this origin's /cdn-cgi/rum.
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      const csp = proxy(createRequest("/en/listings"))!.headers.get("Content-Security-Policy")!;
+      const directive = (name: string) =>
+        csp.split("; ").find((d) => d.startsWith(`${name} `)) ?? "";
+      expect(directive("script-src")).toContain("https://static.cloudflareinsights.com");
+      expect(directive("connect-src")).toContain("'self'");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });
 
 describe("proxy — Origin/Host CSRF defense", () => {
