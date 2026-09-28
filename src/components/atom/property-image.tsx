@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { BlurImage, NEUTRAL_BLUR } from "@/components/atom/blur-image";
 import { PropertyImageFallback } from "@/components/atom/property-image-fallback";
 import cdnVariantLoader from "@/lib/image-loader";
 import { STOCK_BLUR } from "@/lib/stock-blur-map";
@@ -12,8 +12,9 @@ import { STOCK_BLUR } from "@/lib/stock-blur-map";
  *
  * Always `fill` — the caller owns a `relative` box with the aspect ratio. It
  * centralizes, for every listing image in the app:
- *   • a blur placeholder (per-image LQIP when supplied, else a shared shimmer)
- *     so cards fade in instead of popping from a gray box;
+ *   • the blur-up (via BlurImage): the per-image LQIP when supplied, else the
+ *     stock map, else a neutral blur — the photo sharpens into place instead of
+ *     popping from a gray box. The caller's box must be `overflow-hidden`;
  *   • the correct responsive `sizes` + `quality` per surface (variant);
  *   • an optional CDN-variant loader so resize/format happens AWS-side, off
  *     Vercel, once NEXT_PUBLIC_USE_CDN_VARIANTS=true and the variants exist;
@@ -22,10 +23,6 @@ import { STOCK_BLUR } from "@/lib/stock-blur-map";
  * Tune image behaviour here once and it applies across search, detail, gallery,
  * the mobile strip, the full-screen viewer, and the home carousels.
  */
-
-/** Neutral blur shown until the image decodes (reads fine in light + dark). */
-const SHIMMER =
-  "data:image/webp;base64,UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoQAAwAA4BaJaQAA3AA/vEAgAA=";
 
 /** Flip on once the offline Sharp script has populated `<key>-<size>.webp`. */
 const USE_CDN_VARIANTS = process.env.NEXT_PUBLIC_USE_CDN_VARIANTS === "true";
@@ -68,6 +65,8 @@ export interface PropertyImageProps {
   quality?: number;
   /** Seed for the fallback graphic (listing id/title). */
   seed?: string;
+  /** Fade only, no blur-up — for tiny tiles (≤48px) where a blur reads as a bug. */
+  plain?: boolean;
 }
 
 export function PropertyImage({
@@ -80,6 +79,7 @@ export function PropertyImage({
   sizes,
   quality,
   seed,
+  plain = false,
 }: PropertyImageProps): React.ReactElement {
   const [errored, setErrored] = React.useState(false);
   const v = VARIANTS[variant];
@@ -89,16 +89,15 @@ export function PropertyImage({
   }
 
   return (
-    <Image
+    <BlurImage
       src={src}
       alt={alt}
       fill
       sizes={sizes ?? v.sizes}
       quality={quality ?? v.quality}
       priority={priority}
-      // i18n-exempt — next/image API token, not user-facing copy
-      placeholder="blur"
-      blurDataURL={blurDataURL ?? STOCK_BLUR[src] ?? SHIMMER}
+      plain={plain}
+      blurDataURL={blurDataURL ?? STOCK_BLUR[src] ?? NEUTRAL_BLUR}
       loader={USE_CDN_VARIANTS ? cdnVariantLoader : undefined}
       className={cn("object-cover", className)}
       onError={() => setErrored(true)}

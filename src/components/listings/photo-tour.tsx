@@ -120,7 +120,8 @@ export default function PhotoTour({ sections = mockSections }: PhotoTourProps) {
                        .replace("{label}", section.label)
                        .replace("{number}", String(index + 1))}
                      variant="full"
-                     className="transition-transform duration-300 group-hover:scale-105"
+                     // Blur-up runs at 700ms; once sharp, the hover zoom keeps its 300ms.
+                     className="group-hover:scale-105 data-[loaded]:duration-300"
                    />
                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
                  </div>

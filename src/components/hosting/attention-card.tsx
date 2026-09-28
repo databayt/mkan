@@ -44,7 +44,7 @@ export function AttentionCard({ count, photos }: AttentionCardProps) {
       // 6px exact (the theme remaps rounded-md to 8px)
       style={{ backgroundColor: "#F7F7F7", borderRadius: 6, ...offset }}
     >
-      <PropertyImage src={src} alt="" sizes="32px" quality={50} seed={seed} />
+      <PropertyImage src={src} alt="" sizes="32px" quality={50} seed={seed} plain />
     </div>
   );
 

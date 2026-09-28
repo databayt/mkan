@@ -145,7 +145,7 @@ export function ImageCarousel({
         {slides.map((src, i) => (
           <div
             key={i}
-            className="relative h-full w-full flex-none snap-center"
+            className="relative h-full w-full flex-none snap-center overflow-hidden"
           >
             {shouldLoad(i) ? (
               <PropertyImage

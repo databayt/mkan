@@ -11,12 +11,18 @@
  *   4. POST /api/upload to attach the CDN URL to the listing's photoUrls.
  */
 
-import { optimizeImageFile } from "@/lib/image-optimize";
+import { generateBlurDataURL, optimizeImageFile } from "@/lib/image-optimize";
 import { validateImageFile } from "@/lib/upload-config";
 
 export interface UploadedImage {
   url: string;
   key: string;
+  /**
+   * ~16px WebP LQIP of the uploaded photo, for `<PropertyImage blurDataURL>`.
+   * Returned only — not persisted yet (LQIP storage needs a column; phase 2).
+   * Absent when the browser can't generate it (fails soft).
+   */
+  blur?: string;
 }
 
 export async function uploadListingPhoto(
@@ -28,6 +34,8 @@ export async function uploadListingPhoto(
 
   // 1. Downscale + WebP in the browser so we never PUT a 10MB original.
   const optimized = await optimizeImageFile(file);
+  // Tiny LQIP from the optimized bytes, made alongside the upload (fails soft → null).
+  const blurPromise = generateBlurDataURL(optimized);
 
   // 2. Ask the server for a presigned PUT.
   const presignRes = await fetch("/api/upload/presign", {
@@ -70,5 +78,6 @@ export async function uploadListingPhoto(
     });
   }
 
-  return { url: finalUrl, key };
+  const blur = await blurPromise;
+  return blur ? { url: finalUrl, key, blur } : { url: finalUrl, key };
 }
