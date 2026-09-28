@@ -251,3 +251,203 @@ export function HeroSectionSkeleton() {
     </div>
   );
 }
+
+/**
+ * The accessible wrapper for a page- or section-level skeleton: one
+ * role="status" + an sr-only label; every bar inside stays aria-hidden.
+ * Pass the translated label where a dictionary is in scope.
+ */
+export function SkeletonStatus({
+  label,
+  className,
+  children,
+}: {
+  label?: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div role="status" aria-busy="true" className={className}>
+      <span className="sr-only">{label ?? "Loading…"}</span>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Hosting "Today" ghost (hosting/content.tsx) — the material pill strip on
+ * mobile, the 32px chips on desktop, then either the reservation card grid or
+ * the empty-state illustration, whichever the page is about to render.
+ */
+export function HostingTodaySkeleton({
+  hasReservations = false,
+  label,
+}: {
+  hasReservations?: boolean;
+  label?: string;
+}) {
+  return (
+    <SkeletonStatus label={label}>
+      <div className="lg:hidden">
+        <div className="flex items-center justify-center gap-3 py-4">
+          <Skeleton className="h-10 w-20 rounded-full" />
+          <Skeleton className="h-10 w-24 rounded-full" />
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 lg:py-8 min-h-svh lg:min-h-0">
+        <div className="hidden lg:flex justify-center items-center gap-4 mb-8 lg:mb-16">
+          <Skeleton className="h-8 w-20 rounded-full" />
+          <Skeleton className="h-8 w-24 rounded-full" />
+        </div>
+        {hasReservations ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }, (_, i) => (
+              <div key={i} className="border rounded-xl overflow-hidden bg-card">
+                <Skeleton className="h-36 w-full rounded-none" />
+                <div className="p-4 space-y-2">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center pt-2 sm:pt-6">
+            <Skeleton className="h-[166px] w-[220px] rounded-xl sm:h-[200px] sm:w-[200px]" />
+            <div className="mt-2 flex w-full max-w-xs flex-col items-center gap-1.5">
+              <Skeleton className="h-6 w-full sm:h-8" />
+              <Skeleton className="h-6 w-3/5 sm:hidden" />
+            </div>
+            <div className="mt-3 flex w-full max-w-sm flex-col items-center gap-1.5">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+            <Skeleton className="mt-7 h-12 w-52 rounded-xl" />
+          </div>
+        )}
+      </div>
+    </SkeletonStatus>
+  );
+}
+
+/** Host dashboard ghost (host/content.tsx → HostDashboard): welcome line + "start a new listing" rows. */
+export function HostDashboardSkeleton({ label }: { label?: string }) {
+  return (
+    <SkeletonStatus label={label} className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+        <Skeleton className="mb-3 sm:mb-4 h-7 w-2/3 lg:h-8" />
+        <div className="space-y-2 sm:space-y-3">
+          <Skeleton className="h-6 w-40" />
+          <div className="space-y-2">
+            {Array.from({ length: 2 }, (_, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between py-2 sm:py-3 border-b border-border min-h-[50px] sm:min-h-[60px]"
+              >
+                <div className="flex flex-1 items-center gap-2">
+                  <Skeleton className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-lg" />
+                  <Skeleton className="h-4 w-44" />
+                </div>
+                <Skeleton className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </SkeletonStatus>
+  );
+}
+
+/** Transport-host hub ghost (travel-host/content.tsx): hero copy, office card grid, three steps. */
+export function TransportHubSkeleton({ label }: { label?: string }) {
+  return (
+    <SkeletonStatus label={label} className="min-h-screen bg-gradient-to-b from-primary/5 to-background">
+      <div className="max-w-6xl mx-auto px-4 py-12">
+        <div className="mb-12 flex flex-col items-center">
+          <Skeleton className="mb-6 h-9 w-40 rounded-full" />
+          <Skeleton className="mb-4 h-10 w-full max-w-md" />
+          <Skeleton className="h-6 w-full max-w-2xl" />
+        </div>
+        <div className="space-y-8">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-9 w-36 rounded-md" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 3 }, (_, i) => (
+              <div key={i} className="rounded-xl border bg-card p-6 space-y-4">
+                <Skeleton className="h-12 w-12 rounded-lg" />
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-2/3" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-9 w-full rounded-md" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+          {Array.from({ length: 3 }, (_, i) => (
+            <div key={i} className="flex flex-col items-center">
+              <Skeleton className="mb-4 h-12 w-12 rounded-full" />
+              <Skeleton className="mb-2 h-5 w-32" />
+              <Skeleton className="h-4 w-full max-w-[240px]" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </SkeletonStatus>
+  );
+}
+
+/** Onboarding "it's easy to get started" ghost (OnboardingStepsOverview): headline left, numbered steps right, footer CTA. */
+export function OnboardingOverviewSkeleton({
+  steps = 3,
+  label,
+}: {
+  steps?: number;
+  label?: string;
+}) {
+  return (
+    <SkeletonStatus label={label} className="h-screen overflow-hidden">
+      <div className="h-full flex flex-col px-6 md:px-20">
+        <div className="flex-1">
+          <div className="h-full max-w-7xl mx-auto flex flex-col">
+            <div className="flex-1 flex items-center justify-center">
+              <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-12 items-start py-12">
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-4/5" />
+                  <Skeleton className="h-10 w-3/5" />
+                  <Skeleton className="mt-4 h-5 w-2/3" />
+                </div>
+                <div className="space-y-6">
+                  {Array.from({ length: steps }, (_, i) => (
+                    <div key={i} className="flex gap-6 items-start">
+                      <div className="flex flex-1 gap-3">
+                        <Skeleton className="h-6 w-4 shrink-0" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-6 w-1/2" />
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-4/5" />
+                        </div>
+                      </div>
+                      <Skeleton className="hidden md:block h-24 w-24 shrink-0 rounded-lg" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div>
+              <div className="h-px w-full bg-border" />
+              <div className="flex justify-end py-4">
+                <Skeleton className="h-9 w-28 rounded-md" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </SkeletonStatus>
+  );
+}

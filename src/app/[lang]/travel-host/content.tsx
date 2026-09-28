@@ -7,7 +7,7 @@ import { Bus, Plus, Building2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
-import Loading from '@/components/atom/loading';
+import { TransportHubSkeleton } from '@/components/atom/skeletons';
 import { getMyTransportOffices } from '@/lib/actions/travel-actions';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 
@@ -49,7 +49,7 @@ export default function TransportHostContent() {
   };
 
   if (status === 'loading' || isLoading) {
-    return <Loading variant="fullscreen" text={dict.common.loading} />;
+    return <TransportHubSkeleton label={dict.common.loading} />;
   }
 
   if (!session) {

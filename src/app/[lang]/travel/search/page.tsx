@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { Suspense } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { redirect } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -159,7 +160,13 @@ export default async function SearchPage({
         initialDate={searchDate}
         searchSummary={searchSummary}
         filters={
-          <Suspense fallback={null}>
+          <Suspense
+            fallback={
+              // The Filters trigger's own box (48px pill; icon-only on mobile)
+              // so the header row doesn't jump when it hydrates.
+              <Skeleton className="h-12 w-8 shrink-0 rounded-full sm:w-[104px]" />
+            }
+          >
             <FiltersPanel
               facets={facets}
               totalTrips={total}

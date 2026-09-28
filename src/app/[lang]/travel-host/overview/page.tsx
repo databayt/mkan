@@ -6,7 +6,7 @@ import OnboardingStepsOverview from '@/components/onboarding/onboarding-steps-ov
 import { TRANSPORT_OVERVIEW_CONFIG } from '@/components/onboarding/configs';
 import { createTransportOffice } from '@/lib/actions/travel-actions';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
-import Loading from '@/components/atom/loading';
+import { OnboardingOverviewSkeleton } from '@/components/atom/skeletons';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +25,12 @@ const TransportOverviewPage = () => {
   };
 
   if (status === 'loading') {
-    return <Loading variant="fullscreen" text={t?.loadingText ?? 'Loading...'} />;
+    return (
+      <OnboardingOverviewSkeleton
+        steps={TRANSPORT_OVERVIEW_CONFIG.steps.length}
+        label={t?.loadingText ?? 'Loading...'}
+      />
+    );
   }
 
   if (!session) {

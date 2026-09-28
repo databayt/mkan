@@ -26,7 +26,12 @@ import type { Locale } from "@/components/internationalization/config";
 import { localize, localizeNested, getText } from "@/components/translation/localize";
 import TrackView from "@/components/analytics/track-view";
 import { listingSegment } from "@/lib/listing-code";
-import ListingDetailSkeleton from "@/components/listings/listing-detail-skeleton";
+import ListingDetailSkeleton, {
+  MapSectionSkeleton,
+  MobileDetailsSkeleton,
+  MobileMapSkeleton,
+  MobileReviewsSkeleton,
+} from "@/components/listings/listing-detail-skeleton";
 
 interface ListingPageProps {
   params: Promise<{
@@ -331,7 +336,7 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
               }
             />
           </Suspense>
-          <Suspense fallback={<div>{d.rental?.listing?.loadingMap}</div>}>
+          <Suspense fallback={<MapSectionSkeleton label={d.rental?.listing?.loadingMap} />}>
             <Location
               latitude={serializedListing.location?.latitude}
               longitude={serializedListing.location?.longitude}
@@ -371,13 +376,13 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
           initialCheckIn={initialCheckIn}
           initialCheckOut={initialCheckOut}
         >
-        <Suspense fallback={<div>{d.rental?.listing?.loading}</div>}>
+        <Suspense fallback={<MobileDetailsSkeleton label={d.rental?.listing?.loading} />}>
           <MobileListingDetails
             listing={serializedListing}
             images={serializedListing.photoUrls || []}
           />
         </Suspense>
-        <Suspense fallback={<div>{d.rental?.listing?.loadingMap}</div>}>
+        <Suspense fallback={<MobileMapSkeleton label={d.rental?.listing?.loadingMap} />}>
           <MobileMap
             latitude={serializedListing.location?.latitude}
             longitude={serializedListing.location?.longitude}
@@ -387,7 +392,7 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
           />
         </Suspense>
         <MobileBookingCalendar />
-        <Suspense fallback={<div>{d.rental?.listing?.loadingReviews}</div>}>
+        <Suspense fallback={<MobileReviewsSkeleton label={d.rental?.listing?.loadingReviews} />}>
           <div id="mobile-reviews-section">
             <MobileReviews
               reviews={mobileReviewItems}

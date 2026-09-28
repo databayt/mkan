@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import HostDashboard from '@/components/host/host-dashboard';
 import { getHostListings } from '@/components/host/actions';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
-import Loading from '@/components/atom/loading';
+import { HostDashboardSkeleton } from '@/components/atom/skeletons';
 import { useDictionary } from '@/components/internationalization/use-dictionary';
 
 type HostListing = Awaited<ReturnType<typeof getHostListings>>[number];
@@ -87,9 +87,9 @@ export default function BecomeAHostContent() {
     // TODO: implement create from existing listing
   };
 
-  // Show loading while checking session
+  // The dashboard's own shape while the session resolves.
   if (status === 'loading') {
-    return <Loading variant="fullscreen" text={dict?.common?.loading ?? "Loading..."} />;
+    return <HostDashboardSkeleton label={dict?.common?.loading ?? "Loading..."} />;
   }
 
   // Don't render if not authenticated

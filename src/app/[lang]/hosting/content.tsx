@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
-import Loading from '@/components/atom/loading';
+import { HostingTodaySkeleton } from '@/components/atom/skeletons';
 import { Badge } from '@/components/ui/badge';
 import Footer from '@/components/site/footer';
 import { AttentionCard } from '@/components/hosting/attention-card';
@@ -67,9 +67,15 @@ export default function HostingContent({
   const { session, status } = useAuthRedirect();
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming'>('today');
 
-  // Show loading while checking session
+  // The page's own shape while the session resolves (header + bottom nav
+  // stay real — they come from the layout).
   if (status === 'loading') {
-    return <Loading variant="fullscreen" text={dict.common?.loading ?? "Loading..."} />;
+    return (
+      <HostingTodaySkeleton
+        hasReservations={reservations.length > 0}
+        label={dict.common?.loading ?? "Loading..."}
+      />
+    );
   }
 
   // Don't render if not authenticated

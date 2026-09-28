@@ -205,3 +205,25 @@ body {
       transform: translate(calc(-50% - 0.5rem));
     }
   }
+/* Skeleton shimmer — the loading sweep on <Skeleton> (ui/skeleton.tsx).
+   Sweeps in reading direction (reversed under RTL); reduced motion stops the
+   sweep and leaves the shapes static. */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@utility animate-shimmer {
+  animation: shimmer 1.8s ease-in-out infinite;
+  &:where([dir="rtl"], [dir="rtl"] *) {
+    animation-direction: reverse;
+  } /* sweep in reading direction */
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    opacity: 0.7;
+  }
+}
