@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
-import { PropertyImageFallback } from "@/components/atom/property-image-fallback";
+import { PropertyImage } from "@/components/atom/property-image";
 import type { MapBounds } from "./search-provider";
 import type { Listing } from "@/types/listing";
 import { listingSegment } from "@/lib/listing-code";
@@ -357,17 +357,16 @@ export default function SearchMapMobile({
                 >
                   <div className="flex items-stretch">
                     {/* Thumbnail */}
-                    <div className="relative h-[110px] w-[110px] shrink-0 bg-muted">
-                      {photos.length > 0 ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={photos[0]}
-                          alt={l.title ?? ""}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <PropertyImageFallback seed={id} alt={l.title ?? ""} />
-                      )}
+                    <div className="relative h-[110px] w-[110px] shrink-0 overflow-hidden bg-muted">
+                      {/* PropertyImage owns the blur-up, the loader and the
+                          missing/broken-photo fallback. */}
+                      <PropertyImage
+                        src={photos[0]}
+                        alt={l.title ?? ""}
+                        variant="nearby"
+                        sizes="110px"
+                        seed={id}
+                      />
                       <span className="absolute top-2 end-2 grid h-7 w-7 place-items-center">
                         <Heart
                           className="h-5 w-5"

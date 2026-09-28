@@ -1,6 +1,7 @@
 "use client"
 
-import Image from "next/image"
+import { BlurImage } from "@/components/atom/blur-image"
+import { STOCK_BLUR } from "@/lib/stock-blur-map"
 import { Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { IdentityVerified, Building, Chat, SuperhostSimple } from "@/components/atom/icons"
@@ -53,11 +54,12 @@ export default function MeetHost({
               <div className="flex flex-col items-center">
                 <div className="relative mb-4">
                   <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-200 relative">
-                    <Image
+                    <BlurImage
                       src={avatar}
                       alt={displayName}
                       width={80}
                       height={80}
+                      blurDataURL={STOCK_BLUR[avatar]}
                       className="w-full h-full object-cover"
                     />
                   </div>

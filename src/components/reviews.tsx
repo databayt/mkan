@@ -1,4 +1,4 @@
-import Image from "next/image"
+import { BlurImage } from "@/components/atom/blur-image"
 
 import { getListingReviews, getReviewSummary } from "@/lib/actions/review-actions"
 import { getDictionary } from "@/components/internationalization/dictionaries"
@@ -162,13 +162,16 @@ export default async function Reviews({ listingId, lang, curatedGuestFavorite = 
           return (
             <article key={review.id} className="space-y-3">
               <div className="flex items-center gap-[14px]">
-                <Image
-                  src={reviewer?.image ?? FALLBACK_AVATAR}
-                  alt={name}
-                  width={48}
-                  height={48}
-                  className="h-12 w-12 rounded-full bg-[#DDDDDD] object-cover"
-                />
+                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[#DDDDDD]">
+                  <BlurImage
+                    src={reviewer?.image ?? FALLBACK_AVATAR}
+                    alt={name}
+                    width={48}
+                    height={48}
+                    plain
+                    className="h-full w-full object-cover"
+                  />
+                </div>
                 <div>
                   <h3 className="text-base font-medium leading-5 text-[#222222]">{name}</h3>
                   <p className="text-sm leading-[18px] text-[#6A6A6A]">{t.onAirbnb ?? "Guest on Mkan"}</p>

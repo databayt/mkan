@@ -16,13 +16,64 @@ import WhereYouSleep from './where-you-sleep';
 import HostedBy from './hosted-by';
 import { PropertyImageFallback } from '@/components/atom/property-image-fallback';
 import { PropertyImage } from '@/components/atom/property-image';
+import { BlurImage } from '@/components/atom/blur-image';
 import cdnVariantLoader from '@/lib/image-loader';
+import { STOCK_BLUR } from '@/lib/stock-blur-map';
+import { cn } from '@/lib/utils';
 import { PHASE1 } from '@/config/phase-flags';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { formatNumber } from '@/lib/i18n/formatters';
 import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite';
 import { zoneLabel } from '@/lib/geo/zone';
+
+/**
+ * The hero strip's raw <img>, with the blur-up applied by hand.
+ *
+ * The strip stays a raw <picture>/<img> (not BlurImage) on purpose: it is the
+ * mobile LCP and carries the Airbnb-cloned 1x/2x srcSet, eager/lazy split and
+ * fetchPriority inside a scroll-snap swipe strip — next/image would replace
+ * all of that. So the same blur-xl scale-105 → sharp transition is put on the
+ * <img> directly, over the stock LQIP (when there is one) painted as its
+ * background until it decodes. The slide must be `overflow-hidden`.
+ */
+function HeroSlideImg({
+  lqip,
+  className,
+  style,
+  onLoad,
+  ...props
+}: React.ImgHTMLAttributes<HTMLImageElement> & { lqip?: string }) {
+  const [loaded, setLoaded] = useState(false);
+  // An image that finished before hydration never fires onLoad — catch it here.
+  const ref = useCallback((el: HTMLImageElement | null) => {
+    if (el?.complete && el.naturalWidth > 0) setLoaded(true);
+  }, []);
+  return (
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text -- alt arrives via props
+    <img
+      ref={ref}
+      {...props}
+      data-loaded={loaded ? "" : undefined}
+      onLoad={(e) => {
+        setLoaded(true);
+        onLoad?.(e);
+      }}
+      style={
+        !loaded && lqip
+          ? { ...style, backgroundImage: `url("${lqip}")`, backgroundSize: "cover", backgroundPosition: "center" }
+          : style
+      }
+      className={cn(
+        className,
+        "transition-[filter,scale] duration-700 ease-out motion-reduce:transition-none",
+        loaded
+          ? "blur-none scale-100"
+          : "blur-xl scale-105 motion-reduce:blur-none motion-reduce:scale-100",
+      )}
+    />
+  );
+}
 
 interface MobileListingDetailsProps {
   listing: any;
@@ -691,7 +742,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
             className="no-scrollbar flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
           >
             {displayImages.map((src, i) => (
-              <div key={`${src}-${i}`} className="relative h-full w-full flex-none snap-center">
+              <div key={`${src}-${i}`} className="relative h-full w-full flex-none snap-center overflow-hidden">
                 <div 
                   className="i1y91qbp atm_mk_h2mmj6 atm_1w_1xbheko atm_e2_jngzkn atm_vy_4hg7yc atm_5j_nw3v2p atm_vh_yfq0k3 dir dir-ltr w-full h-full"
                   role="img"
@@ -714,7 +765,8 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                       srcSet={`${cdnVariantLoader({ src, width: 640 })} 1x, ${cdnVariantLoader({ src, width: 828 })} 2x`}
                       media="(min-width: 0px)"
                     />
-                    <img
+                    <HeroSlideImg
+                      lqip={STOCK_BLUR[src]}
                       className="i11046vh atm_e2_1osqo2v atm_vy_1osqo2v atm_jp_sm7xtg atm_jr_xm9jbw atm_5j_nw3v2p atm_vh_yfq0k3 iekrptg atm_8w_1t7jgwy dir dir-ltr w-full h-full object-cover"
                       aria-hidden="true"
                       alt={(dict?.listings?.detail?.propertyImageAlt ?? "Property image {number}").replace("{number}", String(i + 1))}
@@ -1096,7 +1148,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                         type="button"
                         className="_1t82b7sc l1ovpqvx atm_npmupv_14b5rvc_10saat9 atm_4s4swg_18xq13z_10saat9 atm_u9em2p_1r3889l_10saat9 atm_1ezpcqw_1u41vd9_10saat9 atm_fyjbsv_c4n71i_10saat9 atm_1rna0z7_1uk391_10saat9 dir dir-ltr"
                       >
-                        <div className="i1j4t3kq atm_26_1guaqub atm_ks_15vqwwr atm_mk_h2mmj6 dir dir-ltr" style={{ height: 40, width: 40, borderRadius: "50%" }}>
+                        <div className="i1j4t3kq atm_26_1guaqub atm_ks_15vqwwr atm_mk_h2mmj6 dir dir-ltr bg-muted" style={{ height: 40, width: 40, borderRadius: "50%" }}>
                           <div
                             className="i1y91qbp atm_mk_h2mmj6 atm_1w_1xbheko atm_e2_jngzkn atm_vy_4hg7yc atm_5j_nw3v2p atm_vh_yfq0k3 dir dir-ltr"
                             role="img"
@@ -1108,16 +1160,17 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                               "--AirImage-background-image": "none",
                             } as React.CSSProperties}
                           >
-                            <img
-                              className="i11046vh atm_e2_1osqo2v atm_vy_1osqo2v atm_jp_sm7xtg atm_jr_xm9jbw atm_5j_nw3v2p atm_vh_yfq0k3 dir dir-ltr"
+                            {/* 40px avatar — `plain` fade, no blur-up; the
+                                wrapper's bg shows while it loads. */}
+                            <BlurImage
+                              className="i11046vh atm_e2_1osqo2v atm_vy_1osqo2v atm_jp_sm7xtg atm_jr_xm9jbw atm_5j_nw3v2p atm_vh_yfq0k3 dir dir-ltr h-full w-full object-cover"
                               aria-hidden="true"
                               alt={dict?.listings?.detail?.hostProfilePicture ?? "Host profile picture"}
-                              decoding="async"
                               {...{ elementtiming: "LCP-target" }}
-                              loading="lazy"
                               src={avatar}
-                              width="100%"
-                              height="100%"
+                              width={40}
+                              height={40}
+                              plain
                             />
                           </div>
                         </div>

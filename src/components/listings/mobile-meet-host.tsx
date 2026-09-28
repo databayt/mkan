@@ -1,7 +1,8 @@
 "use client";
 
 import { Fragment } from "react"
-import Image from "next/image"
+import { BlurImage } from "@/components/atom/blur-image"
+import { STOCK_BLUR } from "@/lib/stock-blur-map"
 import { Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { IdentityVerified, Building, Chat, SuperhostSimple } from "@/components/atom/icons"
@@ -86,11 +87,12 @@ export default function MobileMeetHost({
           {/* Host image and verification badge */}
           <div className="relative shrink-0">
             <div className="w-24 h-24 rounded-full overflow-hidden bg-muted relative">
-              <Image
+              <BlurImage
                 src={avatar}
                 alt={displayName}
                 width={96}
                 height={96}
+                blurDataURL={STOCK_BLUR[avatar]}
                 className="w-full h-full object-cover"
               />
             </div>

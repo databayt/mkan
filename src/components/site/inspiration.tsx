@@ -2,7 +2,7 @@
 import { cdn } from "@/lib/cdn";
 
 import React from 'react';
-import Image from 'next/image';
+import { BlurImage } from '@/components/atom/blur-image';
 import Link from 'next/link';
 import { useLocale } from '@/components/internationalization/use-locale';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
@@ -14,8 +14,17 @@ interface Destination {
   distance: string;
   distanceAr: string;
   image: string;
+  /** 16px WebP LQIP of `image` (sharp, generated once — the set is fixed). */
+  blur?: string;
   backgroundColor: string;
 }
+
+const KHARTOUM_BLUR =
+  'data:image/webp;base64,UklGRoYAAABXRUJQVlA4IHoAAAAwAgCdASoQAAsAAsBMJbACdADiW3XdJ3goAAD6NeNBMfB6MifmxmvzfGdIVtFBjAyEaSXw4yaLUfuFu7LopDVsysG2NGUOQfGb7XnAXr02RWAoOrCXOIc1DryvMtsorMdvYTIaennZYs/zsWmF5TnbJ0XaAY93dFYEAA==';
+const PORT_SUDAN_BLUR =
+  'data:image/webp;base64,UklGRnIAAABXRUJQVlA4IGYAAAAQAgCdASoQAAsAAsBMJbACdAEUrwuRUFHgAP6yOu2ALzlrim/UsJ1MXnTFMstxpINKojY71K8eUIJef9FCwOo6bSY1QTQbKz8Kq+i1n8WjmJ+vnpJbBalcUTYGt0CDnUzhES4AAAA=';
+const OMDURMAN_BLUR =
+  'data:image/webp;base64,UklGRoQAAABXRUJQVlA4IHgAAAAwAgCdASoQAAsAAsBMJbACdADxOaF3+gyYAAD+2GHRSZ2YYECNppx8J1as3W5NinyG6nxiVm2is9s6izACrqMAVWBOon9KBjH7iY3Ih5KX9vXk/p/H2akMzt6KJtkHVRNKJysPC+XCSnqHi+RqpICKN9w0BbSWgAA=';
 
 interface AirbnbInspirationProps {
   destinations?: Destination[];
@@ -30,6 +39,7 @@ const defaultDestinations: Destination[] = [
     distance: 'Capital city',
     distanceAr: 'العاصمة',
     image: cdn.product("destinations/khartoum.jpg"),
+    blur: KHARTOUM_BLUR,
     backgroundColor: '#CC2D4A'
   },
   {
@@ -39,6 +49,7 @@ const defaultDestinations: Destination[] = [
     distance: 'Red Sea coast',
     distanceAr: 'ساحل البحر الأحمر',
     image: cdn.product("destinations/port-sudan.jpg"),
+    blur: PORT_SUDAN_BLUR,
     backgroundColor: '#BC1A6E'
   },
   {
@@ -48,6 +59,7 @@ const defaultDestinations: Destination[] = [
     distance: 'Historic city',
     distanceAr: 'مدينة تاريخية',
     image: cdn.product("destinations/omdurman.jpg"),
+    blur: OMDURMAN_BLUR,
     backgroundColor: '#DE3151'
   },
   {
@@ -57,6 +69,7 @@ const defaultDestinations: Destination[] = [
     distance: 'Southern region',
     distanceAr: 'المنطقة الجنوبية',
     image: cdn.product("destinations/khartoum.jpg"),
+    blur: KHARTOUM_BLUR,
     backgroundColor: '#D93B30'
   }
 ];
@@ -88,10 +101,11 @@ const AirbnbInspiration: React.FC<AirbnbInspirationProps> = ({
             className="cursor-pointer rounded-sm overflow-hidden flex flex-col h-80 transition-transform duration-200 hover:-translate-y-0.5"
           >
             {/* Image Section */}
-            <div className="relative h-40 overflow-hidden">
-              <Image
+            <div className="relative h-40 overflow-hidden bg-muted">
+              <BlurImage
                 src={destination.image}
                 alt={destination.title}
+                blurDataURL={destination.blur}
                 fill
                 className="object-cover"
                 sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"

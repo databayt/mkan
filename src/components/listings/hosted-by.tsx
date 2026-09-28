@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { BlurImage } from "@/components/atom/blur-image";
 
 import { Superhost } from "@/components/atom/icons";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
@@ -32,12 +32,13 @@ export default function HostedBy({ host, hostingMonths, superhost = false }: Hos
   return (
     <div className="flex items-center gap-4 py-6">
       <div className="relative">
-        <div className="w-10 h-10 rounded-full overflow-hidden relative">
-          <Image
+        <div className="w-10 h-10 rounded-full overflow-hidden relative bg-muted">
+          <BlurImage
             src={avatar}
             alt={displayName}
             width={40}
             height={40}
+            plain
             className="w-full h-full object-cover"
           />
         </div>

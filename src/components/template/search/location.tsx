@@ -35,6 +35,7 @@ import { useLocale } from "@/components/internationalization/use-locale";
 import { useNearby, nearbyErrorMessage } from "@/hooks/use-nearby";
 import { roundCoord } from "@/lib/distance";
 import { cdn } from "@/lib/cdn";
+import { BlurImage } from "@/components/atom/blur-image";
 import { formatNumber } from "@/lib/i18n/formatters";
 
 interface LocationProps {
@@ -578,17 +579,24 @@ export default function LocationDropdown({
                     }}
                   >
                     {/* The colored rounded square is baked into the original
-                        Airbnb PNG — render it bare (no wrapper tint). The inline
-                        backgroundColor only shows through while the image loads,
-                        preventing an empty-box flash. */}
+                        Airbnb PNG — render it bare (no wrapper tint). The
+                        wrapper's backgroundColor only shows through while the
+                        image fades in, preventing an empty-box flash. An icon
+                        tile, so `plain` (fade, no blur-up). */}
                     {dest.imageSrc ? (
-                      <img
-                        src={dest.imageSrc}
-                        alt=""
-                        loading="lazy"
+                      <div
+                        className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl"
                         style={{ backgroundColor: dest.backgroundColor }}
-                        className="h-14 w-14 flex-shrink-0 rounded-xl object-cover"
-                      />
+                      >
+                        <BlurImage
+                          src={dest.imageSrc}
+                          alt=""
+                          width={56}
+                          height={56}
+                          plain
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
                     ) : (
                       <div
                         className="h-14 w-14 flex-shrink-0 rounded-xl flex items-center justify-center"

@@ -2,7 +2,7 @@
 import { cdn } from "@/lib/cdn";
 
 import { useState } from "react"
-import Image from "next/image"
+import { BlurImage } from "@/components/atom/blur-image"
 
 interface PhotoSection {
   id: string
@@ -29,12 +29,16 @@ export default function NavThumbnails({
           className="flex-shrink-0 cursor-pointer"
           onClick={() => onSectionClick(section.id)}
         >
-          <div className="relative w-30 h-20 overflow-hidden shadow-md">
-            <Image
+          <div className="relative w-30 h-20 overflow-hidden bg-muted shadow-md">
+            <BlurImage
               src={section.photos[0] ?? cdn.product("property-placeholder.svg")}
               alt={section.label}
               fill
-              className={`transition-all duration-200 ${
+              sizes="120px"
+              // the SVG placeholder is a glyph — fade it, don't blur it
+              plain={!section.photos[0]}
+              // blur-up runs at 700ms; once sharp, hover keeps its 200ms
+              className={`data-[loaded]:duration-200 ${
                 selectedSection === section.id
                   ? 'ring-2 ring-black'
                   : 'hover:opacity-80'
