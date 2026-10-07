@@ -11,7 +11,7 @@
  *   pnpm crm:translate-rw --apply               # translate everything missing
  *   pnpm crm:translate-rw --apply --limit=16    # a slice
  *
- * Flags: --region=<rwanda>  --in=<file>  --batch=<N homes per call>  --parallel=<N calls>
+ * Flags: --lang=<rw|ar>  --region=<rwanda>  --in=<file>  --batch=<N homes per call>  --parallel=<N calls>
  *        --limit=<N>  --refresh  --apply
  *        --sidecar=<file>   read --in, write translations ONLY to the sidecar, so this can
  *                           run while another pass (the ar PDP) is writing --in
@@ -40,6 +40,17 @@ const SIDECAR = arg('sidecar', '');
 const MERGE = process.argv.includes('--merge');
 const LIMIT = parseInt(arg('limit', '0')!, 10);
 const MODEL = process.env.TRANSLATE_RW_MODEL?.trim() || 'sonnet';
+/**
+ * Target language. `ar` exists because Airbnb rate-limited the Kigali wave
+ * (2026-10-07): scraping a second, Arabic PDP pass would double the requests on
+ * the operator's account, so Arabic comes from the same claude -p lane. The
+ * capture is flagged machineTranslated and marked verified, which is what the
+ * upsert and the cache seeder read.
+ */
+const LANG = (arg('lang', 'rw') === 'ar' ? 'ar' : 'rw') as 'ar' | 'rw';
+const LANG_NAME = LANG === 'ar' ? 'Arabic (Modern Standard, as a Gulf/Sudanese guest reads it)' : 'Kinyarwanda (Ikinyarwanda)';
+/** Only homes the PDP pass enriched — a search-card title alone is not worth a call. */
+const enriched = (h: Home) => !!h.i18n?.en && (h as { placeCheck?: string }).placeCheck === 'OK';
 
 type Capture = { title?: string | null; description?: string | null; localeVerified?: string; machineTranslated?: boolean; capturedAt?: string };
 type Home = { airbnbListingId: string; title: string | null; description: string | null; placeCheck?: string; i18n?: Record<string, Capture> };
@@ -58,15 +69,15 @@ function claudeBin(): string {
   return 'claude';
 }
 
-const PROMPT_HEAD = `You translate holiday-rental listings into Kinyarwanda (Ikinyarwanda) for mkan, a home-rental marketplace.
+const PROMPT_HEAD = `You translate holiday-rental listings into ${LANG_NAME} for mkan, a home-rental marketplace.
 
 Rules:
-- Natural, warm Kinyarwanda as a Kigali host would write it — not word-for-word.
+- Natural, warm ${LANG === 'ar' ? 'Arabic' : 'Kinyarwanda as a Kigali host would write it'} — not word-for-word.
 - Keep proper nouns as written: neighbourhood and street names (Kimihurura, Nyarutarama, KG 9 Ave…), brand names (Netflix, Wi-Fi, Airbnb), and numbers.
 - Keep line breaks. Do not add, drop or embellish facts. Do not add contact details.
 - Titles stay short (under ~60 characters where the source allows).
 
-Input is a JSON array of {id, title, description}. Reply with ONLY a JSON array of {id, title, description} in Kinyarwanda, same ids, same order — no prose, no code fence.
+Input is a JSON array of {id, title, description}. Reply with ONLY a JSON array of {id, title, description} in ${LANG === 'ar' ? 'Arabic' : 'Kinyarwanda'}, same ids, same order — no prose, no code fence.
 
 `;
 
@@ -128,20 +139,21 @@ async function main() {
     let merged = 0;
     for (const h of payload.homes) {
       const rw = side[h.airbnbListingId];
-      if (rw && (REFRESH || !h.i18n?.rw)) {
-        h.i18n = { ...(h.i18n ?? {}), rw };
+      if (rw && (REFRESH || !h.i18n?.[LANG])) {
+        h.i18n = { ...(h.i18n ?? {}), [LANG]: rw };
         merged++;
       }
     }
     writeAtomic(IN, payload);
-    console.log(`\n🇷🇼 merged ${merged} Kinyarwanda captures from ${SIDECAR} → ${IN}\n`);
+    console.log(`\n🌐 merged ${merged} ${LANG} captures from ${SIDECAR} → ${IN}\n`);
     return;
   }
 
-  const has = (h: Home) => !!(h.i18n?.rw || side[h.airbnbListingId]);
-  let todo = payload.homes.filter((h) => h.placeCheck !== 'SUSPECT_FOREIGN' && (REFRESH || !has(h)) && source(h));
+  // An ar capture only counts if it is ours or Airbnb-verified — a failed PDP pass can leave an empty one.
+  const has = (h: Home) => !!((h.i18n?.[LANG]?.title && (LANG === 'rw' || h.i18n?.[LANG]?.localeVerified === 'ok')) || side[h.airbnbListingId]);
+  let todo = payload.homes.filter((h) => enriched(h) && (REFRESH || !has(h)) && source(h));
   if (LIMIT) todo = todo.slice(0, LIMIT);
-  console.log(`\n🇷🇼 Kinyarwanda — ${payload.homes.length} homes in ${IN}, ${todo.length} to translate (${BATCH}/call × ${PARALLEL} parallel, ${MODEL})${SIDECAR ? ` → sidecar ${SIDECAR}` : ''}`);
+  console.log(`\n🌐 ${LANG_NAME} — ${payload.homes.length} homes in ${IN}, ${todo.length} to translate (${BATCH}/call × ${PARALLEL} parallel, ${MODEL})${SIDECAR ? ` → sidecar ${SIDECAR}` : ''}`);
   if (!APPLY) {
     const sample = todo.slice(0, 1).map((h) => ({ id: h.airbnbListingId, ...source(h)! }));
     if (sample.length) console.log(`\nsample input: ${JSON.stringify(sample).slice(0, 400)}…`);
@@ -164,9 +176,9 @@ async function main() {
         const out = await translate(slice.map((h) => ({ id: h.airbnbListingId, ...source(h)! })));
         for (const h of slice) {
           const t = out.get(h.airbnbListingId)!;
-          const rw: RwCapture = { title: t.title, description: t.description || null, machineTranslated: true, capturedAt: new Date().toISOString() };
+          const rw: RwCapture = { title: t.title, description: t.description || null, machineTranslated: true, localeVerified: 'ok', capturedAt: new Date().toISOString() };
           if (SIDECAR) side[h.airbnbListingId] = rw;
-          else h.i18n = { ...(h.i18n ?? {}), rw };
+          else h.i18n = { ...(h.i18n ?? {}), [LANG]: rw };
           done++;
         }
         save();
