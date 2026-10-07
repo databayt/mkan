@@ -252,6 +252,7 @@
     "cardConfigMissing": "Kwishyura n'ikarita ntibiteguwe muri iyi sisitemu.",
     "cardErrorPrefix": "Kwishyura ntibyagenze neza",
     "cashInstruction": "Ubukode bwawe buzaguma mu gihe cyo gutegereza kugeza nyir'inzu yemeje ko wishyuye amafaranga ugeze.",
+    "manualPaymentNote": "Kwishyura uru icumbi bitegurwa hamwe na nyir'inzu kandi bigahamywa n'intoki. Ikarita n'ama-wallet yo muri Sudani ntibyemewe kuri iri cumbi.",
     "cashSubmit": "Emeza ubukode bwo kwishyura amafaranga",
     "cashSuccess": "Byakozwe. Ishyura nyir'inzu ugeze; azabyemeza imbonankubone.",
     "referenceInstruction": "Ishyura muri porte-monnaie yawe cyangwa porogaramu ya banki, hanyuma wandike hano nomero y'igikorwa. Umuyobozi ayigenzura mu masaha 24.",

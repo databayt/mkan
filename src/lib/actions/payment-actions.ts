@@ -1096,6 +1096,17 @@ async function loadBookingForPayment(bookingId: number) {
   return { ok: true as const, session, booking };
 }
 
+// The booking's listing currency (default "SDG" for legacy rows). The card
+// rail and the Sudan-only wallets are SDG-only: the card path charges the
+// booking total in USD, so a non-SDG amount must never reach it.
+async function getBookingListingCurrency(listingId: number): Promise<string> {
+  const listing = await db.listing.findUnique({
+    where: { id: listingId },
+    select: { currency: true },
+  });
+  return listing?.currency || "SDG";
+}
+
 export async function createBookingPaymentIntent(input: unknown) {
   const parsed = bookingPaymentIntentSchema.safeParse(input);
   if (!parsed.success) {
@@ -1104,6 +1115,11 @@ export async function createBookingPaymentIntent(input: unknown) {
   const loaded = await loadBookingForPayment(parsed.data.bookingId);
   if (!loaded.ok) return loaded;
   const { booking } = loaded;
+
+  // Card is SDG-only — refuse before any BookingPayment row exists.
+  if ((await getBookingListingCurrency(booking.listingId)) !== "SDG") {
+    return { ok: false as const, error: "card_unavailable_currency" };
+  }
 
   // Persist the BookingPayment row first so we have a stable id to thread
   // through Stripe metadata. The Stripe intent id is patched in after the
@@ -1173,6 +1189,15 @@ export async function createBookingReferencePayment(input: unknown) {
   }
   const loaded = await loadBookingForPayment(parsed.data.bookingId);
   if (!loaded.ok) return loaded;
+
+  // Bankak/Cashi are Sudan-only wallets; the manual rails stay open.
+  if (
+    (parsed.data.method === BookingPaymentMethod.Bankak ||
+      parsed.data.method === BookingPaymentMethod.Cashi) &&
+    (await getBookingListingCurrency(loaded.booking.listingId)) !== "SDG"
+  ) {
+    return { ok: false as const, error: "method_unavailable_currency" };
+  }
 
   const bookingPayment = await db.bookingPayment.create({
     data: {

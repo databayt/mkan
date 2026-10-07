@@ -252,6 +252,7 @@
     "cardConfigMissing": "Card payments are not configured in this environment.",
     "cardErrorPrefix": "Payment failed",
     "cashInstruction": "Your booking will be held as Pending until your host confirms cash payment on arrival.",
+    "manualPaymentNote": "Payment for this stay is arranged directly with your host and confirmed manually. Card and Sudanese wallets are not available for this listing.",
     "cashSubmit": "Confirm cash booking",
     "cashSuccess": "Booked. Pay your host on arrival; they'll confirm in person.",
     "referenceInstruction": "Pay in your wallet or bank app, then enter the transaction reference here. An admin verifies within 24 hours.",

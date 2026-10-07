@@ -29,6 +29,9 @@ import {
   createBookingReferencePayment,
 } from "@/lib/actions/payment-actions";
 
+import { formatCurrency } from "@/lib/i18n/formatters";
+import type { Locale } from "@/components/internationalization/config";
+
 import type { BookingPayload } from "./page";
 
 type ReferenceMethod = "bankak" | "cashi" | "mobile_money" | "bank_transfer";
@@ -52,12 +55,22 @@ interface Props {
 
 export default function BookingCheckoutContent({ lang, booking, dict, showCard }: Props) {
   const t = dict.booking ?? {};
-  const currency = dict.common?.currency ?? "$";
+  const currency = booking.listing.currency ?? "SDG";
+  const locale = lang as Locale;
+  const money = (n: number) => formatCurrency(n, locale, currency);
   const router = useRouter();
+
+  // Card and the Sudan-only wallets (Bankak/Cashi) only serve SDG listings;
+  // other currencies settle on the manual rails, confirmed by host/admin.
+  const isSdg = currency === "SDG";
+  const cardOffered = showCard && isSdg;
 
   // Default to the card rail only when it's offered; otherwise start on Bankak
   // (the dominant Sudanese digital wallet) so the first option is payable.
-  const [method, setMethod] = useState<PaymentMethod>(showCard ? "card" : "bankak");
+  // Non-SDG listings start on mobile money.
+  const [method, setMethod] = useState<PaymentMethod>(
+    !isSdg ? "mobile_money" : showCard ? "card" : "bankak",
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
@@ -91,15 +104,25 @@ export default function BookingCheckoutContent({ lang, booking, dict, showCard }
               value={method}
               onValueChange={(v) => setMethod(v as PaymentMethod)}
             >
-              {showCard && (
+              {cardOffered && (
                 <MethodRow id="method-card" value="card" label={t.card ?? "Credit / Debit card (Stripe)"} method={method} />
               )}
-              <MethodRow id="method-bankak" value="bankak" label={t.bankak ?? "Bankak"} method={method} />
-              <MethodRow id="method-cashi" value="cashi" label={t.cashi ?? "Cashi"} method={method} />
+              {isSdg && (
+                <MethodRow id="method-bankak" value="bankak" label={t.bankak ?? "Bankak"} method={method} />
+              )}
+              {isSdg && (
+                <MethodRow id="method-cashi" value="cashi" label={t.cashi ?? "Cashi"} method={method} />
+              )}
               <MethodRow id="method-mobile" value="mobile_money" label={t.mobileMoney ?? "Mobile money"} method={method} />
               <MethodRow id="method-bank" value="bank_transfer" label={t.bankTransfer ?? "Bank transfer"} method={method} />
               <MethodRow id="method-cash" value="cash" label={t.cash ?? "Pay on arrival (cash)"} method={method} />
             </RadioGroup>
+            {!isSdg && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                {t.manualPaymentNote ??
+                  "Payment for this stay is arranged directly with your host and confirmed manually."}
+              </p>
+            )}
           </section>
 
           <section>
@@ -107,7 +130,7 @@ export default function BookingCheckoutContent({ lang, booking, dict, showCard }
               <CardCheckout
                 bookingId={booking.id}
                 amount={booking.totalPrice}
-                currency={currency}
+                currency={money(booking.totalPrice)}
                 labels={{
                   pay: t.confirmAndPay ?? "Confirm and pay",
                   processing: t.cardProcessing ?? "Processing payment…",
@@ -135,7 +158,7 @@ export default function BookingCheckoutContent({ lang, booking, dict, showCard }
           </section>
         </div>
 
-        <CheckoutSummary booking={booking} currency={currency} t={t} />
+        <CheckoutSummary booking={booking} money={money} t={t} />
       </div>
     </div>
   );
@@ -310,11 +333,11 @@ function ReferenceForm({
 
 function CheckoutSummary({
   booking,
-  currency,
+  money,
   t,
 }: {
   booking: BookingPayload;
-  currency: string;
+  money: (n: number) => string;
   t: Record<string, string>;
 }) {
   const cover = booking.listing.photoUrls?.[0];
@@ -344,39 +367,34 @@ function CheckoutSummary({
       <div className="space-y-1 text-sm">
         <div className="flex justify-between">
           <span>
-            {currency}
-            {booking.nightlyRate} × {booking.nightsCount}{" "}
+            {money(booking.nightlyRate)} × {booking.nightsCount}{" "}
             {booking.nightsCount === 1
               ? (t.nightSingular ?? "night")
               : (t.nightsPlural ?? "nights")}
           </span>
           <span>
-            {currency}
-            {booking.subtotal}
+            {money(booking.subtotal)}
           </span>
         </div>
         {booking.cleaningFee > 0 ? (
           <div className="flex justify-between">
             <span>{t.cleaningFee ?? "Cleaning fee"}</span>
             <span>
-              {currency}
-              {booking.cleaningFee}
+              {money(booking.cleaningFee)}
             </span>
           </div>
         ) : null}
         <div className="flex justify-between">
           <span>{t.serviceFee ?? "Service fee"}</span>
           <span>
-            {currency}
-            {booking.serviceFee}
+            {money(booking.serviceFee)}
           </span>
         </div>
         <hr className="my-2" />
         <div className="flex justify-between font-medium">
           <span>{t.total ?? "Total"}</span>
           <span>
-            {currency}
-            {booking.totalPrice}
+            {money(booking.totalPrice)}
           </span>
         </div>
       </div>

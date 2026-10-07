@@ -61,6 +61,7 @@ export type BookingPayload = {
     id: number;
     title: string | null;
     photoUrls: string[];
+    currency?: string | null;
     location: {
       city: string;
       state: string;
