@@ -55,7 +55,7 @@ const AboutPlaceContent = ({ params }: AboutPlaceProps) => {
         autoPlay
         muted
         playsInline
-        preload="auto"
+        preload="metadata"
         onLoadedData={() => {
           // Ensure video plays after loading
           if (videoRef.current) {

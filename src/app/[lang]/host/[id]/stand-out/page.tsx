@@ -48,7 +48,7 @@ const StandOutPage = ({ params }: StandOutPageProps) => {
         autoPlay
         muted
         playsInline
-        preload="auto"
+        preload="metadata"
         onLoadedData={() => {
           // Ensure video plays after loading
           if (videoRef.current) {

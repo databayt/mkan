@@ -68,3 +68,7 @@ inbox/
 
 # one-off migration snapshots (restore points for scripts/*.ts prod writes)
 /.data/
+
+# /shoot output — framed page stills (public/screenshot/<slug>-ar.png); local
+# media, never committed or baked into the container image
+/public/screenshot/

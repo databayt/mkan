@@ -214,15 +214,30 @@ const nextConfig: NextConfig = {
     ];
 
     if (process.env.NODE_ENV === "production") {
-      headersList.push({
-        source: "/_next/static/(.*)",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
-        ],
-      });
+      headersList.push(
+        {
+          source: "/_next/static/(.*)",
+          headers: [
+            {
+              key: "Cache-Control",
+              value: "public, max-age=31536000, immutable",
+            },
+          ],
+        },
+        {
+          // public/ files are served `max-age=0`, which the Cloudflare Worker
+          // (cf/worker.js) will not freeze at the edge. Self-hosted fonts are
+          // content-stable, so a year. (next/font output already ships hashed
+          // under /_next/static/media; this covers files placed in public/fonts.)
+          source: "/fonts/:path*",
+          headers: [
+            {
+              key: "Cache-Control",
+              value: "public, max-age=31536000, immutable",
+            },
+          ],
+        }
+      );
     }
 
     return headersList;
