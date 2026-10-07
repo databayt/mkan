@@ -331,10 +331,27 @@ export interface PdpParse {
   machineTranslated: boolean | null;
 }
 
+/**
+ * The PDP's `data.node.pdpPresentation` — where Airbnb moved the listing content
+ * by 2026-10. The `sections` array still exists, but on a server render its
+ * DESCRIPTION / LOCATION / MEET_YOUR_HOST entries now hold only a `__typename`,
+ * so the section-based reads below returned null for every field and a Kigali
+ * PDP pass "succeeded" with no text, no place string and only HEURISTIC hosts.
+ */
+export function pdpPresentation(json: any): any | null {
+  return findByKey(json, (o) => o.pdpPresentation && typeof o.pdpPresentation === 'object')?.pdpPresentation ?? null;
+}
+
+const ugc = (o: any): string | null => {
+  const v = o?.localizedStringWithTranslationPreference ?? o?.localizedString ?? null;
+  return typeof v === 'string' && v.trim() ? v : null;
+};
+
 /** PDP JSON + raw → every field worth having, read by section rather than walked. */
 export function parsePdp(json: any, raw: string, listingId: string): PdpParse {
   const S = pdpSections(json);
   const ev = pdpEventData(json);
+  const pp = pdpPresentation(json);
 
   const meetYourHost = S.MEET_YOUR_HOST ?? null;
   const descSection = S.DESCRIPTION_DEFAULT ?? null;
@@ -350,6 +367,7 @@ export function parsePdp(json: any, raw: string, listingId: string): PdpParse {
   // titles. It does: the translated title is carried on the availability
   // calendar sections, of all places.
   const localizedTitle =
+    ugc(pp?.title?.content) ||
     (typeof S.AVAILABILITY_CALENDAR_DEFAULT?.listingTitle === 'string' && S.AVAILABILITY_CALENDAR_DEFAULT.listingTitle) ||
     (typeof S.AVAILABILITY_CALENDAR_INLINE?.listingTitle === 'string' && S.AVAILABILITY_CALENDAR_INLINE.listingTitle) ||
     (typeof S.TITLE_DEFAULT?.title === 'string' && S.TITLE_DEFAULT.title) ||
@@ -359,7 +377,9 @@ export function parsePdp(json: any, raw: string, listingId: string): PdpParse {
   // The old rule was a first-match walk for `isSuperhost`, which has no idea
   // which section it landed in: a co-host or a carousel listing's host could
   // win on key order alone, and silently own the import.
-  let hostCard = meetYourHost?.cardData ?? null;
+  // pdpPresentation.hostInfo is the page's own primary-host card — the same
+  // PassportCardData shape MEET_YOUR_HOST used to carry, so it is as trustworthy.
+  let hostCard = pp?.hostInfo?.passportData ?? meetYourHost?.cardData ?? null;
   let hostSource: HostSource = hostCard ? 'MEET_YOUR_HOST' : null;
   if (!hostCard) {
     const fallback = findByKey(
@@ -405,7 +425,10 @@ export function parsePdp(json: any, raw: string, listingId: string): PdpParse {
     .filter((v: string | null): v is string => !!v);
 
   // ── amenities ──────────────────────────────────────────────────────────────
-  const amenObj =
+  const ppAmen = pp?.amenities;
+  const amenObj = (ppAmen && (Array.isArray(ppAmen.seeAllAmenitiesGroups) || Array.isArray(ppAmen.previewAmenitiesGroups))
+    ? { seeAllAmenityGroups: ppAmen.seeAllAmenitiesGroups, previewAmenitiesGroups: ppAmen.previewAmenitiesGroups }
+    : null) ??
     findByKey(json, (o) => Array.isArray(o.seeAllAmenityGroups)) ??
     findByKey(json, (o) => Array.isArray(o.previewAmenitiesGroups));
   const amenities: string[] = (amenObj?.seeAllAmenityGroups ?? amenObj?.previewAmenitiesGroups ?? [])
@@ -414,6 +437,9 @@ export function parsePdp(json: any, raw: string, listingId: string): PdpParse {
 
   // ── house rules ────────────────────────────────────────────────────────────
   const houseRules: string[] = [
+    ...(Array.isArray(pp?.rules?.groupItems) ? pp.rules.groupItems : []).flatMap((g: any) =>
+      (Array.isArray(g?.items) ? g.items : []).map((r: any) => r?.title),
+    ),
     ...(Array.isArray(policies?.houseRules) ? policies.houseRules : []).map((r: any) => r?.title),
     ...(Array.isArray(policies?.additionalHouseRules) ? policies.additionalHouseRules : []).map(
       (r: any) => (typeof r === 'string' ? r : r?.title),
@@ -421,25 +447,44 @@ export function parsePdp(json: any, raw: string, listingId: string): PdpParse {
   ].filter((t: any): t is string => typeof t === 'string' && t.length > 0);
 
   // A "show original" toggle means what we are reading is Airbnb's translation.
-  const machineTranslated = descSection
-    ? !!(descSection.ugcTranslationButton || descSection.htmlDescription?.showOriginalButton)
-    : null;
+  const ppDesc = pp?.descriptions?.longDescriptionHtml ?? null;
+  const machineTranslated = ppDesc
+    ? typeof ppDesc.source === 'string' && ugc(ppDesc) !== ppDesc.source
+    : descSection
+      ? !!(descSection.ugcTranslationButton || descSection.htmlDescription?.showOriginalButton)
+      : null;
+
+  // "Kamonyi, Southern Province, Rwanda" — the same city→region→country shape
+  // the old LOCATION_DEFAULT.subtitle had, rebuilt from Airbnb's breadcrumbs
+  // (Airbnb › Rwanda › Southern Province › Kamonyi).
+  const crumbs: string[] = (Array.isArray(pp?.seoLinks?.breadcrumbs) ? pp.seoLinks.breadcrumbs : [])
+    .map((b: any) => b?.title)
+    .filter((t: any): t is string => typeof t === 'string' && t.trim().length > 0 && t !== 'Airbnb');
+  const ppSubtitle = crumbs.length ? [...crumbs].reverse().join(', ') : null;
+  const ppPhotos: string[] = (Array.isArray(pp?.heroMedia?.edges) ? pp.heroMedia.edges : [])
+    .map((e: any) => e?.node?.image?.uri)
+    .filter((u: any): u is string => typeof u === 'string' && /^https:\/\/a0\.muscache\.com\//.test(u));
+  const ppLat = Number(pp?.location?.latitude);
+  const ppLng = Number(pp?.location?.longitude);
 
   return {
-    description: descSection?.htmlDescription?.htmlText ?? null,
+    description: ugc(ppDesc) ?? descSection?.htmlDescription?.htmlText ?? null,
     title: localizedTitle,
-    category: pdpCategory(json),
+    category: (typeof pp?.sharingConfig?.propertyType === 'string' && pp.sharingConfig.propertyType) || pdpCategory(json),
     roomType: ev?.roomType ?? findByKey(json, (o) => typeof o.roomType === 'string')?.roomType ?? null,
     amenities,
-    guestCapacity: typeof ev?.personCapacity === 'number' ? ev.personCapacity : null,
-    photos: extractPdpPhotos(raw, listingId),
+    guestCapacity:
+      typeof ev?.personCapacity === 'number' ? ev.personCapacity : typeof pp?.personCapacity === 'number' ? pp.personCapacity : null,
+    photos: ppPhotos.length ? ppPhotos : extractPdpPhotos(raw, listingId),
     host,
     hostSource,
     coHostIds,
-    hostAbout: typeof meetYourHost?.about === 'string' && meetYourHost.about.trim() ? meetYourHost.about : null,
-    locationSubtitle: typeof locSection?.subtitle === 'string' ? locSection.subtitle : null,
-    latitude: typeof locSection?.lat === 'number' ? locSection.lat : (ev?.listingLat ?? null),
-    longitude: typeof locSection?.lng === 'number' ? locSection.lng : (ev?.listingLng ?? null),
+    hostAbout:
+      ugc(pp?.hostInfo?.about) ??
+      (typeof meetYourHost?.about === 'string' && meetYourHost.about.trim() ? meetYourHost.about : null),
+    locationSubtitle: ppSubtitle ?? (typeof locSection?.subtitle === 'string' ? locSection.subtitle : null),
+    latitude: Number.isFinite(ppLat) && pp?.location?.latitude != null ? ppLat : typeof locSection?.lat === 'number' ? locSection.lat : (ev?.listingLat ?? null),
+    longitude: Number.isFinite(ppLng) && pp?.location?.longitude != null ? ppLng : typeof locSection?.lng === 'number' ? locSection.lng : (ev?.listingLng ?? null),
     houseRules,
     descriptionLanguage: typeof ev?.descriptionLanguage === 'string' ? ev.descriptionLanguage : null,
     machineTranslated,

@@ -191,6 +191,12 @@ async function main() {
     console.log('\n  ⏸  interrupted — flushing progress…');
   });
 
+  const TRANSIENT = /ERR_NAME_NOT_RESOLVED|ERR_INTERNET_DISCONNECTED|ERR_NETWORK_CHANGED|ERR_CONNECTION_(?:RESET|CLOSED|TIMED_OUT)|ERR_TIMED_OUT|Timeout \d+ms exceeded/i;
+  const NET_RETRIES = 4;
+  const NET_BACKOFF_MS = 20_000;
+  const NET_ABORT_STREAK = 6;
+  const retries = new Map<string, number>();
+  let netStreak = 0;
   let next = 0;
   const worker = async (page: Page) => {
     for (;;) {
@@ -329,10 +335,29 @@ async function main() {
             `${home.photoCount} photos  ${pdp.hostSource ?? 'no-host'}  ${(capture.title ?? '').slice(0, 32)}`,
         );
       } catch (e) {
+        const msg = (e as Error).message;
+        // A dropped connection is not this listing's fault. On 2026-10-07 the
+        // Mac lost its network mid-run and the pass marked 4,293 homes failed in
+        // minutes; wait it out and retry the same home instead.
+        if (TRANSIENT.test(msg) && (retries.get(home.airbnbListingId) ?? 0) < NET_RETRIES) {
+          const n = (retries.get(home.airbnbListingId) ?? 0) + 1;
+          retries.set(home.airbnbListingId, n);
+          netStreak++;
+          if (netStreak >= NET_ABORT_STREAK * CONCURRENCY) {
+            interrupted = true;
+            console.error(`\n❌ ${netStreak} consecutive network failures — stopping; rerun with --only-missing when it is back.`);
+            return;
+          }
+          console.log(`  … ${home.airbnbListingId}: network error, retry ${n}/${NET_RETRIES} in ${(NET_BACKOFF_MS * n) / 1000}s`);
+          await sleep(NET_BACKOFF_MS * n);
+          queue.push(home);
+          continue;
+        }
         failures++;
-        home.pdpError = (e as Error).message;
-        console.warn(`  ! ${home.airbnbListingId}: ${(e as Error).message}`);
+        home.pdpError = msg;
+        console.warn(`  ! ${home.airbnbListingId}: ${msg}`);
       }
+      netStreak = 0;
 
       if (done % CHECKPOINT_EVERY === 0) flush();
       await sleep(DELAY);

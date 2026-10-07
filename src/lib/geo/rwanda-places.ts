@@ -95,7 +95,10 @@ export interface RwandaPlaceCheck {
 /** Last segment of Airbnb's "Kigali, Kigali City, Rwanda" (or "…، رواندا"). */
 const countryOf = (subtitle: string) => subtitle.split(/[,،]/).pop()?.trim().toLowerCase() ?? '';
 const isRwandaName = (s: string) => /^rwanda$/.test(s) || /^رواندا$/.test(s);
-const namesKigali = (s: string | null | undefined) => !!s && (/kigali/i.test(s) || /كيغالي|كيجالي/.test(s));
+const namesKigali = (s: string | null | undefined) =>
+  !!s && (/kigali|gasabo|kicukiro|nyarugenge/i.test(s) || /كيغالي|كيجالي/.test(s));
+const districtFromText = (s: string): RwandaDistrictCode =>
+  DISTRICTS.find((d) => new RegExp(d.nameEn, 'i').test(s))?.code ?? 'UNKNOWN';
 
 /**
  * Decide whether a listing is a Kigali home.
@@ -120,8 +123,13 @@ export function checkPlace(
     if (country && !isRwandaName(country)) {
       return { city: 'OTHER', state: 'UNKNOWN', agreement: 'SUSPECT_FOREIGN', note: `Airbnb places this listing in ${locationSubtitle}` };
     }
-    if (inKigali) return { city: 'KIGALI', state, agreement: 'CONFIRMED', note: null };
-    if (inRwanda) return { city: 'OTHER', state: 'UNKNOWN', agreement: 'OUTSIDE_CITY', note: `Rwanda, outside Kigali (${locationSubtitle})` };
+    // Airbnb's own place line outranks the radius: the city's edge is fuzzy and
+    // the crawl's outer cells reach Bugesera and Kamonyi, whose homes sit
+    // inside 24 km of the centre but are not Kigali.
+    if (namesKigali(locationSubtitle)) {
+      return { city: 'KIGALI', state: inKigali ? state : districtFromText(locationSubtitle), agreement: 'CONFIRMED', note: null };
+    }
+    if (inRwanda || inKigali) return { city: 'OTHER', state: 'UNKNOWN', agreement: 'OUTSIDE_CITY', note: `Rwanda, outside Kigali (${locationSubtitle})` };
     return {
       city: 'OTHER',
       state: 'UNKNOWN',
