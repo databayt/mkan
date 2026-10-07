@@ -58,7 +58,7 @@ const ListingSidebar = () => {
   const price =
     listing?.pricePerNight != null
       ? fill(t("valuePerNight", "{price} per night"), {
-          price: formatCurrency(listing.pricePerNight, lang),
+          price: formatCurrency(listing.pricePerNight, lang, listing.currency),
         })
       : notSet;
   const guests =

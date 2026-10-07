@@ -7,6 +7,8 @@ import { ListingFormData, updateListing, getListing } from './actions'
 // Types
 export interface Listing extends ListingFormData {
   id?: number
+  /** ISO 4217 of every money field; display only — never written by the host steps. */
+  currency?: string
   createdAt?: Date
   updatedAt?: Date
   postedDate?: Date | null
@@ -29,6 +31,7 @@ function mapPrismaListingToClient(src: ListingPayload): Listing {
     title: src.title ?? undefined,
     description: src.description ?? undefined,
     pricePerNight: src.pricePerNight ?? undefined,
+    currency: src.currency ?? undefined,
     securityDeposit: src.securityDeposit ?? undefined,
     applicationFee: src.applicationFee ?? undefined,
     bedrooms: src.bedrooms ?? undefined,

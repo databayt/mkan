@@ -225,7 +225,7 @@ function getLocale(request: NextRequest) {
   // used to resolve to. Everything else negotiates over the original locales,
   // so en/ar behaviour is unchanged.
   const isBase = (tag: string, bases: string[]) =>
-    bases.includes(tag.toLowerCase().split('-')[0]);
+    bases.includes(tag.toLowerCase().split('-')[0] ?? '');
   const firstRw = languages.findIndex((tag) => isBase(tag, ['rw', 'kin']));
   if (firstRw !== -1) {
     const firstEnAr = languages.findIndex((tag) => isBase(tag, ['en', 'ar']));

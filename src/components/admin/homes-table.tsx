@@ -15,6 +15,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { listingSegment } from "@/lib/listing-code";
+import { formatCurrency } from "@/lib/i18n/formatters";
+import { useLocale } from "@/components/internationalization/use-locale";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +41,7 @@ type AdminListing = {
   isPublished: boolean;
   draft: boolean;
   pricePerNight: number | null;
+  currency?: string | null;
   averageRating: number | null;
   createdAt: Date;
   host: { id: string; email: string; username: string | null };
@@ -113,6 +116,8 @@ function HomeRow({
 }) {
   const [isPending, startTransition] = useTransition();
 
+  const { locale } = useLocale();
+
   function onUnpublish() {
     startTransition(async () => {
       try {
@@ -153,7 +158,7 @@ function HomeRow({
         {listing.location ? `${listing.location.city}, ${listing.location.country}` : "—"}
       </TableCell>
       <TableCell className="text-end text-sm">
-        ${(listing.pricePerNight ?? 0).toFixed(0)}
+        {formatCurrency(listing.pricePerNight ?? 0, locale, listing.currency ?? "SDG")}
       </TableCell>
       <TableCell>
         <StatusBadge listing={listing} labels={labels} />

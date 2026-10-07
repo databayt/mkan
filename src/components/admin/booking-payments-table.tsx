@@ -35,7 +35,7 @@ type BookingPaymentRow = {
   booking: {
     id: number;
     guest: { id: string; email: string; username: string | null };
-    listing: { id: number; title: string | null };
+    listing: { id: number; title: string | null; currency?: string | null };
   };
 };
 
@@ -112,7 +112,7 @@ export function BookingPaymentsTable({
                 {p.booking.guest.username ?? p.booking.guest.email}
               </TableCell>
               <TableCell className="text-end text-sm">
-                {formatCurrency(p.amount, locale)}
+                {formatCurrency(p.amount, locale, p.booking.listing.currency ?? "SDG")}
               </TableCell>
               <TableCell className="text-sm">{p.method}</TableCell>
               <TableCell className="font-mono text-xs text-muted-foreground">

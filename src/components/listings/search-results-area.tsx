@@ -43,9 +43,9 @@ export function SearchResultsArea() {
     .map((l) => ({
       id: l.id,
       price: l.pricePerNight ?? null,
-      // Pre-formatted in the listing currency (SDG) so the map price pills match
+      // Pre-formatted in the listing currency (per listing) so the map price pills match
       // the cards — "SDG 185" / "185 ج.س", not a hardcoded "$".
-      priceLabel: l.pricePerNight != null ? formatCurrency(l.pricePerNight, locale) : null,
+      priceLabel: l.pricePerNight != null ? formatCurrency(l.pricePerNight, locale, l.currency ?? "SDG") : null,
       lat: l.location!.latitude,
       lng: l.location!.longitude,
       title: l.title ?? undefined,

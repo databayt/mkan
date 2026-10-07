@@ -467,7 +467,7 @@ function DetailsPanel({
             <DetailRow label={t.checkIn ?? "Check-in"} value={formatDate(new Date(selected.booking.checkIn), lang)} />
             <DetailRow label={t.checkOut ?? "Check-out"} value={formatDate(new Date(selected.booking.checkOut), lang)} />
             <DetailRow label={t.guests ?? "Guests"} value={formatNumber(selected.booking.guestCount, lang)} />
-            <DetailRow label={t.total ?? "Total"} value={formatCurrency(selected.booking.totalPrice, lang)} />
+            <DetailRow label={t.total ?? "Total"} value={formatCurrency(selected.booking.totalPrice, lang, selected.listingCurrency)} />
           </dl>
         </div>
       )}

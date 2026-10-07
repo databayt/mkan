@@ -3,7 +3,9 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useParams } from 'next/navigation';
+import { formatCurrency } from '@/lib/i18n/formatters';
+import type { Locale } from '@/components/internationalization/config';
 import HostStepLayout from '@/components/host/host-step-layout';
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
@@ -15,9 +17,9 @@ interface PricePageProps {
   params: Promise<{ id: string }>;
 }
 
-// Nightly rates are Sudanese pounds app-wide (cards, editor, checkout render
-// "SDG …" / "… ج.س"); the input keeps a plain latin prefix in both locales.
-const CURRENCY_PREFIX = "SDG ";
+// The input keeps a plain latin ISO prefix in both locales; the code is the
+// listing's own currency (a brand-new listing defaults to SDG). This step only
+// edits pricePerNight — it never changes the currency.
 
 const PricePageContent = ({ params }: PricePageProps) => {
   const router = useRouter();
@@ -26,6 +28,10 @@ const PricePageContent = ({ params }: PricePageProps) => {
   const [id, setId] = React.useState<string>('');
   const { enableNext } = useHostValidation();
   const { listing, updateListingData, loadListing } = useListing();
+  const routeParams = useParams<{ lang?: string }>();
+  const lang = (routeParams?.lang ?? 'en') as Locale;
+  const listingCurrency = listing?.currency ?? 'SDG';
+  const CURRENCY_PREFIX = `${listingCurrency} `;
   // SDG default in a Port-Sudan-sane range (the old hardcoded "SR158" was the
   // wrong currency and off by orders of magnitude for SDG nightly rates).
   const [price, setPrice] = useState<number>(25000);
@@ -155,7 +161,11 @@ const PricePageContent = ({ params }: PricePageProps) => {
         {/* Guest price info */}
         <div className="mb-4">
           <Button variant="ghost" className="inline-flex items-center space-x-2 text-muted-foreground hover:text-foreground">
-            <span>{dict.hosting.pages.price.guestPriceBeforeTaxes.replace('{price}', String(guestPriceBeforeTaxes))}</span>
+            <span>{dict.hosting.pages.price.guestPriceBeforeTaxes
+              // dictionary strings still bake in "SDG" / "ج.س" around {price}; formatCurrency adds the listing's own
+              .replace(/\s*(SDG|ج\.س)\s*/g, ' ')
+              .replace('{price}', formatCurrency(guestPriceBeforeTaxes, lang, listingCurrency))
+              .trim()}</span>
             <ChevronDown size={16} />
           </Button>
         </div>

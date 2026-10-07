@@ -228,6 +228,7 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
           title: true,
           photoUrls: true,
           pricePerNight: true,
+          currency: true,
           averageRating: true,
         },
         take: 12,
@@ -261,6 +262,7 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
       title: l.title ?? "Listing",
       image: l.photoUrls?.[0] ?? null,
       price: l.pricePerNight ?? 0,
+      currency: l.currency,
       rating: l.averageRating ?? 0,
       city: listing.location?.city ?? "",
     }));
@@ -368,6 +370,7 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
         <MobileBookingProvider
           listingId={listingId}
           pricePerNight={serializedListing.pricePerNight || 700}
+          currency={serializedListing.currency ?? "SDG"}
           cleaningFee={serializedListing.cleaningFee ?? 0}
           city={serializedListing.location?.city ?? ""}
           phone={serializedListing.host?.phoneNumber || "+249915494649"}

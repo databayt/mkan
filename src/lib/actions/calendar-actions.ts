@@ -95,6 +95,8 @@ export interface CalendarListing {
   title: string;
   photo: string | null;
   basePrice: number;
+  /** ISO 4217 of basePrice, seasonal prices and booking totals. */
+  currency: string;
   minStay: number;
   isPublished: boolean;
   bookings: CalendarBooking[];
@@ -127,6 +129,7 @@ export async function getMulticalendar(input: unknown): Promise<MulticalendarDat
       title: true,
       photoUrls: true,
       pricePerNight: true,
+      currency: true,
       minStay: true,
       isPublished: true,
       bookings: {
@@ -168,6 +171,7 @@ export async function getMulticalendar(input: unknown): Promise<MulticalendarDat
       title: l.title ?? "Untitled",
       photo: l.photoUrls?.[0] ?? null,
       basePrice: l.pricePerNight ?? 0,
+      currency: l.currency ?? "SDG",
       minStay: l.minStay ?? 1,
       isPublished: l.isPublished,
       bookings: l.bookings.map((b) => ({

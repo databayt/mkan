@@ -4,6 +4,9 @@ import { usePrice } from './use-price'
 import { StepWrapper } from '../step-wrapper'
 import { StepNavigation } from '../step-navigation'
 import { FormField } from '../form-field'
+import { useParams } from 'next/navigation'
+import { formatCurrency } from '@/lib/i18n/formatters'
+import type { Locale } from '@/components/internationalization/config'
 import { useDictionary } from '@/components/internationalization/use-dictionary'
 
 export function PriceForm() {
@@ -14,12 +17,16 @@ export function PriceForm() {
     isLoading, 
     error, 
     isFormValid,
+    currency,
     pricePerNight,
     securityDeposit,
     applicationFee
   } = usePrice()
   const dict = useDictionary()
   const t = dict?.host?.price
+  const params = useParams<{ lang?: string }>()
+  const lang = (params?.lang ?? 'en') as Locale
+  const money = (n: number) => formatCurrency(n, lang, currency)
 
   return (
     <StepWrapper>
@@ -32,7 +39,7 @@ export function PriceForm() {
           >
             <div className="relative">
               <span className="absolute start-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
-                $
+                {currency}
               </span>
               <input
                 type="number"
@@ -40,7 +47,7 @@ export function PriceForm() {
                 max="10000"
                 step="1"
                 {...form.register('pricePerNight', { valueAsNumber: true })}
-                className="w-full ps-8 pe-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full ps-14 pe-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="50"
               />
             </div>
@@ -53,14 +60,14 @@ export function PriceForm() {
           >
             <div className="relative">
               <span className="absolute start-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
-                $
+                {currency}
               </span>
               <input
                 type="number"
                 min="0"
                 step="1"
                 {...form.register('securityDeposit', { valueAsNumber: true })}
-                className="w-full ps-8 pe-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full ps-14 pe-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="0"
               />
             </div>
@@ -73,14 +80,14 @@ export function PriceForm() {
           >
             <div className="relative">
               <span className="absolute start-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
-                $
+                {currency}
               </span>
               <input
                 type="number"
                 min="0"
                 step="1"
                 {...form.register('applicationFee', { valueAsNumber: true })}
-                className="w-full ps-8 pe-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full ps-14 pe-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="0"
               />
             </div>
@@ -93,24 +100,24 @@ export function PriceForm() {
           <div className="space-y-2">
             <div className="flex justify-between">
               <span>{t?.baseLabel ?? "Base price per night"}</span>
-              <span>${pricePerNight || 0}</span>
+              <span>{money(pricePerNight || 0)}</span>
             </div>
             {(securityDeposit ?? 0) > 0 && (
               <div className="flex justify-between">
                 <span>{t?.deposit ?? "Security deposit"}</span>
-                <span>${securityDeposit}</span>
+                <span>{money(securityDeposit ?? 0)}</span>
               </div>
             )}
             {(applicationFee ?? 0) > 0 && (
               <div className="flex justify-between">
                 <span>{t?.fee ?? "Application fee"}</span>
-                <span>${applicationFee}</span>
+                <span>{money(applicationFee ?? 0)}</span>
               </div>
             )}
             <div className="border-t pt-2 mt-2">
               <div className="flex justify-between font-medium">
                 <span>{t?.total ?? "Total for 1 night"}</span>
-                <span>${(pricePerNight || 0) + (securityDeposit || 0) + (applicationFee || 0)}</span>
+                <span>{money((pricePerNight || 0) + (securityDeposit || 0) + (applicationFee || 0))}</span>
               </div>
             </div>
           </div>

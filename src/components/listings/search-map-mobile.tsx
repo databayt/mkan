@@ -194,7 +194,7 @@ export default function SearchMapMobile({
       el.className =
         "flex items-center h-8 rounded-full px-3 text-sm font-semibold border shadow-md cursor-pointer transition";
       el.textContent =
-        l.pricePerNight != null ? formatCurrency(l.pricePerNight, locale) : "—";
+        l.pricePerNight != null ? formatCurrency(l.pricePerNight, locale, l.currency ?? "SDG") : "—";
       if (l.title) el.title = l.title;
       paintPin(el, id === activeIdRef.current);
       el.addEventListener("click", (e) => {
@@ -331,8 +331,8 @@ export default function SearchMapMobile({
                 discountPct > 0 ? Math.round(baseTotal * (1 - discountPct / 100)) : baseTotal;
               const priceNumber =
                 nights && total != null
-                  ? formatCurrency(total, locale)
-                  : formatCurrency(price, locale);
+                  ? formatCurrency(total, locale, l.currency ?? "SDG")
+                  : formatCurrency(price, locale, l.currency ?? "SDG");
               const priceSuffix =
                 nights != null
                   ? (sp?.forNights ?? "for {count} nights").replace("{count}", String(nights))

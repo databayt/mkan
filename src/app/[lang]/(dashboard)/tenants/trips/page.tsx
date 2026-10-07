@@ -17,6 +17,8 @@ import { useDictionary } from '@/components/internationalization/dictionary-cont
 import { useLocale } from '@/components/internationalization/use-locale';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/lib/i18n/formatters';
+import type { Locale } from '@/components/internationalization/config';
 import { useTransition } from 'react';
 
 interface TransportBooking {
@@ -61,6 +63,7 @@ interface HomeBooking {
     id: number;
     title: string | null;
     photoUrls: string[];
+    currency?: string | null;
     location: { city: string; country: string } | null;
   };
 }
@@ -324,8 +327,7 @@ const HomeBookingCard = ({ booking, lang, dict, getStatusColor, isPast, onCancel
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="text-xl font-bold">
-            {(dict.common as any)?.currency ?? "$"}
-            {booking.totalPrice.toLocaleString()}
+            {formatCurrency(booking.totalPrice, lang as Locale, booking.listing.currency ?? 'SDG')}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild>

@@ -82,6 +82,7 @@ export function ListingCarouselSection({
     location: `${listing.location?.city || ""}, ${listing.location?.state || ""}`,
     dates: undefined,
     price: listing.pricePerNight || 0,
+    currency: listing.currency ?? "SDG",
     rating: listing.averageRating || 4.5,
     isSuperhostBadge: false,
     isGuestFavorite: qualifiesAsGuestFavorite(listing),

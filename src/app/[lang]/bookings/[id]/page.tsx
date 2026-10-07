@@ -9,6 +9,7 @@ import { getDictionary } from "@/components/internationalization/dictionaries";
 import { getText } from "@/components/translation/localize";
 import CancelBookingButton from "./cancel-button";
 import { listingSegment } from "@/lib/listing-code";
+import { formatCurrency } from "@/lib/i18n/formatters";
 
 export default async function BookingConfirmationPage({
   params,
@@ -29,7 +30,6 @@ export default async function BookingConfirmationPage({
 
   const dict = (await getDictionary(lang as Locale)) as unknown as Record<string, Record<string, string>>;
   const t = dict.booking ?? {};
-  const currency = dict.common?.currency ?? "$";
 
   const b = booking as unknown as {
     id: number;
@@ -45,6 +45,7 @@ export default async function BookingConfirmationPage({
       sourceListingId: string | null;
       title: string | null;
       photoUrls: string[];
+      currency?: string | null;
       location: { city: string; country: string; address: string } | null;
     };
   };
@@ -130,8 +131,7 @@ export default async function BookingConfirmationPage({
           <div className="pt-3 border-t flex justify-between">
             <span className="text-sm font-medium">{t.total ?? "Total"}</span>
             <span className="text-sm font-medium">
-              {currency}
-              {b.totalPrice}
+              {formatCurrency(b.totalPrice, lang as Locale, b.listing.currency ?? "SDG")}
             </span>
           </div>
         </div>

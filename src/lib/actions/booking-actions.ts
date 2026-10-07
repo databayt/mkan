@@ -335,6 +335,7 @@ export async function getGuestBookings(filters?: unknown) {
               title: true,
               photoUrls: true,
               pricePerNight: true,
+              currency: true,
               location: { select: { city: true, country: true } },
             },
           },

@@ -48,6 +48,8 @@ export interface ConversationDetail {
   listingHref: string | null;
   listingTitle: string | null;
   listingPhoto: string | null;
+  /** ISO 4217 of the listing — every money field of its bookings is in it. */
+  listingCurrency: string;
   bookingId: number | null;
   subject: string | null;
   booking: {
@@ -122,7 +124,7 @@ export async function getConversation(id: unknown): Promise<ConversationDetail |
       listingId: true,
       bookingId: true,
       guest: { select: { username: true, image: true } },
-      listing: { select: { title: true, photoUrls: true, code: true, sourceListingId: true } },
+      listing: { select: { title: true, photoUrls: true, code: true, sourceListingId: true, currency: true } },
       booking: {
         select: { checkIn: true, checkOut: true, guestCount: true, status: true, totalPrice: true },
       },
@@ -154,6 +156,7 @@ export async function getConversation(id: unknown): Promise<ConversationDetail |
       ? await getText(c.listing.title, await getDisplayLang())
       : null,
     listingPhoto: c.listing?.photoUrls?.[0] ?? null,
+    listingCurrency: c.listing?.currency ?? "SDG",
     bookingId: c.bookingId,
     subject: c.subject,
     booking: c.booking

@@ -16,6 +16,8 @@ import {
 import { getListing } from "@/components/host/actions";
 import { getListingLeases } from "@/lib/actions/user-actions";
 import { getLeasePayments } from "@/lib/actions/payment-actions";
+import { formatCurrency } from "@/lib/i18n/formatters";
+import type { Locale } from "@/components/internationalization/config";
 import { ArrowDownToLine, ArrowLeft, Check, Download } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -152,7 +154,7 @@ const PropertyTenants = () => {
                       </div>
                       <div>{new Date(lease.endDate).toLocaleDateString()}</div>
                     </TableCell>
-                    <TableCell>${lease.rent.toFixed(2)}</TableCell>
+                    <TableCell>{formatCurrency(lease.rent, (Array.isArray(lang) ? lang[0] : lang ?? "en") as Locale, property?.currency ?? undefined)}</TableCell>
                     <TableCell>
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-semibold ${

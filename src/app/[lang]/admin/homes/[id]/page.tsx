@@ -9,6 +9,7 @@ import { localizeListing } from "@/components/translation/localize";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { listingSegment } from "@/lib/listing-code";
+import { formatCurrency } from "@/lib/i18n/formatters";
 
 export default async function AdminListingDetailPage({
   params,
@@ -125,13 +126,13 @@ export default async function AdminListingDetailPage({
               <span className="text-muted-foreground">
                 {a.pricePerNight ?? "Per night"}:
               </span>{" "}
-              ${(listing.pricePerNight ?? 0).toFixed(0)}
+              {formatCurrency(listing.pricePerNight ?? 0, lang as Locale, listing.currency ?? "SDG")}
             </div>
             <div>
               <span className="text-muted-foreground">
                 {a.cleaningFee ?? "Cleaning fee"}:
               </span>{" "}
-              ${(listing.cleaningFee ?? 0).toFixed(0)}
+              {formatCurrency(listing.cleaningFee ?? 0, lang as Locale, listing.currency ?? "SDG")}
             </div>
           </CardContent>
         </Card>

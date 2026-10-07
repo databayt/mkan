@@ -90,7 +90,7 @@ export function FinishSetupForm() {
               <div className="text-end">
                 <p className="text-lg font-medium">
                   {fill(t?.perNight ?? '{price} / night', {
-                    price: formatCurrency(listing.pricePerNight || 0, lang),
+                    price: formatCurrency(listing.pricePerNight || 0, lang, listing.currency),
                   })}
                 </p>
               </div>

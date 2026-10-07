@@ -39,6 +39,8 @@ interface MobileBookingValue {
   /** Stay total (nights × rate + cleaning fee) — the all-fees-included price. */
   total: number;
   pricePerNight: number;
+  /** ISO 4217 code of the listing's own currency. */
+  currency: string;
   city: string;
   phone: string;
   rating: number;
@@ -68,6 +70,7 @@ function parseDateParam(value?: string): Date | undefined {
 interface MobileBookingProviderProps {
   listingId: number;
   pricePerNight: number;
+  currency?: string | null;
   cleaningFee?: number;
   city?: string;
   phone: string;
@@ -82,6 +85,7 @@ interface MobileBookingProviderProps {
 export function MobileBookingProvider({
   listingId,
   pricePerNight,
+  currency: currencyProp,
   cleaningFee = 0,
   city = "",
   phone,
@@ -151,12 +155,13 @@ export function MobileBookingProvider({
       nights,
       total: nights * pricePerNight + (nights > 0 ? cleaningFee : 0),
       pricePerNight,
+      currency: currencyProp || "SDG",
       city,
       phone,
       rating,
       reviewsCount,
     };
-  }, [listingId, range, blockedDates, pricePerNight, cleaningFee, city, phone, rating, reviewsCount]);
+  }, [listingId, range, blockedDates, pricePerNight, currencyProp, cleaningFee, city, phone, rating, reviewsCount]);
 
   return <MobileBookingContext.Provider value={value}>{children}</MobileBookingContext.Provider>;
 }

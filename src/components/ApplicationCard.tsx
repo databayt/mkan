@@ -2,6 +2,9 @@ import { cdn } from "@/lib/cdn";
 import { Mail, MapPin, PhoneCall } from "lucide-react";
 import Image from "next/image";
 import React, { useState } from "react";
+import { useParams } from "next/navigation";
+import { formatCurrency } from "@/lib/i18n/formatters";
+import type { Locale } from "@/components/internationalization/config";
 import { ApplicationWithDetails } from "@/lib/actions/application-actions";
 import { PropertyImageFallback } from "@/components/atom/property-image-fallback";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
@@ -18,6 +21,8 @@ const ApplicationCard = ({
   children,
 }: ApplicationCardProps) => {
   const dict = useDictionary();
+  const params = useParams<{ lang?: string }>();
+  const lang = (params?.lang ?? "en") as Locale;
   const t = (dict.application as unknown as { card?: Record<string, string> })?.card;
   const firstPhoto = application.listing.photoUrls?.[0];
   const [errored, setErrored] = useState(false);
@@ -67,7 +72,7 @@ const ApplicationCard = ({
               </div>
             </div>
             <div className="text-xl font-semibold">
-              ${application.listing.pricePerNight}{" "}
+              {formatCurrency(application.listing.pricePerNight ?? 0, lang, application.listing.currency ?? undefined)}{" "}
               <span className="text-sm font-normal">{dict.booking?.perNight ?? "/ night"}</span>
             </div>
           </div>

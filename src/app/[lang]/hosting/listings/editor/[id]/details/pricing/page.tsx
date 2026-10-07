@@ -11,6 +11,7 @@ import {
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { formatCurrency } from "@/lib/i18n/formatters";
 import type { Locale } from "@/components/internationalization/config";
+import { currencyLabel } from "@/components/hosting/currency-label";
 
 type PriceForm = {
   price: number;
@@ -25,9 +26,7 @@ export default function PricingPage() {
   const pp = dict?.listingEditor?.pricing;
   const params = useParams<{ lang: string }>();
   const lang = (params?.lang ?? "en") as Locale;
-  const currency = lang === "ar" ? "ج.س" : "SDG";
-
-  const { value, setValue, dirty, saving, save } = useEditorField<PriceForm>(
+  const { value, setValue, dirty, saving, save, listing } = useEditorField<PriceForm>(
     (l) => ({
       price: l.pricePerNight ?? 0,
       cleaning: l.cleaningFee ?? 0,
@@ -36,6 +35,10 @@ export default function PricingPage() {
     }),
     { price: 0, cleaning: 0, weekly: 0, monthly: 0 }
   );
+
+  // The editor never changes a listing's currency: it only displays it.
+  const listingCurrency = listing?.currency ?? "SDG";
+  const currency = currencyLabel(listingCurrency, lang);
 
   const set = (k: keyof PriceForm) => (v: string) =>
     setValue({ ...value, [k]: Number(v) || 0 });
@@ -89,17 +92,17 @@ export default function PricingPage() {
         <div className="rounded-2xl border border-border p-5">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">{pp?.label ?? "Per-night price"}</span>
-            <span>{formatCurrency(value.price, lang)}</span>
+            <span>{formatCurrency(value.price, lang, listingCurrency)}</span>
           </div>
           {value.cleaning > 0 ? (
             <div className="mt-2 flex items-center justify-between text-sm">
               <span className="text-muted-foreground">{pp?.cleaningFee ?? "Cleaning fee"}</span>
-              <span>{formatCurrency(value.cleaning, lang)}</span>
+              <span>{formatCurrency(value.cleaning, lang, listingCurrency)}</span>
             </div>
           ) : null}
           <div className="mt-3 flex items-center justify-between border-t border-border pt-3 font-semibold">
             <span>{pp?.total ?? "Guest price before taxes"}</span>
-            <span>{formatCurrency(guestTotal, lang)}</span>
+            <span>{formatCurrency(guestTotal, lang, listingCurrency)}</span>
           </div>
         </div>
       </div>

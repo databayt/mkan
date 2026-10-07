@@ -4,6 +4,8 @@ import { useGetPropertyQuery } from "@/state/api";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { MapPin, Star } from "lucide-react";
 import React from "react";
+import { useLocale } from "@/components/internationalization/use-locale";
+import { formatCurrency } from "@/lib/i18n/formatters";
 
 interface PropertyOverviewProps {
   propertyId: number;
@@ -11,6 +13,7 @@ interface PropertyOverviewProps {
 
 const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
   const dict = useDictionary();
+  const { locale } = useLocale();
   const t = dict?.property?.overview;
   const tCommon = dict?.property?.common;
   const {
@@ -59,7 +62,7 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
           <div>
             <div className="text-sm text-gray-500">{t?.pricePerNight ?? "Price / night"}</div>
             <div className="font-semibold">
-              ${(property.pricePerNight ?? 0).toLocaleString()}
+              {formatCurrency(property.pricePerNight ?? 0, locale, property.currency ?? "SDG")}
             </div>
           </div>
           <div className="border-s border-gray-300 h-10"></div>

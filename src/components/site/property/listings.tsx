@@ -84,6 +84,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
     location: `${property.location?.city || ""}, ${property.location?.state || ""}`,
     dates: undefined, // You can add availability dates logic here
     price: property.pricePerNight || 0,
+    currency: property.currency ?? "SDG",
     rating: property.averageRating || 4.5, // Default rating
     isSuperhostBadge: false, // You can add logic for this
     isGuestFavorite: qualifiesAsGuestFavorite(property),
@@ -134,7 +135,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg mb-2">{property.title}</h3>
                   <p className="text-gray-600 mb-2">{property.location}</p>
-                  <p className="font-semibold text-lg">{formatCurrency(property.price, locale)}/{dict?.rental?.property?.card?.night ?? 'night'}</p>
+                  <p className="font-semibold text-lg">{formatCurrency(property.price, locale, property.currency)}/{dict?.rental?.property?.card?.night ?? 'night'}</p>
                 </div>
               </div>
             </div>

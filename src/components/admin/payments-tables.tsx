@@ -27,7 +27,7 @@ type HomePayment = {
   lease: {
     id: number;
     tenant: { userId: string; name: string } | null;
-    listing: { id: number; title: string | null };
+    listing: { id: number; title: string | null; currency?: string | null };
   };
 };
 
@@ -76,6 +76,7 @@ export function HomePaymentsTable({
   payments: HomePayment[];
   labels: HomeLabels;
 }) {
+  const { locale } = useLocale();
   return (
     <Table>
       <TableHeader>
@@ -96,8 +97,8 @@ export function HomePaymentsTable({
               {p.lease.listing.title ?? `#${p.lease.listing.id}`}
             </TableCell>
             <TableCell className="text-sm">{p.lease.tenant?.name ?? "—"}</TableCell>
-            <TableCell className="text-end text-sm">${p.amountDue.toFixed(0)}</TableCell>
-            <TableCell className="text-end text-sm">${p.amountPaid.toFixed(0)}</TableCell>
+            <TableCell className="text-end text-sm">{formatCurrency(p.amountDue, locale, p.lease.listing.currency ?? "SDG")}</TableCell>
+            <TableCell className="text-end text-sm">{formatCurrency(p.amountPaid, locale, p.lease.listing.currency ?? "SDG")}</TableCell>
             <TableCell className="text-xs text-muted-foreground">
               {new Date(p.dueDate).toLocaleDateString()}
             </TableCell>

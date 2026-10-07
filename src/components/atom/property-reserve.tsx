@@ -17,6 +17,8 @@ import { toast } from "sonner";
 interface AirbnbReserveProps {
   listingId?: number;
   pricePerNight?: number;
+  /** ISO 4217 code of the listing's currency (default SDG). */
+  currency?: string;
   cleaningFee?: number | null;
   serviceFeePct?: number;
   maxGuests?: number;
@@ -48,6 +50,7 @@ function diffNights(from: Date, to: Date): number {
 const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
   listingId,
   pricePerNight = 0,
+  currency = "SDG",
   cleaningFee = 0,
   buttonText,
   hideButton = false,
@@ -167,7 +170,7 @@ const AirbnbReserve: React.FC<AirbnbReserveProps> = ({
     });
   };
 
-  const money = (n: number) => formatCurrency(n, locale);
+  const money = (n: number) => formatCurrency(n, locale, currency);
   const fmtDay = (d: Date | undefined) =>
     d ? formatDate(d, locale, { year: undefined, month: "short", day: "numeric" }) : "";
 

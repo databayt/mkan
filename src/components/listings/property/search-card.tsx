@@ -29,6 +29,8 @@ export interface SearchCardProps {
   dates?: string
   /** Per-night price. Always present. */
   pricePerNight: number
+  /** ISO 4217 code of the listing (default SDG). */
+  currency?: string
   /** When a date range is active, the trip total + its night count render as
       "{total} for {nights} nights" instead of the per-night price. */
   totalPrice?: number
@@ -60,6 +62,7 @@ export function SearchCard({
   specs,
   dates,
   pricePerNight,
+  currency = "SDG",
   totalPrice,
   originalPrice,
   nights,
@@ -95,8 +98,8 @@ export function SearchCard({
   // Price line: trip total when dates are set, otherwise per-night.
   const priceNumber =
     nights && totalPrice != null
-      ? formatCurrency(totalPrice, locale)
-      : formatCurrency(pricePerNight, locale)
+      ? formatCurrency(totalPrice, locale, currency)
+      : formatCurrency(pricePerNight, locale, currency)
   const priceSuffix =
     nights && totalPrice != null
       ? (sp?.forNights ?? "for {count} nights").replace("{count}", String(nights))
@@ -105,7 +108,7 @@ export function SearchCard({
   const shownPrice = nights && totalPrice != null ? totalPrice : pricePerNight
   const originalNumber =
     originalPrice != null && originalPrice > shownPrice
-      ? formatCurrency(originalPrice, locale)
+      ? formatCurrency(originalPrice, locale, currency)
       : null
 
   return (

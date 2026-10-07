@@ -424,6 +424,7 @@ export async function listAllListingsAdmin({
         isPublished: true,
         draft: true,
         pricePerNight: true,
+        currency: true,
         averageRating: true,
         createdAt: true,
         host: { select: { id: true, email: true, username: true } },
@@ -546,7 +547,7 @@ export async function listAllHomePaymentsAdmin({
           select: {
             id: true,
             tenant: { select: { userId: true, name: true } },
-            listing: { select: { id: true, title: true } },
+            listing: { select: { id: true, title: true, currency: true } },
           },
         },
       },
@@ -601,7 +602,7 @@ export async function listAllBookingPaymentsAdmin({
           select: {
             id: true,
             guest: { select: { id: true, email: true, username: true } },
-            listing: { select: { id: true, title: true } },
+            listing: { select: { id: true, title: true, currency: true } },
           },
         },
       },

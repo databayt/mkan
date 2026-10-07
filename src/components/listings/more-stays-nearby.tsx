@@ -14,6 +14,7 @@ export interface NearbyStay {
   title: string;
   image: string | null;
   price: number;
+  currency?: string | null;
   rating: number;
   city: string;
 }
@@ -101,7 +102,7 @@ export default function MoreStaysNearby({
             </div>
             <h3 className="mt-2 truncate text-sm font-medium text-[#222222]">{s.title}</h3>
             <div className="mt-1 flex items-center justify-between gap-2 text-sm text-[#222222]">
-              <span>{formatCurrency(s.price, lang as Locale)}</span>
+              <span>{formatCurrency(s.price, lang as Locale, s.currency ?? "SDG")}</span>
               <span className="flex flex-shrink-0 items-center gap-1">
                 <RatingStar size={11} />
                 {s.rating > 0

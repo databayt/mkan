@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { Locale } from "@/components/internationalization/config";
 import { useIsDesktop } from "@/hooks/use-is-desktop";
 import { formatCurrency, formatNumber, formatDate } from "@/lib/i18n/formatters";
+import { currencyLabel } from "../currency-label";
 import {
   getMulticalendar,
   setAvailability,
@@ -286,7 +287,7 @@ export default function Multicalendar({
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-foreground">{listing.title}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {formatCurrency(listing.basePrice, lang)}
+                      {formatCurrency(listing.basePrice, lang, listing.currency)}
                     </p>
                   </div>
                 </div>
@@ -497,7 +498,7 @@ export function SidePanel({
 
       <div className="flex-1 overflow-y-auto p-5">
         {reservedBooking ? (
-          <ReservedCard booking={reservedBooking} lang={lang} t={t} />
+          <ReservedCard booking={reservedBooking} currency={listing.currency} lang={lang} t={t} />
         ) : (
           <div className="space-y-6">
             {/* availability */}
@@ -542,7 +543,7 @@ export function SidePanel({
               </label>
               <div className="flex items-center gap-2">
                 <div className="flex flex-1 items-center rounded-lg border border-border px-3 focus-within:border-foreground">
-                  <span className="text-sm text-muted-foreground">{lang === "ar" ? "ج.س" : "SDG"}</span>
+                  <span className="text-sm text-muted-foreground">{currencyLabel(listing.currency, lang)}</span>
                   <input
                     id="mc-price"
                     type="number"
@@ -575,7 +576,7 @@ export function SidePanel({
   );
 }
 
-function ReservedCard({ booking, lang, t }: { booking: CalendarBooking; lang: Locale; t: MulticalDict }) {
+function ReservedCard({ booking, currency, lang, t }: { booking: CalendarBooking; currency: string; lang: Locale; t: MulticalDict }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -601,7 +602,7 @@ function ReservedCard({ booking, lang, t }: { booking: CalendarBooking; lang: Lo
           label={t.guests ?? "Guests"}
           value={formatNumber(booking.guestCount, lang)}
         />
-        <Row label={t.total ?? "Total"} value={formatCurrency(booking.totalPrice, lang)} />
+        <Row label={t.total ?? "Total"} value={formatCurrency(booking.totalPrice, lang, currency)} />
       </dl>
     </div>
   );

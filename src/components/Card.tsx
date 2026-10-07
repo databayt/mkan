@@ -102,7 +102,7 @@ const Card = ({
             </span>
           </div>
           <p className="text-lg font-bold mb-3">
-            {formatCurrency(property.pricePerMonth ?? 0, locale)}{" "}
+            {formatCurrency(property.pricePerMonth ?? 0, locale, property.currency ?? "SDG")}{" "}
             <span className="text-gray-600 text-base font-normal"> /{dict.rental?.listing?.perMonth ?? "month"}</span>
           </p>
         </div>

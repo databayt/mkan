@@ -280,7 +280,7 @@ export default function MobileCalendar({
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">{l.title}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {formatCurrency(l.basePrice, lang)}
+                        {formatCurrency(l.basePrice, lang, l.currency)}
                       </p>
                     </div>
                     {active && <Check className="size-4 flex-shrink-0 text-foreground" />}

@@ -118,6 +118,7 @@ export function SearchResults({
             specs={buildSpecs(l)}
             dates={datesLabel}
             pricePerNight={price}
+            currency={l.currency ?? "SDG"}
             totalPrice={nights ? discountedTotal : undefined}
             originalPrice={nights && discountPct > 0 ? baseTotal : undefined}
             nights={nights}

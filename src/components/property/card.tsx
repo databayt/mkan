@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { PropertyImage } from '@/components/atom/property-image'
 import GuestFavoriteBadge from '@/components/listings/guest-favorite-badge'
 import { useDictionary } from '@/components/internationalization/dictionary-context'
+import { useLocale } from '@/components/internationalization/use-locale'
+import { formatCurrency } from '@/lib/i18n/formatters'
 
 interface PropertyCardProps {
   id: string
@@ -16,6 +18,7 @@ interface PropertyCardProps {
   location: string
   dates?: string
   price: number
+  currency?: string
   rating: number
   isSuperhostBadge?: boolean
   /** "Guest favorite" pill on the image's top-start corner (Airbnb). */
@@ -33,6 +36,7 @@ export function PropertyCard({
   location,
   dates,
   price,
+  currency,
   rating,
   isSuperhostBadge = false,
   isGuestFavorite = false,
@@ -42,6 +46,7 @@ export function PropertyCard({
   className
 }: PropertyCardProps) {
   const dict = useDictionary()
+  const { locale } = useLocale()
   const t = dict?.property?.card
   const guestFavoriteLabel =
     (dict.property?.guestFavorite as Record<string, string> | undefined)?.title ?? 'Guest favorite'
@@ -159,7 +164,7 @@ export function PropertyCard({
         {/* Price and Rating Row */}
         <div className="flex items-center gap-2">
           <div className="text-gray-500 text-xs">
-            <span className="font-medium">{t?.currency ?? "SDG"}{price}</span>
+            <span className="font-medium">{formatCurrency(price, locale, currency ?? "SDG")}</span>
             <span className="text-gray-500 text-xs"> {t?.night ?? "night"}</span>
           </div>
           <div className="flex items-center">

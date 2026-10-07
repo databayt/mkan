@@ -361,6 +361,7 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                             <AirbnbReserve
                                 listingId={listing.id}
                                 pricePerNight={listing.pricePerNight || 0}
+                                currency={listing.currency ?? "SDG"}
                                 cleaningFee={listing.cleaningFee ?? null}
                                 maxGuests={listing.guestCount ?? 10}
                                 rating={listing.averageRating || 4.5}
@@ -379,7 +380,7 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
                             <div className="rounded-2xl border border-[#DDDDDD] p-6 shadow-[0_6px_16px_rgba(0,0,0,0.12)]">
                                 <div className="mb-4 flex items-baseline gap-1.5">
                                     <span className="text-[22px] font-semibold text-[#222222]">
-                                        {formatCurrency(listing.pricePerNight || 0, locale)}
+                                        {formatCurrency(listing.pricePerNight || 0, locale, listing.currency ?? "SDG")}
                                     </span>
                                     <span className="text-base text-[#222222]">
                                         {dict?.property?.contactHost?.perNight ?? "per night"}

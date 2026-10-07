@@ -29,6 +29,7 @@ export type ApplicationWithDetails = {
     id: number;
     title: string | null;
     pricePerNight: number | null;
+    currency?: string | null;
     photoUrls: string[];
     location: {
       city: string;
@@ -103,6 +104,7 @@ export async function getApplications() {
             id: true,
             title: true,
             pricePerNight: true,
+            currency: true,
             photoUrls: true,
             location: {
               select: { city: true, country: true, address: true },
@@ -412,6 +414,7 @@ export async function getManagerApplications() {
             id: true,
             title: true,
             pricePerNight: true,
+            currency: true,
             photoUrls: true,
             location: {
               select: { city: true, country: true, address: true },

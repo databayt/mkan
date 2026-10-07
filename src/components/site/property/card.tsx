@@ -19,6 +19,8 @@ interface PropertyCardProps {
   location: string
   dates?: string
   price: number
+  /** ISO 4217 code of the listing (default SDG). */
+  currency?: string
   rating: number
   isSuperhostBadge?: boolean
   /** "Guest favorite" pill on the image's top-start corner (Airbnb). */
@@ -42,6 +44,7 @@ export function PropertyCard({
   location,
   dates,
   price,
+  currency,
   rating,
   isSuperhostBadge = false,
   isGuestFavorite = false,
@@ -170,7 +173,7 @@ export function PropertyCard({
         {/* Price and Rating Row */}
         <div className="flex items-center gap-2 leading-tight">
           <div className="text-gray-500 text-xs leading-tight">
-            <span className="font-medium text-gray-900 leading-tight">{formatCurrency(price, locale)}</span>
+            <span className="font-medium text-gray-900 leading-tight">{formatCurrency(price, locale, currency ?? "SDG")}</span>
             <span className="text-gray-500 text-xs leading-tight"> {dict.rental?.property?.card?.night}</span>
           </div>
           <div className="flex items-center leading-tight">

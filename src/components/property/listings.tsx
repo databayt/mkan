@@ -93,6 +93,7 @@ const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
     // `pricePerMonth` is not a column — this read was undefined, so the card
     // rendered "$undefined/month". mkan prices per night.
     price: property.pricePerNight,
+    currency: property.currency ?? "SDG",
     rating: property.averageRating || 4.5, // Default rating
     isSuperhostBadge: false, // You can add logic for this
     isGuestFavorite: qualifiesAsGuestFavorite(property),
@@ -138,7 +139,7 @@ const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
                   <h3 className="font-semibold text-lg mb-2">{property.title}</h3>
                   <p className="text-gray-600 mb-2">{property.location}</p>
                   <p className="font-semibold text-lg">
-                    {formatCurrency(property.price ?? 0, locale)}
+                    {formatCurrency(property.price ?? 0, locale, property.currency)}
                     <span className="text-gray-600 font-normal"> / {t?.night ?? "night"}</span>
                   </p>
                 </div>

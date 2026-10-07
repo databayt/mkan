@@ -8,6 +8,7 @@ import { getTenantFavorites } from "@/lib/actions/user-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { localizeListings } from "@/components/translation/localize";
 import { listingSegment } from "@/lib/listing-code";
+import { formatCurrency } from "@/lib/i18n/formatters";
 
 interface FavoritesContentProps {
   lang: string;
@@ -23,7 +24,6 @@ interface FavoritesContentProps {
 export default async function FavoritesContent({ lang }: FavoritesContentProps) {
   const dict = (await getDictionary(lang as Locale)) as unknown as Record<string, Record<string, string>>;
   const t = (dict.dashboard as Record<string, Record<string, string>> | undefined)?.favorites ?? {};
-  const currency = dict.common?.currency ?? "$";
   const rawFavorites = (await getTenantFavorites()) as unknown as Array<Record<string, unknown>>;
   const favorites = (await localizeListings(rawFavorites, lang as Locale)) as unknown as Array<{
     id: number;
@@ -31,6 +31,7 @@ export default async function FavoritesContent({ lang }: FavoritesContentProps) 
     sourceListingId: string | null;
     title: string | null;
     pricePerNight: number | null;
+    currency?: string | null;
     photoUrls: string[];
     location: { city: string; country: string } | null;
   }>;
@@ -90,8 +91,7 @@ export default async function FavoritesContent({ lang }: FavoritesContentProps) 
                 )}
                 <div className="text-sm">
                   <span className="font-medium">
-                    {currency}
-                    {listing.pricePerNight ?? 0}
+                    {formatCurrency(listing.pricePerNight ?? 0, lang as Locale, listing.currency ?? "SDG")}
                   </span>
                   <span className="text-muted-foreground"> / {t.perNight ?? "night"}</span>
                 </div>

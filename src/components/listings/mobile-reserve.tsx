@@ -57,7 +57,7 @@ const MobileReserve = ({ className = "" }: { className?: string }) => {
   const { locale } = useLocale();
   const dict = useDictionary();
   const isAr = locale === "ar";
-  const { listingId, range, state, nights, total, phone, rating, reviewsCount } = useMobileBooking();
+  const { listingId, range, state, nights, total, currency, phone, rating, reviewsCount } = useMobileBooking();
 
   const t = {
     addDates: isAr ? "أضف التواريخ لعرض الأسعار" : "Add dates for prices",
@@ -198,7 +198,7 @@ const MobileReserve = ({ className = "" }: { className?: string }) => {
                 className="flex min-w-0 flex-col items-start text-start"
               >
                 <span className="text-base font-bold leading-6 text-[#222222] underline">
-                  {formatCurrency(total, locale)}
+                  {formatCurrency(total, locale, currency)}
                 </span>
                 <span className="max-w-full truncate text-xs leading-4 text-[#222222]">
                   {t.forNights} · {dates}

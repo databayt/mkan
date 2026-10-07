@@ -121,7 +121,7 @@ export default async function PropertiesPage({
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-2">
                   <DollarSign className="w-4 h-4 text-green-600" />
-                  <span className="font-medium">{formatCurrency(property.pricePerNight ?? 0, lang as Locale)}/{d.rental?.listing?.perNight ?? 'night'}</span>
+                  <span className="font-medium">{formatCurrency(property.pricePerNight ?? 0, lang as Locale, property.currency)}/{d.rental?.listing?.perNight ?? 'night'}</span>
                 </div>
                 
                 <Badge variant="secondary">

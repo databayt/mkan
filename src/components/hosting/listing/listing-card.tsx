@@ -155,7 +155,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewType }) => {
             editor / availability prompt). */}
         {listing.pricePerNight && (
           <p className="hidden text-xs font-medium text-gray-900 sm:text-sm lg:block">
-            {formatCurrency(listing.pricePerNight, locale)}/{dict.rental?.listing?.perNight ?? "night"}
+            {formatCurrency(listing.pricePerNight, locale, listing.currency ?? undefined)}/{dict.rental?.listing?.perNight ?? "night"}
           </p>
         )}
 

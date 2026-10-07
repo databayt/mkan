@@ -22,6 +22,7 @@ export const SEARCH_LISTING_SELECT = {
   title: true,
   description: true,
   pricePerNight: true,
+  currency: true,
   securityDeposit: true,
   applicationFee: true,
   cleaningFee: true,

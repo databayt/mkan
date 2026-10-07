@@ -11,6 +11,7 @@ import { getDictionary } from "@/components/internationalization/dictionaries";
 import { localizeListing } from "@/components/translation/localize";
 import ApplicationActions from "./actions";
 import { listingSegment } from "@/lib/listing-code";
+import { formatCurrency } from "@/lib/i18n/formatters";
 
 /**
  * Manager-facing application detail page. Gives the host all the context
@@ -63,7 +64,7 @@ export default async function ManagerApplicationDetailPage({
 
   const dict = (await getDictionary(lang as Locale)) as unknown as Record<string, Record<string, string>>;
   const t = (dict.dashboard as Record<string, Record<string, string>> | undefined)?.applications ?? {};
-  const currency = dict.common?.currency ?? "$";
+  const listingCurrency = application.listing.currency ?? "SDG";
   const cover = application.listing.photoUrls?.[0];
 
   const statusColor =
@@ -134,8 +135,7 @@ export default async function ManagerApplicationDetailPage({
               <div className="text-sm">
                 {t.monthlyRent ?? "Monthly rent"}:{" "}
                 <span className="font-medium">
-                  {currency}
-                  {application.lease.rent}
+                  {formatCurrency(application.lease.rent, lang as Locale, listingCurrency)}
                 </span>
               </div>
             </section>
@@ -181,8 +181,7 @@ export default async function ManagerApplicationDetailPage({
           <div className="text-sm">
             {t.pricePerNight ?? "Price / night"}:{" "}
             <span className="font-medium">
-              {currency}
-              {application.listing.pricePerNight ?? 0}
+              {formatCurrency(application.listing.pricePerNight ?? 0, lang as Locale, listingCurrency)}
             </span>
           </div>
         </aside>
