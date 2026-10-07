@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { memoGet, memoSet } from "./memory-cache";
 import { translate } from "./actions";
 import { translateBatch } from "./google";
-import { detectScript, isTranslationEnabled } from "./util";
+import { detectSource, isTranslationEnabled } from "./util";
 import type { Lang } from "./types";
 
 /**
@@ -11,9 +11,13 @@ import type { Lang } from "./types";
  * translation is disabled or the text is already in the target script; any
  * Google failure also falls back to source so a render never breaks.
  */
-export async function getText(text: string | null | undefined, lang: Lang): Promise<string> {
+export async function getText(
+  text: string | null | undefined,
+  lang: Lang,
+  canonicalLocale?: string | null,
+): Promise<string> {
   if (!text) return text ?? "";
-  const src = detectScript(text);
+  const src = detectSource(text, canonicalLocale);
   if (src === lang) return text;
   // translate() always reads the cache (curated/manual rows apply even with no
   // key) and only hits Google when the flag is on.
@@ -35,17 +39,25 @@ export async function localize<T extends Record<string, unknown>>(
   rows: T[],
   fields: readonly string[],
   lang: Lang,
+  /**
+   * Each row's canonical (authored) locale. Defaults to the row's own
+   * `canonicalLocale` field; needed because Latin script can't tell English from
+   * Kinyarwanda. Rows authored in "rw" are never "translated" into rw.
+   */
+  canonicalOf: (row: T, index: number) => string | null | undefined = (row) =>
+    typeof row["canonicalLocale"] === "string" ? (row["canonicalLocale"] as string) : null,
 ): Promise<T[]> {
   if (rows.length === 0) return rows;
   const displayLang = lang;
 
   // Collect unique values needing translation, grouped by detected source lang.
   const wantedBySource = new Map<Lang, Set<string>>();
-  for (const row of rows) {
+  rows.forEach((row, rowIdx) => {
+    const canonical = canonicalOf(row, rowIdx);
     for (const field of fields) {
       const v = row[field];
       if (typeof v !== "string" || v.trim() === "") continue;
-      const src = detectScript(v);
+      const src = detectSource(v, canonical);
       if (src === displayLang) continue;
       let set = wantedBySource.get(src);
       if (!set) {
@@ -54,7 +66,7 @@ export async function localize<T extends Record<string, unknown>>(
       }
       set.add(v);
     }
-  }
+  });
   if (wantedBySource.size === 0) return rows;
 
   const resolved = new Map<string, string>(); // sourceText → translated
@@ -122,12 +134,13 @@ export async function localize<T extends Record<string, unknown>>(
     }
   }
 
-  return rows.map((row) => {
+  return rows.map((row, rowIdx) => {
     let copy: T | null = null;
+    const canonical = canonicalOf(row, rowIdx);
     for (const field of fields) {
       const v = row[field];
       if (typeof v !== "string" || v.trim() === "") continue;
-      if (detectScript(v) === displayLang) continue;
+      if (detectSource(v, canonical) === displayLang) continue;
       const t = resolved.get(v);
       if (t === undefined || t === v) continue;
       if (copy === null) copy = { ...row };
@@ -203,7 +216,11 @@ export async function localizeNested<T extends Record<string, unknown>>(
     }
   });
   if (subs.length === 0) return rows;
-  const localized = await localize(subs, fields, lang);
+  // A nested object (location) inherits its parent row's canonical locale.
+  const localized = await localize(subs, fields, lang, (_sub, j) => {
+    const parent = rows[idx[j]!]!["canonicalLocale"];
+    return typeof parent === "string" ? parent : null;
+  });
   let out: T[] | null = null;
   localized.forEach((sub, j) => {
     if (sub === subs[j]) return;

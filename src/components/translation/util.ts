@@ -12,13 +12,33 @@ export function detectScript(text: string | null | undefined): Lang {
   return "ar";
 }
 
-/** True when `text` needs translating to be shown in `displayLang`. */
+/**
+ * The source language of `text`. Script detection can only tell Arabic from
+ * Latin, and Kinyarwanda is Latin like English — so Latin text on a record whose
+ * `canonicalLocale` is "rw" is Kinyarwanda, not English. Every other input
+ * resolves exactly as detectScript() does (en/ar behaviour is unchanged).
+ */
+export function detectSource(
+  text: string | null | undefined,
+  canonicalLocale?: string | null,
+): Lang {
+  const script = detectScript(text);
+  if (script === "en" && canonicalLocale === "rw") return "rw";
+  return script;
+}
+
+/**
+ * True when `text` needs translating to be shown in `displayLang`. For
+ * displayLang "rw" any text needs translating unless the record's
+ * canonicalLocale is "rw" (nothing can be inferred from script alone).
+ */
 export function needsTranslation(
   text: string | null | undefined,
   displayLang: Lang,
+  canonicalLocale?: string | null,
 ): boolean {
   if (!text || text.trim() === "") return false;
-  return detectScript(text) !== displayLang;
+  return detectSource(text, canonicalLocale) !== displayLang;
 }
 
 /**

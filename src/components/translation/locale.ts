@@ -1,5 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { i18n } from "@/components/internationalization/config";
 import type { Lang } from "./types";
 
 /**
@@ -12,7 +13,8 @@ import type { Lang } from "./types";
 export async function getDisplayLang(): Promise<Lang> {
   try {
     const c = await cookies();
-    return c.get("NEXT_LOCALE")?.value === "en" ? "en" : "ar";
+    const v = c.get("NEXT_LOCALE")?.value;
+    return (i18n.locales as readonly string[]).includes(v ?? "") ? (v as Lang) : "ar";
   } catch {
     return "ar";
   }
