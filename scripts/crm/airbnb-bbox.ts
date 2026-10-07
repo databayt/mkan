@@ -313,7 +313,7 @@ function report(frontier: Frontier, store: Store, priorHomes: number): void {
   console.log(`  cells             ${cells.length} total, ${by('SATURATED').length} split into quadrants`);
   console.log(`    complete        ${by('COMPLETE').length}`);
   console.log(`    empty           ${by('EMPTY').length}`);
-  console.log(`    outside Sudan   ${by('SKIPPED_FOREIGN').length}  (never fetched)`);
+  console.log(`    outside region  ${by('SKIPPED_FOREIGN').length}  (never fetched)`);
   console.log(`    capped          ${by('CAPPED').length}${by('CAPPED').length ? '  ← still truncated at the minimum cell size' : ''}`);
   console.log(`    failed          ${by('FAILED').length}${by('FAILED').length ? '  ← rerun with --retry-failed' : ''}`);
   console.log(`    not yet visited ${unvisited.length}${unvisited.length ? '  ← rerun to continue' : ''}`);
@@ -364,7 +364,7 @@ async function main() {
     );
 
   console.log(`\n🗺  Airbnb ${REGION.countryEn} quadtree — seed depth ${frontier.seedDepth}, page ceiling ${PAGE_CAP}`);
-  console.log(`   ${Object.keys(frontier.cells).length} cells, ${pending().length} to visit, ${pruned} pruned as outside Sudan`);
+  console.log(`   ${Object.keys(frontier.cells).length} cells, ${pending().length} to visit, ${pruned} pruned as outside ${REGION.countryEn}`);
   console.log(`   ${priorHomes} homes already known\n`);
 
   if (DRY) {
