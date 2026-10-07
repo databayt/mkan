@@ -158,6 +158,9 @@ async function main() {
   let queue = homes.filter((h) => {
     if (ONLY.length) return ONLY.includes(h.airbnbListingId);
     if (REFRESH) return true;
+    // A non-Sudan wave only wants its city: once the en pass has read Airbnb's
+    // place line and disowned a home (Bugesera, Kamonyi…), later passes skip it.
+    if (REGION.key !== 'sudan' && LOCALE !== 'en' && h.placeCheck === 'SUSPECT_FOREIGN') return false;
     if (ONLY_MISSING) return !h.i18n?.[LOCALE]?.capturedAt;
     return true;
   });
