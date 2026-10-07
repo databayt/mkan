@@ -247,10 +247,10 @@ async function createUnseen(
 
   const listings = await prisma.listing.findMany({
     select: {
-      id: true, code: true, title: true, description: true, pricePerNight: true, photoUrls: true,
+      id: true, code: true, title: true, description: true, pricePerNight: true, currency: true, photoUrls: true,
       bedrooms: true, bathrooms: true, guestCount: true, propertyType: true,
       isPublished: true, draft: true, hostId: true, sourceListingId: true, createdAt: true,
-      location: { select: { address: true, city: true, state: true, latitude: true, longitude: true } },
+      location: { select: { address: true, city: true, state: true, country: true, latitude: true, longitude: true } },
     },
     orderBy: { id: 'asc' },
   });
@@ -321,13 +321,14 @@ async function createUnseen(
         description: l.description ?? undefined,
         // Not a discovery: the host put this here themselves.
         source: 'MKAN_SITE',
-        country: 'SUDAN',
+        // Sudan unless the Location says otherwise (the Kigali wave is Rwanda).
+        country: l.location?.country === 'Rwanda' ? 'RWANDA' : 'SUDAN',
         homeAddress: l.location
           ? {
               addressStreet1: l.location.address ?? '',
               addressCity: l.location.city || '',
               addressState: l.location.state || '',
-              addressCountry: 'Sudan',
+              addressCountry: l.location.country || 'Sudan',
               addressLat: l.location.latitude ?? undefined,
               addressLng: l.location.longitude ?? undefined,
             }
@@ -339,7 +340,9 @@ async function createUnseen(
         photoCount: (l.photoUrls ?? []).length,
         coverPhotoUrl: linkOne((l.photoUrls ?? [])[0]),
         photosRehosted: true, // born on our own CDN — nothing to re-host
-        priceNightSdg: currency(l.pricePerNight, 'SDG'),
+        // Only an SDG price belongs in priceNightSdg; anything else is the listing's own currency.
+        priceNightSdg: l.currency === 'SDG' ? currency(l.pricePerNight, 'SDG') : undefined,
+        priceNightLocal: l.currency !== 'SDG' ? currency(l.pricePerNight, l.currency) : undefined,
         propertyType: l.propertyType ? PROPERTY_TYPE[l.propertyType] : undefined,
         mkanPropertyType: l.propertyType ? PROPERTY_TYPE[l.propertyType] : undefined,
         // `listingId` is the public code (`0001-01`) and is TEXT; `mkanListingId`
