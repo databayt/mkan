@@ -55,6 +55,7 @@
     "crm:sync-contacts": "tsx scripts/crm/sync-contacts-to-twenty.ts",
     "crm:outreach": "tsx scripts/crm/outreach.ts",
     "crm:seed-i18n": "tsx scripts/crm/seed-listing-translations.ts",
+    "crm:translate-rw": "tsx scripts/crm/translate-rw.ts",
     "crm:sync": "tsx scripts/crm/sync.ts",
     "crm:sync-down": "tsx scripts/crm/sync-down.ts",
     "crm:sync-up": "tsx scripts/crm/sync-up.ts",

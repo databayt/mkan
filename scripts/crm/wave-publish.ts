@@ -10,7 +10,8 @@
  *   npx tsx scripts/crm/wave-publish.ts --city=PORT_SUDAN            # dry plan
  *   FORCE_SEED=1 npx tsx scripts/crm/wave-publish.ts --city=PORT_SUDAN --apply
  *
- * Flags: --in=<scored/rehosted> --ledger=<import ledger> --city=<CITY|all>
+ * Flags: --region=<sudan|rwanda> --in=<scored/rehosted> --ledger=<import ledger> --city=<CITY|all>
+ *        --authorized-by=<name> (required with --force)
  *        --min-band=<AUTO_ONBOARD|MANUAL_REVIEW> --limit=<N> --apply --force
  *
  * ── What `--force` bypasses, and the decision behind it ────────────────────
@@ -49,7 +50,8 @@
 import { config } from 'dotenv';
 config({ override: true });
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, appendFileSync } from 'node:fs';
+import { regionFromArgv } from './regions';
 
 let prisma: (typeof import('@/lib/db'))['db'];
 
@@ -59,8 +61,12 @@ const argv = (n: string, d = ''): string => {
   const h = process.argv.find((a) => a.startsWith(`--${n}=`));
   return h ? h.split('=').slice(1).join('=') : d;
 };
-const IN = argv('in', 'scripts/crm/.data/airbnb-scored.json');
-const LEDGER = argv('ledger', 'scripts/crm/.data/mkan-import-ledger.json');
+const REGION = regionFromArgv();
+const IN = argv('in', REGION.key === 'sudan' ? REGION.files.scored : REGION.files.rehosted);
+const LEDGER = argv('ledger', REGION.files.ledger);
+/** Who authorized a --force wave. Required with --force; written to AUTH_LOG with every listing it published. */
+const AUTHORIZED_BY = argv('authorized-by', '');
+const AUTH_LOG = 'scripts/crm/.data/wave-publish-authorizations.jsonl';
 const CITY = argv('city', 'all').toUpperCase();
 const MIN_BAND = argv('min-band', 'MANUAL_REVIEW');
 const LIMIT = parseInt(argv('limit', '0'), 10) || 0;
@@ -144,6 +150,9 @@ async function main(): Promise<void> {
   if (FORCE && !process.env.FORCE_SEED) {
     throw new Error('--force bypasses the consent gate — re-run with FORCE_SEED=1 to confirm you mean it');
   }
+  if (FORCE && !AUTHORIZED_BY) {
+    throw new Error('--force needs --authorized-by=<name> — the override is recorded, never anonymous');
+  }
 
   // Minting the code here is what keeps mkan.sd and the CRM addressing the
   // same listing by the same string. The first eight codes were assigned by a
@@ -169,6 +178,21 @@ async function main(): Promise<void> {
     } catch (e) {
       console.warn(`! listing #${r.mkanListingId}: ${(e as Error).message}`);
     }
+  }
+  if (FORCE) {
+    appendFileSync(
+      AUTH_LOG,
+      JSON.stringify({
+        at: new Date().toISOString(),
+        region: REGION.key,
+        city: CITY,
+        authorizedBy: AUTHORIZED_BY,
+        bypassed: ['consent (claimedAt)', 'trust band', 'publishReady', 'gateNote'],
+        unclaimed: eligible.filter((r) => !claimed.has(r.mkanListingId!)).map((r) => r.mkanListingId),
+        listings: eligible.map((r) => r.mkanListingId),
+      }) + '\n',
+    );
+    console.log(`   override recorded → ${AUTH_LOG} (authorized by ${AUTHORIZED_BY})`);
   }
   console.log(`\n✅ ${flipped} listing(s) now Available (${CITY} wave). Sync mkanPublishState=LIVE + publishedAt back to Twenty.`);
   if (uncoded) {

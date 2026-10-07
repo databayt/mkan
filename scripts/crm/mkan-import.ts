@@ -33,7 +33,7 @@ import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { Amenity, PropertyType } from '@prisma/client';
 import { mapAmenities as mapAmenityNames, smokingFromAmenities } from './amenity-map';
-import { cityNameEn, stateNameEn, stateOfCity, type CityCode } from './sudan-places';
+import { regionFromArgv } from './regions';
 import { parseHouseRules, toListingHouseRules } from './house-rules';
 import { detectScript } from '@/components/translation/util';
 
@@ -46,8 +46,12 @@ const argv = (n: string, d = ''): string => {
   const h = process.argv.find((a) => a.startsWith(`--${n}=`));
   return h ? h.split('=').slice(1).join('=') : d;
 };
-const IN = argv('in', 'scripts/crm/.data/airbnb-scored.json');
-const OUT = argv('out', 'scripts/crm/.data/mkan-import-ledger.json');
+// `--region=rwanda` imports the Kigali wave: RWF prices, Rwandan Locations,
+// and its own ledger. Sudan stays the default.
+const REGION = regionFromArgv();
+const LOCAL = REGION.key !== 'sudan';
+const IN = argv('in', LOCAL ? REGION.files.rehosted : REGION.files.scored);
+const OUT = argv('out', REGION.files.ledger);
 const MIN_BAND = argv('min-band', 'MANUAL_REVIEW');
 /**
  * Import homes the trust gate would otherwise hold back.
@@ -74,11 +78,8 @@ const POSTAL_OF: Record<string, string> = { PORT_SUDAN: '33311' };
 // City/state names and the amenity table are shared — they used to be copied
 // here and into twenty-upsert.ts, which is how the CRM and the app ended up
 // able to disagree about the same listing.
-const cityLabel = (c: string): string => cityNameEn(c as CityCode);
-const stateLabel = (c: string): string => {
-  const s = stateOfCity(c as CityCode);
-  return s === 'UNKNOWN' ? '' : stateNameEn(s);
-};
+const cityLabel = (c: string): string => REGION.cityNameEn(c);
+const stateLabel = (c: string, state?: string | null): string => REGION.stateNameEn(c, state);
 const mapAmenities = (...groups: Array<string[] | null | undefined>): Amenity[] =>
   mapAmenityNames(...groups).map((n) => Amenity[n as keyof typeof Amenity]).filter(Boolean);
 const mapPropertyType = (v: string | null | undefined): PropertyType | undefined =>
@@ -100,6 +101,9 @@ interface ScoredHome {
   photosRehosted?: boolean;
   priceNightSar: number | null;
   priceNightSdg?: number | null;
+  /** Listing-currency price for non-Sudan regions (photo-rehost --fx-rate). */
+  priceNightLocal?: number | null;
+  homeState?: string | null;
   avgRating: number | null;
   reviewCount: number | null;
   mkanPropertyType: string | null;
@@ -148,12 +152,15 @@ function listingData(home: ScoredHome): Record<string, unknown> {
     home.i18n?.en?.amenities,
     home.i18n?.ar?.amenities
   );
-  const price = home.priceNightSdg ?? (FX && home.priceNightSar ? Math.round(home.priceNightSar * FX) : null);
+  const price = LOCAL
+    ? home.priceNightLocal ?? null
+    : home.priceNightSdg ?? (FX && home.priceNightSar ? Math.round(home.priceNightSar * FX) : null);
   const photos = home.photosRehosted ? home.photoUrls : []; // empty → app placeholder until G1.4
   return {
     title: home.title ?? 'Untitled',
     description: home.description ?? null,
     pricePerNight: price,
+    currency: REGION.currency,
     photoUrls: photos,
     amenities,
     highlights: [],
@@ -198,11 +205,12 @@ function listingData(home: ScoredHome): Record<string, unknown> {
 }
 function locationData(home: ScoredHome): Record<string, unknown> {
   return {
-    address: cityLabel(home.city),
+    address: LOCAL ? [stateLabel(home.city, home.homeState), cityLabel(home.city)].filter(Boolean).join(', ') : cityLabel(home.city),
     city: cityLabel(home.city),
-    state: stateLabel(home.city),
-    country: 'Sudan',
-    postalCode: POSTAL_OF[home.city] ?? '11111',
+    state: stateLabel(home.city, home.homeState),
+    country: REGION.countryEn,
+    // Rwanda has no postal codes in everyday use.
+    postalCode: LOCAL ? '' : POSTAL_OF[home.city] ?? '11111',
     latitude: home.latitude ?? 0,
     longitude: home.longitude ?? 0,
   };
@@ -216,6 +224,7 @@ async function main(): Promise<void> {
   const minRank = BAND_RANK[MIN_BAND] ?? 2;
   const skipped: string[] = [];
   let importable = payload.homes.filter((h) => {
+    if (LOCAL && (h as { placeCheck?: string }).placeCheck === 'SUSPECT_FOREIGN') { skipped.push(`${h.airbnbListingId} (not ${REGION.countryEn})`); return false; }
     if (!h.hostAirbnbId) { skipped.push(`${h.airbnbListingId} (no host)`); return false; }
     // A HEURISTIC host came from a whole-document key walk that a co-host or a
     // "similar listings" card can win. Provisioning an account for the wrong
@@ -274,7 +283,7 @@ async function main(): Promise<void> {
       for (const h of homes) {
         if (ledger.homes[h.airbnbListingId]) { console.log(`    = ${h.airbnbListingId} already imported`); continue; }
         const ld = listingData(h);
-        console.log(`    + ${(h.title ?? '').slice(0, 34).padEnd(34)} ${ld.propertyType ?? '—'} · ${ld.pricePerNight ?? 'price TBD'} SDG · ${(ld.amenities as Amenity[]).length} amenities · Busy`);
+        console.log(`    + ${(h.title ?? '').slice(0, 34).padEnd(34)} ${ld.propertyType ?? '—'} · ${ld.pricePerNight ?? 'price TBD'} ${REGION.currency} · ${(ld.amenities as Amenity[]).length} amenities · Busy`);
       }
     }
     console.log(`\nDRY RUN — no writes. Provisions ${[...byHost.keys()].filter((h) => !ledger.hosts[h]).length} new accounts, imports ${importable.filter((h) => !ledger.homes[h.airbnbListingId]).length} homes.`);
