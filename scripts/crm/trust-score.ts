@@ -10,6 +10,8 @@
  * `rubricVersion` is bumped when weights change so old scores aren't confused
  * with new ones.
  */
+import { KIGALI, isInRwanda } from '@/lib/geo/rwanda-places';
+
 export const RUBRIC_VERSION = 'v1';
 
 // ── inputs (loose — scrape record or Twenty record) ──────────────────────────
@@ -73,8 +75,12 @@ const CITY_CENTROID: Record<string, [number, number]> = {
   OMDURMAN: [15.64, 32.48],
   BAHRI: [15.63, 32.55],
   EAST_NILE: [15.6, 32.72],
+  KIGALI: [KIGALI.lat, KIGALI.lng],
 };
-const inSudan = (lat: number, lng: number) => lat >= 8.5 && lat <= 23.0 && lng >= 21.5 && lng <= 39.0;
+// "In a market we list" — Sudan, or Rwanda since the Kigali wave (2026-10-07).
+// Named inSudan for history; a Kigali home used to fail here and REJECT outright.
+const inSudan = (lat: number, lng: number) =>
+  (lat >= 8.5 && lat <= 23.0 && lng >= 21.5 && lng <= 39.0) || isInRwanda(lat, lng);
 function haversineKm(a: [number, number], b: [number, number]): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const [la1, lo1] = a, [la2, lo2] = b;
