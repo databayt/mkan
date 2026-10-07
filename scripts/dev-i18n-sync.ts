@@ -1,5 +1,5 @@
 /**
- * Sync / verify i18n translation-key parity between en.json and ar.json.
+ * Sync / verify i18n translation-key parity between en.json, ar.json and rw.json.
  *
  *   tsx scripts/dev-i18n-sync.ts --verify   # report drift, exit 1 if any (CI gate)
  *   tsx scripts/dev-i18n-sync.ts --fix       # inject [EN]/[AR] placeholders for missing keys
@@ -20,6 +20,7 @@ const I18N_DIR = join(
 )
 const EN_PATH = join(I18N_DIR, "en.json")
 const AR_PATH = join(I18N_DIR, "ar.json")
+const RW_PATH = join(I18N_DIR, "rw.json")
 const SCHEMA_PATH = join(process.cwd(), "prisma", "schema.prisma")
 
 const args = process.argv.slice(2)
@@ -99,6 +100,7 @@ function setNestedValue(obj: Json, path: string, value: unknown): void {
 function main() {
   const en = JSON.parse(readFileSync(EN_PATH, "utf-8")) as Json
   const ar = JSON.parse(readFileSync(AR_PATH, "utf-8")) as Json
+  const rw = JSON.parse(readFileSync(RW_PATH, "utf-8")) as Json
 
   const enKeys = new Set(getAllKeys(en))
   const arKeys = new Set(getAllKeys(ar))
@@ -106,11 +108,20 @@ function main() {
   const missingInEn = [...arKeys].filter((k) => !enKeys.has(k)).sort()
   const missingInAr = [...enKeys].filter((k) => !arKeys.has(k)).sort()
 
-  console.log("i18n parity check — en.json vs ar.json")
+  const rwKeys = new Set(getAllKeys(rw))
+  const missingInRw = [...enKeys].filter((k) => !rwKeys.has(k)).sort()
+  const extraInRw = [...rwKeys].filter((k) => !enKeys.has(k)).sort()
+
+  console.log("i18n parity check — en.json vs ar.json vs rw.json")
   console.log(`  en keys: ${enKeys.size}`)
   console.log(`  ar keys: ${arKeys.size}`)
+  console.log(`  rw keys: ${rwKeys.size}`)
 
-  let parityOk = missingInEn.length === 0 && missingInAr.length === 0
+  let parityOk =
+    missingInEn.length === 0 &&
+    missingInAr.length === 0 &&
+    missingInRw.length === 0 &&
+    extraInRw.length === 0
   if (parityOk) {
     console.log("✓ All keys are in sync.")
   } else {
@@ -122,7 +133,18 @@ function main() {
       console.log(`\nMissing in ar.json (${missingInAr.length}):`)
       missingInAr.forEach((k) => console.log(`  - ${k}`))
     }
+    if (missingInRw.length > 0) {
+      console.log(`\nMissing in rw.json (${missingInRw.length}):`)
+      missingInRw.forEach((k) => console.log(`  - ${k}`))
+    }
+    if (extraInRw.length > 0) {
+      console.log(`\nIn rw.json but not en.json (${extraInRw.length}):`)
+      extraInRw.forEach((k) => console.log(`  - ${k}`))
+    }
     if (FIX) {
+      for (const key of missingInRw) {
+        setNestedValue(rw, key, `[RW] ${String(getNestedValue(en, key))}`)
+      }
       for (const key of missingInEn) {
         setNestedValue(en, key, `[EN] ${String(getNestedValue(ar, key))}`)
       }
@@ -131,8 +153,9 @@ function main() {
       }
       writeFileSync(EN_PATH, JSON.stringify(en, null, 2) + "\n")
       writeFileSync(AR_PATH, JSON.stringify(ar, null, 2) + "\n")
+      writeFileSync(RW_PATH, JSON.stringify(rw, null, 2) + "\n")
       console.log(
-        `\nAdded ${missingInEn.length + missingInAr.length} placeholder(s). Replace the [EN]/[AR] markers with real translations.`
+        `\nAdded ${missingInEn.length + missingInAr.length + missingInRw.length} placeholder(s). Replace the [EN]/[AR]/[RW] markers with real translations.`
       )
       parityOk = true // placeholders injected — re-run after translating
     }
@@ -156,10 +179,12 @@ function main() {
       }
       const enMap = getNestedValue(en, path)
       const arMap = getNestedValue(ar, path)
+      const rwMap = getNestedValue(rw, path)
       const missing: string[] = []
       for (const v of values) {
         if (!(enMap && typeof enMap === "object" && (enMap as Json)[v] != null)) missing.push(`en ${path}.${v}`)
         if (!(arMap && typeof arMap === "object" && (arMap as Json)[v] != null)) missing.push(`ar ${path}.${v}`)
+        if (!(rwMap && typeof rwMap === "object" && (rwMap as Json)[v] != null)) missing.push(`rw ${path}.${v}`)
       }
       if (missing.length > 0) {
         enumOk = false
@@ -176,7 +201,7 @@ function main() {
     process.exit(0)
   }
   if (!parityOk) console.log("\nRun `pnpm i18n:sync` to add placeholder keys, then translate them.")
-  if (!enumOk) console.log("Add the missing enum labels to BOTH en.json and ar.json.")
+  if (!enumOk) console.log("Add the missing enum labels to en.json, ar.json AND rw.json.")
   process.exit(1)
 }
 

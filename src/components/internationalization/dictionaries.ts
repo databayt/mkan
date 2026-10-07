@@ -5,6 +5,7 @@ import type { Locale } from "./config";
 const dictionaries = {
   "en": () => import("./en.json").then((module) => module.default),
   "ar": () => import("./ar.json").then((module) => module.default),
+  "rw": () => import("./rw.json").then((module) => module.default),
 } as const;
 
 export const getDictionary = async (locale: Locale) => {

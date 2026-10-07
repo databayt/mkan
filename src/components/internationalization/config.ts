@@ -1,6 +1,6 @@
 export const i18n = {
   defaultLocale: 'ar',
-  locales: ['en', 'ar'], // Add your supported locales
+  locales: ['en', 'ar', 'rw'], // en + ar (default, RTL) + rw (Kinyarwanda)
 } as const;
 
 export type Locale = (typeof i18n)['locales'][number];
@@ -20,6 +20,14 @@ export const localeConfig = {
     nativeName: 'العربية',
     dir: 'rtl',
     flag: '🇸🇩',
+    dateFormat: 'dd/MM/yyyy',
+    currency: 'SDG',
+  },
+  'rw': {
+    name: 'Kinyarwanda',
+    nativeName: 'Ikinyarwanda',
+    dir: 'ltr',
+    flag: '🇷🇼',
     dateFormat: 'dd/MM/yyyy',
     currency: 'SDG',
   },
