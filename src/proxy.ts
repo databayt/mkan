@@ -218,7 +218,21 @@ function getLocale(request: NextRequest) {
   };
 
   const languages = new Negotiator({ headers }).languages();
-  return match(languages, locales, defaultLocale);
+
+  // rw is matched only on an explicit rw/rw-RW (or kin) tag. The best-fit
+  // matcher would otherwise map French browsers to Kinyarwanda (French is an
+  // official language of Rwanda) and change what every unsupported language
+  // used to resolve to. Everything else negotiates over the original locales,
+  // so en/ar behaviour is unchanged.
+  const isBase = (tag: string, bases: string[]) =>
+    bases.includes(tag.toLowerCase().split('-')[0]);
+  const firstRw = languages.findIndex((tag) => isBase(tag, ['rw', 'kin']));
+  if (firstRw !== -1) {
+    const firstEnAr = languages.findIndex((tag) => isBase(tag, ['en', 'ar']));
+    if (firstEnAr === -1 || firstRw < firstEnAr) return 'rw';
+  }
+  const negotiable = locales.filter((l) => l !== 'rw');
+  return match(languages, negotiable, defaultLocale);
 }
 
 // ---------------------------------------------------------------------------

@@ -134,7 +134,8 @@ export function ReportIssueDialog({
 }: ReportIssueDialogProps): React.JSX.Element {
   const params = useParams<{ lang?: string }>();
   const effectiveLang: ReportLang =
-    lang ?? (params?.lang === "ar" ? "ar" : "en");
+    lang ??
+    (params?.lang === "ar" || params?.lang === "rw" ? params.lang : "en");
   const dir = effectiveLang === "ar" ? "rtl" : "ltr";
   const t = React.useMemo<ReportDict>(
     () => ({ ...REPORT_DICTIONARY[effectiveLang], ...strings }),

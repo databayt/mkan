@@ -3,7 +3,9 @@
  * Repos can override per-language by extending this map.
  */
 
-export type ReportLang = "en" | "ar";
+import type { Locale } from "@/components/internationalization/config";
+
+export type ReportLang = Locale;
 
 export const REPORT_CATEGORY_LABELS = {
   en: {
@@ -25,6 +27,16 @@ export const REPORT_CATEGORY_LABELS = {
     auth: "تسجيل الدخول / الصلاحيات",
     i18n: "ترجمة / لغة",
     other: "أخرى",
+  },
+  rw: {
+    visual: "Isura / Imiterere",
+    broken: "Ntikora / Yapfuye",
+    data: "Amakuru atari yo",
+    slow: "Biratinda / Imikorere",
+    confusing: "Biravuna / Uburyo bwo gukoresha",
+    auth: "Kwinjira / Uburenganzira",
+    i18n: "Ubuhinduzi / Ururimi",
+    other: "Ibindi",
   },
 } as const;
 
@@ -100,6 +112,42 @@ export const REPORT_DICTIONARY = {
     error: "حدث خطأ. حاول مرة أخرى.",
     cooldown: "يرجى الانتظار لحظة قبل إرسال بلاغ آخر.",
     severityCritical_hint: "البلاغات الحرجة تُصعّد فوراً.",
+  },
+  rw: {
+    triggerText: "Menyesha ikibazo",
+    triggerAriaLabel: "Menyesha ikibazo",
+    title: "Menyesha ikibazo",
+    description:
+      "Tubwire ikitagenze neza kuri uru rupapuro. Aderesi y’urupapuro n’amakuru ya mushakisha yongerwaho mu buryo bwikora.",
+    categoryPlaceholder: "Icyiciro",
+    descriptionPlaceholder: "Ni iki kitagenze neza kuri uru rupapuro?",
+    descriptionHint: "{count}/{min} inyuguti",
+    minHint: "Andika amagambo make yiyongera — nibura inyuguti {min}.",
+    readyHint: "Kanda ⌘↵ / Ctrl+↵ kugira ngo wohereze.",
+    readyHintMobile: "Byiteguye — kanda wohereze.",
+    composerPlaceholder: "Ni iki kitagenze neza?",
+    send: "Ohereza raporo",
+    close: "Funga",
+    emptyState:
+      "Sobanura ibyo wabonye. Gito biremewe — aho byabereye byongerwaho mu buryo bwikora.",
+    addDetails: "Ongeraho intambwe n’ibyari byitezwe (si ngombwa)",
+    reproPlaceholder: "Intambwe zo kongera kubibona: 1. … 2. … 3. …",
+    expectedPlaceholder: "Wari witeze ko haba iki?",
+    actualPlaceholder: "Ni iki cyabaye mu by’ukuri?",
+    severityLabel: "Uburemere",
+    severityLow: "Buke — isura gusa",
+    severityMedium: "Buringaniye — bigaragara",
+    severityHigh: "Bwinshi — birambuza gukora",
+    severityCritical: "Bukabije — gutakaza amakuru / kwangirika",
+    captchaHint: "Raporo z’abakoresha binjiye zitunganywa vuba.",
+    captchaLink: "Injira",
+    submit: "Ohereza",
+    submitting: "Biroherezwa…",
+    success: "Byoherejwe. Murakoze!",
+    successWithId: "Byoherejwe. Nomero ya raporo ni #{id}.",
+    error: "Habaye ikosa. Ongera ugerageze.",
+    cooldown: "Nyamuneka tegereza akanya mbere yo kohereza indi raporo.",
+    severityCritical_hint: "Raporo z’uburemere bukabije zihutishwa ako kanya.",
   },
 } as const;
 

@@ -34,17 +34,19 @@ pnpm purge:synthetic       # delete generated listings (dry-run by default)
 
 ### Internationalization (i18n)
 The application supports multiple languages with custom i18n implementation:
-- **Supported locales**: English (en, LTR), Arabic (ar, RTL)
-- **Default locale**: English (en)
-- Language files: `src/components/internationalization/{en,ar}.json`
+- **Supported locales**: English (en, LTR), Arabic (ar, RTL, default), Kinyarwanda (rw, LTR — "Ikinyarwanda", for Kigali). Source of truth: `i18n.locales` / the `Locale` type in `config.ts` — never hardcode `"en" | "ar"`
+- **Default locale**: Arabic (ar)
+- Language files: `src/components/internationalization/{en,ar,rw}.json` (rw mirrors en key-for-key)
+- **rw specifics**: proxy picks rw only for an explicit `rw`/`rw-RW` Accept-Language (French browsers stay on the default); content translation treats rw as "always translate unless `canonicalLocale === 'rw'`" and reads `translation_cache` rows with `targetLanguage: 'rw'`; inline `{en, ar}` string maps need an `rw` entry (or fall back to en); `lang === "ar" ? … : …` ternaries correctly send rw down the LTR/English branch
+- **Money**: every listing price renders in `Listing.currency` (ISO 4217, default SDG; Kigali = RWF) via `formatCurrency(amount, locale, listing.currency)` in `src/lib/i18n/formatters.ts` — never print a listing price with a hardcoded "SDG"/"$". Card (Stripe) checkout is SDG-listing only; non-SDG listings use the manual rails (mobile money / bank transfer / cash)
 - Middleware handles locale detection and automatic routing with locale prefix
 - All non-API routes get locale prefix (e.g., `/en/dashboard`, `/ar/login`)
 - Server components: `getDictionary(lang)`; client components: `useDictionary()` (context-first, safe anywhere)
 
 #### i18n enforcement — build-gated, do not bypass
 `pnpm i18n:check` (runs inside `pnpm build`) enforces three contracts:
-1. **Key parity** — every dictionary key exists in BOTH en.json and ar.json (`scripts/dev-i18n-sync.ts`)
-2. **Enum-label coverage** — every user-facing Prisma enum value has a label in both locales (same script)
+1. **Key parity** — every dictionary key exists in en.json, ar.json AND rw.json (`scripts/dev-i18n-sync.ts`)
+2. **Enum-label coverage** — every user-facing Prisma enum value has a label in all three locales (same script)
 3. **No hardcoded strings** — `scripts/i18n-scan-hardcoded.ts` (AST scan) fails the build on user-facing literals in JSX (text nodes, placeholder/alt/aria-label/title attrs, toast calls) above `scripts/i18n-hardcoded-baseline.json`
 
 Rules for new UI text:
