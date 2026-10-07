@@ -12,6 +12,10 @@ const notFoundTranslations = {
     notFound: 'الصفحة غير موجودة',
     goHome: 'الذهاب للرئيسية',
   },
+  rw: {
+    notFound: 'Urupapuro ntirubonetse',
+    goHome: 'Subira ahabanza',
+  },
 } as const;
 
 export default async function NotFound() {

@@ -206,6 +206,23 @@ const T = {
     accessibility: "ميزات إمكانية الوصول", hostLanguage: "لغة المضيف",
     clearAll: "مسح الكل", show: "عرض", places: "أماكن", place: "مكان", close: "إغلاق",
   },
+  rw: {
+    filters: "Ayungurura",
+    recommended: "Byakugiriwe",
+    typeOfPlace: "Ubwoko bw'aho kuba",
+    anyType: "Ubwoko ubwo ari bwo bwose", room: "Icyumba", entireHome: "Inzu yose",
+    priceRange: "Urugero rw'ibiciro", priceHint: "Igiciro cy'urugendo, harimo ibyishyuzwa byose",
+    minimum: "Ibyo hasi", maximum: "Ibyo hejuru", currency: "SDG",
+    roomsAndBeds: "Ibyumba n'uburiri", bedrooms: "Ibyumba byo kuraramo", beds: "Uburiri", bathrooms: "Ubwiherero", any: "Byose",
+    amenities: "Ibikoresho n'ibyoroshya", showMore: "Erekana byinshi", showLess: "Erekana bike",
+    bookingOptions: "Uburyo bwo gufata", instantBook: "Gufata ako kanya", selfCheckIn: "Kwinjira wenyine", allowsPets: "Yemera amatungo",
+    standoutStays: "Aho kuba h'indashyikirwa",
+    guestFavorite: "Ibyo abashyitsi bakunda", guestFavoriteSub: "Inzu zikunzwe cyane kuri Mkan",
+    luxe: "Luxe", luxeSub: "Inzu z'akataraboneka zifite igishushanyo cy'indashyikirwa",
+    propertyType: "Ubwoko bw'umutungo",
+    accessibility: "Ibyorohereza abafite ubumuga", hostLanguage: "Ururimi rw'umucumbikiye",
+    clearAll: "Siba byose", show: "Erekana", places: "ahantu", place: "aho", close: "Funga",
+  },
 } as const
 
 // ---------------------------------------------------------------------------

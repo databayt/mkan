@@ -39,6 +39,15 @@ const COPY = {
     noListings: "The account is ready, but no listings are attached to it yet.",
     busy: "Not published",
   },
+  rw: {
+    invalid: "Iri huza ntirigikora",
+    invalidHelp: "Amahuza yo kwisabira konti amara igihe gito kandi akoreshwa rimwe gusa. Twandikire tuguhe irishya.",
+    heading: "Ibi ni ibyawe?",
+    intro: (n: number) =>
+      `Twagutegurije konti ya mkan irimo ${n === 1 ? "icyashyizweho kimwe cyawe" : `ibyashyizweho ${n} byawe`}. Hitamo ijambobanga konti ibe iyawe — nta kintu kigaragara ku bashyitsi utabyemeye.`,
+    noListings: "Konti irahari, ariko nta byashyizweho biyihujwe nayo kugeza ubu.",
+    busy: "Ntibyatangajwe",
+  },
 } as const;
 
 export async function ClaimContent({ token, lang }: ClaimContentProps) {

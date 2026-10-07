@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import Link from "next/link";
 import { CreditCard, Home, Clock, Check, AlertCircle } from "lucide-react";
 
@@ -51,7 +52,7 @@ export default async function TenantPaymentsPage({
     return null; // Layout will redirect.
   }
 
-  const dict = (await getDictionary(lang as "en" | "ar")) as unknown as Record<string, Record<string, string>>;
+  const dict = (await getDictionary(lang as Locale)) as unknown as Record<string, Record<string, string>>;
   const t = (dict.dashboard as Record<string, Record<string, string>> | undefined)?.payments ?? {};
   const currency = dict.common?.currency ?? "$";
 
@@ -67,7 +68,7 @@ export default async function TenantPaymentsPage({
   // viewer's locale — one batched cache round-trip across all rows.
   if (payments.length > 0) {
     const listings = payments.map((p) => p.lease.listing as unknown as Record<string, unknown>);
-    const localized = await localizeListings(listings, lang as "en" | "ar");
+    const localized = await localizeListings(listings, lang as Locale);
     payments.forEach((p, i) => {
       (p.lease as unknown as { listing: unknown }).listing = localized[i];
     });

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { i18n, type Locale } from '@/components/internationalization/config';
 
 function AlertTriangle({ className }: { className?: string }) {
   return (
@@ -47,6 +48,16 @@ const COPY = {
     goHome: 'الصفحة الرئيسية',
     contact: 'إذا استمرت المشكلة، يرجى التواصل مع الدعم',
   },
+  rw: {
+    title: 'Ihangane! Hari ikitagenze neza',
+    description:
+      'Habayeho ikibazo kitateganyijwe. Itsinda ryacu ryamenyeshejwe kandi riri kugikemura.',
+    devDetails: 'Ibisobanuro by’ikosa (mu iterambere gusa)',
+    errorId: 'Nomero y’ikosa:',
+    retry: 'Ongera ugerageze',
+    goHome: 'Subira ahabanza',
+    contact: 'Iki kibazo nigikomeza, nyamuneka vugana n’abatanga ubufasha',
+  },
 } as const;
 
 export default function Error({
@@ -58,9 +69,10 @@ export default function Error({
 }) {
   // Resolve after mount so SSR and the first client render agree (avoids a
   // hydration mismatch); the app default of Arabic is used until then.
-  const [lang, setLang] = useState<'en' | 'ar'>('ar');
+  const [lang, setLang] = useState<Locale>('ar');
   useEffect(() => {
-    setLang(document.documentElement.lang === 'en' ? 'en' : 'ar');
+    const htmlLang = document.documentElement.lang;
+    setLang((i18n.locales as readonly string[]).includes(htmlLang) ? (htmlLang as Locale) : 'ar');
   }, []);
   const t = COPY[lang];
 

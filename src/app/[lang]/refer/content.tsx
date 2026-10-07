@@ -42,6 +42,23 @@ const t = {
     footMid: " وأنواع القوائم المؤهلة فقط. تنتهي المكافآت في 1 يوليو 2026. ",
     terms: "تطبق الشروط",
   },
+  rw: {
+    heading: "Tumira umushyitsi, wiyongerize amafaranga",
+    yourReferrals: "Abo wohereje",
+    moreWays: "Izindi nzira zo gusangiza",
+    share: "Sangiza ihuza ryo gutumira",
+    copied: "Ihuza ryakopowe",
+    home: "Inzu",
+    homeEarn: "Uzabona SDG 105 – SDG 1,000",
+    experience: "Ibikorwa",
+    experienceEarn: "Uzabona SDG 50",
+    service: "Serivisi",
+    serviceEarn: "Uzabona SDG 100",
+    footPre: "Ni iby'abanyamuryango ba Mkan gusa. ",
+    eligible: "Ahujuje ibisabwa",
+    footMid: " n'ubwoko bw'ibyashyizweho bwujuje ibisabwa gusa. Ibihembo birangira ku wa 1 Nyakanga 2026. ",
+    terms: "Hakurikizwa amabwiriza",
+  },
 } as const;
 
 /** Airbnb overflow icon — three 1.5r dots, 16px, fill currentColor. */

@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import { Metadata } from "next";
 import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
@@ -15,7 +16,7 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
-  const dict = await getDictionary(lang as "en" | "ar");
+  const dict = await getDictionary(lang as Locale);
   const t = dict?.transportHost?.metadata;
   return createMetadata({
     title: t?.title ?? "Transport Host",

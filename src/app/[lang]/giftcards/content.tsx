@@ -68,6 +68,37 @@ const t = {
     faqMore: "لمزيد من الأسئلة قم بزيارة",
     helpCenter: "مركز المساعدة",
   },
+  rw: {
+    redeem: "Koresha",
+    buyNow: "Gura nonaha",
+    title1: "Mkan",
+    title2: "amakarita y'impano",
+    subtitle: "Inzu. Ibikorwa. Serivisi. Hari byinshi bya Mkan watanga.",
+    giveHeading: "Wowe utanga. Bo bakagenda.",
+    giveBody:
+      "Fasha inshuti n'umuryango isi ya Mkan. Wizihize iminsi mikuru, uzirikane ibihe by'ingenzi, kandi utere abandi inyota yo gutembera. Bafashe kujya aho bashaka igihe cyose bashakiye, kuko amakarita y'impano ntarangira.",
+    business: "Uragura ku bw'ubucuruzi?",
+    buyBulk: "Gura amakarita y'impano ari menshi",
+    pickDesign: "Hitamo igishushanyo cyawe",
+    feat1: "Ibyo bifuza",
+    feat1Desc:
+      "Wowe uhitamo igishushanyo, ubutumwa n'agaciro k'impano. Bo bahitamo inzu, igikorwa cyangwa serivisi.",
+    feat2: "Biroroshye kohereza",
+    feat2Desc:
+      "Bigera mu minota mike kuri SMS cyangwa imeri. Uzabona ubutumwa bwemeza ko byakiriwe.",
+    feat3: "Ntirirangira",
+    feat3Desc:
+      "Amafaranga y'impano yo gukoresha igihe cyose biteguye gutegura imizigo yabo.",
+    bizHeading: "Amakarita y'impano ku bucuruzi",
+    bizBody:
+      "Erekana ko ushima abakozi n'abakiriya ukoresheje impano yoroshye gutanga mu bihe byose.",
+    bizOrders: "Ku bicuruzwa bya SDG 100,000 cyangwa birenga,",
+    contactSales: "vugana n'ishami rishinzwe kugurisha.",
+    getStarted: "Tangira",
+    faqTitle: "Ibibazo bikunze kubazwa",
+    faqMore: "Ku bindi bibazo sura",
+    helpCenter: "Ikigo cy'ubufasha",
+  },
 } as const;
 
 const FAQ_EN = [
@@ -124,6 +155,33 @@ const FAQ_AR = [
   },
 ];
 
+const FAQ_RW = [
+  {
+    q: "Amakarita y'impano ni ayo gufata mu ntoki cyangwa ni ay'ikoranabuhanga?",
+    a: "Amakarita y'impano ya Mkan ni ay'ikoranabuhanga, yoherezwa kuri imeri cyangwa SMS — nta karita ifatika ibaho.",
+  },
+  {
+    q: "Nagura he ikarita y'impano ifatika?",
+    a: "Ubu dutanga amakarita y'impano y'ikoranabuhanga gusa, agera mu minota mike nyuma yo kugura.",
+  },
+  {
+    q: "Amakarita y'impano arangira?",
+    a: "Oya. Amafaranga ari ku ikarita y'impano ya Mkan ntarangira kandi ashobora gukoreshwa igihe cyose uyahawe yiteguye.",
+  },
+  {
+    q: "Amakarita y'impano aboneka he?",
+    a: "Amakarita y'impano aboneka mu turere dujuje ibisabwa. Aho aboneka herekanwa mu gihe cyo kwishyura.",
+  },
+  {
+    q: "Nshobora koherereza ikarita y'impano umuntu utuye mu kindi gihugu?",
+    a: "Yego, mu gihe agace uyihawe arimo kemerera gukoresha amakarita y'impano ya Mkan.",
+  },
+  {
+    q: "Nabwirwa n'iki amafaranga asigaye ku ikarita yanjye y'impano?",
+    a: "Injira muri konti yawe, ujye mu gice cy'ubwishyu urebe amafaranga y'impano ufite ubu.",
+  },
+];
+
 // Gradient palette for the "Pick your design" gallery — a clone stand-in for
 // Airbnb's illustrated card artwork.
 const CARD_GRADIENTS = [
@@ -162,7 +220,7 @@ function GiftCardArt({ className = "" }: { className?: string }) {
 export default function GiftCardsContent() {
   const { locale } = useLocale();
   const labels = t[locale] ?? t.en;
-  const faqs = locale === "ar" ? FAQ_AR : FAQ_EN;
+  const faqs = locale === "ar" ? FAQ_AR : locale === "rw" ? FAQ_RW : FAQ_EN;
   const [open, setOpen] = useState<number | null>(null);
 
   return (

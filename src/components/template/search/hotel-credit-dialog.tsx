@@ -32,6 +32,15 @@ const t = {
     terms: "تنطبق الشروط",
     close: "إغلاق",
   },
+  rw: {
+    title: "Habwa 15% by'amafaranga ya Mkan muri hoteli",
+    body: "Aharire muri hoteli yatoranyijwe maze ubone amafaranga ya Mkan yo gukoresha ku nzu, ibikorwa cyangwa serivisi.",
+    cta: "Reba hoteli",
+    excludes: "Ntiharimo ibyishyuzwa n'imisoro",
+    valid: "Rimara umwaka umwe",
+    terms: "Hakurikizwa amabwiriza",
+    close: "Funga",
+  },
 } as const;
 
 const STORAGE_KEY = "mkan_hotel_promo_dismissed_v1";

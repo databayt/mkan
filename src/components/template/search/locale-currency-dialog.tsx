@@ -31,6 +31,16 @@ const t = {
     close: "إغلاق",
     trigger: "اختر اللغة والعملة",
   },
+  rw: {
+    languageRegion: "Ururimi n'akarere",
+    currency: "Ifaranga",
+    translation: "Ubuhinduzi",
+    translationDesc: "Hindura mu buryo bwikora ibisobanuro n'ibitekerezo mu Kinyarwanda.",
+    chooseLanguage: "Hitamo ururimi n'akarere",
+    chooseCurrency: "Hitamo ifaranga",
+    close: "Funga",
+    trigger: "Hitamo ururimi n'ifaranga",
+  },
 } as const;
 
 // Functional locales come first (en/ar actually switch the app). The rest are

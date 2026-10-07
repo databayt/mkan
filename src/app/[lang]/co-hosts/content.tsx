@@ -20,6 +20,12 @@ const t = {
     empty: "لا يوجد مضيفون مشاركون قريبون",
     emptyDesc: "عند انضمام مضيفين مشاركين جدد بالقرب منك، سيظهرون هنا.",
   },
+  rw: {
+    placeholder: "Shakisha abafatanyabikorwa b'abashyitsi bakwegereye",
+    search: "Shakisha",
+    empty: "Nta bafatanyabikorwa b'abashyitsi bakwegereye",
+    emptyDesc: "Abafatanyabikorwa bashya bakwegereye nibinjira, bazagaragara hano.",
+  },
 } as const;
 
 export default function CoHostsContent() {

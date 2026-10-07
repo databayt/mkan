@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import { getPlatformMetrics } from "@/lib/actions/admin-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { MetricsCards } from "@/components/admin/metrics-cards";
@@ -8,7 +9,7 @@ export default async function AdminOverviewPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const dict = await getDictionary(lang as "en" | "ar");
+  const dict = await getDictionary(lang as Locale);
   const a = (dict as { admin?: Record<string, string> }).admin ?? {};
   const metrics = await getPlatformMetrics();
 

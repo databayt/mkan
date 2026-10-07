@@ -1,8 +1,9 @@
+import type { Locale } from "@/components/internationalization/config";
 import { createMetadata } from "@/lib/metadata";
 import type { Metadata } from "next";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 
-export async function generateMetadata({ params }: { params: Promise<{ lang: "en" | "ar" }> }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ lang: Locale }> }): Promise<Metadata> {
   const { lang } = await params;
   const d = await getDictionary(lang);
   return createMetadata({
@@ -13,7 +14,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: "en
   });
 }
 
-export default async function AccessibilityPage({ params }: { params: Promise<{ lang: "en" | "ar" }> }) {
+export default async function AccessibilityPage({ params }: { params: Promise<{ lang: Locale }> }) {
   const { lang } = await params;
   const d = await getDictionary(lang);
   const isAr = lang === "ar";

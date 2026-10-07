@@ -1,5 +1,6 @@
 "use client";
 
+import type { Locale } from "@/components/internationalization/config";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +32,7 @@ export function TrendChart({
 }: {
   trend: TrendPoint[];
   labels: AnalyticsLabels;
-  locale: "en" | "ar";
+  locale: Locale;
 }) {
   const config = {
     views: { label: labels.stageViews, color: "var(--chart-1)" },

@@ -1,5 +1,6 @@
 "use client";
 
+import type { Locale } from "@/components/internationalization/config";
 import {
   Camera,
   ChefHat,
@@ -32,7 +33,7 @@ const SERVICES = [
 interface ServiceTypeDropdownProps {
   selected?: string;
   onSelect: (label: string) => void;
-  locale?: "en" | "ar";
+  locale?: Locale;
 }
 
 export default function ServiceTypeDropdown({

@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -57,10 +58,10 @@ export default async function ManagerApplicationDetailPage({
   // Localize the listing's stored free-text (title + location) for the viewer's locale.
   const listing = (await localizeListing(
     application.listing as unknown as Record<string, unknown>,
-    lang as "en" | "ar",
+    lang as Locale,
   )) as unknown as typeof application.listing;
 
-  const dict = (await getDictionary(lang as "en" | "ar")) as unknown as Record<string, Record<string, string>>;
+  const dict = (await getDictionary(lang as Locale)) as unknown as Record<string, Record<string, string>>;
   const t = (dict.dashboard as Record<string, Record<string, string>> | undefined)?.applications ?? {};
   const currency = dict.common?.currency ?? "$";
   const cover = application.listing.photoUrls?.[0];

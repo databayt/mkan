@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ type VerifyListingCopy = {
 
 const VerifyListingPage = async ({ params }: PageProps) => {
   const { lang, id } = await params;
-  const dict = await getDictionary(lang as 'en' | 'ar');
+  const dict = await getDictionary(lang as Locale);
   const v =
     (dict as unknown as { property?: { verifyListing?: VerifyListingCopy } }).property
       ?.verifyListing ?? {};

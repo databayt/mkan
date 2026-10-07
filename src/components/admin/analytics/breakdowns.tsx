@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import Link from "next/link";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,7 +49,7 @@ function ListingTable({
 }: {
   rows: ListingPerformance[];
   labels: AnalyticsLabels;
-  locale: "en" | "ar";
+  locale: Locale;
   lang: string;
 }) {
   if (rows.length === 0) return <Empty label={labels.noData ?? ""} />;

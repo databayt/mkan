@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import { listAllListingsAdmin } from "@/lib/actions/admin-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { HomesTable } from "@/components/admin/homes-table";
@@ -11,7 +12,7 @@ export default async function AdminHomesPage({
 }) {
   const { lang } = await params;
   const sp = await searchParams;
-  const dict = await getDictionary(lang as "en" | "ar");
+  const dict = await getDictionary(lang as Locale);
   const a = (dict as { admin?: Record<string, string> }).admin ?? {};
 
   const page = Number(sp.page ?? 1) || 1;

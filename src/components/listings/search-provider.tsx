@@ -10,6 +10,7 @@ import React, {
   useState,
 } from "react"
 import type { PropertyType, Amenity } from "@prisma/client"
+import type { Locale } from "@/components/internationalization/config"
 import { searchListings } from "@/lib/actions/search-actions"
 import type { SearchFilters } from "@/lib/schemas/search-schema"
 import type { Listing } from "@/types/listing"
@@ -57,7 +58,7 @@ interface SearchContextValue {
     SearchFilters,
     "location" | "checkIn" | "checkOut" | "guests" | "lat" | "lng"
   >
-  lang: "en" | "ar"
+  lang: Locale
   nights?: number
   datesLabel?: string
 }
@@ -100,7 +101,7 @@ export function SearchProvider({
     SearchFilters,
     "location" | "checkIn" | "checkOut" | "guests" | "lat" | "lng"
   >
-  lang: "en" | "ar"
+  lang: Locale
   nights?: number
   datesLabel?: string
   children: React.ReactNode

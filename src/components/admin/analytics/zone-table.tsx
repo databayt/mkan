@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -39,7 +40,7 @@ export function ZoneTable({
 }: {
   data: MarketplaceAnalytics;
   labels: AnalyticsLabels;
-  locale: "en" | "ar";
+  locale: Locale;
 }) {
   const { zoneReport } = data;
   const num = (v: number) => formatNumber(v, locale);

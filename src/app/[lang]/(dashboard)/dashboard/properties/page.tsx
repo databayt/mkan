@@ -67,7 +67,7 @@ export default async function PropertiesPage({
   // Localize stored listing free-text (title + location) for the viewer's locale.
   const properties = (await localizeListings(
     propertiesRaw as unknown as Array<Record<string, unknown>>,
-    lang as "en" | "ar",
+    lang as Locale,
   )) as unknown as typeof propertiesRaw;
 
   return (

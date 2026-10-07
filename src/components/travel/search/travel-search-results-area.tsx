@@ -1,5 +1,6 @@
 "use client";
 
+import type { Locale } from "@/components/internationalization/config";
 import { useState } from "react";
 import { Map as MapIcon, List as ListIcon, BusFront } from "lucide-react";
 import Link from "next/link";
@@ -15,7 +16,7 @@ import type { AssemblyPoint } from "./travel-search-map";
 interface TravelSearchResultsAreaProps {
   trips: any[];
   total: number;
-  lang: "en" | "ar";
+  lang: Locale;
   page: number;
   pageCount: number;
   searchParams: Record<string, string | undefined>;

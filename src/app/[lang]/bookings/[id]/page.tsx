@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -26,7 +27,7 @@ export default async function BookingConfirmationPage({
   }
   if (!booking) notFound();
 
-  const dict = (await getDictionary(lang as "en" | "ar")) as unknown as Record<string, Record<string, string>>;
+  const dict = (await getDictionary(lang as Locale)) as unknown as Record<string, Record<string, string>>;
   const t = dict.booking ?? {};
   const currency = dict.common?.currency ?? "$";
 
@@ -53,9 +54,9 @@ export default async function BookingConfirmationPage({
   const isConfirmed = b.status === "Confirmed";
 
   // Localize the listing's stored free-text for the viewer's locale.
-  const listingTitle = await getText(b.listing.title, lang as "en" | "ar");
-  const locCity = await getText(b.listing.location?.city, lang as "en" | "ar");
-  const locCountry = await getText(b.listing.location?.country, lang as "en" | "ar");
+  const listingTitle = await getText(b.listing.title, lang as Locale);
+  const locCity = await getText(b.listing.location?.city, lang as Locale);
+  const locCountry = await getText(b.listing.location?.country, lang as Locale);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">

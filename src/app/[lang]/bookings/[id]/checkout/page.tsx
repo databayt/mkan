@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import { notFound } from "next/navigation";
 import { getBooking } from "@/lib/actions/booking-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
@@ -26,10 +27,10 @@ export default async function BookingCheckoutPage({
   // Localize the listing's stored free-text (title + location) for the viewer.
   payload.listing = (await localizeListing(
     payload.listing as unknown as Record<string, unknown>,
-    lang as "en" | "ar",
+    lang as Locale,
   )) as unknown as BookingPayload["listing"];
 
-  const dict = await getDictionary(lang as "en" | "ar");
+  const dict = await getDictionary(lang as Locale);
   // Stripe can't serve Sudan — only offer the card rail to diaspora (non-SD geo).
   const showCard = await shouldOfferCardPayment();
 

@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import { UserRole } from "@prisma/client";
 
 import Navbar from "@/components/template/header/header";
@@ -20,7 +21,7 @@ export default async function AdminLayout({
 }) {
   const { lang } = await params;
   await requireRole(lang, [UserRole.SUPER_ADMIN, UserRole.ADMIN]);
-  const dict = await getDictionary(lang as "en" | "ar");
+  const dict = await getDictionary(lang as Locale);
   const adminDict = (dict as { admin?: Record<string, string> }).admin ?? {};
 
   const labels = {

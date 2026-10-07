@@ -61,7 +61,26 @@ const dropdownTranslations = {
     manageListings: "إدارة العقارات",
     account: "الحساب",
     travel: "السفر",
-  }
+  },
+  rw: {
+    becomeHost: "Aba umucumbikiye",
+    switchToHosting: "Hindukira ku gucumbikira",
+    helpCenter: "Ikigo cy'ubufasha",
+    becomeHostDesc: "Biroroshye gutangira gucumbikira no kubona amafaranga y'inyongera.",
+    referHost: "Tumira umucumbikira",
+    findCoHost: "Shaka umufatanyabikorwa mu gucumbikira",
+    giftCards: "Amakarita y'impano",
+    loginOrSignup: "Injira cyangwa wiyandikishe",
+    logout: "Sohoka",
+    messages: "Ubutumwa",
+    trips: "Ingendo",
+    wishlists: "Urutonde rw'ibyifuzo",
+    favorites: "Ibyo ukunda",
+    profile: "Umwirondoro",
+    manageListings: "Gucunga ibyashyizweho",
+    account: "Konti",
+    travel: "Gutembera",
+  },
 } as const;
 
 // ONE unified morph spring drives every transform in the small↔big transition —

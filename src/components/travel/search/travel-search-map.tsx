@@ -1,5 +1,6 @@
 "use client";
 
+import type { Locale } from "@/components/internationalization/config";
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -32,7 +33,7 @@ interface TravelSearchMapProps {
   assemblyPoints: AssemblyPoint[];
   originId?: number;
   destinationId?: number;
-  lang: "en" | "ar";
+  lang: Locale;
   onSetOrigin: (id: number) => void;
   onSetDestination: (id: number) => void;
   stickyTop?: number;

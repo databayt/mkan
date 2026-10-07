@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +23,7 @@ function Delta({
   change: number | null | undefined;
   labels: AnalyticsLabels;
   days: number;
-  locale: "en" | "ar";
+  locale: Locale;
 }) {
   // `undefined` means this metric has no comparison at all; `null` means it has
   // one but the baseline was zero. Both render as text, never as a green 0%.
@@ -61,7 +62,7 @@ function KpiGrid({
   items: Kpi[];
   labels: AnalyticsLabels;
   days: number;
-  locale: "en" | "ar";
+  locale: Locale;
 }) {
   return (
     <section>

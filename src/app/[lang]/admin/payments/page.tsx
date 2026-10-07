@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import {
   listAllBookingPaymentsAdmin,
   listAllHomePaymentsAdmin,
@@ -17,7 +18,7 @@ export default async function AdminPaymentsPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const dict = await getDictionary(lang as "en" | "ar");
+  const dict = await getDictionary(lang as Locale);
   const a = (dict as { admin?: Record<string, string> }).admin ?? {};
 
   const [bookings, homes, transport] = await Promise.all([

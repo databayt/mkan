@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import type { MarketplaceAnalytics } from "@/lib/actions/analytics-actions";
 
 /**
@@ -10,7 +11,7 @@ export type AnalyticsLabels = Record<string, string>;
 export interface SectionProps {
   data: MarketplaceAnalytics;
   labels: AnalyticsLabels;
-  locale: "en" | "ar";
+  locale: Locale;
 }
 
 /** `{name}` placeholder substitution, matching the dictionary's own convention. */

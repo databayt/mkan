@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import type { Locale } from "@/components/internationalization/config";
 import { Metadata } from "next";
 import { Suspense } from "react";
 import { createMetadata } from "@/lib/metadata";
@@ -10,7 +11,7 @@ import { getDictionary } from "@/components/internationalization/dictionaries";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ lang: "en" | "ar" }>;
+  params: Promise<{ lang: Locale }>;
 }): Promise<Metadata> {
   const { lang } = await params;
   const d = await getDictionary(lang);
@@ -73,7 +74,7 @@ function toInt(v: string | undefined, max?: number) {
 
 async function getFilteredListings(
   searchParams: ListingsPageProps["searchParams"],
-  pageParams?: Promise<{ lang: "en" | "ar" }>,
+  pageParams?: Promise<{ lang: Locale }>,
 ) {
   const params = await searchParams;
   const lang = pageParams ? (await pageParams).lang : undefined;
@@ -168,7 +169,7 @@ function PropertySkeleton() {
   );
 }
 
-export default async function ListingsPage({ searchParams, params: pageParams }: ListingsPageProps & { params: Promise<{ lang: "en" | "ar" }> }) {
+export default async function ListingsPage({ searchParams, params: pageParams }: ListingsPageProps & { params: Promise<{ lang: Locale }> }) {
   // Parallelize independent data fetches — resolve params and listings
   // concurrently. The filters panel and its price-bounds aggregation are
   // intentionally hidden on this page; URL filters still work because the

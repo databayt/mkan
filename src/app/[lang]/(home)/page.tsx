@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import { Metadata } from "next";
 import { getHomeListings } from "@/lib/actions/search-actions";
 import { createMetadata } from "@/lib/metadata";
@@ -23,7 +24,7 @@ export const dynamic = "error";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ lang: "en" | "ar" }>;
+  params: Promise<{ lang: Locale }>;
 }): Promise<Metadata> {
   const { lang } = await params;
   const d = await getDictionary(lang);
@@ -34,7 +35,7 @@ export async function generateMetadata({
   });
 }
 
-async function getPublishedListings(lang: "en" | "ar"): Promise<Listing[]> {
+async function getPublishedListings(lang: Locale): Promise<Listing[]> {
   try {
     const listings = await getHomeListings();
     if (!Array.isArray(listings)) return [];
@@ -56,7 +57,7 @@ async function getPublishedListings(lang: "en" | "ar"): Promise<Listing[]> {
 export default async function HomePage({
   params,
 }: {
-  params: Promise<{ lang: "en" | "ar" }>;
+  params: Promise<{ lang: Locale }>;
 }) {
   const { lang } = await params;
   const listings = await getPublishedListings(lang);

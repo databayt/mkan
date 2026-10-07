@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -35,10 +36,10 @@ export default async function AdminListingDetailPage({
   // address/city/country) for the admin's viewing language.
   const listing = (await localizeListing(
     listingRaw as unknown as Record<string, unknown>,
-    lang as "en" | "ar",
+    lang as Locale,
   )) as unknown as NonNullable<typeof listingRaw>;
 
-  const dict = await getDictionary(lang as "en" | "ar");
+  const dict = await getDictionary(lang as Locale);
   const a = (dict as { admin?: Record<string, string> }).admin ?? {};
 
   return (

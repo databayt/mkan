@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { Locale } from "@/components/internationalization/config";
 
 // global-error replaces the whole document, so the root layout's <html lang>
 // is gone — fall back to the browser's preferred language, defaulting to the
@@ -18,6 +19,12 @@ const COPY = {
     description: "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
     retry: "إعادة المحاولة",
   },
+  rw: {
+    dir: "ltr" as const,
+    title: "Hari ikitagenze neza",
+    description: "Habayeho ikosa ritateganyijwe. Nyamuneka ongera ugerageze.",
+    retry: "Ongera ugerageze",
+  },
 } as const;
 
 export default function GlobalError({
@@ -27,11 +34,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const [lang, setLang] = useState<"en" | "ar">("ar");
+  const [lang, setLang] = useState<Locale>("ar");
   useEffect(() => {
-    setLang(
-      navigator.language?.toLowerCase().startsWith("en") ? "en" : "ar"
-    );
+    const nav = navigator.language?.toLowerCase() ?? "";
+    setLang(nav.startsWith("en") ? "en" : nav.startsWith("rw") ? "rw" : "ar");
   }, []);
   const t = COPY[lang];
 

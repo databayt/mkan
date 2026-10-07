@@ -2,19 +2,19 @@ import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
 import { SITE_URL } from "@/lib/metadata";
 import { listingSegment } from "@/lib/listing-code";
+import { i18n } from "@/components/internationalization/config";
 
 // Regenerate hourly so newly published listings/offices surface without a
 // redeploy (the file otherwise prerenders once at build).
 export const revalidate = 3600;
 
-// Per-URL hreflang: tells crawlers /en/... and /ar/... are the same page in
-// two languages instead of two competing pages.
+// Per-URL hreflang: tells crawlers /en/..., /ar/... and /rw/... are the same page in
+// three languages instead of two competing pages.
 function languageAlternates(path: string) {
   return {
-    languages: {
-      en: `${SITE_URL}/en${path}`,
-      ar: `${SITE_URL}/ar${path}`,
-    },
+    languages: Object.fromEntries(
+      i18n.locales.map((locale) => [locale, `${SITE_URL}/${locale}${path}`])
+    ),
   };
 }
 
@@ -39,7 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   const staticEntries: MetadataRoute.Sitemap = staticPages.flatMap((path) =>
-    (["en", "ar"] as const).map((locale) => ({
+    i18n.locales.map((locale) => ({
       url: `${SITE_URL}/${locale}${path}`,
       changeFrequency: "weekly" as const,
       priority: path === "" ? 1.0 : 0.8,
@@ -60,7 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // `/listings/0001-01` — the same room, indexed as two.
     listingEntries = listings.flatMap((listing) => {
       const path = `/listings/${listingSegment(listing)}`;
-      return (["en", "ar"] as const).map((locale) => ({
+      return i18n.locales.map((locale) => ({
         url: `${SITE_URL}/${locale}${path}`,
         lastModified: listing.updatedAt,
         changeFrequency: "daily" as const,
@@ -81,7 +81,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
 
     officeEntries = offices.flatMap((office) =>
-      (["en", "ar"] as const).map((locale) => ({
+      i18n.locales.map((locale) => ({
         url: `${SITE_URL}/${locale}/travel/offices/${office.id}`,
         lastModified: office.updatedAt,
         changeFrequency: "weekly" as const,

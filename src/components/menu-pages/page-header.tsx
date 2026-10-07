@@ -9,6 +9,7 @@ import LocaleCurrencyDialog from "@/components/template/search/locale-currency-d
 const t = {
   en: { login: "Log in / Sign up", title: "Mkan" },
   ar: { login: "تسجيل الدخول / إنشاء حساب", title: "مكان" },
+  rw: { login: "Injira / Iyandikishe", title: "Mkan" },
 } as const;
 
 interface PageHeaderProps {

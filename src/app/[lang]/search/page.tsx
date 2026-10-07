@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import { Metadata } from "next";
 import SearchHeader from "@/components/listings/search-header"
 import { SearchProvider } from "@/components/listings/search-provider"
@@ -15,7 +16,7 @@ import { Listing } from "@/types/listing"
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ lang: "en" | "ar" }>;
+  params: Promise<{ lang: Locale }>;
 }): Promise<Metadata> {
   const { lang } = await params;
   const d = await getDictionary(lang);
@@ -42,7 +43,7 @@ function toInt(v: string | undefined, max?: number) {
 function resolveDates(
   checkIn: string | undefined,
   checkOut: string | undefined,
-  lang: "en" | "ar"
+  lang: Locale
 ): { nights?: number; label?: string } {
   if (!checkIn || !checkOut) return {};
   const inD = new Date(checkIn);
@@ -67,7 +68,7 @@ async function getInitialListings(
     lat?: string
     lng?: string
   },
-  lang?: "en" | "ar",
+  lang?: Locale,
 ): Promise<{ listings: Listing[]; total: number }> {
   // "Nearby" arrives as a coordinate pair, not a place name. parseCoords
   // returns null unless BOTH halves are valid, so a truncated link degrades to
@@ -93,7 +94,7 @@ export default async function SearchPage({
   params: pageParams,
   searchParams,
 }: {
-  params: Promise<{ lang: "en" | "ar" }>
+  params: Promise<{ lang: Locale }>
   searchParams?: Promise<{
     location?: string
     checkIn?: string

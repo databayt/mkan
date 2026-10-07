@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { requireAuth } from "@/lib/auth-guard"
@@ -12,7 +13,7 @@ export async function generateMetadata({
   params: Promise<{ lang: string; id: string }>
 }): Promise<Metadata> {
   const { lang } = await params
-  const dict = await getDictionary(lang as "en" | "ar")
+  const dict = await getDictionary(lang as Locale)
   const t = dict?.transportHost?.metadata
   return {
     title: t?.title ?? "Transport Host",

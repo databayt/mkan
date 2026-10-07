@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { getPlatformSettings } from "@/lib/actions/admin-actions";
 import AdminSettingsContent from "./content";
@@ -10,7 +11,7 @@ export default async function AdminSettingsPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const dict = await getDictionary(lang as "en" | "ar");
+  const dict = await getDictionary(lang as Locale);
   const a = (dict as { admin?: Record<string, string> }).admin ?? {};
   const settings = await getPlatformSettings();
 

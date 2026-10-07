@@ -37,6 +37,13 @@ const COPY = {
     pending: "One moment…",
     note: "You can edit prices, photos and text once you're in, and nothing is published until you approve it.",
   },
+  rw: {
+    confirm: "Yego, ibi ni ibyanjye kandi ndi nyirabyo",
+    password: "Hitamo ijambobanga",
+    submit: "Fata konti",
+    pending: "Tegereza gato…",
+    note: "Ushobora guhindura ibiciro, amafoto n'amagambo umaze kwinjira, kandi nta kintu gitangazwa utabyemeye.",
+  },
 } as const;
 
 export function ClaimForm({ token, lang }: { token: string; lang: Lang }) {

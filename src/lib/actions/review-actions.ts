@@ -1,5 +1,6 @@
 "use server";
 
+import { i18n } from "@/components/internationalization/config";
 import { z } from "zod";
 import { auth, canOverride } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -42,7 +43,7 @@ const listingReviewsFilterSchema = z.object({
   skip: z.number().int().min(0).optional().default(0),
 });
 
-const langSchema = z.enum(["en", "ar"]);
+const langSchema = z.enum(i18n.locales);
 
 // ============================================
 // TYPES

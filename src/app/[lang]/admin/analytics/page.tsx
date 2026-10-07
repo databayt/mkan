@@ -1,3 +1,4 @@
+import { i18n, type Locale } from "@/components/internationalization/config";
 import { getMarketplaceAnalytics } from "@/lib/actions/analytics-actions";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { formatDate } from "@/lib/i18n/formatters";
@@ -28,7 +29,9 @@ export default async function AdminAnalyticsPage({
 }) {
   const { lang } = await params;
   const query = await searchParams;
-  const locale = (lang === "ar" ? "ar" : "en") as "en" | "ar";
+  const locale: Locale = (i18n.locales as readonly string[]).includes(lang)
+    ? (lang as Locale)
+    : "en";
 
   const dict = await getDictionary(locale);
   const labels = ((dict as { adminAnalytics?: AnalyticsLabels }).adminAnalytics ??

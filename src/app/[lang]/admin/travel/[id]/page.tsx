@@ -1,3 +1,4 @@
+import type { Locale } from "@/components/internationalization/config";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -30,7 +31,7 @@ export default async function AdminOfficeDetailPage({
   });
   if (!office) notFound();
 
-  const dict = await getDictionary(lang as "en" | "ar");
+  const dict = await getDictionary(lang as Locale);
   const a = (dict as { admin?: Record<string, string> }).admin ?? {};
 
   return (
