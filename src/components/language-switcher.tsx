@@ -19,6 +19,13 @@ interface LanguageSwitcherProps {
   variant?: "dropdown" | "inline" | "toggle" | "text";
 }
 
+// With 3+ locales "the other one" is ambiguous: cycle through i18n.locales.
+function nextLocaleOf(current: Locale): Locale {
+  const locales = i18n.locales as readonly Locale[];
+  const idx = locales.indexOf(current);
+  return locales[(idx + 1) % locales.length]!;
+}
+
 export function LanguageSwitcher({
   className,
   variant = "dropdown"
@@ -27,9 +34,9 @@ export function LanguageSwitcher({
   const { locale: currentLocale, isRTL } = useLocale();
   const dict = useDictionary();
 
-  // Text variant - simple text showing native language name, clicks to switch
+  // Text variant - shows the next language's native name, clicks to cycle
   if (variant === "text") {
-    const nextLocale = i18n.locales.find(locale => locale !== currentLocale) || i18n.locales[0];
+    const nextLocale = nextLocaleOf(currentLocale);
     const nextConfig = localeConfig[nextLocale];
 
     return (
@@ -44,8 +51,8 @@ export function LanguageSwitcher({
 
   // Toggle variant - simple button that switches to the other language
   if (variant === "toggle") {
-    // Find the next locale (not the current one)
-    const nextLocale = i18n.locales.find(locale => locale !== currentLocale) || i18n.locales[0];
+    // Cycle to the next locale in i18n.locales order
+    const nextLocale = nextLocaleOf(currentLocale);
 
     return (
       <Button
