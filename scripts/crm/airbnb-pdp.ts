@@ -27,6 +27,7 @@
  * Arabic pass silently storing English — is invisible otherwise.
  *
  * Flags: --locale=en|ar --only-missing --refresh --limit=<N> --in=<file>
+ *        --region=<sudan|rwanda> --concurrency=<N tabs, default 1>
  *        --pdp-delay=<ms> --cdp=<url>
  */
 import { chromium, type Page } from 'playwright';
@@ -173,7 +174,10 @@ async function main() {
     throw new Error(`can't reach vault Chrome at ${CDP} — is chrome-debug.sh running? (${(e as Error).message})`);
   });
   const ctx = browser.contexts()[0] ?? (await browser.newContext());
-  const page = await ctx.newPage();
+  // --concurrency=N opens N tabs in this one process: one writer, so the file
+  // can't race, and each tab still waits DELAY between its own pages.
+  const CONCURRENCY = Math.max(1, parseInt(arg('concurrency', '1')!, 10));
+  const pages = await Promise.all(Array.from({ length: CONCURRENCY }, () => ctx.newPage()));
 
   let done = 0;
   let mismatches = 0;
@@ -187,149 +191,154 @@ async function main() {
     console.log('\n  ⏸  interrupted — flushing progress…');
   });
 
-  for (const home of queue) {
-    if (interrupted) break;
-    try {
-      const url = `https://www.airbnb.com/rooms/${home.airbnbListingId}?locale=${LOCALE}`;
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-      await page.waitForTimeout(6000);
-      const json = await readDeferredState(page);
-      if (!json) throw new Error('no deferred state');
+  let next = 0;
+  const worker = async (page: Page) => {
+    for (;;) {
+      const home = queue[next++];
+      if (!home || interrupted) return;
+      try {
+        const url = `https://www.airbnb.com/rooms/${home.airbnbListingId}?locale=${LOCALE}`;
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        await page.waitForTimeout(6000);
+        const json = await readDeferredState(page);
+        if (!json) throw new Error('no deferred state');
 
-      const pdp = parsePdp(json, JSON.stringify(json), home.airbnbListingId);
+        const pdp = parsePdp(json, JSON.stringify(json), home.airbnbListingId);
 
-      // Did Airbnb actually give us the locale we asked for?
-      const got = scriptOf(pdp.description);
-      const want = LOCALE === 'ar' ? 'ar' : 'latin';
-      const verified: LocaleCapture['localeVerified'] =
-        got === 'none' ? 'empty' : got === want ? 'ok' : 'mismatch';
-      if (verified === 'mismatch') mismatches++;
+        // Did Airbnb actually give us the locale we asked for?
+        const got = scriptOf(pdp.description);
+        const want = LOCALE === 'ar' ? 'ar' : 'latin';
+        const verified: LocaleCapture['localeVerified'] =
+          got === 'none' ? 'empty' : got === want ? 'ok' : 'mismatch';
+        if (verified === 'mismatch') mismatches++;
 
-      const capture: LocaleCapture = {
-        title: pdp.title ?? home.title,
-        category: pdp.category,
-        description: pdp.description,
-        amenities: pdp.amenities,
-        houseRules: pdp.houseRules,
-        hostAbout: pdp.hostAbout,
-        capturedAt: new Date().toISOString(),
-        localeVerified: verified,
-        machineTranslated:
-          pdp.descriptionLanguage != null ? pdp.descriptionLanguage !== LOCALE : pdp.machineTranslated,
-      };
+        const capture: LocaleCapture = {
+          title: pdp.title ?? home.title,
+          category: pdp.category,
+          description: pdp.description,
+          amenities: pdp.amenities,
+          houseRules: pdp.houseRules,
+          hostAbout: pdp.hostAbout,
+          capturedAt: new Date().toISOString(),
+          localeVerified: verified,
+          machineTranslated:
+            pdp.descriptionLanguage != null ? pdp.descriptionLanguage !== LOCALE : pdp.machineTranslated,
+        };
 
-      // A mismatched capture is recorded but never allowed to overwrite the
-      // other locale's text — storing English under `ar` is the one failure
-      // that would be invisible downstream.
-      home.i18n = { ...(home.i18n ?? {}), [LOCALE]: capture };
-      if (pdp.descriptionLanguage) home.authoredLocale = pdp.descriptionLanguage;
+        // A mismatched capture is recorded but never allowed to overwrite the
+        // other locale's text — storing English under `ar` is the one failure
+        // that would be invisible downstream.
+        home.i18n = { ...(home.i18n ?? {}), [LOCALE]: capture };
+        if (pdp.descriptionLanguage) home.authoredLocale = pdp.descriptionLanguage;
 
-      // Locale-independent fields: take them from whichever pass runs.
-      if (pdp.roomType) {
-        home.roomType = mapRoomType(pdp.roomType, home.airbnbCategory);
-        home.mkanPropertyType = mapPropertyType(home.airbnbCategory, home.roomType);
+        // Locale-independent fields: take them from whichever pass runs.
+        if (pdp.roomType) {
+          home.roomType = mapRoomType(pdp.roomType, home.airbnbCategory);
+          home.mkanPropertyType = mapPropertyType(home.airbnbCategory, home.roomType);
+        }
+        if (pdp.guestCapacity != null) home.guestCapacity = pdp.guestCapacity;
+        if (pdp.photos.length) {
+          home.photoUrls = pdp.photos;
+          home.photoCount = pdp.photos.length;
+          home.coverPhotoUrl = pdp.photos[0];
+        }
+        if (pdp.latitude != null && pdp.longitude != null) {
+          home.latitude = pdp.latitude;
+          home.longitude = pdp.longitude;
+        }
+        // Classify every home, not only the ones Airbnb gave a subtitle for —
+        // otherwise a listing with coordinates but no subtitle keeps whatever
+        // coarse city the search page guessed and never gets a state at all.
+        // The English subtitle is the one worth keeping. Airbnb's ar locale
+        // localizes the country field wrongly — a Sri Lankan and a South Dakotan
+        // listing both come back as "…، السودان" — so letting the ar pass
+        // overwrite it replaces a checkable string with a false one.
+        if (pdp.locationSubtitle && (LOCALE === 'en' || !home.locationSubtitle)) {
+          home.locationSubtitle = pdp.locationSubtitle;
+        }
+        const place = REGION.checkPlace(home.latitude, home.longitude, home.airbnbCategory, home.locationSubtitle);
+        home.city = place.city;
+        home.homeState = place.state;
+        // OUTSIDE_CITY (a Rwandan home outside Kigali) is not this wave's either.
+        const unwanted = place.agreement === 'SUSPECT_FOREIGN' || place.agreement === 'OUTSIDE_CITY';
+        home.placeCheck = unwanted ? 'SUSPECT_FOREIGN' : 'OK';
+        home.placeNote = unwanted ? place.note : null;
+        // Flat fields hold ONE language, and the rule everywhere else is "the
+        // language the host authored in". House rules were being overwritten by
+        // whichever pass ran last, so the whole set ended up Arabic while
+        // amenitiesRaw beside it stayed English — the per-locale copies live in
+        // `i18n`, which is where anything needing a specific language should read.
+        if (verified === 'ok' && (!home.authoredLocale || home.authoredLocale === LOCALE)) {
+          home.houseRules = pdp.houseRules;
+        } else if (!home.houseRules?.length) {
+          home.houseRules = pdp.houseRules;
+        }
+        // The Arabic label is what a CRM user reads; the flat English
+        // airbnbCategory keeps its search-page form because mapPropertyType
+        // parses it and changing that would reclassify existing homes.
+        if (LOCALE === 'ar' && pdp.category) home.airbnbCategoryAr = pdp.category;
+        home.hostSource = pdp.hostSource;
+        home.coHostIds = pdp.coHostIds;
+        home.pdpFetchedAt = new Date().toISOString();
+        home.pdpError = null;
+
+        // Only the canonical locale's text goes in the flat fields, so a
+        // mismatched or translated capture cannot quietly become the listing.
+        if (verified === 'ok' && (!home.authoredLocale || home.authoredLocale === LOCALE)) {
+          if (capture.title) home.title = capture.title;
+          if (capture.description) home.description = capture.description;
+        }
+
+        if (pdp.host?.airbnbHostId) {
+          home.hostAirbnbId = pdp.host.airbnbHostId;
+          const existing = hosts.get(pdp.host.airbnbHostId);
+          // Spread `existing` first, then overwrite only what this pass knows.
+          //
+          // This used to build a fresh literal listing every field by hand, each
+          // falling back to `existing?.x`. That reads as careful preservation and
+          // is the opposite: any field the PDP pass does not know about — `about`,
+          // `work`, `livesIn`, `languages`, `verifications`, `agencySuspected`,
+          // `profileFetchedAt` — was silently dropped on every run.
+          //
+          // Those come from `airbnb-host-profile.ts`, and they are the only place
+          // a host writes free text that could carry a phone number, so the wipe
+          // destroyed the one contact surface still worth searching. It took
+          // `livesIn` from 55 hosts to 2 between the 08:00 worksheet and the 13:05
+          // PDP re-run on 2026-07-27, along with the diaspora breakdown built on it.
+          hosts.set(pdp.host.airbnbHostId, {
+            ...existing,
+            source: 'AIRBNB',
+            airbnbHostId: pdp.host.airbnbHostId,
+            airbnbProfileUrl: `https://www.airbnb.com/users/show/${pdp.host.airbnbHostId}`,
+            avatarUrl: pdp.host.avatarUrl ?? existing?.avatarUrl ?? null,
+            name: pdp.host.name ?? existing?.name ?? null,
+            superhost: pdp.host.superhost ?? existing?.superhost ?? false,
+            hostSince: pdp.host.hostSince ?? existing?.hostSince ?? null,
+            responseRate: pdp.host.responseRate ?? existing?.responseRate ?? null,
+            airbnbListingsCount: existing?.airbnbListingsCount ?? null,
+            portfolioReviewsTotal: pdp.host.portfolioReviewsTotal ?? existing?.portfolioReviewsTotal ?? null,
+            portfolioAvgRating: pdp.host.portfolioAvgRating ?? existing?.portfolioAvgRating ?? null,
+          });
+        }
+
+        done++;
+        const flagStr =
+          verified === 'ok' ? (capture.machineTranslated ? 'translated' : 'original  ') : verified.padEnd(10);
+        console.log(
+          `  ✓ ${String(done).padStart(4)}/${queue.length}  ${flagStr}  ${String(home.city).padEnd(11)} ` +
+            `${home.photoCount} photos  ${pdp.hostSource ?? 'no-host'}  ${(capture.title ?? '').slice(0, 32)}`,
+        );
+      } catch (e) {
+        failures++;
+        home.pdpError = (e as Error).message;
+        console.warn(`  ! ${home.airbnbListingId}: ${(e as Error).message}`);
       }
-      if (pdp.guestCapacity != null) home.guestCapacity = pdp.guestCapacity;
-      if (pdp.photos.length) {
-        home.photoUrls = pdp.photos;
-        home.photoCount = pdp.photos.length;
-        home.coverPhotoUrl = pdp.photos[0];
-      }
-      if (pdp.latitude != null && pdp.longitude != null) {
-        home.latitude = pdp.latitude;
-        home.longitude = pdp.longitude;
-      }
-      // Classify every home, not only the ones Airbnb gave a subtitle for —
-      // otherwise a listing with coordinates but no subtitle keeps whatever
-      // coarse city the search page guessed and never gets a state at all.
-      // The English subtitle is the one worth keeping. Airbnb's ar locale
-      // localizes the country field wrongly — a Sri Lankan and a South Dakotan
-      // listing both come back as "…، السودان" — so letting the ar pass
-      // overwrite it replaces a checkable string with a false one.
-      if (pdp.locationSubtitle && (LOCALE === 'en' || !home.locationSubtitle)) {
-        home.locationSubtitle = pdp.locationSubtitle;
-      }
-      const place = REGION.checkPlace(home.latitude, home.longitude, home.airbnbCategory, home.locationSubtitle);
-      home.city = place.city;
-      home.homeState = place.state;
-      // OUTSIDE_CITY (a Rwandan home outside Kigali) is not this wave's either.
-      const unwanted = place.agreement === 'SUSPECT_FOREIGN' || place.agreement === 'OUTSIDE_CITY';
-      home.placeCheck = unwanted ? 'SUSPECT_FOREIGN' : 'OK';
-      home.placeNote = unwanted ? place.note : null;
-      // Flat fields hold ONE language, and the rule everywhere else is "the
-      // language the host authored in". House rules were being overwritten by
-      // whichever pass ran last, so the whole set ended up Arabic while
-      // amenitiesRaw beside it stayed English — the per-locale copies live in
-      // `i18n`, which is where anything needing a specific language should read.
-      if (verified === 'ok' && (!home.authoredLocale || home.authoredLocale === LOCALE)) {
-        home.houseRules = pdp.houseRules;
-      } else if (!home.houseRules?.length) {
-        home.houseRules = pdp.houseRules;
-      }
-      // The Arabic label is what a CRM user reads; the flat English
-      // airbnbCategory keeps its search-page form because mapPropertyType
-      // parses it and changing that would reclassify existing homes.
-      if (LOCALE === 'ar' && pdp.category) home.airbnbCategoryAr = pdp.category;
-      home.hostSource = pdp.hostSource;
-      home.coHostIds = pdp.coHostIds;
-      home.pdpFetchedAt = new Date().toISOString();
-      home.pdpError = null;
 
-      // Only the canonical locale's text goes in the flat fields, so a
-      // mismatched or translated capture cannot quietly become the listing.
-      if (verified === 'ok' && (!home.authoredLocale || home.authoredLocale === LOCALE)) {
-        if (capture.title) home.title = capture.title;
-        if (capture.description) home.description = capture.description;
-      }
-
-      if (pdp.host?.airbnbHostId) {
-        home.hostAirbnbId = pdp.host.airbnbHostId;
-        const existing = hosts.get(pdp.host.airbnbHostId);
-        // Spread `existing` first, then overwrite only what this pass knows.
-        //
-        // This used to build a fresh literal listing every field by hand, each
-        // falling back to `existing?.x`. That reads as careful preservation and
-        // is the opposite: any field the PDP pass does not know about — `about`,
-        // `work`, `livesIn`, `languages`, `verifications`, `agencySuspected`,
-        // `profileFetchedAt` — was silently dropped on every run.
-        //
-        // Those come from `airbnb-host-profile.ts`, and they are the only place
-        // a host writes free text that could carry a phone number, so the wipe
-        // destroyed the one contact surface still worth searching. It took
-        // `livesIn` from 55 hosts to 2 between the 08:00 worksheet and the 13:05
-        // PDP re-run on 2026-07-27, along with the diaspora breakdown built on it.
-        hosts.set(pdp.host.airbnbHostId, {
-          ...existing,
-          source: 'AIRBNB',
-          airbnbHostId: pdp.host.airbnbHostId,
-          airbnbProfileUrl: `https://www.airbnb.com/users/show/${pdp.host.airbnbHostId}`,
-          avatarUrl: pdp.host.avatarUrl ?? existing?.avatarUrl ?? null,
-          name: pdp.host.name ?? existing?.name ?? null,
-          superhost: pdp.host.superhost ?? existing?.superhost ?? false,
-          hostSince: pdp.host.hostSince ?? existing?.hostSince ?? null,
-          responseRate: pdp.host.responseRate ?? existing?.responseRate ?? null,
-          airbnbListingsCount: existing?.airbnbListingsCount ?? null,
-          portfolioReviewsTotal: pdp.host.portfolioReviewsTotal ?? existing?.portfolioReviewsTotal ?? null,
-          portfolioAvgRating: pdp.host.portfolioAvgRating ?? existing?.portfolioAvgRating ?? null,
-        });
-      }
-
-      done++;
-      const flagStr =
-        verified === 'ok' ? (capture.machineTranslated ? 'translated' : 'original  ') : verified.padEnd(10);
-      console.log(
-        `  ✓ ${String(done).padStart(4)}/${queue.length}  ${flagStr}  ${String(home.city).padEnd(11)} ` +
-          `${home.photoCount} photos  ${pdp.hostSource ?? 'no-host'}  ${(capture.title ?? '').slice(0, 32)}`,
-      );
-    } catch (e) {
-      failures++;
-      home.pdpError = (e as Error).message;
-      console.warn(`  ! ${home.airbnbListingId}: ${(e as Error).message}`);
+      if (done % CHECKPOINT_EVERY === 0) flush();
+      await sleep(DELAY);
     }
-
-    if (done % CHECKPOINT_EVERY === 0) flush();
-    await sleep(DELAY);
-  }
+  };
+  await Promise.all(pages.map(worker));
 
   // Re-tally each host's listing count over the whole file, not just this run.
   for (const h of hosts.values()) h.airbnbListingsCount = 0;
@@ -341,7 +350,7 @@ async function main() {
   }
 
   flush();
-  await page.close().catch(() => {});
+  await Promise.all(pages.map((p) => p.close().catch(() => {})));
 
   const withLocale = homes.filter((h) => h.i18n?.[LOCALE]?.localeVerified === 'ok').length;
   const authored = homes.reduce<Record<string, number>>((a, h) => {
