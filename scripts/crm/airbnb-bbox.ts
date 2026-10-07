@@ -42,7 +42,7 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync, renameSync } from '
 import { dirname } from 'node:path';
 import { parseSearchResult, type HomeRecord, type HostRecord } from './airbnb-parse';
 import { paginateSearch, PAGE_CAP } from './airbnb-paginate';
-import { SUDAN_BBOX, isInSudan, kmToBorder, checkPlace, BORDER_BUFFER_KM } from './sudan-places';
+import { regionFromArgv, isWanted } from './regions';
 
 const arg = (name: string, def?: string) => {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -57,8 +57,10 @@ const MAX_CELLS = parseInt(arg('max-cells', '0')!, 10);
 const SEED_DEPTH = parseInt(arg('depth', '3')!, 10);
 const DELAY = parseInt(arg('delay', '1200')!, 10);
 const CDP = arg('cdp', 'http://127.0.0.1:9222')!;
-const OUT = arg('out', 'scripts/crm/.data/airbnb-scrape.json')!;
-const FRONTIER = arg('frontier', 'scripts/crm/.data/airbnb-bbox-frontier.json')!;
+// `--region=rwanda` crawls Kigali into its own files; Sudan stays the default.
+const REGION = regionFromArgv();
+const OUT = arg('out', REGION.files.scrape)!;
+const FRONTIER = arg('frontier', REGION.files.frontier)!;
 
 /** ~1.1 km. Below this we stop splitting and report the cell as a known hole. */
 const MIN_SPAN_DEG = 0.01;
@@ -88,7 +90,7 @@ interface Cell {
 }
 
 interface Frontier {
-  bbox: typeof SUDAN_BBOX;
+  bbox: typeof REGION.bbox;
   pageCap: number;
   seedDepth: number;
   startedAt: string;
@@ -118,7 +120,7 @@ function zoomFor(cell: Cell): number {
 
 function cellUrl(cell: Cell): string {
   return (
-    `https://www.airbnb.com/s/Sudan/homes?ne_lat=${cell.neLat.toFixed(5)}&ne_lng=${cell.neLng.toFixed(5)}` +
+    `https://www.airbnb.com/s/${REGION.searchSlug}/homes?ne_lat=${cell.neLat.toFixed(5)}&ne_lng=${cell.neLng.toFixed(5)}` +
     `&sw_lat=${cell.swLat.toFixed(5)}&sw_lng=${cell.swLng.toFixed(5)}&zoom=${zoomFor(cell)}&search_by_map=true`
   );
 }
@@ -130,16 +132,7 @@ function cellUrl(cell: Cell): string {
  * is one wasted fetch against a false negative's silently missing region.
  */
 function touchesSudan(cell: Cell): boolean {
-  const steps = 4;
-  for (let i = 0; i <= steps; i++) {
-    for (let j = 0; j <= steps; j++) {
-      const lat = cell.swLat + ((cell.neLat - cell.swLat) * i) / steps;
-      const lng = cell.swLng + ((cell.neLng - cell.swLng) * j) / steps;
-      if (isInSudan(lat, lng)) return true;
-      if (kmToBorder(lat, lng) <= BORDER_BUFFER_KM) return true;
-    }
-  }
-  return false;
+  return REGION.touches(cell);
 }
 
 function quadrants(cell: Cell): Cell[] {
@@ -163,7 +156,7 @@ function quadrants(cell: Cell): Cell[] {
 /** Uniform grid at `depth`, so we skip proving that the top levels saturate. */
 function seedGrid(depth: number): Cell[] {
   let cells: Cell[] = [
-    { id: 'q', ...SUDAN_BBOX, depth: 0, status: 'PENDING' },
+    { id: 'q', ...REGION.bbox, depth: 0, status: 'PENDING' },
   ];
   for (let d = 0; d < depth; d++) cells = cells.flatMap(quadrants);
   return cells;
@@ -194,7 +187,8 @@ function loadStore(): Store {
 function saveStore(store: Store): void {
   writeAtomic(OUT, {
     scrapedAt: new Date().toISOString(),
-    query: 'bbox-quadtree:Sudan',
+    query: `bbox-quadtree:${REGION.countryEn}`,
+    region: REGION.key,
     counts: { homes: store.homes.size, hosts: store.hosts.size },
     homes: [...store.homes.values()],
     hosts: [...store.hosts.values()],
@@ -213,7 +207,7 @@ function loadFrontier(): Frontier {
   const cells: Record<string, Cell> = {};
   for (const c of seedGrid(SEED_DEPTH)) cells[c.id] = c;
   return {
-    bbox: SUDAN_BBOX,
+    bbox: REGION.bbox,
     pageCap: PAGE_CAP,
     seedDepth: SEED_DEPTH,
     startedAt: new Date().toISOString(),
@@ -263,12 +257,13 @@ async function crawlCell(page: Page, cell: Cell, store: Store): Promise<void> {
     if (store.homes.has(home.airbnbListingId)) continue;
 
     const e = el as { title?: string };
-    const place = checkPlace(home.latitude, home.longitude, e?.title ?? home.airbnbCategory);
-    if (place.agreement === 'SUSPECT_FOREIGN') {
+    const place = REGION.checkPlace(home.latitude, home.longitude, e?.title ?? home.airbnbCategory);
+    if (!isWanted(place)) {
       foreign++;
       continue;
     }
     home.city = place.city;
+    if (REGION.key !== 'sudan') (home as HomeRecord & { homeState?: string }).homeState = place.state;
     store.homes.set(home.airbnbListingId, home);
   }
 
@@ -322,7 +317,7 @@ function report(frontier: Frontier, store: Store, priorHomes: number): void {
   console.log(`    capped          ${by('CAPPED').length}${by('CAPPED').length ? '  ← still truncated at the minimum cell size' : ''}`);
   console.log(`    failed          ${by('FAILED').length}${by('FAILED').length ? '  ← rerun with --retry-failed' : ''}`);
   console.log(`    not yet visited ${unvisited.length}${unvisited.length ? '  ← rerun to continue' : ''}`);
-  console.log(`  provable coverage ${(coverage * 100).toFixed(2)}% of the Sudan bbox area`);
+  console.log(`  provable coverage ${(coverage * 100).toFixed(2)}% of the ${REGION.countryEn} bbox area`);
   console.log(`  results           ${totalInside} inside viewports, ${totalOutside} injected from outside`);
   console.log(`  skipped foreign   ${foreign}`);
   console.log(`  homes             ${priorHomes} → ${store.homes.size}  (+${store.homes.size - priorHomes})`);
@@ -340,7 +335,7 @@ function report(frontier: Frontier, store: Store, priorHomes: number): void {
     console.log('  the frontier file resumes exactly where this run stopped.');
   } else if (!holes.length) {
     console.log(`\n  Every leaf paginated to exhaustion and no cell was left unvisited, so`);
-    console.log(`  the union is Airbnb's complete Sudan result set as of ${new Date().toISOString().slice(0, 10)}.`);
+    console.log(`  the union is Airbnb's complete ${REGION.countryEn} result set as of ${new Date().toISOString().slice(0, 10)}.`);
   } else {
     console.log(`\n  Complete except for the ${holes.length} hole(s) listed above.`);
   }
@@ -368,7 +363,7 @@ async function main() {
       (c) => c.status === 'PENDING' || (RETRY_FAILED && c.status === 'FAILED'),
     );
 
-  console.log(`\n🗺  Airbnb Sudan quadtree — seed depth ${frontier.seedDepth}, page ceiling ${PAGE_CAP}`);
+  console.log(`\n🗺  Airbnb ${REGION.countryEn} quadtree — seed depth ${frontier.seedDepth}, page ceiling ${PAGE_CAP}`);
   console.log(`   ${Object.keys(frontier.cells).length} cells, ${pending().length} to visit, ${pruned} pruned as outside Sudan`);
   console.log(`   ${priorHomes} homes already known\n`);
 
@@ -452,7 +447,7 @@ async function main() {
   report(frontier, store, priorHomes);
   console.log(`\n✅ ${store.homes.size} homes → ${OUT}`);
   console.log(`   frontier → ${FRONTIER}`);
-  console.log('   Next: pnpm crm:pdp --locale=en --only-missing\n');
+  console.log(`   Next: pnpm crm:pdp --region=${REGION.key} --locale=en --only-missing\n`);
   process.exit(0);
 }
 

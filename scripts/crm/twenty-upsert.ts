@@ -21,10 +21,9 @@
 import { config } from 'dotenv';
 import { readFileSync } from 'node:fs';
 import type { HomeRecord, HostRecord } from './airbnb-parse';
-import type { StateCode } from './sudan-places';
 import { toUpperSnake } from './twenty-schema'; // SELECT values must match the seeded options (UPPER_SNAKE)
 import { mapAmenities } from './amenity-map';
-import { cityNameEn, stateNameEn, stateOfCity, type CityCode } from './sudan-places';
+import { regionFromArgv } from './regions';
 
 config({ override: true }); // load central .env (TWENTY_API_URL / TWENTY_API_KEY)
 
@@ -43,7 +42,8 @@ const arg = (n: string, d?: string) => {
   const h = process.argv.find((a) => a.startsWith(`--${n}=`));
   return h ? h.split('=').slice(1).join('=') : d;
 };
-const IN = arg('in', 'scripts/crm/.data/airbnb-scrape.json')!;
+const REGION = regionFromArgv();
+const IN = arg('in', REGION.files.scrape)!;
 const LIMIT = parseInt(arg('limit', '0')!, 10);
 const API_URL = (process.env.TWENTY_API_URL ?? '').replace(/\/+$/, '');
 const API_KEY = process.env.TWENTY_API_KEY ?? '';
@@ -63,15 +63,11 @@ const currency = (amount: number | null, code: string) =>
 
 // City/state names and the amenity table come from the shared modules; both
 // used to be duplicated here and in mkan-import.ts.
-const stateLabel = (c: string) => {
-  const s = stateOfCity(c as CityCode);
-  return s === 'UNKNOWN' ? '' : stateNameEn(s);
-};
-const address = (h: HomeRecord) => ({
+const address = (h: HomeRecord & { homeState?: string }) => ({
   addressStreet1: '',
-  addressCity: cityNameEn(h.city as CityCode),
-  addressState: stateLabel(h.city),
-  addressCountry: 'Sudan',
+  addressCity: REGION.cityNameEn(h.city),
+  addressState: REGION.stateNameEn(h.city, h.homeState),
+  addressCountry: REGION.countryEn,
   addressLat: h.latitude ?? undefined,
   addressLng: h.longitude ?? undefined,
 });
@@ -86,7 +82,7 @@ type EnrichedHost = HostRecord & {
   work?: string | null;
   about?: string | null;
   agencySuspected?: boolean;
-  preferredLanguage?: 'AR' | 'EN' | null;
+  preferredLanguage?: 'AR' | 'EN' | 'RW' | null;
   profileListingsCount?: number | null;
 };
 
@@ -115,8 +111,14 @@ function hostBody(h: EnrichedHost) {
 }
 
 /** What the PDP and profile stages add on top of what discovery captures. */
+/** One locale's PDP capture (`airbnb-pdp.ts`), or the rw machine translation (`translate-rw.ts`). */
+type Capture = { title?: string | null; description?: string | null; space?: string | null; localeVerified?: string };
+
 type EnrichedHome = HomeRecord & {
-  homeState?: StateCode;
+  homeState?: string;
+  i18n?: Partial<Record<'en' | 'ar' | 'rw', Capture>>;
+  priceNightLocal?: number | null;
+  fxRateToLocal?: number | null;
   stillListed?: boolean;
   hostSource?: string | null;
   locationSubtitle?: string | null;
@@ -135,6 +137,13 @@ type EnrichedHome = HomeRecord & {
   notesAr?: string | null;
 };
 
+/** A locale's text only when the PDP verified Airbnb served that language. */
+const said = (h: EnrichedHome, lang: 'en' | 'ar' | 'rw', key: keyof Capture) => {
+  const c = h.i18n?.[lang];
+  if (!c || (lang !== 'rw' && c.localeVerified !== 'ok')) return undefined;
+  return (c[key] as string | null | undefined) ?? undefined;
+};
+
 function homeBody(h: EnrichedHome, hostId: string | null, host?: HostRecord) {
   const amen = mapAmenities(h.amenitiesRaw);
   const count = h.photoCount ?? (h.photoUrls?.length ?? 0);
@@ -146,13 +155,16 @@ function homeBody(h: EnrichedHome, hostId: string | null, host?: HostRecord) {
     airbnbListingId: h.airbnbListingId,
     airbnbUrl: linkOne(h.airbnbUrl, 'Airbnb'),
     title: h.title ?? undefined,
-    titleEn: h.titleEn ?? h.title ?? undefined,
-    titleAr: h.titleAr ?? undefined,
+    titleEn: h.titleEn ?? said(h, 'en', 'title') ?? h.title ?? undefined,
+    titleAr: h.titleAr ?? said(h, 'ar', 'title'),
+    titleRw: said(h, 'rw', 'title'),
     description: h.description ?? undefined,
-    descriptionEn: h.descriptionEn ?? h.description ?? undefined,
-    descriptionAr: h.descriptionAr ?? undefined,
-    spaceEn: h.spaceEn ?? undefined,
-    spaceAr: h.spaceAr ?? undefined,
+    descriptionEn: h.descriptionEn ?? said(h, 'en', 'description') ?? h.description ?? undefined,
+    descriptionAr: h.descriptionAr ?? said(h, 'ar', 'description'),
+    descriptionRw: said(h, 'rw', 'description'),
+    spaceEn: h.spaceEn ?? said(h, 'en', 'space'),
+    spaceAr: h.spaceAr ?? said(h, 'ar', 'space'),
+    spaceRw: said(h, 'rw', 'space'),
     guestAccessEn: h.guestAccessEn ?? undefined,
     guestAccessAr: h.guestAccessAr ?? undefined,
     notesEn: h.notesEn ?? undefined,
@@ -160,10 +172,10 @@ function homeBody(h: EnrichedHome, hostId: string | null, host?: HostRecord) {
     roomType: h.roomType ?? undefined,
     airbnbCategory: h.airbnbCategory ?? undefined,
     airbnbCategoryAr: h.airbnbCategoryAr ?? undefined,
-    country: 'SUDAN',
+    country: REGION.country,
     city: h.city,
-    zone: (h as any).zone ?? undefined,
-    homeState: h.homeState ?? undefined,
+    zone: (h as any).zone ?? (REGION.key === 'rwanda' && h.homeState && h.homeState !== 'UNKNOWN' ? `KIGALI_${h.homeState}` : undefined),
+    homeState: h.homeState && h.homeState !== 'UNKNOWN' ? h.homeState : undefined,
     homeAddress: address(h), // "address" is reserved in Twenty; field is homeAddress
 
     // Host & Contacts (denormalized)
@@ -189,6 +201,9 @@ function homeBody(h: EnrichedHome, hostId: string | null, host?: HostRecord) {
     coverPhotoUrl: linkOne(h.coverPhotoUrl),
     photosRehosted: false,
     priceNightSar: currency(h.priceNightSar, 'SAR'),
+    priceNightScraped: h.priceCurrency ? currency(h.priceNight ?? null, h.priceCurrency) : undefined,
+    fxRateToLocal: h.fxRateToLocal ?? undefined,
+    priceNightLocal: currency(h.priceNightLocal ?? null, REGION.currency),
     avgRating: h.avgRating ?? undefined,
     reviewCount: h.reviewCount ?? undefined,
     propertyType: h.mkanPropertyType ? toUpperSnake(h.mkanPropertyType) : undefined,
@@ -262,7 +277,10 @@ async function findId(plural: string, field: string, value: string): Promise<str
 // ── main ─────────────────────────────────────────────────────────────────────
 async function main() {
   const payload = JSON.parse(readFileSync(IN, 'utf8')) as { homes: HomeRecord[]; hosts: HostRecord[] };
-  let homes = payload.homes ?? [];
+  let homes = (payload.homes ?? []) as EnrichedHome[];
+  // A non-Sudan wave only ever holds its own city: the crawl already dropped
+  // foreign rows, and the PDP marks the ones its geocoding then disowned.
+  if (REGION.key !== 'sudan') homes = homes.filter((h) => (h as any).placeCheck !== 'SUSPECT_FOREIGN');
   if (LIMIT) homes = homes.slice(0, LIMIT);
   const hostIds = new Set(homes.map((h) => h.hostAirbnbId).filter(Boolean));
   const hosts = (payload.hosts ?? []).filter((h) => hostIds.has(h.airbnbHostId));
@@ -293,8 +311,8 @@ async function main() {
   // photosRehosted) — refreshing those would silently undo somebody's work or
   // walk a listing backwards through the funnel.
   const HOME_REFRESHABLE = [
-    'title', 'titleEn', 'titleAr', 'name', 'description', 'descriptionEn', 'descriptionAr',
-    'spaceEn', 'spaceAr', 'guestAccessEn', 'guestAccessAr', 'notesEn', 'notesAr',
+    'title', 'titleEn', 'titleAr', 'titleRw', 'name', 'description', 'descriptionEn', 'descriptionAr', 'descriptionRw',
+    'spaceEn', 'spaceAr', 'spaceRw', 'guestAccessEn', 'guestAccessAr', 'notesEn', 'notesAr',
     'roomType', 'airbnbCategory',
     'country', 'city', 'zone', 'homeState', 'homeAddress',
     'account', 'hostName', 'hostPhone', 'hostWhatsapp', 'hostAttribution', 'locationCheck',
@@ -302,7 +320,7 @@ async function main() {
     'bedrooms', 'beds', 'bathrooms', 'guestCapacity',
     'amenitiesRaw', 'amenities', 'mkanAmenities', 'highlights', 'petsAllowed', 'parkingIncluded',
     'photoStage', 'photoUrls', 'photoCount', 'coverPhotoUrl',
-    'priceNightSar', 'avgRating', 'reviewCount', 'propertyType', 'mkanPropertyType',
+    'priceNightSar', 'priceNightScraped', 'fxRateToLocal', 'priceNightLocal', 'avgRating', 'reviewCount', 'propertyType', 'mkanPropertyType',
     'airbnbUrl', 'hostId', 'stillListed', 'source',
   ] as const;
   const HOST_REFRESHABLE = [

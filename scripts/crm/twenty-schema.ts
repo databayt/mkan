@@ -16,6 +16,7 @@
  */
 
 import { CITY_OPTIONS, STATE_OPTIONS } from './sudan-places';
+import { CITY_OPTIONS as RW_CITY_OPTIONS, DISTRICTS as RW_DISTRICTS, ZONE_OPTIONS as RW_ZONE_OPTIONS } from '@/lib/geo/rwanda-places';
 
 export type TwentyFieldType =
   | 'TEXT'
@@ -103,10 +104,12 @@ const MKAN_PROPERTY_TYPE = ['Apartment', 'Villa', 'Townhouse', 'Cottage', 'Tinyh
 // importer can never disagree about what "Kassala" is. The declared order here
 // is only a starting position — `sync-twenty-options.ts` preserves whatever
 // positions the live workspace already assigned.
-const SUDAN_CITIES = CITY_OPTIONS.map((c) => c.value);
-const SUDAN_STATES = STATE_OPTIONS.map((s) => s.value);
+// Kigali (2026-10-07) is the first market outside Sudan; its city, districts
+// and zones are appended so every existing option keeps its value and position.
+const SUDAN_CITIES = [...CITY_OPTIONS.map((c) => c.value), ...RW_CITY_OPTIONS.map((c) => c.value)];
+const SUDAN_STATES = [...STATE_OPTIONS.map((s) => s.value), ...RW_DISTRICTS.map((d) => d.code)];
 
-const COUNTRIES = ['SUDAN', 'EGYPT', 'SAUDI_ARABIA', 'UAE', 'OTHER'];
+const COUNTRIES = ['SUDAN', 'EGYPT', 'SAUDI_ARABIA', 'UAE', 'OTHER', 'RWANDA'];
 
 export const PORT_SUDAN_ZONE_OPTIONS = [
   'ABU_HASHISH', 'AIRPORT_DISTRICT', 'AL_ASKALA', 'AL_HUDA', 'AL_KAYLO', 'AL_MIRGHANIYA',
@@ -151,8 +154,8 @@ export const HOME: ObjectDef = {
     // Location & Geography (data/home/portsudan)
     { name: 'country', label: 'Country', type: 'SELECT', options: COUNTRIES, defaultValue: 'SUDAN', icon: 'IconFlag', description: 'Listing country (default Sudan).' },
     { name: 'city', label: 'City', type: 'SELECT', options: SUDAN_CITIES, defaultValue: 'PORT_SUDAN', icon: 'IconBuildingCommunity', description: 'Normalized city (wave-rollout key, default Port Sudan).' },
-    { name: 'zone', label: 'Zone', type: 'SELECT', options: PORT_SUDAN_ZONE_OPTIONS, icon: 'IconMapPin2', description: 'Municipal zone / neighborhood (45 Port Sudan zones from data/home).' },
-    { name: 'homeState', label: 'State', type: 'SELECT', options: SUDAN_STATES, icon: 'IconMap2', description: 'Sudanese state (wilaya) — coarse filter above city.' },
+    { name: 'zone', label: 'Zone', type: 'SELECT', options: [...PORT_SUDAN_ZONE_OPTIONS, ...RW_ZONE_OPTIONS.map((z) => z.value)], icon: 'IconMapPin2', description: 'Municipal zone / neighborhood (45 Port Sudan zones from data/home).' },
+    { name: 'homeState', label: 'State', type: 'SELECT', options: SUDAN_STATES, icon: 'IconMap2', description: 'Sudanese state (wilaya), or Kigali district — coarse filter above city.' },
     { name: 'homeAddress', label: 'Address', type: 'ADDRESS', icon: 'IconMapPin', description: 'Full geocoded location (incl. lat/lng subfields) → mkan Location.' },
     { name: 'googleMapsUrl', label: 'Google Maps', type: 'LINKS', icon: 'IconMapPin', description: 'Direct Google Maps pin / location link.' },
 
@@ -173,6 +176,9 @@ export const HOME: ObjectDef = {
     { name: 'descriptionAr', label: 'Description (AR)', type: 'TEXT', description: 'Full Arabic Airbnb description.' },
     { name: 'spaceEn', label: 'Space (EN)', type: 'TEXT', description: 'Walkthrough of the space (EN).' },
     { name: 'spaceAr', label: 'Space (AR)', type: 'TEXT', description: 'Walkthrough of the space (AR).' },
+    { name: 'titleRw', label: 'Title (RW)', type: 'TEXT', description: 'Kinyarwanda title (machine-translated — Airbnb has no rw locale).' },
+    { name: 'descriptionRw', label: 'Description (RW)', type: 'TEXT', description: 'Kinyarwanda description (machine-translated).' },
+    { name: 'spaceRw', label: 'Space (RW)', type: 'TEXT', description: 'Walkthrough of the space (RW, machine-translated).' },
     { name: 'guestAccessEn', label: 'Guest Access (EN)', type: 'TEXT', description: 'Guest access permissions (EN).' },
     { name: 'guestAccessAr', label: 'Guest Access (AR)', type: 'TEXT', description: 'Guest access permissions (AR).' },
     { name: 'notesEn', label: 'Notes (EN)', type: 'TEXT', description: 'Other things to note (EN).' },
@@ -204,6 +210,9 @@ export const HOME: ObjectDef = {
     { name: 'fxRateSarSdg', label: 'FX rate SAR→SDG', type: 'NUMBER', description: 'Parallel-market rate used at conversion (per home; never hardcoded).' },
     { name: 'fxRateDate', label: 'FX rate date', type: 'DATE' },
     { name: 'priceNightSdg', label: 'Price / night (SDG)', type: 'CURRENCY', description: 'round_clean(SAR × rate) → mkan pricePerNight.' },
+    { name: 'priceNightScraped', label: 'Price / night (as scraped)', type: 'CURRENCY', description: 'Nightly price in whatever currency Airbnb displayed (USD for the Kigali wave).' },
+    { name: 'fxRateToLocal', label: 'FX rate → local', type: 'NUMBER', description: 'Rate from the scraped currency to the listing currency, recorded per home.' },
+    { name: 'priceNightLocal', label: 'Price / night (local)', type: 'CURRENCY', description: 'Listing-currency price (RWF for Kigali) → mkan pricePerNight + Listing.currency.' },
     { name: 'priceConfirmedByHost', label: 'Price confirmed by host', type: 'BOOLEAN', defaultValue: false },
     { name: 'priceSanityRatio', label: 'Price sanity ratio', type: 'NUMBER', description: 'price_sdg ÷ median(city, room_type).' },
 
@@ -286,7 +295,7 @@ export const HOST: ObjectDef = {
     { name: 'email', label: 'Email', type: 'EMAILS' },
     { name: 'facebookUrl', label: 'Facebook', type: 'LINKS', icon: 'IconBrandFacebook' },
     { name: 'contactFoundVia', label: 'Contact found via', type: 'SELECT', options: ['AIRBNB_PROFILE', 'FACEBOOK', 'MUTUAL_CONTACT', 'FIELD_SCOUT', 'PUBLIC_DIRECTORY', 'OTHER'] },
-    { name: 'preferredLanguage', label: 'Preferred language', type: 'SELECT', options: ['AR', 'EN'] },
+    { name: 'preferredLanguage', label: 'Preferred language', type: 'SELECT', options: ['AR', 'EN', 'RW'] },
     { name: 'identityVerified', label: 'Identity verified', type: 'SELECT', options: ['UNVERIFIED', 'NAME_MATCHED', 'OWNERSHIP_CLAIMED', 'ID_SEEN'] },
     { name: 'crossSourceCorroborated', label: 'Cross-source corroboration', type: 'SELECT', options: ['NONE', 'PARTIAL', 'CONFIRMED'] },
     { name: 'agencySuspected', label: 'Agency suspected', type: 'BOOLEAN', defaultValue: false },

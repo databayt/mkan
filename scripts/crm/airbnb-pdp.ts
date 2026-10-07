@@ -33,7 +33,7 @@ import { chromium, type Page } from 'playwright';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { parsePdp, mapRoomType, mapPropertyType, type HomeRecord, type HostRecord } from './airbnb-parse';
-import { checkPlace } from './sudan-places';
+import { regionFromArgv } from './regions';
 
 const arg = (name: string, def?: string) => {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -47,7 +47,8 @@ const REFRESH = flag('refresh');
 const LIMIT = parseInt(arg('limit', '0')!, 10);
 const DELAY = parseInt(arg('pdp-delay', '1500')!, 10);
 const CDP = arg('cdp', 'http://127.0.0.1:9222')!;
-const IN = arg('in', 'scripts/crm/.data/airbnb-scrape.json')!;
+const REGION = regionFromArgv();
+const IN = arg('in', REGION.files.scrape)!;
 /** Comma-separated listing ids, for retrying the handful a run dropped. */
 const ONLY = (arg('only', '') || '').split(',').map((x) => x.trim()).filter(Boolean);
 
@@ -248,11 +249,13 @@ async function main() {
       if (pdp.locationSubtitle && (LOCALE === 'en' || !home.locationSubtitle)) {
         home.locationSubtitle = pdp.locationSubtitle;
       }
-      const place = checkPlace(home.latitude, home.longitude, home.airbnbCategory, home.locationSubtitle);
+      const place = REGION.checkPlace(home.latitude, home.longitude, home.airbnbCategory, home.locationSubtitle);
       home.city = place.city;
       home.homeState = place.state;
-      home.placeCheck = place.agreement === 'SUSPECT_FOREIGN' ? 'SUSPECT_FOREIGN' : 'OK';
-      home.placeNote = place.agreement === 'SUSPECT_FOREIGN' ? place.note : null;
+      // OUTSIDE_CITY (a Rwandan home outside Kigali) is not this wave's either.
+      const unwanted = place.agreement === 'SUSPECT_FOREIGN' || place.agreement === 'OUTSIDE_CITY';
+      home.placeCheck = unwanted ? 'SUSPECT_FOREIGN' : 'OK';
+      home.placeNote = unwanted ? place.note : null;
       // Flat fields hold ONE language, and the rule everywhere else is "the
       // language the host authored in". House rules were being overwritten by
       // whichever pass ran last, so the whole set ended up Arabic while

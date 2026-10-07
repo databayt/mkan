@@ -40,6 +40,9 @@ export interface HomeRecord {
   photoCount: number;
   coverPhotoUrl: string | null;
   priceNightSar: number | null;
+  /** Nightly price as displayed, with its ISO currency (USD/SAR/RWF…). */
+  priceNight?: number | null;
+  priceCurrency?: string | null;
   avgRating: number | null;
   reviewCount: number | null;
   mkanPropertyType: string | null;
@@ -101,6 +104,31 @@ export function parsePriceSar(sdp: any): number | null {
   if (t) return Math.round(num(t[1]) / parseInt(t[2], 10));
   const p = String(sdp?.primaryLine?.price ?? '').match(/SR\s*([\d,.]+)/i);
   return p ? num(p[1]) : null;
+}
+
+/** Airbnb's display symbols → ISO 4217. The vault session's currency is not
+ *  ours to choose (it was SR for the Sudan wave and USD on 2026-10-07, and
+ *  `?currency=` is ignored), so record what came back rather than assume it. */
+const SYMBOL_TO_ISO: Record<string, string> = {
+  $: 'USD', 'US$': 'USD', SR: 'SAR', RWF: 'RWF', FRW: 'RWF', RF: 'RWF', '€': 'EUR', '£': 'GBP', SDG: 'SDG',
+};
+const PRICE_TOKEN = /(US\$|\$|SR|RWF|FRw|RF|€|£|SDG)\s*([\d,.]+)/i;
+
+/** Nightly price in whatever currency the session displayed. */
+export function parsePrice(sdp: any): { amount: number; currency: string } | null {
+  const iso = (sym: string) => SYMBOL_TO_ISO[sym.toUpperCase()] ?? sym.toUpperCase();
+  const details = sdp?.explanationData?.priceDetails ?? [];
+  for (const g of details) {
+    for (const it of g?.items ?? []) {
+      const m = String(it?.description ?? '').match(new RegExp(`x\\s*${PRICE_TOKEN.source}`, 'i')); // "5 nights x $25.00"
+      if (m) return { amount: num(m[2]), currency: iso(m[1]) };
+    }
+  }
+  const label = String(sdp?.primaryLine?.accessibilityLabel ?? '');
+  const t = label.match(new RegExp(`${PRICE_TOKEN.source}\\s*for\\s*(\\d+)\\s*night`, 'i')); // "$100 for 5 nights"
+  if (t) return { amount: Math.round(num(t[2]) / parseInt(t[3], 10)), currency: iso(t[1]) };
+  const p = String(sdp?.primaryLine?.price ?? sdp?.primaryLine?.discountedPrice ?? '').match(PRICE_TOKEN);
+  return p ? { amount: num(p[2]), currency: iso(p[1]) } : null;
 }
 
 /** bedrooms / beds / baths from the structuredContent primaryLine messages. */
@@ -199,6 +227,8 @@ export function parseSearchResult(e: any, city: string): HomeRecord | null {
     photoCount: photos.length,
     coverPhotoUrl: photos[0] ?? null,
     priceNightSar: parsePriceSar(e?.structuredDisplayPrice),
+    priceNight: parsePrice(e?.structuredDisplayPrice)?.amount ?? null,
+    priceCurrency: parsePrice(e?.structuredDisplayPrice)?.currency ?? null,
     avgRating: rating,
     reviewCount: reviews,
     mkanPropertyType: mapPropertyType(category, roomType),
