@@ -248,6 +248,7 @@ model Listing {
   title              String?
   description        String?
   pricePerNight      Float?
+  currency           String              @default("SDG") // ISO 4217 of every money field on this listing — Kigali homes are RWF
   securityDeposit    Float?
   applicationFee     Float?
   photoUrls          String[]            @default([])
@@ -290,7 +291,7 @@ model Listing {
   sourceUrl          String?
   sourceHostId       String? // external host id — pairs with User.sourceHostId
   sourceCapturedAt   DateTime?
-  canonicalLocale    String? // "ar" | "en" — which language Listing.title/description hold
+  canonicalLocale    String? // "ar" | "en" | "rw" — which language Listing.title/description hold
   claimedAt          DateTime? // the host proved ownership; the hard gate on publishing
   // Homes vertical fields
   cleaningFee        Float?              @default(0)
