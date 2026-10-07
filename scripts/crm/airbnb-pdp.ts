@@ -199,6 +199,7 @@ async function main() {
   const NET_BACKOFF_MS = 20_000;
   const NET_ABORT_STREAK = 6;
   const retries = new Map<string, number>();
+  let rateLimited = false;
   let netStreak = 0;
   let next = 0;
   const worker = async (page: Page) => {
@@ -207,7 +208,19 @@ async function main() {
       if (!home || interrupted) return;
       try {
         const url = `https://www.airbnb.com/rooms/${home.airbnbListingId}?locale=${LOCALE}`;
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        // Airbnb answers a rate limit with HTTP 429 behind a "503 Service
+        // Unavailable" page. Every request after that fails too, and keeping on
+        // only deepens the block on the operator's own account — so stop the
+        // whole pass at once, leave this home unfetched, and let --only-missing
+        // resume after a cooldown. (2026-10-07: the Kigali pass ran ~540 pages at
+        // 3 tabs before Airbnb started refusing.)
+        if (res && (res.status() === 429 || res.status() === 403)) {
+          rateLimited = true;
+          interrupted = true;
+          console.error(`\n🛑 Airbnb returned ${res.status()} on ${home.airbnbListingId} — rate-limited. Stopping; rerun with --only-missing after a cooldown.`);
+          return;
+        }
         await page.waitForTimeout(6000);
         const json = await readDeferredState(page);
         if (!json) throw new Error('no deferred state');
@@ -390,7 +403,7 @@ async function main() {
   const noHost = homes.filter((h) => h.pdpFetchedAt && !h.hostAirbnbId).length;
 
   console.log(`\n── ${LOCALE} pass ─────────────────────────────────────────`);
-  console.log(`  fetched          ${done}${interrupted ? ' (interrupted)' : ''}`);
+  console.log(`  fetched          ${done}${rateLimited ? ' (STOPPED — Airbnb rate limit)' : interrupted ? ' (interrupted)' : ''}`);
   console.log(`  failures         ${failures}`);
   console.log(`  locale verified  ${withLocale}/${homes.length}`);
   console.log(`  locale mismatch  ${mismatches}${mismatches ? '  ← locale may be sticky; rerun probe-caps' : ''}`);
