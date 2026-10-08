@@ -79,6 +79,7 @@ function detectScript(text: string | null | undefined): 'ar' | 'en' {
 interface Pair {
   ar: string;
   en: string;
+  provider?: 'airbnb' | 'claude';
   /** For the report: which listing and field this came from. */
   origin: string;
 }
@@ -89,6 +90,8 @@ interface LocaleCapture {
   description: string | null;
   localeVerified: 'ok' | 'mismatch' | 'empty';
   machineTranslated?: boolean;
+  /** 'claude' when translate-rw.ts wrote it (the Kigali wave's Arabic); absent for Airbnb's own capture. */
+  provider?: 'claude';
 }
 interface Home {
   airbnbListingId: string;
@@ -127,7 +130,7 @@ function collectPairs(homes: Home[]): { pairs: Pair[]; sameScript: string[]; inc
       // Guard against the capture being swapped: trust the script, not the key.
       const arabic = detectScript(a) === 'ar' ? a : e;
       const english = detectScript(a) === 'ar' ? e : a;
-      pairs.push({ ar: arabic, en: english, origin: `${home.airbnbListingId}.${field}` });
+      pairs.push({ ar: arabic, en: english, origin: `${home.airbnbListingId}.${field}`, provider: ar.provider === 'claude' ? 'claude' : 'airbnb' });
     }
   }
   return { pairs, sameScript, incomplete };
@@ -182,8 +185,8 @@ function rwRows(homes: Home[]): Row[] {
 function toRows(pairs: Pair[], extra: Row[] = []): { rows: Row[]; collisions: Array<{ key: string; targets: string[]; origins: string[] }> } {
   const candidates: Row[] = [...extra];
   for (const p of pairs) {
-    candidates.push({ sourceText: p.en, sourceLanguage: 'en', targetLanguage: 'ar', translatedText: p.ar, origin: p.origin });
-    candidates.push({ sourceText: p.ar, sourceLanguage: 'ar', targetLanguage: 'en', translatedText: p.en, origin: p.origin });
+    candidates.push({ sourceText: p.en, sourceLanguage: 'en', targetLanguage: 'ar', translatedText: p.ar, origin: p.origin, provider: p.provider });
+    candidates.push({ sourceText: p.ar, sourceLanguage: 'ar', targetLanguage: 'en', translatedText: p.en, origin: p.origin, provider: p.provider });
   }
 
   const byKey = new Map<string, Row[]>();
