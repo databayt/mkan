@@ -222,7 +222,13 @@ async function main() {
   const { pairs, sameScript, incomplete } = collectPairs(homes);
   const allPairs = [...pairs, ...placePairs()];
   const extra = REGION.key === 'rwanda' ? rwRows(homes) : [];
-  const { rows, collisions } = toRows(allPairs, extra);
+  const { rows: allRows, collisions } = toRows(allPairs, extra);
+  // translation_cache's unique key is the full sourceText, and Postgres cannot
+  // index a btree row over ~2.7 KB — 11% of Kigali descriptions (mostly Arabic,
+  // two bytes a letter) are longer, and one such row aborted the whole run.
+  // They are skipped and reported until the cache keys on a hash of the text.
+  const tooLong = allRows.filter((r) => Buffer.byteLength(r.sourceText) > 2600);
+  const rows = allRows.filter((r) => Buffer.byteLength(r.sourceText) <= 2600);
   if (extra.length) console.log(`   ${extra.length} Kinyarwanda / Kigali place rows`);
 
   console.log(`   ${homes.length} homes · ${pairs.length} listing pairs · ${placePairs().length} place pairs`);
@@ -232,6 +238,7 @@ async function main() {
   for (const c of collisions.slice(0, 5)) {
     console.log(`     "${c.key}" → ${c.targets.length} different targets (${c.origins.slice(0, 3).join(', ')})`);
   }
+  if (tooLong.length) console.log(`   ${tooLong.length} rows skipped — source text over the cache index's 2.6 KB limit`);
   console.log(`   ${rows.length} rows to write\n`);
 
   if (!rows.length) {
