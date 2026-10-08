@@ -364,7 +364,7 @@ async function main() {
             console.error(`\n❌ ${netStreak} consecutive network failures — stopping; rerun with --only-missing when it is back.`);
             return;
           }
-          console.log(`  … ${home.airbnbListingId}: network error, retry ${n}/${NET_RETRIES} in ${(NET_BACKOFF_MS * n) / 1000}s`);
+          console.log(`  … ${home.airbnbListingId}: network error (${msg.slice(0, 90)}), retry ${n}/${NET_RETRIES} in ${(NET_BACKOFF_MS * n) / 1000}s`);
           await sleep(NET_BACKOFF_MS * n);
           queue.push(home);
           continue;
