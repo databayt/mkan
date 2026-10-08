@@ -157,7 +157,9 @@ function listingData(home: ScoredHome): Record<string, unknown> {
     : home.priceNightSdg ?? (FX && home.priceNightSar ? Math.round(home.priceNightSar * FX) : null);
   const photos = home.photosRehosted ? home.photoUrls : []; // empty → app placeholder until G1.4
   return {
-    title: home.title ?? 'Untitled',
+    // Hosts type line breaks into titles (13 of the first 886 Kigali homes); a
+    // title is one line everywhere mkan renders it.
+    title: home.title?.replace(/\s+/g, ' ').trim() || 'Untitled',
     description: home.description ?? null,
     pricePerNight: price,
     currency: REGION.currency,
