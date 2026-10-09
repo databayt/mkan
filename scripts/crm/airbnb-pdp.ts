@@ -352,6 +352,14 @@ async function main() {
         );
       } catch (e) {
         const msg = (e as Error).message;
+        // The vault Chrome tab can die mid-run; every later page then fails at
+        // once. Stop so the caller reconnects, instead of marking the whole
+        // queue failed (2026-10-09: 448 good pages, then nothing but this).
+        if (/has been closed|Browser closed|Target closed/i.test(msg)) {
+          interrupted = true;
+          console.error(`\n❌ browser closed — stopping; rerun with --only-missing to reconnect.`);
+          return;
+        }
         // A dropped connection is not this listing's fault. On 2026-10-07 the
         // Mac lost its network mid-run and the pass marked 4,293 homes failed in
         // minutes; wait it out and retry the same home instead.
