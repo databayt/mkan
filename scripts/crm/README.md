@@ -382,6 +382,28 @@ bash scripts/crm/units/install.sh --status
 A fresh **scrape** is deliberately not in the loop: it needs a logged-in browser over
 CDP, and it is the one step that invents records rather than reconciling them.
 
+## TikTok lane — Kigali rentals from TikTok videos (2026-10-12)
+
+Kigali brokers post rentals as TikTok videos, so `scripts/crm/tiktok.ts` reads them into the CRM.
+Each video becomes a `home` at **VETTING** (`source TIKTOK`, `sourceId tiktok:<videoId>`, frames on S3)
+and its poster becomes a `host` with an Opportunity. Nothing publishes; going live is the usual human step.
+
+```
+pnpm crm:tiktok-seeds [--add=h|--promote=h|--ignore=h]   # the accounts to crawl (search proposes, a human promotes)
+pnpm crm:tiktok-discover                                  # seed accounts (yt-dlp) + 3 rotating web-search phrases
+pnpm crm:tiktok-fetch --limit=N                           # caption + 8 frames + Whisper transcript; mp4 deleted
+pnpm crm:tiktok-read  --limit=N                           # claude -p (Max pool) reads caption + transcript + frames
+pnpm crm:tiktok-upsert [--apply]                          # S3 frames + host + home + note → Twenty
+pnpm crm:tiktok --apply --notify --limit=N                # all four; launchd runs it daily (install-tiktok-sweep.sh)
+pnpm crm:tiktok-status
+```
+
+There is no TikTok login, so no account is at risk. The ledger lives under `.data/tiktok/` and every stage resumes.
+DuckDuckGo blocks after 2–3 queries and Brave after a few more, so the volume comes from the seed accounts.
+Whisper does not know Kinyarwanda, so the caption and the frames carry the facts.
+Prices are stored in `priceMonthLocal` + `rentPeriod`, because Kigali rents by the month.
+Full doc: kun.databayt.org/docs/scrape.
+
 ## Still to add
 
 - The `Note` / `Task` (Activity) custom fields — `channel`, `host`, `home` (§2.6). Small;

@@ -22,10 +22,11 @@
 import { config } from 'dotenv';
 config({ override: true });
 
-import { execSync, spawnSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { runClaude } from './claude-reader';
 import { twentyClient, phoneOf, fromMicros, type Phones, type Currency } from './twenty-rest';
 import { INTAKE_PROMPT_VERSION, buildIntakePrompt, type ReadMode, type Vocab } from './home-intake-prompt';
 import {
@@ -238,34 +239,9 @@ function appendJsonl(name: string, row: unknown): void {
 }
 
 // ── the reader (claude -p on the Max plan) ───────────────────────────────────
-/** The claude CLI, wherever this process was started from (launchd and the Hermes gateway carry a bare PATH). */
-function claudeBin(): string {
-  const candidates = [trim(process.env.CLAUDE_BIN), join(homedir(), '.local/bin/claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude'];
-  for (const c of candidates) if (c && existsSync(c)) return c;
-  return 'claude';
-}
 function runReader(prompt: string, attempt = 0): IntakeResult {
   const started = Date.now();
-  const proc = spawnSync(
-    claudeBin(),
-    ['-p', '--no-session-persistence', '--model', READER_MODEL, '--output-format', 'json', '--disallowedTools', 'Bash', 'Read', 'Edit', 'Write', 'Glob', 'Grep', 'WebFetch', 'WebSearch', 'Agent', 'NotebookEdit'],
-    {
-      input: prompt,
-      encoding: 'utf8',
-      timeout: 150_000,
-      maxBuffer: 8 * 1024 * 1024,
-      env: { ...process.env, PATH: `${join(homedir(), '.local/bin')}:/opt/homebrew/bin:/usr/local/bin:${process.env.PATH ?? '/usr/bin:/bin'}`, CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' },
-    },
-  );
-  if (proc.error) throw new Error(`reader could not start (is the claude CLI installed?): ${proc.error.message}`);
-  let envelope: { is_error?: boolean; result?: string; subtype?: string } = {};
-  try {
-    envelope = JSON.parse(proc.stdout || '{}');
-  } catch {
-    throw new Error(`reader returned non-JSON: ${(proc.stdout || proc.stderr).slice(0, 200)}`);
-  }
-  if (envelope.is_error) throw new Error(`reader error: ${envelope.result ?? envelope.subtype ?? 'unknown'}`);
-  const text = envelope.result ?? '';
+  const text = runClaude({ prompt, model: READER_MODEL });
   try {
     const parsed = parseIntakeResult(text);
     console.log(`  reader ${INTAKE_PROMPT_VERSION}/${READER_MODEL} · ${((Date.now() - started) / 1000).toFixed(1)}s · kind=${parsed.kind} units=${parsed.units.length}`);

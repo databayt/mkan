@@ -78,7 +78,9 @@ export interface ObjectDef {
 // had to be filed as OTHER, which reads on the board as "we found this
 // somewhere and cannot say where" — the opposite of the truth, and the truth
 // an operator most wants (a host who self-serves has already onboarded).
-const SOURCE = ['AIRBNB', 'FACEBOOK', 'WHATSAPP', 'REFERRAL', 'FIELD_SCOUT', 'MKAN_SITE', 'OTHER'];
+// TIKTOK (2026-10-12): Kigali brokers post rentals as TikTok videos — the
+// `crm:tiktok` lane reads them. Appended, never inserted: options are append-only.
+const SOURCE = ['AIRBNB', 'FACEBOOK', 'WHATSAPP', 'REFERRAL', 'FIELD_SCOUT', 'MKAN_SITE', 'OTHER', 'TIKTOK'];
 
 // mkan enums (exact spellings — the import job maps these straight onto Prisma enums).
 // Appended in the same order as the Prisma enum. `crm:sync-options` grows the
@@ -150,6 +152,10 @@ export const HOME: ObjectDef = {
     { name: 'scrapedAt', label: 'First scraped', type: 'DATE_TIME' },
     { name: 'lastSyncedAt', label: 'Last synced', type: 'DATE_TIME' },
     { name: 'stillListed', label: 'Still on source', type: 'BOOLEAN', defaultValue: true, description: 'Flipped false when a re-scrape 404s.' },
+    // Source-neutral identity for the non-Airbnb lanes (TikTok first): `tiktok:<videoId>`.
+    // airbnbListingId stays the Airbnb key; this one is the dedupe key everywhere else.
+    { name: 'sourceId', label: 'Source ID', type: 'TEXT', icon: 'IconFingerprint', description: 'External id for non-Airbnb sources, e.g. tiktok:7694262165464960276 (dedupe key).' },
+    { name: 'sourceUrl', label: 'Source URL', type: 'LINKS', icon: 'IconExternalLink', description: 'Back-link to the post the home was read from (TikTok video, …).' },
 
     // Location & Geography (data/home/portsudan)
     { name: 'country', label: 'Country', type: 'SELECT', options: COUNTRIES, defaultValue: 'SUDAN', icon: 'IconFlag', description: 'Listing country (default Sudan).' },
@@ -214,6 +220,10 @@ export const HOME: ObjectDef = {
     { name: 'fxRateToLocal', label: 'FX rate → local', type: 'NUMBER', description: 'Rate from the scraped currency to the listing currency, recorded per home.' },
     { name: 'priceNightLocal', label: 'Price / night (local)', type: 'CURRENCY', description: 'Listing-currency price (RWF for Kigali) → mkan pricePerNight + Listing.currency.' },
     { name: 'priceConfirmedByHost', label: 'Price confirmed by host', type: 'BOOLEAN', defaultValue: false },
+    // Kigali's TikTok market rents by the month; the site prices by the night.
+    // Keep the real figure and its period — converting is a publish-time decision.
+    { name: 'rentPeriod', label: 'Rent period', type: 'SELECT', options: ['NIGHT', 'MONTH', 'UNKNOWN'], icon: 'IconCalendarRepeat', description: 'How the source quotes the price.' },
+    { name: 'priceMonthLocal', label: 'Price / month (local)', type: 'CURRENCY', description: 'Monthly rent as quoted (RWF in Kigali).' },
     { name: 'priceSanityRatio', label: 'Price sanity ratio', type: 'NUMBER', description: 'price_sdg ÷ median(city, room_type).' },
 
     // Reputation & derived checks
@@ -294,7 +304,8 @@ export const HOST: ObjectDef = {
     { name: 'whatsappStatus', label: 'WhatsApp status', type: 'SELECT', options: ['UNKNOWN', 'INVALID', 'VALID_DELIVERED'] },
     { name: 'email', label: 'Email', type: 'EMAILS' },
     { name: 'facebookUrl', label: 'Facebook', type: 'LINKS', icon: 'IconBrandFacebook' },
-    { name: 'contactFoundVia', label: 'Contact found via', type: 'SELECT', options: ['AIRBNB_PROFILE', 'FACEBOOK', 'MUTUAL_CONTACT', 'FIELD_SCOUT', 'PUBLIC_DIRECTORY', 'OTHER'] },
+    { name: 'contactFoundVia', label: 'Contact found via', type: 'SELECT', options: ['AIRBNB_PROFILE', 'FACEBOOK', 'MUTUAL_CONTACT', 'FIELD_SCOUT', 'PUBLIC_DIRECTORY', 'OTHER', 'TIKTOK'] },
+    { name: 'tiktokHandle', label: 'TikTok', type: 'TEXT', icon: 'IconBrandTiktok', description: 'TikTok handle without @ (dedupe key when the caption carries no phone).' },
     { name: 'preferredLanguage', label: 'Preferred language', type: 'SELECT', options: ['AR', 'EN', 'RW'] },
     { name: 'identityVerified', label: 'Identity verified', type: 'SELECT', options: ['UNVERIFIED', 'NAME_MATCHED', 'OWNERSHIP_CLAIMED', 'ID_SEEN'] },
     { name: 'crossSourceCorroborated', label: 'Cross-source corroboration', type: 'SELECT', options: ['NONE', 'PARTIAL', 'CONFIRMED'] },

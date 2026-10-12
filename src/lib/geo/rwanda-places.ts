@@ -130,6 +130,35 @@ const countryOf = (subtitle: string) => subtitle.split(/[,،]/).pop()?.trim().to
 const isRwandaName = (s: string) => /^rwanda$/.test(s) || /^رواندا$/.test(s);
 const namesKigali = (s: string | null | undefined) =>
   !!s && (/kigali|gasabo|kicukiro|nyarugenge/i.test(s) || /كيغالي|كيجالي/.test(s));
+/**
+ * Neighbourhood names people use in captions that are not sector names. Each is
+ * filed under the district that holds it; an ambiguous name (Rebero straddles
+ * Kicukiro and Nyarugenge) is left out rather than guessed.
+ */
+const NEIGHBOURHOODS: Array<[string, Exclude<RwandaDistrictCode, 'UNKNOWN'>]> = [
+  ['Kibagabaga', 'GASABO'], ['Nyarutarama', 'GASABO'], ['Gacuriro', 'GASABO'], ['Kagugu', 'GASABO'],
+  ['Batsinda', 'GASABO'], ['Zindiro', 'GASABO'], ['Kabuga', 'GASABO'],
+  ['Kiyovu', 'NYARUGENGE'], ['Norvege', 'NYARUGENGE'], ['Norvège', 'NYARUGENGE'],
+  ['Biryogo', 'NYARUGENGE'], ['Kabeza', 'KICUKIRO'], ['Busanza', 'KICUKIRO'], ['Sonatubes', 'KICUKIRO'],
+  ['Kagarama', 'KICUKIRO'], ['Gahanga', 'KICUKIRO'],
+];
+
+/**
+ * A sector or a well-known neighbourhood named in free text → its district.
+ * For sources with no coordinates (a TikTok caption says "2bedroom in
+ * Nyamirambo"), the name is all there is; UNKNOWN when nothing matches.
+ */
+export function districtForPlace(name: string | null | undefined): RwandaDistrictCode {
+  if (!name) return 'UNKNOWN';
+  const s = name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const hit = (n: string) => new RegExp(`(^|[^a-z])${n.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()}([^a-z]|$)`).test(s);
+  const sector = SECTORS.find(([n]) => n !== 'Kigali' && hit(n));
+  if (sector) return sector[1];
+  const hood = NEIGHBOURHOODS.find(([n]) => hit(n));
+  if (hood) return hood[1];
+  return districtFromText(name);
+}
+
 const districtFromText = (s: string): RwandaDistrictCode =>
   DISTRICTS.find((d) => new RegExp(d.nameEn, 'i').test(s))?.code ?? 'UNKNOWN';
 
