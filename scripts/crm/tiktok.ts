@@ -92,7 +92,13 @@ const saveSeeds = (s: Record<string, SeedRow>) => writeJson(SEEDS, s);
 const tooOld = (ts: number | null | undefined) => ts != null && Date.now() / 1000 - ts > MAX_AGE_DAYS * 86400;
 
 function ytdlp(args: string[]): string {
-  return execFileSync('yt-dlp', ['--no-warnings', ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 120_000, stdio: ['ignore', 'pipe', 'pipe'] });
+  try {
+    return execFileSync('yt-dlp', ['--no-warnings', ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 120_000, stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (e) {
+    // "Command failed" alone says nothing — the reason (network, 403, removed video) is yt-dlp's last stderr line.
+    const err = String((e as { stderr?: string }).stderr ?? '').trim().split('\n').pop();
+    throw new Error(`yt-dlp: ${err || (e as Error).message.split('\n')[0]}`);
+  }
 }
 
 // ── discover ─────────────────────────────────────────────────────────────────
