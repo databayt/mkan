@@ -101,6 +101,32 @@ function ytdlp(args: string[]): string {
   }
 }
 
+/**
+ * The Kigali link drops for minutes at a time (and the Mac sleeps). A stage that
+ * keeps going through a drop burns its whole queue into errors — the 2026-10-13
+ * backlog run did, 337 of 355. So each video first checks DNS for the host it is
+ * about to need, waits out a drop for up to 30 minutes, then stops the stage.
+ */
+async function waitForNetwork(host: string): Promise<void> {
+  const { lookup } = await import('node:dns/promises');
+  for (let waited = 0; ; waited += 60) {
+    try {
+      await lookup(host);
+      if (waited) console.log(`  … ${host} reachable again after ${waited / 60} min`);
+      return;
+    } catch {
+      if (waited >= 30 * 60) throw new NetworkDown(host);
+      if (!waited) console.warn(`  … ${host} does not resolve — waiting for the network (up to 30 min)`);
+      await sleep(60_000);
+    }
+  }
+}
+class NetworkDown extends Error {
+  constructor(host: string) {
+    super(`network down: ${host} has not resolved for 30 min — stopping this stage; re-run resumes`);
+  }
+}
+
 // ── discover ─────────────────────────────────────────────────────────────────
 async function discover(): Promise<void> {
   const videos = loadVideos();
@@ -223,6 +249,7 @@ async function fetchStage(): Promise<void> {
     const wavFor = new Map<string, string>();
     for (const row of batch) {
       const mp4 = join(TMP, `${row.videoId}.mp4`);
+      await waitForNetwork('www.tiktok.com');
       try {
         const j = JSON.parse(ytdlp(['-J', row.url]));
         row.meta = {
@@ -304,6 +331,7 @@ async function readStage(): Promise<void> {
   console.log(`\nread: ${queue.length} video(s) · reader ${TIKTOK_PROMPT_VERSION}/${READER_MODEL}`);
   for (const row of queue) {
     const started = Date.now();
+    await waitForNetwork('api.anthropic.com');
     try {
       const read = readOne(row);
       row.read = read;
@@ -373,6 +401,7 @@ async function upsert(): Promise<{ homes: number; hosts: number }> {
     const existing = homeBySource.get(`tiktok:${row.videoId}`);
     if (existing) {
       Object.assign(row, { state: 'upserted', homeId: String(existing.id), hostId: existing.hostId ? String(existing.hostId) : undefined });
+      delete row.error;
       console.log(`  = ${row.videoId} already in Twenty (${existing.id})`);
       continue;
     }
@@ -434,6 +463,7 @@ async function upsert(): Promise<{ homes: number; hosts: number }> {
         console.warn(`  ! note for ${row.videoId}: ${(e as Error).message.slice(0, 120)}`);
       }
       Object.assign(row, { state: 'upserted', homeId, hostId: String(host.id) });
+      delete row.error;
       homeBySource.set(`tiktok:${row.videoId}`, { id: homeId });
       if (key) seenDup.add(key);
       newHomes++;
