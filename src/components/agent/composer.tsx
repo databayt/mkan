@@ -57,6 +57,7 @@ export function Composer({
     >
       <textarea
         ref={ref}
+        data-agent-composer
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {

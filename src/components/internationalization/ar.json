@@ -5599,6 +5599,44 @@
         "furnishing": "الأثاث",
         "type": "النوع"
       }
+    },
+    "question": {
+      "months": "بالشهر",
+      "monthsHint": "إيجار شهري عبر وسيط. الانتقال يكلّف نحو ٣٫٥ ضعف الإيجار.",
+      "nights": "بالليلة",
+      "nightsHint": "إقامة قصيرة مفروشة بسعر لليلة.",
+      "upToMonth": "حتى {price} شهرياً",
+      "upToNight": "حتى {price} لليلة",
+      "moveIn": "نحو {total} للانتقال: ٣ أشهر وتأمين ورسوم",
+      "stayTotal": "نحو {total} مقابل {nights} ليالٍ مع رسوم الخدمة",
+      "other": "اكتب شيئاً آخر"
+    },
+    "trace": {
+      "todos": "قائمة المهام",
+      "tools": {
+        "requirements_extracted": "فهم",
+        "asked": "سؤال",
+        "search_done": "بحث",
+        "dedup_grouped": "تجميع",
+        "filtered": "تصفية",
+        "ranked": "ترتيب",
+        "needs_confirmation": "تحقق",
+        "broker_contact_started": "مراسلة",
+        "broker_replied": "رد",
+        "viewing_proposed": "معاينة",
+        "viewing_confirmed": "معاينة",
+        "shortlist_ready": "القائمة",
+        "failed": "خطأ",
+        "outcome_recorded": "نتيجة"
+      },
+      "verbs": {
+        "understand": "أقرأ طلبك…",
+        "search": "أبحث في المنازل…",
+        "group": "أجمع الإعلانات المكررة…",
+        "rank": "أرتّب…",
+        "confirm": "أتحقق مع الوسطاء…",
+        "present": "أكتب القائمة…"
+      }
     }
   }
 }

@@ -5599,6 +5599,44 @@
         "furnishing": "Furnishing",
         "type": "Type"
       }
+    },
+    "question": {
+      "months": "Months",
+      "monthsHint": "Monthly rent through a broker. Moving in costs about 3.5× the rent.",
+      "nights": "Nights",
+      "nightsHint": "A furnished short stay, priced per night.",
+      "upToMonth": "Up to {price} a month",
+      "upToNight": "Up to {price} a night",
+      "moveIn": "About {total} to move in: 3 months, deposit and fees",
+      "stayTotal": "About {total} for {nights} nights, with the service fee",
+      "other": "Type something else"
+    },
+    "trace": {
+      "todos": "Update Todos",
+      "tools": {
+        "requirements_extracted": "Understand",
+        "asked": "AskUser",
+        "search_done": "Search",
+        "dedup_grouped": "Group",
+        "filtered": "Filter",
+        "ranked": "Rank",
+        "needs_confirmation": "Check",
+        "broker_contact_started": "Message",
+        "broker_replied": "Reply",
+        "viewing_proposed": "Viewing",
+        "viewing_confirmed": "Viewing",
+        "shortlist_ready": "Shortlist",
+        "failed": "Error",
+        "outcome_recorded": "Outcome"
+      },
+      "verbs": {
+        "understand": "Reading your request…",
+        "search": "Searching homes…",
+        "group": "Grouping duplicate ads…",
+        "rank": "Ranking…",
+        "confirm": "Checking with brokers…",
+        "present": "Writing the shortlist…"
+      }
     }
   }
 }

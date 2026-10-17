@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Check, ChevronDown, Circle, CircleAlert, Clock, Loader2, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { cn } from "@/lib/utils";
 import { elapsed, fill } from "./format";
@@ -29,32 +29,34 @@ export function latestTurn(events: AgentEventView[]): AgentEventView[] {
   return events;
 }
 
-function StatusIcon({ status }: { status: StepStatus | "pending" }) {
-  const cls = "size-3.5 shrink-0";
-  switch (status) {
-    case "done":
-      return <Check className={cn(cls, "text-emerald-600")} aria-hidden />;
-    case "running":
-      return <Loader2 className={cn(cls, "animate-spin text-foreground")} aria-hidden />;
-    case "waiting_person":
-      return <Clock className={cn(cls, "text-amber-600")} aria-hidden />;
-    case "uncertain":
-      return <CircleAlert className={cn(cls, "text-amber-600")} aria-hidden />;
-    case "failed":
-      return <X className={cn(cls, "text-destructive")} aria-hidden />;
-    default:
-      return <Circle className={cn(cls, "text-muted-foreground/50")} aria-hidden />;
-  }
+/** Claude Code's result dot: green done, amber waiting on a person, red failed, pulsing while running. */
+function Dot({ status }: { status: StepStatus }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "mt-[0.45em] inline-block size-2 shrink-0 rounded-full",
+        status === "done" && "bg-emerald-500",
+        (status === "waiting_person" || status === "uncertain") && "bg-amber-500",
+        status === "failed" && "bg-destructive",
+        status === "running" && "animate-pulse bg-muted-foreground",
+      )}
+    />
+  );
 }
 
 /**
- * The agent's work for the latest turn, folded like an assistant's "thinking"
- * block: open and shimmering while it runs, a one-line summary once done. Every
- * line is an `AgentEvent` row — nothing here is invented for show.
+ * The agent's work for the latest turn, written like a Claude Code transcript:
+ * a todo list, then one `⏺ Tool` line per step with its `⎿` result. Folded to
+ * one line once done; open, with a "✻ Searching… (3s)" spinner, while it runs.
+ * Every line is an `AgentEvent` row — nothing here is invented for show.
  */
 export function Steps({ task, compact = false }: { task: AgentTaskView; compact?: boolean }) {
   const dict = useDictionary();
   const p = dict?.agent?.panel;
+  const tr = dict?.agent?.trace;
+  const tools = tr?.tools as Record<string, string> | undefined;
+  const verbs = tr?.verbs as Record<string, string> | undefined;
   const turn = latestTurn(task.events);
   const running = task.status === "RUNNING";
   const asked = turn.some((e) => e.kind === "asked");
@@ -62,6 +64,14 @@ export function Steps({ task, compact = false }: { task: AgentTaskView; compact?
   // null = follow the task (open while running); a click pins it.
   const [pinned, setPinned] = useState<boolean | null>(null);
   const open = pinned ?? running;
+
+  // The spinner's seconds tick while the turn runs.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [running]);
 
   // A step's status is its event's; the first step without one is "running"
   // while the task runs, the rest are pending. An asked turn stops at step 1.
@@ -106,14 +116,15 @@ export function Steps({ task, compact = false }: { task: AgentTaskView; compact?
   };
 
   const current = plan.find((s) => s.status === "running")?.step;
-  const headline = running
-    ? (current && (p?.steps as Record<string, string> | undefined)?.[current]) || dict?.agent?.reply?.working || "Working on it…"
+  const seconds = Math.max(0, Math.round((now - Date.parse(turnStart)) / 1000));
+  const lastAt = turn.at(-1)?.at;
+  const failed = turn.some((e) => e.status === "failed");
+  const headline = asked
+    ? summary(turn.find((e) => e.kind === "asked")!)
     : HEADLINE.map((k) => [...turn].reverse().find((e) => e.kind === k))
         .filter((e): e is AgentEventView => !!e)
         .map(summary)
         .join(" · ") || (turn.at(-1) ? summary(turn.at(-1)!) : "");
-  const lastAt = turn.at(-1)?.at;
-  const failed = turn.some((e) => e.status === "failed");
 
   if (turn.length === 0 && !running) return null;
 
@@ -126,58 +137,79 @@ export function Steps({ task, compact = false }: { task: AgentTaskView; compact?
         className="group flex max-w-full items-center gap-1.5 text-start hover:text-foreground"
       >
         {running ? (
-          <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
+          <>
+            <span aria-hidden className="shrink-0 animate-spin text-amber-600 [animation-duration:2.4s]">
+              ✻
+            </span>
+            <span className="animate-shimmer truncate bg-[linear-gradient(90deg,var(--muted-foreground)_25%,var(--foreground)_50%,var(--muted-foreground)_75%)] bg-[length:200%_100%] bg-clip-text text-transparent">
+              {(current && verbs?.[current]) || dict?.agent?.reply?.working}
+            </span>
+            <span className="shrink-0 tabular-nums opacity-70" dir="ltr">
+              ({seconds}s)
+            </span>
+          </>
         ) : (
-          <StatusIcon status={failed ? "failed" : "done"} />
-        )}
-        <span
-          className={cn(
-            "truncate",
-            running &&
-              "animate-shimmer bg-[linear-gradient(90deg,var(--muted-foreground)_25%,var(--foreground)_50%,var(--muted-foreground)_75%)] bg-[length:200%_100%] bg-clip-text text-transparent",
-          )}
-        >
-          {headline}
-        </span>
-        {!running && lastAt && (
-          <span className="shrink-0 tabular-nums opacity-70" dir="ltr">
-            {elapsed(turnStart, lastAt)}
-          </span>
+          <>
+            <Dot status={failed ? "failed" : asked ? "waiting_person" : "done"} />
+            <span className="truncate">{headline}</span>
+            {lastAt && (
+              <span className="shrink-0 tabular-nums opacity-70" dir="ltr">
+                {elapsed(turnStart, lastAt)}
+              </span>
+            )}
+          </>
         )}
         <ChevronDown className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-180")} aria-hidden />
         <span className="sr-only">{open ? p?.hideSteps ?? "Hide steps" : p?.showSteps ?? "Show steps"}</span>
       </button>
 
       {open && (
-        <div className={cn("mt-2 border-s-2 ps-3", compact ? "space-y-2" : "space-y-3")}>
-          <ul className="space-y-1">
-            {plan.map(({ step, status }) => (
-              <li key={step} className={cn("flex items-center gap-2", status !== "pending" && "text-foreground")}>
-                <StatusIcon status={status} />
-                <span>{(p?.steps as Record<string, string> | undefined)?.[step] ?? step}</span>
-              </li>
-            ))}
-          </ul>
-          {plan.find((s) => s.step === "confirm")?.status === "uncertain" && !turn.some((e) => e.kind === "broker_contact_started") && (
-            <p className="text-xs">{p?.confirmLater ?? "Availability is not confirmed yet."}</p>
-          )}
-          {!compact && (
-            <ol className="space-y-1 font-mono text-xs">
-              {turn.map((e) => (
-                <li key={e.seq} className="flex items-start gap-2">
-                  <span className="w-10 shrink-0 tabular-nums" dir="ltr">
-                    {elapsed(turnStart, e.at)}
-                  </span>
-                  <StatusIcon status={e.status} />
+        <ol className={cn("mt-2 space-y-2 font-mono", compact ? "text-[11px]" : "text-xs")}>
+          {/* The plan, as Claude Code's todo list. */}
+          <li className="flex gap-2">
+            <Dot status={running ? "running" : failed ? "failed" : "done"} />
+            <div className="min-w-0">
+              <p className="font-semibold text-foreground">{tr?.todos ?? "Update Todos"}</p>
+              <ul className="mt-0.5 space-y-0.5">
+                {plan.map(({ step, status }, i) => (
+                  <li key={step} className="flex gap-1.5">
+                    <span className="w-3 shrink-0 opacity-60">{i === 0 ? "⎿" : ""}</span>
+                    <span className={cn(status === "running" && "font-semibold text-foreground", status === "done" && "line-through opacity-70")}>
+                      {status === "done" ? "☒" : "☐"} {(p?.steps as Record<string, string> | undefined)?.[step] ?? step}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </li>
+
+          {turn.map((e) => (
+            <li key={e.seq} className="flex gap-2">
+              <Dot status={e.status} />
+              <div className="min-w-0">
+                <p>
+                  <span className="font-semibold text-foreground">{tools?.[e.kind] ?? e.kind}</span>
+                  {!compact && (
+                    <span className="ms-2 tabular-nums opacity-60" dir="ltr">
+                      {elapsed(turnStart, e.at)}
+                    </span>
+                  )}
+                </p>
+                <p className="flex gap-1.5">
+                  <span className="w-3 shrink-0 opacity-60">⎿</span>
                   <span className="font-sans">
                     {summary(e)}
                     <span className="sr-only"> — {(p?.status as Record<string, string> | undefined)?.[e.status] ?? e.status}</span>
                   </span>
-                </li>
-              ))}
-            </ol>
+                </p>
+              </div>
+            </li>
+          ))}
+
+          {plan.find((s) => s.step === "confirm")?.status === "uncertain" && !turn.some((e) => e.kind === "broker_contact_started") && (
+            <li className="ps-4 font-sans">{p?.confirmLater ?? "Availability is not confirmed yet."}</li>
           )}
-        </div>
+        </ol>
       )}
     </div>
   );

@@ -10,6 +10,7 @@ import { useLocale } from "@/components/internationalization/use-locale";
 import { formatCurrency } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
 import { usePicksLabel, Wizard, type Picks } from "../wizard";
+import { AskCard } from "../ask-card";
 import { Composer } from "../composer";
 import { fill } from "../format";
 import { Steps } from "../steps";
@@ -66,7 +67,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
   const a = dict?.agent;
   const b = a?.bubble;
   const { locale } = useLocale();
-  const { task, loaded, running, waiting, pending, notice, send, reset, reply, askingStay } = useAgentTask(null, { lazy: true });
+  const { task, loaded, running, waiting, pending, notice, send, reset, reply } = useAgentTask(null, { lazy: true });
   const [picks, setPicks] = useState<Picks>({});
   const picksLabel = usePicksLabel();
   // The composer and the wizard's last step both search; a new search carries the picks.
@@ -146,15 +147,10 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
               const latest = i === lastAgentIndex && !pendingTurn;
               return (
                 <AgentTurn key={i} compact steps={latest ? <Steps task={task} compact /> : null}>
-                  <p className="whitespace-pre-wrap">{reply(m)}</p>
-                  {latest && askingStay && (
-                    <div className="flex flex-wrap gap-2">
-                      {[a?.stayShort ?? "Short stay", a?.stayLong ?? "Monthly rent"].map((label) => (
-                        <button key={label} type="button" onClick={() => void send(label)} disabled={pending} className="rounded-full border px-3 py-1 text-xs hover:bg-muted">
-                          {label}
-                        </button>
-                      ))}
-                    </div>
+                  {latest && m.kind === "ask" && !running ? (
+                    <AskCard field={m.field} requirements={task.requirements} onPick={(text, filters) => void send(text, false, filters)} disabled={pending} compact />
+                  ) : (
+                    <p className="whitespace-pre-wrap">{reply(m)}</p>
                   )}
                   {latest && m.kind === "shortlist" && task.shortlist.length > 0 && (
                     <div className="space-y-2">

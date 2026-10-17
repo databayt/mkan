@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { usePicksLabel, Wizard, type Picks } from "./wizard";
+import { AskCard } from "./ask-card";
 import { Composer } from "./composer";
 import { ShortlistCard } from "./shortlist-card";
 import { Steps } from "./steps";
@@ -22,7 +23,7 @@ const LATEST_TURN_ID = "agent-latest-turn";
 export function AgentContent({ initialTask }: { initialTask: AgentTaskView | null }) {
   const dict = useDictionary();
   const a = dict?.agent;
-  const { task, running, pending, notice, send, refresh, reset, reply, chips, askingStay } = useAgentTask(initialTask);
+  const { task, running, pending, notice, send, refresh, reset, reply, chips } = useAgentTask(initialTask);
   const [picks, setPicks] = useState<Picks>({});
   const picksLabel = usePicksLabel();
   const picked = Object.keys(picks).length > 0;
@@ -75,22 +76,10 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
           const latest = i === lastAgentIndex && !pendingTurn;
           return (
             <AgentTurn key={i} id={latest ? LATEST_TURN_ID : undefined} steps={latest ? <Steps task={task} /> : null}>
-              <p className="whitespace-pre-wrap">{reply(m)}</p>
-
-              {latest && askingStay && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {[a?.stayShort ?? "Short stay", a?.stayLong ?? "Monthly rent"].map((label) => (
-                    <button
-                      key={label}
-                      type="button"
-                      onClick={() => void send(label)}
-                      disabled={pending}
-                      className="rounded-full border px-3.5 py-1.5 text-sm hover:bg-muted"
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+              {latest && m.kind === "ask" && !running ? (
+                <AskCard field={m.field} requirements={task.requirements} onPick={(text, filters) => void send(text, false, filters)} disabled={pending} />
+              ) : (
+                <p className="whitespace-pre-wrap">{reply(m)}</p>
               )}
 
               {latest && m.kind === "shortlist" && task.shortlist.length > 0 && (

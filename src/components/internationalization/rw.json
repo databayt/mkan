@@ -5599,6 +5599,44 @@
         "furnishing": "Ibikoresho",
         "type": "Ubwoko"
       }
+    },
+    "question": {
+      "months": "Amezi",
+      "monthsHint": "Ubukode bwa buri kwezi binyuze ku mukomisiyoneri. Kwimukira bitwara hafi inshuro 3.5 z'ubukode.",
+      "nights": "Amajoro",
+      "nightsHint": "Kuguma igihe gito mu nzu ifite ibikoresho, kwishyura ku ijoro.",
+      "upToMonth": "Kugeza kuri {price} ku kwezi",
+      "upToNight": "Kugeza kuri {price} ku ijoro",
+      "moveIn": "Hafi {total} kwimukira: amezi 3, ingwate n'amafaranga y'serivisi",
+      "stayTotal": "Hafi {total} ku majoro {nights}, harimo amafaranga ya serivisi",
+      "other": "Andika ikindi"
+    },
+    "trace": {
+      "todos": "Urutonde rw'imirimo",
+      "tools": {
+        "requirements_extracted": "Gusobanukirwa",
+        "asked": "Kubaza",
+        "search_done": "Gushakisha",
+        "dedup_grouped": "Guhuza",
+        "filtered": "Kuyungurura",
+        "ranked": "Gutondeka",
+        "needs_confirmation": "Kugenzura",
+        "broker_contact_started": "Ubutumwa",
+        "broker_replied": "Igisubizo",
+        "viewing_proposed": "Gusura",
+        "viewing_confirmed": "Gusura",
+        "shortlist_ready": "Urutonde",
+        "failed": "Ikosa",
+        "outcome_recorded": "Ibyavuyemo"
+      },
+      "verbs": {
+        "understand": "Ndasoma icyifuzo cyawe…",
+        "search": "Ndashakisha amazu…",
+        "group": "Ndahuza amatangazo asa…",
+        "rank": "Ndatondeka…",
+        "confirm": "Ndabaza abakomisiyoneri…",
+        "present": "Ndandika urutonde…"
+      }
     }
   }
 }
