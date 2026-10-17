@@ -72,24 +72,35 @@ export function usePicksLabel() {
  * Quick-pick badges under the composer. Each one sets one requirement field
  * exactly (no parsing), so a tenant can search with taps alone.
  */
-export function Badges({ picks, onChange, compact = false }: { picks: Picks; onChange: (next: Picks) => void; compact?: boolean }) {
+export function Badges({
+  picks,
+  onChange,
+  compact = false,
+}: {
+  picks: Picks;
+  onChange: React.Dispatch<React.SetStateAction<Picks>>;
+  compact?: boolean;
+}) {
   const dict = useDictionary();
   const b = dict?.agent?.badges as Record<string, string> | undefined;
   const { locale } = useLocale();
   const money = (n: number) => formatCurrency(n, locale, "RWF");
 
-  const set = (patch: Picks) => {
-    const next = { ...picks, ...patch };
-    for (const k of Object.keys(next) as (keyof Picks)[]) if (next[k] == null) delete next[k];
-    onChange(next);
-  };
-  const toggle = (t: Toggle) => {
-    const on = picks[t.field] === t.value;
-    const patch: Picks = { [t.field]: on ? null : t.value };
-    // Switching nights ↔ months makes a picked budget meaningless.
-    if (t.field === "stay" && picks.maxPrice) Object.assign(patch, { maxPrice: null, pricePeriod: null });
-    set(patch);
-  };
+  // Updates read the latest picks, so quick taps never overwrite each other.
+  const update = (patchOf: (prev: Picks) => Picks) =>
+    onChange((prev) => {
+      const next = { ...prev, ...patchOf(prev) };
+      for (const k of Object.keys(next) as (keyof Picks)[]) if (next[k] == null) delete next[k];
+      return next;
+    });
+  const set = (patch: Picks) => update(() => patch);
+  const toggle = (t: Toggle) =>
+    update((prev) => {
+      const patch: Picks = { [t.field]: prev[t.field] === t.value ? null : t.value };
+      // Switching nights ↔ months makes a picked budget meaningless.
+      if (t.field === "stay" && prev.maxPrice) Object.assign(patch, { maxPrice: null, pricePeriod: null });
+      return patch;
+    });
 
   const nightly = picks.stay === "short";
   const budgets = nightly ? NIGHT_BUDGETS : MONTH_BUDGETS;
@@ -153,7 +164,7 @@ export function Badges({ picks, onChange, compact = false }: { picks: Picks; onC
             key: String(n),
             label: `${fill(b?.upTo ?? "Up to {price}", { price: money(n) })} ${nightly ? b?.perNight ?? "/ night" : b?.perMonth ?? "/ month"}`,
             on: picks.maxPrice === n,
-            pick: () => set({ maxPrice: n, pricePeriod: nightly ? "night" : "month", stay: picks.stay ?? "long" }),
+            pick: () => update((prev) => ({ maxPrice: n, pricePeriod: nightly ? "night" : "month", stay: prev.stay ?? "long" })),
           })),
           () => set({ maxPrice: null, pricePeriod: null }),
         )}
