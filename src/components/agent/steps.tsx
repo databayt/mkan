@@ -164,13 +164,13 @@ export function Steps({ task, compact = false }: { task: AgentTaskView; compact?
       </button>
 
       {open && (
-        <ol className={cn("mt-2 space-y-2 font-mono", compact ? "text-[11px]" : "text-xs")}>
+        <ol className={cn("mt-2 list-none space-y-2 font-mono", compact ? "text-[11px]" : "text-xs")}>
           {/* The plan, as Claude Code's todo list. */}
           <li className="flex gap-2">
             <Dot status={running ? "running" : failed ? "failed" : "done"} />
             <div className="min-w-0">
               <p className="font-semibold text-foreground">{tr?.todos ?? "Update Todos"}</p>
-              <ul className="mt-0.5 space-y-0.5">
+              <ul className="mt-0.5 list-none space-y-0.5">
                 {plan.map(({ step, status }, i) => (
                   <li key={step} className="flex gap-1.5">
                     <span className="w-3 shrink-0 opacity-60">{i === 0 ? "⎿" : ""}</span>

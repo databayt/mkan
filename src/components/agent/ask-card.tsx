@@ -103,7 +103,7 @@ export function AskCard({
   return (
     <div className={cn("rounded-xl border", compact ? "p-1.5" : "p-2")} role="group" aria-label={a?.ask?.[field] ?? ""}>
       <p className={cn("px-3 pb-1 pt-2 font-medium", compact ? "text-sm" : "")}>{a?.ask?.[field]}</p>
-      <ol>
+      <ol className="list-none">
         {options.map((o, i) => (
           <li key={o.label}>
             <button type="button" disabled={disabled} onClick={() => onPick(o.text, o.filters)} className={row}>
