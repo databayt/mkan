@@ -32,7 +32,8 @@ export interface AgentEventView {
 }
 
 export type AgentMessage =
-  | { role: "user"; text: string; at: string }
+  /** `filters` are the badges the tenant picked; they win over the text. */
+  | { role: "user"; text: string; at: string; filters?: Record<string, unknown> }
   | { role: "agent"; kind: "ask"; field: HardField; at: string }
   | { role: "agent"; kind: "shortlist"; count: number; at: string }
   | { role: "agent"; kind: "none"; stay?: "short" | "long"; at: string }

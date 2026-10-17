@@ -103,3 +103,62 @@ describe("rank", () => {
     expect(ranked[0]?.id).toBe(2);
   });
 });
+
+describe("badges and place filters", () => {
+  const base = { ...EMPTY_REQUIREMENTS, stay: "long" as const, maxPrice: 1_000_000, pricePeriod: "month" as const };
+  const at = (lat: number, lng: number, extra: Partial<Candidate> = {}) =>
+    ({
+      id: Math.round(Math.abs(lat * lng * 1000)),
+      hostId: `h${lat}`,
+      rentPeriod: "MONTHLY",
+      pricePerNight: null,
+      priceMonth: 500_000,
+      monthlyDiscount: null,
+      cleaningFee: null,
+      bedrooms: 2,
+      guestCount: 2,
+      district: "GASABO",
+      averageRating: 4.8,
+      numberOfReviews: 10,
+      confirmedAt: null,
+      latitude: lat,
+      longitude: lng,
+      ...extra,
+    }) as Candidate;
+
+  it("reads compound, area, family, cheap, baths and a neighbourhood from text", () => {
+    const r = parseRequirements("cheap self compound for a family near a university in Kibagabaga with 2 bathrooms");
+    expect(r).toMatchObject({ compound: true, area: "university", family: true, cheap: true, bathrooms: 2, neighbourhood: "Kibagabaga" });
+  });
+
+  it("keeps a home in the picked neighbourhood and drops one across town", () => {
+    const r = { ...base, neighbourhood: "Kimihurura" };
+    expect(passesHardFilters(at(-1.951, 30.091), r)).toBe(true);
+    expect(passesHardFilters(at(-1.98, 30.04), r)).toBe(false); // Nyamirambo
+  });
+
+  it("matches a lead's neighbourhood on its address, not its district-centre pin", () => {
+    const r = { ...base, neighbourhood: "Kimihurura" };
+    expect(passesHardFilters(at(-1.94, 30.1, { approxLocation: true, address: "Kimihurura, near KCC" }), r)).toBe(true);
+    // A district-centre pin never satisfies "near the city centre".
+    expect(passesHardFilters(at(-1.9441, 30.0619, { approxLocation: true }), { ...base, area: "center" })).toBe(false);
+  });
+
+  it("self compound means a villa, townhouse or cottage", () => {
+    const r = { ...base, compound: true };
+    expect(passesHardFilters(at(-1.95, 30.09, { propertyType: "Villa" }), r)).toBe(true);
+    expect(passesHardFilters(at(-1.95, 30.09, { propertyType: "Apartment" }), r)).toBe(false);
+  });
+
+  it("cheap ranks the lowest price first", () => {
+    const pricey = at(-1.95, 30.09, { id: 1, hostId: "a", priceMonth: 900_000 });
+    const cheap = at(-1.95, 30.091, { id: 2, hostId: "b", priceMonth: 300_000, averageRating: 4.2 });
+    const { ranked } = rankCandidates([pricey, cheap], { ...base, cheap: true });
+    expect(ranked[0]?.id).toBe(2);
+  });
+
+  it("badge picks win over what the text said", () => {
+    const merged = mergeRequirements(parseRequirements("2 bedroom in Gasabo"), { district: "NYARUGENGE", bedrooms: 1 });
+    expect(merged).toMatchObject({ district: "NYARUGENGE", bedrooms: 1 });
+  });
+});

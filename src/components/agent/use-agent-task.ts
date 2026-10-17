@@ -7,6 +7,7 @@ import { formatCurrency } from "@/lib/i18n/formatters";
 import { districtName } from "@/lib/geo/rwanda-places";
 import { getAgentTask, sendAgentMessage } from "./actions";
 import { fill } from "./format";
+import type { Requirements } from "./requirements";
 import type { AgentMessage, AgentTaskView } from "./types";
 
 const POLL_MS = 800;
@@ -62,13 +63,13 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false }
 
   /** Resolves true once the message is accepted, so the composer can clear. */
   const send = useCallback(
-    (message: string, fresh = false) =>
+    (message: string, fresh = false, filters?: Partial<Requirements>) =>
       new Promise<boolean>((resolve) => {
         const value = message.trim();
         if (!value) return resolve(false);
         setNotice(null);
         startTransition(async () => {
-          const res = await sendAgentMessage({ text: value, lang: locale, taskId: fresh ? undefined : task?.id, fresh });
+          const res = await sendAgentMessage({ text: value, lang: locale, taskId: fresh ? undefined : task?.id, fresh, filters });
           if (!res.ok) {
             setNotice(res.error === "rate" ? a?.reply?.rate ?? "Please wait a few minutes." : res.error === "busy" ? a?.reply?.busy ?? "Still working." : null);
             return resolve(false);
@@ -111,6 +112,12 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false }
         req.nights ? fill(a?.req?.nights ?? "{n} nights", { n: req.nights }) : null,
         req.guests ? fill(a?.req?.guests ?? "{n} guests", { n: req.guests }) : null,
         req.maxUpfront ? fill(a?.req?.upfront ?? "{price}", { price: money(req.maxUpfront) }) : null,
+        req.neighbourhood ?? null,
+        req.area ? (a?.req?.area as Record<string, string> | undefined)?.[req.area] ?? null : null,
+        req.bathrooms ? fill(a?.req?.baths ?? "{n}+ bathrooms", { n: req.bathrooms }) : null,
+        req.compound ? a?.req?.compound : null,
+        req.family ? a?.req?.family : null,
+        req.cheap ? a?.req?.cheap : null,
       ].filter((x): x is string => !!x)
     : [];
 

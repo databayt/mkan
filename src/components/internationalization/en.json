@@ -5441,7 +5441,16 @@
       "maxMonth": "Up to {price} a month",
       "nights": "{n} nights",
       "guests": "{n} guests",
-      "upfront": "{price} to move in"
+      "upfront": "{price} to move in",
+      "baths": "{n}+ bathrooms",
+      "compound": "Self compound",
+      "family": "Family",
+      "cheap": "Cheapest first",
+      "area": {
+        "center": "City centre",
+        "business": "Business district",
+        "university": "Near a university"
+      }
     },
     "card": {
       "perNight": "/ night",
@@ -5475,7 +5484,14 @@
         "furnished": "Furnished",
         "wellRated": "Well rated",
         "confirmed": "Recently confirmed",
-        "upfrontOver": "Over your move-in budget"
+        "upfrontOver": "Over your move-in budget",
+        "neighbourhood": "In your neighbourhood",
+        "nearCenter": "Near the city centre",
+        "nearBusiness": "Near the business district",
+        "nearUniversity": "Near a university",
+        "selfCompound": "Own compound",
+        "familySize": "Room for a family",
+        "lowPrice": "Low price"
       },
       "asked": "Asked the broker — waiting for an answer",
       "rented": "Rented — no longer available",
@@ -5537,6 +5553,28 @@
       "title": "Mkan rental agent",
       "expand": "Open full screen",
       "seeAll": "See all {count} homes and every step"
+    },
+    "badges": {
+      "furnished": "Furnished",
+      "unfurnished": "Unfurnished",
+      "nights": "Nights",
+      "months": "Months",
+      "bed1": "1 bed",
+      "bed2": "2 bed",
+      "bath1": "1 bath",
+      "compound": "Self compound",
+      "zone": "Zone",
+      "budget": "Budget",
+      "upTo": "Up to {price}",
+      "perMonth": "a month",
+      "perNight": "a night",
+      "neighbourhood": "Neighbourhood",
+      "center": "City centre",
+      "business": "Business district",
+      "university": "Near a university",
+      "family": "Family",
+      "cheap": "Cheapest",
+      "any": "Any"
     }
   }
 }

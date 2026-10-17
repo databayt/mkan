@@ -14,6 +14,7 @@ import type { Requirements } from "./requirements";
 import type { Candidate, Ranked } from "./rank";
 import type { ShortlistItem } from "./types";
 import { brokerAnswers } from "./broker";
+import { AREAS, boxAround, NEIGHBOURHOOD_RADIUS_KM, neighbourhoodNamed } from "./areas";
 
 const MAX_CANDIDATES = 400;
 /** Deepest monthly discount we assume when pre-filtering nightly homes for a monthly budget. */
@@ -35,13 +36,14 @@ const SELECT = {
   bathrooms: true,
   guestCount: true,
   photoUrls: true,
+  propertyType: true,
   averageRating: true,
   numberOfReviews: true,
   isPublished: true,
   source: true,
   sourceUrl: true,
   host: { select: { sourceHostId: true } },
-  location: { select: { state: true, city: true, address: true, country: true } },
+  location: { select: { state: true, city: true, address: true, country: true, latitude: true, longitude: true } },
 } satisfies Prisma.ListingSelect;
 
 /** An unpublished TikTok home the agent may offer as a broker lead (never in public search). */
@@ -61,6 +63,25 @@ function priceWhere(r: Requirements): Prisma.ListingWhereInput {
   };
 }
 
+/** Where-clauses for the place and home-type fields; rank.ts makes the exact call. */
+function placeWhere(r: Requirements): Prisma.ListingWhereInput[] {
+  const out: Prisma.ListingWhereInput[] = [];
+  const hood = neighbourhoodNamed(r.neighbourhood);
+  if (hood) {
+    // Leads carry a district-centre pin, so they are matched on their address text instead.
+    out.push({
+      OR: [
+        { location: boxAround([[hood.lat, hood.lng]], NEIGHBOURHOOD_RADIUS_KM) },
+        { source: "TIKTOK", location: { address: { contains: hood.name, mode: "insensitive" } } },
+      ],
+    });
+  }
+  if (r.area) out.push({ location: boxAround(AREAS[r.area].points, AREAS[r.area].radiusKm) });
+  if (r.compound) out.push({ propertyType: { in: ["Villa", "Townhouse", "Cottage"] } });
+  if (r.bathrooms != null) out.push({ OR: [{ bathrooms: null }, { bathrooms: { gte: r.bathrooms } }] });
+  return out;
+}
+
 export async function searchKigali(r: Requirements): Promise<{ rows: Row[]; candidates: Candidate[] }> {
   // Leads are monthly broker homes, so they only join long-stay searches.
   const visible: Prisma.ListingWhereInput =
@@ -68,19 +89,20 @@ export async function searchKigali(r: Requirements): Promise<{ rows: Row[]; cand
       ? { isPublished: true, draft: false }
       : { OR: [{ isPublished: true, draft: false }, { source: "TIKTOK", rentPeriod: "MONTHLY" }] };
   const where: Prisma.ListingWhereInput = {
-    AND: [visible, priceWhere(r)],
+    AND: [visible, priceWhere(r), ...placeWhere(r)],
     currency: "RWF",
     location: {
       city: { equals: "Kigali", mode: "insensitive" },
       ...(r.district ? { state: { equals: r.district, mode: "insensitive" } } : {}),
     },
-    ...(r.bedrooms != null ? { bedrooms: { gte: r.bedrooms } } : {}),
+    ...(r.bedrooms != null ? { bedrooms: { gte: r.bedrooms } } : r.family ? { bedrooms: { gte: 3 } } : {}),
     ...(r.stay === "short" ? { rentPeriod: "NIGHTLY" } : {}),
   };
   const rows = await db.listing.findMany({
     where,
     select: SELECT,
-    orderBy: [{ averageRating: "desc" }, { numberOfReviews: "desc" }],
+    // "Cheap" loads the cheapest 400, not the best-rated 400.
+    orderBy: r.cheap ? [{ pricePerNight: "asc" }, { priceMonth: "asc" }] : [{ averageRating: "desc" }, { numberOfReviews: "desc" }],
     take: MAX_CANDIDATES,
   });
   const answers = await brokerAnswers(rows.map((row) => row.id));
@@ -97,6 +119,12 @@ export async function searchKigali(r: Requirements): Promise<{ rows: Row[]; cand
     bedrooms: row.bedrooms,
     guestCount: row.guestCount,
     district: row.location?.state ?? null,
+    bathrooms: row.bathrooms,
+    propertyType: row.propertyType,
+    latitude: row.location?.latitude ?? null,
+    longitude: row.location?.longitude ?? null,
+    approxLocation: isLead(row),
+    address: row.location?.address ?? null,
     averageRating: row.averageRating,
     numberOfReviews: row.numberOfReviews,
     // Imports stamp lastAvailabilityConfirmedAt at scrape time, so it is not

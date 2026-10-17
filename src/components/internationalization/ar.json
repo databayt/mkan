@@ -5441,7 +5441,16 @@
       "maxMonth": "حتى {price} للشهر",
       "nights": "{n} ليال",
       "guests": "{n} ضيوف",
-      "upfront": "{price} للانتقال"
+      "upfront": "{price} للانتقال",
+      "baths": "{n}+ حمامات",
+      "compound": "منزل مستقل بسور",
+      "family": "عائلة",
+      "cheap": "الأرخص أولاً",
+      "area": {
+        "center": "وسط المدينة",
+        "business": "منطقة الأعمال",
+        "university": "قرب جامعة"
+      }
     },
     "card": {
       "perNight": "/ ليلة",
@@ -5475,7 +5484,14 @@
         "furnished": "مفروش",
         "wellRated": "تقييم عالٍ",
         "confirmed": "مؤكد مؤخراً",
-        "upfrontOver": "أعلى من ميزانية الانتقال"
+        "upfrontOver": "أعلى من ميزانية الانتقال",
+        "neighbourhood": "في الحي الذي اخترته",
+        "nearCenter": "قرب وسط المدينة",
+        "nearBusiness": "قرب منطقة الأعمال",
+        "nearUniversity": "قرب جامعة",
+        "selfCompound": "بسور خاص",
+        "familySize": "يتسع لعائلة",
+        "lowPrice": "سعر منخفض"
       },
       "asked": "سألنا الوسيط — في انتظار الرد",
       "rented": "مؤجّر — لم يعد متاحاً",
@@ -5537,6 +5553,28 @@
       "title": "وكيل الإيجار من مكان",
       "expand": "فتح في صفحة كاملة",
       "seeAll": "عرض المنازل الـ{count} وكل الخطوات"
+    },
+    "badges": {
+      "furnished": "مفروش",
+      "unfurnished": "غير مفروش",
+      "nights": "بالليلة",
+      "months": "بالشهر",
+      "bed1": "غرفة نوم",
+      "bed2": "غرفتا نوم",
+      "bath1": "حمام واحد",
+      "compound": "منزل مستقل بسور",
+      "zone": "المنطقة",
+      "budget": "الميزانية",
+      "upTo": "حتى {price}",
+      "perMonth": "شهرياً",
+      "perNight": "لليلة",
+      "neighbourhood": "الحي",
+      "center": "وسط المدينة",
+      "business": "منطقة الأعمال",
+      "university": "قرب جامعة",
+      "family": "عائلة",
+      "cheap": "الأرخص",
+      "any": "الكل"
     }
   }
 }

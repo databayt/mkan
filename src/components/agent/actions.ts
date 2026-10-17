@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { i18n, type Locale } from "@/components/internationalization/config";
 import { runTurn } from "./run";
-import { coerceRequirements } from "./requirements";
+import { coerceRequirements, type Requirements } from "./requirements";
 import type { AgentEventView, AgentMessage, AgentTaskView, ShortlistItem } from "./types";
 
 const COOKIE = "mkan_agent";
@@ -130,7 +130,14 @@ export type SendResult = { ok: true; taskId: string } | { ok: false; error: "emp
  * same search) unless `fresh` starts a new one. Returns at once; the turn runs
  * in `after()` and the client polls `getAgentTask`.
  */
-export async function sendAgentMessage(input: { text: string; lang: string; taskId?: string; fresh?: boolean }): Promise<SendResult> {
+export async function sendAgentMessage(input: {
+  text: string;
+  lang: string;
+  taskId?: string;
+  fresh?: boolean;
+  /** Badge picks — validated here, merged over the parsed text by runTurn. */
+  filters?: Partial<Requirements>;
+}): Promise<SendResult> {
   const text = input.text.trim().slice(0, MAX_TEXT);
   if (!text) return { ok: false, error: "empty" };
   const lang = (i18n.locales as readonly string[]).includes(input.lang) ? (input.lang as Locale) : i18n.defaultLocale;
@@ -144,7 +151,13 @@ export async function sendAgentMessage(input: { text: string; lang: string; task
   if (turns >= MAX_TURNS_PER_HOUR) return { ok: false, error: "rate" };
 
   const session = await auth().catch(() => null);
-  const userMsg: AgentMessage = { role: "user", text, at: new Date().toISOString() };
+  const filters = coerceRequirements(input.filters);
+  const userMsg: AgentMessage = {
+    role: "user",
+    text,
+    at: new Date().toISOString(),
+    ...(Object.keys(filters).length ? { filters: filters as Record<string, unknown> } : {}),
+  };
 
   let taskId: string;
   const current = !input.fresh && input.taskId

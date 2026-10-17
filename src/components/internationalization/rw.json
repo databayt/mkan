@@ -5441,7 +5441,16 @@
       "maxMonth": "Kugeza {price} ku kwezi",
       "nights": "Amajoro {n}",
       "guests": "Abashyitsi {n}",
-      "upfront": "{price} yo kwinjira"
+      "upfront": "{price} yo kwinjira",
+      "baths": "Ubwiherero {n}+",
+      "compound": "Inzu yigenga ifite igipangu",
+      "family": "Umuryango",
+      "cheap": "Ihendutse mbere",
+      "area": {
+        "center": "Mu mujyi rwagati",
+        "business": "Agace k'ubucuruzi",
+        "university": "Hafi ya kaminuza"
+      }
     },
     "card": {
       "perNight": "/ ijoro",
@@ -5475,7 +5484,14 @@
         "furnished": "Ifite ibikoresho",
         "wellRated": "Yashimwe cyane",
         "confirmed": "Yemejwe vuba",
-        "upfrontOver": "Birenze ingengo yo kwinjira"
+        "upfrontOver": "Birenze ingengo yo kwinjira",
+        "neighbourhood": "Mu gace wahisemo",
+        "nearCenter": "Hafi y'umujyi rwagati",
+        "nearBusiness": "Hafi y'agace k'ubucuruzi",
+        "nearUniversity": "Hafi ya kaminuza",
+        "selfCompound": "Ifite igipangu cyayo",
+        "familySize": "Ihagije umuryango",
+        "lowPrice": "Igiciro gito"
       },
       "asked": "Twabajije komisiyoneri — dutegereje igisubizo",
       "rented": "Yakodeshejwe — ntikiboneka",
@@ -5537,6 +5553,28 @@
       "title": "Umukozi w'ubukode wa Mkan",
       "expand": "Fungura kuri paji yose",
       "seeAll": "Reba amazu {count} yose n'intambwe zose"
+    },
+    "badges": {
+      "furnished": "Ifite ibikoresho",
+      "unfurnished": "Nta bikoresho",
+      "nights": "Amajoro",
+      "months": "Amezi",
+      "bed1": "Icyumba 1",
+      "bed2": "Ibyumba 2",
+      "bath1": "Ubwiherero 1",
+      "compound": "Inzu yigenga ifite igipangu",
+      "zone": "Akarere",
+      "budget": "Ingengo y'imari",
+      "upTo": "Kugeza kuri {price}",
+      "perMonth": "ku kwezi",
+      "perNight": "ku ijoro",
+      "neighbourhood": "Agace",
+      "center": "Mu mujyi rwagati",
+      "business": "Agace k'ubucuruzi",
+      "university": "Hafi ya kaminuza",
+      "family": "Umuryango",
+      "cheap": "Ihendutse",
+      "any": "Byose"
     }
   }
 }

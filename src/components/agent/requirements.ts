@@ -8,6 +8,7 @@
  */
 import { z } from "zod";
 import { districtForPlace, DISTRICTS } from "@/lib/geo/rwanda-places";
+import { AREA_KEYS, NEIGHBOURHOODS } from "./areas";
 
 export const DISTRICT_CODES = ["GASABO", "KICUKIRO", "NYARUGENGE"] as const;
 
@@ -24,6 +25,18 @@ export const RequirementsSchema = z.object({
   guests: z.number().int().positive().max(30).nullable(),
   /** Cash the tenant has for move-in (rent in advance + deposit + fees). */
   maxUpfront: z.number().positive().nullable(),
+  /** Minimum bathrooms. */
+  bathrooms: z.number().int().min(1).max(10).nullable(),
+  /** "Self compound": a standalone house with its own gate — villa, townhouse or cottage. */
+  compound: z.boolean().nullable(),
+  /** A neighbourhood from `areas.ts` (Kimihurura, Kiyovu, …). */
+  neighbourhood: z.string().max(40).nullable(),
+  /** Near the city centre, the business district or a university. */
+  area: z.enum(AREA_KEYS).nullable(),
+  /** Room for a family: 3+ bedrooms unless a count was given; houses rank higher. */
+  family: z.boolean().nullable(),
+  /** Cheapest first, instead of closest to the budget. */
+  cheap: z.boolean().nullable(),
 });
 
 export type Requirements = z.infer<typeof RequirementsSchema>;
@@ -38,6 +51,12 @@ export const EMPTY_REQUIREMENTS: Requirements = {
   nights: null,
   guests: null,
   maxUpfront: null,
+  bathrooms: null,
+  compound: null,
+  neighbourhood: null,
+  area: null,
+  family: null,
+  cheap: null,
 };
 
 /** The fields the agent must have before searching — asked one at a time. */
@@ -100,6 +119,28 @@ function nightsOf(text: string): number | null {
   return null;
 }
 
+function bathroomsOf(text: string): number | null {
+  const m =
+    text.match(/(\d+)\s*-?\s*(?:bath(?:room)?s?|ba\b|toilets?|حمام|حمامات|ubwiherero|ubwogero)/i) ??
+    text.match(/(?:ubwiherero|ubwogero)\s*(\d+)/i);
+  return m ? Number(m[1]) : null;
+}
+
+const COMPOUND_RE = /self[- ]?compound|own compound|standalone|stand[- ]alone|detached|whole house|full house|villa|كمباوند|مستقل|فيلا|inzu yigenga|ifite igipangu/i;
+const AREA_RE: Record<(typeof AREA_KEYS)[number], RegExp> = {
+  center: /city cent(?:er|re)|town cent(?:er|re)|downtown|\bcbd\b|\bin town\b|وسط المدينة|وسط البلد|mu mujyi rwagati/i,
+  business: /business|\bkcc\b|convention cent|kigali heights|منطقة الأعمال|المكاتب|ubucuruzi|ibiro/i,
+  university: /universit|campus|college|student|جامعة|الجامعة|طلاب|طالب|kaminuza|abanyeshuri/i,
+};
+const FAMILY_RE = /family|kids|children|عائلة|أسرة|اسرة|أطفال|اطفال|umuryango|abana/i;
+const CHEAP_RE = /cheap|cheapest|affordable|low[- ]?cost|budget[- ]friendly|رخيص|ارخص|أرخص|بسعر مناسب|ihendutse|bihendutse/i;
+
+function neighbourhoodOf(text: string): string | null {
+  const s = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const hit = NEIGHBOURHOODS.find((n) => n.name !== "Kicukiro" && new RegExp(`(^|[^a-z])${n.name.toLowerCase()}([^a-z]|$)`).test(s));
+  return hit?.name ?? null;
+}
+
 function districtOf(text: string): Requirements["district"] {
   for (const d of DISTRICTS) {
     if (text.includes(d.nameAr)) return d.code;
@@ -137,6 +178,12 @@ export function parseRequirements(input: string): Requirements {
   else if (/furnished|مفروش|مفروشة|ifite ibikoresho|ibikoresho/i.test(text)) r.furnished = true;
 
   r.district = districtOf(text);
+  r.neighbourhood = neighbourhoodOf(text);
+  r.bathrooms = bathroomsOf(text);
+  if (COMPOUND_RE.test(text)) r.compound = true;
+  for (const key of AREA_KEYS) if (AREA_RE[key].test(text)) r.area = key;
+  if (FAMILY_RE.test(text)) r.family = true;
+  if (CHEAP_RE.test(text)) r.cheap = true;
 
   const guests = text.match(/(\d+)\s*(?:guests?|people|persons|adults|أشخاص|اشخاص|ضيوف|abantu)/i);
   if (guests) r.guests = Number(guests[1]);

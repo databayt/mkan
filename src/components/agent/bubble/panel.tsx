@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BadgeCheck, Clock, Loader2, Maximize2, RotateCcw, X } from "lucide-react";
 import { BlurImage } from "@/components/atom/blur-image";
@@ -8,6 +8,7 @@ import { useDictionary } from "@/components/internationalization/use-dictionary"
 import { useLocale } from "@/components/internationalization/use-locale";
 import { formatCurrency } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
+import { Badges, usePicksLabel, type Picks } from "../badges";
 import { Composer } from "../composer";
 import { fill } from "../format";
 import { Steps } from "../steps";
@@ -54,15 +55,18 @@ function MiniCard({ item }: { item: ShortlistItem }) {
 }
 
 /**
- * The bubble's panel: the /find conversation in a compact window. A floating
- * card on desktop, a full-screen sheet on phones (as in the hogwarts chatbot).
+ * The agent's side panel: the /find conversation at full height. From md up it
+ * takes 40% of the width and pushes the page aside (the `data-agent-panel`
+ * rule in globals.css), like Claude in Chrome; on phones it is a full screen.
  */
 export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean; onClose: () => void; onWaiting: (waiting: boolean) => void }) {
   const dict = useDictionary();
   const a = dict?.agent;
   const b = a?.bubble;
   const { locale } = useLocale();
-  const { task, loaded, running, waiting, pending, notice, send, reset, reply, askingStay, examples } = useAgentTask(null, { lazy: true });
+  const { task, loaded, running, waiting, pending, notice, send, reset, reply, askingStay } = useAgentTask(null, { lazy: true });
+  const [picks, setPicks] = useState<Picks>({});
+  const picksLabel = usePicksLabel();
 
   useEffect(() => onWaiting(waiting), [waiting, onWaiting]);
 
@@ -84,10 +88,9 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
       aria-label={b?.title ?? "Mkan rental agent"}
       inert={!open}
       className={cn(
-        "fixed z-50 flex flex-col bg-background transition-[opacity,transform] duration-200 motion-reduce:transition-none",
-        "inset-0 h-dvh sm:inset-auto sm:bottom-24 sm:end-6 sm:h-[min(640px,calc(100dvh-8rem))] sm:w-[400px] sm:rounded-2xl sm:border sm:shadow-2xl",
-        "origin-bottom-right rtl:origin-bottom-left",
-        open ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0",
+        "fixed inset-y-0 end-0 z-[55] flex h-dvh w-full flex-col bg-background transition-transform duration-200 ease-out motion-reduce:transition-none",
+        "md:w-[max(40vw,360px)] md:border-s",
+        open ? "translate-x-0" : "pointer-events-none translate-x-full rtl:-translate-x-full",
       )}
     >
       <header className="flex items-center gap-2 border-b px-4 py-3">
@@ -112,20 +115,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
           <div className="space-y-4">
             <p className="text-lg font-semibold">{a?.greeting ?? "Where do you want to live in Kigali?"}</p>
             <p className="text-sm text-muted-foreground">{a?.subtitle}</p>
-            <ul className="space-y-2">
-              {examples.map((ex) => (
-                <li key={ex}>
-                  <button
-                    type="button"
-                    onClick={() => void send(ex, true)}
-                    disabled={pending}
-                    className="w-full rounded-xl border px-3 py-2 text-start text-sm hover:bg-muted"
-                  >
-                    {ex}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <Badges picks={picks} onChange={setPicks} compact />
           </div>
         ) : (
           <ol className="space-y-5">
@@ -164,7 +154,17 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
 
       <footer className="border-t p-3">
         {notice && <p className="mb-2 text-xs text-muted-foreground">{notice}</p>}
-        <Composer size="sm" onSend={(t) => send(t, !task)} disabled={pending || running || !loaded} />
+        <Composer
+          size="sm"
+          onSend={async (t) => {
+            const fresh = !task;
+            const ok = await send(t.trim() || picksLabel(picks), fresh, fresh ? picks : undefined);
+            if (ok) setPicks({});
+            return ok;
+          }}
+          canSendEmpty={!task && Object.keys(picks).length > 0}
+          disabled={pending || running || !loaded}
+        />
       </footer>
     </section>
   );

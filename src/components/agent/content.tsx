@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
+import { Badges, usePicksLabel, type Picks } from "./badges";
 import { Composer } from "./composer";
 import { ShortlistCard } from "./shortlist-card";
 import { Steps } from "./steps";
@@ -21,7 +22,10 @@ const LATEST_TURN_ID = "agent-latest-turn";
 export function AgentContent({ initialTask }: { initialTask: AgentTaskView | null }) {
   const dict = useDictionary();
   const a = dict?.agent;
-  const { task, running, pending, notice, send, refresh, reset, reply, chips, askingStay, examples } = useAgentTask(initialTask);
+  const { task, running, pending, notice, send, refresh, reset, reply, chips, askingStay } = useAgentTask(initialTask);
+  const [picks, setPicks] = useState<Picks>({});
+  const picksLabel = usePicksLabel();
+  const picked = Object.keys(picks).length > 0;
   const bottomRef = useRef<HTMLDivElement>(null);
   const messageCount = task?.messages.length ?? 0;
 
@@ -44,22 +48,20 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
         </h1>
         <p className="mt-3 max-w-xl text-center text-muted-foreground">{a?.subtitle}</p>
         <div className="mt-8 w-full">
-          <Composer onSend={(t) => send(t, true)} disabled={pending} autoFocus />
+          <Composer
+            onSend={async (t) => {
+              const ok = await send(t.trim() || picksLabel(picks), true, picks);
+              if (ok) setPicks({});
+              return ok;
+            }}
+            disabled={pending}
+            canSendEmpty={picked}
+            autoFocus
+          />
         </div>
-        <ul className="mt-4 flex flex-wrap justify-center gap-2">
-          {examples.map((ex) => (
-            <li key={ex}>
-              <button
-                type="button"
-                onClick={() => void send(ex, true)}
-                disabled={pending}
-                className="rounded-full border px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                {ex}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-4 w-full">
+          <Badges picks={picks} onChange={setPicks} />
+        </div>
         {notice && <p className="mt-4 text-sm text-muted-foreground">{notice}</p>}
       </div>
     );

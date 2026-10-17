@@ -16,12 +16,15 @@ export function Composer({
   disabled,
   size = "lg",
   autoFocus,
+  canSendEmpty = false,
 }: {
   /** Resolves true when the message was accepted; the text is cleared then. */
   onSend: (text: string) => Promise<boolean>;
   disabled?: boolean;
   size?: "lg" | "sm";
   autoFocus?: boolean;
+  /** Badges are picked, so an empty box can still send. */
+  canSendEmpty?: boolean;
 }) {
   const dict = useDictionary();
   const a = dict?.agent;
@@ -37,7 +40,7 @@ export function Composer({
   }, [text]);
 
   const submit = async () => {
-    if (disabled || !text.trim()) return;
+    if (disabled || (!text.trim() && !canSendEmpty)) return;
     if (await onSend(text)) setText("");
   };
 
@@ -75,7 +78,7 @@ export function Composer({
       <button
         type="submit"
         aria-label={a?.send ?? "Send"}
-        disabled={disabled || !text.trim()}
+        disabled={disabled || (!text.trim() && !canSendEmpty)}
         className={cn(
           "flex shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-opacity disabled:opacity-25",
           size === "lg" ? "size-9" : "size-8",

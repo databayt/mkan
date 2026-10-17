@@ -85,14 +85,20 @@ export async function runTurn(taskId: string): Promise<void> {
 
   try {
     // 1. Understand the request.
-    const userTexts = messages.filter((m): m is Extract<AgentMessage, { role: "user" }> => m.role === "user").map((m) => m.text);
+    const userMessages = messages.filter((m): m is Extract<AgentMessage, { role: "user" }> => m.role === "user");
+    const userTexts = userMessages.map((m) => m.text);
     const latest = userTexts[userTexts.length - 1] ?? "";
+    const picked = coerceRequirements(userMessages.at(-1)?.filters);
     const understandId = await trace.start("requirements_extracted");
     const base = mergeRequirements(EMPTY_REQUIREMENTS, coerceRequirements(task.requirements));
     const llm = await readRequirementsWithGroq(userTexts);
     // The model reads the whole conversation; the regex reader reads the
     // latest message and wins on every field it found.
-    const requirements: Requirements = mergeRequirements(mergeRequirements(base, llm ?? {}), parseRequirements(latest));
+    // Badges are exact, so they win over both readers.
+    const requirements: Requirements = mergeRequirements(
+      mergeRequirements(mergeRequirements(base, llm ?? {}), parseRequirements(latest)),
+      picked,
+    );
     await db.agentTask.update({ where: { id: task.id }, data: { requirements: json(requirements) } });
     await trace.finish(understandId, "done", { requirements, reader: llm ? "groq" : "rules" });
 

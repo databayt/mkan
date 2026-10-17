@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { MessageCircle, X } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { cn } from "@/lib/utils";
 
@@ -14,9 +14,10 @@ const AgentPanel = dynamic(() => import("./panel"), { ssr: false });
 const SHOW_ON = /^\/(search|listings|travel|help)(\/|$)/;
 
 /**
- * The rental agent as a floating chat, in the hogwarts chatbot's shape: a round
- * launcher at the end corner and a panel above it (full screen on phones). It is
- * the same agent and the same task as /find; the panel's expand button goes there.
+ * The rental agent as a side panel: a round launcher at the end corner opens a
+ * full-height panel that takes 40% of the screen and pushes the site into the
+ * rest, like Claude in Chrome (full screen on phones). It is the same agent and
+ * the same task as /find; the panel's expand button goes there.
  * Anything can open it with `window.dispatchEvent(new Event("open-agent"))`.
  */
 export function AgentBubble() {
@@ -37,7 +38,19 @@ export function AgentBubble() {
   }, []);
 
   const path = pathname.replace(/^\/(en|ar|rw)(?=\/|$)/, "") || "/";
-  if (path !== "/" && !SHOW_ON.test(path)) return null;
+  const visible = path === "/" || SHOW_ON.test(path);
+
+  // The open panel pushes the page aside (globals.css `data-agent-panel`).
+  useEffect(() => {
+    const root = document.documentElement;
+    if (open && visible) root.dataset.agentPanel = "open";
+    else delete root.dataset.agentPanel;
+    return () => {
+      delete root.dataset.agentPanel;
+    };
+  }, [open, visible]);
+
+  if (!visible) return null;
 
   return (
     <>
@@ -52,10 +65,10 @@ export function AgentBubble() {
         aria-expanded={open}
         className={cn(
           "fixed bottom-6 end-6 z-50 flex size-14 items-center justify-center rounded-full bg-foreground text-background shadow-lg transition-transform hover:scale-105 motion-reduce:transition-none",
-          open && "max-sm:hidden",
+          open && "hidden",
         )}
       >
-        {open ? <X className="size-6" aria-hidden /> : <MessageCircle className="size-6" aria-hidden />}
+        <MessageCircle className="size-6" aria-hidden />
         {waiting && !open && (
           <span className="absolute end-0.5 top-0.5 size-3.5 rounded-full border-2 border-background bg-amber-500" aria-hidden />
         )}

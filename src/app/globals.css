@@ -227,3 +227,19 @@ body {
     opacity: 0.7;
   }
 }
+
+/* Rental agent side panel (src/components/agent/bubble): while open it takes
+   40% of the width from md up and the page reflows into the rest. */
+@media (min-width: 768px) {
+  body {
+    transition: margin-inline-end 200ms ease-out;
+  }
+  html[data-agent-panel="open"] body {
+    margin-inline-end: max(40vw, 360px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body {
+    transition: none;
+  }
+}

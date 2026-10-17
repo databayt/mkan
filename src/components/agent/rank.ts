@@ -4,6 +4,12 @@
  */
 import type { Requirements } from "./requirements";
 import { longStayCost, monthlyRent, shortStayCost, type CostEstimate, type PricedHome } from "./cost";
+import { inArea, inNeighbourhood } from "./areas";
+
+/** Standalone homes with their own compound. */
+const COMPOUND_TYPES = new Set(["Villa", "Townhouse", "Cottage"]);
+/** Bedrooms a "family" search wants when no count was given. */
+const FAMILY_BEDROOMS = 3;
 
 export interface Candidate extends PricedHome {
   id: number;
@@ -15,6 +21,14 @@ export interface Candidate extends PricedHome {
   numberOfReviews: number | null;
   /** Set only by a broker/owner answer (Phase 2) — never by an import. */
   confirmedAt: Date | null;
+  bathrooms?: number | null;
+  propertyType?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  /** True when the pin is a district centre, not the home (TikTok leads). */
+  approxLocation?: boolean;
+  /** Free-text address; a lead's neighbourhood lives here. */
+  address?: string | null;
 }
 
 export type ReasonKey =
@@ -26,7 +40,14 @@ export type ReasonKey =
   | "furnished"
   | "wellRated"
   | "confirmed"
-  | "upfrontOver";
+  | "upfrontOver"
+  | "neighbourhood"
+  | "nearCenter"
+  | "nearBusiness"
+  | "nearUniversity"
+  | "selfCompound"
+  | "familySize"
+  | "lowPrice";
 
 export interface Ranked {
   id: number;
@@ -78,8 +99,27 @@ export function groupDuplicates(cands: Candidate[]): { kept: Candidate[]; dupCou
   return { kept, dupCount, removed: cands.length - kept.length };
 }
 
+/** Where the home is, when its pin can be trusted. */
+const point = (c: Candidate): [number, number] | null =>
+  !c.approxLocation && c.latitude != null && c.longitude != null ? [c.latitude, c.longitude] : null;
+
+function matchesNeighbourhood(c: Candidate, name: string): boolean {
+  const p = point(c);
+  if (p) return inNeighbourhood(p[0], p[1], name);
+  return !!c.address && c.address.toLowerCase().includes(name.toLowerCase());
+}
+
 /** Hard constraints: a home failing any of these is never shown. */
 export function passesHardFilters(c: Candidate, r: Requirements): boolean {
+  if (r.neighbourhood && !matchesNeighbourhood(c, r.neighbourhood)) return false;
+  if (r.area) {
+    // A district-centre pin says nothing about distance to the CBD or a campus.
+    const p = point(c);
+    if (!p || !inArea(p[0], p[1], r.area)) return false;
+  }
+  if (r.compound && !COMPOUND_TYPES.has(c.propertyType ?? "")) return false;
+  if (r.bathrooms != null && c.bathrooms != null && c.bathrooms < r.bathrooms) return false;
+  if (r.family && r.bedrooms == null && c.bedrooms != null && c.bedrooms < FAMILY_BEDROOMS) return false;
   if (r.district && c.district && c.district.toUpperCase() !== r.district) return false;
   if (r.bedrooms != null && c.bedrooms != null && c.bedrooms < r.bedrooms) return false;
   if (r.guests != null && c.guestCount < r.guests && c.rentPeriod === "NIGHTLY") return false;
@@ -102,7 +142,11 @@ export function scoreCandidate(c: Candidate, r: Requirements, dupes = 0, now = n
   let score = 0;
 
   const p = comparablePrice(c, r);
-  if (r.maxPrice && p != null) {
+  if (r.cheap && p != null) {
+    // Cheapest first: price dominates the score (≈ up to 60 points).
+    reasons.push("lowPrice");
+    score += 60 - Math.min(60, (p / (r.maxPrice ?? p * 2)) * 60);
+  } else if (r.maxPrice && p != null) {
     if (p <= r.maxPrice) {
       reasons.push("inBudget");
       // Closer to the ceiling is closer to what they asked for; far under is
@@ -125,6 +169,13 @@ export function scoreCandidate(c: Candidate, r: Requirements, dupes = 0, now = n
       reasons.push("bedroomsMore");
       score += 5;
     }
+  }
+  if (r.neighbourhood) reasons.push("neighbourhood");
+  if (r.area) reasons.push(r.area === "center" ? "nearCenter" : r.area === "business" ? "nearBusiness" : "nearUniversity");
+  if (r.compound) reasons.push("selfCompound");
+  if (r.family) {
+    if ((c.bedrooms ?? 0) >= FAMILY_BEDROOMS) reasons.push("familySize");
+    if (COMPOUND_TYPES.has(c.propertyType ?? "")) score += 8;
   }
   if (r.furnished && c.rentPeriod === "NIGHTLY") {
     reasons.push("furnished");
