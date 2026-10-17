@@ -5347,5 +5347,128 @@
     "recommendLine": "{zone} — {views} views across {listings} listings ({perListing} per listing).",
     "methodNote": "A zone is “high demand” when its views-per-listing is at or above the median zone ({median}). “Healthy supply” is {supply}+ active listings. See ZONE_THRESHOLDS.",
     "medianUnknown": "no median yet"
+  },
+  "agent": {
+    "metaTitle": "Find a home in Kigali",
+    "metaDescription": "Tell the Mkan rental agent what you need. It searches real Kigali homes, works out the full move-in cost and shows every step it takes.",
+    "title": "Find a home in Kigali",
+    "subtitle": "Tell the agent what you need. It searches real homes, works out what you will pay up front, and shows every step it takes.",
+    "placeholder": "e.g. furnished 2-bedroom in Kicukiro, up to 400k a month",
+    "send": "Send",
+    "newSearch": "New search",
+    "you": "You",
+    "agent": "Mkan agent",
+    "examples": {
+      "long": "Furnished 2-bedroom in Kicukiro, up to 400k a month",
+      "short": "3 nights in Gasabo for 2 people, under 60k a night",
+      "studio": "Studio near Nyarugenge, up to 250k monthly"
+    },
+    "ask": {
+      "stay": "Is this a short stay (a few nights) or a long-term rental (monthly rent)?",
+      "maxPrice": "What is your budget? Tell me the most you can pay per night or per month, in RWF."
+    },
+    "stayShort": "Short stay",
+    "stayLong": "Monthly rent",
+    "reply": {
+      "shortlist": "I found {count} homes that match. Each card shows why it fits and what you would pay to move in.",
+      "none": "No published home matches all of that yet. Try a higher budget, another district, or fewer bedrooms.",
+      "error": "Something went wrong on our side. Your search is saved, so please try again.",
+      "busy": "Still working on your last message.",
+      "rate": "You have sent a lot of messages. Please wait a few minutes and try again.",
+      "working": "Working on it…",
+      "noneLong": "No home on Mkan fits that monthly budget yet. Kigali's monthly rentals come from brokers, and we are adding them now. A higher budget will show furnished homes you can rent by the month."
+    },
+    "panel": {
+      "title": "Rental agent",
+      "task": "Task",
+      "plan": "Plan",
+      "activity": "Live activity",
+      "results": "Results",
+      "empty": "Every step the agent takes will appear here.",
+      "steps": {
+        "understand": "Understand your requirements",
+        "search": "Search Mkan homes",
+        "group": "Group duplicate ads",
+        "rank": "Rank homes that fit",
+        "confirm": "Confirm availability with brokers",
+        "present": "Present shortlist"
+      },
+      "events": {
+        "requirements_extracted": "Requirements read",
+        "asked": "Waiting for your answer",
+        "search_done": "Searched {candidates} candidate homes",
+        "dedup_grouped": "Grouped {removed} near-identical ads from the same host",
+        "filtered": "{matching} homes meet your requirements",
+        "ranked": "Ranked the top {top}",
+        "needs_confirmation": "{count} homes need availability confirmation",
+        "shortlist_ready": "Shortlist ready: {count} homes",
+        "broker_contact_started": "Asked a broker to confirm availability",
+        "broker_replied": "A broker replied",
+        "viewing_proposed": "Viewing times proposed",
+        "viewing_confirmed": "Viewing confirmed",
+        "failed": "This step failed"
+      },
+      "reader": {
+        "groq": "read by AI",
+        "rules": "read by rules"
+      },
+      "status": {
+        "done": "Done",
+        "running": "Running",
+        "waiting_person": "Waiting for a person",
+        "failed": "Failed",
+        "uncertain": "Not confirmed"
+      },
+      "confirmLater": "Broker confirmation is coming soon. For now, availability is not confirmed."
+    },
+    "req": {
+      "short": "Short stay",
+      "long": "Long-term",
+      "beds": "{n} bedrooms",
+      "studio": "Studio",
+      "furnished": "Furnished",
+      "unfurnished": "Unfurnished",
+      "maxNight": "Up to {price} a night",
+      "maxMonth": "Up to {price} a month",
+      "nights": "{n} nights",
+      "guests": "{n} guests",
+      "upfront": "{price} to move in"
+    },
+    "card": {
+      "perNight": "/ night",
+      "perMonth": "/ month",
+      "beds": "{n} bd",
+      "baths": "{n} ba",
+      "view": "View home",
+      "unconfirmed": "Availability not confirmed yet",
+      "confirmed": "Availability confirmed",
+      "moveIn": "Estimated to move in",
+      "stayTotal": "Estimated stay total",
+      "range": "{low} – {high}",
+      "estimateNote": "Estimate. A broker or host confirms the final terms.",
+      "duplicates": "+{n} similar ads grouped",
+      "lines": {
+        "nights": "{qty} nights",
+        "cleaning": "Cleaning fee",
+        "serviceFee": "Mkan service fee",
+        "monthlyDiscount": "Monthly discount",
+        "rentInAdvance": "{qty} months' rent in advance",
+        "deposit": "Deposit (½ month)",
+        "commission": "Broker commission (25–30%)",
+        "viewingFee": "Viewing fee"
+      },
+      "reasons": {
+        "inBudget": "Within budget",
+        "slightlyOverBudget": "Slightly over budget",
+        "district": "In your district",
+        "bedroomsExact": "Bedrooms match",
+        "bedroomsMore": "More bedrooms",
+        "furnished": "Furnished",
+        "wellRated": "Well rated",
+        "confirmed": "Recently confirmed",
+        "upfrontOver": "Over your move-in budget"
+      }
+    },
+    "entry": "Ask the rental agent"
   }
 }

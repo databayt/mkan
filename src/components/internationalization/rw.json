@@ -5347,5 +5347,128 @@
     "recommendLine": "{zone} — abarebye {views} ku nzu {listings} ({perListing} kuri buri nzu).",
     "methodNote": "Akarere kavugwa ko gafite “icyifuzo kinini” iyo abarebye kuri buri nzu bangana cyangwa barenze ak'akarere ko hagati ({median}). “Inzu zihagije” ni inzu {supply}+ ziriho. Reba ZONE_THRESHOLDS.",
     "medianUnknown": "nta ko hagati kaboneka"
+  },
+  "agent": {
+    "metaTitle": "Shaka inzu i Kigali",
+    "metaDescription": "Bwira umukozi wa Mkan ushinzwe ubukode icyo ukeneye. Ashakisha amazu nyayo i Kigali, akabara amafaranga yose yo kwinjira, kandi akakwereka buri ntambwe atera.",
+    "title": "Shaka inzu i Kigali",
+    "subtitle": "Bwira umukozi icyo ukeneye. Ashakisha amazu nyayo, akabara ayo uzishyura mbere, kandi akakwereka buri ntambwe atera.",
+    "placeholder": "urugero: inzu ifite ibikoresho y'ibyumba 2 i Kicukiro, kugeza 400k ku kwezi",
+    "send": "Ohereza",
+    "newSearch": "Gushakisha bushya",
+    "you": "Wowe",
+    "agent": "Umukozi wa Mkan",
+    "examples": {
+      "long": "Inzu ifite ibikoresho y'ibyumba 2 i Kicukiro, kugeza 400k ku kwezi",
+      "short": "Amajoro 3 i Gasabo ku bantu 2, munsi ya 60k ku ijoro",
+      "studio": "Studio hafi ya Nyarugenge, kugeza 250k ku kwezi"
+    },
+    "ask": {
+      "stay": "Ni ukurara iminsi mike (amajoro make) cyangwa ubukode bw'igihe kirekire (ubukode bwa buri kwezi)?",
+      "maxPrice": "Ingengo y'imari yawe ni angahe? Mbwira menshi ushobora kwishyura ku ijoro cyangwa ku kwezi, mu mafaranga y'u Rwanda."
+    },
+    "stayShort": "Kurara iminsi mike",
+    "stayLong": "Ubukode bwa buri kwezi",
+    "reply": {
+      "shortlist": "Nabonye amazu {count} ahuye n'ibyo ushaka. Buri karita yerekana impamvu ikubereye n'ayo wakwishyura ngo winjire.",
+      "none": "Nta nzu yatangajwe ihuye n'ibyo byose kugeza ubu. Gerageza ingengo y'imari iri hejuru, akarere kandi, cyangwa ibyumba bike.",
+      "error": "Habaye ikibazo ku ruhande rwacu. Ishakisha ryawe ryabitswe, ongera ugerageze.",
+      "busy": "Ndacyakora ku butumwa bwawe buheruka.",
+      "rate": "Wohereje ubutumwa bwinshi. Tegereza iminota mike hanyuma wongere ugerageze.",
+      "working": "Ndimo kubikora…",
+      "noneLong": "Nta nzu kuri Mkan ihuye n'iyo ngengo y'imari ya buri kwezi kugeza ubu. Amazu akodeshwa buri kwezi i Kigali aturuka ku bakomisiyoneri, kandi turimo kuyongeramo ubu. Ingengo y'imari iri hejuru izerekana amazu afite ibikoresho ushobora gukodesha buri kwezi."
+    },
+    "panel": {
+      "title": "Umukozi w'ubukode",
+      "task": "Igikorwa",
+      "plan": "Gahunda",
+      "activity": "Ibikorwa biri kuba",
+      "results": "Ibisubizo",
+      "empty": "Buri ntambwe umukozi atera izagaragara hano.",
+      "steps": {
+        "understand": "Gusobanukirwa ibyo ukeneye",
+        "search": "Gushakisha amazu ya Mkan",
+        "group": "Guhuza amatangazo asa",
+        "rank": "Gutondeka amazu akubereye",
+        "confirm": "Kwemeza ko ihari ku bakomisiyoneri",
+        "present": "Kwerekana urutonde rugufi"
+      },
+      "events": {
+        "requirements_extracted": "Ibyo ukeneye byasomwe",
+        "asked": "Dutegereje igisubizo cyawe",
+        "search_done": "Hashakishijwe amazu {candidates}",
+        "dedup_grouped": "Hahujwe amatangazo {removed} asa cyane y'umuntu umwe",
+        "filtered": "Amazu {matching} ahuye n'ibyo ukeneye",
+        "ranked": "Hatondekwe {top} ya mbere",
+        "needs_confirmation": "Amazu {count} akeneye kwemezwa ko ahari",
+        "shortlist_ready": "Urutonde rugufi rwiteguye: amazu {count}",
+        "broker_contact_started": "Komisiyoneri yasabwe kwemeza ko ihari",
+        "broker_replied": "Komisiyoneri yasubije",
+        "viewing_proposed": "Hatanzwe amasaha yo gusura",
+        "viewing_confirmed": "Gusura byemejwe",
+        "failed": "Iyi ntambwe yanze"
+      },
+      "reader": {
+        "groq": "byasomwe na AI",
+        "rules": "byasomwe n'amategeko"
+      },
+      "status": {
+        "done": "Byarangiye",
+        "running": "Biri gukorwa",
+        "waiting_person": "Dutegereje umuntu",
+        "failed": "Byanze",
+        "uncertain": "Ntibyemejwe"
+      },
+      "confirmLater": "Kwemeza ku bakomisiyoneri biraza vuba. Kugeza ubu, kuboneka ntibyemejwe."
+    },
+    "req": {
+      "short": "Kurara iminsi mike",
+      "long": "Igihe kirekire",
+      "beds": "Ibyumba {n}",
+      "studio": "Studio",
+      "furnished": "Ifite ibikoresho",
+      "unfurnished": "Nta bikoresho",
+      "maxNight": "Kugeza {price} ku ijoro",
+      "maxMonth": "Kugeza {price} ku kwezi",
+      "nights": "Amajoro {n}",
+      "guests": "Abashyitsi {n}",
+      "upfront": "{price} yo kwinjira"
+    },
+    "card": {
+      "perNight": "/ ijoro",
+      "perMonth": "/ ukwezi",
+      "beds": "Ibyumba {n}",
+      "baths": "Ubwiherero {n}",
+      "view": "Reba inzu",
+      "unconfirmed": "Kuboneka ntikuremezwa",
+      "confirmed": "Kuboneka kwemejwe",
+      "moveIn": "Ikigereranyo cyo kwinjira",
+      "stayTotal": "Ikigereranyo cy'igiteranyo",
+      "range": "{low} – {high}",
+      "estimateNote": "Ni ikigereranyo. Komisiyoneri cyangwa nyir'inzu yemeza amasezerano ya nyuma.",
+      "duplicates": "+{n} amatangazo asa yahujwe",
+      "lines": {
+        "nights": "Amajoro {qty}",
+        "cleaning": "Amafaranga y'isuku",
+        "serviceFee": "Amafaranga ya serivisi ya Mkan",
+        "monthlyDiscount": "Igabanywa rya buri kwezi",
+        "rentInAdvance": "Ubukode bw'amezi {qty} mbere",
+        "deposit": "Ingwate (igice cy'ukwezi)",
+        "commission": "Komisiyo ya komisiyoneri (25–30%)",
+        "viewingFee": "Amafaranga yo gusura"
+      },
+      "reasons": {
+        "inBudget": "Mu ngengo y'imari",
+        "slightlyOverBudget": "Birenze gato ingengo y'imari",
+        "district": "Mu karere kawe",
+        "bedroomsExact": "Ibyumba birahuye",
+        "bedroomsMore": "Ibyumba byinshi",
+        "furnished": "Ifite ibikoresho",
+        "wellRated": "Yashimwe cyane",
+        "confirmed": "Yemejwe vuba",
+        "upfrontOver": "Birenze ingengo yo kwinjira"
+      }
+    },
+    "entry": "Baza umukozi w'ubukode"
   }
 }

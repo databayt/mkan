@@ -249,6 +249,11 @@ model Listing {
   description        String?
   pricePerNight      Float?
   currency           String              @default("SDG") // ISO 4217 of every money field on this listing — Kigali homes are RWF
+  // Kigali's long-term market (TikTok/broker homes) rents by the month; Airbnb
+  // homes rent by the night. A MONTHLY home carries its rent in `priceMonth`
+  // and may leave `pricePerNight` null.
+  rentPeriod         RentPeriod          @default(NIGHTLY)
+  priceMonth         Float?
   securityDeposit    Float?
   applicationFee     Float?
   photoUrls          String[]            @default([])
@@ -327,6 +332,7 @@ model Listing {
   masteringRuns   MasteringRun[]
 
   @@index([hostId])
+  @@index([rentPeriod, isPublished])
   @@index([hostId, isPublished])
   @@index([hostId, isPublished, lastAvailabilityConfirmedAt])
   @@index([isPublished, draft])
@@ -343,6 +349,7 @@ enum ListingSource {
   AIRBNB
   FACEBOOK
   MANUAL
+  TIKTOK
 }
 
 model Location {
@@ -1223,4 +1230,64 @@ enum MasteringStatus {
   UPDATED
   REJECTED
   FAILED
+}
+
+/** How a listing's price is quoted. */
+enum RentPeriod {
+  NIGHTLY
+  MONTHLY
+}
+
+enum AgentTaskStatus {
+  RUNNING
+  WAITING // waiting on a person (a broker) — resumes when they answer
+  DONE
+  FAILED
+}
+
+/**
+ * One tenant search run by the rental agent (`/find`). The task, not the chat
+ * tab, owns the work: a broker who answers hours later updates the task, and a
+ * reload resumes it from `AgentEvent`. Anonymous by default — `sessionKey` is
+ * an httpOnly cookie; `userId` is set when the tenant is signed in.
+ */
+model AgentTask {
+  id           String          @id @default(cuid())
+  sessionKey   String
+  userId       String?
+  locale       String          @default("en")
+  /// The tenant's words, in order — the agent re-reads them on every turn.
+  messages     Json            @default("[]")
+  /// Parsed, validated requirements (src/components/agent/requirements.ts).
+  requirements Json?
+  /// Ranked shortlist the panel renders: [{ listingId, score, reasons, cost }].
+  shortlist    Json?
+  status       AgentTaskStatus @default(RUNNING)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  events AgentEvent[]
+
+  @@index([sessionKey, createdAt])
+  @@index([status, updatedAt])
+}
+
+/**
+ * One step of an agent task — the execution trace the panel renders. Every row
+ * is something the system actually did or is waiting on; the panel never shows
+ * a step that has no row. `status` separates done / running / waiting on a
+ * person / failed / uncertain, as the panel must.
+ */
+model AgentEvent {
+  id        Int       @id @default(autoincrement())
+  taskId    String
+  seq       Int
+  kind      String
+  status    String
+  payload   Json      @default("{}")
+  createdAt DateTime  @default(now())
+
+  task AgentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, seq])
 }
