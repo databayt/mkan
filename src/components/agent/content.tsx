@@ -6,6 +6,7 @@ import { useDictionary } from "@/components/internationalization/use-dictionary"
 import { usePicksLabel, Wizard, type Picks } from "./wizard";
 import { AskCard } from "./ask-card";
 import { Composer } from "./composer";
+import { Refine } from "./refine";
 import { ShortlistCard } from "./shortlist-card";
 import { Steps } from "./steps";
 import { AgentTurn, UserTurn } from "./turn";
@@ -103,6 +104,10 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
                     ))}
                   </div>
                 </div>
+              )}
+
+              {latest && m.kind === "shortlist" && !running && (
+                <Refine message={m} requirements={task.requirements} onPick={(text, filters, clear) => void send(text, false, filters, clear)} disabled={pending} />
               )}
 
               {latest && !running && (

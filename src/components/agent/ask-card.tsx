@@ -36,7 +36,10 @@ export function AskCard({
   onPick,
   disabled,
   compact = false,
+  title,
 }: {
+  /** Replaces the question line — a refine offer reads differently from a question. */
+  title?: string;
   field: HardField;
   requirements: Partial<Requirements> | null;
   onPick: (text: string, filters: Partial<Requirements>) => void;
@@ -100,9 +103,10 @@ export function AskCard({
     compact ? "py-2" : "py-2.5",
   );
 
+  const heading = title ?? a?.ask?.[field] ?? "";
   return (
-    <div className={cn("rounded-xl border", compact ? "p-1.5" : "p-2")} role="group" aria-label={a?.ask?.[field] ?? ""}>
-      <p className={cn("px-3 pb-1 pt-2 font-medium", compact ? "text-sm" : "")}>{a?.ask?.[field]}</p>
+    <div className={cn("rounded-xl border", compact ? "p-1.5" : "p-2")} role="group" aria-label={heading}>
+      <p className={cn("px-3 pb-1 pt-2 font-medium", compact ? "text-sm" : "")}>{heading}</p>
       <ol className="list-none">
         {options.map((o, i) => (
           <li key={o.label}>

@@ -218,14 +218,98 @@ export function mergeRequirements(base: Requirements, next: Partial<Requirements
 }
 
 /**
- * The first hard field still missing. Kigali rents run ~150k–1.5M RWF a month
- * and Airbnb nights ~15k–150k, so without the stay type the budget is
- * unreadable, and without a budget the ranking is noise.
+ * The one field the agent must ask for before searching: nights and months are
+ * different markets (Airbnb ~15k–150k a night, brokers ~150k–1.5M a month), so
+ * without the stay type nothing can be priced. The budget is not blocking — the
+ * agent shows the best homes first and offers a budget as a refinement.
  */
 export function missingHardField(r: Requirements): HardField | null {
-  if (!r.stay) return "stay";
-  if (!r.maxPrice) return "maxPrice";
-  return null;
+  return r.stay ? null : "stay";
+}
+
+/** Below this a bare figure is a nightly price, at or above it a monthly rent. */
+const NIGHTLY_MAX = 100_000;
+const MONTHLY_MIN = 200_000;
+
+/**
+ * Settle the stay type from what the tenant already said, so they are not asked
+ * a question their message answers: a figure of 450k is a month's rent, 40k is
+ * a night; guests or a night count mean a short stay; an unfurnished home, a
+ * self compound or a family home is a long-term rental.
+ */
+export function inferStay(r: Requirements): Requirements {
+  if (r.stay) return r;
+  let stay: Requirements["stay"] = null;
+  if (r.nights || r.guests) stay = "short";
+  else if (r.maxPrice && r.maxPrice <= NIGHTLY_MAX) stay = "short";
+  else if (r.maxPrice && r.maxPrice >= MONTHLY_MIN) stay = "long";
+  else if (r.furnished === false || r.compound || r.family || r.maxUpfront) stay = "long";
+  if (!stay) return r;
+  return { ...r, stay, pricePeriod: r.maxPrice ? r.pricePeriod ?? (stay === "long" ? "month" : "night") : r.pricePeriod };
+}
+
+/** Fields a "start over on this" phrase empties. */
+export const CLEARABLE = ["district", "neighbourhood", "area", "maxPrice", "pricePeriod", "cheap", "furnished", "compound", "family", "bathrooms", "bedrooms"] as const;
+export type ClearableField = (typeof CLEARABLE)[number];
+
+const ANY_PLACE_RE = /anywhere|any (?:area|place|district|neighbou?rhood|zone|location)|all (?:of )?kigali|whole (?:of )?kigali|أي مكان|اي مكان|أي منطقة|اي منطقة|كل كيغالي|ahantu hose|aho ari ho hose/i;
+const ANY_BUDGET_RE = /any (?:budget|price)|no (?:budget|price limit|limit)|price doesn'?t matter|أي سعر|اي سعر|بدون ميزانية|igiciro icyo ari cyo cyose/i;
+const ANY_FURNISH_RE = /furnished or (?:not|un)|(?:any|either) furnish|مفروش أو غير|مفروشة أو غير/i;
+const CHEAPER_RE = /cheaper|less expensive|lower (?:price|budget)|أرخص|ارخص|أقل سعر|ihendutse kurushaho/i;
+const BIGGER_RE = /bigger|larger|more (?:space|room|bedrooms?)|أكبر|اكبر|nini kurushaho/i;
+
+/**
+ * Follow-ups that move an existing search instead of stating a field:
+ * "cheaper" lowers the ceiling by a fifth, "bigger" adds a bedroom, "anywhere"
+ * or "any budget" empty those fields. Read against the current requirements.
+ */
+export function parseAdjustments(input: string, current: Requirements): { set: Partial<Requirements>; clear: ClearableField[] } {
+  const text = toLatinDigits(input);
+  const set: Partial<Requirements> = {};
+  const clear: ClearableField[] = [];
+  if (ANY_PLACE_RE.test(text)) clear.push("district", "neighbourhood", "area");
+  if (ANY_BUDGET_RE.test(text)) clear.push("maxPrice", "pricePeriod", "cheap");
+  if (ANY_FURNISH_RE.test(text)) clear.push("furnished");
+  if (CHEAPER_RE.test(text)) {
+    if (current.maxPrice) set.maxPrice = roundPrice(current.maxPrice * 0.8, current.pricePeriod);
+    set.cheap = true;
+  }
+  if (BIGGER_RE.test(text)) set.bedrooms = Math.min(10, (current.bedrooms ?? 1) + 1);
+  return { set, clear };
+}
+
+/** Round a ceiling to what a person would say: 10k steps a month, 1k a night. */
+export function roundPrice(n: number, period: Requirements["pricePeriod"]): number {
+  const step = period === "night" ? 1_000 : 10_000;
+  return Math.max(step, Math.round(n / step) * step);
+}
+
+export function clearFields(r: Requirements, keys: readonly string[]): Requirements {
+  const out = { ...r };
+  for (const k of keys) if ((CLEARABLE as readonly string[]).includes(k)) (out as Record<string, unknown>)[k] = null;
+  return out;
+}
+
+/**
+ * Keep one turn's requirements consistent with themselves after a merge:
+ * a neighbourhood and a district that disagree keep whichever the tenant said
+ * last; switching nights ↔ months drops a budget priced in the other period.
+ */
+export function reconcile(prev: Requirements, next: Requirements, stated: Partial<Requirements>): Requirements {
+  const out = { ...next };
+  const hood = NEIGHBOURHOODS.find((n) => n.name === out.neighbourhood);
+  if (hood && out.district && hood.district !== out.district) {
+    if (stated.district && !stated.neighbourhood) out.neighbourhood = null;
+    else out.district = hood.district as Requirements["district"];
+  }
+  if (prev.stay && out.stay && prev.stay !== out.stay) {
+    if (stated.maxPrice == null) {
+      out.maxPrice = null;
+      out.pricePeriod = null;
+    } else out.pricePeriod = out.stay === "long" ? "month" : "night";
+    if (out.stay === "long") out.nights = null;
+  }
+  return out;
 }
 
 /** Validate untrusted JSON (an LLM answer, a stored task) into Requirements. */

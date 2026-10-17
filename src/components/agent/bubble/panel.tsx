@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { usePicksLabel, Wizard, type Picks } from "../wizard";
 import { AskCard } from "../ask-card";
 import { Composer } from "../composer";
+import { Refine } from "../refine";
 import { fill } from "../format";
 import { Steps } from "../steps";
 import { AgentTurn, UserTurn } from "../turn";
@@ -161,6 +162,15 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
                         {fill(b?.seeAll ?? "See all {count} homes and every step", { count: task.shortlist.length })}
                       </Link>
                     </div>
+                  )}
+                  {latest && m.kind === "shortlist" && !running && (
+                    <Refine
+                      message={m}
+                      requirements={task.requirements}
+                      onPick={(text, filters, clear) => void send(text, false, filters, clear)}
+                      disabled={pending}
+                      compact
+                    />
                   )}
                 </AgentTurn>
               );

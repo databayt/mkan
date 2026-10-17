@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { longStayCost, monthlyRent, shortStayCost } from "@/components/agent/cost";
 import { groupDuplicates, passesHardFilters, rankCandidates, type Candidate } from "@/components/agent/rank";
-import { EMPTY_REQUIREMENTS, mergeRequirements, missingHardField, parseRequirements } from "@/components/agent/requirements";
+import {
+  clearFields,
+  EMPTY_REQUIREMENTS,
+  inferStay,
+  mergeRequirements,
+  missingHardField,
+  parseAdjustments,
+  parseRequirements,
+  reconcile,
+} from "@/components/agent/requirements";
+import { relaxations } from "@/components/agent/relax";
 
 const monthlyHome = { rentPeriod: "MONTHLY" as const, pricePerNight: null, priceMonth: 300_000, monthlyDiscount: null, cleaningFee: null };
 
@@ -49,11 +59,11 @@ describe("parseRequirements", () => {
     expect(r).toMatchObject({ bedrooms: 0, maxPrice: 250_000, maxUpfront: 900_000 });
   });
 
-  it("asks for the stay type, then the budget", () => {
+  it("asks only for the stay type; the budget comes after the homes", () => {
     let r = mergeRequirements(EMPTY_REQUIREMENTS, parseRequirements("2 bedroom in Kicukiro"));
     expect(missingHardField(r)).toBe("stay");
     r = mergeRequirements(r, parseRequirements("Monthly rent"));
-    expect(missingHardField(r)).toBe("maxPrice");
+    expect(missingHardField(r)).toBeNull();
     r = mergeRequirements(r, parseRequirements("350000"));
     expect(missingHardField(r)).toBeNull();
     expect(r).toMatchObject({ bedrooms: 2, district: "KICUKIRO", stay: "long", maxPrice: 350_000, pricePeriod: "month" });
@@ -160,5 +170,51 @@ describe("badges and place filters", () => {
   it("badge picks win over what the text said", () => {
     const merged = mergeRequirements(parseRequirements("2 bedroom in Gasabo"), { district: "NYARUGENGE", bedrooms: 1 });
     expect(merged).toMatchObject({ district: "NYARUGENGE", bedrooms: 1 });
+  });
+});
+
+describe("fewer questions, no dead ends", () => {
+  const read = (text: string, base = EMPTY_REQUIREMENTS) => inferStay(mergeRequirements(base, parseRequirements(text)));
+
+  it("infers the stay from the figure or the kind of home", () => {
+    expect(read("2 bed in Kimihurura 450k")).toMatchObject({ stay: "long", pricePeriod: "month" });
+    expect(read("something in Kiyovu under 40k")).toMatchObject({ stay: "short", pricePeriod: "night" });
+    expect(read("unfurnished 3 bed house").stay).toBe("long");
+    expect(read("2 bed in Remera").stay).toBeNull();
+  });
+
+  it("moves an existing search: cheaper, bigger, anywhere, any budget", () => {
+    const base = read("2 bed in Niboye, 300k a month");
+    expect(parseAdjustments("cheaper please", base).set).toMatchObject({ maxPrice: 240_000, cheap: true });
+    expect(parseAdjustments("something bigger", base).set.bedrooms).toBe(3);
+    const anywhere = parseAdjustments("anywhere is fine", base);
+    expect(clearFields(base, anywhere.clear)).toMatchObject({ district: null, neighbourhood: null, bedrooms: 2 });
+    expect(parseAdjustments("any budget", base).clear).toContain("maxPrice");
+  });
+
+  it("keeps place and price consistent across turns", () => {
+    const base = read("2 bed in Niboye, 300k a month");
+    // A new district drops a neighbourhood in another one.
+    const moved = mergeRequirements(base, { district: "GASABO" });
+    expect(reconcile(base, moved, { district: "GASABO" })).toMatchObject({ district: "GASABO", neighbourhood: null });
+    // A new neighbourhood carries its district.
+    const hood = mergeRequirements(base, parseRequirements("Kacyiru instead"));
+    expect(reconcile(base, hood, { neighbourhood: "Kacyiru" })).toMatchObject({ neighbourhood: "Kacyiru", district: "GASABO" });
+    // Months → nights drops a monthly budget.
+    const nights = mergeRequirements(base, { stay: "short" });
+    expect(reconcile(base, nights, { stay: "short" })).toMatchObject({ stay: "short", maxPrice: null });
+  });
+
+  it("widens one detail at a time before several, a neighbourhood to its district", () => {
+    const r = { ...read("2 bed self compound in Niboye, 300k a month"), bathrooms: 2 };
+    const attempts = relaxations(r);
+    expect(attempts[0]!.steps).toEqual([{ key: "neighbourhood", to: "KICUKIRO" }]);
+    expect(attempts[0]!.requirements).toMatchObject({ neighbourhood: null, district: "KICUKIRO" });
+    // Single changes first, then the ladder that carries each step forward.
+    const singles = attempts.filter((a) => a.steps.length === 1).map((a) => a.steps[0]!.key);
+    expect(singles).toEqual(["neighbourhood", "type", "bathrooms", "budget", "district"]);
+    const all = attempts.at(-1)!;
+    expect(all.steps).toHaveLength(5);
+    expect(all.requirements).toMatchObject({ maxPrice: 390_000, district: null, neighbourhood: null, bedrooms: 2 });
   });
 });

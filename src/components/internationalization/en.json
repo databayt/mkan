@@ -5359,7 +5359,7 @@
       "studio": "Studio near Nyarugenge, up to 250k monthly"
     },
     "ask": {
-      "stay": "Is this a short stay (a few nights) or a long-term rental (monthly rent)?",
+      "stay": "A few nights, or monthly rent?",
       "maxPrice": "What is your budget? Tell me the most you can pay per night or per month, in RWF."
     },
     "stayShort": "Short stay",
@@ -5404,7 +5404,8 @@
         "viewing_confirmed": "Viewing confirmed",
         "failed": "This step failed",
         "broker_contact_reused": "Joined a question already sent to the broker",
-        "outcome_recorded": "Viewing outcome recorded"
+        "outcome_recorded": "Viewing outcome recorded",
+        "relaxed": "Widened {count} details to find homes"
       },
       "reader": {
         "groq": "read by AI",
@@ -5627,7 +5628,8 @@
         "viewing_confirmed": "Viewing",
         "shortlist_ready": "Shortlist",
         "failed": "Error",
-        "outcome_recorded": "Outcome"
+        "outcome_recorded": "Outcome",
+        "relaxed": "Widen"
       },
       "verbs": {
         "understand": "Reading your request…",
@@ -5637,6 +5639,26 @@
         "confirm": "Checking with brokers…",
         "present": "Writing the shortlist…"
       }
+    },
+    "relaxed": {
+      "lead": "Nothing matched every detail, so I widened the search: {changes}.",
+      "items": {
+        "neighbourhood": "all of {place}",
+        "area": "any part of the city",
+        "type": "any type of home",
+        "bathrooms": "any number of bathrooms",
+        "furnished": "furnished or not",
+        "budget": "up to {price}",
+        "district": "anywhere in Kigali"
+      }
+    },
+    "refine": {
+      "title": "Refine",
+      "budget": "Want me to keep these within a budget?",
+      "cheaper": "Cheaper",
+      "bigger": "More bedrooms",
+      "furnished": "Furnished",
+      "anywhere": "Anywhere in Kigali"
     }
   }
 }

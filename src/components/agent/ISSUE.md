@@ -21,3 +21,9 @@
 - Shipped: `/find` in the ChatGPT/Claude/Gemini layout (centred composer → conversation column, steps block folded on the agent's turn, homes inline); the floating bubble on home / search / listings / travel / help, sharing the task via the `mkan_agent` cookie.
 - Not done (deliberately): "Copy link" on a turn — tasks are private to the browser's cookie, so a link would not open for anyone else; editing a requirement chip in place.
 - The bubble shows an amber dot on the launcher only after it has been opened once in the page (it does not fetch the task on every page load).
+
+## Smarter, fewer steps (2026-10-17)
+
+- Only the stay type blocks a search, and it is inferred when the message answers it (a 450k figure is a month, 40k a night; guests or nights → short; unfurnished / compound / family → long). The budget is offered after the homes, not before.
+- The Groq reader is a delta reader: it gets the current search plus the newest message and returns `{set, clear}`, so "cheaper", "Kacyiru instead" or "anywhere" move the search instead of restating it. The rules reader does the same for cheaper / bigger / anywhere / any budget (`parseAdjustments`); `reconcile` keeps neighbourhood ↔ district and nights ↔ months budgets consistent.
+- Zero matches widen automatically (`relax.ts`) instead of answering "no homes". Data reality: a 2-bed monthly under ~390k barely exists on mkan yet, so such a search widens to all of Kigali and may show one home — the reply says so.

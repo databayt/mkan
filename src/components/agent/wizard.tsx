@@ -87,7 +87,7 @@ export function Wizard({
   const [index, setIndex] = useState(0);
   const step: Step = STEPS[index] ?? "stay";
   const last = index === STEPS.length - 1;
-  const next = () => (last ? onFinish() : setIndex((i) => i + 1));
+  const next = () => setIndex((i) => i + 1);
 
   // Updates read the latest picks, so quick taps never overwrite each other.
   const update = (patchOf: (prev: Picks) => Picks) =>
@@ -248,18 +248,23 @@ export function Wizard({
       <div className="mt-4 flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">{w?.orType ?? "Or just type what you need below."}</p>
         {step !== "stay" && (
-          <button
-            type="button"
-            onClick={next}
-            disabled={disabled}
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium",
-              last ? "bg-foreground text-background" : "border hover:bg-muted",
+          <div className="flex shrink-0 items-center gap-2">
+            {!last && (
+              <button type="button" onClick={next} disabled={disabled} className="rounded-full border px-4 py-1.5 text-sm font-medium hover:bg-muted">
+                {w?.next ?? "Next"}
+              </button>
             )}
-          >
-            {last && <Search className="size-3.5" aria-hidden />}
-            {last ? w?.finish ?? "Show homes" : w?.next ?? "Next"}
-          </button>
+            {/* Enough said at any step: search now, skip the rest. */}
+            <button
+              type="button"
+              onClick={onFinish}
+              disabled={disabled}
+              className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background"
+            >
+              <Search className="size-3.5" aria-hidden />
+              {w?.finish ?? "Show homes"}
+            </button>
+          </div>
         )}
       </div>
     </section>

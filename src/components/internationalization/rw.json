@@ -5359,7 +5359,7 @@
       "studio": "Studio hafi ya Nyarugenge, kugeza 250k ku kwezi"
     },
     "ask": {
-      "stay": "Ni ukurara iminsi mike (amajoro make) cyangwa ubukode bw'igihe kirekire (ubukode bwa buri kwezi)?",
+      "stay": "Amajoro make, cyangwa ubukode bwa buri kwezi?",
       "maxPrice": "Ingengo y'imari yawe ni angahe? Mbwira menshi ushobora kwishyura ku ijoro cyangwa ku kwezi, mu mafaranga y'u Rwanda."
     },
     "stayShort": "Kurara iminsi mike",
@@ -5404,7 +5404,8 @@
         "viewing_confirmed": "Gusura byemejwe",
         "failed": "Iyi ntambwe yanze",
         "broker_contact_reused": "Twifatanyije n'ikibazo cyari cyoherejwe kuri komisiyoneri",
-        "outcome_recorded": "Uko gusura byagenze byanditswe"
+        "outcome_recorded": "Uko gusura byagenze byanditswe",
+        "relaxed": "Naguye ibintu {count} kugira ngo mbone amazu"
       },
       "reader": {
         "groq": "byasomwe na AI",
@@ -5627,7 +5628,8 @@
         "viewing_confirmed": "Gusura",
         "shortlist_ready": "Urutonde",
         "failed": "Ikosa",
-        "outcome_recorded": "Ibyavuyemo"
+        "outcome_recorded": "Ibyavuyemo",
+        "relaxed": "Agura"
       },
       "verbs": {
         "understand": "Ndasoma icyifuzo cyawe…",
@@ -5637,6 +5639,26 @@
         "confirm": "Ndabaza abakomisiyoneri…",
         "present": "Ndandika urutonde…"
       }
+    },
+    "relaxed": {
+      "lead": "Nta nzu yujuje ibyo byose, nuko naguye ishakisha: {changes}.",
+      "items": {
+        "neighbourhood": "{place} hose",
+        "area": "ahantu hose mu mujyi",
+        "type": "ubwoko bwose bw'inzu",
+        "bathrooms": "umubare uwo ari wo wose w'ubwiherero",
+        "furnished": "ifite cyangwa idafite ibikoresho",
+        "budget": "kugeza kuri {price}",
+        "district": "ahantu hose i Kigali"
+      }
+    },
+    "refine": {
+      "title": "Nonosora",
+      "budget": "Urashaka ko nzigumisha mu ngengo y'imari?",
+      "cheaper": "Ihendutse kurushaho",
+      "bigger": "Ibyumba byinshi",
+      "furnished": "Ifite ibikoresho",
+      "anywhere": "Ahantu hose i Kigali"
     }
   }
 }

@@ -1,6 +1,7 @@
 import type { CostEstimate } from "./cost";
 import type { ReasonKey } from "./rank";
 import type { HardField, Requirements } from "./requirements";
+import type { Relaxed } from "./relax";
 
 export type AgentStatus = "RUNNING" | "WAITING" | "DONE" | "FAILED";
 
@@ -13,6 +14,7 @@ export type EventKind =
   | "search_done"
   | "dedup_grouped"
   | "filtered"
+  | "relaxed"
   | "ranked"
   | "needs_confirmation"
   | "shortlist_ready"
@@ -32,10 +34,11 @@ export interface AgentEventView {
 }
 
 export type AgentMessage =
-  /** `filters` are the badges the tenant picked; they win over the text. */
-  | { role: "user"; text: string; at: string; filters?: Record<string, unknown> }
+  /** `filters` are the badges the tenant picked; they win over the text. `clear` empties fields (a refine chip). */
+  | { role: "user"; text: string; at: string; filters?: Record<string, unknown>; clear?: string[] }
   | { role: "agent"; kind: "ask"; field: HardField; at: string }
-  | { role: "agent"; kind: "shortlist"; count: number; at: string }
+  /** `relaxed`: details widened to find these; `refine`: a field offered as a follow-up question. */
+  | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; at: string }
   | { role: "agent"; kind: "none"; stay?: "short" | "long"; at: string }
   | { role: "agent"; kind: "error"; at: string };
 

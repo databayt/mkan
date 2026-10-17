@@ -1,8 +1,9 @@
 import "server-only";
 
 /**
- * One agent turn: read the tenant's message, then either ask for the missing
- * hard field or search → group → filter → rank → shortlist. Every step writes
+ * One agent turn: read the tenant's message, then either ask for the stay type
+ * (the only blocking question) or search → group → filter → (widen) → rank →
+ * shortlist. Every step writes
  * an AgentEvent before and after it runs, so the panel shows exactly what the
  * system is doing — a step with no row did not happen.
  *
@@ -15,13 +16,18 @@ import type { Locale } from "@/components/internationalization/config";
 import { readRequirementsWithGroq } from "./llm";
 import { rankCandidates } from "./rank";
 import {
+  clearFields,
   coerceRequirements,
   EMPTY_REQUIREMENTS,
+  inferStay,
   mergeRequirements,
   missingHardField,
+  parseAdjustments,
   parseRequirements,
+  reconcile,
   type Requirements,
 } from "./requirements";
+import { relaxations, type Relaxed } from "./relax";
 import { searchKigali, toShortlist } from "./search";
 import { requestConfirmations } from "./broker";
 import type { AgentMessage, EventKind, StepStatus } from "./types";
@@ -88,17 +94,22 @@ export async function runTurn(taskId: string): Promise<void> {
     const userMessages = messages.filter((m): m is Extract<AgentMessage, { role: "user" }> => m.role === "user");
     const userTexts = userMessages.map((m) => m.text);
     const latest = userTexts[userTexts.length - 1] ?? "";
-    const picked = coerceRequirements(userMessages.at(-1)?.filters);
+    const lastUser = userMessages.at(-1);
+    const picked = coerceRequirements(lastUser?.filters);
     const understandId = await trace.start("requirements_extracted");
     const base = mergeRequirements(EMPTY_REQUIREMENTS, coerceRequirements(task.requirements));
-    const llm = await readRequirementsWithGroq(userTexts);
-    // The model reads the whole conversation; the regex reader reads the
-    // latest message and wins on every field it found.
-    // Badges are exact, so they win over both readers.
-    const requirements: Requirements = mergeRequirements(
-      mergeRequirements(mergeRequirements(base, llm ?? {}), parseRequirements(latest)),
-      picked,
-    );
+    const parsed = parseRequirements(latest);
+    const adjust = parseAdjustments(latest, base);
+    const llm = await readRequirementsWithGroq(latest, base, userTexts.slice(0, -1));
+    // The model reads the newest message against the search so far; the regex
+    // reader wins on every field it found; taps (picks, refine chips) are
+    // exact, so they win over both. Clears apply last, except over a field this
+    // turn stated outright.
+    const stated: Partial<Requirements> = { ...coerceRequirements(parsed), ...adjust.set, ...picked };
+    let requirements: Requirements = mergeRequirements(mergeRequirements(base, llm?.set ?? {}), stated);
+    const clears = [...(llm?.clear ?? []), ...adjust.clear].filter((k) => stated[k] == null);
+    requirements = clearFields(requirements, [...clears, ...(lastUser?.clear ?? [])]);
+    requirements = inferStay(reconcile(base, requirements, stated));
     await db.agentTask.update({ where: { id: task.id }, data: { requirements: json(requirements) } });
     await trace.finish(understandId, "done", { requirements, reader: llm ? "groq" : "rules" });
 
@@ -112,13 +123,37 @@ export async function runTurn(taskId: string): Promise<void> {
 
     // 2. Search mkan.
     const searchId = await trace.start("search_done");
-    const { rows, candidates } = await searchKigali(requirements);
+    let { rows, candidates } = await searchKigali(requirements);
     await trace.finish(searchId, "done", { candidates: candidates.length });
 
     // 3–4. Group duplicate ads, apply the hard filters, rank.
-    const result = rankCandidates(candidates, requirements);
+    let result = rankCandidates(candidates, requirements);
     await trace.record("dedup_grouped", "done", { removed: result.duplicatesRemoved });
     await trace.record("filtered", "done", { matching: result.matching });
+
+    // Nothing fits every detail: widen one detail at a time until homes appear,
+    // and say which ones. The tenant's own requirements stay as they said them.
+    let relaxed: Relaxed[] = [];
+    if (result.ranked.length === 0) {
+      const relaxId = await trace.start("relaxed");
+      // All attempts at once (one round trip of time); fewest changes wins, then order.
+      const attempts = relaxations(requirements);
+      const tried = await Promise.all(
+        attempts.map(async (attempt) => {
+          const found = await searchKigali(attempt.requirements);
+          return { attempt, found, ranked: rankCandidates(found.candidates, attempt.requirements) };
+        }),
+      );
+      const best = tried
+        .filter((t) => t.ranked.ranked.length > 0)
+        .sort((x, y) => x.attempt.steps.length - y.attempt.steps.length)[0];
+      if (best) {
+        ({ rows, candidates } = best.found);
+        result = best.ranked;
+        relaxed = best.attempt.steps;
+      }
+      await trace.finish(relaxId, relaxed.length ? "done" : "failed", { count: relaxed.length, keys: relaxed.map((s) => s.key), matching: result.matching });
+    }
     await trace.record("ranked", "done", { top: result.ranked.length });
 
     if (result.ranked.length === 0) {
@@ -141,7 +176,15 @@ export async function runTurn(taskId: string): Promise<void> {
 
     await trace.record("shortlist_ready", "done", { count: shortlist.length });
     await db.agentTask.update({ where: { id: task.id }, data: { shortlist: json(shortlist), status: asked.size > 0 ? "WAITING" : "DONE" } });
-    await appendAgentMessage(task.id, messages, { role: "agent", kind: "shortlist", count: shortlist.length, at: now() });
+    await appendAgentMessage(task.id, messages, {
+      role: "agent",
+      kind: "shortlist",
+      count: shortlist.length,
+      ...(relaxed.length ? { relaxed } : {}),
+      // No ceiling yet: the best homes come first and a budget is offered after.
+      ...(!requirements.maxPrice && !requirements.cheap ? { refine: "maxPrice" as const } : {}),
+      at: now(),
+    });
   } catch (err) {
     console.error("[agent] turn failed", err);
     await trace.record("failed", "failed", {}).catch(() => {});

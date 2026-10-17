@@ -8,6 +8,7 @@ import { districtName } from "@/lib/geo/rwanda-places";
 import { getAgentTask, sendAgentMessage } from "./actions";
 import { fill } from "./format";
 import type { Requirements } from "./requirements";
+import type { Relaxed } from "./relax";
 import type { AgentMessage, AgentTaskView } from "./types";
 
 const POLL_MS = 800;
@@ -63,13 +64,13 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false }
 
   /** Resolves true once the message is accepted, so the composer can clear. */
   const send = useCallback(
-    (message: string, fresh = false, filters?: Partial<Requirements>) =>
+    (message: string, fresh = false, filters?: Partial<Requirements>, clear?: string[]) =>
       new Promise<boolean>((resolve) => {
         const value = message.trim();
         if (!value) return resolve(false);
         setNotice(null);
         startTransition(async () => {
-          const res = await sendAgentMessage({ text: value, lang: locale, taskId: fresh ? undefined : task?.id, fresh, filters });
+          const res = await sendAgentMessage({ text: value, lang: locale, taskId: fresh ? undefined : task?.id, fresh, filters, clear });
           if (!res.ok) {
             setNotice(res.error === "rate" ? a?.reply?.rate ?? "Please wait a few minutes." : res.error === "busy" ? a?.reply?.busy ?? "Still working." : null);
             return resolve(false);
@@ -92,14 +93,27 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false }
     if (m.kind === "shortlist") {
       const found = fill(a?.reply?.shortlist ?? "I found {count} homes.", { count: m.count });
       const asked = task?.shortlist.some((s) => s.availability === "asked");
-      return asked ? `${found}\n${a?.reply?.waiting ?? ""}` : found;
+      const lines = [m.relaxed?.length ? relaxedLine(m.relaxed) : null, found, asked ? a?.reply?.waiting : null];
+      return lines.filter(Boolean).join("\n");
     }
     if (m.kind === "none") return (m.stay === "long" ? a?.reply?.noneLong : a?.reply?.none) ?? "";
     return a?.reply?.error ?? "";
   };
 
-  const req = task?.requirements;
   const money = (n: number) => formatCurrency(n, locale, "RWF");
+  /** "Nothing matched every detail, so I widened: all of Kicukiro, up to RWF 390,000." */
+  const relaxedLine = (steps: Relaxed[]): string => {
+    const items = a?.relaxed?.items as Record<string, string> | undefined;
+    const changes = steps.map((s) =>
+      fill(items?.[s.key] ?? s.key, {
+        place: typeof s.to === "string" ? districtName(s.to, locale) : "",
+        price: typeof s.to === "number" ? money(s.to) : "",
+      }),
+    );
+    return fill(a?.relaxed?.lead ?? "{changes}", { changes: changes.join(locale === "ar" ? "، " : ", ") });
+  };
+
+  const req = task?.requirements;
   const chips = req
     ? [
         req.stay === "short" ? a?.req?.short : req.stay === "long" ? a?.req?.long : null,

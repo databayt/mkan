@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { i18n, type Locale } from "@/components/internationalization/config";
 import { runTurn } from "./run";
-import { coerceRequirements, type Requirements } from "./requirements";
+import { CLEARABLE, coerceRequirements, type Requirements } from "./requirements";
 import type { AgentEventView, AgentMessage, AgentTaskView, ShortlistItem } from "./types";
 
 const COOKIE = "mkan_agent";
@@ -137,6 +137,8 @@ export async function sendAgentMessage(input: {
   fresh?: boolean;
   /** Badge picks — validated here, merged over the parsed text by runTurn. */
   filters?: Partial<Requirements>;
+  /** Fields a refine chip empties ("Anywhere in Kigali"). */
+  clear?: string[];
 }): Promise<SendResult> {
   const text = input.text.trim().slice(0, MAX_TEXT);
   if (!text) return { ok: false, error: "empty" };
@@ -152,11 +154,13 @@ export async function sendAgentMessage(input: {
 
   const session = await auth().catch(() => null);
   const filters = coerceRequirements(input.filters);
+  const clear = (input.clear ?? []).filter((k) => (CLEARABLE as readonly string[]).includes(k));
   const userMsg: AgentMessage = {
     role: "user",
     text,
     at: new Date().toISOString(),
     ...(Object.keys(filters).length ? { filters: filters as Record<string, unknown> } : {}),
+    ...(clear.length ? { clear } : {}),
   };
 
   let taskId: string;
