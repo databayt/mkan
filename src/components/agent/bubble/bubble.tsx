@@ -23,7 +23,8 @@ const SHOW_ON = /^\/(search|listings|travel|help)(\/|$)/;
  * Opening it from any other page lands the site on /listings, so the homes the
  * agent is narrowing down sit beside the chat (the panel then filters that
  * page as the requirements firm up). The launcher is the robot mark the
- * hogwarts chatbot uses.
+ * hogwarts chatbot uses, on a theme-coloured disc so it reads over the
+ * photo heroes too (hogwarts samples a solid backdrop, which a photo isn't).
  */
 export function AgentBubble() {
   const dict = useDictionary();
@@ -72,7 +73,7 @@ export function AgentBubble() {
         aria-label={open ? b?.close ?? "Close" : b?.open ?? "Ask the rental agent"}
         aria-expanded={open}
         className={cn(
-          "fixed bottom-6 end-6 z-50 flex size-12 items-center justify-center rounded-full p-1 transition-transform hover:scale-105 motion-reduce:transition-none md:size-14",
+          "fixed bottom-6 end-6 z-50 flex size-12 items-center justify-center rounded-full bg-background p-2 shadow-lg ring-1 ring-border transition-transform hover:scale-105 motion-reduce:transition-none md:size-14",
           open && "hidden",
         )}
       >
