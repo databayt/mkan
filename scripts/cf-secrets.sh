@@ -15,7 +15,7 @@ node cf/env-split.mjs "$SRC" secrets > "$OUT"
 # dead (mkan production shipped NEXTAUTH_SECRET="secret", and the Resend key was
 # revoked). Anything stored in the macOS Keychain as cf-<worker>-<VAR> wins, so
 # re-running this from a stale dotenv cannot regress a fixed secret.
-for VAR in NEXTAUTH_SECRET AUTH_SECRET RESEND_API_KEY; do
+for VAR in NEXTAUTH_SECRET AUTH_SECRET RESEND_API_KEY GROQ_API_KEY SLACK_BOT_TOKEN; do
   V=$(security find-generic-password -s "cf-mkan-$VAR" -w 2>/dev/null || true)
   [[ -n "$V" ]] && OUT="$OUT" VAR="$VAR" V="$V" node -e '
     const fs=require("fs");const p=process.env.OUT;const o=JSON.parse(fs.readFileSync(p,"utf8"));
