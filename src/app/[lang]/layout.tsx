@@ -11,6 +11,7 @@ import { PHASE1 } from '@/config/phase-flags';
 import { CookieBanner } from '@/components/consent/cookie-banner';
 import { ConsentAwareAnalytics } from '@/components/consent/consent-aware-analytics';
 import { AvailabilityPrompt } from '@/components/hosting/availability-prompt';
+import { AgentBubble } from '@/components/agent/bubble/bubble';
 import '../globals.css';
 
 // Enable ISR with 1-hour revalidation
@@ -135,6 +136,7 @@ export default async function LocaleLayout({
             <Toaster richColors />
             {PHASE1.showCookieBanner && <CookieBanner />}
             <AvailabilityPrompt />
+            <AgentBubble />
             <ConsentAwareAnalytics />
           </DictionaryProvider>
         </Providers>

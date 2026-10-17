@@ -30,7 +30,9 @@ client: polls getAgentTask every 800 ms while RUNNING; a reload resumes from the
 | `search.ts` | Prisma query over published RWF Kigali homes → candidates; shortlist cards |
 | `run.ts` | One turn, writing the trace |
 | `actions.ts` | `sendAgentMessage`, `getAgentTask` (cookie-scoped, 30 turns/hour) |
-| `content.tsx` · `execution-panel.tsx` · `shortlist-card.tsx` | UI |
+| `content.tsx` · `turn.tsx` · `composer.tsx` · `steps.tsx` · `shortlist-card.tsx` | /find UI — assistant-app layout (centred composer → conversation column, steps block folded on the agent's turn, homes inline) |
+| `use-agent-task.ts` | Shared conversation state + polling for /find and the bubble |
+| `bubble/bubble.tsx` · `bubble/panel.tsx` | The floating chat (hogwarts chatbot shape) on home / search / listings / travel / help; same task as /find, expand → /find |
 
 ## Rules
 

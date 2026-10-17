@@ -137,11 +137,6 @@
     "title": "Mkan - Rental Marketplace",
     "description": "Connect with property managers and find your perfect rental home"
   },
-  "chatbot": {
-    "title": "Chat Assistant",
-    "startMessage": "Start a conversation...",
-    "thinking": "I'm thinking..."
-  },
   "common": {
     "a11y": {
       "previousSlide": "Previous slide",
@@ -5431,7 +5426,9 @@
         "confirmed": "available",
         "rented": "rented",
         "no_reply": "no answer in 24 hours"
-      }
+      },
+      "showSteps": "Show steps",
+      "hideSteps": "Hide steps"
     },
     "req": {
       "short": "Short stay",
@@ -5530,6 +5527,16 @@
       "privacy": "Mkan shares the tenant's name and phone only after you confirm a viewing.",
       "perMonth": "/ month",
       "perNight": "/ night"
+    },
+    "greeting": "Where do you want to live in Kigali?",
+    "disclaimer": "Mkan checks with brokers, but always see a home before you pay.",
+    "lookingFor": "Looking for",
+    "bubble": {
+      "open": "Ask the rental agent",
+      "close": "Close",
+      "title": "Mkan rental agent",
+      "expand": "Open full screen",
+      "seeAll": "See all {count} homes and every step"
     }
   }
 }

@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import type { Locale } from "@/components/internationalization/config";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import SiteHeader from "@/components/template/header/header";
-import Footer from "@/components/site/footer";
 import { createMetadata } from "@/lib/metadata";
 import { getAgentTask } from "@/components/agent/actions";
 import { AgentContent } from "@/components/agent/content";
 
 // Per-visitor: the page resumes this browser's last search from its cookie.
+// No footer: like the assistant apps, the conversation owns the page.
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: Locale }> }): Promise<Metadata> {
@@ -29,7 +29,6 @@ export default async function FindPage() {
       <main id="main-content">
         <AgentContent initialTask={task} />
       </main>
-      <Footer />
     </div>
   );
 }

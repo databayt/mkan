@@ -137,11 +137,6 @@
     "title": "Mkan - Isoko ry'inzu zikodeshwa",
     "description": "Vugana n'abacunga amazu maze ubone inzu ikodeshwa ikubereye"
   },
-  "chatbot": {
-    "title": "Umufasha wo kuganira",
-    "startMessage": "Tangira ikiganiro...",
-    "thinking": "Ndimo gutekereza..."
-  },
   "common": {
     "a11y": {
       "previousSlide": "Slayidi ibanza",
@@ -5431,7 +5426,9 @@
         "confirmed": "irahari",
         "rented": "yakodeshejwe",
         "no_reply": "nta gisubizo mu masaha 24"
-      }
+      },
+      "showSteps": "Erekana intambwe",
+      "hideSteps": "Hisha intambwe"
     },
     "req": {
       "short": "Kurara iminsi mike",
@@ -5530,6 +5527,16 @@
       "privacy": "Mkan itanga izina na telefoni by'umukiriya ari uko mwemeje gusura gusa.",
       "perMonth": "/ ukwezi",
       "perNight": "/ ijoro"
+    },
+    "greeting": "Ushaka gutura he i Kigali?",
+    "disclaimer": "Mkan ibaza abakomisiyoneri, ariko buri gihe banza urebe inzu mbere yo kwishyura.",
+    "lookingFor": "Urashaka",
+    "bubble": {
+      "open": "Baza umukozi w'ubukode",
+      "close": "Funga",
+      "title": "Umukozi w'ubukode wa Mkan",
+      "expand": "Fungura kuri paji yose",
+      "seeAll": "Reba amazu {count} yose n'intambwe zose"
     }
   }
 }
