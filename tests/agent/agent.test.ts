@@ -217,4 +217,10 @@ describe("fewer questions, no dead ends", () => {
     expect(all.steps).toHaveLength(5);
     expect(all.requirements).toMatchObject({ maxPrice: 390_000, district: null, neighbourhood: null, bedrooms: 2 });
   });
+
+  it("puts the cheapest first even without a budget", () => {
+    const r = { ...EMPTY_REQUIREMENTS, stay: "short" as const, cheap: true };
+    const ranked = rankCandidates([cand({ id: 1, pricePerNight: 90_000 }), cand({ id: 2, hostId: "h2", pricePerNight: 30_000 })], r).ranked;
+    expect(ranked.map((x) => x.id)).toEqual([2, 1]);
+  });
 });

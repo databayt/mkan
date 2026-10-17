@@ -10,6 +10,8 @@ import { inArea, inNeighbourhood } from "./areas";
 const COMPOUND_TYPES = new Set(["Villa", "Townhouse", "Cottage"]);
 /** Bedrooms a "family" search wants when no count was given. */
 const FAMILY_BEDROOMS = 3;
+/** "Cheapest first" with no budget: prices are scored against these (RWF). */
+const CHEAP_SCALE = { night: 150_000, month: 1_500_000 };
 
 export interface Candidate extends PricedHome {
   id: number;
@@ -69,7 +71,8 @@ export function isFresh(confirmedAt: Date | null, now = new Date()): boolean {
 
 /** The price compared against the tenant's ceiling, in the ceiling's period. */
 function comparablePrice(c: Candidate, r: Requirements): number | null {
-  if (r.pricePeriod === "night") return c.rentPeriod === "NIGHTLY" ? c.pricePerNight : null;
+  // No budget yet: the stay type says which price the tenant will compare.
+  if (r.pricePeriod === "night" || (!r.pricePeriod && r.stay === "short")) return c.rentPeriod === "NIGHTLY" ? c.pricePerNight : null;
   return monthlyRent(c);
 }
 
@@ -145,7 +148,9 @@ export function scoreCandidate(c: Candidate, r: Requirements, dupes = 0, now = n
   if (r.cheap && p != null) {
     // Cheapest first: price dominates the score (≈ up to 60 points).
     reasons.push("lowPrice");
-    score += 60 - Math.min(60, (p / (r.maxPrice ?? p * 2)) * 60);
+    // Without a ceiling, measure against the top of Kigali's market.
+    const scale = r.maxPrice ?? (r.pricePeriod === "night" || (!r.pricePeriod && r.stay === "short") ? CHEAP_SCALE.night : CHEAP_SCALE.month);
+    score += 60 - Math.min(60, (p / scale) * 60);
   } else if (r.maxPrice && p != null) {
     if (p <= r.maxPrice) {
       reasons.push("inBudget");
