@@ -102,7 +102,7 @@ const SECTORS: Array<[string, Exclude<RwandaDistrictCode, 'UNKNOWN'>, number, nu
 ];
 
 export function nearestSector(lat: number, lng: number): { sector: string; district: RwandaDistrictCode } {
-  let best = SECTORS[0];
+  let best = SECTORS[0]!;
   let bestKm = Infinity;
   for (const s of SECTORS) {
     const km = haversineKm(lat, lng, s[2], s[3]);
