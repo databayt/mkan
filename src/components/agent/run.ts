@@ -67,15 +67,19 @@ class Trace {
   }
 
   async record(kind: EventKind, status: StepStatus, payload: Record<string, unknown> = {}) {
-    this.seq += 1;
-    await db.agentEvent.create({
-      data: { taskId: this.taskId, seq: this.seq, kind, status, payload: json(payload) },
-    });
+    await this.recordMany([[kind, status, payload]]);
+  }
+
+  /** Several finished steps in one round trip; seqs are taken before the write, in order. */
+  async recordMany(rows: [EventKind, StepStatus, Record<string, unknown>][]) {
+    const data = rows.map(([kind, status, payload]) => ({ taskId: this.taskId, seq: ++this.seq, kind, status, payload: json(payload) }));
+    await db.agentEvent.createMany({ data });
   }
 }
 
-async function appendAgentMessage(taskId: string, messages: AgentMessage[], msg: AgentMessage) {
-  await db.agentTask.update({ where: { id: taskId }, data: { messages: json([...messages, msg]) } });
+/** The agent's reply and the task's new state in one write. */
+async function reply(taskId: string, messages: AgentMessage[], msg: AgentMessage, data: Prisma.AgentTaskUpdateInput = {}) {
+  await db.agentTask.update({ where: { id: taskId }, data: { ...data, messages: json([...messages, msg]) } });
 }
 
 export async function runTurn(taskId: string): Promise<void> {
@@ -96,11 +100,14 @@ export async function runTurn(taskId: string): Promise<void> {
     const latest = userTexts[userTexts.length - 1] ?? "";
     const lastUser = userMessages.at(-1);
     const picked = coerceRequirements(lastUser?.filters);
-    const understandId = await trace.start("requirements_extracted");
     const base = mergeRequirements(EMPTY_REQUIREMENTS, coerceRequirements(task.requirements));
     const parsed = parseRequirements(latest);
     const adjust = parseAdjustments(latest, base);
-    const llm = await readRequirementsWithGroq(latest, base, userTexts.slice(0, -1));
+    // The step's "running" row and the model call overlap: neither waits on the other.
+    const [understandId, llm] = await Promise.all([
+      trace.start("requirements_extracted"),
+      readRequirementsWithGroq(latest, base, userTexts.slice(0, -1)),
+    ]);
     // The model reads the newest message against the search so far; the regex
     // reader wins on every field it found; taps (picks, refine chips) are
     // exact, so they win over both. Clears apply last, except over a field this
@@ -110,64 +117,72 @@ export async function runTurn(taskId: string): Promise<void> {
     const clears = [...(llm?.clear ?? []), ...adjust.clear].filter((k) => stated[k] == null);
     requirements = clearFields(requirements, [...clears, ...(lastUser?.clear ?? [])]);
     requirements = inferStay(reconcile(base, requirements, stated));
-    await db.agentTask.update({ where: { id: task.id }, data: { requirements: json(requirements) } });
-    await trace.finish(understandId, "done", { requirements, reader: llm ? "groq" : "rules" });
-
     const missing = missingHardField(requirements);
+    const understood = trace.finish(understandId, "done", { requirements, reader: llm ? "groq" : "rules" });
     if (missing) {
-      await trace.record("asked", "waiting_person", { field: missing });
-      await appendAgentMessage(task.id, messages, { role: "agent", kind: "ask", field: missing, at: now() });
-      await db.agentTask.update({ where: { id: task.id }, data: { status: "DONE" } });
+      // Events land before the status flips: the client stops polling at DONE.
+      await Promise.all([understood, trace.record("asked", "waiting_person", { field: missing })]);
+      await reply(task.id, messages, { role: "agent", kind: "ask", field: missing, at: now() }, { requirements: json(requirements), status: "DONE" });
       return;
     }
 
-    // 2. Search mkan.
-    const searchId = await trace.start("search_done");
-    let { rows, candidates } = await searchKigali(requirements);
-    await trace.finish(searchId, "done", { candidates: candidates.length });
+    // 2. Search mkan — the bookkeeping writes ride alongside the query.
+    const [searchId, { candidates }] = await Promise.all([
+      trace.start("search_done"),
+      searchKigali(requirements),
+      understood,
+      db.agentTask.update({ where: { id: task.id }, data: { requirements: json(requirements) } }),
+    ]);
 
     // 3–4. Group duplicate ads, apply the hard filters, rank.
     let result = rankCandidates(candidates, requirements);
-    await trace.record("dedup_grouped", "done", { removed: result.duplicatesRemoved });
-    await trace.record("filtered", "done", { matching: result.matching });
+    await Promise.all([
+      trace.finish(searchId, "done", { candidates: candidates.length }),
+      trace.recordMany([
+        ["dedup_grouped", "done", { removed: result.duplicatesRemoved }],
+        ["filtered", "done", { matching: result.matching }],
+      ]),
+    ]);
 
     // Nothing fits every detail: widen one detail at a time until homes appear,
     // and say which ones. The tenant's own requirements stay as they said them.
     let relaxed: Relaxed[] = [];
     if (result.ranked.length === 0) {
-      const relaxId = await trace.start("relaxed");
       // All attempts at once (one round trip of time); fewest changes wins, then order.
       const attempts = relaxations(requirements);
-      const tried = await Promise.all(
-        attempts.map(async (attempt) => {
-          const found = await searchKigali(attempt.requirements);
-          return { attempt, found, ranked: rankCandidates(found.candidates, attempt.requirements) };
-        }),
-      );
+      const [relaxId, tried] = await Promise.all([
+        trace.start("relaxed"),
+        Promise.all(
+          attempts.map(async (attempt) => {
+            const found = await searchKigali(attempt.requirements);
+            return { attempt, ranked: rankCandidates(found.candidates, attempt.requirements) };
+          }),
+        ),
+      ]);
       const best = tried
         .filter((t) => t.ranked.ranked.length > 0)
         .sort((x, y) => x.attempt.steps.length - y.attempt.steps.length)[0];
       if (best) {
-        ({ rows, candidates } = best.found);
         result = best.ranked;
         relaxed = best.attempt.steps;
       }
       await trace.finish(relaxId, relaxed.length ? "done" : "failed", { count: relaxed.length, keys: relaxed.map((s) => s.key), matching: result.matching });
     }
-    await trace.record("ranked", "done", { top: result.ranked.length });
-
     if (result.ranked.length === 0) {
-      await db.agentTask.update({ where: { id: task.id }, data: { shortlist: json([]), status: "DONE" } });
-      await appendAgentMessage(task.id, messages, { role: "agent", kind: "none", stay: requirements.stay ?? undefined, at: now() });
+      await trace.record("ranked", "done", { top: 0 });
+      await reply(task.id, messages, { role: "agent", kind: "none", stay: requirements.stay ?? undefined, at: now() }, { shortlist: json([]), status: "DONE" });
       return;
     }
 
     // 5. Availability: ask the brokers who can answer; say plainly which
     //    homes nobody can confirm.
-    let shortlist = await toShortlist(result.ranked, rows, lang);
+    const [cards] = await Promise.all([toShortlist(result.ranked, lang), trace.record("ranked", "done", { top: result.ranked.length })]);
+    let shortlist = cards;
     const unconfirmed = shortlist.filter((s) => s.availability === "unconfirmed").length;
-    if (unconfirmed > 0) await trace.record("needs_confirmation", "uncertain", { count: unconfirmed });
-    await db.agentTask.update({ where: { id: task.id }, data: { shortlist: json(shortlist) } });
+    await Promise.all([
+      unconfirmed > 0 ? trace.record("needs_confirmation", "uncertain", { count: unconfirmed }) : null,
+      db.agentTask.update({ where: { id: task.id }, data: { shortlist: json(shortlist) } }),
+    ]);
     const asked = new Set(await requestConfirmations(task.id, shortlist, requirements, lang));
     trace.resync(await lastSeq(task.id));
     if (asked.size > 0) {
@@ -175,20 +190,23 @@ export async function runTurn(taskId: string): Promise<void> {
     }
 
     await trace.record("shortlist_ready", "done", { count: shortlist.length });
-    await db.agentTask.update({ where: { id: task.id }, data: { shortlist: json(shortlist), status: asked.size > 0 ? "WAITING" : "DONE" } });
-    await appendAgentMessage(task.id, messages, {
-      role: "agent",
-      kind: "shortlist",
-      count: shortlist.length,
-      ...(relaxed.length ? { relaxed } : {}),
-      // No ceiling yet: the best homes come first and a budget is offered after.
-      ...(!requirements.maxPrice && !requirements.cheap ? { refine: "maxPrice" as const } : {}),
-      at: now(),
-    });
+    await reply(
+      task.id,
+      messages,
+      {
+        role: "agent",
+        kind: "shortlist",
+        count: shortlist.length,
+        ...(relaxed.length ? { relaxed } : {}),
+        // No ceiling yet: the best homes come first and a budget is offered after.
+        ...(!requirements.maxPrice && !requirements.cheap ? { refine: "maxPrice" as const } : {}),
+        at: now(),
+      },
+      { shortlist: json(shortlist), status: asked.size > 0 ? "WAITING" : "DONE" },
+    );
   } catch (err) {
     console.error("[agent] turn failed", err);
     await trace.record("failed", "failed", {}).catch(() => {});
-    await appendAgentMessage(task.id, messages, { role: "agent", kind: "error", at: now() }).catch(() => {});
-    await db.agentTask.update({ where: { id: task.id }, data: { status: "FAILED" } }).catch(() => {});
+    await reply(task.id, messages, { role: "agent", kind: "error", at: now() }, { status: "FAILED" }).catch(() => {});
   }
 }

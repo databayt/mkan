@@ -20,36 +20,49 @@ const MAX_CANDIDATES = 400;
 /** Deepest monthly discount we assume when pre-filtering nightly homes for a monthly budget. */
 const MAX_MONTHLY_DISCOUNT = 0.5;
 
-const SELECT = {
+/** What ranking reads — kept small: 400 of these load ~10× faster than display rows. */
+const CANDIDATE_SELECT = {
   id: true,
-  code: true,
-  sourceListingId: true,
   hostId: true,
-  title: true,
   pricePerNight: true,
   priceMonth: true,
   rentPeriod: true,
-  currency: true,
   monthlyDiscount: true,
   cleaningFee: true,
   bedrooms: true,
   bathrooms: true,
   guestCount: true,
-  photoUrls: true,
   propertyType: true,
+  averageRating: true,
+  numberOfReviews: true,
+  isPublished: true,
+  source: true,
+  location: { select: { state: true, address: true, latitude: true, longitude: true } },
+} satisfies Prisma.ListingSelect;
+
+/** What a card shows — loaded only for the few homes that made the shortlist. */
+const DISPLAY_SELECT = {
+  id: true,
+  code: true,
+  sourceListingId: true,
+  title: true,
+  currency: true,
+  rentPeriod: true,
+  bedrooms: true,
+  bathrooms: true,
+  photoUrls: true,
   averageRating: true,
   numberOfReviews: true,
   isPublished: true,
   source: true,
   sourceUrl: true,
   host: { select: { sourceHostId: true } },
-  location: { select: { state: true, city: true, address: true, country: true, latitude: true, longitude: true } },
+  location: { select: { state: true, city: true, address: true, country: true } },
 } satisfies Prisma.ListingSelect;
 
 /** An unpublished TikTok home the agent may offer as a broker lead (never in public search). */
 const isLead = (row: { isPublished: boolean; source: string | null }) => !row.isPublished && row.source === "TIKTOK";
 
-type Row = Prisma.ListingGetPayload<{ select: typeof SELECT }>;
 
 function priceWhere(r: Requirements): Prisma.ListingWhereInput {
   if (!r.maxPrice) return {};
@@ -82,7 +95,7 @@ function placeWhere(r: Requirements): Prisma.ListingWhereInput[] {
   return out;
 }
 
-export async function searchKigali(r: Requirements): Promise<{ rows: Row[]; candidates: Candidate[] }> {
+export async function searchKigali(r: Requirements): Promise<{ candidates: Candidate[] }> {
   // Leads are monthly broker homes, so they only join long-stay searches.
   const visible: Prisma.ListingWhereInput =
     r.stay === "short"
@@ -100,7 +113,7 @@ export async function searchKigali(r: Requirements): Promise<{ rows: Row[]; cand
   };
   const rows = await db.listing.findMany({
     where,
-    select: SELECT,
+    select: CANDIDATE_SELECT,
     // "Cheap" loads the cheapest 400, not the best-rated 400.
     orderBy: r.cheap ? [{ pricePerNight: "asc" }, { priceMonth: "asc" }] : [{ averageRating: "desc" }, { numberOfReviews: "desc" }],
     take: MAX_CANDIDATES,
@@ -131,13 +144,13 @@ export async function searchKigali(r: Requirements): Promise<{ rows: Row[]; cand
     // a confirmation. Only a broker's answer sets this.
     confirmedAt: answers.get(row.id)?.status === "AVAILABLE" ? answers.get(row.id)!.at : null,
   }));
-  return { rows, candidates };
+  return { candidates };
 }
 
-/** Turn ranked ids back into display cards, localized for the tenant. */
-export async function toShortlist(ranked: Ranked[], rows: Row[], lang: Locale): Promise<ShortlistItem[]> {
-  const byId = new Map(rows.map((r) => [r.id, r]));
-  const picked = ranked.map((r) => byId.get(r.id)).filter((r): r is Row => !!r);
+/** Turn ranked ids into display cards, localized for the tenant: one small query for the winners. */
+export async function toShortlist(ranked: Ranked[], lang: Locale): Promise<ShortlistItem[]> {
+  const picked = await db.listing.findMany({ where: { id: { in: ranked.map((r) => r.id) } }, select: DISPLAY_SELECT });
+  const byId = new Map(picked.map((r) => [r.id, r]));
   const localized = await localizeListings(picked as unknown as Record<string, unknown>[], lang).catch(
     () => picked as unknown as Record<string, unknown>[],
   );
