@@ -15,3 +15,9 @@
   the event shows `read by rules`.
 - **Search caps at 400 candidates** ordered by rating; the panel reports the capped number.
 - Kinyarwanda strings are machine-written — a native speaker should review `agent.*` in rw.json.
+
+## Bubble + assistant-style /find (2026-10-17)
+
+- Shipped: `/find` in the ChatGPT/Claude/Gemini layout (centred composer → conversation column, steps block folded on the agent's turn, homes inline); the floating bubble on home / search / listings / travel / help, sharing the task via the `mkan_agent` cookie.
+- Not done (deliberately): "Copy link" on a turn — tasks are private to the browser's cookie, so a link would not open for anyone else; editing a requirement chip in place.
+- The bubble shows an amber dot on the launcher only after it has been opened once in the page (it does not fetch the task on every page load).

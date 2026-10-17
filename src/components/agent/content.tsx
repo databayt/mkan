@@ -10,6 +10,8 @@ import { AgentTurn, UserTurn } from "./turn";
 import type { AgentTaskView } from "./types";
 import { useAgentTask } from "./use-agent-task";
 
+const LATEST_TURN_ID = "agent-latest-turn";
+
 /**
  * /find — the full-screen rental agent, laid out like the assistant apps
  * (ChatGPT, Claude, Gemini): a centred greeting and composer when empty; a
@@ -23,9 +25,16 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
   const bottomRef = useRef<HTMLDivElement>(null);
   const messageCount = task?.messages.length ?? 0;
 
+  const shortlistCount = task?.shortlist.length ?? 0;
+
+  // A new message scrolls to the bottom; arriving homes scroll to the start of
+  // the agent's reply, so it is read from its first line (as assistants do).
   useEffect(() => {
     if (messageCount) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messageCount, task?.shortlist.length]);
+  }, [messageCount]);
+  useEffect(() => {
+    if (shortlistCount) document.getElementById(LATEST_TURN_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [shortlistCount]);
 
   if (!task) {
     return (
@@ -68,7 +77,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
           if (m.role === "user") return <UserTurn key={i} text={m.text} />;
           const latest = i === lastAgentIndex && !pendingTurn;
           return (
-            <AgentTurn key={i} steps={latest ? <Steps task={task} /> : null}>
+            <AgentTurn key={i} id={latest ? LATEST_TURN_ID : undefined} steps={latest ? <Steps task={task} /> : null}>
               <p className="whitespace-pre-wrap">{reply(m)}</p>
 
               {latest && askingStay && (

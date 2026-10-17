@@ -6,6 +6,7 @@ export function UserTurn({ text, compact = false }: { text: string; compact?: bo
   return (
     <li className="flex justify-end">
       <p
+        dir="auto"
         className={cn(
           "max-w-[85%] whitespace-pre-wrap rounded-3xl bg-muted",
           compact ? "px-3.5 py-2 text-sm" : "px-4 py-2.5",
@@ -18,9 +19,9 @@ export function UserTurn({ text, compact = false }: { text: string; compact?: bo
 }
 
 /** The agent's turn: no bubble — an avatar, its steps, then plain text and content. */
-export function AgentTurn({ steps, children, compact = false }: { steps?: React.ReactNode; children?: React.ReactNode; compact?: boolean }) {
+export function AgentTurn({ steps, children, compact = false, id }: { steps?: React.ReactNode; children?: React.ReactNode; compact?: boolean; id?: string }) {
   return (
-    <li className={cn("flex gap-3", compact && "gap-2 text-sm")}>
+    <li id={id} className={cn("flex scroll-mt-20 gap-3", compact && "gap-2 text-sm")}>
       <span
         className={cn(
           "flex shrink-0 items-center justify-center rounded-full border bg-background",
