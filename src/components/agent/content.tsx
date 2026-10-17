@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
-import { Badges, usePicksLabel, type Picks } from "./badges";
+import { usePicksLabel, Wizard, type Picks } from "./wizard";
 import { Composer } from "./composer";
 import { ShortlistCard } from "./shortlist-card";
 import { Steps } from "./steps";
@@ -26,6 +26,12 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
   const [picks, setPicks] = useState<Picks>({});
   const picksLabel = usePicksLabel();
   const picked = Object.keys(picks).length > 0;
+  // The composer and the wizard's last step both search with what was picked.
+  const search = async (text: string) => {
+    const ok = await send(text.trim() || picksLabel(picks) || "…", true, picks);
+    if (ok) setPicks({});
+    return ok;
+  };
   const bottomRef = useRef<HTMLDivElement>(null);
   const messageCount = task?.messages.length ?? 0;
 
@@ -47,20 +53,9 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
           {a?.greeting ?? "Where do you want to live in Kigali?"}
         </h1>
         <p className="mt-3 max-w-xl text-center text-muted-foreground">{a?.subtitle}</p>
-        <div className="mt-8 w-full">
-          <Composer
-            onSend={async (t) => {
-              const ok = await send(t.trim() || picksLabel(picks), true, picks);
-              if (ok) setPicks({});
-              return ok;
-            }}
-            disabled={pending}
-            canSendEmpty={picked}
-            autoFocus
-          />
-        </div>
-        <div className="mt-4 w-full">
-          <Badges picks={picks} onChange={setPicks} />
+        <div className="mt-8 w-full space-y-3">
+          <Wizard picks={picks} onChange={setPicks} onFinish={() => void search("")} disabled={pending} />
+          <Composer onSend={search} disabled={pending} canSendEmpty={picked} autoFocus />
         </div>
         {notice && <p className="mt-4 text-sm text-muted-foreground">{notice}</p>}
       </div>

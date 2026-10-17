@@ -5574,7 +5574,31 @@
       "university": "Near a university",
       "family": "Family",
       "cheap": "Cheapest",
-      "any": "Any"
+      "any": "Any",
+      "bed3": "3+ bed",
+      "bath2": "2+ bath"
+    },
+    "wizard": {
+      "stepOf": "{n} / {total}",
+      "back": "Back",
+      "next": "Next",
+      "finish": "Show homes",
+      "orType": "Or just type what you need below.",
+      "q": {
+        "stay": "How long do you need it?",
+        "where": "Where in Kigali?",
+        "home": "What kind of home?",
+        "budget": "What's your budget?"
+      },
+      "rows": {
+        "zone": "Zone",
+        "neighbourhood": "Neighbourhood",
+        "near": "Near",
+        "bedrooms": "Bedrooms",
+        "bathrooms": "Bathrooms",
+        "furnishing": "Furnishing",
+        "type": "Type"
+      }
     }
   }
 }

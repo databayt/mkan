@@ -5574,7 +5574,31 @@
       "university": "Hafi ya kaminuza",
       "family": "Umuryango",
       "cheap": "Ihendutse",
-      "any": "Byose"
+      "any": "Byose",
+      "bed3": "Ibyumba 3+",
+      "bath2": "Ubwiherero 2+"
+    },
+    "wizard": {
+      "stepOf": "{n} / {total}",
+      "back": "Subira inyuma",
+      "next": "Komeza",
+      "finish": "Erekana amazu",
+      "orType": "Cyangwa wandike icyo ukeneye hepfo.",
+      "q": {
+        "stay": "Uyikeneye igihe kingana iki?",
+        "where": "Ni hehe i Kigali?",
+        "home": "Ni iyihe nzu?",
+        "budget": "Ingengo y'imari yawe ni angahe?"
+      },
+      "rows": {
+        "zone": "Akarere",
+        "neighbourhood": "Agace",
+        "near": "Hafi ya",
+        "bedrooms": "Ibyumba byo kuraramo",
+        "bathrooms": "Ubwiherero",
+        "furnishing": "Ibikoresho",
+        "type": "Ubwoko"
+      }
     }
   }
 }

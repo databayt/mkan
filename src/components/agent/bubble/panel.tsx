@@ -9,7 +9,7 @@ import { useDictionary } from "@/components/internationalization/use-dictionary"
 import { useLocale } from "@/components/internationalization/use-locale";
 import { formatCurrency } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
-import { Badges, usePicksLabel, type Picks } from "../badges";
+import { usePicksLabel, Wizard, type Picks } from "../wizard";
 import { Composer } from "../composer";
 import { fill } from "../format";
 import { Steps } from "../steps";
@@ -69,6 +69,13 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
   const { task, loaded, running, waiting, pending, notice, send, reset, reply, askingStay } = useAgentTask(null, { lazy: true });
   const [picks, setPicks] = useState<Picks>({});
   const picksLabel = usePicksLabel();
+  // The composer and the wizard's last step both search; a new search carries the picks.
+  const search = async (text: string) => {
+    const fresh = !task;
+    const ok = await send(text.trim() || picksLabel(picks) || "…", fresh, fresh ? picks : undefined);
+    if (ok) setPicks({});
+    return ok;
+  };
 
   useEffect(() => onWaiting(waiting), [waiting, onWaiting]);
 
@@ -130,7 +137,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
           <div className="space-y-4">
             <p className="text-lg font-semibold">{a?.greeting ?? "Where do you want to live in Kigali?"}</p>
             <p className="text-sm text-muted-foreground">{a?.subtitle}</p>
-            <Badges picks={picks} onChange={setPicks} compact />
+            <Wizard picks={picks} onChange={setPicks} onFinish={() => void search("")} disabled={pending} compact />
           </div>
         ) : (
           <ol className="space-y-5">
@@ -171,12 +178,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
         {notice && <p className="mb-2 text-xs text-muted-foreground">{notice}</p>}
         <Composer
           size="sm"
-          onSend={async (t) => {
-            const fresh = !task;
-            const ok = await send(t.trim() || picksLabel(picks), fresh, fresh ? picks : undefined);
-            if (ok) setPicks({});
-            return ok;
-          }}
+          onSend={search}
           canSendEmpty={!task && Object.keys(picks).length > 0}
           disabled={pending || running || !loaded}
         />
