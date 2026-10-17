@@ -330,6 +330,8 @@ model Listing {
   events          ListingEvent[]
   visits          ListingVisit[]
   masteringRuns   MasteringRun[]
+  brokers         ListingBroker[]
+  brokerRequests  BrokerRequest[]
 
   @@index([hostId])
   @@index([rentPeriod, isPublished])
@@ -768,6 +770,8 @@ model User {
   // Analytics
   listingEvents         ListingEvent[]         @relation("ListingEventUser")
   listingVisits         ListingVisit[]         @relation("ListingVisitGuest")
+  brokerListings        ListingBroker[]        @relation("ListingBrokers")
+  brokerRequests        BrokerRequest[]        @relation("BrokerRequests")
 }
 
 // Host/guest "About" profile (clone of airbnb.com/users/profile/about). 1:1 with
@@ -1266,7 +1270,8 @@ model AgentTask {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
-  events AgentEvent[]
+  events         AgentEvent[]
+  brokerRequests BrokerRequest[]
 
   @@index([sessionKey, createdAt])
   @@index([status, updatedAt])
@@ -1290,4 +1295,81 @@ model AgentEvent {
   task AgentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, seq])
+}
+
+enum BrokerRole {
+  BROKER
+  OWNER
+}
+
+/**
+ * Who can speak for a home. One property is often advertised by several
+ * brokers (the same flat in five TikTok videos from three accounts), so this
+ * is many-to-many — `Listing.hostId` stays the account that owns the row.
+ * Written by `scripts/crm/tiktok-mirror.ts` from Twenty `host` records.
+ */
+model ListingBroker {
+  id        Int        @id @default(autoincrement())
+  listingId Int
+  userId    String
+  role      BrokerRole @default(BROKER)
+  /// The ad this broker posted for the home (a TikTok video URL).
+  sourceUrl String?
+  createdAt DateTime   @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user    User    @relation("ListingBrokers", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, userId])
+  @@index([userId])
+}
+
+enum BrokerRequestStatus {
+  PENDING
+  AVAILABLE
+  RENTED
+  NO_REPLY
+}
+
+/**
+ * The agent asking a broker "is this home still available?" — and, once it is,
+ * carrying the viewing: slots the broker proposes, the one the tenant picks,
+ * the broker's confirmation (which creates the ListingVisit).
+ *
+ * The broker answers on `/b/<token>` with one tap; only the token's sha256 is
+ * stored. At most one request per (listing, broker) per 24 h, so a busy search
+ * day never spams a broker. `need` is the tenant's requirement summary — no
+ * name or phone until the tenant chooses a slot and consents.
+ */
+model BrokerRequest {
+  id           String              @id @default(cuid())
+  tokenHash    String              @unique
+  listingId    Int
+  brokerUserId String
+  taskId       String?
+  locale       String              @default("en")
+  need         Json                @default("{}")
+  status       BrokerRequestStatus @default(PENDING)
+  /// "evolution" when the machine sent it, "manual" when a person must tap wa.me.
+  channel      String              @default("manual")
+  sentAt       DateTime?
+  respondedAt  DateTime?
+  expiresAt    DateTime
+  /// Viewing times the broker offered (ISO strings).
+  viewingSlots Json?
+  chosenSlot   DateTime?
+  tenantName   String?
+  tenantPhone  String?
+  /// The ListingVisit created when the broker confirmed the chosen slot.
+  visitId      Int?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  listing Listing    @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  broker  User       @relation("BrokerRequests", fields: [brokerUserId], references: [id], onDelete: Cascade)
+  task    AgentTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([listingId, brokerUserId, createdAt])
+  @@index([status, expiresAt])
+  @@index([taskId])
 }

@@ -23,12 +23,23 @@ import {
   type Requirements,
 } from "./requirements";
 import { searchKigali, toShortlist } from "./search";
+import { requestConfirmations } from "./broker";
 import type { AgentMessage, EventKind, StepStatus } from "./types";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
 
+async function lastSeq(taskId: string): Promise<number> {
+  const last = await db.agentEvent.findFirst({ where: { taskId }, orderBy: { seq: "desc" }, select: { seq: true } });
+  return last?.seq ?? 0;
+}
+
 class Trace {
   private seq: number;
+  /** Other writers (the broker loop) append events too; continue after them. */
+  resync(seq: number) {
+    this.seq = Math.max(this.seq, seq);
+  }
+
   constructor(
     private taskId: string,
     lastSeq: number,
@@ -110,14 +121,20 @@ export async function runTurn(taskId: string): Promise<void> {
       return;
     }
 
-    // 5. Availability. Nothing in the catalogue is broker-confirmed yet, and
-    //    the panel says so rather than implying it.
-    const shortlist = await toShortlist(result.ranked, rows, lang);
+    // 5. Availability: ask the brokers who can answer; say plainly which
+    //    homes nobody can confirm.
+    let shortlist = await toShortlist(result.ranked, rows, lang);
     const unconfirmed = shortlist.filter((s) => s.availability === "unconfirmed").length;
     if (unconfirmed > 0) await trace.record("needs_confirmation", "uncertain", { count: unconfirmed });
+    await db.agentTask.update({ where: { id: task.id }, data: { shortlist: json(shortlist) } });
+    const asked = new Set(await requestConfirmations(task.id, shortlist, requirements, lang));
+    trace.resync(await lastSeq(task.id));
+    if (asked.size > 0) {
+      shortlist = shortlist.map((s) => (asked.has(s.id) ? { ...s, availability: "asked" as const } : s));
+    }
 
     await trace.record("shortlist_ready", "done", { count: shortlist.length });
-    await db.agentTask.update({ where: { id: task.id }, data: { shortlist: json(shortlist), status: "DONE" } });
+    await db.agentTask.update({ where: { id: task.id }, data: { shortlist: json(shortlist), status: asked.size > 0 ? "WAITING" : "DONE" } });
     await appendAgentMessage(task.id, messages, { role: "agent", kind: "shortlist", count: shortlist.length, at: now() });
   } catch (err) {
     console.error("[agent] turn failed", err);

@@ -67,7 +67,47 @@ const TASK_SELECT = {
   shortlist: true,
   createdAt: true,
   events: { orderBy: { seq: "asc" }, select: { seq: true, kind: true, status: true, payload: true, createdAt: true } },
+  brokerRequests: {
+    where: { status: "AVAILABLE" },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, listingId: true, viewingSlots: true, chosenSlot: true, visitId: true },
+  },
 } satisfies Prisma.AgentTaskSelect;
+
+type TaskRow = Prisma.AgentTaskGetPayload<{ select: typeof TASK_SELECT }>;
+
+/** Lay the viewing state (broker's times, the tenant's pick, the booked visit) onto the cards. */
+async function withViewings(view: AgentTaskView, task: TaskRow): Promise<AgentTaskView> {
+  if (task.brokerRequests.length === 0) return view;
+  const visitIds = task.brokerRequests.map((r) => r.visitId).filter((v): v is number => v != null);
+  const visits = visitIds.length
+    ? await db.listingVisit.findMany({ where: { id: { in: visitIds } }, select: { id: true, scheduledFor: true, outcome: true, notes: true } })
+    : [];
+  const visitById = new Map(visits.map((v) => [v.id, v]));
+  const byListing = new Map<number, TaskRow["brokerRequests"][number]>();
+  for (const r of task.brokerRequests) if (!byListing.has(r.listingId)) byListing.set(r.listingId, r);
+  return {
+    ...view,
+    shortlist: view.shortlist.map((item) => {
+      const r = byListing.get(item.id);
+      if (!r) return item;
+      const visit = r.visitId ? visitById.get(r.visitId) : undefined;
+      const outcome = visit && visit.outcome !== "Scheduled" ? visit.notes?.replace(/^Tenant outcome \(\/find\): /, "") ?? visit.outcome : null;
+      return {
+        ...item,
+        availability: "confirmed",
+        viewing: {
+          requestId: r.id,
+          slots: ((r.viewingSlots as string[] | null) ?? []).filter((s) => typeof s === "string"),
+          chosen: r.chosenSlot?.toISOString() ?? null,
+          confirmed: !!visit,
+          scheduledFor: visit?.scheduledFor.toISOString() ?? null,
+          outcome,
+        },
+      };
+    }),
+  };
+}
 
 /** The task this browser owns, or null. Used by the page and by polling. */
 export async function getAgentTask(taskId?: string): Promise<AgentTaskView | null> {
@@ -80,7 +120,7 @@ export async function getAgentTask(taskId?: string): Promise<AgentTaskView | nul
         orderBy: { createdAt: "desc" },
         select: TASK_SELECT,
       });
-  return task ? toView(task) : null;
+  return task ? withViewings(toView(task), task) : null;
 }
 
 export type SendResult = { ok: true; taskId: string } | { ok: false; error: "empty" | "busy" | "rate" };

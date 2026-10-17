@@ -15,6 +15,8 @@ import { ShortlistCard } from "./shortlist-card";
 import type { AgentMessage, AgentTaskView } from "./types";
 
 const POLL_MS = 800;
+/** A broker may answer hours later; a waiting task is checked gently. */
+const WAITING_POLL_MS = 10_000;
 
 export function AgentContent({ initialTask }: { initialTask: AgentTaskView | null }) {
   const dict = useDictionary();
@@ -27,17 +29,21 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const running = task?.status === "RUNNING";
+  const waiting = task?.status === "WAITING";
 
-  // Poll while the task runs. The events are rows in the database, so a reload
-  // resumes exactly here.
+  const refresh = useCallback(async () => {
+    if (!task) return;
+    const next = await getAgentTask(task.id).catch(() => null);
+    if (next) setTask(next);
+  }, [task]);
+
+  // Poll while the task runs or waits on a broker. The events are rows in the
+  // database, so a reload resumes exactly here.
   useEffect(() => {
-    if (!task || !running) return;
-    const id = setInterval(async () => {
-      const next = await getAgentTask(task.id).catch(() => null);
-      if (next) setTask(next);
-    }, POLL_MS);
+    if (!task || (!running && !waiting)) return;
+    const id = setInterval(refresh, running ? POLL_MS : WAITING_POLL_MS);
     return () => clearInterval(id);
-  }, [task, running]);
+  }, [task, running, waiting, refresh]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -64,7 +70,11 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
 
   const reply = (m: Extract<AgentMessage, { role: "agent" }>): string => {
     if (m.kind === "ask") return a?.ask?.[m.field] ?? "";
-    if (m.kind === "shortlist") return fill(a?.reply?.shortlist ?? "I found {count} homes.", { count: m.count });
+    if (m.kind === "shortlist") {
+      const found = fill(a?.reply?.shortlist ?? "I found {count} homes.", { count: m.count });
+      const asked = task?.shortlist.some((s) => s.availability === "asked");
+      return asked ? `${found}\n${a?.reply?.waiting ?? ""}` : found;
+    }
     if (m.kind === "none") return (m.stay === "long" ? a?.reply?.noneLong : a?.reply?.none) ?? "";
     return a?.reply?.error ?? "";
   };
@@ -201,7 +211,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
           {(task?.shortlist.length ?? 0) > 0 && (
             <section className="grid gap-4 sm:grid-cols-2">
               {task!.shortlist.map((item) => (
-                <ShortlistCard key={item.id} item={item} />
+                <ShortlistCard key={item.id} item={item} taskId={task!.id} onChange={refresh} />
               ))}
             </section>
           )}

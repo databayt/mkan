@@ -13,6 +13,7 @@ import type { Locale } from "@/components/internationalization/config";
 import type { Requirements } from "./requirements";
 import type { Candidate, Ranked } from "./rank";
 import type { ShortlistItem } from "./types";
+import { brokerAnswers } from "./broker";
 
 const MAX_CANDIDATES = 400;
 /** Deepest monthly discount we assume when pre-filtering nightly homes for a monthly budget. */
@@ -36,8 +37,15 @@ const SELECT = {
   photoUrls: true,
   averageRating: true,
   numberOfReviews: true,
+  isPublished: true,
+  source: true,
+  sourceUrl: true,
+  host: { select: { sourceHostId: true } },
   location: { select: { state: true, city: true, address: true, country: true } },
 } satisfies Prisma.ListingSelect;
+
+/** An unpublished TikTok home the agent may offer as a broker lead (never in public search). */
+const isLead = (row: { isPublished: boolean; source: string | null }) => !row.isPublished && row.source === "TIKTOK";
 
 type Row = Prisma.ListingGetPayload<{ select: typeof SELECT }>;
 
@@ -54,9 +62,13 @@ function priceWhere(r: Requirements): Prisma.ListingWhereInput {
 }
 
 export async function searchKigali(r: Requirements): Promise<{ rows: Row[]; candidates: Candidate[] }> {
+  // Leads are monthly broker homes, so they only join long-stay searches.
+  const visible: Prisma.ListingWhereInput =
+    r.stay === "short"
+      ? { isPublished: true, draft: false }
+      : { OR: [{ isPublished: true, draft: false }, { source: "TIKTOK", rentPeriod: "MONTHLY" }] };
   const where: Prisma.ListingWhereInput = {
-    isPublished: true,
-    draft: false,
+    AND: [visible, priceWhere(r)],
     currency: "RWF",
     location: {
       city: { equals: "Kigali", mode: "insensitive" },
@@ -64,7 +76,6 @@ export async function searchKigali(r: Requirements): Promise<{ rows: Row[]; cand
     },
     ...(r.bedrooms != null ? { bedrooms: { gte: r.bedrooms } } : {}),
     ...(r.stay === "short" ? { rentPeriod: "NIGHTLY" } : {}),
-    ...priceWhere(r),
   };
   const rows = await db.listing.findMany({
     where,
@@ -72,7 +83,10 @@ export async function searchKigali(r: Requirements): Promise<{ rows: Row[]; cand
     orderBy: [{ averageRating: "desc" }, { numberOfReviews: "desc" }],
     take: MAX_CANDIDATES,
   });
-  const candidates: Candidate[] = rows.map((row) => ({
+  const answers = await brokerAnswers(rows.map((row) => row.id));
+  const candidates: Candidate[] = rows
+    .filter((row) => answers.get(row.id)?.status !== "RENTED")
+    .map((row) => ({
     id: row.id,
     hostId: row.hostId,
     rentPeriod: row.rentPeriod,
@@ -86,8 +100,8 @@ export async function searchKigali(r: Requirements): Promise<{ rows: Row[]; cand
     averageRating: row.averageRating,
     numberOfReviews: row.numberOfReviews,
     // Imports stamp lastAvailabilityConfirmedAt at scrape time, so it is not
-    // a confirmation. Only a broker's answer (Phase 2) sets this.
-    confirmedAt: null,
+    // a confirmation. Only a broker's answer sets this.
+    confirmedAt: answers.get(row.id)?.status === "AVAILABLE" ? answers.get(row.id)!.at : null,
   }));
   return { rows, candidates };
 }
@@ -106,7 +120,8 @@ export async function toShortlist(ranked: Ranked[], rows: Row[], lang: Locale): 
     return [
       {
         id: row.id,
-        path: listingPath(lang, row),
+        // A lead has no public page; its card points at the broker's own ad.
+        path: isLead(row) ? row.sourceUrl ?? "" : listingPath(lang, row),
         title: titleById.get(row.id) ?? row.title ?? "",
         photo: row.photoUrls[0] ?? null,
         district: row.location?.state ?? null,
@@ -121,6 +136,9 @@ export async function toShortlist(ranked: Ranked[], rows: Row[], lang: Locale): 
         cost: rk.cost,
         duplicates: rk.duplicates,
         availability: rk.reasons.includes("confirmed") ? "confirmed" : "unconfirmed",
+        ...(isLead(row)
+          ? { lead: { handle: row.host.sourceHostId?.startsWith("tiktok:") ? row.host.sourceHostId.slice(7) : null, sourceUrl: row.sourceUrl } }
+          : {}),
       } satisfies ShortlistItem,
     ];
   });

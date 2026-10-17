@@ -55,6 +55,12 @@ export function ExecutionPanel({ task }: { task: AgentTaskView | null }) {
   // A step's status is its event's; the first step without one is "running"
   // while the task runs, the rest are pending. An asked turn stops at step 1.
   const eventStatus = (step: PlanStep): StepStatus | null => {
+    if (step === "confirm") {
+      // The broker loop outlives the turn: its latest event is the step's state.
+      const broker = [...turn].reverse().find((e) => e.kind === "broker_replied" || e.kind === "broker_contact_started");
+      const pending = task?.shortlist.some((s) => s.availability === "asked");
+      if (broker) return pending ? "waiting_person" : "done";
+    }
     const ev = turn.find((e) => e.kind === STEP_EVENT[step]);
     if (ev) return ev.status;
     if (step === "confirm" && turn.some((e) => e.kind === "shortlist_ready")) return "done";
@@ -67,7 +73,19 @@ export function ExecutionPanel({ task }: { task: AgentTaskView | null }) {
   }));
 
   const summary = (e: AgentEventView): string => {
-    const label = (p?.events as Record<string, string> | undefined)?.[e.kind] ?? e.kind;
+    const events = p?.events as Record<string, string> | undefined;
+    if (e.kind === "broker_contact_started") {
+      if (e.payload.reused) return `${events?.broker_contact_reused ?? ""}${e.payload.title ? ` · ${e.payload.title}` : ""}`;
+      const channel = (p?.channel as Record<string, string> | undefined)?.[String(e.payload.channel)];
+      const text = fill(events?.broker_contact_started ?? "{broker}", { broker: String(e.payload.broker ?? "—"), count: Number(e.payload.count ?? 1) });
+      return channel ? `${text} · ${channel}` : text;
+    }
+    if (e.kind === "broker_replied") {
+      const answer = (p?.answers as Record<string, string> | undefined)?.[String(e.payload.answer)] ?? String(e.payload.answer);
+      const text = fill(events?.broker_replied ?? "{answer}", { answer });
+      return e.payload.title ? `${text} · ${e.payload.title}` : text;
+    }
+    const label = events?.[e.kind] ?? e.kind;
     const text = fill(label, e.payload as Record<string, string | number>);
     if (e.kind === "requirements_extracted" && e.payload.reader) {
       const reader = (p?.reader as Record<string, string> | undefined)?.[String(e.payload.reader)];
@@ -101,7 +119,7 @@ export function ExecutionPanel({ task }: { task: AgentTaskView | null }) {
                 </li>
               ))}
             </ul>
-            {plan.find((s) => s.step === "confirm")?.status === "uncertain" && (
+            {plan.find((s) => s.step === "confirm")?.status === "uncertain" && !turn.some((e) => e.kind === "broker_contact_started") && (
               <p className="mt-2 font-sans text-xs text-muted-foreground">
                 {p?.confirmLater ?? "Broker confirmation is coming soon. For now, availability is not confirmed."}
               </p>

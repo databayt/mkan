@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BadgeCheck, CircleAlert, Star } from "lucide-react";
+import { BadgeCheck, CircleAlert, Clock, ExternalLink, Star, X } from "lucide-react";
 import { BlurImage } from "@/components/atom/blur-image";
 import { Badge } from "@/components/ui/badge";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
@@ -10,8 +10,9 @@ import { districtName } from "@/lib/geo/rwanda-places";
 import { formatCurrency } from "@/lib/i18n/formatters";
 import { fill } from "./format";
 import type { ShortlistItem } from "./types";
+import { ViewingPanel } from "./viewing";
 
-export function ShortlistCard({ item }: { item: ShortlistItem }) {
+export function ShortlistCard({ item, taskId, onChange }: { item: ShortlistItem; taskId: string; onChange: () => void }) {
   const dict = useDictionary();
   const c = dict?.agent?.card;
   const { locale } = useLocale();
@@ -21,17 +22,19 @@ export function ShortlistCard({ item }: { item: ShortlistItem }) {
   const lineLabel = (key: string, qty?: number) =>
     fill((c?.lines as Record<string, string> | undefined)?.[key] ?? key, { qty: qty ?? "" });
   const district = item.district ? districtName(item.district.toUpperCase(), locale) || item.district : null;
+  const external = !!item.lead;
+  const linkProps = external ? { target: "_blank", rel: "noreferrer" } : {};
 
   return (
     <article className="overflow-hidden rounded-xl border bg-background">
-      <Link href={item.path} className="relative block aspect-[4/3] overflow-hidden bg-muted">
+      <Link href={item.path} {...linkProps} className="relative block aspect-[4/3] overflow-hidden bg-muted">
         {item.photo && (
           <BlurImage src={item.photo} alt={item.title} fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover" />
         )}
       </Link>
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
-          <Link href={item.path} className="line-clamp-2 font-medium hover:underline">
+          <Link href={item.path} {...linkProps} className="line-clamp-2 font-medium hover:underline">
             {item.title}
           </Link>
           {item.rating != null && item.rating > 0 && (
@@ -41,6 +44,12 @@ export function ShortlistCard({ item }: { item: ShortlistItem }) {
             </span>
           )}
         </div>
+
+        {item.lead && (
+          <p className="text-xs font-medium text-muted-foreground">
+            {item.lead.handle ? fill(c?.lead ?? "Broker lead · @{handle} on TikTok", { handle: item.lead.handle }) : c?.leadNoHandle ?? "Broker lead from TikTok"}
+          </p>
+        )}
 
         <p className="text-sm text-muted-foreground">
           {[
@@ -95,6 +104,21 @@ export function ShortlistCard({ item }: { item: ShortlistItem }) {
               <BadgeCheck className="size-4" aria-hidden />
               {c?.confirmed ?? "Availability confirmed"}
             </span>
+          ) : item.availability === "asked" ? (
+            <span className="flex items-center gap-1.5 text-amber-700">
+              <Clock className="size-4" aria-hidden />
+              {c?.asked ?? "Asked the broker — waiting for an answer"}
+            </span>
+          ) : item.availability === "rented" ? (
+            <span className="flex items-center gap-1.5 text-destructive">
+              <X className="size-4" aria-hidden />
+              {c?.rented ?? "Rented — no longer available"}
+            </span>
+          ) : item.availability === "no_reply" ? (
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <CircleAlert className="size-4" aria-hidden />
+              {c?.noReply ?? "The broker didn't answer within 24 hours"}
+            </span>
           ) : (
             <span className="flex items-center gap-1.5 text-amber-700">
               <CircleAlert className="size-4" aria-hidden />
@@ -106,9 +130,18 @@ export function ShortlistCard({ item }: { item: ShortlistItem }) {
           )}
         </div>
 
-        <Link href={item.path} className="block rounded-lg border py-2 text-center text-sm font-medium hover:bg-muted">
-          {c?.view ?? "View home"}
-        </Link>
+        {item.viewing && <ViewingPanel item={item} viewing={item.viewing} taskId={taskId} onChange={onChange} />}
+
+        {item.path && (
+          <Link
+            href={item.path}
+            {...linkProps}
+            className="flex items-center justify-center gap-1.5 rounded-lg border py-2 text-center text-sm font-medium hover:bg-muted"
+          >
+            {external ? c?.viewAd ?? "View the ad" : c?.view ?? "View home"}
+            {external && <ExternalLink className="size-3.5" aria-hidden />}
+          </Link>
+        )}
       </div>
     </article>
   );

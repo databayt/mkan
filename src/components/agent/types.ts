@@ -20,6 +20,7 @@ export type EventKind =
   | "broker_replied"
   | "viewing_proposed"
   | "viewing_confirmed"
+  | "outcome_recorded"
   | "failed";
 
 export interface AgentEventView {
@@ -53,7 +54,21 @@ export interface ShortlistItem {
   reasons: ReasonKey[];
   cost: CostEstimate;
   duplicates: number;
-  availability: "unconfirmed" | "confirmed";
+  /** unconfirmed → asked (a broker was messaged) → confirmed | rented | no_reply. */
+  availability: "unconfirmed" | "asked" | "confirmed" | "rented" | "no_reply";
+  /** Set for a broker lead (an unpublished TikTok home): where the ad lives. */
+  lead?: { handle: string | null; sourceUrl: string | null };
+  /** Phase 3 — the viewing being arranged for this home. */
+  viewing?: ViewingView;
+}
+
+export interface ViewingView {
+  requestId: string;
+  slots: string[];
+  chosen: string | null;
+  confirmed: boolean;
+  scheduledFor: string | null;
+  outcome: string | null;
 }
 
 export interface AgentTaskView {

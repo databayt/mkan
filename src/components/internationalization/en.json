@@ -5376,7 +5376,8 @@
       "busy": "Still working on your last message.",
       "rate": "You have sent a lot of messages. Please wait a few minutes and try again.",
       "working": "Working on it…",
-      "noneLong": "No home on Mkan fits that monthly budget yet. Kigali's monthly rentals come from brokers, and we are adding them now. A higher budget will show furnished homes you can rent by the month."
+      "noneLong": "No home on Mkan fits that monthly budget yet. Kigali's monthly rentals come from brokers, and we are adding them now. A higher budget will show furnished homes you can rent by the month.",
+      "waiting": "I've asked the brokers. Their answers will appear here, even if you close this page and come back."
     },
     "panel": {
       "title": "Rental agent",
@@ -5402,11 +5403,13 @@
         "ranked": "Ranked the top {top}",
         "needs_confirmation": "{count} homes need availability confirmation",
         "shortlist_ready": "Shortlist ready: {count} homes",
-        "broker_contact_started": "Asked a broker to confirm availability",
-        "broker_replied": "A broker replied",
-        "viewing_proposed": "Viewing times proposed",
+        "broker_contact_started": "Asked {broker} about {count} homes",
+        "broker_replied": "Broker answered: {answer}",
+        "viewing_proposed": "Viewing time sent to the broker",
         "viewing_confirmed": "Viewing confirmed",
-        "failed": "This step failed"
+        "failed": "This step failed",
+        "broker_contact_reused": "Joined a question already sent to the broker",
+        "outcome_recorded": "Viewing outcome recorded"
       },
       "reader": {
         "groq": "read by AI",
@@ -5419,7 +5422,16 @@
         "failed": "Failed",
         "uncertain": "Not confirmed"
       },
-      "confirmLater": "Broker confirmation is coming soon. For now, availability is not confirmed."
+      "confirmLater": "Nobody we can reach speaks for these homes yet, so their availability is not confirmed.",
+      "channel": {
+        "evolution": "sent on WhatsApp",
+        "manual": "queued for our team to send"
+      },
+      "answers": {
+        "confirmed": "available",
+        "rented": "rented",
+        "no_reply": "no answer in 24 hours"
+      }
     },
     "req": {
       "short": "Short stay",
@@ -5467,8 +5479,57 @@
         "wellRated": "Well rated",
         "confirmed": "Recently confirmed",
         "upfrontOver": "Over your move-in budget"
+      },
+      "asked": "Asked the broker — waiting for an answer",
+      "rented": "Rented — no longer available",
+      "noReply": "The broker didn't answer within 24 hours",
+      "lead": "Broker lead · @{handle} on TikTok",
+      "leadNoHandle": "Broker lead from TikTok",
+      "viewAd": "View the ad",
+      "pickSlot": "Pick a viewing time",
+      "name": "Your name",
+      "phone": "Your phone (WhatsApp)",
+      "consent": "Share my name and phone with this broker so they can arrange the viewing.",
+      "requestViewing": "Request viewing",
+      "viewingWaiting": "Waiting for the broker to confirm {when}",
+      "viewingConfirmed": "Viewing confirmed: {when}",
+      "noSlots": "Available. The broker hasn't offered viewing times yet.",
+      "howDidItGo": "How did the viewing go?",
+      "outcomeThanks": "Thanks — noted.",
+      "saveError": "Couldn't save. Check the details and try again.",
+      "outcomes": {
+        "rented": "I'm renting it",
+        "notForMe": "Not for me",
+        "differentFromAd": "Different from the ad",
+        "notAvailable": "Not available after all",
+        "tooExpensive": "Too expensive",
+        "brokerNoShow": "Broker didn't come",
+        "iMissedIt": "I couldn't make it"
       }
     },
-    "entry": "Ask the rental agent"
+    "entry": "Ask the rental agent",
+    "broker": {
+      "metaTitle": "Answer a tenant's question",
+      "title": "Is this home still available?",
+      "intro": "A tenant on Mkan is looking for {need}.",
+      "yes": "Yes, it's available",
+      "no": "No, it's rented",
+      "slotsLabel": "Offer up to 3 viewing times (optional, Kigali time)",
+      "send": "Send answer",
+      "thanks": "Thank you — the tenant has your answer.",
+      "rentedThanks": "Thank you — we've taken it off the tenant's list.",
+      "invalid": "This link has expired or is no longer valid.",
+      "answered": "You have already answered. Thank you.",
+      "chosenTitle": "A tenant wants to view this home",
+      "chosenBody": "They chose {when}. Confirm, and you'll see their name and phone.",
+      "confirm": "Confirm viewing",
+      "confirmed": "Viewing confirmed for {when}",
+      "tenant": "Tenant",
+      "whatsapp": "WhatsApp the tenant",
+      "error": "Something went wrong. Please try again.",
+      "privacy": "Mkan shares the tenant's name and phone only after you confirm a viewing.",
+      "perMonth": "/ month",
+      "perNight": "/ night"
+    }
   }
 }

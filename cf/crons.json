@@ -1,5 +1,5 @@
 {
-  "_note": "Generated from vercel.json crons. Keyed by cron expression (UTC) → route paths.",
+  "_note": "Generated from vercel.json crons. Keyed by cron expression (UTC) \u2192 route paths.",
   "schedules": {
     "0 2 * * *": [
       "/api/cron/mark-overdue"
@@ -15,6 +15,9 @@
     ],
     "0 5 * * *": [
       "/api/cron/complete-bookings"
+    ],
+    "0 * * * *": [
+      "/api/cron/broker-requests"
     ]
   }
 }

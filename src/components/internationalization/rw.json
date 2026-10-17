@@ -5376,7 +5376,8 @@
       "busy": "Ndacyakora ku butumwa bwawe buheruka.",
       "rate": "Wohereje ubutumwa bwinshi. Tegereza iminota mike hanyuma wongere ugerageze.",
       "working": "Ndimo kubikora…",
-      "noneLong": "Nta nzu kuri Mkan ihuye n'iyo ngengo y'imari ya buri kwezi kugeza ubu. Amazu akodeshwa buri kwezi i Kigali aturuka ku bakomisiyoneri, kandi turimo kuyongeramo ubu. Ingengo y'imari iri hejuru izerekana amazu afite ibikoresho ushobora gukodesha buri kwezi."
+      "noneLong": "Nta nzu kuri Mkan ihuye n'iyo ngengo y'imari ya buri kwezi kugeza ubu. Amazu akodeshwa buri kwezi i Kigali aturuka ku bakomisiyoneri, kandi turimo kuyongeramo ubu. Ingengo y'imari iri hejuru izerekana amazu afite ibikoresho ushobora gukodesha buri kwezi.",
+      "waiting": "Nabajije abakomisiyoneri. Ibisubizo byabo bizagaragara hano, kabone n'iyo wafunga iyi paji ukazagaruka."
     },
     "panel": {
       "title": "Umukozi w'ubukode",
@@ -5402,11 +5403,13 @@
         "ranked": "Hatondekwe {top} ya mbere",
         "needs_confirmation": "Amazu {count} akeneye kwemezwa ko ahari",
         "shortlist_ready": "Urutonde rugufi rwiteguye: amazu {count}",
-        "broker_contact_started": "Komisiyoneri yasabwe kwemeza ko ihari",
-        "broker_replied": "Komisiyoneri yasubije",
-        "viewing_proposed": "Hatanzwe amasaha yo gusura",
+        "broker_contact_started": "Twabajije {broker} ku mazu {count}",
+        "broker_replied": "Komisiyoneri yasubije: {answer}",
+        "viewing_proposed": "Isaha yo gusura yoherejwe kuri komisiyoneri",
         "viewing_confirmed": "Gusura byemejwe",
-        "failed": "Iyi ntambwe yanze"
+        "failed": "Iyi ntambwe yanze",
+        "broker_contact_reused": "Twifatanyije n'ikibazo cyari cyoherejwe kuri komisiyoneri",
+        "outcome_recorded": "Uko gusura byagenze byanditswe"
       },
       "reader": {
         "groq": "byasomwe na AI",
@@ -5419,7 +5422,16 @@
         "failed": "Byanze",
         "uncertain": "Ntibyemejwe"
       },
-      "confirmLater": "Kwemeza ku bakomisiyoneri biraza vuba. Kugeza ubu, kuboneka ntibyemejwe."
+      "confirmLater": "Nta muntu dushobora kuvugisha uhagarariye aya mazu kugeza ubu, bityo kuboneka kwayo ntikuremezwa.",
+      "channel": {
+        "evolution": "byoherejwe kuri WhatsApp",
+        "manual": "bitegereje ko ikipe yacu ibyohereza"
+      },
+      "answers": {
+        "confirmed": "irahari",
+        "rented": "yakodeshejwe",
+        "no_reply": "nta gisubizo mu masaha 24"
+      }
     },
     "req": {
       "short": "Kurara iminsi mike",
@@ -5467,8 +5479,57 @@
         "wellRated": "Yashimwe cyane",
         "confirmed": "Yemejwe vuba",
         "upfrontOver": "Birenze ingengo yo kwinjira"
+      },
+      "asked": "Twabajije komisiyoneri — dutegereje igisubizo",
+      "rented": "Yakodeshejwe — ntikiboneka",
+      "noReply": "Komisiyoneri ntiyasubije mu masaha 24",
+      "lead": "Inzu ya komisiyoneri · @{handle} kuri TikTok",
+      "leadNoHandle": "Inzu ya komisiyoneri kuri TikTok",
+      "viewAd": "Reba itangazo",
+      "pickSlot": "Hitamo isaha yo gusura",
+      "name": "Izina ryawe",
+      "phone": "Telefoni yawe (WhatsApp)",
+      "consent": "Nemeye ko izina na telefoni yanjye bihabwa uyu komisiyoneri kugira ngo ategure gusura.",
+      "requestViewing": "Saba gusura",
+      "viewingWaiting": "Dutegereje ko komisiyoneri yemeza {when}",
+      "viewingConfirmed": "Gusura byemejwe: {when}",
+      "noSlots": "Irahari. Komisiyoneri ntaratanga amasaha yo gusura.",
+      "howDidItGo": "Gusura byagenze bite?",
+      "outcomeThanks": "Murakoze — byanditswe.",
+      "saveError": "Ntibyabitswe. Reba amakuru wongere ugerageze.",
+      "outcomes": {
+        "rented": "Ngiye kuyikodesha",
+        "notForMe": "Ntimbereye",
+        "differentFromAd": "Itandukanye n'itangazo",
+        "notAvailable": "Ntiyari ikiboneka",
+        "tooExpensive": "Irahenze cyane",
+        "brokerNoShow": "Komisiyoneri ntiyaje",
+        "iMissedIt": "Sinashoboye kujyayo"
       }
     },
-    "entry": "Baza umukozi w'ubukode"
+    "entry": "Baza umukozi w'ubukode",
+    "broker": {
+      "metaTitle": "Subiza ikibazo cy'umukiriya",
+      "title": "Iyi nzu iracyaboneka?",
+      "intro": "Umukiriya kuri Mkan arashaka {need}.",
+      "yes": "Yego, irahari",
+      "no": "Oya, yakodeshejwe",
+      "slotsLabel": "Tanga amasaha agera kuri 3 yo gusura (si ngombwa, isaha ya Kigali)",
+      "send": "Ohereza igisubizo",
+      "thanks": "Murakoze — umukiriya yabonye igisubizo cyanyu.",
+      "rentedThanks": "Murakoze — twayikuye ku rutonde rw'umukiriya.",
+      "invalid": "Uyu murongo warangiye cyangwa ntukiri gukora.",
+      "answered": "Mwamaze gusubiza. Murakoze.",
+      "chosenTitle": "Umukiriya arashaka gusura iyi nzu",
+      "chosenBody": "Yahisemo {when}. Mwemeze, muhita mubona izina na telefoni bye.",
+      "confirm": "Emeza gusura",
+      "confirmed": "Gusura byemejwe {when}",
+      "tenant": "Umukiriya",
+      "whatsapp": "Andikira umukiriya kuri WhatsApp",
+      "error": "Habaye ikibazo. Ongera ugerageze.",
+      "privacy": "Mkan itanga izina na telefoni by'umukiriya ari uko mwemeje gusura gusa.",
+      "perMonth": "/ ukwezi",
+      "perNight": "/ ijoro"
+    }
   }
 }

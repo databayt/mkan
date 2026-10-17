@@ -40,10 +40,34 @@ client: polls getAgentTask every 800 ms while RUNNING; a reload resumes from the
 - Every string lives under `agent.*` in en/ar/rw.
 - Env: `GROQ_API_KEY` (optional — without it the rules reader runs alone), `GROQ_AGENT_MODEL`.
 
-## Phases
+## Broker loop (phase 2) and viewings (phase 3)
 
-1. **Tenant agent** — done (this block).
-2. **Broker confirmation loop** — `ListingBroker`, `BrokerRequest`, one-tap broker page `/b/[token]`, Slack `wa.me` cards, 24 h no-reply cron.
-3. **Viewings + outcomes** — broker-confirmed `ListingVisit`, follow-up, funnel metrics.
+```
+shortlist ─► requestConfirmations: one WhatsApp per broker listing all their homes,
+             BrokerRequest per home (24 h, sha256 token), task WAITING
+             └─ already asked today? the task joins that question (channel "joined"), nothing re-sent
+broker /b/<token> ─► Available (+ up to 3 times, Kigali time) | Rented
+             └─ applyAnswer: every pending question about the home answered,
+                every waiting task's card + panel updated, lastAvailabilityConfirmedAt set
+tenant picks a time + name + phone + consent ─► new token → broker "confirm" message
+broker confirms ─► ListingVisit(Scheduled) — the only place a viewing is booked;
+                   the broker sees the tenant's name and phone only now
+after the time ─► tenant taps how it went ─► ListingVisit outcome + notes
+cron /api/cron/broker-requests (hourly) ─► unanswered after 24 h = NO_REPLY, said so
+```
+
+| File | Role |
+| --- | --- |
+| `broker.ts` | request creation + dedup, answer fan-out, expiry |
+| `broker-message.ts` | the exact en + rw words a broker receives (tested) |
+| `whatsapp.ts` | Evolution `message/sendText` when `MKAN_EVOLUTION_{URL,KEY,INSTANCE}` are set (daily cap `MKAN_EVOLUTION_DAILY_CAP`, default 40); otherwise a #mkan card with a wa.me link (`SLACK_BOT_TOKEN`) |
+| `broker-actions.ts` | broker answer/confirm, tenant choose/outcome |
+| `broker-answer.tsx` + `app/[lang]/b/[token]` | the broker's one-tap page (noindex, no account) |
+| `viewing.tsx` | the tenant's viewing panel on a card |
+
+**Supply for the loop:** `pnpm crm:tiktok-mirror --apply` mirrors Twenty TikTok homes (monthly,
+with a broker phone) as **leads** — `draft`, unpublished, `source TIKTOK`, `ListingBroker` rows.
+They appear only in long-stay `/find` results, labelled with the broker's handle and linking to
+the ad; public search, listing pages and the sitemap never show them.
 
 Plan of record: the Kigali rental agent plan (2026-10-17), from the "Kigali Rental Chatbot Plan" discussion.
