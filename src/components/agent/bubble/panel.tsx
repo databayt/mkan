@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { BadgeCheck, Clock, Loader2, Maximize2, RotateCcw, X } from "lucide-react";
 import { BlurImage } from "@/components/atom/blur-image";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
@@ -15,6 +16,7 @@ import { Steps } from "../steps";
 import { AgentTurn, UserTurn } from "../turn";
 import type { ShortlistItem } from "../types";
 import { useAgentTask } from "../use-agent-task";
+import { listingsQueryFor } from "./listings-query";
 
 const MINI_CARDS = 3;
 
@@ -69,6 +71,19 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
   const picksLabel = usePicksLabel();
 
   useEffect(() => onWaiting(waiting), [waiting, onWaiting]);
+
+  // The page behind the panel follows the conversation: while it is the
+  // listings index, every change in what the agent knows re-filters it.
+  // A listing's own page is left alone — the visitor is reading it.
+  const router = useRouter();
+  const pathname = usePathname() ?? "";
+  const onListings = /^\/(en|ar|rw)\/listings\/?$/.test(pathname);
+  const query = listingsQueryFor(task?.requirements ?? null);
+  useEffect(() => {
+    if (!open || !onListings || !query) return;
+    if (window.location.search.replace(/^\?/, "") === query) return;
+    router.replace(`${pathname}?${query}`, { scroll: false });
+  }, [open, onListings, query, pathname, router]);
 
   useEffect(() => {
     if (!open) return;

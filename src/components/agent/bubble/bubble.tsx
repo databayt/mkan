@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { usePathname } from "next/navigation";
-import { MessageCircle } from "lucide-react";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { cn } from "@/lib/utils";
 
@@ -19,11 +19,17 @@ const SHOW_ON = /^\/(search|listings|travel|help)(\/|$)/;
  * rest, like Claude in Chrome (full screen on phones). It is the same agent and
  * the same task as /find; the panel's expand button goes there.
  * Anything can open it with `window.dispatchEvent(new Event("open-agent"))`.
+ *
+ * Opening it from any other page lands the site on /listings, so the homes the
+ * agent is narrowing down sit beside the chat (the panel then filters that
+ * page as the requirements firm up). The launcher is the robot mark the
+ * hogwarts chatbot uses.
  */
 export function AgentBubble() {
   const dict = useDictionary();
   const b = dict?.agent?.bubble;
   const pathname = usePathname() ?? "/";
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [waiting, setWaiting] = useState(false);
@@ -37,6 +43,7 @@ export function AgentBubble() {
     return () => window.removeEventListener("open-agent", show);
   }, []);
 
+  const lang = pathname.match(/^\/(en|ar|rw)(?=\/|$)/)?.[1] ?? "en";
   const path = pathname.replace(/^\/(en|ar|rw)(?=\/|$)/, "") || "/";
   const visible = path === "/" || SHOW_ON.test(path);
 
@@ -59,16 +66,17 @@ export function AgentBubble() {
         type="button"
         onClick={() => {
           setMounted(true);
-          setOpen((o) => !o);
+          setOpen(true);
+          if (!path.startsWith("/listings")) router.push(`/${lang}/listings`);
         }}
         aria-label={open ? b?.close ?? "Close" : b?.open ?? "Ask the rental agent"}
         aria-expanded={open}
         className={cn(
-          "fixed bottom-6 end-6 z-50 flex size-14 items-center justify-center rounded-full bg-foreground text-background shadow-lg transition-transform hover:scale-105 motion-reduce:transition-none",
+          "fixed bottom-6 end-6 z-50 flex size-12 items-center justify-center rounded-full p-1 transition-transform hover:scale-105 motion-reduce:transition-none md:size-14",
           open && "hidden",
         )}
       >
-        <MessageCircle className="size-6" aria-hidden />
+        <Image src="/illustrations/robot-fill.png" alt="" width={56} height={56} unoptimized className="size-full object-contain dark:invert" />
         {waiting && !open && (
           <span className="absolute end-0.5 top-0.5 size-3.5 rounded-full border-2 border-background bg-amber-500" aria-hidden />
         )}

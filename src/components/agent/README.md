@@ -32,7 +32,8 @@ client: polls getAgentTask every 800 ms while RUNNING; a reload resumes from the
 | `actions.ts` | `sendAgentMessage`, `getAgentTask` (cookie-scoped, 30 turns/hour) |
 | `content.tsx` · `turn.tsx` · `composer.tsx` · `steps.tsx` · `shortlist-card.tsx` | /find UI — assistant-app layout (centred composer → conversation column, steps block folded on the agent's turn, homes inline) |
 | `use-agent-task.ts` | Shared conversation state + polling for /find and the bubble |
-| `bubble/bubble.tsx` · `bubble/panel.tsx` | The floating chat (hogwarts chatbot shape) on home / search / listings / travel / help; same task as /find, expand → /find |
+| `bubble/bubble.tsx` · `bubble/panel.tsx` | The floating chat on home / search / listings / travel / help, launched by the hogwarts robot mark (`public/illustrations/robot-fill.png`); same task as /find, expand → /find. Opening it lands the site on /listings beside the panel |
+| `bubble/listings-query.ts` | Agent requirements → /listings filters (district via `state`, beds, baths, guests; budget stays with the agent — RWF/night-or-month vs per-listing nightly currency). The panel re-filters the listings index as the requirements firm up |
 
 ## Rules
 
