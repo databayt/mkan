@@ -6,6 +6,7 @@
  */
 import { z } from 'zod';
 import { extractJsonObject, toAsciiDigits } from './home-intake-pure';
+import { normalizePhone } from '../../src/lib/phone';
 import { districtForPlace } from '../../src/lib/geo/rwanda-places';
 
 // ── the ledger ───────────────────────────────────────────────────────────────
@@ -110,13 +111,8 @@ export function frameTimes(duration: number, n = 8): number[] {
  * MTN 078/079, Airtel 072/073. Returns null for anything else.
  */
 export function normalizeRwandaPhone(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  let d = toAsciiDigits(raw).replace(/[^\d]/g, '');
-  if (d.startsWith('00250')) d = d.slice(5);
-  else if (d.startsWith('250') && d.length === 12) d = d.slice(3);
-  else if (d.startsWith('0')) d = d.slice(1);
-  if (!/^7[2389]\d{7}$/.test(d)) return null;
-  return `+250${d}`;
+  const n = normalizePhone(raw, 'RW');
+  return n?.startsWith('+250') ? n : null;
 }
 
 /** Every Rwandan mobile written inside free text, in order, deduped. */

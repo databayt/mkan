@@ -27,6 +27,7 @@
  * the Twenty record by the sender — QUEUED is not SENT. Site-provisioned
  * accounts (0001+, shared password, no token) are `pnpm crm:handover`.
  */
+import { phonesFromTwenty } from "../../src/lib/phone";
 import { config } from "dotenv";
 config({ override: true });
 
@@ -116,11 +117,8 @@ async function main() {
 
   const sheets: Sheet[] = [];
   for (const item of rows.sort((a, b) => (a.listingId ?? "").localeCompare(b.listingId ?? ""))) {
-    const phone = item.hostWhatsapp?.primaryPhoneNumber
-      ? `+249${item.hostWhatsapp.primaryPhoneNumber}`
-      : item.hostPhone?.primaryPhoneNumber
-        ? `+249${item.hostPhone.primaryPhoneNumber}`
-        : null;
+    // Port Sudan board: Sudan unless the number carries its own code.
+    const phone = phonesFromTwenty(item.hostWhatsapp, "SD")[0] ?? phonesFromTwenty(item.hostPhone, "SD")[0] ?? null;
 
     // Twenty's `listingId` is the mkan code. It lived in `sourceListingId`
     // until 2026-08-24 and now has its own column — join on that.

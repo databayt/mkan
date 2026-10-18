@@ -14,8 +14,9 @@
  * answer is what makes it "available".
  *
  * Idempotent: listing keyed by `sourceListingId` (= Twenty `sourceId`,
- * `tiktok:<videoId>`), broker by `sourceHostId` (`tiktok:<handle>`). Read-only
- * on Twenty.
+ * `tiktok:<videoId>`), broker by `sourceHostId` (`tiktok:<handle>`). The one
+ * thing written back to Twenty is the home's `mkanListingId`: without it
+ * crm:sync-up could not tell the lead was already on the board and made a copy.
  */
 import { config } from 'dotenv';
 config({ override: true });
@@ -42,6 +43,8 @@ const PROPERTY_TYPES = new Set(['Rooms', 'Tinyhouse', 'Apartment', 'Villa', 'Tow
 
 export interface MirrorPlan {
   sourceId: string;
+  /** The Twenty home, and the site row it already points at (if any). */
+  crm: { homeId: string; mkanListingId: number | null };
   broker: { handle: string; name: string; phone: string; role: 'BROKER' | 'OWNER' };
   location: { address: string; state: string; zoneKey: string | null; latitude: number; longitude: number };
   listing: {
@@ -74,7 +77,7 @@ export function planMirror(home: Row, host: Row | null): MirrorPlan | { skip: st
   if (!priceMonth || priceMonth < 10_000) return { skip: 'no monthly price' };
   const phone = phoneOf((host?.phone as Phones | null) ?? null) ?? phoneOf(home.hostPhone as Phones | null);
   if (!phone) return { skip: 'no broker phone' };
-  const handle = ((host?.tiktokHandle as string | null) ?? '').replace(/^@/, '').trim();
+  const handle = ((host?.tiktokHandle as string | null) ?? '').replace(/^@/, '').trim().toLowerCase();
   if (!handle) return { skip: 'no TikTok handle' };
 
   const districtCode = String(home.homeState ?? '').toUpperCase();
@@ -85,6 +88,7 @@ export function planMirror(home: Row, host: Row | null): MirrorPlan | { skip: st
 
   return {
     sourceId,
+    crm: { homeId: String(home.id), mkanListingId: typeof home.mkanListingId === 'number' ? home.mkanListingId : null },
     broker: {
       handle,
       name: ((host?.name as string | null) ?? (home.hostName as string | null) ?? handle).trim(),
@@ -137,6 +141,7 @@ async function main() {
   const { db } = await import('../../src/lib/db');
   const { default: bcrypt } = await import('bcryptjs');
   let written = 0;
+  let linked = 0;
   for (const p of plans) {
     const sourceHostId = `tiktok:${p.broker.handle}`;
     let broker = await db.user.findUnique({ where: { sourceHostId }, select: { id: true } });
@@ -190,9 +195,20 @@ async function main() {
       update: { role: p.broker.role, sourceUrl: p.listing.sourceUrl },
       create: { listingId: listing.id, userId: broker.id, role: p.broker.role, sourceUrl: p.listing.sourceUrl },
     });
+    if (p.crm.mkanListingId !== listing.id) {
+      try {
+        await client.rest('PATCH', `homes/${p.crm.homeId}`, {
+          mkanListingId: listing.id,
+          mkanListingUrl: { primaryLinkUrl: `https://www.mkan.sd/en/listings/${listing.id}`, primaryLinkLabel: '', secondaryLinks: [] },
+        });
+        linked += 1;
+      } catch (e) {
+        console.warn(`  ! link ${p.sourceId} → #${listing.id}: ${(e as Error).message.slice(0, 120)}`);
+      }
+    }
     written += 1;
   }
-  console.log(`✅ ${written} leads mirrored`);
+  console.log(`✅ ${written} leads mirrored · ${linked} CRM homes linked to their lead`);
   await db.$disconnect();
 }
 

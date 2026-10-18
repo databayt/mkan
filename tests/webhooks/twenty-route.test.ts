@@ -125,3 +125,37 @@ describe('POST /api/webhooks/twenty', () => {
     expect(json.userId).toBe('u1');
   });
 });
+
+describe('POST /api/webhooks/twenty — who owns what', () => {
+  const homeEvent = (record: Record<string, unknown>) =>
+    JSON.stringify({
+      eventName: 'home.updated',
+      objectMetadata: { id: 'o1', nameSingular: 'home' },
+      workspaceId: 'w1',
+      webhookId: 'wh1',
+      eventDate: '2026-10-18T07:00:00.000Z',
+      record: { id: 'r1', mkanListingId: 42, ...record },
+      updatedFields: Object.keys(record),
+    });
+
+  it('leaves a claimed home’s words and price to its host', async () => {
+    listingFindUnique.mockResolvedValue({ id: 42, claimedAt: new Date(), isPublished: true, source: 'AIRBNB' });
+    const { json } = await post(homeEvent({ titleAr: 'عنوان', description: 'x', priceNightSdg: { amountMicros: 5_000_000_000 } }));
+    expect(json.matched).toBe(true);
+    expect(listingUpdate).not.toHaveBeenCalled();
+  });
+
+  it('publishes only from the operator field, never the observed one', async () => {
+    listingFindUnique.mockResolvedValue({ id: 42, claimedAt: null, isPublished: false, source: 'AIRBNB' });
+    await post(homeEvent({ mkanPublishState: 'LIVE' }));
+    expect(listingUpdate).not.toHaveBeenCalled();
+    await post(homeEvent({ publishState: 'LIVE' }));
+    expect(listingUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ isPublished: true }) }));
+  });
+
+  it('ignores a record marked as another home’s duplicate', async () => {
+    const { json } = await post(homeEvent({ homeStatus: 'DUPLICATE', publishState: 'LIVE' }));
+    expect(json.ignored).toBe('duplicate');
+    expect(listingFindUnique).not.toHaveBeenCalled();
+  });
+});

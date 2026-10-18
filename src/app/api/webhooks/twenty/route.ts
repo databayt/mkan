@@ -1,3 +1,4 @@
+import { phonesFromTwenty } from '@/lib/phone';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logger } from '@/lib/logger';
@@ -74,7 +75,15 @@ export async function POST(req: Request) {
       const listingIdStr = record.listingId ? String(record.listingId).trim() : null;
       const airbnbListingId = record.airbnbListingId || record.sourceListingId;
       const mkanListingId = record.mkanListingId ? Number(record.mkanListingId) : (listingIdStr && /^\d+$/.test(listingIdStr) ? Number(listingIdStr) : null);
-      const pubState = record.publishState ?? record.mkanPublishState;
+      // `publishState` is the operator's decision; `mkanPublishState` is what
+      // crm:sync-up observed on the site every hour. Reading the observation as
+      // a decision let an hourly patch republish a home its host took down.
+      const pubState = record.publishState;
+
+      // A record marked as another's copy speaks for nothing.
+      if (record.homeStatus === 'DUPLICATE' || record.duplicateCheck === 'CONFIRMED') {
+        return NextResponse.json({ received: true, matched: false, ignored: 'duplicate' });
+      }
 
       // Twenty's `listingId` is the mkan code (`0001-01`). It lived in
       // `sourceListingId` until 2026-08-24 and moved to its own column, so
@@ -96,6 +105,10 @@ export async function POST(req: Request) {
       }
 
       const updates: Record<string, any> = {};
+      // Words and price belong to the host once they claim the home (the same
+      // rule sync-down follows), and a TikTok lead's to the broker's video,
+      // which crm:tiktok-mirror keeps current.
+      const boardOwnsText = !listing.claimedAt && listing.source !== 'TIKTOK';
 
       // If operator manually set trustBandOverride to REJECT -> Unpublish
       if (record.trustBandOverride === 'REJECT') {
@@ -108,22 +121,24 @@ export async function POST(req: Request) {
       }
 
       // Price update
-      if (record.priceNightSdg?.amountMicros != null) {
+      if (boardOwnsText && record.priceNightSdg?.amountMicros != null) {
         updates.pricePerNight = Math.round(record.priceNightSdg.amountMicros / 1_000_000);
       }
 
       // Title update
-      if (record.titleAr || record.name) {
-        updates.title = record.titleAr || record.name;
+      if (boardOwnsText && record.titleAr) {
+        updates.title = record.titleAr;
       }
 
       // Description update
-      if (record.descriptionAr || record.description) {
+      if (boardOwnsText && (record.descriptionAr || record.description)) {
         updates.description = record.descriptionAr || record.description;
       }
 
       // Publish state override from CRM
-      if (pubState === 'LIVE') {
+      // A host who claimed the home and took it down decides; the board does not
+      // put it back up.
+      if (pubState === 'LIVE' && !(listing.claimedAt && !listing.isPublished)) {
         updates.isPublished = true;
         updates.draft = false;
         updates.lastAvailabilityConfirmedAt = new Date();
@@ -165,7 +180,10 @@ export async function POST(req: Request) {
           : null;
 
       if (user) {
-        const phone = record.phone?.primaryPhoneNumber || record.whatsapp?.primaryPhoneNumber;
+        // Twenty splits the calling code off; storing the bare national part
+        // broke every wa.me link built from it.
+        const hint = record.country === 'RWANDA' || String(user.sourceHostId ?? '').startsWith('tiktok:') ? 'RW' : 'SD';
+        const phone = phonesFromTwenty(record.phone, hint)[0] ?? phonesFromTwenty(record.whatsapp, hint)[0] ?? null;
         if (phone && phone !== user.phoneNumber) {
           await db.user.update({
             where: { id: user.id },

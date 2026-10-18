@@ -48,6 +48,8 @@ config({ override: true });
 
 import { toUpperSnake } from './twenty-schema';
 import { twentyClient } from './twenty-rest';
+import { unseenListings } from './sync-up-pure';
+import { normalizePhone, twentyPhones, type PhoneCountry } from '../../src/lib/phone';
 
 let prisma: (typeof import('@/lib/db'))['db'];
 
@@ -85,15 +87,9 @@ const currency = (amount: number | null | undefined, code: string) =>
   amount != null ? { amountMicros: Math.round(amount * 1_000_000), currencyCode: code } : undefined;
 const emails = (primary: string | null | undefined) =>
   primary ? { primaryEmail: primary, additionalEmails: [] } : undefined;
-const phones = (num: string | null | undefined) =>
-  num
-    ? {
-        primaryPhoneNumber: num.replace(/^\+?249/, ''),
-        primaryPhoneCountryCode: 'SD',
-        primaryPhoneCallingCode: '+249',
-        additionalPhones: [],
-      }
-    : undefined;
+// The owner's own market decides a number with no calling code; one that has
+// a code keeps it (a Kigali host used to come back tagged +249).
+const phones = (num: string | null | undefined, hint: PhoneCountry) => twentyPhones(normalizePhone(num, hint));
 const clean = <T extends Record<string, unknown>>(o: T): Partial<T> =>
   Object.fromEntries(
     Object.entries(o).filter(([, v]) => v !== undefined && v !== null && !(Array.isArray(v) && v.length === 0)),
@@ -112,6 +108,9 @@ const createdId = (res: unknown): string | null =>
 
 interface CrmHome {
   id: string;
+  source: string | null;
+  sourceId: string | null;
+  duplicateCheck: string | null;
   airbnbListingId: string | null;
   mkanListingId: number | null;
   mkanPublishState: string | null;
@@ -161,12 +160,22 @@ async function main(): Promise<void> {
   let gone = 0;
 
   for (const home of homes) {
+    // A record marked as another's duplicate is history, not a home to report on.
+    if (home.homeStatus === 'DUPLICATE' || home.duplicateCheck === 'CONFIRMED') continue;
     // Twenty round-trips absent text as "", not null.
     const airbnbId = home.airbnbListingId?.trim() || null;
     const listing =
       (airbnbId ? byAirbnbId.get(airbnbId) : undefined) ??
       (home.mkanListingId != null ? byListingId.get(home.mkanListingId) : undefined);
     if (!listing) { gone++; continue; }
+    // A TikTok lead keeps the stage the TikTok lane gave it until someone takes
+    // it live; only the link back to the site is worth reporting before then.
+    if (home.source === 'TIKTOK' && !listing.isPublished) {
+      if (home.mkanListingId !== listing.id) {
+        patches.push({ id: home.id, label: home.sourceId ?? `listing #${listing.id}`, body: { mkanListingId: listing.id, lastSyncedAt: now }, fields: ['mkanListingId'] });
+      }
+      continue;
+    }
 
     // A claimed listing is still IMPORTED_BUSY/LIVE from the board's point of
     // view; the claim itself is reported through the host's firstLoginAt, so
@@ -242,21 +251,16 @@ async function createUnseen(
   twenty: ReturnType<typeof twentyClient>,
   homes: CrmHome[],
 ): Promise<number> {
-  const knownListingIds = new Set(homes.map((h) => h.mkanListingId).filter((v): v is number => v != null));
-  const knownAirbnbIds = new Set(homes.map((h) => (h.airbnbListingId ?? '').trim()).filter(Boolean));
-
   const listings = await prisma.listing.findMany({
     select: {
       id: true, code: true, title: true, description: true, pricePerNight: true, currency: true, photoUrls: true,
       bedrooms: true, bathrooms: true, guestCount: true, propertyType: true,
-      isPublished: true, draft: true, hostId: true, sourceListingId: true, createdAt: true,
+      isPublished: true, draft: true, hostId: true, source: true, sourceListingId: true, createdAt: true,
       location: { select: { address: true, city: true, state: true, country: true, latitude: true, longitude: true } },
     },
     orderBy: { id: 'asc' },
   });
-  const unseen = listings.filter(
-    (l) => !knownListingIds.has(l.id) && !(l.sourceListingId && knownAirbnbIds.has(l.sourceListingId)),
-  );
+  const unseen = unseenListings(homes, listings);
   if (!unseen.length) {
     console.log('   the board has a record for every home on the site\n');
     return 0;
@@ -270,6 +274,8 @@ async function createUnseen(
     select: { id: true, email: true, username: true, phoneNumber: true },
   });
   const ownerById = new Map(owners.map((u) => [u.id, u]));
+  const ownerCountry = new Map<string, PhoneCountry>();
+  for (const l of unseen) if (!ownerCountry.has(l.hostId)) ownerCountry.set(l.hostId, l.location?.country === 'Rwanda' ? 'RW' : 'SD');
   const newHosts = owners.filter((u) => !hostRecByUser.has(u.id));
 
   console.log(`   ${unseen.length} home(s) on the site with no CRM record — ${newHosts.length} new host(s)`);
@@ -297,7 +303,7 @@ async function createUnseen(
         mkanUserId: u.id,
         mkanUsername: u.username ?? undefined,
         mkanAccountEmail: emails(u.email),
-        phone: phones(u.phoneNumber),
+        phone: phones(u.phoneNumber, ownerCountry.get(u.id) ?? 'SD'),
         identityVerified: 'OWNERSHIP_CLAIMED',
         hostTrustBand: 'TRUSTED',
         preferredLanguage: 'AR',

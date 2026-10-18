@@ -18,6 +18,7 @@
  * ADDRESS {addressCity/State/Country/Lat/Lng}, CURRENCY {amountMicros, currencyCode}.
  * To-one relations are written as the FK `<field>Id` (e.g. hostId).
  */
+import { normalizePhone, twentyPhones } from '../../src/lib/phone';
 import { config } from 'dotenv';
 import { readFileSync } from 'node:fs';
 import type { HomeRecord, HostRecord } from './airbnb-parse';
@@ -56,8 +57,13 @@ const linkOne = (url: string | null | undefined, label = '') =>
   url ? { primaryLinkUrl: url, primaryLinkLabel: label, secondaryLinks: [] } : undefined;
 const linkMany = (urls: string[]) =>
   urls.length ? { primaryLinkUrl: urls[0], primaryLinkLabel: '', secondaryLinks: urls.slice(1).map((u) => ({ label: '', url: u })) } : undefined;
+// The region's own country splits a number; one that won't normalise is kept
+// as written rather than dropped.
 const phone = (num: string | null | undefined) =>
-  num ? { primaryPhoneNumber: num, primaryPhoneCountryCode: '', primaryPhoneCallingCode: '', additionalPhones: [] } : undefined;
+  num
+    ? twentyPhones(normalizePhone(num, REGION.country === 'RWANDA' ? 'RW' : 'SD')) ??
+      { primaryPhoneNumber: num, primaryPhoneCountryCode: '', primaryPhoneCallingCode: '', additionalPhones: [] }
+    : undefined;
 const currency = (amount: number | null, code: string) =>
   amount != null ? { amountMicros: Math.round(amount * 1_000_000), currencyCode: code } : undefined;
 

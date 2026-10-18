@@ -8,6 +8,7 @@
  * and nothing here guesses.
  */
 import { z } from 'zod';
+import { normalizePhone } from '../../src/lib/phone';
 import { deriveChecks } from './trust-score';
 import type { Vocab } from './home-intake-prompt';
 
@@ -32,14 +33,8 @@ export function toAsciiDigits(s: string): string {
  * Returns null when the digits do not make a Sudanese mobile.
  */
 export function normalizeSudanPhone(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  let d = toAsciiDigits(raw).replace(/[^\d]/g, '');
-  if (d.startsWith('00249')) d = d.slice(5);
-  else if (d.startsWith('249')) d = d.slice(3);
-  else if (d.startsWith('0')) d = d.slice(1);
-  // Sudanese mobiles: 9 digits, leading 9 (Zain/MTN/Sudani: 91,92,99,90,96,…) or 1 (Sudani 12x)
-  if (!/^[19]\d{8}$/.test(d)) return null;
-  return `+249${d}`;
+  const n = normalizePhone(raw, 'SD');
+  return n?.startsWith('+249') ? n : null;
 }
 
 /** Candidate phone runs inside free text (≥9 digits allowing spaces/dashes). */

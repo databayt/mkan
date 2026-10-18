@@ -56,6 +56,7 @@ interface CrmHome {
   trustBand: string | null;
   trustBandOverride: string | null;
   mkanPublishState: string | null;
+  publishState: string | null;
   priceNightSdg: Currency | null;
   priceConfirmedByHost: boolean | null;
 }
@@ -153,7 +154,7 @@ async function main(): Promise<void> {
     }
 
     // ── Publish state ────────────────────────────────────────────────────
-    if (!delisted && !rejected && home.mkanPublishState === 'LIVE' && !listing.isPublished) {
+    if (!delisted && !rejected && home.publishState === 'LIVE' && !listing.isPublished) {
       set('isPublished', true);
     }
 
