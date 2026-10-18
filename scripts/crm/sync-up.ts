@@ -49,6 +49,7 @@ config({ override: true });
 import { toUpperSnake } from './twenty-schema';
 import { twentyClient } from './twenty-rest';
 import { unseenListings } from './sync-up-pure';
+import { recordRun } from './notify';
 import { normalizePhone, twentyPhones, type PhoneCountry } from '../../src/lib/phone';
 
 let prisma: (typeof import('@/lib/db'))['db'];
@@ -378,8 +379,10 @@ async function createUnseen(
 }
 
 main()
-  .catch((e) => {
+  .then(() => (APPLY ? recordRun('crm:sync-up', true) : undefined))
+  .catch(async (e) => {
     console.error(`\n❌ ${(e as Error).message}\n`);
+    if (APPLY) await recordRun('crm:sync-up', false, (e as Error).message);
     process.exit(1);
   })
   .finally(async () => {

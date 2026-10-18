@@ -22,6 +22,10 @@ describe('sync-up create phase', () => {
   it('never re-creates a TikTok lead, even one the board has lost', () => {
     expect(unseenListings(homes, [{ id: 9, source: 'TIKTOK', sourceListingId: 'tiktok:222' }])).toEqual([]);
   });
+
+  it('leaves a scraped home to its wave’s own upsert', () => {
+    expect(unseenListings(homes, [{ id: 10, source: 'AIRBNB', sourceListingId: '555' }])).toEqual([]);
+  });
 });
 
 describe('merge-tiktok-dupes', () => {

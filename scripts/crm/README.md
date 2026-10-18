@@ -371,13 +371,20 @@ the site when Airbnb delists it or the trust band says REJECT, because those are
 whether it may be shown at all — but it will not touch the host's title, price or
 description, and it counts what it declined to do.
 
-**On a schedule** (only on the machine hosting Twenty — the REST API is bound to
-localhost there):
+**On a schedule** — launchd on Abdout's Mac, which hosts Twenty (the REST API is
+bound to localhost there). The full `crm:sync` loop is **not** scheduled: the
+systemd units in `scripts/crm/units/` were written for a Linux host this machine
+is not, and `sync-down` runs by hand. What does run:
 
-```bash
-bash scripts/crm/units/install.sh            # systemd user timer, every 6h
-bash scripts/crm/units/install.sh --status
-```
+| Job | Installer | When | What |
+|---|---|---|---|
+| `com.databayt.mkan-crm-sync-up` | `install-sync-up-cron.sh` | hourly | `crm:sync-up --apply` — site → board |
+| `com.databayt.mkan-home-sweep` | `install-home-sweep.sh` | every 2 min | Slack #mkan → board (`home:sweep`) |
+| `com.databayt.mkan-tiktok-sweep` | `install-tiktok-sweep.sh` | 06:00 | TikTok → board → /find leads, summary to #mkan |
+| `com.databayt.mkan-crm-hygiene` | `install-hygiene-cron.sh` | 07:00 | `crm:hygiene --apply --notify` — duplicates, drift, safe fixes, report |
+
+sync-up and the home sweep alert #mkan after a run of failures
+(`scripts/crm/notify.ts` → `.data/failure-streaks.json`).
 
 A fresh **scrape** is deliberately not in the loop: it needs a logged-in browser over
 CDP, and it is the one step that invents records rather than reconciling them.

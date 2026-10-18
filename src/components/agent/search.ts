@@ -100,7 +100,8 @@ export async function searchKigali(r: Requirements): Promise<{ candidates: Candi
   const visible: Prisma.ListingWhereInput =
     r.stay === "short"
       ? { isPublished: true, draft: false }
-      : { OR: [{ isPublished: true, draft: false }, { source: "TIKTOK", rentPeriod: "MONTHLY" }] };
+      : // A lead whose video was taken down loses its link (crm:hygiene) — and with it, its place here.
+        { OR: [{ isPublished: true, draft: false }, { source: "TIKTOK", rentPeriod: "MONTHLY", sourceUrl: { not: null } }] };
   const where: Prisma.ListingWhereInput = {
     AND: [visible, priceWhere(r), ...placeWhere(r)],
     currency: "RWF",

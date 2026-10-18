@@ -21,6 +21,11 @@ export interface SiteListing {
  * `sourceListingId`). TikTok leads are never "unseen": each was born from a
  * CRM home, and `crm:tiktok-mirror` writes its `mkanListingId` back. Creating
  * one here gave every lead a second MKAN_SITE home and its broker a TRUSTED host.
+ *
+ * Scraped (AIRBNB) listings are never unseen either: a wave publishes to the
+ * site hours before `crm:upsert` files its board record (the link is slow),
+ * and every hourly sync-up in that gap made an MKAN_SITE copy — 2,255 of them
+ * by 2026-10-18. The wave's own upsert is how those reach the board.
  */
 export function unseenListings<L extends SiteListing>(homes: BoardHome[], listings: L[]): L[] {
   const knownListingIds = new Set(homes.map((h) => h.mkanListingId).filter((v): v is number => v != null));
@@ -30,6 +35,7 @@ export function unseenListings<L extends SiteListing>(homes: BoardHome[], listin
   return listings.filter(
     (l) =>
       l.source !== 'TIKTOK' &&
+      l.source !== 'AIRBNB' &&
       !knownListingIds.has(l.id) &&
       !(l.sourceListingId && knownSourceIds.has(l.sourceListingId)),
   );

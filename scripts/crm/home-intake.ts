@@ -21,6 +21,7 @@
  */
 import { config } from 'dotenv';
 config({ override: true });
+import { recordRun } from './notify';
 
 import { execSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -880,6 +881,12 @@ async function sweep(): Promise<void> {
   }
   try {
     await sweepLocked();
+    await recordRun('home:sweep', true);
+  } catch (e) {
+    // Every two minutes, and the Kigali link drops for minutes at a time: only
+    // an hour of failures (30 in a row) is worth a message.
+    await recordRun('home:sweep', false, (e as Error).message, 30);
+    throw e;
   } finally {
     releaseLock();
   }
