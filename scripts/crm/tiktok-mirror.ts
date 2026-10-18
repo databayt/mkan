@@ -26,6 +26,7 @@ import { randomBytes } from 'node:crypto';
 import { twentyClient, phoneOf, fromMicros, type Currency, type Phones } from './twenty-rest';
 import { twentyEnumToPrisma } from './home-intake-pure';
 import { DISTRICTS, KIGALI } from '../../src/lib/geo/rwanda-places';
+import { placeToken } from '../../src/lib/geo/place-token';
 
 type Row = Record<string, unknown>;
 
@@ -140,8 +141,24 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
 
   const { db } = await import('../../src/lib/db');
   const { default: bcrypt } = await import('bcryptjs');
+  // One house, several brokers: a lead with the same facts posted by someone
+  // else gets this broker added to it instead of a second listing. The board
+  // then holds two homes pointing at one lead, which crm:hygiene marks.
+  const factKey = (beds: number | null, price: number | null, place: string | null) =>
+    beds != null && price ? `${beds}|${Math.round(Math.log(price) / Math.log(1.05))}|${placeToken(place)}` : null;
+  const leads = await db.listing.findMany({
+    where: { source: 'TIKTOK' },
+    select: { id: true, sourceListingId: true, bedrooms: true, priceMonth: true, hostId: true, location: { select: { address: true } } },
+  });
+  const leadByFacts = new Map<string, (typeof leads)[number]>();
+  for (const l of leads) {
+    const k = factKey(l.bedrooms, l.priceMonth, l.location?.address ?? null);
+    if (k && placeToken(l.location?.address) && !leadByFacts.has(k)) leadByFacts.set(k, l);
+  }
+
   let written = 0;
   let linked = 0;
+  let shared = 0;
   for (const p of plans) {
     const sourceHostId = `tiktok:${p.broker.handle}`;
     let broker = await db.user.findUnique({ where: { sourceHostId }, select: { id: true } });
@@ -164,6 +181,21 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
     }
 
     const existing = await db.listing.findUnique({ where: { sourceListingId: p.sourceId }, select: { id: true, locationId: true, isPublished: true } });
+    const k = factKey(p.listing.bedrooms, p.listing.priceMonth, p.location.address);
+    const same = !existing && k && placeToken(p.location.address) ? leadByFacts.get(k) : undefined;
+    if (same && same.hostId !== broker.id) {
+      await db.listingBroker.upsert({
+        where: { listingId_userId: { listingId: same.id, userId: broker.id } },
+        update: { role: p.broker.role, sourceUrl: p.listing.sourceUrl },
+        create: { listingId: same.id, userId: broker.id, role: p.broker.role, sourceUrl: p.listing.sourceUrl },
+      });
+      if (p.crm.mkanListingId !== same.id) {
+        await client.rest('PATCH', `homes/${p.crm.homeId}`, { mkanListingId: same.id, duplicateCheck: 'SUSPECTED' }).catch((e) => console.warn(`  ! link ${p.sourceId}: ${(e as Error).message.slice(0, 120)}`));
+      }
+      console.log(`  ≡ ${p.sourceId} @${p.broker.handle} — same home as lead #${same.id} (${same.sourceListingId}); broker added`);
+      shared += 1;
+      continue;
+    }
     const locationData = { address: p.location.address, city: 'Kigali', state: p.location.state, country: 'Rwanda', postalCode: '', latitude: p.location.latitude, longitude: p.location.longitude, zoneKey: p.location.zoneKey };
     let locationId = existing?.locationId ?? null;
     if (locationId) await db.location.update({ where: { id: locationId }, data: locationData });
@@ -190,6 +222,9 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
       ? // A lead someone already took `live` keeps its publish state.
         await db.listing.update({ where: { id: existing.id }, data: listingData, select: { id: true } })
       : await db.listing.create({ data: { ...listingData, sourceListingId: p.sourceId, draft: true, isPublished: false }, select: { id: true } });
+    if (!existing && k && placeToken(p.location.address) && !leadByFacts.has(k)) {
+      leadByFacts.set(k, { id: listing.id, sourceListingId: p.sourceId, bedrooms: p.listing.bedrooms, priceMonth: p.listing.priceMonth, hostId: broker.id, location: { address: p.location.address } });
+    }
     await db.listingBroker.upsert({
       where: { listingId_userId: { listingId: listing.id, userId: broker.id } },
       update: { role: p.broker.role, sourceUrl: p.listing.sourceUrl },
@@ -208,7 +243,7 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
     }
     written += 1;
   }
-  console.log(`✅ ${written} leads mirrored · ${linked} CRM homes linked to their lead`);
+  console.log(`✅ ${written} leads mirrored · ${linked} CRM homes linked to their lead · ${shared} added as a second broker`);
   return { planned: plans.length, written, linked };
 }
 

@@ -7,6 +7,7 @@
 import { z } from 'zod';
 import { extractJsonObject, toAsciiDigits } from './home-intake-pure';
 import { normalizePhone } from '../../src/lib/phone';
+import { placeToken } from '../../src/lib/geo/place-token';
 import { districtForPlace } from '../../src/lib/geo/rwanda-places';
 
 // ── the ledger ───────────────────────────────────────────────────────────────
@@ -287,17 +288,7 @@ export function fallbackTitle(read: TikTokRead): string {
   return `${beds}${type} in ${where}`.replace(/^\w/, (c) => c.toUpperCase());
 }
 
-/** A neighbourhood as people spell it → one comparable token ("Kabeza / Samuduha" → "kabeza"). */
-export function placeToken(neighbourhood: string | null | undefined): string {
-  return (neighbourhood ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .split(/[\/,(|-]|\bkwa\b|\bnear\b/)[0]!
-    .replace(/[^a-z\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+export { placeToken };
 
 /**
  * Same facts = probably the same house — posted twice by one broker, or by two

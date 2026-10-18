@@ -16,6 +16,13 @@ const MAX_TEXT = 600;
 const MAX_TURNS_PER_HOUR = 30;
 /** A reload within this window resumes the last task. */
 const RESUME_DAYS = 7;
+/**
+ * A turn takes 2–3 s. One still RUNNING after this lost its `after()` (the
+ * Worker was recycled mid-turn) and would answer "busy" to every message.
+ */
+const STUCK_AFTER_MS = 90_000;
+/** The panel draws the latest turn only; older turns' steps are not sent on every poll. */
+const EVENTS_PER_POLL = 60;
 
 async function sessionKey(create: boolean): Promise<string | null> {
   const jar = await cookies();
@@ -66,7 +73,8 @@ const TASK_SELECT = {
   requirements: true,
   shortlist: true,
   createdAt: true,
-  events: { orderBy: { seq: "asc" }, select: { seq: true, kind: true, status: true, payload: true, createdAt: true } },
+  updatedAt: true,
+  events: { orderBy: { seq: "desc" }, take: EVENTS_PER_POLL, select: { seq: true, kind: true, status: true, payload: true, createdAt: true } },
   brokerRequests: {
     where: { status: "AVAILABLE" },
     orderBy: { createdAt: "desc" },
@@ -109,6 +117,24 @@ async function withViewings(view: AgentTaskView, task: TaskRow): Promise<AgentTa
   };
 }
 
+/** The latest turn's events, oldest first (the query reads newest first, bounded). */
+function latestTurnEvents(events: TaskRow["events"]): TaskRow["events"] {
+  const asc = [...events].reverse();
+  for (let i = asc.length - 1; i >= 0; i--) if (asc[i]!.kind === "requirements_extracted") return asc.slice(i);
+  return asc;
+}
+
+/** Fail a turn that can no longer finish, so the conversation is not locked. */
+async function recoverStuck(task: TaskRow): Promise<TaskRow> {
+  if (task.status !== "RUNNING" || Date.now() - task.updatedAt.getTime() < STUCK_AFTER_MS) return task;
+  const messages = [...((task.messages as unknown as AgentMessage[]) ?? []), { role: "agent", kind: "error", at: new Date().toISOString() } as AgentMessage];
+  const { count } = await db.agentTask.updateMany({
+    where: { id: task.id, status: "RUNNING", updatedAt: { lt: new Date(Date.now() - STUCK_AFTER_MS) } },
+    data: { status: "FAILED", messages: messages as unknown as Prisma.InputJsonValue },
+  });
+  return count ? { ...task, status: "FAILED", messages: messages as unknown as Prisma.JsonValue } : task;
+}
+
 /** The task this browser owns, or null. Used by the page and by polling. */
 export async function getAgentTask(taskId?: string): Promise<AgentTaskView | null> {
   const key = await sessionKey(false);
@@ -120,7 +146,9 @@ export async function getAgentTask(taskId?: string): Promise<AgentTaskView | nul
         orderBy: { createdAt: "desc" },
         select: TASK_SELECT,
       });
-  return task ? withViewings(toView(task), task) : null;
+  if (!task) return null;
+  const live = await recoverStuck({ ...task, events: latestTurnEvents(task.events) });
+  return withViewings(toView(live), live);
 }
 
 export type SendResult = { ok: true; taskId: string } | { ok: false; error: "empty" | "busy" | "rate" };
@@ -165,10 +193,11 @@ export async function sendAgentMessage(input: {
 
   let taskId: string;
   const current = !input.fresh && input.taskId
-    ? await db.agentTask.findFirst({ where: { id: input.taskId, sessionKey: key }, select: { id: true, status: true, messages: true } })
+    ? await db.agentTask.findFirst({ where: { id: input.taskId, sessionKey: key }, select: { id: true, status: true, messages: true, updatedAt: true } })
     : null;
   if (current) {
-    if (current.status === "RUNNING") return { ok: false, error: "busy" };
+    // A turn lost mid-way is not "busy": the next message simply runs.
+    if (current.status === "RUNNING" && Date.now() - current.updatedAt.getTime() < STUCK_AFTER_MS) return { ok: false, error: "busy" };
     const messages = [...((current.messages as unknown as AgentMessage[]) ?? []), userMsg];
     await db.agentTask.update({
       where: { id: current.id },

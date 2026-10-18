@@ -62,6 +62,7 @@
     "crm:tiktok-mirror": "tsx scripts/crm/tiktok-mirror.ts",
     "crm:merge-tiktok-dupes": "tsx scripts/crm/merge-tiktok-dupes.ts",
     "crm:hygiene": "tsx scripts/crm/hygiene.ts",
+    "agent:funnel": "tsx scripts/crm/agent-funnel.ts",
     "crm:claim-token": "tsx scripts/crm/claim-tokens.ts",
     "crm:gift-handover": "tsx scripts/crm/gift-handover.ts",
     "crm:handover": "tsx scripts/crm/host-handover.ts",

@@ -33,6 +33,8 @@ import { requestConfirmations } from "./broker";
 import type { AgentMessage, EventKind, StepStatus } from "./types";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
+/** Rows loaded once for the zero-match widening; Kigali holds ~4.7k homes in all. */
+const WIDE_POOL = 2_000;
 
 async function lastSeq(taskId: string): Promise<number> {
   const last = await db.agentEvent.findFirst({ where: { taskId }, orderBy: { seq: "desc" }, select: { seq: true } });
@@ -148,16 +150,27 @@ export async function runTurn(taskId: string): Promise<void> {
     // and say which ones. The tenant's own requirements stay as they said them.
     let relaxed: Relaxed[] = [];
     if (result.ranked.length === 0) {
-      // All attempts at once (one round trip of time); fewest changes wins, then order.
+      // One wide load serves every attempt: the widest ladder step is a superset
+      // of all the others, and rankCandidates re-applies each attempt's hard
+      // filters in memory. This used to be one query per attempt — up to 13
+      // searches (plus 13 broker-answer reads) on a single zero-match turn.
+      // Only a pool that hit its cap can be missing rows; then the old way runs.
       const attempts = relaxations(requirements);
+      const widest = attempts.reduce((w, a) => (a.steps.length > w.steps.length ? a : w), attempts[0]!);
       const [relaxId, tried] = await Promise.all([
         trace.start("relaxed"),
-        Promise.all(
-          attempts.map(async (attempt) => {
-            const found = await searchKigali(attempt.requirements);
-            return { attempt, ranked: rankCandidates(found.candidates, attempt.requirements) };
-          }),
-        ),
+        attempts.length === 0
+          ? Promise.resolve([])
+          : searchKigali(widest.requirements, { take: WIDE_POOL }).then(async (pool) =>
+              pool.truncated
+                ? Promise.all(
+                    attempts.map(async (attempt) => {
+                      const found = await searchKigali(attempt.requirements);
+                      return { attempt, ranked: rankCandidates(found.candidates, attempt.requirements) };
+                    }),
+                  )
+                : attempts.map((attempt) => ({ attempt, ranked: rankCandidates(pool.candidates, attempt.requirements) })),
+            ),
       ]);
       const best = tried
         .filter((t) => t.ranked.ranked.length > 0)

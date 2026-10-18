@@ -95,7 +95,11 @@ function placeWhere(r: Requirements): Prisma.ListingWhereInput[] {
   return out;
 }
 
-export async function searchKigali(r: Requirements): Promise<{ candidates: Candidate[] }> {
+/**
+ * `take` widens the load for a pool the caller ranks several ways (the zero-match
+ * widening); `truncated` says the pool hit it, so it may be missing rows.
+ */
+export async function searchKigali(r: Requirements, { take = MAX_CANDIDATES }: { take?: number } = {}): Promise<{ candidates: Candidate[]; truncated: boolean }> {
   // Leads are monthly broker homes, so they only join long-stay searches.
   const visible: Prisma.ListingWhereInput =
     r.stay === "short"
@@ -117,7 +121,7 @@ export async function searchKigali(r: Requirements): Promise<{ candidates: Candi
     select: CANDIDATE_SELECT,
     // "Cheap" loads the cheapest 400, not the best-rated 400.
     orderBy: r.cheap ? [{ pricePerNight: "asc" }, { priceMonth: "asc" }] : [{ averageRating: "desc" }, { numberOfReviews: "desc" }],
-    take: MAX_CANDIDATES,
+    take,
   });
   const answers = await brokerAnswers(rows.map((row) => row.id));
   const candidates: Candidate[] = rows
@@ -145,7 +149,7 @@ export async function searchKigali(r: Requirements): Promise<{ candidates: Candi
     // a confirmation. Only a broker's answer sets this.
     confirmedAt: answers.get(row.id)?.status === "AVAILABLE" ? answers.get(row.id)!.at : null,
   }));
-  return { candidates };
+  return { candidates, truncated: rows.length >= take };
 }
 
 /** Turn ranked ids into display cards, localized for the tenant: one small query for the winners. */

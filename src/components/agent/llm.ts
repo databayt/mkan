@@ -17,7 +17,11 @@ import { CLEARABLE, coerceRequirements, type ClearableField, type Requirements }
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const DEFAULT_MODEL = "openai/gpt-oss-20b";
-const TIMEOUT_MS = 6_000;
+// The rules reader already has the numbers; a slow model costs the tenant more than it adds.
+const TIMEOUT_MS = 3_500;
+/** After a 429, skip the model for this long instead of paying the latency on every turn. */
+const PAUSE_AFTER_429_MS = 60_000;
+let pausedUntil = 0;
 
 const SYSTEM = `You update a Kigali (Rwanda) rental search from the tenant's newest message. You get the search as it stands and the conversation so far. Output ONLY a JSON object {"set": {...}, "clear": [...]}:
 - "set": only the fields the NEWEST message states or changes. Keys:
@@ -43,6 +47,7 @@ export interface GroqReading {
 export async function readRequirementsWithGroq(latest: string, current: Requirements, earlier: string[]): Promise<GroqReading | null> {
   const apiKey = process.env.GROQ_API_KEY?.trim();
   if (!apiKey) return null;
+  if (Date.now() < pausedUntil) return null;
   const known = Object.fromEntries(Object.entries(current).filter(([, v]) => v != null));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -73,6 +78,8 @@ export async function readRequirementsWithGroq(latest: string, current: Requirem
       }),
     });
     if (!res.ok) {
+      // The free tier is shared site-wide (and with the TikTok lane's reader).
+      if (res.status === 429) pausedUntil = Date.now() + PAUSE_AFTER_429_MS;
       console.warn(`[agent] groq ${res.status} — deterministic reader only`);
       return null;
     }

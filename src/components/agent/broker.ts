@@ -27,13 +27,20 @@ export const brokerLink = (token: string, lang = "en") => `${publicAppUrl()}/${l
 
 /** Append an event at the task's next seq (tasks are written by one turn or one answer at a time). */
 export async function appendTaskEvent(taskId: string, kind: EventKind, status: StepStatus, payload: Record<string, unknown>) {
+  await appendTaskEvents(taskId, [[kind, status, payload]]);
+}
+
+/** Several events in one write: one read of the last seq, one insert. */
+export async function appendTaskEvents(taskId: string, rows: [EventKind, StepStatus, Record<string, unknown>][]) {
+  if (rows.length === 0) return;
   for (let attempt = 0; attempt < 3; attempt++) {
     const last = await db.agentEvent.findFirst({ where: { taskId }, orderBy: { seq: "desc" }, select: { seq: true } });
+    const base = last?.seq ?? 0;
     try {
-      await db.agentEvent.create({ data: { taskId, seq: (last?.seq ?? 0) + 1, kind, status, payload: json(payload) } });
+      await db.agentEvent.createMany({ data: rows.map(([kind, status, payload], i) => ({ taskId, seq: base + i + 1, kind, status, payload: json(payload) })) });
       return;
     } catch (err) {
-      if (attempt === 2) throw err;
+      if (attempt === 2) throw err; // another writer took the seq; read it again
     }
   }
 }
@@ -57,101 +64,132 @@ export async function brokerAnswers(listingIds: number[]): Promise<Map<number, {
   return out;
 }
 
+type BrokerLink = { listingId: number; userId: string; user: { phoneNumber: string | null; username: string | null; sourceHostId: string | null } };
+type RecentRequest = { id: string; listingId: number; brokerUserId: string; status: string; expiresAt: Date; taskId: string | null };
+
+/** Everyone who can speak for each home, owner first, then brokers by age. */
+async function brokersFor(listingIds: number[]): Promise<Map<number, BrokerLink[]>> {
+  const links = await db.listingBroker.findMany({
+    where: { listingId: { in: listingIds }, user: { phoneNumber: { not: null } } },
+    orderBy: [{ role: "desc" }, { createdAt: "asc" }],
+    select: { listingId: true, userId: true, user: { select: { phoneNumber: true, username: true, sourceHostId: true } } },
+  });
+  const out = new Map<number, BrokerLink[]>();
+  for (const l of links) if (l.user.phoneNumber) out.set(l.listingId, [...(out.get(l.listingId) ?? []), l]);
+  return out;
+}
+
+/**
+ * Who to ask about one home, given today's requests. A question already out
+ * is joined; otherwise the first broker not yet asked today — so a broker who
+ * said nothing hands the home to the next one who posted it.
+ */
+export function pickBroker(brokers: BrokerLink[], recent: Map<string, RecentRequest>): { join: RecentRequest; broker: BrokerLink } | { ask: BrokerLink } | null {
+  for (const b of brokers) {
+    const r = recent.get(`${b.listingId}:${b.userId}`);
+    if (r?.status === "PENDING") return { join: r, broker: b };
+  }
+  const fresh = brokers.find((b) => !recent.has(`${b.listingId}:${b.userId}`));
+  return fresh ? { ask: fresh } : null;
+}
+
+const handleOf = (b: BrokerLink) => (b.user.sourceHostId?.startsWith("tiktok:") ? b.user.sourceHostId.slice(7) : null);
+
+/** Send each broker one message for all their homes, and record the channel it went by. */
+async function sendGrouped(
+  groups: Map<string, { phone: string; handle: string | null; homes: BrokerHomeLine[]; ids: string[] }>,
+  need: { en: string; rw: string },
+): Promise<{ broker: string | null; count: number; channel: string }[]> {
+  return Promise.all(
+    [...groups.values()].map(async (m) => {
+      const channel = await sendToBroker(m.phone, availabilityMessage(m.handle, need, m.homes), m.handle ? `@${m.handle}` : m.phone);
+      await db.brokerRequest.updateMany({ where: { id: { in: m.ids } }, data: { channel, sentAt: channel === "evolution" ? new Date() : null } });
+      return { broker: m.handle ? `@${m.handle}` : null, count: m.homes.length, channel };
+    }),
+  );
+}
+
 /**
  * For every unconfirmed home on the shortlist that has a reachable broker,
  * make sure a request is out. One WhatsApp per broker, listing all their homes.
  * Returns the listing ids now awaiting an answer.
+ *
+ * Reads and writes in batches: this ran one query per home and one event
+ * insert per home and per broker, all in sequence, inside the tenant's turn.
  */
 export async function requestConfirmations(taskId: string, shortlist: ShortlistItem[], r: Requirements, lang: string): Promise<number[]> {
   const unconfirmed = shortlist.filter((s) => s.availability === "unconfirmed");
   if (unconfirmed.length === 0) return [];
-  const links = await db.listingBroker.findMany({
-    where: { listingId: { in: unconfirmed.map((s) => s.id) }, user: { phoneNumber: { not: null } } },
-    orderBy: [{ role: "desc" }, { createdAt: "asc" }], // OWNER first, then the earliest broker
-    select: { listingId: true, userId: true, user: { select: { phoneNumber: true, username: true, sourceHostId: true } } },
-  });
-  const brokerFor = new Map<number, (typeof links)[number]>();
-  for (const l of links) if (!brokerFor.has(l.listingId) && l.user.phoneNumber) brokerFor.set(l.listingId, l);
+  const ids = unconfirmed.map((s) => s.id);
+  const since = new Date(Date.now() - REQUEST_TTL_HOURS * 3_600_000);
+  const [brokers, recentRows] = await Promise.all([
+    brokersFor(ids),
+    db.brokerRequest.findMany({
+      where: { listingId: { in: ids }, createdAt: { gte: since } },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, listingId: true, brokerUserId: true, status: true, expiresAt: true, taskId: true },
+    }),
+  ]);
+  const recent = new Map<string, RecentRequest>();
+  for (const q of recentRows) if (!recent.has(`${q.listingId}:${q.brokerUserId}`)) recent.set(`${q.listingId}:${q.brokerUserId}`, q);
 
   const need = needSummary(r);
-  const since = new Date(Date.now() - REQUEST_TTL_HOURS * 3_600_000);
-  const toSend = new Map<string, { phone: string; handle: string | null; homes: BrokerHomeLine[]; ids: string[] }>();
+  const needJson = json({ requirements: r, summary: need });
+  const joins: Prisma.BrokerRequestCreateManyInput[] = [];
+  const asks: { row: Prisma.BrokerRequestCreateManyInput; token: string; item: ShortlistItem; broker: BrokerLink }[] = [];
+  const events: [EventKind, StepStatus, Record<string, unknown>][] = [];
   const waiting: number[] = [];
 
   for (const item of unconfirmed) {
-    const b = brokerFor.get(item.id);
-    if (!b) continue;
-    const recent = await db.brokerRequest.findFirst({
-      where: { listingId: item.id, brokerUserId: b.userId, createdAt: { gte: since } },
-      orderBy: { createdAt: "desc" },
-      select: { id: true, status: true, expiresAt: true, taskId: true },
-    });
-    if (recent?.status === "PENDING") {
+    const pick = pickBroker(brokers.get(item.id) ?? [], recent);
+    if (!pick) continue;
+    waiting.push(item.id);
+    if ("join" in pick) {
       // Already asked today: this task joins the same question (a row of its
       // own so the answer reaches it), and nothing is sent again.
-      waiting.push(item.id);
-      if (recent.taskId !== taskId) {
-        await db.brokerRequest.create({
-          data: {
-            tokenHash: hashToken(randomBytes(18).toString("base64url")),
-            listingId: item.id,
-            brokerUserId: b.userId,
-            taskId,
-            locale: lang,
-            need: json({ requirements: r, summary: need }),
-            channel: "joined",
-            expiresAt: recent.expiresAt,
-          },
-        });
+      if (pick.join.taskId !== taskId) {
+        joins.push({ tokenHash: hashToken(randomBytes(18).toString("base64url")), listingId: item.id, brokerUserId: pick.broker.userId, taskId, locale: lang, need: needJson, channel: "joined", expiresAt: pick.join.expiresAt });
       }
-      await appendTaskEvent(taskId, "broker_contact_started", "waiting_person", { listingId: item.id, title: item.title, reused: true });
+      events.push(["broker_contact_started", "waiting_person", { listingId: item.id, title: item.title, reused: true }]);
       continue;
     }
-    if (recent) continue; // answered or expired today — don't ask again
     const token = randomBytes(18).toString("base64url");
-    const req = await db.brokerRequest.create({
-      data: {
-        tokenHash: hashToken(token),
-        listingId: item.id,
-        brokerUserId: b.userId,
-        taskId,
-        locale: lang,
-        need: json({ requirements: r, summary: need }),
-        expiresAt: new Date(Date.now() + REQUEST_TTL_HOURS * 3_600_000),
-      },
-      select: { id: true },
-    });
-    const handle = b.user.sourceHostId?.startsWith("tiktok:") ? b.user.sourceHostId.slice(7) : null;
-    const entry = toSend.get(b.userId) ?? { phone: b.user.phoneNumber!, handle, homes: [], ids: [] };
-    entry.homes.push({ title: item.title, link: brokerLink(token, "en") });
-    entry.ids.push(req.id);
-    toSend.set(b.userId, entry);
-    waiting.push(item.id);
+    const row = { tokenHash: hashToken(token), listingId: item.id, brokerUserId: pick.ask.userId, taskId, locale: lang, need: needJson, expiresAt: new Date(Date.now() + REQUEST_TTL_HOURS * 3_600_000) };
+    asks.push({ row, token, item, broker: pick.ask });
   }
 
-  for (const [, m] of toSend) {
-    const channel = await sendToBroker(m.phone, availabilityMessage(m.handle, need, m.homes), m.handle ? `@${m.handle}` : m.phone);
-    await db.brokerRequest.updateMany({
-      where: { id: { in: m.ids } },
-      data: { channel, sentAt: channel === "evolution" ? new Date() : null },
-    });
-    await appendTaskEvent(taskId, "broker_contact_started", "waiting_person", {
-      broker: m.handle ? `@${m.handle}` : null,
-      count: m.homes.length,
-      channel,
-    });
+  const created = asks.length
+    ? await db.brokerRequest.createManyAndReturn({ data: asks.map((a) => a.row), select: { id: true, tokenHash: true } })
+    : [];
+  if (joins.length) await db.brokerRequest.createMany({ data: joins });
+  const idByHash = new Map(created.map((c) => [c.tokenHash, c.id]));
+  const groups = new Map<string, { phone: string; handle: string | null; homes: BrokerHomeLine[]; ids: string[] }>();
+  for (const a of asks) {
+    const id = idByHash.get(a.row.tokenHash);
+    if (!id) continue;
+    const g = groups.get(a.broker.userId) ?? { phone: a.broker.user.phoneNumber!, handle: handleOf(a.broker), homes: [], ids: [] };
+    g.homes.push({ title: a.item.title, link: brokerLink(a.token, "en") });
+    g.ids.push(id);
+    groups.set(a.broker.userId, g);
   }
+  for (const sent of await sendGrouped(groups, need)) events.push(["broker_contact_started", "waiting_person", sent]);
+  await appendTaskEvents(taskId, events);
   return waiting;
 }
 
 type Answer = "AVAILABLE" | "RENTED" | "NO_REPLY";
 
-/** Re-derive a task's status: WAITING while any of its homes still has a pending request. */
-async function settleTask(taskId: string) {
-  const pending = await db.brokerRequest.count({ where: { taskId, status: "PENDING" } });
-  const task = await db.agentTask.findUnique({ where: { id: taskId }, select: { status: true } });
-  if (!task || task.status === "RUNNING") return;
-  await db.agentTask.update({ where: { id: taskId }, data: { status: pending > 0 ? "WAITING" : "DONE" } });
+/** Re-derive tasks' status: WAITING while any of its homes still has a pending request. */
+async function settleTasks(taskIds: string[]) {
+  if (taskIds.length === 0) return;
+  const pending = await db.brokerRequest.groupBy({ by: ["taskId"], where: { taskId: { in: taskIds }, status: "PENDING" }, _count: true });
+  const waiting = new Set(pending.map((p) => p.taskId));
+  const ids = (s: boolean) => taskIds.filter((t) => waiting.has(t) === s);
+  // A RUNNING turn writes its own status when it finishes.
+  await Promise.all([
+    ids(true).length ? db.agentTask.updateMany({ where: { id: { in: ids(true) }, status: { not: "RUNNING" } }, data: { status: "WAITING" } }) : null,
+    ids(false).length ? db.agentTask.updateMany({ where: { id: { in: ids(false) }, status: { not: "RUNNING" } }, data: { status: "DONE" } }) : null,
+  ]);
 }
 
 /**
@@ -168,29 +206,80 @@ export async function applyAnswer(listingId: number, answer: Answer) {
     select: { id: true, shortlist: true },
   });
   const availability = answer === "AVAILABLE" ? "confirmed" : answer === "RENTED" ? "rented" : "no_reply";
-  for (const t of tasks) {
-    const list = ((t.shortlist as unknown as ShortlistItem[]) ?? []).map((s) =>
-      s.id === listingId ? { ...s, availability: availability as ShortlistItem["availability"] } : s,
-    );
-    const item = list.find((s) => s.id === listingId);
-    await db.agentTask.update({ where: { id: t.id }, data: { shortlist: json(list) } });
-    await appendTaskEvent(t.id, "broker_replied", answer === "AVAILABLE" ? "done" : answer === "RENTED" ? "failed" : "uncertain", {
-      listingId,
-      title: item?.title ?? null,
-      answer: availability,
-    });
-    await settleTask(t.id);
-  }
+  await Promise.all(
+    tasks.map(async (t) => {
+      const list = ((t.shortlist as unknown as ShortlistItem[]) ?? []).map((s) =>
+        s.id === listingId ? { ...s, availability: availability as ShortlistItem["availability"] } : s,
+      );
+      const item = list.find((s) => s.id === listingId);
+      await db.agentTask.update({ where: { id: t.id }, data: { shortlist: json(list) } });
+      await appendTaskEvent(t.id, "broker_replied", answer === "AVAILABLE" ? "done" : answer === "RENTED" ? "failed" : "uncertain", {
+        listingId,
+        title: item?.title ?? null,
+        answer: availability,
+      });
+    }),
+  );
+  await settleTasks(tasks.map((t) => t.id));
   if (answer === "AVAILABLE") await db.listing.update({ where: { id: listingId }, data: { lastAvailabilityConfirmedAt: new Date() } });
 }
 
-/** Cron: requests unanswered past their expiry become NO_REPLY. */
+/**
+ * Cron: requests unanswered past their expiry become NO_REPLY — and the home
+ * goes to the next broker who posted it, if there is one nobody has asked
+ * today. Only when nobody is left does the tenant hear "no reply".
+ */
 export async function expireRequests(now = new Date()): Promise<number> {
-  const stale = await db.brokerRequest.findMany({ where: { status: "PENDING", expiresAt: { lt: now } }, select: { id: true, listingId: true } });
-  for (const r of stale) {
-    await db.brokerRequest.update({ where: { id: r.id }, data: { status: "NO_REPLY" } });
-    const stillPending = await db.brokerRequest.count({ where: { listingId: r.listingId, status: "PENDING", expiresAt: { gte: now } } });
-    if (stillPending === 0) await applyAnswer(r.listingId, "NO_REPLY");
+  const stale = await db.brokerRequest.findMany({
+    where: { status: "PENDING", expiresAt: { lt: now } },
+    select: { id: true, listingId: true, taskId: true, locale: true, need: true, listing: { select: { title: true } } },
+  });
+  if (stale.length === 0) return 0;
+  await db.brokerRequest.updateMany({ where: { id: { in: stale.map((r) => r.id) } }, data: { status: "NO_REPLY" } });
+
+  const listingIds = [...new Set(stale.map((r) => r.listingId))];
+  const since = new Date(now.getTime() - REQUEST_TTL_HOURS * 3_600_000);
+  const [brokers, recentRows, stillPending] = await Promise.all([
+    brokersFor(listingIds),
+    db.brokerRequest.findMany({
+      where: { listingId: { in: listingIds }, createdAt: { gte: since } },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, listingId: true, brokerUserId: true, status: true, expiresAt: true, taskId: true },
+    }),
+    db.brokerRequest.groupBy({ by: ["listingId"], where: { listingId: { in: listingIds }, status: "PENDING", expiresAt: { gte: now } }, _count: true }),
+  ]);
+  const recent = new Map<string, RecentRequest>();
+  for (const q of recentRows) if (!recent.has(`${q.listingId}:${q.brokerUserId}`)) recent.set(`${q.listingId}:${q.brokerUserId}`, q);
+  const pendingNow = new Set(stillPending.map((p) => p.listingId));
+
+  for (const listingId of listingIds) {
+    if (pendingNow.has(listingId)) continue; // someone else is still being asked
+    const pick = pickBroker(brokers.get(listingId) ?? [], recent);
+    const mine = stale.filter((r) => r.listingId === listingId);
+    if (!pick || !("ask" in pick)) {
+      await applyAnswer(listingId, "NO_REPLY");
+      continue;
+    }
+    // The next broker gets the same question, for every task that asked.
+    const first = mine[0]!;
+    const summary = ((first.need as { summary?: { en: string; rw: string } } | null)?.summary) ?? { en: "a home in Kigali", rw: "inzu i Kigali" };
+    const tokens = mine.map(() => randomBytes(18).toString("base64url"));
+    const created = await db.brokerRequest.createManyAndReturn({
+      data: mine.map((r, i) => ({ tokenHash: hashToken(tokens[i]!), listingId, brokerUserId: pick.ask.userId, taskId: r.taskId, locale: r.locale, need: json(r.need), expiresAt: new Date(now.getTime() + REQUEST_TTL_HOURS * 3_600_000) })),
+      select: { id: true },
+    });
+    await sendGrouped(new Map([[pick.ask.userId, { phone: pick.ask.user.phoneNumber!, handle: handleOf(pick.ask), homes: [{ title: first.listing.title ?? "Home in Kigali", link: brokerLink(tokens[0]!, "en") }], ids: created.map((c) => c.id) }]]), summary);
+    await Promise.all(
+      [...new Set(mine.map((r) => r.taskId).filter((t): t is string => !!t))].map((t) =>
+        appendTaskEvent(t, "broker_contact_started", "waiting_person", { listingId, title: first.listing.title, broker: handleOf(pick.ask) ? `@${handleOf(pick.ask)}` : null, next: true }),
+      ),
+    );
   }
   return stale.length;
+}
+
+/** Cron: a turn whose `after()` was lost stays RUNNING forever — fail it so the chat unlocks. */
+export async function failStuckTasks(now = new Date(), olderThanMs = 90_000): Promise<number> {
+  const { count } = await db.agentTask.updateMany({ where: { status: "RUNNING", updatedAt: { lt: new Date(now.getTime() - olderThanMs) } }, data: { status: "FAILED" } });
+  return count;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { formatCurrency } from "@/lib/i18n/formatters";
@@ -12,6 +12,9 @@ import type { Relaxed } from "./relax";
 import type { AgentMessage, AgentTaskView } from "./types";
 
 const POLL_MS = 800;
+/** A turn is 2–3 s; past that, a slow one is checked less often. */
+const FAST_POLL_FOR_MS = 4_000;
+const SLOW_POLL_MS = 2_000;
 /** A broker may answer hours later; a waiting task is checked gently. */
 const WAITING_POLL_MS = 10_000;
 
@@ -56,11 +59,29 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false }
 
   // Poll while the task runs or waits on a broker. The events are rows in the
   // database, so a reload resumes exactly here.
+  // Every 800 ms for the first few seconds of a turn, then every 2 s. Keyed on
+  // the task and its state, not on each poll's result, so the clock keeps
+  // running across polls instead of restarting at "fast" every time.
+  const refreshRef = useRef(refresh);
   useEffect(() => {
-    if (!task || (!running && !waiting)) return;
-    const id = setInterval(refresh, running ? POLL_MS : WAITING_POLL_MS);
-    return () => clearInterval(id);
-  }, [task, running, waiting, refresh]);
+    refreshRef.current = refresh;
+  }, [refresh]);
+  const taskId = task?.id;
+  useEffect(() => {
+    if (!taskId || (!running && !waiting)) return;
+    const started = Date.now();
+    let timer: ReturnType<typeof setTimeout>;
+    let live = true;
+    const tick = () => {
+      const wait = waiting ? WAITING_POLL_MS : Date.now() - started < FAST_POLL_FOR_MS ? POLL_MS : SLOW_POLL_MS;
+      timer = setTimeout(() => void refreshRef.current().finally(() => live && tick()), wait);
+    };
+    tick();
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [taskId, running, waiting]);
 
   /** Resolves true once the message is accepted, so the composer can clear. */
   const send = useCallback(

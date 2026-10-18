@@ -58,12 +58,14 @@ tenant picks a time + name + phone + consent ─► new token → broker "confir
 broker confirms ─► ListingVisit(Scheduled) — the only place a viewing is booked;
                    the broker sees the tenant's name and phone only now
 after the time ─► tenant taps how it went ─► ListingVisit outcome + notes
-cron /api/cron/broker-requests (hourly) ─► unanswered after 24 h = NO_REPLY, said so
+cron /api/cron/broker-requests (hourly) ─► unanswered after 24 h = NO_REPLY → the next broker
+                                          linked to the home is asked; only when none is left
+                                          is the tenant told "no reply". Also fails stuck turns.
 ```
 
 | File | Role |
 | --- | --- |
-| `broker.ts` | request creation + dedup, answer fan-out, expiry |
+| `broker.ts` | request creation + dedup (batched), `pickBroker`, answer fan-out, expiry → next broker, stuck-turn sweep |
 | `broker-message.ts` | the exact en + rw words a broker receives (tested) |
 | `whatsapp.ts` | Evolution `message/sendText` when `MKAN_EVOLUTION_{URL,KEY,INSTANCE}` are set (daily cap `MKAN_EVOLUTION_DAILY_CAP`, default 40); otherwise a #mkan card with a wa.me link (`SLACK_BOT_TOKEN`) |
 | `broker-actions.ts` | broker answer/confirm, tenant choose/outcome |

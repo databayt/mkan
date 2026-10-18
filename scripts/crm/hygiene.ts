@@ -26,6 +26,7 @@ import { join } from 'node:path';
 import { twentyClient } from './twenty-rest';
 import { checkHomes, checkHosts, videoGone, type Finding, type Fix } from './hygiene-pure';
 import { postToMkan, recordRun } from './notify';
+import { agentFunnel, funnelLine } from './agent-funnel';
 
 type Row = Record<string, unknown>;
 
@@ -154,6 +155,8 @@ async function main(): Promise<void> {
     console.log('\nDRY RUN — re-run with --apply.');
   }
 
+  const funnel = funnelLine(await agentFunnel(db, 7));
+  console.log(`\n   ${funnel}`);
   if (NOTIFY) {
     const streaks = readJson<Record<string, { fails: number }>>(join(__dirname, '.data', 'failure-streaks.json'), {});
     const failing = Object.entries(streaks).filter(([, s]) => s.fails > 0);
@@ -161,6 +164,7 @@ async function main(): Promise<void> {
     const lines = [
       `*CRM hygiene* — ${homes.length} homes · ${hosts.length} hosts · ${APPLY ? `${applied} safe fix(es) applied` : 'dry run'} · <${BOARD}|board>`,
       ...findings.map((f) => `• ${f.items.length} ${f.check}`),
+      `• ${funnel}`,
       failing.length ? `⚠️ failing jobs: ${failing.map(([j, s]) => `${j} (${s.fails}×)`).join(', ')}` : '',
       proposed ? `• ${proposed} proposed TikTok seed(s) to review — \`pnpm crm:tiktok-seeds\`` : '',
     ].filter(Boolean);

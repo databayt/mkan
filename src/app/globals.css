@@ -237,6 +237,11 @@ body {
   html[data-agent-panel="open"] body {
     margin-inline-end: max(40vw, 360px);
   }
+  /* The page is ~60% wide now but the header still lays out for the window:
+     the centred tabs run into the host link. A tenant mid-search needs neither. */
+  html[data-agent-panel="open"] [data-agent-panel-hide] {
+    display: none;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   body {

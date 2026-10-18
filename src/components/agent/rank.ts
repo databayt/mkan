@@ -2,6 +2,7 @@
  * Filter, group and rank candidate homes against the tenant's requirements.
  * Pure — `search.ts` feeds it Prisma rows, the tests feed it fixtures.
  */
+import { placeToken } from "@/lib/geo/place-token";
 import type { Requirements } from "./requirements";
 import { longStayCost, monthlyRent, shortStayCost, type CostEstimate, type PricedHome } from "./cost";
 import { inArea, inNeighbourhood } from "./areas";
@@ -80,13 +81,21 @@ function comparablePrice(c: Candidate, r: Requirements): number | null {
  * The same home advertised more than once — one host reposting, or several
  * imported rows of one unit — keeps its best-rated row. Key: host, bedrooms,
  * district and price within 2%.
+ *
+ * TikTok leads are grouped across brokers (Kigali brokers re-post each other's
+ * homes): bedrooms, district, the neighbourhood named in the address and price
+ * within 5%. Not for site homes — two Airbnb hosts with a 1-bed in Gasabo at
+ * one price are two homes.
  */
 export function groupDuplicates(cands: Candidate[]): { kept: Candidate[]; dupCount: Map<number, number>; removed: number } {
   const groups = new Map<string, Candidate[]>();
   for (const c of cands) {
     const price = monthlyRent(c) ?? 0;
     const bucket = Math.round(Math.log(Math.max(price, 1)) / Math.log(1.02));
-    const key = `${c.hostId}|${c.bedrooms ?? "?"}|${c.district ?? "?"}|${bucket}`;
+    const place = c.approxLocation ? placeToken(c.address) : "";
+    const key = place
+      ? `lead|${c.bedrooms ?? "?"}|${c.district ?? "?"}|${place}|${Math.round(Math.log(Math.max(price, 1)) / Math.log(1.05))}`
+      : `${c.hostId}|${c.bedrooms ?? "?"}|${c.district ?? "?"}|${bucket}`;
     const arr = groups.get(key);
     if (arr) arr.push(c);
     else groups.set(key, [c]);

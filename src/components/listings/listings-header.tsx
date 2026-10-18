@@ -412,6 +412,7 @@ const ListingsHeader = ({ disableScrollExpand = false }: ListingsHeaderProps) =>
                   "Switch to hosting" once signed in (→ the host dashboard). */}
               <Link
                 href={isAuthed ? `/${locale}/hosting` : `/${locale}/host`}
+                data-agent-panel-hide
                 className="text-sm font-semibold text-gray-800 hover:bg-gray-100/50 px-4 py-2.5 rounded-full transition-colors hidden sm:inline-block whitespace-nowrap"
               >
                 {isAuthed ? labels.switchToHosting : labels.becomeHost}

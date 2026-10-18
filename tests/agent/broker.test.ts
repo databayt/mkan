@@ -62,3 +62,27 @@ describe("tiktok mirror", () => {
     expect(planMirror({ ...home, pipelineStage: "DUPLICATE" }, host)).toEqual({ skip: "stage DUPLICATE" });
   });
 });
+
+describe("who to ask", () => {
+  const b = (userId: string) => ({ listingId: 5, userId, user: { phoneNumber: "+250788000000", username: null, sourceHostId: `tiktok:${userId}` } });
+  const req = (brokerUserId: string, status: string) => ({ id: `r-${brokerUserId}`, listingId: 5, brokerUserId, status, expiresAt: new Date(), taskId: "t0" });
+
+  it("joins a question already out, else asks the first broker not asked today", async () => {
+    const { pickBroker } = await import("../../src/components/agent/broker");
+    expect(pickBroker([b("a"), b("b")], new Map())).toEqual({ ask: b("a") });
+    expect(pickBroker([b("a"), b("b")], new Map([["5:a", req("a", "NO_REPLY")]]))).toEqual({ ask: b("b") });
+    expect(pickBroker([b("a"), b("b")], new Map([["5:b", req("b", "PENDING")]]))).toMatchObject({ join: { brokerUserId: "b" } });
+    expect(pickBroker([b("a")], new Map([["5:a", req("a", "NO_REPLY")]]))).toBeNull();
+  });
+});
+
+describe("one house, several brokers", () => {
+  it("groups TikTok leads across brokers, never site homes", async () => {
+    const { groupDuplicates } = await import("../../src/components/agent/rank");
+    const lead = (id: number, hostId: string, address: string) =>
+      ({ id, hostId, rentPeriod: "MONTHLY", priceMonth: 500_000, bedrooms: 2, guestCount: 4, district: "Kicukiro", averageRating: null, numberOfReviews: null, confirmedAt: null, approxLocation: true, address }) as never;
+    expect(groupDuplicates([lead(1, "a", "Kabeza"), lead(2, "b", "Kabeza / Samuduha")]).removed).toBe(1);
+    const site = (id: number, hostId: string) => ({ ...(lead(id, hostId, "") as object), approxLocation: false, address: "KN 5 Rd" }) as never;
+    expect(groupDuplicates([site(3, "a"), site(4, "b")]).removed).toBe(0);
+  });
+});
