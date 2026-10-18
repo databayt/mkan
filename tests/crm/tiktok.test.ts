@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   dupKey,
   placeToken,
+  captionCarriesFacts,
   unitReads,
   fallbackTitle,
   frameTimes,
@@ -198,4 +199,14 @@ describe('what a read becomes', () => {
     expect(units[1]!.read).toMatchObject({ bedrooms: 2, priceRwf: 700_000, propertyType: 'Apartment', titleEn: null });
     expect(unitReads('76', read)).toEqual([{ sourceId: 'tiktok:76', read }]);
   });
+});
+
+describe('caption-first reading', () => {
+  it.each([
+    ['Kigali Kimihurura Unfurnished House For Rent @ 600k rwf  3 Bedrooms,2 Bathrooms', true],
+    ['400k price etaje 3bedroom 3bathroom located Norvege', true],
+    ['Studio for rent Remera 150,000 RWF', true],
+    ['#kigalirentals #houseforrent #fyp', false],
+    ['Fully furnished 3 bedroom house for rent in Nyarutarama', false], // no price
+  ])('%s → %s', (caption, want) => expect(captionCarriesFacts(caption)).toBe(want));
 });

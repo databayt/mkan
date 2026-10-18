@@ -82,7 +82,7 @@ export async function runGroq(call: GroqCall, attempt = 0): Promise<string> {
   if (res.status === 429) {
     const wait = retryAfterSeconds(res.headers.get('retry-after'), text);
     // Minute windows clear on their own; a daily one does not, so stop.
-    if (wait == null || wait > 60 || attempt >= 3) throw new GroqLimit(`groq limit: ${text.slice(0, 200)}`);
+    if (wait == null || wait > 60 || attempt >= 3) throw new GroqLimit(`groq limit: ${text.slice(0, 500)}`);
     await sleep((wait + 1) * 1000);
     return runGroq(call, attempt + 1);
   }

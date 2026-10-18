@@ -127,6 +127,18 @@ export function looksLikeRental(caption: string): boolean {
   return captionWords(caption).length < 12;
 }
 
+/**
+ * Does the caption alone carry the facts (a price and a room count)? Those
+ * posts are read as text — the vision model's daily quota (~30 reads) is kept
+ * for captions that leave the facts to the on-screen text.
+ */
+export function captionCarriesFacts(caption: string): boolean {
+  const c = toAsciiDigits(caption).toLowerCase();
+  const price = /(\d+(?:[.,]\d+)?\s*(?:k|m|million)\b|\d{1,3}(?:[,.\s]\d{3})+|\b(?:rwf|frw|usd)\b|\$\s*\d)/.test(c);
+  const rooms = /(\d+\s*(?:-|\s)?\s*(?:bed|bd|br|bedroom|chambre|ibyumba)|studio|single room|self[-\s]?contain)/.test(c);
+  return price && rooms;
+}
+
 /** Six (or n) evenly spaced timestamps, skipping the first and last 5% (intro cards, end screens). */
 export function frameTimes(duration: number, n = 8): number[] {
   if (!Number.isFinite(duration) || duration <= 0) return [0];

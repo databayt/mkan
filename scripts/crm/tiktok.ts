@@ -49,6 +49,7 @@ import {
   skipReasonFor,
   tiktokVideosIn,
   unitReads,
+  captionCarriesFacts,
   type SeedRow,
   type TikTokRead,
   type VideoRow,
@@ -79,6 +80,8 @@ const GROQ_IMAGES = 2;
 const PER_IMAGE = 3;
 const GROQ_FRAMES = GROQ_IMAGES * PER_IMAGE;
 const GROQ_GAP_MS = Number(argv('groq-gap', '45000'));
+/** Text-only reads of fact-rich captions — a separate daily quota from the vision model. */
+const GROQ_TEXT_MODEL = (process.env.TIKTOK_GROQ_TEXT_MODEL ?? '').trim() || 'openai/gpt-oss-120b';
 const MAX_AGE_DAYS = Number(argv('max-age', '120'));
 const DELAY_MS = Number(argv('delay', '4000'));
 const cmd = process.argv.slice(2).find((a) => !a.startsWith('--')) ?? 'help';
@@ -376,6 +379,10 @@ function pickFrames(frames: string[], n: number): { label: number; path: string 
   return Array.from({ length: n }, (_, k) => all[Math.round((k * (all.length - 1)) / (n - 1))]!);
 }
 
+/** Set once the vision model's daily quota is spent: caption-rich posts still get read. */
+let visionSpent = false;
+class NeedsVision extends Error {}
+
 async function readOne(row: VideoRow, attempt = 0, extra = ''): Promise<TikTokRead> {
   const dir = join(FRAMES, row.videoId);
   const base = {
@@ -387,6 +394,21 @@ async function readOne(row: VideoRow, attempt = 0, extra = ''): Promise<TikTokRe
     uploadedAt: row.meta?.timestamp ? new Date(row.meta.timestamp * 1000).toISOString().slice(0, 10) : null,
   };
   let text: string;
+  if (READER === 'groq' && attempt === 0 && !extra && captionCarriesFacts(base.caption)) {
+    // Caption first: when it already says price and rooms, the frames add
+    // little, and the vision model's 200k tokens a day go much further.
+    const prompt = buildTikTokPrompt({ ...base, frames: [], framesMode: 'attached' });
+    try {
+      const read = parseTikTokRead(await runGroq({ prompt, model: GROQ_TEXT_MODEL }));
+      // Nobody looked at the frames, so take the middle of the tour: intros
+      // (faces, logo cards) sit at the start and the end.
+      if (read.priceRwf != null && read.bedrooms != null && read.confidence >= 0.6) return { ...read, propertyFrames: [3, 4, 5, 6] };
+    } catch (e) {
+      if (e instanceof GroqLimit) throw e;
+      /* fall through to the frames */
+    }
+  }
+  if (READER === 'groq' && visionSpent) throw new NeedsVision('vision quota spent for today');
   if (READER === 'groq') {
     const picked = pickFrames(row.frames ?? [], GROQ_FRAMES);
     const strips = Array.from({ length: Math.ceil(picked.length / PER_IMAGE) }, (_, i) => picked.slice(i * PER_IMAGE, (i + 1) * PER_IMAGE));
@@ -449,11 +471,18 @@ async function readStage(): Promise<void> {
       );
     } catch (e) {
       const msg = (e as Error).message;
+      if (e instanceof NeedsVision) continue; // stays fetched; tomorrow's quota reads it
+      if (e instanceof GroqLimit && msg.includes(GROQ_VISION_MODEL) && !visionSpent) {
+        visionSpent = true;
+        runStats.readStopped = `vision quota spent — caption-only reads continue (${msg.slice(0, 200)})`;
+        console.warn(`  ■ vision quota spent — reading caption-rich posts only from here`);
+        continue;
+      }
       // A spent limit fails every video behind it the same way — the 10-16 run
       // logged 40 identical "weekly limit" errors. Stop once; the ledger resumes.
       if (e instanceof GroqLimit || /hit your .*limit|usage limit|rate limit/i.test(msg)) {
-        runStats.readStopped = msg.slice(0, 160);
-        console.warn(`  ■ reader limit reached — stopping the read stage (${msg.slice(0, 120)})`);
+        runStats.readStopped = msg.slice(0, 400);
+        console.warn(`  ■ reader limit reached — stopping the read stage (${msg.slice(0, 400)})`);
         saveVideos(videos);
         break;
       }
