@@ -118,8 +118,8 @@ export function planMirror(home: Row, host: Row | null): MirrorPlan | { skip: st
   };
 }
 
-async function main() {
-  const apply = process.argv.includes('--apply');
+/** Mirror every eligible TikTok home into the lead pool. Also run by `crm:tiktok run --apply`. */
+export async function mirrorLeads(apply: boolean): Promise<{ planned: number; written: number; linked: number }> {
   const client = twentyClient();
   const [homes, hosts] = await Promise.all([client.all('homes'), client.all('hosts')]);
   const hostById = new Map(hosts.map((h) => [String(h.id), h]));
@@ -135,7 +135,7 @@ async function main() {
   if (!apply) {
     for (const p of plans) console.log(`  ${p.sourceId}  @${p.broker.handle} (${p.broker.role})  ${p.listing.bedrooms ?? '?'}bd  RWF ${p.listing.priceMonth}/mo  ${p.location.address}`);
     console.log('\nDRY RUN — pass --apply to write the leads.');
-    return;
+    return { planned: plans.length, written: 0, linked: 0 };
   }
 
   const { db } = await import('../../src/lib/db');
@@ -209,12 +209,14 @@ async function main() {
     written += 1;
   }
   console.log(`✅ ${written} leads mirrored · ${linked} CRM homes linked to their lead`);
-  await db.$disconnect();
+  return { planned: plans.length, written, linked };
 }
 
 if (process.argv[1] && /tiktok-mirror\.ts$/.test(process.argv[1])) {
-  main().catch((e) => {
-    console.error(`\n❌ ${(e as Error).message}\n`);
-    process.exit(1);
-  });
+  mirrorLeads(process.argv.includes('--apply'))
+    .then(async () => (await import('../../src/lib/db')).db.$disconnect())
+    .catch((e) => {
+      console.error(`\n❌ ${(e as Error).message}\n`);
+      process.exit(1);
+    });
 }

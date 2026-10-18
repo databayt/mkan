@@ -6,6 +6,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   dupKey,
+  placeToken,
+  unitReads,
   fallbackTitle,
   frameTimes,
   homeBody,
@@ -87,6 +89,11 @@ describe('discovery', () => {
     ['#inzuzikodeshwa Kicukiro', true],
     ['appartement à louer meublé', true],
     ['funny dance challenge 😂', false],
+    ['4 Bedrooms house for sale in Kibagabaga', false],
+    ['Plot for sale Rebero 300sqm', false],
+    ['House for sale or for rent, 3 bedrooms', true],
+    ['', true], // the frames carry the facts
+    ['Call us 0786471095 #kigali #rwanda', true],
   ])('looksLikeRental(%s) = %s', (caption, want) => expect(looksLikeRental(caption)).toBe(want));
 
   it('spaces frames evenly inside the middle 90%', () => {
@@ -177,7 +184,18 @@ describe('what a read becomes', () => {
 
   it('titles and dedups from facts', () => {
     expect(fallbackTitle({ ...read, titleEn: null })).toBe('2-bedroom apartment in Nyamirambo');
-    expect(dupKey('some.broker', read)).toBe('some.broker|2|250000|nyamirambo');
+    // No handle in the key: two brokers posting one house collide.
+    expect(dupKey('some.broker', read)).toBe(dupKey('another.broker', { ...read, priceRwf: 255_000, neighbourhood: 'Nyamirambo / Biryogo' }));
+    expect(dupKey('some.broker', read)).not.toBe(dupKey('some.broker', { ...read, bedrooms: 3 }));
     expect(dupKey('some.broker', { ...read, priceRwf: null })).toBeNull();
+    expect(placeToken('Kimironko, Kwa Mushimire')).toBe('kimironko');
+  });
+
+  it('splits a multi-unit post into one home per unit', () => {
+    const multi = { ...read, units: [{ bedrooms: 1, priceRwf: 600_000, propertyType: 'Apartment' as const }, { bedrooms: 2, priceRwf: 700_000, propertyType: null }] };
+    const units = unitReads('76', multi);
+    expect(units.map((u) => u.sourceId)).toEqual(['tiktok:76', 'tiktok:76#2']);
+    expect(units[1]!.read).toMatchObject({ bedrooms: 2, priceRwf: 700_000, propertyType: 'Apartment', titleEn: null });
+    expect(unitReads('76', read)).toEqual([{ sourceId: 'tiktok:76', read }]);
   });
 });

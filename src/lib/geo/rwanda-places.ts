@@ -140,7 +140,9 @@ const NEIGHBOURHOODS: Array<[string, Exclude<RwandaDistrictCode, 'UNKNOWN'>]> = 
   ['Batsinda', 'GASABO'], ['Zindiro', 'GASABO'], ['Kabuga', 'GASABO'],
   ['Kiyovu', 'NYARUGENGE'], ['Norvege', 'NYARUGENGE'], ['Norvège', 'NYARUGENGE'],
   ['Biryogo', 'NYARUGENGE'], ['Kabeza', 'KICUKIRO'], ['Busanza', 'KICUKIRO'], ['Sonatubes', 'KICUKIRO'],
-  ['Kagarama', 'KICUKIRO'], ['Gahanga', 'KICUKIRO'],
+  ['Kagarama', 'KICUKIRO'], ['Gahanga', 'KICUKIRO'], ['Niboyi', 'KICUKIRO'],
+  // Remera's commercial strip, named in TikTok captions (2026-10-18).
+  ['Gishushu', 'GASABO'], ['Kisimenti', 'GASABO'],
 ];
 
 /**

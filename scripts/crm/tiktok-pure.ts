@@ -10,7 +10,8 @@ import { normalizePhone } from '../../src/lib/phone';
 import { districtForPlace } from '../../src/lib/geo/rwanda-places';
 
 // ── the ledger ───────────────────────────────────────────────────────────────
-export type VideoState = 'discovered' | 'fetched' | 'read' | 'upserted' | 'skipped';
+/** `failed`: three fetches in a row went wrong (blocked, removed, no formats) — not retried. */
+export type VideoState = 'discovered' | 'fetched' | 'read' | 'upserted' | 'skipped' | 'failed';
 
 export interface VideoMeta {
   caption: string;
@@ -19,6 +20,8 @@ export interface VideoMeta {
   timestamp: number | null;
   duration: number | null;
   views: number | null;
+  /** TikTok's secUid — `tiktokuser:<id>` lists the account when `@handle` pages break. */
+  channelId?: string | null;
 }
 
 export interface VideoRow {
@@ -36,6 +39,8 @@ export interface VideoRow {
   read?: TikTokRead;
   readVersion?: string;
   frameUrls?: string[];
+  /** Fetch attempts that failed; three moves the row to `failed`. */
+  attempts?: number;
   homeId?: string;
   hostId?: string;
   error?: string;
@@ -46,6 +51,11 @@ export interface SeedRow {
   from: 'manual' | 'search';
   addedAt: string;
   hits?: number;
+  /** TikTok's secUid, learnt from one of the account's videos. */
+  channelId?: string;
+  /** Runs in a row that could not list this account. */
+  failStreak?: number;
+  lastListedAt?: string;
 }
 
 // ── discovery ────────────────────────────────────────────────────────────────
@@ -89,11 +99,32 @@ export const SEARCH_QUERIES: string[] = [
   'studio for rent kigali',
 ];
 
-/** A cheap gate before the reader: does the caption look like a rental post at all? */
+const RENT_WORDS = /(rent|renting|for\s*rent|ikodesh|gukodesh|kodesha|louer|location|bed\s*rooms?|bedroom|chambre|studio|apartment|appartement|furnished|self[-\s]?contain|compound|annex|ibyumba|icyumba|inzu)/i;
+const EXPLICIT_RENT = /(for\s*rent|to\s*let|ikodeshwa|irakodeshwa|gukodesha|à\s*louer|a\s*louer|per\s*month|\/\s*month|monthly)/i;
+const SALE_WORDS = /(for\s*sale|on\s*sale|selling|iragurishwa|igurishwa|kugurisha|ikibanza|plots?\b|land\s+for|à\s*vendre|a\s*vendre)/i;
+
+/** What is left of a caption once hashtags, handles, links, phones and emoji are gone. */
+export function captionWords(caption: string): string {
+  return toAsciiDigits(caption)
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/[#@][\p{L}\p{N}_.]+/gu, ' ')
+    .replace(/\+?\d[\d\s.-]{6,}\d/g, ' ')
+    .replace(/[^\p{L}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * A cheap gate before the reader: is this worth a read at all?
+ *
+ * Sale and land posts say "bedroom" too — they were 26 wasted reads. And a
+ * caption that is only hashtags, a phone number or nothing (29 dropped unread)
+ * leaves the facts in the frames' on-screen text, so the reader gets those.
+ */
 export function looksLikeRental(caption: string): boolean {
-  return /(rent|renting|for\s*rent|ikodesh|gukodesh|kodesha|louer|location|bed\s*rooms?|bedroom|chambre|studio|apartment|appartement|furnished|self[-\s]?contain|compound|annex|ibyumba|icyumba|inzu)/i.test(
-    caption,
-  );
+  if (RENT_WORDS.test(caption)) return !SALE_WORDS.test(caption) || EXPLICIT_RENT.test(caption);
+  if (SALE_WORDS.test(caption)) return false;
+  return captionWords(caption).length < 12;
 }
 
 /** Six (or n) evenly spaced timestamps, skipping the first and last 5% (intro cards, end screens). */
@@ -172,6 +203,11 @@ export const TikTokReadSchema = z.object({
   phones: z.array(z.string()).optional().default([]),
   posterKind: z.enum(['BROKER', 'OWNER', 'UNKNOWN']).catch('UNKNOWN'),
   features: z.array(z.string()).optional().default([]),
+  units: z
+    .array(z.object({ bedrooms: nullableNum, priceRwf: nullableNum, propertyType: z.enum(PROPERTY_TYPES).nullable().optional().catch(null).transform((v) => v ?? null) }))
+    .optional()
+    .default([])
+    .catch([]),
   propertyFrames: z.array(z.number().int()).optional().default([]),
   titleEn: nullableStr,
   titleRw: nullableStr,
@@ -182,7 +218,9 @@ export type TikTokRead = z.infer<typeof TikTokReadSchema>;
 
 /** The reader's text → a validated read. Throws with the zod message on a bad shape. */
 export function parseTikTokRead(text: string): TikTokRead {
-  return TikTokReadSchema.parse(extractJsonObject(text));
+  const read = TikTokReadSchema.parse(extractJsonObject(text));
+  // No price, no period: readers default to MONTH, which reads as a fact it isn't.
+  return read.priceRwf == null ? { ...read, period: 'UNKNOWN' } : read;
 }
 
 // ── what a read becomes ──────────────────────────────────────────────────────
@@ -237,10 +275,52 @@ export function fallbackTitle(read: TikTokRead): string {
   return `${beds}${type} in ${where}`.replace(/^\w/, (c) => c.toUpperCase());
 }
 
-/** Same broker + same facts = probably the same house posted twice. */
-export function dupKey(handle: string, read: TikTokRead): string | null {
+/** A neighbourhood as people spell it → one comparable token ("Kabeza / Samuduha" → "kabeza"). */
+export function placeToken(neighbourhood: string | null | undefined): string {
+  return (neighbourhood ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/[\/,(|-]|\bkwa\b|\bnear\b/)[0]!
+    .replace(/[^a-z\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Same facts = probably the same house — posted twice by one broker, or by two
+ * brokers sharing a listing (Kigali brokers re-post each other's homes, so the
+ * handle is not part of the key). Prices are bucketed to 5% to absorb "450k"
+ * against "450,000 + commission".
+ */
+export function dupKey(_handle: string, read: Pick<TikTokRead, 'priceRwf' | 'bedrooms' | 'neighbourhood'>): string | null {
   if (read.priceRwf == null || read.bedrooms == null) return null;
-  return [handle, read.bedrooms, read.priceRwf, (read.neighbourhood ?? '').toLowerCase()].join('|');
+  const place = placeToken(read.neighbourhood);
+  if (!place) return null;
+  const bucket = Math.round(Math.log(read.priceRwf) / Math.log(1.05));
+  return [read.bedrooms, bucket, place].join('|');
+}
+
+/**
+ * One post, one or several homes. A broker's "1bd 600k / 2bd 700k / 3bd 800k"
+ * is three homes; the first keeps the video's own `tiktok:<id>` and the rest
+ * get `tiktok:<id>#2`, `#3` so each has a stable key of its own.
+ */
+export function unitReads(videoId: string, read: TikTokRead): { sourceId: string; read: TikTokRead }[] {
+  // Reads stored before tiktok-v2 have no `units` at all.
+  if ((read.units ?? []).length < 2) return [{ sourceId: `tiktok:${videoId}`, read }];
+  return read.units.map((u, i) => {
+    const unit: TikTokRead = {
+      ...read,
+      bedrooms: u.bedrooms ?? read.bedrooms,
+      priceRwf: u.priceRwf ?? read.priceRwf,
+      propertyType: u.propertyType ?? read.propertyType,
+      units: [],
+    };
+    // The reader's title names the first unit; the others get a factual one.
+    if (i > 0) Object.assign(unit, { titleEn: null, titleRw: null });
+    return { sourceId: i === 0 ? `tiktok:${videoId}` : `tiktok:${videoId}#${i + 1}`, read: unit };
+  });
 }
 
 const linkList = (urls: string[], label = '') =>
@@ -250,12 +330,12 @@ const linkList = (urls: string[], label = '') =>
 const rwf = (n: number | null) => (n != null ? { amountMicros: Math.round(n * 1_000_000), currencyCode: 'RWF' } : undefined);
 
 /** The Twenty `home` body for one read video. Undefined values are dropped by the caller. */
-export function homeBody(row: VideoRow, read: TikTokRead, opts: { frameUrls: string[]; phone: string | null; hostName: string; promptVersion: string; duplicate: boolean }) {
+export function homeBody(row: VideoRow, read: TikTokRead, opts: { frameUrls: string[]; phone: string | null; hostName: string; promptVersion: string; duplicate: boolean; sourceId?: string }) {
   const district = resolveDistrict(read, row.meta?.caption ?? '');
   const title = read.titleEn ?? fallbackTitle(read);
   return {
     source: 'TIKTOK',
-    sourceId: `tiktok:${row.videoId}`,
+    sourceId: opts.sourceId ?? `tiktok:${row.videoId}`,
     sourceUrl: linkList([row.url], 'TikTok'),
     scrapedAt: new Date().toISOString(),
     country: 'RWANDA',
@@ -270,7 +350,7 @@ export function homeBody(row: VideoRow, read: TikTokRead, opts: { frameUrls: str
     titleRw: read.titleRw ?? undefined,
     description: read.descriptionEn ?? row.meta?.caption ?? undefined,
     descriptionEn: read.descriptionEn ?? undefined,
-    notesEn: [read.priceAsWritten ? `Price as written: ${read.priceAsWritten}` : null, read.features.length ? `Features: ${read.features.join(', ')}` : null, `Read by tiktok ${opts.promptVersion}, confidence ${read.confidence}`]
+    notesEn: [read.priceAsWritten ? `Price as written: ${read.priceAsWritten}` : null, read.priceRwf == null ? 'No price in the post — ask the broker.' : null, read.features.length ? `Features: ${read.features.join(', ')}` : null, `Read by tiktok ${opts.promptVersion}, confidence ${read.confidence}`]
       .filter(Boolean)
       .join('\n'),
     // Twenty keys SELECT options in UPPER_SNAKE (live: APARTMENT, VILLA, …).

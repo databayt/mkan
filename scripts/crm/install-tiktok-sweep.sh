@@ -6,8 +6,10 @@
 #   bash scripts/crm/install-tiktok-sweep.sh --remove   # stop + remove
 #   launchctl list | grep mkan-tiktok-sweep             # is it loaded
 #
-# --limit caps how many videos each stage takes per day (the reader is claude -p on
-# the Max pool, ~20 s a video). Pattern: install-home-sweep.sh. Logs under .data/tiktok/.
+# --fetch-limit / --read-limit cap each stage per day. The reader is Groq's free
+# vision tier (~45 s apart to stay under its token minute), so 80 reads ≈ an hour.
+# With --apply the run also mirrors leads into /find. Pattern: install-home-sweep.sh.
+# Logs under .data/tiktok/.
 set -euo pipefail
 LABEL="com.databayt.mkan-tiktok-sweep"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
@@ -15,6 +17,7 @@ REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 LOGDIR="$REPO/scripts/crm/.data/tiktok"
 PNPM="$(command -v pnpm)"
 LIMIT="${TIKTOK_DAILY_LIMIT:-40}"
+READ_LIMIT="${TIKTOK_READ_LIMIT:-80}"
 if [ "${1:-}" = "--remove" ]; then
   launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
   rm -f "$PLIST"
@@ -29,7 +32,7 @@ cat > "$PLIST" <<PL
   <key>Label</key><string>$LABEL</string>
   <key>ProgramArguments</key><array>
     <string>/usr/bin/caffeinate</string><string>-i</string>
-    <string>$PNPM</string><string>-s</string><string>crm:tiktok</string><string>--apply</string><string>--notify</string><string>--limit=$LIMIT</string>
+    <string>$PNPM</string><string>-s</string><string>crm:tiktok</string><string>--apply</string><string>--notify</string><string>--fetch-limit=$LIMIT</string><string>--read-limit=$READ_LIMIT</string>
   </array>
   <key>WorkingDirectory</key><string>$REPO</string>
   <key>EnvironmentVariables</key><dict>
@@ -44,4 +47,4 @@ cat > "$PLIST" <<PL
 PL
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
-echo "installed $LABEL — daily 06:00, --limit=$LIMIT, logs in $LOGDIR/sweep.log"
+echo "installed $LABEL — daily 06:00, fetch $LIMIT / read $READ_LIMIT, logs in $LOGDIR/sweep.log"
