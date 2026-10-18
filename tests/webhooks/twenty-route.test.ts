@@ -153,6 +153,14 @@ describe('POST /api/webhooks/twenty — who owns what', () => {
     expect(listingUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ isPublished: true }) }));
   });
 
+  it('applies only what the edit changed — a script PATCH does not re-assert the title', async () => {
+    listingFindUnique.mockResolvedValue({ id: 42, claimedAt: null, isPublished: true, source: 'AIRBNB' });
+    const event = JSON.parse(homeEvent({ listingId: '3314-01' }));
+    event.record.titleAr = 'عنوان';
+    await post(JSON.stringify(event));
+    expect(listingUpdate).not.toHaveBeenCalled();
+  });
+
   it('ignores a record marked as another home’s duplicate', async () => {
     const { json } = await post(homeEvent({ homeStatus: 'DUPLICATE', publishState: 'LIVE' }));
     expect(json.ignored).toBe('duplicate');

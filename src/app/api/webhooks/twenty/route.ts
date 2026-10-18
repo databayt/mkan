@@ -109,36 +109,43 @@ export async function POST(req: Request) {
       // rule sync-down follows), and a TikTok lead's to the broker's video,
       // which crm:tiktok-mirror keeps current.
       const boardOwnsText = !listing.claimedAt && listing.source !== 'TIKTOK';
+      // Apply what this edit changed, never re-assert the whole record: every
+      // script PATCH (sync-up hourly, hygiene daily) emits home.updated, and
+      // re-reading all fields copied the board's Arabic titleAr over the site's
+      // titles on every one of them.
+      const changed = (...fields: string[]) => fields.some((f) => updatedFields.includes(f));
 
       // If operator manually set trustBandOverride to REJECT -> Unpublish
-      if (record.trustBandOverride === 'REJECT') {
+      if (changed('trustBandOverride') && record.trustBandOverride === 'REJECT') {
         updates.isPublished = false;
       }
 
       // If source listing was delisted -> Unpublish
-      if (record.stillListed === false) {
+      if (changed('stillListed') && record.stillListed === false) {
         updates.isPublished = false;
       }
 
       // Price update
-      if (boardOwnsText && record.priceNightSdg?.amountMicros != null) {
+      if (boardOwnsText && changed('priceNightSdg') && record.priceNightSdg?.amountMicros != null) {
         updates.pricePerNight = Math.round(record.priceNightSdg.amountMicros / 1_000_000);
       }
 
       // Title update
-      if (boardOwnsText && record.titleAr) {
+      if (boardOwnsText && changed('titleAr') && record.titleAr) {
         updates.title = record.titleAr;
       }
 
       // Description update
-      if (boardOwnsText && (record.descriptionAr || record.description)) {
+      if (boardOwnsText && changed('descriptionAr', 'description') && (record.descriptionAr || record.description)) {
         updates.description = record.descriptionAr || record.description;
       }
 
       // Publish state override from CRM
       // A host who claimed the home and took it down decides; the board does not
       // put it back up.
-      if (pubState === 'LIVE' && !(listing.claimedAt && !listing.isPublished)) {
+      if (!changed('publishState')) {
+        // nothing to decide
+      } else if (pubState === 'LIVE' && !(listing.claimedAt && !listing.isPublished)) {
         updates.isPublished = true;
         updates.draft = false;
         updates.lastAvailabilityConfirmedAt = new Date();
@@ -179,7 +186,7 @@ export async function POST(req: Request) {
           ? await db.user.findFirst({ where: { sourceHostId: String(airbnbHostId) } })
           : null;
 
-      if (user) {
+      if (user && updatedFields.some((f) => f === 'phone' || f === 'whatsapp')) {
         // Twenty splits the calling code off; storing the bare national part
         // broke every wa.me link built from it.
         const hint = record.country === 'RWANDA' || String(user.sourceHostId ?? '').startsWith('tiktok:') ? 'RW' : 'SD';
