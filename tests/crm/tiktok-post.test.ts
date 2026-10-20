@@ -8,7 +8,10 @@ import {
   captionFor,
   endCardSvg,
   ineligibleReason,
-  overlaySvg,
+  lowerThirdSvg,
+  brandTimeline,
+  brokerVideoUrl,
+  cornerSvg,
   pickToday,
   refInText,
   refOf,
@@ -97,7 +100,9 @@ describe('caption + artwork', () => {
     expect(refInText(c)).toBe('K77');
   });
   it('escapes text in the SVG', () => {
-    expect(overlaySvg(row({ area: 'A & B <x>' }))).toContain('A &amp; B &lt;x&gt;');
+    expect(lowerThirdSvg(row({ area: 'A & B <x>' }))).toContain('A &amp; B &lt;x&gt;');
+    expect(cornerSvg('kigalihomes')).toContain('Video @kigalihomes');
+    expect(cornerSvg(null)).not.toContain('Video @');
     expect(endCardSvg(row(), '+250 788 000 000')).toContain('+250 788 000 000');
   });
   it('asks brokers in English and Kinyarwanda', () => {
@@ -125,5 +130,20 @@ describe('broker ask link', () => {
     const link = waLink('+250 788 000 000', m);
     expect(link.startsWith('https://wa.me/250788000000?text=')).toBe(true);
     expect(decodeURIComponent(link.split('text=')[1])).toBe(m);
+  });
+});
+
+describe('broker video + brand timeline', () => {
+  it('finds the TikTok video a broker lead was cut from', () => {
+    const lead = row({ source: 'TIKTOK', hostSourceId: 'tiktok:KigaliHomes', photoUrls: ['https://cdn.example/mkan/uploads/tiktok/7412345678901234567/1.jpg'] });
+    expect(brokerVideoUrl(lead)).toBe('https://www.tiktok.com/@kigalihomes/video/7412345678901234567');
+    expect(brokerVideoUrl(row())).toBeNull();
+  });
+  it('credits the broker in the caption', () => {
+    expect(captionFor(row({ hostSourceId: 'tiktok:kigalihomes' }), '+250 788 000 000')).toContain('🎥 @kigalihomes');
+    expect(captionFor(row(), '+250 788 000 000')).not.toContain('🎥');
+  });
+  it('lays sting, body and end card on crossfades', () => {
+    expect(brandTimeline(10)).toEqual({ bodyAt: 1.05, endAt: 10.7, total: 13.7 });
   });
 });

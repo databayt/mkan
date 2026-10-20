@@ -3,7 +3,8 @@
  *
  *   pnpm tt:run                     pick → render → card (the 07:00 launchd tick)
  *   pnpm tt:pick [--n=3] [--dry]    choose today's homes → .data/tiktok-post/<date>/queue.json
- *   pnpm tt:render [--id=5771]      9:16 slideshow per queued home (or one listing, for a look)
+ *   pnpm tt:render [--id=5771] [--slideshow]   9:16 branded video per queued home (or one listing, for a look):
+ *                                   the broker's own video enhanced, else a photo slideshow
  *   pnpm tt:card                    upload each video + its caption to Slack #mkan
  *   pnpm tt:posted <ref> <url>      the poster's receipt: the home rests 30 days
  *   pnpm tt:stats [--notify]        views / likes of our posts, read back by yt-dlp
@@ -19,7 +20,8 @@
  * Who is on the page: monthly homes with ≥4 photos and a price — owners' and
  * field-agent homes (MANUAL), Airbnb hosts who took a monthly price, and a
  * broker's TikTok lead only once that broker said YES (Twenty host
- * `repostConsent`). The frames are cut from the broker's own video.
+ * `repostConsent`). For a broker lead the source is that broker's own video,
+ * stabilised, graded and muted; mkan's brand (kun brand-kit.json) wraps every piece.
  *
  * Env: MKAN_KIGALI_WHATSAPP (the number on the end card and in the caption),
  * TIKTOK_PAGE_HANDLE (default mkan.rw), TIKTOK_PAGE_SECUID (when yt-dlp's
@@ -36,13 +38,19 @@ import sharp from 'sharp';
 import { postToMkan, recordRun, uploadToMkan } from './notify';
 import { twentyClient, phoneOf, type Phones } from './twenty-rest';
 import {
+  brandTimeline,
   brokerAsk,
+  brokerHandle,
+  brokerVideoUrl,
   captionFor,
+  cornerSvg,
   endCardSvg,
   H,
   ineligibleReason,
   MAX_SLIDES,
-  overlaySvg,
+  lowerThirdSvg,
+  pillSvg,
+  stingSvg,
   pickToday,
   refInText,
   refOf,
@@ -147,61 +155,173 @@ const readQueue = (): PostRow[] => {
 };
 
 // ── render ───────────────────────────────────────────────────────────────────
+// The full ffmpeg build carries vidstab and the other filters the enhance step
+// needs; the slim Homebrew build is the fallback (no stabilising then).
+const FFMPEG_FULL = '/opt/homebrew/opt/ffmpeg-full/bin';
+const FF = existsSync(join(FFMPEG_FULL, 'ffmpeg')) ? join(FFMPEG_FULL, 'ffmpeg') : 'ffmpeg';
+const FFPROBE = existsSync(join(FFMPEG_FULL, 'ffprobe')) ? join(FFMPEG_FULL, 'ffprobe') : 'ffprobe';
+/** A broker video longer than this is cut; the reel profile caps the whole piece at 60 s. */
+const MAX_BODY = 45;
+
 function ffmpeg(args: string[]): void {
   try {
-    execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 16 * 1024 * 1024 });
+    execFileSync(FF, ['-hide_banner', '-loglevel', 'error', '-y', ...args], { stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 16 * 1024 * 1024 });
   } catch (e) {
     throw new Error(`ffmpeg: ${String((e as { stderr?: string }).stderr ?? (e as Error).message).trim().split('\n').slice(-3).join(' | ')}`);
   }
 }
 
-/** One home → `<dir>/<ref>.mp4`, ~16 s: photos with a slow push-in, the overlay, the end card. */
+function probe(path: string): { w: number; h: number; dur: number } | null {
+  try {
+    const j = JSON.parse(execFileSync(FFPROBE, ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height:format=duration', '-of', 'json', path], { encoding: 'utf8' }));
+    const st = j.streams?.[0];
+    return st ? { w: st.width, h: st.height, dur: Number(j.format?.duration) || 0 } : null;
+  } catch {
+    return null;
+  }
+}
+
+const hasFilter = (() => {
+  let list: string | null = null;
+  return (name: string): boolean => {
+    list ??= execFileSync(FF, ['-hide_banner', '-filters'], { encoding: 'utf8' });
+    return new RegExp(`\\s${name}\\s`).test(list);
+  };
+})();
+
+/**
+ * The broker's own video, enhanced: stabilised, lightly denoised, graded,
+ * sharpened, framed to 9:16 (a landscape clip sits on a blurred fill instead of
+ * losing its sides) and muted — the poster adds a trending sound in the app.
+ * Null when there is no video to get (a photo post, a deleted video).
+ */
+async function videoBody(r: PostRow, work: string): Promise<{ path: string; dur: number } | null> {
+  const url = brokerVideoUrl(r);
+  if (!url) return null;
+  const id = url.split('/').pop()!;
+  const srcDir = join(DATA, 'src');
+  mkdirSync(srcDir, { recursive: true });
+  const src = join(srcDir, `${id}.mp4`);
+  if (!existsSync(src)) {
+    try {
+      execFileSync('yt-dlp', ['-q', '--no-warnings', '-f', 'b[ext=mp4]/b', '-o', src, url], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 180_000 });
+    } catch (e) {
+      console.warn(`  … ${refOf(r)}: no broker video (${String((e as { stderr?: string }).stderr ?? '').trim().split('\n').pop()?.slice(0, 100)}) — slideshow instead`);
+      return null;
+    }
+  }
+  const info = probe(src);
+  if (!info || info.dur < 3) return null;
+  const dur = Math.min(info.dur, MAX_BODY);
+  const out = join(work, 'body.mp4');
+  const grade = 'hqdn3d=1.5:1.5:6:6,eq=contrast=1.04:saturation=1.08,unsharp=5:5:0.5:5:5:0';
+  let stab = '';
+  if (hasFilter('vidstabdetect')) {
+    const trf = join(work, 'shake.trf');
+    ffmpeg(['-t', String(dur), '-i', src, '-vf', `vidstabdetect=shakiness=5:accuracy=15:result=${trf}`, '-f', 'null', '-']);
+    stab = `vidstabtransform=input=${trf}:smoothing=20:optzoom=1,`;
+  }
+  const frame =
+    info.w > info.h
+      ? // landscape: blurred cover behind, the whole frame in front
+        `split[a][b];[a]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},gblur=sigma=40,eq=brightness=-0.06[bg];[b]scale=${W}:-2:flags=lanczos[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2`
+      : `scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H}`;
+  ffmpeg(['-t', String(dur), '-i', src, '-filter_complex', `[0:v]${stab}${grade},${frame},fps=30,setsar=1,format=yuv420p[v]`, '-map', '[v]', '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', out]);
+  return { path: out, dur: probe(out)?.dur || dur };
+}
+
+/** No video: the home's photos with a slow push-in, crossfaded. */
+async function slideshowBody(r: PostRow, work: string): Promise<{ path: string; dur: number }> {
+  const ref = refOf(r);
+  const slides: string[] = [];
+  for (const url of r.photoUrls) {
+    if (slides.length >= MAX_SLIDES) break;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const out = join(work, `s${slides.length}.jpg`);
+      // 2× the frame so the push-in stays sharp instead of stepping pixel by pixel.
+      await sharp(Buffer.from(await res.arrayBuffer())).rotate().resize(W * 2, H * 2, { fit: 'cover', position: 'attention' }).jpeg({ quality: 88 }).toFile(out);
+      slides.push(out);
+    } catch {
+      /* a dead photo is skipped, not fatal */
+    }
+  }
+  if (slides.length < 3) throw new Error(`${ref}: only ${slides.length} photos downloaded`);
+  const SLIDE = 2.6;
+  const FADE = 0.4;
+  const t = timeline(slides.length, SLIDE, FADE);
+  const frames = Math.round(SLIDE * 30);
+  const f: string[] = slides.map(
+    (_, i) => `[${i}:v]zoompan=z='min(zoom+0.0009,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=30,setsar=1,format=yuv420p[v${i}]`,
+  );
+  let last = 'v0';
+  t.offsets.forEach((off, i) => {
+    f.push(`[${last}][v${i + 1}]xfade=transition=fade:duration=${FADE}:offset=${off}[x${i + 1}]`);
+    last = `x${i + 1}`;
+  });
+  const out = join(work, 'body.mp4');
+  ffmpeg([...slides.flatMap((p) => ['-i', p]), '-filter_complex', f.join(';'), '-map', `[${last}]`, '-t', String(t.slidesLen), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-pix_fmt', 'yuv420p', out]);
+  return { path: out, dur: t.slidesLen };
+}
+
+/**
+ * The brand pass over any body: the ivory sting, the corner mark with the
+ * broker's credit fading in, the lower third sliding up, the WhatsApp end card.
+ */
+async function brandPass(r: PostRow, body: { path: string; dur: number }, work: string, phone: string): Promise<string> {
+  const png = async (name: string, svg: string) => {
+    const p = join(work, name);
+    await sharp(Buffer.from(svg)).png().toFile(p);
+    return p;
+  };
+  const [sting, corner, lower, pill, end] = await Promise.all([
+    png('sting.png', stingSvg()),
+    png('corner.png', cornerSvg(brokerHandle(r.hostSourceId))),
+    png('lower.png', lowerThirdSvg(r)),
+    png('pill.png', pillSvg(r)),
+    png('end.png', endCardSvg(r, phone)),
+  ]);
+  const t = brandTimeline(body.dur);
+  // The lower third holds 7 s, then hands over to the pill — on a short slideshow it simply stays.
+  const hold = body.dur > 11;
+  const f = [
+    `[1:v]scale=${W * 2}:${H * 2},zoompan=z='1+0.0012*on':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=42:s=${W}x${H}:fps=30,setsar=1,format=yuv420p[sting]`,
+    `[0:v]fps=30,setsar=1,format=yuv420p[raw]`,
+    `[2:v]format=rgba,fade=in:st=0.3:d=0.4:alpha=1[corner]`,
+    `[3:v]format=rgba,fade=in:st=0.7:d=0.35:alpha=1${hold ? ',fade=out:st=7:d=0.4:alpha=1' : ''}[lower]`,
+    `[4:v]format=rgba,fade=in:st=7.3:d=0.4:alpha=1[pill]`,
+    `[raw][corner]overlay=0:0:shortest=1[b1]`,
+    `[b1][lower]overlay=x=0:y='if(lt(t,0.7),240,max(0,240-(t-0.7)*640))':eval=frame:shortest=1[b2]`,
+    hold ? `[b2][pill]overlay=0:0:shortest=1,format=yuv420p[body]` : `[b2]format=yuv420p[body];[4:v]nullsink`,
+    `[5:v]scale=${W}:${H},setsar=1,fps=30,format=yuv420p[end]`,
+    `[sting][body]xfade=transition=fade:duration=0.35:offset=${t.bodyAt}[sb]`,
+    `[sb][end]xfade=transition=fade:duration=0.35:offset=${t.endAt}[out]`,
+  ];
+  const mezz = join(work, 'mezz.mp4');
+  ffmpeg([
+    '-i', body.path,
+    '-loop', '1', '-t', '1.4', '-i', sting,
+    '-loop', '1', '-i', corner,
+    '-loop', '1', '-i', lower,
+    '-loop', '1', '-i', pill,
+    '-loop', '1', '-t', '3', '-i', end,
+    '-filter_complex', f.join(';'), '-map', '[out]', '-t', String(t.total), '-an',
+    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-pix_fmt', 'yuv420p', mezz,
+  ]);
+  return mezz;
+}
+
+/** One home → `<dir>/<ref>.mp4`: source (broker video, else photos) → enhance → brand → reel encode. */
 async function renderOne(r: PostRow, dir: string, phone: string): Promise<string> {
   const ref = refOf(r);
   const work = join(dir, `.work-${ref}`);
   mkdirSync(work, { recursive: true });
   try {
-    const slides: string[] = [];
-    for (const url of r.photoUrls) {
-      if (slides.length >= MAX_SLIDES) break;
-      try {
-        const res = await fetch(url);
-        if (!res.ok) continue;
-        const out = join(work, `s${slides.length}.jpg`);
-        // 2× the frame so the push-in stays sharp instead of stepping pixel by pixel.
-        await sharp(Buffer.from(await res.arrayBuffer())).rotate().resize(W * 2, H * 2, { fit: 'cover', position: 'attention' }).jpeg({ quality: 88 }).toFile(out);
-        slides.push(out);
-      } catch {
-        /* a dead photo is skipped, not fatal */
-      }
-    }
-    if (slides.length < 3) throw new Error(`${ref}: only ${slides.length} photos downloaded`);
-    const overlay = join(work, 'overlay.png');
-    const end = join(work, 'end.png');
-    await sharp(Buffer.from(overlaySvg(r))).png().toFile(overlay);
-    await sharp(Buffer.from(endCardSvg(r, phone))).png().toFile(end);
-
-    const SLIDE = 2.6;
-    const FADE = 0.4;
-    const t = timeline(slides.length, SLIDE, FADE);
-    const frames = Math.round(SLIDE * 30);
-    const inputs = slides.flatMap((s) => ['-i', s]);
-    const f: string[] = slides.map(
-      (_, i) =>
-        `[${i}:v]zoompan=z='min(zoom+0.0009,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=30,setsar=1,format=yuv420p[v${i}]`,
-    );
-    let last = 'v0';
-    t.offsets.forEach((off, i) => {
-      f.push(`[${last}][v${i + 1}]xfade=transition=fade:duration=${FADE}:offset=${off}[x${i + 1}]`);
-      last = `x${i + 1}`;
-    });
-    const ovIdx = slides.length;
-    const endIdx = slides.length + 1;
-    f.push(`[${ovIdx}:v]format=rgba[ov]`, `[${last}][ov]overlay=0:0:shortest=1,format=yuv420p[body]`);
-    f.push(`[${endIdx}:v]scale=${W}:${H},setsar=1,fps=30,format=yuv420p[end]`);
-    f.push(`[body][end]xfade=transition=fade:duration=${FADE}:offset=${t.endOffset}[out]`);
-    const mezz = join(work, 'mezz.mp4');
-    ffmpeg([...inputs, '-loop', '1', '-i', overlay, '-loop', '1', '-t', '3', '-i', end, '-filter_complex', f.join(';'), '-map', '[out]', '-t', String(t.total), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-pix_fmt', 'yuv420p', mezz]);
+    const video = flag('slideshow') ? null : await videoBody(r, work);
+    const body = video ?? (await slideshowBody(r, work));
+    console.log(`  … ${ref}: ${video ? 'broker video, enhanced' : 'photo slideshow'} (${body.dur.toFixed(1)} s)`);
+    const mezz = await brandPass(r, body, work, phone);
 
     const out = join(dir, `${ref}.mp4`);
     const media = join(KUN, '.claude/skills/edit/scripts/media.sh');

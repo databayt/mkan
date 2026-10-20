@@ -146,6 +146,7 @@ export function captionFor(r: PostRow, whatsapp: string): string {
     `💰 ${price} / month`,
     `📲 WhatsApp ${whatsapp} — send "${ref}"`,
     `🇷🇼 Inzu ikodeshwa${rooms} i ${place} — ${price} ku kwezi. Ohereza "${ref}" kuri WhatsApp.`,
+    ...(brokerHandle(r.hostSourceId) ? [`🎥 @${brokerHandle(r.hostSourceId)}`] : []),
     '',
     [...new Set(tags)].join(' '),
   ].join('\n');
@@ -173,53 +174,114 @@ export function waLink(phone: string, text = ''): string {
 }
 
 // ── artwork (SVG → PNG via sharp in the runner) ──────────────────────────────
+//
+// mkan's brand kit (kun content/media/brand-kit.json → production.mkan): ivory
+// canvas, slate ink, clay accent, Thmanyah type, the arch mark placed in post.
+// Every layer stays inside TikTok's safe area: the top 130 px (status bar,
+// "Following | For You"), the bottom ~480 px (caption, sound) and the right
+// ~150 px (like / comment rail).
 
 export const W = 1080;
 export const H = 1920;
-const FONT = "'Helvetica Neue', Helvetica, Arial, sans-serif";
+export const BRAND = { canvas: '#faf8f5', ink: '#1a2530', accent: '#e05638', soft: '#e5d9c5' } as const;
+const SANS = "'Thmanyah Sans', 'Helvetica Neue', Arial, sans-serif";
+const DISPLAY = "'Thmanyah Serif Display', Georgia, serif";
+/** The arch mark (mkan public/logo.svg), 197 × 179. */
+const MARK_PATH =
+  'M68.3674 17.1638C81.5791 -5.72128 114.603 -5.72128 127.815 17.1638L191.532 127.507C204.746 150.392 188.227 179 161.801 179H144.681H34.3818C7.9559 179 -8.56365 150.392 4.65052 127.507L68.3674 17.1638ZM98.0913 93.1778L51.5021 179H144.681L98.0913 93.1778Z';
+const mark = (x: number, y: number, w: number, fill: string): string =>
+  `<path transform="translate(${x} ${y}) scale(${(w / 197).toFixed(4)})" fill-rule="evenodd" d="${MARK_PATH}" fill="${fill}"/>`;
 
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/**
- * The text that rides over every photo. Kept inside TikTok's safe area: the top
- * 130 px (status bar, "Following | For You"), the bottom ~480 px (caption,
- * sound) and the right ~150 px (like / comment rail) stay clear.
- */
-export function overlaySvg(r: PostRow): string {
-  const x = 64;
+/** The opening 1.4 s: the mark and the page's promise on ivory. */
+export function stingSvg(): string {
+  const cx = W / 2;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
-  <defs>
-    <linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0.62"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
-    <linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="0.6" stop-color="#000" stop-opacity="0.66"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
-  </defs>
-  <rect x="0" y="0" width="${W}" height="620" fill="url(#t)"/>
-  <rect x="0" y="980" width="${W}" height="640" fill="url(#b)"/>
-  <rect x="${x}" y="170" width="300" height="58" rx="29" fill="#16a34a"/>
-  <text x="${x + 150}" y="210" font-family="${FONT}" font-size="30" font-weight="700" fill="#fff" text-anchor="middle" letter-spacing="2">FOR RENT</text>
-  <text x="${x}" y="335" font-family="${FONT}" font-size="86" font-weight="800" fill="#fff">${esc(formatRwf(r.priceMonth ?? 0))}</text>
-  <text x="${x}" y="398" font-family="${FONT}" font-size="44" font-weight="500" fill="#fff" fill-opacity="0.9">per month</text>
-  <text x="${x}" y="1250" font-family="${FONT}" font-size="64" font-weight="800" fill="#fff">${esc(placeLine(r))}</text>
-  <text x="${x}" y="1322" font-family="${FONT}" font-size="44" font-weight="500" fill="#fff" fill-opacity="0.92">${esc(factsLine(r))}</text>
-  <rect x="${x}" y="1360" width="250" height="56" rx="12" fill="#fff" fill-opacity="0.95"/>
-  <text x="${x + 125}" y="1399" font-family="${FONT}" font-size="32" font-weight="700" fill="#111" text-anchor="middle">Ref ${esc(refOf(r))}</text>
+  <rect width="${W}" height="${H}" fill="${BRAND.canvas}"/>
+  ${mark(cx - 120, 640, 240, BRAND.ink)}
+  <text x="${cx}" y="1040" font-family="${DISPLAY}" font-size="150" font-weight="900" fill="${BRAND.ink}" text-anchor="middle">mkan</text>
+  <rect x="${cx - 60}" y="1090" width="120" height="8" rx="4" fill="${BRAND.accent}"/>
+  <text x="${cx}" y="1180" font-family="${SANS}" font-size="46" font-weight="500" fill="${BRAND.ink}" text-anchor="middle">Kigali · monthly rentals</text>
 </svg>`;
 }
 
-/** The last 3 seconds: who to call and what to send. */
+/** Top-start corner, on for the whole body: the mark, the page, and the broker's credit. */
+export function cornerSvg(credit: string | null): string {
+  const x = 56;
+  const chip = credit
+    ? `<rect x="${x}" y="262" width="${Math.min(820, 120 + credit.length * 22)}" height="56" rx="28" fill="${BRAND.ink}" fill-opacity="0.72"/>
+  <text x="${x + 28}" y="300" font-family="${SANS}" font-size="30" font-weight="500" fill="${BRAND.canvas}">Video @${esc(credit)}</text>`
+    : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  <defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${BRAND.ink}" stop-opacity="0.55"/><stop offset="1" stop-color="${BRAND.ink}" stop-opacity="0"/></linearGradient></defs>
+  <rect width="${W}" height="420" fill="url(#t)"/>
+  ${mark(x, 160, 76, BRAND.canvas)}
+  <text x="${x + 96}" y="222" font-family="${DISPLAY}" font-size="62" font-weight="900" fill="${BRAND.canvas}">mkan</text>
+  ${chip}
+</svg>`;
+}
+
+/** The lower third: price, place, rooms, the ref — slides up a beat after the body starts. */
+export function lowerThirdSvg(r: PostRow): string {
+  const x = 56;
+  const top = 1000;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  <rect x="${x}" y="${top}" width="${W - 2 * x - 120}" height="420" rx="36" fill="${BRAND.ink}" fill-opacity="0.9"/>
+  <rect x="${x}" y="${top + 36}" width="10" height="150" rx="5" fill="${BRAND.accent}"/>
+  <text x="${x + 44}" y="${top + 112}" font-family="${DISPLAY}" font-size="88" font-weight="900" fill="${BRAND.canvas}">${esc(formatRwf(r.priceMonth ?? 0))}</text>
+  <text x="${x + 44}" y="${top + 172}" font-family="${SANS}" font-size="40" font-weight="500" fill="${BRAND.soft}">per month</text>
+  <text x="${x + 44}" y="${top + 262}" font-family="${SANS}" font-size="54" font-weight="500" fill="${BRAND.canvas}">${esc(placeLine(r))}</text>
+  <text x="${x + 44}" y="${top + 322}" font-family="${SANS}" font-size="40" font-weight="500" fill="${BRAND.soft}">${esc(factsLine(r))}</text>
+  <rect x="${x + 44}" y="${top + 348}" width="230" height="52" rx="26" fill="${BRAND.accent}"/>
+  <text x="${x + 159}" y="${top + 384}" font-family="${SANS}" font-size="30" font-weight="500" fill="#fff" text-anchor="middle">Ref ${esc(refOf(r))}</text>
+</svg>`;
+}
+
+/** After the lower third leaves: a small price pill, so the house gets the screen back. */
+export function pillSvg(r: PostRow): string {
+  const x = 56;
+  const y = 1330;
+  const text = `${formatRwf(r.priceMonth ?? 0)} / mo · ${placeLine(r)}`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  <rect x="${x}" y="${y}" width="${Math.min(W - 2 * x - 120, 80 + text.length * 21)}" height="76" rx="38" fill="${BRAND.ink}" fill-opacity="0.85"/>
+  <rect x="${x + 24}" y="${y + 26}" width="24" height="24" rx="12" fill="${BRAND.accent}"/>
+  <text x="${x + 64}" y="${y + 50}" font-family="${SANS}" font-size="34" font-weight="500" fill="${BRAND.canvas}">${esc(text)}</text>
+</svg>`;
+}
+
+/** The last 3 seconds: who to message and what to send. */
 export function endCardSvg(r: PostRow, whatsapp: string): string {
   const cx = W / 2;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
-  <rect width="${W}" height="${H}" fill="#0b1220"/>
-  <text x="${cx}" y="430" font-family="${FONT}" font-size="120" font-weight="800" fill="#fff" text-anchor="middle">mkan</text>
-  <text x="${cx}" y="500" font-family="${FONT}" font-size="38" font-weight="500" fill="#fff" fill-opacity="0.7" text-anchor="middle">Homes for rent in Kigali</text>
-  <rect x="120" y="640" width="${W - 240}" height="300" rx="36" fill="#16a34a"/>
-  <text x="${cx}" y="735" font-family="${FONT}" font-size="44" font-weight="600" fill="#fff" text-anchor="middle">WhatsApp</text>
-  <text x="${cx}" y="840" font-family="${FONT}" font-size="76" font-weight="800" fill="#fff" text-anchor="middle">${esc(whatsapp)}</text>
-  <text x="${cx}" y="900" font-family="${FONT}" font-size="34" font-weight="500" fill="#fff" fill-opacity="0.9" text-anchor="middle">tap the WhatsApp button on our profile</text>
-  <text x="${cx}" y="1070" font-family="${FONT}" font-size="50" font-weight="600" fill="#fff" text-anchor="middle">Send this code:</text>
-  <text x="${cx}" y="1180" font-family="${FONT}" font-size="104" font-weight="800" fill="#fde047" text-anchor="middle">${esc(refOf(r))}</text>
-  <text x="${cx}" y="1290" font-family="${FONT}" font-size="36" font-weight="500" fill="#fff" fill-opacity="0.7" text-anchor="middle">More homes: mkan.sd/find</text>
+  <rect width="${W}" height="${H}" fill="${BRAND.ink}"/>
+  ${mark(cx - 70, 250, 140, BRAND.canvas)}
+  <text x="${cx}" y="520" font-family="${DISPLAY}" font-size="110" font-weight="900" fill="${BRAND.canvas}" text-anchor="middle">mkan</text>
+  <text x="${cx}" y="590" font-family="${SANS}" font-size="40" font-weight="500" fill="${BRAND.soft}" text-anchor="middle">Homes for rent in Kigali</text>
+  <rect x="110" y="680" width="${W - 220}" height="270" rx="36" fill="${BRAND.accent}"/>
+  <text x="${cx}" y="770" font-family="${SANS}" font-size="44" font-weight="500" fill="#fff" text-anchor="middle">WhatsApp</text>
+  <text x="${cx}" y="880" font-family="${DISPLAY}" font-size="80" font-weight="900" fill="#fff" text-anchor="middle">${esc(whatsapp)}</text>
+  <text x="${cx}" y="1070" font-family="${SANS}" font-size="48" font-weight="500" fill="${BRAND.canvas}" text-anchor="middle">Send this code</text>
+  <text x="${cx}" y="1190" font-family="${DISPLAY}" font-size="110" font-weight="900" fill="${BRAND.soft}" text-anchor="middle">${esc(refOf(r))}</text>
+  <text x="${cx}" y="1300" font-family="${SANS}" font-size="36" font-weight="500" fill="${BRAND.soft}" text-anchor="middle">More homes: mkan.sd/find</text>
 </svg>`;
+}
+
+/** The TikTok video a broker lead came from: its frames live at …/uploads/tiktok/<videoId>/<n>.jpg. */
+export function brokerVideoUrl(r: Pick<PostRow, 'photoUrls' | 'hostSourceId'>): string | null {
+  const handle = brokerHandle(r.hostSourceId);
+  const id = r.photoUrls.map((u) => u.match(/\/uploads\/tiktok\/(\d{8,})\//)?.[1]).find(Boolean);
+  return handle && id ? `https://www.tiktok.com/@${handle}/video/${id}` : null;
+}
+
+/**
+ * Sting → body → end card, joined by crossfades. Returns each join's offset and
+ * the total length; `body` is the enhanced video or the slideshow, in seconds.
+ */
+export function brandTimeline(body: number, sting = 1.4, end = 3, fade = 0.35): { bodyAt: number; endAt: number; total: number } {
+  const bodyAt = +(sting - fade).toFixed(3);
+  const endAt = +(bodyAt + body - fade).toFixed(3);
+  return { bodyAt, endAt, total: +(endAt + end).toFixed(3) };
 }
 
 /** xfade timeline: n slides of `slide` s each, `fade` s crossfades, then the end card. */
