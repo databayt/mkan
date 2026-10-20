@@ -6,6 +6,11 @@ import { describe, expect, it } from 'vitest';
 import {
   brokerAsk,
   captionFor,
+  carouselCaption,
+  carouselHomeSvg,
+  carouselThemes,
+  pickCarousel,
+  wrap,
   endCardSvg,
   ineligibleReason,
   lowerThirdSvg,
@@ -145,5 +150,40 @@ describe('broker video + brand timeline', () => {
   });
   it('lays sting, body and end card on crossfades', () => {
     expect(brandTimeline(10)).toEqual({ bodyAt: 1.05, endAt: 10.7, total: 13.7 });
+  });
+});
+
+describe('data carousel', () => {
+  const pool = [
+    row({ id: 1, district: 'Gasabo', priceMonth: 200_000, bedrooms: 1 }),
+    row({ id: 2, district: 'Gasabo', priceMonth: 350_000, bedrooms: 2 }),
+    row({ id: 3, district: 'Gasabo', priceMonth: 500_000, bedrooms: 2 }),
+    row({ id: 4, district: 'Gasabo', priceMonth: 900_000, bedrooms: 3 }),
+    row({ id: 5, district: 'Kicukiro', priceMonth: 400_000, bedrooms: 2 }),
+    row({ id: 6, district: 'Gasabo', priceMonth: null }),
+  ];
+  it('takes any home with facts — no consent needed, no photos used', () => {
+    const lead = row({ id: 9, source: 'TIKTOK', hostSourceId: 'tiktok:x', district: 'Gasabo', photoUrls: [] });
+    const all = carouselThemes([...pool, lead]).find((t) => t.theme.slug === 'district-gasabo')!;
+    expect(all.homes.map((r) => r.id)).toContain(9);
+    expect(all.homes.map((r) => r.id)).not.toContain(6);
+  });
+  it('rotates the theme kind by day and lists homes cheapest first', () => {
+    const day0 = 20_001 * 86_400_000; // a day index divisible by 3 → district
+    const c = pickCarousel(pool, {}, day0, 3)!;
+    expect(c.theme.slug).toBe('district-gasabo');
+    const prices = c.homes.map((r) => r.priceMonth!);
+    expect([...prices].sort((a, b) => a - b)).toEqual(prices);
+    expect(pickCarousel(pool, {}, day0 + 86_400_000, 3)!.theme.kind).toBe('budget');
+  });
+  it('rests a shown home 14 days', () => {
+    const day0 = 20_000 * 86_400_000;
+    const shown = Object.fromEntries(pool.map((r) => [refOf(r), new Date(day0 - 86_400_000).toISOString()]));
+    expect(pickCarousel(pool, shown, day0, 3)).toBeNull();
+  });
+  it('wraps, escapes and carries the ref + number', () => {
+    expect(wrap('Homes for rent in Kicukiro', 14)).toEqual(['Homes for rent', 'in Kicukiro']);
+    expect(carouselHomeSvg(row({ id: 77, area: 'A & B' }), 1, 5, '+250 788 000 000')).toContain('K77');
+    expect(carouselCaption(carouselThemes(pool)[0]!.theme, pool.slice(0, 2), '+250 788 000 000')).toContain('agent or owner');
   });
 });

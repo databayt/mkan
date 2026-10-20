@@ -1,10 +1,11 @@
 /**
  * mkan's own Kigali TikTok page — the daily video queue.
  *
- *   pnpm tt:run                     pick → render → card (the 07:00 launchd tick)
+ *   pnpm tt:run                     pick → render → card, then the carousel (the 07:00 launchd tick)
  *   pnpm tt:pick [--n=3] [--dry]    choose today's homes → .data/tiktok-post/<date>/queue.json
  *   pnpm tt:render [--id=5771] [--slideshow]   9:16 branded video per queued home (or one listing, for a look):
  *                                   the broker's own video enhanced, else a photo slideshow
+ *   pnpm tt:carousel [--dry]        today's data carousel (facts only, any home) → slides + caption
  *   pnpm tt:card                    upload each video + its caption to Slack #mkan
  *   pnpm tt:posted <ref> <url>      the poster's receipt: the home rests 30 days
  *   pnpm tt:stats [--notify]        views / likes of our posts, read back by yt-dlp
@@ -43,6 +44,10 @@ import {
   brokerHandle,
   brokerVideoUrl,
   captionFor,
+  carouselCaption,
+  carouselCoverSvg,
+  carouselEndSvg,
+  carouselHomeSvg,
   cornerSvg,
   endCardSvg,
   H,
@@ -51,6 +56,7 @@ import {
   lowerThirdSvg,
   pillSvg,
   stingSvg,
+  pickCarousel,
   pickToday,
   refInText,
   refOf,
@@ -371,12 +377,12 @@ async function render(): Promise<string[]> {
 }
 
 // ── card ─────────────────────────────────────────────────────────────────────
-async function cdnCopy(path: string, name: string): Promise<string | null> {
+async function cdnCopy(path: string, name: string, contentType = 'video/mp4'): Promise<string | null> {
   try {
     const s3 = await import('@/lib/s3');
     if (!s3.isS3Configured()) return null;
     const ns = process.env.NEXT_PUBLIC_CDN_NAMESPACE?.trim() || 'mkan';
-    return await s3.putObject({ key: `${ns}/uploads/tiktok-post/${name}`, body: readFileSync(path), contentType: 'video/mp4', cacheControl: 'public, max-age=31536000, immutable' });
+    return await s3.putObject({ key: `${ns}/uploads/tiktok-post/${name}`, body: readFileSync(path), contentType, cacheControl: 'public, max-age=31536000, immutable' });
   } catch (e) {
     console.warn(`  ! CDN copy: ${(e as Error).message}`);
     return null;
@@ -496,6 +502,64 @@ async function ask(): Promise<void> {
   }
 }
 
+// ── carousel ─────────────────────────────────────────────────────────────────
+const SHOWN = join(DATA, 'carousel.json');
+
+/**
+ * Today's data carousel → `<date>/carousel/<n>.jpg` + `caption.txt`: a cover,
+ * one slide per home, the WhatsApp slide. Facts only, so every Kigali monthly
+ * home qualifies, consent or not. --notify puts the slides on the CDN and the
+ * links + caption in #mkan for the phone to post as a photo carousel.
+ */
+async function carousel(): Promise<string[]> {
+  const phone = whatsapp();
+  const rows = await loadRows({});
+  const shown: Record<string, string> = existsSync(SHOWN) ? JSON.parse(readFileSync(SHOWN, 'utf8')) : {};
+  const pickd = pickCarousel(rows, shown);
+  if (!pickd) {
+    console.log('carousel: no theme has enough homes not shown in the last 14 days');
+    return [];
+  }
+  const { theme, homes } = pickd;
+  console.log(`carousel: ${theme.title} — ${homes.map(refOf).join(', ')}`);
+  if (flag('dry')) return [];
+  const dir = join(dayDir(), 'carousel');
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  const svgs = [carouselCoverSvg(theme, homes.length), ...homes.map((r, i) => carouselHomeSvg(r, i + 1, homes.length, phone)), carouselEndSvg(phone)];
+  const files: string[] = [];
+  for (const [i, svg] of svgs.entries()) {
+    const f = join(dir, `${i + 1}.jpg`);
+    await sharp(Buffer.from(svg)).jpeg({ quality: 92, chromaSubsampling: '4:4:4' }).toFile(f);
+    files.push(f);
+  }
+  const caption = carouselCaption(theme, homes, phone);
+  writeFileSync(join(dir, 'caption.txt'), caption);
+  const now = new Date().toISOString();
+  for (const r of homes) shown[refOf(r)] = now;
+  writeFileSync(SHOWN, JSON.stringify(shown, null, 2));
+  console.log(`  🖼  ${files.length} slides → ${dir}`);
+
+  if (flag('notify')) {
+    const date = argv('date', today());
+    const urls: string[] = [];
+    for (const [i, f] of files.entries()) {
+      const u = await cdnCopy(f, `${date}/carousel-${theme.slug}-${refOf(homes[0]!)}-${i + 1}.jpg`, 'image/jpeg');
+      if (u) urls.push(u);
+    }
+    if (urls.length === files.length) {
+      await postToMkan(
+        [
+          `🖼 *TikTok @${PAGE} carousel — ${theme.title}* (${files.length} slides). Save each, then TikTok → + → photos, in order, add a sound, paste the caption.`,
+          urls.map((u, i) => `<${u}|${i + 1}>`).join(' · '),
+          '```' + caption + '```',
+        ].join('\n'),
+      );
+    } else console.warn('  ! carousel: CDN upload incomplete — not posted to Slack');
+  }
+  return files;
+}
+
 // ── main ─────────────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
   switch (cmd) {
@@ -505,6 +569,9 @@ async function main(): Promise<void> {
     case 'render':
       await render();
       break;
+    case 'carousel':
+      await carousel();
+      break;
     case 'card':
       await card();
       break;
@@ -513,7 +580,9 @@ async function main(): Promise<void> {
         const picked = await pick();
         const outs = picked.length ? await render() : [];
         const sent = outs.length ? await card() : 0;
-        if (!picked.length && flag('notify')) await postToMkan(`🎬 TikTok @${PAGE}: no home ready to post today — brokers to ask: \`pnpm tt:ask\``);
+        // The carousel goes out every day: facts only, so it never waits on a broker's YES.
+        const slides = await carousel();
+        if (!picked.length && !slides.length && flag('notify')) await postToMkan(`🎬 TikTok @${PAGE}: nothing to post today — brokers to ask: \`pnpm tt:ask\``);
         await recordRun('tiktok-post', outs.length === picked.length, `${picked.length} picked, ${outs.length} rendered, ${sent} sent`);
       } catch (e) {
         await recordRun('tiktok-post', false, (e as Error).message);

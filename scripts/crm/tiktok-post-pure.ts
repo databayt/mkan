@@ -284,6 +284,165 @@ export function brandTimeline(body: number, sting = 1.4, end = 3, fade = 0.35): 
   return { bodyAt, endAt, total: +(endAt + end).toFixed(3) };
 }
 
+// ── data carousel ────────────────────────────────────────────────────────────
+//
+// A photo-mode post made only of facts from the CRM — price, place, rooms, the
+// ref — in mkan's own artwork. No broker photo or footage appears, so any
+// Kigali monthly home can be on it; a tenant who sends the ref is put in touch
+// with the agent or owner (co-broking).
+
+export const CAROUSEL_HOMES = 5;
+/** A home shown in a carousel rests this long before it can be shown again. */
+export const CAROUSEL_REST_DAYS = 14;
+
+export type CarouselTheme = { kind: 'district' | 'budget' | 'beds'; key: string; title: string; rw: string; slug: string };
+
+const BUDGETS: { key: string; lo: number; hi: number; title: string; rw: string }[] = [
+  { key: 'u300', lo: 50_000, hi: 300_000, title: 'Under RWF 300,000 a month', rw: 'Munsi ya 300,000 ku kwezi' },
+  { key: '300-600', lo: 300_000, hi: 600_000, title: 'RWF 300k – 600k a month', rw: '300,000 – 600,000 ku kwezi' },
+  { key: '600-1m', lo: 600_000, hi: 1_000_000, title: 'RWF 600k – 1M a month', rw: '600,000 – 1,000,000 ku kwezi' },
+  { key: '1m', lo: 1_000_000, hi: 10_000_000, title: 'RWF 1M+ a month', rw: 'Hejuru ya 1,000,000 ku kwezi' },
+];
+
+const okForCarousel = (r: PostRow): boolean => !!r.priceMonth && r.priceMonth >= 50_000 && r.priceMonth <= 10_000_000 && !!(r.area || r.district);
+
+/** Every theme the pool could fill, with the homes that fit it. */
+export function carouselThemes(rows: PostRow[]): { theme: CarouselTheme; homes: PostRow[] }[] {
+  const ok = rows.filter(okForCarousel);
+  const out: { theme: CarouselTheme; homes: PostRow[] }[] = [];
+  for (const d of [...new Set(ok.map((r) => r.district?.trim()).filter((d): d is string => !!d))]) {
+    out.push({ theme: { kind: 'district', key: d, title: `Homes for rent in ${d}`, rw: `Inzu zikodeshwa i ${d}`, slug: `district-${d.toLowerCase()}` }, homes: ok.filter((r) => r.district?.trim() === d) });
+  }
+  for (const b of BUDGETS) {
+    out.push({ theme: { kind: 'budget', key: b.key, title: b.title, rw: b.rw, slug: `budget-${b.key}` }, homes: ok.filter((r) => r.priceMonth! >= b.lo && r.priceMonth! < b.hi) });
+  }
+  for (const n of [1, 2, 3, 4]) {
+    const fits = (r: PostRow) => (n === 4 ? (r.bedrooms ?? 0) >= 4 : r.bedrooms === n);
+    const label = n === 4 ? '4+ bedroom' : `${n}-bedroom`;
+    out.push({ theme: { kind: 'beds', key: String(n), title: `${label} homes in Kigali`, rw: `Inzu z'ibyumba ${n === 4 ? '4+' : n} i Kigali`, slug: `beds-${n}` }, homes: ok.filter(fits) });
+  }
+  return out;
+}
+
+/**
+ * Today's carousel: the theme kind rotates by day (district → budget → beds),
+ * and within it the theme with the most homes not shown in the last 14 days.
+ * Homes are listed cheapest first. Null when no theme has enough fresh homes.
+ */
+export function pickCarousel(
+  rows: PostRow[],
+  shown: Record<string, string>,
+  now = Date.now(),
+  n = CAROUSEL_HOMES,
+): { theme: CarouselTheme; homes: PostRow[] } | null {
+  const fresh = (r: PostRow) => {
+    const at = shown[refOf(r)];
+    return !at || now - Date.parse(at) >= CAROUSEL_REST_DAYS * DAY;
+  };
+  const kinds = ['district', 'budget', 'beds'] as const;
+  const day = Math.floor(now / DAY);
+  const options = carouselThemes(rows)
+    .map((o) => ({ theme: o.theme, homes: o.homes.filter(fresh) }))
+    .filter((o) => o.homes.length >= Math.min(n, 3));
+  for (let k = 0; k < kinds.length; k++) {
+    const kind = kinds[(day + k) % kinds.length];
+    const best = options.filter((o) => o.theme.kind === kind).sort((a, b) => b.homes.length - a.homes.length)[0];
+    if (best) {
+      // Spread the price range rather than taking the n cheapest.
+      const sorted = [...best.homes].sort((a, b) => a.priceMonth! - b.priceMonth!);
+      const step = sorted.length / Math.min(n, sorted.length);
+      const homes = Array.from({ length: Math.min(n, sorted.length) }, (_, i) => sorted[Math.floor(i * step)]!);
+      return { theme: best.theme, homes };
+    }
+  }
+  return null;
+}
+
+/** Breaks `text` into lines of at most `max` characters, on spaces. */
+export function wrap(text: string, max: number): string[] {
+  const lines: string[] = [];
+  let cur = '';
+  for (const w of text.split(/\s+/)) {
+    if (cur && (cur + ' ' + w).length > max) {
+      lines.push(cur);
+      cur = w;
+    } else cur = cur ? `${cur} ${w}` : w;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+const bigMark = (fill: string): string => mark(W - 520, 1180, 640, fill);
+
+export function carouselCoverSvg(theme: CarouselTheme, count: number): string {
+  const x = 80;
+  const lines = wrap(theme.title, 14);
+  const head = lines.map((l, i) => `<text x="${x}" y="${560 + i * 130}" font-family="${DISPLAY}" font-size="112" font-weight="900" fill="${BRAND.canvas}">${esc(l)}</text>`).join('\n  ');
+  const y = 560 + lines.length * 130;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  <rect width="${W}" height="${H}" fill="${BRAND.ink}"/>
+  ${bigMark('#22303c')}
+  ${mark(x, 190, 70, BRAND.canvas)}
+  <text x="${x + 90}" y="250" font-family="${DISPLAY}" font-size="58" font-weight="900" fill="${BRAND.canvas}">mkan</text>
+  <text x="${x}" y="400" font-family="${SANS}" font-size="38" font-weight="500" fill="${BRAND.accent}" letter-spacing="4">THIS WEEK IN KIGALI</text>
+  ${head}
+  <text x="${x}" y="${y + 20}" font-family="${SANS}" font-size="48" font-weight="500" fill="${BRAND.soft}">${esc(theme.rw)}</text>
+  <rect x="${x}" y="${y + 90}" width="360" height="84" rx="42" fill="${BRAND.accent}"/>
+  <text x="${x + 180}" y="${y + 145}" font-family="${SANS}" font-size="38" font-weight="500" fill="#fff" text-anchor="middle">${count} homes · swipe →</text>
+</svg>`;
+}
+
+/** One home per slide: the facts large, the ref and the WhatsApp line under them. */
+export function carouselHomeSvg(r: PostRow, i: number, total: number, whatsapp: string): string {
+  const x = 80;
+  const bg = i % 2 ? BRAND.soft : BRAND.canvas;
+  const type = r.propertyType && r.propertyType !== 'Rooms' ? r.propertyType : r.propertyType === 'Rooms' ? 'Room' : 'Home';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  <rect width="${W}" height="${H}" fill="${bg}"/>
+  ${bigMark(i % 2 ? '#dccdb5' : '#efe9df')}
+  ${mark(x, 190, 56, BRAND.ink)}
+  <text x="${x + 72}" y="238" font-family="${DISPLAY}" font-size="46" font-weight="900" fill="${BRAND.ink}">mkan</text>
+  <text x="${W - 190}" y="238" font-family="${SANS}" font-size="36" font-weight="500" fill="${BRAND.ink}" fill-opacity="0.6" text-anchor="end">${i}/${total}</text>
+  <text x="${x}" y="470" font-family="${SANS}" font-size="44" font-weight="500" fill="${BRAND.accent}" letter-spacing="3">${esc(type.toUpperCase())} FOR RENT</text>
+  <text x="${x}" y="620" font-family="${DISPLAY}" font-size="120" font-weight="900" fill="${BRAND.ink}">${esc(formatRwf(r.priceMonth ?? 0))}</text>
+  <text x="${x}" y="690" font-family="${SANS}" font-size="46" font-weight="500" fill="${BRAND.ink}" fill-opacity="0.7">per month</text>
+  <rect x="${x}" y="740" width="140" height="10" rx="5" fill="${BRAND.accent}"/>
+  ${wrap(placeLine(r), 18).slice(0, 2).map((l, k) => `<text x="${x}" y="${860 + k * 90}" font-family="${DISPLAY}" font-size="80" font-weight="900" fill="${BRAND.ink}">${esc(l)}</text>`).join('\n  ')}
+  <text x="${x}" y="1080" font-family="${SANS}" font-size="52" font-weight="500" fill="${BRAND.ink}">${esc(factsLine(r))}</text>
+  <rect x="${x}" y="1170" width="${W - 2 * x - 110}" height="230" rx="32" fill="${BRAND.ink}"/>
+  <text x="${x + 40}" y="1250" font-family="${SANS}" font-size="38" font-weight="500" fill="${BRAND.soft}">WhatsApp ${esc(whatsapp)}</text>
+  <text x="${x + 40}" y="1350" font-family="${SANS}" font-size="44" font-weight="500" fill="${BRAND.canvas}">send</text>
+  <text x="${x + 150}" y="1352" font-family="${DISPLAY}" font-size="78" font-weight="900" fill="${BRAND.accent}">${esc(refOf(r))}</text>
+</svg>`;
+}
+
+export function carouselEndSvg(whatsapp: string): string {
+  const cx = W / 2;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  <rect width="${W}" height="${H}" fill="${BRAND.accent}"/>
+  ${mark(cx - 80, 300, 160, '#fff')}
+  <text x="${cx}" y="640" font-family="${DISPLAY}" font-size="104" font-weight="900" fill="#fff" text-anchor="middle">Want one?</text>
+  <text x="${cx}" y="740" font-family="${SANS}" font-size="46" font-weight="500" fill="#fff" text-anchor="middle">Send its code on WhatsApp</text>
+  <rect x="110" y="820" width="${W - 220}" height="170" rx="36" fill="${BRAND.ink}"/>
+  <text x="${cx}" y="935" font-family="${DISPLAY}" font-size="80" font-weight="900" fill="${BRAND.canvas}" text-anchor="middle">${esc(whatsapp)}</text>
+  <text x="${cx}" y="1090" font-family="${SANS}" font-size="40" font-weight="500" fill="#fff" text-anchor="middle">We connect you with the agent or owner.</text>
+  <text x="${cx}" y="1160" font-family="${SANS}" font-size="40" font-weight="500" fill="#fff" text-anchor="middle">Ohereza kode kuri WhatsApp.</text>
+  <text x="${cx}" y="1300" font-family="${SANS}" font-size="36" font-weight="500" fill="#fff" fill-opacity="0.85" text-anchor="middle">More homes: mkan.sd/find</text>
+</svg>`;
+}
+
+export function carouselCaption(theme: CarouselTheme, homes: PostRow[], whatsapp: string): string {
+  const tags = ['kigali', 'houseforrent', 'kigalirealestate', 'inzuikodeshwa', 'rwanda', ...(theme.kind === 'district' ? [theme.key] : [])].map(tag);
+  return [
+    `🏠 ${theme.title} — this week`,
+    ...homes.map((r) => `• ${refOf(r)} — ${formatRwf(r.priceMonth ?? 0)}/mo, ${placeLine(r)}${r.bedrooms ? `, ${r.bedrooms} bd` : ''}`),
+    `📲 WhatsApp ${whatsapp} — send the code. We connect you with the agent or owner; availability changes, so ask first.`,
+    `🇷🇼 ${theme.rw}. Ohereza kode kuri WhatsApp ${whatsapp}.`,
+    '',
+    [...new Set(tags)].join(' '),
+  ].join('\n');
+}
+
 /** xfade timeline: n slides of `slide` s each, `fade` s crossfades, then the end card. */
 export function timeline(n: number, slide = 2.6, fade = 0.4, end = 3): { offsets: number[]; slidesLen: number; endOffset: number; total: number } {
   const offsets = Array.from({ length: Math.max(0, n - 1) }, (_, i) => +((i + 1) * (slide - fade)).toFixed(3));
