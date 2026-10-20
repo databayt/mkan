@@ -1,18 +1,45 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
-import { ArrowUp } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { ArrowUp, Mic, Plus, Square } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
+import { useLocale } from "@/components/internationalization/use-locale";
 import { cn } from "@/lib/utils";
 
-const MAX_HEIGHT_PX = 200;
+/** About six lines of text before the box scrolls. */
+const MAX_HEIGHT_PX = 168;
+const SPEECH_LANG: Record<string, string> = { ar: "ar-SA", en: "en-US", rw: "rw-RW" };
+
+type Recognition = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+type RecognitionCtor = new () => Recognition;
+
+const noop = () => () => {};
+
+function speechCtor(): RecognitionCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as { SpeechRecognition?: RecognitionCtor; webkitSpeechRecognition?: RecognitionCtor };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
 
 /**
- * The pill input of chat assistants: a textarea that grows with its text and a
- * round send button inside the pill. Enter sends, Shift+Enter breaks a line.
+ * The composer of ChatGPT on iOS: a floating pill with `+` at the start, a
+ * textarea that grows to six lines, and at the end a mic while it is empty
+ * (dictation, where the browser has it) that turns into the black send button
+ * once there is text. Enter sends, Shift+Enter breaks a line.
  */
 export function Composer({
   onSend,
+  onPlus,
+  plusActive = false,
   disabled,
   size = "lg",
   autoFocus,
@@ -20,6 +47,9 @@ export function Composer({
 }: {
   /** Resolves true when the message was accepted; the text is cleared then. */
   onSend: (text: string) => Promise<boolean>;
+  /** The `+` button — opens the guided search. Hidden when not given. */
+  onPlus?: () => void;
+  plusActive?: boolean;
   disabled?: boolean;
   size?: "lg" | "sm";
   autoFocus?: boolean;
@@ -28,8 +58,16 @@ export function Composer({
 }) {
   const dict = useDictionary();
   const a = dict?.agent;
+  const c = a?.chat;
+  const { locale } = useLocale();
   const [text, setText] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
+  // Known only in the browser: false on the server, so the mic appears after hydration.
+  const speech = useSyncExternalStore(noop, () => !!speechCtor(), () => false);
+  const [listening, setListening] = useState(false);
+  const recognition = useRef<Recognition | null>(null);
+
+  useEffect(() => () => recognition.current?.stop(), []);
 
   // `field-sizing: content` is not in Safari yet.
   useLayoutEffect(() => {
@@ -39,10 +77,35 @@ export function Composer({
     el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT_PX)}px`;
   }, [text]);
 
+  const canSend = !disabled && (!!text.trim() || canSendEmpty);
   const submit = async () => {
-    if (disabled || (!text.trim() && !canSendEmpty)) return;
+    if (!canSend) return;
+    recognition.current?.stop();
     if (await onSend(text)) setText("");
   };
+
+  const listen = () => {
+    if (listening) return recognition.current?.stop();
+    const Ctor = speechCtor();
+    if (!Ctor) return;
+    const r = new Ctor();
+    r.lang = SPEECH_LANG[locale] ?? "en-US";
+    r.interimResults = true;
+    r.continuous = false;
+    const before = text ? `${text.trimEnd()} ` : "";
+    r.onresult = (e) => {
+      const said = Array.from(e.results, (res) => res[0]?.transcript ?? "").join("");
+      setText(before + said);
+    };
+    r.onend = () => setListening(false);
+    r.onerror = () => setListening(false);
+    recognition.current = r;
+    setListening(true);
+    r.start();
+  };
+
+  const lg = size === "lg";
+  const iconButton = cn("flex shrink-0 items-center justify-center rounded-full transition-colors", lg ? "size-9" : "size-8");
 
   return (
     <form
@@ -51,10 +114,22 @@ export function Composer({
         void submit();
       }}
       className={cn(
-        "flex items-end gap-2 border bg-background shadow-sm transition-shadow focus-within:shadow-md",
-        size === "lg" ? "rounded-3xl p-2.5 ps-5" : "rounded-2xl p-1.5 ps-3.5",
+        "flex items-end gap-1.5 border bg-background shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-shadow focus-within:shadow-[0_2px_16px_rgba(0,0,0,0.1)] dark:shadow-none",
+        lg ? "rounded-[26px] p-2" : "rounded-[22px] p-1.5",
       )}
     >
+      {onPlus && (
+        <button
+          type="button"
+          onClick={onPlus}
+          aria-label={c?.more ?? "Guided search"}
+          aria-pressed={plusActive}
+          title={c?.more ?? "Guided search"}
+          className={cn(iconButton, "text-foreground hover:bg-muted", plusActive && "bg-muted")}
+        >
+          <Plus className={cn("size-5 transition-transform", plusActive && "rotate-45")} aria-hidden />
+        </button>
+      )}
       <textarea
         ref={ref}
         data-agent-composer
@@ -69,24 +144,36 @@ export function Composer({
         rows={1}
         maxLength={600}
         autoFocus={autoFocus}
-        placeholder={a?.placeholder ?? "Describe the home you need"}
+        enterKeyHint="send"
+        placeholder={c?.placeholder ?? "Describe the home you need"}
         aria-label={a?.placeholder ?? "Describe the home you need"}
         className={cn(
-          "flex-1 resize-none self-center bg-transparent outline-none placeholder:text-muted-foreground",
-          size === "lg" ? "py-1.5 text-base" : "py-1 text-sm",
+          "min-w-0 flex-1 resize-none self-center bg-transparent outline-none placeholder:text-muted-foreground",
+          !onPlus && (lg ? "ps-3" : "ps-2.5"),
+          lg ? "py-1.5 text-[17px] leading-6 md:text-base" : "py-1 text-[15px]",
         )}
       />
-      <button
-        type="submit"
-        aria-label={a?.send ?? "Send"}
-        disabled={disabled || (!text.trim() && !canSendEmpty)}
-        className={cn(
-          "flex shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-opacity disabled:opacity-25",
-          size === "lg" ? "size-9" : "size-8",
-        )}
-      >
-        <ArrowUp className="size-4" aria-hidden />
-      </button>
+      {!text.trim() && !canSendEmpty && speech ? (
+        <button
+          type="button"
+          onClick={listen}
+          disabled={disabled}
+          aria-label={listening ? c?.stopVoice ?? "Stop listening" : c?.voice ?? "Speak"}
+          aria-pressed={listening}
+          className={cn(iconButton, listening ? "bg-foreground text-background" : "text-foreground hover:bg-muted", "disabled:opacity-40")}
+        >
+          {listening ? <Square className="size-3.5 fill-current" aria-hidden /> : <Mic className="size-5" aria-hidden />}
+        </button>
+      ) : (
+        <button
+          type="submit"
+          aria-label={a?.send ?? "Send"}
+          disabled={!canSend}
+          className={cn(iconButton, "bg-foreground text-background disabled:bg-muted disabled:text-muted-foreground")}
+        >
+          <ArrowUp className="size-5" strokeWidth={2.5} aria-hidden />
+        </button>
+      )}
     </form>
   );
 }

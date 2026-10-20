@@ -42,3 +42,14 @@
 - A lead whose video was taken down loses its `sourceUrl` (crm:hygiene, Mondays) and leaves /find.
 - `pnpm agent:funnel` — conversations → shortlists → broker asks → answers → slots → viewings; in the daily #mkan hygiene report. 30 days to 10-18: 15 conversations, 10 shortlists, 0 broker asks.
 - With the panel open, the /listings header's "Become a host" link is hidden (`data-agent-panel-hide`) — the centred tabs ran into it at ~60% width.
+
+## ChatGPT iOS shell, lighter polling (2026-10-20)
+
+- /find drops the site header: the conversation owns the screen like ChatGPT on iOS (`header.tsx`). The empty state is the greeting alone with starter cards (`suggestions.tsx`, the long-unused `agent.examples`) above the pill composer; the 4-step wizard sits behind the "Guided search" card and the composer's `+`. The mic dictates through the Web Speech API where the browser has it (hidden otherwise).
+- The bubble panel uses the same bar, turns and composer; on phones it slides up as a full-height sheet instead of in from the side.
+- Polling moved off a server action to `GET /api/agent/task`: Next runs a client's actions one at a time, so polls queued ahead of every chip, answer and viewing pick. The client sends its `version` (status · updatedAt · last event seq) and gets 204 when nothing moved — one indexed head read instead of messages + shortlist + 60 events. `sendAgentMessage` returns the view, so a send is one round trip, not two.
+- Polling pauses in a hidden tab and a broker-waiting task backs off 10 s → 30 s → 60 s (was 10 s forever). The hook keeps unchanged messages and cards by reference; `UserTurn`, `PastAgentTurn` and `ShortlistCard` are memoised, so a poll re-renders the latest turn only. The steps' 1 s ticker is gone, and `AskCard` no longer re-binds its key listener on every render.
+- The rate limit counts user turns in Postgres (`jsonb_array_elements`) instead of loading every recent transcript.
+- The panel's `/listings` re-filter is debounced 400 ms; the body margin no longer animates (only the panel's transform does).
+- The global `p { text-muted-foreground }` (`styles/typography.css`) greyed the replies — chat text sets `text-foreground` explicitly.
+- Not done: a separate Dialog for desktop (the bottom sheet is capped at `max-w-lg` and reads fine there); lazy-loading `Wizard` (its `usePicksLabel` is needed by every search).

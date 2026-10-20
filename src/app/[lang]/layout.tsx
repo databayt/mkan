@@ -20,6 +20,9 @@ export const revalidate = 3600;
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  // The on-screen keyboard shrinks the layout viewport instead of covering
+  // it, so pinned composers (the rental agent) stay above the keyboard.
+  interactiveWidget: 'resizes-content',
 };
 
 // display:'optional' (not 'swap'): on slow connections the webfont arrives

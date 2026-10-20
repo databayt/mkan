@@ -229,11 +229,9 @@ body {
 }
 
 /* Rental agent side panel (src/components/agent/bubble): while open it takes
-   40% of the width from md up and the page reflows into the rest. */
+   40% of the width from md up and the page reflows into the rest — once, not
+   on every frame: only the panel's transform animates, the margin snaps. */
 @media (min-width: 768px) {
-  body {
-    transition: margin-inline-end 200ms ease-out;
-  }
   html[data-agent-panel="open"] body {
     margin-inline-end: max(40vw, 360px);
   }
@@ -241,10 +239,5 @@ body {
      the centred tabs run into the host link. A tenant mid-search needs neither. */
   html[data-agent-panel="open"] [data-agent-panel-hide] {
     display: none;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  body {
-    transition: none;
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { cn } from "@/lib/utils";
@@ -46,9 +46,10 @@ function Dot({ status }: { status: StepStatus }) {
 }
 
 /**
- * The agent's work for the latest turn, written like a Claude Code transcript:
- * a todo list, then one `⏺ Tool` line per step with its `⎿` result. Folded to
- * one line once done; open, with a "✻ Searching… (3s)" spinner, while it runs.
+ * The agent's work for the latest turn. While it runs: ChatGPT's pulsing dot
+ * and a shimmering "Searching homes…". Once done it folds to one muted line
+ * ("Searched 120 homes · ranked 8 ›") that opens the full trace: a todo list,
+ * then one line per step with its result.
  * Every line is an `AgentEvent` row — nothing here is invented for show.
  */
 export function Steps({ task, compact = false }: { task: AgentTaskView; compact?: boolean }) {
@@ -61,17 +62,8 @@ export function Steps({ task, compact = false }: { task: AgentTaskView; compact?
   const running = task.status === "RUNNING";
   const asked = turn.some((e) => e.kind === "asked");
   const turnStart = turn[0]?.at ?? task.startedAt;
-  // null = follow the task (open while running); a click pins it.
-  const [pinned, setPinned] = useState<boolean | null>(null);
-  const open = pinned ?? running;
-
-  // The spinner's seconds tick while the turn runs.
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!running) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [running]);
+  // Folded by default, as ChatGPT keeps its thinking: a tap opens the trace.
+  const [open, setOpen] = useState(false);
 
   // A step's status is its event's; the first step without one is "running"
   // while the task runs, the rest are pending. An asked turn stops at step 1.
@@ -116,7 +108,6 @@ export function Steps({ task, compact = false }: { task: AgentTaskView; compact?
   };
 
   const current = plan.find((s) => s.status === "running")?.step;
-  const seconds = Math.max(0, Math.round((now - Date.parse(turnStart)) / 1000));
   const lastAt = turn.at(-1)?.at;
   const failed = turn.some((e) => e.status === "failed");
   const headline = asked
@@ -132,20 +123,16 @@ export function Steps({ task, compact = false }: { task: AgentTaskView; compact?
     <div className={cn("text-muted-foreground", compact ? "text-xs" : "text-sm")} aria-live="polite">
       <button
         type="button"
-        onClick={() => setPinned(!open)}
+        onClick={() => setOpen(!open)}
         aria-expanded={open}
         className="group flex max-w-full items-center gap-1.5 text-start hover:text-foreground"
       >
         {running ? (
           <>
-            <span aria-hidden className="shrink-0 animate-spin text-amber-600 [animation-duration:2.4s]">
-              ✻
-            </span>
+            {/* ChatGPT's thinking mark: one pulsing dot, then the shimmering verb. */}
+            <span aria-hidden className="size-3 shrink-0 animate-pulse rounded-full bg-foreground" />
             <span className="animate-shimmer truncate bg-[linear-gradient(90deg,var(--muted-foreground)_25%,var(--foreground)_50%,var(--muted-foreground)_75%)] bg-[length:200%_100%] bg-clip-text text-transparent">
               {(current && verbs?.[current]) || dict?.agent?.reply?.working}
-            </span>
-            <span className="shrink-0 tabular-nums opacity-70" dir="ltr">
-              ({seconds}s)
             </span>
           </>
         ) : (
@@ -159,7 +146,7 @@ export function Steps({ task, compact = false }: { task: AgentTaskView; compact?
             )}
           </>
         )}
-        <ChevronDown className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-180")} aria-hidden />
+        <ChevronDown className={cn("size-3.5 shrink-0 opacity-60 transition-transform", open && "rotate-180")} aria-hidden />
         <span className="sr-only">{open ? p?.hideSteps ?? "Hide steps" : p?.showSteps ?? "Show steps"}</span>
       </button>
 

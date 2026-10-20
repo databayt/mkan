@@ -16,7 +16,8 @@ sendAgentMessage (server action) ──► AgentTask(RUNNING) + after(runTurn)
 runTurn: requirements_extracted ─► asked (missing stay/budget) ─► DONE
                                 └► search_done ─► dedup_grouped ─► filtered ─► ranked
                                    ─► needs_confirmation (uncertain) ─► shortlist_ready ─► DONE
-client: polls getAgentTask every 800 ms while RUNNING; a reload resumes from the cookie
+client: GET /api/agent/task?id=&v=<version> every 800 ms → 2 s while RUNNING, 10 s → 30 s → 60 s while WAITING,
+        paused while the tab is hidden; 204 when the version is unchanged. A reload resumes from the cookie
 ```
 
 ## Files
@@ -29,8 +30,11 @@ client: polls getAgentTask every 800 ms while RUNNING; a reload resumes from the
 | `rank.ts` | Duplicate grouping, hard filters, scoring with reasons |
 | `search.ts` | Prisma query over published RWF Kigali homes → candidates; shortlist cards |
 | `run.ts` | One turn, writing the trace |
-| `actions.ts` | `sendAgentMessage`, `getAgentTask` (cookie-scoped, 30 turns/hour) |
-| `content.tsx` · `turn.tsx` · `composer.tsx` · `steps.tsx` · `shortlist-card.tsx` | /find UI — assistant-app layout (centred composer → conversation column, steps block folded on the agent's turn, homes inline) |
+| `actions.ts` | `sendAgentMessage` (returns the task view, 30 turns/hour counted in SQL), `getAgentTask` (page render) |
+| `task-view.ts` · `app/api/agent/task/route.ts` | Cookie-scoped task loading, stuck-turn recovery, and the GET poll (`pollTask`: one head read, 204 when `version` holds) |
+| `fields.ts` | Client-safe requirement constants (district codes, clearable fields, `roundPrice`) — keeps zod and the parsers out of the browser bundle |
+| `content.tsx` · `header.tsx` · `turn.tsx` · `composer.tsx` · `suggestions.tsx` · `steps.tsx` · `use-stick-to-bottom.ts` | /find UI in ChatGPT's iOS shell — chat bar (back · Mkan · new chat), greeting mid-screen with starter cards over a pill composer (`+` guided search, mic dictation, send), grey user bubbles, plain agent text with copy / 👍 / 👎 / search again, a folded thinking line, scroll that sticks to the bottom only when the reader is there |
+| `shortlist-card.tsx` · `card-sheet.tsx` | Homes as a swipeable inline card row; a tap opens a bottom sheet (cost breakdown, reasons, viewing booking, listing link), loaded on first tap |
 | `wizard.tsx` · `areas.ts` | The opening: four tap questions (how long → where → what home → budget), with "Show homes" on every step after the first that set requirement fields exactly; the composer stays under it, so typing works at any step. `areas.ts` holds the neighbourhoods and the centre / business / university areas |
 | `relax.ts` · `refine.tsx` | No dead ends: when nothing fits every detail, run.ts tries each single widening and the cumulative ladder (neighbourhood → its district, area, home type, bathrooms, furnished, budget +30%, all Kigali) in parallel and keeps the fewest-changes attempt; the reply names each change. After a shortlist, `Refine` offers the budget (when the search ran without one) and one-tap follow-ups — cheaper, more bedrooms, furnished, anywhere |
 | `use-agent-task.ts` | Shared conversation state + polling for /find and the bubble |

@@ -5659,6 +5659,38 @@
       "bigger": "More bedrooms",
       "furnished": "Furnished",
       "anywhere": "Anywhere in Kigali"
+    },
+    "chat": {
+      "name": "Mkan",
+      "home": "Back to Mkan",
+      "newChat": "New chat",
+      "guided": "Guided search",
+      "guidedHint": "Pick stay, area, home and budget",
+      "more": "Guided search",
+      "copy": "Copy",
+      "copied": "Copied",
+      "good": "Good answer",
+      "bad": "Bad answer",
+      "regenerate": "Search again",
+      "scrollDown": "Scroll to the latest message",
+      "voice": "Speak",
+      "stopVoice": "Stop listening",
+      "suggest": {
+        "long": {
+          "title": "Furnished 2-bedroom",
+          "rest": "in Kicukiro, up to 400k a month"
+        },
+        "short": {
+          "title": "3 nights in Gasabo",
+          "rest": "for 2 people, under 60k a night"
+        },
+        "studio": {
+          "title": "A studio",
+          "rest": "near Nyarugenge, up to 250k monthly"
+        }
+      },
+      "details": "Details",
+      "placeholder": "Describe the home you need"
     }
   }
 }

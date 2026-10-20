@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BadgeCheck, Clock, Loader2, Maximize2, RotateCcw, X } from "lucide-react";
+import { ArrowDown, BadgeCheck, Clock, Loader2, Maximize2, SquarePen, X } from "lucide-react";
 import { BlurImage } from "@/components/atom/blur-image";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { useLocale } from "@/components/internationalization/use-locale";
@@ -12,15 +12,20 @@ import { cn } from "@/lib/utils";
 import { usePicksLabel, Wizard, type Picks } from "../wizard";
 import { AskCard } from "../ask-card";
 import { Composer } from "../composer";
+import { ChatHeader, headerButton } from "../header";
 import { Refine } from "../refine";
 import { fill } from "../format";
 import { Steps } from "../steps";
-import { AgentTurn, UserTurn } from "../turn";
+import { Suggestions } from "../suggestions";
+import { AgentTurn, PastAgentTurn, UserTurn } from "../turn";
 import type { ShortlistItem } from "../types";
 import { useAgentTask } from "../use-agent-task";
+import { useStickToBottom } from "../use-stick-to-bottom";
 import { listingsQueryFor } from "./listings-query";
 
 const MINI_CARDS = 3;
+/** The listings page re-filters once the requirements settle, not on every change. */
+const REFILTER_DEBOUNCE_MS = 400;
 
 function MiniCard({ item }: { item: ShortlistItem }) {
   const dict = useDictionary();
@@ -31,13 +36,13 @@ function MiniCard({ item }: { item: ShortlistItem }) {
     <Link
       href={item.path}
       {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
-      className="flex gap-3 rounded-xl border p-2 transition-colors hover:bg-muted"
+      className="flex gap-3 rounded-2xl bg-background p-2 shadow-[0_1px_6px_rgba(0,0,0,0.07)] ring-1 ring-black/5 transition-colors hover:bg-muted dark:ring-white/10"
     >
       <span className="relative h-14 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
         {item.photo && <BlurImage src={item.photo} alt="" fill sizes="64px" className="object-cover" />}
       </span>
       <span className="min-w-0 flex-1 space-y-0.5">
-        <span className="block truncate text-sm font-medium">{item.title}</span>
+        <span dir="auto" className="block truncate text-start text-sm font-medium">{item.title}</span>
         <span className="block text-xs">
           <span className="font-semibold">{formatCurrency(item.cost.headline, locale, item.currency)}</span>{" "}
           <span className="text-muted-foreground">{item.cost.period === "month" ? c?.perMonth ?? "/ month" : c?.perNight ?? "/ night"}</span>
@@ -59,30 +64,46 @@ function MiniCard({ item }: { item: ShortlistItem }) {
 }
 
 /**
- * The agent's side panel: the /find conversation at full height. From md up it
- * takes 40% of the width and pushes the page aside (the `data-agent-panel`
- * rule in globals.css), like Claude in Chrome; on phones it is a full screen.
+ * The agent's panel — the /find conversation in ChatGPT's iOS shell. From md
+ * up it takes 40% of the width and pushes the page aside (the
+ * `data-agent-panel` rule in globals.css), like Claude in Chrome; on phones it
+ * is a full-height sheet that slides up from the bottom.
  */
 export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean; onClose: () => void; onWaiting: (waiting: boolean) => void }) {
   const dict = useDictionary();
   const a = dict?.agent;
   const b = a?.bubble;
+  const c = a?.chat;
   const { locale } = useLocale();
   const { task, loaded, running, waiting, pending, notice, send, reset, reply } = useAgentTask(null, { lazy: true });
   const [picks, setPicks] = useState<Picks>({});
+  const [guided, setGuided] = useState(false);
   const picksLabel = usePicksLabel();
+  const messages = task?.messages ?? [];
+  const { ref: scrollRef, onScroll, away, scrolled, scrollToBottom } = useStickToBottom(`${messages.length}.${task?.shortlist.length ?? 0}.${running}.${open}`);
+
   // The composer and the wizard's last step both search; a new search carries the picks.
   const search = async (text: string) => {
-    const fresh = !task;
+    const fresh = !task || guided;
     const ok = await send(text.trim() || picksLabel(picks) || "…", fresh, fresh ? picks : undefined);
-    if (ok) setPicks({});
+    if (ok) {
+      setPicks({});
+      setGuided(false);
+      requestAnimationFrame(() => scrollToBottom());
+    }
     return ok;
+  };
+  const newChat = () => {
+    reset();
+    setPicks({});
+    setGuided(false);
   };
 
   useEffect(() => onWaiting(waiting), [waiting, onWaiting]);
 
   // The page behind the panel follows the conversation: while it is the
-  // listings index, every change in what the agent knows re-filters it.
+  // listings index, a change in what the agent knows re-filters it — once the
+  // requirements settle, so a burst of polls does not re-fetch the page.
   // A listing's own page is left alone — the visitor is reading it.
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -90,8 +111,11 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
   const query = listingsQueryFor(task?.requirements ?? null);
   useEffect(() => {
     if (!open || !onListings || !query) return;
-    if (window.location.search.replace(/^\?/, "") === query) return;
-    router.replace(`${pathname}?${query}`, { scroll: false });
+    const id = setTimeout(() => {
+      if (window.location.search.replace(/^\?/, "") === query) return;
+      router.replace(`${pathname}?${query}`, { scroll: false });
+    }, REFILTER_DEBOUNCE_MS);
+    return () => clearTimeout(id);
   }, [open, onListings, query, pathname, router]);
 
   useEffect(() => {
@@ -101,7 +125,6 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const messages = task?.messages ?? [];
   const lastAgentIndex = messages.findLastIndex((m) => m.role === "agent");
   const pendingTurn = running && messages.at(-1)?.role === "user";
   const fullPage = `/${locale}/find`;
@@ -112,48 +135,56 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
       aria-label={b?.title ?? "Mkan rental agent"}
       inert={!open}
       className={cn(
-        "fixed inset-y-0 end-0 z-[55] flex h-dvh w-full flex-col bg-background transition-transform duration-200 ease-out motion-reduce:transition-none",
-        "md:w-[max(40vw,360px)] md:border-s",
-        open ? "translate-x-0" : "pointer-events-none translate-x-full rtl:-translate-x-full",
+        "fixed inset-y-0 end-0 z-[55] flex h-dvh w-full flex-col bg-background transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
+        "md:w-[max(40vw,360px)] md:border-s md:duration-200",
+        open ? "translate-0" : "pointer-events-none translate-y-full md:translate-x-full md:translate-y-0 md:rtl:-translate-x-full",
       )}
     >
-      <header className="flex items-center gap-2 border-b px-4 py-3">
-        <p className="flex-1 font-semibold">{b?.title ?? "Mkan rental agent"}</p>
-        {task && !running && (
-          <button type="button" onClick={reset} aria-label={a?.newSearch ?? "New search"} title={a?.newSearch ?? "New search"} className="rounded-md p-1.5 hover:bg-muted">
-            <RotateCcw className="size-4" aria-hidden />
+      <ChatHeader
+        title={c?.name ?? "Mkan"}
+        scrolled={scrolled}
+        start={
+          <button type="button" onClick={onClose} aria-label={b?.close ?? "Close"} title={b?.close ?? "Close"} className={headerButton}>
+            <X aria-hidden />
           </button>
-        )}
-        <Link href={fullPage} onClick={onClose} aria-label={b?.expand ?? "Open full screen"} title={b?.expand ?? "Open full screen"} className="rounded-md p-1.5 hover:bg-muted">
-          <Maximize2 className="size-4" aria-hidden />
-        </Link>
-        <button type="button" onClick={onClose} aria-label={b?.close ?? "Close"} className="rounded-md p-1.5 hover:bg-muted">
-          <X className="size-4" aria-hidden />
-        </button>
-      </header>
+        }
+        end={
+          <>
+            <Link href={fullPage} onClick={onClose} aria-label={b?.expand ?? "Open full screen"} title={b?.expand ?? "Open full screen"} className={headerButton}>
+              <Maximize2 className="!size-[18px]" aria-hidden />
+            </Link>
+            <button type="button" onClick={newChat} disabled={!task || running} aria-label={c?.newChat ?? "New chat"} title={c?.newChat ?? "New chat"} className={headerButton}>
+              <SquarePen aria-hidden />
+            </button>
+          </>
+        }
+      />
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto overscroll-contain px-3">
         {!loaded ? (
           <Loader2 className="mx-auto mt-10 size-5 animate-spin text-muted-foreground" aria-hidden />
-        ) : !task ? (
-          <div className="space-y-4">
-            <p className="text-lg font-semibold">{a?.greeting ?? "Where do you want to live in Kigali?"}</p>
-            <p className="text-sm text-muted-foreground">{a?.subtitle}</p>
-            <Wizard picks={picks} onChange={setPicks} onFinish={() => void search("")} disabled={pending} compact />
+        ) : !task || guided ? (
+          <div className="flex min-h-full flex-col justify-center py-4">
+            {guided ? (
+              <Wizard picks={picks} onChange={setPicks} onFinish={() => void search("")} disabled={pending} compact />
+            ) : (
+              <p className="text-balance text-center text-[22px] font-semibold leading-tight tracking-tight">{a?.greeting ?? "Where do you want to live in Kigali?"}</p>
+            )}
           </div>
         ) : (
-          <ol className="space-y-5">
+          <ol className="list-none space-y-5 py-3">
             {messages.map((m, i) => {
-              if (m.role === "user") return <UserTurn key={i} text={m.text} compact />;
+              if (m.role === "user") return <UserTurn key={`${i}.${m.at}`} text={m.text} compact />;
               const latest = i === lastAgentIndex && !pendingTurn;
+              if (!latest) return <PastAgentTurn key={`${i}.${m.at}`} text={reply(m)} compact />;
               return (
-                <AgentTurn key={i} compact steps={latest ? <Steps task={task} compact /> : null}>
-                  {latest && m.kind === "ask" && !running ? (
+                <AgentTurn key={`${i}.${m.at}`} compact steps={<Steps task={task} compact />}>
+                  {m.kind === "ask" && !running ? (
                     <AskCard field={m.field} requirements={task.requirements} onPick={(text, filters) => void send(text, false, filters)} disabled={pending} compact />
                   ) : (
-                    <p className="whitespace-pre-wrap">{reply(m)}</p>
+                    <p className="whitespace-pre-wrap leading-[inherit] text-foreground">{reply(m)}</p>
                   )}
-                  {latest && m.kind === "shortlist" && task.shortlist.length > 0 && (
+                  {m.kind === "shortlist" && task.shortlist.length > 0 && (
                     <div className="space-y-2">
                       {task.shortlist.slice(0, MINI_CARDS).map((item) => (
                         <MiniCard key={item.id} item={item} />
@@ -163,7 +194,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
                       </Link>
                     </div>
                   )}
-                  {latest && m.kind === "shortlist" && !running && (
+                  {m.kind === "shortlist" && !running && (
                     <Refine
                       message={m}
                       requirements={task.requirements}
@@ -180,12 +211,29 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
         )}
       </div>
 
-      <footer className="border-t p-3">
+      <footer className="relative px-3 pb-[max(env(safe-area-inset-bottom),10px)] pt-1">
+        {away && (
+          <button
+            type="button"
+            onClick={() => scrollToBottom()}
+            aria-label={c?.scrollDown ?? "Scroll to the latest message"}
+            className="absolute -top-11 start-1/2 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border bg-background shadow-md rtl:translate-x-1/2"
+          >
+            <ArrowDown className="size-4" aria-hidden />
+          </button>
+        )}
+        {loaded && !task && !guided && (
+          <div className="pb-2.5">
+            <Suggestions onPick={(text) => void search(text)} onGuided={() => setGuided(true)} disabled={pending} compact />
+          </div>
+        )}
         {notice && <p className="mb-2 text-xs text-muted-foreground">{notice}</p>}
         <Composer
           size="sm"
           onSend={search}
-          canSendEmpty={!task && Object.keys(picks).length > 0}
+          onPlus={() => setGuided((g) => !g)}
+          plusActive={guided}
+          canSendEmpty={guided && Object.keys(picks).length > 0}
           disabled={pending || running || !loaded}
         />
       </footer>

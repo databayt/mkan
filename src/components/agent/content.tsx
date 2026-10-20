@@ -1,138 +1,182 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { useCallback, useState } from "react";
+import Link from "next/link";
+import { ArrowDown, ChevronLeft, SquarePen } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
+import { useLocale } from "@/components/internationalization/use-locale";
 import { usePicksLabel, Wizard, type Picks } from "./wizard";
 import { AskCard } from "./ask-card";
 import { Composer } from "./composer";
+import { ChatHeader, headerButton } from "./header";
 import { Refine } from "./refine";
 import { ShortlistCard } from "./shortlist-card";
 import { Steps } from "./steps";
-import { AgentTurn, UserTurn } from "./turn";
+import { Suggestions } from "./suggestions";
+import { AgentTurn, PastAgentTurn, TurnActions, UserTurn } from "./turn";
 import type { AgentTaskView } from "./types";
 import { useAgentTask } from "./use-agent-task";
-
-const LATEST_TURN_ID = "agent-latest-turn";
+import { useStickToBottom } from "./use-stick-to-bottom";
 
 /**
- * /find — the full-screen rental agent, laid out like the assistant apps
- * (ChatGPT, Claude, Gemini): a centred greeting and composer when empty; a
- * single conversation column with the composer pinned to the bottom after.
- * The agent's work folds into a steps block on its turn; homes render inline.
+ * /find — the rental agent laid out like ChatGPT on iOS: a slim bar with the
+ * name in the middle, the greeting alone mid-screen when empty with starter
+ * cards above a pill composer pinned to the bottom, then a single column of
+ * grey user bubbles and plain agent text. Homes render inline as a swipeable
+ * card row; the agent's work folds into one line on its turn.
  */
 export function AgentContent({ initialTask }: { initialTask: AgentTaskView | null }) {
   const dict = useDictionary();
   const a = dict?.agent;
-  const { task, running, pending, notice, send, refresh, reset, reply, chips } = useAgentTask(initialTask);
+  const c = a?.chat;
+  const { locale } = useLocale();
+  const { task, running, pending, notice, send, refresh, reset, regenerate, reply, chips } = useAgentTask(initialTask);
   const [picks, setPicks] = useState<Picks>({});
+  const [guided, setGuided] = useState(false);
   const picksLabel = usePicksLabel();
   const picked = Object.keys(picks).length > 0;
-  // The composer and the wizard's last step both search with what was picked.
+
+  const messages = task?.messages ?? [];
+  const growth = `${messages.length}.${task?.shortlist.length ?? 0}.${running}`;
+  const { ref: scrollRef, onScroll, away, scrolled, scrollToBottom } = useStickToBottom(growth);
+
+  // Sending always brings the conversation back to its end, as ChatGPT does.
+  const say = useCallback(
+    async (text: string, fresh = false, filters?: Picks, clear?: string[]) => {
+      const ok = await send(text, fresh, filters, clear);
+      if (ok) requestAnimationFrame(() => scrollToBottom());
+      return ok;
+    },
+    [send, scrollToBottom],
+  );
+  // The guided search and a composer under it start a new search with the picks.
   const search = async (text: string) => {
-    const ok = await send(text.trim() || picksLabel(picks) || "…", true, picks);
-    if (ok) setPicks({});
+    const ok = await say(text.trim() || picksLabel(picks) || "…", true, picks);
+    if (ok) {
+      setPicks({});
+      setGuided(false);
+    }
     return ok;
   };
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const messageCount = task?.messages.length ?? 0;
+  const newChat = () => {
+    reset();
+    setPicks({});
+    setGuided(false);
+  };
 
-  const shortlistCount = task?.shortlist.length ?? 0;
-
-  // A new message scrolls to the bottom; arriving homes scroll to the start of
-  // the agent's reply, so it is read from its first line (as assistants do).
-  useEffect(() => {
-    if (messageCount) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messageCount]);
-  useEffect(() => {
-    if (shortlistCount) document.getElementById(LATEST_TURN_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [shortlistCount]);
-
-  if (!task) {
-    return (
-      <div className="mx-auto flex min-h-[calc(100dvh-52px)] w-full max-w-3xl flex-col items-center justify-center px-4 pb-[12vh]">
-        <h1 className="text-center text-3xl font-semibold tracking-tight sm:text-4xl">
-          {a?.greeting ?? "Where do you want to live in Kigali?"}
-        </h1>
-        <p className="mt-3 max-w-xl text-center text-muted-foreground">{a?.subtitle}</p>
-        <div className="mt-8 w-full space-y-3">
-          <Wizard picks={picks} onChange={setPicks} onFinish={() => void search("")} disabled={pending} />
-          <Composer onSend={search} disabled={pending} canSendEmpty={picked} autoFocus />
-        </div>
-        {notice && <p className="mt-4 text-sm text-muted-foreground">{notice}</p>}
-      </div>
-    );
-  }
-
-  const messages = task.messages;
   const lastAgentIndex = messages.findLastIndex((m) => m.role === "agent");
   // While a turn runs, its steps sit on a pending agent turn after the user's message.
   const pendingTurn = running && messages.at(-1)?.role === "user";
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-52px)] w-full max-w-3xl flex-col px-4">
-      <ol className="flex-1 space-y-8 py-8">
-        {messages.map((m, i) => {
-          if (m.role === "user") return <UserTurn key={i} text={m.text} />;
-          const latest = i === lastAgentIndex && !pendingTurn;
-          return (
-            <AgentTurn key={i} id={latest ? LATEST_TURN_ID : undefined} steps={latest ? <Steps task={task} /> : null}>
-              {latest && m.kind === "ask" && !running ? (
-                <AskCard field={m.field} requirements={task.requirements} onPick={(text, filters) => void send(text, false, filters)} disabled={pending} />
-              ) : (
-                <p className="whitespace-pre-wrap">{reply(m)}</p>
-              )}
+    <div className="flex h-dvh flex-col bg-background">
+      <ChatHeader
+        title={c?.name ?? "Mkan"}
+        scrolled={scrolled}
+        start={
+          <Link href={`/${locale}`} aria-label={c?.home ?? "Back to Mkan"} title={c?.home ?? "Back to Mkan"} className={headerButton}>
+            <ChevronLeft className="rtl:rotate-180" aria-hidden />
+          </Link>
+        }
+        end={
+          <button type="button" onClick={newChat} disabled={!task || running} aria-label={c?.newChat ?? "New chat"} title={c?.newChat ?? "New chat"} className={headerButton}>
+            <SquarePen aria-hidden />
+          </button>
+        }
+      />
 
-              {latest && m.kind === "shortlist" && task.shortlist.length > 0 && (
-                <div className="mt-4 space-y-3">
-                  {chips.length > 0 && (
-                    <ul className="flex flex-wrap items-center gap-1.5 text-xs">
-                      <li className="text-muted-foreground">{a?.lookingFor ?? "Looking for"}</li>
-                      {chips.map((chip) => (
-                        <li key={chip} className="rounded-full bg-muted px-2.5 py-1">
-                          {chip}
-                        </li>
-                      ))}
-                    </ul>
+      <div ref={scrollRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto overscroll-contain">
+        {!task ? (
+          <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col items-center justify-center px-4 py-6">
+            {guided ? (
+              <Wizard picks={picks} onChange={setPicks} onFinish={() => void search("")} disabled={pending} />
+            ) : (
+              <h1 className="text-balance text-center text-[26px] font-semibold leading-tight tracking-tight sm:text-3xl">
+                {a?.greeting ?? "Where do you want to live in Kigali?"}
+              </h1>
+            )}
+          </div>
+        ) : (
+          <ol className="mx-auto w-full max-w-3xl list-none space-y-7 px-4 pb-6 pt-4">
+            {messages.map((m, i) => {
+              if (m.role === "user") return <UserTurn key={`${i}.${m.at}`} text={m.text} />;
+              const latest = i === lastAgentIndex && !pendingTurn;
+              if (!latest) return <PastAgentTurn key={`${i}.${m.at}`} text={reply(m)} />;
+              return (
+                <AgentTurn key={`${i}.${m.at}`} steps={<Steps task={task} />}>
+                  {m.kind === "ask" && !running ? (
+                    <AskCard field={m.field} requirements={task.requirements} onPick={(text, filters) => void say(text, false, filters)} disabled={pending} />
+                  ) : (
+                    <p className="whitespace-pre-wrap leading-[inherit] text-foreground">{reply(m)}</p>
                   )}
-                  {/* A swipeable row on phones, a grid from sm up. */}
-                  <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0">
-                    {task.shortlist.map((item) => (
-                      <div key={item.id} className="w-[85%] shrink-0 snap-start sm:w-auto">
-                        <ShortlistCard item={item} taskId={task.id} onChange={refresh} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
-              {latest && m.kind === "shortlist" && !running && (
-                <Refine message={m} requirements={task.requirements} onPick={(text, filters, clear) => void send(text, false, filters, clear)} disabled={pending} />
-              )}
+                  {m.kind === "shortlist" && task.shortlist.length > 0 && (
+                    <div className="space-y-3 pt-1">
+                      {chips.length > 0 && (
+                        <ul className="flex flex-wrap items-center gap-1.5 text-xs">
+                          <li className="text-muted-foreground">{a?.lookingFor ?? "Looking for"}</li>
+                          {chips.map((chip) => (
+                            <li key={chip} className="rounded-full bg-muted px-2.5 py-1">
+                              {chip}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {/* ChatGPT's inline product row: swipe sideways at every width. */}
+                      <ul className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        {task.shortlist.map((item) => (
+                          <li key={item.id} className="w-[78%] max-w-[300px] shrink-0 snap-start">
+                            <ShortlistCard item={item} taskId={task.id} onChange={refresh} />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
-              {latest && !running && (
-                <div className="mt-3 flex gap-1">
-                  <button
-                    type="button"
-                    onClick={reset}
-                    className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    <RotateCcw className="size-3.5" aria-hidden />
-                    {a?.newSearch ?? "New search"}
-                  </button>
-                </div>
-              )}
-            </AgentTurn>
-          );
-        })}
-        {pendingTurn && <AgentTurn steps={<Steps task={task} />} />}
-      </ol>
-      <div ref={bottomRef} />
+                  {m.kind === "shortlist" && !running && (
+                    <Refine message={m} requirements={task.requirements} onPick={(text, filters, clear) => void say(text, false, filters, clear)} disabled={pending} />
+                  )}
 
-      <div className="sticky bottom-0 bg-gradient-to-t from-background from-70% to-transparent pb-3 pt-6">
+                  {!running && <TurnActions text={reply(m)} onRegenerate={() => void regenerate().then((ok) => ok && scrollToBottom())} disabled={pending} />}
+                </AgentTurn>
+              );
+            })}
+            {pendingTurn && <AgentTurn steps={<Steps task={task} />} />}
+            {task && guided && (
+              <li>
+                <Wizard picks={picks} onChange={setPicks} onFinish={() => void search("")} disabled={pending} />
+              </li>
+            )}
+          </ol>
+        )}
+      </div>
+
+      <div className="relative mx-auto w-full max-w-3xl px-3 pb-[max(env(safe-area-inset-bottom),10px)] sm:px-4">
+        {away && (
+          <button
+            type="button"
+            onClick={() => scrollToBottom()}
+            aria-label={c?.scrollDown ?? "Scroll to the latest message"}
+            className="absolute -top-12 start-1/2 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border bg-background shadow-md rtl:translate-x-1/2"
+          >
+            <ArrowDown className="size-4" aria-hidden />
+          </button>
+        )}
+        {!task && !guided && (
+          <div className="pb-3">
+            <Suggestions onPick={(text) => void say(text, true)} onGuided={() => setGuided(true)} disabled={pending} />
+          </div>
+        )}
         {notice && <p className="mb-2 text-center text-sm text-muted-foreground">{notice}</p>}
-        <Composer onSend={(t) => send(t)} disabled={pending || running} />
-        <p className="mt-2 text-center text-xs text-muted-foreground">
+        <Composer
+          onSend={guided || !task ? search : (t) => say(t)}
+          onPlus={() => setGuided((g) => !g)}
+          plusActive={guided}
+          disabled={pending || running}
+          canSendEmpty={guided && picked}
+          autoFocus={!task}
+        />
+        <p className="mt-2 text-center text-[11px] text-muted-foreground">
           {a?.disclaimer ?? "Mkan checks with brokers, but always see a home before you pay."}
         </p>
       </div>
