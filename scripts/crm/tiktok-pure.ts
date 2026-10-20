@@ -69,6 +69,9 @@ export interface SeedRow {
   lastListedAt?: string;
   pausedAt?: string;
   pausedReason?: string;
+  /** When its own recent captions were last read to promote or ignore it, and what they showed. */
+  vettedAt?: string;
+  vet?: string;
 }
 
 /** A seed that has failed three runs in a row stops being listed daily. */
@@ -129,6 +132,39 @@ export const SEARCH_QUERIES: string[] = [
   'house for rent kacyiru',
   'house for rent gisozi',
   'studio for rent kigali',
+  'house for rent kanombe',
+  'house for rent kagarama',
+  'house for rent niboye',
+  'house for rent gikondo',
+  'house for rent rebero',
+  'house for rent kinyinya',
+  'house for rent gacuriro',
+  'house for rent kagugu',
+  'house for rent nyarutarama',
+  'house for rent kimihurura',
+  'house for rent kiyovu',
+  'house for rent kabeza',
+  'house for rent busanza',
+  'house for rent masaka kigali',
+  'house for rent rusororo',
+  'apartment for rent kimironko',
+  'apartment for rent kicukiro',
+  'apartment for rent kacyiru',
+  'apartment for rent nyarutarama',
+  'furnished house for rent kigali',
+  'cheap house for rent kigali',
+  'room for rent kigali',
+  'self contained room kigali',
+  'annex for rent kigali',
+  'kigali real estate agent',
+  'kigali houses for rent tiktok',
+  'inzu ikodeshwa kicukiro',
+  'inzu ikodeshwa gasabo',
+  'inzu ikodeshwa kimironko',
+  'inzu ikodeshwa kanombe',
+  'inzu ikodeshwa nyamirambo',
+  'icyumba gikodeshwa kigali',
+  'maison à louer kigali',
 ];
 
 const RENT_WORDS = /(rent|renting|for\s*rent|ikodesh|gukodesh|kodesha|louer|location|bed\s*rooms?|bedroom|chambre|studio|apartment|appartement|furnished|self[-\s]?contain|compound|annex|ibyumba|icyumba|inzu)/i;
@@ -162,6 +198,30 @@ export function looksLikeRental(caption: string, fromSeed = false): boolean {
 }
 
 export const NOT_A_RENTAL_CAPTION = 'caption does not read as a rental';
+
+// ── vetting a proposed account ───────────────────────────────────────────────
+const RWANDA_WORDS =
+  /(kigali|rwanda|\brwf\b|\bfrw\b|\+?250\s?7|kicukiro|gasabo|nyarugenge|kimironko|remera|kacyiru|kibagabaga|nyamirambo|gisozi|kanombe|kagarama|niboye|gikondo|rebero|kinyinya|gacuriro|kagugu|nyarutarama|kimihurura|kiyovu|rusororo|masaka|kabeza|busanza|kanserege|ikodesh|gukodesh|inzu)/i;
+
+/** A caption that names a rental outright (unlike looksLikeRental, a short vague caption doesn't count). */
+export const rentalCaption = (c: string): boolean => RENT_WORDS.test(c) && (!SALE_WORDS.test(c) || EXPLICIT_RENT.test(c));
+
+/**
+ * What an account's own recent captions say about it. Search proposes any
+ * account that once matched a phrase; this reads its last posts instead:
+ * mostly Kigali rentals → a seed; plenty of posts and none a rental, or none
+ * in Rwanda → ignored; too little to tell → stays proposed.
+ */
+export function vetVerdict(captions: string[]): { verdict: 'promote' | 'ignore' | 'keep'; rental: number; total: number; rwanda: boolean } {
+  const total = captions.length;
+  const rental = captions.filter(rentalCaption).length;
+  // One stray word isn't enough: a fifth of the captions must place it in Rwanda.
+  const rwanda = total > 0 && captions.filter((c) => RWANDA_WORDS.test(c)).length >= Math.max(1, Math.ceil(total * 0.2));
+  let verdict: 'promote' | 'ignore' | 'keep' = 'keep';
+  if (rental >= 3 && rental / total >= 0.3 && rwanda) verdict = 'promote';
+  else if (total >= 5 && (rental === 0 || !rwanda)) verdict = 'ignore';
+  return { verdict, rental, total, rwanda };
+}
 
 /**
  * Rows the caption gate skipped that today's gate would let through — the

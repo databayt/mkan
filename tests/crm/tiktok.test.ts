@@ -33,6 +33,7 @@ import {
   postBody,
   wantsPost,
   type VideoRow,
+  vetVerdict,
 } from '../../scripts/crm/tiktok-pure';
 import { districtForPlace } from '../../src/lib/geo/rwanda-places';
 
@@ -330,4 +331,19 @@ describe('caption-first reading', () => {
     ['#kigalirentals #houseforrent #fyp', false],
     ['Fully furnished 3 bedroom house for rent in Nyarutarama', false], // no price
   ])('%s → %s', (caption, want) => expect(captionCarriesFacts(caption)).toBe(want));
+});
+
+describe('vetVerdict', () => {
+  it('promotes an account that mostly posts Kigali rentals', () => {
+    const caps = ['House for rent in Remera 3 bedrooms 600,000Rwf per month', 'Apartment for rent in Kicukiro', 'Plot for sale in Muyumbu', 'Furnished house for rent in Kimironko', 'Happy weekend'];
+    expect(vetVerdict(caps)).toMatchObject({ verdict: 'promote', rental: 3, total: 5, rwanda: true });
+  });
+  it('ignores an account with plenty of posts and no rental, or none in Rwanda', () => {
+    expect(vetVerdict(['dance', 'music', 'my day', 'vlog', 'funny']).verdict).toBe('ignore');
+    expect(vetVerdict(['Apartment for rent in Lagos', 'House for rent Lekki', 'Studio for rent Ikeja', 'flat to let', 'room for rent']).verdict).toBe('ignore');
+  });
+  it('keeps an account it cannot judge yet', () => {
+    expect(vetVerdict(['House for rent Kigali', 'hi']).verdict).toBe('keep');
+    expect(vetVerdict([]).verdict).toBe('keep');
+  });
 });
