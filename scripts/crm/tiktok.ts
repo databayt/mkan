@@ -1,14 +1,15 @@
 /**
  * The TikTok lane — Kigali rentals posted as TikTok videos → the mkan CRM.
  *
- *   pnpm crm:tiktok-discover [--seeds-only|--search-only] [--query="…"|--queries=3] [--max-age=120] [--per-seed=30]
- *   pnpm crm:tiktok-fetch    [--limit=N] [--max-age=120]       metadata + 8 frames + transcript, mp4 deleted
+ *   pnpm crm:tiktok-discover [--seeds-only|--search-only] [--query="…"|--queries=3] [--max-age=7] [--per-seed=30]
+ *   pnpm crm:tiktok-fetch    [--limit=N] [--max-age=7]         metadata + 8 frames + transcript, mp4 deleted
  *   pnpm crm:tiktok-read     [--read-limit=N] [--reader=groq|claude]  newest first; Groq vision (free tier) by default
  *   pnpm crm:tiktok-upsert   [--limit=N] [--apply]              frames → S3, host + home (VETTING) + note → Twenty
  *   pnpm crm:tiktok          [--limit=N] [--fetch-limit=N] [--read-limit=N] [--apply] [--notify]
  *                                                              all four, then the /find lead mirror (with --apply)
  *   pnpm crm:tiktok-status                                      the ledger, by state and skip reason
- *   pnpm crm:tiktok-seeds    [--add=a,b] [--promote=h] [--ignore=h]
+ *   pnpm crm:tiktok-seeds    [--add=a,b] [--promote=h] [--ignore=h] [--vet [--limit=N] [--apply]]
+ *                                                              --vet reads each proposed account's own captions: rentals → seed, none → ignored
  *   pnpm crm:tiktok-requeue                                     skipped-by-caption rows today's gate passes → back to fetch
  *   pnpm crm:tiktok-settle   [--apply]                          SUSPECTED duplicate homes → DUPLICATE of the first copy
  *   pnpm crm:tiktok-posts    [--apply]                          one Twenty `tiktokPost` per read video (run does it too)
@@ -44,6 +45,7 @@ import { twentyClient } from './twenty-rest';
 import { TIKTOK_PROMPT_VERSION, buildTikTokPrompt } from './tiktok-read-prompt';
 import {
   SEARCH_QUERIES,
+  vetVerdict,
   dupKey,
   frameTimes,
   homeBody,
@@ -99,7 +101,7 @@ const GROQ_FRAMES = GROQ_IMAGES * PER_IMAGE;
 const GROQ_GAP_PER_IMAGE_MS = Number(argv('groq-gap', '45000')) / GROQ_IMAGES;
 /** Text-only reads of fact-rich captions — a separate daily quota from the vision model. */
 const GROQ_TEXT_MODEL = (process.env.TIKTOK_GROQ_TEXT_MODEL ?? '').trim() || 'openai/gpt-oss-120b';
-const MAX_AGE_DAYS = Number(argv('max-age', '120'));
+const MAX_AGE_DAYS = Number(argv('max-age', '7'));
 const DELAY_MS = Number(argv('delay', '4000'));
 const cmd = process.argv.slice(2).find((a) => !a.startsWith('--')) ?? 'help';
 
@@ -318,6 +320,13 @@ async function discover(): Promise<void> {
     if (proposed) console.log(`  ${proposed} new account(s) proposed as seeds — review with \`pnpm crm:tiktok-seeds\``);
   }
 
+  // Proposals are settled by reading their own captions, a few per run.
+  if (!flag('search-only') && !argv('query')) {
+    saveSeeds(seeds);
+    const v = vetSeeds(Number(argv('vet', '8')), true);
+    runStats.seedsPromoted.push(...v.promoted);
+    Object.assign(seeds, loadSeeds());
+  }
   // A proposal that search keeps finding and that already gave a real home is a seed.
   const homesBy = new Map<string, number>();
   for (const v of Object.values(videos)) if (v.state === 'upserted') homesBy.set(v.handle, (homesBy.get(v.handle) ?? 0) + 1);
@@ -1001,6 +1010,44 @@ function status(): void {
   console.log(`seeds: ${count('active')} active · ${count('paused')} paused · ${count('proposed')} proposed · ${count('ignored')} ignored`);
 }
 
+/**
+ * Read each proposed account's latest captions and settle it: a seed when they
+ * are mostly Kigali rentals, ignored when they plainly aren't. `limit` per run
+ * keeps yt-dlp polite; an account is looked at again after two weeks.
+ */
+function vetSeeds(limit: number, apply: boolean): { promoted: string[]; ignored: string[] } {
+  const seeds = loadSeeds();
+  const videos = loadVideos();
+  const due = Object.entries(seeds)
+    .filter(([, s]) => s.status === 'proposed' && (!s.vettedAt || Date.now() - Date.parse(s.vettedAt) >= 14 * 86_400_000))
+    .sort((a, b) => (b[1].hits ?? 0) - (a[1].hits ?? 0))
+    .slice(0, limit);
+  const out = { promoted: [] as string[], ignored: [] as string[] };
+  if (due.length) console.log(`\nvet: ${due.length} proposed account(s)`);
+  for (const [handle, seed] of due) {
+    try {
+      const json = listSeed(handle, seed, videos) as { entries?: { title?: string; description?: string }[] };
+      const captions = (json.entries ?? []).map((e) => e.description || e.title || '').filter(Boolean);
+      const v = vetVerdict(captions);
+      const note = `${v.rental}/${v.total} rental${v.rwanda ? '' : ', no Rwanda signal'}`;
+      console.log(`  ${v.verdict === 'promote' ? '↑' : v.verdict === 'ignore' ? '×' : '·'} @${handle.padEnd(28)} ${note}`);
+      if (apply) {
+        Object.assign(seed, { vettedAt: now(), vet: note });
+        if (v.verdict === 'promote') seed.status = 'active';
+        if (v.verdict === 'ignore') seed.status = 'ignored';
+      }
+      if (v.verdict === 'promote') out.promoted.push(handle);
+      if (v.verdict === 'ignore') out.ignored.push(handle);
+    } catch (e) {
+      console.warn(`  ! @${handle}: ${(e as Error).message.slice(0, 100)}`);
+      if (apply) Object.assign(seed, { vettedAt: now(), vet: 'could not list' });
+    }
+  }
+  if (apply) saveSeeds(seeds);
+  else if (due.length) console.log('DRY RUN — pass --apply to promote / ignore.');
+  return out;
+}
+
 function seedsCmd(): void {
   const seeds = loadSeeds();
   const list = (s: string) => s.split(',').map((h) => h.trim().replace(/^@/, '').toLowerCase()).filter(Boolean);
@@ -1008,6 +1055,12 @@ function seedsCmd(): void {
   for (const h of list(argv('promote'))) if (seeds[h]) seeds[h].status = 'active';
   for (const h of list(argv('ignore'))) seeds[h] = { ...(seeds[h] ?? { from: 'manual', addedAt: now() }), status: 'ignored' };
   if (argv('add') || argv('promote') || argv('ignore')) saveSeeds(seeds);
+  if (flag('vet')) vetSeeds(Number(argv('limit', '100')), APPLY);
+  printSeeds();
+}
+
+function printSeeds(): void {
+  const seeds = loadSeeds();
   const videos = Object.values(loadVideos());
   const kept = (h: string) => videos.filter((v) => v.handle === h && v.state === 'upserted').length;
   console.log('\nhandle'.padEnd(36) + 'status    from     hits  homes');
