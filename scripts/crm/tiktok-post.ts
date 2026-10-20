@@ -48,6 +48,7 @@ import {
   refOf,
   timeline,
   W,
+  waLink,
   type Ledger,
   type PostRow,
 } from './tiktok-post-pure';
@@ -352,11 +353,27 @@ async function ask(): Promise<void> {
     count.set(hs, (count.get(hs) ?? 0) + 1);
   }
   const rows = hosts
-    .map((h) => ({ handle: String(h.tiktokHandle).replace(/^@/, '').toLowerCase(), name: String(h.name ?? '').trim() || String(h.tiktokHandle), phone: phoneOf(h.phone as Phones | null), consent: (h.repostConsent as string | null) ?? '—' }))
+    .map((h) => {
+      const handle = String(h.tiktokHandle).replace(/^@/, '').toLowerCase();
+      const name = String(h.name ?? '').trim();
+      return { handle, name: name.replace(/^@/, '').toLowerCase() === handle ? '' : name, phone: phoneOf(h.phone as Phones | null), consent: (h.repostConsent as string | null) ?? '—' };
+    })
     .sort((a, b) => (count.get(b.handle) ?? 0) - (count.get(a.handle) ?? 0));
   console.log('Broker repost consent (homes = their leads on /find):\n');
-  for (const r of rows) console.log(`  @${r.handle.padEnd(24)} ${String(count.get(r.handle) ?? 0).padStart(3)} homes  ${r.consent.padEnd(6)} ${r.phone ? `https://wa.me/${r.phone.replace(/\D/g, '')}` : 'no phone'}`);
-  console.log(`\nThe ask (edit the name):\n\n${brokerAsk('<name>')}\n\nAfter sending: pnpm tt:ask --mark=<handle,…> --as=ASKED --apply   (YES / NO when they answer)`);
+  for (const r of rows) console.log(`  @${r.handle.padEnd(24)} ${String(count.get(r.handle) ?? 0).padStart(3)} homes  ${r.consent.padEnd(6)} ${r.phone ? waLink(r.phone) : 'no phone'}`);
+  console.log(`\nThe ask:\n\n${brokerAsk('<name>', '<handle>', PAGE)}\n\nAfter sending: pnpm tt:ask --mark=<handle,…> --as=ASKED --apply   (YES / NO when they answer)`);
+
+  // --slack: the tap-through list for the phone that owns the page's WhatsApp.
+  // Only brokers with homes, a number, and no answer yet.
+  if (flag('slack')) {
+    const due = rows.filter((r) => r.phone && (count.get(r.handle) ?? 0) > 0 && r.consent !== 'YES' && r.consent !== 'NO');
+    if (!due.length) return void console.log('Nobody left to ask.');
+    const lines = due.map((r) => `• <${waLink(r.phone!, brokerAsk(r.name, r.handle, PAGE))}|@${r.handle}> — ${count.get(r.handle)} homes${r.consent === 'ASKED' ? ' (asked before)' : ''}`);
+    const ok = await postToMkan(
+      [`📣 *Broker repost asks for TikTok @${PAGE}* — open each on the phone with WhatsApp ${whatsapp()}; the message is typed in, tap send.`, ...lines, `Then: \`pnpm tt:ask --mark=${due.map((r) => r.handle).join(',')} --as=ASKED --apply\``].join('\n'),
+    );
+    console.log(ok ? `Posted ${due.length} asks to #mkan.` : 'Slack post failed.');
+  }
 }
 
 // ── main ─────────────────────────────────────────────────────────────────────

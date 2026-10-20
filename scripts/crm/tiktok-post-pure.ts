@@ -152,14 +152,24 @@ export function captionFor(r: PostRow, whatsapp: string): string {
 }
 
 /** The message asking a seed broker for repost rights — EN, then Kinyarwanda. */
-export function brokerAsk(name: string): string {
+export function brokerAsk(name: string, handle = '', page = ''): string {
+  const hi = name ? ` ${name}` : '';
+  const yours = handle ? ` from @${handle}` : '';
+  const zanyu = handle ? ` (@${handle})` : '';
+  const ours = page ? ` (@${page})` : '';
   return [
-    `Hello ${name} 👋 This is mkan (mkan.sd), a home-rental platform in Kigali.`,
-    'We are starting a TikTok page for monthly rentals in Kigali. Can we repost your houses on it, with your name credited? When a tenant we bring rents one of yours, we share the commission with you. Reply YES and we start.',
+    `Hello${hi} 👋 This is mkan (mkan.sd), a home-rental platform in Kigali.`,
+    `We are starting a TikTok page${ours} for monthly rentals in Kigali. Can we repost your houses${yours} on it, with your name credited? When a tenant we bring rents one of yours, we share the commission with you. Reply YES and we start.`,
     '',
-    `Muraho ${name} 👋 Turi mkan (mkan.sd), urubuga rw'ubukode bw'inzu i Kigali.`,
-    'Dutangiye paji ya TikTok y\'inzu zikodeshwa ku kwezi i Kigali. Mwatwemerera gushyira inzu zanyu kuri paji yacu, tuvuga izina ryanyu? Umukiriya tuzanye nakodesha inzu yanyu, tugabana komisiyo. Musubize YEGO dutangire.',
+    `Muraho${hi} 👋 Turi mkan (mkan.sd), urubuga rw'ubukode bw'inzu i Kigali.`,
+    `Dutangiye paji ya TikTok${ours} y'inzu zikodeshwa ku kwezi i Kigali. Mwatwemerera gushyira inzu zanyu${zanyu} kuri paji yacu, tuvuga izina ryanyu? Umukiriya tuzanye nakodesha inzu yanyu, tugabana komisiyo. Musubize YEGO dutangire.`,
   ].join('\n');
+}
+
+/** A wa.me link that opens the chat with `text` already typed — the person still taps send. */
+export function waLink(phone: string, text = ''): string {
+  const n = phone.replace(/\D/g, '');
+  return text ? `https://wa.me/${n}?text=${encodeURIComponent(text)}` : `https://wa.me/${n}`;
 }
 
 // ── artwork (SVG → PNG via sharp in the runner) ──────────────────────────────

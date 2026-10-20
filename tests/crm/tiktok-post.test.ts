@@ -13,6 +13,7 @@ import {
   refInText,
   refOf,
   timeline,
+  waLink,
   type Ledger,
   type PostRow,
 } from '../../scripts/crm/tiktok-post-pure';
@@ -112,5 +113,17 @@ describe('timeline', () => {
     expect(t.offsets).toEqual([2.2, 4.4, 6.6, 8.8, 11]);
     expect(t.slidesLen).toBe(13.6);
     expect(t.total).toBe(16.2);
+  });
+});
+
+describe('broker ask link', () => {
+  it('names their TikTok and our page, and prefills WhatsApp', () => {
+    const m = brokerAsk('', 'kigalihomes', 'mkan.rw');
+    expect(m).toContain('Hello 👋');
+    expect(m).toContain('@kigalihomes');
+    expect(m).toContain('(@mkan.rw)');
+    const link = waLink('+250 788 000 000', m);
+    expect(link.startsWith('https://wa.me/250788000000?text=')).toBe(true);
+    expect(decodeURIComponent(link.split('text=')[1])).toBe(m);
   });
 });
