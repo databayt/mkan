@@ -17,8 +17,8 @@ interface Chip {
 }
 
 /**
- * What comes after a shortlist: the budget, offered as a pick-one card when the
- * tenant has not given one (the search ran without it), then one-tap follow-ups
+ * What comes after a shortlist: one pick-one question the search ran without —
+ * months or nights (it ran as monthly rent), else the budget — then one-tap follow-ups
  * — cheaper, bigger, furnished, anywhere — that move the same search. Each tap
  * sets exact fields, so nothing is re-parsed from text.
  */
@@ -56,10 +56,10 @@ export function Refine({
 
   return (
     <div className={cn("space-y-3", compact ? "mt-3" : "mt-4")}>
-      {message.refine === "maxPrice" && (
+      {message.refine && (
         <AskCard
-          field="maxPrice"
-          title={f?.budget ?? "Want me to keep these within a budget?"}
+          field={message.refine}
+          title={message.refine === "stay" ? f?.stay ?? "These are monthly rentals. Is your stay for months, or a few nights?" : f?.budget ?? "Want me to keep these within a budget?"}
           requirements={r}
           onPick={(text, filters) => onPick(text, filters)}
           disabled={disabled}

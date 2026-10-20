@@ -210,7 +210,9 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false }
             req.compound ? a?.req?.compound : null,
             req.family ? a?.req?.family : null,
             req.cheap ? a?.req?.cheap : null,
-          ].filter((x): x is string => !!x)
+          ]
+            // A neighbourhood named like its district ("Kicukiro") reads once.
+            .filter((x, i, all): x is string => !!x && all.indexOf(x) === i)
         : [],
     [req, a, locale, money],
   );

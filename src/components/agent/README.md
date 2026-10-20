@@ -13,9 +13,10 @@ or booked without a person's confirmation.
 ```
 sendAgentMessage (server action) ──► AgentTask(RUNNING) + after(runTurn)
                                           │
-runTurn: requirements_extracted ─► asked (missing stay/budget) ─► DONE
-                                └► search_done ─► dedup_grouped ─► filtered ─► ranked
-                                   ─► needs_confirmation (uncertain) ─► shortlist_ready ─► DONE
+runTurn: requirements_extracted (Groq skipped on taps) ─► search_done ─► dedup_grouped ─► filtered ─► ranked
+         ─► needs_confirmation (uncertain) + the shortlist reply (cards visible, still RUNNING)
+         ─► broker asks ─► shortlist_ready ─► DONE / WAITING
+         no stay type → searched as monthly rent, no broker asks, "months or nights?" offered under the cards
 client: GET /api/agent/task?id=&v=<version> every 800 ms → 2 s while RUNNING, 10 s → 30 s → 60 s while WAITING,
         paused while the tab is hidden; 204 when the version is unchanged. A reload resumes from the cookie
 ```

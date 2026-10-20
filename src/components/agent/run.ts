@@ -1,9 +1,10 @@
 import "server-only";
 
 /**
- * One agent turn: read the tenant's message, then either ask for the stay type
- * (the only blocking question) or search → group → filter → (widen) → rank →
- * shortlist. Every step writes
+ * One agent turn: read the tenant's message, then search → group → filter →
+ * (widen) → rank → shortlist. Nothing is asked before the first homes: a
+ * search without a stay type runs as monthly rent and offers the stay
+ * question under the cards. Every step writes
  * an AgentEvent before and after it runs, so the panel shows exactly what the
  * system is doing — a step with no row did not happen.
  *
@@ -21,7 +22,6 @@ import {
   EMPTY_REQUIREMENTS,
   inferStay,
   mergeRequirements,
-  missingHardField,
   parseAdjustments,
   parseRequirements,
   reconcile,
@@ -105,10 +105,13 @@ export async function runTurn(taskId: string): Promise<void> {
     const base = mergeRequirements(EMPTY_REQUIREMENTS, coerceRequirements(task.requirements));
     const parsed = parseRequirements(latest);
     const adjust = parseAdjustments(latest, base);
+    // A tap (picks, an answer card, a refine chip) sets exact fields, so the
+    // model has nothing to add and its 0.3–3.5 s is skipped.
+    const tapped = Object.keys(picked).length > 0 || (lastUser?.clear?.length ?? 0) > 0;
     // The step's "running" row and the model call overlap: neither waits on the other.
     const [understandId, llm] = await Promise.all([
       trace.start("requirements_extracted"),
-      readRequirementsWithGroq(latest, base, userTexts.slice(0, -1)),
+      tapped ? null : readRequirementsWithGroq(latest, base, userTexts.slice(0, -1)),
     ]);
     // The model reads the newest message against the search so far; the regex
     // reader wins on every field it found; taps (picks, refine chips) are
@@ -119,25 +122,22 @@ export async function runTurn(taskId: string): Promise<void> {
     const clears = [...(llm?.clear ?? []), ...adjust.clear].filter((k) => stated[k] == null);
     requirements = clearFields(requirements, [...clears, ...(lastUser?.clear ?? [])]);
     requirements = inferStay(reconcile(base, requirements, stated));
-    const missing = missingHardField(requirements);
-    const understood = trace.finish(understandId, "done", { requirements, reader: llm ? "groq" : "rules" });
-    if (missing) {
-      // Events land before the status flips: the client stops polling at DONE.
-      await Promise.all([understood, trace.record("asked", "waiting_person", { field: missing })]);
-      await reply(task.id, messages, { role: "agent", kind: "ask", field: missing, at: now() }, { requirements: json(requirements), status: "DONE" });
-      return;
-    }
+    // No stay type yet: search monthly rent (every home, nightly ones priced by
+    // the month) and ask months-or-nights under the cards instead of before them.
+    const assumed = !requirements.stay;
+    const query: Requirements = assumed ? { ...requirements, stay: "long" } : requirements;
+    const understood = trace.finish(understandId, "done", { requirements, reader: tapped ? "taps" : llm ? "groq" : "rules" });
 
     // 2. Search mkan — the bookkeeping writes ride alongside the query.
     const [searchId, { candidates }] = await Promise.all([
       trace.start("search_done"),
-      searchKigali(requirements),
+      searchKigali(query),
       understood,
       db.agentTask.update({ where: { id: task.id }, data: { requirements: json(requirements) } }),
     ]);
 
     // 3–4. Group duplicate ads, apply the hard filters, rank.
-    let result = rankCandidates(candidates, requirements);
+    let result = rankCandidates(candidates, query);
     await Promise.all([
       trace.finish(searchId, "done", { candidates: candidates.length }),
       trace.recordMany([
@@ -155,7 +155,7 @@ export async function runTurn(taskId: string): Promise<void> {
       // filters in memory. This used to be one query per attempt — up to 13
       // searches (plus 13 broker-answer reads) on a single zero-match turn.
       // Only a pool that hit its cap can be missing rows; then the old way runs.
-      const attempts = relaxations(requirements);
+      const attempts = relaxations(query);
       const widest = attempts.reduce((w, a) => (a.steps.length > w.steps.length ? a : w), attempts[0]!);
       const [relaxId, tried] = await Promise.all([
         trace.start("relaxed"),
@@ -183,40 +183,39 @@ export async function runTurn(taskId: string): Promise<void> {
     }
     if (result.ranked.length === 0) {
       await trace.record("ranked", "done", { top: 0 });
-      await reply(task.id, messages, { role: "agent", kind: "none", stay: requirements.stay ?? undefined, at: now() }, { shortlist: json([]), status: "DONE" });
+      await reply(task.id, messages, { role: "agent", kind: "none", stay: query.stay ?? undefined, at: now() }, { shortlist: json([]), status: "DONE" });
       return;
     }
 
-    // 5. Availability: ask the brokers who can answer; say plainly which
-    //    homes nobody can confirm.
+    // 5. The cards go up now; the brokers are asked after, while the tenant reads.
     const [cards] = await Promise.all([toShortlist(result.ranked, lang), trace.record("ranked", "done", { top: result.ranked.length })]);
     let shortlist = cards;
     const unconfirmed = shortlist.filter((s) => s.availability === "unconfirmed").length;
+    const answer: AgentMessage = {
+      role: "agent",
+      kind: "shortlist",
+      count: shortlist.length,
+      ...(relaxed.length ? { relaxed } : {}),
+      // One follow-up at a time: months-or-nights first, then a ceiling.
+      ...(assumed ? { refine: "stay" as const } : !requirements.maxPrice && !requirements.cheap ? { refine: "maxPrice" as const } : {}),
+      at: now(),
+    };
     await Promise.all([
       unconfirmed > 0 ? trace.record("needs_confirmation", "uncertain", { count: unconfirmed }) : null,
-      db.agentTask.update({ where: { id: task.id }, data: { shortlist: json(shortlist) } }),
+      reply(task.id, messages, answer, { shortlist: json(shortlist) }),
     ]);
-    const asked = new Set(await requestConfirmations(task.id, shortlist, requirements, lang));
+    // A guessed stay type does not reach a broker: they are asked once the tenant says months.
+    const asked = new Set(assumed ? [] : await requestConfirmations(task.id, shortlist, requirements, lang));
     trace.resync(await lastSeq(task.id));
     if (asked.size > 0) {
       shortlist = shortlist.map((s) => (asked.has(s.id) ? { ...s, availability: "asked" as const } : s));
     }
 
     await trace.record("shortlist_ready", "done", { count: shortlist.length });
-    await reply(
-      task.id,
-      messages,
-      {
-        role: "agent",
-        kind: "shortlist",
-        count: shortlist.length,
-        ...(relaxed.length ? { relaxed } : {}),
-        // No ceiling yet: the best homes come first and a budget is offered after.
-        ...(!requirements.maxPrice && !requirements.cheap ? { refine: "maxPrice" as const } : {}),
-        at: now(),
-      },
-      { shortlist: json(shortlist), status: asked.size > 0 ? "WAITING" : "DONE" },
-    );
+    await db.agentTask.update({
+      where: { id: task.id },
+      data: { ...(asked.size > 0 ? { shortlist: json(shortlist) } : {}), status: asked.size > 0 ? "WAITING" : "DONE" },
+    });
   } catch (err) {
     console.error("[agent] turn failed", err);
     await trace.record("failed", "failed", {}).catch(() => {});

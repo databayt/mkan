@@ -5655,6 +5655,7 @@
     "refine": {
       "title": "Refine",
       "budget": "Want me to keep these within a budget?",
+      "stay": "These are monthly rentals. Is your stay for months, or a few nights?",
       "cheaper": "Cheaper",
       "bigger": "More bedrooms",
       "furnished": "Furnished",

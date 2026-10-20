@@ -53,3 +53,11 @@
 - The panel's `/listings` re-filter is debounced 400 ms; the body margin no longer animates (only the panel's transform does).
 - The global `p { text-muted-foreground }` (`styles/typography.css`) greyed the replies — chat text sets `text-foreground` explicitly.
 - Not done: a separate Dialog for desktop (the bottom sheet is capped at `max-w-lg` and reads fine there); lazy-loading `Wizard` (its `usePicksLabel` is needed by every search).
+
+## Homes before questions (2026-10-20)
+
+- Nothing is asked before the first homes. A message without a stay type ("2 bedroom in Kicukiro") used to get "Months or nights?" first; it now searches monthly rent (every home, nightly ones priced by the month) and offers months-or-nights as the card under the shortlist (`refine: "stay"`), then the budget. Brokers are not asked on a guessed stay type — only after the tenant taps Months.
+- The shortlist reply is written as soon as the cards are ranked; the broker asks run after it. Prod traces had the cards waiting 1–5 s on broker contact.
+- A tap (wizard picks, an answer card, a refine chip) skips the Groq reader: the fields are exact, and Groq took 0.3–3.6 s per turn in the traces.
+- The "Looking for" chips drop a neighbourhood named like its district (duplicate React key).
+- Still open: with no budget the first cards are the best-rated, which for monthly rent means RWF 1–3M Airbnb units. A price-aware default (median rent first) is the next lever if tenants bounce there.
