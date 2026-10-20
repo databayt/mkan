@@ -37,6 +37,53 @@ export function slackToken(): string {
   return cached;
 }
 
+/**
+ * Uploads a file to #mkan with `comment` as its message — the TikTok page's
+ * daily videos reach the phone this way. Slack's two-step external upload:
+ * get an upload URL, POST the bytes, then complete into the channel. Needs the
+ * bot's `files:write` scope. Never throws.
+ */
+export async function uploadToMkan(path: string, comment: string, opts: { channel?: string; title?: string } = {}): Promise<boolean> {
+  const token = slackToken();
+  if (!token) {
+    console.warn('  ! no Slack token — file not uploaded');
+    return false;
+  }
+  try {
+    const bytes = readFileSync(path);
+    const filename = path.split('/').pop() ?? 'file';
+    const auth = { Authorization: `Bearer ${token}` };
+    const step1 = (await (
+      await fetch('https://slack.com/api/files.getUploadURLExternal', {
+        method: 'POST',
+        headers: { ...auth, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ filename, length: String(bytes.length) }),
+      })
+    ).json()) as { ok?: boolean; error?: string; upload_url?: string; file_id?: string };
+    if (!step1.ok || !step1.upload_url || !step1.file_id) {
+      console.warn(`  ! slack upload: ${step1.error}`);
+      return false;
+    }
+    const put = await fetch(step1.upload_url, { method: 'POST', body: bytes });
+    if (!put.ok) {
+      console.warn(`  ! slack upload: HTTP ${put.status}`);
+      return false;
+    }
+    const done = (await (
+      await fetch('https://slack.com/api/files.completeUploadExternal', {
+        method: 'POST',
+        headers: { ...auth, 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({ files: [{ id: step1.file_id, title: opts.title ?? filename }], channel_id: opts.channel ?? MKAN_CHANNEL, initial_comment: comment }),
+      })
+    ).json()) as { ok?: boolean; error?: string };
+    if (!done.ok) console.warn(`  ! slack upload: ${done.error}`);
+    return !!done.ok;
+  } catch (e) {
+    console.warn(`  ! slack upload: ${(e as Error).message}`);
+    return false;
+  }
+}
+
 /** Posts `text` (Slack mrkdwn). Never throws: a missing token or a Slack error is logged. */
 export async function postToMkan(text: string, opts: { channel?: string; threadTs?: string } = {}): Promise<boolean> {
   const token = slackToken();

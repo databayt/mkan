@@ -306,6 +306,8 @@ export const HOST: ObjectDef = {
     { name: 'facebookUrl', label: 'Facebook', type: 'LINKS', icon: 'IconBrandFacebook' },
     { name: 'contactFoundVia', label: 'Contact found via', type: 'SELECT', options: ['AIRBNB_PROFILE', 'FACEBOOK', 'MUTUAL_CONTACT', 'FIELD_SCOUT', 'PUBLIC_DIRECTORY', 'OTHER', 'TIKTOK'] },
     { name: 'tiktokHandle', label: 'TikTok', type: 'TEXT', icon: 'IconBrandTiktok', description: 'TikTok handle without @ (dedupe key when the caption carries no phone).' },
+    // A broker's YES lets mkan's own Kigali TikTok page repost their houses (tt:ask).
+    { name: 'repostConsent', label: 'Repost consent', type: 'SELECT', options: ['ASKED', 'YES', 'NO'] },
     { name: 'preferredLanguage', label: 'Preferred language', type: 'SELECT', options: ['AR', 'EN', 'RW'] },
     { name: 'identityVerified', label: 'Identity verified', type: 'SELECT', options: ['UNVERIFIED', 'NAME_MATCHED', 'OWNERSHIP_CLAIMED', 'ID_SEEN'] },
     { name: 'crossSourceCorroborated', label: 'Cross-source corroboration', type: 'SELECT', options: ['NONE', 'PARTIAL', 'CONFIRMED'] },
