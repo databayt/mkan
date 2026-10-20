@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # mkan's Kigali TikTok page, daily at 07:00 (after the 06:00 broker sweep):
 # pick today's homes → render the 9:16 videos → upload each with its caption to
-# #mkan, where the poster saves it to the phone and posts it to @mkan.
+# #mkan, where the poster saves it to the phone and posts it to @mkan.rw.
 #
 #   bash scripts/crm/install-tiktok-post.sh            # install (does not run now)
 #   bash scripts/crm/install-tiktok-post.sh --remove   # stop + remove

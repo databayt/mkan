@@ -22,7 +22,7 @@
  * `repostConsent`). The frames are cut from the broker's own video.
  *
  * Env: MKAN_KIGALI_WHATSAPP (the number on the end card and in the caption),
- * TIKTOK_PAGE_HANDLE (default mkan), TIKTOK_PAGE_SECUID (when yt-dlp's
+ * TIKTOK_PAGE_HANDLE (default mkan.rw), TIKTOK_PAGE_SECUID (when yt-dlp's
  * @handle page breaks), KUN_DIR (for the shared reel encode; default ~/kun).
  */
 import { config } from 'dotenv';
@@ -64,7 +64,7 @@ const DATA = join(__dirname, '.data', 'tiktok-post');
 const LEDGER = join(DATA, 'posted.json');
 const today = (): string => new Date().toISOString().slice(0, 10);
 const dayDir = (d = argv('date', today())) => join(DATA, d);
-const PAGE = (process.env.TIKTOK_PAGE_HANDLE ?? '').trim().replace(/^@/, '') || 'mkan';
+const PAGE = (process.env.TIKTOK_PAGE_HANDLE ?? '').trim().replace(/^@/, '') || 'mkan.rw';
 const KUN = (process.env.KUN_DIR ?? '').trim() || join(homedir(), 'kun');
 
 function whatsapp(): string {
