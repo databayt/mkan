@@ -50,7 +50,8 @@ export type ReasonKey =
   | "nearUniversity"
   | "selfCompound"
   | "familySize"
-  | "lowPrice";
+  | "lowPrice"
+  | "typicalPrice";
 
 export interface Ranked {
   id: number;
@@ -147,7 +148,37 @@ export function costFor(c: Candidate, r: Requirements): CostEstimate | null {
   return r.stay === "short" ? shortStayCost(c, r.nights ?? 1) : longStayCost(c);
 }
 
-export function scoreCandidate(c: Candidate, r: Requirements, dupes = 0, now = new Date()): Ranked | null {
+/** Within this share of the median, a home is "typical" for the search. */
+const TYPICAL_BAND = 0.25;
+
+/** Fewer real monthly rents than this and the median falls back to every home. */
+const MIN_MONTHLY_SAMPLE = 3;
+
+/**
+ * The going price for the search, in the period the tenant compares. For a
+ * monthly search it is the median of the real monthly rents that matched
+ * (broker homes): a nightly apartment priced by the month runs 3–5× Kigali's
+ * rents, and those far outnumber them.
+ */
+export function medianPrice(cands: Candidate[], r: Requirements): number | null {
+  const priced = (list: Candidate[]) =>
+    list
+      .map((c) => comparablePrice(c, r))
+      .filter((p): p is number => p != null && p > 0)
+      .sort((a, b) => a - b);
+  const monthly = r.stay === "short" ? [] : priced(cands.filter((c) => c.rentPeriod === "MONTHLY"));
+  const prices = monthly.length >= MIN_MONTHLY_SAMPLE ? monthly : priced(cands);
+  if (prices.length === 0) return null;
+  const mid = prices.length >> 1;
+  return prices.length % 2 ? prices[mid]! : (prices[mid - 1]! + prices[mid]!) / 2;
+}
+
+/**
+ * `median` stands in for a budget the tenant has not given: homes near the
+ * middle of what matched lead, so a first shortlist is not five luxury
+ * apartments because they carry the best ratings.
+ */
+export function scoreCandidate(c: Candidate, r: Requirements, dupes = 0, now = new Date(), median: number | null = null): Ranked | null {
   const cost = costFor(c, r);
   if (!cost) return null;
   const reasons: ReasonKey[] = [];
@@ -170,6 +201,11 @@ export function scoreCandidate(c: Candidate, r: Requirements, dupes = 0, now = n
       reasons.push("slightlyOverBudget");
       score -= 10;
     }
+  } else if (median && p != null) {
+    // Distance on a log scale: double the median and half of it weigh the same.
+    const off = Math.abs(Math.log(p / median));
+    if (off <= Math.log(1 + TYPICAL_BAND)) reasons.push("typicalPrice");
+    score += Math.max(0, 30 - off * 25);
   }
   if (r.district && c.district?.toUpperCase() === r.district) {
     reasons.push("district");
@@ -220,8 +256,9 @@ export interface RankResult {
 export function rankCandidates(cands: Candidate[], r: Requirements, limit = 6, now = new Date()): RankResult {
   const { kept, dupCount, removed } = groupDuplicates(cands);
   const matching = kept.filter((c) => passesHardFilters(c, r));
+  const median = !r.maxPrice && !r.cheap ? medianPrice(matching, r) : null;
   const ranked = matching
-    .map((c) => scoreCandidate(c, r, dupCount.get(c.id) ?? 0, now))
+    .map((c) => scoreCandidate(c, r, dupCount.get(c.id) ?? 0, now, median))
     .filter((x): x is Ranked => x !== null)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);

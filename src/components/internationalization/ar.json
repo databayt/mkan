@@ -5492,7 +5492,8 @@
         "nearUniversity": "قرب جامعة",
         "selfCompound": "بسور خاص",
         "familySize": "يتسع لعائلة",
-        "lowPrice": "سعر منخفض"
+        "lowPrice": "سعر منخفض",
+        "typicalPrice": "سعر معتاد"
       },
       "asked": "سألنا الوسيط — في انتظار الرد",
       "rented": "مؤجّر — لم يعد متاحاً",

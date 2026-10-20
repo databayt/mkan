@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { longStayCost, monthlyRent, shortStayCost } from "@/components/agent/cost";
-import { groupDuplicates, passesHardFilters, rankCandidates, type Candidate } from "@/components/agent/rank";
+import { groupDuplicates, medianPrice, passesHardFilters, rankCandidates, type Candidate } from "@/components/agent/rank";
 import {
   clearFields,
   EMPTY_REQUIREMENTS,
@@ -89,6 +89,31 @@ const cand = (over: Partial<Candidate>): Candidate => ({
 
 describe("rank", () => {
   const req = { ...EMPTY_REQUIREMENTS, stay: "long" as const, district: "KICUKIRO" as const, bedrooms: 2, maxPrice: 400_000, pricePeriod: "month" as const };
+
+  it("leads with typical prices when no budget was given, not the best-rated luxury", () => {
+    const open = { ...EMPTY_REQUIREMENTS, stay: "long" as const, bedrooms: 2 };
+    const homes = [
+      cand({ id: 1, hostId: "a", pricePerNight: 100_000, averageRating: 5, numberOfReviews: 200 }), // 3M/month
+      cand({ id: 2, hostId: "b", pricePerNight: 90_000, averageRating: 5, numberOfReviews: 150 }),
+      cand({ id: 3, hostId: "c", pricePerNight: 15_000, averageRating: 4.5, numberOfReviews: 8 }), // 450k
+      cand({ id: 4, hostId: "d", pricePerNight: 16_000, averageRating: 4.6, numberOfReviews: 10 }),
+      cand({ id: 5, hostId: "e", pricePerNight: 14_000, averageRating: 4.4, numberOfReviews: 5 }),
+    ];
+    const { ranked } = rankCandidates(homes, open, 3);
+    expect(ranked.map((r) => r.id).sort()).toEqual([3, 4, 5]);
+    expect(ranked[0]!.reasons).toContain("typicalPrice");
+    // A stated budget still rules: the median is not used.
+    expect(rankCandidates(homes, { ...open, maxPrice: 3_000_000, pricePeriod: "month" }, 1).ranked[0]!.reasons).not.toContain("typicalPrice");
+  });
+
+  it("takes the going rate from real monthly rents, not nightly homes priced by the month", () => {
+    const open = { ...EMPTY_REQUIREMENTS, stay: "long" as const };
+    const month = (id: number, priceMonth: number) => cand({ id, hostId: `m${id}`, rentPeriod: "MONTHLY", pricePerNight: null, priceMonth });
+    const homes = [month(1, 400_000), month(2, 500_000), month(3, 600_000), cand({ id: 4, pricePerNight: 90_000 }), cand({ id: 5, pricePerNight: 100_000 })];
+    expect(medianPrice(homes, open)).toBe(500_000);
+    // Too few monthly rents to trust: every home counts.
+    expect(medianPrice([month(1, 400_000), cand({ id: 4, pricePerNight: 90_000 }), cand({ id: 5, pricePerNight: 100_000 })], open)).toBe(2_700_000);
+  });
 
   it("groups one host's reposts of the same unit", () => {
     const { kept, removed } = groupDuplicates([cand({ id: 1 }), cand({ id: 2, averageRating: 4.9 }), cand({ id: 3, hostId: "h2" })]);

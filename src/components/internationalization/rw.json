@@ -5492,7 +5492,8 @@
         "nearUniversity": "Hafi ya kaminuza",
         "selfCompound": "Ifite igipangu cyayo",
         "familySize": "Ihagije umuryango",
-        "lowPrice": "Igiciro gito"
+        "lowPrice": "Igiciro gito",
+        "typicalPrice": "Igiciro gisanzwe"
       },
       "asked": "Twabajije komisiyoneri — dutegereje igisubizo",
       "rented": "Yakodeshejwe — ntikiboneka",

@@ -5492,7 +5492,8 @@
         "nearUniversity": "Near a university",
         "selfCompound": "Own compound",
         "familySize": "Room for a family",
-        "lowPrice": "Low price"
+        "lowPrice": "Low price",
+        "typicalPrice": "Typical price"
       },
       "asked": "Asked the broker — waiting for an answer",
       "rented": "Rented — no longer available",

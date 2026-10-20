@@ -17,6 +17,11 @@ import { brokerAnswers } from "./broker";
 import { AREAS, boxAround, NEIGHBOURHOOD_RADIUS_KM, neighbourhoodNamed } from "./areas";
 
 const MAX_CANDIDATES = 400;
+/**
+ * Monthly rents load in a pool of their own: they carry no ratings, so the
+ * best-rated 400 (all nightly apartments in most of Kigali) shut them out.
+ */
+const MAX_MONTHLY = 200;
 /** Deepest monthly discount we assume when pre-filtering nightly homes for a monthly budget. */
 const MAX_MONTHLY_DISCOUNT = 0.5;
 
@@ -116,13 +121,20 @@ export async function searchKigali(r: Requirements, { take = MAX_CANDIDATES }: {
     ...(r.bedrooms != null ? { bedrooms: { gte: r.bedrooms } } : r.family ? { bedrooms: { gte: 3 } } : {}),
     ...(r.stay === "short" ? { rentPeriod: "NIGHTLY" } : {}),
   };
-  const rows = await db.listing.findMany({
-    where,
-    select: CANDIDATE_SELECT,
-    // "Cheap" loads the cheapest 400, not the best-rated 400.
-    orderBy: r.cheap ? [{ pricePerNight: "asc" }, { priceMonth: "asc" }] : [{ averageRating: "desc" }, { numberOfReviews: "desc" }],
-    take,
-  });
+  const [rated, monthly] = await Promise.all([
+    db.listing.findMany({
+      where,
+      select: CANDIDATE_SELECT,
+      // "Cheap" loads the cheapest 400, not the best-rated 400.
+      orderBy: r.cheap ? [{ pricePerNight: "asc" }, { priceMonth: "asc" }] : [{ averageRating: "desc" }, { numberOfReviews: "desc" }],
+      take,
+    }),
+    r.stay === "short"
+      ? []
+      : db.listing.findMany({ where: { AND: [where, { rentPeriod: "MONTHLY" }] }, select: CANDIDATE_SELECT, orderBy: { priceMonth: "asc" }, take: MAX_MONTHLY }),
+  ]);
+  const seen = new Set(rated.map((row) => row.id));
+  const rows = [...rated, ...monthly.filter((row) => !seen.has(row.id))];
   const answers = await brokerAnswers(rows.map((row) => row.id));
   const candidates: Candidate[] = rows
     .filter((row) => answers.get(row.id)?.status !== "RENTED")
@@ -149,7 +161,7 @@ export async function searchKigali(r: Requirements, { take = MAX_CANDIDATES }: {
     // a confirmation. Only a broker's answer sets this.
     confirmedAt: answers.get(row.id)?.status === "AVAILABLE" ? answers.get(row.id)!.at : null,
   }));
-  return { candidates, truncated: rows.length >= take };
+  return { candidates, truncated: rated.length >= take };
 }
 
 /** Turn ranked ids into display cards, localized for the tenant: one small query for the winners. */
