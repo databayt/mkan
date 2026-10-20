@@ -8,6 +8,8 @@ import {
   captionFor,
   carouselCaption,
   carouselHomeSvg,
+  carouselNarration,
+  slideHolds,
   carouselThemes,
   pickCarousel,
   wrap,
@@ -185,5 +187,19 @@ describe('data carousel', () => {
     expect(wrap('Homes for rent in Kicukiro', 14)).toEqual(['Homes for rent', 'in Kicukiro']);
     expect(carouselHomeSvg(row({ id: 77, area: 'A & B' }), 1, 5, '+250 788 000 000')).toContain('K77');
     expect(carouselCaption(carouselThemes(pool)[0]!.theme, pool.slice(0, 2), '+250 788 000 000')).toContain('agent or owner');
+  });
+});
+
+describe('voiced data video', () => {
+  it('narrates the cover, each home and the call to action', () => {
+    const theme = carouselThemes([row()]).find((t) => t.theme.slug === 'district-gasabo')!.theme;
+    const lines = carouselNarration(theme, [row({ id: 77, propertyType: 'Apartment', bedrooms: 2, bathrooms: 1 })]);
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toBe('One home for rent in Gasabo this week.');
+    expect(lines[1]).toBe('An apartment in Kimironko, Gasabo. Two bedrooms, one bathroom. 450,000 francs a month. Code K-7-7.');
+    expect(lines[2]).toContain('WhatsApp');
+  });
+  it('holds each slide for its line plus room, never too short', () => {
+    expect(slideHolds([5, 1, 0])).toEqual([5.7, 2.5, 2.5]);
   });
 });

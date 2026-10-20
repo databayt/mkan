@@ -443,6 +443,54 @@ export function carouselCaption(theme: CarouselTheme, homes: PostRow[], whatsapp
   ].join('\n');
 }
 
+// ── voiced data video ────────────────────────────────────────────────────────
+//
+// The day's carousel slides, one narrated line each (a Google stock voice via
+// kun's `media.sh voice`). Numbers stay digits: the voice reads them as words,
+// and kun's gate compares Whisper's transcript (which writes digits) to this
+// text letter by letter. A ref is hyphenated so it is read out one character
+// at a time.
+
+/** K5877 → "K-5-8-7-7"; 0005-01 → "0-0-0-5-0-1". */
+export const spokenRef = (ref: string): string => ref.replace(/-/g, '').split('').join('-');
+
+const fmt = (n: number): string => n.toLocaleString('en-US');
+const SMALL = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+/** Counts read as words, the way Whisper writes them back ("five bedrooms"); prices stay digits. */
+const count = (n: number): string => SMALL[n] ?? String(n);
+const Count = (n: number): string => count(n).replace(/^./, (c) => c.toUpperCase());
+
+const BUDGET_SPOKEN: Record<string, string> = {
+  u300: 'under 300,000 francs a month',
+  '300-600': 'between 300,000 and 600,000 francs a month',
+  '600-1m': 'between 600,000 and 1,000,000 francs a month',
+  '1m': 'from 1,000,000 francs a month',
+};
+
+/** One line per slide: the cover, each home, the call to action. */
+export function carouselNarration(theme: CarouselTheme, homes: PostRow[]): string[] {
+  const n = `${Count(homes.length)} home${homes.length === 1 ? '' : 's'}`;
+  const beds = Number(theme.key);
+  const cover =
+    theme.kind === 'district'
+      ? `${n} for rent in ${theme.key} this week.`
+      : theme.kind === 'budget'
+        ? `${n} in Kigali, ${BUDGET_SPOKEN[theme.key] ?? 'this week'}.`
+          : `${n} in Kigali with ${beds >= 4 ? 'four bedrooms or more' : `${count(beds)} bedroom${beds === 1 ? '' : 's'}`}.`;
+  const lines = homes.map((r) => {
+    const type = (r.propertyType && r.propertyType !== 'Rooms' ? r.propertyType : r.propertyType === 'Rooms' ? 'room' : 'home').toLowerCase();
+    const article = /^[aeiou]/.test(type) ? 'An' : 'A';
+    const rooms = [r.bedrooms ? `${count(r.bedrooms)} bedroom${r.bedrooms > 1 ? 's' : ''}` : '', r.bathrooms ? `${count(r.bathrooms)} bathroom${r.bathrooms > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ');
+    return [`${article} ${type} in ${placeLine(r)}.`, rooms ? `${rooms[0]!.toUpperCase()}${rooms.slice(1)}.` : '', `${fmt(r.priceMonth ?? 0)} francs a month.`, `Code ${spokenRef(refOf(r))}.`].filter(Boolean).join(' ');
+  });
+  return [cover, ...lines, 'Want one? Send its code on WhatsApp, to the number on screen. We connect you with the agent or owner.'];
+}
+
+/** How long each slide holds: its line plus breathing room, never under `min`. */
+export function slideHolds(lineSeconds: number[], pad = 0.7, min = 2.5): number[] {
+  return lineSeconds.map((d) => +Math.max(min, d + pad).toFixed(3));
+}
+
 /** xfade timeline: n slides of `slide` s each, `fade` s crossfades, then the end card. */
 export function timeline(n: number, slide = 2.6, fade = 0.4, end = 3): { offsets: number[]; slidesLen: number; endOffset: number; total: number } {
   const offsets = Array.from({ length: Math.max(0, n - 1) }, (_, i) => +((i + 1) * (slide - fade)).toFixed(3));
