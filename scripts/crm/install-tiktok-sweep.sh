@@ -7,6 +7,7 @@
 #   bash scripts/crm/install-tiktok-sweep.sh --remove   # remove the Hermes job
 #   bash scripts/crm/install-tiktok-sweep.sh --launchd  # fallback: back to the launchd job
 #   hermes cron list | grep -A8 mkan-tiktok-sweep       # next run, last result
+#   /tiktok (Slack DM or WhatsApp self-chat)            # run it now
 #
 # Only one scheduler may own the sweep: two runs race on the ledger and the Groq quota,
 # so each mode switches the other off. The job body is scripts/crm/hermes/tiktok-sweep.sh,
@@ -104,7 +105,7 @@ hermes cron create "$SCHEDULE" --name "$NAME" --script "$NAME.sh" --no-agent \
 retire_launchd
 
 # Chat commands (Slack DM to the bot or the WhatsApp self-chat), no model:
-#   /tiktok      ledger status + the job's next run    /tiktokrun   run the sweep on the next tick
+#   /tiktok      start the sweep now (detached), and reply with the ledger status
 # Merged into quick_commands the way kun's scripts/seek/hermes-setup.sh does: other keys survive.
 HERMES_BIN="$(command -v hermes)"
 "$HERMES_HOME/hermes-agent/venv/bin/python" - "$CONFIG" "$REPO" "$HERMES_BIN" <<'PY'
@@ -112,13 +113,13 @@ import sys, yaml, shutil, datetime, os
 cfg_path, repo, hermes = sys.argv[1:4]
 cfg = yaml.safe_load(open(cfg_path)) or {}
 path = "PATH=/opt/homebrew/bin:/usr/local/bin:$PATH"
-nxt = f"{hermes} cron list 2>/dev/null | grep -A4 'Name: *mkan-tiktok-sweep' | grep -E 'Next run|Last run'"
 run_id = f"$({hermes} cron list 2>/dev/null | awk '/^  [0-9a-f]{{12}} \\[/{{id=$1}} $2==\"mkan-tiktok-sweep\"{{print id}}')"
 want = {
-    "tiktok": f"cd {repo} && {path} pnpm -s crm:tiktok-status; {nxt}",
-    "tiktokrun": f"{hermes} cron run {run_id} >/dev/null && echo 'TikTok sweep queued for the next tick — counts land in #mkan when it ends (~1 h).'",
+    # `hermes cron run` runs the whole job in its own process, so detach it: quick commands die at 30 s.
+    "tiktok": f"(nohup {hermes} cron run {run_id} >/dev/null 2>&1 &) && echo 'TikTok sweep started — counts land in #mkan when it ends (~1 h).' && cd {repo} && {path} pnpm -s crm:tiktok-status",
 }
 qc = cfg.get("quick_commands") or {}
+qc.pop("tiktokrun", None)  # folded into /tiktok on 2026-10-20
 qc.update({k: {"type": "exec", "command": c} for k, c in want.items()})
 block = yaml.safe_dump({"quick_commands": qc}, sort_keys=False, allow_unicode=True, width=1000)
 out, skip = [], False

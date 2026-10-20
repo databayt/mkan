@@ -380,7 +380,7 @@ is not, and `sync-down` runs by hand. What does run:
 |---|---|---|---|
 | `com.databayt.mkan-crm-sync-up` | `install-sync-up-cron.sh` | hourly | `crm:sync-up --apply` — site → board |
 | `com.databayt.mkan-home-sweep` | `install-home-sweep.sh` | every 2 min | Slack #mkan → board (`home:sweep`) |
-| Hermes cron `mkan-tiktok-sweep` | `install-tiktok-sweep.sh` | 06:00 | TikTok → board → /find leads, summary to #mkan. Runs in the Hermes gateway since 2026-10-20 (`--launchd` = old job); `/tiktok` · `/tiktokrun` in Slack/WhatsApp |
+| Hermes cron `mkan-tiktok-sweep` | `install-tiktok-sweep.sh` | 06:00 | TikTok → board → /find leads, summary to #mkan. Runs in the Hermes gateway since 2026-10-20 (`--launchd` = old job); `/tiktok` in Slack/WhatsApp runs it now |
 | `com.databayt.mkan-crm-hygiene` | `install-hygiene-cron.sh` | 07:00 | `crm:hygiene --apply --notify` — duplicates, drift, safe fixes, report |
 
 sync-up and the home sweep alert #mkan after a run of failures
