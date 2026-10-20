@@ -347,8 +347,42 @@ export const HOST: ObjectDef = {
   ],
 };
 
+// ── TikTok post ──────────────────────────────────────────────────────────────
+// One record per TikTok video the `crm:tiktok` lane read (2026-10-20). The
+// home holds the facts; this holds the ad itself — who posted it, when, and
+// every word it carries — so a broker's claim can be checked against the post.
+export const TIKTOK_POST: ObjectDef = {
+  nameSingular: 'tiktokPost',
+  namePlural: 'tiktokPosts',
+  labelSingular: 'TikTok post',
+  labelPlural: 'TikTok posts',
+  icon: 'IconBrandTiktok',
+  description: 'A Kigali rental ad posted on TikTok: the broker, the publish date, the caption and the text in the video.',
+  fields: [
+    { name: 'videoId', label: 'Video ID', type: 'TEXT', description: 'TikTok video id (dedupe key).' },
+    { name: 'videoUrl', label: 'Video', type: 'LINKS', icon: 'IconBrandTiktok' },
+    { name: 'tiktokHandle', label: 'Handle', type: 'TEXT', icon: 'IconAt', description: 'The posting account, without @.' },
+    { name: 'accountName', label: 'Account name', type: 'TEXT', icon: 'IconUser', description: "The account's display name on TikTok." },
+    { name: 'brokerName', label: 'Broker / agency', type: 'TEXT', icon: 'IconBuildingEstate', description: 'The broker or real-estate name the ad shows (logo, caption, on-screen card); else the account name.' },
+    { name: 'publishedAt', label: 'Published', type: 'DATE_TIME', icon: 'IconCalendar', description: 'When the ad was posted on TikTok.' },
+    { name: 'caption', label: 'Caption', type: 'TEXT', icon: 'IconTextCaption' },
+    { name: 'onScreenText', label: 'Text in video', type: 'TEXT', icon: 'IconLetterCase', description: 'Text shown on screen in the video (price cards, rooms, place, phone), as the reader copied it.' },
+    { name: 'transcript', label: 'Speech', type: 'TEXT', icon: 'IconMicrophone', description: 'Automatic speech transcript (Whisper) — Kinyarwanda comes out garbled.' },
+    { name: 'phonesSeen', label: 'Phones seen', type: 'TEXT', icon: 'IconPhone', description: 'Every Rwandan number found in the post, comma-separated.' },
+    { name: 'views', label: 'Views', type: 'NUMBER', icon: 'IconEye' },
+    { name: 'durationSec', label: 'Duration (s)', type: 'NUMBER', icon: 'IconClock' },
+    { name: 'postStatus', label: 'Status', type: 'SELECT', icon: 'IconProgressCheck', options: ['WAITING', 'LISTING', 'JOINED_EXISTING', 'SKIPPED'], description: 'LISTING: became a home · JOINED_EXISTING: a re-post of a home on the board · SKIPPED: see the reason.' },
+    { name: 'skipReason', label: 'Skip reason', type: 'TEXT' },
+    { name: 'coverUrl', label: 'Frames', type: 'LINKS', icon: 'IconPhoto' },
+    { name: 'readVersion', label: 'Read by', type: 'TEXT' },
+    { name: 'scrapedAt', label: 'Scraped', type: 'DATE_TIME' },
+    { name: 'home', label: 'Home', type: 'RELATION', icon: 'IconHome', relation: { target: 'home', type: 'MANY_TO_ONE', targetFieldLabel: 'TikTok posts', targetFieldIcon: 'IconBrandTiktok' } },
+    { name: 'host', label: 'Host', type: 'RELATION', icon: 'IconUserCheck', relation: { target: 'host', type: 'MANY_TO_ONE', targetFieldLabel: 'TikTok posts', targetFieldIcon: 'IconBrandTiktok' } },
+  ],
+};
+
 /** Objects the seeder creates, in dependency order (home + host first; relations wired last). */
-export const OBJECTS: ObjectDef[] = [HOST, HOME];
+export const OBJECTS: ObjectDef[] = [HOST, HOME, TIKTOK_POST];
 
 // ── Opportunity (standard object) — custom fields for the onboarding funnel ───
 // One Opportunity per host. The funnel lives in `onboardingStage`; the standard

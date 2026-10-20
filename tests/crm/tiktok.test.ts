@@ -30,6 +30,8 @@ import {
   seedIsDue,
   shouldPromote,
   NOT_A_RENTAL_CAPTION,
+  postBody,
+  wantsPost,
   type VideoRow,
 } from '../../scripts/crm/tiktok-pure';
 import { districtForPlace } from '../../src/lib/geo/rwanda-places';
@@ -278,6 +280,37 @@ describe('what a read becomes', () => {
     expect(dupKey('some.broker', { ...read, priceRwf: null })).toBeNull();
     expect(dupKey('some.broker', { ...read, neighbourhood: 'Kigali' })).toBeNull();
     expect(placeToken('Kimironko, Kwa Mushimire')).toBe('kimironko');
+  });
+
+  it('records the ad itself: broker, publish date, caption, on-screen text', () => {
+    const r = parseTikTokRead(JSON.stringify({ ...READ, onScreenText: '2 BEDROOMS | 250K | NYAMIRAMBO', brokerName: 'Some Real Estate' }));
+    const p = postBody({ ...row, state: 'upserted', read: r, homeId: 'h1', hostId: 'o1', transcript: 'call me', readVersion: 'tiktok-v3/groq', meta: { ...row.meta!, timestamp: 1_760_000_000 } });
+    expect(p).toMatchObject({
+      videoId: '7600000000000000001',
+      tiktokHandle: 'some.broker',
+      accountName: 'Some Broker',
+      brokerName: 'Some Real Estate',
+      publishedAt: new Date(1_760_000_000_000).toISOString(),
+      caption: '2bedroom 250k Nyamirambo 0780000111',
+      onScreenText: '2 BEDROOMS | 250K | NYAMIRAMBO',
+      transcript: 'call me',
+      phonesSeen: '+250780000111',
+      postStatus: 'LISTING',
+      homeId: 'h1',
+      hostId: 'o1',
+    });
+    expect(p.name).toBe('Some Real Estate · 2025-10-09');
+    // No agency named: the account name stands in; a re-post links the home it joined.
+    const q = postBody({ ...row, state: 'upserted', read: parseTikTokRead(JSON.stringify(READ)), homeId: 'h2', mergedInto: 'h1' });
+    expect(q).toMatchObject({ brokerName: 'Some Broker', postStatus: 'JOINED_EXISTING', homeId: 'h1' });
+    expect(postBody({ ...row, state: 'fetched' })).toMatchObject({ postStatus: 'WAITING', homeId: undefined });
+  });
+
+  it('keeps a post for every video the reader judged, not for caption-gate drops', () => {
+    expect(wantsPost({ ...row, state: 'fetched' })).toBe(true);
+    expect(wantsPost({ ...row, state: 'skipped', skipReason: 'caption does not read as a rental' })).toBe(false);
+    expect(wantsPost({ ...row, state: 'skipped', read: parseTikTokRead(JSON.stringify(READ)) })).toBe(true);
+    expect(wantsPost({ ...row, meta: undefined, state: 'discovered' })).toBe(false);
   });
 
   it('splits a multi-unit post into one home per unit', () => {

@@ -5,7 +5,9 @@
  */
 // v2 (2026-10-18): frames can arrive attached (the Groq reader) instead of as
 // files to open; the USD rate is passed in; multi-unit posts list their units.
-export const TIKTOK_PROMPT_VERSION = 'tiktok-v2';
+// v3 (2026-10-20): the TikTok post record keeps the ad itself — the reader
+// now copies the on-screen text and names the broker/agency the ad shows.
+export const TIKTOK_PROMPT_VERSION = 'tiktok-v3';
 
 /** RWF per USD for posts priced in dollars. Override with TIKTOK_USD_RWF. */
 export const USD_RWF = Number(process.env.TIKTOK_USD_RWF) || 1450;
@@ -59,9 +61,11 @@ Rules:
 - units: when one post offers SEVERAL units at different prices (e.g. "1bd 600k / 2bd 700k"), list each as {"bedrooms":n|null,"priceRwf":n|null,"propertyType":string|null}; the top-level fields then describe the first unit. A single home → [].
 - propertyFrames: the frame numbers (as labelled above) of the frames that show the PROPERTY itself (rooms, exterior, kitchen, bathroom, view). Exclude frames that are mostly a person's face, text cards, logos or blurred transitions. Best frame first.
 - titleEn: one short guest-facing line, e.g. "2-bedroom apartment in Nyamirambo". titleRw: the same in Kinyarwanda. descriptionEn: 2–4 plain sentences of facts only — never invent amenities.
+- onScreenText: every piece of text shown ON SCREEN in the frames (price cards, room counts, place names, phone numbers, agency names, slogans), copied exactly as written, in frame order, pieces separated by " | ". Do not translate or correct. Skip TikTok's own interface text. Max ~600 characters. null if the frames show no text.
+- brokerName: the broker's or real-estate agency's name as the ad presents it (a logo, a "… Real Estate" card, a signature in the caption), e.g. "Ibra Real Estate". null if the ad names none — do not just repeat the handle.
 - confidence 0–1: how sure you are of the extracted facts overall.
 - Never invent a fact. Unknown → null.
 
 Return ONLY this JSON object, no prose:
-{"isRental":bool,"rejectReason":string|null,"inKigali":bool,"period":"MONTH"|"NIGHT"|"UNKNOWN","priceRwf":number|null,"priceAsWritten":string|null,"propertyType":string|null,"roomType":string|null,"bedrooms":number|null,"bathrooms":number|null,"furnished":bool|null,"district":string|null,"neighbourhood":string|null,"phones":[string],"posterKind":"BROKER"|"OWNER"|"UNKNOWN","features":[string],"units":[{"bedrooms":number|null,"priceRwf":number|null,"propertyType":string|null}],"propertyFrames":[number],"titleEn":string|null,"titleRw":string|null,"descriptionEn":string|null,"confidence":number}`;
+{"isRental":bool,"rejectReason":string|null,"inKigali":bool,"period":"MONTH"|"NIGHT"|"UNKNOWN","priceRwf":number|null,"priceAsWritten":string|null,"propertyType":string|null,"roomType":string|null,"bedrooms":number|null,"bathrooms":number|null,"furnished":bool|null,"district":string|null,"neighbourhood":string|null,"phones":[string],"posterKind":"BROKER"|"OWNER"|"UNKNOWN","features":[string],"units":[{"bedrooms":number|null,"priceRwf":number|null,"propertyType":string|null}],"propertyFrames":[number],"titleEn":string|null,"titleRw":string|null,"descriptionEn":string|null,"onScreenText":string|null,"brokerName":string|null,"confidence":number}`;
 }

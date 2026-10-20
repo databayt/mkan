@@ -11,6 +11,7 @@
  *   pnpm crm:tiktok-seeds    [--add=a,b] [--promote=h] [--ignore=h]
  *   pnpm crm:tiktok-requeue                                     skipped-by-caption rows today's gate passes → back to fetch
  *   pnpm crm:tiktok-settle   [--apply]                          SUSPECTED duplicate homes → DUPLICATE of the first copy
+ *   pnpm crm:tiktok-posts    [--apply]                          one Twenty `tiktokPost` per read video (run does it too)
  *
  * Discovery never logs in to TikTok: an account's public videos come from
  * yt-dlp, new accounts and videos from a public web search. Accounts found by
@@ -30,6 +31,7 @@ config({ override: true });
 process.env.PRISMA_QUIET ??= '1';
 
 import { execFileSync, execSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -62,6 +64,8 @@ import {
   rwandaPhonesInText,
   seedIsDue,
   shouldPromote,
+  postBody,
+  wantsPost,
   type SeedRow,
   type TikTokRead,
   type VideoRow,
@@ -129,6 +133,7 @@ const runStats = {
   readLeft: 0,
   merged: 0,
   mirroredNew: 0,
+  posts: 0,
   mirroredChanged: 0,
 };
 
@@ -686,7 +691,7 @@ const clean = <T extends Record<string, unknown>>(o: T): Partial<T> =>
   Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0))) as Partial<T>;
 const createdId = (res: unknown): string => {
   const d = (res as { data?: Row })?.data ?? (res as Row);
-  const rec = (d as Row)?.createHome ?? (d as Row)?.createHost ?? (d as Row)?.createNote ?? (d as Row)?.createOpportunity ?? d;
+  const rec = (d as Row)?.createHome ?? (d as Row)?.createHost ?? (d as Row)?.createNote ?? (d as Row)?.createOpportunity ?? (d as Row)?.createTiktokPost ?? d;
   return String((rec as Row)?.id ?? '');
 };
 
@@ -890,6 +895,53 @@ async function upsert(): Promise<{ homes: number; hosts: number }> {
   return { homes: newHomes, hosts: newHosts };
 }
 
+// ── posts ────────────────────────────────────────────────────────────────────
+/**
+ * The ad itself, one Twenty `tiktokPost` per video: broker, publish date,
+ * caption, on-screen text, speech — linked to its home and host. Written
+ * only when something changed since the last write (a hash on the row).
+ */
+async function syncPosts(): Promise<{ created: number; updated: number }> {
+  const videos = loadVideos();
+  const rows = Object.values(videos).filter(wantsPost);
+  const client = twentyClient();
+  const byVideo = new Map((await client.all('tiktokPosts')).map((p) => [String(p.videoId), String(p.id)]));
+  let created = 0;
+  let updated = 0;
+  let unchanged = 0;
+  for (const row of rows) {
+    const body = clean(postBody(row));
+    const hash = createHash('sha1').update(JSON.stringify(body)).digest('hex').slice(0, 16);
+    const id = row.postId ?? byVideo.get(row.videoId);
+    if (id && row.postHash === hash) {
+      unchanged++;
+      continue;
+    }
+    if (!APPLY) {
+      if (created + updated < 3) console.log(`  ${id ? '~' : '+'} ${row.videoId} ${JSON.stringify(body).slice(0, 400)}`);
+      id ? updated++ : created++;
+      continue;
+    }
+    try {
+      if (id) {
+        await client.rest('PATCH', `tiktokPosts/${id}`, body);
+        updated++;
+      } else {
+        row.postId = createdId(await client.rest('POST', 'tiktokPosts', body));
+        created++;
+      }
+      row.postId ??= id;
+      row.postHash = hash;
+    } catch (e) {
+      console.warn(`  ! post ${row.videoId}: ${(e as Error).message.slice(0, 160)}`);
+    }
+    if ((created + updated) % 25 === 0) saveVideos(videos);
+  }
+  saveVideos(videos);
+  console.log(`\nposts: ${APPLY ? '' : 'would write '}${created} new, ${updated} updated TikTok post(s); ${unchanged} unchanged${APPLY ? '' : ' (dry run — pass --apply)'}`);
+  return { created, updated };
+}
+
 // ── settle ───────────────────────────────────────────────────────────────────
 const SETTLE_LOG = join(process.cwd(), 'scripts/crm/.data/settle-tiktok-dupes.jsonl');
 
@@ -968,7 +1020,7 @@ function runSummary(r: { homes: number; hosts: number }): string {
   const videos = Object.values(loadVideos());
   const backlog = (st: VideoRow['state']) => videos.filter((v) => v.state === st).length;
   const lines = [
-    `*TikTok lane* — ${r.homes} new Kigali home(s) at VETTING, ${r.hosts} new broker(s), ${runStats.mirroredNew} new lead(s) in /find${runStats.mirroredChanged ? ` (${runStats.mirroredChanged} updated)` : ''}${runStats.merged ? ` · ${runStats.merged} re-post(s) joined an existing home` : ''} · <https://mkan.databayt.org/objects/homes|board>`,
+    `*TikTok lane* — ${r.homes} new Kigali home(s) at VETTING, ${r.hosts} new broker(s), ${runStats.mirroredNew} new lead(s) in /find${runStats.mirroredChanged ? ` (${runStats.mirroredChanged} updated)` : ''}${runStats.merged ? ` · ${runStats.merged} re-post(s) joined an existing home` : ''}${runStats.posts ? ` · ${runStats.posts} TikTok post(s) recorded` : ''} · <https://mkan.databayt.org/objects/homes|board>`,
     `found ${runStats.discovered}${runStats.requeued ? ` (+${runStats.requeued} requeued)` : ''} · fetched ${runStats.fetched} · read ${runStats.read} · waiting: ${backlog('discovered')} to fetch, ${backlog('fetched')} to read`,
   ];
   if (runStats.seedsPaused.length) lines.push(`⏸ paused after ${SEED_PAUSE_STREAK} failed listings: ${runStats.seedsPaused.map((h) => `@${h}`).join(', ')}`);
@@ -1005,6 +1057,8 @@ async function main(): Promise<void> {
       return withLock(async () => requeue());
     case 'settle':
       return withLock(settle);
+    case 'posts':
+      return withLock(async () => void (await syncPosts()));
     case 'run':
       return withLock(async () => {
         requeue();
@@ -1012,6 +1066,13 @@ async function main(): Promise<void> {
         await fetchStage();
         await readStage();
         const r = await upsert();
+        if (APPLY) {
+          try {
+            runStats.posts = (await syncPosts()).created;
+          } catch (e) {
+            console.warn(`  ! posts: ${(e as Error).message.slice(0, 160)}`);
+          }
+        }
         // The /find agent only sees what is in Prisma; it used to wait for a
         // hand-run `crm:tiktok-mirror --apply`.
         if (APPLY) {

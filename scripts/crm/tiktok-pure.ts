@@ -51,6 +51,9 @@ export interface VideoRow {
   photoMode?: boolean;
   /** Upserted as another poster's copy of a home already on the board. */
   mergedInto?: string;
+  /** The Twenty `tiktokPost` record, and a hash of what was last written to it. */
+  postId?: string;
+  postHash?: string;
 }
 
 export interface SeedRow {
@@ -285,6 +288,9 @@ export const TikTokReadSchema = z.object({
   titleEn: nullableStr,
   titleRw: nullableStr,
   descriptionEn: nullableStr,
+  // tiktok-v3: the ad's own words, for the TikTok post record.
+  onScreenText: nullableStr,
+  brokerName: nullableStr,
   confidence: z.number().min(0).max(1).catch(0.5),
 });
 export type TikTokRead = z.infer<typeof TikTokReadSchema>;
@@ -491,6 +497,53 @@ export function homeBody(row: VideoRow, read: TikTokRead, opts: { frameUrls: str
     homeStatus: 'SCRAPED',
     pipelineStage: 'VETTING',
     publishState: 'NOT_IMPORTED',
+  };
+}
+
+/**
+ * Which ledger rows get a TikTok post record: every video the reader judged or
+ * is waiting to judge. Rows the caption gate or the age gate dropped unread
+ * have nothing worth keeping beyond the ledger.
+ */
+export function wantsPost(row: VideoRow): boolean {
+  if (!row.meta) return false;
+  if (row.state === 'fetched' || row.state === 'read' || row.state === 'upserted') return true;
+  return row.state === 'skipped' && !!row.read;
+}
+
+export function postStatus(row: VideoRow): 'WAITING' | 'LISTING' | 'JOINED_EXISTING' | 'SKIPPED' {
+  if (row.state === 'upserted') return row.mergedInto ? 'JOINED_EXISTING' : 'LISTING';
+  if (row.state === 'skipped') return 'SKIPPED';
+  return 'WAITING';
+}
+
+/** The Twenty `tiktokPost` body for one video: the ad as posted. Undefined values are dropped by the caller. */
+export function postBody(row: VideoRow) {
+  const read = row.read;
+  const published = row.meta?.timestamp ? new Date(row.meta.timestamp * 1000) : null;
+  const broker = read?.brokerName ?? row.meta?.channel ?? row.handle;
+  const phones = read ? phonesFor(read, `${row.meta?.caption ?? ''} ${row.handle} ${row.transcript ?? ''}`) : rwandaPhonesInText(`${row.meta?.caption ?? ''} ${row.handle}`);
+  return {
+    name: `${broker} · ${published ? published.toISOString().slice(0, 10) : row.videoId}`,
+    videoId: row.videoId,
+    videoUrl: linkList([row.url], 'TikTok'),
+    tiktokHandle: row.handle,
+    accountName: row.meta?.channel ?? undefined,
+    brokerName: broker,
+    publishedAt: published?.toISOString(),
+    caption: row.meta?.caption || undefined,
+    onScreenText: read?.onScreenText ?? undefined,
+    transcript: row.transcript || undefined,
+    phonesSeen: phones.length ? phones.join(', ') : undefined,
+    views: row.meta?.views ?? undefined,
+    durationSec: row.meta?.duration ?? undefined,
+    postStatus: postStatus(row),
+    skipReason: row.state === 'skipped' ? row.skipReason : undefined,
+    coverUrl: linkList(row.frameUrls ?? []),
+    readVersion: row.readVersion,
+    scrapedAt: row.discoveredAt,
+    homeId: row.state === 'upserted' ? (row.mergedInto ?? row.homeId) : undefined,
+    hostId: row.state === 'upserted' ? row.hostId : undefined,
   };
 }
 
