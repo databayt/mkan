@@ -9,8 +9,8 @@
  *   pnpm tt:stats [--notify]        views / likes of our posts, read back by yt-dlp
  *   pnpm tt:ask [--mark=a,b --as=ASKED|YES|NO --apply]   broker repost consent
  *
- * The page runs the way Kigali brokers run theirs: an account with the
- * WhatsApp button, one short video per house, the price and area on screen.
+ * The page runs the way Kigali brokers run theirs: the WhatsApp number in the
+ * bio, one short video per house, the price and area on screen.
  * The pipeline makes the video and the caption; a person posts it from the
  * phone and adds a trending sound in the TikTok app (posting through TikTok's
  * API stays private until an app audit passes). Inquiries arrive on WhatsApp
