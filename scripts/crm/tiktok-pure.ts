@@ -45,10 +45,17 @@ export interface VideoRow {
   homeId?: string;
   hostId?: string;
   error?: string;
+  /** The caption-only text read already came back short of facts for this prompt version — go straight to vision. */
+  textMissVersion?: string;
+  /** Photo-mode post: the frames are its cover images, not video stills. */
+  photoMode?: boolean;
+  /** Upserted as another poster's copy of a home already on the board. */
+  mergedInto?: string;
 }
 
 export interface SeedRow {
-  status: 'active' | 'proposed' | 'ignored';
+  /** `paused`: three listings in a row failed (private, renamed, gone) — re-tried weekly. */
+  status: 'active' | 'proposed' | 'ignored' | 'paused';
   from: 'manual' | 'search';
   addedAt: string;
   hits?: number;
@@ -57,6 +64,27 @@ export interface SeedRow {
   /** Runs in a row that could not list this account. */
   failStreak?: number;
   lastListedAt?: string;
+  pausedAt?: string;
+  pausedReason?: string;
+}
+
+/** A seed that has failed three runs in a row stops being listed daily. */
+export const SEED_PAUSE_STREAK = 3;
+const WEEK_MS = 7 * 86_400_000;
+
+/** Is this seed listed on this run? Active ones daily, paused ones once a week. */
+export function seedIsDue(seed: SeedRow, nowMs = Date.now()): boolean {
+  if (seed.status === 'active') return true;
+  if (seed.status !== 'paused') return false;
+  return !seed.pausedAt || nowMs - Date.parse(seed.pausedAt) >= WEEK_MS;
+}
+
+/**
+ * A proposed account earns a seed once search keeps finding it AND one of its
+ * posts already became a real home — 44 proposals sat unreviewed for a week.
+ */
+export function shouldPromote(seed: SeedRow, upsertedHomes: number): boolean {
+  return seed.status === 'proposed' && (seed.hits ?? 0) >= 3 && upsertedHomes >= 1;
 }
 
 // ── discovery ────────────────────────────────────────────────────────────────
@@ -122,11 +150,43 @@ export function captionWords(caption: string): string {
  * caption that is only hashtags, a phone number or nothing (29 dropped unread)
  * leaves the facts in the frames' on-screen text, so the reader gets those.
  */
-export function looksLikeRental(caption: string): boolean {
+export function looksLikeRental(caption: string, fromSeed = false): boolean {
   if (RENT_WORDS.test(caption)) return !SALE_WORDS.test(caption) || EXPLICIT_RENT.test(caption);
   if (SALE_WORDS.test(caption)) return false;
-  return captionWords(caption).length < 12;
+  // A seed is an account we already know posts rentals: its wordy, off-topic
+  // captions ("beauty update", a story) still carry a house in the frames.
+  return fromSeed || captionWords(caption).length < 12;
 }
+
+export const NOT_A_RENTAL_CAPTION = 'caption does not read as a rental';
+
+/**
+ * Rows the caption gate skipped that today's gate would let through — the
+ * gate has been loosened twice and skipped rows were never looked at again
+ * (98 of 135 on 2026-10-20). Young enough to still be on the market only.
+ */
+export function requeueable(row: VideoRow, fromSeed: boolean, maxAgeDays: number, nowMs = Date.now()): boolean {
+  if (row.state !== 'skipped' || row.skipReason !== NOT_A_RENTAL_CAPTION || !row.meta) return false;
+  if (row.meta.timestamp != null && nowMs / 1000 - row.meta.timestamp > maxAgeDays * 86400) return false;
+  return looksLikeRental(row.meta.caption, fromSeed);
+}
+
+/**
+ * Read order when the vision quota covers ~a third of the queue: a post that
+ * names a phone and a price is a lead the agent can call today; then seeds
+ * (known rental posters); then newest. Lower sorts first.
+ */
+export function readPriority(row: VideoRow, fromSeed: boolean): number[] {
+  const text = `${row.meta?.caption ?? ''} ${row.handle} ${row.transcript ?? ''}`;
+  const c = toAsciiDigits(row.meta?.caption ?? '').toLowerCase();
+  const price = /(\d+(?:[.,]\d+)?\s*(?:k|m|million)\b|\d{1,3}(?:[,.\s]\d{3})+|\b(?:rwf|frw|usd)\b|\$\s*\d)/.test(c);
+  return [rwandaPhonesInText(text).length ? 0 : 1, price ? 0 : 1, fromSeed ? 0 : 1, -(row.meta?.timestamp ?? 0)];
+}
+
+export const byPriority = (a: number[], b: number[]): number => {
+  for (let i = 0; i < Math.max(a.length, b.length); i++) if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) - (b[i] ?? 0);
+  return 0;
+};
 
 /**
  * Does the caption alone carry the facts (a price and a room count)? Those
@@ -258,11 +318,51 @@ export function phonesFor(read: Pick<TikTokRead, 'phones'>, caption: string): st
   return out;
 }
 
+/** "hafi ya Kigali", "near Kigali", "près de Kigali" — said of homes that are NOT in it. */
+const NEAR_KIGALI = /(hafi\s+(?:ya|y'|y’)\s*kigali|near\s+kigali|close\s+to\s+kigali|pr[eè]s\s+de\s+kigali|outside\s+kigali)/i;
+
+/**
+ * Is the home in Kigali? The gazetteer outranks the reader: it filed a
+ * Norvege flat (Nyarugenge) as "outside Kigali" and a Kamonyi house captioned
+ * "hafi ya kigali" as inside. The named neighbourhood decides first, then
+ * the caption, then the reader.
+ */
+export function inKigaliFor(read: Pick<TikTokRead, 'inKigali' | 'neighbourhood'>, caption = ''): boolean {
+  const hood = districtForPlace(read.neighbourhood);
+  if (hood !== 'UNKNOWN') return true;
+  if (NEAR_KIGALI.test(caption) || NEAR_KIGALI.test(read.neighbourhood ?? '')) return false;
+  if (districtForPlace(caption) !== 'UNKNOWN') return true;
+  return read.inKigali;
+}
+
 /** Should this read become a CRM home? `null` = yes, otherwise the reason it is skipped. */
-export function skipReasonFor(read: TikTokRead, minConfidence = 0.5): string | null {
+export function skipReasonFor(read: TikTokRead, opts: { caption?: string; minConfidence?: number } = {}): string | null {
   if (!read.isRental) return `not a rental${read.rejectReason ? `: ${read.rejectReason}` : ''}`;
-  if (!read.inKigali) return 'outside Kigali';
-  if (read.confidence < minConfidence) return `low confidence ${read.confidence}`;
+  if (!inKigaliFor(read, opts.caption)) return 'outside Kigali';
+  // "?bd ? RWF" at 0.6 reached VETTING four times from one account (10-20).
+  if (read.priceRwf == null && read.bedrooms == null && !read.units?.length) return 'no price and no rooms';
+  const min = opts.minConfidence ?? 0.6;
+  if (read.confidence < min) return `low confidence ${read.confidence}`;
+  return null;
+}
+
+/**
+ * Kigali rents people actually ask (2026-10: 1bd ~150k, villas ~3M a month).
+ * Outside the band is usually a misread ("20000" was a deposit, "300" was
+ * USD) — kept, but flagged so nobody quotes it.
+ */
+export const PRICE_BAND = { MONTH: [60_000, 15_000_000], NIGHT: [10_000, 1_000_000] } as const;
+export function priceLooksWrong(read: Pick<TikTokRead, 'priceRwf' | 'period'>): boolean {
+  if (read.priceRwf == null || read.period === 'UNKNOWN') return false;
+  const [lo, hi] = PRICE_BAND[read.period];
+  return read.priceRwf < lo || read.priceRwf > hi;
+}
+
+/** The currency the post wrote the price in, when it was not RWF. */
+export function currencyAsWritten(priceAsWritten: string | null | undefined): 'USD' | 'EUR' | null {
+  const s = priceAsWritten ?? '';
+  if (/\$|\busd\b|dollars?/i.test(s)) return 'USD';
+  if (/€|\beur(?:o|os)?\b/i.test(s)) return 'EUR';
   return null;
 }
 
@@ -296,10 +396,13 @@ export { placeToken };
  * handle is not part of the key). Prices are bucketed to 5% to absorb "450k"
  * against "450,000 + commission".
  */
+const BROAD_PLACES = new Set(['kigali', 'kigali city', 'rwanda', 'kigali rwanda']);
+
 export function dupKey(_handle: string, read: Pick<TikTokRead, 'priceRwf' | 'bedrooms' | 'neighbourhood'>): string | null {
   if (read.priceRwf == null || read.bedrooms == null) return null;
   const place = placeToken(read.neighbourhood);
-  if (!place) return null;
+  // "Kigali" names a city, not a street: two 1-bedrooms at one price there are two homes.
+  if (!place || BROAD_PLACES.has(place)) return null;
   const bucket = Math.round(Math.log(read.priceRwf) / Math.log(1.05));
   return [read.bedrooms, bucket, place].join('|');
 }
@@ -336,6 +439,10 @@ const rwf = (n: number | null) => (n != null ? { amountMicros: Math.round(n * 1_
 export function homeBody(row: VideoRow, read: TikTokRead, opts: { frameUrls: string[]; phone: string | null; hostName: string; promptVersion: string; duplicate: boolean; sourceId?: string }) {
   const district = resolveDistrict(read, row.meta?.caption ?? '');
   const title = read.titleEn ?? fallbackTitle(read);
+  const currency = currencyAsWritten(read.priceAsWritten);
+  // The board's own chips: a wrong-looking price outranks a missing phone,
+  // since a call fixes the phone but a quoted misread loses the tenant.
+  const qualificationStatus = priceLooksWrong(read) ? 'PRICE_ANOMALY' : !opts.phone ? 'UNREACHABLE_HOST' : undefined;
   return {
     source: 'TIKTOK',
     sourceId: opts.sourceId ?? `tiktok:${row.videoId}`,
@@ -353,7 +460,13 @@ export function homeBody(row: VideoRow, read: TikTokRead, opts: { frameUrls: str
     titleRw: read.titleRw ?? undefined,
     description: read.descriptionEn ?? row.meta?.caption ?? undefined,
     descriptionEn: read.descriptionEn ?? undefined,
-    notesEn: [read.priceAsWritten ? `Price as written: ${read.priceAsWritten}` : null, read.priceRwf == null ? 'No price in the post — ask the broker.' : null, read.features.length ? `Features: ${read.features.join(', ')}` : null, `Read by tiktok ${opts.promptVersion}, confidence ${read.confidence}`]
+    notesEn: [
+      read.priceAsWritten ? `Price as written: ${read.priceAsWritten}` : null,
+      currency ? `Currency as written: ${currency} — RWF price is converted, confirm with the broker.` : null,
+      read.priceRwf == null ? 'No price in the post — ask the broker.' : null,
+      priceLooksWrong(read) ? `Price ${read.priceRwf} RWF/${read.period.toLowerCase()} is outside the usual Kigali band — check before quoting.` : null,
+      !opts.phone ? 'No phone in the post — reach the poster on TikTok.' : null,
+      row.photoMode ? 'Photo-mode post: the photos are its cover images.' : null, read.features.length ? `Features: ${read.features.join(', ')}` : null, `Read by tiktok ${opts.promptVersion}, confidence ${read.confidence}`]
       .filter(Boolean)
       .join('\n'),
     // Twenty keys SELECT options in UPPER_SNAKE (live: APARTMENT, VILLA, …).
@@ -372,6 +485,7 @@ export function homeBody(row: VideoRow, read: TikTokRead, opts: { frameUrls: str
     photosRehosted: opts.frameUrls.length > 0,
     photoStage: opts.frameUrls.length ? 'INCOMPLETE' : 'NOT_FOUND',
     duplicateCheck: opts.duplicate ? 'SUSPECTED' : 'NONE',
+    qualificationStatus,
     hotelAgencyCheck: read.posterKind === 'BROKER' ? 'LARGE_PORTFOLIO' : 'UNCHECKED',
     labels: ['SCRAPED'],
     homeStatus: 'SCRAPED',
@@ -390,6 +504,7 @@ export function hostBody(row: VideoRow, read: TikTokRead, phone: string | null) 
     contactFoundVia: 'TIKTOK',
     preferredLanguage: 'RW',
     agencySuspected: read.posterKind === 'BROKER',
+    contactConfidence: phone ? undefined : 'NONE',
     notes: `TikTok @${row.handle} — https://www.tiktok.com/@${row.handle}`,
   };
 }

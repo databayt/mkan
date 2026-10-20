@@ -73,7 +73,8 @@ const createPrismaClient = () => {
 
   return new PrismaClient({
     adapter,
-    log: isProduction
+    // Scripts that run unattended (the TikTok sweep) set PRISMA_QUIET.
+    log: isProduction || process.env.PRISMA_QUIET
       ? ["error", "warn"]
       : ["query", "error", "warn"],
     errorFormat: isProduction ? "minimal" : "pretty",

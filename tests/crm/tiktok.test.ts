@@ -21,6 +21,15 @@ import {
   rwandaPhonesInText,
   skipReasonFor,
   tiktokVideosIn,
+  inKigaliFor,
+  priceLooksWrong,
+  currencyAsWritten,
+  requeueable,
+  readPriority,
+  byPriority,
+  seedIsDue,
+  shouldPromote,
+  NOT_A_RENTAL_CAPTION,
   type VideoRow,
 } from '../../scripts/crm/tiktok-pure';
 import { districtForPlace } from '../../src/lib/geo/rwanda-places';
@@ -97,6 +106,46 @@ describe('discovery', () => {
     ['Call us 0786471095 #kigali #rwanda', true],
   ])('looksLikeRental(%s) = %s', (caption, want) => expect(looksLikeRental(caption)).toBe(want));
 
+  it('lets a known rental account through on a wordy off-topic caption, never a sale', () => {
+    const story = 'Good morning family today we went to see the beautiful hills and the sunrise was amazing thank you all';
+    expect(looksLikeRental(story)).toBe(false);
+    expect(looksLikeRental(story, true)).toBe(true);
+    expect(looksLikeRental('Plot for sale Rebero 300sqm', true)).toBe(false);
+  });
+
+  it('requeues caption-skipped rows the gate now passes, while still fresh', () => {
+    const nowMs = Date.UTC(2026, 9, 20);
+    const row = (caption: string, daysOld: number, skipReason = NOT_A_RENTAL_CAPTION): VideoRow => ({
+      videoId: '1', url: 'u', handle: 'h', via: 'seed', discoveredAt: '', state: 'skipped', skipReason,
+      meta: { caption, uploader: 'h', channel: null, timestamp: nowMs / 1000 - daysOld * 86400, duration: 30, views: 1 },
+    });
+    expect(requeueable(row('#kigali_update #kigalitiktok #diasporatiktok', 10), true, 120, nowMs)).toBe(true);
+    expect(requeueable(row('#kigali_update #kigalitiktok', 200), true, 120, nowMs)).toBe(false);
+    expect(requeueable(row('Plot for sale Rebero', 10), true, 120, nowMs)).toBe(false);
+    expect(requeueable(row('#kigali', 10, 'outside Kigali'), true, 120, nowMs)).toBe(false);
+  });
+
+  it('reads phone-and-price posts first, then seeds, then newest', () => {
+    const r = (caption: string, timestamp: number, handle = 'h'): VideoRow => ({
+      videoId: String(timestamp), url: 'u', handle, via: 'seed', discoveredAt: '', state: 'fetched',
+      meta: { caption, uploader: handle, channel: null, timestamp, duration: 30, views: 1 },
+    });
+    const rows = [r('#fyp', 300), r('2bd 250k', 100), r('2bd 250k call 0780000111', 50), r('#fyp', 200)];
+    const sorted = rows.map((v) => ({ v, p: readPriority(v, v.meta!.timestamp === 200) })).sort((a, b) => byPriority(a.p, b.p)).map(({ v }) => v.meta!.timestamp);
+    expect(sorted).toEqual([50, 100, 200, 300]);
+  });
+
+  it('pauses dead seeds, re-tries them weekly, and promotes proven proposals', () => {
+    const nowMs = Date.UTC(2026, 9, 20);
+    expect(seedIsDue({ status: 'active', from: 'manual', addedAt: '' }, nowMs)).toBe(true);
+    expect(seedIsDue({ status: 'paused', from: 'manual', addedAt: '', pausedAt: new Date(nowMs - 2 * 86_400_000).toISOString() }, nowMs)).toBe(false);
+    expect(seedIsDue({ status: 'paused', from: 'manual', addedAt: '', pausedAt: new Date(nowMs - 8 * 86_400_000).toISOString() }, nowMs)).toBe(true);
+    expect(seedIsDue({ status: 'ignored', from: 'manual', addedAt: '' }, nowMs)).toBe(false);
+    expect(shouldPromote({ status: 'proposed', from: 'search', addedAt: '', hits: 5 }, 1)).toBe(true);
+    expect(shouldPromote({ status: 'proposed', from: 'search', addedAt: '', hits: 5 }, 0)).toBe(false);
+    expect(shouldPromote({ status: 'proposed', from: 'search', addedAt: '', hits: 2 }, 3)).toBe(false);
+  });
+
   it('spaces frames evenly inside the middle 90%', () => {
     const t = frameTimes(100, 4);
     expect(t).toEqual([16.25, 38.75, 61.25, 83.75]);
@@ -123,8 +172,35 @@ describe('reading', () => {
     const r = parseTikTokRead(JSON.stringify(READ));
     expect(skipReasonFor(r)).toBeNull();
     expect(skipReasonFor({ ...r, isRental: false, rejectReason: 'plot for sale' })).toBe('not a rental: plot for sale');
-    expect(skipReasonFor({ ...r, inKigali: false })).toBe('outside Kigali');
+    expect(skipReasonFor({ ...r, inKigali: false, neighbourhood: null })).toBe('outside Kigali');
     expect(skipReasonFor({ ...r, confidence: 0.3 })).toBe('low confidence 0.3');
+    expect(skipReasonFor({ ...r, confidence: 0.55 })).toBe('low confidence 0.55');
+  });
+
+  it('rejects a read with neither a price nor a room count', () => {
+    const r = parseTikTokRead(JSON.stringify({ ...READ, priceRwf: null, bedrooms: null, confidence: 0.6 }));
+    expect(skipReasonFor(r)).toBe('no price and no rooms');
+    expect(skipReasonFor({ ...r, bedrooms: 2 })).toBeNull();
+  });
+
+  it('decides Kigali from the gazetteer before the reader', () => {
+    const r = parseTikTokRead(JSON.stringify(READ));
+    // The reader filed a Norvege flat as outside Kigali.
+    expect(inKigaliFor({ inKigali: false, neighbourhood: 'Norvege' })).toBe(true);
+    expect(skipReasonFor({ ...r, inKigali: false, neighbourhood: null }, { caption: 'Unfurnished apartment 2bedroom in norvege 600k' })).toBeNull();
+    // …and a Kamonyi house "near Kigali" as inside.
+    expect(inKigaliFor({ inKigali: true, neighbourhood: 'Kamonyi' }, 'inzu ikodeshwa hafi ya kigali')).toBe(false);
+    expect(inKigaliFor({ inKigali: true, neighbourhood: null }, '2bd house')).toBe(true);
+  });
+
+  it('flags prices outside the Kigali band and foreign currencies', () => {
+    expect(priceLooksWrong({ priceRwf: 20_000, period: 'MONTH' })).toBe(true);
+    expect(priceLooksWrong({ priceRwf: 250_000, period: 'MONTH' })).toBe(false);
+    expect(priceLooksWrong({ priceRwf: 40_000, period: 'NIGHT' })).toBe(false);
+    expect(priceLooksWrong({ priceRwf: 20_000, period: 'UNKNOWN' })).toBe(false);
+    expect(currencyAsWritten('$1200')).toBe('USD');
+    expect(currencyAsWritten('1,200 usd per month')).toBe('USD');
+    expect(currencyAsWritten('450k')).toBeNull();
   });
 });
 
@@ -180,7 +256,18 @@ describe('what a read becomes', () => {
       hostPhone: { primaryPhoneNumber: '780000111', primaryPhoneCallingCode: '+250' },
     });
     expect(b.priceNightLocal).toBeUndefined();
+    expect(b.qualificationStatus).toBeUndefined();
     expect(b.photoUrls).toEqual({ primaryLinkUrl: 'u1', primaryLinkLabel: '', secondaryLinks: [{ url: 'u2', label: '' }] });
+  });
+
+  it('marks homes nobody can call, and prices nobody should quote', () => {
+    const noPhone = homeBody(row, read, { frameUrls: [], phone: null, hostName: 'x', promptVersion: 'v', duplicate: false });
+    expect(noPhone.qualificationStatus).toBe('UNREACHABLE_HOST');
+    expect(noPhone.notesEn).toContain('No phone in the post');
+    const cheap = homeBody(row, { ...read, priceRwf: 20_000 }, { frameUrls: [], phone: null, hostName: 'x', promptVersion: 'v', duplicate: false });
+    expect(cheap.qualificationStatus).toBe('PRICE_ANOMALY');
+    const usd = homeBody(row, { ...read, priceAsWritten: '$1200' }, { frameUrls: [], phone: '+250780000111', hostName: 'x', promptVersion: 'v', duplicate: false });
+    expect(usd.notesEn).toContain('Currency as written: USD');
   });
 
   it('titles and dedups from facts', () => {
@@ -189,6 +276,7 @@ describe('what a read becomes', () => {
     expect(dupKey('some.broker', read)).toBe(dupKey('another.broker', { ...read, priceRwf: 255_000, neighbourhood: 'Nyamirambo / Biryogo' }));
     expect(dupKey('some.broker', read)).not.toBe(dupKey('some.broker', { ...read, bedrooms: 3 }));
     expect(dupKey('some.broker', { ...read, priceRwf: null })).toBeNull();
+    expect(dupKey('some.broker', { ...read, neighbourhood: 'Kigali' })).toBeNull();
     expect(placeToken('Kimironko, Kwa Mushimire')).toBe('kimironko');
   });
 

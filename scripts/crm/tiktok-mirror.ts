@@ -20,6 +20,7 @@
  */
 import { config } from 'dotenv';
 config({ override: true });
+process.env.PRISMA_QUIET ??= '1';
 
 import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -120,7 +121,7 @@ export function planMirror(home: Row, host: Row | null): MirrorPlan | { skip: st
 }
 
 /** Mirror every eligible TikTok home into the lead pool. Also run by `crm:tiktok run --apply`. */
-export async function mirrorLeads(apply: boolean): Promise<{ planned: number; written: number; linked: number }> {
+export async function mirrorLeads(apply: boolean): Promise<{ planned: number; written: number; created: number; unchanged: number; linked: number }> {
   const client = twentyClient();
   const [homes, hosts] = await Promise.all([client.all('homes'), client.all('hosts')]);
   const hostById = new Map(hosts.map((h) => [String(h.id), h]));
@@ -136,7 +137,7 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
   if (!apply) {
     for (const p of plans) console.log(`  ${p.sourceId}  @${p.broker.handle} (${p.broker.role})  ${p.listing.bedrooms ?? '?'}bd  RWF ${p.listing.priceMonth}/mo  ${p.location.address}`);
     console.log('\nDRY RUN — pass --apply to write the leads.');
-    return { planned: plans.length, written: 0, linked: 0 };
+    return { planned: plans.length, written: 0, created: 0, unchanged: 0, linked: 0 };
   }
 
   const { db } = await import('../../src/lib/db');
@@ -157,6 +158,8 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
   }
 
   let written = 0;
+  let created = 0;
+  let unchanged = 0;
   let linked = 0;
   let shared = 0;
   for (const p of plans) {
@@ -180,7 +183,30 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
       await db.user.update({ where: { id: broker.id }, data: { phoneNumber: p.broker.phone } });
     }
 
-    const existing = await db.listing.findUnique({ where: { sourceListingId: p.sourceId }, select: { id: true, locationId: true, isPublished: true } });
+    const existing = await db.listing.findUnique({
+      where: { sourceListingId: p.sourceId },
+      select: { id: true, locationId: true, isPublished: true, title: true, description: true, priceMonth: true, bedrooms: true, bathrooms: true, propertyType: true, photoUrls: true, sourceUrl: true, hostId: true, location: { select: { address: true, zoneKey: true } } },
+    });
+    // Every lead was rewritten every day ("written" 104 → 126 with nothing new).
+    // Same facts as last time: leave the row — and any hand edits — alone.
+    if (
+      existing &&
+      p.crm.mkanListingId === existing.id &&
+      existing.hostId === broker.id &&
+      existing.title === p.listing.title &&
+      existing.description === p.listing.description &&
+      existing.priceMonth === p.listing.priceMonth &&
+      existing.bedrooms === p.listing.bedrooms &&
+      existing.bathrooms === p.listing.bathrooms &&
+      (existing.propertyType ?? null) === p.listing.propertyType &&
+      existing.sourceUrl === p.listing.sourceUrl &&
+      JSON.stringify(existing.photoUrls) === JSON.stringify(p.listing.photoUrls) &&
+      existing.location?.address === p.location.address &&
+      (existing.location?.zoneKey ?? null) === p.location.zoneKey
+    ) {
+      unchanged += 1;
+      continue;
+    }
     const k = factKey(p.listing.bedrooms, p.listing.priceMonth, p.location.address);
     const same = !existing && k && placeToken(p.location.address) ? leadByFacts.get(k) : undefined;
     if (same && same.hostId !== broker.id) {
@@ -222,6 +248,7 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
       ? // A lead someone already took `live` keeps its publish state.
         await db.listing.update({ where: { id: existing.id }, data: listingData, select: { id: true } })
       : await db.listing.create({ data: { ...listingData, sourceListingId: p.sourceId, draft: true, isPublished: false }, select: { id: true } });
+    if (!existing) created += 1;
     if (!existing && k && placeToken(p.location.address) && !leadByFacts.has(k)) {
       leadByFacts.set(k, { id: listing.id, sourceListingId: p.sourceId, bedrooms: p.listing.bedrooms, priceMonth: p.listing.priceMonth, hostId: broker.id, location: { address: p.location.address } });
     }
@@ -243,8 +270,8 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
     }
     written += 1;
   }
-  console.log(`✅ ${written} leads mirrored · ${linked} CRM homes linked to their lead · ${shared} added as a second broker`);
-  return { planned: plans.length, written, linked };
+  console.log(`✅ ${created} new lead(s) · ${written - created} updated · ${unchanged} unchanged · ${linked} CRM homes linked to their lead · ${shared} added as a second broker`);
+  return { planned: plans.length, written, created, unchanged, linked };
 }
 
 if (process.argv[1] && /tiktok-mirror\.ts$/.test(process.argv[1])) {
