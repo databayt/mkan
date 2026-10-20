@@ -380,7 +380,7 @@ is not, and `sync-down` runs by hand. What does run:
 |---|---|---|---|
 | `com.databayt.mkan-crm-sync-up` | `install-sync-up-cron.sh` | hourly | `crm:sync-up --apply` — site → board |
 | `com.databayt.mkan-home-sweep` | `install-home-sweep.sh` | every 2 min | Slack #mkan → board (`home:sweep`) |
-| `com.databayt.mkan-tiktok-sweep` | `install-tiktok-sweep.sh` | 06:00 | TikTok → board → /find leads, summary to #mkan |
+| Hermes cron `mkan-tiktok-sweep` | `install-tiktok-sweep.sh` | 06:00 | TikTok → board → /find leads, summary to #mkan. Runs in the Hermes gateway since 2026-10-20 (`--launchd` = old job); `/tiktok` · `/tiktokrun` in Slack/WhatsApp |
 | `com.databayt.mkan-crm-hygiene` | `install-hygiene-cron.sh` | 07:00 | `crm:hygiene --apply --notify` — duplicates, drift, safe fixes, report |
 
 sync-up and the home sweep alert #mkan after a run of failures
@@ -401,7 +401,7 @@ pnpm crm:tiktok-discover                                  # seed accounts (yt-dl
 pnpm crm:tiktok-fetch --limit=N                           # caption + 8 frames + Whisper transcript; mp4 deleted
 pnpm crm:tiktok-read  --limit=N                           # claude -p (Max pool) reads caption + transcript + frames
 pnpm crm:tiktok-upsert [--apply]                          # S3 frames + host + home + note → Twenty
-pnpm crm:tiktok --apply --notify --limit=N                # all four; launchd runs it daily (install-tiktok-sweep.sh)
+pnpm crm:tiktok --apply --notify --limit=N                # all four; Hermes cron runs it daily (install-tiktok-sweep.sh)
 pnpm crm:tiktok-status
 ```
 
