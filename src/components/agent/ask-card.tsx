@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { CornerDownLeft } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { useLocale } from "@/components/internationalization/use-locale";
@@ -79,10 +79,17 @@ export function AskCard({
     });
   }
 
-  // 1–n pick an option while the tenant is not typing.
+  // 1–n pick an option while the tenant is not typing. The listener is bound
+  // once per enable; it reads the latest options through a ref, not by
+  // re-binding on every render (every poll used to re-bind it).
+  const latest = useRef({ options, onPick });
+  useEffect(() => {
+    latest.current = { options, onPick };
+  });
   useEffect(() => {
     if (disabled) return;
     const onKey = (e: KeyboardEvent) => {
+      const { options, onPick } = latest.current;
       const el = e.target as HTMLElement | null;
       if (el?.closest("input, textarea, [contenteditable=true]") || e.metaKey || e.ctrlKey || e.altKey) return;
       const n = Number(e.key);
@@ -96,7 +103,7 @@ export function AskCard({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, [disabled]);
 
   const row = cn(
     "group flex w-full items-start gap-3 rounded-lg px-3 text-start transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none disabled:opacity-50",

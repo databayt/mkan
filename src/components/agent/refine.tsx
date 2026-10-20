@@ -3,7 +3,8 @@
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { cn } from "@/lib/utils";
 import { AskCard } from "./ask-card";
-import { roundPrice, type Requirements } from "./requirements";
+import { roundPrice } from "./fields";
+import type { Requirements } from "./requirements";
 import type { AgentMessage } from "./types";
 
 type Pick = (text: string, filters: Partial<Requirements>, clear?: string[]) => void;

@@ -84,4 +84,6 @@ export interface AgentTaskView {
   shortlist: ShortlistItem[];
   events: AgentEventView[];
   startedAt: string;
+  /** Status, updatedAt and last event seq — the poll answers 204 while it holds. */
+  version: string;
 }

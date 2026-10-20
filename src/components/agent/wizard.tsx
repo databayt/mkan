@@ -9,7 +9,8 @@ import { formatCurrency } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
 import { NEIGHBOURHOODS } from "./areas";
 import { fill } from "./format";
-import { DISTRICT_CODES, type Requirements } from "./requirements";
+import { DISTRICT_CODES } from "./fields";
+import type { Requirements } from "./requirements";
 
 export type Picks = Partial<Requirements>;
 

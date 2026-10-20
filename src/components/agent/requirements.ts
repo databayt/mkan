@@ -9,8 +9,9 @@
 import { z } from "zod";
 import { districtForPlace, DISTRICTS } from "@/lib/geo/rwanda-places";
 import { AREA_KEYS, NEIGHBOURHOODS } from "./areas";
+import { CLEARABLE, DISTRICT_CODES, roundPrice, type ClearableField } from "./fields";
 
-export const DISTRICT_CODES = ["GASABO", "KICUKIRO", "NYARUGENGE"] as const;
+export { CLEARABLE, DISTRICT_CODES, roundPrice, type ClearableField };
 
 export const RequirementsSchema = z.object({
   /** short = nights (Airbnb-style); long = monthly rent (Kigali broker market). */
@@ -248,10 +249,6 @@ export function inferStay(r: Requirements): Requirements {
   return { ...r, stay, pricePeriod: r.maxPrice ? r.pricePeriod ?? (stay === "long" ? "month" : "night") : r.pricePeriod };
 }
 
-/** Fields a "start over on this" phrase empties. */
-export const CLEARABLE = ["district", "neighbourhood", "area", "maxPrice", "pricePeriod", "cheap", "furnished", "compound", "family", "bathrooms", "bedrooms"] as const;
-export type ClearableField = (typeof CLEARABLE)[number];
-
 const ANY_PLACE_RE = /anywhere|any (?:area|place|district|neighbou?rhood|zone|location)|all (?:of )?kigali|whole (?:of )?kigali|أي مكان|اي مكان|أي منطقة|اي منطقة|كل كيغالي|ahantu hose|aho ari ho hose/i;
 const ANY_BUDGET_RE = /any (?:budget|price)|no (?:budget|price limit|limit)|price doesn'?t matter|أي سعر|اي سعر|بدون ميزانية|igiciro icyo ari cyo cyose/i;
 const ANY_FURNISH_RE = /furnished or (?:not|un)|(?:any|either) furnish|مفروش أو غير|مفروشة أو غير/i;
@@ -276,12 +273,6 @@ export function parseAdjustments(input: string, current: Requirements): { set: P
   }
   if (BIGGER_RE.test(text)) set.bedrooms = Math.min(10, (current.bedrooms ?? 1) + 1);
   return { set, clear };
-}
-
-/** Round a ceiling to what a person would say: 10k steps a month, 1k a night. */
-export function roundPrice(n: number, period: Requirements["pricePeriod"]): number {
-  const step = period === "night" ? 1_000 : 10_000;
-  return Math.max(step, Math.round(n / step) * step);
 }
 
 export function clearFields(r: Requirements, keys: readonly string[]): Requirements {
