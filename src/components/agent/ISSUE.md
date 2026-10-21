@@ -3,10 +3,15 @@
 - **Thin monthly supply.** 20 TikTok leads (2026-10-17) next to 4,566 Airbnb homes. Since 10-18 the
   06:00 TikTok sweep runs the mirror itself (`crm:tiktok run --apply`), but its reader is Groq's free
   vision tier: ~30 videos a day, plus caption-only reads of posts that state price and rooms.
-- **Auto-send is off until mkan has a WhatsApp line.** Evolution lives inside the balqalam
-  container on loopback; mkan needs its own paired instance (a phone scans the QR) reachable from
-  the mkan container, then `MKAN_EVOLUTION_*` secrets. Until then every broker message is a #mkan
-  card a person taps — and prod needs `SLACK_BOT_TOKEN` for those cards to appear.
+- **Auto-send waits on pairing the mkan line (+250780984777).** Since 2026-10-21 every message is
+  an `OutboundMessage` row when `MKAN_WA_OUTBOX=1`, drained on the Mac by `scripts/wa/outbox.ts`
+  through a local Evolution (`ops/evolution/`). Until the line is paired and the flag is set, every
+  message — availability asks, demand asks, tenant alerts — is a #mkan wa.me card a person taps
+  (rows kept as SKIPPED), and prod needs `SLACK_BOT_TOKEN` for those cards to appear.
+- **Broker photos for a sent home** come by WhatsApp reply only; `/b/d/<token>` takes price, rooms,
+  place and a note, so those leads show without photos until someone adds them.
+- **Demand reaches only brokers in the directory.** `crm:brokers` builds it from ad history; a
+  district with no known broker gets "kept open" and no asks.
 - **Twenty is mirrored once a day, not live.** `crm:hygiene` (07:00) notes every broker answer on
   its Twenty home and stamps `lastAvailabilityConfirmedAt` from an AVAILABLE only.
 - **Broker replies typed in WhatsApp are not read** — only the one-tap page counts.

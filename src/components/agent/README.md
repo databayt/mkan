@@ -109,3 +109,17 @@ They appear only in long-stay `/find` results, labelled with the broker's handle
 the ad; public search, listing pages and the sitemap never show them.
 
 Plan of record: the Kigali rental agent plan (2026-10-17), from the "Kigali Rental Chatbot Plan" discussion.
+
+## Unmet demand (2026-10-21)
+
+A search with nothing that fits — or only widened homes — opens a `TenantRequest` (14 days) in
+`demand.ts`. `pickBrokersForDemand` (`demand-pure.ts`) scores the `Broker` directory by district /
+neighbourhood coverage, price band, stay, recency and answer rate; the top 8 not asked in 24 h and
+not opted out get a `BROKER_ASK` with a `/b/d/<token>` link. A broker's sent home becomes a WEB
+lead (`demand-actions.ts` `submitDemandHome`) matched to the chat at once. The tenant can leave a
+WhatsApp number (`demand-card.tsx`); `pnpm crm:demand-match` (09:00, Hermes) matches every open
+request against the day's new homes, alerts opted-in tenants and posts the #mkan digest.
+
+Sends: `whatsapp.ts` `sendMessages` writes `OutboundMessage` rows. With `MKAN_WA_OUTBOX=1` the Mac
+drains them (`scripts/wa/outbox.ts`: 40/day warm-up, one per broker per day, 08:00–20:00 Kigali,
+STOP / HAGARIKA / ARRÊTE opt out); without it one #mkan card carries the wa.me links.
