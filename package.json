@@ -118,6 +118,7 @@
     "tt:posted": "tsx scripts/crm/tiktok-post.ts posted",
     "tt:stats": "tsx scripts/crm/tiktok-post.ts stats",
     "tt:ask": "tsx scripts/crm/tiktok-post.ts ask",
+    "tt:upload": "tsx scripts/crm/tiktok-upload.ts",
     "home:sweep": "tsx scripts/crm/home-intake.ts sweep",
     "home:extract": "tsx scripts/crm/home-intake.ts extract",
     "home:intake": "tsx scripts/crm/home-intake.ts intake",
