@@ -39,6 +39,8 @@ export interface Funnel {
   passes: number;
   thumbsUp: number;
   thumbsDown: number;
+  /** Unmet demand: requests opened, brokers asked for a home, homes they sent, requests matched, tenants opted in / alerted. */
+  demand: { opened: number; asks: number; offers: number; matched: number; optIns: number; alerts: number };
 }
 
 export async function agentFunnel(db: Db, days = 7): Promise<Funnel> {
@@ -70,6 +72,17 @@ export async function agentFunnel(db: Db, days = 7): Promise<Funnel> {
     db.agentEvent.count({ where: { kind: 'requirements_extracted', createdAt: { gte: since }, payload: { path: ['reader'], equals: 'rules' } } }),
     db.brokerRequest.findMany({ where: { createdAt: { gte: since }, channel: { not: 'joined' } }, select: { status: true, chosenSlot: true, visitId: true } }),
   ]);
+  // Zeros, not a failed report, on a database without the demand tables yet.
+  const demand = await Promise.all([
+    db.tenantRequest.count({ where: { createdAt: { gte: since } } }),
+    db.outboundMessage.count({ where: { kind: 'BROKER_ASK', createdAt: { gte: since } } }),
+    db.outboundMessage.count({ where: { kind: 'BROKER_ASK', createdAt: { gte: since }, listingId: { not: null } } }),
+    db.tenantRequest.count({ where: { createdAt: { gte: since }, matchedListingIds: { isEmpty: false } } }),
+    db.tenantRequest.count({ where: { createdAt: { gte: since }, optInAt: { not: null } } }),
+    db.outboundMessage.count({ where: { kind: 'TENANT_ALERT', createdAt: { gte: since } } }),
+  ])
+    .then(([opened, asks, offers, matched, optIns, alerts]) => ({ opened, asks, offers, matched, optIns, alerts }))
+    .catch(() => ({ opened: 0, asks: 0, offers: 0, matched: 0, optIns: 0, alerts: 0 }));
   return {
     days,
     tasks,
@@ -92,6 +105,7 @@ export async function agentFunnel(db: Db, days = 7): Promise<Funnel> {
     passes,
     thumbsUp,
     thumbsDown,
+    demand,
   };
 }
 
@@ -99,6 +113,7 @@ export const funnelLine = (f: Funnel): string =>
   `/find, last ${f.days}d: ${f.tasks} conversations (${f.homesFirst} homes-first, ${f.returning} returning) → ${f.shortlisted} shortlists (${f.widened} widened) → ${f.asked} broker asks → ${f.answered} answers (${f.available} available) → ${f.slotChosen} slots → ${f.booked} viewings · ${f.failed} failed` +
   ` · read by Claude ${f.readers.claude} / Groq ${f.readers.groq} / rules ${f.readers.rules} / taps ${f.readers.taps} · ${f.written} written` +
   ` · ♥ ${f.saves} · passed ${f.passes} · 👍 ${f.thumbsUp} 👎 ${f.thumbsDown}` +
+  ` · no match → ${f.demand.opened} requests → ${f.demand.asks} brokers asked → ${f.demand.offers} homes sent → ${f.demand.matched} matched · ${f.demand.optIns} opted in, ${f.demand.alerts} alerts` +
   ` · Claude US$${f.spendUsd.toFixed(2)} this month${f.capped ? " (CAPPED)" : ""}`;
 
 if (process.argv[1] && /agent-funnel\.ts$/.test(process.argv[1])) {
