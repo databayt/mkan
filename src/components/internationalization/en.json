@@ -5405,11 +5405,16 @@
         "failed": "This step failed",
         "broker_contact_reused": "Joined a question already sent to the broker",
         "outcome_recorded": "Viewing outcome recorded",
-        "relaxed": "Widened {count} details to find homes"
+        "relaxed": "Widened {count} details to find homes",
+        "memory_used": "Used what you told me before: {fields}",
+        "memory_updated": "Remembered for next time",
+        "reply_written": "Reply written",
+        "availability_asked": "Asked the broker about availability"
       },
       "reader": {
         "groq": "read by AI",
-        "rules": "read by rules"
+        "rules": "read by rules",
+        "claude": "read by Claude"
       },
       "status": {
         "done": "Done",
@@ -5429,7 +5434,22 @@
         "no_reply": "no answer in 24 hours"
       },
       "showSteps": "Show steps",
-      "hideSteps": "Hide steps"
+      "hideSteps": "Hide steps",
+      "fields": {
+        "stay": "stay type",
+        "maxPrice": "budget",
+        "pricePeriod": "budget",
+        "bedrooms": "bedrooms",
+        "bathrooms": "bathrooms",
+        "mustHaves": "must-haves",
+        "district": "district",
+        "neighbourhood": "neighbourhood",
+        "area": "area",
+        "near": "place",
+        "furnished": "furnishing",
+        "family": "family",
+        "compound": "compound"
+      }
     },
     "req": {
       "short": "Short stay",
@@ -5451,7 +5471,10 @@
         "center": "City centre",
         "business": "Business district",
         "university": "Near a university"
-      }
+      },
+      "near": "Near {place}",
+      "moveIn": "From {date}",
+      "months": "{n} months"
     },
     "card": {
       "perNight": "/ night",
@@ -5630,7 +5653,11 @@
         "shortlist_ready": "Shortlist",
         "failed": "Error",
         "outcome_recorded": "Outcome",
-        "relaxed": "Widen"
+        "relaxed": "Widen",
+        "memory_used": "Memory",
+        "memory_updated": "Memory",
+        "reply_written": "Write",
+        "availability_asked": "Message"
       },
       "verbs": {
         "understand": "Reading your request…",
@@ -5717,6 +5744,23 @@
       "confirmed": "A broker confirmed a home",
       "deviceOnly": "Chats stay on this device.",
       "signIn": "Sign in to keep them on every device"
+    },
+    "mustHaves": {
+      "parking": "Parking",
+      "pets": "Pets allowed",
+      "wifi": "Wi-Fi",
+      "workspace": "Workspace",
+      "ac": "Air conditioning",
+      "security": "Security",
+      "quiet": "Quiet area",
+      "transit": "Near transport",
+      "kitchen": "Kitchen",
+      "washer": "Washing machine",
+      "balcony": "Balcony",
+      "garden": "Garden",
+      "elevator": "Lift",
+      "waterTank": "Water tank",
+      "generator": "Backup power"
     }
   }
 }

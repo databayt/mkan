@@ -22,8 +22,36 @@ export const CLEARABLE = [
   "nights",
   "guests",
   "maxUpfront",
+  "near",
+  "mustHaves",
+  "moveIn",
+  "months",
 ] as const;
 export type ClearableField = (typeof CLEARABLE)[number];
+
+/**
+ * What a tenant can insist on beyond rooms and price. Each maps onto listing
+ * data in rank.ts (`Amenity`, `Highlight`, `isPetsAllowed`, `isParkingIncluded`);
+ * water tank and generator are the Kigali asks a listing cannot state yet.
+ */
+export const MUST_HAVES = [
+  "parking",
+  "pets",
+  "wifi",
+  "workspace",
+  "ac",
+  "security",
+  "quiet",
+  "transit",
+  "kitchen",
+  "washer",
+  "balcony",
+  "garden",
+  "elevator",
+  "waterTank",
+  "generator",
+] as const;
+export type MustHave = (typeof MUST_HAVES)[number];
 
 /** Round a ceiling to what a person would say: 10k steps a month, 1k a night. */
 export function roundPrice(n: number, period: "night" | "month" | null): number {

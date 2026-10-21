@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
+import { useLocale } from "@/components/internationalization/use-locale";
 import { cn } from "@/lib/utils";
 import { elapsed, fill } from "./format";
 import type { AgentEventView, AgentTaskView, EventKind, StepStatus } from "./types";
@@ -54,6 +55,7 @@ function Dot({ status }: { status: StepStatus }) {
  */
 export function Steps({ task, compact = false }: { task: AgentTaskView; compact?: boolean }) {
   const dict = useDictionary();
+  const { locale } = useLocale();
   const p = dict?.agent?.panel;
   const tr = dict?.agent?.trace;
   const tools = tr?.tools as Record<string, string> | undefined;
@@ -97,6 +99,11 @@ export function Steps({ task, compact = false }: { task: AgentTaskView; compact?
       const answer = (p?.answers as Record<string, string> | undefined)?.[String(e.payload.answer)] ?? String(e.payload.answer);
       const text = fill(events?.broker_replied ?? "{answer}", { answer });
       return e.payload.title ? `${text} · ${e.payload.title}` : text;
+    }
+    if (e.kind === "memory_used") {
+      // The remembered fields by name, once each ("budget" covers price and period).
+      const names = ((e.payload.fields as string[] | undefined) ?? []).map((k) => (p?.fields as Record<string, string> | undefined)?.[k] ?? k);
+      return fill(events?.memory_used ?? "{fields}", { fields: [...new Set(names)].join(locale === "ar" ? "، " : ", ") });
     }
     const label = events?.[e.kind] ?? e.kind;
     const text = fill(label, e.payload as Record<string, string | number>);

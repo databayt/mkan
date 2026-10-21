@@ -9,9 +9,9 @@
 import { z } from "zod";
 import { districtForPlace, DISTRICTS } from "@/lib/geo/rwanda-places";
 import { AREA_KEYS, NEIGHBOURHOODS } from "./areas";
-import { CLEARABLE, DISTRICT_CODES, roundPrice, type ClearableField } from "./fields";
+import { CLEARABLE, DISTRICT_CODES, MUST_HAVES, roundPrice, type ClearableField, type MustHave } from "./fields";
 
-export { CLEARABLE, DISTRICT_CODES, roundPrice, type ClearableField };
+export { CLEARABLE, DISTRICT_CODES, MUST_HAVES, roundPrice, type ClearableField, type MustHave };
 
 export const RequirementsSchema = z.object({
   /** short = nights (Airbnb-style); long = monthly rent (Kigali broker market). */
@@ -38,6 +38,20 @@ export const RequirementsSchema = z.object({
   family: z.boolean().nullable(),
   /** Cheapest first, instead of closest to the budget. */
   cheap: z.boolean().nullable(),
+  /**
+   * A place the tenant wants to live near ("Kigali Heights", "the airport"),
+   * with the pin homes are ranked by distance to: a LANDMARKS pin in areas.ts,
+   * or the centre of the neighbourhood the reader says the place is in.
+   */
+  near: z
+    .object({ name: z.string().min(2).max(60), lat: z.number().min(-2.2).max(-1.7), lng: z.number().min(29.8).max(30.4) })
+    .nullable(),
+  /** Things the home must have (parking, pets, a water tank…). */
+  mustHaves: z.array(z.enum(MUST_HAVES)).max(8).nullable(),
+  /** Move-in date, YYYY-MM-DD. */
+  moveIn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  /** Lease length in months. */
+  months: z.number().int().min(1).max(60).nullable(),
 });
 
 export type Requirements = z.infer<typeof RequirementsSchema>;
@@ -58,6 +72,10 @@ export const EMPTY_REQUIREMENTS: Requirements = {
   area: null,
   family: null,
   cheap: null,
+  near: null,
+  mustHaves: null,
+  moveIn: null,
+  months: null,
 };
 
 /** The fields the agent must have before searching — asked one at a time. */
@@ -244,7 +262,7 @@ export function inferStay(r: Requirements): Requirements {
   if (r.nights || r.guests) stay = "short";
   else if (r.maxPrice && r.maxPrice <= NIGHTLY_MAX) stay = "short";
   else if (r.maxPrice && r.maxPrice >= MONTHLY_MIN) stay = "long";
-  else if (r.furnished === false || r.compound || r.family || r.maxUpfront) stay = "long";
+  else if (r.furnished === false || r.compound || r.family || r.maxUpfront || r.months) stay = "long";
   if (!stay) return r;
   return { ...r, stay, pricePeriod: r.maxPrice ? r.pricePeriod ?? (stay === "long" ? "month" : "night") : r.pricePeriod };
 }

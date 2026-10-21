@@ -5405,11 +5405,16 @@
         "failed": "فشلت هذه الخطوة",
         "broker_contact_reused": "انضممنا إلى سؤال أُرسل للوسيط مسبقاً",
         "outcome_recorded": "تم تسجيل نتيجة المعاينة",
-        "relaxed": "وسّعت {count} من التفاصيل للعثور على منازل"
+        "relaxed": "وسّعت {count} من التفاصيل للعثور على منازل",
+        "memory_used": "استخدمت ما أخبرتني به سابقاً: {fields}",
+        "memory_updated": "حفظته للمرة القادمة",
+        "reply_written": "كُتب الرد",
+        "availability_asked": "سألت الوسيط عن توفّر المنزل"
       },
       "reader": {
         "groq": "قرأها الذكاء الاصطناعي",
-        "rules": "قرأتها القواعد"
+        "rules": "قرأتها القواعد",
+        "claude": "قرأها Claude"
       },
       "status": {
         "done": "تم",
@@ -5429,7 +5434,22 @@
         "no_reply": "لا رد خلال ٢٤ ساعة"
       },
       "showSteps": "إظهار الخطوات",
-      "hideSteps": "إخفاء الخطوات"
+      "hideSteps": "إخفاء الخطوات",
+      "fields": {
+        "stay": "نوع الإقامة",
+        "maxPrice": "الميزانية",
+        "pricePeriod": "الميزانية",
+        "bedrooms": "عدد الغرف",
+        "bathrooms": "الحمامات",
+        "mustHaves": "المتطلبات",
+        "district": "المقاطعة",
+        "neighbourhood": "الحي",
+        "area": "المنطقة",
+        "near": "المكان",
+        "furnished": "الأثاث",
+        "family": "العائلة",
+        "compound": "المنزل المستقل"
+      }
     },
     "req": {
       "short": "إقامة قصيرة",
@@ -5451,7 +5471,10 @@
         "center": "وسط المدينة",
         "business": "منطقة الأعمال",
         "university": "قرب جامعة"
-      }
+      },
+      "near": "قرب {place}",
+      "moveIn": "من {date}",
+      "months": "{n} أشهر"
     },
     "card": {
       "perNight": "/ ليلة",
@@ -5630,7 +5653,11 @@
         "shortlist_ready": "القائمة",
         "failed": "خطأ",
         "outcome_recorded": "نتيجة",
-        "relaxed": "توسيع"
+        "relaxed": "توسيع",
+        "memory_used": "الذاكرة",
+        "memory_updated": "الذاكرة",
+        "reply_written": "الكتابة",
+        "availability_asked": "رسالة"
       },
       "verbs": {
         "understand": "أقرأ طلبك…",
@@ -5717,6 +5744,23 @@
       "confirmed": "أكّد وسيط أن منزلاً متاح",
       "deviceOnly": "تبقى المحادثات على هذا الجهاز.",
       "signIn": "سجّل الدخول لتحتفظ بها على كل أجهزتك"
+    },
+    "mustHaves": {
+      "parking": "موقف سيارات",
+      "pets": "يُسمح بالحيوانات الأليفة",
+      "wifi": "واي فاي",
+      "workspace": "مساحة للعمل",
+      "ac": "تكييف",
+      "security": "حراسة وأمان",
+      "quiet": "منطقة هادئة",
+      "transit": "قرب المواصلات",
+      "kitchen": "مطبخ",
+      "washer": "غسالة",
+      "balcony": "شرفة",
+      "garden": "حديقة",
+      "elevator": "مصعد",
+      "waterTank": "خزان مياه",
+      "generator": "كهرباء احتياطية"
     }
   }
 }

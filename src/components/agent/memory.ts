@@ -141,3 +141,45 @@ export function mergeMemory(a: AgentMemory, b: AgentMemory): AgentMemory {
     seen: unionIds(a.seen, b.seen),
   };
 }
+
+/** Fields that only mean something when the stay type was stated, not assumed. */
+const STAY_BOUND: readonly PrefField[] = ["stay", "pricePeriod", "maxPrice"];
+
+/**
+ * What one finished turn teaches: the search fields it settled on (newest
+ * wins; a field the tenant did not mention is kept, not erased), the facts
+ * the reader picked up (sanitized), the notes they asked to forget, and the
+ * homes they were shown. Pure — run.ts reads, merges and writes in one go.
+ */
+export function rememberTurn(
+  memory: AgentMemory,
+  turn: {
+    requirements: Partial<Record<PrefField, unknown>>;
+    /** No stay type was given: the search ran as monthly rent by assumption. */
+    stayGuessed: boolean;
+    tapped: boolean;
+    remember: string[];
+    forget: string[];
+    shown: number[];
+    now: Date;
+  },
+): AgentMemory {
+  const at = turn.now.toISOString();
+  const prefs: AgentMemory["prefs"] = { ...memory.prefs };
+  for (const field of PREF_FIELDS) {
+    const value = turn.requirements[field];
+    if (value == null || (Array.isArray(value) && value.length === 0)) continue;
+    if (turn.stayGuessed && STAY_BOUND.includes(field)) continue;
+    prefs[field] = { value, at, source: turn.tapped ? "tapped" : "said" };
+  }
+  const forgotten = new Set(turn.forget);
+  const fresh = turn.remember
+    .map(sanitizeNote)
+    .filter((t): t is string => !!t)
+    .map((text, i) => ({ id: `n${turn.now.getTime().toString(36)}${i}`, text, at }));
+  const notes = mergeMemory({ ...emptyMemory(), notes: fresh }, { ...emptyMemory(), notes: memory.notes.filter((n) => !forgotten.has(n.id)) }).notes;
+  return { ...memory, prefs, notes, seen: unionIds(turn.shown, memory.seen) };
+}
+
+/** Did this turn change anything worth a write? */
+export const memoryChanged = (a: AgentMemory, b: AgentMemory): boolean => JSON.stringify(a) !== JSON.stringify(b);

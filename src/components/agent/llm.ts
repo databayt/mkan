@@ -44,13 +44,13 @@ export interface GroqReading {
 }
 
 /** Read what the newest message changes in the current search. */
-export async function readRequirementsWithGroq(latest: string, current: Requirements, earlier: string[]): Promise<GroqReading | null> {
+export async function readRequirementsWithGroq(latest: string, current: Requirements, earlier: string[], timeoutMs = TIMEOUT_MS): Promise<GroqReading | null> {
   const apiKey = process.env.GROQ_API_KEY?.trim();
   if (!apiKey) return null;
   if (Date.now() < pausedUntil) return null;
   const known = Object.fromEntries(Object.entries(current).filter(([, v]) => v != null));
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(GROQ_API_URL, {
       method: "POST",

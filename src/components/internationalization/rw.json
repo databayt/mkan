@@ -5405,11 +5405,16 @@
         "failed": "Iyi ntambwe yanze",
         "broker_contact_reused": "Twifatanyije n'ikibazo cyari cyoherejwe kuri komisiyoneri",
         "outcome_recorded": "Uko gusura byagenze byanditswe",
-        "relaxed": "Naguye ibintu {count} kugira ngo mbone amazu"
+        "relaxed": "Naguye ibintu {count} kugira ngo mbone amazu",
+        "memory_used": "Nakoresheje ibyo wambwiye mbere: {fields}",
+        "memory_updated": "Nabibitse ubutaha",
+        "reply_written": "Igisubizo cyanditswe",
+        "availability_asked": "Nabajije komisiyoneri niba inzu ihari"
       },
       "reader": {
         "groq": "byasomwe na AI",
-        "rules": "byasomwe n'amategeko"
+        "rules": "byasomwe n'amategeko",
+        "claude": "byasomwe na Claude"
       },
       "status": {
         "done": "Byarangiye",
@@ -5429,7 +5434,22 @@
         "no_reply": "nta gisubizo mu masaha 24"
       },
       "showSteps": "Erekana intambwe",
-      "hideSteps": "Hisha intambwe"
+      "hideSteps": "Hisha intambwe",
+      "fields": {
+        "stay": "igihe cyo kuguma",
+        "maxPrice": "ingengo y'imari",
+        "pricePeriod": "ingengo y'imari",
+        "bedrooms": "ibyumba",
+        "bathrooms": "ubwiherero",
+        "mustHaves": "ibikenewe",
+        "district": "akarere",
+        "neighbourhood": "agace",
+        "area": "agace",
+        "near": "ahantu",
+        "furnished": "ibikoresho",
+        "family": "umuryango",
+        "compound": "igipangu"
+      }
     },
     "req": {
       "short": "Kurara iminsi mike",
@@ -5451,7 +5471,10 @@
         "center": "Mu mujyi rwagati",
         "business": "Agace k'ubucuruzi",
         "university": "Hafi ya kaminuza"
-      }
+      },
+      "near": "Hafi ya {place}",
+      "moveIn": "Guhera {date}",
+      "months": "Amezi {n}"
     },
     "card": {
       "perNight": "/ ijoro",
@@ -5630,7 +5653,11 @@
         "shortlist_ready": "Urutonde",
         "failed": "Ikosa",
         "outcome_recorded": "Ibyavuyemo",
-        "relaxed": "Agura"
+        "relaxed": "Agura",
+        "memory_used": "Ububiko",
+        "memory_updated": "Ububiko",
+        "reply_written": "Kwandika",
+        "availability_asked": "Ubutumwa"
       },
       "verbs": {
         "understand": "Ndasoma icyifuzo cyawe…",
@@ -5717,6 +5744,23 @@
       "confirmed": "Komisiyoneri yemeje ko inzu ihari",
       "deviceOnly": "Ibiganiro bigumaho kuri iki gikoresho.",
       "signIn": "Injira kugira ngo ubibone kuri buri gikoresho"
+    },
+    "mustHaves": {
+      "parking": "Parikingi",
+      "pets": "Amatungo yemewe",
+      "wifi": "Wi-Fi",
+      "workspace": "Aho gukorera",
+      "ac": "Ubukonje (AC)",
+      "security": "Umutekano",
+      "quiet": "Ahantu hatuje",
+      "transit": "Hafi y'imodoka rusange",
+      "kitchen": "Igikoni",
+      "washer": "Imashini imesa",
+      "balcony": "Balikoni",
+      "garden": "Ubusitani",
+      "elevator": "Asanseri",
+      "waterTank": "Ikigega cy'amazi",
+      "generator": "Umuriro w'ingoboka"
     }
   }
 }

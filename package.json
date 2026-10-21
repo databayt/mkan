@@ -63,6 +63,7 @@
     "crm:merge-tiktok-dupes": "tsx scripts/crm/merge-tiktok-dupes.ts",
     "crm:hygiene": "tsx scripts/crm/hygiene.ts",
     "agent:funnel": "tsx scripts/crm/agent-funnel.ts",
+    "agent:eval": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/eval-reader.ts",
     "crm:claim-token": "tsx scripts/crm/claim-tokens.ts",
     "crm:gift-handover": "tsx scripts/crm/gift-handover.ts",
     "crm:handover": "tsx scripts/crm/host-handover.ts",
@@ -135,7 +136,7 @@
     "backfill:zones": "tsx scripts/backfill-zone-keys.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.68.0",
+    "@anthropic-ai/sdk": "^0.137.0",
     "@auth/prisma-adapter": "^2.11.2",
     "@aws-sdk/client-s3": "^3.1079.0",
     "@aws-sdk/s3-request-presigner": "^3.1079.0",

@@ -6,6 +6,10 @@ import type { Requirements } from "./requirements";
 
 type AgentDict = Dictionary["agent"] | undefined;
 
+/** "2026-11-01" → "1 Nov" in the reader's language; the date is a calendar day, so UTC. */
+const dayLabel = (iso: string, locale: Locale) =>
+  new Intl.DateTimeFormat(locale === "rw" ? "en" : locale, { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
+
 /**
  * A search as the chips a tenant reads — "Long stay · Kicukiro · 2 bedrooms ·
  * Up to RWF 500,000 a month". The "Looking for" row, the ☰ chat titles, the
@@ -29,6 +33,10 @@ export function requirementChips(req: Partial<Requirements> | null | undefined, 
     req.compound ? a?.req?.compound : null,
     req.family ? a?.req?.family : null,
     req.cheap ? a?.req?.cheap : null,
+    req.near ? fill(a?.req?.near ?? "Near {place}", { place: req.near.name }) : null,
+    ...(req.mustHaves ?? []).map((k) => (a?.mustHaves as Record<string, string> | undefined)?.[k] ?? k),
+    req.moveIn ? fill(a?.req?.moveIn ?? "From {date}", { date: dayLabel(req.moveIn, locale) }) : null,
+    req.months ? fill(a?.req?.months ?? "{n} months", { n: req.months }) : null,
   ].filter((x, i, all): x is string => !!x && all.indexOf(x) === i);
 }
 

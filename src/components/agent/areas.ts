@@ -57,6 +57,56 @@ export const AREAS: Record<AreaKey, { radiusKm: number; points: [number, number]
   },
 };
 
+export interface Landmark {
+  name: string;
+  aliases: string[];
+  lat: number;
+  lng: number;
+}
+
+/**
+ * Places tenants name instead of a neighbourhood — a workplace, a campus, a
+ * market, the airport. "Near Kigali Heights" ranks homes by distance to this
+ * pin (rank.ts), softly: a pin off by a few hundred metres costs a home a few
+ * points, never its place. Approximate like the rest of this file; a place
+ * missing here can still be placed by the neighbourhood the reader names.
+ */
+export const LANDMARKS: Landmark[] = [
+  { name: "Kigali Convention Centre", aliases: ["kcc", "convention centre", "convention center", "radisson blu"], lat: -1.9536, lng: 30.0928 },
+  { name: "Kigali Heights", aliases: ["kigali heights mall"], lat: -1.9531, lng: 30.0936 },
+  { name: "Kigali City Tower", aliases: ["kct", "city tower", "car free zone", "utc", "union trade centre", "union trade center"], lat: -1.9441, lng: 30.0619 },
+  { name: "King Faisal Hospital", aliases: ["king faisal", "kfh"], lat: -1.9446, lng: 30.0928 },
+  { name: "CHUK", aliases: ["chuk hospital", "university teaching hospital of kigali"], lat: -1.9566, lng: 30.0603 },
+  { name: "University of Rwanda Nyarugenge", aliases: ["ur nyarugenge", "cst", "kist", "ur cst", "university of rwanda"], lat: -1.9586, lng: 30.0636 },
+  { name: "University of Rwanda Gikondo", aliases: ["ur gikondo", "cbe", "ur cbe"], lat: -1.977, lng: 30.073 },
+  { name: "University of Rwanda Remera", aliases: ["ur remera", "cmhs", "kie"], lat: -1.956, lng: 30.116 },
+  { name: "ULK", aliases: ["kigali independent university", "ulk gisozi"], lat: -1.921, lng: 30.063 },
+  { name: "Kigali Innovation City", aliases: ["kic", "cmu africa", "carnegie mellon", "carnegie mellon africa", "alu"], lat: -1.93, lng: 30.153 },
+  { name: "Kigali International Airport", aliases: ["airport", "kanombe airport", "kgl"], lat: -1.9686, lng: 30.1395 },
+  { name: "Kimironko Market", aliases: ["kimironko market", "isoko rya kimironko"], lat: -1.9365, lng: 30.1271 },
+  { name: "Nyabugogo", aliases: ["nyabugogo bus park", "nyabugogo taxi park", "nyabugogo bus station"], lat: -1.9375, lng: 30.0447 },
+  { name: "Amahoro Stadium", aliases: ["amahoro"], lat: -1.955, lng: 30.1163 },
+  { name: "BK Arena", aliases: ["kigali arena"], lat: -1.9536, lng: 30.1175 },
+  { name: "Remera Giporoso", aliases: ["giporoso", "remera bus park", "remera taxi park"], lat: -1.9575, lng: 30.111 },
+  { name: "Sonatubes", aliases: ["sonatube"], lat: -1.966, lng: 30.104 },
+  { name: "Kicukiro Centre", aliases: ["kicukiro center", "centre kicukiro"], lat: -1.972, lng: 30.103 },
+  { name: "Kigali Golf Course", aliases: ["golf course", "kigali golf", "golf resort"], lat: -1.937, lng: 30.103 },
+  { name: "Kigali Marriott", aliases: ["marriott"], lat: -1.9535, lng: 30.0617 },
+  { name: "Kigali Serena", aliases: ["serena", "serena hotel"], lat: -1.9545, lng: 30.0632 },
+  { name: "Kigali Genocide Memorial", aliases: ["genocide memorial", "gisozi memorial"], lat: -1.9306, lng: 30.0605 },
+  { name: "Kigali Special Economic Zone", aliases: ["sez", "ksez", "special economic zone", "free zone"], lat: -1.928, lng: 30.145 },
+  { name: "Nyamirambo Stadium", aliases: ["pele stadium", "kigali pele stadium", "nyamirambo regional stadium"], lat: -1.9759, lng: 30.0452 },
+];
+
+const placeKey = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/** A landmark by its name or a common alias ("KCC", "the airport"). */
+export function landmarkNamed(name: string | null | undefined): Landmark | undefined {
+  if (!name) return undefined;
+  const key = placeKey(name).replace(/^the /, "");
+  return LANDMARKS.find((l) => placeKey(l.name) === key || l.aliases.some((a) => placeKey(a) === key));
+}
+
 export const neighbourhoodNamed = (name: string | null | undefined): Neighbourhood | undefined =>
   name ? NEIGHBOURHOODS.find((n) => n.name.toLowerCase() === name.toLowerCase()) : undefined;
 
