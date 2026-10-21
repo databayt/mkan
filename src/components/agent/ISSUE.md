@@ -96,3 +96,4 @@
 - Not done: Kinyarwanda writing (`AGENT_WRITER_LOCALES`) waits for a native review of `pnpm agent:eval-writer`
   samples; the e2e suite needs a test branch (the repo `.env` is production); "new since" only counts homes created
   after the last search (a price drop on an old home is not "new").
+- 2026-10-21: the composer is read-only until hydration — a message typed on a slow phone before the page was interactive used to vanish (Enter went nowhere, hydration cleared the box).
