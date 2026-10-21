@@ -218,6 +218,9 @@ export async function runTurn(taskId: string): Promise<void> {
     requirements = clearFields(requirements, [...clears, ...(lastUser?.clear ?? [])]);
     requirements = inferStay(reconcile(base, requirements, stated));
     const remembered = fromMemory(reading, memory, rules);
+    // Homes the tenant passed on never come back — remembered ones, and the one this message rejects.
+    const rejected = reading?.notLike ? shown[Number(reading.notLike.slice(1)) - 1]?.id : undefined;
+    const excludeIds = [...new Set([...memory.dismissed, ...(rejected ? [rejected] : [])])];
     // No stay type yet: search monthly rent (every home, nightly ones priced by
     // the month) and ask months-or-nights under the cards instead of before them.
     const assumed = !requirements.stay;
@@ -251,7 +254,7 @@ export async function runTurn(taskId: string): Promise<void> {
     // 2. Search mkan — the bookkeeping writes ride alongside the query.
     const [searchId, { candidates }] = await Promise.all([
       trace.start("search_done"),
-      searchKigali(query),
+      searchKigali(query, { excludeIds }),
       understood,
       db.agentTask.update({ where: { id: task.id }, data: { requirements: json(requirements) } }),
     ]);
@@ -281,11 +284,11 @@ export async function runTurn(taskId: string): Promise<void> {
         trace.start("relaxed"),
         attempts.length === 0
           ? Promise.resolve([])
-          : searchKigali(widest.requirements, { take: WIDE_POOL }).then(async (pool) =>
+          : searchKigali(widest.requirements, { take: WIDE_POOL, excludeIds }).then(async (pool) =>
               pool.truncated
                 ? Promise.all(
                     attempts.map(async (attempt) => {
-                      const found = await searchKigali(attempt.requirements);
+                      const found = await searchKigali(attempt.requirements, { excludeIds });
                       return { attempt, ranked: rankCandidates(found.candidates, attempt.requirements) };
                     }),
                   )
@@ -308,7 +311,7 @@ export async function runTurn(taskId: string): Promise<void> {
     }
 
     // 5. The cards go up now; the brokers are asked after, while the tenant reads.
-    const [cards] = await Promise.all([toShortlist(result.ranked, lang), trace.record("ranked", "done", { top: result.ranked.length })]);
+    const [cards] = await Promise.all([toShortlist(result.ranked, lang, query.near?.name), trace.record("ranked", "done", { top: result.ranked.length })]);
     let shortlist = cards;
     const unconfirmed = shortlist.filter((s) => s.availability === "unconfirmed").length;
     const answer: AgentMessage = {

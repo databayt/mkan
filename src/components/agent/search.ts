@@ -42,8 +42,16 @@ const CANDIDATE_SELECT = {
   numberOfReviews: true,
   isPublished: true,
   source: true,
+  amenities: true,
+  highlights: true,
+  isPetsAllowed: true,
+  isParkingIncluded: true,
+  furnished: true,
   location: { select: { state: true, address: true, latitude: true, longitude: true } },
 } satisfies Prisma.ListingSelect;
+
+/** How far around a place the pool reaches; ranking then scores the distance. */
+const NEAR_POOL_KM = 5;
 
 /** What a card shows — loaded only for the few homes that made the shortlist. */
 const DISPLAY_SELECT = {
@@ -94,7 +102,9 @@ function placeWhere(r: Requirements): Prisma.ListingWhereInput[] {
       ],
     });
   }
-  if (r.area) out.push({ location: boxAround(AREAS[r.area].points, AREAS[r.area].radiusKm) });
+  // Leads carry a district-centre pin that says nothing about distance — they stay in, scored neutrally.
+  if (r.area) out.push({ OR: [{ location: boxAround(AREAS[r.area].points, AREAS[r.area].radiusKm) }, { source: "TIKTOK" }] });
+  if (r.near) out.push({ OR: [{ location: boxAround([[r.near.lat, r.near.lng]], NEAR_POOL_KM) }, { source: "TIKTOK" }] });
   if (r.compound) out.push({ propertyType: { in: ["Villa", "Townhouse", "Cottage"] } });
   if (r.bathrooms != null) out.push({ OR: [{ bathrooms: null }, { bathrooms: { gte: r.bathrooms } }] });
   return out;
@@ -102,9 +112,14 @@ function placeWhere(r: Requirements): Prisma.ListingWhereInput[] {
 
 /**
  * `take` widens the load for a pool the caller ranks several ways (the zero-match
- * widening); `truncated` says the pool hit it, so it may be missing rows.
+ * widening); `truncated` says a pool hit its cap, so it may be missing rows.
+ * `excludeIds` keeps out homes the tenant passed on; `createdAfter` finds the
+ * homes listed since their last search ("new since Tuesday").
  */
-export async function searchKigali(r: Requirements, { take = MAX_CANDIDATES }: { take?: number } = {}): Promise<{ candidates: Candidate[]; truncated: boolean }> {
+export async function searchKigali(
+  r: Requirements,
+  { take = MAX_CANDIDATES, excludeIds = [], createdAfter }: { take?: number; excludeIds?: number[]; createdAfter?: Date } = {},
+): Promise<{ candidates: Candidate[]; truncated: boolean }> {
   // Leads are monthly broker homes, so they only join long-stay searches.
   const visible: Prisma.ListingWhereInput =
     r.stay === "short"
@@ -120,6 +135,8 @@ export async function searchKigali(r: Requirements, { take = MAX_CANDIDATES }: {
     },
     ...(r.bedrooms != null ? { bedrooms: { gte: r.bedrooms } } : r.family ? { bedrooms: { gte: 3 } } : {}),
     ...(r.stay === "short" ? { rentPeriod: "NIGHTLY" } : {}),
+    ...(excludeIds.length ? { id: { notIn: excludeIds } } : {}),
+    ...(createdAfter ? { createdAt: { gt: createdAfter } } : {}),
   };
   const [rated, monthly] = await Promise.all([
     db.listing.findMany({
@@ -155,17 +172,23 @@ export async function searchKigali(r: Requirements, { take = MAX_CANDIDATES }: {
     longitude: row.location?.longitude ?? null,
     approxLocation: isLead(row),
     address: row.location?.address ?? null,
+    amenities: row.amenities,
+    highlights: row.highlights,
+    isPetsAllowed: row.isPetsAllowed,
+    isParkingIncluded: row.isParkingIncluded,
+    furnished: row.furnished,
     averageRating: row.averageRating,
     numberOfReviews: row.numberOfReviews,
     // Imports stamp lastAvailabilityConfirmedAt at scrape time, so it is not
     // a confirmation. Only a broker's answer sets this.
     confirmedAt: answers.get(row.id)?.status === "AVAILABLE" ? answers.get(row.id)!.at : null,
   }));
-  return { candidates, truncated: rated.length >= take };
+  // Either pool at its cap may be missing rows — the monthly one too (it fed the typical-price median).
+  return { candidates, truncated: rated.length >= take || monthly.length >= MAX_MONTHLY };
 }
 
 /** Turn ranked ids into display cards, localized for the tenant: one small query for the winners. */
-export async function toShortlist(ranked: Ranked[], lang: Locale): Promise<ShortlistItem[]> {
+export async function toShortlist(ranked: Ranked[], lang: Locale, near?: string | null): Promise<ShortlistItem[]> {
   const picked = await db.listing.findMany({ where: { id: { in: ranked.map((r) => r.id) } }, select: DISPLAY_SELECT });
   const byId = new Map(picked.map((r) => [r.id, r]));
   const localized = await localizeListings(picked as unknown as Record<string, unknown>[], lang).catch(
@@ -194,6 +217,8 @@ export async function toShortlist(ranked: Ranked[], lang: Locale): Promise<Short
         cost: rk.cost,
         duplicates: rk.duplicates,
         availability: rk.reasons.includes("confirmed") ? "confirmed" : "unconfirmed",
+        ...(rk.mustHaves ? { mustHaves: rk.mustHaves } : {}),
+        ...(near && rk.km != null ? { place: { name: near, km: rk.km } } : {}),
         ...(isLead(row)
           ? { lead: { handle: row.host.sourceHostId?.startsWith("tiktok:") ? row.host.sourceHostId.slice(7) : null, sourceUrl: row.sourceUrl } }
           : {}),

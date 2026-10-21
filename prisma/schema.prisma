@@ -261,6 +261,8 @@ model Listing {
   highlights         Highlight[]         @default([])
   isPetsAllowed      Boolean             @default(false)
   isParkingIncluded  Boolean             @default(false)
+  /// Known furnishing. Null = not stated (most broker homes); nightly homes are furnished.
+  furnished          Boolean?
   bedrooms           Int?
   bathrooms          Float?
   squareFeet         Int?
@@ -864,6 +866,9 @@ enum Amenity {
   FireExtinguisher
   FirstAidKit
   SecurityCameras
+  // Kigali: the city's supply cuts make these what tenants ask brokers first
+  WaterTank
+  BackupGenerator
 }
 
 enum ApplicationStatus {

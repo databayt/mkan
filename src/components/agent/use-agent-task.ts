@@ -249,7 +249,8 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false, 
       const items = a?.relaxed?.items as Record<string, string> | undefined;
       const changes = steps.map((s) =>
         fill(items?.[s.key] ?? s.key, {
-          place: typeof s.to === "string" ? districtName(s.to, locale) : "",
+          // "near" widens away from a named place; the other place steps name a district.
+          place: s.key === "near" ? String(s.to ?? "") : typeof s.to === "string" ? districtName(s.to, locale) : "",
           price: typeof s.to === "number" ? money(s.to) : "",
         }),
       );

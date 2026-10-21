@@ -1131,7 +1131,9 @@
         "CarbonMonoxideAlarm": "Carbon monoxide alarm",
         "FireExtinguisher": "Fire extinguisher",
         "FirstAidKit": "First aid kit",
-        "SecurityCameras": "Exterior security cameras on property"
+        "SecurityCameras": "Exterior security cameras on property",
+        "WaterTank": "Water tank",
+        "BackupGenerator": "Backup generator"
       },
       "highlights": {
         "HighSpeedInternetAccess": "High Speed Internet",
@@ -5516,7 +5518,8 @@
         "selfCompound": "Own compound",
         "familySize": "Room for a family",
         "lowPrice": "Low price",
-        "typicalPrice": "Typical price"
+        "typicalPrice": "Typical price",
+        "nearPlace": "Close to your place"
       },
       "asked": "Asked the broker — waiting for an answer",
       "rented": "Rented — no longer available",
@@ -5543,7 +5546,24 @@
         "tooExpensive": "Too expensive",
         "brokerNoShow": "Broker didn't come",
         "iMissedIt": "I couldn't make it"
-      }
+      },
+      "best": "Best match",
+      "nearPlace": "{km} km from {place}",
+      "has": "Has: {list}",
+      "askAbout": "Ask the broker about: {list}",
+      "save": "Save",
+      "unsave": "Remove from saved",
+      "notForMe": "Not for me",
+      "notForMeTitle": "What's not right?",
+      "notReasons": {
+        "expensive": "Too expensive",
+        "small": "Too small",
+        "other": "Just not this one"
+      },
+      "checkAvailability": "Check availability",
+      "checkAvailabilityHint": "Mkan messages the broker for you and shows the answer here.",
+      "checking": "Asking the broker…",
+      "noBroker": "No broker to ask for this home yet."
     },
     "entry": "Ask the rental agent",
     "broker": {
@@ -5677,7 +5697,8 @@
         "bathrooms": "any number of bathrooms",
         "furnished": "furnished or not",
         "budget": "up to {price}",
-        "district": "anywhere in Kigali"
+        "district": "anywhere in Kigali",
+        "near": "further from {place}"
       }
     },
     "refine": {
@@ -5743,7 +5764,27 @@
       "waiting": "Waiting on a broker",
       "confirmed": "A broker confirmed a home",
       "deviceOnly": "Chats stay on this device.",
-      "signIn": "Sign in to keep them on every device"
+      "signIn": "Sign in to keep them on every device",
+      "saved": "Saved homes",
+      "memory": "Memory",
+      "back": "Back",
+      "savedEmpty": "Tap ♥ on a home to keep it here.",
+      "memoryEmpty": "Nothing yet. As you search, Mkan remembers your budget, areas and must-haves so you don't have to repeat them.",
+      "memorySearch": "Your search",
+      "memoryNotes": "Things you told me",
+      "memoryPassed": "Homes you passed on: {n}",
+      "memoryLetBack": "Show them again",
+      "memoryHint": "Tap a chip to change it, or just tell Mkan.",
+      "memoryPrivacy": "Kept on this device unless you sign in. Phone numbers and emails are never kept.",
+      "forgetAll": "Forget everything",
+      "forgetConfirm": "Forget everything Mkan remembers?",
+      "forget": "Forget",
+      "remove": "Remove",
+      "editBudget": "Budget",
+      "editBeds": "Bedrooms",
+      "studio": "Studio",
+      "perMonth": "a month",
+      "perNight": "a night"
     },
     "mustHaves": {
       "parking": "Parking",
@@ -5761,6 +5802,11 @@
       "elevator": "Lift",
       "waterTank": "Water tank",
       "generator": "Backup power"
+    },
+    "welcome": {
+      "title": "Welcome back",
+      "continue": "Continue your search",
+      "newSince": "New since {date}"
     }
   }
 }

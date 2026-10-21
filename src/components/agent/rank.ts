@@ -2,8 +2,9 @@
  * Filter, group and rank candidate homes against the tenant's requirements.
  * Pure — `search.ts` feeds it Prisma rows, the tests feed it fixtures.
  */
+import { haversineKm } from "@/lib/geo/rwanda-places";
 import { placeToken } from "@/lib/geo/place-token";
-import type { Requirements } from "./requirements";
+import type { MustHave, Requirements } from "./requirements";
 import { longStayCost, monthlyRent, shortStayCost, type CostEstimate, type PricedHome } from "./cost";
 import { inArea, inNeighbourhood } from "./areas";
 
@@ -13,6 +14,15 @@ const COMPOUND_TYPES = new Set(["Villa", "Townhouse", "Cottage"]);
 const FAMILY_BEDROOMS = 3;
 /** "Cheapest first" with no budget: prices are scored against these (RWF). */
 const CHEAP_SCALE = { night: 150_000, month: 1_500_000 };
+/**
+ * An unrated home scores as a decent one, not as a zero: broker homes carry no
+ * ratings at all, and up to ~18 rating points kept them under every rated
+ * Airbnb flat however well they fit.
+ */
+const UNRATED_RATING = 4.5;
+/** Points for each must-have a home is known to have; one it is known to lack costs a little. */
+const MUST_HAVE_POINTS = 8;
+const MUST_HAVE_MISSING = -4;
 
 export interface Candidate extends PricedHome {
   id: number;
@@ -32,6 +42,12 @@ export interface Candidate extends PricedHome {
   approxLocation?: boolean;
   /** Free-text address; a lead's neighbourhood lives here. */
   address?: string | null;
+  amenities?: string[];
+  highlights?: string[];
+  isPetsAllowed?: boolean;
+  isParkingIncluded?: boolean;
+  /** Known furnishing; null when the listing does not say. */
+  furnished?: boolean | null;
 }
 
 export type ReasonKey =
@@ -51,7 +67,8 @@ export type ReasonKey =
   | "selfCompound"
   | "familySize"
   | "lowPrice"
-  | "typicalPrice";
+  | "typicalPrice"
+  | "nearPlace";
 
 export interface Ranked {
   id: number;
@@ -60,6 +77,58 @@ export interface Ranked {
   cost: CostEstimate;
   /** Other ads grouped into this home by `groupDuplicates`. */
   duplicates: number;
+  /** The tenant's must-haves this home is known to have, and the ones nobody knows yet. */
+  mustHaves?: { matched: MustHave[]; unknown: MustHave[] };
+  /** Kilometres from the place the tenant wants to be near (a trusted pin only). */
+  km?: number;
+}
+
+const has = (list: string[] | undefined, ...values: string[]) => !!list && values.some((v) => list.includes(v));
+
+/**
+ * Whether a home has a must-have: true / false when its listing says, null
+ * when it says nothing at all (a broker lead with no amenity list) — then the
+ * card says "ask the broker" instead of guessing.
+ */
+export function hasMustHave(c: Candidate, key: MustHave): boolean | null {
+  const a = c.amenities;
+  const h = c.highlights;
+  const known = (a?.length ?? 0) > 0 || (h?.length ?? 0) > 0 || c.isPetsAllowed || c.isParkingIncluded;
+  const yes = (() => {
+    switch (key) {
+      case "parking":
+        return !!c.isParkingIncluded || has(a, "Parking");
+      case "pets":
+        return !!c.isPetsAllowed || has(a, "PetsAllowed");
+      case "wifi":
+        return has(a, "WiFi", "HighSpeedInternet") || has(h, "HighSpeedInternetAccess");
+      case "workspace":
+        return has(a, "DedicatedWorkspace");
+      case "ac":
+        return has(a, "AirConditioning") || has(h, "AirConditioning");
+      case "security":
+        return has(a, "SecurityCameras");
+      case "quiet":
+        return has(h, "QuietNeighborhood");
+      case "transit":
+        return has(h, "CloseToTransit");
+      case "kitchen":
+        return has(a, "Kitchen");
+      case "washer":
+        return has(a, "WasherDryer") || has(h, "WasherDryer");
+      case "balcony":
+        return has(a, "PatioOrBalcony");
+      case "garden":
+        return has(a, "Backyard");
+      case "elevator":
+        return has(a, "Elevator");
+      case "waterTank":
+        return has(a, "WaterTank");
+      case "generator":
+        return has(a, "BackupGenerator");
+    }
+  })();
+  return yes ? true : known ? false : null;
 }
 
 /** A broker's answer older than this no longer counts as "available". */
@@ -126,10 +195,13 @@ function matchesNeighbourhood(c: Candidate, name: string): boolean {
 export function passesHardFilters(c: Candidate, r: Requirements): boolean {
   if (r.neighbourhood && !matchesNeighbourhood(c, r.neighbourhood)) return false;
   if (r.area) {
-    // A district-centre pin says nothing about distance to the CBD or a campus.
+    // A district-centre pin says nothing about the distance to the CBD or a
+    // campus: a broker lead stays in (neutral), a pinned home must be in it.
     const p = point(c);
-    if (!p || !inArea(p[0], p[1], r.area)) return false;
+    if (p && !inArea(p[0], p[1], r.area)) return false;
   }
+  // "Unfurnished" is a long-term ask: nightly homes are furnished by definition.
+  if (r.furnished === false && (c.rentPeriod === "NIGHTLY" || c.furnished === true)) return false;
   if (r.compound && !COMPOUND_TYPES.has(c.propertyType ?? "")) return false;
   if (r.bathrooms != null && c.bathrooms != null && c.bathrooms < r.bathrooms) return false;
   if (r.family && r.bedrooms == null && c.bedrooms != null && c.bedrooms < FAMILY_BEDROOMS) return false;
@@ -221,17 +293,38 @@ export function scoreCandidate(c: Candidate, r: Requirements, dupes = 0, now = n
     }
   }
   if (r.neighbourhood) reasons.push("neighbourhood");
-  if (r.area) reasons.push(r.area === "center" ? "nearCenter" : r.area === "business" ? "nearBusiness" : "nearUniversity");
+  const pin = point(c);
+  if (r.area && pin) reasons.push(r.area === "center" ? "nearCenter" : r.area === "business" ? "nearBusiness" : "nearUniversity");
+  // Near a place: by distance, softly — 20 points on the spot, none past ~3.3 km.
+  // A lead's district-centre pin says nothing, so it neither gains nor loses.
+  let km: number | undefined;
+  if (r.near && pin) {
+    km = Math.round(haversineKm(pin[0], pin[1], r.near.lat, r.near.lng) * 10) / 10;
+    score += Math.max(0, 20 - 6 * km);
+    if (km <= 3) reasons.push("nearPlace");
+  }
+  let mustHaves: Ranked["mustHaves"];
+  if (r.mustHaves?.length) {
+    mustHaves = { matched: [], unknown: [] };
+    for (const key of r.mustHaves) {
+      const known = hasMustHave(c, key);
+      if (known === true) {
+        mustHaves.matched.push(key);
+        score += MUST_HAVE_POINTS;
+      } else if (known === false) score += MUST_HAVE_MISSING;
+      else mustHaves.unknown.push(key);
+    }
+  }
   if (r.compound) reasons.push("selfCompound");
   if (r.family) {
     if ((c.bedrooms ?? 0) >= FAMILY_BEDROOMS) reasons.push("familySize");
     if (COMPOUND_TYPES.has(c.propertyType ?? "")) score += 8;
   }
-  if (r.furnished && c.rentPeriod === "NIGHTLY") {
+  if (r.furnished && (c.rentPeriod === "NIGHTLY" || c.furnished === true)) {
     reasons.push("furnished");
-    score += 3;
+    score += c.rentPeriod === "NIGHTLY" ? 3 : 6;
   }
-  const rating = c.averageRating ?? 0;
+  const rating = c.averageRating && c.averageRating > 0 ? c.averageRating : UNRATED_RATING;
   const reviews = c.numberOfReviews ?? 0;
   if (rating >= 4.7 && reviews >= 5) reasons.push("wellRated");
   score += rating * 2 + Math.min(Math.log10(reviews + 1) * 4, 8);
@@ -243,7 +336,15 @@ export function scoreCandidate(c: Candidate, r: Requirements, dupes = 0, now = n
     reasons.push("upfrontOver");
     score -= 25;
   }
-  return { id: c.id, score: Math.round(score * 10) / 10, reasons, cost, duplicates: dupes };
+  return {
+    id: c.id,
+    score: Math.round(score * 10) / 10,
+    reasons,
+    cost,
+    duplicates: dupes,
+    ...(mustHaves ? { mustHaves } : {}),
+    ...(km != null ? { km } : {}),
+  };
 }
 
 export interface RankResult {

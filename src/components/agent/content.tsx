@@ -8,15 +8,18 @@ import { cn } from "@/lib/utils";
 import { usePicksLabel, Wizard, type Picks } from "./wizard";
 import { AskCard } from "./ask-card";
 import { Composer } from "./composer";
+import { noteHomeFeedback } from "./feedback-actions";
+import { roundPrice } from "./fields";
 import { ChatHeader, headerButton } from "./header";
 import { Refine } from "./refine";
-import { ShortlistCard } from "./shortlist-card";
+import { ShortlistCard, type NotForMe } from "./shortlist-card";
 import { Steps } from "./steps";
 import { Suggestions } from "./suggestions";
 import { AgentTurn, PastAgentTurn, TurnActions, UserTurn } from "./turn";
 import type { AgentTaskView } from "./types";
 import { useAgentTask } from "./use-agent-task";
 import { useStickToBottom } from "./use-stick-to-bottom";
+import { Welcome } from "./welcome";
 
 // The ☰ sheet loads on its first open; a tenant who never opens it never pays for it.
 const ChatsSheet = dynamic(() => import("./chats-sheet").then((m) => m.ChatsSheet), { ssr: false });
@@ -36,6 +39,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
   const [sheet, setSheet] = useState<"closed" | "open" | "never">("never");
   const [picks, setPicks] = useState<Picks>({});
   const [guided, setGuided] = useState(false);
+  const [returning, setReturning] = useState(false);
   const picksLabel = usePicksLabel();
   const picked = Object.keys(picks).length > 0;
 
@@ -66,6 +70,20 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
     setPicks({});
     setGuided(false);
     setSheet((v) => (v === "never" ? v : "closed"));
+  };
+  // "Not for me": the home is passed on (never shown again), then one tap moves the search.
+  const notForMe: NotForMe = async (item, reason) => {
+    await noteHomeFeedback({ taskId: task?.id ?? "", listingId: item.id, kind: "dismiss", reason }).catch(() => {});
+    const label = (a?.card?.notReasons as Record<string, string> | undefined)?.[reason] ?? reason;
+    const period = item.cost.period === "month" ? "month" : "night";
+    const filters: Picks =
+      reason === "expensive"
+        ? // Similar but cheaper: the ranker centres on 85% of the new ceiling — "cheapest" would jump to the floor.
+          { maxPrice: roundPrice(item.cost.headline * 0.85, period), pricePeriod: period }
+        : reason === "small"
+          ? { bedrooms: Math.min(10, (item.bedrooms ?? 1) + 1) }
+          : { stay: task?.requirements?.stay ?? "long" };
+    void say(label, false, filters);
   };
   const openChat = (id: string) => {
     setSheet("closed");
@@ -107,9 +125,14 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
             {guided ? (
               <Wizard picks={picks} onChange={setPicks} onFinish={() => void search("")} disabled={pending} />
             ) : (
-              <h1 className="text-balance text-center text-[26px] font-semibold leading-tight tracking-tight sm:text-3xl">
-                {a?.greeting ?? "Where do you want to live in Kigali?"}
-              </h1>
+              <>
+                <Welcome onContinue={(text, filters) => void say(text, true, filters)} onReady={setReturning} disabled={pending} />
+                {!returning && (
+                  <h1 className="text-balance text-center text-[26px] font-semibold leading-tight tracking-tight sm:text-3xl">
+                    {a?.greeting ?? "Where do you want to live in Kigali?"}
+                  </h1>
+                )}
+              </>
             )}
           </div>
         ) : (
@@ -140,9 +163,9 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
                       )}
                       {/* ChatGPT's inline product row: swipe sideways at every width. */}
                       <ul className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                        {task.shortlist.map((item) => (
+                        {task.shortlist.map((item, index) => (
                           <li key={item.id} className="w-[78%] max-w-[300px] shrink-0 snap-start">
-                            <ShortlistCard item={item} taskId={task.id} onChange={refresh} />
+                            <ShortlistCard item={item} taskId={task.id} onChange={refresh} best={index === 0} onNotForMe={notForMe} />
                           </li>
                         ))}
                       </ul>

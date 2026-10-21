@@ -1131,7 +1131,9 @@
         "CarbonMonoxideAlarm": "جهاز الكشف عن أول أكسيد الكربون",
         "FireExtinguisher": "طفاية حريق",
         "FirstAidKit": "حقيبة إسعافات أولية",
-        "SecurityCameras": "كاميرات المراقبة الخارجية للعقار"
+        "SecurityCameras": "كاميرات المراقبة الخارجية للعقار",
+        "WaterTank": "خزان مياه",
+        "BackupGenerator": "مولّد كهرباء احتياطي"
       },
       "highlights": {
         "HighSpeedInternetAccess": "إنترنت عالي السرعة",
@@ -5516,7 +5518,8 @@
         "selfCompound": "بسور خاص",
         "familySize": "يتسع لعائلة",
         "lowPrice": "سعر منخفض",
-        "typicalPrice": "سعر معتاد"
+        "typicalPrice": "سعر معتاد",
+        "nearPlace": "قريب من المكان الذي تريده"
       },
       "asked": "سألنا الوسيط — في انتظار الرد",
       "rented": "مؤجّر — لم يعد متاحاً",
@@ -5543,7 +5546,24 @@
         "tooExpensive": "مكلف جداً",
         "brokerNoShow": "لم يحضر الوسيط",
         "iMissedIt": "لم أتمكن من الحضور"
-      }
+      },
+      "best": "الأنسب لك",
+      "nearPlace": "{km} كم من {place}",
+      "has": "يوجد: {list}",
+      "askAbout": "اسأل الوسيط عن: {list}",
+      "save": "حفظ",
+      "unsave": "إزالة من المحفوظ",
+      "notForMe": "لا يناسبني",
+      "notForMeTitle": "ما الذي لا يناسبك؟",
+      "notReasons": {
+        "expensive": "غالٍ جداً",
+        "small": "صغير جداً",
+        "other": "ليس هذا فقط"
+      },
+      "checkAvailability": "تحقّق من التوفّر",
+      "checkAvailabilityHint": "يراسل مكان الوسيط نيابة عنك ويعرض الرد هنا.",
+      "checking": "نسأل الوسيط…",
+      "noBroker": "لا يوجد وسيط لهذا المنزل بعد."
     },
     "entry": "اسأل وكيل الإيجار",
     "broker": {
@@ -5677,7 +5697,8 @@
         "bathrooms": "أي عدد من الحمامات",
         "furnished": "مفروش أو غير مفروش",
         "budget": "حتى {price}",
-        "district": "أي مكان في كيغالي"
+        "district": "أي مكان في كيغالي",
+        "near": "أبعد عن {place}"
       }
     },
     "refine": {
@@ -5743,7 +5764,27 @@
       "waiting": "في انتظار رد الوسيط",
       "confirmed": "أكّد وسيط أن منزلاً متاح",
       "deviceOnly": "تبقى المحادثات على هذا الجهاز.",
-      "signIn": "سجّل الدخول لتحتفظ بها على كل أجهزتك"
+      "signIn": "سجّل الدخول لتحتفظ بها على كل أجهزتك",
+      "saved": "المنازل المحفوظة",
+      "memory": "الذاكرة",
+      "back": "رجوع",
+      "savedEmpty": "اضغط ♥ على أي منزل ليُحفظ هنا.",
+      "memoryEmpty": "لا شيء بعد. أثناء بحثك يتذكّر مكان ميزانيتك ومناطقك وما تحتاجه حتى لا تكرّرها.",
+      "memorySearch": "بحثك",
+      "memoryNotes": "أشياء أخبرتني بها",
+      "memoryPassed": "منازل استبعدتها: {n}",
+      "memoryLetBack": "أظهرها مجدداً",
+      "memoryHint": "اضغط على أي خيار لتغييره، أو أخبر مكان فقط.",
+      "memoryPrivacy": "تُحفظ على هذا الجهاز ما لم تسجّل الدخول. لا تُحفظ أرقام الهواتف ولا البريد الإلكتروني.",
+      "forgetAll": "انسَ كل شيء",
+      "forgetConfirm": "هل تريد أن ينسى مكان كل ما يتذكّره؟",
+      "forget": "انسَ",
+      "remove": "إزالة",
+      "editBudget": "الميزانية",
+      "editBeds": "الغرف",
+      "studio": "استوديو",
+      "perMonth": "شهرياً",
+      "perNight": "لليلة"
     },
     "mustHaves": {
       "parking": "موقف سيارات",
@@ -5761,6 +5802,11 @@
       "elevator": "مصعد",
       "waterTank": "خزان مياه",
       "generator": "كهرباء احتياطية"
+    },
+    "welcome": {
+      "title": "مرحباً بعودتك",
+      "continue": "تابع بحثك",
+      "newSince": "جديد منذ {date}"
     }
   }
 }

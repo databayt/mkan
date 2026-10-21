@@ -1,7 +1,7 @@
 import type { CostEstimate } from "./cost";
 import type { AgentMemory } from "./memory";
 import type { ReasonKey } from "./rank";
-import type { HardField, Requirements } from "./requirements";
+import type { HardField, MustHave, Requirements } from "./requirements";
 import type { Relaxed } from "./relax";
 
 export type AgentStatus = "RUNNING" | "WAITING" | "DONE" | "FAILED";
@@ -77,6 +77,10 @@ export interface ShortlistItem {
   lead?: { handle: string | null; sourceUrl: string | null };
   /** Phase 3 — the viewing being arranged for this home. */
   viewing?: ViewingView;
+  /** The tenant's must-haves this home has, and the ones only the broker can answer. */
+  mustHaves?: { matched: MustHave[]; unknown: MustHave[] };
+  /** Distance from the place the tenant wants to be near. */
+  place?: { name: string; km: number };
 }
 
 export interface ViewingView {
@@ -120,4 +124,13 @@ export interface AgentChatsView {
   next: string | null;
   signedIn: boolean;
   memory: AgentMemory | null;
+}
+
+/** The empty /find for a returning tenant (`GET /api/agent/welcome`). */
+export interface AgentWelcomeView {
+  /** The remembered search, as requirements — what "Continue" sends. Null for a first visit. */
+  search: Partial<Requirements> | null;
+  /** Homes listed since the last search that fit it, best first. */
+  homes: ShortlistItem[];
+  since: string | null;
 }

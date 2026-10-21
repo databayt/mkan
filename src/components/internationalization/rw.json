@@ -1131,7 +1131,9 @@
         "CarbonMonoxideAlarm": "Alarimu ya karuboni monoogisidi",
         "FireExtinguisher": "Icyuma kizimya umuriro",
         "FirstAidKit": "Agasanduku k'ubutabazi bwa mbere",
-        "SecurityCameras": "Kamera z'umutekano ziri hanze y'inzu"
+        "SecurityCameras": "Kamera z'umutekano ziri hanze y'inzu",
+        "WaterTank": "Ikigega cy'amazi",
+        "BackupGenerator": "Moteri y'umuriro w'ingoboka"
       },
       "highlights": {
         "HighSpeedInternetAccess": "Internet yihuta",
@@ -5516,7 +5518,8 @@
         "selfCompound": "Ifite igipangu cyayo",
         "familySize": "Ihagije umuryango",
         "lowPrice": "Igiciro gito",
-        "typicalPrice": "Igiciro gisanzwe"
+        "typicalPrice": "Igiciro gisanzwe",
+        "nearPlace": "Hafi y'aho ushaka"
       },
       "asked": "Twabajije komisiyoneri — dutegereje igisubizo",
       "rented": "Yakodeshejwe — ntikiboneka",
@@ -5543,7 +5546,24 @@
         "tooExpensive": "Irahenze cyane",
         "brokerNoShow": "Komisiyoneri ntiyaje",
         "iMissedIt": "Sinashoboye kujyayo"
-      }
+      },
+      "best": "Iyikubereye kurusha",
+      "nearPlace": "km {km} uvuye {place}",
+      "has": "Ifite: {list}",
+      "askAbout": "Baza komisiyoneri kuri: {list}",
+      "save": "Bika",
+      "unsave": "Kuramo mu byabitswe",
+      "notForMe": "Ntibimbereye",
+      "notForMeTitle": "Ni iki kitakunogeye?",
+      "notReasons": {
+        "expensive": "Irahenze cyane",
+        "small": "Ni nto cyane",
+        "other": "Si iyi gusa"
+      },
+      "checkAvailability": "Reba niba ihari",
+      "checkAvailabilityHint": "Mkan yandikira komisiyoneri mu izina ryawe, igisubizo kikagaragara hano.",
+      "checking": "Turabaza komisiyoneri…",
+      "noBroker": "Nta komisiyoneri wo kubaza kuri iyi nzu ubu."
     },
     "entry": "Baza umukozi w'ubukode",
     "broker": {
@@ -5677,7 +5697,8 @@
         "bathrooms": "umubare uwo ari wo wose w'ubwiherero",
         "furnished": "ifite cyangwa idafite ibikoresho",
         "budget": "kugeza kuri {price}",
-        "district": "ahantu hose i Kigali"
+        "district": "ahantu hose i Kigali",
+        "near": "kure gato ya {place}"
       }
     },
     "refine": {
@@ -5743,7 +5764,27 @@
       "waiting": "Dutegereje igisubizo cya komisiyoneri",
       "confirmed": "Komisiyoneri yemeje ko inzu ihari",
       "deviceOnly": "Ibiganiro bigumaho kuri iki gikoresho.",
-      "signIn": "Injira kugira ngo ubibone kuri buri gikoresho"
+      "signIn": "Injira kugira ngo ubibone kuri buri gikoresho",
+      "saved": "Amazu wabitse",
+      "memory": "Ububiko",
+      "back": "Subira inyuma",
+      "savedEmpty": "Kanda ♥ ku nzu kugira ngo iboneke hano.",
+      "memoryEmpty": "Nta kintu kirahari. Uko ushakisha, Mkan yibuka ingengo y'imari yawe, uduce n'ibyo ukeneye kugira ngo utabisubiramo.",
+      "memorySearch": "Ibyo ushaka",
+      "memoryNotes": "Ibyo wambwiye",
+      "memoryPassed": "Amazu wanze: {n}",
+      "memoryLetBack": "Yongere uyerekane",
+      "memoryHint": "Kanda ku cyo ushaka guhindura, cyangwa ubibwire Mkan.",
+      "memoryPrivacy": "Bibikwa kuri iki gikoresho keretse winjiye. Nimero za telefoni na imeri ntibibikwa.",
+      "forgetAll": "Ibagirwa byose",
+      "forgetConfirm": "Urashaka ko Mkan yibagirwa byose yibuka?",
+      "forget": "Ibagirwa",
+      "remove": "Kuramo",
+      "editBudget": "Ingengo y'imari",
+      "editBeds": "Ibyumba",
+      "studio": "Sitidiyo",
+      "perMonth": "ku kwezi",
+      "perNight": "ku ijoro"
     },
     "mustHaves": {
       "parking": "Parikingi",
@@ -5761,6 +5802,11 @@
       "elevator": "Asanseri",
       "waterTank": "Ikigega cy'amazi",
       "generator": "Umuriro w'ingoboka"
+    },
+    "welcome": {
+      "title": "Murakaza neza nanone",
+      "continue": "Komeza gushakisha",
+      "newSince": "Bishya kuva {date}"
     }
   }
 }

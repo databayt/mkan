@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Loader2, MoreHorizontal, SquarePen } from "lucide-react";
+import { Brain, ChevronLeft, ChevronRight, Heart, Loader2, MoreHorizontal, SquarePen } from "lucide-react";
+import { useFavorites } from "@/components/favorites/favorites-context";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { useLocale } from "@/components/internationalization/use-locale";
@@ -12,11 +13,14 @@ import { deleteAgentChat } from "./actions";
 import { groupChats } from "./chat-list";
 import { chatTitle } from "./chips";
 import { headerButton } from "./header";
+import { MemoryView } from "./memory-view";
+import { SavedView } from "./saved-view";
 import type { AgentChatRow, AgentChatsView } from "./types";
 
 /**
  * The ☰ sheet — ChatGPT's sidebar on iOS. Mkan and New chat on top, then
- * this tenant's chats by day; a row opens its chat, ⋯ deletes it after an
+ * Saved homes and Memory (each a view inside the sheet, with a back chevron —
+ * no sheet on a sheet), then this tenant's chats by day; a row opens its chat, ⋯ deletes it after an
  * inline "Delete this chat?" (no portal, so it works over the bubble panel
  * too). Anonymous chats live in this browser, and the footer says so with a
  * way to sign in and keep them everywhere.
@@ -47,7 +51,11 @@ export function ChatsSheet({
   const [failed, setFailed] = useState(false);
   const [more, setMore] = useState(false);
   const [reloads, setReloads] = useState(0);
+  const [view, setView] = useState<"chats" | "saved" | "memory">("chats");
+  const { ids: savedIds } = useFavorites();
   const money = useCallback((n: number) => formatCurrency(n, locale, "RWF"), [locale]);
+  const remembered = !!data?.memory && (Object.keys(data.memory.prefs).length > 0 || data.memory.notes.length > 0);
+  const viewTitle = view === "saved" ? s?.saved ?? "Saved homes" : view === "memory" ? s?.memory ?? "Memory" : null;
 
   // Fresh on every open (a chat may have moved, finished or heard from a broker since);
   // the last list shows meanwhile.
@@ -82,7 +90,13 @@ export function ChatsSheet({
   const groupLabel = s?.groups as Record<string, string> | undefined;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet
+      open={open}
+      onOpenChange={(o) => {
+        onOpenChange(o);
+        if (!o) setView("chats");
+      }}
+    >
       <SheetContent
         side="left"
         showClose={false}
@@ -92,17 +106,55 @@ export function ChatsSheet({
         <SheetTitle className="sr-only">{s?.title ?? "Chats"}</SheetTitle>
         <SheetDescription className="sr-only">{s?.description ?? "Your searches with Mkan"}</SheetDescription>
 
-        <div className="flex h-14 shrink-0 items-center justify-between gap-2 ps-2 pe-1.5">
-          <Link href={`/${locale}`} className="rounded-full px-3 py-1.5 text-[17px] font-semibold text-foreground transition-colors hover:bg-muted">
-            {a?.chat?.name ?? "Mkan"}
-            <span className="sr-only"> — {a?.chat?.home ?? "Back to Mkan"}</span>
-          </Link>
-          <button type="button" onClick={onNewChat} aria-label={a?.chat?.newChat ?? "New chat"} title={a?.chat?.newChat ?? "New chat"} className={headerButton}>
-            <SquarePen aria-hidden />
-          </button>
-        </div>
+        {viewTitle ? (
+          <div className="flex h-14 shrink-0 items-center gap-1 px-1.5">
+            <button type="button" onClick={() => setView("chats")} aria-label={s?.back ?? "Back"} title={s?.back ?? "Back"} className={headerButton}>
+              <ChevronLeft className="rtl:rotate-180" aria-hidden />
+            </button>
+            <h2 className="text-[17px] font-semibold">{viewTitle}</h2>
+          </div>
+        ) : (
+          <div className="flex h-14 shrink-0 items-center justify-between gap-2 ps-2 pe-1.5">
+            <Link href={`/${locale}`} className="rounded-full px-3 py-1.5 text-[17px] font-semibold text-foreground transition-colors hover:bg-muted">
+              {a?.chat?.name ?? "Mkan"}
+              <span className="sr-only"> — {a?.chat?.home ?? "Back to Mkan"}</span>
+            </Link>
+            <button type="button" onClick={onNewChat} aria-label={a?.chat?.newChat ?? "New chat"} title={a?.chat?.newChat ?? "New chat"} className={headerButton}>
+              <SquarePen aria-hidden />
+            </button>
+          </div>
+        )}
 
-        <nav aria-label={s?.title ?? "Chats"} className="flex-1 overflow-y-auto overscroll-contain px-2 pb-4">
+        {view === "saved" && (
+          <div className="flex-1 overflow-y-auto overscroll-contain px-2 pb-4">
+            <SavedView />
+          </div>
+        )}
+        {view === "memory" && (
+          <div className="flex-1 overflow-y-auto overscroll-contain pb-4">
+            <MemoryView memory={data?.memory ?? null} onChange={(memory) => setData((d) => (d ? { ...d, memory } : d))} />
+          </div>
+        )}
+
+        <nav aria-label={s?.title ?? "Chats"} className={cn("flex-1 overflow-y-auto overscroll-contain px-2 pb-4", view !== "chats" && "hidden")}>
+          <ul className="list-none space-y-0.5 pt-1">
+            <li>
+              <button type="button" onClick={() => setView("saved")} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start text-[15px] hover:bg-muted/60">
+                <Heart className="size-[18px] text-muted-foreground" aria-hidden />
+                <span className="flex-1">{s?.saved ?? "Saved homes"}</span>
+                {savedIds.length > 0 && <span className="text-xs tabular-nums text-muted-foreground">{savedIds.length}</span>}
+                <ChevronRight className="size-4 text-muted-foreground rtl:rotate-180" aria-hidden />
+              </button>
+            </li>
+            <li>
+              <button type="button" onClick={() => setView("memory")} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start text-[15px] hover:bg-muted/60">
+                <Brain className="size-[18px] text-muted-foreground" aria-hidden />
+                <span className="flex-1">{s?.memory ?? "Memory"}</span>
+                {remembered && <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />}
+                <ChevronRight className="size-4 text-muted-foreground rtl:rotate-180" aria-hidden />
+              </button>
+            </li>
+          </ul>
           {!data && !failed && (
             <ul aria-hidden className="space-y-2 px-3 pt-5">
               {[70, 55, 80, 45].map((w) => (
@@ -153,7 +205,7 @@ export function ChatsSheet({
           )}
         </nav>
 
-        {data && !data.signedIn && (
+        {data && !data.signedIn && view === "chats" && (
           <p className="shrink-0 border-t px-5 py-4 pb-[max(env(safe-area-inset-bottom),16px)] text-xs leading-5 text-muted-foreground">
             {s?.deviceOnly ?? "Chats stay on this device."}{" "}
             <Link

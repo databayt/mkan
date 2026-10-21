@@ -7,7 +7,7 @@
 import { neighbourhoodNamed } from "./areas";
 import { roundPrice, type Requirements } from "./requirements";
 
-export type RelaxKey = "neighbourhood" | "area" | "type" | "bathrooms" | "furnished" | "budget" | "district";
+export type RelaxKey = "neighbourhood" | "area" | "near" | "type" | "bathrooms" | "furnished" | "budget" | "district";
 
 /** One widening, with what it widened to (a district code, a new ceiling). */
 export interface Relaxed {
@@ -28,6 +28,8 @@ const STEPS: Step[] = [
     return { next: { ...r, neighbourhood: null, district: district as Requirements["district"] }, step: { key: "neighbourhood", to: district ?? undefined } };
   },
   (r) => (r.area ? { next: { ...r, area: null }, step: { key: "area" } } : null),
+  // "Near Kigali Heights": the place goes, so homes further out can show.
+  (r) => (r.near ? { next: { ...r, near: null }, step: { key: "near", to: r.near.name } } : null),
   (r) => (r.compound || r.family ? { next: { ...r, compound: null, family: null }, step: { key: "type" } } : null),
   (r) => (r.bathrooms != null ? { next: { ...r, bathrooms: null }, step: { key: "bathrooms" } } : null),
   (r) => (r.furnished != null ? { next: { ...r, furnished: null }, step: { key: "furnished" } } : null),

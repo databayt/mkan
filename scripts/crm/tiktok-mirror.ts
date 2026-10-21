@@ -27,6 +27,7 @@ import { randomBytes } from 'node:crypto';
 import { twentyClient, phoneOf, fromMicros, type Currency, type Phones } from './twenty-rest';
 import { twentyEnumToPrisma } from './home-intake-pure';
 import { DISTRICTS, KIGALI } from '../../src/lib/geo/rwanda-places';
+import { factsFromFeatures, type FeatureFacts } from '../../src/components/agent/amenities';
 import { placeToken } from '../../src/lib/geo/place-token';
 
 type Row = Record<string, unknown>;
@@ -60,6 +61,8 @@ export interface MirrorPlan {
     bathrooms: number | null;
     propertyType: string | null;
     photoUrls: string[];
+    /** What the video showed (parking, a water tank, furnished…), for the agent's must-haves. */
+    facts: FeatureFacts;
   };
 }
 
@@ -116,6 +119,7 @@ export function planMirror(home: Row, host: Row | null): MirrorPlan | { skip: st
       bathrooms: (home.bathrooms as number | null) ?? null,
       propertyType: type && PROPERTY_TYPES.has(type) ? type : null,
       photoUrls: links(home.photoUrls),
+      facts: factsFromFeatures(Array.isArray(home.amenitiesRaw) ? (home.amenitiesRaw as unknown[]).map(String) : []),
     },
   };
 }
@@ -241,6 +245,10 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
       bathrooms: p.listing.bathrooms,
       propertyType: p.listing.propertyType as never,
       photoUrls: p.listing.photoUrls,
+      amenities: p.listing.facts.amenities as never,
+      furnished: p.listing.facts.furnished,
+      isParkingIncluded: p.listing.facts.isParkingIncluded,
+      isPetsAllowed: p.listing.facts.isPetsAllowed,
       hostId: broker.id,
       locationId,
     };

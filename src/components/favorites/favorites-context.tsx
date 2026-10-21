@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useSession } from "next-auth/react";
-import { getMyFavoriteIds, toggleFavorite } from "@/lib/actions/favorite-actions";
+import { getMyFavoriteIds, mergeFavorites, toggleFavorite } from "@/lib/actions/favorite-actions";
 
 /**
  * One favorites source of truth for every heart in the app (cards, mobile
@@ -16,12 +16,15 @@ const GUEST_KEY = "mkan:favorites";
 
 interface FavoritesContextValue {
   ready: boolean;
+  /** Every saved listing id, for lists like the agent's ☰ Saved homes. */
+  ids: number[];
   isFavorite: (id: number | string) => boolean;
   toggle: (id: number | string) => void;
 }
 
 const FavoritesContext = React.createContext<FavoritesContextValue>({
   ready: false,
+  ids: [],
   isFavorite: () => false,
   toggle: () => {},
 });
@@ -54,7 +57,14 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     if (status === "loading") return;
     if (authed) {
-      getMyFavoriteIds()
+      // Hearts saved as a guest join the account on sign-in, then leave this browser.
+      const guest = readGuestIds();
+      (guest.length
+        ? mergeFavorites(guest).then((ids) => {
+            if (guest.every((g) => ids.includes(g))) writeGuestIds(new Set());
+            return ids;
+          })
+        : getMyFavoriteIds())
         .then((server) => {
           if (cancelled) return;
           setIds(new Set(server));
@@ -110,9 +120,10 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     [authed]
   );
 
+  const list = React.useMemo(() => [...ids], [ids]);
   const value = React.useMemo(
-    () => ({ ready, isFavorite, toggle }),
-    [ready, isFavorite, toggle]
+    () => ({ ready, ids: list, isFavorite, toggle }),
+    [ready, list, isFavorite, toggle]
   );
 
   return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>;

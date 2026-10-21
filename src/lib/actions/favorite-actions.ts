@@ -75,3 +75,35 @@ export async function toggleFavorite(listingId: unknown): Promise<ToggleFavorite
     return { ok: false };
   }
 }
+
+/**
+ * Bring a guest's hearts (kept in this browser) into the account on sign-in,
+ * so saving a home before logging in is never lost. Adds only listings that
+ * exist; returns the account's full list.
+ */
+export async function mergeFavorites(listingIds: unknown): Promise<number[]> {
+  const ids = z.array(listingIdSchema).max(200).safeParse(listingIds);
+  const session = await auth();
+  if (!ids.success || !session?.user?.id) return getMyFavoriteIds();
+  try {
+    const existing = await db.listing.findMany({ where: { id: { in: ids.data } }, select: { id: true } });
+    if (existing.length) {
+      await db.tenant.upsert({
+        where: { userId: session.user.id },
+        create: {
+          userId: session.user.id,
+          name: session.user.name ?? session.user.email?.split("@")[0] ?? "Guest",
+          email: session.user.email ?? "",
+          phoneNumber: "",
+          favorites: { connect: existing.map(({ id }) => ({ id })) },
+        },
+        update: { favorites: { connect: existing.map(({ id }) => ({ id })) } },
+        select: { id: true },
+      });
+      revalidatePath("/tenants/favorites");
+    }
+  } catch (error) {
+    logger.error("Error merging favorites:", error);
+  }
+  return getMyFavoriteIds();
+}

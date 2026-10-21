@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ExternalLink, Star } from "lucide-react";
+import { ExternalLink, Loader2, Star } from "lucide-react";
 import { BlurImage } from "@/components/atom/blur-image";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -9,8 +10,9 @@ import { useDictionary } from "@/components/internationalization/use-dictionary"
 import { useLocale } from "@/components/internationalization/use-locale";
 import { districtName } from "@/lib/geo/rwanda-places";
 import { formatCurrency } from "@/lib/i18n/formatters";
+import { askAvailability } from "./feedback-actions";
 import { fill } from "./format";
-import { Availability } from "./shortlist-card";
+import { Availability, FitLine, SaveHeart, type NotForMe } from "./shortlist-card";
 import type { ShortlistItem } from "./types";
 import { ViewingPanel } from "./viewing";
 
@@ -25,15 +27,28 @@ export default function CardSheet({
   onChange,
   open,
   onOpenChange,
+  onNotForMe,
 }: {
   item: ShortlistItem;
   taskId: string;
   onChange: () => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onNotForMe?: NotForMe;
 }) {
   const dict = useDictionary();
   const c = dict?.agent?.card;
+  const labels = dict?.agent?.mustHaves as Record<string, string> | undefined;
+  const [asking, setAsking] = useState<"idle" | "asking" | "none">("idle");
+  const [why, setWhy] = useState(false);
+  // A broker lead the agent did not ask about (the stay type was a guess): one tap asks.
+  const canAsk = !!item.lead && item.availability === "unconfirmed";
+  const ask = async () => {
+    setAsking("asking");
+    const res = await askAvailability({ taskId, listingId: item.id }).catch(() => ({ ok: false, asked: false }));
+    setAsking(res.asked ? "idle" : "none");
+    if (res.asked) onChange();
+  };
   const { locale } = useLocale();
   const money = (n: number) => formatCurrency(n, locale, item.currency);
   const { cost } = item;
@@ -54,6 +69,7 @@ export default function CardSheet({
         <div className="space-y-4 p-4 pt-3">
           <div className="relative aspect-[16/10] overflow-hidden rounded-2xl bg-muted">
             {item.photo && <BlurImage src={item.photo} alt={item.title} fill sizes="(min-width: 512px) 480px, 100vw" className="object-cover" />}
+            <SaveHeart item={item} taskId={taskId} className="absolute end-3 top-3 size-9" />
           </div>
           <div className="space-y-1">
             <div className="flex items-start justify-between gap-3 pe-6">
@@ -85,6 +101,13 @@ export default function CardSheet({
             <span className="text-xl font-semibold">{money(cost.headline)}</span>{" "}
             <span className="text-sm text-muted-foreground">{cost.period === "month" ? c?.perMonth ?? "/ month" : c?.perNight ?? "/ night"}</span>
           </p>
+
+          <FitLine item={item} className="whitespace-normal text-sm" />
+          {item.mustHaves && item.mustHaves.unknown.length > 0 && (
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              {fill(c?.askAbout ?? "Ask the broker about: {list}", { list: item.mustHaves.unknown.map((k) => labels?.[k] ?? k).join(", ") })}
+            </p>
+          )}
 
           <ul className="flex flex-wrap gap-1.5">
             {item.reasons.map((r) => (
@@ -125,6 +148,23 @@ export default function CardSheet({
 
           {item.viewing && <ViewingPanel item={item} viewing={item.viewing} taskId={taskId} onChange={onChange} />}
 
+          {canAsk && (
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                onClick={() => void ask()}
+                disabled={asking === "asking"}
+                className="flex w-full items-center justify-center gap-2 rounded-full border py-3 text-[15px] font-medium transition-colors hover:bg-muted disabled:opacity-60"
+              >
+                {asking === "asking" && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                {asking === "asking" ? c?.checking ?? "Asking the broker…" : c?.checkAvailability ?? "Check availability"}
+              </button>
+              <p className="text-center text-xs text-muted-foreground">
+                {asking === "none" ? c?.noBroker ?? "No broker to ask for this home yet." : c?.checkAvailabilityHint ?? "Mkan messages the broker for you and shows the answer here."}
+              </p>
+            </div>
+          )}
+
           {item.path && (
             <Link
               href={item.path}
@@ -135,6 +175,32 @@ export default function CardSheet({
               {external && <ExternalLink className="size-3.5" aria-hidden />}
             </Link>
           )}
+
+          {onNotForMe &&
+            (why ? (
+              <div className="space-y-2 rounded-2xl bg-muted/60 p-3">
+                <p className="text-sm font-medium">{c?.notForMeTitle ?? "What's not right?"}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(["expensive", "small", "other"] as const).map((reason) => (
+                    <button
+                      key={reason}
+                      type="button"
+                      onClick={() => {
+                        onOpenChange(false);
+                        onNotForMe(item, reason);
+                      }}
+                      className="rounded-full bg-background px-3 py-1.5 text-sm shadow-sm ring-1 ring-black/5 transition-colors hover:bg-muted dark:ring-white/10"
+                    >
+                      {(c?.notReasons as Record<string, string> | undefined)?.[reason] ?? reason}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setWhy(true)} className="w-full py-1 text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+                {c?.notForMe ?? "Not for me"}
+              </button>
+            ))}
         </div>
       </SheetContent>
     </Sheet>

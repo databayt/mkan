@@ -22,6 +22,7 @@ import { AgentTurn, PastAgentTurn, UserTurn } from "../turn";
 import type { ShortlistItem } from "../types";
 import { useAgentTask } from "../use-agent-task";
 import { useStickToBottom } from "../use-stick-to-bottom";
+import { Welcome } from "../welcome";
 import { listingsQueryFor } from "./listings-query";
 
 // Above the panel (z-55), loaded on its first open.
@@ -31,7 +32,7 @@ const MINI_CARDS = 3;
 /** The listings page re-filters once the requirements settle, not on every change. */
 const REFILTER_DEBOUNCE_MS = 400;
 
-function MiniCard({ item }: { item: ShortlistItem }) {
+function MiniCard({ item, best = false }: { item: ShortlistItem; best?: boolean }) {
   const dict = useDictionary();
   const c = dict?.agent?.card;
   const { locale } = useLocale();
@@ -46,6 +47,7 @@ function MiniCard({ item }: { item: ShortlistItem }) {
         {item.photo && <BlurImage src={item.photo} alt="" fill sizes="64px" className="object-cover" />}
       </span>
       <span className="min-w-0 flex-1 space-y-0.5">
+        {best && <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{c?.best ?? "Best match"}</span>}
         <span dir="auto" className="block truncate text-start text-sm font-medium">{item.title}</span>
         <span className="block text-xs">
           <span className="font-semibold">{formatCurrency(item.cost.headline, locale, item.currency)}</span>{" "}
@@ -83,6 +85,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
   const [sheet, setSheet] = useState<"closed" | "open" | "never">("never");
   const [picks, setPicks] = useState<Picks>({});
   const [guided, setGuided] = useState(false);
+  const [returning, setReturning] = useState(false);
   const picksLabel = usePicksLabel();
   const messages = task?.messages ?? [];
   const { ref: scrollRef, onScroll, away, scrolled, scrollToBottom } = useStickToBottom(`${messages.length}.${task?.shortlist.length ?? 0}.${running}.${open}`);
@@ -192,7 +195,17 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
             {guided ? (
               <Wizard picks={picks} onChange={setPicks} onFinish={() => void search("")} disabled={pending} compact />
             ) : (
-              <p className="text-balance text-center text-[22px] font-semibold leading-tight tracking-tight">{a?.greeting ?? "Where do you want to live in Kigali?"}</p>
+              <div className="flex flex-col items-center">
+                <Welcome
+                  compact
+                  onContinue={(text, filters) => void send(text, true, filters).then((ok) => ok && requestAnimationFrame(() => scrollToBottom()))}
+                  onReady={setReturning}
+                  disabled={pending}
+                />
+                {!returning && (
+                  <p className="text-balance text-center text-[22px] font-semibold leading-tight tracking-tight">{a?.greeting ?? "Where do you want to live in Kigali?"}</p>
+                )}
+              </div>
             )}
           </div>
         ) : (
@@ -210,8 +223,8 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
                   )}
                   {m.kind === "shortlist" && task.shortlist.length > 0 && (
                     <div className="space-y-2">
-                      {task.shortlist.slice(0, MINI_CARDS).map((item) => (
-                        <MiniCard key={item.id} item={item} />
+                      {task.shortlist.slice(0, MINI_CARDS).map((item, index) => (
+                        <MiniCard key={item.id} item={item} best={index === 0} />
                       ))}
                       <Link href={fullPage} onClick={onClose} className="block text-xs font-medium underline-offset-4 hover:underline">
                         {fill(b?.seeAll ?? "See all {count} homes and every step", { count: task.shortlist.length })}

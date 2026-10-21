@@ -48,7 +48,7 @@ describe('zero-match widening', () => {
     const { runTurn } = await import('@/components/agent/run');
     await runTurn('t1');
     expect(search).toHaveBeenCalledTimes(2);
-    expect(search.mock.calls[1]![1]).toEqual({ take: 2000 });
+    expect(search.mock.calls[1]![1]).toEqual({ take: 2000, excludeIds: [] });
   });
 
   it('falls back to one search per widening when the pool was cut short', async () => {

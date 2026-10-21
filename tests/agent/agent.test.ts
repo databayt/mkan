@@ -175,8 +175,10 @@ describe("badges and place filters", () => {
   it("matches a lead's neighbourhood on its address, not its district-centre pin", () => {
     const r = { ...base, neighbourhood: "Kimihurura" };
     expect(passesHardFilters(at(-1.94, 30.1, { approxLocation: true, address: "Kimihurura, near KCC" }), r)).toBe(true);
-    // A district-centre pin never satisfies "near the city centre".
-    expect(passesHardFilters(at(-1.9441, 30.0619, { approxLocation: true }), { ...base, area: "center" })).toBe(false);
+    // A district-centre pin says nothing about "near the city centre": the lead stays in, unscored…
+    expect(passesHardFilters(at(-1.9441, 30.0619, { approxLocation: true }), { ...base, area: "center" })).toBe(true);
+    // …while a home pinned far from the centre is out.
+    expect(passesHardFilters(at(-1.99, 30.13), { ...base, area: "center" })).toBe(false);
   });
 
   it("self compound means a villa, townhouse or cottage", () => {
