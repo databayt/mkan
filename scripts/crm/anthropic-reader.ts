@@ -3,8 +3,8 @@
  * included API credits (decided 2026-10-21: included credits only, a hard
  * monthly cap here, no paid overage).
  *
- * Groq's free tier shares one key with the /find agent and read 2–8 videos a
- * day once the frames were counted; Haiku 5.5 reads a 3-frame strip for about
+ * Groq's free tier shares one key with the /find agent: ~22 vision reads on a
+ * clean day (10-21, 50 left waiting), 2–8 on days with repeat runs (10-20); Haiku 5.5 reads a 3-frame strip for about
  * a tenth of a cent, so the cap is the only limit that matters. The spend is
  * tallied from each response's own `usage` into .data/tiktok/spend.json, and a
  * month that reaches the cap ends the stage with `AnthropicCap` — the ledger
