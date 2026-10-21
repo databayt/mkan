@@ -63,3 +63,17 @@
 - No budget → typical prices first (same day): the going rate stands in for a budget. For a monthly search it is the median of the real monthly rents that matched (≥3, else every home); homes score by log-distance from it and within ±25% carry a "Typical price" badge. A stated budget or "cheapest" still rules.
 - Search bug found on the way: broker monthly homes carry no ratings, so the best-rated 400 shut them out of every monthly search with a truncated pool (0 of 40 two-bed broker homes reached a Kicukiro search). They now load in a pool of their own (`MAX_MONTHLY`, cheapest first). Real data, 2-bed Kicukiro with no budget: first cards RWF 660k–1.1M a month, were 2.4–3.2M. 2-bed monthly in Kigali: broker rents p25–p75 330k–700k, nightly homes ×30 1.8M–4M.
 - Kimihurura still opens at ~3.6M: one broker home matches there, so the median is the nightly market's — a stock gap, not a ranking one.
+
+## ☰ chats, profiles, hardening (2026-10-21)
+
+- Shipped: `AgentProfile` (anonymous cookie, merged on sign-in, closed after sign-out), `/find?c=<id>` chats,
+  the ☰ sheet (/find + bubble), delete, 👍 / 👎 saved as silent events. Migration
+  `20261022000000_agent_profiles` (additive; `sessionKey` made nullable — apply it before the code ships).
+- Fixed on the way: every cron trusted a spoofable `x-vercel-cron` header (now Bearer only, `lib/cron-auth.ts`);
+  the rate limit counted a chat's whole history whenever anything touched it (now user messages by time, plus
+  120 / h per `cf-connecting-ip`); the cron failed stuck turns without a reply (now error reply, or DONE if
+  the cards were up); a confirmed viewing never named the signed-in tenant (`guestUserId`); a neighbourhood
+  the model invents no longer forces zero results; `stay` / `nights` / `guests` / `maxUpfront` can be cleared.
+- Sheet primitive: side sheets slide from their logical edge (Arabic slid from the wrong side before).
+- Next: Claude Haiku 5.5 reader on the included API credits (capped ledger `ApiSpend`), memory reads/writes,
+  welcome back, saved homes, best-match ranking, model-written replies — see the plan of 2026-10-21.

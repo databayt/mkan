@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import Link from "next/link";
-import { ArrowDown, ChevronLeft, SquarePen } from "lucide-react";
+import dynamic from "next/dynamic";
+import { ArrowDown, Loader2, Menu, SquarePen } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
-import { useLocale } from "@/components/internationalization/use-locale";
+import { cn } from "@/lib/utils";
 import { usePicksLabel, Wizard, type Picks } from "./wizard";
 import { AskCard } from "./ask-card";
 import { Composer } from "./composer";
@@ -18,6 +18,9 @@ import type { AgentTaskView } from "./types";
 import { useAgentTask } from "./use-agent-task";
 import { useStickToBottom } from "./use-stick-to-bottom";
 
+// The ☰ sheet loads on its first open; a tenant who never opens it never pays for it.
+const ChatsSheet = dynamic(() => import("./chats-sheet").then((m) => m.ChatsSheet), { ssr: false });
+
 /**
  * /find — the rental agent laid out like ChatGPT on iOS: a slim bar with the
  * name in the middle, the greeting alone mid-screen when empty with starter
@@ -29,8 +32,8 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
   const dict = useDictionary();
   const a = dict?.agent;
   const c = a?.chat;
-  const { locale } = useLocale();
-  const { task, running, pending, notice, send, refresh, reset, regenerate, reply, chips } = useAgentTask(initialTask);
+  const { task, running, pending, notice, send, refresh, reset, open, opening, regenerate, reply, chips } = useAgentTask(initialTask, { syncUrl: true });
+  const [sheet, setSheet] = useState<"closed" | "open" | "never">("never");
   const [picks, setPicks] = useState<Picks>({});
   const [guided, setGuided] = useState(false);
   const picksLabel = usePicksLabel();
@@ -62,6 +65,12 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
     reset();
     setPicks({});
     setGuided(false);
+    setSheet((v) => (v === "never" ? v : "closed"));
+  };
+  const openChat = (id: string) => {
+    setSheet("closed");
+    setGuided(false);
+    void open(id).then((ok) => ok && requestAnimationFrame(() => scrollToBottom()));
   };
 
   const lastAgentIndex = messages.findLastIndex((m) => m.role === "agent");
@@ -74,9 +83,9 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
         title={c?.name ?? "Mkan"}
         scrolled={scrolled}
         start={
-          <Link href={`/${locale}`} aria-label={c?.home ?? "Back to Mkan"} title={c?.home ?? "Back to Mkan"} className={headerButton}>
-            <ChevronLeft className="rtl:rotate-180" aria-hidden />
-          </Link>
+          <button type="button" onClick={() => setSheet("open")} aria-label={a?.chats?.menu ?? "Chats"} title={a?.chats?.menu ?? "Chats"} className={headerButton}>
+            <Menu aria-hidden />
+          </button>
         }
         end={
           <button type="button" onClick={newChat} disabled={!task || running} aria-label={c?.newChat ?? "New chat"} title={c?.newChat ?? "New chat"} className={headerButton}>
@@ -85,8 +94,15 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
         }
       />
 
-      <div ref={scrollRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto overscroll-contain">
-        {!task ? (
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        aria-busy={!!opening}
+        className={cn("relative flex-1 overflow-y-auto overscroll-contain transition-opacity", opening && task && "opacity-40")}
+      >
+        {!task && opening ? (
+          <Loader2 className="mx-auto mt-[30vh] size-5 animate-spin text-muted-foreground" aria-hidden />
+        ) : !task ? (
           <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col items-center justify-center px-4 py-6">
             {guided ? (
               <Wizard picks={picks} onChange={setPicks} onFinish={() => void search("")} disabled={pending} />
@@ -137,7 +153,9 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
                     <Refine message={m} requirements={task.requirements} onPick={(text, filters, clear) => void say(text, false, filters, clear)} disabled={pending} />
                   )}
 
-                  {!running && <TurnActions text={reply(m)} onRegenerate={() => void regenerate().then((ok) => ok && scrollToBottom())} disabled={pending} />}
+                  {!running && (
+                    <TurnActions text={reply(m)} onRegenerate={() => void regenerate().then((ok) => ok && scrollToBottom())} disabled={pending} taskId={task.id} at={m.at} />
+                  )}
                 </AgentTurn>
               );
             })}
@@ -180,6 +198,17 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
           {a?.disclaimer ?? "Mkan checks with brokers, but always see a home before you pay."}
         </p>
       </div>
+
+      {sheet !== "never" && (
+        <ChatsSheet
+          open={sheet === "open"}
+          onOpenChange={(o) => setSheet(o ? "open" : "closed")}
+          activeId={task?.id ?? null}
+          onOpenChat={openChat}
+          onNewChat={newChat}
+          onDeleted={(id) => id === task?.id && reset("replace")}
+        />
+      )}
     </div>
   );
 }

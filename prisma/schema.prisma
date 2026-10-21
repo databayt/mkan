@@ -772,6 +772,8 @@ model User {
   listingVisits         ListingVisit[]         @relation("ListingVisitGuest")
   brokerListings        ListingBroker[]        @relation("ListingBrokers")
   brokerRequests        BrokerRequest[]        @relation("BrokerRequests")
+  // Rental agent (/find): chats + memory once signed in
+  agentProfile          AgentProfile?          @relation("AgentProfiles")
 }
 
 // Host/guest "About" profile (clone of airbnb.com/users/profile/about). 1:1 with
@@ -1250,15 +1252,42 @@ enum AgentTaskStatus {
 }
 
 /**
+ * Who rental-agent chats belong to. Anonymous by default: `keyHash` is the
+ * sha256 of the browser's httpOnly `mkan_agent` cookie. Signing in sets
+ * `userId` (folding another browser's anonymous profile into it), and from
+ * then on the profile opens only with that session. `memory` is what the
+ * agent remembers across chats (src/components/agent/memory.ts).
+ */
+model AgentProfile {
+  id           String    @id @default(cuid())
+  keyHash      String?   @unique
+  userId       String?   @unique
+  memory       Json?
+  /// The last search that showed homes — "new since your last visit" starts here.
+  lastSearchAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user  User?       @relation("AgentProfiles", fields: [userId], references: [id], onDelete: Cascade)
+  tasks AgentTask[]
+
+  @@index([updatedAt])
+}
+
+/**
  * One tenant search run by the rental agent (`/find`). The task, not the chat
  * tab, owns the work: a broker who answers hours later updates the task, and a
- * reload resumes it from `AgentEvent`. Anonymous by default — `sessionKey` is
- * an httpOnly cookie; `userId` is set when the tenant is signed in.
+ * reload resumes it from `AgentEvent`. It belongs to an `AgentProfile`;
+ * `sessionKey` (the raw cookie) only marks tasks from before profiles, until
+ * their browser comes back and they are adopted.
  */
 model AgentTask {
   id           String          @id @default(cuid())
-  sessionKey   String
+  sessionKey   String?
+  profileId    String?
   userId       String?
+  /// The tenant's first words, for the ☰ chat list.
+  title        String?         @db.VarChar(80)
   locale       String          @default("en")
   /// The tenant's words, in order — the agent re-reads them on every turn.
   messages     Json            @default("[]")
@@ -1270,11 +1299,32 @@ model AgentTask {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
+  profile        AgentProfile?   @relation(fields: [profileId], references: [id], onDelete: Cascade)
   events         AgentEvent[]
   brokerRequests BrokerRequest[]
 
   @@index([sessionKey, createdAt])
+  @@index([profileId, updatedAt])
   @@index([status, updatedAt])
+}
+
+/// Claude API spend per UTC day and lane, priced from each response's `usage`:
+/// the ledger behind the rental agent's hard monthly cap
+/// (src/components/agent/claude.ts). Lanes: agent-read, agent-write,
+/// agent-eval, and `capped` — a marker row written when the API reports the
+/// credits are spent, so every instance stops until the month turns.
+model ApiSpend {
+  day             String
+  lane            String
+  usd             Decimal  @default(0) @db.Decimal(10, 5)
+  calls           Int      @default(0)
+  inputTokens     Int      @default(0)
+  outputTokens    Int      @default(0)
+  cacheReadTokens  Int      @default(0)
+  cacheWriteTokens Int      @default(0)
+  updatedAt        DateTime @updatedAt
+
+  @@id([day, lane])
 }
 
 /**

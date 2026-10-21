@@ -5692,7 +5692,31 @@
         }
       },
       "details": "Details",
-      "placeholder": "Describe the home you need"
+      "placeholder": "Describe the home you need",
+      "untitled": "Gushakisha gushya"
+    },
+    "chats": {
+      "menu": "Ibiganiro",
+      "title": "Ibiganiro",
+      "description": "Ibyo washakishije kuri Mkan",
+      "groups": {
+        "today": "Uyu munsi",
+        "yesterday": "Ejo hashize",
+        "week": "Iminsi 7 ishize",
+        "older": "Ibya kera"
+      },
+      "empty": "Nta biganiro birahari. Sobanura inzu ukeneye, ubushakashatsi bwawe buzabikwa hano.",
+      "error": "Ntibyashobotse kuzana ibiganiro byawe.",
+      "retry": "Ongera ugerageze",
+      "more": "Erekana ibindi",
+      "options": "Amahitamo y'ikiganiro",
+      "delete": "Siba",
+      "deleteConfirm": "Gusiba iki kiganiro?",
+      "cancel": "Hagarika",
+      "waiting": "Dutegereje igisubizo cya komisiyoneri",
+      "confirmed": "Komisiyoneri yemeje ko inzu ihari",
+      "deviceOnly": "Ibiganiro bigumaho kuri iki gikoresho.",
+      "signIn": "Injira kugira ngo ubibone kuri buri gikoresho"
     }
   }
 }

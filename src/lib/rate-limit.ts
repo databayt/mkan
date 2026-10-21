@@ -90,6 +90,16 @@ export const rateLimiters = {
     analytics: true,
     prefix: "@upstash/ratelimit/track",
   }) : null,
+
+  // Rental agent turns per IP. Each typed turn can call the Claude API, so a
+  // bot clearing its cookie must still hit a ceiling; loose enough for a
+  // CGNAT-ed Kigali mobile network where many tenants share one address.
+  agent: redis ? new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(120, "1 h"),
+    analytics: true,
+    prefix: "@upstash/ratelimit/agent",
+  }) : null,
 };
 
 // ─── Postgres fallback ───────────────────────────────────────────────────────
@@ -109,6 +119,7 @@ const TIER_CONFIG: Record<keyof typeof rateLimiters, { limit: number; windowMs: 
   report: { limit: 5, windowMs: 600_000 },
   "report-tenant": { limit: 30, windowMs: 3_600_000 },
   track: { limit: 300, windowMs: 60_000 },
+  agent: { limit: 120, windowMs: 3_600_000 },
 };
 
 async function pgRateLimit(

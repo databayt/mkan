@@ -11,12 +11,12 @@
  * tenant's chosen time; until then both sides see "waiting".
  */
 import { randomBytes } from "node:crypto";
-import { cookies } from "next/headers";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { appendTaskEvent, applyAnswer, brokerLink, hashToken } from "./broker";
 import { viewingChosenMessage } from "./broker-message";
+import { ownedBy, resolveViewer } from "./profile";
 import { sendToBroker } from "./whatsapp";
 
 const MAX_SLOTS = 3;
@@ -64,9 +64,15 @@ export async function confirmViewing(token: string): Promise<BrokerAnswerResult>
   const req = await requestByToken(token);
   if (!req) return { ok: false, error: "invalid" };
   if (!req.chosenSlot || req.visitId) return { ok: false, error: "answered" };
+  // A signed-in tenant's viewing is theirs: it shows in their account, not only on the chat.
+  const owner = req.taskId
+    ? await db.agentTask.findUnique({ where: { id: req.taskId }, select: { userId: true, profile: { select: { userId: true } } } })
+    : null;
+  const guestUserId = owner?.profile?.userId ?? owner?.userId ?? null;
   const visit = await db.listingVisit.create({
     data: {
       listingId: req.listingId,
+      ...(guestUserId ? { guestUserId } : {}),
       contactName: req.tenantName,
       contactPhone: req.tenantPhone,
       scheduledFor: req.chosenSlot,
@@ -87,9 +93,9 @@ export async function confirmViewing(token: string): Promise<BrokerAnswerResult>
 // ── Tenant side ──────────────────────────────────────────────────────────────
 
 async function ownedTask(taskId: string) {
-  const key = (await cookies()).get("mkan_agent")?.value;
-  if (!key) return null;
-  return db.agentTask.findFirst({ where: { id: taskId, sessionKey: key }, select: { id: true, locale: true } });
+  const viewer = await resolveViewer({ write: false });
+  if (viewer.ids.length === 0 && !viewer.legacyKey) return null;
+  return db.agentTask.findFirst({ where: { id: taskId, ...ownedBy(viewer) }, select: { id: true, locale: true } });
 }
 
 const ChooseSchema = z.object({

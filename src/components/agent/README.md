@@ -18,8 +18,19 @@ runTurn: requirements_extracted (Groq skipped on taps) ─► search_done ─►
          ─► broker asks ─► shortlist_ready ─► DONE / WAITING
          no stay type → searched as monthly rent, no broker asks, "months or nights?" offered under the cards
 client: GET /api/agent/task?id=&v=<version> every 800 ms → 2 s while RUNNING, 10 s → 30 s → 60 s while WAITING,
-        paused while the tab is hidden; 204 when the version is unchanged. A reload resumes from the cookie
+        paused while the tab is hidden; 204 when the version is unchanged.
+chats:  /find?c=<id> opens a chat (reload, back and forward work); a bare /find is a new chat. The bubble
+        reopens this browser's last chat (localStorage pointer, 3 days). ☰ lists every chat of the profile.
 ```
+
+## Who a chat belongs to
+
+`AgentProfile` (`profile.ts`). A browser is its httpOnly `mkan_agent` cookie — a random UUID, stored only as
+a sha256 (`keyHash`), rolled for a year on every send. Signing in attaches the browser's profile to the
+account, or folds it into the account's profile from another device (chats move, memory merges). A profile
+with a `userId` opens only with that session: after sign-out the browser gets a fresh cookie and an empty
+profile. Reads (page render, poll) never write; writes (actions, the chat list) adopt pre-profile tasks
+(`sessionKey` = the raw cookie), merge, create and rotate.
 
 ## Files
 
@@ -38,7 +49,10 @@ client: GET /api/agent/task?id=&v=<version> every 800 ms → 2 s while RUNNING, 
 | `shortlist-card.tsx` · `card-sheet.tsx` | Homes as a swipeable inline card row; a tap opens a bottom sheet (cost breakdown, reasons, viewing booking, listing link), loaded on first tap |
 | `wizard.tsx` · `areas.ts` | The opening: four tap questions (how long → where → what home → budget), with "Show homes" on every step after the first that set requirement fields exactly; the composer stays under it, so typing works at any step. `areas.ts` holds the neighbourhoods and the centre / business / university areas |
 | `relax.ts` · `refine.tsx` | No dead ends: when nothing fits every detail, run.ts tries each single widening and the cumulative ladder (neighbourhood → its district, area, home type, bathrooms, furnished, budget +30%, all Kigali) in parallel and keeps the fewest-changes attempt; the reply names each change. After a shortlist, `Refine` offers the budget (when the search ran without one) and one-tap follow-ups — cheaper, more bedrooms, furnished, anywhere |
-| `use-agent-task.ts` | Shared conversation state + polling for /find and the bubble |
+| `use-agent-task.ts` | Shared conversation state + polling for /find and the bubble; `open(id)` / `reset()` keep `?c=` and the bubble's last-chat pointer in step, `popstate` follows back and forward |
+| `profile.ts` | `resolveViewer({ write })` — the profile behind the cookie and the session; `ownedBy(viewer)` is the `where` every task query uses |
+| `memory.ts` | The `AgentProfile.memory` shape: sticky search fields, short notes (phones and emails stripped), liked / dismissed / seen homes; `mergeMemory` for sign-in |
+| `chats-sheet.tsx` · `chat-list.ts` · `chips.ts` · `app/api/agent/chats` | The ☰ sheet: New chat, chats by day (Today / Yesterday / Previous 7 days / Older, the viewer's own days), inline delete, a sign-in line for anonymous chats; titles from the search's chips, else the first words. z-60, above the bubble panel |
 | `bubble/bubble.tsx` · `bubble/panel.tsx` | The floating chat on home / search / listings / travel / help, launched by the hogwarts robot mark (`public/illustrations/robot-fill.png`); same task as /find, expand → /find. Opening it lands the site on /listings beside the panel |
 | `bubble/listings-query.ts` | Agent requirements → /listings filters (district via `state`, beds, baths, guests; budget stays with the agent — RWF/night-or-month vs per-listing nightly currency). The panel re-filters the listings index as the requirements firm up |
 
@@ -48,6 +62,8 @@ client: GET /api/agent/task?id=&v=<version> every 800 ms → 2 s while RUNNING, 
 - `Listing.lastAvailabilityConfirmedAt` is stamped by imports, so it is **not** a
   confirmation. Only a broker's answer (phase 2) makes a card "confirmed".
 - Every string lives under `agent.*` in en/ar/rw.
+- The tenant's own taps (👍 / 👎, saves) are `SILENT_EVENTS`: kept for counting, never drawn, never part of
+  the poll's version or its 60-row window.
 - Env: `GROQ_API_KEY` (optional — without it the rules reader runs alone), `GROQ_AGENT_MODEL`.
 
 ## Broker loop (phase 2) and viewings (phase 3)

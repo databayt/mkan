@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowDown, BadgeCheck, Clock, Loader2, Maximize2, SquarePen, X } from "lucide-react";
+import { ArrowDown, BadgeCheck, Clock, Loader2, Maximize2, Menu, SquarePen, X } from "lucide-react";
 import { BlurImage } from "@/components/atom/blur-image";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { useLocale } from "@/components/internationalization/use-locale";
@@ -22,6 +23,9 @@ import type { ShortlistItem } from "../types";
 import { useAgentTask } from "../use-agent-task";
 import { useStickToBottom } from "../use-stick-to-bottom";
 import { listingsQueryFor } from "./listings-query";
+
+// Above the panel (z-55), loaded on its first open.
+const ChatsSheet = dynamic(() => import("../chats-sheet").then((m) => m.ChatsSheet), { ssr: false });
 
 const MINI_CARDS = 3;
 /** The listings page re-filters once the requirements settle, not on every change. */
@@ -75,7 +79,8 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
   const b = a?.bubble;
   const c = a?.chat;
   const { locale } = useLocale();
-  const { task, loaded, running, waiting, pending, notice, send, reset, reply } = useAgentTask(null, { lazy: true });
+  const { task, loaded, running, waiting, pending, notice, send, reset, open: openTask, opening, reply } = useAgentTask(null, { lazy: true });
+  const [sheet, setSheet] = useState<"closed" | "open" | "never">("never");
   const [picks, setPicks] = useState<Picks>({});
   const [guided, setGuided] = useState(false);
   const picksLabel = usePicksLabel();
@@ -97,6 +102,12 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
     reset();
     setPicks({});
     setGuided(false);
+    setSheet((v) => (v === "never" ? v : "closed"));
+  };
+  const openChat = (id: string) => {
+    setSheet("closed");
+    setGuided(false);
+    void openTask(id).then((ok) => ok && requestAnimationFrame(() => scrollToBottom()));
   };
 
   useEffect(() => onWaiting(waiting), [waiting, onWaiting]);
@@ -118,16 +129,19 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
     return () => clearTimeout(id);
   }, [open, onListings, query, pathname, router]);
 
+  // Escape closes the ☰ sheet first (Radix), the panel only when the sheet is shut. The
+  // listener sits in the capture phase: closing the sheet re-attaches it mid-event, and a
+  // bubbling listener would then catch the very Escape that closed the sheet.
   useEffect(() => {
-    if (!open) return;
+    if (!open || sheet === "open") return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [open, onClose, sheet]);
 
   const lastAgentIndex = messages.findLastIndex((m) => m.role === "agent");
   const pendingTurn = running && messages.at(-1)?.role === "user";
-  const fullPage = `/${locale}/find`;
+  const fullPage = task ? `/${locale}/find?c=${task.id}` : `/${locale}/find`;
 
   return (
     <section
@@ -144,9 +158,14 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
         title={c?.name ?? "Mkan"}
         scrolled={scrolled}
         start={
-          <button type="button" onClick={onClose} aria-label={b?.close ?? "Close"} title={b?.close ?? "Close"} className={headerButton}>
-            <X aria-hidden />
-          </button>
+          <>
+            <button type="button" onClick={onClose} aria-label={b?.close ?? "Close"} title={b?.close ?? "Close"} className={headerButton}>
+              <X aria-hidden />
+            </button>
+            <button type="button" onClick={() => setSheet("open")} aria-label={a?.chats?.menu ?? "Chats"} title={a?.chats?.menu ?? "Chats"} className={headerButton}>
+              <Menu aria-hidden />
+            </button>
+          </>
         }
         end={
           <>
@@ -160,8 +179,13 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
         }
       />
 
-      <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto overscroll-contain px-3">
-        {!loaded ? (
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        aria-busy={!!opening}
+        className={cn("flex-1 overflow-y-auto overscroll-contain px-3 transition-opacity", opening && task && "opacity-40")}
+      >
+        {!loaded || (!task && opening) ? (
           <Loader2 className="mx-auto mt-10 size-5 animate-spin text-muted-foreground" aria-hidden />
         ) : !task || guided ? (
           <div className="flex min-h-full flex-col justify-center py-4">
@@ -237,6 +261,17 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
           disabled={pending || running || !loaded}
         />
       </footer>
+
+      {sheet !== "never" && (
+        <ChatsSheet
+          open={sheet === "open" && open}
+          onOpenChange={(o) => setSheet(o ? "open" : "closed")}
+          activeId={task?.id ?? null}
+          onOpenChat={openChat}
+          onNewChat={newChat}
+          onDeleted={(id) => id === task?.id && reset()}
+        />
+      )}
     </section>
   );
 }

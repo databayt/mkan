@@ -12,7 +12,7 @@ import "server-only";
  *
  * Env: GROQ_API_KEY (required for this path), GROQ_AGENT_MODEL (optional).
  */
-import { NEIGHBOURHOODS } from "./areas";
+import { NEIGHBOURHOODS, neighbourhoodNamed } from "./areas";
 import { CLEARABLE, coerceRequirements, type ClearableField, type Requirements } from "./requirements";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -90,7 +90,15 @@ export async function readRequirementsWithGroq(latest: string, current: Requirem
     const clear = Array.isArray(parsed.clear)
       ? parsed.clear.filter((k): k is ClearableField => typeof k === "string" && (CLEARABLE as readonly string[]).includes(k))
       : [];
-    return { set: coerceRequirements(parsed.set), clear };
+    const set = coerceRequirements(parsed.set);
+    // A neighbourhood mkan cannot place matches no pinned home and would force
+    // zero results; keep only the names areas.ts knows (with their spelling).
+    if (set.neighbourhood) {
+      const known = neighbourhoodNamed(set.neighbourhood);
+      if (known) set.neighbourhood = known.name;
+      else delete set.neighbourhood;
+    }
+    return { set, clear };
   } catch (err) {
     console.warn(`[agent] groq failed — deterministic reader only: ${(err as Error).message}`);
     return null;

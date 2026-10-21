@@ -4,6 +4,7 @@ import { memo, useState } from "react";
 import { Check, Copy, RotateCcw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { cn } from "@/lib/utils";
+import { noteAgentFeedback } from "./actions";
 
 /** The user's turn: a grey bubble at the end side, as in ChatGPT on iOS. */
 export const UserTurn = memo(function UserTurn({ text, compact = false }: { text: string; compact?: boolean }) {
@@ -43,13 +44,18 @@ export const PastAgentTurn = memo(function PastAgentTurn({ text, compact = false
 
 /**
  * The row under the latest answer: copy, thumbs up/down and "search again".
- * The thumbs are local — they mark the answer for the tenant, nothing is sent.
+ * A thumb is saved on the chat (a silent trace row), so answer quality can be
+ * counted; a failed save leaves the tenant's mark in place.
  */
-export function TurnActions({ text, onRegenerate, disabled }: { text: string; onRegenerate?: () => void; disabled?: boolean }) {
+export function TurnActions({ text, onRegenerate, disabled, taskId, at }: { text: string; onRegenerate?: () => void; disabled?: boolean; taskId?: string; at?: string }) {
   const dict = useDictionary();
   const c = dict?.agent?.chat;
   const [copied, setCopied] = useState(false);
   const [vote, setVote] = useState<"good" | "bad" | null>(null);
+  const mark = (next: "good" | "bad" | null) => {
+    setVote(next);
+    if (taskId && at) void noteAgentFeedback({ taskId, at, kind: next }).catch(() => {});
+  };
   const button = "flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40";
 
   return (
@@ -69,12 +75,12 @@ export function TurnActions({ text, onRegenerate, disabled }: { text: string; on
         {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
       </button>
       {vote !== "bad" && (
-        <button type="button" className={button} aria-pressed={vote === "good"} aria-label={c?.good ?? "Good answer"} title={c?.good ?? "Good answer"} onClick={() => setVote(vote === "good" ? null : "good")}>
+        <button type="button" className={button} aria-pressed={vote === "good"} aria-label={c?.good ?? "Good answer"} title={c?.good ?? "Good answer"} onClick={() => mark(vote === "good" ? null : "good")}>
           <ThumbsUp className={cn("size-4", vote === "good" && "fill-current text-foreground")} aria-hidden />
         </button>
       )}
       {vote !== "good" && (
-        <button type="button" className={button} aria-pressed={vote === "bad"} aria-label={c?.bad ?? "Bad answer"} title={c?.bad ?? "Bad answer"} onClick={() => setVote(vote === "bad" ? null : "bad")}>
+        <button type="button" className={button} aria-pressed={vote === "bad"} aria-label={c?.bad ?? "Bad answer"} title={c?.bad ?? "Bad answer"} onClick={() => mark(vote === "bad" ? null : "bad")}>
           <ThumbsDown className={cn("size-4", vote === "bad" && "fill-current text-foreground")} aria-hidden />
         </button>
       )}

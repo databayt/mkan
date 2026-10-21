@@ -1,4 +1,5 @@
 import type { CostEstimate } from "./cost";
+import type { AgentMemory } from "./memory";
 import type { ReasonKey } from "./rank";
 import type { HardField, Requirements } from "./requirements";
 import type { Relaxed } from "./relax";
@@ -23,7 +24,19 @@ export type EventKind =
   | "viewing_proposed"
   | "viewing_confirmed"
   | "outcome_recorded"
-  | "failed";
+  | "memory_used"
+  | "memory_updated"
+  | "reply_written"
+  | "availability_asked"
+  | "failed"
+  // Silent: what the tenant did, kept for counting — never drawn as a step.
+  | "feedback"
+  | "card_opened"
+  | "home_saved"
+  | "home_dismissed";
+
+/** Rows the steps panel never shows: the tenant's own taps, not the agent's work. */
+export const SILENT_EVENTS: readonly EventKind[] = ["feedback", "card_opened", "home_saved", "home_dismissed"];
 
 export interface AgentEventView {
   seq: number;
@@ -86,4 +99,25 @@ export interface AgentTaskView {
   startedAt: string;
   /** Status, updatedAt and last event seq — the poll answers 204 while it holds. */
   version: string;
+}
+
+/** One row of the ☰ chat list (`GET /api/agent/chats`). */
+export interface AgentChatRow {
+  id: string;
+  /** The tenant's first words; the row prefers a title built from `requirements`. */
+  title: string | null;
+  requirements: Requirements | null;
+  updatedAt: string;
+  status: AgentStatus;
+  homes: number;
+  /** A broker confirmed one of its homes is available. */
+  confirmed: boolean;
+}
+
+export interface AgentChatsView {
+  chats: AgentChatRow[];
+  /** Pass as `?before=` for the next page; null at the end. */
+  next: string | null;
+  signedIn: boolean;
+  memory: AgentMemory | null;
 }

@@ -1,10 +1,10 @@
 import "server-only";
 
-import { cookies } from "next/headers";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { ownedBy, type Viewer } from "./profile";
 import { coerceRequirements } from "./requirements";
-import type { AgentEventView, AgentMessage, AgentTaskView, ShortlistItem } from "./types";
+import { SILENT_EVENTS, type AgentEventView, type AgentMessage, type AgentTaskView, type ShortlistItem } from "./types";
 
 /**
  * Loading a task for its owner — shared by the server actions (page render,
@@ -13,9 +13,6 @@ import type { AgentEventView, AgentMessage, AgentTaskView, ShortlistItem } from 
  * queued in front of every tap on a chip, an answer or a viewing time.
  */
 
-const COOKIE = "mkan_agent";
-/** A reload within this window resumes the last task. */
-const RESUME_DAYS = 7;
 /**
  * A turn takes 2–3 s. One still RUNNING after this lost its `after()` (the
  * Worker was recycled mid-turn) and would answer "busy" to every message.
@@ -23,16 +20,6 @@ const RESUME_DAYS = 7;
 export const STUCK_AFTER_MS = 90_000;
 /** The panel draws the latest turn only; older turns' steps are not sent on every poll. */
 const EVENTS_PER_POLL = 60;
-
-export async function sessionKey(create: boolean): Promise<string | null> {
-  const jar = await cookies();
-  const existing = jar.get(COOKIE)?.value;
-  if (existing) return existing;
-  if (!create) return null;
-  const key = crypto.randomUUID();
-  jar.set(COOKIE, key, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 60 * 60 * 24 * 30, path: "/" });
-  return key;
-}
 
 function toView(task: {
   id: string;
@@ -76,7 +63,13 @@ const TASK_SELECT = {
   shortlist: true,
   createdAt: true,
   updatedAt: true,
-  events: { orderBy: { seq: "desc" }, take: EVENTS_PER_POLL, select: { seq: true, kind: true, status: true, payload: true, createdAt: true } },
+  // The tenant's own taps (SILENT_EVENTS) are kept for counting, never drawn or compared.
+  events: {
+    where: { kind: { notIn: [...SILENT_EVENTS] } },
+    orderBy: { seq: "desc" },
+    take: EVENTS_PER_POLL,
+    select: { seq: true, kind: true, status: true, payload: true, createdAt: true },
+  },
   brokerRequests: {
     where: { status: "AVAILABLE" },
     orderBy: { createdAt: "desc" },
@@ -126,15 +119,22 @@ function latestTurnEvents(events: TaskRow["events"]): TaskRow["events"] {
   return asc;
 }
 
-/** Fail a turn that can no longer finish, so the conversation is not locked. */
+/**
+ * Unlock a turn that can no longer finish. One that already answered (its
+ * cards are up, the broker step was lost) is simply done; one that never
+ * answered gets the error reply, so the chat does not end on the tenant.
+ */
 async function recoverStuck(task: TaskRow): Promise<TaskRow> {
   if (task.status !== "RUNNING" || Date.now() - task.updatedAt.getTime() < STUCK_AFTER_MS) return task;
-  const messages = [...((task.messages as unknown as AgentMessage[]) ?? []), { role: "agent", kind: "error", at: new Date().toISOString() } as AgentMessage];
+  const before = (task.messages as unknown as AgentMessage[]) ?? [];
+  const answered = before.at(-1)?.role === "agent";
+  const messages = answered ? before : [...before, { role: "agent", kind: "error", at: new Date().toISOString() } as AgentMessage];
+  const status = answered ? "DONE" : "FAILED";
   const { count } = await db.agentTask.updateMany({
     where: { id: task.id, status: "RUNNING", updatedAt: { lt: new Date(Date.now() - STUCK_AFTER_MS) } },
-    data: { status: "FAILED", messages: messages as unknown as Prisma.InputJsonValue },
+    data: { status, messages: messages as unknown as Prisma.InputJsonValue },
   });
-  return count ? { ...task, status: "FAILED", messages: messages as unknown as Prisma.JsonValue } : task;
+  return count ? { ...task, status, messages: messages as unknown as Prisma.JsonValue } : task;
 }
 
 /**
@@ -146,15 +146,9 @@ export function taskVersion(status: string, updatedAt: Date, lastSeq: number): s
   return `${status}.${updatedAt.getTime()}.${lastSeq}`;
 }
 
-/** The task this browser owns (or its latest within RESUME_DAYS), or null. */
-export async function loadTask(key: string, taskId?: string): Promise<AgentTaskView | null> {
-  const task = taskId
-    ? await db.agentTask.findFirst({ where: { id: taskId, sessionKey: key }, select: TASK_SELECT })
-    : await db.agentTask.findFirst({
-        where: { sessionKey: key, createdAt: { gte: new Date(Date.now() - RESUME_DAYS * 86_400_000) } },
-        orderBy: { createdAt: "desc" },
-        select: TASK_SELECT,
-      });
+/** The task, if this viewer owns it. Chats open by id (`/find?c=`); a bare /find is a new chat. */
+export async function loadTask(viewer: Viewer, taskId: string): Promise<AgentTaskView | null> {
+  const task = await db.agentTask.findFirst({ where: { id: taskId, ...ownedBy(viewer) }, select: TASK_SELECT });
   if (!task) return null;
   const live = await recoverStuck({ ...task, events: latestTurnEvents(task.events) });
   return withViewings(toView(live), live);
@@ -166,15 +160,15 @@ export async function loadTask(key: string, taskId?: string): Promise<AgentTaskV
  * the messages, shortlist and 60 events every second just to find no change.
  * A RUNNING task past STUCK_AFTER_MS takes the full path so it is recovered.
  */
-export async function pollTask(key: string, taskId: string, version: string | null): Promise<AgentTaskView | "same" | null> {
+export async function pollTask(viewer: Viewer, taskId: string, version: string | null): Promise<AgentTaskView | "same" | null> {
   if (version) {
     const head = await db.agentTask.findFirst({
-      where: { id: taskId, sessionKey: key },
-      select: { status: true, updatedAt: true, events: { orderBy: { seq: "desc" }, take: 1, select: { seq: true } } },
+      where: { id: taskId, ...ownedBy(viewer) },
+      select: { status: true, updatedAt: true, events: { where: { kind: { notIn: [...SILENT_EVENTS] } }, orderBy: { seq: "desc" }, take: 1, select: { seq: true } } },
     });
     if (!head) return null;
     const stuck = head.status === "RUNNING" && Date.now() - head.updatedAt.getTime() >= STUCK_AFTER_MS;
     if (!stuck && taskVersion(head.status, head.updatedAt, head.events[0]?.seq ?? 0) === version) return "same";
   }
-  return loadTask(key, taskId);
+  return loadTask(viewer, taskId);
 }

@@ -278,8 +278,19 @@ export async function expireRequests(now = new Date()): Promise<number> {
   return stale.length;
 }
 
-/** Cron: a turn whose `after()` was lost stays RUNNING forever — fail it so the chat unlocks. */
+/**
+ * Cron: a turn whose `after()` was lost stays RUNNING forever — unlock it, as
+ * an open tab would (task-view.ts `recoverStuck`). One that already answered
+ * is done; one that never did gets the error reply, so the chat does not end
+ * on the tenant's own message.
+ */
 export async function failStuckTasks(now = new Date(), olderThanMs = 90_000): Promise<number> {
-  const { count } = await db.agentTask.updateMany({ where: { status: "RUNNING", updatedAt: { lt: new Date(now.getTime() - olderThanMs) } }, data: { status: "FAILED" } });
-  return count;
+  const cutoff = new Date(now.getTime() - olderThanMs);
+  const errorReply = JSON.stringify([{ role: "agent", kind: "error", at: now.toISOString() }]);
+  return db.$executeRaw`
+    UPDATE "AgentTask" SET
+      "status" = (CASE WHEN "messages"->-1->>'role' = 'agent' THEN 'DONE' ELSE 'FAILED' END)::"AgentTaskStatus",
+      "messages" = CASE WHEN "messages"->-1->>'role' = 'agent' THEN "messages" ELSE "messages" || ${errorReply}::jsonb END,
+      "updatedAt" = ${now}
+    WHERE "status" = 'RUNNING' AND "updatedAt" < ${cutoff}`;
 }

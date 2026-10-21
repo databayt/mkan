@@ -5692,7 +5692,31 @@
         }
       },
       "details": "Details",
-      "placeholder": "Describe the home you need"
+      "placeholder": "Describe the home you need",
+      "untitled": "New search"
+    },
+    "chats": {
+      "menu": "Chats",
+      "title": "Chats",
+      "description": "Your searches with Mkan",
+      "groups": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "week": "Previous 7 days",
+        "older": "Older"
+      },
+      "empty": "No chats yet. Describe the home you need, and your search will be kept here.",
+      "error": "Couldn't load your chats.",
+      "retry": "Try again",
+      "more": "Show more",
+      "options": "Chat options",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this chat?",
+      "cancel": "Cancel",
+      "waiting": "Waiting on a broker",
+      "confirmed": "A broker confirmed a home",
+      "deviceOnly": "Chats stay on this device.",
+      "signIn": "Sign in to keep them on every device"
     }
   }
 }
