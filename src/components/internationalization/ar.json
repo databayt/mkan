@@ -5482,6 +5482,7 @@
       "months": "{n} أشهر"
     },
     "card": {
+      "moreLike": "المزيد مثل هذا",
       "perNight": "/ ليلة",
       "perMonth": "/ شهر",
       "beds": "{n} غرف",

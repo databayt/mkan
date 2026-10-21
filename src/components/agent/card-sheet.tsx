@@ -181,6 +181,19 @@ export default function CardSheet({
             </Link>
           )}
 
+          {onNotForMe && (
+            <button
+              type="button"
+              onClick={() => {
+                onOpenChange(false);
+                onNotForMe(item, "like");
+              }}
+              className="w-full rounded-full py-2.5 text-center text-[15px] font-medium ring-1 ring-border transition-colors hover:bg-muted"
+            >
+              {c?.moreLike ?? "More like this"}
+            </button>
+          )}
+
           {onNotForMe &&
             (why ? (
               <div className="space-y-2 rounded-2xl bg-muted/60 p-3">

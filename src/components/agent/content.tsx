@@ -74,9 +74,21 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
   };
   // "Not for me": the home is passed on (never shown again), then one tap moves the search.
   const notForMe: NotForMe = async (item, reason) => {
+    const period = item.cost.period === "month" ? "month" : "night";
+    if (reason === "like") {
+      // Same district and size, priced around this home: the tenant points instead of describing.
+      const like: Picks = {
+        ...(item.district ? { district: item.district as Picks["district"] } : {}),
+        ...(item.bedrooms != null ? { bedrooms: item.bedrooms } : {}),
+        maxPrice: roundPrice(item.cost.headline * 1.15, period),
+        pricePeriod: period,
+        stay: period === "month" ? "long" : "short",
+      };
+      void say(a?.card?.moreLike ?? "More like this", false, like);
+      return;
+    }
     await noteHomeFeedback({ taskId: task?.id ?? "", listingId: item.id, kind: "dismiss", reason }).catch(() => {});
     const label = (a?.card?.notReasons as Record<string, string> | undefined)?.[reason] ?? reason;
-    const period = item.cost.period === "month" ? "month" : "night";
     const filters: Picks =
       reason === "expensive"
         ? // Similar but cheaper: the ranker centres on 85% of the new ceiling — "cheapest" would jump to the floor.

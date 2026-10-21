@@ -15,7 +15,8 @@ import { fill } from "./format";
 import type { ShortlistItem } from "./types";
 
 /** What a "Not for me" tap does to the search: a reason, and the message + fields it sends. */
-export type NotForMe = (item: ShortlistItem, reason: "expensive" | "small" | "other") => void;
+/** A tap on a card that re-steers the search: one of "Not for me"'s reasons, or "More like this". */
+export type NotForMe = (item: ShortlistItem, reason: "expensive" | "small" | "other" | "like") => void;
 
 // The cost breakdown, viewing booking and its form load on the first tap.
 const CardSheet = dynamic(() => import("./card-sheet"), { ssr: false });

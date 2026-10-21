@@ -5482,6 +5482,7 @@
       "months": "{n} months"
     },
     "card": {
+      "moreLike": "More like this",
       "perNight": "/ night",
       "perMonth": "/ month",
       "beds": "{n} bd",
