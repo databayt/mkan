@@ -31,6 +31,7 @@ function toView(task: {
   createdAt: Date;
   updatedAt: Date;
   events: { seq: number; kind: string; status: string; payload: Prisma.JsonValue; createdAt: Date }[];
+  demand?: { optInAt: Date | null; status: string } | null;
 }): AgentTaskView {
   const req = coerceRequirements(task.requirements);
   return {
@@ -51,6 +52,7 @@ function toView(task: {
     ),
     startedAt: task.createdAt.toISOString(),
     version: taskVersion(task.status, task.updatedAt, task.events.at(-1)?.seq ?? 0),
+    demand: task.demand ? { optedIn: !!task.demand.optInAt, status: task.demand.status } : null,
   };
 }
 
@@ -70,6 +72,7 @@ const TASK_SELECT = {
     take: EVENTS_PER_POLL,
     select: { seq: true, kind: true, status: true, payload: true, createdAt: true },
   },
+  demand: { select: { optInAt: true, status: true } },
   brokerRequests: {
     where: { status: "AVAILABLE" },
     orderBy: { createdAt: "desc" },

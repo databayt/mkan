@@ -5430,7 +5430,8 @@
       "confirmLater": "Nta muntu dushobora kuvugisha uhagarariye aya mazu kugeza ubu, bityo kuboneka kwayo ntikuremezwa.",
       "channel": {
         "evolution": "byoherejwe kuri WhatsApp",
-        "manual": "bitegereje ko ikipe yacu ibyohereza"
+        "manual": "bitegereje ko ikipe yacu ibyohereza",
+        "queued": "birimo koherezwa kuri WhatsApp"
       },
       "answers": {
         "confirmed": "irahari",
@@ -5804,6 +5805,40 @@
       "elevator": "Asanseri",
       "waterTank": "Ikigega cy'amazi",
       "generator": "Umuriro w'ingoboka"
+    },
+    "demand": {
+      "noneAsked": "Nta nzu iri kuri Mkan ihuye n'ibyo ushaka, nabajije abakomisiyoneri {count} bakorera aha. Amazu bohereje azagaragara hano.",
+      "noneKept": "Nta nzu iri kuri Mkan ihuye n'ibyo ushaka. Nzakomeza gushakisha mu byumweru bibiri: amazu mashya aza buri munsi kandi azagaragara hano.",
+      "widenedAsked": "Nabajije kandi abakomisiyoneri {count} inzu ihuye neza n'ibyo ushaka.",
+      "optInTitle": "Bona ubutumwa kuri WhatsApp tuyibonye",
+      "optInBody": "Siga nimero yawe tuzakwandikira inzu ihuye n'ibyo ushaka nibonekera.",
+      "phoneLabel": "Nimero ya WhatsApp",
+      "phonePlaceholder": "07X XXX XXXX",
+      "optInButton": "Mbimenyeshe",
+      "optedIn": "Tuzakwandikira kuri WhatsApp inzu nibonekera.",
+      "phoneError": "Andika nimero ya WhatsApp nyayo.",
+      "error": "Habaye ikibazo. Ongera ugerageze."
+    },
+    "offer": {
+      "metaTitle": "Ohereza inzu y'umukiriya",
+      "title": "Ufite inzu y'uyu mukiriya?",
+      "intro": "Umukiriya kuri Mkan arashaka {need}.",
+      "price": "Ubukode ku kwezi (RWF)",
+      "bedrooms": "Ibyumba byo kuraramo",
+      "bathrooms": "Ubwiherero",
+      "place": "Agace",
+      "furnished": "Ifite ibikoresho?",
+      "yes": "Yego",
+      "no": "Oya",
+      "note": "Ibindi (si ngombwa)",
+      "send": "Bohereze umukiriya",
+      "photos": "Amafoto: uyohereze usubiza ubutumwa bwacu kuri WhatsApp tuyongeremo.",
+      "thanks": "Murakoze — umukiriya ashobora kubona inzu yanyu ubu.",
+      "another": "Ohereza indi nzu",
+      "formError": "Reba neza igiciro, ibyumba n'aho iherereye.",
+      "limit": "Mwohereje amazu 3 kuri uyu mukiriya. Murakoze.",
+      "invalid": "Iyi link ntikigikora.",
+      "expired": "Uyu mukiriya yabonye inzu cyangwa ubusabe bwafunzwe. Murakoze."
     },
     "welcome": {
       "title": "Murakaza neza nanone",

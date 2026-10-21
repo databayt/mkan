@@ -54,10 +54,11 @@ export type AgentMessage =
    * `relaxed`: details widened to find these; `refine`: a field offered as a follow-up question.
    * `text`: the reply Claude wrote (guarded) — else the template; `pendingText` while it is being written.
    */
-  | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; text?: string; pendingText?: boolean; at: string }
+  | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; text?: string; pendingText?: boolean; demand?: boolean; asked?: number; at: string }
   /** A question about renting, answered from knowledge.ts, or a greeting; no search ran. */
   | { role: "agent"; kind: "answer"; topic: "question" | "other"; text?: string; at: string }
-  | { role: "agent"; kind: "none"; stay?: "short" | "long"; at: string }
+  /** `demand`: the search was kept as a TenantRequest; `asked`: brokers messaged for it now. */
+  | { role: "agent"; kind: "none"; stay?: "short" | "long"; demand?: boolean; asked?: number; at: string }
   | { role: "agent"; kind: "error"; at: string };
 
 export interface ShortlistItem {
@@ -110,6 +111,8 @@ export interface AgentTaskView {
   startedAt: string;
   /** Status, updatedAt and last event seq — the poll answers 204 while it holds. */
   version: string;
+  /** The unmet demand kept for this chat, if any: whether the tenant left a number. */
+  demand: { optedIn: boolean; status: string } | null;
 }
 
 /** One row of the ☰ chat list (`GET /api/agent/chats`). */

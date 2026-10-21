@@ -5430,7 +5430,8 @@
       "confirmLater": "Nobody we can reach speaks for these homes yet, so their availability is not confirmed.",
       "channel": {
         "evolution": "sent on WhatsApp",
-        "manual": "queued for our team to send"
+        "manual": "queued for our team to send",
+        "queued": "sending on WhatsApp"
       },
       "answers": {
         "confirmed": "available",
@@ -5804,6 +5805,40 @@
       "elevator": "Lift",
       "waterTank": "Water tank",
       "generator": "Backup power"
+    },
+    "demand": {
+      "noneAsked": "Nothing on Mkan fits yet, so I asked {count} brokers who work this area. Homes they send will appear here.",
+      "noneKept": "Nothing on Mkan fits yet. I'll keep this search open for two weeks: new homes come in every day and will appear here.",
+      "widenedAsked": "I also asked {count} brokers for an exact match.",
+      "optInTitle": "Get a WhatsApp when it's found",
+      "optInBody": "Leave your number and we'll message you once a home that fits comes in.",
+      "phoneLabel": "WhatsApp number",
+      "phonePlaceholder": "07X XXX XXXX",
+      "optInButton": "Notify me",
+      "optedIn": "We'll WhatsApp you when a home comes in.",
+      "phoneError": "Please enter a valid WhatsApp number.",
+      "error": "Something went wrong. Please try again."
+    },
+    "offer": {
+      "metaTitle": "Send a home for a tenant",
+      "title": "Do you have a home for this tenant?",
+      "intro": "A tenant on Mkan is looking for {need}.",
+      "price": "Rent per month (RWF)",
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "place": "Neighbourhood",
+      "furnished": "Furnished?",
+      "yes": "Yes",
+      "no": "No",
+      "note": "Anything else (optional)",
+      "send": "Send to the tenant",
+      "photos": "Photos: reply to our WhatsApp message with them and we'll add them.",
+      "thanks": "Thank you — the tenant can see your home now.",
+      "another": "Send another home",
+      "formError": "Please check the price, rooms and place.",
+      "limit": "You have sent 3 homes for this tenant. Thank you.",
+      "invalid": "This link is no longer valid.",
+      "expired": "This tenant has found a home or the request has closed. Thank you."
     },
     "welcome": {
       "title": "Welcome back",

@@ -13,6 +13,7 @@ import { appendTaskEvent, requestConfirmations } from "./broker";
 import { coerceMemory, emptyMemory, MAX_IDS, PREF_FIELDS, type AgentMemory, type PrefField } from "./memory";
 import { ownedBy, requireProfile } from "./profile";
 import { coerceRequirements } from "./requirements";
+import { LEAD_SOURCES } from "./search";
 import type { ShortlistItem } from "./types";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
@@ -118,7 +119,7 @@ export async function getSavedHomes(ids: number[], lang: Locale): Promise<SavedH
   return wanted.flatMap((id) => {
     const r = byId.get(id);
     if (!r) return [];
-    const lead = !r.isPublished && r.source === "TIKTOK";
+    const lead = !r.isPublished && (LEAD_SOURCES as readonly string[]).includes(r.source ?? "");
     const monthly = r.rentPeriod === "MONTHLY";
     return [
       {

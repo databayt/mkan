@@ -270,8 +270,18 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false, 
       if (m.kind === "shortlist" && m.text) return m.text;
       if (m.kind === "shortlist") {
         const found = fill(a?.reply?.shortlist ?? "I found {count} homes.", { count: m.count });
-        const lines = [m.relaxed?.length ? relaxedLine(m.relaxed) : null, found, anyAsked ? a?.reply?.waiting : null];
+        const lines = [
+          m.relaxed?.length ? relaxedLine(m.relaxed) : null,
+          found,
+          anyAsked ? a?.reply?.waiting : null,
+          m.demand && m.asked ? fill(a?.demand?.widenedAsked ?? "I also asked {count} brokers for an exact match.", { count: m.asked }) : null,
+        ];
         return lines.filter(Boolean).join("\n");
+      }
+      if (m.kind === "none" && m.demand) {
+        return m.asked
+          ? fill(a?.demand?.noneAsked ?? "Nothing on Mkan fits yet, so I asked {count} brokers who work this area. Homes they send will appear here.", { count: m.asked })
+          : a?.demand?.noneKept ?? "Nothing on Mkan fits yet. I'll keep this search open for two weeks: new homes come in every day and will appear here.";
       }
       if (m.kind === "none") return (m.stay === "long" ? a?.reply?.noneLong : a?.reply?.none) ?? "";
       return a?.reply?.error ?? "";

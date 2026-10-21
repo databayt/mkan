@@ -32,6 +32,7 @@ import {
 } from "./requirements";
 import { relaxations, type Relaxed } from "./relax";
 import { searchKigali, toShortlist } from "./search";
+import { openDemand } from "./demand";
 import { requestConfirmations } from "./broker";
 import type { AgentMessage, EventKind, ShortlistItem, StepStatus } from "./types";
 
@@ -322,8 +323,19 @@ export async function runTurn(taskId: string): Promise<void> {
       await trace.finish(relaxId, relaxed.length ? "done" : "failed", { count: relaxed.length, keys: relaxed.map((s) => s.key), matching: result.matching });
     }
     if (result.ranked.length === 0) {
+      // Nothing on Mkan fits: keep the demand and ask the brokers who work the area.
       await Promise.all([trace.record("ranked", "done", { top: 0 }), learn([])]);
-      await reply(task.id, messages, { role: "agent", kind: "none", stay: query.stay ?? undefined, at: now() }, { shortlist: json([]), status: "DONE" });
+      const demand = await openDemand(task.id, task.profileId, query, lang).catch((err) => {
+        console.warn(`[agent] demand not opened: ${(err as Error).message}`);
+        return null;
+      });
+      trace.resync(await lastSeq(task.id));
+      await reply(
+        task.id,
+        messages,
+        { role: "agent", kind: "none", stay: query.stay ?? undefined, ...(demand ? { demand: true, asked: demand.asked } : {}), at: now() },
+        { shortlist: json([]), status: "DONE" },
+      );
       return;
     }
 
@@ -356,6 +368,13 @@ export async function runTurn(taskId: string): Promise<void> {
       : Promise.resolve(null);
     // A guessed stay type does not reach a broker: they are asked once the tenant says months.
     const asked = new Set(assumed ? [] : await requestConfirmations(task.id, shortlist, requirements, lang));
+    // Only widened homes fit: show them, and also ask the area's brokers for the real thing.
+    const demand = relaxed.length && !assumed
+      ? await openDemand(task.id, task.profileId, requirements, lang).catch((err) => {
+          console.warn(`[agent] demand not opened: ${(err as Error).message}`);
+          return null;
+        })
+      : null;
     const written = await writing;
     trace.resync(await lastSeq(task.id));
     if (asked.size > 0) {
@@ -363,7 +382,7 @@ export async function runTurn(taskId: string): Promise<void> {
     }
     if (written?.why.size) shortlist = shortlist.map((s, i) => (written.why.has(`h${i + 1}`) ? { ...s, why: written.why.get(`h${i + 1}`) } : s));
     // The reply message, finished: the written text (when it passed the guard) replaces the pending mark.
-    const finalAnswer: AgentMessage = { ...answer, pendingText: undefined, ...(written?.reply ? { text: written.reply } : {}) };
+    const finalAnswer: AgentMessage = { ...answer, pendingText: undefined, ...(written?.reply ? { text: written.reply } : {}), ...(demand ? { demand: true, asked: demand.asked } : {}) };
 
     await trace.recordMany([
       ...(written?.reply || written?.why.size ? [["reply_written", "done", { lines: written.why.size }] as [EventKind, StepStatus, Record<string, unknown>]] : []),
@@ -373,7 +392,7 @@ export async function runTurn(taskId: string): Promise<void> {
       where: { id: task.id },
       data: {
         ...(asked.size > 0 || written?.why.size ? { shortlist: json(shortlist) } : {}),
-        ...(willWrite ? { messages: json([...messages, finalAnswer]) } : {}),
+        ...(willWrite || demand ? { messages: json([...messages, finalAnswer]) } : {}),
         status: asked.size > 0 ? "WAITING" : "DONE",
       },
     });

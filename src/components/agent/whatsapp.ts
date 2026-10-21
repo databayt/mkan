@@ -1,65 +1,29 @@
 import "server-only";
 
 /**
- * Outbound WhatsApp for the rental agent — Evolution API when mkan has a paired
- * instance, a #mkan Slack card with a one-tap wa.me link when it does not.
+ * Outbound WhatsApp for the rental agent.
  *
- * Evolution (the Baileys bridge hogwarts embeds) is switched on by three env
- * vars; any missing one, any failure, or the daily cap reached falls back to
- * the human lane rather than dropping the message:
- *   MKAN_EVOLUTION_URL       e.g. http://127.0.0.1:8080 (no trailing slash)
- *   MKAN_EVOLUTION_KEY       the instance's `apikey`
- *   MKAN_EVOLUTION_INSTANCE  the paired instance name (a phone scanned its QR)
- *   MKAN_EVOLUTION_DAILY_CAP optional, default 40 — a fresh number that sends
- *                            too much to strangers gets banned by WhatsApp
+ * With `MKAN_WA_OUTBOX=1` every message is a row in `OutboundMessage`: the
+ * Worker cannot reach the Evolution instance on the Mac, so the Mac drains the
+ * outbox (`scripts/wa/outbox.ts`) under its caps — a daily total, one message
+ * per broker per day, quiet hours — and falls back to a #mkan wa.me card
+ * itself after three failed tries.
+ *
+ * Without it (the line is not paired yet) a #mkan Slack card with a one-tap
+ * wa.me link goes out at once, and outbox rows are still written as SKIPPED so
+ * the funnel counts every ask.
  * Slack: SLACK_BOT_TOKEN + SLACK_HOME_CHANNEL (default #mkan).
  */
+import type { OutboundKind } from "@prisma/client";
 import { db } from "@/lib/db";
 import { waLink } from "../../../scripts/crm/public-links";
 
-const DEFAULT_DAILY_CAP = 40;
 const DEFAULT_SLACK_CHANNEL = "C0BS2NZE2AY";
-const TIMEOUT_MS = 10_000;
 
-export type SendChannel = "evolution" | "manual";
+/** "queued": the Mac sends it; "manual": a person taps the wa.me link in #mkan. */
+export type SendChannel = "queued" | "manual";
 
-function evolutionConfig() {
-  const url = process.env.MKAN_EVOLUTION_URL?.trim().replace(/\/+$/, "");
-  const key = process.env.MKAN_EVOLUTION_KEY?.trim();
-  const instance = process.env.MKAN_EVOLUTION_INSTANCE?.trim();
-  return url && key && instance ? { url, key, instance } : null;
-}
-
-async function underDailyCap(): Promise<boolean> {
-  const cap = Number(process.env.MKAN_EVOLUTION_DAILY_CAP) || DEFAULT_DAILY_CAP;
-  const since = new Date();
-  since.setUTCHours(0, 0, 0, 0);
-  // Requests of one message share a sentAt, so count distinct send instants.
-  const sends = await db.brokerRequest.groupBy({ by: ["brokerUserId", "sentAt"], where: { channel: "evolution", sentAt: { gte: since } } });
-  return sends.length < cap;
-}
-
-async function sendEvolution(phone: string, text: string): Promise<boolean> {
-  const cfg = evolutionConfig();
-  if (!cfg || !(await underDailyCap())) return false;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(`${cfg.url}/message/sendText/${encodeURIComponent(cfg.instance)}`, {
-      method: "POST",
-      signal: controller.signal,
-      headers: { "Content-Type": "application/json", apikey: cfg.key },
-      body: JSON.stringify({ number: phone.replace(/[^\d]/g, ""), text }),
-    });
-    if (!res.ok) console.warn(`[agent] evolution ${res.status} — falling back to the manual lane`);
-    return res.ok;
-  } catch (err) {
-    console.warn(`[agent] evolution failed — falling back to the manual lane: ${(err as Error).message}`);
-    return false;
-  } finally {
-    clearTimeout(timer);
-  }
-}
+const outboxOn = () => process.env.MKAN_WA_OUTBOX?.trim() === "1";
 
 async function postSlackCard(text: string): Promise<void> {
   const token = process.env.SLACK_BOT_TOKEN?.trim();
@@ -76,12 +40,48 @@ async function postSlackCard(text: string): Promise<void> {
   if (!json?.ok) console.warn(`[agent] slack: ${json?.error ?? "unreachable"}`);
 }
 
+export interface Outgoing {
+  kind: OutboundKind;
+  to: string;
+  body: string;
+  /** Who it is for, on the Slack card: "@handle", an agency name, "tenant". */
+  label: string;
+  brokerId?: string | null;
+  tenantRequestId?: string | null;
+  brokerRequestIds?: string[];
+  tokenHash?: string | null;
+}
+
 /**
- * Send one message to a broker. Returns the lane it went through; "manual"
- * means a person must tap the wa.me link in #mkan before the broker sees it.
+ * Send several messages. Queued for the Mac when the outbox is on; otherwise
+ * one #mkan card carries every wa.me link, under `heading`.
  */
-export async function sendToBroker(phone: string, text: string, label: string): Promise<SendChannel> {
-  if (await sendEvolution(phone, text)) return "evolution";
-  await postSlackCard(`:house: *Rental agent → ${label}* — tap to send on WhatsApp:\n${waLink(phone, text)}`);
+export async function sendMessages(messages: Outgoing[], heading: string): Promise<SendChannel> {
+  if (messages.length === 0) return outboxOn() ? "queued" : "manual";
+  const on = outboxOn();
+  await db.outboundMessage.createMany({
+    data: messages.map((m) => ({
+      kind: m.kind,
+      to: m.to,
+      body: m.body,
+      label: m.label,
+      brokerId: m.brokerId ?? null,
+      tenantRequestId: m.tenantRequestId ?? null,
+      brokerRequestIds: m.brokerRequestIds ?? [],
+      tokenHash: m.tokenHash ?? null,
+      ...(on ? {} : { status: "SKIPPED" as const, error: "manual: slack card" }),
+    })),
+  });
+  if (on) return "queued";
+  const lines = messages.map((m) => `• *${m.label}* — ${waLink(m.to, m.body)}`);
+  await postSlackCard(`:house: *${heading}* — tap to send on WhatsApp:\n${lines.join("\n")}`);
   return "manual";
+}
+
+/**
+ * Send one message to a broker about homes already on Mkan (availability, a
+ * chosen viewing time). Returns the lane it went through.
+ */
+export async function sendToBroker(phone: string, text: string, label: string, brokerRequestIds: string[] = []): Promise<SendChannel> {
+  return sendMessages([{ kind: "BROKER_REQUEST", to: phone, body: text, label, brokerRequestIds }], `Rental agent → ${label}`);
 }

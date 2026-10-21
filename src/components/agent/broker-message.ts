@@ -57,3 +57,26 @@ export function viewingChosenMessage(title: string, slotLabel: string, link: str
     `Umukiriya yahisemo ${slotLabel} gusura inzu. Emeza hano:`,
   ].join("\n");
 }
+
+/**
+ * Nothing on Mkan fits a tenant: ask a broker who works the area whether they
+ * have a home. One link to submit it; a plain WhatsApp reply works too.
+ */
+export function demandMessage(name: string | null, need: { en: string; rw: string }, link: string): string {
+  return [
+    `${name ? `Hello ${name}` : "Hello"}, this is Mkan (mkan.sd).`,
+    `A tenant is looking for ${need.en} and nothing we list fits. Do you have one? Send it here (price, rooms, place) or reply with photos:`,
+    link,
+    "",
+    `Muraho! Umukiriya arashaka ${need.rw}. Ufite inzu imeze ityo? Yohereze hano cyangwa usubize n'amafoto.`,
+    "",
+    "Reply STOP to receive no more requests. / Andika HAGARIKA.",
+  ].join("\n");
+}
+
+/** To a tenant who left their number: homes for their search have come in. */
+export function tenantAlertMessage(lang: string, count: number, link: string): string {
+  if (lang === "ar") return `مكان: وجدنا ${count === 1 ? "منزلاً جديداً" : `${count} منازل جديدة`} لبحثك في كيغالي.\n${link}`;
+  if (lang === "rw") return `Mkan: twabonye ${count === 1 ? "inzu nshya" : `amazu ${count} mashya`} ahuye n'ibyo washakaga i Kigali.\n${link}`;
+  return `Mkan: ${count === 1 ? "a new home has" : `${count} new homes have`} come in for your Kigali search.\n${link}\n\nReply STOP to stop these alerts.`;
+}

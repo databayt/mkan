@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { usePicksLabel, Wizard, type Picks } from "./wizard";
 import { AskCard } from "./ask-card";
 import { Composer } from "./composer";
+import { DemandCard } from "./demand-card";
 import { noteHomeFeedback } from "./feedback-actions";
 import { roundPrice } from "./fields";
 import { ChatHeader, headerButton } from "./header";
@@ -177,6 +178,10 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
 
                   {m.kind === "shortlist" && !running && (
                     <Refine message={m} requirements={task.requirements} onPick={(text, filters, clear) => void say(text, false, filters, clear)} disabled={pending} />
+                  )}
+
+                  {(m.kind === "none" || m.kind === "shortlist") && m.demand && task.demand && !running && (
+                    <DemandCard taskId={task.id} optedIn={task.demand.optedIn} onDone={refresh} />
                   )}
 
                   {!running && (

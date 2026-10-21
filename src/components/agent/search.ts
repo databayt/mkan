@@ -74,7 +74,9 @@ const DISPLAY_SELECT = {
 } satisfies Prisma.ListingSelect;
 
 /** An unpublished TikTok home the agent may offer as a broker lead (never in public search). */
-const isLead = (row: { isPublished: boolean; source: string | null }) => !row.isPublished && row.source === "TIKTOK";
+/** Broker ads mirrored as unpublished leads: TikTok, Facebook groups, web classifieds and homes brokers sent us. */
+export const LEAD_SOURCES = ["TIKTOK", "FACEBOOK", "WEB"] as const;
+const isLead = (row: { isPublished: boolean; source: string | null }) => !row.isPublished && (LEAD_SOURCES as readonly string[]).includes(row.source ?? "");
 
 
 function priceWhere(r: Requirements): Prisma.ListingWhereInput {
@@ -98,13 +100,13 @@ function placeWhere(r: Requirements): Prisma.ListingWhereInput[] {
     out.push({
       OR: [
         { location: boxAround([[hood.lat, hood.lng]], NEIGHBOURHOOD_RADIUS_KM) },
-        { source: "TIKTOK", location: { address: { contains: hood.name, mode: "insensitive" } } },
+        { source: { in: [...LEAD_SOURCES] }, location: { address: { contains: hood.name, mode: "insensitive" } } },
       ],
     });
   }
   // Leads carry a district-centre pin that says nothing about distance — they stay in, scored neutrally.
-  if (r.area) out.push({ OR: [{ location: boxAround(AREAS[r.area].points, AREAS[r.area].radiusKm) }, { source: "TIKTOK" }] });
-  if (r.near) out.push({ OR: [{ location: boxAround([[r.near.lat, r.near.lng]], NEAR_POOL_KM) }, { source: "TIKTOK" }] });
+  if (r.area) out.push({ OR: [{ location: boxAround(AREAS[r.area].points, AREAS[r.area].radiusKm) }, { source: { in: [...LEAD_SOURCES] } }] });
+  if (r.near) out.push({ OR: [{ location: boxAround([[r.near.lat, r.near.lng]], NEAR_POOL_KM) }, { source: { in: [...LEAD_SOURCES] } }] });
   if (r.compound) out.push({ propertyType: { in: ["Villa", "Townhouse", "Cottage"] } });
   if (r.bathrooms != null) out.push({ OR: [{ bathrooms: null }, { bathrooms: { gte: r.bathrooms } }] });
   return out;
@@ -125,7 +127,7 @@ export async function searchKigali(
     r.stay === "short"
       ? { isPublished: true, draft: false }
       : // A lead whose video was taken down loses its link (crm:hygiene) — and with it, its place here.
-        { OR: [{ isPublished: true, draft: false }, { source: "TIKTOK", rentPeriod: "MONTHLY", sourceUrl: { not: null } }] };
+        { OR: [{ isPublished: true, draft: false }, { source: { in: [...LEAD_SOURCES] }, rentPeriod: "MONTHLY", sourceUrl: { not: null } }] };
   const where: Prisma.ListingWhereInput = {
     AND: [visible, priceWhere(r), ...placeWhere(r)],
     currency: "RWF",

@@ -102,8 +102,9 @@ async function sendGrouped(
 ): Promise<{ broker: string | null; count: number; channel: string }[]> {
   return Promise.all(
     [...groups.values()].map(async (m) => {
-      const channel = await sendToBroker(m.phone, availabilityMessage(m.handle, need, m.homes), m.handle ? `@${m.handle}` : m.phone);
-      await db.brokerRequest.updateMany({ where: { id: { in: m.ids } }, data: { channel, sentAt: channel === "evolution" ? new Date() : null } });
+      const channel = await sendToBroker(m.phone, availabilityMessage(m.handle, need, m.homes), m.handle ? `@${m.handle}` : m.phone, m.ids);
+      // "queued": the Mac's outbox stamps channel "evolution" and sentAt once it really went out.
+      await db.brokerRequest.updateMany({ where: { id: { in: m.ids } }, data: { channel, sentAt: null } });
       return { broker: m.handle ? `@${m.handle}` : null, count: m.homes.length, channel };
     }),
   );
