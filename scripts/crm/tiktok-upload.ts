@@ -83,42 +83,70 @@ async function connect() {
 
 /** TikTok Studio throws tours and "turn on content checks?" prompts; none of them is the post. */
 async function dismissPrompts(p: Page): Promise<void> {
-  for (const name of [/^got it$/i, /^not now$/i, /^skip$/i, /^cancel$/i, /^close$/i]) {
-    const b = p.getByRole('dialog').getByRole('button', { name });
-    if (await b.first().isVisible().catch(() => false)) await b.first().click().catch(() => {});
+  // Feature tours (react-joyride) lay an overlay over the whole form.
+  for (let i = 0; i < 6 && (await p.locator('.react-joyride__overlay, .react-joyride__tooltip').first().isVisible().catch(() => false)); i++) {
+    const skip = p.locator('.react-joyride__tooltip button').filter({ hasText: /skip|got it|done|close|next/i }).last();
+    if (await skip.isVisible().catch(() => false)) await skip.click({ force: true }).catch(() => {});
+    else await p.keyboard.press('Escape');
+    await p.waitForTimeout(800);
   }
+  await p.evaluate(() => document.getElementById('react-joyride-portal')?.remove()).catch(() => {});
+  const modal = p.locator('.TUXModal-overlay, [role="dialog"]');
+  for (let i = 0; i < 4 && (await modal.first().isVisible().catch(() => false)); i++) {
+    const m = modal.first();
+    const text = await m.innerText().catch(() => '');
+    // The copyright/muted-music check is worth having; every other prompt is a tour.
+    const name = /content checks/i.test(text) ? /^turn on$/i : /^(got it|not now|skip|close|cancel)$/i;
+    const b = m.getByRole('button', { name }).first();
+    if (!(await b.isVisible().catch(() => false))) break;
+    await b.click().catch(() => {});
+    await p.waitForTimeout(1000);
+  }
+}
+
+/** A run that died mid-upload leaves a draft banner: discard it so the new file takes. */
+async function discardDraft(p: Page): Promise<void> {
+  const discard = p.getByRole('button', { name: /^discard$/i });
+  if (!(await discard.first().isVisible().catch(() => false))) return;
+  await discard.first().click();
+  await p.waitForTimeout(1000);
+  const confirm = p.locator('.TUXModal-overlay, [role="dialog"]').getByRole('button', { name: /^discard$/i });
+  if (await confirm.first().isVisible().catch(() => false)) await confirm.first().click();
+  await p.waitForTimeout(1500);
 }
 
 async function setCaption(p: Page, text: string): Promise<void> {
   const box = p.locator('.public-DraftEditor-content, div[contenteditable="true"]').first();
   await box.waitFor({ timeout: 60_000 });
+  await dismissPrompts(p);
   await box.click();
   // The editor starts with the file name in it.
   await p.keyboard.press('Meta+A');
   await p.keyboard.press('Backspace');
-  const lines = text.trim().split('\n');
-  for (const [i, line] of lines.entries()) {
-    await p.keyboard.insertText(line);
-    // A hashtag/mention opens a suggestion list that would eat the next Enter.
-    if (/[#@]\S+$/.test(line)) {
-      await p.waitForTimeout(800);
-      await p.keyboard.press('Escape').catch(() => {});
-    }
-    if (i < lines.length - 1) await p.keyboard.press('Shift+Enter');
-  }
+  // Draft.js ignores synthetic input events but takes a paste whole — newlines, emoji, hashtags.
+  await box.evaluate((el, t) => {
+    const dt = new DataTransfer();
+    dt.setData('text/plain', t);
+    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  }, text.trim());
+  await p.waitForTimeout(1000);
+  await p.keyboard.press('Escape').catch(() => {}); // a trailing hashtag opens the suggestion list
+  const got = (await box.innerText()).trim();
+  const first = text.trim().split('\n')[0]!.trim();
+  if (!got.startsWith(first)) throw new Error(`caption did not take — the box reads "${got.slice(0, 60)}"`);
 }
 
 async function setAigc(p: Page): Promise<void> {
   const more = p.getByText(/^show more$/i).first();
   if (await more.isVisible().catch(() => false)) await more.click();
-  const row = p.locator('div', { hasText: /AI-generated content/i }).last();
-  await row.waitFor({ timeout: 15_000 });
-  const sw = row.locator('[role="switch"], input[type="checkbox"]').first();
-  const on = (await sw.getAttribute('aria-checked').catch(() => null)) === 'true' || (await sw.isChecked().catch(() => false));
-  if (!on) await sw.click({ force: true });
+  const sw = p.locator('[data-e2e="aigc_container"] .Switch__content').first();
+  await sw.waitFor({ timeout: 15_000 });
+  if ((await sw.getAttribute('aria-checked')) !== 'true') await sw.click();
   // First time on, TikTok explains the label in a dialog.
-  const turnOn = p.getByRole('button', { name: /^turn on$/i });
+  const turnOn = p.locator('.TUXModal-overlay, [role="dialog"]').getByRole('button', { name: /^turn on$/i });
   if (await turnOn.first().isVisible({ timeout: 3000 }).catch(() => false)) await turnOn.first().click();
+  await p.waitForTimeout(800);
+  if ((await sw.getAttribute('aria-checked')) !== 'true') throw new Error('the AI-generated label would not switch on — not posting an unlabelled AI voice');
 }
 
 async function postOne(p: Page, piece: Piece): Promise<string> {
@@ -127,9 +155,13 @@ async function postOne(p: Page, piece: Piece): Promise<string> {
     await p.waitForTimeout(6000);
     if (/\/login/.test(p.url())) throw new Error(`the vault Chrome is logged out of TikTok — scan the QR at ${UPLOAD_URL} with @${PAGE} on the phone`);
   }
+  await discardDraft(p);
   await p.locator('input[type=file]').first().setInputFiles(piece.mp4);
+  await p.locator('.public-DraftEditor-content, div[contenteditable="true"]').first().waitFor({ timeout: 60_000 });
+  await p.waitForTimeout(3000);
   await dismissPrompts(p);
   await setCaption(p, piece.caption);
+  await dismissPrompts(p);
   if (piece.aigc) await setAigc(p);
   await dismissPrompts(p);
 
@@ -161,7 +193,10 @@ async function main(): Promise<void> {
   if (!due.length) return void console.log(pieces.length ? `all ${pieces.length} pieces for ${date} already posted` : `nothing rendered for ${date} — run tt:run`);
 
   const browser = await connect();
+  for (const old of browser.contexts()[0]!.pages()) if (old.url().includes('tiktokstudio/upload')) await old.close().catch(() => {});
   const page = await browser.contexts()[0]!.newPage();
+  // The vault window can be narrow; Studio hides the post form's side panel below desktop width.
+  await page.setViewportSize({ width: 1440, height: 900 });
   const ledger = readJson<Ledger>(LEDGER, {});
   const lines: string[] = [];
   let ok = 0;
@@ -185,7 +220,7 @@ async function main(): Promise<void> {
     }
   } finally {
     if (!dry) writeFileSync(LEDGER, JSON.stringify(ledger, null, 2));
-    await page.close().catch(() => {});
+    if (!dry) await page.close().catch(() => {}); // a dry run leaves the filled form open to look at
     await browser.close().catch(() => {}); // detaches; the vault Chrome keeps running
   }
   if (dry) return;
