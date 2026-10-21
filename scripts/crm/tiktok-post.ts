@@ -6,7 +6,7 @@
  *   pnpm tt:render [--id=5771] [--slideshow]   9:16 branded video per queued home (or one listing, for a look):
  *                                   the broker's own video enhanced, else a photo slideshow
  *   pnpm tt:carousel [--dry]        today's data carousel (facts only, any home) → slides + caption
- *   pnpm tt:datavideo [--notify]    the carousel as a narrated video (AI stock voice via kun media.sh voice)
+ *   pnpm tt:datavideo [--notify]    the carousel as a picture video: photos on the beat of mkan's track, no voice
  *   pnpm tt:card                    upload each video + its caption to Slack #mkan
  *   pnpm tt:posted <ref> <url>      the poster's receipt: the home rests 30 days
  *   pnpm tt:stats [--notify]        views / likes of our posts, read back by yt-dlp
@@ -44,13 +44,12 @@ import {
   brokerAsk,
   brokerHandle,
   brokerVideoUrl,
+  beatHolds,
   captionFor,
   carouselCaption,
   carouselCoverSvg,
   carouselEndSvg,
   carouselHomeSvg,
-  carouselNarration,
-  slideHolds,
   type CarouselTheme,
   cornerSvg,
   endCardSvg,
@@ -62,6 +61,12 @@ import {
   stingSvg,
   pickCarousel,
   pickToday,
+  pickStock,
+  photoCoverSvg,
+  photoCredits,
+  photoEndSvg,
+  photoHomeSvg,
+  type StockPhoto,
   refInText,
   refOf,
   timeline,
@@ -568,7 +573,7 @@ async function carousel(): Promise<string[]> {
 // ── voiced data video ────────────────────────────────────────────────────────
 const MEDIA_SH = () => join(KUN, '.claude/skills/edit/scripts/media.sh');
 
-/** The delivery encode every piece shares, with the direct-encode fallback. */
+/** The delivery encode every piece shares, with the direct-encode fallback (audio is mixed and levelled upstream, so it is copied). */
 function reelEncode(mezz: string, out: string): void {
   if (existsSync(MEDIA_SH())) {
     try {
@@ -578,71 +583,111 @@ function reelEncode(mezz: string, out: string): void {
       console.warn(`  … reel profile declined (${String((e as { stderr?: string }).stderr ?? '').trim().split('\n').pop()}) — encoding directly`);
     }
   }
-  ffmpeg(['-i', mezz, '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-profile:v', 'high', '-maxrate', '8M', '-bufsize', '16M', '-pix_fmt', 'yuv420p', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', out]);
+  ffmpeg(['-i', mezz, '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-profile:v', 'high', '-maxrate', '8M', '-bufsize', '16M', '-pix_fmt', 'yuv420p', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-c:a', 'copy', '-movflags', '+faststart', out]);
 }
 
 /**
- * Today's carousel as a narrated video → `<date>/carousel/video.mp4`: each
- * slide holds for its line, with a slow push-in and crossfades. The voice is a
- * Google stock voice (kun `media.sh voice gen`, one request for the whole
- * script, cached by text) and the caption says so.
+ * Today's carousel as a picture video → `<date>/carousel/video.mp4`: no voice,
+ * mkan's music track (kun brand-kit production.mkan.audio), every slide a
+ * photograph — the home's own photo when we may post it, else a reviewed CC
+ * photo of Kigali tagged "area photo" — under a transparent overlay, cut on the
+ * beat. The photo drifts in; the type stays still.
  */
 async function dataVideo(): Promise<string | null> {
   const dir = join(dayDir(), 'carousel');
   if (!existsSync(join(dir, 'meta.json'))) await carousel();
   if (!existsSync(join(dir, 'meta.json'))) return null;
   const { theme, homes } = JSON.parse(readFileSync(join(dir, 'meta.json'), 'utf8')) as { theme: CarouselTheme; homes: PostRow[] };
-  const slides = Array.from({ length: homes.length + 2 }, (_, i) => join(dir, `${i + 1}.jpg`));
-  if (!slides.every((f) => existsSync(f))) throw new Error('carousel slides missing — run tt:carousel');
-  const lines = carouselNarration(theme, homes);
-  const work = join(dir, '.voice');
+  const bed = join(KUN, 'public/brands/mkan-bed.m4a');
+  if (!existsSync(bed)) throw new Error(`no music bed at ${bed} — kun brand-kit production.mkan.audio`);
+  const work = join(dir, '.video');
   mkdirSync(work, { recursive: true });
-  const script = join(work, 'script.json');
-  writeFileSync(script, JSON.stringify({ engine: 'gemini', voice: 'Charon', lang: 'en', style: 'warm, upbeat and clear, like a friendly local rental agent; steady pace on numbers', lines }, null, 2));
-  try {
-    execFileSync('bash', [MEDIA_SH(), 'voice', 'gen', script, '--out', work], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 600_000 });
-  } catch (e) {
-    throw new Error(`voice: ${String((e as { stderr?: string }).stderr ?? (e as Error).message).trim().split('\n').pop()}`);
+
+  // Pictures: a home's own photo only when it may be posted; area photos fill the rest.
+  const consented = await consentedHandles();
+  const own = (r: PostRow): string | null => {
+    const ok = r.source !== 'TIKTOK' || consented.has(brokerHandle(r.hostSourceId) ?? '');
+    return ok && r.photoUrls[0] ? r.photoUrls[0] : null;
+  };
+  const stockAll = (JSON.parse(readFileSync(join(__dirname, 'stock', 'kigali.json'), 'utf8')) as { photos: StockPhoto[] }).photos;
+  const used = existsSync(STOCK_USED) ? (JSON.parse(readFileSync(STOCK_USED, 'utf8')) as Record<string, string>) : {};
+  const ownHome = homes.map(own);
+  const stock = pickStock(stockAll, used, 2 + ownHome.filter((u) => !u).length);
+  let si = 0;
+  const frames: { src: string; area: boolean; overlay: string }[] = [
+    { src: '', area: true, overlay: '' },
+    ...homes.map((r, i) => ({ src: ownHome[i] ?? '', area: !ownHome[i], overlay: '' })),
+    { src: '', area: true, overlay: '' },
+  ];
+  for (const f of frames) if (!f.src) f.src = stock[si++]!.url;
+  frames[0]!.overlay = photoCoverSvg(theme, homes.length, frames[0]!.area);
+  homes.forEach((r, i) => (frames[i + 1]!.overlay = photoHomeSvg(r, i + 1, homes.length, frames[i + 1]!.area)));
+  frames[frames.length - 1]!.overlay = photoEndSvg(whatsapp());
+
+  const inputs: string[] = [];
+  for (const [i, f] of frames.entries()) {
+    const photo = join(work, `p${i}.jpg`);
+    const buf = await fetchPhoto(f.src);
+    await sharp(buf).rotate().resize(W * 2, H * 2, { fit: 'cover', position: 'attention' }).jpeg({ quality: 92 }).toFile(photo);
+    const ov = join(work, `o${i}.png`);
+    await sharp(Buffer.from(f.overlay)).png().toFile(ov);
+    inputs.push(photo, ov);
   }
-  const voice = JSON.parse(readFileSync(join(work, 'voice.json'), 'utf8')) as { captionsOnly?: boolean; reason?: string; lines: { ok: boolean; duration?: number }[] };
-  if (voice.captionsOnly) throw new Error(`voice: ${voice.reason}`);
-  const holds = slideHolds(voice.lines.map((l) => (l.ok ? l.duration ?? 0 : 0)));
+
+  const holds = beatHolds(homes.length);
   const FADE = 0.3;
   const starts: number[] = [];
   holds.reduce((t, h, i) => (starts.push(+t.toFixed(3)), t + h - (i < holds.length - 1 ? FADE : 0)), 0);
   const total = +(starts[starts.length - 1]! + holds[holds.length - 1]!).toFixed(3);
-
-  const f: string[] = slides.map((_, i) => {
-    const frames = Math.round(holds[i]! * 30);
-    return `[${i}:v]scale=${W * 2}:${H * 2},zoompan=z='min(zoom+0.0006,1.06)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=30,setsar=1,format=yuv420p[v${i}]`;
+  const f: string[] = frames.map((_, i) => {
+    const n = Math.round(holds[i]! * 30);
+    return `[${2 * i}:v]zoompan=z='min(zoom+0.0009,1.10)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${n}:s=${W}x${H}:fps=30,setsar=1[z${i}];[z${i}][${2 * i + 1}:v]overlay=0:0,format=yuv420p,trim=duration=${holds[i]}[v${i}]`;
   });
   let last = 'v0';
-  for (let i = 1; i < slides.length; i++) {
+  for (let i = 1; i < frames.length; i++) {
     f.push(`[${last}][v${i}]xfade=transition=fade:duration=${FADE}:offset=${starts[i]}[x${i}]`);
     last = `x${i}`;
   }
   const silent = join(work, 'silent.mp4');
-  ffmpeg([...slides.flatMap((p) => ['-loop', '1', '-i', p]), '-filter_complex', f.join(';'), '-map', `[${last}]`, '-t', String(total), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-pix_fmt', 'yuv420p', silent]);
-
-  const cues = join(work, 'cues.json');
-  writeFileSync(cues, JSON.stringify(starts.map((start) => ({ start }))));
-  const wav = join(work, 'voice.wav');
-  execFileSync('bash', [MEDIA_SH(), 'voice', 'mix', join(work, 'voice.json'), '--cues', cues, '--duration', String(total), '--out', wav, '--lead', '0.3'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  ffmpeg([...inputs.flatMap((p) => ['-loop', '1', '-i', p]), '-filter_complex', f.join(';'), '-map', `[${last}]`, '-t', String(total), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-pix_fmt', 'yuv420p', silent]);
   const mezz = join(work, 'mezz.mp4');
-  ffmpeg(['-i', silent, '-i', wav, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', mezz]);
+  ffmpeg(['-i', silent, '-i', bed, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-af', `afade=t=in:d=0.4,afade=t=out:st=${(total - 1.8).toFixed(2)}:d=1.8,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000,alimiter=limit=0.79:level=false`, '-ar', '48000', '-c:a', 'aac', '-b:a', '192k', '-t', String(total), mezz]);
   const out = join(dir, 'video.mp4');
   reelEncode(mezz, out);
-  const caption = carouselCaption(theme, homes, whatsapp()).replace(/\n\n(#)/, '\n🔊 AI voice\n\n$1');
+
+  const area = frames.some((x) => x.area);
+  const caption = carouselCaption(theme, homes, whatsapp()).replace(/\n\n(#)/, `\n${area ? photoCredits(stock) + '\n' : ''}🎵 Music: mkan (AI-generated)\n\n$1`);
   writeFileSync(join(dir, 'video-caption.txt'), caption);
+  const at = new Date().toISOString();
+  for (const p of stock) used[p.id] = at;
+  writeFileSync(STOCK_USED, JSON.stringify(used, null, 2));
   rmSync(work, { recursive: true, force: true });
-  console.log(`  🎙  ${theme.title} — ${total.toFixed(1)} s → ${out}`);
+  console.log(`  🎬 ${theme.title} — ${total.toFixed(1)} s, ${frames.filter((x) => !x.area).length} home photos + ${stock.length} area photos → ${out}`);
 
   if (flag('notify')) {
     const url = await cdnCopy(out, `${argv('date', today())}/datavideo-${theme.slug}-${refOf(homes[0]!)}.mp4`);
-    if (url) await postToMkan([`🎙 *TikTok @${PAGE} voiced video — ${theme.title}* (${total.toFixed(0)} s, AI voice). Save it, post it, paste the caption — keep TikTok's AI-generated label on.`, url, '```' + caption + '```'].join('\n'));
+    if (url) await postToMkan([`🎬 *TikTok @${PAGE} video — ${theme.title}* (${total.toFixed(0)} s, photos + mkan track). Posts itself at the end of this run.`, url, '```' + caption + '```'].join('\n'));
     else console.warn('  ! data video: CDN upload failed — not posted to Slack');
   }
   return out;
+}
+
+const STOCK_USED = join(DATA, 'stock-used.json');
+const STOCK_CACHE = join(DATA, 'stock');
+
+/** A photo by URL: Commons originals are cached on disk (they are big and never change). */
+async function fetchPhoto(url: string): Promise<Buffer> {
+  const commons = url.includes('upload.wikimedia.org');
+  const cached = commons ? join(STOCK_CACHE, url.split('/').pop()!) : '';
+  if (cached && existsSync(cached)) return readFileSync(cached);
+  const res = await fetch(url, { headers: { 'User-Agent': 'mkan-tiktok/1.0 (https://mkan.sd; osman@databayt.org)' } });
+  if (!res.ok) throw new Error(`photo ${res.status}: ${url}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (cached) {
+    mkdirSync(STOCK_CACHE, { recursive: true });
+    writeFileSync(cached, buf);
+  }
+  return buf;
 }
 
 // ── main ─────────────────────────────────────────────────────────────────────
@@ -670,7 +715,7 @@ async function main(): Promise<void> {
         const sent = outs.length ? await card() : 0;
         // The carousel goes out every day: facts only, so it never waits on a broker's YES.
         const slides = await carousel();
-        // The voiced cut of the same carousel; a spent voice quota costs the video, not the run.
+        // The picture video of the same carousel; a failed render costs the video, not the run.
         if (slides.length) await dataVideo().catch((e) => console.warn(`  ! data video: ${(e as Error).message}`));
         if (!picked.length && !slides.length && flag('notify')) await postToMkan(`🎬 TikTok @${PAGE}: nothing to post today — brokers to ask: \`pnpm tt:ask\``);
         await recordRun('tiktok-post', outs.length === picked.length, `${picked.length} picked, ${outs.length} rendered, ${sent} sent`);

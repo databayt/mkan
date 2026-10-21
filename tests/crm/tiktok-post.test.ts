@@ -4,6 +4,11 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+  beatHolds,
+  photoCredits,
+  photoHomeSvg,
+  pickStock,
+  type StockPhoto,
   brokerAsk,
   captionFor,
   carouselCaption,
@@ -201,5 +206,32 @@ describe('voiced data video', () => {
   });
   it('holds each slide for its line plus room, never too short', () => {
     expect(slideHolds([5, 1, 0])).toEqual([5.7, 2.5, 2.5]);
+  });
+});
+
+describe('picture video', () => {
+  const photo = (id: string, artist: string, license: string): StockPhoto => ({ id, label: id, title: id, license, artist, page: '', url: `https://upload.wikimedia.org/x/${id}.jpg` });
+
+  it('cuts on the beat: cover 4 beats, homes and end card 8', () => {
+    expect(beatHolds(2, 120)).toEqual([2, 4, 4, 4]);
+    expect(beatHolds(5)).toHaveLength(7);
+  });
+
+  it('rotates area photos, never-used first', () => {
+    const all = [photo('a', 'X', 'CC0'), photo('b', 'Y', 'CC0'), photo('c', 'Z', 'CC0')];
+    expect(pickStock(all, { a: '2026-10-20T00:00:00Z' }, 2).map((p) => p.id)).toEqual(['b', 'c']);
+    expect(pickStock(all, { a: '2026-10-20', b: '2026-10-19', c: '2026-10-21' }, 1).map((p) => p.id)).toEqual(['b']);
+  });
+
+  it('credits each author once with their licences, and says the photos are not the homes', () => {
+    const line = photoCredits([photo('a', 'Ann', 'CC BY 2.0'), photo('b', 'Ann', 'CC BY 2.0'), photo('c', 'Bo', 'CC0')]);
+    expect(line).toContain('not the listed homes');
+    expect(line).toContain('Ann (CC BY 2.0), Bo (CC0)');
+  });
+
+  it('tags an area photo on screen, and not a home photo', () => {
+    const r = { id: 1, code: null, source: 'MANUAL' as const, priceMonth: 300000, bedrooms: 2, bathrooms: 1, propertyType: null, photoUrls: [], area: 'Kimihurura', district: 'Gasabo', hostSourceId: null };
+    expect(photoHomeSvg(r, 1, 5, true)).toContain('area photo');
+    expect(photoHomeSvg(r, 1, 5, false)).not.toContain('area photo');
   });
 });

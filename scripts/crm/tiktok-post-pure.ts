@@ -12,7 +12,7 @@
 export interface PostRow {
   id: number;
   code: string | null;
-  source: 'AIRBNB' | 'FACEBOOK' | 'MANUAL' | 'TIKTOK' | null;
+  source: 'AIRBNB' | 'FACEBOOK' | 'MANUAL' | 'TIKTOK' | 'WEB' | null;
   priceMonth: number | null;
   bedrooms: number | null;
   bathrooms: number | null;
@@ -503,4 +503,100 @@ export function timeline(n: number, slide = 2.6, fade = 0.4, end = 3): { offsets
 export function refInText(text: string | null | undefined): string | null {
   const m = (text ?? '').match(/"(K\d+|\d{4}-\d{2})"/) ?? (text ?? '').match(/\b(K\d{2,}|\d{4}-\d{2})\b/);
   return m?.[1] ?? null;
+}
+
+// ── picture video ────────────────────────────────────────────────────────────
+//
+// The daily video since 2026-10-21: no narration, mkan's music track, and every
+// frame a photograph — the home's own photo when we may post it (an owner's or
+// field agent's listing, or a broker who said YES), otherwise a hand-reviewed
+// CC0 / CC BY photo of Kigali, tagged on screen as an area photo. The overlay
+// is a transparent SVG over that photo; slides change on the track's beat.
+
+/** The mkan bed is generated at this tempo (kun brand-kit production.mkan.audio). */
+export const BED_BPM = 112;
+
+/** Slide holds on the beat grid: the cover 4 beats, each home and the end card 8. */
+export function beatHolds(homes: number, bpm = BED_BPM): number[] {
+  const beat = 60 / bpm;
+  return [4, ...Array.from({ length: homes }, () => 8), 8].map((b) => +(b * beat).toFixed(3));
+}
+
+export interface StockPhoto {
+  id: string;
+  label: string;
+  title: string;
+  license: string;
+  artist: string;
+  page: string;
+  url: string;
+}
+
+/** The `n` area photos used longest ago (never-used first), deterministic within a day. */
+export function pickStock(photos: StockPhoto[], used: Record<string, string>, n: number): StockPhoto[] {
+  return [...photos].sort((a, b) => (used[a.id] ?? '').localeCompare(used[b.id] ?? '') || a.id.localeCompare(b.id)).slice(0, n);
+}
+
+/** CC BY needs author + licence next to the work; CC0 gets credited anyway. */
+export function photoCredits(photos: StockPhoto[]): string {
+  const seen = new Map<string, Set<string>>();
+  for (const p of photos) seen.set(p.artist, (seen.get(p.artist) ?? new Set()).add(p.license));
+  return `📷 Kigali area photos, not the listed homes — ${[...seen].map(([a, l]) => `${a} (${[...l].join(', ')})`).join(', ')}, via Wikimedia Commons`;
+}
+
+const scrim = (id: string, y1: number, y2: number, top: number, bottom: number): string =>
+  `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1117" stop-opacity="${top}"/><stop offset="1" stop-color="#0b1117" stop-opacity="${bottom}"/></linearGradient></defs><rect y="${y1}" width="${W}" height="${y2 - y1}" fill="url(#${id})"/>`;
+
+/** mkan wordmark top-left, and the area-photo tag when the frame is not the home. */
+const photoHeader = (areaTag: boolean): string => `${scrim('top', 0, 420, 0.55, 0)}
+  ${mark(80, 170, 60, BRAND.canvas)}
+  <text x="156" y="220" font-family="${DISPLAY}" font-size="50" font-weight="900" fill="${BRAND.canvas}">mkan</text>${
+    areaTag ? `\n  <rect x="80" y="262" width="300" height="52" rx="26" fill="#0b1117" fill-opacity="0.55"/><text x="230" y="297" font-family="${SANS}" font-size="28" font-weight="500" fill="${BRAND.canvas}" text-anchor="middle">Kigali · area photo</text>` : ''
+  }`;
+
+export function photoCoverSvg(theme: CarouselTheme, count: number, areaTag: boolean): string {
+  const x = 80;
+  const lines = wrap(theme.title, 15);
+  const top = 1300 - lines.length * 118;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  ${photoHeader(areaTag)}
+  ${scrim('bot', 760, H, 0, 0.88)}
+  <text x="${x}" y="${top - 40}" font-family="${SANS}" font-size="38" font-weight="500" fill="${BRAND.accent}" letter-spacing="4">THIS WEEK IN KIGALI</text>
+  ${lines.map((l, i) => `<text x="${x}" y="${top + 100 + i * 118}" font-family="${DISPLAY}" font-size="108" font-weight="900" fill="${BRAND.canvas}">${esc(l)}</text>`).join('\n  ')}
+  <rect x="${x}" y="1350" width="330" height="76" rx="38" fill="${BRAND.accent}"/>
+  <text x="${x + 165}" y="1400" font-family="${SANS}" font-size="36" font-weight="500" fill="#fff" text-anchor="middle">${count} homes →</text>
+</svg>`;
+}
+
+/** One home: price chip, place, facts, the code to send — the lower third, clear of TikTok's rails. */
+export function photoHomeSvg(r: PostRow, i: number, total: number, areaTag: boolean): string {
+  const x = 80;
+  const place = wrap(placeLine(r), 20).slice(0, 2);
+  const price = formatRwf(r.priceMonth ?? 0);
+  const py = 1010 - (place.length - 1) * 84;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  ${photoHeader(areaTag)}
+  <text x="${W - 190}" y="220" font-family="${SANS}" font-size="34" font-weight="500" fill="${BRAND.canvas}" fill-opacity="0.85" text-anchor="end">${i}/${total}</text>
+  ${scrim('bot', 820, H, 0, 0.9)}
+  <rect x="${x}" y="${py - 96}" width="${price.length * 44 + 170}" height="92" rx="46" fill="${BRAND.accent}"/>
+  <text x="${x + 36}" y="${py - 34}" font-family="${DISPLAY}" font-size="58" font-weight="900" fill="#fff">${esc(price)}<tspan font-family="${SANS}" font-size="32" font-weight="500" dx="10">/mo</tspan></text>
+  ${place.map((l, k) => `<text x="${x}" y="${py + 90 + k * 84}" font-family="${DISPLAY}" font-size="76" font-weight="900" fill="${BRAND.canvas}">${esc(l)}</text>`).join('\n  ')}
+  <text x="${x}" y="${py + 90 + place.length * 84 + 10}" font-family="${SANS}" font-size="44" font-weight="500" fill="${BRAND.soft}">${esc(factsLine(r))}</text>
+  <rect x="${x}" y="1330" width="420" height="96" rx="24" fill="${BRAND.canvas}"/>
+  <text x="${x + 32}" y="1393" font-family="${SANS}" font-size="36" font-weight="500" fill="${BRAND.ink}">send</text>
+  <text x="${x + 132}" y="1396" font-family="${DISPLAY}" font-size="58" font-weight="900" fill="${BRAND.accent}">${esc(refOf(r))}</text>
+</svg>`;
+}
+
+export function photoEndSvg(whatsapp: string): string {
+  const cx = W / 2;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  <rect width="${W}" height="${H}" fill="#0b1117" fill-opacity="0.62"/>
+  ${mark(cx - 70, 470, 140, BRAND.canvas)}
+  <text x="${cx}" y="780" font-family="${DISPLAY}" font-size="104" font-weight="900" fill="${BRAND.canvas}" text-anchor="middle">Want one?</text>
+  <text x="${cx}" y="870" font-family="${SANS}" font-size="44" font-weight="500" fill="${BRAND.soft}" text-anchor="middle">Send its code on WhatsApp</text>
+  <rect x="110" y="940" width="${W - 220}" height="160" rx="36" fill="${BRAND.accent}"/>
+  <text x="${cx}" y="1045" font-family="${DISPLAY}" font-size="76" font-weight="900" fill="#fff" text-anchor="middle">${esc(whatsapp)}</text>
+  <text x="${cx}" y="1200" font-family="${SANS}" font-size="38" font-weight="500" fill="${BRAND.canvas}" text-anchor="middle">Ohereza kode kuri WhatsApp.</text>
+</svg>`;
 }
