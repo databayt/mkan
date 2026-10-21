@@ -146,7 +146,8 @@ export function captionFor(r: PostRow, whatsapp: string): string {
     `💰 ${price} / month`,
     `📲 WhatsApp ${whatsapp} — send "${ref}"`,
     `🇷🇼 Inzu ikodeshwa${rooms} i ${place} — ${price} ku kwezi. Ohereza "${ref}" kuri WhatsApp.`,
-    ...(brokerHandle(r.hostSourceId) ? [`🎥 @${brokerHandle(r.hostSourceId)}`] : []),
+    ...(brokerHandle(r.hostSourceId) ? [`🎥 @${brokerHandle(r.hostSourceId)} · remastered by mkan`] : []),
+    '🎵 Music: mkan (AI-generated)',
     '',
     [...new Set(tags)].join(' '),
   ].join('\n');
@@ -164,6 +165,24 @@ export function brokerAsk(name: string, handle = '', page = ''): string {
     '',
     `Muraho${hi} 👋 Turi mkan (mkan.sd), urubuga rw'ubukode bw'inzu i Kigali.`,
     `Dutangiye paji ya TikTok${ours} y'inzu zikodeshwa ku kwezi i Kigali. Mwatwemerera gushyira inzu zanyu${zanyu} kuri paji yacu, tuvuga izina ryanyu? Umukiriya tuzanye nakodesha inzu yanyu, tugabana komisiyo. Musubize YEGO dutangire.`,
+  ].join('\n');
+}
+
+/**
+ * The ask with the pitch in it: one of the broker's own homes, remastered by
+ * mkan, sent to them privately (an unlisted CDN link — nothing is posted).
+ */
+export function brokerPreviewAsk(name: string, handle: string, page: string, previewUrl: string): string {
+  const hi = name ? ` ${name}` : '';
+  const ours = page ? ` (@${page})` : '';
+  return [
+    `Hello${hi} 👋 This is mkan (mkan.sd), a home-rental platform in Kigali.`,
+    `We re-edited one of your homes from @${handle} — sharper picture, steadier, mkan music — just for you to see: ${previewUrl}`,
+    `Can we post your houses like this on our TikTok page${ours} for monthly rentals, with your name on every video? When a tenant we bring rents one of yours, we share the commission with you. Reply YES and we start. Nothing is posted until you say YES.`,
+    '',
+    `Muraho${hi} 👋 Turi mkan (mkan.sd), urubuga rw'ubukode bw'inzu i Kigali.`,
+    `Twatunganyije video y'inzu yanyu (@${handle}) ngo muyirebe: ${previewUrl}`,
+    `Mwatwemerera gushyira inzu zanyu kuri paji yacu ya TikTok${ours} gutya, tuvuga izina ryanyu? Umukiriya tuzanye nakodesha inzu yanyu, tugabana komisiyo. Musubize YEGO dutangire. Nta kintu dushyiraho mutaravuga YEGO.`,
   ].join('\n');
 }
 

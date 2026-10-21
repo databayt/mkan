@@ -11,6 +11,7 @@
  *   pnpm tt:posted <ref> <url>      the poster's receipt: the home rests 30 days
  *   pnpm tt:stats [--notify]        views / likes of our posts, read back by yt-dlp
  *   pnpm tt:ask [--mark=a,b --as=ASKED|YES|NO --apply]   broker repost consent
+ *   pnpm tt:ask --preview [--top=5]  remaster one home per top broker (preview/, never posted) and post the asks with it
  *
  * The page runs the way Kigali brokers run theirs: the WhatsApp number in the
  * bio, one short video per house, the price and area on screen.
@@ -35,13 +36,14 @@ config({ override: true });
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import sharp from 'sharp';
 import { postToMkan, recordRun, uploadToMkan } from './notify';
 import { twentyClient, phoneOf, type Phones } from './twenty-rest';
 import {
   brandTimeline,
   brokerAsk,
+  brokerPreviewAsk,
   brokerHandle,
   brokerVideoUrl,
   beatHolds,
@@ -204,10 +206,59 @@ const hasFilter = (() => {
   };
 })();
 
+// Real-ESRGAN (ncnn/Vulkan, Apple GPU): the release binary at ~/.local/opt/realesrgan, or REALESRGAN.
+const REALESRGAN = (process.env.REALESRGAN ?? '').trim() || join(homedir(), '.local/opt/realesrgan/realesrgan-ncnn-vulkan');
+/** Frames upscaled per batch: a 4× frame is ~6 MB of JPEG, so 50 bound the batch to ~300 MB. */
+const UPSCALE_CHUNK = 50;
+
 /**
- * The broker's own video, enhanced: stabilised, lightly denoised, graded,
- * sharpened, framed to 9:16 (a landscape clip sits on a blurred fill instead of
- * losing its sides) and muted — the poster adds a trending sound in the app.
+ * The remaster's AI step: every frame upscaled 4× by Real-ESRGAN's video model
+ * (≈0.35 s a frame on the M-series GPU, so a 45 s clip is ~8 min), brought down
+ * to 1080 wide, then blended 65/35 with a plain lanczos scale of the source:
+ * the model's crisp edges without its painted look. Its photo model looks a
+ * touch more natural but runs 30× slower. Improves the picture, never the
+ * property: no generative fill, no object changes. Null when the binary is
+ * missing or `--fast` — the caller keeps today's ffmpeg-only enhance.
+ */
+function upscale(src: string, dur: number, work: string, info: { w: number; h: number }): string | null {
+  if (flag('fast') || !existsSync(REALESRGAN)) return null;
+  const raw = join(work, 'raw');
+  const ai = join(work, 'ai');
+  mkdirSync(raw, { recursive: true });
+  mkdirSync(ai, { recursive: true });
+  ffmpeg(['-t', String(dur), '-i', src, '-vf', 'fps=30', '-q:v', '2', join(raw, '%05d.jpg')]);
+  const frames = execFileSync('ls', [raw], { encoding: 'utf8' }).split('\n').filter((f) => f.endsWith('.jpg')).sort();
+  // Upscaled frames are scaled to the 9:16 cover's width (or the landscape fit) as they land.
+  const target = info.w > info.h ? `${W}:-2` : `${W}:${H}:force_original_aspect_ratio=increase`;
+  const started = Date.now();
+  for (let i = 0; i < frames.length; i += UPSCALE_CHUNK) {
+    const inDir = join(work, 'in');
+    const upDir = join(work, 'up');
+    rmSync(inDir, { recursive: true, force: true });
+    rmSync(upDir, { recursive: true, force: true });
+    mkdirSync(inDir);
+    mkdirSync(upDir);
+    for (const f of frames.slice(i, i + UPSCALE_CHUNK)) execFileSync('mv', [join(raw, f), join(inDir, f)]);
+    execFileSync(REALESRGAN, ['-i', inDir, '-o', upDir, '-n', 'realesr-animevideov3', '-s', '4', '-f', 'jpg', '-m', join(dirname(REALESRGAN), 'models')], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 1_800_000 });
+    for (const f of frames.slice(i, i + UPSCALE_CHUNK)) {
+      ffmpeg(['-i', join(upDir, f), '-i', join(inDir, f), '-filter_complex', `[0]scale=${target}:flags=lanczos[a];[1]scale=${target}:flags=lanczos[b];[a][b]blend=all_expr='A*0.65+B*0.35'`, '-q:v', '2', join(ai, f)]);
+      execFileSync('mv', [join(inDir, f), join(raw, f)]);
+    }
+    rmSync(upDir, { recursive: true, force: true });
+  }
+  const out = join(work, 'remaster.mp4');
+  ffmpeg(['-framerate', '30', '-i', join(ai, '%05d.jpg'), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '12', '-pix_fmt', 'yuv420p', out]);
+  rmSync(raw, { recursive: true, force: true });
+  rmSync(ai, { recursive: true, force: true });
+  console.log(`  … AI upscale: ${frames.length} frames in ${((Date.now() - started) / 60000).toFixed(1)} min`);
+  return out;
+}
+
+/**
+ * The broker's own video, remastered: AI-upscaled (see upscale), stabilised,
+ * deflickered, graded to mkan's daylight look, framed to 9:16 (a landscape clip
+ * sits on a blurred fill instead of losing its sides). Its own sound is dropped;
+ * mkan's track goes under the whole piece in renderOne.
  * Null when there is no video to get (a photo post, a deleted video).
  */
 async function videoBody(r: PostRow, work: string): Promise<{ path: string; dur: number } | null> {
@@ -229,11 +280,15 @@ async function videoBody(r: PostRow, work: string): Promise<{ path: string; dur:
   if (!info || info.dur < 3) return null;
   const dur = Math.min(info.dur, MAX_BODY);
   const out = join(work, 'body.mp4');
-  const grade = 'hqdn3d=1.5:1.5:6:6,eq=contrast=1.04:saturation=1.08,unsharp=5:5:0.5:5:5:0';
+  // The AI upscale feeds the rest of the chain; without it the source goes in as before.
+  const upscaled = upscale(src, dur, work, info);
+  const input = upscaled ?? src;
+  // mkan's daylight look: lift, a little warmth, flicker from phone auto-exposure smoothed out.
+  const grade = `${upscaled ? '' : 'hqdn3d=1.5:1.5:6:6,'}deflicker=size=5,eq=contrast=1.05:saturation=1.1:gamma=1.03,colorbalance=rm=0.03:bm=-0.03,unsharp=5:5:${upscaled ? '0.25' : '0.5'}:5:5:0`;
   let stab = '';
   if (hasFilter('vidstabdetect')) {
     const trf = join(work, 'shake.trf');
-    ffmpeg(['-t', String(dur), '-i', src, '-vf', `vidstabdetect=shakiness=5:accuracy=15:result=${trf}`, '-f', 'null', '-']);
+    ffmpeg(['-t', String(dur), '-i', input, '-vf', `vidstabdetect=shakiness=5:accuracy=15:result=${trf}`, '-f', 'null', '-']);
     stab = `vidstabtransform=input=${trf}:smoothing=20:optzoom=1,`;
   }
   const frame =
@@ -241,7 +296,7 @@ async function videoBody(r: PostRow, work: string): Promise<{ path: string; dur:
       ? // landscape: blurred cover behind, the whole frame in front
         `split[a][b];[a]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},gblur=sigma=40,eq=brightness=-0.06[bg];[b]scale=${W}:-2:flags=lanczos[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2`
       : `scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H}`;
-  ffmpeg(['-t', String(dur), '-i', src, '-filter_complex', `[0:v]${stab}${grade},${frame},fps=30,setsar=1,format=yuv420p[v]`, '-map', '[v]', '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', out]);
+  ffmpeg(['-t', String(dur), '-i', input, '-filter_complex', `[0:v]${stab}${grade},${frame},fps=30,setsar=1,format=yuv420p[v]`, '-map', '[v]', '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', out]);
   return { path: out, dur: probe(out)?.dur || dur };
 }
 
@@ -336,7 +391,7 @@ async function renderOne(r: PostRow, dir: string, phone: string): Promise<string
     const video = flag('slideshow') ? null : await videoBody(r, work);
     const body = video ?? (await slideshowBody(r, work));
     console.log(`  … ${ref}: ${video ? 'broker video, enhanced' : 'photo slideshow'} (${body.dur.toFixed(1)} s)`);
-    const mezz = await brandPass(r, body, work, phone);
+    const mezz = withBed(await brandPass(r, body, work, phone), brandTimeline(body.dur).total, work);
 
     const out = join(dir, `${ref}.mp4`);
     const media = join(KUN, '.claude/skills/edit/scripts/media.sh');
@@ -352,7 +407,7 @@ async function renderOne(r: PostRow, dir: string, phone: string): Promise<string
       }
     }
     if (!encoded) {
-      ffmpeg(['-i', mezz, '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-profile:v', 'high', '-maxrate', '8M', '-bufsize', '16M', '-pix_fmt', 'yuv420p', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-movflags', '+faststart', out]);
+      ffmpeg(['-i', mezz, '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-profile:v', 'high', '-maxrate', '8M', '-bufsize', '16M', '-pix_fmt', 'yuv420p', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-c:a', 'copy', '-movflags', '+faststart', out]);
     }
     writeFileSync(join(dir, `${ref}.txt`), captionFor(r, phone));
     return out;
@@ -505,6 +560,9 @@ async function ask(): Promise<void> {
   for (const r of rows) console.log(`  @${r.handle.padEnd(24)} ${String(count.get(r.handle) ?? 0).padStart(3)} homes  ${r.consent.padEnd(6)} ${r.phone ? waLink(r.phone) : 'no phone'}`);
   console.log(`\nThe ask:\n\n${brokerAsk('<name>', '<handle>', PAGE)}\n\nAfter sending: pnpm tt:ask --mark=<handle,…> --as=ASKED --apply   (YES / NO when they answer)`);
 
+  // --preview: remaster one of each top broker's homes into preview/ and put it in their ask.
+  if (flag('preview')) return void (await askWithPreview(rows, leads, count));
+
   // --slack: the tap-through list for the phone that owns the page's WhatsApp.
   // Only brokers with homes, a number, and no answer yet.
   if (flag('slack')) {
@@ -516,6 +574,52 @@ async function ask(): Promise<void> {
     );
     console.log(ok ? `Posted ${due.length} asks to #mkan.` : 'Slack post failed.');
   }
+}
+
+/**
+ * The pitch, not just the ask: for the top `--top` brokers (default 5) with a
+ * number and no answer yet, remaster their newest home that has a video into
+ * preview/ (never posted — tt:upload refuses that folder), put it on the CDN
+ * unlisted, and post the prefilled wa.me asks carrying the link to #mkan.
+ */
+async function askWithPreview(rows: { handle: string; name: string; phone: string | null; consent: string }[], leads: PostRow[], count: Map<string, number>): Promise<void> {
+  const top = Number(argv('top', '5')) || 5;
+  const due = rows.filter((r) => r.phone && (count.get(r.handle) ?? 0) > 0 && r.consent !== 'YES' && r.consent !== 'NO').slice(0, top);
+  const dir = join(DATA, 'preview');
+  mkdirSync(dir, { recursive: true });
+  const lines: string[] = [];
+  for (const b of due) {
+    const theirs = leads.filter((r) => r.hostSourceId?.replace(/^tiktok:/, '').toLowerCase() === b.handle && brokerVideoUrl(r)).sort((a, z) => z.id - a.id);
+    if (!theirs.length) {
+      console.warn(`  ! @${b.handle}: no home with a video — plain ask instead`);
+      lines.push(`• <${waLink(b.phone!, brokerAsk(b.name, b.handle, PAGE))}|@${b.handle}> — ${count.get(b.handle)} homes (no video to remaster)`);
+      continue;
+    }
+    let made: { ref: string; url: string } | null = null;
+    for (const r of theirs.slice(0, 3)) {
+      try {
+        const out = await renderOne(r, dir, whatsapp());
+        const url = await cdnCopy(out, `preview/${b.handle}-${refOf(r)}.mp4`);
+        if (url) {
+          made = { ref: refOf(r), url };
+          break;
+        }
+      } catch (e) {
+        console.warn(`  ! @${b.handle} ${refOf(r)}: ${(e as Error).message}`);
+      }
+    }
+    if (!made) {
+      lines.push(`• <${waLink(b.phone!, brokerAsk(b.name, b.handle, PAGE))}|@${b.handle}> — ${count.get(b.handle)} homes (remaster failed)`);
+      continue;
+    }
+    console.log(`  🎬 @${b.handle}: ${made.ref} → ${made.url}`);
+    lines.push(`• <${waLink(b.phone!, brokerPreviewAsk(b.name, b.handle, PAGE, made.url))}|@${b.handle}> — ${count.get(b.handle)} homes · preview <${made.url}|${made.ref}>`);
+  }
+  if (!lines.length) return void console.log('Nobody left to ask.');
+  const ok = await postToMkan(
+    [`📣 *Broker asks with their own home remastered* — open each on the phone with WhatsApp ${whatsapp()}; the message and the preview link are typed in, tap send. Nothing is posted until they reply YES.`, ...lines, `Then: \`pnpm tt:ask --mark=${due.map((r) => r.handle).join(',')} --as=ASKED --apply\``].join('\n'),
+  );
+  console.log(ok ? `Posted ${lines.length} preview asks to #mkan.` : 'Slack post failed.');
 }
 
 // ── carousel ─────────────────────────────────────────────────────────────────
@@ -580,6 +684,19 @@ async function carousel(): Promise<string[]> {
 // ── voiced data video ────────────────────────────────────────────────────────
 const MEDIA_SH = () => join(KUN, '.claude/skills/edit/scripts/media.sh');
 
+/**
+ * mkan's track under a silent cut → `<work>/bed.mp4`: faded in and out, levelled
+ * to -14 LUFS, limited below -2 dBTP (resampled to 48 kHz first, or the overs
+ * come back). Every piece carries it, so TikTok gets one sound across the page.
+ */
+function withBed(silent: string, total: number, work: string): string {
+  const bed = join(KUN, 'public/brands/mkan-bed.m4a');
+  if (!existsSync(bed)) throw new Error(`no music bed at ${bed} — kun brand-kit production.mkan.audio`);
+  const out = join(work, 'bed.mp4');
+  ffmpeg(['-i', silent, '-stream_loop', '-1', '-i', bed, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-af', `afade=t=in:d=0.4,afade=t=out:st=${(total - 1.8).toFixed(2)}:d=1.8,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000,alimiter=limit=0.79:level=false`, '-ar', '48000', '-c:a', 'aac', '-b:a', '192k', '-t', String(total), out]);
+  return out;
+}
+
 /** The delivery encode every piece shares, with the direct-encode fallback (audio is mixed and levelled upstream, so it is copied). */
 function reelEncode(mezz: string, out: string): void {
   if (existsSync(MEDIA_SH())) {
@@ -605,8 +722,6 @@ async function dataVideo(): Promise<string | null> {
   if (!existsSync(join(dir, 'meta.json'))) await carousel();
   if (!existsSync(join(dir, 'meta.json'))) return null;
   const { theme, homes } = JSON.parse(readFileSync(join(dir, 'meta.json'), 'utf8')) as { theme: CarouselTheme; homes: PostRow[] };
-  const bed = join(KUN, 'public/brands/mkan-bed.m4a');
-  if (!existsSync(bed)) throw new Error(`no music bed at ${bed} — kun brand-kit production.mkan.audio`);
   const work = join(dir, '.video');
   mkdirSync(work, { recursive: true });
 
@@ -657,8 +772,7 @@ async function dataVideo(): Promise<string | null> {
   }
   const silent = join(work, 'silent.mp4');
   ffmpeg([...inputs.flatMap((p) => ['-loop', '1', '-i', p]), '-filter_complex', f.join(';'), '-map', `[${last}]`, '-t', String(total), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-pix_fmt', 'yuv420p', silent]);
-  const mezz = join(work, 'mezz.mp4');
-  ffmpeg(['-i', silent, '-i', bed, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-af', `afade=t=in:d=0.4,afade=t=out:st=${(total - 1.8).toFixed(2)}:d=1.8,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000,alimiter=limit=0.79:level=false`, '-ar', '48000', '-c:a', 'aac', '-b:a', '192k', '-t', String(total), mezz]);
+  const mezz = withBed(silent, total, work);
   const out = join(dir, 'video.mp4');
   reelEncode(mezz, out);
 

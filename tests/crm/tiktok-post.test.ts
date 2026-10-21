@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   beatHolds,
+  brokerPreviewAsk,
   photoCredits,
   photoHomeSvg,
   pickStock,
@@ -233,5 +234,15 @@ describe('picture video', () => {
     const r = { id: 1, code: null, source: 'MANUAL' as const, priceMonth: 300000, bedrooms: 2, bathrooms: 1, propertyType: null, photoUrls: [], area: 'Kimihurura', district: 'Gasabo', hostSourceId: null };
     expect(photoHomeSvg(r, 1, 5, true)).toContain('area photo');
     expect(photoHomeSvg(r, 1, 5, false)).not.toContain('area photo');
+  });
+});
+
+describe('preview ask', () => {
+  it('carries the preview link in both languages and promises nothing goes out before YES', () => {
+    const m = brokerPreviewAsk('Eric', 'somebroker', 'mkan.rw', 'https://cdn.example/p.mp4');
+    expect(m.match(/https:\/\/cdn\.example\/p\.mp4/g)).toHaveLength(2);
+    expect(m).toContain('Nothing is posted until you say YES');
+    expect(m).toContain('YEGO');
+    expect(m).toContain('@somebroker');
   });
 });

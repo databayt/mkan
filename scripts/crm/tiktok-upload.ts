@@ -11,8 +11,8 @@
  * file to the API then.
  *
  * What goes out each day (tt:run made it at 07:00):
- *   - each queued home: <date>/<ref>.mp4 + <ref>.txt (a consented broker's own footage — no AI label)
- *   - the voiced data video: <date>/carousel/video.mp4 + video-caption.txt (AI voice → AI-generated label on)
+ *   - each queued home: <date>/<ref>.mp4 + <ref>.txt (a consented broker's footage, AI-upscaled, on mkan's AI track → AI label on)
+ *   - the picture video: <date>/carousel/video.mp4 + video-caption.txt (mkan's AI track → AI label on)
  * A per-day `uploads.json` keeps a rerun from posting twice. A posted home is
  * stamped in posted.json, so it rests 30 days like a hand-posted one.
  *
@@ -65,7 +65,7 @@ function todaysPieces(): Piece[] {
   for (const r of queue) {
     const ref = r.code?.trim() || `K${r.id}`;
     const mp4 = join(DAY, `${ref}.mp4`);
-    if (existsSync(mp4) && existsSync(join(DAY, `${ref}.txt`))) out.push({ key: ref, mp4, caption: readFileSync(join(DAY, `${ref}.txt`), 'utf8'), aigc: false });
+    if (existsSync(mp4) && existsSync(join(DAY, `${ref}.txt`))) out.push({ key: ref, mp4, caption: readFileSync(join(DAY, `${ref}.txt`), 'utf8'), aigc: true });
   }
   const dv = join(DAY, 'carousel', 'video.mp4');
   if (existsSync(dv)) out.push({ key: 'datavideo', mp4: dv, caption: readFileSync(join(DAY, 'carousel', 'video-caption.txt'), 'utf8'), aigc: true });
