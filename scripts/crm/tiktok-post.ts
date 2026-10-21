@@ -365,7 +365,14 @@ async function render(): Promise<string[]> {
   const phone = whatsapp();
   const id = Number(argv('id', '0'));
   // --id renders any one listing for a look, eligible or not — into preview/, never the queue.
-  const rows = id ? await loadRows({ id }) : readQueue();
+  let rows = id ? await loadRows({ id }) : readQueue();
+  if (!id) {
+    // The queue was written at pick time; a broker can withdraw a YES in between.
+    const consented = await consentedHandles();
+    const held = rows.filter((r) => r.source === 'TIKTOK' && !consented.has(brokerHandle(r.hostSourceId) ?? ''));
+    for (const r of held) console.warn(`  ! ${refOf(r)}: broker has no YES on file — not rendered`);
+    rows = rows.filter((r) => !held.includes(r));
+  }
   if (!rows.length) {
     console.log(id ? `no Kigali monthly listing #${id}` : `queue for ${argv('date', today())} is empty — run tt:pick`);
     return [];

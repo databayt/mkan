@@ -57,6 +57,8 @@ const readJson = <T>(p: string, d: T): T => (existsSync(p) ? (JSON.parse(readFil
 
 function todaysPieces(): Piece[] {
   const file = argv('file');
+  // preview/ holds renders made for a look or a broker's ask (any listing, consent or not): never posted.
+  if (file && /[\\/]preview[\\/]/.test(file)) throw new Error(`${file} is a preview render — previews are never posted`);
   if (file) return [{ key: basename(file, '.mp4'), mp4: file, caption: readFileSync(argv('caption'), 'utf8'), aigc: flag('aigc') }];
   const out: Piece[] = [];
   const queue = readJson<{ id: number; code: string | null }[]>(join(DAY, 'queue.json'), []);
