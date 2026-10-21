@@ -79,8 +79,9 @@ export interface ObjectDef {
 // somewhere and cannot say where" — the opposite of the truth, and the truth
 // an operator most wants (a host who self-serves has already onboarded).
 // TIKTOK (2026-10-12): Kigali brokers post rentals as TikTok videos — the
-// `crm:tiktok` lane reads them. Appended, never inserted: options are append-only.
-const SOURCE = ['AIRBNB', 'FACEBOOK', 'WHATSAPP', 'REFERRAL', 'FIELD_SCOUT', 'MKAN_SITE', 'OTHER', 'TIKTOK'];
+// `crm:tiktok` lane reads them. WEB (2026-10-21): classifieds via `crm:web-ads`.
+// Appended, never inserted: options are append-only.
+const SOURCE = ['AIRBNB', 'FACEBOOK', 'WHATSAPP', 'REFERRAL', 'FIELD_SCOUT', 'MKAN_SITE', 'OTHER', 'TIKTOK', 'WEB'];
 
 // mkan enums (exact spellings — the import job maps these straight onto Prisma enums).
 // Appended in the same order as the Prisma enum. `crm:sync-options` grows the
