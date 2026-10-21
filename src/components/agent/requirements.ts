@@ -1,14 +1,14 @@
 /**
  * What the tenant asked for — the one structure every agent step reads.
  *
- * Two readers fill it: `parseRequirements` (deterministic, en/ar/rw, always
+ * Two readers fill it: `parseRequirements` (deterministic, en/ar/rw/fr/sw, always
  * runs) and the Groq reader in `llm.ts` (fills what the regexes cannot, when the
  * free tier answers). Numbers come from the deterministic reader whenever it
  * found one — a 20B model misreads "400k" more often than a regex does.
  */
 import { z } from "zod";
 import { districtForPlace, DISTRICTS } from "@/lib/geo/rwanda-places";
-import { AREA_KEYS, NEIGHBOURHOODS } from "./areas";
+import { AREA_KEYS, landmarkIn, nearestSchool, NEIGHBOURHOODS } from "./areas";
 import { CLEARABLE, DISTRICT_CODES, MUST_HAVES, roundPrice, type ClearableField, type MustHave } from "./fields";
 
 export { CLEARABLE, DISTRICT_CODES, MUST_HAVES, roundPrice, type ClearableField, type MustHave };
@@ -84,32 +84,43 @@ export type HardField = "stay" | "maxPrice";
 const AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
 const toLatinDigits = (s: string) => s.replace(/[٠-٩]/g, (d) => String(AR_DIGITS.indexOf(d)));
 
-const MONTH_RE = /(month|monthly|\/mo\b|per mo\b|lease|long[- ]?term|year|شهر|شهري|سنة|سنوي|kwezi|umwaka)/i;
-const NIGHT_RE = /(night|nightly|per night|weekend|short[- ]?stay|holiday|vacation|إقامة قصيرة|iminsi mike|ليلة|ليال|ليالي|ijoro|amajoro)/i;
+const MONTH_RE = /(month|monthly|\/mo\b|per mo\b|\blease\b|long[- ]?term|year|شهر|شهري|سنة|سنوي|kwezi|umwaka|\bmois\b|mensuel|ann[ée]e|\bun an\b|long terme|mwezi|mwaka)/i;
+const NIGHT_RE = /(night|nightly|per night|weekend|short[- ]?stay|holiday|vacation|إقامة قصيرة|iminsi mike|ليلة|ليال|ليالي|ijoro|amajoro|\bnuits?\b|par nuit|week-end|vacances|court s[ée]jour|usiku|likizo)/i;
 const UPFRONT_RE = /(upfront|up front|move[- ]in|in hand|cash|savings|مقدم|مقدما|كاش|mbere)/i;
 
 const WORD_NUMBERS: Record<string, number> = {
   one: 1, two: 2, three: 3, four: 4, five: 5,
   "واحد": 1, "واحدة": 1, "اثنين": 2, "اثنتين": 2, "ثلاث": 3, "ثلاثة": 3, "أربع": 4, "اربع": 4, "خمس": 5,
   rimwe: 1, kimwe: 1, bibiri: 2, bitatu: 3, bine: 4, bitanu: 5,
+  un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5,
+  moja: 1, kimoja: 1, "تلاتة": 3, "تلات": 3, mbili: 2, viwili: 2, tatu: 3, vitatu: 3, nne: 4, vinne: 4, tano: 5, vitano: 5,
 };
 
 /** "400k" / "400,000" / "400 000" / "1.2m" → numbers ≥ 1,000, with their offset. */
 function moneyMentions(text: string): { value: number; index: number; raw: string }[] {
   const out: { value: number; index: number; raw: string }[] = [];
-  const re = /(\d{1,3}(?:[,\s]\d{3})+|\d+(?:\.\d+)?)\s*(k(?![a-z])|m(?![a-z])|million|thousand|ألف|الف|مليون|ibihumbi)?/gi;
+  const re = /(\d{1,3}(?:[,\s]\d{3})+|\d+(?:\.\d+)?)\s*(k(?![a-z])|m(?![a-z])|million|millions|milioni|miliyoni|thousand|mille|elfu|ألف|الف|مليون|ibihumbi)?/gi;
+  // Kinyarwanda and Swahili put the unit first: "ibihumbi 300", "elfu 300", "milioni 1.2".
+  const before = /\b(ibihumbi|elfu|milioni|miliyoni)\s+(\d+(?:[.,]\d+)?)/gi;
+  for (const m of text.matchAll(before)) {
+    const base = Number((m[2] ?? "").replace(",", "."));
+    const value = base * (/^mil/i.test(m[1] ?? "") ? 1_000_000 : 1_000);
+    if (Number.isFinite(value) && value >= 1_000) out.push({ value, index: m.index ?? 0, raw: m[0] });
+  }
   for (const m of text.matchAll(re)) {
     const base = Number((m[1] ?? "").replace(/[,\s]/g, ""));
     if (!Number.isFinite(base)) continue;
     const unit = (m[2] ?? "").toLowerCase();
     const mult =
-      unit === "k" || unit === "thousand" || unit === "ألف" || unit === "الف" || unit === "ibihumbi"
+      unit === "k" || unit === "thousand" || unit === "mille" || unit === "elfu" || unit === "ألف" || unit === "الف" || unit === "ibihumbi"
         ? 1_000
-        : unit === "m" || unit === "million" || unit === "مليون"
+        : unit === "m" || unit === "million" || unit === "millions" || unit === "milioni" || unit === "miliyoni" || unit === "مليون"
           ? 1_000_000
           : 1;
     const value = base * mult;
-    if (value >= 1_000) out.push({ value, index: m.index ?? 0, raw: m[0] });
+    // The figure of a unit-first mention ("ibihumbi 300") is already counted.
+    if (value >= 1_000 && (unit || (value <= 50_000_000 && !(value >= 1_900 && value <= 2_100))) && !out.some((o) => (m.index ?? 0) > o.index && (m.index ?? 0) < o.index + o.raw.length))
+      out.push({ value, index: m.index ?? 0, raw: m[0] });
   }
   return out;
 }
@@ -117,8 +128,15 @@ function moneyMentions(text: string): { value: number; index: number; raw: strin
 function bedroomsOf(text: string): number | null {
   if (/\bstudio\b|ستوديو|استوديو/i.test(text)) return 0;
   if (/غرفتين|غرفتان/.test(text)) return 2;
+  // French counts rooms, not bedrooms: a "3 pièces" (F3) is a living room + 2 bedrooms.
+  const pieces = text.match(/(\d+|un|une|deux|trois|quatre|cinq)\s*pi[eè]ces?\b/i) ?? text.match(/\bF([1-6])\b/);
+  if (pieces) {
+    const n = /^\d+$/.test(pieces[1] ?? "") ? Number(pieces[1]) : WORD_NUMBERS[(pieces[1] ?? "").toLowerCase()];
+    if (n) return Math.max(0, n - 1);
+  }
   const digit =
     text.match(/(\d+)\s*-?\s*(?:bed(?:room)?s?|br\b|bhk|chambres?)/i) ??
+    text.match(/(?:vyumba|chumba)\s*(?:vya kulala)?\s*(\d+)/i) ??
     text.match(/(\d+)\s*(?:غرف|غرفة|غرفه)/) ??
     text.match(/(?:ibyumba|icyumba)\s*(?:by'?|bya|bibiri)?\s*(\d+)/i) ??
     text.match(/(?:غرف|غرفة)\s*(?:عدد)?\s*(\d+)/);
@@ -126,14 +144,18 @@ function bedroomsOf(text: string): number | null {
   const word =
     text.match(/\b(one|two|three|four|five)\s*-?\s*bed(?:room)?s?/i) ??
     text.match(/(?:ibyumba|icyumba)\s+(kimwe|bibiri|bitatu|bine|bitanu)/i) ??
-    text.match(/(واحدة|ثلاث|ثلاثة|أربع|اربع|خمس)\s*غرف/);
+    text.match(/\b(une|un|deux|trois|quatre|cinq)\s+chambres?\b/i) ??
+    text.match(/(?:vyumba|chumba)\s+(?:vya kulala\s+|cha kulala\s+)?(kimoja|moja|viwili|mbili|vitatu|tatu|vinne|nne|vitano|tano)\b/i) ??
+    text.match(/(واحدة|ثلاث|ثلاثة|تلاتة|تلات|أربع|اربع|خمس)\s*غرف/);
   return word ? WORD_NUMBERS[(word[1] ?? "").toLowerCase()] ?? null : null;
 }
 
 function nightsOf(text: string): number | null {
-  const m = text.match(/(\d+)\s*(?:nights?|days?|ليال|ليالي|ليلة|أيام|ايام|يوم|iminsi|amajoro)/i);
+  const m =
+    text.match(/(\d+)\s*(?:nights?|days?|nuits?|jours?|ليال|ليالي|ليلة|أيام|ايام|يوم|iminsi|amajoro)/i) ??
+    text.match(/(?:usiku|siku|iminsi|amajoro)\s*(\d+)/i);
   if (m) return Number(m[1]);
-  if (/\b(a|one|1)\s*week\b|أسبوع|اسبوع|icyumweru/i.test(text)) return 7;
+  if (/\b(a|one|1)\s*week\b|\bune semaine\b|wiki moja|أسبوع|اسبوع|icyumweru/i.test(text)) return 7;
   if (/\bweekend\b|نهاية الأسبوع|wikendi/i.test(text)) return 2;
   return null;
 }
@@ -152,7 +174,60 @@ const AREA_RE: Record<(typeof AREA_KEYS)[number], RegExp> = {
   university: /universit|campus|college|student|جامعة|الجامعة|طلاب|طالب|kaminuza|abanyeshuri/i,
 };
 const FAMILY_RE = /family|kids|children|عائلة|أسرة|اسرة|أطفال|اطفال|umuryango|abana/i;
-const CHEAP_RE = /cheap|cheapest|affordable|low[- ]?cost|budget[- ]friendly|رخيص|ارخص|أرخص|بسعر مناسب|ihendutse|bihendutse/i;
+const CHEAP_RE = /cheap|cheapest|affordable|low[- ]?cost|budget[- ]friendly|pas cher|bon march[ée]|abordable|bei nafuu|bei rahisi|رخيص|ارخص|أرخص|بسعر مناسب|ihendutse|bihendutse/i;
+
+/**
+ * Must-haves the rules can read (en, fr, rw, ar, a little sw) — on prod the
+ * Claude reader is often dark, and Groq does not return them, so these are
+ * the only must-haves a Groq or rules turn gets. Furnished is a field of its
+ * own, not a must-have. Words are kept specific: "office" alone is a
+ * workplace ("near my office"), not a desk at home.
+ */
+const MUST_HAVE_RE: Record<MustHave, RegExp> = {
+  parking: /parking|car ?park|garage|place to park|parikingi|aho guparika|parikinga|maegesho|موقف|مواقف|جراج|كراج/i,
+  pets: /\bpets?\b|pet[- ]friendly|\bdogs?\b|\bcats?\b|animaux|\bchiens?\b|\bchats\b|imbwa|injangwe|amatungo|\bmbwa\b|wanyama|حيوان|حيوانات|كلب|قطة|قطط/i,
+  wifi: /wi-?fi|internet|fib(?:re|er)|connexion|interineti|murandasi|إنترنت|انترنت|واي ?فاي/i,
+  workspace: /\bdesk\b|workspace|work ?space|home office|office (?:space|room|corner)|study room|espace de travail|coin bureau|aho gukorera|ameza y'?akazi|مساحة عمل|ركن عمل|مكتب للعمل|مكتب في البيت/i,
+  ac: /\ba\/?c\b|air ?con|air[- ]condition|climatis|\bclim\b|تكييف|مكيف|مكيّف/i,
+  security: /security|secure|\bguard|watchman|cctv|camera|gated|gardien|s[ée]curit[ée]|umuzamu|abazamu|umutekano|mlinzi|ulinzi|حراسة|حارس|كاميرات|أمان|آمن/i,
+  quiet: /quiet|\bcalm|peaceful|no noise|tranquille|paisible|hatuje urusaku|nta rusaku|ituje|utulivu|kimya|هادئ|هادئة|هادي|هدوء/i,
+  transit: /public transport|bus stop|near (?:the )?(?:main )?(?:road|tarmac|bus)|transports? en commun|arr[eê]t de bus|imodoka rusange|usafiri|مواصلات|محطة باص|محطة حافلات/i,
+  kitchen: /kitchen|cuisine|igikoni|jikoni|مطبخ/i,
+  washer: /washing machine|washer|laundry|machine [àa] laver|lave-linge|buanderie|imashini imesa|غسالة|غسيل/i,
+  balcony: /balcon|terrace|terrasse|veranda|balikoni|roshani|بلكونة|بلكون|شرفة|تراس/i,
+  garden: /garden|\byard\b|lawn|jardin|ubusitani|bustani|حديقة|جنينة|حوش/i,
+  elevator: /elevator|\blift\b|ascenseur|asanseri|lifti|مصعد|اسانسير|أسانسير/i,
+  waterTank: /water ?tank|\btank\b|reservoir|r[ée]servoir|citerne|ikigega|tanki ya maji|خزان|تانك/i,
+  generator: /generator|back-?up power|power back-?up|groupe [ée]lectrog[eè]ne|\bmoteur\b|moteri|jenereta|inverter|مولد|مولّد/i,
+};
+/** "no need for parking", "sans parking", "بدون موقف" — the word is not a must-have. */
+const NOT_NEEDED_RE = /(?:\bno\b|don'?t need|do not need|don'?t have|do not have|no longer|without|not necessary|\bsans\b|pas besoin|pas de|ntabwo|nta\b|bidakenewe|bila|hakuna|بدون|لا أحتاج|لا احتاج|ما محتاج|مش محتاج|ما داير)(?:(?!\b(?:but|mais|with|avec|lakini|ariko)\b|لكن|مع)[^,.;،؛\n]){0,25}$/i;
+
+function mustHavesOf(text: string): MustHave[] {
+  const out: MustHave[] = [];
+  for (const key of MUST_HAVES) {
+    const m = MUST_HAVE_RE[key].exec(text);
+    if (!m) continue;
+    if (NOT_NEEDED_RE.test(text.slice(0, m.index))) continue;
+    out.push(key);
+  }
+  return out.slice(0, 8);
+}
+
+/** "near", "close to", "hafi", "près de", "karibu", "قرب" — the message asks to live near a place. */
+const NEAR_RE = /\bnear\b|nearby|close to|next to|walking distance|\bby the\b|\bwork(?:ing)? (?:at|in)\b|\bhafi\b|iruhande|pr[eè]s d|proche d|[àa] c[oô]t[ée] d|\bkaribu\b|قرب|قريب|جنب|بجانب|بالقرب/i;
+const SCHOOL_RE = /\bschools?\b|ishuri|amashuri|[ée]coles?\b|\blyc[ée]es?\b|\bshule\b|مدرس[ةه]|مدارس/i;
+
+/**
+ * A place to live near: a named landmark (schools included), or for a bare
+ * "near a school" the school pin for the neighbourhood or district the
+ * message names. A bare school with no place stays unset — see `nearestSchool`.
+ */
+function nearOf(text: string, at: { neighbourhood: string | null; district: string | null }): Requirements["near"] {
+  if (!NEAR_RE.test(text)) return null;
+  const pin = landmarkIn(text) ?? (SCHOOL_RE.test(text) ? nearestSchool(at) : undefined);
+  return pin ? { name: pin.name, lat: pin.lat, lng: pin.lng } : null;
+}
 
 function neighbourhoodOf(text: string): string | null {
   const s = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -172,7 +247,7 @@ function districtOf(text: string): Requirements["district"] {
 function clauseAround(text: string, index: number): string {
   const before = text.slice(0, index).search(/[,.;،؛\n][^,.;،؛\n]*$/);
   const start = before === -1 ? 0 : before + 1;
-  const after = text.slice(index).search(/[,.;،؛\n]/);
+  const after = text.slice(index).search(/[,;،؛\n]|\.(?!\d)/); // "1.5M" is one figure, not a sentence end
   return text.slice(start, after === -1 ? text.length : index + after);
 }
 
@@ -193,8 +268,8 @@ export function parseRequirements(input: string): Requirements {
   r.nights = nights;
 
   r.bedrooms = bedroomsOf(text);
-  if (/unfurnished|not furnished|غير مفروش|بدون عفش|bidafite ibikoresho|nta bikoresho/i.test(text)) r.furnished = false;
-  else if (/furnished|مفروش|مفروشة|ifite ibikoresho|ibikoresho/i.test(text)) r.furnished = true;
+  if (/unfurnished|not furnished|non[- ]meubl[ée]|pas meubl[ée]|bila samani|غير مفروش|بدون عفش|bidafite ibikoresho|nta bikoresho/i.test(text)) r.furnished = false;
+  else if (/furnished|meubl[ée]|samani|مفروش|مفروشة|ifite ibikoresho|ibikoresho/i.test(text)) r.furnished = true;
 
   r.district = districtOf(text);
   r.neighbourhood = neighbourhoodOf(text);
@@ -203,8 +278,11 @@ export function parseRequirements(input: string): Requirements {
   for (const key of AREA_KEYS) if (AREA_RE[key].test(text)) r.area = key;
   if (FAMILY_RE.test(text)) r.family = true;
   if (CHEAP_RE.test(text)) r.cheap = true;
+  const mustHaves = mustHavesOf(text);
+  if (mustHaves.length) r.mustHaves = mustHaves;
+  r.near = nearOf(text, r);
 
-  const guests = text.match(/(\d+)\s*(?:guests?|people|persons|adults|أشخاص|اشخاص|ضيوف|abantu)/i);
+  const guests = text.match(/(\d+)\s*(?:guests?|people|persons|adults|personnes|adultes|watu|أشخاص|اشخاص|ضيوف|abantu)/i) ?? text.match(/(?:watu|abantu)\s+(\d+)/i);
   if (guests) r.guests = Number(guests[1]);
 
   // Money: a figure next to an upfront word is the upfront budget; the
@@ -223,13 +301,18 @@ export function parseRequirements(input: string): Requirements {
   return r;
 }
 
-/** Later turns override earlier ones field by field; null never erases. */
+/**
+ * Later turns override earlier ones field by field; null never erases.
+ * Must-haves add up ("with parking", then "and a garden"); dropping them is a
+ * clear (`clearFields`), never a merge.
+ */
 export function mergeRequirements(base: Requirements, next: Partial<Requirements>): Requirements {
   const out: Requirements = { ...base };
   for (const key of Object.keys(EMPTY_REQUIREMENTS) as (keyof Requirements)[]) {
     const v = next[key];
     if (v !== null && v !== undefined) (out as Record<string, unknown>)[key] = v;
   }
+  if (base.mustHaves?.length && next.mustHaves?.length) out.mustHaves = [...new Set([...base.mustHaves, ...next.mustHaves])].slice(0, 8);
   // A price ceiling without its period inherits the stay's.
   if (out.maxPrice && !out.pricePeriod && out.stay) out.pricePeriod = out.stay === "long" ? "month" : "night";
   if (!out.stay && out.pricePeriod) out.stay = out.pricePeriod === "month" ? "long" : "short";

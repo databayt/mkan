@@ -1,5 +1,5 @@
 {
-  "$comment": "Golden cases for the /find reader (pnpm agent:eval). `expect` holds fields that must match: a value, {between:[lo,hi]}, {near:'<name>'}, {has:[...]} for arrays, or {placed:true}. `absent` lists fields that must stay unset. `clear`, `intent`, `like`, `notLike`, `remember` (min count) and `forget` check the rest of the reading. Today is 2026-10-21 in every case.",
+  "$comment": "Golden cases for the /find reader (pnpm agent:eval). `expect` holds fields that must match: a value, {between:[lo,hi]}, {near:'<name>'}, {has:[...]} for arrays, or {placed:true}. `absent` lists fields that must stay unset. `clear`, `intent`, `like`, `notLike`, `remember` (min count) and `forget` check the rest of the reading. Today is 2026-10-21 in every case. `rulesOnly: true` scores a case on the rules reader alone (a behaviour only the rules have yet, e.g. a bare \"near a school\").",
   "cases": [
     { "id": "en-basic", "lang": "en", "message": "2 bedroom in Kicukiro for a year", "expect": { "stay": "long", "bedrooms": 2, "district": "KICUKIRO", "months": 12 } },
     { "id": "en-budget", "lang": "en", "message": "a 1 bedroom under 400k a month in Remera", "expect": { "bedrooms": 1, "maxPrice": 400000, "pricePeriod": "month", "neighbourhood": "Remera" } },
@@ -45,6 +45,23 @@
     { "id": "rw-basic", "lang": "rw", "message": "Ndashaka inzu y'ibyumba bibiri i Kicukiro, ibihumbi 300 ku kwezi", "expect": { "bedrooms": 2, "district": "KICUKIRO", "maxPrice": 300000, "pricePeriod": "month" } },
     { "id": "rw-near", "lang": "rw", "message": "Ndashaka inzu hafi y'isoko rya Kimironko", "expect": { "near": { "near": "Kimironko Market" } } },
     { "id": "fr-basic", "lang": "fr", "message": "un appartement de deux chambres à Kicukiro, moins de 400 000 par mois", "expect": { "bedrooms": 2, "district": "KICUKIRO", "maxPrice": 400000, "pricePeriod": "month" } },
-    { "id": "sw-basic", "lang": "sw", "message": "nyumba ya vyumba viwili Remera", "expect": { "bedrooms": 2, "neighbourhood": "Remera" } }
+    { "id": "sw-basic", "lang": "sw", "message": "nyumba ya vyumba viwili Remera", "expect": { "bedrooms": 2, "neighbourhood": "Remera" } },
+    { "id": "en-musthaves-power", "lang": "en", "message": "2 bedroom with parking, a generator and a quiet street", "expect": { "bedrooms": 2, "mustHaves": { "has": ["parking", "generator", "quiet"] } } },
+    { "id": "en-no-parking", "lang": "en", "message": "no need for parking, but a garden please", "expect": { "mustHaves": ["garden"] } },
+    { "id": "fr-musthaves", "lang": "fr", "message": "appartement meublé de deux chambres, calme, avec parking et citerne", "expect": { "bedrooms": 2, "furnished": true, "mustHaves": { "has": ["quiet", "parking", "waterTank"] } } },
+    { "id": "fr-security-garden", "lang": "fr", "message": "une maison avec jardin, un gardien et un groupe électrogène", "expect": { "mustHaves": { "has": ["garden", "security", "generator"] } } },
+    { "id": "rw-musthaves", "lang": "rw", "message": "Ndashaka inzu ifite parikingi n'ikigega cy'amazi, hatuje urusaku", "expect": { "mustHaves": { "has": ["parking", "waterTank", "quiet"] } } },
+    { "id": "rw-security-power", "lang": "rw", "message": "inzu ifite ibyumba 3, umuzamu na moteri", "expect": { "bedrooms": 3, "mustHaves": { "has": ["security", "generator"] } } },
+    { "id": "ar-musthaves", "lang": "ar", "message": "شقة هادئة فيها موقف ومولد وحارس", "expect": { "mustHaves": { "has": ["quiet", "parking", "generator", "security"] } } },
+    { "id": "ar-garden-wifi", "lang": "ar", "message": "بيت فيه حديقة وإنترنت وبلكونة", "expect": { "mustHaves": { "has": ["garden", "wifi", "balcony"] } } },
+    { "id": "fr-pieces-month", "lang": "fr", "message": "un 3 pièces à Kicukiro, 400 mille par mois", "expect": { "stay": "long", "bedrooms": 2, "district": "KICUKIRO", "maxPrice": 400000, "pricePeriod": "month" } },
+    { "id": "fr-nights-cheap", "lang": "fr", "message": "un studio pour 4 nuits, pas cher", "expect": { "stay": "short", "nights": 4, "bedrooms": 0, "cheap": true } },
+    { "id": "sw-month-money", "lang": "sw", "message": "nyumba ya vyumba vitatu Kicukiro, elfu 400 kwa mwezi", "expect": { "stay": "long", "bedrooms": 3, "district": "KICUKIRO", "maxPrice": 400000, "pricePeriod": "month" } },
+    { "id": "sw-nights-cheap", "lang": "sw", "message": "chumba kimoja usiku 3, bei nafuu", "expect": { "stay": "short", "nights": 3, "bedrooms": 1, "cheap": true } },
+    { "id": "en-school-named", "lang": "en", "message": "3 bedrooms close to Green Hills Academy", "expect": { "bedrooms": 3, "near": { "near": "Green Hills Academy" } } },
+    { "id": "fr-school-named", "lang": "fr", "message": "deux chambres près du Lycée de Kigali", "expect": { "bedrooms": 2, "near": { "near": "Lycée de Kigali" } } },
+    { "id": "en-school-generic", "lang": "en", "rulesOnly": true, "message": "2 bedroom near a school in Kimihurura", "expect": { "bedrooms": 2, "neighbourhood": "Kimihurura", "near": { "near": "Green Hills Academy" } } },
+    { "id": "rw-school-generic", "lang": "rw", "rulesOnly": true, "message": "Ndashaka inzu hafi y'ishuri i Kicukiro", "expect": { "district": "KICUKIRO", "near": { "near": "Kigali Parents School" } } },
+    { "id": "ar-school-generic", "lang": "ar", "rulesOnly": true, "message": "بيت قرب مدرسة في نياروغينغي", "expect": { "district": "NYARUGENGE", "near": { "placed": true } } }
   ]
 }

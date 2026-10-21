@@ -11,6 +11,11 @@
  *   pnpm agent:eval                 # all cases, all readers
  *   pnpm agent:eval --only=ar-usd   # one case
  *   pnpm agent:eval --no-groq       # skip the free tier
+ *   pnpm agent:eval --rules-only    # the deterministic rules alone: no key, no network
+ *
+ * The rules must read must-haves at ≥ 85% (prod runs on Groq + rules when
+ * Claude is dark, and Groq returns none). Cases marked `rulesOnly` test what
+ * only the rules do yet (a bare "near a school") and are not put to the models.
  *
  * Key: AGENT_ANTHROPIC_API_KEY, else the Keychain item mkan-ANTHROPIC_API_KEY.
  * About 45 calls ≈ $0.03.
@@ -53,6 +58,7 @@ interface Case {
   notLike?: string;
   remember?: number;
   forget?: string[];
+  rulesOnly?: boolean;
 }
 interface Got {
   set: Record<string, unknown>;
@@ -66,7 +72,10 @@ interface Got {
 
 const args = process.argv.slice(2);
 const only = args.find((a) => a.startsWith('--only='))?.slice(7);
-const withGroq = !args.includes('--no-groq');
+const rulesOnly = args.includes('--rules-only');
+const withGroq = !rulesOnly && !args.includes('--no-groq');
+/** The rules' floor on must-haves — the only reader of them on a Groq or rules turn. */
+const RULES_MUST_HAVE_MIN = 85;
 const NOW = new Date('2026-10-21T09:00:00Z');
 
 const golden = JSON.parse(readFileSync(join(process.cwd(), 'tests/agent/fixtures/reader-golden.json'), 'utf8')) as { cases: Case[] };
@@ -116,6 +125,11 @@ let calls = 0;
 async function main() {
 for (const c of cases) {
   const input = { latest: c.message, current: currentOf(c), history: [], shown: shownOf(c), memory: coerceMemory(c.memory), newChat: c.newChat ?? true, now: NOW };
+  results.rules.push({ c, rows: score(c, readRules(c)) });
+  if (rulesOnly || c.rulesOnly) {
+    process.stdout.write('r');
+    continue;
+  }
   const started = Date.now();
   const reading = await readWithClaude(input, {
     timeoutMs: 15_000,
@@ -127,7 +141,6 @@ for (const c of cases) {
   });
   if (reading) latencies.push(Date.now() - started);
   results.claude.push({ c, rows: score(c, reading ? { ...reading, set: reading.set as Record<string, unknown> } : null) });
-  results.rules.push({ c, rows: score(c, readRules(c)) });
   if (withGroq) {
     const g = await readRequirementsWithGroq(c.message, input.current, [], 8_000);
     results.groq.push({ c, rows: score(c, g ? { set: g.set as Record<string, unknown>, clear: g.clear } : null) });
@@ -148,18 +161,34 @@ for (const k of ['claude', 'groq', 'rules'] as const) {
   console.log(`${k.padEnd(8)} ${`${pct(flat(k))}%`.padEnd(6)} ${byLang.join(' ')}`);
 }
 
-const kinds = [...new Set(flat('rules').map((r) => r.kind))];
-const worse = kinds.filter((kind) => pct(flat('claude').filter((r) => r.kind === kind)) < pct(flat('rules').filter((r) => r.kind === kind)));
+const mustHaveRows = (k: keyof typeof results) => flat(k).filter((r) => r.kind === 'mustHaves');
+console.log(`\nmust-haves  ${(['claude', 'groq', 'rules'] as const).filter((k) => results[k].length).map((k) => `${k} ${pct(mustHaveRows(k))}%`).join(' · ')} (${mustHaveRows('rules').length} checks)`);
+const rulesMustHaves = pct(mustHaveRows('rules')) >= RULES_MUST_HAVE_MIN;
+const ruleMisses = results.rules.flatMap(({ c, rows }) => rows.filter((r) => !r.ok && (r.kind === 'mustHaves' || c.rulesOnly)).map((r) => `  ${c.id.padEnd(22)} ${r.detail}`));
+if (ruleMisses.length) console.log(`\nrules must-have / rules-only misses:\n${ruleMisses.join('\n')}`);
+
+if (rulesOnly) {
+  console.log(`\ngate (rules must-haves ≥ ${RULES_MUST_HAVE_MIN}%): ${rulesMustHaves ? 'PASS' : 'FAIL'}`);
+  process.exit(rulesMustHaves ? 0 : 1);
+}
+
+const kinds = [...new Set(flat('claude').map((r) => r.kind))];
+// Like for like: the rules on the cases Claude also read.
+const rulesBeside = results.rules.filter((r) => !r.c.rulesOnly).flatMap((r) => r.rows);
+const worse = kinds.filter((kind) => pct(flat('claude').filter((r) => r.kind === kind)) < pct(rulesBeside.filter((r) => r.kind === kind)));
+const modelCases = cases.filter((c) => !c.rulesOnly).length;
 
 latencies.sort((a, b) => a - b);
 const p = (q: number) => latencies[Math.min(latencies.length - 1, Math.floor(q * latencies.length))] ?? 0;
-console.log(`\nclaude: ${latencies.length}/${cases.length} read · p50 ${p(0.5)} ms · p95 ${p(0.95)} ms · $${usd.toFixed(4)} for ${calls} calls`);
+console.log(`\nclaude: ${latencies.length}/${modelCases} read · p50 ${p(0.5)} ms · p95 ${p(0.95)} ms · $${usd.toFixed(4)} for ${calls} calls`);
 
 const misses = results.claude.flatMap(({ c, rows }) => rows.filter((r) => !r.ok).map((r) => `  ${c.id.padEnd(22)} ${r.detail}`));
 if (misses.length) console.log(`\nclaude misses:\n${misses.join('\n')}`);
 
-const pass = latencies.length === cases.length && pct(flat('claude')) >= 90 && worse.length === 0 && p(0.95) <= 2_500;
-console.log(`\ngate: ${pass ? 'PASS' : 'FAIL'}${worse.length ? ` — worse than the rules on: ${worse.join(', ')}` : ''}`);
+const pass = latencies.length === modelCases && pct(flat('claude')) >= 90 && worse.length === 0 && p(0.95) <= 2_500 && rulesMustHaves;
+console.log(
+  `\ngate: ${pass ? 'PASS' : 'FAIL'}${worse.length ? ` — worse than the rules on: ${worse.join(', ')}` : ''}${rulesMustHaves ? '' : ` — rules must-haves under ${RULES_MUST_HAVE_MIN}%`}`,
+);
 process.exit(pass ? 0 : 1);
 }
 

@@ -67,8 +67,8 @@ describe('reader answer → requirements', () => {
   it('puts a landmark on the map, a known neighbourhood in the filter, and reports a place it cannot place', () => {
     expect(toReading(out({ set: [{ field: 'near', value: 'KCC' }] }), input()).set.near).toEqual({ name: 'Kigali Convention Centre', lat: -1.9536, lng: 30.0928 });
     expect(toReading(out({ set: [{ field: 'neighbourhood', value: 'kimironko' }] }), input()).set).toEqual({ neighbourhood: 'Kimironko', district: 'GASABO' });
-    const placed = toReading(out({ set: [{ field: 'near', value: 'Norrsken House' }, { field: 'nearIn', value: 'Kiyovu' }] }), input()).set.near;
-    expect(placed).toEqual({ name: 'Norrsken House', lat: -1.95, lng: 30.065 });
+    const placed = toReading(out({ set: [{ field: 'near', value: 'Inema Arts Center' }, { field: 'nearIn', value: 'Kacyiru' }] }), input()).set.near;
+    expect(placed).toEqual({ name: 'Inema Arts Center', lat: -1.938, lng: 30.083 });
     const lost = toReading(out({ set: [{ field: 'neighbourhood', value: 'Somewhere Nice' }] }), input());
     expect(lost.set.neighbourhood).toBeUndefined();
     expect(lost.unplaced).toBe('Somewhere Nice');
