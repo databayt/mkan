@@ -244,47 +244,47 @@ model Lease {
 }
 
 model Listing {
-  id                 Int                 @id @default(autoincrement())
-  title              String?
-  description        String?
-  pricePerNight      Float?
-  currency           String              @default("SDG") // ISO 4217 of every money field on this listing — Kigali homes are RWF
+  id                          Int                 @id @default(autoincrement())
+  title                       String?
+  description                 String?
+  pricePerNight               Float?
+  currency                    String              @default("SDG") // ISO 4217 of every money field on this listing — Kigali homes are RWF
   // Kigali's long-term market (TikTok/broker homes) rents by the month; Airbnb
   // homes rent by the night. A MONTHLY home carries its rent in `priceMonth`
   // and may leave `pricePerNight` null.
-  rentPeriod         RentPeriod          @default(NIGHTLY)
-  priceMonth         Float?
-  securityDeposit    Float?
-  applicationFee     Float?
-  photoUrls          String[]            @default([])
-  amenities          Amenity[]           @default([])
-  highlights         Highlight[]         @default([])
-  isPetsAllowed      Boolean             @default(false)
-  isParkingIncluded  Boolean             @default(false)
+  rentPeriod                  RentPeriod          @default(NIGHTLY)
+  priceMonth                  Float?
+  securityDeposit             Float?
+  applicationFee              Float?
+  photoUrls                   String[]            @default([])
+  amenities                   Amenity[]           @default([])
+  highlights                  Highlight[]         @default([])
+  isPetsAllowed               Boolean             @default(false)
+  isParkingIncluded           Boolean             @default(false)
   /// Known furnishing. Null = not stated (most broker homes); nightly homes are furnished.
-  furnished          Boolean?
-  bedrooms           Int?
-  bathrooms          Float?
-  squareFeet         Int?
-  guestCount         Int                 @default(2)
-  propertyType       PropertyType?
-  postedDate         DateTime?
+  furnished                   Boolean?
+  bedrooms                    Int?
+  bathrooms                   Float?
+  squareFeet                  Int?
+  guestCount                  Int                 @default(2)
+  propertyType                PropertyType?
+  postedDate                  DateTime?
   lastAvailabilityConfirmedAt DateTime? // owner last reconfirmed Available/Busy (phase-1 nudge)
-  averageRating      Float?              @default(0)
-  numberOfReviews    Int?                @default(0)
-  isGuestFavorite    Boolean             @default(false) // curated "Guest favorite" badge (operator-set, independent of reviews)
-  draft              Boolean             @default(true)
-  isPublished        Boolean             @default(false)
-  instantBook        Boolean             @default(false)
-  locationId         Int?
-  hostId             String
+  averageRating               Float?              @default(0)
+  numberOfReviews             Int?                @default(0)
+  isGuestFavorite             Boolean             @default(false) // curated "Guest favorite" badge (operator-set, independent of reviews)
+  draft                       Boolean             @default(true)
+  isPublished                 Boolean             @default(false)
+  instantBook                 Boolean             @default(false)
+  locationId                  Int?
+  hostId                      String
   // Provenance — where an imported listing came from, and whether its owner has
   // taken it over. `.data/mkan-import-ledger.json` used to be the only bridge
   // between an Airbnb id and the row it became; it is gitignored and written
   // once after the whole import loop, so a crash or a lost file made 74
   // listings permanently unattributable. The join key belongs here.
-  source             ListingSource?
-  sourceListingId    String?             @unique // external id, e.g. the Airbnb room id
+  source                      ListingSource?
+  sourceListingId             String?             @unique // external id, e.g. the Airbnb room id
   // mkan's own public listing code — `NNNN-NN`, where NNNN is the host's
   // account number (the `NNNN@mkan.org` login) and NN the unit sequence within
   // that host. This is the id the CRM, the WhatsApp outreach and mkan.sd all
@@ -294,29 +294,29 @@ model Listing {
   // scraped listings that were promoted to a code had their Airbnb room id
   // overwritten, and `sync-up.ts`'s Airbnb lookup map silently stopped finding
   // them. One column per meaning; neither borrows the other's.
-  code               String?             @unique
-  sourceUrl          String?
-  sourceHostId       String? // external host id — pairs with User.sourceHostId
-  sourceCapturedAt   DateTime?
-  canonicalLocale    String? // "ar" | "en" | "rw" — which language Listing.title/description hold
-  claimedAt          DateTime? // the host proved ownership; the hard gate on publishing
+  code                        String?             @unique
+  sourceUrl                   String?
+  sourceHostId                String? // external host id — pairs with User.sourceHostId
+  sourceCapturedAt            DateTime?
+  canonicalLocale             String? // "ar" | "en" | "rw" — which language Listing.title/description hold
+  claimedAt                   DateTime? // the host proved ownership; the hard gate on publishing
   // Homes vertical fields
-  cleaningFee        Float?              @default(0)
-  weeklyDiscount     Float?              @default(0)
-  monthlyDiscount    Float?              @default(0)
-  cancellationPolicy CancellationPolicy? @default(Flexible)
-  checkInTime        String?
-  checkOutTime       String?
-  checkInMethod      CheckInMethod?
-  houseRules         Json?
-  guideInfo          Json?
-  minStay            Int?                @default(1)
-  maxStay            Int?                @default(365)
-  advanceNotice      Int?                @default(1)
-  preparationTime    Int?                @default(0)
-  availabilityWindow Int?                @default(12)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  cleaningFee                 Float?              @default(0)
+  weeklyDiscount              Float?              @default(0)
+  monthlyDiscount             Float?              @default(0)
+  cancellationPolicy          CancellationPolicy? @default(Flexible)
+  checkInTime                 String?
+  checkOutTime                String?
+  checkInMethod               CheckInMethod?
+  houseRules                  Json?
+  guideInfo                   Json?
+  minStay                     Int?                @default(1)
+  maxStay                     Int?                @default(365)
+  advanceNotice               Int?                @default(1)
+  preparationTime             Int?                @default(0)
+  availabilityWindow          Int?                @default(12)
+  createdAt                   DateTime            @default(now())
+  updatedAt                   DateTime            @updatedAt
 
   location        Location?         @relation(fields: [locationId], references: [id])
   host            User              @relation(fields: [hostId], references: [id])
@@ -334,6 +334,7 @@ model Listing {
   masteringRuns   MasteringRun[]
   brokers         ListingBroker[]
   brokerRequests  BrokerRequest[]
+  demandAsks      OutboundMessage[]
 
   @@index([hostId])
   @@index([rentPeriod, isPublished])
@@ -348,12 +349,15 @@ model Listing {
   @@index([source, claimedAt])
 }
 
-/** How a Listing entered mkan. Absent for listings a host created themselves. */
+/**
+ * How a Listing entered mkan. Absent for listings a host created themselves.
+ */
 enum ListingSource {
   AIRBNB
   FACEBOOK
   MANUAL
   TIKTOK
+  WEB
 }
 
 model Location {
@@ -774,6 +778,7 @@ model User {
   listingVisits         ListingVisit[]         @relation("ListingVisitGuest")
   brokerListings        ListingBroker[]        @relation("ListingBrokers")
   brokerRequests        BrokerRequest[]        @relation("BrokerRequests")
+  brokerProfile         Broker?                @relation("BrokerUser")
   // Rental agent (/find): chats + memory once signed in
   agentProfile          AgentProfile?          @relation("AgentProfiles")
 }
@@ -1193,14 +1198,14 @@ enum VisitOutcome {
 /// image now live on listing X, and what happened to attempt 1" stays
 /// answerable forever. Runbook: docs/image-mastering.md.
 model MasteringRun {
-  id         String          @id @default(cuid())
-  listingId  Int
+  id            String          @id @default(cuid())
+  listingId     Int
   /// Position in photoUrls at queue time — display only. The apply step swaps
   /// by originalUrl match, never by index: hosts mutate the array under us.
-  photoIndex Int
-  originalUrl String
-  status     MasteringStatus @default(QUEUED)
-  attempt    Int             @default(1)
+  photoIndex    Int
+  originalUrl   String
+  status        MasteringStatus @default(QUEUED)
+  attempt       Int             @default(1)
   /// The prompt is compiled and FROZEN at queue time. The canonical prompt
   /// will evolve; what a given image was actually asked for must not change
   /// under it, or the record of why an image looks the way it does is fiction.
@@ -1210,17 +1215,17 @@ model MasteringRun {
   /// Gemini-app lane, a Gemini API model id once the automated lane is funded.
   model         String
   /// Set only together with status MASTERED/UPDATED, never alone.
-  masteredUrl String?
+  masteredUrl   String?
   /// Slack task message (ts + permalink) in #makan-image-mastering.
-  slackTs  String?
-  slackUrl String?
+  slackTs       String?
+  slackUrl      String?
   failureReason String?
   humanNote     String?
-  queuedAt   DateTime  @default(now())
-  assignedAt DateTime?
-  masteredAt DateTime?
+  queuedAt      DateTime        @default(now())
+  assignedAt    DateTime?
+  masteredAt    DateTime?
   /// When the mastered URL went live in Listing.photoUrls (status UPDATED).
-  appliedAt  DateTime?
+  appliedAt     DateTime?
 
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
@@ -1243,7 +1248,9 @@ enum MasteringStatus {
   FAILED
 }
 
-/** How a listing's price is quoted. */
+/**
+ * How a listing's price is quoted.
+ */
 enum RentPeriod {
   NIGHTLY
   MONTHLY
@@ -1307,6 +1314,7 @@ model AgentTask {
   profile        AgentProfile?   @relation(fields: [profileId], references: [id], onDelete: Cascade)
   events         AgentEvent[]
   brokerRequests BrokerRequest[]
+  demand         TenantRequest?
 
   @@index([sessionKey, createdAt])
   @@index([profileId, updatedAt])
@@ -1319,12 +1327,12 @@ model AgentTask {
 /// agent-eval, and `capped` — a marker row written when the API reports the
 /// credits are spent, so every instance stops until the month turns.
 model ApiSpend {
-  day             String
-  lane            String
-  usd             Decimal  @default(0) @db.Decimal(10, 5)
-  calls           Int      @default(0)
-  inputTokens     Int      @default(0)
-  outputTokens    Int      @default(0)
+  day              String
+  lane             String
+  usd              Decimal  @default(0) @db.Decimal(10, 5)
+  calls            Int      @default(0)
+  inputTokens      Int      @default(0)
+  outputTokens     Int      @default(0)
   cacheReadTokens  Int      @default(0)
   cacheWriteTokens Int      @default(0)
   updatedAt        DateTime @updatedAt
@@ -1339,13 +1347,13 @@ model ApiSpend {
  * person / failed / uncertain, as the panel must.
  */
 model AgentEvent {
-  id        Int       @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   taskId    String
   seq       Int
   kind      String
   status    String
-  payload   Json      @default("{}")
-  createdAt DateTime  @default(now())
+  payload   Json     @default("{}")
+  createdAt DateTime @default(now())
 
   task AgentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
@@ -1370,13 +1378,17 @@ model ListingBroker {
   role      BrokerRole @default(BROKER)
   /// The ad this broker posted for the home (a TikTok video URL).
   sourceUrl String?
+  /// The directory entry for this broker (scripts/crm/brokers.ts).
+  brokerId  String?
   createdAt DateTime   @default(now())
 
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   user    User    @relation("ListingBrokers", fields: [userId], references: [id], onDelete: Cascade)
+  broker  Broker? @relation(fields: [brokerId], references: [id], onDelete: SetNull)
 
   @@unique([listingId, userId])
   @@index([userId])
+  @@index([brokerId])
 }
 
 enum BrokerRequestStatus {
@@ -1390,7 +1402,6 @@ enum BrokerRequestStatus {
  * The agent asking a broker "is this home still available?" — and, once it is,
  * carrying the viewing: slots the broker proposes, the one the tenant picks,
  * the broker's confirmation (which creates the ListingVisit).
- *
  * The broker answers on `/b/<token>` with one tap; only the token's sha256 is
  * stored. At most one request per (listing, broker) per 24 h, so a busy search
  * day never spams a broker. `need` is the tenant's requirement summary — no
@@ -1427,4 +1438,141 @@ model BrokerRequest {
   @@index([listingId, brokerUserId, createdAt])
   @@index([status, expiresAt])
   @@index([taskId])
+}
+
+enum BrokerKind {
+  BROKER
+  AGENCY
+  LANDLORD
+}
+
+/**
+ * The broker and agency directory: everyone who rents homes out in Kigali,
+ * whether or not mkan has one of their homes. Built daily by
+ * `scripts/crm/brokers.ts` from ListingBroker users, Twenty hosts, TikTok and
+ * Facebook posters and Maps agencies, and mirrored to the Twenty `broker`
+ * object. Coverage (districts, neighbourhoods, stays, price band) is derived
+ * from the ads they posted; it is who the agent asks when nothing matches.
+ */
+model Broker {
+  id               String     @id @default(cuid())
+  kind             BrokerKind @default(BROKER)
+  name             String
+  userId           String?    @unique
+  /// Normalised +250… numbers, the first is the one messaged.
+  phones           String[]
+  whatsapp         String?
+  tiktokHandle     String?    @unique
+  facebookUrl      String?
+  website          String?
+  email            String?
+  districts        String[]
+  neighbourhoods   String[]
+  /// "night" | "month"
+  stays            String[]
+  /// RWF per month, 10th–90th percentile of their rents.
+  priceMin         Int?
+  priceMax         Int?
+  listingsCount    Int        @default(0)
+  /// Their newest ad anywhere.
+  lastSeenAt       DateTime?
+  lastAskedAt      DateTime?
+  asks             Int        @default(0)
+  answers          Int        @default(0)
+  availableAnswers Int        @default(0)
+  optOut           Boolean    @default(false)
+  optOutAt         DateTime?
+  twentyId         String?    @unique
+  /// tiktok | facebook | web | maps | site | airbnb
+  sources          String[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  user     User?             @relation("BrokerUser", fields: [userId], references: [id], onDelete: SetNull)
+  listings ListingBroker[]
+  messages OutboundMessage[]
+
+  @@index([optOut, lastSeenAt])
+}
+
+enum TenantRequestStatus {
+  OPEN
+  MATCHED
+  CLOSED
+  EXPIRED
+}
+
+/**
+ * Demand the agent could not meet: a search with no home, kept for 14 days.
+ * Brokers who cover the area are asked for a home (OutboundMessage
+ * BROKER_ASK), and every new ad is matched against it daily
+ * (scripts/crm/demand-match.ts). `phone` only after the tenant opted in.
+ */
+model TenantRequest {
+  id                String              @id @default(cuid())
+  taskId            String              @unique
+  profileId         String?
+  requirements      Json
+  locale            String              @default("en")
+  phone             String?
+  optInAt           DateTime?
+  status            TenantRequestStatus @default(OPEN)
+  expiresAt         DateTime
+  matchedListingIds Int[]
+  lastMatchedAt     DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  task     AgentTask         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  messages OutboundMessage[]
+
+  @@index([status, expiresAt])
+}
+
+enum OutboundKind {
+  BROKER_ASK
+  BROKER_REQUEST
+  TENANT_ALERT
+}
+
+enum OutboundStatus {
+  QUEUED
+  SENT
+  FAILED
+  SKIPPED
+}
+
+/**
+ * The WhatsApp outbox. The Worker cannot reach the Evolution instance on the
+ * Mac, so it only writes rows here; `scripts/wa/outbox.ts` on the Mac drains
+ * them under the caps (daily total, one per broker per day, quiet hours).
+ * A BROKER_ASK carries the sha256 of the token behind `/b/d/<token>`, where
+ * the broker submits a home for the request.
+ */
+model OutboundMessage {
+  id               String         @id @default(cuid())
+  kind             OutboundKind
+  to               String
+  body             String
+  /// Who it is about, for the Slack fallback card.
+  label            String?
+  status           OutboundStatus @default(QUEUED)
+  attempts         Int            @default(0)
+  error            String?
+  tokenHash        String?        @unique
+  brokerId         String?
+  tenantRequestId  String?
+  /// BROKER_REQUEST: the BrokerRequest rows this message carries.
+  brokerRequestIds String[]
+  /// A home the broker submitted through the link.
+  listingId        Int?
+  sentAt           DateTime?
+  createdAt        DateTime       @default(now())
+
+  broker        Broker?        @relation(fields: [brokerId], references: [id], onDelete: SetNull)
+  tenantRequest TenantRequest? @relation(fields: [tenantRequestId], references: [id], onDelete: Cascade)
+  listing       Listing?       @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([brokerId, createdAt])
 }
