@@ -13,6 +13,8 @@ unset SLACK_HOME_CHANNEL
 mkdir -p "$LOGDIR"
 cd "$REPO" || { echo "⚠️ demand match failed — no repo at $REPO"; exit 0; }
 echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron ──" >>"$LOGDIR/match.log"
+# Facebook (06:30) and web (06:45) homes reach the lead pool here; TikTok's 06:00 run mirrors its own.
+PRISMA_QUIET=1 pnpm -s crm:tiktok-mirror --apply >>"$LOGDIR/match.log" 2>&1
 pnpm -s crm:demand-match --notify >>"$LOGDIR/match.log" 2>&1
 code=$?
 if [ "$code" -ne 0 ]; then
