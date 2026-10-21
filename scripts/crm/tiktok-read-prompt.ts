@@ -32,6 +32,23 @@ function frameLine(v: TikTokPromptInput): string {
     : `${v.frames.length} still frames from the video, in order, in the current directory: ${v.frames.join(', ')}. Open EVERY frame with the Read tool.`;
 }
 
+/**
+ * The same reader for a Facebook group post or Marketplace listing: the facts,
+ * rules and JSON are identical, only the medium changes (photos, no speech).
+ * The TikTok text stays byte-for-byte what tiktok-v3 read with.
+ */
+export const FACEBOOK_PROMPT_VERSION = 'facebook-v1';
+export function buildFacebookPrompt(v: Omit<TikTokPromptInput, 'transcript'>): string {
+  return buildTikTokPrompt({ ...v, transcript: '', framesMode: 'attached' })
+    .replace('one TikTok video posted in Rwanda', 'one Facebook post (a group post or a Marketplace listing) in Rwanda')
+    .replace(/- an automatic speech transcript[^\n]*\n/, '')
+    .replace('still frames from the video, attached', 'photos from the post, attached')
+    .replace('Frames often carry on-screen text', 'Photos often carry text')
+    .replace('Poster: @', 'Poster: ')
+    .replace('CAPTION:', 'POST TEXT:')
+    .replace(/\nTRANSCRIPT:\n\(none\)\n/, '\n');
+}
+
 export function buildTikTokPrompt(v: TikTokPromptInput): string {
   return `You read one TikTok video posted in Rwanda and decide whether it advertises a home for rent in Kigali, and if so extract its facts for a rental CRM.
 
