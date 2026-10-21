@@ -5,6 +5,9 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+  tiktokIdTime,
+  fetchBudget,
+  needsTranscript,
   dupKey,
   placeToken,
   captionCarriesFacts,
@@ -345,5 +348,32 @@ describe('vetVerdict', () => {
   it('keeps an account it cannot judge yet', () => {
     expect(vetVerdict(['House for rent Kigali', 'hi']).verdict).toBe('keep');
     expect(vetVerdict([]).verdict).toBe('keep');
+  });
+});
+
+describe('tiktokIdTime', () => {
+  it('reads the posting time out of the id', () => {
+    // 7698715459662679303 >> 32 = 1792496875 (2026-10-20T11:47Z)
+    expect(tiktokIdTime('7698715459662679303')).toBe(1792496875);
+  });
+  it('refuses what is not a TikTok id', () => {
+    expect(tiktokIdTime('abc')).toBeNull();
+    expect(tiktokIdTime('123')).toBeNull();
+  });
+});
+
+describe('fetchBudget', () => {
+  it('fetches only what the reader can take, a little ahead', () => {
+    expect(fetchBudget(40, 8, 0)).toBe(10);
+    expect(fetchBudget(40, 8, 72)).toBe(0);
+    expect(fetchBudget(40, 80, 10)).toBe(40);
+  });
+});
+
+describe('needsTranscript', () => {
+  it('skips Whisper when the caption gives price, rooms and a phone', () => {
+    expect(needsTranscript('2 bedroom house for rent Kicukiro 300k call 0788123456')).toBe(false);
+    expect(needsTranscript('2 bedroom house for rent Kicukiro 300k')).toBe(true);
+    expect(needsTranscript('beautiful home 🏡')).toBe(true);
   });
 });

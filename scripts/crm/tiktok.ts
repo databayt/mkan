@@ -36,6 +36,7 @@ import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
+import { ANTHROPIC_VISION_MODEL, AnthropicCap, anthropicKey, monthSpend, MONTHLY_CAP_USD, runAnthropic } from './anthropic-reader';
 import { runClaude } from './claude-reader';
 import { GROQ_VISION_MODEL, GroqLimit, runGroq } from './groq-reader';
 import { postToMkan } from './notify';
@@ -68,6 +69,9 @@ import {
   shouldPromote,
   postBody,
   wantsPost,
+  tiktokIdTime,
+  fetchBudget,
+  needsTranscript,
   type SeedRow,
   type TikTokRead,
   type VideoRow,
@@ -86,7 +90,11 @@ const LIMIT = Number(argv('limit', '0')) || Infinity;
 // fetched. Each stage now has its own budget, and read takes the newest first.
 const FETCH_LIMIT = Number(argv('fetch-limit', '0')) || LIMIT;
 const READ_LIMIT = Number(argv('read-limit', '0')) || LIMIT;
-const READER = (argv('reader') || process.env.TIKTOK_READER || 'groq').trim() as 'groq' | 'claude';
+// The Claude API (included Max credits, capped) reads when a key is stored;
+// Groq's free tier is the fallback, and takes over mid-run if the cap is hit.
+let READER = (argv('reader') || process.env.TIKTOK_READER || (anthropicKey() ? 'anthropic' : 'groq')).trim() as 'groq' | 'claude' | 'anthropic';
+/** Frames the API reader sees, each whole at 720px — no strips, no gaps. */
+const API_FRAMES = 6;
 const MAX_FETCH_ATTEMPTS = 3;
 /**
  * Groq's free vision tier: at most 3 images a request, 7,000 input tokens a
@@ -111,6 +119,8 @@ const SEEDS = join(DATA, 'seeds.json');
 const FRAMES = join(DATA, 'frames');
 const TMP = join(DATA, 'tmp');
 const LOCK = join(DATA, 'run.lock');
+/** How many videos the last read stage got through — the next fetch is sized to it. */
+const CAPACITY = join(DATA, 'capacity.json');
 const READER_MODEL = (process.env.TIKTOK_READER_MODEL ?? '').trim() || 'sonnet';
 const ASR_PY = (process.env.TIKTOK_ASR_PYTHON ?? '').trim() || join(homedir(), '.local/share/uv/tools/mlx-whisper/bin/python');
 const ASR_SCRIPT = (process.env.TIKTOK_ASR_SCRIPT ?? '').trim() || join(homedir(), '.claude/skills/edit/scripts/media/asr_batch.py');
@@ -220,6 +230,8 @@ async function discover(): Promise<void> {
   const add = (v: { handle: string; videoId: string; url: string }, via: VideoRow['via'], query?: string) => {
     // An ignored account kept coming back through search (@rentzen.co, 10-20).
     if (videos[v.videoId] || seeds[v.handle]?.status === 'ignored') return false;
+    // Search hits carry no date; the id does. Months-old posts never enter the queue.
+    if (tooOld(tiktokIdTime(v.videoId))) return false;
     videos[v.videoId] = { videoId: v.videoId, url: v.url, handle: v.handle, via, query, discoveredAt: now(), state: 'discovered' };
     return true;
   };
@@ -445,11 +457,21 @@ async function photoModeFrames(j: { thumbnails?: { url?: string; width?: number 
 async function fetchStage(): Promise<void> {
   const videos = loadVideos();
   const seeds = loadSeeds();
+  // Already-queued rows the id dates as stale are dropped without a network call.
+  let staleById = 0;
+  for (const v of Object.values(videos)) {
+    if (v.state !== 'discovered' || !tooOld(v.meta?.timestamp ?? tiktokIdTime(v.videoId))) continue;
+    Object.assign(v, { state: 'skipped', skipReason: `older than ${MAX_AGE_DAYS} days` });
+    staleById++;
+  }
+  const queued = Object.values(videos).filter((v) => v.state === 'fetched').length;
+  const capacity = READER === 'groq' ? Math.max(10, readJson<{ reads?: number }>(CAPACITY, {}).reads ?? 10) : READ_LIMIT === Infinity ? FETCH_LIMIT : READ_LIMIT;
+  const budget = FETCH_LIMIT === Infinity ? Infinity : fetchBudget(FETCH_LIMIT, capacity, queued);
   const queue = Object.values(videos)
     .filter((v) => v.state === 'discovered')
     .sort((a, b) => b.videoId.localeCompare(a.videoId)) // TikTok ids grow with time: newest first
-    .slice(0, FETCH_LIMIT === Infinity ? undefined : FETCH_LIMIT);
-  console.log(`\nfetch: ${queue.length} video(s) to fetch`);
+    .slice(0, budget === Infinity ? undefined : budget);
+  console.log(`\nfetch: ${queue.length} video(s) to fetch${budget !== Infinity ? ` (reader takes ~${capacity}, ${queued} already queued)` : ''}${staleById ? ` · ${staleById} dated stale by id, dropped unfetched` : ''}`);
   mkdirSync(TMP, { recursive: true });
   const BATCH = 10;
   for (let i = 0; i < queue.length; i += BATCH) {
@@ -498,9 +520,14 @@ async function fetchStage(): Promise<void> {
           execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-ss', String(t), '-i', mp4, '-frames:v', '1', '-vf', 'scale=720:-2', '-q:v', '3', out]);
           if (existsSync(out)) row.frames!.push(out);
         });
-        const wav = join(TMP, `${row.videoId}.wav`);
-        execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-i', mp4, '-vn', '-ac', '1', '-ar', '16000', wav]);
-        wavFor.set(row.videoId, wav);
+        if (needsTranscript(row.meta.caption)) {
+          const wav = join(TMP, `${row.videoId}.wav`);
+          execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-i', mp4, '-vn', '-ac', '1', '-ar', '16000', wav]);
+          wavFor.set(row.videoId, wav);
+        } else {
+          Object.assign(row, { transcript: '', state: 'fetched' });
+          runStats.fetched++;
+        }
         delete row.error;
         console.log(`  ✓ ${row.videoId} @${row.handle} · ${row.frames.length} frames · ${row.meta.caption.slice(0, 70).replace(/\n/g, ' ')}`);
       } catch (e) {
@@ -569,6 +596,17 @@ async function readOne(row: VideoRow, attempt = 0, extra = ''): Promise<TikTokRe
     } catch (e) {
       if (e instanceof GroqLimit) throw e;
       /* fall through to the frames */
+    }
+  }
+  if (READER === 'anthropic') {
+    const picked = pickFrames(row.frames ?? [], API_FRAMES);
+    const prompt = buildTikTokPrompt({ ...base, frames: picked.map((f, i) => `image ${i + 1} = frame ${f.label}`), framesMode: 'attached' });
+    text = await runAnthropic({ prompt: prompt + extra, images: picked.map((f) => f.path) });
+    try {
+      return parseTikTokRead(text);
+    } catch (e) {
+      if (attempt >= 1) throw e;
+      return readOne(row, 1, `\n\nYour previous answer was rejected: ${(e as Error).message.slice(0, 300)}. Return ONLY the JSON object.`);
     }
   }
   if (READER === 'groq' && visionSpent) throw new NeedsVision('vision quota spent for today');
@@ -644,7 +682,7 @@ async function readStage(): Promise<void> {
     .sort((a, b) => byPriority(a.p, b.p))
     .map(({ v }) => v)
     .slice(0, READ_LIMIT === Infinity ? undefined : READ_LIMIT);
-  const model = READER === 'groq' ? GROQ_VISION_MODEL : READER_MODEL;
+  const model = READER === 'groq' ? GROQ_VISION_MODEL : READER === 'anthropic' ? ANTHROPIC_VISION_MODEL : READER_MODEL;
   console.log(`\nread: ${queue.length} video(s), phone + price first · reader ${TIKTOK_PROMPT_VERSION}/${READER}:${model}${stale ? ` · ${stale} older than ${MAX_AGE_DAYS}d skipped unread` : ''}`);
   for (const row of queue) {
     const started = Date.now();
@@ -665,6 +703,13 @@ async function readStage(): Promise<void> {
       );
     } catch (e) {
       const msg = (e as Error).message;
+      if (e instanceof AnthropicCap) {
+        // The month's slice of the credits is spent: Groq's free tier reads the rest.
+        console.warn(`  ■ ${msg.slice(0, 200)} — reading on Groq from here`);
+        runStats.readStopped = msg.slice(0, 200);
+        READER = 'groq';
+        continue;
+      }
       if (e instanceof NeedsVision) {
         runStats.readLeft++;
         continue; // stays fetched; tomorrow's quota reads it
@@ -690,6 +735,11 @@ async function readStage(): Promise<void> {
     if (READER === 'groq') await sleep(GROQ_GAP_PER_IMAGE_MS * Math.max(1, lastImages)); // stay under the tier's minute
   }
   saveVideos(videos);
+  writeJson(CAPACITY, { reads: runStats.read, reader: READER, at: now() });
+  if (READER === 'anthropic' || runStats.readStopped.startsWith('anthropic')) {
+    const s = monthSpend();
+    console.log(`read: API spend ${s.month} $${s.usd.toFixed(3)} of $${MONTHLY_CAP_USD} (${s.calls} calls)`);
+  }
   if (runStats.oneStrip || runStats.twoStrips) console.log(`read: ${runStats.oneStrip} answered from one strip, ${runStats.twoStrips} needed two`);
   if (runStats.readLeft) console.log(`read: ${runStats.readLeft} video(s) wait for tomorrow's vision quota`);
 }

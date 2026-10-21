@@ -263,6 +263,36 @@ export function captionCarriesFacts(caption: string): boolean {
   return price && rooms;
 }
 
+/**
+ * When a video was posted, from its id alone: a TikTok id's top 32 bits are the
+ * unix seconds. Search hits carry no timestamp, so before this each one paid a
+ * `yt-dlp -J` just to learn it was months old.
+ */
+export function tiktokIdTime(videoId: string): number | null {
+  if (!/^\d{15,20}$/.test(videoId)) return null;
+  const s = Number(BigInt(videoId) >> 32n);
+  // 2016-09 (TikTok's launch) .. a day ahead — anything else is not a TikTok id.
+  return s > 1_472_000_000 && s < Date.now() / 1000 + 86_400 ? s : null;
+}
+
+/**
+ * How many videos to fetch this run: enough to keep the read queue a little
+ * ahead of what the reader can take, never more. Fetching 40 a day for a reader
+ * that took 2–8 left 128 downloaded videos to go stale unread (10-20).
+ */
+export function fetchBudget(limit: number, readCapacity: number, queued: number): number {
+  const want = Math.ceil(readCapacity * 1.2) - queued;
+  return Math.max(0, Math.min(limit, want));
+}
+
+/**
+ * Is the speech worth transcribing? A caption that already gives the price and
+ * a phone leaves Whisper nothing the reader needs — and over music it invents.
+ */
+export function needsTranscript(caption: string): boolean {
+  return !(captionCarriesFacts(caption) && rwandaPhonesInText(caption).length > 0);
+}
+
 /** Six (or n) evenly spaced timestamps, skipping the first and last 5% (intro cards, end screens). */
 export function frameTimes(duration: number, n = 8): number[] {
   if (!Number.isFinite(duration) || duration <= 0) return [0];
