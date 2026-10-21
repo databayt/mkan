@@ -1,0 +1,70 @@
+# mkan's WhatsApp bridge on the Mac — Evolution API v2 (Baileys), drained by
+# scripts/wa/outbox.ts. Same Evolution version hogwarts embeds (2.3.7, see
+# hogwarts/Dockerfile EVOLUTION_VERSION).
+#
+# Start it with ./up.sh, never `docker compose up` directly: the API key and the
+# database password come from the Keychain at `up` time (the only-central-.env
+# rule — there is no ops/evolution/.env). Both values are required below, so a
+# bare `docker compose up` fails loudly instead of running with an empty key.
+#
+# Nothing is reachable from outside the Mac: the API binds 127.0.0.1:8081 only,
+# Postgres has no host port at all.
+
+name: mkan-evolution
+
+services:
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    container_name: mkan-evolution
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      SERVER_URL: http://127.0.0.1:8081
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:?run ops/evolution/up.sh — key comes from Keychain mkan-EVOLUTION_API_KEY}
+      DEL_INSTANCE: "false"
+      # --- Database (v2 requires one). Messages are saved so the drain job can
+      # poll replies with /chat/findMessages — there is no public webhook.
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:${EVOLUTION_DB_PASSWORD:?run ops/evolution/up.sh}@postgres:5432/evolution
+      DATABASE_CONNECTION_CLIENT_NAME: mkan_evolution
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "false"
+      DATABASE_SAVE_DATA_CONTACTS: "false"
+      DATABASE_SAVE_DATA_CHATS: "false"
+      # --- Cache: local memory, no Redis container (one instance, one Mac).
+      CACHE_REDIS_ENABLED: "false"
+      CACHE_LOCAL_ENABLED: "true"
+      # --- Disabled integrations
+      RABBITMQ_ENABLED: "false"
+      S3_ENABLED: "false"
+      WEBSOCKET_ENABLED: "false"
+      LOG_LEVEL: ERROR,WARN,INFO
+    volumes:
+      - evolution_instances:/evolution/instances
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: mkan-evolution-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${EVOLUTION_DB_PASSWORD:?run ops/evolution/up.sh}
+      POSTGRES_DB: evolution
+    volumes:
+      - evolution_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolution -d evolution"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  # The paired session lives here — losing it means scanning the QR again.
+  evolution_instances:
+  evolution_pg:
