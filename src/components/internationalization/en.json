@@ -5374,7 +5374,9 @@
       "rate": "You have sent a lot of messages. Please wait a few minutes and try again.",
       "working": "Working on it…",
       "noneLong": "No home on Mkan fits that monthly budget yet. Kigali's monthly rentals come from brokers, and we are adding them now. A higher budget will show furnished homes you can rent by the month.",
-      "waiting": "I've asked the brokers. Their answers will appear here, even if you close this page and come back."
+      "waiting": "I've asked the brokers. Their answers will appear here, even if you close this page and come back.",
+      "answerFallback": "I'm not sure about that one yet. I can find homes, estimate what moving in costs and ask brokers for you.",
+      "other": "Happy to help. Tell me the area, the size and your budget, and I'll find homes."
     },
     "panel": {
       "title": "Rental agent",

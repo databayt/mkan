@@ -145,8 +145,11 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
                 <AgentTurn key={`${i}.${m.at}`} steps={<Steps task={task} />}>
                   {m.kind === "ask" && !running ? (
                     <AskCard field={m.field} requirements={task.requirements} onPick={(text, filters) => void say(text, false, filters)} disabled={pending} />
+                  ) : m.kind === "shortlist" && m.pendingText && !m.text && running ? (
+                    // Claude is writing the reply; the cards are already up below.
+                    <span aria-hidden className="block h-5 w-3/4 animate-pulse rounded bg-muted" />
                   ) : (
-                    <p className="whitespace-pre-wrap leading-[inherit] text-foreground">{reply(m)}</p>
+                    <p dir="auto" className="whitespace-pre-wrap text-start leading-[inherit] text-foreground">{reply(m)}</p>
                   )}
 
                   {m.kind === "shortlist" && task.shortlist.length > 0 && (

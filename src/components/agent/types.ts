@@ -50,8 +50,13 @@ export type AgentMessage =
   /** `filters` are the badges the tenant picked; they win over the text. `clear` empties fields (a refine chip). */
   | { role: "user"; text: string; at: string; filters?: Record<string, unknown>; clear?: string[] }
   | { role: "agent"; kind: "ask"; field: HardField; at: string }
-  /** `relaxed`: details widened to find these; `refine`: a field offered as a follow-up question. */
-  | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; at: string }
+  /**
+   * `relaxed`: details widened to find these; `refine`: a field offered as a follow-up question.
+   * `text`: the reply Claude wrote (guarded) — else the template; `pendingText` while it is being written.
+   */
+  | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; text?: string; pendingText?: boolean; at: string }
+  /** A question about renting, answered from knowledge.ts, or a greeting; no search ran. */
+  | { role: "agent"; kind: "answer"; topic: "question" | "other"; text?: string; at: string }
   | { role: "agent"; kind: "none"; stay?: "short" | "long"; at: string }
   | { role: "agent"; kind: "error"; at: string };
 
@@ -81,6 +86,8 @@ export interface ShortlistItem {
   mustHaves?: { matched: MustHave[]; unknown: MustHave[] };
   /** Distance from the place the tenant wants to be near. */
   place?: { name: string; km: number };
+  /** One line, written by Claude from this card's facts: why it fits. */
+  why?: string;
 }
 
 export interface ViewingView {

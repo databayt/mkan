@@ -102,6 +102,11 @@ export default function CardSheet({
             <span className="text-sm text-muted-foreground">{cost.period === "month" ? c?.perMonth ?? "/ month" : c?.perNight ?? "/ night"}</span>
           </p>
 
+          {item.why && (
+            <p dir="auto" className="text-start text-[15px] leading-6">
+              {item.why}
+            </p>
+          )}
           <FitLine item={item} className="whitespace-normal text-sm" />
           {item.mustHaves && item.mustHaves.unknown.length > 0 && (
             <p className="text-sm text-amber-700 dark:text-amber-400">

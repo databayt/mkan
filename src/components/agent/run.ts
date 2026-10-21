@@ -18,6 +18,7 @@ import { DISTRICTS } from "@/lib/geo/rwanda-places";
 import { coerceMemory, memoryChanged, rememberTurn, type AgentMemory, type PrefField } from "./memory";
 import { rankCandidates } from "./rank";
 import { readRequirements, type Reading } from "./reader";
+import { canWrite, writeAnswer, writeReply, writerFacts, type WriterFacts } from "./writer";
 import {
   clearFields,
   coerceRequirements,
@@ -251,6 +252,22 @@ export async function runTurn(taskId: string): Promise<void> {
         now: new Date(),
       });
 
+    // A question about renting, or a greeting, that changes nothing: answer it, no search.
+    const asksOnly = byClaude && reading.intent !== "search" && Object.keys(reading.set).length === 0 && reading.clear.length === 0 && !tapped;
+    if (asksOnly) {
+      const writeLang = (reading.lang ?? lang) as WriterFacts["lang"];
+      const text =
+        reading.intent === "question" && reading.question && (await canWrite(writeLang)) ? await writeAnswer(reading.question, writeLang) : null;
+      await Promise.all([understood, learn([]), text ? trace.record("reply_written", "done", { answer: true }) : null]);
+      await reply(
+        task.id,
+        messages,
+        { role: "agent", kind: "answer", topic: reading.intent === "question" ? "question" : "other", ...(text ? { text } : {}), at: now() },
+        { status: "DONE" },
+      );
+      return;
+    }
+
     // 2. Search mkan — the bookkeeping writes ride alongside the query.
     const [searchId, { candidates }] = await Promise.all([
       trace.start("search_done"),
@@ -314,13 +331,18 @@ export async function runTurn(taskId: string): Promise<void> {
     const [cards] = await Promise.all([toShortlist(result.ranked, lang, query.near?.name), trace.record("ranked", "done", { top: result.ranked.length })]);
     let shortlist = cards;
     const unconfirmed = shortlist.filter((s) => s.availability === "unconfirmed").length;
-    const answer: AgentMessage = {
+    // Claude writes the words when it can (language allowed, credits left); the cards never wait for it.
+    const writeLang = (reading?.lang ?? lang) as WriterFacts["lang"];
+    const willWrite = await canWrite(writeLang);
+    const refine = assumed ? ("stay" as const) : !requirements.maxPrice && !requirements.cheap ? ("maxPrice" as const) : undefined;
+    const answer: Extract<AgentMessage, { kind: "shortlist" }> = {
       role: "agent",
       kind: "shortlist",
       count: shortlist.length,
       ...(relaxed.length ? { relaxed } : {}),
       // One follow-up at a time: months-or-nights first, then a ceiling.
-      ...(assumed ? { refine: "stay" as const } : !requirements.maxPrice && !requirements.cheap ? { refine: "maxPrice" as const } : {}),
+      ...(refine ? { refine } : {}),
+      ...(willWrite ? { pendingText: true } : {}),
       at: now(),
     };
     await Promise.all([
@@ -328,17 +350,32 @@ export async function runTurn(taskId: string): Promise<void> {
       reply(task.id, messages, answer, { shortlist: json(shortlist) }),
       learn(shortlist.map((s) => s.id)),
     ]);
+    // The writer and the broker asks run side by side.
+    const writing = willWrite
+      ? writeReply(writerFacts({ lang: writeLang, requirements, relaxed, shortlist, refine, unplaced: reading?.unplaced })).catch(() => null)
+      : Promise.resolve(null);
     // A guessed stay type does not reach a broker: they are asked once the tenant says months.
     const asked = new Set(assumed ? [] : await requestConfirmations(task.id, shortlist, requirements, lang));
+    const written = await writing;
     trace.resync(await lastSeq(task.id));
     if (asked.size > 0) {
       shortlist = shortlist.map((s) => (asked.has(s.id) ? { ...s, availability: "asked" as const } : s));
     }
+    if (written?.why.size) shortlist = shortlist.map((s, i) => (written.why.has(`h${i + 1}`) ? { ...s, why: written.why.get(`h${i + 1}`) } : s));
+    // The reply message, finished: the written text (when it passed the guard) replaces the pending mark.
+    const finalAnswer: AgentMessage = { ...answer, pendingText: undefined, ...(written?.reply ? { text: written.reply } : {}) };
 
-    await trace.record("shortlist_ready", "done", { count: shortlist.length });
+    await trace.recordMany([
+      ...(written?.reply || written?.why.size ? [["reply_written", "done", { lines: written.why.size }] as [EventKind, StepStatus, Record<string, unknown>]] : []),
+      ["shortlist_ready", "done", { count: shortlist.length }],
+    ]);
     await db.agentTask.update({
       where: { id: task.id },
-      data: { ...(asked.size > 0 ? { shortlist: json(shortlist) } : {}), status: asked.size > 0 ? "WAITING" : "DONE" },
+      data: {
+        ...(asked.size > 0 || written?.why.size ? { shortlist: json(shortlist) } : {}),
+        ...(willWrite ? { messages: json([...messages, finalAnswer]) } : {}),
+        status: asked.size > 0 ? "WAITING" : "DONE",
+      },
     });
   } catch (err) {
     console.error("[agent] turn failed", err);

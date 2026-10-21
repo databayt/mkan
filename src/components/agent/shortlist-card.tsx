@@ -149,6 +149,11 @@ export const ShortlistCard = memo(function ShortlistCard({
             )}
           </span>
           {meta && <span className="block truncate text-sm text-muted-foreground">{meta}</span>}
+          {item.why && (
+            <span dir="auto" className="line-clamp-2 block text-start text-sm text-foreground/80">
+              {item.why}
+            </span>
+          )}
           <span className="block text-[15px]">
             <span className="font-semibold">{formatCurrency(item.cost.headline, locale, item.currency)}</span>{" "}
             <span className="text-sm text-muted-foreground">{item.cost.period === "month" ? c?.perMonth ?? "/ month" : c?.perNight ?? "/ night"}</span>

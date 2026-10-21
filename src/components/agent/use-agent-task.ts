@@ -60,9 +60,11 @@ type HistoryMode = "push" | "replace" | "none";
  */
 function mergeTask(prev: AgentTaskView | null, next: AgentTaskView): AgentTaskView {
   if (!prev || prev.id !== next.id) return next;
+  // An agent message can change in place (its written text arrives after the cards), so compare it whole.
   const messages = next.messages.map((m, i) => {
     const old = prev.messages[i];
-    return old && old.role === m.role && old.at === m.at ? old : m;
+    if (!old || old.role !== m.role || old.at !== m.at) return m;
+    return m.role === "user" || JSON.stringify(old) === JSON.stringify(m) ? old : m;
   });
   const before = new Map(prev.shortlist.map((item) => [item.id, item]));
   const shortlist = next.shortlist.map((item) => {
@@ -264,6 +266,8 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false, 
   const reply = useCallback(
     (m: Extract<AgentMessage, { role: "agent" }>): string => {
       if (m.kind === "ask") return a?.ask?.[m.field] ?? "";
+      if (m.kind === "answer") return m.text ?? (m.topic === "question" ? a?.reply?.answerFallback : a?.reply?.other) ?? "";
+      if (m.kind === "shortlist" && m.text) return m.text;
       if (m.kind === "shortlist") {
         const found = fill(a?.reply?.shortlist ?? "I found {count} homes.", { count: m.count });
         const lines = [m.relaxed?.length ? relaxedLine(m.relaxed) : null, found, anyAsked ? a?.reply?.waiting : null];

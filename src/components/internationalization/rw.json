@@ -5374,7 +5374,9 @@
       "rate": "Wohereje ubutumwa bwinshi. Tegereza iminota mike hanyuma wongere ugerageze.",
       "working": "Ndimo kubikora…",
       "noneLong": "Nta nzu kuri Mkan ihuye n'iyo ngengo y'imari ya buri kwezi kugeza ubu. Amazu akodeshwa buri kwezi i Kigali aturuka ku bakomisiyoneri, kandi turimo kuyongeramo ubu. Ingengo y'imari iri hejuru izerekana amazu afite ibikoresho ushobora gukodesha buri kwezi.",
-      "waiting": "Nabajije abakomisiyoneri. Ibisubizo byabo bizagaragara hano, kabone n'iyo wafunga iyi paji ukazagaruka."
+      "waiting": "Nabajije abakomisiyoneri. Ibisubizo byabo bizagaragara hano, kabone n'iyo wafunga iyi paji ukazagaruka.",
+      "answerFallback": "Ibyo sindabimenya neza. Nshobora kugushakira amazu, kubara ikiguzi cyo kwimuka no kubaza abakomisiyoneri mu izina ryawe.",
+      "other": "Nishimiye kugufasha. Mbwira agace, ingano n'ingengo y'imari, ngushakire amazu."
     },
     "panel": {
       "title": "Umukozi w'ubukode",

@@ -91,6 +91,20 @@ describe('with a Claude reading', () => {
     expect(query).toMatchObject({ neighbourhood: null, district: null, bedrooms: 2 });
   });
 
+  it('a question that changes nothing is answered, not searched', async () => {
+    read.mockResolvedValueOnce(claude({ intent: 'question', question: 'how much is the deposit' }));
+    findUnique.mockResolvedValueOnce({ id: 't1', locale: 'en', messages: [{ role: 'user', text: 'how much deposit do brokers ask?', at: '' }], requirements: null, shortlist: null, profileId: 'p1', profile: { memory: null }, events: [] });
+    const { runTurn } = await import('@/components/agent/run');
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.agentTask.update).mockClear();
+    await runTurn('t1');
+    expect(search).not.toHaveBeenCalled();
+    const last = (vi.mocked(db.agentTask.update).mock.calls.at(-1)![0] as { data: { messages: { kind: string; topic?: string }[]; status: string } }).data;
+    // No key in tests: the template answers (topic "question").
+    expect(last.messages.at(-1)).toMatchObject({ kind: 'answer', topic: 'question' });
+    expect(last.status).toBe('DONE');
+  });
+
   it('without a model, the rules read alone (and still read money)', async () => {
     read.mockResolvedValueOnce(null);
     const query = await turn('2 bedroom in Kicukiro under 400k a month');
