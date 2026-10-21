@@ -273,6 +273,7 @@ export const HOME: ObjectDef = {
     // Relations (created last — targets must exist)
     { name: 'host', label: 'Host', type: 'RELATION', icon: 'IconUserCheck', relation: { target: 'host', type: 'MANY_TO_ONE', targetFieldLabel: 'Homes', targetFieldIcon: 'IconHome' } },
     { name: 'duplicateOf', label: 'Duplicate of', type: 'RELATION', relation: { target: 'home', type: 'MANY_TO_ONE', targetFieldLabel: 'Duplicates', targetFieldIcon: 'IconCopy' } },
+    { name: 'broker', label: 'Broker', type: 'RELATION', icon: 'IconBuildingEstate', relation: { target: 'broker', type: 'MANY_TO_ONE', targetFieldLabel: 'Homes', targetFieldIcon: 'IconHome' } },
   ],
 };
 
@@ -344,6 +345,8 @@ export const HOST: ObjectDef = {
 
     // Relation — optional bridge to the standard People object once identity is real
     { name: 'person', label: 'Person (verified)', type: 'RELATION', relation: { target: 'person', type: 'MANY_TO_ONE', targetFieldLabel: 'Hosts', targetFieldIcon: 'IconUserCheck' } },
+    // The directory entry this host belongs to (crm:brokers links it).
+    { name: 'broker', label: 'Broker', type: 'RELATION', icon: 'IconBuildingEstate', relation: { target: 'broker', type: 'MANY_TO_ONE', targetFieldLabel: 'Hosts', targetFieldIcon: 'IconUserCheck' } },
   ],
 };
 
@@ -378,11 +381,53 @@ export const TIKTOK_POST: ObjectDef = {
     { name: 'scrapedAt', label: 'Scraped', type: 'DATE_TIME' },
     { name: 'home', label: 'Home', type: 'RELATION', icon: 'IconHome', relation: { target: 'home', type: 'MANY_TO_ONE', targetFieldLabel: 'TikTok posts', targetFieldIcon: 'IconBrandTiktok' } },
     { name: 'host', label: 'Host', type: 'RELATION', icon: 'IconUserCheck', relation: { target: 'host', type: 'MANY_TO_ONE', targetFieldLabel: 'TikTok posts', targetFieldIcon: 'IconBrandTiktok' } },
+    { name: 'broker', label: 'Broker', type: 'RELATION', icon: 'IconBuildingEstate', relation: { target: 'broker', type: 'MANY_TO_ONE', targetFieldLabel: 'TikTok posts', targetFieldIcon: 'IconBrandTiktok' } },
+  ],
+};
+
+// ── Broker ───────────────────────────────────────────────────────────────────
+// The broker and agency directory (2026-10-21): everyone who rents homes out in
+// Kigali, merged from ListingBroker users, agency-like hosts, TikTok posts and
+// seeds, Facebook posters and Maps agencies by `crm:brokers`. Prisma `Broker`
+// is the source of truth (the Worker reads it); this is its mirror for humans.
+// Coverage is derived from the homes they posted. The relations live on the
+// other side — `host.broker`, `home.broker`, `tiktokPost.broker` — so the
+// reverse lists (Hosts, Homes, TikTok posts) appear on each broker.
+export const BROKER: ObjectDef = {
+  nameSingular: 'broker',
+  namePlural: 'brokers',
+  labelSingular: 'Broker',
+  labelPlural: 'Brokers',
+  icon: 'IconBuildingEstate',
+  description: 'A Kigali broker, agency or landlord: how to reach them, where and at what price they rent, and how they answer.',
+  fields: [
+    { name: 'kind', label: 'Kind', type: 'SELECT', icon: 'IconCategory', options: ['BROKER', 'AGENCY', 'LANDLORD'] },
+    { name: 'phone', label: 'Phone', type: 'PHONES', icon: 'IconPhone', description: 'Normalised +250 numbers; the first is the one messaged.' },
+    { name: 'whatsapp', label: 'WhatsApp', type: 'PHONES', icon: 'IconBrandWhatsapp' },
+    { name: 'tiktokHandle', label: 'TikTok', type: 'TEXT', icon: 'IconBrandTiktok', description: 'Handle without @.' },
+    { name: 'facebookUrl', label: 'Facebook', type: 'LINKS', icon: 'IconBrandFacebook' },
+    { name: 'website', label: 'Website', type: 'LINKS', icon: 'IconWorldWww' },
+    { name: 'email', label: 'Email', type: 'EMAILS', icon: 'IconMail' },
+    { name: 'districts', label: 'Districts', type: 'MULTI_SELECT', icon: 'IconMapPin', options: ['GASABO', 'KICUKIRO', 'NYARUGENGE'], description: 'Where their homes are, most first.' },
+    { name: 'neighbourhoods', label: 'Neighbourhoods', type: 'TEXT', icon: 'IconMap2', description: 'Comma-separated, most first (Kimihurura, Remera…).' },
+    { name: 'stays', label: 'Stays', type: 'MULTI_SELECT', icon: 'IconCalendarTime', options: ['MONTH', 'NIGHT'] },
+    { name: 'priceMin', label: 'Rent from (RWF/month)', type: 'NUMBER', icon: 'IconCurrencyDollar', description: '10th percentile of their monthly rents.' },
+    { name: 'priceMax', label: 'Rent to (RWF/month)', type: 'NUMBER', icon: 'IconCurrencyDollar', description: '90th percentile of their monthly rents.' },
+    { name: 'listingsCount', label: 'Homes', type: 'NUMBER', icon: 'IconHome' },
+    { name: 'lastSeenAt', label: 'Last ad', type: 'DATE_TIME', icon: 'IconCalendar', description: 'Their newest ad anywhere.' },
+    { name: 'lastAskedAt', label: 'Last asked', type: 'DATE_TIME', icon: 'IconSend' },
+    { name: 'asks', label: 'Asks', type: 'NUMBER', icon: 'IconMessageQuestion' },
+    { name: 'answers', label: 'Answers', type: 'NUMBER', icon: 'IconMessageCheck' },
+    { name: 'availableAnswers', label: 'Had a home', type: 'NUMBER', icon: 'IconHomeCheck', description: 'Answers that offered an available home.' },
+    { name: 'optOut', label: 'Opted out', type: 'BOOLEAN', icon: 'IconBan', defaultValue: false },
+    { name: 'optOutAt', label: 'Opted out at', type: 'DATE_TIME' },
+    { name: 'sources', label: 'Sources', type: 'MULTI_SELECT', icon: 'IconWorldWww', options: ['TIKTOK', 'FACEBOOK', 'WEB', 'MAPS', 'SITE', 'AIRBNB'] },
+    { name: 'mkanBrokerId', label: 'mkan broker ID', type: 'TEXT', description: 'Prisma Broker.id (dedupe key).' },
   ],
 };
 
 /** Objects the seeder creates, in dependency order (home + host first; relations wired last). */
-export const OBJECTS: ObjectDef[] = [HOST, HOME, TIKTOK_POST];
+export const OBJECTS: ObjectDef[] = [HOST, HOME, TIKTOK_POST, BROKER];
 
 // ── Opportunity (standard object) — custom fields for the onboarding funnel ───
 // One Opportunity per host. The funnel lives in `onboardingStage`; the standard

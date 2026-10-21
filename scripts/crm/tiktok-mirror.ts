@@ -1,5 +1,5 @@
 /**
- * TikTok homes → the rental agent's lead pool.
+ * TikTok homes (and Facebook / web ads) → the rental agent's lead pool.
  *
  *   pnpm crm:tiktok-mirror            dry run: what would be written
  *   pnpm crm:tiktok-mirror --apply
@@ -14,7 +14,9 @@
  * answer is what makes it "available".
  *
  * Idempotent: listing keyed by `sourceListingId` (= Twenty `sourceId`,
- * `tiktok:<videoId>`), broker by `sourceHostId` (`tiktok:<handle>`). The one
+ * `tiktok:<videoId>`, `facebook:<postId>`, `web:<…>`), broker by `sourceHostId`
+ * (`tiktok:<handle>`, else `<source>:<phone>`). When the broker directory
+ * (`crm:brokers`) knows the broker, each ListingBroker row points at it. The one
  * thing written back to Twenty is the home's `mkanListingId`: without it
  * crm:sync-up could not tell the lead was already on the board and made a copy.
  */
@@ -44,11 +46,20 @@ if (!(process.env.TWENTY_API_KEY ?? '').trim()) {
 const SKIP_STAGES = new Set(['DECLINED', 'DUPLICATE', 'REJECTED']);
 const PROPERTY_TYPES = new Set(['Rooms', 'Tinyhouse', 'Apartment', 'Villa', 'Townhouse', 'Cottage']);
 
+/** Lead sources the mirror accepts: TikTok, Facebook posts and web ads all land in Twenty as homes. */
+export const MIRROR_SOURCES = ['TIKTOK', 'FACEBOOK', 'WEB'] as const;
+export type MirrorSource = (typeof MIRROR_SOURCES)[number];
+
 export interface MirrorPlan {
   sourceId: string;
+  source: MirrorSource;
   /** The Twenty home, and the site row it already points at (if any). */
   crm: { homeId: string; mkanListingId: number | null };
-  broker: { handle: string; name: string; phone: string; role: 'BROKER' | 'OWNER' };
+  /**
+   * `key` is the broker User's `sourceHostId`: `tiktok:<handle>` whenever the
+   * host has a handle (every TikTok home does), else `<source>:<phone>`.
+   */
+  broker: { handle: string | null; key: string; name: string; phone: string; role: 'BROKER' | 'OWNER' };
   location: { address: string; state: string; zoneKey: string | null; latitude: number; longitude: number };
   listing: {
     sourceListingId: string;
@@ -75,15 +86,16 @@ const links = (v: unknown): string[] => {
 /** One Twenty home + its host → what the lead pool should hold, or why not. */
 export function planMirror(home: Row, host: Row | null): MirrorPlan | { skip: string } {
   const sourceId = (home.sourceId as string | null) ?? '';
-  if (home.source !== 'TIKTOK' || !sourceId.startsWith('tiktok:')) return { skip: 'not a TikTok home' };
+  const source = MIRROR_SOURCES.find((s) => s === home.source);
+  if (!source || !sourceId.startsWith(`${source.toLowerCase()}:`)) return { skip: 'not a TikTok, Facebook or web home' };
   if (SKIP_STAGES.has(String(home.pipelineStage)) || SKIP_STAGES.has(String(home.homeStatus))) return { skip: `stage ${home.pipelineStage}` };
   if (home.rentPeriod !== 'MONTH') return { skip: 'not a monthly rent' };
   const priceMonth = fromMicros(home.priceMonthLocal as Currency | null);
   if (!priceMonth || priceMonth < 10_000) return { skip: 'no monthly price' };
   const phone = phoneOf((host?.phone as Phones | null) ?? null) ?? phoneOf(home.hostPhone as Phones | null);
   if (!phone) return { skip: 'no broker phone' };
-  const handle = ((host?.tiktokHandle as string | null) ?? '').replace(/^@/, '').trim().toLowerCase();
-  if (!handle) return { skip: 'no TikTok handle' };
+  const handle = ((host?.tiktokHandle as string | null) ?? '').replace(/^@/, '').trim().toLowerCase() || null;
+  if (!handle && source === 'TIKTOK') return { skip: 'no TikTok handle' };
 
   const districtCode = String(home.homeState ?? '').toUpperCase();
   const district = DISTRICTS.find((d) => d.code === districtCode);
@@ -93,10 +105,12 @@ export function planMirror(home: Row, host: Row | null): MirrorPlan | { skip: st
 
   return {
     sourceId,
+    source,
     crm: { homeId: String(home.id), mkanListingId: typeof home.mkanListingId === 'number' ? home.mkanListingId : null },
     broker: {
       handle,
-      name: ((host?.name as string | null) ?? (home.hostName as string | null) ?? handle).trim(),
+      key: handle ? `tiktok:${handle}` : `${source.toLowerCase()}:${phone.replace(/^\+/, '')}`,
+      name: ((host?.name as string | null) ?? (home.hostName as string | null) ?? handle ?? phone).trim(),
       phone,
       role: host?.agencySuspected === false ? 'OWNER' : 'BROKER',
     },
@@ -124,7 +138,30 @@ export function planMirror(home: Row, host: Row | null): MirrorPlan | { skip: st
   };
 }
 
-/** Mirror every eligible TikTok home into the lead pool. Also run by `crm:tiktok run --apply`. */
+/**
+ * The directory entry (scripts/crm/brokers.ts) for a broker, by handle or phone.
+ * Until the broker_directory migration reaches the database the table does not
+ * exist; the first failure turns the lookup off so the daily mirror keeps running.
+ */
+type Db = (typeof import('../../src/lib/db'))['db'];
+let directoryLive = true;
+async function directoryBrokerId(db: Db, handle: string | null, phone: string): Promise<string | null> {
+  if (!directoryLive) return null;
+  try {
+    const b = await db.broker.findFirst({
+      where: { OR: [...(handle ? [{ tiktokHandle: handle }] : []), { phones: { has: phone } }] },
+      orderBy: { listingsCount: 'desc' },
+      select: { id: true },
+    });
+    return b?.id ?? null;
+  } catch (e) {
+    directoryLive = false;
+    console.warn(`  (broker directory not readable — ListingBroker.brokerId left unset: ${(e as Error).message.split('\n').pop()?.slice(0, 120)})`);
+    return null;
+  }
+}
+
+/** Mirror every eligible TikTok / Facebook / web home into the lead pool. Also run by `crm:tiktok run --apply`. */
 export async function mirrorLeads(apply: boolean): Promise<{ planned: number; written: number; created: number; unchanged: number; linked: number }> {
   const client = twentyClient();
   const [homes, hosts] = await Promise.all([client.all('homes'), client.all('hosts')]);
@@ -132,14 +169,14 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
   const plans: MirrorPlan[] = [];
   const skipped = new Map<string, number>();
   for (const home of homes) {
-    if (home.source !== 'TIKTOK') continue;
+    if (!MIRROR_SOURCES.includes(home.source as MirrorSource)) continue;
     const plan = planMirror(home, hostById.get(String(home.hostId)) ?? null);
     if ('skip' in plan) skipped.set(plan.skip, (skipped.get(plan.skip) ?? 0) + 1);
     else plans.push(plan);
   }
-  console.log(`TikTok homes → leads: ${plans.length} to mirror; skipped ${[...skipped].map(([k, v]) => `${v} ${k}`).join(', ') || 'none'}`);
+  console.log(`TikTok / Facebook / web homes → leads: ${plans.length} to mirror; skipped ${[...skipped].map(([k, v]) => `${v} ${k}`).join(', ') || 'none'}`);
   if (!apply) {
-    for (const p of plans) console.log(`  ${p.sourceId}  @${p.broker.handle} (${p.broker.role})  ${p.listing.bedrooms ?? '?'}bd  RWF ${p.listing.priceMonth}/mo  ${p.location.address}`);
+    for (const p of plans) console.log(`  ${p.sourceId}  ${p.broker.handle ? `@${p.broker.handle}` : p.broker.key} (${p.broker.role})  ${p.listing.bedrooms ?? '?'}bd  RWF ${p.listing.priceMonth}/mo  ${p.location.address}`);
     console.log('\nDRY RUN — pass --apply to write the leads.');
     return { planned: plans.length, written: 0, created: 0, unchanged: 0, linked: 0 };
   }
@@ -152,7 +189,7 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
   const factKey = (beds: number | null, price: number | null, place: string | null) =>
     beds != null && price ? `${beds}|${Math.round(Math.log(price) / Math.log(1.05))}|${placeToken(place)}` : null;
   const leads = await db.listing.findMany({
-    where: { source: 'TIKTOK' },
+    where: { source: { in: [...MIRROR_SOURCES] } },
     select: { id: true, sourceListingId: true, bedrooms: true, priceMonth: true, hostId: true, location: { select: { address: true } } },
   });
   const leadByFacts = new Map<string, (typeof leads)[number]>();
@@ -167,10 +204,14 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
   let linked = 0;
   let shared = 0;
   for (const p of plans) {
-    const sourceHostId = `tiktok:${p.broker.handle}`;
+    const sourceHostId = p.broker.key;
     let broker = await db.user.findUnique({ where: { sourceHostId }, select: { id: true } });
+    // No handle (a Facebook or web poster): the same number already brokering a lead is the same broker.
+    if (!broker && !p.broker.handle) {
+      broker = await db.user.findFirst({ where: { phoneNumber: p.broker.phone, brokerListings: { some: {} } }, select: { id: true } });
+    }
     if (!broker) {
-      const usernameFree = !(await db.user.findUnique({ where: { username: `@${p.broker.handle}` }, select: { id: true } }));
+      const usernameFree = p.broker.handle ? !(await db.user.findUnique({ where: { username: `@${p.broker.handle}` }, select: { id: true } })) : false;
       broker = await db.user.create({
         data: {
           email: sourceHostId,
@@ -186,6 +227,9 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
     } else {
       await db.user.update({ where: { id: broker.id }, data: { phoneNumber: p.broker.phone } });
     }
+
+    const brokerId = await directoryBrokerId(db, p.broker.handle, p.broker.phone);
+    const linkBroker = brokerId ? { brokerId } : {};
 
     const existing = await db.listing.findUnique({
       where: { sourceListingId: p.sourceId },
@@ -209,6 +253,12 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
       (existing.location?.zoneKey ?? null) === p.location.zoneKey
     ) {
       unchanged += 1;
+      if (brokerId) {
+        await db.listingBroker.updateMany({
+          where: { listingId: existing.id, userId: broker.id, OR: [{ brokerId: null }, { brokerId: { not: brokerId } }] },
+          data: { brokerId },
+        });
+      }
       continue;
     }
     const k = factKey(p.listing.bedrooms, p.listing.priceMonth, p.location.address);
@@ -216,8 +266,9 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
     if (same && same.hostId !== broker.id) {
       await db.listingBroker.upsert({
         where: { listingId_userId: { listingId: same.id, userId: broker.id } },
-        update: { role: p.broker.role, sourceUrl: p.listing.sourceUrl },
-        create: { listingId: same.id, userId: broker.id, role: p.broker.role, sourceUrl: p.listing.sourceUrl },
+        update: { role: p.broker.role, sourceUrl: p.listing.sourceUrl, ...linkBroker },
+        create: { listingId: same.id, userId: broker.id, role: p.broker.role, sourceUrl: p.listing.sourceUrl, ...linkBroker },
+        select: { id: true },
       });
       if (p.crm.mkanListingId !== same.id) {
         await client.rest('PATCH', `homes/${p.crm.homeId}`, { mkanListingId: same.id, duplicateCheck: 'SUSPECTED' }).catch((e) => console.warn(`  ! link ${p.sourceId}: ${(e as Error).message.slice(0, 120)}`));
@@ -232,7 +283,7 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
     else locationId = (await db.location.create({ data: locationData, select: { id: true } })).id;
 
     const listingData = {
-      source: 'TIKTOK' as const,
+      source: p.source,
       sourceUrl: p.listing.sourceUrl,
       sourceCapturedAt: p.listing.sourceCapturedAt,
       canonicalLocale: 'en',
@@ -262,8 +313,9 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
     }
     await db.listingBroker.upsert({
       where: { listingId_userId: { listingId: listing.id, userId: broker.id } },
-      update: { role: p.broker.role, sourceUrl: p.listing.sourceUrl },
-      create: { listingId: listing.id, userId: broker.id, role: p.broker.role, sourceUrl: p.listing.sourceUrl },
+      update: { role: p.broker.role, sourceUrl: p.listing.sourceUrl, ...linkBroker },
+      create: { listingId: listing.id, userId: broker.id, role: p.broker.role, sourceUrl: p.listing.sourceUrl, ...linkBroker },
+      select: { id: true },
     });
     if (p.crm.mkanListingId !== listing.id) {
       try {
