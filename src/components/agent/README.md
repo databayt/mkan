@@ -37,7 +37,14 @@ profile. Reads (page render, poll) never write; writes (actions, the chat list) 
 | File | Role |
 | --- | --- |
 | `requirements.ts` | Zod schema + deterministic en/ar/rw reader, merge, missing hard field |
-| `llm.ts` | Groq free-tier reader (`openai/gpt-oss-20b`); any failure → rules only |
+| `reader.ts` | The reader: Claude Haiku 5.5 first (structured output — a flat, fully required `ReaderOut`, every value range-checked here), Groq with what is left of the 3.5 s budget, then the rules. Reads the screen as [h1]…[h6] (`like` / `notLike`), landmarks (`near`), must-haves, move-in, USD, memory continuity, `intent` (search / question / other) |
+| `llm.ts` | Groq free-tier reader (`openai/gpt-oss-20b`) — the fallback; a place it names counts only when the message names it |
+| `claude.ts` | The capped Claude client: `ApiSpend` ledger (priced from `usage`), $15/month (`AGENT_API_CAP_USD`), daily pacing, 429/5xx cooldowns, a 402 or a `capped` row stops every instance |
+| `writer.ts` · `knowledge.ts` | Claude writes the reply and one "why this home" per card from facts with no money and no dates; answers renting questions from `knowledge.ts` (built from the cost constants and the areas). `guardText` drops any piece with a number not in the facts, a price, an "available" without a broker's yes, or the wrong script — the template stands instead |
+| `memory.ts` · `feedback-actions.ts` | What the agent remembers (sticky search fields, ≤10 sanitized notes, liked / dismissed / seen homes) — written after each turn from a trusted reader only; ♥ / Not for me / Check availability / the Memory view's edits |
+| `welcome.tsx` · `app/api/agent/welcome` | Welcome back: the remembered search as one tap, and homes listed since the last search |
+| `saved-view.tsx` · `memory-view.tsx` | ☰ → Saved homes (the site's favorites) and ☰ → Memory (change, remove, forget) |
+| `amenities.ts` | A TikTok video's features → `Amenity` values, furnishing, parking, pets (the mirror writes them onto leads) |
 | `cost.ts` | Short stay (nights + 12% fee) · month in a nightly home · Kigali broker terms (3 months + ½ deposit + 25–30% commission + 5k viewing) |
 | `rank.ts` | Duplicate grouping, hard filters, scoring with reasons |
 | `search.ts` | Prisma query over published RWF Kigali homes → candidates; shortlist cards |
@@ -58,7 +65,10 @@ profile. Reads (page render, poll) never write; writes (actions, the chat list) 
 
 ## Rules
 
-- The model only reads requirements. Numbers, filters, ranking and money are code.
+- The model reads the tenant and writes words. Numbers, filters, ranking and money are code, and every written piece passes the guard.
+- Claude spends only the Max plan's included API credits (D-20261021-included-api-credits-for-find): `AGENT_ANTHROPIC_API_KEY` (never `ANTHROPIC_API_KEY` — that switches on the uncapped report triage), `AGENT_API_CAP_USD` (15), `AGENT_CLAUDE=off`, `AGENT_CLAUDE_MODEL`, `AGENT_WRITER_LOCALES` (en,ar), `USD_TO_RWF` (1450). Kill switch without a restart: insert an `ApiSpend` row with lane `capped` for today.
+- Quality gates: `pnpm agent:eval` (45 golden reader cases, Claude vs Groq vs rules; gate ≥ 90%, never worse than the rules, p95 ≤ 2.5 s) and `pnpm agent:eval-writer` (guard pass rate + ar/rw samples for a person). E2E: `tests/e2e/find.spec.ts` against a dev server on a Neon **test branch** only (`AGENT_E2E=1`).
+- Retention: `/api/cron/agent-retention` (03:00 UTC) deletes anonymous profiles idle 180 days with their chats.
 - `Listing.lastAvailabilityConfirmedAt` is stamped by imports, so it is **not** a
   confirmation. Only a broker's answer (phase 2) makes a card "confirmed".
 - Every string lives under `agent.*` in en/ar/rw.

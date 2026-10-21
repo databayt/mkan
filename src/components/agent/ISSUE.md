@@ -77,3 +77,22 @@
 - Sheet primitive: side sheets slide from their logical edge (Arabic slid from the wrong side before).
 - Next: Claude Haiku 5.5 reader on the included API credits (capped ledger `ApiSpend`), memory reads/writes,
   welcome back, saved homes, best-match ranking, model-written replies — see the plan of 2026-10-21.
+
+## Smart reader, memory, best match, written replies (2026-10-21)
+
+- Shipped dark until the key exists: Claude Haiku 5.5 reader + writer on the included credits, capped in
+  code. **Blocker: the credits are not claimed** — Keychain `mkan-ANTHROPIC_API_KEY` and
+  `cf-mkan-AGENT_ANTHROPIC_API_KEY` are missing, so prod reads with Groq then the rules, and replies stay templates.
+  Once stored: `pnpm agent:eval` (gate) → `scripts/cf-secrets.sh` → redeploy → one warm-up turn (the first call
+  with a new schema compiles its grammar and can pass the 3 s timeout).
+- Memory: sticky fields, notes, liked / dismissed / seen; written only from a trusted reader. A Groq-only turn
+  cannot teach it a place (seen: "near Kigali Heights" → Kicukiro).
+- Best match: must-haves scored on listing data (`hasMustHave`: null = ask the broker), distance to a landmark
+  (24 approximate pins in `areas.ts` — refine against a map), neutral rating for unrated homes, leads stay in area
+  searches, "unfurnished" leaves out nightly homes. `Listing.furnished` + `WaterTank` / `BackupGenerator` filled for
+  leads by the mirror from the video's features (from the next mirror run).
+- One tap: ♥ (site favorites; guest hearts merge on sign-in), Not for me (too expensive → 85% ceiling, too small →
+  +1 bedroom, not this one → hidden), Check availability on a lead the agent did not ask about.
+- Not done: Kinyarwanda writing (`AGENT_WRITER_LOCALES`) waits for a native review of `pnpm agent:eval-writer`
+  samples; the e2e suite needs a test branch (the repo `.env` is production); "new since" only counts homes created
+  after the last search (a price drop on an old home is not "new").
