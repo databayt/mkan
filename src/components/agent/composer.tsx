@@ -64,6 +64,9 @@ export function Composer({
   const ref = useRef<HTMLTextAreaElement>(null);
   // Known only in the browser: false on the server, so the mic appears after hydration.
   const speech = useSyncExternalStore(noop, () => !!speechCtor(), () => false);
+  // Typing before hydration was lost: React reset the box and the Enter went nowhere
+  // (seen on prod, slow phones). Read-only until the page can take the message.
+  const ready = useSyncExternalStore(noop, () => true, () => false);
   const [listening, setListening] = useState(false);
   const recognition = useRef<Recognition | null>(null);
 
@@ -142,6 +145,7 @@ export function Composer({
           }
         }}
         rows={1}
+        readOnly={!ready}
         maxLength={600}
         autoFocus={autoFocus}
         enterKeyHint="send"
