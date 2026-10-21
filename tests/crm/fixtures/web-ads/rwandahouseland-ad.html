@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
+    <title>Full furnished house for rent - RwandaHouseland</title>
+        <meta name="description" content="FURNISHED APARTMENT FOR RENT IN KANOMBEEnjoy comfortable living in this fully furnished, self-contained apartment located in one of Kanombe’s best neighbor...">
+    <meta property="og:site_name" content="RwandaHouseland">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Full furnished house for rent">
+    <meta property="og:description" content="FURNISHED APARTMENT FOR RENT IN KANOMBEEnjoy comfortable living in this fully furnished, self-contained apartment located in one of Kanombe’s best neighbor...">
+    <meta property="og:image" content="https://rwandahouseland.com/photos/d3de5e95-b1bb-4eb3-b980-02b183d45ae2.jpeg">
+    <meta name="twitter:card" content="summary_large_image">
+</head>
+<body class="bg-gray-100">
+    <nav x-data="{ open: false }" class="bg-gradient-to-r from-gray-900 to-gray-700 shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <a href="/" class="flex items-center space-x-3">
+                    <img src="/images/rogo1.jpg" class="h-10 w-10 rounded-full" alt="RwandaHouseland Logo">
+                    <span class="text-white font-bold text-lg sm:text-xl">RwandaHouseland</span>
+                </a>
+                <div class="hidden md:flex items-center space-x-5">
+                    <div class="flex space-x-5">
+                        <a href="/" class="nav-link text-white hover:text-green-300 transition-colors duration-200 flex items-center space-x-2">
+                            <i class="bx bxs-home"></i><span>Home</span>
+                        </a>
+                        <a href="https://rwandahouseland.com/forRent" class="nav-link text-white hover:text-green-300 transition-colors duration-200 flex items-center space-x-2">
+                            <i class="bx bxs-key"></i><span>For Rent</span>
+                        </a>
+                        <a href="https://rwandahouseland.com/forSale" class="nav-link text-white hover:text-green-300 transition-colors duration-200 flex items-center space-x-2">
+                            <i class="bx bxs-building-house"></i><span>For Sale</span>
+                        </a>
+                        <a href="https://rwandahouseland.com/shortStay" class="nav-link text-white hover:text-green-300 transition-colors duration-200 flex items-center space-x-2">
+                            <i class="bx bxs-hotel"></i><span>Short Stay</span>
+                        </a>
+                        <div x-data="{ menu: false }" @mouseleave="menu = false" class="relative">
+                            <button @click="menu = !menu" @mouseenter="menu = true"
+                                    class="nav-link text-white hover:text-green-300 transition-colors duration-200 flex items-center space-x-2 focus:outline-none">
+                                <i class="bx bx-compass"></i><span>Explore</span><i class="bx bx-chevron-down"></i>
+                            </button>
+                            <div x-show="menu" x-transition style="display:none;"
+                                 class="absolute right-0 mt-3 w-56 bg-white rounded-xl shadow-2xl py-2 z-50">
+                                <a href="https://rwandahouseland.com/brokers" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700">
+                                    <i class="bx bxs-user-badge text-lg text-green-600"></i> Our Brokers
+                                </a>
+                                <a href="https://rwandahouseland.com/neighborhoods" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700">
+                                    <i class="bx bx-map-alt text-lg text-green-600"></i> Neighborhoods
+                                </a>
+                                <a href="https://rwandahouseland.com/guides" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700">
+                                    <i class="bx bx-book-open text-lg text-green-600"></i> Buying &amp; Renting Guides
+                                </a>
+                                <a href="https://rwandahouseland.com/insights" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700">
+                                    <i class="bx bx-line-chart text-lg text-green-600"></i> Market Insights
+                                </a>
+                                <a href="https://rwandahouseland.com/events" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700">
+                                    <i class="bx bx-calendar-event text-lg text-green-600"></i> Events &amp; Open Houses
+                                </a>
+                                <a href="https://rwandahouseland.com/rewards" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700">
+                                    <i class="bx bx-gift text-lg text-green-600"></i> Rewards
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <a href="https://rwandahouseland.com/form" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg flex items-center space-x-2 transition transform hover:scale-105 text-sm font-semibold">
+                            <i class="bx bxs-plus-circle"></i><span>Post Advert</span>
+                        </a>
+                        <a href="https://rwandahouseland.com/request" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg flex items-center space-x-2 transition transform hover:scale-105 text-sm font-semibold">
+                            <i class="bx bxs-search-alt-2"></i><span>Request</span>
+                        </a>
+                                                    <a href="/loginPage" class="bg-white text-gray-900 hover:bg-gray-100 px-4 py-2 rounded-lg flex items-center space-x-2 transition transform hover:scale-105 text-sm font-semibold">
+                                <i class="bx bx-log-in"></i><span>Login</span>
+                            </a>
+                                            </div>
+                </div>
+                <button @click="open = !open" aria-label="Open menu" class="md:hidden text-white text-3xl focus:outline-none z-50 relative">
+                    <i x-show="!open" class="bx bx-menu"></i>
+                    <i x-show="open" class="bx bx-x"></i>
+                </button>
+            </div>
+        </div>
+        <div
+            x-show="open"
+            @click="open = false"
+            x-transition:enter="transition-opacity ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition-opacity ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            class="md:hidden fixed inset-0 bg-black bg-opacity-60 z-40"
+            style="display: none;"
+        ></div>
+        <div
+            x-show="open"
+            x-transition:enter="transition ease-out duration-300 transform"
+            x-transition:enter-start="-translate-x-full"
+            x-transition:enter-end="translate-x-0"
+            x-transition:leave="transition ease-in duration-200 transform"
+            x-transition:leave-start="translate-x-0"
+            x-transition:leave-end="-translate-x-full"
+            class="md:hidden fixed left-0 top-0 bottom-0 w-72 bg-gradient-to-b from-gray-800 to-gray-900 shadow-2xl overflow-y-auto custom-scrollbar z-50"
+            style="display: none;"
+        >
+                            <div class="bg-gradient-to-r from-green-600 to-blue-600 p-6 flex items-center space-x-3">
+                    <img src="/images/rogo1.jpg" class="h-12 w-12 rounded-full border-2 border-white" alt="Logo">
+                    <div>
+                        <h2 class="text-white font-bold text-lg">RwandaHouseland</h2>
+                        <p class="text-gray-200 text-xs">Find Your Dream Home</p>
+                    </div>
+                </div>
+            <div class="py-4">
+                <div class="mb-4">
+                    <h3 class="px-6 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Browse</h3>
+                    <a href="/" class="menu-item px-6 py-3 text-white hover:bg-gray-700 flex items-center space-x-3 transition-all duration-200">
+                        <i class="bx bxs-home text-xl text-green-400"></i>
+                        <span class="font-medium">Home</span>
+                    </a>
+                    <a href="https://rwandahouseland.com/forRent" class="menu-item px-6 py-3 text-white hover:bg-gray-700 flex items-center space-x-3 transition-all duration-200">
+                        <i class="bx bxs-key text-xl text-blue-400"></i>
+                        <span class="font-medium">For Rent</span>
+                    </a>
+                    <a href="https://rwandahouseland.com/forSale" class="menu-item px-6 py-3 text-white hover:bg-gray-700 flex items-center space-x-3 transition-all duration-200">
+                        <i class="bx bxs-building-house text-xl text-purple-400"></i>
+                        <span class="font-medium">For Sale</span>
+                    </a>
+                    <a href="https://rwandahouseland.com/shortStay" class="menu-item px-6 py-3 text-white hover:bg-gray-700 flex items-center space-x-3 transition-all duration-200">
+                        <i class="bx bxs-hotel text-xl text-yellow-400"></i>
+                        <span class="font-medium">Short Stay</span>
+                    </a>
+                    <a href="https://rwandahouseland.com/land" class="menu-item px-6 py-3 text-white hover:bg-gray-700 flex items-center space-x-3 transition-all duration-200">
+                        <i class="bx bxs-landscape text-xl text-emerald-400"></i>
+                        <span class="font-medium">Land &amp; Plots</span>
+                    </a>
+                </div>
+                <div class="border-t border-gray-700 my-4"></div>
+                <div class="mb-4">
+                    <h3 class="px-6 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Explore</h3>
+                    <a href="https://rwandahouseland.com/brokers" class="menu-item px-6 py-3 text-white hover:bg-gray-700 flex items-center space-x-3 transition-all duration-200">
+                        <i class="bx bxs-user-badge text-xl text-green-400"></i><span class="font-medium">Our Brokers</span>
+                    </a>
+                    <a href="https://rwandahouseland.com/neighborhoods" class="menu-item px-6 py-3 text-white hover:bg-gray-700 flex items-center space-x-3 transition-all duration-200">
+                        <i class="bx bx-map-alt text-xl text-green-400"></i><span class="font-medium">Neighborhoods</span>
+                    </a>
+                    <a href="https://rwandahouseland.com/guides" class="menu-item px-6 py-3 text-white hover:bg-gray-700 flex items-center space-x-3 transition-all duration-200">
+                        <i class="bx bx-book-open text-xl text-blue-400"></i><span class="font-medium">Guides</span>
+                    </a>
+                    <a href="https://rwandahouseland.com/insights" class="menu-item px-6 py-3 text-white hover:bg-gray-700 flex items-center space-x-3 transition-all duration-200">
+                        <i class="bx bx-line-chart text-xl text-purple-400"></i><span class="font-medium">Market Insights</span>
+                    </a>
+                    <a href="https://rwandahouseland.com/events" class="menu-item px-6 py-3 text-white hover:bg-gray-700 flex items-center space-x-3 transition-all duration-200">
+                        <i class="bx bx-calendar-event text-xl text-yellow-400"></i><span class="font-medium">Events</span>
+                    </a>
+                </div>
+                <div class="border-t border-gray-700 my-4"></div>
+                <div>
+                    <h3 class="px-6 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Quick Actions</h3>
+                    <a href="https://rwandahouseland.com/form" class="menu-item px-6 py-3 text-white hover:bg-gray-700 flex items-center space-x-3 transition-all duration-200">
+                        <div class="bg-green-500 p-1.5 rounded-lg">
+                            <i class="bx bxs-plus-circle text-lg text-white"></i>
+                        </div>
+                        <span class="font-medium">Post Advert</span>
+                    </a>
+                    <a href="https://rwandahouseland.com/request" class="menu-item px-6 py-3 text-white hover:bg-gray-700 flex items-center space-x-3 transition-all duration-200">
+                        <div class="bg-blue-500 p-1.5 rounded-lg">
+                            <i class="bx bxs-search-alt-2 text-lg text-white"></i>
+                        </div>
+                        <span class="font-medium">Request Property</span>
+                    </a>
+                                            <a href="/loginPage" class="menu-item px-6 py-3 text-white hover:bg-gray-700 flex items-center space-x-3 transition-all duration-200">
+                            <div class="bg-gray-600 p-1.5 rounded-lg">
+                                <i class="bx bx-log-in text-lg text-white"></i>
+                            </div>
+                            <span class="font-medium">Broker Login</span>
+                        </a>
+                                    </div>
+            </div>
+        </div>
+    </nav>
+    <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 shadow-2xl">
+        <div class="grid grid-cols-5 text-center">
+            <a href="/" class="tabbar-link py-2 text-gray-500 hover:text-green-600 flex flex-col items-center gap-0.5">
+                <i class="bx bxs-home text-xl"></i><span class="text-xs">Home</span>
+            </a>
+            <a href="https://rwandahouseland.com/forRent" class="tabbar-link py-2 text-gray-500 hover:text-green-600 flex flex-col items-center gap-0.5">
+                <i class="bx bxs-key text-xl"></i><span class="text-xs">Rent</span>
+            </a>
+            <a href="https://rwandahouseland.com/form" class="tabbar-link py-2 text-white flex flex-col items-center gap-0.5">
+                <span class="-mt-4 h-11 w-11 rounded-full bg-green-600 shadow-lg flex items-center justify-center">
+                    <i class="bx bx-plus text-2xl"></i>
+                </span>
+                <span class="text-xs text-gray-500">Post</span>
+            </a>
+            <a href="https://rwandahouseland.com/forSale" class="tabbar-link py-2 text-gray-500 hover:text-green-600 flex flex-col items-center gap-0.5">
+                <i class="bx bxs-building-house text-xl"></i><span class="text-xs">Buy</span>
+            </a>
+                            <a href="/loginPage" class="tabbar-link py-2 text-gray-500 hover:text-green-600 flex flex-col items-center gap-0.5">
+                    <i class="bx bx-user text-xl"></i><span class="text-xs">Login</span>
+                </a>
+                    </div>
+    </nav>
+    <div id="appConfirm" class="hidden fixed inset-0 z-50 px-4" role="dialog" aria-modal="true" aria-labelledby="appConfirmTitle">
+    <div id="appConfirmBackdrop" class="absolute inset-0 bg-gray-900 bg-opacity-60"></div>
+    <div class="relative top-24 mx-auto w-full max-w-sm">
+        <div id="appConfirmCard" class="bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-200 scale-95 opacity-0">
+            <div class="p-5 text-center">
+                <div id="appConfirmIconWrap" class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                    <i id="appConfirmIcon" class="bx bx-error text-2xl text-red-600"></i>
+                </div>
+                <h3 id="appConfirmTitle" class="text-lg font-bold text-gray-900 mt-4">Are you sure?</h3>
+                <p id="appConfirmMessage" class="text-sm text-gray-500 mt-2"></p>
+            </div>
+            <div class="flex gap-3 px-5 pb-5">
+                <button type="button" id="appConfirmCancel"
+                        class="flex-1 px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold transition">
+                    Cancel
+                </button>
+                <button type="button" id="appConfirmOk"
+                        class="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="container mx-auto px-4 py-5">
+    <nav class="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-500 mb-4">
+        <a href="/" class="hover:text-green-600"><i class="bx bx-home-alt"></i> Home</a>
+        <span>/</span>
+        <a href="https://rwandahouseland.com/forRent" class="hover:text-green-600">
+            Rent
+        </a>
+        <span>/</span>
+        <span class="text-gray-800 font-medium truncate">Full furnished house for rent</span>
+    </nav>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div id="mainFrame" class="relative bg-gray-900">
+                    <img id="mainImage" src="https://rwandahouseland.com/photos/d3de5e95-b1bb-4eb3-b980-02b183d45ae2.jpeg" alt="Full furnished house for rent"
+                         class="w-full h-56 sm:h-80 lg:h-96 object-cover"
+                         width="800" height="600" decoding="async" fetchpriority="high"
+                         onerror="this.onerror=null;this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22400%22%20height=%22300%22%20viewBox=%220%200%20400%20300%22%3E%3Crect%20width=%22400%22%20height=%22300%22%20fill=%22%23e5e7eb%22/%3E%3Cg%20fill=%22%239ca3af%22%3E%3Cpath%20d=%22M200%20108l58%2046h-26v44h-64v-44h-26z%22%20opacity=%22.55%22/%3E%3Crect%20x=%22146%22%20y=%22206%22%20width=%22108%22%20height=%2210%22%20rx=%225%22%20opacity=%22.45%22/%3E%3C/g%3E%3C/svg%3E'">
+                    <span class="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold text-white shadow bg-green-600">
+                        Available
+                    </span>
+                                            <span class="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold bg-white text-gray-800 shadow">
+                            For Rent
+                        </span>
+                                    </div>
+                                <div class="p-3 flex gap-2 overflow-x-auto" style="scrollbar-width: thin;">
+                                            <img src="https://rwandahouseland.com/photos/d3de5e95-b1bb-4eb3-b980-02b183d45ae2.jpeg"
+                             data-full="https://rwandahouseland.com/photos/d3de5e95-b1bb-4eb3-b980-02b183d45ae2.jpeg" alt=""
+                             class="thumb h-16 w-24 flex-shrink-0 rounded-lg object-cover cursor-pointer border-2 border-transparent hover:border-green-500 transition"
+                             width="96" height="64" loading="lazy" decoding="async"
+                             onclick="showImage(this)"
+                             onerror="this.style.display='none'">
+                                            <img src="https://rwandahouseland.com/photos/17384564-b6f9-4d23-b899-8e8bf4e197de.jpeg"
+                             data-full="https://rwandahouseland.com/photos/17384564-b6f9-4d23-b899-8e8bf4e197de.jpeg" alt=""
+                             class="thumb h-16 w-24 flex-shrink-0 rounded-lg object-cover cursor-pointer border-2 border-transparent hover:border-green-500 transition"
+                             width="96" height="64" loading="lazy" decoding="async"
+                             onclick="showImage(this)"
+                             onerror="this.style.display='none'">
+                                            <img src="https://rwandahouseland.com/photos/f9042e4e-545f-4526-9e86-da7af3d12d43.jpeg"
+                             data-full="https://rwandahouseland.com/photos/f9042e4e-545f-4526-9e86-da7af3d12d43.jpeg" alt=""
+                             class="thumb h-16 w-24 flex-shrink-0 rounded-lg object-cover cursor-pointer border-2 border-transparent hover:border-green-500 transition"
+                             width="96" height="64" loading="lazy" decoding="async"
+                             onclick="showImage(this)"
+                             onerror="this.style.display='none'">
+                                            <img src="https://rwandahouseland.com/photos/6ae57781-30c5-4161-8318-bb715dfe91b1.jpeg"
+                             data-full="https://rwandahouseland.com/photos/6ae57781-30c5-4161-8318-bb715dfe91b1.jpeg" alt=""
+                             class="thumb h-16 w-24 flex-shrink-0 rounded-lg object-cover cursor-pointer border-2 border-transparent hover:border-green-500 transition"
+                             width="96" height="64" loading="lazy" decoding="async"
+                             onclick="showImage(this)"
+                             onerror="this.style.display='none'">
+                                            <img src="https://rwandahouseland.com/photos/20c7fe39-76d1-4737-86f9-63d7a1954bf7.jpeg"
+                             data-full="https://rwandahouseland.com/photos/20c7fe39-76d1-4737-86f9-63d7a1954bf7.jpeg" alt=""
+                             class="thumb h-16 w-24 flex-shrink-0 rounded-lg object-cover cursor-pointer border-2 border-transparent hover:border-green-500 transition"
+                             width="96" height="64" loading="lazy" decoding="async"
+                             onclick="showImage(this)"
+                             onerror="this.style.display='none'">
+                                            <img src="https://rwandahouseland.com/photos/55e39a0b-f0f8-4f77-98f6-86878c80fa88.jpeg"
+                             data-full="https://rwandahouseland.com/photos/55e39a0b-f0f8-4f77-98f6-86878c80fa88.jpeg" alt=""
+                             class="thumb h-16 w-24 flex-shrink-0 rounded-lg object-cover cursor-pointer border-2 border-transparent hover:border-green-500 transition"
+                             width="96" height="64" loading="lazy" decoding="async"
+                             onclick="showImage(this)"
+                             onerror="this.style.display='none'">
+                                            <img src="https://rwandahouseland.com/photos/d30f96ae-e415-4fd0-84f8-679d14515188.jpeg"
+                             data-full="https://rwandahouseland.com/photos/d30f96ae-e415-4fd0-84f8-679d14515188.jpeg" alt=""
+                             class="thumb h-16 w-24 flex-shrink-0 rounded-lg object-cover cursor-pointer border-2 border-transparent hover:border-green-500 transition"
+                             width="96" height="64" loading="lazy" decoding="async"
+                             onclick="showImage(this)"
+                             onerror="this.style.display='none'">
+                                            <img src="https://rwandahouseland.com/photos/f30b724d-198f-4e48-836f-6384aad3b8ee.jpeg"
+                             data-full="https://rwandahouseland.com/photos/f30b724d-198f-4e48-836f-6384aad3b8ee.jpeg" alt=""
+                             class="thumb h-16 w-24 flex-shrink-0 rounded-lg object-cover cursor-pointer border-2 border-transparent hover:border-green-500 transition"
+                             width="96" height="64" loading="lazy" decoding="async"
+                             onclick="showImage(this)"
+                             onerror="this.style.display='none'">
+                                    </div>
+                            </div>
+            <div class="bg-white rounded-2xl shadow-sm p-5 md:p-6">
+                <h1 class="text-xl md:text-3xl font-extrabold text-gray-900">Full furnished house for rent</h1>
+                                    <p class="text-sm text-gray-500 mt-1 flex items-center gap-1">
+                        <i class="bx bx-map text-green-600"></i> Kanombe, Kicukiro, Kigali city
+                    </p>
+                <div class="mt-4 flex flex-wrap gap-2">
+                                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm">
+                            <i class="bx bxs-home text-green-600"></i> house
+                        </span>
+                                                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm">
+                            <i class="bx bxs-bed text-green-600"></i> 3 bedroom(s)
+                        </span>
+                                                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm">
+                            <i class="bx bxs-bath text-green-600"></i> 3 bathroom(s)
+                        </span>
+                                                                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm">
+                            <i class="bx bx-calendar text-green-600"></i> Payable monthly
+                        </span>
+                                    </div>
+            </div>
+            <div class="lg:hidden bg-white rounded-2xl shadow-sm p-5">
+                <p class="text-xs uppercase tracking-wide text-gray-400">Asking price</p>
+                                    <p class="text-2xl font-extrabold text-green-700 mt-1">
+                        900
+                        <span class="text-sm font-bold text-gray-500">USD</span>
+                    </p>
+                                <div class="mt-4 grid grid-cols-2 gap-2">
+                                            <a href="tel:+250788000112"
+                           class="text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2">
+                            <i class="bx bxs-phone-call"></i> Call
+                        </a>
+                        <a href="https://wa.me/250788000112" target="_blank" rel="noopener"
+                           class="text-center bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2">
+                            <i class="bx bxl-whatsapp"></i> WhatsApp
+                        </a>
+                                        <a href="#enquiry"
+                       class="col-span-2 text-center bg-gray-900 hover:bg-gray-700 text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2">
+                        <i class="bx bx-envelope"></i> Send a message
+                    </a>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm p-5 md:p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <i class="bx bx-detail text-green-600"></i> About this property
+                </h2>
+                <div class="text-gray-700 text-sm md:text-base leading-relaxed break-words">
+                    <p>FURNISHED APARTMENT FOR RENT IN KANOMBE</p><p><br></p><p>Enjoy comfortable living in this fully furnished, self-contained apartment located in one of Kanombe’s best neighborhoods.&nbsp;</p><p><br></p><p>It features 3 bedrooms, 3 bathrooms, a spacious living and dining area, and a modern kitchen.&nbsp;</p><p><br></p><p>Conveniently located with easy access to essential infrastructure and nearby services.</p><p><br></p><p>Rental Rates:</p><p><br></p><p>* $900 per month</p><p>* $80 per day</p><p>* $30 per room</p><p><br></p><p>📞 Call or WhatsApp: +250 788 000 112</p><p><br></p><p><br></p>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm p-5 md:p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <i class="bx bx-map-pin text-green-600"></i> Location
+                </h2>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                    <div>
+                        <p class="text-gray-400 text-xs uppercase tracking-wide">Province</p>
+                        <p class="text-gray-900 font-medium">Kigali city</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-xs uppercase tracking-wide">District</p>
+                        <p class="text-gray-900 font-medium">Kicukiro</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-xs uppercase tracking-wide">Sector</p>
+                        <p class="text-gray-900 font-medium">Kanombe</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-xs uppercase tracking-wide">Cell / Village</p>
+                        <p class="text-gray-900 font-medium">—</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="lg:col-span-1 space-y-6">
+            <div class="hidden lg:block bg-white rounded-2xl shadow-sm p-5 md:p-6">
+                <p class="text-xs uppercase tracking-wide text-gray-400">Asking price</p>
+                                    <p class="text-2xl md:text-3xl font-extrabold text-green-700 mt-1">
+                        900
+                        <span class="text-base font-bold text-gray-500">USD</span>
+                    </p>
+                                                    <p class="text-xs text-gray-500 mt-1">Payable monthly</p>
+                <div class="mt-4 grid grid-cols-1 gap-2">
+                                            <a href="tel:+250788000112"
+                           class="w-full text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="bx bxs-phone-call text-lg"></i> Call the broker
+                        </a>
+                        <a href="https://wa.me/250788000112" target="_blank" rel="noopener"
+                           class="w-full text-center bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="bx bxl-whatsapp text-lg"></i> WhatsApp
+                        </a>
+                                        <a href="#enquiry"
+                       class="w-full text-center bg-gray-900 hover:bg-gray-700 text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2">
+                        <i class="bx bx-envelope text-lg"></i> Send a message
+                    </a>
+                </div>
+            </div>
+                        <div class="bg-white rounded-2xl shadow-sm p-5 md:p-6">
+                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">Listed by</h2>
+                <div class="flex items-center gap-4">
+                                            <div class="h-16 w-16 rounded-full bg-gradient-to-br from-green-500 to-green-700 text-white flex items-center justify-center text-2xl font-bold">
+                            J
+                        </div>
+                                        <div class="min-w-0">
+                        <p class="font-bold text-gray-900 truncate">
+                                                            <a href="https://rwandahouseland.com/broker/45" class="hover:text-green-700 transition">
+                                    Jane Broker
+                                </a>
+                                                    </p>
+                        <p class="text-xs text-green-600 font-semibold flex items-center gap-1">
+                            <i class="bx bxs-check-shield"></i> Verified broker
+                        </p>
+                    </div>
+                </div>
+                <div class="mt-4 space-y-2 text-sm">
+                    <p class="flex items-center gap-2 text-gray-700">
+                        <i class="bx bx-phone text-green-600"></i>
+                        +250788000112
+                    </p>
+                    <p class="flex items-center gap-2 text-gray-700 break-all">
+                        <i class="bx bx-envelope text-green-600"></i>
+                        agent@example.com
+                    </p>
+                </div>
+                                    <a href="https://rwandahouseland.com/broker/45"
+                       class="mt-4 block w-full text-center bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2.5 rounded-xl transition text-sm">
+                        <i class="bx bxs-building-house"></i> View all properties by Umutesi
+                    </a>
+                            </div>
+            <div id="enquiry" class="bg-white rounded-2xl shadow-sm p-5 md:p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-1">Get in touch</h2>
+                <p class="text-xs text-gray-500 mb-4">
+                    Ask a question or book a visit — this goes straight to
+                    Umutesi, who posted this property.
+                </p>
+                <form class="space-y-3" method="POST" action="https://rwandahouseland.com/touch">
+                    <input type="hidden" name="_token" value="aSaBGSLtrysN79GzgRaEd4pEdAMQk3OM86HDhVkP" autocomplete="off">
+                    <input type="hidden" name="property_id" value="1998">
+                    <input type="text" name="website" tabindex="-1" autocomplete="off"
+                           style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" aria-hidden="true">
+                    <input type="hidden" name="form_started" value="1792594036">
+                    <div>
+                        <label for="name" class="block text-xs font-semibold text-gray-600 mb-1">Full name</label>
+                        <input type="text" name="full_name" id="name" required placeholder="Your name"
+                               value=""
+                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label for="email" class="block text-xs font-semibold text-gray-600 mb-1">Email</label>
+                        <input type="email" name="email" id="email" required placeholder="agent@example.com"
+                               value=""
+                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label for="phone" class="block text-xs font-semibold text-gray-600 mb-1">Phone number</label>
+                        <input type="text" name="phone" id="phone" required placeholder="07xxxxxxxx"
+                               value=""
+                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label for="message" class="block text-xs font-semibold text-gray-600 mb-1">Message</label>
+                        <textarea id="message" name="message" rows="4" placeholder="I'm interested in Full furnished house for rent..."
+                                  class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"></textarea>
+                        <p class="text-xs text-gray-400 mt-1">Plain words only — messages containing links are not delivered.</p>
+                    </div>
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition">
+                        Send enquiry
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="mt-8 text-center">
+        <a href="https://rwandahouseland.com/all" class="inline-flex items-center gap-2 text-sm font-semibold text-green-700 hover:text-green-800">
+            <i class="bx bx-left-arrow-alt"></i> Browse more properties
+        </a>
+    </div>
+</div>
+<footer class="bg-gradient-to-b from-gray-800 to-gray-900 text-white py-12">
+  <div class="container mx-auto px-6">
+    <div class="flex items-center space-x-4 mb-10">
+      <img src="https://rwandahouseland.com/images/rogo1.jpg"
+           class="h-12 w-12 rounded-full border-2 border-white/20 shadow-lg" alt="Logo"/>
+      <div>
+        <span class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">RwandaHouseland</span>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-8 text-sm">
+      <div class="space-y-3">
+        <h2 class="text-sm font-bold text-white uppercase tracking-wider after:content-[''] after:block after:w-10 after:h-0.5 after:bg-green-500 after:mt-2">By Neighborhood</h2>
+                  <a href="https://rwandahouseland.com/search?search=Nyarutarama" class="block text-gray-400 hover:text-white transition-colors">Nyarutarama</a>
+                  <a href="https://rwandahouseland.com/search?search=Kibagabaga" class="block text-gray-400 hover:text-white transition-colors">Kibagabaga</a>
+                  <a href="https://rwandahouseland.com/search?search=Gacuriro" class="block text-gray-400 hover:text-white transition-colors">Gacuriro</a>
+                  <a href="https://rwandahouseland.com/search?search=Kimironko" class="block text-gray-400 hover:text-white transition-colors">Kimironko</a>
+                  <a href="https://rwandahouseland.com/search?search=Kicukiro" class="block text-gray-400 hover:text-white transition-colors">Kicukiro</a>
+                  <a href="https://rwandahouseland.com/search?search=Niboye" class="block text-gray-400 hover:text-white transition-colors">Niboye</a>
+                <a href="https://rwandahouseland.com/neighborhoods" class="block text-green-400 hover:text-green-300 font-semibold">All neighborhoods &rarr;</a>
+      </div>
+      <div class="space-y-3">
+        <h2 class="text-sm font-bold text-white uppercase tracking-wider after:content-[''] after:block after:w-10 after:h-0.5 after:bg-green-500 after:mt-2">By Property Type</h2>
+        <a href="https://rwandahouseland.com/house" class="block text-gray-400 hover:text-white transition-colors">Houses</a>
+        <a href="https://rwandahouseland.com/apartment" class="block text-gray-400 hover:text-white transition-colors">Apartments</a>
+        <a href="https://rwandahouseland.com/room" class="block text-gray-400 hover:text-white transition-colors">Rooms</a>
+        <a href="https://rwandahouseland.com/land" class="block text-gray-400 hover:text-white transition-colors">Land &amp; Plots</a>
+        <a href="https://rwandahouseland.com/forRent" class="block text-gray-400 hover:text-white transition-colors">For Rent</a>
+        <a href="https://rwandahouseland.com/forSale" class="block text-gray-400 hover:text-white transition-colors">For Sale</a>
+        <a href="https://rwandahouseland.com/shortStay" class="block text-gray-400 hover:text-white transition-colors">Short Stay</a>
+      </div>
+      <div class="space-y-3">
+        <h2 class="text-sm font-bold text-white uppercase tracking-wider after:content-[''] after:block after:w-10 after:h-0.5 after:bg-green-500 after:mt-2">By Price Range</h2>
+        <a href="https://rwandahouseland.com/search?search=house&max_price=200000" class="block text-gray-400 hover:text-white transition-colors">Under 200K RWF</a>
+        <a href="https://rwandahouseland.com/search?search=house&min_price=200000&max_price=500000" class="block text-gray-400 hover:text-white transition-colors">200K – 500K RWF</a>
+        <a href="https://rwandahouseland.com/search?search=house&min_price=500000&max_price=1000000" class="block text-gray-400 hover:text-white transition-colors">500K – 1M RWF</a>
+        <a href="https://rwandahouseland.com/search?search=house&min_price=1000000" class="block text-gray-400 hover:text-white transition-colors">Above 1M RWF</a>
+        <a href="https://rwandahouseland.com/insights" class="block text-green-400 hover:text-green-300 font-semibold">Market insights &rarr;</a>
+      </div>
+      <div class="space-y-3">
+        <h2 class="text-sm font-bold text-white uppercase tracking-wider after:content-[''] after:block after:w-10 after:h-0.5 after:bg-green-500 after:mt-2">Guides &amp; Articles</h2>
+                  <a href="https://rwandahouseland.com/guides/first-time-buyers-guide-rwanda" class="block text-gray-400 hover:text-white transition-colors">First Time Buyer&#039;s Guide in Rwanda</a>
+                  <a href="https://rwandahouseland.com/guides/best-neighborhoods-families-kigali" class="block text-gray-400 hover:text-white transition-colors">Best Neighborhoods for Families in Kigali</a>
+                  <a href="https://rwandahouseland.com/guides/how-to-negotiate-rent" class="block text-gray-400 hover:text-white transition-colors">How to Negotiate Rent Prices</a>
+                  <a href="https://rwandahouseland.com/guides/investment-properties-kigali" class="block text-gray-400 hover:text-white transition-colors">Investment Properties in Kigali</a>
+                  <a href="https://rwandahouseland.com/guides/moving-checklist" class="block text-gray-400 hover:text-white transition-colors">Moving Checklist</a>
+                <a href="https://rwandahouseland.com/guides" class="block text-green-400 hover:text-green-300 font-semibold">All guides &rarr;</a>
+      </div>
+      <div class="space-y-3">
+        <h2 class="text-sm font-bold text-white uppercase tracking-wider after:content-[''] after:block after:w-10 after:h-0.5 after:bg-green-500 after:mt-2">Services &amp; Support</h2>
+        <a href="https://rwandahouseland.com/form" class="block text-gray-400 hover:text-white transition-colors">Post a Property</a>
+        <a href="https://rwandahouseland.com/request" class="block text-gray-400 hover:text-white transition-colors">Request a Property</a>
+        <a href="https://rwandahouseland.com/events" class="block text-gray-400 hover:text-white transition-colors">Events &amp; Open Houses</a>
+        <a href="https://rwandahouseland.com/compare" class="block text-gray-400 hover:text-white transition-colors">Compare Properties</a>
+        <a href="https://rwandahouseland.com/rewards" class="block text-gray-400 hover:text-white transition-colors">Rewards Program</a>
+        <a href="https://rwandahouseland.com/bloker_form" class="block text-gray-400 hover:text-white transition-colors">Become a Broker</a>
+        <a href="https://rwandahouseland.com/loginPage" class="block text-gray-400 hover:text-white transition-colors">Broker Login</a>
+      </div>
+    </div>
+    <div class="mt-10 pt-8 border-t border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm">
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-gray-400">
+        <span><i class="bx bx-phone"></i> +250788000113</span>
+        <a href="mailto:agent@example.com" class="hover:text-white"><i class="bx bx-envelope"></i> agent@example.com</a>
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="https://facebook.com/groups/961250805315629/e" class="text-gray-400 hover:text-white text-xl" aria-label="Facebook"><i class="bx bxl-facebook-circle"></i></a>
+        <a href="https://instagram.com/rent.buy.sellinrwanda?utm_source=qr&igshid=MzNlNGNkZWQ4Mg%3D%3D" class="text-gray-400 hover:text-white text-xl" aria-label="Instagram"><i class="bx bxl-instagram"></i></a>
+      </div>
+    </div>
+    <div class="mt-6 text-center text-gray-500 text-xs">
+      &copy; 2026 RwandaHouseland. All rights reserved.
+    </div>
+  </div>
+</footer>
+</body>
+</html>

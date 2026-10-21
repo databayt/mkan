@@ -1,0 +1,120 @@
+{
+  "_about": "PROPOSED seeds for the Facebook rentals lane (facebook-rentals.ts). Not read by the lane: its live seeds sit in scripts/crm/.data/fb-rentals/seeds.json (gitignored), which only `seeds --add` writes. Facebook was not scraped to build this — group IDs come from public search results; groups with url=null were found by name only. A human resolves and checks each one on the DEDICATED scrape account (it must already be a member / see the posts; the bot never searches or joins), then promotes it.",
+  "_promote": "pnpm crm:fb-rentals-seeds --add=<url>[,<url>…]   # group (https://www.facebook.com/groups/…) or Marketplace (https://www.facebook.com/marketplace/…) URLs only; then: pnpm crm:fb-rentals capture --limit=1 --probe",
+  "_resolve": "For a url=null entry: on the scrape account open the `find` link, pick the group whose name matches, check it is about Kigali rentals and active this week, join if needed, and copy its https://www.facebook.com/groups/<id-or-slug>/ URL into --add.",
+  "researchedAt": "2026-10-21",
+  "seeds": [
+    {
+      "name": "Facebook Marketplace — Kigali property rentals",
+      "kind": "marketplace",
+      "url": "https://www.facebook.com/marketplace/kigali/propertyrentals",
+      "status": "ready",
+      "evidence": "Marketplace's standard /marketplace/<city>/propertyrentals path; the lane's parser already reads Marketplace listings (marketplace_listing_title). Check the city slug resolves to Kigali on the scrape account.",
+      "priority": 1
+    },
+    {
+      "name": "Facebook Marketplace — search \"house for rent\" in Kigali",
+      "kind": "marketplace",
+      "url": "https://www.facebook.com/marketplace/kigali/search?query=house%20for%20rent",
+      "status": "ready",
+      "evidence": "Marketplace search URL; broker posts in English.",
+      "priority": 2
+    },
+    {
+      "name": "Facebook Marketplace — search \"inzu ikodeshwa\" (Kinyarwanda: house for rent) in Kigali",
+      "kind": "marketplace",
+      "url": "https://www.facebook.com/marketplace/kigali/search?query=inzu%20ikodeshwa",
+      "status": "ready",
+      "evidence": "The Kinyarwanda phrase owners use (the TikTok lane's top captions, rw.zimcompass.com's own title 'Inzu Ikodeshwa').",
+      "priority": 3
+    },
+    {
+      "name": "Facebook Marketplace — search \"apartment for rent\" in Kigali",
+      "kind": "marketplace",
+      "url": "https://www.facebook.com/marketplace/kigali/search?query=apartment%20for%20rent",
+      "status": "ready",
+      "evidence": "Marketplace search URL.",
+      "priority": 4
+    },
+    {
+      "name": "Expats in Kigali",
+      "kind": "group",
+      "url": "https://www.facebook.com/groups/472643917304110/",
+      "status": "verify",
+      "evidence": "Group ID from a publicly indexed post URL (facebook.com/groups/472643917304110/posts/…); listed as a Kigali expat community on nomad.watch. Mixed topics — rentals are a share of posts, so the lane's rental-text gate does the filtering.",
+      "priority": 5
+    },
+    {
+      "name": "Living in Kigali (Expats) Rwanda",
+      "kind": "group",
+      "url": null,
+      "find": "https://www.facebook.com/search/groups/?q=Living%20in%20Kigali%20Expats%20Rwanda",
+      "status": "resolve",
+      "evidence": "Named on nomad.watch's Kigali communities list; livinginkigali.com (38k-like Page) sends house hunters to its Facebook community and says it vets advertisers.",
+      "priority": 6
+    },
+    {
+      "name": "Expats in Kigali (Living Rwanda) House Buy & Sale",
+      "kind": "group",
+      "url": null,
+      "find": "https://www.facebook.com/search/groups/?q=Expats%20in%20Kigali%20House%20Buy%20%26%20Sale",
+      "status": "resolve",
+      "evidence": "Named on nomad.watch as the housing group among Kigali's expat groups. Sale posts are dropped by the lane's rental gate.",
+      "priority": 7
+    },
+    {
+      "name": "Expats Living And Working In Kigali",
+      "kind": "group",
+      "url": null,
+      "find": "https://www.facebook.com/search/groups/?q=Expats%20Living%20And%20Working%20In%20Kigali",
+      "status": "resolve",
+      "evidence": "Named on nomad.watch's Kigali communities list.",
+      "priority": 8
+    },
+    {
+      "name": "Expats in Rwanda",
+      "kind": "group",
+      "url": null,
+      "find": "https://www.facebook.com/search/groups/?q=Expats%20in%20Rwanda",
+      "status": "resolve",
+      "evidence": "Startup Guide's Kigali cost-of-living page names 'Expats in Rwanda' and 'Living in Kigali' as where to start a room search.",
+      "priority": 9
+    },
+    {
+      "name": "House for rent in Kigali",
+      "kind": "group",
+      "url": null,
+      "find": "https://www.facebook.com/search/groups/?q=house%20for%20rent%20in%20Kigali",
+      "status": "resolve",
+      "evidence": "The common group name for broker posts; several groups share it — keep the one with daily posts and RWF prices.",
+      "priority": 10
+    },
+    {
+      "name": "Inzu zikodeshwa Kigali",
+      "kind": "group",
+      "url": null,
+      "find": "https://www.facebook.com/search/groups/?q=inzu%20zikodeshwa%20kigali",
+      "status": "resolve",
+      "evidence": "Kinyarwanda 'houses for rent' — the hashtag behind most of the TikTok lane's seeds; owner-direct posts, the supply the English groups miss.",
+      "priority": 11
+    },
+    {
+      "name": "Kigali Real Estate (rent & sale)",
+      "kind": "group",
+      "url": null,
+      "find": "https://www.facebook.com/search/groups/?q=Kigali%20real%20estate",
+      "status": "resolve",
+      "evidence": "Agency-heavy; pick the group whose posts are rentals with prices, skip land/sale-only ones.",
+      "priority": 12
+    }
+  ],
+  "notSeedable": {
+    "_why": "Facebook Pages, not groups — the lane reads only /groups/ and /marketplace/ URLs. Their stock reaches the CRM another way.",
+    "pages": [
+      { "name": "House in Rwanda", "url": "https://www.facebook.com/houseinrwanda/", "covered": "web lane adapter houseinrwanda" },
+      { "name": "Rent house/apartment in Kigali (Kerub Real Estate)", "url": "https://www.facebook.com/renthouseapartmentinkigali/", "covered": "Phase 1 agency directory candidate" },
+      { "name": "Apartments Kigali", "url": "https://www.facebook.com/ApartmentsKigali/", "covered": "Phase 1 agency directory candidate" },
+      { "name": "Living In Kigali", "url": "https://www.facebook.com/LivingInKigali/", "covered": "points at its group (above)" }
+    ]
+  }
+}

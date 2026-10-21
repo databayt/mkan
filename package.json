@@ -99,6 +99,7 @@
     "crm:fb-rentals-read": "tsx scripts/crm/facebook-rentals.ts read",
     "crm:fb-rentals-upsert": "tsx scripts/crm/facebook-rentals.ts upsert",
     "crm:fb-rentals-status": "tsx scripts/crm/facebook-rentals.ts status",
+    "crm:web-ads": "tsx scripts/crm/web-ads.ts",
     "master:census": "tsx scripts/mastering/census.ts",
     "master:queue": "tsx scripts/mastering/queue.ts",
     "master:prep": "tsx scripts/mastering/prep.ts",
