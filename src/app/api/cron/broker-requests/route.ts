@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cronUnauthorized } from "@/lib/cron-auth";
 import { expireRequests, failStuckTasks } from "@/components/agent/broker";
 
 /**
@@ -12,11 +13,8 @@ import { expireRequests, failStuckTasks } from "@/components/agent/broker";
  * Bearer token on the schedule in `cf/crons.json`.
  */
 export async function GET(request: NextRequest) {
-  const expected = process.env.CRON_SECRET;
-  const isVercelCron = request.headers.has("x-vercel-cron");
-  if (!isVercelCron && (!expected || request.headers.get("authorization") !== `Bearer ${expected}`)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = cronUnauthorized(request);
+  if (denied) return denied;
   const [expired, unstuck] = await Promise.all([expireRequests(), failStuckTasks(new Date(), 3_600_000)]);
   return NextResponse.json({ ok: true, expired, unstuck });
 }

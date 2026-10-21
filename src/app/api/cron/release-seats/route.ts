@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cronUnauthorized } from "@/lib/cron-auth";
 import { releaseExpiredSeatHolds } from "@/lib/actions/travel-actions";
 
 /**
@@ -12,15 +13,8 @@ import { releaseExpiredSeatHolds } from "@/lib/actions/travel-actions";
  * can trigger it. Schedule lives in vercel.json.
  */
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  const expected = process.env.CRON_SECRET;
-  const isVercelCron = request.headers.has("x-vercel-cron");
-
-  if (!isVercelCron) {
-    if (!expected || authHeader !== `Bearer ${expected}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-  }
+  const denied = cronUnauthorized(request);
+  if (denied) return denied;
 
   try {
     const result = await releaseExpiredSeatHolds();

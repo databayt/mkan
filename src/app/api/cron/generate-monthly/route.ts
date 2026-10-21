@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cronUnauthorized } from "@/lib/cron-auth";
 import { generateMonthlyPaymentsForAllLeases } from "@/lib/actions/payment-actions";
 
 /**
@@ -7,15 +8,8 @@ import { generateMonthlyPaymentsForAllLeases } from "@/lib/actions/payment-actio
  * `mark-overdue`. Schedule: `0 1 1 * *` (01:00 UTC on the 1st).
  */
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  const expected = process.env.CRON_SECRET;
-  const isVercelCron = request.headers.has("x-vercel-cron");
-
-  if (!isVercelCron) {
-    if (!expected || authHeader !== `Bearer ${expected}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-  }
+  const denied = cronUnauthorized(request);
+  if (denied) return denied;
 
   try {
     const result = await generateMonthlyPaymentsForAllLeases();
