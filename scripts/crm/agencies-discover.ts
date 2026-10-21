@@ -41,7 +41,7 @@ const SCROLLS = Number(argv('scrolls', '8'));
 const REFRESH = process.argv.includes('--refresh');
 const cmd = process.argv.slice(2).find((a, i, all) => !a.startsWith('--') && !all[i - 1]?.startsWith('--')) ?? 'run';
 
-export const QUERIES = ['real estate agency Kigali', 'immobilier Kigali', 'property management Kigali', 'rental agency Kigali'];
+export const QUERIES = ['real estate agency Kigali', 'immobilier Kigali', 'property management Kigali', 'house rental agency Kigali'];
 const extra = argv('query', '');
 const queries = extra ? [...QUERIES, extra] : QUERIES;
 const SEARCH_EVERY_MS = 7 * 86_400_000;

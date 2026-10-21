@@ -253,10 +253,15 @@ export function candidatesFromFacebook(posts: Record<string, FbPost>): Candidate
   return out;
 }
 
+/** A Maps place that rents or sells homes — "rental agency Kigali" also finds car hire. */
+export const isHousingAgency = (r: { name?: string | null; category?: string | null }) =>
+  /real ?estate|property|properties|apartment|realtor|housing|homes?\b|immobili/i.test(`${r.category ?? ''} ${r.name ?? ''}`) &&
+  !/\bcar\b|vehicle|self.?drive|\btours?\b|safari/i.test(`${r.category ?? ''} ${r.name ?? ''}`);
+
 /** (f) Maps agencies in Kigali that the discovery pass finished. */
 export function candidatesFromAgencies(rows: Record<string, AgencyRow>): Candidate[] {
   return Object.values(rows)
-    .filter((r) => r.state === 'done' && r.inKigali !== false)
+    .filter((r) => r.state === 'done' && r.inKigali !== false && isHousingAgency(r))
     .map((r) => ({
       origin: 'maps',
       kind: 'AGENCY',

@@ -184,3 +184,14 @@ describe('agency pages', () => {
     expect(placeIdFromMapsUrl('https://www.google.com/maps/place/Hill%20Realty/@-1.9,30.1,17z')).toBe('hill realty');
   });
 });
+
+describe('isHousingAgency', () => {
+  it('keeps estate and property firms and drops car hire found by "rental agency"', async () => {
+    const { isHousingAgency } = await import('../../scripts/crm/brokers');
+    expect(isHousingAgency({ name: 'Kwanda Real Estate', category: 'Real estate agency' })).toBe(true);
+    expect(isHousingAgency({ name: 'Kigali Nice', category: 'Apartment rental agency' })).toBe(true);
+    expect(isHousingAgency({ name: 'Nina Estate Group', category: 'Property management company' })).toBe(true);
+    expect(isHousingAgency({ name: 'Kigali Rent Car', category: 'Car rental agency' })).toBe(false);
+    expect(isHousingAgency({ name: 'Lebs Services /Tours, car rental', category: 'Car rental agency' })).toBe(false);
+  });
+});
