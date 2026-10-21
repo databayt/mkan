@@ -2,7 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { AREA_KEYS, LANDMARKS, NEIGHBOURHOODS, landmarkNamed, neighbourhoodNamed } from "./areas";
+import { AREA_KEYS, LANDMARKS, NEIGHBOURHOODS, landmarkNamed, nearestSchool, neighbourhoodNamed } from "./areas";
 import { AGENT_MODEL, canSpend, claudeClient, noteFailure, recordSpend, type SpendLane } from "./claude";
 import { readRequirementsWithGroq } from "./llm";
 import type { AgentMemory } from "./memory";
@@ -237,7 +237,11 @@ export function toReading(out: ReaderOutput, input: ReadInput, by: Reading["by"]
     } else nearName ??= hood;
   }
   if (nearName) {
-    const landmark = landmarkNamed(nearName);
+    // "a school" / "schools" with no name: the nearest school to the place they want, if any.
+    const bareSchool = /^(an? |the |any )?(schools?|école|ecole|ishuri|amashuri|مدرسة|المدرسة|shule)$/i.test(nearName.trim());
+    const landmark = bareSchool
+      ? nearestSchool({ neighbourhood: set.neighbourhood ?? input.current.neighbourhood, district: set.district ?? input.current.district })
+      : landmarkNamed(nearName);
     const within = neighbourhoodNamed(raw.get("nearIn"));
     if (landmark) set.near = { name: landmark.name, lat: landmark.lat, lng: landmark.lng };
     else if (within) set.near = { name: nearName.slice(0, 60), lat: within.lat, lng: within.lng };
