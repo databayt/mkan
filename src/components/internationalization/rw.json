@@ -5746,11 +5746,12 @@
       "details": "Details",
       "placeholder": "Baza ikintu cyose",
       "untitled": "Gushakisha gushya",
-      "readAloud": "Soma mu ijwi",
-      "stopReading": "Hagarika gusoma",
       "share": "Sangiza",
       "moreActions": "Ibindi",
-      "deleteChat": "Siba ikiganiro"
+      "deleteChat": "Siba ikiganiro",
+      "voiceDenied": "Emerera mikoro kugira ngo uvuge icyo ushaka.",
+      "voiceNoSpeech": "Ntitwumvise ikintu. Kanda kuri mikoro uvuge.",
+      "voiceFailed": "Ijwi ntirikora hano. Andika aho."
     },
     "chats": {
       "menu": "Ibiganiro",

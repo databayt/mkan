@@ -235,7 +235,7 @@ describe("proxy — security headers", () => {
   it("sets Permissions-Policy header", () => {
     const res = proxy(createRequest("/en/listings"));
     expect(res!.headers.get("Permissions-Policy")).toBe(
-      "camera=(), microphone=(), geolocation=(self)"
+      "camera=(), microphone=(self), geolocation=(self)"
     );
   });
 

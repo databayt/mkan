@@ -129,7 +129,8 @@ export async function searchKigali(
       : // A lead whose video was taken down loses its link (crm:hygiene) — and with it, its place here.
         { OR: [{ isPublished: true, draft: false }, { source: { in: [...LEAD_SOURCES] }, rentPeriod: "MONTHLY", sourceUrl: { not: null } }] };
   const where: Prisma.ListingWhereInput = {
-    AND: [visible, priceWhere(r), ...placeWhere(r)],
+    // Airbnb imports never reach the agent (Abdout, 2026-10-22); a host's own home has no source and stays.
+    AND: [visible, { OR: [{ source: null }, { source: { not: "AIRBNB" } }] }, priceWhere(r), ...placeWhere(r)],
     currency: "RWF",
     location: {
       city: { equals: "Kigali", mode: "insensitive" },

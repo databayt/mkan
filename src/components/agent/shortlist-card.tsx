@@ -126,7 +126,7 @@ export const ShortlistCard = memo(function ShortlistCard({
       >
         <span className="relative block aspect-[4/3] overflow-hidden bg-muted">
           {item.photo && (
-            <BlurImage src={item.photo} alt={item.title} fill sizes="(min-width: 768px) 300px, 80vw" className="object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
+            <BlurImage src={item.photo} alt={item.title} fill sizes="(min-width: 768px) 220px, 60vw" className="object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
           )}
           {best && !needsPick && (
             <span className="absolute start-2 top-2 rounded-full bg-foreground px-2.5 py-0.5 text-xs font-semibold text-background shadow-sm">
@@ -139,25 +139,25 @@ export const ShortlistCard = memo(function ShortlistCard({
             </span>
           )}
         </span>
-        <span className="block space-y-1 p-3">
+        <span className="block space-y-0.5 p-2.5">
           <span className="flex items-start justify-between gap-2">
-            <span dir="auto" className="line-clamp-1 text-start text-[15px] font-semibold">{item.title}</span>
+            <span dir="auto" className="line-clamp-1 text-start text-sm font-semibold">{item.title}</span>
             {item.rating != null && item.rating > 0 && (
-              <span className="flex shrink-0 items-center gap-0.5 text-sm">
+              <span className="flex shrink-0 items-center gap-0.5 text-xs">
                 <Star className="size-3.5 fill-current" aria-hidden />
                 {item.rating.toFixed(1)}
               </span>
             )}
           </span>
-          {meta && <span className="block truncate text-sm text-muted-foreground">{meta}</span>}
+          {meta && <span className="block truncate text-xs text-muted-foreground">{meta}</span>}
           {item.why && (
-            <span dir="auto" className="line-clamp-2 block text-start text-sm text-foreground/80">
+            <span dir="auto" className="line-clamp-2 block text-start text-xs text-foreground/80">
               {item.why}
             </span>
           )}
-          <span className="block text-[15px]">
+          <span className="block text-sm">
             <span className="font-semibold">{formatCurrency(item.cost.headline, locale, item.currency)}</span>{" "}
-            <span className="text-sm text-muted-foreground">{item.cost.period === "month" ? c?.perMonth ?? "/ month" : c?.perNight ?? "/ night"}</span>
+            <span className="text-xs text-muted-foreground">{item.cost.period === "month" ? c?.perMonth ?? "/ month" : c?.perNight ?? "/ night"}</span>
           </span>
           <FitLine item={item} />
           <Availability item={item} className="pt-0.5 text-xs" />

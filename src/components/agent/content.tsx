@@ -205,9 +205,9 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
                         </ul>
                       )}
                       {/* ChatGPT's inline product row: swipe sideways at every width. */}
-                      <ul className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      <ul className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-3 pt-1 no-scrollbar">
                         {task.shortlist.map((item, index) => (
-                          <li key={item.id} className="w-[78%] max-w-[300px] shrink-0 snap-start">
+                          <li key={item.id} className="w-[58%] max-w-[220px] shrink-0 snap-start">
                             <ShortlistCard item={item} taskId={task.id} onChange={refresh} best={index === 0} onNotForMe={notForMe} />
                           </li>
                         ))}
@@ -251,7 +251,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
           </button>
         )}
         {!task && !guided && (
-          <div className="pb-3">
+          <div className="pb-5">
             <Suggestions onPick={(text) => void say(text, true)} onGuided={() => setGuided(true)} disabled={pending} />
           </div>
         )}

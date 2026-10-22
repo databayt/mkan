@@ -22,7 +22,7 @@ export function Suggestions({ onPick, onGuided, disabled, compact = false }: { o
   const rest = cn("line-clamp-2 text-muted-foreground", compact ? "text-xs" : "text-sm");
 
   return (
-    <ul className={cn("flex snap-x snap-mandatory gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", compact ? "-mx-3 px-3" : "-mx-4 px-4")}>
+    <ul className={cn("flex snap-x snap-mandatory gap-2 overflow-x-auto no-scrollbar", compact ? "-mx-3 px-3" : "-mx-4 px-4")}>
       <li className="contents">
         <button type="button" onClick={onGuided} disabled={disabled} className={card}>
           <span className={cn(title, "flex items-center gap-1.5")}>

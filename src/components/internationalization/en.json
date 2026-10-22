@@ -5746,11 +5746,12 @@
       "details": "Details",
       "placeholder": "Ask anything",
       "untitled": "New search",
-      "readAloud": "Read aloud",
-      "stopReading": "Stop reading",
       "share": "Share",
       "moreActions": "More",
-      "deleteChat": "Delete chat"
+      "deleteChat": "Delete chat",
+      "voiceDenied": "Allow the microphone to speak your search.",
+      "voiceNoSpeech": "Didn't hear anything. Tap the mic and speak.",
+      "voiceFailed": "Voice isn't working here. Please type instead."
     },
     "chats": {
       "menu": "Chats",

@@ -82,7 +82,7 @@ export function Welcome({
       {view.homes.length > 0 && (
         <div className="space-y-2">
           {since && <p className="px-1 text-xs font-medium text-muted-foreground">{fill(w?.newSince ?? "New since {date}", { date: since })}</p>}
-          <ul className="-mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <ul className="-mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 pb-2 no-scrollbar">
             {view.homes.map((home) => (
               <li key={home.id} className="w-40 shrink-0 snap-start">
                 <Link

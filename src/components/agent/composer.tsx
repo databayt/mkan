@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowUp, AudioLines, Mic, Plus, Square } from "lucide-react";
+import { ArrowUp, Mic, Plus, Square } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,7 @@ type Recognition = {
   continuous: boolean;
   onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
   onend: (() => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((e: { error: string }) => void) | null;
   start: () => void;
   stop: () => void;
 };
@@ -32,10 +32,9 @@ function speechCtor(): RecognitionCtor | null {
 
 /**
  * The composer of ChatGPT on iOS: a grey round `+` beside a grey pill whose
- * textarea grows to six lines. Inside the pill's end sit a quiet mic and one
- * black round button that is the voice button while the box is empty, send
- * once there is text, and a stop square while a turn runs. Enter sends,
- * Shift+Enter breaks a line.
+ * textarea grows to six lines. Inside the pill's end sit the mic (dictation
+ * into the box, where the browser has it) and one black round button: send,
+ * or a stop square while a turn runs. Enter sends, Shift+Enter breaks a line.
  */
 export function Composer({
   onSend,
@@ -72,6 +71,7 @@ export function Composer({
   // (seen on prod, slow phones). Read-only until the page can take the message.
   const ready = useSyncExternalStore(noop, () => true, () => false);
   const [listening, setListening] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const recognition = useRef<Recognition | null>(null);
 
   useEffect(() => () => recognition.current?.stop(), []);
@@ -105,14 +105,29 @@ export function Composer({
       setText(before + said);
     };
     r.onend = () => setListening(false);
-    r.onerror = () => setListening(false);
+    // A denied mic or a missing language used to end in silence; say what happened.
+    r.onerror = (e) => {
+      setListening(false);
+      if (e.error === "aborted") return;
+      setVoiceError(
+        e.error === "not-allowed" || e.error === "service-not-allowed"
+          ? c?.voiceDenied ?? "Allow the microphone to speak your search."
+          : e.error === "no-speech"
+            ? c?.voiceNoSpeech ?? "Didn't hear anything. Tap the mic and speak."
+            : c?.voiceFailed ?? "Voice isn't working here. Please type instead.",
+      );
+    };
     recognition.current = r;
+    setVoiceError(null);
     setListening(true);
-    r.start();
+    try {
+      r.start();
+    } catch {
+      setListening(false);
+    }
   };
 
   const lg = size === "lg";
-  const empty = !text.trim() && !canSendEmpty;
   const round = cn("flex shrink-0 items-center justify-center rounded-full transition-colors", lg ? "size-10" : "size-8");
   const black = cn(round, "bg-foreground text-background");
 
@@ -122,7 +137,7 @@ export function Composer({
         e.preventDefault();
         void submit();
       }}
-      className={cn("flex items-end", lg ? "gap-2" : "gap-1.5")}
+      className={cn("flex flex-wrap items-end", lg ? "gap-x-2" : "gap-x-1.5")}
     >
       {onPlus && (
         <button
@@ -169,16 +184,17 @@ export function Composer({
             lg ? "py-1.5 text-[17px] leading-6 md:text-base" : "py-1 text-[15px]",
           )}
         />
-        {empty && speech && !busy && !listening && (
+        {speech && !busy && (
           <button
             type="button"
             onClick={listen}
             disabled={disabled}
-            aria-label={c?.voice ?? "Speak"}
-            title={c?.voice ?? "Speak"}
-            className={cn(round, "text-muted-foreground hover:text-foreground disabled:opacity-40")}
+            aria-label={listening ? c?.stopVoice ?? "Stop listening" : c?.voice ?? "Speak"}
+            aria-pressed={listening}
+            title={listening ? c?.stopVoice ?? "Stop listening" : c?.voice ?? "Speak"}
+            className={cn(round, listening ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground", "disabled:opacity-40")}
           >
-            <Mic className={lg ? "size-[22px]" : "size-5"} aria-hidden />
+            {listening ? <Square className={cn("animate-pulse fill-current", lg ? "size-3.5" : "size-3")} aria-hidden /> : <Mic className={lg ? "size-[22px]" : "size-5"} aria-hidden />}
           </button>
         )}
         {busy ? (
@@ -186,23 +202,17 @@ export function Composer({
           <span role="status" aria-label={a?.reply?.working ?? "Working"} className={black}>
             <Square className={cn("fill-current", lg ? "size-3.5" : "size-3")} aria-hidden />
           </span>
-        ) : empty && speech ? (
-          <button
-            type="button"
-            onClick={listen}
-            disabled={disabled}
-            aria-label={listening ? c?.stopVoice ?? "Stop listening" : c?.voice ?? "Speak"}
-            aria-pressed={listening}
-            className={cn(black, "disabled:opacity-40")}
-          >
-            {listening ? <Square className={cn("fill-current", lg ? "size-3.5" : "size-3")} aria-hidden /> : <AudioLines className={lg ? "size-5" : "size-4"} aria-hidden />}
-          </button>
         ) : (
           <button type="submit" aria-label={a?.send ?? "Send"} disabled={!canSend} className={cn(black, "disabled:bg-foreground/20")}>
             <ArrowUp className={lg ? "size-5" : "size-4"} strokeWidth={2.5} aria-hidden />
           </button>
         )}
       </div>
+      {voiceError && (
+        <p role="alert" className="basis-full pt-1.5 text-center text-xs text-muted-foreground">
+          {voiceError}
+        </p>
+      )}
     </form>
   );
 }

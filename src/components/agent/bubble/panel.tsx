@@ -260,7 +260,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
           </button>
         )}
         {loaded && !task && !guided && (
-          <div className="pb-2.5">
+          <div className="pb-4">
             <Suggestions onPick={(text) => void search(text)} onGuided={() => setGuided(true)} disabled={pending} compact />
           </div>
         )}

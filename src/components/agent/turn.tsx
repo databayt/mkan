@@ -1,14 +1,11 @@
 "use client";
 
-import { Fragment, memo, useEffect, useState } from "react";
-import { Check, Copy, MoreHorizontal, RotateCcw, Share, ThumbsDown, ThumbsUp, Volume2, VolumeX } from "lucide-react";
+import { Fragment, memo, useState } from "react";
+import { Check, Copy, MoreHorizontal, RotateCcw, Share, ThumbsDown, ThumbsUp } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
-import { useLocale } from "@/components/internationalization/use-locale";
 import { cn } from "@/lib/utils";
 import { noteAgentFeedback } from "./actions";
-
-const SPEECH_LANG: Record<string, string> = { ar: "ar-SA", en: "en-US", rw: "rw-RW" };
 
 /** The user's turn: a grey bubble at the end side, as in ChatGPT on iOS. */
 export const UserTurn = memo(function UserTurn({ text, compact = false }: { text: string; compact?: boolean }) {
@@ -121,18 +118,17 @@ export function Prose({ text, className }: { text: string; className?: string })
 }
 
 /**
- * The row under the latest answer, as ChatGPT has it: copy, read aloud,
- * thumbs up/down, share and ⋯ (search again). A thumb is saved on the chat
+ * The row under the latest answer, as ChatGPT has it: copy, thumbs up/down,
+ * share and ⋯ (search again). No read aloud: the tenant may speak a message,
+ * but Mkan always answers in the chat. A thumb is saved on the chat
  * (a silent trace row), so answer quality can be counted; a failed save
  * leaves the tenant's mark in place.
  */
 export function TurnActions({ text, onRegenerate, disabled, taskId, at }: { text: string; onRegenerate?: () => void; disabled?: boolean; taskId?: string; at?: string }) {
   const dict = useDictionary();
   const c = dict?.agent?.chat;
-  const { locale } = useLocale();
   const [copied, setCopied] = useState(false);
   const [vote, setVote] = useState<"good" | "bad" | null>(null);
-  const [speaking, setSpeaking] = useState(false);
   const plain = text.replace(/\*\*/g, "").replace(/^#{1,4}\s+/gm, "");
   const mark = (next: "good" | "bad" | null) => {
     setVote(next);
@@ -144,27 +140,11 @@ export function TurnActions({ text, onRegenerate, disabled, taskId, at }: { text
       setTimeout(() => setCopied(false), 1500);
     });
   };
-  const speak = () => {
-    const synth = typeof window !== "undefined" ? window.speechSynthesis : undefined;
-    if (!synth) return;
-    if (speaking) {
-      synth.cancel();
-      return setSpeaking(false);
-    }
-    const u = new SpeechSynthesisUtterance(plain);
-    u.lang = SPEECH_LANG[locale] ?? "en-US";
-    u.onend = () => setSpeaking(false);
-    u.onerror = () => setSpeaking(false);
-    synth.cancel();
-    synth.speak(u);
-    setSpeaking(true);
-  };
   // The answer's text goes to the phone's share sheet; without one it is copied.
   const share = () => {
     if (navigator.share) void navigator.share({ text: plain }).catch(() => {});
     else copy();
   };
-  useEffect(() => () => void (speaking && window.speechSynthesis?.cancel()), [speaking]);
 
   const button = "flex size-9 items-center justify-center rounded-lg text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 [&_svg]:size-[19px]";
 
@@ -172,16 +152,6 @@ export function TurnActions({ text, onRegenerate, disabled, taskId, at }: { text
     <div className="-ms-2 flex items-center">
       <button type="button" className={button} aria-label={copied ? c?.copied ?? "Copied" : c?.copy ?? "Copy"} title={copied ? c?.copied ?? "Copied" : c?.copy ?? "Copy"} onClick={copy}>
         {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
-      </button>
-      <button
-        type="button"
-        className={button}
-        aria-pressed={speaking}
-        aria-label={speaking ? c?.stopReading ?? "Stop reading" : c?.readAloud ?? "Read aloud"}
-        title={speaking ? c?.stopReading ?? "Stop reading" : c?.readAloud ?? "Read aloud"}
-        onClick={speak}
-      >
-        {speaking ? <VolumeX aria-hidden /> : <Volume2 aria-hidden />}
       </button>
       {vote !== "bad" && (
         <button type="button" className={button} aria-pressed={vote === "good"} aria-label={c?.good ?? "Good answer"} title={c?.good ?? "Good answer"} onClick={() => mark(vote === "good" ? null : "good")}>

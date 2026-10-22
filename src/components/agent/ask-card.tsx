@@ -112,8 +112,8 @@ export function AskCard({
 
   const heading = title ?? a?.ask?.[field] ?? "";
   return (
-    <div className={cn("rounded-xl border", compact ? "p-1.5" : "p-2")} role="group" aria-label={heading}>
-      <p className={cn("px-3 pb-1 pt-2 font-medium", compact ? "text-sm" : "")}>{heading}</p>
+    <div className="-mx-3" role="group" aria-label={heading}>
+      <p className={cn("px-3 pb-1 pt-2 font-medium text-foreground", compact && "text-sm")}>{heading}</p>
       <ol className="list-none">
         {options.map((o, i) => (
           <li key={o.label}>

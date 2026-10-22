@@ -75,7 +75,7 @@ export function Refine({
                 disabled={disabled}
                 onClick={() => onPick(c.label, c.filters, c.clear)}
                 className={cn(
-                  "rounded-full border px-3 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50",
+                  "rounded-full bg-muted px-3 text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50",
                   compact ? "py-1 text-xs" : "py-1.5 text-sm",
                 )}
               >
