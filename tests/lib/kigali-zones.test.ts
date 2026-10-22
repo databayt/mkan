@@ -34,6 +34,8 @@ describe("kigali zone tree", () => {
   it("resolves text before the pin, and ignores a pin that is only a district centre", () => {
     expect(resolveZone({ text: "Kabeza", lat: -1.95, lng: 30.18 })).toMatchObject({ district: "KICUKIRO", sector: "kicukiro/kanombe", neighbourhood: "kicukiro/kanombe/kabeza" });
     expect(resolveZone({ text: "Kigali", lat: -1.896, lng: 30.112, pinIsReal: false })).toBeNull();
+    expect(resolveZone({ text: "Kicukiro, Kigali", lat: -1.97, lng: 30.145 })?.sector).toBe("kicukiro/kanombe");
+    expect(resolveZone({ text: "Kicukiro, Kigali", lat: -1.935, lng: 30.127 })?.zone.slug).toBe("kicukiro");
   });
 
   it("keeps the gazetteer and the agent on the same names", () => {

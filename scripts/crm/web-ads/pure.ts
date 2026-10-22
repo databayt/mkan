@@ -10,9 +10,11 @@ import { buildFacebookPrompt, USD_RWF } from '../tiktok-read-prompt';
 import { dupKey, fallbackTitle, homeBody, hostBody, phonesFor, type TikTokRead, type VideoRow } from '../tiktok-pure';
 import { twentyPhones } from '../../../src/lib/phone';
 import { districtForPlace } from '../../../src/lib/geo/rwanda-places';
+import { termsFromText } from '../terms-pure';
 import type { RawAd } from './html';
 
-export const WEB_PROMPT_VERSION = 'web-v1';
+// web-v2 (2026-10-22): the reader (facebook-v2) and the labels both carry the renting terms.
+export const WEB_PROMPT_VERSION = 'web-v2';
 export const sourceIdFor = (site: string, adId: string): string => `web:${site}:${adId}`;
 
 /** The site's type word → the reader's PROPERTY_TYPES; null = not a home (land, shop, office). */
@@ -47,6 +49,8 @@ export function readFromAd(ad: RawAd, usdRate = USD_RWF): TikTokRead {
   const priceRwf = priceRwfFor(ad, usdRate);
   const district = district3(ad.district) ?? district3(ad.place) ?? district3(ad.location);
   const inKigali = district != null || KIGALI.test(ad.province ?? '') || (KIGALI.test(ad.location) && !ad.province);
+  // The site's furnishing label wins; the ad's own words fill it and the terms.
+  const terms = termsFromText(`${ad.title}\n${ad.text}`, { priceRwf });
   return {
     isRental: type !== 'NOT_A_HOME',
     rejectReason: type === 'NOT_A_HOME' ? `listed as ${ad.propertyType}` : null,
@@ -58,7 +62,12 @@ export function readFromAd(ad: RawAd, usdRate = USD_RWF): TikTokRead {
     roomType: type === 'Rooms' ? 'PRIVATE_ROOM' : type ? 'ENTIRE_HOME' : null,
     bedrooms: ad.bedrooms,
     bathrooms: ad.bathrooms,
-    furnished: ad.furnished,
+    furnished: ad.furnished ?? terms.furnished,
+    depositMonths: terms.depositMonths,
+    commission: terms.commission,
+    viewingFee: terms.viewingFee,
+    water: terms.water,
+    electricity: terms.electricity,
     district,
     neighbourhood: ad.place,
     phones: ad.phones,
@@ -114,6 +123,11 @@ export function mergeReads(labels: TikTokRead, model: TikTokRead): TikTokRead {
     bedrooms: pick('bedrooms'),
     bathrooms: pick('bathrooms'),
     furnished: pick('furnished'),
+    depositMonths: pick('depositMonths'),
+    commission: pick('commission'),
+    viewingFee: pick('viewingFee'),
+    water: pick('water'),
+    electricity: pick('electricity'),
     district: pick('district'),
     neighbourhood: pick('neighbourhood'),
     phones: [...new Set([...labels.phones, ...model.phones])],

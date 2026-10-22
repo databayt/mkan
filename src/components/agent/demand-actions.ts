@@ -10,7 +10,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { DISTRICTS } from "@/lib/geo/rwanda-places";
-import { neighbourhoodNamed } from "./areas";
+import { resolveZone } from "@/lib/geo/kigali-zones";
 import { matchRequest, optInDemand } from "./demand";
 import { normalisePhone } from "./demand-pure";
 import { ownedBy, requireProfile } from "./profile";
@@ -86,20 +86,25 @@ export async function submitDemandHome(token: string, input: z.input<typeof Offe
     await db.broker.update({ where: { id: broker.id }, data: { userId: hostId } });
   }
 
-  // Place: a known neighbourhood pins it; otherwise the district the tenant asked for.
+  // Place: the zone the broker names pins it (neighbourhood > sector); otherwise
+  // the district the tenant asked for. Same shape as the TikTok mirror's leads:
+  // `state` is the district's name ("Gasabo"), the zone slugs beside it.
   const wanted = (ask.tenantRequest.requirements ?? {}) as { district?: string | null };
-  const hood = neighbourhoodNamed(offer.place);
-  const district = DISTRICTS.find((d) => d.code === (hood?.district ?? wanted.district)) ?? DISTRICTS[0]!;
+  const zone = resolveZone({ text: offer.place, pinIsReal: false });
+  const district = DISTRICTS.find((d) => d.code === (zone?.district ?? wanted.district)) ?? DISTRICTS[0]!;
+  const pin = zone && zone.zone.level !== "district" ? zone.zone : district;
   const location = await db.location.create({
     data: {
       address: offer.place,
       city: "Kigali",
-      state: district.code,
+      state: district.nameEn,
       country: "Rwanda",
       postalCode: "",
-      latitude: hood?.lat ?? district.lat,
-      longitude: hood?.lng ?? district.lng,
+      latitude: pin.lat,
+      longitude: pin.lng,
       zoneKey: `KIGALI_${district.code}`,
+      sector: zone?.sector ?? null,
+      neighbourhood: zone?.neighbourhood ?? null,
     },
     select: { id: true },
   });

@@ -9,6 +9,8 @@ import { extractJsonObject, toAsciiDigits } from './home-intake-pure';
 import { normalizePhone } from '../../src/lib/phone';
 import { placeToken } from '../../src/lib/geo/place-token';
 import { districtForPlace } from '../../src/lib/geo/rwanda-places';
+import { factsFromFeatures } from '../../src/components/agent/amenities';
+import { mergeTerms, termsFromText, type AdTerms } from './terms-pure';
 
 // ── the ledger ───────────────────────────────────────────────────────────────
 /** `failed`: three fetches in a row went wrong (blocked, removed, no formats) — not retried. */
@@ -352,6 +354,26 @@ const nullableNum = z
 
 export const PROPERTY_TYPES = ['Apartment', 'Villa', 'Townhouse', 'Cottage', 'Tinyhouse', 'Rooms'] as const;
 
+const utility = z.enum(['INCLUDED', 'SEPARATE']).nullable().optional().catch(null).transform((v) => v ?? null);
+/**
+ * tiktok-v4's commission: `{pct, none}`. Readers also answer "none", a bare
+ * number, or 0.25 for 25% — all folded into the one shape; anything else → null.
+ */
+const commissionField = z
+  .unknown()
+  .optional()
+  .transform((v): { pct: number | null; none: boolean } | null => {
+    if (v == null || v === '') return null;
+    if (typeof v === 'string' && /^(none|no|no commission)$/i.test(v.trim())) return { pct: null, none: true };
+    const raw = typeof v === 'object' ? (v as { pct?: unknown; none?: unknown }) : { pct: v, none: false };
+    const none = raw.none === true || raw.none === 'true';
+    const n = raw.pct == null || raw.pct === '' ? null : Number(toAsciiDigits(String(raw.pct)).replace(/[^\d.]/g, ''));
+    const pct = n != null && Number.isFinite(n) && n > 0 ? (n < 1 ? Math.round(n * 100) : n <= 200 ? n : null) : null;
+    if (none) return { pct: null, none: true };
+    return typeof v === 'object' || pct != null ? { pct, none: false } : null;
+  })
+  .catch(null);
+
 export const TikTokReadSchema = z.object({
   isRental: z.boolean(),
   rejectReason: nullableStr,
@@ -363,7 +385,13 @@ export const TikTokReadSchema = z.object({
   roomType: z.enum(['ENTIRE_HOME', 'PRIVATE_ROOM', 'SHARED_ROOM']).nullable().optional().catch(null).transform((v) => v ?? null),
   bedrooms: nullableNum,
   bathrooms: nullableNum,
-  furnished: z.boolean().nullable().optional().transform((v) => v ?? null),
+  furnished: z.boolean().nullable().optional().catch(null).transform((v) => v ?? null),
+  // tiktok-v4: the renting terms the ad states. Reads stored before v4 have none → null.
+  depositMonths: nullableNum.catch(null).transform((v) => (v != null && v >= 0 && v <= 12 ? v : null)),
+  commission: commissionField,
+  viewingFee: nullableNum.catch(null).transform((v) => (v != null && v >= 0 && v <= 100_000 ? Math.round(v) : null)),
+  water: utility,
+  electricity: utility,
   district: z.enum(['GASABO', 'KICUKIRO', 'NYARUGENGE']).nullable().optional().catch(null).transform((v) => v ?? null),
   neighbourhood: nullableStr,
   phones: z.array(z.string()).optional().default([]),
@@ -531,6 +559,28 @@ const linkList = (urls: string[], label = '') =>
     : undefined;
 const rwf = (n: number | null) => (n != null ? { amountMicros: Math.round(n * 1_000_000), currencyCode: 'RWF' } : undefined);
 
+/**
+ * The terms a post states: the reader's answer first, then the rules over the
+ * caption and on-screen text (terms-pure.ts) — a v3 read never asked, and a
+ * model misses "nta komisiyo" now and then. Furnishing also falls back to the
+ * reader's features ("furnished") before the rules.
+ */
+export function adTermsFor(row: Pick<VideoRow, 'meta'>, read: TikTokRead, readVersion?: string | null): AdTerms {
+  const rules = termsFromText([row.meta?.caption, read.onScreenText].filter(Boolean).join('\n'), { priceRwf: read.priceRwf });
+  return mergeTerms({ ...read, furnished: statedFurnished(read, readVersion) ?? factsFromFeatures(read.features).furnished }, rules);
+}
+
+/**
+ * The reader's `furnished`, when it means something. Before tiktok-v4 (and
+ * facebook-v1) the prompt never said "null when not said", and 126 of 235
+ * TikTok reads answered false for captions that say nothing about furniture.
+ * Their `true` (furniture seen in the frames) still counts.
+ */
+export function statedFurnished(read: Pick<TikTokRead, 'furnished'>, readVersion?: string | null): boolean | null {
+  if (read.furnished === false && /^(tiktok-v[123]|facebook-v1)\b/.test(readVersion ?? '')) return null;
+  return read.furnished ?? null;
+}
+
 /** The Twenty `home` body for one read video. Undefined values are dropped by the caller. */
 export function homeBody(row: VideoRow, read: TikTokRead, opts: { frameUrls: string[]; phone: string | null; hostName: string; promptVersion: string; duplicate: boolean; sourceId?: string }) {
   const district = resolveDistrict(read, row.meta?.caption ?? '');
@@ -539,6 +589,7 @@ export function homeBody(row: VideoRow, read: TikTokRead, opts: { frameUrls: str
   // The board's own chips: a wrong-looking price outranks a missing phone,
   // since a call fixes the phone but a quoted misread loses the tenant.
   const qualificationStatus = priceLooksWrong(read) ? 'PRICE_ANOMALY' : !opts.phone ? 'UNREACHABLE_HOST' : undefined;
+  const terms = adTermsFor(row, read, opts.promptVersion);
   return {
     source: 'TIKTOK',
     sourceId: opts.sourceId ?? `tiktok:${row.videoId}`,
@@ -570,6 +621,14 @@ export function homeBody(row: VideoRow, read: TikTokRead, opts: { frameUrls: str
     roomType: read.roomType ?? undefined,
     bedrooms: read.bedrooms ?? undefined,
     bathrooms: read.bathrooms ?? undefined,
+    // As the ad states them; empty = not stated. commissionPct is a percent (25), not a fraction.
+    furnishing: terms.furnished == null ? undefined : terms.furnished ? 'FURNISHED' : 'UNFURNISHED',
+    depositMonths: terms.depositMonths ?? undefined,
+    commissionPct: terms.commission?.pct ?? undefined,
+    noCommission: terms.commission ? terms.commission.none : undefined,
+    viewingFee: terms.viewingFee ?? undefined,
+    water: terms.water ?? undefined,
+    electricity: terms.electricity ?? undefined,
     amenitiesRaw: read.features.length ? read.features : undefined,
     rentPeriod: read.period,
     priceMonthLocal: read.period === 'MONTH' ? rwf(read.priceRwf) : undefined,

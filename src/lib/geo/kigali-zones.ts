@@ -197,15 +197,16 @@ const resolved = (z: KigaliZone): ResolvedZone => ({
 
 /**
  * Text first (a caption naming "Kibagabaga" is better than a district-centre
- * pin), then the pin when it is real. Null when neither places it in Kigali.
+ * pin), then the pin when it is real — and a real pin beats text that names
+ * only the district it lies in. Null when neither places it in Kigali.
  */
 export function resolveZone(at: { text?: string | null; lat?: number | null; lng?: number | null; pinIsReal?: boolean }): ResolvedZone | null {
   const byName = zoneNamed(at.text);
-  if (byName) return resolved(byName);
-  if (at.pinIsReal !== false && at.lat != null && at.lng != null && Number.isFinite(at.lat) && Number.isFinite(at.lng)) {
-    return resolved(zoneAt(at.lat, at.lng));
-  }
-  return null;
+  const real = at.pinIsReal !== false && at.lat != null && at.lng != null && Number.isFinite(at.lat) && Number.isFinite(at.lng);
+  const byPin = real ? zoneAt(at.lat!, at.lng!) : undefined;
+  // "Kicukiro, Kigali" names only a district: a real pin inside it says more.
+  if (byName && !(byName.level === "district" && byPin?.district === byName.district)) return resolved(byName);
+  return byPin ? resolved(byPin) : null;
 }
 
 export function zoneLabel(slug: string | null | undefined, lang: "en" | "ar" | "rw" = "en"): string | null {

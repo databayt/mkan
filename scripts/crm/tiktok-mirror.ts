@@ -31,6 +31,7 @@ import { twentyEnumToPrisma } from './home-intake-pure';
 import { DISTRICTS, KIGALI } from '../../src/lib/geo/rwanda-places';
 import { factsFromFeatures, type FeatureFacts } from '../../src/components/agent/amenities';
 import { placeToken } from '../../src/lib/geo/place-token';
+import { termsFromHome, zoneForLead, type LeadTerms } from './lead-terms-pure';
 
 type Row = Record<string, unknown>;
 
@@ -60,7 +61,16 @@ export interface MirrorPlan {
    * host has a handle (every TikTok home does), else `<source>:<phone>`.
    */
   broker: { handle: string | null; key: string; name: string; phone: string; role: 'BROKER' | 'OWNER' };
-  location: { address: string; state: string; zoneKey: string | null; latitude: number; longitude: number };
+  location: {
+    address: string;
+    state: string;
+    zoneKey: string | null;
+    latitude: number;
+    longitude: number;
+    /** Kigali zone slugs (src/lib/geo/kigali-zones.ts), from the place the ad names. */
+    sector: string | null;
+    neighbourhood: string | null;
+  };
   listing: {
     sourceListingId: string;
     sourceUrl: string | null;
@@ -74,7 +84,17 @@ export interface MirrorPlan {
     photoUrls: string[];
     /** What the video showed (parking, a water tank, furnished…), for the agent's must-haves. */
     facts: FeatureFacts;
+    /** The ad's furnishing (Twenty `furnishing`), else what the features said; null = not stated. */
+    furnished: boolean | null;
+    /** The renting terms as the ad states them; null when it states none (the agent then says "typical"). */
+    terms: LeadTerms | null;
   };
+}
+
+/** Same terms as the plan, or the plan has none to write (a backfilled row is then left alone). */
+function sameTerms(existing: Partial<Record<keyof LeadTerms, unknown>>, terms: LeadTerms | null): boolean {
+  if (!terms) return true;
+  return (Object.keys(terms) as (keyof LeadTerms)[]).every((k) => (existing[k] ?? null) === terms[k]);
 }
 
 const links = (v: unknown): string[] => {
@@ -97,9 +117,16 @@ export function planMirror(home: Row, host: Row | null): MirrorPlan | { skip: st
   const handle = ((host?.tiktokHandle as string | null) ?? '').replace(/^@/, '').trim().toLowerCase() || null;
   if (!handle && source === 'TIKTOK') return { skip: 'no TikTok handle' };
 
-  const districtCode = String(home.homeState ?? '').toUpperCase();
-  const district = DISTRICTS.find((d) => d.code === districtCode);
   const neighbourhood = ((home.homeAddress as Row | null)?.addressStreet1 as string | null) ?? null;
+  const title = ((home.titleEn as string | null) || (home.title as string | null) || 'Home in Kigali').replace(/\s+/g, ' ').trim();
+  const filed = DISTRICTS.find((d) => d.code === String(home.homeState ?? '').toUpperCase())?.code ?? null;
+  const zone = zoneForLead({ neighbourhood, title, districtCode: filed });
+  const district = DISTRICTS.find((d) => d.code === (filed ?? zone?.district));
+  // Pinned at the most specific zone the ad names (neighbourhood > sector), else
+  // the district centre. Still approximate: the ad gives a place, not a gate.
+  const pin = zone && zone.zone.level !== 'district' ? zone.zone : district;
+  const furnishing = home.furnishing === 'FURNISHED' ? true : home.furnishing === 'UNFURNISHED' ? false : null;
+  const facts = factsFromFeatures(Array.isArray(home.amenitiesRaw) ? (home.amenitiesRaw as unknown[]).map(String) : []);
   const type = home.propertyType ? twentyEnumToPrisma(String(home.propertyType)) : null;
   const scrapedAt = home.scrapedAt ? new Date(String(home.scrapedAt)) : null;
 
@@ -119,21 +146,25 @@ export function planMirror(home: Row, host: Row | null): MirrorPlan | { skip: st
       state: district?.nameEn ?? '',
       zoneKey: district ? `KIGALI_${district.code}` : null,
       // No pin from a video: the district centre, said so by the address.
-      latitude: district?.lat ?? KIGALI.lat,
-      longitude: district?.lng ?? KIGALI.lng,
+      latitude: pin?.lat ?? KIGALI.lat,
+      longitude: pin?.lng ?? KIGALI.lng,
+      sector: zone?.sector ?? null,
+      neighbourhood: zone?.neighbourhood ?? null,
     },
     listing: {
       sourceListingId: sourceId,
       sourceUrl: links(home.sourceUrl)[0] ?? null,
       sourceCapturedAt: scrapedAt && !Number.isNaN(scrapedAt.getTime()) ? scrapedAt : null,
-      title: ((home.titleEn as string | null) || (home.title as string | null) || 'Home in Kigali').replace(/\s+/g, ' ').trim(),
+      title,
       description: (home.descriptionEn as string | null) || (home.description as string | null) || null,
       priceMonth,
       bedrooms: (home.bedrooms as number | null) ?? null,
       bathrooms: (home.bathrooms as number | null) ?? null,
       propertyType: type && PROPERTY_TYPES.has(type) ? type : null,
       photoUrls: links(home.photoUrls),
-      facts: factsFromFeatures(Array.isArray(home.amenitiesRaw) ? (home.amenitiesRaw as unknown[]).map(String) : []),
+      facts,
+      furnished: furnishing ?? facts.furnished,
+      terms: termsFromHome(home),
     },
   };
 }
@@ -176,7 +207,7 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
   }
   console.log(`TikTok / Facebook / web homes → leads: ${plans.length} to mirror; skipped ${[...skipped].map(([k, v]) => `${v} ${k}`).join(', ') || 'none'}`);
   if (!apply) {
-    for (const p of plans) console.log(`  ${p.sourceId}  ${p.broker.handle ? `@${p.broker.handle}` : p.broker.key} (${p.broker.role})  ${p.listing.bedrooms ?? '?'}bd  RWF ${p.listing.priceMonth}/mo  ${p.location.address}`);
+    for (const p of plans) console.log(`  ${p.sourceId}  ${p.broker.handle ? `@${p.broker.handle}` : p.broker.key} (${p.broker.role})  ${p.listing.bedrooms ?? '?'}bd  RWF ${p.listing.priceMonth}/mo  ${p.location.address}${p.location.neighbourhood ?? p.location.sector ? ` → ${p.location.neighbourhood ?? p.location.sector}` : ''}${p.listing.terms ? '  +terms' : ''}`);
     console.log('\nDRY RUN — pass --apply to write the leads.');
     return { planned: plans.length, written: 0, created: 0, unchanged: 0, linked: 0 };
   }
@@ -233,7 +264,11 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
 
     const existing = await db.listing.findUnique({
       where: { sourceListingId: p.sourceId },
-      select: { id: true, locationId: true, isPublished: true, title: true, description: true, priceMonth: true, bedrooms: true, bathrooms: true, propertyType: true, photoUrls: true, sourceUrl: true, hostId: true, location: { select: { address: true, zoneKey: true } } },
+      select: {
+        id: true, locationId: true, isPublished: true, title: true, description: true, priceMonth: true, bedrooms: true, bathrooms: true, propertyType: true, photoUrls: true, sourceUrl: true, hostId: true,
+        furnished: true, depositMonths: true, commissionPct: true, noCommission: true, viewingFee: true, waterIncluded: true, electricityIncluded: true, termsSource: true,
+        location: { select: { address: true, zoneKey: true, sector: true, neighbourhood: true, latitude: true, longitude: true } },
+      },
     });
     // Every lead was rewritten every day ("written" 104 → 126 with nothing new).
     // Same facts as last time: leave the row — and any hand edits — alone.
@@ -250,7 +285,13 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
       existing.sourceUrl === p.listing.sourceUrl &&
       JSON.stringify(existing.photoUrls) === JSON.stringify(p.listing.photoUrls) &&
       existing.location?.address === p.location.address &&
-      (existing.location?.zoneKey ?? null) === p.location.zoneKey
+      (existing.location?.zoneKey ?? null) === p.location.zoneKey &&
+      (existing.location?.sector ?? null) === p.location.sector &&
+      (existing.location?.neighbourhood ?? null) === p.location.neighbourhood &&
+      existing.location?.latitude === p.location.latitude &&
+      existing.location?.longitude === p.location.longitude &&
+      (p.listing.furnished == null || existing.furnished === p.listing.furnished) &&
+      sameTerms(existing, p.listing.terms)
     ) {
       unchanged += 1;
       if (brokerId) {
@@ -277,7 +318,18 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
       shared += 1;
       continue;
     }
-    const locationData = { address: p.location.address, city: 'Kigali', state: p.location.state, country: 'Rwanda', postalCode: '', latitude: p.location.latitude, longitude: p.location.longitude, zoneKey: p.location.zoneKey };
+    const locationData = {
+      address: p.location.address,
+      city: 'Kigali',
+      state: p.location.state,
+      country: 'Rwanda',
+      postalCode: '',
+      latitude: p.location.latitude,
+      longitude: p.location.longitude,
+      zoneKey: p.location.zoneKey,
+      sector: p.location.sector,
+      neighbourhood: p.location.neighbourhood,
+    };
     let locationId = existing?.locationId ?? null;
     if (locationId) await db.location.update({ where: { id: locationId }, data: locationData });
     else locationId = (await db.location.create({ data: locationData, select: { id: true } })).id;
@@ -297,7 +349,9 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
       propertyType: p.listing.propertyType as never,
       photoUrls: p.listing.photoUrls,
       amenities: p.listing.facts.amenities as never,
-      furnished: p.listing.facts.furnished,
+      // Unstated furnishing / terms are left as they are: crm:backfill-terms may have read them from the caption.
+      ...(p.listing.furnished != null ? { furnished: p.listing.furnished } : {}),
+      ...(p.listing.terms ?? {}),
       isParkingIncluded: p.listing.facts.isParkingIncluded,
       isPetsAllowed: p.listing.facts.isPetsAllowed,
       hostId: broker.id,
