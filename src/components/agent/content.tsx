@@ -2,21 +2,23 @@
 
 import { useCallback, useState } from "react";
 import dynamic from "next/dynamic";
-import { ArrowDown, Loader2, Menu, SquarePen } from "lucide-react";
+import { ArrowDown, Loader2, MoreHorizontal, SlidersHorizontal, SquarePen, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { cn } from "@/lib/utils";
 import { usePicksLabel, Wizard, type Picks } from "./wizard";
+import { deleteAgentChat } from "./actions";
 import { AskCard } from "./ask-card";
 import { Composer } from "./composer";
 import { DemandCard } from "./demand-card";
 import { noteHomeFeedback } from "./feedback-actions";
 import { roundPrice } from "./fields";
-import { ChatHeader, headerButton } from "./header";
+import { ChatHeader, headerButton, MenuGlyph } from "./header";
 import { Refine } from "./refine";
 import { ShortlistCard, type NotForMe } from "./shortlist-card";
 import { Steps } from "./steps";
 import { Suggestions } from "./suggestions";
-import { AgentTurn, PastAgentTurn, TurnActions, UserTurn } from "./turn";
+import { AgentTurn, PastAgentTurn, Prose, TurnActions, UserTurn } from "./turn";
 import type { AgentTaskView } from "./types";
 import { useAgentTask } from "./use-agent-task";
 import { useStickToBottom } from "./use-stick-to-bottom";
@@ -98,6 +100,12 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
           : { stay: task?.requirements?.stay ?? "long" };
     void say(label, false, filters);
   };
+  // ⋯ in the bar: delete the chat on screen, after the browser's own confirm.
+  const deleteChat = async () => {
+    if (!task || !window.confirm(a?.chats?.deleteConfirm ?? "Delete this chat?")) return;
+    const res = await deleteAgentChat(task.id).catch(() => ({ ok: false }));
+    if (res.ok) reset("replace");
+  };
   const openChat = (id: string) => {
     setSheet("closed");
     setGuided(false);
@@ -115,13 +123,32 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
         scrolled={scrolled}
         start={
           <button type="button" onClick={() => setSheet("open")} aria-label={a?.chats?.menu ?? "Chats"} title={a?.chats?.menu ?? "Chats"} className={headerButton}>
-            <Menu aria-hidden />
+            <MenuGlyph />
           </button>
         }
         end={
-          <button type="button" onClick={newChat} disabled={!task || running} aria-label={c?.newChat ?? "New chat"} title={c?.newChat ?? "New chat"} className={headerButton}>
-            <SquarePen aria-hidden />
-          </button>
+          <>
+            <button type="button" onClick={newChat} disabled={!task || running} aria-label={c?.newChat ?? "New chat"} title={c?.newChat ?? "New chat"} className={headerButton}>
+              <SquarePen aria-hidden />
+            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger className={headerButton} aria-label={c?.moreActions ?? "More"} title={c?.moreActions ?? "More"}>
+                <MoreHorizontal aria-hidden />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-52 rounded-2xl p-1.5">
+                <DropdownMenuItem onSelect={() => setGuided((g) => !g)} className="gap-2.5 rounded-xl px-3 py-2.5 text-[15px]">
+                  <SlidersHorizontal className="size-4" aria-hidden />
+                  {c?.guided ?? "Guided search"}
+                </DropdownMenuItem>
+                {task && (
+                  <DropdownMenuItem disabled={running} onSelect={() => void deleteChat()} className="gap-2.5 rounded-xl px-3 py-2.5 text-[15px] text-destructive focus:text-destructive">
+                    <Trash2 className="size-4 text-current" aria-hidden />
+                    {c?.deleteChat ?? "Delete chat"}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
         }
       />
 
@@ -162,7 +189,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
                     // Claude is writing the reply; the cards are already up below.
                     <span aria-hidden className="block h-5 w-3/4 animate-pulse rounded bg-muted" />
                   ) : (
-                    <p dir="auto" className="whitespace-pre-wrap text-start leading-[inherit] text-foreground">{reply(m)}</p>
+                    <Prose text={reply(m)} />
                   )}
 
                   {m.kind === "shortlist" && task.shortlist.length > 0 && (
@@ -218,9 +245,9 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
             type="button"
             onClick={() => scrollToBottom()}
             aria-label={c?.scrollDown ?? "Scroll to the latest message"}
-            className="absolute -top-12 start-1/2 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border bg-background shadow-md rtl:translate-x-1/2"
+            className="absolute -top-14 start-1/2 flex size-10 -translate-x-1/2 items-center justify-center rounded-full border border-border/60 bg-background shadow-[0_2px_10px_rgba(0,0,0,0.12)] rtl:translate-x-1/2"
           >
-            <ArrowDown className="size-4" aria-hidden />
+            <ArrowDown className="size-5" aria-hidden />
           </button>
         )}
         {!task && !guided && (
@@ -234,12 +261,16 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
           onPlus={() => setGuided((g) => !g)}
           plusActive={guided}
           disabled={pending || running}
+          busy={running}
           canSendEmpty={guided && picked}
           autoFocus={!task}
         />
-        <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          {a?.disclaimer ?? "Mkan checks with brokers, but always see a home before you pay."}
-        </p>
+        {/* ChatGPT's conversation has no footer line; the safety note shows before the first message. */}
+        {!task ? (
+          <p className="mt-2 text-center text-[11px] text-muted-foreground">{a?.disclaimer ?? "Mkan checks with brokers, but always see a home before you pay."}</p>
+        ) : (
+          <div className="h-2" aria-hidden />
+        )}
       </div>
 
       {sheet !== "never" && (

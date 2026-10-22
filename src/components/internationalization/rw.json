@@ -5744,8 +5744,13 @@
         }
       },
       "details": "Details",
-      "placeholder": "Describe the home you need",
-      "untitled": "Gushakisha gushya"
+      "placeholder": "Baza ikintu cyose",
+      "untitled": "Gushakisha gushya",
+      "readAloud": "Soma mu ijwi",
+      "stopReading": "Hagarika gusoma",
+      "share": "Sangiza",
+      "moreActions": "Ibindi",
+      "deleteChat": "Siba ikiganiro"
     },
     "chats": {
       "menu": "Ibiganiro",
@@ -5788,7 +5793,13 @@
       "editBeds": "Ibyumba",
       "studio": "Sitidiyo",
       "perMonth": "ku kwezi",
-      "perNight": "ku ijoro"
+      "perNight": "ku ijoro",
+      "chat": "Ikiganiro",
+      "tiles": {
+        "saved": "Ibyabitswe",
+        "memory": "Ibyibukwa",
+        "homes": "Amazu"
+      }
     },
     "mustHaves": {
       "parking": "Parikingi",

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowDown, BadgeCheck, Clock, Loader2, Maximize2, Menu, SquarePen, X } from "lucide-react";
+import { ArrowDown, BadgeCheck, Clock, Loader2, Maximize2, SquarePen, X } from "lucide-react";
 import { BlurImage } from "@/components/atom/blur-image";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { useLocale } from "@/components/internationalization/use-locale";
@@ -13,12 +13,12 @@ import { cn } from "@/lib/utils";
 import { usePicksLabel, Wizard, type Picks } from "../wizard";
 import { AskCard } from "../ask-card";
 import { Composer } from "../composer";
-import { ChatHeader, headerButton } from "../header";
+import { ChatHeader, headerButton, MenuGlyph } from "../header";
 import { Refine } from "../refine";
 import { fill } from "../format";
 import { Steps } from "../steps";
 import { Suggestions } from "../suggestions";
-import { AgentTurn, PastAgentTurn, UserTurn } from "../turn";
+import { AgentTurn, PastAgentTurn, Prose, UserTurn } from "../turn";
 import type { ShortlistItem } from "../types";
 import { useAgentTask } from "../use-agent-task";
 import { useStickToBottom } from "../use-stick-to-bottom";
@@ -166,7 +166,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
               <X aria-hidden />
             </button>
             <button type="button" onClick={() => setSheet("open")} aria-label={a?.chats?.menu ?? "Chats"} title={a?.chats?.menu ?? "Chats"} className={headerButton}>
-              <Menu aria-hidden />
+              <MenuGlyph />
             </button>
           </>
         }
@@ -219,7 +219,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
                   {m.kind === "ask" && !running ? (
                     <AskCard field={m.field} requirements={task.requirements} onPick={(text, filters) => void send(text, false, filters)} disabled={pending} compact />
                   ) : (
-                    <p className="whitespace-pre-wrap leading-[inherit] text-foreground">{reply(m)}</p>
+                    <Prose text={reply(m)} />
                   )}
                   {m.kind === "shortlist" && task.shortlist.length > 0 && (
                     <div className="space-y-2">
@@ -254,7 +254,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
             type="button"
             onClick={() => scrollToBottom()}
             aria-label={c?.scrollDown ?? "Scroll to the latest message"}
-            className="absolute -top-11 start-1/2 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border bg-background shadow-md rtl:translate-x-1/2"
+            className="absolute -top-12 start-1/2 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-border/60 bg-background shadow-[0_2px_10px_rgba(0,0,0,0.12)] rtl:translate-x-1/2"
           >
             <ArrowDown className="size-4" aria-hidden />
           </button>
@@ -272,6 +272,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
           plusActive={guided}
           canSendEmpty={guided && Object.keys(picks).length > 0}
           disabled={pending || running || !loaded}
+          busy={running}
         />
       </footer>
 

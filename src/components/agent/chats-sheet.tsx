@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Brain, ChevronLeft, ChevronRight, Heart, Loader2, MoreHorizontal, SquarePen } from "lucide-react";
+import { Brain, ChevronLeft, Heart, House, Loader2, MoreHorizontal, SquarePen } from "lucide-react";
 import { useFavorites } from "@/components/favorites/favorites-context";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
@@ -18,9 +18,11 @@ import { SavedView } from "./saved-view";
 import type { AgentChatRow, AgentChatsView } from "./types";
 
 /**
- * The ☰ sheet — ChatGPT's sidebar on iOS. Mkan and New chat on top, then
- * Saved homes and Memory (each a view inside the sheet, with a back chevron —
- * no sheet on a sheet), then this tenant's chats by day; a row opens its chat, ⋯ deletes it after an
+ * The ☰ sheet — ChatGPT's drawer on iOS. Mkan in large bold type, a row of
+ * round tiles (Saved homes and Memory open as views inside the sheet, with a
+ * back chevron — no sheet on a sheet; Homes goes to the listings), then this
+ * tenant's chats under bold day heads, and a floating black "✎ Chat" pill for
+ * a new chat. A row opens its chat, ⋯ deletes it after an
  * inline "Delete this chat?" (no portal, so it works over the bubble panel
  * too). Anonymous chats live in this browser, and the footer says so with a
  * way to sign in and keep them everywhere.
@@ -101,7 +103,7 @@ export function ChatsSheet({
         side="left"
         showClose={false}
         overlayClassName="z-[60]"
-        className="z-[60] w-[85%] max-w-[320px] gap-0 p-0 sm:max-w-[320px]"
+        className="z-[60] w-[88%] max-w-[360px] gap-0 p-0 sm:max-w-[360px]"
       >
         <SheetTitle className="sr-only">{s?.title ?? "Chats"}</SheetTitle>
         <SheetDescription className="sr-only">{s?.description ?? "Your searches with Mkan"}</SheetDescription>
@@ -114,14 +116,11 @@ export function ChatsSheet({
             <h2 className="text-[17px] font-semibold">{viewTitle}</h2>
           </div>
         ) : (
-          <div className="flex h-14 shrink-0 items-center justify-between gap-2 ps-2 pe-1.5">
-            <Link href={`/${locale}`} className="rounded-full px-3 py-1.5 text-[17px] font-semibold text-foreground transition-colors hover:bg-muted">
+          <div className="flex h-16 shrink-0 items-center px-5 pt-2">
+            <Link href={`/${locale}`} className="text-[28px] font-bold tracking-tight text-foreground">
               {a?.chat?.name ?? "Mkan"}
               <span className="sr-only"> — {a?.chat?.home ?? "Back to Mkan"}</span>
             </Link>
-            <button type="button" onClick={onNewChat} aria-label={a?.chat?.newChat ?? "New chat"} title={a?.chat?.newChat ?? "New chat"} className={headerButton}>
-              <SquarePen aria-hidden />
-            </button>
           </div>
         )}
 
@@ -136,24 +135,18 @@ export function ChatsSheet({
           </div>
         )}
 
-        <nav aria-label={s?.title ?? "Chats"} className={cn("flex-1 overflow-y-auto overscroll-contain px-2 pb-4", view !== "chats" && "hidden")}>
-          <ul className="list-none space-y-0.5 pt-1">
-            <li>
-              <button type="button" onClick={() => setView("saved")} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start text-[15px] hover:bg-muted/60">
-                <Heart className="size-[18px] text-muted-foreground" aria-hidden />
-                <span className="flex-1">{s?.saved ?? "Saved homes"}</span>
-                {savedIds.length > 0 && <span className="text-xs tabular-nums text-muted-foreground">{savedIds.length}</span>}
-                <ChevronRight className="size-4 text-muted-foreground rtl:rotate-180" aria-hidden />
-              </button>
-            </li>
-            <li>
-              <button type="button" onClick={() => setView("memory")} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start text-[15px] hover:bg-muted/60">
-                <Brain className="size-[18px] text-muted-foreground" aria-hidden />
-                <span className="flex-1">{s?.memory ?? "Memory"}</span>
-                {remembered && <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />}
-                <ChevronRight className="size-4 text-muted-foreground rtl:rotate-180" aria-hidden />
-              </button>
-            </li>
+        <nav aria-label={s?.title ?? "Chats"} className={cn("flex-1 overflow-y-auto overscroll-contain px-2 pb-28", view !== "chats" && "hidden")}>
+          {/* ChatGPT's Files · Images · Apps row: round grey tiles, a word under each. */}
+          <ul className="grid list-none grid-cols-3 gap-2 border-b px-1 pb-5 pt-3">
+            <Tile label={s?.tiles?.saved ?? "Saved"} onClick={() => setView("saved")} badge={savedIds.length > 0 ? String(savedIds.length) : undefined}>
+              <Heart aria-hidden />
+            </Tile>
+            <Tile label={s?.tiles?.memory ?? "Memory"} onClick={() => setView("memory")} dot={remembered}>
+              <Brain aria-hidden />
+            </Tile>
+            <Tile label={s?.tiles?.homes ?? "Homes"} href={`/${locale}/listings`}>
+              <House aria-hidden />
+            </Tile>
           </ul>
           {!data && !failed && (
             <ul aria-hidden className="space-y-2 px-3 pt-5">
@@ -175,8 +168,8 @@ export function ChatsSheet({
           )}
 
           {groups.map(({ group, rows }) => (
-            <section key={group} className="pt-4">
-              <h3 className="px-3 pb-1 text-xs font-medium text-muted-foreground">{groupLabel?.[group] ?? group}</h3>
+            <section key={group} className="pt-6">
+              <h3 className="px-3 pb-2 text-[17px] font-semibold text-foreground">{groupLabel?.[group] ?? group}</h3>
               <ul className="list-none">
                 {rows.map((chat) => (
                   <ChatRow
@@ -205,6 +198,20 @@ export function ChatsSheet({
           )}
         </nav>
 
+        {view === "chats" && (
+          <div className="pointer-events-none relative h-0 shrink-0">
+            <button
+              type="button"
+              onClick={onNewChat}
+              className="pointer-events-auto absolute bottom-5 end-5 flex h-14 items-center gap-2.5 rounded-full bg-foreground px-6 text-[17px] font-medium text-background shadow-[0_6px_20px_rgba(0,0,0,0.25)] transition-transform active:scale-95"
+            >
+              <SquarePen className="size-[22px]" aria-hidden />
+              {s?.chat ?? "Chat"}
+              <span className="sr-only"> — {a?.chat?.newChat ?? "New chat"}</span>
+            </button>
+          </div>
+        )}
+
         {data && !data.signedIn && view === "chats" && (
           <p className="shrink-0 border-t px-5 py-4 pb-[max(env(safe-area-inset-bottom),16px)] text-xs leading-5 text-muted-foreground">
             {s?.deviceOnly ?? "Chats stay on this device."}{" "}
@@ -219,6 +226,21 @@ export function ChatsSheet({
       </SheetContent>
     </Sheet>
   );
+}
+
+function Tile({ label, onClick, href, badge, dot, children }: { label: string; onClick?: () => void; href?: string; badge?: string; dot?: boolean; children: React.ReactNode }) {
+  const body = (
+    <>
+      <span className="relative flex size-16 items-center justify-center rounded-full bg-muted text-foreground transition-colors group-hover:bg-muted/70 [&_svg]:size-6">
+        {children}
+        {badge && <span className="absolute -end-0.5 -top-0.5 min-w-5 rounded-full bg-foreground px-1.5 text-center text-[11px] font-medium leading-5 text-background tabular-nums">{badge}</span>}
+        {dot && <span className="absolute end-1 top-1 size-2.5 rounded-full border-2 border-background bg-emerald-500" aria-hidden />}
+      </span>
+      <span className="text-[13px] font-medium text-foreground">{label}</span>
+    </>
+  );
+  const cls = "group flex w-full flex-col items-center gap-2";
+  return <li>{href ? <Link href={href} className={cls}>{body}</Link> : <button type="button" onClick={onClick} className={cls}>{body}</button>}</li>;
 }
 
 async function fetchChats(before?: string): Promise<AgentChatsView | null> {
@@ -250,7 +272,7 @@ function ChatRow({ chat, title, active, onOpen, onDelete }: { chat: AgentChatRow
         type="button"
         onClick={onOpen}
         aria-current={active ? "page" : undefined}
-        className="flex min-w-0 flex-1 items-center gap-2 py-2.5 ps-3 text-start text-[15px] text-foreground"
+        className="flex min-w-0 flex-1 items-center gap-2 py-3 ps-3 text-start text-[17px] text-foreground"
       >
         <span dir="auto" className="truncate">
           {title}

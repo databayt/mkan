@@ -5744,8 +5744,13 @@
         }
       },
       "details": "التفاصيل",
-      "placeholder": "صف المنزل الذي تريده",
-      "untitled": "بحث جديد"
+      "placeholder": "اسأل أي شيء",
+      "untitled": "بحث جديد",
+      "readAloud": "اقرأ بصوت عالٍ",
+      "stopReading": "إيقاف القراءة",
+      "share": "مشاركة",
+      "moreActions": "المزيد",
+      "deleteChat": "حذف المحادثة"
     },
     "chats": {
       "menu": "المحادثات",
@@ -5788,7 +5793,13 @@
       "editBeds": "الغرف",
       "studio": "استوديو",
       "perMonth": "شهرياً",
-      "perNight": "لليلة"
+      "perNight": "لليلة",
+      "chat": "محادثة",
+      "tiles": {
+        "saved": "المحفوظة",
+        "memory": "الذاكرة",
+        "homes": "المنازل"
+      }
     },
     "mustHaves": {
       "parking": "موقف سيارات",

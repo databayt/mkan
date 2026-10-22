@@ -5744,8 +5744,13 @@
         }
       },
       "details": "Details",
-      "placeholder": "Describe the home you need",
-      "untitled": "New search"
+      "placeholder": "Ask anything",
+      "untitled": "New search",
+      "readAloud": "Read aloud",
+      "stopReading": "Stop reading",
+      "share": "Share",
+      "moreActions": "More",
+      "deleteChat": "Delete chat"
     },
     "chats": {
       "menu": "Chats",
@@ -5788,7 +5793,13 @@
       "editBeds": "Bedrooms",
       "studio": "Studio",
       "perMonth": "a month",
-      "perNight": "a night"
+      "perNight": "a night",
+      "chat": "Chat",
+      "tiles": {
+        "saved": "Saved",
+        "memory": "Memory",
+        "homes": "Homes"
+      }
     },
     "mustHaves": {
       "parking": "Parking",

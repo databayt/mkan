@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowUp, Mic, Plus, Square } from "lucide-react";
+import { ArrowUp, AudioLines, Mic, Plus, Square } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { cn } from "@/lib/utils";
@@ -31,16 +31,18 @@ function speechCtor(): RecognitionCtor | null {
 }
 
 /**
- * The composer of ChatGPT on iOS: a floating pill with `+` at the start, a
- * textarea that grows to six lines, and at the end a mic while it is empty
- * (dictation, where the browser has it) that turns into the black send button
- * once there is text. Enter sends, Shift+Enter breaks a line.
+ * The composer of ChatGPT on iOS: a grey round `+` beside a grey pill whose
+ * textarea grows to six lines. Inside the pill's end sit a quiet mic and one
+ * black round button that is the voice button while the box is empty, send
+ * once there is text, and a stop square while a turn runs. Enter sends,
+ * Shift+Enter breaks a line.
  */
 export function Composer({
   onSend,
   onPlus,
   plusActive = false,
   disabled,
+  busy = false,
   size = "lg",
   autoFocus,
   canSendEmpty = false,
@@ -51,6 +53,8 @@ export function Composer({
   onPlus?: () => void;
   plusActive?: boolean;
   disabled?: boolean;
+  /** A turn is running: the black button shows ChatGPT's stop square. */
+  busy?: boolean;
   size?: "lg" | "sm";
   autoFocus?: boolean;
   /** Badges are picked, so an empty box can still send. */
@@ -108,7 +112,9 @@ export function Composer({
   };
 
   const lg = size === "lg";
-  const iconButton = cn("flex shrink-0 items-center justify-center rounded-full transition-colors", lg ? "size-9" : "size-8");
+  const empty = !text.trim() && !canSendEmpty;
+  const round = cn("flex shrink-0 items-center justify-center rounded-full transition-colors", lg ? "size-10" : "size-8");
+  const black = cn(round, "bg-foreground text-background");
 
   return (
     <form
@@ -116,10 +122,7 @@ export function Composer({
         e.preventDefault();
         void submit();
       }}
-      className={cn(
-        "flex items-end gap-1.5 border bg-background shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-shadow focus-within:shadow-[0_2px_16px_rgba(0,0,0,0.1)] dark:shadow-none",
-        lg ? "rounded-[26px] p-2" : "rounded-[22px] p-1.5",
-      )}
+      className={cn("flex items-end", lg ? "gap-2" : "gap-1.5")}
     >
       {onPlus && (
         <button
@@ -128,56 +131,78 @@ export function Composer({
           aria-label={c?.more ?? "Guided search"}
           aria-pressed={plusActive}
           title={c?.more ?? "Guided search"}
-          className={cn(iconButton, "text-foreground hover:bg-muted", plusActive && "bg-muted")}
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70",
+            lg ? "size-[52px]" : "size-10",
+            plusActive && "bg-foreground text-background hover:bg-foreground/90",
+          )}
         >
-          <Plus className={cn("size-5 transition-transform", plusActive && "rotate-45")} aria-hidden />
+          <Plus className={cn("transition-transform", lg ? "size-6" : "size-5", plusActive && "rotate-45")} strokeWidth={1.75} aria-hidden />
         </button>
       )}
-      <textarea
-        ref={ref}
-        data-agent-composer
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-            e.preventDefault();
-            void submit();
-          }
-        }}
-        rows={1}
-        readOnly={!ready}
-        maxLength={600}
-        autoFocus={autoFocus}
-        enterKeyHint="send"
-        placeholder={c?.placeholder ?? "Describe the home you need"}
-        aria-label={a?.placeholder ?? "Describe the home you need"}
+      <div
         className={cn(
-          "min-w-0 flex-1 resize-none self-center bg-transparent outline-none placeholder:text-muted-foreground",
-          !onPlus && (lg ? "ps-3" : "ps-2.5"),
-          lg ? "py-1.5 text-[17px] leading-6 md:text-base" : "py-1 text-[15px]",
+          "flex min-w-0 flex-1 items-end gap-1 bg-muted transition-shadow focus-within:ring-1 focus-within:ring-border",
+          lg ? "min-h-[52px] rounded-[26px] p-1.5 ps-5" : "min-h-10 rounded-[20px] p-1 ps-3.5",
         )}
-      />
-      {!text.trim() && !canSendEmpty && speech ? (
-        <button
-          type="button"
-          onClick={listen}
-          disabled={disabled}
-          aria-label={listening ? c?.stopVoice ?? "Stop listening" : c?.voice ?? "Speak"}
-          aria-pressed={listening}
-          className={cn(iconButton, listening ? "bg-foreground text-background" : "text-foreground hover:bg-muted", "disabled:opacity-40")}
-        >
-          {listening ? <Square className="size-3.5 fill-current" aria-hidden /> : <Mic className="size-5" aria-hidden />}
-        </button>
-      ) : (
-        <button
-          type="submit"
-          aria-label={a?.send ?? "Send"}
-          disabled={!canSend}
-          className={cn(iconButton, "bg-foreground text-background disabled:bg-muted disabled:text-muted-foreground")}
-        >
-          <ArrowUp className="size-5" strokeWidth={2.5} aria-hidden />
-        </button>
-      )}
+      >
+        <textarea
+          ref={ref}
+          data-agent-composer
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              void submit();
+            }
+          }}
+          rows={1}
+          readOnly={!ready}
+          maxLength={600}
+          autoFocus={autoFocus}
+          enterKeyHint="send"
+          placeholder={c?.placeholder ?? "Describe the home you need"}
+          aria-label={a?.placeholder ?? "Describe the home you need"}
+          className={cn(
+            "min-w-0 flex-1 resize-none self-center bg-transparent outline-none placeholder:text-muted-foreground",
+            lg ? "py-1.5 text-[17px] leading-6 md:text-base" : "py-1 text-[15px]",
+          )}
+        />
+        {empty && speech && !busy && !listening && (
+          <button
+            type="button"
+            onClick={listen}
+            disabled={disabled}
+            aria-label={c?.voice ?? "Speak"}
+            title={c?.voice ?? "Speak"}
+            className={cn(round, "text-muted-foreground hover:text-foreground disabled:opacity-40")}
+          >
+            <Mic className={lg ? "size-[22px]" : "size-5"} aria-hidden />
+          </button>
+        )}
+        {busy ? (
+          // The turn runs on the server and cannot be cut short; the square only marks it, as ChatGPT's does.
+          <span role="status" aria-label={a?.reply?.working ?? "Working"} className={black}>
+            <Square className={cn("fill-current", lg ? "size-3.5" : "size-3")} aria-hidden />
+          </span>
+        ) : empty && speech ? (
+          <button
+            type="button"
+            onClick={listen}
+            disabled={disabled}
+            aria-label={listening ? c?.stopVoice ?? "Stop listening" : c?.voice ?? "Speak"}
+            aria-pressed={listening}
+            className={cn(black, "disabled:opacity-40")}
+          >
+            {listening ? <Square className={cn("fill-current", lg ? "size-3.5" : "size-3")} aria-hidden /> : <AudioLines className={lg ? "size-5" : "size-4"} aria-hidden />}
+          </button>
+        ) : (
+          <button type="submit" aria-label={a?.send ?? "Send"} disabled={!canSend} className={cn(black, "disabled:bg-foreground/20")}>
+            <ArrowUp className={lg ? "size-5" : "size-4"} strokeWidth={2.5} aria-hidden />
+          </button>
+        )}
+      </div>
     </form>
   );
 }
