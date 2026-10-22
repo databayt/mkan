@@ -7,6 +7,9 @@
  *
  * The last run's time lives in .data/demand/last-run.json, so a missed day
  * catches up instead of skipping homes. --dry-run counts, writes nothing.
+ *
+ * Then the Twenty `zone` records' `openDemand` counters are refreshed (only the
+ * ones that changed — a few PATCHes); the other counters move with `crm:zones`.
  */
 import { config } from 'dotenv';
 config({ override: true });
@@ -52,11 +55,21 @@ async function main() {
     writeFileSync(LAST, JSON.stringify({ at: started.toISOString(), ...result }, null, 2));
   }
 
+  // Zone pages show how many tenants still wait there. Twenty being down never fails the run.
+  let zonesNote = '';
+  try {
+    const { refreshOpenDemand } = await import('./zones');
+    const n = await refreshOpenDemand({ write: !flag('dry-run') });
+    zonesNote = ` · zone open-demand counters ${flag('dry-run') ? 'to refresh' : 'refreshed'}: ${n}`;
+  } catch (err) {
+    zonesNote = ` · zone counters skipped (${(err as Error).message.slice(0, 80)})`;
+  }
+
   const leads = newBySource.map((r) => `${r.source?.toLowerCase()} ${r._count}`).join(' · ') || 'none';
   const sends = outbox.map((r) => `${r.kind.toLowerCase()} ${r.status.toLowerCase()} ${r._count}`).join(' · ') || 'none';
   const digest = [
     `:house: *mkan daily* — new leads since ${since.toISOString().slice(0, 16)}Z: ${leads}`,
-    `New brokers (24 h): ${newBrokers} · open tenant requests: ${result.requests}`,
+    `New brokers (24 h): ${newBrokers} · open tenant requests: ${result.requests}${zonesNote}`,
     `Matched today: ${result.matched} request(s), ${result.homes} home(s)${flag('dry-run') ? ' (dry run)' : ''}`,
     `WhatsApp (24 h): ${sends}`,
   ].join('\n');

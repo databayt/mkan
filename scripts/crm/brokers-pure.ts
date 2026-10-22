@@ -18,11 +18,13 @@
 import { normalizePhone } from '../../src/lib/phone';
 import { districtForPlace, isInKigali, nearestDistrict } from '../../src/lib/geo/rwanda-places';
 import { NEIGHBOURHOODS, inNeighbourhood } from '../../src/components/agent/areas';
+import { KIGALI_ZONE_BY_SLUG, districtZone, resolveZone, zoneAt, type KigaliZone } from '../../src/lib/geo/kigali-zones';
 
 export type BrokerKindT = 'BROKER' | 'AGENCY' | 'LANDLORD';
 /** Matches the comment on `Broker.sources` in the Prisma schema. */
 export type SourceTag = 'tiktok' | 'facebook' | 'web' | 'maps' | 'site' | 'airbnb';
-export type Origin = 'listing' | 'host' | 'post' | 'seed' | 'facebook' | 'maps';
+/** `directory`: an existing Prisma Broker row, so keys a person merged in Twenty keep its groups together. */
+export type Origin = 'listing' | 'host' | 'post' | 'seed' | 'facebook' | 'maps' | 'directory';
 export type Stay = 'night' | 'month';
 
 const DISTRICT_CODES = new Set(['GASABO', 'KICUKIRO', 'NYARUGENGE']);
@@ -87,6 +89,8 @@ export interface MergedBroker {
   twentyHostIds: string[];
   sources: SourceTag[];
   origins: Origin[];
+  /** Zones served (kigali-zones slugs), most homes first. */
+  zoneSlugs: string[];
   districts: string[];
   neighbourhoods: string[];
   stays: Stay[];
@@ -126,12 +130,30 @@ export function websiteDomain(url: string | null | undefined): string | null {
   }
 }
 
-const AGENCY_WORDS = /\b(real\s*estate|realty|realtors?|propert(y|ies)|immobili[eè]re?|immo|agency|agence|estates?|homes?\s+(ltd|rwanda)|ltd|limited|company|co\.?\s*ltd|group|housing|apartments? management|management)\b/i;
+/** Words that only a real-estate business uses in its name. */
+const ESTATE_WORDS = /\b(real\s*estates?|realty|realtors?|propert(y|ies)|immobili[eè]re?|immo|agence|estates?|housing|apartments? management|homes?\s+rwanda)\b/i;
+/** Housing words a person's handle uses too (kigali_houses) — an agency only with a business word. */
+const HOUSING_WORDS = /\b(homes?|houses?|apartments?|rentals?|inzu|amazu)\b/i;
+/** Generic business words: "Nina Group" or "Gakwaya Ltd" sells anything, so these alone never make an agency. */
+const BUSINESS_WORDS = /\b(ltd|limited|company|co\.?\s*ltd|group|management|agency|enterprises?)\b/i;
 
-/** A name that says it is a business, not a person. */
+/**
+ * A name that says it is a real-estate business, not a person. Generic
+ * business words (ltd, group, management, company) count only beside a
+ * housing word: "Kigali Homes Ltd" is an agency, "Nina Group" is not.
+ */
 export function isAgencyName(name: string | null | undefined): boolean {
-  return !!name && AGENCY_WORDS.test(name);
+  if (!name) return false;
+  return ESTATE_WORDS.test(name) || (BUSINESS_WORDS.test(name) && HOUSING_WORDS.test(name));
 }
+
+/** Maps categories that are real estate, but not homes to rent. */
+const NOT_HOMES = /commercial real ?estate|industrial real ?estate|office space|warehouse|land surveyor|\bcar\b|vehicle|self.?drive|\btours?\b|safari/i;
+
+/** A Maps place that rents or sells homes — "rental agency Kigali" also finds car hire and industrial estates. */
+export const isHousingAgency = (r: { name?: string | null; category?: string | null }) =>
+  /real ?estate|property|properties|apartment|realtor|housing|homes?\b|immobili/i.test(`${r.category ?? ''} ${r.name ?? ''}`) &&
+  !NOT_HOMES.test(`${r.category ?? ''} ${r.name ?? ''}`);
 
 /** Lower-case, accent-free, punctuation-free — for grouping agencies by name. */
 export function nameKey(name: string | null | undefined): string | null {
@@ -222,7 +244,45 @@ function byFrequency(values: string[]): string[] {
   return [...n].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([v]) => v);
 }
 
+/**
+ * The most specific Kigali zone a home or office is in: a place the address
+ * names (sector or finer), else a real pin inside Kigali, else the district
+ * the text or the district code names. Null when nothing places it in Kigali.
+ * TikTok/Facebook pins are district centres, so they never count (`pinIsReal`).
+ */
+export function zoneOf(h: { district?: string | null; address?: string | null; lat?: number | null; lng?: number | null; pinIsReal?: boolean }): KigaliZone | null {
+  const named = resolveZone({ text: h.address, pinIsReal: false })?.zone;
+  if (named && named.level !== 'district') return named;
+  // "Kicukiro, Kigali" names only the district: a real pin inside Kigali says more.
+  if (h.pinIsReal === true && h.lat != null && h.lng != null && isInKigali(h.lat, h.lng)) return zoneAt(h.lat, h.lng);
+  if (named) return named;
+  const d = (h.district ?? '').toUpperCase().replace(/^KIGALI_/, '');
+  if (DISTRICT_CODES.has(d)) return districtZone(d as KigaliZone['district']);
+  return null;
+}
+
+/** A zone and the sector above it, by name — what `Broker.neighbourhoods` lists. */
+const placeNames = (z: KigaliZone): string[] => {
+  const out: string[] = [];
+  for (let cur: KigaliZone | undefined = z; cur && cur.level !== 'district'; cur = cur.parent ? KIGALI_ZONE_BY_SLUG.get(cur.parent) : undefined) out.push(cur.nameEn);
+  return out;
+};
+
+/**
+ * Districts and neighbourhood names for zones served, most first — the
+ * back-compat columns the Twenty broker view and older readers use.
+ */
+export function namesForZones(zoneSlugs: string[]): { districts: string[]; neighbourhoods: string[] } {
+  const zones = zoneSlugs.map((s) => KIGALI_ZONE_BY_SLUG.get(s)).filter((z): z is KigaliZone => !!z);
+  return {
+    districts: [...new Set(zones.map((z) => z.district))],
+    neighbourhoods: [...new Set(zones.flatMap(placeNames))],
+  };
+}
+
 export interface Coverage {
+  /** Zones served, most homes first (each home counts once, at its most specific zone). */
+  zoneSlugs: string[];
   districts: string[];
   neighbourhoods: string[];
   stays: Stay[];
@@ -241,12 +301,23 @@ export function coverage(homes: HomeFact[], places: PlaceFact[] = []): Coverage 
     if (!prev || (prev.priceMonth == null && h.priceMonth != null) || (!prev.address && h.address)) unique.set(h.key, { ...prev, ...h });
   }
   const list = [...unique.values()];
-  const districts = byFrequency([...list, ...places].map((h) => districtOf(h)).filter((d): d is string => !!d));
-  const neighbourhoods = byFrequency([...list, ...places].flatMap((h) => neighbourhoodsOf(h)));
+  // An office pin from Maps is real; a home's pin only when its source says so.
+  const spots = [...list, ...places.map((p) => ({ ...p, pinIsReal: true }))];
+  const zones = spots.map((h) => zoneOf(h));
+  const zoneSlugs = byFrequency(zones.filter((z): z is KigaliZone => !!z).map((z) => z.slug));
+  // Districts from the zone where there is one, else the older gazetteer (it knows a few more place names).
+  const districts = byFrequency(spots.map((h, i) => zones[i]?.district ?? districtOf(h)).filter((d): d is string => !!d));
+  const neighbourhoods = byFrequency(
+    spots.flatMap((h, i) => {
+      const z = zones[i];
+      return z && z.level !== 'district' ? placeNames(z) : neighbourhoodsOf(h);
+    }),
+  );
   const stays: Stay[] = (['month', 'night'] as const).filter((s) => list.some((h) => h.stay === s));
   const { priceMin, priceMax } = priceBand(list.map((h) => h.priceMonth).filter((p): p is number => p != null));
   const seen = list.map((h) => h.seenAt?.getTime()).filter((t): t is number => t != null && Number.isFinite(t));
   return {
+    zoneSlugs,
     districts,
     neighbourhoods,
     stays,
@@ -260,7 +331,7 @@ export function coverage(homes: HomeFact[], places: PlaceFact[] = []): Coverage 
 // ── merge ────────────────────────────────────────────────────────────────────
 
 const KIND_RANK: Record<BrokerKindT, number> = { AGENCY: 3, BROKER: 2, LANDLORD: 1 };
-const ORIGIN_NAME_RANK: Record<Origin, number> = { maps: 6, host: 5, post: 4, facebook: 3, listing: 2, seed: 1 };
+const ORIGIN_NAME_RANK: Record<Origin, number> = { maps: 6, host: 5, post: 4, facebook: 3, listing: 2, seed: 1, directory: 0 };
 const KEY_RANK = ['phone:', 'tt:', 'web:', 'name:', 'user:', 'host:', 'fb:'];
 const keyRank = (k: string) => KEY_RANK.findIndex((p) => k.startsWith(p));
 
@@ -294,6 +365,8 @@ export function mergeCandidates(cands: Candidate[]): MergedBroker[] {
   const out: MergedBroker[] = [];
   for (const idx of groups.values()) {
     const g = idx.map((i) => cands[i]!);
+    // A directory row alone is a broker no source shows any more: leave its row as it is.
+    if (g.every((c) => c.origin === 'directory')) continue;
     const keys = [...new Set(idx.flatMap((i) => keysOf[i]!))].sort((a, b) => keyRank(a) - keyRank(b) || a.localeCompare(b));
     const uniq = <T>(xs: (T | null | undefined)[]) => [...new Set(xs.filter((x): x is T => x != null && x !== ''))];
     const phones = uniq(g.flatMap((c) => [...c.phones, c.whatsapp ?? null].map(normaliseRwPhone)));
@@ -307,7 +380,7 @@ export function mergeCandidates(cands: Candidate[]): MergedBroker[] {
     const userWeight = new Map<string, number>();
     for (const c of g) if (c.userId) userWeight.set(c.userId, (userWeight.get(c.userId) ?? 0) + 1 + c.homes.length);
     const userIds = [...userWeight].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([u]) => u);
-    const kind = g.map((c) => c.kind).sort((a, b) => KIND_RANK[b] - KIND_RANK[a])[0] ?? 'BROKER';
+    const kind = g.filter((c) => c.origin !== 'directory').map((c) => c.kind).sort((a, b) => KIND_RANK[b] - KIND_RANK[a])[0] ?? 'BROKER';
     const named = g
       .filter((c) => c.name?.trim())
       .sort((a, b) => ORIGIN_NAME_RANK[b.origin] - ORIGIN_NAME_RANK[a.origin] || (b.name ?? '').length - (a.name ?? '').length);
@@ -329,7 +402,8 @@ export function mergeCandidates(cands: Candidate[]): MergedBroker[] {
       userId: userIds[0] ?? null,
       twentyHostIds: uniq(g.flatMap((c) => c.twentyHostIds ?? [])),
       sources: uniq(g.flatMap((c) => c.sources)).sort() as SourceTag[],
-      origins: uniq(g.map((c) => c.origin)).sort() as Origin[],
+      origins: uniq(g.map((c) => c.origin).filter((o) => o !== 'directory')).sort() as Origin[],
+      zoneSlugs: cov.zoneSlugs,
       districts: cov.districts,
       neighbourhoods: cov.neighbourhoods,
       stays: cov.stays,
@@ -356,7 +430,245 @@ export function summarise(brokers: MergedBroker[]) {
     byOrigin: count(brokers.flatMap((b) => b.origins)),
     withPhone: brokers.filter((b) => b.phones.length).length,
     withCoverage: brokers.filter((b) => b.districts.length).length,
+    withZones: brokers.filter((b) => b.zoneSlugs.some((z) => z.includes('/'))).length,
     withHomes: brokers.filter((b) => b.listingsCount > 0).length,
+  };
+}
+
+// ── two-way with Twenty ──────────────────────────────────────────────────────
+//
+// Prisma is the source of truth, but people fix brokers in Twenty: an agency
+// filed as a broker, a wrong name, a dead number, the zones they really serve,
+// an opt-out by phone, two records that are one person. Each run pulls those
+// edits back first, then never overwrites them.
+
+/** Fields a person can own from Twenty. Names are Prisma's; `phones` is Twenty's `phone`. */
+export const LOCKABLE = ['kind', 'name', 'phones', 'whatsapp', 'optOut', 'zoneSlugs'] as const;
+export type LockableField = (typeof LOCKABLE)[number];
+
+/** Our own PATCH lands a moment after `syncedAt` is read; later than this is someone else. */
+export const EDIT_TOLERANCE_MS = 5_000;
+
+/** Actors Twenty stamps on `updatedBy` / `createdBy` that are scripts, not people. */
+const MACHINE_ACTORS = new Set(['API', 'SYSTEM']);
+const byPerson = (source: string | null | undefined) => !!source && !MACHINE_ACTORS.has(source.toUpperCase());
+
+/** A Twenty `broker` record, read back. */
+export interface TwentyBrokerState {
+  id: string;
+  updatedAt: Date | null;
+  /** `updatedBy.source`: MANUAL for the UI, API for scripts. Null when Twenty does not say. */
+  updatedBy: string | null;
+  kind: BrokerKindT | null;
+  name: string | null;
+  phones: string[];
+  whatsapp: string | null;
+  optOut: boolean;
+  /** Zones from its `brokerZone` rows; null when the junction object does not exist yet. */
+  zoneSlugs: string[] | null;
+  /** True when any of those rows was created by a person. */
+  zonesByPerson: boolean;
+  mergeIntoId: string | null;
+}
+
+/** The Prisma `Broker` row, as far as the two-way sync needs it. */
+export interface BrokerRowState {
+  id: string;
+  kind: BrokerKindT;
+  name: string;
+  phones: string[];
+  whatsapp: string | null;
+  optOut: boolean;
+  optOutAt: Date | null;
+  zoneSlugs: string[];
+  lockedFields: string[];
+  syncedAt: Date | null;
+}
+
+export interface HumanEdit {
+  /** The Prisma update: changed values plus `lockedFields`. Empty when nothing changed. */
+  data: Partial<Pick<BrokerRowState, LockableField | 'optOutAt' | 'lockedFields'>>;
+  /** Fields copied from Twenty this run. */
+  changed: LockableField[];
+}
+
+const sameSet = (a: string[], b: string[]) => a.length === b.length && new Set([...a, ...b]).size === a.length;
+
+/**
+ * What a person changed on a broker in Twenty, as a Prisma update that also
+ * locks those fields. A record counts as edited when a person (not the API)
+ * touched it after our last write (`syncedAt` + tolerance); with no
+ * `syncedAt` yet, only a person's stamp counts. Only fields that differ from
+ * Prisma are copied and locked. Zones are judged on the junction rows
+ * themselves, since adding a `brokerZone` row does not touch the broker.
+ */
+export function humanEdit(t: TwentyBrokerState, p: BrokerRowState, now = new Date()): HumanEdit {
+  const changed: LockableField[] = [];
+  const data: HumanEdit['data'] = {};
+  const after = p.syncedAt ? t.updatedAt != null && t.updatedAt.getTime() > p.syncedAt.getTime() + EDIT_TOLERANCE_MS : true;
+  const recordEdited = after && (t.updatedBy == null ? p.syncedAt != null : byPerson(t.updatedBy));
+
+  if (recordEdited) {
+    if (t.kind && t.kind !== p.kind) {
+      data.kind = t.kind;
+      changed.push('kind');
+    }
+    const name = t.name?.replace(/\s+/g, ' ').trim();
+    if (name && name !== p.name) {
+      data.name = name;
+      changed.push('name');
+    }
+    const phones = [...new Set(t.phones.map(normaliseRwPhone).filter((n): n is string => !!n))];
+    // A cleared phone field is a person removing a dead number — but never every number at once by accident of a bad read.
+    if (phones.length && !sameSet(phones, p.phones)) {
+      data.phones = phones;
+      changed.push('phones');
+    }
+    const wa = normaliseRwPhone(t.whatsapp);
+    if (wa !== p.whatsapp && (wa || t.whatsapp === null || t.whatsapp === '')) {
+      data.whatsapp = wa;
+      changed.push('whatsapp');
+    }
+    if (t.optOut !== p.optOut) {
+      // The agent opted them out after our last write, so Twenty still shows the old "no": keep the opt-out.
+      const agentNewer = p.optOut && !t.optOut && p.optOutAt != null && (!p.syncedAt || p.optOutAt.getTime() > p.syncedAt.getTime());
+      if (!agentNewer) {
+        data.optOut = t.optOut;
+        data.optOutAt = t.optOut ? now : null;
+        changed.push('optOut');
+      }
+    }
+  }
+
+  // Zones: a person-created row, or (once we have synced) any difference from what we last wrote.
+  if (t.zoneSlugs && (t.zonesByPerson || p.syncedAt) && !sameSet(t.zoneSlugs, p.zoneSlugs)) {
+    data.zoneSlugs = t.zoneSlugs;
+    changed.push('zoneSlugs');
+  }
+
+  if (changed.length) data.lockedFields = [...new Set([...p.lockedFields, ...changed])];
+  return { data, changed };
+}
+
+/** The derived update minus what a person owns. `zoneSlugs` locked keeps districts/neighbourhoods on those zones. */
+export function withoutLocked<T extends Record<string, unknown>>(data: T, locked: string[], lockedZones?: string[]): Partial<T> {
+  const out: Record<string, unknown> = { ...data };
+  for (const f of locked) delete out[f];
+  if (locked.includes('zoneSlugs') && lockedZones) Object.assign(out, namesForZones(lockedZones));
+  return out as Partial<T>;
+}
+
+/** The Twenty body keys each lockable field writes. */
+export const TWENTY_KEYS: Record<LockableField, string[]> = {
+  kind: ['kind'],
+  name: ['name'],
+  phones: ['phone'],
+  whatsapp: ['whatsapp'],
+  optOut: ['optOut', 'optOutAt'],
+  zoneSlugs: [],
+};
+
+/**
+ * `mergeInto` chains resolved to the record that survives: A → B → C merges
+ * A and B into C. Cycles and targets that no longer exist are skipped.
+ */
+export function resolveMerges(rows: { id: string; mergeIntoId: string | null }[]): Map<string, string> {
+  const next = new Map(rows.filter((r) => r.mergeIntoId && r.mergeIntoId !== r.id).map((r) => [r.id, r.mergeIntoId!]));
+  const exists = new Set(rows.map((r) => r.id));
+  const out = new Map<string, string>();
+  for (const id of next.keys()) {
+    const seen = new Set([id]);
+    let cur = next.get(id)!;
+    while (next.has(cur) && !seen.has(cur)) {
+      seen.add(cur);
+      cur = next.get(cur)!;
+    }
+    if (seen.has(cur) || !exists.has(cur)) continue; // a cycle, or merged into nothing
+    out.set(id, cur);
+  }
+  return out;
+}
+
+/** A full Prisma `Broker` row, for merging two of them. */
+export interface BrokerRowFull extends BrokerRowState {
+  userId: string | null;
+  tiktokHandle: string | null;
+  facebookUrl: string | null;
+  website: string | null;
+  email: string | null;
+  districts: string[];
+  neighbourhoods: string[];
+  stays: string[];
+  priceMin: number | null;
+  priceMax: number | null;
+  listingsCount: number;
+  lastSeenAt: Date | null;
+  lastAskedAt: Date | null;
+  asks: number;
+  answers: number;
+  availableAnswers: number;
+  sources: string[];
+}
+
+const maxDate = (a: Date | null, b: Date | null) => (a && b ? (a > b ? a : b) : (a ?? b));
+
+/**
+ * The survivor's row after absorbing the loser: counters summed, phones,
+ * sources and zones unioned (survivor's first), blanks filled from the loser,
+ * and every field the survivor's person locked kept as it is. The loser's
+ * unique `userId` / `tiktokHandle` move only into an empty slot — the caller
+ * deletes the loser first so the unique index allows it.
+ */
+export function mergeBrokerRows(survivor: BrokerRowFull, loser: BrokerRowFull) {
+  const locked = new Set(survivor.lockedFields);
+  const union = (a: string[], b: string[]) => [...new Set([...a, ...b])];
+  const keep = <K extends LockableField>(k: K, merged: BrokerRowFull[K]) => (locked.has(k) ? survivor[k] : merged);
+  const zoneSlugs = keep('zoneSlugs', union(survivor.zoneSlugs, loser.zoneSlugs));
+  const names = namesForZones(zoneSlugs);
+  const optOut = keep('optOut', survivor.optOut || loser.optOut);
+  return {
+    kind: keep('kind', KIND_RANK[loser.kind] > KIND_RANK[survivor.kind] ? loser.kind : survivor.kind),
+    name: survivor.name,
+    phones: keep('phones', union(survivor.phones, loser.phones)),
+    whatsapp: keep('whatsapp', survivor.whatsapp ?? loser.whatsapp),
+    optOut,
+    optOutAt: optOut ? (survivor.optOutAt ?? loser.optOutAt) : null,
+    zoneSlugs,
+    districts: union(names.districts.length ? names.districts : survivor.districts, loser.districts),
+    neighbourhoods: union(names.neighbourhoods.length ? names.neighbourhoods : survivor.neighbourhoods, loser.neighbourhoods),
+    userId: survivor.userId ?? loser.userId,
+    tiktokHandle: survivor.tiktokHandle ?? loser.tiktokHandle,
+    facebookUrl: survivor.facebookUrl ?? loser.facebookUrl,
+    website: survivor.website ?? loser.website,
+    email: survivor.email ?? loser.email,
+    stays: union(survivor.stays, loser.stays),
+    priceMin: survivor.priceMin == null ? loser.priceMin : loser.priceMin == null ? survivor.priceMin : Math.min(survivor.priceMin, loser.priceMin),
+    priceMax: survivor.priceMax == null ? loser.priceMax : loser.priceMax == null ? survivor.priceMax : Math.max(survivor.priceMax, loser.priceMax),
+    listingsCount: survivor.listingsCount + loser.listingsCount,
+    lastSeenAt: maxDate(survivor.lastSeenAt, loser.lastSeenAt),
+    lastAskedAt: maxDate(survivor.lastAskedAt, loser.lastAskedAt),
+    asks: survivor.asks + loser.asks,
+    answers: survivor.answers + loser.answers,
+    availableAnswers: survivor.availableAnswers + loser.availableAnswers,
+    sources: union(survivor.sources, loser.sources),
+    lockedFields: survivor.lockedFields,
+  };
+}
+
+/** An existing Prisma row as a merge candidate: its keys hold together what a person merged. */
+export function directoryCandidate(r: { phones: string[]; whatsapp: string | null; tiktokHandle: string | null; userId: string | null; website: string | null; facebookUrl: string | null }): Candidate {
+  return {
+    origin: 'directory',
+    kind: 'LANDLORD',
+    name: null,
+    phones: r.phones,
+    whatsapp: r.whatsapp,
+    tiktokHandle: r.tiktokHandle,
+    userId: r.userId,
+    website: r.website,
+    facebookUrl: r.facebookUrl,
+    sources: [],
+    homes: [],
   };
 }
 

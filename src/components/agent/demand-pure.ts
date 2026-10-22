@@ -3,7 +3,9 @@
  * cover the tenant's area, budget and stay. Pure, so the tests read exactly
  * which brokers a request reaches.
  */
-import { NEIGHBOURHOODS } from "./areas";
+import { KIGALI_ZONES, KIGALI_ZONE_BY_SLUG, zoneAt, zoneNamed, zoneWithin, type KigaliZone } from "@/lib/geo/kigali-zones";
+import { haversineKm } from "@/lib/geo/rwanda-places";
+import { AREA_KEYS, AREAS, NEIGHBOURHOODS, type AreaKey } from "./areas";
 import type { Requirements } from "./requirements";
 
 /** Brokers asked per unmet request. */
@@ -19,6 +21,8 @@ export interface BrokerFit {
   phones: string[];
   districts: string[];
   neighbourhoods: string[];
+  /** Zones served (kigali-zones slugs) — the precise coverage; districts/neighbourhoods are its older names. */
+  zoneSlugs?: string[];
   stays: string[];
   priceMin: number | null;
   priceMax: number | null;
@@ -38,6 +42,36 @@ function districtOf(r: Requirements): string | null {
   return hood?.district ?? null;
 }
 
+/** Sector and neighbourhood zones whose centre falls inside each "near…" area. */
+export const AREA_ZONES: Record<AreaKey, string[]> = Object.fromEntries(
+  AREA_KEYS.map((k) => [
+    k,
+    KIGALI_ZONES.filter((z) => z.level !== "district" && AREAS[k].points.some(([lat, lng]) => haversineKm(lat, lng, z.lat, z.lng) <= AREAS[k].radiusKm)).map((z) => z.slug),
+  ]),
+) as Record<AreaKey, string[]>;
+
+/** The sector or neighbourhood the tenant wants: the one they named, else the one their "near" pin is in. */
+export function wantedZone(r: Requirements): KigaliZone | null {
+  if (r.neighbourhood) {
+    const hood = NEIGHBOURHOODS.find((n) => n.name.toLowerCase() === r.neighbourhood!.toLowerCase());
+    const z = hood ? KIGALI_ZONE_BY_SLUG.get(hood.slug) : zoneNamed(r.neighbourhood);
+    if (z && z.level !== "district") return z;
+  }
+  if (r.near) return zoneAt(r.near.lat, r.near.lng);
+  return null;
+}
+
+/** A broker zone covers a place when it is that place or inside it, or is a sector/neighbourhood holding it. */
+const covers = (brokerZone: string, place: string) => zoneWithin(place, brokerZone) || (brokerZone.includes("/") && zoneWithin(brokerZone, place));
+
+/** 2: they work that very place · 1: the same sector · 0: neither. */
+export function zoneMatch(zoneSlugs: string[], want: KigaliZone): 0 | 1 | 2 {
+  if (zoneSlugs.some((s) => covers(s, want.slug))) return 2;
+  const sector = want.level === "neighbourhood" ? want.parent : null;
+  if (sector && zoneSlugs.some((s) => zoneWithin(sector, s))) return 1;
+  return 0;
+}
+
 /** The tenant's ceiling as RWF per month, or null. */
 export function monthlyCeiling(r: Requirements): number | null {
   if (!r.maxPrice) return null;
@@ -47,7 +81,9 @@ export function monthlyCeiling(r: Requirements): number | null {
 /**
  * How well one broker fits a request, or null when they must not be asked:
  * opted out, no phone, asked too recently, or not covering the district.
- * Coverage beats everything; then budget, stay, recency and answer rate.
+ * Coverage beats everything — the tenant's neighbourhood or sector (from
+ * `zoneSlugs`) over the district alone — then budget, stay, recency and
+ * answer rate. An agency with no known coverage is asked, but last.
  */
 export function brokerFitScore(b: BrokerFit, r: Requirements, now: Date): number | null {
   if (b.optOut || b.phones.length === 0) return null;
@@ -55,14 +91,23 @@ export function brokerFitScore(b: BrokerFit, r: Requirements, now: Date): number
   let score = 0;
 
   const district = districtOf(r);
-  const districts = lower(b.districts);
+  const zones = b.zoneSlugs ?? [];
+  const districts = [...new Set([...lower(b.districts), ...zones.map((s) => KIGALI_ZONE_BY_SLUG.get(s)?.district.toLowerCase()).filter((d): d is string => !!d)])];
   if (district) {
-    // An agency with no known coverage still works the whole city.
-    if (districts.length === 0 && b.kind !== "AGENCY") return null;
     if (districts.length > 0 && !districts.includes(district.toLowerCase())) return null;
-    score += 30;
+    if (districts.length > 0) score += 30;
+    // An agency with no known coverage may still work the whole city — asked, but after the locals.
+    else if (b.kind === "AGENCY") score += 5;
+    else return null;
   }
-  if (r.neighbourhood && lower(b.neighbourhoods).includes(r.neighbourhood.toLowerCase())) score += 20;
+  // Sector and neighbourhood outrank the district: the zone they really work, else the names their ads used.
+  const want = wantedZone(r);
+  const match = want && zones.length ? zoneMatch(zones, want) : 0;
+  const named = !!r.neighbourhood && lower(b.neighbourhoods).includes(r.neighbourhood.toLowerCase());
+  if (match === 2 || named) score += 20;
+  else if (match === 1) score += 10;
+  // "Near the centre / business district / a university": the zones inside that area.
+  if (r.area && zones.some((s) => AREA_ZONES[r.area!].some((a) => covers(s, a)))) score += 15;
 
   const ceiling = monthlyCeiling(r);
   if (ceiling && b.priceMin != null) {

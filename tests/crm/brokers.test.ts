@@ -7,8 +7,19 @@ import {
   contactsInHtml,
   coordsFromMapsUrl,
   coverage,
+  directoryCandidate,
   districtOf,
+  humanEdit,
   isAgencyName,
+  isHousingAgency,
+  mergeBrokerRows,
+  namesForZones,
+  resolveMerges,
+  withoutLocked,
+  zoneOf,
+  type BrokerRowFull,
+  type BrokerRowState,
+  type TwentyBrokerState,
   mergeCandidates,
   mergeKeys,
   nameKey,
@@ -186,12 +197,237 @@ describe('agency pages', () => {
 });
 
 describe('isHousingAgency', () => {
-  it('keeps estate and property firms and drops car hire found by "rental agency"', async () => {
-    const { isHousingAgency } = await import('../../scripts/crm/brokers');
+  it('keeps estate and property firms and drops car hire found by "rental agency"', () => {
     expect(isHousingAgency({ name: 'Kwanda Real Estate', category: 'Real estate agency' })).toBe(true);
     expect(isHousingAgency({ name: 'Kigali Nice', category: 'Apartment rental agency' })).toBe(true);
     expect(isHousingAgency({ name: 'Nina Estate Group', category: 'Property management company' })).toBe(true);
     expect(isHousingAgency({ name: 'Kigali Rent Car', category: 'Car rental agency' })).toBe(false);
     expect(isHousingAgency({ name: 'Lebs Services /Tours, car rental', category: 'Car rental agency' })).toBe(false);
+  });
+});
+
+describe('agency fetch quality', () => {
+  it('drops commercial and industrial real estate', () => {
+    expect(isHousingAgency({ name: 'Kigali Logistics Park', category: 'Industrial real estate agency' })).toBe(false);
+    expect(isHousingAgency({ name: 'Downtown Offices', category: 'Commercial real estate agency' })).toBe(false);
+    expect(isHousingAgency({ name: 'Hill Homes', category: 'Real estate developer' })).toBe(true);
+    expect(isHousingAgency({ name: 'Oscar Realty', category: 'Real estate agent' })).toBe(true);
+  });
+
+  it('counts ltd / group / management / company only beside a housing word', () => {
+    expect(isAgencyName('Nina Group')).toBe(false);
+    expect(isAgencyName('Gakwaya Trading Ltd')).toBe(false);
+    expect(isAgencyName('Hotappa Ltd')).toBe(false);
+    expect(isAgencyName('Kigali Homes Ltd')).toBe(true);
+    expect(isAgencyName('Prime Apartments Management')).toBe(true);
+    expect(isAgencyName('Nina Estate Group')).toBe(true);
+    expect(isAgencyName('Inzu Nziza Company')).toBe(true);
+    expect(isAgencyName('kigali houses')).toBe(false); // a person's handle
+  });
+});
+
+describe('zones served', () => {
+  it('places a home by the place its address names, else a real pin, else the district', () => {
+    expect(zoneOf({ address: '3 bedroom in Kibagabaga' })?.slug).toBe('gasabo/kimironko/kibagabaga');
+    // "Kicukiro, Kigali" is only the district; an Airbnb pin by Sonatubes says more.
+    expect(zoneOf({ address: 'Kicukiro, Kigali', lat: -1.97, lng: 30.105, pinIsReal: true })?.slug).toBe('kicukiro/niboye/sonatubes');
+    // A TikTok pin is the district centre: never finer than the district.
+    expect(zoneOf({ district: 'KICUKIRO', lat: -1.97, lng: 30.105, pinIsReal: false })?.slug).toBe('kicukiro');
+    expect(zoneOf({ district: 'KIGALI_GASABO' })?.slug).toBe('gasabo');
+    // A real pin outside Kigali places nothing.
+    expect(zoneOf({ lat: -1.5, lng: 29.6, pinIsReal: true })).toBeNull();
+  });
+
+  it('lists zones most homes first and keeps districts and neighbourhoods from them', () => {
+    const c = coverage([
+      home('home:1', { address: 'Kibagabaga' }),
+      home('home:2', { address: 'near Kibagabaga hospital' }),
+      home('home:3', { address: 'Remera' }),
+      home('home:4', { district: 'KICUKIRO' }),
+    ]);
+    expect(c.zoneSlugs).toEqual(['gasabo/kimironko/kibagabaga', 'gasabo/remera', 'kicukiro']);
+    expect(c.districts).toEqual(['GASABO', 'KICUKIRO']);
+    expect(c.neighbourhoods).toEqual(['Kibagabaga', 'Kimironko', 'Remera']);
+  });
+
+  it("places a Maps agency's office by its pin", () => {
+    const c = coverage([], [{ address: 'KG 9 Ave, Kigali', lat: -1.938, lng: 30.083 }]);
+    expect(c.zoneSlugs).toEqual(['gasabo/kacyiru']);
+  });
+
+  it('names districts and neighbourhoods for zones a person set', () => {
+    expect(namesForZones(['gasabo/remera/nyarutarama', 'kicukiro'])).toEqual({ districts: ['GASABO', 'KICUKIRO'], neighbourhoods: ['Nyarutarama', 'Remera'] });
+  });
+
+  it('merged brokers carry their zones', () => {
+    const [b] = mergeCandidates([cand({ tiktokHandle: 'z1', homes: [home('home:1', { address: 'Gacuriro' })] })]);
+    expect(b!.zoneSlugs).toEqual(['gasabo/kinyinya/gacuriro']);
+  });
+});
+
+describe('directory candidates', () => {
+  it('hold together the keys a person merged, without adding a broker of their own', () => {
+    const merged = mergeCandidates([
+      cand({ tiktokHandle: 'one', homes: [home('home:1')] }),
+      cand({ phones: ['0788000002'], homes: [home('home:2')] }),
+      directoryCandidate({ phones: ['+250788000002'], whatsapp: null, tiktokHandle: 'one', userId: null, website: null, facebookUrl: null }),
+      directoryCandidate({ phones: ['+250788000009'], whatsapp: null, tiktokHandle: null, userId: null, website: null, facebookUrl: null }),
+    ]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]!.listingsCount).toBe(2);
+    expect(merged[0]!.origins).toEqual(['post']);
+  });
+});
+
+// ── two-way ──────────────────────────────────────────────────────────────────
+
+const synced = new Date('2026-10-22T08:00:00Z');
+const later = (s: number) => new Date(synced.getTime() + s * 1000);
+const prismaRow = (over: Partial<BrokerRowState> = {}): BrokerRowState => ({
+  id: 'p1',
+  kind: 'BROKER',
+  name: 'Kigali House Find',
+  phones: ['+250788000001'],
+  whatsapp: null,
+  optOut: false,
+  optOutAt: null,
+  zoneSlugs: ['gasabo/remera'],
+  lockedFields: [],
+  syncedAt: synced,
+  ...over,
+});
+const twentyRow = (over: Partial<TwentyBrokerState> = {}): TwentyBrokerState => ({
+  id: 't1',
+  updatedAt: synced,
+  updatedBy: 'API',
+  kind: 'BROKER',
+  name: 'Kigali House Find',
+  phones: ['+250788000001'],
+  whatsapp: null,
+  optOut: false,
+  zoneSlugs: ['gasabo/remera'],
+  zonesByPerson: false,
+  mergeIntoId: null,
+  ...over,
+});
+
+describe('humanEdit', () => {
+  it('ignores our own write, and API writes after it', () => {
+    expect(humanEdit(twentyRow({ updatedAt: later(2), kind: 'AGENCY', updatedBy: 'MANUAL' }), prismaRow()).changed).toEqual([]);
+    expect(humanEdit(twentyRow({ updatedAt: later(60), kind: 'AGENCY' }), prismaRow()).changed).toEqual([]);
+  });
+
+  it('copies and locks what a person changed, and only that', () => {
+    const now = new Date('2026-10-22T09:00:00Z');
+    const e = humanEdit(twentyRow({ updatedAt: later(60), updatedBy: 'MANUAL', kind: 'AGENCY', optOut: true }), prismaRow(), now);
+    expect(e.changed).toEqual(['kind', 'optOut']);
+    expect(e.data).toEqual({ kind: 'AGENCY', optOut: true, optOutAt: now, lockedFields: ['kind', 'optOut'] });
+  });
+
+  it('keeps earlier locks and normalises phones', () => {
+    const e = humanEdit(twentyRow({ updatedAt: later(60), updatedBy: 'MANUAL', phones: ['0788 000 003'] }), prismaRow({ lockedFields: ['kind'] }));
+    expect(e.data).toEqual({ phones: ['+250788000003'], lockedFields: ['kind', 'phones'] });
+  });
+
+  it('never undoes an opt-out the agent recorded after our last write', () => {
+    const e = humanEdit(twentyRow({ updatedAt: later(60), updatedBy: 'MANUAL', name: 'KHF Rentals' }), prismaRow({ optOut: true, optOutAt: later(30) }));
+    expect(e.changed).toEqual(['name']);
+  });
+
+  it('with no sync stamp yet, only a person stamp counts', () => {
+    expect(humanEdit(twentyRow({ updatedAt: later(60), kind: 'AGENCY' }), prismaRow({ syncedAt: null })).changed).toEqual([]);
+    expect(humanEdit(twentyRow({ updatedAt: later(60), updatedBy: 'MANUAL', kind: 'AGENCY' }), prismaRow({ syncedAt: null })).changed).toEqual(['kind']);
+  });
+
+  it('reads zones served from the junction rows', () => {
+    // A person added a zone row (it does not touch the broker record).
+    expect(humanEdit(twentyRow({ zoneSlugs: ['gasabo/remera', 'gasabo/kimironko'], zonesByPerson: true }), prismaRow()).data).toEqual({
+      zoneSlugs: ['gasabo/remera', 'gasabo/kimironko'],
+      lockedFields: ['zoneSlugs'],
+    });
+    // A person removed one, once we have synced.
+    expect(humanEdit(twentyRow({ zoneSlugs: [] }), prismaRow()).changed).toEqual(['zoneSlugs']);
+    // Never synced and no person rows: a missing junction is ours to build, not an edit.
+    expect(humanEdit(twentyRow({ zoneSlugs: [] }), prismaRow({ syncedAt: null })).changed).toEqual([]);
+    // Junction object not seeded.
+    expect(humanEdit(twentyRow({ zoneSlugs: null }), prismaRow()).changed).toEqual([]);
+  });
+});
+
+describe('locks', () => {
+  it('drops locked fields from the derived update; locked zones keep their names', () => {
+    const derived = { kind: 'BROKER', name: 'x', zoneSlugs: ['kicukiro'], districts: ['KICUKIRO'], neighbourhoods: [] as string[], priceMin: 1 };
+    expect(withoutLocked(derived, ['kind', 'zoneSlugs'], ['gasabo/remera'])).toEqual({ name: 'x', districts: ['GASABO'], neighbourhoods: ['Remera'], priceMin: 1 });
+    expect(withoutLocked(derived, [])).toEqual(derived);
+  });
+});
+
+describe('mergeInto', () => {
+  it('follows chains to the survivor and skips cycles and missing targets', () => {
+    const m = resolveMerges([
+      { id: 'a', mergeIntoId: 'b' },
+      { id: 'b', mergeIntoId: 'c' },
+      { id: 'c', mergeIntoId: null },
+      { id: 'x', mergeIntoId: 'y' },
+      { id: 'y', mergeIntoId: 'x' },
+      { id: 'g', mergeIntoId: 'gone' },
+      { id: 's', mergeIntoId: 's' },
+    ]);
+    expect([...m]).toEqual([
+      ['a', 'c'],
+      ['b', 'c'],
+    ]);
+  });
+
+  const full = (over: Partial<BrokerRowFull>): BrokerRowFull => ({
+    ...prismaRow(),
+    userId: null,
+    tiktokHandle: null,
+    facebookUrl: null,
+    website: null,
+    email: null,
+    districts: [],
+    neighbourhoods: [],
+    stays: [],
+    priceMin: null,
+    priceMax: null,
+    listingsCount: 0,
+    lastSeenAt: null,
+    lastAskedAt: null,
+    asks: 0,
+    answers: 0,
+    availableAnswers: 0,
+    sources: [],
+    ...over,
+  });
+
+  it('sums counters, unions phones, sources and zones, fills blanks, keeps the survivor locks', () => {
+    const survivor = full({ id: 's', kind: 'BROKER', phones: ['+250788000001'], zoneSlugs: ['gasabo/remera'], lockedFields: ['kind'], asks: 2, answers: 1, listingsCount: 3, sources: ['tiktok'], priceMin: 300_000, priceMax: 600_000 });
+    const loser = full({
+      id: 'l', kind: 'AGENCY', phones: ['+250788000002', '+250788000001'], zoneSlugs: ['kicukiro/niboye'], userId: 'u2', tiktokHandle: 'loser', asks: 1, answers: 1,
+      availableAnswers: 1, listingsCount: 2, sources: ['facebook'], priceMin: 200_000, priceMax: 900_000, optOut: true, optOutAt: synced,
+    });
+    const d = mergeBrokerRows(survivor, loser);
+    expect(d).toMatchObject({
+      kind: 'BROKER', // locked by a person on the survivor
+      phones: ['+250788000001', '+250788000002'],
+      zoneSlugs: ['gasabo/remera', 'kicukiro/niboye'],
+      districts: ['GASABO', 'KICUKIRO'],
+      userId: 'u2',
+      tiktokHandle: 'loser',
+      asks: 3,
+      answers: 2,
+      availableAnswers: 1,
+      listingsCount: 5,
+      sources: ['tiktok', 'facebook'],
+      priceMin: 200_000,
+      priceMax: 900_000,
+      optOut: true,
+      lockedFields: ['kind'],
+    });
+    // Unlocked kind takes the stronger of the two.
+    expect(mergeBrokerRows({ ...survivor, lockedFields: [] }, loser).kind).toBe('AGENCY');
+    // Locked zones stay the survivor's.
+    expect(mergeBrokerRows({ ...survivor, lockedFields: ['zoneSlugs'] }, loser).zoneSlugs).toEqual(['gasabo/remera']);
   });
 });

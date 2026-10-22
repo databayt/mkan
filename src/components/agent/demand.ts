@@ -52,7 +52,7 @@ export async function openDemand(taskId: string, profileId: string | null, r: Re
     orderBy: [{ lastSeenAt: { sort: "desc", nulls: "last" } }],
     take: BROKER_POOL,
     select: {
-      id: true, kind: true, name: true, tiktokHandle: true, phones: true, districts: true, neighbourhoods: true, stays: true,
+      id: true, kind: true, name: true, tiktokHandle: true, phones: true, districts: true, neighbourhoods: true, zoneSlugs: true, stays: true,
       priceMin: true, priceMax: true, lastSeenAt: true, lastAskedAt: true, asks: true, answers: true, optOut: true,
     },
   });

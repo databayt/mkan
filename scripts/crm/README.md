@@ -411,6 +411,59 @@ Whisper does not know Kinyarwanda, so the caption and the frames carry the facts
 Prices are stored in `priceMonthLocal` + `rentPeriod`, because Kigali rents by the month.
 Full doc: kun.databayt.org/docs/scrape.
 
+## Brokers, agencies and zones (2026-10-22)
+
+`crm:brokers` builds one directory of everyone who rents homes out in Kigali (`Broker` in Prisma,
+mirrored to the Twenty `broker` object). Brokers and agencies are one record; `kind` says which.
+Coverage is read from their ads: each home is placed at its most specific Kigali zone
+(`src/lib/geo/kigali-zones.ts` — a place the address names, else a real Airbnb/office pin, else the
+district) and `Broker.zoneSlugs` lists those zones, most homes first. `districts` and
+`neighbourhoods` are kept, derived from the zones, for older readers.
+
+```
+pnpm crm:zones                   # dry run: zones to create/patch, counters, homes to link
+pnpm crm:zones --write           # upsert the 54 zones (parents first), refresh counters, set home.kigaliZone
+pnpm crm:zones --write --no-homes   # zones + counters only
+pnpm crm:brokers                 # dry run (or --dry-run): Twenty edits to pull, merges, the merged directory
+pnpm crm:brokers --apply         # pull edits + merges, upsert Prisma, mirror to Twenty + brokerZone rows
+```
+
+**Zones in Twenty.** Each `zone` record (district, sector or neighbourhood, keyed by `mkanZoneSlug`)
+has a `parent`, and counters: `homesCount` (Prisma listings placed in it or under it), `brokersCount`
+(brokers with a zone served in it) and `openDemand` (OPEN tenant requests asking for it). A home links
+to its most specific zone (`home.kigaliZone`); a broker's zones served are `brokerZone` rows (the
+"Zones served" list on a broker, "Brokers" on a zone). `crm:demand-match` refreshes `openDemand`
+daily; run `crm:zones --write` after `crm:brokers --apply` to move the other counters.
+
+**Two-way edits.** Fix a broker in Twenty and the fix holds. Each `crm:brokers` run starts by
+reading every Twenty broker. A record a person touched after our last write (Twenty `updatedAt` later
+than `Broker.syncedAt` + 5 s, and `updatedBy` not the API) has its changed fields copied to Prisma:
+`kind`, `name`, phones, WhatsApp and opt-out. Zones served are read from its `brokerZone` rows —
+add or delete rows on the broker's page to change them. Every copied field is added to
+`Broker.lockedFields`, and from then on the build never writes it again, in Prisma or in Twenty.
+`syncedAt` is set after each Twenty write (from Twenty's own `updatedAt`, so clocks don't matter).
+An opt-out the agent recorded after our last write is never undone by a stale Twenty value. To hand a
+field back to the build, remove it from `lockedFields` in Prisma.
+
+**Merging two records.** On the broker to remove, set **Merge into** to the one to keep. The next
+`--apply` run moves its ListingBroker rows and outbound messages to the survivor, adds up the asks,
+answers and homes, unions phones, sources and zones, fills the survivor's empty fields (user,
+TikTok handle, website…) and keeps every field the survivor has locked. The loser is deleted from
+Prisma and Twenty along with its `brokerZone` rows, and its Twenty homes, hosts and TikTok posts
+point at the survivor. Chains (A → B → C) resolve to C; cycles are skipped. The survivor's phones and
+handle then hold the two source groups together on later runs.
+
+**Agencies from Maps.** `isHousingAgency` drops car hire, tours and commercial or industrial real
+estate. A name counts as an agency on real-estate words (real estate, realty, property, immobilière,
+estate, housing); the generic `ltd / group / management / company / agency` count only beside a housing
+word ("Kigali Homes Ltd" yes, "Nina Group" no). An agency's office pin places its zone.
+
+**Who the agent asks** (`src/components/agent/demand-pure.ts`). A broker who works the tenant's
+neighbourhood or sector (`zoneSlugs`, `zoneWithin`) outranks one who only covers the district; a
+sibling neighbourhood in the same sector scores in between. "Near the centre / business district / a
+university" matches the zones inside that area. An agency with no known zones is still asked, but
+after the locals. Opted-out, phoneless and asked-in-the-last-24-h brokers are never asked.
+
 ## Still to add
 
 - The `Note` / `Task` (Activity) custom fields — `channel`, `host`, `home` (§2.6). Small;
