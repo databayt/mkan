@@ -433,7 +433,10 @@ export const BROKER: ObjectDef = {
     { name: 'availableAnswers', label: 'Had a home', type: 'NUMBER', icon: 'IconHomeCheck', description: 'Answers that offered an available home.' },
     { name: 'optOut', label: 'Opted out', type: 'BOOLEAN', icon: 'IconBan', defaultValue: false },
     { name: 'optOutAt', label: 'Opted out at', type: 'DATE_TIME' },
-    { name: 'sources', label: 'Sources', type: 'MULTI_SELECT', icon: 'IconWorldWww', options: ['TIKTOK', 'FACEBOOK', 'WEB', 'MAPS', 'SITE', 'AIRBNB'] },
+    { name: 'sources', label: 'Sources', type: 'MULTI_SELECT', icon: 'IconWorldWww', options: ['TIKTOK', 'FACEBOOK', 'WEB', 'MAPS', 'SITE', 'AIRBNB', 'WHATSAPP'] },
+    { name: 'visitFee', label: 'Visit fee (RWF)', type: 'NUMBER', icon: 'IconCash', description: 'What they ask to show a home.' },
+    { name: 'replyMinutes', label: 'Replies in (min)', type: 'NUMBER', icon: 'IconClock', description: 'Median minutes to answer on WhatsApp.' },
+    { name: 'lastReplyAt', label: 'Last WhatsApp reply', type: 'DATE_TIME', icon: 'IconMessage' },
     { name: 'mkanBrokerId', label: 'mkan broker ID', type: 'TEXT', description: 'Prisma Broker.id (dedupe key).' },
     // Two-way (2026-10-22): set this to the record to keep and the next crm:brokers run
     // moves this one's homes, messages and counters there, then deletes it.

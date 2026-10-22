@@ -1507,7 +1507,7 @@ model Broker {
   optOut           Boolean    @default(false)
   optOutAt         DateTime?
   twentyId         String?    @unique
-  /// tiktok | facebook | web | maps | site | airbnb
+  /// tiktok | facebook | web | maps | site | airbnb | whatsapp
   sources          String[]
   /// Zones served (kigali-zones slugs), derived from their ads unless a person set them in Twenty.
   zoneSlugs        String[]   @default([])
@@ -1517,6 +1517,12 @@ model Broker {
   syncedAt         DateTime?
   /// Merged into another broker in Twenty; kept only until the merge is applied.
   mergedIntoId     String?
+  /// RWF they ask to show a home (Kigali's usual is 5k), from their chats or replies.
+  visitFee         Int?
+  /// Median minutes they take to answer a WhatsApp message.
+  replyMinutes     Int?
+  /// Their last WhatsApp message to Mkan or to Abdout.
+  lastReplyAt      DateTime?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 

@@ -292,6 +292,35 @@ export function candidatesFromAgencies(rows: Record<string, AgencyRow>): Candida
     }) satisfies Candidate);
 }
 
+interface WaRow {
+  phone: string;
+  altPhones: string[];
+  name: string | null;
+  kind: BrokerKindT;
+  quotes: { price: number; place: string | null; bedrooms: number | null; at: string }[];
+  places: string[];
+  visitFee: number | null;
+  replyMinutes: number | null;
+  lastAt: string;
+  lastReplyAt: string | null;
+}
+/** (g) Brokers from Abdout's own WhatsApp chats (scripts/wa/chats.ts): each quote is a home they offered. */
+export function candidatesFromWhatsapp(rows: WaRow[]): Candidate[] {
+  return rows.map((r) => ({
+    origin: 'whatsapp',
+    kind: r.kind,
+    name: r.name,
+    phones: [r.phone, ...r.altPhones],
+    sources: ['whatsapp'],
+    homes: r.quotes.map((q, i) => ({ key: `wa:${r.phone}:${i}`, address: q.place, stay: 'month', priceMonth: q.price, seenAt: new Date(q.at) }) satisfies HomeFact),
+    places: r.places.filter((p) => !r.quotes.some((q) => q.place === p)).map((address) => ({ address })),
+    lastSeenAt: r.lastReplyAt ? new Date(r.lastReplyAt) : null,
+    visitFee: r.visitFee,
+    replyMinutes: r.replyMinutes,
+    lastReplyAt: r.lastReplyAt ? new Date(r.lastReplyAt) : null,
+  }));
+}
+
 // ── gather ───────────────────────────────────────────────────────────────────
 
 async function gather(): Promise<{ candidates: Candidate[]; counts: Record<string, number> }> {
@@ -332,6 +361,7 @@ async function gather(): Promise<{ candidates: Candidate[]; counts: Record<strin
   const seeds = readJson<Record<string, { status?: string }>>(join(DATA, 'tiktok/seeds.json'), {});
   const fb = readJson<Record<string, FbPost>>(join(DATA, 'fb-rentals/posts.json'), {});
   const agencies = readJson<Record<string, AgencyRow>>(join(DATA, 'agencies/agencies.json'), {});
+  const whatsapp = readJson<{ brokers: WaRow[] }>(join(DATA, 'whatsapp/brokers.json'), { brokers: [] });
 
   const parts = {
     listingBrokers: candidatesFromListingBrokers(lb),
@@ -340,6 +370,7 @@ async function gather(): Promise<{ candidates: Candidate[]; counts: Record<strin
     seeds: candidatesFromSeeds(seeds),
     facebook: candidatesFromFacebook(fb),
     agencies: candidatesFromAgencies(agencies),
+    whatsapp: candidatesFromWhatsapp(whatsapp.brokers),
     directory: directoryRows.map(directoryCandidate),
   };
   // A post's host's other homes count too: the post names the broker, the host holds the portfolio.
@@ -551,6 +582,9 @@ export function twentyBrokerBody(
     optOut: row.optOut,
     optOutAt: row.optOutAt?.toISOString() ?? null,
     sources: b.sources.map((s) => s.toUpperCase()),
+    visitFee: b.visitFee ?? undefined,
+    replyMinutes: b.replyMinutes ?? undefined,
+    lastReplyAt: b.lastReplyAt?.toISOString() ?? undefined,
     mkanBrokerId: row.id,
   };
   for (const f of locked) for (const k of TWENTY_KEYS[f] ?? []) delete body[k];
@@ -609,6 +643,9 @@ async function apply(brokers: MergedBroker[]): Promise<void> {
       priceMax: b.priceMax,
       listingsCount: b.listingsCount,
       lastSeenAt: b.lastSeenAt,
+      visitFee: b.visitFee ?? undefined,
+      replyMinutes: b.replyMinutes ?? undefined,
+      lastReplyAt: b.lastReplyAt ?? undefined,
       sources: [...new Set([...(existing?.sources ?? []), ...b.sources])],
     };
     // A person's edit in Twenty wins over what the ads say.

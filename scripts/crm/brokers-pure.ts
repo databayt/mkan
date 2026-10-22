@@ -22,9 +22,9 @@ import { KIGALI_ZONE_BY_SLUG, districtZone, resolveZone, zoneAt, type KigaliZone
 
 export type BrokerKindT = 'BROKER' | 'AGENCY' | 'LANDLORD';
 /** Matches the comment on `Broker.sources` in the Prisma schema. */
-export type SourceTag = 'tiktok' | 'facebook' | 'web' | 'maps' | 'site' | 'airbnb';
+export type SourceTag = 'tiktok' | 'facebook' | 'web' | 'maps' | 'site' | 'airbnb' | 'whatsapp';
 /** `directory`: an existing Prisma Broker row, so keys a person merged in Twenty keep its groups together. */
-export type Origin = 'listing' | 'host' | 'post' | 'seed' | 'facebook' | 'maps' | 'directory';
+export type Origin = 'listing' | 'host' | 'post' | 'seed' | 'facebook' | 'maps' | 'whatsapp' | 'directory';
 export type Stay = 'night' | 'month';
 
 const DISTRICT_CODES = new Set(['GASABO', 'KICUKIRO', 'NYARUGENGE']);
@@ -68,6 +68,11 @@ export interface Candidate {
   homes: HomeFact[];
   places?: PlaceFact[];
   lastSeenAt?: Date | null;
+  /** From a WhatsApp chat: the visit fee they ask (RWF). */
+  visitFee?: number | null;
+  /** From a WhatsApp chat: median minutes to answer. */
+  replyMinutes?: number | null;
+  lastReplyAt?: Date | null;
 }
 
 export interface MergedBroker {
@@ -98,6 +103,9 @@ export interface MergedBroker {
   priceMax: number | null;
   listingsCount: number;
   lastSeenAt: Date | null;
+  visitFee: number | null;
+  replyMinutes: number | null;
+  lastReplyAt: Date | null;
 }
 
 // ── normalisers ──────────────────────────────────────────────────────────────
@@ -331,7 +339,8 @@ export function coverage(homes: HomeFact[], places: PlaceFact[] = []): Coverage 
 // ── merge ────────────────────────────────────────────────────────────────────
 
 const KIND_RANK: Record<BrokerKindT, number> = { AGENCY: 3, BROKER: 2, LANDLORD: 1 };
-const ORIGIN_NAME_RANK: Record<Origin, number> = { maps: 6, host: 5, post: 4, facebook: 3, listing: 2, seed: 1, directory: 0 };
+// A name a broker gave in a chat ("I'm Thierry") is the one they answer to.
+const ORIGIN_NAME_RANK: Record<Origin, number> = { whatsapp: 7, maps: 6, host: 5, post: 4, facebook: 3, listing: 2, seed: 1, directory: 0 };
 const KEY_RANK = ['phone:', 'tt:', 'web:', 'name:', 'user:', 'host:', 'fb:'];
 const keyRank = (k: string) => KEY_RANK.findIndex((p) => k.startsWith(p));
 
@@ -411,6 +420,9 @@ export function mergeCandidates(cands: Candidate[]): MergedBroker[] {
       priceMax: cov.priceMax,
       listingsCount: cov.listingsCount,
       lastSeenAt: seen.length ? new Date(Math.max(...seen)) : null,
+      visitFee: g.find((c) => c.visitFee != null)?.visitFee ?? null,
+      replyMinutes: g.reduce<number | null>((m, c) => (c.replyMinutes == null ? m : m == null ? c.replyMinutes : Math.min(m, c.replyMinutes)), null),
+      lastReplyAt: g.reduce<Date | null>((m, c) => (c.lastReplyAt && (!m || c.lastReplyAt > m) ? c.lastReplyAt : m), null),
     });
   }
   return out.sort((a, b) => b.listingsCount - a.listingsCount || a.key.localeCompare(b.key));
