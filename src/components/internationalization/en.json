@@ -5909,7 +5909,17 @@
       "formError": "Please check the price, rooms and place.",
       "limit": "You have sent 3 homes for this tenant. Thank you.",
       "invalid": "This link is no longer valid.",
-      "expired": "This tenant has found a home or the request has closed. Thank you."
+      "expired": "This tenant has found a home or the request has closed. Thank you.",
+      "type": "Type of home",
+      "apartment": "Apartment",
+      "house": "Self compound",
+      "room": "Room",
+      "visitFee": "Visit fee (RWF)",
+      "deposit": "Deposit (months)",
+      "commission": "Commission (% of first rent)",
+      "included": "Included in the rent",
+      "water": "Water",
+      "electricity": "Electricity"
     },
     "welcome": {
       "title": "Welcome back",

@@ -53,7 +53,7 @@ export async function openDemand(taskId: string, profileId: string | null, r: Re
     take: BROKER_POOL,
     select: {
       id: true, kind: true, name: true, tiktokHandle: true, phones: true, districts: true, neighbourhoods: true, zoneSlugs: true, stays: true,
-      priceMin: true, priceMax: true, lastSeenAt: true, lastAskedAt: true, asks: true, answers: true, optOut: true,
+      priceMin: true, priceMax: true, lastSeenAt: true, lastAskedAt: true, asks: true, answers: true, optOut: true, replyMinutes: true,
     },
   });
   const picked = pickBrokersForDemand(pool, r, now);

@@ -156,3 +156,13 @@ describe("the ask answers what brokers ask back", () => {
     expect(demandMessage(null, need, "L")).toMatch(/photos and the price/);
   });
 });
+
+describe("responsiveness", () => {
+  it("asks the broker who answers in minutes before the one who takes a day", () => {
+    const fast = brokerFitScore(broker({ replyMinutes: 2 }), want(), now)!;
+    const slow = brokerFitScore(broker({ replyMinutes: 2_000 }), want(), now)!;
+    const unknown = brokerFitScore(broker(), want(), now)!;
+    expect(fast).toBeGreaterThan(unknown);
+    expect(unknown).toBeGreaterThan(slow);
+  });
+});

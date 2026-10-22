@@ -31,6 +31,8 @@ export interface BrokerFit {
   asks: number;
   answers: number;
   optOut: boolean;
+  /** Median minutes they take to answer on WhatsApp (from chats and replies). */
+  replyMinutes?: number | null;
 }
 
 const lower = (xs: string[]) => xs.map((x) => x.toLowerCase());
@@ -125,6 +127,8 @@ export function brokerFitScore(b: BrokerFit, r: Requirements, now: Date): number
   }
   // Answer rate once there is history; a broker who never answers sinks.
   if (b.asks >= 3) score += Math.round((b.answers / b.asks) * 20) - 5;
+  // Brokers who answer within minutes close deals; one who takes a day loses the tenant.
+  if (b.replyMinutes != null) score += b.replyMinutes <= 15 ? 10 : b.replyMinutes <= 120 ? 5 : b.replyMinutes >= 24 * 60 ? -5 : 0;
   if (b.kind === "AGENCY") score += 3;
   return score;
 }

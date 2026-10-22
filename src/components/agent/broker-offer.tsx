@@ -19,6 +19,9 @@ export function BrokerOffer({ token, state }: { token: string; state: OfferPageS
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [furnished, setFurnished] = useState<boolean | undefined>(undefined);
+  const [homeType, setHomeType] = useState<"apartment" | "house" | "room" | undefined>(undefined);
+  const [water, setWater] = useState<boolean | undefined>(undefined);
+  const [electricity, setElectricity] = useState<boolean | undefined>(undefined);
 
   if (state.kind !== "ask") {
     return <p className="text-muted-foreground">{state.kind === "expired" ? d?.expired ?? "This tenant has found a home or the request has closed. Thank you." : d?.invalid ?? "This link is no longer valid."}</p>;
@@ -54,6 +57,12 @@ export function BrokerOffer({ token, state }: { token: string; state: OfferPageS
             place: String(f.get("place") ?? ""),
             furnished,
             note: String(f.get("note") ?? "") || undefined,
+            homeType,
+            viewingFee: f.get("visitFee") ? Number(f.get("visitFee")) : undefined,
+            depositMonths: f.get("deposit") ? Number(f.get("deposit")) : undefined,
+            commissionPct: f.get("commission") ? Number(f.get("commission")) : undefined,
+            waterIncluded: water,
+            electricityIncluded: electricity,
           }).catch(() => ({ ok: false as const, error: "invalid" as const }));
           if (res.ok) {
             setSent((n) => n + 1);
@@ -91,6 +100,45 @@ export function BrokerOffer({ token, state }: { token: string; state: OfferPageS
           {[true, false].map((v) => (
             <Button key={String(v)} type="button" variant={furnished === v ? "default" : "outline"} size="sm" onClick={() => setFurnished(furnished === v ? undefined : v)}>
               {v ? d?.yes ?? "Yes" : d?.no ?? "No"}
+            </Button>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset className="space-y-1.5">
+        <legend className="text-sm font-medium">{d?.type ?? "Type of home"}</legend>
+        <div className="flex flex-wrap gap-2">
+          {(["apartment", "house", "room"] as const).map((v) => (
+            <Button key={v} type="button" variant={homeType === v ? "default" : "outline"} size="sm" onClick={() => setHomeType(homeType === v ? undefined : v)}>
+              {d?.[v] ?? { apartment: "Apartment", house: "Self compound", room: "Room" }[v]}
+            </Button>
+          ))}
+        </div>
+      </fieldset>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block space-y-1.5">
+          <span className="text-sm font-medium">{d?.visitFee ?? "Visit fee (RWF)"}</span>
+          <Input name="visitFee" type="number" inputMode="numeric" min={0} max={100000} step={500} dir="ltr" placeholder="5000" />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-sm font-medium">{d?.deposit ?? "Deposit (months)"}</span>
+          <Input name="deposit" type="number" inputMode="decimal" min={0} max={12} step={0.5} dir="ltr" placeholder="1" />
+        </label>
+      </div>
+      <label className="block space-y-1.5">
+        <span className="text-sm font-medium">{d?.commission ?? "Commission (% of first rent)"}</span>
+        <Input name="commission" type="number" inputMode="numeric" min={0} max={100} dir="ltr" placeholder="0" />
+      </label>
+      <fieldset className="space-y-1.5">
+        <legend className="text-sm font-medium">{d?.included ?? "Included in the rent"}</legend>
+        <div className="flex gap-2">
+          {(
+            [
+              ["water", water, setWater],
+              ["electricity", electricity, setElectricity],
+            ] as const
+          ).map(([key, value, set]) => (
+            <Button key={key} type="button" variant={value ? "default" : "outline"} size="sm" onClick={() => set(value ? undefined : true)}>
+              {d?.[key] ?? (key === "water" ? "Water" : "Electricity")}
             </Button>
           ))}
         </div>

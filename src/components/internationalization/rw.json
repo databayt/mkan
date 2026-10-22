@@ -5909,7 +5909,17 @@
       "formError": "Reba neza igiciro, ibyumba n'aho iherereye.",
       "limit": "Mwohereje amazu 3 kuri uyu mukiriya. Murakoze.",
       "invalid": "Iyi link ntikigikora.",
-      "expired": "Uyu mukiriya yabonye inzu cyangwa ubusabe bwafunzwe. Murakoze."
+      "expired": "Uyu mukiriya yabonye inzu cyangwa ubusabe bwafunzwe. Murakoze.",
+      "type": "Ubwoko bw'inzu",
+      "apartment": "Apartment",
+      "house": "Inzu yigenga ifite igipangu",
+      "room": "Icyumba",
+      "visitFee": "Amafaranga yo gusura (RWF)",
+      "deposit": "Ingwate (amezi)",
+      "commission": "Komisiyo (% by’ubukode bwa mbere)",
+      "included": "Biri mu bukode",
+      "water": "Amazi",
+      "electricity": "Umuriro"
     },
     "welcome": {
       "title": "Murakaza neza nanone",
