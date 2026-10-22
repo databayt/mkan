@@ -14,8 +14,10 @@ export const CLEARABLE = [
   "pricePeriod",
   "cheap",
   "furnished",
-  "compound",
-  "family",
+  "homeType",
+  "purpose",
+  "waterIncluded",
+  "noCommission",
   "bathrooms",
   "bedrooms",
   "stay",
@@ -28,6 +30,22 @@ export const CLEARABLE = [
   "months",
 ] as const;
 export type ClearableField = (typeof CLEARABLE)[number];
+
+/**
+ * The kind of home: a flat in a building, a house with its own gate (a "self
+ * compound" — villa, townhouse, cottage), a single room (often "self-contained"),
+ * or a studio (no separate bedroom).
+ */
+export const HOME_TYPES = ["apartment", "house", "room", "studio"] as const;
+export type HomeType = (typeof HOME_TYPES)[number];
+
+/** Why the tenant is moving: it shapes size, area and price (rank.ts). */
+export const PURPOSES = ["family", "study", "business"] as const;
+export type Purpose = (typeof PURPOSES)[number];
+
+/** What the clarify card can ask in one go, most result-changing first. */
+export const CLARIFY_FIELDS = ["stay", "homeType", "furnished", "purpose"] as const;
+export type ClarifyField = (typeof CLARIFY_FIELDS)[number];
 
 /**
  * What a tenant can insist on beyond rooms and price. Each maps onto listing

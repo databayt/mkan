@@ -20,6 +20,7 @@ import { rankCandidates } from "./rank";
 import { readRequirements, type Reading } from "./reader";
 import { canWrite, writeAnswer, writeReply, writerFacts, type WriterFacts } from "./writer";
 import {
+  clarifyFields,
   clearFields,
   coerceRequirements,
   EMPTY_REQUIREMENTS,
@@ -50,9 +51,11 @@ const RULES_FILL_BESIDE_CLAUDE: readonly (keyof Requirements)[] = [
   "bedrooms",
   "bathrooms",
   "furnished",
-  "compound",
+  "homeType",
   "area",
-  "family",
+  "purpose",
+  "waterIncluded",
+  "noCommission",
   "cheap",
   "guests",
 ];
@@ -266,6 +269,18 @@ export async function runTurn(taskId: string): Promise<void> {
         { role: "agent", kind: "answer", topic: reading.intent === "question" ? "question" : "other", ...(text ? { text } : {}), at: now() },
         { status: "DONE" },
       );
+      return;
+    }
+
+    // A vague first message ("I need a house"): ask what is missing in one card before searching.
+    const clarify = clarifyFields(requirements, { first: userMessages.length === 1, tapped });
+    if (clarify) {
+      await Promise.all([
+        understood,
+        learn([]),
+        trace.record("asked", "waiting_person", { fields: clarify.join(", ") }),
+      ]);
+      await reply(task.id, messages, { role: "agent", kind: "clarify", fields: clarify, at: now() }, { status: "DONE", requirements: json(requirements) });
       return;
     }
 

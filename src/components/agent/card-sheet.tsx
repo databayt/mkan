@@ -8,11 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { useLocale } from "@/components/internationalization/use-locale";
-import { districtName } from "@/lib/geo/rwanda-places";
 import { formatCurrency } from "@/lib/i18n/formatters";
 import { askAvailability } from "./feedback-actions";
 import { fill } from "./format";
-import { Availability, FitLine, SaveHeart, type NotForMe } from "./shortlist-card";
+import type { CostLine } from "./cost";
+import { Availability, FitLine, kindLine, placeName, SaveHeart, type NotForMe } from "./shortlist-card";
 import type { ShortlistItem } from "./types";
 import { ViewingPanel } from "./viewing";
 
@@ -53,9 +53,27 @@ export default function CardSheet({
   const money = (n: number) => formatCurrency(n, locale, item.currency);
   const { cost } = item;
   const ranged = cost.totalHigh !== cost.total;
-  const lineLabel = (key: string, qty?: number) =>
-    fill((c?.lines as Record<string, string> | undefined)?.[key] ?? key, { qty: qty ?? "" });
-  const district = item.district ? districtName(item.district.toUpperCase(), locale) || item.district : null;
+  const lines = c?.lines as Record<string, string> | undefined;
+  const num = (n: number) => n.toLocaleString(locale === "ar" ? "ar" : "en", { maximumFractionDigits: 1 });
+  // Labels carry the line's own figures (from the ad, or Kigali's typical terms) — none are written into the dictionary.
+  const lineLabel = (l: CostLine) => {
+    const key =
+      l.key === "deposit"
+        ? l.qty === 0 ? "depositNone" : l.qty === 0.5 ? "depositHalf" : l.qty === 1 ? "depositOne" : "deposit"
+        : l.key === "commission" && l.qtyHigh != null
+          ? "commissionRange"
+          : l.key;
+    return fill(lines?.[key] ?? key, { qty: l.qty != null ? num(l.qty) : "", qtyHigh: l.qtyHigh != null ? num(l.qtyHigh) : "" });
+  };
+  const status = c?.status as Record<string, string> | undefined;
+  const source = c?.source as Record<string, string> | undefined;
+  const asks = [
+    ...(item.mustHaves?.unknown ?? []).map((k) => labels?.[k] ?? k),
+    ...(item.ask ?? []).map((k) => (c?.askKeys as Record<string, string> | undefined)?.[k] ?? k),
+  ];
+  const kind = kindLine(item, c);
+  // A broker-market home with no commission line: the owner posted it, or the ad says none.
+  const noCommission = cost.period === "month" && cost.lines.some((l) => l.key === "rentInAdvance") && !cost.lines.some((l) => l.key === "commission");
   const external = !!item.lead;
   const linkProps = external ? { target: "_blank", rel: "noreferrer" } : {};
 
@@ -83,13 +101,14 @@ export default function CardSheet({
             </div>
             <SheetDescription className="text-sm text-muted-foreground">
               {[
-                district,
+                placeName(item, locale),
                 item.bedrooms != null ? fill(c?.beds ?? "{n} bd", { n: item.bedrooms }) : null,
                 item.bathrooms != null ? fill(c?.baths ?? "{n} ba", { n: item.bathrooms }) : null,
               ]
                 .filter(Boolean)
                 .join(" · ")}
             </SheetDescription>
+            {kind && <p className="text-sm text-foreground">{kind}</p>}
             {item.lead && (
               <p className="text-xs font-medium text-muted-foreground">
                 {item.lead.handle ? fill(c?.lead ?? "Broker lead · @{handle} on TikTok", { handle: item.lead.handle }) : c?.leadNoHandle ?? "Broker lead from TikTok"}
@@ -108,10 +127,8 @@ export default function CardSheet({
             </p>
           )}
           <FitLine item={item} className="whitespace-normal text-sm" />
-          {item.mustHaves && item.mustHaves.unknown.length > 0 && (
-            <p className="text-sm text-amber-700 dark:text-amber-400">
-              {fill(c?.askAbout ?? "Ask the broker about: {list}", { list: item.mustHaves.unknown.map((k) => labels?.[k] ?? k).join(", ") })}
-            </p>
+          {asks.length > 0 && (
+            <p className="text-sm text-amber-700 dark:text-amber-400">{fill(c?.askAbout ?? "Ask the broker about: {list}", { list: asks.join(locale === "ar" ? "، " : ", ") })}</p>
           )}
 
           <ul className="flex flex-wrap gap-1.5">
@@ -134,12 +151,25 @@ export default function CardSheet({
             <dl className="mt-2 space-y-1">
               {cost.lines.map((l) => (
                 <div key={l.key} className="flex justify-between gap-2 text-muted-foreground">
-                  <dt>{lineLabel(l.key, l.qty)}</dt>
-                  <dd className="tabular-nums">
-                    {l.amountHigh != null ? fill(c?.range ?? "{low} – {high}", { low: money(l.amount), high: money(l.amountHigh) }) : money(l.amount)}
+                  <dt className="min-w-0">
+                    {lineLabel(l)}
+                    {l.source && <span className="ms-1.5 text-[11px] text-muted-foreground/80">· {source?.[l.source] ?? l.source}</span>}
+                  </dt>
+                  <dd className="shrink-0 tabular-nums">
+                    {l.status
+                      ? status?.[l.status] ?? l.status
+                      : l.amountHigh != null
+                        ? fill(c?.range ?? "{low} – {high}", { low: money(l.amount), high: money(l.amountHigh) })
+                        : money(l.amount)}
                   </dd>
                 </div>
               ))}
+              {noCommission && (
+                <div className="flex justify-between gap-2 text-muted-foreground">
+                  <dt>{c?.noCommission ?? "No broker commission"}</dt>
+                  <dd className="shrink-0 tabular-nums">{money(0)}</dd>
+                </div>
+              )}
             </dl>
             <p className="mt-2 text-xs text-muted-foreground">{c?.estimateNote ?? "Estimate. A broker or host confirms the final terms."}</p>
           </details>

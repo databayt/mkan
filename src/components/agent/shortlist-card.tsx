@@ -8,6 +8,8 @@ import { useFavorites } from "@/components/favorites/favorites-context";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { districtName } from "@/lib/geo/rwanda-places";
+import { zoneLabel } from "@/lib/geo/kigali-zones";
+import type { Locale } from "@/components/internationalization/config";
 import { formatCurrency } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
 import { noteHomeFeedback } from "./feedback-actions";
@@ -63,6 +65,28 @@ export function SaveHeart({ item, taskId, className }: { item: Pick<ShortlistIte
   );
 }
 
+type CardDict = NonNullable<ReturnType<typeof useDictionary>>["agent"]["card"] | undefined;
+
+/** Where the home is, as a tenant says it: its neighbourhood in their language, else the district. */
+export function placeName(item: Pick<ShortlistItem, "zone" | "district">, locale: Locale): string | null {
+  const zone = zoneLabel(item.zone, locale === "ar" ? "ar" : locale === "rw" ? "rw" : "en");
+  if (zone) return zone;
+  return item.district ? districtName(item.district.toUpperCase(), locale) || item.district : null;
+}
+
+/** "Apartment · Unfurnished · Water included" — only what the ad states. */
+export function kindLine(item: ShortlistItem, c: CardDict): string {
+  const types = c?.types as Record<string, string> | undefined;
+  const water = item.cost.lines.find((l) => l.key === "water")?.status;
+  return [
+    item.bedrooms === 0 ? types?.studio ?? "Studio" : item.homeType ? types?.[item.homeType] ?? item.homeType : null,
+    item.rentPeriod === "MONTHLY" && item.furnished === true ? c?.furnished ?? "Furnished" : item.furnished === false ? c?.unfurnished ?? "Unfurnished" : null,
+    water === "included" ? c?.waterIncluded ?? "Water included" : water === "separate" ? c?.waterSeparate ?? "Water paid separately" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 /** "1.2 km from Kigali Heights · Has: Parking" — the one line that says why this home, in facts. */
 export function FitLine({ item, className }: { item: ShortlistItem; className?: string }) {
   const dict = useDictionary();
@@ -102,9 +126,9 @@ export const ShortlistCard = memo(function ShortlistCard({
   const { locale } = useLocale();
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const district = item.district ? districtName(item.district.toUpperCase(), locale) || item.district : null;
+  const kind = kindLine(item, c);
   const meta = [
-    district,
+    placeName(item, locale),
     item.bedrooms != null ? fill(c?.beds ?? "{n} bd", { n: item.bedrooms }) : null,
     item.bathrooms != null ? fill(c?.baths ?? "{n} ba", { n: item.bathrooms }) : null,
   ]
@@ -150,6 +174,7 @@ export const ShortlistCard = memo(function ShortlistCard({
             )}
           </span>
           {meta && <span className="block truncate text-xs text-muted-foreground">{meta}</span>}
+          {kind && <span className="block truncate text-xs text-muted-foreground">{kind}</span>}
           {item.why && (
             <span dir="auto" className="line-clamp-2 block text-start text-xs text-foreground/80">
               {item.why}

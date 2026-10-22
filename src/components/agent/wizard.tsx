@@ -29,7 +29,9 @@ const HOME_ROWS: { key: string; options: Toggle[] }[] = [
   { key: "bedrooms", options: [t("bed1", "bedrooms", 1), t("bed2", "bedrooms", 2), t("bed3", "bedrooms", 3)] },
   { key: "bathrooms", options: [t("bath1", "bathrooms", 1), t("bath2", "bathrooms", 2)] },
   { key: "furnishing", options: [t("furnished", "furnished", true), t("unfurnished", "furnished", false)] },
-  { key: "type", options: [t("compound", "compound", true), t("family", "family", true)] },
+  // A house is a "self compound" in Kigali: its own gate and yard.
+  { key: "home", options: [t("apartment", "homeType", "apartment"), t("house", "homeType", "house"), t("room", "homeType", "room")] },
+  { key: "purpose", options: [t("family", "purpose", "family"), t("study", "purpose", "study"), t("work", "purpose", "business")] },
 ];
 const CHEAP = t("cheap", "cheap", true);
 const ALL_TOGGLES = [...STAY, ...HOME_ROWS.flatMap((r) => r.options), ...AREAS, CHEAP];

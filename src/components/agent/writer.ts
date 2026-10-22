@@ -5,6 +5,8 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { AGENT_MODEL, canSpend, claudeClient, noteFailure, recordSpend, type SpendLane } from "./claude";
 import { KNOWLEDGE } from "./knowledge";
 import { districtName } from "@/lib/geo/rwanda-places";
+import { zoneLabel } from "@/lib/geo/kigali-zones";
+import type { CostLine } from "./cost";
 import type { Relaxed } from "./relax";
 import type { Requirements } from "./requirements";
 import type { ShortlistItem } from "./types";
@@ -41,6 +43,14 @@ export interface WriterHome {
   ref: string;
   title: string;
   area: string | null;
+  /** The neighbourhood (or sector) the home is in, when known. */
+  neighbourhood: string | null;
+  /** apartment · house with its own gate · room · studio; null when the ad does not say. */
+  type: string | null;
+  /** "furnished" / "unfurnished"; null when the ad does not say. */
+  furnishing: string | null;
+  /** The move-in terms the ad states ("deposit of 1 month", "no commission", "water included"). No money. */
+  terms: string[];
   bedrooms: number | null;
   bathrooms: number | null;
   period: "night" | "month";
@@ -69,7 +79,7 @@ const SYSTEM = `You write Mkan's short reply to a tenant looking for a home in K
 Write in the language given by "lang" (en English, ar Arabic, rw Kinyarwanda). Sound like a helpful local friend: warm, plain, brief. No marketing words, no emojis, no lists.
 
 reply: 1–2 sentences, under 280 characters. Say what was found for their search. If "widened" is not empty, say what Mkan widened to find homes. If "unplaced" is set, ask which neighbourhood that place is in. If "followUp" is set, end by asking about it naturally.
-why: one entry per home, with its ref, under 100 characters: why it fits, from its facts — area, size, the must-haves it "has", its "distance", a "typicalPrice" or "inBudget". For "askBroker" items, say to ask the broker about them. The first home leads the list: say why.
+why: one entry per home, with its ref, under 100 characters: why it fits, from its facts — neighbourhood or area, type, size, furnishing, its "terms", the must-haves it "has", its "distance", a "typicalPrice" or "inBudget". For "askBroker" items, say to ask the broker about them. The first home leads the list: say why.
 
 Hard rules:
 - Never write a price, an amount of money or a currency. The cards show prices.
@@ -166,7 +176,7 @@ export interface Written {
 export async function writeReply(facts: WriterFacts, timeoutMs = WRITE_TIMEOUT_MS, lane: SpendLane = "agent-write"): Promise<Written | null> {
   const out = await call(SYSTEM, JSON.stringify(facts), timeoutMs, lane);
   if (!out) return null;
-  const allowed = allowedNumbers(facts.count, facts.homes.map((h) => [h.bedrooms, h.bathrooms, h.distance, h.title]), facts.search, facts.widened);
+  const allowed = allowedNumbers(facts.count, facts.homes.map((h) => [h.bedrooms, h.bathrooms, h.distance, h.title, h.terms]), facts.search, facts.widened);
   const anyConfirmed = facts.homes.some((h) => h.confirmed);
   const guard = (text: string, maxLen: number, confirmed: boolean) => guardText(text, { allowed, maxLen, lang: facts.lang, anyConfirmed: confirmed });
   const refs = new Map(facts.homes.map((h) => [h.ref, h]));
@@ -209,6 +219,9 @@ const MUST_HAVE_EN: Record<string, string> = {
   waterTank: "a water tank",
   generator: "backup power",
 };
+const ASK_EN = { furnishing: "furnishing", homeType: "the type of home", water: "whether water is included", commission: "the commission" } as const;
+const HOME_TYPE_EN = { apartment: "an apartment", house: "a house with its own gate", room: "a room", studio: "a studio" } as const;
+const PURPOSE_EN = { family: "for a family", study: "for studies", business: "for work" } as const;
 const AREA_EN = { center: "near the city centre", business: "near the business district", university: "near a university" } as const;
 const district = (code: string) => districtName(code.toUpperCase(), "en") || code;
 
@@ -221,8 +234,10 @@ export function describeSearch(r: Partial<Requirements>): string[] {
     r.bedrooms === 0 ? "a studio" : r.bedrooms != null ? `${r.bedrooms} bedrooms` : null,
     r.bathrooms ? `${r.bathrooms}+ bathrooms` : null,
     r.furnished === true ? "furnished" : r.furnished === false ? "unfurnished" : null,
-    r.family ? "for a family" : null,
-    r.compound ? "a standalone house with its own gate" : null,
+    r.homeType ? HOME_TYPE_EN[r.homeType] : null,
+    r.purpose ? PURPOSE_EN[r.purpose] : null,
+    r.waterIncluded ? "water included in the rent" : null,
+    r.noCommission ? "no broker commission" : null,
     r.cheap ? "cheapest first" : r.maxPrice ? "within their budget" : null,
     r.nights ? `${r.nights} nights` : null,
     r.guests ? `${r.guests} guests` : null,
@@ -245,11 +260,39 @@ function widenedEn(step: Relaxed): string {
       return "any number of bathrooms";
     case "furnished":
       return "furnished or not";
+    case "water":
+      return "homes where water is paid separately";
+    case "commission":
+      return "homes with a broker commission";
     case "budget":
       return "a slightly higher budget";
     case "district":
       return "all of Kigali";
   }
+}
+
+const plainNumber = (n: number) => String(Math.round(n * 10) / 10);
+
+/**
+ * A home's terms as the writer may say them: only what the ad states (a
+ * "typical" line is Mkan's estimate, not a fact about the home), never money —
+ * the guard allows these numbers because they are in the facts.
+ */
+export function termsFacts(lines: CostLine[]): string[] {
+  const out: string[] = [];
+  const line = (k: CostLine["key"]) => (lines ?? []).find((l) => l.key === k);
+  const deposit = line("deposit");
+  if (deposit?.source === "ad" && deposit.qty != null) out.push(deposit.qty === 0 ? "no deposit" : `a deposit of ${plainNumber(deposit.qty)} month${deposit.qty === 1 ? "" : "s"}`);
+  const commission = line("commission");
+  // No commission line on a broker-market home: the owner posted it, or the ad says none.
+  if (!commission && (lines ?? []).some((l) => l.key === "rentInAdvance")) out.push("no commission");
+  else if (commission?.source === "ad" && commission.qty != null) out.push(`a ${plainNumber(commission.qty)}% commission`);
+  for (const k of ["water", "electricity"] as const) {
+    const l = line(k);
+    if (l?.status === "included") out.push(`${k} included in the rent`);
+    else if (l?.status === "separate") out.push(`${k} paid separately`);
+  }
+  return out;
 }
 
 export function writerFacts(input: {
@@ -269,13 +312,17 @@ export function writerFacts(input: {
       ref: `h${i + 1}`,
       title: s.title,
       area: s.district ? district(s.district) : null,
+      neighbourhood: zoneLabel(s.zone, "en"),
+      type: s.bedrooms === 0 ? "studio" : s.homeType ? HOME_TYPE_EN[s.homeType] : null,
+      furnishing: s.furnished === true ? "furnished" : s.furnished === false ? "unfurnished" : null,
+      terms: s.cost.period === "month" ? termsFacts(s.cost.lines) : [],
       bedrooms: s.bedrooms,
       bathrooms: s.bathrooms,
       period: s.cost.period,
       typicalPrice: s.reasons.includes("typicalPrice"),
       inBudget: s.reasons.includes("inBudget") ? true : s.reasons.includes("slightlyOverBudget") ? false : null,
       has: (s.mustHaves?.matched ?? []).map((k) => MUST_HAVE_EN[k] ?? k),
-      askBroker: (s.mustHaves?.unknown ?? []).map((k) => MUST_HAVE_EN[k] ?? k),
+      askBroker: [...(s.mustHaves?.unknown ?? []).map((k) => MUST_HAVE_EN[k] ?? k), ...(s.ask ?? []).map((k) => ASK_EN[k])],
       distance: s.place ? `${s.place.km} km from ${s.place.name}` : null,
       confirmed: s.availability === "confirmed",
       brokerHome: !!s.lead,

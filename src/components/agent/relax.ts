@@ -7,7 +7,7 @@
 import { neighbourhoodNamed } from "./areas";
 import { roundPrice, type Requirements } from "./requirements";
 
-export type RelaxKey = "neighbourhood" | "area" | "near" | "type" | "bathrooms" | "furnished" | "budget" | "district";
+export type RelaxKey = "neighbourhood" | "area" | "near" | "type" | "bathrooms" | "furnished" | "water" | "commission" | "budget" | "district";
 
 /** One widening, with what it widened to (a district code, a new ceiling). */
 export interface Relaxed {
@@ -30,9 +30,16 @@ const STEPS: Step[] = [
   (r) => (r.area ? { next: { ...r, area: null }, step: { key: "area" } } : null),
   // "Near Kigali Heights": the place goes, so homes further out can show.
   (r) => (r.near ? { next: { ...r, near: null }, step: { key: "near", to: r.near.name } } : null),
-  (r) => (r.compound || r.family ? { next: { ...r, compound: null, family: null }, step: { key: "type" } } : null),
+  // The kind of home and what it is for go together: any home, any size the purpose implied.
+  (r) =>
+    r.homeType || r.purpose
+      ? { next: { ...r, homeType: null, purpose: null, ...(r.homeType === "studio" ? { bedrooms: null } : {}) }, step: { key: "type" } }
+      : null,
   (r) => (r.bathrooms != null ? { next: { ...r, bathrooms: null }, step: { key: "bathrooms" } } : null),
   (r) => (r.furnished != null ? { next: { ...r, furnished: null }, step: { key: "furnished" } } : null),
+  // Terms the tenant asked for: homes where water is a bill on top, or a broker takes a commission.
+  (r) => (r.waterIncluded ? { next: { ...r, waterIncluded: null }, step: { key: "water" } } : null),
+  (r) => (r.noCommission ? { next: { ...r, noCommission: null }, step: { key: "commission" } } : null),
   (r) => {
     if (!r.maxPrice) return null;
     const to = roundPrice(r.maxPrice * BUDGET_STEP, r.pricePeriod);

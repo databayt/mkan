@@ -22,6 +22,8 @@ describe("cost", () => {
     expect(c.total).toBe(1_130_000);
     expect(c.totalHigh).toBe(1_145_000);
     expect(c.headline).toBe(300_000);
+    // An ad that states nothing: every term is Kigali's typical one.
+    expect(c.lines.filter((l) => l.amount > 0).every((l) => l.source === "typical")).toBe(true);
   });
 
   it("prices a month in a nightly home like a booking, with its discount", () => {
@@ -161,9 +163,9 @@ describe("badges and place filters", () => {
       ...extra,
     }) as Candidate;
 
-  it("reads compound, area, family, cheap, baths and a neighbourhood from text", () => {
+  it("reads a house, area, family, cheap, baths and a neighbourhood from text", () => {
     const r = parseRequirements("cheap self compound for a family near a university in Kibagabaga with 2 bathrooms");
-    expect(r).toMatchObject({ compound: true, area: "university", family: true, cheap: true, bathrooms: 2, neighbourhood: "Kibagabaga" });
+    expect(r).toMatchObject({ homeType: "house", area: "university", purpose: "family", cheap: true, bathrooms: 2, neighbourhood: "Kibagabaga" });
   });
 
   it("keeps a home in the picked neighbourhood and drops one across town", () => {
@@ -181,10 +183,11 @@ describe("badges and place filters", () => {
     expect(passesHardFilters(at(-1.99, 30.13), { ...base, area: "center" })).toBe(false);
   });
 
-  it("self compound means a villa, townhouse or cottage", () => {
-    const r = { ...base, compound: true };
+  it("a house (self compound) means a villa, townhouse or cottage; an ad that does not say stays in", () => {
+    const r = { ...base, homeType: "house" as const };
     expect(passesHardFilters(at(-1.95, 30.09, { propertyType: "Villa" }), r)).toBe(true);
     expect(passesHardFilters(at(-1.95, 30.09, { propertyType: "Apartment" }), r)).toBe(false);
+    expect(passesHardFilters(at(-1.95, 30.09, { propertyType: null }), r)).toBe(true);
   });
 
   it("cheap ranks the lowest price first", () => {

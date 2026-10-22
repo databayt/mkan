@@ -5,13 +5,13 @@ import "server-only";
  * requirements, loaded wide (price slack, nightly↔monthly conversion) so the
  * pure filters in rank.ts make the final call.
  */
-import type { Prisma } from "@prisma/client";
+import type { Prisma, PropertyType } from "@prisma/client";
 import { db } from "@/lib/db";
 import { listingPath } from "@/lib/listing-code";
 import { localizeListings } from "@/components/translation/localize";
 import type { Locale } from "@/components/internationalization/config";
 import type { Requirements } from "./requirements";
-import type { Candidate, Ranked } from "./rank";
+import { HOME_TYPE_PROPERTY, type Candidate, type Ranked } from "./rank";
 import type { ShortlistItem } from "./types";
 import { brokerAnswers } from "./broker";
 import { AREAS, boxAround, NEIGHBOURHOOD_RADIUS_KM, neighbourhoodNamed } from "./areas";
@@ -47,7 +47,16 @@ const CANDIDATE_SELECT = {
   isPetsAllowed: true,
   isParkingIncluded: true,
   furnished: true,
-  location: { select: { state: true, address: true, latitude: true, longitude: true } },
+  // The ad's own terms (the lead readers fill them); null where it says nothing.
+  depositMonths: true,
+  commissionPct: true,
+  noCommission: true,
+  viewingFee: true,
+  waterIncluded: true,
+  electricityIncluded: true,
+  location: { select: { state: true, address: true, latitude: true, longitude: true, sector: true, neighbourhood: true } },
+  // An owner posting their own home: no broker, no commission.
+  brokers: { where: { role: "OWNER" }, select: { id: true }, take: 1 },
 } satisfies Prisma.ListingSelect;
 
 /** How far around a place the pool reaches; ranking then scores the distance. */
@@ -69,8 +78,10 @@ const DISPLAY_SELECT = {
   isPublished: true,
   source: true,
   sourceUrl: true,
+  propertyType: true,
+  furnished: true,
   host: { select: { sourceHostId: true } },
-  location: { select: { state: true, city: true, address: true, country: true } },
+  location: { select: { state: true, city: true, address: true, country: true, sector: true, neighbourhood: true } },
 } satisfies Prisma.ListingSelect;
 
 /** An unpublished TikTok home the agent may offer as a broker lead (never in public search). */
@@ -91,15 +102,23 @@ function priceWhere(r: Requirements): Prisma.ListingWhereInput {
   };
 }
 
-/** Where-clauses for the place and home-type fields; rank.ts makes the exact call. */
+/** A zone slug or anything under it (`gasabo/remera` holds `gasabo/remera/nyarutarama`). */
+const underZone = (slug: string): Prisma.StringNullableFilter[] => [{ equals: slug }, { startsWith: `${slug}/` }];
+
+/**
+ * Where-clauses for the place, home-type and term fields; rank.ts makes the
+ * exact call. Every "known opposite" filter keeps the homes whose ad says
+ * nothing — rank.ts ranks them lower and the card says to ask the broker.
+ */
 function placeWhere(r: Requirements): Prisma.ListingWhereInput[] {
   const out: Prisma.ListingWhereInput[] = [];
   const hood = neighbourhoodNamed(r.neighbourhood);
   if (hood) {
-    // Leads carry a district-centre pin, so they are matched on their address text instead.
+    // A lead's zone (Location.neighbourhood / sector) places it; older leads only have their address text.
     out.push({
       OR: [
         { location: boxAround([[hood.lat, hood.lng]], NEIGHBOURHOOD_RADIUS_KM) },
+        ...underZone(hood.slug).flatMap((f) => [{ location: { neighbourhood: f } }, { location: { sector: f } }]),
         { source: { in: [...LEAD_SOURCES] }, location: { address: { contains: hood.name, mode: "insensitive" } } },
       ],
     });
@@ -107,8 +126,28 @@ function placeWhere(r: Requirements): Prisma.ListingWhereInput[] {
   // Leads carry a district-centre pin that says nothing about distance — they stay in, scored neutrally.
   if (r.area) out.push({ OR: [{ location: boxAround(AREAS[r.area].points, AREAS[r.area].radiusKm) }, { source: { in: [...LEAD_SOURCES] } }] });
   if (r.near) out.push({ OR: [{ location: boxAround([[r.near.lat, r.near.lng]], NEAR_POOL_KM) }, { source: { in: [...LEAD_SOURCES] } }] });
-  if (r.compound) out.push({ propertyType: { in: ["Villa", "Townhouse", "Cottage"] } });
+  if (r.homeType && r.homeType !== "studio") {
+    out.push({ OR: [{ propertyType: null }, { propertyType: { in: [...HOME_TYPE_PROPERTY[r.homeType]] as PropertyType[] } }] });
+  }
   if (r.bathrooms != null) out.push({ OR: [{ bathrooms: null }, { bathrooms: { gte: r.bathrooms } }] });
+  // A studio is no bedroom; any other count a minimum. A lead that does not say stays in.
+  if (r.bedrooms != null) {
+    out.push({ OR: [{ bedrooms: null }, r.bedrooms === 0 && r.homeType === "studio" ? { bedrooms: 0 } : { bedrooms: { gte: r.bedrooms } }] });
+  }
+  if (r.furnished === true) out.push({ OR: [{ rentPeriod: "NIGHTLY" }, { furnished: null }, { furnished: true }] });
+  if (r.furnished === false) out.push({ rentPeriod: "MONTHLY", OR: [{ furnished: null }, { furnished: false }] });
+  if (r.waterIncluded) out.push({ OR: [{ rentPeriod: "NIGHTLY" }, { waterIncluded: null }, { waterIncluded: true }] });
+  if (r.noCommission) {
+    out.push({
+      OR: [
+        { rentPeriod: "NIGHTLY" },
+        { noCommission: true },
+        { commissionPct: 0 },
+        { brokers: { some: { role: "OWNER" } } },
+        { noCommission: null, commissionPct: null },
+      ],
+    });
+  }
   return out;
 }
 
@@ -136,7 +175,6 @@ export async function searchKigali(
       city: { equals: "Kigali", mode: "insensitive" },
       ...(r.district ? { state: { equals: r.district, mode: "insensitive" } } : {}),
     },
-    ...(r.bedrooms != null ? { bedrooms: { gte: r.bedrooms } } : r.family ? { bedrooms: { gte: 3 } } : {}),
     ...(r.stay === "short" ? { rentPeriod: "NIGHTLY" } : {}),
     ...(excludeIds.length ? { id: { notIn: excludeIds } } : {}),
     ...(createdAfter ? { createdAt: { gt: createdAfter } } : {}),
@@ -180,6 +218,16 @@ export async function searchKigali(
     isPetsAllowed: row.isPetsAllowed,
     isParkingIncluded: row.isParkingIncluded,
     furnished: row.furnished,
+    zone: row.location?.neighbourhood ?? row.location?.sector ?? null,
+    terms: {
+      depositMonths: row.depositMonths,
+      commissionPct: row.commissionPct,
+      noCommission: row.noCommission,
+      viewingFee: row.viewingFee,
+      waterIncluded: row.waterIncluded,
+      electricityIncluded: row.electricityIncluded,
+      owner: row.brokers.length > 0,
+    },
     averageRating: row.averageRating,
     numberOfReviews: row.numberOfReviews,
     // Imports stamp lastAvailabilityConfirmedAt at scrape time, so it is not
@@ -188,6 +236,15 @@ export async function searchKigali(
   }));
   // Either pool at its cap may be missing rows — the monthly one too (it fed the typical-price median).
   return { candidates, truncated: rated.length >= take || monthly.length >= MAX_MONTHLY };
+}
+
+/** The card's word for a listing's type. */
+function homeTypeOf(t: string | null): ShortlistItem["homeType"] {
+  if (!t) return null;
+  if (HOME_TYPE_PROPERTY.house.includes(t)) return "house";
+  if (t === "Apartment") return "apartment";
+  if (t === "Rooms") return "room";
+  return null;
 }
 
 /** Turn ranked ids into display cards, localized for the tenant: one small query for the winners. */
@@ -209,6 +266,9 @@ export async function toShortlist(ranked: Ranked[], lang: Locale, near?: string 
         title: titleById.get(row.id) ?? row.title ?? "",
         photo: row.photoUrls[0] ?? null,
         district: row.location?.state ?? null,
+        zone: row.location?.neighbourhood ?? row.location?.sector ?? null,
+        homeType: homeTypeOf(row.propertyType),
+        furnished: row.rentPeriod === "NIGHTLY" ? true : row.furnished,
         bedrooms: row.bedrooms,
         bathrooms: row.bathrooms,
         rating: row.averageRating,
@@ -221,6 +281,7 @@ export async function toShortlist(ranked: Ranked[], lang: Locale, near?: string 
         duplicates: rk.duplicates,
         availability: rk.reasons.includes("confirmed") ? "confirmed" : "unconfirmed",
         ...(rk.mustHaves ? { mustHaves: rk.mustHaves } : {}),
+        ...(rk.ask ? { ask: rk.ask } : {}),
         ...(near && rk.km != null ? { place: { name: near, km: rk.km } } : {}),
         ...(isLead(row)
           ? { lead: { handle: row.host.sourceHostId?.startsWith("tiktok:") ? row.host.sourceHostId.slice(7) : null, sourceUrl: row.sourceUrl } }

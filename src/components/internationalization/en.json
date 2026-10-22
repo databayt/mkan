@@ -5452,8 +5452,10 @@
         "area": "area",
         "near": "place",
         "furnished": "furnishing",
-        "family": "family",
-        "compound": "compound"
+        "homeType": "home type",
+        "purpose": "purpose",
+        "waterIncluded": "water",
+        "noCommission": "commission"
       }
     },
     "req": {
@@ -5469,8 +5471,6 @@
       "guests": "{n} guests",
       "upfront": "{price} to move in",
       "baths": "{n}+ bathrooms",
-      "compound": "Self compound",
-      "family": "Family",
       "cheap": "Cheapest first",
       "area": {
         "center": "City centre",
@@ -5479,7 +5479,20 @@
       },
       "near": "Near {place}",
       "moveIn": "From {date}",
-      "months": "{n} months"
+      "months": "{n} months",
+      "homeType": {
+        "apartment": "Apartment",
+        "house": "House with its own gate",
+        "room": "Room",
+        "studio": "Studio"
+      },
+      "purpose": {
+        "family": "For a family",
+        "study": "For studies",
+        "business": "For work"
+      },
+      "waterIncluded": "Water included",
+      "noCommission": "No commission"
     },
     "card": {
       "moreLike": "More like this",
@@ -5501,9 +5514,15 @@
         "serviceFee": "Mkan service fee",
         "monthlyDiscount": "Monthly discount",
         "rentInAdvance": "{qty} months' rent in advance",
-        "deposit": "Deposit (½ month)",
-        "commission": "Broker commission (25–30%)",
-        "viewingFee": "Viewing fee"
+        "deposit": "Deposit ({qty} months)",
+        "commission": "Broker commission ({qty}%)",
+        "viewingFee": "Viewing fee",
+        "depositHalf": "Deposit (half a month)",
+        "depositOne": "Deposit (1 month)",
+        "depositNone": "No deposit",
+        "commissionRange": "Broker commission ({qty}–{qtyHigh}%)",
+        "water": "Water",
+        "electricity": "Electricity"
       },
       "reasons": {
         "inBudget": "Within budget",
@@ -5523,7 +5542,11 @@
         "familySize": "Room for a family",
         "lowPrice": "Low price",
         "typicalPrice": "Typical price",
-        "nearPlace": "Close to your place"
+        "nearPlace": "Close to your place",
+        "unfurnished": "Unfurnished",
+        "homeType": "The home you asked for",
+        "waterIncluded": "Water included",
+        "noCommission": "No commission"
       },
       "asked": "Asked the broker — waiting for an answer",
       "rented": "Rented — no longer available",
@@ -5567,7 +5590,33 @@
       "checkAvailability": "Check availability",
       "checkAvailabilityHint": "Mkan messages the broker for you and shows the answer here.",
       "checking": "Asking the broker…",
-      "noBroker": "No broker to ask for this home yet."
+      "noBroker": "No broker to ask for this home yet.",
+      "status": {
+        "included": "Included",
+        "separate": "Paid separately",
+        "unknown": "Not stated"
+      },
+      "source": {
+        "ad": "from the ad",
+        "typical": "typical"
+      },
+      "noCommission": "No broker commission",
+      "types": {
+        "apartment": "Apartment",
+        "house": "House",
+        "room": "Room",
+        "studio": "Studio"
+      },
+      "furnished": "Furnished",
+      "unfurnished": "Unfurnished",
+      "waterIncluded": "Water included",
+      "waterSeparate": "Water paid separately",
+      "askKeys": {
+        "furnishing": "furnishing",
+        "homeType": "the type of home",
+        "water": "water",
+        "commission": "commission"
+      }
     },
     "entry": "Ask the rental agent",
     "broker": {
@@ -5611,7 +5660,6 @@
       "bed1": "1 bed",
       "bed2": "2 bed",
       "bath1": "1 bath",
-      "compound": "Self compound",
       "zone": "Zone",
       "budget": "Budget",
       "upTo": "Up to {price}",
@@ -5625,7 +5673,12 @@
       "cheap": "Cheapest",
       "any": "Any",
       "bed3": "3+ bed",
-      "bath2": "2+ bath"
+      "bath2": "2+ bath",
+      "apartment": "Apartment",
+      "house": "House with its own gate",
+      "room": "Room",
+      "study": "Study",
+      "work": "Work"
     },
     "wizard": {
       "stepOf": "{n} / {total}",
@@ -5646,12 +5699,13 @@
         "bedrooms": "Bedrooms",
         "bathrooms": "Bathrooms",
         "furnishing": "Furnishing",
-        "type": "Type"
+        "home": "Home",
+        "purpose": "Purpose"
       }
     },
     "question": {
       "months": "Months",
-      "monthsHint": "Monthly rent through a broker. Moving in costs about 3.5× the rent.",
+      "monthsHint": "Monthly rent through a broker. Moving in usually costs about {x}× the rent.",
       "nights": "Nights",
       "nightsHint": "A furnished short stay, priced per night.",
       "upToMonth": "Up to {price} a month",
@@ -5702,7 +5756,9 @@
         "furnished": "furnished or not",
         "budget": "up to {price}",
         "district": "anywhere in Kigali",
-        "near": "further from {place}"
+        "near": "further from {place}",
+        "water": "homes where water is paid separately",
+        "commission": "homes with a broker commission"
       }
     },
     "refine": {
@@ -5712,7 +5768,9 @@
       "cheaper": "Cheaper",
       "bigger": "More bedrooms",
       "furnished": "Furnished",
-      "anywhere": "Anywhere in Kigali"
+      "anywhere": "Anywhere in Kigali",
+      "noCommission": "No commission",
+      "water": "Water included"
     },
     "chat": {
       "name": "Mkan",
@@ -5857,6 +5915,85 @@
       "title": "Welcome back",
       "continue": "Continue your search",
       "newSince": "New since {date}"
+    },
+    "clarify": {
+      "reply": "A few quick questions, so I search the right homes.",
+      "label": "Questions",
+      "tabs": {
+        "stay": "Stay",
+        "homeType": "Home",
+        "furnished": "Furnishing",
+        "purpose": "Purpose",
+        "submit": "Submit"
+      },
+      "q": {
+        "stay": "How long do you need the home?",
+        "homeType": "What kind of home?",
+        "furnished": "Furnished or unfurnished?",
+        "purpose": "What is the move for?"
+      },
+      "options": {
+        "stay": {
+          "long": {
+            "label": "Months",
+            "hint": "Monthly rent through a broker — most Kigali homes."
+          },
+          "short": {
+            "label": "A few nights",
+            "hint": "A furnished short stay, priced per night."
+          }
+        },
+        "homeType": {
+          "apartment": {
+            "label": "Apartment",
+            "hint": "A flat in a building, often with a guard and parking."
+          },
+          "house": {
+            "label": "House with its own gate",
+            "hint": "A self compound: your own gate and yard."
+          },
+          "room": {
+            "label": "Room",
+            "hint": "A self-contained room — the cheapest way to rent."
+          },
+          "studio": {
+            "label": "Studio",
+            "hint": "One room with its own kitchen and bathroom."
+          }
+        },
+        "furnished": {
+          "no": {
+            "label": "Unfurnished",
+            "hint": "Most long-term homes. Cheaper; you bring your own."
+          },
+          "yes": {
+            "label": "Furnished",
+            "hint": "Move in with a suitcase. Costs more."
+          }
+        },
+        "purpose": {
+          "family": {
+            "label": "Family",
+            "hint": "Two or more bedrooms, houses first."
+          },
+          "study": {
+            "label": "Study",
+            "hint": "Near a campus, rooms welcome, cheaper first."
+          },
+          "business": {
+            "label": "Work",
+            "hint": "Near the offices of Kimihurura, Kacyiru and the centre."
+          }
+        }
+      },
+      "recommended": "(Recommended)",
+      "other": "Type something…",
+      "review": "Review your answers",
+      "skipped": "Not answered — any",
+      "submit": "Submit",
+      "submitHint": "Press Enter to search",
+      "prev": "Previous question",
+      "next": "Next question"
     }
   }
 }

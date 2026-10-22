@@ -12,6 +12,7 @@ import { formatCurrency } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
 import { usePicksLabel, Wizard, type Picks } from "../wizard";
 import { AskCard } from "../ask-card";
+import { ClarifyCard } from "../clarify-card";
 import { Composer } from "../composer";
 import { ChatHeader, headerButton, MenuGlyph } from "../header";
 import { Refine } from "../refine";
@@ -86,6 +87,8 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
   const [picks, setPicks] = useState<Picks>({});
   const [guided, setGuided] = useState(false);
   const [returning, setReturning] = useState(false);
+  /** Answers picked on a clarify card: a message typed instead goes out with them. */
+  const [draft, setDraft] = useState<Picks>({});
   const picksLabel = usePicksLabel();
   const messages = task?.messages ?? [];
   const { ref: scrollRef, onScroll, away, scrolled, scrollToBottom } = useStickToBottom(`${messages.length}.${task?.shortlist.length ?? 0}.${running}.${open}`);
@@ -93,8 +96,9 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
   // The composer and the wizard's last step both search; a new search carries the picks.
   const search = async (text: string) => {
     const fresh = !task || guided;
-    const ok = await send(text.trim() || picksLabel(picks) || "…", fresh, fresh ? picks : undefined);
+    const ok = await send(text.trim() || picksLabel(picks) || "…", fresh, fresh ? picks : Object.keys(draft).length ? draft : undefined);
     if (ok) {
+      setDraft({});
       setPicks({});
       setGuided(false);
       requestAnimationFrame(() => scrollToBottom());
@@ -218,6 +222,18 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
                 <AgentTurn key={`${i}.${m.at}`} compact steps={<Steps task={task} compact />}>
                   {m.kind === "ask" && !running ? (
                     <AskCard field={m.field} requirements={task.requirements} onPick={(text, filters) => void send(text, false, filters)} disabled={pending} compact />
+                  ) : m.kind === "clarify" && !running ? (
+                    <>
+                      <Prose text={reply(m)} />
+                      <ClarifyCard
+                        key={m.at}
+                        fields={m.fields}
+                        onSubmit={(text, filters) => void send(text, false, filters).then((ok) => ok && (setDraft({}), requestAnimationFrame(() => scrollToBottom())))}
+                        onDraft={setDraft}
+                        disabled={pending}
+                        compact
+                      />
+                    </>
                   ) : (
                     <Prose text={reply(m)} />
                   )}

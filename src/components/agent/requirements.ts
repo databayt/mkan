@@ -8,10 +8,24 @@
  */
 import { z } from "zod";
 import { districtForPlace, DISTRICTS } from "@/lib/geo/rwanda-places";
+import { KIGALI_ZONE_BY_SLUG } from "@/lib/geo/kigali-zones";
 import { AREA_KEYS, landmarkIn, nearestSchool, NEIGHBOURHOODS } from "./areas";
-import { CLEARABLE, DISTRICT_CODES, MUST_HAVES, roundPrice, type ClearableField, type MustHave } from "./fields";
+import {
+  CLARIFY_FIELDS,
+  CLEARABLE,
+  DISTRICT_CODES,
+  HOME_TYPES,
+  MUST_HAVES,
+  PURPOSES,
+  roundPrice,
+  type ClarifyField,
+  type ClearableField,
+  type HomeType,
+  type MustHave,
+  type Purpose,
+} from "./fields";
 
-export { CLEARABLE, DISTRICT_CODES, MUST_HAVES, roundPrice, type ClearableField, type MustHave };
+export { CLEARABLE, DISTRICT_CODES, HOME_TYPES, MUST_HAVES, PURPOSES, roundPrice, type ClearableField, type HomeType, type MustHave, type Purpose };
 
 export const RequirementsSchema = z.object({
   /** short = nights (Airbnb-style); long = monthly rent (Kigali broker market). */
@@ -28,14 +42,26 @@ export const RequirementsSchema = z.object({
   maxUpfront: z.number().positive().nullable(),
   /** Minimum bathrooms. */
   bathrooms: z.number().int().min(1).max(10).nullable(),
-  /** "Self compound": a standalone house with its own gate — villa, townhouse or cottage. */
-  compound: z.boolean().nullable(),
+  /**
+   * apartment · house (a "self compound": its own gate — villa, townhouse,
+   * cottage) · room (often "self-contained") · studio (bedrooms 0). Stored
+   * searches from before carry `compound: true`; `coerceRequirements` reads it as house.
+   */
+  homeType: z.enum(HOME_TYPES).nullable(),
   /** A neighbourhood from `areas.ts` (Kimihurura, Kiyovu, …). */
   neighbourhood: z.string().max(40).nullable(),
   /** Near the city centre, the business district or a university. */
   area: z.enum(AREA_KEYS).nullable(),
-  /** Room for a family: 3+ bedrooms unless a count was given; houses rank higher. */
-  family: z.boolean().nullable(),
+  /**
+   * Why they move: family (2+ bedrooms unless a count was given, houses rank
+   * higher), study (near a campus, rooms welcome, cheaper first), business
+   * (near the business district or the centre). Old `family: true` reads as family.
+   */
+  purpose: z.enum(PURPOSES).nullable(),
+  /** Water in the rent (the ad says so), not a bill on top. */
+  waterIncluded: z.boolean().nullable(),
+  /** No broker commission: an owner's home, or an ad that says none. */
+  noCommission: z.boolean().nullable(),
   /** Cheapest first, instead of closest to the budget. */
   cheap: z.boolean().nullable(),
   /**
@@ -67,10 +93,12 @@ export const EMPTY_REQUIREMENTS: Requirements = {
   guests: null,
   maxUpfront: null,
   bathrooms: null,
-  compound: null,
+  homeType: null,
   neighbourhood: null,
   area: null,
-  family: null,
+  purpose: null,
+  waterIncluded: null,
+  noCommission: null,
   cheap: null,
   near: null,
   mustHaves: null,
@@ -167,13 +195,22 @@ function bathroomsOf(text: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
-const COMPOUND_RE = /self[- ]?compound|own compound|standalone|stand[- ]alone|detached|whole house|full house|villa|كمباوند|مستقل|فيلا|inzu yigenga|ifite igipangu/i;
+const HOUSE_RE = /self[- ]?compound|own compound|own gate|standalone|stand[- ]alone|detached|whole house|full house|villa|maison individuelle|kwa kujitegemea|كمباوند|بيت مستقل|منزل مستقل|فيلا|فله|inzu yigenga|ifite igipangu|mu gipangu|igipangu cyayo/i;
+const APARTMENT_RE = /apartments?\b|appartements?\b|apartment|\bflat\b|\bcondo\b|شقة|شقه|شقق|apartema|inzu y'?amagorofa/i;
+/** One room to live in — "self-contained", an annex, a single room — not a bedroom count ("2 rooms"). */
+const ROOM_RE = /self[- ]?contain(?:ed)?|\bannex\b|\b(?:a|one|single|private) room\b|^\s*room\b|(?<!(?:living|dining|sitting|guest|spare|store|laundry|play|class|show|bed|bath) )\broom (?:near|in|for|at|close|around|by)\b|chambre (?:seule|individuelle|autonome)|studette|غرفة (?:واحدة|مستقلة|منفصلة|قرب|قريبة|جنب|بالقرب)|\bicyumba\b(?!\s*(?:\d|by'?|bya|bibiri|bitatu|bine|bitanu))|chumba (?:kimoja|cha kupanga)/i;
+const STUDIO_RE = /\bstudio\b|ستوديو|استوديو/i;
 const AREA_RE: Record<(typeof AREA_KEYS)[number], RegExp> = {
   center: /city cent(?:er|re)|town cent(?:er|re)|downtown|\bcbd\b|\bin town\b|وسط المدينة|وسط البلد|mu mujyi rwagati/i,
   business: /business|\bkcc\b|convention cent|kigali heights|منطقة الأعمال|المكاتب|ubucuruzi|ibiro/i,
-  university: /universit|campus|college|student|جامعة|الجامعة|طلاب|طالب|kaminuza|abanyeshuri/i,
+  university: /universit|campus|college|جامعة|الجامعة|kaminuza|universit[ée]/i,
 };
-const FAMILY_RE = /family|kids|children|عائلة|أسرة|اسرة|أطفال|اطفال|umuryango|abana/i;
+const FAMILY_RE = /family|kids|children|famille|enfants|familia|watoto|عائلة|عائلتي|أسرة|اسرة|أسرتي|أطفال|اطفال|muryango|\babana\b/i;
+const STUDY_RE = /\bstud(?:y|ying|ies|ent|ents)\b|for (?:my )?(?:school|studies)|[ée]tudiant|[ée]tudes\b|mwanafunzi|wanafunzi|طالب|طالبة|طلاب|دراسة|للدراسة|الدراسة|umunyeshuri|abanyeshuri|\bkwiga\b/i;
+/** Work: "office in Kacyiru", "for work" — not a desk at home ("home office" is the workspace must-have). */
+const BUSINESS_RE = /(?<!home )\boffice\b(?! (?:space|room|corner))|\bfor work\b|\bwork(?:ing)? (?:at|in|near|from)\b(?! home)|\bmy (?:job|work)\b|business (?:trip|travel)|\bbureau\b|travail|\bkazini\b|مكتبي|مكتب الشركة|للعمل|عملي|شغلي|الشغل|ku kazi|\bakazi\b|\bibiro\b/i;
+const WATER_INCLUDED_RE = /water (?:is |bills? )?(?:included|inclusive|paid|free)|incl(?:\.|uding|udes)? water|with water (?:bills? )?included|free water|eau (?:comprise|incluse)|maji (?:yamejumuishwa|bure)|amazi (?:arimo|yishyuwe|ari mu bukode|ari muri|araboneka mu)|(?:شامل|شاملة|مع) (?:ال)?(?:ماء|مياه|موية)|(?:ال)?(?:ماء|مياه|موية) (?:مشمول|مشمولة|ضمن|مدفوع|مدفوعة|مجان)/i;
+const NO_COMMISSION_RE = /no (?:broker(?:'?s)? |agent(?:'?s)? )?(?:commission|fees?)\b|without (?:a )?(?:commission|broker)|commission[- ]free|zero commission|no (?:broker|agent|middle ?man)\b|direct(?:ly)? from (?:the )?owner|owner direct|sans (?:commission|frais d'agence)|pas de commission|nta (?:komisiyo|commission)|nta (?:broker|komisiyoneri)|bila (?:commission|kamisheni|dalali)|بدون (?:عمولة|سمسرة|سمسار|وسيط)|بلا (?:عمولة|سمسرة)|من المالك مباشرة|من المالك/i;
 const CHEAP_RE = /cheap|cheapest|affordable|low[- ]?cost|budget[- ]friendly|pas cher|bon march[ée]|abordable|bei nafuu|bei rahisi|رخيص|ارخص|أرخص|بسعر مناسب|ihendutse|bihendutse/i;
 
 /**
@@ -231,7 +268,13 @@ function nearOf(text: string, at: { neighbourhood: string | null; district: stri
 
 function neighbourhoodOf(text: string): string | null {
   const s = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  const hit = NEIGHBOURHOODS.find((n) => n.name !== "Kicukiro" && new RegExp(`(^|[^a-z])${n.name.toLowerCase()}([^a-z]|$)`).test(s));
+  const hit =
+    NEIGHBOURHOODS.find((n) => n.name !== "Kicukiro" && new RegExp(`(^|[^a-z])${n.name.toLowerCase()}([^a-z]|$)`).test(s)) ??
+    // Arabic names from the zone tree ("كاتشيرو"); a sector named like its district reads as the district.
+    NEIGHBOURHOODS.find((n) => {
+      const ar = KIGALI_ZONE_BY_SLUG.get(n.slug)?.nameAr;
+      return n.name !== "Kicukiro" && !!ar && ar.length > 2 && !DISTRICTS.some((d) => d.nameAr === ar) && text.includes(ar);
+    });
   return hit?.name ?? null;
 }
 
@@ -268,15 +311,18 @@ export function parseRequirements(input: string): Requirements {
   r.nights = nights;
 
   r.bedrooms = bedroomsOf(text);
+  r.homeType = STUDIO_RE.test(text) ? "studio" : ROOM_RE.test(text) ? "room" : HOUSE_RE.test(text) ? "house" : APARTMENT_RE.test(text) ? "apartment" : null;
+  if (r.homeType === "studio") r.bedrooms = 0;
   if (/unfurnished|not furnished|non[- ]meubl[ée]|pas meubl[ée]|bila samani|غير مفروش|بدون عفش|bidafite ibikoresho|nta bikoresho/i.test(text)) r.furnished = false;
   else if (/furnished|meubl[ée]|samani|مفروش|مفروشة|ifite ibikoresho|ibikoresho/i.test(text)) r.furnished = true;
 
   r.district = districtOf(text);
   r.neighbourhood = neighbourhoodOf(text);
   r.bathrooms = bathroomsOf(text);
-  if (COMPOUND_RE.test(text)) r.compound = true;
   for (const key of AREA_KEYS) if (AREA_RE[key].test(text)) r.area = key;
-  if (FAMILY_RE.test(text)) r.family = true;
+  r.purpose = FAMILY_RE.test(text) ? "family" : STUDY_RE.test(text) ? "study" : BUSINESS_RE.test(text) ? "business" : null;
+  if (WATER_INCLUDED_RE.test(text)) r.waterIncluded = true;
+  if (NO_COMMISSION_RE.test(text)) r.noCommission = true;
   if (CHEAP_RE.test(text)) r.cheap = true;
   const mustHaves = mustHavesOf(text);
   if (mustHaves.length) r.mustHaves = mustHaves;
@@ -329,6 +375,26 @@ export function missingHardField(r: Requirements): HardField | null {
   return r.stay ? null : "stay";
 }
 
+/**
+ * What makes a first message a search on its own: a place, a size or a
+ * budget. With none of them ("I need a house", "a room please") the message
+ * is vague, and the clarify card asks what is missing before searching.
+ */
+const SPECIFIC_FIELDS: readonly (keyof Requirements)[] = ["district", "neighbourhood", "area", "near", "bedrooms", "maxPrice"];
+
+/**
+ * What the clarify card should ask, in CLARIFY_FIELDS order (what changes the
+ * results most first) — or null to search now. Only a typed, vague first
+ * message with two or more of them missing; otherwise the search runs and a
+ * single missing field stays the one question under the cards.
+ */
+export function clarifyFields(r: Requirements, { first, tapped }: { first: boolean; tapped: boolean }): ClarifyField[] | null {
+  if (!first || tapped) return null;
+  if (SPECIFIC_FIELDS.some((k) => r[k] != null)) return null;
+  const missing = CLARIFY_FIELDS.filter((k) => r[k] == null);
+  return missing.length >= 2 ? missing : null;
+}
+
 /** Below this a bare figure is a nightly price, at or above it a monthly rent. */
 const NIGHTLY_MAX = 100_000;
 const MONTHLY_MIN = 200_000;
@@ -337,7 +403,8 @@ const MONTHLY_MIN = 200_000;
  * Settle the stay type from what the tenant already said, so they are not asked
  * a question their message answers: a figure of 450k is a month's rent, 40k is
  * a night; guests or a night count mean a short stay; an unfurnished home, a
- * self compound or a family home is a long-term rental.
+ * self compound, a room, a family home or broker terms (commission, water in
+ * the rent) mean a long-term rental.
  */
 export function inferStay(r: Requirements): Requirements {
   if (r.stay) return r;
@@ -345,7 +412,18 @@ export function inferStay(r: Requirements): Requirements {
   if (r.nights || r.guests) stay = "short";
   else if (r.maxPrice && r.maxPrice <= NIGHTLY_MAX) stay = "short";
   else if (r.maxPrice && r.maxPrice >= MONTHLY_MIN) stay = "long";
-  else if (r.furnished === false || r.compound || r.family || r.maxUpfront || r.months) stay = "long";
+  else if (
+    r.furnished === false ||
+    r.homeType === "house" ||
+    r.homeType === "room" ||
+    r.purpose === "family" ||
+    r.purpose === "study" ||
+    r.noCommission ||
+    r.waterIncluded ||
+    r.maxUpfront ||
+    r.months
+  )
+    stay = "long";
   if (!stay) return r;
   return { ...r, stay, pricePeriod: r.maxPrice ? r.pricePeriod ?? (stay === "long" ? "month" : "night") : r.pricePeriod };
 }
@@ -372,7 +450,11 @@ export function parseAdjustments(input: string, current: Requirements): { set: P
     if (current.maxPrice) set.maxPrice = roundPrice(current.maxPrice * 0.8, current.pricePeriod);
     set.cheap = true;
   }
-  if (BIGGER_RE.test(text)) set.bedrooms = Math.min(10, (current.bedrooms ?? 1) + 1);
+  if (BIGGER_RE.test(text)) {
+    set.bedrooms = Math.min(10, (current.bedrooms ?? 1) + 1);
+    // A bigger studio is a one-bedroom.
+    if (current.homeType === "studio") clear.push("homeType");
+  }
   return { set, clear };
 }
 
@@ -401,17 +483,28 @@ export function reconcile(prev: Requirements, next: Requirements, stated: Partia
     } else out.pricePeriod = out.stay === "long" ? "month" : "night";
     if (out.stay === "long") out.nights = null;
   }
+  // A studio has no bedroom: the newer of the two wins.
+  if (out.homeType === "studio" && out.bedrooms != null && out.bedrooms > 0) {
+    if (stated.bedrooms != null && stated.homeType == null) out.homeType = null;
+    else out.bedrooms = 0;
+  } else if (out.homeType === "studio" && out.bedrooms == null) out.bedrooms = 0;
   return out;
 }
 
 /** Validate untrusted JSON (an LLM answer, a stored task) into Requirements. */
 export function coerceRequirements(value: unknown): Partial<Requirements> {
   if (!value || typeof value !== "object") return {};
+  const raw = value as Record<string, unknown>;
   const out: Partial<Requirements> = {};
   const shape = RequirementsSchema.shape;
   for (const key of Object.keys(shape) as (keyof Requirements)[]) {
-    const parsed = shape[key].safeParse((value as Record<string, unknown>)[key]);
+    // A model may name one must-have mkan does not know: keep the rest, not nothing.
+    const v = key === "mustHaves" && Array.isArray(raw[key]) ? (raw[key] as unknown[]).filter((m) => (MUST_HAVES as readonly unknown[]).includes(m)) : raw[key];
+    const parsed = shape[key].safeParse(key === "mustHaves" && Array.isArray(v) && v.length === 0 ? null : v);
     if (parsed.success && parsed.data !== null) (out as Record<string, unknown>)[key] = parsed.data;
   }
+  // Searches stored before home types and purposes: `compound` was a house, `family` a family.
+  if (raw.compound === true && !out.homeType) out.homeType = "house";
+  if (raw.family === true && !out.purpose) out.purpose = "family";
   return out;
 }

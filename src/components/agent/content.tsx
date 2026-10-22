@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { usePicksLabel, Wizard, type Picks } from "./wizard";
 import { deleteAgentChat } from "./actions";
 import { AskCard } from "./ask-card";
+import { ClarifyCard } from "./clarify-card";
 import { Composer } from "./composer";
 import { DemandCard } from "./demand-card";
 import { noteHomeFeedback } from "./feedback-actions";
@@ -43,6 +44,8 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
   const [picks, setPicks] = useState<Picks>({});
   const [guided, setGuided] = useState(false);
   const [returning, setReturning] = useState(false);
+  /** Answers picked on a clarify card: a message typed instead goes out with them. */
+  const [draft, setDraft] = useState<Picks>({});
   const picksLabel = usePicksLabel();
   const picked = Object.keys(picks).length > 0;
 
@@ -54,7 +57,10 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
   const say = useCallback(
     async (text: string, fresh = false, filters?: Picks, clear?: string[]) => {
       const ok = await send(text, fresh, filters, clear);
-      if (ok) requestAnimationFrame(() => scrollToBottom());
+      if (ok) {
+        setDraft({});
+        requestAnimationFrame(() => scrollToBottom());
+      }
       return ok;
     },
     [send, scrollToBottom],
@@ -185,6 +191,11 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
                 <AgentTurn key={`${i}.${m.at}`} steps={<Steps task={task} />}>
                   {m.kind === "ask" && !running ? (
                     <AskCard field={m.field} requirements={task.requirements} onPick={(text, filters) => void say(text, false, filters)} disabled={pending} />
+                  ) : m.kind === "clarify" && !running ? (
+                    <>
+                      <Prose text={reply(m)} />
+                      <ClarifyCard key={m.at} fields={m.fields} onSubmit={(text, filters) => void say(text, false, filters)} onDraft={setDraft} disabled={pending} />
+                    </>
                   ) : m.kind === "shortlist" && m.pendingText && !m.text && running ? (
                     // Claude is writing the reply; the cards are already up below.
                     <span aria-hidden className="block h-5 w-3/4 animate-pulse rounded bg-muted" />
@@ -257,7 +268,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
         )}
         {notice && <p className="mb-2 text-center text-sm text-muted-foreground">{notice}</p>}
         <Composer
-          onSend={guided || !task ? search : (t) => say(t)}
+          onSend={guided || !task ? search : (t) => say(t, false, Object.keys(draft).length ? draft : undefined)}
           onPlus={() => setGuided((g) => !g)}
           plusActive={guided}
           disabled={pending || running}

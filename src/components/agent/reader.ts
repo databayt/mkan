@@ -6,7 +6,7 @@ import { AREA_KEYS, LANDMARKS, NEIGHBOURHOODS, landmarkNamed, nearestSchool, nei
 import { AGENT_MODEL, canSpend, claudeClient, noteFailure, recordSpend, type SpendLane } from "./claude";
 import { readRequirementsWithGroq } from "./llm";
 import type { AgentMemory } from "./memory";
-import { CLEARABLE, DISTRICT_CODES, MUST_HAVES, type ClearableField, type MustHave, type Requirements } from "./requirements";
+import { CLEARABLE, DISTRICT_CODES, HOME_TYPES, MUST_HAVES, PURPOSES, type ClearableField, type MustHave, type Requirements } from "./requirements";
 import type { AgentMessage, ShortlistItem } from "./types";
 
 /**
@@ -35,8 +35,10 @@ const SET_FIELDS = [
   "bedrooms",
   "bathrooms",
   "furnished",
-  "compound",
-  "family",
+  "homeType",
+  "purpose",
+  "waterIncluded",
+  "noCommission",
   "cheap",
   "maxPrice",
   "pricePeriod",
@@ -98,9 +100,11 @@ Fields:
 - neighbourhood: exactly one of: ${NEIGHBOURHOODS.map((n) => n.name).join(", ")}. Any other place goes in near.
 - near: a place the tenant wants to live close to — a workplace, campus, market, hospital, the airport. One of these names when it is one of them: ${LANDMARKS.map((l) => l.name).join(", ")}; otherwise the place as the tenant wrote it.
 - nearIn: only when near is not one of those names: the neighbourhood (from the neighbourhood list) the place is in, if you know it.
-- area: "center" (city centre, downtown), "business" (business district, offices, ministries) or "university" (near a campus) — only when no specific place is named.
+- area: "center" (city centre, downtown), "business" (business district, offices, ministries) or "university" (near a campus) — only when no specific place is named. "My office is in Kacyiru" is neighbourhood Kacyiru with purpose "business", not an area.
 - bedrooms: an integer, a studio is 0. bathrooms: the minimum count.
-- furnished; compound (a standalone house with its own gate: a villa, a "self compound"); family (a family with children); cheap (wants the cheapest): "true" or "false".
+- homeType: "apartment" (a flat in a building), "house" (a standalone house with its own gate: a villa, a "self compound", inzu yigenga), "room" (one room to live in, often "self-contained", an annex) or "studio" (one room with its kitchen; also set bedrooms 0).
+- purpose: "family" (moving with a family or children), "study" (a student, near a campus) or "business" (moving for work, an office to be near).
+- furnished; waterIncluded (water is in the rent, not a bill on top); noCommission (no broker commission, or straight from the owner); cheap (wants the cheapest): "true" or "false".
 - maxPrice: the rent ceiling as a plain number ("400k" → 400000, "1.2m" → 1200000). pricePeriod: "night" or "month".
 - currency: "USD" when the tenant's amounts are in dollars ("$800", "800 dollars"), else "RWF". Give the number as written; Mkan converts.
 - nights, guests: integers. maxUpfront: the cash the tenant has to move in, only if stated. months: the lease length in months ("a year" → 12). moveIn: YYYY-MM-DD, worked out from today's date, which is given with the message.
@@ -135,6 +139,7 @@ const kigaliDay = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Afr
 function agentLine(m: Extract<AgentMessage, { role: "agent" }>): string {
   if (m.kind === "shortlist") return `showed ${m.count} homes${m.refine ? `, then asked about ${m.refine === "stay" ? "months or nights" : "the budget"}` : ""}`;
   if (m.kind === "ask") return `asked about ${m.field === "stay" ? "months or nights" : "the budget"}`;
+  if (m.kind === "clarify") return `asked about ${m.fields.join(", ")}`;
   if (m.kind === "none") return "found no home";
   return "had an error";
 }
@@ -214,10 +219,16 @@ export function toReading(out: ReaderOutput, input: ReadInput, by: Reading["by"]
     const n = raw.has(field) ? int(raw.get(field)!, min, max) : null;
     if (n != null) set[field] = n;
   }
-  for (const field of ["furnished", "compound", "family", "cheap"] as const) {
+  for (const field of ["furnished", "waterIncluded", "noCommission", "cheap"] as const) {
     const b = raw.has(field) ? bool(raw.get(field)!) : null;
     if (b != null) set[field] = b;
   }
+  // "compound" / "self compound" is how Kigali says house.
+  const homeType = oneOf((raw.get("homeType") ?? "").toLowerCase().replace(/^(?:self[- ]?)?compound$/, "house"), HOME_TYPES);
+  if (homeType) set.homeType = homeType;
+  if (homeType === "studio") set.bedrooms = 0;
+  const purpose = oneOf((raw.get("purpose") ?? "").toLowerCase(), PURPOSES);
+  if (purpose) set.purpose = purpose;
   // A nightly ceiling over 2M or a monthly one over 50M is a misread, not a budget.
   const ceiling = raw.has("maxPrice") ? money(raw.get("maxPrice")!, usd, (period ?? input.current.pricePeriod) === "night" ? 2_000_000 : 50_000_000) : null;
   if (ceiling != null) set.maxPrice = ceiling;

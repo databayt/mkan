@@ -5452,8 +5452,10 @@
         "area": "agace",
         "near": "ahantu",
         "furnished": "ibikoresho",
-        "family": "umuryango",
-        "compound": "igipangu"
+        "homeType": "ubwoko bw'inzu",
+        "purpose": "impamvu",
+        "waterIncluded": "amazi",
+        "noCommission": "komisiyo"
       }
     },
     "req": {
@@ -5469,8 +5471,6 @@
       "guests": "Abashyitsi {n}",
       "upfront": "{price} yo kwinjira",
       "baths": "Ubwiherero {n}+",
-      "compound": "Inzu yigenga ifite igipangu",
-      "family": "Umuryango",
       "cheap": "Ihendutse mbere",
       "area": {
         "center": "Mu mujyi rwagati",
@@ -5479,7 +5479,20 @@
       },
       "near": "Hafi ya {place}",
       "moveIn": "Guhera {date}",
-      "months": "Amezi {n}"
+      "months": "Amezi {n}",
+      "homeType": {
+        "apartment": "Apartema",
+        "house": "Inzu ifite igipangu",
+        "room": "Icyumba",
+        "studio": "Studio"
+      },
+      "purpose": {
+        "family": "Ku muryango",
+        "study": "Kwiga",
+        "business": "Ku kazi"
+      },
+      "waterIncluded": "Amazi ari mu bukode",
+      "noCommission": "Nta komisiyo"
     },
     "card": {
       "moreLike": "Ibindi bimeze nk'ibi",
@@ -5501,9 +5514,15 @@
         "serviceFee": "Amafaranga ya serivisi ya Mkan",
         "monthlyDiscount": "Igabanywa rya buri kwezi",
         "rentInAdvance": "Ubukode bw'amezi {qty} mbere",
-        "deposit": "Ingwate (igice cy'ukwezi)",
-        "commission": "Komisiyo ya komisiyoneri (25–30%)",
-        "viewingFee": "Amafaranga yo gusura"
+        "deposit": "Ingwate (amezi {qty})",
+        "commission": "Komisiyo ya komisiyoneri ({qty}%)",
+        "viewingFee": "Amafaranga yo gusura",
+        "depositHalf": "Ingwate (igice cy'ukwezi)",
+        "depositOne": "Ingwate (ukwezi 1)",
+        "depositNone": "Nta ngwate",
+        "commissionRange": "Komisiyo ya komisiyoneri ({qty}–{qtyHigh}%)",
+        "water": "Amazi",
+        "electricity": "Amashanyarazi"
       },
       "reasons": {
         "inBudget": "Mu ngengo y'imari",
@@ -5523,7 +5542,11 @@
         "familySize": "Ihagije umuryango",
         "lowPrice": "Igiciro gito",
         "typicalPrice": "Igiciro gisanzwe",
-        "nearPlace": "Hafi y'aho ushaka"
+        "nearPlace": "Hafi y'aho ushaka",
+        "unfurnished": "Nta bikoresho",
+        "homeType": "Ubwoko wasabye",
+        "waterIncluded": "Amazi ari mu bukode",
+        "noCommission": "Nta komisiyo"
       },
       "asked": "Twabajije komisiyoneri — dutegereje igisubizo",
       "rented": "Yakodeshejwe — ntikiboneka",
@@ -5567,7 +5590,33 @@
       "checkAvailability": "Reba niba ihari",
       "checkAvailabilityHint": "Mkan yandikira komisiyoneri mu izina ryawe, igisubizo kikagaragara hano.",
       "checking": "Turabaza komisiyoneri…",
-      "noBroker": "Nta komisiyoneri wo kubaza kuri iyi nzu ubu."
+      "noBroker": "Nta komisiyoneri wo kubaza kuri iyi nzu ubu.",
+      "status": {
+        "included": "Biri mu bukode",
+        "separate": "Byishyurwa ukwabyo",
+        "unknown": "Ntibivugwa"
+      },
+      "source": {
+        "ad": "biri mu itangazo",
+        "typical": "bisanzwe"
+      },
+      "noCommission": "Nta komisiyo ya komisiyoneri",
+      "types": {
+        "apartment": "Apartema",
+        "house": "Inzu yigenga",
+        "room": "Icyumba",
+        "studio": "Studio"
+      },
+      "furnished": "Ifite ibikoresho",
+      "unfurnished": "Nta bikoresho",
+      "waterIncluded": "Amazi ari mu bukode",
+      "waterSeparate": "Amazi yishyurwa ukwayo",
+      "askKeys": {
+        "furnishing": "ibikoresho",
+        "homeType": "ubwoko bw'inzu",
+        "water": "amazi",
+        "commission": "komisiyo"
+      }
     },
     "entry": "Baza umukozi w'ubukode",
     "broker": {
@@ -5611,7 +5660,6 @@
       "bed1": "Icyumba 1",
       "bed2": "Ibyumba 2",
       "bath1": "Ubwiherero 1",
-      "compound": "Inzu yigenga ifite igipangu",
       "zone": "Akarere",
       "budget": "Ingengo y'imari",
       "upTo": "Kugeza kuri {price}",
@@ -5625,7 +5673,12 @@
       "cheap": "Ihendutse",
       "any": "Byose",
       "bed3": "Ibyumba 3+",
-      "bath2": "Ubwiherero 2+"
+      "bath2": "Ubwiherero 2+",
+      "apartment": "Apartema",
+      "house": "Inzu ifite igipangu",
+      "room": "Icyumba",
+      "study": "Kwiga",
+      "work": "Akazi"
     },
     "wizard": {
       "stepOf": "{n} / {total}",
@@ -5646,12 +5699,13 @@
         "bedrooms": "Ibyumba byo kuraramo",
         "bathrooms": "Ubwiherero",
         "furnishing": "Ibikoresho",
-        "type": "Ubwoko"
+        "home": "Ubwoko bw'inzu",
+        "purpose": "Impamvu"
       }
     },
     "question": {
       "months": "Amezi",
-      "monthsHint": "Ubukode bwa buri kwezi binyuze ku mukomisiyoneri. Kwimukira bitwara hafi inshuro 3.5 z'ubukode.",
+      "monthsHint": "Ubukode bwa buri kwezi binyuze ku mukomisiyoneri. Kwimukira bitwara hafi inshuro {x} z'ubukode.",
       "nights": "Amajoro",
       "nightsHint": "Kuguma igihe gito mu nzu ifite ibikoresho, kwishyura ku ijoro.",
       "upToMonth": "Kugeza kuri {price} ku kwezi",
@@ -5702,7 +5756,9 @@
         "furnished": "ifite cyangwa idafite ibikoresho",
         "budget": "kugeza kuri {price}",
         "district": "ahantu hose i Kigali",
-        "near": "kure gato ya {place}"
+        "near": "kure gato ya {place}",
+        "water": "inzu zishyurirwa amazi ukwayo",
+        "commission": "inzu zifite komisiyo ya komisiyoneri"
       }
     },
     "refine": {
@@ -5712,7 +5768,9 @@
       "cheaper": "Ihendutse kurushaho",
       "bigger": "Ibyumba byinshi",
       "furnished": "Ifite ibikoresho",
-      "anywhere": "Ahantu hose i Kigali"
+      "anywhere": "Ahantu hose i Kigali",
+      "noCommission": "Nta komisiyo",
+      "water": "Amazi ari mu bukode"
     },
     "chat": {
       "name": "Mkan",
@@ -5857,6 +5915,85 @@
       "title": "Murakaza neza nanone",
       "continue": "Komeza gushakisha",
       "newSince": "Bishya kuva {date}"
+    },
+    "clarify": {
+      "reply": "Ibibazo bike byihuse, kugira ngo nshake inzu zikwiye.",
+      "label": "Ibibazo",
+      "tabs": {
+        "stay": "Igihe",
+        "homeType": "Inzu",
+        "furnished": "Ibikoresho",
+        "purpose": "Impamvu",
+        "submit": "Ohereza"
+      },
+      "q": {
+        "stay": "Ukeneye inzu igihe kingana iki?",
+        "homeType": "Ukeneye inzu imeze ite?",
+        "furnished": "Ifite ibikoresho cyangwa itabifite?",
+        "purpose": "Wimuka ugamije iki?"
+      },
+      "options": {
+        "stay": {
+          "long": {
+            "label": "Amezi",
+            "hint": "Ubukode bwa buri kwezi binyuze ku mukomisiyoneri — inzu nyinshi z'i Kigali."
+          },
+          "short": {
+            "label": "Amajoro make",
+            "hint": "Kurara iminsi mike mu nzu ifite ibikoresho, wishyura ijoro."
+          }
+        },
+        "homeType": {
+          "apartment": {
+            "label": "Apartema",
+            "hint": "Inzu iri mu igorofa, akenshi ifite umuzamu na parikingi."
+          },
+          "house": {
+            "label": "Inzu ifite igipangu",
+            "hint": "Inzu yigenga ifite irembo ryayo n'urugo."
+          },
+          "room": {
+            "label": "Icyumba",
+            "hint": "Icyumba cyigenga gifite ubwiherero — bihendutse kurusha ibindi."
+          },
+          "studio": {
+            "label": "Studio",
+            "hint": "Icyumba kimwe gifite igikoni n'ubwiherero."
+          }
+        },
+        "furnished": {
+          "no": {
+            "label": "Nta bikoresho",
+            "hint": "Inzu nyinshi z'igihe kirekire. Zirahendutse, uzana ibyawe."
+          },
+          "yes": {
+            "label": "Ifite ibikoresho",
+            "hint": "Wimukira mo ufite ivalise gusa. Birahenze."
+          }
+        },
+        "purpose": {
+          "family": {
+            "label": "Umuryango",
+            "hint": "Ibyumba bibiri cyangwa birenga, inzu zigenga mbere."
+          },
+          "study": {
+            "label": "Kwiga",
+            "hint": "Hafi ya kaminuza, ibyumba byemewe, ibihendutse mbere."
+          },
+          "business": {
+            "label": "Akazi",
+            "hint": "Hafi y'ibiro bya Kimihurura, Kacyiru n'umujyi rwagati."
+          }
+        }
+      },
+      "recommended": "(Byatoranyijwe)",
+      "other": "Andika ikindi…",
+      "review": "Reba ibisubizo byawe",
+      "skipped": "Nta gisubizo — icyo ari cyo cyose",
+      "submit": "Ohereza",
+      "submitHint": "Kanda Enter ushakishe",
+      "prev": "Ikibazo kibanza",
+      "next": "Ikibazo gikurikira"
     }
   }
 }

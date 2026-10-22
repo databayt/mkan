@@ -1,6 +1,7 @@
 import type { CostEstimate } from "./cost";
 import type { AgentMemory } from "./memory";
-import type { ReasonKey } from "./rank";
+import type { ClarifyField } from "./fields";
+import type { AskKey, ReasonKey } from "./rank";
 import type { HardField, MustHave, Requirements } from "./requirements";
 import type { Relaxed } from "./relax";
 
@@ -51,6 +52,11 @@ export type AgentMessage =
   | { role: "user"; text: string; at: string; filters?: Record<string, unknown>; clear?: string[] }
   | { role: "agent"; kind: "ask"; field: HardField; at: string }
   /**
+   * A vague first message missing several things at once: one stepper card asks
+   * them all (`fields`, most result-changing first); its Submit sends one message.
+   */
+  | { role: "agent"; kind: "clarify"; fields: ClarifyField[]; at: string }
+  /**
    * `relaxed`: details widened to find these; `refine`: a field offered as a follow-up question.
    * `text`: the reply Claude wrote (guarded) — else the template; `pendingText` while it is being written.
    */
@@ -67,6 +73,12 @@ export interface ShortlistItem {
   title: string;
   photo: string | null;
   district: string | null;
+  /** Kigali zone slug (neighbourhood, else sector) — the card names it in the reader's language. */
+  zone?: string | null;
+  /** The listing's type in the tenant's words; null when the ad does not say. */
+  homeType?: "apartment" | "house" | "room" | null;
+  /** Known furnishing; null when the ad does not say. */
+  furnished?: boolean | null;
   bedrooms: number | null;
   bathrooms: number | null;
   rating: number | null;
@@ -85,6 +97,8 @@ export interface ShortlistItem {
   viewing?: ViewingView;
   /** The tenant's must-haves this home has, and the ones only the broker can answer. */
   mustHaves?: { matched: MustHave[]; unknown: MustHave[] };
+  /** Details the tenant asked for that the ad does not state — "ask the broker". */
+  ask?: AskKey[];
   /** Distance from the place the tenant wants to be near. */
   place?: { name: string; km: number };
   /** One line, written by Claude from this card's facts: why it fits. */

@@ -13,7 +13,7 @@ import "server-only";
  * Env: GROQ_API_KEY (required for this path), GROQ_AGENT_MODEL (optional).
  */
 import { NEIGHBOURHOODS, neighbourhoodNamed } from "./areas";
-import { CLEARABLE, coerceRequirements, type ClearableField, type Requirements } from "./requirements";
+import { CLEARABLE, coerceRequirements, MUST_HAVES, type ClearableField, type Requirements } from "./requirements";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const DEFAULT_MODEL = "openai/gpt-oss-20b";
@@ -30,13 +30,16 @@ const SYSTEM = `You update a Kigali (Rwanda) rental search from the tenant's new
   neighbourhood: one of ${NEIGHBOURHOODS.map((n) => n.name).join(", ")}
   area: "center" (city centre / downtown), "business" (business district, offices, KCC) or "university" (near a campus)
   bedrooms: integer (studio = 0) · bathrooms: integer minimum
-  furnished: true/false · compound: true for a standalone house with its own gate (villa, self compound)
-  family: true when it is for a family with children · cheap: true when they want the cheapest
+  furnished: true/false · cheap: true when they want the cheapest
+  homeType: "apartment" (a flat), "house" (standalone with its own gate: villa, self compound), "room" (one room, self-contained, annex) or "studio" (also bedrooms 0)
+  purpose: "family" (with a family/children), "study" (a student, near a campus) or "business" (moving for work, near an office)
+  waterIncluded: true when water must be in the rent · noCommission: true for no broker commission / straight from the owner
+  mustHaves: array of the features the home must have, from: ${MUST_HAVES.join(", ")} (waterTank = a water tank, generator = backup power, workspace = a desk at home)
   maxPrice: number in RWF (expand "400k" to 400000) · pricePeriod: "night" or "month"
   nights, guests: integers · maxUpfront: RWF cash available to move in, only if stated
 - "clear": field names the newest message drops ("anywhere" → district, neighbourhood, area; "any budget" → maxPrice; "furnished or not" → furnished). Allowed: ${CLEARABLE.join(", ")}.
 Relative asks resolve against the current search: "cheaper" → maxPrice about 20% lower; "bigger" → one more bedroom; "Kacyiru instead" → the new neighbourhood (and its district).
-Messages may be English, Arabic or Kinyarwanda. Never guess a number that was not written. Omit everything the newest message does not touch.`;
+"My office is in Kacyiru" → neighbourhood Kacyiru and purpose "business". Messages may be English, Arabic or Kinyarwanda. Never guess a number that was not written. Omit everything the newest message does not touch.`;
 
 export interface GroqReading {
   set: Partial<Requirements>;
@@ -59,7 +62,7 @@ export async function readRequirementsWithGroq(latest: string, current: Requirem
       body: JSON.stringify({
         model: process.env.GROQ_AGENT_MODEL?.trim() || DEFAULT_MODEL,
         temperature: 0,
-        max_tokens: 400,
+        max_tokens: 500,
         reasoning_effort: "low",
         response_format: { type: "json_object" },
         messages: [

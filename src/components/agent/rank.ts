@@ -4,14 +4,23 @@
  */
 import { haversineKm } from "@/lib/geo/rwanda-places";
 import { placeToken } from "@/lib/geo/place-token";
-import type { MustHave, Requirements } from "./requirements";
+import { KIGALI_ZONE_BY_SLUG, zoneWithin } from "@/lib/geo/kigali-zones";
+import type { HomeType, MustHave, Requirements } from "./requirements";
 import { longStayCost, monthlyRent, shortStayCost, type CostEstimate, type PricedHome } from "./cost";
-import { inArea, inNeighbourhood } from "./areas";
+import { inArea, inNeighbourhood, neighbourhoodNamed } from "./areas";
 
 /** Standalone homes with their own compound. */
 const COMPOUND_TYPES = new Set(["Villa", "Townhouse", "Cottage"]);
+/** `Listing.propertyType` values each home type covers (a studio is a bedroom count, not a type). */
+export const HOME_TYPE_PROPERTY: Record<Exclude<HomeType, "studio">, readonly string[]> = {
+  apartment: ["Apartment"],
+  house: ["Villa", "Townhouse", "Cottage"],
+  room: ["Rooms"],
+};
 /** Bedrooms a "family" search wants when no count was given. */
-const FAMILY_BEDROOMS = 3;
+const FAMILY_BEDROOMS = 2;
+/** A detail the tenant asked for that the ad does not state: ranked lower, never hidden. */
+const UNKNOWN_DETAIL = -3;
 /** "Cheapest first" with no budget: prices are scored against these (RWF). */
 const CHEAP_SCALE = { night: 150_000, month: 1_500_000 };
 /**
@@ -48,7 +57,12 @@ export interface Candidate extends PricedHome {
   isParkingIncluded?: boolean;
   /** Known furnishing; null when the listing does not say. */
   furnished?: boolean | null;
+  /** The most specific Kigali zone slug on the home's location (neighbourhood, else sector). */
+  zone?: string | null;
 }
+
+/** What the card tells the tenant to ask the broker: the ad is silent on something they asked for. */
+export type AskKey = "furnishing" | "homeType" | "water" | "commission";
 
 export type ReasonKey =
   | "inBudget"
@@ -68,7 +82,11 @@ export type ReasonKey =
   | "familySize"
   | "lowPrice"
   | "typicalPrice"
-  | "nearPlace";
+  | "nearPlace"
+  | "unfurnished"
+  | "homeType"
+  | "waterIncluded"
+  | "noCommission";
 
 export interface Ranked {
   id: number;
@@ -81,6 +99,8 @@ export interface Ranked {
   mustHaves?: { matched: MustHave[]; unknown: MustHave[] };
   /** Kilometres from the place the tenant wants to be near (a trusted pin only). */
   km?: number;
+  /** Details the tenant asked for that the ad does not state. */
+  ask?: AskKey[];
 }
 
 const has = (list: string[] | undefined, ...values: string[]) => !!list && values.some((v) => list.includes(v));
@@ -181,15 +201,54 @@ export function groupDuplicates(cands: Candidate[]): { kept: Candidate[]; dupCou
   return { kept, dupCount, removed: cands.length - kept.length };
 }
 
-/** Where the home is, when its pin can be trusted. */
-const point = (c: Candidate): [number, number] | null =>
-  !c.approxLocation && c.latitude != null && c.longitude != null ? [c.latitude, c.longitude] : null;
+/**
+ * Where the home is, when that can be trusted: its own pin, else (a broker
+ * lead pinned at a district centre) the centre of the neighbourhood or sector
+ * its location resolved to — close enough to score areas and "near".
+ */
+const point = (c: Candidate): [number, number] | null => {
+  if (!c.approxLocation && c.latitude != null && c.longitude != null) return [c.latitude, c.longitude];
+  const z = c.zone ? KIGALI_ZONE_BY_SLUG.get(c.zone) : undefined;
+  return z && z.level !== "district" ? [z.lat, z.lng] : null;
+};
 
-function matchesNeighbourhood(c: Candidate, name: string): boolean {
-  const p = point(c);
-  if (p) return inNeighbourhood(p[0], p[1], name);
+/**
+ * In the named neighbourhood: by the location's zone slug when it is at least
+ * as specific as the ask (a home in sector Remera is not known to be in
+ * Nyarutarama), else by the pin, else by the words of the address.
+ */
+export function matchesNeighbourhood(c: Candidate, name: string): boolean {
+  const hood = neighbourhoodNamed(name);
+  if (hood && c.zone) {
+    if (zoneWithin(hood.slug, c.zone)) return true;
+    // Two zones neither inside the other: a different place.
+    if (!zoneWithin(c.zone, hood.slug)) return false;
+  }
+  if (!c.approxLocation && c.latitude != null && c.longitude != null) return inNeighbourhood(c.latitude, c.longitude, name);
   return !!c.address && c.address.toLowerCase().includes(name.toLowerCase());
 }
+
+/** Known furnishing: a nightly home is furnished by definition. */
+const furnishedOf = (c: Candidate): boolean | null => (c.rentPeriod === "NIGHTLY" ? true : c.furnished ?? null);
+
+/** Whether the home is the type asked for: true / false, null when the ad does not say. */
+export function homeTypeMatch(c: Candidate, type: HomeType): boolean | null {
+  if (type === "studio") return c.bedrooms == null ? null : c.bedrooms === 0;
+  if (!c.propertyType) return null;
+  return HOME_TYPE_PROPERTY[type].includes(c.propertyType);
+}
+
+/** No commission: an owner's home, an ad that says none or 0%. Null when the ad is silent. */
+export function commissionFree(c: Candidate): boolean | null {
+  const t = c.terms;
+  if (!t) return c.rentPeriod === "NIGHTLY" ? true : null;
+  if (t.owner || t.noCommission === true || t.commissionPct === 0) return true;
+  if (t.noCommission === false || (t.commissionPct != null && t.commissionPct > 0)) return false;
+  return c.rentPeriod === "NIGHTLY" ? true : null;
+}
+
+/** Water in the rent: the ad's word; a nightly home includes it. */
+const waterOf = (c: Candidate): boolean | null => (c.rentPeriod === "NIGHTLY" ? true : c.terms?.waterIncluded ?? null);
 
 /** Hard constraints: a home failing any of these is never shown. */
 export function passesHardFilters(c: Candidate, r: Requirements): boolean {
@@ -200,12 +259,20 @@ export function passesHardFilters(c: Candidate, r: Requirements): boolean {
     const p = point(c);
     if (p && !inArea(p[0], p[1], r.area)) return false;
   }
+  // A stated furnishing drops homes known to be the other; an ad that says nothing stays (ranked lower).
   // "Unfurnished" is a long-term ask: nightly homes are furnished by definition.
-  if (r.furnished === false && (c.rentPeriod === "NIGHTLY" || c.furnished === true)) return false;
-  if (r.compound && !COMPOUND_TYPES.has(c.propertyType ?? "")) return false;
+  if (r.furnished != null) {
+    const f = furnishedOf(c);
+    if (f != null && f !== r.furnished) return false;
+  }
+  if (r.homeType && homeTypeMatch(c, r.homeType) === false) return false;
+  if (r.waterIncluded && waterOf(c) === false) return false;
+  if (r.noCommission && commissionFree(c) === false) return false;
   if (r.bathrooms != null && c.bathrooms != null && c.bathrooms < r.bathrooms) return false;
-  if (r.family && r.bedrooms == null && c.bedrooms != null && c.bedrooms < FAMILY_BEDROOMS) return false;
+  if (r.purpose === "family" && r.bedrooms == null && c.bedrooms != null && c.bedrooms < FAMILY_BEDROOMS) return false;
   if (r.district && c.district && c.district.toUpperCase() !== r.district) return false;
+  // A studio is exactly no bedroom; any other count is a minimum.
+  if (r.bedrooms === 0 && r.homeType === "studio" && c.bedrooms != null && c.bedrooms !== 0) return false;
   if (r.bedrooms != null && c.bedrooms != null && c.bedrooms < r.bedrooms) return false;
   if (r.guests != null && c.guestCount < r.guests && c.rentPeriod === "NIGHTLY") return false;
   if (r.stay === "short" && c.rentPeriod !== "NIGHTLY") return false;
@@ -295,6 +362,7 @@ export function scoreCandidate(c: Candidate, r: Requirements, dupes = 0, now = n
   if (r.neighbourhood) reasons.push("neighbourhood");
   const pin = point(c);
   if (r.area && pin) reasons.push(r.area === "center" ? "nearCenter" : r.area === "business" ? "nearBusiness" : "nearUniversity");
+  const ask: AskKey[] = [];
   // Near a place: by distance, softly — 20 points on the spot, none past ~3.3 km.
   // A lead's district-centre pin says nothing, so it neither gains nor loses.
   let km: number | undefined;
@@ -315,14 +383,67 @@ export function scoreCandidate(c: Candidate, r: Requirements, dupes = 0, now = n
       else mustHaves.unknown.push(key);
     }
   }
-  if (r.compound) reasons.push("selfCompound");
-  if (r.family) {
+  // The kind of home: a known match lifts it, an ad that does not say costs a little.
+  if (r.homeType) {
+    const fit = homeTypeMatch(c, r.homeType);
+    if (fit) {
+      reasons.push(r.homeType === "house" ? "selfCompound" : "homeType");
+      score += 8;
+    } else if (fit == null) {
+      score += UNKNOWN_DETAIL;
+      ask.push("homeType");
+    }
+  }
+  if (r.furnished != null) {
+    const f = furnishedOf(c);
+    if (f === r.furnished) {
+      reasons.push(r.furnished ? "furnished" : "unfurnished");
+      score += c.rentPeriod === "NIGHTLY" ? 3 : 6;
+    } else if (f == null) {
+      score += UNKNOWN_DETAIL;
+      ask.push("furnishing");
+    }
+  }
+  if (r.waterIncluded) {
+    const w = waterOf(c);
+    if (w) {
+      reasons.push("waterIncluded");
+      score += 6;
+    } else if (w == null) {
+      score += UNKNOWN_DETAIL;
+      ask.push("water");
+    }
+  }
+  if (r.noCommission) {
+    const free = commissionFree(c);
+    if (free) {
+      reasons.push("noCommission");
+      score += 8;
+    } else if (free == null) {
+      score += UNKNOWN_DETAIL;
+      ask.push("commission");
+    }
+  }
+  // Why they move: a family wants room and a house; a student a campus, a room and a low price; work the business areas.
+  if (r.purpose === "family") {
     if ((c.bedrooms ?? 0) >= FAMILY_BEDROOMS) reasons.push("familySize");
     if (COMPOUND_TYPES.has(c.propertyType ?? "")) score += 8;
-  }
-  if (r.furnished && (c.rentPeriod === "NIGHTLY" || c.furnished === true)) {
-    reasons.push("furnished");
-    score += c.rentPeriod === "NIGHTLY" ? 3 : 6;
+    if ((c.bedrooms ?? 0) >= 3) score += 3;
+  } else if (r.purpose === "study") {
+    if (!r.area && pin && inArea(pin[0], pin[1], "university")) {
+      reasons.push("nearUniversity");
+      score += 6;
+    }
+    if (c.propertyType === "Rooms" || c.bedrooms === 0 || c.bedrooms === 1) score += 4;
+    if (!r.maxPrice && !r.cheap && median && p != null && p < median) score += Math.min(8, (1 - p / median) * 20);
+  } else if (r.purpose === "business" && !r.area && pin) {
+    if (inArea(pin[0], pin[1], "business")) {
+      reasons.push("nearBusiness");
+      score += 6;
+    } else if (inArea(pin[0], pin[1], "center")) {
+      reasons.push("nearCenter");
+      score += 4;
+    }
   }
   const rating = c.averageRating && c.averageRating > 0 ? c.averageRating : UNRATED_RATING;
   const reviews = c.numberOfReviews ?? 0;
@@ -344,6 +465,7 @@ export function scoreCandidate(c: Candidate, r: Requirements, dupes = 0, now = n
     duplicates: dupes,
     ...(mustHaves ? { mustHaves } : {}),
     ...(km != null ? { km } : {}),
+    ...(ask.length ? { ask } : {}),
   };
 }
 

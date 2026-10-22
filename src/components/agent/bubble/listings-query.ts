@@ -19,7 +19,7 @@ export function listingsQueryFor(req: Requirements | null): string {
     req.district ?? NEIGHBOURHOODS.find((n) => n.name.toLowerCase() === req.neighbourhood?.toLowerCase())?.district;
   const qs = toListingsParams({
     location: district ? districtName(district, "en") : undefined,
-    beds: req.bedrooms ?? (req.family ? 3 : undefined),
+    beds: req.bedrooms ?? (req.purpose === "family" ? 2 : undefined),
     baths: req.bathrooms ?? undefined,
     guests: req.guests ?? undefined,
   });

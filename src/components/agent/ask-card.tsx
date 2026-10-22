@@ -6,7 +6,7 @@ import { useDictionary } from "@/components/internationalization/use-dictionary"
 import { useLocale } from "@/components/internationalization/use-locale";
 import { formatCurrency } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
-import { longStayCost, shortStayCost } from "./cost";
+import { longStayCost, shortStayCost, typicalMoveInMultiple } from "./cost";
 import { fill } from "./format";
 import type { HardField, Requirements } from "./requirements";
 
@@ -55,7 +55,7 @@ export function AskCard({
   let options: Option[];
   if (field === "stay") {
     options = [
-      { label: q?.months ?? "Months", description: q?.monthsHint ?? "", text: q?.months ?? "Months", filters: { stay: "long" } },
+      { label: q?.months ?? "Months", description: fill(q?.monthsHint ?? "", { x: typicalMoveInMultiple().toLocaleString(locale === "ar" ? "ar" : "en") }), text: q?.months ?? "Months", filters: { stay: "long" } },
       { label: q?.nights ?? "Nights", description: q?.nightsHint ?? "", text: q?.nights ?? "Nights", filters: { stay: "short" } },
     ];
   } else {

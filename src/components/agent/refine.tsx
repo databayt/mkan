@@ -48,8 +48,16 @@ export function Refine({
       filters: r.maxPrice ? { maxPrice: roundPrice(r.maxPrice * 0.8, r.pricePeriod), cheap: true } : { cheap: true },
     });
   }
-  if ((r.bedrooms ?? 0) < 5) chips.push({ key: "bigger", label: f?.bigger ?? "More bedrooms", filters: { bedrooms: (r.bedrooms ?? 1) + 1 } });
+  // A bigger studio is a one-bedroom: the studio type goes.
+  if ((r.bedrooms ?? 0) < 5) {
+    chips.push({ key: "bigger", label: f?.bigger ?? "More bedrooms", filters: { bedrooms: (r.bedrooms ?? 1) + 1 }, ...(r.homeType === "studio" ? { clear: ["homeType"] } : {}) });
+  }
   if (r.furnished == null) chips.push({ key: "furnished", label: f?.furnished ?? "Furnished", filters: { furnished: true } });
+  // Broker terms matter for monthly rent only.
+  if (r.stay !== "short") {
+    if (!r.noCommission) chips.push({ key: "noCommission", label: f?.noCommission ?? "No commission", filters: { noCommission: true } });
+    if (!r.waterIncluded) chips.push({ key: "water", label: f?.water ?? "Water included", filters: { waterIncluded: true } });
+  }
   if (r.district || r.neighbourhood || r.area) {
     chips.push({ key: "anywhere", label: f?.anywhere ?? "Anywhere in Kigali", filters: {}, clear: ["district", "neighbourhood", "area"] });
   }

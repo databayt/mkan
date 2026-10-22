@@ -266,6 +266,7 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false, 
   const reply = useCallback(
     (m: Extract<AgentMessage, { role: "agent" }>): string => {
       if (m.kind === "ask") return a?.ask?.[m.field] ?? "";
+      if (m.kind === "clarify") return a?.clarify?.reply ?? "";
       if (m.kind === "answer") return m.text ?? (m.topic === "question" ? a?.reply?.answerFallback : a?.reply?.other) ?? "";
       if (m.kind === "shortlist" && m.text) return m.text;
       if (m.kind === "shortlist") {

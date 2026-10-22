@@ -15,7 +15,7 @@ import type { AgentMemory, PrefField } from "./memory";
 const BUDGETS = { month: [150_000, 300_000, 500_000, 1_000_000], night: [30_000, 60_000, 100_000, 150_000] } as const;
 const BEDROOMS = [0, 1, 2, 3, 4] as const;
 /** The order a tenant reads their search in; pricePeriod rides with maxPrice. */
-const SHOWN: PrefField[] = ["stay", "district", "neighbourhood", "near", "area", "bedrooms", "bathrooms", "maxPrice", "furnished", "family", "compound", "mustHaves"];
+const SHOWN: PrefField[] = ["stay", "district", "neighbourhood", "near", "area", "bedrooms", "bathrooms", "maxPrice", "furnished", "homeType", "purpose", "waterIncluded", "noCommission", "mustHaves"];
 
 /**
  * ☰ → Memory: what Mkan remembers, all of it visible and undoable — the

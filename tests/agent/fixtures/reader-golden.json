@@ -18,8 +18,8 @@
     { "id": "en-instead", "lang": "en", "current": { "stay": "long", "neighbourhood": "Kimihurura", "district": "GASABO" }, "message": "Kacyiru instead", "newChat": false, "expect": { "neighbourhood": "Kacyiru" } },
     { "id": "en-anywhere", "lang": "en", "current": { "stay": "long", "district": "KICUKIRO", "neighbourhood": "Niboye" }, "message": "anywhere in Kigali is fine", "newChat": false, "clear": ["district", "neighbourhood"] },
     { "id": "en-any-budget", "lang": "en", "current": { "stay": "long", "maxPrice": 300000, "pricePeriod": "month" }, "message": "forget the budget, show me anything", "newChat": false, "clear": ["maxPrice"] },
-    { "id": "en-family", "lang": "en", "message": "a house for my family, we have 3 kids", "expect": { "family": true } },
-    { "id": "en-compound", "lang": "en", "message": "self compound house in Gisozi", "expect": { "compound": true, "neighbourhood": "Gisozi" } },
+    { "id": "en-family", "lang": "en", "message": "a house for my family, we have 3 kids", "expect": { "purpose": "family" } },
+    { "id": "en-compound", "lang": "en", "message": "self compound house in Gisozi", "expect": { "homeType": "house", "neighbourhood": "Gisozi" } },
     { "id": "en-weekend", "lang": "en", "message": "a weekend in Nyarutarama", "expect": { "stay": "short", "nights": 2, "neighbourhood": "Nyarutarama" } },
     { "id": "en-upfront", "lang": "en", "message": "rent max 400k a month, I have 1.5M to move in", "expect": { "maxPrice": 400000, "maxUpfront": 1500000 } },
     { "id": "en-typos", "lang": "en", "message": "2 bedrom in kicukro under 400k monthly", "expect": { "bedrooms": 2, "district": "KICUKIRO", "maxPrice": 400000, "pricePeriod": "month" } },
@@ -41,7 +41,7 @@
     { "id": "ar-sudanese", "lang": "ar", "message": "داير بيت تلاتة غرف قريب من المطار", "expect": { "bedrooms": 3, "near": { "near": "Kigali International Airport" } } },
     { "id": "ar-gulf", "lang": "ar", "message": "أبغى استوديو مفروش في كيوفو", "expect": { "bedrooms": 0, "furnished": true, "neighbourhood": "Kiyovu" } },
     { "id": "ar-usd", "lang": "ar", "message": "شقة بغرفة واحدة بحدود ٥٠٠ دولار في الشهر", "expect": { "bedrooms": 1, "maxPrice": { "between": [650000, 800000] }, "pricePeriod": "month" } },
-    { "id": "ar-parking", "lang": "ar", "message": "بيت للعائلة فيه موقف سيارات وخزان مياه", "expect": { "family": true, "mustHaves": { "has": ["parking", "waterTank"] } } },
+    { "id": "ar-parking", "lang": "ar", "message": "بيت للعائلة فيه موقف سيارات وخزان مياه", "expect": { "purpose": "family", "mustHaves": { "has": ["parking", "waterTank"] } } },
     { "id": "rw-basic", "lang": "rw", "message": "Ndashaka inzu y'ibyumba bibiri i Kicukiro, ibihumbi 300 ku kwezi", "expect": { "bedrooms": 2, "district": "KICUKIRO", "maxPrice": 300000, "pricePeriod": "month" } },
     { "id": "rw-near", "lang": "rw", "message": "Ndashaka inzu hafi y'isoko rya Kimironko", "expect": { "near": { "near": "Kimironko Market" } } },
     { "id": "fr-basic", "lang": "fr", "message": "un appartement de deux chambres à Kicukiro, moins de 400 000 par mois", "expect": { "bedrooms": 2, "district": "KICUKIRO", "maxPrice": 400000, "pricePeriod": "month" } },
@@ -62,6 +62,15 @@
     { "id": "fr-school-named", "lang": "fr", "message": "deux chambres près du Lycée de Kigali", "expect": { "bedrooms": 2, "near": { "near": "Lycée de Kigali" } } },
     { "id": "en-school-generic", "lang": "en", "rulesOnly": true, "message": "2 bedroom near a school in Kimihurura", "expect": { "bedrooms": 2, "neighbourhood": "Kimihurura", "near": { "near": "Green Hills Academy" } } },
     { "id": "rw-school-generic", "lang": "rw", "rulesOnly": true, "message": "Ndashaka inzu hafi y'ishuri i Kicukiro", "expect": { "district": "KICUKIRO", "near": { "near": "Kigali Parents School" } } },
-    { "id": "ar-school-generic", "lang": "ar", "rulesOnly": true, "message": "بيت قرب مدرسة في نياروغينغي", "expect": { "district": "NYARUGENGE", "near": { "placed": true } } }
+    { "id": "ar-school-generic", "lang": "ar", "rulesOnly": true, "message": "بيت قرب مدرسة في نياروغينغي", "expect": { "district": "NYARUGENGE", "near": { "placed": true } } },
+    { "id": "en-kigali-house", "lang": "en", "message": "self compound unfurnished in Kicukiro for my family", "expect": { "homeType": "house", "furnished": false, "district": "KICUKIRO", "purpose": "family" } },
+    { "id": "ar-kigali-house", "lang": "ar", "message": "بيت مستقل غير مفروش في كيتشوكيرو لعائلتي", "expect": { "homeType": "house", "furnished": false, "district": "KICUKIRO", "purpose": "family" } },
+    { "id": "rw-kigali-house", "lang": "rw", "message": "Inzu yigenga nta bikoresho i Kicukiro, ku muryango wanjye", "expect": { "homeType": "house", "furnished": false, "district": "KICUKIRO", "purpose": "family" } },
+    { "id": "en-room-no-commission", "lang": "en", "message": "room near the university, no commission", "expect": { "homeType": "room", "area": "university", "noCommission": true } },
+    { "id": "ar-room-no-commission", "lang": "ar", "message": "غرفة قرب الجامعة بدون عمولة", "expect": { "homeType": "room", "area": "university", "noCommission": true } },
+    { "id": "rw-room-no-commission", "lang": "rw", "message": "Icyumba hafi ya kaminuza, nta komisiyo", "expect": { "homeType": "room", "area": "university", "noCommission": true } },
+    { "id": "en-apartment-water-office", "lang": "en", "message": "apartment with water included, office in Kacyiru", "expect": { "homeType": "apartment", "waterIncluded": true, "purpose": "business", "neighbourhood": "Kacyiru" } },
+    { "id": "ar-apartment-water-office", "lang": "ar", "message": "شقة شاملة الماء، مكتبي في كاتشيرو", "expect": { "homeType": "apartment", "waterIncluded": true, "purpose": "business", "neighbourhood": "Kacyiru" } },
+    { "id": "rw-apartment-water-office", "lang": "rw", "message": "Apartema, amazi ari mu bukode, ibiro byanjye biri i Kacyiru", "expect": { "homeType": "apartment", "waterIncluded": true, "purpose": "business", "neighbourhood": "Kacyiru" } }
   ]
 }

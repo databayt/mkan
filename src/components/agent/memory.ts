@@ -21,8 +21,10 @@ export const PREF_FIELDS = [
   "bedrooms",
   "bathrooms",
   "furnished",
-  "family",
-  "compound",
+  "purpose",
+  "homeType",
+  "waterIncluded",
+  "noCommission",
   "district",
   "neighbourhood",
   "area",
@@ -70,8 +72,16 @@ export function coerceMemory(raw: unknown): AgentMemory {
   if (!raw || typeof raw !== "object") return out;
   const r = raw as Record<string, unknown>;
   if (r.prefs && typeof r.prefs === "object") {
+    const stored = { ...(r.prefs as Record<string, unknown>) };
+    // Memories from before home types and purposes: a remembered compound is a house, a family search a family.
+    const legacy = (key: string, field: PrefField, value: string) => {
+      const p = stored[key] as Partial<RememberedPref> | undefined;
+      if (p?.value === true && !stored[field]) stored[field] = { ...p, value };
+    };
+    legacy("compound", "homeType", "house");
+    legacy("family", "purpose", "family");
     for (const field of PREF_FIELDS) {
-      const p = (r.prefs as Record<string, unknown>)[field] as Partial<RememberedPref> | undefined;
+      const p = stored[field] as Partial<RememberedPref> | undefined;
       if (!p || p.value == null || typeof p.at !== "string" || Number.isNaN(Date.parse(p.at))) continue;
       out.prefs[field] = { value: p.value, at: p.at, source: SOURCES.includes(p.source as PrefSource) ? (p.source as PrefSource) : "said" };
     }

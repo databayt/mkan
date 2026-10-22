@@ -168,6 +168,9 @@ const ruleMisses = results.rules.flatMap(({ c, rows }) => rows.filter((r) => !r.
 if (ruleMisses.length) console.log(`\nrules must-have / rules-only misses:\n${ruleMisses.join('\n')}`);
 
 if (rulesOnly) {
+  // With no model to compare, every rules miss is worth seeing.
+  const all = results.rules.flatMap(({ c, rows }) => rows.filter((r) => !r.ok && r.kind !== 'mustHaves' && !c.rulesOnly).map((r) => `  ${c.id.padEnd(26)} ${r.detail}`));
+  if (all.length) console.log(`\nrules misses:\n${all.join('\n')}`);
   console.log(`\ngate (rules must-haves ≥ ${RULES_MUST_HAVE_MIN}%): ${rulesMustHaves ? 'PASS' : 'FAIL'}`);
   process.exit(rulesMustHaves ? 0 : 1);
 }
