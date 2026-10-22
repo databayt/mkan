@@ -124,3 +124,20 @@ request against the day's new homes, alerts opted-in tenants and posts the #mkan
 Sends: `whatsapp.ts` `sendMessages` writes `OutboundMessage` rows. With `MKAN_WA_OUTBOX=1` the Mac
 drains them (`scripts/wa/outbox.ts`: 40/day warm-up, one per broker per day, 08:00–20:00 Kigali,
 STOP / HAGARIKA / ARRÊTE opt out); without it one #mkan card carries the wa.me links.
+
+**Brokers answer in WhatsApp words (2026-10-22).** Abdout's own chats with ~20 Kigali brokers
+showed it: a vague ask gets "How much?" / "Features&budget", homes come as an album plus a
+"Kibagabaga / 2 bedrooms / Price: 300k" caption, never through a link, and a visit costs ~5k.
+So `needSummary` names type (self compound / apartment / room), furnishing, neighbourhood,
+budget, move-in and household. `broker-reply.ts` reads replies by rules, and
+`broker-inbox.ts` (called from the outbox's reply poll) acts on them:
+
+- an offer becomes a lead through `broker-home.ts` `createBrokerHome`, the same path as the
+  form, with its photos copied to S3;
+- a question gets the need plus a fresh link, once;
+- photos without a price get "what's the rent, and where?";
+- "taken" / "yes" answers a one-home availability ask.
+
+`brokerFitScore` favours fast repliers (`Broker.replyMinutes`). Brokers from those chats enter
+the directory through `pnpm wa:chats` (`scripts/wa/chats.ts`, reviewed chats only, facts not
+messages).
