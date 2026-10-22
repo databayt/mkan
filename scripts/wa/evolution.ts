@@ -139,3 +139,13 @@ export async function findMessages(since: Date, until: Date, limit = 200, name =
   if (Array.isArray(res)) return res;
   return res.messages?.records ?? [];
 }
+
+/** A received photo's bytes (Evolution decrypts the media for us). Null when it is gone or not media. */
+export async function mediaBytes(messageId: string, name = INSTANCE): Promise<{ bytes: Buffer; mimetype: string } | null> {
+  const res = await request<{ base64?: string; mimetype?: string }>(`/chat/getBase64FromMediaMessage/${encodeURIComponent(name)}`, {
+    method: 'POST',
+    body: JSON.stringify({ message: { key: { id: messageId } }, convertToMp4: false }),
+  }).catch(() => null);
+  if (!res?.base64) return null;
+  return { bytes: Buffer.from(res.base64.replace(/^data:[^;]+;base64,/, ''), 'base64'), mimetype: res.mimetype ?? 'image/jpeg' };
+}

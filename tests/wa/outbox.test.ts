@@ -149,3 +149,21 @@ describe('wa outbox — replies', () => {
     expect(senderPhone({ remoteJid: '120363000000000000@g.us' })).toBeNull();
   });
 });
+
+describe("broker bursts", () => {
+  it("reads an album and its caption as one reply per broker", async () => {
+    const { groupByPhone, isImage } = await import("../../scripts/wa/outbox-pure");
+    const items = [
+      { id: "1", phone: "250700000011", text: "", image: true, type: "imageMessage" },
+      { id: "2", phone: "250700000011", text: "", image: true, type: "imageMessage" },
+      { id: "3", phone: "250700000011", text: "Kibagabaga\n2 bedrooms\nPrice: 300k", image: false, type: "conversation" },
+      { id: "4", phone: "250700000017", text: "How much?", image: false, type: "conversation" },
+      { id: "5", phone: null, text: "group noise", image: false, type: "conversation" },
+    ];
+    const groups = groupByPhone(items);
+    expect(groups).toHaveLength(2);
+    expect(groups[0]).toMatchObject({ phone: "250700000011", imageIds: ["1", "2"], text: "Kibagabaga\n2 bedrooms\nPrice: 300k" });
+    expect(isImage({ imageMessage: {} })).toBe(true);
+    expect(isImage({ conversation: "hi" }, "conversation")).toBe(false);
+  });
+});

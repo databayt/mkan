@@ -19,9 +19,12 @@
  *      a failed send costs an attempt; the third makes it FAILED and posts a
  *      #mkan card with a wa.me link so a person sends it by hand.
  *   3. Replies — polls /chat/findMessages (no public webhook). STOP / HAGARIKA /
- *      ARRÊTE / UNSUBSCRIBE from a broker's number sets Broker.optOut; any other
- *      broker reply is posted to #mkan. Message ids are remembered in
- *      scripts/crm/.data/wa/seen.json.
+ *      ARRÊTE / UNSUBSCRIBE from a broker's number sets Broker.optOut. Every
+ *      other broker burst (an album + its caption) goes to agent/broker-inbox:
+ *      a home becomes a lead in the tenant's chat, "How much?" gets the need,
+ *      "taken" answers an availability ask; the rest is posted to #mkan.
+ *      Photos are copied to S3 (pending-photos.json holds them until the price
+ *      comes). Message ids are remembered in scripts/crm/.data/wa/seen.json.
  *
  * A lock file keeps two runs from overlapping (a full day's sends take ~30 min).
  */
@@ -31,12 +34,14 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, statSync, unl
 import { join } from 'node:path';
 import { postToMkan, recordRun } from '../crm/notify';
 import { waLink } from '../crm/public-links';
-import { EVOLUTION_URL, INSTANCE, connectionState, findMessages, isBridgeDown, sendText } from './evolution';
+import { EVOLUTION_URL, INSTANCE, connectionState, findMessages, isBridgeDown, mediaBytes, sendText } from './evolution';
 import {
   MAX_ATTEMPTS,
   type OutboxRow,
   dailyCap,
+  groupByPhone,
   inSendWindow,
+  isImage,
   isOptOut,
   messageText,
   phoneKey,
@@ -206,6 +211,35 @@ async function drain(db: Db): Promise<{ bridgeError?: string }> {
   return {};
 }
 
+const PENDING = join(DATA, 'pending-photos.json');
+/** Photos sent before the price wait this long for it. */
+const PENDING_MS = 2 * 60 * 60 * 1000;
+/** Photos kept from one burst. */
+const MAX_PHOTOS = 12;
+
+type Pending = Record<string, { urls: string[]; at: string }>;
+const loadPending = (): Pending => {
+  try {
+    return existsSync(PENDING) ? (JSON.parse(readFileSync(PENDING, 'utf8')) as Pending) : {};
+  } catch {
+    return {};
+  }
+};
+
+/** A broker's photos → our bucket, so a lead never points at WhatsApp's expiring media. */
+async function storePhotos(brokerId: string, ids: string[]): Promise<string[]> {
+  const { buildUploadKey, putObject } = await import('../../src/lib/s3');
+  const urls: string[] = [];
+  for (const id of ids.slice(0, MAX_PHOTOS)) {
+    const media = await mediaBytes(id);
+    if (!media) continue;
+    const ext = media.mimetype.split('/')[1]?.replace('jpeg', 'jpg') ?? 'jpg';
+    const url = await putObject({ key: buildUploadKey(`broker-${brokerId}`, ext), body: media.bytes, contentType: media.mimetype, cacheControl: 'public, max-age=31536000, immutable' }).catch(() => null);
+    if (url) urls.push(url);
+  }
+  return urls;
+}
+
 async function replies(db: Db): Promise<void> {
   const now = new Date();
   const records = await findMessages(new Date(now.getTime() - REPLY_LOOKBACK_MS), now, 200);
@@ -213,7 +247,7 @@ async function replies(db: Db): Promise<void> {
   const seenSet = new Set(seen);
   const fresh = records
     .filter((m) => !m.key?.fromMe)
-    .map((m) => ({ id: m.key?.id ?? m.id ?? '', phone: senderPhone(m.key), text: messageText(m.message), type: m.messageType ?? 'message', name: m.pushName ?? '' }))
+    .map((m) => ({ id: m.key?.id ?? m.id ?? '', phone: senderPhone(m.key), text: messageText(m.message), image: isImage(m.message, m.messageType), type: m.messageType ?? 'message', name: m.pushName ?? '' }))
     .filter((m) => m.id && !seenSet.has(m.id))
     .reverse(); // oldest first
   if (!fresh.length) return;
@@ -227,32 +261,69 @@ async function replies(db: Db): Promise<void> {
 
   let optOuts = 0;
   let posted = 0;
+  let homes = 0;
+  let answered = 0;
+  const rest: typeof fresh = [];
   for (const m of fresh) {
     const broker = m.phone ? byPhone.get(m.phone) : undefined;
-    if (broker) {
-      if (isOptOut(m.text)) {
-        optOuts += 1;
-        log(`opt-out from ${broker.name} (+${m.phone})`);
-        if (!DRY && !broker.optOut) {
-          await db.broker.update({ where: { id: broker.id }, data: { optOut: true, optOutAt: new Date() } });
-          broker.optOut = true;
-          await postToMkan(`🚫 *${broker.name}* (+${m.phone}) replied "${m.text}" — opted out; no more WhatsApp asks.`);
-        }
-      } else {
-        posted += 1;
-        const words = m.text || `[${m.type}]`;
-        log(`reply from ${broker.name} (+${m.phone}): ${words.slice(0, 80)}`);
-        if (!DRY) {
-          await postToMkan(
-            `💬 *${broker.name}* (+${m.phone}) replied on WhatsApp:\n> ${words.replace(/\n/g, '\n> ')}\n<${waLink(m.phone ?? '', '')}|Open the chat> — turn it into a home in this thread.`,
-          );
-        }
+    if (broker && isOptOut(m.text)) {
+      optOuts += 1;
+      log(`opt-out from ${broker.name} (+${m.phone})`);
+      if (!DRY && !broker.optOut) {
+        await db.broker.update({ where: { id: broker.id }, data: { optOut: true, optOutAt: new Date() } });
+        broker.optOut = true;
+        await postToMkan(`🚫 *${broker.name}* (+${m.phone}) replied "${m.text}" — opted out; no more WhatsApp asks.`);
       }
-    }
-    seen.push(m.id);
+    } else if (broker) rest.push(m);
   }
-  if (!DRY) saveSeen(seen);
-  log(`replies: ${fresh.length} new · ${optOuts} opt-out · ${posted} posted`);
+
+  // An album and its caption arrive as several messages: read each broker's burst as one reply.
+  const { handleBrokerReply } = await import('../../src/components/agent/broker-inbox');
+  const pending = loadPending();
+  for (const g of groupByPhone(rest)) {
+    const broker = byPhone.get(g.phone)!;
+    const words = g.text || `[${g.items.map((m) => m.type).join(', ')}]`;
+    log(`reply from ${broker.name} (+${g.phone}): ${words.slice(0, 80)}${g.imageIds.length ? ` + ${g.imageIds.length} photo(s)` : ''}`);
+    if (DRY) continue;
+    const stored = await storePhotos(broker.id, g.imageIds);
+    const held = pending[broker.id] && now.getTime() - new Date(pending[broker.id]!.at).getTime() < PENDING_MS ? pending[broker.id]!.urls : [];
+    const photoUrls = [...held, ...stored].slice(0, MAX_PHOTOS);
+    const action = await handleBrokerReply({ brokerId: broker.id, text: g.text, photoUrls, at: now }).catch((err) => {
+      log(`inbox failed for ${broker.name}: ${(err as Error).message}`);
+      return { kind: 'none' } as const;
+    });
+    if (action.kind === 'home') {
+      homes += 1;
+      delete pending[broker.id];
+      await postToMkan(
+        `🏠 *${broker.name}* (+${g.phone}) sent a home on WhatsApp → lead #${action.listingId}${photoUrls.length ? ` with ${photoUrls.length} photo(s)` : ''}${action.matched ? ', now in the tenant\'s chat' : ''}.\n> ${g.text.replace(/\n/g, '\n> ').slice(0, 600)}`,
+      );
+    } else if (action.kind === 'reply') {
+      answered += 1;
+      if (action.why === 'photos-need-price' && photoUrls.length) pending[broker.id] = { urls: photoUrls, at: now.toISOString() };
+      try {
+        await sendText(g.phone, action.text);
+        log(`answered ${broker.name} (${action.why})`);
+      } catch (err) {
+        await db.outboundMessage.update({ where: { id: action.outboundId }, data: { status: 'FAILED', error: (err as Error).message.slice(0, 500) } });
+        log(`answer to ${broker.name} failed: ${(err as Error).message}`);
+      }
+    } else if (action.kind === 'availability') {
+      await postToMkan(`✅ *${broker.name}* (+${g.phone}) answered "${g.text.slice(0, 80)}" → home #${action.listingId} marked ${action.answer === 'RENTED' ? 'rented' : 'available'}.`);
+    } else {
+      posted += 1;
+      if (stored.length) pending[broker.id] = { urls: photoUrls, at: now.toISOString() };
+      await postToMkan(
+        `💬 *${broker.name}* (+${g.phone}) replied on WhatsApp${stored.length ? ` (${stored.length} photo(s) kept)` : ''}:\n> ${words.replace(/\n/g, '\n> ')}\n<${waLink(g.phone, '')}|Open the chat> — turn it into a home in this thread.`,
+      );
+    }
+  }
+  for (const m of fresh) seen.push(m.id);
+  if (!DRY) {
+    saveSeen(seen);
+    writeFileSync(PENDING, JSON.stringify(pending, null, 2));
+  }
+  log(`replies: ${fresh.length} new · ${optOuts} opt-out · ${homes} home(s) · ${answered} answered · ${posted} posted`);
 }
 
 async function main() {

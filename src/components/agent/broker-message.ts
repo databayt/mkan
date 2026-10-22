@@ -13,25 +13,59 @@ export interface BrokerHomeLine {
 
 const rwf = (n: number) => `RWF ${Math.round(n).toLocaleString("en-US")}`;
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * The need in the words a broker asks for before offering anything. Kigali
+ * brokers answer a vague ask with "How much?", "Where?", "Features&budget",
+ * "Single or family?" (Abdout's own chats, Oct 2026), so every slot the tenant
+ * filled goes in: size and type, furnishing, place, budget, move-in, household.
+ */
 export function needSummary(r: Requirements): { en: string; rw: string } {
   const en: string[] = [];
   const rw: string[] = [];
-  if (r.bedrooms != null) {
+  if (r.homeType === "room") {
+    en.push("a single room");
+    rw.push("icyumba kimwe");
+  } else if (r.bedrooms != null) {
     en.push(r.bedrooms === 0 ? "a studio" : `${r.bedrooms} bedroom${r.bedrooms === 1 ? "" : "s"}`);
     rw.push(r.bedrooms === 0 ? "studio" : `ibyumba ${r.bedrooms}`);
+  }
+  if (r.homeType === "house") {
+    en.push("self compound (own gate and yard)");
+    rw.push("inzu yigenga ifite igipangu");
+  } else if (r.homeType === "apartment") {
+    en.push("apartment");
+    rw.push("apartment");
   }
   if (r.furnished === true) {
     en.push("furnished");
     rw.push("ifite ibikoresho");
+  } else if (r.furnished === false) {
+    en.push("unfurnished");
+    rw.push("nta bikoresho");
   }
-  if (r.district) {
-    const d = r.district.charAt(0) + r.district.slice(1).toLowerCase();
-    en.push(`in ${d}`);
-    rw.push(`i ${d}`);
+  const district = r.district ? r.district.charAt(0) + r.district.slice(1).toLowerCase() : null;
+  const place = r.neighbourhood ? (district ? `${r.neighbourhood} (${district})` : r.neighbourhood) : district;
+  if (place) {
+    en.push(`in ${place}`);
+    rw.push(`i ${place}`);
   }
   if (r.maxPrice) {
     en.push(`up to ${rwf(r.maxPrice)} a ${r.pricePeriod === "night" ? "night" : "month"}`);
     rw.push(`kugeza ${rwf(r.maxPrice)} ${r.pricePeriod === "night" ? "ku ijoro" : "ku kwezi"}`);
+  }
+  if (r.moveIn) {
+    const [, m, d] = r.moveIn.split("-").map(Number);
+    en.push(`from ${d} ${MONTHS[(m ?? 1) - 1]}`);
+    rw.push(`guhera ${d}/${m}`);
+  }
+  if (r.purpose === "family") {
+    en.push("for a family");
+    rw.push("ku muryango");
+  } else if (r.purpose === "study") {
+    en.push("for a student");
+    rw.push("ku munyeshuri");
   }
   return { en: en.join(", ") || "a home in Kigali", rw: rw.join(", ") || "inzu i Kigali" };
 }
@@ -65,10 +99,11 @@ export function viewingChosenMessage(title: string, slotLabel: string, link: str
 export function demandMessage(name: string | null, need: { en: string; rw: string }, link: string): string {
   return [
     `${name ? `Hello ${name}` : "Hello"}, this is Mkan (mkan.sd).`,
-    `A tenant is looking for ${need.en} and nothing we list fits. Do you have one? Send it here (price, rooms, place) or reply with photos:`,
+    `A tenant is looking for ${need.en}. Nothing we list fits — do you have one?`,
+    `Reply here with the photos and the price (and the visit fee, if any), or send it on this page:`,
     link,
     "",
-    `Muraho! Umukiriya arashaka ${need.rw}. Ufite inzu imeze ityo? Yohereze hano cyangwa usubize n'amafoto.`,
+    `Muraho! Umukiriya arashaka ${need.rw}. Ufite inzu imeze ityo? Subiza hano n'amafoto n'igiciro, cyangwa uyohereze kuri uru rubuga.`,
     "",
     "Reply STOP to receive no more requests. / Andika HAGARIKA.",
   ].join("\n");

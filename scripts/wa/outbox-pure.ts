@@ -170,3 +170,35 @@ export function senderPhone(key: { remoteJid?: string; remoteJidAlt?: string; se
   }
   return null;
 }
+
+/** A photo message (album items arrive as separate image messages). */
+export function isImage(message: Record<string, unknown> | null | undefined, messageType?: string): boolean {
+  return messageType === 'imageMessage' || !!(message as { imageMessage?: unknown } | null)?.imageMessage;
+}
+
+export interface InboxItem {
+  id: string;
+  phone: string | null;
+  text: string;
+  image: boolean;
+  type: string;
+}
+
+/**
+ * One broker's burst — an album and its caption arrive as several messages
+ * within a run — read as one reply: the texts joined, the photos together.
+ * Oldest first in, sender order kept out.
+ */
+export function groupByPhone<T extends InboxItem>(items: T[]): { phone: string; items: T[]; text: string; imageIds: string[] }[] {
+  const groups = new Map<string, T[]>();
+  for (const m of items) {
+    if (!m.phone) continue;
+    groups.set(m.phone, [...(groups.get(m.phone) ?? []), m]);
+  }
+  return [...groups].map(([phone, its]) => ({
+    phone,
+    items: its,
+    text: its.map((m) => m.text).filter(Boolean).join('\n'),
+    imageIds: its.filter((m) => m.image).map((m) => m.id),
+  }));
+}

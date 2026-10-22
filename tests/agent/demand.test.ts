@@ -147,3 +147,12 @@ describe("demand messages", () => {
     expect(tenantAlertMessage("rw", 1, "L")).toContain("inzu nshya");
   });
 });
+
+describe("the ask answers what brokers ask back", () => {
+  it("names type, furnishing, place, budget, move-in and household", () => {
+    const need = needSummary(want({ homeType: "house", furnished: false, neighbourhood: "Kibagabaga", district: "GASABO", maxPrice: 400_000, moveIn: "2026-11-01", purpose: "family" }));
+    expect(need.en).toBe("2 bedrooms, self compound (own gate and yard), unfurnished, in Kibagabaga (Gasabo), up to RWF 400,000 a month, from 1 Nov, for a family");
+    expect(need.rw).toContain("igipangu");
+    expect(demandMessage(null, need, "L")).toMatch(/photos and the price/);
+  });
+});
