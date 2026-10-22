@@ -239,7 +239,7 @@ function upscale(src: string, dur: number, work: string, info: { w: number; h: n
     mkdirSync(inDir);
     mkdirSync(upDir);
     for (const f of frames.slice(i, i + UPSCALE_CHUNK)) execFileSync('mv', [join(raw, f), join(inDir, f)]);
-    execFileSync(REALESRGAN, ['-i', inDir, '-o', upDir, '-n', 'realesr-animevideov3', '-s', '4', '-f', 'jpg', '-m', join(dirname(REALESRGAN), 'models')], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 1_800_000 });
+    execFileSync(REALESRGAN, ['-i', inDir, '-o', upDir, '-n', 'realesr-animevideov3', '-s', '4', '-f', 'jpg', '-m', join(dirname(REALESRGAN), 'models')], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 3_600_000 });
     for (const f of frames.slice(i, i + UPSCALE_CHUNK)) {
       ffmpeg(['-i', join(upDir, f), '-i', join(inDir, f), '-filter_complex', `[0]scale=${target}:flags=lanczos[a];[1]scale=${target}:flags=lanczos[b];[a][b]blend=all_expr='A*0.65+B*0.35'`, '-q:v', '2', join(ai, f)]);
       execFileSync('mv', [join(inDir, f), join(raw, f)]);
@@ -598,7 +598,9 @@ async function askWithPreview(rows: { handle: string; name: string; phone: strin
     let made: { ref: string; url: string } | null = null;
     for (const r of theirs.slice(0, 3)) {
       try {
-        const out = await renderOne(r, dir, whatsapp());
+        // A rerun after a dropped connection reuses the remaster already on disk (~15 min each).
+        const done = join(dir, `${refOf(r)}.mp4`);
+        const out = existsSync(done) && !flag('rerender') ? done : await renderOne(r, dir, whatsapp());
         const url = await cdnCopy(out, `preview/${b.handle}-${refOf(r)}.mp4`);
         if (url) {
           made = { ref: refOf(r), url };
