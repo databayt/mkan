@@ -18,7 +18,9 @@ node cf/env-split.mjs "$SRC" secrets > "$OUT"
 # AGENT_ANTHROPIC_API_KEY: the /find agent's Claude key (included Max credits, capped in
 # src/components/agent/claude.ts). Never store it as ANTHROPIC_API_KEY — that name also
 # switches on the uncapped report triage.
-for VAR in NEXTAUTH_SECRET AUTH_SECRET RESEND_API_KEY GROQ_API_KEY SLACK_BOT_TOKEN AGENT_ANTHROPIC_API_KEY; do
+# MKAN_WA_OUTBOX=1: agent WhatsApp goes to the OutboundMessage outbox the Mac drains
+# (scripts/wa/outbox.ts) instead of #mkan wa.me cards. Kept here so redeploys keep it.
+for VAR in NEXTAUTH_SECRET AUTH_SECRET RESEND_API_KEY GROQ_API_KEY SLACK_BOT_TOKEN AGENT_ANTHROPIC_API_KEY MKAN_WA_OUTBOX; do
   V=$(security find-generic-password -s "cf-mkan-$VAR" -w 2>/dev/null || true)
   [[ -n "$V" ]] && OUT="$OUT" VAR="$VAR" V="$V" node -e '
     const fs=require("fs");const p=process.env.OUT;const o=JSON.parse(fs.readFileSync(p,"utf8"));
