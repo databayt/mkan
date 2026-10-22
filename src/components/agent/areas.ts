@@ -6,37 +6,32 @@
  * Coordinates are approximate (a sector or campus centre to ~300 m); the radii
  * are generous on purpose, since a listing pin is itself an approximation.
  */
+import { KIGALI_ZONES } from "@/lib/geo/kigali-zones";
 import { haversineKm } from "@/lib/geo/rwanda-places";
 
 export type District = "GASABO" | "KICUKIRO" | "NYARUGENGE";
 
 export interface Neighbourhood {
   name: string;
+  /** The zone slug (`gasabo/remera/nyarutarama`). */
+  slug: string;
   district: District;
   lat: number;
   lng: number;
 }
 
-/** The names Kigali renters use — sectors plus a few well-known cells. */
-export const NEIGHBOURHOODS: Neighbourhood[] = [
-  { name: "Kimihurura", district: "GASABO", lat: -1.95, lng: 30.09 },
-  { name: "Kacyiru", district: "GASABO", lat: -1.938, lng: 30.083 },
-  { name: "Nyarutarama", district: "GASABO", lat: -1.935, lng: 30.103 },
-  { name: "Remera", district: "GASABO", lat: -1.955, lng: 30.11 },
-  { name: "Kibagabaga", district: "GASABO", lat: -1.925, lng: 30.115 },
-  { name: "Kimironko", district: "GASABO", lat: -1.935, lng: 30.127 },
-  { name: "Kinyinya", district: "GASABO", lat: -1.905, lng: 30.1 },
-  { name: "Gisozi", district: "GASABO", lat: -1.921, lng: 30.068 },
-  { name: "Kiyovu", district: "NYARUGENGE", lat: -1.95, lng: 30.065 },
-  { name: "Nyamirambo", district: "NYARUGENGE", lat: -1.98, lng: 30.04 },
-  { name: "Muhima", district: "NYARUGENGE", lat: -1.942, lng: 30.056 },
-  { name: "Kicukiro", district: "KICUKIRO", lat: -1.975, lng: 30.103 },
-  { name: "Niboye", district: "KICUKIRO", lat: -1.98, lng: 30.115 },
-  { name: "Kagarama", district: "KICUKIRO", lat: -1.995, lng: 30.11 },
-  { name: "Gikondo", district: "KICUKIRO", lat: -1.975, lng: 30.075 },
-  { name: "Rebero", district: "KICUKIRO", lat: -1.995, lng: 30.075 },
-  { name: "Kanombe", district: "KICUKIRO", lat: -1.97, lng: 30.145 },
-];
+/**
+ * The names Kigali renters use — sectors plus a few well-known cells — from the
+ * zone tree's popular zones (`kigali-zones.ts`), so the agent and the CRM name
+ * places the same way.
+ */
+export const NEIGHBOURHOODS: Neighbourhood[] = KIGALI_ZONES.filter((z) => z.popular && z.level !== "district").map((z) => ({
+  name: z.nameEn,
+  slug: z.slug,
+  district: z.district,
+  lat: z.lat,
+  lng: z.lng,
+}));
 
 /** How far from a neighbourhood's centre still counts as "in" it. */
 export const NEIGHBOURHOOD_RADIUS_KM = 1.8;

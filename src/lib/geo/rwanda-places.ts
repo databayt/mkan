@@ -17,6 +17,8 @@
  * precision is enough for it.
  */
 
+import { zoneNamed, zonesAt } from './kigali-zones';
+
 export type RwandaCityCode = 'KIGALI' | 'OTHER';
 export type RwandaDistrictCode = 'GASABO' | 'KICUKIRO' | 'NYARUGENGE' | 'UNKNOWN';
 
@@ -73,33 +75,15 @@ export const isInKigali = (lat: number, lng: number): boolean =>
   inBox(lat, lng, KIGALI_BBOX) && haversineKm(lat, lng, KIGALI.lat, KIGALI.lng) <= KIGALI.radiusKm;
 
 /**
- * Kigali's 35 sectors (imirenge), approximate centres. Three district centroids
- * were not enough: the districts are long and irregular, and centroid distance
- * put Remera and Kimihurura, Gasabo's densest rental areas, in Kicukiro.
- * Airbnb's place line cannot settle it either: it names "Nyarugenge" for nearly
- * every Kigali listing. Nearest sector, then its district, is accurate to
- * roughly a sector's width at the boundaries.
+ * Kigali's 35 sectors (imirenge), approximate centres — from the zone tree
+ * (`kigali-zones.ts`). Three district centroids were not enough: the districts
+ * are long and irregular, and centroid distance put Remera and Kimihurura,
+ * Gasabo's densest rental areas, in Kicukiro. Airbnb's place line cannot settle
+ * it either: it names "Nyarugenge" for nearly every Kigali listing. Nearest
+ * sector, then its district, is accurate to roughly a sector's width at the
+ * boundaries.
  */
-const SECTORS: Array<[string, Exclude<RwandaDistrictCode, 'UNKNOWN'>, number, number]> = [
-  ['Gitega', 'NYARUGENGE', -1.96, 30.055], ['Kanyinya', 'NYARUGENGE', -1.93, 30.01],
-  ['Kigali', 'NYARUGENGE', -1.955, 30.02], ['Kimisagara', 'NYARUGENGE', -1.959, 30.043],
-  ['Mageragere', 'NYARUGENGE', -2.03, 30.02], ['Muhima', 'NYARUGENGE', -1.942, 30.056],
-  ['Nyakabanda', 'NYARUGENGE', -1.968, 30.045], ['Nyamirambo', 'NYARUGENGE', -1.98, 30.04],
-  ['Nyarugenge', 'NYARUGENGE', -1.95, 30.06], ['Rwezamenyo', 'NYARUGENGE', -1.972, 30.05],
-  ['Bumbogo', 'GASABO', -1.89, 30.15], ['Gatsata', 'GASABO', -1.92, 30.055],
-  ['Gikomero', 'GASABO', -1.86, 30.17], ['Gisozi', 'GASABO', -1.921, 30.068],
-  ['Jabana', 'GASABO', -1.89, 30.05], ['Jali', 'GASABO', -1.88, 30.0],
-  ['Kacyiru', 'GASABO', -1.938, 30.083], ['Kimihurura', 'GASABO', -1.95, 30.09],
-  ['Kimironko', 'GASABO', -1.935, 30.127], ['Kinyinya', 'GASABO', -1.905, 30.1],
-  ['Ndera', 'GASABO', -1.93, 30.17], ['Nduba', 'GASABO', -1.87, 30.1],
-  ['Remera', 'GASABO', -1.955, 30.11], ['Rusororo', 'GASABO', -1.95, 30.18],
-  ['Rutunga', 'GASABO', -1.82, 30.13],
-  ['Gahanga', 'KICUKIRO', -2.03, 30.1], ['Gatenga', 'KICUKIRO', -1.99, 30.085],
-  ['Gikondo', 'KICUKIRO', -1.975, 30.075], ['Kagarama', 'KICUKIRO', -1.995, 30.11],
-  ['Kanombe', 'KICUKIRO', -1.97, 30.145], ['Kicukiro', 'KICUKIRO', -1.975, 30.103],
-  ['Kigarama', 'KICUKIRO', -1.988, 30.095], ['Masaka', 'KICUKIRO', -1.995, 30.19],
-  ['Niboye', 'KICUKIRO', -1.98, 30.115], ['Nyarugunga', 'KICUKIRO', -1.965, 30.13],
-];
+const SECTORS: Array<[string, Exclude<RwandaDistrictCode, 'UNKNOWN'>, number, number]> = zonesAt('sector').map((z) => [z.nameEn, z.district, z.lat, z.lng]);
 
 export function nearestSector(lat: number, lng: number): { sector: string; district: RwandaDistrictCode } {
   let best = SECTORS[0]!;
@@ -131,34 +115,14 @@ const isRwandaName = (s: string) => /^rwanda$/.test(s) || /^رواندا$/.test(
 const namesKigali = (s: string | null | undefined) =>
   !!s && (/kigali|gasabo|kicukiro|nyarugenge/i.test(s) || /كيغالي|كيجالي/.test(s));
 /**
- * Neighbourhood names people use in captions that are not sector names. Each is
- * filed under the district that holds it; an ambiguous name (Rebero straddles
- * Kicukiro and Nyarugenge) is left out rather than guessed.
- */
-const NEIGHBOURHOODS: Array<[string, Exclude<RwandaDistrictCode, 'UNKNOWN'>]> = [
-  ['Kibagabaga', 'GASABO'], ['Nyarutarama', 'GASABO'], ['Gacuriro', 'GASABO'], ['Kagugu', 'GASABO'],
-  ['Batsinda', 'GASABO'], ['Zindiro', 'GASABO'], ['Kabuga', 'GASABO'],
-  ['Kiyovu', 'NYARUGENGE'], ['Norvege', 'NYARUGENGE'], ['Norvège', 'NYARUGENGE'],
-  ['Biryogo', 'NYARUGENGE'], ['Kabeza', 'KICUKIRO'], ['Busanza', 'KICUKIRO'], ['Sonatubes', 'KICUKIRO'],
-  ['Kagarama', 'KICUKIRO'], ['Gahanga', 'KICUKIRO'], ['Niboyi', 'KICUKIRO'],
-  // Remera's commercial strip, named in TikTok captions (2026-10-18).
-  ['Gishushu', 'GASABO'], ['Kisimenti', 'GASABO'],
-];
-
-/**
  * A sector or a well-known neighbourhood named in free text → its district.
  * For sources with no coordinates (a TikTok caption says "2bedroom in
- * Nyamirambo"), the name is all there is; UNKNOWN when nothing matches.
+ * Nyamirambo"), the name is all there is; UNKNOWN when nothing matches. The
+ * names and aliases are the zone tree's (`kigali-zones.ts`).
  */
 export function districtForPlace(name: string | null | undefined): RwandaDistrictCode {
   if (!name) return 'UNKNOWN';
-  const s = name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  const hit = (n: string) => new RegExp(`(^|[^a-z])${n.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()}([^a-z]|$)`).test(s);
-  const sector = SECTORS.find(([n]) => n !== 'Kigali' && hit(n));
-  if (sector) return sector[1];
-  const hood = NEIGHBOURHOODS.find(([n]) => hit(n));
-  if (hood) return hood[1];
-  return districtFromText(name);
+  return zoneNamed(name)?.district ?? districtFromText(name);
 }
 
 const districtFromText = (s: string): RwandaDistrictCode =>

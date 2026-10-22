@@ -200,6 +200,16 @@ export const HOME: ObjectDef = {
 
     // Amenities & photos
     { name: 'amenitiesRaw', label: 'Amenities (raw)', type: 'RAW_JSON', description: 'Lossless scraped amenity list.' },
+
+    // Kigali move-in terms as the ad states them (2026-10-22). Empty = the ad is silent;
+    // the agent then shows Kigali's typical terms, marked "typical".
+    { name: 'furnishing', label: 'Furnishing', type: 'SELECT', icon: 'IconSofa', options: ['FURNISHED', 'UNFURNISHED'], description: 'As the ad states it; empty = not stated.' },
+    { name: 'depositMonths', label: 'Deposit (months)', type: 'NUMBER', icon: 'IconLock', description: 'Months of rent held as deposit, e.g. 1.' },
+    { name: 'commissionPct', label: 'Commission %', type: 'NUMBER', icon: 'IconPercentage', description: "The broker's cut as % of the first rent, e.g. 25." },
+    { name: 'noCommission', label: 'No commission', type: 'BOOLEAN', icon: 'IconDiscount', defaultValue: false, description: 'The ad says no commission (often the owner).' },
+    { name: 'viewingFee', label: 'Visit fee (RWF)', type: 'NUMBER', icon: 'IconEye' },
+    { name: 'water', label: 'Water', type: 'SELECT', icon: 'IconDroplet', options: ['INCLUDED', 'SEPARATE'], description: 'Water in the rent, or billed separately; empty = not stated.' },
+    { name: 'electricity', label: 'Electricity', type: 'SELECT', icon: 'IconBolt', options: ['INCLUDED', 'SEPARATE'], description: 'Usually a prepaid Cash Power meter (SEPARATE).' },
     { name: 'amenities', label: 'Amenities', type: 'MULTI_SELECT', options: MKAN_AMENITIES, description: 'Mapped subset of the mkan Amenity enum.' },
     { name: 'highlights', label: 'Highlights', type: 'MULTI_SELECT', options: MKAN_HIGHLIGHTS, description: 'Mapped subset of the mkan Highlight enum.' },
     { name: 'petsAllowed', label: 'Pets allowed', type: 'BOOLEAN', defaultValue: false },
@@ -275,6 +285,7 @@ export const HOME: ObjectDef = {
     { name: 'host', label: 'Host', type: 'RELATION', icon: 'IconUserCheck', relation: { target: 'host', type: 'MANY_TO_ONE', targetFieldLabel: 'Homes', targetFieldIcon: 'IconHome' } },
     { name: 'duplicateOf', label: 'Duplicate of', type: 'RELATION', relation: { target: 'home', type: 'MANY_TO_ONE', targetFieldLabel: 'Duplicates', targetFieldIcon: 'IconCopy' } },
     { name: 'broker', label: 'Broker', type: 'RELATION', icon: 'IconBuildingEstate', relation: { target: 'broker', type: 'MANY_TO_ONE', targetFieldLabel: 'Homes', targetFieldIcon: 'IconHome' } },
+    { name: 'kigaliZone', label: 'Kigali zone', type: 'RELATION', icon: 'IconMapPin2', relation: { target: 'zone', type: 'MANY_TO_ONE', targetFieldLabel: 'Homes', targetFieldIcon: 'IconHome' } },
   ],
 };
 
@@ -424,11 +435,58 @@ export const BROKER: ObjectDef = {
     { name: 'optOutAt', label: 'Opted out at', type: 'DATE_TIME' },
     { name: 'sources', label: 'Sources', type: 'MULTI_SELECT', icon: 'IconWorldWww', options: ['TIKTOK', 'FACEBOOK', 'WEB', 'MAPS', 'SITE', 'AIRBNB'] },
     { name: 'mkanBrokerId', label: 'mkan broker ID', type: 'TEXT', description: 'Prisma Broker.id (dedupe key).' },
+    // Two-way (2026-10-22): set this to the record to keep and the next crm:brokers run
+    // moves this one's homes, messages and counters there, then deletes it.
+    { name: 'mergeInto', label: 'Merge into', type: 'RELATION', icon: 'IconArrowMerge', relation: { target: 'broker', type: 'MANY_TO_ONE', targetFieldLabel: 'Merged from', targetFieldIcon: 'IconArrowMerge' } },
+  ],
+};
+
+// ── Zone ─────────────────────────────────────────────────────────────────────
+// Kigali's district → sector → neighbourhood tree (src/lib/geo/kigali-zones.ts),
+// seeded by `crm:zones`. A zone page lists its homes (`home.kigaliZone`), the
+// brokers who serve it (via `brokerZone`) and the open tenant demand in it.
+export const ZONE: ObjectDef = {
+  nameSingular: 'zone',
+  namePlural: 'zones',
+  labelSingular: 'Zone',
+  labelPlural: 'Zones',
+  icon: 'IconMapPin2',
+  description: 'A Kigali district, sector or neighbourhood, with its homes, brokers and open demand.',
+  fields: [
+    { name: 'level', label: 'Level', type: 'SELECT', icon: 'IconStack2', options: ['DISTRICT', 'SECTOR', 'NEIGHBOURHOOD'] },
+    { name: 'district', label: 'District', type: 'SELECT', icon: 'IconMap2', options: ['GASABO', 'KICUKIRO', 'NYARUGENGE'] },
+    { name: 'nameAr', label: 'Name (Arabic)', type: 'TEXT' },
+    { name: 'nameRw', label: 'Name (Kinyarwanda)', type: 'TEXT' },
+    { name: 'aliases', label: 'Aliases', type: 'TEXT', description: 'Other spellings the readers match, comma-separated.' },
+    { name: 'latitude', label: 'Latitude', type: 'NUMBER' },
+    { name: 'longitude', label: 'Longitude', type: 'NUMBER' },
+    { name: 'radiusKm', label: 'Radius (km)', type: 'NUMBER' },
+    { name: 'homesCount', label: 'Homes', type: 'NUMBER', icon: 'IconHome', description: 'Live homes and leads in this zone and the zones inside it.' },
+    { name: 'brokersCount', label: 'Brokers', type: 'NUMBER', icon: 'IconBuildingEstate' },
+    { name: 'openDemand', label: 'Open demand', type: 'NUMBER', icon: 'IconUserSearch', description: 'Tenants still waiting for a home here.' },
+    { name: 'mkanZoneSlug', label: 'Zone slug', type: 'TEXT', description: 'kigali-zones slug, e.g. gasabo/remera/nyarutarama (dedupe key).' },
+    { name: 'parent', label: 'Inside', type: 'RELATION', icon: 'IconMapPin', relation: { target: 'zone', type: 'MANY_TO_ONE', targetFieldLabel: 'Zones inside', targetFieldIcon: 'IconMapPins' } },
+  ],
+};
+
+// ── Broker ↔ zone ────────────────────────────────────────────────────────────
+// The zones a broker serves. A junction so both sides list the other; derived
+// from their ads unless a person edits the broker's zones in Twenty.
+export const BROKER_ZONE: ObjectDef = {
+  nameSingular: 'brokerZone',
+  namePlural: 'brokerZones',
+  labelSingular: 'Broker zone',
+  labelPlural: 'Broker zones',
+  icon: 'IconRoute',
+  description: 'A zone a broker serves.',
+  fields: [
+    { name: 'broker', label: 'Broker', type: 'RELATION', icon: 'IconBuildingEstate', relation: { target: 'broker', type: 'MANY_TO_ONE', targetFieldLabel: 'Zones served', targetFieldIcon: 'IconMapPin2' } },
+    { name: 'zone', label: 'Zone', type: 'RELATION', icon: 'IconMapPin2', relation: { target: 'zone', type: 'MANY_TO_ONE', targetFieldLabel: 'Brokers', targetFieldIcon: 'IconBuildingEstate' } },
   ],
 };
 
 /** Objects the seeder creates, in dependency order (home + host first; relations wired last). */
-export const OBJECTS: ObjectDef[] = [HOST, HOME, TIKTOK_POST, BROKER];
+export const OBJECTS: ObjectDef[] = [HOST, HOME, TIKTOK_POST, BROKER, ZONE, BROKER_ZONE];
 
 // ── Opportunity (standard object) — custom fields for the onboarding funnel ───
 // One Opportunity per host. The funnel lives in `onboardingStage`; the standard

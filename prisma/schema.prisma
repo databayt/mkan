@@ -263,6 +263,19 @@ model Listing {
   isParkingIncluded           Boolean             @default(false)
   /// Known furnishing. Null = not stated (most broker homes); nightly homes are furnished.
   furnished                   Boolean?
+  /// Move-in terms as the ad (or the broker) states them; null = not stated, and
+  /// the agent shows Kigali's typical terms (agent/cost.ts) marked "typical".
+  depositMonths               Float?
+  /// The broker's cut as a share of the move-in rent (0.25 = 25%).
+  commissionPct               Float?
+  /// The ad says no commission (often the owner posting).
+  noCommission                Boolean?
+  /// RWF to visit the home.
+  viewingFee                  Int?
+  waterIncluded               Boolean?
+  electricityIncluded         Boolean?
+  /// Where the terms above came from.
+  termsSource                 TermsSource?
   bedrooms                    Int?
   bathrooms                   Float?
   squareFeet                  Int?
@@ -361,14 +374,14 @@ enum ListingSource {
 }
 
 model Location {
-  id         Int       @id @default(autoincrement())
-  address    String
-  city       String
-  state      String
-  country    String
-  postalCode String
-  latitude   Float
-  longitude  Float
+  id            Int       @id @default(autoincrement())
+  address       String
+  city          String
+  state         String
+  country       String
+  postalCode    String
+  latitude      Float
+  longitude     Float
   /// Marketplace zone, derived from (latitude, longitude) by
   /// `classifyPoint` in src/lib/geo/sudan-places.ts. A plain String rather
   /// than an enum on purpose: the gazetteer gains places over time and an
@@ -381,15 +394,26 @@ model Location {
   /// Worth knowing: `city` disagrees with this for 20% of live listings —
   /// 16 rows filed as Khartoum are across the Blue Nile in Bahri and 10 are
   /// in Omdurman. Zone reporting uses this column, not `city`.
-  zoneKey    String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  listings   Listing[]
+  zoneKey       String?
+  /// Kigali zone slugs from `src/lib/geo/kigali-zones.ts` (`gasabo/remera`,
+  /// `gasabo/remera/nyarutarama`). Null outside Kigali or when unplaced.
+  sector        String?
+  neighbourhood String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  listings      Listing[]
 
   @@index([city, state])
   @@index([country])
   @@index([latitude, longitude])
   @@index([zoneKey])
+  @@index([sector])
+  @@index([neighbourhood])
+}
+
+enum TermsSource {
+  AD
+  BROKER
 }
 
 model PasswordResetToken {
@@ -1485,6 +1509,14 @@ model Broker {
   twentyId         String?    @unique
   /// tiktok | facebook | web | maps | site | airbnb
   sources          String[]
+  /// Zones served (kigali-zones slugs), derived from their ads unless a person set them in Twenty.
+  zoneSlugs        String[]   @default([])
+  /// Fields a person edited in Twenty; `crm:brokers` never overwrites them.
+  lockedFields     String[]   @default([])
+  /// When this row last went to Twenty — a later Twenty `updatedAt` is a person's edit.
+  syncedAt         DateTime?
+  /// Merged into another broker in Twenty; kept only until the merge is applied.
+  mergedIntoId     String?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
