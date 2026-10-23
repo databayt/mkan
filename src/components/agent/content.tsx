@@ -81,7 +81,10 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
     setSheet((v) => (v === "never" ? v : "closed"));
   };
   // "Not for me": the home is passed on (never shown again), then one tap moves the search.
-  const notForMe: NotForMe = async (item, reason) => {
+  // Stable across polls, so the memoised cards do not re-render on every change to the task.
+  const taskId = task?.id;
+  const stay = task?.requirements?.stay;
+  const notForMe: NotForMe = useCallback(async (item, reason) => {
     const period = item.cost.period === "month" ? "month" : "night";
     if (reason === "like") {
       // Same district and size, priced around this home: the tenant points instead of describing.
@@ -95,7 +98,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
       void say(a?.card?.moreLike ?? "More like this", false, like);
       return;
     }
-    await noteHomeFeedback({ taskId: task?.id ?? "", listingId: item.id, kind: "dismiss", reason }).catch(() => {});
+    await noteHomeFeedback({ taskId: taskId ?? "", listingId: item.id, kind: "dismiss", reason }).catch(() => {});
     const label = (a?.card?.notReasons as Record<string, string> | undefined)?.[reason] ?? reason;
     const filters: Picks =
       reason === "expensive"
@@ -103,9 +106,9 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
           { maxPrice: roundPrice(item.cost.headline * 0.85, period), pricePeriod: period }
         : reason === "small"
           ? { bedrooms: Math.min(10, (item.bedrooms ?? 1) + 1) }
-          : { stay: task?.requirements?.stay ?? "long" };
+          : { stay: stay ?? "long" };
     void say(label, false, filters);
-  };
+  }, [taskId, stay, a, say]);
   // ⋯ in the bar: delete the chat on screen, after the browser's own confirm.
   const deleteChat = async () => {
     if (!task || !window.confirm(a?.chats?.deleteConfirm ?? "Delete this chat?")) return;

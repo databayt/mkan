@@ -18,6 +18,8 @@ const FAST_POLL_FOR_MS = 4_000;
 const SLOW_POLL_MS = 2_000;
 /** A broker may answer hours later: 10 s, then 30 s, then once a minute. */
 const WAITING_POLL_MS = [10_000, 30_000, 60_000];
+/** Past this, a chat waiting on a broker stops polling until the tab is shown again. */
+const WAITING_POLL_FOR_MS = 30 * 60_000;
 
 /**
  * The chat this browser was last in, so the bubble on another page reopens
@@ -71,7 +73,15 @@ function mergeTask(prev: AgentTaskView | null, next: AgentTaskView): AgentTaskVi
     const old = before.get(item.id);
     return old && JSON.stringify(old) === JSON.stringify(item) ? old : item;
   });
-  return { ...next, messages, shortlist };
+  // The arrays too, when every element was kept: a memo keyed on them skips.
+  const same = <T,>(a: T[], b: T[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+  return {
+    ...next,
+    messages: same(messages, prev.messages) ? prev.messages : messages,
+    shortlist: same(shortlist, prev.shortlist) ? prev.shortlist : shortlist,
+    requirements: JSON.stringify(prev.requirements) === JSON.stringify(next.requirements) ? prev.requirements : next.requirements,
+    events: JSON.stringify(prev.events) === JSON.stringify(next.events) ? prev.events : next.events,
+  };
 }
 
 /**
@@ -104,7 +114,10 @@ function withSent(prev: AgentTaskView | null, msg: AgentMessage, locale: string,
  * taking one from the server — the bubble mounts on first open, so pages never
  * pay for it.
  */
-export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false, syncUrl = false }: { lazy?: boolean; syncUrl?: boolean } = {}) {
+export function useAgentTask(
+  initialTask: AgentTaskView | null,
+  { lazy = false, syncUrl = false, active = true }: { lazy?: boolean; syncUrl?: boolean; active?: boolean } = {},
+) {
   const dict = useDictionary();
   const a = dict?.agent;
   const { locale } = useLocale();
@@ -173,16 +186,20 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false, 
   // waiting on a broker backs off to once a minute. Keyed on the task and its
   // state, not on each poll's result, so the clock keeps running across polls.
   // A hidden tab stops polling and catches up the moment it is shown again.
+  // Waiting on a broker polls only while the chat is in view (`active`: the
+  // bubble's panel is open) and for half an hour at most — each poll is a
+  // request to the one container, for an answer that can take hours.
   const taskId = task?.id;
   useEffect(() => {
-    if (!taskId || (!running && !waiting)) return;
-    const started = Date.now();
+    if (!taskId || (!running && !waiting) || (waiting && !active)) return;
+    let started = Date.now();
     let timer: ReturnType<typeof setTimeout> | undefined;
     let live = true;
     let polls = 0;
     const tick = (wait?: number) => {
       clearTimeout(timer);
       if (document.visibilityState === "hidden") return;
+      if (waiting && Date.now() - started > WAITING_POLL_FOR_MS) return;
       const next = waiting
         ? WAITING_POLL_MS[Math.min(polls, WAITING_POLL_MS.length - 1)]!
         : Date.now() - started < FAST_POLL_FOR_MS
@@ -194,8 +211,10 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false, 
       }, wait ?? next);
     };
     const onVisible = () => {
-      if (document.visibilityState === "visible") tick(0);
-      else clearTimeout(timer);
+      if (document.visibilityState === "visible") {
+        started = Date.now();
+        tick(0);
+      } else clearTimeout(timer);
     };
     tick();
     document.addEventListener("visibilitychange", onVisible);
@@ -204,7 +223,7 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false, 
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [taskId, running, waiting, refresh]);
+  }, [taskId, running, waiting, active, refresh]);
 
   /**
    * Shows the message at once and resolves true, so the composer clears; the

@@ -78,7 +78,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
   const b = a?.bubble;
   const c = a?.chat;
   const { locale } = useLocale();
-  const { task, loaded, running, waiting, pending, notice, send, reset, open: openTask, opening, reply, regenerate } = useAgentTask(null, { lazy: true });
+  const { task, loaded, running, waiting, pending, notice, send, reset, open: openTask, opening, reply, regenerate } = useAgentTask(null, { lazy: true, active: open });
   const [sheet, setSheet] = useState<"closed" | "open" | "never">("never");
   const [picks, setPicks] = useState<Picks>({});
   const [guided, setGuided] = useState(false);

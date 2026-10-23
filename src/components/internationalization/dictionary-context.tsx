@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, use } from "react"
-import type { Locale } from "./config"
+import { i18n, type Locale } from "./config"
 import type { Dictionary } from "./dictionaries"
 import { getDictionaryClient } from "./get-dictionary-client"
 
@@ -14,6 +14,15 @@ export const DictionaryContext = createContext<Dictionary | null>(null)
 const dictionaryPromises: Partial<Record<Locale, Promise<Dictionary>>> = {}
 function loadDictionary(lang: Locale): Promise<Dictionary> {
   return (dictionaryPromises[lang] ??= getDictionaryClient(lang))
+}
+
+// Start the page's locale chunk the moment this module runs in the browser,
+// not when the provider first renders: hydration waits on it (there is no
+// Suspense here, by design — see below), and the composer on /find stays
+// read-only until then. Same promise either way, so it is fetched once.
+if (typeof document !== "undefined") {
+  const lang = document.documentElement.lang
+  if ((i18n.locales as readonly string[]).includes(lang)) void loadDictionary(lang as Locale)
 }
 
 function DictionaryLoader({
