@@ -5370,6 +5370,7 @@
       "shortlist": "I found {count} homes that match. Each card shows why it fits and what you would pay to move in.",
       "none": "No published home matches all of that yet. Try a higher budget, another district, or fewer bedrooms.",
       "error": "Something went wrong on our side. Your search is saved, so please try again.",
+      "retry": "Try again",
       "busy": "Still working on your last message.",
       "rate": "You have sent a lot of messages. Please wait a few minutes and try again.",
       "working": "Working on it…",

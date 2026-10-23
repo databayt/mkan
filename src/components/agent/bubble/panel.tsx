@@ -14,7 +14,7 @@ import { AskCard } from "../ask-card";
 import { ClarifyCard } from "../clarify-card";
 import { Composer } from "../composer";
 import { ChatHeader, headerButton, MenuGlyph } from "../header";
-import { Refine } from "../refine";
+import { Refine, Retry } from "../refine";
 import { fill } from "../format";
 import { Steps } from "../steps";
 import { Suggestions } from "../suggestions";
@@ -78,7 +78,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
   const b = a?.bubble;
   const c = a?.chat;
   const { locale } = useLocale();
-  const { task, loaded, running, waiting, pending, notice, send, reset, open: openTask, opening, reply } = useAgentTask(null, { lazy: true });
+  const { task, loaded, running, waiting, pending, notice, send, reset, open: openTask, opening, reply, regenerate } = useAgentTask(null, { lazy: true });
   const [sheet, setSheet] = useState<"closed" | "open" | "never">("never");
   const [picks, setPicks] = useState<Picks>({});
   const [guided, setGuided] = useState(false);
@@ -235,6 +235,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
                       compact
                     />
                   )}
+                  {m.kind === "error" && !running && <Retry onRetry={() => void regenerate()} disabled={pending} compact />}
                 </AgentTurn>
               );
             })}

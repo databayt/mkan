@@ -15,7 +15,7 @@ import { DemandCard } from "./demand-card";
 import { noteHomeFeedback } from "./feedback-actions";
 import { roundPrice } from "./fields";
 import { ChatHeader, headerButton, MenuGlyph } from "./header";
-import { Refine } from "./refine";
+import { Refine, Retry } from "./refine";
 import { ShortlistCard, type NotForMe } from "./shortlist-card";
 import { Steps } from "./steps";
 import { Suggestions } from "./suggestions";
@@ -229,6 +229,8 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
                   {m.kind === "shortlist" && !running && (
                     <Refine message={m} requirements={task.requirements} onPick={(text, filters, clear) => void say(text, false, filters, clear)} disabled={pending} />
                   )}
+
+                  {m.kind === "error" && !running && <Retry onRetry={() => void regenerate().then((ok) => ok && scrollToBottom())} disabled={pending} />}
 
                   {(m.kind === "none" || m.kind === "shortlist") && m.demand && task.demand && !running && (
                     <DemandCard taskId={task.id} optedIn={task.demand.optedIn} onDone={refresh} />

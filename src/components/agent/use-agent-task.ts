@@ -5,7 +5,7 @@ import { useDictionary } from "@/components/internationalization/use-dictionary"
 import { useLocale } from "@/components/internationalization/use-locale";
 import { formatCurrency } from "@/lib/i18n/formatters";
 import { districtName } from "@/lib/geo/rwanda-places";
-import { getAgentTask, sendAgentMessage } from "./actions";
+import { sendAgentMessage } from "./actions";
 import { requirementChips } from "./chips";
 import { fill } from "./format";
 import type { Requirements } from "./requirements";
@@ -87,6 +87,16 @@ async function pollTask(id: string, version?: string): Promise<AgentTaskView | "
 }
 
 /**
+ * What the screen shows the moment a message is sent, before the server has
+ * it: the message under the conversation and the turn running. A new chat
+ * gets a stand-in with no id (no poll, no pointer) until the send returns.
+ */
+function withSent(prev: AgentTaskView | null, msg: AgentMessage, locale: string, fresh: boolean): AgentTaskView {
+  if (prev && !fresh) return { ...prev, status: "RUNNING", messages: [...prev.messages, msg] };
+  return { id: "", status: "RUNNING", locale, messages: [msg], requirements: null, shortlist: [], events: [], startedAt: msg.at, version: "", demand: null };
+}
+
+/**
  * One rental-agent conversation, for /find and the bubble. A chat is addressed
  * by id: /find keeps it in the URL (`?c=`, so reload, back and forward work),
  * and both remember it as this browser's last chat, so the bubble on another
@@ -112,9 +122,10 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false, 
     if (!lazy) return;
     let live = true;
     const id = readPointer();
-    (id ? getAgentTask(id).catch(() => null) : Promise.resolve(null)).then((t) => {
+    // Over GET, not a server action: a tab's actions run one at a time.
+    (id ? pollTask(id) : Promise.resolve(null)).then((t) => {
       if (!live) return;
-      if (t) setTask(t);
+      if (t && t !== "same") setTask(t);
       else if (id) writePointer(null);
       setLoaded(true);
     });
@@ -145,9 +156,9 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false, 
     async (id: string, history: HistoryMode = "push"): Promise<boolean> => {
       if (taskRef.current?.id === id) return true;
       setOpening(id);
-      const next = await getAgentTask(id).catch(() => null);
+      const next = await pollTask(id);
       setOpening(null);
-      if (!next) return false;
+      if (!next || next === "same") return false;
       setTask(next);
       setNotice(null);
       if (syncUrl && history !== "none") window.history[history === "push" ? "pushState" : "replaceState"](null, "", chatUrl(id));
@@ -195,26 +206,42 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false, 
     };
   }, [taskId, running, waiting, refresh]);
 
-  /** Resolves true once the message is accepted, so the composer can clear. */
+  /**
+   * Shows the message at once and resolves true, so the composer clears; the
+   * send itself returns with the turn's first reply when it came in time. A
+   * refused send (rate, busy) takes the message back and says why.
+   */
   const send = useCallback(
     (message: string, fresh = false, filters?: Partial<Requirements>, clear?: string[]) =>
       new Promise<boolean>((resolve) => {
         const value = message.trim();
         if (!value) return resolve(false);
         setNotice(null);
+        const before = taskRef.current;
+        const sent: AgentMessage = {
+          role: "user",
+          text: value,
+          at: new Date().toISOString(),
+          ...(filters && Object.keys(filters).length ? { filters: filters as Record<string, unknown> } : {}),
+          ...(clear?.length ? { clear } : {}),
+        };
+        setTask(withSent(before, sent, locale, fresh));
+        resolve(true);
         startTransition(async () => {
-          const res = await sendAgentMessage({ text: value, lang: locale, taskId: fresh ? undefined : task?.id, fresh, filters, clear });
+          const res = await sendAgentMessage({ text: value, lang: locale, taskId: fresh ? undefined : before?.id || undefined, fresh, filters, clear }).catch(
+            () => ({ ok: false, error: "failed" }) as const,
+          );
           if (!res.ok) {
-            setNotice(res.error === "rate" ? a?.reply?.rate ?? "Please wait a few minutes." : res.error === "busy" ? a?.reply?.busy ?? "Still working." : null);
-            return resolve(false);
+            setTask(before);
+            setNotice(res.error === "rate" ? a?.reply?.rate ?? "Please wait a few minutes." : res.error === "busy" ? a?.reply?.busy ?? "Still working." : a?.reply?.error ?? null);
+            return;
           }
-          resolve(true);
           if (res.task) setTask((prev) => mergeTask(prev, res.task!));
           // A new chat takes its address now; replace, so Back skips the empty page.
-          if (syncUrl && res.taskId !== task?.id) window.history.replaceState(null, "", chatUrl(res.taskId));
+          if (syncUrl && res.taskId !== before?.id) window.history.replaceState(null, "", chatUrl(res.taskId));
         });
       }),
-    [locale, task?.id, a, syncUrl],
+    [locale, a, syncUrl],
   );
 
   /** A new chat: the screen empties and the address drops `?c=`; nothing is stored until the first message. */

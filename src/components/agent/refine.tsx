@@ -96,3 +96,21 @@ export function Refine({
     </div>
   );
 }
+
+/** Under an error reply: the same message again, in one tap. */
+export function Retry({ onRetry, disabled, compact = false }: { onRetry: () => void; disabled?: boolean; compact?: boolean }) {
+  const dict = useDictionary();
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onRetry}
+      className={cn(
+        "rounded-full bg-muted px-3 text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50",
+        compact ? "mt-3 py-1 text-xs" : "mt-4 py-1.5 text-sm",
+      )}
+    >
+      {dict?.agent?.reply?.retry ?? "Try again"}
+    </button>
+  );
+}
