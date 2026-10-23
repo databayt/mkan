@@ -100,9 +100,20 @@ function freezable(response) {
   return !!maxAge && Number(maxAge[1]) > 0
 }
 
+// SEO-tool crawlers (the same list as src/app/robots.ts). An AhrefsBot sweep
+// sent 251 image resizes to the one container in 40 s and froze the /find chat
+// behind them (2026-10-21); robots.txt alone takes about a day to be re-read.
+const SEO_CRAWLERS = /AhrefsBot|SemrushBot|DotBot|MJ12bot|DataForSeoBot|PetalBot|BLEXBot|Barkrowler/i
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url)
+    if (url.pathname !== "/robots.txt" && SEO_CRAWLERS.test(request.headers.get("user-agent") || "")) {
+      return new Response("Crawling is disallowed for this agent; see /robots.txt\n", {
+        status: 403,
+        headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
+      })
+    }
     // Range requests (media seeking) go straight through: the key holds the
     // whole body, and a full 200 answering a range breaks Safari video.
     const cacheable =
