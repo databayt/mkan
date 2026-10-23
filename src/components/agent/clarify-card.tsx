@@ -15,10 +15,6 @@ interface Choice {
 
 /** Each question's options, the usual answer first. A studio is a bedroom count as well as a type. */
 const CHOICES: Record<ClarifyField, Choice[]> = {
-  stay: [
-    { key: "long", filters: { stay: "long" } },
-    { key: "short", filters: { stay: "short" } },
-  ],
   homeType: [
     { key: "apartment", filters: { homeType: "apartment" } },
     { key: "house", filters: { homeType: "house" } },
@@ -37,11 +33,10 @@ const CHOICES: Record<ClarifyField, Choice[]> = {
 };
 
 /** Kigali's usual answer, marked "(Recommended)". Purpose has none: it is the tenant's own. */
-function recommended(field: ClarifyField, answers: Answers): string | null {
-  if (field === "stay") return "long";
+function recommended(field: ClarifyField): string | null {
   if (field === "homeType") return "apartment";
-  // Long-term homes are mostly unfurnished; a few nights are always furnished.
-  if (field === "furnished") return answers.stay === "short" ? "yes" : "no";
+  // Kigali's monthly homes are mostly unfurnished.
+  if (field === "furnished") return "no";
   return null;
 }
 
@@ -49,7 +44,8 @@ type Answers = Partial<Record<ClarifyField, string>>;
 
 /** The picked answers as the exact fields they set. */
 export function clarifyFilters(answers: Answers): Partial<Requirements> {
-  const out: Partial<Requirements> = {};
+  // Answering the card is a monthly search: the agent covers monthly rentals only.
+  const out: Partial<Requirements> = { stay: "long" };
   for (const [field, key] of Object.entries(answers) as [ClarifyField, string][]) {
     Object.assign(out, CHOICES[field]?.find((c) => c.key === key)?.filters ?? {});
   }
@@ -61,7 +57,7 @@ const focusComposer = () => document.querySelector<HTMLTextAreaElement>("textare
 
 /**
  * Several questions in one card, shaped like Claude Code's question stepper:
- * a tab strip (← ☐ Stay ☐ Home ☐ Furnishing ☐ Purpose ✔ Submit →), the
+ * a tab strip (← ☐ Home ☐ Furnishing ☐ Purpose ✔ Submit →), the
  * active question in bold with a start-side rule, numbered options with a
  * line each (the usual one first, "(Recommended)"), and a last "Type
  * something…" that hands over to the composer — what is typed there goes out
@@ -99,7 +95,7 @@ export function ClarifyCard({
     ((k?.options as Record<string, Record<string, { label: string; hint: string }>> | undefined)?.[f]?.[key]) ?? { label: key, hint: "" };
 
   const choices = (f: ClarifyField): Choice[] => {
-    const rec = recommended(f, answers);
+    const rec = recommended(f);
     const list = CHOICES[f];
     return rec ? [...list.filter((c) => c.key === rec), ...list.filter((c) => c.key !== rec)] : list;
   };
@@ -227,7 +223,7 @@ export function ClarifyCard({
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold text-foreground">
                         {o.label}
-                        {i === 0 && recommended(field, answers) === c.key && <span className="ms-1.5 font-normal text-muted-foreground">{k?.recommended ?? "(Recommended)"}</span>}
+                        {i === 0 && recommended(field) === c.key && <span className="ms-1.5 font-normal text-muted-foreground">{k?.recommended ?? "(Recommended)"}</span>}
                       </span>
                       {o.hint && <span className="block text-xs text-muted-foreground">{o.hint}</span>}
                     </span>

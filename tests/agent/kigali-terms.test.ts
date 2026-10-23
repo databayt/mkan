@@ -238,7 +238,8 @@ describe('the clarify card', () => {
   const read = (text: string) => inferStay(mergeRequirements(EMPTY_REQUIREMENTS, parseRequirements(text)));
 
   it('asks a vague first message what is missing, most result-changing first', () => {
-    expect(clarifyFields(read('I need a place'), { first: true, tapped: false })).toEqual(['stay', 'homeType', 'furnished', 'purpose']);
+    // Monthly rentals only: the stay is never asked.
+    expect(clarifyFields(read('I need a place'), { first: true, tapped: false })).toEqual(['homeType', 'furnished', 'purpose']);
     // A self compound says the kind of home and the stay (monthly): the rest is asked.
     expect(clarifyFields(read('I need a self compound'), { first: true, tapped: false })).toEqual(['furnished', 'purpose']);
     // Fewer than two missing: search now.

@@ -312,6 +312,8 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false, 
           : a?.demand?.noneKept ?? "Nothing on Mkan fits yet. I'll keep this search open for two weeks: new homes come in every day and will appear here.";
       }
       if (m.kind === "none") return (m.stay === "long" ? a?.reply?.noneLong : a?.reply?.none) ?? "";
+      if (m.kind === "monthlyOnly")
+        return a?.reply?.monthlyOnly ?? "Mkan finds homes for monthly rent in Kigali, so I can't help with a stay of a few nights yet. Want to see monthly homes for the same search?";
       return a?.reply?.error ?? "";
     },
     [a, anyAsked, relaxedLine],
@@ -329,7 +331,7 @@ export function useAgentTask(initialTask: AgentTaskView | null, { lazy = false, 
 
   const lastAgent = [...(task?.messages ?? [])].reverse().find((m) => m.role === "agent");
   const askingStay = !running && lastAgent?.role === "agent" && lastAgent.kind === "ask" && lastAgent.field === "stay";
-  const examples = [a?.examples?.long, a?.examples?.short, a?.examples?.studio].filter((x): x is string => !!x);
+  const examples = [a?.examples?.long, a?.examples?.room, a?.examples?.studio].filter((x): x is string => !!x);
 
   return { task, loaded, running, waiting, pending, notice, send, refresh, reset, open, opening, regenerate, reply, chips, askingStay, examples, money };
 }

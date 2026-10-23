@@ -208,7 +208,11 @@ describe("fewer questions, no dead ends", () => {
 
   it("infers the stay from the figure or the kind of home", () => {
     expect(read("2 bed in Kimihurura 450k")).toMatchObject({ stay: "long", pricePeriod: "month" });
-    expect(read("something in Kiyovu under 40k")).toMatchObject({ stay: "short", pricePeriod: "night" });
+    // Monthly rentals only: a small bare figure is a month's rent (a Kigali room), not a night.
+    expect(read("something in Kiyovu under 40k")).toMatchObject({ stay: "long", pricePeriod: "month" });
+    expect(read("a room in Kimironko, 120k")).toMatchObject({ stay: "long", pricePeriod: "month" });
+    // Only words that name nights make a short stay.
+    expect(read("3 nights in Kiyovu").stay).toBe("short");
     expect(read("unfurnished 3 bed house").stay).toBe("long");
     expect(read("2 bed in Remera").stay).toBeNull();
   });

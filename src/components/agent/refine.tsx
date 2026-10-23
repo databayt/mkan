@@ -114,3 +114,22 @@ export function Retry({ onRetry, disabled, compact = false }: { onRetry: () => v
     </button>
   );
 }
+
+/** Under the monthly-only answer: the same search as monthly rent, in one tap. */
+export function ShowMonthly({ onPick, disabled, compact = false }: { onPick: Pick; disabled?: boolean; compact?: boolean }) {
+  const dict = useDictionary();
+  const label = dict?.agent?.reply?.showMonthly ?? "Show monthly homes";
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onPick(label, { stay: "long" }, ["nights", "guests"])}
+      className={cn(
+        "rounded-full bg-foreground px-3 font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50",
+        compact ? "mt-3 py-1 text-xs" : "mt-4 py-1.5 text-sm",
+      )}
+    >
+      {label}
+    </button>
+  );
+}

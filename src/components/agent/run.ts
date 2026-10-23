@@ -2,9 +2,10 @@ import "server-only";
 
 /**
  * One agent turn: read the tenant's message, then search → group → filter →
- * (widen) → rank → shortlist. Nothing is asked before the first homes: a
- * search without a stay type runs as monthly rent and offers the stay
- * question under the cards. Every step writes
+ * (widen) → rank → shortlist. Nothing is asked before the first homes: the
+ * agent covers monthly rentals only, so a search without a stay type runs as
+ * monthly rent and offers a budget under the cards; a few nights get one
+ * honest line instead of a search. Every step writes
  * an AgentEvent before and after it runs, so the panel shows exactly what the
  * system is doing — a step with no row did not happen.
  *
@@ -342,6 +343,14 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
       return;
     }
 
+    // Monthly rentals only (2026-10-24): no nightly home is offered, so a few nights get one honest
+    // line and a one-tap "show monthly homes" — no search, no demand, no broker asked.
+    if (requirements.stay === "short") {
+      await understood;
+      await firstReply({ role: "agent", kind: "monthlyOnly", at: now() }, { status: "DONE", requirements: json(requirements) });
+      return;
+    }
+
     // A vague first message ("I need a house"): ask what is missing in one card before searching.
     const clarify = clarifyFields(requirements, { first: userMessages.length === 1, tapped });
     if (clarify) {
@@ -433,13 +442,13 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     // Claude writes the words when it can (language allowed, credits left); the cards never wait for it.
     const writeLang = (reading?.lang ?? lang) as WriterFacts["lang"];
     const willWrite = await canWrite(writeLang);
-    const refine = assumed ? ("stay" as const) : !requirements.maxPrice && !requirements.cheap ? ("maxPrice" as const) : undefined;
+    // The budget, when the search ran without one; picking it also settles the stay as months.
+    const refine = !requirements.maxPrice && !requirements.cheap ? ("maxPrice" as const) : undefined;
     const answer: Extract<AgentMessage, { kind: "shortlist" }> = {
       role: "agent",
       kind: "shortlist",
       count: shortlist.length,
       ...(relaxed.length ? { relaxed } : {}),
-      // One follow-up at a time: months-or-nights first, then a ceiling.
       ...(refine ? { refine } : {}),
       ...(willWrite ? { pendingText: true } : {}),
       at: now(),

@@ -5357,7 +5357,7 @@
     "agent": "Umukozi wa Mkan",
     "examples": {
       "long": "Inzu ifite ibikoresho y'ibyumba 2 i Kicukiro, kugeza 400k ku kwezi",
-      "short": "Amajoro 3 i Gasabo ku bantu 2, munsi ya 60k ku ijoro",
+      "room": "Icyumba i Kimironko ku munyeshuri, kugeza 150k ku kwezi",
       "studio": "Studio hafi ya Nyarugenge, kugeza 250k ku kwezi"
     },
     "ask": {
@@ -5371,6 +5371,8 @@
       "none": "Nta nzu yatangajwe ihuye n'ibyo byose kugeza ubu. Gerageza ingengo y'imari iri hejuru, akarere kandi, cyangwa ibyumba bike.",
       "error": "Habaye ikibazo ku ruhande rwacu. Ishakisha ryawe ryabitswe, ongera ugerageze.",
       "retry": "Ongera ugerageze",
+      "monthlyOnly": "Mkan ishakisha amazu akodeshwa ku kwezi i Kigali, bityo ntirabasha gufasha ku icumbi ry'iminsi mike. Ese nkwereke amazu y'ukwezi kuri iri shakisha?",
+      "showMonthly": "Erekana amazu y'ukwezi",
       "busy": "Ndacyakora ku butumwa bwawe buheruka.",
       "rate": "Wohereje ubutumwa bwinshi. Tegereza iminota mike hanyuma wongere ugerageze.",
       "working": "Ndimo kubikora…",
@@ -5778,7 +5780,7 @@
       "home": "Back to Mkan",
       "newChat": "New chat",
       "guided": "Guided search",
-      "guidedHint": "Pick stay, area, home and budget",
+      "guidedHint": "Hitamo agace, inzu n'ingengo y'imari",
       "more": "Guided search",
       "copy": "Copy",
       "copied": "Copied",
@@ -5793,9 +5795,9 @@
           "title": "Furnished 2-bedroom",
           "rest": "in Kicukiro, up to 400k a month"
         },
-        "short": {
-          "title": "3 nights in Gasabo",
-          "rest": "for 2 people, under 60k a night"
+        "room": {
+          "title": "Icyumba cy'umunyeshuri",
+          "rest": "i Kimironko, kugeza 150k ku kwezi"
         },
         "studio": {
           "title": "A studio",

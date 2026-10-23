@@ -85,10 +85,19 @@ describe('homes before questions', () => {
       .map((c) => (c as unknown as [{ data: { messages?: { kind?: string; refine?: string }[] } }])[0].data.messages?.at(-1))
       .filter(Boolean);
 
-  it('searches monthly rent when no stay type was given, and asks it under the cards', async () => {
+  it('searches monthly rent when no stay type was given, and offers a budget under the cards', async () => {
     await turnWith({ role: 'user', text: '2 bedroom in Kicukiro' });
     expect(search.mock.calls[0]![0]).toMatchObject({ stay: 'long', bedrooms: 2, district: 'KICUKIRO' });
-    expect(replies()).toEqual([expect.objectContaining({ kind: 'shortlist', refine: 'stay' })]);
+    expect(replies()).toEqual([expect.objectContaining({ kind: 'shortlist', refine: 'maxPrice' })]);
+    // Not yet engaged: no broker is asked until the tenant picks a budget or says monthly.
+    const { requestConfirmations } = await import('@/components/agent/broker');
+    expect(requestConfirmations).not.toHaveBeenCalled();
+  });
+
+  it('answers a few nights with "monthly only": no search, no broker', async () => {
+    await turnWith({ role: 'user', text: '3 nights in Kiyovu for 2 people' });
+    expect(search).not.toHaveBeenCalled();
+    expect(replies()).toEqual([expect.objectContaining({ kind: 'monthlyOnly' })]);
     const { requestConfirmations } = await import('@/components/agent/broker');
     expect(requestConfirmations).not.toHaveBeenCalled();
   });

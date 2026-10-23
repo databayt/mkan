@@ -395,23 +395,19 @@ export function clarifyFields(r: Requirements, { first, tapped }: { first: boole
   return missing.length >= 2 ? missing : null;
 }
 
-/** Below this a bare figure is a nightly price, at or above it a monthly rent. */
-const NIGHTLY_MAX = 100_000;
-const MONTHLY_MIN = 200_000;
-
 /**
- * Settle the stay type from what the tenant already said, so they are not asked
- * a question their message answers: a figure of 450k is a month's rent, 40k is
- * a night; guests or a night count mean a short stay; an unfurnished home, a
- * self compound, a room, a family home or broker terms (commission, water in
- * the rent) mean a long-term rental.
+ * Settle the stay type from what the tenant already said. The agent covers
+ * monthly rentals only (2026-10-24), so only words that name nights — a night
+ * count or a nightly price — make a short stay (answered with "monthly only");
+ * any bare figure is a month's rent (a room in Kigali runs 50–150k a month);
+ * an unfurnished home, a self compound, a room, a family home or broker terms
+ * (commission, water in the rent) mean a long-term rental too.
  */
 export function inferStay(r: Requirements): Requirements {
   if (r.stay) return r;
   let stay: Requirements["stay"] = null;
-  if (r.nights || r.guests) stay = "short";
-  else if (r.maxPrice && r.maxPrice <= NIGHTLY_MAX) stay = "short";
-  else if (r.maxPrice && r.maxPrice >= MONTHLY_MIN) stay = "long";
+  if (r.nights || r.pricePeriod === "night") stay = "short";
+  else if (r.maxPrice) stay = "long";
   else if (
     r.furnished === false ||
     r.homeType === "house" ||

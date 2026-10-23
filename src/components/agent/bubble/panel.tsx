@@ -14,7 +14,7 @@ import { AskCard } from "../ask-card";
 import { ClarifyCard } from "../clarify-card";
 import { Composer } from "../composer";
 import { ChatHeader, headerButton, MenuGlyph } from "../header";
-import { Refine, Retry } from "../refine";
+import { Refine, Retry, ShowMonthly } from "../refine";
 import { fill } from "../format";
 import { Steps } from "../steps";
 import { Suggestions } from "../suggestions";
@@ -236,6 +236,9 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
                     />
                   )}
                   {m.kind === "error" && !running && <Retry onRetry={() => void regenerate()} disabled={pending} compact />}
+                  {m.kind === "monthlyOnly" && !running && (
+                    <ShowMonthly onPick={(text, filters, clear) => void send(text, false, filters, clear)} disabled={pending} compact />
+                  )}
                 </AgentTurn>
               );
             })}

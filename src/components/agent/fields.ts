@@ -44,7 +44,8 @@ export const PURPOSES = ["family", "study", "business"] as const;
 export type Purpose = (typeof PURPOSES)[number];
 
 /** What the clarify card can ask in one go, most result-changing first. */
-export const CLARIFY_FIELDS = ["stay", "homeType", "furnished", "purpose"] as const;
+// No "stay": the agent covers monthly rentals only (2026-10-24).
+export const CLARIFY_FIELDS = ["homeType", "furnished", "purpose"] as const;
 export type ClarifyField = (typeof CLARIFY_FIELDS)[number];
 
 /**

@@ -36,7 +36,8 @@ const HOME_ROWS: { key: string; options: Toggle[] }[] = [
 const CHEAP = t("cheap", "cheap", true);
 const ALL_TOGGLES = [...STAY, ...HOME_ROWS.flatMap((r) => r.options), ...AREAS, CHEAP];
 
-const STEPS = ["stay", "where", "home", "budget"] as const;
+// Monthly rent only (2026-10-24): no "how long" step; every pick searches monthly.
+const STEPS = ["where", "home", "budget"] as const;
 type Step = (typeof STEPS)[number];
 
 const chip = (on: boolean) =>
@@ -64,8 +65,9 @@ export function usePicksLabel() {
 }
 
 /**
- * The agent's opening: four short questions — how long, where, what kind of
- * home, what budget — answered with taps. It never blocks the composer below
+ * The agent's opening: three short questions — where, what kind of home, what
+ * budget — answered with taps. The agent covers monthly rentals only, so any
+ * pick sets the stay to months. It never blocks the composer below
  * it: typing and sending at any step searches with the text plus whatever was
  * picked so far. Each tap sets one requirement field exactly (no parsing).
  */
@@ -88,7 +90,7 @@ export function Wizard({
   const rows = w?.rows as Record<string, string> | undefined;
   const { locale } = useLocale();
   const [index, setIndex] = useState(0);
-  const step: Step = STEPS[index] ?? "stay";
+  const step: Step = STEPS[index] ?? "where";
   const last = index === STEPS.length - 1;
   const next = () => setIndex((i) => i + 1);
 
@@ -97,6 +99,7 @@ export function Wizard({
     onChange((prev) => {
       const merged = { ...prev, ...patchOf(prev) };
       for (const k of Object.keys(merged) as (keyof Picks)[]) if (merged[k] == null) delete merged[k];
+      if (Object.keys(merged).length > 0) merged.stay = "long";
       return merged;
     });
   const toggle = (o: Toggle) =>
@@ -137,10 +140,7 @@ export function Wizard({
   const hoods = picks.district ? NEIGHBOURHOODS.filter((n) => n.district === picks.district) : NEIGHBOURHOODS.filter((n) => POPULAR.includes(n.name));
 
   let body: React.ReactNode;
-  if (step === "stay") {
-    // A single choice: a tap answers and moves on.
-    body = row(null, STAY.map((o) => option(o, () => setIndex(1))));
-  } else if (step === "where") {
+  if (step === "where") {
     body = (
       <>
         {row(
@@ -250,25 +250,23 @@ export function Wizard({
 
       <div className="mt-4 flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">{w?.orType ?? "Or just type what you need below."}</p>
-        {step !== "stay" && (
-          <div className="flex shrink-0 items-center gap-2">
-            {!last && (
-              <button type="button" onClick={next} disabled={disabled} className="rounded-full border px-4 py-1.5 text-sm font-medium hover:bg-muted">
-                {w?.next ?? "Next"}
-              </button>
-            )}
-            {/* Enough said at any step: search now, skip the rest. */}
-            <button
-              type="button"
-              onClick={onFinish}
-              disabled={disabled}
-              className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background"
-            >
-              <Search className="size-3.5" aria-hidden />
-              {w?.finish ?? "Show homes"}
+        <div className="flex shrink-0 items-center gap-2">
+          {!last && (
+            <button type="button" onClick={next} disabled={disabled} className="rounded-full border px-4 py-1.5 text-sm font-medium hover:bg-muted">
+              {w?.next ?? "Next"}
             </button>
-          </div>
-        )}
+          )}
+          {/* Enough said at any step: search now, skip the rest. */}
+          <button
+            type="button"
+            onClick={onFinish}
+            disabled={disabled}
+            className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background"
+          >
+            <Search className="size-3.5" aria-hidden />
+            {w?.finish ?? "Show homes"}
+          </button>
+        </div>
       </div>
     </section>
   );

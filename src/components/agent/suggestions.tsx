@@ -4,7 +4,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { cn } from "@/lib/utils";
 
-const KEYS = ["long", "short", "studio"] as const;
+const KEYS = ["long", "room", "studio"] as const;
 
 /**
  * The starter cards above the empty composer, as in ChatGPT on iOS: a row
@@ -29,7 +29,7 @@ export function Suggestions({ onPick, onGuided, disabled, compact = false }: { o
             <SlidersHorizontal className="size-3.5" aria-hidden />
             {c?.guided ?? "Guided search"}
           </span>
-          <span className={rest}>{c?.guidedHint ?? "Pick stay, area, home and budget"}</span>
+          <span className={rest}>{c?.guidedHint ?? "Pick area, home and budget"}</span>
         </button>
       </li>
       {KEYS.map((k) => {

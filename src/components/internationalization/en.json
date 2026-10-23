@@ -5357,7 +5357,7 @@
     "agent": "Mkan agent",
     "examples": {
       "long": "Furnished 2-bedroom in Kicukiro, up to 400k a month",
-      "short": "3 nights in Gasabo for 2 people, under 60k a night",
+      "room": "A room in Kimironko for a student, up to 150k a month",
       "studio": "Studio near Nyarugenge, up to 250k monthly"
     },
     "ask": {
@@ -5371,6 +5371,8 @@
       "none": "No published home matches all of that yet. Try a higher budget, another district, or fewer bedrooms.",
       "error": "Something went wrong on our side. Your search is saved, so please try again.",
       "retry": "Try again",
+      "monthlyOnly": "Mkan finds homes for monthly rent in Kigali, so I can't help with a stay of a few nights yet. Want to see monthly homes for the same search?",
+      "showMonthly": "Show monthly homes",
       "busy": "Still working on your last message.",
       "rate": "You have sent a lot of messages. Please wait a few minutes and try again.",
       "working": "Working on it…",
@@ -5778,7 +5780,7 @@
       "home": "Back to Mkan",
       "newChat": "New chat",
       "guided": "Guided search",
-      "guidedHint": "Pick stay, area, home and budget",
+      "guidedHint": "Pick area, home and budget",
       "more": "Guided search",
       "copy": "Copy",
       "copied": "Copied",
@@ -5793,9 +5795,9 @@
           "title": "Furnished 2-bedroom",
           "rest": "in Kicukiro, up to 400k a month"
         },
-        "short": {
-          "title": "3 nights in Gasabo",
-          "rest": "for 2 people, under 60k a night"
+        "room": {
+          "title": "A room for a student",
+          "rest": "in Kimironko, up to 150k a month"
         },
         "studio": {
           "title": "A studio",

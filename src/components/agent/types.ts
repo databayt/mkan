@@ -65,6 +65,8 @@ export type AgentMessage =
   | { role: "agent"; kind: "answer"; topic: "question" | "other"; text?: string; at: string }
   /** `demand`: the search was kept as a TenantRequest; `asked`: brokers messaged for it now. */
   | { role: "agent"; kind: "none"; stay?: "short" | "long"; demand?: boolean; asked?: number; at: string }
+  /** The tenant asked for a few nights: the agent covers monthly rentals only, so no search ran (2026-10-24). */
+  | { role: "agent"; kind: "monthlyOnly"; at: string }
   | { role: "agent"; kind: "error"; at: string };
 
 export interface ShortlistItem {
