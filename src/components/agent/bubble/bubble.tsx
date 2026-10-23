@@ -99,7 +99,7 @@ export function AgentBubble() {
         )}
       >
         {/* Through the optimiser: a 64/128 px WebP the edge keeps for a month, not the 512 px PNG on every page view. */}
-        <Image src="/illustrations/robot-fill.png" alt="" width={56} height={56} sizes="56px" className="size-full object-contain dark:invert" />
+        <Image src="/illustrations/robot-fill.png" alt="" width={56} height={56} className="size-full object-contain dark:invert" />
         {waiting && !open && (
           <span className="absolute end-0.5 top-0.5 size-3.5 rounded-full border-2 border-background bg-amber-500" aria-hidden />
         )}
