@@ -21,7 +21,8 @@
 - **No re-ping yet.** A broker who stays silent for 24 h hands the home to the next broker linked to
   it (`ListingBroker`, filled by the mirror when two brokers post one house). There is no 6-h nudge:
   a manual card cannot tell whether a person tapped it, and Evolution is not live.
-- **Search caps at 400 candidates** ordered by rating; the panel reports the capped number.
+- **Search caps at 400 candidates** ordered by rating; the panel reports the capped number. (Since Airbnb homes left the
+  agent, only ~277 homes are agent-visible, so the cap is never reached.)
 - Kinyarwanda strings are machine-written — a native speaker should review `agent.*` in rw.json.
 
 ## Bubble + assistant-style /find (2026-10-17)
@@ -102,3 +103,39 @@
   samples; the e2e suite needs a test branch (the repo `.env` is production); "new since" only counts homes created
   after the last search (a price drop on an old home is not "new").
 - 2026-10-21: the composer is read-only until hydration — a message typed on a slow phone before the page was interactive used to vanish (Enter went nowhere, hydration cleared the box).
+
+## Fast and stall-free (2026-10-24)
+
+Prod said otherwise than "2–3 s": 81 turns over 7 days ran p50 3.4 s, p90 14.4 s, 27 over 6 s, tap turns
+sat 23–25 s before their first step, and one hung 27 s and errored. `pnpm agent:latency` splits every turn;
+Workers Logs (the observability telemetry API) showed why:
+
+- **The one half-vCPU container ran out of CPU.** AhrefsBot sent 251 image resizes in 40 s (10-21) and walked
+  `/ar|/rw/listings/*`; a /listings grid behind the bubble held 64 resizes at p50 51 s (10-22). The chat's sends
+  and polls queued 12–54 s behind them. → WebP only (AVIF encodes several times slower), card images sized
+  50vw for the 2-up phone grid, SEO crawlers disallowed in robots.txt and answered 403 by the Worker, and the
+  bubble no longer sends the site to /listings.
+- **Every send re-rendered the page before the turn started.** `requireProfile()` set the cookie on each
+  write, which makes Next re-render the current page into the action's response, and `after()` waited for
+  it. → The cookie is set only when new, rotated or a month old; `startTurn` begins the turn at once, and the
+  send waits ≤ 6 s for its first reply.
+- **The database was ~96 ms away per query** (container in London, Neon in Virginia), ~20 queries a turn. →
+  `constraints.regions: ["ENAM"]` (now Columbus, `cmh02`): 17–24 ms. Kigali requests travel further, and still
+  come back faster (liveness 0.65–0.72 s, was 0.71–0.91 s).
+- **Nothing bounded a stalled query.** The pool is now bounded (connect 5 s, query 15 s), and a turn with no
+  reply after 15 s answers with the error and a Try again chip. Correction to the commit `eaf2ec2` message:
+  production already ran `PrismaPg` over TCP (its env never set `DATABASE_URL_ADAPTER`; the WebSocket driver is
+  `.env`'s local setting) — the fix was the pool's missing timeouts, not the driver.
+
+Numbers on prod from Kigali at 393 px after both deploys: typed first message → cards 1.55 s (server 0.7 s),
+a tap → cards 0.83 s (server 0.3 s), both inside the send's own response.
+
+Monthly only (Abdout, 2026-10-24): a few nights get one honest line and "Show monthly homes"; the wizard lost its
+months/nights step; a stay-less search offers the budget under the cards (a budget tap settles the stay, so
+brokers are still asked only once the tenant engages). New `agent.reply.*` / `agent.examples.room` rw strings are
+machine-written like the rest.
+
+Not done (measure first): the in-memory pool of agent homes and Prisma `relationJoins` (the search step is
+~0.1–0.3 s now); long-poll/SSE (the send carries the first reply); lazy-loading the conversation-only
+components on /find; a bigger container or edge image resizing (only if Workers Logs still show slow
+`/_next/image` misses).
