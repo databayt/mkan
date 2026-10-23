@@ -40,8 +40,10 @@ const VARIANTS: Record<
   PropertyImageVariant,
   { sizes: string; quality: number }
 > = {
+  // Every card grid is 2-up below lg (grid-cols-2), 3–4 up above it. A 100vw
+  // phone size asked the optimiser for 1200 px images twice the card's width.
   card: {
-    sizes: "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw",
+    sizes: "(max-width: 1024px) 50vw, 25vw",
     quality: 65,
   },
   hero: { sizes: "(max-width: 1024px) 100vw, 50vw", quality: 75 },

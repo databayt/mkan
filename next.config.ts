@@ -141,10 +141,14 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
     ],
-    // Low-bandwidth (Port Sudan mobile): AVIF first (~20-30% smaller than WebP),
-    // trim device sizes to what phones/laptops actually need (drop 2048/3840,
-    // add 360 for small phones), and cache optimized variants for a month.
-    formats: ["image/avif", "image/webp"],
+    // WebP only. AVIF is ~20-30% smaller but several times slower to encode,
+    // and the encoding runs on the one half-vCPU container that also serves
+    // every page and the /find agent: crawler image sweeps (AhrefsBot, 251
+    // resizes in 40 s) and /listings grids held each resize 8-63 s and froze
+    // the chat behind them (2026-10-21/22). Device sizes are trimmed to what
+    // phones/laptops need (no 2048/3840, 360 for small phones); variants are
+    // cached for a month here and at the edge (cf/worker.js).
+    formats: ["image/webp"],
     deviceSizes: [360, 640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
     // Allow per-image quality below the 75 default — card grids ship q65,

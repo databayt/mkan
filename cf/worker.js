@@ -42,19 +42,18 @@ const CACHE_HOST = "https://mkan.sd"
 
 // The image optimiser picks the format from the client's Accept header, and
 // Workers' Cache API ignores Vary at match time, so the format is part of the
-// key — or a browser without avif would be handed another browser's avif.
-// Next's rule (getSupportedMimeType over images.formats [avif, webp]): avif
-// named → avif, else webp named → webp, else the original (a bare `image/*` is
-// not enough). That is exact while each is named plainly, as every browser
-// does; any other mention — q-weighted, parameterised, another case, a longer
-// type — returns null and goes to the origin uncached rather than guessed at.
+// key — or a browser without webp would be handed another browser's webp.
+// Next's rule (getSupportedMimeType over images.formats [webp] — AVIF was
+// dropped, next.config.ts): webp named → webp, else the original (a bare
+// `image/*` is not enough). That is exact while it is named plainly, as every
+// browser does; any other mention — q-weighted, parameterised, another case,
+// a longer type — returns null and goes to the origin uncached rather than
+// guessed at. Browsers that also name avif now share the webp entries.
 function imageFormat(accept) {
-  const tokens = accept.split(",").map((t) => t.trim())
-  const avif = tokens.includes("image/avif")
-  const webp = tokens.includes("image/webp")
-  const mentions = accept.match(/image\/(?:avif|webp)/gi)?.length ?? 0
-  if (mentions !== Number(avif) + Number(webp)) return null
-  return avif ? "avif" : webp ? "webp" : "orig"
+  const webp = accept.split(",").map((t) => t.trim()).includes("image/webp")
+  const mentions = accept.match(/image\/webp/gi)?.length ?? 0
+  if (mentions !== Number(webp)) return null
+  return webp ? "webp" : "orig"
 }
 
 function edgeCacheKey(url, request) {
