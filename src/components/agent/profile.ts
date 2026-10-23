@@ -19,12 +19,30 @@ import { coerceMemory, mergeMemory } from "./memory";
  *
  * Reads (a page render, the poll) never write: they may open the account's
  * profile and a not-yet-merged anonymous one. Writes (server actions, the chat
- * list) adopt old chats, merge, create, rotate and roll the cookie for a year —
- * cookies can only be set there.
+ * list) adopt old chats, merge, create and rotate — cookies can only be set
+ * there — and roll the cookie for a year only when it is new, rotated or a
+ * month old. A Server Action that sets a cookie makes Next re-render the whole
+ * current page into its response; every send used to (2026-10-24).
  */
 
 export const AGENT_COOKIE = "mkan_agent";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+/** A cookie this old is rolled for another year on the next write. */
+const ROLL_AFTER_DAYS = 30;
+
+const dayNumber = (ms = Date.now()) => Math.floor(ms / 86_400_000);
+
+/**
+ * The cookie is `<uuid>.<issue day, base 36>`; only the uuid is the key (and
+ * hashed). A bare uuid is a cookie from before the stamp — rolled on its next write.
+ */
+function readCookie(raw: string | undefined): { key: string; issued: number | null } | null {
+  if (!raw) return null;
+  const [key, stamp] = raw.split(".");
+  if (!key) return null;
+  const issued = stamp ? parseInt(stamp, 36) : NaN;
+  return { key, issued: Number.isFinite(issued) ? issued : null };
+}
 
 const SELECT = { id: true, userId: true, memory: true, lastSearchAt: true } satisfies Prisma.AgentProfileSelect;
 export type AgentProfileRow = Prisma.AgentProfileGetPayload<{ select: typeof SELECT }>;
@@ -66,7 +84,8 @@ async function absorb(into: AgentProfileRow, from: AgentProfileRow): Promise<Age
 
 export async function resolveViewer({ write }: { write: boolean }): Promise<Viewer> {
   const jar = await cookies();
-  let key = jar.get(AGENT_COOKIE)?.value ?? null;
+  const cookie = readCookie(jar.get(AGENT_COOKIE)?.value);
+  let key = cookie?.key ?? null;
   const userId = (await auth().catch(() => null))?.user?.id ?? null;
   let byKey = key ? await db.agentProfile.findUnique({ where: { keyHash: hashKey(key) }, select: SELECT }) : null;
 
@@ -104,7 +123,16 @@ export async function resolveViewer({ write }: { write: boolean }): Promise<View
     if (!userId) {
       profile ??= await db.agentProfile.upsert({ where: { keyHash: hashKey(key) }, create: { keyHash: hashKey(key) }, update: {}, select: SELECT });
     }
-    jar.set(AGENT_COOKIE, key, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: COOKIE_MAX_AGE, path: "/" });
+    const stale = cookie?.issued == null || dayNumber() - cookie.issued >= ROLL_AFTER_DAYS;
+    if (key !== cookie?.key || stale) {
+      jar.set(AGENT_COOKIE, `${key}.${dayNumber().toString(36)}`, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: COOKIE_MAX_AGE,
+        path: "/",
+      });
+    }
   }
   if (profile && !ids.includes(profile.id)) ids.unshift(profile.id);
   return { profile, ids, legacyKey: key && !byKey?.userId ? key : null };

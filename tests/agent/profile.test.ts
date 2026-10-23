@@ -9,7 +9,10 @@ import { createHash } from 'node:crypto';
 type Profile = { id: string; keyHash: string | null; userId: string | null; memory: unknown; lastSearchAt: Date | null };
 type Task = { id: string; profileId: string | null; sessionKey: string | null };
 
-const state = { cookie: null as string | null, userId: null as string | null, profiles: [] as Profile[], tasks: [] as Task[], seq: 0 };
+const state = { cookie: null as string | null, sets: 0, userId: null as string | null, profiles: [] as Profile[], tasks: [] as Task[], seq: 0 };
+const today = Math.floor(Date.now() / 86_400_000);
+/** The cookie's key: `<uuid>.<issue day>` → the uuid. */
+const keyOf = (cookie: string) => cookie.split('.')[0]!;
 const hash = (k: string) => createHash('sha256').update(k).digest('hex');
 const pick = (p: Profile) => ({ id: p.id, userId: p.userId, memory: p.memory, lastSearchAt: p.lastSearchAt });
 const findBy = (where: { keyHash?: string; userId?: string }) =>
@@ -20,6 +23,7 @@ vi.mock('next/headers', () => ({
     get: () => (state.cookie ? { value: state.cookie } : undefined),
     set: (_name: string, value: string) => {
       state.cookie = value;
+      state.sets++;
     },
   }),
 }));
@@ -67,7 +71,7 @@ vi.mock('@/lib/db', () => ({
 const { resolveViewer, ownedBy } = await import('@/components/agent/profile');
 
 beforeEach(() => {
-  Object.assign(state, { cookie: null, userId: null, profiles: [], tasks: [], seq: 0 });
+  Object.assign(state, { cookie: null, sets: 0, userId: null, profiles: [], tasks: [], seq: 0 });
 });
 
 describe('agent profiles', () => {
@@ -81,7 +85,7 @@ describe('agent profiles', () => {
   it('a first send gives the browser a cookie and an anonymous profile, stored only as a hash', async () => {
     const v = await resolveViewer({ write: true });
     expect(state.cookie).toBeTruthy();
-    expect(state.profiles).toEqual([expect.objectContaining({ keyHash: hash(state.cookie!), userId: null })]);
+    expect(state.profiles).toEqual([expect.objectContaining({ keyHash: hash(keyOf(state.cookie!)), userId: null })]);
     expect(v.ids).toEqual([v.profile!.id]);
   });
 
@@ -131,6 +135,34 @@ describe('agent profiles', () => {
     expect(state.cookie).not.toBe('k');
     expect(write.profile!.id).not.toBe('mine');
     expect(write.ids).toEqual([write.profile!.id]);
+  });
+
+  it('a second send leaves the cookie alone, so Next does not re-render the page into the action', async () => {
+    await resolveViewer({ write: true });
+    const first = state.cookie;
+    await resolveViewer({ write: true });
+    expect(state.sets).toBe(1);
+    expect(state.cookie).toBe(first);
+  });
+
+  it('a cookie a month old is rolled for another year, keeping its key', async () => {
+    state.profiles = [{ id: 'p', keyHash: hash('k'), userId: null, memory: null, lastSearchAt: null }];
+    state.cookie = `k.${(today - 31).toString(36)}`;
+    const v = await resolveViewer({ write: true });
+    expect(state.sets).toBe(1);
+    expect(state.cookie).toBe(`k.${today.toString(36)}`);
+    expect(v.profile!.id).toBe('p');
+  });
+
+  it('a cookie from before the stamp is stamped once, keeping its key and its chats', async () => {
+    state.profiles = [{ id: 'p', keyHash: hash('k'), userId: null, memory: null, lastSearchAt: null }];
+    state.cookie = 'k';
+    const v = await resolveViewer({ write: true });
+    expect(keyOf(state.cookie!)).toBe('k');
+    expect(v.profile!.id).toBe('p');
+    expect(v.legacyKey).toBe('k');
+    await resolveViewer({ write: true });
+    expect(state.sets).toBe(1);
   });
 
   it('ownership: a viewer with nothing owns nothing', () => {
