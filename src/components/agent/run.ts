@@ -61,6 +61,20 @@ const RULES_FILL_BESIDE_CLAUDE: readonly (keyof Requirements)[] = [
 ];
 /** Rows loaded once for the zero-match widening; Kigali holds ~4.7k homes in all. */
 const WIDE_POOL = 2_000;
+/**
+ * A turn with no reply by now answers with the error (and the tenant's "Try
+ * again") instead of leaving the chat silent: one sat 27 s on a starved
+ * container and the database before it failed (2026-10-22).
+ */
+const TURN_DEADLINE_MS = 15_000;
+
+/** One turn's write gate: once the deadline has answered, nothing from the turn writes. */
+interface Gate {
+  /** The first reply is being written — the deadline stands down. */
+  claimed: boolean;
+  /** The deadline wrote the error reply — every later write of this turn is dropped. */
+  abandoned: boolean;
+}
 
 async function lastSeq(taskId: string): Promise<number> {
   const last = await db.agentEvent.findFirst({ where: { taskId }, orderBy: { seq: "desc" }, select: { seq: true } });
@@ -77,11 +91,13 @@ class Trace {
   constructor(
     private taskId: string,
     lastSeq: number,
+    private gate?: Gate,
   ) {
     this.seq = lastSeq;
   }
 
   async start(kind: EventKind, payload: Record<string, unknown> = {}): Promise<number> {
+    if (this.gate?.abandoned) return -1;
     this.seq += 1;
     const row = await db.agentEvent.create({
       data: { taskId: this.taskId, seq: this.seq, kind, status: "running", payload: json(payload) },
@@ -91,6 +107,7 @@ class Trace {
   }
 
   async finish(id: number, status: StepStatus, payload: Record<string, unknown> = {}) {
+    if (id < 0 || this.gate?.abandoned) return;
     await db.agentEvent.update({ where: { id }, data: { status, payload: json(payload) } });
   }
 
@@ -100,6 +117,7 @@ class Trace {
 
   /** Several finished steps in one round trip; seqs are taken before the write, in order. */
   async recordMany(rows: [EventKind, StepStatus, Record<string, unknown>][]) {
+    if (this.gate?.abandoned) return;
     const data = rows.map(([kind, status, payload]) => ({ taskId: this.taskId, seq: ++this.seq, kind, status, payload: json(payload) }));
     await db.agentEvent.createMany({ data });
   }
@@ -160,7 +178,42 @@ async function reply(taskId: string, messages: AgentMessage[], msg: AgentMessage
   await db.agentTask.update({ where: { id: taskId }, data: { ...data, messages: json([...messages, msg]) } });
 }
 
-export async function runTurn(taskId: string): Promise<void> {
+/** Append one agent message without reading the task first — the deadline's error, written even if the task never loaded. */
+async function appendReply(taskId: string, msg: AgentMessage, status: "FAILED") {
+  await db.$executeRaw`UPDATE "AgentTask" SET "messages" = "messages" || ${JSON.stringify([msg])}::jsonb, "status" = ${status}::"AgentTaskStatus", "updatedAt" = now() WHERE "id" = ${taskId}`;
+}
+
+/**
+ * Start a turn now — not after the send's response — and say when its first
+ * reply is written. The send action waits on `shown` (a few seconds at most),
+ * so a normal turn's cards come back in the send itself; `done` is everything,
+ * broker asks included, and is handed to `after()` so the request outlives it.
+ */
+export function startTurn(taskId: string): { shown: Promise<void>; done: Promise<void> } {
+  let show!: () => void;
+  const shown = new Promise<void>((resolve) => (show = resolve));
+  const done = runTurn(taskId, () => show()).finally(() => show());
+  return { shown, done };
+}
+
+export async function runTurn(taskId: string, onShown: () => void = () => {}): Promise<void> {
+  const gate: Gate = { claimed: false, abandoned: false };
+  const deadline = setTimeout(() => {
+    if (gate.claimed) return;
+    gate.abandoned = true;
+    console.warn(`[agent] turn ${taskId} had no reply after ${TURN_DEADLINE_MS} ms; answering with the error`);
+    void appendReply(taskId, { role: "agent", kind: "error", at: new Date().toISOString() }, "FAILED")
+      .catch((err) => console.error("[agent] deadline reply not written", err))
+      .finally(onShown);
+  }, TURN_DEADLINE_MS);
+  try {
+    await turn(taskId, gate, onShown);
+  } finally {
+    clearTimeout(deadline);
+  }
+}
+
+async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<void> {
   const task = await db.agentTask.findUnique({
     where: { id: taskId },
     select: {
@@ -176,13 +229,27 @@ export async function runTurn(taskId: string): Promise<void> {
   });
   if (!task) return;
   const messages = (task.messages as unknown as AgentMessage[]) ?? [];
-  const trace = new Trace(task.id, task.events[0]?.seq ?? 0);
+  const trace = new Trace(task.id, task.events[0]?.seq ?? 0, gate);
   const lang = task.locale as Locale;
   const now = () => new Date().toISOString();
   // The server's own clock for this turn (ms from its start), read by `pnpm agent:latency`.
   const t0 = Date.now();
   const ms: Record<string, number> = {};
   const mark = (step: string) => (ms[step] = Date.now() - t0);
+  /** The turn's first reply — unless the deadline has already answered. True when written. */
+  const firstReply = async (msg: AgentMessage, data: Prisma.AgentTaskUpdateInput = {}): Promise<boolean> => {
+    if (gate.abandoned) return false;
+    gate.claimed = true;
+    try {
+      await reply(task.id, messages, msg, data);
+    } catch (err) {
+      // Not written after all: the deadline (or the catch below) still answers.
+      gate.claimed = false;
+      throw err;
+    }
+    onShown();
+    return true;
+  };
 
   try {
     // 1. Understand the request.
@@ -268,9 +335,7 @@ export async function runTurn(taskId: string): Promise<void> {
       const text =
         reading.intent === "question" && reading.question && (await canWrite(writeLang)) ? await writeAnswer(reading.question, writeLang) : null;
       await Promise.all([understood, learn([]), text ? trace.record("reply_written", "done", { answer: true }) : null]);
-      await reply(
-        task.id,
-        messages,
+      await firstReply(
         { role: "agent", kind: "answer", topic: reading.intent === "question" ? "question" : "other", ...(text ? { text } : {}), at: now() },
         { status: "DONE" },
       );
@@ -285,7 +350,7 @@ export async function runTurn(taskId: string): Promise<void> {
         learn([]),
         trace.record("asked", "waiting_person", { fields: clarify.join(", ") }),
       ]);
-      await reply(task.id, messages, { role: "agent", kind: "clarify", fields: clarify, at: now() }, { status: "DONE", requirements: json(requirements) });
+      await firstReply({ role: "agent", kind: "clarify", fields: clarify, at: now() }, { status: "DONE", requirements: json(requirements) });
       return;
     }
 
@@ -347,14 +412,14 @@ export async function runTurn(taskId: string): Promise<void> {
     if (result.ranked.length === 0) {
       // Nothing on Mkan fits: keep the demand and ask the brokers who work the area.
       await Promise.all([trace.record("ranked", "done", { top: 0 }), learn([])]);
+      // Past the deadline the tenant already has the error: no broker is asked on its behalf.
+      if (gate.abandoned) return;
       const demand = await openDemand(task.id, task.profileId, query, lang).catch((err) => {
         console.warn(`[agent] demand not opened: ${(err as Error).message}`);
         return null;
       });
       trace.resync(await lastSeq(task.id));
-      await reply(
-        task.id,
-        messages,
+      await firstReply(
         { role: "agent", kind: "none", stay: query.stay ?? undefined, ...(demand ? { demand: true, asked: demand.asked } : {}), at: now() },
         { shortlist: json([]), status: "DONE" },
       );
@@ -379,12 +444,14 @@ export async function runTurn(taskId: string): Promise<void> {
       ...(willWrite ? { pendingText: true } : {}),
       at: now(),
     };
-    await Promise.all([
+    const [, shownCards] = await Promise.all([
       unconfirmed > 0 ? trace.record("needs_confirmation", "uncertain", { count: unconfirmed }) : null,
-      reply(task.id, messages, answer, { shortlist: json(shortlist) }),
+      firstReply(answer, { shortlist: json(shortlist) }),
       learn(shortlist.map((s) => s.id)),
     ]);
     mark("cards");
+    // Past the deadline the tenant already has the error: no broker is asked, nothing more is written.
+    if (!shownCards) return;
     // The writer and the broker asks run side by side.
     const writing = willWrite
       ? writeReply(writerFacts({ lang: writeLang, requirements, relaxed, shortlist, refine, unplaced: reading?.unplaced })).catch(() => null)
@@ -421,7 +488,13 @@ export async function runTurn(taskId: string): Promise<void> {
     });
   } catch (err) {
     console.error("[agent] turn failed", err);
+    if (gate.abandoned) return;
     await trace.record("failed", "failed", {}).catch(() => {});
-    await reply(task.id, messages, { role: "agent", kind: "error", at: now() }, { status: "FAILED" }).catch(() => {});
+    if (gate.claimed) {
+      // The reply is up; a later step (the writer, a broker ask) failed. Keep what the tenant sees.
+      await db.agentTask.update({ where: { id: task.id }, data: { status: "DONE" } }).catch(() => {});
+    } else {
+      await firstReply({ role: "agent", kind: "error", at: now() }, { status: "FAILED" }).catch(() => {});
+    }
   }
 }

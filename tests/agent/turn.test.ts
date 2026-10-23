@@ -2,7 +2,7 @@
  * The agent's database-shaped behaviour with the database mocked: a zero-match
  * turn loads one pool for every widening, and the broker loop picks who to ask.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Candidate } from '@/components/agent/rank';
 
 const search = vi.fn();
@@ -13,8 +13,10 @@ vi.mock('@/components/agent/search', () => ({
 vi.mock('@/components/agent/llm', () => ({ readRequirementsWithGroq: vi.fn(async () => null) }));
 vi.mock('@/components/agent/broker', () => ({ requestConfirmations: vi.fn(async () => []) }));
 const update = vi.fn(async () => ({}));
+const executeRaw = vi.fn(async () => 1);
 vi.mock('@/lib/db', () => ({
   db: {
+    $executeRaw: (...a: unknown[]) => executeRaw(...(a as [])),
     agentTask: {
       findUnique: vi.fn(async () => ({
         id: 't1',
@@ -97,5 +99,60 @@ describe('homes before questions', () => {
     await turnWith({ role: 'user', text: 'Months', filters: { stay: 'long' } });
     expect(readRequirementsWithGroq).not.toHaveBeenCalled();
     expect(replies()).toEqual([expect.objectContaining({ kind: 'shortlist', refine: 'maxPrice' })]);
+  });
+});
+
+describe('the turn deadline', () => {
+  const tap = async () => {
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.agentTask.findUnique).mockResolvedValueOnce({
+      id: 't1',
+      locale: 'en',
+      messages: [{ role: 'user', text: 'Months', filters: { stay: 'long' }, at: '' }],
+      requirements: null,
+      events: [],
+    } as never);
+  };
+  const replies = () =>
+    update.mock.calls
+      .map((c) => (c as unknown as [{ data: { messages?: { kind?: string }[] } }])[0].data.messages?.at(-1))
+      .filter(Boolean);
+
+  beforeEach(async () => {
+    search.mockReset();
+    update.mockClear();
+    executeRaw.mockClear();
+    const { requestConfirmations } = await import('@/components/agent/broker');
+    vi.mocked(requestConfirmations).mockClear();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('answers with the error when nothing replied in 15 s, and drops the late cards', async () => {
+    vi.useFakeTimers();
+    await tap();
+    let release!: (v: unknown) => void;
+    search.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
+    const { startTurn } = await import('@/components/agent/run');
+    const turn = startTurn('t1');
+    await vi.advanceTimersByTimeAsync(15_000);
+    await turn.shown;
+    // The error went in as an append, without the task's messages in hand.
+    expect(executeRaw).toHaveBeenCalledTimes(1);
+    release({ candidates: [home({ id: 7 })], truncated: false });
+    await turn.done;
+    expect(replies()).toEqual([]);
+    const { requestConfirmations } = await import('@/components/agent/broker');
+    expect(requestConfirmations).not.toHaveBeenCalled();
+  });
+
+  it('says the first reply is shown as soon as the cards are written', async () => {
+    await tap();
+    search.mockResolvedValue({ candidates: [home({ id: 7 })], truncated: false });
+    const { startTurn } = await import('@/components/agent/run');
+    const turn = startTurn('t1');
+    await turn.shown;
+    expect(replies()).toEqual([expect.objectContaining({ kind: 'shortlist' })]);
+    await turn.done;
+    expect(executeRaw).not.toHaveBeenCalled();
   });
 });
