@@ -8,45 +8,42 @@ import ws from "ws";
  * Prisma client factory.
  *
  * Adapter selection is controlled by `DATABASE_URL_ADAPTER`:
- *   - `neon`  → `@neondatabase/serverless` driver over HTTPS + WebSockets.
- *               Works from networks where direct TCP to Neon is blocked and
- *               shaves ~300ms off cold-start.
- *   - default → `@prisma/adapter-pg` (direct TCP). Used for local Postgres,
- *               CI, and any environment where HTTPS is slower than TCP.
+ *   - `pg`    → `@prisma/adapter-pg`, node-postgres over TCP. The Cloudflare
+ *               container sets it (wrangler.jsonc `vars`), like hogwarts' lane:
+ *               one long-lived process keeps warm pooled sockets to Neon's
+ *               `-pooler` host.
+ *   - `neon`  → `@neondatabase/serverless` over WebSockets, for networks where
+ *               direct TCP to Neon is blocked (local dev, Mac scripts).
+ *   - default → `pg`.
  *
- * Production deployments on Vercel should set `DATABASE_URL_ADAPTER=neon`.
+ * The pool is bounded so a stalled connection fails instead of hanging a
+ * request: a /find turn once sat 27 s on the database and then errored
+ * (2026-10-22). The old `connection_limit` / `pool_timeout` URL params belonged
+ * to Prisma's Rust engine and did nothing under a driver adapter.
  */
+const isProduction = process.env.NODE_ENV === "production";
 
-const connectionPoolConfig = {
-  connection_limit: parseInt(process.env.DATABASE_CONNECTION_LIMIT || "10"),
-  pool_timeout: parseInt(process.env.DATABASE_POOL_TIMEOUT || "10"),
+const POOL = {
+  max: Number(process.env.DATABASE_CONNECTION_LIMIT) || 10,
+  // Warm between a turn's queries, its polls and the next message.
+  idleTimeoutMillis: 60_000,
+  // A connection that cannot be opened fails in 5 s, not never.
+  connectionTimeoutMillis: 5_000,
+  keepAlive: true,
+  // PgBouncer (the pooler) refuses a statement_timeout startup option, so the
+  // limit is the client's own. Production only: Mac scripts run long backfills.
+  ...(isProduction ? { query_timeout: 15_000 } : {}),
 };
 
 function getConnectionUrl(): string | undefined {
-  if (process.env.NODE_ENV !== "production") {
-    return process.env.DATABASE_URL;
-  }
-
   const baseUrl = process.env.DATABASE_URL;
-  if (!baseUrl) return undefined;
-
+  if (!baseUrl || !isProduction) return baseUrl;
   try {
     const url = new URL(baseUrl);
-
-    url.searchParams.set("connection_limit", connectionPoolConfig.connection_limit.toString());
-    url.searchParams.set("pool_timeout", connectionPoolConfig.pool_timeout.toString());
-
-    if (process.env.DATABASE_POOLING_MODE) {
-      url.searchParams.set("pgbouncer", process.env.DATABASE_POOLING_MODE);
-    }
-
-    if (!url.searchParams.has("sslmode")) {
-      url.searchParams.set("sslmode", "require");
-    }
-
+    if (!url.searchParams.has("sslmode")) url.searchParams.set("sslmode", "require");
     return url.toString();
   } catch {
-    return process.env.DATABASE_URL;
+    return baseUrl;
   }
 }
 
@@ -55,7 +52,6 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 const createPrismaClient = () => {
-  const isProduction = process.env.NODE_ENV === "production";
   const connectionString = getConnectionUrl();
   const adapterKind = (process.env.DATABASE_URL_ADAPTER ?? "pg").toLowerCase();
 
@@ -66,9 +62,9 @@ const createPrismaClient = () => {
     if (typeof WebSocket === "undefined") {
       neonConfig.webSocketConstructor = ws;
     }
-    adapter = new PrismaNeon({ connectionString });
+    adapter = new PrismaNeon({ connectionString, ...POOL });
   } else {
-    adapter = new PrismaPg({ connectionString });
+    adapter = new PrismaPg({ connectionString, ...POOL });
   }
 
   return new PrismaClient({

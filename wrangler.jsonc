@@ -7,6 +7,12 @@
     "nodejs_compat"
   ],
   "workers_dev": true,
+  // String bindings become the container's env (cf/worker.js envVars) and win
+  // over the baked env.json. The container reaches Neon over TCP (PrismaPg,
+  // src/lib/db.ts) with a bounded pool, not the WebSocket driver.
+  "vars": {
+    "DATABASE_URL_ADAPTER": "pg"
+  },
   "observability": {
     "enabled": true
   },
