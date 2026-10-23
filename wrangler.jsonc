@@ -21,7 +21,14 @@
       "class_name": "MkanContainer",
       "image": "./Dockerfile.cf",
       "max_instances": 1,
-      "instance_type": "standard-1"
+      "instance_type": "standard-1",
+      // Next to the database: Neon is in AWS us-east-1. In London (where the
+      // container landed on its own) every query cost ~96 ms and a /find turn
+      // makes ~20 in a row; a Kigali request gains ~70 ms the other way.
+      // Changing this starts a rollout that restarts the instance (2026-10-24).
+      "constraints": {
+        "regions": ["ENAM"]
+      }
     }
   ],
   "durable_objects": {
