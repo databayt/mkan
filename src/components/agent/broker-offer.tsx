@@ -92,6 +92,7 @@ export function BrokerOffer({ token, state }: { token: string; state: OfferPageS
       </div>
       <label className="block space-y-1.5">
         <span className="text-sm font-medium">{d?.place ?? "Neighbourhood"}</span>
+        {/* i18n-exempt — Kigali place names read the same in every language */}
         <Input name="place" required minLength={2} maxLength={80} placeholder="Kicukiro, Niboye" />
       </label>
       <fieldset className="space-y-1.5">
