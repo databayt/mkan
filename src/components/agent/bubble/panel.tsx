@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import { ArrowDown, BadgeCheck, Clock, Loader2, Maximize2, SquarePen, X } from "lucide-react";
 import { BlurImage } from "@/components/atom/blur-image";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
@@ -24,14 +23,11 @@ import type { ShortlistItem } from "../types";
 import { useAgentTask } from "../use-agent-task";
 import { useStickToBottom } from "../use-stick-to-bottom";
 import { Welcome } from "../welcome";
-import { listingsQueryFor } from "./listings-query";
 
 // Above the panel (z-55), loaded on its first open.
 const ChatsSheet = dynamic(() => import("../chats-sheet").then((m) => m.ChatsSheet), { ssr: false });
 
 const MINI_CARDS = 3;
-/** The listings page re-filters once the requirements settle, not on every change. */
-const REFILTER_DEBOUNCE_MS = 400;
 
 function MiniCard({ item, best = false }: { item: ShortlistItem; best?: boolean }) {
   const dict = useDictionary();
@@ -118,23 +114,6 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
   };
 
   useEffect(() => onWaiting(waiting), [waiting, onWaiting]);
-
-  // The page behind the panel follows the conversation: while it is the
-  // listings index, a change in what the agent knows re-filters it — once the
-  // requirements settle, so a burst of polls does not re-fetch the page.
-  // A listing's own page is left alone — the visitor is reading it.
-  const router = useRouter();
-  const pathname = usePathname() ?? "";
-  const onListings = /^\/(en|ar|rw)\/listings\/?$/.test(pathname);
-  const query = listingsQueryFor(task?.requirements ?? null);
-  useEffect(() => {
-    if (!open || !onListings || !query) return;
-    const id = setTimeout(() => {
-      if (window.location.search.replace(/^\?/, "") === query) return;
-      router.replace(`${pathname}?${query}`, { scroll: false });
-    }, REFILTER_DEBOUNCE_MS);
-    return () => clearTimeout(id);
-  }, [open, onListings, query, pathname, router]);
 
   // Escape closes the ☰ sheet first (Radix), the panel only when the sheet is shut. The
   // listener sits in the capture phase: closing the sheet re-attaches it mid-event, and a
