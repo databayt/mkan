@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { rateLimitWithFallback, rateLimitResponse } from '@/lib/rate-limit';
 import os from 'os';
+import { monitorEventLoopDelay } from 'perf_hooks';
+
+// Event-loop delay since the last detailed read: a CPU-starved container (an
+// image-resize storm, a crawler) shows here as seconds, not milliseconds.
+const loopDelay = monitorEventLoopDelay({ resolution: 20 });
+loopDelay.enable();
+let loopSince = Date.now();
+
+function readLoopDelay() {
+  const ms = (ns: number) => Math.round(ns / 1e6);
+  const out = {
+    p50: ms(loopDelay.percentile(50)),
+    p99: ms(loopDelay.percentile(99)),
+    max: ms(loopDelay.max),
+    sinceSec: Math.round((Date.now() - loopSince) / 1000),
+  };
+  loopDelay.reset();
+  loopSince = Date.now();
+  return out;
+}
 
 // Get system metrics
 function getSystemMetrics() {
@@ -32,6 +52,13 @@ function getSystemMetrics() {
       },
       nodeVersion: process.version,
     },
+    // Set by the Cloudflare container runtime: where this instance runs.
+    placement: {
+      location: process.env.CLOUDFLARE_LOCATION ?? null,
+      region: process.env.CLOUDFLARE_REGION ?? null,
+      country: process.env.CLOUDFLARE_COUNTRY_A2 ?? null,
+    },
+    eventLoopMs: readLoopDelay(),
   };
 }
 

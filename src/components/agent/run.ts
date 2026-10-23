@@ -179,6 +179,10 @@ export async function runTurn(taskId: string): Promise<void> {
   const trace = new Trace(task.id, task.events[0]?.seq ?? 0);
   const lang = task.locale as Locale;
   const now = () => new Date().toISOString();
+  // The server's own clock for this turn (ms from its start), read by `pnpm agent:latency`.
+  const t0 = Date.now();
+  const ms: Record<string, number> = {};
+  const mark = (step: string) => (ms[step] = Date.now() - t0);
 
   try {
     // 1. Understand the request.
@@ -202,6 +206,7 @@ export async function runTurn(taskId: string): Promise<void> {
         ? null
         : readRequirements({ latest, current: base, history: messages.slice(0, -1), shown, memory, newChat: userMessages.length === 1 }),
     ]);
+    mark("read");
     // Who wins a field: taps (picks, refine chips) are exact and beat everything.
     // Claude's reading is trusted whole — the rules only fill what it left
     // alone, and its own "cheaper" / "anywhere" replace the rules' phrases. With
@@ -291,6 +296,7 @@ export async function runTurn(taskId: string): Promise<void> {
       understood,
       db.agentTask.update({ where: { id: task.id }, data: { requirements: json(requirements) } }),
     ]);
+    mark("search");
 
     // 3–4. Group duplicate ads, apply the hard filters, rank.
     let result = rankCandidates(candidates, query);
@@ -337,6 +343,7 @@ export async function runTurn(taskId: string): Promise<void> {
       }
       await trace.finish(relaxId, relaxed.length ? "done" : "failed", { count: relaxed.length, keys: relaxed.map((s) => s.key), matching: result.matching });
     }
+    mark("rank");
     if (result.ranked.length === 0) {
       // Nothing on Mkan fits: keep the demand and ask the brokers who work the area.
       await Promise.all([trace.record("ranked", "done", { top: 0 }), learn([])]);
@@ -377,6 +384,7 @@ export async function runTurn(taskId: string): Promise<void> {
       reply(task.id, messages, answer, { shortlist: json(shortlist) }),
       learn(shortlist.map((s) => s.id)),
     ]);
+    mark("cards");
     // The writer and the broker asks run side by side.
     const writing = willWrite
       ? writeReply(writerFacts({ lang: writeLang, requirements, relaxed, shortlist, refine, unplaced: reading?.unplaced })).catch(() => null)
@@ -401,7 +409,7 @@ export async function runTurn(taskId: string): Promise<void> {
 
     await trace.recordMany([
       ...(written?.reply || written?.why.size ? [["reply_written", "done", { lines: written.why.size }] as [EventKind, StepStatus, Record<string, unknown>]] : []),
-      ["shortlist_ready", "done", { count: shortlist.length }],
+      ["shortlist_ready", "done", { count: shortlist.length, ms }],
     ]);
     await db.agentTask.update({
       where: { id: task.id },
