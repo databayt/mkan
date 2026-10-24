@@ -38,8 +38,10 @@ Kigali, 2026-10-23).
   --listing=<code|id> | --assets --profile=default` (`scripts/process-listing-images.ts`).
   Idempotent: `-lg.avif` is written last and a photo whose `-lg.avif` answers
   200 is skipped.
-- **Schedule**: `.github/workflows/listing-images.yml` — hourly `--since=3`,
-  Sundays `--all`, and a manual 20-shard backfill. Secrets: `MKAN_AWS_*` (the
+- **Schedule**: `.github/workflows/listing-images.yml` — hourly `--since=50`,
+  Sundays `--all`, and a manual 20-shard backfill. GitHub drops scheduled
+  ticks under load, so each hourly run looks back two days and any single run
+  that fires catches up. Secrets: `MKAN_AWS_*` (the
   app's `mkan` key, write-only to `mkan/uploads/*`) and
   `MKAN_IMAGES_DATABASE_URL` (read-only login `mkan_images_ro`).
 - **Outside uploads** (hero, destinations, stock): the app key can't write

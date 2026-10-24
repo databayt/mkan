@@ -6,14 +6,17 @@ name: Listing images
 # Photos whose variants aren't made yet still work — they fall back to the
 # optimiser until the next run picks them up.
 
+# GitHub drops scheduled ticks under load (on 2026-10-24 eight hours of hourly
+# ticks started one run, 51 min late), so each run looks back two days, not
+# just the last hour. Done photos cost one HEAD; two days held 40 photos then.
 on:
   schedule:
-    - cron: "23 * * * *" # hourly: photos of listings changed in the last 3 h
+    - cron: "23 * * * *" # hourly: photos of listings changed in the last 50 h
     - cron: "41 2 * * 0" # Sundays: every photo (done ones cost one HEAD)
   workflow_dispatch:
     inputs:
       mode:
-        description: "since = listings changed in the last 3 h, all = every photo"
+        description: "since = listings changed in the last 50 h, all = every photo"
         type: choice
         options: [since, all]
         default: since
@@ -46,7 +49,7 @@ jobs:
           mode=since; shards=1
           if [ "$EVENT" = workflow_dispatch ]; then mode="$MODE_INPUT"; shards="$SHARDS_INPUT"; fi
           if [ "$SCHEDULE" = "41 2 * * 0" ]; then mode=all; fi
-          if [ "$mode" = since ]; then shards=1; args="--since=3"; else args="--all"; fi
+          if [ "$mode" = since ]; then shards=1; args="--since=50"; else args="--all"; fi
           echo "args=$args" >> "$GITHUB_OUTPUT"
           echo "shards=$(node -e 'console.log(JSON.stringify([...Array(Math.max(1, Math.min(20, Number(process.argv[1]) || 1))).keys()]))' "$shards")" >> "$GITHUB_OUTPUT"
 
