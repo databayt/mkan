@@ -10,16 +10,19 @@
 // (i.e. after the offline Sharp script has populated the variants in S3).
 
 import type { ImageLoaderProps } from "next/image";
-import { LISTING_IMAGE_VARIANTS, variantBaseKey } from "@/lib/listing-image";
+import {
+  LISTING_IMAGE_VARIANTS,
+  pickVariantSuffix,
+  variantBaseKey,
+} from "@/lib/image-variants";
 
 const CDN_HOST = process.env.NEXT_PUBLIC_CDN_DOMAIN?.trim() || "cdn.databayt.org";
 
-/** Smallest pre-made variant suffix that covers the requested render width. */
+const LARGEST = Math.max(...LISTING_IMAGE_VARIANTS.map((v) => v.width));
+
+/** Pre-made stock variant for a render width; past the ladder, the full-size file. */
 function pickSuffix(width: number): string {
-  for (const v of LISTING_IMAGE_VARIANTS) {
-    if (width <= v.width) return v.suffix;
-  }
-  return "original";
+  return width > LARGEST ? "original" : pickVariantSuffix(width);
 }
 
 /**
@@ -43,10 +46,11 @@ export default function cdnVariantLoader({
   if (!src.includes(CDN_HOST)) return src;
 
   const base = variantBaseKey(src);
-  // Only the stock pool has pre-made `-{size}.webp` variants (produced by
-  // scripts/process-stock-images.ts). Everything else on the CDN (uploads,
-  // rehosted photos) goes through Vercel's optimizer for resize + AVIF until
-  // an offline script produces variants for those pools too.
+  // Stock photos are served straight from their pre-made `-{size}.webp`
+  // files. Every other CDN photo (uploads, rehosted homes) keeps the
+  // /_next/image URL: cf/worker.js answers it from the AVIF/WebP variants that
+  // scripts/process-listing-images.ts writes beside each photo, and only a
+  // photo whose variants aren't made yet reaches the optimizer.
   if (!base.includes("mkan/stock/")) {
     return vercelOptimizedUrl({ src, width, quality });
   }

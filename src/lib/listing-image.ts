@@ -1,32 +1,17 @@
-// Pre-made WebP variant helpers (mirror hogwarts `catalog/image-url.ts`).
+// Pre-made variant helpers (mirror hogwarts `catalog/image-url.ts`).
 //
-// `scripts/process-stock-images.ts` runs Sharp to produce `<base>-<size>.webp`
-// variants in S3/CDN. Once those exist AND NEXT_PUBLIC_USE_CDN_VARIANTS=true,
-// the custom loader (`image-loader.ts`) serves them so transforms happen
-// AWS-side, off Vercel. Until then the app uses Next's default optimizer.
-//
-// Single source of truth for the variant widths — shared by the loader and the
-// offline Sharp script.
+// The ladder itself lives in `image-variants.ts`, the single source of truth
+// shared by the loader, the Worker and the offline Sharp scripts; this file
+// adds the app-side URL builder on top of it.
 
 import { urlForKey } from "@/lib/cdn";
+import { variantBaseKey, type LadderSuffix } from "@/lib/image-variants";
 
-export const LISTING_IMAGE_VARIANTS = [
-  { suffix: "sm", width: 400 },
-  { suffix: "md", width: 800 },
-  { suffix: "lg", width: 1600 },
-] as const;
+export { LISTING_IMAGE_VARIANTS, variantBaseKey } from "@/lib/image-variants";
 
-export type VariantSuffix =
-  | (typeof LISTING_IMAGE_VARIANTS)[number]["suffix"]
-  | "original";
+export type VariantSuffix = LadderSuffix | "original";
 
-/** Accept a full CDN URL or a bare key; return the key with any image ext stripped. */
-export function variantBaseKey(keyOrUrl: string): string {
-  const key = keyOrUrl.replace(/^https?:\/\/[^/]+\//, "").replace(/\?.*$/, "");
-  return key.replace(/\.(jpe?g|png|webp)$/i, "");
-}
-
-/** Full CDN URL for a single pre-made variant. */
+/** Full CDN URL for a single pre-made WebP variant. */
 export function getListingImageUrl(
   keyOrUrl: string,
   size: VariantSuffix = "md",
