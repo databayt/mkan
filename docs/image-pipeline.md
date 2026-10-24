@@ -20,6 +20,38 @@ Mirrors the proven hogwarts pattern (`catalog/image.ts`, `cloudfront-url.ts`,
 > and pared from `AdministratorAccess` to `s3:*` on `hogwarts-databayt` +
 > `databayt-cdn` plus `cloudfront:CreateInvalidation` — no more account admin.
 
+## Listing photos — pre-made, served by the Worker (2026-10-24)
+
+Every listing photo (98k, nearly all `mkan/uploads/<id>/<uuid>.jpg` Airbnb rehosts)
+now has its ladder pre-made beside it: `<base>-{sm,md,lg}.{avif,webp}` at
+400 / 800 / 1600 px wide (`src/lib/image-variants.ts` is the one ladder, shared by
+the loader, the Worker and the scripts). The browser still asks for
+`/_next/image?url=…&w=…`; **`cf/worker.js` answers it from the matching
+variant** (AVIF if `Accept` names it, else WebP), fetched with Cloudflare's
+tiered fetch cache, so the container never resizes a listing photo.
+
+Why: the one half-vCPU container encoded on request, and a cold /listings page
+queued ~20 s of encodes — 12 parallel photos took 19–22 s each (measured from
+Kigali, 2026-10-23).
+
+- **Generator**: `pnpm images:variants --since=3 | --all [--shard=i/n] |
+  --listing=<code|id> | --assets --profile=default` (`scripts/process-listing-images.ts`).
+  Idempotent: `-lg.avif` is written last and a photo whose `-lg.avif` answers
+  200 is skipped.
+- **Schedule**: `.github/workflows/listing-images.yml` — hourly `--since=3`,
+  Sundays `--all`, and a manual 20-shard backfill. Secrets: `MKAN_AWS_*` (the
+  app's `mkan` key, write-only to `mkan/uploads/*`) and
+  `MKAN_IMAGES_DATABASE_URL` (read-only login `mkan_images_ro`).
+- **Outside uploads** (hero, destinations, stock): the app key can't write
+  there, so run `pnpm images:variants --assets --profile=default` on the Mac.
+- **New photos** are served by the optimizer (WebP-only) until the next hourly run;
+  nothing breaks in between. Check a response with
+  `curl -sI -H 'Accept: image/avif' 'https://www.mkan.sd/_next/image?url=…&w=750&q=65'`:
+  `x-edge-cache: variant-*` means the pre-made file answered.
+- **Client**: photos sharpen when their bytes land (a pre-paint listener in
+  `app/[lang]/layout.tsx` stamps `data-loaded`, not React's post-hydration
+  onLoad), and `PropertyImage` sizes match each layout (`card`, `carousel`, `search`).
+
 ## CDN namespace (databayt convention)
 
 `cdn.ts` classifies every asset by its first path segment (codebase
