@@ -111,8 +111,8 @@ sat 23–25 s before their first step, and one hung 27 s and errored. `pnpm agen
 Workers Logs (the observability telemetry API) showed why:
 
 - **The one half-vCPU container ran out of CPU.** AhrefsBot sent 251 image resizes in 40 s (10-21) and walked
-  `/ar|/rw/listings/*`; a /listings grid behind the bubble held 64 resizes at p50 51 s (10-22). The chat's sends
-  and polls queued 12–54 s behind them. → WebP only (AVIF encodes several times slower), card images sized
+  `/ar|/rw/listings/*`; a /listings grid behind the bubble pushed 132 resizes into the container in 10 minutes
+  (10-22: images up to 66 s, the chat's sends up to 35 s, its polls up to 13 s). → WebP only (AVIF encodes several times slower), card images sized
   50vw for the 2-up phone grid, SEO crawlers disallowed in robots.txt and answered 403 by the Worker, and the
   bubble no longer sends the site to /listings.
 - **Every send re-rendered the page before the turn started.** `requireProfile()` set the cookie on each
@@ -126,6 +126,12 @@ Workers Logs (the observability telemetry API) showed why:
   reply after 15 s answers with the error and a Try again chip. Correction to the commit `eaf2ec2` message:
   production already ran `PrismaPg` over TCP (its env never set `DATABASE_URL_ADAPTER`; the WebSocket driver is
   `.env`'s local setting) — the fix was the pool's missing timeouts, not the driver.
+
+Reading Workers Logs: what a visitor waited is the Worker's event (no `entrypoint`). The container's Durable
+Object logs the same request again, and that event runs on until the object's next event or its 3-minute
+alarm tick (~1 ms CPU, no status). So a 2–3 minute `MkanContainer` fetch in a quiet hour is bookkeeping, not
+a stall: the 10-23 Bingbot `/ar/travel/trips/15097` (158.6 s) and 10-24's 05:00–05:45Z cron, favicon and
+`/ar/host` (116–172 s) all answered in 0.1–1.1 s.
 
 Numbers on prod from Kigali at 393 px after both deploys: typed first message → cards 1.55 s (server 0.7 s),
 a tap → cards 0.83 s (server 0.3 s), both inside the send's own response.
