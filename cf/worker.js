@@ -13,7 +13,12 @@
 // the origin itself says `public` with a real max-age (so public/ files served
 // `max-age=0`, 404s and anything carrying a session are never frozen). HTML,
 // RSC, /api and auth never take the cache path at all.
+//
+// Listing photos skip the container entirely: each one has AVIF + WebP files
+// pre-made beside it on the CDN (scripts/process-listing-images.ts), and the
+// Worker answers /_next/image with the right one (variantResponse below).
 import { Container, getContainer } from "@cloudflare/containers"
+import { VARIANT_CACHE_CONTROL, variantUrl } from "../src/lib/image-variants"
 import crons from "./crons.json"
 
 export class MkanContainer extends Container {
@@ -100,6 +105,53 @@ function freezable(response) {
   return !!maxAge && Number(maxAge[1]) > 0
 }
 
+// The pre-made variant's format. Unlike imageFormat() this names no cache key —
+// the CDN URL carries the format — so any non-zero mention of a type counts.
+function variantFormat(accept) {
+  const types = new Set()
+  for (const part of accept.toLowerCase().split(",")) {
+    const [type, ...params] = part.split(";").map((s) => s.trim())
+    if (!params.some((p) => /^q=0(\.0*)?$/.test(p))) types.add(type)
+  }
+  return types.has("image/avif") ? "avif" : types.has("image/webp") ? "webp" : null
+}
+
+// A CDN listing photo comes from its pre-made file, never the container: a
+// cold /listings page queued ~20 s of encodes on the one half-vCPU instance
+// (2026-10-23). fetch() keeps the file in the zone cache with Tiered Cache —
+// caches.default is one data center deep — and a 403 (variants not made yet,
+// the minutes after an upload) is held for a minute, then the request falls
+// through to the optimiser exactly as before.
+async function variantResponse(url, request) {
+  const format = variantFormat(request.headers.get("accept") || "")
+  if (!format) return null
+  const target = variantUrl(url.searchParams.get("url"), Number(url.searchParams.get("w")), format)
+  if (!target) return null
+  let res
+  try {
+    res = await fetch(target, {
+      cf: { cacheEverything: true, cacheTtlByStatus: { "200-299": 31536000, "403": 60, "404": 60, "500-599": 0 } },
+    })
+  } catch {
+    return null // CDN unreachable: the optimiser path still answers
+  }
+  if (res.status !== 200) {
+    await res.body?.cancel()
+    return null
+  }
+  const headers = new Headers({
+    "content-type": res.headers.get("content-type") || `image/${format}`,
+    "cache-control": VARIANT_CACHE_CONTROL,
+    vary: "Accept",
+    "x-edge-cache": `variant-${(res.headers.get("cf-cache-status") || "none").toLowerCase()}`,
+  })
+  for (const name of ["content-length", "etag", "last-modified"]) {
+    const value = res.headers.get(name)
+    if (value) headers.set(name, value)
+  }
+  return new Response(res.body, { status: 200, headers })
+}
+
 // SEO-tool crawlers (the same list as src/app/robots.ts). An AhrefsBot sweep
 // sent 251 image resizes to the one container in 40 s and froze the /find chat
 // behind them (2026-10-21); robots.txt alone takes about a day to be re-read.
@@ -113,6 +165,10 @@ export default {
         status: 403,
         headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
       })
+    }
+    if (request.method === "GET" && url.pathname === "/_next/image" && !request.headers.has("range")) {
+      const variant = await variantResponse(url, request)
+      if (variant) return variant
     }
     // Range requests (media seeking) go straight through: the key holds the
     // whole body, and a full 200 answering a range breaks Safari video.
