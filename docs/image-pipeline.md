@@ -51,6 +51,15 @@ Kigali, 2026-10-23).
 - **Client**: photos sharpen when their bytes land (a pre-paint listener in
   `app/[lang]/layout.tsx` stamps `data-loaded`, not React's post-hydration
   onLoad), and `PropertyImage` sizes match each layout (`card`, `carousel`, `search`).
+- **Cover previews**: `Listing.coverBlur` holds a 16 px WebP data URL of the
+  cover (~200 chars) and `coverBlurUrl` the photo it was made from. Cards,
+  the gallery hero, the mobile strip, the map strip and "more stays nearby"
+  paint the real photo blurred from the first HTML byte. `coverBlurOf()` drops a blur once
+  the host changes the cover. `pnpm images:blurs` (`scripts/process-cover-blurs.ts`)
+  fills missing or stale ones from the `-sm.webp` variant; the workflow's
+  `blurs` job runs it after each variants run. Raw SQL on purpose: a Prisma
+  update would bump `updatedAt` and re-send every listing to the CRM.
+  The workflow's login holds UPDATE on those two columns only.
 
 ## CDN namespace (databayt convention)
 
