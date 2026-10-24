@@ -110,7 +110,11 @@ cron /api/cron/broker-requests (hourly) ─► unanswered after 24 h = NO_REPLY 
 | --- | --- |
 | `broker.ts` | request creation + dedup (batched), `pickBroker`, answer fan-out, expiry → next broker, stuck-turn sweep |
 | `broker-message.ts` | the exact en + rw words a broker receives (tested) |
-| `whatsapp.ts` | Evolution `message/sendText` when `MKAN_EVOLUTION_{URL,KEY,INSTANCE}` are set (daily cap `MKAN_EVOLUTION_DAILY_CAP`, default 40); otherwise a #mkan card with a wa.me link (`SLACK_BOT_TOKEN`) |
+| `whatsapp.ts` | Outbound WhatsApp: with `MKAN_WA_OUTBOX=1` every message is an `OutboundMessage` row the Mac drains (`scripts/wa/outbox.ts`, daily cap `MKAN_WA_DAILY_CAP`, default 40); otherwise a #mkan card with a wa.me link (`SLACK_BOT_TOKEN`) |
+| `whatsapp-chat.ts` | Tenants chatting on WhatsApp: `handleTenantWhatsApp` runs the same turn for a phone (profile `sha256("wa:<digits>")`), digit picks, `ref:` hand-off, auto opt-in for demand alerts |
+| `whatsapp-format.ts` | Pure: the turn as one WhatsApp message (3 homes, numbered options, /find link), `readPick`, `waLang` |
+| `append.ts` · `availability.ts` | The message append and the "check availability" loop, shared by the web actions and WhatsApp |
+| `wa-link.ts` | Mkan's WhatsApp number and the /find ⋯ "Continue on WhatsApp" link |
 | `broker-actions.ts` | broker answer/confirm, tenant choose/outcome |
 | `broker-answer.tsx` + `app/[lang]/b/[token]` | the broker's one-tap page (noindex, no account) |
 | `viewing.tsx` | the tenant's viewing panel on a card |
@@ -152,3 +156,26 @@ budget, move-in and household. `broker-reply.ts` reads replies by rules, and
 `brokerFitScore` favours fast repliers (`Broker.replyMinutes`). Brokers from those chats enter
 the directory through `pnpm wa:chats` (`scripts/wa/chats.ts`, reviewed chats only, facts not
 messages).
+
+## WhatsApp chat (2026-10-24)
+
+Tenants message **+250780984777** and get the same agent, free (Evolution on the Mac + the agent's
+rules → Groq → capped-Claude ladder; `AGENT_CLAUDE=off` keeps it at $0).
+
+```
+tenant WA → Evolution (Mac, Docker) ─webhook→ scripts/wa/inbox-server.ts (127.0.0.1:8091)
+          → POST www.mkan.sd/api/agent/whatsapp (Bearer MKAN_WA_BRIDGE_SECRET) → runTurn on the Worker
+          → reply text → Evolution sendText ("typing…" first)
+```
+
+- The turn runs on the Worker (ENAM, next to Neon), never on the Mac.
+- A chat continues while under a day old; "new" starts another; a bare digit answers the last numbered
+  question (a clarify option, or "check home N" → the broker loop, the tenant's consent).
+- `/find` ⋯ → Continue on WhatsApp sends `ref:<task id>`: the phone's new chat starts from the web one.
+- A search kept open from WhatsApp alerts that same number (`TenantRequest.phone` set on the turn).
+- Mac rules (`scripts/wa/tenant-pure.ts`): reply only to messages a tenant sent (never a first message);
+  STOP silences until START; a person at Mkan typing in the chat pauses the agent there for 12 h;
+  messages older than 1 h are not answered; 20 replies/phone/hour, 120/line/hour.
+- Brokers (any number in `Broker.phones`) are left to the outbox's burst reader. The 2-minute poll also
+  passes tenant messages the webhook missed; the Worker answers each message id once.
+- Limit: replies pause while the Mac sleeps or the link drops (`device_removed` → `pnpm wa:pair`).

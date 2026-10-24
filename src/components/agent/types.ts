@@ -49,7 +49,8 @@ export interface AgentEventView {
 
 export type AgentMessage =
   /** `filters` are the badges the tenant picked; they win over the text. `clear` empties fields (a refine chip). */
-  | { role: "user"; text: string; at: string; filters?: Record<string, unknown>; clear?: string[] }
+  /** `wa`: the WhatsApp message id it came in as — a retried webhook or the fallback poll is answered once. */
+  | { role: "user"; text: string; at: string; filters?: Record<string, unknown>; clear?: string[]; wa?: string }
   | { role: "agent"; kind: "ask"; field: HardField; at: string }
   /**
    * A vague first message missing several things at once: one stepper card asks

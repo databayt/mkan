@@ -9,12 +9,11 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import type { Locale } from "@/components/internationalization/config";
 import { listingPath } from "@/lib/listing-code";
-import { appendTaskEvent, requestConfirmations } from "./broker";
+import { appendTaskEvent } from "./broker";
+import { askAvailabilityFor } from "./availability";
 import { coerceMemory, emptyMemory, MAX_IDS, PREF_FIELDS, type AgentMemory, type PrefField } from "./memory";
 import { ownedBy, requireProfile } from "./profile";
-import { coerceRequirements } from "./requirements";
 import { LEAD_SOURCES } from "./search";
-import type { ShortlistItem } from "./types";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
 
@@ -61,24 +60,9 @@ export async function noteHomeFeedback(input: { taskId: string; listingId: numbe
  */
 export async function askAvailability(input: { taskId: string; listingId: number }): Promise<{ ok: boolean; asked: boolean }> {
   const viewer = await requireProfile();
-  const task = await db.agentTask.findFirst({
-    where: { id: input.taskId, ...ownedBy(viewer) },
-    select: { id: true, locale: true, requirements: true, shortlist: true, status: true },
-  });
-  if (!task || task.status === "RUNNING") return { ok: false, asked: false };
-  const shortlist = (task.shortlist as unknown as ShortlistItem[] | null) ?? [];
-  const item = shortlist.find((s) => s.id === input.listingId);
-  if (!item?.lead || item.availability !== "unconfirmed") return { ok: false, asked: false };
-  // Tapping it means a monthly rent: the broker is asked about one.
-  const requirements = { ...coerceRequirements(task.requirements), stay: "long" as const };
-  const asked = await requestConfirmations(task.id, [item], requirements as never, task.locale);
-  if (asked.length === 0) return { ok: true, asked: false };
-  await appendTaskEvent(task.id, "availability_asked", "waiting_person", { listingId: item.id });
-  await db.agentTask.update({
-    where: { id: task.id },
-    data: { status: "WAITING", shortlist: json(shortlist.map((s) => (s.id === item.id ? { ...s, availability: "asked" } : s))) },
-  });
-  return { ok: true, asked: true };
+  const task = await db.agentTask.findFirst({ where: { id: input.taskId, ...ownedBy(viewer) }, select: { id: true } });
+  if (!task) return { ok: false, asked: false };
+  return askAvailabilityFor(task.id, input.listingId);
 }
 
 export interface SavedHome {

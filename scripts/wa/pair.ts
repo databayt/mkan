@@ -3,6 +3,7 @@
  *
  *   pnpm wa:pair                        create instance `mkan` if missing, save the QR PNG, print its path
  *   pnpm wa:pair --number=250780984777  also ask for an 8-character pairing code (Linked devices → link with phone number)
+ *   pnpm wa:pair --webhook-only         only point the instance's webhook at the inbox server (scripts/wa/inbox-server.ts)
  *
  * A human scans the QR from WhatsApp on the phone (+250780984777): Settings →
  * Linked devices → Link a device. The QR expires in about a minute; run it
@@ -10,9 +11,16 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { EVOLUTION_URL, INSTANCE, connectionState, createInstance, fetchInstance, qr } from './evolution';
+import { EVOLUTION_URL, INSTANCE, connectionState, createInstance, evolutionKey, fetchInstance, qr, setWebhook } from './evolution';
 
 const OUT_DIR = join(__dirname, '..', 'crm', '.data', 'wa');
+/** Where Evolution (in Docker) reaches the inbox server on this Mac; the key keeps strangers out. */
+const INBOX_URL = (process.env.MKAN_WA_INBOX_URL ?? '').trim() || 'http://host.docker.internal:8091/wa';
+
+async function webhook() {
+  await setWebhook(`${INBOX_URL}/${evolutionKey()}`);
+  console.log(`✓ webhook → ${INBOX_URL}/<key> (MESSAGES_UPSERT)`);
+}
 
 async function main() {
   const number = process.argv.find((a) => a.startsWith('--number='))?.split('=')[1];
@@ -22,6 +30,8 @@ async function main() {
     console.log('· instance missing — creating it');
     await createInstance();
   }
+  await webhook();
+  if (process.argv.includes('--webhook-only')) return;
 
   const state = await connectionState();
   if (state === 'open') {

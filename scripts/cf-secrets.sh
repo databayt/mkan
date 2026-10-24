@@ -20,7 +20,9 @@ node cf/env-split.mjs "$SRC" secrets > "$OUT"
 # switches on the uncapped report triage.
 # MKAN_WA_OUTBOX=1: agent WhatsApp goes to the OutboundMessage outbox the Mac drains
 # (scripts/wa/outbox.ts) instead of #mkan wa.me cards. Kept here so redeploys keep it.
-for VAR in NEXTAUTH_SECRET AUTH_SECRET RESEND_API_KEY GROQ_API_KEY SLACK_BOT_TOKEN AGENT_ANTHROPIC_API_KEY MKAN_WA_OUTBOX; do
+# MKAN_WA_BRIDGE_SECRET: the Bearer the Mac bridge sends to /api/agent/whatsapp (tenant
+# chats on WhatsApp); scripts/wa/tenant.ts reads the same Keychain item.
+for VAR in NEXTAUTH_SECRET AUTH_SECRET RESEND_API_KEY GROQ_API_KEY SLACK_BOT_TOKEN AGENT_ANTHROPIC_API_KEY MKAN_WA_OUTBOX MKAN_WA_BRIDGE_SECRET; do
   V=$(security find-generic-password -s "cf-mkan-$VAR" -w 2>/dev/null || true)
   [[ -n "$V" ]] && OUT="$OUT" VAR="$VAR" V="$V" node -e '
     const fs=require("fs");const p=process.env.OUT;const o=JSON.parse(fs.readFileSync(p,"utf8"));

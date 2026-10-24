@@ -86,7 +86,7 @@ export async function fetchInstance(name = INSTANCE): Promise<{ name: string; co
   return hit ? { name, connectionStatus: hit.connectionStatus } : null;
 }
 
-/** Creates a Baileys instance with QR pairing and no webhook (nothing public to call). */
+/** Creates a Baileys instance with QR pairing; `setWebhook` then points it at the Mac's own inbox server. */
 export async function createInstance(name = INSTANCE): Promise<unknown> {
   return request('/instance/create', {
     method: 'POST',
@@ -148,4 +148,23 @@ export async function mediaBytes(messageId: string, name = INSTANCE): Promise<{ 
   }).catch(() => null);
   if (!res?.base64) return null;
   return { bytes: Buffer.from(res.base64.replace(/^data:[^;]+;base64,/, ''), 'base64'), mimetype: res.mimetype ?? 'image/jpeg' };
+}
+
+/**
+ * Point the instance's events at the Mac inbox server (scripts/wa/inbox-server.ts).
+ * Only MESSAGES_UPSERT: each new message, both directions.
+ */
+export async function setWebhook(url: string, name = INSTANCE): Promise<unknown> {
+  return request(`/webhook/set/${encodeURIComponent(name)}`, {
+    method: 'POST',
+    body: JSON.stringify({ webhook: { enabled: true, url, byEvents: false, base64: false, events: ['MESSAGES_UPSERT'] } }),
+  });
+}
+
+/** "typing…" in the tenant's chat while the agent works. Best effort. */
+export async function sendPresence(to: string, delayMs = 3_000, name = INSTANCE): Promise<void> {
+  await request(`/chat/sendPresence/${encodeURIComponent(name)}`, {
+    method: 'POST',
+    body: JSON.stringify({ number: to.replace(/[^\d]/g, '').replace(/^00/, ''), delay: delayMs, presence: 'composing' }),
+  }).catch(() => {});
 }

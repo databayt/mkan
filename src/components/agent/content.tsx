@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import dynamic from "next/dynamic";
-import { ArrowDown, Loader2, MoreHorizontal, SlidersHorizontal, SquarePen, Trash2 } from "lucide-react";
+import { ArrowDown, Loader2, MessageCircle, MoreHorizontal, SlidersHorizontal, SquarePen, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ import { Suggestions } from "./suggestions";
 import { AgentTurn, PastAgentTurn, Prose, TurnActions, UserTurn } from "./turn";
 import type { AgentTaskView } from "./types";
 import { useAgentTask } from "./use-agent-task";
+import { continueOnWhatsApp } from "./wa-link";
 import { useStickToBottom } from "./use-stick-to-bottom";
 import { Welcome } from "./welcome";
 
@@ -148,6 +149,12 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
                 <DropdownMenuItem onSelect={() => setGuided((g) => !g)} className="gap-2.5 rounded-xl px-3 py-2.5 text-[15px]">
                   <SlidersHorizontal className="size-4" aria-hidden />
                   {c?.guided ?? "Guided search"}
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="gap-2.5 rounded-xl px-3 py-2.5 text-[15px]">
+                  <a href={continueOnWhatsApp(task?.id, c?.whatsappText ?? "Continue my Mkan search")} target="_blank" rel="noopener noreferrer">
+                    <MessageCircle className="size-4" aria-hidden />
+                    {c?.whatsapp ?? "Continue on WhatsApp"}
+                  </a>
                 </DropdownMenuItem>
                 {task && (
                   <DropdownMenuItem disabled={running} onSelect={() => void deleteChat()} className="gap-2.5 rounded-xl px-3 py-2.5 text-[15px] text-destructive focus:text-destructive">

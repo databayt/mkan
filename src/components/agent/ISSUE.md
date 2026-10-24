@@ -1,5 +1,11 @@
 # Agent — open issues
 
+- **WhatsApp chat (2026-10-24) needs the line paired.** Built: tenants chat with the agent on
+  +250780984777 (README → WhatsApp chat). The link dropped with `device_removed` on 10-22: until
+  `pnpm wa:pair` is re-scanned, neither the chat nor the broker outbox sends. Replies pause while the
+  Mac sleeps. Not built: photos as images (the first link unfurls), voice notes, the bubble's own
+  WhatsApp entry (it expands to /find, which has it), a tenant alert when a broker confirms later.
+
 - **Thin monthly supply.** 20 TikTok leads (2026-10-17) next to 4,566 Airbnb homes. Since 10-18 the
   06:00 TikTok sweep runs the mirror itself (`crm:tiktok run --apply`), but its reader is Groq's free
   vision tier: ~30 videos a day, plus caption-only reads of posts that state price and rooms.
@@ -14,7 +20,6 @@
   district with no known broker gets "kept open" and no asks.
 - **Twenty is mirrored once a day, not live.** `crm:hygiene` (07:00) notes every broker answer on
   its Twenty home and stamps `lastAvailabilityConfirmedAt` from an AVAILABLE only.
-- **Broker replies typed in WhatsApp are not read** — only the one-tap page counts.
 - **Furnished is not a column.** Nightly homes are treated as furnished; monthly homes are unknown.
 - **Groq free tier** is shared site-wide (~8k tokens/min). On 429 the rules reader runs alone and
   the model is skipped for 60 s; the event shows `read by rules`. Timeout 3.5 s.

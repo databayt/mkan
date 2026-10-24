@@ -1,7 +1,6 @@
 "use server";
 
 import { after } from "next/server";
-import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
 import { assertRateLimit, getClientId, RateLimitError } from "@/lib/rate-limit";
@@ -10,7 +9,8 @@ import { appendTaskEvent } from "./broker";
 import { ownedBy, requireProfile, resolveViewer } from "./profile";
 import { startTurn } from "./run";
 import { CLEARABLE, coerceRequirements, type Requirements } from "./requirements";
-import { loadTask, STUCK_AFTER_MS } from "./task-view";
+import { appendUserMessage } from "./append";
+import { loadTask } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
 
 const MAX_TEXT = 600;
@@ -97,29 +97,9 @@ export async function sendAgentMessage(input: {
     ...(clear.length ? { clear } : {}),
   };
 
-  let taskId: string;
-  if (current) {
-    // A turn lost mid-way is not "busy": the next message simply runs.
-    if (current.status === "RUNNING" && Date.now() - current.updatedAt.getTime() < STUCK_AFTER_MS) return { ok: false, error: "busy" };
-    const messages = [...((current.messages as unknown as AgentMessage[]) ?? []), userMsg];
-    await db.agentTask.update({
-      where: { id: current.id },
-      data: { messages: messages as unknown as Prisma.InputJsonValue, status: "RUNNING", locale: lang, profileId },
-    });
-    taskId = current.id;
-  } else {
-    const created = await db.agentTask.create({
-      data: {
-        profileId,
-        userId: viewer.profile.userId,
-        title: text.slice(0, 80),
-        locale: lang,
-        messages: [userMsg] as unknown as Prisma.InputJsonValue,
-      },
-      select: { id: true },
-    });
-    taskId = created.id;
-  }
+  const appended = await appendUserMessage({ profileId, userId: viewer.profile.userId, current, message: userMsg, lang });
+  if ("busy" in appended) return { ok: false, error: "busy" };
+  const { taskId } = appended;
 
   const turn = startTurn(taskId);
   after(turn.done);

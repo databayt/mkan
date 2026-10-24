@@ -12,6 +12,8 @@ through it every two minutes. Paired number: **+250780984777**, instance `mkan`.
 | `scripts/wa/pair.ts` | `pnpm wa:pair`: creates the instance if missing and saves the QR to `scripts/crm/.data/wa/qr.png`. |
 | `scripts/wa/outbox.ts` | `pnpm wa:outbox [--dry-run]`: sends under the caps, then reads replies (opt-outs, broker answers to #mkan). |
 | `scripts/wa/install-outbox.sh` | Installs launchd `com.databayt.mkan-wa-outbox` (every 120 s, logs in `scripts/crm/.data/wa/outbox.log`). |
+| `scripts/wa/inbox-server.ts` | `pnpm wa:inbox`: the webhook listener (127.0.0.1:8091) — tenants' messages to the rental agent on the Worker, replies sent back at once. |
+| `scripts/wa/install-inbox.sh` | Installs launchd `com.databayt.mkan-wa-inbox` (KeepAlive, logs in `scripts/crm/.data/wa/inbox.log`). |
 
 ## Secrets
 
@@ -35,6 +37,9 @@ The scripts read the same key: from `MKAN_EVOLUTION_KEY`, then from `EVOLUTION_A
 3. Pair with `pnpm wa:pair`, then open `scripts/crm/.data/wa/qr.png`. On the phone that holds +250780984777, go to WhatsApp → Settings → Linked devices → Link a device and scan the code. The QR expires in about a minute, so run the command again for a fresh one. `pnpm wa:pair --number=250780984777` also prints a pairing code that you can type in instead of scanning.
 4. Check with `pnpm wa:outbox --dry-run`, which should log neither "unreachable" nor "close", and should list the queue plan.
 5. Schedule it with `bash scripts/wa/install-outbox.sh`. Remove it with `--remove`.
+6. Tenant chat: `bash scripts/wa/install-inbox.sh`, then `pnpm wa:pair --webhook-only` (pairing sets it too).
+   Evolution posts to `http://host.docker.internal:8091/wa/<api key>`; Colima forwards that to this Mac's
+   loopback. The bridge's Bearer is Keychain `cf-mkan-MKAN_WA_BRIDGE_SECRET` (cf-secrets.sh pushes it to the Worker).
 
 ## Caps (scripts/wa/outbox-pure.ts)
 
@@ -47,6 +52,11 @@ The scripts read the same key: from `MKAN_EVOLUTION_KEY`, then from `EVOLUTION_A
 - If the bridge is down or unpaired, nothing is sent and no attempt is used up. `recordRun` alerts #mkan after 3 failed runs in a row.
 
 ## Troubleshooting
+
+- **A tenant got no answer.** `curl -s 127.0.0.1:8091/health`, then `scripts/crm/.data/wa/inbox.log`: each
+  message logs `answered`, `skip-human` (someone at Mkan typed there in the last 12 h — delete the phone from
+  `tenant-human.json` to resume), `skip-stopped`, `skip-old` or `failed: agent 401` (the Worker lacks
+  `MKAN_WA_BRIDGE_SECRET`).
 
 - **The pairing was lost** (the phone unlinked the device, or the session expired). The drain logs `instance "mkan" is close`, and #mkan gets the streak alert. Run `pnpm wa:pair` again.
 - **No QR is returned.** Wait a few seconds after `up` and retry. If it keeps failing, `bash ops/evolution/up.sh logs -f evolution-api` shows why.

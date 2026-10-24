@@ -35,6 +35,8 @@ import { join } from 'node:path';
 import { postToMkan, recordRun } from '../crm/notify';
 import { waLink } from '../crm/public-links';
 import { EVOLUTION_URL, INSTANCE, connectionState, findMessages, isBridgeDown, mediaBytes, sendText } from './evolution';
+import { answerTenant, noteFromMe, recordSent } from './tenant';
+import { isDirectChat } from './tenant-pure';
 import {
   MAX_ATTEMPTS,
   type OutboxRow,
@@ -177,7 +179,8 @@ async function drain(db: Db): Promise<{ bridgeError?: string }> {
       break;
     }
     try {
-      await sendText(row.to, row.body);
+      const sent = await sendText(row.to, row.body);
+      if (row.kind === 'TENANT_ALERT') recordSent(phoneKey(row.to), sent?.key?.id);
       const sentAt = new Date();
       await db.outboundMessage.update({ where: { id: row.id }, data: { status: 'SENT', sentAt, attempts: { increment: 1 }, error: null } });
       if (row.kind === 'BROKER_REQUEST' && row.brokerRequestIds.length) {
@@ -245,14 +248,24 @@ async function replies(db: Db): Promise<void> {
   const records = await findMessages(new Date(now.getTime() - REPLY_LOOKBACK_MS), now, 200);
   const seen = loadSeen();
   const seenSet = new Set(seen);
-  const fresh = records
-    .filter((m) => !m.key?.fromMe)
-    .map((m) => ({ id: m.key?.id ?? m.id ?? '', phone: senderPhone(m.key), text: messageText(m.message), image: isImage(m.message, m.messageType), type: m.messageType ?? 'message', name: m.pushName ?? '' }))
+  const all = records
+    .map((m) => ({
+      id: m.key?.id ?? m.id ?? '',
+      phone: senderPhone(m.key),
+      text: messageText(m.message),
+      image: isImage(m.message, m.messageType),
+      type: m.messageType ?? 'message',
+      name: m.pushName ?? '',
+      fromMe: !!m.key?.fromMe,
+      direct: isDirectChat(m.key?.remoteJid),
+      sentAt: new Date(Number(m.messageTimestamp ?? 0) * 1000 || now.getTime()),
+    }))
     .filter((m) => m.id && !seenSet.has(m.id))
     .reverse(); // oldest first
-  if (!fresh.length) return;
+  const fresh = all.filter((m) => !m.fromMe);
+  if (!all.length) return;
 
-  const phones = [...new Set(fresh.map((m) => m.phone).filter((p): p is string => !!p))];
+  const phones = [...new Set(all.map((m) => m.phone).filter((p): p is string => !!p))];
   const brokers = phones.length
     ? await db.broker.findMany({ where: { phones: { hasSome: phoneVariants(phones) } }, select: { id: true, name: true, phones: true, optOut: true } })
     : [];
@@ -264,7 +277,16 @@ async function replies(db: Db): Promise<void> {
   let homes = 0;
   let answered = 0;
   const rest: typeof fresh = [];
+  const tenants: typeof fresh = [];
+  for (const m of all) {
+    // A person at Mkan typing in a tenant's chat pauses the agent there (tenant.ts).
+    if (m.fromMe && m.direct && m.phone && !byPhone.has(m.phone) && !DRY) noteFromMe(m.phone, m.id, m.sentAt);
+  }
   for (const m of fresh) {
+    if (m.phone && m.direct && !byPhone.has(m.phone)) {
+      tenants.push(m);
+      continue;
+    }
     const broker = m.phone ? byPhone.get(m.phone) : undefined;
     if (broker && isOptOut(m.text)) {
       optOuts += 1;
@@ -318,12 +340,21 @@ async function replies(db: Db): Promise<void> {
       );
     }
   }
-  for (const m of fresh) seen.push(m.id);
+  // Tenants the inbox server missed (it was down, the webhook failed); the Worker answers each id once.
+  let tenantAnswers = 0;
+  for (const m of tenants) {
+    if (DRY) {
+      log(`would pass tenant +${m.phone} to the agent: ${m.text.slice(0, 60)}`);
+      continue;
+    }
+    if ((await answerTenant({ phone: m.phone!, text: m.text, msgId: m.id, sentAt: m.sentAt }, log)) === 'sent') tenantAnswers += 1;
+  }
+  for (const m of all) seen.push(m.id);
   if (!DRY) {
     saveSeen(seen);
     writeFileSync(PENDING, JSON.stringify(pending, null, 2));
   }
-  log(`replies: ${fresh.length} new · ${optOuts} opt-out · ${homes} home(s) · ${answered} answered · ${posted} posted`);
+  log(`replies: ${fresh.length} new · ${optOuts} opt-out · ${homes} home(s) · ${answered} answered · ${posted} posted · ${tenants.length} tenant (${tenantAnswers} answered here)`);
 }
 
 async function main() {

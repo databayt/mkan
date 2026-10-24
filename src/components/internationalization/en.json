@@ -5810,6 +5810,8 @@
       "share": "Share",
       "moreActions": "More",
       "deleteChat": "Delete chat",
+      "whatsapp": "Continue on WhatsApp",
+      "whatsappText": "Continue my Mkan search",
       "voiceDenied": "Allow the microphone to speak your search.",
       "voiceNoSpeech": "Didn't hear anything. Tap the mic and speak.",
       "voiceFailed": "Voice isn't working here. Please type instead."
