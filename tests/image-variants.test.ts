@@ -9,6 +9,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  coverBlurOf,
   hasVariants,
   pickVariantSuffix,
   variantFiles,
@@ -73,5 +74,24 @@ describe("variantFiles", () => {
     expect(files).toHaveLength(6);
     expect(files.at(-1)).toMatchObject({ suffix: "lg", format: "avif" });
     expect(new Set(files.map((f) => `${f.suffix}.${f.format}`)).size).toBe(6);
+  });
+});
+
+describe("coverBlurOf", () => {
+  const blur = "data:image/webp;base64,UklGRg==";
+
+  it("returns the stored blur while it belongs to the current cover", () => {
+    expect(coverBlurOf({ photoUrls: [PHOTO, "b.jpg"], coverBlur: blur, coverBlurUrl: PHOTO })).toBe(blur);
+  });
+
+  it("drops a blur made from an older cover", () => {
+    expect(coverBlurOf({ photoUrls: ["new-cover.jpg", PHOTO], coverBlur: blur, coverBlurUrl: PHOTO })).toBeUndefined();
+  });
+
+  it("is undefined with no photos, no blur, or no source recorded", () => {
+    expect(coverBlurOf({ photoUrls: [], coverBlur: blur, coverBlurUrl: PHOTO })).toBeUndefined();
+    expect(coverBlurOf({ photoUrls: [PHOTO], coverBlur: null, coverBlurUrl: PHOTO })).toBeUndefined();
+    expect(coverBlurOf({ photoUrls: [PHOTO], coverBlur: blur })).toBeUndefined();
+    expect(coverBlurOf({})).toBeUndefined();
   });
 });

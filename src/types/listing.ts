@@ -12,6 +12,8 @@ export interface Listing {
   weeklyDiscount?: number | null;
   monthlyDiscount?: number | null;
   photoUrls: string[];
+  coverBlur?: string | null;
+  coverBlurUrl?: string | null;
   amenities?: string[];
   highlights?: string[];
   isPetsAllowed?: boolean;

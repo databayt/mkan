@@ -19,6 +19,7 @@
     "typecheck": "tsc --noEmit",
     "wake-db": "tsx scripts/wake-db.ts",
     "images:variants": "tsx scripts/process-listing-images.ts",
+    "images:blurs": "tsx scripts/process-cover-blurs.ts",
     "purge:synthetic": "tsx scripts/purge-synthetic.ts",
     "seed:admin": "tsx scripts/seed-admin.ts",
     "seed:heirs": "tsx scripts/seed-heirs-homes.ts",

@@ -29,6 +29,9 @@ export const SEARCH_LISTING_SELECT = {
   weeklyDiscount: true,
   monthlyDiscount: true,
   photoUrls: true,
+  // The cover's blurred preview and the photo it was made from (coverBlurOf).
+  coverBlur: true,
+  coverBlurUrl: true,
   amenities: true,
   highlights: true,
   isPetsAllowed: true,

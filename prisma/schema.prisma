@@ -257,6 +257,11 @@ model Listing {
   securityDeposit             Float?
   applicationFee              Float?
   photoUrls                   String[]            @default([])
+  /// 16 px WebP data URL of photoUrls[0] — a card paints the real photo, blurred,
+  /// before the image loads (scripts/process-cover-blurs.ts, hourly).
+  coverBlur                   String?
+  /// The photo coverBlur was made from; once the cover changes it is stale and unused.
+  coverBlurUrl                String?
   amenities                   Amenity[]           @default([])
   highlights                  Highlight[]         @default([])
   isPetsAllowed               Boolean             @default(false)

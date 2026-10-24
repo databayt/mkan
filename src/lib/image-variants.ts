@@ -69,6 +69,20 @@ export function variantUrl(
 }
 
 /**
+ * The cover's stored blur (Listing.coverBlur), only while it still belongs to
+ * the cover: a host who changes the cover must not get the old photo's blur.
+ */
+export function coverBlurOf(listing: {
+  photoUrls?: string[] | null;
+  coverBlur?: string | null;
+  coverBlurUrl?: string | null;
+}): string | undefined {
+  const cover = listing.photoUrls?.[0];
+  if (!cover || !listing.coverBlur || listing.coverBlurUrl !== cover) return undefined;
+  return listing.coverBlur;
+}
+
+/**
  * Every file the generator writes for one photo, in write order. The last one
  * (lg.avif) doubles as the "this photo is done" marker, so it must stay last.
  */
