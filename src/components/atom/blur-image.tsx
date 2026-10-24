@@ -13,6 +13,11 @@ import { cn } from "@/lib/utils";
  * ratio for `fill` images — `overflow-hidden` is required so `scale-105` never
  * spills.
  *
+ * The sharpen keys off `data-loaded`, not React state: a pre-paint listener in
+ * the root layout stamps it the moment the bytes land, so a photo is sharp
+ * while the page is still hydrating — on slow phones that is seconds earlier.
+ * React's own onLoad stamps it too, for images mounted after hydration.
+ *
  * LQIP source, in order: static import → stored per image → NEUTRAL_BLUR.
  */
 
@@ -47,7 +52,10 @@ export function BlurImage({
       // i18n-exempt — next/image API tokens, not user-facing copy
       placeholder={placeholder ?? (plain ? "empty" : "blur")}
       blurDataURL={plain ? undefined : blur}
+      data-blur-up={plain ? "plain" : "blur"}
       data-loaded={loaded ? "" : undefined}
+      // The pre-paint listener may stamp data-loaded before hydration.
+      suppressHydrationWarning
       onLoad={(e) => {
         setLoaded(true);
         onLoad?.(e);
@@ -56,11 +64,9 @@ export function BlurImage({
         "transition-[filter,scale,opacity] duration-700 ease-out",
         "motion-reduce:transition-none",
         // Tailwind v4 has no `blur-0` — `blur-none` is the sharp end state.
-        loaded
-          ? "blur-none scale-100 opacity-100"
-          : plain
-            ? "opacity-0"
-            : "blur-xl scale-105 motion-reduce:blur-none motion-reduce:scale-100",
+        plain
+          ? "opacity-0 data-loaded:opacity-100"
+          : "blur-xl scale-105 data-loaded:blur-none data-loaded:scale-100 motion-reduce:blur-none motion-reduce:scale-100",
         className,
       )}
     />

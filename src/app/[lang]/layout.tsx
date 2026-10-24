@@ -109,6 +109,17 @@ export default async function LocaleLayout({
       <body
         className={`${isRTL ? thmanyahText.className : inter.className} antialiased`}
       >
+        {/* Pre-paint blur-up: a photo sharpens the moment its bytes land, not
+            when React hydrates seconds later on a slow phone. Image load
+            events don't bubble, so one capturing listener — registered before
+            any <img> is parsed — sees them all; BlurImage keys its blur off
+            the data-loaded stamp. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "document.addEventListener('load',function(e){var t=e.target;if(t&&t.hasAttribute&&t.hasAttribute('data-blur-up'))t.setAttribute('data-loaded','')},true)",
+          }}
+        />
         {/* Pre-paint consent gate: the cookie banner is part of the server
             HTML so it paints with the page (a post-hydration mount made it
             the LCP element at ~10s on slow phones). This parser-blocking
