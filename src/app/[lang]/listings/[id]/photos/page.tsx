@@ -40,13 +40,10 @@ export default function PhotoTourPage() {
 
   useEffect(() => {
     if (!params?.id) return;
-    const listingId = parseInt(params.id);
-    if (isNaN(listingId)) {
-      setLoading(false);
-      return;
-    }
-
-    getListing(listingId)
+    // The gallery links here with the public code ("3323-01"). getListing takes
+    // the code or a numeric id as-is; parseInt turned the code into 3323 — a
+    // different listing's photos.
+    getListing(params.id)
       .then((listing) => {
         if (listing && listing.photoUrls) {
           setPhotos(listing.photoUrls);
