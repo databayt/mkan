@@ -59,8 +59,8 @@ jobs:
       matrix:
         shard: ${{ fromJSON(needs.plan.outputs.shards) }}
     env:
-      # Read-only login (SELECT on "Listing"); the app's S3 key, which can
-      # only write under mkan/uploads/*.
+      # SELECT on "Listing" (+ UPDATE on its two cover-blur columns, used by
+      # the blurs job); the app's S3 key, which can only write mkan/uploads/*.
       DATABASE_URL: ${{ secrets.MKAN_IMAGES_DATABASE_URL }}
       AWS_ACCESS_KEY_ID: ${{ secrets.MKAN_AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.MKAN_AWS_SECRET_ACCESS_KEY }}
@@ -78,3 +78,26 @@ jobs:
       - run: pnpm images:variants ${{ needs.plan.outputs.args }} --shard=${{ matrix.shard }}/${{ strategy.job-total }}
         env:
           NODE_ENV: production # quiet Prisma query logs; set here, not job-wide, or pnpm install skips devDependencies (tsx)
+
+  # The covers' 16 px blurred previews (scripts/process-cover-blurs.ts): only
+  # listings whose cover has none or changed, so most hours it writes a few.
+  blurs:
+    needs: variants
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      # Same login: SELECT on "Listing" plus UPDATE on its two cover-blur columns.
+      DATABASE_URL: ${{ secrets.MKAN_IMAGES_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma generate
+      - run: pnpm images:blurs
+        env:
+          NODE_ENV: production
