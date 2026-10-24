@@ -13,6 +13,7 @@ import { PropertyImage } from "@/components/atom/property-image";
 import type { MapBounds } from "./search-provider";
 import type { Listing } from "@/types/listing";
 import { listingSegment } from "@/lib/listing-code";
+import { coverBlurOf } from "@/lib/image-variants";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
@@ -364,6 +365,7 @@ export default function SearchMapMobile({
                         src={photos[0]}
                         alt={l.title ?? ""}
                         variant="nearby"
+                        blurDataURL={coverBlurOf(l)}
                         sizes="110px"
                         seed={id}
                       />

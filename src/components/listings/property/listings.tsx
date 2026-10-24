@@ -15,6 +15,7 @@ import { formatCurrency, formatNumber } from '@/lib/i18n/formatters'
 import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite'
 import { zoneLabel } from '@/lib/geo/zone'
 import { listingSegment } from '@/lib/listing-code'
+import { coverBlurOf } from '@/lib/image-variants'
 
 interface PropertyListingsProps {
   properties: Listing[]
@@ -139,6 +140,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
                 id={l.id.toString()}
                 linkId={listingSegment(l)}
                 images={l.photoUrls ?? []}
+                coverBlur={coverBlurOf(l)}
                 title={l.title ?? ''}
                 subtitle={buildLocationSubtitle(l)}
                 specs={buildSpecs(l)}

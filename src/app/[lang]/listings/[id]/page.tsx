@@ -26,6 +26,7 @@ import type { Locale } from "@/components/internationalization/config";
 import { localize, localizeNested, getText } from "@/components/translation/localize";
 import TrackView from "@/components/analytics/track-view";
 import { listingSegment } from "@/lib/listing-code";
+import { coverBlurOf } from "@/lib/image-variants";
 import ListingDetailSkeleton, {
   MapSectionSkeleton,
   MobileDetailsSkeleton,
@@ -227,6 +228,8 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
           sourceListingId: true,
           title: true,
           photoUrls: true,
+          coverBlur: true,
+          coverBlurUrl: true,
           pricePerNight: true,
           currency: true,
           averageRating: true,
@@ -261,6 +264,7 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
       id: listingSegment(l as { code?: string | null; sourceListingId?: string | null; id: number }),
       title: l.title ?? "Listing",
       image: l.photoUrls?.[0] ?? null,
+      blur: coverBlurOf(l),
       price: l.pricePerNight ?? 0,
       currency: l.currency,
       rating: l.averageRating ?? 0,

@@ -19,6 +19,7 @@ import { PropertyImage } from '@/components/atom/property-image';
 import { BlurImage } from '@/components/atom/blur-image';
 import cdnVariantLoader from '@/lib/image-loader';
 import { STOCK_BLUR } from '@/lib/stock-blur-map';
+import { coverBlurOf } from '@/lib/image-variants';
 import { cn } from '@/lib/utils';
 import { PHASE1 } from '@/config/phase-flags';
 import { useDictionary } from '@/components/internationalization/dictionary-context';
@@ -768,7 +769,7 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                       media="(min-width: 0px)"
                     />
                     <HeroSlideImg
-                      lqip={STOCK_BLUR[src]}
+                      lqip={(i === 0 ? coverBlurOf(listing ?? {}) : undefined) ?? STOCK_BLUR[src]}
                       className="i11046vh atm_e2_1osqo2v atm_vy_1osqo2v atm_jp_sm7xtg atm_jr_xm9jbw atm_5j_nw3v2p atm_vh_yfq0k3 iekrptg atm_8w_1t7jgwy dir dir-ltr w-full h-full object-cover"
                       aria-hidden="true"
                       alt={(dict?.listings?.detail?.propertyImageAlt ?? "Property image {number}").replace("{number}", String(i + 1))}

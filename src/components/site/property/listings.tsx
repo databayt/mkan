@@ -14,6 +14,7 @@ import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-
 import { useSession } from 'next-auth/react'
 import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite'
 import { listingSegment } from '@/lib/listing-code'
+import { coverBlurOf } from '@/lib/image-variants'
 
 interface PropertyListingsProps {
   properties: Listing[]
@@ -80,6 +81,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
     id: property.id.toString(),
     linkId: listingSegment(property),
     images: property.photoUrls || [],
+    coverBlur: coverBlurOf(property),
     title: property.title || "Property",
     location: `${property.location?.city || ""}, ${property.location?.state || ""}`,
     dates: undefined, // You can add availability dates logic here

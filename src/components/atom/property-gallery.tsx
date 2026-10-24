@@ -8,6 +8,8 @@ import { PropertyImage } from "@/components/atom/property-image"
 
 interface PropertyGalleryProps {
   images?: string[];
+  /** The cover's stored blur (coverBlurOf) — painted under photo 1 until it loads. */
+  coverBlur?: string;
   onSave?: () => void;
   isSaved?: boolean;
   onShowAllPhotos?: () => void;
@@ -37,6 +39,7 @@ function PhotosGridIcon() {
 
 export default function PropertyGallery({
   images = [],
+  coverBlur,
   onShowAllPhotos,
   className = "",
   listingId,
@@ -91,6 +94,7 @@ export default function PropertyGallery({
             src={mainImage}
             alt={t?.mainImageAlt ?? "Property main image"}
             variant="hero"
+            blurDataURL={coverBlur}
             // Lazy + high, not priority: this desktop tree is display:none on
             // phones, where an eager or preloaded image still downloads — the
             // mobile strip's photo 1 came down twice. Lazy fetches only the

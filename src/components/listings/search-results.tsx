@@ -12,6 +12,7 @@ import { addFavoriteProperty, removeFavoriteProperty } from "@/lib/actions/user-
 import { qualifiesAsGuestFavorite } from "@/lib/guest-favorite"
 import { zoneLabel } from "@/lib/geo/zone"
 import { listingSegment } from "@/lib/listing-code"
+import { coverBlurOf } from "@/lib/image-variants"
 
 interface SearchResultsProps {
   properties: Listing[]
@@ -114,6 +115,7 @@ export function SearchResults({
             id={l.id.toString()}
             linkId={listingSegment(l)}
             images={l.photoUrls ?? []}
+            coverBlur={coverBlurOf(l)}
             title={l.title ?? ""}
             subtitle={buildLocationSubtitle(l)}
             specs={buildSpecs(l)}

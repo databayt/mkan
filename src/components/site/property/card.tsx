@@ -37,6 +37,8 @@ interface PropertyCardProps {
   priority?: boolean
   /** Image sizes for the surface: "carousel" on the homepage rows, "card" in grids. */
   imageVariant?: PropertyImageVariant
+  /** The cover's stored blur (coverBlurOf) — the real photo, blurred, until it loads. */
+  coverBlur?: string
 }
 
 export function PropertyCard({
@@ -57,6 +59,7 @@ export function PropertyCard({
   className,
   priority = false,
   imageVariant = "card",
+  coverBlur,
 }: PropertyCardProps) {
   const dict = useDictionary()
   const { locale } = useLocale()
@@ -102,6 +105,7 @@ export function PropertyCard({
             alt={title}
             variant={imageVariant}
             priority={priority}
+            blurDataURL={currentImageIndex === 0 ? coverBlur : undefined}
             seed={id || title}
             className="transition-transform duration-300 group-hover:scale-105"
           />

@@ -55,6 +55,8 @@ export interface SearchCardProps {
   priority?: boolean
   /** Image sizes for the surface: "card" on /listings, "search" on /search. */
   imageVariant?: PropertyImageVariant
+  /** The cover's stored blur (coverBlurOf) — the real photo, blurred, until it loads. */
+  coverBlur?: string
 }
 
 export function SearchCard({
@@ -78,6 +80,7 @@ export function SearchCard({
   linkId,
   priority = false,
   imageVariant = "card",
+  coverBlur,
 }: SearchCardProps) {
   const dict = useDictionary()
   const { locale } = useLocale()
@@ -124,6 +127,7 @@ export function SearchCard({
         seed={id || title}
         priority={priority}
         imageVariant={imageVariant}
+        coverBlur={coverBlur}
         radius={20}
         prevLabel={card?.previousPhoto ?? "Previous photo"}
         nextLabel={card?.nextPhoto ?? "Next photo"}

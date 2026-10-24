@@ -31,6 +31,8 @@ export interface ImageCarouselProps {
   priority?: boolean;
   /** Image sizes for the surface: "card" in the /listings grid, "search" on /search. */
   imageVariant?: PropertyImageVariant;
+  /** The cover's stored blur — slide 0 paints it while the photo loads. */
+  coverBlur?: string;
   /** Corner radius (px) of the rounded media box. */
   radius?: number;
   className?: string;
@@ -46,6 +48,7 @@ export function ImageCarousel({
   seed,
   priority = false,
   imageVariant = "card",
+  coverBlur,
   radius = 12,
   className,
   children,
@@ -156,6 +159,7 @@ export function ImageCarousel({
                 alt={alt}
                 variant={imageVariant}
                 priority={priority && i === 0}
+                blurDataURL={i === 0 ? coverBlur : undefined}
                 seed={seed}
               />
             ) : (

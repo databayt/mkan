@@ -26,6 +26,7 @@ import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
 import { trackEvent } from "@/lib/analytics/beacon";
 import { zoneLabel } from "@/lib/geo/zone";
 import { listingSegment } from "@/lib/listing-code";
+import { coverBlurOf } from "@/lib/image-variants";
 
 interface ListingDetailsClientProps {
     listing: Listing;
@@ -192,6 +193,7 @@ export default function ListingDetailsClient({ listing, reviewsSlot, meetHostSlo
 
             <PropertyGallery
                 images={listing.photoUrls || []}
+                coverBlur={coverBlurOf(listing)}
                 onSave={handleSave}
                 isSaved={isSaved}
                 onShowAllPhotos={handleShowAllPhotos}

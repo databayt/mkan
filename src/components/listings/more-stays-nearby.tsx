@@ -13,6 +13,8 @@ export interface NearbyStay {
   id: number | string;
   title: string;
   image: string | null;
+  /** The cover's stored blur (coverBlurOf). */
+  blur?: string;
   price: number;
   currency?: string | null;
   rating: number;
@@ -96,6 +98,7 @@ export default function MoreStaysNearby({
                 src={s.image}
                 alt={s.title}
                 variant="nearby"
+                blurDataURL={s.blur}
                 seed={String(s.id)}
                 className="transition-transform duration-300 group-hover:scale-105"
               />

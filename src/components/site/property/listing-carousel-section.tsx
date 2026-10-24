@@ -16,6 +16,7 @@ import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-
 import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite'
 import { listingSegment } from '@/lib/listing-code'
 import { useSession } from 'next-auth/react'
+import { coverBlurOf } from '@/lib/image-variants'
 
 interface ListingCarouselSectionProps {
   title: string
@@ -78,6 +79,7 @@ export function ListingCarouselSection({
     id: listing.id.toString(),
     linkId: listingSegment(listing),
     images: listing.photoUrls || [],
+    coverBlur: coverBlurOf(listing),
     title: listing.title || "Property",
     location: `${listing.location?.city || ""}, ${listing.location?.state || ""}`,
     dates: undefined,
