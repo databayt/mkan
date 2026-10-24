@@ -139,7 +139,7 @@ export function ListingCarouselSection({
               key={property.id}
               className="ps-4 basis-[85%] sm:basis-1/2 lg:basis-1/4"
             >
-              <PropertyCard {...property} priority={i < priorityCount} />
+              <PropertyCard {...property} priority={i < priorityCount} imageVariant="carousel" />
             </CarouselItem>
           ))}
         </CarouselContent>

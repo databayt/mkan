@@ -179,7 +179,6 @@ export default function HomeContent({ listings, locale }: HomeContentProps) {
               title={sections?.popular ?? "Popular homes in Portsudan"}
               href={`/${locale}/listings?location=Port+Sudan`}
               listings={getPopularPortsudanListings(listings, 12)}
-              priorityCount={4}
             />
             <ListingCarouselSection
               title={sections?.recent ?? "Recently added"}

@@ -9,7 +9,7 @@ import { useFavorites } from "@/components/favorites/favorites-context"
 import { useDictionary } from '@/components/internationalization/dictionary-context'
 import { useLocale } from '@/components/internationalization/use-locale'
 import { formatCurrency, formatNumber } from '@/lib/i18n/formatters'
-import { PropertyImage } from '@/components/atom/property-image'
+import { PropertyImage, type PropertyImageVariant } from '@/components/atom/property-image'
 import GuestFavoriteBadge from '@/components/listings/guest-favorite-badge'
 
 interface PropertyCardProps {
@@ -35,6 +35,8 @@ interface PropertyCardProps {
   linkId?: string
   className?: string
   priority?: boolean
+  /** Image sizes for the surface: "carousel" on the homepage rows, "card" in grids. */
+  imageVariant?: PropertyImageVariant
 }
 
 export function PropertyCard({
@@ -53,7 +55,8 @@ export function PropertyCard({
   onCardClick,
   linkId,
   className,
-  priority = false
+  priority = false,
+  imageVariant = "card",
 }: PropertyCardProps) {
   const dict = useDictionary()
   const { locale } = useLocale()
@@ -97,7 +100,7 @@ export function PropertyCard({
           <PropertyImage
             src={hasPhotos ? (images[currentImageIndex] ?? images[0]) : undefined}
             alt={title}
-            variant="card"
+            variant={imageVariant}
             priority={priority}
             seed={id || title}
             className="transition-transform duration-300 group-hover:scale-105"

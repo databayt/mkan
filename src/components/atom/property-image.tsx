@@ -29,6 +29,8 @@ const USE_CDN_VARIANTS = process.env.NEXT_PUBLIC_USE_CDN_VARIANTS === "true";
 
 export type PropertyImageVariant =
   | "card"
+  | "carousel"
+  | "search"
   | "hero"
   | "thumb"
   | "full"
@@ -46,6 +48,17 @@ const VARIANTS: Record<
     sizes: "(max-width: 1024px) 50vw, 25vw",
     quality: 65,
   },
+  // Homepage rows: Embla items are basis-[85%] sm:basis-1/2 lg:basis-1/4.
+  carousel: {
+    sizes: "(max-width: 639px) 85vw, (max-width: 1023px) 50vw, 25vw",
+    quality: 65,
+  },
+  // /search: 1 → 2 → 3 columns, then two 307px cards in the fixed 638px
+  // results column beside the map (search-results-area.tsx).
+  search: {
+    sizes: "(max-width: 639px) 100vw, (max-width: 767px) 50vw, (max-width: 1023px) 33vw, 307px",
+    quality: 65,
+  },
   hero: { sizes: "(max-width: 1024px) 100vw, 50vw", quality: 75 },
   thumb: { sizes: "25vw", quality: 65 },
   full: { sizes: "(max-width: 768px) 100vw, 50vw", quality: 75 },
@@ -56,7 +69,12 @@ export interface PropertyImageProps {
   src?: string | null;
   alt: string;
   variant?: PropertyImageVariant;
+  /** Above the fold: load eagerly at high priority (Next 16 deprecates `priority`). */
   priority?: boolean;
+  /** Override the loading strategy, e.g. lazy + high for an LCP image in a
+   *  tree that is display:none on some breakpoints (it then never downloads there). */
+  loading?: "lazy" | "eager";
+  fetchPriority?: "high" | "low" | "auto";
   /** Per-image LQIP; falls back to the shared shimmer. */
   blurDataURL?: string;
   /** Extra classes on the <Image> (merged after object-cover). */
@@ -76,6 +94,8 @@ export function PropertyImage({
   alt,
   variant = "card",
   priority = false,
+  loading,
+  fetchPriority,
   blurDataURL,
   className,
   sizes,
@@ -97,7 +117,8 @@ export function PropertyImage({
       fill
       sizes={sizes ?? v.sizes}
       quality={quality ?? v.quality}
-      priority={priority}
+      loading={loading ?? (priority ? "eager" : undefined)}
+      fetchPriority={fetchPriority ?? (priority ? "high" : undefined)}
       plain={plain}
       blurDataURL={blurDataURL ?? STOCK_BLUR[src] ?? NEUTRAL_BLUR}
       loader={USE_CDN_VARIANTS ? cdnVariantLoader : undefined}

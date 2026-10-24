@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PropertyImage } from "@/components/atom/property-image";
+import { PropertyImage, type PropertyImageVariant } from "@/components/atom/property-image";
 import { CarouselDots } from "./carousel-dots";
 
 /**
@@ -29,6 +29,8 @@ export interface ImageCarouselProps {
   alt: string;
   seed?: string;
   priority?: boolean;
+  /** Image sizes for the surface: "card" in the /listings grid, "search" on /search. */
+  imageVariant?: PropertyImageVariant;
   /** Corner radius (px) of the rounded media box. */
   radius?: number;
   className?: string;
@@ -43,6 +45,7 @@ export function ImageCarousel({
   alt,
   seed,
   priority = false,
+  imageVariant = "card",
   radius = 12,
   className,
   children,
@@ -151,7 +154,7 @@ export function ImageCarousel({
               <PropertyImage
                 src={src}
                 alt={alt}
-                variant="card"
+                variant={imageVariant}
                 priority={priority && i === 0}
                 seed={seed}
               />

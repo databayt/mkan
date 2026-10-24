@@ -9,6 +9,7 @@ import { useLocale } from "@/components/internationalization/use-locale"
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters"
 import GuestFavoriteBadge from "@/components/listings/guest-favorite-badge"
 import { ImageCarousel } from "./image-carousel"
+import type { PropertyImageVariant } from "@/components/atom/property-image"
 
 // Exact Airbnb palette (measured from the live /s/homes search cards):
 //   title / price / rating  → #222222
@@ -52,6 +53,8 @@ export interface SearchCardProps {
       `parseInt("0001-01")` is 1 — one heart on the wrong listing. */
   linkId?: string
   priority?: boolean
+  /** Image sizes for the surface: "card" on /listings, "search" on /search. */
+  imageVariant?: PropertyImageVariant
 }
 
 export function SearchCard({
@@ -74,6 +77,7 @@ export function SearchCard({
   onCardClick,
   linkId,
   priority = false,
+  imageVariant = "card",
 }: SearchCardProps) {
   const dict = useDictionary()
   const { locale } = useLocale()
@@ -119,6 +123,7 @@ export function SearchCard({
         alt={title}
         seed={id || title}
         priority={priority}
+        imageVariant={imageVariant}
         radius={20}
         prevLabel={card?.previousPhoto ?? "Previous photo"}
         nextLabel={card?.nextPhoto ?? "Next photo"}

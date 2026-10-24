@@ -49,7 +49,6 @@ export default function WhereToNext() {
             fill
             sizes="(min-width: 768px) 50vw, 100vw"
             className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
-            priority
           />
         </div>
       </div>

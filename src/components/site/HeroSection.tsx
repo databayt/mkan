@@ -33,7 +33,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
           blurDataURL={HERO_BLUR}
           fill
           className="object-cover object-center"
-          priority
+          // The LCP. eager + high, not `priority` (deprecated in Next 16):
+          // the <img> is in the first HTML bytes, so no preload link is needed.
+          loading="eager"
           fetchPriority="high"
           sizes="100vw"
         />

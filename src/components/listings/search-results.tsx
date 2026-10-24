@@ -110,6 +110,7 @@ export function SearchResults({
         return (
           <SearchCard
             key={l.id}
+            imageVariant="search"
             id={l.id.toString()}
             linkId={listingSegment(l)}
             images={l.photoUrls ?? []}

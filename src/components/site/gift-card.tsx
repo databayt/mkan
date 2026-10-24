@@ -31,7 +31,6 @@ export default function GiftCard() {
               width={800}
               height={400}
               className="w-full h-auto object-contain"
-              priority
             />
           </div>
         </div>
