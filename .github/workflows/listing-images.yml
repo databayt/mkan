@@ -1,0 +1,80 @@
+name: Listing images
+
+# Pre-makes the AVIF + WebP ladder for every listing photo
+# (scripts/process-listing-images.ts) so cf/worker.js serves photos straight
+# from the CDN instead of the one container resizing them on request.
+# Photos whose variants aren't made yet still work — they fall back to the
+# optimiser until the next run picks them up.
+
+on:
+  schedule:
+    - cron: "23 * * * *" # hourly: photos of listings changed in the last 3 h
+    - cron: "41 2 * * 0" # Sundays: every photo (done ones cost one HEAD)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "since = listings changed in the last 3 h, all = every photo"
+        type: choice
+        options: [since, all]
+        default: since
+      shards:
+        description: "Parallel jobs for all mode"
+        type: number
+        default: 20
+
+concurrency:
+  group: listing-images
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      args: ${{ steps.plan.outputs.args }}
+      shards: ${{ steps.plan.outputs.shards }}
+    steps:
+      - id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          MODE_INPUT: ${{ inputs.mode }}
+          SHARDS_INPUT: ${{ inputs.shards }}
+        run: |
+          mode=since; shards=1
+          if [ "$EVENT" = workflow_dispatch ]; then mode="$MODE_INPUT"; shards="$SHARDS_INPUT"; fi
+          if [ "$SCHEDULE" = "41 2 * * 0" ]; then mode=all; fi
+          if [ "$mode" = since ]; then shards=1; args="--since=3"; else args="--all"; fi
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+          echo "shards=$(node -e 'console.log(JSON.stringify([...Array(Math.max(1, Math.min(20, Number(process.argv[1]) || 1))).keys()]))' "$shards")" >> "$GITHUB_OUTPUT"
+
+  variants:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    env:
+      # Read-only login (SELECT on "Listing"); the app's S3 key, which can
+      # only write under mkan/uploads/*.
+      DATABASE_URL: ${{ secrets.MKAN_IMAGES_DATABASE_URL }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.MKAN_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.MKAN_AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: us-east-1
+      AWS_S3_BUCKET: databayt-cdn
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma generate
+      - run: pnpm images:variants ${{ needs.plan.outputs.args }} --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+        env:
+          NODE_ENV: production # quiet Prisma query logs; set here, not job-wide, or pnpm install skips devDependencies (tsx)
