@@ -91,7 +91,12 @@ export default function PropertyGallery({
             src={mainImage}
             alt={t?.mainImageAlt ?? "Property main image"}
             variant="hero"
-            priority
+            // Lazy + high, not priority: this desktop tree is display:none on
+            // phones, where an eager or preloaded image still downloads — the
+            // mobile strip's photo 1 came down twice. Lazy fetches only the
+            // visible tree's copy, at high priority, on first layout.
+            loading="lazy"
+            fetchPriority="high"
           />
         </button>
 

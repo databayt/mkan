@@ -54,7 +54,11 @@ function HeroSlideImg({
     <img
       ref={ref}
       {...props}
+      // Same contract as BlurImage: the root layout's pre-paint listener
+      // stamps data-loaded as soon as the bytes land, before hydration.
+      data-blur-up="blur"
       data-loaded={loaded ? "" : undefined}
+      suppressHydrationWarning
       onLoad={(e) => {
         setLoaded(true);
         onLoad?.(e);
@@ -67,9 +71,7 @@ function HeroSlideImg({
       className={cn(
         className,
         "transition-[filter,scale] duration-700 ease-out motion-reduce:transition-none",
-        loaded
-          ? "blur-none scale-100"
-          : "blur-xl scale-105 motion-reduce:blur-none motion-reduce:scale-100",
+        "blur-xl scale-105 data-loaded:blur-none data-loaded:scale-100 motion-reduce:blur-none motion-reduce:scale-100",
       )}
     />
   );
@@ -773,7 +775,11 @@ const MobileListingDetails: React.FC<MobileListingDetailsProps> = ({
                       {...{ elementtiming: "FMP-target" }}
                       id={`FMP-target-${i}`}
                       src={cdnVariantLoader({ src, width: 828 })}
-                      loading={i === 0 ? "eager" : "lazy"}
+                      // Lazy even for slide 0: this tree is display:none on
+                      // desktop, and an eager <img> there still downloads
+                      // (React even preloads it). Lazy + high fetches it at
+                      // first layout on phones only — once, not twice.
+                      loading="lazy"
                       fetchPriority={i === 0 ? "high" : undefined}
                       decoding="async"
                       data-original-uri={src}
