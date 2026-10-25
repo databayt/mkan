@@ -73,6 +73,10 @@ export interface Candidate {
   /** From a WhatsApp chat: median minutes to answer. */
   replyMinutes?: number | null;
   lastReplyAt?: Date | null;
+  /** The person the ads say to call. */
+  contactName?: string | null;
+  /** Languages this source shows them using, most used first (RW, EN, FR, SW, AR). */
+  languages?: string[];
 }
 
 export interface MergedBroker {
@@ -106,6 +110,20 @@ export interface MergedBroker {
   visitFee: number | null;
   replyMinutes: number | null;
   lastReplyAt: Date | null;
+  contactName: string | null;
+  /** The language to write to them in; null when no source shows one. */
+  preferredLanguage: string | null;
+  languages: string[];
+}
+
+/**
+ * The group's languages, most used first: each source's first language counts
+ * 2, the rest 1. Ties go to RW, which every Kigali broker reads.
+ */
+export function mergeLanguages(lists: (string[] | undefined)[]): string[] {
+  const w = new Map<string, number>();
+  for (const list of lists) (list ?? []).forEach((l, i) => w.set(l, (w.get(l) ?? 0) + (i === 0 ? 2 : 1)));
+  return [...w].sort((a, b) => b[1] - a[1] || (a[0] === 'RW' ? -1 : b[0] === 'RW' ? 1 : a[0].localeCompare(b[0]))).map(([l]) => l);
 }
 
 // ── normalisers ──────────────────────────────────────────────────────────────
@@ -395,6 +413,7 @@ export function mergeCandidates(cands: Candidate[]): MergedBroker[] {
       .sort((a, b) => ORIGIN_NAME_RANK[b.origin] - ORIGIN_NAME_RANK[a.origin] || (b.name ?? '').length - (a.name ?? '').length);
     const name = (named[0]?.name ?? (tiktokHandles[0] ? `@${tiktokHandles[0]}` : phones[0]) ?? 'Unknown broker').replace(/\s+/g, ' ').trim();
     const cov = coverage(g.flatMap((c) => c.homes), g.flatMap((c) => c.places ?? []));
+    const languages = mergeLanguages(g.map((c) => c.languages));
     const seen = [cov.lastSeenAt, ...g.map((c) => c.lastSeenAt ?? null)].map((d) => d?.getTime()).filter((t): t is number => t != null && Number.isFinite(t));
     out.push({
       key: keys[0]!,
@@ -423,6 +442,9 @@ export function mergeCandidates(cands: Candidate[]): MergedBroker[] {
       visitFee: g.find((c) => c.visitFee != null)?.visitFee ?? null,
       replyMinutes: g.reduce<number | null>((m, c) => (c.replyMinutes == null ? m : m == null ? c.replyMinutes : Math.min(m, c.replyMinutes)), null),
       lastReplyAt: g.reduce<Date | null>((m, c) => (c.lastReplyAt && (!m || c.lastReplyAt > m) ? c.lastReplyAt : m), null),
+      contactName: mostNamed(g.map((c) => c.contactName)),
+      preferredLanguage: languages[0] ?? null,
+      languages,
     });
   }
   return out.sort((a, b) => b.listingsCount - a.listingsCount || a.key.localeCompare(b.key));
@@ -568,6 +590,20 @@ export function withoutLocked<T extends Record<string, unknown>>(data: T, locked
   for (const f of locked) delete out[f];
   if (locked.includes('zoneSlugs') && lockedZones) Object.assign(out, namesForZones(lockedZones));
   return out as Partial<T>;
+}
+
+/** The name most sources repeat (case and spacing ignored); first seen wins a tie. */
+export function mostNamed(names: (string | null | undefined)[]): string | null {
+  const n = new Map<string, { label: string; count: number }>();
+  for (const raw of names) {
+    const label = raw?.replace(/\s+/g, ' ').trim();
+    if (!label) continue;
+    const k = label.toLowerCase();
+    n.set(k, { label: n.get(k)?.label ?? label, count: (n.get(k)?.count ?? 0) + 1 });
+  }
+  let best: { label: string; count: number } | null = null;
+  for (const v of n.values()) if (!best || v.count > best.count) best = v;
+  return best?.label ?? null;
 }
 
 /** The Twenty body keys each lockable field writes. */

@@ -11,7 +11,10 @@
 // visit fee, water, electricity — and Kigali's words for the home type
 // (self compound, self-contained, studio). The /find card shows them as
 // "from the ad"; a term the ad leaves out stays null and reads as "typical".
-export const TIKTOK_PROMPT_VERSION = 'tiktok-v4';
+// v5 (2026-10-25): the frames' OCR (Apple Vision, on the Mac) arrives as text,
+// so most ads read without images; the reader names the contact person and
+// the languages the ad uses, for the broker's preferred language.
+export const TIKTOK_PROMPT_VERSION = 'tiktok-v5';
 
 /** RWF per USD for posts priced in dollars. Override with TIKTOK_USD_RWF. */
 export const USD_RWF = Number(process.env.TIKTOK_USD_RWF) || 1450;
@@ -22,6 +25,8 @@ export interface TikTokPromptInput {
   caption: string;
   transcript: string;
   uploadedAt: string | null;
+  /** OCR of the frames, pieces separated by " | " (TikTok only). */
+  ocr?: string;
   /** Frame labels in video order — file names, or "frame N" when attached. */
   frames: string[];
   /** `attached`: the images follow the prompt; `files`: open them with Read. */
@@ -42,7 +47,8 @@ function frameLine(v: TikTokPromptInput): string {
  * The TikTok text stays byte-for-byte what the TikTok reader reads with.
  * v2 (2026-10-22): the renting terms, with tiktok-v4.
  */
-export const FACEBOOK_PROMPT_VERSION = 'facebook-v2';
+// v3 (2026-10-25): contact person + languages, with tiktok-v5.
+export const FACEBOOK_PROMPT_VERSION = 'facebook-v3';
 export function buildFacebookPrompt(v: Omit<TikTokPromptInput, 'transcript'>): string {
   return buildTikTokPrompt({ ...v, transcript: '', framesMode: 'attached' })
     .replace('one TikTok video posted in Rwanda', 'one Facebook post (a group post or a Marketplace listing) in Rwanda')
@@ -60,7 +66,8 @@ export function buildTikTokPrompt(v: TikTokPromptInput): string {
 You have:
 - the caption (most reliable — brokers write price, rooms, place and phone here),
 - an automatic speech transcript (Whisper; Kinyarwanda comes out garbled — use it only for place names, numbers and prices you can recognise),
-- ${frameLine(v)} Frames often carry on-screen text (price, rooms, location, phone) — read it; when the caption is empty the frames carry everything.
+- ${frameLine(v)} Frames often carry on-screen text (price, rooms, location, phone) — read it; when the caption is empty the frames carry everything.${v.ocr ? `
+- the on-screen text, already read from the frames by OCR (exact characters, may hold OCR slips like "O" for "0" — fix only obvious ones in the facts, never in onScreenText).` : ''}
 
 Poster: @${v.handle}${v.channel ? ` (${v.channel})` : ''}${v.uploadedAt ? ` · posted ${v.uploadedAt}` : ''}
 
@@ -69,7 +76,10 @@ ${v.caption || '(empty)'}
 
 TRANSCRIPT:
 ${v.transcript || '(none)'}
-
+${v.ocr ? `
+ON-SCREEN TEXT (OCR):
+${v.ocr}
+` : ''}
 Rules:
 - isRental = true only for a home offered FOR RENT (house, apartment, studio, room, annex). Sale, land, plots, hotels, furniture, comedy, ads for services → false with a short rejectReason.
 - inKigali = true if the place is in Kigali city (Gasabo, Kicukiro, Nyarugenge or any of their sectors/neighbourhoods: Kimironko, Kibagabaga, Remera, Kacyiru, Nyamirambo, Gisozi, Kicukiro, Kanombe, Rebero, Nyarutarama, Gacuriro, Kagarama, Gikondo …). If no place is named but the post clearly targets Kigali, true. Other towns (Musanze, Rubavu, Huye …) → false.
@@ -92,9 +102,12 @@ Rules:
 - titleEn: one short guest-facing line, e.g. "2-bedroom apartment in Nyamirambo". titleRw: the same in Kinyarwanda. descriptionEn: 2–4 plain sentences of facts only — never invent amenities.
 - onScreenText: every piece of text shown ON SCREEN in the frames (price cards, room counts, place names, phone numbers, agency names, slogans), copied exactly as written, in frame order, pieces separated by " | ". Do not translate or correct. Skip TikTok's own interface text. Max ~600 characters. null if the frames show no text.
 - brokerName: the broker's or real-estate agency's name as the ad presents it (a logo, a "… Real Estate" card, a signature in the caption), e.g. "Ibra Real Estate". null if the ad names none — do not just repeat the handle.
+- contactName: the PERSON the ad says to contact ("call Eric", "contact Mama Gaju", "Jean Paul 078…", a first name signed under the phone). null if no person is named. Never the agency name again, never the handle.
+- languages: the languages the ad itself uses in its caption, on-screen text and speech, most used first, as codes: RW (Kinyarwanda), EN, FR, SW (Swahili), AR. Kinyarwanda words: inzu, ikodeshwa, icyumba, ibyumba, amafaranga, hamagara, ukwezi… Brand names and place names are no language.
+- primaryLanguage: the one language the broker writes to tenants in — the language of the caption's sentences (not its facts like "2 bedrooms"); null if the ad has no sentences.
 - confidence 0–1: how sure you are of the extracted facts overall.
 - Never invent a fact. Unknown → null.
 
 Return ONLY this JSON object, no prose:
-{"isRental":bool,"rejectReason":string|null,"inKigali":bool,"period":"MONTH"|"NIGHT"|"UNKNOWN","priceRwf":number|null,"priceAsWritten":string|null,"propertyType":string|null,"roomType":string|null,"bedrooms":number|null,"bathrooms":number|null,"furnished":bool|null,"depositMonths":number|null,"commission":{"pct":number|null,"none":bool}|null,"viewingFee":number|null,"water":"INCLUDED"|"SEPARATE"|null,"electricity":"INCLUDED"|"SEPARATE"|null,"district":string|null,"neighbourhood":string|null,"phones":[string],"posterKind":"BROKER"|"OWNER"|"UNKNOWN","features":[string],"units":[{"bedrooms":number|null,"priceRwf":number|null,"propertyType":string|null}],"propertyFrames":[number],"titleEn":string|null,"titleRw":string|null,"descriptionEn":string|null,"onScreenText":string|null,"brokerName":string|null,"confidence":number}`;
+{"isRental":bool,"rejectReason":string|null,"inKigali":bool,"period":"MONTH"|"NIGHT"|"UNKNOWN","priceRwf":number|null,"priceAsWritten":string|null,"propertyType":string|null,"roomType":string|null,"bedrooms":number|null,"bathrooms":number|null,"furnished":bool|null,"depositMonths":number|null,"commission":{"pct":number|null,"none":bool}|null,"viewingFee":number|null,"water":"INCLUDED"|"SEPARATE"|null,"electricity":"INCLUDED"|"SEPARATE"|null,"district":string|null,"neighbourhood":string|null,"phones":[string],"posterKind":"BROKER"|"OWNER"|"UNKNOWN","features":[string],"units":[{"bedrooms":number|null,"priceRwf":number|null,"propertyType":string|null}],"propertyFrames":[number],"titleEn":string|null,"titleRw":string|null,"descriptionEn":string|null,"onScreenText":string|null,"brokerName":string|null,"contactName":string|null,"languages":["RW"|"EN"|"FR"|"SW"|"AR"],"primaryLanguage":"RW"|"EN"|"FR"|"SW"|"AR"|null,"confidence":number}`;
 }

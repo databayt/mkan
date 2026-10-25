@@ -553,7 +553,7 @@ async function ask(): Promise<void> {
     .map((h) => {
       const handle = String(h.tiktokHandle).replace(/^@/, '').toLowerCase();
       const name = String(h.name ?? '').trim();
-      return { handle, name: name.replace(/^@/, '').toLowerCase() === handle ? '' : name, phone: phoneOf(h.phone as Phones | null), consent: (h.repostConsent as string | null) ?? '—' };
+      return { handle, name: name.replace(/^@/, '').toLowerCase() === handle ? '' : name, phone: phoneOf(h.phone as Phones | null), consent: (h.repostConsent as string | null) ?? '—', lang: (h.preferredLanguage as string | null) ?? null };
     })
     .sort((a, b) => (count.get(b.handle) ?? 0) - (count.get(a.handle) ?? 0));
   console.log('Broker repost consent (homes = their leads on /find):\n');
@@ -568,7 +568,7 @@ async function ask(): Promise<void> {
   if (flag('slack')) {
     const due = rows.filter((r) => r.phone && (count.get(r.handle) ?? 0) > 0 && r.consent !== 'YES' && r.consent !== 'NO');
     if (!due.length) return void console.log('Nobody left to ask.');
-    const lines = due.map((r) => `• <${waLink(r.phone!, brokerAsk(r.name, r.handle, PAGE))}|@${r.handle}> — ${count.get(r.handle)} homes${r.consent === 'ASKED' ? ' (asked before)' : ''}`);
+    const lines = due.map((r) => `• <${waLink(r.phone!, brokerAsk(r.name, r.handle, PAGE, r.lang))}|@${r.handle}> — ${count.get(r.handle)} homes${r.consent === 'ASKED' ? ' (asked before)' : ''}`);
     const ok = await postToMkan(
       [`📣 *Broker repost asks for TikTok @${PAGE}* — open each on the phone with WhatsApp ${whatsapp()}; the message is typed in, tap send.`, ...lines, `Then: \`pnpm tt:ask --mark=${due.map((r) => r.handle).join(',')} --as=ASKED --apply\``].join('\n'),
     );
@@ -582,7 +582,7 @@ async function ask(): Promise<void> {
  * preview/ (never posted — tt:upload refuses that folder), put it on the CDN
  * unlisted, and post the prefilled wa.me asks carrying the link to #mkan.
  */
-async function askWithPreview(rows: { handle: string; name: string; phone: string | null; consent: string }[], leads: PostRow[], count: Map<string, number>): Promise<void> {
+async function askWithPreview(rows: { handle: string; name: string; phone: string | null; consent: string; lang: string | null }[], leads: PostRow[], count: Map<string, number>): Promise<void> {
   const top = Number(argv('top', '5')) || 5;
   const due = rows.filter((r) => r.phone && (count.get(r.handle) ?? 0) > 0 && r.consent !== 'YES' && r.consent !== 'NO').slice(0, top);
   const dir = join(DATA, 'preview');
@@ -592,7 +592,7 @@ async function askWithPreview(rows: { handle: string; name: string; phone: strin
     const theirs = leads.filter((r) => r.hostSourceId?.replace(/^tiktok:/, '').toLowerCase() === b.handle && brokerVideoUrl(r)).sort((a, z) => z.id - a.id);
     if (!theirs.length) {
       console.warn(`  ! @${b.handle}: no home with a video — plain ask instead`);
-      lines.push(`• <${waLink(b.phone!, brokerAsk(b.name, b.handle, PAGE))}|@${b.handle}> — ${count.get(b.handle)} homes (no video to remaster)`);
+      lines.push(`• <${waLink(b.phone!, brokerAsk(b.name, b.handle, PAGE, b.lang))}|@${b.handle}> — ${count.get(b.handle)} homes (no video to remaster)`);
       continue;
     }
     let made: { ref: string; url: string } | null = null;
@@ -611,11 +611,11 @@ async function askWithPreview(rows: { handle: string; name: string; phone: strin
       }
     }
     if (!made) {
-      lines.push(`• <${waLink(b.phone!, brokerAsk(b.name, b.handle, PAGE))}|@${b.handle}> — ${count.get(b.handle)} homes (remaster failed)`);
+      lines.push(`• <${waLink(b.phone!, brokerAsk(b.name, b.handle, PAGE, b.lang))}|@${b.handle}> — ${count.get(b.handle)} homes (remaster failed)`);
       continue;
     }
     console.log(`  🎬 @${b.handle}: ${made.ref} → ${made.url}`);
-    lines.push(`• <${waLink(b.phone!, brokerPreviewAsk(b.name, b.handle, PAGE, made.url))}|@${b.handle}> — ${count.get(b.handle)} homes · preview <${made.url}|${made.ref}>`);
+    lines.push(`• <${waLink(b.phone!, brokerPreviewAsk(b.name, b.handle, PAGE, made.url, b.lang))}|@${b.handle}> — ${count.get(b.handle)} homes · preview <${made.url}|${made.ref}>`);
   }
   if (!lines.length) return void console.log('Nobody left to ask.');
   const ok = await postToMkan(

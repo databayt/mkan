@@ -39,6 +39,8 @@ export interface VideoRow {
   meta?: VideoMeta;
   frames?: string[];
   transcript?: string;
+  /** Apple Vision OCR per frame, in frame order (index = frame number − 1). */
+  ocr?: string[];
   read?: TikTokRead;
   readVersion?: string;
   frameUrls?: string[];
@@ -66,6 +68,8 @@ export interface SeedRow {
   hits?: number;
   /** TikTok's secUid, learnt from one of the account's videos. */
   channelId?: string;
+  /** One video of theirs (the search hit that found them) — its page gives the secUid when the ledger has none. */
+  sampleUrl?: string;
   /** Runs in a row that could not list this account. */
   failStreak?: number;
   lastListedAt?: string;
@@ -231,9 +235,45 @@ export function vetVerdict(captions: string[]): { verdict: 'promote' | 'ignore' 
  * (98 of 135 on 2026-10-20). Young enough to still be on the market only.
  */
 export function requeueable(row: VideoRow, fromSeed: boolean, maxAgeDays: number, nowMs = Date.now()): boolean {
-  if (row.state !== 'skipped' || row.skipReason !== NOT_A_RENTAL_CAPTION || !row.meta) return false;
-  if (row.meta.timestamp != null && nowMs / 1000 - row.meta.timestamp > maxAgeDays * 86400) return false;
+  if (row.state !== 'skipped') return false;
+  const posted = row.meta?.timestamp ?? tiktokIdTime(row.videoId);
+  const young = posted == null || nowMs / 1000 - posted <= maxAgeDays * 86400;
+  // The age gate moved (7 → 30 days on 2026-10-25): a row it skipped is back
+  // once today's window holds it.
+  if (/^older than \d+ days$/.test(row.skipReason ?? '')) return young;
+  if (row.skipReason !== NOT_A_RENTAL_CAPTION || !row.meta || !young) return false;
   return looksLikeRental(row.meta.caption, fromSeed);
+}
+
+/** The frames' OCR as one text — each distinct line once, in frame order. */
+export function ocrText(row: Pick<VideoRow, 'ocr'>, max = 1200): string {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const frame of row.ocr ?? []) {
+    for (const piece of frame.split(' | ')) {
+      const k = piece.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (k.length < 2 || seen.has(k)) continue;
+      seen.add(k);
+      out.push(piece.trim());
+    }
+  }
+  return out.join(' | ').slice(0, max);
+}
+
+/**
+ * The frames that show the house: brokers burn a text card over the intro and
+ * the outro, so the frames with the least OCR text are the tour. Ties keep the
+ * middle of the video first. Frame numbers are 1-based, like the reader's.
+ */
+export function propertyFramesByOcr(ocr: string[] | undefined, n: number, max = 4): number[] {
+  if (!n) return [];
+  const mid = (n + 1) / 2;
+  const len = (i: number) => (ocr?.[i] ?? '').replace(/[^A-Za-z0-9]/g, '').length;
+  const frames = Array.from({ length: n }, (_, i) => i);
+  const ranked = frames.sort((a, b) => len(a) - len(b) || Math.abs(a + 1 - mid) - Math.abs(b + 1 - mid));
+  // A frame that is mostly a text card (≥ 60 letters) is never the house.
+  const clean = ranked.filter((i) => len(i) < 60);
+  return (clean.length ? clean : ranked).slice(0, max).map((i) => i + 1);
 }
 
 /**
@@ -242,8 +282,8 @@ export function requeueable(row: VideoRow, fromSeed: boolean, maxAgeDays: number
  * (known rental posters); then newest. Lower sorts first.
  */
 export function readPriority(row: VideoRow, fromSeed: boolean): number[] {
-  const text = `${row.meta?.caption ?? ''} ${row.handle} ${row.transcript ?? ''}`;
-  const c = toAsciiDigits(row.meta?.caption ?? '').toLowerCase();
+  const text = `${adText(row)} ${row.handle} ${row.transcript ?? ''}`;
+  const c = toAsciiDigits(adText(row)).toLowerCase();
   const price = /(\d+(?:[.,]\d+)?\s*(?:k|m|million)\b|\d{1,3}(?:[,.\s]\d{3})+|\b(?:rwf|frw|usd)\b|\$\s*\d)/.test(c);
   return [rwandaPhonesInText(text).length ? 0 : 1, price ? 0 : 1, fromSeed ? 0 : 1, -(row.meta?.timestamp ?? 0)];
 }
@@ -253,15 +293,22 @@ export const byPriority = (a: number[], b: number[]): number => {
   return 0;
 };
 
+/** What the ad says in writing: its caption, then the text burned into its frames. */
+export function adText(row: Pick<VideoRow, 'meta' | 'ocr'>): string {
+  const ocr = ocrText(row);
+  return [row.meta?.caption ?? '', ocr].filter(Boolean).join('\n');
+}
+
 /**
- * Does the caption alone carry the facts (a price and a room count)? Those
- * posts are read as text — the vision model's daily quota (~30 reads) is kept
- * for captions that leave the facts to the on-screen text.
+ * Does the written ad (caption + OCR of the frames) carry the facts — a price
+ * and a room count? Those posts are read as text: the vision model's daily
+ * quota (~30 reads) is kept for ads whose facts are only in the pictures.
  */
 export function captionCarriesFacts(caption: string): boolean {
   const c = toAsciiDigits(caption).toLowerCase();
   const price = /(\d+(?:[.,]\d+)?\s*(?:k|m|million)\b|\d{1,3}(?:[,.\s]\d{3})+|\b(?:rwf|frw|usd)\b|\$\s*\d)/.test(c);
-  const rooms = /(\d+\s*(?:-|\s)?\s*(?:bed|bd|br|bedroom|chambre|ibyumba)|studio|single room|self[-\s]?contain)/.test(c);
+  // Kinyarwanda and French put the count after the word: "ibyumba 2", "chambres: 3".
+  const rooms = /(\d+\s*(?:-|\s)?\s*(?:bed|bd|br|bedroom|chambre|ibyumba)|(?:ibyumba|chambres?|bedrooms?)\s*[:=-]?\s*\d|studio|single room|self[-\s]?contain)/.test(c);
   return price && rooms;
 }
 
@@ -288,11 +335,13 @@ export function fetchBudget(limit: number, readCapacity: number, queued: number)
 }
 
 /**
- * Is the speech worth transcribing? A caption that already gives the price and
- * a phone leaves Whisper nothing the reader needs — and over music it invents.
+ * Is the speech worth transcribing? An ad whose caption or on-screen text
+ * already gives the price and a phone leaves Whisper nothing the reader needs —
+ * and over music it invents. (The broker's spoken language is read from the
+ * caption then, see `detectLanguages`.)
  */
-export function needsTranscript(caption: string): boolean {
-  return !(captionCarriesFacts(caption) && rwandaPhonesInText(caption).length > 0);
+export function needsTranscript(text: string): boolean {
+  return !(captionCarriesFacts(text) && rwandaPhonesInText(text).length > 0);
 }
 
 /** Six (or n) evenly spaced timestamps, skipping the first and last 5% (intro cards, end screens). */
@@ -334,6 +383,104 @@ export function rwPhonesComposite(e164: string | null | undefined) {
     primaryPhoneCallingCode: '+250',
     additionalPhones: [],
   };
+}
+
+// ── language ─────────────────────────────────────────────────────────────────
+/** The languages a Kigali broker writes in — Twenty `preferredLanguage` options. */
+export const LANGS = ['RW', 'EN', 'FR', 'SW', 'AR'] as const;
+export type Lang = (typeof LANGS)[number];
+
+/** A reader's or Whisper's language label → ours. Unknown → null. */
+export function langCode(v: string | null | undefined): Lang | null {
+  const k = (v ?? '').trim().toLowerCase();
+  if (!k) return null;
+  if (/^(rw|kin|kinyarwanda|ikinyarwanda|rn|kirundi)$/.test(k)) return 'RW';
+  if (/^(en|eng|english)$/.test(k)) return 'EN';
+  if (/^(fr|fra|fre|french|français|francais)$/.test(k)) return 'FR';
+  if (/^(sw|swa|swahili|kiswahili)$/.test(k)) return 'SW';
+  if (/^(ar|ara|arabic|العربية)$/.test(k)) return 'AR';
+  return null;
+}
+
+// Words only one of the languages uses in a rental ad. "appartement" is left
+// out: Kigali's English ads spell it that way too.
+const LANG_WORDS: Record<Exclude<Lang, 'AR'>, RegExp> = {
+  RW: /\b(inzu|ikodeshwa|irakodeshwa|gukodesha|gukodeshwa|icyumba|ibyumba|amafaranga|amazi|umuriro|iherereye|ifite|yigenga|ubwiherero|igikoni|ukwezi|nta|hamagara|twandikire|ibikoresho|kandi|cyangwa|iri|iyi|uyu|aho|muri|hafi|y'?umukozi|yumukozi|isoko|ahantu|igiciro|nziza|ni|ku|mu)\b/g,
+  // Function words on both sides (the/and/is/in vs et/une/est/les), or a
+  // bilingual EN+FR caption tips to whichever list has more of them.
+  EN: /\b(for|rent|bedrooms?|bathrooms?|kitchen|living|room|price|available|furnished|unfurnished|house|located|near|with|and|the|is|in|of|to|a|an|it|has|this|call|contact|month|monthly|parking|compound|new|big|nice|very|clean)\b/g,
+  FR: /\b(louer|chambres?|salon|cuisine|meubl[ée]e?|maison|par|mois|avec|douche|prix|quartier|disponible|pour|les|des|est|une?|et|à|tr[eè]s|neuf|propre)\b/g,
+  // Not "kwa": Kinyarwanda uses it too ("kwa Kanombe").
+  SW: /\b(nyumba|inapangishwa|kupangisha|kodi|vyumba|chumba|mwezi|choo|jiko|bei|karibu|mpangaji|sebule|inauzwa|piga)\b/g,
+};
+
+/**
+ * Which languages a text is in, most used first, by counting words only that
+ * language uses in a rental ad. Kigali captions mix (English facts, Kinyarwanda
+ * call-to-action), so all of them are returned with their counts.
+ */
+export function detectLanguages(text: string): { lang: Lang; hits: number }[] {
+  const t = (text ?? '').toLowerCase();
+  const out: { lang: Lang; hits: number }[] = [];
+  for (const [lang, re] of Object.entries(LANG_WORDS) as [Lang, RegExp][]) {
+    const hits = t.match(re)?.length ?? 0;
+    if (hits) out.push({ lang, hits });
+  }
+  const ar = t.match(/[\u0600-\u06FF]+/g)?.length ?? 0;
+  if (ar) out.push({ lang: 'AR', hits: ar });
+  // Ties → RW: it is the language every Kigali broker reads.
+  return out.sort((a, b) => b.hits - a.hits || (a.lang === 'RW' ? -1 : b.lang === 'RW' ? 1 : 0));
+}
+
+const mostCommon = (votes: Map<string, { n: number; label: string }>): string | null => {
+  let best: { n: number; label: string } | null = null;
+  for (const v of votes.values()) if (!best || v.n > best.n) best = v;
+  return best?.label ?? null;
+};
+const vote = (votes: Map<string, { n: number; label: string }>, label: string | null | undefined, w = 1) => {
+  const l = (label ?? '').trim();
+  const k = l.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (k.length < 2) return;
+  const cur = votes.get(k);
+  votes.set(k, { n: (cur?.n ?? 0) + w, label: cur?.label ?? l });
+};
+
+export interface BrokerProfile {
+  /** The agency or broker name their ads show most. */
+  brokerName: string | null;
+  /** The person to ask for ("call Eric") their ads name most. */
+  contactName: string | null;
+  /** The language to write to them in. */
+  preferredLanguage: Lang;
+  /** Every language their ads use, most used first. */
+  languages: Lang[];
+}
+
+/**
+ * One broker from all of an account's posts: the name and contact their ads
+ * repeat, and the language they write to tenants in. The caption is how the
+ * broker writes, so it counts double; the on-screen text once; the reader's
+ * own call (it also hears the speech) three times. Whisper's language guess is
+ * not used: it has no Kinyarwanda and labels it Swahili or worse.
+ */
+export function brokerProfile(rows: Pick<VideoRow, 'meta' | 'ocr' | 'read'>[]): BrokerProfile {
+  const names = new Map<string, { n: number; label: string }>();
+  const contacts = new Map<string, { n: number; label: string }>();
+  const score = new Map<Lang, number>();
+  const add = (l: Lang | null, w: number) => l && score.set(l, (score.get(l) ?? 0) + w);
+  for (const r of rows) {
+    vote(names, r.read?.brokerName);
+    vote(contacts, r.read?.contactName);
+    const written = [
+      ...detectLanguages(r.meta?.caption ?? '').map((x) => [x.lang, x.hits * 2] as const),
+      ...detectLanguages(ocrText(r)).map((x) => [x.lang, x.hits] as const),
+    ];
+    for (const [l, w] of written) add(l, w);
+    if (r.read?.primaryLanguage) add(r.read.primaryLanguage, 3);
+    for (const l of r.read?.languages ?? []) add(l, 1);
+  }
+  const languages = [...score.entries()].sort((a, b) => b[1] - a[1] || (a[0] === 'RW' ? -1 : b[0] === 'RW' ? 1 : 0)).map(([l]) => l);
+  return { brokerName: mostCommon(names), contactName: mostCommon(contacts), preferredLanguage: languages[0] ?? 'RW', languages };
 }
 
 // ── the reader's result ──────────────────────────────────────────────────────
@@ -409,6 +556,10 @@ export const TikTokReadSchema = z.object({
   // tiktok-v3: the ad's own words, for the TikTok post record.
   onScreenText: nullableStr,
   brokerName: nullableStr,
+  // tiktok-v5: who answers the phone, and the languages the ad is written/spoken in.
+  contactName: nullableStr,
+  languages: z.array(z.string()).optional().default([]).catch([]).transform((v) => [...new Set(v.map(langCode).filter((l): l is Lang => !!l))]),
+  primaryLanguage: z.string().nullable().optional().catch(null).transform((v) => langCode(v)),
   confidence: z.number().min(0).max(1).catch(0.5),
 });
 export type TikTokRead = z.infer<typeof TikTokReadSchema>;
@@ -671,7 +822,7 @@ export function postBody(row: VideoRow) {
   const read = row.read;
   const published = row.meta?.timestamp ? new Date(row.meta.timestamp * 1000) : null;
   const broker = read?.brokerName ?? row.meta?.channel ?? row.handle;
-  const phones = read ? phonesFor(read, `${row.meta?.caption ?? ''} ${row.handle} ${row.transcript ?? ''}`) : rwandaPhonesInText(`${row.meta?.caption ?? ''} ${row.handle}`);
+  const phones = read ? phonesFor(read, `${adText(row)} ${row.handle} ${row.transcript ?? ''}`) : rwandaPhonesInText(`${adText(row)} ${row.handle}`);
   return {
     name: `${broker} · ${published ? published.toISOString().slice(0, 10) : row.videoId}`,
     videoId: row.videoId,
@@ -681,7 +832,11 @@ export function postBody(row: VideoRow) {
     brokerName: broker,
     publishedAt: published?.toISOString(),
     caption: row.meta?.caption || undefined,
-    onScreenText: read?.onScreenText ?? undefined,
+    // The reader copies what it sees; the OCR is the full text when the read
+    // came from text alone (no frames sent).
+    onScreenText: read?.onScreenText ?? (ocrText(row) || undefined),
+    contactName: read?.contactName ?? undefined,
+    languages: postLanguages(row),
     transcript: row.transcript || undefined,
     phonesSeen: phones.length ? phones.join(', ') : undefined,
     views: row.meta?.views ?? undefined,
@@ -697,16 +852,46 @@ export function postBody(row: VideoRow) {
 }
 
 /** The Twenty `host` body for a TikTok poster. */
-export function hostBody(row: VideoRow, read: TikTokRead, phone: string | null) {
+export function hostBody(row: VideoRow, read: TikTokRead, phone: string | null, profile?: BrokerProfile) {
+  const p = profile ?? brokerProfile([row]);
   return {
-    name: row.meta?.channel || row.handle,
+    name: p.brokerName || p.contactName || row.meta?.channel || row.handle,
+    contactName: p.contactName ?? undefined,
     source: 'TIKTOK',
     tiktokHandle: row.handle,
     phone: rwPhonesComposite(phone),
     contactFoundVia: 'TIKTOK',
-    preferredLanguage: 'RW',
+    preferredLanguage: p.preferredLanguage,
     agencySuspected: read.posterKind === 'BROKER',
     contactConfidence: phone ? undefined : 'NONE',
     notes: `TikTok @${row.handle} — https://www.tiktok.com/@${row.handle}`,
   };
+}
+
+/** The languages one post uses — the reader's call, else the written words. */
+export function postLanguages(row: Pick<VideoRow, 'meta' | 'ocr' | 'read'>): Lang[] | undefined {
+  const p = brokerProfile([row]);
+  return p.languages.length ? p.languages : undefined;
+}
+
+/**
+ * What a host already in Twenty learns from the broker profile. Only fields
+ * the lane itself set are touched: a name that is still the handle or channel
+ * name, a language still on the old blanket 'RW' default, an empty contact.
+ * A person's edit in Twenty is never overwritten.
+ */
+export function hostProfilePatch(
+  host: { name?: unknown; contactName?: unknown; preferredLanguage?: unknown },
+  row: Pick<VideoRow, 'handle' | 'meta'>,
+  p: BrokerProfile,
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  const name = String(host.name ?? '').trim();
+  const autoName = !name || name === row.handle || name === row.meta?.channel;
+  const better = p.brokerName || p.contactName;
+  if (autoName && better && better !== name) patch.name = better;
+  if (!host.contactName && p.contactName) patch.contactName = p.contactName;
+  const lang = host.preferredLanguage as string | null | undefined;
+  if (p.languages.length && (!lang || lang === 'RW') && p.preferredLanguage !== lang) patch.preferredLanguage = p.preferredLanguage;
+  return patch;
 }

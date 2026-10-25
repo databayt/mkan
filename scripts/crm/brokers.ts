@@ -226,6 +226,8 @@ export function candidatesFromPosts(posts: Row[], homeById: Map<string, HomeFact
       sources: ['tiktok'],
       homes: home ? [home] : [],
       lastSeenAt: dateOf(p.publishedAt),
+      contactName: ((p.contactName as string | null) || '').trim() || null,
+      languages: Array.isArray(p.languages) ? (p.languages as string[]) : [],
     });
   }
   return out;
@@ -585,6 +587,9 @@ export function twentyBrokerBody(
     visitFee: b.visitFee ?? undefined,
     replyMinutes: b.replyMinutes ?? undefined,
     lastReplyAt: b.lastReplyAt?.toISOString() ?? undefined,
+    contactName: b.contactName ?? undefined,
+    preferredLanguage: b.preferredLanguage ?? undefined,
+    languages: b.languages.length ? b.languages : undefined,
     mkanBrokerId: row.id,
   };
   for (const f of locked) for (const k of TWENTY_KEYS[f] ?? []) delete body[k];
@@ -646,6 +651,9 @@ async function apply(brokers: MergedBroker[]): Promise<void> {
       visitFee: b.visitFee ?? undefined,
       replyMinutes: b.replyMinutes ?? undefined,
       lastReplyAt: b.lastReplyAt ?? undefined,
+      contactName: b.contactName ?? undefined,
+      preferredLanguage: b.preferredLanguage ?? undefined,
+      languages: b.languages,
       sources: [...new Set([...(existing?.sources ?? []), ...b.sources])],
     };
     // A person's edit in Twenty wins over what the ads say.

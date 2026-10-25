@@ -153,37 +153,63 @@ export function captionFor(r: PostRow, whatsapp: string): string {
   ].join('\n');
 }
 
-/** The message asking a seed broker for repost rights — EN, then Kinyarwanda. */
-export function brokerAsk(name: string, handle = '', page = ''): string {
+/**
+ * Two blocks in the broker's language first: the ads say which (the TikTok
+ * lane's brokerProfile → host.preferredLanguage). English is the second block
+ * for a French or Kinyarwanda writer, Kinyarwanda for everyone else — every
+ * Kigali broker reads one of the two.
+ */
+function inTheirLanguage(lang: string | null | undefined, blocks: { EN: string[]; RW: string[]; FR: string[] }): string {
+  const order: (keyof typeof blocks)[] = lang === 'RW' ? ['RW', 'EN'] : lang === 'FR' ? ['FR', 'EN'] : ['EN', 'RW'];
+  return order.map((l) => blocks[l].join('\n')).join('\n\n');
+}
+
+/** The message asking a seed broker for repost rights — their language first, then a second one. */
+export function brokerAsk(name: string, handle = '', page = '', lang?: string | null): string {
   const hi = name ? ` ${name}` : '';
   const yours = handle ? ` from @${handle}` : '';
   const zanyu = handle ? ` (@${handle})` : '';
   const ours = page ? ` (@${page})` : '';
-  return [
-    `Hello${hi} 👋 This is mkan (mkan.sd), a home-rental platform in Kigali.`,
-    `We are starting a TikTok page${ours} for monthly rentals in Kigali. Can we repost your houses${yours} on it, with your name credited? When a tenant we bring rents one of yours, we share the commission with you. Reply YES and we start.`,
-    '',
-    `Muraho${hi} 👋 Turi mkan (mkan.sd), urubuga rw'ubukode bw'inzu i Kigali.`,
-    `Dutangiye paji ya TikTok${ours} y'inzu zikodeshwa ku kwezi i Kigali. Mwatwemerera gushyira inzu zanyu${zanyu} kuri paji yacu, tuvuga izina ryanyu? Umukiriya tuzanye nakodesha inzu yanyu, tugabana komisiyo. Musubize YEGO dutangire.`,
-  ].join('\n');
+  return inTheirLanguage(lang, {
+    EN: [
+      `Hello${hi} 👋 This is mkan (mkan.sd), a home-rental platform in Kigali.`,
+      `We are starting a TikTok page${ours} for monthly rentals in Kigali. Can we repost your houses${yours} on it, with your name credited? When a tenant we bring rents one of yours, we share the commission with you. Reply YES and we start.`,
+    ],
+    RW: [
+      `Muraho${hi} 👋 Turi mkan (mkan.sd), urubuga rw'ubukode bw'inzu i Kigali.`,
+      `Dutangiye paji ya TikTok${ours} y'inzu zikodeshwa ku kwezi i Kigali. Mwatwemerera gushyira inzu zanyu${zanyu} kuri paji yacu, tuvuga izina ryanyu? Umukiriya tuzanye nakodesha inzu yanyu, tugabana komisiyo. Musubize YEGO dutangire.`,
+    ],
+    FR: [
+      `Bonjour${hi} 👋 Ici mkan (mkan.sd), une plateforme de location de maisons à Kigali.`,
+      `Nous lançons une page TikTok${ours} pour les locations au mois à Kigali. Pouvons-nous y republier vos maisons${zanyu}, avec votre nom ? Quand un locataire que nous amenons loue l'une d'elles, nous partageons la commission avec vous. Répondez OUI (ou YES) et nous commençons.`,
+    ],
+  });
 }
 
 /**
  * The ask with the pitch in it: one of the broker's own homes, remastered by
  * mkan, sent to them privately (an unlisted CDN link — nothing is posted).
  */
-export function brokerPreviewAsk(name: string, handle: string, page: string, previewUrl: string): string {
+export function brokerPreviewAsk(name: string, handle: string, page: string, previewUrl: string, lang?: string | null): string {
   const hi = name ? ` ${name}` : '';
   const ours = page ? ` (@${page})` : '';
-  return [
-    `Hello${hi} 👋 This is mkan (mkan.sd), a home-rental platform in Kigali.`,
-    `We re-edited one of your homes from @${handle} — sharper picture, steadier, mkan music — just for you to see: ${previewUrl}`,
-    `Can we post your houses like this on our TikTok page${ours} for monthly rentals, with your name on every video? When a tenant we bring rents one of yours, we share the commission with you. Reply YES and we start. Nothing is posted until you say YES.`,
-    '',
-    `Muraho${hi} 👋 Turi mkan (mkan.sd), urubuga rw'ubukode bw'inzu i Kigali.`,
-    `Twatunganyije video y'inzu yanyu (@${handle}) ngo muyirebe: ${previewUrl}`,
-    `Mwatwemerera gushyira inzu zanyu kuri paji yacu ya TikTok${ours} gutya, tuvuga izina ryanyu? Umukiriya tuzanye nakodesha inzu yanyu, tugabana komisiyo. Musubize YEGO dutangire. Nta kintu dushyiraho mutaravuga YEGO.`,
-  ].join('\n');
+  return inTheirLanguage(lang, {
+    EN: [
+      `Hello${hi} 👋 This is mkan (mkan.sd), a home-rental platform in Kigali.`,
+      `We re-edited one of your homes from @${handle} — sharper picture, steadier, mkan music — just for you to see: ${previewUrl}`,
+      `Can we post your houses like this on our TikTok page${ours} for monthly rentals, with your name on every video? When a tenant we bring rents one of yours, we share the commission with you. Reply YES and we start. Nothing is posted until you say YES.`,
+    ],
+    RW: [
+      `Muraho${hi} 👋 Turi mkan (mkan.sd), urubuga rw'ubukode bw'inzu i Kigali.`,
+      `Twatunganyije video y'inzu yanyu (@${handle}) ngo muyirebe: ${previewUrl}`,
+      `Mwatwemerera gushyira inzu zanyu kuri paji yacu ya TikTok${ours} gutya, tuvuga izina ryanyu? Umukiriya tuzanye nakodesha inzu yanyu, tugabana komisiyo. Musubize YEGO dutangire. Nta kintu dushyiraho mutaravuga YEGO.`,
+    ],
+    FR: [
+      `Bonjour${hi} 👋 Ici mkan (mkan.sd), une plateforme de location de maisons à Kigali.`,
+      `Nous avons remonté une vidéo de l'une de vos maisons (@${handle}) — image plus nette, plus stable, musique mkan — rien que pour vous : ${previewUrl}`,
+      `Pouvons-nous publier vos maisons ainsi sur notre page TikTok${ours} de locations au mois, avec votre nom sur chaque vidéo ? Quand un locataire que nous amenons loue l'une d'elles, nous partageons la commission avec vous. Répondez OUI (ou YES) et nous commençons. Rien n'est publié avant votre OUI.`,
+    ],
+  });
 }
 
 /** A wa.me link that opens the chat with `text` already typed — the person still taps send. */

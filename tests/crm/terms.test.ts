@@ -112,9 +112,9 @@ const V3_READ = {
   confidence: 0.8,
 };
 
-describe('the reader (tiktok-v4)', () => {
+describe('the reader (tiktok-v4 terms, still in v5)', () => {
   it('asks for the terms and Kigali home words, and versions the change', () => {
-    expect(TIKTOK_PROMPT_VERSION).toBe('tiktok-v4');
+    expect(TIKTOK_PROMPT_VERSION).toBe('tiktok-v5');
     const p = buildTikTokPrompt({ handle: 'x', channel: null, caption: 'c', transcript: '', uploadedAt: null, frames: [] });
     expect(p).toContain('"depositMonths":number|null');
     expect(p).toContain('"commission":{"pct":number|null,"none":bool}|null');
@@ -124,6 +124,11 @@ describe('the reader (tiktok-v4)', () => {
     const fb = buildFacebookPrompt({ handle: 'x', channel: null, caption: 'c', uploadedAt: null, frames: [] });
     expect(fb).toContain('POST TEXT:');
     expect(fb).toContain('"viewingFee":number|null');
+    // v5: the OCR block appears only when there is OCR, and never for Facebook.
+    expect(p).not.toContain('ON-SCREEN TEXT (OCR)');
+    expect(buildTikTokPrompt({ handle: 'x', channel: null, caption: 'c', transcript: '', uploadedAt: null, frames: [], ocr: '600k | 3 bedrooms' })).toContain('ON-SCREEN TEXT (OCR):\n600k | 3 bedrooms');
+    expect(fb).not.toContain('OCR');
+    expect(p).toContain('"contactName":string|null');
   });
 
   it('keeps old reads parsing, the new fields null', () => {

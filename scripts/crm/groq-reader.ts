@@ -42,6 +42,8 @@ export interface GroqCall {
   model?: string;
   maxTokens?: number;
   timeoutMs?: number;
+  /** gpt-oss models reason before they answer; at the default effort the reasoning ate the whole 900-token answer. */
+  reasoningEffort?: 'low' | 'medium' | 'high';
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -73,6 +75,7 @@ export async function runGroq(call: GroqCall, attempt = 0): Promise<string> {
         messages: [{ role: 'user', content }],
         temperature: 0,
         max_tokens: call.maxTokens ?? 900,
+        ...(call.reasoningEffort ? { reasoning_effort: call.reasoningEffort } : {}),
       }),
     });
   } finally {

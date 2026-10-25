@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# The TikTok lane's daily tick: discover → fetch → read → upsert → posts → /find mirror,
-# once a day at 06:00, posting the day's counts to #mkan.
+# The TikTok lane's tick: discover → fetch → read → upsert → posts → /find mirror,
+# twice a day at 06:00 and 18:00 Kigali (since 2026-10-25; was 06:00 only), posting
+# each run's counts to #mkan. One job, two times — the lock keeps them from overlapping.
 #
 # Since 2026-10-20 the scheduler is the Hermes gateway's cron (no agent, no model):
 #   bash scripts/crm/install-tiktok-sweep.sh            # install / refresh the Hermes job
@@ -14,7 +15,7 @@
 # copied to ~/.hermes/scripts/ (Hermes only runs scripts from there). Silent on success,
 # a short alert in #mkan on failure. Hermes catches a daily job up to 2 h late after sleep.
 #
-# --fetch-limit / --read-limit cap each stage per day. The reader is Groq's free
+# --fetch-limit / --read-limit cap each stage per run. The reader is Groq's free
 # vision tier (~45 s apart to stay under its token minute), so 80 reads ≈ an hour;
 # the Hermes script timeout is raised to 2 h for it. Logs under .data/tiktok/.
 set -euo pipefail
@@ -27,7 +28,7 @@ HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 HERMES_SCRIPT="$HERMES_HOME/scripts/$NAME.sh"
 CONFIG="$HERMES_HOME/config.yaml"
 MKAN_CHANNEL="C0BS2NZE2AY" # private #mkan
-SCHEDULE="${TIKTOK_SCHEDULE:-0 6 * * *}"
+SCHEDULE="${TIKTOK_SCHEDULE:-0 6,18 * * *}"
 PNPM="$(command -v pnpm)"
 LIMIT="${TIKTOK_DAILY_LIMIT:-40}"
 READ_LIMIT="${TIKTOK_READ_LIMIT:-80}"

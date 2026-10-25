@@ -1530,6 +1530,12 @@ model Broker {
   replyMinutes     Int?
   /// Their last WhatsApp message to Mkan or to Abdout.
   lastReplyAt      DateTime?
+  /// The person their ads say to call ("call Eric").
+  contactName       String?
+  /// RW | EN | FR | SW | AR — the language their ads are written in; write to them in it.
+  preferredLanguage String?
+  /// Every language their ads use, most used first.
+  languages         String[]   @default([])
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 

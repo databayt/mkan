@@ -33,7 +33,7 @@ process.env.PRISMA_QUIET ??= '1';
 
 import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 import { ANTHROPIC_VISION_MODEL, AnthropicCap, anthropicKey, monthSpend, MONTHLY_CAP_USD, runAnthropic } from './anthropic-reader';
@@ -69,6 +69,11 @@ import {
   shouldPromote,
   postBody,
   wantsPost,
+  adText,
+  brokerProfile,
+  hostProfilePatch,
+  ocrText,
+  propertyFramesByOcr,
   tiktokIdTime,
   fetchBudget,
   needsTranscript,
@@ -109,7 +114,9 @@ const GROQ_FRAMES = GROQ_IMAGES * PER_IMAGE;
 const GROQ_GAP_PER_IMAGE_MS = Number(argv('groq-gap', '45000')) / GROQ_IMAGES;
 /** Text-only reads of fact-rich captions — a separate daily quota from the vision model. */
 const GROQ_TEXT_MODEL = (process.env.TIKTOK_GROQ_TEXT_MODEL ?? '').trim() || 'openai/gpt-oss-120b';
-const MAX_AGE_DAYS = Number(argv('max-age', '7'));
+// 30 days (was 7 until 2026-10-25): Kigali rentals stay on the market for weeks,
+// and the reader keeps up now that most reads are text (the frames' OCR).
+const MAX_AGE_DAYS = Number(argv('max-age', '30'));
 const DELAY_MS = Number(argv('delay', '4000'));
 const cmd = process.argv.slice(2).find((a) => !a.startsWith('--')) ?? 'help';
 
@@ -125,6 +132,9 @@ const READER_MODEL = (process.env.TIKTOK_READER_MODEL ?? '').trim() || 'sonnet';
 const ASR_PY = (process.env.TIKTOK_ASR_PYTHON ?? '').trim() || join(homedir(), '.local/share/uv/tools/mlx-whisper/bin/python');
 const ASR_SCRIPT = (process.env.TIKTOK_ASR_SCRIPT ?? '').trim() || join(homedir(), '.claude/skills/edit/scripts/media/asr_batch.py');
 const ASR_MODEL = 'mlx-community/whisper-large-v3-turbo';
+/** Apple Vision OCR (scripts/crm/ocr-frames.swift), compiled once into the gitignored data dir. */
+const OCR_SRC = join(process.cwd(), 'scripts/crm/ocr-frames.swift');
+const OCR_BIN = join(process.cwd(), 'scripts/crm/.data/bin/ocr-frames');
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const now = () => new Date().toISOString();
@@ -140,6 +150,8 @@ const runStats = {
   fetched: 0,
   read: 0,
   oneStrip: 0,
+  /** Reads answered from the caption + OCR alone, no images sent. */
+  textReads: 0,
   twoStrips: 0,
   readStopped: '' as string,
   readLeft: 0,
@@ -212,11 +224,17 @@ function listSeed(handle: string, seed: SeedRow, videos: Record<string, VideoRow
   const list = (target: string) => JSON.parse(ytdlp(['--flat-playlist', '-J', '--playlist-end', argv('per-seed', '30'), target]));
   if (seed.channelId) return list(`tiktokuser:${seed.channelId}`);
   try {
-    return list(`https://www.tiktok.com/@${handle}`);
+    const json = list(`https://www.tiktok.com/@${handle}`);
+    // The @handle page works only some days: keep the secUid while it does.
+    const id = json.channel_id ?? (typeof json.id === 'string' && json.id.startsWith('MS4w') ? json.id : undefined);
+    if (id) seed.channelId = id;
+    return json;
   } catch (e) {
     const known = Object.values(videos).find((v) => v.handle === handle && v.meta?.channelId)?.meta?.channelId;
-    const sample = Object.values(videos).find((v) => v.handle === handle);
-    const channelId = known ?? (sample ? (JSON.parse(ytdlp(['-J', sample.url])).channel_id as string | undefined) : undefined);
+    // Accounts promoted from search often have no video in the ledger (their
+    // hits were stale): the hit that found them still gives the secUid.
+    const sample = Object.values(videos).find((v) => v.handle === handle)?.url ?? seed.sampleUrl;
+    const channelId = known ?? (sample ? (JSON.parse(ytdlp(['-J', sample])).channel_id as string | undefined) : undefined);
     if (!channelId) throw e;
     seed.channelId = channelId;
     return list(`tiktokuser:${channelId}`);
@@ -278,14 +296,15 @@ async function discover(): Promise<void> {
   }
 
   if (!flag('seeds-only')) {
-    // A few phrases per run, rotating by day: the engines rate-limit after two or
-    // three queries, and a daily run covers the whole list in under a week.
+    // A few phrases per run, rotating by half-day: the engines rate-limit after
+    // two or three queries, and the 06:00 and 18:00 runs each take the next ones.
     const perRun = Number(argv('queries', '3'));
-    const day = Math.floor(Date.now() / 86_400_000);
+    const day = Math.floor(Date.now() / 43_200_000);
     const queries = argv('query')
       ? [argv('query')]
       : Array.from({ length: Math.min(perRun, SEARCH_QUERIES.length) }, (_, i) => SEARCH_QUERIES[(day * perRun + i) % SEARCH_QUERIES.length]);
     const hits = new Map<string, number>();
+    const sampleFor = new Map<string, string>();
     console.log(`\nsearch: ${queries.length} quer${queries.length === 1 ? 'y' : 'ies'}`);
     // DuckDuckGo answers two or three queries, then serves its bot "anomaly"
     // page (HTTP 202); Brave answers the rest. Measured 2026-10-12 — Bing, Yahoo,
@@ -314,6 +333,7 @@ async function discover(): Promise<void> {
         for (const v of found) {
           if (add(v, 'search', q)) fresh++;
           hits.set(v.handle, (hits.get(v.handle) ?? 0) + 1);
+          sampleFor.set(v.handle, v.url);
         }
         console.log(`  "${q}" (${engine.name}): ${found.length} video(s), +${fresh} new${res.ok ? '' : ` (HTTP ${res.status})`}`);
       } catch (e) {
@@ -323,9 +343,11 @@ async function discover(): Promise<void> {
     }
     let proposed = 0;
     for (const [handle, n] of hits) {
-      if (seeds[handle]) seeds[handle].hits = Math.max(seeds[handle].hits ?? 0, n);
-      else {
-        seeds[handle] = { status: 'proposed', from: 'search', addedAt: now(), hits: n };
+      if (seeds[handle]) {
+        seeds[handle].hits = Math.max(seeds[handle].hits ?? 0, n);
+        seeds[handle].sampleUrl ??= sampleFor.get(handle);
+      } else {
+        seeds[handle] = { status: 'proposed', from: 'search', addedAt: now(), hits: n, sampleUrl: sampleFor.get(handle) };
         proposed++;
       }
     }
@@ -430,6 +452,27 @@ function transcribe(wavs: string[]): Record<string, string> {
 }
 
 /**
+ * The text burned into each frame, read on the Mac (Apple Vision: free,
+ * offline, ~20 ms a frame once warm). Brokers put the price, rooms, place and
+ * phone on screen, so with this most posts read as text and the vision quota
+ * is kept for the ads whose facts are only in the pictures.
+ */
+function ocrFrames(frames: string[]): string[] | undefined {
+  if (!frames.length) return [];
+  try {
+    if (!existsSync(OCR_BIN) || statSync(OCR_BIN).mtimeMs < statSync(OCR_SRC).mtimeMs) {
+      mkdirSync(join(OCR_BIN, '..'), { recursive: true });
+      execFileSync('swiftc', ['-O', OCR_SRC, '-o', OCR_BIN], { stdio: 'pipe' });
+    }
+    const out = JSON.parse(execFileSync(OCR_BIN, frames, { encoding: 'utf8', timeout: 120_000 })) as Record<string, string>;
+    return frames.map((f) => out[f] ?? '');
+  } catch (e) {
+    console.warn(`  ! OCR failed: ${(e as Error).message.split('\n')[0]!.slice(0, 160)} — reading from the frames instead`);
+    return undefined;
+  }
+}
+
+/**
  * A photo-mode post (a slideshow) has no video stream — yt-dlp offers only its
  * music, and ffmpeg failed on it until the row was given up. Its cover images
  * still show the house and often the price card.
@@ -506,6 +549,7 @@ async function fetchStage(): Promise<void> {
         if (!((j.formats ?? []) as { vcodec?: string }[]).some((f) => f.vcodec && f.vcodec !== 'none')) {
           row.frames = await photoModeFrames(j, dir);
           if (!row.frames.length) throw new Error('photo-mode post: no cover image could be fetched');
+          row.ocr = ocrFrames(row.frames);
           Object.assign(row, { photoMode: true, transcript: '', state: 'fetched' });
           delete row.error;
           runStats.fetched++;
@@ -520,7 +564,8 @@ async function fetchStage(): Promise<void> {
           execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-ss', String(t), '-i', mp4, '-frames:v', '1', '-vf', 'scale=720:-2', '-q:v', '3', out]);
           if (existsSync(out)) row.frames!.push(out);
         });
-        if (needsTranscript(row.meta.caption)) {
+        row.ocr = ocrFrames(row.frames);
+        if (needsTranscript(adText(row))) {
           const wav = join(TMP, `${row.videoId}.wav`);
           execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-i', mp4, '-vn', '-ac', '1', '-ar', '16000', wav]);
           wavFor.set(row.videoId, wav);
@@ -529,7 +574,7 @@ async function fetchStage(): Promise<void> {
           runStats.fetched++;
         }
         delete row.error;
-        console.log(`  ✓ ${row.videoId} @${row.handle} · ${row.frames.length} frames · ${row.meta.caption.slice(0, 70).replace(/\n/g, ' ')}`);
+        console.log(`  ✓ ${row.videoId} @${row.handle} · ${row.frames.length} frames${row.ocr ? ` · OCR ${ocrText(row).length} chars` : ''} · ${row.meta.caption.slice(0, 70).replace(/\n/g, ' ')}`);
       } catch (e) {
         if (e instanceof NetworkDown) throw e;
         row.error = (e as Error).message.split('\n')[0]!.slice(0, 200);
@@ -580,22 +625,30 @@ async function readOne(row: VideoRow, attempt = 0, extra = ''): Promise<TikTokRe
     // Whisper over music is mostly noise, and the Groq tier counts every token.
     transcript: (row.transcript ?? '').slice(0, READER === 'groq' ? 600 : 4000),
     uploadedAt: row.meta?.timestamp ? new Date(row.meta.timestamp * 1000).toISOString().slice(0, 10) : null,
+    ocr: ocrText(row) || undefined,
   };
   let text: string;
-  if (READER === 'groq' && attempt === 0 && !extra && captionCarriesFacts(base.caption) && row.textMissVersion !== TIKTOK_PROMPT_VERSION) {
-    // Caption first: when it already says price and rooms, the frames add
-    // little, and the vision model's 200k tokens a day go much further.
+  if (READER === 'groq' && attempt === 0 && !extra && captionCarriesFacts(adText(row)) && row.textMissVersion !== TIKTOK_PROMPT_VERSION) {
+    // Text first: when the caption or the frames' OCR already says price and
+    // rooms, the images add little, and the vision model's 200k tokens a day
+    // go much further on the ads that only show their facts.
     const prompt = buildTikTokPrompt({ ...base, frames: [], framesMode: 'attached' });
     try {
-      const read = parseTikTokRead(await runGroq({ prompt, model: GROQ_TEXT_MODEL }));
-      // Nobody looked at the frames, so take the middle of the tour: intros
-      // (faces, logo cards) sit at the start and the end.
-      if (read.priceRwf != null && read.bedrooms != null && read.confidence >= 0.6) return { ...read, propertyFrames: row.photoMode ? [1, 2, 3] : [3, 4, 5, 6] };
+      // gpt-oss reasons first: low effort and room for the v5 JSON, or the answer never arrives.
+      const read = parseTikTokRead(await runGroq({ prompt, model: GROQ_TEXT_MODEL, maxTokens: 3000, reasoningEffort: 'low' }));
+      // Nobody looked at the frames: the house is in the ones with the least
+      // text on them (intros and outros carry the price card).
+      if (read.priceRwf != null && read.bedrooms != null && read.confidence >= 0.6) {
+        runStats.textReads++;
+        const frames = propertyFramesByOcr(row.ocr, (row.frames ?? []).length);
+        return { ...read, propertyFrames: frames.length ? frames : row.photoMode ? [1, 2, 3] : [3, 4, 5, 6] };
+      }
       // Remember the miss: 66 backlog rows paid for this same text read every run.
       row.textMissVersion = TIKTOK_PROMPT_VERSION;
     } catch (e) {
       if (e instanceof GroqLimit) throw e;
-      /* fall through to the frames */
+      // Say why: this failed silently for every text read until 2026-10-25.
+      console.warn(`    text read failed (${(e as Error).message.slice(0, 80)}) — reading the frames`);
     }
   }
   if (READER === 'anthropic') {
@@ -675,7 +728,19 @@ async function readStage(): Promise<void> {
     rmSync(join(FRAMES, v.videoId), { recursive: true, force: true });
     stale++;
   }
-  if (stale) saveVideos(videos);
+  // Rows fetched before the OCR stage existed (or whose OCR failed) get it now:
+  // it decides the read order and whether a text read is enough.
+  let ocred = 0;
+  for (const v of Object.values(videos)) {
+    if (v.state !== 'fetched' || v.ocr || !(v.frames ?? []).some((f) => existsSync(f))) continue;
+    const ocr = ocrFrames((v.frames ?? []).filter((f) => existsSync(f)));
+    if (ocr) {
+      v.ocr = ocr;
+      ocred++;
+    }
+  }
+  if (stale || ocred) saveVideos(videos);
+  if (ocred) console.log(`read: OCR'd ${ocred} queued video(s) fetched before the OCR stage`);
   const queue = Object.values(videos)
     .filter((v) => v.state === 'fetched')
     .map((v) => ({ v, p: readPriority(v, isSeed(seeds, v.handle)) }))
@@ -692,7 +757,7 @@ async function readStage(): Promise<void> {
       const read = await readOne(row);
       row.read = read;
       row.readVersion = `${TIKTOK_PROMPT_VERSION}/${READER}`;
-      const skip = skipReasonFor(read, { caption: row.meta?.caption ?? '' });
+      const skip = skipReasonFor(read, { caption: adText(row) });
       Object.assign(row, skip ? { state: 'skipped', skipReason: skip } : { state: 'read' });
       // A skipped video's frames are never uploaded; keep the disk for the ones that are.
       if (skip) rmSync(join(FRAMES, row.videoId), { recursive: true, force: true });
@@ -740,6 +805,7 @@ async function readStage(): Promise<void> {
     const s = monthSpend();
     console.log(`read: API spend ${s.month} $${s.usd.toFixed(3)} of $${MONTHLY_CAP_USD} (${s.calls} calls)`);
   }
+  if (runStats.textReads) console.log(`read: ${runStats.textReads} answered from the caption + on-screen text alone (no images)`);
   if (runStats.oneStrip || runStats.twoStrips) console.log(`read: ${runStats.oneStrip} answered from one strip, ${runStats.twoStrips} needed two`);
   if (runStats.readLeft) console.log(`read: ${runStats.readLeft} video(s) wait for tomorrow's vision quota`);
 }
@@ -800,19 +866,25 @@ async function upsert(): Promise<{ homes: number; hosts: number }> {
   // 21 homes, no phone): every number any of the handle's posts showed.
   const phonesByHandle = new Map<string, string[]>();
   for (const v of Object.values(videos)) {
-    const found = [...(v.read ? phonesFor(v.read, '') : []), ...rwandaPhonesInText(`${v.meta?.caption ?? ''} ${v.transcript ?? ''}`)];
+    const found = [...(v.read ? phonesFor(v.read, '') : []), ...rwandaPhonesInText(`${adText(v)} ${v.transcript ?? ''}`)];
     if (!found.length) continue;
     const list = phonesByHandle.get(v.handle) ?? [];
     for (const p of found) if (!list.includes(p)) list.push(p);
     phonesByHandle.set(v.handle, list);
   }
 
+  // The broker behind each handle — name, contact person and language — from
+  // every post of theirs in the ledger, not just today's.
+  const postsByHandle = new Map<string, VideoRow[]>();
+  for (const v of Object.values(videos)) if (v.read || v.ocr?.length) postsByHandle.set(v.handle, [...(postsByHandle.get(v.handle) ?? []), v]);
+  const profileFor = (handle: string) => brokerProfile(postsByHandle.get(handle) ?? []);
+
   let newHomes = 0;
   let newHosts = 0;
   for (const row of queue) {
     const read = row.read!;
     // Reads made under older, looser rules wait here too: hold them to today's.
-    const late = skipReasonFor(read, { caption: row.meta?.caption ?? '' });
+    const late = skipReasonFor(read, { caption: adText(row) });
     if (late) {
       console.log(`  · ${row.videoId} @${row.handle} — ${late}`);
       if (APPLY) {
@@ -832,13 +904,14 @@ async function upsert(): Promise<{ homes: number; hosts: number }> {
     }
     // The handle can carry the number ("muranga.pierre0788371624"); the
     // voice-over often says it; the broker's other posts may have shown it.
-    const phones = phonesFor(read, `${row.meta?.caption ?? ''} ${row.handle} ${row.transcript ?? ''}`);
+    const phones = phonesFor(read, `${adText(row)} ${row.handle} ${row.transcript ?? ''}`);
     for (const p of phonesByHandle.get(row.handle) ?? []) if (!phones.includes(p)) phones.push(p);
     let host = (phones[0] && hostByPhone.get(phones[0])) || hostByHandle.get(row.handle.toLowerCase()) || null;
     if (!phones.length && host) phones.push(...phonesFromTwenty(host.phone as never, 'RW').filter((n) => n.startsWith('+250')));
     const phone = phones[0] ?? null;
     const framePaths = propertyFramePaths(row.frames ?? [], read.propertyFrames);
-    const hBody = clean({ ...hostBody(row, read, phone), phone: twentyPhones(phone, phones.slice(1)) });
+    const profile = profileFor(row.handle);
+    const hBody = clean({ ...hostBody(row, read, phone, profile), phone: twentyPhones(phone, phones.slice(1)) });
     const promptVersion = row.readVersion ?? TIKTOK_PROMPT_VERSION;
 
     if (!APPLY) {
@@ -883,6 +956,7 @@ async function upsert(): Promise<{ homes: number; hosts: number }> {
         const patch: Row = {};
         const known = phonesFromTwenty(host.phone as never, 'RW');
         if (!host.tiktokHandle) patch.tiktokHandle = row.handle;
+        Object.assign(patch, hostProfilePatch(host, row, profile));
         if (!known.length && phone) patch.phone = twentyPhones(phone, phones.slice(1));
         else if (phones.some((p) => !known.includes(p))) patch.phone = twentyPhones(known[0]!, [...known.slice(1), ...phones.filter((p) => !known.includes(p))]);
         if (Object.keys(patch).length) {

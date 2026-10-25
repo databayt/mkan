@@ -380,7 +380,7 @@ is not, and `sync-down` runs by hand. What does run:
 |---|---|---|---|
 | `com.databayt.mkan-crm-sync-up` | `install-sync-up-cron.sh` | hourly | `crm:sync-up --apply` — site → board |
 | `com.databayt.mkan-home-sweep` | `install-home-sweep.sh` | every 2 min | Slack #mkan → board (`home:sweep`) |
-| Hermes cron `mkan-tiktok-sweep` | `install-tiktok-sweep.sh` | 06:00 | TikTok → board → /find leads, summary to #mkan. Runs in the Hermes gateway since 2026-10-20 (`--launchd` = old job); `/tiktok` in Slack/WhatsApp runs it now |
+| Hermes cron `mkan-tiktok-sweep` | `install-tiktok-sweep.sh` | 06:00 + 18:00 | TikTok → board → /find leads, summary to #mkan. Runs in the Hermes gateway since 2026-10-20 (`--launchd` = old job); `/tiktok` in Slack/WhatsApp runs it now |
 | `com.databayt.mkan-crm-hygiene` | `install-hygiene-cron.sh` | 07:00 | `crm:hygiene --apply --notify` — duplicates, drift, safe fixes, report |
 
 sync-up and the home sweep alert #mkan after a run of failures
@@ -399,7 +399,7 @@ and its poster becomes a `host` with an Opportunity. Nothing publishes; going li
 pnpm crm:tiktok-seeds [--add=h|--promote=h|--ignore=h]   # the accounts to crawl (search proposes, a human promotes)
 pnpm crm:tiktok-discover                                  # seed accounts (yt-dlp) + 3 rotating web-search phrases
 pnpm crm:tiktok-fetch --limit=N                           # caption + 8 frames + Whisper transcript; mp4 deleted
-pnpm crm:tiktok-read  --limit=N                           # claude -p (Max pool) reads caption + transcript + frames
+pnpm crm:tiktok-read  --read-limit=N                      # caption + OCR as text first (Groq), else Groq vision on the frames
 pnpm crm:tiktok-upsert [--apply]                          # S3 frames + host + home + note → Twenty
 pnpm crm:tiktok --apply --notify --limit=N                # all four; Hermes cron runs it daily (install-tiktok-sweep.sh)
 pnpm crm:tiktok-status
@@ -409,6 +409,29 @@ There is no TikTok login, so no account is at risk. The ledger lives under `.dat
 DuckDuckGo blocks after 2–3 queries and Brave after a few more, so the volume comes from the seed accounts.
 Whisper does not know Kinyarwanda, so the caption and the frames carry the facts.
 Prices are stored in `priceMonthLocal` + `rentPeriod`, because Kigali rents by the month.
+
+**2026-10-25 — read everything the ad says, twice a day.**
+- *OCR at fetch.* `ocr-frames.swift` (Apple Vision, compiled once to `.data/bin/ocr-frames`) reads the text
+  burned into all 8 frames into `row.ocr`. It's free, offline, and needs no quota.
+- *Text first.* When the caption + OCR give a price and a room count, the Groq **text** model reads the ad
+  with no images, and the house frames are the ones with the least text on them. Vision (≈30/day) is left
+  for ads whose facts are only in the pictures. `gpt-oss` needs `reasoning_effort: low` and 3k tokens:
+  at 900 tokens its reasoning used the whole budget, and every text read had failed silently until now.
+- *30-day window* (was 7). `requeue` brings back rows the 7-day gate skipped. Backfill older posts by hand:
+  `pnpm crm:tiktok --apply --max-age=120 --fetch-limit=200`. It is never cron'd, so it doesn't race the sweep.
+- *Broker profile.* Reader `tiktok-v5` adds `contactName` ("call Eric"), `languages` and `primaryLanguage`.
+  `brokerProfile()` merges every post of a handle into:
+  - the agency name the ads repeat;
+  - the contact person;
+  - the preferred language (RW / EN / FR / SW / AR), read from the caption ×2, the OCR ×1 and the reader ×3.
+    Whisper's guess isn't used, because it has no Kinyarwanda.
+- It lands on `host.name` / `contactName` / `preferredLanguage` (it only overwrites values the lane set itself),
+  on `tiktokPost.languages`, and through `crm:brokers` on `Broker.contactName` / `preferredLanguage` / `languages`.
+  `tt:ask` writes to each broker in their language first.
+- *Seeds.* A handle's secUid is cached from any listing that works, and a search hit's URL is kept
+  (`seed.sampleUrl`). Accounts with no video in the ledger stop failing with "secondary user ID".
+- *Search* rotates by half-day, so the two runs search different phrases.
+
 Full doc: kun.databayt.org/docs/scrape.
 
 ## Brokers, agencies and zones (2026-10-22)
