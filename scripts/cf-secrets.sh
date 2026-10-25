@@ -18,11 +18,12 @@ node cf/env-split.mjs "$SRC" secrets > "$OUT"
 # AGENT_ANTHROPIC_API_KEY: the /find agent's Claude key (included Max credits, capped in
 # src/components/agent/claude.ts). Never store it as ANTHROPIC_API_KEY — that name also
 # switches on the uncapped report triage.
-# MKAN_WA_OUTBOX=1: agent WhatsApp goes to the OutboundMessage outbox the Mac drains
-# (scripts/wa/outbox.ts) instead of #mkan wa.me cards. Kept here so redeploys keep it.
-# MKAN_WA_BRIDGE_SECRET: the Bearer the Mac bridge sends to /api/agent/whatsapp (tenant
-# chats on WhatsApp); scripts/wa/tenant.ts reads the same Keychain item.
-for VAR in NEXTAUTH_SECRET AUTH_SECRET RESEND_API_KEY GROQ_API_KEY SLACK_BOT_TOKEN AGENT_ANTHROPIC_API_KEY MKAN_WA_OUTBOX MKAN_WA_BRIDGE_SECRET; do
+# MKAN_WA_OUTBOX=1: agent WhatsApp goes to the OutboundMessage outbox the 2-minute cron
+# drains (src/components/agent/wa-outbox.ts) instead of #mkan wa.me cards.
+# MKAN_WA_BRIDGE_SECRET: the gate on cf/worker.js /__wa/* (the shared WhatsApp bridge) and
+# the seed of the webhook token. MKAN_EVOLUTION_KEY: mkan's instance token on that bridge,
+# written by `pnpm wa:pair`.
+for VAR in NEXTAUTH_SECRET AUTH_SECRET RESEND_API_KEY GROQ_API_KEY SLACK_BOT_TOKEN AGENT_ANTHROPIC_API_KEY MKAN_WA_OUTBOX MKAN_WA_BRIDGE_SECRET MKAN_EVOLUTION_KEY; do
   V=$(security find-generic-password -s "cf-mkan-$VAR" -w 2>/dev/null || true)
   [[ -n "$V" ]] && OUT="$OUT" VAR="$VAR" V="$V" node -e '
     const fs=require("fs");const p=process.env.OUT;const o=JSON.parse(fs.readFileSync(p,"utf8"));

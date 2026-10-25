@@ -1,10 +1,9 @@
 import "server-only";
 
 /**
- * The rental agent on WhatsApp. A tenant messages Mkan's number; the Mac
- * bridge (scripts/wa/inbox-server.ts) posts the message to
- * `/api/agent/whatsapp`, and this runs the same turn `/find` runs and returns
- * the reply as one WhatsApp message for the bridge to send.
+ * The rental agent on WhatsApp. A tenant messages Mkan's number; the bridge
+ * posts it to /api/whatsapp/hook, and this runs the same turn `/find` runs and
+ * returns the reply as one WhatsApp message (wa-tenant.ts sends it).
  *
  * A phone is a profile like a browser is: `AgentProfile.keyHash` is the sha256
  * of "wa:<digits>". A message continues the phone's latest chat while it is
@@ -51,8 +50,13 @@ async function waDict(lang: WaLang): Promise<WaDict> {
 
 async function profileFor(digits: string) {
   const keyHash = hashKey(`wa:${digits}`);
-  const select = { id: true, userId: true, memory: true, lastSearchAt: true } satisfies Prisma.AgentProfileSelect;
-  return (await db.agentProfile.findUnique({ where: { keyHash }, select })) ?? db.agentProfile.create({ data: { keyHash }, select });
+  const select = { id: true, userId: true, memory: true, lastSearchAt: true, waPhone: true } satisfies Prisma.AgentProfileSelect;
+  const waPhone = `+${digits}`;
+  const found = await db.agentProfile.findUnique({ where: { keyHash }, select });
+  if (!found) return db.agentProfile.create({ data: { keyHash, waPhone }, select });
+  // Profiles from before 10-25 learn their number on the next message.
+  if (!found.waPhone) await db.agentProfile.update({ where: { id: found.id }, data: { waPhone } }).catch(() => {});
+  return found;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

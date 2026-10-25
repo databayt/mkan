@@ -138,7 +138,6 @@
     "home:publish": "tsx scripts/crm/home-publish.ts",
     "wa:chats": "tsx scripts/wa/chats.ts",
     "wa:outbox": "tsx --require ./scripts/agent/no-server-only.js scripts/wa/outbox.ts",
-    "wa:inbox": "tsx --require ./scripts/agent/no-server-only.js scripts/wa/inbox-server.ts",
     "wa:pair": "tsx scripts/wa/pair.ts",
     "accounts:simplify": "tsx scripts/crm/simplify-accounts.ts",
     "scope:portsudan": "tsx scripts/crm/scope-portsudan-phase.ts",

@@ -13,11 +13,11 @@ import { createHash, randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { publicAppUrl } from "../../../scripts/crm/public-links";
-import { availabilityMessage, needSummary, type BrokerHomeLine } from "./broker-message";
+import { availabilityMessage, brokerAnswerMessage, needSummary, type BrokerHomeLine } from "./broker-message";
 import { CONFIRMATION_TTL_DAYS } from "./rank";
 import type { Requirements } from "./requirements";
 import type { EventKind, ShortlistItem, StepStatus } from "./types";
-import { sendToBroker } from "./whatsapp";
+import { sendMessages, sendToBroker } from "./whatsapp";
 
 export const REQUEST_TTL_HOURS = 24;
 const json = (v: unknown) => v as Prisma.InputJsonValue;
@@ -204,7 +204,7 @@ export async function applyAnswer(listingId: number, answer: Answer) {
   }
   const tasks = await db.agentTask.findMany({
     where: { status: { in: ["WAITING", "DONE"] }, updatedAt: { gte: new Date(Date.now() - 7 * 86_400_000) }, brokerRequests: { some: { listingId } } },
-    select: { id: true, shortlist: true },
+    select: { id: true, shortlist: true, locale: true, profile: { select: { waPhone: true } } },
   });
   const availability = answer === "AVAILABLE" ? "confirmed" : answer === "RENTED" ? "rented" : "no_reply";
   await Promise.all(
@@ -222,7 +222,24 @@ export async function applyAnswer(listingId: number, answer: Answer) {
     }),
   );
   await settleTasks(tasks.map((t) => t.id));
+  await tellWhatsAppTenants(tasks, listingId, answer);
   if (answer === "AVAILABLE") await db.listing.update({ where: { id: listingId }, data: { lastAvailabilityConfirmedAt: new Date() } });
+}
+
+/**
+ * A tenant who asked on WhatsApp hears the broker's answer there — the web
+ * chat updates itself, a WhatsApp chat does not. Queued like every other
+ * send (whatsapp.ts), so the outbox's caps and the #mkan fallback apply.
+ */
+async function tellWhatsAppTenants(tasks: { id: string; shortlist: unknown; locale: string; profile: { waPhone: string | null } | null }[], listingId: number, answer: Answer) {
+  if (answer !== "AVAILABLE" && answer !== "RENTED") return;
+  const messages = tasks.flatMap((t) => {
+    const to = t.profile?.waPhone;
+    if (!to) return [];
+    const title = ((t.shortlist as ShortlistItem[] | null) ?? []).find((s) => s.id === listingId)?.title?.trim() || `#${listingId}`;
+    return [{ kind: "TENANT_ALERT" as const, to, body: brokerAnswerMessage(t.locale, title, answer === "AVAILABLE", `${publicAppUrl()}/${t.locale}/find?c=${t.id}`), label: "tenant" }];
+  });
+  if (messages.length) await sendMessages(messages, `Broker answered home #${listingId}`);
 }
 
 /**

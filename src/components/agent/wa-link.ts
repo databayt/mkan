@@ -1,6 +1,6 @@
 /**
  * Mkan's WhatsApp line, where tenants chat with the same agent as /find
- * (scripts/wa/inbox-server.ts → /api/agent/whatsapp). "Continue on WhatsApp"
+ * (/api/whatsapp/hook → wa-tenant.ts). "Continue on WhatsApp"
  * carries the chat over: `ref:<task id>` starts the phone's chat from this one.
  */
 export const MKAN_WA_NUMBER = "250780984777";

@@ -157,9 +157,36 @@ async function variantResponse(url, request) {
 // behind them (2026-10-21); robots.txt alone takes about a day to be re-read.
 const SEO_CRAWLERS = /AhrefsBot|SemrushBot|DotBot|MJ12bot|DataForSeoBot|PetalBot|BLEXBot|Barkrowler/i
 
+// ---- The WhatsApp bridge ------------------------------------------------------
+// mkan's line lives on the Evolution process in the hogwarts container, reached
+// through its private WhatsappBridge entrypoint (the WHATSAPP service binding).
+// The app in the container cannot hold a binding, so it calls
+// https://www.mkan.sd/__wa/* and this forwards it — only with the bridge
+// secret, and Evolution still checks mkan's instance token on every call
+// (src/lib/whatsapp/evolution.ts).
+const WA_PREFIX = "/__wa/"
+
+function sameSecret(a, b) {
+  if (!a || !b || a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return diff === 0
+}
+
+async function whatsappBridge(request, url, env) {
+  if (!env.WHATSAPP || !sameSecret(request.headers.get("x-mkan-wa") || "", env.MKAN_WA_BRIDGE_SECRET || "")) {
+    return new Response("Not found", { status: 404 })
+  }
+  const headers = new Headers(request.headers)
+  headers.delete("x-mkan-wa")
+  const target = "http://bridge" + url.pathname.slice(WA_PREFIX.length - 1) + url.search
+  return env.WHATSAPP.fetch(new Request(target, { method: request.method, headers, body: request.body }))
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url)
+    if (url.pathname.startsWith(WA_PREFIX)) return whatsappBridge(request, url, env)
     if (url.pathname !== "/robots.txt" && SEO_CRAWLERS.test(request.headers.get("user-agent") || "")) {
       return new Response("Crawling is disallowed for this agent; see /robots.txt\n", {
         status: 403,

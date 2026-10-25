@@ -115,3 +115,18 @@ export function tenantAlertMessage(lang: string, count: number, link: string): s
   if (lang === "rw") return `Mkan: twabonye ${count === 1 ? "inzu nshya" : `amazu ${count} mashya`} ahuye n'ibyo washakaga i Kigali.\n${link}`;
   return `Mkan: ${count === 1 ? "a new home has" : `${count} new homes have`} come in for your Kigali search.\n${link}\n\nReply STOP to stop these alerts.`;
 }
+
+/** To a tenant who asked on WhatsApp: the broker answered about one home. */
+export function brokerAnswerMessage(lang: string, title: string, available: boolean, link: string): string {
+  if (lang === "ar")
+    return available
+      ? `مكان: أكّد الوسيط أن «${title}» ما زال متاحاً. اختر موعداً للمعاينة هنا:\n${link}`
+      : `مكان: «${title}» مؤجَّر للأسف. بقية المنازل لبحثك هنا:\n${link}`;
+  if (lang === "rw")
+    return available
+      ? `Mkan: komisiyoneri yemeje ko "${title}" igihari. Hitamo igihe cyo kuyisura hano:\n${link}`
+      : `Mkan: "${title}" yamaze gufatwa. Andi mazu ahuye n'ibyo ushaka ari hano:\n${link}`;
+  return available
+    ? `Mkan: the broker says "${title}" is still available. Pick a viewing time here:\n${link}`
+    : `Mkan: "${title}" is taken, sorry. Your other homes are here:\n${link}`;
+}

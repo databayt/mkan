@@ -3,11 +3,10 @@ import "server-only";
 /**
  * Outbound WhatsApp for the rental agent.
  *
- * With `MKAN_WA_OUTBOX=1` every message is a row in `OutboundMessage`: the
- * Worker cannot reach the Evolution instance on the Mac, so the Mac drains the
- * outbox (`scripts/wa/outbox.ts`) under its caps — a daily total, one message
- * per broker per day, quiet hours — and falls back to a #mkan wa.me card
- * itself after three failed tries.
+ * With `MKAN_WA_OUTBOX=1` every message is a row in `OutboundMessage`, which
+ * the 2-minute cron drains through the shared bridge (wa-outbox.ts) under its
+ * caps — a daily total, one message per broker per day, quiet hours — falling
+ * back to a #mkan wa.me card after three failed tries.
  *
  * Without it (the line is not paired yet) a #mkan Slack card with a one-tap
  * wa.me link goes out at once, and outbox rows are still written as SKIPPED so
@@ -25,7 +24,7 @@ export type SendChannel = "queued" | "manual";
 
 const outboxOn = () => process.env.MKAN_WA_OUTBOX?.trim() === "1";
 
-async function postSlackCard(text: string): Promise<void> {
+export async function postSlackCard(text: string): Promise<void> {
   const token = process.env.SLACK_BOT_TOKEN?.trim();
   if (!token) {
     console.warn(`[agent] no SLACK_BOT_TOKEN — manual send not posted:\n${text}`);

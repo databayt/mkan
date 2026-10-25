@@ -1303,6 +1303,8 @@ model AgentProfile {
   id           String    @id @default(cuid())
   keyHash      String?   @unique
   userId       String?   @unique
+  /// A WhatsApp tenant's number ("+250…"): where a broker's later answer is sent.
+  waPhone      String?   @unique
   memory       Json?
   /// The last search that showed homes — "new since your last visit" starts here.
   lastSearchAt DateTime?
@@ -1618,4 +1620,13 @@ model OutboundMessage {
 
   @@index([status, createdAt])
   @@index([brokerId, createdAt])
+}
+
+/// The WhatsApp bridge's small working state (src/components/agent/wa-state.ts):
+/// seen message ids, STOP list, human holds, the agent's own sent ids, the
+/// outbox lease and failure streak. One JSON value per key.
+model WaState {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
 }

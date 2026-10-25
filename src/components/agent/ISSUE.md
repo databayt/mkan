@@ -1,10 +1,15 @@
 # Agent — open issues
 
-- **WhatsApp chat (2026-10-24) needs the line paired.** Built: tenants chat with the agent on
-  +250780984777 (README → WhatsApp chat). The link dropped with `device_removed` on 10-22: until
-  `pnpm wa:pair` is re-scanned, neither the chat nor the broker outbox sends. Replies pause while the
-  Mac sleeps. Not built: photos as images (the first link unfurls), voice notes, the bubble's own
-  WhatsApp entry (it expands to /find, which has it), a tenant alert when a broker confirms later.
+## 2026-10-25 — WhatsApp moves to Cloudflare; brokers' answers reach WhatsApp tenants
+
+- The line now runs on hogwarts' shared Evolution bridge (instance `mkan`), through mkan's Worker
+  (`/__wa/*`). The Mac listener, `/api/agent/whatsapp` and the launchd jobs are retired; the outbox
+  drains from `/api/cron/wa-outbox` every 2 minutes, state in `WaState` (migration
+  `20261028000000_whatsapp_cloud`, also `AgentProfile.waPhone`).
+- A broker's AVAILABLE / RENTED answer is sent to every WhatsApp tenant who asked about that home.
+- Watch: the new `*/2` cron trigger (hogwarts' new triggers once took ~19 h to start firing); the
+  hogwarts container now carries mkan's session too (memory, Evolution's DB growth).
+- Not built: photos as images (the first link unfurls), voice notes.
 
 - **Thin monthly supply.** 20 TikTok leads (2026-10-17) next to 4,566 Airbnb homes. Since 10-18 the
   06:00 TikTok sweep runs the mirror itself (`crm:tiktok run --apply`), but its reader is Groq's free

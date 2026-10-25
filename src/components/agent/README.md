@@ -110,11 +110,14 @@ cron /api/cron/broker-requests (hourly) ─► unanswered after 24 h = NO_REPLY 
 | --- | --- |
 | `broker.ts` | request creation + dedup (batched), `pickBroker`, answer fan-out, expiry → next broker, stuck-turn sweep |
 | `broker-message.ts` | the exact en + rw words a broker receives (tested) |
-| `whatsapp.ts` | Outbound WhatsApp: with `MKAN_WA_OUTBOX=1` every message is an `OutboundMessage` row the Mac drains (`scripts/wa/outbox.ts`, daily cap `MKAN_WA_DAILY_CAP`, default 40); otherwise a #mkan card with a wa.me link (`SLACK_BOT_TOKEN`) |
+| `whatsapp.ts` | Outbound WhatsApp: with `MKAN_WA_OUTBOX=1` every message is an `OutboundMessage` row the 2-minute cron drains (`wa-outbox.ts`, daily cap `MKAN_WA_DAILY_CAP`, default 40); otherwise a #mkan card with a wa.me link (`SLACK_BOT_TOKEN`) |
 | `whatsapp-chat.ts` | Tenants chatting on WhatsApp: `handleTenantWhatsApp` runs the same turn for a phone (profile `sha256("wa:<digits>")`), digit picks, `ref:` hand-off, auto opt-in for demand alerts |
 | `whatsapp-format.ts` | Pure: the turn as one WhatsApp message (3 homes, numbered options, /find link), `readPick`, `waLang` |
 | `append.ts` · `availability.ts` | The message append and the "check availability" loop, shared by the web actions and WhatsApp |
 | `wa-link.ts` | Mkan's WhatsApp number and the /find ⋯ "Continue on WhatsApp" link |
+| `wa-tenant.ts` | `answerTenant`: the guardrails, "typing…", the turn, the send; `noteFromMe` (a person took the chat over) |
+| `wa-outbox.ts` | `runOutbox`: the 2-minute drain (sends under the caps, broker replies, missed tenant messages) |
+| `wa-state.ts` | The bridge's small state in `WaState` (seen ids, STOP list, human holds, lease, streak) |
 | `broker-actions.ts` | broker answer/confirm, tenant choose/outcome |
 | `broker-answer.tsx` + `app/[lang]/b/[token]` | the broker's one-tap page (noindex, no account) |
 | `viewing.tsx` | the tenant's viewing panel on a card |
@@ -136,8 +139,8 @@ lead (`demand-actions.ts` `submitDemandHome`) matched to the chat at once. The t
 WhatsApp number (`demand-card.tsx`); `pnpm crm:demand-match` (09:00, Hermes) matches every open
 request against the day's new homes, alerts opted-in tenants and posts the #mkan digest.
 
-Sends: `whatsapp.ts` `sendMessages` writes `OutboundMessage` rows. With `MKAN_WA_OUTBOX=1` the Mac
-drains them (`scripts/wa/outbox.ts`: 40/day warm-up, one per broker per day, 08:00–20:00 Kigali,
+Sends: `whatsapp.ts` `sendMessages` writes `OutboundMessage` rows. With `MKAN_WA_OUTBOX=1` the cron
+drains them (`wa-outbox.ts`, `/api/cron/wa-outbox`: 40/day warm-up, one per broker per day, 08:00–20:00 Kigali,
 STOP / HAGARIKA / ARRÊTE opt out); without it one #mkan card carries the wa.me links.
 
 **Brokers answer in WhatsApp words (2026-10-22).** Abdout's own chats with ~20 Kigali brokers
@@ -157,25 +160,28 @@ budget, move-in and household. `broker-reply.ts` reads replies by rules, and
 the directory through `pnpm wa:chats` (`scripts/wa/chats.ts`, reviewed chats only, facts not
 messages).
 
-## WhatsApp chat (2026-10-24)
+## WhatsApp chat (2026-10-24; on Cloudflare since 10-25)
 
-Tenants message **+250780984777** and get the same agent, free (Evolution on the Mac + the agent's
-rules → Groq → capped-Claude ladder; `AGENT_CLAUDE=off` keeps it at $0).
+Tenants message **+250780984777** and get the same agent, free (the agent's rules → Groq →
+capped-Claude ladder; `AGENT_CLAUDE=off` keeps it at $0). No Mac in the path.
 
 ```
-tenant WA → Evolution (Mac, Docker) ─webhook→ scripts/wa/inbox-server.ts (127.0.0.1:8091)
-          → POST www.mkan.sd/api/agent/whatsapp (Bearer MKAN_WA_BRIDGE_SECRET) → runTurn on the Worker
-          → reply text → Evolution sendText ("typing…" first)
+tenant WA → Evolution in the hogwarts container (instance "mkan", shared WhatsappBridge entrypoint)
+          ─webhook→ www.mkan.sd/api/whatsapp/hook/<token> → wa-tenant.ts → runTurn in-process
+          → reply → Evolution sendText via www.mkan.sd/__wa (cf/worker.js → WHATSAPP binding)
 ```
 
-- The turn runs on the Worker (ENAM, next to Neon), never on the Mac.
+- The bridge: hogwarts' Evolution, reached only through mkan's Worker (`/__wa/*`, header
+  `x-mkan-wa: MKAN_WA_BRIDGE_SECRET`); Evolution checks `MKAN_EVOLUTION_KEY`, mkan's instance token.
 - A chat continues while under a day old; "new" starts another; a bare digit answers the last numbered
   question (a clarify option, or "check home N" → the broker loop, the tenant's consent).
 - `/find` ⋯ → Continue on WhatsApp sends `ref:<task id>`: the phone's new chat starts from the web one.
 - A search kept open from WhatsApp alerts that same number (`TenantRequest.phone` set on the turn).
-- Mac rules (`scripts/wa/tenant-pure.ts`): reply only to messages a tenant sent (never a first message);
+- A broker's answer about a home the tenant asked on (WhatsApp words or the link) reaches the tenant on
+  WhatsApp (`broker.ts` `tellWhatsAppTenants`, via `AgentProfile.waPhone`).
+- Rules (`scripts/wa/tenant-pure.ts`): reply only to messages a tenant sent (never a first message);
   STOP silences until START; a person at Mkan typing in the chat pauses the agent there for 12 h;
   messages older than 1 h are not answered; 20 replies/phone/hour, 120/line/hour.
 - Brokers (any number in `Broker.phones`) are left to the outbox's burst reader. The 2-minute poll also
-  passes tenant messages the webhook missed; the Worker answers each message id once.
-- Limit: replies pause while the Mac sleeps or the link drops (`device_removed` → `pnpm wa:pair`).
+  passes tenant messages the webhook missed; the turn answers each message id once.
+- Re-link after a `device_removed`: `pnpm wa:pair` (QR at `scripts/crm/.data/wa/qr.png`).
