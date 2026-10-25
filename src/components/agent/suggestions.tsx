@@ -21,8 +21,9 @@ export function Suggestions({ onPick, onGuided, disabled, compact = false }: { o
   const title = cn("font-semibold", compact ? "text-sm" : "text-[15px]");
   const rest = cn("line-clamp-2 text-muted-foreground", compact ? "text-xs" : "text-sm");
 
+  // The bleed matches the wrapper's gutter (/find: px-3 sm:px-4; the bubble: px-3), or the row widens the page.
   return (
-    <ul className={cn("flex snap-x snap-mandatory gap-2 overflow-x-auto no-scrollbar", compact ? "-mx-3 px-3" : "-mx-4 px-4")}>
+    <ul className={cn("flex snap-x snap-mandatory gap-2 overflow-x-auto no-scrollbar", compact ? "-mx-3 px-3" : "-mx-3 px-3 sm:-mx-4 sm:px-4")}>
       <li className="contents">
         <button type="button" onClick={onGuided} disabled={disabled} className={card}>
           <span className={cn(title, "flex items-center gap-1.5")}>

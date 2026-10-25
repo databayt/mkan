@@ -169,7 +169,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
         ref={scrollRef}
         onScroll={onScroll}
         aria-busy={!!opening}
-        className={cn("flex-1 overflow-y-auto overscroll-contain px-3 transition-opacity", opening && task && "opacity-40")}
+        className={cn("flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3 transition-opacity", opening && task && "opacity-40")}
       >
         {!loaded || (!task && opening) ? (
           <Loader2 className="mx-auto mt-10 size-5 animate-spin text-muted-foreground" aria-hidden />

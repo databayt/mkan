@@ -127,7 +127,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
   const pendingTurn = running && messages.at(-1)?.role === "user";
 
   return (
-    <div className="flex h-dvh flex-col bg-background">
+    <div className="flex h-dvh flex-col overflow-x-clip bg-background">
       <ChatHeader
         title={c?.name ?? "Mkan"}
         scrolled={scrolled}
@@ -172,7 +172,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
         ref={scrollRef}
         onScroll={onScroll}
         aria-busy={!!opening}
-        className={cn("relative flex-1 overflow-y-auto overscroll-contain transition-opacity", opening && task && "opacity-40")}
+        className={cn("relative flex-1 overflow-y-auto overflow-x-hidden overscroll-contain transition-opacity", opening && task && "opacity-40")}
       >
         {!task && opening ? (
           <Loader2 className="mx-auto mt-[30vh] size-5 animate-spin text-muted-foreground" aria-hidden />
