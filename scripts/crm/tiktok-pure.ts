@@ -541,15 +541,17 @@ export const TikTokReadSchema = z.object({
   electricity: utility,
   district: z.enum(['GASABO', 'KICUKIRO', 'NYARUGENGE']).nullable().optional().catch(null).transform((v) => v ?? null),
   neighbourhood: nullableStr,
-  phones: z.array(z.string()).optional().default([]),
+  // Readers answer null for an empty list now and then; that is [] (10-25: a text read died on it).
+  phones: z.array(z.string()).nullable().optional().catch([]).transform((v) => v ?? []),
   posterKind: z.enum(['BROKER', 'OWNER', 'UNKNOWN']).catch('UNKNOWN'),
-  features: z.array(z.string()).optional().default([]),
+  features: z.array(z.string()).nullable().optional().catch([]).transform((v) => v ?? []),
   units: z
     .array(z.object({ bedrooms: nullableNum, priceRwf: nullableNum, propertyType: z.enum(PROPERTY_TYPES).nullable().optional().catch(null).transform((v) => v ?? null) }))
+    .nullable()
     .optional()
-    .default([])
-    .catch([]),
-  propertyFrames: z.array(z.number().int()).optional().default([]),
+    .catch([])
+    .transform((v) => v ?? []),
+  propertyFrames: z.array(z.number().int()).nullable().optional().catch([]).transform((v) => v ?? []),
   titleEn: nullableStr,
   titleRw: nullableStr,
   descriptionEn: nullableStr,
@@ -558,7 +560,7 @@ export const TikTokReadSchema = z.object({
   brokerName: nullableStr,
   // tiktok-v5: who answers the phone, and the languages the ad is written/spoken in.
   contactName: nullableStr,
-  languages: z.array(z.string()).optional().default([]).catch([]).transform((v) => [...new Set(v.map(langCode).filter((l): l is Lang => !!l))]),
+  languages: z.array(z.string()).nullable().optional().catch([]).transform((v) => v ?? []).transform((v) => [...new Set(v.map(langCode).filter((l): l is Lang => !!l))]),
   primaryLanguage: z.string().nullable().optional().catch(null).transform((v) => langCode(v)),
   confidence: z.number().min(0).max(1).catch(0.5),
 });

@@ -136,3 +136,10 @@ describe('room counts written after the word', () => {
     expect(captionCarriesFacts('price 250k nice place')).toBe(false);
   });
 });
+
+describe('reader lists', () => {
+  it('reads null lists as empty', () => {
+    const r = read({ phones: null, features: null, propertyFrames: null, units: null, languages: null });
+    expect([r.phones, r.features, r.propertyFrames, r.units, r.languages]).toEqual([[], [], [], [], []]);
+  });
+});

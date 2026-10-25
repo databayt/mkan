@@ -508,7 +508,9 @@ async function fetchStage(): Promise<void> {
     staleById++;
   }
   const queued = Object.values(videos).filter((v) => v.state === 'fetched').length;
-  const capacity = READER === 'groq' ? Math.max(10, readJson<{ reads?: number }>(CAPACITY, {}).reads ?? 10) : READ_LIMIT === Infinity ? FETCH_LIMIT : READ_LIMIT;
+  // Text reads (caption + OCR) carry no vision cost, so the floor is the old
+  // vision-only day (~30), not 10.
+  const capacity = READER === 'groq' ? Math.max(30, readJson<{ reads?: number }>(CAPACITY, {}).reads ?? 30) : READ_LIMIT === Infinity ? FETCH_LIMIT : READ_LIMIT;
   const budget = FETCH_LIMIT === Infinity ? Infinity : fetchBudget(FETCH_LIMIT, capacity, queued);
   const queue = Object.values(videos)
     .filter((v) => v.state === 'discovered')
@@ -800,7 +802,12 @@ async function readStage(): Promise<void> {
     if (READER === 'groq') await sleep(GROQ_GAP_PER_IMAGE_MS * Math.max(1, lastImages)); // stay under the tier's minute
   }
   saveVideos(videos);
-  writeJson(CAPACITY, { reads: runStats.read, reader: READER, at: now() });
+  // Capacity is what the reader can take before a quota stops it. A run that
+  // simply ran out of queue says nothing about that — recording it shrank the
+  // next fetch (29 → 7 → a 12-video fetch on 2026-10-25 with 229 waiting).
+  const prevReads = readJson<{ reads?: number }>(CAPACITY, {}).reads ?? 0;
+  const limited = visionSpent || !!runStats.readStopped || queue.length >= (READ_LIMIT === Infinity ? Number.MAX_SAFE_INTEGER : READ_LIMIT);
+  writeJson(CAPACITY, { reads: limited ? runStats.read : Math.max(prevReads, runStats.read), reader: READER, at: now() });
   if (READER === 'anthropic' || runStats.readStopped.startsWith('anthropic')) {
     const s = monthSpend();
     console.log(`read: API spend ${s.month} $${s.usd.toFixed(3)} of $${MONTHLY_CAP_USD} (${s.calls} calls)`);
@@ -909,7 +916,19 @@ async function upsert(): Promise<{ homes: number; hosts: number }> {
     let host = (phones[0] && hostByPhone.get(phones[0])) || hostByHandle.get(row.handle.toLowerCase()) || null;
     if (!phones.length && host) phones.push(...phonesFromTwenty(host.phone as never, 'RW').filter((n) => n.startsWith('+250')));
     const phone = phones[0] ?? null;
-    const framePaths = propertyFramePaths(row.frames ?? [], read.propertyFrames);
+    // A row re-judged by requeue (old "outside Kigali" skips) lost its frames
+    // when it was skipped: fetch it again rather than fail on a missing file.
+    if (!row.frameUrls?.length && (row.frames ?? []).length && !(row.frames ?? []).some((f) => existsSync(f))) {
+      console.log(`  ↺ ${row.videoId} @${row.handle} — frames gone, back to fetch`);
+      if (APPLY) {
+        Object.assign(row, { state: 'discovered' });
+        delete row.frames;
+        delete row.ocr;
+        delete row.error;
+      }
+      continue;
+    }
+    const framePaths = propertyFramePaths((row.frames ?? []).filter((f) => existsSync(f)), read.propertyFrames);
     const profile = profileFor(row.handle);
     const hBody = clean({ ...hostBody(row, read, phone, profile), phone: twentyPhones(phone, phones.slice(1)) });
     const promptVersion = row.readVersion ?? TIKTOK_PROMPT_VERSION;
