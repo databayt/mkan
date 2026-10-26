@@ -1,0 +1,12 @@
+// mkan-watchdog — watches /find + the WhatsApp line from outside mkan's own Worker.
+// Deploy: pnpm exec wrangler deploy -c ops/watchdog/wrangler.jsonc (see worker.js for secrets).
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "mkan-watchdog",
+  "main": "worker.js",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["global_fetch_strictly_public"],
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "triggers": { "crons": ["*/5 * * * *"] }
+}
