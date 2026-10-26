@@ -27,6 +27,8 @@ export interface BrokerReply {
   question: boolean;
   /** "Yes, still available", "Iracyahari" — to "is this home still available?". */
   yes: boolean;
+  /** "Are you a bot?", "is this automatic?" — a person answers this one, never the inbox. */
+  asksIfBot: boolean;
 }
 
 /** Rents outside this band are fees, deposits or sale prices, not a month's rent. */
@@ -99,6 +101,7 @@ const STUDIO = /\bstudio\b/;
 const GONE = /^(?:n|no+|nope|taken|gone|rented|sold|not available|no longer available|already (?:taken|rented)|it(?:'?s| is| has been) taken|byaragiye|yagiye|ntayihari|ntiyihari|oldest post)\b/;
 const GONE_ANYWHERE = /\b(?:already taken|has been taken|was taken|already rented|no longer available|not available anymore|byaragiye|oldest post)\b/;
 const YES = /^(?:yes|yeah|yep|yah|sure|available|still available|it(?:'?s| is) (?:still )?available|iracyahari|irahari|yego|ndiyo|oui|disponible)\b/;
+const BOT_QUESTION = /\b(?:bot|robot|chatbot|automatic|automated|auto ?reply|ai)\b.*\?|\b(?:are|r) (?:you|u) (?:a )?(?:real|human|person|bot|robot|machine)\b|\bis this (?:a )?(?:bot|robot|machine|automatic|real person)\b|\bni robot\b|\buri umuntu\b/;
 const QUESTION = /how much|what(?:'s| is) (?:the |your )?budget|budget\??$|features|details\??$|^where\??$|which (?:area|place|location)|single or (?:a )?family|for how many|when (?:do|will) you|ni angahe|amafaranga angahe/;
 
 /** Read one broker message. */
@@ -131,6 +134,7 @@ export function parseBrokerReply(text: string | null | undefined): BrokerReply {
     gone: gone && !hasOffer,
     question: !hasOffer && QUESTION.test(t.trim()),
     yes: !gone && YES.test(bare),
+    asksIfBot: BOT_QUESTION.test(t),
   };
 }
 

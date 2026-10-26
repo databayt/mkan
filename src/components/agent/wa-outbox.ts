@@ -36,9 +36,11 @@ import {
   recipientKey,
   senderPhone,
   startOfKigaliDay,
+  typingMs,
 } from "../../../scripts/wa/outbox-pure";
 import { db } from "@/lib/db";
-import { EvolutionError, connectionState, findMessages, isBridgeDown, mediaBytes, sendText } from "@/lib/whatsapp/evolution";
+import { parseBrokerReply } from "./broker-reply";
+import { EvolutionError, connectionState, findMessages, isBridgeDown, mediaBytes, sendPresence, sendText } from "@/lib/whatsapp/evolution";
 import { handleBrokerReply } from "./broker-inbox";
 import { mutateState, readState, releaseLease, takeLease, writeState } from "./wa-state";
 import { answerTenant, noteFromMe, recordSent } from "./wa-tenant";
@@ -130,6 +132,8 @@ async function drain(dry: boolean, log: Log): Promise<{ sent: number; bridgeErro
     }
     if (row.kind !== "TENANT_ALERT" && !inSendWindow(new Date())) break;
     try {
+      // Brokers see "typing…" first, as from a person; tenant alerts go straight out.
+      if (row.kind !== "TENANT_ALERT") await sendPresence(row.to, typingMs(row.body));
       const out = await sendText(row.to, row.body);
       if (row.kind === "TENANT_ALERT") await recordSent(phoneKey(row.to), out?.key?.id);
       const sentAt = new Date();
@@ -255,6 +259,7 @@ async function replies(dry: boolean, log: Log): Promise<number> {
     } else if (action.kind === "reply") {
       if (action.why === "photos-need-price" && photoUrls.length) pending[broker.id] = { urls: photoUrls, at: now.toISOString() };
       try {
+        await sendPresence(g.phone, typingMs(action.text));
         await sendText(g.phone, action.text);
       } catch (err) {
         await db.outboundMessage.update({ where: { id: action.outboundId }, data: { status: "FAILED", error: (err as Error).message.slice(0, 500) } });
@@ -264,8 +269,9 @@ async function replies(dry: boolean, log: Log): Promise<number> {
       await postSlackCard(`✅ *${broker.name}* (+${g.phone}) answered "${g.text.slice(0, 80)}" → home #${action.listingId} marked ${action.answer === "RENTED" ? "rented" : "available"}.`);
     } else {
       if (stored.length) pending[broker.id] = { urls: photoUrls, at: now.toISOString() };
+      const botAsk = parseBrokerReply(g.text).asksIfBot ? "🤖 asks if they're talking to a bot — answer this one yourself.\n" : "";
       await postSlackCard(
-        `💬 *${broker.name}* (+${g.phone}) replied on WhatsApp${stored.length ? ` (${stored.length} photo(s) kept)` : ""}:\n> ${words.replace(/\n/g, "\n> ")}\n<${waLink(g.phone, "")}|Open the chat> — turn it into a home in this thread.`,
+        `${botAsk}💬 *${broker.name}* (+${g.phone}) replied on WhatsApp${stored.length ? ` (${stored.length} photo(s) kept)` : ""}:\n> ${words.replace(/\n/g, "\n> ")}\n<${waLink(g.phone, "")}|Open the chat> — turn it into a home in this thread.`,
       );
     }
   }

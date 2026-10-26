@@ -1,26 +1,44 @@
 import { describe, expect, it } from "vitest";
-import { availabilityMessage, needSummary, viewingChosenMessage } from "@/components/agent/broker-message";
+import { availabilityMessage, needSummary, pickPhrase, priceQuestionMessage, viewingChosenMessage } from "@/components/agent/broker-message";
+import { parseBrokerReply } from "@/components/agent/broker-reply";
 import { EMPTY_REQUIREMENTS } from "@/components/agent/requirements";
 import { planMirror } from "../../scripts/crm/tiktok-mirror";
 
 describe("broker message", () => {
   const need = needSummary({ ...EMPTY_REQUIREMENTS, bedrooms: 3, district: "KICUKIRO", maxPrice: 600_000, pricePeriod: "month", stay: "long" });
 
-  it("states the need in English and Kinyarwanda", () => {
-    expect(need.en).toBe("3 bedrooms, in Kicukiro, up to RWF 600,000 a month");
+  it("states the need the way brokers write it, and in Kinyarwanda for the form", () => {
+    expect(need.en).toBe("a 3-bedroom, in Kicukiro, up to 600k");
     expect(need.rw).toBe("ibyumba 3, i Kicukiro, kugeza RWF 600,000 ku kwezi");
   });
 
-  it("lists every home with its own one-tap link and never a tenant's details", () => {
-    const text = availabilityMessage("mossa", need, [
+  it("lists every home with its own link and never a tenant's details", () => {
+    const text = availabilityMessage(need, [
       { title: "3-bed in Kagarama", link: "https://www.mkan.sd/en/b/aaa" },
       { title: "3-bed in Remera", link: "https://www.mkan.sd/en/b/bbb" },
     ]);
-    expect(text).toContain("Hello @mossa");
     expect(text).toContain("1. 3-bed in Kagarama\nhttps://www.mkan.sd/en/b/aaa");
     expect(text).toContain("2. 3-bed in Remera\nhttps://www.mkan.sd/en/b/bbb");
-    expect(text).toContain("Muraho!");
+    expect(text).toContain(need.en);
     expect(text).not.toMatch(/\+?\d{9,}/);
+  });
+
+  it("reads like a person: no brand line, no one-tap pitch, no opt-out footer", () => {
+    const texts = ["a", "b", "c", "d", "e", "f"].map((k) => availabilityMessage(need, [{ title: "Flat", link: `https://www.mkan.sd/en/b/${k}` }]));
+    for (const t of texts) expect(t).not.toMatch(/this is Mkan|mkan\.sd\)|one tap|STOP|HAGARIKA|tenant/i);
+    expect(new Set(texts.map((t) => t.split("\n")[0])).size).toBeGreaterThan(1);
+    expect(priceQuestionMessage("x")).toMatch(/month/);
+  });
+
+  it("picks the same phrasing for the same seed", () => {
+    expect(pickPhrase("seed", ["a", "b", "c"])).toBe(pickPhrase("seed", ["a", "b", "c"]));
+  });
+
+  it.each(["Are you a bot?", "r u a robot", "is this automatic?", "Are you a real person?", "Uri umuntu?"])("%s goes to a person", (t) => {
+    expect(parseBrokerReply(t).asksIfBot).toBe(true);
+  });
+  it.each(["How much?", "Is there a washing machine", "Yes available", "Price 300k"])("%s is not a bot question", (t) => {
+    expect(parseBrokerReply(t).asksIfBot).toBe(false);
   });
 
   it("asks the broker to confirm the chosen time", () => {

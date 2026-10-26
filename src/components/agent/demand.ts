@@ -7,7 +7,6 @@ import "server-only";
  * reply through `/b/d/<token>` or tomorrow's scrape — is matched against it.
  * A tenant who left a number gets a WhatsApp when it finds something.
  */
-import { createHash, randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { publicAppUrl } from "../../../scripts/crm/public-links";
@@ -21,7 +20,6 @@ import type { EventKind, ShortlistItem, StepStatus } from "./types";
 import { sendMessages, type Outgoing } from "./whatsapp";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
-const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 export const demandLink = (token: string, lang = "en") => `${publicAppUrl()}/${lang}/b/d/${token}`;
 export const chatLink = (taskId: string, lang = "en") => `${publicAppUrl()}/${lang}/find?c=${taskId}`;
 
@@ -61,16 +59,14 @@ export async function openDemand(taskId: string, profileId: string | null, r: Re
 
   const need = needSummary(r);
   const messages: Outgoing[] = picked.map((b) => {
-    const token = randomBytes(18).toString("base64url");
     const name = b.tiktokHandle ? `@${b.tiktokHandle}` : b.kind === "AGENCY" ? b.name : null;
     return {
       kind: "BROKER_ASK",
       to: b.phones[0]!,
-      body: demandMessage(name, need, demandLink(token, "en")),
+      body: demandMessage(need, `${request.id}:${b.id}`),
       label: name ?? b.name,
       brokerId: b.id,
       tenantRequestId: request.id,
-      tokenHash: hash(token),
     };
   });
   const channel = await sendMessages(messages, `Rental agent → no home for "${need.en}", asking ${picked.length} brokers`);

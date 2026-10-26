@@ -61,6 +61,11 @@ export function randomGapMs(rand: () => number = Math.random): number {
   return 20_000 + Math.floor(rand() * 40_001);
 }
 
+/** How long "typing…" shows before a broker message: about a person's speed, 2.5–8 s. */
+export function typingMs(text: string, rand: () => number = Math.random): number {
+  return Math.min(8_000, Math.max(2_500, text.length * 45)) + Math.floor(rand() * 1_500);
+}
+
 export function dailyCap(env: string | undefined = process.env.MKAN_WA_DAILY_CAP): number {
   const n = Number(env);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_DAILY_CAP;

@@ -14,13 +14,11 @@ import "server-only";
  *     as if tapped;
  *   - anything else → the caller posts it to #mkan for a person.
  */
-import { createHash, randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { applyAnswer } from "./broker";
 import { createBrokerHome, type AskForHome } from "./broker-home";
-import { needSummary } from "./broker-message";
+import { needReplyMessage, needSummary, priceQuestionMessage } from "./broker-message";
 import { isOffer, parseBrokerReply } from "./broker-reply";
-import { demandLink } from "./demand";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements } from "./requirements";
 
 /** An ask is still being answered this long after it went out. */
@@ -34,7 +32,6 @@ export type InboxAction =
   | { kind: "availability"; listingId: number; answer: "AVAILABLE" | "RENTED" }
   | { kind: "none" };
 
-const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 /** Learn how fast the broker answers: a running blend that favours their usual pace over one slow day. */
 async function stampReply(brokerId: string, at: Date) {
@@ -69,6 +66,9 @@ export async function handleBrokerReply(input: { brokerId: string; text: string;
     },
   })) as (AskForHome & { tenantRequestId: string | null; broker: AskForHome["broker"] & { visitFee: number | null } }) | null;
 
+  // A person answers "are you a bot?" (wa-outbox flags it in #mkan); the inbox stays quiet.
+  if (r.asksIfBot) return { kind: "none" };
+
   if (ask?.tenantRequest && ask.broker) {
     const wanted = mergeRequirements(EMPTY_REQUIREMENTS, coerceRequirements(ask.tenantRequest.requirements));
     const price = r.price;
@@ -96,21 +96,13 @@ export async function handleBrokerReply(input: { brokerId: string; text: string;
         let body: string;
         let outboundId: string;
         if (label === "auto-answer") {
-          // A fresh link on its own ask row, so the form still finds the request.
-          const token = randomBytes(18).toString("base64url");
-          body = [
-            `Thanks! The tenant wants ${need.en}.`,
-            `If you have one, reply with the photos and the price (and the visit fee), or send it here:`,
-            demandLink(token, "en"),
-            "",
-            `Murakoze! Umukiriya arashaka ${need.rw}.`,
-          ].join("\n");
+          body = needReplyMessage(need, ask.id);
           ({ id: outboundId } = await db.outboundMessage.create({
-            data: { kind: "BROKER_ASK", to: ask.broker.phones[0]!, body, label, status: "SENT", sentAt: new Date(), brokerId, tenantRequestId: ask.tenantRequestId, tokenHash: hash(token) },
+            data: { kind: "BROKER_ASK", to: ask.broker.phones[0]!, body, label, status: "SENT", sentAt: new Date(), brokerId, tenantRequestId: ask.tenantRequestId },
             select: { id: true },
           }));
         } else {
-          body = "Thanks for the photos! What is the rent per month, and where is it (neighbourhood)? / Murakoze! Ni angahe ku kwezi, kandi iri he?";
+          body = priceQuestionMessage(ask.id);
           ({ id: outboundId } = await db.outboundMessage.create({
             data: { kind: "BROKER_ASK", to: ask.broker.phones[0]!, body, label, status: "SENT", sentAt: new Date(), brokerId, tenantRequestId: ask.tenantRequestId },
             select: { id: true },
