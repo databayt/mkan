@@ -115,8 +115,8 @@ export function viewingChosenMessage(title: string, slotLabel: string, link: str
 export function demandMessage(need: { en: string }, seed: string): string {
   return pickPhrase(seed, [
     `Muraho! Do you have ${need.en}? I have a client ready. If yes send me photos and the price 🙏`,
-    `Hello, I'm looking for ${need.en} for a client. Do you have something? Send photos and price please.`,
-    `Hi! I need ${need.en} for a client. Anything available? Send me photos and the price.`,
+    `Hello, I have a client looking for ${need.en}. Do you have something? Send photos and price please.`,
+    `Hi! My client needs ${need.en}. Anything available? Send me photos and the price.`,
   ]);
 }
 
