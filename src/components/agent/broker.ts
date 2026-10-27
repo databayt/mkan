@@ -12,6 +12,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { listingPath } from "@/lib/listing-code";
 import { publicAppUrl } from "../../../scripts/crm/public-links";
 import { availabilityMessage, brokerAnswerMessage, needSummary, type BrokerHomeLine } from "./broker-message";
 import { CONFIRMATION_TTL_DAYS } from "./rank";
@@ -64,15 +65,76 @@ export async function brokerAnswers(listingIds: number[]): Promise<Map<number, {
   return out;
 }
 
-type BrokerLink = { listingId: number; userId: string; user: { phoneNumber: string | null; username: string | null; sourceHostId: string | null } };
+type BrokerLink = {
+  listingId: number;
+  userId: string;
+  /** The ad this broker posted for the home. */
+  sourceUrl?: string | null;
+  user: { phoneNumber: string | null; username: string | null; sourceHostId: string | null };
+  listing?: HomeForLink;
+};
+type HomeForLink = { id: number; sourceUrl: string | null; isPublished: boolean; code: string | null; sourceListingId: string | null };
+const HOME_FOR_LINK = { id: true, sourceUrl: true, isPublished: true, code: true, sourceListingId: true } as const;
+
+const isUrl = (u: string | null | undefined): u is string => !!u && /^https?:\/\//.test(u);
+
+/**
+ * The link a tenant would send: the broker's own ad, else wherever the home was
+ * found, else its Mkan page — only when published (an unpublished one 404s).
+ */
+export function homeLink(ad: string | null | undefined, home: HomeForLink | null | undefined): string | null {
+  if (isUrl(ad)) return ad;
+  const found = home?.sourceUrl;
+  if (isUrl(found)) return found;
+  return home?.isPublished ? `${publicAppUrl()}${listingPath("en", home)}` : null;
+}
+
+/**
+ * What a queued ask says when it goes out, read again from its requests: a
+ * wording change reaches rows queued before it (the outbox sends at most one
+ * broker message a tick, so a queue can wait days), and a home answered in the
+ * meantime is not asked about again. `answered` — every home on it already
+ * has its answer; null — keep the stored text.
+ */
+export async function askBodyNow(seed: string, requestIds: string[]): Promise<string | "answered" | null> {
+  const requests = await db.brokerRequest.findMany({
+    where: { id: { in: requestIds } },
+    select: { listingId: true, brokerUserId: true, status: true, listing: { select: { title: true, ...HOME_FOR_LINK } } },
+  });
+  if (requests.length === 0) return null;
+  const open = requests.filter((q) => q.status !== "AVAILABLE" && q.status !== "RENTED");
+  if (open.length === 0) return "answered";
+  const ads = await db.listingBroker.findMany({
+    where: { OR: open.map((q) => ({ listingId: q.listingId, userId: q.brokerUserId })) },
+    select: { listingId: true, sourceUrl: true },
+  });
+  const adOf = new Map(ads.map((a) => [a.listingId, a.sourceUrl]));
+  const homes: BrokerHomeLine[] = [];
+  const seen = new Set<number>();
+  for (const q of open) {
+    if (seen.has(q.listingId)) continue;
+    seen.add(q.listingId);
+    const link = homeLink(adOf.get(q.listingId), q.listing);
+    if (!link) return null;
+    homes.push({ title: q.listing.title ?? "", link });
+  }
+  return availabilityMessage(homes, seed);
+}
+
 type RecentRequest = { id: string; listingId: number; brokerUserId: string; status: string; expiresAt: Date; taskId: string | null };
 
-/** Everyone who can speak for each home, owner first, then brokers by age. */
+/** Everyone who can speak for each home, owner first, then brokers by age — never one who said STOP. */
 async function brokersFor(listingIds: number[]): Promise<Map<number, BrokerLink[]>> {
   const links = await db.listingBroker.findMany({
-    where: { listingId: { in: listingIds }, user: { phoneNumber: { not: null } } },
+    where: { listingId: { in: listingIds }, user: { phoneNumber: { not: null } }, NOT: { broker: { is: { optOut: true } } } },
     orderBy: [{ role: "desc" }, { createdAt: "asc" }],
-    select: { listingId: true, userId: true, user: { select: { phoneNumber: true, username: true, sourceHostId: true } } },
+    select: {
+      listingId: true,
+      userId: true,
+      sourceUrl: true,
+      user: { select: { phoneNumber: true, username: true, sourceHostId: true } },
+      listing: { select: HOME_FOR_LINK },
+    },
   });
   const out = new Map<number, BrokerLink[]>();
   for (const l of links) if (l.user.phoneNumber) out.set(l.listingId, [...(out.get(l.listingId) ?? []), l]);
@@ -98,11 +160,10 @@ const handleOf = (b: BrokerLink) => (b.user.sourceHostId?.startsWith("tiktok:") 
 /** Send each broker one message for all their homes, and record the channel it went by. */
 async function sendGrouped(
   groups: Map<string, { phone: string; handle: string | null; homes: BrokerHomeLine[]; ids: string[] }>,
-  need: { en: string; rw: string },
 ): Promise<{ broker: string | null; count: number; channel: string }[]> {
   return Promise.all(
     [...groups.values()].map(async (m) => {
-      const channel = await sendToBroker(m.phone, availabilityMessage(need, m.homes), m.handle ? `@${m.handle}` : m.phone, m.ids);
+      const channel = await sendToBroker(m.phone, availabilityMessage(m.homes, m.ids.join()), m.handle ? `@${m.handle}` : m.phone, m.ids);
       // "queued": the Mac's outbox stamps channel "evolution" and sentAt once it really went out.
       await db.brokerRequest.updateMany({ where: { id: { in: m.ids } }, data: { channel, sentAt: null } });
       return { broker: m.handle ? `@${m.handle}` : null, count: m.homes.length, channel };
@@ -169,11 +230,11 @@ export async function requestConfirmations(taskId: string, shortlist: ShortlistI
     const id = idByHash.get(a.row.tokenHash);
     if (!id) continue;
     const g = groups.get(a.broker.userId) ?? { phone: a.broker.user.phoneNumber!, handle: handleOf(a.broker), homes: [], ids: [] };
-    g.homes.push({ title: a.item.title, link: brokerLink(a.token, "en") });
+    g.homes.push({ title: a.item.title, link: homeLink(a.broker.sourceUrl, a.broker.listing) ?? brokerLink(a.token, "en") });
     g.ids.push(id);
     groups.set(a.broker.userId, g);
   }
-  for (const sent of await sendGrouped(groups, need)) events.push(["broker_contact_started", "waiting_person", sent]);
+  for (const sent of await sendGrouped(groups)) events.push(["broker_contact_started", "waiting_person", sent]);
   await appendTaskEvents(taskId, events);
   return waiting;
 }
@@ -233,11 +294,15 @@ export async function applyAnswer(listingId: number, answer: Answer) {
  */
 async function tellWhatsAppTenants(tasks: { id: string; shortlist: unknown; locale: string; profile: { waPhone: string | null } | null }[], listingId: number, answer: Answer) {
   if (answer !== "AVAILABLE" && answer !== "RENTED") return;
+  if (!tasks.some((t) => t.profile?.waPhone)) return;
+  // Times exist only when the broker offered them on the form; a typed "yes" offers none.
+  const offered = answer === "AVAILABLE" ? await db.brokerRequest.findMany({ where: { listingId, status: "AVAILABLE" }, select: { viewingSlots: true }, take: 20 }) : [];
+  const canPick = offered.some((r) => Array.isArray(r.viewingSlots) && r.viewingSlots.some((s) => typeof s === "string" && Date.parse(s) > Date.now()));
   const messages = tasks.flatMap((t) => {
     const to = t.profile?.waPhone;
     if (!to) return [];
     const title = ((t.shortlist as ShortlistItem[] | null) ?? []).find((s) => s.id === listingId)?.title?.trim() || `#${listingId}`;
-    return [{ kind: "TENANT_ALERT" as const, to, body: brokerAnswerMessage(t.locale, title, answer === "AVAILABLE", `${publicAppUrl()}/${t.locale}/find?c=${t.id}`), label: "tenant" }];
+    return [{ kind: "TENANT_ALERT" as const, to, body: brokerAnswerMessage(t.locale, title, answer === "AVAILABLE", `${publicAppUrl()}/${t.locale}/find?c=${t.id}`, canPick), label: "tenant" }];
   });
   if (messages.length) await sendMessages(messages, `Broker answered home #${listingId}`);
 }
@@ -280,13 +345,13 @@ export async function expireRequests(now = new Date()): Promise<number> {
     }
     // The next broker gets the same question, for every task that asked.
     const first = mine[0]!;
-    const summary = ((first.need as { summary?: { en: string; rw: string } } | null)?.summary) ?? { en: "a home in Kigali", rw: "inzu i Kigali" };
     const tokens = mine.map(() => randomBytes(18).toString("base64url"));
     const created = await db.brokerRequest.createManyAndReturn({
       data: mine.map((r, i) => ({ tokenHash: hashToken(tokens[i]!), listingId, brokerUserId: pick.ask.userId, taskId: r.taskId, locale: r.locale, need: json(r.need), expiresAt: new Date(now.getTime() + REQUEST_TTL_HOURS * 3_600_000) })),
       select: { id: true },
     });
-    await sendGrouped(new Map([[pick.ask.userId, { phone: pick.ask.user.phoneNumber!, handle: handleOf(pick.ask), homes: [{ title: first.listing.title ?? "Home in Kigali", link: brokerLink(tokens[0]!, "en") }], ids: created.map((c) => c.id) }]]), summary);
+    const link = homeLink(pick.ask.sourceUrl, pick.ask.listing) ?? brokerLink(tokens[0]!, "en");
+    await sendGrouped(new Map([[pick.ask.userId, { phone: pick.ask.user.phoneNumber!, handle: handleOf(pick.ask), homes: [{ title: first.listing.title ?? "Home in Kigali", link }], ids: created.map((c) => c.id) }]]));
     await Promise.all(
       [...new Set(mine.map((r) => r.taskId).filter((t): t is string => !!t))].map((t) =>
         appendTaskEvent(t, "broker_contact_started", "waiting_person", { listingId, title: first.listing.title, broker: handleOf(pick.ask) ? `@${handleOf(pick.ask)}` : null, next: true }),

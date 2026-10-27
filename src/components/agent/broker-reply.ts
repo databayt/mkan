@@ -25,8 +25,10 @@ export interface BrokerReply {
   gone: boolean;
   /** The broker asks before offering: "How much?", "Where", "Features&budget". */
   question: boolean;
-  /** "Yes, still available", "Iracyahari" — to "is this home still available?". */
+  /** "Yes, still available", "Hi / It's available, when do you want to visit?", "Iyinzu irahari" — to "is this home still available?". */
   yes: boolean;
+  /** Only a hello: "Hi", "Hello how are you?", "Muraho". */
+  greeting: boolean;
   /** "Are you a bot?", "is this automatic?" — a person answers this one, never the inbox. */
   asksIfBot: boolean;
 }
@@ -99,8 +101,38 @@ const BATHROOMS = /\b(\d|one|two|three|four|q)\s*(?:-|\s)?(?:bath(?:room)?s?|ba\
 const STUDIO = /\bstudio\b/;
 
 const GONE = /^(?:n|no+|nope|taken|gone|rented|sold|not available|no longer available|already (?:taken|rented)|it(?:'?s| is| has been) taken|byaragiye|yagiye|ntayihari|ntiyihari|oldest post)\b/;
-const GONE_ANYWHERE = /\b(?:already taken|has been taken|was taken|already rented|no longer available|not available anymore|byaragiye|oldest post)\b/;
-const YES = /^(?:yes|yeah|yep|yah|sure|available|still available|it(?:'?s| is) (?:still )?available|iracyahari|irahari|yego|ndiyo|oui|disponible)\b/;
+const GONE_ANYWHERE = /\b(?:already taken|has been taken|was taken|already rented|no longer available|not available anymore|byaragiye|oldest post|ntiyihari|ntayihari|yafashwe)\b|\b(?:it'?s|its|it is|is|was) (?:already )?(?:not available|taken|rented|gone)\b/;
+/** One clause that says yes. Never "I am available" (the broker, not the home). */
+const YES_CLAUSE =
+  /^(?:yes|yeah|yep|yah|sure|available|still available|oui|disponible|yego|ndiyo)\b|\b(?:yes|yeah|yep|yego|ndiyo)\b|\b(?:it'?s|its|it is|is|still|ni) (?:still )?available\b|\b(?:iracyahari|irahari|igihari)\b/;
+/** "Let me check if it is still available" is a promise, not an answer. */
+const HEDGE = /\b(?:if|whether|check|checking|confirm|ask|asking|not sure|maybe)\b/;
+/** Asking when you'll come means the home is there. */
+const VISIT_QUESTION = /\bwhen (?:do|will|can) (?:you|u) (?:want to |like to )?(?:visit|come|see)\b/;
+
+/**
+ * A yes anywhere in the reply, clause by clause — brokers open with "Hello /
+ * Nice to e-meet" before "It's available". A clause asked back ("Is it still
+ * available?", "Yes?") is not an answer.
+ */
+function saysYes(t: string): boolean {
+  if (VISIT_QUESTION.test(t)) return true;
+  const parts = t.split(/([\n.!?,;])/);
+  for (let i = 0; i < parts.length; i += 2) {
+    const clause = parts[i]!.trim();
+    if (!clause || parts[i + 1] === "?") continue;
+    if (YES_CLAUSE.test(clause) && !HEDGE.test(clause)) return true;
+  }
+  return false;
+}
+const GREETING_WORDS = new Set("hi hii hiii hello helo hellow hey heyy hallo muraho mwiriwe mwaramutse bonjour salut habari jambo good morning afternoon evening day how are you u r doing amakuru nice to meet e emeet dear sir madam there bro".split(" "));
+const GREETING_CORE = /\b(?:hi+|hel+o+w?|hey+|hallo|muraho|mwiriwe|mwaramutse|bonjour|salut|habari|jambo|good (?:morning|afternoon|evening|day))\b/;
+
+/** Only a hello — nothing that answers or asks about the home. */
+function isGreetingOnly(t: string): boolean {
+  const words = t.replace(/[^a-z\s]/g, " ").split(/\s+/).filter(Boolean);
+  return words.length > 0 && words.length <= 8 && GREETING_CORE.test(t) && words.every((w) => GREETING_WORDS.has(w));
+}
 const BOT_QUESTION = /\b(?:bot|robot|chatbot|automatic|automated|auto ?reply|ai)\b.*\?|\b(?:are|r) (?:you|u) (?:a )?(?:real|human|person|bot|robot|machine)\b|\bis this (?:a )?(?:bot|robot|machine|automatic|real person)\b|\bni robot\b|\buri umuntu\b/;
 const QUESTION = /how much|what(?:'s| is) (?:the |your )?budget|budget\??$|features|details\??$|^where\??$|which (?:area|place|location)|single or (?:a )?family|for how many|when (?:do|will) you|ni angahe|amafaranga angahe/;
 
@@ -133,7 +165,8 @@ export function parseBrokerReply(text: string | null | undefined): BrokerReply {
     visitFee: fee,
     gone: gone && !hasOffer,
     question: !hasOffer && QUESTION.test(t.trim()),
-    yes: !gone && YES.test(bare),
+    yes: !(gone || GONE_ANYWHERE.test(t)) && saysYes(t),
+    greeting: isGreetingOnly(t),
     asksIfBot: BOT_QUESTION.test(t),
   };
 }

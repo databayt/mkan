@@ -12,7 +12,9 @@ import "server-only";
  *   2. Send — QUEUED rows under scripts/wa/outbox-pure.ts (Kigali 08:00–20:00,
  *      MKAN_WA_DAILY_CAP a day, one per broker a day). One broker message a
  *      tick: the 2-minute schedule is the gap between sends. Tenant alerts all
- *      go at once. The third failed try makes a row FAILED and posts a #mkan
+ *      go at once. An "is this available?" is worded when it goes, not when it
+ *      was queued (broker.ts askBodyNow), and skipped if the home was answered
+ *      meanwhile. The third failed try makes a row FAILED and posts a #mkan
  *      card with a wa.me link so a person sends it by hand.
  *   3. Replies — polls /chat/findMessages. STOP / HAGARIKA from a broker sets
  *      Broker.optOut; every other broker burst (an album + its caption) goes
@@ -39,6 +41,7 @@ import {
   typingMs,
 } from "../../../scripts/wa/outbox-pure";
 import { db } from "@/lib/db";
+import { askBodyNow } from "./broker";
 import { parseBrokerReply } from "./broker-reply";
 import { EvolutionError, connectionState, findMessages, isBridgeDown, mediaBytes, sendPresence, sendText } from "@/lib/whatsapp/evolution";
 import { handleBrokerReply } from "./broker-inbox";
@@ -103,6 +106,10 @@ async function drain(dry: boolean, log: Log): Promise<{ sent: number; bridgeErro
   const optedOutByPhone = bareKeys.length
     ? await db.broker.findMany({ where: { optOut: true, phones: { hasSome: phoneVariants(bareKeys) } }, select: { phones: true } })
     : [];
+  // A broker who said STOP from the number on their ad, which the directory may not list.
+  const optedOutPosters = bareKeys.length
+    ? await db.listingBroker.findMany({ where: { broker: { is: { optOut: true } }, user: { phoneNumber: { in: phoneVariants(bareKeys) } } }, select: { user: { select: { phoneNumber: true } } } })
+    : [];
 
   const cap = dailyCap();
   const plan = planOutbox<(typeof rows)[number] & OutboxRow>({
@@ -111,7 +118,7 @@ async function drain(dry: boolean, log: Log): Promise<{ sent: number; bridgeErro
     sentToday: sentRows.length,
     lastSentAt,
     optedOutBrokers: new Set(brokers.filter((b) => b.optOut).map((b) => b.id)),
-    optedOutPhones: new Set(optedOutByPhone.flatMap((b) => b.phones.map(phoneKey))),
+    optedOutPhones: new Set([...optedOutByPhone.flatMap((b) => b.phones.map(phoneKey)), ...optedOutPosters.map((p) => phoneKey(p.user.phoneNumber ?? ""))]),
     cap,
   });
   const held = plan.hold.reduce<Record<string, number>>((acc, h) => ({ ...acc, [h.reason]: (acc[h.reason] ?? 0) + 1 }), {});
@@ -126,18 +133,28 @@ async function drain(dry: boolean, log: Log): Promise<{ sent: number; bridgeErro
 
   let sent = 0;
   for (const row of toSend) {
+    let body = row.body;
+    if (row.kind === "BROKER_REQUEST" && row.brokerRequestIds.length) {
+      const worded = await askBodyNow(row.brokerRequestIds.join(), row.brokerRequestIds);
+      if (worded === "answered") {
+        log(`skip ${row.id}: every home on it was answered before it went out`);
+        if (!dry) await db.outboundMessage.update({ where: { id: row.id }, data: { status: "SKIPPED", error: "answered before it went out" } });
+        continue;
+      }
+      if (worded) body = worded;
+    }
     if (dry) {
-      log(`would send ${row.id} ${row.kind} → ${row.to}: ${row.body.slice(0, 80).replace(/\s+/g, " ")}…`);
+      log(`would send ${row.id} ${row.kind} → ${row.to}: ${body.replace(/\s+/g, " ")}`);
       continue;
     }
     if (row.kind !== "TENANT_ALERT" && !inSendWindow(new Date())) break;
     try {
       // Brokers see "typing…" first, as from a person; tenant alerts go straight out.
-      if (row.kind !== "TENANT_ALERT") await sendPresence(row.to, typingMs(row.body));
-      const out = await sendText(row.to, row.body);
+      if (row.kind !== "TENANT_ALERT") await sendPresence(row.to, typingMs(body));
+      const out = await sendText(row.to, body);
       if (row.kind === "TENANT_ALERT") await recordSent(phoneKey(row.to), out?.key?.id);
       const sentAt = new Date();
-      await db.outboundMessage.update({ where: { id: row.id }, data: { status: "SENT", sentAt, attempts: { increment: 1 }, error: null } });
+      await db.outboundMessage.update({ where: { id: row.id }, data: { status: "SENT", sentAt, attempts: { increment: 1 }, error: null, ...(body !== row.body ? { body } : {}) } });
       if (row.kind === "BROKER_REQUEST" && row.brokerRequestIds.length) {
         await db.brokerRequest.updateMany({ where: { id: { in: row.brokerRequestIds } }, data: { channel: "evolution", sentAt } });
       }
@@ -162,7 +179,7 @@ async function drain(dry: boolean, log: Log): Promise<{ sent: number; bridgeErro
         }
         await postSlackCard(
           `⚠️ WhatsApp could not send this ${row.kind.toLowerCase().replace("_", " ")} after ${attempts} tries — ${row.label ?? row.to}\n` +
-            `<${waLink(row.to, row.body)}|Send it by hand on WhatsApp> · last error: \`${message.slice(0, 200)}\``,
+            `<${waLink(row.to, body)}|Send it by hand on WhatsApp> · last error: \`${message.slice(0, 200)}\``,
         );
       }
     }
@@ -171,6 +188,17 @@ async function drain(dry: boolean, log: Log): Promise<{ sent: number; bridgeErro
 }
 
 type Pending = Record<string, { urls: string[]; at: string }>;
+
+/** A word back to a broker, as a person types it; its row turns FAILED if WhatsApp refuses it. */
+async function sendReply(phone: string, reply: { text: string; outboundId: string }, name: string, log: Log) {
+  try {
+    await sendPresence(phone, typingMs(reply.text));
+    await sendText(phone, reply.text);
+  } catch (err) {
+    await db.outboundMessage.update({ where: { id: reply.outboundId }, data: { status: "FAILED", error: (err as Error).message.slice(0, 500) } });
+    log(`answer to ${name} failed: ${(err as Error).message}`);
+  }
+}
 
 /** A broker's photos → our bucket, so a lead never points at WhatsApp's expiring media. */
 async function storePhotos(brokerId: string, ids: string[]): Promise<string[]> {
@@ -215,15 +243,31 @@ async function replies(dry: boolean, log: Log): Promise<number> {
     : [];
   const byPhone = new Map<string, (typeof brokers)[number]>();
   for (const b of brokers) for (const p of b.phones) byPhone.set(phoneKey(p), b);
+  // Whoever posted a home we ask about is a broker even when the directory has another number for them.
+  const unlisted = phones.filter((p) => !byPhone.has(p));
+  const posters = unlisted.length
+    ? await db.listingBroker.findMany({
+        where: { user: { phoneNumber: { in: phoneVariants(unlisted) } } },
+        select: { user: { select: { phoneNumber: true } }, broker: { select: { id: true, name: true, phones: true, optOut: true } } },
+      })
+    : [];
+  const posterPhones = new Set<string>();
+  for (const p of posters) {
+    const key = phoneKey(p.user.phoneNumber ?? "");
+    posterPhones.add(key);
+    if (p.broker && !byPhone.has(key)) byPhone.set(key, p.broker);
+  }
 
   // A person at Mkan typing in a tenant's chat pauses the agent there (wa-tenant.ts).
-  if (!dry) for (const m of all) if (m.fromMe && m.direct && m.phone && !byPhone.has(m.phone)) await noteFromMe(m.phone, m.id, m.sentAt);
+  if (!dry) for (const m of all) if (m.fromMe && m.direct && m.phone && !byPhone.has(m.phone) && !posterPhones.has(m.phone)) await noteFromMe(m.phone, m.id, m.sentAt);
 
   const rest: typeof fresh = [];
   const tenants: typeof fresh = [];
+  const strangers: typeof fresh = [];
   for (const m of fresh) {
     if (m.phone && m.direct && !byPhone.has(m.phone)) {
-      tenants.push(m);
+      // Never let the tenant agent answer a broker we asked about a home.
+      (posterPhones.has(m.phone) ? strangers : tenants).push(m);
       continue;
     }
     const broker = m.phone ? byPhone.get(m.phone) : undefined;
@@ -247,7 +291,8 @@ async function replies(dry: boolean, log: Log): Promise<number> {
     const stored = await storePhotos(broker.id, g.imageIds);
     const held = pending[broker.id] && now.getTime() - new Date(pending[broker.id]!.at).getTime() < PENDING_MS ? pending[broker.id]!.urls : [];
     const photoUrls = [...held, ...stored].slice(0, MAX_PHOTOS);
-    const action = await handleBrokerReply({ brokerId: broker.id, text: g.text, photoUrls, at: now }).catch((err) => {
+    const at = g.items[g.items.length - 1]?.sentAt ?? now;
+    const action = await handleBrokerReply({ brokerId: broker.id, phone: g.phone, text: g.text, photoUrls, at }).catch((err) => {
       log(`inbox failed for ${broker.name}: ${(err as Error).message}`);
       return { kind: "none" } as const;
     });
@@ -258,15 +303,13 @@ async function replies(dry: boolean, log: Log): Promise<number> {
       );
     } else if (action.kind === "reply") {
       if (action.why === "photos-need-price" && photoUrls.length) pending[broker.id] = { urls: photoUrls, at: now.toISOString() };
-      try {
-        await sendPresence(g.phone, typingMs(action.text));
-        await sendText(g.phone, action.text);
-      } catch (err) {
-        await db.outboundMessage.update({ where: { id: action.outboundId }, data: { status: "FAILED", error: (err as Error).message.slice(0, 500) } });
-        log(`answer to ${broker.name} failed: ${(err as Error).message}`);
-      }
+      await sendReply(g.phone, action, broker.name, log);
     } else if (action.kind === "availability") {
-      await postSlackCard(`✅ *${broker.name}* (+${g.phone}) answered "${g.text.slice(0, 80)}" → home #${action.listingId} marked ${action.answer === "RENTED" ? "rented" : "available"}.`);
+      if (action.reply) await sendReply(g.phone, action.reply, broker.name, log);
+      const marked = `${action.applied ? "marked" : "already"} ${action.answer === "RENTED" ? "rented" : "available"}`;
+      await postSlackCard(
+        `✅ *${broker.name}* (+${g.phone}) answered → home #${action.listingId} ${marked}${action.reply ? ` · we said "${action.reply.text}"` : ""}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 600)}`,
+      );
     } else {
       if (stored.length) pending[broker.id] = { urls: photoUrls, at: now.toISOString() };
       const botAsk = parseBrokerReply(g.text).asksIfBot ? "🤖 asks if they're talking to a bot — answer this one yourself.\n" : "";
@@ -274,6 +317,10 @@ async function replies(dry: boolean, log: Log): Promise<number> {
         `${botAsk}💬 *${broker.name}* (+${g.phone}) replied on WhatsApp${stored.length ? ` (${stored.length} photo(s) kept)` : ""}:\n> ${words.replace(/\n/g, "\n> ")}\n<${waLink(g.phone, "")}|Open the chat> — turn it into a home in this thread.`,
       );
     }
+  }
+  // Posted a home we asked about, but not in the directory: a person reads it.
+  for (const g of dry ? [] : groupByPhone(strangers)) {
+    await postSlackCard(`💬 +${g.phone} (posts a home we asked about, not in the broker directory) replied on WhatsApp:\n> ${(g.text || "[photo or voice note]").replace(/\n/g, "\n> ").slice(0, 600)}\n<${waLink(g.phone, "")}|Open the chat>`);
   }
   // Tenants the webhook missed; the turn answers each message id once.
   for (const m of tenants) {
@@ -284,7 +331,7 @@ async function replies(dry: boolean, log: Log): Promise<number> {
     await mutateState<string[]>("seen", [], (list) => [...list, ...all.map((m) => m.id)].slice(-SEEN_KEEP));
     await writeState("pending", pending);
   }
-  log(`replies: ${fresh.length} new · ${rest.length} broker · ${tenants.length} tenant`);
+  log(`replies: ${fresh.length} new · ${rest.length} broker · ${strangers.length} unlisted broker · ${tenants.length} tenant`);
   return fresh.length;
 }
 

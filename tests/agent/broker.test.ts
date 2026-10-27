@@ -1,32 +1,63 @@
 import { describe, expect, it } from "vitest";
-import { availabilityMessage, needSummary, pickPhrase, priceQuestionMessage, viewingChosenMessage } from "@/components/agent/broker-message";
+import {
+  aboutMeMessage,
+  availabilityMessage,
+  availableAckMessage,
+  needSummary,
+  pickPhrase,
+  priceQuestionMessage,
+  reAskMessage,
+  takenAckMessage,
+  viewingChosenMessage,
+} from "@/components/agent/broker-message";
 import { parseBrokerReply } from "@/components/agent/broker-reply";
 import { EMPTY_REQUIREMENTS } from "@/components/agent/requirements";
 import { planMirror } from "../../scripts/crm/tiktok-mirror";
 
+const ad = (k: string) => `https://www.tiktok.com/@kigali.homes/video/${k}`;
+const seeds = ["a", "b", "c", "d", "e", "f", "g", "h"];
+/** What would give away a bot, a platform or a middleman. */
+const NOT_A_TENANT = /mkan|client|tenant|one tap|tap here|STOP|HAGARIKA|form|reply with|automatic/i;
+
 describe("broker message", () => {
   const need = needSummary({ ...EMPTY_REQUIREMENTS, bedrooms: 3, district: "KICUKIRO", maxPrice: 600_000, pricePeriod: "month", stay: "long" });
 
-  it("states the need the way brokers write it, and in Kinyarwanda for the form", () => {
+  it("states the need the way brokers write it, in Kinyarwanda for the form, and as the tenant says it", () => {
     expect(need.en).toBe("a 3-bedroom, in Kicukiro, up to 600k");
     expect(need.rw).toBe("ibyumba 3, i Kicukiro, kugeza RWF 600,000 ku kwezi");
+    expect(need.me).toBe("I'm looking for a 3-bedroom in Kicukiro, up to 600k.");
+    expect(needSummary(EMPTY_REQUIREMENTS).me).toBe("I'm looking for a place in Kigali.");
   });
 
-  it("lists every home with its own link and never a tenant's details", () => {
-    const text = availabilityMessage(need, [
-      { title: "3-bed in Kagarama", link: "https://www.mkan.sd/en/b/aaa" },
-      { title: "3-bed in Remera", link: "https://www.mkan.sd/en/b/bbb" },
-    ]);
-    expect(text).toContain("1. 3-bed in Kagarama\nhttps://www.mkan.sd/en/b/aaa");
-    expect(text).toContain("2. 3-bed in Remera\nhttps://www.mkan.sd/en/b/bbb");
-    expect(text).toContain(need.en);
-    expect(text).not.toMatch(/\+?\d{9,}/);
+  it("opens like a tenant: a hello, is it available, the broker's own ad — nothing else", () => {
+    const texts = seeds.map((k) => availabilityMessage([{ title: "3-bed in Kagarama", link: ad(k) }], k));
+    texts.forEach((t, i) => {
+      expect(t.split("\n")).toHaveLength(2);
+      expect(t).toContain(ad(seeds[i]!));
+      expect(t).toMatch(/available/i);
+      expect(t.replace(ad(seeds[i]!), "")).not.toMatch(NOT_A_TENANT);
+      expect(t).not.toContain("3-bed in Kagarama");
+    });
+    expect(new Set(texts.map((t) => t.replace(/https:\S+/, ""))).size).toBeGreaterThan(2);
+    expect(texts.some((t) => t.startsWith("Hey there, is this available?\n"))).toBe(true);
   });
 
-  it("reads like a person: no brand line, no one-tap pitch, no opt-out footer", () => {
-    const texts = ["a", "b", "c", "d", "e", "f"].map((k) => availabilityMessage(need, [{ title: "Flat", link: `https://www.mkan.sd/en/b/${k}` }]));
-    for (const t of texts) expect(t).not.toMatch(/this is Mkan|mkan\.sd\)|one tap|STOP|HAGARIKA|tenant/i);
-    expect(new Set(texts.map((t) => t.split("\n")[0])).size).toBeGreaterThan(1);
+  it("asks about several ads in one message, links only", () => {
+    const text = availabilityMessage([{ title: "A", link: ad("1") }, { title: "B", link: ad("2") }, { title: "A again", link: ad("1") }], "s");
+    expect(text).toMatch(/are these/i);
+    expect(text.match(/https:/g)).toHaveLength(2);
+    expect(text).not.toMatch(/\+?\d{9,}|1\.|A again/);
+  });
+
+  it("follows up as the tenant, with only what the tenant said", () => {
+    expect(aboutMeMessage(need, "x")).toMatch(/^I'm looking for a 3-bedroom in Kicukiro, up to 600k\. Is (it|this one) still (available|free)\?$/);
+    expect(aboutMeMessage(need, "x", true)).toMatch(/Are (they|these) still/);
+    for (const k of seeds) {
+      expect(availableAckMessage(k)).not.toMatch(NOT_A_TENANT);
+      expect(takenAckMessage(k)).not.toMatch(NOT_A_TENANT);
+    }
+    expect(reAskMessage("Hi", "x")).toMatch(/is it still available\?/i);
+    expect(reAskMessage("Hello how are you?", "x")).toMatch(/^(Good|Fine)/);
     expect(priceQuestionMessage("x")).toMatch(/month/);
   });
 
@@ -41,8 +72,11 @@ describe("broker message", () => {
     expect(parseBrokerReply(t).asksIfBot).toBe(false);
   });
 
-  it("asks the broker to confirm the chosen time", () => {
-    expect(viewingChosenMessage("Flat", "Sat 18 Oct, 10:00", "https://x/b/t")).toContain("Sat 18 Oct, 10:00");
+  it("asks to come at the chosen time, in the tenant's words", () => {
+    const text = viewingChosenMessage("Flat", "Sat 18 Oct, 10:00", "https://x/b/t");
+    expect(text).toContain("Sat 18 Oct, 10:00");
+    expect(text).not.toContain("Flat");
+    expect(text).not.toMatch(/client/i);
   });
 });
 

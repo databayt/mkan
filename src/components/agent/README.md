@@ -91,10 +91,12 @@ profile. Reads (page render, poll) never write; writes (actions, the chat list) 
 ## Broker loop (phase 2) and viewings (phase 3)
 
 ```
-shortlist ─► requestConfirmations: one WhatsApp per broker listing all their homes,
+shortlist ─► requestConfirmations: one WhatsApp per broker, as the tenant: "Hey there, is this
+             available?" + the broker's own ad (ListingBroker.sourceUrl) for each of their homes,
              BrokerRequest per home (24 h, sha256 token), task WAITING
              └─ already asked today? the task joins that question (channel "joined"), nothing re-sent
-broker /b/<token> ─► Available (+ up to 3 times, Kigali time) | Rented
+broker types "yes" / "taken" (broker-inbox.ts) — or, for asks sent before 10-27, taps /b/<token>
+             ─► Available (+ up to 3 times on the form, Kigali time) | Rented
              └─ applyAnswer: every pending question about the home answered,
                 every waiting task's card + panel updated, lastAvailabilityConfirmedAt set
 tenant picks a time + name + phone + consent ─► new token → broker "confirm" message
@@ -109,7 +111,7 @@ cron /api/cron/broker-requests (hourly) ─► unanswered after 24 h = NO_REPLY 
 | File | Role |
 | --- | --- |
 | `broker.ts` | request creation + dedup (batched), `pickBroker`, answer fan-out, expiry → next broker, stuck-turn sweep |
-| `broker-message.ts` | the exact en + rw words a broker receives (tested) |
+| `broker-message.ts` | the exact words a broker receives, written as the tenant (tested); rw for the form |
 | `whatsapp.ts` | Outbound WhatsApp: with `MKAN_WA_OUTBOX=1` every message is an `OutboundMessage` row the 2-minute cron drains (`wa-outbox.ts`, daily cap `MKAN_WA_DAILY_CAP`, default 40); otherwise a #mkan card with a wa.me link (`SLACK_BOT_TOKEN`) |
 | `whatsapp-chat.ts` | Tenants chatting on WhatsApp: `handleTenantWhatsApp` runs the same turn for a phone (profile `sha256("wa:<digits>")`), digit picks, `ref:` hand-off, auto opt-in for demand alerts |
 | `whatsapp-format.ts` | Pure: the turn as one WhatsApp message (3 homes, numbered options, /find link), `readPick`, `waLang` |
@@ -152,9 +154,19 @@ budget, move-in and household. `broker-reply.ts` reads replies by rules, and
 
 - an offer becomes a lead through `broker-home.ts` `createBrokerHome`, the same path as the
   form, with its photos copied to S3;
-- a question gets the need plus a fresh link, once;
+- a question gets the need in the tenant's words, once;
 - photos without a price get "what's the rent, and where?";
-- "taken" / "yes" answers a one-home availability ask.
+- "yes" / "taken" anywhere in the reply answers an availability ask about one home, recorded like a
+  tap on the form and thanked once; "budget?" gets the need, a bare hello gets one "is it still
+  available?". A reply goes with the last question its number got, so an older ask never takes it.
+
+**Asked as the tenant (2026-10-27).** A broker gets what a renter would send: "Hey there, is this
+available?" and the link to their own ad — no Mkan line, no form, no need summary; follow-ups say
+only what the tenant told the agent ("I'm looking for a 2-bedroom in Kibagabaga, up to 400k. It's
+for my family."). The bot never says it is a person: "are you a bot?" goes to #mkan for one, and the
+line's WhatsApp name stays Mkan. Queued asks are worded when they go (`broker.ts` `askBodyNow`), and
+skipped when every home on them was answered meanwhile. Whoever posted a home we ask about counts as a
+broker even when the directory has another number for them, so the tenant agent never answers one.
 
 `brokerFitScore` favours fast repliers (`Broker.replyMinutes`). Brokers from those chats enter
 the directory through `pnpm wa:chats` (`scripts/wa/chats.ts`, reviewed chats only, facts not

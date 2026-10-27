@@ -1,5 +1,18 @@
 # Agent — open issues
 
+## 2026-10-27 — Brokers are asked as the tenant; typed answers count
+
+- Asks read like a renter: "Hey there, is this available?" + the broker's own ad. Homes we ask about
+  are unpublished, so a Mkan link would 404; every ask has the ad (`ListingBroker.sourceUrl`).
+- Typed answers never counted before this: the inbox looked asks up by `brokerId`, which
+  BROKER_REQUEST rows never carry, and read "yes" only at the start of a message. 19 broker replies
+  on 10-26/27 sat in #mkan; `scripts/wa/replay-answers.ts` applied the 6 new ones once.
+- Queued rows kept the words of the day they were queued (the 10-26 rewrite reached nobody); the
+  outbox now words an ask when it sends it.
+- **Not built: booking a viewing after a typed yes.** The time picker needs times a broker offers on
+  the form, and brokers now answer in words; "when do you want to visit?" and the times brokers
+  propose show in #mkan. Open: a person arranges it, or the tenant gets the broker's number.
+
 ## 2026-10-25 — WhatsApp moves to Cloudflare; brokers' answers reach WhatsApp tenants
 
 - The line now runs on hogwarts' shared Evolution bridge (instance `mkan`), through mkan's Worker

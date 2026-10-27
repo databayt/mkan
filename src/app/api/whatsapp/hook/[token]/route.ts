@@ -27,12 +27,20 @@ function allowed(token: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-/** Broker numbers, refreshed every 10 minutes — the directory changes daily, not per message. */
+/**
+ * Broker numbers, refreshed every 10 minutes — the directory changes daily, not
+ * per message. Whoever posted a home we ask about counts too, so a broker's
+ * "yes" never reaches the tenant agent.
+ */
 let brokers: { at: number; phones: Set<string> } = { at: 0, phones: new Set() };
 async function isBroker(phone: string): Promise<boolean> {
   if (Date.now() - brokers.at > 10 * 60_000) {
-    const rows = await db.broker.findMany({ select: { phones: true } });
-    brokers = { at: Date.now(), phones: new Set(rows.flatMap((b) => b.phones.map(phoneKey))) };
+    const [rows, posters] = await Promise.all([
+      db.broker.findMany({ select: { phones: true } }),
+      db.listingBroker.findMany({ select: { user: { select: { phoneNumber: true } } } }),
+    ]);
+    const all = [...rows.flatMap((b) => b.phones), ...posters.map((p) => p.user.phoneNumber ?? "")].filter(Boolean);
+    brokers = { at: Date.now(), phones: new Set(all.map(phoneKey)) };
   }
   return brokers.phones.has(phone);
 }

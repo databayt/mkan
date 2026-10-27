@@ -51,4 +51,31 @@ describe("parseBrokerReply", () => {
     for (const s of ["Yes available", "Iracyahari", "It's still available", "Available"]) expect(parseBrokerReply(s).yes).toBe(true);
     expect(parseBrokerReply("No").yes).toBe(false);
   });
+
+  it("hears the yes wherever brokers put it", () => {
+    for (const s of [
+      "Hello\nNice to e-meet\nIt's available\nTomorrow 10am we can see it",
+      "Hi\nIt's available, when do you want to visit?",
+      "Yes the apartment it's available\nCall or text me for viewing when you're free",
+      "Iyi nzu irahari mwayisura",
+      "Hello, when do you want to come and see it?",
+    ]) expect(parseBrokerReply(s).yes, s).toBe(true);
+    for (const s of [
+      "I am available any time to show a client",
+      "It's not available",
+      "Sorry it was already taken",
+      "Ok",
+      "Hello",
+      "Let me check if it is still available",
+      "Is it still available?",
+      "Yes?",
+      "Available?",
+    ]) expect(parseBrokerReply(s).yes, s).toBe(false);
+    expect(parseBrokerReply("It's not available, sorry").gone).toBe(true);
+  });
+
+  it("knows a bare hello from an answer", () => {
+    for (const s of ["Hi", "Hello", "Hello how are you?", "Muraho", "Good morning sir"]) expect(parseBrokerReply(s).greeting, s).toBe(true);
+    for (const s of ["Hello who is this?", "Hi, it's available", "Hello\nCan you please make a call", "Thank you for contacting us! How can we help?", "Ok"]) expect(parseBrokerReply(s).greeting, s).toBe(false);
+  });
 });
