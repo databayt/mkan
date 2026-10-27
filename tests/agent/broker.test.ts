@@ -61,6 +61,24 @@ describe("broker message", () => {
     expect(priceQuestionMessage("x")).toMatch(/month/);
   });
 
+  it("never uses an emoji in anything a broker reads", () => {
+    const emoji = /\p{Extended_Pictographic}/u;
+    const demand = needSummary({ ...EMPTY_REQUIREMENTS, bedrooms: 2, purpose: "family" });
+    for (const k of seeds) {
+      for (const t of [
+        availabilityMessage([{ title: "A", link: ad(k) }], k),
+        availabilityMessage([{ title: "A", link: ad("1") }, { title: "B", link: ad("2") }], k),
+        aboutMeMessage(demand, k),
+        reAskMessage("Hi", k),
+        reAskMessage("Hello how are you?", k),
+        availableAckMessage(k),
+        takenAckMessage(k),
+        priceQuestionMessage(k),
+        viewingChosenMessage("Flat", "Sat 18 Oct, 10:00", `https://x/b/${k}`),
+      ]) expect(t, t).not.toMatch(emoji);
+    }
+  });
+
   it("picks the same phrasing for the same seed", () => {
     expect(pickPhrase("seed", ["a", "b", "c"])).toBe(pickPhrase("seed", ["a", "b", "c"]));
   });

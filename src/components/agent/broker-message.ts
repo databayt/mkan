@@ -108,7 +108,7 @@ export function availabilityMessage(homes: BrokerHomeLine[], seed: string): stri
 /** The tenant picked one of the times the broker offered on the form; the broker confirms there and then sees their contact. */
 export function viewingChosenMessage(_title: string, slotLabel: string, link: string): string {
   return pickPhrase(link, [
-    `Hi! Can I come see it on ${slotLabel}? Please confirm here 🙏\n${link}`,
+    `Hi! Can I come see it on ${slotLabel}? Please confirm here\n${link}`,
     `Hello, is ${slotLabel} okay for me to come and see it? Confirm here please:\n${link}`,
   ]);
 }
@@ -120,15 +120,15 @@ export function viewingChosenMessage(_title: string, slotLabel: string, link: st
  */
 export function demandMessage(need: { me: string }, seed: string): string {
   return pickPhrase(seed, [
-    `Hi, ${need.me} Do you have anything? Send me photos and the price 🙏`,
+    `Hi, ${need.me} Do you have anything? Send me photos and the price`,
     `Hello! ${need.me} Anything available? Send photos and the price please`,
-    `Hey there 👋 ${need.me} Do you have something? Photos and price please 🙏`,
+    `Hey there, ${need.me} Do you have something? Photos and price please`,
   ]);
 }
 
 /** The broker asked "how much / where / features?" back about a no-home ask: answer with the need, once. */
 export function needReplyMessage(need: { me: string }, seed: string): string {
-  return pickPhrase(seed, [`${need.me} Do you have something? Send photos and the price 🙏`, `${need.me} If you have one send me photos and the price.`]);
+  return pickPhrase(seed, [`${need.me} Do you have something? Send photos and the price`, `${need.me} If you have one send me photos and the price.`]);
 }
 
 /** The broker asked about the tenant ("budget?", "single or family?") after "is this available?": answer, once. */
@@ -139,24 +139,24 @@ export function aboutMeMessage(need: { me: string }, seed: string, many = false)
 /** The broker only said hello: say it back and ask again, once. "How are you?" gets its answer. */
 export function reAskMessage(text: string, seed: string, many = false): string {
   const it = many ? "are they" : "is it";
-  if (/how are (?:you|u)|how r u|amakuru/i.test(text)) return pickPhrase(seed, [`Good, thanks 🙏 ${it} still available?`, `Fine thanks. ${cap(it)} still available?`]);
-  return pickPhrase(seed, [`Hi 👋 ${it} still available?`, `Hello, ${it} still available?`]);
+  if (/how are (?:you|u)|how r u|amakuru/i.test(text)) return pickPhrase(seed, [`Good, thanks. ${cap(it)} still available?`, `Fine thanks. ${cap(it)} still available?`]);
+  return pickPhrase(seed, [`Hi, ${it} still available?`, `Hello, ${it} still available?`]);
 }
 
 /** The broker said it is available. */
 export function availableAckMessage(seed: string): string {
-  return pickPhrase(seed, ["Great, thanks 🙏", "Okay thank you, I'll get back to you", "Nice 👍 thanks, I'll let you know"]);
+  return pickPhrase(seed, ["Great, thanks", "Okay thank you, I'll get back to you", "Nice, thanks. I'll let you know"]);
 }
 
 /** The broker said it is taken. */
 export function takenAckMessage(seed: string): string {
-  return pickPhrase(seed, ["Ok, thanks for letting me know 🙏", "Alright, thank you", "Okay thanks 🙏"]);
+  return pickPhrase(seed, ["Ok, thanks for letting me know", "Alright, thank you", "Okay thanks"]);
 }
 
 /** The broker sent photos without a price. */
 export function priceQuestionMessage(seed: string): string {
   return pickPhrase(seed, [
-    "Nice 👍 how much per month? And which area?",
+    "Nice, how much per month? And which area?",
     "Thanks! What's the price per month, and where is it?",
     "Looks good. How much a month, and which area?",
   ]);

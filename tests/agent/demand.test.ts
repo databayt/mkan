@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { demandMessage, needSummary, tenantAlertMessage } from "@/components/agent/broker-message";
+import { demandMessage, needReplyMessage, needSummary, tenantAlertMessage } from "@/components/agent/broker-message";
 import { AREA_ZONES, brokerFitScore, normalisePhone, pickBrokersForDemand, wantedZone, zoneMatch, type BrokerFit } from "@/components/agent/demand-pure";
 import { KIGALI_ZONE_BY_SLUG } from "@/lib/geo/kigali-zones";
 import { EMPTY_REQUIREMENTS, type Requirements } from "@/components/agent/requirements";
@@ -153,7 +153,10 @@ describe("the ask answers what brokers ask back", () => {
     expect(need.rw).toContain("igipangu");
     expect(need.me).toBe("I'm looking for a 2-bedroom house with its own compound in Kibagabaga, unfurnished, up to 400k, from 1 Nov. It's for my family.");
     expect(demandMessage(need, "L")).toMatch(/price/);
-    for (const k of ["a", "b", "c", "d"]) expect(demandMessage(need, k)).not.toMatch(/for a family|client/);
+    for (const k of ["a", "b", "c", "d"]) {
+      expect(demandMessage(need, k)).not.toMatch(/for a family|client|\p{Extended_Pictographic}/u);
+      expect(needReplyMessage(need, k)).not.toMatch(/\p{Extended_Pictographic}/u);
+    }
   });
 });
 
