@@ -14,7 +14,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { listingPath } from "@/lib/listing-code";
 import { publicAppUrl } from "../../../scripts/crm/public-links";
-import { availabilityMessage, brokerAnswerMessage, needSummary, type BrokerHomeLine } from "./broker-message";
+import { availabilityMessage, brokerAnswerMessage, brokerNumber, needSummary, type BrokerHomeLine } from "./broker-message";
 import { CONFIRMATION_TTL_DAYS } from "./rank";
 import type { Requirements } from "./requirements";
 import type { EventKind, ShortlistItem, StepStatus } from "./types";
@@ -256,9 +256,11 @@ async function settleTasks(taskIds: string[]) {
 
 /**
  * Write a broker's answer onto every task whose shortlist holds the home and
- * that is still waiting — not just the task that sent the request.
+ * that is still waiting — not just the task that sent the request. A yes
+ * carries the broker's number: the tenant calls them to arrange the viewing.
  */
-export async function applyAnswer(listingId: number, answer: Answer) {
+export async function applyAnswer(listingId: number, answer: Answer, brokerPhone?: string | null) {
+  const number = answer === "AVAILABLE" ? brokerNumber(brokerPhone) : null;
   // Every open question about this home has its answer now.
   if (answer !== "NO_REPLY") {
     await db.brokerRequest.updateMany({ where: { listingId, status: "PENDING" }, data: { status: answer, respondedAt: new Date() } });
@@ -271,7 +273,7 @@ export async function applyAnswer(listingId: number, answer: Answer) {
   await Promise.all(
     tasks.map(async (t) => {
       const list = ((t.shortlist as unknown as ShortlistItem[]) ?? []).map((s) =>
-        s.id === listingId ? { ...s, availability: availability as ShortlistItem["availability"] } : s,
+        s.id === listingId ? { ...s, availability: availability as ShortlistItem["availability"], ...(number ? { brokerPhone: number } : {}) } : s,
       );
       const item = list.find((s) => s.id === listingId);
       await db.agentTask.update({ where: { id: t.id }, data: { shortlist: json(list) } });
@@ -283,7 +285,7 @@ export async function applyAnswer(listingId: number, answer: Answer) {
     }),
   );
   await settleTasks(tasks.map((t) => t.id));
-  await tellWhatsAppTenants(tasks, listingId, answer);
+  await tellWhatsAppTenants(tasks, listingId, answer, number);
   if (answer === "AVAILABLE") await db.listing.update({ where: { id: listingId }, data: { lastAvailabilityConfirmedAt: new Date() } });
 }
 
@@ -292,7 +294,7 @@ export async function applyAnswer(listingId: number, answer: Answer) {
  * chat updates itself, a WhatsApp chat does not. Queued like every other
  * send (whatsapp.ts), so the outbox's caps and the #mkan fallback apply.
  */
-async function tellWhatsAppTenants(tasks: { id: string; shortlist: unknown; locale: string; profile: { waPhone: string | null } | null }[], listingId: number, answer: Answer) {
+async function tellWhatsAppTenants(tasks: { id: string; shortlist: unknown; locale: string; profile: { waPhone: string | null } | null }[], listingId: number, answer: Answer, brokerPhone: string | null) {
   if (answer !== "AVAILABLE" && answer !== "RENTED") return;
   if (!tasks.some((t) => t.profile?.waPhone)) return;
   // Times exist only when the broker offered them on the form; a typed "yes" offers none.
@@ -302,7 +304,7 @@ async function tellWhatsAppTenants(tasks: { id: string; shortlist: unknown; loca
     const to = t.profile?.waPhone;
     if (!to) return [];
     const title = ((t.shortlist as ShortlistItem[] | null) ?? []).find((s) => s.id === listingId)?.title?.trim() || `#${listingId}`;
-    return [{ kind: "TENANT_ALERT" as const, to, body: brokerAnswerMessage(t.locale, title, answer === "AVAILABLE", `${publicAppUrl()}/${t.locale}/find?c=${t.id}`, canPick), label: "tenant" }];
+    return [{ kind: "TENANT_ALERT" as const, to, body: brokerAnswerMessage(t.locale, title, answer === "AVAILABLE", `${publicAppUrl()}/${t.locale}/find?c=${t.id}`, canPick, brokerPhone), label: "tenant" }];
   });
   if (messages.length) await sendMessages(messages, `Broker answered home #${listingId}`);
 }

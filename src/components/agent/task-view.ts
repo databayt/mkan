@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { brokerNumber } from "./broker-message";
 import { ownedBy, type Viewer } from "./profile";
 import { coerceRequirements } from "./requirements";
 import { SILENT_EVENTS, type AgentEventView, type AgentMessage, type AgentTaskView, type ShortlistItem } from "./types";
@@ -76,7 +77,7 @@ const TASK_SELECT = {
   brokerRequests: {
     where: { status: "AVAILABLE" },
     orderBy: { createdAt: "desc" },
-    select: { id: true, listingId: true, viewingSlots: true, chosenSlot: true, visitId: true },
+    select: { id: true, listingId: true, viewingSlots: true, chosenSlot: true, visitId: true, broker: { select: { phoneNumber: true } } },
   },
 } satisfies Prisma.AgentTaskSelect;
 
@@ -102,6 +103,7 @@ async function withViewings(view: AgentTaskView, task: TaskRow): Promise<AgentTa
       return {
         ...item,
         availability: "confirmed",
+        brokerPhone: item.brokerPhone ?? brokerNumber(r.broker.phoneNumber),
         viewing: {
           requestId: r.id,
           slots: ((r.viewingSlots as string[] | null) ?? []).filter((s) => typeof s === "string"),

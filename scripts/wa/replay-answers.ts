@@ -46,7 +46,7 @@ async function main() {
       news += 1;
       homes.add(read.home);
       console.log(`${apply ? '' : '[dry] '}${what}`);
-      if (apply) await recordTypedAnswer(read.ask.brokerRequestIds, read.home, read.answer);
+      if (apply) await recordTypedAnswer(read.ask.brokerRequestIds, read.home, read.answer, m.phone);
     }
     console.log(`${replies.length} broker/tenant messages read · ${answered.size} answers · ${news} new${apply ? ' applied' : ' (dry — pass --apply)'}`);
   } finally {

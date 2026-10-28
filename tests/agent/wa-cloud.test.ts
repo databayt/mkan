@@ -11,6 +11,19 @@ describe("brokerAnswerMessage", () => {
     expect(m.endsWith(LINK)).toBe(true);
   });
 
+  it("hands the tenant the broker's number with a yes", () => {
+    const m = brokerAnswerMessage("en", "2BR in Kicukiro", true, LINK, false, "+250 700 000 001");
+    expect(m).toContain("Call or WhatsApp them to arrange a viewing: +250700000001");
+    expect(m).toContain("https://wa.me/250700000001");
+    expect(m).not.toContain("Or pick");
+    expect(brokerAnswerMessage("ar", "شقة", true, LINK, true, "250700000001")).toContain("أو اختر موعداً");
+    expect(brokerAnswerMessage("en", "2BR", false, LINK, false, "+250700000001")).not.toContain("+250");
+  });
+
+  it("offers the time picker alone when there is no number", () => {
+    expect(brokerAnswerMessage("en", "2BR", true, LINK)).toContain("still available.\nPick a viewing time here:");
+  });
+
   it("says taken in the tenant's language", () => {
     expect(brokerAnswerMessage("ar", "شقة", false, LINK)).toContain("مؤجَّر");
     expect(brokerAnswerMessage("rw", "Inzu", false, LINK)).toContain("yamaze gufatwa");

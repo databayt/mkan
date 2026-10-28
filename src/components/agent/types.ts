@@ -96,6 +96,8 @@ export interface ShortlistItem {
   availability: "unconfirmed" | "asked" | "confirmed" | "rented" | "no_reply";
   /** Set for a broker lead (an unpublished TikTok home): where the ad lives. */
   lead?: { handle: string | null; sourceUrl: string | null };
+  /** Once a broker says the home is available: their number, for the tenant to call or WhatsApp. */
+  brokerPhone?: string | null;
   /** Phase 3 — the viewing being arranged for this home. */
   viewing?: ViewingView;
   /** The tenant's must-haves this home has, and the ones only the broker can answer. */

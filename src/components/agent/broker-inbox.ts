@@ -92,14 +92,15 @@ export async function readAvailabilityReply(phone: string, text: string, at: Dat
 /**
  * A typed answer, kept like a tap on the form: on the ask's own requests (a
  * late one too — an ask that expired unanswered is still asking), then on every
- * task waiting on the home (broker.ts applyAnswer).
+ * task waiting on the home (broker.ts applyAnswer). `phone` is the number the
+ * answer came from — the tenant gets it with a yes.
  */
-export async function recordTypedAnswer(requestIds: string[], listingId: number, answer: "AVAILABLE" | "RENTED") {
+export async function recordTypedAnswer(requestIds: string[], listingId: number, answer: "AVAILABLE" | "RENTED", phone: string) {
   await db.brokerRequest.updateMany({
     where: { id: { in: requestIds }, listingId, status: { in: ["PENDING", "NO_REPLY"] } },
     data: { status: answer, respondedAt: new Date() },
   });
-  await applyAnswer(listingId, answer);
+  await applyAnswer(listingId, answer, phone);
 }
 
 /** Write a word back to the broker — once per ask and label — for the caller to send. Null when it already went. */
@@ -133,14 +134,14 @@ export async function handleBrokerReply(input: { brokerId: string; phone: string
   const last = await lastAsk(phone, at);
   if (last?.kind !== "BROKER_REQUEST") return answerDemandAsk(brokerId, text, photoUrls, at);
   const read = await readAvailabilityReply(phone, text, at, last);
-  return read ? answerAvailabilityAsk(read, text, photoUrls.length > 0) : { kind: "none" };
+  return read ? answerAvailabilityAsk(read, phone, text, photoUrls.length > 0) : { kind: "none" };
 }
 
 /** The reply to "is this available?". */
-async function answerAvailabilityAsk(read: NonNullable<Awaited<ReturnType<typeof readAvailabilityReply>>>, text: string, hasPhotos: boolean): Promise<InboxAction> {
+async function answerAvailabilityAsk(read: NonNullable<Awaited<ReturnType<typeof readAvailabilityReply>>>, phone: string, text: string, hasPhotos: boolean): Promise<InboxAction> {
   const { ask, r, answer, home, isNews, many, need } = read;
   if (answer && home != null) {
-    if (isNews) await recordTypedAnswer(ask.brokerRequestIds, home, answer);
+    if (isNews) await recordTypedAnswer(ask.brokerRequestIds, home, answer, phone);
     // "Budget?" next to the yes gets its answer in the same message; "when do you want to visit?" waits for the tenant.
     const aboutTenant = r.question && !/visit|view|come|see/i.test(text);
     const body = answer === "RENTED" ? takenAckMessage(ask.id) : aboutTenant ? `${availableAckMessage(ask.id)} ${need.me}` : availableAckMessage(ask.id);

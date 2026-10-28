@@ -9,9 +9,10 @@
   on 10-26/27 sat in #mkan; `scripts/wa/replay-answers.ts` applied the 6 new ones once.
 - Queued rows kept the words of the day they were queued (the 10-26 rewrite reached nobody); the
   outbox now words an ask when it sends it.
-- **Not built: booking a viewing after a typed yes.** The time picker needs times a broker offers on
-  the form, and brokers now answer in words; "when do you want to visit?" and the times brokers
-  propose show in #mkan. Open: a person arranges it, or the tenant gets the broker's number.
+- **Viewing after a typed yes (10-28, decided: the tenant gets the broker's number).** The time
+  picker needs times a broker offers on the form, and brokers answer in words. A yes now hands the
+  tenant the broker's number: in the WhatsApp alert (number + wa.me link) and as Call / WhatsApp on
+  the confirmed card. The time picker still shows when a broker offered times on the form.
 
 ## 2026-10-25 — WhatsApp moves to Cloudflare; brokers' answers reach WhatsApp tenants
 

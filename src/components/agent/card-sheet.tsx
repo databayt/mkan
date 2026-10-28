@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ExternalLink, Loader2, Star } from "lucide-react";
+import { ExternalLink, Loader2, MessageCircle, Phone, Star } from "lucide-react";
 import { BlurImage } from "@/components/atom/blur-image";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -180,6 +180,31 @@ export default function CardSheet({
               <span className="shrink-0 text-xs text-muted-foreground">{fill(c?.duplicates ?? "+{n} similar ads grouped", { n: item.duplicates })}</span>
             )}
           </div>
+
+          {item.availability === "confirmed" && item.brokerPhone && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">{c?.brokerContact ?? "The broker says it's available. Call or WhatsApp them to arrange a viewing."}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href={`tel:${item.brokerPhone}`}
+                  className="flex items-center justify-center gap-2 rounded-full border py-3 text-[15px] font-medium transition-colors hover:bg-muted"
+                >
+                  <Phone className="size-4" aria-hidden />
+                  {c?.callBroker ?? "Call"}
+                </a>
+                <a
+                  href={`https://wa.me/${item.brokerPhone.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-full border py-3 text-[15px] font-medium transition-colors hover:bg-muted"
+                >
+                  <MessageCircle className="size-4" aria-hidden />
+                  {c?.whatsappBroker ?? "WhatsApp"}
+                </a>
+              </div>
+              <p className="text-center text-xs tabular-nums text-muted-foreground" dir="ltr">{item.brokerPhone}</p>
+            </div>
+          )}
 
           {item.viewing && <ViewingPanel item={item} viewing={item.viewing} taskId={taskId} onChange={onChange} />}
 

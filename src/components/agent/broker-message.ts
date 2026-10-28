@@ -171,21 +171,31 @@ export function tenantAlertMessage(lang: string, count: number, link: string): s
   return `Mkan: ${count === 1 ? "a new home has" : `${count} new homes have`} come in for your Kigali search.\n${link}\n\nReply STOP to stop these alerts.`;
 }
 
+/** "+250 788…" in any shape → "+250788…"; null when it is not a number. */
+export function brokerNumber(phone: string | null | undefined): string | null {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  return digits.length >= 9 ? `+${digits}` : null;
+}
+
 /**
  * To a tenant who asked on WhatsApp: the broker answered about one home.
  * `canPick` — the broker offered viewing times on the form, so the chat has a
  * time to pick; a broker who answered in words offered none.
+ * `phone` — the broker who said yes, for the tenant to call and arrange the viewing.
  */
-export function brokerAnswerMessage(lang: string, title: string, available: boolean, link: string, canPick = true): string {
+export function brokerAnswerMessage(lang: string, title: string, available: boolean, link: string, canPick = true, phone?: string | null): string {
+  const number = available ? brokerNumber(phone) : null;
+  const lines = (said: string, call: string, pick: string, orPick: string) =>
+    [said, ...(number ? [`${call} ${number}`, `https://wa.me/${number.slice(1)}`] : []), ...(canPick ? [number ? orPick : pick] : []), link].join("\n");
   if (lang === "ar")
     return available
-      ? `مكان: أكّد الوسيط أن «${title}» ما زال متاحاً.${canPick ? " اختر موعداً للمعاينة هنا:" : ""}\n${link}`
+      ? lines(`مكان: أكّد الوسيط أن «${title}» ما زال متاحاً.`, "اتصل به أو راسله على واتساب لترتيب المعاينة:", "اختر موعداً للمعاينة هنا:", "أو اختر موعداً للمعاينة هنا:")
       : `مكان: «${title}» مؤجَّر للأسف. بقية المنازل لبحثك هنا:\n${link}`;
   if (lang === "rw")
     return available
-      ? `Mkan: komisiyoneri yemeje ko "${title}" igihari.${canPick ? " Hitamo igihe cyo kuyisura hano:" : ""}\n${link}`
+      ? lines(`Mkan: komisiyoneri yemeje ko "${title}" igihari.`, "Muhamagare cyangwa umwandikire kuri WhatsApp mupange gusura:", "Hitamo igihe cyo kuyisura hano:", "Cyangwa uhitemo igihe cyo kuyisura hano:")
       : `Mkan: "${title}" yamaze gufatwa. Andi mazu ahuye n'ibyo ushaka ari hano:\n${link}`;
   return available
-    ? `Mkan: the broker says "${title}" is still available.${canPick ? " Pick a viewing time here:" : ""}\n${link}`
+    ? lines(`Mkan: the broker says "${title}" is still available.`, "Call or WhatsApp them to arrange a viewing:", "Pick a viewing time here:", "Or pick a viewing time here:")
     : `Mkan: "${title}" is taken, sorry. Your other homes are here:\n${link}`;
 }

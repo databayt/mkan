@@ -55,7 +55,8 @@ export async function answerAvailability(token: string, answer: "available" | "r
     // The broker's times belong to the home, so every task asking about it sees them.
     await db.brokerRequest.updateMany({ where: { listingId: req.listingId, status: "PENDING" }, data: { viewingSlots: slots as Prisma.InputJsonValue } });
   }
-  await applyAnswer(req.listingId, status);
+  const broker = status === "AVAILABLE" ? await db.user.findUnique({ where: { id: req.brokerUserId }, select: { phoneNumber: true } }) : null;
+  await applyAnswer(req.listingId, status, broker?.phoneNumber);
   return { ok: true };
 }
 
