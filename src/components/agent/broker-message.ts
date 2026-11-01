@@ -1,14 +1,19 @@
 /**
- * The words a broker receives, written as the tenant they speak for: a Kigali
- * renter texting about one ad — "Hey there, is this available?" and the link
- * to the broker's own post, nothing else. No brand line, no form link, no
- * opt-out footer (STOP / HAGARIKA still work, wa-outbox). Every follow-up uses
- * only what the tenant told the agent; nothing here invents a person, and a
- * broker who asks "are you a bot?" gets a person (broker-inbox). Each message
- * picks one of a few phrasings from its seed, so a broker asked twice doesn't
- * get the same template twice. Pure, so the tests read exactly what goes out.
- * The tenant's name and phone never appear here; a broker sees them only after
- * confirming a viewing.
+ * The words a broker receives, from Mkan as Mkan (Abdout, 2026-11-01): we find
+ * tenants for Kigali brokers and bring them to the viewing, so a broker knows
+ * who is asking and why — the ground a partnership and a shared commission
+ * stand on. The first message to a broker introduces Mkan and says how to stop
+ * hearing from us; later ones are short, about one real tenant's need. No
+ * emojis, no form links, nothing a tenant did not say. A broker who asks "are
+ * you a bot?" gets a person (broker-inbox), never a claim to be one.
+ *
+ * Until 11-01 the line wrote as the tenant ("Hey there, is this available?"),
+ * which brokers could not tell from a renter — and which a test search could
+ * send to them every day.
+ *
+ * Each message picks one of a few phrasings from its seed, so a broker asked
+ * twice doesn't get the same template twice. Pure, so the tests read exactly
+ * what goes out. The tenant's name and phone never appear here.
  */
 import type { Requirements } from "./requirements";
 
@@ -36,10 +41,10 @@ export function pickPhrase<T>(seed: string, options: readonly T[]): T {
  * "Single or family?" (Abdout's own chats, Oct 2026), so every slot the tenant
  * filled goes in: size and type, furnishing, place, budget, move-in, household.
  * `en` is a noun phrase ("a 2-bedroom apartment, furnished, in Remera, up to
- * 400k") for the answer form; `me` is the tenant saying it ("I'm looking for
- * …. It's for my family.") for WhatsApp.
+ * 400k"); `they` is Mkan telling the broker ("They're looking for …. It's for a
+ * family.").
  */
-export function needSummary(r: Requirements): { en: string; rw: string; me: string } {
+export function needSummary(r: Requirements): { en: string; rw: string; they: string } {
   const rw: string[] = [];
   let noun: string;
   const beds = r.bedrooms != null && r.bedrooms > 0 ? `${r.bedrooms}-bedroom` : null;
@@ -72,68 +77,115 @@ export function needSummary(r: Requirements): { en: string; rw: string; me: stri
     rw.push(`guhera ${d}/${m}`);
   }
   let household: string | null = null;
-  let mine = "";
+  let whose = "";
   if (r.purpose === "family") {
     household = "for a family";
     rw.push("ku muryango");
-    mine = " It's for my family.";
+    whose = " It's for a family.";
   } else if (r.purpose === "study") {
     household = "for a student";
     rw.push("ku munyeshuri");
-    mine = " I'm a student.";
+    whose = " It's for a student.";
   }
   const en = [noun, furnished, where ? `in ${where}` : null, budget, from, household].filter(Boolean).join(", ");
   // Said aloud the place sits on the noun: "a studio in Kanombe, unfurnished, up to 200k".
   const what = `${noun === "a home" ? "a place" : noun} in ${where ?? "Kigali"}`;
-  const me = `I'm looking for ${[what, furnished, budget, from].filter(Boolean).join(", ")}.${mine}`;
-  return { en, rw: rw.join(", ") || "inzu i Kigali", me };
+  const they = `They're looking for ${[what, furnished, budget, from].filter(Boolean).join(", ")}.${whose}`;
+  return { en, rw: rw.join(", ") || "inzu i Kigali", they };
 }
 
-/** "Is this available?" about the broker's own ads — the link and nothing else. */
-export function availabilityMessage(homes: BrokerHomeLine[], seed: string): string {
+/** How a message to one broker is voiced. */
+export interface BrokerVoice {
+  /** Their first message from Mkan: say who we are and how to stop hearing from us. */
+  introduce: boolean;
+  /** The person their ads say to call ("Eric"), else none — never an agency name with emojis in it. */
+  name?: string | null;
+  /** The language their ads are written in (Broker.preferredLanguage): EN, FR or RW. Anything else is EN. */
+  lang?: string | null;
+  /** The tenant's need, as `needSummary().they`. */
+  need?: string | null;
+}
+
+/** A first name fit to greet with: letters only, no emoji, no handle, not an agency's whole name. */
+export function greetName(name: string | null | undefined): string | null {
+  const n = (name ?? "").replace(/[^\p{L}\p{M}\s'-]/gu, " ").replace(/\s+/g, " ").trim();
+  if (!n || n.length > 24 || n.split(" ").length > 2) return null;
+  if (/\b(?:real|estate|properties|property|house|homes?|rentals?|agency|ltd|services|kigali|rwanda|apartments?)\b/i.test(n)) return null;
+  return n;
+}
+
+type Lang = "EN" | "FR" | "RW";
+const langOf = (l: string | null | undefined): Lang => (l === "FR" || l === "RW" ? l : "EN");
+
+/**
+ * "Is this home still available?" about the broker's own ads, from Mkan. The
+ * first one introduces Mkan and how to opt out; after that, a short ask that
+ * names the tenant's need.
+ */
+export function availabilityMessage(homes: BrokerHomeLine[], seed: string, voice: BrokerVoice = { introduce: true }): string {
   const links = [...new Set(homes.map((h) => h.link))];
-  if (links.length === 1) {
-    const link = links[0]!;
-    return pickPhrase(seed, [
-      `Hey there, is this available?\n${link}`,
-      `Hi, is this still available?\n${link}`,
-      `hey, is this one still available?\n${link}`,
-      `${link}\nHello, is this still available?`,
-    ]);
-  }
+  const many = links.length > 1;
   const list = links.join("\n");
-  return pickPhrase(seed, [`Hi, are these still available?\n${list}`, `Hey there, are these available?\n${list}`]);
+  const name = greetName(voice.name);
+  const need = voice.need?.trim() ? `\n${voice.need.trim()}` : "";
+  const lang = langOf(voice.lang);
+  if (lang === "FR") {
+    const hi = `Bonjour${name ? ` ${name}` : ""}`;
+    const q = many ? "Sont-elles toujours disponibles ?" : "Est-elle toujours disponible ?";
+    if (voice.introduce)
+      return `${hi}, ici Mkan. Nous aidons des gens à trouver un logement à Kigali et nous les amenons à des agents comme vous. Un locataire que nous accompagnons s'intéresse à ${many ? "vos maisons" : "votre maison"} :\n${list}${need}\n${q} Si oui, nous organisons la visite avec vous.\nSi vous préférez ne plus recevoir nos messages, répondez simplement stop.`;
+    return pickPhrase(seed, [`${hi}, c'est Mkan. Un locataire que nous accompagnons aime ${many ? "celles-ci" : "celle-ci"} :\n${list}${need}\n${q}`, `${hi}, Mkan à nouveau. Un locataire s'intéresse à ${many ? "ces maisons" : "cette maison"} :\n${list}${need}\n${q}`]);
+  }
+  if (lang === "RW") {
+    const hi = `Muraho${name ? ` ${name}` : ""}`;
+    const q = many ? "Ziracyahari?" : "Iracyahari?";
+    if (voice.introduce)
+      return `${hi}, ni Mkan. Dufasha abantu kubona inzu i Kigali tukabazana ku ba komisiyoneri nkawe. Umukiriya dufasha yashimye ${many ? "amazu yawe" : "inzu yawe"}:\n${list}${need}\n${q} Niba ${many ? "zihari" : "ihari"}, turategura gusura nawe.\nNiba udashaka ko tukwandikira, subiza stop.`;
+    return pickPhrase(seed, [`${hi}, ni Mkan. Umukiriya dufasha yashimye ${many ? "aya mazu" : "iyi nzu"}:\n${list}${need}\n${q}`, `${hi}, ni Mkan nanone. Dufite umukiriya ushaka ${many ? "aya mazu" : "iyi nzu"}:\n${list}${need}\n${q}`]);
+  }
+  const hi = `Hi${name ? ` ${name}` : " there"}`;
+  const q = many ? "Are they still available?" : "Is it still available?";
+  if (voice.introduce)
+    return `${hi}, this is Mkan. We help people find homes in Kigali and bring them to brokers like you. A tenant we're helping is interested in ${many ? "these homes of yours" : "your home"}:\n${list}${need}\n${q} If ${many ? "they are" : "it is"}, we'll set up the viewing with you.\nIf you'd rather we didn't message you, just reply stop.`;
+  return pickPhrase(seed, [
+    `${hi}, Mkan here. A tenant we're helping likes ${many ? "these" : "this one"}:\n${list}${need}\n${q}`,
+    `Hello${name ? ` ${name}` : ""}, it's Mkan again. We have a tenant interested in ${many ? "these homes" : "this home"}:\n${list}${need}\n${q}`,
+    `${hi}, Mkan again. One of our tenants is asking about ${many ? "these" : "this one"}:\n${list}${need}\n${q}`,
+  ]);
 }
 
 /** The tenant picked one of the times the broker offered on the form; the broker confirms there and then sees their contact. */
 export function viewingChosenMessage(_title: string, slotLabel: string, link: string): string {
   return pickPhrase(link, [
-    `Hi! Can I come see it on ${slotLabel}? Please confirm here\n${link}`,
-    `Hello, is ${slotLabel} okay for me to come and see it? Confirm here please:\n${link}`,
+    `Hi, Mkan here. Our tenant would like to see it on ${slotLabel}. Could you confirm here?\n${link}`,
+    `Hello, it's Mkan. Is ${slotLabel} okay for the viewing with our tenant? Please confirm here:\n${link}`,
   ]);
 }
 
 /**
- * Nothing on Mkan fits a tenant: ask a broker who works the area whether they
- * have a home. They answer in the chat — photos and a price — which
- * broker-inbox turns into a lead. `seed` varies the wording per broker.
+ * Nothing on Mkan fits a tenant who asked us to look around: ask a broker who
+ * works the area whether they have a home. They answer in the chat — photos and
+ * a price — which broker-inbox turns into a lead. `seed` varies the wording.
  */
-export function demandMessage(need: { me: string }, seed: string): string {
+export function demandMessage(need: { they: string }, seed: string, voice: Pick<BrokerVoice, "introduce" | "name"> = { introduce: true }): string {
+  const name = greetName(voice.name);
+  const hi = `Hi${name ? ` ${name}` : " there"}`;
+  if (voice.introduce)
+    return `${hi}, this is Mkan. We help people find homes in Kigali and bring them to brokers like you. A tenant we're helping is looking for a place. ${need.they} Do you have anything? Photos and the price would be great.\nIf you'd rather we didn't message you, just reply stop.`;
   return pickPhrase(seed, [
-    `Hi, ${need.me} Do you have anything? Send me photos and the price`,
-    `Hello! ${need.me} Anything available? Send photos and the price please`,
-    `Hey there, ${need.me} Do you have something? Photos and price please`,
+    `${hi}, Mkan here. A tenant we're helping is looking for a place. ${need.they} Do you have anything? Photos and the price please.`,
+    `Hello${name ? ` ${name}` : ""}, it's Mkan. ${need.they} Anything that fits? Send photos and the price please.`,
   ]);
 }
 
 /** The broker asked "how much / where / features?" back about a no-home ask: answer with the need, once. */
-export function needReplyMessage(need: { me: string }, seed: string): string {
-  return pickPhrase(seed, [`${need.me} Do you have something? Send photos and the price`, `${need.me} If you have one send me photos and the price.`]);
+export function needReplyMessage(need: { they: string }, seed: string): string {
+  return pickPhrase(seed, [`${need.they} Do you have something? Photos and the price please.`, `${need.they} If you have one, send photos and the price.`]);
 }
 
-/** The broker asked about the tenant ("budget?", "single or family?") after "is this available?": answer, once. */
-export function aboutMeMessage(need: { me: string }, seed: string, many = false): string {
-  return pickPhrase(seed, many ? [`${need.me} Are they still available?`, `${need.me} Are these still free?`] : [`${need.me} Is it still available?`, `${need.me} Is this one still free?`]);
+/** The broker asked about the tenant ("budget?", "single or family?") after the availability ask: answer, once. */
+export function aboutMeMessage(need: { they: string }, seed: string, many = false): string {
+  return pickPhrase(seed, many ? [`${need.they} Are they still available?`, `${need.they} Are these still free?`] : [`${need.they} Is it still available?`, `${need.they} Is it still free?`]);
 }
 
 /** The broker only said hello: say it back and ask again, once. "How are you?" gets its answer. */
@@ -143,14 +195,18 @@ export function reAskMessage(text: string, seed: string, many = false): string {
   return pickPhrase(seed, [`Hi, ${it} still available?`, `Hello, ${it} still available?`]);
 }
 
-/** The broker said it is available. */
+/** The broker said it is available: Mkan comes back with the viewing. */
 export function availableAckMessage(seed: string): string {
-  return pickPhrase(seed, ["Great, thanks", "Okay thank you, I'll get back to you", "Nice, thanks. I'll let you know"]);
+  return pickPhrase(seed, [
+    "Great, thank you. We'll come back to you to set up the viewing.",
+    "Thanks! We'll get back to you with a time for the viewing.",
+    "Perfect, thank you. We'll be in touch about the viewing.",
+  ]);
 }
 
 /** The broker said it is taken. */
 export function takenAckMessage(seed: string): string {
-  return pickPhrase(seed, ["Ok, thanks for letting me know", "Alright, thank you", "Okay thanks"]);
+  return pickPhrase(seed, ["Thanks for letting us know.", "Okay, thank you.", "Alright, thanks for the update."]);
 }
 
 /** The broker sent photos without a price. */
@@ -177,25 +233,33 @@ export function brokerNumber(phone: string | null | undefined): string | null {
   return digits.length >= 9 ? `+${digits}` : null;
 }
 
+/** Who from Mkan meets the tenant and the broker at a viewing (MKAN_VIEWING_REP; Abdout for now, 2026-11-01). */
+export const viewingRep = (env: string | undefined = process.env.MKAN_VIEWING_REP) => env?.trim() || "Osman";
+
 /**
- * To a tenant who asked on WhatsApp: the broker answered about one home.
- * `canPick` — the broker offered viewing times on the form, so the chat has a
- * time to pick; a broker who answered in words offered none.
- * `phone` — the broker who said yes, for the tenant to call and arrange the viewing.
+ * To a tenant who asked on WhatsApp: the broker answered about one home. Mkan
+ * stays in the middle (Abdout, 2026-11-01): a yes never hands the tenant the
+ * broker's number — the person from Mkan who will be at the viewing writes to
+ * them. `canPick` — the broker offered viewing times on the form (asks before
+ * 10-27), so the chat has a time to pick.
  */
-export function brokerAnswerMessage(lang: string, title: string, available: boolean, link: string, canPick = true, phone?: string | null): string {
-  const number = available ? brokerNumber(phone) : null;
-  const lines = (said: string, call: string, pick: string, orPick: string) =>
-    [said, ...(number ? [`${call} ${number}`, `https://wa.me/${number.slice(1)}`] : []), ...(canPick ? [number ? orPick : pick] : []), link].join("\n");
+export function brokerAnswerMessage(lang: string, title: string, available: boolean, link: string, canPick = false, rep = viewingRep()): string {
   if (lang === "ar")
     return available
-      ? lines(`مكان: أكّد الوسيط أن «${title}» ما زال متاحاً.`, "اتصل به أو راسله على واتساب لترتيب المعاينة:", "اختر موعداً للمعاينة هنا:", "أو اختر موعداً للمعاينة هنا:")
+      ? [`مكان: أكّد الوسيط أن «${title}» ما زال متاحاً.`, `سيراسلك ${rep} من مكان هنا قريباً لترتيب المعاينة معك ومع الوسيط، والمعاينة مجانية لك.`, ...(canPick ? ["أو اختر موعداً للمعاينة هنا:"] : []), link].join("\n")
       : `مكان: «${title}» مؤجَّر للأسف. بقية المنازل لبحثك هنا:\n${link}`;
   if (lang === "rw")
     return available
-      ? lines(`Mkan: komisiyoneri yemeje ko "${title}" igihari.`, "Muhamagare cyangwa umwandikire kuri WhatsApp mupange gusura:", "Hitamo igihe cyo kuyisura hano:", "Cyangwa uhitemo igihe cyo kuyisura hano:")
+      ? [`Mkan: komisiyoneri yemeje ko "${title}" igihari.`, `${rep} wo muri Mkan arakwandikira hano vuba mupange gusura hamwe na komisiyoneri — ni ubuntu kuri wowe.`, ...(canPick ? ["Cyangwa uhitemo igihe cyo kuyisura hano:"] : []), link].join("\n")
       : `Mkan: "${title}" yamaze gufatwa. Andi mazu ahuye n'ibyo ushaka ari hano:\n${link}`;
   return available
-    ? lines(`Mkan: the broker says "${title}" is still available.`, "Call or WhatsApp them to arrange a viewing:", "Pick a viewing time here:", "Or pick a viewing time here:")
+    ? [`Mkan: good news, the broker says "${title}" is still available.`, `${rep} from Mkan will message you here shortly to set up the viewing with you and the broker. The viewing is free for you.`, ...(canPick ? ["Or pick a viewing time here:"] : []), link].join("\n")
     : `Mkan: "${title}" is taken, sorry. Your other homes are here:\n${link}`;
+}
+
+/** To a WhatsApp tenant: the broker has not answered in a day, and nobody else is left to ask about the home. */
+export function noReplyMessage(lang: string, title: string, link: string): string {
+  if (lang === "ar") return `مكان: لم يرد الوسيط بعد بخصوص «${title}». سأخبرك فور رده. يمكنك أيضاً أن تكتب لي ما تريد تغييره في البحث.\n${link}`;
+  if (lang === "rw") return `Mkan: komisiyoneri ntarasubiza ku bya "${title}". Nzakubwira akimara gusubiza. Ushobora no kumbwira icyo wahindura mu byo ushaka.\n${link}`;
+  return `Mkan: the broker hasn't answered about "${title}" yet. I'll tell you as soon as they do. Meanwhile you can tell me what to change in your search.\n${link}`;
 }

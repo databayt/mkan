@@ -2,19 +2,34 @@ import "server-only";
 
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { appendTaskEvent, requestConfirmations } from "./broker";
+import { waLink } from "../../../scripts/crm/public-links";
+import { appendTaskEvent, homeLink, requestConfirmations } from "./broker";
+import { gateForTask } from "./broker-sends";
 import { coerceRequirements } from "./requirements";
 import type { ShortlistItem } from "./types";
+import { postSlackCard } from "./whatsapp";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
 
 /**
- * "Check availability" on a broker home the agent did not ask about (the stay
- * type was a guess): the tenant's tap — or their digit on WhatsApp — is the
- * consent, and the same one-message broker loop runs for this one home.
- * The caller has already checked the task is the tenant's.
+ * Why a pick did not become a broker message:
+ *   handed  — broker sends are off, or the tenant is on the team's list: a
+ *             person got a #mkan card with the home and the broker, and the
+ *             tenant hears that we are checking;
+ *   web     — /find in a browser never reaches a broker: the card offers the
+ *             same chat on WhatsApp instead;
+ *   none    — nobody to ask (no broker with a number, or this broker was asked
+ *             about it lately and has not answered).
  */
-export async function askAvailabilityFor(taskId: string, listingId: number): Promise<{ ok: boolean; asked: boolean }> {
+export type AskOutcome = { ok: boolean; asked: boolean; why?: "handed" | "web" | "none" };
+
+/**
+ * The tenant picked a broker home — a digit on WhatsApp, "yes" to "want me to
+ * check it?" — and that is the consent: the one-message broker loop runs for
+ * this one home, as Mkan (broker-message.ts). The caller has already checked
+ * the task is the tenant's.
+ */
+export async function askAvailabilityFor(taskId: string, listingId: number): Promise<AskOutcome> {
   const task = await db.agentTask.findUnique({
     where: { id: taskId },
     select: { id: true, locale: true, requirements: true, shortlist: true, status: true },
@@ -23,14 +38,39 @@ export async function askAvailabilityFor(taskId: string, listingId: number): Pro
   const shortlist = (task.shortlist as unknown as ShortlistItem[] | null) ?? [];
   const item = shortlist.find((s) => s.id === listingId);
   if (!item?.lead || item.availability !== "unconfirmed") return { ok: false, asked: false };
-  // Tapping it means a monthly rent: the broker is asked about one.
+
+  const gate = await gateForTask(task.id);
+  if (!gate.ok) {
+    if (gate.why === "not-whatsapp") return { ok: true, asked: false, why: "web" };
+    await handToPerson(task.id, item, gate.waPhone, gate.why === "test-phone");
+    await appendTaskEvent(task.id, "availability_asked", "waiting_person", { listingId: item.id, handed: true });
+    return { ok: true, asked: false, why: "handed" };
+  }
+
+  // Picking it means a monthly rent: the broker is asked about one.
   const requirements = { ...coerceRequirements(task.requirements), stay: "long" as const };
   const asked = await requestConfirmations(task.id, [item], requirements as never, task.locale);
-  if (asked.length === 0) return { ok: true, asked: false };
+  if (asked.length === 0) return { ok: true, asked: false, why: "none" };
   await appendTaskEvent(task.id, "availability_asked", "waiting_person", { listingId: item.id });
   await db.agentTask.update({
     where: { id: task.id },
     data: { status: "WAITING", shortlist: json(shortlist.map((s) => (s.id === item.id ? { ...s, availability: "asked" } : s))) },
   });
   return { ok: true, asked: true };
+}
+
+/** The pick, for a person: who asked, which home, which broker — and the chats one tap away. */
+async function handToPerson(taskId: string, item: ShortlistItem, tenant: string | null, test: boolean) {
+  const brokers = await db.listingBroker.findMany({
+    where: { listingId: item.id, user: { phoneNumber: { not: null } } },
+    orderBy: [{ role: "desc" }, { createdAt: "asc" }],
+    select: { sourceUrl: true, user: { select: { phoneNumber: true, username: true } }, listing: { select: { id: true, sourceUrl: true, isPublished: true, code: true, sourceListingId: true } } },
+    take: 3,
+  });
+  const ad = homeLink(brokers[0]?.sourceUrl, brokers[0]?.listing) ?? item.path;
+  const who = brokers.map((b) => `${b.user.username ?? "broker"} <${waLink(b.user.phoneNumber!, "")}|${b.user.phoneNumber}>`).join(" · ") || "no broker number on file";
+  const head = test ? "🧪 TEST (team number, not sent)" : "🙋 A tenant wants a home checked — broker sends are paused, so a person does it";
+  await postSlackCard(
+    `${head}\n*${item.title}* (#${item.id}) — ${ad}\nTenant: ${tenant ? `<${waLink(tenant, "")}|${tenant}>` : "web"} · chat ${taskId}\nBroker: ${who}`,
+  ).catch(() => {});
 }

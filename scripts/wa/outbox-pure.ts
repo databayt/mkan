@@ -5,9 +5,11 @@
  * banned by WhatsApp, so the Mac sender only sends:
  *   - between 08:00 and 20:00 Kigali time (UTC+2, no DST),
  *   - up to `cap` messages per Kigali day in total (MKAN_WA_DAILY_CAP, 40 while warming up),
- *   - at most one message per broker per Kigali day (TENANT_ALERT is exempt but counts toward the total),
+ *   - at most one message per broker number per Kigali day (TENANT_ALERT is exempt but counts toward the total),
+ *   - no new ask to a broker who already had three this week, or whose last two went unanswered (a rest),
  *   - with a random 20–60 s gap between sends.
- * Rows for a broker who opted out are SKIPPED, at any hour.
+ * Rows for a broker who opted out, rows queued more than STALE_HOURS ago, and every
+ * broker row while broker sends are off (broker-sends.ts) are SKIPPED, at any hour.
  */
 
 export const KIGALI_OFFSET_MS = 2 * 60 * 60 * 1000;
@@ -31,9 +33,13 @@ export function phoneKey(phone: string): string {
   return phone.replace(/[^\d]/g, '').replace(/^00/, '');
 }
 
-/** Who a row counts against for the one-a-day rule: the broker, else the number. */
+/**
+ * Who a row counts against for the one-a-day rule: the number it goes to. An
+ * availability ask carries no broker id and a demand ask does, so keying by the
+ * broker let one number get one of each a day.
+ */
 export function recipientKey(row: Pick<OutboxRow, 'brokerId' | 'to'>): string {
-  return row.brokerId ? `broker:${row.brokerId}` : `to:${phoneKey(row.to)}`;
+  return `to:${phoneKey(row.to)}`;
 }
 
 /** YYYY-MM-DD of `d` in Kigali. */
@@ -83,16 +89,47 @@ export interface PlanInput<R extends OutboxRow = OutboxRow> {
   optedOutBrokers: Set<string>;
   /** phoneKey()s of brokers that opted out — catches rows that carry only a number. */
   optedOutPhones?: Set<string>;
+  /** phoneKey() → why that broker gets no new ask now (brokerRest). */
+  resting?: Map<string, RestReason>;
+  /** Broker sends are off (broker-sends.ts): every broker row is skipped, tenant alerts still go. */
+  brokerSendsOff?: boolean;
   cap: number;
 }
 
-export type HoldReason = 'quiet-hours' | 'daily-cap' | 'broker-today';
+/** A broker ask that waited this long is about a search the tenant has moved on from. */
+export const STALE_HOURS = 18;
+/** At most this many asks reach one broker in seven days. */
+export const ASKS_PER_WEEK = 3;
+/** This many asks in a row with no reply → the broker rests. */
+export const UNANSWERED_IN_A_ROW = 2;
+export const REST_DAYS = 14;
+const DAY_MS = 86_400_000;
+
+export type RestReason = 'broker-week' | 'broker-resting';
+export type HoldReason = 'quiet-hours' | 'daily-cap' | 'broker-today' | RestReason;
+export type SkipReason = 'opted-out' | 'stale' | 'sends-off';
+
+/**
+ * Why a broker gets no new ask now, from the asks that number was sent (any
+ * order) and when they last wrote back — null when they may get one. A broker
+ * who answers is never rested; one who stays silent hears nothing for two weeks.
+ */
+export function brokerRest(asks: Date[], lastReplyAt: Date | null, now: Date): RestReason | null {
+  const newest = [...asks].sort((a, b) => b.getTime() - a.getTime());
+  if (newest.filter((a) => now.getTime() - a.getTime() < 7 * DAY_MS).length >= ASKS_PER_WEEK) return 'broker-week';
+  if (newest.length >= UNANSWERED_IN_A_ROW) {
+    const older = newest[UNANSWERED_IN_A_ROW - 1]!;
+    const silent = !lastReplyAt || lastReplyAt.getTime() < older.getTime();
+    if (silent && now.getTime() - newest[0]!.getTime() < REST_DAYS * DAY_MS) return 'broker-resting';
+  }
+  return null;
+}
 
 export interface Plan<R extends OutboxRow = OutboxRow> {
   /** In send order. */
   send: R[];
   /** Mark SKIPPED now. */
-  skip: Array<{ row: R; reason: 'opted-out' }>;
+  skip: Array<{ row: R; reason: SkipReason }>;
   /** Stay QUEUED for a later run. */
   hold: Array<{ row: R; reason: HoldReason }>;
 }
@@ -108,9 +145,17 @@ export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
 
   for (const row of rows) {
     const isAlert = row.kind === 'TENANT_ALERT';
+    if (!isAlert && input.brokerSendsOff) {
+      plan.skip.push({ row, reason: 'sends-off' });
+      continue;
+    }
     const optedOut = !isAlert && ((row.brokerId != null && input.optedOutBrokers.has(row.brokerId)) || (input.optedOutPhones?.has(phoneKey(row.to)) ?? false));
     if (optedOut) {
       plan.skip.push({ row, reason: 'opted-out' });
+      continue;
+    }
+    if (!isAlert && now.getTime() - row.createdAt.getTime() > STALE_HOURS * 3_600_000) {
+      plan.skip.push({ row, reason: 'stale' });
       continue;
     }
     if (!open) {
@@ -120,6 +165,11 @@ export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
     const key = recipientKey(row);
     if (!isAlert && takenToday.has(key)) {
       plan.hold.push({ row, reason: 'broker-today' });
+      continue;
+    }
+    const rest = isAlert ? undefined : input.resting?.get(phoneKey(row.to));
+    if (rest) {
+      plan.hold.push({ row, reason: rest });
       continue;
     }
     if (budget <= 0) {
@@ -133,11 +183,19 @@ export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
   return plan;
 }
 
-/** A reply that means "stop messaging me" — en, rw, fr. Whole message only, so "stop by tomorrow" is not one. */
-const OPT_OUT = /^(stop|hagarika|arr[êe]te|unsubscribe)[\s.!]*$/iu;
+/** A whole reply that means "stop messaging me" — en, rw, fr. "stop by tomorrow" is not one. */
+const OPT_OUT = /^(?:please )?(?:stop|hagarika|arr[êe]te|arr[êe]tez|unsubscribe|sinshaka|ntimwongere|mundeke)[\s.!]*$/iu;
+/**
+ * The same said in a sentence — "please stop", "stop sending me these", "don't
+ * message me again", "you keep sending sending??" (a broker, 11-01). Only in a
+ * short reply, so a long message that mentions stopping is read by a person.
+ */
+const OPT_OUT_PHRASE =
+  /\b(?:please stop|stop (?:it|this|now|sending|messaging|texting|writing|asking|bothering)|(?:don'?t|do not|dont) (?:message|text|send|write|contact|disturb) (?:me|us)|(?:you|u) keep (?:on )?(?:sending|asking|texting|messaging)|keep sending|leave me alone|remove (?:me|my number)|unsubscribe|wrong number|ntimwongere|ne m'?[ée]cri(?:vez|s) plus|arr[êe]tez de m'?[ée]crire)\b/iu;
 
 export function isOptOut(text: string | null | undefined): boolean {
-  return OPT_OUT.test((text ?? '').trim());
+  const t = (text ?? '').trim();
+  return OPT_OUT.test(t) || (t.length <= 160 && OPT_OUT_PHRASE.test(t));
 }
 
 /** The words of a WhatsApp message payload, whatever kind carried them. */

@@ -2,22 +2,26 @@ import "server-only";
 
 /**
  * Demand the agent could not meet. A search with no home (or only widened
- * ones) opens a `TenantRequest`: the brokers and agencies whose ads cover the
- * area are asked for a home, and every home that comes in later — a broker's
- * reply through `/b/d/<token>` or tomorrow's scrape — is matched against it.
- * A tenant who left a number gets a WhatsApp when it finds something.
+ * ones) opens a `TenantRequest`, and every home that comes in later — a
+ * broker's reply or tomorrow's scrape — is matched against it. A tenant who
+ * left a number gets a WhatsApp when it finds something.
+ *
+ * Brokers are asked for a home only when a real WhatsApp tenant says yes to
+ * "want me to ask brokers around?" (askAround): three who cover the area, each
+ * at most once a week. Until 2026-11-01 every empty search asked eight.
  */
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { publicAppUrl } from "../../../scripts/crm/public-links";
-import { appendTaskEvents } from "./broker";
+import { appendTaskEvents, wasIntroduced } from "./broker";
 import { demandMessage, needSummary, tenantAlertMessage } from "./broker-message";
-import { BROKER_ASK_GAP_HOURS, DEMAND_TTL_DAYS, pickBrokersForDemand } from "./demand-pure";
+import { gateForTask } from "./broker-sends";
+import { DEMAND_TTL_DAYS, pickBrokersForDemand } from "./demand-pure";
 import { rankCandidates } from "./rank";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements, type Requirements } from "./requirements";
 import { searchKigali, toShortlist } from "./search";
 import type { EventKind, ShortlistItem, StepStatus } from "./types";
-import { sendMessages, type Outgoing } from "./whatsapp";
+import { postSlackCard, sendMessages, type Outgoing } from "./whatsapp";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
 export const demandLink = (token: string, lang = "en") => `${publicAppUrl()}/${lang}/b/d/${token}`;
@@ -25,13 +29,21 @@ export const chatLink = (taskId: string, lang = "en") => `${publicAppUrl()}/${la
 
 /** Brokers loaded per request before scoring: the most recently active first. */
 const BROKER_POOL = 400;
+/** One request asks brokers at most once in this many hours, however often the tenant says yes. */
+const REQUEST_ASK_GAP_HOURS = 24;
 
 /**
- * Open (or refresh) the request for a task and ask the brokers who cover it.
- * A request asks brokers once per day at most; a later turn in the same chat
- * only updates what the tenant wants. Returns how many brokers were asked now.
+ * Open (or refresh) the request for a task. `askBrokers` — the tenant said yes
+ * to asking around and the gate let them through — also asks the brokers who
+ * cover it, once a day at most. Returns how many brokers were asked now.
  */
-export async function openDemand(taskId: string, profileId: string | null, r: Requirements, lang: string): Promise<{ requestId: string; asked: number }> {
+export async function openDemand(
+  taskId: string,
+  profileId: string | null,
+  r: Requirements,
+  lang: string,
+  opts: { askBrokers?: boolean } = {},
+): Promise<{ requestId: string; asked: number }> {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + DEMAND_TTL_DAYS * 86_400_000);
   const request = await db.tenantRequest.upsert({
@@ -40,8 +52,9 @@ export async function openDemand(taskId: string, profileId: string | null, r: Re
     update: { requirements: json(r), locale: lang, expiresAt, status: "OPEN" },
     select: { id: true },
   });
+  if (!opts.askBrokers) return { requestId: request.id, asked: 0 };
   const askedToday = await db.outboundMessage.count({
-    where: { tenantRequestId: request.id, kind: "BROKER_ASK", createdAt: { gte: new Date(now.getTime() - BROKER_ASK_GAP_HOURS * 3_600_000) } },
+    where: { tenantRequestId: request.id, kind: "BROKER_ASK", createdAt: { gte: new Date(now.getTime() - REQUEST_ASK_GAP_HOURS * 3_600_000) } },
   });
   if (askedToday > 0) return { requestId: request.id, asked: 0 };
 
@@ -51,30 +64,54 @@ export async function openDemand(taskId: string, profileId: string | null, r: Re
     take: BROKER_POOL,
     select: {
       id: true, kind: true, name: true, tiktokHandle: true, phones: true, districts: true, neighbourhoods: true, zoneSlugs: true, stays: true,
-      priceMin: true, priceMax: true, lastSeenAt: true, lastAskedAt: true, asks: true, answers: true, optOut: true, replyMinutes: true,
+      priceMin: true, priceMax: true, lastSeenAt: true, lastAskedAt: true, asks: true, answers: true, optOut: true, replyMinutes: true, contactName: true,
     },
   });
   const picked = pickBrokersForDemand(pool, r, now);
   if (picked.length === 0) return { requestId: request.id, asked: 0 };
 
   const need = needSummary(r);
-  const messages: Outgoing[] = picked.map((b) => {
-    const name = b.tiktokHandle ? `@${b.tiktokHandle}` : b.kind === "AGENCY" ? b.name : null;
-    return {
-      kind: "BROKER_ASK",
-      to: b.phones[0]!,
-      body: demandMessage(need, `${request.id}:${b.id}`),
-      label: name ?? b.name,
-      brokerId: b.id,
-      tenantRequestId: request.id,
-    };
-  });
+  const messages: Outgoing[] = await Promise.all(
+    picked.map(async (b) => {
+      const label = b.tiktokHandle ? `@${b.tiktokHandle}` : b.kind === "AGENCY" ? b.name : null;
+      const introduce = !(await wasIntroduced(b.phones[0]!));
+      return {
+        kind: "BROKER_ASK" as const,
+        to: b.phones[0]!,
+        body: demandMessage(need, `${request.id}:${b.id}`, { introduce, name: b.contactName }),
+        label: label ?? b.name,
+        brokerId: b.id,
+        tenantRequestId: request.id,
+      };
+    }),
+  );
   const channel = await sendMessages(messages, `Rental agent → no home for "${need.en}", asking ${picked.length} brokers`);
   await Promise.all([
     db.broker.updateMany({ where: { id: { in: picked.map((b) => b.id) } }, data: { lastAskedAt: now, asks: { increment: 1 } } }),
     appendTaskEvents(taskId, [["broker_contact_started", "waiting_person", { demand: true, count: picked.length, channel }]]),
   ]);
   return { requestId: request.id, asked: picked.length };
+}
+
+/**
+ * The tenant said yes to "want me to ask brokers around?" (WhatsApp). Their
+ * consent and the gate decide whether brokers hear about it; otherwise a
+ * person gets the request in #mkan. Returns how many brokers were asked.
+ */
+export async function askAround(taskId: string): Promise<{ asked: number; handed: boolean }> {
+  const task = await db.agentTask.findUnique({ where: { id: taskId }, select: { id: true, profileId: true, requirements: true, locale: true } });
+  if (!task) return { asked: 0, handed: false };
+  const r = mergeRequirements(EMPTY_REQUIREMENTS, coerceRequirements(task.requirements));
+  const query: Requirements = r.stay ? r : { ...r, stay: "long" };
+  const gate = await gateForTask(task.id);
+  if (!gate.ok) {
+    await openDemand(task.id, task.profileId, query, task.locale);
+    const head = gate.why === "test-phone" ? "🧪 TEST (team number, not sent)" : "🙋 A tenant wants us to ask brokers around — broker sends are paused, so a person does it";
+    await postSlackCard(`${head}\n${needSummary(query).en} · tenant ${gate.waPhone ?? "web"} · chat ${task.id}`).catch(() => {});
+    return { asked: 0, handed: true };
+  }
+  const { asked } = await openDemand(task.id, task.profileId, query, task.locale, { askBrokers: true });
+  return { asked, handed: false };
 }
 
 /** The tenant's opt-in: their number, for an alert when a home comes in. */

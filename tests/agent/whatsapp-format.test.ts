@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@/components/internationalization/en.json";
 import ar from "@/components/internationalization/ar.json";
-import { formatWhatsApp, isFresh, readPick, readRef, waLang, type WaDict } from "@/components/agent/whatsapp-format";
+import { askAroundText, botText, checkText, formatWhatsApp, isFresh, readHomeRef, readPick, readRef, saysYes, waLang, wantsPerson, type WaDict } from "@/components/agent/whatsapp-format";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "@/components/agent/types";
 
 const dict = (d: typeof en): WaDict => d.agent as unknown as WaDict;
@@ -99,5 +99,65 @@ describe("message reading", () => {
     expect(readRef("Continue my Mkan search ref:cmh2abcdefghijklmnopqrst")).toEqual({ ref: "cmh2abcdefghijklmnopqrst", rest: "Continue my Mkan search" });
     expect(isFresh("New search")).toBe(true);
     expect(isFresh("new apartment in Remera")).toBe(false);
+  });
+});
+
+describe("home refs from TikTok posts", () => {
+  const lead = (id: number) => home(id, { path: `https://www.tiktok.com/@b/video/${id}`, lead: { handle: "b", sourceUrl: `https://www.tiktok.com/@b/video/${id}` } });
+
+  it("reads K5808 anywhere, a bare 4–6 digit message, and never a phone number", () => {
+    expect(readHomeRef("K5808")).toBe(5808);
+    expect(readHomeRef("hi, is k-5808 still there?")).toBe(5808);
+    expect(readHomeRef("5808")).toBe(5808);
+    expect(readHomeRef("0786485237")).toBeNull();
+    expect(readHomeRef("2 bedroom 400k")).toBeNull();
+    expect(readHomeRef("1")).toBeNull();
+  });
+
+  it("leads with the ref's home and asks whether to check it", () => {
+    const out = formatWhatsApp(view({ role: "agent", kind: "shortlist", count: 3, pin: { id: 5808, found: true }, at }, [lead(5808), lead(2), lead(3)]), dict(en), "en", CHAT, APP);
+    expect(out.startsWith("Here's K5808:")).toBe(true);
+    expect(out).toContain("*1. Home 5808*");
+    expect(out).toContain("Reply *1*");
+    expect(out).not.toContain("budget");
+  });
+
+  it("says plainly when the ref's home is gone", () => {
+    const out = formatWhatsApp(view({ role: "agent", kind: "shortlist", count: 1, pin: { id: 5808, found: false }, at }, [lead(2)]), dict(en), "en", CHAT, APP);
+    expect(out.startsWith("K5808 isn't available any more, sorry. Here are homes like it:")).toBe(true);
+    const none = formatWhatsApp(view({ role: "agent", kind: "none", demand: true, asked: 0, pin: { id: 5808, found: false }, at }), dict(en), "en", CHAT, APP);
+    expect(none.startsWith("K5808 isn't available any more, sorry.")).toBe(true);
+  });
+
+  it("turns yes into a check of the ref's home, and into asking around when nothing fit", () => {
+    const pinned = view({ role: "agent", kind: "shortlist", count: 2, pin: { id: 5808, found: true }, at }, [lead(5808), lead(2)]);
+    expect(readPick("yes", pinned, dict(en))).toEqual({ kind: "check", listingId: 5808 });
+    expect(readPick("2", pinned, dict(en))).toEqual({ kind: "check", listingId: 2 });
+    const none = view({ role: "agent", kind: "none", demand: true, asked: 0, at });
+    expect(readPick("yes", none, dict(en))).toEqual({ kind: "askAround" });
+    expect(readPick("ndiyo", none, dict(en))).toEqual({ kind: "askAround" });
+    expect(readPick("no thanks", none, dict(en))).toBeNull();
+    expect(formatWhatsApp(none, dict(en), "en", CHAT, APP)).toContain("Reply *yes*");
+  });
+});
+
+describe("honest answers", () => {
+  it("says what happened to a check: asked, handed to a person, or nothing to ask", () => {
+    expect(checkText("en", "asked", "Flat")).toMatch(/I've asked the broker/);
+    expect(checkText("en", "handed", "Flat")).toMatch(/checking "Flat" with the broker now/);
+    expect(checkText("en", "none", "Flat")).toMatch(/can't get an answer/);
+    expect(askAroundText("en", { asked: 3, handed: false })).toMatch(/asking brokers/);
+    expect(askAroundText("en", { asked: 0, handed: false })).toMatch(/couldn't find a broker/);
+  });
+
+  it("never claims to be a person, and finds one when asked", () => {
+    const t = botText("en", "Osman");
+    expect(t).toMatch(/Mkan's assistant/);
+    expect(t).not.toMatch(/I'm (a )?(real )?(person|human)/i);
+    expect(wantsPerson("person")).toBe(true);
+    expect(wantsPerson("a real person")).toBe(true);
+    expect(wantsPerson("person with 2 kids")).toBe(false);
+    expect(saysYes("Yes!")).toBe(true);
+    expect(saysYes("yes but cheaper")).toBe(false);
   });
 });

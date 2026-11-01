@@ -18,8 +18,9 @@ import "server-only";
  *     - only a hello → one "is it still available?";
  *   - anything else → the caller posts it to #mkan for a person.
  *
- * Every word back is the tenant's own (broker-message.ts) and goes out at most
- * once per ask. "Are you a bot?" is never answered here: a person does.
+ * Every word back is Mkan's (broker-message.ts) and goes out at most once per
+ * ask — none at all while broker sends are off (wa-outbox.ts). "Are you a
+ * bot?" is never answered here: a person does.
  */
 import { db } from "@/lib/db";
 import { applyAnswer, brokerAnswers } from "./broker";
@@ -165,7 +166,7 @@ async function answerAvailabilityAsk(read: NonNullable<Awaited<ReturnType<typeof
     if (isNews) await recordTypedAnswer(ask.brokerRequestIds, home, answer, phone);
     // "Budget?" next to the yes gets its answer in the same message; "when do you want to visit?" waits for the tenant.
     const aboutTenant = r.question && !/visit|view|come|see/i.test(text);
-    const body = answer === "RENTED" ? takenAckMessage(ask.id) : aboutTenant ? `${availableAckMessage(ask.id)} ${need.me}` : availableAckMessage(ask.id);
+    const body = answer === "RENTED" ? takenAckMessage(ask.id) : aboutTenant ? `${availableAckMessage(ask.id)} ${need.they}` : availableAckMessage(ask.id);
     return { kind: "availability", listingId: home, answer, applied: isNews, reply: await replyOnce(ask, "auto-ack", body) };
   }
   if (r.question) {

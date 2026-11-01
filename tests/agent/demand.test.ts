@@ -25,11 +25,12 @@ const broker = (over: Partial<BrokerFit> = {}): BrokerFit => ({
 const want = (over: Partial<Requirements> = {}): Requirements => ({ ...EMPTY_REQUIREMENTS, stay: "long", district: "KICUKIRO", bedrooms: 2, maxPrice: 400_000, pricePeriod: "month", ...over });
 
 describe("brokerFitScore", () => {
-  it("never asks a broker who opted out, has no phone, or was asked in the last 24 h", () => {
+  it("never asks a broker who opted out, has no phone, or had a demand ask this week", () => {
     expect(brokerFitScore(broker({ optOut: true }), want(), now)).toBeNull();
     expect(brokerFitScore(broker({ phones: [] }), want(), now)).toBeNull();
     expect(brokerFitScore(broker({ lastAskedAt: new Date(now.getTime() - 3_600_000) }), want(), now)).toBeNull();
-    expect(brokerFitScore(broker({ lastAskedAt: daysAgo(2) }), want(), now)).not.toBeNull();
+    expect(brokerFitScore(broker({ lastAskedAt: daysAgo(2) }), want(), now)).toBeNull();
+    expect(brokerFitScore(broker({ lastAskedAt: daysAgo(8) }), want(), now)).not.toBeNull();
   });
 
   it("skips brokers outside the district, but an agency with unknown coverage stays in", () => {
@@ -57,7 +58,7 @@ describe("pickBrokersForDemand", () => {
       ...Array.from({ length: 10 }, (_, i) => broker({ id: `x${i}`, neighbourhoods: [], lastSeenAt: daysAgo(20) })),
     ];
     const picked = pickBrokersForDemand(list, want({ neighbourhood: "Niboye" }), now);
-    expect(picked).toHaveLength(8);
+    expect(picked).toHaveLength(3);
     expect(picked[0]!.id).toBe("local");
     expect(picked.map((b) => b.id)).not.toContain("stale");
   });
@@ -133,11 +134,16 @@ describe("normalisePhone", () => {
 
 describe("demand messages", () => {
   const need = needSummary(want());
-  it("asks a broker for a home in plain words, with no tenant details", () => {
-    const text = demandMessage(need, "req:broker");
-    expect(text).toContain(need.me);
-    expect(text).toMatch(/photos/i);
-    expect(text).not.toMatch(/mkan|https?:|STOP|tenant|client|\+?\d{9,}/i);
+  it("asks a broker for a home as Mkan, in plain words, with no tenant details", () => {
+    const first = demandMessage(need, "req:broker");
+    expect(first).toMatch(/^Hi there, this is Mkan\./);
+    expect(first).toContain(need.they);
+    expect(first).toMatch(/photos/i);
+    expect(first).toMatch(/just reply stop\.$/);
+    const later = demandMessage(need, "req:broker", { introduce: false, name: "Eric" });
+    expect(later).toMatch(/^(Hi|Hello) Eric/);
+    expect(later).toContain(need.they);
+    for (const t of [first, later]) expect(t).not.toMatch(/https?:|I'm looking|\+?\d{9,}|\p{Extended_Pictographic}/u);
   });
   it("alerts a tenant in their language with the chat link", () => {
     expect(tenantAlertMessage("en", 2, "L")).toMatch(/2 new homes.*\nL/);
@@ -151,10 +157,10 @@ describe("the ask answers what brokers ask back", () => {
     const need = needSummary(want({ homeType: "house", furnished: false, neighbourhood: "Kibagabaga", district: "GASABO", maxPrice: 400_000, moveIn: "2026-11-01", purpose: "family" }));
     expect(need.en).toBe("a 2-bedroom house with its own compound, unfurnished, in Kibagabaga, up to 400k, from 1 Nov, for a family");
     expect(need.rw).toContain("igipangu");
-    expect(need.me).toBe("I'm looking for a 2-bedroom house with its own compound in Kibagabaga, unfurnished, up to 400k, from 1 Nov. It's for my family.");
+    expect(need.they).toBe("They're looking for a 2-bedroom house with its own compound in Kibagabaga, unfurnished, up to 400k, from 1 Nov. It's for a family.");
     expect(demandMessage(need, "L")).toMatch(/price/);
     for (const k of ["a", "b", "c", "d"]) {
-      expect(demandMessage(need, k)).not.toMatch(/for a family|client|\p{Extended_Pictographic}/u);
+      expect(demandMessage(need, k, { introduce: false })).not.toMatch(/for a family for|client|\p{Extended_Pictographic}/u);
       expect(needReplyMessage(need, k)).not.toMatch(/\p{Extended_Pictographic}/u);
     }
   });

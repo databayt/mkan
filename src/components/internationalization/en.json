@@ -5595,6 +5595,11 @@
       },
       "checkAvailability": "Check availability",
       "checkAvailabilityHint": "Mkan messages the broker for you and shows the answer here.",
+      "checkOnWhatsApp": "Check availability on WhatsApp",
+      "checkOnWhatsAppHint": "Mkan checks with the broker and sets up the viewing. It's free for you.",
+      "mkanArranges": "The broker says it's available. Mkan sets up the viewing with you and the broker, and it's free for you.",
+      "bookViewing": "Book the viewing on WhatsApp",
+      "bookViewingWords": "I'd like to view {ref}",
       "checking": "Asking the broker…",
       "noBroker": "No broker to ask for this home yet.",
       "status": {

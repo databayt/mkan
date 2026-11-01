@@ -11,17 +11,18 @@ describe("brokerAnswerMessage", () => {
     expect(m.endsWith(LINK)).toBe(true);
   });
 
-  it("hands the tenant the broker's number with a yes", () => {
-    const m = brokerAnswerMessage("en", "2BR in Kicukiro", true, LINK, false, "+250 700 000 001");
-    expect(m).toContain("Call or WhatsApp them to arrange a viewing: +250700000001");
-    expect(m).toContain("https://wa.me/250700000001");
-    expect(m).not.toContain("Or pick");
-    expect(brokerAnswerMessage("ar", "شقة", true, LINK, true, "250700000001")).toContain("أو اختر موعداً");
-    expect(brokerAnswerMessage("en", "2BR", false, LINK, false, "+250700000001")).not.toContain("+250");
+  it("never hands the tenant the broker's number: the person from Mkan sets up the viewing", () => {
+    const m = brokerAnswerMessage("en", "2BR in Kicukiro", true, LINK, false, "Osman");
+    expect(m).toContain("Osman from Mkan will message you here");
+    expect(m).toMatch(/free for you/);
+    expect(m).not.toMatch(/\+?250\d|wa\.me|Call or WhatsApp them/);
+    expect(brokerAnswerMessage("ar", "شقة", true, LINK, true, "Osman")).toContain("أو اختر موعداً");
+    expect(brokerAnswerMessage("rw", "Inzu", true, LINK, false, "Osman")).toContain("Osman wo muri Mkan");
   });
 
-  it("offers the time picker alone when there is no number", () => {
-    expect(brokerAnswerMessage("en", "2BR", true, LINK)).toContain("still available.\nPick a viewing time here:");
+  it("offers the time picker only when the broker offered times on the form", () => {
+    expect(brokerAnswerMessage("en", "2BR", true, LINK, true, "Osman")).toContain("Or pick a viewing time here:");
+    expect(brokerAnswerMessage("en", "2BR", true, LINK, false, "Osman")).not.toContain("pick a viewing time");
   });
 
   it("says taken in the tenant's language", () => {

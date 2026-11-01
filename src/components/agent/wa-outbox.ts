@@ -26,7 +26,11 @@ import { waLink } from "../../../scripts/crm/public-links";
 import { isDirectChat } from "../../../scripts/wa/tenant-pure";
 import {
   MAX_ATTEMPTS,
+  REST_DAYS,
   type OutboxRow,
+  type RestReason,
+  type SkipReason,
+  brokerRest,
   dailyCap,
   groupByPhone,
   inSendWindow,
@@ -41,7 +45,8 @@ import {
   typingMs,
 } from "../../../scripts/wa/outbox-pure";
 import { db } from "@/lib/db";
-import { askBodyNow } from "./broker";
+import { askBodyNow, markIntroduced } from "./broker";
+import { brokerSendMode } from "./broker-sends";
 import { isRepostAsk, parseBrokerReply } from "./broker-reply";
 import { EvolutionError, connectionState, findMessages, isBridgeDown, mediaBytes, sendPresence, sendText } from "@/lib/whatsapp/evolution";
 import { handleBrokerReply, repostAskKey } from "./broker-inbox";
@@ -88,7 +93,36 @@ async function recordRun(ok: boolean, detail = "") {
   await writeState("streak", next);
 }
 
-async function drain(dry: boolean, log: Log): Promise<{ sent: number; bridgeError?: string }> {
+const SKIP_TEXT: Record<SkipReason, string> = {
+  "opted-out": "broker opted out",
+  stale: "stale: queued over 18 h ago",
+  "sends-off": "broker sends off",
+};
+
+/** Asks (not the line's own short replies, labelled auto-*) each number got in the last REST_DAYS, and when it last wrote back. */
+async function restingBrokers(phones: string[], now: Date): Promise<Map<string, RestReason>> {
+  const out = new Map<string, RestReason>();
+  if (phones.length === 0) return out;
+  const since = new Date(now.getTime() - REST_DAYS * 86_400_000);
+  const [asks, brokers] = await Promise.all([
+    db.outboundMessage.findMany({
+      where: { status: "SENT", kind: { in: ["BROKER_REQUEST", "BROKER_ASK"] }, to: { in: phoneVariants(phones) }, sentAt: { gte: since }, NOT: { label: { startsWith: "auto-" } } },
+      select: { to: true, sentAt: true },
+    }),
+    db.broker.findMany({ where: { phones: { hasSome: phoneVariants(phones) } }, select: { phones: true, lastReplyAt: true } }),
+  ]);
+  const sentAt = new Map<string, Date[]>();
+  for (const a of asks) if (a.sentAt) sentAt.set(phoneKey(a.to), [...(sentAt.get(phoneKey(a.to)) ?? []), a.sentAt]);
+  const replied = new Map<string, Date>();
+  for (const b of brokers) for (const p of b.phones) if (b.lastReplyAt && (!replied.get(phoneKey(p)) || replied.get(phoneKey(p))! < b.lastReplyAt)) replied.set(phoneKey(p), b.lastReplyAt);
+  for (const phone of phones) {
+    const why = brokerRest(sentAt.get(phone) ?? [], replied.get(phone) ?? null, now);
+    if (why) out.set(phone, why);
+  }
+  return out;
+}
+
+async function drain(dry: boolean, log: Log, sendsOff: boolean): Promise<{ sent: number; bridgeError?: string }> {
   const now = new Date();
   const rows = await db.outboundMessage.findMany({ where: { status: "QUEUED" }, orderBy: { createdAt: "asc" }, take: 500 });
   if (!rows.length) return { sent: 0 };
@@ -112,6 +146,8 @@ async function drain(dry: boolean, log: Log): Promise<{ sent: number; bridgeErro
     : [];
 
   const cap = dailyCap();
+  const brokerPhones = [...new Set(rows.filter((r) => r.kind !== "TENANT_ALERT").map((r) => phoneKey(r.to)))];
+  const resting = sendsOff ? new Map<string, RestReason>() : await restingBrokers(brokerPhones, now);
   const plan = planOutbox<(typeof rows)[number] & OutboxRow>({
     now,
     rows,
@@ -119,29 +155,41 @@ async function drain(dry: boolean, log: Log): Promise<{ sent: number; bridgeErro
     lastSentAt,
     optedOutBrokers: new Set(brokers.filter((b) => b.optOut).map((b) => b.id)),
     optedOutPhones: new Set([...optedOutByPhone.flatMap((b) => b.phones.map(phoneKey)), ...optedOutPosters.map((p) => phoneKey(p.user.phoneNumber ?? ""))]),
+    resting,
+    brokerSendsOff: sendsOff,
     cap,
   });
   const held = plan.hold.reduce<Record<string, number>>((acc, h) => ({ ...acc, [h.reason]: (acc[h.reason] ?? 0) + 1 }), {});
   const alerts = plan.send.filter((r) => r.kind === "TENANT_ALERT");
   const toSend = [...alerts, ...plan.send.filter((r) => r.kind !== "TENANT_ALERT").slice(0, BROKER_SENDS_PER_TICK)];
-  log(`queued ${rows.length} · sent today ${sentRows.length}/${cap} · plan ${plan.send.length} (this tick ${toSend.length}) · skip ${plan.skip.length} · hold ${JSON.stringify(held)}`);
+  log(`queued ${rows.length} · sent today ${sentRows.length}/${cap} · plan ${plan.send.length} (this tick ${toSend.length}) · skip ${plan.skip.length} · hold ${JSON.stringify(held)}${sendsOff ? " · broker sends OFF" : ""}`);
 
-  for (const { row } of plan.skip) {
-    log(`skip ${row.id} ${row.kind}: broker opted out`);
-    if (!dry) await db.outboundMessage.update({ where: { id: row.id }, data: { status: "SKIPPED", error: "broker opted out" } });
+  for (const { row, reason } of plan.skip) {
+    log(`skip ${row.id} ${row.kind}: ${SKIP_TEXT[reason]}`);
+    if (!dry) await db.outboundMessage.update({ where: { id: row.id }, data: { status: "SKIPPED", error: SKIP_TEXT[reason] } });
   }
 
   let sent = 0;
   for (const row of toSend) {
     let body = row.body;
     if (row.kind === "BROKER_REQUEST" && row.brokerRequestIds.length) {
-      const worded = await askBodyNow(row.brokerRequestIds.join(), row.brokerRequestIds);
-      if (worded === "answered") {
-        log(`skip ${row.id}: every home on it was answered before it went out`);
-        if (!dry) await db.outboundMessage.update({ where: { id: row.id }, data: { status: "SKIPPED", error: "answered before it went out" } });
+      const worded = await askBodyNow(row.brokerRequestIds.join(), row.brokerRequestIds, row.to);
+      if (worded === "answered" || worded === "expired") {
+        const why = worded === "answered" ? "answered before it went out" : "expired before it went out";
+        log(`skip ${row.id}: ${why}`);
+        if (!dry) await db.outboundMessage.update({ where: { id: row.id }, data: { status: "SKIPPED", error: why } });
         continue;
       }
-      if (worded) body = worded;
+      if (worded) body = worded.body;
+    }
+    // A demand ask whose tenant request closed while it waited is about nothing any more.
+    if (row.kind === "BROKER_ASK" && row.tenantRequestId) {
+      const open = await db.tenantRequest.count({ where: { id: row.tenantRequestId, status: { in: ["OPEN", "MATCHED"] }, expiresAt: { gte: now } } });
+      if (!open) {
+        log(`skip ${row.id}: its tenant request is closed`);
+        if (!dry) await db.outboundMessage.update({ where: { id: row.id }, data: { status: "SKIPPED", error: "tenant request closed" } });
+        continue;
+      }
     }
     if (dry) {
       log(`would send ${row.id} ${row.kind} → ${row.to}: ${body.replace(/\s+/g, " ")}`);
@@ -158,6 +206,8 @@ async function drain(dry: boolean, log: Log): Promise<{ sent: number; bridgeErro
       if (row.kind === "BROKER_REQUEST" && row.brokerRequestIds.length) {
         await db.brokerRequest.updateMany({ where: { id: { in: row.brokerRequestIds } }, data: { channel: "evolution", sentAt } });
       }
+      // Their first message from Mkan said who we are; every later one is short.
+      if (row.kind !== "TENANT_ALERT") await markIntroduced(row.to, sentAt);
       sent += 1;
       log(`sent ${row.id} ${row.kind}`);
     } catch (err) {
@@ -189,14 +239,25 @@ async function drain(dry: boolean, log: Log): Promise<{ sent: number; bridgeErro
 
 type Pending = Record<string, { urls: string[]; at: string }>;
 
-/** A word back to a broker, as a person types it; its row turns FAILED if WhatsApp refuses it. */
-async function sendReply(phone: string, reply: { text: string; outboundId: string }, name: string, log: Log) {
+/**
+ * A word back to a broker, as a person types it; its row turns FAILED if
+ * WhatsApp refuses it. With broker sends off nothing goes: the row is SKIPPED
+ * and the caller's #mkan card carries what the line would have said.
+ */
+async function sendReply(phone: string, reply: { text: string; outboundId: string }, name: string, log: Log, sendsOff = false): Promise<boolean> {
+  if (sendsOff) {
+    await db.outboundMessage.update({ where: { id: reply.outboundId }, data: { status: "SKIPPED", error: "broker sends off" } }).catch(() => {});
+    log(`answer to ${name} held: broker sends off`);
+    return false;
+  }
   try {
     await sendPresence(phone, typingMs(reply.text));
     await sendText(phone, reply.text);
+    return true;
   } catch (err) {
     await db.outboundMessage.update({ where: { id: reply.outboundId }, data: { status: "FAILED", error: (err as Error).message.slice(0, 500) } });
     log(`answer to ${name} failed: ${(err as Error).message}`);
+    return false;
   }
 }
 
@@ -216,7 +277,7 @@ async function storePhotos(brokerId: string, ids: string[]): Promise<string[]> {
   return urls;
 }
 
-async function replies(dry: boolean, log: Log): Promise<number> {
+async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<number> {
   const now = new Date();
   const records = await findMessages(new Date(now.getTime() - REPLY_LOOKBACK_MS), now, 200);
   const seen = await readState<string[]>("seen", []);
@@ -306,7 +367,11 @@ async function replies(dry: boolean, log: Log): Promise<number> {
       );
     } else if (action.kind === "reply") {
       if (action.why === "photos-need-price" && photoUrls.length) pending[broker.id] = { urls: photoUrls, at: now.toISOString() };
-      await sendReply(g.phone, action, broker.name, log);
+      if (!(await sendReply(g.phone, action, broker.name, log, sendsOff)) && sendsOff) {
+        await postSlackCard(
+          `💬 *${broker.name}* (+${g.phone}) replied — broker sends are off, so the line said nothing. It would have said "${action.text}".\n> ${words.replace(/\n/g, "\n> ").slice(0, 600)}\n<${waLink(g.phone, "")}|Answer by hand>`,
+        );
+      }
     } else if (action.kind === "repost") {
       const next =
         action.answer === "YES"
@@ -316,11 +381,10 @@ async function replies(dry: boolean, log: Log): Promise<number> {
             : "Not a plain yes or no — read it. If it is a yes, tell Hermes: `these brokers said yes: <handle>`.";
       await postSlackCard(`📣 *${broker.name}* (+${g.phone}) answered the TikTok repost ask: *${action.answer ?? "unclear"}*\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 400)}\n${next}`);
     } else if (action.kind === "availability") {
-      if (action.reply) await sendReply(g.phone, action.reply, broker.name, log);
+      const said = action.reply ? await sendReply(g.phone, action.reply, broker.name, log, sendsOff) : false;
       const marked = `${action.applied ? "marked" : "already"} ${action.answer === "RENTED" ? "rented" : "available"}`;
-      await postSlackCard(
-        `✅ *${broker.name}* (+${g.phone}) answered → home #${action.listingId} ${marked}${action.reply ? ` · we said "${action.reply.text}"` : ""}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 600)}`,
-      );
+      const note = action.reply ? (said ? ` · we said "${action.reply.text}"` : sendsOff ? ` · not answered (broker sends off) — <${waLink(g.phone, "")}|answer by hand>` : "") : "";
+      await postSlackCard(`✅ *${broker.name}* (+${g.phone}) answered → home #${action.listingId} ${marked}${note}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 600)}`);
     } else {
       if (stored.length) pending[broker.id] = { urls: photoUrls, at: now.toISOString() };
       const botAsk = parseBrokerReply(g.text).asksIfBot ? "🤖 asks if they're talking to a bot — answer this one yourself.\n" : "";
@@ -329,8 +393,14 @@ async function replies(dry: boolean, log: Log): Promise<number> {
       );
     }
   }
-  // Posted a home we asked about, but not in the directory: a person reads it.
+  // Posted a home we asked about, but not in the directory: a person reads it — and a "stop"
+  // from them holds like anyone's, on a directory row of their own.
   for (const g of dry ? [] : groupByPhone(strangers)) {
+    if (isOptOut(g.text)) {
+      await db.broker.create({ data: { kind: "BROKER", name: `+${g.phone}`, phones: [`+${g.phone}`], sources: ["whatsapp"], optOut: true, optOutAt: new Date() } }).catch(() => {});
+      await postSlackCard(`🚫 +${g.phone} (posts a home we asked about) replied "${g.text.slice(0, 200)}" — opted out; no more WhatsApp asks.`);
+      continue;
+    }
     await postSlackCard(`💬 +${g.phone} (posts a home we asked about, not in the broker directory) replied on WhatsApp:\n> ${(g.text || "[photo or voice note]").replace(/\n/g, "\n> ").slice(0, 600)}\n<${waLink(g.phone, "")}|Open the chat>`);
   }
   // Tenants the webhook missed; the turn answers each message id once.
@@ -365,12 +435,14 @@ export async function runOutbox(opts: { dry?: boolean; log?: Log } = {}): Promis
   }
   if (!dry && !(await takeLease(LEASE, LEASE_MS))) return { state, sent: 0, replies: 0, skipped: "locked" };
   try {
-    const { sent, bridgeError } = await drain(dry, log);
+    // Read once per pass: a person flips it with `pnpm wa:brokers` (broker-sends.ts).
+    const sendsOff = (await brokerSendMode()) !== "gated";
+    const { sent, bridgeError } = await drain(dry, log, sendsOff);
     if (bridgeError) {
       if (!dry) await recordRun(false, bridgeError);
       return { state, sent, replies: 0 };
     }
-    const n = state === "open" ? await replies(dry, log) : 0;
+    const n = state === "open" ? await replies(dry, log, sendsOff) : 0;
     if (!dry) await recordRun(true);
     return { state, sent, replies: n };
   } catch (err) {

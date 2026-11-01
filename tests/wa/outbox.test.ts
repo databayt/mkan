@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   type OutboxRow,
+  brokerRest,
   dailyCap,
   inSendWindow,
   isOptOut,
@@ -79,21 +80,43 @@ describe('wa outbox — plan', () => {
     expect(base(rows, { sentToday: 40, cap: 40 }).send).toEqual([]);
   });
 
-  it('sends one message per broker per Kigali day', () => {
-    const a1 = row({ brokerId: 'A' });
-    const a2 = row({ brokerId: 'A' });
-    const b1 = row({ brokerId: 'B' });
+  it('sends one message per broker number per Kigali day, whatever kind of ask', () => {
+    const a1 = row({ brokerId: 'A', to: '+250700000011' });
+    const a2 = row({ brokerId: null, kind: 'BROKER_REQUEST', to: '+250700000011' });
+    const b1 = row({ brokerId: 'B', to: '+250700000012' });
     const plan = base([a1, a2, b1]);
     expect(plan.send.map((r) => r.id)).toEqual([a1.id, b1.id]);
     expect(plan.hold).toEqual([{ row: a2, reason: 'broker-today' }]);
   });
 
-  it('remembers brokers sent to earlier today, and forgets yesterday', () => {
-    const r = row({ brokerId: 'A' });
-    const today = base([r], { lastSentAt: new Map([['broker:A', kigali('2026-10-21T08:30:00')]]) });
+  it('remembers numbers sent to earlier today, and forgets yesterday', () => {
+    const r = row({ brokerId: 'A', to: '+250700000013' });
+    const today = base([r], { lastSentAt: new Map([[recipientKey(r), kigali('2026-10-21T08:30:00')]]) });
     expect(today.hold).toEqual([{ row: r, reason: 'broker-today' }]);
-    const yesterday = base([r], { lastSentAt: new Map([['broker:A', kigali('2026-10-20T19:30:00')]]) });
+    const yesterday = base([r], { lastSentAt: new Map([[recipientKey(r), kigali('2026-10-20T19:30:00')]]) });
     expect(yesterday.send).toEqual([r]);
+  });
+
+  it('skips a broker ask that waited too long, never a tenant alert', () => {
+    const old = row({ createdAt: kigali('2026-10-20T15:00:00') });
+    const alert = row({ kind: 'TENANT_ALERT', brokerId: null, createdAt: kigali('2026-10-20T15:00:00') });
+    const plan = base([old, alert]);
+    expect(plan.skip).toEqual([{ row: old, reason: 'stale' }]);
+    expect(plan.send).toEqual([alert]);
+  });
+
+  it('skips every broker row while broker sends are off; tenant alerts still go', () => {
+    const ask = row();
+    const alert = row({ kind: 'TENANT_ALERT', brokerId: null });
+    const plan = base([ask, alert], { brokerSendsOff: true });
+    expect(plan.skip).toEqual([{ row: ask, reason: 'sends-off' }]);
+    expect(plan.send).toEqual([alert]);
+  });
+
+  it('holds an ask for a broker who is resting', () => {
+    const r = row({ to: '+250700000014' });
+    const plan = base([r], { resting: new Map([['250700000014', 'broker-resting']]) });
+    expect(plan.hold).toEqual([{ row: r, reason: 'broker-resting' }]);
   });
 
   it('caps a row without a broker by its number', () => {
@@ -165,5 +188,34 @@ describe("broker bursts", () => {
     expect(groups[0]).toMatchObject({ phone: "250700000011", imageIds: ["1", "2"], text: "Kibagabaga\n2 bedrooms\nPrice: 300k" });
     expect(isImage({ imageMessage: {} })).toBe(true);
     expect(isImage({ conversation: "hi" }, "conversation")).toBe(false);
+  });
+});
+
+describe('wa outbox — a broker is never pestered', () => {
+  const now = kigali('2026-11-01T10:00:00');
+  const ago = (h: number) => new Date(now.getTime() - h * 3_600_000);
+
+  it('caps asks at three a week', () => {
+    expect(brokerRest([ago(2), ago(30), ago(60)], ago(1), now)).toBe('broker-week');
+    expect(brokerRest([ago(2), ago(30), ago(24 * 8)], ago(1), now)).toBeNull();
+  });
+
+  it('rests a broker for two weeks after two asks in a row went unanswered (11-01: "you keep sending sending??")', () => {
+    expect(brokerRest([ago(2), ago(30)], null, now)).toBe('broker-resting');
+    expect(brokerRest([ago(2), ago(30)], ago(40), now)).toBe('broker-resting');
+    // They answered the older ask: only the newest is still open.
+    expect(brokerRest([ago(2), ago(30)], ago(20), now)).toBeNull();
+    // The rest ends two weeks after the last ask.
+    expect(brokerRest([ago(24 * 15), ago(24 * 16)], null, now)).toBeNull();
+    expect(brokerRest([ago(2)], null, now)).toBeNull();
+  });
+});
+
+describe('wa outbox — opting out in a sentence', () => {
+  it.each(['stop', 'STOP!', 'Please stop', 'stop sending me these', "don't message me again", 'you keep sending sending??', 'Leave me alone', 'wrong number', 'Ntimwongere', 'Sinshaka', 'Arrêtez de m’écrire'])('"%s" opts out', (t) => {
+    expect(isOptOut(t.replace('’', "'"))).toBe(true);
+  });
+  it.each(['stop by tomorrow at 3', 'Yes it is available', 'When can you stop by to see it?', 'Price 300k, no stopping fee'])('"%s" does not', (t) => {
+    expect(isOptOut(t)).toBe(false);
   });
 });

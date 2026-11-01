@@ -25,6 +25,12 @@ import { startTurn } from "./run";
 import { loadTask } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
 import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, waLang, type WaDict, type WaLang } from "./whatsapp-format";
+import { askAroundText, botText, personText, readHomeRef, wantsPerson } from "./whatsapp-format";
+import { askAround } from "./demand";
+import { viewingRep } from "./broker-message";
+import { parseBrokerReply } from "./broker-reply";
+import { homeForRef } from "./home-ref";
+import { postSlackCard } from "./whatsapp";
 
 const MAX_TEXT = 600;
 /** A WhatsApp chat is one search while it stays this fresh. */
@@ -97,17 +103,37 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   const d = await waDict(lang);
   if ((row?.turns ?? 0) >= MAX_TURNS_PER_HOUR) return { reply: busyText(d, "rate"), taskId: current?.id ?? null };
 
+  // "Are you a bot?" gets the truth, and "person" gets one; the team hears both in #mkan.
+  if (parseBrokerReply(rest).asksIfBot || wantsPerson(rest)) {
+    const asksBot = !wantsPerson(rest);
+    await postSlackCard(`${asksBot ? "🤖 A tenant asked if they're talking to a bot" : "🙋 A tenant wants a person"} — ${profile.waPhone ?? "unknown number"}${current ? ` · chat ${current.id}` : ""}\n> ${rest.slice(0, 300)}`).catch(() => {});
+    if (current) await stampSeen(current.id, input.msgId, 0);
+    return { reply: asksBot ? botText(lang, viewingRep()) : personText(lang, viewingRep()), taskId: current?.id ?? null };
+  }
+
+  // A home's code ("K5808" from a TikTok post, or /find's "Check on WhatsApp"): a fresh chat that
+  // searches like it, that home first. With a web ref too, the web chat's words come along.
+  const homeRef = readHomeRef(rest);
+  const refHome = homeRef ? await homeForRef(homeRef) : null;
+  if (refHome) current = null;
+
   // A digit answers the last numbered question.
   // A ref's prefilled words are ours, not the tenant's: the web chat's own words run instead.
-  let text = ref ? "" : rest;
+  let text = ref && !refHome ? "" : rest;
   if (current) {
     const view = await loadTask(viewer, current.id);
     const pick = readPick(rest, view, d);
     if (pick?.kind === "check") {
       const item = view!.shortlist.find((s) => s.id === pick.listingId)!;
-      const { asked } = await askAvailabilityFor(current.id, pick.listingId).catch(() => ({ asked: false }));
+      const res = await askAvailabilityFor(current.id, pick.listingId).catch(() => ({ ok: false, asked: false }) as const);
       await stampSeen(current.id, input.msgId, pick.listingId);
-      return { reply: checkText(lang, asked, item.title), taskId: current.id };
+      const outcome = res.asked ? "asked" : "why" in res && res.why === "handed" ? "handed" : "none";
+      return { reply: checkText(lang, outcome, item.title), taskId: current.id };
+    }
+    if (pick?.kind === "askAround") {
+      const result = await askAround(current.id).catch(() => ({ asked: 0, handed: false }));
+      await stampSeen(current.id, input.msgId, 0);
+      return { reply: askAroundText(lang, result), taskId: current.id };
     }
     if (pick?.kind === "text") text = pick.text;
   }
@@ -124,7 +150,13 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   }
   if (!text) text = raw;
 
-  const message: Extract<AgentMessage, { role: "user" }> = { role: "user", text, at: new Date().toISOString(), wa: input.msgId };
+  const message: Extract<AgentMessage, { role: "user" }> = {
+    role: "user",
+    text,
+    at: new Date().toISOString(),
+    wa: input.msgId,
+    ...(refHome ? { filters: refHome.filters, pin: refHome.id } : {}),
+  };
   let appended = await appendUserMessage({ profileId: profile.id, userId: profile.userId, current, message, lang, seed });
   // The bridge sends one phone's messages in order, so "busy" is the tail of the last turn: wait for it once.
   for (let i = 0; "busy" in appended && i < 3; i++) {

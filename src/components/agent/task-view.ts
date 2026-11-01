@@ -2,7 +2,6 @@ import "server-only";
 
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { brokerNumber } from "./broker-message";
 import { ownedBy, type Viewer } from "./profile";
 import { coerceRequirements } from "./requirements";
 import { SILENT_EVENTS, type AgentEventView, type AgentMessage, type AgentTaskView, type ShortlistItem } from "./types";
@@ -103,7 +102,6 @@ async function withViewings(view: AgentTaskView, task: TaskRow): Promise<AgentTa
       return {
         ...item,
         availability: "confirmed",
-        brokerPhone: item.brokerPhone ?? brokerNumber(r.broker.phoneNumber),
         viewing: {
           requestId: r.id,
           slots: ((r.viewingSlots as string[] | null) ?? []).filter((s) => typeof s === "string"),

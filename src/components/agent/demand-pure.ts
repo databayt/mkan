@@ -8,10 +8,10 @@ import { haversineKm } from "@/lib/geo/rwanda-places";
 import { AREA_KEYS, AREAS, NEIGHBOURHOODS, type AreaKey } from "./areas";
 import type { Requirements } from "./requirements";
 
-/** Brokers asked per unmet request. */
-export const DEMAND_FAN_OUT = 8;
-/** A broker gets at most one demand ask per this many hours, whatever the requests. */
-export const BROKER_ASK_GAP_HOURS = 24;
+/** Brokers asked per unmet request, once the tenant said yes to "want me to ask around?" (8 until 2026-11-01). */
+export const DEMAND_FAN_OUT = 3;
+/** A broker gets at most one demand ask per this many hours, whatever the requests: a week (a day until 2026-11-01). */
+export const BROKER_ASK_GAP_HOURS = 7 * 24;
 /** Unmet demand is kept, matched and alerted on this long. */
 export const DEMAND_TTL_DAYS = 14;
 

@@ -2,19 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ExternalLink, Loader2, MessageCircle, Phone, Star } from "lucide-react";
+import { ExternalLink, MessageCircle, Star } from "lucide-react";
 import { BlurImage } from "@/components/atom/blur-image";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { formatCurrency } from "@/lib/i18n/formatters";
-import { askAvailability } from "./feedback-actions";
 import { fill } from "./format";
 import type { CostLine } from "./cost";
 import { Availability, FitLine, kindLine, placeName, SaveHeart, type NotForMe } from "./shortlist-card";
 import type { ShortlistItem } from "./types";
 import { ViewingPanel } from "./viewing";
+import { continueOnWhatsApp } from "./wa-link";
 
 /**
  * A home's details as an iOS bottom sheet: the photo, why it ranked, the full
@@ -39,16 +39,11 @@ export default function CardSheet({
   const dict = useDictionary();
   const c = dict?.agent?.card;
   const labels = dict?.agent?.mustHaves as Record<string, string> | undefined;
-  const [asking, setAsking] = useState<"idle" | "asking" | "none">("idle");
   const [why, setWhy] = useState(false);
-  // A broker lead the agent did not ask about (the stay type was a guess): one tap asks.
+  // A broker lead nobody has asked about: the check happens on WhatsApp, where Mkan reaches the
+  // tenant again with the answer — a browser never messages a broker (2026-11-01).
   const canAsk = !!item.lead && item.availability === "unconfirmed";
-  const ask = async () => {
-    setAsking("asking");
-    const res = await askAvailability({ taskId, listingId: item.id }).catch(() => ({ ok: false, asked: false }));
-    setAsking(res.asked ? "idle" : "none");
-    if (res.asked) onChange();
-  };
+  const ref = `K${item.id}`;
   const { locale } = useLocale();
   const money = (n: number) => formatCurrency(n, locale, item.currency);
   const { cost } = item;
@@ -181,28 +176,20 @@ export default function CardSheet({
             )}
           </div>
 
-          {item.availability === "confirmed" && item.brokerPhone && (
+          {item.availability === "confirmed" && !item.viewing?.slots.length && (
             <div className="space-y-1.5">
-              <p className="text-xs text-muted-foreground">{c?.brokerContact ?? "The broker says it's available. Call or WhatsApp them to arrange a viewing."}</p>
-              <div className="grid grid-cols-2 gap-2">
-                <a
-                  href={`tel:${item.brokerPhone}`}
-                  className="flex items-center justify-center gap-2 rounded-full border py-3 text-[15px] font-medium transition-colors hover:bg-muted"
-                >
-                  <Phone className="size-4" aria-hidden />
-                  {c?.callBroker ?? "Call"}
-                </a>
-                <a
-                  href={`https://wa.me/${item.brokerPhone.replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 rounded-full border py-3 text-[15px] font-medium transition-colors hover:bg-muted"
-                >
-                  <MessageCircle className="size-4" aria-hidden />
-                  {c?.whatsappBroker ?? "WhatsApp"}
-                </a>
-              </div>
-              <p className="text-center text-xs tabular-nums text-muted-foreground" dir="ltr">{item.brokerPhone}</p>
+              <p className="text-xs text-muted-foreground">
+                {c?.mkanArranges ?? "The broker says it's available. Mkan sets up the viewing with you and the broker, and it's free for you."}
+              </p>
+              <a
+                href={continueOnWhatsApp(taskId, fill(c?.bookViewingWords ?? "I'd like to view {ref}", { ref }))}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 rounded-full border py-3 text-[15px] font-medium transition-colors hover:bg-muted"
+              >
+                <MessageCircle className="size-4" aria-hidden />
+                {c?.bookViewing ?? "Book the viewing on WhatsApp"}
+              </a>
             </div>
           )}
 
@@ -210,17 +197,17 @@ export default function CardSheet({
 
           {canAsk && (
             <div className="space-y-1.5">
-              <button
-                type="button"
-                onClick={() => void ask()}
-                disabled={asking === "asking"}
-                className="flex w-full items-center justify-center gap-2 rounded-full border py-3 text-[15px] font-medium transition-colors hover:bg-muted disabled:opacity-60"
+              <a
+                href={continueOnWhatsApp(taskId, ref)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-full border py-3 text-[15px] font-medium transition-colors hover:bg-muted"
               >
-                {asking === "asking" && <Loader2 className="size-4 animate-spin" aria-hidden />}
-                {asking === "asking" ? c?.checking ?? "Asking the broker…" : c?.checkAvailability ?? "Check availability"}
-              </button>
+                <MessageCircle className="size-4" aria-hidden />
+                {c?.checkOnWhatsApp ?? "Check availability on WhatsApp"}
+              </a>
               <p className="text-center text-xs text-muted-foreground">
-                {asking === "none" ? c?.noBroker ?? "No broker to ask for this home yet." : c?.checkAvailabilityHint ?? "Mkan messages the broker for you and shows the answer here."}
+                {c?.checkOnWhatsAppHint ?? "Mkan checks with the broker and sets up the viewing. It's free for you."}
               </p>
             </div>
           )}

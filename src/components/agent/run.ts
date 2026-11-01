@@ -35,7 +35,6 @@ import {
 import { relaxations, type Relaxed } from "./relax";
 import { searchKigali, toShortlist } from "./search";
 import { openDemand } from "./demand";
-import { requestConfirmations } from "./broker";
 import type { AgentMessage, EventKind, ShortlistItem, StepStatus } from "./types";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
@@ -419,9 +418,9 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     }
     mark("rank");
     if (result.ranked.length === 0) {
-      // Nothing on Mkan fits: keep the demand and ask the brokers who work the area.
+      // Nothing on Mkan fits: keep the demand (new homes are matched against it daily). Brokers are
+      // asked around only when a WhatsApp tenant says yes to it (demand.ts askAround).
       await Promise.all([trace.record("ranked", "done", { top: 0 }), learn([])]);
-      // Past the deadline the tenant already has the error: no broker is asked on its behalf.
       if (gate.abandoned) return;
       const demand = await openDemand(task.id, task.profileId, query, lang).catch((err) => {
         console.warn(`[agent] demand not opened: ${(err as Error).message}`);
@@ -429,14 +428,25 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
       });
       trace.resync(await lastSeq(task.id));
       await firstReply(
-        { role: "agent", kind: "none", stay: query.stay ?? undefined, ...(demand ? { demand: true, asked: demand.asked } : {}), at: now() },
+        {
+          role: "agent",
+          kind: "none",
+          stay: query.stay ?? undefined,
+          ...(demand ? { demand: true, asked: demand.asked } : {}),
+          ...(lastUser?.pin ? { pin: { id: lastUser.pin, found: false } } : {}),
+          at: now(),
+        },
         { shortlist: json([]), status: "DONE" },
       );
       return;
     }
 
-    // 5. The cards go up now; the brokers are asked after, while the tenant reads.
-    const [cards] = await Promise.all([toShortlist(result.ranked, lang, query.near?.name), trace.record("ranked", "done", { top: result.ranked.length })]);
+    // 5. The cards go up now. No broker is asked here: a tenant picks a home first (availability.ts).
+    const [ranked] = await Promise.all([toShortlist(result.ranked, lang, query.near?.name), trace.record("ranked", "done", { top: result.ranked.length })]);
+    // A ref ("K5808" from a TikTok post) leads with its home when it still fits; gone, it is said plainly.
+    const pin = lastUser?.pin;
+    const pinned = pin ? ranked.find((s) => s.id === pin) : undefined;
+    const cards = pinned ? [pinned, ...ranked.filter((s) => s.id !== pin)] : ranked;
     let shortlist = cards;
     const unconfirmed = shortlist.filter((s) => s.availability === "unconfirmed").length;
     // Claude writes the words when it can (language allowed, credits left); the cards never wait for it.
@@ -451,6 +461,7 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
       ...(relaxed.length ? { relaxed } : {}),
       ...(refine ? { refine } : {}),
       ...(willWrite ? { pendingText: true } : {}),
+      ...(pin ? { pin: { id: pin, found: !!pinned } } : {}),
       at: now(),
     };
     const [, shownCards] = await Promise.all([
@@ -461,13 +472,13 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     mark("cards");
     // Past the deadline the tenant already has the error: no broker is asked, nothing more is written.
     if (!shownCards) return;
-    // The writer and the broker asks run side by side.
     const writing = willWrite
       ? writeReply(writerFacts({ lang: writeLang, requirements, relaxed, shortlist, refine, unplaced: reading?.unplaced })).catch(() => null)
       : Promise.resolve(null);
-    // A guessed stay type does not reach a broker: they are asked once the tenant says months.
-    const asked = new Set(assumed ? [] : await requestConfirmations(task.id, shortlist, requirements, lang));
-    // Only widened homes fit: show them, and also ask the area's brokers for the real thing.
+    // Brokers hear about a home only after the tenant picks it (2026-11-01): every monthly
+    // search used to ask the broker of each home it showed, test searches included.
+    const asked = new Set<number>();
+    // Only widened homes fit: keep the real need as demand, matched against new homes daily.
     const demand = relaxed.length && !assumed
       ? await openDemand(task.id, task.profileId, requirements, lang).catch((err) => {
           console.warn(`[agent] demand not opened: ${(err as Error).message}`);

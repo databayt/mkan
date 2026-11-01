@@ -5595,6 +5595,11 @@
       },
       "checkAvailability": "Reba niba ihari",
       "checkAvailabilityHint": "Mkan yandikira komisiyoneri mu izina ryawe, igisubizo kikagaragara hano.",
+      "checkOnWhatsApp": "Baza niba ihari kuri WhatsApp",
+      "checkOnWhatsAppHint": "Mkan ibaza komisiyoneri ikanategura gusura. Ni ubuntu kuri wowe.",
+      "mkanArranges": "Komisiyoneri avuga ko ihari. Mkan itegura gusura hamwe nawe na komisiyoneri, kandi ni ubuntu kuri wowe.",
+      "bookViewing": "Saba gusura kuri WhatsApp",
+      "bookViewingWords": "Ndashaka gusura {ref}",
       "checking": "Turabaza komisiyoneri…",
       "noBroker": "Nta komisiyoneri wo kubaza kuri iyi nzu ubu.",
       "status": {

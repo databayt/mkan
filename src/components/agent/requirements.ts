@@ -127,7 +127,8 @@ const WORD_NUMBERS: Record<string, number> = {
 /** "400k" / "400,000" / "400 000" / "1.2m" → numbers ≥ 1,000, with their offset. */
 function moneyMentions(text: string): { value: number; index: number; raw: string }[] {
   const out: { value: number; index: number; raw: string }[] = [];
-  const re = /(\d{1,3}(?:[,\s]\d{3})+|\d+(?:\.\d+)?)\s*(k(?![a-z])|m(?![a-z])|million|millions|milioni|miliyoni|thousand|mille|elfu|ألف|الف|مليون|ibihumbi)?/gi;
+  // A number glued to a letter is a home ref ("K5808" from a TikTok post), never money.
+  const re = /(?<![A-Za-z\d])(?<![A-Za-z][-#])(\d{1,3}(?:[,\s]\d{3})+|\d+(?:\.\d+)?)\s*(k(?![a-z])|m(?![a-z])|million|millions|milioni|miliyoni|thousand|mille|elfu|ألف|الف|مليون|ibihumbi)?/gi;
   // Kinyarwanda and Swahili put the unit first: "ibihumbi 300", "elfu 300", "milioni 1.2".
   const before = /\b(ibihumbi|elfu|milioni|miliyoni)\s+(\d+(?:[.,]\d+)?)/gi;
   for (const m of text.matchAll(before)) {

@@ -3,6 +3,7 @@ import {
   aboutMeMessage,
   availabilityMessage,
   availableAckMessage,
+  greetName,
   needSummary,
   pickPhrase,
   priceQuestionMessage,
@@ -16,45 +17,76 @@ import { planMirror } from "../../scripts/crm/tiktok-mirror";
 
 const ad = (k: string) => `https://www.tiktok.com/@kigali.homes/video/${k}`;
 const seeds = ["a", "b", "c", "d", "e", "f", "g", "h"];
-/** What would give away a bot, a platform or a middleman. */
-const NOT_A_TENANT = /mkan|client|tenant|one tap|tap here|STOP|HAGARIKA|form|reply with|automatic/i;
+/** What a message from Mkan must never carry: a renter's voice, a link to tap, a form. */
+const POSING = /I'm looking|my family|I'm a student|one tap|tap here|form|reply with a number/i;
 
 describe("broker message", () => {
   const need = needSummary({ ...EMPTY_REQUIREMENTS, bedrooms: 3, district: "KICUKIRO", maxPrice: 600_000, pricePeriod: "month", stay: "long" });
 
-  it("states the need the way brokers write it, in Kinyarwanda for the form, and as the tenant says it", () => {
+  it("states the need the way brokers write it, in Kinyarwanda for the form, and as Mkan tells it", () => {
     expect(need.en).toBe("a 3-bedroom, in Kicukiro, up to 600k");
     expect(need.rw).toBe("ibyumba 3, i Kicukiro, kugeza RWF 600,000 ku kwezi");
-    expect(need.me).toBe("I'm looking for a 3-bedroom in Kicukiro, up to 600k.");
-    expect(needSummary(EMPTY_REQUIREMENTS).me).toBe("I'm looking for a place in Kigali.");
+    expect(need.they).toBe("They're looking for a 3-bedroom in Kicukiro, up to 600k.");
+    expect(needSummary({ ...EMPTY_REQUIREMENTS, bedrooms: 2, purpose: "family" }).they).toBe("They're looking for a 2-bedroom in Kigali. It's for a family.");
   });
 
-  it("opens like a tenant: a hello, is it available, the broker's own ad — nothing else", () => {
-    const texts = seeds.map((k) => availabilityMessage([{ title: "3-bed in Kagarama", link: ad(k) }], k));
-    texts.forEach((t, i) => {
-      expect(t.split("\n")).toHaveLength(2);
-      expect(t).toContain(ad(seeds[i]!));
-      expect(t).toMatch(/available/i);
-      expect(t.replace(ad(seeds[i]!), "")).not.toMatch(NOT_A_TENANT);
+  it("introduces Mkan in a broker's first message: who we are, the ad, the ask, how to stop", () => {
+    for (const k of seeds) {
+      const t = availabilityMessage([{ title: "3-bed in Kagarama", link: ad(k) }], k, { introduce: true, name: "Eric", need: need.they });
+      expect(t).toMatch(/^Hi Eric, this is Mkan\./);
+      expect(t).toContain(ad(k));
+      expect(t).toContain(need.they);
+      expect(t).toMatch(/Is it still available\?/);
+      expect(t).toMatch(/just reply stop\.$/);
       expect(t).not.toContain("3-bed in Kagarama");
+      expect(t).not.toMatch(POSING);
+    }
+    expect(availabilityMessage([{ title: "A", link: ad("1") }], "s")).toMatch(/^Hi there, this is Mkan\./);
+  });
+
+  it("keeps later asks short, as Mkan, with the tenant's need", () => {
+    const texts = seeds.map((k) => availabilityMessage([{ title: "A", link: ad(k) }], k, { introduce: false, name: "Eric", need: need.they }));
+    texts.forEach((t, i) => {
+      expect(t).toMatch(/Mkan/);
+      expect(t).toContain(ad(seeds[i]!));
+      expect(t).toContain(need.they);
+      expect(t).toMatch(/available\?$/);
+      expect(t).not.toMatch(/reply stop/);
+      expect(t).not.toMatch(POSING);
     });
-    expect(new Set(texts.map((t) => t.replace(/https:\S+/, ""))).size).toBeGreaterThan(2);
-    expect(texts.some((t) => t.startsWith("Hey there, is this available?\n"))).toBe(true);
+    expect(new Set(texts.map((t) => t.replace(/https:\S+/, ""))).size).toBeGreaterThan(1);
   });
 
   it("asks about several ads in one message, links only", () => {
-    const text = availabilityMessage([{ title: "A", link: ad("1") }, { title: "B", link: ad("2") }, { title: "A again", link: ad("1") }], "s");
-    expect(text).toMatch(/are these/i);
+    const text = availabilityMessage([{ title: "A", link: ad("1") }, { title: "B", link: ad("2") }, { title: "A again", link: ad("1") }], "s", { introduce: false });
+    expect(text).toMatch(/Are they still available\?/);
     expect(text.match(/https:/g)).toHaveLength(2);
-    expect(text).not.toMatch(/\+?\d{9,}|1\.|A again/);
+    expect(text).not.toMatch(/\+?\d{9,}|A again/);
   });
 
-  it("follows up as the tenant, with only what the tenant said", () => {
-    expect(aboutMeMessage(need, "x")).toMatch(/^I'm looking for a 3-bedroom in Kicukiro, up to 600k\. Is (it|this one) still (available|free)\?$/);
+  it("writes in the broker's language when their ads use French or Kinyarwanda", () => {
+    const fr = availabilityMessage([{ title: "A", link: ad("1") }], "s", { introduce: true, lang: "FR" });
+    expect(fr).toMatch(/^Bonjour, ici Mkan\./);
+    expect(fr).toMatch(/répondez simplement stop\.$/);
+    const rw = availabilityMessage([{ title: "A", link: ad("1") }], "s", { introduce: true, lang: "RW" });
+    expect(rw).toMatch(/^Muraho, ni Mkan\./);
+    expect(rw).toMatch(/subiza stop\.$/);
+    expect(availabilityMessage([{ title: "A", link: ad("1") }], "s", { introduce: true, lang: "SW" })).toMatch(/^Hi there, this is Mkan/);
+  });
+
+  it("greets a person by name, never an agency, a handle or a flag", () => {
+    expect(greetName("Eric")).toBe("Eric");
+    expect(greetName("Marie Claire")).toBe("Marie Claire");
+    for (const n of ["Ibra real estate 🇷🇼", "@kigali.homes", "Kigali Students Living Services", "", null]) expect(greetName(n)).toBeNull();
+  });
+
+  it("follows up as Mkan, with only what the tenant said", () => {
+    expect(aboutMeMessage(need, "x")).toMatch(/^They're looking for a 3-bedroom in Kicukiro, up to 600k\. Is it still (available|free)\?$/);
     expect(aboutMeMessage(need, "x", true)).toMatch(/Are (they|these) still/);
     for (const k of seeds) {
-      expect(availableAckMessage(k)).not.toMatch(NOT_A_TENANT);
-      expect(takenAckMessage(k)).not.toMatch(NOT_A_TENANT);
+      expect(availableAckMessage(k)).toMatch(/viewing/);
+      expect(availableAckMessage(k)).not.toMatch(POSING);
+      expect(takenAckMessage(k)).not.toMatch(POSING);
     }
     expect(reAskMessage("Hi", "x")).toMatch(/is it still available\?/i);
     expect(reAskMessage("Hello how are you?", "x")).toMatch(/^(Good|Fine)/);
@@ -66,8 +98,11 @@ describe("broker message", () => {
     const demand = needSummary({ ...EMPTY_REQUIREMENTS, bedrooms: 2, purpose: "family" });
     for (const k of seeds) {
       for (const t of [
-        availabilityMessage([{ title: "A", link: ad(k) }], k),
+        availabilityMessage([{ title: "A", link: ad(k) }], k, { introduce: true, name: "Ibra real estate 🇷🇼" }),
+        availabilityMessage([{ title: "A", link: ad(k) }], k, { introduce: false }),
         availabilityMessage([{ title: "A", link: ad("1") }, { title: "B", link: ad("2") }], k),
+        availabilityMessage([{ title: "A", link: ad(k) }], k, { introduce: true, lang: "RW" }),
+        availabilityMessage([{ title: "A", link: ad(k) }], k, { introduce: true, lang: "FR" }),
         aboutMeMessage(demand, k),
         reAskMessage("Hi", k),
         reAskMessage("Hello how are you?", k),
@@ -90,11 +125,12 @@ describe("broker message", () => {
     expect(parseBrokerReply(t).asksIfBot).toBe(false);
   });
 
-  it("asks to come at the chosen time, in the tenant's words", () => {
+  it("asks for the chosen viewing time as Mkan, for its tenant", () => {
     const text = viewingChosenMessage("Flat", "Sat 18 Oct, 10:00", "https://x/b/t");
     expect(text).toContain("Sat 18 Oct, 10:00");
+    expect(text).toMatch(/Mkan/);
     expect(text).not.toContain("Flat");
-    expect(text).not.toMatch(/client/i);
+    expect(text).not.toMatch(POSING);
   });
 });
 
@@ -135,14 +171,31 @@ describe("tiktok mirror", () => {
 
 describe("who to ask", () => {
   const b = (userId: string) => ({ listingId: 5, userId, user: { phoneNumber: "+250788000000", username: null, sourceHostId: `tiktok:${userId}` } });
-  const req = (brokerUserId: string, status: string) => ({ id: `r-${brokerUserId}`, listingId: 5, brokerUserId, status, expiresAt: new Date(), taskId: "t0" });
+  const now = Date.parse("2026-11-01T12:00:00Z");
+  const hours = (h: number) => new Date(now + h * 3_600_000);
+  const req = (brokerUserId: string, status: string, createdAt = hours(-30), expiresAt = hours(-6)) => ({ id: `r-${brokerUserId}`, listingId: 5, brokerUserId, status, expiresAt, taskId: "t0", createdAt });
 
-  it("joins a question already out, else asks the first broker not asked today", async () => {
+  it("joins a question still out, else asks the first broker not asked about the home lately", async () => {
     const { pickBroker } = await import("../../src/components/agent/broker");
-    expect(pickBroker([b("a"), b("b")], new Map())).toEqual({ ask: b("a") });
-    expect(pickBroker([b("a"), b("b")], new Map([["5:a", req("a", "NO_REPLY")]]))).toEqual({ ask: b("b") });
-    expect(pickBroker([b("a"), b("b")], new Map([["5:b", req("b", "PENDING")]]))).toMatchObject({ join: { brokerUserId: "b" } });
-    expect(pickBroker([b("a")], new Map([["5:a", req("a", "NO_REPLY")]]))).toBeNull();
+    expect(pickBroker([b("a"), b("b")], new Map(), now)).toEqual({ ask: b("a") });
+    expect(pickBroker([b("a"), b("b")], new Map([["5:a", req("a", "NO_REPLY")]]), now)).toEqual({ ask: b("b") });
+    expect(pickBroker([b("a"), b("b")], new Map([["5:b", req("b", "PENDING", hours(-2), hours(22))]]), now)).toMatchObject({ join: { brokerUserId: "b" } });
+  });
+
+  it("never asks the same broker about the same home again the next day (the 10-24..11-01 loop)", async () => {
+    const { pickBroker } = await import("../../src/components/agent/broker");
+    // One broker, asked 30 h ago, silent: the hourly cron used to ask them again every day for a week.
+    expect(pickBroker([b("a")], new Map([["5:a", req("a", "NO_REPLY")]]), now)).toBeNull();
+    // A pending ask past its expiry is neither joined nor repeated.
+    expect(pickBroker([b("a")], new Map([["5:a", req("a", "PENDING")]]), now)).toBeNull();
+    // A broker who said "rented" is not asked again either.
+    expect(pickBroker([b("a")], new Map([["5:a", req("a", "RENTED")]]), now)).toBeNull();
+  });
+
+  it("asks again a broker who said it was available, once that answer is old", async () => {
+    const { pickBroker } = await import("../../src/components/agent/broker");
+    expect(pickBroker([b("a")], new Map([["5:a", req("a", "AVAILABLE", hours(-24))]]), now)).toBeNull();
+    expect(pickBroker([b("a")], new Map([["5:a", req("a", "AVAILABLE", hours(-24 * 4))]]), now)).toEqual({ ask: b("a") });
   });
 });
 

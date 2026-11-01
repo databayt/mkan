@@ -85,6 +85,10 @@ describe('French and Swahili', () => {
   it('does not read a phone number, a year or a decimal point as money', () => {
     expect(parseRequirements('2 bedroom in Remera, call me on 0788123456').maxPrice).toBeNull();
     expect(parseRequirements('studio in Kiyovu, moving in January 2027').maxPrice).toBeNull();
+    // The code a TikTok post tells viewers to send is a home, not a RWF 5,808 budget (it was, until 11-01).
+    expect(parseRequirements('K5808').maxPrice).toBeNull();
+    expect(parseRequirements('Hi, is K-6328 still available?').maxPrice).toBeNull();
+    expect(parseRequirements('K5808, up to 400k').maxPrice).toBe(400_000);
     expect(parseRequirements('rent max 400k a month, I have 1.5M to move in')).toMatchObject({ maxPrice: 400_000, maxUpfront: 1_500_000 });
   });
 });

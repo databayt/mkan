@@ -50,7 +50,8 @@ export interface AgentEventView {
 export type AgentMessage =
   /** `filters` are the badges the tenant picked; they win over the text. `clear` empties fields (a refine chip). */
   /** `wa`: the WhatsApp message id it came in as — a retried webhook or the fallback poll is answered once. */
-  | { role: "user"; text: string; at: string; filters?: Record<string, unknown>; clear?: string[]; wa?: string }
+  /** `pin`: the home a ref named ("K5808" from a TikTok post) — it leads the shortlist when it still fits. */
+  | { role: "user"; text: string; at: string; filters?: Record<string, unknown>; clear?: string[]; wa?: string; pin?: number }
   | { role: "agent"; kind: "ask"; field: HardField; at: string }
   /**
    * A vague first message missing several things at once: one stepper card asks
@@ -61,11 +62,12 @@ export type AgentMessage =
    * `relaxed`: details widened to find these; `refine`: a field offered as a follow-up question.
    * `text`: the reply Claude wrote (guarded) — else the template; `pendingText` while it is being written.
    */
-  | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; text?: string; pendingText?: boolean; demand?: boolean; asked?: number; at: string }
+  /** `pin`: the home the tenant's ref named — `found` false when it is gone (rented, or its ad was taken down). */
+  | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; text?: string; pendingText?: boolean; demand?: boolean; asked?: number; pin?: { id: number; found: boolean }; at: string }
   /** A question about renting, answered from knowledge.ts, or a greeting; no search ran. */
   | { role: "agent"; kind: "answer"; topic: "question" | "other"; text?: string; at: string }
   /** `demand`: the search was kept as a TenantRequest; `asked`: brokers messaged for it now. */
-  | { role: "agent"; kind: "none"; stay?: "short" | "long"; demand?: boolean; asked?: number; at: string }
+  | { role: "agent"; kind: "none"; stay?: "short" | "long"; demand?: boolean; asked?: number; pin?: { id: number; found: boolean }; at: string }
   /** The tenant asked for a few nights: the agent covers monthly rentals only, so no search ran (2026-10-24). */
   | { role: "agent"; kind: "monthlyOnly"; at: string }
   | { role: "agent"; kind: "error"; at: string };
