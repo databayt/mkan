@@ -148,7 +148,9 @@ async function consentedHandles(): Promise<Set<string>> {
 
 // ── pick ─────────────────────────────────────────────────────────────────────
 async function pick(): Promise<PostRow[]> {
-  const n = Number(argv('n', process.env.TIKTOK_POSTS_PER_DAY ?? '3')) || 3;
+  // 0 is an answer (broker videos on hold); only a missing or broken value falls back to 3.
+  const asked = Number(argv('n', process.env.TIKTOK_POSTS_PER_DAY ?? '3'));
+  const n = Number.isInteger(asked) && asked >= 0 ? asked : 3;
   // Brokers who answered the repost ask on WhatsApp since the last run go into today's pool.
   if (!flag('dry')) await syncLineConsent().catch((e) => console.warn(`  ! repost answers from the line not read: ${(e as Error).message.slice(0, 120)}`));
   const [rows, consented] = await Promise.all([loadRows({}), consentedHandles()]);
@@ -161,7 +163,8 @@ async function pick(): Promise<PostRow[]> {
   const picked = pickToday(rows, ledger, consented, n);
   console.log(`Kigali monthly homes: ${rows.length} · brokers consented: ${consented.size} · held back: ${[...why].map(([k, v]) => `${v} ${k}`).join(', ') || 'none'}`);
   for (const r of picked) console.log(`  ${refOf(r).padEnd(8)} #${r.id}  ${r.bedrooms ?? '?'}bd  RWF ${r.priceMonth}/mo  ${r.area ?? ''}, ${r.district ?? ''}  (${r.source})`);
-  if (!picked.length) console.log('  nothing to post today — the pool fills when brokers say YES (tt:ask) or owners send homes');
+  if (!picked.length && n === 0) console.log('  broker videos on hold (--n=0) — the picture video still posts');
+  else if (!picked.length) console.log('  nothing to post today — the pool fills when brokers say YES (tt:ask) or owners send homes');
   if (flag('dry')) return picked;
   mkdirSync(dayDir(), { recursive: true });
   writeFileSync(join(dayDir(), 'queue.json'), JSON.stringify(picked, null, 2));

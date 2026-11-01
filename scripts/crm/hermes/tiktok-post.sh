@@ -9,7 +9,10 @@
 set -uo pipefail
 REPO="${MKAN_REPO:-/Users/abdout/mkan}"
 LOGDIR="$REPO/scripts/crm/.data/tiktok-post"
-PER_DAY="${TIKTOK_POSTS_PER_DAY:-3}"
+# Broker videos are on hold (0) until their burned-in captions and phone numbers are
+# stripped before the brand pass (2026-11-01): a broker's own number on our page sends the
+# tenant straight to them. The daily picture video still posts. Back to 3 once it ships.
+PER_DAY="${TIKTOK_POSTS_PER_DAY:-0}"
 export PATH="/opt/homebrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
 unset SLACK_HOME_CHANNEL
 
