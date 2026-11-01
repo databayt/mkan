@@ -16,7 +16,11 @@ echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron ──" >>"$LOGDIR/match.l
 # Facebook (06:30) and web (06:45) homes reach the lead pool here; TikTok's 06:00 run mirrors its own.
 PRISMA_QUIET=1 pnpm -s crm:tiktok-mirror --apply >>"$LOGDIR/match.log" 2>&1
 # Brokers from Abdout's own WhatsApp chats (reviewed ones only), then into the directory.
-pnpm -s wa:chats >>"$LOGDIR/match.log" 2>&1 && PRISMA_QUIET=1 pnpm -s crm:brokers --apply >>"$LOGDIR/match.log" 2>&1
+# The directory builds either way: wa:chats needs Full Disk Access to WhatsApp's
+# ChatStorage.sqlite, and its EPERM under the gateway (10-23 → 11-01) used to skip the
+# whole build behind an `&&` — no new brokers for nine days. The last snapshot is kept.
+pnpm -s wa:chats >>"$LOGDIR/match.log" 2>&1 || echo "  ! wa:chats failed — the directory builds from the last WhatsApp snapshot" >>"$LOGDIR/match.log"
+PRISMA_QUIET=1 pnpm -s crm:brokers --apply >>"$LOGDIR/match.log" 2>&1
 pnpm -s crm:demand-match --notify >>"$LOGDIR/match.log" 2>&1
 code=$?
 if [ "$code" -ne 0 ]; then
