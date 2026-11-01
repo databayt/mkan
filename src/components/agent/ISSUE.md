@@ -17,9 +17,15 @@
   its number, 1 to 3". After a hello, short replies (ok, yes, 👍, thanks, a digit) keep the agent —
   silence there would read as a dead line; only a message that is neither about a home nor short goes
   to a person (`personAfterHello`).
-- **Open (Abdout):** the WhatsApp shortlist links each broker lead to the broker's own TikTok post,
-  whose caption usually carries their number, and `checkText` "none" says "The link above has the
-  ad" — a way around Mkan staying in the middle. Linking the mkan.sd card instead is the fix if wanted.
+- **Mkan's own page for a broker home** (Abdout said yes, 11-01; `26c2837` + `4849922`, Worker `e774dea6`, checked live on a phone in en + ar): every link a
+  tenant could follow to a broker's home was the broker's TikTok post — its caption carries their
+  number — and "The link above has the ad" pointed there. Now `/<lang>/k/K<id>`: photos, facts,
+  the move-in cost (viewing fee left out, it is Mkan's) and "Check availability on WhatsApp" (opens
+  the home on the line by its code); noindex; a published home 308s to its listing page; unknown
+  codes 404. `forTenant` (home-path.ts) rewrites links and blanks the broker's handle where a view is
+  built (web card, WhatsApp, stored chats) and for the welcome homes; the saved list links it too.
+  Residual: lead photos are frames of the broker's video and can carry burned-in text, and their
+  CDN path holds the TikTok video id.
 - **Owed:** once the Claude key exists, its reading of intent can take over from the word lists.
 
 ## 2026-11-01 — Mkan in the middle: deal sheet, three-party viewing, confirmed terms
