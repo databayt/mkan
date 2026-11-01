@@ -241,6 +241,49 @@ function listSeed(handle: string, seed: SeedRow, videos: Record<string, VideoRow
   }
 }
 
+/**
+ * TikTok's own search, in the session-vault Chrome (Abdout's signed-in browser, logged in as
+ * the page's account @mkan.rw — the same channel the daily upload uses). The web engines answer
+ * two queries a run before blocking (DuckDuckGo 202, Brave never once since 10-20), so search
+ * added 0–5 videos a day; TikTok's own results are where Kigali brokers actually are. One phrase
+ * a run, a few scrolls, one tab opened and closed. Null when the vault is not up (it is not woken
+ * for this) or TIKTOK_VAULT_SEARCH=off.
+ */
+async function vaultSearch(q: string): Promise<string | null> {
+  if ((process.env.TIKTOK_VAULT_SEARCH ?? '').trim() === 'off') return null;
+  const cdp = (process.env.TIKTOK_UPLOAD_CDP ?? '').trim() || 'http://127.0.0.1:9222';
+  const up = await fetch(`${cdp}/json/version`, { signal: AbortSignal.timeout(2_000) }).then((r) => r.ok).catch(() => false);
+  if (!up) {
+    console.log('  · tiktok search: the vault Chrome is not up — skipped');
+    return null;
+  }
+  const { chromium } = await import('playwright');
+  const browser = await chromium.connectOverCDP(cdp, { timeout: 20_000 });
+  try {
+    const ctx = browser.contexts()[0];
+    if (!ctx) return null;
+    const page = await ctx.newPage();
+    try {
+      await page.goto(`https://www.tiktok.com/search/video?q=${encodeURIComponent(q)}`, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+      await page.waitForTimeout(4_000);
+      for (let i = 0; i < 6; i++) {
+        await page.mouse.wheel(0, 2_400);
+        await page.waitForTimeout(1_500 + Math.floor(Math.random() * 1_200));
+      }
+      // Absolute hrefs, so tiktokVideosIn reads them the same way it reads an engine's page.
+      const links = await page.$$eval('a[href*="/video/"]', (as) => as.map((a) => (a as HTMLAnchorElement).href));
+      return links.join('\n');
+    } finally {
+      await page.close().catch(() => {});
+    }
+  } catch (e) {
+    console.warn(`  · tiktok search failed: ${(e as Error).message.slice(0, 120)}`);
+    return null;
+  } finally {
+    await browser.close().catch(() => {}); // detaches; the vault Chrome keeps running
+  }
+}
+
 async function discover(): Promise<void> {
   const videos = loadVideos();
   const seeds = loadSeeds();
@@ -313,6 +356,20 @@ async function discover(): Promise<void> {
       { name: 'duckduckgo', url: (q: string) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, blocked: false },
       { name: 'brave', url: (q: string) => `https://search.brave.com/search?q=${encodeURIComponent(q)}`, blocked: false },
     ];
+    // TikTok's own search first: one phrase a run, on its own rotation through the same list.
+    const tiktokQueries = argv('query') ? [] : Array.from({ length: Number(argv('tiktok-queries', '1')) }, (_, i) => SEARCH_QUERIES[(day + 17 + i) % SEARCH_QUERIES.length]!);
+    for (const q of tiktokQueries) {
+      const html = await vaultSearch(q);
+      if (html == null) break;
+      const found = tiktokVideosIn(html);
+      let fresh = 0;
+      for (const v of found) {
+        if (add(v, 'search', q)) fresh++;
+        hits.set(v.handle, (hits.get(v.handle) ?? 0) + 1);
+        sampleFor.set(v.handle, v.url);
+      }
+      console.log(`  "${q}" (tiktok): ${found.length} video(s) from ${new Set(found.map((v) => v.handle)).size} account(s), +${fresh} new`);
+    }
     for (const q of queries) {
       const engine = engines.find((e) => !e.blocked);
       if (!engine) {
