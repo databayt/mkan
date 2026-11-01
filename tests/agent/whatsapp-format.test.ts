@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@/components/internationalization/en.json";
 import ar from "@/components/internationalization/ar.json";
-import { askAroundText, botText, checkText, formatWhatsApp, isFresh, readHomeRef, readPick, readRef, saysYes, waLang, wantsPerson, type WaDict } from "@/components/agent/whatsapp-format";
+import { askAroundText, botText, checkText, firstMessageKind, formatWhatsApp, isFresh, readHomeRef, readPick, readRef, saysYes, waLang, wantsPerson, type WaDict } from "@/components/agent/whatsapp-format";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "@/components/agent/types";
 
 const dict = (d: typeof en): WaDict => d.agent as unknown as WaDict;
@@ -159,5 +159,17 @@ describe("honest answers", () => {
     expect(wantsPerson("person with 2 kids")).toBe(false);
     expect(saysYes("Yes!")).toBe(true);
     expect(saysYes("yes but cheaper")).toBe(false);
+  });
+});
+
+describe("who a first message is from", () => {
+  it("answers someone looking for a home, or saying hello", () => {
+    for (const t of ["K5808", "5808", "I need a 2 bedroom in Kicukiro", "house for rent?", "budget 400k", "Ndashaka inzu i Remera", "شقة في كيغالي", "Is it still available?"]) expect(firstMessageKind(t), t).toBe("rental");
+    for (const t of ["Hello", "hi 👋", "Good morning", "Muraho", "What is this?", "who is this"]) expect(firstMessageKind(t), t).toBe("greeting");
+  });
+
+  it("leaves to a person the friends who knew the number before it was Mkan's", () => {
+    // Real first messages to the line, 10-27..11-01.
+    for (const t of ["Babe", "You sleeping", "Can we meet now", "0786485237"]) expect(firstMessageKind(t), t).toBe("other");
   });
 });

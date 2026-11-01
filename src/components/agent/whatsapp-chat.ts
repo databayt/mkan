@@ -25,7 +25,7 @@ import { startTurn } from "./run";
 import { loadTask } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
 import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, waLang, type WaDict, type WaLang } from "./whatsapp-format";
-import { askAroundText, botText, personText, readHomeRef, wantsPerson } from "./whatsapp-format";
+import { askAroundText, botText, firstMessageKind, personText, readHomeRef, wantsPerson } from "./whatsapp-format";
 import { askAround } from "./demand";
 import { viewingRep } from "./broker-message";
 import { parseBrokerReply } from "./broker-reply";
@@ -163,6 +163,13 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
     }
   }
   if (!text) text = raw;
+
+  // A new chat that is neither about a home nor a hello is likely someone who knew this number before it
+  // was Mkan's: a person answers it, never the agent.
+  if (!current && !ref && !refHome && firstMessageKind(text) === "other") {
+    await postSlackCard(`💬 ${profile.waPhone ?? "a number"} wrote, not about a home — the agent stayed quiet; answer it yourself if it is for you:\n> ${text.slice(0, 300)}`).catch(() => {});
+    return { reply: null, why: "empty" };
+  }
 
   const message: Extract<AgentMessage, { role: "user" }> = {
     role: "user",

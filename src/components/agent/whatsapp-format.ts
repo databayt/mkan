@@ -309,6 +309,30 @@ export function personText(lang: WaLang, rep: string): string {
   return `Okay, I've asked ${rep} to reply to you here.`;
 }
 
+/**
+ * What a first message to the line is (2026-11-01). The Mkan line was Abdout's own
+ * number before it became the business line, and friends still write to it ("Babe",
+ * "you sleeping?", "can we meet now") — the agent answered them. A new chat about a
+ * home, or a hello, gets the agent; anything else gets a person (a #mkan card).
+ */
+export function firstMessageKind(text: string): "rental" | "greeting" | "other" {
+  const t = text.trim().toLowerCase();
+  if (!t) return "other";
+  if (HOME_REF_RE.test(t) || /^#?\d{4,6}$/.test(t)) return "rental";
+  if (
+    /\b(?:house|home|homes|apartment|appartment|apartement|flat|room|rooms|studio|rent|rental|renting|bed ?rooms?|bdr|furnished|unfurnished|compound|kigali|kicukiro|gasabo|nyarugenge|kimironko|remera|kacyiru|kibagabaga|kimihurura|nyarutarama|gisozi|kanombe|nyamirambo|kagarama|rebero|gikondo|niboye|kabeza|budget|price|monthly|per month|tenant|landlord|broker|viewing|available|inzu|icyumba|ibyumba|gukodesha|ubukode|ndashaka inzu|maison|appartement|chambre|louer|loyer)\b/.test(t) ||
+    /\d+\s*k\b|\d{3},\d{3}|ibihumbi/.test(t) ||
+    /شقة|منزل|بيت|ايجار|إيجار|غرفة|سكن/.test(t)
+  )
+    return "rental";
+  if (
+    /^(?:hi+|hello+|hey+|hallo|good (?:morning|afternoon|evening)|muraho|mwiriwe|mwaramutse|bonjour|salut|salam|habari|jambo|السلام عليكم|سلام|مرحبا|اهلا|أهلا)[\s,.!👋🙏😊]*$/u.test(t) ||
+    /^(?:what is this|who is this|who are you|what do you do|mkan\??|ni nde|ni iki)[\s?!.]*$/.test(t)
+  )
+    return "greeting";
+  return "other";
+}
+
 /** "person" / "human" / "agent": the tenant wants someone from Mkan. */
 export const wantsPerson = (text: string) => /^(?:a )?(?:person|human|real person|agent|someone|staff|شخص|انسان|إنسان|umuntu)[\s.!]*$/i.test(text.trim());
 
