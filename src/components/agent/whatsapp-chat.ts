@@ -25,7 +25,7 @@ import { startTurn } from "./run";
 import { loadTask } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
 import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, waLang, type WaDict, type WaLang } from "./whatsapp-format";
-import { aboutHomes, askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, onlyGreetedSoFar, personText, readHomeRef, shownHomes, thanksText, wantsPerson, whichOneText } from "./whatsapp-format";
+import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, readHomeRef, shownHomes, thanksText, wantsPerson, whichOneText } from "./whatsapp-format";
 import { askAround } from "./demand";
 import { viewingRep } from "./broker-message";
 import { parseBrokerReply } from "./broker-reply";
@@ -177,7 +177,7 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   }
   // The same after a hello: a chat that has only greeted, whose next message is not about a home either
   // ("where are you, so we can bring the things" got six homes on 11-01), goes to a person.
-  if (current && !ref && !refHome && !aboutHomes(text) && onlyGreetedSoFar(current.messages as unknown as AgentMessage[])) {
+  if (current && !ref && !refHome && personAfterHello(text, current.messages as unknown as AgentMessage[])) {
     await postSlackCard(`💬 ${profile.waPhone ?? "a number"} said hello, then wrote something not about a home — the agent stayed quiet; answer it yourself:\n> ${text.slice(0, 300)}`).catch(() => {});
     return { reply: null, why: "empty" };
   }

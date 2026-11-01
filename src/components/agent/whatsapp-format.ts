@@ -329,6 +329,14 @@ export function whichOneText(lang: WaLang, n: number): string {
 /** Homes already went out in this chat. */
 export const shownHomes = (messages: AgentMessage[] | null | undefined) => (messages ?? []).some((m) => m.role === "agent" && m.kind === "shortlist");
 
+/**
+ * After a hello, does this message go to a person? Only one that is neither about a home nor a
+ * short reply: "ok", "yes", 👍, "thanks" or a digit under the opening question still get the agent (silence
+ * there would read as a dead line), while "where are you, so we can bring the things" does not.
+ */
+export const personAfterHello = (text: string, messages: AgentMessage[] | null | undefined): boolean =>
+  onlyGreetedSoFar(messages) && !aboutHomes(text) && !isBareYes(text) && !isThanks(text) && !/^\s*[1-9٠-٩]\.?\s*$/.test(text);
+
 /** "You're welcome", and what they can do next. */
 export function thanksText(lang: WaLang): string {
   if (lang === "ar") return "العفو! أرسل رقم المنزل الذي يعجبك وأتأكد أنه ما زال متاحاً، أو أخبرني بما تريد تغييره.";

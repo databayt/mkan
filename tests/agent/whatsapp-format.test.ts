@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@/components/internationalization/en.json";
 import ar from "@/components/internationalization/ar.json";
-import { aboutHomes, askAroundText, botText, checkText, firstMessageKind, formatWhatsApp, isBareYes, isFresh, isThanks, onlyGreetedSoFar, readHomeRef, readPick, readRef, saysYes, shownHomes, thanksText, waLang, wantsPerson, whichOneText, type WaDict } from "@/components/agent/whatsapp-format";
+import { aboutHomes, askAroundText, botText, checkText, firstMessageKind, formatWhatsApp, isBareYes, isFresh, isThanks, onlyGreetedSoFar, personAfterHello, readHomeRef, readPick, readRef, saysYes, shownHomes, thanksText, waLang, wantsPerson, whichOneText, type WaDict } from "@/components/agent/whatsapp-format";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "@/components/agent/types";
 
 const dict = (d: typeof en): WaDict => d.agent as unknown as WaDict;
@@ -185,6 +185,11 @@ describe("after a hello", () => {
     expect(onlyGreetedSoFar(hello)).toBe(true);
     expect(aboutHomes("Muherereyehe ngo tubazanire ibintu")).toBe(false);
     for (const t of ["How are you?", "Thank you", "Can I call you"]) expect(aboutHomes(t), t).toBe(false);
+  });
+
+  it("keeps the agent for a short reply under the opening question — silence would read as a dead line", () => {
+    expect(personAfterHello("Muherereyehe ngo tubazanire ibintu", hello)).toBe(true);
+    for (const t of ["ok", "yes", "👍", "Thank you", "for my family", "2"]) expect(personAfterHello(t, hello), t).toBe(false);
   });
 
   it("never silences a tenant answering the opening question", () => {
