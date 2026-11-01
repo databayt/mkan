@@ -7,7 +7,7 @@
  *                                   the broker's own video enhanced, else a photo slideshow
  *   pnpm tt:carousel [--dry]        today's data carousel (facts only, any home) → slides + caption
  *   pnpm tt:datavideo [--notify]    the carousel as a picture video: photos on the beat of mkan's track, no voice
- *   pnpm tt:card                    upload each video + its caption to Slack #mkan
+ *   pnpm tt:card                    show each video + its caption in Slack #mkan (tt:upload posts them)
  *   pnpm tt:posted <ref> <url>      the poster's receipt: the home rests 30 days
  *   pnpm tt:stats [--notify]        views / likes of our posts, read back by yt-dlp
  *   pnpm tt:ask [--mark=a,b --as=ASKED|YES|NO --apply]   broker repost consent
@@ -18,16 +18,18 @@
  *
  * The page runs the way Kigali brokers run theirs: the WhatsApp number in the
  * bio, one short video per house, the price and area on screen.
- * The pipeline makes the video and the caption; a person posts it from the
- * phone and adds a trending sound in the TikTok app (posting through TikTok's
- * API stays private until an app audit passes). Inquiries arrive on WhatsApp
- * quoting the home's ref.
+ * The pipeline makes the video and the caption; tt:upload posts them to the
+ * page through the session-vault Chrome (posting through TikTok's API stays
+ * private until an app audit passes). Inquiries arrive on WhatsApp quoting
+ * the home's ref.
  *
- * Who is on the page: monthly homes with ≥4 photos and a price — owners' and
+ * Who is on the page: monthly homes with ≥4 photos and a price, whose source
+ * post is at most 14 days old and not taken (Listing.lostAt) — owners' and
  * field-agent homes (MANUAL), Airbnb hosts who took a monthly price, and a
  * broker's TikTok lead only once that broker said YES (Twenty host
  * `repostConsent`). For a broker lead the source is that broker's own video,
- * stabilised, graded and muted; mkan's brand (kun brand-kit.json) wraps every piece.
+ * stabilised, graded and muted, with their burned-in text (captions, phone
+ * number, @handle) wiped before mkan's brand (kun brand-kit.json) goes on.
  *
  * Env: MKAN_KIGALI_WHATSAPP (the number on the end card and in the caption),
  * TIKTOK_PAGE_HANDLE (default mkan.rw), TIKTOK_PAGE_SECUID (when yt-dlp's
@@ -37,7 +39,7 @@ import { config } from 'dotenv';
 config({ override: true });
 
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import sharp from 'sharp';
@@ -56,8 +58,10 @@ import {
   carouselEndSvg,
   carouselHomeSvg,
   type CarouselTheme,
+  contactLeaks,
   cornerSvg,
   endCardSvg,
+  FRESH_DAYS,
   H,
   ineligibleReason,
   MAX_SLIDES,
@@ -74,6 +78,11 @@ import {
   type StockPhoto,
   refInText,
   refOf,
+  STRIP_FPS,
+  stripGraph,
+  textRegions,
+  type TextBox,
+  type TextFrame,
   timeline,
   W,
   waLink,
@@ -116,6 +125,7 @@ async function loadRows(where: Record<string, unknown>): Promise<PostRow[]> {
     where: { rentPeriod: 'MONTHLY', location: { country: 'Rwanda' }, ...where },
     select: {
       id: true, code: true, source: true, priceMonth: true, bedrooms: true, bathrooms: true, propertyType: true, photoUrls: true,
+      postedDate: true, createdAt: true, lostAt: true,
       location: { select: { address: true, state: true } },
       host: { select: { sourceHostId: true } },
     },
@@ -132,6 +142,9 @@ async function loadRows(where: Record<string, unknown>): Promise<PostRow[]> {
     area: r.location?.address ?? null,
     district: r.location?.state || null,
     hostSourceId: r.host?.sourceHostId ?? null,
+    // A broker lead's own video date beats these (sourcePostedAt reads it from the frames' video id).
+    postedAt: (r.postedDate ?? r.createdAt).toISOString(),
+    lostAt: r.lostAt?.toISOString() ?? null,
   }));
 }
 
@@ -266,7 +279,8 @@ function upscale(src: string, dur: number, work: string, info: { w: number; h: n
  * The broker's own video, remastered: AI-upscaled (see upscale), stabilised,
  * deflickered, graded to mkan's daylight look, framed to 9:16 (a landscape clip
  * sits on a blurred fill instead of losing its sides). Its own sound is dropped;
- * mkan's track goes under the whole piece in renderOne.
+ * mkan's track goes under the whole piece in renderOne, and its burned-in text
+ * comes off there (stripText) on this 9:16 frame, before the brand pass.
  * Null when there is no video to get (a photo post, a deleted video).
  */
 async function videoBody(r: PostRow, work: string): Promise<{ path: string; dur: number } | null> {
@@ -349,9 +363,102 @@ async function slideshowBody(r: PostRow, work: string): Promise<{ path: string; 
   return { path: out, dur: t.slidesLen };
 }
 
+// ── the broker's text, off ───────────────────────────────────────────────────
+/** Apple Vision text boxes (ocr-frames.swift --boxes), compiled once into the data dir — the same binary the TikTok lane reads with. */
+const OCR_SRC = join(__dirname, 'ocr-frames.swift');
+const OCR_BIN = join(__dirname, '.data', 'bin', 'ocr-frames');
+/** videoBody and slideshowBody both end on fps=30, so a frame's index is its time. */
+const BODY_FPS = 30;
+
+/** Where Vision sees text on each image. Throws when it cannot read one — the callers fail closed. */
+function ocrBoxes(images: string[]): TextBox[][] {
+  if (!existsSync(OCR_BIN) || statSync(OCR_BIN).mtimeMs < statSync(OCR_SRC).mtimeMs) {
+    mkdirSync(dirname(OCR_BIN), { recursive: true });
+    const tmp = `${OCR_BIN}.${process.pid}`;
+    execFileSync('swiftc', ['-O', OCR_SRC, '-o', tmp], { stdio: 'pipe' });
+    renameSync(tmp, OCR_BIN);
+  }
+  const out = JSON.parse(execFileSync(OCR_BIN, ['--boxes', ...images], { encoding: 'utf8', timeout: 600_000, maxBuffer: 64 * 1024 * 1024 })) as Record<string, TextBox[]>;
+  return images.map((p) => {
+    if (!Array.isArray(out[p])) throw new Error(`no text read for ${p}`);
+    return out[p]!;
+  });
+}
+
+/** Every (BODY_FPS / STRIP_FPS)th frame of a body from frame `offset`, as JPEGs with their times. */
+function sampleFrames(video: string, dir: string, offset: number): { t: number; path: string }[] {
+  const stride = BODY_FPS / STRIP_FPS;
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  ffmpeg(['-i', video, '-vf', `select='eq(mod(n,${stride}),${offset})'`, '-fps_mode', 'vfr', '-q:v', '2', join(dir, '%04d.jpg')]);
+  const files = readdirSync(dir).filter((f) => f.endsWith('.jpg')).sort();
+  if (!files.length) throw new Error(`no frames sampled from ${video}`);
+  return files.map((f, i) => ({ t: +((offset + i * stride) / BODY_FPS).toFixed(3), path: join(dir, f) }));
+}
+
+const firstLine = (e: unknown): string => String((e as { stderr?: string }).stderr || (e as Error).message).trim().split('\n')[0]!.slice(0, 160);
+
 /**
- * The brand pass over any body: the ivory sting, the corner mark with the
- * broker's credit fading in, the lower third sliding up, the WhatsApp end card.
+ * The broker's own text off a body, before mkan's prints go on: their
+ * captions, phone number and @handle on our page would send the tenant
+ * straight to them. Frames sampled STRIP_FPS a second are read for where text
+ * sits, and each place is wiped while text is there (textRegions →
+ * stripGraph). The wiped body is then read again between those samples: a
+ * phone number or @handle still on screen gets one more pass with what was
+ * found, and stops the render after that. Fails closed — frames that cannot be
+ * read stop the render too, so nothing goes out with the broker's text on it.
+ */
+function stripText(ref: string, body: { path: string; dur: number }, work: string): { path: string; dur: number } {
+  const dir = join(work, 'ocr');
+  const read = (video: string, offset: number): TextFrame[] => {
+    try {
+      const frames = sampleFrames(video, dir, offset);
+      const boxes = ocrBoxes(frames.map((f) => f.path));
+      return frames.map((f, i) => ({ t: f.t, boxes: boxes[i]! }));
+    } catch (e) {
+      throw new Error(`could not read the frames for the broker's text (${firstLine(e)}) — not rendered, so nothing goes out with their number on it`);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  };
+  const seen = read(body.path, 0);
+  for (let pass = 1; ; pass++) {
+    const regions = textRegions(seen, { duration: body.dur });
+    let path = body.path;
+    if (regions.length) {
+      path = join(work, `clean${pass}.mp4`);
+      ffmpeg(['-i', body.path, '-filter_complex', stripGraph(regions), '-map', '[v]', '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-pix_fmt', 'yuv420p', path]);
+    }
+    // Between the samples the wipe was built from: no number or @handle may be left.
+    const check = read(path, Math.floor(BODY_FPS / STRIP_FPS / 2));
+    const left = check.flatMap((f) => f.boxes.flatMap((b) => contactLeaks(b.text ?? '').map((l) => `"${l}" at ${f.t} s`)));
+    if (!left.length) {
+      console.log(`  … ${ref}: ${regions.length ? `on-screen text wiped in ${regions.length} place${regions.length > 1 ? 's' : ''}` : 'no on-screen text'}`);
+      return { path, dur: body.dur };
+    }
+    if (pass === 2) throw new Error(`a phone number or @handle is still on screen after the strip (${left.slice(0, 3).join(', ')}) — not rendered`);
+    seen.push(...check);
+  }
+}
+
+/** A still's text wiped in place: the picture video's own-home photo is a frame of the broker's video for a broker lead. */
+function stripStill(photo: string, work: string): void {
+  let boxes: TextBox[];
+  try {
+    boxes = ocrBoxes([photo])[0]!;
+  } catch (e) {
+    throw new Error(`could not read the text on a home photo (${firstLine(e)}) — no picture video today, so no broker number goes out on it`);
+  }
+  const regions = textRegions([{ t: 0, boxes }], { width: W * 2, height: H * 2, minPx: 24 });
+  if (!regions.length) return;
+  const tmp = join(work, 'stripped.jpg');
+  ffmpeg(['-i', photo, '-filter_complex', stripGraph(regions, false), '-map', '[v]', '-frames:v', '1', '-update', '1', '-q:v', '2', tmp]);
+  renameSync(tmp, photo);
+}
+
+/**
+ * The brand pass over any body: the ivory sting, the corner mark fading in,
+ * the lower third sliding up, the WhatsApp end card.
  */
 async function brandPass(r: PostRow, body: { path: string; dur: number }, work: string, phone: string): Promise<string> {
   const png = async (name: string, svg: string) => {
@@ -361,7 +468,7 @@ async function brandPass(r: PostRow, body: { path: string; dur: number }, work: 
   };
   const [sting, corner, lower, pill, end] = await Promise.all([
     png('sting.png', stingSvg()),
-    png('corner.png', cornerSvg(brokerHandle(r.hostSourceId))),
+    png('corner.png', cornerSvg()),
     png('lower.png', lowerThirdSvg(r)),
     png('pill.png', pillSvg(r)),
     png('end.png', endCardSvg(r, phone)),
@@ -396,18 +503,23 @@ async function brandPass(r: PostRow, body: { path: string; dur: number }, work: 
   return mezz;
 }
 
-/** One home → `<dir>/<ref>.mp4`: source (broker video, else photos) → enhance → brand → reel encode. */
+/** One home → `<dir>/<ref>.mp4`: source (broker video, else photos) → enhance → text off → brand → reel encode. */
 async function renderOne(r: PostRow, dir: string, phone: string): Promise<string> {
   const ref = refOf(r);
   const work = join(dir, `.work-${ref}`);
+  const out = join(dir, `${ref}.mp4`);
+  // A render that fails must leave nothing to post: an older cut of this home goes first.
+  rmSync(out, { force: true });
+  rmSync(join(dir, `${ref}.txt`), { force: true });
   mkdirSync(work, { recursive: true });
   try {
     const video = flag('slideshow') ? null : await videoBody(r, work);
-    const body = video ?? (await slideshowBody(r, work));
-    console.log(`  … ${ref}: ${video ? 'broker video, enhanced' : 'photo slideshow'} (${body.dur.toFixed(1)} s)`);
+    const made = video ?? (await slideshowBody(r, work));
+    console.log(`  … ${ref}: ${video ? 'broker video, enhanced' : 'photo slideshow'} (${made.dur.toFixed(1)} s)`);
+    // Only mkan's prints on the page: the pictures' own text (a broker's captions, number, @handle) comes off first.
+    const body = stripText(ref, made, work);
     const mezz = withBed(await brandPass(r, body, work, phone), brandTimeline(body.dur).total, work);
 
-    const out = join(dir, `${ref}.mp4`);
     const media = join(KUN, '.claude/skills/edit/scripts/media.sh');
     let encoded = false;
     if (existsSync(media)) {
@@ -482,9 +594,10 @@ async function card(): Promise<number> {
     const mp4 = join(dayDir(), `${ref}.mp4`);
     if (!existsSync(mp4)) continue;
     const caption = readFileSync(join(dayDir(), `${ref}.txt`), 'utf8');
+    // tt:upload posts this same file at the end of the run: the card is for a look, never a second post.
     const comment = [
       `🎬 *TikTok @${PAGE}* — ${ref} (#${r.id})`,
-      'Save the video → TikTok → add a trending sound → paste the caption → post. Then: `pnpm tt:posted ' + ref + ' <tiktok url>`',
+      'Queued for the automatic upload: tt:upload posts it to the page with this caption at the end of the run. Nothing to post by hand.',
       '```',
       caption,
       '```',
@@ -493,8 +606,7 @@ async function card(): Promise<number> {
       sent += 1;
       continue;
     }
-    // No `files:write` on the bot (or Slack refused): put the clip on the CDN and post the link —
-    // the phone opens it, long-presses, saves to Photos.
+    // No `files:write` on the bot (or Slack refused): put the clip on the CDN and post the link.
     const url = await cdnCopy(mp4, `${argv('date', today())}/${ref}.mp4`);
     if (url && (await postToMkan(`${comment.split('\n')[0]}\n▶️ ${url}\n${comment.split('\n').slice(1).join('\n')}`))) sent += 1;
   }
@@ -634,7 +746,7 @@ async function consent(): Promise<void> {
     }
     const line =
       answer === 'YES'
-        ? `${theirs.length} homes from their videos, ${postable.length} can post (the rest lack photos or a monthly price)`
+        ? `${theirs.length} homes from their videos, ${postable.length} can post (the rest lack photos or a monthly price, are taken, or were posted over ${FRESH_DAYS} days ago)`
         : `${theirs.length} homes stay off the page`;
     console.log(`  ${apply ? '✓' : '·'} @${handle} → ${answer} · ${line}`);
   }
@@ -925,6 +1037,8 @@ async function dataVideo(): Promise<string | null> {
     const photo = join(work, `p${i}.jpg`);
     const buf = await fetchPhoto(f.src);
     await sharp(buf).rotate().resize(W * 2, H * 2, { fit: 'cover', position: 'attention' }).jpeg({ quality: 92 }).toFile(photo);
+    // A broker lead's photo is a frame of their video: its burned-in number comes off like the video's.
+    if (!f.area) stripStill(photo, work);
     const ov = join(work, `o${i}.png`);
     await sharp(Buffer.from(f.overlay)).png().toFile(ov);
     inputs.push(photo, ov);

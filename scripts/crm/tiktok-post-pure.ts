@@ -23,6 +23,13 @@ export interface PostRow {
   district: string | null;
   /** The listing host's `sourceHostId` — `tiktok:<handle>` for a broker lead. */
   hostSourceId: string | null;
+  /**
+   * When the listing went up (ISO): its `postedDate`, else when mkan got it. A
+   * broker lead's own video date beats it (see sourcePostedAt).
+   */
+  postedAt: string | null;
+  /** Set once the home is taken or its ad or video is gone (Listing.lostAt): it never goes out again. */
+  lostAt: string | null;
 }
 
 export interface LedgerEntry {
@@ -44,6 +51,8 @@ const DAY = 86_400_000;
 export const REPOST_AFTER_DAYS = 30;
 /** A home queued but never posted frees up after this. */
 export const QUEUED_HOLD_DAYS = 3;
+/** Only homes whose source post is this fresh go out: an older one is most likely rented already. */
+export const FRESH_DAYS = 14;
 
 /** What the viewer sends on WhatsApp. */
 export const refOf = (r: Pick<PostRow, 'id' | 'code'>): string => r.code?.trim() || `K${r.id}`;
@@ -52,13 +61,31 @@ export const brokerHandle = (hostSourceId: string | null): string | null =>
   hostSourceId?.startsWith('tiktok:') ? hostSourceId.slice(7).toLowerCase() : null;
 
 /**
+ * When the home's source post went up, in ms. A broker lead's frames carry
+ * their TikTok video's id, and a TikTok id's top 32 bits are its unix seconds
+ * (tiktok-pure tiktokIdTime) — the post's own date, where the listing only
+ * knows when mkan read it. Anything else: the listing's postedAt.
+ */
+export function sourcePostedAt(r: Pick<PostRow, 'photoUrls' | 'postedAt'>): number | null {
+  const id = r.photoUrls.map((u) => u.match(/\/uploads\/tiktok\/(\d{15,20})\//)?.[1]).find(Boolean);
+  const s = id ? Number(BigInt(id) >> BigInt(32)) : 0;
+  if (s > 1_472_000_000) return s * 1000; // after TikTok's launch (2016-09), else not a TikTok id
+  const t = r.postedAt ? Date.parse(r.postedAt) : NaN;
+  return Number.isFinite(t) ? t : null;
+}
+
+/**
  * Why a home can't go on the page, or null when it can. A broker's lead needs
  * that broker's YES first — the frames are cut from their video.
  */
-export function ineligibleReason(r: PostRow, consented: ReadonlySet<string>): string | null {
+export function ineligibleReason(r: PostRow, consented: ReadonlySet<string>, now = Date.now()): string | null {
+  if (r.lostAt) return 'taken, or its ad is gone';
   if (!r.priceMonth || r.priceMonth < 50_000) return 'no monthly price';
   if (r.photoUrls.length < MIN_PHOTOS) return `under ${MIN_PHOTOS} photos`;
   if (!r.district && !r.area) return 'no area';
+  const posted = sourcePostedAt(r);
+  if (posted === null) return 'no source post date';
+  if (now - posted > FRESH_DAYS * DAY) return `source post over ${FRESH_DAYS} days old`;
   if (r.source === 'TIKTOK') {
     const h = brokerHandle(r.hostSourceId);
     if (!h || !consented.has(h)) return 'broker has not agreed to reposts';
@@ -80,7 +107,7 @@ function resting(e: LedgerEntry | undefined, now: number): boolean {
  * and no district twice in a day while another one has homes left.
  */
 export function pickToday(rows: PostRow[], ledger: Ledger, consented: ReadonlySet<string>, n: number, now = Date.now()): PostRow[] {
-  const pool = rows.filter((r) => !ineligibleReason(r, consented) && !resting(ledger[refOf(r)], now));
+  const pool = rows.filter((r) => !ineligibleReason(r, consented, now) && !resting(ledger[refOf(r)], now));
   const recent = new Map<string, number>();
   for (const e of Object.values(ledger)) {
     const at = Date.parse(e.postedAt ?? e.queuedAt);
@@ -146,7 +173,8 @@ export function captionFor(r: PostRow, whatsapp: string): string {
     `💰 ${price} / month`,
     `📲 WhatsApp ${whatsapp} — send "${ref}"`,
     `🇷🇼 Inzu ikodeshwa${rooms} i ${place} — ${price} ku kwezi. Ohereza "${ref}" kuri WhatsApp.`,
-    ...(brokerHandle(r.hostSourceId) ? [`🎥 @${brokerHandle(r.hostSourceId)} · remastered by mkan`] : []),
+    // The broker agreed to reposts with their name on them: credited here, not on screen.
+    ...(brokerHandle(r.hostSourceId) ? [`Video: @${brokerHandle(r.hostSourceId)}`] : []),
     '🎵 Music: mkan (AI-generated)',
     '',
     [...new Set(tags)].join(' '),
@@ -251,19 +279,18 @@ export function stingSvg(): string {
 </svg>`;
 }
 
-/** Top-start corner, on for the whole body: the mark, the page, and the broker's credit. */
-export function cornerSvg(credit: string | null): string {
+/**
+ * Top-start corner, on for the whole body: the mark and the page. No broker
+ * handle on screen — a viewer who finds the broker skips mkan; the caption
+ * credits them instead.
+ */
+export function cornerSvg(): string {
   const x = 56;
-  const chip = credit
-    ? `<rect x="${x}" y="262" width="${Math.min(820, 120 + credit.length * 22)}" height="56" rx="28" fill="${BRAND.ink}" fill-opacity="0.72"/>
-  <text x="${x + 28}" y="300" font-family="${SANS}" font-size="30" font-weight="500" fill="${BRAND.canvas}">Video @${esc(credit)}</text>`
-    : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
   <defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${BRAND.ink}" stop-opacity="0.55"/><stop offset="1" stop-color="${BRAND.ink}" stop-opacity="0"/></linearGradient></defs>
   <rect width="${W}" height="420" fill="url(#t)"/>
   ${mark(x, 160, 76, BRAND.canvas)}
   <text x="${x + 96}" y="222" font-family="${DISPLAY}" font-size="62" font-weight="900" fill="${BRAND.canvas}">mkan</text>
-  ${chip}
 </svg>`;
 }
 
@@ -329,6 +356,168 @@ export function brandTimeline(body: number, sting = 1.4, end = 3, fade = 0.35): 
   return { bodyAt, endAt, total: +(endAt + end).toFixed(3) };
 }
 
+// ── the broker's own text, off ───────────────────────────────────────────────
+//
+// A broker's video carries their captions, phone number and @handle burned in;
+// on mkan's page those send the tenant straight to the broker. Before mkan's
+// prints go on, the remaster reads where text sits on frames sampled
+// STRIP_FPS times a second (Apple Vision: ocr-frames.swift --boxes) and wipes
+// each place for as long as text is there.
+
+/** Frames read per second of body when looking for text. */
+export const STRIP_FPS = 2;
+
+/** One line Vision read on a frame: fractions of the frame from its top-left corner. */
+export interface TextBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  conf: number;
+  text?: string;
+}
+export interface TextFrame {
+  t: number;
+  boxes: TextBox[];
+}
+/** A place to wipe, in output pixels, and the seconds of body it is wiped for. */
+export interface TextRegion {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  start: number;
+  end: number;
+}
+
+export interface TextRegionOpts {
+  /** The frame the boxes map into (the 9:16 output). */
+  width?: number;
+  height?: number;
+  /** Seconds between sampled frames: text seen at t may have been there since the sample before and until the next one. */
+  step?: number;
+  /** A little more on each side of that. */
+  margin?: number;
+  /** Sightings of one place this many seconds apart are one region (Vision missed the frames between). */
+  gap?: number;
+  /** Under this a box is a texture Vision half-read, not text. */
+  minConf?: number;
+  /** Boxes thinner than this many output pixels are noise. */
+  minPx?: number;
+  /** Past this many regions the closest merge (wiped places grow; none is dropped). */
+  maxRegions?: number;
+  /** The body's length: no region runs past it. */
+  duration?: number;
+}
+
+const vol = (r: TextRegion): number => r.w * r.h * (r.end - r.start);
+const union = (a: TextRegion, b: TextRegion): TextRegion => {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y, start: Math.min(a.start, b.start), end: Math.max(a.end, b.end) };
+};
+
+/**
+ * Text seen across sampled frames → the places to wipe, each with when. Every
+ * box is padded (Vision's box hugs the glyphs; a caption's plate, and an emoji
+ * Vision does not read, sit around them) and held from a sample before it was
+ * seen to a sample after; boxes that touch while on screen merge into one. A
+ * region is never dropped to stay under maxRegions — the two whose merge wipes
+ * the least extra merge instead — so the cap can only grow what is wiped.
+ */
+export function textRegions(frames: TextFrame[], opts: TextRegionOpts = {}): TextRegion[] {
+  const { width = W, height = H, step = 1 / STRIP_FPS, margin = 0.15, gap = 1, minConf = 0.3, minPx = 12, maxRegions = 32, duration = Infinity } = opts;
+  const hold = step + margin;
+  let regions: TextRegion[] = [];
+  for (const f of frames) {
+    for (const b of f.boxes) {
+      const bw = b.w * width;
+      const bh = b.h * height;
+      if (!(b.conf >= minConf) || bh < minPx || bw < minPx) continue;
+      const px = 12 + 1.5 * bh;
+      const py = 6 + 0.5 * bh;
+      // One pixel of frame stays on every side: delogo fills from the pixels around a region.
+      const x0 = Math.max(1, Math.floor(b.x * width - px));
+      const y0 = Math.max(1, Math.floor(b.y * height - py));
+      const x1 = Math.min(width - 1, Math.ceil(b.x * width + bw + px));
+      const y1 = Math.min(height - 1, Math.ceil(b.y * height + bh + py));
+      // Hundredths, rounded outward (the epsilon keeps 4.35 from flooring to 4.34).
+      const start = Math.max(0, Math.floor((f.t - hold) * 100 + 1e-6) / 100);
+      const end = Math.min(duration, Math.ceil((f.t + hold) * 100 - 1e-6) / 100);
+      if (x1 - x0 < 2 || y1 - y0 < 2 || end <= start) continue;
+      regions.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0, start, end });
+    }
+  }
+  const near = (a: TextRegion, b: TextRegion): boolean =>
+    a.x <= b.x + b.w && b.x <= a.x + a.w && a.y <= b.y + b.h && b.y <= a.y + a.h && a.start <= b.end + gap && b.start <= a.end + gap;
+  // Merge until nothing touches: a grown region can reach one it missed before.
+  for (let merged = true; merged; ) {
+    merged = false;
+    for (let i = 0; i < regions.length; i++) {
+      for (let j = regions.length - 1; j > i; j--) {
+        if (!near(regions[i]!, regions[j]!)) continue;
+        regions[i] = union(regions[i]!, regions[j]!);
+        regions.splice(j, 1);
+        merged = true;
+        j = regions.length; // rescan against the grown region
+      }
+    }
+  }
+  while (regions.length > maxRegions) {
+    let best: [number, number] = [0, 1];
+    let cost = Infinity;
+    for (let i = 0; i < regions.length; i++) {
+      for (let j = i + 1; j < regions.length; j++) {
+        const c = vol(union(regions[i]!, regions[j]!)) - vol(regions[i]!) - vol(regions[j]!);
+        if (c < cost) [cost, best] = [c, [i, j]];
+      }
+    }
+    regions[best[0]] = union(regions[best[0]]!, regions[best[1]]!);
+    regions.splice(best[1], 1);
+  }
+  regions = regions.sort((a, b) => a.start - b.start || a.y - b.y || a.x - b.x);
+  return regions;
+}
+
+/**
+ * The ffmpeg graph ([0:v] → [v]) that wipes each region while text is there:
+ * delogo fills it from the pixels around it, so no trace of the letters is left
+ * to read, then the fill is softened (on a busy edge — a railing, stairs —
+ * delogo alone leaves a plaid of streaks). `timed: false` wipes a still.
+ */
+export function stripGraph(regions: TextRegion[], timed = true): string {
+  if (!regions.length) return '[0:v]null[v]';
+  return regions
+    .map((r, i) => {
+      const on = timed ? `:enable='between(t,${r.start},${r.end})'` : '';
+      const sigma = Math.round(Math.min(24, Math.max(6, Math.min(r.w, r.h) / 8)));
+      const from = i ? `[s${i}]` : '[0:v]';
+      const to = i === regions.length - 1 ? '[v]' : `[s${i + 1}]`;
+      return `${from}delogo=x=${r.x}:y=${r.y}:w=${r.w}:h=${r.h}${on},split[k${i}][c${i}];[c${i}]crop=${r.w}:${r.h}:${r.x}:${r.y},gblur=sigma=${sigma}${on}[p${i}];[k${i}][p${i}]overlay=${r.x}:${r.y}${on}${to}`;
+    })
+    .join(';');
+}
+
+/**
+ * Phone numbers and @handles in a line of on-screen text — what a broker's
+ * video must never carry onto mkan's page. Digits split by spaces, dots or
+ * dashes are joined first ("0788 123 456"); `allow` holds our own numbers.
+ */
+export function contactLeaks(text: string, allow: string[] = []): string[] {
+  const own = new Set(allow.map((p) => p.replace(/\D/g, '').slice(-9)).filter((d) => d.length === 9));
+  const joined = text
+    .replace(/[Oo](?=\d{5,})|(?<=\d)[Oo]/g, '0') // Vision's O for 0 inside a number
+    .replace(/(\d)[\s.\-–—()/]+(?=\+?\d)/g, '$1');
+  const found = new Set<string>();
+  for (const m of joined.match(/\+?\d{9,}|(?<!\d)(?:\+?250|0)7\d{5,}/g) ?? []) {
+    if (!own.has(m.replace(/\D/g, '').slice(-9))) found.add(m);
+  }
+  for (const m of text.match(/@[a-z0-9._]{3,30}/gi) ?? []) {
+    if (!/^@\d+[km]?$/i.test(m)) found.add(m); // "@600k" is a price
+  }
+  return [...found];
+}
+
 // ── data carousel ────────────────────────────────────────────────────────────
 //
 // A photo-mode post made only of facts from the CRM — price, place, rooms, the
@@ -349,7 +538,7 @@ const BUDGETS: { key: string; lo: number; hi: number; title: string; rw: string 
   { key: '1m', lo: 1_000_000, hi: 10_000_000, title: 'RWF 1M+ a month', rw: 'Hejuru ya 1,000,000 ku kwezi' },
 ];
 
-const okForCarousel = (r: PostRow): boolean => !!r.priceMonth && r.priceMonth >= 50_000 && r.priceMonth <= 10_000_000 && !!(r.area || r.district);
+const okForCarousel = (r: PostRow): boolean => !r.lostAt && !!r.priceMonth && r.priceMonth >= 50_000 && r.priceMonth <= 10_000_000 && !!(r.area || r.district);
 
 /** Every theme the pool could fill, with the homes that fit it. */
 export function carouselThemes(rows: PostRow[]): { theme: CarouselTheme; homes: PostRow[] }[] {

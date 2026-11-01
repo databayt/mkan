@@ -6,6 +6,13 @@ import { describe, expect, it } from 'vitest';
 import {
   beatHolds,
   brokerPreviewAsk,
+  contactLeaks,
+  FRESH_DAYS,
+  sourcePostedAt,
+  stripGraph,
+  textRegions,
+  type TextBox,
+  type TextFrame,
   photoCredits,
   photoHomeSvg,
   pickStock,
@@ -34,6 +41,8 @@ import {
   type PostRow,
 } from '../../scripts/crm/tiktok-post-pure';
 
+const NOW = Date.parse('2026-10-20T07:00:00Z');
+const daysAgo = (d: number) => new Date(NOW - d * 86_400_000).toISOString();
 const PHOTOS = ['1', '2', '3', '4', '5'].map((n) => `https://cdn.example/${n}.jpg`);
 const row = (over: Partial<PostRow> = {}): PostRow => ({
   id: 100,
@@ -47,10 +56,13 @@ const row = (over: Partial<PostRow> = {}): PostRow => ({
   area: 'Kimironko',
   district: 'Gasabo',
   hostSourceId: null,
+  postedAt: daysAgo(2),
+  lostAt: null,
   ...over,
 });
-const NOW = Date.parse('2026-10-20T07:00:00Z');
-const daysAgo = (d: number) => new Date(NOW - d * 86_400_000).toISOString();
+/** A TikTok video id posted `d` days before NOW (its top 32 bits are the unix seconds). */
+const videoId = (d: number): string => ((BigInt(Math.floor((NOW - d * 86_400_000) / 1000)) << BigInt(32)) + BigInt(123_456)).toString();
+const brokerFrames = (d: number): string[] => ['1', '2', '3', '4'].map((n) => `https://cdn.example/mkan/uploads/tiktok/${videoId(d)}/${n}.jpg`);
 
 describe('refOf', () => {
   it('prefers the listing code, else K<id>', () => {
@@ -62,16 +74,32 @@ describe('refOf', () => {
 describe('ineligibleReason', () => {
   const none = new Set<string>();
   it('passes an owner home with photos and a price', () => {
-    expect(ineligibleReason(row(), none)).toBeNull();
+    expect(ineligibleReason(row(), none, NOW)).toBeNull();
   });
   it('holds a broker lead until that broker says YES', () => {
     const lead = row({ source: 'TIKTOK', hostSourceId: 'tiktok:kigalihomes' });
-    expect(ineligibleReason(lead, none)).toMatch(/not agreed/);
-    expect(ineligibleReason(lead, new Set(['kigalihomes']))).toBeNull();
+    expect(ineligibleReason(lead, none, NOW)).toMatch(/not agreed/);
+    expect(ineligibleReason(lead, new Set(['kigalihomes']), NOW)).toBeNull();
   });
   it('needs a monthly price and enough photos', () => {
-    expect(ineligibleReason(row({ priceMonth: null }), none)).toMatch(/price/);
-    expect(ineligibleReason(row({ photoUrls: PHOTOS.slice(0, 2) }), none)).toMatch(/photos/);
+    expect(ineligibleReason(row({ priceMonth: null }), none, NOW)).toMatch(/price/);
+    expect(ineligibleReason(row({ photoUrls: PHOTOS.slice(0, 2) }), none, NOW)).toMatch(/photos/);
+  });
+  it(`takes only homes whose source post is at most ${FRESH_DAYS} days old`, () => {
+    expect(ineligibleReason(row({ postedAt: daysAgo(FRESH_DAYS - 1) }), none, NOW)).toBeNull();
+    expect(ineligibleReason(row({ postedAt: daysAgo(FRESH_DAYS + 1) }), none, NOW)).toBe(`source post over ${FRESH_DAYS} days old`);
+    expect(ineligibleReason(row({ postedAt: null }), none, NOW)).toBe('no source post date');
+  });
+  it("dates a broker lead by its TikTok video, not by when mkan read it", () => {
+    const yes = new Set(['kigalihomes']);
+    const lead = (videoDays: number) => row({ source: 'TIKTOK', hostSourceId: 'tiktok:kigalihomes', photoUrls: brokerFrames(videoDays), postedAt: daysAgo(1) });
+    expect(sourcePostedAt(lead(30))).toBe(Math.floor((NOW - 30 * 86_400_000) / 1000) * 1000);
+    expect(ineligibleReason(lead(30), yes, NOW)).toBe(`source post over ${FRESH_DAYS} days old`);
+    expect(ineligibleReason(lead(10), yes, NOW)).toBeNull();
+  });
+  it('never takes a home that is gone', () => {
+    expect(ineligibleReason(row({ lostAt: daysAgo(1) }), none, NOW)).toBe('taken, or its ad is gone');
+    expect(pickToday([row({ id: 1, lostAt: daysAgo(1) }), row({ id: 2 })], {}, none, 3, NOW).map((r) => r.id)).toEqual([2]);
   });
 });
 
@@ -114,9 +142,13 @@ describe('caption + artwork', () => {
   });
   it('escapes text in the SVG', () => {
     expect(lowerThirdSvg(row({ area: 'A & B <x>' }))).toContain('A &amp; B &lt;x&gt;');
-    expect(cornerSvg('kigalihomes')).toContain('Video @kigalihomes');
-    expect(cornerSvg(null)).not.toContain('Video @');
     expect(endCardSvg(row(), '+250 788 000 000')).toContain('+250 788 000 000');
+  });
+  it('keeps the corner to the mark and the page — no broker handle on screen', () => {
+    const c = cornerSvg();
+    expect(c).toContain('>mkan</text>');
+    expect(c).not.toContain('Video');
+    expect(c).not.toContain('@');
   });
   it('asks brokers in English and Kinyarwanda', () => {
     const m = brokerAsk('Eric');
@@ -152,9 +184,11 @@ describe('broker video + brand timeline', () => {
     expect(brokerVideoUrl(lead)).toBe('https://www.tiktok.com/@kigalihomes/video/7412345678901234567');
     expect(brokerVideoUrl(row())).toBeNull();
   });
-  it('credits the broker in the caption', () => {
-    expect(captionFor(row({ hostSourceId: 'tiktok:kigalihomes' }), '+250 788 000 000')).toContain('🎥 @kigalihomes');
-    expect(captionFor(row(), '+250 788 000 000')).not.toContain('🎥');
+  it('credits the broker in the caption on a plain line', () => {
+    const lines = captionFor(row({ hostSourceId: 'tiktok:kigalihomes' }), '+250 788 000 000').split('\n');
+    expect(lines).toContain('Video: @kigalihomes');
+    expect(lines.join('\n')).not.toMatch(/🎥|remastered/);
+    expect(captionFor(row(), '+250 788 000 000')).not.toContain('Video:');
   });
   it('lays sting, body and end card on crossfades', () => {
     expect(brandTimeline(10)).toEqual({ bodyAt: 1.05, endAt: 10.7, total: 13.7 });
@@ -183,6 +217,10 @@ describe('data carousel', () => {
     const prices = c.homes.map((r) => r.priceMonth!);
     expect([...prices].sort((a, b) => a - b)).toEqual(prices);
     expect(pickCarousel(pool, {}, day0 + 86_400_000, 3)!.theme.kind).toBe('budget');
+  });
+  it('leaves a home that is gone out of every theme', () => {
+    const gone = row({ id: 7, district: 'Gasabo', lostAt: daysAgo(1) });
+    expect(carouselThemes([...pool, gone]).flatMap((t) => t.homes.map((r) => r.id))).not.toContain(7);
   });
   it('rests a shown home 14 days', () => {
     const day0 = 20_000 * 86_400_000;
@@ -231,7 +269,7 @@ describe('picture video', () => {
   });
 
   it('tags an area photo on screen, and not a home photo', () => {
-    const r = { id: 1, code: null, source: 'MANUAL' as const, priceMonth: 300000, bedrooms: 2, bathrooms: 1, propertyType: null, photoUrls: [], area: 'Kimihurura', district: 'Gasabo', hostSourceId: null };
+    const r = { id: 1, code: null, source: 'MANUAL' as const, priceMonth: 300000, bedrooms: 2, bathrooms: 1, propertyType: null, photoUrls: [], area: 'Kimihurura', district: 'Gasabo', hostSourceId: null, postedAt: null, lostAt: null };
     expect(photoHomeSvg(r, 1, 5, true)).toContain('area photo');
     expect(photoHomeSvg(r, 1, 5, false)).not.toContain('area photo');
   });
@@ -244,5 +282,84 @@ describe('preview ask', () => {
     expect(m).toContain('Nothing is posted until you say YES');
     expect(m).toContain('YEGO');
     expect(m).toContain('@somebroker');
+  });
+});
+
+describe("the broker's text, off", () => {
+  // A caption line Vision read: 0.3 of the frame wide, 0.025 tall (48 px of 1920).
+  const line = (over: Partial<TextBox> = {}): TextBox => ({ x: 0.2, y: 0.5, w: 0.3, h: 0.025, conf: 1, text: '0788 000 000', ...over });
+  const seen = (ts: number[], boxes: TextBox[] = [line()]): TextFrame[] => ts.map((t) => ({ t, boxes }));
+  /** Every box Vision read lies inside some region while it was seen (but the frame's outermost pixel, which delogo fills from). */
+  const covered = (frames: TextFrame[], regions: ReturnType<typeof textRegions>): boolean =>
+    frames.every((f) =>
+      f.boxes.every((b) =>
+        regions.some(
+          (r) =>
+            r.x <= Math.max(1, b.x * 1080) && r.y <= Math.max(1, b.y * 1920) && r.x + r.w >= Math.min(1079, (b.x + b.w) * 1080) && r.y + r.h >= Math.min(1919, (b.y + b.h) * 1920) && r.start <= f.t && r.end >= f.t,
+        ),
+      ),
+    );
+
+  it('maps a box into output pixels, padded past its plate, held a sample either side', () => {
+    // 48 px tall → 84 px of pad across (a leading emoji, the plate's ends), 30 px up and down.
+    expect(textRegions(seen([5]))).toEqual([{ x: 132, y: 930, w: 492, h: 108, start: 4.35, end: 5.65 }]);
+  });
+
+  it('makes one region of a caption that stays, and of the lines of one caption', () => {
+    const frames = seen([0, 0.5, 1, 1.5, 2, 2.5, 3], [line(), line({ y: 0.53, text: '2 beds' })]);
+    const r = textRegions(frames, { duration: 40 });
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ start: 0, end: 3.65 });
+    expect(covered(frames, r)).toBe(true);
+  });
+
+  it('bridges frames Vision missed, but not a caption that comes back much later', () => {
+    expect(textRegions(seen([1, 2.5]))).toHaveLength(1);
+    const apart = textRegions(seen([1, 10]));
+    expect(apart.map((r) => [r.start, r.end])).toEqual([[0.35, 1.65], [9.35, 10.65]]);
+  });
+
+  it('keeps separate places separate', () => {
+    expect(textRegions(seen([1], [line({ y: 0.1 }), line({ y: 0.8 })]))).toHaveLength(2);
+  });
+
+  it('ignores low-confidence and tiny boxes', () => {
+    expect(textRegions(seen([1], [line({ conf: 0.1 }), line({ h: 0.004 })]))).toEqual([]);
+  });
+
+  it('stays inside the frame (a pixel of edge for delogo) and inside the body', () => {
+    const [r] = textRegions(seen([2.8], [line({ x: 0, y: 0, w: 1, h: 0.05 })]), { duration: 3 });
+    expect(r).toMatchObject({ x: 1, y: 1, w: 1078, end: 3 });
+  });
+
+  it('caps the count by merging the closest, never by dropping text', () => {
+    // 60 small boxes all over the frame and the clip.
+    const frames: TextFrame[] = Array.from({ length: 60 }, (_, i) => ({ t: (i % 12) * 3, boxes: [line({ x: (i % 5) * 0.19, y: Math.floor(i / 5) * 0.08, w: 0.05, h: 0.012 })] }));
+    const r = textRegions(frames, { maxRegions: 8, duration: 40 });
+    expect(r.length).toBeLessThanOrEqual(8);
+    expect(covered(frames, r)).toBe(true);
+  });
+
+  it('builds the wipe as one ffmpeg graph, timed for a video and for good on a still', () => {
+    const regions = textRegions(seen([1], [line(), line({ y: 0.1 })]));
+    const g = stripGraph(regions);
+    expect(g.startsWith('[0:v]delogo=')).toBe(true);
+    expect(g.endsWith('[v]')).toBe(true);
+    expect(g.match(/delogo=/g)).toHaveLength(2);
+    expect(g).toContain(`enable='between(t,${regions[0]!.start},${regions[0]!.end})'`);
+    expect(stripGraph(regions, false)).not.toContain('enable');
+    expect(stripGraph([])).toBe('[0:v]null[v]');
+  });
+
+  it('finds the numbers and handles a broker burns in, and lets ours through', () => {
+    expect(contactLeaks('4 Beds,3 Baths. 0781000024')).toEqual(['0781000024']);
+    expect(contactLeaks('WhatsApp +250 732 000 096')).toEqual(['+250732000096']);
+    expect(contactLeaks('call 0788.000.588 now')).toEqual(['0788000588']);
+    expect(contactLeaks('O788000588')).toEqual(['0788000588']); // Vision's O for a zero
+    expect(contactLeaks('07880 00')).toEqual(['0788000']); // half a number is still a number
+    expect(contactLeaks('follow @kigali.homes')).toEqual(['@kigali.homes']);
+    expect(contactLeaks('House For Rent @600k · 2.5 bathrooms · RWF 1,450,000 · security 24/7')).toEqual([]);
+    expect(contactLeaks('WhatsApp +250 780 000 777', ['+250 780 000 777'])).toEqual([]);
+    expect(contactLeaks('WhatsApp +250 780 000 777')).toEqual(['+250780000777']);
   });
 });
