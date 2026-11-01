@@ -25,6 +25,8 @@ export const KIGALI_LONG_TERMS = {
 
 /** The terms an ad states; null / missing = the ad says nothing. */
 export interface ListingTerms {
+  /** Months of rent paid up front. No ad states it; a broker does, at booking (deal.ts). */
+  monthsInAdvance?: number | null;
   /** Months of rent held as deposit (0.5, 1, 2). */
   depositMonths?: number | null;
   /** A fraction of one month's rent (0.25). */
@@ -69,7 +71,7 @@ export interface CostLine {
   qty?: number;
   /** Upper end of a ranged label ("25–30%"). */
   qtyHigh?: number;
-  /** A monthly term: read from the ad, or what Kigali brokers typically ask. */
+  /** A monthly term: stated (by the ad, or by the broker at booking), or what Kigali brokers typically ask. */
   source?: "ad" | "typical";
   /** Water and electricity carry no amount: in the rent, paid on top, or the ad does not say. */
   status?: "included" | "separate" | "unknown";
@@ -128,8 +130,10 @@ export function longStayCost(home: PricedHome): CostEstimate | null {
   const t = KIGALI_LONG_TERMS;
   const terms = home.terms ?? {};
   const known = (n: number | null | undefined): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0;
-  const advance = rent * t.monthsInAdvance;
-  const lines: CostLine[] = [{ key: "rentInAdvance", amount: advance, qty: t.monthsInAdvance, source: "typical" }];
+  const inAdvance = known(terms.monthsInAdvance) && terms.monthsInAdvance >= 1 && terms.monthsInAdvance <= 12 ? terms.monthsInAdvance : null;
+  const advanceMonths = inAdvance ?? t.monthsInAdvance;
+  const advance = rent * advanceMonths;
+  const lines: CostLine[] = [{ key: "rentInAdvance", amount: advance, qty: advanceMonths, source: inAdvance != null ? "ad" : "typical" }];
 
   const depositMonths = known(terms.depositMonths) && terms.depositMonths <= 12 ? terms.depositMonths : null;
   const deposit = round(rent * (depositMonths ?? t.depositMonths));

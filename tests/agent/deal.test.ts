@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
-import type { CostEstimate } from "@/components/agent/cost";
-import { askTimeMessage, dealSheetMessage, readViewingTime, viewingConfirmedMessage, viewingLabel, viewingReminderMessage } from "@/components/agent/deal-pure";
+import { longStayCost, type CostEstimate } from "@/components/agent/cost";
+import {
+  askTimeMessage,
+  confirmedTermsLine,
+  dealSheetMessage,
+  parseTermFlags,
+  readViewingTime,
+  termsToAsk,
+  viewingConfirmedMessage,
+  viewingLabel,
+  viewingReminderMessage,
+} from "@/components/agent/deal-pure";
 
 const cost: CostEstimate = {
   headline: 350_000,
@@ -84,5 +94,69 @@ describe("the viewing messages", () => {
     expect(viewingConfirmedMessage("en", { title: "Flat", label, place: "Kibagabaga, near the market", rep: "Osman" })).toMatch(/You'll meet the broker and Osman from Mkan there/);
     expect(viewingReminderMessage("en", { title: "Flat", label, rep: "Osman" }, "24h")).toMatch(/tomorrow/);
     expect(viewingReminderMessage("rw", { title: "Flat", label, rep: "Osman" }, "2h")).toMatch(/uyu munsi/);
+  });
+});
+
+describe("the terms the person from Mkan confirms", () => {
+  it("lists what the tenant was shown as usual or unstated, and what no ad says", () => {
+    expect(termsToAsk(cost)).toEqual([
+      "months up front (we said 3 months, the usual)",
+      "deposit (we said half a month, the usual)",
+      "commission (we said 25–30%, the usual)",
+      "water in the rent?",
+      "lease length",
+      "move-in date",
+      "viewing fee (Mkan pays it)",
+    ]);
+    // Electricity was stated by the ad; nothing to ask.
+    expect(termsToAsk(cost).join(" ")).not.toMatch(/electricity/);
+    expect(termsToAsk(null)).toEqual(["rent", "months up front", "deposit", "commission", "water", "electricity", "lease length", "move-in date"]);
+  });
+
+  it("reads the deal:book flags, and refuses a typo before anything is booked", () => {
+    const flags: Record<string, string> = { rent: "350,000", advance: "3", deposit: "half", commission: "10%", fee: "5000", water: "yes", power: "no", lease: "12", "move-in": "2026-11-15" };
+    expect(parseTermFlags((n) => flags[n])).toEqual({
+      rent: 350_000,
+      monthsInAdvance: 3,
+      depositMonths: 0.5,
+      commissionPct: 0.1,
+      viewingFee: 5_000,
+      waterIncluded: true,
+      electricityIncluded: false,
+      leaseMonths: 12,
+      moveIn: "2026-11-15",
+    });
+    expect(parseTermFlags(() => undefined)).toEqual({});
+    expect(parseTermFlags((n) => (n === "commission" ? "none" : undefined))).toEqual({ noCommission: true, commissionPct: 0 });
+    expect(parseTermFlags((n) => (n === "commission" ? "0" : undefined))).toEqual({ noCommission: true, commissionPct: 0 });
+    expect(parseTermFlags((n) => (n === "deposit" ? "0" : undefined))).toEqual({ depositMonths: 0 });
+    expect(() => parseTermFlags((n) => (n === "water" ? "maybe" : undefined))).toThrow(/--water=maybe/);
+    expect(() => parseTermFlags((n) => (n === "advance" ? "20" : undefined))).toThrow(/--advance=20/);
+    expect(() => parseTermFlags((n) => (n === "move-in" ? "15/11" : undefined))).toThrow(/YYYY-MM-DD/);
+  });
+
+  it("restates only what the broker said, in the tenant's language", () => {
+    const said = { monthsInAdvance: 3, depositMonths: 1, commissionPct: 0.1, waterIncluded: true, electricityIncluded: false, leaseMonths: 12, moveIn: "2026-11-15" };
+    expect(confirmedTermsLine("en", said, [1_435_000, 1_435_000])).toBe(
+      "Confirmed with the broker: 3 months up front, 1 month deposit, broker's commission 10% of a month's rent, water included, electricity paid by you, 12-month lease, move in from 15 Nov. To move in: RWF 1,435,000.",
+    );
+    expect(confirmedTermsLine("en", { noCommission: true, commissionPct: 0 }, null)).toBe("Confirmed with the broker: no broker's commission.");
+    expect(confirmedTermsLine("ar", said, null)).toBe("أكّد الوسيط: 3 أشهر مقدماً، شهر تأميناً، عمولة الوسيط 10% من إيجار شهر، الماء ضمن الإيجار، الكهرباء على المستأجر، عقد لمدة 12 شهراً، الانتقال من 15 Nov.");
+    expect(confirmedTermsLine("rw", said, [1_435_000, 1_435_000])).toMatch(/^Byemejwe na komisiyoneri: amezi 3 mbere, ukwezi kumwe y'ingwate, .* amasezerano y'amezi 12, .*Kwimukira: RWF 1,435,000\.$/);
+    expect(confirmedTermsLine("en", {}, [1, 1])).toBeNull();
+  });
+
+  it("puts the confirmed terms under the viewing confirmation", () => {
+    const t = viewingConfirmedMessage("en", { title: "Flat", label: "Mon 2 Nov, 10:00", place: null, rep: "Osman", terms: "Confirmed with the broker: no deposit." });
+    expect(t.split("\n")).toHaveLength(2);
+    expect(t.split("\n")[1]).toBe("Confirmed with the broker: no deposit.");
+  });
+
+  it("prices the move-in on the broker's months up front", () => {
+    const c = longStayCost({ rentPeriod: "MONTHLY", priceMonth: 300_000, pricePerNight: null, monthlyDiscount: null, cleaningFee: null, terms: { monthsInAdvance: 1, depositMonths: 1, noCommission: true } })!;
+    expect(c.lines.find((l) => l.key === "rentInAdvance")).toMatchObject({ amount: 300_000, qty: 1, source: "ad" });
+    // Out of range falls back to Kigali's usual 3 months, said as such.
+    const usual = longStayCost({ rentPeriod: "MONTHLY", priceMonth: 300_000, pricePerNight: null, monthlyDiscount: null, cleaningFee: null, terms: { monthsInAdvance: 40 } })!;
+    expect(usual.lines.find((l) => l.key === "rentInAdvance")).toMatchObject({ qty: 3, source: "typical" });
   });
 });

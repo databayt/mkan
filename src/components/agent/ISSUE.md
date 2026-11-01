@@ -1,5 +1,22 @@
 # Agent — open issues
 
+## 2026-11-01 — Mkan in the middle: deal sheet, three-party viewing, confirmed terms
+
+- **Shipped** (`6e873e1`, deployed): a broker's yes sends the WhatsApp tenant the deal sheet and
+  asks when they can come; the time they name becomes a 📅 #mkan card for `MKAN_VIEWING_REP`;
+  `pnpm deal:book` creates the three-party `ListingVisit` and a `Deal`; reminders 24 h / 2 h and
+  "how did it go?"; `pnpm deal:status`. A broker's "taken" sets `Listing.lostAt` (out of /find and
+  the TikTok pick for good). Broker `relationship` / share / `introducedAt` / `lastMessagedAt`, also
+  on the Twenty broker record (`578712d`).
+- **The terms** (this change): the deal sheet tells the tenant the usual or unstated terms get
+  confirmed, and nothing asked them. The 📅 card now lists them (`termsToAsk`), the person asks
+  while agreeing the time, and `deal:book --advance=3 --deposit=1 --commission=10 --water=yes
+  --power=no --lease=12 --move-in=…` records the answers (BrokerRequest.terms, the home's terms
+  with `termsSource BROKER`, the Deal's figures) and restates them to the tenant. No machine
+  message to the broker: a person talks to them about their home, as the flow intends.
+- **Owed:** the card's checklist reaches prod with the next deploy (`deal:book` runs on the Mac
+  and works now). The Arabic and Kinyarwanda deal strings want a speaker's read, like the broker ones.
+
 ## 2026-11-01 — Broker sends gated to real WhatsApp tenants; Mkan speaks as Mkan
 
 - **What happened:** brokers complained ("you keep sending sending??"). Measured on prod: 129 broker

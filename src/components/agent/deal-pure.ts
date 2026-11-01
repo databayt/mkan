@@ -11,6 +11,12 @@
  * pays to see a home. Every figure comes from the card's cost lines (cost.ts):
  * the ad's own terms when it stated them, Kigali's typical ones otherwise —
  * said as such, and confirmed at the viewing.
+ *
+ * "We'll ask" is kept by a person: the #mkan card for the viewing lists what
+ * the tenant was shown as usual or unstated (termsToAsk), the person from Mkan
+ * asks the broker while agreeing the time, and `pnpm deal:book --advance=3 …`
+ * records the answers (parseTermFlags), which the tenant's confirmation then
+ * restates (confirmedTermsLine).
  */
 import type { CostEstimate, CostLine } from "./cost";
 
@@ -29,10 +35,32 @@ export interface DealFacts {
   link: string;
 }
 
+/**
+ * What the broker confirmed to the person from Mkan, recorded at booking
+ * (`pnpm deal:book --advance=3 …`). A term left out was not discussed.
+ */
+export interface BrokerTerms {
+  /** RWF a month, when the broker's figure differs from the ad's. */
+  rent?: number;
+  monthsInAdvance?: number;
+  /** 0 = no deposit. */
+  depositMonths?: number;
+  /** A fraction of one month's rent (0.1). */
+  commissionPct?: number;
+  noCommission?: boolean;
+  /** RWF; Mkan pays it. */
+  viewingFee?: number;
+  waterIncluded?: boolean;
+  electricityIncluded?: boolean;
+  leaseMonths?: number;
+  /** YYYY-MM-DD. */
+  moveIn?: string;
+}
+
 const line = (cost: CostEstimate | null, key: CostLine["key"]) => cost?.lines.find((l) => l.key === key);
 const months = (q: number | undefined, lang: DealLang) => {
   const n = q ?? 0;
-  if (lang === "ar") return n === 0.5 ? "نصف شهر" : n === 1 ? "شهر" : `${n} أشهر`;
+  if (lang === "ar") return n === 0.5 ? "نصف شهر" : n === 1 ? "شهر" : n === 2 ? "شهران" : n >= 11 ? `${n} شهراً` : `${n} أشهر`;
   if (lang === "rw") return n === 0.5 ? "igice cy'ukwezi" : n === 1 ? "ukwezi kumwe" : `amezi ${n}`;
   return n === 0.5 ? "half a month" : n === 1 ? "1 month" : `${n} months`;
 };
@@ -203,11 +231,156 @@ export function askTimeMessage(lang: DealLang): string {
   return `What time works? For example "10am" or "3pm".`;
 }
 
-export function viewingConfirmedMessage(lang: DealLang, v: { title: string; label: string; place: string | null; rep: string }): string {
+/**
+ * What the person from Mkan asks the broker while agreeing the time, for the
+ * #mkan card: every term the tenant was shown as usual or not stated (with what
+ * they were told), and what no ad states. Empty cost = ask everything.
+ */
+export function termsToAsk(cost: CostEstimate | null): string[] {
+  if (!cost) return ["rent", "months up front", "deposit", "commission", "water", "electricity", "lease length", "move-in date"];
+  const usual = (key: CostLine["key"], what: string, told: (l: CostLine) => string) => {
+    const l = line(cost, key);
+    return l?.source === "typical" ? `${what} (we said ${told(l)}, the usual)` : null;
+  };
+  const utility = (key: "water" | "electricity") => ((line(cost, key)?.status ?? "unknown") === "unknown" ? `${key} in the rent?` : null);
+  const fee = line(cost, "viewingFee");
+  return [
+    usual("rentInAdvance", "months up front", (l) => months(l.qty, "en")),
+    usual("deposit", "deposit", (l) => months(l.qty, "en")),
+    usual("commission", "commission", (l) => (l.qtyHigh != null ? `${l.qty}–${l.qtyHigh}%` : `${l.qty}%`)),
+    utility("water"),
+    utility("electricity"),
+    "lease length",
+    "move-in date",
+    fee?.source === "typical" ? "viewing fee (Mkan pays it)" : null,
+  ].filter((s): s is string => !!s);
+}
+
+/**
+ * `pnpm deal:book` flags → what the broker confirmed. --advance=3 and --deposit=1 are
+ * months (--deposit=0.5 or half; 0 = none); --commission=10 is a percent of one month's
+ * rent (0 or none = no commission); --rent and --fee are RWF; --water / --power =
+ * yes (in the rent) or no (paid separately); --lease=12 months; --move-in=YYYY-MM-DD.
+ */
+export function parseTermFlags(get: (name: string) => string | undefined): BrokerTerms {
+  const t: BrokerTerms = {};
+  const num = (name: string, min: number, max: number): number | undefined => {
+    const raw = get(name)?.trim();
+    if (!raw) return undefined;
+    const n = Number(raw.replace(/[,_\s]/g, "").replace(/%$/, ""));
+    if (!Number.isFinite(n) || n < min || n > max) throw new Error(`--${name}=${raw}: expected a number from ${min} to ${max}`);
+    return n;
+  };
+  const yesNo = (name: string): boolean | undefined => {
+    const raw = get(name)?.trim().toLowerCase();
+    if (!raw) return undefined;
+    if (/^(y|yes|true|included|in)$/.test(raw)) return true;
+    if (/^(n|no|false|separate|out)$/.test(raw)) return false;
+    throw new Error(`--${name}=${raw}: say yes (in the rent) or no (paid separately)`);
+  };
+  const rent = num("rent", 1_000, 100_000_000);
+  if (rent != null) t.rent = Math.round(rent);
+  const advance = num("advance", 1, 12);
+  if (advance != null) t.monthsInAdvance = advance;
+  const deposit = get("deposit")?.trim().toLowerCase() === "half" ? 0.5 : num("deposit", 0, 12);
+  if (deposit != null) t.depositMonths = deposit;
+  const commission = get("commission")?.trim().toLowerCase();
+  if (commission === "none" || commission === "no") {
+    t.noCommission = true;
+    t.commissionPct = 0;
+  } else {
+    const pct = num("commission", 0, 100);
+    if (pct != null) {
+      t.commissionPct = pct / 100;
+      if (pct === 0) t.noCommission = true;
+    }
+  }
+  const fee = num("fee", 0, 1_000_000);
+  if (fee != null) t.viewingFee = Math.round(fee);
+  const water = yesNo("water");
+  if (water != null) t.waterIncluded = water;
+  const power = yesNo("power");
+  if (power != null) t.electricityIncluded = power;
+  const lease = num("lease", 1, 120);
+  if (lease != null) t.leaseMonths = lease;
+  const moveIn = get("move-in")?.trim();
+  if (moveIn) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(moveIn) || Number.isNaN(Date.parse(moveIn))) throw new Error(`--move-in=${moveIn}: expected YYYY-MM-DD`);
+    t.moveIn = moveIn;
+  }
+  return t;
+}
+
+/** "15 Nov" from "2026-11-15". */
+const dayMonth = (iso: string) => {
+  const m = iso.match(/^\d{4}-(\d{2})-(\d{2})$/);
+  return m ? `${Number(m[2])} ${MO[Number(m[1]) - 1]}` : iso;
+};
+const pctOf = (p: number) => `${Math.round(p * 1000) / 10}%`;
+const rwfRange = (r: [number, number]) => (r[1] !== r[0] ? `${rwf(r[0])}–${rwf(r[1])}` : rwf(r[0]));
+
+/**
+ * The deal as the broker confirmed it, for the tenant's booking confirmation:
+ * only what was said, in the tenant's language; null when nothing was.
+ * `moveIn` is what moving in costs on those terms (the viewing fee is Mkan's).
+ */
+export function confirmedTermsLine(lang: DealLang, t: BrokerTerms, moveIn: [number, number] | null): string | null {
+  const free = t.noCommission === true || t.commissionPct === 0;
+  const total = moveIn ? rwfRange(moveIn) : null;
+  if (lang === "ar") {
+    const util = (v: boolean) => (v ? "ضمن الإيجار" : "على المستأجر");
+    const parts = [
+      t.rent != null ? `الإيجار ${rwf(t.rent)} في الشهر` : null,
+      t.monthsInAdvance != null ? `${months(t.monthsInAdvance, lang)} مقدماً` : null,
+      t.depositMonths != null ? (t.depositMonths === 0 ? "بلا تأمين" : `${months(t.depositMonths, lang)} تأميناً`) : null,
+      free ? "بلا عمولة وسيط" : t.commissionPct != null ? `عمولة الوسيط ${pctOf(t.commissionPct)} من إيجار شهر` : null,
+      t.waterIncluded != null ? `الماء ${util(t.waterIncluded)}` : null,
+      t.electricityIncluded != null ? `الكهرباء ${util(t.electricityIncluded)}` : null,
+      t.leaseMonths != null ? `عقد لمدة ${months(t.leaseMonths, lang)}` : null,
+      t.moveIn ? `الانتقال من ${dayMonth(t.moveIn)}` : null,
+    ].filter(Boolean);
+    if (!parts.length) return null;
+    return `أكّد الوسيط: ${parts.join("، ")}.${total ? ` للانتقال: ${total}.` : ""}`;
+  }
+  if (lang === "rw") {
+    const util = (v: boolean) => (v ? "biri mu bukode" : "ubyishyura ukwawe");
+    const parts = [
+      t.rent != null ? `ubukode ${rwf(t.rent)} ku kwezi` : null,
+      t.monthsInAdvance != null ? `${months(t.monthsInAdvance, lang)} mbere` : null,
+      t.depositMonths != null ? (t.depositMonths === 0 ? "nta ngwate" : `${months(t.depositMonths, lang)} y'ingwate`) : null,
+      free ? "nta komisiyo" : t.commissionPct != null ? `komisiyo ${pctOf(t.commissionPct)} by'ukwezi kumwe` : null,
+      t.waterIncluded != null ? `amazi ${util(t.waterIncluded)}` : null,
+      t.electricityIncluded != null ? `amashanyarazi ${util(t.electricityIncluded)}` : null,
+      t.leaseMonths != null ? `amasezerano y'${months(t.leaseMonths, lang)}` : null,
+      t.moveIn ? `kwimuka guhera ${dayMonth(t.moveIn)}` : null,
+    ].filter(Boolean);
+    if (!parts.length) return null;
+    return `Byemejwe na komisiyoneri: ${parts.join(", ")}.${total ? ` Kwimukira: ${total}.` : ""}`;
+  }
+  const util = (v: boolean) => (v ? "included" : "paid by you");
+  const parts = [
+    t.rent != null ? `rent ${rwf(t.rent)} a month` : null,
+    t.monthsInAdvance != null ? `${months(t.monthsInAdvance, lang)} up front` : null,
+    t.depositMonths != null ? (t.depositMonths === 0 ? "no deposit" : `${months(t.depositMonths, lang)} deposit`) : null,
+    free ? "no broker's commission" : t.commissionPct != null ? `broker's commission ${pctOf(t.commissionPct)} of a month's rent` : null,
+    t.waterIncluded != null ? `water ${util(t.waterIncluded)}` : null,
+    t.electricityIncluded != null ? `electricity ${util(t.electricityIncluded)}` : null,
+    t.leaseMonths != null ? `${t.leaseMonths}-month lease` : null,
+    t.moveIn ? `move in from ${dayMonth(t.moveIn)}` : null,
+  ].filter(Boolean);
+  if (!parts.length) return null;
+  return `Confirmed with the broker: ${parts.join(", ")}.${total ? ` To move in: ${total}.` : ""}`;
+}
+
+export function viewingConfirmedMessage(lang: DealLang, v: { title: string; label: string; place: string | null; rep: string; terms?: string | null }): string {
   const where = v.place ? ` · ${v.place}` : "";
-  if (lang === "ar") return `تم تأكيد المعاينة: «${v.title}»، ${v.label}${where}. ستلتقي الوسيط و${v.rep} من مكان هناك. أحضر هويتك؛ إن أعجبك المنزل نكتب العقد ونوقّعه في اليوم نفسه. أخبرنا هنا إن تغيّر شيء.`;
-  if (lang === "rw") return `Gusura byemejwe: "${v.title}", ${v.label}${where}. Uzahura na komisiyoneri na ${v.rep} wo muri Mkan. Uzane indangamuntu; niba uyikunze, amasezerano yandikwa agasinywa uwo munsi. Tubwire hano niba hari icyahindutse.`;
-  return `Viewing confirmed: "${v.title}", ${v.label}${where}. You'll meet the broker and ${v.rep} from Mkan there. Bring your ID; if you like it, the lease is written and signed the same day. Tell us here if anything changes.`;
+  const body =
+    lang === "ar"
+      ? `تم تأكيد المعاينة: «${v.title}»، ${v.label}${where}. ستلتقي الوسيط و${v.rep} من مكان هناك. أحضر هويتك؛ إن أعجبك المنزل نكتب العقد ونوقّعه في اليوم نفسه. أخبرنا هنا إن تغيّر شيء.`
+      : lang === "rw"
+        ? `Gusura byemejwe: "${v.title}", ${v.label}${where}. Uzahura na komisiyoneri na ${v.rep} wo muri Mkan. Uzane indangamuntu; niba uyikunze, amasezerano yandikwa agasinywa uwo munsi. Tubwire hano niba hari icyahindutse.`
+        : `Viewing confirmed: "${v.title}", ${v.label}${where}. You'll meet the broker and ${v.rep} from Mkan there. Bring your ID; if you like it, the lease is written and signed the same day. Tell us here if anything changes.`;
+  return v.terms ? `${body}\n${v.terms}` : body;
 }
 
 export function viewingReminderMessage(lang: DealLang, v: { title: string; label: string; rep: string }, which: "24h" | "2h"): string {

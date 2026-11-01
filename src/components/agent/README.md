@@ -50,7 +50,7 @@ profile. Reads (page render, poll) never write; writes (actions, the chat list) 
 | `welcome.tsx` · `app/api/agent/welcome` | Welcome back: the remembered search as one tap, and homes listed since the last search |
 | `saved-view.tsx` · `memory-view.tsx` | ☰ → Saved homes (the site's favorites) and ☰ → Memory (change, remove, forget) |
 | `amenities.ts` | A TikTok video's features → `Amenity` values, furnishing, parking, pets (the mirror writes them onto leads) |
-| `cost.ts` | Short stay (nights + 12% fee) · month in a nightly home · Kigali broker terms: the ad's own deposit / commission / viewing fee when the lead reader found them (each line `source: "ad"`), else the typical 3 months + ½ deposit + 25–30% commission + 5k viewing (`"typical"`); an owner's post or "no commission" has no commission line; water and electricity are status lines (included / paid separately / not stated) |
+| `cost.ts` | Short stay (nights + 12% fee) · month in a nightly home · Kigali broker terms: the ad's own deposit / commission / viewing fee when the lead reader found them (each line `source: "ad"`), else the typical 3 months + ½ deposit + 25–30% commission + 5k viewing (`"typical"`); months up front only ever come from a broker, at booking (`monthsInAdvance`, deal.ts); an owner's post or "no commission" has no commission line; water and electricity are status lines (included / paid separately / not stated) |
 | `rank.ts` | Duplicate grouping, hard filters, scoring with reasons. A stated furnishing, home type (apartment / house / room; studio = 0 bedrooms), "water included" or "no commission" drops only homes known to be the opposite — an ad that is silent stays, ranked lower, with `ask` ("ask the broker"). Purpose: family 2+ bedrooms and houses, study campus / rooms / cheaper, work the business areas. A lead is placed by its `Location.neighbourhood` / `sector` zone slug (its centre scores areas and "near"), else its address text |
 | `search.ts` | Prisma query over published RWF Kigali homes → candidates; shortlist cards. Airbnb imports (`source = AIRBNB`) are excluded — the agent shows broker leads and hosts' own homes only |
 | `run.ts` | One turn, writing the trace. `startTurn` runs it at once and says when its first reply is written (`shown`); a 15 s deadline answers with the error (`appendReply`) and a write gate drops the turn's later writes |
@@ -123,9 +123,23 @@ broker types "yes" / "taken" (broker-inbox.ts) — or, for asks sent before 10-2
              └─ applyAnswer: every pending question about the home answered,
                 every waiting task's card + panel updated, lastAvailabilityConfirmedAt set;
                 a yes never hands the tenant the broker's number (Mkan stays in the middle):
-                the tenant hears that MKAN_VIEWING_REP (Osman) will set up the viewing, and
-                that person gets a 🔑 #mkan card with both chats
-tenant picks a time + name + phone + consent ─► new token → broker "confirm" message
+                the WhatsApp tenant gets the deal sheet (deal.ts sendDealSheet — rent, the
+                move-in total, commission, viewing free because Mkan pays it, water and
+                electricity, next steps) and is asked when they can come; MKAN_VIEWING_REP
+                (Osman) gets a 🔑 #mkan card with both chats
+WhatsApp tenant names a time ("tomorrow 10am", "ejo saa yine") ─► proposeViewing: a 📅 #mkan
+                card — the person agrees the time with the broker by hand and asks what the
+                tenant was shown as usual or unstated (termsToAsk: months up front, deposit,
+                commission, water, electricity, lease length, move-in date)
+person books it ─► `pnpm deal:book --task … --listing … --at … [--advance=3 --deposit=1
+                --commission=10 --water=yes --power=no --lease=12 --move-in=YYYY-MM-DD]`:
+                ListingVisit (tenant + broker + rep) and a Deal priced on what the broker
+                said; the terms go on BrokerRequest.terms and on the home (termsSource
+                BROKER, the next tenant's card shows them as stated); the tenant's
+                confirmation restates them. Reminders 24 h + 2 h before, "how did it go?"
+                3 h after (hourly cron); `pnpm deal:status --status=signed` → home lost,
+                broker PARTNER
+web tenant picks a time + name + phone + consent ─► new token → broker "confirm" message
 broker confirms ─► ListingVisit(Scheduled) — the only place a viewing is booked;
                    the broker sees the tenant's name and phone only now
 after the time ─► tenant taps how it went ─► ListingVisit outcome + notes
@@ -139,6 +153,7 @@ cron /api/cron/broker-requests (hourly) ─► unanswered after 24 h = NO_REPLY 
 | --- | --- |
 | `broker.ts` | request creation + dedup (batched), `pickBroker` (14-day gap), answer fan-out, expiry → a different broker, the 🔑 viewing card, stuck-turn sweep |
 | `broker-message.ts` | the exact words a broker receives, as Mkan (tested): intro once, then short asks; EN/FR/RW |
+| `deal.ts` · `deal-pure.ts` · `scripts/agent/deal.ts` | from a yes to a signed lease: the deal sheet, viewing times in the tenant's words, the 📅 card with the terms to ask, `deal:book` / `deal:status` / `deal:list`, reminders; the words are pure and tested (EN/AR/RW) |
 | `broker-sends.ts` · `broker-gate.ts` | the `broker-sends` switch and the team's numbers (WaState); the pure gate: WhatsApp tenant, not a team number, sends `gated` |
 | `home-ref.ts` | a TikTok post's code ("K5808") → that home's exact search; the turn pins it first (`pin`) |
 | `whatsapp.ts` | Outbound WhatsApp: with `MKAN_WA_OUTBOX=1` every message is an `OutboundMessage` row the 2-minute cron drains (`wa-outbox.ts`, daily cap `MKAN_WA_DAILY_CAP`, default 40); otherwise a #mkan card with a wa.me link (`SLACK_BOT_TOKEN`) |

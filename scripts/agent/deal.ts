@@ -4,10 +4,14 @@
  *
  *   pnpm deal:list                                   viewings asked, booked, and open deals
  *   pnpm deal:book --task=<id> --listing=<id> --at=<ISO or "2026-11-04 10:00" Kigali> [--place="…"] [--by=Osman]
+ *                  [what the broker confirmed: --rent=350000 --advance=3 --deposit=1 --commission=10
+ *                   --fee=5000 --water=yes --power=no --lease=12 --move-in=2026-11-15]
  *   pnpm deal:status --deal=<id> --status=viewed|signed|paid|lost [--share=<RWF>] [--note="…"]
  *
  * `deal:book` messages the tenant on WhatsApp (the outbox's caps apply) and
- * posts to #mkan; the #mkan "Viewing asked" card carries the exact command.
+ * posts to #mkan; the #mkan "Viewing asked" card carries the exact command and
+ * the terms to ask. Each term flag is optional: a term left out was not discussed,
+ * and the tenant's confirmation restates only what the broker said.
  */
 import { config } from "dotenv";
 config({ override: true });
@@ -28,15 +32,19 @@ function when(text: string | undefined): Date {
 async function main() {
   const { db } = await import("../../src/lib/db");
   const deal = await import("../../src/components/agent/deal");
-  const { viewingLabel } = await import("../../src/components/agent/deal-pure");
+  const { confirmedTermsLine, parseTermFlags, viewingLabel } = await import("../../src/components/agent/deal-pure");
   try {
     if (cmd === "book") {
       const taskId = arg("task");
       const listingId = Number(arg("listing"));
       if (!taskId || !listingId) throw new Error("--task and --listing are required");
       const at = when(arg("at"));
-      const res = await deal.bookViewing({ taskId, listingId, at, place: arg("place") ?? null, by: arg("by") ?? null });
+      // Parsed before anything is written: a mistyped term stops the booking, not half of it.
+      const terms = parseTermFlags(arg);
+      const res = await deal.bookViewing({ taskId, listingId, at, place: arg("place") ?? null, by: arg("by") ?? null, terms });
       console.log(`booked: visit ${res.visitId}, deal ${res.dealId} — ${viewingLabel(at, "en")} (Kigali)`);
+      const said = confirmedTermsLine("en", terms, null);
+      console.log(said ? `  ${said}` : "  no terms recorded — the tenant's confirmation keeps the deal sheet's usual terms");
     } else if (cmd === "status") {
       const id = arg("deal");
       const status = (arg("status") ?? "").toUpperCase();
