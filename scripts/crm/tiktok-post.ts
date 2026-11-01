@@ -926,7 +926,8 @@ const SHOWN = join(DATA, 'carousel.json');
  * Today's data carousel → `<date>/carousel/<n>.jpg` + `caption.txt`: a cover,
  * one slide per home, the WhatsApp slide. Facts only, so every Kigali monthly
  * home qualifies, consent or not. --notify puts the slides on the CDN and the
- * links + caption in #mkan for the phone to post as a photo carousel.
+ * links + caption in #mkan to look at: tt:upload posts them as a photo post at
+ * the end of the run (since 11-01; with TIKTOK_PHOTO_POSTS=off the phone posts them).
  */
 async function carousel(): Promise<string[]> {
   const phone = whatsapp();
@@ -968,7 +969,11 @@ async function carousel(): Promise<string[]> {
     if (urls.length === files.length) {
       await postToMkan(
         [
-          `🖼 *TikTok @${PAGE} carousel — ${theme.title}* (${files.length} slides). Save each, then TikTok → + → photos, in order, add a sound, paste the caption.`,
+          `🖼 *TikTok @${PAGE} carousel — ${theme.title}* (${files.length} slides). ${
+            (process.env.TIKTOK_PHOTO_POSTS ?? '').trim().toLowerCase() === 'off'
+              ? 'Save each, then TikTok → + → photos, in order, add a sound, paste the caption.'
+              : 'Posts itself as a photo post at the end of this run — nothing to post by hand.'
+          }`,
           urls.map((u, i) => `<${u}|${i + 1}>`).join(' · '),
           '```' + caption + '```',
         ].join('\n'),
