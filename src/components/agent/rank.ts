@@ -177,7 +177,7 @@ function comparablePrice(c: Candidate, r: Requirements): number | null {
  * within 5%. Not for site homes — two Airbnb hosts with a 1-bed in Gasabo at
  * one price are two homes.
  */
-export function groupDuplicates(cands: Candidate[]): { kept: Candidate[]; dupCount: Map<number, number>; removed: number } {
+export function groupDuplicates(cands: Candidate[], pin?: number): { kept: Candidate[]; dupCount: Map<number, number>; removed: number } {
   const groups = new Map<string, Candidate[]>();
   for (const c of cands) {
     const price = monthlyRent(c) ?? 0;
@@ -193,7 +193,8 @@ export function groupDuplicates(cands: Candidate[]): { kept: Candidate[]; dupCou
   const kept: Candidate[] = [];
   const dupCount = new Map<number, number>();
   for (const arr of groups.values()) {
-    arr.sort((a, b) => (b.averageRating ?? 0) - (a.averageRating ?? 0) || (b.numberOfReviews ?? 0) - (a.numberOfReviews ?? 0));
+    // The home a tenant's ref named stands for its group: its own ad, its own broker.
+    arr.sort((a, b) => Number(b.id === pin) - Number(a.id === pin) || (b.averageRating ?? 0) - (a.averageRating ?? 0) || (b.numberOfReviews ?? 0) - (a.numberOfReviews ?? 0));
     const best = arr[0]!;
     kept.push(best);
     dupCount.set(best.id, arr.length - 1);
@@ -476,14 +477,16 @@ export interface RankResult {
   matching: number;
 }
 
-export function rankCandidates(cands: Candidate[], r: Requirements, limit = 6, now = new Date()): RankResult {
-  const { kept, dupCount, removed } = groupDuplicates(cands);
+/** `pin`: a home the tenant's ref named — it is kept in the top `limit` whenever it fits at all. */
+export function rankCandidates(cands: Candidate[], r: Requirements, limit = 6, now = new Date(), pin?: number): RankResult {
+  const { kept, dupCount, removed } = groupDuplicates(cands, pin);
   const matching = kept.filter((c) => passesHardFilters(c, r));
   const median = !r.maxPrice && !r.cheap ? medianPrice(matching, r) : null;
-  const ranked = matching
+  const scored = matching
     .map((c) => scoreCandidate(c, r, dupCount.get(c.id) ?? 0, now, median))
     .filter((x): x is Ranked => x !== null)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+    .sort((a, b) => b.score - a.score);
+  const pinned = pin != null ? scored.find((x) => x.id === pin) : undefined;
+  const ranked = pinned ? [pinned, ...scored.filter((x) => x !== pinned)].slice(0, limit) : scored.slice(0, limit);
   return { ranked, candidates: cands.length, duplicatesRemoved: removed, matching: matching.length };
 }

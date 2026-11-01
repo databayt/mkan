@@ -208,4 +208,22 @@ describe("one house, several brokers", () => {
     const site = (id: number, hostId: string) => ({ ...(lead(id, hostId, "") as object), approxLocation: false, address: "KN 5 Rd" }) as never;
     expect(groupDuplicates([site(3, "a"), site(4, "b")]).removed).toBe(0);
   });
+
+  it("keeps the ad a tenant's ref named, and keeps it on the shortlist when it fits", async () => {
+    const { groupDuplicates, rankCandidates } = await import("../../src/components/agent/rank");
+    const { EMPTY_REQUIREMENTS: E } = await import("../../src/components/agent/requirements");
+    const lead = (id: number, price: number, address: string) =>
+      ({ id, hostId: `h${id}`, rentPeriod: "MONTHLY", priceMonth: price, bedrooms: 2, guestCount: 4, district: "Kicukiro", averageRating: null, numberOfReviews: null, confirmedAt: null, approxLocation: true, address, amenities: [], highlights: [] }) as never;
+    // Two brokers posted the same house: the one the tenant's ref named stands for it.
+    expect(groupDuplicates([lead(1, 500_000, "Kabeza"), lead(2, 500_000, "Kabeza")], 2).kept.map((c) => (c as { id: number }).id)).toEqual([2]);
+    // Seven homes fit and one is left off the six: pinned, it leads them.
+    const homes = [1, 2, 3, 4, 5, 6, 7].map((i) => lead(i, 200_000 + i * 20_000, `Place${i}`));
+    const r = { ...E, stay: "long" as const, district: "KICUKIRO" as const, bedrooms: 2, maxPrice: 400_000, pricePeriod: "month" as const };
+    const plain = rankCandidates(homes, r).ranked.map((x) => x.id);
+    const last = [1, 2, 3, 4, 5, 6, 7].find((id) => !plain.includes(id))!;
+    expect(plain).toHaveLength(6);
+    const pinned = rankCandidates(homes, r, 6, new Date(), last).ranked.map((x) => x.id);
+    expect(pinned[0]).toBe(last);
+    expect(pinned).toHaveLength(6);
+  });
 });

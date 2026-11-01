@@ -372,7 +372,7 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     mark("search");
 
     // 3–4. Group duplicate ads, apply the hard filters, rank.
-    let result = rankCandidates(candidates, query);
+    let result = rankCandidates(candidates, query, undefined, undefined, lastUser?.pin);
     await Promise.all([
       trace.finish(searchId, "done", { candidates: candidates.length }),
       trace.recordMany([
