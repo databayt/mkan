@@ -7,6 +7,7 @@ import { rankCandidates } from "@/components/agent/rank";
 import { coerceRequirements, EMPTY_REQUIREMENTS, type Requirements } from "@/components/agent/requirements";
 import { searchKigali, toShortlist } from "@/components/agent/search";
 import type { AgentWelcomeView } from "@/components/agent/types";
+import { forTenant } from "@/components/agent/home-path";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,7 @@ export async function GET(req: NextRequest) {
     const query: Requirements = { ...EMPTY_REQUIREMENTS, ...search, stay: "long" };
     const { candidates } = await searchKigali(query, { createdAfter: since, excludeIds: [...memory.seen, ...memory.dismissed] });
     const { ranked } = rankCandidates(candidates, query, 6);
-    homes = await toShortlist(ranked, lang, query.near?.name).catch(() => []);
+    homes = (await toShortlist(ranked, lang, query.near?.name).catch(() => [])).map((h) => forTenant(h, lang));
   }
   const view: AgentWelcomeView = { search, homes, since: since?.toISOString() ?? null };
   remember(key, view);

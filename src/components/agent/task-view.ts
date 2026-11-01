@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { forTenant } from "./home-path";
 import { ownedBy, type Viewer } from "./profile";
 import { coerceRequirements } from "./requirements";
 import { SILENT_EVENTS, type AgentEventView, type AgentMessage, type AgentTaskView, type ShortlistItem } from "./types";
@@ -40,7 +41,8 @@ function toView(task: {
     locale: task.locale,
     messages: (task.messages as unknown as AgentMessage[]) ?? [],
     requirements: task.requirements ? (req as AgentTaskView["requirements"]) : null,
-    shortlist: (task.shortlist as unknown as ShortlistItem[]) ?? [],
+    // A broker home links to Mkan's own page, never the broker's ad or handle — stored chats too (home-path.ts).
+    shortlist: ((task.shortlist as unknown as ShortlistItem[]) ?? []).map((item) => forTenant(item, task.locale)),
     events: task.events.map(
       (e): AgentEventView => ({
         seq: e.seq,

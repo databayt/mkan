@@ -10,6 +10,7 @@
  */
 import { districtName } from "@/lib/geo/rwanda-places";
 import { zoneLabel } from "@/lib/geo/kigali-zones";
+import { forTenant } from "./home-path";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "./types";
 
 export type WaLang = "en" | "ar" | "rw";
@@ -130,7 +131,7 @@ function place(item: ShortlistItem, lang: WaLang): string | null {
   return item.district ? districtName(item.district.toUpperCase(), lang) || item.district : null;
 }
 
-/** Absolute links only: a lead's path is its TikTok post, a listing's is "/en/listings/…". */
+/** Absolute links only: a listing's path is "/en/listings/…", a broker home's is Mkan's own page "/en/k/K…" (home-path.ts). */
 const absolute = (path: string, appUrl: string) => (/^https?:\/\//.test(path) ? path : path ? `${appUrl}${path}` : null);
 
 function homeLines(items: ShortlistItem[], lang: WaLang, appUrl: string): string[] {
@@ -139,7 +140,8 @@ function homeLines(items: ShortlistItem[], lang: WaLang, appUrl: string): string
     const price = `${money(item.cost.headline)}${item.cost.period === "night" ? c.night : c.month}`;
     const status = item.availability === "confirmed" ? c.confirmed : item.availability === "rented" ? c.rented : item.availability === "asked" ? c.asked : null;
     const head = [`*${i + 1}. ${item.title.trim()}*`, price, place(item, lang), status ? `(${status})` : null].filter(Boolean).join(" · ");
-    const link = absolute(item.path, appUrl);
+    // Never the broker's ad: its caption carries their number (forTenant, 2026-11-01).
+    const link = absolute(forTenant(item, lang).path, appUrl);
     return link ? `${head}\n${link}` : head;
   });
 }
@@ -265,18 +267,18 @@ export function checkText(lang: WaLang, outcome: "asked" | "handed" | "none", ti
       ? `سألت الوسيط عن «${title}». سأرسل لك الرد هنا.`
       : outcome === "handed"
         ? `تمام، أتحقق من «${title}» مع الوسيط الآن، وسأراسلك هنا.`
-        : `لا أستطيع الحصول على رد بخصوص «${title}» الآن. سأخبرك هنا إن ردّ الوسيط. الرابط أعلاه فيه الإعلان.`;
+        : `لا أستطيع الحصول على رد بخصوص «${title}» الآن. سأخبرك هنا إن ردّ الوسيط.`;
   if (lang === "rw")
     return outcome === "asked"
       ? `Nabajije komisiyoneri ibya "${title}". Igisubizo nzakikoherereza hano.`
       : outcome === "handed"
         ? `Yego, ndimo kubaza komisiyoneri ibya "${title}" ubu. Nzakwandikira hano.`
-        : `Ntabwo mbona igisubizo ku bya "${title}" ubu. Nzakubwira hano nasubiza. Link iri hejuru ifite itangazo.`;
+        : `Ntabwo mbona igisubizo ku bya "${title}" ubu. Nzakubwira hano nasubiza.`;
   return outcome === "asked"
     ? `I've asked the broker about "${title}". I'll send their answer here.`
     : outcome === "handed"
       ? `Got it, I'm checking "${title}" with the broker now. I'll message you here.`
-      : `I can't get an answer about "${title}" right now. I'll tell you here if the broker writes back. The link above has the ad.`;
+      : `I can't get an answer about "${title}" right now. I'll tell you here if the broker writes back.`;
 }
 
 /** What to answer "yes, ask around" with. */

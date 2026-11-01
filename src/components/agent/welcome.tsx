@@ -87,7 +87,7 @@ export function Welcome({
               <li key={home.id} className="w-40 shrink-0 snap-start">
                 <Link
                   href={home.path}
-                  {...(home.lead ? { target: "_blank", rel: "noreferrer" } : {})}
+                  {...(/^https?:\/\//.test(home.path) ? { target: "_blank", rel: "noreferrer" } : {})}
                   className="block overflow-hidden rounded-xl bg-background shadow-[0_1px_6px_rgba(0,0,0,0.08)] ring-1 ring-black/5 dark:ring-white/10"
                 >
                   <span className="relative block aspect-[4/3] bg-muted">

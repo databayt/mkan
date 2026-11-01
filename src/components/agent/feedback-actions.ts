@@ -14,6 +14,7 @@ import { askAvailabilityFor } from "./availability";
 import { coerceMemory, emptyMemory, MAX_IDS, PREF_FIELDS, type AgentMemory, type PrefField } from "./memory";
 import { ownedBy, requireProfile } from "./profile";
 import { LEAD_SOURCES } from "./search";
+import { homePath } from "./home-path";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
 
@@ -114,8 +115,9 @@ export async function getSavedHomes(ids: number[], lang: Locale): Promise<SavedH
         price: monthly ? r.priceMonth : r.pricePerNight,
         period: monthly ? "month" : "night",
         currency: r.currency,
-        path: lead ? r.sourceUrl ?? "" : listingPath(lang, r),
-        external: lead,
+        // A broker home opens Mkan's own page, never the broker's ad (home-path.ts).
+        path: lead ? homePath(lang, r.id) : listingPath(lang, r),
+        external: false,
       } satisfies SavedHome,
     ];
   });

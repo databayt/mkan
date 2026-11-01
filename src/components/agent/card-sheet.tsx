@@ -69,7 +69,8 @@ export default function CardSheet({
   const kind = kindLine(item, c);
   // A broker-market home with no commission line: the owner posted it, or the ad says none.
   const noCommission = cost.period === "month" && cost.lines.some((l) => l.key === "rentInAdvance") && !cost.lines.some((l) => l.key === "commission");
-  const external = !!item.lead;
+  // A broker home's link is Mkan's own page now (home-path.ts); only a stray absolute URL opens outside.
+  const external = /^https?:\/\//.test(item.path);
   const linkProps = external ? { target: "_blank", rel: "noreferrer" } : {};
 
   return (

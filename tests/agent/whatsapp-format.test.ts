@@ -58,7 +58,9 @@ describe("formatWhatsApp", () => {
     const lead = home(7, { path: "https://www.tiktok.com/@b/video/1", lead: { handle: "b", sourceUrl: "https://www.tiktok.com/@b/video/1" } });
     const out = formatWhatsApp(view({ role: "agent", kind: "shortlist", count: 1, text: "Here is one in Niboye.", at }, [lead]), dict(en), "en", CHAT, APP);
     expect(out.startsWith("Here is one in Niboye.")).toBe(true);
-    expect(out).toContain("https://www.tiktok.com/@b/video/1");
+    // A broker home links to Mkan's own page, never the broker's ad: its caption carries their number (11-01).
+    expect(out).toContain("https://mkan.sd/en/k/K7");
+    expect(out).not.toContain("tiktok.com");
     expect(out).toContain("Reply with a home's number");
     const plain = formatWhatsApp(view({ role: "agent", kind: "shortlist", count: 1, at }, [home(1)]), dict(en), "en", CHAT, APP);
     expect(plain).not.toContain("Reply with a home's number");
