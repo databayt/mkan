@@ -1,5 +1,18 @@
 # Agent — open issues
 
+## 2026-11-01 — After a hello, a message that is not about a home goes to a person
+
+- **What happened:** a number wrote "Hello" (the agent asked what kind of home), then "Muherereyehe
+  ngo tubazanire ibintu" — "where are you, so we can bring the things" — and got six homes. The
+  first-message gate (`b4b66ca`) only reads a chat's opening line, and the reader's "not a search"
+  intent counts only from Claude, which waits on its key (Groq read it as a search).
+- **Shipped** (`a7818d3`, Worker `1c41108d`, verified end to end on the shipped code with a fake
+  number): a chat that has only greeted, whose next message is not about a home, gets no agent reply
+  and a #mkan card (`onlyGreetedSoFar`, `aboutHomes`). Purpose and want words count as about a home
+  here ("for my family", "I'm a student", "I need something near town"), so a tenant answering the
+  opening question is never silenced. The same deploy carries the 📅 card's terms checklist (`2e4dd08`).
+- **Owed:** once the Claude key exists, its reading of intent can take over from the word lists.
+
 ## 2026-11-01 — Mkan in the middle: deal sheet, three-party viewing, confirmed terms
 
 - **Shipped** (`6e873e1`, deployed): a broker's yes sends the WhatsApp tenant the deal sheet and
@@ -14,8 +27,8 @@
   --power=no --lease=12 --move-in=…` records the answers (BrokerRequest.terms, the home's terms
   with `termsSource BROKER`, the Deal's figures) and restates them to the tenant. No machine
   message to the broker: a person talks to them about their home, as the flow intends.
-- **Owed:** the card's checklist reaches prod with the next deploy (`deal:book` runs on the Mac
-  and works now). The Arabic and Kinyarwanda deal strings want a speaker's read, like the broker ones.
+- **Owed:** the Arabic and Kinyarwanda deal strings want a speaker's read, like the broker ones.
+  (The card's checklist shipped with Worker `1c41108d`.)
 
 ## 2026-11-01 — Broker sends gated to real WhatsApp tenants; Mkan speaks as Mkan
 
