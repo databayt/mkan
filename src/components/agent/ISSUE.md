@@ -1,5 +1,27 @@
 # Agent — open issues
 
+## 2026-11-01 — Broker sends gated to real WhatsApp tenants; Mkan speaks as Mkan
+
+- **What happened:** brokers complained ("you keep sending sending??"). Measured on prod: 129 broker
+  messages 10-26..11-01 to 26 brokers (13 got 5+); 257 asks since 10-24 came from 17 searches, 10 of
+  them anonymous web tests; 97 of 113 sent asks had no WhatsApp tenant behind them; ~90 % of each
+  day's asks came from searches older than a day; 0 viewings ever.
+- **Causes:** (1) any monthly search on /find asked every shown home's broker (`run.ts`), an empty
+  one asked 8 area brokers; (2) `expireRequests` re-asked the SAME broker daily — its "asked
+  recently" window was 24 h and the expired ask was older (550 of 573 broker homes have one broker);
+  (3) queued rows never went stale; (4) nothing could pause sends; (5) STOP only as a whole message.
+- **Paused** the same day: 78 queued broker rows SKIPPED, 19 pending requests NO_REPLY (ids in
+  `scripts/crm/.data/wa/pause-2026-11-01.jsonl`); WaState `broker-sends` = `off`; Abdout's
+  +249919071294 registered as a team number. Reopen with `pnpm wa:brokers gated` once verified.
+- **Shipped** (`b0525fb`): the gate, the 14-day gap, a broker budget (1/day, 3/week, 14-day rest
+  after two silent asks, 18 h staleness), opt-out phrases, demand asks only on the tenant's yes (3,
+  weekly), the Mkan voice with a one-time intro, no broker number to the tenant (🔑 #mkan card to
+  `MKAN_VIEWING_REP`), the K-ref handler (it was read as a RWF 5,808 budget), honest "are you a bot?".
+- **Owed:** the deal sheet + three-party viewing (`ListingVisit` attendees, reminders) and a `Deal`
+  record with the broker's share; `lostAt` on homes a broker says are taken (today: hidden 30 days);
+  Broker `answers`/`availableAnswers` counters (0 on all) and relationship fields; the Claude writer
+  key. Kinyarwanda/French broker strings are machine-written — a speaker should read them.
+
 ## 2026-10-27 — Brokers are asked as the tenant; typed answers count
 
 - Asks read like a renter: "Hey there, is this available?" + the broker's own ad. Homes we ask about

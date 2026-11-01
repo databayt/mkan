@@ -88,30 +88,59 @@ profile. Reads (page render, poll) never write; writes (actions, the chat list) 
   next to Neon (us-east-1) — `/api/health?detailed=true` shows the placement, DB latency and event-loop lag. Prisma
   uses `PrismaPg` over TCP with a bounded pool (connect 5 s, idle 60 s, query 15 s; `src/lib/db.ts`).
 
+## Broker sends — who may reach a broker (2026-11-01)
+
+A broker is asked about a home **only** for a real WhatsApp tenant who picked it — a digit, or
+"yes" under a ref's home — while WaState `broker-sends` is `gated` (`broker-sends.ts`, flipped
+with `pnpm wa:brokers off|gated`, no deploy; a missing row reads as `off`). A browser on /find
+never reaches a broker: its "Check availability on WhatsApp" opens the same chat on the line
+(`ref:<task>` + `K<id>`). The team's own numbers (`pnpm wa:brokers test add …`) run the whole
+chat; their picks become 🧪 TEST cards in #mkan. While `off`, a tenant's pick is a #mkan card a
+person acts on, the line answers no broker reply, and queued broker rows are skipped.
+
+Why: until 11-01 every monthly search asked the broker of each home it showed, an empty one asked
+8 area brokers, and the hourly cron asked the same broker about the same home again every day —
+129 messages in a week reached 26 brokers, 97 of them with no WhatsApp tenant behind them.
+
+Each broker number also has a budget in the outbox (`scripts/wa/outbox-pure.ts`): one message a
+day (an availability ask and a demand ask used to make two), three asks a week (`broker-week`),
+a 14-day rest after two unanswered in a row (`broker-resting`), and a queued ask expires after
+18 h. "stop", "please stop", "you keep sending", "wrong number", "ntimwongere" opt out — from a
+poster outside the directory too.
+
 ## Broker loop (phase 2) and viewings (phase 3)
 
 ```
-shortlist ─► requestConfirmations: one WhatsApp per broker, as the tenant: "Hey there, is this
-             available?" + the broker's own ad (ListingBroker.sourceUrl) for each of their homes,
-             BrokerRequest per home (24 h, sha256 token), task WAITING
-             └─ already asked today? the task joins that question (channel "joined"), nothing re-sent
+tenant picks ─► availability.ts askAvailabilityFor: the gate (broker-gate.ts) — else a #mkan card
+             └─ requestConfirmations: one WhatsApp per broker, as Mkan: their first message says
+                who we are and how to stop; later ones are short and name the tenant's need, in
+                Broker.preferredLanguage (EN/FR/RW) — worded at send time (askBodyNow).
+                BrokerRequest per home (24 h, sha256 token), task WAITING
+             └─ asked about this home in the last 14 days? a pending question is joined
+                (channel "joined"); a silent or "rented" broker is not asked again
 broker types "yes" / "taken" (broker-inbox.ts) — or, for asks sent before 10-27, taps /b/<token>
              ─► Available (+ up to 3 times on the form, Kigali time) | Rented
              └─ applyAnswer: every pending question about the home answered,
-                every waiting task's card + panel updated, lastAvailabilityConfirmedAt set
+                every waiting task's card + panel updated, lastAvailabilityConfirmedAt set;
+                a yes never hands the tenant the broker's number (Mkan stays in the middle):
+                the tenant hears that MKAN_VIEWING_REP (Osman) will set up the viewing, and
+                that person gets a 🔑 #mkan card with both chats
 tenant picks a time + name + phone + consent ─► new token → broker "confirm" message
 broker confirms ─► ListingVisit(Scheduled) — the only place a viewing is booked;
                    the broker sees the tenant's name and phone only now
 after the time ─► tenant taps how it went ─► ListingVisit outcome + notes
-cron /api/cron/broker-requests (hourly) ─► unanswered after 24 h = NO_REPLY → the next broker
-                                          linked to the home is asked; only when none is left
-                                          is the tenant told "no reply". Also fails stuck turns.
+cron /api/cron/broker-requests (hourly) ─► unanswered after 24 h = NO_REPLY → a DIFFERENT broker
+                                          linked to the home is asked, only for a gated tenant who
+                                          wrote in the last 72 h; when none is left the WhatsApp
+                                          tenant is told "no reply". Also fails stuck turns.
 ```
 
 | File | Role |
 | --- | --- |
-| `broker.ts` | request creation + dedup (batched), `pickBroker`, answer fan-out, expiry → next broker, stuck-turn sweep |
-| `broker-message.ts` | the exact words a broker receives, written as the tenant (tested); rw for the form |
+| `broker.ts` | request creation + dedup (batched), `pickBroker` (14-day gap), answer fan-out, expiry → a different broker, the 🔑 viewing card, stuck-turn sweep |
+| `broker-message.ts` | the exact words a broker receives, as Mkan (tested): intro once, then short asks; EN/FR/RW |
+| `broker-sends.ts` · `broker-gate.ts` | the `broker-sends` switch and the team's numbers (WaState); the pure gate: WhatsApp tenant, not a team number, sends `gated` |
+| `home-ref.ts` | a TikTok post's code ("K5808") → that home's exact search; the turn pins it first (`pin`) |
 | `whatsapp.ts` | Outbound WhatsApp: with `MKAN_WA_OUTBOX=1` every message is an `OutboundMessage` row the 2-minute cron drains (`wa-outbox.ts`, daily cap `MKAN_WA_DAILY_CAP`, default 40); otherwise a #mkan card with a wa.me link (`SLACK_BOT_TOKEN`) |
 | `whatsapp-chat.ts` | Tenants chatting on WhatsApp: `handleTenantWhatsApp` runs the same turn for a phone (profile `sha256("wa:<digits>")`), digit picks, `ref:` hand-off, auto opt-in for demand alerts |
 | `whatsapp-format.ts` | Pure: the turn as one WhatsApp message (3 homes, numbered options, /find link), `readPick`, `waLang` |
@@ -135,8 +164,9 @@ Plan of record: the Kigali rental agent plan (2026-10-17), from the "Kigali Rent
 
 A search with nothing that fits — or only widened homes — opens a `TenantRequest` (14 days) in
 `demand.ts`. `pickBrokersForDemand` (`demand-pure.ts`) scores the `Broker` directory by district /
-neighbourhood coverage, price band, stay, recency and answer rate; the top 8 not asked in 24 h and
-not opted out get a `BROKER_ASK` with a `/b/d/<token>` link. A broker's sent home becomes a WEB
+neighbourhood coverage, price band, stay, recency and answer rate. Brokers are asked only when a
+WhatsApp tenant says yes to "want me to ask brokers around?" (`askAround`, 2026-11-01): the top 3
+not asked in a week and not opted out get a `BROKER_ASK` (8 a day, on every empty search, before). A broker's sent home becomes a WEB
 lead (`demand-actions.ts` `submitDemandHome`) matched to the chat at once. The tenant can leave a
 WhatsApp number (`demand-card.tsx`); `pnpm crm:demand-match` (09:00, Hermes) matches every open
 request against the day's new homes, alerts opted-in tenants and posts the #mkan digest.
@@ -160,11 +190,13 @@ budget, move-in and household. `broker-reply.ts` reads replies by rules, and
   tap on the form and thanked once; "budget?" gets the need, a bare hello gets one "is it still
   available?". A reply goes with the last question its number got, so an older ask never takes it.
 
-**Asked as the tenant (2026-10-27).** A broker gets what a renter would send: "Hey there, is this
-available?" and the link to their own ad — no Mkan line, no form, no need summary; follow-ups say
-only what the tenant told the agent ("I'm looking for a 2-bedroom in Kibagabaga, up to 400k. It's
-for my family."). The bot never says it is a person: "are you a bot?" goes to #mkan for one, and the
-line's WhatsApp name stays Mkan. Queued asks are worded when they go (`broker.ts` `askBodyNow`), and
+**As Mkan (2026-11-01; "as the tenant" 10-27..11-01).** Brokers know who is asking: Mkan finds
+tenants for Kigali brokers and brings them to the viewing — the ground for a shared commission.
+The first message to a number introduces Mkan and says "just reply stop" (WaState
+`broker-intro:<digits>`, set once a message is delivered); follow-ups say only what the tenant told
+the agent ("They're looking for a 2-bedroom in Kibagabaga, up to 400k. It's for a family."). The
+bot never says it is a person: "are you a bot?" goes to #mkan for one — from a tenant too, who gets
+the truth and "person" — and the line's WhatsApp name stays Mkan. Queued asks are worded when they go (`broker.ts` `askBodyNow`), and
 skipped when every home on them was answered meanwhile. Whoever posted a home we ask about counts as a
 broker even when the directory has another number for them, so the tenant agent never answers one.
 
