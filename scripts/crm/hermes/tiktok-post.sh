@@ -19,6 +19,11 @@ echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron ──" >>"$LOGDIR/post.lo
 
 run() { /usr/bin/caffeinate -i pnpm -s "$@" >>"$LOGDIR/post.log" 2>>"$LOGDIR/post.err.log"; }
 
+# Wake the session-vault Chrome now, so it is up and settled by the upload (~10 min
+# later). Its launchd job respects a Cmd-Q, so a quit or a reboot left it down and
+# the upload failed on 10-26, 10-29 and 11-01. kickstart starts it only if it is down.
+launchctl kickstart "gui/$(id -u)/com.databayt.chrome-session" >/dev/null 2>&1 || true
+
 # The 07:00 query has failed on a waking Neon; one retry after a minute.
 run tt:run --notify --n="$PER_DAY" || { sleep 60; run tt:run --notify --n="$PER_DAY"; } || {
   echo "⚠️ TikTok render failed twice. Last errors:"

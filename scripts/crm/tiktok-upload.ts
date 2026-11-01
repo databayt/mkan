@@ -22,7 +22,7 @@
 import { config } from 'dotenv';
 config({ override: true });
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
@@ -72,15 +72,38 @@ function todaysPieces(): Piece[] {
   return out;
 }
 
-async function connect() {
+const VAULT_JOB = 'com.databayt.chrome-session';
+
+async function cdpUp(): Promise<boolean> {
   try {
-    return await chromium.connectOverCDP(CDP, { timeout: 15_000 });
+    return (await fetch(`${CDP}/json/version`, { signal: AbortSignal.timeout(2000) })).ok;
   } catch {
-    // The vault is launchd-kept, but a reboot or a quit Chrome leaves it down: bring it back once.
-    execFileSync('bash', [join(homedir(), '.claude', 'bin', 'chrome-debug.sh')], { stdio: 'ignore', timeout: 60_000 });
-    await new Promise((r) => setTimeout(r, 5000));
-    return chromium.connectOverCDP(CDP, { timeout: 15_000 });
+    return false;
   }
+}
+
+/** Wake the session vault when it is down; true once its CDP port answers. */
+async function wakeVault(waitMs = 90_000): Promise<boolean> {
+  if (await cdpUp()) return true;
+  // The vault's launchd job respects a Cmd-Q (it only restarts after a crash), so a quit
+  // or a reboot leaves it down. kickstart starts the loaded job without fighting a person
+  // using it. chrome-debug.sh is the fallback, detached: it execs Chrome in the foreground,
+  // so waiting on it (the old execFileSync) timed out at 60 s and killed the vault with it.
+  try {
+    execFileSync('launchctl', ['kickstart', `gui/${process.getuid?.() ?? 501}/${VAULT_JOB}`], { stdio: 'ignore', timeout: 15_000 });
+  } catch {
+    spawn('bash', [join(homedir(), '.claude', 'bin', 'chrome-debug.sh')], { stdio: 'ignore', detached: true }).unref();
+  }
+  for (const end = Date.now() + waitMs; Date.now() < end; ) {
+    if (await cdpUp()) return true;
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  return false;
+}
+
+async function connect() {
+  if (!(await wakeVault())) throw new Error(`the session-vault Chrome did not come up on ${CDP} — run: launchctl kickstart gui/$(id -u)/${VAULT_JOB}`);
+  return chromium.connectOverCDP(CDP, { timeout: 30_000 });
 }
 
 /** TikTok Studio throws tours and "turn on content checks?" prompts; none of them is the post. */

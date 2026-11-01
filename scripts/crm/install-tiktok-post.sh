@@ -11,6 +11,8 @@
 # One-time: the vault Chrome (127.0.0.1:9222) must be logged in to TikTok as @mkan.rw
 # (QR scan at tiktok.com/login). If it logs out, the run says so in #mkan.
 # TIKTOK_POSTS_PER_DAY sets how many homes (default 3). Logs under .data/tiktok-post/.
+# A second job, mkan-tiktok-upload-retry (13:00), posts whatever 07:00 rendered but could
+# not upload; the day's uploads.json keeps it from posting anything twice.
 set -euo pipefail
 NAME="mkan-tiktok-post"
 LABEL="com.databayt.$NAME"
@@ -21,17 +23,21 @@ HERMES_SCRIPT="$HERMES_HOME/scripts/$NAME.sh"
 MKAN_CHANNEL="C0BS2NZE2AY" # private #mkan
 SCHEDULE="${TIKTOK_POST_SCHEDULE:-0 7 * * *}"
 PER_DAY="${TIKTOK_POSTS_PER_DAY:-3}"
+RETRY="mkan-tiktok-upload-retry"
+RETRY_SCRIPT="$HERMES_HOME/scripts/$RETRY.sh"
+RETRY_SCHEDULE="${TIKTOK_RETRY_SCHEDULE:-0 13 * * *}"
 
 hermes_job_ids() {
-  hermes cron list 2>/dev/null | awk -v n="$NAME" '/^  [0-9a-f]{12} \[/{id=$1} $1=="Name:" && $2==n {print id}'
+  hermes cron list 2>/dev/null | awk -v n="${1:-$NAME}" '/^  [0-9a-f]{12} \[/{id=$1} $1=="Name:" && $2==n {print id}'
 }
 remove_hermes_job() {
-  for id in $(hermes_job_ids); do hermes cron remove "$id" >/dev/null && echo "removed Hermes job $id"; done
+  for id in $(hermes_job_ids "${1:-$NAME}"); do hermes cron remove "$id" >/dev/null && echo "removed Hermes job $id"; done
 }
 
 if [ "${1:-}" = "--remove" ]; then
-  remove_hermes_job
-  rm -f "$HERMES_SCRIPT"
+  remove_hermes_job "$NAME"
+  remove_hermes_job "$RETRY"
+  rm -f "$HERMES_SCRIPT" "$RETRY_SCRIPT"
   exit 0
 fi
 
@@ -42,8 +48,15 @@ sed -e "s|\${MKAN_REPO:-/Users/abdout/mkan}|\${MKAN_REPO:-$REPO}|" \
   "$REPO/scripts/crm/hermes/tiktok-post.sh" >"$HERMES_SCRIPT"
 chmod +x "$HERMES_SCRIPT"
 
-remove_hermes_job
+remove_hermes_job "$NAME"
 hermes cron create "$SCHEDULE" --name "$NAME" --script "$NAME.sh" --no-agent \
+  --deliver "slack:$MKAN_CHANNEL" >/dev/null
+
+sed -e "s|\${MKAN_REPO:-/Users/abdout/mkan}|\${MKAN_REPO:-$REPO}|" \
+  "$REPO/scripts/crm/hermes/tiktok-upload-retry.sh" >"$RETRY_SCRIPT"
+chmod +x "$RETRY_SCRIPT"
+remove_hermes_job "$RETRY"
+hermes cron create "$RETRY_SCHEDULE" --name "$RETRY" --script "$RETRY.sh" --no-agent \
   --deliver "slack:$MKAN_CHANNEL" >/dev/null
 
 # Only one scheduler may own the tick: the old launchd job rendered without posting.
@@ -53,4 +66,5 @@ if [ -f "$PLIST" ]; then
   mv "$PLIST" "$HOME/Library/LaunchAgents/disabled/$LABEL.plist"
   echo "launchd $LABEL off (plist kept in LaunchAgents/disabled/)"
 fi
-echo "installed Hermes job $NAME — '$SCHEDULE', $PER_DAY homes + the voiced data video, auto-posted to @mkan.rw"
+echo "installed Hermes job $NAME — '$SCHEDULE', $PER_DAY homes + the picture video, auto-posted to @mkan.rw"
+echo "installed Hermes job $RETRY — '$RETRY_SCHEDULE', posts what the morning tick could not upload"
