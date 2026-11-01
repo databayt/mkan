@@ -848,3 +848,40 @@ export function errorText(e: unknown): string {
   if (err && typeof err.code === 'string' && err.code) return err.code;
   return String(e);
 }
+
+/** One video on the page, as yt-dlp reads it back. */
+export interface PageVideo {
+  views: number;
+  likes: number;
+  /** Posted, epoch ms. */
+  at: number;
+  text: string;
+}
+
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * The page in one #mkan line: every video on it (the daily picture videos carry
+ * several refs and are in no home's ledger, so the old line read "0 views" over a
+ * page with ~1,000), the ones posted in the last 7 days, the best one, and the
+ * broker videos matched to homes.
+ */
+export function pageStatsLine(page: string, vids: PageVideo[], homes: { matched: number; views: number }, now = Date.now()): string {
+  const n = (x: number) => x.toLocaleString('en-US');
+  const sum = (xs: PageVideo[], k: 'views' | 'likes') => xs.reduce((t, v) => t + v[k], 0);
+  const week = vids.filter((v) => v.at > now - 7 * 86_400_000);
+  const best = [...vids].sort((a, b) => b.views - a.views)[0];
+  const title = (t: string) => (t.split(/\s+[—•]\s+/)[0] ?? '').replace(/^\p{Extended_Pictographic}\s*/u, '').trim().slice(0, 48);
+  const day = (ms: number) => {
+    const d = new Date(ms + 2 * 3_600_000); // Kigali
+    return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}`;
+  };
+  return [
+    `📈 TikTok @${page}: ${vids.length} videos, ${n(sum(vids, 'views'))} views, ${n(sum(vids, 'likes'))} likes`,
+    `posted in the last 7 days: ${week.length}, ${n(sum(week, 'views'))} views`,
+    best && best.views > 0 ? `best: "${title(best.text)}" ${n(best.views)} (${day(best.at)})` : null,
+    `broker videos matched to homes: ${homes.matched}${homes.matched ? ` (${n(homes.views)} views)` : ''}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}

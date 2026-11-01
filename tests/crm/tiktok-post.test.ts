@@ -8,6 +8,7 @@ import {
   brokerPreviewAsk,
   contactLeaks,
   errorText,
+  pageStatsLine,
   FRESH_DAYS,
   sourcePostedAt,
   stripGraph,
@@ -373,5 +374,21 @@ describe('errorText', () => {
     expect(errorText(new Error('Connection terminated due to connection timeout'))).toBe('Connection terminated due to connection timeout');
     expect(errorText(Object.assign(new Error(''), { code: 'ECONNRESET' }))).toBe('ECONNRESET');
     expect(errorText('plain')).toBe('plain');
+  });
+});
+
+
+describe('pageStatsLine', () => {
+  it("counts every video on the page, the picture videos included", () => {
+    const now = Date.parse('2026-11-01T12:00:00Z');
+    const vids = [
+      { views: 113, likes: 5, at: Date.parse('2026-11-01T07:03:00Z'), text: '🏠 RWF 1M+ a month — this week • K5808 — RWF 1,000,000/mo' },
+      { views: 187, likes: 5, at: Date.parse('2026-10-23T05:31:00Z'), text: '🏠 RWF 1M+ a month — this week • K5776' },
+      { views: 171, likes: 5, at: Date.parse('2026-10-31T05:01:00Z'), text: '🏠 Homes for rent in Gasabo — this week • K6285' },
+    ];
+    expect(pageStatsLine('mkan.rw', vids, { matched: 0, views: 0 }, now)).toBe(
+      '📈 TikTok @mkan.rw: 3 videos, 471 views, 15 likes · posted in the last 7 days: 2, 284 views · best: "RWF 1M+ a month" 187 (23 Oct) · broker videos matched to homes: 0',
+    );
+    expect(pageStatsLine('mkan.rw', [], { matched: 0, views: 0 }, now)).toBe('📈 TikTok @mkan.rw: 0 videos, 0 views, 0 likes · posted in the last 7 days: 0, 0 views · broker videos matched to homes: 0');
   });
 });

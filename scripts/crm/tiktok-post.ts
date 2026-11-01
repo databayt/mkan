@@ -39,7 +39,7 @@ import { config } from 'dotenv';
 config({ override: true });
 
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import sharp from 'sharp';
@@ -87,7 +87,9 @@ import {
   W,
   waLink,
   errorText,
+  pageStatsLine,
   type Ledger,
+  type PageVideo,
   type PostRow,
 } from './tiktok-post-pure';
 
@@ -643,9 +645,17 @@ async function stats(): Promise<void> {
   }
   saveLedger(ledger);
   const live = Object.entries(ledger).filter(([, e]) => e.statsAt);
-  const views = live.reduce((s, [, e]) => s + (e.views ?? 0), 0);
-  const top = [...live].sort((a, b) => (b[1].views ?? 0) - (a[1].views ?? 0)).slice(0, 3);
-  const line = `📈 TikTok @${PAGE}: ${entries.length} videos on the page, ${matched} matched to homes · ${views.toLocaleString('en-US')} views total · top: ${top.map(([r, e]) => `${r} ${e.views}`).join(', ') || '—'}`;
+  const homeViews = live.reduce((s, [, e]) => s + (e.views ?? 0), 0);
+  const vids: PageVideo[] = entries.map((v) => ({
+    views: Number(v.view_count ?? 0),
+    likes: Number(v.like_count ?? 0),
+    at: Number(v.timestamp ?? 0) * 1000,
+    text: String(v.description ?? v.title ?? ''),
+  }));
+  // One snapshot per run, so the page's reach has a trend (weekly in #mkan, any day by hand).
+  const views = vids.reduce((s, v) => s + v.views, 0);
+  appendFileSync(join(DATA, 'page-stats.jsonl'), `${JSON.stringify({ at: new Date().toISOString(), videos: vids.length, views, likes: vids.reduce((s, v) => s + v.likes, 0), homeVideos: matched })}\n`);
+  const line = pageStatsLine(PAGE, vids, { matched, views: homeViews });
   console.log(line);
   if (flag('notify')) await postToMkan(line);
 }

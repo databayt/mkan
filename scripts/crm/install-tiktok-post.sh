@@ -15,7 +15,8 @@
 # refresh never lifts the hold by accident. Logs under .data/tiktok-post/.
 # A second job, mkan-tiktok-upload-retry (13:00), posts whatever 07:00 rendered but could
 # not upload; the day's uploads.json keeps it from posting anything twice, and the two
-# share one lock, so they never upload at once.
+# share one lock, so they never upload at once. A third, mkan-tiktok-stats (Mondays
+# 10:00), puts the page's views and likes in #mkan.
 set -euo pipefail
 NAME="mkan-tiktok-post"
 LABEL="com.databayt.$NAME"
@@ -32,6 +33,9 @@ fi
 RETRY="mkan-tiktok-upload-retry"
 RETRY_SCRIPT="$HERMES_HOME/scripts/$RETRY.sh"
 RETRY_SCHEDULE="${TIKTOK_RETRY_SCHEDULE:-0 13 * * *}"
+STATS="mkan-tiktok-stats"
+STATS_SCRIPT="$HERMES_HOME/scripts/$STATS.sh"
+STATS_SCHEDULE="${TIKTOK_STATS_SCHEDULE:-0 10 * * 1}"
 
 hermes_job_ids() {
   hermes cron list 2>/dev/null | awk -v n="${1:-$NAME}" '/^  [0-9a-f]{12} \[/{id=$1} $1=="Name:" && $2==n {print id}'
@@ -43,7 +47,8 @@ remove_hermes_job() {
 if [ "${1:-}" = "--remove" ]; then
   remove_hermes_job "$NAME"
   remove_hermes_job "$RETRY"
-  rm -f "$HERMES_SCRIPT" "$RETRY_SCRIPT"
+  remove_hermes_job "$STATS"
+  rm -f "$HERMES_SCRIPT" "$RETRY_SCRIPT" "$STATS_SCRIPT"
   exit 0
 fi
 
@@ -67,6 +72,13 @@ remove_hermes_job "$RETRY"
 hermes cron create "$RETRY_SCHEDULE" --name "$RETRY" --script "$RETRY.sh" --no-agent \
   --deliver "slack:$MKAN_CHANNEL" >/dev/null
 
+sed -e "s|\${MKAN_REPO:-/Users/abdout/mkan}|\${MKAN_REPO:-$REPO}|" \
+  "$REPO/scripts/crm/hermes/tiktok-stats.sh" >"$STATS_SCRIPT.tmp"
+chmod +x "$STATS_SCRIPT.tmp" && mv -f "$STATS_SCRIPT.tmp" "$STATS_SCRIPT"
+remove_hermes_job "$STATS"
+hermes cron create "$STATS_SCHEDULE" --name "$STATS" --script "$STATS.sh" --no-agent \
+  --deliver "slack:$MKAN_CHANNEL" >/dev/null
+
 # Only one scheduler may own the tick: the old launchd job rendered without posting.
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 if [ -f "$PLIST" ]; then
@@ -75,4 +87,5 @@ if [ -f "$PLIST" ]; then
   echo "launchd $LABEL off (plist kept in LaunchAgents/disabled/)"
 fi
 echo "installed Hermes job $NAME — '$SCHEDULE', $PER_DAY homes + the picture video, auto-posted to @mkan.rw"
-echo "installed Hermes job $RETRY — '$RETRY_SCHEDULE', posts what the morning tick could not upload"
+echo "installed Hermes job $RETRY — '$RETRY_SCHEDULE', posts what the morning tick could not upload (or the whole post when it rendered nothing)"
+echo "installed Hermes job $STATS — '$STATS_SCHEDULE', the page's views and likes in #mkan"
