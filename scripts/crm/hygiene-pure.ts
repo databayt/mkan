@@ -155,4 +155,4 @@ export function checkHosts(hosts: Row[]): { findings: Finding[]; fixes: Fix[] } 
 
 /** A yt-dlp error that means the video itself is gone, not that the network blinked. */
 export const videoGone = (msg: string): boolean =>
-  /video (is )?unavailable|has been removed|does not exist|not available|status code 10204|private/i.test(msg) && !/resolve|timed out|ENOTFOUND|network/i.test(msg);
+  /video (is )?unavailable|has been removed|does not exist|not available|status code 10204|no video formats found|private/i.test(msg) && !/resolve|timed out|ENOTFOUND|network/i.test(msg);

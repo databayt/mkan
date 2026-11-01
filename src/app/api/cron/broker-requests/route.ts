@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cronUnauthorized } from "@/lib/cron-auth";
 import { expireRequests, failStuckTasks } from "@/components/agent/broker";
+import { viewingReminders } from "@/components/agent/deal";
 
 /**
  * Hourly — a broker who has not answered the rental agent within 24 h is
@@ -15,6 +16,14 @@ import { expireRequests, failStuckTasks } from "@/components/agent/broker";
 export async function GET(request: NextRequest) {
   const denied = cronUnauthorized(request);
   if (denied) return denied;
-  const [expired, unstuck] = await Promise.all([expireRequests(), failStuckTasks(new Date(), 3_600_000)]);
-  return NextResponse.json({ ok: true, expired, unstuck });
+  const [expired, unstuck, reminded] = await Promise.all([
+    expireRequests(),
+    failStuckTasks(new Date(), 3_600_000),
+    // Three-party viewings: 24 h and 2 h before, and "how did it go?" after (deal.ts).
+    viewingReminders().catch((err) => {
+      console.warn(`[cron] viewing reminders: ${(err as Error).message}`);
+      return 0;
+    }),
+  ]);
+  return NextResponse.json({ ok: true, expired, unstuck, reminded });
 }

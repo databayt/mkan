@@ -169,7 +169,8 @@ export async function searchKigali(
         { OR: [{ isPublished: true, draft: false }, { source: { in: [...LEAD_SOURCES] }, rentPeriod: "MONTHLY", sourceUrl: { not: null } }] };
   const where: Prisma.ListingWhereInput = {
     // Airbnb imports never reach the agent (Abdout, 2026-10-22); a host's own home has no source and stays.
-    AND: [visible, { OR: [{ source: null }, { source: { not: "AIRBNB" } }] }, priceWhere(r), ...placeWhere(r)],
+    // A home a broker said is taken, or whose ad is gone, is lost for good (Listing.lostAt, 2026-11-01).
+    AND: [visible, { lostAt: null }, { OR: [{ source: null }, { source: { not: "AIRBNB" } }] }, priceWhere(r), ...placeWhere(r)],
     currency: "RWF",
     location: {
       city: { equals: "Kigali", mode: "insensitive" },

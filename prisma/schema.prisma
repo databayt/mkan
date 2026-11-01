@@ -288,6 +288,12 @@ model Listing {
   propertyType                PropertyType?
   postedDate                  DateTime?
   lastAvailabilityConfirmedAt DateTime? // owner last reconfirmed Available/Busy (phase-1 nudge)
+  /// When the home stopped being available — a broker said it is taken, its ad
+  /// or video was taken down. A lost home leaves /find and the TikTok pick for
+  /// good (a "rented" answer used to hide it for 30 days only).
+  lostAt                      DateTime?
+  /// RENTED | AD_GONE | VIDEO_GONE
+  lostReason                  String?
   averageRating               Float?              @default(0)
   numberOfReviews             Int?                @default(0)
   isGuestFavorite             Boolean             @default(false) // curated "Guest favorite" badge (operator-set, independent of reviews)
@@ -353,8 +359,10 @@ model Listing {
   brokers         ListingBroker[]
   brokerRequests  BrokerRequest[]
   demandAsks      OutboundMessage[]
+  deals           Deal[]
 
   @@index([hostId])
+  @@index([lostAt])
   @@index([rentPeriod, isPublished])
   @@index([hostId, isPublished])
   @@index([hostId, isPublished, lastAvailabilityConfirmedAt])
@@ -1185,11 +1193,21 @@ model ListingVisit {
   /// Host or admin who logged it. Loose ref, no FK — mirrors
   /// BookingPayment.verifiedBy.
   recordedById String
+  /// A three-party viewing (2026-11-01): the tenant, the broker, and the
+  /// person from Mkan who meets them there (repName) — the rental agent's task
+  /// it came from, and where they meet.
+  brokerId     String?
+  taskId       String?
+  repName      String?
+  meetingPoint String?
+  /// Reminder marks already sent ("24h", "2h", "after") — the cron sends each once.
+  reminders    String[]     @default([])
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
   listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   guestUser User?   @relation("ListingVisitGuest", fields: [guestUserId], references: [id], onDelete: SetNull)
+  deal      Deal?
 
   @@index([listingId])
   @@index([listingId, outcome])
@@ -1459,6 +1477,10 @@ model BrokerRequest {
   tenantPhone  String?
   /// The ListingVisit created when the broker confirmed the chosen slot.
   visitId      Int?
+  /// When the tenant picked this home and said yes to asking (2026-11-01: no ask without it).
+  consentAt    DateTime?
+  /// What the broker told us about the deal: rent, months up front, deposit, commission, viewing fee, utilities, lease.
+  terms        Json?
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
 
@@ -1536,14 +1558,79 @@ model Broker {
   preferredLanguage String?
   /// Every language their ads use, most used first.
   languages         String[]   @default([])
+  /// Where Mkan stands with them (2026-11-01): NEW → INTRODUCED (our first message
+  /// went out) → ACTIVE (they answered) → PARTNER (a share agreed); PAUSED; DO_NOT_CONTACT.
+  relationship      BrokerRelationship @default(NEW)
+  introducedAt      DateTime?
+  /// The share of their commission Mkan earns on a tenant it brings (0.5 = half), or a flat amount.
+  sharePct          Decimal?   @db.Decimal(5, 4)
+  shareFlatRwf      Int?
+  agreementNote     String?
+  agreedAt          DateTime?
+  /// The last message Mkan sent them — asks and replies alike.
+  lastMessagedAt    DateTime?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
   user     User?             @relation("BrokerUser", fields: [userId], references: [id], onDelete: SetNull)
   listings ListingBroker[]
   messages OutboundMessage[]
+  deals    Deal[]
 
   @@index([optOut, lastSeenAt])
+}
+
+enum BrokerRelationship {
+  NEW
+  INTRODUCED
+  ACTIVE
+  PARTNER
+  PAUSED
+  DO_NOT_CONTACT
+}
+
+enum DealStatus {
+  VIEWING_BOOKED
+  VIEWED
+  SIGNED
+  PAID
+  LOST
+}
+
+/**
+ * A tenant Mkan brought to a broker's home, from the booked viewing to the
+ * signed lease and Mkan's share (2026-11-01). The three meet at the home —
+ * tenant, broker, and the person from Mkan — and the lease is signed there
+ * when it goes well. Mkan pays the viewing fee from its share of the broker's
+ * commission; `mkanShare` is what the broker owes Mkan for this one.
+ */
+model Deal {
+  id               String     @id @default(cuid())
+  listingId        Int
+  brokerId         String?
+  visitId          Int?       @unique
+  taskId           String?
+  tenantName       String?
+  tenantPhone      String?
+  rentMonthly      Int?
+  /// Paid at signing: rent in advance + deposit (+ commission when the tenant pays it).
+  upfront          Int?
+  brokerCommission Int?
+  mkanShare        Int?
+  viewingFeePaid   Int?
+  status           DealStatus @default(VIEWING_BOOKED)
+  notes            String?
+  signedAt         DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  listing Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  broker  Broker?       @relation(fields: [brokerId], references: [id], onDelete: SetNull)
+  visit   ListingVisit? @relation(fields: [visitId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([brokerId])
 }
 
 enum TenantRequestStatus {

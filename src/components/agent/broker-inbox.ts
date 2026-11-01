@@ -112,6 +112,11 @@ export async function recordTypedAnswer(requestIds: string[], listingId: number,
     data: { status: answer, respondedAt: new Date() },
   });
   await applyAnswer(listingId, answer, phone);
+  // The directory's own record of who answers (0 on every broker until 11-01).
+  await db.broker.updateMany({
+    where: { phones: { hasSome: phoneVariants(phone) } },
+    data: { answers: { increment: 1 }, ...(answer === "AVAILABLE" ? { availableAnswers: { increment: 1 } } : {}) },
+  });
 }
 
 /** Write a word back to the broker — once per ask and label — for the caller to send. Null when it already went. */
@@ -134,6 +139,8 @@ async function stampReply(brokerId: string, at: Date) {
   const minutes = last?.sentAt ? Math.max(0, Math.round((at.getTime() - last.sentAt.getTime()) / 60_000)) : null;
   const blended = minutes == null ? undefined : broker?.replyMinutes == null ? minutes : Math.round((broker.replyMinutes * 2 + minutes) / 3);
   await db.broker.update({ where: { id: brokerId }, data: { lastReplyAt: at, lastSeenAt: at, ...(blended != null ? { replyMinutes: blended } : {}) } });
+  // They wrote back: Mkan and this broker are talking.
+  await db.broker.updateMany({ where: { id: brokerId, relationship: { in: ["NEW", "INTRODUCED"] } }, data: { relationship: "ACTIVE" } });
 }
 
 export async function handleBrokerReply(input: { brokerId: string; phone: string; text: string; photoUrls: string[]; at: Date }): Promise<InboxAction> {

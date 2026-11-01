@@ -30,6 +30,8 @@ import { askAround } from "./demand";
 import { viewingRep } from "./broker-message";
 import { parseBrokerReply } from "./broker-reply";
 import { homeForRef } from "./home-ref";
+import { proposeViewing, readViewingAsk } from "./deal";
+import { askTimeMessage, readViewingTime } from "./deal-pure";
 import { postSlackCard } from "./whatsapp";
 
 const MAX_TEXT = 600;
@@ -109,6 +111,18 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
     await postSlackCard(`${asksBot ? "🤖 A tenant asked if they're talking to a bot" : "🙋 A tenant wants a person"} — ${profile.waPhone ?? "unknown number"}${current ? ` · chat ${current.id}` : ""}\n> ${rest.slice(0, 300)}`).catch(() => {});
     if (current) await stampSeen(current.id, input.msgId, 0);
     return { reply: asksBot ? botText(lang, viewingRep()) : personText(lang, viewingRep()), taskId: current?.id ?? null };
+  }
+
+  // The deal sheet asked "when can you come?": a day and a time go to the person who books the viewing.
+  const viewingAsk = await readViewingAsk(profile.waPhone);
+  if (viewingAsk) {
+    const when = readViewingTime(rest, new Date());
+    if (when && "at" in when) {
+      const reply = await proposeViewing(viewingAsk, when.at, profile.waPhone!, lang);
+      await stampSeen(viewingAsk.taskId, input.msgId, viewingAsk.listingId);
+      return { reply, taskId: viewingAsk.taskId };
+    }
+    if (when) return { reply: askTimeMessage(lang), taskId: viewingAsk.taskId };
   }
 
   // A home's code ("K5808" from a TikTok post, or /find's "Check on WhatsApp"): a fresh chat that

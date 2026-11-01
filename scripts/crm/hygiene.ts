@@ -75,8 +75,9 @@ async function main(): Promise<void> {
       homeId: String(home.id),
       requestId: a.id,
       markdown: `**/find broker check** — ${who} ${said} (${when.slice(0, 16).replace('T', ' ')} UTC)${a.visitId ? ` · viewing #${a.visitId} booked` : ''}`,
-      // Only a broker's yes is a confirmation (imports stamp this field too, so it never was one).
-      patch: a.status === 'AVAILABLE' ? { lastAvailabilityConfirmedAt: when } : undefined,
+      // A broker's "rented" takes the home off the board's market (the mirror skips stillListed=false).
+      // The board has no availability-date field: the yes lives in the note (the PATCH 400'd every run).
+      patch: a.status === 'RENTED' ? { stillListed: false } : undefined,
     });
   }
   if (notes.length) findings.push({ check: 'broker answers not yet on the board', items: notes.map((n) => `${n.homeId}: ${n.markdown.replace(/\*\*/g, '')}`) });
@@ -129,9 +130,10 @@ async function main(): Promise<void> {
         const res = (await twenty.rest('POST', 'notes', { title: 'Broker check from /find', bodyV2: { markdown: n.markdown } })) as { data?: { createNote?: { id?: string } } };
         const noteId = res?.data?.createNote?.id;
         if (noteId) await twenty.rest('POST', 'noteTargets', { noteId, targetHomeId: n.homeId });
-        if (n.patch) await twenty.rest('PATCH', `homes/${n.homeId}`, n.patch);
+        // The note is on the board: never post it again, whatever the patch does.
         synced.add(n.requestId);
         applied++;
+        if (n.patch) await twenty.rest('PATCH', `homes/${n.homeId}`, n.patch).catch((e: Error) => console.warn(`   ! broker note ${n.requestId} patch: ${e.message.slice(0, 140)}`));
       } catch (e) {
         console.warn(`   ! broker note ${n.requestId}: ${(e as Error).message.slice(0, 140)}`);
       }
@@ -142,7 +144,8 @@ async function main(): Promise<void> {
         await twenty.rest('PATCH', `homes/${h.id}`, { stillListed: false });
         // The lead's card links to the video; with no video there is no lead.
         // The mirror skips stillListed=false homes, so this is not undone.
-        if (h.mkanListingId != null) await db.listing.updateMany({ where: { id: Number(h.mkanListingId), source: 'TIKTOK', isPublished: false }, data: { sourceUrl: null } });
+        if (h.mkanListingId != null)
+          await db.listing.updateMany({ where: { id: Number(h.mkanListingId), source: 'TIKTOK', isPublished: false }, data: { sourceUrl: null, lostAt: new Date(), lostReason: 'VIDEO_GONE' } });
         log({ object: 'homes', id: h.id, why: 'TikTok video gone', body: { stillListed: false }, was: { stillListed: h.stillListed ?? null } });
         applied++;
       } catch (e) {

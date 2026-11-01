@@ -207,7 +207,12 @@ async function drain(dry: boolean, log: Log, sendsOff: boolean): Promise<{ sent:
         await db.brokerRequest.updateMany({ where: { id: { in: row.brokerRequestIds } }, data: { channel: "evolution", sentAt } });
       }
       // Their first message from Mkan said who we are; every later one is short.
-      if (row.kind !== "TENANT_ALERT") await markIntroduced(row.to, sentAt);
+      if (row.kind !== "TENANT_ALERT") {
+        await markIntroduced(row.to, sentAt);
+        const theirs = { phones: { hasSome: phoneVariants([phoneKey(row.to)]) } };
+        await db.broker.updateMany({ where: theirs, data: { lastMessagedAt: sentAt } });
+        await db.broker.updateMany({ where: { ...theirs, relationship: "NEW" }, data: { relationship: "INTRODUCED", introducedAt: sentAt } });
+      }
       sent += 1;
       log(`sent ${row.id} ${row.kind}`);
     } catch (err) {
@@ -338,7 +343,7 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
     if (broker && isOptOut(m.text)) {
       log(`opt-out from ${broker.name}`);
       if (!dry && !broker.optOut) {
-        await db.broker.update({ where: { id: broker.id }, data: { optOut: true, optOutAt: new Date() } });
+        await db.broker.update({ where: { id: broker.id }, data: { optOut: true, optOutAt: new Date(), relationship: "DO_NOT_CONTACT" } });
         broker.optOut = true;
         await postSlackCard(`🚫 *${broker.name}* (+${m.phone}) replied "${m.text}" — opted out; no more WhatsApp asks.`);
       }
@@ -397,7 +402,7 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
   // from them holds like anyone's, on a directory row of their own.
   for (const g of dry ? [] : groupByPhone(strangers)) {
     if (isOptOut(g.text)) {
-      await db.broker.create({ data: { kind: "BROKER", name: `+${g.phone}`, phones: [`+${g.phone}`], sources: ["whatsapp"], optOut: true, optOutAt: new Date() } }).catch(() => {});
+      await db.broker.create({ data: { kind: "BROKER", name: `+${g.phone}`, phones: [`+${g.phone}`], sources: ["whatsapp"], optOut: true, optOutAt: new Date(), relationship: "DO_NOT_CONTACT" } }).catch(() => {});
       await postSlackCard(`🚫 +${g.phone} (posts a home we asked about) replied "${g.text.slice(0, 200)}" — opted out; no more WhatsApp asks.`);
       continue;
     }

@@ -322,9 +322,12 @@ export async function applyAnswer(listingId: number, answer: Answer, brokerPhone
   await settleTasks(tasks.map((t) => t.id));
   await tellWhatsAppTenants(tasks, listingId, answer);
   if (answer === "AVAILABLE") {
-    await db.listing.update({ where: { id: listingId }, data: { lastAvailabilityConfirmedAt: new Date() } });
+    // Available again lifts an earlier "taken".
+    await db.listing.update({ where: { id: listingId }, data: { lastAvailabilityConfirmedAt: new Date(), lostAt: null, lostReason: null } });
     await tellViewingRep(tasks, listingId, number);
   }
+  // A broker's "taken" means the home is lost: out of /find and the TikTok pick for good (it was hidden 30 days).
+  if (answer === "RENTED") await db.listing.update({ where: { id: listingId }, data: { lostAt: new Date(), lostReason: "RENTED" } });
 }
 
 type AnsweredTask = { id: string; shortlist: unknown; locale: string; messages: unknown; profile: { waPhone: string | null } | null };
@@ -341,6 +344,12 @@ async function tellWhatsAppTenants(tasks: AnsweredTask[], listingId: number, ans
   const offered = answer === "AVAILABLE" ? await db.brokerRequest.findMany({ where: { listingId, status: "AVAILABLE" }, select: { viewingSlots: true }, take: 20 }) : [];
   const canPick = offered.some((r) => Array.isArray(r.viewingSlots) && r.viewingSlots.some((s) => typeof s === "string" && Date.parse(s) > Date.now()));
   const now = new Date();
+  // A yes: the deal sheet (what it costs, what Mkan covers, what happens next) and "when can you come?" (deal.ts).
+  if (answer === "AVAILABLE" && !canPick) {
+    const { sendDealSheet } = await import("./deal");
+    await Promise.all(tasks.filter((t) => t.profile?.waPhone).map((t) => sendDealSheet(t, listingId).catch((err) => console.warn(`[agent] deal sheet: ${(err as Error).message}`))));
+    return;
+  }
   const messages = tasks.flatMap((t) => {
     const to = t.profile?.waPhone;
     if (!to) return [];
