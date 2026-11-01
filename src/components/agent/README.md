@@ -156,6 +156,7 @@ cron /api/cron/broker-requests (hourly) ─► unanswered after 24 h = NO_REPLY 
 | `deal.ts` · `deal-pure.ts` · `scripts/agent/deal.ts` | from a yes to a signed lease: the deal sheet, viewing times in the tenant's words, the 📅 card with the terms to ask, `deal:book` / `deal:status` / `deal:list`, reminders; the words are pure and tested (EN/AR/RW) |
 | `broker-sends.ts` · `broker-gate.ts` | the `broker-sends` switch and the team's numbers (WaState); the pure gate: WhatsApp tenant, not a team number, sends `gated` |
 | `home-ref.ts` | a TikTok post's code ("K5808") → that home's exact search; the turn pins it first (`pin`) |
+| `home-path.ts` + `app/[lang]/k/[ref]` | Mkan's own page for a broker home (`/en/k/K5808`): photos, facts, move-in cost, "Check availability on WhatsApp"; `forTenant` sends every tenant link to a broker home there and blanks the broker's handle (task-view, welcome, saved list) — never the broker's ad, handle or number (2026-11-01) |
 | `whatsapp.ts` | Outbound WhatsApp: with `MKAN_WA_OUTBOX=1` every message is an `OutboundMessage` row the 2-minute cron drains (`wa-outbox.ts`, daily cap `MKAN_WA_DAILY_CAP`, default 40); otherwise a #mkan card with a wa.me link (`SLACK_BOT_TOKEN`) |
 | `whatsapp-chat.ts` | Tenants chatting on WhatsApp: `handleTenantWhatsApp` runs the same turn for a phone (profile `sha256("wa:<digits>")`), digit picks, `ref:` hand-off, auto opt-in for demand alerts |
 | `whatsapp-format.ts` | Pure: the turn as one WhatsApp message (3 homes, numbered options, /find link), `readPick`, `waLang` |
