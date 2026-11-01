@@ -71,6 +71,7 @@
     "crm:demand-match": "tsx --require ./scripts/agent/no-server-only.js scripts/crm/demand-match.ts",
     "agent:funnel": "tsx scripts/crm/agent-funnel.ts",
     "agent:latency": "tsx scripts/agent/latency.ts",
+    "mkan:read": "tsx --require ./scripts/agent/no-server-only.js scripts/hermes/read.ts",
     "agent:eval": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/eval-reader.ts",
     "agent:eval-writer": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/eval-writer.ts",
     "crm:claim-token": "tsx scripts/crm/claim-tokens.ts",
