@@ -86,6 +86,7 @@ import {
   timeline,
   W,
   waLink,
+  errorText,
   type Ledger,
   type PostRow,
 } from './tiktok-post-pure';
@@ -1156,6 +1157,6 @@ main()
     if (['pick', 'render', 'run', 'ask', 'consent'].includes(cmd)) await (await import('../../src/lib/db')).db.$disconnect();
   })
   .catch((e) => {
-    console.error(`\n❌ ${(e as Error).message}\n`);
+    console.error(`\n❌ ${errorText(e)}\n`);
     process.exit(1);
   });

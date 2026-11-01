@@ -7,6 +7,7 @@ import {
   beatHolds,
   brokerPreviewAsk,
   contactLeaks,
+  errorText,
   FRESH_DAYS,
   sourcePostedAt,
   stripGraph,
@@ -361,5 +362,16 @@ describe("the broker's text, off", () => {
     expect(contactLeaks('House For Rent @600k · 2.5 bathrooms · RWF 1,450,000 · security 24/7')).toEqual([]);
     expect(contactLeaks('WhatsApp +250 780 000 777', ['+250 780 000 777'])).toEqual([]);
     expect(contactLeaks('WhatsApp +250 780 000 777')).toEqual(['+250780000777']);
+  });
+});
+
+describe('errorText', () => {
+  it('spells out a connection that failed on every address, where the message is empty', () => {
+    const e = new AggregateError([Object.assign(new Error('connect ETIMEDOUT 3.18.0.1:5432'), { code: 'ETIMEDOUT' }), new Error('connect ENETUNREACH 2600::1:5432')], '');
+    expect(e.message).toBe('');
+    expect(errorText(e)).toBe('connect ETIMEDOUT 3.18.0.1:5432; connect ENETUNREACH 2600::1:5432');
+    expect(errorText(new Error('Connection terminated due to connection timeout'))).toBe('Connection terminated due to connection timeout');
+    expect(errorText(Object.assign(new Error(''), { code: 'ECONNRESET' }))).toBe('ECONNRESET');
+    expect(errorText('plain')).toBe('plain');
   });
 });

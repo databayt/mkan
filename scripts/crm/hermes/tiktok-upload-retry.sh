@@ -2,7 +2,9 @@
 # The TikTok page's second chance, run by the Hermes gateway's cron at 13:00 (no agent,
 # no model): posts whatever the 07:00 tick rendered but could not upload — the vault
 # Chrome was down, TikTok was slow, the Mac was asleep. tt:upload skips anything in the
-# day's uploads.json, so a day that already went out does nothing here.
+# day's uploads.json, so a day that already went out does nothing here. When 07:00
+# rendered nothing at all (Neon refused it twice on 10-24, 10-25, 10-27 and 10-28, and
+# the page posted nothing those days), it runs the whole morning post instead.
 # Installed to ~/.hermes/scripts/mkan-tiktok-upload-retry.sh by scripts/crm/install-tiktok-post.sh.
 #
 # Same two halves as the 07:00 post (2026-11-01): the tick takes the post lock, so the two
@@ -39,6 +41,17 @@ trap 'rm -rf "$LOCK"' EXIT
 cd "$REPO" || exit 0
 started=$(date +%s)
 echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (13:00 retry, detached) ──" >>"$LOGDIR/post.log"
+
+# Today's pick writes queue.json once the database answered; without it nothing was
+# rendered, so the morning post runs now (it renders, uploads, caps itself, reports its
+# own failure and frees the lock). Installed beside this script, or the repo's copy.
+POST="$(dirname "$0")/mkan-tiktok-post.sh"
+[ -f "$POST" ] || POST="$(dirname "$0")/tiktok-post.sh"
+if [ ! -f "$LOGDIR/$(date +%F)/queue.json" ] && [ -f "$POST" ]; then
+  echo "  … nothing rendered today — running the morning post now" >>"$LOGDIR/post.log"
+  trap - EXIT
+  exec /bin/bash "$POST" --run
+fi
 
 launchctl kickstart "gui/$(id -u)/com.databayt.chrome-session" >/dev/null 2>&1 || true
 set -m

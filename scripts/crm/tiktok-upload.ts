@@ -28,7 +28,7 @@ import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { chromium, type Page } from 'playwright';
 import { postToMkan, recordRun } from './notify';
-import type { Ledger } from './tiktok-post-pure';
+import { errorText, type Ledger } from './tiktok-post-pure';
 
 const argv = (n: string, d = ''): string => {
   const h = process.argv.find((a) => a.startsWith(`--${n}=`));
@@ -255,6 +255,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((e) => {
-  console.error(`\n❌ ${(e as Error).message}\n`);
+  console.error(`\n❌ ${errorText(e)}\n`);
   process.exit(1);
 });

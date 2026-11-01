@@ -834,3 +834,17 @@ export function photoEndSvg(whatsapp: string): string {
   <text x="${cx}" y="1200" font-family="${SANS}" font-size="38" font-weight="500" fill="${BRAND.canvas}" text-anchor="middle">Ohereza kode kuri WhatsApp.</text>
 </svg>`;
 }
+
+/**
+ * An error's own words, for the log and #mkan. A connection that fails on every
+ * address (Node's happy-eyeballs connect) throws an AggregateError whose message
+ * is empty — the 10-24..10-28 renders logged a bare "❌" — so its inner errors
+ * are spelled out instead.
+ */
+export function errorText(e: unknown): string {
+  const err = e as { message?: unknown; errors?: unknown; code?: unknown } | null | undefined;
+  if (err && typeof err.message === 'string' && err.message.trim()) return err.message;
+  if (err && Array.isArray(err.errors) && err.errors.length) return [...new Set(err.errors.map((x) => errorText(x)))].join('; ');
+  if (err && typeof err.code === 'string' && err.code) return err.code;
+  return String(e);
+}
