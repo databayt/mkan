@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@/components/internationalization/en.json";
 import ar from "@/components/internationalization/ar.json";
-import { aboutHomes, askAroundText, botText, checkText, firstMessageKind, formatWhatsApp, isFresh, onlyGreetedSoFar, readHomeRef, readPick, readRef, saysYes, waLang, wantsPerson, type WaDict } from "@/components/agent/whatsapp-format";
+import { aboutHomes, askAroundText, botText, checkText, firstMessageKind, formatWhatsApp, isBareYes, isFresh, isThanks, onlyGreetedSoFar, readHomeRef, readPick, readRef, saysYes, shownHomes, thanksText, waLang, wantsPerson, whichOneText, type WaDict } from "@/components/agent/whatsapp-format";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "@/components/agent/types";
 
 const dict = (d: typeof en): WaDict => d.agent as unknown as WaDict;
@@ -196,5 +196,30 @@ describe("after a hello", () => {
     expect(onlyGreetedSoFar([{ role: "user", text: "I need a house in Remera", at: "x" }] as never)).toBe(false);
     expect(onlyGreetedSoFar([...(hello as unknown[]), { role: "agent", kind: "shortlist", count: 6, at: "y" }] as never)).toBe(false);
     expect(onlyGreetedSoFar([] as never)).toBe(false);
+  });
+});
+
+describe("a thank-you", () => {
+  it("is thanks, in the line's languages, and nothing that answers a question", () => {
+    for (const t of ["Thank you", "thanks!", "Thank you so much 🙏", "Murakoze cyane", "merci", "شكرا", "thx"]) expect(isThanks(t), t).toBe(true);
+    for (const t of ["ok", "yes", "thanks, but cheaper", "thank you, the second one", "2"]) expect(isThanks(t), t).toBe(false);
+  });
+
+  it("gets a line back once homes went out, in the tenant's language", () => {
+    expect(shownHomes([{ role: "agent", kind: "shortlist", count: 6, at: "x" }] as never)).toBe(true);
+    expect(shownHomes([{ role: "agent", kind: "clarify", fields: [], at: "x" }] as never)).toBe(false);
+    expect(thanksText("en")).toMatch(/^You're welcome!/);
+    expect(thanksText("rw")).toMatch(/^Ntacyo!/);
+    expect(thanksText("ar")).toMatch(/^العفو!/);
+  });
+});
+
+describe("a bare yes under homes", () => {
+  it("asks which one, like a person would", () => {
+    for (const t of ["ok", "Yes", "yego", "👍", "sawa", "تمام"]) expect(isBareYes(t), t).toBe(true);
+    for (const t of ["2", "yes the second one", "cheaper please", "thank you"]) expect(isBareYes(t), t).toBe(false);
+    expect(whichOneText("en", 3)).toBe("Which one? Send its number, 1 to 3, and I'll check it's still free.");
+    expect(whichOneText("en", 1)).toBe("Send 1 and I'll check it's still free.");
+    expect(whichOneText("rw", 2)).toMatch(/^Iyihe\?.*kugeza kuri 2/);
   });
 });

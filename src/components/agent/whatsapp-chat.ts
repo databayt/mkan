@@ -25,7 +25,7 @@ import { startTurn } from "./run";
 import { loadTask } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
 import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, waLang, type WaDict, type WaLang } from "./whatsapp-format";
-import { aboutHomes, askAroundText, botText, firstMessageKind, onlyGreetedSoFar, personText, readHomeRef, wantsPerson } from "./whatsapp-format";
+import { aboutHomes, askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, onlyGreetedSoFar, personText, readHomeRef, shownHomes, thanksText, wantsPerson, whichOneText } from "./whatsapp-format";
 import { askAround } from "./demand";
 import { viewingRep } from "./broker-message";
 import { parseBrokerReply } from "./broker-reply";
@@ -150,6 +150,11 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
       return { reply: askAroundText(lang, result), taskId: current.id };
     }
     if (pick?.kind === "text") text = pick.text;
+    // A bare yes / ok / 👍 under homes, with no question pending: which one? (It used to re-run the search.)
+    if (!pick && !refHome && view && lastAgent(view)?.kind === "shortlist" && view.shortlist.length > 0 && isBareYes(rest)) {
+      await stampSeen(current.id, input.msgId, 0);
+      return { reply: whichOneText(lang, Math.min(MAX_HOMES, view.shortlist.length)), taskId: current.id };
+    }
   }
 
   // The web chat a ref names: its words and search come along to this phone's new chat.
@@ -175,6 +180,11 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   if (current && !ref && !refHome && !aboutHomes(text) && onlyGreetedSoFar(current.messages as unknown as AgentMessage[])) {
     await postSlackCard(`💬 ${profile.waPhone ?? "a number"} said hello, then wrote something not about a home — the agent stayed quiet; answer it yourself:\n> ${text.slice(0, 300)}`).catch(() => {});
     return { reply: null, why: "empty" };
+  }
+  // A thank-you after the homes went out gets a line back, not the same homes again (11-01: "Thank you" got six).
+  if (current && !ref && !refHome && isThanks(text) && shownHomes(current.messages as unknown as AgentMessage[])) {
+    await stampSeen(current.id, input.msgId, 0);
+    return { reply: thanksText(lang), taskId: current.id };
   }
 
   const message: Extract<AgentMessage, { role: "user" }> = {

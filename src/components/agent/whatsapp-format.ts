@@ -302,6 +302,40 @@ export function botText(lang: WaLang, rep: string): string {
   return `You're chatting with Mkan's assistant: I search the homes and talk to the brokers for you. ${rep} from our team follows these chats and comes to the viewing with you. Type "person" if you'd like a person to reply.`;
 }
 
+/**
+ * A plain thank-you ("thanks", "murakoze cyane", "شكرا", 🙏). After the homes went out it gets a
+ * line back, never the same homes again: 11-01's "Thank you" got six. "ok" is not one — it answers
+ * a question (`saysYes`).
+ */
+export const isThanks = (text: string) =>
+  /^(?:thank(?:s| you| u)(?: (?:so|very) much| a lot)?|thx|tnx|ty|merci(?: beaucoup)?|murakoze(?: cyane)?|urakoze(?: cyane)?|asante(?: sana)?|شكرا|شكراً|مشكور|متشكر)[\s!.,🙏😊❤️👍]*$/iu.test(text.trim());
+
+/** A bare yes / ok / 👍 — under homes with no question pending, it means "that one" without saying which. */
+export const isBareYes = (text: string) =>
+  saysYes(text) || /^(?:👍|👌|alright|fine|cool|great|nice|sawa|nibyo|ni byiza|d'accord|حسنا|طيب)[\s.!👍👌]*$/iu.test(text.trim());
+
+/** "Which one?" — what a person asks when a bare yes comes under several homes (it used to re-run the search). */
+export function whichOneText(lang: WaLang, n: number): string {
+  if (n <= 1) {
+    if (lang === "ar") return "أرسل 1 وأتأكد أنه ما زال متاحاً.";
+    if (lang === "rw") return "Ohereza 1 ndebe ko igihari.";
+    return "Send 1 and I'll check it's still free.";
+  }
+  if (lang === "ar") return `أيّها؟ أرسل رقمه، من 1 إلى ${n}، وأتأكد أنه ما زال متاحاً.`;
+  if (lang === "rw") return `Iyihe? Ohereza nimero yayo, kuva kuri 1 kugeza kuri ${n}, ndebe ko igihari.`;
+  return `Which one? Send its number, 1 to ${n}, and I'll check it's still free.`;
+}
+
+/** Homes already went out in this chat. */
+export const shownHomes = (messages: AgentMessage[] | null | undefined) => (messages ?? []).some((m) => m.role === "agent" && m.kind === "shortlist");
+
+/** "You're welcome", and what they can do next. */
+export function thanksText(lang: WaLang): string {
+  if (lang === "ar") return "العفو! أرسل رقم المنزل الذي يعجبك وأتأكد أنه ما زال متاحاً، أو أخبرني بما تريد تغييره.";
+  if (lang === "rw") return "Ntacyo! Ohereza nimero y'inzu ikunogeye ndebe ko igihari, cyangwa umbwire icyo wahindura.";
+  return "You're welcome! Send the number of a home you like and I'll check it's still free, or tell me what to change.";
+}
+
 /** The tenant asked for a person: one is told (a #mkan card), and the tenant hears so. */
 export function personText(lang: WaLang, rep: string): string {
   if (lang === "ar") return `تمام، طلبت من ${rep} أن يرد عليك هنا.`;
