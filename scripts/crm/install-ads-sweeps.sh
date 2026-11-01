@@ -48,10 +48,10 @@ install_one() { # <name> <body script> <schedule>
 command -v hermes >/dev/null || { echo "hermes not installed"; exit 1; }
 case "$WHICH" in
 fb) install_one mkan-fb-sweep fb-sweep.sh "${FB_SCHEDULE:-30 6 * * *}" ;;
-web) install_one mkan-web-sweep web-sweep.sh "${WEB_SCHEDULE:-45 6 * * *}" ;;
+web) install_one mkan-web-sweep web-sweep.sh "${WEB_SCHEDULE:-45 6,18 * * *}" ;;
 all)
   install_one mkan-fb-sweep fb-sweep.sh "${FB_SCHEDULE:-30 6 * * *}"
-  install_one mkan-web-sweep web-sweep.sh "${WEB_SCHEDULE:-45 6 * * *}"
+  install_one mkan-web-sweep web-sweep.sh "${WEB_SCHEDULE:-45 6,18 * * *}"
   ;;
 *)
   sed -n '2,21p' "$0"

@@ -64,23 +64,33 @@ const now = () => new Date().toISOString();
 
 // ── polite fetch ─────────────────────────────────────────────────────────────
 let lastFetch = 0;
-/** One request at a time, ≥ GAP_MS apart, honest UA. Returns null on a non-200. */
-export async function politeGet(url: string, gapMs = GAP_MS): Promise<{ status: number; url: string; html: string } | null> {
-  const wait = lastFetch + gapMs - Date.now();
-  if (wait > 0) await sleep(wait);
-  lastFetch = Date.now();
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 30_000);
-  try {
-    const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml' }, redirect: 'follow', signal: ctrl.signal });
-    const html = await res.text();
-    return { status: res.status, url: res.url, html };
-  } catch (e) {
-    console.warn(`  ! ${url}: ${(e as Error).message.slice(0, 120)}`);
-    return null;
-  } finally {
-    clearTimeout(timer);
+/**
+ * One request at a time, ≥ GAP_MS apart, honest UA. A dropped connection is
+ * tried again twice (5 s, then 15 s later): Kigali's link drops for seconds at a
+ * time, and 6 of the first 11 runs ended on a list page with "no response".
+ * Returns null when every try failed; the status as it came otherwise.
+ */
+export async function politeGet(url: string, gapMs = GAP_MS, tries = 3): Promise<{ status: number; url: string; html: string } | null> {
+  for (let attempt = 1; attempt <= tries; attempt++) {
+    const wait = lastFetch + gapMs - Date.now();
+    if (wait > 0) await sleep(wait);
+    lastFetch = Date.now();
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30_000);
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml' }, redirect: 'follow', signal: ctrl.signal });
+      const html = await res.text();
+      // A server error is a bad moment, like a dropped line; a 404 or a 200 is an answer.
+      if (res.status >= 500 && attempt < tries) throw new Error(`HTTP ${res.status}`);
+      return { status: res.status, url: res.url, html };
+    } catch (e) {
+      console.warn(`  ! ${url}: ${(e as Error).message.slice(0, 120)}${attempt < tries ? ` — trying again (${attempt}/${tries})` : ''}`);
+      if (attempt < tries) await sleep(attempt === 1 ? 5_000 : 15_000);
+    } finally {
+      clearTimeout(timer);
+    }
   }
+  return null;
 }
 
 // ── the ledger ───────────────────────────────────────────────────────────────
@@ -187,6 +197,8 @@ async function collect(adapter: SiteAdapter, readBudget: { left: number }): Prom
     const page = await politeGet(url);
     if (!page || page.status !== 200) {
       console.warn(`  ! list ${url}: ${page?.status ?? 'no response'}`);
+      // The first list page is the whole run for this site: say so, or the day reads as "ok, 0 new".
+      if (p === 0) stats.stop = `${adapter.site}: list page ${page?.status ?? 'no response'}`;
       break;
     }
     if (/\/(login|signin|user\/login)/i.test(new URL(page.url).pathname)) {
@@ -469,6 +481,8 @@ async function run(): Promise<void> {
     .join(' · ');
   console.log(`\n${APPLY ? '' : '(dry run) '}${line}${stops.length ? `\nstopped: ${stops.join('; ')}` : ''}`);
   if (APPLY) await recordRun('web-ads', stops.length < adapters.length, stops.join('; '));
+  // Every site failed: a non-zero exit, so the Hermes tick reports it instead of "ok".
+  if (stops.length === adapters.length) process.exitCode = 1;
   if (APPLY && flag('notify')) {
     const homes = Object.values(totals).reduce((n, t) => n + t.homes, 0);
     const joined = Object.values(totals).reduce((n, t) => n + t.joined, 0);
