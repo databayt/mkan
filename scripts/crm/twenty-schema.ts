@@ -444,6 +444,15 @@ export const BROKER: ObjectDef = {
     { name: 'visitFee', label: 'Visit fee (RWF)', type: 'NUMBER', icon: 'IconCash', description: 'What they ask to show a home.' },
     { name: 'replyMinutes', label: 'Replies in (min)', type: 'NUMBER', icon: 'IconClock', description: 'Median minutes to answer on WhatsApp.' },
     { name: 'lastReplyAt', label: 'Last WhatsApp reply', type: 'DATE_TIME', icon: 'IconMessage' },
+    // The partnership (2026-11-01): Mkan brings brokers tenants and earns a share of their
+    // commission. A person edits these here; crm:brokers copies them into Prisma.
+    { name: 'relationship', label: 'Relationship', type: 'SELECT', icon: 'IconHeartHandshake', options: ['NEW', 'INTRODUCED', 'ACTIVE', 'PARTNER', 'PAUSED', 'DO_NOT_CONTACT'], description: 'NEW → INTRODUCED (Mkan wrote) → ACTIVE (they answered) → PARTNER (a lease signed / a share agreed). DO_NOT_CONTACT also opts them out.' },
+    { name: 'sharePct', label: 'Mkan share (% of commission)', type: 'NUMBER', icon: 'IconPercentage', description: "What Mkan earns of the broker's commission on a tenant it brings, e.g. 50." },
+    { name: 'shareFlatRwf', label: 'Mkan share (flat RWF)', type: 'NUMBER', icon: 'IconCash', description: 'A fixed amount per signed lease instead of a percentage.' },
+    { name: 'agreementNote', label: 'Agreement', type: 'TEXT', icon: 'IconFileText', description: 'What was agreed, in a sentence (who pays the viewing fee, when the share is paid).' },
+    { name: 'agreedAt', label: 'Agreed on', type: 'DATE_TIME', icon: 'IconCalendarCheck' },
+    { name: 'introducedAt', label: 'Introduced on', type: 'DATE_TIME', icon: 'IconHandStop', description: "When Mkan's first message reached them." },
+    { name: 'lastMessagedAt', label: 'Last messaged', type: 'DATE_TIME', icon: 'IconSend' },
     { name: 'mkanBrokerId', label: 'mkan broker ID', type: 'TEXT', description: 'Prisma Broker.id (dedupe key).' },
     // Two-way (2026-10-22): set this to the record to keep and the next crm:brokers run
     // moves this one's homes, messages and counters there, then deletes it.

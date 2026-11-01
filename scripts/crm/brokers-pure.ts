@@ -480,6 +480,25 @@ export function summarise(brokers: MergedBroker[]) {
 export const LOCKABLE = ['kind', 'name', 'phones', 'whatsapp', 'optOut', 'zoneSlugs'] as const;
 export type LockableField = (typeof LOCKABLE)[number];
 
+/** Where Mkan stands with a broker (Prisma `BrokerRelationship`, Twenty `relationship`). */
+export const RELATIONSHIPS = ['NEW', 'INTRODUCED', 'ACTIVE', 'PARTNER', 'PAUSED', 'DO_NOT_CONTACT'] as const;
+export type Relationship = (typeof RELATIONSHIPS)[number];
+
+/**
+ * The partnership a person keeps in Twenty (2026-11-01): the relationship and Mkan's share
+ * of the broker's commission. The agent never writes the share, so these are copied from
+ * Twenty whenever a person edited the record — no locks needed. `sharePct` is a fraction
+ * here and in Prisma (0.5), a percent in Twenty (50).
+ */
+export interface Partnership {
+  relationship: Relationship;
+  sharePct: number | null;
+  shareFlatRwf: number | null;
+  agreementNote: string | null;
+  agreedAt: Date | null;
+}
+export type PartnershipField = keyof Partnership;
+
 /** Our own PATCH lands a moment after `syncedAt` is read; later than this is someone else. */
 export const EDIT_TOLERANCE_MS = 5_000;
 
@@ -503,6 +522,8 @@ export interface TwentyBrokerState {
   /** True when any of those rows was created by a person. */
   zonesByPerson: boolean;
   mergeIntoId: string | null;
+  /** Null when the Twenty object has no partnership fields yet (crm:seed-objects not applied). */
+  partnership?: Partial<Partnership> | null;
 }
 
 /** The Prisma `Broker` row, as far as the two-way sync needs it. */
@@ -517,13 +538,18 @@ export interface BrokerRowState {
   zoneSlugs: string[];
   lockedFields: string[];
   syncedAt: Date | null;
+  relationship?: Relationship;
+  sharePct?: number | null;
+  shareFlatRwf?: number | null;
+  agreementNote?: string | null;
+  agreedAt?: Date | null;
 }
 
 export interface HumanEdit {
   /** The Prisma update: changed values plus `lockedFields`. Empty when nothing changed. */
-  data: Partial<Pick<BrokerRowState, LockableField | 'optOutAt' | 'lockedFields'>>;
-  /** Fields copied from Twenty this run. */
-  changed: LockableField[];
+  data: Partial<Pick<BrokerRowState, LockableField | 'optOutAt' | 'lockedFields'>> & Partial<Partnership>;
+  /** Fields copied from Twenty this run (only the lockable ones are locked). */
+  changed: (LockableField | PartnershipField)[];
 }
 
 const sameSet = (a: string[], b: string[]) => a.length === b.length && new Set([...a, ...b]).size === a.length;
@@ -537,7 +563,7 @@ const sameSet = (a: string[], b: string[]) => a.length === b.length && new Set([
  * themselves, since adding a `brokerZone` row does not touch the broker.
  */
 export function humanEdit(t: TwentyBrokerState, p: BrokerRowState, now = new Date()): HumanEdit {
-  const changed: LockableField[] = [];
+  const changed: (LockableField | PartnershipField)[] = [];
   const data: HumanEdit['data'] = {};
   const after = p.syncedAt ? t.updatedAt != null && t.updatedAt.getTime() > p.syncedAt.getTime() + EDIT_TOLERANCE_MS : true;
   const recordEdited = after && (t.updatedBy == null ? p.syncedAt != null : byPerson(t.updatedBy));
@@ -572,6 +598,36 @@ export function humanEdit(t: TwentyBrokerState, p: BrokerRowState, now = new Dat
         changed.push('optOut');
       }
     }
+    const pt = t.partnership;
+    if (pt) {
+      if (pt.relationship && pt.relationship !== (p.relationship ?? 'NEW')) {
+        data.relationship = pt.relationship;
+        changed.push('relationship');
+        // "Do not contact" set by a person is an opt-out the agent honours.
+        if (pt.relationship === 'DO_NOT_CONTACT' && !p.optOut && !changed.includes('optOut')) {
+          data.optOut = true;
+          data.optOutAt = now;
+          changed.push('optOut');
+        }
+      }
+      const num = (v: number | null | undefined) => (v == null || Number.isNaN(v) ? null : Math.round(v * 10_000) / 10_000);
+      if (pt.sharePct !== undefined && num(pt.sharePct) !== num(p.sharePct)) {
+        data.sharePct = num(pt.sharePct);
+        changed.push('sharePct');
+      }
+      if (pt.shareFlatRwf !== undefined && (pt.shareFlatRwf ?? null) !== (p.shareFlatRwf ?? null)) {
+        data.shareFlatRwf = pt.shareFlatRwf ?? null;
+        changed.push('shareFlatRwf');
+      }
+      if (pt.agreementNote !== undefined && (pt.agreementNote ?? null) !== (p.agreementNote ?? null)) {
+        data.agreementNote = pt.agreementNote ?? null;
+        changed.push('agreementNote');
+      }
+      if (pt.agreedAt !== undefined && (pt.agreedAt?.getTime() ?? null) !== (p.agreedAt?.getTime() ?? null)) {
+        data.agreedAt = pt.agreedAt ?? null;
+        changed.push('agreedAt');
+      }
+    }
   }
 
   // Zones: a person-created row, or (once we have synced) any difference from what we last wrote.
@@ -580,7 +636,8 @@ export function humanEdit(t: TwentyBrokerState, p: BrokerRowState, now = new Dat
     changed.push('zoneSlugs');
   }
 
-  if (changed.length) data.lockedFields = [...new Set([...p.lockedFields, ...changed])];
+  const locks = changed.filter((f): f is LockableField => (LOCKABLE as readonly string[]).includes(f));
+  if (locks.length) data.lockedFields = [...new Set([...p.lockedFields, ...locks])];
   return { data, changed };
 }
 

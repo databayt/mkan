@@ -312,6 +312,26 @@ const twentyRow = (over: Partial<TwentyBrokerState> = {}): TwentyBrokerState => 
 });
 
 describe('humanEdit', () => {
+  it("copies the partnership a person keeps in Twenty, without locking it", () => {
+    const agreed = new Date('2026-11-01T10:00:00Z');
+    const e = humanEdit(
+      twentyRow({ updatedAt: later(60), updatedBy: 'MANUAL', partnership: { relationship: 'PARTNER', sharePct: 0.5, shareFlatRwf: null, agreementNote: 'Half the commission; Mkan pays the viewing fee', agreedAt: agreed } }),
+      prismaRow({ relationship: 'ACTIVE', sharePct: null }),
+    );
+    expect(e.changed).toEqual(['relationship', 'sharePct', 'agreementNote', 'agreedAt']);
+    expect(e.data).toEqual({ relationship: 'PARTNER', sharePct: 0.5, agreementNote: 'Half the commission; Mkan pays the viewing fee', agreedAt: agreed });
+    // The same values again change nothing; a missing partnership (fields not seeded) is ignored.
+    expect(humanEdit(twentyRow({ updatedAt: later(60), updatedBy: 'MANUAL', partnership: { relationship: 'PARTNER', sharePct: 0.5 } }), prismaRow({ relationship: 'PARTNER', sharePct: 0.5 })).changed).toEqual([]);
+    expect(humanEdit(twentyRow({ updatedAt: later(60), updatedBy: 'MANUAL', partnership: null }), prismaRow()).changed).toEqual([]);
+  });
+
+  it('"do not contact" set by a person opts the broker out', () => {
+    const now = new Date('2026-11-01T11:00:00Z');
+    const e = humanEdit(twentyRow({ updatedAt: later(60), updatedBy: 'MANUAL', partnership: { relationship: 'DO_NOT_CONTACT' } }), prismaRow(), now);
+    expect(e.changed).toEqual(['relationship', 'optOut']);
+    expect(e.data).toMatchObject({ relationship: 'DO_NOT_CONTACT', optOut: true, optOutAt: now, lockedFields: ['optOut'] });
+  });
+
   it('ignores our own write, and API writes after it', () => {
     expect(humanEdit(twentyRow({ updatedAt: later(2), kind: 'AGENCY', updatedBy: 'MANUAL' }), prismaRow()).changed).toEqual([]);
     expect(humanEdit(twentyRow({ updatedAt: later(60), kind: 'AGENCY' }), prismaRow()).changed).toEqual([]);

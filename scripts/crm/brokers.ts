@@ -53,6 +53,7 @@ import {
   resolveMerges,
   summarise,
   withoutLocked,
+  RELATIONSHIPS,
   TWENTY_KEYS,
   type BrokerKindT,
   type BrokerRowFull,
@@ -60,6 +61,7 @@ import {
   type HomeFact,
   type LockableField,
   type MergedBroker,
+  type Relationship,
   type SourceTag,
   type TwentyBrokerState,
 } from './brokers-pure';
@@ -392,6 +394,7 @@ const BROKER_FULL = {
   email: true, districts: true, neighbourhoods: true, stays: true, priceMin: true, priceMax: true, listingsCount: true, lastSeenAt: true,
   lastAskedAt: true, asks: true, answers: true, availableAnswers: true, optOut: true, optOutAt: true, twentyId: true, sources: true,
   zoneSlugs: true, lockedFields: true, syncedAt: true,
+  relationship: true, sharePct: true, shareFlatRwf: true, agreementNote: true, agreedAt: true,
 } as const;
 type BrokerRow = BrokerRowFull & { twentyId: string | null };
 
@@ -456,6 +459,17 @@ export function twentyBrokerState(t: Row, junction: Row[] | null, zoneSlugById: 
       return !!by && by !== 'API' && by !== 'SYSTEM';
     }),
     mergeIntoId: t.mergeIntoId ? String(t.mergeIntoId) : null,
+    // Present once crm:seed-objects added the partnership fields; the share is a percent in Twenty.
+    partnership:
+      'relationship' in t || 'sharePct' in t
+        ? {
+            relationship: (RELATIONSHIPS as readonly string[]).includes(String(t.relationship)) ? (t.relationship as Relationship) : undefined,
+            sharePct: typeof t.sharePct === 'number' ? t.sharePct / 100 : null,
+            shareFlatRwf: typeof t.shareFlatRwf === 'number' ? Math.round(t.shareFlatRwf) : null,
+            agreementNote: typeof t.agreementNote === 'string' && t.agreementNote.trim() ? t.agreementNote.trim() : null,
+            agreedAt: dateOf(t.agreedAt),
+          }
+        : null,
   };
 }
 
@@ -468,7 +482,8 @@ async function pullTwenty(write: boolean): Promise<void> {
   const { db } = await import('../../src/lib/db');
   const client = twentyClient();
   const tw = await readTwentyDirectory(client);
-  const rows = (await db.broker.findMany({ select: BROKER_FULL })) as BrokerRow[];
+  // Prisma hands a Decimal share back; the two-way logic compares plain numbers.
+  const rows = (await db.broker.findMany({ select: BROKER_FULL })).map((r) => ({ ...r, sharePct: r.sharePct == null ? null : Number(r.sharePct) })) as BrokerRow[];
   const byTwentyId = new Map(rows.filter((r) => r.twentyId).map((r) => [r.twentyId!, r]));
   const byId = new Map(rows.map((r) => [r.id, r]));
   const twentyById = new Map(tw.brokers.map((t) => [String(t.id), t]));
@@ -555,7 +570,10 @@ const STAY_OPTION = { month: 'MONTH', night: 'NIGHT' } as const;
  */
 export function twentyBrokerBody(
   b: MergedBroker,
-  row: { id: string; asks: number; answers: number; availableAnswers: number; lastAskedAt: Date | null; optOut: boolean; optOutAt: Date | null; lockedFields?: string[]; districts?: string[]; neighbourhoods?: string[] },
+  row: {
+    id: string; asks: number; answers: number; availableAnswers: number; lastAskedAt: Date | null; optOut: boolean; optOutAt: Date | null; lockedFields?: string[]; districts?: string[]; neighbourhoods?: string[];
+    relationship?: string; sharePct?: number | { toString(): string } | null; shareFlatRwf?: number | null; agreementNote?: string | null; agreedAt?: Date | null; introducedAt?: Date | null; lastMessagedAt?: Date | null;
+  },
 ) {
   const link = (url: string | null, label: string) => (url ? { primaryLinkUrl: url, primaryLinkLabel: label, secondaryLinks: [] } : undefined);
   const locked = (row.lockedFields ?? []) as LockableField[];
@@ -590,6 +608,15 @@ export function twentyBrokerBody(
     contactName: b.contactName ?? undefined,
     preferredLanguage: b.preferredLanguage ?? undefined,
     languages: b.languages.length ? b.languages : undefined,
+    // The partnership: the relationship always; the share and agreement only once they exist,
+    // so an empty Prisma value never clears what a person typed in Twenty.
+    relationship: row.relationship ?? undefined,
+    sharePct: row.sharePct != null ? Math.round(Number(row.sharePct) * 10_000) / 100 : undefined,
+    shareFlatRwf: row.shareFlatRwf ?? undefined,
+    agreementNote: row.agreementNote ?? undefined,
+    agreedAt: row.agreedAt?.toISOString() ?? undefined,
+    introducedAt: row.introducedAt?.toISOString() ?? undefined,
+    lastMessagedAt: row.lastMessagedAt?.toISOString() ?? undefined,
     mkanBrokerId: row.id,
   };
   for (const f of locked) for (const k of TWENTY_KEYS[f] ?? []) delete body[k];
@@ -692,6 +719,7 @@ async function apply(brokers: MergedBroker[]): Promise<void> {
       select: {
         id: true, name: true, twentyId: true, asks: true, answers: true, availableAnswers: true, lastAskedAt: true, optOut: true, optOutAt: true,
         lockedFields: true, zoneSlugs: true, districts: true, neighbourhoods: true,
+        relationship: true, sharePct: true, shareFlatRwf: true, agreementNote: true, agreedAt: true, introducedAt: true, lastMessagedAt: true,
       },
     });
     const body = twentyBrokerBody(b, row);
