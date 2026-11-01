@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@/components/internationalization/en.json";
 import ar from "@/components/internationalization/ar.json";
-import { askAroundText, botText, checkText, firstMessageKind, formatWhatsApp, isFresh, readHomeRef, readPick, readRef, saysYes, waLang, wantsPerson, type WaDict } from "@/components/agent/whatsapp-format";
+import { aboutHomes, askAroundText, botText, checkText, firstMessageKind, formatWhatsApp, isFresh, onlyGreetedSoFar, readHomeRef, readPick, readRef, saysYes, waLang, wantsPerson, type WaDict } from "@/components/agent/whatsapp-format";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "@/components/agent/types";
 
 const dict = (d: typeof en): WaDict => d.agent as unknown as WaDict;
@@ -171,5 +171,30 @@ describe("who a first message is from", () => {
   it("leaves to a person the friends who knew the number before it was Mkan's", () => {
     // Real first messages to the line, 10-27..11-01.
     for (const t of ["Babe", "You sleeping", "Can we meet now", "0786485237"]) expect(firstMessageKind(t), t).toBe("other");
+  });
+});
+
+describe("after a hello", () => {
+  const hello = [
+    { role: "user", text: "Hello", at: "2026-11-01T11:42:52Z" },
+    { role: "agent", kind: "clarify", fields: ["homeType", "furnished", "purpose"], at: "2026-11-01T11:42:53Z" },
+  ] as never;
+
+  it("leaves to a person a next message that is not about a home", () => {
+    // The real one, 11-01 13:43: the agent answered it with six homes.
+    expect(onlyGreetedSoFar(hello)).toBe(true);
+    expect(aboutHomes("Muherereyehe ngo tubazanire ibintu")).toBe(false);
+    for (const t of ["How are you?", "Thank you", "Can I call you"]) expect(aboutHomes(t), t).toBe(false);
+  });
+
+  it("never silences a tenant answering the opening question", () => {
+    for (const t of ["for my family", "to live with my kids", "I'm a student", "I need something near town", "apartment", "furnished", "ndashaka inzu", "pour ma famille", "2 bedrooms"])
+      expect(aboutHomes(t), t).toBe(true);
+  });
+
+  it("is over once they asked for a home or saw homes", () => {
+    expect(onlyGreetedSoFar([{ role: "user", text: "I need a house in Remera", at: "x" }] as never)).toBe(false);
+    expect(onlyGreetedSoFar([...(hello as unknown[]), { role: "agent", kind: "shortlist", count: 6, at: "y" }] as never)).toBe(false);
+    expect(onlyGreetedSoFar([] as never)).toBe(false);
   });
 });

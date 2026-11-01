@@ -333,6 +333,28 @@ export function firstMessageKind(text: string): "rental" | "greeting" | "other" 
   return "other";
 }
 
+/**
+ * Wider than `firstMessageKind`'s "rental": a reply to the opening question (what kind of home,
+ * furnished, what for) can name no home word — "for my family", "to live with my kids", "I'm a
+ * student" — and still be a tenant's. Used only after a hello, where a miss silences a tenant.
+ */
+const PURPOSE_OR_WANT =
+  /\b(?:family|kids|children|child|wife|husband|couple|student|students|alone|myself|single|work|working|office|business|shop|live|living|stay|staying|move|moving|relocat\w*|looking for|look for|searching|need|want|umuryango|abana|umugore|umugabo|umunyeshuri|abanyeshuri|akazi|gutura|kuba|nkeneye|ndakeneye|ndashaka|nshaka|famille|enfants|étudiant|etudiant|travail|habiter|vivre|cherche)\b|عائلة|اسرة|أسرة|اطفال|أطفال|طالب|عمل|اسكن|أسكن|ابحث|أبحث/i;
+
+export const aboutHomes = (text: string): boolean => firstMessageKind(text) === "rental" || PURPOSE_OR_WANT.test(text);
+
+/**
+ * The chat so far is only hellos: no word about a home from them, no homes from us. Its next
+ * message, if not about a home either, is for a person — "Muherereyehe ngo tubazanire ibintu"
+ * ("where are you, so we can bring the things", 11-01) got six homes from the agent.
+ */
+export function onlyGreetedSoFar(messages: AgentMessage[] | null | undefined): boolean {
+  const said = (messages ?? []).filter((m): m is Extract<AgentMessage, { role: "user" }> => m.role === "user");
+  if (!said.length) return false;
+  if ((messages ?? []).some((m) => m.role === "agent" && m.kind === "shortlist")) return false;
+  return said.every((m) => firstMessageKind(m.text ?? "") === "greeting");
+}
+
 /** "person" / "human" / "agent": the tenant wants someone from Mkan. */
 export const wantsPerson = (text: string) => /^(?:a )?(?:person|human|real person|agent|someone|staff|شخص|انسان|إنسان|umuntu)[\s.!]*$/i.test(text.trim());
 
