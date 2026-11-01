@@ -13,6 +13,8 @@
  * What goes out each day (tt:run made it at 07:00):
  *   - each queued home: <date>/<ref>.mp4 + <ref>.txt (a consented broker's footage, AI-upscaled, on mkan's AI track → AI label on)
  *   - the picture video: <date>/carousel/video.mp4 + video-caption.txt (mkan's AI track → AI label on)
+ *   - the same slides as a photo post: <date>/carousel/<n>.jpg + caption.txt, through Studio's
+ *     Photos tab (swipeable, up to 35; no AI voice, so no label). TIKTOK_PHOTO_POSTS=off skips it.
  * A per-day `uploads.json` keeps a rerun from posting twice. A posted home is
  * stamped in posted.json, so it rests 30 days like a hand-posted one.
  *
@@ -23,12 +25,12 @@ import { config } from 'dotenv';
 config({ override: true });
 
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { chromium, type Page } from 'playwright';
 import { postToMkan, recordRun } from './notify';
-import { errorText, type Ledger } from './tiktok-post-pure';
+import { errorText, photoTitle, type Ledger } from './tiktok-post-pure';
 
 const argv = (n: string, d = ''): string => {
   const h = process.argv.find((a) => a.startsWith(`--${n}=`));
@@ -44,11 +46,15 @@ const UPLOADS = join(DAY, 'uploads.json');
 const CDP = (process.env.TIKTOK_UPLOAD_CDP ?? '').trim() || 'http://127.0.0.1:9222';
 const PAGE = (process.env.TIKTOK_PAGE_HANDLE ?? '').trim().replace(/^@/, '') || 'mkan.rw';
 const UPLOAD_URL = 'https://www.tiktok.com/tiktokstudio/upload?lang=en';
+/** Studio's web upload takes photo posts on its Photos tab (checked 2026-11-01: jpg/png/webp, up to 35). */
+const PHOTO_POSTS = (process.env.TIKTOK_PHOTO_POSTS ?? '').trim().toLowerCase() !== 'off';
 const dry = flag('dry');
 
 interface Piece {
-  key: string; // ref for a home, `datavideo` for the voiced carousel
-  mp4: string;
+  key: string; // ref for a home, `datavideo` for the voiced carousel, `slides` for its photo post
+  mp4: string; // the video, or a photo post's first slide
+  /** A photo post's slides, in order. */
+  photos?: string[];
   caption: string;
   aigc: boolean;
 }
@@ -69,6 +75,10 @@ function todaysPieces(): Piece[] {
   }
   const dv = join(DAY, 'carousel', 'video.mp4');
   if (existsSync(dv)) out.push({ key: 'datavideo', mp4: dv, caption: readFileSync(join(DAY, 'carousel', 'video-caption.txt'), 'utf8'), aigc: true });
+  // The slides themselves as a swipeable photo post — what a tenant scrolls past as "slides".
+  const dir = join(DAY, 'carousel');
+  const slides = existsSync(dir) ? readdirSync(dir).filter((f) => /^\d+\.jpg$/.test(f)).sort((a, b) => parseInt(a, 10) - parseInt(b, 10)).map((f) => join(dir, f)) : [];
+  if (PHOTO_POSTS && slides.length >= 2 && existsSync(join(dir, 'caption.txt'))) out.push({ key: 'slides', mp4: slides[0]!, photos: slides.slice(0, 35), caption: readFileSync(join(dir, 'caption.txt'), 'utf8'), aigc: false });
   return out;
 }
 
@@ -174,21 +184,59 @@ async function setAigc(p: Page): Promise<void> {
   if ((await sw.getAttribute('aria-checked')) !== 'true') throw new Error('the AI-generated label would not switch on — not posting an unlabelled AI voice');
 }
 
+/**
+ * Every slide up before Post. Studio wakes Post while photos are still uploading (11-01 dry
+ * runs: 3 of 7, then 6 of 7 with one failed), and a failed slide shows a retry arrow over
+ * it — tapped up to three times. A partial set is never posted: the run says so, and the
+ * 13:00 retry tries the day again.
+ */
+async function waitForPhotos(p: Page, n: number, waitMs = 8 * 60_000): Promise<void> {
+  const done = p.getByText(new RegExp(`\\b${n} photos? uploaded`, 'i')).first();
+  const failed = p.locator('[class*="errorOverlay"]');
+  let retries = 0;
+  for (const end = Date.now() + waitMs; Date.now() < end; ) {
+    if (await done.isVisible().catch(() => false)) return;
+    if (retries < 3 && (await failed.count().catch(() => 0)) > 0) {
+      retries += 1;
+      await failed.first().click().catch(() => {});
+    }
+    await p.waitForTimeout(3000);
+  }
+  const got = (await p.getByText(/photos? uploaded/i).first().textContent().catch(() => ''))?.match(/\d+/)?.[0] ?? 'some';
+  throw new Error(`only ${got} of ${n} photos uploaded after ${Math.round(waitMs / 60_000)} min${retries ? ` (${retries} retried)` : ''} — not posting a partial set`);
+}
+
 async function postOne(p: Page, piece: Piece): Promise<string> {
-  await p.goto(UPLOAD_URL, { waitUntil: 'domcontentloaded' });
+  await p.goto(piece.photos ? `${UPLOAD_URL}&tab=photo` : UPLOAD_URL, { waitUntil: 'domcontentloaded' });
   if (/\/login/.test(p.url()) || (await p.locator('input[type=file]').count().catch(() => 0)) === 0) {
     await p.waitForTimeout(6000);
     if (/\/login/.test(p.url())) throw new Error(`the vault Chrome is logged out of TikTok — scan the QR at ${UPLOAD_URL} with @${PAGE} on the phone`);
   }
   await discardDraft(p);
-  await p.locator('input[type=file]').first().setInputFiles(piece.mp4);
+  if (piece.photos) {
+    // The Photos tab swaps the file input for one that takes images, several at once.
+    const images = p.locator('input[type=file][accept*="image"]');
+    if ((await images.count().catch(() => 0)) === 0) {
+      await p.getByText('Photos', { exact: true }).first().click({ timeout: 15_000 });
+      await images.first().waitFor({ state: 'attached', timeout: 15_000 });
+    }
+    await images.first().setInputFiles(piece.photos);
+  } else {
+    await p.locator('input[type=file]').first().setInputFiles(piece.mp4);
+  }
   await p.locator('.public-DraftEditor-content, div[contenteditable="true"]').first().waitFor({ timeout: 60_000 });
   await p.waitForTimeout(3000);
   await dismissPrompts(p);
   await setCaption(p, piece.caption);
   await dismissPrompts(p);
+  if (piece.photos) {
+    // A photo post has a title line of its own (90 characters): the caption's first line.
+    const title = p.getByPlaceholder(/catchy title/i).first();
+    if (await title.isVisible().catch(() => false)) await title.fill(photoTitle(piece.caption)).catch(() => {});
+  }
   if (piece.aigc) await setAigc(p);
   await dismissPrompts(p);
+  if (piece.photos) await waitForPhotos(p, piece.photos.length);
 
   const post = p.locator('button[data-e2e="post_video_button"]').or(p.getByRole('button', { name: /^post$/i })).first();
   // Post stays disabled until the upload finishes processing.
@@ -237,7 +285,7 @@ async function main(): Promise<void> {
         done[piece.key] = new Date().toISOString();
         writeFileSync(UPLOADS, JSON.stringify(done, null, 2));
         if (ledger[piece.key]) ledger[piece.key] = { ...ledger[piece.key]!, postedAt: done[piece.key] };
-        lines.push(`• ${piece.key}${piece.aigc ? ' (AI voice, labelled)' : ''}`);
+        lines.push(`• ${piece.key}${piece.photos ? ` (${piece.photos.length} photos)` : ''}${piece.aigc ? ' (AI voice, labelled)' : ''}`);
       } catch (e) {
         console.warn(`  ! ${piece.key}: ${(e as Error).message}`);
         lines.push(`• ⚠️ ${piece.key} not posted: ${(e as Error).message.slice(0, 200)}`);

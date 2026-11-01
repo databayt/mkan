@@ -886,3 +886,7 @@ export function pageStatsLine(page: string, vids: PageVideo[], homes: { matched:
     .filter(Boolean)
     .join(' · ');
 }
+
+/** A photo post's title (Studio gives it 90 characters): the caption's first line, without its emoji. */
+export const photoTitle = (caption: string): string =>
+  (caption.trim().split('\n')[0] ?? '').replace(/[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\uFE0F]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 90);

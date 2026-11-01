@@ -9,6 +9,7 @@ import {
   contactLeaks,
   errorText,
   pageStatsLine,
+  photoTitle,
   FRESH_DAYS,
   sourcePostedAt,
   stripGraph,
@@ -397,5 +398,13 @@ describe('pageStatsLine', () => {
       '📈 TikTok @mkan.rw: 3 videos, 471 views, 15 likes · posted in the last 7 days: 2, 284 views · best: "RWF 1M+ a month" 187 (23 Oct) · broker videos matched to homes: 0',
     );
     expect(pageStatsLine('mkan.rw', [], { matched: 0, views: 0 }, now)).toBe('📈 TikTok @mkan.rw: 0 videos, 0 views, 0 likes · posted in the last 7 days: 0, 0 views · broker videos matched to homes: 0');
+  });
+});
+
+describe('photoTitle', () => {
+  it("is the caption's first line, without emoji, within 90 characters", () => {
+    expect(photoTitle('🏠 RWF 1M+ a month — this week\n• K5808 — RWF 1,000,000/mo')).toBe('RWF 1M+ a month — this week');
+    expect(photoTitle('🇷🇼 Inzu zikodeshwa')).toBe('Inzu zikodeshwa');
+    expect(photoTitle('x'.repeat(120))).toHaveLength(90);
   });
 });
