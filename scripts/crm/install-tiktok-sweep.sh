@@ -89,8 +89,9 @@ mkdir -p "$HERMES_HOME/scripts" "$LOGDIR"
 sed -e "s|\${MKAN_REPO:-/Users/abdout/mkan}|\${MKAN_REPO:-$REPO}|" \
   -e "s|\${TIKTOK_DAILY_LIMIT:-40}|\${TIKTOK_DAILY_LIMIT:-$LIMIT}|" \
   -e "s|\${TIKTOK_READ_LIMIT:-80}|\${TIKTOK_READ_LIMIT:-$READ_LIMIT}|" \
-  "$REPO/scripts/crm/hermes/tiktok-sweep.sh" >"$HERMES_SCRIPT"
-chmod +x "$HERMES_SCRIPT"
+  "$REPO/scripts/crm/hermes/tiktok-sweep.sh" >"$HERMES_SCRIPT.tmp"
+# Renamed over the live copy, never rewritten in place: a detached run still reads it.
+chmod +x "$HERMES_SCRIPT.tmp" && mv -f "$HERMES_SCRIPT.tmp" "$HERMES_SCRIPT"
 
 # The default 1 h script timeout is shorter than a full read day.
 if ! grep -q '^cron:' "$CONFIG"; then

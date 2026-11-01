@@ -10,9 +10,12 @@
 #
 # One-time: the vault Chrome (127.0.0.1:9222) must be logged in to TikTok as @mkan.rw
 # (QR scan at tiktok.com/login). If it logs out, the run says so in #mkan.
-# TIKTOK_POSTS_PER_DAY sets how many homes (default 3). Logs under .data/tiktok-post/.
+# TIKTOK_POSTS_PER_DAY=<n> bakes a new default into the installed copy; without it the
+# script's own default stands (0 while broker videos are on hold, 2026-11-01), so a
+# refresh never lifts the hold by accident. Logs under .data/tiktok-post/.
 # A second job, mkan-tiktok-upload-retry (13:00), posts whatever 07:00 rendered but could
-# not upload; the day's uploads.json keeps it from posting anything twice.
+# not upload; the day's uploads.json keeps it from posting anything twice, and the two
+# share one lock, so they never upload at once.
 set -euo pipefail
 NAME="mkan-tiktok-post"
 LABEL="com.databayt.$NAME"
@@ -22,7 +25,10 @@ HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 HERMES_SCRIPT="$HERMES_HOME/scripts/$NAME.sh"
 MKAN_CHANNEL="C0BS2NZE2AY" # private #mkan
 SCHEDULE="${TIKTOK_POST_SCHEDULE:-0 7 * * *}"
-PER_DAY="${TIKTOK_POSTS_PER_DAY:-3}"
+PER_DAY_SED='s/^$//' # no-op unless TIKTOK_POSTS_PER_DAY is set
+if [ -n "${TIKTOK_POSTS_PER_DAY:-}" ]; then
+  PER_DAY_SED="s|\${TIKTOK_POSTS_PER_DAY:-[0-9]*}|\${TIKTOK_POSTS_PER_DAY:-$TIKTOK_POSTS_PER_DAY}|"
+fi
 RETRY="mkan-tiktok-upload-retry"
 RETRY_SCRIPT="$HERMES_HOME/scripts/$RETRY.sh"
 RETRY_SCHEDULE="${TIKTOK_RETRY_SCHEDULE:-0 13 * * *}"
@@ -43,18 +49,20 @@ fi
 
 command -v hermes >/dev/null || { echo "hermes not installed"; exit 1; }
 mkdir -p "$HERMES_HOME/scripts" "$REPO/scripts/crm/.data/tiktok-post"
-sed -e "s|\${MKAN_REPO:-/Users/abdout/mkan}|\${MKAN_REPO:-$REPO}|" \
-  -e "s|\${TIKTOK_POSTS_PER_DAY:-3}|\${TIKTOK_POSTS_PER_DAY:-$PER_DAY}|" \
-  "$REPO/scripts/crm/hermes/tiktok-post.sh" >"$HERMES_SCRIPT"
-chmod +x "$HERMES_SCRIPT"
+# Each copy is written beside the live one and renamed over it, so a run still reading the
+# old copy keeps it: cp or > rewrites a file in place, and that cut the 11-01 demand run short.
+sed -e "s|\${MKAN_REPO:-/Users/abdout/mkan}|\${MKAN_REPO:-$REPO}|" -e "$PER_DAY_SED" \
+  "$REPO/scripts/crm/hermes/tiktok-post.sh" >"$HERMES_SCRIPT.tmp"
+chmod +x "$HERMES_SCRIPT.tmp" && mv -f "$HERMES_SCRIPT.tmp" "$HERMES_SCRIPT"
+PER_DAY=$(sed -n 's/^PER_DAY="\${TIKTOK_POSTS_PER_DAY:-\([0-9]*\)}"$/\1/p' "$HERMES_SCRIPT")
 
 remove_hermes_job "$NAME"
 hermes cron create "$SCHEDULE" --name "$NAME" --script "$NAME.sh" --no-agent \
   --deliver "slack:$MKAN_CHANNEL" >/dev/null
 
 sed -e "s|\${MKAN_REPO:-/Users/abdout/mkan}|\${MKAN_REPO:-$REPO}|" \
-  "$REPO/scripts/crm/hermes/tiktok-upload-retry.sh" >"$RETRY_SCRIPT"
-chmod +x "$RETRY_SCRIPT"
+  "$REPO/scripts/crm/hermes/tiktok-upload-retry.sh" >"$RETRY_SCRIPT.tmp"
+chmod +x "$RETRY_SCRIPT.tmp" && mv -f "$RETRY_SCRIPT.tmp" "$RETRY_SCRIPT"
 remove_hermes_job "$RETRY"
 hermes cron create "$RETRY_SCHEDULE" --name "$RETRY" --script "$RETRY.sh" --no-agent \
   --deliver "slack:$MKAN_CHANNEL" >/dev/null
