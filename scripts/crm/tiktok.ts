@@ -357,7 +357,7 @@ async function discover(): Promise<void> {
   // Proposals are settled by reading their own captions, a few per run.
   if (!flag('search-only') && !argv('query')) {
     saveSeeds(seeds);
-    const v = vetSeeds(Number(argv('vet', '8')), true);
+    const v = vetSeeds(Number(argv('vet', '12')), true);
     runStats.seedsPromoted.push(...v.promoted);
     Object.assign(seeds, loadSeeds());
   }
@@ -1162,7 +1162,8 @@ function vetSeeds(limit: number, apply: boolean): { promoted: string[]; ignored:
   const seeds = loadSeeds();
   const videos = loadVideos();
   const due = Object.entries(seeds)
-    .filter(([, s]) => s.status === 'proposed' && (!s.vettedAt || Date.now() - Date.parse(s.vettedAt) >= 14 * 86_400_000))
+    // Re-read every 3 days (14 until 11-01): a new broker's account fills up fast.
+    .filter(([, s]) => s.status === 'proposed' && (!s.vettedAt || Date.now() - Date.parse(s.vettedAt) >= 3 * 86_400_000))
     .sort((a, b) => (b[1].hits ?? 0) - (a[1].hits ?? 0))
     .slice(0, limit);
   const out = { promoted: [] as string[], ignored: [] as string[] };

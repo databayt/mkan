@@ -149,7 +149,9 @@ describe('discovery', () => {
     expect(seedIsDue({ status: 'ignored', from: 'manual', addedAt: '' }, nowMs)).toBe(false);
     expect(shouldPromote({ status: 'proposed', from: 'search', addedAt: '', hits: 5 }, 1)).toBe(true);
     expect(shouldPromote({ status: 'proposed', from: 'search', addedAt: '', hits: 5 }, 0)).toBe(false);
-    expect(shouldPromote({ status: 'proposed', from: 'search', addedAt: '', hits: 2 }, 3)).toBe(false);
+    // One real Kigali home is enough — search hits no longer gate it (search answers 2 queries a run).
+    expect(shouldPromote({ status: 'proposed', from: 'search', addedAt: '', hits: 2 }, 3)).toBe(true);
+    expect(shouldPromote({ status: 'active', from: 'search', addedAt: '', hits: 9 }, 3)).toBe(false);
   });
 
   it('spaces frames evenly inside the middle 90%', () => {
@@ -344,6 +346,10 @@ describe('vetVerdict', () => {
   it('ignores an account with plenty of posts and no rental, or none in Rwanda', () => {
     expect(vetVerdict(['dance', 'music', 'my day', 'vlog', 'funny']).verdict).toBe('ignore');
     expect(vetVerdict(['Apartment for rent in Lagos', 'House for rent Lekki', 'Studio for rent Ikeja', 'flat to let', 'room for rent']).verdict).toBe('ignore');
+  });
+  it('promotes a broker who mixes rentals with sales and plots', () => {
+    const caps = ['House for rent Kimironko', 'Apartment for rent Remera', 'Plot for sale Bugesera', 'Land for sale', 'House for sale Rebero', 'Studio for rent Kicukiro', 'plot', 'plot', 'plot', 'sale', 'sale', 'sale', 'Kigali', 'Kigali'];
+    expect(vetVerdict(caps)).toMatchObject({ verdict: 'promote', rental: 3 });
   });
   it('keeps an account it cannot judge yet', () => {
     expect(vetVerdict(['House for rent Kigali', 'hi']).verdict).toBe('keep');

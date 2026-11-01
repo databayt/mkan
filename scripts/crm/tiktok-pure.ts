@@ -95,8 +95,13 @@ export function seedIsDue(seed: SeedRow, nowMs = Date.now()): boolean {
  * A proposed account earns a seed once search keeps finding it AND one of its
  * posts already became a real home — 44 proposals sat unreviewed for a week.
  */
+/**
+ * A proposal whose posts already gave a real Kigali home (one that passed every gate
+ * and reached the board) is a broker: make it a seed. Until 2026-11-01 it also needed
+ * 3 search hits — and search answers 2 queries a run, so none of 20 proposals qualified.
+ */
 export function shouldPromote(seed: SeedRow, upsertedHomes: number): boolean {
-  return seed.status === 'proposed' && (seed.hits ?? 0) >= 3 && upsertedHomes >= 1;
+  return seed.status === 'proposed' && upsertedHomes >= 1;
 }
 
 // ── discovery ────────────────────────────────────────────────────────────────
@@ -224,7 +229,8 @@ export function vetVerdict(captions: string[]): { verdict: 'promote' | 'ignore' 
   // One stray word isn't enough: a fifth of the captions must place it in Rwanda.
   const rwanda = total > 0 && captions.filter((c) => RWANDA_WORDS.test(c)).length >= Math.max(1, Math.ceil(total * 0.2));
   let verdict: 'promote' | 'ignore' | 'keep' = 'keep';
-  if (rental >= 3 && rental / total >= 0.3 && rwanda) verdict = 'promote';
+  // A fifth of the posts, not a third: Kigali brokers mix rentals with sales and plots (several sat at 23–27%).
+  if (rental >= 3 && rental / total >= 0.2 && rwanda) verdict = 'promote';
   else if (total >= 5 && (rental === 0 || !rwanda)) verdict = 'ignore';
   return { verdict, rental, total, rwanda };
 }
