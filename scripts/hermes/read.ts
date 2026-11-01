@@ -196,7 +196,7 @@ async function lanes(db: Db): Promise<string[]> {
   const raw = existsSync(jobsFile) ? (JSON.parse(readFileSync(jobsFile, 'utf8')) as { jobs?: HermesJob[] } | HermesJob[]) : [];
   const jobs: HermesJob[] = Array.isArray(raw) ? raw : (raw.jobs ?? []);
   out.push('', 'Scheduled lanes (Hermes, on the Mac):');
-  for (const name of ['mkan-tiktok-sweep', 'mkan-web-sweep', 'mkan-demand-match', 'mkan-tiktok-post', 'mkan-tiktok-upload-retry']) {
+  for (const name of ['mkan-tiktok-sweep', 'mkan-web-sweep', 'mkan-demand-match', 'mkan-tiktok-post', 'mkan-tiktok-upload-retry', 'mkan-tiktok-stats']) {
     const j = jobs.find((x) => x.name === name);
     if (!j) {
       out.push(`  ${name.padEnd(25)} not scheduled`);
@@ -205,6 +205,18 @@ async function lanes(db: Db): Promise<string[]> {
     const last = j.last_run_at ? `${kigali(j.last_run_at)} ${j.last_status ?? ''}` : 'never ran';
     const err = j.last_status === 'error' && j.last_error ? ` — ${maskText(j.last_error, 90)}` : '';
     out.push(`  ${name.padEnd(25)} ${(j.schedule_display ?? '').padEnd(14)} last ${last}${err} · next ${j.next_run_at ? kigali(j.next_run_at) : '—'}${j.enabled === false ? ' · PAUSED' : ''}`);
+  }
+  // Hermes says "ok" the moment a detached run starts; each run's own record says how it went (crm/notify.ts recordRun).
+  const streaksFile = join(__dirname, '..', 'crm', '.data', 'failure-streaks.json');
+  const streaks = existsSync(streaksFile) ? (JSON.parse(readFileSync(streaksFile, 'utf8')) as Record<string, { fails: number; at?: string; ok?: boolean; detail?: string; last?: string }>) : {};
+  out.push('', 'Last runs, as the runs themselves recorded them:');
+  for (const job of ['tiktok-sweep', 'web-ads', 'demand-match', 'tiktok-post', 'tiktok-upload']) {
+    const r = streaks[job];
+    if (!r?.at) {
+      out.push(`  ${job.padEnd(25)} not recorded yet${r?.fails ? ` · ${r.fails} failed in a row` : ''}`);
+      continue;
+    }
+    out.push(`  ${job.padEnd(25)} ${kigali(r.at)} ${r.ok ? 'ok' : 'FAILED'}${r.fails > 1 ? ` (${r.fails} in a row)` : ''}${r.detail ? ` — ${maskText(r.detail, 110)}` : ''}`);
   }
   const day = new Date(Date.now() - 86_400_000);
   const week = new Date(Date.now() - 7 * 86_400_000);

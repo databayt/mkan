@@ -112,9 +112,12 @@ const STREAKS = join(__dirname, '.data', 'failure-streaks.json');
  * Count consecutive failures of a scheduled job; alert #mkan once when the
  * streak reaches `threshold`, and once more when it recovers. sync-up failed
  * 87 times against a sleeping CRM and nobody heard about any of them.
+ * Each record also keeps this run's time, result and detail (`at` / `ok` / `detail`):
+ * a run started detached from Hermes reports "ok" to Hermes the moment it starts, so
+ * `mkan:read lanes` reads how it really went from here.
  */
 export async function recordRun(job: string, ok: boolean, detail = '', threshold = 3): Promise<void> {
-  let streaks: Record<string, { fails: number; alerted: boolean; last?: string }> = {};
+  let streaks: Record<string, { fails: number; alerted: boolean; last?: string; at?: string; ok?: boolean; detail?: string }> = {};
   try {
     if (existsSync(STREAKS)) streaks = JSON.parse(readFileSync(STREAKS, 'utf8'));
   } catch {
@@ -123,10 +126,11 @@ export async function recordRun(job: string, ok: boolean, detail = '', threshold
   const s = streaks[job] ?? { fails: 0, alerted: false };
   if (ok) {
     if (s.alerted) await postToMkan(`✅ *${job}* is running again after ${s.fails} failed run(s).`);
-    streaks[job] = { fails: 0, alerted: false };
+    streaks[job] = { fails: 0, alerted: false, at: new Date().toISOString(), ok: true, detail: detail.slice(0, 300) };
   } else {
     s.fails += 1;
     s.last = detail.slice(0, 300);
+    Object.assign(s, { at: new Date().toISOString(), ok: false, detail: s.last });
     if (s.fails >= threshold && !s.alerted) {
       await postToMkan(`⚠️ *${job}* has failed ${s.fails} runs in a row. Last error: \`${s.last || 'unknown'}\``);
       s.alerted = true;

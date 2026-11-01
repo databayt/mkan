@@ -39,7 +39,7 @@ import { basename, join } from 'node:path';
 import { ANTHROPIC_VISION_MODEL, AnthropicCap, anthropicKey, monthSpend, MONTHLY_CAP_USD, runAnthropic } from './anthropic-reader';
 import { runClaude } from './claude-reader';
 import { GROQ_VISION_MODEL, GroqLimit, runGroq } from './groq-reader';
-import { postToMkan } from './notify';
+import { postToMkan, recordRun } from './notify';
 import { mirrorLeads } from './tiktok-mirror';
 import { phonesFromTwenty, twentyPhones } from '../../src/lib/phone';
 import { twentyClient } from './twenty-rest';
@@ -1341,6 +1341,7 @@ async function main(): Promise<void> {
         }
         pruneFrames();
         if (APPLY && flag('notify')) await postToMkan(runSummary(r));
+        if (APPLY) await recordRun('tiktok-sweep', true, `found ${runStats.discovered} · fetched ${runStats.fetched} · read ${runStats.read} · ${r.homes} new home(s), ${r.hosts} new broker(s), ${runStats.mirroredNew} new lead(s)`);
       });
     case 'status':
       return status();
@@ -1351,7 +1352,8 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((e) => {
+main().catch(async (e) => {
   console.error(`\n❌ ${(e as Error).message}\n`);
+  if (cmd === 'run' && APPLY) await recordRun('tiktok-sweep', false, (e as Error).message).catch(() => {});
   process.exit(1);
 });
