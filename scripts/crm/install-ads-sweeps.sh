@@ -39,8 +39,10 @@ install_one() { # <name> <body script> <schedule>
     return
   fi
   mkdir -p "$HERMES_HOME/scripts"
-  sed -e "s|\${MKAN_REPO:-/Users/abdout/mkan}|\${MKAN_REPO:-$REPO}|" "$REPO/scripts/crm/hermes/$body" >"$target"
-  chmod +x "$target"
+  # Written beside the live copy and renamed over it: a running sweep still reads the old one
+  # (cp or > rewrites it in place, which cut a demand run short on 11-01).
+  sed -e "s|\${MKAN_REPO:-/Users/abdout/mkan}|\${MKAN_REPO:-$REPO}|" "$REPO/scripts/crm/hermes/$body" >"$target.tmp"
+  chmod +x "$target.tmp" && mv -f "$target.tmp" "$target"
   hermes cron create "$schedule" --name "$name" --script "$name.sh" --no-agent --deliver "slack:$MKAN_CHANNEL" >/dev/null
   echo "installed Hermes job $name — '$schedule', alerts to #mkan"
 }

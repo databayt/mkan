@@ -210,7 +210,7 @@ async function lanes(db: Db): Promise<string[]> {
   const streaksFile = join(__dirname, '..', 'crm', '.data', 'failure-streaks.json');
   const streaks = existsSync(streaksFile) ? (JSON.parse(readFileSync(streaksFile, 'utf8')) as Record<string, { fails: number; at?: string; ok?: boolean; detail?: string; last?: string }>) : {};
   out.push('', 'Last runs, as the runs themselves recorded them:');
-  for (const job of ['tiktok-sweep', 'web-ads', 'demand-match', 'tiktok-post', 'tiktok-upload']) {
+  for (const job of ['tiktok-sweep', 'web-ads', 'web-recheck', 'demand-match', 'tiktok-post', 'tiktok-upload']) {
     const r = streaks[job];
     if (!r?.at) {
       out.push(`  ${job.padEnd(25)} not recorded yet${r?.fails ? ` · ${r.fails} failed in a row` : ''}`);

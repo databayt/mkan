@@ -5,6 +5,7 @@
  *   pnpm crm:web-ads run [--apply] [--notify]     list → ad pages → read → gate → Twenty
  *        [--site=houseinrwanda,imali] [--limit=N per site] [--max-age=90] [--read-limit=N] [--no-read]
  *   pnpm crm:web-ads status
+ *   pnpm crm:web-ads recheck [--apply] [--notify] [--limit=N]   live web homes' ads read again; removed ones leave /find
  *
  * One adapter per site under scripts/crm/web-ads/<site>.ts turns its pages into
  * a raw ad; SURVEY.md says why these sites and not the others. Every fetch is
@@ -38,7 +39,7 @@ import type { RawAd, SiteAdapter } from './web-ads/html';
 import { houseinrwanda } from './web-ads/houseinrwanda';
 import { imali } from './web-ads/imali';
 import { rwandahouseland } from './web-ads/rwandahouseland';
-import { buildWebPrompt, isStale, mergeReads, readFromAd, readerGaps, sourceIdFor, twentyHomeKey, webHomeBody, webHostBody, webPhones, WEB_PROMPT_VERSION } from './web-ads/pure';
+import { adGone, buildWebPrompt, isStale, mergeReads, readFromAd, readerGaps, sourceIdFor, twentyHomeKey, webHomeBody, webHostBody, webPhones, WEB_PROMPT_VERSION } from './web-ads/pure';
 import { SURVEY_SITES, robotsAllows, surveyPage, type SurveyRow } from './web-ads/survey';
 
 // ── argv ─────────────────────────────────────────────────────────────────────
@@ -502,10 +503,64 @@ function status(): void {
   }
 }
 
+// ── recheck: a removed ad's home leaves /find ────────────────────────────────
+const RECHECK = join(DATA, 'recheck.json');
+const RECHECK_EVERY_MS = 3 * 86_400_000;
+
+/**
+ * Every live web home's ad is read again every 3 days. A removed one (adGone: a 404, or a
+ * redirect away from the ad) marks the home lost — AD_GONE — so /find stops offering a home
+ * a tenant can no longer have. A request that fails or is blocked decides nothing and is
+ * tried again next run. The mirror never touches lostAt, so the mark holds.
+ */
+async function recheck(): Promise<void> {
+  const { db } = await import('../../src/lib/db');
+  const seen: Record<string, string> = existsSync(RECHECK) ? JSON.parse(readFileSync(RECHECK, 'utf8')) : {};
+  try {
+    const rows = await db.listing.findMany({
+      where: { source: 'WEB', isPublished: false, lostAt: null, sourceUrl: { not: null } },
+      select: { id: true, title: true, sourceUrl: true },
+      orderBy: { id: 'asc' },
+    });
+    const due = rows.filter((r) => !seen[r.id] || Date.now() - Date.parse(seen[r.id]!) >= RECHECK_EVERY_MS).slice(0, Number(argv('limit', '250')));
+    const gone: { id: number; title: string | null }[] = [];
+    let live = 0;
+    let unread = 0;
+    for (const r of due) {
+      const res = await politeGet(r.sourceUrl!, GAP_MS, 2);
+      const verdict = res ? adGone({ adUrl: r.sourceUrl!, status: res.status, finalUrl: res.url, html: res.html }) : 'unknown';
+      if (verdict === 'unknown') {
+        unread += 1;
+        continue;
+      }
+      seen[r.id] = now();
+      if (verdict === 'live') {
+        live += 1;
+        continue;
+      }
+      gone.push({ id: r.id, title: r.title });
+      if (APPLY) await db.listing.updateMany({ where: { id: r.id, lostAt: null }, data: { lostAt: new Date(), lostReason: 'AD_GONE' } });
+    }
+    if (APPLY) {
+      mkdirSync(DATA, { recursive: true });
+      writeFileSync(RECHECK, JSON.stringify(seen, null, 2));
+    }
+    const line = `🧹 Web ads re-checked: ${due.length} of ${rows.length} live homes · ${gone.length} ad(s) gone${APPLY ? ' — out of /find' : ' (dry run)'} · ${live} still up${unread ? ` · ${unread} could not be read` : ''}`;
+    console.log(line);
+    for (const g of gone.slice(0, 25)) console.log(`  × K${g.id} ${g.title ?? ''}`);
+    if (APPLY && flag('notify') && gone.length) await postToMkan(line);
+    if (APPLY) await recordRun('web-recheck', unread <= due.length / 2, line);
+  } finally {
+    await db.$disconnect();
+  }
+}
+
 async function main(): Promise<void> {
   switch (cmd) {
     case 'survey':
       return survey();
+    case 'recheck':
+      return recheck();
     case 'run':
       return run();
     case 'status':

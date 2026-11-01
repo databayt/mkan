@@ -39,6 +39,10 @@ echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron ──" >>"$LOGDIR/sweep.l
 code=$?
 mins=$(( ($(date +%s) - started) / 60 ))
 
+# Then the live web homes' ads, read again every 3 days: a removed ad's home leaves /find
+# (lostAt AD_GONE). It posts to #mkan only when some went; its failure streak alerts there too.
+/usr/bin/caffeinate -i pnpm -s crm:web-ads recheck --apply --notify >>"$LOGDIR/sweep.log" 2>>"$LOGDIR/sweep.err.log"
+
 if [ "$code" -ne 0 ]; then
   echo "⚠️ Web ads sweep failed (exit $code after ${mins} min). Last errors:"
   tail -n 8 "$LOGDIR/sweep.err.log" | cut -c1-240

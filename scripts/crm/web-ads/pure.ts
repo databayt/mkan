@@ -224,3 +224,27 @@ export function webHostBody(ad: RawAd, read: TikTokRead, phones: string[], siteL
 
 /** Phones to file: the labels and reader's, validated, plus any the ad text spells out. */
 export const webPhones = (read: TikTokRead, ad: RawAd): string[] => phonesFor(read, `${ad.text} ${ad.phones.join(' ')}`);
+
+/**
+ * Is a home's web ad still up? Read on 2026-11-01 from each site's own answer to a removed ad:
+ * houseinrwanda.com says 404; imali.biz redirects to /error/404; rwandahouseland.com redirects
+ * to its homepage. A live ad keeps its own address (its id or slug stays in the final URL).
+ * A blocked, rate-limited or failing request decides nothing ("unknown"), and the page's words
+ * are never read for "rented": a "similar homes" strip would say it about other homes.
+ */
+export function adGone(input: { adUrl: string; status: number; finalUrl: string; html: string }): 'gone' | 'live' | 'unknown' {
+  if (input.status === 404 || input.status === 410) return 'gone';
+  if (input.status >= 400 || input.status < 200) return 'unknown';
+  if (/\/error\/404\b/i.test(input.finalUrl)) return 'gone';
+  const title = (input.html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '').replace(/\s+/g, ' ').trim();
+  if (/\b404\b[^|]*\b(?:error|not found)\b|\b(?:error|not found)\b[^|]*\b404\b|^404\s*\|/i.test(title)) return 'gone';
+  // The ad's own id or slug: the last segment of its path. Redirected somewhere that has lost it = gone.
+  let key: string | null = null;
+  try {
+    key = new URL(input.adUrl).pathname.replace(/\/+$/, '').split('/').pop() || null;
+  } catch {
+    return 'unknown';
+  }
+  if (key && !decodeURIComponent(input.finalUrl).includes(decodeURIComponent(key))) return 'gone';
+  return 'live';
+}

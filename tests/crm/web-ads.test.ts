@@ -10,7 +10,7 @@ import { htmlToText, labelValue, parsePrice } from '../../scripts/crm/web-ads/ht
 import * as hir from '../../scripts/crm/web-ads/houseinrwanda';
 import * as imali from '../../scripts/crm/web-ads/imali';
 import * as rhl from '../../scripts/crm/web-ads/rwandahouseland';
-import { buildWebPrompt, isStale, mergeReads, propertyTypeFor, readFromAd, readerGaps, sourceIdFor, webHomeBody, webHostBody } from '../../scripts/crm/web-ads/pure';
+import { adGone, buildWebPrompt, isStale, mergeReads, propertyTypeFor, readFromAd, readerGaps, sourceIdFor, webHomeBody, webHostBody } from '../../scripts/crm/web-ads/pure';
 import { robotsAllows, surveyPage, SURVEY_SITES } from '../../scripts/crm/web-ads/survey';
 import { dupKey, skipReasonFor, type TikTokRead } from '../../scripts/crm/tiktok-pure';
 
@@ -231,5 +231,24 @@ describe('stale ads and the survey', () => {
     const next = SURVEY_SITES.find((s) => s.site === 'nextlinehomes')!;
     expect(surveyPage(next, { status: 200, url: next.listUrl, html: '<div id="__next"></div><script src="/_next/static/x.js"></script>'.padEnd(5000) }, true).verdict).toBe('FAIL ads render client-side');
     expect(surveyPage(next, null, false).verdict).toMatch(/robots/);
+  });
+});
+
+describe('adGone', () => {
+  const page = (title: string) => `<html><head><title>${title}</title></head><body>…</body></html>`;
+  it('reads each site\'s own answer to a removed ad (checked 2026-11-01)', () => {
+    // houseinrwanda.com: a real 404.
+    expect(adGone({ adUrl: 'https://www.houseinrwanda.com/property/rent/house/no-such-home', status: 404, finalUrl: 'https://www.houseinrwanda.com/property/rent/house/no-such-home', html: page('404 | House in Rwanda') })).toBe('gone');
+    // imali.biz: a redirect to its error page.
+    expect(adGone({ adUrl: 'https://imali.biz/isaziso/houses-for-rent/27/999999/imp1', status: 200, finalUrl: 'https://imali.biz/error/404', html: page('. : : IMALI.biz | 404 Error! : : .') })).toBe('gone');
+    // rwandahouseland.com: a redirect to its homepage.
+    expect(adGone({ adUrl: 'https://rwandahouseland.com/property_view/999999', status: 200, finalUrl: 'https://rwandahouseland.com/', html: page('Real Estate Market Place - RwandaHouseland') })).toBe('gone');
+  });
+  it('keeps a live ad, and lets a blocked or failing request decide nothing', () => {
+    expect(adGone({ adUrl: 'https://imali.biz/isaziso/houses-for-rent/27/261467/imp3716152', status: 200, finalUrl: 'https://imali.biz/isaziso/houses-for-rent/27/261467/imp3716152', html: page('. : : IMALI.biz | Kimironko kwamushimire : : .') })).toBe('live');
+    expect(adGone({ adUrl: 'https://rwandahouseland.com/property_view/1991', status: 200, finalUrl: 'https://rwandahouseland.com/property_view/1991', html: page('4 Bedroom House - RwandaHouseland') })).toBe('live');
+    // An apartment numbered 404 is not an error page.
+    expect(adGone({ adUrl: 'https://www.houseinrwanda.com/property/rent/apartment/apt-404-remera', status: 200, finalUrl: 'https://www.houseinrwanda.com/property/rent/apartment/apt-404-remera', html: page('Apartment 404 in Remera | House in Rwanda') })).toBe('live');
+    for (const status of [403, 429, 500, 503]) expect(adGone({ adUrl: 'https://imali.biz/x/1', status, finalUrl: 'https://imali.biz/x/1', html: '' }), String(status)).toBe('unknown');
   });
 });
