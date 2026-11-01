@@ -522,8 +522,9 @@ export function contactLeaks(text: string, allow: string[] = []): string[] {
 //
 // A photo-mode post made only of facts from the CRM — price, place, rooms, the
 // ref — in mkan's own artwork. No broker photo or footage appears, so any
-// Kigali monthly home can be on it; a tenant who sends the ref is put in touch
-// with the agent or owner (co-broking).
+// Kigali monthly home can be on it. A tenant who sends the ref gets it checked
+// and a viewing set up by Mkan, who stays in the middle (Abdout, 2026-11-01):
+// the copy never promises the agent's or owner's contact, and the viewing is free.
 
 export const CAROUSEL_HOMES = 5;
 /** A home shown in a carousel rests this long before it can be shown again. */
@@ -659,7 +660,7 @@ export function carouselEndSvg(whatsapp: string): string {
   <text x="${cx}" y="740" font-family="${SANS}" font-size="46" font-weight="500" fill="#fff" text-anchor="middle">Send its code on WhatsApp</text>
   <rect x="110" y="820" width="${W - 220}" height="170" rx="36" fill="${BRAND.ink}"/>
   <text x="${cx}" y="935" font-family="${DISPLAY}" font-size="80" font-weight="900" fill="${BRAND.canvas}" text-anchor="middle">${esc(whatsapp)}</text>
-  <text x="${cx}" y="1090" font-family="${SANS}" font-size="40" font-weight="500" fill="#fff" text-anchor="middle">We connect you with the agent or owner.</text>
+  <text x="${cx}" y="1090" font-family="${SANS}" font-size="40" font-weight="500" fill="#fff" text-anchor="middle">We check it's free. Viewing is on us.</text>
   <text x="${cx}" y="1160" font-family="${SANS}" font-size="40" font-weight="500" fill="#fff" text-anchor="middle">Ohereza kode kuri WhatsApp.</text>
   <text x="${cx}" y="1300" font-family="${SANS}" font-size="36" font-weight="500" fill="#fff" fill-opacity="0.85" text-anchor="middle">More homes: mkan.sd/find</text>
 </svg>`;
@@ -670,8 +671,8 @@ export function carouselCaption(theme: CarouselTheme, homes: PostRow[], whatsapp
   return [
     `🏠 ${theme.title} — this week`,
     ...homes.map((r) => `• ${refOf(r)} — ${formatRwf(r.priceMonth ?? 0)}/mo, ${placeLine(r)}${r.bedrooms ? `, ${r.bedrooms} bd` : ''}`),
-    `📲 WhatsApp ${whatsapp} — send the code. We connect you with the agent or owner; availability changes, so ask first.`,
-    `🇷🇼 ${theme.rw}. Ohereza kode kuri WhatsApp ${whatsapp}.`,
+    `📲 WhatsApp ${whatsapp} — send the code. We check it's still free and take you to see it. No viewing fee.`,
+    `🇷🇼 ${theme.rw}. Ohereza kode kuri WhatsApp ${whatsapp}. Gusura ni ubuntu.`,
     '',
     [...new Set(tags)].join(' '),
   ].join('\n');
@@ -717,7 +718,7 @@ export function carouselNarration(theme: CarouselTheme, homes: PostRow[]): strin
     const rooms = [r.bedrooms ? `${count(r.bedrooms)} bedroom${r.bedrooms > 1 ? 's' : ''}` : '', r.bathrooms ? `${count(r.bathrooms)} bathroom${r.bathrooms > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ');
     return [`${article} ${type} in ${placeLine(r)}.`, rooms ? `${rooms[0]!.toUpperCase()}${rooms.slice(1)}.` : '', `${fmt(r.priceMonth ?? 0)} francs a month.`, `Code ${spokenRef(refOf(r))}.`].filter(Boolean).join(' ');
   });
-  return [cover, ...lines, 'Want one? Send its code on WhatsApp, to the number on screen. We connect you with the agent or owner.'];
+  return [cover, ...lines, 'Want one? Send its code on WhatsApp, to the number on screen. We check it is free, and the viewing is on us.'];
 }
 
 /** How long each slide holds: its line plus breathing room, never under `min`. */

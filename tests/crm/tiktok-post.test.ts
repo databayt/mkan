@@ -22,6 +22,7 @@ import {
   brokerAsk,
   captionFor,
   carouselCaption,
+  carouselEndSvg,
   carouselHomeSvg,
   carouselNarration,
   slideHolds,
@@ -232,7 +233,13 @@ describe('data carousel', () => {
   it('wraps, escapes and carries the ref + number', () => {
     expect(wrap('Homes for rent in Kicukiro', 14)).toEqual(['Homes for rent', 'in Kicukiro']);
     expect(carouselHomeSvg(row({ id: 77, area: 'A & B' }), 1, 5, '+250 788 000 000')).toContain('K77');
-    expect(carouselCaption(carouselThemes(pool)[0]!.theme, pool.slice(0, 2), '+250 788 000 000')).toContain('agent or owner');
+    expect(carouselCaption(carouselThemes(pool)[0]!.theme, pool.slice(0, 2), '+250 788 000 000')).toContain('No viewing fee');
+  });
+  it('never promises the agent\'s or owner\'s contact: Mkan stays in the middle (11-01)', () => {
+    const theme = carouselThemes(pool)[0]!.theme;
+    const copy = [carouselCaption(theme, pool.slice(0, 2), '+250 788 000 000'), carouselEndSvg('+250 788 000 000'), ...carouselNarration(theme, pool.slice(0, 2))].join('\n');
+    expect(copy).not.toMatch(/agent or owner|connect you with|put you in touch/i);
+    expect(copy).toMatch(/viewing is on us/i);
   });
 });
 
