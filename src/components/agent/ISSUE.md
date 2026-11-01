@@ -11,6 +11,15 @@
   and a #mkan card (`onlyGreetedSoFar`, `aboutHomes`). Purpose and want words count as about a home
   here ("for my family", "I'm a student", "I need something near town"), so a tenant answering the
   opening question is never silenced. The same deploy carries the 📅 card's terms checklist (`2e4dd08`).
+- **Then** (`569ba31`, `c09f2a7`, Worker `5fb5e5b6`, both verified end to end): after homes went out, a
+  plain thank-you gets "You're welcome! Send the number of a home you like…" instead of the same
+  homes again (…772, 11-01), and a bare yes / ok / 👍 with no question pending gets "Which one? Send
+  its number, 1 to 3". After a hello, short replies (ok, yes, 👍, thanks, a digit) keep the agent —
+  silence there would read as a dead line; only a message that is neither about a home nor short goes
+  to a person (`personAfterHello`).
+- **Open (Abdout):** the WhatsApp shortlist links each broker lead to the broker's own TikTok post,
+  whose caption usually carries their number, and `checkText` "none" says "The link above has the
+  ad" — a way around Mkan staying in the middle. Linking the mkan.sd card instead is the fix if wanted.
 - **Owed:** once the Claude key exists, its reading of intent can take over from the word lists.
 
 ## 2026-11-01 — Mkan in the middle: deal sheet, three-party viewing, confirmed terms
