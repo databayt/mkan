@@ -485,7 +485,30 @@ word ("Kigali Homes Ltd" yes, "Nina Group" no). An agency's office pin places it
 neighbourhood or sector (`zoneSlugs`, `zoneWithin`) outranks one who only covers the district; a
 sibling neighbourhood in the same sector scores in between. "Near the centre / business district / a
 university" matches the zones inside that area. An agency with no known zones is still asked, but
-after the locals. Opted-out, phoneless and asked-in-the-last-24-h brokers are never asked.
+after the locals. Opted-out, phoneless and asked-in-the-last-week brokers are never asked, and only
+3 are asked per request, after the tenant said yes to asking around (2026-11-01).
+
+**The partnership (2026-11-01).** Mkan brings brokers tenants and earns a share of their commission;
+the Twenty broker record holds it: `relationship` (NEW → INTRODUCED when Mkan's first message reached
+them → ACTIVE once they answer → PARTNER; PAUSED; DO_NOT_CONTACT), `sharePct` (% of their commission,
+e.g. 50) or `shareFlatRwf`, `agreementNote`, `agreedAt`, plus `introducedAt` / `lastMessagedAt`.
+The agent moves `relationship` forward in Prisma; a person edits the share and the agreement in
+Twenty and `crm:brokers` copies them into Prisma (not locked — the agent never writes them; a share
+empty in Prisma never clears Twenty's). A person's DO_NOT_CONTACT also sets `optOut`. A signed lease
+(`pnpm deal:status --status=signed`) makes the broker a PARTNER.
+
+**Where new brokers come from.** The TikTok sweep finds accounts through TikTok's own search in the
+session-vault Chrome (one phrase a run; `TIKTOK_VAULT_SEARCH=off` stops it) and through web search;
+a proposed account becomes a seed once one real Kigali home came from it, or once a fifth of its
+recent captions are Kigali rentals (re-read every 3 days, 12 a run). The directory then takes every
+TikTok poster with a phone. The 09:00 tick runs the build even when `wa:chats` cannot read WhatsApp's
+database (no Full Disk Access under Hermes) — it uses the last snapshot.
+
+**Runs that outlive the gateway.** The Hermes ticks for the sweep (06:00/18:00) and the 09:00 demand
+match take a lock and start the run with `hermes/detached.sh` (double fork + setsid), so a gateway
+restart cannot kill it; the run posts its own failure to #mkan (`pnpm -s crm:post-mkan`). Install a
+changed tick with a temp file + `mv` — `cp` over a script bash is running cuts that run short.
+`pnpm mkan:read lanes` shows every lane's last run.
 
 ## Still to add
 
