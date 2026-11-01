@@ -39,6 +39,9 @@ Brokers live on TikTok and WhatsApp; mkan meets them there.
   rendered and uploaded automatically; 13:00 a retry posts whatever 07:00 could not.
   A broker's video is used **only after that broker said YES**. Until then the daily post
   is mkan's own picture video.
+- **Broker messages are paused** (2026-11-01): the line asks a broker only for a real WhatsApp
+  tenant who picked a home, and only when Abdout turns it on (`pnpm wa:brokers gated`). Never
+  turn it on yourself; `pnpm -s wa:brokers` (no argument) shows the state.
 - **#mkan** (`C0BS2NZE2AY`) is the intake desk — owned by the `home` skill. Never answer
   mkan questions there.
 
@@ -58,6 +61,8 @@ cd /Users/abdout/mkan && pnpm -s mkan:read <topic>
 | which brokers agreed to reposts | `crm consent` |
 | TikTok videos in the CRM | `crm tiktok` |
 | today's TikTok post | `tiktok` |
+| the status of each pipeline, what ran, scraping, "is it working" | `lanes` |
+| viewings booked and deals | `pnpm -s deal:list` (read-only) |
 
 Add `--days=7` for a week, `--n=20` for more rows. Phones come masked (…777) — never
 ask for or guess full numbers. Other safe reads: `pnpm -s agent:funnel --days=7`,

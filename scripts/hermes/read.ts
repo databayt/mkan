@@ -6,6 +6,7 @@
  *   pnpm -s mkan:read wa [--days=1] [--n=8]       the WhatsApp line: tenants, broker sends, replies
  *   pnpm -s mkan:read crm homes|brokers|consent|tiktok   the Twenty CRM (mkan workspace)
  *   pnpm -s mkan:read tiktok                     today's TikTok post: queue, uploads, log
+ *   pnpm -s mkan:read lanes                      every pipeline: last run, how it went, the last 24 h
  *
  * It never writes and never sends. Its output reaches a third-party model, so phone
  * numbers show only their last 3 digits, long digit runs inside free text are masked
@@ -182,9 +183,63 @@ function tiktok(): string[] {
   return out;
 }
 
+type HermesJob = { name?: string; schedule_display?: string; last_run_at?: string | null; last_status?: string | null; last_error?: string | null; next_run_at?: string | null; enabled?: boolean };
+
+/**
+ * Every pipeline in one screen (2026-11-01): the Hermes jobs as they last ran
+ * (a "ok" with nothing found shows as its counts here), the last 24 h of supply,
+ * the broker directory, the WhatsApp line, viewings and deals.
+ */
+async function lanes(db: Db): Promise<string[]> {
+  const out = [`mkan lanes — ${kigali(new Date().toISOString())} Kigali`];
+  const jobsFile = join(process.env.HOME ?? '', '.hermes', 'cron', 'jobs.json');
+  const raw = existsSync(jobsFile) ? (JSON.parse(readFileSync(jobsFile, 'utf8')) as { jobs?: HermesJob[] } | HermesJob[]) : [];
+  const jobs: HermesJob[] = Array.isArray(raw) ? raw : (raw.jobs ?? []);
+  out.push('', 'Scheduled lanes (Hermes, on the Mac):');
+  for (const name of ['mkan-tiktok-sweep', 'mkan-web-sweep', 'mkan-demand-match', 'mkan-tiktok-post', 'mkan-tiktok-upload-retry']) {
+    const j = jobs.find((x) => x.name === name);
+    if (!j) {
+      out.push(`  ${name.padEnd(25)} not scheduled`);
+      continue;
+    }
+    const last = j.last_run_at ? `${kigali(j.last_run_at)} ${j.last_status ?? ''}` : 'never ran';
+    const err = j.last_status === 'error' && j.last_error ? ` — ${maskText(j.last_error, 90)}` : '';
+    out.push(`  ${name.padEnd(25)} ${(j.schedule_display ?? '').padEnd(14)} last ${last}${err} · next ${j.next_run_at ? kigali(j.next_run_at) : '—'}${j.enabled === false ? ' · PAUSED' : ''}`);
+  }
+  const day = new Date(Date.now() - 86_400_000);
+  const week = new Date(Date.now() - 7 * 86_400_000);
+  const brokerKinds = { in: ['BROKER_REQUEST' as const, 'BROKER_ASK' as const] };
+  const [tiktokNew, webNew, leads, brokers, brokersNew, withPhone, withLang, partners, lost, sends, sent24, queued, waTenants, visits, deals] = await Promise.all([
+    db.listing.count({ where: { source: 'TIKTOK', createdAt: { gte: day } } }),
+    db.listing.count({ where: { source: 'WEB', createdAt: { gte: day } } }),
+    db.listing.count({ where: { source: { in: ['TIKTOK', 'WEB', 'FACEBOOK'] }, rentPeriod: 'MONTHLY', sourceUrl: { not: null }, lostAt: null } }),
+    db.broker.count(),
+    db.broker.count({ where: { createdAt: { gte: day } } }),
+    db.broker.count({ where: { phones: { isEmpty: false } } }),
+    db.broker.count({ where: { preferredLanguage: { not: null } } }),
+    db.broker.count({ where: { relationship: { in: ['ACTIVE', 'PARTNER'] } } }),
+    db.listing.count({ where: { lostAt: { gte: week } } }),
+    db.waState.findUnique({ where: { key: 'broker-sends' }, select: { value: true } }),
+    db.outboundMessage.count({ where: { status: 'SENT', kind: brokerKinds, sentAt: { gte: day } } }),
+    db.outboundMessage.count({ where: { status: 'QUEUED', kind: brokerKinds } }),
+    db.agentProfile.count({ where: { waPhone: { not: null }, updatedAt: { gte: day } } }),
+    db.listingVisit.groupBy({ by: ['outcome'], where: { taskId: { not: null } }, _count: true }),
+    db.deal.groupBy({ by: ['status'], _count: true }),
+  ]);
+  const mode = (sends?.value as { mode?: string } | null)?.mode === 'gated' ? 'GATED (real WhatsApp tenants only)' : 'OFF (picks go to #mkan)';
+  out.push(
+    '',
+    `Supply, last 24 h: ${tiktokNew} TikTok home(s) · ${webNew} web home(s) · ${leads} live broker leads in /find · ${lost} home(s) lost this week`,
+    `Brokers: ${brokers} (${withPhone} with a phone, ${withLang} with a language, ${partners} talking to us) · ${brokersNew} new in 24 h`,
+    `WhatsApp line: broker sends ${mode} · ${sent24} broker message(s) in 24 h · ${queued} queued · ${waTenants} tenant(s) wrote in 24 h`,
+    `Viewings: ${visits.map((v) => `${v._count} ${v.outcome}`).join(', ') || 'none yet'} · Deals: ${deals.map((d) => `${d._count} ${d.status}`).join(', ') || 'none yet'}`,
+  );
+  return out;
+}
+
 async function main(): Promise<void> {
   const [topic = 'brief', sub = ''] = words;
-  const needsDb = ['brief', 'chats', 'wa', 'whatsapp'].includes(topic);
+  const needsDb = ['brief', 'chats', 'wa', 'whatsapp', 'lanes'].includes(topic);
   const db = needsDb ? (await import('../../src/lib/db')).db : null;
   try {
     let lines: string[] = [];
@@ -192,10 +247,11 @@ async function main(): Promise<void> {
     else if (topic === 'wa' || topic === 'whatsapp') lines = await whatsapp(db!);
     else if (topic === 'crm') lines = await crm(sub);
     else if (topic === 'tiktok') lines = [...tiktok(), ...(await crm('consent'))];
+    else if (topic === 'lanes') lines = await lanes(db!);
     else if (topic === 'brief') {
       const { agentFunnel, funnelLine } = await import('../crm/agent-funnel');
       lines = [funnelLine(await agentFunnel(db!, DAYS)), '', ...tiktok().slice(0, 4), ...(await crm('consent').catch((e) => [`CRM: ${(e as Error).message}`]))];
-    } else lines = ['topics: brief (default) · chats · wa · crm homes|brokers|consent|tiktok · tiktok   (--days=N --n=N)'];
+    } else lines = ['topics: brief (default) · chats · wa · crm homes|brokers|consent|tiktok · tiktok · lanes   (--days=N --n=N)'];
     console.log(lines.join('\n'));
   } finally {
     await db?.$disconnect().catch(() => {});
