@@ -42,9 +42,9 @@ import {
 } from "../../../scripts/wa/outbox-pure";
 import { db } from "@/lib/db";
 import { askBodyNow } from "./broker";
-import { parseBrokerReply } from "./broker-reply";
+import { isRepostAsk, parseBrokerReply } from "./broker-reply";
 import { EvolutionError, connectionState, findMessages, isBridgeDown, mediaBytes, sendPresence, sendText } from "@/lib/whatsapp/evolution";
-import { handleBrokerReply } from "./broker-inbox";
+import { handleBrokerReply, repostAskKey } from "./broker-inbox";
 import { mutateState, readState, releaseLease, takeLease, writeState } from "./wa-state";
 import { answerTenant, noteFromMe, recordSent } from "./wa-tenant";
 import { postSlackCard } from "./whatsapp";
@@ -260,6 +260,9 @@ async function replies(dry: boolean, log: Log): Promise<number> {
 
   // A person at Mkan typing in a tenant's chat pauses the agent there (wa-tenant.ts).
   if (!dry) for (const m of all) if (m.fromMe && m.direct && m.phone && !byPhone.has(m.phone) && !posterPhones.has(m.phone)) await noteFromMe(m.phone, m.id, m.sentAt);
+  // The TikTok repost ask goes out from the phone, not from here: remember it, so the
+  // broker's "yes" answers that ask and not an open "is this available?" (broker-inbox.ts).
+  if (!dry) for (const m of all) if (m.fromMe && m.direct && m.phone && (byPhone.has(m.phone) || posterPhones.has(m.phone)) && isRepostAsk(m.text)) await writeState(repostAskKey(m.phone), { at: m.sentAt.toISOString() });
 
   const rest: typeof fresh = [];
   const tenants: typeof fresh = [];
@@ -304,6 +307,14 @@ async function replies(dry: boolean, log: Log): Promise<number> {
     } else if (action.kind === "reply") {
       if (action.why === "photos-need-price" && photoUrls.length) pending[broker.id] = { urls: photoUrls, at: now.toISOString() };
       await sendReply(g.phone, action, broker.name, log);
+    } else if (action.kind === "repost") {
+      const next =
+        action.answer === "YES"
+          ? "The 07:00 run records it on their CRM host; their videos join the TikTok posts from then."
+          : action.answer === "NO"
+            ? "The 07:00 run records it on their CRM host; their videos stay off the page."
+            : "Not a plain yes or no — read it. If it is a yes, tell Hermes: `these brokers said yes: <handle>`.";
+      await postSlackCard(`📣 *${broker.name}* (+${g.phone}) answered the TikTok repost ask: *${action.answer ?? "unclear"}*\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 400)}\n${next}`);
     } else if (action.kind === "availability") {
       if (action.reply) await sendReply(g.phone, action.reply, broker.name, log);
       const marked = `${action.applied ? "marked" : "already"} ${action.answer === "RENTED" ? "rented" : "available"}`;

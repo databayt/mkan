@@ -25,8 +25,9 @@ import { db } from "@/lib/db";
 import { applyAnswer, brokerAnswers } from "./broker";
 import { createBrokerHome, type AskForHome } from "./broker-home";
 import { aboutMeMessage, availableAckMessage, needReplyMessage, needSummary, priceQuestionMessage, reAskMessage, takenAckMessage } from "./broker-message";
-import { isOffer, parseBrokerReply, type BrokerReply } from "./broker-reply";
+import { isOffer, parseBrokerReply, repostAnswer, type BrokerReply } from "./broker-reply";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements } from "./requirements";
+import { readState, writeState } from "./wa-state";
 
 /** An ask is still being answered this long after it went out. */
 const ASK_WINDOW_MS = 72 * 3_600_000;
@@ -38,7 +39,16 @@ export type InboxAction =
   | { kind: "reply"; text: string; why: "question" | "photos-need-price" | "about-me" | "greeting"; outboundId: string }
   /** `applied` — the answer was news to Mkan; `reply` — the thanks to send, as above. */
   | { kind: "availability"; listingId: number; answer: "AVAILABLE" | "RENTED"; applied: boolean; reply: { text: string; outboundId: string } | null }
+  /** The answer to the TikTok repost ask (null: unclear, a person reads it). The Mac records it in the CRM. */
+  | { kind: "repost"; answer: "YES" | "NO" | null }
   | { kind: "none" };
+
+/** A repost ask is still being answered this long after the phone sent it. */
+const REPOST_WINDOW_MS = 7 * 86_400_000;
+/** Where the line keeps the phone's repost ask (wa-outbox.ts) and the broker's answer (read by tt:run on the Mac). */
+export const repostAskKey = (phone: string) => `repost-ask:${phone.replace(/\D/g, "")}`;
+export const repostAnswerKey = (phone: string) => `repost-answer:${phone.replace(/\D/g, "")}`;
+export type RepostAnswer = { answer: "YES" | "NO" | null; text: string; at: string };
 
 /** Phones are stored "+250…"; numbers from WhatsApp come as digits. */
 const phoneVariants = (phone: string) => [`+${phone.replace(/^\+/, "")}`, phone.replace(/^\+/, "")];
@@ -132,6 +142,17 @@ export async function handleBrokerReply(input: { brokerId: string; phone: string
   if (parseBrokerReply(text).asksIfBot) return { kind: "none" };
   // The broker answers the last question this number got; an older no-home ask never takes the reply.
   const last = await lastAsk(phone, at);
+  // The TikTok repost ask from the phone is a question too. When it is the latest one, a
+  // "yes" answers it — never an older "is this available?".
+  const { at: repostAt } = await readState<{ at: string | null }>(repostAskKey(phone), { at: null });
+  const asked = repostAt ? new Date(repostAt) : null;
+  if (asked && asked <= at && at.getTime() - asked.getTime() < REPOST_WINDOW_MS && (!last?.sentAt || asked > last.sentAt)) {
+    const answer = repostAnswer(text);
+    await writeState(repostAnswerKey(phone), { answer, text: text.slice(0, 300), at: at.toISOString() } satisfies RepostAnswer);
+    // A plain answer closes the ask; an unclear one leaves it open for the next message.
+    if (answer) await writeState(repostAskKey(phone), { at: null });
+    return { kind: "repost", answer };
+  }
   if (last?.kind !== "BROKER_REQUEST") return answerDemandAsk(brokerId, text, photoUrls, at);
   const read = await readAvailabilityReply(phone, text, at, last);
   return read ? answerAvailabilityAsk(read, phone, text, photoUrls.length > 0) : { kind: "none" };

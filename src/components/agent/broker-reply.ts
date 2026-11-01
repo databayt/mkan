@@ -175,3 +175,35 @@ export function parseBrokerReply(text: string | null | undefined): BrokerReply {
 export function isOffer(r: BrokerReply): boolean {
   return (r.price != null || r.priceUsd != null) && (r.place != null || r.bedrooms != null);
 }
+
+/**
+ * The TikTok repost ask (scripts/crm/tiktok-post-pure.ts brokerAsk and
+ * brokerPreviewAsk, in English, Kinyarwanda or French). It goes out from the
+ * phone, never from the bot, so the inbox learns of it from the line itself.
+ */
+export function isRepostAsk(text: string | null | undefined): boolean {
+  const t = (text ?? "").toLowerCase();
+  // Every version ends by asking for a YES; the availability asks never do.
+  return /tiktok/.test(t) && /\b(?:reply yes|musubize yego|r[ée]pondez oui|repost|republier|gushyira)\b/.test(t);
+}
+
+/**
+ * A broker's answer to the repost ask: YES or NO when the reply opens with one
+ * plainly, else null for a person to read. A YES is a permission to post their
+ * videos, so anything hedged ("ok let me think", a question back) is not one.
+ * "No problem" is a yes.
+ */
+export function repostAnswer(text: string | null | undefined): "YES" | "NO" | null {
+  const raw = (text ?? "").toLowerCase();
+  const t = raw
+    .replace(/[^\p{L}\p{N}\s']/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!t) return null;
+  if (/^(?:no problem|no worries|no wahala)\b/.test(t) && !REPOST_HEDGE.test(raw)) return "YES";
+  if (/^(?:no|non|nope|oya|ntabwo|not now|sorry no|i don'?t agree|we don'?t agree)\b/.test(t)) return "NO";
+  if (REPOST_HEDGE.test(raw)) return null;
+  if (/^(?:yes|yeah|yea|yep|yego|ego|oui|ok|okay|okey|sure|of course|go ahead|sawa|ni sawa|nibyo|ndabyemeye|turabyemeye|d'?accord|bien s[uû]r|you can|you may|it'?s ok|its ok|fine|alright|all right)\b/.test(t)) return "YES";
+  return null;
+}
+const REPOST_HEDGE = /\?|\b(?:think|check|later|wait|first|tomorrow|discuss|consult|maybe|perhaps|how much|what do (?:i|we) get|commission\?|reka (?:ndebe|nzabanza)|ejo|nzakubwira|tuzabiganiraho)\b/;

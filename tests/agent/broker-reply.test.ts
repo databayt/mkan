@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isOffer, parseBrokerReply } from "@/components/agent/broker-reply";
+import { isOffer, isRepostAsk, parseBrokerReply, repostAnswer } from "@/components/agent/broker-reply";
 
 // Shapes from real Kigali broker chats (October 2026).
 describe("parseBrokerReply", () => {
@@ -77,5 +77,26 @@ describe("parseBrokerReply", () => {
   it("knows a bare hello from an answer", () => {
     for (const s of ["Hi", "Hello", "Hello how are you?", "Muraho", "Good morning sir"]) expect(parseBrokerReply(s).greeting, s).toBe(true);
     for (const s of ["Hello who is this?", "Hi, it's available", "Hello\nCan you please make a call", "Thank you for contacting us! How can we help?", "Ok"]) expect(parseBrokerReply(s).greeting, s).toBe(false);
+  });
+});
+
+describe("the TikTok repost ask", () => {
+  it("knows the ask in each language it goes out in", async () => {
+    const { brokerAsk, brokerPreviewAsk } = await import("../../scripts/crm/tiktok-post-pure");
+    for (const lang of ["EN", "RW", "FR"]) {
+      expect(isRepostAsk(brokerAsk("Aline", "ibrahouserent", "mkan.rw", lang))).toBe(true);
+      expect(isRepostAsk(brokerPreviewAsk("Aline", "ibrahouserent", "mkan.rw", "https://cdn.databayt.org/x.mp4", lang))).toBe(true);
+    }
+    expect(isRepostAsk("Hey there, is this available? https://www.tiktok.com/@x/video/1")).toBe(false);
+    expect(isRepostAsk("I'm looking for a 2-bedroom in Kibagabaga")).toBe(false);
+  });
+
+  it("reads a plain yes or no, in English, Kinyarwanda and French", () => {
+    for (const t of ["YES", "Yes you can", "yego", "Yego rwose", "Oui", "ok", "Okay no problem", "No problem", "Sure, go ahead", "Ni sawa", "d'accord"]) expect(repostAnswer(t), t).toBe("YES");
+    for (const t of ["No", "no thanks", "Oya", "Non merci", "Not now"]) expect(repostAnswer(t), t).toBe("NO");
+  });
+
+  it("leaves anything hedged for a person — a YES is a permission", () => {
+    for (const t of ["ok let me think", "Okay I'll check with the owner first", "yes?", "How much commission?", "Who are you?", "Irahari", "Taken", "", "👍"]) expect(repostAnswer(t), t).toBeNull();
   });
 });

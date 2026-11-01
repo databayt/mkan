@@ -12,6 +12,9 @@
  *   pnpm tt:stats [--notify]        views / likes of our posts, read back by yt-dlp
  *   pnpm tt:ask [--mark=a,b --as=ASKED|YES|NO --apply]   broker repost consent
  *   pnpm tt:ask --preview [--top=5]  remaster one home per top broker (preview/, never posted) and post the asks with it
+ *   pnpm tt:consent --yes=<handle,…> [--no=<handle,…>] --source="<how they said it>" [--apply]
+ *                                   record brokers' answers (a note on their CRM host) and keep a YES broker's videos
+ *   pnpm tt:consent --from-line      record the answers brokers gave on the WhatsApp line (every pick does this first)
  *
  * The page runs the way Kigali brokers run theirs: the WhatsApp number in the
  * bio, one short video per house, the price and area on screen.
@@ -33,8 +36,8 @@
 import { config } from 'dotenv';
 config({ override: true });
 
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawn } from 'node:child_process';
+import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import sharp from 'sharp';
@@ -146,6 +149,8 @@ async function consentedHandles(): Promise<Set<string>> {
 // ── pick ─────────────────────────────────────────────────────────────────────
 async function pick(): Promise<PostRow[]> {
   const n = Number(argv('n', process.env.TIKTOK_POSTS_PER_DAY ?? '3')) || 3;
+  // Brokers who answered the repost ask on WhatsApp since the last run go into today's pool.
+  if (!flag('dry')) await syncLineConsent().catch((e) => console.warn(`  ! repost answers from the line not read: ${(e as Error).message.slice(0, 120)}`));
   const [rows, consented] = await Promise.all([loadRows({}), consentedHandles()]);
   const ledger = loadLedger();
   const why = new Map<string, number>();
@@ -272,8 +277,14 @@ async function videoBody(r: PostRow, work: string): Promise<{ path: string; dur:
     try {
       execFileSync('yt-dlp', ['-q', '--no-warnings', '-f', 'b[ext=mp4]/b', '-o', src, url], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 180_000 });
     } catch (e) {
-      console.warn(`  … ${refOf(r)}: no broker video (${String((e as { stderr?: string }).stderr ?? '').trim().split('\n').pop()?.slice(0, 100)}) — slideshow instead`);
-      return null;
+      // Gone from TikTok? The copy kept when the broker said YES (tt:consent) still plays.
+      const kept = loadArchive()[id];
+      const res = kept ? await fetch(kept).catch(() => null) : null;
+      if (res?.ok) writeFileSync(src, Buffer.from(await res.arrayBuffer()));
+      else {
+        console.warn(`  … ${refOf(r)}: no broker video (${String((e as { stderr?: string }).stderr ?? '').trim().split('\n').pop()?.slice(0, 100)}) — slideshow instead`);
+        return null;
+      }
     }
   }
   const info = probe(src);
@@ -576,6 +587,164 @@ async function ask(): Promise<void> {
   }
 }
 
+// ── consent (record a broker's answer, keep their videos) ────────────────────
+const ARCHIVE = join(DATA, 'archive.json');
+const loadArchive = (): Record<string, string> => (existsSync(ARCHIVE) ? JSON.parse(readFileSync(ARCHIVE, 'utf8')) : {});
+const handlesArg = (n: string): string[] => argv(n).split(',').map((s) => s.trim().replace(/^@/, '').toLowerCase()).filter(Boolean);
+const YT_DLP_MP4 = ['-q', '--no-warnings', '-f', 'b[ext=mp4]/b', '-o'];
+
+/**
+ * A broker's answer to the repost ask, recorded with where it came from (a note on
+ * their Twenty host), so the page can show who agreed and how. A YES puts their
+ * homes into the daily pick from the next run, and their videos are kept (see keep).
+ * Under the Hermes gateway only Abdout may record one: its free model can be talked
+ * into running anything, so this does not trust the caller.
+ */
+async function consent(): Promise<void> {
+  if (argv('keep')) return void (await keep(handlesArg('keep')));
+  if (flag('from-line')) return void console.log(`${(await syncLineConsent()).length} new YES from the WhatsApp line`);
+  const platform = process.env.HERMES_SESSION_PLATFORM ?? '';
+  const allowed = (process.env.KUN_BRIDGE_USERS ?? 'U0AQ0GLDY04').split(',');
+  if (platform && !allowed.includes(process.env.HERMES_SESSION_USER_ID ?? '')) throw new Error('only Abdout can record a broker\'s consent');
+  const answers = [...handlesArg('yes').map((h) => [h, 'YES'] as const), ...handlesArg('no').map((h) => [h, 'NO'] as const)];
+  if (!answers.length) throw new Error('nothing to record — pass --yes=<handle,…> and/or --no=<handle,…>');
+  const source = argv('source').trim();
+  const apply = flag('apply');
+  if (apply && !source) throw new Error('say where the answer came from: --source="WhatsApp to the phone, per Abdout 11-01"');
+
+  const client = twentyClient();
+  const hosts = (await client.all('hosts', 0)).filter((h) => String(h.tiktokHandle ?? '').trim());
+  const leads = await loadRows({ source: 'TIKTOK' });
+  const consented = new Set([...(await consentedHandles()), ...answers.filter(([, a]) => a === 'YES').map(([h]) => h)]);
+  const kept: string[] = [];
+  for (const [handle, answer] of answers) {
+    const h = hosts.find((x) => String(x.tiktokHandle).replace(/^@/, '').trim().toLowerCase() === handle);
+    if (!h) {
+      console.warn(`  ! @${handle}: no CRM host has that TikTok handle — check the spelling (pnpm tt:ask lists them)`);
+      continue;
+    }
+    const theirs = leads.filter((r) => brokerHandle(r.hostSourceId) === handle);
+    const postable = theirs.filter((r) => !ineligibleReason(r, consented));
+    if (apply) {
+      await recordConsent(client, String(h.id), handle, answer, source);
+      if (answer === 'YES' && postable.length) kept.push(handle);
+    }
+    const line =
+      answer === 'YES'
+        ? `${theirs.length} homes from their videos, ${postable.length} can post (the rest lack photos or a monthly price)`
+        : `${theirs.length} homes stay off the page`;
+    console.log(`  ${apply ? '✓' : '·'} @${handle} → ${answer} · ${line}`);
+  }
+  if (!apply) return void console.log('DRY RUN — pass --apply to write.');
+  if (kept.length) {
+    keepInBackground(kept);
+    console.log(`Keeping their videos now (on this Mac and the CDN), so a post never depends on TikTok still having them. Posts start with the next daily run (07:00).`);
+  }
+}
+
+/** The answer on the host, plus a note saying where it came from — the page can always show who agreed and how. */
+async function recordConsent(client: ReturnType<typeof twentyClient>, hostId: string, handle: string, answer: 'YES' | 'NO', source: string): Promise<void> {
+  await client.rest('PATCH', `hosts/${hostId}`, { repostConsent: answer });
+  const day = new Date().toISOString().slice(0, 10);
+  try {
+    const note = (await client.rest('POST', 'notes', {
+      title: `Repost consent ${answer} · ${day}`,
+      bodyV2: { markdown: `@${handle} answered **${answer}** to reposting their homes' TikTok videos on @${PAGE}.\n\nSource: ${source}\n\nRecorded ${day} by tt:consent.` },
+    })) as { data?: { createNote?: { id?: string } } };
+    const noteId = note.data?.createNote?.id;
+    if (noteId) await client.rest('POST', 'noteTargets', { noteId, targetHostId: hostId });
+  } catch (e) {
+    console.warn(`  ! @${handle}: consent is recorded, the note is not (${(e as Error).message.slice(0, 100)})`);
+  }
+}
+
+/** Downloading videos takes minutes: it runs on its own, logged to post.log. */
+function keepInBackground(handles: string[]): void {
+  const log = openSync(join(DATA, 'post.log'), 'a');
+  spawn('pnpm', ['-s', 'tt:consent', `--keep=${handles.join(',')}`], { cwd: join(__dirname, '..', '..'), detached: true, stdio: ['ignore', log, log] }).unref();
+}
+
+/**
+ * Answers to the repost ask that came in on the WhatsApp line. The line's inbox
+ * (src/components/agent/broker-inbox.ts) keeps each in WaState `repost-answer:<digits>`;
+ * this records a plain YES or NO on the broker's CRM host once (an unclear one waits
+ * for a person). Runs at the start of every pick, and as `tt:consent --from-line`.
+ */
+async function syncLineConsent(): Promise<string[]> {
+  const { db } = await import('../../src/lib/db');
+  const rows = await db.waState.findMany({ where: { key: { startsWith: 'repost-answer:' } }, select: { key: true, value: true } });
+  const doneFile = join(DATA, 'consent-from-line.json');
+  const done: Record<string, string> = existsSync(doneFile) ? JSON.parse(readFileSync(doneFile, 'utf8')) : {};
+  const fresh = rows
+    .map((r) => ({ digits: r.key.slice('repost-answer:'.length), v: r.value as { answer?: 'YES' | 'NO' | null; text?: string; at?: string } | null }))
+    .filter((r) => r.v?.answer && r.v.at && !done[`${r.digits}@${r.v.at}`]);
+  if (!fresh.length) return [];
+  const client = twentyClient();
+  const hosts = await client.all('hosts', 0);
+  const handleOf = (h: Record<string, unknown> | undefined) => String(h?.tiktokHandle ?? '').replace(/^@/, '').trim().toLowerCase();
+  const yes: string[] = [];
+  for (const { digits, v } of fresh) {
+    const last9 = digits.slice(-9);
+    let host = hosts.find((h) => handleOf(h) && (phoneOf(h.phone as Phones | null) ?? '').replace(/\D/g, '').endsWith(last9));
+    if (!host) {
+      const b = await db.broker.findFirst({ where: { phones: { hasSome: [`+${digits}`, digits] } }, select: { tiktokHandle: true } });
+      const bh = (b?.tiktokHandle ?? '').replace(/^@/, '').trim().toLowerCase();
+      host = bh ? hosts.find((h) => handleOf(h) === bh) : undefined;
+    }
+    const key = `${digits}@${v!.at}`;
+    if (!host) {
+      console.warn(`  ! a repost answer (${v!.answer}) from …${digits.slice(-3)} has no CRM host with a TikTok handle — record it with tt:consent`);
+      done[key] = 'unmatched';
+      continue;
+    }
+    const handle = handleOf(host);
+    await recordConsent(client, String(host.id), handle, v!.answer!, `WhatsApp reply on the mkan line, ${v!.at!.slice(0, 16).replace('T', ' ')} UTC: "${(v!.text ?? '').slice(0, 160)}"`);
+    done[key] = new Date().toISOString();
+    if (v!.answer === 'YES') yes.push(handle);
+    console.log(`  ✓ @${handle} answered the repost ask on WhatsApp → ${v!.answer}`);
+  }
+  mkdirSync(DATA, { recursive: true });
+  writeFileSync(doneFile, JSON.stringify(done, null, 2));
+  if (yes.length) keepInBackground(yes);
+  return yes;
+}
+
+/** The consented brokers' videos, kept: on this Mac (render's cache) and on the CDN. */
+async function keep(handles: string[]): Promise<void> {
+  const consented = await consentedHandles();
+  const rows = (await loadRows({ source: 'TIKTOK' })).filter((r) => {
+    const h = brokerHandle(r.hostSourceId);
+    return !!h && handles.includes(h) && consented.has(h);
+  });
+  const archive = loadArchive();
+  const srcDir = join(DATA, 'src');
+  mkdirSync(srcDir, { recursive: true });
+  let kept = 0;
+  let missing = 0;
+  for (const r of rows) {
+    const url = brokerVideoUrl(r);
+    if (!url) continue;
+    const id = url.split('/').pop()!;
+    const src = join(srcDir, `${id}.mp4`);
+    if (!existsSync(src)) {
+      try {
+        execFileSync('yt-dlp', [...YT_DLP_MP4, src, url], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 180_000 });
+      } catch {
+        missing += 1; // a photo post, or gone already
+        continue;
+      }
+    }
+    if (!archive[id]) {
+      const cdn = await cdnCopy(src, `src/${id}.mp4`);
+      if (cdn) archive[id] = cdn;
+    }
+    kept += 1;
+  }
+  mkdirSync(DATA, { recursive: true });
+  writeFileSync(ARCHIVE, JSON.stringify(archive, null, 2));
+  console.log(`kept ${kept} videos for @${handles.join(', @')} (${missing} photo posts or gone)`);
+}
+
 /**
  * The pitch, not just the ask: for the top `--top` brokers (default 5) with a
  * number and no answer yet, remaster their newest home that has a video into
@@ -857,6 +1026,9 @@ async function main(): Promise<void> {
     case 'ask':
       await ask();
       break;
+    case 'consent':
+      await consent();
+      break;
     default:
       console.log(readFileSync(__filename, 'utf8').split('*/')[0]);
   }
@@ -864,7 +1036,7 @@ async function main(): Promise<void> {
 
 main()
   .then(async () => {
-    if (['pick', 'render', 'run', 'ask'].includes(cmd)) await (await import('../../src/lib/db')).db.$disconnect();
+    if (['pick', 'render', 'run', 'ask', 'consent'].includes(cmd)) await (await import('../../src/lib/db')).db.$disconnect();
   })
   .catch((e) => {
     console.error(`\n❌ ${(e as Error).message}\n`);
