@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";
-import { MessageCircle } from "lucide-react";
+import { ArrowLeft, MessageCircle } from "lucide-react";
 import { db } from "@/lib/db";
 import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
@@ -14,6 +14,7 @@ import { districtName } from "@/lib/geo/rwanda-places";
 import { zoneLabel } from "@/lib/geo/kigali-zones";
 import { longStayCost, type CostLine } from "@/components/agent/cost";
 import { fill } from "@/components/agent/format";
+import { ChatHeader, headerButton } from "@/components/agent/header";
 import { homeIdOfRef } from "@/components/agent/home-path";
 import { LEAD_SOURCES } from "@/components/agent/search";
 import { continueOnWhatsApp } from "@/components/agent/wa-link";
@@ -161,7 +162,18 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
   const place = placeOf(home, l);
 
   return (
-    <main className="mx-auto w-full max-w-lg px-4 pb-16 pt-4">
+    <div className="mx-auto w-full max-w-lg">
+      {/* /find's own bar: a tenant who opened this from WhatsApp sees whose page it is, one tap from more homes. */}
+      <ChatHeader
+        title="Mkan"
+        scrolled
+        start={
+          <Link href={`/${lang}/find`} aria-label={t.more} className={headerButton}>
+            <ArrowLeft className="rtl:-scale-x-100" aria-hidden />
+          </Link>
+        }
+      />
+    <main className="w-full px-4 pb-16 pt-4">
       {photos.length > 0 && (
         <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 no-scrollbar">
           {photos.map((src, i) => (
@@ -198,7 +210,7 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
 
       {cost && (
         <p className="mt-4">
-          <span className="text-2xl font-semibold">{money(cost.headline)}</span>{" "}
+          <span className="text-2xl font-semibold text-foreground">{money(cost.headline)}</span>{" "}
           <span className="text-sm text-muted-foreground">{say("perMonth", "/ month")}</span>
         </p>
       )}
@@ -207,9 +219,9 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
 
       {cost && !lost && (
         <details open className="mt-4 rounded-xl bg-muted/60 p-3 text-sm">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
-            <span>{say("moveIn", "Estimated to move in")}</span>
-            <span className="font-semibold">{range(cost.total - fee, cost.totalHigh - fee)}</span>
+          <summary className="flex cursor-pointer list-none flex-col gap-0.5">
+            <span className="text-muted-foreground">{say("moveIn", "Estimated to move in")}</span>
+            <span className="text-base font-semibold text-foreground">{range(cost.total - fee, cost.totalHigh - fee)}</span>
           </summary>
           <dl className="mt-2 space-y-1">
             {shownLines.map((x) => (
@@ -256,5 +268,6 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
         {t.more}
       </Link>
     </main>
+    </div>
   );
 }
