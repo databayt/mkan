@@ -166,6 +166,8 @@ describe("tiktok mirror", () => {
     expect(planMirror({ ...home, rentPeriod: "NIGHT" }, host)).toEqual({ skip: "not a monthly rent" });
     expect(planMirror(home, { ...host, phone: null })).toEqual({ skip: "no broker phone" });
     expect(planMirror({ ...home, pipelineStage: "DUPLICATE" }, host)).toEqual({ skip: "stage DUPLICATE" });
+    // A duplicate still at VETTING is skipped for its status, and says so (it read "stage VETTING").
+    expect(planMirror({ ...home, pipelineStage: "VETTING", homeStatus: "DUPLICATE" }, host)).toEqual({ skip: "status DUPLICATE" });
   });
 });
 

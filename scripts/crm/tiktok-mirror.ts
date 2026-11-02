@@ -108,7 +108,9 @@ export function planMirror(home: Row, host: Row | null): MirrorPlan | { skip: st
   const sourceId = (home.sourceId as string | null) ?? '';
   const source = MIRROR_SOURCES.find((s) => s === home.source);
   if (!source || !sourceId.startsWith(`${source.toLowerCase()}:`)) return { skip: 'not a TikTok, Facebook or web home' };
-  if (SKIP_STAGES.has(String(home.pipelineStage)) || SKIP_STAGES.has(String(home.homeStatus))) return { skip: `stage ${home.pipelineStage}` };
+  // Named by what matched: "stage VETTING" for a DUPLICATE status sent a reader hunting a stage rule that is not there.
+  if (SKIP_STAGES.has(String(home.pipelineStage))) return { skip: `stage ${home.pipelineStage}` };
+  if (SKIP_STAGES.has(String(home.homeStatus))) return { skip: `status ${home.homeStatus}` };
   if (home.rentPeriod !== 'MONTH') return { skip: 'not a monthly rent' };
   const priceMonth = fromMicros(home.priceMonthLocal as Currency | null);
   if (!priceMonth || priceMonth < 10_000) return { skip: 'no monthly price' };
