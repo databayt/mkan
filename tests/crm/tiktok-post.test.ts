@@ -382,6 +382,9 @@ describe('errorText', () => {
     expect(errorText(new Error('Connection terminated due to connection timeout'))).toBe('Connection terminated due to connection timeout');
     expect(errorText(Object.assign(new Error(''), { code: 'ECONNRESET' }))).toBe('ECONNRESET');
     expect(errorText('plain')).toBe('plain');
+    // The WebSocket ErrorEvent the database driver throws, with the real error inside.
+    expect(errorText({ type: 'error', error: new Error('getaddrinfo ENOTFOUND ep-x.neon.tech') })).toBe('database connection: getaddrinfo ENOTFOUND ep-x.neon.tech');
+    expect(errorText({ type: 'error' })).toBe('error event (no detail)');
   });
 });
 

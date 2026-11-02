@@ -843,10 +843,14 @@ export function photoEndSvg(whatsapp: string): string {
  * are spelled out instead.
  */
 export function errorText(e: unknown): string {
-  const err = e as { message?: unknown; errors?: unknown; code?: unknown } | null | undefined;
+  const err = e as { message?: unknown; errors?: unknown; code?: unknown; error?: unknown; type?: unknown } | null | undefined;
   if (err && typeof err.message === 'string' && err.message.trim()) return err.message;
   if (err && Array.isArray(err.errors) && err.errors.length) return [...new Set(err.errors.map((x) => errorText(x)))].join('; ');
+  // The database driver's WebSocket fails with an ErrorEvent that carries the real error inside
+  // (11-02's post logged a bare "[object ErrorEvent]").
+  if (err && err.error && typeof err.error === 'object') return `database connection: ${errorText(err.error)}`;
   if (err && typeof err.code === 'string' && err.code) return err.code;
+  if (err && typeof err.type === 'string' && err.type) return `${err.type} event (no detail)`;
   return String(e);
 }
 
