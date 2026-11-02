@@ -504,11 +504,16 @@ recent captions are Kigali rentals (re-read every 3 days, 12 a run). The directo
 TikTok poster with a phone. The 09:00 tick runs the build even when `wa:chats` cannot read WhatsApp's
 database (no Full Disk Access under Hermes) — it uses the last snapshot.
 
-**Runs that outlive the gateway.** The Hermes ticks for the sweep (06:00/18:00) and the 09:00 demand
-match take a lock and start the run with `hermes/detached.sh` (double fork + setsid), so a gateway
-restart cannot kill it; the run posts its own failure to #mkan (`pnpm -s crm:post-mkan`). Install a
-changed tick with a temp file + `mv` — `cp` over a script bash is running cuts that run short.
-`pnpm mkan:read lanes` shows every lane's last run.
+**Runs that outlive the gateway — and a sleeping Mac.** Every Hermes lane (TikTok sweep 06:00/18:00,
+web sweep 06:45/18:45, demand match 09:00, TikTok post 07:00 + 13:00 retry, Monday stats) takes a lock
+and starts its run with `hermes/detached.sh` (double fork + setsid), so a gateway restart cannot kill
+it; the run posts its own failure to #mkan (`pnpm -s crm:post-mkan`). `hermes/lane.sh` (2026-11-02):
+the lock holds its run's PID, and a tick leaves any lock whose run is alive, however old (sleep only
+pauses it); and each run first waits for the internet — wall clock, up to 10 h — because with the lid
+shut Hermes fires ticks in brief maintenance wakes with no network (every 11-02 morning run failed
+that way until the lid opened at 12:28). So a lane slotted while the Mac sleeps runs once it is awake.
+Install a changed tick with a temp file + `mv` — `cp` over a script bash is running cuts that run
+short. `pnpm mkan:read lanes` shows every lane's last run and flags one gone quiet past its period.
 
 ## Still to add
 
