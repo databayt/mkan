@@ -20,6 +20,15 @@
   - Whatever the reader decides, a shortlist with exactly the last one's homes carries `same`, and
     WhatsApp sends one line ("These are still the best homes for your search…") instead of the list.
   - Tests: `tests/agent/wa-after-homes.test.ts`, written from the real messages.
+  - Shipped with Worker `f07edc4f` (`a96f9f2`, pinned build). Verified on prod data before the deploy,
+    with the shipped handler, a fake test number and no sends:
+    - a search got its homes;
+    - "How are you" / "Can we meet now" / "?" / "Are you still available?" each got their line;
+    - "It's a lot of money" re-searched cheaper (RWF 40k–200k instead of 700k).
+  - The same deploy carries "1 bedroom" (singular), and no prefetch on the welcome cards (7 server
+    renders per /find visit before).
+  - After the deploy: health ok, the watchdog's 5 checks pass, and /en/find at 393 px has a clean
+    console.
 - **Owed:**
   - The web /find still shows the same cards for small talk: `same` is set, the web ignores it.
   - Claude's intent reading, once the key exists, would replace the word lists.
