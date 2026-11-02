@@ -210,13 +210,18 @@ async function lanes(db: Db): Promise<string[]> {
   const streaksFile = join(__dirname, '..', 'crm', '.data', 'failure-streaks.json');
   const streaks = existsSync(streaksFile) ? (JSON.parse(readFileSync(streaksFile, 'utf8')) as Record<string, { fails: number; at?: string; ok?: boolean; detail?: string; last?: string }>) : {};
   out.push('', 'Last runs, as the runs themselves recorded them:');
-  for (const job of ['tiktok-sweep', 'web-ads', 'web-recheck', 'demand-match', 'tiktok-post', 'tiktok-upload']) {
+  // How long each run may go unrecorded before it is overdue: twice-daily lanes 13 h, daily ones 26 h.
+  const every: Record<string, number> = { 'tiktok-sweep': 13, 'web-ads': 13, 'web-recheck': 13, 'demand-match': 26, 'tiktok-post': 26, 'tiktok-upload': 26 };
+  for (const job of Object.keys(every)) {
     const r = streaks[job];
     if (!r?.at) {
       out.push(`  ${job.padEnd(25)} not recorded yet${r?.fails ? ` · ${r.fails} failed in a row` : ''}`);
       continue;
     }
-    out.push(`  ${job.padEnd(25)} ${kigali(r.at)} ${r.ok ? 'ok' : 'FAILED'}${r.fails > 1 ? ` (${r.fails} in a row)` : ''}${r.detail ? ` — ${maskText(r.detail, 110)}` : ''}`);
+    // A run that never got the network records nothing, so a quiet lane is flagged by its age.
+    const hours = Math.floor((Date.now() - Date.parse(r.at)) / 3_600_000);
+    const overdue = hours >= every[job]! ? ` · ⚠ nothing recorded for ${hours} h` : '';
+    out.push(`  ${job.padEnd(25)} ${kigali(r.at)} ${r.ok ? 'ok' : 'FAILED'}${r.fails > 1 ? ` (${r.fails} in a row)` : ''}${overdue}${r.detail ? ` — ${maskText(r.detail, 110)}` : ''}`);
   }
   const day = new Date(Date.now() - 86_400_000);
   const week = new Date(Date.now() - 7 * 86_400_000);
