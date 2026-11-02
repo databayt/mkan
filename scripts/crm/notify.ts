@@ -132,8 +132,9 @@ export async function recordRun(job: string, ok: boolean, detail = '', threshold
     s.last = detail.slice(0, 300);
     Object.assign(s, { at: new Date().toISOString(), ok: false, detail: s.last });
     if (s.fails >= threshold && !s.alerted) {
-      await postToMkan(`⚠️ *${job}* has failed ${s.fails} runs in a row. Last error: \`${s.last || 'unknown'}\``);
-      s.alerted = true;
+      // Marked only once it lands: the outage that fails a run often fails this post too
+      // (11-02 13:53: "slack: fetch failed", and the streak counted as told).
+      s.alerted = await postToMkan(`⚠️ *${job}* has failed ${s.fails} runs in a row. Last error: \`${s.last || 'unknown'}\``);
     }
     streaks[job] = s;
   }

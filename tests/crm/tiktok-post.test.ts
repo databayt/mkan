@@ -385,6 +385,8 @@ describe('errorText', () => {
     // The WebSocket ErrorEvent the database driver throws, with the real error inside.
     expect(errorText({ type: 'error', error: new Error('getaddrinfo ENOTFOUND ep-x.neon.tech') })).toBe('database connection: getaddrinfo ENOTFOUND ep-x.neon.tech');
     expect(errorText({ type: 'error' })).toBe('error event (no detail)');
+    // A wrapped error keeps the real one in `cause`.
+    expect(errorText(new Error('', { cause: Object.assign(new Error(''), { code: 'ECONNREFUSED' }) }))).toBe('ECONNREFUSED');
   });
 });
 

@@ -37,19 +37,38 @@ cd "$REPO" || exit 0
 # never comes back exits quietly; the next tick tries again.
 wait_online 600 || exit 0
 echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (detached) ──" >>"$LOGDIR/match.log"
+# Errors only from Prisma: without it the match step logged every query (179 lines on 11-02).
+export PRISMA_QUIET=1
+# A step that fails on the network runs once more when the Mac is back online. On 11-02 the
+# directory and the match both died at 13:53 on a dropped connection (Slack was unreachable
+# too), half an hour into a clean run; the lid shut three minutes later. Every step here is
+# safe to repeat: the mirror and the directory upsert, and the match skips homes it already
+# sent (matchedListingIds) and catches up from its last good run.
+failed=""
+step() {
+  local name=$1
+  shift
+  "$@" >>"$LOGDIR/match.log" 2>&1 && return 0
+  sleep "${DEMAND_RETRY_PAUSE:-60}"
+  if wait_online 600; then
+    echo "  ↻ $name failed — once more, online again ($(date '+%H:%M'))" >>"$LOGDIR/match.log"
+    "$@" >>"$LOGDIR/match.log" 2>&1 && return 0
+  fi
+  failed="$failed $name"
+  return 1
+}
 # Facebook (06:30) and web (06:45) homes reach the lead pool here; TikTok's 06:00 run mirrors its own.
-PRISMA_QUIET=1 pnpm -s crm:tiktok-mirror --apply >>"$LOGDIR/match.log" 2>&1
+step mirror pnpm -s crm:tiktok-mirror --apply
 # Brokers from Abdout's own WhatsApp chats (reviewed ones only), then into the directory.
 # The directory builds either way: wa:chats needs Full Disk Access to WhatsApp's
 # ChatStorage.sqlite, and its EPERM under the gateway (10-23 → 11-01) used to skip the
 # whole build behind an `&&` — no new brokers for nine days. The last snapshot is kept.
 pnpm -s wa:chats >>"$LOGDIR/match.log" 2>&1 || echo "  ! wa:chats failed — the directory builds from the last WhatsApp snapshot" >>"$LOGDIR/match.log"
-PRISMA_QUIET=1 pnpm -s crm:brokers --apply >>"$LOGDIR/match.log" 2>&1
-pnpm -s crm:demand-match --notify >>"$LOGDIR/match.log" 2>&1
-code=$?
-if [ "$code" -ne 0 ]; then
+step directory pnpm -s crm:brokers --apply
+step match pnpm -s crm:demand-match --notify
+if [ -n "$failed" ]; then
   {
-    echo "⚠️ demand match failed (exit $code). Last lines:"
+    echo "⚠️ demand run: $(echo $failed | sed 's/ /, /g') failed twice. Last lines:"
     tail -n 8 "$LOGDIR/match.log" | cut -c1-240
   } | pnpm -s crm:post-mkan >/dev/null 2>&1
 fi

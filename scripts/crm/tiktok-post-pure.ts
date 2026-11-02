@@ -836,23 +836,8 @@ export function photoEndSvg(whatsapp: string): string {
 </svg>`;
 }
 
-/**
- * An error's own words, for the log and #mkan. A connection that fails on every
- * address (Node's happy-eyeballs connect) throws an AggregateError whose message
- * is empty — the 10-24..10-28 renders logged a bare "❌" — so its inner errors
- * are spelled out instead.
- */
-export function errorText(e: unknown): string {
-  const err = e as { message?: unknown; errors?: unknown; code?: unknown; error?: unknown; type?: unknown } | null | undefined;
-  if (err && typeof err.message === 'string' && err.message.trim()) return err.message;
-  if (err && Array.isArray(err.errors) && err.errors.length) return [...new Set(err.errors.map((x) => errorText(x)))].join('; ');
-  // The database driver's WebSocket fails with an ErrorEvent that carries the real error inside
-  // (11-02's post logged a bare "[object ErrorEvent]").
-  if (err && err.error && typeof err.error === 'object') return `database connection: ${errorText(err.error)}`;
-  if (err && typeof err.code === 'string' && err.code) return err.code;
-  if (err && typeof err.type === 'string' && err.type) return `${err.type} event (no detail)`;
-  return String(e);
-}
+// Moved to its own module (2026-11-02) so the directory and demand scripts share it.
+export { errorText } from './error-text';
 
 /** One video on the page, as yt-dlp reads it back. */
 export interface PageVideo {

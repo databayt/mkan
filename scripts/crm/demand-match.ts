@@ -17,6 +17,7 @@ config({ override: true });
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { postToMkan, recordRun } from './notify';
+import { errorText } from './error-text';
 
 const DIR = join(__dirname, '.data', 'demand');
 const LAST = join(DIR, 'last-run.json');
@@ -82,6 +83,6 @@ main()
   .then(() => recordRun('demand-match', true))
   .catch(async (err) => {
     console.error(err);
-    await recordRun('demand-match', false, (err as Error).message);
+    await recordRun('demand-match', false, errorText(err));
     process.exit(1);
   });

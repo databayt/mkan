@@ -28,6 +28,7 @@ import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { twentyClient, phoneOf, fromMicros, type Currency, type Phones } from './twenty-rest';
 import { twentyEnumToPrisma } from './home-intake-pure';
+import { errorText } from './error-text';
 import { DISTRICTS, KIGALI } from '../../src/lib/geo/rwanda-places';
 import { factsFromFeatures, type FeatureFacts } from '../../src/components/agent/amenities';
 import { placeToken } from '../../src/lib/geo/place-token';
@@ -394,7 +395,7 @@ if (process.argv[1] && /tiktok-mirror\.ts$/.test(process.argv[1])) {
   mirrorLeads(process.argv.includes('--apply'))
     .then(async () => (await import('../../src/lib/db')).db.$disconnect())
     .catch((e) => {
-      console.error(`\n❌ ${(e as Error).message}\n`);
+      console.error(`\n❌ ${errorText(e)}\n`);
       process.exit(1);
     });
 }

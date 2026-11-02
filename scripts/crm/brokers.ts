@@ -39,6 +39,7 @@ process.env.PRISMA_QUIET ??= '1';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { twentyClient, fromMicros, type Currency } from './twenty-rest';
+import { errorText } from './error-text';
 import { phonesFromTwenty, twentyPhones } from '../../src/lib/phone';
 import { DISTRICTS } from '../../src/lib/geo/rwanda-places';
 import {
@@ -812,7 +813,7 @@ if (process.argv[1] && /brokers\.ts$/.test(process.argv[1])) {
   main()
     .then(async () => (await import('../../src/lib/db')).db.$disconnect())
     .catch((e) => {
-      console.error(`\n❌ ${(e as Error).message}\n`);
+      console.error(`\n❌ ${errorText(e)}\n`);
       process.exit(1);
     });
 }

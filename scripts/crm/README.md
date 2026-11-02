@@ -512,6 +512,10 @@ the lock holds its run's PID, and a tick leaves any lock whose run is alive, how
 pauses it); and each run first waits for the internet — wall clock, up to 10 h — because with the lid
 shut Hermes fires ticks in brief maintenance wakes with no network (every 11-02 morning run failed
 that way until the lid opened at 12:28). So a lane slotted while the Mac sleeps runs once it is awake.
+A dropped connection mid-run is the other half: the demand run's mirror, directory and match each run
+once more after a minute and once back online (all three are safe to repeat), and #mkan hears only
+about a step that failed twice. Errors print through `error-text.ts`, which unwraps the database
+driver's empty `ErrorEvent` (11-02 13:53 logged a bare "❌").
 Install a changed tick with a temp file + `mv` — `cp` over a script bash is running cuts that run
 short. `pnpm mkan:read lanes` shows every lane's last run and flags one gone quiet past its period.
 
