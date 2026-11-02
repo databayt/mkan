@@ -400,9 +400,9 @@ describe('pageStatsLine', () => {
       { views: 171, likes: 5, at: Date.parse('2026-10-31T05:01:00Z'), text: '🏠 Homes for rent in Gasabo — this week • K6285' },
     ];
     expect(pageStatsLine('mkan.rw', vids, { matched: 0, views: 0 }, now)).toBe(
-      '📈 TikTok @mkan.rw: 3 videos, 471 views, 15 likes · posted in the last 7 days: 2, 284 views · best: "RWF 1M+ a month" 187 (23 Oct) · broker videos matched to homes: 0',
+      '📈 TikTok @mkan.rw: 3 posts, 471 views, 15 likes · posted in the last 7 days: 2, 284 views · best: "RWF 1M+ a month" 187 (23 Oct) · broker videos matched to homes: 0',
     );
-    expect(pageStatsLine('mkan.rw', [], { matched: 0, views: 0 }, now)).toBe('📈 TikTok @mkan.rw: 0 videos, 0 views, 0 likes · posted in the last 7 days: 0, 0 views · broker videos matched to homes: 0');
+    expect(pageStatsLine('mkan.rw', [], { matched: 0, views: 0 }, now)).toBe('📈 TikTok @mkan.rw: 0 posts, 0 views, 0 likes · posted in the last 7 days: 0, 0 views · broker videos matched to homes: 0');
   });
 });
 

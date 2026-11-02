@@ -867,7 +867,7 @@ export function pageStatsLine(page: string, vids: PageVideo[], homes: { matched:
     return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}`;
   };
   return [
-    `📈 TikTok @${page}: ${vids.length} videos, ${n(sum(vids, 'views'))} views, ${n(sum(vids, 'likes'))} likes`,
+    `📈 TikTok @${page}: ${vids.length} posts, ${n(sum(vids, 'views'))} views, ${n(sum(vids, 'likes'))} likes`,
     `posted in the last 7 days: ${week.length}, ${n(sum(week, 'views'))} views`,
     best && best.views > 0 ? `best: "${title(best.text)}" ${n(best.views)} (${day(best.at)})` : null,
     `broker videos matched to homes: ${homes.matched}${homes.matched ? ` (${n(homes.views)} views)` : ''}`,
