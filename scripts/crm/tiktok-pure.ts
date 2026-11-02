@@ -528,9 +528,12 @@ const commissionField = z
   .catch(null);
 
 export const TikTokReadSchema = z.object({
-  isRental: z.boolean(),
+  // A reader unsure of either answers null now and then; that is not a crash (11-01: a read failed
+  // every run on `inKigali: null`). Unsure of a rental = not a rental (skipped, with its reason);
+  // unsure of Kigali = null, and inKigaliFor decides from the place names.
+  isRental: z.boolean().catch(false),
   rejectReason: nullableStr,
-  inKigali: z.boolean(),
+  inKigali: z.boolean().nullable().catch(null),
   period: z.enum(['MONTH', 'NIGHT', 'UNKNOWN']).catch('UNKNOWN'),
   priceRwf: nullableNum,
   priceAsWritten: nullableStr,
@@ -615,7 +618,7 @@ export function inKigaliFor(read: Pick<TikTokRead, 'inKigali' | 'neighbourhood'>
   if (hood !== 'UNKNOWN') return true;
   if (NEAR_KIGALI.test(caption) || NEAR_KIGALI.test(read.neighbourhood ?? '')) return false;
   if (districtForPlace(caption) !== 'UNKNOWN') return true;
-  return read.inKigali;
+  return read.inKigali === true;
 }
 
 /** Should this read become a CRM home? `null` = yes, otherwise the reason it is skipped. */
@@ -761,6 +764,9 @@ export function homeBody(row: VideoRow, read: TikTokRead, opts: { frameUrls: str
     homeAddress: read.neighbourhood ? { addressStreet1: read.neighbourhood, addressCity: 'Kigali', addressCountry: 'Rwanda' } : undefined,
     hostName: opts.hostName,
     hostPhone: rwPhonesComposite(opts.phone),
+    // The record's own label: Twenty lists and heads a home by `name`, and every scraped home
+    // read "Untitled" until 2026-11-02 (673 of them). Set on create only; updates are targeted patches.
+    name: title,
     title,
     titleEn: title,
     titleRw: read.titleRw ?? undefined,

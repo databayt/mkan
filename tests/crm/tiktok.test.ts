@@ -195,6 +195,9 @@ describe('reading', () => {
     const r = parseTikTokRead(JSON.stringify(READ));
     // The reader filed a Norvege flat as outside Kigali.
     expect(inKigaliFor({ inKigali: false, neighbourhood: 'Norvege' })).toBe(true);
+    // Unsure (null): the place names decide, and with none it is not confirmed Kigali.
+    expect(inKigaliFor({ inKigali: null, neighbourhood: 'Kimironko' })).toBe(true);
+    expect(inKigaliFor({ inKigali: null, neighbourhood: null })).toBe(false);
     expect(skipReasonFor({ ...r, inKigali: false, neighbourhood: null }, { caption: 'Unfurnished apartment 2bedroom in norvege 600k' })).toBeNull();
     // …and a Kamonyi house "near Kigali" as inside.
     expect(inKigaliFor({ inKigali: true, neighbourhood: 'Kamonyi' }, 'inzu ikodeshwa hafi ya kigali')).toBe(false);
