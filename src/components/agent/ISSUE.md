@@ -23,6 +23,18 @@
   - "ok thanks" / "great, thanks!" is a thank-you on WhatsApp too (it went to a person).
   - The reader's history names answer / monthly-only turns (it called them "had an error").
   - Tests: `tests/agent/follow-up.test.ts`, plus "under the homes on /find" in `turn.test.ts`.
+  - Shipped with Worker `810306bd` (`b59c715`, pinned build). The first build hit 23 Neon connection
+    timeouts while prerendering: `/api/listings/published` fell from a 5-minute cache to dynamic, and
+    `getAssemblyPoints` would have cached an empty list for an hour. It was rebuilt once the compute
+    answered, and the route table then matched 11-02's exactly.
+  - Verified on prod at 393 px, en and ar:
+    - a search showed 6 homes;
+    - "How are you", "Can we meet now" and "Are you still available?" each got their line, and the 6
+      homes stayed above;
+    - "Give me more options" searched, found the same 6 and said so;
+    - the check line's button opens WhatsApp with `ref:<chat>`;
+    - the console was clean, health ok, and the watchdog showed `failed: {}`. The test chat was then
+      deleted.
 - **Owed:**
   - The new rw lines are machine-written, like the 11-02 ones: a native speaker's read.
 
