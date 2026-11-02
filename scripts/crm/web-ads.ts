@@ -504,13 +504,27 @@ function status(): void {
 }
 
 // ── recheck: a removed ad's home leaves /find ────────────────────────────────
+let board: TwentyClient | null = null;
+/** The board too: stillListed=false, which the mirror skips — hygiene does the same for a gone video. */
+async function boardGone(sourceId: string, label: string): Promise<void> {
+  try {
+    board ??= twentyClient();
+    const res = (await board.rest('GET', `homes?filter=sourceId[eq]:"${encodeURIComponent(sourceId)}"&limit=1&depth=0`)) as { data?: { homes?: { id: string }[] } };
+    const id = res?.data?.homes?.[0]?.id;
+    if (id) await board.rest('PATCH', `homes/${id}`, { stillListed: false });
+  } catch (e) {
+    console.warn(`  ! board ${label}: ${(e as Error).message.slice(0, 120)}`);
+  }
+}
+
 const RECHECK = join(DATA, 'recheck.json');
 const RECHECK_EVERY_MS = 3 * 86_400_000;
 
 /**
  * Every live web home's ad is read again every 3 days. A removed one (adGone: a 404, or a
  * redirect away from the ad) marks the home lost — AD_GONE — so /find stops offering a home
- * a tenant can no longer have. A request that fails or is blocked decides nothing and is
+ * a tenant can no longer have, and the board shows it as no longer listed. A request that
+ * fails or is blocked decides nothing and is
  * tried again next run. The mirror never touches lostAt, so the mark holds.
  */
 async function recheck(): Promise<void> {
@@ -519,7 +533,7 @@ async function recheck(): Promise<void> {
   try {
     const rows = await db.listing.findMany({
       where: { source: 'WEB', isPublished: false, lostAt: null, sourceUrl: { not: null } },
-      select: { id: true, title: true, sourceUrl: true },
+      select: { id: true, title: true, sourceUrl: true, sourceListingId: true },
       orderBy: { id: 'asc' },
     });
     const due = rows.filter((r) => !seen[r.id] || Date.now() - Date.parse(seen[r.id]!) >= RECHECK_EVERY_MS).slice(0, Number(argv('limit', '250')));
@@ -539,7 +553,9 @@ async function recheck(): Promise<void> {
         continue;
       }
       gone.push({ id: r.id, title: r.title });
-      if (APPLY) await db.listing.updateMany({ where: { id: r.id, lostAt: null }, data: { lostAt: new Date(), lostReason: 'AD_GONE' } });
+      if (!APPLY) continue;
+      await db.listing.updateMany({ where: { id: r.id, lostAt: null }, data: { lostAt: new Date(), lostReason: 'AD_GONE' } });
+      if (r.sourceListingId) await boardGone(r.sourceListingId, `K${r.id}`);
     }
     if (APPLY) {
       mkdirSync(DATA, { recursive: true });
