@@ -1,9 +1,8 @@
 import "server-only";
 
 import { z } from "zod";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { AREA_KEYS, LANDMARKS, NEIGHBOURHOODS, landmarkNamed, nearestSchool, neighbourhoodNamed } from "./areas";
-import { AGENT_MODEL, canSpend, claudeClient, noteFailure, recordSpend, type SpendLane } from "./claude";
+import { AGENT_MODEL, canSpend, claudeClient, noteFailure, recordSpend, strictOutputFormat, type SpendLane } from "./claude";
 import { readRequirementsWithGroq } from "./llm";
 import type { AgentMemory } from "./memory";
 import { CLEARABLE, DISTRICT_CODES, HOME_TYPES, MUST_HAVES, PURPOSES, type ClearableField, type MustHave, type Requirements } from "./requirements";
@@ -101,18 +100,18 @@ Fields:
 - near: a place the tenant wants to live close to — a workplace, campus, market, hospital, the airport. One of these names when it is one of them: ${LANDMARKS.map((l) => l.name).join(", ")}; otherwise the place as the tenant wrote it.
 - nearIn: only when near is not one of those names: the neighbourhood (from the neighbourhood list) the place is in, if you know it.
 - area: "center" (city centre, downtown), "business" (business district, offices, ministries) or "university" (near a campus) — only when no specific place is named. "My office is in Kacyiru" is neighbourhood Kacyiru with purpose "business", not an area.
-- bedrooms: an integer, a studio is 0. bathrooms: the minimum count.
-- homeType: "apartment" (a flat in a building), "house" (a standalone house with its own gate: a villa, a "self compound", inzu yigenga), "room" (one room to live in, often "self-contained", an annex) or "studio" (one room with its kitchen; also set bedrooms 0).
+- bedrooms: an integer, a studio is 0. French "N pièces" (also F3, T3) counts the living room: bedrooms is N − 1 ("un 3 pièces" → 2). bathrooms: the minimum count.
+- homeType: "apartment" (a flat in a building), "house" (a standalone house with its own gate: a villa, a "self compound", inzu yigenga), "room" (one room to live in, often "self-contained", an annex; a lone "icyumba" in Kinyarwanda, where "ibyumba 3" is 3 bedrooms) or "studio" (one room with its kitchen; also set bedrooms 0).
 - purpose: "family" (moving with a family or children), "study" (a student, near a campus) or "business" (moving for work, an office to be near).
 - furnished; waterIncluded (water is in the rent, not a bill on top); noCommission (no broker commission, or straight from the owner); cheap (wants the cheapest): "true" or "false".
 - maxPrice: the rent ceiling as a plain number ("400k" → 400000, "1.2m" → 1200000). pricePeriod: "night" or "month".
 - currency: "USD" when the tenant's amounts are in dollars ("$800", "800 dollars"), else "RWF". Give the number as written; Mkan converts.
-- nights, guests: integers. maxUpfront: the cash the tenant has to move in, only if stated. months: the lease length in months ("a year" → 12). moveIn: YYYY-MM-DD, worked out from today's date, which is given with the message.
-- mustHaves values: parking, pets (a pet allowed), wifi, workspace (a desk or office corner), ac (air conditioning), security (guard, cameras, gate), quiet, transit (close to buses or motos), kitchen, washer, balcony, garden, elevator, waterTank, generator (backup power).
+- nights, guests: integers ("a weekend" → 2 nights). maxUpfront: the cash the tenant has to move in, only if stated. months: the lease length in months ("a year" → 12). moveIn: YYYY-MM-DD, worked out from today's date, which is given with the message.
+- mustHaves values: parking, pets (a pet allowed), wifi, workspace (a desk or office corner), ac (air conditioning), security (guard, cameras, gate), quiet, transit (close to buses or motos), kitchen, washer, balcony, garden, elevator, waterTank, generator (backup power; "moteri" in Kinyarwanda).
 
 Relative asks move the current search: "cheaper" → maxPrice about 20% lower and cheap "true"; "bigger" → one more bedroom; "Kacyiru instead" → that neighbourhood (and its district); "same but furnished" → furnished "true".
 
-The homes on the tenant's screen are listed as [h1], [h2]… like: the ref of a home the tenant wants more like ("like the second one" → "h2"), else "". notLike: the ref of a home they reject, else "". When they want a home like one but changed ("like h2 but cheaper"), also set what changes, using that home's facts.
+The homes on the tenant's screen are listed as [h1], [h2]… like: the ref of a home the tenant wants more like ("like the second one" → "h2"), else "". notLike: the ref of a home they reject ("not the first one" → "h1"), else "". When they want a home like one but changed ("like h2 but cheaper"), also set what changes, using that home's facts.
 
 Memory holds facts about the tenant from earlier chats. In the FIRST message of a new chat you may set maxPrice, pricePeriod, stay, bedrooms and mustHaves from memory when the message does not say otherwise; set a place from memory only when the message says "same area", "again" or similar. The newest message always wins over memory.
 remember: at most 2 short facts from the newest message worth keeping for future searches (household, workplace, pets, needs, moving date), in the tenant's language, under 80 characters each. Never a name, phone number, email or ID number. Usually empty.
@@ -305,7 +304,10 @@ export async function readWithClaude(
         max_tokens: 1_500,
         system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content: readerMessage(input) }],
-        output_config: { effort: "low", format: zodOutputFormat(ReaderOut) },
+        // No thinking: reading one message into fields is extraction, and Haiku 5.5's default adaptive
+        // thinking took 3.3–3.7 s a read, past the 3 s timeout above (2026-11-03).
+        thinking: { type: "disabled" },
+        output_config: { effort: "low", format: strictOutputFormat(ReaderOut) },
       },
       { timeout: timeoutMs },
     );

@@ -153,6 +153,8 @@ async function call(system: string, content: string, timeoutMs: number, lane: Sp
         max_tokens: 1_200,
         system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content }],
+        // No thinking: Haiku 5.5's default adaptive thinking runs past the 2.5 s budget (2026-11-03).
+        thinking: { type: "disabled" },
         output_config: { effort: "low", format: zodOutputFormat(WriterOut) },
       },
       { timeout: timeoutMs },

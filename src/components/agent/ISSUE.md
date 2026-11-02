@@ -1,5 +1,28 @@
 # Agent — open issues
 
+## 2026-11-03 (2) — The Claude key exists, and the reader passes its gate
+
+- **The key:** the Max plan's included $100 a month in API credits were claimed in the Console (org
+  Databayt; promotional credit, auto-reload off, so the card on file is never charged). The key
+  `mkan-agent` is in Keychain `cf-mkan-AGENT_ANTHROPIC_API_KEY`.
+- **The Claude reader was broken as soon as a key existed.** `pnpm agent:eval` gave Claude 51%
+  against the rules' 89%, with p95 at 4.1 s:
+  - SDK 0.137.0's `zodOutputFormat` folds `enum` into the description text, so the API enforced
+    none of ReaderOut's lists. 33 of 68 replies used a value outside them (`currency` inside
+    `set`) and failed validation.
+  - Haiku 5.5 thinks by default: 3.3–3.7 s a read, past the reader's 3 s timeout and the writer's
+    2.5 s.
+- **Fixed:**
+  - `strictOutputFormat` (claude.ts) puts the enums back.
+  - The reader and the writer run with `thinking: disabled`.
+  - The reader's prompt names four conventions: French "N pièces" (N − 1 bedrooms), a weekend (2
+    nights), "moteri" (a generator) and "not the first one" (h1).
+  - Eval: Claude 99% (en 98, ar / rw / fr / sw 100), must-haves 100%, p50 1.7 s, p95 2.2 s, gate
+    PASS. Writer: 21/21 replies pass the guard. Tests: `tests/agent/claude-format.test.ts`.
+- **Owed:**
+  - The rw writer stays off (`AGENT_WRITER_LOCALES` = en, ar) until a native speaker approves the
+    samples `pnpm agent:eval-writer` prints.
+
 ## 2026-11-03 — /find answers under the homes too, and the homes stay where they were
 
 - **The gap:** the 11-02 fix was WhatsApp's alone. On /find every message under the homes still ran a

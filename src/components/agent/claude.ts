@@ -1,6 +1,8 @@
 import "server-only";
 
 import Anthropic from "@anthropic-ai/sdk";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { z } from "zod";
 import { db } from "@/lib/db";
 
 /**
@@ -118,4 +120,40 @@ export async function noteFailure(err: unknown): Promise<void> {
   }
   if (err instanceof Anthropic.RateLimitError) cooldownUntil = Date.now() + 60_000;
   else if (err instanceof Anthropic.InternalServerError || (err instanceof Anthropic.APIError && (err.status ?? 0) >= 500)) cooldownUntil = Date.now() + 30_000;
+}
+
+type JsonNode = Record<string, unknown>;
+
+/**
+ * zodOutputFormat with the schema's enums kept. SDK 0.137.0's transformJSONSchema folds every
+ * keyword it does not list — `enum` among them — into the description text, so the API never
+ * enforced ReaderOut's field, clear, intent and lang lists: a third of Claude's reads came back
+ * with a value outside them and failed validation (pnpm agent:eval, 2026-11-03). Structured
+ * outputs do enforce `enum`; this copies it back from Zod's own JSON schema.
+ */
+export function strictOutputFormat<T extends z.ZodType>(schema: T) {
+  const format = zodOutputFormat(schema);
+  restoreEnums(format.schema as JsonNode, z.toJSONSchema(schema, { reused: "ref" }) as JsonNode);
+  return format;
+}
+
+function restoreEnums(out: JsonNode | undefined, raw: JsonNode | undefined): void {
+  if (!out || !raw || typeof out !== "object" || typeof raw !== "object") return;
+  if (Array.isArray(raw.enum)) {
+    out.enum = raw.enum;
+    const text = `{enum: ${JSON.stringify(raw.enum)}}`;
+    if (out.description === text) delete out.description;
+    else if (typeof out.description === "string" && out.description.endsWith(`\n\n${text}`)) out.description = out.description.slice(0, -text.length - 2);
+  }
+  for (const key of ["properties", "$defs"] as const) {
+    const o = out[key] as Record<string, JsonNode> | undefined;
+    const r = raw[key] as Record<string, JsonNode> | undefined;
+    if (o && r) for (const k of Object.keys(o)) restoreEnums(o[k], r[k]);
+  }
+  restoreEnums(out.items as JsonNode | undefined, raw.items as JsonNode | undefined);
+  for (const key of ["anyOf", "allOf"] as const) {
+    const o = out[key] as JsonNode[] | undefined;
+    const r = (raw[key] ?? (key === "anyOf" ? raw.oneOf : undefined)) as JsonNode[] | undefined;
+    if (o && r) o.forEach((n, i) => restoreEnums(n, r[i]));
+  }
 }
