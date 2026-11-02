@@ -162,12 +162,6 @@ describe('the Twenty home carries furnishing and terms', () => {
   };
   const opts = { frameUrls: [], phone: '+250780000111', hostName: 'x', promptVersion: 'tiktok-v4', duplicate: false };
 
-  it("names the home after its title, so the board stops reading \"Untitled\" (11-02)", () => {
-    const b = homeBody(row, parseTikTokRead(JSON.stringify(V3_READ)), opts);
-    expect(b.name).toBeTruthy();
-    expect(b.name).toBe(b.title);
-  });
-
   it("takes a reader's unsure answers instead of failing the read every run (11-01)", () => {
     const unsure = parseTikTokRead(JSON.stringify({ ...V3_READ, inKigali: null }));
     expect(unsure.inKigali).toBeNull();

@@ -764,9 +764,6 @@ export function homeBody(row: VideoRow, read: TikTokRead, opts: { frameUrls: str
     homeAddress: read.neighbourhood ? { addressStreet1: read.neighbourhood, addressCity: 'Kigali', addressCountry: 'Rwanda' } : undefined,
     hostName: opts.hostName,
     hostPhone: rwPhonesComposite(opts.phone),
-    // The record's own label: Twenty lists and heads a home by `name`, and every scraped home
-    // read "Untitled" until 2026-11-02 (673 of them). Set on create only; updates are targeted patches.
-    name: title,
     title,
     titleEn: title,
     titleRw: read.titleRw ?? undefined,
