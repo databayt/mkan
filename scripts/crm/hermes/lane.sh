@@ -16,8 +16,10 @@
 #                               the lock and records the outcome lane_end set — none set means the run
 #                               died (fail). Hermes says "ok" the moment a detached run starts; this
 #                               record is what kun's runs.sh and the supervisor read instead.
-#   lane_end <status> [summary] ok | warn | fail | defer — recorded when the run exits.
+#   lane_end <status> [summary] [needs_human 0|1]  ok | warn | fail | defer — recorded at exit;
+#                               needs_human 1: only Abdout can unblock it, so nothing re-runs it.
 #   lane_finish                 record now (before an exec that replaces this script).
+#   lane_alert                  a failed run's own #mkan post (stdin) — only without kun's supervisor.
 #   wait_ready <minutes>        0 once the Mac is fully awake (not a dark wake with the lid shut) and
 #                               online; 1 when the wall clock runs out. lane_not_ready says why not.
 #
@@ -57,7 +59,7 @@ lane_own() {
   trap 'lane_finish; rm -rf "$LANE_LOCK"' EXIT
 }
 
-lane_end() { LANE_STATUS=$1; LANE_SUMMARY=${2:-}; }
+lane_end() { LANE_STATUS=$1; LANE_SUMMARY=${2:-}; LANE_HUMAN=${3:-0}; }
 
 lane_finish() {
   [ -n "${LANE_JOB:-}" ] && [ -z "${LANE_DONE:-}" ] || return 0
@@ -70,7 +72,7 @@ lane_finish() {
     LANE_STATUS=fail
     LANE_SUMMARY="the run ended without an outcome"
   fi
-  runs_record "$LANE_JOB" "$LANE_STATUS" "${LANE_SUMMARY:-}" 0 "" "" "$slept"
+  runs_record "$LANE_JOB" "$LANE_STATUS" "${LANE_SUMMARY:-}" "${LANE_HUMAN:-0}" "" "" "$slept"
 }
 
 wait_ready() {
@@ -87,6 +89,18 @@ wait_ready() {
 }
 # The name before 11-02's gate; copies installed earlier still call it.
 wait_online() { wait_ready "$@"; }
+
+# A failed run's own #mkan post, read from stdin. With kun's supervisor on this Mac it stays quiet:
+# the supervisor re-runs the slot first and alerts once (an issue + a #mkan line with a mention)
+# only if that fails too — a per-run post for a failure the re-run fixes was noise. Without it the
+# lane posts as it always did.
+lane_alert() {
+  if type runs_ready >/dev/null 2>&1 && [ -f "$HOME/Library/LaunchAgents/com.databayt.supervisor.plist" ]; then
+    cat >/dev/null
+    return 0
+  fi
+  pnpm -s crm:post-mkan >/dev/null 2>&1
+}
 
 lane_not_ready() {
   if type runs_not_ready >/dev/null 2>&1; then runs_not_ready "$@"; else echo "offline"; fi

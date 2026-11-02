@@ -131,7 +131,10 @@ export async function recordRun(job: string, ok: boolean, detail = '', threshold
     s.fails += 1;
     s.last = detail.slice(0, 300);
     Object.assign(s, { at: new Date().toISOString(), ok: false, detail: s.last });
-    if (s.fails >= threshold && !s.alerted) {
+    // Under kun's supervisor (RUNS_JOB set, its launchd job installed) the supervisor alerts, after
+    // re-running the slot; this streak alert stays for runs it does not watch.
+    const supervised = !!process.env.RUNS_JOB && existsSync(join(homedir(), 'Library', 'LaunchAgents', 'com.databayt.supervisor.plist'));
+    if (s.fails >= threshold && !s.alerted && !supervised) {
       // Marked only once it lands: the outage that fails a run often fails this post too
       // (11-02 13:53: "slack: fetch failed", and the streak counted as told).
       s.alerted = await postToMkan(`⚠️ *${job}* has failed ${s.fails} runs in a row. Last error: \`${s.last || 'unknown'}\``);

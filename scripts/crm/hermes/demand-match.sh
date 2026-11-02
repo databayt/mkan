@@ -72,7 +72,7 @@ if [ -n "$failed" ]; then
   {
     echo "⚠️ demand run: $(echo $failed | sed 's/ /, /g') failed twice. Last lines:"
     tail -n 8 "$LOGDIR/match.log" | cut -c1-240
-  } | pnpm -s crm:post-mkan >/dev/null 2>&1
+  } | lane_alert
 else
   lane_end ok
 fi

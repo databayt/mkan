@@ -65,6 +65,6 @@ else
     echo "⚠️ TikTok sweep failed (exit $code after ${mins} min). Last errors:"
     tail -n 8 "$LOGDIR/sweep.err.log" | cut -c1-240
     echo "Log: $LOGDIR/sweep.log"
-  } | pnpm -s crm:post-mkan >/dev/null 2>&1
+  } | lane_alert
 fi
 exit 0

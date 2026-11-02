@@ -43,6 +43,9 @@ const LEDGER = join(DATA, 'posted.json');
 const date = argv('date', new Date().toISOString().slice(0, 10));
 const DAY = join(DATA, date);
 const UPLOADS = join(DAY, 'uploads.json');
+// Clicked Post, confirmation not seen yet. TikTok may well have it: a retry must not post it again
+// (the 13:00 retry, or kun's supervisor re-running the day's post). Cleared on confirmation, or by hand.
+const PENDING = join(DAY, 'pending.json');
 const CDP = (process.env.TIKTOK_UPLOAD_CDP ?? '').trim() || 'http://127.0.0.1:9222';
 const PAGE = (process.env.TIKTOK_PAGE_HANDLE ?? '').trim().replace(/^@/, '') || 'mkan.rw';
 const UPLOAD_URL = 'https://www.tiktok.com/tiktokstudio/upload?lang=en';
@@ -246,6 +249,9 @@ async function postOne(p: Page, piece: Piece): Promise<string> {
   await p.screenshot({ path: shot, fullPage: true });
   if (dry) return `dry run — filled, not posted (${shot})`;
 
+  const pending = readJson<Record<string, string>>(PENDING, {});
+  pending[piece.key] = new Date().toISOString();
+  writeFileSync(PENDING, JSON.stringify(pending, null, 2));
   await post.click();
   // A pending copyright/content check asks once more.
   const now = p.getByRole('button', { name: /^post now$/i });
@@ -262,8 +268,24 @@ async function postOne(p: Page, piece: Piece): Promise<string> {
 async function main(): Promise<void> {
   const pieces = todaysPieces();
   const done = readJson<Record<string, string>>(UPLOADS, {});
-  const due = pieces.filter((x) => flag('force') || !done[x.key]);
-  if (!due.length) return void console.log(pieces.length ? `all ${pieces.length} pieces for ${date} already posted` : `nothing rendered for ${date} — run tt:run`);
+  const pending = readJson<Record<string, string>>(PENDING, {});
+  // --repost=<key>: Abdout looked at the profile and the piece is not there — post it again.
+  const repost = argv('repost');
+  if (repost && pending[repost]) {
+    delete pending[repost];
+    writeFileSync(PENDING, JSON.stringify(pending, null, 2));
+  }
+  const unsure = pieces.filter((x) => !done[x.key] && pending[x.key] && !flag('force'));
+  const due = pieces.filter((x) => flag('force') || (!done[x.key] && !pending[x.key]));
+  const unsureLine = (key: string, at: string) => `• ⚠️ ${key}: Post was clicked at ${at.slice(11, 16)} UTC but TikTok never confirmed — look at @${PAGE}; if it is not there: \`pnpm tt:upload --repost=${key}\``;
+  const unsureLines = unsure.map((x) => unsureLine(x.key, pending[x.key]!));
+  if (!due.length && !unsure.length) return void console.log(pieces.length ? `all ${pieces.length} pieces for ${date} already posted` : `nothing rendered for ${date} — run tt:run`);
+  if (!due.length) {
+    for (const l of unsureLines) console.warn(l);
+    if (flag('notify') && !dry) await postToMkan([`📲 *TikTok @${PAGE}* — nothing re-posted; needs a look:`, ...unsureLines].join('\n'));
+    process.exitCode = 77; // needs Abdout: kun's job-run/lanes record it so, and nothing re-runs it
+    return;
+  }
 
   const browser = await connect();
   for (const old of browser.contexts()[0]!.pages()) if (old.url().includes('tiktokstudio/upload')) await old.close().catch(() => {});
@@ -284,6 +306,11 @@ async function main(): Promise<void> {
         ok += 1;
         done[piece.key] = new Date().toISOString();
         writeFileSync(UPLOADS, JSON.stringify(done, null, 2));
+        if (pending[piece.key] || readJson<Record<string, string>>(PENDING, {})[piece.key]) {
+          const p = readJson<Record<string, string>>(PENDING, {});
+          delete p[piece.key];
+          writeFileSync(PENDING, JSON.stringify(p, null, 2));
+        }
         if (ledger[piece.key]) ledger[piece.key] = { ...ledger[piece.key]!, postedAt: done[piece.key] };
         lines.push(`• ${piece.key}${piece.photos ? ` (${piece.photos.length} photos)` : ''}${piece.aigc ? ' (AI voice, labelled)' : ''}`);
       } catch (e) {
@@ -297,9 +324,13 @@ async function main(): Promise<void> {
     await browser.close().catch(() => {}); // detaches; the vault Chrome keeps running
   }
   if (dry) return;
-  if (flag('notify')) await postToMkan([`📲 *TikTok @${PAGE}* — ${ok}/${due.length} posted automatically`, ...lines, `https://www.tiktok.com/@${PAGE}`].join('\n'));
-  await recordRun('tiktok-upload', ok === due.length, `${ok}/${due.length} posted`);
-  if (ok < due.length) process.exitCode = 1;
+  // Clicked but never confirmed — before this run or in it: never re-posted on its own.
+  const left = readJson<Record<string, string>>(PENDING, {});
+  const unconfirmed = pieces.filter((x) => !done[x.key] && left[x.key]).map((x) => unsureLine(x.key, left[x.key]!));
+  if (flag('notify')) await postToMkan([`📲 *TikTok @${PAGE}* — ${ok}/${due.length} posted automatically`, ...lines, ...unconfirmed, `https://www.tiktok.com/@${PAGE}`].join('\n'));
+  await recordRun('tiktok-upload', ok === due.length && !unconfirmed.length, `${ok}/${due.length} posted${unconfirmed.length ? `, ${unconfirmed.length} unconfirmed` : ''}`);
+  if (unconfirmed.length) process.exitCode = 77; // needs Abdout: a retry could post it twice
+  else if (ok < due.length) process.exitCode = 1;
 }
 
 main().catch((e) => {

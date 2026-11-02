@@ -72,6 +72,8 @@ if [ "$code" -eq 0 ]; then
   lane_end ok
   # The day's post is done: its slot (07:00 + this retry) is one slot to the supervisor.
   runs_record hermes:mkan-tiktok-post ok "posted by the 13:00 retry"
+elif [ "$code" -eq 77 ]; then
+  lane_end fail "a post was clicked but never confirmed — check @mkan.rw, then pnpm tt:upload --repost=<key> if it is missing" 1
 else
   lane_end fail "the 13:00 retry could not post (exit $code after ${mins} min)"
 fi
@@ -80,6 +82,6 @@ if [ "$code" -ne 0 ]; then
     echo "⚠️ TikTok retry (13:00) still could not post (exit $code after ${mins} min). Last errors:"
     tail -n 8 "$LOGDIR/post.err.log" | cut -c1-240
     echo "Log: $LOGDIR/post.log"
-  } | pnpm -s crm:post-mkan >/dev/null 2>&1
+  } | lane_alert
 fi
 exit 0

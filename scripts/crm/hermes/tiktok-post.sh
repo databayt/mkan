@@ -55,7 +55,11 @@ steps() {
   launchctl kickstart "gui/$(id -u)/com.databayt.chrome-session" >/dev/null 2>&1 || true
   # The 07:00 query has failed on a waking Neon; one retry after a minute.
   run tt:run --notify --n="$PER_DAY" || { sleep 60; run tt:run --notify --n="$PER_DAY"; } || return 2
-  run tt:upload --notify || return 3
+  run tt:upload --notify
+  local up=$?
+  # 77: a post was clicked but never confirmed — a re-run could post it twice; Abdout looks.
+  [ "$up" -eq 77 ] && return 77
+  [ "$up" -eq 0 ] || return 3
 }
 
 # Job control: the steps get their own process group, so the cap can stop all of them.
@@ -73,11 +77,12 @@ case "$code" in
   0) lane_end ok; exit 0 ;;
   2) what="TikTok render failed twice"; lane_end fail "$what" ;;
   3) what="TikTok auto-post had failures — the 13:00 retry posts what is left"; lane_end warn "$what" ;;
+  77) what="TikTok: a post was clicked but never confirmed — check @mkan.rw, then pnpm tt:upload --repost=<key> if it is missing"; lane_end fail "$what" 1 ;;
   *) what="TikTok post failed (exit $code after ${mins} min)"; lane_end fail "$what" ;;
 esac
 {
   echo "⚠️ $what. Last errors:"
   tail -n 8 "$LOGDIR/post.err.log" | cut -c1-240
   echo "Log: $LOGDIR/post.log"
-} | pnpm -s crm:post-mkan >/dev/null 2>&1
+} | lane_alert
 exit 0

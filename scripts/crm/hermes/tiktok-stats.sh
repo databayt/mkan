@@ -40,6 +40,6 @@ else
   {
     echo "⚠️ TikTok stats could not read the page back. Last errors:"
     tail -n 4 "$LOGDIR/post.err.log" | cut -c1-240
-  } | pnpm -s crm:post-mkan >/dev/null 2>&1
+  } | lane_alert
 fi
 exit 0
