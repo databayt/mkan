@@ -17,6 +17,7 @@ unset SLACK_HOME_CHANNEL
 mkdir -p "$LOGDIR"
 # lane.sh: who holds the lock, and waiting for the internet (the Mac sleeps with its lid shut).
 . "$REPO/scripts/crm/hermes/lane.sh"
+LANE_JOB=hermes:mkan-tiktok-stats
 
 if [ "${1:-}" != "--run" ]; then
   lane_tick "$LOCK" 'tiktok-stats\.sh' || exit 0
@@ -30,10 +31,15 @@ fi
 # ── the run, outside the gateway ────────────────────────────────────────────
 lane_own "$LOCK"
 cd "$REPO" || exit 0
-wait_online 600 || exit 0
+wait_ready 600 || { lane_end defer "$(lane_not_ready)"; exit 0; }
 echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (weekly stats, detached) ──" >>"$LOGDIR/post.log"
-pnpm -s tt:stats --notify >>"$LOGDIR/post.log" 2>>"$LOGDIR/post.err.log" || {
-  echo "⚠️ TikTok stats could not read the page back. Last errors:"
-  tail -n 4 "$LOGDIR/post.err.log" | cut -c1-240
-} | pnpm -s crm:post-mkan >/dev/null 2>&1
+if pnpm -s tt:stats --notify >>"$LOGDIR/post.log" 2>>"$LOGDIR/post.err.log"; then
+  lane_end ok
+else
+  lane_end fail "tt:stats could not read the page back"
+  {
+    echo "⚠️ TikTok stats could not read the page back. Last errors:"
+    tail -n 4 "$LOGDIR/post.err.log" | cut -c1-240
+  } | pnpm -s crm:post-mkan >/dev/null 2>&1
+fi
 exit 0

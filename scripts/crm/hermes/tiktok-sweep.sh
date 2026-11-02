@@ -22,6 +22,7 @@ unset SLACK_HOME_CHANNEL
 mkdir -p "$LOGDIR"
 # lane.sh: who holds the lock, and waiting for the internet (the Mac sleeps with its lid shut).
 . "$REPO/scripts/crm/hermes/lane.sh"
+LANE_JOB=hermes:mkan-tiktok-sweep
 
 if [ "${1:-}" != "--run" ]; then
   # A live run holds the lock — paused by sleep, or waiting for the network: let it be.
@@ -39,7 +40,7 @@ cd "$REPO" || exit 0
 # The tick may have fired in a short maintenance wake (lid shut, network off): wait for the
 # internet — wall clock, up to 10 h — instead of failing every stage. A run that finds it
 # never comes back exits quietly; the next tick tries again.
-wait_online 600 || exit 0
+wait_ready 600 || { lane_end defer "$(lane_not_ready)"; exit 0; }
 started=$(date +%s)
 echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (detached) ──" >>"$LOGDIR/sweep.log"
 # Job control: each background job gets its own process group, so the cap can stop the whole run.
@@ -56,7 +57,10 @@ code=$?
 kill -- "-$watchdog" 2>/dev/null
 mins=$(( ($(date +%s) - started) / 60 ))
 
-if [ "$code" -ne 0 ]; then
+if [ "$code" -eq 0 ]; then
+  lane_end ok
+else
+  lane_end fail "TikTok sweep exit $code after ${mins} min: $(grep -v '^[[:space:]]*$' "$LOGDIR/sweep.err.log" | tail -n 1 | cut -c1-160)"
   {
     echo "⚠️ TikTok sweep failed (exit $code after ${mins} min). Last errors:"
     tail -n 8 "$LOGDIR/sweep.err.log" | cut -c1-240

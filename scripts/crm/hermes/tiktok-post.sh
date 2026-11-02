@@ -25,6 +25,7 @@ unset SLACK_HOME_CHANNEL
 mkdir -p "$LOGDIR"
 # lane.sh: who holds the lock, and waiting for the internet (the Mac sleeps with its lid shut).
 . "$REPO/scripts/crm/hermes/lane.sh"
+LANE_JOB=hermes:mkan-tiktok-post
 
 if [ "${1:-}" != "--run" ]; then
   # A live run holds the lock — paused by sleep, or waiting for the network: let it be.
@@ -42,7 +43,7 @@ cd "$REPO" || exit 0
 # The tick may have fired in a short maintenance wake (lid shut, network off): wait for the
 # internet — wall clock, up to 10 h — instead of failing every stage. A run that finds it
 # never comes back exits quietly; the next tick tries again.
-wait_online 600 || exit 0
+wait_ready 600 || { lane_end defer "$(lane_not_ready)"; exit 0; }
 started=$(date +%s)
 echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (detached) ──" >>"$LOGDIR/post.log"
 
@@ -69,10 +70,10 @@ kill -- "-$watchdog" 2>/dev/null
 mins=$(( ($(date +%s) - started) / 60 ))
 
 case "$code" in
-  0) exit 0 ;;
-  2) what="TikTok render failed twice" ;;
-  3) what="TikTok auto-post had failures — the 13:00 retry posts what is left" ;;
-  *) what="TikTok post failed (exit $code after ${mins} min)" ;;
+  0) lane_end ok; exit 0 ;;
+  2) what="TikTok render failed twice"; lane_end fail "$what" ;;
+  3) what="TikTok auto-post had failures — the 13:00 retry posts what is left"; lane_end warn "$what" ;;
+  *) what="TikTok post failed (exit $code after ${mins} min)"; lane_end fail "$what" ;;
 esac
 {
   echo "⚠️ $what. Last errors:"

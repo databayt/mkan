@@ -18,6 +18,7 @@ unset SLACK_HOME_CHANNEL
 mkdir -p "$LOGDIR"
 # lane.sh: who holds the lock, and waiting for the internet (the Mac sleeps with its lid shut).
 . "$REPO/scripts/crm/hermes/lane.sh"
+LANE_JOB=hermes:mkan-demand-match
 
 if [ "${1:-}" != "--run" ]; then
   # A live run holds the lock — paused by sleep, or waiting for the network: let it be.
@@ -35,7 +36,7 @@ cd "$REPO" || exit 0
 # The tick may have fired in a short maintenance wake (lid shut, network off): wait for the
 # internet — wall clock, up to 10 h — instead of failing every stage. A run that finds it
 # never comes back exits quietly; the next tick tries again.
-wait_online 600 || exit 0
+wait_ready 600 || { lane_end defer "$(lane_not_ready)"; exit 0; }
 echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (detached) ──" >>"$LOGDIR/match.log"
 # Errors only from Prisma: without it the match step logged every query (179 lines on 11-02).
 export PRISMA_QUIET=1
@@ -67,9 +68,12 @@ pnpm -s wa:chats >>"$LOGDIR/match.log" 2>&1 || echo "  ! wa:chats failed — the
 step directory pnpm -s crm:brokers --apply
 step match pnpm -s crm:demand-match --notify
 if [ -n "$failed" ]; then
+  lane_end fail "$(echo $failed | sed 's/ /, /g') failed twice"
   {
     echo "⚠️ demand run: $(echo $failed | sed 's/ /, /g') failed twice. Last lines:"
     tail -n 8 "$LOGDIR/match.log" | cut -c1-240
   } | pnpm -s crm:post-mkan >/dev/null 2>&1
+else
+  lane_end ok
 fi
 exit 0

@@ -6,7 +6,7 @@
  * "no Slack token — summary not posted". The token lookup the Slack intake
  * lane already had (env → Keychain → ~/.hermes/.env) now serves every job.
  */
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -140,4 +140,21 @@ export async function recordRun(job: string, ok: boolean, detail = '', threshold
   }
   mkdirSync(join(__dirname, '.data'), { recursive: true });
   writeFileSync(STREAKS, JSON.stringify(streaks, null, 2));
+  engineRecord(job, ok, detail);
+}
+
+/**
+ * The same outcome on kun's record of the job that ran it (RUNS_JOB, set by kun's job-run.sh or a
+ * Hermes lane: e.g. `hermes:mkan-demand-match`), as a step named after this job. kun's runs.sh judges
+ * from that record and its supervisor re-runs from it. Best effort, through kun's own helper so both
+ * write one format; a Mac without kun (or a run by hand, no RUNS_JOB) records nothing there.
+ */
+function engineRecord(step: string, ok: boolean, detail: string): void {
+  const job = (process.env.RUNS_JOB ?? '').trim();
+  if (!job) return;
+  try {
+    execFileSync('bash', ['-c', '. "$HOME/.claude/scripts/lib/runs.sh" && runs_record "$@"', '_', job, ok ? 'ok' : 'fail', detail.slice(0, 200), '0', step], { stdio: 'ignore', timeout: 15_000 });
+  } catch {
+    /* the job's own record still holds */
+  }
 }

@@ -21,6 +21,7 @@ unset SLACK_HOME_CHANNEL
 mkdir -p "$LOGDIR"
 # lane.sh: who holds the lock, and waiting for the internet (the Mac sleeps with its lid shut).
 . "$REPO/scripts/crm/hermes/lane.sh"
+LANE_JOB=hermes:mkan-tiktok-upload-retry
 
 if [ "${1:-}" != "--run" ]; then
   # A live run holds the lock — paused by sleep, or waiting for the network: let it be.
@@ -38,7 +39,7 @@ cd "$REPO" || exit 0
 # The tick may have fired in a short maintenance wake (lid shut, network off): wait for the
 # internet — wall clock, up to 10 h — instead of failing every stage. A run that finds it
 # never comes back exits quietly; the next tick tries again.
-wait_online 600 || exit 0
+wait_ready 600 || { lane_end defer "$(lane_not_ready)"; exit 0; }
 started=$(date +%s)
 echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (13:00 retry, detached) ──" >>"$LOGDIR/post.log"
 
@@ -49,6 +50,9 @@ POST="$(dirname "$0")/mkan-tiktok-post.sh"
 [ -f "$POST" ] || POST="$(dirname "$0")/tiktok-post.sh"
 if [ ! -f "$LOGDIR/$(date +%F)/queue.json" ] && [ -f "$POST" ]; then
   echo "  … nothing rendered today — running the morning post now" >>"$LOGDIR/post.log"
+  # This run's record ends here; the post records its own under hermes:mkan-tiktok-post.
+  lane_end ok "nothing rendered — handed the day to the morning post"
+  lane_finish
   trap - EXIT
   exec /bin/bash "$POST" --run
 fi
@@ -64,6 +68,13 @@ code=$?
 kill -- "-$watchdog" 2>/dev/null
 mins=$(( ($(date +%s) - started) / 60 ))
 
+if [ "$code" -eq 0 ]; then
+  lane_end ok
+  # The day's post is done: its slot (07:00 + this retry) is one slot to the supervisor.
+  runs_record hermes:mkan-tiktok-post ok "posted by the 13:00 retry"
+else
+  lane_end fail "the 13:00 retry could not post (exit $code after ${mins} min)"
+fi
 if [ "$code" -ne 0 ]; then
   {
     echo "⚠️ TikTok retry (13:00) still could not post (exit $code after ${mins} min). Last errors:"
