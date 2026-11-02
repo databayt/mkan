@@ -516,6 +516,14 @@ A dropped connection mid-run is the other half: the demand run's mirror, directo
 once more after a minute and once back online (all three are safe to repeat), and #mkan hears only
 about a step that failed twice. Errors print through `error-text.ts`, which unwraps the database
 driver's empty `ErrorEvent` (11-02 13:53 logged a bare "❌").
+Since 11-02 evening the lanes ride kun's job layer (`~/.claude/scripts/lib/runs.sh`, when this Mac
+has it): `wait_ready` waits for a *full* wake, not just the network (a dark wake can have network
+for a few seconds); each run records its real outcome under its engine name (`LANE_JOB`, e.g.
+`hermes:mkan-demand-match`) — Hermes says "ok" the moment a detached run starts, this record says
+how it ended; and kun's supervisor re-runs a missed or failed slot and alerts once (an issue + a
+#mkan line with a mention) if that fails too, so a failed run no longer posts its own warning
+(`lane_alert`). A TikTok piece whose Post click was never confirmed is stamped `pending` and never
+re-posted on its own: `pnpm tt:upload --repost=<key>` after a look at @mkan.rw.
 Install a changed tick with a temp file + `mv` — `cp` over a script bash is running cuts that run
 short. `pnpm mkan:read lanes` shows every lane's last run and flags one gone quiet past its period.
 
