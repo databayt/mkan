@@ -20,6 +20,29 @@ const REPO = "databayt/mkan"
 const SLACK_CHANNEL = "C0BS2NZE2AY" // private #mkan
 const RECHECK_MS = 60_000
 const CRON_STALE_SEC = 600 // the WhatsApp cron runs every 2 min
+const BEAT_STALE_SEC = 20 * 60 // kun's job supervisor beats every 15 min while the Mac is awake
+
+/**
+ * The Mac's scheduled jobs, seen from outside (2026-11-02). kun's supervisor writes WaState
+ * 'mac-beat' = { at, jobs: { <job>: { lastOk, dueBy } } } every 15 min while the Mac is awake; it
+ * re-runs and escalates by itself then. Silence alone is normal (the lid is shut at night), so this
+ * fails only when the beat is stale AND a job's deadline has passed: the Mac has been off or asleep
+ * past the point where a missed run matters. Pure, for tests: (row, now) → overdue job names.
+ */
+export function macOverdue(row, now = Date.now()) {
+  if (!row || typeof row.age !== "number" || row.age <= BEAT_STALE_SEC) return []
+  let value = row.value
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value)
+    } catch {
+      value = {}
+    }
+  }
+  return Object.entries(value?.jobs ?? {})
+    .filter(([, j]) => j?.dueBy && Date.parse(j.dueBy) < now)
+    .map(([k]) => k.replace(/^hermes:/, "").replace(/^mkan-/, ""))
+}
 
 async function timed(url, init = {}) {
   return fetch(url, { ...init, signal: AbortSignal.timeout(20_000), redirect: "manual" })
@@ -53,6 +76,18 @@ const CHECKS = {
     if (typeof age !== "number") throw new Error(`WhatsApp cron state unreadable (${res.status})`)
     if (age > CRON_STALE_SEC) throw new Error(`WhatsApp cron last ran ${Math.round(age / 60)} min ago`)
   },
+  async mac(env) {
+    const host = new URL(env.DATABASE_URL).hostname
+    const res = await timed(`https://${host}/sql`, {
+      method: "POST",
+      headers: { "Neon-Connection-String": env.DATABASE_URL, "Content-Type": "application/json" },
+      body: JSON.stringify({ query: `select value, extract(epoch from now() - "updatedAt")::int as age from "WaState" where key = $1`, params: ["mac-beat"] }),
+    })
+    if (!res.ok) throw new Error(`Mac beat unreadable (${res.status})`)
+    const row = (await res.json().catch(() => ({})))?.rows?.[0]
+    const overdue = macOverdue(row)
+    if (overdue.length) throw new Error(`the Mac has been silent ${Math.round(row.age / 60)} min and these are overdue: ${overdue.join(", ")}`)
+  },
 }
 
 const FIX = {
@@ -60,6 +95,7 @@ const FIX = {
   health: "The app can't reach its database — check Neon project solitary-water-49503410.",
   wa_line: "The WhatsApp link dropped — in /Users/abdout/mkan run `pnpm wa:pair` and scan the QR from the +250780984777 phone (WhatsApp Business → Linked devices).",
   wa_cron: "The `*/2` cron stopped reaching /api/cron/wa-outbox — check the mkan Worker's cron triggers and the container.",
+  mac: "The Mac that runs the scrape, CRM and TikTok lanes has been off or asleep past a job's deadline. Open the lid (or plug it in): kun's supervisor re-runs what was missed within minutes of a real wake. If the Mac is awake, check `launchctl print gui/$(id -u)/com.databayt.supervisor`.",
 }
 
 async function runChecks(env) {
