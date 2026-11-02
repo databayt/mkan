@@ -5366,7 +5366,16 @@
     },
     "stayShort": "Kurara iminsi mike",
     "stayLong": "Ubukode bwa buri kwezi",
+    "followUp": {
+      "check": "Mkan ibaza komisiyoneri niba inzu igihari kuri WhatsApp, kandi ni ubuntu kuri wowe. Komereza kuri WhatsApp, wohereze nimero y'inzu ushaka.",
+      "visit": "Yego rwose. Gusura bitegurirwa kuri WhatsApp: komereza aho, wohereze nimero y'inzu wifuza gusura, hanyuma tuguhe igihe tuzazana nawe.",
+      "about": "Uri kuvugana n'umufasha wa Mkan: nshakisha amazu kandi mvugana n'abakomisiyoneri ku bwawe. Umuntu wo mu itsinda ryacu akurikirana ibiganiro kandi azaza mu gusura. Kugira ngo uvugane na we, komereza kuri WhatsApp wandike \"umuntu\".",
+      "chat": "Muraho! Ndi umufasha wa Mkan. Kanda ku nzu iri hejuru urebe amakuru yayo, cyangwa umbwire icyo wahindura: agace, amafaranga cyangwa ibyumba.",
+      "thanks": "Ntacyo! Kanda ku nzu iri hejuru urebe amakuru yayo, cyangwa umbwire icyo wahindura.",
+      "person": "Hano nshobora gufasha ku mazu gusa. Ku bindi byose, komereza kuri WhatsApp wandike \"umuntu\": umuntu wo muri Mkan azagusubiza aho."
+    },
     "reply": {
+      "same": "Izi nizo nzu zikijyanye n'ibyo ushaka. Kanda ku nzu iri hejuru urebe amakuru yayo, cyangwa umbwire icyo wahindura: agace, amafaranga cyangwa ibyumba.",
       "shortlist": "Nabonye amazu {count} ahuye n'ibyo ushaka. Buri karita yerekana impamvu ikubereye n'ayo wakwishyura ngo winjire.",
       "none": "Nta nzu yatangajwe ihuye n'ibyo byose kugeza ubu. Gerageza ingengo y'imari iri hejuru, akarere kandi, cyangwa ibyumba bike.",
       "error": "Habaye ikibazo ku ruhande rwacu. Ishakisha ryawe ryabitswe, ongera ugerageze.",

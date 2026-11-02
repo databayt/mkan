@@ -1,5 +1,31 @@
 # Agent — open issues
 
+## 2026-11-03 — /find answers under the homes too, and the homes stay where they were
+
+- **The gap:** the 11-02 fix was WhatsApp's alone. On /find every message under the homes still ran a
+  search: "How are you", "?", "Can we meet now" and "thanks" each showed the cards again, under a new
+  "I found 6 homes" line. The web ignored `same`, and an answer turn hid the homes (only the latest
+  agent turn drew cards).
+- **Shipped:**
+  - run.ts reads a message under the homes before any model call (`followUpKind`, follow-up.ts: a
+    person, a bot question, a thank-you, a bare yes or a home's number, then WhatsApp's
+    `afterHomesKind`). Anything but a search gets a `followUp` message: no search, no Groq call, the
+    shortlist untouched. One the rules cannot place goes to Claude when it can read, else the line that
+    points to a person. WhatsApp turns (`wa` set) keep their own gate.
+  - The lines: check / visit / about / person point to WhatsApp, where the homes come numbered and a
+    person answers "person", with a Continue on WhatsApp button that carries the chat. Chat / thanks
+    keep the one-tap changes (`agent.followUp.*`, en / ar / rw).
+  - The homes stay under the turn that showed them (`homesTurn`), on /find and in the bubble: a line
+    after them never moves them down the chat or hides them.
+  - `same` on the web: "These are still the best homes for your search…" (`agent.reply.same`). The
+    same homes keep Claude's lines and a broker already asked, with nothing written again; a task
+    waiting on that broker stays WAITING.
+  - "ok thanks" / "great, thanks!" is a thank-you on WhatsApp too (it went to a person).
+  - The reader's history names answer / monthly-only turns (it called them "had an error").
+  - Tests: `tests/agent/follow-up.test.ts`, plus "under the homes on /find" in `turn.test.ts`.
+- **Owed:**
+  - The new rw lines are machine-written, like the 11-02 ones: a native speaker's read.
+
 ## 2026-11-02 — Under the homes, a message that moves nothing gets what it asked, not six homes again
 
 - **Measured first:** since the 10-24 speed work, 36 turns ran p50 0.7 s, p90 1.0 s, max 2.1 s, 0 errors
@@ -30,7 +56,7 @@
   - After the deploy: health ok, the watchdog's 5 checks pass, and /en/find at 393 px has a clean
     console.
 - **Owed:**
-  - The web /find still shows the same cards for small talk: `same` is set, the web ignores it.
+  - ~~The web /find still shows the same cards for small talk~~ — done 11-03 (the entry above).
   - Claude's intent reading, once the key exists, would replace the word lists.
   - The Kinyarwanda lines are machine-written like the rest.
 

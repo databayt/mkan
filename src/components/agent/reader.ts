@@ -141,6 +141,9 @@ function agentLine(m: Extract<AgentMessage, { role: "agent" }>): string {
   if (m.kind === "ask") return `asked about ${m.field === "stay" ? "months or nights" : "the budget"}`;
   if (m.kind === "clarify") return `asked about ${m.fields.join(", ")}`;
   if (m.kind === "none") return "found no home";
+  if (m.kind === "answer") return "answered without searching";
+  if (m.kind === "followUp") return `answered under the homes (${m.say}) without searching`;
+  if (m.kind === "monthlyOnly") return "said it covers monthly rentals only";
   return "had an error";
 }
 

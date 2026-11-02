@@ -165,3 +165,82 @@ describe('the turn deadline', () => {
     expect(executeRaw).not.toHaveBeenCalled();
   });
 });
+
+// /find, 2026-11-03: under the homes, "How are you", "?" or "Can we meet now" ran a new search and
+// showed the same homes again; WhatsApp already answered them before a turn (whatsapp-chat.ts).
+describe('under the homes on /find', () => {
+  const said = [
+    { role: 'user', text: '2 bedroom in Kicukiro', at: '1' },
+    { role: 'agent', kind: 'shortlist', count: 1, at: '2' },
+  ];
+  const turnWith = async (message: Record<string, unknown>) => {
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.agentTask.findUnique).mockResolvedValueOnce({
+      id: 't1',
+      locale: 'en',
+      messages: [...said, { role: 'user', at: '3', ...message }],
+      requirements: null,
+      shortlist: [{ id: 7, availability: 'asked', why: 'Ten minutes from your office' }],
+      events: [],
+    } as never);
+    const shortlist = await import('@/components/agent/search');
+    vi.mocked(shortlist.toShortlist).mockResolvedValueOnce([{ id: 7, availability: 'unconfirmed' }] as never);
+    search.mockResolvedValue({ candidates: [home({ id: 7 })], truncated: false });
+    const { runTurn } = await import('@/components/agent/run');
+    await runTurn('t1');
+  };
+  const writes = () => update.mock.calls.map((c) => (c as unknown as [{ data: { messages?: Record<string, unknown>[]; shortlist?: Record<string, unknown>[]; status?: string } }])[0].data);
+  const replies = () => writes().map((d) => d.messages?.at(-1)).filter(Boolean);
+
+  beforeEach(async () => {
+    search.mockReset();
+    update.mockClear();
+    const { readRequirementsWithGroq } = await import('@/components/agent/llm');
+    vi.mocked(readRequirementsWithGroq).mockClear();
+  });
+
+  it('answers small talk in one line: no search, no model call, the homes left as they were', async () => {
+    await turnWith({ text: 'How are you' });
+    expect(search).not.toHaveBeenCalled();
+    const { readRequirementsWithGroq } = await import('@/components/agent/llm');
+    expect(readRequirementsWithGroq).not.toHaveBeenCalled();
+    expect(replies()).toEqual([expect.objectContaining({ kind: 'followUp', say: 'chat' })]);
+    expect(writes().some((d) => 'shortlist' in d)).toBe(false);
+    expect(writes().at(-1)?.status).toBe('DONE');
+  });
+
+  it.each([
+    ['Can we meet now', 'visit'],
+    ['Are you still available?', 'check'],
+    ['?', 'about'],
+    ['Thank you', 'thanks'],
+    ['Babe', 'person'],
+  ])('"%s" gets the %s line', async (text, say) => {
+    await turnWith({ text });
+    expect(search).not.toHaveBeenCalled();
+    expect(replies()).toEqual([expect.objectContaining({ kind: 'followUp', say })]);
+  });
+
+  it('still searches a message that moves the search, and a tap', async () => {
+    await turnWith({ text: 'cheaper' });
+    expect(search).toHaveBeenCalled();
+    search.mockReset();
+    await turnWith({ text: 'How are you', filters: { furnished: true } });
+    expect(search).toHaveBeenCalled();
+  });
+
+  it('leaves a WhatsApp message to its own gate', async () => {
+    await turnWith({ text: 'How are you', wa: 'wamid.test' });
+    expect(search).toHaveBeenCalled();
+  });
+
+  it('says the same homes are still the best, keeps what they showed, and keeps waiting on the broker', async () => {
+    await turnWith({ text: 'Give me more options' });
+    expect(search).toHaveBeenCalled();
+    expect(replies()).toEqual([expect.objectContaining({ kind: 'shortlist', same: true })]);
+    expect(writes().find((d) => d.shortlist)?.shortlist).toEqual([
+      expect.objectContaining({ id: 7, availability: 'asked', why: 'Ten minutes from your office' }),
+    ]);
+    expect(writes().at(-1)?.status).toBe('WAITING');
+  });
+});

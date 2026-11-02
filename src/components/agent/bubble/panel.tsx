@@ -14,12 +14,12 @@ import { AskCard } from "../ask-card";
 import { ClarifyCard } from "../clarify-card";
 import { Composer } from "../composer";
 import { ChatHeader, headerButton, MenuGlyph } from "../header";
-import { Refine, Retry, ShowMonthly } from "../refine";
+import { Refine, Retry, ShowMonthly, ToWhatsApp } from "../refine";
 import { fill } from "../format";
 import { Steps } from "../steps";
 import { Suggestions } from "../suggestions";
 import { AgentTurn, PastAgentTurn, Prose, UserTurn } from "../turn";
-import type { ShortlistItem } from "../types";
+import { handsToWhatsApp, homesTurn, type ShortlistItem } from "../types";
 import { useAgentTask } from "../use-agent-task";
 import { useStickToBottom } from "../use-stick-to-bottom";
 import { Welcome } from "../welcome";
@@ -126,6 +126,8 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
   }, [open, onClose, sheet]);
 
   const lastAgentIndex = messages.findLastIndex((m) => m.role === "agent");
+  const homesIndex = homesTurn(messages);
+  const homesMessage = messages[homesIndex];
   const pendingTurn = running && messages.at(-1)?.role === "user";
   const fullPage = task ? `/${locale}/find?c=${task.id}` : `/${locale}/find`;
 
@@ -196,9 +198,10 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
             {messages.map((m, i) => {
               if (m.role === "user") return <UserTurn key={`${i}.${m.at}`} text={m.text} compact />;
               const latest = i === lastAgentIndex && !pendingTurn;
-              if (!latest) return <PastAgentTurn key={`${i}.${m.at}`} text={reply(m)} compact />;
+              const homes = i === homesIndex && m.kind === "shortlist" && task.shortlist.length > 0;
+              if (!latest && !homes) return <PastAgentTurn key={`${i}.${m.at}`} text={reply(m)} compact />;
               return (
-                <AgentTurn key={`${i}.${m.at}`} compact steps={<Steps task={task} compact />}>
+                <AgentTurn key={`${i}.${m.at}`} compact steps={latest ? <Steps task={task} compact /> : undefined}>
                   {m.kind === "ask" && !running ? (
                     <AskCard field={m.field} requirements={task.requirements} onPick={(text, filters) => void send(text, false, filters)} disabled={pending} compact />
                   ) : m.kind === "clarify" && !running ? (
@@ -216,7 +219,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
                   ) : (
                     <Prose text={reply(m)} />
                   )}
-                  {m.kind === "shortlist" && task.shortlist.length > 0 && (
+                  {homes && (
                     <div className="space-y-2">
                       {task.shortlist.slice(0, MINI_CARDS).map((item, index) => (
                         <MiniCard key={item.id} item={item} best={index === 0} />
@@ -226,18 +229,35 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
                       </Link>
                     </div>
                   )}
-                  {m.kind === "shortlist" && !running && (
-                    <Refine
-                      message={m}
-                      requirements={task.requirements}
-                      onPick={(text, filters, clear) => void send(text, false, filters, clear)}
-                      disabled={pending}
-                      compact
-                    />
-                  )}
-                  {m.kind === "error" && !running && <Retry onRetry={() => void regenerate()} disabled={pending} compact />}
-                  {m.kind === "monthlyOnly" && !running && (
-                    <ShowMonthly onPick={(text, filters, clear) => void send(text, false, filters, clear)} disabled={pending} compact />
+                  {latest && !running && (
+                    <>
+                      {m.kind === "shortlist" && (
+                        <Refine
+                          message={m}
+                          requirements={task.requirements}
+                          onPick={(text, filters, clear) => void send(text, false, filters, clear)}
+                          disabled={pending}
+                          compact
+                        />
+                      )}
+                      {m.kind === "followUp" &&
+                        (handsToWhatsApp(m.say) ? (
+                          <ToWhatsApp taskId={task.id} compact />
+                        ) : (
+                          homesMessage?.role === "agent" &&
+                          homesMessage.kind === "shortlist" && (
+                            <Refine
+                              message={homesMessage}
+                              requirements={task.requirements}
+                              onPick={(text, filters, clear) => void send(text, false, filters, clear)}
+                              disabled={pending}
+                              compact
+                            />
+                          )
+                        ))}
+                      {m.kind === "error" && <Retry onRetry={() => void regenerate()} disabled={pending} compact />}
+                      {m.kind === "monthlyOnly" && <ShowMonthly onPick={(text, filters, clear) => void send(text, false, filters, clear)} disabled={pending} compact />}
+                    </>
                   )}
                 </AgentTurn>
               );

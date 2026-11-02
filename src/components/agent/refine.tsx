@@ -1,11 +1,13 @@
 "use client";
 
+import { MessageCircle } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { cn } from "@/lib/utils";
 import { AskCard } from "./ask-card";
 import { roundPrice } from "./fields";
 import type { Requirements } from "./requirements";
 import type { AgentMessage } from "./types";
+import { continueOnWhatsApp } from "./wa-link";
 
 type Pick = (text: string, filters: Partial<Requirements>, clear?: string[]) => void;
 
@@ -112,6 +114,28 @@ export function Retry({ onRetry, disabled, compact = false }: { onRetry: () => v
     >
       {dict?.agent?.reply?.retry ?? "Try again"}
     </button>
+  );
+}
+
+/**
+ * Under a line whose next step is on WhatsApp (a broker check, a viewing, a person): the same chat,
+ * carried over by its ref — the phone gets the homes numbered, and a number picks one.
+ */
+export function ToWhatsApp({ taskId, compact = false }: { taskId: string; compact?: boolean }) {
+  const c = useDictionary()?.agent?.chat;
+  return (
+    <a
+      href={continueOnWhatsApp(taskId, c?.whatsappText ?? "Continue my Mkan search")}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 font-medium text-background transition-opacity hover:opacity-90",
+        compact ? "mt-3 py-1 text-xs" : "mt-4 py-1.5 text-sm",
+      )}
+    >
+      <MessageCircle className={compact ? "size-3.5" : "size-4"} aria-hidden />
+      {c?.whatsapp ?? "Continue on WhatsApp"}
+    </a>
   );
 }
 

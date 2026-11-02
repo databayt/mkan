@@ -15,12 +15,12 @@ import { DemandCard } from "./demand-card";
 import { noteHomeFeedback } from "./feedback-actions";
 import { roundPrice } from "./fields";
 import { ChatHeader, headerButton, MenuGlyph } from "./header";
-import { Refine, Retry, ShowMonthly } from "./refine";
+import { Refine, Retry, ShowMonthly, ToWhatsApp } from "./refine";
 import { ShortlistCard, type NotForMe } from "./shortlist-card";
 import { Steps } from "./steps";
 import { Suggestions } from "./suggestions";
 import { AgentTurn, PastAgentTurn, Prose, TurnActions, UserTurn } from "./turn";
-import type { AgentTaskView } from "./types";
+import { handsToWhatsApp, homesTurn, type AgentTaskView } from "./types";
 import { useAgentTask } from "./use-agent-task";
 import { continueOnWhatsApp } from "./wa-link";
 import { useStickToBottom } from "./use-stick-to-bottom";
@@ -123,6 +123,8 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
   };
 
   const lastAgentIndex = messages.findLastIndex((m) => m.role === "agent");
+  const homesIndex = homesTurn(messages);
+  const homesMessage = messages[homesIndex];
   // While a turn runs, its steps sit on a pending agent turn after the user's message.
   const pendingTurn = running && messages.at(-1)?.role === "user";
 
@@ -196,9 +198,10 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
             {messages.map((m, i) => {
               if (m.role === "user") return <UserTurn key={`${i}.${m.at}`} text={m.text} />;
               const latest = i === lastAgentIndex && !pendingTurn;
-              if (!latest) return <PastAgentTurn key={`${i}.${m.at}`} text={reply(m)} />;
+              const homes = i === homesIndex && m.kind === "shortlist" && task.shortlist.length > 0;
+              if (!latest && !homes) return <PastAgentTurn key={`${i}.${m.at}`} text={reply(m)} />;
               return (
-                <AgentTurn key={`${i}.${m.at}`} steps={<Steps task={task} />}>
+                <AgentTurn key={`${i}.${m.at}`} steps={latest ? <Steps task={task} /> : undefined}>
                   {m.kind === "ask" && !running ? (
                     <AskCard field={m.field} requirements={task.requirements} onPick={(text, filters) => void say(text, false, filters)} disabled={pending} />
                   ) : m.kind === "clarify" && !running ? (
@@ -206,14 +209,14 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
                       <Prose text={reply(m)} />
                       <ClarifyCard key={m.at} fields={m.fields} onSubmit={(text, filters) => void say(text, false, filters)} onDraft={setDraft} disabled={pending} />
                     </>
-                  ) : m.kind === "shortlist" && m.pendingText && !m.text && running ? (
+                  ) : latest && m.kind === "shortlist" && m.pendingText && !m.text && running ? (
                     // Claude is writing the reply; the cards are already up below.
                     <span aria-hidden className="block h-5 w-3/4 animate-pulse rounded bg-muted" />
                   ) : (
                     <Prose text={reply(m)} />
                   )}
 
-                  {m.kind === "shortlist" && task.shortlist.length > 0 && (
+                  {homes && (
                     <div className="space-y-3 pt-1">
                       {chips.length > 0 && (
                         <ul className="flex flex-wrap items-center gap-1.5 text-xs">
@@ -236,19 +239,31 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
                     </div>
                   )}
 
-                  {m.kind === "shortlist" && !running && (
-                    <Refine message={m} requirements={task.requirements} onPick={(text, filters, clear) => void say(text, false, filters, clear)} disabled={pending} />
-                  )}
+                  {latest && !running && (
+                    <>
+                      {m.kind === "shortlist" && (
+                        <Refine message={m} requirements={task.requirements} onPick={(text, filters, clear) => void say(text, false, filters, clear)} disabled={pending} />
+                      )}
+                      {/* A line under the homes: its next step on WhatsApp, or the same one-tap changes as under the homes. */}
+                      {m.kind === "followUp" &&
+                        (handsToWhatsApp(m.say) ? (
+                          <ToWhatsApp taskId={task.id} />
+                        ) : (
+                          homesMessage?.role === "agent" &&
+                          homesMessage.kind === "shortlist" && (
+                            <Refine message={homesMessage} requirements={task.requirements} onPick={(text, filters, clear) => void say(text, false, filters, clear)} disabled={pending} />
+                          )
+                        ))}
 
-                  {m.kind === "error" && !running && <Retry onRetry={() => void regenerate().then((ok) => ok && scrollToBottom())} disabled={pending} />}
-                  {m.kind === "monthlyOnly" && !running && <ShowMonthly onPick={(text, filters, clear) => void say(text, false, filters, clear)} disabled={pending} />}
+                      {m.kind === "error" && <Retry onRetry={() => void regenerate().then((ok) => ok && scrollToBottom())} disabled={pending} />}
+                      {m.kind === "monthlyOnly" && <ShowMonthly onPick={(text, filters, clear) => void say(text, false, filters, clear)} disabled={pending} />}
 
-                  {(m.kind === "none" || m.kind === "shortlist") && m.demand && task.demand && !running && (
-                    <DemandCard taskId={task.id} optedIn={task.demand.optedIn} onDone={refresh} />
-                  )}
+                      {(m.kind === "none" || m.kind === "shortlist") && m.demand && task.demand && (
+                        <DemandCard taskId={task.id} optedIn={task.demand.optedIn} onDone={refresh} />
+                      )}
 
-                  {!running && (
-                    <TurnActions text={reply(m)} onRegenerate={() => void regenerate().then((ok) => ok && scrollToBottom())} disabled={pending} taskId={task.id} at={m.at} />
+                      <TurnActions text={reply(m)} onRegenerate={() => void regenerate().then((ok) => ok && scrollToBottom())} disabled={pending} taskId={task.id} at={m.at} />
+                    </>
                   )}
                 </AgentTurn>
               );

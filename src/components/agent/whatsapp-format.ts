@@ -216,6 +216,13 @@ export function formatWhatsApp(view: AgentTaskView, d: WaDict, lang: WaLang, cha
     case "monthlyOnly":
       parts.push(d.reply.monthlyOnly ?? "");
       break;
+    case "followUp": {
+      // /find's line under the homes. A WhatsApp turn never writes one (whatsapp-chat.ts answers these
+      // first), so this only keeps a carried-over chat from going silent.
+      const n = Math.min(MAX_HOMES, view.shortlist.length);
+      parts.push(m.say === "check" ? whichOneText(lang, n) : m.say === "visit" ? visitText(lang, n) : m.say === "thanks" ? thanksText(lang) : chatText(lang));
+      break;
+    }
     case "error":
       parts.push(d.reply.error ?? "");
       break;
@@ -316,7 +323,7 @@ export function botText(lang: WaLang, rep: string): string {
  * a question (`saysYes`).
  */
 export const isThanks = (text: string) =>
-  /^(?:thank(?:s| you| u)(?: (?:so|very) much| a lot)?|thx|tnx|ty|merci(?: beaucoup)?|murakoze(?: cyane)?|urakoze(?: cyane)?|asante(?: sana)?|شكرا|شكراً|مشكور|متشكر)[\s!.,🙏😊❤️👍]*$/iu.test(text.trim());
+  /^(?:(?:ok(?:ay)?|alright|great|perfect|cool|nice|sawa|yego|تمام)[\s,!.]+)?(?:thank(?:s| you| u)(?: (?:so|very) much| a lot)?|thx|tnx|ty|merci(?: beaucoup)?|murakoze(?: cyane)?|urakoze(?: cyane)?|asante(?: sana)?|شكرا|شكراً|مشكور|متشكر)[\s!.,🙏😊❤️👍]*$/iu.test(text.trim());
 
 /** A bare yes / ok / 👍 — under homes with no question pending, it means "that one" without saying which. */
 export const isBareYes = (text: string) =>

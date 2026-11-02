@@ -314,6 +314,9 @@ export function useAgentTask(
       if (m.kind === "ask") return a?.ask?.[m.field] ?? "";
       if (m.kind === "clarify") return a?.clarify?.reply ?? "";
       if (m.kind === "answer") return m.text ?? (m.topic === "question" ? a?.reply?.answerFallback : a?.reply?.other) ?? "";
+      if (m.kind === "followUp") return a?.followUp?.[m.say] ?? "";
+      // The message moved nothing: the homes above stay, and one line says so.
+      if (m.kind === "shortlist" && m.same && !m.pin) return a?.reply?.same ?? "These are still the best homes for your search.";
       if (m.kind === "shortlist" && m.text) return m.text;
       if (m.kind === "shortlist") {
         const found = fill(a?.reply?.shortlist ?? "I found {count} homes.", { count: m.count });

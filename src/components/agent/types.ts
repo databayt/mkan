@@ -7,6 +7,25 @@ import type { Relaxed } from "./relax";
 
 export type AgentStatus = "RUNNING" | "WAITING" | "DONE" | "FAILED";
 
+/**
+ * What a message under the homes asked for, when it moved nothing about the search:
+ * check — is it still free? · visit — to see one or meet · about — what is this? · chat — small talk ·
+ * thanks · person — none of these: a person answers, on WhatsApp.
+ */
+export type FollowUpKind = "check" | "visit" | "about" | "chat" | "thanks" | "person";
+
+/** Lines whose next step happens on WhatsApp (a broker check, a viewing, a person): the reply carries the chat there. */
+export const handsToWhatsApp = (say: FollowUpKind) => say === "check" || say === "visit" || say === "about" || say === "person";
+
+/**
+ * The turn the homes on screen came with (-1 for none). They stay under it, so a line after them
+ * ("How are you", "?", the same homes again) never moves them down the chat (2026-11-03).
+ */
+export function homesTurn(messages: AgentMessage[]): number {
+  const i = messages.findLastIndex((m) => m.role === "agent" && m.kind === "shortlist" && !m.same);
+  return i >= 0 ? i : messages.findLastIndex((m) => m.role === "agent" && m.kind === "shortlist");
+}
+
 /** done · running · waiting on a person · failed · result not certain. */
 export type StepStatus = "done" | "running" | "waiting_person" | "failed" | "uncertain";
 
@@ -67,6 +86,12 @@ export type AgentMessage =
   | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; text?: string; pendingText?: boolean; demand?: boolean; asked?: number; pin?: { id: number; found: boolean }; same?: boolean; at: string }
   /** A question about renting, answered from knowledge.ts, or a greeting; no search ran. */
   | { role: "agent"; kind: "answer"; topic: "question" | "other"; text?: string; at: string }
+  /**
+   * Under the homes on /find, a message that moved nothing ("How are you", "?", "Can we meet now",
+   * "thanks"): one line back, no search ran, and the homes stay where they were (2026-11-03).
+   * WhatsApp answers the same messages before a turn starts (whatsapp-chat.ts).
+   */
+  | { role: "agent"; kind: "followUp"; say: FollowUpKind; at: string }
   /** `demand`: the search was kept as a TenantRequest; `asked`: brokers messaged for it now. */
   | { role: "agent"; kind: "none"; stay?: "short" | "long"; demand?: boolean; asked?: number; pin?: { id: number; found: boolean }; at: string }
   /** The tenant asked for a few nights: the agent covers monthly rentals only, so no search ran (2026-10-24). */

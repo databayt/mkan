@@ -35,6 +35,8 @@ import {
 import { relaxations, type Relaxed } from "./relax";
 import { searchKigali, toShortlist } from "./search";
 import { openDemand } from "./demand";
+import { canSpend } from "./claude";
+import { followUpKind, underHomes } from "./follow-up";
 import type { AgentMessage, EventKind, ShortlistItem, StepStatus } from "./types";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
@@ -266,6 +268,18 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     const tapped = Object.keys(picked).length > 0 || (lastUser?.clear?.length ?? 0) > 0;
     const memory = coerceMemory(task.profile?.memory);
     const shown = (task.shortlist as unknown as ShortlistItem[] | null) ?? [];
+
+    // Under the homes on /find, a message that moves nothing about the search gets one line, not the
+    // same homes again (2026-11-03; WhatsApp answers these before a turn starts, whatsapp-chat.ts). The
+    // rules settle what they are sure of, with no model call; one they cannot place goes to Claude when
+    // it can read (it may be a question), else to a person on WhatsApp.
+    const followUp = !lastUser?.wa && !tapped && !lastUser?.pin && shown.length > 0 && underHomes(messages) ? followUpKind(latest) : "search";
+    if (followUp !== "search" && (followUp !== "person" || !(await canSpend().catch(() => false)))) {
+      await trace.record("requirements_extracted", "done", { requirements: base, reader: "rules", intent: followUp });
+      await firstReply({ role: "agent", kind: "followUp", say: followUp, at: now() }, { status: "DONE" });
+      return;
+    }
+
     // The step's "running" row and the model call overlap: neither waits on the other.
     const [understandId, reading] = await Promise.all([
       trace.start("requirements_extracted"),
@@ -447,17 +461,24 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     const pin = lastUser?.pin;
     const pinned = pin ? ranked.find((s) => s.id === pin) : undefined;
     const cards = pinned ? [pinned, ...ranked.filter((s) => s.id !== pin)] : ranked;
-    let shortlist = cards;
+    // The very homes the last shortlist showed, in the same order: this message moved nothing. WhatsApp
+    // tells the tenant so in one line rather than sending the same six again (10-26..11-01: "How are
+    // you", "?" and "Can we meet now" each re-sent them); /find says it under the homes already up.
+    const same = !pin && shown.length > 0 && shown.length === cards.length && shown.every((s, i) => s.id === cards[i]?.id);
+    // The same homes keep what the tenant already saw on them: Claude's line, a broker already asked
+    // (a new search reads only "confirmed" or "unconfirmed"). Nothing is written again.
+    let shortlist = same
+      ? cards.map((s, i) => {
+          const was = shown[i]!;
+          return { ...s, ...(was.why ? { why: was.why } : {}), ...(s.availability === "unconfirmed" && was.availability !== "confirmed" ? { availability: was.availability } : {}) };
+        })
+      : cards;
     const unconfirmed = shortlist.filter((s) => s.availability === "unconfirmed").length;
     // Claude writes the words when it can (language allowed, credits left); the cards never wait for it.
     const writeLang = (reading?.lang ?? lang) as WriterFacts["lang"];
-    const willWrite = await canWrite(writeLang);
+    const willWrite = !same && (await canWrite(writeLang));
     // The budget, when the search ran without one; picking it also settles the stay as months.
     const refine = !requirements.maxPrice && !requirements.cheap ? ("maxPrice" as const) : undefined;
-    // The very homes the last shortlist showed, in the same order: this message moved nothing. WhatsApp
-    // tells the tenant so in one line rather than sending the same six again (10-26..11-01: "How are
-    // you", "?" and "Can we meet now" each re-sent them).
-    const same = !pin && shown.length > 0 && shown.length === shortlist.length && shown.every((s, i) => s.id === shortlist[i]?.id);
     const answer: Extract<AgentMessage, { kind: "shortlist" }> = {
       role: "agent",
       kind: "shortlist",
@@ -508,7 +529,8 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
       data: {
         ...(asked.size > 0 || written?.why.size ? { shortlist: json(shortlist) } : {}),
         ...(willWrite || demand ? { messages: json([...messages, finalAnswer]) } : {}),
-        status: asked.size > 0 ? "WAITING" : "DONE",
+        // A broker asked about one of the same homes is still being waited on.
+        status: asked.size > 0 || shortlist.some((s) => s.availability === "asked") ? "WAITING" : "DONE",
       },
     });
   } catch (err) {

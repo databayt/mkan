@@ -5366,7 +5366,16 @@
     },
     "stayShort": "Short stay",
     "stayLong": "Monthly rent",
+    "followUp": {
+      "check": "I check a home with its broker on WhatsApp, and it's free for you. Continue there and send the number of the home you want.",
+      "visit": "Happy to. Viewings are set up on WhatsApp: continue there, send the number of the home you want to see, and we agree a time and come with you.",
+      "about": "You're chatting with Mkan's assistant: I search the homes and talk to the brokers for you. A person from our team follows these chats and comes to the viewing with you. To talk to them, continue on WhatsApp and write \"person\".",
+      "chat": "Hi! I'm Mkan's assistant. Tap a home above for its details, or tell me what to change: the area, the budget or the bedrooms.",
+      "thanks": "You're welcome! Tap a home above for its details, or tell me what to change.",
+      "person": "I can only help with homes here. For anything else, continue on WhatsApp and write \"person\": someone from Mkan answers you there."
+    },
     "reply": {
+      "same": "These are still the best homes for your search. Tap one above for its details, or tell me what to change: the area, the budget or the bedrooms.",
       "shortlist": "I found {count} homes that match. Each card shows why it fits and what you would pay to move in.",
       "none": "No published home matches all of that yet. Try a higher budget, another district, or fewer bedrooms.",
       "error": "Something went wrong on our side. Your search is saved, so please try again.",
