@@ -428,7 +428,9 @@ export function inferStay(r: Requirements): Requirements {
 const ANY_PLACE_RE = /anywhere|any (?:area|place|district|neighbou?rhood|zone|location)|all (?:of )?kigali|whole (?:of )?kigali|أي مكان|اي مكان|أي منطقة|اي منطقة|كل كيغالي|ahantu hose|aho ari ho hose/i;
 const ANY_BUDGET_RE = /any (?:budget|price)|no (?:budget|price limit|limit)|price doesn'?t matter|أي سعر|اي سعر|بدون ميزانية|igiciro icyo ari cyo cyose/i;
 const ANY_FURNISH_RE = /furnished or (?:not|un)|(?:any|either) furnish|مفروش أو غير|مفروشة أو غير/i;
-const CHEAPER_RE = /cheaper|less expensive|lower (?:price|budget)|أرخص|ارخص|أقل سعر|ihendutse kurushaho/i;
+// A complaint about the price asks for cheaper too (2026-11-02): "It's a lot of money" under the
+// homes re-ran the same search and got the same six back.
+const CHEAPER_RE = /cheaper|less expensive|lower (?:price|budget)|too (?:expensive|much|costly|high|pricey)|(?:so|very|quite|really|it'?s|is|are|that'?s|bit) expensive|expensive\s*[!.?]*$|a lot of money|trop cher|c'?est cher|moins cher|birahenze|birahendutse|bihenze|biraruta|أرخص|ارخص|أقل سعر|غالي|غالية|مكلف|ihendutse kurushaho/i;
 const BIGGER_RE = /bigger|larger|more (?:space|room|bedrooms?)|أكبر|اكبر|nini kurushaho/i;
 
 /**

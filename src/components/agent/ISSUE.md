@@ -1,5 +1,30 @@
 # Agent — open issues
 
+## 2026-11-02 — Under the homes, a message that moves nothing gets what it asked, not six homes again
+
+- **Measured first:** since the 10-24 speed work, 36 turns ran p50 0.7 s, p90 1.0 s, max 2.1 s, 0 errors
+  (`pnpm agent:latency --days=8`), so speed is not the gap. The 14-day transcripts (110 tenant messages)
+  were. Under their homes, real tenants wrote "How are you", "?", "What is this", "Can we meet now",
+  "Are you still available?", "It's a lot of money" and "All 👍👍😁", and each one re-ran the search and
+  got the same six homes. Groq reads them as searches, and its "not a search" intent is not trusted
+  (only Claude's is).
+- **Shipped:**
+  - `afterHomesKind` (whatsapp-format.ts) sorts a message under the homes: search (the rules read a
+    field or a change, or "more"), check ("still available?" → which one), visit (meet / see it →
+    which one, then a time), about (what is this / ? → what the assistant is), chat (small talk → a line
+    and how to go on), or person (anything else → a #mkan card, and the tenant hears a person will
+    reply).
+  - A price complaint reads as "cheaper" (`CHEAPER_RE`).
+  - Emoji-only and "all good" count as a bare yes.
+  - A phone number on its own goes to a person, never a search for a RWF 786-million home.
+  - Whatever the reader decides, a shortlist with exactly the last one's homes carries `same`, and
+    WhatsApp sends one line ("These are still the best homes for your search…") instead of the list.
+  - Tests: `tests/agent/wa-after-homes.test.ts`, written from the real messages.
+- **Owed:**
+  - The web /find still shows the same cards for small talk: `same` is set, the web ignores it.
+  - Claude's intent reading, once the key exists, would replace the word lists.
+  - The Kinyarwanda lines are machine-written like the rest.
+
 ## 2026-11-01 — After a hello, a message that is not about a home goes to a person
 
 - **What happened:** a number wrote "Hello" (the agent asked what kind of home), then "Muherereyehe

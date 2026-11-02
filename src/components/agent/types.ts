@@ -63,7 +63,8 @@ export type AgentMessage =
    * `text`: the reply Claude wrote (guarded) — else the template; `pendingText` while it is being written.
    */
   /** `pin`: the home the tenant's ref named — `found` false when it is gone (rented, or its ad was taken down). */
-  | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; text?: string; pendingText?: boolean; demand?: boolean; asked?: number; pin?: { id: number; found: boolean }; at: string }
+  /** `same`: exactly the homes the last shortlist showed, in the same order — the message moved nothing ("How are you", "?"); WhatsApp says so instead of sending them again (2026-11-02). */
+  | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; text?: string; pendingText?: boolean; demand?: boolean; asked?: number; pin?: { id: number; found: boolean }; same?: boolean; at: string }
   /** A question about renting, answered from knowledge.ts, or a greeting; no search ran. */
   | { role: "agent"; kind: "answer"; topic: "question" | "other"; text?: string; at: string }
   /** `demand`: the search was kept as a TenantRequest; `asked`: brokers messaged for it now. */

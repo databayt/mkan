@@ -26,6 +26,7 @@ import { loadTask } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
 import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, waLang, type WaDict, type WaLang } from "./whatsapp-format";
 import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, readHomeRef, shownHomes, thanksText, wantsPerson, whichOneText } from "./whatsapp-format";
+import { afterHomesKind, chatText, visitText } from "./whatsapp-format";
 import { askAround } from "./demand";
 import { viewingRep } from "./broker-message";
 import { parseBrokerReply } from "./broker-reply";
@@ -185,6 +186,24 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   if (current && !ref && !refHome && isThanks(text) && shownHomes(current.messages as unknown as AgentMessage[])) {
     await stampSeen(current.id, input.msgId, 0);
     return { reply: thanksText(lang), taskId: current.id };
+  }
+  // Under the homes, a message that moves nothing about the search gets what it asked for, never the
+  // same homes again (2026-11-02): "How are you", "?", "What is this", "Can we meet now" and "Are you
+  // still available?" each re-sent six (10-26..11-01). whatsapp-format.ts afterHomesKind.
+  const said = current?.messages as unknown as AgentMessage[] | undefined;
+  if (current && !ref && !refHome && shownHomes(said)) {
+    const kind = afterHomesKind(text);
+    if (kind !== "search") {
+      await stampSeen(current.id, input.msgId, 0);
+      const last = [...(said ?? [])].reverse().find((m): m is Extract<AgentMessage, { kind: "shortlist" }> => m.role === "agent" && m.kind === "shortlist");
+      const n = Math.min(MAX_HOMES, last?.count ?? MAX_HOMES);
+      if (kind === "person") {
+        await postSlackCard(`💬 ${profile.waPhone ?? "a number"} wrote under their homes, not about a home — answer them yourself:\n> ${text.slice(0, 300)}`).catch(() => {});
+        return { reply: personText(lang, viewingRep()), taskId: current.id };
+      }
+      const reply = kind === "check" ? whichOneText(lang, n) : kind === "visit" ? visitText(lang, n) : kind === "about" ? botText(lang, viewingRep()) : chatText(lang);
+      return { reply, taskId: current.id };
+    }
   }
 
   const message: Extract<AgentMessage, { role: "user" }> = {

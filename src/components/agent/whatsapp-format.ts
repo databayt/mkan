@@ -11,6 +11,7 @@
 import { districtName } from "@/lib/geo/rwanda-places";
 import { zoneLabel } from "@/lib/geo/kigali-zones";
 import { forTenant } from "./home-path";
+import { EMPTY_REQUIREMENTS, parseAdjustments, parseRequirements } from "./requirements";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "./types";
 
 export type WaLang = "en" | "ar" | "rw";
@@ -183,6 +184,11 @@ export function formatWhatsApp(view: AgentTaskView, d: WaDict, lang: WaLang, cha
       break;
     }
     case "shortlist": {
+      // The message moved nothing: the same homes, so a line instead of the list again.
+      if (m.same && !m.pin) {
+        parts.push(sameHomesText(lang, Math.min(MAX_HOMES, view.shortlist.length)));
+        return parts.join("\n\n");
+      }
       const ref = m.pin ? `K${m.pin.id}` : null;
       if (m.pin?.found) parts.push(fill(c.pinFound, { ref: ref! }));
       else if (m.pin) parts.push(fill(c.pinGone, { ref: ref! }));
@@ -314,7 +320,9 @@ export const isThanks = (text: string) =>
 
 /** A bare yes / ok / 👍 — under homes with no question pending, it means "that one" without saying which. */
 export const isBareYes = (text: string) =>
-  saysYes(text) || /^(?:👍|👌|alright|fine|cool|great|nice|sawa|nibyo|ni byiza|d'accord|حسنا|طيب)[\s.!👍👌]*$/iu.test(text.trim());
+  saysYes(text) ||
+  /^(?:👍|👌|alright|fine|cool|great|nice|perfect|super|good|all(?: good| fine| set| ok)?|sawa|nibyo|ni byiza|d'accord|حسنا|طيب)[\s.!\p{Extended_Pictographic}\uFE0F]*$/iu.test(text.trim()) ||
+  /^[\s\p{Extended_Pictographic}\uFE0F]+$/u.test(text.trim()); // emoji only ("👍👍😁"): under homes, "that one"
 
 /** "Which one?" — what a person asks when a bare yes comes under several homes (it used to re-run the search). */
 export function whichOneText(lang: WaLang, n: number): string {
@@ -397,6 +405,69 @@ export function onlyGreetedSoFar(messages: AgentMessage[] | null | undefined): b
   if (!said.length) return false;
   if ((messages ?? []).some((m) => m.role === "agent" && m.kind === "shortlist")) return false;
   return said.every((m) => firstMessageKind(m.text ?? "") === "greeting");
+}
+
+/** The search, as the rules read this one message: does it state or change anything about a home? */
+const movesSearch = (text: string): boolean => {
+  const r = parseRequirements(text);
+  const stated = Object.values(r).some((v) => v !== null && v !== false && !(Array.isArray(v) && v.length === 0));
+  const adjust = parseAdjustments(text, EMPTY_REQUIREMENTS);
+  return stated || r.furnished === false || Object.keys(adjust.set).length > 0 || adjust.clear.length > 0;
+};
+
+const MORE_RE = /\b(?:more|others?|another|different|else|next|options?|show me|any(?:thing)?)\b|ibindi|indi|زيد|المزيد|غيره|غيرها|autres?/i;
+const AVAILABLE_RE = /still available|is it (?:still )?(?:available|free)|are (?:they|these) (?:still )?available|(?:is|are) .{0,20}available\s*\?|iracyari|irahari|ما زال متاح|متاح\?|disponible\s*\?/i;
+const VISIT_RE = /\b(?:meet|meeting|visit|viewing|view it|see (?:it|the (?:house|home|place|room|apartment)|them)|come (?:and )?see|tour|show me the (?:house|home))\b|gusura|kureba inzu|turebe|tubonane|نلتقي|زيارة|معاينة|اشوف|أشوف|visiter|voir la maison/i;
+const ABOUT_RE = /^(?:\?+|what(?:'s| is) this[?؟]?|who (?:is this|are you)[?؟]?|what (?:do you do|are you)[?؟]?|how does (?:this|it) work[?؟]?|ni iki[?؟]?|ni nde[?؟]?|ما هذا[?؟]?|من انت[?؟]?|من أنت[?؟]?|c'?est quoi[?؟]?|qui (?:êtes|etes)-vous[?؟]?)[\s?!.؟]*$/iu;
+const SMALL_TALK_RE = /^(?:(?:so|and|ok|okay|well|hey)[\s,]+)?(?:hi+|hello+|hey+|hallo|yo|good (?:morning|afternoon|evening|night)|how (?:are|r) (?:you|u)|how(?:'s| is) (?:it|it going|your day|everything)(?: today)?|what'?s up|wassup|sup|you (?:there|around|awake|sleeping)|are you there|muraho|mwiriwe|mwaramutse|amakuru|bite|ni meza|bonjour|bonsoir|salut|ça va|ca va|salam|habari|mambo|السلام عليكم|سلام|مرحبا|اهلا|أهلا|كيف حالك|كيفك)[\s,.!?؟👋🙏😊😁😄🙂]*$/iu;
+
+export type AfterHomes = "search" | "check" | "visit" | "about" | "chat" | "person";
+
+/**
+ * After the homes went out, what is this message (2026-11-02)? Everything that was not a pick, a yes
+ * or a thank-you ran a new search, so "How are you", "?", "What is this", "Can we meet now" and "Are
+ * you still available?" each got the same six homes again (real tenants, 10-26..11-01).
+ *   search  — states or changes something about a home (the rules read it), or asks for more: the agent runs it
+ *   check   — "is it still available?": which one (the check starts from a pick)
+ *   visit   — wants to see a home or meet: which one, then a time
+ *   about   — "what is this", "who are you", "?": what Mkan's assistant is
+ *   chat    — small talk: a friendly line and how to go on
+ *   person  — anything else ("why can't you ask?"): a person answers (a #mkan card), the tenant hears so
+ * "It's a lot of money" is a search: the rules read it as "cheaper" (requirements.ts CHEAPER_RE).
+ */
+export function afterHomesKind(text: string): AfterHomes {
+  const t = text.trim();
+  // A phone number on its own: they want a call, not a search for a RWF 786-million home.
+  if (/^\+?\d[\d\s-]{7,14}\d$/.test(t) && !/^\d{1,3}(?:[,.\s]\d{3})+$/.test(t)) return "person";
+  if (AVAILABLE_RE.test(t)) return "check";
+  if (VISIT_RE.test(t)) return "visit";
+  if (ABOUT_RE.test(t)) return "about";
+  if (aboutHomes(t) || movesSearch(t) || MORE_RE.test(t) || HOME_REF_RE.test(t)) return "search";
+  if (SMALL_TALK_RE.test(t) || firstMessageKind(t) === "greeting") return "chat";
+  return "person";
+}
+
+/** The same homes as last time: say so, and how to go on (instead of the list again). */
+export function sameHomesText(lang: WaLang, n: number): string {
+  const range = n > 1 ? (lang === "ar" ? `من 1 إلى ${n}` : lang === "rw" ? `kuva kuri 1 kugeza kuri ${n}` : `1 to ${n}`) : "1";
+  if (lang === "ar") return `هذه ما زالت أفضل المنازل لبحثك. أرسل رقم واحد منها، ${range}، وأتأكد أنه متاح، أو أخبرني بما تريد تغييره: المنطقة أو الميزانية أو عدد الغرف.`;
+  if (lang === "rw") return `Izi nizo nzu zikijyanye n'ibyo ushaka. Ohereza nimero y'imwe muri zo, ${range}, ndebe ko igihari, cyangwa umbwire icyo wahindura: agace, amafaranga cyangwa ibyumba.`;
+  return `These are still the best homes for your search. Send the number of one, ${range}, and I'll check it's free, or tell me what to change: the area, the budget or the bedrooms.`;
+}
+
+/** Wants to see a home or meet: which one, then a time. */
+export function visitText(lang: WaLang, n: number): string {
+  const range = n > 1 ? (lang === "ar" ? `من 1 إلى ${n}` : lang === "rw" ? `kuva kuri 1 kugeza kuri ${n}` : `1 to ${n}`) : "1";
+  if (lang === "ar") return `بكل سرور. أي منزل تريد أن تراه؟ أرسل رقمه، ${range}: أتأكد أنه متاح، ثم نتفق على موعد ونأتي معك.`;
+  if (lang === "rw") return `Yego rwose. Ni iyihe nzu wifuza gusura? Ohereza nimero yayo, ${range}: ndebe ko igihari, hanyuma tuguhe igihe tuzazana nawe.`;
+  return `Happy to. Which home would you like to see? Send its number, ${range}: I'll check it's free, then we agree a time and come with you.`;
+}
+
+/** Small talk under the homes: a friendly line, and how to go on. */
+export function chatText(lang: WaLang): string {
+  if (lang === "ar") return "أهلاً! أنا مساعد مكان. أرسل رقم منزل من القائمة وأتأكد أنه متاح، أو أخبرني بما تبحث عنه: المنطقة والميزانية وعدد الغرف.";
+  if (lang === "rw") return "Muraho! Ndi umufasha wa Mkan. Ohereza nimero y'inzu iri ku rutonde ndebe ko igihari, cyangwa umbwire icyo ushaka: agace, amafaranga n'ibyumba.";
+  return "Hi! I'm Mkan's assistant. Send the number of a home above and I'll check it's free, or tell me what you're looking for: the area, the budget and the bedrooms.";
 }
 
 /** "person" / "human" / "agent": the tenant wants someone from Mkan. */

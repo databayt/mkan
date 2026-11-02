@@ -454,6 +454,10 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     const willWrite = await canWrite(writeLang);
     // The budget, when the search ran without one; picking it also settles the stay as months.
     const refine = !requirements.maxPrice && !requirements.cheap ? ("maxPrice" as const) : undefined;
+    // The very homes the last shortlist showed, in the same order: this message moved nothing. WhatsApp
+    // tells the tenant so in one line rather than sending the same six again (10-26..11-01: "How are
+    // you", "?" and "Can we meet now" each re-sent them).
+    const same = !pin && shown.length > 0 && shown.length === shortlist.length && shown.every((s, i) => s.id === shortlist[i]?.id);
     const answer: Extract<AgentMessage, { kind: "shortlist" }> = {
       role: "agent",
       kind: "shortlist",
@@ -462,6 +466,7 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
       ...(refine ? { refine } : {}),
       ...(willWrite ? { pendingText: true } : {}),
       ...(pin ? { pin: { id: pin, found: !!pinned } } : {}),
+      ...(same ? { same: true } : {}),
       at: now(),
     };
     const [, shownCards] = await Promise.all([
