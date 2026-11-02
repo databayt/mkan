@@ -5465,6 +5465,7 @@
       "short": "Short stay",
       "long": "Long-term",
       "beds": "{n} bedrooms",
+      "bed": "{n} bedroom",
       "studio": "Studio",
       "furnished": "Furnished",
       "unfurnished": "Unfurnished",

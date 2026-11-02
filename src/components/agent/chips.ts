@@ -26,7 +26,8 @@ export function requirementChips(req: Partial<Requirements> | null | undefined, 
   return [
     req.stay === "short" ? a?.req?.short : req.stay === "long" ? a?.req?.long : null,
     req.district ? districtName(req.district, locale) : null,
-    req.bedrooms === 0 ? a?.req?.studio : req.bedrooms != null ? fill(a?.req?.beds ?? "{n} bedrooms", { n: req.bedrooms }) : null,
+    // One bedroom reads singular ("1 bedrooms" showed under "Continue your search", 11-02).
+    req.bedrooms === 0 ? a?.req?.studio : req.bedrooms != null ? fill((req.bedrooms === 1 ? a?.req?.bed : undefined) ?? a?.req?.beds ?? "{n} bedrooms", { n: req.bedrooms }) : null,
     req.furnished === true ? a?.req?.furnished : req.furnished === false ? a?.req?.unfurnished : null,
     req.maxPrice ? fill((req.pricePeriod === "night" ? a?.req?.maxNight : a?.req?.maxMonth) ?? "{price}", { price: money(req.maxPrice) }) : null,
     req.nights ? fill(a?.req?.nights ?? "{n} nights", { n: req.nights }) : null,

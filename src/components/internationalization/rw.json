@@ -5465,6 +5465,7 @@
       "short": "Kurara iminsi mike",
       "long": "Igihe kirekire",
       "beds": "Ibyumba {n}",
+      "bed": "Icyumba {n}",
       "studio": "Studio",
       "furnished": "Ifite ibikoresho",
       "unfurnished": "Nta bikoresho",
