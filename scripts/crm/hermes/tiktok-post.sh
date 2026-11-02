@@ -23,17 +23,12 @@ MAX_MINUTES="${TIKTOK_POST_MAX_MINUTES:-120}"
 export PATH="/opt/homebrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
 unset SLACK_HOME_CHANNEL
 mkdir -p "$LOGDIR"
+# lane.sh: who holds the lock, and waiting for the internet (the Mac sleeps with its lid shut).
+. "$REPO/scripts/crm/hermes/lane.sh"
 
 if [ "${1:-}" != "--run" ]; then
-  if ! mkdir "$LOCK" 2>/dev/null; then
-    # A lock older than 3 h is a crashed run, not a live one.
-    if [ -n "$(find "$LOCK" -maxdepth 0 -mmin +180 2>/dev/null)" ]; then
-      rm -rf "$LOCK" && mkdir "$LOCK"
-    else
-      echo "⚠️ TikTok post skipped — the previous run still holds $LOCK"
-      exit 0
-    fi
-  fi
+  # A live run holds the lock — paused by sleep, or waiting for the network: let it be.
+  lane_tick "$LOCK" 'tiktok-(post|upload-retry)\.sh' || exit 0
   if ! /bin/bash "$REPO/scripts/crm/hermes/detached.sh" /bin/bash "$0" --run; then
     rm -rf "$LOCK"
     echo "⚠️ TikTok post could not start detached from the gateway"
@@ -42,8 +37,12 @@ if [ "${1:-}" != "--run" ]; then
 fi
 
 # ── the run, outside the gateway ────────────────────────────────────────────
-trap 'rm -rf "$LOCK"' EXIT
+lane_own "$LOCK"
 cd "$REPO" || exit 0
+# The tick may have fired in a short maintenance wake (lid shut, network off): wait for the
+# internet — wall clock, up to 10 h — instead of failing every stage. A run that finds it
+# never comes back exits quietly; the next tick tries again.
+wait_online 600 || exit 0
 started=$(date +%s)
 echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (detached) ──" >>"$LOGDIR/post.log"
 

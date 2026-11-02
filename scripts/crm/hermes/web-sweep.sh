@@ -3,10 +3,12 @@
 # gateway's cron (no agent, no model). Installed to ~/.hermes/scripts/mkan-web-sweep.sh
 # by scripts/crm/install-ads-sweeps.sh web.
 #
-# Hermes delivers stdout verbatim to #mkan and stays silent on empty stdout. The
-# lane's own --notify posts the day's counts, so this prints only on a failed run
-# or a held lock. No browser, no login: plain HTTP, one request every 2.5 s.
-# Full output goes to .data/web-ads/sweep.log.
+# Two halves, like the TikTok lanes (2026-11-02): the tick takes the lock and starts the
+# run detached from the gateway (detached.sh); the run waits until the Mac is online (the
+# 11-01 evening and 11-02 morning runs fired with the lid shut and found no network), then
+# lists, reads and files, re-checks the live ads, and posts its own failure to #mkan. The
+# lane's --notify posts the day's counts. No browser, no login: plain HTTP, one request
+# every 2.5 s. Full output goes to .data/web-ads/sweep.log.
 set -uo pipefail
 REPO="${MKAN_REPO:-/Users/abdout/mkan}"
 LOGDIR="$REPO/scripts/crm/.data/web-ads"
@@ -19,20 +21,26 @@ export PATH="/opt/homebrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
 unset SLACK_HOME_CHANNEL
 
 mkdir -p "$LOGDIR"
-if ! mkdir "$LOCK" 2>/dev/null; then
-  # A lock older than 2 h is a crashed run, not a live one.
-  if [ -n "$(find "$LOCK" -maxdepth 0 -mmin +120 2>/dev/null)" ]; then
-    rm -rf "$LOCK" && mkdir "$LOCK"
-  else
-    echo "⚠️ Web ads sweep skipped — the previous run still holds $LOCK"
-    exit 0
-  fi
-fi
-trap 'rm -rf "$LOCK"' EXIT
+# lane.sh: who holds the lock, and waiting for the internet (the Mac sleeps with its lid shut).
+. "$REPO/scripts/crm/hermes/lane.sh"
 
-cd "$REPO" || { echo "⚠️ Web ads sweep failed — no repo at $REPO"; exit 0; }
+if [ "${1:-}" != "--run" ]; then
+  # A live run holds the lock — paused by sleep, or waiting for the network: let it be.
+  lane_tick "$LOCK" 'web-sweep\.sh' || exit 0
+  if ! /bin/bash "$REPO/scripts/crm/hermes/detached.sh" /bin/bash "$0" --run; then
+    rm -rf "$LOCK"
+    echo "⚠️ Web ads sweep could not start detached from the gateway"
+  fi
+  exit 0
+fi
+
+# ── the run, outside the gateway ────────────────────────────────────────────
+lane_own "$LOCK"
+cd "$REPO" || exit 0
+# Wait for the internet — wall clock, up to 10 h — instead of every site "fetch failed".
+wait_online 600 || exit 0
 started=$(date +%s)
-echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron ──" >>"$LOGDIR/sweep.log"
+echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (detached) ──" >>"$LOGDIR/sweep.log"
 /usr/bin/caffeinate -i pnpm -s crm:web-ads run --apply --notify \
   --limit="$PER_SITE" --read-limit="$READ_LIMIT" --max-age="$MAX_AGE" \
   >>"$LOGDIR/sweep.log" 2>>"$LOGDIR/sweep.err.log"
@@ -44,8 +52,10 @@ mins=$(( ($(date +%s) - started) / 60 ))
 /usr/bin/caffeinate -i pnpm -s crm:web-ads recheck --apply --notify >>"$LOGDIR/sweep.log" 2>>"$LOGDIR/sweep.err.log"
 
 if [ "$code" -ne 0 ]; then
-  echo "⚠️ Web ads sweep failed (exit $code after ${mins} min). Last errors:"
-  tail -n 8 "$LOGDIR/sweep.err.log" | cut -c1-240
-  echo "Log: $LOGDIR/sweep.log"
+  {
+    echo "⚠️ Web ads sweep failed (exit $code after ${mins} min). Last errors:"
+    tail -n 8 "$LOGDIR/sweep.err.log" | cut -c1-240
+    echo "Log: $LOGDIR/sweep.log"
+  } | pnpm -s crm:post-mkan >/dev/null 2>&1
 fi
 exit 0

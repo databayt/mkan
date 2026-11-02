@@ -1287,13 +1287,35 @@ function runSummary(r: { homes: number; hosts: number }): string {
 }
 
 // ── main ─────────────────────────────────────────────────────────────────────
+/** Is this process still there? EPERM means it exists under another user — alive too. */
+const isAlive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === 'EPERM';
+  }
+};
+
+/**
+ * The lock holds `<pid> <ms>`. A run whose process is alive keeps it, however long sleep has
+ * paused it (11-01: an 18:00 run slept until 02:00 and then finished) — up to 20 h, past which a
+ * recycled PID is likelier than a run. A dead holder's lock is taken over at once. The old
+ * format (time only) keeps the old rule: under 3 h old means held.
+ */
 function withLock<T>(fn: () => Promise<T>): Promise<T> {
   mkdirSync(DATA, { recursive: true });
-  if (existsSync(LOCK) && Date.now() - Number(readFileSync(LOCK, 'utf8')) < 3 * 3600_000) {
-    console.log('another TikTok run holds the lock (< 3h old) — nothing to do');
-    process.exit(0);
+  if (existsSync(LOCK)) {
+    const [first, second] = readFileSync(LOCK, 'utf8').trim().split(/\s+/);
+    const pid = second ? Number(first) : NaN;
+    const age = Date.now() - Number(second ?? first);
+    const held = Number.isInteger(pid) ? isAlive(pid) && age < 20 * 3600_000 : age < 3 * 3600_000;
+    if (held) {
+      console.log('another TikTok run holds the lock — nothing to do');
+      process.exit(0);
+    }
   }
-  writeFileSync(LOCK, String(Date.now()));
+  writeFileSync(LOCK, `${process.pid} ${Date.now()}`);
   return fn().finally(() => rmSync(LOCK, { force: true }));
 }
 
