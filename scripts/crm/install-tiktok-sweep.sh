@@ -142,6 +142,8 @@ open(cfg_path, "w").write("\n".join(out).rstrip("\n") + "\n\n# jobs lane — man
 assert (yaml.safe_load(open(cfg_path)) or {}).get("quick_commands", {}).keys() >= want.keys()
 print("quick_commands:", ", ".join("/" + k for k in want))
 PY
-hermes gateway restart >/dev/null 2>&1 || launchctl kickstart -k "gui/$(id -u)/ai.hermes.gateway"
+# The quick_commands change needs a restart. `hermes gateway restart` lets in-flight jobs finish
+# (agent.restart_drain_timeout); `kickstart -k` killed the 11-01 sweep mid-run, so it is not a fallback.
+hermes gateway restart >/dev/null 2>&1 || echo "! gateway restart failed — run: hermes gateway restart"
 echo "installed Hermes job $NAME — '$SCHEDULE', fetch $LIMIT / read $READ_LIMIT, alerts to #mkan, logs in $LOGDIR/sweep.log"
 hermes cron status 2>&1 | head -3

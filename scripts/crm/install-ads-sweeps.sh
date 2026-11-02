@@ -60,5 +60,6 @@ all)
   exit 1
   ;;
 esac
-hermes gateway restart >/dev/null 2>&1 || launchctl kickstart -k "gui/$(id -u)/ai.hermes.gateway" || true
+# Cron jobs need no gateway restart (its ticker reads jobs.json every minute); a restart only
+# interrupts whatever is running (11-01: the sweep and the demand match were killed that way).
 hermes cron status 2>&1 | head -3
