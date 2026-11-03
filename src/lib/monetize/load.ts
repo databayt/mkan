@@ -5,7 +5,9 @@ import { brokerSendMode } from "@/components/agent/broker-sends";
 
 import { agentFunnel, type Funnel } from "./agent-funnel";
 import { bottleneck, type Bottleneck, type Stage } from "./bottleneck";
-import { fixedCostsRwf, fixedEstimated } from "./costs";
+import { costByBlock, costLines, type CostLine } from "./cost-lines";
+import { nextSteps, type NextStep } from "./next-steps";
+import { fixedCostsRwf, fixedEstimated, USD_TO_RWF } from "./costs";
 import { blockHealth, change, deltas, worst } from "./health";
 import { money, REVENUE_LINES, type MoneyView, type RevenueLineKey } from "./money";
 import type { BlockKey, BlockView, Health, JobState, Kpi, SnapshotMetrics } from "./types";
@@ -42,6 +44,14 @@ export interface MonetizeOverview {
   money: MoneyView;
   fixedBreakdown: Record<string, number>;
   fixedEstimated: boolean;
+  /** Every cost line, with the block it serves — "where the money goes". */
+  costLines: CostLine[];
+  costByBlock: Record<BlockKey, { soFarRwf: number; monthlyRwf: number }>;
+  /** Share of the month elapsed (0–1) and the exchange rate the page converts USD at. */
+  monthElapsed: number;
+  usdToRwf: number;
+  /** What to do next to make money, derived from the numbers above. */
+  nextSteps: NextStep[];
   blocks: BlockView[];
   stages: Stage[];
   bottleneck: Bottleneck;
@@ -103,7 +113,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
       db.masteringRun.groupBy({ by: ["status"], where: { queuedAt: { gte: since } }, _count: { _all: true } }),
       db.masteringRun.count({ where: { appliedAt: { gte: prevSince, lt: since } } }),
       db.masteringRun.count({ where: { status: { in: ["QUEUED", "ASSIGNED"] } } }),
-      db.apiSpend.findMany({ where: { day: { startsWith: month } }, select: { lane: true, usd: true } }),
+      db.apiSpend.findMany({ where: { day: { startsWith: month } }, select: { lane: true, usd: true, calls: true, inputTokens: true, outputTokens: true } }),
       db.experiment.findMany({ orderBy: { startedAt: "desc" }, take: 12 }).catch(() => []),
       brokerSendMode().catch(() => "off" as const),
       // Web vs WhatsApp, and chats opened by a TikTok home code (the first message carries `pin`).
@@ -232,6 +242,13 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     paidDeals: monthPaid.length,
     monthElapsed: (now - monthStart.getTime()) / (daysInMonth * DAY),
   });
+  const monthElapsed = (now - monthStart.getTime()) / (daysInMonth * DAY);
+  const lines = costLines({
+    fixed,
+    spend: spend.map((r) => ({ lane: r.lane, usd: Number(r.usd), calls: r.calls, tokensIn: r.inputTokens, tokensOut: r.outputTokens })),
+    tiktokUsd: sm.spendUsdMonth ?? 0,
+    monthElapsed,
+  });
 
   const block = (key: BlockKey, kpis: Kpi[], jobs: JobState[], trend: number[], blockers: string[] = []): BlockView => {
     const lever = kpis.find((k) => k.lever);
@@ -262,16 +279,26 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     { key: "paid", block: "chat", count: paid.length },
   ];
 
+  const gates = { brokerSends, capped };
+  const bn = bottleneck(stages);
+  const fixedIsEstimate = fixedEstimated();
+  const steps = nextSteps({ money: m, blocks, bottleneck: bn, gates, fixedEstimated: fixedIsEstimate, shortlisted: funnel.shortlisted, paidDealsMonth: monthPaid.length });
+
   return {
     days,
     generatedAt: new Date(now).toISOString(),
     health: worst(blocks.map((b) => b.health)),
     money: m,
     fixedBreakdown: fixed,
-    fixedEstimated: fixedEstimated(),
+    fixedEstimated: fixedIsEstimate,
+    costLines: lines,
+    costByBlock: costByBlock(lines),
+    monthElapsed,
+    usdToRwf: USD_TO_RWF,
+    nextSteps: steps,
     blocks,
     stages,
-    bottleneck: bottleneck(stages),
+    bottleneck: bn,
     experiments: experiments.map((e) => ({
       id: e.id,
       block: e.block,
@@ -284,7 +311,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
       startedAt: e.startedAt.toISOString(),
       endedAt: e.endedAt?.toISOString() ?? null,
     })),
-    gates: { brokerSends, capped },
+    gates,
     adChats: chatSplit[0]?.ad ?? 0,
     funnel,
   };

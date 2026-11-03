@@ -1,6 +1,6 @@
 import type { Locale } from "@/components/internationalization/config";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addRevenueEntry, saveExperiment } from "@/lib/actions/monetize-actions";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import type { MonetizeLabels } from "./format";
 
 // Plain <form action={serverAction}>: works before hydration and needs no client bundle.
-const SELECT = "h-9 w-full rounded-md border bg-background px-2 text-sm";
+const SELECT = "h-10 w-full rounded-lg border bg-background px-3 text-sm";
 
 function Field({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
   return (
@@ -29,7 +29,7 @@ function Field({ id, label, children }: { id: string; label: string; children: R
 export function RevenueForm({ labels }: { labels: MonetizeLabels }) {
   const L = labels.revenueForm;
   return (
-    <Card>
+    <Card className="rounded-2xl shadow-none">
       <CardHeader>
         <CardTitle className="text-base">{L.title}</CardTitle>
       </CardHeader>
@@ -81,11 +81,7 @@ export function Experiments({ items, labels, locale, editable = false }: { items
   const num = (v: number | null) => (v == null ? "—" : formatNumber(v, locale));
   const blockTitle = (b: string) => (labels.blocks as Record<string, { title: string }>)[b]?.title ?? b;
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{L.title}</CardTitle>
-        <CardDescription>{L.rule}</CardDescription>
-      </CardHeader>
+    <Card className="rounded-2xl shadow-none">
       <CardContent className="space-y-4">
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground">{L.empty}</p>

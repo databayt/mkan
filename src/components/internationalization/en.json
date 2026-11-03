@@ -6032,7 +6032,7 @@
   "monetize": {
     "metaTitle": "Monetize — the chatbot business",
     "title": "Monetize",
-    "description": "The chatbot business in four building blocks — each with its numbers, its health, its cost and its share of the money.",
+    "description": "The chatbot business in four blocks — scrape, enhance, post, chat. What each one does, what it costs, and how close the whole thing is to paying for itself.",
     "drive": "Cash flow first. Break-even or bust.",
     "range7": "7 days",
     "range30": "30 days",
@@ -6058,20 +6058,44 @@
     },
     "blocks": {
       "scrape": {
-        "title": "1 · Scrape → CRM",
-        "desc": "Posts about Kigali homes (TikTok, web ads, Slack) read and saved to the CRM."
+        "title": "Scrape",
+        "desc": "Find every Kigali home posted for rent — TikTok brokers and rental websites — read it and save it to the CRM.",
+        "steps": [
+          "Twice a day (06:00 and 18:00) the Mac sweeps the TikTok accounts of Kigali brokers and rental searches; rental websites follow at 06:45 and 18:45.",
+          "Each post's video frames are read on the Mac (Apple Vision text), and a model settles what the caption leaves out: price, bedrooms, place, phone.",
+          "Real rentals are saved to the CRM with the broker as host; a repost of a home joins the home it repeats.",
+          "Every day at 09:00 the new homes are mirrored into /find and the broker directory is rebuilt."
+        ]
       },
       "enhance": {
-        "title": "2 · Enhance",
-        "desc": "Photos mastered, foreign text stripped, our brand and copy on."
+        "title": "Enhance",
+        "desc": "Turn a broker's raw photos and videos into Mkan ads: clean, branded, fast to load.",
+        "steps": [
+          "New listing photos are queued for mastering.",
+          "Foreign text and broker watermarks are stripped; light and colour corrected.",
+          "Mkan's brand and copy go on; AVIF and WebP copies are made so pages load fast.",
+          "Broker videos are re-rendered without the broker's text, held to a daily allowance."
+        ]
       },
       "post": {
-        "title": "3 · Post to TikTok",
-        "desc": "Ads published on @mkan.rw every day."
+        "title": "Post",
+        "desc": "Publish one home a day on TikTok @mkan.rw so tenants find Mkan, not the broker.",
+        "steps": [
+          "Every day at 07:00 one ready home is posted to TikTok @mkan.rw.",
+          "The caption carries the home's code (K1234) — a viewer sends it to us to ask about that home.",
+          "A failed upload is retried at 13:00.",
+          "Page stats are read every Monday at 10:00."
+        ]
       },
       "chat": {
-        "title": "4 · Chatbot → deal",
-        "desc": "Viewers message us; the agent asks brokers on their behalf and closes the deal."
+        "title": "Chat",
+        "desc": "Tenants message Mkan on /find or WhatsApp; the agent finds homes, asks brokers and closes the deal.",
+        "steps": [
+          "A tenant writes on mkan.sd/find or WhatsApp +250 780 984 777.",
+          "Claude reads the need and replies; matching homes come back in about a second.",
+          "Mkan asks the broker if the chosen home is still available — only for a WhatsApp tenant who picked it.",
+          "A viewing is booked, the deal recorded, and Mkan earns its share."
+        ]
       }
     },
     "kpis": {
@@ -6196,6 +6220,199 @@
       "note": "Note",
       "save": "Record"
     },
-    "currency": "RWF"
+    "currency": "RWF",
+    "nav": {
+      "money": "Money",
+      "spend": "Costs",
+      "earn": "Earnings",
+      "funnel": "Funnel",
+      "experiments": "Experiments",
+      "todo": "To do"
+    },
+    "howItWorks": "How it works",
+    "blockCost": "Cost this month",
+    "blockCostLine": "{soFar} so far · {monthly} for the full month",
+    "blockCostNone": "Nothing charged to this block.",
+    "kpisTitle": "Numbers",
+    "jobsTitle": "Jobs on the Mac",
+    "jobAt": "Last run {time}",
+    "spend": {
+      "title": "Where the money goes",
+      "desc": "Every line this business pays for, what it buys, and which block it serves. So far = charged up to today; month = the full bill, or the spend projected to month end.",
+      "kinds": {
+        "fixed": "Fixed bills",
+        "metered": "Model spend",
+        "free": "Used, but not charged here"
+      },
+      "kindHelp": {
+        "fixed": "Monthly bills, counted for the share of the month that has passed. Estimates until invoices replace them.",
+        "metered": "Counted per call as it happens, converted from USD at {rate} RWF.",
+        "free": "Listed so the total is honest about what it leaves out."
+      },
+      "soFar": "So far",
+      "month": "Month",
+      "perMonth": "{v} / month",
+      "total": "Total so far",
+      "totalMonth": "{v} for the full month at this pace",
+      "calls": "{n} calls",
+      "tokens": "{in} tokens in · {out} out",
+      "usd": "{v} USD",
+      "serves": "Serves",
+      "lines": {
+        "cloudflare": {
+          "name": "Cloudflare",
+          "what": "Runs mkan.sd, /find, the WhatsApp webhook and every cloud job. Mkan's share of the Workers plan."
+        },
+        "whatsappLine": {
+          "name": "WhatsApp number",
+          "what": "SIM and data bundle for +250 780 984 777, the line tenants and brokers write to."
+        },
+        "macAndInternet": {
+          "name": "Mac and internet",
+          "what": "Power and data for the Mac that scrapes, enhances and posts. Mkan's share."
+        },
+        "agent-read": {
+          "name": "Claude — reading chats",
+          "what": "Turns each tenant message into a search: area, budget, bedrooms."
+        },
+        "agent-write": {
+          "name": "Claude — writing replies",
+          "what": "Words the reply the tenant reads under the homes."
+        },
+        "agent-eval": {
+          "name": "Claude — quality tests",
+          "what": "The test set run before a change to the chat ships."
+        },
+        "tiktokReader": {
+          "name": "TikTok post reader",
+          "what": "Model reads of broker videos, only where the caption and on-screen text can't settle the facts."
+        },
+        "claudeMax": {
+          "name": "Claude Max plan",
+          "what": "Pays for the engineering sessions that build all this; shared by every Databayt product."
+        },
+        "neon": {
+          "name": "Database (Neon)",
+          "what": "Billed to the Databayt account and shared — not counted here yet."
+        },
+        "waBridge": {
+          "name": "WhatsApp bridge",
+          "what": "Runs inside the hogwarts server that is already paid for — no extra cost."
+        },
+        "groq": {
+          "name": "Groq models",
+          "what": "Free tier: the backup reader for chats and posts."
+        },
+        "appleOcr": {
+          "name": "Apple Vision text reading",
+          "what": "Reads the text in video frames on the Mac itself — free."
+        },
+        "other": {
+          "name": "Other",
+          "what": "A cost set by override."
+        }
+      },
+      "byBlockTitle": "Cost by block",
+      "byBlockHint": "A line that serves several blocks is split evenly between them.",
+      "breakEvenTitle": "How break-even is worked out",
+      "breakEvenFixed": "Fixed bills, full month",
+      "breakEvenMetered": "Model spend, projected to month end",
+      "breakEvenTotal": "Revenue needed every month",
+      "breakEvenProgress": "{pct} of break-even received this month",
+      "elapsed": "{pct} of the month has passed."
+    },
+    "earn": {
+      "title": "How Mkan earns",
+      "desc": "Four ways money comes in. Only money actually received counts.",
+      "what": {
+        "COMMISSION": "Mkan's share of the broker's commission when a tenant Mkan brought signs.",
+        "VIEWING_FEE": "What a tenant pays to book a viewing through Mkan.",
+        "SUBSCRIPTION": "Brokers paying monthly to receive Mkan's tenants.",
+        "LICENSE": "Another business licensing the chatbot."
+      }
+    },
+    "todo": {
+      "title": "What to do next to make money",
+      "desc": "Built from the numbers on this page, most cash-moving first. Each task leaves the list by itself once the data shows it done.",
+      "empty": "Nothing open — every check passes.",
+      "priority": {
+        "1": "Money",
+        "2": "Unblock",
+        "3": "Grow",
+        "4": "Books"
+      },
+      "why": "Why",
+      "how": "Do this",
+      "done": "Done when",
+      "count": "{n} open",
+      "items": {
+        "recordMoney": {
+          "title": "Record {amount} already earned",
+          "why": "Paid deals show money Mkan earned that is not yet recorded as received, so the page under-counts revenue.",
+          "how": "Check the payment arrived, then add it in “Record money received” below.",
+          "done": "Recorded revenue matches the paid deals."
+        },
+        "brokerSends": {
+          "title": "Turn broker sends back on",
+          "why": "Broker sends are {mode}, so Mkan never asks a broker if a home is free. The funnel stops at the shortlist and no deal can close.",
+          "how": "Do the phone test from +249 919 071 294, then run `pnpm wa:brokers gated` on the Mac.",
+          "done": "Broker sends read “gated”."
+        },
+        "firstDeal": {
+          "title": "Close the first paid deal this month",
+          "why": "No paid deal yet this month, so revenue is zero. {n} chats reached a shortlist this window.",
+          "how": "Pick a WhatsApp tenant with a shortlist, book the viewing with `pnpm deal:book`, follow it to payment.",
+          "done": "A deal is marked paid this month."
+        },
+        "breakEven": {
+          "title": "Reach break-even: {need} a month",
+          "why": "{have} received so far this month against {need} needed to cover every cost.",
+          "how": "Close deals first; then price the broker subscription so two or three brokers cover the fixed bills.",
+          "done": "Revenue this month reaches break-even."
+        },
+        "jobFailed": {
+          "title": "Fix the failing job {job}",
+          "why": "Its last run failed ({detail}). Until it runs clean, its block feeds nothing new downstream.",
+          "how": "Read its log on the Mac (`bash ~/.claude/scripts/runs.sh`), fix, and re-run it — the supervisor re-runs it on the next wake.",
+          "done": "The job's last run is ok."
+        },
+        "jobStale": {
+          "title": "Get {job} running again",
+          "why": "It has not run for twice its schedule — usually the Mac was asleep or off.",
+          "how": "Open the Mac and keep it awake; the supervisor re-runs missed jobs on wake.",
+          "done": "The job has a fresh run."
+        },
+        "capped": {
+          "title": "Raise or reset the Claude spend cap",
+          "why": "The cap is hit, so chats fall back to the simpler readers and answer worse.",
+          "how": "Check spend on this page, then raise the cap in the agent settings if the month allows it.",
+          "done": "The cap is no longer hit."
+        },
+        "failRate": {
+          "title": "Bring failed chats under 20%",
+          "why": "{pct}% of chats failed this window; each one is a tenant lost.",
+          "how": "Open the failed chats in the admin panel and fix the most common cause.",
+          "done": "Failed chats are under 20%."
+        },
+        "bottleneck": {
+          "title": "Unblock {from} → {to}",
+          "why": "Only {rate}% get through against a floor of {floor}% — the weakest hand-off in the business.",
+          "how": "Work this step in the {block} block before anything else downstream.",
+          "done": "The step converts at or above its floor."
+        },
+        "postDaily": {
+          "title": "Post every day",
+          "why": "Only {n} of the last 7 days had a post; days without a post bring no new viewers.",
+          "how": "Keep homes ready in Enhance and the Mac awake at 07:00 so the daily post goes out.",
+          "done": "7 of 7 days posted."
+        },
+        "invoices": {
+          "title": "Replace cost estimates with real invoices",
+          "why": "Fixed costs on this page are estimates, so break-even is a guess.",
+          "how": "Set MONETIZE_FIXED_COSTS_RWF on the Worker from the real Cloudflare, SIM and power bills.",
+          "done": "Fixed costs come from invoices."
+        }
+      }
+    }
   }
 }

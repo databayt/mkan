@@ -9,7 +9,9 @@ import en from "@/components/internationalization/en.json";
 import { MonetizeContent } from "@/components/monetize/content";
 import { bottleneck } from "@/lib/monetize/bottleneck";
 import type { MonetizeOverview } from "@/lib/monetize/load";
+import { costByBlock, costLines } from "@/lib/monetize/cost-lines";
 import { money } from "@/lib/monetize/money";
+import { nextSteps } from "@/lib/monetize/next-steps";
 
 const stages = [
   { key: "read", block: "scrape", count: 20 },
@@ -17,7 +19,14 @@ const stages = [
   { key: "ready", block: "enhance", count: 0 },
 ];
 
-const data = {
+const lines = costLines({
+  fixed: { cloudflare: 7250, whatsappLine: 5000, macAndInternet: 15000 },
+  spend: [{ lane: "agent-read", usd: 0.002, calls: 8, tokensIn: 2937, tokensOut: 1014 }],
+  tiktokUsd: 0.001,
+  monthElapsed: 0.1,
+});
+
+const base = {
   days: 7,
   generatedAt: "2026-11-03T12:00:00Z",
   health: "red",
@@ -36,6 +45,14 @@ const data = {
   gates: { brokerSends: "off", capped: false },
   adChats: 0,
   funnel: {} as never,
+  costLines: lines,
+  costByBlock: costByBlock(lines),
+  monthElapsed: 0.1,
+  usdToRwf: 1450,
+};
+const data = {
+  ...base,
+  nextSteps: nextSteps({ money: base.money, blocks: base.blocks, bottleneck: base.bottleneck, gates: base.gates, fixedEstimated: true, shortlisted: 15, paidDealsMonth: 0 }),
 } satisfies MonetizeOverview;
 
 describe("/monetize content", () => {
@@ -44,11 +61,23 @@ describe("/monetize content", () => {
     for (const b of ["scrape", "enhance", "post", "chat"] as const) expect(screen.getAllByText(en.monetize.blocks[b].title).length).toBeGreaterThan(0);
     expect(screen.getAllByText(en.monetize.reasons.brokerSendsOff).length).toBeGreaterThan(0);
     expect(screen.getAllByText(en.monetize.money.revenue).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/the weakest hand-off, in the 2 · Enhance block/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/the weakest hand-off, in the Enhance block/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Earned on paid deals but not recorded/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Auto-mastering lifts ready homes").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: en.monetize.revenueForm.save })).toBeTruthy();
     expect(screen.getAllByText("690 ms").length).toBeGreaterThan(0);
+  });
+
+  it("opens with the to-do list and explains every cost line", () => {
+    render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" />);
+    expect(screen.getByRole("heading", { name: en.monetize.todo.title })).toBeTruthy();
+    expect(screen.getAllByText("Turn broker sends back on").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Fix the failing job mkan-demand-match/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(en.monetize.spend.lines.cloudflare.name).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(en.monetize.spend.lines["agent-read"].name).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/8 calls/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(en.monetize.spend.breakEvenTitle).length).toBeGreaterThan(0);
+    for (const b of ["Scrape", "Enhance", "Post", "Chat"]) expect(screen.getAllByText(b).length).toBeGreaterThan(0);
   });
 
   it("is public read-only: no write forms without an admin session", () => {
