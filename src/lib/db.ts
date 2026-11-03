@@ -28,7 +28,8 @@ const POOL = {
   // Warm between a turn's queries, its polls and the next message.
   idleTimeoutMillis: 60_000,
   // A connection that cannot be opened fails in 5 s, not never.
-  connectionTimeoutMillis: 5_000,
+  // 5 s suits the Worker next to Neon; the Mac on a phone hotspot needs ~10 s for TLS + auth (11-03).
+  connectionTimeoutMillis: Number(process.env.DATABASE_CONNECT_TIMEOUT_MS) || 5_000,
   keepAlive: true,
   // PgBouncer (the pooler) refuses a statement_timeout startup option, so the
   // limit is the client's own. Production only: Mac scripts run long backfills.
