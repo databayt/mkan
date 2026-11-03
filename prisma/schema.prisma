@@ -1723,3 +1723,64 @@ model WaState {
   value     Json
   updatedAt DateTime @updatedAt
 }
+
+/// /monetize — the chatbot business, block by block (src/lib/monetize/).
+/// One row per block per push: the Mac reads what the Worker cannot (run state
+/// files, the scrape and post ledgers in scripts/crm/.data) and writes it here
+/// hourly via `pnpm monetize:snapshot`. The page reads the latest row per block
+/// and the last 14 days for trends.
+model BlockSnapshot {
+  id      String   @id @default(cuid())
+  /// scrape | enhance | post | chat
+  block   String
+  at      DateTime @default(now())
+  /// ok | warn | fail | stale — the run ledger's verdict for the block's jobs.
+  status  String
+  metrics Json
+  summary String?
+
+  @@index([block, at])
+}
+
+enum RevenueLine {
+  COMMISSION
+  VIEWING_FEE
+  SUBSCRIPTION
+  LICENSE
+}
+
+/// Money actually received — cash flow first. Commission and viewing fees are
+/// entered when paid (cross-checked against Deal); broker subscriptions and
+/// chatbot licences live only here.
+model RevenueEntry {
+  id         String      @id @default(cuid())
+  line       RevenueLine
+  amountRwf  Int
+  receivedAt DateTime    @default(now())
+  dealId     String?
+  brokerId   String?
+  customer   String?
+  note       String?
+  createdAt  DateTime    @default(now())
+
+  @@index([line, receivedAt])
+}
+
+/// The self-improvement loop: one lever per block at a time, with a baseline
+/// and a verdict measured from the snapshots, not from memory.
+model Experiment {
+  id         String    @id @default(cuid())
+  block      String
+  hypothesis String
+  metric     String
+  baseline   Float?
+  target     Float?
+  result     Float?
+  /// running | won | lost | inconclusive
+  verdict    String    @default("running")
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+  note       String?
+
+  @@index([block, startedAt])
+}

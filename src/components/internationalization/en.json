@@ -6028,5 +6028,174 @@
       "prev": "Previous question",
       "next": "Next question"
     }
+  },
+  "monetize": {
+    "metaTitle": "Monetize — the chatbot business",
+    "title": "Monetize",
+    "description": "The chatbot business in four building blocks — each with its numbers, its health, its cost and its share of the money.",
+    "drive": "Cash flow first. Break-even or bust.",
+    "range7": "7 days",
+    "range30": "30 days",
+    "updated": "Updated {time}",
+    "overall": "Overall health",
+    "health": {
+      "green": "Healthy",
+      "yellow": "Watch",
+      "red": "Broken",
+      "unknown": "No evidence"
+    },
+    "reasons": {
+      "healthy": "Running and holding its numbers.",
+      "jobFailed": "A job in this block failed on its last run.",
+      "jobStale": "A job in this block has not run for twice its schedule.",
+      "noEvidence": "No run record or numbers yet — the Mac has not pushed a snapshot.",
+      "leverDown": "Its main number fell more than 20% against the previous window.",
+      "jobWarn": "A job finished with a warning or was deferred.",
+      "leverZero": "Its main number is zero this window.",
+      "capped": "The Claude spend cap is hit — chats fall back to the simpler readers.",
+      "failRateHigh": "More than 1 in 5 chats failed.",
+      "brokerSendsOff": "Broker sends are off — the funnel stops at the shortlist, no deal can close."
+    },
+    "blocks": {
+      "scrape": {
+        "title": "1 · Scrape → CRM",
+        "desc": "Posts about Kigali homes (TikTok, web ads, Slack) read and saved to the CRM."
+      },
+      "enhance": {
+        "title": "2 · Enhance",
+        "desc": "Photos mastered, foreign text stripped, our brand and copy on."
+      },
+      "post": {
+        "title": "3 · Post to TikTok",
+        "desc": "Ads published on @mkan.rw every day."
+      },
+      "chat": {
+        "title": "4 · Chatbot → deal",
+        "desc": "Viewers message us; the agent asks brokers on their behalf and closes the deal."
+      }
+    },
+    "kpis": {
+      "newHomes": "New homes saved",
+      "found": "Posts found (last sweep)",
+      "read": "Posts read (last sweep)",
+      "skipRate": "Skipped as not a rental",
+      "savedTotal": "Homes in CRM",
+      "webAds": "Web ads tracked",
+      "newBrokers": "New brokers (last sweep)",
+      "spendMonth": "Reader spend this month",
+      "mastered": "Photos mastered",
+      "queued": "Photos queued",
+      "rejectRate": "Rejected or failed",
+      "backlog": "Waiting to master",
+      "brokerVideosPerDay": "Broker videos allowed per day",
+      "viewsPerPost": "Views per post",
+      "postedDays7": "Days posted (of 7)",
+      "viewsWeek": "Views gained this week",
+      "postsWeek": "Posts this week",
+      "likeRate": "Likes per view",
+      "adChatRate": "Views → chats with a home code",
+      "chatToPaid": "Chat → paid deal",
+      "chats": "Chats",
+      "waChats": "WhatsApp chats",
+      "webChats": "Web chats",
+      "shortlistRate": "Got a shortlist",
+      "claudeShare": "Read by Claude",
+      "p50": "Reply time (median)",
+      "p95": "Reply time (slowest 5%)",
+      "brokerAnswerRate": "Brokers who answered",
+      "viewings": "Viewings booked",
+      "paidDeals": "Paid deals",
+      "failRate": "Chats that failed"
+    },
+    "lever": "Main number",
+    "vsPrev": "{pct} vs the {days} days before",
+    "noBaseline": "No earlier window to compare",
+    "jobs": "Jobs",
+    "jobStatus": {
+      "ok": "ok",
+      "warn": "warning",
+      "fail": "failed",
+      "stale": "stale",
+      "missing": "no record"
+    },
+    "lastPush": "Mac snapshot {time}",
+    "noSnapshot": "Counted live from the database",
+    "money": {
+      "title": "Money this month",
+      "revenue": "Revenue received",
+      "cost": "Cost so far",
+      "net": "Net",
+      "roi": "Return on cost",
+      "costPerChat": "Cost per chat",
+      "costPerLead": "Cost per new home",
+      "costPerDeal": "Cost per paid deal",
+      "breakEven": "Revenue needed per month to break even",
+      "projected": "Month-end net at this pace",
+      "unrecorded": "Earned on paid deals but not recorded as received — chase it",
+      "fixed": "Fixed",
+      "variable": "Model spend",
+      "estimated": "Fixed costs are estimates until invoices replace them.",
+      "none": "—"
+    },
+    "lines": {
+      "COMMISSION": "Broker commission share",
+      "VIEWING_FEE": "Tenant viewing fee",
+      "SUBSCRIPTION": "Broker lead subscription",
+      "LICENSE": "Chatbot licence"
+    },
+    "stages": {
+      "read": "Posts read",
+      "homes": "Homes saved",
+      "ready": "Ready to post",
+      "posted": "Posted",
+      "views": "Views",
+      "chats": "Chats",
+      "shortlisted": "Shortlisted",
+      "asked": "Brokers asked",
+      "available": "Available",
+      "viewings": "Viewings",
+      "paid": "Paid"
+    },
+    "funnelTitle": "The whole business, post to payment",
+    "bottleneckTitle": "Work here next",
+    "bottleneckStep": "{from} → {to} converts {rate} against a floor of {floor} — the weakest hand-off, in the {block} block.",
+    "bottleneckAbove": "The weakest hand-off is {from} → {to} at {rate} (floor {floor}). Nothing is under its floor.",
+    "insufficient": "Not enough volume yet to name a bottleneck (each step needs at least 5).",
+    "adChats": "{n} chats this window opened with a TikTok home code.",
+    "gates": {
+      "brokerSends": "Broker sends: {mode}",
+      "capped": "Claude cap hit"
+    },
+    "experiments": {
+      "title": "Experiments — one lever per block",
+      "rule": "Write the hypothesis and the baseline before changing anything; close it with the measured result.",
+      "empty": "No experiments yet.",
+      "block": "Block",
+      "hypothesis": "Hypothesis",
+      "metric": "Metric",
+      "baseline": "Baseline",
+      "target": "Target",
+      "result": "Result",
+      "verdict": "Verdict",
+      "save": "Save experiment",
+      "update": "Update",
+      "verdicts": {
+        "running": "Running",
+        "won": "Won",
+        "lost": "Lost",
+        "inconclusive": "Inconclusive"
+      }
+    },
+    "revenueForm": {
+      "title": "Record money received",
+      "line": "Line",
+      "amount": "Amount (RWF)",
+      "receivedAt": "Received on",
+      "customer": "From",
+      "dealId": "Deal id",
+      "note": "Note",
+      "save": "Record"
+    },
+    "currency": "RWF"
   }
 }

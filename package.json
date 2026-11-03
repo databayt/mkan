@@ -71,6 +71,7 @@
     "crm:hygiene": "tsx scripts/crm/hygiene.ts",
     "crm:demand-match": "tsx --require ./scripts/agent/no-server-only.js scripts/crm/demand-match.ts",
     "agent:funnel": "tsx scripts/crm/agent-funnel.ts",
+    "monetize:snapshot": "tsx scripts/monetize/snapshot.ts",
     "deal:list": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/deal.ts list",
     "deal:book": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/deal.ts book",
     "deal:status": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/deal.ts status",
