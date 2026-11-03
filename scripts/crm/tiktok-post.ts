@@ -45,6 +45,7 @@ import { dirname, join } from 'node:path';
 import sharp from 'sharp';
 import { postToMkan, recordRun, uploadToMkan } from './notify';
 import { twentyClient, phoneOf, type Phones } from './twenty-rest';
+import { ownTikTok } from './tiktok-pure';
 import {
   brandTimeline,
   brokerAsk,
@@ -105,7 +106,7 @@ const DATA = join(__dirname, '.data', 'tiktok-post');
 const LEDGER = join(DATA, 'posted.json');
 const today = (): string => new Date().toISOString().slice(0, 10);
 const dayDir = (d = argv('date', today())) => join(DATA, d);
-const PAGE = (process.env.TIKTOK_PAGE_HANDLE ?? '').trim().replace(/^@/, '') || 'mkan.rw';
+const PAGE = ownTikTok().handle;
 const KUN = (process.env.KUN_DIR ?? '').trim() || join(homedir(), 'kun');
 
 function whatsapp(): string {

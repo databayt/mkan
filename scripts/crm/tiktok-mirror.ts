@@ -29,6 +29,8 @@ import { randomBytes } from 'node:crypto';
 import { twentyClient, phoneOf, fromMicros, type Currency, type Phones } from './twenty-rest';
 import { twentyEnumToPrisma } from './home-intake-pure';
 import { errorText } from './error-text';
+import { effectivePeriod } from './tiktok-pure';
+import { recordRun } from './notify';
 import { DISTRICTS, KIGALI } from '../../src/lib/geo/rwanda-places';
 import { factsFromFeatures, type FeatureFacts } from '../../src/components/agent/amenities';
 import { placeToken } from '../../src/lib/geo/place-token';
@@ -112,8 +114,9 @@ export function planMirror(home: Row, host: Row | null): MirrorPlan | { skip: st
   // Named by what matched: "stage VETTING" for a DUPLICATE status sent a reader hunting a stage rule that is not there.
   if (SKIP_STAGES.has(String(home.pipelineStage))) return { skip: `stage ${home.pipelineStage}` };
   if (SKIP_STAGES.has(String(home.homeStatus))) return { skip: `status ${home.homeStatus}` };
-  if (home.rentPeriod !== 'MONTH') return { skip: 'not a monthly rent' };
   const priceMonth = fromMicros(home.priceMonthLocal as Currency | null);
+  // An unsaid period with a monthly-band price is a monthly rent (2026-11-03); nightly stays out.
+  if (effectivePeriod(home.rentPeriod as string | null, priceMonth).period !== 'MONTH') return { skip: 'not a monthly rent' };
   if (!priceMonth || priceMonth < 10_000) return { skip: 'no monthly price' };
   const phone = phoneOf((host?.phone as Phones | null) ?? null) ?? phoneOf(home.hostPhone as Phones | null);
   if (!phone) return { skip: 'no broker phone' };
@@ -216,6 +219,7 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
   }
 
   const { db } = await import('../../src/lib/db');
+  await reachDb(db);
   const { default: bcrypt } = await import('bcryptjs');
   // One house, several brokers: a lead with the same facts posted by someone
   // else gets this broker added to it instead of a second listing. The board
@@ -391,11 +395,35 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
   return { planned: plans.length, written, created, unchanged, linked };
 }
 
+/**
+ * A database socket the Mac's sleep dropped fails the first query ("Client has encountered a
+ * connection error", 2026-11-03 09:02 + 09:11): a short reconnect loop before any write, so one
+ * dead socket does not cost a day's leads.
+ */
+async function reachDb(db: { $queryRawUnsafe: (q: string) => Promise<unknown>; $disconnect: () => Promise<void> }, tries = 3, pauseMs = 20_000): Promise<void> {
+  for (let i = 1; ; i++) {
+    try {
+      await db.$queryRawUnsafe('SELECT 1');
+      return;
+    } catch (e) {
+      if (i >= tries) throw e;
+      console.warn(`  ↻ database not reachable (${errorText(e).slice(0, 80)}) — retry ${i}/${tries - 1} in ${pauseMs / 1000}s`);
+      await db.$disconnect().catch(() => {});
+      await new Promise((r) => setTimeout(r, pauseMs));
+    }
+  }
+}
+
 if (process.argv[1] && /tiktok-mirror\.ts$/.test(process.argv[1])) {
-  mirrorLeads(process.argv.includes('--apply'))
-    .then(async () => (await import('../../src/lib/db')).db.$disconnect())
-    .catch((e) => {
+  const apply = process.argv.includes('--apply');
+  mirrorLeads(apply)
+    .then(async (r) => {
+      if (apply) await recordRun('mirror', true, `${r.created} new · ${r.written - r.created} updated · ${r.linked} linked`);
+      await (await import('../../src/lib/db')).db.$disconnect();
+    })
+    .catch(async (e) => {
       console.error(`\n❌ ${errorText(e)}\n`);
+      if (apply) await recordRun('mirror', false, errorText(e)).catch(() => {});
       process.exit(1);
     });
 }

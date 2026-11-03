@@ -31,6 +31,7 @@ import { basename, dirname, join } from 'node:path';
 import { chromium, type Page } from 'playwright';
 import { postToMkan, recordRun } from './notify';
 import { errorText, photoTitle, type Ledger } from './tiktok-post-pure';
+import { ownTikTok } from './tiktok-pure';
 
 const argv = (n: string, d = ''): string => {
   const h = process.argv.find((a) => a.startsWith(`--${n}=`));
@@ -47,7 +48,7 @@ const UPLOADS = join(DAY, 'uploads.json');
 // (the 13:00 retry, or kun's supervisor re-running the day's post). Cleared on confirmation, or by hand.
 const PENDING = join(DAY, 'pending.json');
 const CDP = (process.env.TIKTOK_UPLOAD_CDP ?? '').trim() || 'http://127.0.0.1:9222';
-const PAGE = (process.env.TIKTOK_PAGE_HANDLE ?? '').trim().replace(/^@/, '') || 'mkan.rw';
+const PAGE = ownTikTok().handle;
 const UPLOAD_URL = 'https://www.tiktok.com/tiktokstudio/upload?lang=en';
 /** Studio's web upload takes photo posts on its Photos tab (checked 2026-11-01: jpg/png/webp, up to 35). */
 const PHOTO_POSTS = (process.env.TIKTOK_PHOTO_POSTS ?? '').trim().toLowerCase() !== 'off';

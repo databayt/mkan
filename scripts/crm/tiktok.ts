@@ -12,6 +12,7 @@
  *                                                              --vet reads each proposed account's own captions: rentals → seed, none → ignored
  *   pnpm crm:tiktok-requeue                                     skipped-by-caption rows today's gate passes → back to fetch
  *   pnpm crm:tiktok-settle   [--apply]                          SUSPECTED duplicate homes → DUPLICATE of the first copy
+ *   pnpm crm:tiktok-settle --own [--apply]                    homes read from our own page's posts → DUPLICATE
  *   pnpm crm:tiktok-posts    [--apply]                          one Twenty `tiktokPost` per read video (run does it too)
  *
  * Discovery never logs in to TikTok: an account's public videos come from
@@ -41,6 +42,7 @@ import { runClaude } from './claude-reader';
 import { GROQ_VISION_MODEL, GroqLimit, runGroq } from './groq-reader';
 import { postToMkan, recordRun } from './notify';
 import { mirrorLeads } from './tiktok-mirror';
+import { errorText } from './error-text';
 import { phonesFromTwenty, twentyPhones } from '../../src/lib/phone';
 import { twentyClient } from './twenty-rest';
 import { TIKTOK_PROMPT_VERSION, buildTikTokPrompt } from './tiktok-read-prompt';
@@ -67,6 +69,7 @@ import {
   rwandaPhonesInText,
   seedIsDue,
   shouldPromote,
+  isOwnAccount,
   postBody,
   wantsPost,
   adText,
@@ -288,9 +291,16 @@ async function discover(): Promise<void> {
   const videos = loadVideos();
   const seeds = loadSeeds();
   const before = Object.keys(videos).length;
+  // Our own page as a seed (promoted 11-02 by vet): settle it as ignored, once, loudly.
+  for (const [handle, seed] of Object.entries(seeds)) {
+    if (seed.status !== 'ignored' && isOwnAccount(handle, seed.channelId)) {
+      Object.assign(seed, { status: 'ignored', vet: 'our own page' });
+      console.log(`  × @${handle} is our own page — ignored as a seed`);
+    }
+  }
   const add = (v: { handle: string; videoId: string; url: string }, via: VideoRow['via'], query?: string) => {
-    // An ignored account kept coming back through search (@rentzen.co, 10-20).
-    if (videos[v.videoId] || seeds[v.handle]?.status === 'ignored') return false;
+    // An ignored account kept coming back through search (@rentzen.co, 10-20); our own page never enters.
+    if (videos[v.videoId] || seeds[v.handle]?.status === 'ignored' || isOwnAccount(v.handle, seeds[v.handle]?.channelId)) return false;
     // Search hits carry no date; the id does. Months-old posts never enter the queue.
     if (tooOld(tiktokIdTime(v.videoId))) return false;
     videos[v.videoId] = { videoId: v.videoId, url: v.url, handle: v.handle, via, query, discoveredAt: now(), state: 'discovered' };
@@ -400,6 +410,7 @@ async function discover(): Promise<void> {
     }
     let proposed = 0;
     for (const [handle, n] of hits) {
+      if (isOwnAccount(handle)) continue;
       if (seeds[handle]) {
         seeds[handle].hits = Math.max(seeds[handle].hits ?? 0, n);
         seeds[handle].sampleUrl ??= sampleFor.get(handle);
@@ -422,7 +433,7 @@ async function discover(): Promise<void> {
   const homesBy = new Map<string, number>();
   for (const v of Object.values(videos)) if (v.state === 'upserted') homesBy.set(v.handle, (homesBy.get(v.handle) ?? 0) + 1);
   for (const [handle, seed] of Object.entries(seeds)) {
-    if (!shouldPromote(seed, homesBy.get(handle) ?? 0)) continue;
+    if (!shouldPromote(seed, homesBy.get(handle) ?? 0, handle)) continue;
     seed.status = 'active';
     runStats.seedsPromoted.push(handle);
     console.log(`  ↑ @${handle} promoted to seed (${seed.hits} search hits, ${homesBy.get(handle)} home(s))`);
@@ -1165,6 +1176,26 @@ async function settle(): Promise<void> {
   const client = twentyClient();
   const homes = (await client.all('homes')).filter((h) => h.source === 'TIKTOK' && h.homeStatus !== 'DUPLICATE');
   const bySource = new Map(homes.map((h) => [String(h.sourceId), h]));
+  // --own: homes read from our own page's posts (@mkan.rw promoted as a seed 11-02) are our own
+  // leads coming back — every one is a copy, whatever its facts.
+  if (flag('own')) {
+    const seeds = loadSeeds();
+    let n = 0;
+    for (const v of Object.values(videos)) {
+      if (!v.read || !isOwnAccount(v.handle, seeds[v.handle]?.channelId)) continue;
+      for (const u of unitReads(v.videoId, v.read)) {
+        const home = bySource.get(u.sourceId);
+        if (!home) continue;
+        n++;
+        console.log(`  ${APPLY ? '✓' : '·'} ${u.sourceId} "${home.title ?? ''}" → DUPLICATE (our own page @${v.handle})`);
+        if (!APPLY) continue;
+        await client.rest('PATCH', `homes/${home.id}`, { homeStatus: 'DUPLICATE', duplicateCheck: 'CONFIRMED' });
+        appendFileSync(SETTLE_LOG, `${JSON.stringify({ at: now(), id: home.id, key: 'own-page', handle: v.handle, was: { homeStatus: home.homeStatus, duplicateCheck: home.duplicateCheck, mkanListingId: home.mkanListingId ?? null } })}\n`);
+      }
+    }
+    console.log(`settle --own: ${n} home(s) from our own page ${APPLY ? 'marked DUPLICATE' : 'would be marked DUPLICATE (dry run — pass --apply)'}`);
+    return;
+  }
   const groups = new Map<string, { home: Row; at: string }[]>();
   for (const v of Object.values(videos)) {
     if (!v.read) continue;
@@ -1220,7 +1251,7 @@ function vetSeeds(limit: number, apply: boolean): { promoted: string[]; ignored:
   const videos = loadVideos();
   const due = Object.entries(seeds)
     // Re-read every 3 days (14 until 11-01): a new broker's account fills up fast.
-    .filter(([, s]) => s.status === 'proposed' && (!s.vettedAt || Date.now() - Date.parse(s.vettedAt) >= 3 * 86_400_000))
+    .filter(([h, s]) => s.status === 'proposed' && !isOwnAccount(h, s.channelId) && (!s.vettedAt || Date.now() - Date.parse(s.vettedAt) >= 3 * 86_400_000))
     .sort((a, b) => (b[1].hits ?? 0) - (a[1].hits ?? 0))
     .slice(0, limit);
   const out = { promoted: [] as string[], ignored: [] as string[] };
@@ -1351,19 +1382,24 @@ async function main(): Promise<void> {
         }
         // The /find agent only sees what is in Prisma; it used to wait for a
         // hand-run `crm:tiktok-mirror --apply`.
+        // A failed mirror fails the run's record (it used to say "ok" with 0 new leads, 2026-11-03).
+        let mirrorError = '';
         if (APPLY) {
           try {
             const m = await mirrorLeads(true);
             runStats.mirroredNew = m.created;
             runStats.mirroredChanged = m.written - m.created;
+            await recordRun('mirror', true, `${m.created} new · ${m.written - m.created} updated · ${m.linked} linked (sweep)`);
             await (await import('../../src/lib/db')).db.$disconnect();
           } catch (e) {
-            console.warn(`  ! mirror: ${(e as Error).message.slice(0, 160)}`);
+            mirrorError = errorText(e).slice(0, 160);
+            console.warn(`  ! mirror: ${mirrorError}`);
+            await recordRun('mirror', false, `${mirrorError} (sweep)`).catch(() => {});
           }
         }
         pruneFrames();
         if (APPLY && flag('notify')) await postToMkan(runSummary(r));
-        if (APPLY) await recordRun('tiktok-sweep', true, `found ${runStats.discovered} · fetched ${runStats.fetched} · read ${runStats.read} · ${r.homes} new home(s), ${r.hosts} new broker(s), ${runStats.mirroredNew} new lead(s)`);
+        if (APPLY) await recordRun('tiktok-sweep', !mirrorError, `${mirrorError ? `mirror failed: ${mirrorError} · ` : ''}found ${runStats.discovered} · fetched ${runStats.fetched} · read ${runStats.read} · ${r.homes} new home(s), ${r.hosts} new broker(s), ${runStats.mirroredNew} new lead(s)`);
       });
     case 'status':
       return status();

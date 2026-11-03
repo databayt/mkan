@@ -100,8 +100,33 @@ export function seedIsDue(seed: SeedRow, nowMs = Date.now()): boolean {
  * and reached the board) is a broker: make it a seed. Until 2026-11-01 it also needed
  * 3 search hits — and search answers 2 queries a run, so none of 20 proposals qualified.
  */
-export function shouldPromote(seed: SeedRow, upsertedHomes: number): boolean {
-  return seed.status === 'proposed' && upsertedHomes >= 1;
+/**
+ * Our own TikTok page (@mkan.rw). Its "Homes for rent in Gasabo — K6045" posts are our own leads:
+ * search found it under its numeric id, vet promoted it on 2026-11-02, and 9 of our homes came back
+ * as new CRM homes. It is never a seed. Search lists it by the numeric user id, yt-dlp by secUid.
+ */
+export interface OwnTikTok {
+  handle: string;
+  uid: string;
+  secUid: string;
+}
+
+export function ownTikTok(env: Record<string, string | undefined> = process.env): OwnTikTok {
+  const clean = (v: string | undefined) => (v ?? '').trim().replace(/^@/, '');
+  return {
+    handle: clean(env.TIKTOK_PAGE_HANDLE) || 'mkan.rw',
+    uid: clean(env.TIKTOK_PAGE_UID) || '7534402925961184263',
+    secUid: clean(env.TIKTOK_PAGE_SECUID),
+  };
+}
+
+export function isOwnAccount(handle: string, channelId?: string, own: OwnTikTok = ownTikTok()): boolean {
+  const h = handle.trim().replace(/^@/, '').toLowerCase();
+  return h === own.handle.toLowerCase() || h === own.uid || (!!own.secUid && channelId === own.secUid);
+}
+
+export function shouldPromote(seed: SeedRow, upsertedHomes: number, handle = ''): boolean {
+  return seed.status === 'proposed' && upsertedHomes >= 1 && !isOwnAccount(handle, seed.channelId);
 }
 
 // ── discovery ────────────────────────────────────────────────────────────────
@@ -638,6 +663,17 @@ export function skipReasonFor(read: TikTokRead, opts: { caption?: string; minCon
  * USD) — kept, but flagged so nobody quotes it.
  */
 export const PRICE_BAND = { MONTH: [60_000, 15_000_000], NIGHT: [10_000, 1_000_000] } as const;
+/**
+ * Kigali rents are monthly: a price whose period the post left unsaid counts as monthly when it
+ * sits in the monthly band (Abdout, 2026-11-03). Nightly stays nightly; out of band stays unknown.
+ */
+export function effectivePeriod(period: 'MONTH' | 'NIGHT' | 'UNKNOWN' | string | null | undefined, priceRwf: number | null | undefined): { period: 'MONTH' | 'NIGHT' | 'UNKNOWN'; inferred: boolean } {
+  if (period === 'MONTH' || period === 'NIGHT') return { period, inferred: false };
+  const [lo, hi] = PRICE_BAND.MONTH;
+  if (priceRwf != null && priceRwf >= lo && priceRwf <= hi) return { period: 'MONTH', inferred: true };
+  return { period: 'UNKNOWN', inferred: false };
+}
+
 export function priceLooksWrong(read: Pick<TikTokRead, 'priceRwf' | 'period'>): boolean {
   if (read.priceRwf == null || read.period === 'UNKNOWN') return false;
   const [lo, hi] = PRICE_BAND[read.period];
@@ -792,8 +828,10 @@ export function homeBody(row: VideoRow, read: TikTokRead, opts: { frameUrls: str
     water: terms.water ?? undefined,
     electricity: terms.electricity ?? undefined,
     amenitiesRaw: read.features.length ? read.features : undefined,
+    // The period stays as the post said it; an unsaid one with a monthly-band price keeps that price
+    // (it used to be dropped) and the mirror counts it as monthly — effectivePeriod.
     rentPeriod: read.period,
-    priceMonthLocal: read.period === 'MONTH' ? rwf(read.priceRwf) : undefined,
+    priceMonthLocal: effectivePeriod(read.period, read.priceRwf).period === 'MONTH' ? rwf(read.priceRwf) : undefined,
     priceNightLocal: read.period === 'NIGHT' ? rwf(read.priceRwf) : undefined,
     priceConfirmedByHost: false,
     photoUrls: linkList(opts.frameUrls),

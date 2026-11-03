@@ -196,7 +196,7 @@ async function lanes(db: Db): Promise<string[]> {
   const raw = existsSync(jobsFile) ? (JSON.parse(readFileSync(jobsFile, 'utf8')) as { jobs?: HermesJob[] } | HermesJob[]) : [];
   const jobs: HermesJob[] = Array.isArray(raw) ? raw : (raw.jobs ?? []);
   out.push('', 'Scheduled lanes (Hermes, on the Mac):');
-  for (const name of ['mkan-tiktok-sweep', 'mkan-web-sweep', 'mkan-demand-match', 'mkan-tiktok-post', 'mkan-tiktok-upload-retry', 'mkan-tiktok-stats']) {
+  for (const name of ['mkan-tiktok-sweep', 'mkan-web-sweep', 'mkan-demand-match', 'mkan-tiktok-post', 'mkan-tiktok-upload-retry', 'mkan-tiktok-stats', 'mkan-price-ask']) {
     const j = jobs.find((x) => x.name === name);
     if (!j) {
       out.push(`  ${name.padEnd(25)} not scheduled`);
@@ -211,7 +211,8 @@ async function lanes(db: Db): Promise<string[]> {
   const streaks = existsSync(streaksFile) ? (JSON.parse(readFileSync(streaksFile, 'utf8')) as Record<string, { fails: number; at?: string; ok?: boolean; detail?: string; last?: string }>) : {};
   out.push('', 'Last runs, as the runs themselves recorded them:');
   // How long each run may go unrecorded before it is overdue: twice-daily lanes 13 h, daily ones 26 h.
-  const every: Record<string, number> = { 'tiktok-sweep': 13, 'web-ads': 13, 'web-recheck': 13, 'demand-match': 26, 'tiktok-post': 26, 'tiktok-upload': 26 };
+  // `mirror` (CRM homes → /find leads) runs inside every sweep and demand run: its own row, so a failed copy shows red.
+  const every: Record<string, number> = { 'tiktok-sweep': 13, mirror: 13, 'price-ask': 26, 'web-ads': 13, 'web-recheck': 13, 'demand-match': 26, 'tiktok-post': 26, 'tiktok-upload': 26 };
   for (const job of Object.keys(every)) {
     const r = streaks[job];
     if (!r?.at) {
@@ -235,7 +236,7 @@ async function lanes(db: Db): Promise<string[]> {
     db.broker.count({ where: { phones: { isEmpty: false } } }),
     db.broker.count({ where: { preferredLanguage: { not: null } } }),
     db.broker.count({ where: { relationship: { in: ['ACTIVE', 'PARTNER'] } } }),
-    db.listing.count({ where: { lostAt: { gte: week } } }),
+    db.listing.count({ where: { lostAt: { gte: week }, NOT: { lostReason: 'OWN_PAGE' } } }),
     db.waState.findUnique({ where: { key: 'broker-sends' }, select: { value: true } }),
     db.outboundMessage.count({ where: { status: 'SENT', kind: brokerKinds, sentAt: { gte: day } } }),
     db.outboundMessage.count({ where: { status: 'QUEUED', kind: brokerKinds } }),

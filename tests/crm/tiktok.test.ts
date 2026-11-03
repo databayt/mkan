@@ -32,6 +32,9 @@ import {
   byPriority,
   seedIsDue,
   shouldPromote,
+  ownTikTok,
+  effectivePeriod,
+  isOwnAccount,
   NOT_A_RENTAL_CAPTION,
   postBody,
   wantsPost,
@@ -152,6 +155,28 @@ describe('discovery', () => {
     // One real Kigali home is enough — search hits no longer gate it (search answers 2 queries a run).
     expect(shouldPromote({ status: 'proposed', from: 'search', addedAt: '', hits: 2 }, 3)).toBe(true);
     expect(shouldPromote({ status: 'active', from: 'search', addedAt: '', hits: 9 }, 3)).toBe(false);
+  });
+
+  it('counts an unsaid period as monthly only inside the monthly band (2026-11-03)', () => {
+    expect(effectivePeriod('MONTH', null)).toEqual({ period: 'MONTH', inferred: false });
+    expect(effectivePeriod('NIGHT', 80_000)).toEqual({ period: 'NIGHT', inferred: false });
+    expect(effectivePeriod('UNKNOWN', 350_000)).toEqual({ period: 'MONTH', inferred: true });
+    expect(effectivePeriod('UNKNOWN', 30_000)).toEqual({ period: 'UNKNOWN', inferred: false });
+    expect(effectivePeriod('UNKNOWN', 400_000_000)).toEqual({ period: 'UNKNOWN', inferred: false });
+    expect(effectivePeriod('UNKNOWN', null)).toEqual({ period: 'UNKNOWN', inferred: false });
+  });
+
+  it('never takes our own page for a broker (search found it by numeric id, 2026-11-02)', () => {
+    const own = ownTikTok({ TIKTOK_PAGE_HANDLE: '@ourpage', TIKTOK_PAGE_UID: '1111', TIKTOK_PAGE_SECUID: 'SEC-OURS' });
+    expect(own).toEqual({ handle: 'ourpage', uid: '1111', secUid: 'SEC-OURS' });
+    expect(isOwnAccount('OurPage', undefined, own)).toBe(true);
+    expect(isOwnAccount('1111', undefined, own)).toBe(true);
+    expect(isOwnAccount('somebroker', 'SEC-OURS', own)).toBe(true);
+    expect(isOwnAccount('somebroker', 'SEC-THEIRS', own)).toBe(false);
+    expect(isOwnAccount('2222', undefined, own)).toBe(false);
+    // Defaults: the page handle, never an empty secUid matching an account with no channelId.
+    expect(ownTikTok({}).handle).toBe('mkan.rw');
+    expect(isOwnAccount('somebroker', undefined, ownTikTok({}))).toBe(false);
   });
 
   it('spaces frames evenly inside the middle 90%', () => {
