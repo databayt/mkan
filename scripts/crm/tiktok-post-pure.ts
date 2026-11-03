@@ -187,7 +187,7 @@ export function captionFor(r: PostRow, whatsapp: string): string {
  * for a French or Kinyarwanda writer, Kinyarwanda for everyone else — every
  * Kigali broker reads one of the two.
  */
-function inTheirLanguage(lang: string | null | undefined, blocks: { EN: string[]; RW: string[]; FR: string[] }): string {
+export function inTheirLanguage(lang: string | null | undefined, blocks: { EN: string[]; RW: string[]; FR: string[] }): string {
   const order: (keyof typeof blocks)[] = lang === 'RW' ? ['RW', 'EN'] : lang === 'FR' ? ['FR', 'EN'] : ['EN', 'RW'];
   return order.map((l) => blocks[l].join('\n')).join('\n\n');
 }

@@ -102,6 +102,7 @@
     "crm:tiktok-seeds": "tsx scripts/crm/tiktok.ts seeds",
     "crm:tiktok-requeue": "tsx scripts/crm/tiktok.ts requeue",
     "crm:tiktok-settle": "tsx scripts/crm/tiktok.ts settle",
+    "crm:price-ask": "tsx scripts/crm/price-ask.ts",
     "crm:tiktok-posts": "tsx scripts/crm/tiktok.ts posts",
     "crm:fb-rentals": "tsx scripts/crm/facebook-rentals.ts run",
     "crm:fb-rentals-seeds": "tsx scripts/crm/facebook-rentals.ts seeds",
