@@ -2,7 +2,8 @@
  * TikTok homes (and Facebook / web ads) → the rental agent's lead pool.
  *
  *   pnpm crm:tiktok-mirror            dry run: what would be written
- *   pnpm crm:tiktok-mirror --apply
+ *   pnpm crm:tiktok-mirror --apply           only homes changed since the last clean run (full pass weekly)
+ *   pnpm crm:tiktok-mirror --apply --full    every home
  *
  * Kigali's monthly market lives on brokers' TikTok pages (`crm:tiktok` reads
  * them into Twenty `home` records at VETTING). The `/find` agent needs those
@@ -25,6 +26,8 @@ config({ override: true });
 process.env.PRISMA_QUIET ??= '1';
 
 import { execSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { twentyClient, phoneOf, fromMicros, type Currency, type Phones } from './twenty-rest';
 import { twentyEnumToPrisma } from './home-intake-pure';
@@ -198,20 +201,57 @@ async function directoryBrokerId(db: Db, handle: string | null, phone: string): 
   }
 }
 
-/** Mirror every eligible TikTok / Facebook / web home into the lead pool. Also run by `crm:tiktok run --apply`. */
-export async function mirrorLeads(apply: boolean): Promise<{ planned: number; written: number; created: number; unchanged: number; linked: number }> {
+/**
+ * Incremental by default. Each query to Neon costs ~3.5 s over the Kigali phone hotspot, so a full
+ * pass over ~630 homes ran an hour and more — long enough for the Mac to sleep or the line to drop
+ * under it (11-03). A run now mirrors only the homes whose CRM record (or host) changed since the
+ * last clean run, minus an hour of overlap; a full pass runs once a week, or with `--full`.
+ */
+const MIRROR_STATE = join(__dirname, '.data', 'tiktok', 'mirror-state.json');
+const FULL_EVERY_MS = 7 * 86_400_000;
+const OVERLAP_MS = 3_600_000;
+type MirrorState = { lastOkAt?: string; lastFullAt?: string };
+
+function readMirrorState(): MirrorState {
+  try {
+    if (existsSync(MIRROR_STATE)) return JSON.parse(readFileSync(MIRROR_STATE, 'utf8')) as MirrorState;
+  } catch {
+    /* a broken file means a full run */
+  }
+  return {};
+}
+
+function writeMirrorState(s: MirrorState) {
+  mkdirSync(join(__dirname, '.data', 'tiktok'), { recursive: true });
+  writeFileSync(MIRROR_STATE, JSON.stringify(s, null, 2));
+}
+
+const changedAt = (...records: ({ updatedAt?: unknown } | null | undefined)[]) =>
+  Math.max(0, ...records.map((r) => (typeof r?.updatedAt === 'string' ? Date.parse(r.updatedAt) || 0 : 0)));
+
+/** Mirror the eligible TikTok / Facebook / web homes into the lead pool. Also run by `crm:tiktok run --apply`. */
+export async function mirrorLeads(apply: boolean, opts: { full?: boolean } = {}): Promise<{ planned: number; written: number; created: number; unchanged: number; linked: number }> {
+  const startedAt = new Date();
+  const state = readMirrorState();
+  const full = !!opts.full || !state.lastOkAt || !state.lastFullAt || startedAt.getTime() - Date.parse(state.lastFullAt) > FULL_EVERY_MS;
+  const since = full ? 0 : Date.parse(state.lastOkAt!) - OVERLAP_MS;
   const client = twentyClient();
   const [homes, hosts] = await Promise.all([client.all('homes'), client.all('hosts')]);
   const hostById = new Map(hosts.map((h) => [String(h.id), h]));
   const plans: MirrorPlan[] = [];
   const skipped = new Map<string, number>();
+  let unchangedSince = 0;
   for (const home of homes) {
     if (!MIRROR_SOURCES.includes(home.source as MirrorSource)) continue;
-    const plan = planMirror(home, hostById.get(String(home.hostId)) ?? null);
+    const host = hostById.get(String(home.hostId)) ?? null;
+    const plan = planMirror(home, host);
     if ('skip' in plan) skipped.set(plan.skip, (skipped.get(plan.skip) ?? 0) + 1);
+    else if (changedAt(home, host) < since) unchangedSince += 1;
     else plans.push(plan);
   }
-  console.log(`TikTok / Facebook / web homes → leads: ${plans.length} to mirror; skipped ${[...skipped].map(([k, v]) => `${v} ${k}`).join(', ') || 'none'}`);
+  console.log(
+    `TikTok / Facebook / web homes → leads: ${plans.length} to mirror (${full ? 'full pass' : `changed since ${new Date(since).toISOString().slice(0, 16)}Z; ${unchangedSince} unchanged`}); skipped ${[...skipped].map(([k, v]) => `${v} ${k}`).join(', ') || 'none'}`,
+  );
   if (!apply) {
     for (const p of plans) console.log(`  ${p.sourceId}  ${p.broker.handle ? `@${p.broker.handle}` : p.broker.key} (${p.broker.role})  ${p.listing.bedrooms ?? '?'}bd  RWF ${p.listing.priceMonth}/mo  ${p.location.address}${p.location.neighbourhood ?? p.location.sector ? ` → ${p.location.neighbourhood ?? p.location.sector}` : ''}${p.listing.terms ? '  +terms' : ''}`);
     console.log('\nDRY RUN — pass --apply to write the leads.');
@@ -241,157 +281,185 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
   let unchanged = 0;
   let linked = 0;
   let shared = 0;
+  // One home at a time, each retried on its own: a full mirror is ~640 homes and ~25 min over the
+  // phone hotspot, and before 2026-11-03 one dropped socket anywhere in it killed the whole run
+  // (demand 09:02 + 09:11, sweep 06:00). Every write below is an upsert or guarded by a read, so a
+  // retried home is safe; a home that still fails is reported and the rest carry on.
+  const failed: string[] = [];
   for (const p of plans) {
-    const sourceHostId = p.broker.key;
-    let broker = await db.user.findUnique({ where: { sourceHostId }, select: { id: true } });
-    // No handle (a Facebook or web poster): the same number already brokering a lead is the same broker.
-    if (!broker && !p.broker.handle) {
-      broker = await db.user.findFirst({ where: { phoneNumber: p.broker.phone, brokerListings: { some: {} } }, select: { id: true } });
-    }
-    if (!broker) {
-      const usernameFree = p.broker.handle ? !(await db.user.findUnique({ where: { username: `@${p.broker.handle}` }, select: { id: true } })) : false;
-      broker = await db.user.create({
-        data: {
-          email: sourceHostId,
-          sourceHostId,
-          username: usernameFree ? `@${p.broker.handle}` : null,
-          phoneNumber: p.broker.phone,
-          // Nobody signs in as a lead's broker; the answer page needs no account.
-          password: await bcrypt.hash(randomBytes(24).toString('hex'), 10),
-          role: 'MANAGER',
+    const one = async () => {
+      const sourceHostId = p.broker.key;
+      let broker = await db.user.findUnique({ where: { sourceHostId }, select: { id: true } });
+      // No handle (a Facebook or web poster): the same number already brokering a lead is the same broker.
+      if (!broker && !p.broker.handle) {
+        broker = await db.user.findFirst({ where: { phoneNumber: p.broker.phone, brokerListings: { some: {} } }, select: { id: true } });
+      }
+      if (!broker) {
+        const usernameFree = p.broker.handle ? !(await db.user.findUnique({ where: { username: `@${p.broker.handle}` }, select: { id: true } })) : false;
+        broker = await db.user.create({
+          data: {
+            email: sourceHostId,
+            sourceHostId,
+            username: usernameFree ? `@${p.broker.handle}` : null,
+            phoneNumber: p.broker.phone,
+            // Nobody signs in as a lead's broker; the answer page needs no account.
+            password: await bcrypt.hash(randomBytes(24).toString('hex'), 10),
+            role: 'MANAGER',
+          },
+          select: { id: true },
+        });
+      } else {
+        await db.user.update({ where: { id: broker.id }, data: { phoneNumber: p.broker.phone } });
+      }
+
+      const brokerId = await directoryBrokerId(db, p.broker.handle, p.broker.phone);
+      const linkBroker = brokerId ? { brokerId } : {};
+
+      const existing = await db.listing.findUnique({
+        where: { sourceListingId: p.sourceId },
+        select: {
+          id: true, locationId: true, isPublished: true, title: true, description: true, priceMonth: true, bedrooms: true, bathrooms: true, propertyType: true, photoUrls: true, sourceUrl: true, hostId: true,
+          furnished: true, depositMonths: true, commissionPct: true, noCommission: true, viewingFee: true, waterIncluded: true, electricityIncluded: true, termsSource: true,
+          location: { select: { address: true, zoneKey: true, sector: true, neighbourhood: true, latitude: true, longitude: true } },
         },
-        select: { id: true },
       });
-    } else {
-      await db.user.update({ where: { id: broker.id }, data: { phoneNumber: p.broker.phone } });
-    }
-
-    const brokerId = await directoryBrokerId(db, p.broker.handle, p.broker.phone);
-    const linkBroker = brokerId ? { brokerId } : {};
-
-    const existing = await db.listing.findUnique({
-      where: { sourceListingId: p.sourceId },
-      select: {
-        id: true, locationId: true, isPublished: true, title: true, description: true, priceMonth: true, bedrooms: true, bathrooms: true, propertyType: true, photoUrls: true, sourceUrl: true, hostId: true,
-        furnished: true, depositMonths: true, commissionPct: true, noCommission: true, viewingFee: true, waterIncluded: true, electricityIncluded: true, termsSource: true,
-        location: { select: { address: true, zoneKey: true, sector: true, neighbourhood: true, latitude: true, longitude: true } },
-      },
-    });
-    // Every lead was rewritten every day ("written" 104 → 126 with nothing new).
-    // Same facts as last time: leave the row — and any hand edits — alone.
-    if (
-      existing &&
-      p.crm.mkanListingId === existing.id &&
-      existing.hostId === broker.id &&
-      existing.title === p.listing.title &&
-      existing.description === p.listing.description &&
-      existing.priceMonth === p.listing.priceMonth &&
-      existing.bedrooms === p.listing.bedrooms &&
-      existing.bathrooms === p.listing.bathrooms &&
-      (existing.propertyType ?? null) === p.listing.propertyType &&
-      existing.sourceUrl === p.listing.sourceUrl &&
-      JSON.stringify(existing.photoUrls) === JSON.stringify(p.listing.photoUrls) &&
-      existing.location?.address === p.location.address &&
-      (existing.location?.zoneKey ?? null) === p.location.zoneKey &&
-      (existing.location?.sector ?? null) === p.location.sector &&
-      (existing.location?.neighbourhood ?? null) === p.location.neighbourhood &&
-      existing.location?.latitude === p.location.latitude &&
-      existing.location?.longitude === p.location.longitude &&
-      (p.listing.furnished == null || existing.furnished === p.listing.furnished) &&
-      sameTerms(existing, p.listing.terms)
-    ) {
-      unchanged += 1;
-      if (brokerId) {
-        await db.listingBroker.updateMany({
-          where: { listingId: existing.id, userId: broker.id, OR: [{ brokerId: null }, { brokerId: { not: brokerId } }] },
-          data: { brokerId },
-        });
+      // Every lead was rewritten every day ("written" 104 → 126 with nothing new).
+      // Same facts as last time: leave the row — and any hand edits — alone.
+      if (
+        existing &&
+        p.crm.mkanListingId === existing.id &&
+        existing.hostId === broker.id &&
+        existing.title === p.listing.title &&
+        existing.description === p.listing.description &&
+        existing.priceMonth === p.listing.priceMonth &&
+        existing.bedrooms === p.listing.bedrooms &&
+        existing.bathrooms === p.listing.bathrooms &&
+        (existing.propertyType ?? null) === p.listing.propertyType &&
+        existing.sourceUrl === p.listing.sourceUrl &&
+        JSON.stringify(existing.photoUrls) === JSON.stringify(p.listing.photoUrls) &&
+        existing.location?.address === p.location.address &&
+        (existing.location?.zoneKey ?? null) === p.location.zoneKey &&
+        (existing.location?.sector ?? null) === p.location.sector &&
+        (existing.location?.neighbourhood ?? null) === p.location.neighbourhood &&
+        existing.location?.latitude === p.location.latitude &&
+        existing.location?.longitude === p.location.longitude &&
+        (p.listing.furnished == null || existing.furnished === p.listing.furnished) &&
+        sameTerms(existing, p.listing.terms)
+      ) {
+        unchanged += 1;
+        if (brokerId) {
+          await db.listingBroker.updateMany({
+            where: { listingId: existing.id, userId: broker.id, OR: [{ brokerId: null }, { brokerId: { not: brokerId } }] },
+            data: { brokerId },
+          });
+        }
+        return;
       }
-      continue;
-    }
-    const k = factKey(p.listing.bedrooms, p.listing.priceMonth, p.location.address);
-    const same = !existing && k && placeToken(p.location.address) ? leadByFacts.get(k) : undefined;
-    if (same && same.hostId !== broker.id) {
+      const k = factKey(p.listing.bedrooms, p.listing.priceMonth, p.location.address);
+      const same = !existing && k && placeToken(p.location.address) ? leadByFacts.get(k) : undefined;
+      if (same && same.hostId !== broker.id) {
+        await db.listingBroker.upsert({
+          where: { listingId_userId: { listingId: same.id, userId: broker.id } },
+          update: { role: p.broker.role, sourceUrl: p.listing.sourceUrl, ...linkBroker },
+          create: { listingId: same.id, userId: broker.id, role: p.broker.role, sourceUrl: p.listing.sourceUrl, ...linkBroker },
+          select: { id: true },
+        });
+        if (p.crm.mkanListingId !== same.id) {
+          await client.rest('PATCH', `homes/${p.crm.homeId}`, { mkanListingId: same.id, duplicateCheck: 'SUSPECTED' }).catch((e) => console.warn(`  ! link ${p.sourceId}: ${(e as Error).message.slice(0, 120)}`));
+        }
+        console.log(`  ≡ ${p.sourceId} @${p.broker.handle} — same home as lead #${same.id} (${same.sourceListingId}); broker added`);
+        shared += 1;
+        return;
+      }
+      const locationData = {
+        address: p.location.address,
+        city: 'Kigali',
+        state: p.location.state,
+        country: 'Rwanda',
+        postalCode: '',
+        latitude: p.location.latitude,
+        longitude: p.location.longitude,
+        zoneKey: p.location.zoneKey,
+        sector: p.location.sector,
+        neighbourhood: p.location.neighbourhood,
+      };
+      let locationId = existing?.locationId ?? null;
+      if (locationId) await db.location.update({ where: { id: locationId }, data: locationData });
+      else locationId = (await db.location.create({ data: locationData, select: { id: true } })).id;
+
+      const listingData = {
+        source: p.source,
+        sourceUrl: p.listing.sourceUrl,
+        sourceCapturedAt: p.listing.sourceCapturedAt,
+        canonicalLocale: 'en',
+        title: p.listing.title,
+        description: p.listing.description,
+        rentPeriod: 'MONTHLY' as const,
+        priceMonth: p.listing.priceMonth,
+        currency: 'RWF',
+        bedrooms: p.listing.bedrooms,
+        bathrooms: p.listing.bathrooms,
+        propertyType: p.listing.propertyType as never,
+        photoUrls: p.listing.photoUrls,
+        amenities: p.listing.facts.amenities as never,
+        // Unstated furnishing / terms are left as they are: crm:backfill-terms may have read them from the caption.
+        ...(p.listing.furnished != null ? { furnished: p.listing.furnished } : {}),
+        ...(p.listing.terms ?? {}),
+        isParkingIncluded: p.listing.facts.isParkingIncluded,
+        isPetsAllowed: p.listing.facts.isPetsAllowed,
+        hostId: broker.id,
+        locationId,
+      };
+      const listing = existing
+        ? // A lead someone already took `live` keeps its publish state.
+          await db.listing.update({ where: { id: existing.id }, data: listingData, select: { id: true } })
+        : await db.listing.create({ data: { ...listingData, sourceListingId: p.sourceId, draft: true, isPublished: false }, select: { id: true } });
+      if (!existing) created += 1;
+      if (!existing && k && placeToken(p.location.address) && !leadByFacts.has(k)) {
+        leadByFacts.set(k, { id: listing.id, sourceListingId: p.sourceId, bedrooms: p.listing.bedrooms, priceMonth: p.listing.priceMonth, hostId: broker.id, location: { address: p.location.address } });
+      }
       await db.listingBroker.upsert({
-        where: { listingId_userId: { listingId: same.id, userId: broker.id } },
+        where: { listingId_userId: { listingId: listing.id, userId: broker.id } },
         update: { role: p.broker.role, sourceUrl: p.listing.sourceUrl, ...linkBroker },
-        create: { listingId: same.id, userId: broker.id, role: p.broker.role, sourceUrl: p.listing.sourceUrl, ...linkBroker },
+        create: { listingId: listing.id, userId: broker.id, role: p.broker.role, sourceUrl: p.listing.sourceUrl, ...linkBroker },
         select: { id: true },
       });
-      if (p.crm.mkanListingId !== same.id) {
-        await client.rest('PATCH', `homes/${p.crm.homeId}`, { mkanListingId: same.id, duplicateCheck: 'SUSPECTED' }).catch((e) => console.warn(`  ! link ${p.sourceId}: ${(e as Error).message.slice(0, 120)}`));
+      if (p.crm.mkanListingId !== listing.id) {
+        try {
+          await client.rest('PATCH', `homes/${p.crm.homeId}`, {
+            mkanListingId: listing.id,
+            mkanListingUrl: { primaryLinkUrl: `https://www.mkan.sd/en/listings/${listing.id}`, primaryLinkLabel: '', secondaryLinks: [] },
+          });
+          linked += 1;
+        } catch (e) {
+          console.warn(`  ! link ${p.sourceId} → #${listing.id}: ${(e as Error).message.slice(0, 120)}`);
+        }
       }
-      console.log(`  ≡ ${p.sourceId} @${p.broker.handle} — same home as lead #${same.id} (${same.sourceListingId}); broker added`);
-      shared += 1;
-      continue;
-    }
-    const locationData = {
-      address: p.location.address,
-      city: 'Kigali',
-      state: p.location.state,
-      country: 'Rwanda',
-      postalCode: '',
-      latitude: p.location.latitude,
-      longitude: p.location.longitude,
-      zoneKey: p.location.zoneKey,
-      sector: p.location.sector,
-      neighbourhood: p.location.neighbourhood,
+      written += 1;
     };
-    let locationId = existing?.locationId ?? null;
-    if (locationId) await db.location.update({ where: { id: locationId }, data: locationData });
-    else locationId = (await db.location.create({ data: locationData, select: { id: true } })).id;
-
-    const listingData = {
-      source: p.source,
-      sourceUrl: p.listing.sourceUrl,
-      sourceCapturedAt: p.listing.sourceCapturedAt,
-      canonicalLocale: 'en',
-      title: p.listing.title,
-      description: p.listing.description,
-      rentPeriod: 'MONTHLY' as const,
-      priceMonth: p.listing.priceMonth,
-      currency: 'RWF',
-      bedrooms: p.listing.bedrooms,
-      bathrooms: p.listing.bathrooms,
-      propertyType: p.listing.propertyType as never,
-      photoUrls: p.listing.photoUrls,
-      amenities: p.listing.facts.amenities as never,
-      // Unstated furnishing / terms are left as they are: crm:backfill-terms may have read them from the caption.
-      ...(p.listing.furnished != null ? { furnished: p.listing.furnished } : {}),
-      ...(p.listing.terms ?? {}),
-      isParkingIncluded: p.listing.facts.isParkingIncluded,
-      isPetsAllowed: p.listing.facts.isPetsAllowed,
-      hostId: broker.id,
-      locationId,
-    };
-    const listing = existing
-      ? // A lead someone already took `live` keeps its publish state.
-        await db.listing.update({ where: { id: existing.id }, data: listingData, select: { id: true } })
-      : await db.listing.create({ data: { ...listingData, sourceListingId: p.sourceId, draft: true, isPublished: false }, select: { id: true } });
-    if (!existing) created += 1;
-    if (!existing && k && placeToken(p.location.address) && !leadByFacts.has(k)) {
-      leadByFacts.set(k, { id: listing.id, sourceListingId: p.sourceId, bedrooms: p.listing.bedrooms, priceMonth: p.listing.priceMonth, hostId: broker.id, location: { address: p.location.address } });
-    }
-    await db.listingBroker.upsert({
-      where: { listingId_userId: { listingId: listing.id, userId: broker.id } },
-      update: { role: p.broker.role, sourceUrl: p.listing.sourceUrl, ...linkBroker },
-      create: { listingId: listing.id, userId: broker.id, role: p.broker.role, sourceUrl: p.listing.sourceUrl, ...linkBroker },
-      select: { id: true },
-    });
-    if (p.crm.mkanListingId !== listing.id) {
+    for (let attempt = 1; ; attempt++) {
       try {
-        await client.rest('PATCH', `homes/${p.crm.homeId}`, {
-          mkanListingId: listing.id,
-          mkanListingUrl: { primaryLinkUrl: `https://www.mkan.sd/en/listings/${listing.id}`, primaryLinkLabel: '', secondaryLinks: [] },
-        });
-        linked += 1;
+        await one();
+        break;
       } catch (e) {
-        console.warn(`  ! link ${p.sourceId} → #${listing.id}: ${(e as Error).message.slice(0, 120)}`);
+        if (attempt >= 3 || !isConnectionError(e)) {
+          failed.push(p.sourceId);
+          console.warn(`  ✗ ${p.sourceId}: ${errorText(e).slice(0, 160)}`);
+          break;
+        }
+        console.warn(`  ↻ ${p.sourceId}: connection dropped (${errorText(e).slice(0, 80)}) — reconnecting, try ${attempt + 1}/3`);
+        await db.$disconnect().catch(() => {});
+        await reachDb(db, 6);
       }
     }
-    written += 1;
+    // A run where most homes fail is a dead network, not bad rows: stop and let the lane retry.
+    if (failed.length >= 10 && failed.length > written + unchanged + shared) {
+      throw new Error(`database unreachable — ${failed.length} homes failed in a row (last ${failed.at(-1)})`);
+    }
   }
-  console.log(`✅ ${created} new lead(s) · ${written - created} updated · ${unchanged} unchanged · ${linked} CRM homes linked to their lead · ${shared} added as a second broker`);
+  // A clean run moves the mark; a run with failures leaves it, so the next run retries those homes.
+  if (failed.length === 0) writeMirrorState({ lastOkAt: startedAt.toISOString(), lastFullAt: full ? startedAt.toISOString() : state.lastFullAt });
+  console.log(`✅ ${created} new lead(s) · ${written - created} updated · ${unchanged} unchanged · ${linked} CRM homes linked to their lead · ${shared} added as a second broker${failed.length ? ` · ${failed.length} failed (next run retries them)` : ''}`);
   return { planned: plans.length, written, created, unchanged, linked };
 }
 
@@ -400,6 +468,12 @@ export async function mirrorLeads(apply: boolean): Promise<{ planned: number; wr
  * connection error", 2026-11-03 09:02 + 09:11): a short reconnect loop before any write, so one
  * dead socket does not cost a day's leads.
  */
+/** A dropped or refused socket (sleep, hotspot hand-off), as opposed to a bad row. */
+export function isConnectionError(e: unknown): boolean {
+  const t = `${errorText(e)} ${(e as { code?: string })?.code ?? ''} ${(e as { cause?: unknown })?.cause ? errorText((e as { cause: unknown }).cause) : ''}`;
+  return /connection|connect|socket|ECONN|ETIMEDOUT|EPIPE|ENOTFOUND|EAI_AGAIN|terminated|not queryable|timeout|P1001|P1017|P2024|fetch failed|TypeError/i.test(t);
+}
+
 async function reachDb(db: { $queryRawUnsafe: (q: string) => Promise<unknown>; $disconnect: () => Promise<void> }, tries = 3, pauseMs = 20_000): Promise<void> {
   for (let i = 1; ; i++) {
     try {
@@ -416,7 +490,7 @@ async function reachDb(db: { $queryRawUnsafe: (q: string) => Promise<unknown>; $
 
 if (process.argv[1] && /tiktok-mirror\.ts$/.test(process.argv[1])) {
   const apply = process.argv.includes('--apply');
-  mirrorLeads(apply)
+  mirrorLeads(apply, { full: process.argv.includes('--full') })
     .then(async (r) => {
       if (apply) await recordRun('mirror', true, `${r.created} new · ${r.written - r.created} updated · ${r.linked} linked`);
       await (await import('../../src/lib/db')).db.$disconnect();
