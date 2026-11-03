@@ -15,10 +15,20 @@
 - **Fixed:**
   - `strictOutputFormat` (claude.ts) puts the enums back.
   - The reader and the writer run with `thinking: disabled`.
-  - The reader's prompt names four conventions: French "N pièces" (N − 1 bedrooms), a weekend (2
-    nights), "moteri" (a generator) and "not the first one" (h1).
+  - The reader's prompt names five conventions: French "N pièces" (N − 1 bedrooms), a weekend (2
+    nights), "moteri" (a generator), "not the first one" (h1) and a lone "icyumba" (one room, where
+    "ibyumba 3" is 3 bedrooms).
   - Eval: Claude 99% (en 98, ar / rw / fr / sw 100), must-haves 100%, p50 1.7 s, p95 2.2 s, gate
     PASS. Writer: 21/21 replies pass the guard. Tests: `tests/agent/claude-format.test.ts`.
+- **Live:** Worker `01e0bf9b` (`3b30c24`, pinned build). The Worker secret was put right before
+  the deploy, so no container ran the old reader with the key. Verified on prod at 393 px:
+  - a search read by Claude got every chip right, and Claude wrote the reply and the card lines;
+  - the cards were up at about 3 s;
+  - "How much deposit do landlords usually ask for?" got Claude's answer, with no search;
+  - "How are you" stayed with the rules;
+  - the console was clean and the watchdog showed `failed: {}`;
+  - the ledger counted $0.0014 for 2 reads and 2 writes (month to date $0.025 of the $15 cap).
+  - The test chat was deleted.
 - **Owed:**
   - The rw writer stays off (`AGENT_WRITER_LOCALES` = en, ar) until a native speaker approves the
     samples `pnpm agent:eval-writer` prints.
