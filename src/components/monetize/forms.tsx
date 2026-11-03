@@ -75,7 +75,7 @@ const VERDICT_TONE: Record<string, string> = {
   inconclusive: "text-muted-foreground",
 };
 
-export function Experiments({ items, labels, locale }: { items: ExperimentView[]; labels: MonetizeLabels; locale: Locale }) {
+export function Experiments({ items, labels, locale, editable = false }: { items: ExperimentView[]; labels: MonetizeLabels; locale: Locale; editable?: boolean }) {
   const L = labels.experiments;
   const verdicts = L.verdicts as Record<string, string>;
   const num = (v: number | null) => (v == null ? "—" : formatNumber(v, locale));
@@ -101,7 +101,7 @@ export function Experiments({ items, labels, locale }: { items: ExperimentView[]
                   {blockTitle(e.block)} · {e.metric} · {L.baseline} {num(e.baseline)} · {L.target}{" "}
                   {num(e.target)} · {L.result} {num(e.result)} · {formatDate(new Date(e.startedAt), locale)}
                 </p>
-                {e.verdict === "running" && (
+                {editable && e.verdict === "running" && (
                   <form action={saveExperiment} className="flex flex-wrap items-end gap-2">
                     <input type="hidden" name="id" value={e.id} />
                     <input type="hidden" name="block" value={e.block} />
@@ -130,6 +130,7 @@ export function Experiments({ items, labels, locale }: { items: ExperimentView[]
             ))}
           </ul>
         )}
+        {editable && (
         <form action={saveExperiment} className="grid grid-cols-1 gap-3 border-t pt-4 sm:grid-cols-2">
           <Field id="exp-block" label={L.block}>
             <select id="exp-block" name="block" className={SELECT} required>
@@ -164,6 +165,7 @@ export function Experiments({ items, labels, locale }: { items: ExperimentView[]
             <Button type="submit">{L.save}</Button>
           </div>
         </form>
+        )}
       </CardContent>
     </Card>
   );

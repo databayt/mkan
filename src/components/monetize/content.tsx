@@ -17,7 +17,7 @@ import { MoneyStrip } from "./money-strip";
  * loader pass (src/lib/monetize/load.ts); the only client work is the browser
  * submitting two plain forms to server actions.
  */
-export function MonetizeContent({ data, labels, locale, lang }: { data: MonetizeOverview; labels: MonetizeLabels; locale: Locale; lang: string }) {
+export function MonetizeContent({ data, labels, locale, lang, canEdit = false }: { data: MonetizeOverview; labels: MonetizeLabels; locale: Locale; lang: string; canEdit?: boolean }) {
   const ranges = [
     { days: 7, label: labels.range7 },
     { days: 30, label: labels.range30 },
@@ -61,9 +61,10 @@ export function MonetizeContent({ data, labels, locale, lang }: { data: Monetize
         ))}
       </section>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Experiments items={data.experiments} labels={labels} locale={locale} />
-        <RevenueForm labels={labels} />
+      {/* Public read; the two write forms are admin-only (their server actions re-check the role). */}
+      <section className={canEdit ? "grid grid-cols-1 gap-4 lg:grid-cols-2" : "grid grid-cols-1 gap-4"}>
+        <Experiments items={data.experiments} labels={labels} locale={locale} editable={canEdit} />
+        {canEdit && <RevenueForm labels={labels} />}
       </section>
     </div>
   );

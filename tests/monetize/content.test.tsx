@@ -39,8 +39,8 @@ const data = {
 } satisfies MonetizeOverview;
 
 describe("/monetize content", () => {
-  it("renders every block, the money, the bottleneck and the forms (en)", () => {
-    render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" />);
+  it("renders every block, the money, the bottleneck and, for an admin, the forms (en)", () => {
+    render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" canEdit />);
     for (const b of ["scrape", "enhance", "post", "chat"] as const) expect(screen.getAllByText(en.monetize.blocks[b].title).length).toBeGreaterThan(0);
     expect(screen.getAllByText(en.monetize.reasons.brokerSendsOff).length).toBeGreaterThan(0);
     expect(screen.getAllByText(en.monetize.money.revenue).length).toBeGreaterThan(0);
@@ -49,6 +49,14 @@ describe("/monetize content", () => {
     expect(screen.getAllByText("Auto-mastering lifts ready homes").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: en.monetize.revenueForm.save })).toBeTruthy();
     expect(screen.getAllByText("690 ms").length).toBeGreaterThan(0);
+  });
+
+  it("is public read-only: no write forms without an admin session", () => {
+    render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" />);
+    expect(screen.getAllByText(en.monetize.money.revenue).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Auto-mastering lifts ready homes").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: en.monetize.revenueForm.save })).toBeNull();
+    expect(screen.queryByRole("button", { name: en.monetize.experiments.save })).toBeNull();
   });
   it("renders in Arabic with the Arabic labels", () => {
     render(<MonetizeContent data={data} labels={ar.monetize} locale="ar" lang="ar" />);
