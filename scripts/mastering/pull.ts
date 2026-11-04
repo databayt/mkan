@@ -47,7 +47,7 @@ import {
   slackReady,
   takenNames,
   tempKey,
-  trim,, describeError } from './lib';
+  trim, describeError } from './lib';
 import { compilePrompt, PROMPT_VERSION } from './prompt';
 import { DEFAULT_MODEL_ID } from './models';
 import { twentyClient } from '../crm/twenty-rest';

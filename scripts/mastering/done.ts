@@ -57,7 +57,7 @@ import {
   slackReactSafe,
   swapPhoto,
   trim,
-  twentyRollup,, describeError } from './lib';
+  twentyRollup, describeError } from './lib';
 import { correctedModel, resolveModel } from './models';
 
 const FILE = argv('file');

@@ -42,6 +42,7 @@ import { argv, flag, isCdnUrl, getDb, roomHintFrom, shortId, trim, describeError
 import { compilePrompt, PROMPT_VERSION } from './prompt';
 import { resolveModel, modelList } from './models';
 import { twentyClient } from '../crm/twenty-rest';
+import { recordRun } from '../crm/notify';
 
 const APPLY = flag('apply');
 const FORCE = flag('force');
@@ -163,6 +164,7 @@ async function resolveListings(): Promise<ListingRow[]> {
 async function main(): Promise<void> {
   console.log(`\n📸 Mastering queue — prompt ${PROMPT_VERSION}, model ${MODEL.label} (${APPLY ? 'APPLY' : 'dry'})`);
   if (!MODEL.url) console.log(`   ⚠️  «${MODEL.id}» is not in the registry — recorded as given, prep has no app to open (known: ${modelList()})`);
+  process.env.PRISMA_QUIET ??= '1'; // the hourly log was 7 MB of SELECTs; set before the lazy db import
   const db = await getDb();
   if (PRUNE) await pruneOutOfScope(await bookCodes());
   const listings = await resolveListings();
@@ -239,9 +241,20 @@ async function main(): Promise<void> {
       ? `\n✅ queued ${planned} run(s), skipped ${skipped}. Next: pnpm master:dispatch --apply\n`
       : `\nDRY RUN — would queue ${planned} run(s), skip ${skipped}. Re-run with --apply.\n`,
   );
+  if (APPLY) {
+    // The hourly sweep's one line on kun's run record (and so on /monetize's Enhance card): what
+    // this run added, and where the whole queue stands — a blank summary read as "nothing happens".
+    const counts = await db.masteringRun.groupBy({ by: ['status'], _count: { _all: true } });
+    const queue = counts
+      .sort((a, b) => b._count._all - a._count._all)
+      .map((c) => `${c._count._all} ${String(c.status).toLowerCase()}`)
+      .join(' · ');
+    await recordRun('master:queue', true, `queued ${planned} · skipped ${skipped} · queue: ${queue}`);
+  }
 }
 
-main().catch((e: unknown) => {
+main().catch(async (e: unknown) => {
   console.error(`\n❌ ${describeError(e)}\n`);
+  if (APPLY) await recordRun('master:queue', false, describeError(e), 3).catch(() => {});
   process.exit(1);
 });

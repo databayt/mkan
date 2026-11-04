@@ -162,7 +162,36 @@ async function main(): Promise<void> {
   const db = await getDb();
   let ingested = 0;
 
-  for (const file of files) {
+  // ~/Downloads, un-named: the sole-dispatched-run fallback is only honest when exactly ONE
+  // generator render there is young enough to answer it. Gemini is used for far more than this
+  // loop — 50 renders (logos, -removebg previews) sat in Downloads, all newer than the one
+  // dispatched run, and the relay would have mastered the OLDEST of them into a live listing.
+  // Several candidates is ambiguity, and ambiguity is a refusal, never a guess: leave them all
+  // and say so once. A render prefixed with its run id, or saved into the inbox, still goes.
+  const shorts = (await db.masteringRun.findMany({
+    where: { status: { in: ["QUEUED", "ASSIGNED"] } },
+    select: { id: true, assignedAt: true, status: true },
+  })).map((r) => ({ short: shortId(r.id).toLowerCase(), assignedAt: r.assignedAt, status: r.status }));
+  const since = Math.min(
+    ...shorts.filter((r) => r.status === "ASSIGNED" && r.assignedAt).map((r) => r.assignedAt!.getTime()),
+  );
+  const unnamedDownloads = files.filter(
+    (f) =>
+      dirname(f) === DOWNLOADS &&
+      !shorts.some((r) => basename(f).toLowerCase().includes(r.short)) &&
+      !(Number.isFinite(since) && statSync(f).mtimeMs < since),
+  );
+  let queue = files;
+  if (unnamedDownloads.length > 1) {
+    queue = files.filter((f) => !unnamedDownloads.includes(f));
+    await announce(
+      `:inbox_tray: Mastering relay left ${unnamedDownloads.length} un-named Gemini/ChatGPT renders in ~/Downloads alone — ` +
+        `more than one could be the dispatched photo's render, so none is. Save the real one into ~/mkan/inbox, ` +
+        `or prefix it with its run id.`,
+    );
+  }
+
+  for (const file of queue) {
     const runs = await db.masteringRun.findMany({
       where: { status: { in: ["QUEUED", "ASSIGNED"] } },
       orderBy: { queuedAt: "asc" },

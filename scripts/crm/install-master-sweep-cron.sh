@@ -16,6 +16,10 @@
 # Hourly, matching the site→board sync: a photo that arrives at 10:05 is queued
 # by 11:00, and nothing queued is urgent by definition.
 #
+# Behind kun's job-run.sh (as the supervisor re-wraps it anyway), so every run lands on
+# ~/.claude/state/runs/mkan-master-sweep.json — the record /monetize's Enhance card reads. launchd's
+# StartInterval does not fire while the Mac sleeps: a lid shut for 2h+ shows "stale" until it wakes.
+#
 # Idempotent; re-run after editing. Log: ~/Library/Logs/mkan-master-sweep.log
 set -euo pipefail
 LABEL="com.databayt.mkan-master-sweep"
@@ -28,6 +32,8 @@ cat > "$PLIST" <<XML
 <plist version="1.0"><dict>
   <key>Label</key><string>$LABEL</string>
   <key>ProgramArguments</key><array>
+    <string>/bin/bash</string><string>$HOME/.claude/bin/job-run.sh</string>
+    <string>mkan-master-sweep</string><string>--</string>
     <string>/bin/zsh</string><string>-lc</string>
     <string>cd $HOME/mkan &amp;&amp; pnpm master:queue --all --prune --apply</string>
   </array>
