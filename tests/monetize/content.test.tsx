@@ -60,11 +60,12 @@ describe("/monetize content", () => {
     render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" canEdit />);
     for (const b of ["scrape", "enhance", "post", "chat"] as const) expect(screen.getAllByText(en.monetize.blocks[b].title).length).toBeGreaterThan(0);
     expect(screen.getAllByText(en.monetize.reasons.brokerSendsOff).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(en.monetize.money.revenue).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(en.monetize.card.revenue).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/the weakest hand-off, in the Enhance block/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Earned on paid deals but not recorded/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/already earned/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Auto-mastering lifts ready homes").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: en.monetize.revenueForm.save })).toBeTruthy();
+    expect(screen.getAllByText(en.monetize.card.ctaRecord).length).toBeGreaterThan(0);
     expect(screen.getAllByText("690 ms").length).toBeGreaterThan(0);
   });
 
@@ -76,13 +77,15 @@ describe("/monetize content", () => {
     expect(screen.getAllByText(en.monetize.spend.lines.cloudflare.name).length).toBeGreaterThan(0);
     expect(screen.getAllByText(en.monetize.spend.lines["agent-read"].name).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/8 calls/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(en.monetize.spend.breakEvenTitle).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(en.monetize.card.needed).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(en.monetize.banner.next).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(en.monetize.card.ctaNext).length).toBeGreaterThan(0);
     for (const b of ["Scrape", "Enhance", "Post", "Chat"]) expect(screen.getAllByText(b).length).toBeGreaterThan(0);
   });
 
   it("is public read-only: no write forms without an admin session", () => {
     render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" />);
-    expect(screen.getAllByText(en.monetize.money.revenue).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(en.monetize.card.revenue).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Auto-mastering lifts ready homes").length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: en.monetize.revenueForm.save })).toBeNull();
     expect(screen.queryByRole("button", { name: en.monetize.experiments.save })).toBeNull();
@@ -90,6 +93,6 @@ describe("/monetize content", () => {
   it("renders in Arabic with the Arabic labels", () => {
     render(<MonetizeContent data={data} labels={ar.monetize} locale="ar" lang="ar" />);
     expect(screen.getAllByText(ar.monetize.blocks.chat.title).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(ar.monetize.money.title).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(ar.monetize.card.needed).length).toBeGreaterThan(0);
   });
 });

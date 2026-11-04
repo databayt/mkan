@@ -1,9 +1,9 @@
 import Link from "next/link";
+import { Bot } from "lucide-react";
 
 import type { Locale } from "@/components/internationalization/config";
-import { formatDateTime } from "@/lib/i18n/formatters";
+import { formatDateTime, formatPercentage } from "@/lib/i18n/formatters";
 import type { MonetizeOverview } from "@/lib/monetize/load";
-import { NAVBAR_HEIGHT } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 import { BlockSection } from "./block-section";
@@ -11,97 +11,108 @@ import { fill, type MonetizeLabels } from "./format";
 import { Experiments, RevenueForm } from "./forms";
 import { FunnelSection } from "./funnel";
 import { HealthBadge } from "./health-badge";
-import { EarnSection, MoneySection, SpendSection } from "./money-section";
+import { FeatureCard, H2, INK, LINE, MUTED } from "./listing-ui";
+import { MobileBar, MoneyCard, progressOf } from "./money-card";
+import { EarnSection, SpendSection } from "./money-section";
+import { NextBanner } from "./next-banner";
 import { TodoSection } from "./todo-section";
-import { Section } from "./ui";
 
 /**
- * /monetize — the chatbot business, top to bottom: what to do next, the money,
- * where it goes, how it comes in, the funnel, then each block in its own
- * section. Server-rendered from one loader pass (src/lib/monetize/load.ts); the
- * only client work is the browser submitting two plain forms (admins only).
+ * /monetize, laid out like a listing (src/app/[lang]/listings/[id]): title row,
+ * the next task where the photos would be, a 640px column of sections beside a
+ * sticky 372px money card (the Reserve card), the funnel and experiments full
+ * width below, and the Reserve bar fixed at the bottom on a phone.
+ * Server-rendered; the only client work is two plain admin forms.
  */
 export function MonetizeContent({ data, labels, locale, lang, canEdit = false }: { data: MonetizeOverview; labels: MonetizeLabels; locale: Locale; lang: string; canEdit?: boolean }) {
+  const rwf = (v: number) => `${new Intl.NumberFormat(locale).format(Math.round(v))} ${labels.currency}`;
+  const broken = data.blocks.filter((b) => b.health === "red").length;
   const ranges = [
     { days: 7, label: labels.range7 },
     { days: 30, label: labels.range30 },
   ];
-  const nav = [
-    { id: "todo", label: labels.nav.todo },
-    { id: "money", label: labels.nav.money },
-    { id: "spend", label: labels.nav.spend },
-    { id: "earn", label: labels.nav.earn },
-    { id: "funnel", label: labels.nav.funnel },
-    ...data.blocks.map((b) => ({ id: b.key, label: labels.blocks[b.key].title, health: b.health })),
-    { id: "experiments", label: labels.nav.experiments },
-  ];
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6 lg:px-10">
-      <header className="flex flex-col gap-5 pb-8 sm:flex-row sm:items-end sm:justify-between">
-        <div className="max-w-3xl space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-[32px] font-semibold leading-tight tracking-tight">{labels.title}</h1>
+    <div className="mx-auto w-full max-w-[1184px] px-6 pb-28 pt-6 md:px-8 md:pb-16">
+      {/* Title row — like the listing's name with Share / Save on the right. */}
+      <header className="pb-6">
+        <h1 className={cn("text-2xl font-semibold leading-tight tracking-tight md:text-[26px]", INK)}>{labels.heading}</h1>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <div className={cn("flex flex-wrap items-center gap-x-2 gap-y-1 text-sm", INK)}>
             <HealthBadge health={data.health} label={`${labels.overall}: ${labels.health[data.health]}`} />
+            <span className={MUTED}>·</span>
+            <span className="underline underline-offset-2">{fill(labels.updated, { time: formatDateTime(new Date(data.generatedAt), locale) })}</span>
+            <span className={MUTED}>·</span>
+            <span>{fill(labels.gates.brokerSends, { mode: data.gates.brokerSends })}</span>
           </div>
-          <p className="text-base leading-relaxed text-muted-foreground">{labels.description}</p>
-          <p className="text-xs text-muted-foreground">
-            {fill(labels.updated, { time: formatDateTime(new Date(data.generatedAt), locale) })} · {fill(labels.gates.brokerSends, { mode: data.gates.brokerSends })}
-            {data.gates.capped && ` · ${labels.gates.capped}`} · {fill(labels.adChats, { n: data.adChats })}
-          </p>
+          <nav className="flex gap-1" aria-label={`${labels.range7} / ${labels.range30}`}>
+            {ranges.map((r) => (
+              <Link
+                key={r.days}
+                href={`/${lang}/monetize?days=${r.days}`}
+                aria-current={data.days === r.days ? "page" : undefined}
+                className={cn("rounded-lg px-3 py-1.5 text-sm font-semibold underline-offset-2", data.days === r.days ? cn("bg-[#F7F7F7] dark:bg-muted", INK) : cn("hover:bg-[#F7F7F7] hover:underline dark:hover:bg-muted", INK))}
+              >
+                {r.label}
+              </Link>
+            ))}
+          </nav>
         </div>
-        <nav className="flex shrink-0 gap-1 self-start rounded-full border p-1 sm:self-auto" aria-label={labels.range7 + " / " + labels.range30}>
-          {ranges.map((r) => (
-            <Link
-              key={r.days}
-              href={`/${lang}/monetize?days=${r.days}`}
-              className={cn("rounded-full px-4 py-1.5 text-sm font-medium transition-colors", data.days === r.days ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
-              aria-current={data.days === r.days ? "page" : undefined}
-            >
-              {r.label}
-            </Link>
-          ))}
-        </nav>
       </header>
 
-      {/* Section pills, like Airbnb's listing tabs: jump links, scrolled sideways on a phone. */}
-      <nav style={{ top: NAVBAR_HEIGHT }} className="sticky z-10 -mx-4 mb-6 overflow-x-auto border-b bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:px-0" aria-label={labels.title}>
-        <ul className="flex min-w-max gap-2">
-          {nav.map((n) => (
-            <li key={n.id}>
-              <a href={`#${n.id}`} className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors hover:border-foreground">
-                {"health" in n && n.health && (
-                  <span
-                    className={cn(
-                      "size-1.5 rounded-full",
-                      n.health === "green" ? "bg-emerald-500" : n.health === "yellow" ? "bg-amber-500" : n.health === "red" ? "bg-destructive" : "bg-muted-foreground/40",
-                    )}
-                    aria-hidden
-                  />
-                )}
-                {n.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <NextBanner data={data} labels={labels} locale={locale} />
 
-      <TodoSection steps={data.nextSteps} labels={labels} locale={locale} />
-      <MoneySection data={data} labels={labels} locale={locale} />
-      <SpendSection data={data} labels={labels} locale={locale} />
-      <EarnSection data={data} labels={labels} locale={locale} />
+      <div className="mt-10 flex flex-col justify-between gap-12 lg:flex-row">
+        <div className="w-full min-w-0 lg:max-w-[640px]">
+          {/* "Hosted by" row. */}
+          <section className={cn("flex items-center gap-4 border-b pb-6", LINE)}>
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#222222] text-white dark:bg-foreground dark:text-background">
+              <Bot className="size-5" strokeWidth={1.5} />
+            </span>
+            <div className="min-w-0">
+              <p className={cn("text-base font-medium leading-5", INK)}>{labels.statusRow.title}</p>
+              <p className={cn("text-sm leading-[18px]", MUTED)}>{fill(labels.statusRow.line, { blocks: data.blocks.length, broken, tasks: data.nextSteps.length })}</p>
+            </div>
+          </section>
+
+          {/* The three feature cards. */}
+          <section className={cn("border-b py-8", LINE)}>
+            <p className={cn("mb-6 text-base leading-6", INK)}>{labels.description}</p>
+            <div className="grid grid-cols-3 gap-3">
+              <FeatureCard label={labels.featureCards.revenue} value={rwf(data.money.revenueRwf)} />
+              <FeatureCard label={labels.featureCards.net} value={rwf(data.money.netRwf)} tone={data.money.netRwf < 0 ? "neg" : "pos"} />
+              <FeatureCard label={labels.featureCards.breakEven} value={formatPercentage(progressOf(data), locale)} sub={rwf(data.money.breakEvenRwf)} />
+            </div>
+          </section>
+
+          <TodoSection steps={data.nextSteps} labels={labels} locale={locale} />
+          <SpendSection data={data} labels={labels} locale={locale} />
+          <EarnSection data={data} labels={labels} locale={locale} />
+          {data.blocks.map((b, i) => (
+            <BlockSection key={b.key} block={b} index={i + 1} labels={labels} locale={locale} days={data.days} cost={data.costByBlock[b.key]} />
+          ))}
+        </div>
+
+        {/* The Reserve column: sticky beside the sections; a phone gets the bottom bar instead. */}
+        <aside className="hidden w-full shrink-0 md:block lg:w-[372px]">
+          <div className="sticky top-28">
+            <MoneyCard data={data} labels={labels} locale={locale} canEdit={canEdit} />
+          </div>
+        </aside>
+      </div>
+
       <FunnelSection stages={data.stages} labels={labels} locale={locale} bottleneck={data.bottleneck} />
 
-      {data.blocks.map((b, i) => (
-        <BlockSection key={b.key} block={b} index={i + 1} labels={labels} locale={locale} days={data.days} cost={data.costByBlock[b.key]} />
-      ))}
-
-      {/* Public read; the two write forms are admin-only (their server actions re-check the role). */}
-      <Section id="experiments" title={labels.experiments.title} desc={labels.experiments.rule}>
+      {/* Public read; the write forms are admin-only (their server actions re-check the role). */}
+      <section id="experiments" className="scroll-mt-28 py-12">
+        <H2>{labels.experiments.title}</H2>
+        <p className={cn("mb-6 mt-2 text-base leading-6", MUTED)}>{labels.experiments.rule}</p>
         <div className={canEdit ? "grid grid-cols-1 gap-6 lg:grid-cols-2" : "grid grid-cols-1 gap-6"}>
           <Experiments items={data.experiments} labels={labels} locale={locale} editable={canEdit} />
           {canEdit && <RevenueForm labels={labels} />}
         </div>
-      </Section>
+      </section>
+
+      <MobileBar data={data} labels={labels} locale={locale} />
     </div>
   );
 }

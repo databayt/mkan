@@ -1,104 +1,88 @@
-import { ArrowRight, CircleCheck } from "lucide-react";
+import { ArrowRight, Banknote, CircleCheck, ListChecks, TrendingUp, Unplug, Wrench } from "lucide-react";
 
 import type { Locale } from "@/components/internationalization/config";
 import type { NextStep } from "@/lib/monetize/next-steps";
 import { cn } from "@/lib/utils";
 
 import { fill, formatValue, type MonetizeLabels } from "./format";
-import { Chip, Section } from "./ui";
+import { Highlight, INK, MUTED, Pill, RichText, Section } from "./listing-ui";
 
-const PRIORITY_TONE: Record<number, string> = {
-  1: "bg-primary text-primary-foreground",
-  2: "bg-destructive/10 text-destructive",
-  3: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
-  4: "bg-muted text-muted-foreground",
+export const PRIORITY_ICON = { 1: Banknote, 2: Unplug, 3: TrendingUp, 4: ListChecks } as const;
+export const PRIORITY_TONE: Record<number, string> = {
+  1: "bg-[#FFF0F3] text-[#E31C5F]",
+  2: "bg-[#FFF4ED] text-[#C13515]",
+  3: "bg-[#FFF8E6] text-[#8A5A00]",
+  4: "bg-[#F7F7F7] text-[#6A6A6A]",
 };
 
-/** Inline `code` in a dictionary string, rendered as code — the "do this" lines carry commands. */
-function Text({ t }: { t: string }) {
-  return (
-    <>
-      {t.split(/(`[^`]+`)/g).map((part, i) =>
-        part.startsWith("`") && part.endsWith("`") ? (
-          <code key={i} dir="ltr" className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[13px]">
-            {part.slice(1, -1)}
-          </code>
-        ) : (
-          <span key={i}>{part}</span>
-        ),
-      )}
-    </>
-  );
+/** A task's words, its numbers and stage names filled in. Shared by the banner and the list. */
+export function stepCopy(s: NextStep, labels: MonetizeLabels, locale: Locale) {
+  const L = labels.todo;
+  const t = (L.items as Record<string, { title: string; why: string; how: string; done: string }>)[s.key];
+  if (!t) return null;
+  const stage = labels.stages as Record<string, string>;
+  const v: Record<string, string | number> = {};
+  for (const [k, x] of Object.entries(s.vars)) {
+    if (["amount", "need", "have"].includes(k) && typeof x === "number") v[k] = formatValue(x, "rwf", locale, labels.currency);
+    else if ((k === "from" || k === "to") && typeof x === "string") v[k] = stage[x] ?? x;
+    else v[k] = x;
+  }
+  v.block = s.block ? labels.blocks[s.block].title : "";
+  return {
+    title: fill(t.title, v),
+    why: fill(t.why, v),
+    how: fill(t.how, v),
+    done: fill(t.done, v),
+    priority: (L.priority as Record<string, string>)[String(s.priority)],
+    block: s.block ? labels.blocks[s.block].title : null,
+  };
 }
 
+/** Every open task, as a listing's highlights: icon, bold title, why, then do-this / done-when. */
 export function TodoSection({ steps, labels, locale }: { steps: NextStep[]; labels: MonetizeLabels; locale: Locale }) {
   const L = labels.todo;
-  const items = L.items as Record<string, { title: string; why: string; how: string; done: string }>;
-  const stage = labels.stages as Record<string, string>;
-  const rwf = (v: number) => formatValue(v, "rwf", locale, labels.currency);
-  // Money amounts and stage keys arrive raw; the page words them.
-  const vars = (s: NextStep) =>
-    Object.fromEntries(
-      Object.entries(s.vars).map(([k, v]) => {
-        if (["amount", "need", "have"].includes(k) && typeof v === "number") return [k, rwf(v)];
-        if ((k === "from" || k === "to") && typeof v === "string") return [k, stage[v] ?? v];
-        return [k, v];
-      }),
-    );
   return (
-    <Section
-      id="todo"
-      className="border-t-0 pt-2 sm:pt-2"
-      title={L.title}
-      desc={L.desc}
-      aside={steps.length > 0 && <Chip className="bg-primary/10 text-primary">{fill(L.count, { n: steps.length })}</Chip>}
-    >
+    <Section id="todo" title={L.title} aside={steps.length > 0 && <Pill>{fill(L.count, { n: steps.length })}</Pill>}>
+      <p className={cn("-mt-3 mb-6 text-sm leading-5", MUTED)}>{L.desc}</p>
       {steps.length === 0 ? (
-        <div className="flex items-center gap-3 rounded-2xl border p-6 text-[15px]">
-          <CircleCheck className="size-5 text-emerald-600" aria-hidden />
-          {L.empty}
-        </div>
+        <Highlight icon={CircleCheck} title={L.empty} />
       ) : (
-        <ol className="my-0 ms-0 list-none [&>li]:mt-0 divide-y overflow-hidden rounded-2xl border">
+        <div className="space-y-6">
           {steps.map((s, i) => {
-            const t = items[s.key];
-            if (!t) return null;
-            const v = { ...vars(s), block: s.block ? labels.blocks[s.block].title : "" };
+            const c = stepCopy(s, labels, locale);
+            if (!c) return null;
             return (
-              <li key={`${s.key}-${i}`} className="grid gap-3 p-5 sm:grid-cols-[2.5rem_1fr] sm:p-6">
-                <span className="flex size-9 items-center justify-center rounded-full border text-sm font-semibold tabular-nums" aria-hidden>
-                  {i + 1}
-                </span>
-                <div className="min-w-0 space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-base font-semibold">{fill(t.title, v)}</h3>
-                    <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", PRIORITY_TONE[s.priority])}>
-                      {(L.priority as Record<string, string>)[String(s.priority)]}
+              <Highlight
+                key={`${s.key}-${i}`}
+                icon={s.key.startsWith("job") ? Wrench : PRIORITY_ICON[s.priority]}
+                title={
+                  <span className="flex flex-wrap items-center gap-2">
+                    {c.title}
+                    <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", PRIORITY_TONE[s.priority])}>{c.priority}</span>
+                  </span>
+                }
+                sub={c.why}
+              >
+                <div className="mt-3 space-y-2 text-sm leading-5">
+                  <p className={cn("flex gap-2", INK)}>
+                    <ArrowRight className="mt-0.5 size-4 shrink-0 rtl:-scale-x-100" aria-hidden />
+                    <span>
+                      <span className="font-semibold">{L.how}: </span>
+                      <RichText t={c.how} />
                     </span>
-                    {s.block && <Chip>{labels.blocks[s.block].title}</Chip>}
-                  </div>
-                  <p className="text-[15px] leading-relaxed text-muted-foreground">{fill(t.why, v)}</p>
-                  <div className="grid gap-2 text-sm sm:grid-cols-2">
-                    <p className="flex gap-2 rounded-xl bg-muted/60 p-3">
-                      <ArrowRight className="mt-0.5 size-4 shrink-0 rtl:-scale-x-100" aria-hidden />
-                      <span>
-                        <span className="font-medium">{L.how}: </span>
-                        <Text t={fill(t.how, v)} />
-                      </span>
-                    </p>
-                    <p className="flex gap-2 rounded-xl border border-dashed p-3 text-muted-foreground">
-                      <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
-                      <span>
-                        <span className="font-medium text-foreground">{L.done}: </span>
-                        {fill(t.done, v)}
-                      </span>
-                    </p>
-                  </div>
+                  </p>
+                  <p className={cn("flex gap-2", MUTED)}>
+                    <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
+                    <span>
+                      <span className="font-semibold">{L.done}: </span>
+                      {c.done}
+                    </span>
+                  </p>
                 </div>
-              </li>
+              </Highlight>
             );
           })}
-        </ol>
+        </div>
       )}
     </Section>
   );

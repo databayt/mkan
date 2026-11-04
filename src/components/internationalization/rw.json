@@ -6413,6 +6413,44 @@
           "done": "Fixed costs come from invoices."
         }
       }
+    },
+    "heading": "Monetize the chatbot business",
+    "statusRow": {
+      "title": "Run by the Mkan agent",
+      "line": "{blocks} blocks · {broken} broken · {tasks} tasks open"
+    },
+    "banner": {
+      "next": "Next task",
+      "advice": "Advice",
+      "seeAll": "See all {n} tasks",
+      "adviceBottleneck": "Work on {from} → {to} next — it is the weakest step at {rate}.",
+      "adviceBreakEven": "Everything is running. The gap to break-even is {gap} a month — close deals.",
+      "adviceDone": "Everything is running and break-even is covered. Keep the daily post going."
+    },
+    "card": {
+      "toBreakEven": "/ month to break even",
+      "revenue": "Revenue",
+      "cost": "Cost so far",
+      "net": "Net this month",
+      "ctaRecord": "Record money received",
+      "ctaNext": "See the next task",
+      "refresh": "Numbers refresh every hour",
+      "fixed": "Fixed bills, full month",
+      "metered": "Model spend, projected",
+      "needed": "Revenue needed every month",
+      "progress": "Break-even reached",
+      "projected": "Month-end net at this pace",
+      "weakest": "Weakest step: {from} → {to} {rate}"
+    },
+    "mobile": {
+      "net": "Net {v}",
+      "ofBreakEven": "{pct} of break-even",
+      "cta": "Next task"
+    },
+    "featureCards": {
+      "revenue": "Revenue this month",
+      "net": "Net this month",
+      "breakEven": "Of break-even"
     }
   }
 }

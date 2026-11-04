@@ -1,6 +1,5 @@
 import type { Locale } from "@/components/internationalization/config";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addRevenueEntry, saveExperiment } from "@/lib/actions/monetize-actions";
@@ -11,14 +10,17 @@ import { BLOCKS } from "@/lib/monetize/types";
 import { cn } from "@/lib/utils";
 
 import type { MonetizeLabels } from "./format";
+import { GRADIENT, INK, LINE, MUTED } from "./listing-ui";
 
 // Plain <form action={serverAction}>: works before hydration and needs no client bundle.
-const SELECT = "h-10 w-full rounded-lg border bg-background px-3 text-sm";
+const SELECT = "h-12 w-full rounded-[12px] border border-[#B0B0B0] bg-background px-3 text-base dark:border-border";
+const INPUT = "h-12 rounded-[12px] border-[#B0B0B0] text-base dark:border-border";
+const SUBMIT = "h-12 w-full rounded-[12px] border-0 text-base font-semibold text-white hover:opacity-95 sm:w-auto sm:px-8";
 
 function Field({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <Label htmlFor={id} className="text-xs">
+      <Label htmlFor={id} className={cn("text-[10px] font-bold uppercase tracking-wide", INK)}>
         {label}
       </Label>
       {children}
@@ -29,11 +31,9 @@ function Field({ id, label, children }: { id: string; label: string; children: R
 export function RevenueForm({ labels }: { labels: MonetizeLabels }) {
   const L = labels.revenueForm;
   return (
-    <Card className="rounded-2xl shadow-none">
-      <CardHeader>
-        <CardTitle className="text-base">{L.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <div id="record" className={cn("scroll-mt-28 rounded-xl border p-6 shadow-[0_6px_16px_rgba(0,0,0,0.12)]", LINE)}>
+      <h3 className={cn("mb-5 text-lg font-semibold leading-6 tracking-normal", INK)}>{L.title}</h3>
+      <div>
         <form action={addRevenueEntry} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field id="rev-line" label={L.line}>
             <select id="rev-line" name="line" className={SELECT} required>
@@ -45,26 +45,28 @@ export function RevenueForm({ labels }: { labels: MonetizeLabels }) {
             </select>
           </Field>
           <Field id="rev-amount" label={L.amount}>
-            <Input id="rev-amount" name="amountRwf" type="number" min={1} step={1} inputMode="numeric" required dir="ltr" />
+            <Input className={INPUT} id="rev-amount" name="amountRwf" type="number" min={1} step={1} inputMode="numeric" required dir="ltr" />
           </Field>
           <Field id="rev-at" label={L.receivedAt}>
-            <Input id="rev-at" name="receivedAt" type="date" dir="ltr" />
+            <Input className={INPUT} id="rev-at" name="receivedAt" type="date" dir="ltr" />
           </Field>
           <Field id="rev-customer" label={L.customer}>
-            <Input id="rev-customer" name="customer" maxLength={120} />
+            <Input className={INPUT} id="rev-customer" name="customer" maxLength={120} />
           </Field>
           <Field id="rev-deal" label={L.dealId}>
-            <Input id="rev-deal" name="dealId" maxLength={40} dir="ltr" />
+            <Input className={INPUT} id="rev-deal" name="dealId" maxLength={40} dir="ltr" />
           </Field>
           <Field id="rev-note" label={L.note}>
-            <Input id="rev-note" name="note" maxLength={500} />
+            <Input className={INPUT} id="rev-note" name="note" maxLength={500} />
           </Field>
           <div className="sm:col-span-2">
-            <Button type="submit">{L.save}</Button>
+            <Button type="submit" className={SUBMIT} style={{ background: GRADIENT }}>
+              {L.save}
+            </Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -81,19 +83,19 @@ export function Experiments({ items, labels, locale, editable = false }: { items
   const num = (v: number | null) => (v == null ? "—" : formatNumber(v, locale));
   const blockTitle = (b: string) => (labels.blocks as Record<string, { title: string }>)[b]?.title ?? b;
   return (
-    <Card className="rounded-2xl shadow-none">
-      <CardContent className="space-y-4">
+    <div className={cn("space-y-4 rounded-xl border p-6", LINE)}>
+      <div className="space-y-4">
         {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{L.empty}</p>
+          <p className={cn("text-base", MUTED)}>{L.empty}</p>
         ) : (
           <ul className="divide-y">
             {items.map((e) => (
               <li key={e.id} className="space-y-2 py-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-sm font-medium">{e.hypothesis}</p>
+                  <p className={cn("text-base font-medium", INK)}>{e.hypothesis}</p>
                   <span className={cn("text-xs font-medium", VERDICT_TONE[e.verdict])}>{verdicts[e.verdict] ?? e.verdict}</span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className={cn("text-sm", MUTED)}>
                   {blockTitle(e.block)} · {e.metric} · {L.baseline} {num(e.baseline)} · {L.target}{" "}
                   {num(e.target)} · {L.result} {num(e.result)} · {formatDate(new Date(e.startedAt), locale)}
                 </p>
@@ -148,21 +150,23 @@ export function Experiments({ items, labels, locale, editable = false }: { items
           </Field>
           <div className="sm:col-span-2">
             <Field id="exp-hyp" label={L.hypothesis}>
-              <Input id="exp-hyp" name="hypothesis" minLength={5} maxLength={500} required />
+              <Input className={INPUT} id="exp-hyp" name="hypothesis" minLength={5} maxLength={500} required />
             </Field>
           </div>
           <Field id="exp-base" label={L.baseline}>
-            <Input id="exp-base" name="baseline" type="number" step="any" dir="ltr" />
+            <Input className={INPUT} id="exp-base" name="baseline" type="number" step="any" dir="ltr" />
           </Field>
           <Field id="exp-target" label={L.target}>
-            <Input id="exp-target" name="target" type="number" step="any" dir="ltr" />
+            <Input className={INPUT} id="exp-target" name="target" type="number" step="any" dir="ltr" />
           </Field>
           <div className="sm:col-span-2">
-            <Button type="submit">{L.save}</Button>
+            <Button type="submit" className={SUBMIT} style={{ background: GRADIENT }}>
+              {L.save}
+            </Button>
           </div>
         </form>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
