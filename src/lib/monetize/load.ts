@@ -7,6 +7,8 @@ import { agentFunnel, type Funnel } from "./agent-funnel";
 import { bottleneck, type Bottleneck, type Stage } from "./bottleneck";
 import { costByBlock, costLines, type CostLine } from "./cost-lines";
 import { nextSteps, type NextStep } from "./next-steps";
+import { loadSprints } from "./sprint";
+import type { SprintsView } from "./sprint-shape";
 import { fixedCostsRwf, fixedEstimated, USD_TO_RWF } from "./costs";
 import { blockHealth, change, deltas, worst } from "./health";
 import { money, REVENUE_LINES, type MoneyView, type RevenueLineKey } from "./money";
@@ -52,6 +54,8 @@ export interface MonetizeOverview {
   usdToRwf: number;
   /** What to do next to make money, derived from the numbers above. */
   nextSteps: NextStep[];
+  /** The week and month sprint, and the prompts that carry them out. */
+  sprints: SprintsView;
   blocks: BlockView[];
   stages: Stage[];
   bottleneck: Bottleneck;
@@ -98,7 +102,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   const month = monthStart.toISOString().slice(0, 7);
   const daysInMonth = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 0)).getUTCDate();
 
-  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency] =
+  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints] =
     await Promise.all([
       agentFunnel(db, days),
       agentFunnel(db, days, days),
@@ -134,6 +138,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
         SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY ms) AS p50,
                percentile_cont(0.95) WITHIN GROUP (ORDER BY ms) AS p95
         FROM turns WHERE ms IS NOT NULL`.catch(() => [{ p50: null, p95: null }]),
+      loadSprints(),
     ]);
 
   // ── snapshots, per block ──────────────────────────────────────────────
@@ -296,6 +301,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     monthElapsed,
     usdToRwf: USD_TO_RWF,
     nextSteps: steps,
+    sprints,
     blocks,
     stages,
     bottleneck: bn,

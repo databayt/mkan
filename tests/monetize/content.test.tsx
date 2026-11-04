@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/actions/monetize-actions", () => ({ addRevenueEntry: vi.fn(), saveExperiment: vi.fn() }));
+vi.mock("@/lib/actions/monetize-actions", () => ({ addRevenueEntry: vi.fn(), saveExperiment: vi.fn(), toggleSprintTask: vi.fn(), setPromptStatus: vi.fn(), saveSprint: vi.fn(), closeSprint: vi.fn(), addSprintTask: vi.fn(), addSprintPrompt: vi.fn() }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...p }: { href: string; children: React.ReactNode }) => <a href={href} {...p}>{children}</a> }));
 
 import ar from "@/components/internationalization/ar.json";
@@ -12,6 +12,7 @@ import type { MonetizeOverview } from "@/lib/monetize/load";
 import { costByBlock, costLines } from "@/lib/monetize/cost-lines";
 import { money } from "@/lib/monetize/money";
 import { nextSteps } from "@/lib/monetize/next-steps";
+import { shapeSprints } from "@/lib/monetize/sprint-shape";
 
 const stages = [
   { key: "read", block: "scrape", count: 20 },
@@ -50,12 +51,48 @@ const base = {
   monthElapsed: 0.1,
   usdToRwf: 1450,
 };
+const sprints = shapeSprints(
+  [
+    {
+      id: "w",
+      kind: "WEEK",
+      title: "First paid deal",
+      goal: "One tenant signs",
+      startsAt: new Date("2026-11-02"),
+      endsAt: new Date("2026-11-09"),
+      status: "active",
+      tasks: [{ id: "t1", title: "Turn broker sends back on", block: "chat", order: 0, done: false, doneAt: null }],
+      prompts: [
+        { id: "p1", taskId: "t1", order: 0, text: "In ~/mkan: read the test chat, then gate broker sends.", status: "pending", processedAt: null, result: null },
+        { id: "p2", taskId: null, order: 1, text: "In ~/mkan: post every day.", status: "processed", processedAt: new Date("2026-11-03"), result: "ok" },
+      ],
+    },
+  ],
+  new Date("2026-11-04"),
+);
+
 const data = {
   ...base,
+  sprints,
   nextSteps: nextSteps({ money: base.money, blocks: base.blocks, bottleneck: base.bottleneck, gates: base.gates, fixedEstimated: true, shortlisted: 15, paidDealsMonth: 0 }),
 } satisfies MonetizeOverview;
 
 describe("/monetize content", () => {
+  it("shows the next sprint prompt with copy and prev/next, and the sprint", () => {
+    render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" />);
+    expect(screen.getAllByText("In ~/mkan: read the test chat, then gate broker sends.").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: en.monetize.prompt.copy })).toBeTruthy();
+    expect(screen.getByRole("button", { name: en.monetize.prompt.next })).toBeTruthy();
+    expect(screen.getAllByText("First paid deal").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: en.monetize.prompt.markProcessed })).toBeNull();
+  });
+
+  it("gives an admin the processed / tick controls", () => {
+    render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" canEdit />);
+    expect(screen.getByRole("button", { name: en.monetize.prompt.markProcessed })).toBeTruthy();
+    expect(screen.getAllByTitle(en.monetize.sprint.toggle).length).toBe(1);
+  });
+
   it("renders every block, the money, the bottleneck and, for an admin, the forms (en)", () => {
     render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" canEdit />);
     for (const b of ["scrape", "enhance", "post", "chat"] as const) expect(screen.getAllByText(en.monetize.blocks[b].title).length).toBeGreaterThan(0);
@@ -78,8 +115,7 @@ describe("/monetize content", () => {
     expect(screen.getAllByText(en.monetize.spend.lines["agent-read"].name).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/8 calls/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(en.monetize.card.needed).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(en.monetize.banner.next).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(en.monetize.card.ctaNext).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(en.monetize.card.ctaNext).length).toBeGreaterThan(0);
     for (const b of ["Scrape", "Enhance", "Post", "Chat"]) expect(screen.getAllByText(b).length).toBeGreaterThan(0);
   });
 

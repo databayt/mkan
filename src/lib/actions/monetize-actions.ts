@@ -77,3 +77,78 @@ export async function saveExperiment(form: FormData): Promise<void> {
   logger.info("monetize:experiment", { actorId: session.user.id, block: fields.block, verdict: fields.verdict });
   revalidatePath("/[lang]/monetize", "page");
 }
+
+// ── the sprint plan ─────────────────────────────────────────────────────
+// The page's sprint controls; the Mac's `pnpm sprint:*` (scripts/sprint.ts) writes the same rows.
+
+const idOf = (form: FormData, name = "id") => z.string().trim().min(1).max(40).parse(form.get(name));
+
+export async function toggleSprintTask(form: FormData): Promise<void> {
+  await requireAdmin();
+  const id = idOf(form);
+  const task = await db.sprintTask.findUniqueOrThrow({ where: { id }, select: { done: true } });
+  await db.sprintTask.update({ where: { id }, data: { done: !task.done, doneAt: task.done ? null : new Date() } });
+  revalidatePath("/[lang]/monetize", "page");
+}
+
+const promptStatus = z.enum(["pending", "processed", "skipped"]);
+
+export async function setPromptStatus(form: FormData): Promise<void> {
+  await requireAdmin();
+  const id = idOf(form);
+  const status = promptStatus.parse(form.get("status"));
+  const result = blank(form.get("result"));
+  await db.sprintPrompt.update({
+    where: { id },
+    data: { status, processedAt: status === "pending" ? null : new Date(), ...(result ? { result: String(result).slice(0, 500) } : {}) },
+  });
+  revalidatePath("/[lang]/monetize", "page");
+}
+
+const sprintSchema = z.object({
+  kind: z.enum(["WEEK", "MONTH"]),
+  title: z.string().trim().min(2).max(120),
+  goal: z.string().trim().max(300).optional(),
+  startsAt: z.coerce.date(),
+  endsAt: z.coerce.date(),
+});
+
+export async function saveSprint(form: FormData): Promise<void> {
+  await requireAdmin();
+  const data = sprintSchema.parse({
+    kind: form.get("kind"),
+    title: form.get("title"),
+    goal: blank(form.get("goal")),
+    startsAt: form.get("startsAt"),
+    endsAt: form.get("endsAt"),
+  });
+  if (data.endsAt <= data.startsAt) throw new Error("The sprint ends before it starts");
+  await db.sprint.create({ data });
+  revalidatePath("/[lang]/monetize", "page");
+}
+
+export async function closeSprint(form: FormData): Promise<void> {
+  await requireAdmin();
+  await db.sprint.update({ where: { id: idOf(form) }, data: { status: "closed" } });
+  revalidatePath("/[lang]/monetize", "page");
+}
+
+export async function addSprintTask(form: FormData): Promise<void> {
+  await requireAdmin();
+  const sprintId = idOf(form, "sprintId");
+  const title = z.string().trim().min(2).max(200).parse(form.get("title"));
+  const block = z.enum(BLOCKS).optional().parse(blank(form.get("block")));
+  const order = await db.sprintTask.count({ where: { sprintId } });
+  await db.sprintTask.create({ data: { sprintId, title, block, order } });
+  revalidatePath("/[lang]/monetize", "page");
+}
+
+export async function addSprintPrompt(form: FormData): Promise<void> {
+  await requireAdmin();
+  const sprintId = idOf(form, "sprintId");
+  const text = z.string().trim().min(5).max(4000).parse(form.get("text"));
+  const taskId = blank(form.get("taskId")) ? idOf(form, "taskId") : undefined;
+  const order = await db.sprintPrompt.count({ where: { sprintId } });
+  await db.sprintPrompt.create({ data: { sprintId, text, taskId, order } });
+  revalidatePath("/[lang]/monetize", "page");
+}

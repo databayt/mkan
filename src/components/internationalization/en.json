@@ -6227,7 +6227,8 @@
       "earn": "Earnings",
       "funnel": "Funnel",
       "experiments": "Experiments",
-      "todo": "To do"
+      "todo": "To do",
+      "sprint": "Sprint"
     },
     "howItWorks": "How it works",
     "blockCost": "Cost this month",
@@ -6433,24 +6434,73 @@
       "cost": "Cost so far",
       "net": "Net this month",
       "ctaRecord": "Record money received",
-      "ctaNext": "See the next task",
+      "ctaNext": "See the next prompt",
       "refresh": "Numbers refresh every hour",
       "fixed": "Fixed bills, full month",
       "metered": "Model spend, projected",
       "needed": "Revenue needed every month",
       "progress": "Break-even reached",
       "projected": "Month-end net at this pace",
-      "weakest": "Weakest step: {from} → {to} {rate}"
+      "weakest": "Weakest step: {from} → {to} {rate}",
+      "sprintLine": "Sprint: {tasks} tasks · {prompts} prompts"
     },
     "mobile": {
       "net": "Net {v}",
       "ofBreakEven": "{pct} of break-even",
-      "cta": "Next task"
+      "cta": "Next prompt"
     },
     "featureCards": {
       "revenue": "Revenue this month",
       "net": "Net this month",
       "breakEven": "Of break-even"
+    },
+    "prompt": {
+      "title": "Next prompt",
+      "of": "{i} / {n}",
+      "prev": "Previous prompt",
+      "next": "Next prompt",
+      "copy": "Copy",
+      "copied": "Copied",
+      "week": "This week",
+      "month": "This month",
+      "status": {
+        "pending": "Not done yet",
+        "processed": "Processed",
+        "skipped": "Skipped"
+      },
+      "processedAt": "Processed {time}",
+      "markProcessed": "Mark processed",
+      "skip": "Skip",
+      "undo": "Undo",
+      "empty": "No sprint prompts yet — plan this week's sprint below.",
+      "doneLine": "When done, run in ~/mkan: {cmd}"
+    },
+    "sprint": {
+      "title": "The sprint",
+      "desc": "This week's and this month's plan. Each task is carried out by the prompts in the card above; tick a task when it is done, mark a prompt when a session has run it.",
+      "week": "This week",
+      "month": "This month",
+      "none": "No active sprint.",
+      "tasks": "{done} of {total} tasks done",
+      "prompts": "{done} of {total} prompts processed",
+      "range": "{from} – {to}",
+      "promptsTitle": "Prompts",
+      "addTask": "Add task",
+      "addPrompt": "Add prompt",
+      "taskTitle": "Task",
+      "promptText": "Prompt text",
+      "forTask": "For task",
+      "noTask": "No task",
+      "plan": "Plan a new sprint",
+      "kind": "Kind",
+      "name": "Title",
+      "goal": "Goal",
+      "starts": "Starts",
+      "ends": "Ends",
+      "create": "Create sprint",
+      "close": "Close sprint",
+      "toggle": "Mark done / not done",
+      "cli": "Claude sessions: `pnpm sprint:next` · `pnpm sprint:done <id> --task-done`"
     }
   }
 }

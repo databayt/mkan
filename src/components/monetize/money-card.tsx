@@ -55,6 +55,14 @@ export function MoneyCard({ data, labels, locale, canEdit }: Props) {
 
         {canEdit ? <GradientLink href="#record">{C.ctaRecord}</GradientLink> : <GradientLink href="#top-task">{C.ctaNext}</GradientLink>}
         <p className={cn("mt-3 text-center text-sm", MUTED)}>{C.refresh}</p>
+        {(data.sprints.week || data.sprints.month) && (
+          <a href="#sprint" className={cn("mt-4 block rounded-[10px] bg-[#F7F7F7] px-3 py-2 text-center text-sm underline-offset-2 hover:underline dark:bg-muted", INK)}>
+            {fill(C.sprintLine, {
+              tasks: `${(data.sprints.week?.doneTasks ?? 0) + (data.sprints.month?.doneTasks ?? 0)}/${(data.sprints.week?.tasks.length ?? 0) + (data.sprints.month?.tasks.length ?? 0)}`,
+              prompts: `${data.sprints.prompts.filter((p) => p.status !== "pending").length}/${data.sprints.prompts.length}`,
+            })}
+          </a>
+        )}
 
         <div className={cn("mt-5 space-y-3 text-base", INK)}>
           <div className="flex justify-between gap-4">

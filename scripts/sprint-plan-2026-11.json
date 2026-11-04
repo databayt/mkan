@@ -1,0 +1,48 @@
+{
+  "sprints": [
+    {
+      "kind": "WEEK",
+      "title": "First paid deal",
+      "goal": "One tenant from a Mkan chat signs a home this week, and Mkan's share is recorded.",
+      "startsAt": "2026-11-02",
+      "endsAt": "2026-11-09",
+      "tasks": [
+        { "key": "brokers", "title": "Turn broker sends back on", "block": "chat" },
+        { "key": "master", "title": "Get mkan-master-sweep running so Enhance feeds Post again", "block": "enhance" },
+        { "key": "viewing", "title": "Book a viewing from a shortlisted WhatsApp tenant", "block": "chat" },
+        { "key": "close", "title": "Close the deal and record the money", "block": "chat" },
+        { "key": "post", "title": "Post on TikTok every day", "block": "post" },
+        { "key": "fda", "title": "Give the Hermes gateway Full Disk Access so wa:chats reads again", "block": "scrape" }
+      ],
+      "prompts": [
+        { "task": "brokers", "text": "In ~/mkan: I did the WhatsApp phone test from +249 919 071 294 to +250 780 984 777. Read that test chat end to end (AgentTask rows for my number, the #mkan cards it raised) and tell me if every reply was right. If it was, run `pnpm wa:brokers gated`, confirm the WaState broker-sends row reads gated, then mark this prompt done with --task-done." },
+        { "task": "master", "text": "In ~/mkan: the Enhance block is red because mkan-master-sweep has not run for twice its schedule. Read its log (`bash ~/.claude/scripts/runs.sh`, then the job's own log), find why it stopped, fix the cause, re-run it, and show me the mastering queue moving (MasteringRun counts). Then mark this prompt done with --task-done." },
+        { "task": "viewing", "text": "In ~/mkan: list the WhatsApp tenants of the last 7 days who reached a shortlist and picked a home. Rank them by how ready they look (budget fits, move-in date, replies). For the top two, show me the home, the broker and the viewing ask Mkan would send. Book nothing until I say yes; then book with `pnpm deal:book` and mark this prompt done." },
+        { "task": "close", "text": "In ~/mkan: for the deal booked this week, run `pnpm deal:status` and walk me through what is left before it is paid (viewing, signing, the broker's commission share). When the money arrives, mark the deal paid and record Mkan's share on /monetize (Record money received), then mark this prompt done with --task-done." },
+        { "task": "post", "text": "In ~/mkan: check mkan-tiktok-post posted on each of the last 7 days. For every missed day, find why (no ready home, Mac asleep at 07:00, upload failed) and fix what can be fixed so there are always 3 homes ready ahead. Report the 7-day record, then mark this prompt done." },
+        { "task": "fda", "text": "In ~/mkan: `pnpm wa:chats` fails with EPERM on WhatsApp's ChatStorage.sqlite when the Hermes gateway runs it. Find the exact binary that needs Full Disk Access (the node the gateway runs), tell me the path to add in System Settings → Privacy & Security → Full Disk Access, wait for me, then re-run the demand job and confirm wa:chats reads. Mark this prompt done with --task-done." }
+      ]
+    },
+    {
+      "kind": "MONTH",
+      "title": "Break even — 28,250 RWF a month",
+      "goal": "Revenue received in November covers every cost on /monetize.",
+      "startsAt": "2026-11-01",
+      "endsAt": "2026-12-01",
+      "tasks": [
+        { "key": "deals", "title": "Two paid deals a week", "block": "chat" },
+        { "key": "subscription", "title": "Price and pitch the broker lead subscription", "block": "chat" },
+        { "key": "ready", "title": "Lift Homes saved → Ready to post above 10%", "block": "enhance" },
+        { "key": "invoices", "title": "Replace the cost estimates with real invoices" },
+        { "key": "rw", "title": "Native Kinyarwanda review of the monetize and agent strings" }
+      ],
+      "prompts": [
+        { "task": "deals", "text": "In ~/mkan: open /monetize and read the funnel. Name the one hand-off between Shortlisted and Paid that loses the most tenants this week, show me the chats behind the number, and propose one change to the agent or the broker flow that would lift it. Write it as an experiment on /monetize (hypothesis, baseline, target) before changing anything." },
+        { "task": "subscription", "text": "In ~/mkan, with the canon pricing principles: draft the broker lead subscription — price in RWF per month, what a broker gets (tenants matched to their zones, the viewing flow), and the first 5 brokers to offer it to from the directory (most homes, has a phone, answered before). Show me the offer text in English and Kinyarwanda before anything is sent." },
+        { "task": "ready", "text": "In ~/mkan: 0% of new homes reach Ready to post. Trace a home saved this week through mastering to the post queue and find where it stops (110 waiting to master, broker videos allowed per day 0). Fix the lane so at least 1 in 10 new homes is ready within a day, and show me the before/after counts." },
+        { "task": "invoices", "text": "In ~/mkan: the fixed costs on /monetize are estimates. Ask me for the real monthly amounts (Cloudflare's mkan share, the WhatsApp SIM bundle, the Mac's power and data), then set MONETIZE_FIXED_COSTS_RWF the way the deploy lane takes new values (Keychain cf-mkan-<VAR>, appended to the production env) and deploy. Confirm the page no longer says estimates." },
+        { "task": "rw", "text": "In ~/mkan: export every Kinyarwanda string under monetize.* and the agent's tenant-facing messages that is still English or machine-written into one review sheet (key, English, current rw) that a native speaker can fill, and tell me where it is. Mark this prompt done when the sheet exists; the task closes when the answers are merged." }
+      ]
+    }
+  ]
+}

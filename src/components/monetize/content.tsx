@@ -15,6 +15,8 @@ import { FeatureCard, H2, INK, LINE, MUTED } from "./listing-ui";
 import { MobileBar, MoneyCard, progressOf } from "./money-card";
 import { EarnSection, SpendSection } from "./money-section";
 import { NextBanner } from "./next-banner";
+import { PromptCard } from "./prompt-card";
+import { SprintSection } from "./sprint-section";
 import { TodoSection } from "./todo-section";
 
 /**
@@ -59,7 +61,12 @@ export function MonetizeContent({ data, labels, locale, lang, canEdit = false }:
         </div>
       </header>
 
-      <NextBanner data={data} labels={labels} locale={locale} />
+      {/* The next sprint prompt (copy, prev / next); with no sprint prompts yet, the derived next task. */}
+      {data.sprints.prompts.length > 0 ? (
+        <PromptCard prompts={data.sprints.prompts} start={data.sprints.startIndex} labels={labels.prompt} canEdit={canEdit} locale={locale} />
+      ) : (
+        <NextBanner data={data} labels={labels} locale={locale} />
+      )}
 
       <div className="mt-10 flex flex-col justify-between gap-12 lg:flex-row">
         <div className="w-full min-w-0 lg:max-w-[640px]">
@@ -84,6 +91,7 @@ export function MonetizeContent({ data, labels, locale, lang, canEdit = false }:
             </div>
           </section>
 
+          <SprintSection sprints={data.sprints} labels={labels} locale={locale} canEdit={canEdit} />
           <TodoSection steps={data.nextSteps} labels={labels} locale={locale} />
           <SpendSection data={data} labels={labels} locale={locale} />
           <EarnSection data={data} labels={labels} locale={locale} />

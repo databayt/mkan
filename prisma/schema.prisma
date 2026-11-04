@@ -1784,3 +1784,56 @@ model Experiment {
 
   @@index([block, startedAt])
 }
+
+/// /monetize sprint plan: one active WEEK and one active MONTH sprint, their tasks,
+/// and the prompts that carry them out — pasted into Claude Code, then marked
+/// processed on the page or with `pnpm sprint:done` (scripts/sprint.ts).
+model Sprint {
+  id        String         @id @default(cuid())
+  /// WEEK | MONTH
+  kind      String
+  title     String
+  goal      String?
+  startsAt  DateTime
+  endsAt    DateTime
+  /// active | closed
+  status    String         @default("active")
+  createdAt DateTime       @default(now())
+  tasks     SprintTask[]
+  prompts   SprintPrompt[]
+
+  @@index([kind, startsAt])
+}
+
+model SprintTask {
+  id       String         @id @default(cuid())
+  sprintId String
+  sprint   Sprint         @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  title    String
+  /// scrape | enhance | post | chat
+  block    String?
+  order    Int            @default(0)
+  done     Boolean        @default(false)
+  doneAt   DateTime?
+  note     String?
+  prompts  SprintPrompt[]
+
+  @@index([sprintId, order])
+}
+
+model SprintPrompt {
+  id          String      @id @default(cuid())
+  sprintId    String
+  sprint      Sprint      @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  taskId      String?
+  task        SprintTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  order       Int         @default(0)
+  text        String
+  /// pending | processed | skipped
+  status      String      @default("pending")
+  processedAt DateTime?
+  /// What the session that ran it reported.
+  result      String?
+
+  @@index([sprintId, order])
+}
