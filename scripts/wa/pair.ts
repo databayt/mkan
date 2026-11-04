@@ -13,6 +13,7 @@
  * (+250780984777): Settings → Linked devices → Link a device. It expires in
  * about a minute; run it again for a fresh one.
  */
+import { refuseUnattended } from '../unattended';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -37,6 +38,7 @@ async function ensureInstance() {
 }
 
 async function main() {
+  refuseUnattended("re-pairing the WhatsApp line");
   const number = process.argv.find((a) => a.startsWith('--number='))?.split('=')[1];
   if (!process.env.MKAN_WA_BRIDGE_SECRET) throw new Error('no MKAN_WA_BRIDGE_SECRET (Keychain cf-mkan-MKAN_WA_BRIDGE_SECRET)');
   console.log(`Evolution ${evolutionUrl()}, instance "${INSTANCE}"`);

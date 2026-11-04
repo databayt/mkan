@@ -1,7 +1,7 @@
 import { Circle, CircleCheck } from "lucide-react";
 
 import type { Locale } from "@/components/internationalization/config";
-import { addSprintPrompt, addSprintTask, closeSprint, saveSprint, toggleSprintTask } from "@/lib/actions/monetize-actions";
+import { addSprintPrompt, addSprintTask, closeSprint, saveSprint, setPromptStatus, toggleSprintTask } from "@/lib/actions/monetize-actions";
 import { formatDate } from "@/lib/i18n/formatters";
 import type { SprintsView, SprintView } from "@/lib/monetize/sprint-shape";
 import { BLOCKS } from "@/lib/monetize/types";
@@ -11,7 +11,13 @@ import { fill, type MonetizeLabels } from "./format";
 import { GRADIENT, INK, LINE, MUTED, RichText, Section } from "./listing-ui";
 
 const FIELD = "h-11 w-full rounded-[10px] border border-[#B0B0B0] bg-background px-3 text-sm dark:border-border";
-const DOT: Record<string, string> = { pending: "bg-[#B0B0B0]", processed: "bg-[#008A05]", skipped: "bg-[#EBEBEB] ring-1 ring-[#B0B0B0]" };
+const DOT: Record<string, string> = {
+  pending: "bg-[#B0B0B0]",
+  running: "bg-[#E31C5F] animate-pulse",
+  processed: "bg-[#008A05]",
+  skipped: "bg-[#EBEBEB] ring-1 ring-[#B0B0B0]",
+  blocked: "bg-[#C13515]",
+};
 
 function Progress({ value }: { value: number }) {
   return (
@@ -75,15 +81,31 @@ function SprintBlock({ sprint, heading, labels, locale, canEdit }: { sprint: Spr
           <p className={cn("mb-2 text-sm font-semibold", INK)}>{S.promptsTitle}</p>
           <ol className="my-0 ms-0 list-none space-y-1 [&>li]:mt-0">
             {sprint.prompts.map((p, n) => (
-              <li key={p.id}>
-                <a href={`#prompt-${p.id}`} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-[#F7F7F7] dark:hover:bg-muted">
+              <li key={p.id} className="flex items-center gap-2">
+                <a href={`#prompt-${p.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-[#F7F7F7] dark:hover:bg-muted">
                   <span className={cn("size-2 shrink-0 rounded-full", DOT[p.status])} aria-hidden />
                   <span className={cn("w-5 shrink-0 text-xs tabular-nums", MUTED)}>{n + 1}</span>
-                  <span dir="auto" className={cn("truncate text-sm", p.status === "pending" ? INK : MUTED)}>
+                  <span dir="auto" className={cn("truncate text-sm", p.status === "pending" || p.status === "running" || p.status === "blocked" ? INK : MUTED)}>
                     {p.text.split("\n")[0]}
                   </span>
-                  <span className={cn("ms-auto shrink-0 text-xs", MUTED)}>{(labels.prompt.status as Record<string, string>)[p.status]}</span>
+                  <span className={cn("ms-auto shrink-0 text-xs", p.status === "blocked" ? "font-semibold text-[#C13515]" : MUTED)}>
+                    {(labels.prompt.status as Record<string, string>)[p.status]}
+                  </span>
                 </a>
+                {canEdit && p.status !== "running" && (
+                  <form action={setPromptStatus} className="shrink-0">
+                    <input type="hidden" name="id" value={p.id} />
+                    {p.status === "pending" ? (
+                      <button name="status" value="skipped" className={cn("text-xs underline underline-offset-2", MUTED)}>
+                        {labels.prompt.skip}
+                      </button>
+                    ) : (
+                      <button name="status" value="pending" className={cn("text-xs underline underline-offset-2", INK)}>
+                        {p.status === "blocked" ? labels.prompt.retry : labels.prompt.undo}
+                      </button>
+                    )}
+                  </form>
+                )}
               </li>
             ))}
           </ol>

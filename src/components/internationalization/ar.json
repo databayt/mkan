@@ -6464,16 +6464,21 @@
       "week": "هذا الأسبوع",
       "month": "هذا الشهر",
       "status": {
-        "pending": "لم يُنفَّذ بعد",
-        "processed": "نُفِّذ",
-        "skipped": "تُخطّي"
+        "pending": "التالي",
+        "processed": "تم",
+        "skipped": "تُخطّي",
+        "running": "يعمل الآن",
+        "blocked": "يحتاجك"
       },
       "processedAt": "نُفِّذ {time}",
       "markProcessed": "علّمه منفَّذاً",
       "skip": "تخطَّ",
       "undo": "تراجع",
       "empty": "لا أوامر في السبرنت بعد — خطّط لسبرنت هذا الأسبوع أدناه.",
-      "doneLine": "When done, run in ~/mkan: {cmd}"
+      "doneLine": "When done, run in ~/mkan: {cmd}",
+      "copyAria": "انسخ الأمر",
+      "auto": "يعمل وحده كل ساعة على الماك",
+      "retry": "أعد المحاولة"
     },
     "sprint": {
       "title": "السبرنت",
@@ -6501,6 +6506,49 @@
       "close": "أغلق السبرنت",
       "toggle": "منجزة / غير منجزة",
       "cli": "جلسات Claude: `pnpm sprint:next` · `pnpm sprint:done <id> --task-done`"
+    },
+    "panels": {
+      "overview": "المال",
+      "sprint": "السبرنت",
+      "todo": "المهام",
+      "spend": "التكاليف",
+      "earn": "الإيرادات",
+      "scrape": "الجمع",
+      "enhance": "التحسين",
+      "post": "النشر",
+      "chat": "المحادثة",
+      "sprintWeek": "هذا الأسبوع",
+      "sprintMonth": "هذا الشهر",
+      "tasksDone": "{done}/{total} مهام",
+      "promptsLegend": "الأوامر",
+      "todoBy": "المهام المفتوحة حسب الأولوية",
+      "spendTop": "التكلفة حتى الآن حسب البند",
+      "spendTotal": "المجموع حتى الآن",
+      "earnTarget": "التعادل {v}",
+      "earnNone": "لم يُستلم مال بعد هذا الشهر.",
+      "scrapeFlow": "آخر مسح",
+      "homesPerDay": "منازل جديدة يومياً",
+      "enhanceFlow": "الصور في هذه الفترة",
+      "backlog": "تنتظر التحسين",
+      "viewsPerDay": "المشاهدات المكتسبة يومياً",
+      "postedDays": "أيام النشر، آخر 7",
+      "chatFlow": "من المحادثة إلى الصفقة المدفوعة",
+      "noTrend": "لا أيام كافية بعد لاتجاه.",
+      "jump": "اعرض {name}"
+    },
+    "lastUpdate": "آخر تحديث {date}",
+    "success": {
+      "title": "مقاييس النجاح",
+      "summary": "تحقّق {met} من {total}",
+      "met": "تحقّق",
+      "missed": "لم يتحقّق بعد",
+      "unknown": "لا بيانات بعد",
+      "target": "الهدف {op} {v}",
+      "atLeast": "≥",
+      "atMost": "≤",
+      "perWeek": "أسبوعياً",
+      "perSweep": "لكل مسح",
+      "now": "الآن {v}"
     }
   }
 }

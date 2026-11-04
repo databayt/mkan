@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/actions/monetize-actions", () => ({ addRevenueEntry: vi.fn(), saveExperiment: vi.fn(), toggleSprintTask: vi.fn(), setPromptStatus: vi.fn(), saveSprint: vi.fn(), closeSprint: vi.fn(), addSprintTask: vi.fn(), addSprintPrompt: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...p }: { href: string; children: React.ReactNode }) => <a href={href} {...p}>{children}</a> }));
 
 import ar from "@/components/internationalization/ar.json";
@@ -81,15 +82,17 @@ describe("/monetize content", () => {
   it("shows the next sprint prompt with copy and prev/next, and the sprint", () => {
     render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" />);
     expect(screen.getAllByText("In ~/mkan: read the test chat, then gate broker sends.").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: en.monetize.prompt.copy })).toBeTruthy();
+    expect(screen.getByRole("button", { name: en.monetize.prompt.copyAria })).toBeTruthy();
     expect(screen.getByRole("button", { name: en.monetize.prompt.next })).toBeTruthy();
+    expect(screen.getByRole("button", { name: en.monetize.prompt.prev })).toBeTruthy();
     expect(screen.getAllByText("First paid deal").length).toBeGreaterThan(0);
-    expect(screen.queryByRole("button", { name: en.monetize.prompt.markProcessed })).toBeNull();
+    expect(screen.queryByRole("button", { name: en.monetize.prompt.skip })).toBeNull();
   });
 
   it("gives an admin the processed / tick controls", () => {
     render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" canEdit />);
-    expect(screen.getByRole("button", { name: en.monetize.prompt.markProcessed })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: en.monetize.prompt.skip }).length).toBe(1);
+    expect(screen.getAllByRole("button", { name: en.monetize.prompt.undo }).length).toBe(1);
     expect(screen.getAllByTitle(en.monetize.sprint.toggle).length).toBe(1);
   });
 
@@ -117,6 +120,7 @@ describe("/monetize content", () => {
     expect(screen.getAllByText(en.monetize.card.needed).length).toBeGreaterThan(0);
         expect(screen.getAllByText(en.monetize.card.ctaNext).length).toBeGreaterThan(0);
     for (const b of ["Scrape", "Enhance", "Post", "Chat"]) expect(screen.getAllByText(b).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(en.monetize.success.title)).toHaveLength(4);
   });
 
   it("is public read-only: no write forms without an admin session", () => {

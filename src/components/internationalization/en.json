@@ -6464,16 +6464,21 @@
       "week": "This week",
       "month": "This month",
       "status": {
-        "pending": "Not done yet",
-        "processed": "Processed",
-        "skipped": "Skipped"
+        "pending": "Up next",
+        "processed": "Done",
+        "skipped": "Skipped",
+        "running": "Running now",
+        "blocked": "Needs you"
       },
       "processedAt": "Processed {time}",
       "markProcessed": "Mark processed",
       "skip": "Skip",
       "undo": "Undo",
       "empty": "No sprint prompts yet — plan this week's sprint below.",
-      "doneLine": "When done, run in ~/mkan: {cmd}"
+      "doneLine": "When done, run in ~/mkan: {cmd}",
+      "copyAria": "Copy the prompt",
+      "auto": "Runs by itself every hour on the Mac",
+      "retry": "Retry"
     },
     "sprint": {
       "title": "The sprint",
@@ -6501,6 +6506,49 @@
       "close": "Close sprint",
       "toggle": "Mark done / not done",
       "cli": "Claude sessions: `pnpm sprint:next` · `pnpm sprint:done <id> --task-done`"
+    },
+    "panels": {
+      "overview": "Money",
+      "sprint": "Sprint",
+      "todo": "To do",
+      "spend": "Costs",
+      "earn": "Earnings",
+      "scrape": "Scrape",
+      "enhance": "Enhance",
+      "post": "Post",
+      "chat": "Chat",
+      "sprintWeek": "This week",
+      "sprintMonth": "This month",
+      "tasksDone": "{done}/{total} tasks",
+      "promptsLegend": "Prompts",
+      "todoBy": "Open tasks by priority",
+      "spendTop": "Cost so far, by line",
+      "spendTotal": "Total so far",
+      "earnTarget": "Break-even {v}",
+      "earnNone": "No money received yet this month.",
+      "scrapeFlow": "Last sweep",
+      "homesPerDay": "New homes per day",
+      "enhanceFlow": "Photos this window",
+      "backlog": "Waiting to master",
+      "viewsPerDay": "Views gained per day",
+      "postedDays": "Days posted, last 7",
+      "chatFlow": "Chat to paid deal",
+      "noTrend": "Not enough days yet for a trend.",
+      "jump": "Show {name}"
+    },
+    "lastUpdate": "Last update {date}",
+    "success": {
+      "title": "Success metrics",
+      "summary": "{met} of {total} met",
+      "met": "Met",
+      "missed": "Not yet",
+      "unknown": "No data yet",
+      "target": "Target {op} {v}",
+      "atLeast": "≥",
+      "atMost": "≤",
+      "perWeek": "a week",
+      "perSweep": "a sweep",
+      "now": "Now {v}"
     }
   }
 }

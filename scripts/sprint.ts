@@ -4,7 +4,9 @@
  *
  *   pnpm sprint:show                                   week + month: tasks ✓, prompts and their state
  *   pnpm sprint:next                                   the next pending prompt (id, sprint, task, text)
- *   pnpm sprint:done <promptId> [--result="…"] [--task-done] [--skip]
+ *   pnpm sprint:done <promptId> [--result="…"] [--task-done] [--skip | --blocked]
+ *   pnpm sprint:claim                                  the runner: take the next pending prompt (→ running), print it as JSON
+ *   pnpm sprint:release <promptId> --result="…"        the runner: a run that ended without reporting → blocked
  *   pnpm sprint:task <taskId> [--undo]                 tick (or untick) a task
  *   pnpm sprint:plan --file=plan.json                  create a WEEK / MONTH sprint from JSON (replaces an open one of that kind)
  *
@@ -58,10 +60,40 @@ async function next(db: Db) {
 }
 
 async function done(db: Db, id: string) {
-  const status = flag('skip') ? 'skipped' : 'processed';
+  // --blocked: the prompt needs Abdout (a send to a real person, money, a decision) — the result says what.
+  const status = flag('skip') ? 'skipped' : flag('blocked') ? 'blocked' : 'processed';
   const p = await db.sprintPrompt.update({ where: { id }, data: { status, processedAt: new Date(), ...(arg('result') ? { result: arg('result')!.slice(0, 500) } : {}) } });
-  if (flag('task-done') && p.taskId) await db.sprintTask.update({ where: { id: p.taskId }, data: { done: true, doneAt: new Date() } });
+  if (status === 'processed' && flag('task-done') && p.taskId) await db.sprintTask.update({ where: { id: p.taskId }, data: { done: true, doneAt: new Date() } });
   console.log(`✓ prompt ${id} ${status}${flag('task-done') && p.taskId ? ` · task ${p.taskId} done` : ''}`);
+}
+
+/** The runner's claim: the next pending prompt (week first), marked running so no second run takes it. */
+async function claim(db: Db) {
+  // A prompt left running by a run that died (a crash, a reboot) is not retried blind: it needs a look.
+  await db.sprintPrompt.updateMany({
+    where: { status: 'running', processedAt: { lt: new Date(Date.now() - 3 * 3_600_000) } },
+    data: { status: 'blocked', result: 'The unattended run stopped without reporting — check the runner log, then mark it pending to retry.' },
+  });
+  const s = shapeSprints(await rows(db));
+  if (s.prompts.some((x) => x.status === 'running')) return console.log(JSON.stringify({ busy: true }));
+  const p = s.prompts.find((x) => x.status === 'pending');
+  if (!p) return console.log(JSON.stringify({ empty: true }));
+  // processedAt doubles as "started at" while running.
+  const took = await db.sprintPrompt.updateMany({ where: { id: p.id, status: 'pending' }, data: { status: 'running', processedAt: new Date() } });
+  if (took.count !== 1) return console.log(JSON.stringify({ busy: true }));
+  console.log(JSON.stringify({ id: p.id, kind: p.kind, task: p.taskTitle, taskId: p.taskId, text: p.text }));
+}
+
+async function release(db: Db, id: string) {
+  const p = await db.sprintPrompt.findUnique({ where: { id }, select: { status: true } });
+  if (p?.status !== 'running') return console.log(`prompt ${id} is ${p?.status ?? 'gone'} — nothing to release`);
+  // --pending: give it back untouched (the runner's daily cap); otherwise it needs a look.
+  const status = flag('pending') ? 'pending' : 'blocked';
+  await db.sprintPrompt.update({
+    where: { id },
+    data: { status, processedAt: status === 'pending' ? null : new Date(), result: (arg('result') ?? 'The run ended without reporting.').slice(0, 500) },
+  });
+  console.log(`✓ prompt ${id} ${status}`);
 }
 
 async function task(db: Db, id: string) {
@@ -107,6 +139,8 @@ async function main() {
     else if (cmd === 'next') await next(db);
     else if (cmd === 'done' && id) await done(db, id);
     else if (cmd === 'task' && id) await task(db, id);
+    else if (cmd === 'claim') await claim(db);
+    else if (cmd === 'release' && id) await release(db, id);
     else if (cmd === 'plan' && arg('file')) await plan(db, arg('file')!);
     else console.log('usage: pnpm sprint:show | sprint:next | sprint:done <promptId> [--result=…] [--task-done] [--skip] | sprint:task <taskId> [--undo] | sprint:plan --file=plan.json');
   } finally {

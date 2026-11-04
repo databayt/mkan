@@ -45,7 +45,9 @@ import { draftMessage, type Lang } from './outreach-templates';
 
 config({ override: true });
 
+import { refuseUnattended } from '../unattended';
 const APPLY = process.argv.includes('--apply');
+if (APPLY) refuseUnattended('sending outreach follow-ups');
 const OUTBOX_PATH = join(process.cwd(), 'scripts/crm/.data/outreach-cadence-outbox.json');
 
 export interface CadenceHost {

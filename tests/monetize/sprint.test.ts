@@ -51,4 +51,13 @@ describe("sprint shaping", () => {
     expect(pickActive([closed], "WEEK", d("2026-11-04"))).toBeNull();
     expect(shapeSprints([], d("2026-11-04"))).toMatchObject({ week: null, month: null, prompts: [], startIndex: 0 });
   });
+
+  it("opens on the prompt running now, then on one that needs Abdout, then on the next pending", () => {
+    const mk = (statuses: string[]) =>
+      shapeSprints([row({ id: "w", prompts: statuses.map((st, i) => ({ id: `p${i}`, taskId: null, order: i, text: "x", status: st, processedAt: null, result: null })) })], d("2026-11-04"));
+    expect(mk(["processed", "pending", "running"]).startIndex).toBe(2);
+    expect(mk(["processed", "pending", "blocked"]).startIndex).toBe(2);
+    expect(mk(["processed", "pending"]).startIndex).toBe(1);
+    expect(mk(["weird"]).prompts[0]!.status).toBe("pending");
+  });
 });

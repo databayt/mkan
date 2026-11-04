@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { Bot } from "lucide-react";
+import Image from "next/image";
 
 import type { Locale } from "@/components/internationalization/config";
-import { formatDateTime, formatPercentage } from "@/lib/i18n/formatters";
+import { formatDate, formatPercentage } from "@/lib/i18n/formatters";
 import type { MonetizeOverview } from "@/lib/monetize/load";
 import { cn } from "@/lib/utils";
 
@@ -26,44 +25,28 @@ import { TodoSection } from "./todo-section";
  * width below, and the Reserve bar fixed at the bottom on a phone.
  * Server-rendered; the only client work is two plain admin forms.
  */
-export function MonetizeContent({ data, labels, locale, lang, canEdit = false }: { data: MonetizeOverview; labels: MonetizeLabels; locale: Locale; lang: string; canEdit?: boolean }) {
+// `lang` stays in the props (the page passes it) though the 7 / 30 days links that used it are gone (Abdout, 11-04).
+export function MonetizeContent({ data, labels, locale, canEdit = false }: { data: MonetizeOverview; labels: MonetizeLabels; locale: Locale; lang: string; canEdit?: boolean }) {
   const rwf = (v: number) => `${new Intl.NumberFormat(locale).format(Math.round(v))} ${labels.currency}`;
   const broken = data.blocks.filter((b) => b.health === "red").length;
-  const ranges = [
-    { days: 7, label: labels.range7 },
-    { days: 30, label: labels.range30 },
-  ];
   return (
     <div className="mx-auto w-full max-w-[1184px] px-6 pb-28 pt-6 md:px-8 md:pb-16">
-      {/* Title row — like the listing's name with Share / Save on the right. */}
+      {/* Title row — like the listing's name: the state on the left, the last update at the end. */}
       <header className="pb-6">
         <h1 className={cn("text-2xl font-semibold leading-tight tracking-tight md:text-[26px]", INK)}>{labels.heading}</h1>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <div className={cn("flex flex-wrap items-center gap-x-2 gap-y-1 text-sm", INK)}>
-            <HealthBadge health={data.health} label={`${labels.overall}: ${labels.health[data.health]}`} />
-            <span className={MUTED}>·</span>
-            <span className="underline underline-offset-2">{fill(labels.updated, { time: formatDateTime(new Date(data.generatedAt), locale) })}</span>
+        <div className={cn("mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm", INK)}>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <HealthBadge health={data.health} label={labels.health[data.health]} />
             <span className={MUTED}>·</span>
             <span>{fill(labels.gates.brokerSends, { mode: data.gates.brokerSends })}</span>
           </div>
-          <nav className="flex gap-1" aria-label={`${labels.range7} / ${labels.range30}`}>
-            {ranges.map((r) => (
-              <Link
-                key={r.days}
-                href={`/${lang}/monetize?days=${r.days}`}
-                aria-current={data.days === r.days ? "page" : undefined}
-                className={cn("rounded-lg px-3 py-1.5 text-sm font-semibold underline-offset-2", data.days === r.days ? cn("bg-[#F7F7F7] dark:bg-muted", INK) : cn("hover:bg-[#F7F7F7] hover:underline dark:hover:bg-muted", INK))}
-              >
-                {r.label}
-              </Link>
-            ))}
-          </nav>
+          <span className={MUTED}>{fill(labels.lastUpdate, { date: formatDate(new Date(data.generatedAt), locale, { year: undefined, month: "short", day: "numeric" }) })}</span>
         </div>
       </header>
 
       {/* The next sprint prompt (copy, prev / next); with no sprint prompts yet, the derived next task. */}
       {data.sprints.prompts.length > 0 ? (
-        <PromptCard prompts={data.sprints.prompts} start={data.sprints.startIndex} labels={labels.prompt} canEdit={canEdit} locale={locale} />
+        <PromptCard prompts={data.sprints.prompts} start={data.sprints.startIndex} labels={labels.prompt} />
       ) : (
         <NextBanner data={data} labels={labels} locale={locale} />
       )}
@@ -72,8 +55,9 @@ export function MonetizeContent({ data, labels, locale, lang, canEdit = false }:
         <div className="w-full min-w-0 lg:max-w-[640px]">
           {/* "Hosted by" row. */}
           <section className={cn("flex items-center gap-4 border-b pb-6", LINE)}>
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#222222] text-white dark:bg-foreground dark:text-background">
-              <Bot className="size-5" strokeWidth={1.5} />
+            {/* The rental agent's own robot mark — the chat bubble's launcher (agent/bubble/bubble.tsx). */}
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-background p-1.5 ring-1 ring-[#DDDDDD] dark:ring-border">
+              <Image src="/illustrations/robot-fill.png" alt="" width={40} height={40} className="size-full object-contain dark:invert" />
             </span>
             <div className="min-w-0">
               <p className={cn("text-base font-medium leading-5", INK)}>{labels.statusRow.title}</p>

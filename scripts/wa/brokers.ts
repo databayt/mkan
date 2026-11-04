@@ -13,6 +13,8 @@ import { config } from "dotenv";
 config({ override: true });
 import { startOfKigaliDay } from "./outbox-pure";
 
+import { refuseUnattended } from "../unattended";
+
 const args = process.argv.slice(2);
 const note = args.find((a) => a.startsWith("--note="))?.slice(7);
 const by = process.env.USER || "cli";
@@ -23,6 +25,7 @@ async function main() {
   const { brokerSendMode, setBrokerSendMode, setTestPhones, testPhones } = await import("../../src/components/agent/broker-sends");
   try {
     const [cmd, sub, phone] = args.filter((a) => !a.startsWith("--"));
+    if (cmd === "gated" || (cmd === "test" && sub === "add")) refuseUnattended("turning WhatsApp broker sends on");
     if (cmd === "off" || cmd === "gated") {
       await setBrokerSendMode(cmd, by, note);
       console.log(`broker sends → ${cmd.toUpperCase()}`);

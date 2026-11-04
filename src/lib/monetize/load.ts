@@ -93,6 +93,17 @@ function series(rows: SnapRow[], pick: (m: SnapshotMetrics) => number | undefine
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
+/** The day-by-day gain of a cumulative field (views, homes saved), each with its day. */
+function dailyGain(rows: SnapRow[], pick: (m: SnapshotMetrics) => number | undefined | null): { day: string; value: number }[] {
+  const byDay = new Map<string, number>();
+  for (const r of rows) {
+    const v = pick(metricsOf(r));
+    if (typeof v === "number") byDay.set(r.at.toISOString().slice(0, 10), v);
+  }
+  const days = [...byDay.keys()].sort();
+  return days.slice(1).map((d, i) => ({ day: d, value: Math.max(0, byDay.get(d)! - byDay.get(days[i]!)!) }));
+}
+
 
 export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   const now = Date.now();
@@ -255,16 +266,16 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     monthElapsed,
   });
 
-  const block = (key: BlockKey, kpis: Kpi[], jobs: JobState[], trend: number[], blockers: string[] = []): BlockView => {
+  const block = (key: BlockKey, kpis: Kpi[], jobs: JobState[], trend: number[], blockers: string[] = [], daily?: { day: string; value: number }[]): BlockView => {
     const lever = kpis.find((k) => k.lever);
     const { health, reason } = blockHealth({ jobs, lever: lever?.value ?? null, leverPrev: lever?.prev ?? null, blockers });
-    return { key, health, reason, kpis, jobs, snapshotAt: last(key)?.at.toISOString() ?? null, trend };
+    return { key, health, reason, kpis, jobs, snapshotAt: last(key)?.at.toISOString() ?? null, trend, ...(daily ? { daily } : {}) };
   };
 
   const blocks: BlockView[] = [
-    block("scrape", scrapeKpis, scrapeJobs, homesTrend),
+    block("scrape", scrapeKpis, scrapeJobs, homesTrend, [], dailyGain(scrapeRows, (m) => m.scrape?.savedTotal)),
     block("enhance", enhanceKpis, jobsOf("enhance"), []),
-    block("post", postKpis, jobsOf("post"), series(byBlock("post"), (x) => x.post?.views, 14)),
+    block("post", postKpis, jobsOf("post"), series(byBlock("post"), (x) => x.post?.views, 14), [], dailyGain(byBlock("post"), (x) => x.post?.views)),
     block("chat", chatKpis, jobsOf("chat"), [], chatBlockers),
   ];
 

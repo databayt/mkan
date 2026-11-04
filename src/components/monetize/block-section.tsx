@@ -1,6 +1,9 @@
+import { CircleCheck, CircleDashed, CircleX } from "lucide-react";
+
 import type { Locale } from "@/components/internationalization/config";
 import { formatDateTime, formatPercentage } from "@/lib/i18n/formatters";
 import { change } from "@/lib/monetize/health";
+import { successFor, type SuccessView } from "@/lib/monetize/success";
 import type { BlockView } from "@/lib/monetize/types";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +20,52 @@ const JOB_TONE: Record<string, string> = {
   missing: "bg-[#F7F7F7] text-[#6A6A6A]",
 };
 
-/** One block as a listing section: title + health, how it works, the main number, every KPI, cost, jobs. */
+const SUCCESS_ICON = { met: CircleCheck, missed: CircleX, unknown: CircleDashed } as const;
+const SUCCESS_TONE = { met: "text-[#008A05]", missed: "text-[#C13515]", unknown: "text-[#6A6A6A] dark:text-muted-foreground" } as const;
+
+/** The block's success metrics: each target, the number now, met or not — icon and word, never colour alone. */
+function SuccessMetrics({ rows, labels, locale }: { rows: SuccessView[]; labels: MonetizeLabels; locale: Locale }) {
+  const S = labels.success;
+  const kpiLabel = labels.kpis as Record<string, string>;
+  const met = rows.filter((r) => r.status === "met").length;
+  const per = (r: SuccessView) => (r.per === "week" ? ` ${S.perWeek}` : r.per === "sweep" ? ` ${S.perSweep}` : "");
+  return (
+    <>
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-2">
+        <h3 className={cn("text-lg font-semibold leading-6 tracking-normal", INK)}>{S.title}</h3>
+        <span className={cn("rounded-full bg-[#F7F7F7] px-2.5 py-0.5 text-xs font-semibold dark:bg-muted", INK)}>{fill(S.summary, { met, total: rows.length })}</span>
+      </div>
+      <ul className="mt-4 space-y-4">
+        {rows.map((r) => {
+          const Icon = SUCCESS_ICON[r.status];
+          return (
+            <li key={r.kpi} className="flex items-start gap-4">
+              <Icon className={cn("mt-0.5 size-6 shrink-0", SUCCESS_TONE[r.status])} strokeWidth={1.5} aria-hidden />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-4">
+                  <p className={cn("text-base font-medium leading-5", INK)}>{kpiLabel[r.kpi] ?? r.kpi}</p>
+                  <p className={cn("shrink-0 text-base font-semibold tabular-nums", INK)}>{formatValue(r.value, r.unit, locale, labels.currency)}</p>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#EBEBEB] dark:bg-muted">
+                  <div className={cn("h-full rounded-full", r.status === "met" ? "bg-[#008A05]" : "bg-[#E31C5F]")} style={{ width: `${r.status === "unknown" ? 0 : Math.max(2, r.progress * 100)}%` }} />
+                </div>
+                <p className={cn("mt-1.5 flex flex-wrap justify-between gap-x-3 text-xs", MUTED)}>
+                  <span>
+                    {fill(S.target, { op: r.op === ">=" ? S.atLeast : S.atMost, v: formatValue(r.target, r.unit, locale, labels.currency) })}
+                    {per(r)}
+                  </span>
+                  <span className={cn("font-semibold", SUCCESS_TONE[r.status])}>{S[r.status]}</span>
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
+
+/** One block as a listing section: title + health, how it works, the main number, its success metrics, every KPI, cost, jobs. */
 export function BlockSection({
   block,
   index,
@@ -81,6 +129,8 @@ export function BlockSection({
           )}
         </div>
       </div>
+
+      <SuccessMetrics rows={successFor(block, days)} labels={labels} locale={locale} />
 
       <h3 className={cn("mt-8 text-lg font-semibold leading-6 tracking-normal", INK)}>{labels.howItWorks}</h3>
       <ol className="my-0 ms-0 mt-4 list-none space-y-4 [&>li]:mt-0">

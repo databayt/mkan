@@ -16,9 +16,12 @@
 import { config } from "dotenv";
 config({ override: true });
 
+import { refuseUnattended } from "../unattended";
+
 const args = process.argv.slice(2);
 const arg = (name: string) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const cmd = args.find((a) => !a.startsWith("--")) ?? "list";
+if (cmd === "book") refuseUnattended("booking a viewing with a real tenant and broker");
 
 /** An ISO instant, or "YYYY-MM-DD HH:MM" read as Kigali time (UTC+2). */
 function when(text: string | undefined): Date {

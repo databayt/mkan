@@ -98,6 +98,7 @@ const argv = (n: string, d = ''): string => {
   const h = process.argv.find((a) => a.startsWith(`--${n}=`));
   return h ? h.slice(n.length + 3) : d;
 };
+import { refuseUnattended } from '../unattended';
 const flag = (n: string): boolean => process.argv.includes(`--${n}`);
 const positional = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const cmd = positional[0] ?? 'help';
@@ -1158,9 +1159,11 @@ async function main(): Promise<void> {
       await stats();
       break;
     case 'ask':
+      refuseUnattended('asking brokers on TikTok');
       await ask();
       break;
     case 'consent':
+      refuseUnattended('asking brokers for consent');
       await consent();
       break;
     default:

@@ -49,6 +49,8 @@ export interface BlockView {
   snapshotAt: string | null;
   /** Lever value per day, oldest first — the sparkline. */
   trend: number[];
+  /** A per-day series with its days (YYYY-MM-DD), oldest first — the sticky card's trend chart. */
+  daily?: { day: string; value: number }[];
 }
 
 /** Metrics the Mac pushes per block (BlockSnapshot.metrics). All optional: a missing file is a gap, not a crash. */

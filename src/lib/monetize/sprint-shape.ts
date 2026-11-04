@@ -3,7 +3,9 @@
  * tests share one shape. Rows come from Sprint / SprintTask / SprintPrompt.
  */
 export type SprintKind = "WEEK" | "MONTH";
-export type PromptStatus = "pending" | "processed" | "skipped";
+/** pending → running (the Mac runner took it) → processed | blocked (needs Abdout) | skipped */
+export type PromptStatus = "pending" | "running" | "processed" | "skipped" | "blocked";
+export const PROMPT_STATUSES: PromptStatus[] = ["pending", "running", "processed", "skipped", "blocked"];
 
 export interface SprintTaskView {
   id: string;
@@ -40,7 +42,7 @@ export interface SprintsView {
   month: SprintView | null;
   /** The carousel: the week's prompts, then the month's. */
   prompts: SprintPromptView[];
-  /** Where the carousel opens: the first pending prompt, else 0. */
+  /** Where the carousel opens: the prompt running now, else one that needs Abdout, else the next pending, else 0. */
   startIndex: number;
 }
 
@@ -77,7 +79,7 @@ export function shapeSprint(r: SprintRow): SprintView {
       taskId: p.taskId,
       taskTitle: p.taskId ? (titleOf.get(p.taskId) ?? null) : null,
       text: p.text,
-      status: (["pending", "processed", "skipped"].includes(p.status) ? p.status : "pending") as PromptStatus,
+      status: (PROMPT_STATUSES as string[]).includes(p.status) ? (p.status as PromptStatus) : "pending",
       processedAt: iso(p.processedAt),
       result: p.result,
     }));
@@ -91,7 +93,7 @@ export function shapeSprint(r: SprintRow): SprintView {
     tasks: tasks.map((t) => ({ id: t.id, title: t.title, block: t.block, done: t.done, doneAt: iso(t.doneAt) })),
     prompts,
     doneTasks: tasks.filter((t) => t.done).length,
-    processedPrompts: prompts.filter((p) => p.status !== "pending").length,
+    processedPrompts: prompts.filter((p) => p.status === "processed" || p.status === "skipped").length,
   };
 }
 
@@ -101,8 +103,9 @@ export function shapeSprints(rows: SprintRow[], now = new Date()): SprintsView {
   const week = w ? shapeSprint(w) : null;
   const month = m ? shapeSprint(m) : null;
   const prompts = [...(week?.prompts ?? []), ...(month?.prompts ?? [])];
-  const first = prompts.findIndex((p) => p.status === "pending");
-  return { week, month, prompts, startIndex: first >= 0 ? first : 0 };
+  const at = (st: PromptStatus) => prompts.findIndex((p) => p.status === st);
+  const first = [at("running"), at("blocked"), at("pending")].find((i) => i >= 0);
+  return { week, month, prompts, startIndex: first ?? 0 };
 }
 
 export const EMPTY_SPRINTS: SprintsView = { week: null, month: null, prompts: [], startIndex: 0 };

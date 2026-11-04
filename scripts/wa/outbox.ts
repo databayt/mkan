@@ -12,8 +12,11 @@ import { config } from 'dotenv';
 config({ override: true });
 import './evolution';
 
+import { refuseUnattended } from '../unattended';
+
 async function main() {
   const dry = process.argv.includes('--dry-run');
+  if (!dry) refuseUnattended('sending the WhatsApp outbox by hand');
   const { runOutbox } = await import('../../src/components/agent/wa-outbox');
   const { db } = await import('../../src/lib/db');
   try {

@@ -43,7 +43,9 @@ import { draftMessage, type MsgType, type Lang } from './outreach-templates';
 import { claimUrl, publicAppUrl } from './public-links';
 import { twentyClient, phoneOf, type Phones } from './twenty-rest';
 
+import { refuseUnattended } from '../unattended';
 const APPLY = process.argv.includes('--apply');
+if (APPLY) refuseUnattended('sending host outreach');
 // Draft without consulting the CRM (no TWENTY_API_* needed).
 const OFFLINE = process.argv.includes('--offline');
 const argv = (n: string, d = ''): string => {

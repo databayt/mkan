@@ -77,6 +77,8 @@
     "sprint:done": "tsx scripts/sprint.ts done",
     "sprint:task": "tsx scripts/sprint.ts task",
     "sprint:plan": "tsx scripts/sprint.ts plan",
+    "sprint:claim": "tsx scripts/sprint.ts claim",
+    "sprint:release": "tsx scripts/sprint.ts release",
     "deal:list": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/deal.ts list",
     "deal:book": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/deal.ts book",
     "deal:status": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/deal.ts status",

@@ -24,6 +24,7 @@
 import { config } from 'dotenv';
 config({ override: true });
 
+import { refuseUnattended } from '../unattended';
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -267,6 +268,7 @@ async function postOne(p: Page, piece: Piece): Promise<string> {
 }
 
 async function main(): Promise<void> {
+  refuseUnattended('uploading to the public TikTok page');
   const pieces = todaysPieces();
   const done = readJson<Record<string, string>>(UPLOADS, {});
   const pending = readJson<Record<string, string>>(PENDING, {});
