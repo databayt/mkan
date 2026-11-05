@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Kigali estate agencies from Google Maps → the broker directory, daily at 08:00, run by the
+# Kigali estate agencies from Google Maps → the broker directory, daily at 11:00, run by the
 # Hermes gateway's cron (no agent, no model). Installed to ~/.hermes/scripts/mkan-agencies.sh by
-# scripts/crm/install-ads-sweeps.sh agencies. The 09:00 demand-match run merges the ledger into
-# the directory (crm:brokers --apply), so new agencies are askable the same morning.
+# scripts/crm/install-ads-sweeps.sh agencies. 11:00 because the session-vault Chrome is shared:
+# the 06:00/18:00 TikTok sweep and the 07:00 post / 13:00 retry uploads drive it too, and two
+# lanes on one Chrome time out (the 11-05 18:00 sweep did). New agencies are merged into the
+# directory (crm:brokers --apply) right after, so they are askable the same day.
 #
 # Each search phrase (term × neighbourhood, agencies-discover.ts QUERIES) is searched once a
 # week; up to AGENCIES_LIMIT places are detailed a day (phone, website, WhatsApp). It drives the
@@ -35,6 +37,8 @@ wait_ready 600 || { lane_end defer "$(lane_not_ready)"; exit 0; }
 echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (detached) ──" >>"$LOGDIR/sweep.log"
 /usr/bin/caffeinate -i pnpm -s crm:agencies --limit "$LIMIT" >>"$LOGDIR/sweep.log" 2>>"$LOGDIR/sweep.err.log"
 code=$?
+# Merge the new agencies into the directory the agent asks (the 09:00 demand-match run does it too).
+[ "$code" -eq 0 ] && pnpm -s crm:brokers --apply >>"$LOGDIR/sweep.log" 2>>"$LOGDIR/sweep.err.log"
 if [ "$code" -ne 0 ]; then
   lane_end fail "agencies exit $code: $(grep -v '^[[:space:]]*$' "$LOGDIR/sweep.err.log" | tail -n 1 | cut -c1-160)"
   echo "⚠️ Agencies sweep failed (exit $code) — tail .data/agencies/sweep.err.log"
