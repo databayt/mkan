@@ -5372,7 +5372,8 @@
       "about": "Uri kuvugana n'umufasha wa Mkan: nshakisha amazu kandi mvugana n'abakomisiyoneri ku bwawe. Umuntu wo mu itsinda ryacu akurikirana ibiganiro kandi azaza mu gusura. Kugira ngo uvugane na we, komereza kuri WhatsApp wandike \"umuntu\".",
       "chat": "Muraho! Ndi umufasha wa Mkan. Kanda ku nzu iri hejuru urebe amakuru yayo, cyangwa umbwire icyo wahindura: agace, amafaranga cyangwa ibyumba.",
       "thanks": "Ntacyo! Kanda ku nzu iri hejuru urebe amakuru yayo, cyangwa umbwire icyo wahindura.",
-      "person": "Hano nshobora gufasha ku mazu gusa. Ku bindi byose, komereza kuri WhatsApp wandike \"umuntu\": umuntu wo muri Mkan azagusubiza aho."
+      "person": "Hano nshobora gufasha ku mazu gusa. Ku bindi byose, komereza kuri WhatsApp wandike \"umuntu\": umuntu wo muri Mkan azagusubiza aho.",
+      "checkHome": "Nzabaza komisiyoneri niba {ref} igihari. Igisubizo kiza kuri WhatsApp: kanda hasi wohereze ubutumwa, Mkan ihite ibaza ikakubwire aho. Ni ubuntu."
     },
     "reply": {
       "same": "Izi nizo nzu zikijyanye n'ibyo ushaka. Kanda ku nzu iri hejuru urebe amakuru yayo, cyangwa umbwire icyo wahindura: agace, amafaranga cyangwa ibyumba.",
@@ -5637,7 +5638,10 @@
         "homeType": "ubwoko bw'inzu",
         "water": "amazi",
         "commission": "komisiyo"
-      }
+      },
+      "brokerAnswer": "Bona igisubizo cya komisiyoneri kuri WhatsApp",
+      "brokerAnswerHint": "Ohereza ubutumwa bufunguka, Mkan ihita ibaza komisiyoneri. Igisubizo kikugeraho kuri WhatsApp, kandi ni ubuntu.",
+      "checkWords": "Ese inzu {ref} iracyahari? Mbarize."
     },
     "entry": "Baza umukozi w'ubukode",
     "broker": {

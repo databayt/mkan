@@ -82,16 +82,18 @@ export type AgentMessage =
    * `text`: the reply Claude wrote (guarded) — else the template; `pendingText` while it is being written.
    */
   /** `pin`: the home the tenant's ref named — `found` false when it is gone (rented, or its ad was taken down). */
+  /** `checked`: the message asked for the pinned home's check itself ("Check K1234 for me" from /find's card) and it ran (availability.ts askBroker). */
   /** `same`: exactly the homes the last shortlist showed, in the same order — the message moved nothing ("How are you", "?"); WhatsApp says so instead of sending them again (2026-11-02). */
-  | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; text?: string; pendingText?: boolean; demand?: boolean; asked?: number; pin?: { id: number; found: boolean }; same?: boolean; at: string }
+  | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; text?: string; pendingText?: boolean; demand?: boolean; asked?: number; pin?: { id: number; found: boolean }; same?: boolean; checked?: "asked" | "handed" | "none"; at: string }
   /** A question about renting, answered from knowledge.ts, or a greeting; no search ran. */
   | { role: "agent"; kind: "answer"; topic: "question" | "other"; text?: string; at: string }
   /**
    * Under the homes on /find, a message that moved nothing ("How are you", "?", "Can we meet now",
    * "thanks"): one line back, no search ran, and the homes stay where they were (2026-11-03).
-   * WhatsApp answers the same messages before a turn starts (whatsapp-chat.ts).
+   * WhatsApp answers the same messages before a turn starts (whatsapp-chat.ts). `listingId`: a "check"
+   * that named its home by number, an unconfirmed broker home — its broker's answer is fetched on WhatsApp.
    */
-  | { role: "agent"; kind: "followUp"; say: FollowUpKind; at: string }
+  | { role: "agent"; kind: "followUp"; say: FollowUpKind; listingId?: number; at: string }
   /** `demand`: the search was kept as a TenantRequest; `asked`: brokers messaged for it now. */
   | { role: "agent"; kind: "none"; stay?: "short" | "long"; demand?: boolean; asked?: number; pin?: { id: number; found: boolean }; at: string }
   /** The tenant asked for a few nights: the agent covers monthly rentals only, so no search ran (2026-10-24). */

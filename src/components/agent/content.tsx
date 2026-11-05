@@ -247,7 +247,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
                       {/* A line under the homes: its next step on WhatsApp, or the same one-tap changes as under the homes. */}
                       {m.kind === "followUp" &&
                         (handsToWhatsApp(m.say) ? (
-                          <ToWhatsApp taskId={task.id} />
+                          <ToWhatsApp taskId={task.id} listingId={m.listingId} />
                         ) : (
                           homesMessage?.role === "agent" &&
                           homesMessage.kind === "shortlist" && (

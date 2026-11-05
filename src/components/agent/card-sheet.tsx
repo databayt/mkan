@@ -41,7 +41,9 @@ export default function CardSheet({
   const labels = dict?.agent?.mustHaves as Record<string, string> | undefined;
   const [why, setWhy] = useState(false);
   // A broker lead nobody has asked about: the check happens on WhatsApp, where Mkan reaches the
-  // tenant again with the answer — a browser never messages a broker (2026-11-01).
+  // tenant again with the answer — a browser never messages a broker (2026-11-01), and a web chat
+  // has no number to send the answer to (4 of 4 "available" answers in a week reached nobody).
+  // "Check K1234 for me", sent from their phone, is the pick: the broker is asked at once (run.ts).
   const canAsk = !!item.lead && item.availability === "unconfirmed";
   const ref = `K${item.id}`;
   const { locale } = useLocale();
@@ -199,16 +201,16 @@ export default function CardSheet({
           {canAsk && (
             <div className="space-y-1.5">
               <a
-                href={continueOnWhatsApp(taskId, ref)}
+                href={continueOnWhatsApp(taskId, fill(c?.checkWords ?? "Check {ref} for me", { ref }))}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex w-full items-center justify-center gap-2 rounded-full border py-3 text-[15px] font-medium transition-colors hover:bg-muted"
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-3 text-[15px] font-medium text-background transition-opacity hover:opacity-90"
               >
                 <MessageCircle className="size-4" aria-hidden />
-                {c?.checkOnWhatsApp ?? "Check availability on WhatsApp"}
+                {c?.brokerAnswer ?? "Get the broker's answer on WhatsApp"}
               </a>
               <p className="text-center text-xs text-muted-foreground">
-                {c?.checkOnWhatsAppHint ?? "Mkan checks with the broker and sets up the viewing. It's free for you."}
+                {c?.brokerAnswerHint ?? "Send the message that opens, and Mkan asks the broker right away. The answer comes to you on WhatsApp, and it's free."}
               </p>
             </div>
           )}
@@ -217,7 +219,11 @@ export default function CardSheet({
             <Link
               href={item.path}
               {...linkProps}
-              className="flex items-center justify-center gap-1.5 rounded-full bg-foreground py-3 text-center text-[15px] font-medium text-background"
+              className={
+                canAsk
+                  ? "flex items-center justify-center gap-1.5 rounded-full py-3 text-center text-[15px] font-medium ring-1 ring-border transition-colors hover:bg-muted"
+                  : "flex items-center justify-center gap-1.5 rounded-full bg-foreground py-3 text-center text-[15px] font-medium text-background"
+              }
             >
               {external ? c?.viewAd ?? "View the ad" : c?.view ?? "View home"}
               {external && <ExternalLink className="size-3.5" aria-hidden />}

@@ -112,6 +112,16 @@ export function readHomeRef(text: string): number | null {
   return bare ? Number(bare[1]) : null;
 }
 
+/**
+ * A home's code that asks for the check in the same breath — "Check K1234 for me" (what /find's card
+ * and the /k page prefill), "is K1234 still available?", "تحقّق من K1234", "inzu K1234 iracyahari?".
+ * The tenant chose that home on their own phone, so it is the pick: the broker is asked at once and
+ * the answer comes back on this chat (2026-11-05). A bare code (a TikTok caption's) still asks first.
+ */
+const CHECK_WORD_RE =
+  /\b(?:check|checking|available|availability|still free|is it free|verify|confirm|disponible|v[ée]rifie[rz]?)\b|mbarize|mbaza|iracyahari|iracyari|irahari|igihari|تحق|تأكد|تاكد|متاح|متوفر/i;
+export const asksToCheck = (text: string): boolean => readHomeRef(text) != null && CHECK_WORD_RE.test(text);
+
 /** Where a chat's home code came from — the first-share funnel's attribution (2026-11-05). */
 export type RefSource = "tiktok" | "k_page" | "web" | "organic";
 
@@ -224,7 +234,9 @@ export function formatWhatsApp(view: AgentTaskView, d: WaDict, lang: WaLang, cha
       const homes = homeLines(view.shortlist, lang, appUrl);
       if (homes.length) parts.push(homes.join("\n\n"));
       const pinned = m.pin?.found ? view.shortlist[0] : undefined;
-      if (pinned?.lead && pinned.availability === "unconfirmed") parts.push(c.checkPinned);
+      // The message asked for the check itself ("Check K1234 for me"): it has started, say so.
+      if (pinned && m.checked) parts.push(checkText(lang, m.checked, pinned.title.trim()));
+      else if (pinned?.lead && pinned.availability === "unconfirmed") parts.push(c.checkPinned);
       else if (view.shortlist.some((s) => s.lead && s.availability === "unconfirmed")) parts.push(c.check);
       if (!m.pin && m.refine === "stay") parts.push(d.refine.stay ?? "");
       else if (!m.pin && m.refine === "maxPrice") parts.push(d.refine.budget ?? "");

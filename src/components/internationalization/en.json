@@ -5372,7 +5372,8 @@
       "about": "You're chatting with Mkan's assistant: I search the homes and talk to the brokers for you. A person from our team follows these chats and comes to the viewing with you. To talk to them, continue on WhatsApp and write \"person\".",
       "chat": "Hi! I'm Mkan's assistant. Tap a home above for its details, or tell me what to change: the area, the budget or the bedrooms.",
       "thanks": "You're welcome! Tap a home above for its details, or tell me what to change.",
-      "person": "I can only help with homes here. For anything else, continue on WhatsApp and write \"person\": someone from Mkan answers you there."
+      "person": "I can only help with homes here. For anything else, continue on WhatsApp and write \"person\": someone from Mkan answers you there.",
+      "checkHome": "I'll ask the broker if {ref} is still free. The answer comes on WhatsApp, so tap below and send the message: Mkan asks right away and tells you there. It's free."
     },
     "reply": {
       "same": "These are still the best homes for your search. Tap one above for its details, or tell me what to change: the area, the budget or the bedrooms.",
@@ -5637,7 +5638,10 @@
         "homeType": "the type of home",
         "water": "water",
         "commission": "commission"
-      }
+      },
+      "brokerAnswer": "Get the broker's answer on WhatsApp",
+      "brokerAnswerHint": "Send the message that opens, and Mkan asks the broker right away. The answer comes to you on WhatsApp, and it's free.",
+      "checkWords": "Check {ref} for me"
     },
     "entry": "Ask the rental agent",
     "broker": {

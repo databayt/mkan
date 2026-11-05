@@ -242,7 +242,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
                       )}
                       {m.kind === "followUp" &&
                         (handsToWhatsApp(m.say) ? (
-                          <ToWhatsApp taskId={task.id} compact />
+                          <ToWhatsApp taskId={task.id} listingId={m.listingId} compact />
                         ) : (
                           homesMessage?.role === "agent" &&
                           homesMessage.kind === "shortlist" && (

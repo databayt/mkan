@@ -1,5 +1,5 @@
 import { parseBrokerReply } from "./broker-reply";
-import type { AgentMessage, FollowUpKind } from "./types";
+import type { AgentMessage, FollowUpKind, ShortlistItem } from "./types";
 import { afterHomesKind, isBareYes, isThanks, wantsPerson } from "./whatsapp-format";
 
 /**
@@ -22,4 +22,15 @@ export function followUpKind(text: string): FollowUpKind | "search" {
 export function underHomes(messages: AgentMessage[]): boolean {
   const last = messages.findLast((m) => m.role === "agent");
   return last?.role === "agent" && (last.kind === "shortlist" || last.kind === "followUp" || last.kind === "answer");
+}
+
+/**
+ * A "check" under the homes that names one by its number ("2"): that home, when it is a broker home
+ * nobody has asked about. Its broker is asked from WhatsApp, where the answer can reach the tenant
+ * (a browser has no number to send it to), so /find hands over that home, not just the chat.
+ */
+export function checkTarget(text: string, shown: readonly ShortlistItem[]): number | undefined {
+  const digit = text.trim().replace(/[٠-٩]/g, (ch) => String(ch.charCodeAt(0) - 0x0660)).match(/^#?([1-9])\.?$/);
+  const item = digit ? shown[Number(digit[1]) - 1] : shown.length === 1 ? shown[0] : undefined;
+  return item?.lead && item.availability === "unconfirmed" ? item.id : undefined;
 }

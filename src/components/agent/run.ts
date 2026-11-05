@@ -36,7 +36,8 @@ import { relaxations, type Relaxed } from "./relax";
 import { searchKigali, toShortlist } from "./search";
 import { openDemand } from "./demand";
 import { canSpend } from "./claude";
-import { followUpKind, underHomes } from "./follow-up";
+import { checkTarget, followUpKind, underHomes } from "./follow-up";
+import { asksToCheck } from "./whatsapp-format";
 import type { AgentMessage, EventKind, ShortlistItem, StepStatus } from "./types";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
@@ -276,7 +277,9 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     const followUp = !lastUser?.wa && !tapped && !lastUser?.pin && shown.length > 0 && underHomes(messages) ? followUpKind(latest) : "search";
     if (followUp !== "search" && (followUp !== "person" || !(await canSpend().catch(() => false)))) {
       await trace.record("requirements_extracted", "done", { requirements: base, reader: "rules", intent: followUp });
-      await firstReply({ role: "agent", kind: "followUp", say: followUp, at: now() }, { status: "DONE" });
+      // "2" or "is it still available?" under one home: that home's check goes to WhatsApp with it.
+      const listingId = followUp === "check" ? checkTarget(latest, shown) : undefined;
+      await firstReply({ role: "agent", kind: "followUp", say: followUp, ...(listingId ? { listingId } : {}), at: now() }, { status: "DONE" });
       return;
     }
 
@@ -504,6 +507,20 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     // Brokers hear about a home only after the tenant picks it (2026-11-01): every monthly
     // search used to ask the broker of each home it showed, test searches included.
     const asked = new Set<number>();
+    // ...and "Check K1234 for me", sent from the tenant's own WhatsApp (/find's card prefills it), is
+    // that pick: the broker is asked now, and the answer reaches this chat's phone (2026-11-05). Before,
+    // the tenant got the home with "reply 1 to check" and had to answer once more.
+    const check =
+      lastUser?.wa && pinned?.lead && pinned.availability === "unconfirmed" && asksToCheck(latest)
+        ? await import("./availability")
+            .then(({ askBroker }) => askBroker(task.id, pinned, requirements, lang))
+            .catch((err) => {
+              console.warn(`[agent] pinned check: ${(err as Error).message}`);
+              return null;
+            })
+        : null;
+    const checked = check ? (check.asked ? "asked" : check.why === "handed" ? "handed" : check.why === "none" ? "none" : undefined) : undefined;
+    if (check?.asked) asked.add(pinned!.id);
     // Only widened homes fit: keep the real need as demand, matched against new homes daily.
     const demand = relaxed.length && !assumed
       ? await openDemand(task.id, task.profileId, requirements, lang).catch((err) => {
@@ -518,7 +535,13 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     }
     if (written?.why.size) shortlist = shortlist.map((s, i) => (written.why.has(`h${i + 1}`) ? { ...s, why: written.why.get(`h${i + 1}`) } : s));
     // The reply message, finished: the written text (when it passed the guard) replaces the pending mark.
-    const finalAnswer: AgentMessage = { ...answer, pendingText: undefined, ...(written?.reply ? { text: written.reply } : {}), ...(demand ? { demand: true, asked: demand.asked } : {}) };
+    const finalAnswer: AgentMessage = {
+      ...answer,
+      pendingText: undefined,
+      ...(written?.reply ? { text: written.reply } : {}),
+      ...(demand ? { demand: true, asked: demand.asked } : {}),
+      ...(checked ? { checked } : {}),
+    };
 
     await trace.recordMany([
       ...(written?.reply || written?.why.size ? [["reply_written", "done", { lines: written.why.size }] as [EventKind, StepStatus, Record<string, unknown>]] : []),
@@ -528,7 +551,7 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
       where: { id: task.id },
       data: {
         ...(asked.size > 0 || written?.why.size ? { shortlist: json(shortlist) } : {}),
-        ...(willWrite || demand ? { messages: json([...messages, finalAnswer]) } : {}),
+        ...(willWrite || demand || checked ? { messages: json([...messages, finalAnswer]) } : {}),
         // A broker asked about one of the same homes is still being waited on.
         status: asked.size > 0 || shortlist.some((s) => s.availability === "asked") ? "WAITING" : "DONE",
       },

@@ -39,23 +39,42 @@ export async function askAvailabilityFor(taskId: string, listingId: number): Pro
   const item = shortlist.find((s) => s.id === listingId);
   if (!item?.lead || item.availability !== "unconfirmed") return { ok: false, asked: false };
 
-  const gate = await gateForTask(task.id);
+  const outcome = await askBroker(task.id, item, task.requirements, task.locale);
+  if (outcome.asked) {
+    await db.agentTask.update({
+      where: { id: task.id },
+      data: { status: "WAITING", shortlist: json(shortlist.map((s) => (s.id === item.id ? { ...s, availability: "asked" } : s))) },
+    });
+  }
+  return outcome;
+}
+
+/**
+ * The check itself, for one unconfirmed broker home the tenant chose: the gate,
+ * then the broker (or a person at Mkan). It writes no shortlist, so a running
+ * turn calls it too — "Check K1234 for me" sent from /find's card is the pick
+ * (run.ts) — and marks the home asked with the rest of its writes.
+ */
+export async function askBroker(taskId: string, item: ShortlistItem, requirementsJson: unknown, locale: string): Promise<AskOutcome> {
+  const gate = await gateForTask(taskId);
   if (!gate.ok) {
     if (gate.why === "not-whatsapp") return { ok: true, asked: false, why: "web" };
-    await handToPerson(task.id, item, gate.waPhone, gate.why === "test-phone");
-    await appendTaskEvent(task.id, "availability_asked", "waiting_person", { listingId: item.id, handed: true });
+    await handToPerson(taskId, item, gate.waPhone, gate.why === "test-phone");
+    await appendTaskEvent(taskId, "availability_asked", "waiting_person", { listingId: item.id, handed: true });
     return { ok: true, asked: false, why: "handed" };
   }
 
   // Picking it means a monthly rent: the broker is asked about one.
-  const requirements = { ...coerceRequirements(task.requirements), stay: "long" as const };
-  const asked = await requestConfirmations(task.id, [item], requirements as never, task.locale);
+  const requirements = { ...coerceRequirements(requirementsJson), stay: "long" as const };
+  const asked = await requestConfirmations(taskId, [item], requirements as never, locale);
   if (asked.length === 0) return { ok: true, asked: false, why: "none" };
-  await appendTaskEvent(task.id, "availability_asked", "waiting_person", { listingId: item.id });
-  await db.agentTask.update({
-    where: { id: task.id },
-    data: { status: "WAITING", shortlist: json(shortlist.map((s) => (s.id === item.id ? { ...s, availability: "asked" } : s))) },
-  });
+  await Promise.all([
+    appendTaskEvent(taskId, "availability_asked", "waiting_person", { listingId: item.id }),
+    // The tenant chose this home on their own phone: the request records when (schema: BrokerRequest.consentAt).
+    // The answer reaches them through the task's WhatsApp profile (broker.ts applyAnswer); their number is
+    // shared with the broker only when they pick a viewing time.
+    db.brokerRequest.updateMany({ where: { taskId, listingId: item.id, consentAt: null }, data: { consentAt: new Date() } }),
+  ]);
   return { ok: true, asked: true };
 }
 

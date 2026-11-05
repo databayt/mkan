@@ -248,16 +248,16 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
       {!lost && (
         <div className="mt-5 space-y-1.5">
           <a
-            href={continueOnWhatsApp(null, `${ref_} ${K_PAGE_MARK}`)}
+            href={continueOnWhatsApp(null, `${fill(say("checkWords", "Check {ref} for me"), { ref: ref_ })} ${K_PAGE_MARK}`)}
             target="_blank"
             rel="noopener noreferrer"
             className="flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-3 text-[15px] font-medium text-background"
           >
             <MessageCircle className="size-4" aria-hidden />
-            {say("checkOnWhatsApp", "Check availability on WhatsApp")}
+            {say("brokerAnswer", "Get the broker's answer on WhatsApp")}
           </a>
           <p className="text-center text-xs text-muted-foreground">
-            {say("checkOnWhatsAppHint", "Mkan checks with the broker and sets up the viewing. It's free for you.")}
+            {say("brokerAnswerHint", "Send the message that opens, and Mkan asks the broker right away. The answer comes to you on WhatsApp, and it's free.")}
           </p>
         </div>
       )}

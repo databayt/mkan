@@ -314,6 +314,8 @@ export function useAgentTask(
       if (m.kind === "ask") return a?.ask?.[m.field] ?? "";
       if (m.kind === "clarify") return a?.clarify?.reply ?? "";
       if (m.kind === "answer") return m.text ?? (m.topic === "question" ? a?.reply?.answerFallback : a?.reply?.other) ?? "";
+      if (m.kind === "followUp" && m.listingId)
+        return fill(a?.followUp?.checkHome ?? "I'll ask the broker if {ref} is still free. The answer comes on WhatsApp, so tap below and send the message: Mkan asks right away and tells you there. It's free.", { ref: `K${m.listingId}` });
       if (m.kind === "followUp") return a?.followUp?.[m.say] ?? "";
       // The message moved nothing: the homes above stay, and one line says so.
       if (m.kind === "shortlist" && m.same && !m.pin) return a?.reply?.same ?? "These are still the best homes for your search.";

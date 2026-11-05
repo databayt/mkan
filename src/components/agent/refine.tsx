@@ -5,6 +5,7 @@ import { useDictionary } from "@/components/internationalization/use-dictionary"
 import { cn } from "@/lib/utils";
 import { AskCard } from "./ask-card";
 import { roundPrice } from "./fields";
+import { fill } from "./format";
 import type { Requirements } from "./requirements";
 import type { AgentMessage } from "./types";
 import { continueOnWhatsApp } from "./wa-link";
@@ -119,13 +120,20 @@ export function Retry({ onRetry, disabled, compact = false }: { onRetry: () => v
 
 /**
  * Under a line whose next step is on WhatsApp (a broker check, a viewing, a person): the same chat,
- * carried over by its ref — the phone gets the homes numbered, and a number picks one.
+ * carried over by its ref — the phone gets the homes numbered, and a number picks one. With a home
+ * (a check that named it), the message asks for that home's check: sent from the tenant's phone, it
+ * is the pick, the broker is asked at once and the answer comes back on that chat (run.ts).
  */
-export function ToWhatsApp({ taskId, compact = false }: { taskId: string; compact?: boolean }) {
-  const c = useDictionary()?.agent?.chat;
+export function ToWhatsApp({ taskId, listingId, compact = false }: { taskId: string; listingId?: number; compact?: boolean }) {
+  const dict = useDictionary();
+  const c = dict?.agent?.chat;
+  const card = dict?.agent?.card;
+  const words = listingId
+    ? fill(card?.checkWords ?? "Check {ref} for me", { ref: `K${listingId}` })
+    : c?.whatsappText ?? "Continue my Mkan search";
   return (
     <a
-      href={continueOnWhatsApp(taskId, c?.whatsappText ?? "Continue my Mkan search")}
+      href={continueOnWhatsApp(taskId, words)}
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
@@ -134,7 +142,7 @@ export function ToWhatsApp({ taskId, compact = false }: { taskId: string; compac
       )}
     >
       <MessageCircle className={compact ? "size-3.5" : "size-4"} aria-hidden />
-      {c?.whatsapp ?? "Continue on WhatsApp"}
+      {listingId ? card?.brokerAnswer ?? "Get the broker's answer on WhatsApp" : c?.whatsapp ?? "Continue on WhatsApp"}
     </a>
   );
 }
