@@ -9,8 +9,8 @@ import type { FirstShareView } from "./first-share-shape";
 import { bottleneck, type Bottleneck, type Stage } from "./bottleneck";
 import { costByBlock, costLines, type CostLine } from "./cost-lines";
 import { nextSteps, type NextStep } from "./next-steps";
-import { loadSprints } from "./sprint";
-import type { SprintsView } from "./sprint-shape";
+import { loadLessons, loadSprints } from "./sprint";
+import type { LessonView, SprintsView } from "./sprint-shape";
 import { fixedCostsRwf, fixedEstimated, USD_TO_RWF } from "./costs";
 import { blockHealth, change, deltas, worst } from "./health";
 import { money, REVENUE_LINES, type MoneyView, type RevenueLineKey } from "./money";
@@ -58,6 +58,8 @@ export interface MonetizeOverview {
   nextSteps: NextStep[];
   /** The week and month sprint, and the prompts that carry them out. */
   sprints: SprintsView;
+  /** What the sprint loop measured after each finished prompt, newest first. */
+  lessons: LessonView[];
   blocks: BlockView[];
   stages: Stage[];
   bottleneck: Bottleneck;
@@ -120,7 +122,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   // Deals are read from the earlier of the comparison window and the month: one created weeks ago
   // and paid this month still counts as this month's money.
   const dealsFrom = new Date(Math.min(prevSince.getTime(), monthStart.getTime()));
-  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints, firstShare] =
+  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints, firstShare, lessons] =
     await Promise.all([
       agentFunnel(db, days),
       agentFunnel(db, days, days),
@@ -160,6 +162,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
         FROM turns WHERE ms IS NOT NULL`.catch(() => [{ p50: null, p95: null }]),
       loadSprints(),
       loadFirstShare(days),
+      loadLessons(8).catch(() => [] as LessonView[]),
     ]);
 
   // ── snapshots, per block ──────────────────────────────────────────────
@@ -336,6 +339,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     usdToRwf: USD_TO_RWF,
     nextSteps: steps,
     sprints,
+    lessons,
     blocks,
     stages,
     bottleneck: bn,

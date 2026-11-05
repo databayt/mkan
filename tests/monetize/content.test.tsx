@@ -48,6 +48,7 @@ const base = {
   adChats: 0,
   funnel: {} as never,
   firstShare: null,
+  lessons: [],
   costLines: lines,
   costByBlock: costByBlock(lines),
   monthElapsed: 0.1,

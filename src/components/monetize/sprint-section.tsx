@@ -3,7 +3,7 @@ import { Circle, CircleCheck } from "lucide-react";
 import type { Locale } from "@/components/internationalization/config";
 import { addSprintPrompt, addSprintTask, closeSprint, saveSprint, setPromptStatus, toggleSprintTask } from "@/lib/actions/monetize-actions";
 import { formatDate } from "@/lib/i18n/formatters";
-import type { SprintsView, SprintView } from "@/lib/monetize/sprint-shape";
+import type { LessonView, SprintsView, SprintView } from "@/lib/monetize/sprint-shape";
 import { BLOCKS } from "@/lib/monetize/types";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +40,7 @@ function SprintBlock({ sprint, heading, labels, locale, canEdit }: { sprint: Spr
           </p>
         </div>
         <h3 className={cn("mt-1 text-lg font-semibold leading-6 tracking-normal", INK)}>{sprint.title}</h3>
+        {sprint.auto && <span className={cn("mt-1 inline-block rounded-full bg-[#F7F7F7] px-2 py-0.5 text-xs dark:bg-muted", MUTED)}>{labels.lessons.auto}</span>}
         {sprint.goal && <p className={cn("mt-1 text-sm leading-5", MUTED)}>{sprint.goal}</p>}
         <div className="mt-3 space-y-1.5">
           <Progress value={tasksPct} />
@@ -82,7 +83,7 @@ function SprintBlock({ sprint, heading, labels, locale, canEdit }: { sprint: Spr
           <p className={cn("mb-2 text-sm font-semibold", INK)}>{S.promptsTitle}</p>
           <ol className="my-0 ms-0 list-none space-y-1 [&>li]:mt-0">
             {sprint.prompts.map((p, n) => (
-              <li key={p.id} className="flex items-center gap-2">
+              <li key={p.id} className="flex flex-wrap items-center gap-x-2">
                 <a href={`#prompt-${p.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-[#F7F7F7] dark:hover:bg-muted">
                   <span className={cn("size-2 shrink-0 rounded-full", DOT[p.status])} aria-hidden />
                   <span className={cn("w-5 shrink-0 text-xs tabular-nums", MUTED)}>{n + 1}</span>
@@ -106,6 +107,14 @@ function SprintBlock({ sprint, heading, labels, locale, canEdit }: { sprint: Spr
                       </button>
                     )}
                   </form>
+                )}
+                {/* A blocked prompt's result is the one line that says what Abdout must do; the loop resumes it on its own. */}
+                {p.status === "blocked" && p.result && (
+                  <p dir="auto" className="mb-1 ms-[3.25rem] mt-0 w-full text-xs leading-5 text-[#C13515]">
+                    <span className="font-semibold">{labels.lessons.needsYou}: </span>
+                    {p.result.slice(0, 220)}
+                    {p.unblockWhen && <span className={cn("block", MUTED)}>{p.unblockWhen}</span>}
+                  </p>
                 )}
               </li>
             ))}
@@ -185,7 +194,41 @@ function PlanForm({ labels }: { labels: MonetizeLabels }) {
 }
 
 /** This week's and this month's sprint, first in the column: progress, task checklist, prompts. */
-export function SprintSection({ sprints, labels, locale, canEdit }: { sprints: SprintsView; labels: MonetizeLabels; locale: Locale; canEdit: boolean }) {
+function Lessons({ lessons, labels, locale }: { lessons: LessonView[]; labels: MonetizeLabels; locale: Locale }) {
+  const L = labels.lessons;
+  const tone: Record<string, string> = { moved: "text-[#008A05]", worse: "text-[#C13515]", flat: "text-[#6A6A6A]", unknown: "text-[#6A6A6A]" };
+  return (
+    <div>
+      <p className={cn("text-sm font-semibold", INK)}>{L.title}</p>
+      <p className={cn("mb-3 mt-1 text-xs leading-5", MUTED)}>{L.lead}</p>
+      {lessons.length === 0 ? (
+        <p className={cn("text-sm", MUTED)}>{L.empty}</p>
+      ) : (
+        <ul className="my-0 ms-0 list-none space-y-2 [&>li]:mt-0">
+          {lessons.map((l) => (
+            <li key={l.id} className={cn("rounded-lg border p-3 text-sm leading-5", LINE)}>
+              <div className="flex flex-wrap items-center gap-x-2 text-xs">
+                <span className={cn("font-semibold", tone[l.verdict])}>{(L.verdict as Record<string, string>)[l.verdict] ?? l.verdict}</span>
+                {l.metric && (
+                  <span className={cn("tabular-nums", MUTED)}>
+                    {l.metric}
+                    {l.before != null && ` ${l.before} → ${l.after ?? "…"}`}
+                  </span>
+                )}
+                <span className={cn("ms-auto", MUTED)}>{formatDate(new Date(l.createdAt), locale, { year: undefined, month: "short", day: "numeric" })}</span>
+              </div>
+              <p dir="auto" className={cn("mb-0 mt-1", INK)}>
+                {l.text}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export function SprintSection({ sprints, lessons = [], labels, locale, canEdit }: { sprints: SprintsView; lessons?: LessonView[]; labels: MonetizeLabels; locale: Locale; canEdit: boolean }) {
   const S = labels.sprint;
   const blocks = [
     { s: sprints.week, h: S.week },
@@ -205,6 +248,7 @@ export function SprintSection({ sprints, labels, locale, canEdit }: { sprints: S
             </p>
           ),
         )}
+        <Lessons lessons={lessons} labels={labels} locale={locale} />
         {canEdit && <PlanForm labels={labels} />}
         <p className={cn("text-xs leading-5", MUTED)}>
           <RichText t={S.cli} />

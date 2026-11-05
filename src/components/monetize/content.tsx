@@ -74,7 +74,7 @@ export function MonetizeContent({ data, labels, locale, canEdit = false }: { dat
             </div>
           </section>
 
-          <SprintSection sprints={data.sprints} labels={labels} locale={locale} canEdit={canEdit} />
+          <SprintSection sprints={data.sprints} lessons={data.lessons} labels={labels} locale={locale} canEdit={canEdit} />
           <FirstShareSection data={data.firstShare} labels={labels} locale={locale} />
           <TodoSection steps={data.nextSteps} labels={labels} locale={locale} />
           <SpendSection data={data} labels={labels} locale={locale} />
