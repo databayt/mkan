@@ -25,7 +25,7 @@ import { startTurn } from "./run";
 import { loadTask } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
 import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, waLang, type WaDict, type WaLang } from "./whatsapp-format";
-import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, readHomeRef, shownHomes, thanksText, wantsPerson, whichOneText } from "./whatsapp-format";
+import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, readHomeRef, refSourceOf, shownHomes, thanksText, wantsPerson, whichOneText, type RefSource } from "./whatsapp-format";
 import { afterHomesKind, chatText, visitText } from "./whatsapp-format";
 import { askAround } from "./demand";
 import { viewingRep } from "./broker-message";
@@ -59,7 +59,7 @@ async function waDict(lang: WaLang): Promise<WaDict> {
 
 async function profileFor(digits: string) {
   const keyHash = hashKey(`wa:${digits}`);
-  const select = { id: true, userId: true, memory: true, lastSearchAt: true, waPhone: true } satisfies Prisma.AgentProfileSelect;
+  const select = { id: true, userId: true, memory: true, lastSearchAt: true, waPhone: true, firstSource: true } satisfies Prisma.AgentProfileSelect;
   const waPhone = `+${digits}`;
   const found = await db.agentProfile.findUnique({ where: { keyHash }, select });
   if (!found) return db.agentProfile.create({ data: { keyHash, waPhone }, select });
@@ -69,6 +69,18 @@ async function profileFor(digits: string) {
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * How this person first reached Mkan (a TikTok post's code, the /k page, a web chat, or none) —
+ * stamped once, on a profile made in the last hour, so older numbers are not re-attributed.
+ */
+const stampFirstSource = (profileId: string, source: RefSource, listingId: number | null) =>
+  db.agentProfile
+    .updateMany({
+      where: { id: profileId, firstSource: null, createdAt: { gte: new Date(Date.now() - 3_600_000) } },
+      data: { firstSource: source, firstRef: listingId },
+    })
+    .catch(() => {});
 
 export async function handleTenantWhatsApp(input: { phone: string; text: string; msgId: string }): Promise<WaResult> {
   const digits = waDigits(input.phone);
@@ -99,6 +111,7 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   if (answered) return { reply: null, why: "duplicate" };
 
   const { ref, rest } = readRef(raw);
+  if (!profile.firstSource) await stampFirstSource(profile.id, refSourceOf(rest, ref), null);
   const latest = recent[0] && Date.now() - recent[0].updatedAt.getTime() < CONTINUE_MS ? recent[0] : null;
   const fresh = isFresh(rest) || !!ref;
   let current: (CurrentTask & { locale: string }) | null = fresh ? null : latest;
@@ -131,6 +144,8 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   const homeRef = readHomeRef(rest);
   const refHome = homeRef ? await homeForRef(homeRef) : null;
   if (refHome) current = null;
+  const refSource = refHome ? refSourceOf(rest, ref) : null;
+  if (refHome) await db.agentProfile.updateMany({ where: { id: profile.id, firstRef: null, firstSource: refSource }, data: { firstRef: refHome.id } }).catch(() => {});
 
   // A digit answers the last numbered question.
   // A ref's prefilled words are ours, not the tenant's: the web chat's own words run instead.
@@ -222,6 +237,8 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   }
   if ("busy" in appended) return { reply: null, why: "busy" };
   const { taskId } = appended;
+  // The chat a home code opened, and where the code came from: the first-share funnel's join to the post.
+  if (refHome) await db.agentTask.updateMany({ where: { id: taskId, refListingId: null }, data: { refListingId: refHome.id, refSource } }).catch(() => {});
 
   const turn = startTurn(taskId);
   await Promise.race([turn.done.catch(() => {}), sleep(TURN_WAIT_MS)]);

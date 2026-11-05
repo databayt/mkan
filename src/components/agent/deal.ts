@@ -262,8 +262,17 @@ export async function setDealStatus(dealId: string, status: "VIEWED" | "SIGNED" 
       ...(extras.mkanShare != null ? { mkanShare: extras.mkanShare } : {}),
       ...(extras.notes ? { notes: extras.notes } : {}),
     },
-    select: { id: true, visitId: true, listingId: true, brokerId: true },
+    select: { id: true, visitId: true, listingId: true, brokerId: true, mkanShare: true },
   });
+  // Paid means the money is in: Mkan's share lands on /monetize as received, once per deal.
+  if (status === "PAID" && (deal.mkanShare ?? 0) > 0) {
+    const had = await db.revenueEntry.findFirst({ where: { dealId: deal.id, line: "COMMISSION" }, select: { id: true } });
+    if (!had) {
+      await db.revenueEntry.create({
+        data: { line: "COMMISSION", amountRwf: deal.mkanShare!, receivedAt: now, dealId: deal.id, brokerId: deal.brokerId, note: "deal:status PAID" },
+      });
+    }
+  }
   if (deal.visitId && status !== "PAID") {
     // The viewing took place, whatever came of it.
     await db.listingVisit.update({ where: { id: deal.visitId }, data: { outcome: "Completed", occurredAt: now } }).catch(() => {});

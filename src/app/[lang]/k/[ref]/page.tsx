@@ -18,6 +18,7 @@ import { ChatHeader, headerButton } from "@/components/agent/header";
 import { homeIdOfRef } from "@/components/agent/home-path";
 import { LEAD_SOURCES } from "@/components/agent/search";
 import { continueOnWhatsApp } from "@/components/agent/wa-link";
+import { K_PAGE_MARK } from "@/components/agent/whatsapp-format";
 
 /**
  * Mkan's own page for a broker home — /en/k/K5808 (Abdout, 2026-11-01). Every link a tenant
@@ -247,7 +248,7 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
       {!lost && (
         <div className="mt-5 space-y-1.5">
           <a
-            href={continueOnWhatsApp(null, ref_)}
+            href={continueOnWhatsApp(null, `${ref_} ${K_PAGE_MARK}`)}
             target="_blank"
             rel="noopener noreferrer"
             className="flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-3 text-[15px] font-medium text-background"

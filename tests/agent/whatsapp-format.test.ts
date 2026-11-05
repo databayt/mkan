@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@/components/internationalization/en.json";
 import ar from "@/components/internationalization/ar.json";
-import { aboutHomes, askAroundText, botText, checkText, firstMessageKind, formatWhatsApp, isBareYes, isFresh, isThanks, onlyGreetedSoFar, personAfterHello, readHomeRef, readPick, readRef, saysYes, shownHomes, thanksText, waLang, wantsPerson, whichOneText, type WaDict } from "@/components/agent/whatsapp-format";
+import { aboutHomes, askAroundText, botText, checkText, firstMessageKind, formatWhatsApp, isBareYes, isFresh, isThanks, K_PAGE_MARK, onlyGreetedSoFar, personAfterHello, readHomeRef, readPick, readRef, refSourceOf, saysYes, shownHomes, thanksText, waLang, wantsPerson, whichOneText, type WaDict } from "@/components/agent/whatsapp-format";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "@/components/agent/types";
 
 const dict = (d: typeof en): WaDict => d.agent as unknown as WaDict;
@@ -228,5 +228,22 @@ describe("a bare yes under homes", () => {
     expect(whichOneText("en", 3)).toBe("Which one? Send its number, 1 to 3, and I'll check it's still free.");
     expect(whichOneText("en", 1)).toBe("Send 1 and I'll check it's still free.");
     expect(whichOneText("rw", 2)).toMatch(/^Iyihe\?.*kugeza kuri 2/);
+  });
+});
+
+describe("refSourceOf — where a chat's home code came from", () => {
+  it("a bare code is a TikTok post's", () => {
+    expect(refSourceOf("K5808", null)).toBe("tiktok");
+    expect(refSourceOf("hi, is K-5808 still free?", null)).toBe("tiktok");
+  });
+  it("the /k page's mark makes it that page", () => {
+    expect(refSourceOf(`K5808 ${K_PAGE_MARK}`, null)).toBe("k_page");
+  });
+  it("a code carried with a web chat's ref is /find", () => {
+    expect(refSourceOf("I'd like to view K5808", "cmabc")).toBe("web");
+  });
+  it("no code: organic, or web when a web chat came along", () => {
+    expect(refSourceOf("2 bedrooms in Kicukiro", null)).toBe("organic");
+    expect(refSourceOf("Continue my Mkan search", "cmabc")).toBe("web");
   });
 });
