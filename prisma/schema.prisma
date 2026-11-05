@@ -1326,6 +1326,11 @@ model AgentProfile {
   memory       Json?
   /// The last search that showed homes — "new since your last visit" starts here.
   lastSearchAt DateTime?
+  /// How this person first reached Mkan: tiktok (sent a post's home code) |
+  /// k_page (the /k/<code> page's WhatsApp button) | organic. Set once.
+  firstSource  String?
+  /// The listing whose code opened their first chat, when there was one.
+  firstRef     Int?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -1357,6 +1362,10 @@ model AgentTask {
   /// Ranked shortlist the panel renders: [{ listingId, score, reasons, cost }].
   shortlist    Json?
   status       AgentTaskStatus @default(RUNNING)
+  /// The home code this chat opened with (K1234 → listing id), if any.
+  refListingId Int?
+  /// Where that code came from: tiktok | k_page | organic — the first-share funnel's attribution.
+  refSource    String?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
@@ -1368,6 +1377,7 @@ model AgentTask {
   @@index([sessionKey, createdAt])
   @@index([profileId, updatedAt])
   @@index([status, updatedAt])
+  @@index([refSource, createdAt])
 }
 
 /// Claude API spend per UTC day and lane, priced from each response's `usage`:
@@ -1798,6 +1808,10 @@ model Sprint {
   endsAt    DateTime
   /// active | closed
   status    String         @default("active")
+  /// Planned by the sprint cycle (scripts/sprint-cycle.ts), not by hand.
+  auto      Boolean        @default(false)
+  /// Written when the sprint closes: tasks done, the metrics before and after.
+  retro     String?
   createdAt DateTime       @default(now())
   tasks     SprintTask[]
   prompts   SprintPrompt[]
@@ -1829,11 +1843,69 @@ model SprintPrompt {
   task        SprintTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
   order       Int         @default(0)
   text        String
-  /// pending | processed | skipped
+  /// pending | running | processed | skipped | blocked ("needs you")
   status      String      @default("pending")
   processedAt DateTime?
   /// What the session that ran it reported.
   result      String?
+  /// The success-metric key this prompt should move (src/lib/monetize/success.ts / metric keys).
+  metric      String?
+  /// That metric when the prompt was claimed; the lesson measures the delta.
+  baseline    Float?
+  /// When blocked: "<metric> <op> <value>" — the cycle sets it back to pending once true.
+  unblockWhen String?
+  blockedAt   DateTime?
+  retries     Int         @default(0)
+  /// Written by the sprint cycle, not by hand.
+  auto        Boolean     @default(false)
 
   @@index([sprintId, order])
+}
+
+/// What the sprint loop learned: one row per finished prompt or closed sprint,
+/// with the metric it aimed at before and after. The planner reads the latest
+/// lessons before writing the next sprint (scripts/sprint-cycle.ts).
+model SprintLesson {
+  id        String    @id @default(cuid())
+  promptId  String?
+  sprintId  String?
+  metric    String?
+  before    Float?
+  after     Float?
+  /// moved | flat | worse | unknown — filled 24 h after the prompt is done.
+  verdict   String    @default("unknown")
+  text      String
+  measureAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([verdict, measureAt])
+}
+
+/// One listing → one cleaned broker video → one TikTok post (2026-11-05).
+/// The Mac's post lane writes the row as the video moves: PICKED (featured) →
+/// CLEAN (text and logos stripped, nothing of ours burned on) or REJECTED →
+/// POSTED or FAILED. The first-share funnel counts from here.
+model TikTokPost {
+  id            String    @id @default(cuid())
+  listingId     Int
+  /// The home code in the caption (K1234).
+  ref           String
+  sourceVideoId String?
+  brokerHandle  String?
+  /// PICKED | CLEAN | REJECTED | POSTED | FAILED
+  status        String    @default("PICKED")
+  reason        String?
+  pickedAt      DateTime  @default(now())
+  cleanAt       DateTime?
+  postedAt      DateTime?
+  tiktokUrl     String?
+  tiktokId      String?
+  views         Int?
+  likes         Int?
+  statsAt       DateTime?
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status, pickedAt])
+  @@index([listingId, postedAt])
 }
