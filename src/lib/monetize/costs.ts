@@ -12,11 +12,13 @@ export const USD_TO_RWF = Number(process.env.MONETIZE_USD_TO_RWF) > 0 ? Number(p
 
 export const DEFAULT_FIXED_RWF: Record<string, number> = {
   /**
-   * Cloudflare Workers Paid ($5) is one plan shared by every Databayt Worker
-   * (22 repos ship a wrangler.jsonc, about 10 carry real traffic). Mkan pays $1,
-   * a heavy user's share, not the whole bill (it was charged 5 × 1450 until 2026-11-05).
+   * Cloudflare: mkan's share of the shared Workers Paid plan ($1 of $5) plus its own always-on
+   * Container — standard-1 (½ vCPU, 4 GiB, 8 GB) billed on provisioned memory and disk every
+   * second: 4 GiB × 720 h − 25 included = $25.70, ~5% CPU $2.14, disk $1.40 ≈ $29.24/month
+   * (Cloudflare Containers pricing, 2026-10-05; docs/costs-2026-11.md). It was $1 until 2026-11-05,
+   * which left the container out. Moving mkan to a plain Worker (OpenNext) would remove the $29.
    */
-  cloudflare: 1 * 1450,
+  cloudflare: Math.round((1 + 29.24) * 1450),
   /** The WhatsApp number's SIM and data bundle: the one bill mkan adds on its own. */
   whatsappLine: 5000,
   /**
