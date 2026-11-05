@@ -698,11 +698,13 @@ async function readOne(row: VideoRow, attempt = 0, extra = ''): Promise<TikTokRe
     ocr: ocrText(row) || undefined,
   };
   let text: string;
-  if (READER === 'groq' && attempt === 0 && !extra && captionCarriesFacts(adText(row)) && row.textMissVersion !== TIKTOK_PROMPT_VERSION) {
+  if ((READER === 'groq' || READER === 'anthropic') && attempt === 0 && !extra && captionCarriesFacts(adText(row)) && row.textMissVersion !== TIKTOK_PROMPT_VERSION) {
     // Text first: when the caption or the frames' OCR already says price and
     // rooms, the images add little, and the vision model's 200k tokens a day
-    // go much further on the ads that only show their facts.
-    const prompt = buildTikTokPrompt({ ...base, frames: [], framesMode: 'attached' });
+    // go much further on the ads that only show their facts. On the Claude
+    // reader too: this read is Groq's free tier, so a settled caption costs
+    // nothing instead of six paid frames (the bulk of /monetize model spend).
+    const prompt = buildTikTokPrompt({ ...base, transcript: base.transcript.slice(0, 600), frames: [], framesMode: 'attached' });
     try {
       // gpt-oss reasons first: low effort and room for the v5 JSON, or the answer never arrives.
       const read = parseTikTokRead(await runGroq({ prompt, model: GROQ_TEXT_MODEL, maxTokens: 3000, reasoningEffort: 'low' }));
@@ -716,7 +718,8 @@ async function readOne(row: VideoRow, attempt = 0, extra = ''): Promise<TikTokRe
       // Remember the miss: 66 backlog rows paid for this same text read every run.
       row.textMissVersion = TIKTOK_PROMPT_VERSION;
     } catch (e) {
-      if (e instanceof GroqLimit) throw e;
+      // On the Claude reader a Groq limit just means: read the frames on Claude.
+      if (e instanceof GroqLimit && READER === 'groq') throw e;
       // Say why: this failed silently for every text read until 2026-10-25.
       console.warn(`    text read failed (${(e as Error).message.slice(0, 80)}) — reading the frames`);
     }

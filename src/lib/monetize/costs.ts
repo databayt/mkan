@@ -11,12 +11,20 @@
 export const USD_TO_RWF = Number(process.env.MONETIZE_USD_TO_RWF) > 0 ? Number(process.env.MONETIZE_USD_TO_RWF) : 1450;
 
 export const DEFAULT_FIXED_RWF: Record<string, number> = {
-  /** Cloudflare Workers Paid, the mkan share of it. */
-  cloudflare: 5 * 1450,
-  /** The WhatsApp number's SIM and data bundle. */
+  /**
+   * Cloudflare Workers Paid ($5) is one plan shared by every Databayt Worker
+   * (22 repos ship a wrangler.jsonc, about 10 carry real traffic). Mkan pays $1,
+   * a heavy user's share, not the whole bill (it was charged 5 × 1450 until 2026-11-05).
+   */
+  cloudflare: 1 * 1450,
+  /** The WhatsApp number's SIM and data bundle: the one bill mkan adds on its own. */
   whatsappLine: 5000,
-  /** Mac power + internet that runs the scrape and post lanes, the mkan share. */
-  macAndInternet: 15000,
+  /**
+   * The Mac stays on for engineering whatever mkan does. Mkan adds the minutes of
+   * its sweeps, renders and posts each day, so roughly 3,000 a month in power and
+   * data, not a share of the whole Mac (it was charged 15,000 until 2026-11-05).
+   */
+  macAndInternet: 3000,
 };
 
 export function fixedCostsRwf(env: string | undefined = process.env.MONETIZE_FIXED_COSTS_RWF): Record<string, number> {
