@@ -20,6 +20,8 @@ export const SUCCESS: Record<BlockKey, SuccessTarget[]> = {
     { kpi: "read", op: ">=", target: 20, per: "sweep" },
     { kpi: "skipRate", op: "<=", target: 0.5 },
     { kpi: "newBrokers", op: ">=", target: 1, per: "sweep" },
+    { kpi: "brokersTotal", op: ">=", target: 1000 }, // brokers + estate agencies in the directory (goal 2026-11-05)
+    { kpi: "brokersNewWeek", op: ">=", target: 80, per: "week" }, // 176 → 1,000 in about ten weeks
   ],
   enhance: [
     { kpi: "videosClean", op: ">=", target: 21, per: "week" }, // three clean broker videos for three posts a day

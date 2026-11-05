@@ -9,8 +9,10 @@ import { cn } from "@/lib/utils";
 import { fill, formatValue, type MonetizeLabels } from "./format";
 import { INK, LINE, MUTED, Section } from "./listing-ui";
 
-/** The numbers to keep an eye on, TikTok page to the home: where it stops is where to work. */
+/** The numbers to keep an eye on, the broker directory and TikTok page to the home: where it stops is where to work. */
 const WATCH: { block: BlockKey; kpi: string }[] = [
+  { block: "scrape", kpi: "brokersTotal" },
+  { block: "scrape", kpi: "brokersNewWeek" },
   { block: "post", kpi: "followers" },
   { block: "post", kpi: "followersWeek" },
   { block: "post", kpi: "viewsPerPost" },

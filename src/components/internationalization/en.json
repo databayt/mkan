@@ -6174,7 +6174,9 @@
       "peopleToSigned": "Writers who got the home",
       "handoffs": "Left to you (not about a home)",
       "evalReader": "Quality test: reading",
-      "evalWriter": "Quality test: replies"
+      "evalWriter": "Quality test: replies",
+      "brokersTotal": "Brokers + agencies in the directory",
+      "brokersNewWeek": "New brokers + agencies"
     },
     "lever": "Main number",
     "vsPrev": "{pct} vs the {days} days before",

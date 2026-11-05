@@ -30,6 +30,7 @@ export const JOBS: Record<BlockKey, { job: string; cadence: number }[]> = {
   scrape: [
     { job: 'hermes_mkan-tiktok-sweep', cadence: 12 },
     { job: 'hermes_mkan-web-sweep', cadence: 12 },
+    { job: 'hermes_mkan-agencies', cadence: 24 },
     { job: 'mkan-home-sweep', cadence: 1 },
     { job: 'hermes_mkan-demand-match', cadence: 24 },
     { job: 'mkan-crm-sync-up', cadence: 1 },

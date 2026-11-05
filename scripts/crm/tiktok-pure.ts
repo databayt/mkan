@@ -153,6 +153,14 @@ export function tiktokVideosIn(html: string): { handle: string; videoId: string;
 export const SEARCH_QUERIES: string[] = [
   'house for rent kigali',
   'apartment for rent kigali',
+  // The people, not just the homes (goal 2026-11-05: 1,000 brokers and agencies).
+  'real estate agent kigali',
+  'real estate rwanda',
+  'property agent kigali',
+  'umukomisiyoneri w inzu',
+  'komisiyoneri kigali',
+  'commissionnaire immobilier kigali',
+  'agence immobilière kigali',
   'furnished apartment kigali',
   'inzu ikodeshwa kigali',
   'inzu zikodeshwa',

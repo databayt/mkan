@@ -2,9 +2,11 @@
 # The two daily ad lanes after TikTok's 06:00 sweep, as Hermes gateway crons (no agent, no model):
 #   mkan-fb-sweep   06:30  Facebook groups + Marketplace seeds → Twenty  (scripts/crm/hermes/fb-sweep.sh)
 #   mkan-web-sweep  06:45  Rwandan property sites → Twenty              (scripts/crm/hermes/web-sweep.sh)
+#   mkan-agencies   08:00  Google Maps estate agencies → the directory   (scripts/crm/hermes/agencies.sh)
 #
 #   bash scripts/crm/install-ads-sweeps.sh fb            # install / refresh one job
 #   bash scripts/crm/install-ads-sweeps.sh web
+#   bash scripts/crm/install-ads-sweeps.sh agencies
 #   bash scripts/crm/install-ads-sweeps.sh all
 #   bash scripts/crm/install-ads-sweeps.sh fb --remove   # remove it
 #   hermes cron list | grep -A8 mkan-                    # next run, last result
@@ -51,9 +53,11 @@ command -v hermes >/dev/null || { echo "hermes not installed"; exit 1; }
 case "$WHICH" in
 fb) install_one mkan-fb-sweep fb-sweep.sh "${FB_SCHEDULE:-30 6 * * *}" ;;
 web) install_one mkan-web-sweep web-sweep.sh "${WEB_SCHEDULE:-45 6,18 * * *}" ;;
+agencies) install_one mkan-agencies agencies.sh "${AGENCIES_SCHEDULE:-0 8 * * *}" ;;
 all)
   install_one mkan-fb-sweep fb-sweep.sh "${FB_SCHEDULE:-30 6 * * *}"
   install_one mkan-web-sweep web-sweep.sh "${WEB_SCHEDULE:-45 6,18 * * *}"
+  install_one mkan-agencies agencies.sh "${AGENCIES_SCHEDULE:-0 8 * * *}"
   ;;
 *)
   sed -n '2,21p' "$0"

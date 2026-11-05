@@ -36,12 +36,25 @@ const argv = (name: string, fallback: string): string => {
   return i > 0 && process.argv[i + 1] && !process.argv[i + 1]!.startsWith('--') ? process.argv[i + 1]! : fallback;
 };
 const LIMIT = Number(argv('limit', '20')) || 20;
+/** Maps searches a run, so a long phrase list spreads over the week instead of one burst Google may block. */
+const SEARCHES_PER_RUN = Number(argv('searches', '12')) || 12;
 const PORT = Number(argv('port', process.env.MAPS_CDP_PORT ?? '9222'));
 const SCROLLS = Number(argv('scrolls', '8'));
 const REFRESH = process.argv.includes('--refresh');
 const cmd = process.argv.slice(2).find((a, i, all) => !a.startsWith('--') && !all[i - 1]?.startsWith('--')) ?? 'run';
 
-export const QUERIES = ['real estate agency Kigali', 'immobilier Kigali', 'property management Kigali', 'house rental agency Kigali'];
+// Kigali-wide, then each term per neighbourhood: Maps shows ~20 places a search, so one city-wide
+// phrase only ever reached the same 53 agencies (goal 2026-11-05: 1,000 brokers and agencies).
+const TERMS = ['real estate agency', 'property management', 'house rental agent', 'immobilier'];
+const AREAS = ['Kicukiro', 'Gasabo', 'Nyarugenge', 'Kimironko', 'Remera', 'Kacyiru', 'Kimihurura', 'Nyarutarama', 'Kibagabaga', 'Kagugu', 'Gacuriro', 'Kinyinya', 'Gisozi', 'Nyamirambo', 'Kanombe', 'Niboye', 'Gikondo', 'Rebero'];
+export const QUERIES = [
+  'real estate agency Kigali',
+  'immobilier Kigali',
+  'property management Kigali',
+  'house rental agency Kigali',
+  'real estate agency Rwanda',
+  ...AREAS.flatMap((a) => TERMS.map((t) => `${t} ${a} Kigali`)),
+];
 const extra = argv('query', '');
 const queries = extra ? [...QUERIES, extra] : QUERIES;
 const SEARCH_EVERY_MS = 7 * 86_400_000;
@@ -194,12 +207,15 @@ async function run(): Promise<void> {
   const searches = readJson<Record<string, { at: string; found: number }>>(SEARCHES, {});
   const s = await createCdpSession(PORT);
   try {
+    let searched = 0;
     for (const q of queries) {
       const last = searches[q]?.at ? Date.parse(searches[q]!.at) : 0;
+      if (searched >= SEARCHES_PER_RUN && !REFRESH) break;
       if (!REFRESH && Date.now() - last < SEARCH_EVERY_MS) {
         console.log(`= "${q}" searched ${searches[q]!.at.slice(0, 10)} — skip (--refresh to redo)`);
         continue;
       }
+      searched += 1;
       const places = await search(s, q).catch((e) => {
         console.warn(`  ! search "${q}": ${(e as Error).message.slice(0, 160)}`);
         return [];

@@ -122,7 +122,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   // Deals are read from the earlier of the comparison window and the month: one created weeks ago
   // and paid this month still counts as this month's money.
   const dealsFrom = new Date(Math.min(prevSince.getTime(), monthStart.getTime()));
-  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints, firstShare, lessons, inbox, handoffs] =
+  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints, firstShare, lessons, inbox, handoffs, directory] =
     await Promise.all([
       agentFunnel(db, days),
       agentFunnel(db, days, days),
@@ -184,6 +184,8 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
         FROM said`.catch(() => null),
       // Messages the agent left to a person (whatsapp-chat.ts noteHandoff).
       db.waState.count({ where: { key: { startsWith: "handoff:" }, updatedAt: { gte: since } } }).catch(() => null),
+      // The broker + agency directory the agent asks (goal: 1,000), and how many joined this window.
+      Promise.all([db.broker.count(), db.broker.count({ where: { createdAt: { gte: since } } })]).catch(() => null),
     ]);
 
   // ── snapshots, per block ──────────────────────────────────────────────
@@ -214,6 +216,8 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     { key: "savedTotal", value: sm.savedTotal ?? null, unit: "count" },
     { key: "webAds", value: sm.webAds ?? null, unit: "count" },
     { key: "newBrokers", value: sm.newBrokers ?? null, unit: "count" },
+    { key: "brokersTotal", value: directory?.[0] ?? null, unit: "count" },
+    { key: "brokersNewWeek", value: directory?.[1] ?? null, unit: "count" },
     { key: "spendMonth", value: sm.spendUsdMonth ?? null, unit: "usd" },
   ];
 

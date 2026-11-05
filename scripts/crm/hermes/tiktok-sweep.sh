@@ -45,8 +45,11 @@ started=$(date +%s)
 echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (detached) ──" >>"$LOGDIR/sweep.log"
 # Job control: each background job gets its own process group, so the cap can stop the whole run.
 set -m
+# More searches and more candidate accounts vetted per run: the directory's goal is 1,000
+# brokers and agencies (2026-11-05); each run used 1 TikTok + 3 web searches and vetted 12.
 /usr/bin/caffeinate -i pnpm -s crm:tiktok --apply --notify \
   --fetch-limit="$FETCH_LIMIT" --read-limit="$READ_LIMIT" \
+  --queries="${TIKTOK_SEARCH_QUERIES:-6}" --tiktok-queries="${TIKTOK_SEARCH_TT:-3}" --vet="${TIKTOK_VET:-30}" \
   >>"$LOGDIR/sweep.log" 2>>"$LOGDIR/sweep.err.log" &
 pid=$!
 # The cap: a run still going after MAX_MINUTES is stopped, so the next tick finds the lane free.
