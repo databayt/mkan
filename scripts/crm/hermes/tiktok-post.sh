@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The TikTok page's daily tick, run by the Hermes gateway's cron (no agent, no model):
-# tt:run renders today's pieces, then tt:upload posts them to @mkan.rw through the
+# tt:run renders today's homes (one video each), then tt:upload posts them to @mkan.rw through the
 # session-vault Chrome — fully automatic since 2026-10-21, no human gate.
 # Installed to ~/.hermes/scripts/mkan-tiktok-post.sh by scripts/crm/install-tiktok-post.sh.
 #
@@ -14,10 +14,11 @@ set -uo pipefail
 REPO="${MKAN_REPO:-/Users/abdout/mkan}"
 LOGDIR="$REPO/scripts/crm/.data/tiktok-post"
 LOCK="$LOGDIR/.post.lock"
-# Broker videos are on hold (0) until their burned-in captions and phone numbers are
-# stripped before the brand pass (2026-11-01): a broker's own number on our page sends the
-# tenant straight to them. The daily picture video still posts. Back to 3 once it ships.
-PER_DAY="${TIKTOK_POSTS_PER_DAY:-0}"
+# Homes posted a day, one post each (2026-11-05): the broker's own video with every burned-in
+# text and logo stripped and nothing of ours burned on, their sound kept with spoken numbers
+# muted, the code + WhatsApp + credit in the caption only. A render whose strip leaves text is
+# REJECTED and never uploads. No carousels or picture videos any more. 0 holds the lane.
+PER_DAY="${TIKTOK_POSTS_PER_DAY:-3}"
 # A run past this is stuck; the cap frees the lock long before the 13:00 retry.
 MAX_MINUTES="${TIKTOK_POST_MAX_MINUTES:-120}"
 export PATH="/opt/homebrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"

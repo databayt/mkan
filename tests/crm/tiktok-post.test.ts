@@ -4,38 +4,27 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-  beatHolds,
   brokerPreviewAsk,
   contactLeaks,
   errorText,
   pageStatsLine,
-  photoTitle,
   FRESH_DAYS,
   sourcePostedAt,
   stripGraph,
   textRegions,
+  leftoverText,
+  staticOverlayRegions,
+  spokenContactSpans,
+  muteFilter,
+  oldRenderDays,
+  type GrayFrame,
+  type SpokenWord,
   type TextBox,
   type TextFrame,
-  photoCredits,
-  photoHomeSvg,
-  pickStock,
-  type StockPhoto,
   brokerAsk,
   captionFor,
-  carouselCaption,
-  carouselEndSvg,
-  carouselHomeSvg,
-  carouselNarration,
-  slideHolds,
-  carouselThemes,
-  pickCarousel,
-  wrap,
-  endCardSvg,
   ineligibleReason,
-  lowerThirdSvg,
-  brandTimeline,
   brokerVideoUrl,
-  cornerSvg,
   pickToday,
   refInText,
   refOf,
@@ -134,7 +123,7 @@ describe('pickToday', () => {
   });
 });
 
-describe('caption + artwork', () => {
+describe('caption', () => {
   it('carries price, place, the ref and the number', () => {
     const c = captionFor(row({ id: 77 }), '+250 788 000 000');
     expect(c).toContain('RWF 450,000 / month');
@@ -144,15 +133,8 @@ describe('caption + artwork', () => {
     expect(c).toContain('#gasabo');
     expect(refInText(c)).toBe('K77');
   });
-  it('escapes text in the SVG', () => {
-    expect(lowerThirdSvg(row({ area: 'A & B <x>' }))).toContain('A &amp; B &lt;x&gt;');
-    expect(endCardSvg(row(), '+250 788 000 000')).toContain('+250 788 000 000');
-  });
-  it('keeps the corner to the mark and the page — no broker handle on screen', () => {
-    const c = cornerSvg();
-    expect(c).toContain('>mkan</text>');
-    expect(c).not.toContain('Video');
-    expect(c).not.toContain('@');
+  it('carries no music line: the broker\'s own sound goes out, nothing generated', () => {
+    expect(captionFor(row({ hostSourceId: 'tiktok:kigalihomes' }), '+250 788 000 000')).not.toMatch(/music|AI-generated/i);
   });
   it('asks brokers in English and Kinyarwanda', () => {
     const m = brokerAsk('Eric');
@@ -182,7 +164,7 @@ describe('broker ask link', () => {
   });
 });
 
-describe('broker video + brand timeline', () => {
+describe('broker video', () => {
   it('finds the TikTok video a broker lead was cut from', () => {
     const lead = row({ source: 'TIKTOK', hostSourceId: 'tiktok:KigaliHomes', photoUrls: ['https://cdn.example/mkan/uploads/tiktok/7412345678901234567/1.jpg'] });
     expect(brokerVideoUrl(lead)).toBe('https://www.tiktok.com/@kigalihomes/video/7412345678901234567');
@@ -194,96 +176,8 @@ describe('broker video + brand timeline', () => {
     expect(lines.join('\n')).not.toMatch(/🎥|remastered/);
     expect(captionFor(row(), '+250 788 000 000')).not.toContain('Video:');
   });
-  it('lays sting, body and end card on crossfades', () => {
-    expect(brandTimeline(10)).toEqual({ bodyAt: 1.05, endAt: 10.7, total: 13.7 });
-  });
 });
 
-describe('data carousel', () => {
-  const pool = [
-    row({ id: 1, district: 'Gasabo', priceMonth: 200_000, bedrooms: 1 }),
-    row({ id: 2, district: 'Gasabo', priceMonth: 350_000, bedrooms: 2 }),
-    row({ id: 3, district: 'Gasabo', priceMonth: 500_000, bedrooms: 2 }),
-    row({ id: 4, district: 'Gasabo', priceMonth: 900_000, bedrooms: 3 }),
-    row({ id: 5, district: 'Kicukiro', priceMonth: 400_000, bedrooms: 2 }),
-    row({ id: 6, district: 'Gasabo', priceMonth: null }),
-  ];
-  it('takes any home with facts — no consent needed, no photos used', () => {
-    const lead = row({ id: 9, source: 'TIKTOK', hostSourceId: 'tiktok:x', district: 'Gasabo', photoUrls: [] });
-    const all = carouselThemes([...pool, lead]).find((t) => t.theme.slug === 'district-gasabo')!;
-    expect(all.homes.map((r) => r.id)).toContain(9);
-    expect(all.homes.map((r) => r.id)).not.toContain(6);
-  });
-  it('rotates the theme kind by day and lists homes cheapest first', () => {
-    const day0 = 20_001 * 86_400_000; // a day index divisible by 3 → district
-    const c = pickCarousel(pool, {}, day0, 3)!;
-    expect(c.theme.slug).toBe('district-gasabo');
-    const prices = c.homes.map((r) => r.priceMonth!);
-    expect([...prices].sort((a, b) => a - b)).toEqual(prices);
-    expect(pickCarousel(pool, {}, day0 + 86_400_000, 3)!.theme.kind).toBe('budget');
-  });
-  it('leaves a home that is gone out of every theme', () => {
-    const gone = row({ id: 7, district: 'Gasabo', lostAt: daysAgo(1) });
-    expect(carouselThemes([...pool, gone]).flatMap((t) => t.homes.map((r) => r.id))).not.toContain(7);
-  });
-  it('rests a shown home 14 days', () => {
-    const day0 = 20_000 * 86_400_000;
-    const shown = Object.fromEntries(pool.map((r) => [refOf(r), new Date(day0 - 86_400_000).toISOString()]));
-    expect(pickCarousel(pool, shown, day0, 3)).toBeNull();
-  });
-  it('wraps, escapes and carries the ref + number', () => {
-    expect(wrap('Homes for rent in Kicukiro', 14)).toEqual(['Homes for rent', 'in Kicukiro']);
-    expect(carouselHomeSvg(row({ id: 77, area: 'A & B' }), 1, 5, '+250 788 000 000')).toContain('K77');
-    expect(carouselCaption(carouselThemes(pool)[0]!.theme, pool.slice(0, 2), '+250 788 000 000')).toContain('No viewing fee');
-  });
-  it('never promises the agent\'s or owner\'s contact: Mkan stays in the middle (11-01)', () => {
-    const theme = carouselThemes(pool)[0]!.theme;
-    const copy = [carouselCaption(theme, pool.slice(0, 2), '+250 788 000 000'), carouselEndSvg('+250 788 000 000'), ...carouselNarration(theme, pool.slice(0, 2))].join('\n');
-    expect(copy).not.toMatch(/agent or owner|connect you with|put you in touch/i);
-    expect(copy).toMatch(/viewing is on us/i);
-  });
-});
-
-describe('voiced data video', () => {
-  it('narrates the cover, each home and the call to action', () => {
-    const theme = carouselThemes([row()]).find((t) => t.theme.slug === 'district-gasabo')!.theme;
-    const lines = carouselNarration(theme, [row({ id: 77, propertyType: 'Apartment', bedrooms: 2, bathrooms: 1 })]);
-    expect(lines).toHaveLength(3);
-    expect(lines[0]).toBe('One home for rent in Gasabo this week.');
-    expect(lines[1]).toBe('An apartment in Kimironko, Gasabo. Two bedrooms, one bathroom. 450,000 francs a month. Code K-7-7.');
-    expect(lines[2]).toContain('WhatsApp');
-  });
-  it('holds each slide for its line plus room, never too short', () => {
-    expect(slideHolds([5, 1, 0])).toEqual([5.7, 2.5, 2.5]);
-  });
-});
-
-describe('picture video', () => {
-  const photo = (id: string, artist: string, license: string): StockPhoto => ({ id, label: id, title: id, license, artist, page: '', url: `https://upload.wikimedia.org/x/${id}.jpg` });
-
-  it('cuts on the beat: cover 4 beats, homes and end card 8', () => {
-    expect(beatHolds(2, 120)).toEqual([2, 4, 4, 4]);
-    expect(beatHolds(5)).toHaveLength(7);
-  });
-
-  it('rotates area photos, never-used first', () => {
-    const all = [photo('a', 'X', 'CC0'), photo('b', 'Y', 'CC0'), photo('c', 'Z', 'CC0')];
-    expect(pickStock(all, { a: '2026-10-20T00:00:00Z' }, 2).map((p) => p.id)).toEqual(['b', 'c']);
-    expect(pickStock(all, { a: '2026-10-20', b: '2026-10-19', c: '2026-10-21' }, 1).map((p) => p.id)).toEqual(['b']);
-  });
-
-  it('credits each author once with their licences, and says the photos are not the homes', () => {
-    const line = photoCredits([photo('a', 'Ann', 'CC BY 2.0'), photo('b', 'Ann', 'CC BY 2.0'), photo('c', 'Bo', 'CC0')]);
-    expect(line).toContain('not the listed homes');
-    expect(line).toContain('Ann (CC BY 2.0), Bo (CC0)');
-  });
-
-  it('tags an area photo on screen, and not a home photo', () => {
-    const r = { id: 1, code: null, source: 'MANUAL' as const, priceMonth: 300000, bedrooms: 2, bathrooms: 1, propertyType: null, photoUrls: [], area: 'Kimihurura', district: 'Gasabo', hostSourceId: null, postedAt: null, lostAt: null };
-    expect(photoHomeSvg(r, 1, 5, true)).toContain('area photo');
-    expect(photoHomeSvg(r, 1, 5, false)).not.toContain('area photo');
-  });
-});
 
 describe('preview ask', () => {
   it('carries the preview link in both languages and promises nothing goes out before YES', () => {
@@ -292,6 +186,15 @@ describe('preview ask', () => {
     expect(m).toContain('Nothing is posted until you say YES');
     expect(m).toContain('YEGO');
     expect(m).toContain('@somebroker');
+  });
+  it('credits them in the caption, and promises the video cleaned — never their name on it, never mkan music', () => {
+    for (const lang of ['EN', 'RW', 'FR']) {
+      const m = brokerPreviewAsk('Eric', 'somebroker', 'mkan.rw', 'https://cdn.example/p.mp4', lang);
+      expect(m).not.toMatch(/on every video|sur chaque vidéo|mkan music|musique mkan/i);
+    }
+    const en = brokerPreviewAsk('Eric', 'somebroker', 'mkan.rw', 'https://cdn.example/p.mp4', 'EN');
+    expect(en).toContain('crediting you by name in the caption');
+    expect(en).toContain('the text on screen taken off');
   });
 });
 
@@ -406,10 +309,114 @@ describe('pageStatsLine', () => {
   });
 });
 
-describe('photoTitle', () => {
-  it("is the caption's first line, without emoji, within 90 characters", () => {
-    expect(photoTitle('🏠 RWF 1M+ a month — this week\n• K5808 — RWF 1,000,000/mo')).toBe('RWF 1M+ a month — this week');
-    expect(photoTitle('🇷🇼 Inzu zikodeshwa')).toBe('Inzu zikodeshwa');
-    expect(photoTitle('x'.repeat(120))).toHaveLength(90);
+
+
+describe('the strict gate after the strip', () => {
+  const box = (over: Partial<TextBox> = {}): TextBox => ({ x: 0.2, y: 0.5, w: 0.3, h: 0.025, conf: 0.9, text: 'Kimironko 2 beds', ...over });
+  it('fails on any readable text left, not just a number', () => {
+    expect(leftoverText([{ t: 1, boxes: [box()] }])).toEqual(['"Kimironko 2 beds" at 1 s']);
+  });
+  it('fails on a number or handle at any size or confidence', () => {
+    expect(leftoverText([{ t: 2, boxes: [box({ w: 0.02, h: 0.005, conf: 0.35, text: '0788 000 111' })] }])).toEqual(['"0788000111" at 2 s']);
+    expect(leftoverText([{ t: 2, boxes: [box({ w: 0.02, h: 0.005, conf: 0.35, text: '@some.broker' })] }])).toHaveLength(1);
+  });
+  it('lets small or unsure reads on a wiped patch through', () => {
+    expect(leftoverText([{ t: 1, boxes: [box({ w: 0.03, h: 0.01 }), box({ conf: 0.3 }), box({ text: '·' })] }])).toEqual([]);
+    expect(leftoverText([])).toEqual([]);
+  });
+});
+
+describe('logos and watermarks', () => {
+  const gw = 54;
+  const gh = 96;
+  /** Frames whose scene moves (fresh noise each time) under a fixed checkered mark at (mx, my, mw × mh) cells. */
+  const frames = (n: number, mark?: { x: number; y: number; w: number; h: number }, still = false, seed = 1): GrayFrame[] => {
+    let s = seed;
+    const rnd = () => ((s = (s * 1103515245 + 12345) % 2147483648) / 2147483648) * 255;
+    const base = Array.from({ length: gw * gh }, rnd);
+    return Array.from({ length: n }, (_, i) => {
+      const data = still ? base.slice() : Array.from({ length: gw * gh }, rnd);
+      if (mark) for (let y = mark.y; y < mark.y + mark.h; y++) for (let x = mark.x; x < mark.x + mark.w; x++) data[y * gw + x] = (x + y) % 2 ? 250 : 10;
+      return { t: i / 2, data };
+    });
+  };
+  const opts = { gw, gh, width: 1080, height: 1920, duration: 8 };
+
+  it('finds a mark that holds still while the scene moves, in output pixels', () => {
+    const r = staticOverlayRegions(frames(16, { x: 40, y: 4, w: 10, h: 5 }), opts);
+    expect(r).toHaveLength(1);
+    const [m] = r;
+    // 20 px a cell; the mark is cells 40–49 × 4–8, plus a cell of pad.
+    expect(m!.x).toBeLessThanOrEqual(40 * 20);
+    expect(m!.x + m!.w).toBeGreaterThanOrEqual(50 * 20);
+    expect(m!.y).toBeLessThanOrEqual(4 * 20);
+    expect(m!.y + m!.h).toBeGreaterThanOrEqual(9 * 20);
+    expect(m!.start).toBe(0);
+    expect(m!.end).toBe(8);
+    expect(stripGraph(r)).toContain('delogo=');
+  });
+
+  it('times a mark that only shows in part of the clip', () => {
+    const f = [...frames(8), ...frames(8, { x: 2, y: 80, w: 8, h: 6 }, false, 7).map((x) => ({ ...x, t: x.t + 4 }))];
+    const [m] = staticOverlayRegions(f, opts);
+    expect(m!.start).toBeGreaterThanOrEqual(3);
+    expect(m!.end).toBe(8);
+  });
+
+  it('wipes nothing on a still shot or a photo slideshow', () => {
+    expect(staticOverlayRegions(frames(16, { x: 40, y: 4, w: 10, h: 5 }, true), opts)).toEqual([]);
+  });
+
+  it('never takes a big part of the frame for a logo', () => {
+    // A fixed block over a quarter of the frame is the scene (a wall, a window), not an overlay.
+    expect(staticOverlayRegions(frames(16, { x: 0, y: 0, w: 30, h: 50 }), opts)).toEqual([]);
+  });
+
+  it('ignores a fixed flat patch with no edges, and too few frames', () => {
+    const flat = frames(16).map((f) => {
+      const d = Array.from(f.data);
+      for (let y = 10; y < 16; y++) for (let x = 10; x < 20; x++) d[y * gw + x] = 128;
+      return { ...f, data: d };
+    });
+    expect(staticOverlayRegions(flat, opts)).toEqual([]);
+    expect(staticOverlayRegions(frames(3, { x: 40, y: 4, w: 10, h: 5 }), opts)).toEqual([]);
+  });
+});
+
+describe("the broker's voice", () => {
+  const say = (text: string, from = 0): SpokenWord[] => text.split(' ').map((word, i) => ({ word: ` ${word}`, start: from + i * 0.4, end: from + i * 0.4 + 0.35 }));
+
+  it('mutes a phone number read out as digits or words', () => {
+    expect(spokenContactSpans(say('call me on 0788 123 456 today'))).toEqual([{ start: 0.95, end: 2.6, what: 'number 078…' }]);
+    const words = spokenContactSpans(say('WhatsApp zero seven eight eight one two three four five six'));
+    expect(words).toHaveLength(1);
+    expect(words[0]!.start).toBeCloseTo(0.15);
+    expect(spokenContactSpans(say('zero seven double eight one two three'))).toHaveLength(1); // 0788123
+  });
+
+  it('mutes an @handle', () => {
+    const [h] = spokenContactSpans(say('follow @kigali.homes for more'));
+    expect(h!.what).toBe('a handle');
+    expect(spokenContactSpans(say('follow at kigalihomes for more'))).toHaveLength(1);
+  });
+
+  it('keeps prices, counts and short numbers', () => {
+    expect(spokenContactSpans(say('the rent is 1,500,000 francs for 3 bedrooms and 2 baths'))).toEqual([]);
+    expect(spokenContactSpans(say('house number 12 34 on the left'))).toEqual([]);
+    expect(spokenContactSpans([])).toEqual([]);
+  });
+
+  it('joins spans that touch, and builds one ffmpeg filter', () => {
+    const spans = spokenContactSpans([...say('0788 123 456'), ...say('@x.homes', 1.3)]);
+    expect(spans).toHaveLength(1);
+    expect(muteFilter(spans)).toBe(`volume=enable='between(t,${spans[0]!.start},${spans[0]!.end})':volume=0`);
+    expect(muteFilter([])).toBeNull();
+  });
+});
+
+describe('disk floor', () => {
+  it('frees render folders over 14 days old, never anything else', () => {
+    const now = Date.parse('2026-11-05T07:00:00Z');
+    expect(oldRenderDays(['2026-10-01', '2026-10-25', '2026-11-05', 'src', 'preview', 'posted.json'], now)).toEqual(['2026-10-01']);
   });
 });

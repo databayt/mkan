@@ -1,5 +1,5 @@
 /**
- * Posts the day's rendered TikTok pieces to @mkan.rw — no phone step.
+ * Posts the day's rendered TikTok videos to @mkan.rw — no phone step.
  *
  *   pnpm tt:upload [--date=YYYY-MM-DD] [--dry] [--notify]
  *   pnpm tt:upload --file=<mp4> --caption=<txt> [--aigc] [--dry]   one ad-hoc video
@@ -10,13 +10,17 @@
  * Posting API stays private until an app audit passes (kun#168); switch this
  * file to the API then.
  *
- * What goes out each day (tt:run made it at 07:00):
- *   - each queued home: <date>/<ref>.mp4 + <ref>.txt (a consented broker's footage, AI-upscaled, on mkan's AI track → AI label on)
- *   - the picture video: <date>/carousel/video.mp4 + video-caption.txt (mkan's AI track → AI label on)
- *   - the same slides as a photo post: <date>/carousel/<n>.jpg + caption.txt, through Studio's
- *     Photos tab (swipeable, up to 35; no AI voice, so no label). TIKTOK_PHOTO_POSTS=off skips it.
+ * What goes out each day (tt:run made it at 07:00): one post per queued home —
+ * <date>/<ref>.mp4 + <ref>.txt, the broker's own footage cleaned of every text
+ * and logo, their own sound kept, the caption carrying the code, the WhatsApp
+ * number and the broker's credit. Nothing generated is in it (the upscale only
+ * sharpens the real footage), so the AI-content label is switched OFF; an
+ * ad-hoc --file post can still ask for it with --aigc. No carousels, no photo
+ * posts, no picture videos (2026-11-05).
  * A per-day `uploads.json` keeps a rerun from posting twice. A posted home is
- * stamped in posted.json, so it rests 30 days like a hand-posted one.
+ * stamped in posted.json, so it rests 30 days like a hand-posted one, and its
+ * TikTokPost row turns POSTED (with the post's URL when Studio shows it) or
+ * FAILED with the reason.
  *
  * --dry fills everything (file, caption, label) and stops before Post, saving a
  * screenshot next to the video. Env: TIKTOK_UPLOAD_CDP (default http://127.0.0.1:9222).
@@ -26,12 +30,12 @@ config({ override: true });
 
 import { refuseUnattended } from '../unattended';
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
-import { chromium, type Page } from 'playwright';
+import { chromium, type Page, type Response } from 'playwright';
 import { postToMkan, recordRun } from './notify';
-import { errorText, photoTitle, type Ledger } from './tiktok-post-pure';
+import { errorText, type Ledger } from './tiktok-post-pure';
 import { ownTikTok } from './tiktok-pure';
 
 const argv = (n: string, d = ''): string => {
@@ -51,39 +55,33 @@ const PENDING = join(DAY, 'pending.json');
 const CDP = (process.env.TIKTOK_UPLOAD_CDP ?? '').trim() || 'http://127.0.0.1:9222';
 const PAGE = ownTikTok().handle;
 const UPLOAD_URL = 'https://www.tiktok.com/tiktokstudio/upload?lang=en';
-/** Studio's web upload takes photo posts on its Photos tab (checked 2026-11-01: jpg/png/webp, up to 35). */
-const PHOTO_POSTS = (process.env.TIKTOK_PHOTO_POSTS ?? '').trim().toLowerCase() !== 'off';
 const dry = flag('dry');
 
 interface Piece {
-  key: string; // ref for a home, `datavideo` for the voiced carousel, `slides` for its photo post
-  mp4: string; // the video, or a photo post's first slide
-  /** A photo post's slides, in order. */
-  photos?: string[];
+  key: string; // the home's ref
+  mp4: string;
   caption: string;
   aigc: boolean;
+  /** The home's TikTokPost row (tt:pick wrote it into queue.json). */
+  postId?: string;
 }
 
 const readJson = <T>(p: string, d: T): T => (existsSync(p) ? (JSON.parse(readFileSync(p, 'utf8')) as T) : d);
 
 function todaysPieces(): Piece[] {
   const file = argv('file');
-  // preview/ holds renders made for a look or a broker's ask (any listing, consent or not): never posted.
-  if (file && /[\\/]preview[\\/]/.test(file)) throw new Error(`${file} is a preview render — previews are never posted`);
+  // preview/ holds renders made for a look or a broker's ask (any listing, consent or not), dry/ holds
+  // dry-run renders: never posted.
+  if (file && /[\\/](preview|dry)[\\/]/.test(file)) throw new Error(`${file} is a preview or dry-run render — those are never posted`);
   if (file) return [{ key: basename(file, '.mp4'), mp4: file, caption: readFileSync(argv('caption'), 'utf8'), aigc: flag('aigc') }];
   const out: Piece[] = [];
-  const queue = readJson<{ id: number; code: string | null }[]>(join(DAY, 'queue.json'), []);
+  const queue = readJson<{ id: number; code: string | null; postId?: string }[]>(join(DAY, 'queue.json'), []);
   for (const r of queue) {
     const ref = r.code?.trim() || `K${r.id}`;
     const mp4 = join(DAY, `${ref}.mp4`);
-    if (existsSync(mp4) && existsSync(join(DAY, `${ref}.txt`))) out.push({ key: ref, mp4, caption: readFileSync(join(DAY, `${ref}.txt`), 'utf8'), aigc: true });
+    // A REJECTED render leaves no mp4, so it never gets here.
+    if (existsSync(mp4) && existsSync(join(DAY, `${ref}.txt`))) out.push({ key: ref, mp4, caption: readFileSync(join(DAY, `${ref}.txt`), 'utf8'), aigc: false, postId: r.postId });
   }
-  const dv = join(DAY, 'carousel', 'video.mp4');
-  if (existsSync(dv)) out.push({ key: 'datavideo', mp4: dv, caption: readFileSync(join(DAY, 'carousel', 'video-caption.txt'), 'utf8'), aigc: true });
-  // The slides themselves as a swipeable photo post — what a tenant scrolls past as "slides".
-  const dir = join(DAY, 'carousel');
-  const slides = existsSync(dir) ? readdirSync(dir).filter((f) => /^\d+\.jpg$/.test(f)).sort((a, b) => parseInt(a, 10) - parseInt(b, 10)).map((f) => join(dir, f)) : [];
-  if (PHOTO_POSTS && slides.length >= 2 && existsSync(join(dir, 'caption.txt'))) out.push({ key: 'slides', mp4: slides[0]!, photos: slides.slice(0, 35), caption: readFileSync(join(dir, 'caption.txt'), 'utf8'), aigc: false });
   return out;
 }
 
@@ -155,93 +153,126 @@ async function discardDraft(p: Page): Promise<void> {
   await p.waitForTimeout(1500);
 }
 
-async function setCaption(p: Page, text: string): Promise<void> {
-  const box = p.locator('.public-DraftEditor-content, div[contenteditable="true"]').first();
-  await box.waitFor({ timeout: 60_000 });
-  await dismissPrompts(p);
-  await box.click();
-  // The editor starts with the file name in it.
-  await p.keyboard.press('Meta+A');
-  await p.keyboard.press('Backspace');
-  // Draft.js ignores synthetic input events but takes a paste whole — newlines, emoji, hashtags.
-  await box.evaluate((el, t) => {
-    const dt = new DataTransfer();
-    dt.setData('text/plain', t);
-    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
-  }, text.trim());
-  await p.waitForTimeout(1000);
-  await p.keyboard.press('Escape').catch(() => {}); // a trailing hashtag opens the suggestion list
-  const got = (await box.innerText()).trim();
-  const first = text.trim().split('\n')[0]!.trim();
-  if (!got.startsWith(first)) throw new Error(`caption did not take — the box reads "${got.slice(0, 60)}"`);
+const EDITOR = '.public-DraftEditor-content, div[contenteditable="true"]';
+
+/**
+ * The upload page with the file in and the caption editor on screen. Studio has
+ * sat on a half-built form after the file went in (11-05: "locator.waitFor
+ * Timeout … DraftEditor-content"): the page is reloaded once and the file put in
+ * again before the run gives up on this piece.
+ */
+async function openForm(p: Page, piece: Piece): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    if (attempt === 1) await p.goto(UPLOAD_URL, { waitUntil: 'domcontentloaded' });
+    else await p.reload({ waitUntil: 'domcontentloaded' });
+    if (/\/login/.test(p.url()) || (await p.locator('input[type=file]').count().catch(() => 0)) === 0) {
+      await p.waitForTimeout(6000);
+      if (/\/login/.test(p.url())) throw new Error(`the vault Chrome is logged out of TikTok — scan the QR at ${UPLOAD_URL} with @${PAGE} on the phone`);
+    }
+    await discardDraft(p);
+    await dismissPrompts(p);
+    const input = p.locator('input[type=file]').first();
+    await input.waitFor({ state: 'attached', timeout: 60_000 });
+    await input.setInputFiles(piece.mp4);
+    try {
+      await p.locator(EDITOR).first().waitFor({ state: 'visible', timeout: attempt === 1 ? 90_000 : 150_000 });
+      return;
+    } catch (e) {
+      const shot = join(dirname(piece.mp4), `${piece.key}.editor-timeout.png`);
+      await p.screenshot({ path: shot, fullPage: true }).catch(() => {});
+      if (attempt >= 2) throw new Error(`the caption editor never appeared, after one reload (screenshot ${shot})`);
+      console.warn(`  … ${piece.key}: the caption editor did not appear (${(e as Error).message.split('\n')[0]}) — reloading once`);
+    }
+  }
 }
 
-async function setAigc(p: Page): Promise<void> {
-  const more = p.getByText(/^show more$/i).first();
-  if (await more.isVisible().catch(() => false)) await more.click();
-  const sw = p.locator('[data-e2e="aigc_container"] .Switch__content').first();
-  await sw.waitFor({ timeout: 15_000 });
-  if ((await sw.getAttribute('aria-checked')) !== 'true') await sw.click();
-  // First time on, TikTok explains the label in a dialog.
-  const turnOn = p.locator('.TUXModal-overlay, [role="dialog"]').getByRole('button', { name: /^turn on$/i });
-  if (await turnOn.first().isVisible({ timeout: 3000 }).catch(() => false)) await turnOn.first().click();
-  await p.waitForTimeout(800);
-  if ((await sw.getAttribute('aria-checked')) !== 'true') throw new Error('the AI-generated label would not switch on — not posting an unlabelled AI voice');
+async function setCaption(p: Page, text: string): Promise<void> {
+  const box = p.locator(EDITOR).first();
+  const first = text.trim().split('\n')[0]!.trim();
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    await box.waitFor({ state: 'visible', timeout: 60_000 });
+    await dismissPrompts(p);
+    await box.click();
+    // The editor starts with the file name in it.
+    await p.keyboard.press('Meta+A');
+    await p.keyboard.press('Backspace');
+    // Draft.js ignores synthetic input events but takes a paste whole — newlines, emoji, hashtags.
+    await box.evaluate((el, t) => {
+      const dt = new DataTransfer();
+      dt.setData('text/plain', t);
+      el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    }, text.trim());
+    await p.waitForTimeout(1000);
+    await p.keyboard.press('Escape').catch(() => {}); // a trailing hashtag opens the suggestion list
+    const got = (await box.innerText().catch(() => '')).trim();
+    if (got.startsWith(first)) return;
+    if (attempt === 2) throw new Error(`caption did not take — the box reads "${got.slice(0, 60)}"`);
+    await p.waitForTimeout(3000);
+  }
 }
 
 /**
- * Every slide up before Post. Studio wakes Post while photos are still uploading (11-01 dry
- * runs: 3 of 7, then 6 of 7 with one failed), and a failed slide shows a retry arrow over
- * it — tapped up to three times. A partial set is never posted: the run says so, and the
- * 13:00 retry tries the day again.
+ * The AI-generated label, set to `on`. A listing video is real footage (the
+ * upscale sharpens it, nothing is generated), so it goes out with the label
+ * OFF — and Studio may remember the last post's setting, so it is checked
+ * either way. No switch on the form means TikTok's default: off.
  */
-async function waitForPhotos(p: Page, n: number, waitMs = 8 * 60_000): Promise<void> {
-  const done = p.getByText(new RegExp(`\\b${n} photos? uploaded`, 'i')).first();
-  const failed = p.locator('[class*="errorOverlay"]');
-  let retries = 0;
-  for (const end = Date.now() + waitMs; Date.now() < end; ) {
-    if (await done.isVisible().catch(() => false)) return;
-    if (retries < 3 && (await failed.count().catch(() => 0)) > 0) {
-      retries += 1;
-      await failed.first().click().catch(() => {});
-    }
-    await p.waitForTimeout(3000);
+async function setAigc(p: Page, on: boolean): Promise<void> {
+  const more = p.getByText(/^show more$/i).first();
+  if (await more.isVisible().catch(() => false)) await more.click();
+  const sw = p.locator('[data-e2e="aigc_container"] .Switch__content').first();
+  if (!on && !(await sw.isVisible({ timeout: 8000 }).catch(() => false))) return;
+  await sw.waitFor({ timeout: 15_000 });
+  if (((await sw.getAttribute('aria-checked')) === 'true') !== on) await sw.click();
+  // First time on, TikTok explains the label in a dialog.
+  if (on) {
+    const turnOn = p.locator('.TUXModal-overlay, [role="dialog"]').getByRole('button', { name: /^turn on$/i });
+    if (await turnOn.first().isVisible({ timeout: 3000 }).catch(() => false)) await turnOn.first().click();
   }
-  const got = (await p.getByText(/photos? uploaded/i).first().textContent().catch(() => ''))?.match(/\d+/)?.[0] ?? 'some';
-  throw new Error(`only ${got} of ${n} photos uploaded after ${Math.round(waitMs / 60_000)} min${retries ? ` (${retries} retried)` : ''} — not posting a partial set`);
+  await p.waitForTimeout(800);
+  if (((await sw.getAttribute('aria-checked')) === 'true') !== on) throw new Error(`the AI-generated label would not switch ${on ? 'on' : 'off'}`);
 }
 
-async function postOne(p: Page, piece: Piece): Promise<string> {
-  await p.goto(piece.photos ? `${UPLOAD_URL}&tab=photo` : UPLOAD_URL, { waitUntil: 'domcontentloaded' });
-  if (/\/login/.test(p.url()) || (await p.locator('input[type=file]').count().catch(() => 0)) === 0) {
-    await p.waitForTimeout(6000);
-    if (/\/login/.test(p.url())) throw new Error(`the vault Chrome is logged out of TikTok — scan the QR at ${UPLOAD_URL} with @${PAGE} on the phone`);
-  }
-  await discardDraft(p);
-  if (piece.photos) {
-    // The Photos tab swaps the file input for one that takes images, several at once.
-    const images = p.locator('input[type=file][accept*="image"]');
-    if ((await images.count().catch(() => 0)) === 0) {
-      await p.getByText('Photos', { exact: true }).first().click({ timeout: 15_000 });
-      await images.first().waitFor({ state: 'attached', timeout: 15_000 });
+/** A post's id in a Studio API answer: item_id / aweme_id / video_id, 17–20 digits. */
+const ID_IN_JSON = /"(?:item_id|aweme_id|video_id|itemId|awemeId)"\s*:\s*"?(\d{17,20})/;
+
+/**
+ * Where the post went, best effort: Studio's own answer to the publish call
+ * (watched while Post is clicked), else the newest row on Studio's content list
+ * whose text carries the ref. Null when neither shows it — tt:stats fills the
+ * URL in later by the ref in the caption.
+ */
+async function postedUrl(p: Page, piece: Piece, seen: Set<string>): Promise<{ url: string; id: string } | null> {
+  const id = [...seen][0];
+  if (id) return { id, url: `https://www.tiktok.com/@${PAGE}/video/${id}` };
+  try {
+    if (!/tiktokstudio\/content/.test(p.url())) await p.goto('https://www.tiktok.com/tiktokstudio/content', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    for (let i = 0; i < 8; i++) {
+      const hit = await p.evaluate((ref) => {
+        for (const a of Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href*="/video/"]'))) {
+          const row = a.closest('[data-tt*="row"], [class*="row"], tr, li') ?? a.parentElement?.parentElement ?? a;
+          if ((row.textContent ?? '').includes(ref)) return a.href;
+        }
+        return null;
+      }, piece.key);
+      const m = hit?.match(/\/video\/(\d{15,20})/);
+      if (m) return { id: m[1]!, url: `https://www.tiktok.com/@${PAGE}/video/${m[1]}` };
+      await p.waitForTimeout(5000);
     }
-    await images.first().setInputFiles(piece.photos);
-  } else {
-    await p.locator('input[type=file]').first().setInputFiles(piece.mp4);
+  } catch {
+    /* the URL is a nice-to-have; the post is out */
   }
-  await p.locator('.public-DraftEditor-content, div[contenteditable="true"]').first().waitFor({ timeout: 60_000 });
+  return null;
+}
+
+async function postOne(p: Page, piece: Piece): Promise<{ result: string; url?: string; id?: string }> {
+  await openForm(p, piece);
   await p.waitForTimeout(3000);
   await dismissPrompts(p);
   await setCaption(p, piece.caption);
   await dismissPrompts(p);
-  if (piece.photos) {
-    // A photo post has a title line of its own (90 characters): the caption's first line.
-    const title = p.getByPlaceholder(/catchy title/i).first();
-    if (await title.isVisible().catch(() => false)) await title.fill(photoTitle(piece.caption)).catch(() => {});
-  }
-  if (piece.aigc) await setAigc(p);
+  await setAigc(p, piece.aigc);
   await dismissPrompts(p);
-  if (piece.photos) await waitForPhotos(p, piece.photos.length);
 
   const post = p.locator('button[data-e2e="post_video_button"]').or(p.getByRole('button', { name: /^post$/i })).first();
   // Post stays disabled until the upload finishes processing.
@@ -249,22 +280,50 @@ async function postOne(p: Page, piece: Piece): Promise<string> {
   for (let i = 0; i < 60 && (await post.isDisabled().catch(() => true)); i++) await p.waitForTimeout(3000);
   const shot = join(dirname(piece.mp4), `${piece.key}.upload.png`);
   await p.screenshot({ path: shot, fullPage: true });
-  if (dry) return `dry run — filled, not posted (${shot})`;
+  if (dry) return { result: `dry run — filled, not posted (${shot})` };
 
-  const pending = readJson<Record<string, string>>(PENDING, {});
-  pending[piece.key] = new Date().toISOString();
-  writeFileSync(PENDING, JSON.stringify(pending, null, 2));
-  await post.click();
-  // A pending copyright/content check asks once more.
-  const now = p.getByRole('button', { name: /^post now$/i });
-  if (await now.first().isVisible({ timeout: 5000 }).catch(() => false)) await now.first().click();
-  await p.waitForURL(/tiktokstudio\/content|\/manage/, { timeout: 180_000 }).catch(async () => {
-    if (!(await p.getByText(/(uploaded|posted|being processed)/i).first().isVisible().catch(() => false))) {
-      await p.screenshot({ path: shot, fullPage: true });
-      throw new Error(`no confirmation after Post (screenshot ${shot})`);
-    }
-  });
-  return 'posted';
+  // Studio's answer to the publish call names the new post: watch for it while Post is clicked.
+  const ids = new Set<string>();
+  const watch = (res: Response) => {
+    const u = res.url();
+    if (!/tiktok\.com/.test(u) || !/post|publish|create|project/i.test(u)) return;
+    res.text().then((t) => {
+      const m = t.match(ID_IN_JSON);
+      if (m) ids.add(m[1]!);
+    }).catch(() => {});
+  };
+  p.on('response', watch);
+  try {
+    const pending = readJson<Record<string, string>>(PENDING, {});
+    pending[piece.key] = new Date().toISOString();
+    writeFileSync(PENDING, JSON.stringify(pending, null, 2));
+    await post.click();
+    // A pending copyright/content check asks once more.
+    const now = p.getByRole('button', { name: /^post now$/i });
+    if (await now.first().isVisible({ timeout: 5000 }).catch(() => false)) await now.first().click();
+    await p.waitForURL(/tiktokstudio\/content|\/manage/, { timeout: 180_000 }).catch(async () => {
+      if (!(await p.getByText(/(uploaded|posted|being processed)/i).first().isVisible().catch(() => false))) {
+        await p.screenshot({ path: shot, fullPage: true });
+        throw new Error(`no confirmation after Post (screenshot ${shot})`);
+      }
+    });
+    await p.waitForTimeout(3000);
+  } finally {
+    p.off('response', watch);
+  }
+  const where = await postedUrl(p, piece, ids);
+  return { result: where ? `posted — ${where.url}` : 'posted (URL not shown yet — tt:stats fills it in)', ...(where ?? {}) };
+}
+
+/** The home's TikTokPost row, written without ever stopping the upload. */
+async function markRow(piece: Piece, data: Record<string, unknown>): Promise<void> {
+  if (!piece.postId || dry) return;
+  try {
+    const { db } = await import('../../src/lib/db');
+    await db.tikTokPost.update({ where: { id: piece.postId }, data });
+  } catch (e) {
+    console.warn(`  ! TikTokPost ${piece.key}: ${errorText(e).slice(0, 160)}`);
+  }
 }
 
 async function main(): Promise<void> {
@@ -304,7 +363,7 @@ async function main(): Promise<void> {
       if (i > 0 && !dry) await page.waitForTimeout(90_000 + Math.random() * 120_000);
       try {
         const r = await postOne(page, piece);
-        console.log(`  ✅ ${piece.key}: ${r}`);
+        console.log(`  ✅ ${piece.key}: ${r.result}`);
         if (dry) continue;
         ok += 1;
         done[piece.key] = new Date().toISOString();
@@ -314,17 +373,23 @@ async function main(): Promise<void> {
           delete p[piece.key];
           writeFileSync(PENDING, JSON.stringify(p, null, 2));
         }
-        if (ledger[piece.key]) ledger[piece.key] = { ...ledger[piece.key]!, postedAt: done[piece.key] };
-        lines.push(`• ${piece.key}${piece.photos ? ` (${piece.photos.length} photos)` : ''}${piece.aigc ? ' (AI voice, labelled)' : ''}`);
+        if (ledger[piece.key]) ledger[piece.key] = { ...ledger[piece.key]!, postedAt: done[piece.key], ...(r.url ? { url: r.url } : {}) };
+        await markRow(piece, { status: 'POSTED', postedAt: new Date(done[piece.key]!), reason: null, ...(r.url ? { tiktokUrl: r.url, tiktokId: r.id } : {}) });
+        lines.push(`• ${piece.key}${r.url ? ` — ${r.url}` : ''}${piece.aigc ? ' (AI label on)' : ''}`);
       } catch (e) {
-        console.warn(`  ! ${piece.key}: ${(e as Error).message}`);
-        lines.push(`• ⚠️ ${piece.key} not posted: ${(e as Error).message.slice(0, 200)}`);
+        const why = (e as Error).message;
+        console.warn(`  ! ${piece.key}: ${why}`);
+        lines.push(`• ⚠️ ${piece.key} not posted: ${why.slice(0, 200)}`);
+        // Clicked but unconfirmed stays as it was (it may well be up); anything else failed.
+        if (!dry && !readJson<Record<string, string>>(PENDING, {})[piece.key]) await markRow(piece, { status: 'FAILED', reason: why.slice(0, 500) });
+        else if (!dry) await markRow(piece, { reason: `Post clicked, never confirmed: ${why.slice(0, 400)}` });
       }
     }
   } finally {
     if (!dry) writeFileSync(LEDGER, JSON.stringify(ledger, null, 2));
     if (!dry) await page.close().catch(() => {}); // a dry run leaves the filled form open to look at
     await browser.close().catch(() => {}); // detaches; the vault Chrome keeps running
+    if (!dry && due.some((x) => x.postId)) await import('../../src/lib/db').then((m) => m.db.$disconnect()).catch(() => {});
   }
   if (dry) return;
   // Clicked but never confirmed — before this run or in it: never re-posted on its own.

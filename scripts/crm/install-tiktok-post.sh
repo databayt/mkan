@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # mkan's Kigali TikTok page, daily at 07:00 (after the 06:00 broker sweep):
-# tt:run renders today's pieces → tt:upload posts them to @mkan.rw through the
+# tt:run renders today's homes, one video each → tt:upload posts them to @mkan.rw through the
 # session-vault Chrome (fully automatic since 2026-10-21). Summaries land in #mkan.
 #
 # The scheduler is the Hermes gateway's cron (no agent, no model), like the sweep:
@@ -11,8 +11,8 @@
 # One-time: the vault Chrome (127.0.0.1:9222) must be logged in to TikTok as @mkan.rw
 # (QR scan at tiktok.com/login). If it logs out, the run says so in #mkan.
 # TIKTOK_POSTS_PER_DAY=<n> bakes a new default into the installed copy; without it the
-# script's own default stands (0 while broker videos are on hold, 2026-11-01), so a
-# refresh never lifts the hold by accident. Logs under .data/tiktok-post/.
+# script's own default stands (3 homes a day since the clean-video strip, 2026-11-05;
+# TIKTOK_POSTS_PER_DAY=0 holds the lane). Logs under .data/tiktok-post/.
 # A second job, mkan-tiktok-upload-retry (13:00), posts whatever 07:00 rendered but could
 # not upload; the day's uploads.json keeps it from posting anything twice, and the two
 # share one lock, so they never upload at once. A third, mkan-tiktok-stats (Mondays
@@ -86,6 +86,6 @@ if [ -f "$PLIST" ]; then
   mv "$PLIST" "$HOME/Library/LaunchAgents/disabled/$LABEL.plist"
   echo "launchd $LABEL off (plist kept in LaunchAgents/disabled/)"
 fi
-echo "installed Hermes job $NAME — '$SCHEDULE', $PER_DAY homes + the picture video, auto-posted to @mkan.rw"
+echo "installed Hermes job $NAME — '$SCHEDULE', $PER_DAY homes a day (one clean video each), auto-posted to @mkan.rw"
 echo "installed Hermes job $RETRY — '$RETRY_SCHEDULE', posts what the morning tick could not upload (or the whole post when it rendered nothing)"
 echo "installed Hermes job $STATS — '$STATS_SCHEDULE', the page's views and likes in #mkan"
