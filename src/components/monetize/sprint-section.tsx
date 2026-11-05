@@ -56,6 +56,7 @@ function SprintBlock({ sprint, heading, labels, locale, canEdit }: { sprint: Spr
             <>
               <Icon className={cn("mt-0.5 size-5 shrink-0", t.done ? "fill-[#222222] text-white dark:fill-foreground dark:text-background" : INK)} strokeWidth={1.5} />
               <span className={cn("text-base leading-6", t.done ? cn(MUTED, "line-through") : INK)}>{t.title}</span>
+              {/* i18n-exempt — the fallback is the block's key, shown only when its label is missing */}
               {t.block && <span className={cn("ms-auto shrink-0 text-xs", MUTED)}>{labels.blocks[t.block as keyof MonetizeLabels["blocks"]]?.title ?? t.block}</span>}
             </>
           );
