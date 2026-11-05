@@ -31,6 +31,7 @@ import { askAround } from "./demand";
 import { viewingRep } from "./broker-message";
 import { parseBrokerReply } from "./broker-reply";
 import { homeForRef } from "./home-ref";
+import { isPersonal } from "./personal";
 import { proposeViewing, readViewingAsk } from "./deal";
 import { askTimeMessage, readViewingTime } from "./deal-pure";
 import { postSlackCard } from "./whatsapp";
@@ -48,7 +49,7 @@ const REF_MAX_AGE_MS = 30 * 24 * 3_600_000;
 export type WaResult =
   | { reply: string; taskId: string | null }
   /** Nothing to send: a message already answered, or the last turn still running. */
-  | { reply: null; why: "duplicate" | "busy" | "empty" };
+  | { reply: null; why: "duplicate" | "busy" | "empty" | "personal" };
 
 export const waDigits = (phone: string) => phone.replace(/[^\d]/g, "").replace(/^00/, "");
 
@@ -86,6 +87,8 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   const digits = waDigits(input.phone);
   const raw = input.text.trim().slice(0, MAX_TEXT);
   if (!digits || !raw) return { reply: null, why: "empty" };
+  // Abdout's own contacts on this number: the agent stays out entirely (personal.ts).
+  if (await isPersonal(digits)) return { reply: null, why: "personal" };
   const profile = await profileFor(digits);
   const viewer: Viewer = { profile, ids: [profile.id], legacyKey: null };
 
