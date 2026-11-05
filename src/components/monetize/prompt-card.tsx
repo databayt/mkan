@@ -5,34 +5,23 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import type { SprintPromptView } from "@/lib/monetize/sprint-shape";
-import { cn } from "@/lib/utils";
 
 export interface PromptCardLabels {
   copyAria: string;
   prev: string;
   next: string;
   doneLine: string;
-  auto: string;
-  status: Record<string, string>;
 }
 
 const fill = (t: string, v: Record<string, string | number>) => Object.entries(v).reduce((o, [k, x]) => o.replaceAll(`{${k}}`, String(x)), t);
-
-const DOT: Record<string, string> = {
-  pending: "bg-[#B0B0B0]",
-  running: "bg-[#E31C5F] animate-pulse",
-  processed: "bg-[#008A05]",
-  skipped: "bg-[#DDDDDD]",
-  blocked: "bg-[#C13515]",
-};
 
 const ARROW =
   "flex size-9 items-center justify-center rounded-full border border-[#DDDDDD] bg-white text-[#222222] transition hover:border-[#222222] hover:shadow-sm disabled:opacity-30 dark:border-border dark:bg-background dark:text-foreground";
 
 /**
- * The sprint's prompt, as plain text on a muted panel: copy at the top corner, prev / next at the
- * bottom corner. The Mac runner works through the prompts by itself (scripts/crm/hermes/sprint-runner.sh),
- * so the card follows it — it shows the prompt running now, refreshes every minute, and moves on as
+ * The sprint's prompt, as plain text on a muted panel in three rows: copy, the prompt, prev / next.
+ * The Mac runner works through the prompts by itself (scripts/crm/hermes/sprint-runner.sh), so the
+ * card follows it — it shows the prompt running now, refreshes every minute, and moves on as
  * prompts finish — until you flip by hand. A copied prompt carries its own `pnpm sprint:done` line.
  */
 export function PromptCard({ prompts, start, labels }: { prompts: SprintPromptView[]; start: number; labels: PromptCardLabels }) {
@@ -83,28 +72,27 @@ export function PromptCard({ prompts, start, labels }: { prompts: SprintPromptVi
   };
 
   return (
-    <div id="top-task" className="relative scroll-mt-28 rounded-2xl bg-[#F7F7F7] px-6 pb-20 pe-16 pt-7 md:px-8 md:pb-20 md:pe-20 md:pt-8 dark:bg-muted">
-      <button
-        type="button"
-        onClick={copy}
-        aria-label={labels.copyAria}
-        title={labels.copyAria}
-        className="absolute end-3 top-3 flex size-10 items-center justify-center rounded-full text-[#222222] transition hover:bg-white hover:shadow-sm md:end-4 md:top-4 dark:text-foreground dark:hover:bg-background"
-      >
-        {copied ? <Check className="size-[18px] text-[#008A05]" /> : <Copy className="size-[18px]" />}
-      </button>
+    <div id="top-task" className="scroll-mt-28 rounded-2xl bg-[#F7F7F7] p-3 md:p-4 dark:bg-muted">
+      {/* Row 1: copy. */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={copy}
+          aria-label={labels.copyAria}
+          title={labels.copyAria}
+          className="flex size-10 items-center justify-center rounded-full text-[#222222] transition hover:bg-white hover:shadow-sm dark:text-foreground dark:hover:bg-background"
+        >
+          {copied ? <Check className="size-[18px] text-[#008A05]" /> : <Copy className="size-[18px]" />}
+        </button>
+      </div>
 
-      <p dir="auto" className="whitespace-pre-wrap text-[17px] leading-7 text-[#222222] dark:text-foreground">
+      {/* Row 2: the prompt. */}
+      <p dir="auto" className="whitespace-pre-wrap px-3 py-2 text-[17px] leading-7 text-[#222222] md:px-4 dark:text-foreground">
         {p.text}
       </p>
 
-      <div className="absolute bottom-4 start-6 end-28 flex min-w-0 items-center gap-2 text-sm text-[#6A6A6A] md:bottom-5 md:start-8 dark:text-muted-foreground">
-        <span className={cn("size-2 shrink-0 rounded-full", DOT[p.status])} aria-hidden />
-        <span className="shrink-0 font-medium text-[#222222] dark:text-foreground">{labels.status[p.status]}</span>
-        <span className="truncate">{p.status === "blocked" || p.status === "processed" ? (p.result ?? "") : p.status === "pending" || p.status === "running" ? labels.auto : ""}</span>
-      </div>
-
-      <div className="absolute bottom-3 end-3 flex items-center gap-2 md:bottom-4 md:end-4">
+      {/* Row 3: prev / next. */}
+      <div className="mt-2 flex items-center justify-end gap-2">
         <span className="me-1 text-xs tabular-nums text-[#6A6A6A] dark:text-muted-foreground">
           {i + 1}/{prompts.length}
         </span>

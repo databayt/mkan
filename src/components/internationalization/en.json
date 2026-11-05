@@ -6065,6 +6065,12 @@
           "Each post's video frames are read on the Mac (Apple Vision text), and a model settles what the caption leaves out: price, bedrooms, place, phone.",
           "Real rentals are saved to the CRM with the broker as host; a repost of a home joins the home it repeats.",
           "Every day at 09:00 the new homes are mirrored into /find and the broker directory is rebuilt."
+        ],
+        "flow": [
+          "Sweep TikTok + sites",
+          "Read each post",
+          "Save to the CRM",
+          "Mirror to /find"
         ]
       },
       "enhance": {
@@ -6075,6 +6081,12 @@
           "Foreign text and broker watermarks are stripped; light and colour corrected.",
           "Mkan's brand and copy go on; AVIF and WebP copies are made so pages load fast.",
           "Broker videos are re-rendered without the broker's text, held to a daily allowance."
+        ],
+        "flow": [
+          "Queue new photos",
+          "Strip text, fix light",
+          "Brand + fast copies",
+          "Re-render videos"
         ]
       },
       "post": {
@@ -6085,6 +6097,12 @@
           "The caption carries the home's code (K1234) — a viewer sends it to us to ask about that home.",
           "A failed upload is retried at 13:00.",
           "Page stats are read every Monday at 10:00."
+        ],
+        "flow": [
+          "Post one home",
+          "Code in the caption",
+          "Retry a failed upload",
+          "Read page stats"
         ]
       },
       "chat": {
@@ -6095,6 +6113,12 @@
           "Claude reads the need and replies; matching homes come back in about a second.",
           "Mkan asks the broker if the chosen home is still available — only for a WhatsApp tenant who picked it.",
           "A viewing is booked, the deal recorded, and Mkan earns its share."
+        ],
+        "flow": [
+          "Tenant writes",
+          "Claude replies",
+          "Ask the broker",
+          "Viewing + deal"
         ]
       }
     },
@@ -6477,7 +6501,6 @@
       "empty": "No sprint prompts yet — plan this week's sprint below.",
       "doneLine": "When done, run in ~/mkan: {cmd}",
       "copyAria": "Copy the prompt",
-      "auto": "Runs by itself every hour on the Mac",
       "retry": "Retry"
     },
     "sprint": {
@@ -6534,7 +6557,9 @@
       "postedDays": "Days posted, last 7",
       "chatFlow": "Chat to paid deal",
       "noTrend": "Not enough days yet for a trend.",
-      "jump": "Show {name}"
+      "jump": "Show {name}",
+      "flowTitle": "How it runs",
+      "flowOk": "Every step is running"
     },
     "lastUpdate": "Last update {date}",
     "success": {

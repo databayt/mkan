@@ -1,7 +1,8 @@
 import type { Locale } from "@/components/internationalization/config";
-import { formatDate, formatPercentage } from "@/lib/i18n/formatters";
+import { formatPercentage } from "@/lib/i18n/formatters";
 import type { MonetizeOverview } from "@/lib/monetize/load";
 import { REVENUE_LINES } from "@/lib/monetize/money";
+import { BLOCKS, type BlockKey, type BlockView, type Health } from "@/lib/monetize/types";
 
 import { fill, formatValue, type MonetizeLabels } from "./format";
 
@@ -12,11 +13,6 @@ import { fill, formatValue, type MonetizeLabels } from "./format";
  */
 export interface Bar {
   key: string;
-  label: string;
-  value: number;
-  display: string;
-}
-export interface TrendPoint {
   label: string;
   value: number;
   display: string;
@@ -46,10 +42,43 @@ export interface CardData {
   todo: Bar[];
   spend: { bars: Bar[]; total: string };
   earn: { bars: Bar[]; target: number; targetDisplay: string; empty: boolean };
-  scrape: { funnel: Bar[]; trend: TrendPoint[] };
-  enhance: { funnel: Bar[]; backlog: string; reject: string; rejectLabel: string };
-  post: { trend: TrendPoint[]; postedDays: number | null };
-  chat: { funnel: Bar[] };
+  /** Each block's steps as a flow chart, with the step the light blames (null when green). */
+  flows: Record<BlockKey, BlockFlow>;
+}
+export interface BlockFlow {
+  steps: string[];
+  problem: number | null;
+  reason: string | null;
+  health: Health;
+}
+
+/** The step a failing or stale job belongs to (the block's "how it works" order). */
+const JOB_STEP: Record<string, number> = {
+  "hermes_mkan-tiktok-sweep": 0,
+  "hermes_mkan-web-sweep": 0,
+  "mkan-home-sweep": 2,
+  "mkan-crm-sync-up": 2,
+  "hermes_mkan-demand-match": 3,
+  "mkan-master-sweep": 1,
+  "mkan-mastering-reconcile": 2,
+  "hermes_mkan-tiktok-post": 0,
+  "hermes_mkan-tiktok-stats": 3,
+};
+/** The step a number-based reason points at: where the block's main number is made. */
+const REASON_STEP: Record<BlockKey, Record<string, number>> = {
+  scrape: { leverDown: 2, leverZero: 2 },
+  enhance: { leverDown: 1, leverZero: 1 },
+  post: { leverDown: 0, leverZero: 0 },
+  chat: { leverDown: 3, leverZero: 3, capped: 1, failRateHigh: 1, brokerSendsOff: 2 },
+};
+
+function flowOf(b: BlockView, steps: string[], reasons: Record<string, string>): BlockFlow {
+  if (b.health === "green") return { steps, problem: null, reason: null, health: b.health };
+  const want = b.reason === "jobFailed" ? ["fail"] : b.reason === "jobStale" ? ["stale"] : b.reason === "jobWarn" ? ["warn"] : [];
+  const job = b.jobs.find((j) => want.includes(j.status) && j.job in JOB_STEP);
+  // A stale pusher (monetize-snapshot) or no evidence at all: the flow stops at its first step.
+  const problem = job ? JOB_STEP[job.job]! : (REASON_STEP[b.key][b.reason] ?? 0);
+  return { steps, problem: Math.min(problem, steps.length - 1), reason: reasons[b.reason] ?? b.reason, health: b.health };
 }
 
 export const PANELS = ["overview", "sprint", "todo", "spend", "earn", "scrape", "enhance", "post", "chat"] as const;
@@ -63,7 +92,6 @@ export function cardData(d: MonetizeOverview, labels: MonetizeLabels, locale: Lo
   const C = labels.card;
   const P = labels.panels;
   const stage = labels.stages as Record<string, string>;
-  const kpi = (block: string, key: string) => d.blocks.find((b) => b.key === block)?.kpis.find((k) => k.key === key)?.value ?? null;
 
   const fixedMonth = d.costLines.filter((l) => l.kind === "fixed").reduce((s, l) => s + l.monthlyRwf, 0);
   const meteredMonth = d.costLines.filter((l) => l.kind === "metered").reduce((s, l) => s + l.monthlyRwf, 0);
@@ -73,7 +101,6 @@ export function cardData(d: MonetizeOverview, labels: MonetizeLabels, locale: Lo
   const bn = d.bottleneck;
 
   const bar = (key: string, label: string, value: number | null, display?: string): Bar => ({ key, label, value: value ?? 0, display: display ?? (value == null ? "—" : num(value)) });
-  const day = (iso: string) => formatDate(new Date(`${iso}T12:00:00Z`), locale, { month: "short", day: "numeric" });
 
   const statusLabel = labels.prompt.status as Record<string, string>;
   const order = ["processed", "running", "blocked", "pending", "skipped"];
@@ -127,32 +154,12 @@ export function cardData(d: MonetizeOverview, labels: MonetizeLabels, locale: Lo
       targetDisplay: fill(P.earnTarget, { v: rwf(m.breakEvenRwf) }),
       empty: m.revenueRwf === 0,
     },
-    scrape: {
-      funnel: [
-        bar("found", labels.kpis.found, kpi("scrape", "found")),
-        bar("read", labels.kpis.read, kpi("scrape", "read")),
-        bar("newHomes", labels.kpis.newHomes, kpi("scrape", "newHomes")),
-      ],
-      trend: (d.blocks.find((b) => b.key === "scrape")?.daily ?? []).map((p) => ({ label: day(p.day), value: p.value, display: num(p.value) })),
-    },
-    enhance: {
-      funnel: [
-        bar("queued", labels.kpis.queued, kpi("enhance", "queued")),
-        bar("mastered", labels.kpis.mastered, kpi("enhance", "mastered")),
-      ],
-      backlog: kpi("enhance", "backlog") == null ? "—" : num(kpi("enhance", "backlog")!),
-      reject: kpi("enhance", "rejectRate") == null ? "—" : pct(kpi("enhance", "rejectRate")!),
-      rejectLabel: labels.kpis.rejectRate,
-    },
-    post: {
-      trend: (d.blocks.find((b) => b.key === "post")?.daily ?? []).map((p) => ({ label: day(p.day), value: p.value, display: num(p.value) })),
-      postedDays: kpi("post", "postedDays7"),
-    },
-    chat: {
-      funnel: ["chats", "shortlisted", "asked", "available", "viewings", "paid"].map((k) => {
-        const st = d.stages.find((x) => x.key === k);
-        return bar(k, stage[k] ?? k, st?.count ?? 0);
+    flows: Object.fromEntries(
+      BLOCKS.map((k) => {
+        const b = d.blocks.find((x) => x.key === k);
+        const steps = labels.blocks[k].flow;
+        return [k, b ? flowOf(b, steps, labels.reasons as Record<string, string>) : { steps, problem: null, reason: null, health: "unknown" as Health }];
       }),
-    },
+    ) as Record<BlockKey, BlockFlow>,
   };
 }

@@ -1,12 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ChevronDown, TriangleAlert } from "lucide-react";
+import { Check, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-import type { Bar, CardData, PanelKey, TrendPoint } from "./card-data";
+import type { Bar, BlockFlow, CardData, PanelKey } from "./card-data";
 import type { MonetizeLabels } from "./format";
 
 /**
@@ -99,40 +99,6 @@ function BarList({ bars, target }: { bars: Bar[]; target?: { value: number; labe
   );
 }
 
-/** A flow: each step's bar sized to the first step, the step-to-step rate between them. */
-function Flow({ steps }: { steps: Bar[] }) {
-  const top = Math.max(1, steps[0]?.value ?? 1, ...steps.map((s) => s.value));
-  return (
-    <ol className="my-0 ms-0 list-none space-y-1 [&>li]:mt-0">
-      {steps.map((s, i) => {
-        const prev = steps[i - 1];
-        // A rate only where the step is a true subset of the one before (≤ 100%): brokers are asked per
-        // home, so "Shortlisted → Brokers asked" can pass 100% and is not a conversion.
-        const rate = prev && prev.value > 0 && s.value <= prev.value ? s.value / prev.value : null;
-        return (
-          <li key={s.key}>
-            {i > 0 && (
-              <p className={cn("flex h-4 items-center gap-1 ps-1 text-[11px] tabular-nums", MUTED)}>
-                <ChevronDown className="size-3" aria-hidden />
-                {rate != null && `${Math.round(rate * 100)}%`}
-              </p>
-            )}
-            <div className="group" title={`${s.label}: ${s.display}`}>
-              <div className={cn("mb-1 flex items-baseline justify-between gap-3 text-sm", INK)}>
-                <span className="truncate">{s.label}</span>
-                <span className="font-semibold tabular-nums">{s.display}</span>
-              </div>
-              <div className="h-2 rounded-full bg-[#EBEBEB] dark:bg-muted">
-                <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${s.value > 0 ? Math.max(2, (s.value / top) * 100) : 0}%`, background: GRADIENT }} />
-              </div>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 /** One progress ring: the share done, the label under it. */
 function Ring({ value, display, label, sub }: { value: number; display: string; label: string; sub: string }) {
   const r = 30;
@@ -160,55 +126,58 @@ const STATUS_FILL: Record<string, string> = {
   skipped: "bg-[#EBEBEB] dark:bg-muted",
 };
 
-/** A daily trend: area + 2px line, a crosshair and a value readout under the pointer. */
-function Trend({ points, empty }: { points: TrendPoint[]; empty: string }) {
-  const ref = useRef<SVGSVGElement>(null);
-  const [hover, setHover] = useState<number | null>(null);
-  if (points.length < 2) return <p className={cn("rounded-xl bg-[#F7F7F7] p-4 text-sm dark:bg-muted", MUTED)}>{empty}</p>;
-  const W = 300;
-  const H = 96;
-  const max = Math.max(1, ...points.map((p) => p.value));
-  const x = (i: number) => (i / (points.length - 1)) * W;
-  const y = (v: number) => H - 4 - (v / max) * (H - 12);
-  const line = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
-  const area = `${line} L${W},${H} L0,${H} Z`;
-  const pick = (clientX: number) => {
-    const el = ref.current;
-    if (!el) return;
-    const box = el.getBoundingClientRect();
-    let f = (clientX - box.left) / box.width;
-    if (getComputedStyle(el).direction === "rtl") f = 1 - f; // the chart is mirrored in RTL
-    setHover(Math.max(0, Math.min(points.length - 1, Math.round(f * (points.length - 1)))));
-  };
-  const h = hover == null ? points.length - 1 : hover;
+/**
+ * A block's steps as a flow chart: boxes joined by arrows, in run order. The step the block's light
+ * blames carries a "!" and the reason under it; the steps after it wait on it, so they fade.
+ */
+function StepFlow({ flow, title, ok }: { flow: BlockFlow; title: string; ok: string }) {
+  const bad = flow.problem;
   return (
     <div>
-      <div className={cn("mb-2 flex items-baseline justify-between text-sm", INK)}>
-        <span className={MUTED}>{points[h]!.label}</span>
-        <span className="font-semibold tabular-nums">{points[h]!.display}</span>
-      </div>
-      <svg
-        ref={ref}
-        viewBox={`0 0 ${W} ${H}`}
-        className="h-24 w-full touch-none rtl:-scale-x-100"
-        role="img"
-        aria-label={points.map((p) => `${p.label} ${p.display}`).join(", ")}
-        onPointerMove={(e) => pick(e.clientX)}
-        onPointerDown={(e) => pick(e.clientX)}
-        onPointerLeave={() => setHover(null)}
-      >
-        <defs>
-          <linearGradient id="mk-area" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#E31C5F" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#E31C5F" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <line x1="0" x2={W} y1={H - 0.5} y2={H - 0.5} className="stroke-[#DDDDDD] dark:stroke-border" strokeWidth="1" />
-        <path d={area} fill="url(#mk-area)" />
-        <path d={line} fill="none" stroke="#E31C5F" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        <line x1={x(h)} x2={x(h)} y1="0" y2={H} className="stroke-[#B0B0B0]" strokeWidth="1" strokeDasharray="3 3" />
-        <circle cx={x(h)} cy={y(points[h]!.value)} r="4.5" fill="#E31C5F" className="stroke-white dark:stroke-background" strokeWidth="2" />
-      </svg>
+      <p className={cn("mb-3 text-sm", MUTED)}>{title}</p>
+      <ol className="my-0 ms-0 list-none [&>li]:mt-0">
+        {flow.steps.map((label, i) => {
+          const isBad = i === bad;
+          const after = bad != null && i > bad;
+          return (
+            <li key={i}>
+              {i > 0 && (
+                <div className="flex h-5 justify-center" aria-hidden>
+                  <svg viewBox="0 0 10 20" className={cn("h-5 w-2.5", after ? "text-[#DDDDDD] dark:text-border" : "text-[#B0B0B0]")}>
+                    <path d="M5 0v15" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M1.5 12 5 17l3.5-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              )}
+              <div
+                className={cn(
+                  "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm",
+                  isBad ? "border-[#C13515] bg-[#FFF0F0] dark:bg-destructive/10" : "border-[#DDDDDD] dark:border-border",
+                  after && "opacity-50",
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+                    isBad ? "bg-[#C13515] text-white" : "bg-[#F7F7F7] dark:bg-muted " + INK,
+                  )}
+                  aria-hidden={!isBad}
+                >
+                  {isBad ? "!" : i + 1}
+                </span>
+                <span className={cn("min-w-0 flex-1 truncate", isBad ? "font-semibold text-[#C13515]" : INK)}>{label}</span>
+              </div>
+              {isBad && flow.reason && <p className="mt-1.5 ps-1 text-xs leading-4 text-[#C13515]">{flow.reason}</p>}
+            </li>
+          );
+        })}
+      </ol>
+      {bad == null && (
+        <p className="mt-4 flex items-center gap-1.5 text-sm text-[#008A05]">
+          <Check className="size-4" aria-hidden />
+          {ok}
+        </p>
+      )}
     </div>
   );
 }
@@ -332,64 +301,10 @@ function Panel({ k, d, L }: { k: PanelKey; d: CardData; L: ScrollCardLabels }) {
         </div>
       );
     case "scrape":
-      return (
-        <div className="space-y-5">
-          <div>
-            <p className={cn("mb-2 text-sm", MUTED)}>{P.scrapeFlow}</p>
-            <Flow steps={d.scrape.funnel} />
-          </div>
-          <div>
-            <p className={cn("mb-1 text-sm font-semibold", INK)}>{P.homesPerDay}</p>
-            <Trend points={d.scrape.trend} empty={P.noTrend} />
-          </div>
-        </div>
-      );
     case "enhance":
-      return (
-        <div className="space-y-5">
-          <div>
-            <p className={cn("mb-2 text-sm", MUTED)}>{P.enhanceFlow}</p>
-            <Flow steps={d.enhance.funnel} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-[#DDDDDD] p-3 dark:border-border">
-              <p className={cn("text-[22px] font-semibold tabular-nums", INK)}>{d.enhance.backlog}</p>
-              <p className={cn("text-xs", MUTED)}>{P.backlog}</p>
-            </div>
-            <div className="rounded-xl border border-[#DDDDDD] p-3 dark:border-border">
-              <p className={cn("text-[22px] font-semibold tabular-nums", INK)}>{d.enhance.reject}</p>
-              <p className={cn("text-xs", MUTED)}>{d.enhance.rejectLabel}</p>
-            </div>
-          </div>
-        </div>
-      );
     case "post":
-      return (
-        <div className="space-y-5">
-          <div>
-            <p className={cn("mb-1 text-sm font-semibold", INK)}>{P.viewsPerDay}</p>
-            <Trend points={d.post.trend} empty={P.noTrend} />
-          </div>
-          {d.post.postedDays != null && (
-            <div>
-              <p className={cn("mb-2 text-sm", MUTED)}>{P.postedDays}</p>
-              <div className="flex gap-1.5" role="img" aria-label={`${d.post.postedDays}/7`}>
-                {Array.from({ length: 7 }, (_, i) => (
-                  <span key={i} className={cn("h-3 flex-1 rounded-[4px]", i < (d.post.postedDays ?? 0) ? "bg-[#E31C5F]" : "bg-[#EBEBEB] dark:bg-muted")} />
-                ))}
-              </div>
-              <p className={cn("mt-1.5 text-sm font-semibold tabular-nums", INK)}>{d.post.postedDays}/7</p>
-            </div>
-          )}
-        </div>
-      );
     case "chat":
-      return (
-        <div>
-          <p className={cn("mb-2 text-sm", MUTED)}>{P.chatFlow}</p>
-          <Flow steps={d.chat.funnel} />
-        </div>
-      );
+      return <StepFlow flow={d.flows[k]} title={P.flowTitle} ok={P.flowOk} />;
   }
 }
 

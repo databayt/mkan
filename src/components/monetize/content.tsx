@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 import type { Locale } from "@/components/internationalization/config";
 import { formatDate, formatPercentage } from "@/lib/i18n/formatters";
 import type { MonetizeOverview } from "@/lib/monetize/load";
@@ -31,15 +29,14 @@ export function MonetizeContent({ data, labels, locale, canEdit = false }: { dat
   const broken = data.blocks.filter((b) => b.health === "red").length;
   return (
     <div className="mx-auto w-full max-w-[1184px] px-6 pb-28 pt-6 md:px-8 md:pb-16">
-      {/* Title row — like the listing's name: the state on the left, the last update at the end. */}
+      {/* Title row — like the listing's name: the state, then the last update right after it. */}
       <header className="pb-6">
         <h1 className={cn("text-2xl font-semibold leading-tight tracking-tight md:text-[26px]", INK)}>{labels.heading}</h1>
-        <div className={cn("mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm", INK)}>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <HealthBadge health={data.health} label={labels.health[data.health]} />
-            <span className={MUTED}>·</span>
-            <span>{fill(labels.gates.brokerSends, { mode: data.gates.brokerSends })}</span>
-          </div>
+        <div className={cn("mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm", INK)}>
+          <HealthBadge health={data.health} label={labels.health[data.health]} />
+          <span className={MUTED}>·</span>
+          <span>{fill(labels.gates.brokerSends, { mode: data.gates.brokerSends })}</span>
+          <span className={MUTED}>·</span>
           <span className={MUTED}>{fill(labels.lastUpdate, { date: formatDate(new Date(data.generatedAt), locale, { year: undefined, month: "short", day: "numeric" }) })}</span>
         </div>
       </header>
@@ -56,8 +53,9 @@ export function MonetizeContent({ data, labels, locale, canEdit = false }: { dat
           {/* "Hosted by" row. */}
           <section className={cn("flex items-center gap-4 border-b pb-6", LINE)}>
             {/* The rental agent's own robot mark — the chat bubble's launcher (agent/bubble/bubble.tsx). */}
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-background p-1.5 ring-1 ring-[#DDDDDD] dark:ring-border">
-              <Image src="/illustrations/robot-fill.png" alt="" width={40} height={40} className="size-full object-contain dark:invert" />
+            {/* Inverted: a foreground disc, the mark cut out in the background colour (a CSS mask, so it follows the theme). */}
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-foreground p-2" aria-hidden>
+              <span className="size-full bg-background [mask-image:url(/illustrations/robot-fill.png)] [mask-position:center] [mask-repeat:no-repeat] [mask-size:contain]" />
             </span>
             <div className="min-w-0">
               <p className={cn("text-base font-medium leading-5", INK)}>{labels.statusRow.title}</p>
