@@ -85,8 +85,8 @@ export const PANELS = ["overview", "sprint", "todo", "spend", "earn", "scrape", 
 export type PanelKey = (typeof PANELS)[number];
 
 export function cardData(d: MonetizeOverview, labels: MonetizeLabels, locale: Locale): CardData {
-  const rwf = (v: number) => formatValue(v, "rwf", locale, labels.currency);
-  const num = (v: number) => formatValue(v, "count", locale, labels.currency);
+  const rwf = (v: number) => formatValue(v, "rwf", locale);
+  const num = (v: number) => formatValue(v, "count", locale);
   const pct = (v: number) => formatPercentage(v, locale);
   const m = d.money;
   const C = labels.card;

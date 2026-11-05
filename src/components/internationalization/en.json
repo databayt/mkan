@@ -6244,7 +6244,7 @@
       "note": "Note",
       "save": "Record"
     },
-    "currency": "RWF",
+    "currency": "USD",
     "nav": {
       "money": "Money",
       "spend": "Costs",
@@ -6271,7 +6271,7 @@
       },
       "kindHelp": {
         "fixed": "Monthly bills, counted for the share of the month that has passed. Estimates until invoices replace them.",
-        "metered": "Counted per call as it happens, converted from USD at {rate} RWF.",
+        "metered": "Counted per call as it happens, in US dollars.",
         "free": "Listed so the total is honest about what it leaves out."
       },
       "soFar": "So far",

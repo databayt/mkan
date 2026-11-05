@@ -26,7 +26,7 @@ export function NextBanner({ data, labels, locale }: { data: MonetizeOverview; l
       bn.kind === "step" && bn.rate != null
         ? fill(B.adviceBottleneck, { from: stage[bn.from!] ?? bn.from!, to: stage[bn.to!] ?? bn.to!, rate: formatPercentage(bn.rate, locale) })
         : gap > 0
-          ? fill(B.adviceBreakEven, { gap: formatValue(gap, "rwf", locale, labels.currency) })
+          ? fill(B.adviceBreakEven, { gap: formatValue(gap, "rwf", locale) })
           : B.adviceDone;
     return (
       <div id="top-task" className="flex scroll-mt-28 items-start gap-4 rounded-2xl bg-[#F7F7F7] p-6 md:p-8 dark:bg-muted">

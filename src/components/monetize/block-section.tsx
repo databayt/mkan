@@ -44,14 +44,14 @@ function SuccessMetrics({ rows, labels, locale }: { rows: SuccessView[]; labels:
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-4">
                   <p className={cn("text-base font-medium leading-5", INK)}>{kpiLabel[r.kpi] ?? r.kpi}</p>
-                  <p className={cn("shrink-0 text-base font-semibold tabular-nums", INK)}>{formatValue(r.value, r.unit, locale, labels.currency)}</p>
+                  <p className={cn("shrink-0 text-base font-semibold tabular-nums", INK)}>{formatValue(r.value, r.unit, locale)}</p>
                 </div>
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#EBEBEB] dark:bg-muted">
                   <div className={cn("h-full rounded-full", r.status === "met" ? "bg-[#008A05]" : "bg-[#E31C5F]")} style={{ width: `${r.status === "unknown" ? 0 : Math.max(2, r.progress * 100)}%` }} />
                 </div>
                 <p className={cn("mt-1.5 flex flex-wrap justify-between gap-x-3 text-xs", MUTED)}>
                   <span>
-                    {fill(S.target, { op: r.op === ">=" ? S.atLeast : S.atMost, v: formatValue(r.target, r.unit, locale, labels.currency) })}
+                    {fill(S.target, { op: r.op === ">=" ? S.atLeast : S.atMost, v: formatValue(r.target, r.unit, locale) })}
                     {per(r)}
                   </span>
                   <span className={cn("font-semibold", SUCCESS_TONE[r.status])}>{S[r.status]}</span>
@@ -86,7 +86,7 @@ export function BlockSection({
   const lever = block.kpis.find((k) => k.lever);
   const rest = block.kpis.filter((k) => !k.lever);
   const delta = lever ? change(lever.value, lever.prev) : null;
-  const rwf = (v: number) => formatValue(v, "rwf", locale, labels.currency);
+  const rwf = (v: number) => formatValue(v, "rwf", locale);
   const reason = (labels.reasons as Record<string, string>)[block.reason] ?? block.reason;
 
   return (
@@ -108,7 +108,7 @@ export function BlockSection({
             </p>
             <div className="flex items-end justify-between gap-3">
               <div>
-                <p className={cn("text-[32px] font-semibold leading-9 tabular-nums", INK)}>{formatValue(lever.value, lever.unit, locale, labels.currency)}</p>
+                <p className={cn("text-[32px] font-semibold leading-9 tabular-nums", INK)}>{formatValue(lever.value, lever.unit, locale)}</p>
                 <p className={cn("mt-1 text-[13px]", delta == null ? MUTED : delta >= 0 ? "text-[#008A05]" : "text-[#C13515]")}>
                   {delta == null ? labels.noBaseline : fill(labels.vsPrev, { pct: formatPercentage(delta, locale), days })}
                 </p>
@@ -152,7 +152,7 @@ export function BlockSection({
                 <div key={k.key} className={cn("flex items-baseline justify-between gap-4 border-b pb-3", LINE)}>
                   <dt className={cn("text-base leading-5", INK)}>{kpiLabel[k.key] ?? k.key}</dt>
                   <dd className="shrink-0 text-end">
-                    <span className={cn("text-base font-semibold tabular-nums", INK)}>{formatValue(k.value, k.unit, locale, labels.currency)}</span>
+                    <span className={cn("text-base font-semibold tabular-nums", INK)}>{formatValue(k.value, k.unit, locale)}</span>
                     {d != null && <span className={cn("ms-2 text-xs tabular-nums", d >= 0 ? "text-[#008A05]" : "text-[#C13515]")}>{d >= 0 ? "▲" : "▼"} {formatPercentage(Math.abs(d), locale)}</span>}
                   </dd>
                 </div>

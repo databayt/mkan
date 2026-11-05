@@ -43,7 +43,7 @@ function Detail({ line, labels, locale }: { line: CostLine; labels: MonetizeLabe
 /** Where the money goes: amenity-style rows, one per line, grouped by kind; then cost per block. */
 export function SpendSection({ data, labels, locale }: Props) {
   const S = labels.spend;
-  const rwf = (v: number) => formatValue(v, "rwf", locale, labels.currency);
+  const rwf = (v: number) => formatValue(v, "rwf", locale);
   const copy = S.lines as Record<string, { name: string; what: string }>;
   const kinds: CostKind[] = ["fixed", "metered", "free"];
   return (
@@ -107,7 +107,7 @@ export function SpendSection({ data, labels, locale }: Props) {
 /** How Mkan earns: the four lines as highlights, amount on the right. */
 export function EarnSection({ data, labels, locale }: Props) {
   const E = labels.earn;
-  const rwf = (v: number) => formatValue(v, "rwf", locale, labels.currency);
+  const rwf = (v: number) => formatValue(v, "rwf", locale);
   return (
     <Section id="earn" title={E.title}>
       <p className={cn("-mt-3 mb-6 text-sm leading-5", MUTED)}>{E.desc}</p>

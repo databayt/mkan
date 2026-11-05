@@ -4,7 +4,7 @@ import type { MonetizeOverview } from "@/lib/monetize/load";
 import { cn } from "@/lib/utils";
 
 import { BlockSection } from "./block-section";
-import { fill, type MonetizeLabels } from "./format";
+import { fill, formatValue, type MonetizeLabels } from "./format";
 import { Experiments, RevenueForm } from "./forms";
 import { FunnelSection } from "./funnel";
 import { HealthBadge } from "./health-badge";
@@ -25,7 +25,7 @@ import { TodoSection } from "./todo-section";
  */
 // `lang` stays in the props (the page passes it) though the 7 / 30 days links that used it are gone (Abdout, 11-04).
 export function MonetizeContent({ data, labels, locale, canEdit = false }: { data: MonetizeOverview; labels: MonetizeLabels; locale: Locale; lang: string; canEdit?: boolean }) {
-  const rwf = (v: number) => `${new Intl.NumberFormat(locale).format(Math.round(v))} ${labels.currency}`;
+  const rwf = (v: number) => formatValue(v, "rwf", locale);
   const broken = data.blocks.filter((b) => b.health === "red").length;
   return (
     <div className="mx-auto w-full max-w-[1184px] px-6 pb-28 pt-6 md:px-8 md:pb-16">

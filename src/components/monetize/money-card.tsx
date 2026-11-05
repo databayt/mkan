@@ -35,7 +35,7 @@ export function MoneyCard({ data, labels, locale, canEdit }: Props) {
 /** The listing page's fixed mobile Reserve bar: the month's net and the next task. */
 export function MobileBar({ data, labels, locale }: Omit<Props, "canEdit">) {
   const M = labels.mobile;
-  const rwf = (v: number) => formatValue(v, "rwf", locale, labels.currency);
+  const rwf = (v: number) => formatValue(v, "rwf", locale);
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 md:hidden">
       <div

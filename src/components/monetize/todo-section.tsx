@@ -23,7 +23,7 @@ export function stepCopy(s: NextStep, labels: MonetizeLabels, locale: Locale) {
   const stage = labels.stages as Record<string, string>;
   const v: Record<string, string | number> = {};
   for (const [k, x] of Object.entries(s.vars)) {
-    if (["amount", "need", "have"].includes(k) && typeof x === "number") v[k] = formatValue(x, "rwf", locale, labels.currency);
+    if (["amount", "need", "have"].includes(k) && typeof x === "number") v[k] = formatValue(x, "rwf", locale);
     else if ((k === "from" || k === "to") && typeof x === "string") v[k] = stage[x] ?? x;
     else v[k] = x;
   }
