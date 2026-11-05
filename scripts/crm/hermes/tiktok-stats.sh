@@ -32,6 +32,7 @@ fi
 lane_own "$LOCK"
 cd "$REPO" || exit 0
 wait_ready 600 || { lane_end defer "$(lane_not_ready)"; exit 0; }
+vault_ready || { lane_end fail "the session-vault Chrome (:9222) hangs every CDP attach, even after a restart"; echo "⚠️ The session-vault Chrome is stuck — restart it: launchctl kickstart -k gui/$(id -u)/com.databayt.chrome-session"; exit 0; }
 echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (daily stats, detached) ──" >>"$LOGDIR/post.log"
 # Read every evening so /monetize has a daily trend (followers, views per post); #mkan hears it on Mondays.
 NOTIFY=""; [ "$(date +%u)" = "1" ] && NOTIFY="--notify"

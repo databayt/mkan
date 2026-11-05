@@ -94,6 +94,17 @@ wait_ready() {
 # The name before 11-02's gate; copies installed earlier still call it.
 wait_online() { wait_ready "$@"; }
 
+# The session-vault Chrome (:9222, launchd com.databayt.chrome-session) that the TikTok sweep, the
+# uploads, the stats and the Maps lane drive. It can answer HTTP yet hang every CDP attach; then
+# restart it once (same profile, logins kept) and check again. Returns 1 when it stays unusable.
+vault_ready() {
+  node "$REPO/scripts/crm/vault-check.mjs" 2>>"${LOGDIR:-/tmp}/vault.log" && return 0
+  echo "$(date '+%F %T') vault Chrome unreachable over CDP — restarting it" >>"${LOGDIR:-/tmp}/vault.log"
+  launchctl kickstart -k "gui/$(id -u)/com.databayt.chrome-session" 2>/dev/null
+  for _ in $(seq 1 30); do curl -s -m 2 http://127.0.0.1:9222/json/version >/dev/null && break; sleep 2; done
+  node "$REPO/scripts/crm/vault-check.mjs" 2>>"${LOGDIR:-/tmp}/vault.log"
+}
+
 # A failed run's own #mkan post, read from stdin. With kun's supervisor on this Mac it stays quiet:
 # the supervisor re-runs the slot first and alerts once (an issue + a #mkan line with a mention)
 # only if that fails too — a per-run post for a failure the re-run fixes was noise. Without it the

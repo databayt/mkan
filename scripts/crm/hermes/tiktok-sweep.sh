@@ -41,6 +41,7 @@ cd "$REPO" || exit 0
 # internet — wall clock, up to 10 h — instead of failing every stage. A run that finds it
 # never comes back exits quietly; the next tick tries again.
 wait_ready 600 || { lane_end defer "$(lane_not_ready)"; exit 0; }
+vault_ready || { lane_end fail "the session-vault Chrome (:9222) hangs every CDP attach, even after a restart"; echo "⚠️ The session-vault Chrome is stuck — restart it: launchctl kickstart -k gui/$(id -u)/com.databayt.chrome-session"; exit 0; }
 started=$(date +%s)
 echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (detached) ──" >>"$LOGDIR/sweep.log"
 # Job control: each background job gets its own process group, so the cap can stop the whole run.
