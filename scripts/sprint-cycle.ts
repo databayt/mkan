@@ -22,7 +22,7 @@ config({ override: true });
 process.env.PRISMA_QUIET ??= '1';
 
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, rmSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { evalCondition, verdictOf, type Metrics } from '../src/lib/monetize/metrics';
@@ -194,7 +194,7 @@ async function plannerContext(db: Db, model: MonetizeOverview, metrics: Metrics,
   };
 }
 
-function plannerPrompt(kinds: Kind[], path: string, context: unknown, now: Date) {
+function plannerPrompt(kinds: Kind[], path: string, context: unknown, now: Date, midSprint?: string) {
   const w = weekWindow(now);
   const m = monthWindow(now);
   const windows = kinds.map((k) => (k === 'WEEK' ? `WEEK ${w.startsAt} → ${w.endsAt}` : `MONTH ${m.startsAt} → ${m.endsAt}`)).join(' and ');
@@ -220,7 +220,15 @@ Rules:
   "revenueEntry exists"; ops == != >= <= > < exists, join with &&) and "needsYou" (one line: exactly what Abdout
   must do). Its "text" is the follow-up the unattended session does once the condition holds.
 - Carry the open "needsYou" items below forward when they still matter.
-
+- Until Mkan has received its first money (metrics "revenueEntry" is null), every runnable prompt must say how it
+  brings a real tenant closer to a signed, paid deal THIS week — conversion first, polish later.
+${midSprint ? `
+MID-SPRINT TOP-UP. The current sprint is already running and has no runnable prompt left: everything open waits on
+Abdout. Do NOT re-plan it. Return one WEEK sprint in the same JSON shape whose prompts are 1–3 NEW runnable prompts
+(no "unblockWhen") an unattended session can finish today, each on a metric no open prompt below already targets,
+with the tasks they belong to. Open and recent prompts (do not repeat them):
+${midSprint}
+` : ''}
 JSON shape (nothing else in the file):
 { "sprints": [ { "kind": "WEEK"|"MONTH", "title": "…", "goal": "one sentence", "startsAt": "YYYY-MM-DD", "endsAt": "YYYY-MM-DD",
   "tasks": [ { "key": "short-key", "title": "…", "block": "scrape"|"enhance"|"post"|"chat" } ],
@@ -269,9 +277,9 @@ function runPlanner(prompt: string, logPath: string): Promise<number> {
 }
 
 /** The planner's plan, or why there is none. */
-async function planWithClaude(db: Db, kinds: Kind[], model: MonetizeOverview, metrics: Metrics, retros: string[], path: string, now: Date) {
+async function planWithClaude(db: Db, kinds: Kind[], model: MonetizeOverview, metrics: Metrics, retros: string[], path: string, now: Date, midSprint?: string) {
   const ctx = await plannerContext(db, model, metrics, retros);
-  const code = await runPlanner(plannerPrompt(kinds, path, ctx, now), path.replace(/\.json$/, '.log'));
+  const code = await runPlanner(plannerPrompt(kinds, path, ctx, now, midSprint), path.replace(/\.json$/, '.log'));
   if (code !== 0) return { plan: null, why: code === 75 ? 'planner capped (daily cap)' : `planner exit ${code}` };
   if (!existsSync(path)) return { plan: null, why: 'planner wrote no file' };
   let json: unknown;
@@ -363,6 +371,57 @@ async function topUp(db: Db, model: MonetizeOverview, now: Date, out: Summary) {
   if (!out.toppedUp.length) say(`top up: ${pending} pending, every next step already has a prompt`);
 }
 
+// ── f. mid-sprint top-up by the planner ───────────────────────────────────
+/**
+ * Everything open waits on Abdout and every next step already has a prompt: the loop would idle until the
+ * sprint ends. Ask the planner for 1–3 new runnable prompts aimed at the first paid deal and add them to
+ * the active WEEK sprint — at most twice a day (each run spends one of the runner's daily Claude sessions).
+ */
+async function replan(db: Db, model: MonetizeOverview, metrics: Metrics, now: Date, out: Summary) {
+  const active = (await openSprints(db)).filter((s) => s.endsAt > now && s.startsAt <= now);
+  const week = active.find((s) => s.kind === 'WEEK');
+  if (!week) return;
+  const prompts = active.flatMap((s) => s.prompts);
+  if (prompts.some((p) => p.status === 'pending' || p.status === 'running')) return;
+  const today = now.toISOString().slice(0, 10);
+  const used = [1, 2].filter((n) => existsSync(join(DATA, `.replanned-${today}-${n}`)));
+  if (used.length >= 2 || process.env.SPRINT_CYCLE_NO_PLANNER === '1') return say('replan: nothing runnable, and today\'s two top-ups are used');
+  if (dry) return say('replan: nothing runnable — would ask the planner for 1–3 new prompts');
+  mkdirSync(DATA, { recursive: true });
+  writeFileSync(join(DATA, `.replanned-${today}-${used.length + 1}`), now.toISOString());
+  const recent = prompts
+    .filter((p) => OPEN.includes(p.status) || (p.processedAt && now.getTime() - p.processedAt.getTime() < 72 * H))
+    .map((p) => `- [${p.status}] (${p.metric ?? 'no metric'}) ${p.text.split('\n')[0]!.slice(0, 160)}`)
+    .join('\n');
+  const r = await planWithClaude(db, ['WEEK'], model, metrics, [], join(DATA, `replan-${today}-${used.length + 1}.json`), now, recent);
+  if (!r.plan) {
+    // A capped day is not a used top-up: the next tick after the cap resets tries again.
+    if (/capped/.test(r.why)) rmSync(join(DATA, `.replanned-${today}-${used.length + 1}`), { force: true });
+    return say(`replan: no prompts (${r.why})`);
+  }
+  const openMetrics = new Set(prompts.filter((p) => OPEN.includes(p.status)).map((p) => p.metric).filter(Boolean));
+  let order = Math.max(-1, ...week.prompts.map((p) => p.order)) + 1;
+  let taskOrder = Math.max(-1, ...week.tasks.map((t) => t.order)) + 1;
+  const plan = r.plan.sprints[0]!;
+  const taskIds = new Map<string, string>();
+  let added = 0;
+  for (const p of plan.prompts) {
+    if (added >= 3 || p.unblockWhen || (p.metric && openMetrics.has(p.metric))) continue;
+    const t = plan.tasks.find((x) => x.key === p.task);
+    let taskId = t ? taskIds.get(t.key) : undefined;
+    if (t && !taskId) {
+      taskId = (await db.sprintTask.create({ data: { sprintId: week.id, title: t.title, block: t.block ?? null, order: taskOrder++ } })).id;
+      taskIds.set(t.key, taskId);
+    }
+    await db.sprintPrompt.create({ data: { sprintId: week.id, taskId: taskId ?? null, text: p.text, order: order++, metric: p.metric ?? null, auto: true } });
+    if (p.metric) openMetrics.add(p.metric);
+    out.toppedUp.push(`(planner) ${t?.title ?? p.text.slice(0, 60)}`);
+    say(`replan: + ${t?.title ?? p.text.slice(0, 60)} (metric ${p.metric})`);
+    added++;
+  }
+  if (!added) say('replan: the planner proposed nothing new');
+}
+
 // ── main ───────────────────────────────────────────────────────────────
 async function main() {
   const now = new Date();
@@ -382,6 +441,7 @@ async function main() {
     await measure(db, metrics, now, out);
     if (!flag('no-plan')) await plan(db, model, metrics, retros, now, out);
     await topUp(db, model, now, out);
+    if (!flag('no-plan')) await replan(db, model, metrics, now, out);
     const n = (k: keyof Summary) => out[k].length;
     say(`cycle: closed ${n('closed')} · unblocked ${n('unblocked')} · retried ${n('retried')} · measured ${n('measured')} · planned ${n('planned')} · topped up ${n('toppedUp')} · needs you ${n('needsYou')}`);
     console.log(JSON.stringify({ cycle: { dry, ...out } }));
