@@ -208,6 +208,13 @@ describe("who to ask", () => {
     expect(pickBroker([b("a")], new Map([["5:a", req("a", "RENTED")]]), now)).toBeNull();
   });
 
+  it("hands a slow ask on to the next broker, never back to the one still being asked", async () => {
+    const { pickBroker } = await import("../../src/components/agent/broker");
+    const pending = new Map([["5:a", req("a", "PENDING", hours(-4), hours(20))]]);
+    expect(pickBroker([b("a"), b("b")], pending, now, { join: false })).toEqual({ ask: b("b") });
+    expect(pickBroker([b("a")], pending, now, { join: false })).toBeNull();
+  });
+
   it("asks again a broker who said it was available, once that answer is old", async () => {
     const { pickBroker } = await import("../../src/components/agent/broker");
     expect(pickBroker([b("a")], new Map([["5:a", req("a", "AVAILABLE", hours(-24))]]), now)).toBeNull();

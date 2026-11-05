@@ -11,6 +11,10 @@ import "server-only";
  * (broker-gate.ts) while broker sends are on (broker-sends.ts). Until 11-01 an
  * unanswered ask went back to the same broker every day: the "next broker"
  * check looked back 24 h, and the expired ask was older than that.
+ *
+ * Since 11-05 the broker most likely to answer is asked first, and one who is
+ * silent for FALLBACK_AWAKE_HOURS of daytime hands the home to the next one —
+ * at most MAX_BROKERS_PER_HOME per home per tenant (broker-rank.ts).
  */
 import { createHash, randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
@@ -18,6 +22,8 @@ import { db } from "@/lib/db";
 import { listingPath } from "@/lib/listing-code";
 import { publicAppUrl, waLink } from "../../../scripts/crm/public-links";
 import { REASK_GAP_DAYS, tenantActive, tenantGate } from "./broker-gate";
+import { inSendWindow, phoneKey, REST_DAYS, brokerRest, startOfKigaliDay } from "../../../scripts/wa/outbox-pure";
+import { answerStats, dueForNext, MAX_BROKERS_PER_HOME, rankBrokers, SILENT_LOOKBACK_DAYS, type BrokerSignal } from "./broker-rank";
 import { availabilityMessage, brokerAnswerMessage, brokerNumber, needSummary, noReplyMessage, viewingRep, type BrokerHomeLine } from "./broker-message";
 import { brokerSendMode, testPhones } from "./broker-sends";
 import { CONFIRMATION_TTL_DAYS } from "./rank";
@@ -77,6 +83,8 @@ type BrokerLink = {
   sourceUrl?: string | null;
   user: { phoneNumber: string | null; username: string | null; sourceHostId: string | null };
   listing?: HomeForLink;
+  /** Their directory row, when the ad is linked to one: what the ranking reads. */
+  broker?: { relationship: string; lastReplyAt: Date | null; lastSeenAt: Date | null; replyMinutes: number | null } | null;
 };
 type HomeForLink = { id: number; sourceUrl: string | null; isPublished: boolean; code: string | null; sourceListingId: string | null };
 const HOME_FOR_LINK = { id: true, sourceUrl: true, isPublished: true, code: true, sourceListingId: true } as const;
@@ -136,7 +144,7 @@ export async function askBodyNow(seed: string, requestIds: string[], to?: string
     seen.add(q.listingId);
     const link = homeLink(adOf.get(q.listingId)?.sourceUrl, q.listing);
     if (!link) return null;
-    homes.push({ title: q.listing.title ?? "", link });
+    homes.push({ title: q.listing.title ?? "", link, code: q.listing.code });
   }
   const broker = ads.find((a) => a.broker)?.broker ?? null;
   const wanted = mergeRequirements(EMPTY_REQUIREMENTS, coerceRequirements((open[0]?.need as { requirements?: unknown } | null)?.requirements));
@@ -152,10 +160,22 @@ const hasNeed = (r: Requirements) => r.bedrooms != null || !!r.homeType || !!r.d
 type RecentRequest = { id: string; listingId: number; brokerUserId: string; status: string; expiresAt: Date; taskId: string | null; createdAt: Date };
 const RECENT_SELECT = { id: true, listingId: true, brokerUserId: true, status: true, expiresAt: true, taskId: true, createdAt: true } as const;
 
-/** Everyone who can speak for each home, owner first, then brokers by age — never one who said STOP. */
-async function brokersFor(listingIds: number[]): Promise<Map<number, BrokerLink[]>> {
+/** Phones are stored "+250…" on users and as given on outbox rows. */
+const phoneVariants = (phones: string[]) => [...new Set(phones.map(phoneKey).filter(Boolean).flatMap((k) => [`+${k}`, k]))];
+
+/**
+ * Everyone who can speak for each home — never one who said STOP — the one
+ * most likely to answer first (broker-rank.ts): their own answer rate, where
+ * Mkan stands with them, how recently they were active. A broker the outbox
+ * would hold today goes behind the rest, one who never answers goes last.
+ */
+async function brokersFor(listingIds: number[], now = new Date()): Promise<Map<number, BrokerLink[]>> {
   const links = await db.listingBroker.findMany({
-    where: { listingId: { in: listingIds }, user: { phoneNumber: { not: null } }, NOT: { broker: { is: { optOut: true } } } },
+    where: {
+      listingId: { in: listingIds },
+      user: { phoneNumber: { not: null } },
+      NOT: [{ broker: { is: { optOut: true } } }, { broker: { is: { relationship: "DO_NOT_CONTACT" } } }],
+    },
     orderBy: [{ role: "desc" }, { createdAt: "asc" }],
     select: {
       listingId: true,
@@ -163,11 +183,82 @@ async function brokersFor(listingIds: number[]): Promise<Map<number, BrokerLink[
       sourceUrl: true,
       user: { select: { phoneNumber: true, username: true, sourceHostId: true } },
       listing: { select: HOME_FOR_LINK },
+      broker: { select: { relationship: true, lastReplyAt: true, lastSeenAt: true, replyMinutes: true } },
     },
   });
+  const reachable = links.filter((l) => l.user.phoneNumber);
+  const signals = await brokerSignals(reachable, now);
   const out = new Map<number, BrokerLink[]>();
-  for (const l of links) if (l.user.phoneNumber) out.set(l.listingId, [...(out.get(l.listingId) ?? []), l]);
+  for (const l of reachable) out.set(l.listingId, [...(out.get(l.listingId) ?? []), l]);
+  for (const [id, list] of out) out.set(id, rankBrokers(list, (l) => signals.get(l.userId) ?? { asked: 0, answered: 0, askedLong: 0, answeredLong: 0 }, now));
   return out;
+}
+
+/** What the ranking knows about each broker: their asks and own answers, and whether the outbox would hold an ask to them now. */
+async function brokerSignals(links: BrokerLink[], now: Date): Promise<Map<string, BrokerSignal>> {
+  const out = new Map<string, BrokerSignal>();
+  if (links.length === 0) return out;
+  const userIds = [...new Set(links.map((l) => l.userId))];
+  const phones = phoneVariants(links.map((l) => l.user.phoneNumber!));
+  const [asks, outbound] = await Promise.all([
+    db.brokerRequest.findMany({
+      where: { brokerUserId: { in: userIds }, createdAt: { gte: new Date(now.getTime() - SILENT_LOOKBACK_DAYS * 86_400_000) } },
+      select: { brokerUserId: true, status: true, channel: true, sentAt: true, respondedAt: true, createdAt: true },
+    }),
+    db.outboundMessage.findMany({
+      where: {
+        to: { in: phones },
+        kind: { in: ["BROKER_REQUEST", "BROKER_ASK"] },
+        OR: [{ status: "QUEUED" }, { status: "SENT", sentAt: { gte: new Date(now.getTime() - REST_DAYS * 86_400_000) } }],
+      },
+      select: { to: true, status: true, sentAt: true, label: true },
+    }),
+  ]);
+  const stats = answerStats(asks, now);
+  const today = startOfKigaliDay(now);
+  const busy = new Set<string>();
+  const sent = new Map<string, Date[]>();
+  for (const m of outbound) {
+    const key = phoneKey(m.to);
+    // One message per broker a Kigali day (outbox-pure.ts): a queued one or one sent today takes it.
+    if (m.status === "QUEUED" || (m.sentAt && m.sentAt >= today)) busy.add(key);
+    if (m.status === "SENT" && m.sentAt && !m.label?.startsWith("auto-")) sent.set(key, [...(sent.get(key) ?? []), m.sentAt]);
+  }
+  for (const l of links) {
+    if (out.has(l.userId)) continue;
+    const key = phoneKey(l.user.phoneNumber!);
+    const s = stats.get(l.userId) ?? { asked: 0, answered: 0, askedLong: 0, answeredLong: 0 };
+    const lastReplyAt = l.broker?.lastReplyAt ?? null;
+    out.set(l.userId, {
+      ...s,
+      relationship: l.broker?.relationship ?? null,
+      lastReplyAt,
+      lastSeenAt: l.broker?.lastSeenAt ?? null,
+      replyMinutes: l.broker?.replyMinutes ?? null,
+      held: busy.has(key) || brokerRest(sent.get(key) ?? [], lastReplyAt, now) != null,
+    });
+  }
+  return out;
+}
+
+/**
+ * Per broker user, the last `days` days: availability asks that went out and
+ * those they answered themselves — the number the ranking reads, and what
+ * `pnpm wa:brokers` prints. A later tenant joining an ask is not another ask.
+ */
+export async function brokerAnswerRates(now = new Date(), days = 30): Promise<{ brokerUserId: string; asked: number; answered: number }[]> {
+  const rows = await db.brokerRequest.findMany({
+    where: { createdAt: { gte: new Date(now.getTime() - days * 86_400_000) }, channel: { not: "joined" }, sentAt: { not: null } },
+    select: { brokerUserId: true, status: true, channel: true, sentAt: true, respondedAt: true, createdAt: true },
+  });
+  return [...answerStats(rows, now)].map(([brokerUserId, s]) => ({ brokerUserId, asked: s.asked, answered: s.answered }));
+}
+
+/** The newest request per (home, broker). */
+function newestPerBroker(rows: RecentRequest[]): Map<string, RecentRequest> {
+  const recent = new Map<string, RecentRequest>();
+  for (const q of [...rows].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())) if (!recent.has(`${q.listingId}:${q.brokerUserId}`)) recent.set(`${q.listingId}:${q.brokerUserId}`, q);
+  return recent;
 }
 
 /**
@@ -180,8 +271,10 @@ export function pickBroker(
   brokers: BrokerLink[],
   recent: Map<string, RecentRequest>,
   now = Date.now(),
+  opts: { join?: boolean } = {},
 ): { join: RecentRequest; broker: BrokerLink } | { ask: BrokerLink } | null {
-  for (const b of brokers) {
+  // Handing a slow ask on (`join: false`), the broker still being asked is passed over, not joined.
+  for (const b of opts.join === false ? [] : brokers) {
     const r = recent.get(`${b.listingId}:${b.userId}`);
     if (r?.status === "PENDING" && r.expiresAt.getTime() > now) return { join: r, broker: b };
   }
@@ -228,8 +321,7 @@ export async function requestConfirmations(taskId: string, shortlist: ShortlistI
     brokersFor(ids),
     db.brokerRequest.findMany({ where: { listingId: { in: ids }, createdAt: { gte: since } }, orderBy: { createdAt: "desc" }, select: RECENT_SELECT }),
   ]);
-  const recent = new Map<string, RecentRequest>();
-  for (const q of recentRows) if (!recent.has(`${q.listingId}:${q.brokerUserId}`)) recent.set(`${q.listingId}:${q.brokerUserId}`, q);
+  const recent = newestPerBroker(recentRows);
 
   const need = needSummary(r);
   const needJson = json({ requirements: r, summary: need });
@@ -266,7 +358,7 @@ export async function requestConfirmations(taskId: string, shortlist: ShortlistI
     const id = idByHash.get(a.row.tokenHash);
     if (!id) continue;
     const g = groups.get(a.broker.userId) ?? { phone: a.broker.user.phoneNumber!, handle: handleOf(a.broker), homes: [], ids: [] };
-    g.homes.push({ title: a.item.title, link: homeLink(a.broker.sourceUrl, a.broker.listing) ?? brokerLink(a.token, "en") });
+    g.homes.push({ title: a.item.title, link: homeLink(a.broker.sourceUrl, a.broker.listing) ?? brokerLink(a.token, "en"), code: a.broker.listing?.code });
     g.ids.push(id);
     groups.set(a.broker.userId, g);
   }
@@ -298,9 +390,11 @@ async function settleTasks(taskIds: string[]) {
  */
 export async function applyAnswer(listingId: number, answer: Answer, brokerPhone?: string | null) {
   const number = answer === "AVAILABLE" ? brokerNumber(brokerPhone) : null;
-  // Every open question about this home has its answer now.
+  // Every open question about this home has its answer now. `respondedAt` stays on the
+  // answering broker's own rows (the caller stamped them), so a broker's answer rate
+  // counts only what they said (broker-rank.ts answerStats).
   if (answer !== "NO_REPLY") {
-    await db.brokerRequest.updateMany({ where: { listingId, status: "PENDING" }, data: { status: answer, respondedAt: new Date() } });
+    await db.brokerRequest.updateMany({ where: { listingId, status: "PENDING" }, data: { status: answer } });
   }
   const tasks = await db.agentTask.findMany({
     where: { status: { in: ["WAITING", "DONE"] }, updatedAt: { gte: new Date(Date.now() - 7 * 86_400_000) }, brokerRequests: { some: { listingId } } },
@@ -370,6 +464,68 @@ async function tellViewingRep(tasks: AnsweredTask[], listingId: number, brokerPh
   await postSlackCard(`🔑 *${title}* (#${listingId}) is available — ${viewingRep()}, set up the viewing (tenant + broker + you).\nTenant: ${who}${broker}`).catch(() => {});
 }
 
+type Waiting = {
+  taskId: string | null;
+  locale: string;
+  need: Prisma.JsonValue;
+  task: { messages: Prisma.JsonValue; profile: { waPhone: string | null } | null } | null;
+};
+const WAITING_SELECT = { taskId: true, locale: true, need: true, task: { select: { messages: true, profile: { select: { waPhone: true } } } } } as const;
+
+/** The waiting rows whose search carries the question on: a real WhatsApp tenant (broker-gate.ts) still writing to us, while sends are on. */
+async function liveWaiting<T extends Waiting>(rows: T[], now: Date): Promise<T[]> {
+  if (rows.length === 0) return [];
+  const [mode, tests] = await Promise.all([brokerSendMode(), testPhones()]);
+  return rows.filter((r) => r.task && tenantGate({ mode, waPhone: r.task.profile?.waPhone ?? null, testPhones: tests }).ok && tenantActive(r.task.messages, now));
+}
+
+/**
+ * Ask the next broker who posted the home, for every task waiting on it: one
+ * message and one counted ask (the other tasks join it). Never a broker asked
+ * about the home in REASK_GAP_DAYS, never more than MAX_BROKERS_PER_HOME for one
+ * tenant. False when nobody is left to ask.
+ */
+async function askNext(listingId: number, title: string | null, waiting: Waiting[], now: Date, why: "expired" | "slow"): Promise<boolean> {
+  const byTask = new Map<string, Waiting>();
+  for (const w of waiting) if (w.taskId && !byTask.has(w.taskId)) byTask.set(w.taskId, w);
+  if (byTask.size === 0) return false;
+  const since = new Date(now.getTime() - REASK_GAP_DAYS * 86_400_000);
+  const [brokers, recentRows] = await Promise.all([
+    brokersFor([listingId], now),
+    db.brokerRequest.findMany({ where: { listingId, createdAt: { gte: since } }, orderBy: { createdAt: "desc" }, select: RECENT_SELECT }),
+  ]);
+  const askedFor = new Map<string, Set<string>>();
+  for (const q of recentRows) if (q.taskId) askedFor.set(q.taskId, (askedFor.get(q.taskId) ?? new Set<string>()).add(q.brokerUserId));
+  const tasks = [...byTask.values()].filter((t) => (askedFor.get(t.taskId!)?.size ?? 0) < MAX_BROKERS_PER_HOME);
+  if (tasks.length === 0) return false;
+  const pick = pickBroker(brokers.get(listingId) ?? [], newestPerBroker(recentRows), now.getTime(), { join: false });
+  if (!pick || !("ask" in pick)) return false;
+
+  const tokens = tasks.map(() => randomBytes(18).toString("base64url"));
+  const expiresAt = new Date(now.getTime() + REQUEST_TTL_HOURS * 3_600_000);
+  const created = await db.brokerRequest.createManyAndReturn({
+    data: tasks.map((t, i) => ({
+      tokenHash: hashToken(tokens[i]!),
+      listingId,
+      brokerUserId: pick.ask.userId,
+      taskId: t.taskId,
+      locale: t.locale,
+      need: json(t.need),
+      expiresAt,
+      // One ask goes out; the other tasks ride on it, as in requestConfirmations.
+      ...(i > 0 ? { channel: "joined" } : {}),
+    })),
+    select: { id: true, tokenHash: true },
+  });
+  const first = created.find((c) => c.tokenHash === hashToken(tokens[0]!));
+  if (!first) return false;
+  const link = homeLink(pick.ask.sourceUrl, pick.ask.listing) ?? brokerLink(tokens[0]!, "en");
+  const handle = handleOf(pick.ask);
+  await sendGrouped(new Map([[pick.ask.userId, { phone: pick.ask.user.phoneNumber!, handle, homes: [{ title: title ?? "Home in Kigali", link, code: pick.ask.listing?.code }], ids: [first.id] }]]));
+  await Promise.all(tasks.map((t) => appendTaskEvent(t.taskId!, "broker_contact_started", "waiting_person", { listingId, title, broker: handle ? `@${handle}` : null, next: true, why })));
+  return true;
+}
+
 /**
  * Cron: requests unanswered past their expiry become NO_REPLY. A home goes on
  * to the next broker who posted it only for a real tenant still in the search
@@ -379,57 +535,51 @@ async function tellViewingRep(tasks: AnsweredTask[], listingId: number, brokerPh
 export async function expireRequests(now = new Date()): Promise<number> {
   const stale = await db.brokerRequest.findMany({
     where: { status: "PENDING", expiresAt: { lt: now } },
-    select: {
-      id: true,
-      listingId: true,
-      taskId: true,
-      locale: true,
-      need: true,
-      listing: { select: { title: true } },
-      task: { select: { messages: true, profile: { select: { waPhone: true } } } },
-    },
+    select: { id: true, listingId: true, ...WAITING_SELECT, listing: { select: { title: true } } },
   });
   if (stale.length === 0) return 0;
   await db.brokerRequest.updateMany({ where: { id: { in: stale.map((r) => r.id) } }, data: { status: "NO_REPLY" } });
 
-  const [mode, tests] = await Promise.all([brokerSendMode(), testPhones()]);
-  const live = stale.filter((r) => r.task && tenantGate({ mode, waPhone: r.task.profile?.waPhone ?? null, testPhones: tests }).ok && tenantActive(r.task.messages, now));
+  const live = await liveWaiting(stale, now);
   const listingIds = [...new Set(stale.map((r) => r.listingId))];
-  const since = new Date(now.getTime() - REASK_GAP_DAYS * 86_400_000);
-  const [brokers, recentRows, stillPending] = await Promise.all([
-    brokersFor(listingIds),
-    db.brokerRequest.findMany({ where: { listingId: { in: listingIds }, createdAt: { gte: since } }, orderBy: { createdAt: "desc" }, select: RECENT_SELECT }),
-    db.brokerRequest.groupBy({ by: ["listingId"], where: { listingId: { in: listingIds }, status: "PENDING", expiresAt: { gte: now } }, _count: true }),
-  ]);
-  const recent = new Map<string, RecentRequest>();
-  for (const q of recentRows) if (!recent.has(`${q.listingId}:${q.brokerUserId}`)) recent.set(`${q.listingId}:${q.brokerUserId}`, q);
+  const stillPending = await db.brokerRequest.groupBy({ by: ["listingId"], where: { listingId: { in: listingIds }, status: "PENDING", expiresAt: { gte: now } }, _count: true });
   const pendingNow = new Set(stillPending.map((p) => p.listingId));
 
   for (const listingId of listingIds) {
     if (pendingNow.has(listingId)) continue; // someone else is still being asked
     // Only the searches of real tenants still writing to us carry the question on.
     const mine = live.filter((r) => r.listingId === listingId);
-    const pick = mine.length ? pickBroker(brokers.get(listingId) ?? [], recent, now.getTime()) : null;
-    if (!pick || !("ask" in pick)) {
-      await applyAnswer(listingId, "NO_REPLY");
-      continue;
-    }
-    // The next broker gets the same question, for every task that asked.
-    const first = mine[0]!;
-    const tokens = mine.map(() => randomBytes(18).toString("base64url"));
-    const created = await db.brokerRequest.createManyAndReturn({
-      data: mine.map((r, i) => ({ tokenHash: hashToken(tokens[i]!), listingId, brokerUserId: pick.ask.userId, taskId: r.taskId, locale: r.locale, need: json(r.need), expiresAt: new Date(now.getTime() + REQUEST_TTL_HOURS * 3_600_000) })),
-      select: { id: true },
-    });
-    const link = homeLink(pick.ask.sourceUrl, pick.ask.listing) ?? brokerLink(tokens[0]!, "en");
-    await sendGrouped(new Map([[pick.ask.userId, { phone: pick.ask.user.phoneNumber!, handle: handleOf(pick.ask), homes: [{ title: first.listing.title ?? "Home in Kigali", link }], ids: created.map((c) => c.id) }]]));
-    await Promise.all(
-      [...new Set(mine.map((r) => r.taskId).filter((t): t is string => !!t))].map((t) =>
-        appendTaskEvent(t, "broker_contact_started", "waiting_person", { listingId, title: first.listing.title, broker: handleOf(pick.ask) ? `@${handleOf(pick.ask)}` : null, next: true }),
-      ),
-    );
+    const asked = mine.length ? await askNext(listingId, mine[0]!.listing.title, mine, now, "expired") : false;
+    if (!asked) await applyAnswer(listingId, "NO_REPLY");
   }
   return stale.length;
+}
+
+/**
+ * Cron, hourly: a broker who has not answered within FALLBACK_AWAKE_HOURS of
+ * daytime (08:00–20:00 Kigali) since the ask really went out hands the home to
+ * the next broker who posted it. Their own ask stays open for its 24 h — a late
+ * yes still counts. Nothing is handed on at night, while an ask still waits in
+ * the outbox (caps, quiet hours), or with broker sends off. Returns the homes
+ * handed on.
+ */
+export async function handOnUnanswered(now = new Date()): Promise<number> {
+  if (!inSendWindow(now)) return 0;
+  const open = await db.brokerRequest.findMany({
+    where: { status: "PENDING", expiresAt: { gt: now } },
+    select: { listingId: true, channel: true, sentAt: true, createdAt: true, ...WAITING_SELECT, listing: { select: { title: true } } },
+  });
+  const byHome = new Map<number, typeof open>();
+  for (const r of open) byHome.set(r.listingId, [...(byHome.get(r.listingId) ?? []), r]);
+  let handed = 0;
+  for (const [listingId, rows] of byHome) {
+    // The newest ask about the home: still queued, or not yet slow, keeps the wait.
+    const newest = rows.filter((r) => r.channel !== "joined").sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+    if (!newest?.sentAt || !dueForNext(newest.sentAt, now)) continue;
+    const live = await liveWaiting(rows, now);
+    if (live.length && (await askNext(listingId, rows[0]!.listing.title, live, now, "slow"))) handed += 1;
+  }
+  return handed;
 }
 
 /**

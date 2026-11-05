@@ -210,7 +210,9 @@ async function drain(dry: boolean, log: Log, sendsOff: boolean): Promise<{ sent:
       if (row.kind !== "TENANT_ALERT") {
         await markIntroduced(row.to, sentAt);
         const theirs = { phones: { hasSome: phoneVariants([phoneKey(row.to)]) } };
-        await db.broker.updateMany({ where: theirs, data: { lastMessagedAt: sentAt } });
+        // An availability ask counts on the directory row too (demand asks count when queued, demand.ts).
+        const ask = row.kind === "BROKER_REQUEST" && row.brokerRequestIds.length > 0;
+        await db.broker.updateMany({ where: theirs, data: { lastMessagedAt: sentAt, ...(ask ? { lastAskedAt: sentAt, asks: { increment: 1 } } : {}) } });
         await db.broker.updateMany({ where: { ...theirs, relationship: "NEW" }, data: { relationship: "INTRODUCED", introducedAt: sentAt } });
       }
       sent += 1;

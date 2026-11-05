@@ -3,7 +3,7 @@
  * (src/components/agent/broker-sends.ts). Flips a WaState row — no deploy, and
  * the Worker reads it on its next 2-minute pass.
  *
- *   pnpm wa:brokers                       status: the mode, the team numbers, today's broker sends
+ *   pnpm wa:brokers                       status: the mode, the team numbers, today's broker sends, the 30-day answer rate
  *   pnpm wa:brokers off   [--note="…"]    nothing reaches a broker; tenants' picks become #mkan cards
  *   pnpm wa:brokers gated [--note="…"]    real WhatsApp tenants' picks ask the broker, within each broker's budget
  *   pnpm wa:brokers test add +250…        a team number: its chats run, its picks never reach a broker
@@ -58,6 +58,14 @@ async function main() {
     console.log(`team numbers: ${tests.size ? [...tests].map((p) => `+${p}`).join(", ") : "none"}`);
     console.log(`broker messages today: ${today} sent · ${queued} queued`);
     console.log(`last 7 days: ${week.reduce((n, g) => n + g._count, 0)} asks to ${week.length} brokers (max ${Math.max(0, ...week.map((g) => g._count))} to one)`);
+    // Each broker's own answers to availability asks (broker-rank.ts): what ranks who is asked first.
+    const { brokerAnswerRates } = await import("../../src/components/agent/broker");
+    const rates = await brokerAnswerRates();
+    const asked = rates.reduce((n, r) => n + r.asked, 0);
+    const answered = rates.reduce((n, r) => n + r.answered, 0);
+    console.log(
+      `availability asks, last 30 days: ${answered}/${asked} answered by the broker asked${asked ? ` (${Math.round((answered / asked) * 1000) / 10}%)` : ""} · ${rates.filter((r) => r.answered > 0).length} of ${rates.length} brokers answered at least once`,
+    );
   } finally {
     await db.$disconnect();
   }
