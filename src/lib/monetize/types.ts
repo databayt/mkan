@@ -74,6 +74,12 @@ export interface EnhanceMetrics {
   brokerVideosPerDay?: number;
   /** Rendered stripped clips waiting in today's queue. */
   pendingRenders?: number;
+  /** Kigali listings saved in the last 7 days. */
+  newHomes7?: number;
+  /** Of those, the ones the page's post gate passed within a day of saving — the funnel's "ready to post". */
+  readyNew7?: number;
+  /** Why the rest are held, by reason. */
+  readyWhy?: Record<string, number>;
 }
 export interface PostMetrics {
   videos?: number;

@@ -18,6 +18,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 import { jobStatus } from '../../src/lib/monetize/health';
+import { ineligibleReason, type PostRow } from '../crm/tiktok-post-pure';
 import type { BlockKey, JobState, SnapshotMetrics } from '../../src/lib/monetize/types';
 
 const RUNS = join(homedir(), '.claude/state/runs');
@@ -109,6 +110,52 @@ function scrape(jobs: JobState[]): SnapshotMetrics['scrape'] {
   };
 }
 
+/**
+ * "Ready to post", measured on the homes the scrape actually saves.
+ *
+ * The funnel's ready stage used to count MasteringRuns — Port Sudan photos a
+ * human re-renders in Gemini — under a "homes saved" stage that counts the
+ * Kigali TikTok/web sweep. Those homes never enter mastering (the book is Port
+ * Sudan only), so the hand-off read 0% whatever happened. A Kigali home is
+ * ready when the page's own gate (`ineligibleReason`, the rule tt:pick posts
+ * by) passes it within a day of being saved: monthly, priced, ≥4 photos, an
+ * area, a fresh source post, and — for a broker lead — that broker's YES.
+ * Consent is read as it stands now; a YES given later lifts older homes too.
+ */
+export async function readyNew(now = Date.now()): Promise<Pick<NonNullable<SnapshotMetrics['enhance']>, 'newHomes7' | 'readyNew7' | 'readyWhy'>> {
+  process.env.PRISMA_QUIET ??= '1';
+  const { db } = await import('../../src/lib/db');
+  const { twentyClient } = await import('../crm/twenty-rest');
+  const rows = await db.listing.findMany({
+    where: { location: { country: 'Rwanda' }, createdAt: { gte: new Date(now - 7 * 86_400_000) } },
+    select: {
+      id: true, code: true, source: true, priceMonth: true, bedrooms: true, bathrooms: true, propertyType: true, photoUrls: true,
+      postedDate: true, createdAt: true, lostAt: true, rentPeriod: true,
+      location: { select: { address: true, state: true } },
+      host: { select: { sourceHostId: true } },
+    },
+  });
+  // Twenty down → no broker counts as consented, the same fail-closed rule tt:pick uses.
+  const consented = await twentyClient()
+    .all('hosts', 0)
+    .then((hosts) => new Set(hosts.filter((h) => h.repostConsent === 'YES').map((h) => String(h.tiktokHandle ?? '').replace(/^@/, '').trim().toLowerCase()).filter(Boolean)))
+    .catch(() => new Set<string>());
+  const why: Record<string, number> = {};
+  let ready = 0;
+  for (const r of rows) {
+    const p: PostRow = {
+      id: r.id, code: r.code, source: r.source, priceMonth: r.priceMonth, bedrooms: r.bedrooms, bathrooms: r.bathrooms,
+      propertyType: r.propertyType, photoUrls: r.photoUrls, area: r.location?.address ?? null, district: r.location?.state || null,
+      hostSourceId: r.host?.sourceHostId ?? null, postedAt: (r.postedDate ?? r.createdAt).toISOString(), lostAt: r.lostAt?.toISOString() ?? null,
+    };
+    // Judged as of a day after it was saved — "ready within a day", not "ready by now".
+    const w = r.rentPeriod !== 'MONTHLY' ? 'not monthly' : ineligibleReason(p, consented, Math.min(now, r.createdAt.getTime() + 86_400_000));
+    if (w) why[w] = (why[w] ?? 0) + 1;
+    else ready++;
+  }
+  return { newHomes7: rows.length, readyNew7: ready, readyWhy: why };
+}
+
 function enhance(): SnapshotMetrics['enhance'] {
   const sh = existsSync(join(HERMES, 'tiktok-post.sh')) ? readFileSync(join(HERMES, 'tiktok-post.sh'), 'utf8') : '';
   const m = sh.match(/PER_DAY="\$\{TIKTOK_POSTS_PER_DAY:-(\d+)\}"/);
@@ -180,6 +227,10 @@ export function build(now = Date.now()): { block: BlockKey; status: string; metr
 if (process.argv[1] && /snapshot\.ts$/.test(process.argv[1])) {
   (async () => {
     const snaps = build();
+    const e = snaps.find((s) => s.block === 'enhance')!;
+    const ready = await readyNew().catch((err) => (console.warn(`  ! ready count skipped: ${(err as Error).message.slice(0, 120)}`), {}));
+    e.metrics.enhance = { ...e.metrics.enhance, ...ready };
+    e.summary = 'readyNew7' in ready ? `${ready.readyNew7}/${ready.newHomes7} new Kigali homes ready to post` : null;
     for (const s of snaps) console.log(`${s.block.padEnd(8)} ${s.status.padEnd(6)} ${s.summary ?? ''}`);
     if (process.argv.includes('--dry')) return console.log(JSON.stringify(snaps, null, 2));
     const { db } = await import('../../src/lib/db');

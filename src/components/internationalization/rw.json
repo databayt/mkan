@@ -6136,6 +6136,7 @@
       "rejectRate": "Rejected or failed",
       "backlog": "Waiting to master",
       "brokerVideosPerDay": "Broker videos allowed per day",
+      "readyNew": "New homes ready to post (7 days)",
       "viewsPerPost": "Views per post",
       "postedDays7": "Days posted (of 7)",
       "viewsWeek": "Views gained this week",

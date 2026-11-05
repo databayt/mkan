@@ -194,6 +194,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     { key: "rejectRate", value: queuedNow ? (mCount("REJECTED") + mCount("FAILED")) / queuedNow : null, unit: "pct" },
     { key: "backlog", value: backlog, unit: "count" },
     { key: "brokerVideosPerDay", value: em.brokerVideosPerDay ?? null, unit: "perDay" },
+    { key: "readyNew", value: em.readyNew7 ?? null, unit: "count" },
   ];
 
   // ── block 3: post ─────────────────────────────────────────────────────
@@ -283,7 +284,10 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   const stages: Stage[] = [
     { key: "read", block: "scrape", count: sm.read ?? 0 },
     { key: "homes", block: "scrape", count: homesNow ?? 0 },
-    { key: "ready", block: "enhance", count: masteredNow },
+    // New Kigali homes the page's post gate passed within a day (pushed by monetize:snapshot).
+    // Mastering is the Port Sudan photo lane: those homes are never in the Kigali "homes saved"
+    // count above, so dividing by it read 0% whatever either lane did. Older snapshots fall back.
+    { key: "ready", block: "enhance", count: em.readyNew7 ?? masteredNow },
     // Until a week of page stats exists: days posted, and the page's all-time views.
     { key: "posted", block: "post", count: Math.max(0, postsWeek ?? pm.postedDays7 ?? 0) },
     { key: "views", block: "post", count: Math.max(0, viewsWeek ?? pm.views ?? 0) },
