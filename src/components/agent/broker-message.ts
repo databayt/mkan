@@ -20,7 +20,23 @@ import type { Requirements } from "./requirements";
 export interface BrokerHomeLine {
   title: string;
   link: string;
+  /** The Mkan listing code ("0002-05"), when the home has one: a ref the broker and #mkan can both quote. */
+  code?: string | null;
 }
+
+/**
+ * The one-tap answer under a single-home ask (11-05): only 10.9% of asks got an
+ * answer when the broker had to compose one. "1" or "2" is read as the answer
+ * only after a message that offered it (broker-reply.ts, `menu`).
+ */
+export const REPLY_MENU: Record<"EN" | "FR" | "RW", string> = {
+  EN: "Reply 1 = still available, 2 = taken.",
+  FR: "Répondez 1 = disponible, 2 = déjà prise.",
+  RW: "Subiza 1 = iracyahari, 2 = yafashwe.",
+};
+
+/** Did this ask offer the 1 / 2 answer? */
+export const offersReplyMenu = (body: string | null | undefined) => !!body && Object.values(REPLY_MENU).some((m) => body.includes(m));
 
 /** Money the way brokers write it: 400k, 1.2M. */
 export const shortRwf = (n: number) => (n >= 1_000_000 ? `${Number((n / 1_000_000).toFixed(1))}M` : `${Math.round(n / 1000)}k`);
@@ -125,26 +141,30 @@ const langOf = (l: string | null | undefined): Lang => (l === "FR" || l === "RW"
 export function availabilityMessage(homes: BrokerHomeLine[], seed: string, voice: BrokerVoice = { introduce: true }): string {
   const links = [...new Set(homes.map((h) => h.link))];
   const many = links.length > 1;
-  const list = links.join("\n");
+  // One home: its ref beside the link. Several: links only.
+  const code = !many ? homes.find((h) => h.code?.trim())?.code?.trim() : null;
+  const list = many ? links.join("\n") : `${links[0] ?? ""}${code ? ` (ref ${code})` : ""}`;
   const name = greetName(voice.name);
   const need = voice.need?.trim() ? `\n${voice.need.trim()}` : "";
   const lang = langOf(voice.lang);
+  // One question, and for one home the answer is a digit.
+  const menu = many ? "" : ` ${REPLY_MENU[lang]}`;
   if (lang === "FR") {
     const hi = `Bonjour${name ? ` ${name}` : ""}`;
-    const q = many ? "Sont-elles toujours disponibles ?" : "Est-elle toujours disponible ?";
+    const q = (many ? "Sont-elles toujours disponibles ?" : "Est-elle toujours disponible ?") + menu;
     if (voice.introduce)
       return `${hi}, ici Mkan. Nous aidons des gens à trouver un logement à Kigali et nous les amenons à des agents comme vous. Un locataire que nous accompagnons s'intéresse à ${many ? "vos maisons" : "votre maison"} :\n${list}${need}\n${q} Si oui, nous organisons la visite avec vous.\nSi vous préférez ne plus recevoir nos messages, répondez simplement stop.`;
     return pickPhrase(seed, [`${hi}, c'est Mkan. Un locataire que nous accompagnons aime ${many ? "celles-ci" : "celle-ci"} :\n${list}${need}\n${q}`, `${hi}, Mkan à nouveau. Un locataire s'intéresse à ${many ? "ces maisons" : "cette maison"} :\n${list}${need}\n${q}`]);
   }
   if (lang === "RW") {
     const hi = `Muraho${name ? ` ${name}` : ""}`;
-    const q = many ? "Ziracyahari?" : "Iracyahari?";
+    const q = (many ? "Ziracyahari?" : "Iracyahari?") + menu;
     if (voice.introduce)
       return `${hi}, ni Mkan. Dufasha abantu kubona inzu i Kigali tukabazana ku ba komisiyoneri nkawe. Umukiriya dufasha yashimye ${many ? "amazu yawe" : "inzu yawe"}:\n${list}${need}\n${q} Niba ${many ? "zihari" : "ihari"}, turategura gusura nawe.\nNiba udashaka ko tukwandikira, subiza stop.`;
     return pickPhrase(seed, [`${hi}, ni Mkan. Umukiriya dufasha yashimye ${many ? "aya mazu" : "iyi nzu"}:\n${list}${need}\n${q}`, `${hi}, ni Mkan nanone. Dufite umukiriya ushaka ${many ? "aya mazu" : "iyi nzu"}:\n${list}${need}\n${q}`]);
   }
   const hi = `Hi${name ? ` ${name}` : " there"}`;
-  const q = many ? "Are they still available?" : "Is it still available?";
+  const q = (many ? "Are they still available?" : "Is it still available?") + menu;
   if (voice.introduce)
     return `${hi}, this is Mkan. We help people find homes in Kigali and bring them to brokers like you. A tenant we're helping is interested in ${many ? "these homes of yours" : "your home"}:\n${list}${need}\n${q} If ${many ? "they are" : "it is"}, we'll set up the viewing with you.\nIf you'd rather we didn't message you, just reply stop.`;
   return pickPhrase(seed, [

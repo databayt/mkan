@@ -12,8 +12,8 @@ import "server-only";
  *     - "How much?" / "Where?" / "Features&budget" → one answer with the need;
  *     - photos without a price → one "what's the rent, and where?";
  *   - "is this available?" (BROKER_REQUEST):
- *     - "yes" / "taken" anywhere in the reply → the answer, as if tapped, and
- *       one short thanks;
+ *     - "yes" / "taken" anywhere in the reply, or "1" / "2" to an ask that
+ *       offered them → the answer, as if tapped, and one short thanks;
  *     - "budget?" / "single or family?" → one answer with the need;
  *     - only a hello → one "is it still available?";
  *   - anything else → the caller posts it to #mkan for a person.
@@ -25,7 +25,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { applyAnswer, brokerAnswers } from "./broker";
 import { createBrokerHome, type AskForHome } from "./broker-home";
-import { aboutMeMessage, availableAckMessage, needReplyMessage, needSummary, priceQuestionMessage, reAskMessage, takenAckMessage } from "./broker-message";
+import { aboutMeMessage, availableAckMessage, needReplyMessage, needSummary, offersReplyMenu, priceQuestionMessage, reAskMessage, takenAckMessage } from "./broker-message";
 import { isOffer, parseBrokerReply, repostAnswer, type BrokerReply } from "./broker-reply";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements } from "./requirements";
 import { readState, writeState } from "./wa-state";
@@ -54,7 +54,7 @@ export type RepostAnswer = { answer: "YES" | "NO" | null; text: string; at: stri
 /** Phones are stored "+250…"; numbers from WhatsApp come as digits. */
 const phoneVariants = (phone: string) => [`+${phone.replace(/^\+/, "")}`, phone.replace(/^\+/, "")];
 
-type Ask = { id: string; kind: "BROKER_ASK" | "BROKER_REQUEST" | "TENANT_ALERT"; to: string; sentAt: Date | null; brokerRequestIds: string[] };
+type Ask = { id: string; kind: "BROKER_ASK" | "BROKER_REQUEST" | "TENANT_ALERT"; to: string; sentAt: Date | null; brokerRequestIds: string[]; body?: string };
 
 /** The last question this number got from Mkan before `at`: a no-home ask, or "is this available?" with its requests. */
 async function lastAsk(phone: string, at: Date): Promise<Ask | null> {
@@ -66,7 +66,7 @@ async function lastAsk(phone: string, at: Date): Promise<Ask | null> {
       OR: [{ kind: "BROKER_ASK" }, { kind: "BROKER_REQUEST", brokerRequestIds: { isEmpty: false } }],
     },
     orderBy: { sentAt: "desc" },
-    select: { id: true, kind: true, to: true, sentAt: true, brokerRequestIds: true },
+    select: { id: true, kind: true, to: true, sentAt: true, brokerRequestIds: true, body: true },
   });
 }
 
@@ -92,8 +92,9 @@ async function askedHomes(requestIds: string[]) {
 export async function readAvailabilityReply(phone: string, text: string, at: Date, known?: Ask | null) {
   const ask = known === undefined ? await lastAsk(phone, at) : known;
   if (ask?.kind !== "BROKER_REQUEST" || !ask.sentAt || at.getTime() - ask.sentAt.getTime() > REQUEST_WINDOW_MS) return null;
-  const r = parseBrokerReply(text);
   const homes = await askedHomes(ask.brokerRequestIds);
+  // "1" / "2" answer only an ask about one home that offered them (broker-message.ts REPLY_MENU).
+  const r = parseBrokerReply(text, { menu: !homes.many && offersReplyMenu(ask.body) });
   const answer: "AVAILABLE" | "RENTED" | null = r.asksIfBot || homes.home == null ? null : r.gone ? "RENTED" : r.yes ? "AVAILABLE" : null;
   // The same answer already on record (the form, another broker who posted it) is not news: tenants heard it.
   const onRecord = answer && homes.home != null ? (await brokerAnswers([homes.home])).get(homes.home)?.status : undefined;

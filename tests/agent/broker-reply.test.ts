@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isOffer, isRepostAsk, parseBrokerReply, repostAnswer } from "@/components/agent/broker-reply";
+import { isOffer, isRepostAsk, menuChoice, parseBrokerReply, repostAnswer } from "@/components/agent/broker-reply";
 
 // Shapes from real Kigali broker chats (October 2026).
 describe("parseBrokerReply", () => {
@@ -77,6 +77,37 @@ describe("parseBrokerReply", () => {
   it("knows a bare hello from an answer", () => {
     for (const s of ["Hi", "Hello", "Hello how are you?", "Muraho", "Good morning sir"]) expect(parseBrokerReply(s).greeting, s).toBe(true);
     for (const s of ["Hello who is this?", "Hi, it's available", "Hello\nCan you please make a call", "Thank you for contacting us! How can we help?", "Ok"]) expect(parseBrokerReply(s).greeting, s).toBe(false);
+  });
+});
+
+describe("the 1 / 2 answer to a one-home ask", () => {
+  it("reads a bare digit as the answer only when the ask offered it", () => {
+    for (const s of ["1", "1.", " 1 ", "1️⃣", "1 yes", "1 = still available", "1 iracyahari", "1 Yego"]) {
+      expect(parseBrokerReply(s, { menu: true }).yes, s).toBe(true);
+      expect(parseBrokerReply(s, { menu: true }).gone, s).toBe(false);
+    }
+    for (const s of ["2", "2!", "2️⃣", "2 taken", "2 = taken", "2 yafashwe", "2 déjà prise", "2 byaragiye"]) {
+      expect(parseBrokerReply(s, { menu: true }).gone, s).toBe(true);
+      expect(parseBrokerReply(s, { menu: true }).yes, s).toBe(false);
+    }
+    // Without the menu a digit means nothing, as before.
+    for (const s of ["1", "2"]) {
+      expect(parseBrokerReply(s).yes, s).toBe(false);
+      expect(parseBrokerReply(s).gone, s).toBe(false);
+    }
+  });
+
+  it("never takes a count, a price or a contradiction for a choice", () => {
+    for (const s of ["2 bedrooms", "1 bedroom left", "12", "10", "2,000", "1.5m", "2 yes", "1 taken", "1 How much?", "21 Nov"]) expect(menuChoice(s), s).toBeNull();
+    expect(parseBrokerReply("2 bedrooms 300k", { menu: true })).toMatchObject({ bedrooms: 2, price: 300_000, gone: false, yes: false });
+    expect(parseBrokerReply("1 taken", { menu: true }).yes).toBe(false);
+  });
+
+  it("keeps reading words the way it did, menu or not", () => {
+    for (const s of ["Yes available", "Iracyahari", "It's still available"]) expect(parseBrokerReply(s, { menu: true }).yes, s).toBe(true);
+    for (const s of ["taken", "No", "Byaragiye"]) expect(parseBrokerReply(s, { menu: true }).gone, s).toBe(true);
+    expect(parseBrokerReply("How much?", { menu: true }).question).toBe(true);
+    expect(parseBrokerReply("Hello", { menu: true }).greeting).toBe(true);
   });
 });
 

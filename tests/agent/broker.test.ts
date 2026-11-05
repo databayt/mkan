@@ -4,6 +4,7 @@ import {
   availabilityMessage,
   availableAckMessage,
   greetName,
+  offersReplyMenu,
   needSummary,
   pickPhrase,
   priceQuestionMessage,
@@ -36,7 +37,7 @@ describe("broker message", () => {
       expect(t).toMatch(/^Hi Eric, this is Mkan\./);
       expect(t).toContain(ad(k));
       expect(t).toContain(need.they);
-      expect(t).toMatch(/Is it still available\?/);
+      expect(t).toMatch(/Is it still available\? Reply 1 = still available, 2 = taken\./);
       expect(t).toMatch(/just reply stop\.$/);
       expect(t).not.toContain("3-bed in Kagarama");
       expect(t).not.toMatch(POSING);
@@ -50,7 +51,7 @@ describe("broker message", () => {
       expect(t).toMatch(/Mkan/);
       expect(t).toContain(ad(seeds[i]!));
       expect(t).toContain(need.they);
-      expect(t).toMatch(/available\?$/);
+      expect(t).toMatch(/available\? Reply 1 = still available, 2 = taken\.$/);
       expect(t).not.toMatch(/reply stop/);
       expect(t).not.toMatch(POSING);
     });
@@ -59,7 +60,10 @@ describe("broker message", () => {
 
   it("asks about several ads in one message, links only", () => {
     const text = availabilityMessage([{ title: "A", link: ad("1") }, { title: "B", link: ad("2") }, { title: "A again", link: ad("1") }], "s", { introduce: false });
-    expect(text).toMatch(/Are they still available\?/);
+    expect(text).toMatch(/Are they still available\?$/);
+    // "1" could mean either home: several homes get no digit menu, and no ref.
+    expect(offersReplyMenu(text)).toBe(false);
+    expect(text).not.toMatch(/ref /);
     expect(text.match(/https:/g)).toHaveLength(2);
     expect(text).not.toMatch(/\+?\d{9,}|A again/);
   });
@@ -72,6 +76,16 @@ describe("broker message", () => {
     expect(rw).toMatch(/^Muraho, ni Mkan\./);
     expect(rw).toMatch(/subiza stop\.$/);
     expect(availabilityMessage([{ title: "A", link: ad("1") }], "s", { introduce: true, lang: "SW" })).toMatch(/^Hi there, this is Mkan/);
+    // The one-digit answer, in their language.
+    expect(rw).toContain("Iracyahari? Subiza 1 = iracyahari, 2 = yafashwe.");
+    expect(fr).toContain("Est-elle toujours disponible ? Répondez 1 = disponible, 2 = déjà prise.");
+    for (const lang of ["EN", "FR", "RW"]) for (const k of seeds) expect(offersReplyMenu(availabilityMessage([{ title: "A", link: ad(k) }], k, { introduce: false, lang }))).toBe(true);
+  });
+
+  it("puts the home's Mkan ref beside its link, when it has one", () => {
+    const t = availabilityMessage([{ title: "A", link: ad("1"), code: "0002-05" }], "s", { introduce: false });
+    expect(t).toContain(`${ad("1")} (ref 0002-05)`);
+    expect(availabilityMessage([{ title: "A", link: ad("1"), code: null }], "s", { introduce: false })).not.toMatch(/ref/);
   });
 
   it("greets a person by name, never an agency, a handle or a flag", () => {

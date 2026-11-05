@@ -33,6 +33,22 @@ export interface BrokerReply {
   asksIfBot: boolean;
 }
 
+const EMPTY_REPLY: BrokerReply = {
+  price: null,
+  priceUsd: null,
+  bedrooms: null,
+  bathrooms: null,
+  place: null,
+  zoneSlug: null,
+  furnished: null,
+  visitFee: null,
+  gone: false,
+  question: false,
+  yes: false,
+  greeting: false,
+  asksIfBot: false,
+};
+
 /** Rents outside this band are fees, deposits or sale prices, not a month's rent. */
 const RENT_MIN = 40_000;
 const RENT_MAX = 15_000_000;
@@ -136,8 +152,30 @@ function isGreetingOnly(t: string): boolean {
 const BOT_QUESTION = /\b(?:bot|robot|chatbot|automatic|automated|auto ?reply|ai)\b.*\?|\b(?:are|r) (?:you|u) (?:a )?(?:real|human|person|bot|robot|machine)\b|\bis this (?:a )?(?:bot|robot|machine|automatic|real person)\b|\bni robot\b|\buri umuntu\b/;
 const QUESTION = /how much|what(?:'s| is) (?:the |your )?budget|budget\??$|features|details\??$|^where\??$|which (?:area|place|location)|single or (?:a )?family|for how many|when (?:do|will) you|ni angahe|amafaranga angahe/;
 
-/** Read one broker message. */
-export function parseBrokerReply(text: string | null | undefined): BrokerReply {
+/**
+ * "1" or "2" to an ask that offered them (broker-message.ts REPLY_MENU): the
+ * digit alone ("1", "2.", "1️⃣"), or with words that agree ("1 yes", "2 taken",
+ * "1 = still available"). "2 bedrooms" is not a 2; null when it is not a choice.
+ */
+export function menuChoice(text: string | null | undefined): 1 | 2 | null {
+  const t = fold((text ?? "").replace(/[\uFE0F\u20E3]/g, "")).trim();
+  const m = t.match(/^([12])(?![\d.,]\d)\s*[.)!:=,-]*\s*([\s\S]*)$/);
+  if (!m) return null;
+  const digit = m[1] === "1" ? 1 : 2;
+  const rest = m[2]!.trim();
+  if (!rest) return digit;
+  const r = parseBrokerReply(rest);
+  if (digit === 1 && r.yes && !r.gone) return 1;
+  if (digit === 2 && (r.gone || /^(?:deja )?prise?\b/.test(rest))) return 2;
+  return null;
+}
+
+/**
+ * Read one broker message. `menu` — the ask it answers offered "1 = still
+ * available, 2 = taken", so a digit is an answer; without it a bare digit means
+ * nothing (it could be a count, a price, a slip).
+ */
+export function parseBrokerReply(text: string | null | undefined, opts: { menu?: boolean } = {}): BrokerReply {
   const raw = (text ?? "").trim();
   // Ids and links carry digit runs that are not money ("…F120E69305").
   const t = fold(raw)
@@ -154,6 +192,8 @@ export function parseBrokerReply(text: string | null | undefined): BrokerReply {
   const bare = t.replace(/[^a-z ]/g, "").trim();
   const gone = GONE.test(bare) || GONE_ANYWHERE.test(t);
   const hasOffer = rwf.length > 0 || usd.length > 0 || bed != null;
+  const choice = opts.menu ? menuChoice(raw) : null;
+  if (choice) return { ...EMPTY_REPLY, yes: choice === 1, gone: choice === 2 };
   return {
     price: sale ? null : (rwf[0] ?? null),
     priceUsd: sale ? null : (usd[0] ?? null),
