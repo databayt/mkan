@@ -47,6 +47,7 @@ const base = {
   gates: { brokerSends: "off", capped: false },
   adChats: 0,
   funnel: {} as never,
+  firstShare: null,
   costLines: lines,
   costByBlock: costByBlock(lines),
   monthElapsed: 0.1,

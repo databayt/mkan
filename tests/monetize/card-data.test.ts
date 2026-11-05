@@ -46,7 +46,7 @@ describe("the sticky card's data", () => {
   const c = cardData(data, en.monetize, "en");
 
   it("words the money overview like the Reserve card", () => {
-    expect(c.overview.price).toMatch(/RWF/);
+    expect(c.overview.price).toMatch(/\$/); // money shows in US dollars since 5ea0499
     expect(c.overview.netNeg).toBe(true);
     expect(c.overview.sprintLine).toBeNull();
   });
@@ -54,10 +54,9 @@ describe("the sticky card's data", () => {
   it("ranks the costs, counts the open tasks by priority, and builds the flows", () => {
     expect(c.spend.bars[0]!.key).toBe("macAndInternet");
     expect(c.todo.map((b) => b.value)).toEqual([1, 1, 0, 0]);
-    expect(c.scrape.funnel.map((b) => b.value)).toEqual([131, 20, 15]);
-    expect(c.scrape.trend).toHaveLength(2);
-    expect(c.chat.funnel.find((b) => b.key === "shortlisted")!.value).toBe(12);
-    expect(c.post.postedDays).toBe(5);
+    // A green block's flow blames no step; the rest of the per-block panels became flows in b30d8c6.
+    expect(c.flows.scrape.problem).toBeNull();
+    expect(c.flows.scrape.steps.length).toBeGreaterThan(0);
     expect(c.sprint).toBeNull();
   });
 });

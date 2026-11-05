@@ -34,12 +34,12 @@ export const JOBS: Record<BlockKey, { job: string; cadence: number }[]> = {
     { job: 'hermes_mkan-demand-match', cadence: 24 },
     { job: 'mkan-crm-sync-up', cadence: 1 },
   ],
-  enhance: [
-    { job: 'mkan-master-sweep', cadence: 1 },
-    { job: 'mkan-mastering-reconcile', cadence: 24 },
-  ],
+  // Enhance is the broker video cleaned for its post (2026-11-05): the 07:00 post job renders it.
+  // The Port Sudan photo mastering (mkan-master-sweep) is outside the four blocks now.
+  enhance: [{ job: 'hermes_mkan-tiktok-post', cadence: 24 }],
   post: [
     { job: 'hermes_mkan-tiktok-post', cadence: 24 },
+    { job: 'hermes_mkan-tiktok-upload-retry', cadence: 24 },
     { job: 'hermes_mkan-tiktok-stats', cadence: 168 },
   ],
   // The chat lanes are Worker crons (wa-outbox, broker-requests): the page reads their effects from Neon.

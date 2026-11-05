@@ -22,15 +22,17 @@ export const SUCCESS: Record<BlockKey, SuccessTarget[]> = {
     { kpi: "newBrokers", op: ">=", target: 1, per: "sweep" },
   ],
   enhance: [
-    { kpi: "mastered", op: ">=", target: 7, per: "week" }, // one ready home for every daily post
-    { kpi: "backlog", op: "<=", target: 50 },
-    { kpi: "rejectRate", op: "<=", target: 0.2 },
+    { kpi: "videosClean", op: ">=", target: 21, per: "week" }, // three clean broker videos for three posts a day
+    { kpi: "videoRejectRate", op: "<=", target: 0.3 },
+    { kpi: "brokerVideosPerDay", op: ">=", target: 3 },
   ],
   post: [
     { kpi: "postedDays7", op: ">=", target: 7 },
     { kpi: "viewsPerPost", op: ">=", target: 200 },
     { kpi: "likeRate", op: ">=", target: 0.03 },
     { kpi: "adChatRate", op: ">=", target: 0.01 },
+    { kpi: "postsListing", op: ">=", target: 21, per: "week" }, // one listing per post, three a day
+    { kpi: "contactsPerPost", op: ">=", target: 1 },
   ],
   chat: [
     { kpi: "paidDeals", op: ">=", target: 2, per: "week" }, // the month's goal: two paid deals a week

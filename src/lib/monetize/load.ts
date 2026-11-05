@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { brokerSendMode } from "@/components/agent/broker-sends";
 
 import { agentFunnel, type Funnel } from "./agent-funnel";
+import { loadFirstShare } from "./first-share";
+import type { FirstShareView } from "./first-share-shape";
 import { bottleneck, type Bottleneck, type Stage } from "./bottleneck";
 import { costByBlock, costLines, type CostLine } from "./cost-lines";
 import { nextSteps, type NextStep } from "./next-steps";
@@ -64,6 +66,8 @@ export interface MonetizeOverview {
   /** Chats that began with a TikTok home code (K1234) — the ad → chat join. */
   adChats: number;
   funnel: Funnel;
+  /** Featured → clean → posted → contacts → chatbot → got the home, per post and in total. Null = unreadable. */
+  firstShare: FirstShareView | null;
 }
 
 type SnapRow = { block: string; at: Date; status: string; metrics: unknown };
@@ -113,16 +117,20 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   const month = monthStart.toISOString().slice(0, 7);
   const daysInMonth = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 0)).getUTCDate();
 
-  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints] =
+  // Deals are read from the earlier of the comparison window and the month: one created weeks ago
+  // and paid this month still counts as this month's money.
+  const dealsFrom = new Date(Math.min(prevSince.getTime(), monthStart.getTime()));
+  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints, firstShare] =
     await Promise.all([
       agentFunnel(db, days),
       agentFunnel(db, days, days),
-      latestSnapshots(new Date(now - 14 * DAY)),
+      // Two windows plus a day, so a 30-day view has a previous window to compare against.
+      latestSnapshots(new Date(now - Math.max(14, 2 * days + 1) * DAY)),
       db.revenueEntry
         .groupBy({ by: ["line"], where: { receivedAt: { gte: monthStart } }, _sum: { amountRwf: true } })
         .catch(() => [] as { line: string; _sum: { amountRwf: number | null } }[]),
       db.deal.findMany({
-        where: { createdAt: { gte: prevSince } },
+        where: { OR: [{ createdAt: { gte: prevSince } }, { paidAt: { gte: dealsFrom } }] },
         select: { status: true, mkanShare: true, viewingFeePaid: true, createdAt: true, paidAt: true },
       }),
       db.masteringRun.groupBy({ by: ["status"], where: { queuedAt: { gte: since } }, _count: { _all: true } }),
@@ -131,12 +139,13 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
       db.apiSpend.findMany({ where: { day: { startsWith: month } }, select: { lane: true, usd: true, calls: true, inputTokens: true, outputTokens: true } }),
       db.experiment.findMany({ orderBy: { startedAt: "desc" }, take: 12 }).catch(() => []),
       brokerSendMode().catch(() => "off" as const),
-      // Web vs WhatsApp, and chats opened by a TikTok home code (the first message carries `pin`).
+      // Web vs WhatsApp, and chats opened by a TikTok home code: `refSource` since 2026-11-05;
+      // older chats only carry the first message's `pin`, which the /k page's button set too.
       db.$queryRaw<{ wa: number; web: number; ad: number }[]>`
         SELECT
           COUNT(*) FILTER (WHERE p."waPhone" IS NOT NULL)::int AS wa,
           COUNT(*) FILTER (WHERE p."waPhone" IS NULL)::int AS web,
-          COUNT(*) FILTER (WHERE t.messages->0->>'pin' IS NOT NULL)::int AS ad
+          COUNT(*) FILTER (WHERE t."refSource" = 'tiktok' OR (t."refSource" IS NULL AND t.messages->0->>'pin' IS NOT NULL))::int AS ad
         FROM "AgentTask" t LEFT JOIN "AgentProfile" p ON p.id = t."profileId"
         WHERE t."createdAt" >= ${since}`,
       // `ms` is the turn's step clock ({ read: 900, search: 1400, … }, ms from its start): the last step is the reply time.
@@ -150,6 +159,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
                percentile_cont(0.95) WITHIN GROUP (ORDER BY ms) AS p95
         FROM turns WHERE ms IS NOT NULL`.catch(() => [{ p50: null, p95: null }]),
       loadSprints(),
+      loadFirstShare(days),
     ]);
 
   // ── snapshots, per block ──────────────────────────────────────────────
@@ -188,14 +198,19 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   const masteredNow = mCount("UPDATED") + mCount("MASTERED");
   const queuedNow = mastering.reduce((s, r) => s + r._count._all, 0);
   const em = metricsOf(last("enhance")).enhance ?? {};
+  // Enhance = the broker video stripped of every text and logo, nothing of ours burned on (2026-11-05).
+  // The Port Sudan photo mastering stays listed, but no longer drives the block.
+  const fs = firstShare;
   const enhanceKpis: Kpi[] = [
-    { key: "mastered", value: masteredNow, unit: "count", lever: true, prev: masteringPrev },
-    { key: "queued", value: queuedNow, unit: "count" },
-    { key: "rejectRate", value: queuedNow ? (mCount("REJECTED") + mCount("FAILED")) / queuedNow : null, unit: "pct" },
-    { key: "backlog", value: backlog, unit: "count" },
+    { key: "videosClean", value: fs?.clean ?? null, unit: "count", lever: true },
+    { key: "videosFeatured", value: fs?.featured ?? null, unit: "count" },
+    { key: "videoRejectRate", value: fs && fs.featured ? fs.rejected / fs.featured : null, unit: "pct" },
     { key: "brokerVideosPerDay", value: em.brokerVideosPerDay ?? null, unit: "perDay" },
     { key: "readyNew", value: em.readyNew7 ?? null, unit: "count" },
+    { key: "mastered", value: masteredNow, unit: "count", prev: masteringPrev },
+    { key: "backlog", value: backlog, unit: "count" },
   ];
+  void queuedNow;
 
   // ── block 3: post ─────────────────────────────────────────────────────
   const pm = metricsOf(last("post")).post ?? {};
@@ -208,7 +223,10 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     { key: "viewsWeek", value: viewsWeek, unit: "count" },
     { key: "postsWeek", value: postsWeek, unit: "count" },
     { key: "likeRate", value: pm.views ? (pm.likes ?? 0) / pm.views : null, unit: "pct" },
-    { key: "adChatRate", value: viewsWeek ? (chatSplit[0]?.ad ?? 0) / viewsWeek : null, unit: "pct" },
+    // Both sides over one week: code chats in the last 7 days per view gained in them.
+    { key: "adChatRate", value: viewsWeek ? (days === 7 ? (chatSplit[0]?.ad ?? 0) : ((chatSplit[0]?.ad ?? 0) * 7) / days) / viewsWeek : null, unit: "pct" },
+    { key: "postsListing", value: fs?.posted ?? null, unit: "count" },
+    { key: "contactsPerPost", value: fs && fs.posted ? fs.contacts / fs.posted : null, unit: "count" },
   ];
 
   // ── block 4: chat → deal ──────────────────────────────────────────────
@@ -287,9 +305,10 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     // New Kigali homes the page's post gate passed within a day (pushed by monetize:snapshot).
     // Mastering is the Port Sudan photo lane: those homes are never in the Kigali "homes saved"
     // count above, so dividing by it read 0% whatever either lane did. Older snapshots fall back.
-    { key: "ready", block: "enhance", count: em.readyNew7 ?? masteredNow },
-    // Until a week of page stats exists: days posted, and the page's all-time views.
-    { key: "posted", block: "post", count: Math.max(0, postsWeek ?? pm.postedDays7 ?? 0) },
+    // Clean broker videos from the post ledger; before it has rows, the post gate's count.
+    { key: "ready", block: "enhance", count: fs && fs.featured > 0 ? fs.clean : (em.readyNew7 ?? masteredNow) },
+    // Listing posts from the ledger; until it has rows, page stats (days posted as a last resort).
+    { key: "posted", block: "post", count: fs && fs.posted > 0 ? fs.posted : Math.max(0, postsWeek ?? pm.postedDays7 ?? 0) },
     { key: "views", block: "post", count: Math.max(0, viewsWeek ?? pm.views ?? 0) },
     { key: "chats", block: "chat", count: funnel.tasks },
     { key: "shortlisted", block: "chat", count: funnel.shortlisted },
@@ -335,6 +354,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     gates,
     adChats: chatSplit[0]?.ad ?? 0,
     funnel,
+    firstShare,
   };
 }
 

@@ -6075,34 +6075,34 @@
       },
       "enhance": {
         "title": "Enhance",
-        "desc": "Turn a broker's raw photos and videos into Mkan ads: clean, branded, fast to load.",
+        "desc": "Take the broker's video and strip it clean: every word, number, logo and watermark off the picture, and nothing of ours burned on.",
         "steps": [
-          "New listing photos are queued for mastering.",
-          "Foreign text and broker watermarks are stripped; light and colour corrected.",
-          "Mkan's brand and copy go on; AVIF and WebP copies are made so pages load fast.",
-          "Broker videos are re-rendered without the broker's text, held to a daily allowance."
+          "Each morning three ready homes are picked, one listing each, from brokers who said yes to a repost.",
+          "Every text, phone number, logo and watermark — the broker's and TikTok's — is found frame by frame and wiped; picture upscaled, steadied and colour corrected.",
+          "A second read checks the frames: any text left and the video is rejected, never posted. Spoken phone numbers are muted; the broker's own sound stays.",
+          "No caption, logo or card is added to the video: the words travel in the post's text only."
         ],
         "flow": [
-          "Queue new photos",
-          "Strip text, fix light",
-          "Brand + fast copies",
-          "Re-render videos"
+          "Pick 3 listings",
+          "Strip text + logos",
+          "Check, mute numbers",
+          "Clean video ready"
         ]
       },
       "post": {
         "title": "Post",
-        "desc": "Publish one home a day on TikTok @mkan.rw so tenants find Mkan, not the broker.",
+        "desc": "One listing per video per post on TikTok @mkan.rw, the caption in the post text only, so tenants message Mkan — not the broker.",
         "steps": [
-          "Every day at 07:00 one ready home is posted to TikTok @mkan.rw.",
-          "The caption carries the home's code (K1234) — a viewer sends it to us to ask about that home.",
-          "A failed upload is retried at 13:00.",
-          "Page stats are read every Monday at 10:00."
+          "Every day at 07:00 each clean video is posted on its own to TikTok @mkan.rw.",
+          "The post text carries the home's code (K1234), our WhatsApp number and the broker's credit — the video itself carries none.",
+          "A failed upload is retried at 13:00; every post is a row, so its views and the chats it brought are counted.",
+          "Page and post stats are read every Monday at 10:00."
         ],
         "flow": [
-          "Post one home",
-          "Code in the caption",
+          "Post each listing",
+          "Code in the post text",
           "Retry a failed upload",
-          "Read page stats"
+          "Read post stats"
         ]
       },
       "chat": {
@@ -6131,10 +6131,10 @@
       "webAds": "Web ads tracked",
       "newBrokers": "New brokers (last sweep)",
       "spendMonth": "Reader spend this month",
-      "mastered": "Photos mastered",
+      "mastered": "Port Sudan photos mastered",
       "queued": "Photos queued",
       "rejectRate": "Rejected or failed",
-      "backlog": "Waiting to master",
+      "backlog": "Port Sudan photos waiting",
       "brokerVideosPerDay": "Broker videos allowed per day",
       "readyNew": "New homes ready to post (7 days)",
       "viewsPerPost": "Views per post",
@@ -6154,7 +6154,12 @@
       "brokerAnswerRate": "Brokers who answered",
       "viewings": "Viewings booked",
       "paidDeals": "Paid deals",
-      "failRate": "Chats that failed"
+      "failRate": "Chats that failed",
+      "videosClean": "Videos stripped clean",
+      "videosFeatured": "Listings featured",
+      "videoRejectRate": "Videos rejected (text left)",
+      "postsListing": "Listing posts",
+      "contactsPerPost": "Contacts per post"
     },
     "lever": "Main number",
     "vsPrev": "{pct} vs the {days} days before",
@@ -6575,6 +6580,59 @@
       "perWeek": "a week",
       "perSweep": "a sweep",
       "now": "Now {v}"
+    },
+    "firstShare": {
+      "title": "The first share",
+      "lead": "Every home we feature, followed to the money: featured, stripped clean, posted, the people who sent its code to our WhatsApp, how the chatbot did with them, and who got the home.",
+      "unknown": "The post ledger could not be read just now.",
+      "stages": {
+        "featured": "Featured",
+        "clean": "Enhanced",
+        "posted": "Posted",
+        "views": "Views",
+        "contacts": "Contacted",
+        "shortlisted": "Got homes",
+        "asked": "Broker asked",
+        "answered": "Broker answered",
+        "viewings": "Viewings",
+        "signed": "Got the home",
+        "paidShareRwf": "Mkan's share"
+      },
+      "chatbot": "How the chatbot did",
+      "chatbotLine": "{chats} chats from post codes · {shortlisted} got homes · {asked} brokers asked · {answered} answered · {failed} failed",
+      "rejected": "Rejected",
+      "rejectedLine": "{n} videos rejected — {why}",
+      "unattributed": "{n} code chats with no matching post (home never posted, or posted after the chat)",
+      "table": {
+        "ref": "Home",
+        "broker": "Broker",
+        "posted": "Posted",
+        "status": "Status",
+        "views": "Views",
+        "contacts": "Contacts",
+        "deals": "Got the home"
+      },
+      "status": {
+        "PICKED": "Picked",
+        "CLEAN": "Clean, waiting",
+        "REJECTED": "Rejected",
+        "POSTED": "Posted",
+        "FAILED": "Upload failed"
+      },
+      "empty": "No listing posts yet in this window — the first ones go out at 07:00."
+    },
+    "lessons": {
+      "title": "What the sprint learned",
+      "lead": "Each finished prompt names the number it should move; a day later the loop measures it.",
+      "empty": "No lessons measured yet.",
+      "auto": "Planned by the loop",
+      "verdict": {
+        "moved": "Moved",
+        "flat": "No change",
+        "worse": "Worse",
+        "unknown": "Measuring"
+      },
+      "needsYou": "Needs you"
     }
   }
 }

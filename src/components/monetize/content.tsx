@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 
 import { BlockSection } from "./block-section";
 import { fill, formatValue, type MonetizeLabels } from "./format";
+import { FirstShareSection } from "./first-share";
 import { Experiments, RevenueForm } from "./forms";
 import { FunnelSection } from "./funnel";
 import { HealthBadge } from "./health-badge";
@@ -74,6 +75,7 @@ export function MonetizeContent({ data, labels, locale, canEdit = false }: { dat
           </section>
 
           <SprintSection sprints={data.sprints} labels={labels} locale={locale} canEdit={canEdit} />
+          <FirstShareSection data={data.firstShare} labels={labels} locale={locale} />
           <TodoSection steps={data.nextSteps} labels={labels} locale={locale} />
           <SpendSection data={data} labels={labels} locale={locale} />
           <EarnSection data={data} labels={labels} locale={locale} />
