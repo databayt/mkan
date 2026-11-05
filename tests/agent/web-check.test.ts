@@ -3,7 +3,8 @@
  * "available" answers in a week reached nobody. /find's card (and the /k page) now open WhatsApp
  * with "Check K1234 for me" + the chat's ref; that message, sent from the tenant's own phone, is the
  * pick: the turn asks the broker at once and the answer comes back on that chat. Under the homes, a
- * "check" that names its home hands that home over, not just the chat.
+ * "check" that names its home hands that home over, not just the chat. A price complaint lowers the
+ * budget whoever reads it.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/components/internationalization/en.json";
@@ -209,5 +210,27 @@ describe("/find under the homes", () => {
     const r = replies()[0]!;
     expect(r).toMatchObject({ kind: "followUp", say: "check" });
     expect(r).not.toHaveProperty("listingId");
+  });
+
+  it("lowers the budget on a price complaint, even when Claude reads it as talk", async () => {
+    const { readRequirements } = await import("@/components/agent/reader");
+    vi.mocked(readRequirements).mockResolvedValueOnce({ by: "claude", set: {}, clear: [], intent: "other", remember: [], forget: [] } as never);
+    await turn([...said, { role: "user", text: "It's a lot of money", at: "3" }], {
+      shortlist: [lead(31), lead(32)],
+      requirements: { stay: "long", district: "KICUKIRO", bedrooms: 2, maxPrice: 400_000, pricePeriod: "month" },
+    });
+    expect(search).toHaveBeenCalled();
+    expect(search.mock.calls[0]![0]).toMatchObject({ maxPrice: 320_000, cheap: true });
+    expect(replies().some((r) => r!.kind === "answer")).toBe(false);
+  });
+
+  it("leaves Claude's own cheaper alone", async () => {
+    const { readRequirements } = await import("@/components/agent/reader");
+    vi.mocked(readRequirements).mockResolvedValueOnce({ by: "claude", set: { maxPrice: 350_000, pricePeriod: "month" }, clear: [], intent: "search", remember: [], forget: [] } as never);
+    await turn([...said, { role: "user", text: "too expensive", at: "3" }], {
+      shortlist: [lead(31), lead(32)],
+      requirements: { stay: "long", district: "KICUKIRO", bedrooms: 2, maxPrice: 400_000, pricePeriod: "month" },
+    });
+    expect(search.mock.calls[0]![0]).toMatchObject({ maxPrice: 350_000 });
   });
 });

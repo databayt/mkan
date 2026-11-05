@@ -306,7 +306,14 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
           ),
         )
       : { ...rules, ...adjust.set };
-    const stated: Partial<Requirements> = byClaude ? { ...filled, ...llmSet, ...picked } : { ...filled, ...picked };
+    // A price complaint asks for cheaper whoever reads it (2026-11-05): Claude can take "It's a lot of
+    // money" for talk, and the same homes came back. The rules' cheaper comes from the current budget,
+    // never from a figure in the message, so it stands beside Claude when Claude left the price alone.
+    const complaint: Partial<Requirements> =
+      byClaude && adjust.set.cheap && llmSet.maxPrice == null && llmSet.cheap == null && !reading.clear.includes("maxPrice" as never)
+        ? { ...(adjust.set.maxPrice != null ? { maxPrice: adjust.set.maxPrice } : {}), cheap: true }
+        : {};
+    const stated: Partial<Requirements> = byClaude ? { ...filled, ...llmSet, ...complaint, ...picked } : { ...filled, ...picked };
     let requirements: Requirements = mergeRequirements(byClaude ? base : mergeRequirements(base, llmSet), stated);
     const clears = [...(reading?.clear ?? []), ...(byClaude ? [] : adjust.clear)].filter((k) => stated[k] == null);
     requirements = clearFields(requirements, [...clears, ...(lastUser?.clear ?? [])]);
@@ -346,7 +353,7 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
       });
 
     // A question about renting, or a greeting, that changes nothing: answer it, no search.
-    const asksOnly = byClaude && reading.intent !== "search" && Object.keys(reading.set).length === 0 && reading.clear.length === 0 && !tapped;
+    const asksOnly = byClaude && reading.intent !== "search" && Object.keys(reading.set).length === 0 && reading.clear.length === 0 && !tapped && !complaint.cheap;
     if (asksOnly) {
       const writeLang = (reading.lang ?? lang) as WriterFacts["lang"];
       const text =
