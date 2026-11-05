@@ -6167,7 +6167,10 @@
       "people": "People who wrote",
       "peopleToHomes": "Writers who got homes",
       "peopleToViewing": "Writers who booked a viewing",
-      "peopleToSigned": "Writers who got the home"
+      "peopleToSigned": "Writers who got the home",
+      "handoffs": "Left to you (not about a home)",
+      "evalReader": "Quality test: reading",
+      "evalWriter": "Quality test: replies"
     },
     "lever": "Umubare nyamukuru",
     "vsPrev": "{pct} vs the {days} days before",

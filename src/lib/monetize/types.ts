@@ -104,8 +104,11 @@ export interface PostMetrics {
   postsWeekAgo?: number | null;
 }
 export interface ChatMetrics {
+  /** Share of the quality-test checks the chatbot passed (pnpm agent:eval / agent:eval-writer), 0–1. */
   evalReaderPct?: number | null;
   evalWriterPct?: number | null;
+  /** When the newer of the two tests last ran. */
+  evalAt?: string | null;
 }
 export interface SnapshotMetrics {
   jobs: JobState[];

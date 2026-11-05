@@ -213,6 +213,14 @@ export function post(now = Date.now()): SnapshotMetrics['post'] {
   };
 }
 
+/** The chatbot's last quality-test scores (scripts/agent/eval-record.ts). */
+export function evals(): SnapshotMetrics['chat'] {
+  const e = readJson<Record<string, { at: string; pass: number }>>(join(DATA, 'agent', 'eval.json'));
+  if (!e) return {};
+  const at = [e.reader?.at, e.writer?.at].filter(Boolean).sort().at(-1) ?? null;
+  return { evalReaderPct: e.reader?.pass ?? null, evalWriterPct: e.writer?.pass ?? null, evalAt: at };
+}
+
 const worstStatus = (jobs: JobState[]) =>
   jobs.some((j) => j.status === 'fail') ? 'fail' : jobs.some((j) => j.status === 'stale') ? 'stale' : jobs.some((j) => j.status === 'warn') ? 'warn' : 'ok';
 
@@ -227,7 +235,7 @@ export function build(now = Date.now()): { block: BlockKey; status: string; metr
     { block: 'scrape', status: worstStatus(sj), metrics: { jobs: sj, scrape: s }, summary: sj.find((j) => j.job === 'hermes_mkan-tiktok-sweep')?.summary ?? null },
     { block: 'enhance', status: worstStatus(ej), metrics: { jobs: ej, enhance: e }, summary: null },
     { block: 'post', status: worstStatus(pj), metrics: { jobs: pj, post: p }, summary: `${p?.views ?? '?'} views · ${p?.postedDays7 ?? 0}/7 days posted` },
-    { block: 'chat', status: 'ok', metrics: { jobs: [] }, summary: null },
+    { block: 'chat', status: 'ok', metrics: { jobs: [], chat: evals() }, summary: null },
   ];
 }
 

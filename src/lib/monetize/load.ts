@@ -122,7 +122,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   // Deals are read from the earlier of the comparison window and the month: one created weeks ago
   // and paid this month still counts as this month's money.
   const dealsFrom = new Date(Math.min(prevSince.getTime(), monthStart.getTime()));
-  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints, firstShare, lessons, inbox] =
+  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints, firstShare, lessons, inbox, handoffs] =
     await Promise.all([
       agentFunnel(db, days),
       agentFunnel(db, days, days),
@@ -165,7 +165,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
       loadLessons(8).catch(() => [] as LessonView[]),
       // Messages clients sent in the window, and the people behind them — Abdout's own contacts
       // (WaState personal:<number>) left out — and of those people, who got homes, a viewing, the home.
-      db.$queryRaw<{ messages: number; people: number; shortlisted: number; viewing: number; signed: number }[]>`
+      db.$queryRaw<{ chats: number; messages: number; people: number; shortlisted: number; viewing: number; signed: number }[]>`
         WITH said AS (
           SELECT t.id, t."profileId", COUNT(*)::int AS n
           FROM "AgentTask" t
@@ -175,12 +175,15 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
             AND NOT EXISTS (SELECT 1 FROM "WaState" w WHERE p."waPhone" IS NOT NULL AND w.key = 'personal:' || replace(p."waPhone", '+', ''))
           GROUP BY t.id, t."profileId"
         )
-        SELECT COALESCE(SUM(n), 0)::int AS messages,
+        SELECT COUNT(*)::int AS chats,
+               COALESCE(SUM(n), 0)::int AS messages,
                COUNT(DISTINCT COALESCE("profileId", id))::int AS people,
                COUNT(DISTINCT COALESCE("profileId", id)) FILTER (WHERE EXISTS (SELECT 1 FROM "AgentEvent" e WHERE e."taskId" = said.id AND e.kind = 'shortlist_ready'))::int AS shortlisted,
                COUNT(DISTINCT COALESCE("profileId", id)) FILTER (WHERE EXISTS (SELECT 1 FROM "Deal" d WHERE d."taskId" = said.id))::int AS viewing,
                COUNT(DISTINCT COALESCE("profileId", id)) FILTER (WHERE EXISTS (SELECT 1 FROM "Deal" d WHERE d."taskId" = said.id AND d.status IN ('SIGNED', 'PAID')))::int AS signed
         FROM said`.catch(() => null),
+      // Messages the agent left to a person (whatsapp-chat.ts noteHandoff).
+      db.waState.count({ where: { key: { startsWith: "handoff:" }, updatedAt: { gte: since } } }).catch(() => null),
     ]);
 
   // ── snapshots, per block ──────────────────────────────────────────────
@@ -264,7 +267,8 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   const brokerSends = gate;
   const chatKpis: Kpi[] = [
     { key: "chatToPaid", value: conv(paid.length, funnel.tasks), unit: "pct", lever: true, prev: conv(paidPrev.length, prevFunnel.tasks) },
-    { key: "chats", value: funnel.tasks, unit: "count", prev: prevFunnel.tasks },
+    // Chats with a client's words in the window, Abdout's own contacts left out; the agent's funnel as a fallback.
+    { key: "chats", value: inbox?.[0]?.chats ?? funnel.tasks, unit: "count", prev: prevFunnel.tasks },
     { key: "waChats", value: chatSplit[0]?.wa ?? 0, unit: "count" },
     { key: "webChats", value: chatSplit[0]?.web ?? 0, unit: "count" },
     { key: "shortlistRate", value: conv(funnel.shortlisted, funnel.tasks), unit: "pct", prev: conv(prevFunnel.shortlisted, prevFunnel.tasks) },
@@ -277,6 +281,9 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     { key: "failRate", value: conv(funnel.failed, funnel.tasks), unit: "pct" },
     // People, not chats: one person can open several. Their messages, and how many of them moved on.
     { key: "messages", value: inbox?.[0]?.messages ?? null, unit: "count" },
+    { key: "handoffs", value: handoffs, unit: "count" },
+    { key: "evalReader", value: metricsOf(last("chat")).chat?.evalReaderPct ?? null, unit: "pct" },
+    { key: "evalWriter", value: metricsOf(last("chat")).chat?.evalWriterPct ?? null, unit: "pct" },
     { key: "people", value: inbox?.[0]?.people ?? null, unit: "count" },
     { key: "peopleToHomes", value: inbox?.[0] ? conv(inbox[0].shortlisted, inbox[0].people) : null, unit: "pct" },
     { key: "peopleToViewing", value: inbox?.[0] ? conv(inbox[0].viewing, inbox[0].people) : null, unit: "pct" },

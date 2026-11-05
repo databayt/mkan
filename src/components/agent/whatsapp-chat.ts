@@ -72,6 +72,16 @@ async function profileFor(digits: string) {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
+ * A message the agent left to a person (asked for one, asked if it's a bot, or wrote about
+ * something other than a home): one WaState row per message, `handoff:<id>`, so /monetize can
+ * count what lands on Abdout's desk instead of only posting a #mkan card.
+ */
+const noteHandoff = (msgId: string, why: string) =>
+  db.waState
+    .upsert({ where: { key: `handoff:${msgId}` }, create: { key: `handoff:${msgId}`, value: { why } }, update: {} })
+    .catch(() => {});
+
+/**
  * How this person first reached Mkan (a TikTok post's code, the /k page, a web chat, or none) —
  * stamped once, on a profile made in the last hour, so older numbers are not re-attributed.
  */
@@ -130,6 +140,7 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   // "Are you a bot?" gets the truth, and "person" gets one; the team hears both in #mkan.
   if (parseBrokerReply(rest).asksIfBot || wantsPerson(rest)) {
     const asksBot = !wantsPerson(rest);
+    await noteHandoff(input.msgId, asksBot ? "asked-bot" : "wants-person");
     await postSlackCard(`${asksBot ? "🤖 A tenant asked if they're talking to a bot" : "🙋 A tenant wants a person"} — ${profile.waPhone ?? "unknown number"}${current ? ` · chat ${current.id}` : ""}\n> ${rest.slice(0, 300)}`).catch(() => {});
     if (current) await stampSeen(current.id, input.msgId, 0);
     return { reply: asksBot ? botText(lang, viewingRep()) : personText(lang, viewingRep()), taskId: current?.id ?? null };
@@ -196,12 +207,14 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   // A new chat that is neither about a home nor a hello is likely someone who knew this number before it
   // was Mkan's: a person answers it, never the agent.
   if (!current && !ref && !refHome && firstMessageKind(text) === "other") {
+    await noteHandoff(input.msgId, "not-about-a-home");
     await postSlackCard(`💬 ${profile.waPhone ?? "a number"} wrote, not about a home — the agent stayed quiet; answer it yourself if it is for you:\n> ${text.slice(0, 300)}${profile.waPhone ? `\nIf this is someone you know: \`pnpm wa:personal add ${profile.waPhone}\`` : ""}`).catch(() => {});
     return { reply: null, why: "empty" };
   }
   // The same after a hello: a chat that has only greeted, whose next message is not about a home either
   // ("where are you, so we can bring the things" got six homes on 11-01), goes to a person.
   if (current && !ref && !refHome && personAfterHello(text, current.messages as unknown as AgentMessage[])) {
+    await noteHandoff(input.msgId, "after-hello");
     await postSlackCard(`💬 ${profile.waPhone ?? "a number"} said hello, then wrote something not about a home — the agent stayed quiet; answer it yourself:\n> ${text.slice(0, 300)}`).catch(() => {});
     return { reply: null, why: "empty" };
   }
@@ -221,6 +234,7 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
       const last = [...(said ?? [])].reverse().find((m): m is Extract<AgentMessage, { kind: "shortlist" }> => m.role === "agent" && m.kind === "shortlist");
       const n = Math.min(MAX_HOMES, last?.count ?? MAX_HOMES);
       if (kind === "person") {
+        await noteHandoff(input.msgId, "under-homes");
         await postSlackCard(`💬 ${profile.waPhone ?? "a number"} wrote under their homes, not about a home — answer them yourself:\n> ${text.slice(0, 300)}`).catch(() => {});
         return { reply: personText(lang, viewingRep()), taskId: current.id };
       }

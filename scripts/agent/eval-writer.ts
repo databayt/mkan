@@ -11,6 +11,7 @@
 import 'dotenv/config';
 import { execFileSync } from 'node:child_process';
 import { writeAnswer, writeReply, type WriterFacts, type WriterHome } from '../../src/components/agent/writer';
+import { recordEval } from './eval-record';
 
 if (!process.env.AGENT_ANTHROPIC_API_KEY) {
   try {
@@ -72,6 +73,7 @@ async function main() {
   }
   console.log(`\n\nreplies passing the guard: ${passed}/${replies} · why lines: ${linesPassed}/${lines}\n`);
   console.log(samples.join('\n\n'));
+  recordEval('writer', { pass: replies ? passed / replies : 0, gate: passed / replies >= 0.85 });
   process.exit(passed / replies >= 0.85 ? 0 : 1);
 }
 

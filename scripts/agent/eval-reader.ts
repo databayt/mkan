@@ -30,6 +30,7 @@ import { coerceMemory } from '../../src/components/agent/memory';
 import { readWithClaude } from '../../src/components/agent/reader';
 import { EMPTY_REQUIREMENTS, coerceRequirements, parseAdjustments, parseRequirements, type Requirements } from '../../src/components/agent/requirements';
 import type { ShortlistItem } from '../../src/components/agent/types';
+import { recordEval } from './eval-record';
 
 if (!process.env.AGENT_ANTHROPIC_API_KEY) {
   try {
@@ -189,6 +190,7 @@ const misses = results.claude.flatMap(({ c, rows }) => rows.filter((r) => !r.ok)
 if (misses.length) console.log(`\nclaude misses:\n${misses.join('\n')}`);
 
 const pass = latencies.length === modelCases && pct(flat('claude')) >= 90 && worse.length === 0 && p(0.95) <= 2_500 && rulesMustHaves;
+recordEval('reader', { pass: pct(flat('claude')) / 100, gate: pass, p95Ms: p(0.95) });
 console.log(
   `\ngate: ${pass ? 'PASS' : 'FAIL'}${worse.length ? ` — worse than the rules on: ${worse.join(', ')}` : ''}${rulesMustHaves ? '' : ` — rules must-haves under ${RULES_MUST_HAVE_MIN}%`}`,
 );

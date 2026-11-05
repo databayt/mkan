@@ -46,6 +46,8 @@ export const SUCCESS: Record<BlockKey, SuccessTarget[]> = {
     { kpi: "people", op: ">=", target: 20, per: "week" },
     { kpi: "peopleToViewing", op: ">=", target: 0.1 },
     { kpi: "peopleToSigned", op: ">=", target: 0.02 }, // 2 of every 100 people who write get a home
+    { kpi: "evalReader", op: ">=", target: 0.9 }, // the reader's quality test (pnpm agent:eval)
+    { kpi: "evalWriter", op: ">=", target: 0.85 },
   ],
 };
 

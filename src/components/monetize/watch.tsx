@@ -23,6 +23,8 @@ const WATCH: { block: BlockKey; kpi: string }[] = [
   { block: "chat", kpi: "peopleToViewing" },
   { block: "chat", kpi: "peopleToSigned" },
   { block: "chat", kpi: "paidDeals" },
+  { block: "chat", kpi: "handoffs" },
+  { block: "chat", kpi: "evalReader" },
 ];
 
 export function WatchSection({ data, labels, locale }: { data: MonetizeOverview; labels: MonetizeLabels; locale: Locale }) {

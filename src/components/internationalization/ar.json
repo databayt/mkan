@@ -6167,7 +6167,10 @@
       "people": "أشخاص كتبوا",
       "peopleToHomes": "وصلتهم بيوت",
       "peopleToViewing": "حجزوا معاينة",
-      "peopleToSigned": "حصلوا على البيت"
+      "peopleToSigned": "حصلوا على البيت",
+      "handoffs": "تُركت لك (ليست عن بيت)",
+      "evalReader": "اختبار الجودة: الفهم",
+      "evalWriter": "اختبار الجودة: الردود"
     },
     "lever": "الرقم الرئيسي",
     "vsPrev": "{pct} مقارنة بالـ{days} أيام السابقة",
