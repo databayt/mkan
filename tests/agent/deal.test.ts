@@ -54,6 +54,13 @@ describe("the deal sheet", () => {
     const owner = { ...cost, lines: cost.lines.filter((l) => l.key !== "commission") };
     expect(dealSheetMessage({ ...facts, cost: owner }, "en")).toContain("No broker's commission.");
   });
+
+  it("promises no commission it does not know about when the home has no cost at all", () => {
+    for (const lang of ["en", "ar", "rw"] as const) {
+      const t = dealSheetMessage({ ...facts, cost: null }, lang);
+      expect(t, lang).not.toMatch(/No broker's commission|لا عمولة وسيط|Nta komisiyo/);
+    }
+  });
 });
 
 describe("viewing times in a tenant's words", () => {

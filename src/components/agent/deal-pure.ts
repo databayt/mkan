@@ -87,7 +87,7 @@ export function dealSheetMessage(f: DealFacts, lang: DealLang): string {
       `خبر جيد: يقول الوسيط إن «${f.title}» (${f.ref}) ما زال متاحاً.`,
       rent != null ? `الإيجار: ${rwf(rent)} في الشهر.` : null,
       moveIn ? `للانتقال: نحو ${moveIn}${advance ? ` — ${months(advance.qty, lang)} مقدماً` : ""}${deposit && deposit.qty ? ` و${months(deposit.qty, lang)} تأميناً` : ""}${typical ? " (المعتاد في كيغالي، يُؤكَّد في المعاينة)" : ""}.` : null,
-      pct ? `عمولة الوسيط: ${pct} من إيجار شهر${commission?.source === "typical" ? " (المعتاد، تُؤكَّد في المعاينة)" : ""}.` : `لا عمولة وسيط.`,
+      pct ? `عمولة الوسيط: ${pct} من إيجار شهر${commission?.source === "typical" ? " (المعتاد، تُؤكَّد في المعاينة)" : ""}.` : c ? `لا عمولة وسيط.` : null,
       `المعاينة: مجانية لك، تدفعها مكان.`,
       `الماء: ${util(water)}. الكهرباء: ${util(power)}.`,
       `الخطوة التالية: نلتقي في المنزل، أنت والوسيط و${f.rep} من مكان. إن أعجبك نكتب العقد ونوقّعه في اليوم نفسه. أحضر هويتك.`,
@@ -102,7 +102,7 @@ export function dealSheetMessage(f: DealFacts, lang: DealLang): string {
       `Inkuru nziza: komisiyoneri avuga ko "${f.title}" (${f.ref}) igihari.`,
       rent != null ? `Ubukode: ${rwf(rent)} ku kwezi.` : null,
       moveIn ? `Kwimukira: hafi ${moveIn}${advance ? ` — ${months(advance.qty, lang)} mbere` : ""}${deposit && deposit.qty ? ` na ${months(deposit.qty, lang)} y'ingwate` : ""}${typical ? " (nk'uko bisanzwe i Kigali, bizemezwa mu gusura)" : ""}.` : null,
-      pct ? `Komisiyo ya komisiyoneri: ${pct} by'ukwezi kumwe${commission?.source === "typical" ? " (bisanzwe, bizemezwa mu gusura)" : ""}.` : `Nta komisiyo ya komisiyoneri.`,
+      pct ? `Komisiyo ya komisiyoneri: ${pct} by'ukwezi kumwe${commission?.source === "typical" ? " (bisanzwe, bizemezwa mu gusura)" : ""}.` : c ? `Nta komisiyo ya komisiyoneri.` : null,
       `Gusura: ni ubuntu kuri wowe, Mkan irabyishyura.`,
       `Amazi: ${util(water)}. Amashanyarazi: ${util(power)}.`,
       `Ibikurikira: duhurira ku nzu, wowe, komisiyoneri na ${f.rep} wo muri Mkan. Niba uyikunze, twandika amasezerano tukayasinya uwo munsi. Uzane indangamuntu.`,
@@ -118,7 +118,7 @@ export function dealSheetMessage(f: DealFacts, lang: DealLang): string {
     moveIn
       ? `To move in: about ${moveIn}${advance ? ` — ${months(advance.qty, lang)} up front` : ""}${deposit && deposit.qty ? ` + ${months(deposit.qty, lang)} deposit` : ""}${typical ? " (what's usual in Kigali, confirmed at the viewing)" : ""}.`
       : null,
-    pct ? `Broker's commission: ${pct} of a month's rent${commission?.source === "typical" ? " (usual, confirmed at the viewing)" : ""}.` : `No broker's commission.`,
+    pct ? `Broker's commission: ${pct} of a month's rent${commission?.source === "typical" ? " (usual, confirmed at the viewing)" : ""}.` : c ? `No broker's commission.` : null,
     `Viewing: free for you. Mkan covers it.`,
     `Water: ${util(water)}. Electricity: ${util(power)}.`,
     `Next: we meet at the house, you, the broker and ${f.rep} from Mkan. If you like it, we write and sign the lease the same day. Bring your ID.`,
