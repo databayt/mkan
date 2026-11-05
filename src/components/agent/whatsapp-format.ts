@@ -128,6 +128,17 @@ export function refSourceOf(text: string, webRef: string | null): RefSource {
   return webRef ? "web" : "tiktok";
 }
 
+/**
+ * For one of Abdout's own contacts (agent/personal.ts) the bar is higher than for a stranger:
+ * friends say "home", "price" and "available" in everyday talk. A home code, a rental word, or a
+ * place word together with a want — "I'm at home" is not a request, "looking for a house" is.
+ */
+const RENT_WORD = /\b(?:rent|renting|rental|for rent|to let|bed ?rooms?|bdr|apartments?|appartment|studio|furnished|unfurnished|tenant|landlord|gukodesha|ubukode|ibyumba|louer|loyer|appartement)\b|ايجار|إيجار|شقة|للإيجار/i;
+const PLACE_WORD = /\b(?:house|houses|room|rooms|inzu|icyumba|maison|chambre)\b|منزل|بيت|غرفة|سكن/i;
+const WANT_WORD = /\b(?:looking for|look for|searching|need|want|how much|price|budget|ndashaka|nshaka|nkeneye|ndakeneye|angahe|cherche)\b|ابحث|أبحث|عايز|عاوز|محتاج|اريد|أريد|بكم|كم سعر/i;
+export const asksForHome = (text: string): boolean =>
+  HOME_REF_RE.test(text) || RENT_WORD.test(text) || (PLACE_WORD.test(text) && WANT_WORD.test(text));
+
 /** "yes" to the last question, in the tenant's words — a digit 1 too. */
 export const saysYes = (text: string) => /^(?:1|yes|yeah|yep|ok(?:ay)?|sure|please|go ahead|yego|ndiyo|oui|نعم|ايوه|أيوه|ايوا|تمام)[\s.!]*$/i.test(text.trim());
 

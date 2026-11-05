@@ -25,7 +25,7 @@ import { startTurn } from "./run";
 import { loadTask } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
 import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, waLang, type WaDict, type WaLang } from "./whatsapp-format";
-import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, readHomeRef, refSourceOf, shownHomes, thanksText, wantsPerson, whichOneText, type RefSource } from "./whatsapp-format";
+import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, asksForHome, readHomeRef, refSourceOf, shownHomes, thanksText, wantsPerson, whichOneText, type RefSource } from "./whatsapp-format";
 import { afterHomesKind, chatText, visitText } from "./whatsapp-format";
 import { askAround } from "./demand";
 import { viewingRep } from "./broker-message";
@@ -87,8 +87,8 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   const digits = waDigits(input.phone);
   const raw = input.text.trim().slice(0, MAX_TEXT);
   if (!digits || !raw) return { reply: null, why: "empty" };
-  // Abdout's own contacts on this number: the agent stays out entirely (personal.ts).
-  if (await isPersonal(digits)) return { reply: null, why: "personal" };
+  // Abdout's own contacts on this number are read message by message below (personal.ts).
+  const personal = await isPersonal(digits);
   const profile = await profileFor(digits);
   const viewer: Viewer = { profile, ids: [profile.id], legacyKey: null };
 
@@ -116,6 +116,11 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   const { ref, rest } = readRef(raw);
   if (!profile.firstSource) await stampFirstSource(profile.id, refSourceOf(rest, ref), null);
   const latest = recent[0] && Date.now() - recent[0].updatedAt.getTime() < CONTINUE_MS ? recent[0] : null;
+  // One of Abdout's own contacts: the agent answers only a message that asks for a home, or one that
+  // carries on a home search it already started; everything else on this number stays his.
+  const searching = !!latest && shownHomes(latest.messages as unknown as AgentMessage[]);
+  if (personal && !asksForHome(rest) && !searching) return { reply: null, why: "personal" };
+  if (personal && !searching) await postSlackCard(`🏠 ${profile.waPhone ?? "A contact"} from Abdout's personal list asked about a home — the agent is answering:\n> ${rest.slice(0, 300)}`).catch(() => {});
   const fresh = isFresh(rest) || !!ref;
   let current: (CurrentTask & { locale: string }) | null = fresh ? null : latest;
   const lang: WaLang = /^\s*[1-9٠-٩]\.?\s*$/.test(rest) && current ? ((["en", "ar", "rw"].includes(current.locale) ? current.locale : "en") as WaLang) : waLang(rest || raw);
@@ -191,7 +196,7 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   // A new chat that is neither about a home nor a hello is likely someone who knew this number before it
   // was Mkan's: a person answers it, never the agent.
   if (!current && !ref && !refHome && firstMessageKind(text) === "other") {
-    await postSlackCard(`💬 ${profile.waPhone ?? "a number"} wrote, not about a home — the agent stayed quiet; answer it yourself if it is for you:\n> ${text.slice(0, 300)}`).catch(() => {});
+    await postSlackCard(`💬 ${profile.waPhone ?? "a number"} wrote, not about a home — the agent stayed quiet; answer it yourself if it is for you:\n> ${text.slice(0, 300)}${profile.waPhone ? `\nIf this is someone you know: \`pnpm wa:personal add ${profile.waPhone}\`` : ""}`).catch(() => {});
     return { reply: null, why: "empty" };
   }
   // The same after a hello: a chat that has only greeted, whose next message is not about a home either

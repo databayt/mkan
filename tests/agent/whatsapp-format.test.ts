@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@/components/internationalization/en.json";
 import ar from "@/components/internationalization/ar.json";
-import { aboutHomes, askAroundText, botText, checkText, firstMessageKind, formatWhatsApp, isBareYes, isFresh, isThanks, K_PAGE_MARK, onlyGreetedSoFar, personAfterHello, readHomeRef, readPick, readRef, refSourceOf, saysYes, shownHomes, thanksText, waLang, wantsPerson, whichOneText, type WaDict } from "@/components/agent/whatsapp-format";
+import { aboutHomes, askAroundText, asksForHome, botText, checkText, firstMessageKind, formatWhatsApp, isBareYes, isFresh, isThanks, K_PAGE_MARK, onlyGreetedSoFar, personAfterHello, readHomeRef, readPick, readRef, refSourceOf, saysYes, shownHomes, thanksText, waLang, wantsPerson, whichOneText, type WaDict } from "@/components/agent/whatsapp-format";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "@/components/agent/types";
 
 const dict = (d: typeof en): WaDict => d.agent as unknown as WaDict;
@@ -245,5 +245,22 @@ describe("refSourceOf — where a chat's home code came from", () => {
   it("no code: organic, or web when a web chat came along", () => {
     expect(refSourceOf("2 bedrooms in Kicukiro", null)).toBe("organic");
     expect(refSourceOf("Continue my Mkan search", "cmabc")).toBe("web");
+  });
+});
+
+describe("asksForHome — one of Abdout's own contacts asking for a home", () => {
+  it("a code, a rental word, or a place with a want", () => {
+    expect(asksForHome("K5808")).toBe(true);
+    expect(asksForHome("do you have an apartment in Kimironko?")).toBe(true);
+    expect(asksForHome("I'm looking for a house for my sister")).toBe(true);
+    expect(asksForHome("ndashaka inzu")).toBe(true);
+    expect(asksForHome("ابحث عن بيت للايجار")).toBe(true);
+  });
+  it("everyday talk is not a request", () => {
+    expect(asksForHome("I'm at home, call me")).toBe(false);
+    expect(asksForHome("Babe how are you")).toBe(false);
+    expect(asksForHome("are you available tomorrow?")).toBe(false);
+    expect(asksForHome("Muherereyehe ngo tubazanire ibintu")).toBe(false);
+    expect(asksForHome("انا في البيت")).toBe(false);
   });
 });
