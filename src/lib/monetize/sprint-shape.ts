@@ -24,6 +24,15 @@ export interface SprintPromptView {
   status: PromptStatus;
   processedAt: string | null;
   result: string | null;
+  /** The metric key this prompt should move (src/lib/monetize/metrics.ts), and its value at claim. */
+  metric: string | null;
+  baseline: number | null;
+  /** Blocked on Abdout: the condition that sends it back to pending by itself ("brokerSends == gated"). */
+  unblockWhen: string | null;
+  blockedAt: string | null;
+  retries: number;
+  /** Written by the sprint cycle, not by hand. */
+  auto: boolean;
 }
 export interface SprintView {
   id: string;
@@ -32,6 +41,8 @@ export interface SprintView {
   goal: string | null;
   startsAt: string;
   endsAt: string;
+  /** Planned by the sprint cycle, not by hand. */
+  auto: boolean;
   tasks: SprintTaskView[];
   prompts: SprintPromptView[];
   doneTasks: number;
@@ -54,16 +65,38 @@ export interface SprintRow {
   startsAt: Date;
   endsAt: Date;
   status: string;
+  auto?: boolean;
   tasks: { id: string; title: string; block: string | null; order: number; done: boolean; doneAt: Date | null }[];
-  prompts: { id: string; taskId: string | null; order: number; text: string; status: string; processedAt: Date | null; result: string | null }[];
+  prompts: {
+    id: string;
+    taskId: string | null;
+    order: number;
+    text: string;
+    status: string;
+    processedAt: Date | null;
+    result: string | null;
+    // Optional: rows selected before the auto-sprint fields existed still shape.
+    metric?: string | null;
+    baseline?: number | null;
+    unblockWhen?: string | null;
+    blockedAt?: Date | null;
+    retries?: number;
+    auto?: boolean;
+  }[];
 }
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 
-/** The active sprint of a kind: open, and the latest whose window holds `now` (else the latest open one). */
+/**
+ * The active sprint of a kind: open, not yet ended, and the latest whose window holds `now` (else the
+ * latest open one that starts later). An expired sprint is never active — the cycle closes it and plans
+ * the next (scripts/sprint-cycle.ts).
+ */
 export function pickActive(rows: SprintRow[], kind: SprintKind, now = new Date()): SprintRow | null {
-  const open = rows.filter((r) => r.kind === kind && r.status !== "closed").sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime());
-  return open.find((r) => r.startsAt <= now && now < r.endsAt) ?? open[0] ?? null;
+  const open = rows
+    .filter((r) => r.kind === kind && r.status !== "closed" && now < r.endsAt)
+    .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime());
+  return open.find((r) => r.startsAt <= now) ?? open.at(-1) ?? null;
 }
 
 export function shapeSprint(r: SprintRow): SprintView {
@@ -82,6 +115,12 @@ export function shapeSprint(r: SprintRow): SprintView {
       status: (PROMPT_STATUSES as string[]).includes(p.status) ? (p.status as PromptStatus) : "pending",
       processedAt: iso(p.processedAt),
       result: p.result,
+      metric: p.metric ?? null,
+      baseline: p.baseline ?? null,
+      unblockWhen: p.unblockWhen ?? null,
+      blockedAt: iso(p.blockedAt ?? null),
+      retries: p.retries ?? 0,
+      auto: p.auto ?? false,
     }));
   return {
     id: r.id,
@@ -90,6 +129,7 @@ export function shapeSprint(r: SprintRow): SprintView {
     goal: r.goal,
     startsAt: r.startsAt.toISOString(),
     endsAt: r.endsAt.toISOString(),
+    auto: r.auto ?? false,
     tasks: tasks.map((t) => ({ id: t.id, title: t.title, block: t.block, done: t.done, doneAt: iso(t.doneAt) })),
     prompts,
     doneTasks: tasks.filter((t) => t.done).length,
@@ -106,6 +146,49 @@ export function shapeSprints(rows: SprintRow[], now = new Date()): SprintsView {
   const at = (st: PromptStatus) => prompts.findIndex((p) => p.status === st);
   const first = [at("running"), at("blocked"), at("pending")].find((i) => i >= 0);
   return { week, month, prompts, startIndex: first ?? 0 };
+}
+
+/** What the sprint loop learned — one prompt or sprint, the metric it aimed at, before → after. */
+export type LessonVerdict = "moved" | "flat" | "worse" | "unknown";
+export interface LessonRow {
+  id: string;
+  promptId: string | null;
+  sprintId: string | null;
+  metric: string | null;
+  before: number | null;
+  after: number | null;
+  verdict: string;
+  text: string;
+  measureAt: Date | null;
+  createdAt: Date;
+}
+export interface LessonView {
+  id: string;
+  promptId: string | null;
+  sprintId: string | null;
+  metric: string | null;
+  before: number | null;
+  after: number | null;
+  verdict: LessonVerdict;
+  text: string;
+  /** When the 24 h measurement is (or was) due; null for a sprint retro. */
+  measureAt: string | null;
+  createdAt: string;
+}
+const VERDICTS: LessonVerdict[] = ["moved", "flat", "worse", "unknown"];
+export function shapeLesson(r: LessonRow): LessonView {
+  return {
+    id: r.id,
+    promptId: r.promptId,
+    sprintId: r.sprintId,
+    metric: r.metric,
+    before: r.before,
+    after: r.after,
+    verdict: (VERDICTS as string[]).includes(r.verdict) ? (r.verdict as LessonVerdict) : "unknown",
+    text: r.text,
+    measureAt: iso(r.measureAt),
+    createdAt: r.createdAt.toISOString(),
+  };
 }
 
 export const EMPTY_SPRINTS: SprintsView = { week: null, month: null, prompts: [], startIndex: 0 };

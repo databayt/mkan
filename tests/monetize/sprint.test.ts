@@ -60,4 +60,21 @@ describe("sprint shaping", () => {
     expect(mk(["processed", "pending"]).startIndex).toBe(1);
     expect(mk(["weird"]).prompts[0]!.status).toBe("pending");
   });
+
+  it("never picks an expired sprint, even when it is the only open one", () => {
+    const old = row({ id: "old", startsAt: d("2026-10-26"), endsAt: d("2026-11-02") });
+    expect(pickActive([old], "WEEK", d("2026-11-04"))).toBeNull();
+    expect(pickActive([old, week], "WEEK", d("2026-11-09"))).toBeNull(); // endsAt is exclusive
+    const next = row({ id: "next", startsAt: d("2026-11-09"), endsAt: d("2026-11-16") });
+    expect(pickActive([old, next], "WEEK", d("2026-11-04"))!.id).toBe("next"); // a planned sprint not started yet
+  });
+
+  it("carries the auto-sprint fields, defaulted for older rows", () => {
+    const s = shapeSprints([
+      row({ id: "w", auto: true, prompts: [{ id: "p", taskId: null, order: 0, text: "x", status: "blocked", processedAt: null, result: "r", metric: "chats", baseline: 3, unblockWhen: "brokerSends == gated", blockedAt: d("2026-11-03"), retries: 1, auto: true }] }),
+    ], d("2026-11-04"));
+    expect(s.week!.auto).toBe(true);
+    expect(s.week!.prompts[0]).toMatchObject({ metric: "chats", baseline: 3, unblockWhen: "brokerSends == gated", blockedAt: "2026-11-03T00:00:00.000Z", retries: 1, auto: true });
+    expect(shapeSprints([week], d("2026-11-04")).week!.prompts[0]).toMatchObject({ metric: null, baseline: null, unblockWhen: null, blockedAt: null, retries: 0, auto: false });
+  });
 });

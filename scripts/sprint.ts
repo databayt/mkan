@@ -4,15 +4,23 @@
  *
  *   pnpm sprint:show                                   week + month: tasks ✓, prompts and their state
  *   pnpm sprint:next                                   the next pending prompt (id, sprint, task, text)
- *   pnpm sprint:done <promptId> [--result="…"] [--task-done] [--skip | --blocked]
- *   pnpm sprint:claim                                  the runner: take the next pending prompt (→ running), print it as JSON
+ *   pnpm sprint:done <promptId> [--result="…"] [--task-done] [--skip | --blocked [--unblock-when="<cond>"]]
+ *                    [--metric=<key>] [--lesson="…"]  the lesson is measured 24 h later by sprint:cycle
+ *   pnpm sprint:claim                                  the runner: take the next pending prompt (→ running, its metric's
+ *                                                      value stored as the baseline), print it as JSON
  *   pnpm sprint:release <promptId> --result="…"        the runner: a run that ended without reporting → blocked
+ *   tsx scripts/sprint.ts brief <promptId>             the runner: key numbers now + the 5 most relevant lessons
  *   pnpm sprint:task <taskId> [--undo]                 tick (or untick) a task
  *   pnpm sprint:plan --file=plan.json                  create a WEEK / MONTH sprint from JSON (replaces an open one of that kind)
  *
- * plan.json: { "sprints": [{ "kind": "WEEK", "title", "goal", "startsAt": "2026-11-02", "endsAt": "2026-11-09",
+ *   pnpm sprint:cycle [--dry] [--no-plan]             close, unblock, measure, plan, top up (scripts/sprint-cycle.ts)
+ *
+ * plan.json: { "sprints": [{ "kind": "WEEK", "title", "goal", "startsAt": "2026-11-02", "endsAt": "2026-11-09", "auto"?: false,
  *              "tasks": [{ "key": "brokers", "title", "block": "chat" }],
- *              "prompts": [{ "task": "brokers", "text": "…" }] }] }
+ *              "prompts": [{ "task": "brokers", "text": "…", "metric"?: "brokersAsked",
+ *                            "unblockWhen"?: "brokerSends == gated", "needsYou"?: "one line for Abdout" }] }] }
+ * A prompt with unblockWhen starts blocked ("needs you") and goes back to pending by itself once the
+ * condition holds (src/lib/monetize/metrics.ts evalCondition). Metric keys: readMetrics() there.
  */
 import { config } from 'dotenv';
 config({ override: true });
@@ -21,7 +29,9 @@ process.env.PRISMA_QUIET ??= '1';
 
 import { readFileSync } from 'node:fs';
 
+import { parseCondition } from '../src/lib/monetize/metrics';
 import { shapeSprints, type SprintRow } from '../src/lib/monetize/sprint-shape';
+import { createSprint, type LoosePlanSprint } from './sprint/plan-db';
 
 type Db = (typeof import('../src/lib/db'))['db'];
 
@@ -40,11 +50,15 @@ async function show(db: Db) {
   const s = shapeSprints(await rows(db));
   for (const sp of [s.week, s.month]) {
     if (!sp) continue;
-    console.log(`\n${sp.kind}  ${sp.title}  (${sp.startsAt.slice(0, 10)} → ${sp.endsAt.slice(0, 10)})  id ${sp.id}`);
+    console.log(`\n${sp.kind}  ${sp.title}  (${sp.startsAt.slice(0, 10)} → ${sp.endsAt.slice(0, 10)})  id ${sp.id}${sp.auto ? '  [auto]' : ''}`);
     if (sp.goal) console.log(`  goal: ${sp.goal}`);
     console.log(`  tasks ${sp.doneTasks}/${sp.tasks.length} · prompts ${sp.processedPrompts}/${sp.prompts.length}`);
     for (const t of sp.tasks) console.log(`  [${t.done ? 'x' : ' '}] ${t.title}${t.block ? `  (${t.block})` : ''}  ${t.id}`);
-    sp.prompts.forEach((p, i) => console.log(`  ${String(i + 1).padStart(2)}. ${p.status.padEnd(9)} ${p.text.split('\n')[0].slice(0, 90)}  ${p.id}`));
+    sp.prompts.forEach((p, i) => {
+      const tags = [p.auto ? 'auto' : '', p.metric ? `metric=${p.metric}${p.baseline != null ? `@${+p.baseline.toFixed(3)}` : ''}` : '', p.retries ? `retries=${p.retries}` : ''].filter(Boolean).join(' ');
+      console.log(`  ${String(i + 1).padStart(2)}. ${p.status.padEnd(9)} ${p.text.split('\n')[0]!.slice(0, 90)}  ${p.id}${tags ? `  ${tags}` : ''}`);
+      if (p.status === 'blocked') console.log(`        ↳ needs you: ${(p.result ?? '').slice(0, 140)}${p.unblockWhen ? `  · resumes when ${p.unblockWhen}` : (p.retries ? '  · retried once already: waits for Abdout' : '  · no condition: retried once after 48 h')}`);
+    });
   }
   if (!s.week && !s.month) console.log('No active sprint. Plan one: pnpm sprint:plan --file=plan.json');
 }
@@ -60,11 +74,51 @@ async function next(db: Db) {
 }
 
 async function done(db: Db, id: string) {
-  // --blocked: the prompt needs Abdout (a send to a real person, money, a decision) — the result says what.
+  // --blocked: the prompt needs Abdout (a send to a real person, money, a decision) — the result says what,
+  // and --unblock-when says which number turns true once he has done it (the cycle then resumes it).
   const status = flag('skip') ? 'skipped' : flag('blocked') ? 'blocked' : 'processed';
-  const p = await db.sprintPrompt.update({ where: { id }, data: { status, processedAt: new Date(), ...(arg('result') ? { result: arg('result')!.slice(0, 500) } : {}) } });
-  if (status === 'processed' && flag('task-done') && p.taskId) await db.sprintTask.update({ where: { id: p.taskId }, data: { done: true, doneAt: new Date() } });
-  console.log(`✓ prompt ${id} ${status}${flag('task-done') && p.taskId ? ` · task ${p.taskId} done` : ''}`);
+  const unblockWhen = status === 'blocked' ? arg('unblock-when') : undefined;
+  if (unblockWhen && !parseCondition(unblockWhen)) throw new Error(`--unblock-when must read like "brokerSends == gated": ${unblockWhen}`);
+  const now = new Date();
+  const metric = arg('metric');
+  const p = await db.sprintPrompt.update({
+    where: { id },
+    data: {
+      status,
+      processedAt: now,
+      ...(arg('result') ? { result: arg('result')!.slice(0, 500) } : {}),
+      ...(status === 'blocked' ? { blockedAt: now, ...(unblockWhen ? { unblockWhen } : {}) } : {}),
+      ...(metric ? { metric } : {}),
+    },
+  });
+  if (status === 'processed' && flag('task-done') && p.taskId) await db.sprintTask.update({ where: { id: p.taskId }, data: { done: true, doneAt: now } });
+  // The lesson: what the session believes moved the number; sprint:cycle measures it 24 h on.
+  const lesson = arg('lesson');
+  if (lesson || (status === 'processed' && p.metric)) {
+    await db.sprintLesson.create({
+      data: {
+        promptId: id,
+        sprintId: p.sprintId,
+        metric: p.metric,
+        before: p.baseline,
+        text: (lesson ?? p.result ?? 'done').slice(0, 1000),
+        measureAt: p.metric ? new Date(now.getTime() + 24 * 3_600_000) : null,
+      },
+    });
+  }
+  console.log(`✓ prompt ${id} ${status}${flag('task-done') && p.taskId ? ` · task ${p.taskId} done` : ''}${unblockWhen ? ` · resumes when ${unblockWhen}` : ''}${lesson ? ' · lesson saved' : ''}`);
+}
+
+/** The prompt's metric now — its baseline at claim. Null when the numbers can't be read (never blocks a claim). */
+async function metricNow(key: string | null | undefined): Promise<number | null> {
+  if (!key) return null;
+  try {
+    const { liveMetrics } = await import('./sprint/live');
+    const v = (await liveMetrics()).metrics[key];
+    return typeof v === 'number' ? v : null;
+  } catch {
+    return null;
+  }
 }
 
 /** The runner's claim: the next pending prompt (week first), marked running so no second run takes it. */
@@ -81,7 +135,30 @@ async function claim(db: Db) {
   // processedAt doubles as "started at" while running.
   const took = await db.sprintPrompt.updateMany({ where: { id: p.id, status: 'pending' }, data: { status: 'running', processedAt: new Date() } });
   if (took.count !== 1) return console.log(JSON.stringify({ busy: true }));
-  console.log(JSON.stringify({ id: p.id, kind: p.kind, task: p.taskTitle, taskId: p.taskId, text: p.text }));
+  const baseline = await metricNow(p.metric);
+  if (baseline != null) await db.sprintPrompt.update({ where: { id: p.id }, data: { baseline } });
+  console.log(JSON.stringify({ id: p.id, kind: p.kind, task: p.taskTitle, taskId: p.taskId, text: p.text, metric: p.metric, baseline, retries: p.retries, lastResult: p.retries ? p.result : null }));
+}
+
+/** The runner's context for one prompt: the key numbers now, and the 5 most relevant lessons (same metric, then same block). */
+async function brief(db: Db, id: string) {
+  const p = await db.sprintPrompt.findUnique({ where: { id }, include: { task: { select: { block: true } } } });
+  if (!p) return console.log(`prompt ${id} not found`);
+  const { liveMetrics } = await import('./sprint/live');
+  const { pickMetrics } = await import('../src/lib/monetize/sprint-auto');
+  const metrics = await liveMetrics().then((r) => r.metrics).catch(() => null);
+  if (metrics) {
+    const keys = pickMetrics(metrics);
+    if (p.metric && !(p.metric in keys)) keys[p.metric] = metrics[p.metric] ?? null;
+    console.log(`Key numbers now: ${Object.entries(keys).map(([k, v]) => `${k}=${typeof v === 'number' ? +v.toFixed(3) : v}`).join(', ')}`);
+  } else console.log('Key numbers now: unavailable (the /monetize read failed).');
+  const lessons = await db.sprintLesson.findMany({ orderBy: { createdAt: 'desc' }, take: 60 });
+  const block = p.task?.block;
+  const blockMetrics = block ? new Set((await db.sprintPrompt.findMany({ where: { task: { block } }, select: { metric: true } })).map((x) => x.metric)) : new Set<string | null>();
+  const rank = (l: (typeof lessons)[number]) => (p.metric && l.metric === p.metric ? 0 : l.metric && blockMetrics.has(l.metric) ? 1 : 2);
+  const top = [...lessons].sort((a, b) => rank(a) - rank(b)).slice(0, 5);
+  console.log(top.length ? 'Lessons so far (most relevant first):' : 'Lessons so far: none yet.');
+  for (const l of top) console.log(`- [${l.verdict}] ${l.metric ?? '—'} ${l.before ?? '?'} → ${l.after ?? '?'}: ${l.text.replace(/\s+/g, ' ').slice(0, 220)}`);
 }
 
 async function release(db: Db, id: string) {
@@ -102,31 +179,12 @@ async function task(db: Db, id: string) {
   console.log(`✓ task ${id} ${undo ? 'not done' : 'done'}`);
 }
 
-type PlanFile = {
-  sprints: { kind: 'WEEK' | 'MONTH'; title: string; goal?: string; startsAt: string; endsAt: string; tasks: { key: string; title: string; block?: string }[]; prompts: { task?: string; text: string }[] }[];
-};
-
 async function plan(db: Db, file: string) {
-  const json = JSON.parse(readFileSync(file, 'utf8')) as PlanFile;
+  const json = JSON.parse(readFileSync(file, 'utf8')) as { sprints: LoosePlanSprint[] };
   for (const s of json.sprints) {
     if (s.kind !== 'WEEK' && s.kind !== 'MONTH') throw new Error(`kind must be WEEK or MONTH: ${s.kind}`);
-    const created = await db.$transaction(async (tx) => {
-      // One open sprint per kind: a new plan closes the one it replaces.
-      await tx.sprint.updateMany({ where: { kind: s.kind, status: { not: 'closed' } }, data: { status: 'closed' } });
-      const sprint = await tx.sprint.create({ data: { kind: s.kind, title: s.title, goal: s.goal, startsAt: new Date(s.startsAt), endsAt: new Date(s.endsAt) } });
-      const ids = new Map<string, string>();
-      for (const [order, t] of s.tasks.entries()) {
-        const row = await tx.sprintTask.create({ data: { sprintId: sprint.id, title: t.title, block: t.block, order } });
-        ids.set(t.key, row.id);
-      }
-      for (const [order, p] of s.prompts.entries()) {
-        if (p.task && !ids.has(p.task)) throw new Error(`prompt ${order + 1} names an unknown task "${p.task}"`);
-        await tx.sprintPrompt.create({ data: { sprintId: sprint.id, taskId: p.task ? ids.get(p.task) : null, text: p.text.trim(), order } });
-      }
-      return sprint;
-      // Over the Mac's phone hotspot one round trip to Neon is ~3.5 s: Prisma's 2 s default to start
-      // a transaction never succeeds there (11-04).
-    }, { maxWait: 30_000, timeout: 180_000 });
+    for (const p of s.prompts) if (p.unblockWhen && !parseCondition(p.unblockWhen)) throw new Error(`bad unblockWhen: ${p.unblockWhen}`);
+    const created = await createSprint(db, s, { auto: s.auto ?? false });
     console.log(`✓ ${s.kind} sprint "${s.title}" — ${s.tasks.length} tasks, ${s.prompts.length} prompts  (${created.id})`);
   }
 }
@@ -141,8 +199,9 @@ async function main() {
     else if (cmd === 'task' && id) await task(db, id);
     else if (cmd === 'claim') await claim(db);
     else if (cmd === 'release' && id) await release(db, id);
+    else if (cmd === 'brief' && id) await brief(db, id);
     else if (cmd === 'plan' && arg('file')) await plan(db, arg('file')!);
-    else console.log('usage: pnpm sprint:show | sprint:next | sprint:done <promptId> [--result=…] [--task-done] [--skip] | sprint:task <taskId> [--undo] | sprint:plan --file=plan.json');
+    else console.log('usage: pnpm sprint:show | sprint:next | sprint:done <promptId> [--result=…] [--task-done] [--skip | --blocked [--unblock-when=…]] [--metric=…] [--lesson=…] | sprint:task <taskId> [--undo] | sprint:plan --file=plan.json');
   } finally {
     await db.$disconnect();
   }
