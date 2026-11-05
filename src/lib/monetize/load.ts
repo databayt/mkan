@@ -335,8 +335,10 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     // New Kigali homes the page's post gate passed within a day (pushed by monetize:snapshot).
     // Mastering is the Port Sudan photo lane: those homes are never in the Kigali "homes saved"
     // count above, so dividing by it read 0% whatever either lane did. Older snapshots fall back.
-    // Clean broker videos from the post ledger; before it has rows, the post gate's count.
-    { key: "ready", block: "enhance", count: fs && fs.featured > 0 ? fs.clean : (em.readyNew7 ?? masteredNow) },
+    // Not the ledger's clean videos: those are one per post (a few a week), so against ~100 homes
+    // saved they read "homes → ready" under its floor and aimed the sprint at Enhance whenever the
+    // real limit was how often the page posts. Strip quality lives in the first-share section.
+    { key: "ready", block: "enhance", count: em.readyNew7 ?? (fs && fs.featured > 0 ? fs.clean : masteredNow) },
     // Listing posts from the ledger; until it has rows, page stats (days posted as a last resort).
     { key: "posted", block: "post", count: fs && fs.posted > 0 ? fs.posted : Math.max(0, postsWeek ?? pm.postedDays7 ?? 0) },
     { key: "views", block: "post", count: Math.max(0, viewsWeek ?? pm.views ?? 0) },
