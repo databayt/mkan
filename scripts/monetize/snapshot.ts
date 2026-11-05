@@ -40,7 +40,7 @@ export const JOBS: Record<BlockKey, { job: string; cadence: number }[]> = {
   post: [
     { job: 'hermes_mkan-tiktok-post', cadence: 24 },
     { job: 'hermes_mkan-tiktok-upload-retry', cadence: 24 },
-    { job: 'hermes_mkan-tiktok-stats', cadence: 168 },
+    { job: 'hermes_mkan-tiktok-stats', cadence: 24 },
   ],
   // The chat lanes are Worker crons (wa-outbox, broker-requests): the page reads their effects from Neon.
   chat: [],
@@ -163,7 +163,7 @@ function enhance(): SnapshotMetrics['enhance'] {
   return { brokerVideosPerDay: perDay != null ? Number(perDay) : undefined };
 }
 
-type PageStat = { at: string; videos?: number; photos?: number; views?: number; likes?: number; homeVideos?: number };
+type PageStat = { at: string; videos?: number; photos?: number; views?: number; likes?: number; homeVideos?: number; followers?: number; hearts?: number; comments?: number; shares?: number };
 
 export function post(now = Date.now()): SnapshotMetrics['post'] {
   const dir = join(DATA, 'tiktok-post');
@@ -203,6 +203,13 @@ export function post(now = Date.now()): SnapshotMetrics['post'] {
     lastUploadAt,
     viewsWeekAgo: weekAgo?.views ?? null,
     postsWeekAgo: weekAgo ? (weekAgo.videos ?? 0) + (weekAgo.photos ?? 0) : null,
+    // Followers only since 2026-11-05: the latest row that has them, and the one a week before it.
+    followers: [...stats].reverse().find((s) => s.followers != null)?.followers ?? null,
+    followersWeekAgo: [...stats].reverse().find((s) => s.followers != null && Date.parse(s.at) <= now - 7 * 86_400_000)?.followers ?? null,
+    hearts: latest?.hearts ?? null,
+    comments: latest?.comments ?? null,
+    shares: latest?.shares ?? null,
+    statsAt: latest?.at ?? null,
   };
 }
 

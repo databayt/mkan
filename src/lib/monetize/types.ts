@@ -92,6 +92,14 @@ export interface PostMetrics {
   lastUploadAt?: string | null;
   /** Views on the page-stats row ~7 days earlier, for views gained this week. */
   viewsWeekAgo?: number | null;
+  /** The page's followers and total likes (its profile, read in the session Chrome), and comments + shares on its videos. */
+  followers?: number | null;
+  followersWeekAgo?: number | null;
+  hearts?: number | null;
+  comments?: number | null;
+  shares?: number | null;
+  /** When the page stats were last read. */
+  statsAt?: string | null;
   /** Post count ~7 days earlier. */
   postsWeekAgo?: number | null;
 }

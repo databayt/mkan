@@ -750,6 +750,36 @@ async function readPage(target: string): Promise<string> {
   throw new Error(`yt-dlp could not read @${PAGE} after ${waits.length} tries: ${firstLine(last)}`);
 }
 
+/**
+ * The page itself — followers, total likes, video count — read from its own profile in the
+ * signed-in session Chrome the uploader drives (a plain fetch meets TikTok's bot wall). Null when
+ * that Chrome is not up; the rest of the stats still run.
+ */
+async function pageProfile(): Promise<{ followers: number; hearts: number; videoCount: number } | null> {
+  const cdp = process.env.TIKTOK_CDP_URL ?? 'http://127.0.0.1:9222';
+  try {
+    const { chromium } = await import('playwright');
+    const browser = await chromium.connectOverCDP(cdp, { timeout: 15_000 });
+    const page = await browser.contexts()[0]!.newPage();
+    try {
+      await page.goto(`https://www.tiktok.com/@${PAGE}`, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+      await page.waitForTimeout(3_000);
+      const s = await page.evaluate(() => {
+        const el = document.getElementById('__UNIVERSAL_DATA_FOR_REHYDRATION__');
+        const d = el ? (JSON.parse(el.textContent ?? '{}') as Record<string, Record<string, { userInfo?: { stats?: Record<string, number> } }>>) : {};
+        return d.__DEFAULT_SCOPE__?.['webapp.user-detail']?.userInfo?.stats ?? null;
+      });
+      return s ? { followers: Number(s.followerCount ?? 0), hearts: Number(s.heartCount ?? s.heart ?? 0), videoCount: Number(s.videoCount ?? 0) } : null;
+    } finally {
+      await page.close().catch(() => {});
+      await browser.close().catch(() => {});
+    }
+  } catch (err) {
+    console.warn(`  ! page profile not read (${(err as Error).message.slice(0, 120)})`);
+    return null;
+  }
+}
+
 async function stats(): Promise<void> {
   const secUid = (process.env.TIKTOK_PAGE_SECUID ?? '').trim();
   const target = secUid ? `tiktokuser:${secUid}` : `https://www.tiktok.com/@${PAGE}`;
@@ -799,7 +829,13 @@ async function stats(): Promise<void> {
   }));
   // One snapshot per run, so the page's reach has a trend (weekly in #mkan, any day by hand).
   const views = vids.reduce((s, v) => s + v.views, 0);
-  appendFileSync(join(DATA, 'page-stats.jsonl'), `${JSON.stringify({ at: new Date().toISOString(), videos: vids.length, views, likes: vids.reduce((s, v) => s + v.likes, 0), homeVideos: matched, rows })}\n`);
+  const comments = entries.reduce((s, v) => s + Number(v.comment_count ?? 0), 0);
+  const shares = entries.reduce((s, v) => s + Number(v.repost_count ?? 0), 0);
+  const profile = await pageProfile();
+  appendFileSync(
+    join(DATA, 'page-stats.jsonl'),
+    `${JSON.stringify({ at: new Date().toISOString(), videos: vids.length, views, likes: vids.reduce((s, v) => s + v.likes, 0), comments, shares, ...(profile ?? {}), homeVideos: matched, rows })}\n`,
+  );
   const line = pageStatsLine(PAGE, vids, { matched, views: homeViews });
   console.log(`${line}${rows ? ` · ${rows} TikTokPost rows updated` : ''}`);
   if (flag('notify')) await postToMkan(line);

@@ -6159,7 +6159,15 @@
       "videosFeatured": "إعلانات مختارة",
       "videoRejectRate": "فيديوهات مرفوضة (بقي نص)",
       "postsListing": "منشورات الإعلانات",
-      "contactsPerPost": "تواصل لكل منشور"
+      "contactsPerPost": "تواصل لكل منشور",
+      "followers": "متابعو تيك توك",
+      "followersWeek": "متابعون جدد",
+      "engageRate": "إعجابات وتعليقات ومشاركات لكل مشاهدة",
+      "messages": "رسائل العملاء",
+      "people": "أشخاص كتبوا",
+      "peopleToHomes": "وصلتهم بيوت",
+      "peopleToViewing": "حجزوا معاينة",
+      "peopleToSigned": "حصلوا على البيت"
     },
     "lever": "الرقم الرئيسي",
     "vsPrev": "{pct} مقارنة بالـ{days} أيام السابقة",
@@ -6633,6 +6641,11 @@
         "unknown": "قيد القياس"
       },
       "needsYou": "يحتاجك"
+    },
+    "watch": {
+      "title": "أرقام نراقبها",
+      "lead": "من صفحة تيك توك حتى البيت، آخر {days} أيام. {missed} تحت الهدف — ابدأ بأول رقم أحمر.",
+      "noTarget": "قيد المتابعة"
     }
   }
 }

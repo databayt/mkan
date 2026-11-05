@@ -32,8 +32,10 @@ fi
 lane_own "$LOCK"
 cd "$REPO" || exit 0
 wait_ready 600 || { lane_end defer "$(lane_not_ready)"; exit 0; }
-echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (weekly stats, detached) ──" >>"$LOGDIR/post.log"
-if pnpm -s tt:stats --notify >>"$LOGDIR/post.log" 2>>"$LOGDIR/post.err.log"; then
+echo "── $(date '+%Y-%m-%d %H:%M:%S') hermes cron (daily stats, detached) ──" >>"$LOGDIR/post.log"
+# Read every evening so /monetize has a daily trend (followers, views per post); #mkan hears it on Mondays.
+NOTIFY=""; [ "$(date +%u)" = "1" ] && NOTIFY="--notify"
+if pnpm -s tt:stats $NOTIFY >>"$LOGDIR/post.log" 2>>"$LOGDIR/post.err.log"; then
   lane_end ok
 else
   lane_end fail "tt:stats could not read the page back"

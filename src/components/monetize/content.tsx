@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { BlockSection } from "./block-section";
 import { fill, formatValue, type MonetizeLabels } from "./format";
 import { FirstShareSection } from "./first-share";
+import { WatchSection } from "./watch";
 import { Experiments, RevenueForm } from "./forms";
 import { FunnelSection } from "./funnel";
 import { HealthBadge } from "./health-badge";
@@ -74,6 +75,7 @@ export function MonetizeContent({ data, labels, locale, canEdit = false }: { dat
             </div>
           </section>
 
+          <WatchSection data={data} labels={labels} locale={locale} />
           <SprintSection sprints={data.sprints} lessons={data.lessons} labels={labels} locale={locale} canEdit={canEdit} />
           <FirstShareSection data={data.firstShare} labels={labels} locale={locale} />
           <TodoSection steps={data.nextSteps} labels={labels} locale={locale} />

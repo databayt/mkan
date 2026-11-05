@@ -33,6 +33,8 @@ export const SUCCESS: Record<BlockKey, SuccessTarget[]> = {
     { kpi: "adChatRate", op: ">=", target: 0.01 },
     { kpi: "postsListing", op: ">=", target: 21, per: "week" }, // one listing per post, three a day
     { kpi: "contactsPerPost", op: ">=", target: 1 },
+    { kpi: "followersWeek", op: ">=", target: 20, per: "week" }, // the page grows every week
+    { kpi: "engageRate", op: ">=", target: 0.05 },
   ],
   chat: [
     { kpi: "paidDeals", op: ">=", target: 2, per: "week" }, // the month's goal: two paid deals a week
@@ -41,6 +43,9 @@ export const SUCCESS: Record<BlockKey, SuccessTarget[]> = {
     { kpi: "brokerAnswerRate", op: ">=", target: 0.3 },
     { kpi: "p50", op: "<=", target: 3000 },
     { kpi: "failRate", op: "<=", target: 0.05 },
+    { kpi: "people", op: ">=", target: 20, per: "week" },
+    { kpi: "peopleToViewing", op: ">=", target: 0.1 },
+    { kpi: "peopleToSigned", op: ">=", target: 0.02 }, // 2 of every 100 people who write get a home
   ],
 };
 

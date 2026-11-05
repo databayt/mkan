@@ -15,8 +15,9 @@
 # TIKTOK_POSTS_PER_DAY=0 holds the lane). Logs under .data/tiktok-post/.
 # A second job, mkan-tiktok-upload-retry (13:00), posts whatever 07:00 rendered but could
 # not upload; the day's uploads.json keeps it from posting anything twice, and the two
-# share one lock, so they never upload at once. A third, mkan-tiktok-stats (Mondays
-# 10:00), puts the page's views and likes in #mkan.
+# share one lock, so they never upload at once. A third, mkan-tiktok-stats (daily
+# 21:00), reads followers, views, likes, comments and shares per post for /monetize, and
+# puts the page's numbers in #mkan on Mondays.
 set -euo pipefail
 NAME="mkan-tiktok-post"
 LABEL="com.databayt.$NAME"
@@ -35,7 +36,7 @@ RETRY_SCRIPT="$HERMES_HOME/scripts/$RETRY.sh"
 RETRY_SCHEDULE="${TIKTOK_RETRY_SCHEDULE:-0 13 * * *}"
 STATS="mkan-tiktok-stats"
 STATS_SCRIPT="$HERMES_HOME/scripts/$STATS.sh"
-STATS_SCHEDULE="${TIKTOK_STATS_SCHEDULE:-0 10 * * 1}"
+STATS_SCHEDULE="${TIKTOK_STATS_SCHEDULE:-0 21 * * *}"
 
 hermes_job_ids() {
   hermes cron list 2>/dev/null | awk -v n="${1:-$NAME}" '/^  [0-9a-f]{12} \[/{id=$1} $1=="Name:" && $2==n {print id}'

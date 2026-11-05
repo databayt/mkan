@@ -6159,7 +6159,15 @@
       "videosFeatured": "Listings featured",
       "videoRejectRate": "Videos rejected (text left)",
       "postsListing": "Listing posts",
-      "contactsPerPost": "Contacts per post"
+      "contactsPerPost": "Contacts per post",
+      "followers": "TikTok followers",
+      "followersWeek": "New followers",
+      "engageRate": "Likes, comments, shares per view",
+      "messages": "Messages from clients",
+      "people": "People who wrote",
+      "peopleToHomes": "Writers who got homes",
+      "peopleToViewing": "Writers who booked a viewing",
+      "peopleToSigned": "Writers who got the home"
     },
     "lever": "Main number",
     "vsPrev": "{pct} vs the {days} days before",
@@ -6633,6 +6641,11 @@
         "unknown": "Measuring"
       },
       "needsYou": "Needs you"
+    },
+    "watch": {
+      "title": "Numbers to watch",
+      "lead": "From the TikTok page to the home, last {days} days. {missed} below target — start with the first red one.",
+      "noTarget": "Tracked"
     }
   }
 }

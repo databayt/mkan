@@ -122,7 +122,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   // Deals are read from the earlier of the comparison window and the month: one created weeks ago
   // and paid this month still counts as this month's money.
   const dealsFrom = new Date(Math.min(prevSince.getTime(), monthStart.getTime()));
-  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints, firstShare, lessons] =
+  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints, firstShare, lessons, inbox] =
     await Promise.all([
       agentFunnel(db, days),
       agentFunnel(db, days, days),
@@ -163,6 +163,24 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
       loadSprints(),
       loadFirstShare(days),
       loadLessons(8).catch(() => [] as LessonView[]),
+      // Messages clients sent in the window, and the people behind them — Abdout's own contacts
+      // (WaState personal:<number>) left out — and of those people, who got homes, a viewing, the home.
+      db.$queryRaw<{ messages: number; people: number; shortlisted: number; viewing: number; signed: number }[]>`
+        WITH said AS (
+          SELECT t.id, t."profileId", COUNT(*)::int AS n
+          FROM "AgentTask" t
+          LEFT JOIN "AgentProfile" p ON p.id = t."profileId"
+          CROSS JOIN LATERAL jsonb_array_elements(t.messages) m
+          WHERE t."updatedAt" >= ${since} AND m->>'role' = 'user' AND m->>'at' >= ${since.toISOString()}
+            AND NOT EXISTS (SELECT 1 FROM "WaState" w WHERE p."waPhone" IS NOT NULL AND w.key = 'personal:' || replace(p."waPhone", '+', ''))
+          GROUP BY t.id, t."profileId"
+        )
+        SELECT COALESCE(SUM(n), 0)::int AS messages,
+               COUNT(DISTINCT COALESCE("profileId", id))::int AS people,
+               COUNT(DISTINCT COALESCE("profileId", id)) FILTER (WHERE EXISTS (SELECT 1 FROM "AgentEvent" e WHERE e."taskId" = said.id AND e.kind = 'shortlist_ready'))::int AS shortlisted,
+               COUNT(DISTINCT COALESCE("profileId", id)) FILTER (WHERE EXISTS (SELECT 1 FROM "Deal" d WHERE d."taskId" = said.id))::int AS viewing,
+               COUNT(DISTINCT COALESCE("profileId", id)) FILTER (WHERE EXISTS (SELECT 1 FROM "Deal" d WHERE d."taskId" = said.id AND d.status IN ('SIGNED', 'PAID')))::int AS signed
+        FROM said`.catch(() => null),
     ]);
 
   // ── snapshots, per block ──────────────────────────────────────────────
@@ -228,6 +246,9 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     { key: "likeRate", value: pm.views ? (pm.likes ?? 0) / pm.views : null, unit: "pct" },
     // Both sides over one week: code chats in the last 7 days per view gained in them.
     { key: "adChatRate", value: viewsWeek ? (days === 7 ? (chatSplit[0]?.ad ?? 0) : ((chatSplit[0]?.ad ?? 0) * 7) / days) / viewsWeek : null, unit: "pct" },
+    { key: "followers", value: pm.followers ?? null, unit: "count" },
+    { key: "followersWeek", value: pm.followers != null && pm.followersWeekAgo != null ? pm.followers - pm.followersWeekAgo : null, unit: "count" },
+    { key: "engageRate", value: pm.views ? ((pm.likes ?? 0) + (pm.comments ?? 0) + (pm.shares ?? 0)) / pm.views : null, unit: "pct" },
     { key: "postsListing", value: fs?.posted ?? null, unit: "count" },
     { key: "contactsPerPost", value: fs && fs.posted ? fs.contacts / fs.posted : null, unit: "count" },
   ];
@@ -254,6 +275,12 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     { key: "viewings", value: funnel.booked, unit: "count" },
     { key: "paidDeals", value: paid.length, unit: "count", prev: paidPrev.length },
     { key: "failRate", value: conv(funnel.failed, funnel.tasks), unit: "pct" },
+    // People, not chats: one person can open several. Their messages, and how many of them moved on.
+    { key: "messages", value: inbox?.[0]?.messages ?? null, unit: "count" },
+    { key: "people", value: inbox?.[0]?.people ?? null, unit: "count" },
+    { key: "peopleToHomes", value: inbox?.[0] ? conv(inbox[0].shortlisted, inbox[0].people) : null, unit: "pct" },
+    { key: "peopleToViewing", value: inbox?.[0] ? conv(inbox[0].viewing, inbox[0].people) : null, unit: "pct" },
+    { key: "peopleToSigned", value: inbox?.[0] ? conv(inbox[0].signed, inbox[0].people) : null, unit: "pct" },
   ];
   const chatBlockers = [
     ...(capped ? ["capped"] : []),
