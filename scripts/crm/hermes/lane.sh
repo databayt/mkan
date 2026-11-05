@@ -26,6 +26,10 @@
 # The record and the gate come from kun's ~/.claude/scripts/lib/runs.sh when this Mac has it; without
 # it the lanes still run (no record, and the gate is the old network-only wait).
 
+# Lane logs are for the lane's own lines: without this every SELECT lands in them (post.log on
+# 11-05 was mostly Listing queries). A lane that needs the queries can set PRISMA_QUIET= itself.
+export PRISMA_QUIET="${PRISMA_QUIET-1}"
+
 if ! . "$HOME/.claude/scripts/lib/runs.sh" 2>/dev/null; then
   runs_record() { :; }
 fi
