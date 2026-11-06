@@ -412,6 +412,80 @@ export function stripGraph(regions: TextRegion[], timed = true): string {
     .join(';');
 }
 
+// ── full-width caption bands: cut off, not wiped ─────────────────────────────
+
+/** A rectangle on the body frame, in output pixels. */
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface BandCropOpts {
+  /** A region at least this share of the picture's width is a banner (the caption plate reaches the edges; Vision's box hugs the glyphs). */
+  minWidth?: number;
+  /** A top band starts in this top share of the picture (a bottom band ends in the bottom share). */
+  edge?: number;
+  /** The cut never keeps less than this share of the picture's height. */
+  minKeep?: number;
+}
+
+/**
+ * Where a full-width caption banner should be CUT OFF rather than wiped. On a
+ * banner, delogo fills from what is above and below (11-06, K6516: black bars
+ * over a photo), so a frosted block is left across the picture. A region that
+ * spans the picture (`minWidth`) and starts in its top quarter (or ends in its
+ * bottom quarter) is a band; the picture keeps the rows between the bands,
+ * which renderOne re-fits to 9:16 (fitGraph). A cut that would keep under
+ * `minKeep` of the picture drops that band (it is wiped as before). Null when
+ * there is nothing to cut — every smaller box is still delogo'd.
+ */
+export function bandCrop(regions: TextRegion[], pic: Rect, opts: BandCropOpts = {}): { keep: Rect; top: number; bottom: number } | null {
+  const { minWidth = 0.75, edge = 0.25, minKeep = 0.55 } = opts;
+  const wide = regions.filter((r) => {
+    const x0 = Math.max(r.x, pic.x);
+    const x1 = Math.min(r.x + r.w, pic.x + pic.w);
+    return x1 - x0 >= minWidth * pic.w && r.y < pic.y + pic.h && r.y + r.h > pic.y;
+  });
+  let top = 0; // rows cut off the picture's top
+  let bottom = 0;
+  for (const r of wide) {
+    if (r.y <= pic.y + edge * pic.h) top = Math.max(top, r.y + r.h - pic.y);
+    else if (r.y + r.h >= pic.y + (1 - edge) * pic.h) bottom = Math.max(bottom, pic.y + pic.h - r.y);
+  }
+  // Both cuts too much: the bigger one that fits on its own, else none (those bands are wiped as before).
+  const fits = (t: number, b: number): boolean => pic.h - t - b >= minKeep * pic.h;
+  if (!fits(top, bottom)) {
+    const one = ([[top, 0], [0, bottom]] as const).filter(([t, b]) => (t || b) && fits(t, b)).sort((a, b) => b[0] + b[1] - a[0] - a[1])[0];
+    [top, bottom] = one ? [one[0], one[1]] : [0, 0];
+  }
+  if (!top && !bottom) return null;
+  const even = (n: number): number => Math.floor(n / 2) * 2;
+  const y0 = Math.ceil((pic.y + top) / 2) * 2;
+  const h = even(pic.y + pic.h - bottom - y0);
+  return { keep: { x: even(pic.x), y: y0, w: even(pic.w), h }, top, bottom };
+}
+
+/**
+ * How a w × h picture fills the W × H frame (an ffmpeg chain, no labels at its
+ * ends): cover — scaled up and its sides cut — while that keeps at least
+ * `minSide` of its width; otherwise (a landscape picture) whole, on a blurred
+ * cover of itself.
+ */
+export function fitGraph(w: number, h: number, minSide = 0.65): string {
+  const kept = W / H / (w / h);
+  if (kept >= minSide) return `scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H}`;
+  return `split[fa][fb];[fa]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},gblur=sigma=40,eq=brightness=-0.06[fbg];[fb]scale=${W}:-2:flags=lanczos[ffg];[fbg][ffg]overlay=(W-w)/2:(H-h)/2`;
+}
+
+/** Where a w × h source sits on the body videoBody framed it into: a portrait one covers it, a landscape one is a centred strip. */
+export function pictureRect(w: number, h: number): Rect {
+  if (w <= h) return { x: 0, y: 0, w: W, h: H };
+  const ph = Math.min(H, Math.round((W * h) / w / 2) * 2);
+  return { x: 0, y: Math.round((H - ph) / 2), w: W, h: ph };
+}
+
 /**
  * Phone numbers and @handles in a line of on-screen text — what a broker's
  * video must never carry onto mkan's page. Digits split by spaces, dots or

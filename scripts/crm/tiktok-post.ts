@@ -53,7 +53,11 @@ import {
   brokerAsk,
   brokerPreviewAsk,
   brokerHandle,
+  bandCrop,
   brokerVideoUrl,
+  fitGraph,
+  pictureRect,
+  type Rect,
   captionFor,
   FRESH_DAYS,
   type GrayFrame,
@@ -314,7 +318,7 @@ function upscale(src: string, dur: number, work: string, info: { w: number; h: n
  * burned-in text and logos come off in renderOne (stripText) on this 9:16 frame.
  * Null when there is no video to get (a photo post, a deleted video).
  */
-async function videoBody(r: PostRow, work: string): Promise<{ path: string; dur: number } | null> {
+async function videoBody(r: PostRow, work: string): Promise<{ path: string; dur: number; pic: Rect } | null> {
   const url = brokerVideoUrl(r);
   if (!url) return null;
   const id = url.split('/').pop()!;
@@ -363,7 +367,7 @@ async function videoBody(r: PostRow, work: string): Promise<{ path: string; dur:
     '-map', '[v]', '-map', `${upscaled ? 1 : 0}:a:0?`,
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-shortest', out,
   ]);
-  return { path: out, dur: probe(out)?.dur || dur };
+  return { path: out, dur: probe(out)?.dur || dur, pic: pictureRect(info.w, info.h) };
 }
 
 /** An owner's home with no video: its own photos with a slow push-in, crossfaded — no text, no sound. */
@@ -464,7 +468,7 @@ class Rejected extends Error {}
  * gets one more pass with wider pads and what was found, and is REJECTED after
  * that. Fails closed: frames that cannot be read reject the render too.
  */
-async function stripText(ref: string, body: { path: string; dur: number }, work: string): Promise<{ path: string; dur: number; note: string }> {
+async function stripText(ref: string, made: { path: string; dur: number; pic?: Rect }, work: string): Promise<{ path: string; dur: number; note: string }> {
   const dir = join(work, 'ocr');
   const read = async (video: string, offset: number, gray = false): Promise<{ text: TextFrame[]; grays: GrayFrame[] }> => {
     try {
@@ -478,7 +482,21 @@ async function stripText(ref: string, body: { path: string; dur: number }, work:
       rmSync(dir, { recursive: true, force: true });
     }
   };
-  const first = await read(body.path, 0, true);
+  let first = await read(made.path, 0, true);
+  let body = { path: made.path, dur: made.dur };
+  // A caption banner across the picture's top or bottom is cut off, not wiped (a wipe leaves a
+  // frosted block): the rows between the bands re-fit to 9:16, then the rest is read again.
+  const band = bandCrop(textRegions(first.text, { duration: made.dur }), made.pic ?? { x: 0, y: 0, w: W, h: H });
+  let cut = '';
+  if (band) {
+    const k = band.keep;
+    const path = join(work, 'banded.mp4');
+    ffmpeg(['-i', made.path, '-filter_complex', `[0:v]crop=${k.w}:${k.h}:${k.x}:${k.y},${fitGraph(k.w, k.h)},setsar=1,format=yuv420p[v]`, '-map', '[v]', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-c:a', 'copy', path]);
+    body = { path, dur: made.dur };
+    first = await read(path, 0, true);
+    cut = `cut caption band (${[band.top && `top ${band.top}px`, band.bottom && `bottom ${band.bottom}px`].filter(Boolean).join(', ')}), `;
+    console.log(`  … ${ref}: ${cut.slice(0, -2)} — re-fit ${k.w}×${k.h} to 9:16`);
+  }
   const seen = first.text;
   const marks = staticOverlayRegions(first.grays, { gw: GW, gh: GH, duration: body.dur });
   for (let pass = 1; pass <= 2; pass++) {
@@ -493,7 +511,7 @@ async function stripText(ref: string, body: { path: string; dur: number }, work:
     const check = (await read(path, Math.floor(BODY_FPS / STRIP_FPS / 2))).text;
     const left = leftoverText(check);
     if (!left.length) {
-      const note = regions.length ? `wiped ${words.length} text place${words.length === 1 ? '' : 's'} + ${marks.length} logo/watermark${marks.length === 1 ? '' : 's'}${pass > 1 ? ' (second pass)' : ''}` : 'no on-screen text or logo';
+      const note = cut + (regions.length ? `wiped ${words.length} text place${words.length === 1 ? '' : 's'} + ${marks.length} logo/watermark${marks.length === 1 ? '' : 's'}${pass > 1 ? ' (second pass)' : ''}` : 'no on-screen text or logo');
       console.log(`  … ${ref}: ${note}`);
       return { path, dur: body.dur, note };
     }

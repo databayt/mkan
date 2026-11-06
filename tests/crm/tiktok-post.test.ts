@@ -11,6 +11,11 @@ import {
   FRESH_DAYS,
   sourcePostedAt,
   stripGraph,
+  bandCrop,
+  fitGraph,
+  pictureRect,
+  W,
+  H,
   textRegions,
   leftoverText,
   staticOverlayRegions,
@@ -427,5 +432,72 @@ describe('a sale price read as a monthly rent', () => {
     const row = { id: 6525, code: null, source: 'MANUAL', priceMonth: 140_000_000, bedrooms: 4, bathrooms: 3, propertyType: 'HOUSE', photoUrls: ['a', 'b', 'c', 'd', 'e'], area: 'Kabeza', district: 'Kicukiro', hostSourceId: null, postedAt: new Date().toISOString(), lostAt: null } as never;
     expect(ineligibleReason(row, new Set())).toBe('price looks like a sale');
     expect(ineligibleReason({ ...(row as object), priceMonth: MAX_MONTHLY_RENT } as never, new Set())).toBeNull();
+  });
+});
+
+describe('bandCrop — a full-width caption banner is cut off, not wiped', () => {
+  const full = { x: 0, y: 0, w: W, h: H };
+  // K6516 (11-06), as Vision read it on the 1080×1920 body: three centred caption lines, top quarter.
+  const k6516: TextFrame[] = [0.5, 3, 6, 9].map((t) => ({
+    t,
+    boxes: [
+      { x: 0.23, y: 0.173, w: 0.623, h: 0.035, conf: 1, text: 'Full furnished one' },
+      { x: 0.204, y: 0.222, w: 0.674, h: 0.035, conf: 1, text: 'bedroom for rent In' },
+      { x: 0.343, y: 0.268, w: 0.396, h: 0.04, conf: 1, text: 'Gisozi 550k' },
+    ],
+  }));
+
+  it('cuts the K6516 banner off the top and keeps everything under it', () => {
+    const regions = textRegions(k6516, { duration: 10 });
+    const cut = bandCrop(regions, full)!;
+    expect(cut).not.toBeNull();
+    expect(cut.bottom).toBe(0);
+    // Below the last caption line, never into the picture's middle.
+    const lineBottom = (0.268 + 0.04) * H;
+    expect(cut.keep.y).toBeGreaterThanOrEqual(lineBottom);
+    expect(cut.keep.y).toBeLessThan(0.4 * H);
+    expect(cut.keep.y + cut.keep.h).toBe(H);
+    expect(cut.keep.w % 2 + cut.keep.h % 2 + cut.keep.y % 2).toBe(0);
+  });
+
+  it('leaves a small box (a price tag in a corner) to delogo', () => {
+    const r = { x: 700, y: 100, w: 300, h: 80, start: 0, end: 5 };
+    expect(bandCrop([r], full)).toBeNull();
+  });
+
+  it('leaves a wide line mid-picture to delogo — only the top and bottom quarters are cut', () => {
+    expect(bandCrop([{ x: 20, y: 900, w: 1040, h: 120, start: 0, end: 5 }], full)).toBeNull();
+  });
+
+  it('cuts a bottom banner from its top edge down', () => {
+    const cut = bandCrop([{ x: 1, y: 1700, w: 1078, h: 150, start: 0, end: 5 }], full)!;
+    expect(cut.top).toBe(0);
+    expect(cut.keep.y).toBe(0);
+    expect(cut.keep.y + cut.keep.h).toBeLessThanOrEqual(1700);
+  });
+
+  it('measures against the picture, not the frame: a landscape strip on its blurred fill', () => {
+    const pic = pictureRect(1920, 1080); // 1080 × 608, centred
+    expect(pic).toEqual({ x: 0, y: 656, w: 1080, h: 608 });
+    const cut = bandCrop([{ x: 30, y: 660, w: 1020, h: 90, start: 0, end: 4 }], pic)!;
+    expect(cut.keep.y).toBeGreaterThanOrEqual(750);
+    expect(cut.keep.y + cut.keep.h).toBe(656 + 608);
+    // The same line high on a portrait frame is in that picture's top quarter, but on the
+    // strip a line in the frame's top quarter is outside the picture: nothing to cut.
+    expect(bandCrop([{ x: 30, y: 100, w: 1020, h: 90, start: 0, end: 4 }], pic)).toBeNull();
+  });
+
+  it('never cuts away more than minKeep allows: the bigger band that fits alone, else none', () => {
+    const top = { x: 0, y: 1, w: W, h: 500, start: 0, end: 5 };
+    const bottom = { x: 0, y: 1500, w: W, h: 419, start: 0, end: 5 };
+    const cut = bandCrop([top, bottom], full)!; // both = 1001 + 420 rows > 45%
+    expect(cut.top).toBeGreaterThan(0);
+    expect(cut.bottom).toBe(0);
+    expect(bandCrop([{ x: 0, y: 1, w: W, h: 1000, start: 0, end: 5 }], full)).toBeNull();
+  });
+
+  it('re-fits: a near-portrait keep covers the frame, a wide one sits on its blurred fill', () => {
+    expect(fitGraph(1080, 1300)).toMatch(/^scale=1080:1920:force_original_aspect_ratio=increase.*crop=1080:1920$/);
+    expect(fitGraph(1080, 500)).toContain('gblur=sigma=40');
   });
 });
