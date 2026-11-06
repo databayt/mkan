@@ -93,7 +93,8 @@ smoke() {
   printf "    %-22s %s\n" "host demo.mkan.sd" "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -H 'Host: demo.mkan.sd' http://localhost:3300/dashboard)"
   echo "==> container log tail"; docker logs --tail 15 mkan-cf-smoke 2>&1 | sed 's/^/    /'
   # On this Mac Colima's port-forward answers 000, so the container's own "Ready" is the boot signal.
-  local ready=0; docker logs mkan-cf-smoke 2>&1 | grep -q "Ready in" && ready=1
+  # Captured first: under pipefail, `docker logs | grep -q` fails when grep's early exit SIGPIPEs docker.
+  local ready=0 boot; boot=$(docker logs mkan-cf-smoke 2>&1 || true); grep -q "Ready in" <<<"$boot" && ready=1
   docker stop mkan-cf-smoke >/dev/null
   [[ $ready == 1 ]] || { echo "ABORT: the container never printed Ready"; return 1; }
 }
