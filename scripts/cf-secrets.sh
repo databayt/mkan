@@ -23,7 +23,10 @@ node cf/env-split.mjs "$SRC" secrets > "$OUT"
 # MKAN_WA_BRIDGE_SECRET: the gate on cf/worker.js /__wa/* (the shared WhatsApp bridge) and
 # the seed of the webhook token. MKAN_EVOLUTION_KEY: mkan's instance token on that bridge,
 # written by `pnpm wa:pair`.
-for VAR in NEXTAUTH_SECRET AUTH_SECRET RESEND_API_KEY GROQ_API_KEY SLACK_BOT_TOKEN AGENT_ANTHROPIC_API_KEY MKAN_WA_OUTBOX MKAN_WA_BRIDGE_SECRET MKAN_EVOLUTION_KEY; do
+# TICKET_QR_SECRET / ANALYTICS_SALT_SECRET: pinned to the pre-2026-11-06 NEXTAUTH_SECRET when the
+# session secret rotated, so bus tickets already issued still verify and visitor ids stay stable
+# (both fell back to NEXTAUTH_SECRET). MKAN_CHAT_LINK_SECRET: signs /find?c=…&s=… chat links.
+for VAR in NEXTAUTH_SECRET AUTH_SECRET RESEND_API_KEY GROQ_API_KEY SLACK_BOT_TOKEN AGENT_ANTHROPIC_API_KEY MKAN_WA_OUTBOX MKAN_WA_BRIDGE_SECRET MKAN_EVOLUTION_KEY TICKET_QR_SECRET ANALYTICS_SALT_SECRET MKAN_CHAT_LINK_SECRET; do
   V=$(security find-generic-password -s "cf-mkan-$VAR" -w 2>/dev/null || true)
   [[ -n "$V" ]] && OUT="$OUT" VAR="$VAR" V="$V" node -e '
     const fs=require("fs");const p=process.env.OUT;const o=JSON.parse(fs.readFileSync(p,"utf8"));
