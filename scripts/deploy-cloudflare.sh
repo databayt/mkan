@@ -5,6 +5,9 @@
 # scripts/deploy-hobby.sh; Vercel stays a working fallback until DNS is flipped.
 #
 #   scripts/deploy-cloudflare.sh <env-file> build|smoke|deploy|all
+#   scripts/deploy-cloudflare.sh <env-file> rollback <registry.cloudflare.com/…/mkan-mkancontainer:<tag>>
+#               re-pin a pushed image (no build, no Docker): the Worker from the build dir, the container
+#               image from the registry — the guarded auto-deploy's way back (scripts/crm/hermes/ship.sh)
 #
 # <env-file>  a dotenv with the PRODUCTION values (vercel env pull …). Used verbatim:
 #             NEXT_PUBLIC_* are inlined by next build; non-secret vars are baked into
@@ -29,6 +32,10 @@ IMAGE=mkan-cf:local
 
 build() {
   local SOURCE=${CF_SOURCE:-head}
+  # The commit this image is built from, baked into env.json: /api/health reports it, so a deploy can
+  # wait until the new image actually serves (wrangler returns when the rollout starts, not ends).
+  local BUILD_SHA
+  if [[ "$SOURCE" == "worktree" ]]; then BUILD_SHA="$(git rev-parse --short=7 HEAD)-dirty"; else BUILD_SHA=$(git rev-parse --short=7 "$([[ "$SOURCE" == "head" ]] && echo HEAD || echo "$SOURCE")"); fi
   rm -rf "$BUILD_DIR"; mkdir -p "$BUILD_DIR"
   if [[ "$SOURCE" == "worktree" ]]; then
     echo "==> copying the WORKING TREE ($(git rev-parse --short HEAD) + uncommitted changes) to $BUILD_DIR"
@@ -62,6 +69,8 @@ build() {
 
   echo "==> assembling: baked non-secret config, sharp + prisma checks"
   node cf/env-split.mjs "$ENV_FILE" config > .next/standalone/env.json
+  BUILD_SHA="$BUILD_SHA" node -e 'const f=".next/standalone/env.json";const fs=require("fs");const j=JSON.parse(fs.readFileSync(f,"utf8"));j.BUILD_SHA=process.env.BUILD_SHA;fs.writeFileSync(f,JSON.stringify(j))'
+  echo "    BUILD_SHA=$BUILD_SHA"
   echo "    env.json: $(node -e 'console.log(Object.keys(require("./.next/standalone/env.json")).length)') config vars; $(node cf/env-split.mjs "$ENV_FILE" secrets | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(Object.keys(JSON.parse(s)).length))') secrets stay with the Worker"
   du -sh .next/standalone .next/static public | sed 's/^/    /'
 }
@@ -83,7 +92,20 @@ smoke() {
   done
   printf "    %-22s %s\n" "host demo.mkan.sd" "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -H 'Host: demo.mkan.sd' http://localhost:3300/dashboard)"
   echo "==> container log tail"; docker logs --tail 15 mkan-cf-smoke 2>&1 | sed 's/^/    /'
+  # On this Mac Colima's port-forward answers 000, so the container's own "Ready" is the boot signal.
+  local ready=0; docker logs mkan-cf-smoke 2>&1 | grep -q "Ready in" && ready=1
   docker stop mkan-cf-smoke >/dev/null
+  [[ $ready == 1 ]] || { echo "ABORT: the container never printed Ready"; return 1; }
+}
+
+rollback() {
+  local REF=${1:?registry image reference}
+  [[ "$REF" == registry.cloudflare.com/*/mkan-mkancontainer[:@]* ]] || { echo "ABORT: not a mkan registry image: $REF"; exit 2; }
+  cd "$BUILD_DIR"
+  sed "s#\"image\": \"./Dockerfile.cf\"#\"image\": \"$REF\"#" wrangler.jsonc > wrangler.rollback.jsonc
+  grep -q "$REF" wrangler.rollback.jsonc || { echo "ABORT: could not re-pin the image in wrangler.jsonc"; exit 1; }
+  echo "==> wrangler deploy, container image re-pinned to $REF"
+  pnpm exec wrangler deploy -c wrangler.rollback.jsonc
 }
 
 deploy() {
@@ -97,6 +119,7 @@ case "$MODE" in
   smoke) smoke ;;
   deploy) deploy ;;
   all) build; smoke; deploy ;;
-  *) echo "mode must be build|smoke|deploy|all"; exit 2 ;;
+  rollback) rollback "${3:-}" ;;
+  *) echo "mode must be build|smoke|deploy|all|rollback"; exit 2 ;;
 esac
 echo "==> done ($MODE)"

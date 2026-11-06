@@ -154,7 +154,9 @@ export async function GET(request: NextRequest) {
     try {
       await db.$queryRaw`SELECT 1`;
       return NextResponse.json(
-        { status: 'live', uptime: Math.round(process.uptime()) },
+        // build: the commit the image was built from (BUILD_SHA, baked by scripts/deploy-cloudflare.sh) —
+        // a deploy waits for it before it checks anything, since wrangler returns when the rollout starts.
+        { status: 'live', uptime: Math.round(process.uptime()), build: process.env.BUILD_SHA ?? null },
         { headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' } },
       );
     } catch {
@@ -168,6 +170,7 @@ export async function GET(request: NextRequest) {
     version: process.env.npm_package_version || '1.0.0',
     environment: process.env.NODE_ENV || 'development',
     uptime: Math.round(process.uptime()),
+    build: process.env.BUILD_SHA ?? null,
     checks: {
       database: false,
       redis: false,

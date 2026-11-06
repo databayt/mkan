@@ -38,7 +38,7 @@ DRAIN_SECONDS="${SPRINT_DRAIN_SECONDS:-10800}"
 # The files that keep an unattended run safe. A session may edit the repo like any other change, so a
 # change here parks the loop until Abdout has read it and blessed it (--bless). Kept outside the repo.
 GUARD_SUMS="$HOME/.claude/state/mkan-guard.sha256"
-GUARD_FILES=(scripts/unattended.ts scripts/crm/hermes/sprint-runner.sh scripts/crm/hermes/lane.sh scripts/crm/hermes/detached.sh src/lib/monetize/provenance.ts scripts/sprint/act.ts src/lib/monetize/actions.ts)
+GUARD_FILES=(scripts/unattended.ts scripts/crm/hermes/sprint-runner.sh scripts/crm/hermes/lane.sh scripts/crm/hermes/detached.sh src/lib/monetize/provenance.ts scripts/sprint/act.ts src/lib/monetize/actions.ts scripts/crm/hermes/ship.sh scripts/deploy-cloudflare.sh)
 guard_sums() { (cd "$REPO" && /usr/bin/shasum -a 256 "${GUARD_FILES[@]}" 2>/dev/null); }
 
 if [ "${1:-}" = "--bless" ]; then
@@ -323,4 +323,9 @@ EOF
   esac
   # …and straight on to the next prompt: no hourly wait.
 done
+# Between drains: ship main to production when every guard passes (ship.sh — deterministic, never a
+# session; 3 h apart, rolls itself back). Not while the guard files wait for Abdout's bless.
+if [ -z "$DRY" ] && [ "$(guard_sums)" = "$(cat "$GUARD_SUMS" 2>/dev/null)" ]; then
+  bash "$REPO/scripts/crm/hermes/ship.sh" >>"$RUNLOG" 2>&1 || true
+fi
 exit 0
