@@ -194,6 +194,9 @@ function PlanForm({ labels }: { labels: MonetizeLabels }) {
 }
 
 /** This week's and this month's sprint, first in the column: progress, task checklist, prompts. */
+/** A lesson's before / after as a reader wants it: 151.2, not 151.23076923076923 (2026-11-06). */
+const lessonNum = (v: number, locale: Locale) => new Intl.NumberFormat(locale === "ar" ? "ar" : locale, { maximumFractionDigits: Math.abs(v) < 10 ? 2 : 1 }).format(v);
+
 function Lessons({ lessons, labels, locale }: { lessons: LessonView[]; labels: MonetizeLabels; locale: Locale }) {
   const L = labels.lessons;
   const tone: Record<string, string> = { moved: "text-[#008A05]", worse: "text-[#C13515]", flat: "text-[#6A6A6A]", unknown: "text-[#6A6A6A]" };
@@ -211,8 +214,8 @@ function Lessons({ lessons, labels, locale }: { lessons: LessonView[]; labels: M
                 <span className={cn("font-semibold", tone[l.verdict])}>{(L.verdict as Record<string, string>)[l.verdict] ?? l.verdict}</span>
                 {l.metric && (
                   <span className={cn("tabular-nums", MUTED)}>
-                    {l.metric}
-                    {l.before != null && ` ${l.before} → ${l.after ?? "…"}`}
+                    {(labels.kpis as unknown as Record<string, string> | undefined)?.[l.metric] ?? l.metric}
+                    {l.before != null && ` ${lessonNum(l.before, locale)} → ${l.after == null ? "…" : lessonNum(l.after, locale)}`}
                   </span>
                 )}
                 <span className={cn("ms-auto", MUTED)}>{formatDate(new Date(l.createdAt), locale, { year: undefined, month: "short", day: "numeric" })}</span>

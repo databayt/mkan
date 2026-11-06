@@ -133,7 +133,8 @@ export function shapeSprint(r: SprintRow): SprintView {
     tasks: tasks.map((t) => ({ id: t.id, title: t.title, block: t.block, done: t.done, doneAt: iso(t.doneAt) })),
     prompts,
     doneTasks: tasks.filter((t) => t.done).length,
-    processedPrompts: prompts.filter((p) => p.status === "processed" || p.status === "skipped").length,
+    // Run, not skipped: "8 of 13 processed" counted the skipped ones as done (2026-11-06).
+    processedPrompts: prompts.filter((p) => p.status === "processed").length,
   };
 }
 

@@ -37,6 +37,15 @@ export interface Funnel {
 }
 
 /** `offsetDays` shifts the window back: (offsetDays=7, days=7) is the week before this one. */
+/** All zeros: what the page shows for the chat funnel when its queries fail, instead of a 500. */
+export function emptyFunnel(days: number): Funnel {
+  return {
+    days, tasks: 0, shortlisted: 0, widened: 0, rulesOnly: 0, failed: 0, asked: 0, answered: 0, available: 0, slotChosen: 0, booked: 0,
+    readers: { claude: 0, groq: 0, rules: 0, taps: 0 }, written: 0, spendUsd: 0, capped: false, homesFirst: 0, returning: 0,
+    saves: 0, passes: 0, thumbsUp: 0, thumbsDown: 0, demand: { opened: 0, asks: 0, offers: 0, matched: 0, optIns: 0, alerts: 0 },
+  };
+}
+
 export async function agentFunnel(db: Db, days = 7, offsetDays = 0): Promise<Funnel> {
   const until = new Date(Date.now() - offsetDays * 86_400_000);
   const since = new Date(until.getTime() - days * 86_400_000);
@@ -65,7 +74,8 @@ export async function agentFunnel(db: Db, days = 7, offsetDays = 0): Promise<Fun
     distinctTasks('relaxed', { status: 'done' }),
     // Turns the Groq reader missed (429, timeout) and the rules read alone.
     db.agentEvent.count({ where: { kind: 'requirements_extracted', createdAt: { gte: since, lt: until }, payload: { path: ['reader'], equals: 'rules' } } }),
-    db.brokerRequest.findMany({ where: { createdAt: { gte: since, lt: until }, channel: { not: 'joined' } }, select: { status: true, chosenSlot: true, visitId: true } }),
+    // Asks that really went out (sentAt), so a skipped or queued one is not "asked" (2026-11-06).
+    db.brokerRequest.findMany({ where: { sentAt: { gte: since, lt: until }, channel: { not: 'joined' } }, select: { status: true, respondedAt: true, chosenSlot: true, visitId: true } }),
   ]);
   // Zeros, not a failed report, on a database without the demand tables yet.
   const demand = await Promise.all([
@@ -86,8 +96,10 @@ export async function agentFunnel(db: Db, days = 7, offsetDays = 0): Promise<Fun
     rulesOnly,
     failed,
     asked: requests.length,
-    answered: requests.filter((r) => r.status === 'AVAILABLE' || r.status === 'RENTED').length,
-    available: requests.filter((r) => r.status === 'AVAILABLE').length,
+    // The broker's own answer only: applyAnswer closes the other brokers' asks about the same home
+    // without one (respondedAt stays null), and those used to count as answered — and as available.
+    answered: requests.filter((r) => r.respondedAt && (r.status === 'AVAILABLE' || r.status === 'RENTED')).length,
+    available: requests.filter((r) => r.respondedAt && r.status === 'AVAILABLE').length,
     slotChosen: requests.filter((r) => r.chosenSlot).length,
     booked: requests.filter((r) => r.visitId != null).length,
     readers: { claude, groq, rules: rulesOnly, taps },

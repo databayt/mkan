@@ -48,9 +48,12 @@ export function nextSteps(i: NextStepInput): NextStep[] {
   }
 
   // ── 2 unblock ─────────────────────────────────────────────────────────
+  // One task per job: a stale snapshot used to put "Fix monetize-snapshot" on the list four times.
+  const listed = new Set<string>();
   for (const b of i.blocks) {
     for (const j of b.jobs) {
-      if (j.status === "fail" || j.status === "stale") {
+      if ((j.status === "fail" || j.status === "stale") && !listed.has(j.job)) {
+        listed.add(j.job);
         out.push({ key: j.status === "fail" ? "jobFailed" : "jobStale", priority: 2, block: b.key, vars: { job: j.job.replace(/^hermes_/, ""), detail: j.summary ?? "" } });
       }
     }
@@ -60,9 +63,11 @@ export function nextSteps(i: NextStepInput): NextStep[] {
   if (failRate != null && failRate > 0.2) out.push({ key: "failRate", priority: 2, block: "chat", vars: { pct: Math.round(failRate * 100) } });
 
   // ── 3 grow ────────────────────────────────────────────────────────────
+  // One decimal under 10%, as the funnel prints it (2.4%, not "2%" beside it).
+  const pct1 = (r: number) => (r < 0.1 ? Math.round(r * 1000) / 10 : Math.round(r * 100));
   const bn = i.bottleneck;
   if (bn.kind === "step" && bn.rate != null && bn.floor != null && bn.rate < bn.floor) {
-    out.push({ key: "bottleneck", priority: 3, block: (bn.block as BlockKey) ?? null, vars: { from: bn.from ?? "", to: bn.to ?? "", rate: Math.round(bn.rate * 100), floor: Math.round(bn.floor * 100) } });
+    out.push({ key: "bottleneck", priority: 3, block: (bn.block as BlockKey) ?? null, vars: { from: bn.from ?? "", to: bn.to ?? "", rate: pct1(bn.rate), floor: Math.round(bn.floor * 100) } });
   }
   const postedDays = kpi(block("post"), "postedDays7");
   if (postedDays != null && postedDays < 7) out.push({ key: "postDaily", priority: 3, block: "post", vars: { n: postedDays } });

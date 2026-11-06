@@ -18,7 +18,7 @@ export const DEFAULT_FIXED_RWF: Record<string, number> = {
    * (Cloudflare Containers pricing, 2026-10-05; docs/costs-2026-11.md). It was $1 until 2026-11-05,
    * which left the container out. Moving mkan to a plain Worker (OpenNext) would remove the $29.
    */
-  cloudflare: Math.round((1 + 29.24) * 1450),
+  cloudflare: Math.round((1 + 29.24) * USD_TO_RWF),
   /** The WhatsApp number's SIM and data bundle: the one bill mkan adds on its own. */
   whatsappLine: 5000,
   /**
@@ -33,9 +33,10 @@ export function fixedCostsRwf(env: string | undefined = process.env.MONETIZE_FIX
   if (!env) return DEFAULT_FIXED_RWF;
   try {
     const parsed = JSON.parse(env) as Record<string, unknown>;
-    const out: Record<string, number> = {};
+    // Merged over the defaults: an override that names one bill must not drop the others (2026-11-06).
+    const out: Record<string, number> = { ...DEFAULT_FIXED_RWF };
     for (const [k, v] of Object.entries(parsed)) if (typeof v === "number" && v >= 0) out[k] = v;
-    return Object.keys(out).length ? out : DEFAULT_FIXED_RWF;
+    return out;
   } catch {
     return DEFAULT_FIXED_RWF;
   }

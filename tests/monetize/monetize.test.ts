@@ -113,7 +113,9 @@ describe("bottleneck", () => {
 describe("costs config", () => {
   it("falls back to defaults on bad JSON and drops negatives", () => {
     expect(fixedCostsRwf("not json")).toEqual(DEFAULT_FIXED_RWF);
-    expect(fixedCostsRwf('{"sim":5000,"bad":-1,"x":"y"}')).toEqual({ sim: 5000 });
+    // Merged over the defaults: naming one bill keeps the others; bad values are ignored.
+    expect(fixedCostsRwf('{"sim":5000,"bad":-1,"x":"y"}')).toEqual({ ...DEFAULT_FIXED_RWF, sim: 5000 });
+    expect(fixedCostsRwf('{"whatsappLine":7000}')).toEqual({ ...DEFAULT_FIXED_RWF, whatsappLine: 7000 });
   });
 });
 

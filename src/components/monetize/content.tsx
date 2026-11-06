@@ -28,7 +28,8 @@ import { TodoSection } from "./todo-section";
 // `lang` stays in the props (the page passes it) though the 7 / 30 days links that used it are gone (Abdout, 11-04).
 export function MonetizeContent({ data, labels, locale, canEdit = false }: { data: MonetizeOverview; labels: MonetizeLabels; locale: Locale; lang: string; canEdit?: boolean }) {
   const rwf = (v: number) => formatValue(v, "rwf", locale);
-  const broken = data.blocks.filter((b) => b.health === "red").length;
+  // Red or amber: "0 broken" beside a page of missed targets read as all-clear (2026-11-06).
+  const broken = data.blocks.filter((b) => b.health === "red" || b.health === "yellow").length;
   return (
     <div className="mx-auto w-full max-w-[1184px] px-6 pb-28 pt-6 md:px-8 md:pb-16">
       {/* Title row — like the listing's name: the state, then the last update right after it. */}
@@ -37,7 +38,7 @@ export function MonetizeContent({ data, labels, locale, canEdit = false }: { dat
         <div className={cn("mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm", INK)}>
           <HealthBadge health={data.health} label={labels.health[data.health]} />
           <span className={MUTED}>·</span>
-          <span>{fill(labels.gates.brokerSends, { mode: data.gates.brokerSends })}</span>
+          <span>{fill(labels.gates.brokerSends, { mode: (labels.gates as { modes?: Record<string, string> }).modes?.[data.gates.brokerSends] ?? data.gates.brokerSends })}</span>
           <span className={MUTED}>·</span>
           <span className={MUTED}>{fill(labels.lastUpdate, { date: formatDate(new Date(data.generatedAt), locale, { year: undefined, month: "short", day: "numeric" }) })}</span>
         </div>

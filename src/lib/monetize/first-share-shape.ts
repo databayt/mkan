@@ -76,7 +76,8 @@ export interface FirstShareView extends FunnelCounts {
   rejected: number;
   posted: number;
   failedUploads: number;
-  views: number;
+  /** Views of the posts with a stats reading; null until tt:stats has read any (not 0). */
+  views: number | null;
   /** Code chats no post could claim (the home was never posted, or posted after the chat). */
   unattributedChats: number;
   rejectReasons: { reason: string; count: number }[];
@@ -153,7 +154,8 @@ export function shapeFirstShare(input: {
     rejected: posts.filter((p) => p.status === "REJECTED" && inWin(p.pickedAt)).length,
     posted: posts.filter((p) => p.status === "POSTED" && inWin(p.postedAt)).length,
     failedUploads: posts.filter((p) => p.status === "FAILED" && inWin(p.pickedAt)).length,
-    views: posts.filter((p) => p.status === "POSTED").reduce((s, p) => s + (p.views ?? 0), 0),
+    // Unknown is not zero: "Views 0" beside "views per post 151" read as a broken post (2026-11-06).
+    views: posts.some((p) => p.status === "POSTED" && p.views != null) ? posts.filter((p) => p.status === "POSTED").reduce((s, p) => s + (p.views ?? 0), 0) : null,
     ...total,
     contacts,
     unattributedChats: unattributed,

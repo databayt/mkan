@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 import { auth, isAdminNow } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -9,6 +9,7 @@ import { logger } from "@/lib/logger";
 import { BLOCKS } from "@/lib/monetize/types";
 import { REVENUE_LINES } from "@/lib/monetize/money";
 import { approvalHint, isWebText, markWeb } from "@/lib/monetize/provenance";
+import { MONETIZE_TAG } from "@/lib/monetize/load-cached";
 
 /**
  * /monetize writes: money received, the experiment log, the sprint plan. Each action re-checks the
@@ -53,6 +54,7 @@ export async function addRevenueEntry(form: FormData): Promise<void> {
   await db.revenueEntry.create({ data });
   logger.info("monetize:revenue", { actorId: session.user.id, line: data.line, amountRwf: data.amountRwf });
   revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
 }
 
 const experimentSchema = z.object({
@@ -87,6 +89,7 @@ export async function saveExperiment(form: FormData): Promise<void> {
   else await db.experiment.create({ data: { ...fields, endedAt } });
   logger.info("monetize:experiment", { actorId: session.user.id, block: fields.block, verdict: fields.verdict });
   revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
 }
 
 // ── the sprint plan ─────────────────────────────────────────────────────
@@ -100,6 +103,7 @@ export async function toggleSprintTask(form: FormData): Promise<void> {
   const task = await db.sprintTask.findUniqueOrThrow({ where: { id }, select: { done: true } });
   await db.sprintTask.update({ where: { id }, data: { done: !task.done, doneAt: task.done ? null : new Date() } });
   revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
 }
 
 const promptStatus = z.enum(["pending", "processed", "skipped"]);
@@ -122,6 +126,7 @@ export async function setPromptStatus(form: FormData): Promise<void> {
     data: { status, processedAt: status === "pending" ? null : new Date() },
   });
   revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
 }
 
 const sprintSchema = z.object({
@@ -144,12 +149,14 @@ export async function saveSprint(form: FormData): Promise<void> {
   if (data.endsAt <= data.startsAt) throw new Error("The sprint ends before it starts");
   await db.sprint.create({ data: { ...data, title: markWeb(data.title), ...(data.goal ? { goal: markWeb(data.goal) } : {}) } });
   revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
 }
 
 export async function closeSprint(form: FormData): Promise<void> {
   await requireAdmin();
   await db.sprint.update({ where: { id: idOf(form) }, data: { status: "closed" } });
   revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
 }
 
 export async function addSprintTask(form: FormData): Promise<void> {
@@ -160,6 +167,7 @@ export async function addSprintTask(form: FormData): Promise<void> {
   const order = await db.sprintTask.count({ where: { sprintId } });
   await db.sprintTask.create({ data: { sprintId, title: markWeb(title), block, order } });
   revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
 }
 
 export async function addSprintPrompt(form: FormData): Promise<void> {
@@ -173,4 +181,5 @@ export async function addSprintPrompt(form: FormData): Promise<void> {
   const p = await db.sprintPrompt.create({ data: { sprintId, text: markWeb(text), taskId, order, status: "blocked", blockedAt: now, processedAt: now } });
   await db.sprintPrompt.update({ where: { id: p.id }, data: { result: approvalHint(p.id) } });
   revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
 }

@@ -37,7 +37,7 @@ export function FirstShareSection({ data, labels, locale }: { data: FirstShareVi
                 <p className={cn("text-xs", MUTED)}>
                   <span className="tabular-nums">{i + 1}</span> · {L.stages[k]}
                 </p>
-                <p className={cn("mt-1 text-xl font-semibold tabular-nums", INK)}>{k === "paidShareRwf" ? formatValue(data[k], "rwf", locale) : n(data[k])}</p>
+                <p className={cn("mt-1 text-xl font-semibold tabular-nums", INK)}>{k === "paidShareRwf" ? formatValue(data[k], "rwf", locale) : data[k] == null ? "—" : n(data[k])}</p>
               </li>
             ))}
           </ol>

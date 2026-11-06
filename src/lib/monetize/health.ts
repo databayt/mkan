@@ -9,6 +9,8 @@ import type { Health, JobState, JobStatus } from "./types";
  */
 export const STALE_FACTOR = 2;
 export const YELLOW_DROP = 0.2;
+/** A run still "start"ed this long after it began has hung (no job here runs for 3 h). */
+export const START_STALE_MS = 3 * 3_600_000;
 
 export function jobStatus(
   raw: { status?: string | null; at?: string | null },
@@ -20,6 +22,8 @@ export function jobStatus(
   const at = raw.at ? Date.parse(raw.at) : NaN;
   if (!Number.isFinite(at)) return "missing";
   if (now - at > STALE_FACTOR * cadenceHours * 3_600_000) return "stale";
+  // Started and never ended: running now, or hung — it used to read as a quiet ok (2026-11-06).
+  if (raw.status === "start" && now - at > START_STALE_MS) return "stale";
   return raw.status === "warn" || raw.status === "defer" ? "warn" : "ok";
 }
 
@@ -35,8 +39,10 @@ export function blockHealth(input: {
   leverPrev: number | null;
   /** Block-specific hard stops (a cap hit, a gate closed) that make it red regardless of jobs. */
   blockers?: string[];
+  /** Its success targets (success.ts): fewer than half met is amber, not "healthy" (2026-11-06). */
+  targets?: { met: number; known: number };
 }): { health: Health; reason: string } {
-  const { jobs, lever, leverPrev, blockers = [] } = input;
+  const { jobs, lever, leverPrev, blockers = [], targets } = input;
   if (blockers.length) return { health: "red", reason: blockers[0]! };
   const failed = jobs.find((j) => j.status === "fail");
   if (failed) return { health: "red", reason: "jobFailed" };
@@ -47,7 +53,10 @@ export function blockHealth(input: {
   const delta = change(lever, leverPrev);
   if (delta != null && delta < -YELLOW_DROP) return { health: "yellow", reason: "leverDown" };
   if (jobs.some((j) => j.status === "warn")) return { health: "yellow", reason: "jobWarn" };
+  // A job the block depends on left no record at all: not proof it runs.
+  if (jobs.some((j) => j.status === "missing")) return { health: "yellow", reason: "jobMissing" };
   if (lever === 0) return { health: "yellow", reason: "leverZero" };
+  if (targets && targets.known > 0 && targets.met / targets.known < 0.5) return { health: "yellow", reason: "targetsMissed" };
   return { health: "green", reason: "healthy" };
 }
 

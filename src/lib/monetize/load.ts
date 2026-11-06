@@ -3,7 +3,8 @@ import "server-only";
 import { db } from "@/lib/db";
 import { brokerSendMode } from "@/components/agent/broker-sends";
 
-import { agentFunnel, type Funnel } from "./agent-funnel";
+import { agentFunnel, emptyFunnel, type Funnel } from "./agent-funnel";
+import { successFor } from "./success";
 import { loadFirstShare } from "./first-share";
 import type { FirstShareView } from "./first-share-shape";
 import { bottleneck, type Bottleneck, type Stage } from "./bottleneck";
@@ -115,17 +116,21 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   const now = Date.now();
   const since = new Date(now - days * DAY);
   const prevSince = new Date(now - 2 * days * DAY);
-  const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
-  const month = monthStart.toISOString().slice(0, 7);
-  const daysInMonth = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 0)).getUTCDate();
+  // The business month is Kigali's (UTC+2): money received at 23:30 on the 31st belongs to that month.
+  const KIGALI_MS = 2 * 3_600_000;
+  const kigaliNow = new Date(Date.now() + KIGALI_MS);
+  const monthStart = new Date(Date.UTC(kigaliNow.getUTCFullYear(), kigaliNow.getUTCMonth(), 1) - KIGALI_MS);
+  const month = kigaliNow.toISOString().slice(0, 7);
+  const daysInMonth = new Date(Date.UTC(kigaliNow.getUTCFullYear(), kigaliNow.getUTCMonth() + 1, 0)).getUTCDate();
 
   // Deals are read from the earlier of the comparison window and the month: one created weeks ago
   // and paid this month still counts as this month's money.
   const dealsFrom = new Date(Math.min(prevSince.getTime(), monthStart.getTime()));
   const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints, firstShare, lessons, inbox, handoffs, directory] =
     await Promise.all([
-      agentFunnel(db, days),
-      agentFunnel(db, days, days),
+      // Every read below falls back on its own: one failed query must not take the page down (2026-11-06).
+      agentFunnel(db, days).catch(() => emptyFunnel(days)),
+      agentFunnel(db, days, days).catch(() => emptyFunnel(days)),
       // Two windows plus a day, so a 30-day view has a previous window to compare against.
       latestSnapshots(new Date(now - Math.max(14, 2 * days + 1) * DAY)),
       db.revenueEntry
@@ -134,11 +139,11 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
       db.deal.findMany({
         where: { OR: [{ createdAt: { gte: prevSince } }, { paidAt: { gte: dealsFrom } }] },
         select: { status: true, mkanShare: true, viewingFeePaid: true, createdAt: true, paidAt: true },
-      }),
-      db.masteringRun.groupBy({ by: ["status"], where: { queuedAt: { gte: since } }, _count: { _all: true } }),
-      db.masteringRun.count({ where: { appliedAt: { gte: prevSince, lt: since } } }),
-      db.masteringRun.count({ where: { status: { in: ["QUEUED", "ASSIGNED"] } } }),
-      db.apiSpend.findMany({ where: { day: { startsWith: month } }, select: { lane: true, usd: true, calls: true, inputTokens: true, outputTokens: true } }),
+      }).catch(() => []),
+      db.masteringRun.groupBy({ by: ["status"], where: { queuedAt: { gte: since } }, _count: { _all: true } }).catch(() => []),
+      db.masteringRun.count({ where: { appliedAt: { gte: prevSince, lt: since } } }).catch(() => 0),
+      db.masteringRun.count({ where: { status: { in: ["QUEUED", "ASSIGNED"] } } }).catch(() => 0),
+      db.apiSpend.findMany({ where: { day: { startsWith: month } }, select: { lane: true, usd: true, calls: true, inputTokens: true, outputTokens: true } }).catch(() => []),
       db.experiment.findMany({ orderBy: { startedAt: "desc" }, take: 12 }).catch(() => []),
       brokerSendMode().catch(() => "off" as const),
       // Web vs WhatsApp, and chats opened by a TikTok home code: `refSource` since 2026-11-05;
@@ -160,8 +165,8 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
         SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY ms) AS p50,
                percentile_cont(0.95) WITHIN GROUP (ORDER BY ms) AS p95
         FROM turns WHERE ms IS NOT NULL`.catch(() => [{ p50: null, p95: null }]),
-      loadSprints(),
-      loadFirstShare(days),
+      loadSprints().catch(() => ({ week: null, month: null, prompts: [], startIndex: 0 }) as SprintsView),
+      loadFirstShare(days).catch(() => null),
       loadLessons(8).catch(() => [] as LessonView[]),
       // Messages clients sent in the window, and the people behind them — Abdout's own contacts
       // (WaState personal:<number>) left out — and of those people, who got homes, a viewing, the home.
@@ -173,12 +178,19 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
           CROSS JOIN LATERAL jsonb_array_elements(t.messages) m
           WHERE t."updatedAt" >= ${since} AND m->>'role' = 'user' AND m->>'at' >= ${since.toISOString()}
             AND NOT EXISTS (SELECT 1 FROM "WaState" w WHERE p."waPhone" IS NOT NULL AND w.key = 'personal:' || replace(p."waPhone", '+', ''))
+            -- The team's test numbers are not clients (broker-sends.ts testPhones).
+            AND NOT EXISTS (SELECT 1 FROM "WaState" w WHERE p."waPhone" IS NOT NULL AND w.key = 'test-phones' AND w.value @> to_jsonb(replace(p."waPhone", '+', '')))
           GROUP BY t.id, t."profileId"
         )
         SELECT COUNT(*)::int AS chats,
                COALESCE(SUM(n), 0)::int AS messages,
                COUNT(DISTINCT COALESCE("profileId", id))::int AS people,
-               COUNT(DISTINCT COALESCE("profileId", id)) FILTER (WHERE EXISTS (SELECT 1 FROM "AgentEvent" e WHERE e."taskId" = said.id AND e.kind = 'shortlist_ready'))::int AS shortlisted,
+               -- Got homes = a real shortlist in the window: homes on it, and not a saved search's later match
+               -- (shortlist_ready is also written for an empty or demand-only list — "100%" every week).
+               COUNT(DISTINCT COALESCE("profileId", id)) FILTER (WHERE EXISTS (
+                 SELECT 1 FROM "AgentEvent" e WHERE e."taskId" = said.id AND e.kind = 'shortlist_ready' AND e."createdAt" >= ${since}
+                   AND COALESCE((e.payload->>'count')::int, 0) > 0 AND COALESCE((e.payload->>'demand')::boolean, false) = false
+               ))::int AS shortlisted,
                COUNT(DISTINCT COALESCE("profileId", id)) FILTER (WHERE EXISTS (SELECT 1 FROM "Deal" d WHERE d."taskId" = said.id))::int AS viewing,
                COUNT(DISTINCT COALESCE("profileId", id)) FILTER (WHERE EXISTS (SELECT 1 FROM "Deal" d WHERE d."taskId" = said.id AND d.status IN ('SIGNED', 'PAID')))::int AS signed
         FROM said`.catch(() => null),
@@ -194,8 +206,9 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   const jobsOf = (b: BlockKey): JobState[] => {
     const row = last(b);
     if (!row) return [];
-    // A snapshot older than 3 h means the pusher itself stopped — say so.
-    const stale = now - row.at.getTime() > 3 * 3_600_000;
+    // A snapshot older than 3 h means the pusher itself stopped — say so, on the blocks whose numbers
+    // come from the Mac. Chat reads Neon live: a sleeping Mac does not make it red (2026-11-06).
+    const stale = b !== "chat" && now - row.at.getTime() > 3 * 3_600_000;
     const jobs = metricsOf(row).jobs ?? [];
     return stale ? [...jobs, { job: "monetize-snapshot", status: "stale", at: row.at.toISOString() }] : jobs;
   };
@@ -328,7 +341,9 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
 
   const block = (key: BlockKey, kpis: Kpi[], jobs: JobState[], trend: number[], blockers: string[] = [], daily?: { day: string; value: number }[]): BlockView => {
     const lever = kpis.find((k) => k.lever);
-    const { health, reason } = blockHealth({ jobs, lever: lever?.value ?? null, leverPrev: lever?.prev ?? null, blockers });
+    const goals = successFor({ key, kpis } as BlockView, days);
+    const targets = { met: goals.filter((g) => g.status === "met").length, known: goals.filter((g) => g.status !== "unknown").length };
+    const { health, reason } = blockHealth({ jobs, lever: lever?.value ?? null, leverPrev: lever?.prev ?? null, blockers, targets });
     return { key, health, reason, kpis, jobs, snapshotAt: last(key)?.at.toISOString() ?? null, trend, ...(daily ? { daily } : {}) };
   };
 
