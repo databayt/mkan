@@ -83,6 +83,7 @@
     "deal:list": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/deal.ts list",
     "deal:book": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/deal.ts book",
     "deal:status": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/deal.ts status",
+    "deal:e2e": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/deal-e2e.ts",
     "agent:latency": "tsx scripts/agent/latency.ts",
     "mkan:read": "tsx --require ./scripts/agent/no-server-only.js scripts/hermes/read.ts",
     "agent:eval": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/eval-reader.ts",
