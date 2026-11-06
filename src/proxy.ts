@@ -9,6 +9,7 @@
  * migration: https://nextjs.org/docs/messages/middleware-to-proxy
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { decode } from 'next-auth/jwt';
 import { match } from '@formatjs/intl-localematcher';
 import Negotiator from 'negotiator';
 import { i18n } from './components/internationalization/config';
@@ -42,12 +43,41 @@ const STALE_HOSTS = new Set([
 // Auth helpers
 // ---------------------------------------------------------------------------
 
-function isAuthenticated(request: NextRequest): boolean {
+const SESSION_COOKIE =
+  process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token';
+
+type SessionState = 'none' | 'valid' | 'stale';
+
+/**
+ * Whether the session cookie is one this deployment signed. Its mere presence used to count as
+ * signed in: after AUTH_SECRET rotates, an old cookie would send /login → dashboard → /login in a
+ * loop (hogwarts 2026-09-13). A cookie that does not decode is "stale" — treated as signed out and
+ * expired on the response, so the next request starts clean. Without a secret here (local tooling)
+ * presence still counts; the pages' auth() decides.
+ */
+async function sessionState(request: NextRequest): Promise<SessionState> {
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  if (!token) return 'none';
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+  if (!secret) return 'valid';
+  try {
+    return (await decode({ token, secret, salt: SESSION_COOKIE })) ? 'valid' : 'stale';
+  } catch {
+    return 'stale';
+  }
+}
+
+/** Expire a cookie this deployment cannot read, with the attributes auth.ts set it with. */
+function expireStaleSession(response: NextResponse): NextResponse {
   const isProduction = process.env.NODE_ENV === 'production';
-  const cookieName = isProduction
-    ? '__Secure-next-auth.session-token'
-    : 'next-auth.session-token';
-  return !!request.cookies.get(cookieName)?.value;
+  response.cookies.set(SESSION_COOKIE, '', {
+    path: '/',
+    maxAge: 0,
+    httpOnly: true,
+    sameSite: isProduction ? 'strict' : 'lax',
+    secure: isProduction,
+  });
+  return response;
 }
 
 function getPathWithoutLocale(pathname: string): string {
@@ -239,7 +269,7 @@ function getLocale(request: NextRequest) {
 // Proxy (Next 16 export name)
 // ---------------------------------------------------------------------------
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // --- Host canonicalization ----------------------------------------------
@@ -320,7 +350,10 @@ export function proxy(request: NextRequest) {
   // --- Auth checking (runs only when locale is present) ------------------
 
   const path = getPathWithoutLocale(pathname);
-  const loggedIn = isAuthenticated(request);
+  const session = await sessionState(request);
+  const loggedIn = session === 'valid';
+  // Every response from here on also expires a cookie this deployment cannot read.
+  const done = (response: NextResponse) => (session === 'stale' ? expireStaleSession(response) : response);
 
   // Only (re)persist the locale cookie when the client's copy is missing or
   // different. A Set-Cookie header on every page response marks the response
@@ -348,11 +381,11 @@ export function proxy(request: NextRequest) {
         new URL(destination, request.nextUrl.origin)
       );
       addSecurityHeaders(response, requestId, persistLocale);
-      return response;
+      return done(response);
     }
     const response = passThrough();
     addSecurityHeaders(response, requestId, persistLocale);
-    return response;
+    return done(response);
   }
 
   // Public routes: always accessible — unless the path also falls under a
@@ -362,7 +395,7 @@ export function proxy(request: NextRequest) {
   if (isPublicRoute(path) && !isProtectedRoute(path)) {
     const response = passThrough();
     addSecurityHeaders(response, requestId, persistLocale);
-    return response;
+    return done(response);
   }
 
   // Protected routes: require session cookie.
@@ -376,14 +409,14 @@ export function proxy(request: NextRequest) {
     request.nextUrl.search = `?callbackUrl=${callbackUrl}`;
     const response = NextResponse.redirect(request.nextUrl);
     addSecurityHeaders(response, requestId, persistLocale);
-    return response;
+    return done(response);
   }
 
   // Everything else (authenticated users on any route, anonymous users on
   // unknown paths, etc.) — let through so the app router can resolve.
   const response = passThrough();
   addSecurityHeaders(response, requestId, persistLocale);
-  return response;
+  return done(response);
 }
 
 export const config = {

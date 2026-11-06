@@ -1,4 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+// @vitest-environment node
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vitest";
+import { encode } from "next-auth/jwt";
 
 /**
  * Tests exercise the Next.js 16 proxy (renamed from middleware) against the
@@ -73,6 +75,38 @@ function getRedirectLocation(response: NextResponse): string {
   return response.headers.get("location") ?? "";
 }
 
+describe("proxy — a session cookie must be one this deployment signed", () => {
+  const SECRET = "test-secret-at-least-32-characters-long!!";
+  const COOKIE = "next-auth.session-token";
+  const saved = process.env.AUTH_SECRET;
+  beforeAll(() => {
+    process.env.AUTH_SECRET = SECRET;
+  });
+  afterAll(() => {
+    // process.env turns undefined into the string "undefined": delete instead.
+    if (saved === undefined) delete process.env.AUTH_SECRET;
+    else process.env.AUTH_SECRET = saved;
+  });
+
+  it("treats a cookie signed with another secret as signed out, and expires it", async () => {
+    const stale = await encode({ token: { sub: "u1", id: "u1" }, secret: "an-old-rotated-secret-of-32-characters!!", salt: COOKIE });
+    const res = await proxy(createRequest("/en/login", { cookies: { [COOKIE]: stale } }));
+    expect(res.status).toBe(200); // the login page, not a redirect away from it (no loop)
+    expect(res.headers.get("set-cookie") ?? "").toMatch(new RegExp(`${COOKIE}=;.*Max-Age=0`, "i"));
+  });
+
+  it("treats garbage as signed out", async () => {
+    const res = await proxy(createRequest("/en/login", { cookies: { [COOKIE]: "not-a-jwt" } }));
+    expect(res.status).toBe(200);
+  });
+
+  it("sends a validly signed user away from /en/login", async () => {
+    const valid = await encode({ token: { sub: "u1", id: "u1" }, secret: SECRET, salt: COOKIE });
+    const res = await proxy(createRequest("/en/login", { cookies: { [COOKIE]: valid } }));
+    expect(res.status).toBe(307);
+  });
+});
+
 describe("proxy — locale detection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -80,23 +114,23 @@ describe("proxy — locale detection", () => {
     mocks.negotiatorLanguages.mockReturnValue(["ar"]);
   });
 
-  it("redirects bare / to /ar when no locale cookie", () => {
-    const res = proxy(createRequest("/"));
+  it("redirects bare / to /ar when no locale cookie", async () => {
+    const res = await proxy(createRequest("/"));
     expect(isRedirect(res!)).toBe(true);
     expect(getRedirectLocation(res!)).toContain("/ar");
   });
 
-  it("redirects to /ar when NEXT_LOCALE cookie is ar", () => {
-    const res = proxy(
+  it("redirects to /ar when NEXT_LOCALE cookie is ar", async () => {
+    const res = await proxy(
       createRequest("/", { cookies: { NEXT_LOCALE: "ar" } })
     );
     expect(isRedirect(res!)).toBe(true);
     expect(getRedirectLocation(res!)).toContain("/ar");
   });
 
-  it("uses Accept-Language header when no cookie", () => {
+  it("uses Accept-Language header when no cookie", async () => {
     mocks.matchFn.mockReturnValue("ar");
-    const res = proxy(
+    const res = await proxy(
       createRequest("/listings", {
         headers: { "accept-language": "ar,en;q=0.5" },
       })
@@ -105,67 +139,67 @@ describe("proxy — locale detection", () => {
     expect(getRedirectLocation(res!)).toContain("/ar/listings");
   });
 
-  it("defaults to ar when locale is unknown", () => {
+  it("defaults to ar when locale is unknown", async () => {
     mocks.matchFn.mockReturnValue("ar");
-    const res = proxy(createRequest("/about"));
+    const res = await proxy(createRequest("/about"));
     expect(isRedirect(res!)).toBe(true);
     expect(getRedirectLocation(res!)).toContain("/ar/about");
   });
 
-  it("sets NEXT_LOCALE cookie on locale redirect", () => {
-    const res = proxy(createRequest("/"));
+  it("sets NEXT_LOCALE cookie on locale redirect", async () => {
+    const res = await proxy(createRequest("/"));
     const setCookie = res!.headers.get("set-cookie") ?? "";
     expect(setCookie).toContain("NEXT_LOCALE");
   });
 
-  it("does not redirect when locale already in URL", () => {
-    const res = proxy(createRequest("/en/listings"));
+  it("does not redirect when locale already in URL", async () => {
+    const res = await proxy(createRequest("/en/listings"));
     expect(isRedirect(res!)).toBe(false);
   });
 });
 
 describe("proxy — skip rules", () => {
-  it("passes through /_next requests", () => {
-    const res = proxy(createRequest("/_next/static/chunk.js"));
+  it("passes through /_next requests", async () => {
+    const res = await proxy(createRequest("/_next/static/chunk.js"));
     expect(isRedirect(res!)).toBe(false);
   });
 
-  it("passes through /api/auth requests", () => {
-    const res = proxy(createRequest("/api/auth/callback/google"));
+  it("passes through /api/auth requests", async () => {
+    const res = await proxy(createRequest("/api/auth/callback/google"));
     expect(isRedirect(res!)).toBe(false);
   });
 
-  it("passes through /api requests (GET)", () => {
-    const res = proxy(createRequest("/api/listings"));
+  it("passes through /api requests (GET)", async () => {
+    const res = await proxy(createRequest("/api/listings"));
     expect(isRedirect(res!)).toBe(false);
   });
 
-  it("passes through file requests (paths with dots)", () => {
-    const res = proxy(createRequest("/favicon.ico"));
+  it("passes through file requests (paths with dots)", async () => {
+    const res = await proxy(createRequest("/favicon.ico"));
     expect(isRedirect(res!)).toBe(false);
   });
 });
 
 describe("proxy — public routes", () => {
-  it("allows unauthenticated access to public route with locale", () => {
-    const res = proxy(createRequest("/en/listings"));
+  it("allows unauthenticated access to public route with locale", async () => {
+    const res = await proxy(createRequest("/en/listings"));
     expect(isRedirect(res!)).toBe(false);
   });
 
-  it("allows unauthenticated access to root with locale", () => {
-    const res = proxy(createRequest("/en"));
+  it("allows unauthenticated access to root with locale", async () => {
+    const res = await proxy(createRequest("/en"));
     expect(isRedirect(res!)).toBe(false);
   });
 });
 
 describe("proxy — auth routes", () => {
-  it("allows unauthenticated user to access /en/login", () => {
-    const res = proxy(createRequest("/en/login"));
+  it("allows unauthenticated user to access /en/login", async () => {
+    const res = await proxy(createRequest("/en/login"));
     expect(isRedirect(res!)).toBe(false);
   });
 
-  it("redirects authenticated user away from /en/login", () => {
-    const res = proxy(
+  it("redirects authenticated user away from /en/login", async () => {
+    const res = await proxy(
       createRequest("/en/login", {
         cookies: { "next-auth.session-token": "valid-token" },
       })
@@ -174,8 +208,8 @@ describe("proxy — auth routes", () => {
     expect(getRedirectLocation(res!)).toContain("/hosting/listings");
   });
 
-  it("redirects authenticated user from /en/join to default redirect", () => {
-    const res = proxy(
+  it("redirects authenticated user from /en/join to default redirect", async () => {
+    const res = await proxy(
       createRequest("/en/join", {
         cookies: { "next-auth.session-token": "valid-token" },
       })
@@ -186,21 +220,21 @@ describe("proxy — auth routes", () => {
 });
 
 describe("proxy — protected routes", () => {
-  it("redirects unauthenticated user from /en/dashboard to login", () => {
-    const res = proxy(createRequest("/en/dashboard"));
+  it("redirects unauthenticated user from /en/dashboard to login", async () => {
+    const res = await proxy(createRequest("/en/dashboard"));
     expect(isRedirect(res!)).toBe(true);
     expect(getRedirectLocation(res!)).toContain("/en/login");
   });
 
-  it("includes callbackUrl when redirecting to login", () => {
-    const res = proxy(createRequest("/en/hosting/listings"));
+  it("includes callbackUrl when redirecting to login", async () => {
+    const res = await proxy(createRequest("/en/hosting/listings"));
     expect(isRedirect(res!)).toBe(true);
     const location = getRedirectLocation(res!);
     expect(location).toContain("callbackUrl=");
   });
 
-  it("allows authenticated user to access protected route", () => {
-    const res = proxy(
+  it("allows authenticated user to access protected route", async () => {
+    const res = await proxy(
       createRequest("/en/dashboard", {
         cookies: { "next-auth.session-token": "valid-token" },
       })
@@ -210,30 +244,30 @@ describe("proxy — protected routes", () => {
 });
 
 describe("proxy — security headers", () => {
-  it("sets X-Frame-Options on public route response", () => {
-    const res = proxy(createRequest("/en/listings"));
+  it("sets X-Frame-Options on public route response", async () => {
+    const res = await proxy(createRequest("/en/listings"));
     expect(res!.headers.get("X-Frame-Options")).toBe("DENY");
   });
 
-  it("sets X-Content-Type-Options header", () => {
-    const res = proxy(createRequest("/en/listings"));
+  it("sets X-Content-Type-Options header", async () => {
+    const res = await proxy(createRequest("/en/listings"));
     expect(res!.headers.get("X-Content-Type-Options")).toBe("nosniff");
   });
 
-  it("sets Referrer-Policy header", () => {
-    const res = proxy(createRequest("/en/listings"));
+  it("sets Referrer-Policy header", async () => {
+    const res = await proxy(createRequest("/en/listings"));
     expect(res!.headers.get("Referrer-Policy")).toBe(
       "strict-origin-when-cross-origin"
     );
   });
 
-  it("sets X-XSS-Protection header", () => {
-    const res = proxy(createRequest("/en/listings"));
+  it("sets X-XSS-Protection header", async () => {
+    const res = await proxy(createRequest("/en/listings"));
     expect(res!.headers.get("X-XSS-Protection")).toBe("1; mode=block");
   });
 
-  it("sets Permissions-Policy header", () => {
-    const res = proxy(createRequest("/en/listings"));
+  it("sets Permissions-Policy header", async () => {
+    const res = await proxy(createRequest("/en/listings"));
     expect(res!.headers.get("Permissions-Policy")).toBe(
       "camera=(), microphone=(self), geolocation=(self)"
     );
@@ -242,32 +276,32 @@ describe("proxy — security headers", () => {
   // Regression guard: `geolocation=()` disables the API for every origin
   // INCLUDING self, which silently broke the "Nearby" search row and the host
   // address picker. Own-origin geolocation must stay allowed.
-  it("allows own-origin geolocation in Permissions-Policy", () => {
-    const res = proxy(createRequest("/en/listings"));
+  it("allows own-origin geolocation in Permissions-Policy", async () => {
+    const res = await proxy(createRequest("/en/listings"));
     const policy = res!.headers.get("Permissions-Policy")!;
     expect(policy).toContain("geolocation=(self)");
     expect(policy).not.toContain("geolocation=()");
   });
 
-  it("sets X-Mw-Ran sanity marker on every response", () => {
-    const res = proxy(createRequest("/en/listings"));
+  it("sets X-Mw-Ran sanity marker on every response", async () => {
+    const res = await proxy(createRequest("/en/listings"));
     expect(res!.headers.get("X-Mw-Ran")).toBe("1");
   });
 
-  it("emits Content-Security-Policy-Report-Only in dev", () => {
-    const res = proxy(createRequest("/en/listings"));
+  it("emits Content-Security-Policy-Report-Only in dev", async () => {
+    const res = await proxy(createRequest("/en/listings"));
     // In test env NODE_ENV=test, so dev CSP applies
     const csp = res!.headers.get("Content-Security-Policy-Report-Only");
     expect(csp).toBeTruthy();
     expect(csp).toContain("default-src 'self'");
   });
 
-  it("lets the Cloudflare Web Analytics beacon load under the enforced policy", () => {
+  it("lets the Cloudflare Web Analytics beacon load under the enforced policy", async () => {
     // Cloudflare auto-injects the beacon from a versioned path
     // (/beacon.min.js/v…) and it reports to this origin's /cdn-cgi/rum.
     vi.stubEnv("NODE_ENV", "production");
     try {
-      const csp = proxy(createRequest("/en/listings"))!.headers.get("Content-Security-Policy")!;
+      const csp = (await proxy(createRequest("/en/listings"))).headers.get("Content-Security-Policy")!;
       const directive = (name: string) =>
         csp.split("; ").find((d) => d.startsWith(`${name} `)) ?? "";
       expect(directive("script-src")).toContain("https://static.cloudflareinsights.com");
@@ -282,8 +316,8 @@ describe("proxy — canonical host (the apex→www login bounce)", () => {
   // Auth.js keeps the session cookie on the host that signed in and redirects
   // to NEXTAUTH_URL (www). A login on the apex therefore bounced back to
   // /login — so apex page loads must reach www before anyone signs in.
-  it("308s an apex page load to www, keeping path and query", () => {
-    const res = proxy(
+  it("308s an apex page load to www, keeping path and query", async () => {
+    const res = await proxy(
       createRequest("/ar/login?callbackUrl=%2Far%2Fhosting", { headers: { host: "mkan.sd" } }),
     );
     expect(res!.status).toBe(308);
@@ -292,35 +326,35 @@ describe("proxy — canonical host (the apex→www login bounce)", () => {
     );
   });
 
-  it("serves apex API calls in place — webhooks may not follow redirects", () => {
-    const res = proxy(createRequest("/api/health", { headers: { host: "mkan.sd" } }));
+  it("serves apex API calls in place — webhooks may not follow redirects", async () => {
+    const res = await proxy(createRequest("/api/health", { headers: { host: "mkan.sd" } }));
     expect(res!.status).not.toBe(308);
   });
 
-  it("does not redirect a non-GET request on the apex", () => {
-    const res = proxy(
+  it("does not redirect a non-GET request on the apex", async () => {
+    const res = await proxy(
       createRequest("/ar/login", { method: "POST", headers: { host: "mkan.sd" } }),
     );
     expect(res!.status).not.toBe(308);
   });
 
-  it("leaves the canonical host and tenant subdomains alone", () => {
+  it("leaves the canonical host and tenant subdomains alone", async () => {
     for (const host of ["www.mkan.sd", "demo.mkan.sd"]) {
-      const res = proxy(createRequest("/ar/login", { headers: { host } }));
+      const res = await proxy(createRequest("/ar/login", { headers: { host } }));
       expect(res!.status, host).not.toBe(308);
     }
   });
 
-  it("sends the retired databayt.org aliases to the canonical host", () => {
-    const res = proxy(createRequest("/en", { headers: { host: "mkan.databayt.org" } }));
+  it("sends the retired databayt.org aliases to the canonical host", async () => {
+    const res = await proxy(createRequest("/en", { headers: { host: "mkan.databayt.org" } }));
     expect(res!.status).toBe(308);
     expect(getRedirectLocation(res!)).toBe("https://www.mkan.sd/en");
   });
 });
 
 describe("proxy — Origin/Host CSRF defense", () => {
-  it("blocks cross-origin POST to /api/upload", () => {
-    const res = proxy(
+  it("blocks cross-origin POST to /api/upload", async () => {
+    const res = await proxy(
       createRequest("/api/upload", {
         method: "POST",
         headers: {
@@ -332,8 +366,8 @@ describe("proxy — Origin/Host CSRF defense", () => {
     expect(res!.status).toBe(403);
   });
 
-  it("allows same-origin POST to /api/upload", () => {
-    const res = proxy(
+  it("allows same-origin POST to /api/upload", async () => {
+    const res = await proxy(
       createRequest("/api/upload", {
         method: "POST",
         headers: {
@@ -345,8 +379,8 @@ describe("proxy — Origin/Host CSRF defense", () => {
     expect(res!.status).not.toBe(403);
   });
 
-  it("allows POST without Origin header (top-level form submit)", () => {
-    const res = proxy(
+  it("allows POST without Origin header (top-level form submit)", async () => {
+    const res = await proxy(
       createRequest("/api/upload", {
         method: "POST",
         headers: { host: "localhost:3000" },
@@ -355,8 +389,8 @@ describe("proxy — Origin/Host CSRF defense", () => {
     expect(res!.status).not.toBe(403);
   });
 
-  it("allows GET cross-origin (not state-changing)", () => {
-    const res = proxy(
+  it("allows GET cross-origin (not state-changing)", async () => {
+    const res = await proxy(
       createRequest("/api/listings", {
         method: "GET",
         headers: {
@@ -368,8 +402,8 @@ describe("proxy — Origin/Host CSRF defense", () => {
     expect(res!.status).not.toBe(403);
   });
 
-  it("skips Origin check for /api/auth (NextAuth has own CSRF)", () => {
-    const res = proxy(
+  it("skips Origin check for /api/auth (NextAuth has own CSRF)", async () => {
+    const res = await proxy(
       createRequest("/api/auth/callback/google", {
         method: "POST",
         headers: {
