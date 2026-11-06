@@ -81,9 +81,16 @@ export function sourcePostedAt(r: Pick<PostRow, 'photoUrls' | 'postedAt'>): numb
  * Why a home can't go on the page, or null when it can. A broker's lead needs
  * that broker's YES first — the frames are cut from their video.
  */
+/**
+ * Above this a "monthly rent" is a sale price read as rent: Kigali's dearest rentals sit well
+ * under ~10M RWF ($7k). 11-06: K6525 posted at RWF 140,000,000/month ("140 million", a sale).
+ */
+export const MAX_MONTHLY_RENT = 15_000_000;
+
 export function ineligibleReason(r: PostRow, consented: ReadonlySet<string>, now = Date.now()): string | null {
   if (r.lostAt) return 'taken, or its ad is gone';
   if (!r.priceMonth || r.priceMonth < 50_000) return 'no monthly price';
+  if (r.priceMonth > MAX_MONTHLY_RENT) return 'price looks like a sale';
   if (r.photoUrls.length < MIN_PHOTOS) return `under ${MIN_PHOTOS} photos`;
   if (!r.district && !r.area) return 'no area';
   const posted = sourcePostedAt(r);

@@ -27,6 +27,7 @@ import { twentyClient } from './twenty-rest';
 import { checkHomes, checkHosts, videoGone, type Finding, type Fix } from './hygiene-pure';
 import { postToMkan, recordRun } from './notify';
 import { agentFunnel, funnelLine } from './agent-funnel';
+import { MAX_MONTHLY_RENT } from './tiktok-post-pure';
 
 type Row = Record<string, unknown>;
 
@@ -52,6 +53,19 @@ async function main(): Promise<void> {
   const h2 = checkHosts(hosts);
   const findings: Finding[] = [...h1.findings, ...h2.findings];
   const fixes: Fix[] = [...h1.fixes, ...h2.fixes];
+
+  // ── a sale price read as a monthly rent → off /find and off the post queue ───
+  // (11-06: nine live homes at RWF 20M–1.9B "a month", one already posted on TikTok.)
+  const forSale = await db.listing.findMany({
+    where: { rentPeriod: 'MONTHLY', priceMonth: { gt: MAX_MONTHLY_RENT }, lostAt: null },
+    select: { id: true, priceMonth: true, title: true },
+  });
+  if (forSale.length) {
+    console.log(`   ${forSale.length} home(s) priced like a sale (over RWF ${MAX_MONTHLY_RENT.toLocaleString('en')}/month)${APPLY ? ' — taken off /find' : ''}:`);
+    for (const l of forSale) console.log(`     K${l.id}  RWF ${l.priceMonth?.toLocaleString('en')}  ${l.title}`);
+    if (APPLY) await db.listing.updateMany({ where: { id: { in: forSale.map((l) => l.id) } }, data: { lostAt: new Date(), lostReason: 'FOR_SALE' } });
+    findings.push({ check: 'homes priced like a sale (taken off /find)', items: forSale.map((l) => `K${l.id}`) } as Finding);
+  }
 
   // ── broker answers → the home they are about ─────────────────────────────
   const synced = new Set(readJson<string[]>(SYNCED, []));

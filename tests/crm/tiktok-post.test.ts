@@ -420,3 +420,12 @@ describe('disk floor', () => {
     expect(oldRenderDays(['2026-10-01', '2026-10-25', '2026-11-05', 'src', 'preview', 'posted.json'], now)).toEqual(['2026-10-01']);
   });
 });
+
+describe('a sale price read as a monthly rent', () => {
+  it('is never posted', async () => {
+    const { ineligibleReason, MAX_MONTHLY_RENT } = await import('../../scripts/crm/tiktok-post-pure');
+    const row = { id: 6525, code: null, source: 'MANUAL', priceMonth: 140_000_000, bedrooms: 4, bathrooms: 3, propertyType: 'HOUSE', photoUrls: ['a', 'b', 'c', 'd', 'e'], area: 'Kabeza', district: 'Kicukiro', hostSourceId: null, postedAt: new Date().toISOString(), lostAt: null } as never;
+    expect(ineligibleReason(row, new Set())).toBe('price looks like a sale');
+    expect(ineligibleReason({ ...(row as object), priceMonth: MAX_MONTHLY_RENT } as never, new Set())).toBeNull();
+  });
+});
