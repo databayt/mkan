@@ -304,6 +304,8 @@ export async function handleTenantWhatsApp(input: {
     at: new Date().toISOString(),
     wa: input.msgId,
     ...(refHome ? { filters: refHome.filters, pin: refHome.id } : {}),
+    // The web chat this one carries on: the broker's answer is marked there too (broker.ts applyAnswer).
+    ...(seed && ref ? { origin: ref } : {}),
   };
   input.onAnswering?.();
   let appended = await appendUserMessage({ profileId: profile.id, userId: profile.userId, current, message, lang, seed });

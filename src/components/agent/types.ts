@@ -70,7 +70,8 @@ export type AgentMessage =
   /** `filters` are the badges the tenant picked; they win over the text. `clear` empties fields (a refine chip). */
   /** `wa`: the WhatsApp message id it came in as — a retried webhook or the fallback poll is answered once. */
   /** `pin`: the home a ref named ("K5808" from a TikTok post) — it leads the shortlist when it still fits. */
-  | { role: "user"; text: string; at: string; filters?: Record<string, unknown>; clear?: string[]; wa?: string; pin?: number }
+  /** `origin`: the web chat a WhatsApp chat was started from (`ref:`) — a broker's answer is marked there too. */
+  | { role: "user"; text: string; at: string; filters?: Record<string, unknown>; clear?: string[]; wa?: string; pin?: number; origin?: string }
   | { role: "agent"; kind: "ask"; field: HardField; at: string }
   /**
    * A vague first message missing several things at once: one stepper card asks

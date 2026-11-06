@@ -424,6 +424,7 @@ export async function applyAnswer(listingId: number, answer: Answer, brokerPhone
     }),
   );
   await settleTasks(tasks.map((t) => t.id));
+  await markOriginChats(found, listingId, availability);
   await tellWhatsAppTenants(tasks, listingId, answer);
   if (answer === "AVAILABLE") {
     // Available again lifts an earlier "taken".
@@ -432,6 +433,26 @@ export async function applyAnswer(listingId: number, answer: Answer, brokerPhone
   }
   // A broker's "taken" means the home is lost: out of /find and the TikTok pick for good (it was hidden 30 days).
   if (answer === "RENTED") await db.listing.update({ where: { id: listingId }, data: { lostAt: new Date(), lostReason: "RENTED" } });
+}
+
+/**
+ * The web chats these WhatsApp chats were started from ("Check K1234 for me ref:<chat>"): the tenant
+ * asked on the web, so the answer shows there too, not only on WhatsApp (2026-11-06).
+ */
+async function markOriginChats(tasks: { id: string; messages: unknown }[], listingId: number, availability: string) {
+  const answered = new Set(tasks.map((t) => t.id));
+  const origins = [
+    ...new Set(
+      tasks.flatMap((t) => ((t.messages as { role?: string; origin?: string }[] | null) ?? []).filter((m) => m.role === "user" && m.origin).map((m) => m.origin!)),
+    ),
+  ].filter((id) => !answered.has(id));
+  for (const id of origins) {
+    const web = await db.agentTask.findUnique({ where: { id }, select: { id: true, shortlist: true } }).catch(() => null);
+    const list = (web?.shortlist as unknown as ShortlistItem[] | null) ?? [];
+    if (!web || !list.some((s) => s.id === listingId)) continue;
+    await db.agentTask.update({ where: { id }, data: { shortlist: json(list.map((s) => (s.id === listingId ? { ...s, availability: availability as ShortlistItem["availability"] } : s))) } }).catch(() => {});
+    await appendTaskEvent(id, "broker_replied", availability === "confirmed" ? "done" : availability === "rented" ? "failed" : "uncertain", { listingId, answer: availability, via: "whatsapp" }).catch(() => {});
+  }
 }
 
 type AnsweredTask = { id: string; shortlist: unknown; locale: string; messages: unknown; profile: { waPhone: string | null } | null };
