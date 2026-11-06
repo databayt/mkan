@@ -6695,7 +6695,16 @@
       "doneLine": "When done, run in ~/mkan: {cmd}",
       "min": "{n} min",
       "hours": "{n} h",
-      "hoursMin": "{h} h {m} min"
+      "hoursMin": "{h} h {m} min",
+      "decide": {
+        "yes": "Yes",
+        "no": "No",
+        "answeredYes": "You said yes — the loop does it within minutes",
+        "answeredNo": "You said no",
+        "done": "Done",
+        "failed": "It failed: {e}",
+        "what": "Yes does this:"
+      }
     },
     "road": {
       "title": "The road to money",

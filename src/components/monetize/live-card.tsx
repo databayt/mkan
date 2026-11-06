@@ -1,7 +1,9 @@
 "use client";
 
 import { Check, ChevronDown, Copy } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
+
+import { decidePrompt } from "@/lib/actions/monetize-actions";
 
 import type { LiveTask, LiveView, LoopState } from "@/lib/monetize/live-shape";
 import { cn } from "@/lib/utils";
@@ -51,6 +53,51 @@ function Row({ label, task, blocks, none, children }: { label: string; task: Liv
   );
 }
 
+/** A prepared one-tap decision: what Yes does, then Yes / No — or the answer and how it went. */
+function Decision({ task, L, onDone }: { task: LiveTask; L: Labels; onDone: () => void }) {
+  const d = task.decision!;
+  const D = L.decide;
+  const [pending, start] = useTransition();
+  const [answered, setAnswered] = useState<"yes" | "no" | null>(d.answer);
+  const answer = (a: "yes" | "no") =>
+    start(async () => {
+      const fd = new FormData();
+      fd.set("promptId", task.id);
+      fd.set("decision", a);
+      try {
+        await decidePrompt(fd);
+        setAnswered(a);
+        onDone();
+      } catch {
+        setAnswered(null);
+      }
+    });
+  return (
+    <div className="mt-1.5 rounded-xl bg-white p-3 dark:bg-background">
+      <p className="text-sm font-medium text-[#222222] dark:text-foreground" dir="auto">
+        {d.ask}
+      </p>
+      <p className="mt-1 text-sm text-[#6A6A6A] dark:text-muted-foreground" dir="auto">
+        {D.what} {d.effect}
+      </p>
+      {d.done ? (
+        <p className={cn("mt-2 text-sm font-semibold", d.ok === false ? "text-[#C13515]" : "text-[#008A05]")}>{d.ok === false ? fill(D.failed, { e: d.output ?? "" }) : D.done}</p>
+      ) : answered ? (
+        <p className="mt-2 text-sm font-semibold text-[#222222] dark:text-foreground">{answered === "yes" ? D.answeredYes : D.answeredNo}</p>
+      ) : (
+        <div className="mt-2 flex gap-2">
+          <button type="button" disabled={pending} onClick={() => answer("yes")} className="h-9 rounded-full bg-[#222222] px-5 text-sm font-semibold text-white disabled:opacity-50 dark:bg-foreground dark:text-background">
+            {D.yes}
+          </button>
+          <button type="button" disabled={pending} onClick={() => answer("no")} className="h-9 rounded-full border border-[#B0B0B0] px-5 text-sm font-semibold text-[#222222] disabled:opacity-50 dark:border-border dark:text-foreground">
+            {D.no}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * The loop, live: what it is doing now and for how long, what's next, what it finished last, and — for an
  * admin — every step that waits on Abdout with the one thing to do. Polls /api/monetize/live every 15 s
@@ -63,30 +110,29 @@ export function LiveCard({ initial, labels, blocks, canEdit, locale }: { initial
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const pull = useCallback(async () => {
+    if (document.visibilityState !== "visible") return;
+    try {
+      const r = await fetch("/api/monetize/live", { cache: "no-store" });
+      if (r.ok) setLive((await r.json()) as LiveView);
+    } catch {
+      // The next pull tries again; the card keeps the last state it had.
+    }
+  }, []);
+
   useEffect(() => {
-    let stop = false;
-    const pull = async () => {
-      if (document.visibilityState !== "visible") return;
-      try {
-        const r = await fetch("/api/monetize/live", { cache: "no-store" });
-        if (r.ok && !stop) setLive((await r.json()) as LiveView);
-      } catch {
-        // The next pull tries again; the card keeps the last state it had.
-      }
-    };
     const poll = setInterval(pull, 15_000);
     const tick = setInterval(() => setNow(Date.now()), 30_000);
     // The server's clock rendered the first "for 12 min"; the browser's takes over right after.
     const first = setTimeout(() => setNow(Date.now()), 0);
     document.addEventListener("visibilitychange", pull);
     return () => {
-      stop = true;
       clearInterval(poll);
       clearInterval(tick);
       clearTimeout(first);
       document.removeEventListener("visibilitychange", pull);
     };
-  }, []);
+  }, [pull]);
 
   const busy = live.running ?? null;
   const prompt = busy ?? live.next;
@@ -161,7 +207,7 @@ export function LiveCard({ initial, labels, blocks, canEdit, locale }: { initial
                 {live.needsYou.map((t) => (
                   <li key={t.id} className="text-sm leading-5" dir="auto">
                     <span className="font-medium text-[#222222] dark:text-foreground">{t.title}</span>
-                    {t.result && <span className="block text-[#6A6A6A] dark:text-muted-foreground">{t.result}</span>}
+                    {t.decision ? <Decision task={t} L={L} onDone={pull} /> : t.result && <span className="block text-[#6A6A6A] dark:text-muted-foreground">{t.result}</span>}
                   </li>
                 ))}
               </ul>

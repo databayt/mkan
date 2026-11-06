@@ -6,6 +6,7 @@
  */
 import { redactPublic } from "@/lib/redact";
 
+import type { DecisionRecord } from "./actions";
 import type { SprintPromptView, SprintsView } from "./sprint-shape";
 
 export type LoopState = "checking" | "planning" | "running" | "idle" | "waiting" | "parked" | "stopped" | "offline";
@@ -21,6 +22,8 @@ export interface LiveTask {
   /** The run's own report (admins only). */
   result: string | null;
   status: SprintPromptView["status"];
+  /** A one-tap decision waiting on this step (admins only): the ask, what Yes does, and the answer so far. */
+  decision?: { ask: string; effect: string; answer: "yes" | "no" | null; done: boolean; ok: boolean | null; output: string | null } | null;
 }
 
 export interface LiveView {
@@ -57,8 +60,12 @@ const OFFLINE_AFTER = 40 * MIN;
 
 const firstLine = (t: string) => t.replace(/^In ~\/mkan[^:]*:\s*/, "").split("\n")[0]!.slice(0, 140);
 
-function task(p: SprintPromptView, blockOf: Map<string, string | null>): LiveTask {
+function task(p: SprintPromptView, blockOf: Map<string, string | null>, decisions?: Record<string, DecisionRecord>): LiveTask {
+  const d = decisions?.[p.id];
   return {
+    decision: d
+      ? { ask: d.ask, effect: d.effect, answer: d.decision ?? null, done: !!d.consumedAt, ok: d.outcome ? d.outcome.ok : null, output: d.outcome?.output?.slice(0, 200) ?? null }
+      : null,
     id: p.id,
     title: p.taskTitle ?? firstLine(p.text),
     block: p.taskId ? (blockOf.get(p.taskId) ?? null) : null,
@@ -69,7 +76,7 @@ function task(p: SprintPromptView, blockOf: Map<string, string | null>): LiveTas
   };
 }
 
-export function liveView(sprints: SprintsView, beat: Beat | null, macBeatAt: string | null, now = new Date()): LiveView {
+export function liveView(sprints: SprintsView, beat: Beat | null, macBeatAt: string | null, now = new Date(), decisions?: Record<string, DecisionRecord>): LiveView {
   const blockOf = new Map<string, string | null>();
   for (const s of [sprints.week, sprints.month]) for (const t of s?.tasks ?? []) blockOf.set(t.id, t.block);
   const prompts = sprints.prompts;
@@ -95,7 +102,7 @@ export function liveView(sprints: SprintsView, beat: Beat | null, macBeatAt: str
     running: running ? task(running, blockOf) : null,
     next: next ? task(next, blockOf) : null,
     last: done[0] ? task(done[0], blockOf) : null,
-    needsYou: prompts.filter((p) => p.status === "blocked").map((p) => task(p, blockOf)),
+    needsYou: prompts.filter((p) => p.status === "blocked").map((p) => task(p, blockOf, decisions)),
     doneToday: done.filter((p) => Date.parse(p.processedAt!) >= dayAgo && p.status === "processed").length,
     doneWeek: done.filter((p) => Date.parse(p.processedAt!) >= weekAgo && p.status === "processed").length,
     generatedAt: now.toISOString(),
@@ -104,6 +111,6 @@ export function liveView(sprints: SprintsView, beat: Beat | null, macBeatAt: str
 
 /** What an anonymous visitor may see: the state and the task titles, never a prompt, a result or a note. */
 export function publicLive(v: LiveView): LiveView {
-  const t = (x: LiveTask | null): LiveTask | null => (x ? { ...x, title: redactPublic(x.title), text: null, result: null } : null);
+  const t = (x: LiveTask | null): LiveTask | null => (x ? { ...x, title: redactPublic(x.title), text: null, result: null, decision: null } : null);
   return { ...v, note: null, running: t(v.running), next: t(v.next), last: t(v.last), needsYou: v.needsYou.map((x) => t(x)!) };
 }

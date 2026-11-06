@@ -9,6 +9,7 @@ import { logger } from "@/lib/logger";
 import { BLOCKS } from "@/lib/monetize/types";
 import { REVENUE_LINES } from "@/lib/monetize/money";
 import { approvalHint, isWebText, markWeb } from "@/lib/monetize/provenance";
+import { decisionKey, decisionSig, type DecisionRecord } from "@/lib/monetize/actions";
 import { MONETIZE_TAG } from "@/lib/monetize/load-cached";
 
 /**
@@ -180,6 +181,31 @@ export async function addSprintPrompt(form: FormData): Promise<void> {
   const now = new Date();
   const p = await db.sprintPrompt.create({ data: { sprintId, text: markWeb(text), taskId, order, status: "blocked", blockedAt: now, processedAt: now } });
   await db.sprintPrompt.update({ where: { id: p.id }, data: { result: approvalHint(p.id) } });
+  revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
+}
+
+/**
+ * Abdout's one tap on a prepared decision (src/lib/monetize/actions.ts): yes or no, no free text — so the
+ * web-text rule stands. The answer is signed here with a key the Mac verifies before it runs anything;
+ * the Mac's loop runs a yes once (scripts/sprint/act.ts). An answer is final: a second tap changes nothing.
+ */
+export async function decidePrompt(form: FormData): Promise<void> {
+  const session = await requireAdmin();
+  const promptId = z.string().regex(/^[a-z0-9]{20,32}$/).parse(form.get("promptId"));
+  const decision = z.enum(["yes", "no"]).parse(form.get("decision"));
+  const row = await db.waState.findUnique({ where: { key: decisionKey(promptId) } });
+  const rec = row?.value as unknown as DecisionRecord | undefined;
+  if (!rec || rec.promptId !== promptId) throw new Error("No decision waits on this prompt");
+  if (rec.decision) return; // already answered
+  const decidedAt = new Date().toISOString();
+  const sig = decisionSig(rec, decision, decidedAt);
+  if (!sig) throw new Error("The decision key is missing on the server (MKAN_WA_BRIDGE_SECRET)");
+  const value = { ...rec, decision, decidedAt, decidedBy: session.user!.id!, sig };
+  // Only an unanswered record takes the answer: two taps in two tabs cannot both land.
+  const n = await db.$executeRaw`UPDATE "WaState" SET value = ${JSON.stringify(value)}::jsonb, "updatedAt" = now() WHERE key = ${decisionKey(promptId)} AND NOT (value::jsonb ? 'decision')`;
+  if (n !== 1) return;
+  logger.info("monetize:decision", { actorId: session.user!.id, promptId, kind: rec.kind, decision });
   revalidatePath("/[lang]/monetize", "page");
   updateTag(MONETIZE_TAG);
 }

@@ -38,7 +38,7 @@ DRAIN_SECONDS="${SPRINT_DRAIN_SECONDS:-10800}"
 # The files that keep an unattended run safe. A session may edit the repo like any other change, so a
 # change here parks the loop until Abdout has read it and blessed it (--bless). Kept outside the repo.
 GUARD_SUMS="$HOME/.claude/state/mkan-guard.sha256"
-GUARD_FILES=(scripts/unattended.ts scripts/crm/hermes/sprint-runner.sh scripts/crm/hermes/lane.sh scripts/crm/hermes/detached.sh src/lib/monetize/provenance.ts)
+GUARD_FILES=(scripts/unattended.ts scripts/crm/hermes/sprint-runner.sh scripts/crm/hermes/lane.sh scripts/crm/hermes/detached.sh src/lib/monetize/provenance.ts scripts/sprint/act.ts src/lib/monetize/actions.ts)
 guard_sums() { (cd "$REPO" && /usr/bin/shasum -a 256 "${GUARD_FILES[@]}" 2>/dev/null); }
 
 if [ "${1:-}" = "--bless" ]; then
@@ -64,6 +64,14 @@ export PRISMA_QUIET=1
 RUNLOG="$LOGDIR/runner.log"
 
 beat() { pnpm exec tsx scripts/sprint.ts beat "$@" >>"$RUNLOG" 2>&1 || true; }   # beat <state> [--prompt= --until= --note=]
+
+# Abdout's one-tap answers on /monetize (scripts/sprint/act.ts): verified against the Worker's signature,
+# each yes run once. The key comes from the Keychain for this one process — never a model session's env.
+act() {
+  local key
+  key=$(/usr/bin/security find-generic-password -s cf-mkan-MKAN_WA_BRIDGE_SECRET -w 2>/dev/null) || return 0
+  MKAN_WA_BRIDGE_SECRET="$key" pnpm exec tsx scripts/sprint/act.ts 2>&1 | grep -v 'injected env' >>"$RUNLOG" || true
+}
 
 # "<epoch>\t<reason>" while parked: the plan's limit, this job's budget, the breaker — the latest wins.
 parked_until() {
@@ -139,9 +147,9 @@ while :; do
   if [ -n "$P" ] && [ -z "$DRY" ]; then park_and_stop "$P"; break; fi
   if [ "$(date +%s)" -ge "$DEADLINE" ]; then lane_end ok "drained $RAN prompt(s) in this run; the next tick carries on"; break; fi
 
-  # The cycle first: close expired sprints, resume prompts whose condition holds, measure lessons, plan a
-  # new sprint from the roadmap when none is active, top up the queue (scripts/sprint-cycle.ts).
-  [ -n "$DRY" ] || beat checking
+  # Abdout's answers first, then the cycle: close expired sprints, resume prompts whose condition holds,
+  # measure lessons, plan a new sprint from the roadmap when none is active, top up the queue.
+  [ -n "$DRY" ] || { beat checking; act; }
   CYCLE_JSON=$(pnpm -s sprint:cycle ${DRY:+--dry} 2>>"$RUNLOG" | tee -a "$RUNLOG" | tail -1)
   CYCLE_SAID=$(printf '%s' "$CYCLE_JSON" | /usr/bin/python3 -c '
 import json, sys
@@ -227,6 +235,12 @@ Lines you never cross in this run:
   by its K-code, a number by its last 3 digits (…155).
 When the prompt needs one of those, or needs Abdout's answer or approval, do all the preparation
 you can (the analysis, the drafts, the exact command for him), then stop and report it blocked.
+When his yes is the only thing missing and the step is one of these, make it a one-tap decision
+(he taps Yes on /monetize and the loop runs it) by adding to the blocked report:
+  --ask="<the one question, a full sentence>" --action=<kind> --params='<JSON>'
+  deal.book    {"task":"<AgentTask id>","listing":<id>,"at":"YYYY-MM-DD HH:MM","rent":…,"advance":…,"deposit":…,"commission":…,"fee":…,"water":"yes|no","power":"yes|no","lease":…,"moveIn":"YYYY-MM-DD"} (terms optional)
+  deal.status  {"deal":"<Deal id>","status":"viewed|signed|paid|lost","share":<RWF, with paid>}
+  brokers.gated {}
 
 ${BRIEF}
 
@@ -267,7 +281,7 @@ EOF
       "Bash(pnpm prisma migrate:*)" "Bash(pnpm exec prisma migrate:*)" "Bash(npx prisma migrate:*)" "Bash(prisma migrate deploy:*)" "Bash(pnpm exec prisma db push:*)" "Bash(prisma db push:*)" \
       "Bash(security:*)" "Bash(/usr/bin/security:*)" "Bash(wrangler:*)" "Bash(pnpm wrangler:*)" "Bash(pnpm exec wrangler:*)" "Bash(npx wrangler:*)" "Bash(pnpm dlx wrangler:*)" \
       "Bash(bash scripts/deploy-cloudflare.sh:*)" "Bash(scripts/deploy-cloudflare.sh:*)" "Bash(./scripts/deploy-cloudflare.sh:*)" "Bash(bash scripts/cf-secrets.sh:*)" "Bash(scripts/cf-secrets.sh:*)" \
-      "Bash(hermes cron:*)" "Bash(bash scripts/crm/hermes/sprint-runner.sh --bless:*)" \
+      "Bash(hermes cron:*)" "Bash(bash scripts/crm/hermes/sprint-runner.sh --bless:*)" "Bash(pnpm exec tsx scripts/sprint/act.ts:*)" \
       "Bash(pnpm sprint:approve:*)" "Bash(pnpm -s sprint:approve:*)" "Bash(pnpm exec tsx scripts/sprint.ts approve:*)" "Bash(tsx scripts/sprint.ts approve:*)" \
     >"$SESSION_LOG" 2>&1
   RC=$?

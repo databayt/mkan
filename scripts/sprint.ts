@@ -6,6 +6,8 @@
  *   pnpm sprint:next                                   the next pending prompt (id, sprint, task, text)
  *   pnpm sprint:done <promptId> [--result="…"] [--task-done] [--skip | --blocked [--unblock-when="<cond>"]]
  *                    [--metric=<key>] [--lesson="…"]  the lesson is measured 24 h later by sprint:cycle
+ *                    [--blocked --ask="…" --action=<kind> --params='{…}']  a one-tap decision: Abdout taps Yes on
+ *                                                      /monetize and the loop runs the action (src/lib/monetize/actions.ts)
  *   pnpm sprint:claim                                  the runner: take the next pending prompt (→ running, its metric's
  *                                                      value stored as the baseline), print it as JSON
  *   pnpm sprint:release <promptId> --result="…"        the runner: a run that ended without reporting → blocked
@@ -83,6 +85,8 @@ async function done(db: Db, id: string) {
   const status = flag('skip') ? 'skipped' : flag('blocked') ? 'blocked' : 'processed';
   const unblockWhen = status === 'blocked' ? arg('unblock-when') : undefined;
   if (unblockWhen && !parseCondition(unblockWhen)) throw new Error(`--unblock-when must read like "brokerSends == gated": ${unblockWhen}`);
+  // A one-tap decision: checked before anything is written, so a bad action never leaves a half report.
+  const decision = status === 'blocked' && arg('action') ? await prepareDecision(db, id) : null;
   const now = new Date();
   const metric = arg('metric');
   const p = await db.sprintPrompt.update({
@@ -96,6 +100,7 @@ async function done(db: Db, id: string) {
     },
   });
   if (status === 'processed' && flag('task-done') && p.taskId) await db.sprintTask.update({ where: { id: p.taskId }, data: { done: true, doneAt: now } });
+  if (decision) await db.waState.upsert({ where: { key: decision.key }, create: { key: decision.key, value: decision.value }, update: { value: decision.value } });
   // The lesson: what the session believes moved the number; sprint:cycle measures it 24 h on.
   const lesson = arg('lesson');
   if (lesson || (status === 'processed' && p.metric)) {
@@ -110,7 +115,31 @@ async function done(db: Db, id: string) {
       },
     });
   }
-  console.log(`✓ prompt ${id} ${status}${flag('task-done') && p.taskId ? ` · task ${p.taskId} done` : ''}${unblockWhen ? ` · resumes when ${unblockWhen}` : ''}${lesson ? ' · lesson saved' : ''}`);
+  console.log(`✓ prompt ${id} ${status}${flag('task-done') && p.taskId ? ` · task ${p.taskId} done` : ''}${unblockWhen ? ` · resumes when ${unblockWhen}` : ''}${lesson ? ' · lesson saved' : ''}${decision ? ` · decision waits on /monetize: ${decision.value.effect}` : ''}`);
+}
+
+/**
+ * A blocked report that carries --ask, --action=<kind> and --params='{…}' becomes a one-tap decision
+ * (WaState `decision:<id>`): the kind must be on the allowlist and its params must pass its schema
+ * (src/lib/monetize/actions.ts). The effect line is built from the params by code, never from the ask.
+ */
+async function prepareDecision(db: Db, id: string) {
+  const { actionEffect, decisionKey, parseAction } = await import('../src/lib/monetize/actions');
+  const p = await db.sprintPrompt.findUnique({ where: { id }, select: { text: true } });
+  if (!p) throw new Error(`prompt ${id} not found`);
+  if (isWebText(p.text)) throw new Error('a prompt added on the web cannot carry an action');
+  const ask = (arg('ask') ?? '').replace(/\s+/g, ' ').trim();
+  if (ask.length < 8) throw new Error('--ask is the one question for Abdout (a full sentence)');
+  let params: unknown = {};
+  try {
+    params = JSON.parse(arg('params') ?? '{}');
+  } catch {
+    throw new Error("--params must be JSON, e.g. --params='{\"deal\":\"…\",\"status\":\"paid\",\"share\":40000}'");
+  }
+  const a = parseAction(arg('action')!, params);
+  if (!a.ok) throw new Error(`--action: ${a.error}`);
+  const value = { promptId: id, ask: ask.slice(0, 300), kind: a.kind, params: a.params, effect: actionEffect(a.kind, a.params), createdAt: new Date().toISOString() };
+  return { key: decisionKey(id), value };
 }
 
 /** The prompt's metric now — its baseline at claim. Null when the numbers can't be read (never blocks a claim). */
