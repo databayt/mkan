@@ -173,13 +173,25 @@ function sameSecret(a, b) {
   return diff === 0
 }
 
+// Only the Evolution calls mkan makes, on mkan's own instance (src/lib/whatsapp/evolution.ts): the
+// bridge is shared with hogwarts, and the secret alone used to open every path and method on it.
+const waAllowed = (path, instance) =>
+  path === "/instance/create" ||
+  path === "/instance/fetchInstances" ||
+  new RegExp(
+    `^/(?:instance/(?:connectionState|connect)|message/sendText|chat/(?:findMessages|getBase64FromMediaMessage|sendPresence)|webhook/set)/${instance}$`,
+  ).test(path)
+
 async function whatsappBridge(request, url, env) {
   if (!env.WHATSAPP || !sameSecret(request.headers.get("x-mkan-wa") || "", env.MKAN_WA_BRIDGE_SECRET || "")) {
     return new Response("Not found", { status: 404 })
   }
+  const path = url.pathname.slice(WA_PREFIX.length - 1)
+  const instance = (env.MKAN_EVOLUTION_INSTANCE || "mkan").replace(/[^\w-]/g, "")
+  if (!waAllowed(path, instance)) return new Response("Not found", { status: 404 })
   const headers = new Headers(request.headers)
   headers.delete("x-mkan-wa")
-  const target = "http://bridge" + url.pathname.slice(WA_PREFIX.length - 1) + url.search
+  const target = "http://bridge" + path + url.search
   return env.WHATSAPP.fetch(new Request(target, { method: request.method, headers, body: request.body }))
 }
 
