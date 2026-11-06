@@ -91,6 +91,15 @@ Hard rules:
 - Never say a home is available, free or booked unless its "confirmed" is true.
 - Never invent a feature, a place or a fact.`;
 
+/**
+ * WhatsApp lists the homes itself and never shows the per-home lines: asking for them cost ~2 s a
+ * shortlist (≈ 340 tokens written for nothing, 2026-11-07). There the writer writes the reply only.
+ */
+const REPLY_ONLY_SYSTEM = `${SYSTEM}
+
+This reply goes to WhatsApp, which lists the homes itself: write only "reply" and leave "why" empty.`;
+const REPLY_ONLY_MAX_TOKENS = 400;
+
 const ANSWER_SYSTEM = `You answer one question from a tenant looking for a home in Kigali, Rwanda, for Mkan, a rental app. Answer ONLY from the knowledge lines given; never add facts, prices or promises they do not contain. Write in the language given by "lang" (en English, ar Arabic, rw Kinyarwanda): 2–3 plain sentences, under 400 characters, warm, no lists, no emojis. If the knowledge does not cover the question, say you are not sure and that Mkan can find homes, estimate move-in costs and ask brokers. Put the answer in "reply" and leave "why" empty.
 
 Knowledge:
@@ -175,14 +184,14 @@ export async function canWrite(lang: string): Promise<boolean> {
   return WRITER_LOCALES.includes(lang) && !!claudeClient() && (await canSpend());
 }
 
-async function call(system: string, content: string, timeoutMs: number, lane: SpendLane) {
+async function call(system: string, content: string, timeoutMs: number, lane: SpendLane, maxTokens = 1_200) {
   const client = claudeClient();
   if (!client || !(await canSpend())) return null;
   try {
     const res = await client.messages.parse(
       {
         model: AGENT_MODEL,
-        max_tokens: 1_200,
+        max_tokens: maxTokens,
         system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content }],
         // No thinking: Haiku 5.5's default adaptive thinking runs past the 2.5 s budget (2026-11-03).
@@ -231,8 +240,16 @@ export async function noteRwSamples(taskId: string, samples: RwSample[] | undefi
 }
 
 /** The reply and per-home lines for a shortlist; each piece guarded on its own. */
-export async function writeReply(facts: WriterFacts, timeoutMs = WRITE_TIMEOUT_MS, lane: SpendLane = "agent-write"): Promise<Written | null> {
-  const out = await call(SYSTEM, JSON.stringify(facts), timeoutMs, lane);
+export async function writeReply(
+  facts: WriterFacts,
+  timeoutMs = WRITE_TIMEOUT_MS,
+  lane: SpendLane = "agent-write",
+  { replyOnly = false }: { replyOnly?: boolean } = {},
+): Promise<Written | null> {
+  const out = replyOnly
+    ? await call(REPLY_ONLY_SYSTEM, JSON.stringify(facts), timeoutMs, lane, REPLY_ONLY_MAX_TOKENS)
+    : await call(SYSTEM, JSON.stringify(facts), timeoutMs, lane);
+  if (out && replyOnly) out.why = [];
   if (!out) return null;
   const allowed = allowedNumbers(facts.count, facts.homes.map((h) => [h.bedrooms, h.bathrooms, h.distance, h.title, h.terms]), facts.search, facts.widened);
   const anyConfirmed = facts.homes.some((h) => h.confirmed);

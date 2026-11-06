@@ -499,7 +499,10 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     const unconfirmed = shortlist.filter((s) => s.availability === "unconfirmed").length;
     // Claude writes the words when it can (language allowed, credits left); the cards never wait for it.
     const writeLang = (reading?.lang ?? lang) as WriterFacts["lang"];
-    const willWrite = !same && (await canWrite(writeLang));
+    // On WhatsApp a coded home's reply drops the written text (whatsapp-format.ts), so nothing is written
+    // for it; any other WhatsApp shortlist gets the reply sentence only — the homes list is WhatsApp's own.
+    const onWhatsApp = !!lastUser?.wa;
+    const willWrite = !same && !(onWhatsApp && pin) && (await canWrite(writeLang));
     // The budget, when the search ran without one; picking it also settles the stay as months.
     const refine = !requirements.maxPrice && !requirements.cheap ? ("maxPrice" as const) : undefined;
     const answer: Extract<AgentMessage, { kind: "shortlist" }> = {
@@ -522,7 +525,7 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     // Past the deadline the tenant already has the error: no broker is asked, nothing more is written.
     if (!shownCards) return;
     const writing = willWrite
-      ? writeReply(writerFacts({ lang: writeLang, requirements, relaxed, shortlist, refine, unplaced: reading?.unplaced })).catch(() => null)
+      ? writeReply(writerFacts({ lang: writeLang, requirements, relaxed, shortlist, refine, unplaced: reading?.unplaced }), undefined, undefined, { replyOnly: onWhatsApp }).catch(() => null)
       : Promise.resolve(null);
     // Brokers hear about a home only after the tenant picks it (2026-11-01): every monthly
     // search used to ask the broker of each home it showed, test searches included.

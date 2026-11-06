@@ -123,3 +123,39 @@ describe('Kinyarwanda (on since 2026-11-07, behind looksKinyarwanda)', () => {
     vi.doUnmock('@/components/agent/claude');
   });
 });
+
+describe('WhatsApp gets the reply sentence only (2026-11-07)', () => {
+  it('asks for the reply alone, with a small token budget, and keeps no per-home lines', async () => {
+    vi.resetModules();
+    const calls: { system: string; max_tokens: number }[] = [];
+    vi.doMock('@/components/agent/claude', () => ({
+      AGENT_MODEL: 'claude-haiku-5-5',
+      canSpend: async () => true,
+      claudeClient: () => ({
+        messages: {
+          parse: async (req: { system: { text: string }[]; max_tokens: number }) => {
+            calls.push({ system: req.system[0]!.text, max_tokens: req.max_tokens });
+            return { stop_reason: 'end_turn', usage: { input_tokens: 1, output_tokens: 1 }, parsed_output: { reply: 'I found 2 homes for you.', why: [{ ref: 'h1', text: 'It has 2 bedrooms.' }] } };
+          },
+        },
+      }),
+      noteFailure: async () => {},
+      recordSpend: async () => {},
+      strictOutputFormat: (x: unknown) => x,
+    }));
+    const { writeReply } = await import('@/components/agent/writer');
+    const facts = {
+      lang: 'en' as const, search: [], widened: [], count: 2, followUp: null,
+      homes: [{ ref: 'h1', title: 'x', area: null, neighbourhood: null, type: null, furnishing: null, terms: [], bedrooms: 2, bathrooms: null, period: 'month' as const, typicalPrice: false, inBudget: null, has: [], askBroker: [], distance: null, confirmed: false, brokerHome: true }],
+    };
+    const web = await writeReply(facts);
+    const wa = await writeReply(facts, undefined, undefined, { replyOnly: true });
+    expect(web?.why.size).toBe(1);
+    expect(wa?.reply).toBe('I found 2 homes for you.');
+    expect(wa?.why.size).toBe(0);
+    expect(calls[0]!.max_tokens).toBe(1_200);
+    expect(calls[1]!.max_tokens).toBe(400);
+    expect(calls[1]!.system).toContain('WhatsApp');
+    vi.doUnmock('@/components/agent/claude');
+  });
+});
