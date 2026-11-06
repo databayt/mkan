@@ -4,11 +4,14 @@ import { UserRole } from "@prisma/client";
 // instead of a raw `new PrismaClient()`.
 import { db as prisma } from "@/lib/db";
 
-const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "super@mkan.org";
-const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "123456";
+// The prod admin already exists (admin@mkan.sd); its password lives in Keychain `mkan-admin-password`
+// and is changed with `pnpm admin:password` — this seeds a fresh database only, with no default secret.
+const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "admin@mkan.sd";
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "";
 const ADMIN_USERNAME = process.env.SEED_ADMIN_USERNAME ?? "super-admin";
 
 async function main() {
+  if (ADMIN_PASSWORD.length < 16) throw new Error("set SEED_ADMIN_PASSWORD (16+ characters); there is no default");
   const hashed = await bcrypt.hash(ADMIN_PASSWORD, 10);
 
   const user = await prisma.user.upsert({
@@ -31,7 +34,7 @@ async function main() {
   });
 
   console.log("Super admin ready:", user);
-  console.log(`Credentials: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
+  console.log(`Sign in as ${ADMIN_EMAIL} with the password you set (it is not printed).`);
 }
 
 main()

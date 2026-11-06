@@ -156,6 +156,7 @@
     "wa:chats": "tsx scripts/wa/chats.ts",
     "wa:outbox": "tsx --require ./scripts/agent/no-server-only.js scripts/wa/outbox.ts",
     "wa:pair": "tsx scripts/wa/pair.ts",
+    "admin:password": "tsx --require ./scripts/agent/no-server-only.js scripts/set-admin-password.ts",
     "accounts:simplify": "tsx scripts/crm/simplify-accounts.ts",
     "scope:portsudan": "tsx scripts/crm/scope-portsudan-phase.ts",
     "scope:city": "tsx scripts/crm/scope-portsudan-phase.ts",
