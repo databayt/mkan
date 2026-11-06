@@ -188,3 +188,85 @@ describe("after the viewing — the reply to 'how did it go?'", () => {
     expect(afterViewingNotText("rw")).toMatch(/Murakoze/);
   });
 });
+
+describe("Mkan's share — how the business gets paid", () => {
+  it("reads the share flags, and refuses mixed or broken ones", async () => {
+    const { parseShareFlags } = await import("@/components/agent/deal-pure");
+    const flags = (pairs: Record<string, string>, set: string[] = []) => parseShareFlags((n) => pairs[n], (f) => set.includes(f));
+    expect(flags({})).toBeNull();
+    expect(flags({ "share-pct": "50" })).toEqual({ pct: 0.5 });
+    expect(flags({ "share-pct": "37.5%" })).toEqual({ pct: 0.375 });
+    expect(flags({ "share-rwf": "30,000" })).toEqual({ flatRwf: 30_000 });
+    expect(flags({}, ["no-share"])).toEqual({ none: true });
+    expect(() => flags({ "share-pct": "50", "share-rwf": "1000" })).toThrow(/not both/);
+    expect(() => flags({ "share-pct": "50" }, ["no-share"])).toThrow(/pick one/);
+    expect(() => flags({ "share-pct": "0" })).toThrow(/above 0/);
+    expect(() => flags({ "share-pct": "150" })).toThrow();
+    expect(() => flags({ "share-rwf": "abc" })).toThrow();
+  });
+
+  it("works out the share: flat wins, else part of the commission, else nothing", async () => {
+    const { expectedShare } = await import("@/components/agent/deal-pure");
+    expect(expectedShare(175_000, { pct: 0.5 })).toBe(87_500);
+    expect(expectedShare(175_000, { flatRwf: 30_000, pct: 0.5 })).toBe(30_000);
+    expect(expectedShare(null, { pct: 0.5 })).toBeNull();
+    expect(expectedShare(0, { pct: 0.5 })).toBeNull();
+    expect(expectedShare(175_000, null)).toBeNull();
+  });
+
+  it("says what a deal earns net of the viewing fee, and warns when it earns nothing", async () => {
+    const { unitEconomicsLine } = await import("@/components/agent/deal-pure");
+    const ok = unitEconomicsLine({ share: 87_500, commission: 175_000, agreement: { pct: 0.5 }, viewingFee: 5_000 });
+    expect(ok).toContain("RWF 87,500");
+    expect(ok).toContain("50% of the commission of RWF 175,000");
+    expect(ok).toContain("= ≈ RWF 82,500");
+    expect(ok).not.toContain("⚠");
+    const thin = unitEconomicsLine({ share: 2_000, commission: 4_000, agreement: { pct: 0.5 }, viewingFee: 5_000 });
+    expect(thin).toContain("⚠ the viewing fee is more than Mkan's share");
+    const none = unitEconomicsLine({ share: null, commission: 175_000, agreement: null, viewingFee: 5_000 });
+    expect(none).toMatch(/No share for Mkan/);
+    expect(none).toContain("costs Mkan RWF 5,000");
+    expect(unitEconomicsLine({ share: 30_000, commission: null, agreement: { flatRwf: 30_000 }, viewingFee: null })).toBe("💵 If it signs: Mkan ≈ RWF 30,000 (flat, as agreed)");
+    // A share agreed on the commission, with the commission not known yet: ask for it, don't say "none".
+    const unpriced = unitEconomicsLine({ share: null, commission: null, agreement: { pct: 0.5 }, viewingFee: 5_000 });
+    expect(unpriced).toContain("50% of the commission");
+    expect(unpriced).toContain("--commission=");
+    expect(unpriced).not.toMatch(/No share/);
+  });
+
+  it("prints a deal:status command that parses back, and still reads the old short form", async () => {
+    const { dealCommand, parseStatusArgs } = await import("@/components/agent/deal-pure");
+    const printed = dealCommand("cmdeal1", "signed");
+    expect(printed).toBe("pnpm deal:status --deal=cmdeal1 --status=signed");
+    // What the CLI sees after `pnpm deal:status` (the command word is removed).
+    expect(parseStatusArgs(printed.split(" ").slice(2))).toEqual({ id: "cmdeal1", status: "SIGNED", share: null, noShare: false, note: null });
+    expect(parseStatusArgs(["cmdeal1", "SIGNED"])).toMatchObject({ id: "cmdeal1", status: "SIGNED" });
+    expect(parseStatusArgs(["--deal=d", "--status=paid", "--share=12,500", "--note=cash"])).toEqual({ id: "d", status: "PAID", share: 12_500, noShare: false, note: "cash" });
+    expect(parseStatusArgs(["--deal=d", "--status=signed", "--no-share"]).noShare).toBe(true);
+    expect(() => parseStatusArgs(["--deal=d", "--status=paid", "--share=-1"])).toThrow();
+  });
+
+  it("refuses to sign or pay a deal with no share unless --no-share says so", async () => {
+    const { shareForStatus } = await import("@/components/agent/deal-pure");
+    const none = { given: null, booked: null, commission: 175_000, agreement: null, noShare: false };
+    expect(() => shareForStatus("SIGNED", none)).toThrow(/no share for Mkan/);
+    expect(() => shareForStatus("PAID", none)).toThrow(/no share for Mkan/);
+    expect(shareForStatus("SIGNED", { ...none, noShare: true })).toBeNull();
+    expect(shareForStatus("VIEWED", none)).toBeNull();
+    expect(shareForStatus("LOST", none)).toBeNull();
+    // Given now beats booked beats the broker's agreement.
+    expect(shareForStatus("PAID", { ...none, given: 40_000, booked: 30_000, agreement: { pct: 0.5 } })).toBe(40_000);
+    expect(shareForStatus("PAID", { ...none, booked: 30_000, agreement: { pct: 0.5 } })).toBe(30_000);
+    expect(shareForStatus("SIGNED", { ...none, agreement: { pct: 0.5 } })).toBe(87_500);
+  });
+
+  it("drafts the invoice a person sends the broker, with the payout line when set", async () => {
+    const { invoiceDraft } = await import("@/components/agent/deal-pure");
+    const d = invoiceDraft({ broker: "Jean", amount: 87_500, ref: "K5882", title: "2-bed in Remera", payout: "MoMo 0780000001 (Mkan)" });
+    expect(d).toContain("Hello Jean");
+    expect(d).toContain("K5882");
+    expect(d).toContain("RWF 87,500");
+    expect(d).toContain("Please send it to MoMo 0780000001 (Mkan).");
+    expect(invoiceDraft({ broker: null, amount: 1_000, ref: "K1", title: "x", payout: null })).not.toContain("Please send");
+  });
+});

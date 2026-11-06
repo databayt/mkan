@@ -22,7 +22,7 @@ import type { CostEstimate, CostLine } from "./cost";
 
 export type DealLang = "en" | "ar" | "rw";
 
-const rwf = (n: number) => `RWF ${Math.round(n).toLocaleString("en-US")}`;
+export const rwf = (n: number) => `RWF ${Math.round(n).toLocaleString("en-US")}`;
 const KIGALI_MS = 2 * 3_600_000;
 
 export interface DealFacts {
@@ -309,6 +309,120 @@ export function parseTermFlags(get: (name: string) => string | undefined): Broke
     t.moveIn = moveIn;
   }
   return t;
+}
+
+// ── Mkan's share: how the business gets paid ──────────────────────────────────
+// Mkan brings the tenant; the broker who signs the lease pays Mkan a share of their commission, or
+// a flat amount, agreed with that broker (Broker.sharePct / shareFlatRwf). Until 2026-11-07 nothing
+// asked for it, computed it or refused a deal without it: 0 of 238 brokers had terms on record.
+
+/** Mkan's share as agreed with a broker: part of their commission, or a flat amount per lease. */
+export interface ShareAgreement {
+  /** A fraction of the broker's commission (0.5). */
+  pct?: number | null;
+  /** RWF per signed lease. */
+  flatRwf?: number | null;
+}
+
+/**
+ * `--share-pct=50` (percent of the broker's commission), `--share-rwf=30000` (flat RWF per lease),
+ * or `--no-share` (go on without one, on purpose). Null when none was given.
+ */
+export function parseShareFlags(get: (name: string) => string | undefined, has: (flag: string) => boolean): (ShareAgreement & { none?: boolean }) | null {
+  const pctRaw = get("share-pct")?.trim();
+  const rwfRaw = get("share-rwf")?.trim();
+  const none = has("no-share");
+  if ((pctRaw || rwfRaw) && none) throw new Error("--no-share together with a share: pick one");
+  if (pctRaw && rwfRaw) throw new Error("--share-pct or --share-rwf, not both");
+  if (none) return { none: true };
+  if (pctRaw) {
+    const n = Number(pctRaw.replace(/%$/, ""));
+    if (!Number.isFinite(n) || n <= 0 || n > 100) throw new Error(`--share-pct=${pctRaw}: expected a percent of the broker's commission, above 0 and up to 100`);
+    return { pct: n / 100 };
+  }
+  if (rwfRaw) {
+    const n = Number(rwfRaw.replace(/[,_\s]/g, ""));
+    if (!Number.isFinite(n) || n < 1 || n > 100_000_000) throw new Error(`--share-rwf=${rwfRaw}: expected RWF from 1 to 100,000,000`);
+    return { flatRwf: Math.round(n) };
+  }
+  return null;
+}
+
+/** What Mkan earns on a signed lease: the flat amount, else its part of the commission; null without either. */
+export function expectedShare(commission: number | null | undefined, a: ShareAgreement | null | undefined): number | null {
+  if (a?.flatRwf != null && a.flatRwf > 0) return Math.round(a.flatRwf);
+  if (a?.pct != null && a.pct > 0 && commission != null && commission > 0) return Math.round(commission * a.pct);
+  return null;
+}
+
+/** The agreement as a #mkan card says it: "50% of the commission", "RWF 30,000 a lease". */
+export function shareLabel(a: ShareAgreement | null | undefined): string | null {
+  if (a?.flatRwf != null && a.flatRwf > 0) return `${rwf(a.flatRwf)} a lease`;
+  if (a?.pct != null && a.pct > 0) return `${Math.round(a.pct * 1000) / 10}% of the commission`;
+  return null;
+}
+
+/** One line for #mkan: what the deal earns Mkan once signed, net of the viewing fee Mkan pays. */
+export function unitEconomicsLine(v: { share: number | null; commission: number | null; agreement: ShareAgreement | null; viewingFee: number | null }): string {
+  const fee = v.viewingFee ?? 0;
+  // Agreed as a part of the commission, but the commission is not known yet: price it, don't cry "none".
+  if ((v.share == null || v.share <= 0) && v.agreement?.pct && !(v.commission != null && v.commission > 0)) {
+    return `💵 Mkan's share: ${shareLabel(v.agreement)} — the commission is not on record yet: add \`--commission=<% of one month's rent>\` when booking, or \`--share=<RWF>\` when it signs.`;
+  }
+  if (v.share == null || v.share <= 0) {
+    return `⚠ No share for Mkan on record: this deal ${fee > 0 ? `costs Mkan ${rwf(fee)} (the viewing fee) and ` : ""}earns nothing. Agree Mkan's share with the broker before the viewing (\`pnpm deal:terms\`).`;
+  }
+  const basis = v.agreement?.flatRwf ? " (flat, as agreed)" : v.agreement?.pct && v.commission ? ` (${shareLabel(v.agreement)} of ${rwf(v.commission)})` : "";
+  if (fee <= 0) return `💵 If it signs: Mkan ≈ ${rwf(v.share)}${basis}`;
+  const net = v.share - fee;
+  return `💵 If it signs: Mkan ≈ ${rwf(v.share)}${basis} − ${rwf(fee)} viewing fee = ≈ ${rwf(net)}${net <= 0 ? " ⚠ the viewing fee is more than Mkan's share" : ""}`;
+}
+
+/** The WhatsApp a person from Mkan sends the broker once the lease is signed (it never goes by itself). */
+export function invoiceDraft(v: { broker: string | null; amount: number; ref: string; title: string; payout: string | null }): string {
+  return `Hello${v.broker ? ` ${v.broker}` : ""}, thank you for the lease on ${v.title} (${v.ref}). As agreed, Mkan's share is ${rwf(v.amount)}.${v.payout ? ` Please send it to ${v.payout}.` : ""} Murakoze!`;
+}
+
+export type DealStatusWord = "viewed" | "signed" | "paid" | "lost";
+
+/** The exact `pnpm deal:status` line a #mkan card prints; parseStatusArgs reads it back. */
+export function dealCommand(id: string, status: DealStatusWord, extra = ""): string {
+  return `pnpm deal:status --deal=${id} --status=${status}${extra ? ` ${extra}` : ""}`;
+}
+
+/**
+ * `pnpm deal:status` arguments after the command: the flags (--deal= --status= [--share=] [--no-share]
+ * [--note=]), or the short `<deal id> SIGNED` an older card printed.
+ */
+export function parseStatusArgs(args: string[]): { id: string | null; status: string | null; share: number | null; noShare: boolean; note: string | null } {
+  const flag = (name: string) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
+  const positional = args.filter((a) => !a.startsWith("--"));
+  const id = flag("deal") ?? positional[0] ?? null;
+  const status = (flag("status") ?? positional[1] ?? "").toUpperCase() || null;
+  const raw = flag("share")?.trim();
+  let share: number | null = null;
+  if (raw) {
+    const n = Number(raw.replace(/[,_\s]/g, ""));
+    if (!Number.isFinite(n) || n <= 0 || n > 100_000_000) throw new Error(`--share=${raw}: expected the RWF the broker owes Mkan`);
+    share = Math.round(n);
+  }
+  return { id, status, share, noShare: args.includes("--no-share"), note: flag("note") ?? null };
+}
+
+/**
+ * The share a deal closes with: the amount given now, else the one booked, else the broker's agreement
+ * on the commission. A signed or paid deal with no share is refused unless `--no-share` says so — the
+ * business is that share; a deal that closes without one is a choice, not an accident.
+ */
+export function shareForStatus(
+  status: "VIEWED" | "SIGNED" | "PAID" | "LOST",
+  v: { given: number | null; booked: number | null; commission: number | null; agreement: ShareAgreement | null; noShare: boolean },
+): number | null {
+  const share = v.given ?? v.booked ?? expectedShare(v.commission, v.agreement);
+  if ((status === "SIGNED" || status === "PAID") && !(share != null && share > 0) && !v.noShare) {
+    throw new Error("no share for Mkan on this deal — pass --share=<RWF the broker owes Mkan>, or --no-share to close it without one");
+  }
+  return share != null && share > 0 ? share : null;
 }
 
 /** "15 Nov" from "2026-11-15". */

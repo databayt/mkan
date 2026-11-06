@@ -129,7 +129,7 @@ async function main() {
   const brokerVariants = brokerPhone ? [`+${brokerPhone.replace(/^\+/, "")}`, brokerPhone.replace(/^\+/, "")] : [];
   const brokersTouched = await db.broker.findMany({
     where: { OR: [...(link?.brokerId ? [{ id: link.brokerId }] : []), ...(brokerVariants.length ? [{ phones: { hasSome: brokerVariants } }] : [])] },
-    select: { id: true, relationship: true, answers: true, availableAnswers: true },
+    select: { id: true, relationship: true, answers: true, availableAnswers: true, sharePct: true, shareFlatRwf: true, agreementNote: true, agreedAt: true },
   });
 
   // Row counts in this run's scope, before and after.
@@ -255,9 +255,29 @@ async function main() {
     // ── 4. book the viewing ─────────────────────────────────────────────────
     console.log(`\n4. bookViewing (pnpm deal:book)`);
     const at = ask3?.proposedAt ? new Date(ask3.proposedAt) : new Date(Date.now() + 3 * DAY);
-    const booked = await bookViewing({ taskId, listingId: home.id, at, place: "deal:e2e — not a real viewing", by: "deal:e2e", terms: null });
+    // Mkan's share is settled before a viewing is booked (2026-11-07): with no agreement on record, a
+    // booking without one is refused before anything is written.
+    const agreedBefore = brokersTouched.some((b) => b.id === link?.brokerId && (b.sharePct != null || b.shareFlatRwf != null));
+    if (!agreedBefore) {
+      const refused = await bookViewing({ taskId, listingId: home.id, at, place: "deal:e2e", by: "deal:e2e", terms: null }).then(
+        () => null,
+        (err: Error) => err.message,
+      );
+      check(!!refused && /no share agreed/.test(refused), "a booking with no share agreed is refused", refused ?? "it booked");
+      const half = await db.deal.count({ where: { taskId } });
+      check(half === 0, "…and wrote nothing", `${half} deal(s)`);
+    } else console.log("  · the broker already has a share on record: the refusal is not exercised");
+    const booked = await bookViewing({ taskId, listingId: home.id, at, place: "deal:e2e — not a real viewing", by: "deal:e2e", terms: null, share: { pct: 0.5 } });
     made.visitId = booked.visitId;
     made.dealId = booked.dealId;
+    const priced = await db.deal.findUnique({ where: { id: booked.dealId }, select: { brokerCommission: true, mkanShare: true } });
+    const wantShare = priced?.brokerCommission ? Math.round(priced.brokerCommission * 0.5) : null;
+    check(priced?.mkanShare === wantShare, "the deal carries Mkan's share (50% of the commission)", `commission ${priced?.brokerCommission ?? "none"}, share ${priced?.mkanShare ?? "none"}`);
+    check(/💵|⚠ No share/.test(booked.economics), "the booking says what the deal earns", booked.economics);
+    if (link?.brokerId) {
+      const b = await db.broker.findUnique({ where: { id: link.brokerId }, select: { sharePct: true, relationship: true, agreedAt: true } });
+      check(Number(b?.sharePct) === 0.5 && b?.relationship === "PARTNER" && !!b.agreedAt, "the broker's agreement is recorded (restored in cleanup)", `${b?.sharePct} · ${b?.relationship}`);
+    }
     const visit = await db.listingVisit.findUnique({ where: { id: booked.visitId }, select: { taskId: true, contactPhone: true, scheduledFor: true } });
     const deal = await db.deal.findUnique({ where: { id: booked.dealId }, select: { status: true, taskId: true, visitId: true, listingId: true, brokerId: true, rentMonthly: true } });
     check(visit?.taskId === taskId && visit?.contactPhone === TEST_PHONE, "ListingVisit with taskId and the tenant", `visit ${booked.visitId}`);
@@ -271,8 +291,13 @@ async function main() {
 
     // ── 5. signed, then paid ────────────────────────────────────────────────
     console.log(`\n5. setDealStatus SIGNED, PAID (pnpm deal:status)`);
-    await setDealStatus(booked.dealId, "SIGNED", { notes: RUN });
-    const signed = await db.deal.findUnique({ where: { id: booked.dealId }, select: { status: true, signedAt: true } });
+    const cards5 = slackCards.length;
+    // The share booked above closes the deal; a home with no commission line gets one given here.
+    await setDealStatus(booked.dealId, "SIGNED", { notes: RUN, ...(priced?.mkanShare ? {} : { mkanShare: 1000 }) });
+    const signed = await db.deal.findUnique({ where: { id: booked.dealId }, select: { status: true, signedAt: true, mkanShare: true } });
+    const invoice = slackCards.slice(cards5).find((c) => c.includes("🧾 *Invoice*"));
+    check(!!invoice && invoice.includes(`RWF ${(signed?.mkanShare ?? 0).toLocaleString("en-US")}`), "SIGNED posts the invoice with the share (a person sends it)", invoice?.split("\n")[0] ?? "no invoice card");
+    check(!!invoice && (invoice.includes("wa.me") || invoice.includes("no broker number")), "…with the drafted WhatsApp to the broker");
     const lost = await db.listing.findUnique({ where: { id: home.id }, select: { lostAt: true, lostReason: true } });
     check(signed?.status === "SIGNED" && !!signed.signedAt, "SIGNED with signedAt");
     check(!!lost?.lostAt && lost.lostReason === "RENTED", "the home is off the market (lostAt, RENTED)");
@@ -297,6 +322,17 @@ async function main() {
       check(!!post && post.chats >= 1, "the chat is attributed to the home's post", post ? `post ${post.id}${made.postId ? " (temporary)" : ""}: chats ${post.chats}` : "no post row for the home");
       check(!!post && post.paid >= 1 && post.paidShareRwf >= 1000, "…and so is the paid deal", post ? `viewings ${post.viewings}, signed ${post.signed}, paid ${post.paid}, share ${post.paidShareRwf} RWF` : "");
     }
+
+    // ── 7. an unattended session cannot write money ─────────────────────────
+    console.log(`\n7. deal:status from an unattended session`);
+    const { spawnSync } = await import("node:child_process");
+    const guarded = spawnSync("pnpm", ["exec", "tsx", "--require", "./scripts/agent/no-server-only.js", "scripts/agent/deal.ts", "status", `--deal=${booked.dealId}`, "--status=lost"], {
+      env: { ...process.env, MKAN_UNATTENDED: "1" },
+      encoding: "utf8",
+      timeout: 60_000,
+    });
+    const still = await db.deal.findUnique({ where: { id: booked.dealId }, select: { status: true } });
+    check(guarded.status === 3 && still?.status === "PAID", "refused with exit 3, the deal untouched", `exit ${guarded.status}, deal ${still?.status}`);
 
     const leaked = await db.outboundMessage.count({ where: { to: { in: [...variants, ...brokerVariants] }, createdAt: { gte: t0 }, status: { in: ["QUEUED", "SENT"] } } });
     check(leaked === 0 && blocked.length === 0, "nothing was sent to anyone", `${leaked} queued/sent row(s), ${blocked.length} blocked fetch(es), ${slackCards.length} Slack card(s) intercepted`);
@@ -337,7 +373,11 @@ async function main() {
         db.waState.deleteMany({ where: { key: { in: [`viewing-ask:${TEST_DIGITS}`, ...msgIds.map((m) => `handoff:${m}`)] } } }),
       );
       await db.listing.update({ where: { id: home.id }, data: { lostAt: home.lostAt, lostReason: home.lostReason, lastAvailabilityConfirmedAt: home.lastAvailabilityConfirmedAt } });
-      for (const b of brokersTouched) await db.broker.update({ where: { id: b.id }, data: { relationship: b.relationship, answers: b.answers, availableAnswers: b.availableAnswers } });
+      for (const b of brokersTouched)
+        await db.broker.update({
+          where: { id: b.id },
+          data: { relationship: b.relationship, answers: b.answers, availableAnswers: b.availableAnswers, sharePct: b.sharePct, shareFlatRwf: b.shareFlatRwf, agreementNote: b.agreementNote, agreedAt: b.agreedAt },
+        });
       if (profileBefore) {
         await db.agentProfile.update({
           where: { id: profileBefore.id },
@@ -353,7 +393,10 @@ async function main() {
 
       const after = await scopeCounts(profileBefore?.id ?? null);
       const listingAfter = await db.listing.findUnique({ where: { id: home.id }, select: { lostAt: true, lostReason: true, lastAvailabilityConfirmedAt: true } });
-      const brokersAfter = await db.broker.findMany({ where: { id: { in: brokersTouched.map((b) => b.id) } }, select: { id: true, relationship: true, answers: true, availableAnswers: true } });
+      const brokersAfter = await db.broker.findMany({
+        where: { id: { in: brokersTouched.map((b) => b.id) } },
+        select: { id: true, relationship: true, answers: true, availableAnswers: true, sharePct: true, shareFlatRwf: true, agreementNote: true, agreedAt: true },
+      });
       const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
       for (const k of Object.keys(before) as (keyof typeof before)[]) check(before[k] === after[k], `count ${k}`, `before ${before[k]}, after ${after[k]}`);
       check(same(listingAfter, { lostAt: home.lostAt, lostReason: home.lostReason, lastAvailabilityConfirmedAt: home.lastAvailabilityConfirmedAt }), "listing restored", JSON.stringify(listingAfter));

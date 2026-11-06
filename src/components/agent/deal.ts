@@ -20,7 +20,7 @@ import "server-only";
  * a person, not a machine, about the time they show their home.
  */
 import { db } from "@/lib/db";
-import { publicAppUrl, waLink } from "../../../scripts/crm/public-links";
+import { waLink } from "../../../scripts/crm/public-links";
 import { viewingRep } from "./broker-message";
 import { longStayCost, type CostEstimate, type ListingTerms } from "./cost";
 import {
@@ -28,14 +28,22 @@ import {
   afterViewingNotText,
   afterViewingWantText,
   confirmedTermsLine,
+  dealCommand,
   dealSheetMessage,
+  expectedShare,
+  invoiceDraft,
+  rwf,
+  shareForStatus,
+  shareLabel,
   termsToAsk,
+  unitEconomicsLine,
   viewingConfirmedMessage,
   viewingLabel,
   viewingProposedMessage,
   viewingReminderMessage,
   type BrokerTerms,
   type DealLang,
+  type ShareAgreement,
 } from "./deal-pure";
 import type { ShortlistItem } from "./types";
 import { postSlackCard, sendMessages } from "./whatsapp";
@@ -56,6 +64,21 @@ const ASK_TTL_MS = 72 * 3_600_000;
 export type ViewingAsk = { taskId: string; listingId: number; at: string; proposedAt?: string };
 
 const langOf = (l: string): DealLang => (l === "ar" || l === "rw" ? l : "en");
+
+/** A broker's recorded share agreement (Broker.sharePct / shareFlatRwf); null when there is none. */
+export function agreementOf(b: { sharePct: unknown; shareFlatRwf: number | null } | null | undefined): ShareAgreement | null {
+  if (!b) return null;
+  const pct = b.sharePct != null ? Number(b.sharePct) : null;
+  if ((pct == null || !(pct > 0)) && !(b.shareFlatRwf != null && b.shareFlatRwf > 0)) return null;
+  return { pct: pct != null && pct > 0 ? pct : null, flatRwf: b.shareFlatRwf != null && b.shareFlatRwf > 0 ? b.shareFlatRwf : null };
+}
+
+/** Where brokers pay Mkan, for the invoice draft (MKAN_PAYOUT_MOMO + MKAN_PAYOUT_NAME in the env). */
+function payoutLine(): string | null {
+  const momo = process.env.MKAN_PAYOUT_MOMO?.trim();
+  const name = process.env.MKAN_PAYOUT_NAME?.trim();
+  return momo ? `MoMo ${momo}${name ? ` (${name})` : ""}` : null;
+}
 
 async function nextSeq(taskId: string): Promise<number> {
   const last = await db.agentEvent.findFirst({ where: { taskId }, orderBy: { seq: "desc" }, select: { seq: true } });
@@ -119,18 +142,27 @@ export async function proposeViewing(ask: ViewingAsk, at: Date, tenant: string, 
   const label = viewingLabel(at, lang);
   const [home, brokers, task] = await Promise.all([
     db.listing.findUnique({ where: { id: ask.listingId }, select: { title: true, location: { select: { address: true, neighbourhood: true, sector: true } } } }),
-    db.listingBroker.findMany({ where: { listingId: ask.listingId }, select: { user: { select: { phoneNumber: true, username: true } } }, take: 3 }),
+    db.listingBroker.findMany({
+      where: { listingId: ask.listingId },
+      select: { user: { select: { phoneNumber: true, username: true } }, broker: { select: { sharePct: true, shareFlatRwf: true } } },
+      take: 3,
+    }),
     db.agentTask.findUnique({ where: { id: ask.taskId }, select: { shortlist: true } }),
   ]);
   const broker = brokers.map((b) => (b.user.phoneNumber ? `${b.user.username ?? "broker"} <${waLink(b.user.phoneNumber, "")}|${b.user.phoneNumber}>` : null)).filter(Boolean).join(" · ") || "no broker number on file";
   const shown = ((task?.shortlist as ShortlistItem[] | null) ?? []).find((s) => s.id === ask.listingId)?.cost ?? null;
   const iso = at.toISOString();
+  // Mkan's share is agreed before Mkan sends a person and pays the viewing fee (2026-11-07): the card
+  // says what is on record, or asks for it with the time.
+  const agreed = brokers.map((b) => agreementOf(b.broker)).find((a) => a != null) ?? null;
+  const share = shareLabel(agreed);
   // The deal sheet told the tenant the usual and unstated terms get confirmed: the person asks them with the time.
   await postSlackCard(
     `📅 *Viewing asked* — ${home?.title ?? `#${ask.listingId}`} (K${ask.listingId}), *${viewingLabel(at, "en")}*\n` +
       `Tenant: <${waLink(tenant, "")}|${tenant}> · Broker: ${broker}\n` +
-      `${viewingRep()}: confirm the time with the broker and ask: ${termsToAsk(shown).join(" · ")}. Then\n` +
-      `\`pnpm deal:book --task=${ask.taskId} --listing=${ask.listingId} --at=${iso} --place="…"\` + what they said, e.g. \`--advance=3 --deposit=1 --commission=10 --water=yes --power=no --lease=12 --move-in=YYYY-MM-DD\``,
+      `💵 Mkan's share: ${share ? `${share} (agreed)` : "*none agreed — ask it with the time*"}\n` +
+      `${viewingRep()}: confirm the time with the broker and ask: ${termsToAsk(shown).join(" · ")}${share ? "" : " · Mkan's share"}. Then\n` +
+      `\`pnpm deal:book --task=${ask.taskId} --listing=${ask.listingId} --at=${iso} --place="…"\` + what they said, e.g. \`--advance=3 --deposit=1 --commission=10 --water=yes --power=no --lease=12 --move-in=YYYY-MM-DD${share ? "" : " --share-pct=50"}\``,
   ).catch(() => {});
   await trace(ask.taskId, "viewing_proposed", "waiting_person", { listingId: ask.listingId, at: iso });
   const value = { ...ask, proposedAt: iso } satisfies ViewingAsk;
@@ -174,7 +206,16 @@ function listingTermsData(t: BrokerTerms) {
  * the broker confirmed (`terms`) price the Deal, restate the deal to the tenant,
  * and stay on the home for the next tenant's card.
  */
-export async function bookViewing(input: { taskId: string; listingId: number; at: Date; place?: string | null; by?: string | null; terms?: BrokerTerms | null }): Promise<{ visitId: number; dealId: string }> {
+export async function bookViewing(input: {
+  taskId: string;
+  listingId: number;
+  at: Date;
+  place?: string | null;
+  by?: string | null;
+  terms?: BrokerTerms | null;
+  /** Mkan's share as the broker agreed it now (`--share-pct=` / `--share-rwf=`), or `none` (`--no-share`). */
+  share?: (ShareAgreement & { none?: boolean }) | null;
+}): Promise<{ visitId: number; dealId: string; share: number | null; economics: string }> {
   const task = await db.agentTask.findUnique({ where: { id: input.taskId }, select: { id: true, locale: true, shortlist: true, profile: { select: { waPhone: true } } } });
   if (!task) throw new Error(`no task ${input.taskId}`);
   const item = ((task.shortlist as ShortlistItem[] | null) ?? []).find((s) => s.id === input.listingId);
@@ -187,6 +228,16 @@ export async function bookViewing(input: { taskId: string; listingId: number; at
   });
   const answered = yes ? await db.listingBroker.findFirst({ where: { listingId: input.listingId, userId: yes.brokerUserId, brokerId: { not: null } }, select: { brokerId: true } }) : null;
   const link = answered ?? (await db.listingBroker.findFirst({ where: { listingId: input.listingId }, orderBy: [{ role: "desc" }, { createdAt: "asc" }], select: { brokerId: true } }));
+  // Mkan's share is settled before anything is written: Mkan sends a person and pays the viewing fee
+  // only for a deal that pays it back, or on purpose with --no-share (2026-11-07).
+  const brokerRow = link?.brokerId
+    ? await db.broker.findUnique({ where: { id: link.brokerId }, select: { id: true, sharePct: true, shareFlatRwf: true, relationship: true } })
+    : null;
+  const given = input.share && !input.share.none && (input.share.pct || input.share.flatRwf) ? { pct: input.share.pct ?? null, flatRwf: input.share.flatRwf ?? null } : null;
+  const agreement = given ?? agreementOf(brokerRow);
+  if (!agreement && !input.share?.none) {
+    throw new Error("no share agreed with this home's broker — add --share-pct=<% of their commission> or --share-rwf=<RWF a lease> (or record it first with pnpm deal:terms), or --no-share to book without one");
+  }
   // Booking the same home for the same chat again is a new time, not a second deal: the open one moves.
   const open = await db.deal.findFirst({ where: { taskId: task.id, listingId: input.listingId, status: { in: ["VIEWING_BOOKED", "VIEWED"] } }, select: { id: true, visitId: true } });
   const rep = input.by?.trim() || viewingRep();
@@ -208,6 +259,21 @@ export async function bookViewing(input: { taskId: string; listingId: number; at
   // What moving in costs the tenant on these terms: the viewing fee is Mkan's.
   const moveIn: [number, number] | null = cost?.period === "month" ? [cost.total - (viewingFee ?? 0), cost.totalHigh - (viewingFee ?? 0)] : null;
   const round = (n: number | null | undefined) => (n == null ? null : Math.round(n));
+  const share = expectedShare(commission, agreement);
+  const economics = unitEconomicsLine({ share, commission: round(commission), agreement, viewingFee: round(viewingFee) });
+  // A share agreed now is the broker's terms from here on: the next deal with them starts from it.
+  if (given && brokerRow) {
+    await db.broker.update({
+      where: { id: brokerRow.id },
+      data: {
+        sharePct: given.pct ?? null,
+        shareFlatRwf: given.flatRwf ?? null,
+        agreedAt: new Date(),
+        agreementNote: `agreed at deal:book K${input.listingId} (${new Date().toISOString().slice(0, 10)}, ${rep})`,
+        ...(brokerRow.relationship === "PAUSED" || brokerRow.relationship === "DO_NOT_CONTACT" ? {} : { relationship: "PARTNER" as const }),
+      },
+    });
+  }
 
   const visitData = {
     contactPhone: tenant,
@@ -225,6 +291,8 @@ export async function bookViewing(input: { taskId: string; listingId: number; at
     upfront: moveIn ? round(moveIn[0]) : null,
     brokerCommission: round(commission),
     viewingFeePaid: round(viewingFee),
+    mkanShare: share,
+    ...(input.share?.none ? { notes: "booked with --no-share: no share agreed" } : {}),
   };
   let visit: { id: number };
   let deal: { id: string };
@@ -254,8 +322,10 @@ export async function bookViewing(input: { taskId: string; listingId: number; at
     await db.waState.delete({ where: { key: askKey(tenant) } }).catch(() => {});
   }
   const said = terms ? confirmedTermsLine("en", terms, moveIn) : null;
-  await postSlackCard(`✅ *Viewing booked* — ${item?.title ?? `#${input.listingId}`}, *${viewingLabel(input.at, "en")}*${input.place ? ` · ${input.place}` : ""} · ${rep} · deal \`${deal.id}\`${said ? `\n${said}` : ""}`).catch(() => {});
-  return { visitId: visit.id, dealId: deal.id };
+  await postSlackCard(
+    `✅ *Viewing booked* — ${item?.title ?? `#${input.listingId}`}, *${viewingLabel(input.at, "en")}*${input.place ? ` · ${input.place}` : ""} · ${rep} · deal \`${deal.id}\`${said ? `\n${said}` : ""}\n${economics}`,
+  ).catch(() => {});
+  return { visitId: visit.id, dealId: deal.id, share, economics };
 }
 
 /**
@@ -288,17 +358,46 @@ export async function viewingReminders(now = new Date()): Promise<number> {
   return sent;
 }
 
-/** How the deal ended up, written by the person who was there (`pnpm deal:status`). */
-export async function setDealStatus(dealId: string, status: "VIEWED" | "SIGNED" | "PAID" | "LOST", extras: { mkanShare?: number | null; notes?: string | null } = {}) {
+/**
+ * How the deal ended up, written by the person who was there (`pnpm deal:status`). SIGNED and PAID
+ * need Mkan's share — given now, booked, or the broker's agreement on the commission — unless
+ * `noShare` closes it without one on purpose. SIGNED posts the invoice for a person to send.
+ */
+export async function setDealStatus(
+  dealId: string,
+  status: "VIEWED" | "SIGNED" | "PAID" | "LOST",
+  extras: { mkanShare?: number | null; notes?: string | null; noShare?: boolean } = {},
+) {
   const now = new Date();
+  const before = await db.deal.findUnique({
+    where: { id: dealId },
+    select: {
+      status: true,
+      mkanShare: true,
+      brokerCommission: true,
+      viewingFeePaid: true,
+      listingId: true,
+      broker: { select: { name: true, phones: true, sharePct: true, shareFlatRwf: true } },
+      listing: { select: { title: true } },
+    },
+  });
+  if (!before) throw new Error(`no deal ${dealId}`);
+  // Throws before anything is written when a signed or paid deal would close with no share.
+  const share = shareForStatus(status, {
+    given: extras.mkanShare != null && extras.mkanShare > 0 ? Math.round(extras.mkanShare) : null,
+    booked: before.mkanShare,
+    commission: before.brokerCommission,
+    agreement: agreementOf(before.broker),
+    noShare: !!extras.noShare,
+  });
   const deal = await db.deal.update({
     where: { id: dealId },
     data: {
       status,
       ...(status === "SIGNED" ? { signedAt: now } : {}),
       ...(status === "PAID" ? { paidAt: now } : {}),
-      ...(extras.mkanShare != null ? { mkanShare: extras.mkanShare } : {}),
-      ...(extras.notes ? { notes: extras.notes } : {}),
+      ...(share != null ? { mkanShare: share } : {}),
+      ...(extras.notes ? { notes: extras.notes } : extras.noShare && (status === "SIGNED" || status === "PAID") ? { notes: `closed ${status} with --no-share` } : {}),
     },
     select: { id: true, visitId: true, listingId: true, brokerId: true, mkanShare: true },
   });
@@ -316,11 +415,32 @@ export async function setDealStatus(dealId: string, status: "VIEWED" | "SIGNED" 
     await db.listingVisit.update({ where: { id: deal.visitId }, data: { outcome: "Completed", occurredAt: now } }).catch(() => {});
   }
   // A signed lease — or paid, which means signed (11-06: PAID alone left the home listed): the home is
-  // off the market, and the broker is a partner in practice.
+  // off the market. The broker became a PARTNER when the share was agreed (bookViewing, deal:terms) —
+  // a signature alone no longer promotes them (2026-11-07: every broker would have been "a partner"
+  // with no terms on record).
   if (status === "PAID") await db.deal.updateMany({ where: { id: deal.id, signedAt: null }, data: { signedAt: now } });
   if (status === "SIGNED" || status === "PAID") {
     await db.listing.update({ where: { id: deal.listingId }, data: { lostAt: now, lostReason: "RENTED" } });
-    if (deal.brokerId) await db.broker.updateMany({ where: { id: deal.brokerId, relationship: { in: ["NEW", "INTRODUCED", "ACTIVE"] } }, data: { relationship: "PARTNER" } });
+  }
+  // #mkan hears the money steps once, when the status changes.
+  if (before.status !== status) {
+    const ref = `K${deal.listingId}`;
+    const title = scrubTitle(before.listing.title) || `#${deal.listingId}`;
+    const fee = before.viewingFeePaid ?? 0;
+    if (status === "SIGNED" && share != null) {
+      // The invoice is drafted, never sent by itself: a person from Mkan sends it to the broker.
+      const phone = before.broker?.phones?.[0] ?? null;
+      const draft = invoiceDraft({ broker: before.broker?.name ?? null, amount: share, ref, title, payout: payoutLine() });
+      await postSlackCard(
+        `🧾 *Invoice* ${before.broker?.name ?? "the broker"} ${rwf(share)} for ${ref} (${title}) — ${phone ? `<${waLink(phone, draft)}|open the drafted WhatsApp>` : "no broker number on file"}; a person sends it.\n` +
+          `${payoutLine() ? "" : "⚠ No payout number set (MKAN_PAYOUT_MOMO): add where the broker should pay before sending.\n"}` +
+          `When it is in: \`${dealCommand(deal.id, "paid")}\``,
+      ).catch(() => {});
+    } else if (status === "SIGNED") {
+      await postSlackCard(`✍️ *Signed* ${ref} (${title}) — closed with no share for Mkan (--no-share).`).catch(() => {});
+    } else if (status === "PAID" && share != null) {
+      await postSlackCard(`💰 *Paid* ${ref} (${title}) — ${rwf(share)} received${fee > 0 ? `, ${rwf(share - fee)} after the ${rwf(fee)} viewing fee` : ""}.`).catch(() => {});
+    }
   }
   return deal;
 }
@@ -357,7 +477,7 @@ export async function recordAfterViewing(
   await db.listingVisit.update({ where: { id: v.id }, data: { outcome: "Completed" } }).catch(() => {});
   if (verdict === "want") {
     if (v.deal && v.deal.status === "VIEWING_BOOKED") await db.deal.update({ where: { id: v.deal.id }, data: { status: "VIEWED", notes: `tenant wants it (WhatsApp ${stamp})` } });
-    await postSlackCard(`🎉 ${phone} wants to take *K${v.listingId}* (${title}) after the viewing — call the broker to sign.${v.deal ? `\nThen: \`pnpm deal:status ${v.deal.id} SIGNED\`` : ""}\n> ${text.slice(0, 300)}`).catch(() => {});
+    await postSlackCard(`🎉 ${phone} wants to take *K${v.listingId}* (${title}) after the viewing — call the broker to sign.${v.deal ? `\nThen: \`${dealCommand(v.deal.id, "signed")}\`` : ""}\n> ${text.slice(0, 300)}`).catch(() => {});
     return afterViewingWantText(lang, title);
   }
   if (verdict === "not") {
