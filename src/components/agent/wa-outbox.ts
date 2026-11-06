@@ -35,6 +35,8 @@ import {
   groupByPhone,
   inSendWindow,
   isImage,
+  isMedia,
+  quotedId,
   isOptOut,
   messageText,
   phoneKey,
@@ -49,8 +51,8 @@ import { askBodyNow, markIntroduced } from "./broker";
 import { brokerSendMode } from "./broker-sends";
 import { isRepostAsk, parseBrokerReply } from "./broker-reply";
 import { EvolutionError, connectionState, findMessages, isBridgeDown, mediaBytes, sendPresence, sendText } from "@/lib/whatsapp/evolution";
-import { handleBrokerReply, repostAskKey } from "./broker-inbox";
-import { mutateState, readState, releaseLease, takeLease, writeState } from "./wa-state";
+import { handleBrokerReply, repostAskKey, askMsgKey } from "./broker-inbox";
+import { mutateState, pruneMessageClaims, readState, releaseLease, takeLease, writeState } from "./wa-state";
 import { answerTenant, noteFromMe, recordSent } from "./wa-tenant";
 import { postSlackCard } from "./whatsapp";
 
@@ -97,6 +99,8 @@ const SKIP_TEXT: Record<SkipReason, string> = {
   "opted-out": "broker opted out",
   stale: "stale: queued over 18 h ago",
   "sends-off": "broker sends off",
+  "tenant-stop": "tenant said STOP",
+  "stale-alert": "tenant alert too late to send",
 };
 
 /** Asks (not the line's own short replies, labelled auto-*) each number got in the last REST_DAYS, and when it last wrote back. */
@@ -157,6 +161,7 @@ async function drain(dry: boolean, log: Log, sendsOff: boolean): Promise<{ sent:
     optedOutPhones: new Set([...optedOutByPhone.flatMap((b) => b.phones.map(phoneKey)), ...optedOutPosters.map((p) => phoneKey(p.user.phoneNumber ?? ""))]),
     resting,
     brokerSendsOff: sendsOff,
+    stoppedTenants: new Set((await readState<string[]>("tenant-stop", [])).map(phoneKey)),
     cap,
   });
   const held = plan.hold.reduce<Record<string, number>>((acc, h) => ({ ...acc, [h.reason]: (acc[h.reason] ?? 0) + 1 }), {});
@@ -201,6 +206,8 @@ async function drain(dry: boolean, log: Log, sendsOff: boolean): Promise<{ sent:
       if (row.kind !== "TENANT_ALERT") await sendPresence(row.to, typingMs(body));
       const out = await sendText(row.to, body);
       if (row.kind === "TENANT_ALERT") await recordSent(phoneKey(row.to), out?.key?.id);
+      // A broker who replies to this very message (WhatsApp's quote) answers this ask, not their newest one.
+      else if (out?.key?.id) await writeState(askMsgKey(out.key.id), { outboundId: row.id }).catch(() => {});
       const sentAt = new Date();
       await db.outboundMessage.update({ where: { id: row.id }, data: { status: "SENT", sentAt, attempts: { increment: 1 }, error: null, ...(body !== row.body ? { body } : {}) } });
       if (row.kind === "BROKER_REQUEST" && row.brokerRequestIds.length) {
@@ -295,6 +302,8 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
       phone: senderPhone(m.key),
       text: messageText(m.message),
       image: isImage(m.message, m.messageType),
+      media: isMedia(m.message, m.messageType),
+      quoted: quotedId(m.message),
       type: m.messageType ?? "message",
       fromMe: !!m.key?.fromMe,
       direct: isDirectChat(m.key?.remoteJid),
@@ -363,7 +372,8 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
     const held = pending[broker.id] && now.getTime() - new Date(pending[broker.id]!.at).getTime() < PENDING_MS ? pending[broker.id]!.urls : [];
     const photoUrls = [...held, ...stored].slice(0, MAX_PHOTOS);
     const at = g.items[g.items.length - 1]?.sentAt ?? now;
-    const action = await handleBrokerReply({ brokerId: broker.id, phone: g.phone, text: g.text, photoUrls, at }).catch((err) => {
+    const quoted = [...g.items].reverse().find((m) => m.quoted)?.quoted ?? null;
+    const action = await handleBrokerReply({ brokerId: broker.id, phone: g.phone, text: g.text, photoUrls, at, quotedId: quoted }).catch((err) => {
       log(`inbox failed for ${broker.name}: ${(err as Error).message}`);
       return { kind: "none" } as const;
     });
@@ -410,13 +420,19 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
     }
     await postSlackCard(`💬 +${g.phone} (posts a home we asked about, not in the broker directory) replied on WhatsApp:\n> ${(g.text || "[photo or voice note]").replace(/\n/g, "\n> ").slice(0, 600)}\n<${waLink(g.phone, "")}|Open the chat>`);
   }
-  // Tenants the webhook missed; the turn answers each message id once.
+  // Tenants the webhook missed or could not finish; each message is claimed once (wa-state.ts), and one
+  // still busy or failed is NOT marked seen, so the next pass answers it (2026-11-06: it was dropped).
+  const unfinished = new Set<string>();
   for (const m of tenants) {
-    if (dry) log(`would pass a tenant message to the agent`);
-    else await answerTenant({ phone: m.phone!, text: m.text, msgId: m.id, sentAt: m.sentAt });
+    if (dry) {
+      log(`would pass a tenant message to the agent`);
+      continue;
+    }
+    const outcome = await answerTenant({ phone: m.phone!, text: m.text, msgId: m.id, sentAt: m.sentAt, media: m.media });
+    if (outcome === "busy" || outcome === "error") unfinished.add(m.id);
   }
   if (!dry) {
-    await mutateState<string[]>("seen", [], (list) => [...list, ...all.map((m) => m.id)].slice(-SEEN_KEEP));
+    await mutateState<string[]>("seen", [], (list) => [...list, ...all.filter((m) => !unfinished.has(m.id)).map((m) => m.id)].slice(-SEEN_KEEP));
     await writeState("pending", pending);
   }
   log(`replies: ${fresh.length} new · ${rest.length} broker · ${strangers.length} unlisted broker · ${tenants.length} tenant`);
@@ -450,6 +466,7 @@ export async function runOutbox(opts: { dry?: boolean; log?: Log } = {}): Promis
       return { state, sent, replies: 0 };
     }
     const n = state === "open" ? await replies(dry, log, sendsOff) : 0;
+    if (!dry) await pruneMessageClaims().catch(() => 0);
     if (!dry) await recordRun(true);
     return { state, sent, replies: n };
   } catch (err) {

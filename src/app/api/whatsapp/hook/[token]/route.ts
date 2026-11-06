@@ -1,8 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { after, NextResponse, type NextRequest } from "next/server";
 import { isDirectChat } from "../../../../../../scripts/wa/tenant-pure";
-import { messageText, phoneKey, senderPhone } from "../../../../../../scripts/wa/outbox-pure";
-import { mutateState } from "@/components/agent/wa-state";
+import { isMedia, messageText, phoneKey, senderPhone } from "../../../../../../scripts/wa/outbox-pure";
 import { answerTenant, noteFromMe } from "@/components/agent/wa-tenant";
 import { db } from "@/lib/db";
 import { hookToken, type EvoMessage } from "@/lib/whatsapp/evolution";
@@ -70,9 +69,9 @@ async function handle(m: EvoMessage) {
     await noteFromMe(phone, key.id, sentAt);
     return;
   }
-  // The poll skips what the webhook already answered.
-  await mutateState<string[]>("seen", [], (list) => (list.includes(key.id!) ? list : [...list, key.id!]));
-  await answerTenant({ phone, text: messageText(m.message), msgId: key.id, sentAt });
+  // Claimed once in answerTenant (wa-state.ts claimMessage): the poll that brings the same message
+  // finds it answered — and one the webhook could not finish (a busy turn, an error) it answers itself.
+  await answerTenant({ phone, text: messageText(m.message), msgId: key.id, sentAt, media: isMedia(m.message, m.messageType) });
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {

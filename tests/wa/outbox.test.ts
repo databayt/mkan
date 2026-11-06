@@ -219,3 +219,52 @@ describe('wa outbox — opting out in a sentence', () => {
     expect(isOptOut(t)).toBe(false);
   });
 });
+
+describe('wa outbox — STOP means nothing more reaches the tenant', () => {
+  it('skips every tenant alert to a number that said STOP, in any spelling of the number', () => {
+    const alert = row({ kind: 'TENANT_ALERT', brokerId: null, to: '+250720000015', label: 'tenant', createdAt: kigali('2026-10-21T09:50:00') });
+    const plan = base([alert], { stoppedTenants: new Set(['250720000015']) });
+    expect(plan.send).toHaveLength(0);
+    expect(plan.skip).toEqual([{ row: alert, reason: 'tenant-stop' }]);
+  });
+
+  it('still sends to a tenant who did not say STOP', () => {
+    const alert = row({ kind: 'TENANT_ALERT', brokerId: null, to: '+250720000016', label: 'tenant', createdAt: kigali('2026-10-21T09:50:00') });
+    expect(base([alert], { stoppedTenants: new Set(['250720000015']) }).send).toEqual([alert]);
+  });
+});
+
+describe('wa outbox — a tenant alert that would arrive too late is dropped', () => {
+  it('drops a viewing reminder queued more than 3 h ago ("in 2 h" after the viewing)', () => {
+    const reminder = row({ kind: 'TENANT_ALERT', brokerId: null, label: 'tenant-reminder-2h', createdAt: kigali('2026-10-21T06:30:00') });
+    expect(base([reminder]).skip).toEqual([{ row: reminder, reason: 'stale-alert' }]);
+  });
+
+  it('keeps an answer queued overnight (quiet hours), drops one from yesterday', () => {
+    const overnight = row({ kind: 'TENANT_ALERT', brokerId: null, label: 'tenant', createdAt: kigali('2026-10-20T21:00:00') });
+    const old = row({ kind: 'TENANT_ALERT', brokerId: null, label: 'tenant', createdAt: kigali('2026-10-20T12:00:00') });
+    const plan = base([overnight, old]);
+    expect(plan.send).toEqual([overnight]);
+    expect(plan.skip).toEqual([{ row: old, reason: 'stale-alert' }]);
+  });
+});
+
+describe('wa outbox — what the agent cannot read as words', () => {
+  it('knows a voice note, a photo and a location', async () => {
+    const { isMedia } = await import('../../scripts/wa/outbox-pure');
+    expect(isMedia({ audioMessage: {} })).toBe(true);
+    expect(isMedia(null, 'imageMessage')).toBe(true);
+    expect(isMedia({ locationMessage: { degreesLatitude: -1.9 } })).toBe(true);
+    expect(isMedia({ conversation: 'hello' })).toBe(false);
+  });
+});
+
+describe('wa outbox — a broker quoting our ask', () => {
+  it('finds the quoted message id in any message kind', async () => {
+    const { quotedId } = await import('../../scripts/wa/outbox-pure');
+    expect(quotedId({ extendedTextMessage: { text: 'yes', contextInfo: { stanzaId: 'ABC123' } } })).toBe('ABC123');
+    expect(quotedId({ imageMessage: { caption: '300k', contextInfo: { stanzaId: 'XYZ' } } })).toBe('XYZ');
+    expect(quotedId({ conversation: 'yes' })).toBeNull();
+    expect(quotedId(null)).toBeNull();
+  });
+});

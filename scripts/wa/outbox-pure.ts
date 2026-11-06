@@ -26,6 +26,8 @@ export interface OutboxRow {
   to: string;
   brokerId: string | null;
   createdAt: Date;
+  /** "tenant", "tenant-reminder-2h", a broker's name… (wa-outbox's Slack fallback and the staleness rule below). */
+  label?: string | null;
 }
 
 /** Digits only, without the `00` international prefix — how phones, JIDs and wa.me numbers are compared. */
@@ -93,6 +95,8 @@ export interface PlanInput<R extends OutboxRow = OutboxRow> {
   resting?: Map<string, RestReason>;
   /** Broker sends are off (broker-sends.ts): every broker row is skipped, tenant alerts still go. */
   brokerSendsOff?: boolean;
+  /** phoneKey()s of tenants who said STOP: nothing reaches them — no deal sheet, no reminder, no alert. */
+  stoppedTenants?: Set<string>;
   cap: number;
 }
 
@@ -107,7 +111,16 @@ const DAY_MS = 86_400_000;
 
 export type RestReason = 'broker-week' | 'broker-resting';
 export type HoldReason = 'quiet-hours' | 'daily-cap' | 'broker-today' | RestReason;
-export type SkipReason = 'opted-out' | 'stale' | 'sends-off';
+export type SkipReason = 'opted-out' | 'stale' | 'sends-off' | 'tenant-stop' | 'stale-alert';
+
+/**
+ * A tenant alert that waited this long (an outage, a line logged out) would read late: an answer, a
+ * deal sheet or a match after quiet hours still goes (20 h), a viewing reminder only within 3 h of
+ * being queued — "your viewing is in 2 h" after the viewing is worse than nothing.
+ */
+export const ALERT_STALE_HOURS = 20;
+export const REMINDER_STALE_HOURS = 3;
+export const isReminder = (label: string | null | undefined) => !!label && label.startsWith('tenant-reminder');
 
 /**
  * Why a broker gets no new ask now, from the asks that number was sent (any
@@ -145,6 +158,14 @@ export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
 
   for (const row of rows) {
     const isAlert = row.kind === 'TENANT_ALERT';
+    if (isAlert && input.stoppedTenants?.has(phoneKey(row.to))) {
+      plan.skip.push({ row, reason: 'tenant-stop' });
+      continue;
+    }
+    if (isAlert && now.getTime() - row.createdAt.getTime() > (isReminder(row.label) ? REMINDER_STALE_HOURS : ALERT_STALE_HOURS) * 3_600_000) {
+      plan.skip.push({ row, reason: 'stale-alert' });
+      continue;
+    }
     if (!isAlert && input.brokerSendsOff) {
       plan.skip.push({ row, reason: 'sends-off' });
       continue;
@@ -230,6 +251,23 @@ export function messageText(message: Record<string, unknown> | null | undefined)
 export function senderPhone(key: { remoteJid?: string; remoteJidAlt?: string; senderPn?: string } | undefined): string | null {
   for (const jid of [key?.senderPn, key?.remoteJidAlt, key?.remoteJid]) {
     if (jid && jid.endsWith('@s.whatsapp.net')) return phoneKey(jid.split('@')[0] ?? '');
+  }
+  return null;
+}
+
+const MEDIA_KINDS = ['audioMessage', 'pttMessage', 'imageMessage', 'videoMessage', 'documentMessage', 'stickerMessage', 'locationMessage', 'liveLocationMessage', 'contactMessage', 'contactsArrayMessage'];
+/** A voice note, photo, video, file, sticker, location or contact — something the agent cannot read as words. */
+export function isMedia(message: Record<string, unknown> | null | undefined, messageType?: string): boolean {
+  if (messageType && MEDIA_KINDS.includes(messageType)) return true;
+  return !!message && MEDIA_KINDS.some((k) => k in message);
+}
+
+/** The id of the message this one replies to (WhatsApp's "reply"): which of our asks a broker answers. */
+export function quotedId(message: Record<string, unknown> | null | undefined): string | null {
+  if (!message) return null;
+  for (const v of Object.values(message)) {
+    const ctx = (v as { contextInfo?: { stanzaId?: string } } | null)?.contextInfo;
+    if (ctx?.stanzaId) return ctx.stanzaId;
   }
   return null;
 }
