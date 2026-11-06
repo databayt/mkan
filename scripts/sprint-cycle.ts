@@ -32,6 +32,7 @@ import {
   fallbackPlan,
   monthWindow,
   parseRetro,
+  monthTitle,
   pickMetrics,
   retroText,
   roadmapPlan,
@@ -99,6 +100,22 @@ async function close(db: Db, metrics: Metrics, now: Date, out: Summary) {
     await db.sprintLesson.create({ data: { sprintId: s.id, metric: key, before, after, verdict: verdictOf(key, before, after), text, measureAt: now } });
   }
   return closedRetros;
+}
+
+// ── a2. retitle ────────────────────────────────────────────────────────
+/** The month's goal follows the live break-even: "28,250 RWF" stayed on the page after the container cost was found. */
+async function retitleMonth(db: Db, model: MonetizeOverview, now: Date, out: Summary) {
+  const month = (await openSprints(db)).find((s) => s.kind === 'MONTH' && s.startsAt <= now && s.endsAt > now);
+  if (!month || isWebText(month.title)) return;
+  const was = /^(?:Break even|\d+× break-even) — ([\d,]+) RWF a month$/.exec(month.title);
+  if (!was) return;
+  const want = monthTitle(model.money.breakEvenRwf, now);
+  const target = Number(/([\d,]+) RWF/.exec(want)?.[1]?.replace(/,/g, '') ?? 0);
+  const before = Number(was[1]!.replace(/,/g, ''));
+  if (!target || Math.abs(target - before) / target < 0.1) return;
+  say(`retitle MONTH "${month.title}" → "${want}" (break-even moved)`);
+  out.planned.push(`MONTH retitled: ${want}`);
+  if (!dry) await db.sprint.update({ where: { id: month.id }, data: { title: want } });
 }
 
 // ── b. unblock ─────────────────────────────────────────────────────────
@@ -475,6 +492,7 @@ async function main() {
       return;
     }
     const retros = await close(db, metrics, now, out);
+    await retitleMonth(db, model, now, out);
     await unblock(db, metrics, now, out);
     await measure(db, metrics, now, out);
     if (!flag('no-plan')) await plan(db, model, metrics, retros, now, out);

@@ -13,6 +13,7 @@ import type { MonetizeOverview } from "@/lib/monetize/load";
 import { costByBlock, costLines } from "@/lib/monetize/cost-lines";
 import { money } from "@/lib/monetize/money";
 import { nextSteps } from "@/lib/monetize/next-steps";
+import { liveView, publicLive } from "@/lib/monetize/live-shape";
 import { shapeSprints } from "@/lib/monetize/sprint-shape";
 
 const stages = [
@@ -66,7 +67,8 @@ const sprints = shapeSprints(
       status: "active",
       tasks: [{ id: "t1", title: "Turn broker sends back on", block: "chat", order: 0, done: false, doneAt: null }],
       prompts: [
-        { id: "p1", taskId: "t1", order: 0, text: "In ~/mkan: read the test chat, then gate broker sends.", status: "pending", processedAt: null, result: null },
+        { id: "p1", taskId: "t1", order: 0, text: "In ~/mkan: read the test chat, then gate broker sends.", status: "running", processedAt: new Date("2026-11-03T11:50:00Z"), result: null },
+        { id: "p3", taskId: null, order: 2, text: "In ~/mkan: draft the share terms for +250 780 123 456.", status: "blocked", processedAt: new Date("2026-11-03T10:00:00Z"), result: "Approve the text for +250 780 123 456" },
         { id: "p2", taskId: null, order: 1, text: "In ~/mkan: post every day.", status: "processed", processedAt: new Date("2026-11-03"), result: "ok" },
       ],
     },
@@ -80,61 +82,61 @@ const data = {
   nextSteps: nextSteps({ money: base.money, blocks: base.blocks, bottleneck: base.bottleneck, gates: base.gates, fixedEstimated: true, shortlisted: 15, paidDealsMonth: 0 }),
 } satisfies MonetizeOverview;
 
+const live = liveView(sprints, { state: "running", since: "2026-11-03T11:50:00Z", at: "2026-11-03T11:50:00Z", promptId: "p1" }, "2026-11-03T11:55:00Z", new Date("2026-11-03T12:00:00Z"));
+
 describe("/monetize content", () => {
-  it("shows the next sprint prompt with copy and prev/next, and the sprint", () => {
-    render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" />);
-    expect(screen.getAllByText("In ~/mkan: read the test chat, then gate broker sends.").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: en.monetize.prompt.copyAria })).toBeTruthy();
-    expect(screen.getByRole("button", { name: en.monetize.prompt.next })).toBeTruthy();
-    expect(screen.getByRole("button", { name: en.monetize.prompt.prev })).toBeTruthy();
-    expect(screen.getAllByText("First paid deal").length).toBeGreaterThan(0);
-    expect(screen.queryByRole("button", { name: en.monetize.prompt.skip })).toBeNull();
-  });
-
-  it("gives an admin the processed / tick controls", () => {
-    render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" canEdit />);
-    expect(screen.getAllByRole("button", { name: en.monetize.prompt.skip }).length).toBe(1);
-    expect(screen.getAllByRole("button", { name: en.monetize.prompt.undo }).length).toBe(1);
-    expect(screen.getAllByTitle(en.monetize.sprint.toggle).length).toBe(1);
-  });
-
-  it("renders every block, the money, the bottleneck and, for an admin, the forms (en)", () => {
-    render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" canEdit />);
-    for (const b of ["scrape", "enhance", "post", "chat"] as const) expect(screen.getAllByText(en.monetize.blocks[b].title).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(en.monetize.reasons.brokerSendsOff).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(en.monetize.card.revenue).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/the weakest hand-off, in the Enhance block/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/already earned/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Auto-mastering lifts ready homes").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: en.monetize.revenueForm.save })).toBeTruthy();
-    expect(screen.getAllByText(en.monetize.card.ctaRecord).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("690 ms").length).toBeGreaterThan(0);
-  });
-
-  it("opens with the to-do list and explains every cost line", () => {
-    render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" />);
-    expect(screen.getByRole("heading", { name: en.monetize.todo.title })).toBeTruthy();
+  it("opens on the loop, live: what it does now, for how long, and what is next", () => {
+    render(<MonetizeContent data={data} live={live} labels={en.monetize} locale="en" lang="en" canEdit />);
+    expect(screen.getByText(`${en.monetize.live.title}: ${en.monetize.live.states.running}`)).toBeTruthy();
     expect(screen.getAllByText("Turn broker sends back on").length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Fix the failing job mkan-demand-match/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(en.monetize.spend.lines.cloudflare.name).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(en.monetize.spend.lines["agent-read"].name).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/8 calls/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(en.monetize.card.needed).length).toBeGreaterThan(0);
-        expect(screen.getAllByText(en.monetize.card.ctaNext).length).toBeGreaterThan(0);
-    for (const b of ["Scrape", "Enhance", "Post", "Chat"]) expect(screen.getAllByText(b).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(en.monetize.success.title)).toHaveLength(4);
+    expect(screen.getByRole("button", { name: en.monetize.live.copy })).toBeTruthy();
+    expect(screen.getByRole("button", { name: en.monetize.live.showPrompt })).toBeTruthy();
+    // An admin sees the ask that waits on Abdout.
+    expect(screen.getAllByText("Approve the text for +250 780 123 456").length).toBeGreaterThan(0);
   });
 
-  it("is public read-only: no write forms without an admin session", () => {
-    render(<MonetizeContent data={data} labels={en.monetize} locale="en" lang="en" />);
-    expect(screen.getAllByText(en.monetize.card.revenue).length).toBeGreaterThan(0);
+  it("shows the road to money: the ladder, this week's sprint and the sprints after it", () => {
+    render(<MonetizeContent data={data} live={live} labels={en.monetize} locale="en" lang="en" />);
+    expect(screen.getByRole("heading", { name: en.monetize.road.title })).toBeTruthy();
+    for (const r of Object.values(en.monetize.road.rungs)) expect(screen.getAllByText(r).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("First paid deal").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("A viewing on a home that pays").length).toBeGreaterThan(0);
+  });
+
+  it("draws the weakest block's flowchart first, with its live numbers, and names the weakest hand-off", () => {
+    render(<MonetizeContent data={data} live={live} labels={en.monetize} locale="en" lang="en" />);
+    expect(screen.getByRole("heading", { name: en.monetize.flows.title })).toBeTruthy();
+    for (const b of ["scrape", "enhance", "post", "chat"] as const) expect(screen.getAllByText(en.monetize.blocks[b].title).length).toBeGreaterThan(0);
+    // homes → ready (15 → 0) is the weakest hand-off: the Enhance chart opens.
+    expect(screen.getByText(en.monetize.flows.enhance.pick.t)).toBeTruthy();
+    expect(screen.getByText(en.monetize.flows.enhance.rejected.t)).toBeTruthy();
+    expect(screen.getAllByText(en.monetize.flows.weakest).length).toBeGreaterThan(0);
+  });
+
+  it("keeps the money in one card, every cost line one click away", () => {
+    render(<MonetizeContent data={data} live={live} labels={en.monetize} locale="en" lang="en" canEdit />);
+    expect(screen.getAllByText(en.monetize.money.revenue).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(en.monetize.card.net).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(en.monetize.spend.lines.cloudflare.name).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(en.monetize.lines.COMMISSION).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: en.monetize.revenueForm.save })).toBeTruthy();
     expect(screen.getAllByText("Auto-mastering lifts ready homes").length).toBeGreaterThan(0);
+  });
+
+  it("is public read-only: no write forms, no prompt, no asks — only how many wait", () => {
+    const pub = publicLive(live);
+    render(<MonetizeContent data={data} live={pub} labels={en.monetize} locale="en" lang="en" />);
     expect(screen.queryByRole("button", { name: en.monetize.revenueForm.save })).toBeNull();
     expect(screen.queryByRole("button", { name: en.monetize.experiments.save })).toBeNull();
+    expect(screen.queryByRole("button", { name: en.monetize.live.showPrompt })).toBeNull();
+    expect(screen.queryByText(/123 456/)).toBeNull();
+    expect(screen.getByText(en.monetize.live.needsYouCount.replace("{n}", "1"))).toBeTruthy();
   });
+
   it("renders in Arabic with the Arabic labels", () => {
-    render(<MonetizeContent data={data} labels={ar.monetize} locale="ar" lang="ar" />);
+    render(<MonetizeContent data={data} live={live} labels={ar.monetize} locale="ar" lang="ar" />);
     expect(screen.getAllByText(ar.monetize.blocks.chat.title).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(ar.monetize.card.needed).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: ar.monetize.road.title })).toBeTruthy();
+    expect(screen.getByText(ar.monetize.flows.enhance.pick.t)).toBeTruthy();
   });
 });

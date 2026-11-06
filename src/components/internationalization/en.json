@@ -6045,11 +6045,6 @@
     "metaTitle": "Monetize — the chatbot business",
     "title": "Monetize",
     "description": "The chatbot business in four blocks — scrape, enhance, post, chat. What each one does, what it costs, and how close the whole thing is to paying for itself.",
-    "drive": "Cash flow first. Break-even or bust.",
-    "range7": "7 days",
-    "range30": "30 days",
-    "updated": "Updated {time}",
-    "overall": "Overall health",
     "health": {
       "green": "Healthy",
       "yellow": "Watch",
@@ -6074,12 +6069,6 @@
       "scrape": {
         "title": "Scrape",
         "desc": "Find every Kigali home posted for rent — TikTok brokers and rental websites — read it and save it to the CRM.",
-        "steps": [
-          "Twice a day (06:00 and 18:00) the Mac sweeps the TikTok accounts of Kigali brokers and rental searches; rental websites follow at 06:45 and 18:45.",
-          "Each post's video frames are read on the Mac (Apple Vision text), and a model settles what the caption leaves out: price, bedrooms, place, phone.",
-          "Real rentals are saved to the CRM with the broker as host; a repost of a home joins the home it repeats.",
-          "Every day at 09:00 the new homes are mirrored into /find and the broker directory is rebuilt."
-        ],
         "flow": [
           "Sweep TikTok + sites",
           "Read each post",
@@ -6090,12 +6079,6 @@
       "enhance": {
         "title": "Enhance",
         "desc": "Take the broker's video and strip it clean: every word, number, logo and watermark off the picture, and nothing of ours burned on.",
-        "steps": [
-          "Each morning three ready homes are picked, one listing each, from brokers who said yes to a repost.",
-          "Every text, phone number, logo and watermark — the broker's and TikTok's — is found frame by frame and wiped; picture upscaled, steadied and colour corrected.",
-          "A second read checks the frames: any text left and the video is rejected, never posted. Spoken phone numbers are muted; the broker's own sound stays.",
-          "No caption, logo or card is added to the video: the words travel in the post's text only."
-        ],
         "flow": [
           "Pick 3 listings",
           "Strip text + logos",
@@ -6106,12 +6089,6 @@
       "post": {
         "title": "Post",
         "desc": "One listing per video per post on TikTok @mkan.rw, the caption in the post text only, so tenants message Mkan — not the broker.",
-        "steps": [
-          "Every day at 07:00 each clean video is posted on its own to TikTok @mkan.rw.",
-          "The post text carries the home's code (K1234), our WhatsApp number and the broker's credit — the video itself carries none.",
-          "A failed upload is retried at 13:00; every post is a row, so its views and the chats it brought are counted.",
-          "Page and post stats are read every Monday at 10:00."
-        ],
         "flow": [
           "Post each listing",
           "Code in the post text",
@@ -6122,12 +6099,6 @@
       "chat": {
         "title": "Chat",
         "desc": "Tenants message Mkan on /find or WhatsApp; the agent finds homes, asks brokers and closes the deal.",
-        "steps": [
-          "A tenant writes on mkan.sd/find or WhatsApp +250 780 984 777.",
-          "Claude reads the need and replies; matching homes come back in about a second.",
-          "Mkan asks the broker if the chosen home is still available — only for a WhatsApp tenant who picked it.",
-          "A viewing is booked, the deal recorded, and Mkan earns its share."
-        ],
         "flow": [
           "Tenant writes",
           "Claude replies",
@@ -6189,8 +6160,6 @@
       "brokersNewWeek": "New brokers + agencies"
     },
     "lever": "Main number",
-    "vsPrev": "{pct} vs the {days} days before",
-    "noBaseline": "No earlier window to compare",
     "jobs": "Jobs",
     "jobStatus": {
       "ok": "ok",
@@ -6199,8 +6168,6 @@
       "stale": "stale",
       "missing": "no record"
     },
-    "lastPush": "Mac snapshot {time}",
-    "noSnapshot": "Counted live from the database",
     "money": {
       "title": "Money this month",
       "revenue": "Revenue received",
@@ -6237,11 +6204,6 @@
       "viewings": "Viewings",
       "paid": "Paid"
     },
-    "funnelTitle": "The whole business, post to payment",
-    "bottleneckTitle": "Work here next",
-    "bottleneckStep": "{from} → {to} converts {rate} against a floor of {floor} — the weakest hand-off, in the {block} block.",
-    "bottleneckAbove": "The weakest hand-off is {from} → {to} at {rate} (floor {floor}). Nothing is under its floor.",
-    "insufficient": "Not enough volume yet to name a bottleneck (each step needs at least 5).",
     "adChats": "{n} chats this window opened with a TikTok home code.",
     "gates": {
       "brokerSends": "Broker sends: {mode}",
@@ -6292,13 +6254,7 @@
       "todo": "To do",
       "sprint": "Sprint"
     },
-    "howItWorks": "How it works",
     "blockCost": "Cost this month",
-    "blockCostLine": "{soFar} so far · {monthly} for the full month",
-    "blockCostNone": "Nothing charged to this block.",
-    "kpisTitle": "Numbers",
-    "jobsTitle": "Jobs on the Mac",
-    "jobAt": "Last run {time}",
     "spend": {
       "title": "Where the money goes",
       "desc": "Every line this business pays for, what it buys, and which block it serves. So far = charged up to today; month = the full bill, or the spend projected to month end.",
@@ -6389,132 +6345,30 @@
       "desc": "Four ways money comes in. Only money actually received counts.",
       "what": {
         "COMMISSION": "Mkan's share of the broker's commission when a tenant Mkan brought signs.",
-        "VIEWING_FEE": "What a tenant pays to book a viewing through Mkan.",
+        "VIEWING_FEE": "A fee a tenant pays Mkan to book a viewing. Not charged yet: viewings are free for tenants, and Mkan pays the broker's fee from its share.",
         "SUBSCRIPTION": "Brokers paying monthly to receive Mkan's tenants.",
         "LICENSE": "Another business licensing the chatbot."
       }
     },
-    "todo": {
-      "title": "What to do next to make money",
-      "desc": "Built from the numbers on this page, most cash-moving first. Each task leaves the list by itself once the data shows it done.",
-      "empty": "Nothing open — every check passes.",
-      "priority": {
-        "1": "Money",
-        "2": "Unblock",
-        "3": "Grow",
-        "4": "Books"
-      },
-      "why": "Why",
-      "how": "Do this",
-      "done": "Done when",
-      "count": "{n} open",
-      "items": {
-        "recordMoney": {
-          "title": "Record {amount} already earned",
-          "why": "Paid deals show money Mkan earned that is not yet recorded as received, so the page under-counts revenue.",
-          "how": "Check the payment arrived, then add it in “Record money received” below.",
-          "done": "Recorded revenue matches the paid deals."
-        },
-        "brokerSends": {
-          "title": "Turn broker sends back on",
-          "why": "Broker sends are {mode}, so Mkan never asks a broker if a home is free. The funnel stops at the shortlist and no deal can close.",
-          "how": "Do the phone test from +249 919 071 294, then run `pnpm wa:brokers gated` on the Mac.",
-          "done": "Broker sends read “gated”."
-        },
-        "firstDeal": {
-          "title": "Close the first paid deal this month",
-          "why": "No paid deal yet this month, so revenue is zero. {n} chats reached a shortlist this window.",
-          "how": "Pick a WhatsApp tenant with a shortlist, book the viewing with `pnpm deal:book`, follow it to payment.",
-          "done": "A deal is marked paid this month."
-        },
-        "breakEven": {
-          "title": "Reach break-even: {need} a month",
-          "why": "{have} received so far this month against {need} needed to cover every cost.",
-          "how": "Close deals first; then price the broker subscription so two or three brokers cover the fixed bills.",
-          "done": "Revenue this month reaches break-even."
-        },
-        "jobFailed": {
-          "title": "Fix the failing job {job}",
-          "why": "Its last run failed ({detail}). Until it runs clean, its block feeds nothing new downstream.",
-          "how": "Read its log on the Mac (`bash ~/.claude/scripts/runs.sh`), fix, and re-run it — the supervisor re-runs it on the next wake.",
-          "done": "The job's last run is ok."
-        },
-        "jobStale": {
-          "title": "Get {job} running again",
-          "why": "It has not run for twice its schedule — usually the Mac was asleep or off.",
-          "how": "Open the Mac and keep it awake; the supervisor re-runs missed jobs on wake.",
-          "done": "The job has a fresh run."
-        },
-        "capped": {
-          "title": "Raise or reset the Claude spend cap",
-          "why": "The cap is hit, so chats fall back to the simpler readers and answer worse.",
-          "how": "Check spend on this page, then raise the cap in the agent settings if the month allows it.",
-          "done": "The cap is no longer hit."
-        },
-        "failRate": {
-          "title": "Bring failed chats under 20%",
-          "why": "{pct}% of chats failed this window; each one is a tenant lost.",
-          "how": "Open the failed chats in the admin panel and fix the most common cause.",
-          "done": "Failed chats are under 20%."
-        },
-        "bottleneck": {
-          "title": "Unblock {from} → {to}",
-          "why": "Only {rate}% get through against a floor of {floor}% — the weakest hand-off in the business.",
-          "how": "Work this step in the {block} block before anything else downstream.",
-          "done": "The step converts at or above its floor."
-        },
-        "postDaily": {
-          "title": "Post every day",
-          "why": "Only {n} of the last 7 days had a post; days without a post bring no new viewers.",
-          "how": "Keep homes ready in Enhance and the Mac awake at 07:00 so the daily post goes out.",
-          "done": "7 of 7 days posted."
-        },
-        "invoices": {
-          "title": "Replace cost estimates with real invoices",
-          "why": "Fixed costs on this page are estimates, so break-even is a guess.",
-          "how": "Set MONETIZE_FIXED_COSTS_RWF on the Worker from the real Cloudflare, SIM and power bills.",
-          "done": "Fixed costs come from invoices."
-        }
-      }
-    },
-    "heading": "Monetize the chatbot business",
-    "statusRow": {
-      "title": "Run by the Mkan agent",
-      "line": "{blocks} blocks · {broken} need attention · {tasks} tasks open"
-    },
-    "banner": {
-      "next": "Next task",
-      "advice": "Advice",
-      "seeAll": "See all {n} tasks",
-      "adviceBottleneck": "Work on {from} → {to} next — it is the weakest step at {rate}.",
-      "adviceBreakEven": "Everything is running. The gap to break-even is {gap} a month — close deals.",
-      "adviceDone": "Everything is running and break-even is covered. Keep the daily post going."
-    },
+    "heading": "Monetize the chatbot",
     "card": {
       "toBreakEven": "/ month to break even",
       "revenue": "Revenue",
       "cost": "Cost so far",
       "net": "Net this month",
       "ctaRecord": "Record money received",
-      "ctaNext": "See the next prompt",
       "refresh": "Numbers refresh every hour",
       "fixed": "Fixed bills, full month",
       "metered": "Model spend, projected",
       "needed": "Revenue needed every month",
       "progress": "Break-even reached",
       "projected": "Month-end net at this pace",
-      "weakest": "Weakest step: {from} → {to} {rate}",
-      "sprintLine": "Sprint: {tasks} tasks · {prompts} prompts"
+      "weakest": "Weakest step: {from} → {to} {rate}"
     },
     "mobile": {
       "net": "Net {v}",
       "ofBreakEven": "{pct} of break-even",
-      "cta": "Next prompt"
-    },
-    "featureCards": {
-      "revenue": "Revenue this month",
-      "net": "Net this month",
-      "breakEven": "Of break-even"
+      "cta": "The loop"
     },
     "prompt": {
       "title": "Next prompt",
@@ -6567,37 +6421,6 @@
       "close": "Close sprint",
       "toggle": "Mark done / not done",
       "cli": "Claude sessions: `pnpm sprint:next` · `pnpm sprint:done <id> --task-done`"
-    },
-    "panels": {
-      "overview": "Money",
-      "sprint": "Sprint",
-      "todo": "To do",
-      "spend": "Costs",
-      "earn": "Earnings",
-      "scrape": "Scrape",
-      "enhance": "Enhance",
-      "post": "Post",
-      "chat": "Chat",
-      "sprintWeek": "This week",
-      "sprintMonth": "This month",
-      "tasksDone": "{done}/{total} tasks",
-      "promptsLegend": "Prompts",
-      "todoBy": "Open tasks by priority",
-      "spendTop": "Cost so far, by line",
-      "spendTotal": "Total so far",
-      "earnTarget": "Break-even {v}",
-      "earnNone": "No money received yet this month.",
-      "scrapeFlow": "Last sweep",
-      "homesPerDay": "New homes per day",
-      "enhanceFlow": "Photos this window",
-      "backlog": "Waiting to master",
-      "viewsPerDay": "Views gained per day",
-      "postedDays": "Days posted, last 7",
-      "chatFlow": "Chat to paid deal",
-      "noTrend": "Not enough days yet for a trend.",
-      "jump": "Show {name}",
-      "flowTitle": "How it runs",
-      "flowOk": "Every step is running"
     },
     "lastUpdate": "Last update {date}",
     "success": {
@@ -6666,10 +6489,244 @@
       },
       "needsYou": "Needs you"
     },
-    "watch": {
-      "title": "Numbers to watch",
-      "lead": "From the TikTok page to the home, last {days} days. {missed} below target — start with the first red one.",
-      "noTarget": "Tracked"
+    "flows": {
+      "title": "How it works",
+      "lead": "Four blocks, from a broker's post to Mkan's share. Open one to see its flowchart; the numbers are the last 7 days.",
+      "yes": "yes",
+      "no": "no",
+      "ifNot": "If not",
+      "ifSo": "If so",
+      "reach": "{rate} reach {to}",
+      "weakest": "weakest",
+      "jobs": "{ok} of {n} jobs ok",
+      "jobsNone": "Counted live from the database",
+      "jobsBad": "Needs a look: {names}",
+      "lastRun": "last run {time}",
+      "targets": "{met} of {total} targets met",
+      "scrape": {
+        "sweep": {
+          "t": "Sweep the brokers' TikTok pages",
+          "when": "06:00 · 18:00 (web ads 06:45 · 18:45)",
+          "n": "{v} posts found"
+        },
+        "fetch": {
+          "t": "Fetch the newest posts, up to 40"
+        },
+        "read": {
+          "t": "Read each one: the text in its frames, then the caption",
+          "n": "{v} read"
+        },
+        "rental": {
+          "t": "A rental in Kigali, with a price or rooms, read with confidence?"
+        },
+        "skipped": {
+          "t": "Skipped",
+          "n": "{v} of posts"
+        },
+        "save": {
+          "t": "Save it to the CRM, with the broker as host",
+          "n": "{v} new homes"
+        },
+        "copied": {
+          "t": "Copied into Mkan as a draft home?"
+        },
+        "failed": {
+          "t": "The run fails and #mkan is told"
+        },
+        "directory": {
+          "t": "Homes reach /find; the broker directory is rebuilt",
+          "when": "09:00",
+          "n": "{v} brokers and agencies"
+        }
+      },
+      "enhance": {
+        "pick": {
+          "t": "Pick three homes to post",
+          "when": "07:00",
+          "n": "{v} ready"
+        },
+        "fit": {
+          "t": "Fit to post? Not taken, 50k–15M a month, 4+ photos, an area, under 14 days old"
+        },
+        "waits": {
+          "t": "Waits for a better home"
+        },
+        "consent": {
+          "t": "Did the broker say yes to a repost?"
+        },
+        "ask": {
+          "t": "Waits for the broker's yes"
+        },
+        "strip": {
+          "t": "Strip the video: every word, number and logo off; upscale, steady, colour",
+          "n": "{v} featured"
+        },
+        "mute": {
+          "t": "Mute spoken phone numbers; keep the broker's sound"
+        },
+        "text": {
+          "t": "Any text left on a second read?"
+        },
+        "rejected": {
+          "t": "Rejected, never posted",
+          "n": "{v} of videos"
+        },
+        "clean": {
+          "t": "Clean video ready",
+          "n": "{v} clean"
+        }
+      },
+      "post": {
+        "slots": {
+          "t": "Post one home per video",
+          "when": "07:00 · 12:30 · 18:30",
+          "n": "{v} of 7 days posted"
+        },
+        "upload": {
+          "t": "Upload to TikTok @mkan.rw; the caption carries the home code and Mkan's WhatsApp"
+        },
+        "confirmed": {
+          "t": "Did TikTok confirm the upload?"
+        },
+        "retry": {
+          "t": "Tried again at the next slot; a stuck one waits for Abdout",
+          "n": "{v} failed"
+        },
+        "row": {
+          "t": "Each post is a row: its views, likes and chats are counted",
+          "n": "{v} listing posts"
+        },
+        "stats": {
+          "t": "Read the page's numbers",
+          "when": "21:00",
+          "n": "{v} views a post"
+        },
+        "code": {
+          "t": "Does a viewer send the home code to WhatsApp?"
+        },
+        "viewOnly": {
+          "t": "A view, not a chat yet"
+        },
+        "chat": {
+          "t": "A chat that opens with the home code, on to Chat",
+          "n": "{v} chats"
+        }
+      },
+      "chat": {
+        "writes": {
+          "t": "A tenant writes on mkan.sd/find or WhatsApp",
+          "n": "{v} chats"
+        },
+        "reads": {
+          "t": "Claude reads the need and ranks the homes",
+          "n": "{v} to reply"
+        },
+        "shortlist": {
+          "t": "The tenant gets a shortlist",
+          "n": "{v} shortlisted"
+        },
+        "picked": {
+          "t": "Did a WhatsApp tenant pick a home?"
+        },
+        "askNumber": {
+          "t": "On the web, ask for a WhatsApp number first"
+        },
+        "ask": {
+          "t": "Ask the broker if it is still free, 08:00–20:00, one broker at a time",
+          "n": "{v} asks"
+        },
+        "answered": {
+          "t": "Did the broker answer within 3 daytime hours?",
+          "n": "{v} answer"
+        },
+        "nextBroker": {
+          "t": "Ask the next broker (up to 3), then mark it no reply"
+        },
+        "available": {
+          "t": "Still available?",
+          "n": "{v} said yes"
+        },
+        "taken": {
+          "t": "Taken: the home leaves /find"
+        },
+        "sheet": {
+          "t": "Deal sheet to the tenant; the tenant picks a time"
+        },
+        "book": {
+          "t": "Book the viewing: Abdout taps Yes",
+          "n": "{v} booked"
+        },
+        "signed": {
+          "t": "Viewed, and the lease signed?"
+        },
+        "lost": {
+          "t": "Lost, with the reason recorded"
+        },
+        "paid": {
+          "t": "Paid: Mkan's share is recorded",
+          "n": "{v} paid"
+        }
+      }
+    },
+    "live": {
+      "title": "The loop",
+      "states": {
+        "checking": "Checking the numbers",
+        "planning": "Planning the next tasks",
+        "running": "Working",
+        "idle": "Caught up, planning more",
+        "waiting": "Waiting on you",
+        "parked": "Parked",
+        "stopped": "Paused",
+        "offline": "The Mac is asleep or offline"
+      },
+      "for": "for {d}",
+      "until": "until {t}",
+      "now": "Now",
+      "next": "Up next",
+      "last": "Last done",
+      "none": "Nothing yet",
+      "needsYou": "Needs you",
+      "needsYouCount": "{n} waiting on you",
+      "done": "{n} done today · {w} this week",
+      "showPrompt": "Show the prompt",
+      "hidePrompt": "Hide the prompt",
+      "copy": "Copy the prompt",
+      "doneLine": "When done, run in ~/mkan: {cmd}",
+      "min": "{n} min",
+      "hours": "{n} h",
+      "hoursMin": "{h} h {m} min"
+    },
+    "road": {
+      "title": "The road to money",
+      "lead": "Every sprint from the first deal to a chatbot that pays Databayt's costs. The loop plans each week from this road and pulls the next week forward when the work is done.",
+      "rungs": {
+        "first": "First money",
+        "breakEven": "Pays for itself",
+        "plan": "Pays for the Claude plan",
+        "burn": "Pays Databayt's costs"
+      },
+      "rungTarget": "{v} a month",
+      "rungAny": "any amount",
+      "reached": "Reached",
+      "thisWeek": "This week",
+      "month": "This month",
+      "next": "Next",
+      "tasksDone": "{done} of {total} done",
+      "status": {
+        "done": "Done",
+        "running": "Working",
+        "blocked": "Needs you",
+        "pending": "Up next",
+        "open": "Open"
+      },
+      "learned": "What the loop learned",
+      "tasks": "{n} tasks",
+      "none": "No sprint is open; the loop plans one from the road."
+    },
+    "details": {
+      "title": "All the numbers",
+      "lead": "Costs line by line, every post, every target, the experiments and the sprint's controls."
     }
   }
 }

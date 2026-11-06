@@ -4,6 +4,8 @@ import { i18n, type Locale } from "@/components/internationalization/config";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { MonetizeContent } from "@/components/monetize/content";
 import type { MonetizeLabels } from "@/components/monetize/format";
+import { loadLive } from "@/lib/monetize/live";
+import { publicLive } from "@/lib/monetize/live-shape";
 import { loadMonetizeCached } from "@/lib/monetize/load-cached";
 import { toPublic } from "@/lib/monetize/public";
 import { auth, isAdminNow } from "@/lib/auth";
@@ -31,10 +33,12 @@ export default async function MonetizePage({
   const locale: Locale = (i18n.locales as readonly string[]).includes(lang) ? (lang as Locale) : i18n.defaultLocale;
   const dict = await getDictionary(locale);
   const labels = (dict as unknown as { monetize: MonetizeLabels }).monetize;
-  const [raw, session] = await Promise.all([loadMonetizeCached(days === "30" ? 30 : 7), auth()]);
+  // The numbers are cached 60 s; the loop is read fresh (its card then polls /api/monetize/live).
+  const [raw, liveRaw, session] = await Promise.all([loadMonetizeCached(days === "30" ? 30 : 7), loadLive(), auth()]);
   const canEdit = !!session?.user?.id && (await isAdminNow(session));
   // Anyone may read the numbers; only an admin sees the people behind them (src/lib/monetize/public.ts).
   // Masked here, on the server, so nothing personal reaches the HTML or the client components' props.
   const data = canEdit ? raw : toPublic(raw);
-  return <MonetizeContent data={data} labels={labels} locale={locale} lang={lang} canEdit={canEdit} />;
+  const live = canEdit ? liveRaw : publicLive(liveRaw);
+  return <MonetizeContent data={data} live={live} labels={labels} locale={locale} lang={lang} canEdit={canEdit} />;
 }

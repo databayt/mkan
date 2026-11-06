@@ -317,7 +317,8 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   const received = Object.fromEntries(REVENUE_LINES.map((l) => [l, 0])) as Record<RevenueLineKey, number>;
   for (const r of revenue) received[r.line as RevenueLineKey] = r._sum.amountRwf ?? 0;
   const monthPaid = dealRows.filter((d) => d.status === "PAID" && d.paidAt && d.paidAt >= monthStart);
-  const dealEarnedRwf = sum(monthPaid.map((d) => (d.mkanShare ?? 0) + (d.viewingFeePaid ?? 0)));
+  // Mkan's share only: the viewing fee is money Mkan pays the broker, never money it earned (2026-11-07).
+  const dealEarnedRwf = sum(monthPaid.map((d) => d.mkanShare ?? 0));
   const fixed = fixedCostsRwf();
   const apiUsd = sum(spend.filter((r) => r.lane !== "capped").map((r) => Number(r.usd)));
   const m = money({
