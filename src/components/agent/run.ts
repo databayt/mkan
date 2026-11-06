@@ -19,7 +19,7 @@ import { DISTRICTS } from "@/lib/geo/rwanda-places";
 import { coerceMemory, memoryChanged, rememberTurn, type AgentMemory, type PrefField } from "./memory";
 import { rankCandidates } from "./rank";
 import { readRequirements, type Reading } from "./reader";
-import { canWrite, writeAnswer, writeReply, writerFacts, type WriterFacts } from "./writer";
+import { canWrite, noteRwSamples, writeAnswer, writeReply, writerFacts, type RwSample, type WriterFacts } from "./writer";
 import {
   clarifyFields,
   clearFields,
@@ -366,9 +366,12 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     const asksOnly = byClaude && reading.intent !== "search" && Object.keys(reading.set).length === 0 && reading.clear.length === 0 && !tapped && !complaint.cheap;
     if (asksOnly) {
       const writeLang = (reading.lang ?? lang) as WriterFacts["lang"];
+      const samples: RwSample[] = [];
       const text =
-        reading.intent === "question" && reading.question && (await canWrite(writeLang)) ? await writeAnswer(reading.question, writeLang) : null;
-      await Promise.all([understood, learn([]), text ? trace.record("reply_written", "done", { answer: true }) : null]);
+        reading.intent === "question" && reading.question && (await canWrite(writeLang))
+          ? await writeAnswer(reading.question, writeLang, undefined, undefined, (x) => samples.push(x))
+          : null;
+      await Promise.all([understood, learn([]), text ? trace.record("reply_written", "done", { answer: true }) : null, noteRwSamples(task.id, samples)]);
       await firstReply(
         { role: "agent", kind: "answer", topic: reading.intent === "question" ? "question" : "other", ...(text ? { text } : {}), at: now() },
         { status: "DONE" },
@@ -552,6 +555,8 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
         })
       : null;
     const written = await writing;
+    // Kinyarwanda pieces, passed or not, wait for a native speaker's read (writer.ts noteRwSamples).
+    void noteRwSamples(task.id, written?.samples);
     trace.resync(await lastSeq(task.id));
     // A broker's answer that landed while this turn ran (applyAnswer writes running chats too) is kept,
     // not overwritten by the shortlist this turn read at its start (2026-11-06).

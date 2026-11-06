@@ -28,8 +28,12 @@ const MAX_REPLY = 320;
 const MAX_ANSWER = 460;
 const MAX_WHY = 110;
 
-/** Languages the writer may write in. rw waits for a native speaker's review of samples (pnpm agent:eval-writer). */
-export const WRITER_LOCALES = (process.env.AGENT_WRITER_LOCALES ?? "en,ar")
+/**
+ * Languages the writer may write in. rw is on since 2026-11-07 (Abdout: Haiku writes Kinyarwanda),
+ * behind looksKinyarwanda — a reply that fails it falls back to the template — and every rw piece is
+ * kept for a native speaker's read (`pnpm agent:rw-samples`). Kill switch: AGENT_WRITER_LOCALES=en,ar.
+ */
+export const WRITER_LOCALES = (process.env.AGENT_WRITER_LOCALES ?? "en,ar,rw")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
@@ -118,6 +122,33 @@ export function allowedNumbers(...sources: unknown[]): Set<string> {
   return out;
 }
 
+// Kinyarwanda words a real rw sentence nearly always carries (two are required), and the English and
+// French words that give away a reply written in the wrong language.
+const RW_MARKERS = new Set(
+  "ni na mu ku muri kuri kandi cyangwa ariko kuko kugira ngo nta ntabwo hari iyi iyo uyu izi ibi ubu iri ari ya za wa ba bya cya rya ka y n inzu amazu ibyumba icyumba ubwiherero amazi umuriro hafi neza cyane murakoze muraho mwiriwe mwaramutse nabonye twabonye ufite ifite zifite dufite ushaka urashaka mushaka ibyo byose zose yose iki iki ese mbese kubona gukodesha ukwezi amezi umujyi akarere umurenge"
+    .split(" "),
+);
+const EN_STOP = new Set("the and you your is are for with this that we have found homes home near of to".split(" "));
+const FR_STOP = new Set("le la les des une un et pour avec vous nous est sont dans du".split(" "));
+
+/**
+ * Whether rw text reads as Kinyarwanda: Latin script, two or more Kinyarwanda words, at most one
+ * English and one French giveaway, and no word three times running (a model stuck in a loop).
+ */
+export function looksKinyarwanda(text: string): boolean {
+  if (ARABIC_RE.test(text)) return false;
+  const words = text
+    .toLowerCase()
+    .split(/[^a-zà-ÿ]+/i)
+    .filter(Boolean);
+  if (words.length === 0) return false;
+  const markers = words.filter((w) => RW_MARKERS.has(w)).length;
+  const en = words.filter((w) => EN_STOP.has(w)).length;
+  const fr = words.filter((w) => FR_STOP.has(w)).length;
+  for (let i = 2; i < words.length; i++) if (words[i] === words[i - 1] && words[i] === words[i - 2]) return false;
+  return markers >= 2 && en <= 1 && fr <= 1;
+}
+
 /**
  * The writing, or null when it breaks a rule. Numbers are read across
  * thousands separators ("1,200" is 1200, a number the facts must hold).
@@ -133,6 +164,7 @@ export function guardText(
   if (!allowMoney && MONEY_RE.test(plain)) return null;
   if (!anyConfirmed && AVAILABLE_RE.test(plain)) return null;
   if (lang === "ar" ? !ARABIC_RE.test(t) : ARABIC_RE.test(t)) return null;
+  if (lang === "rw" && !looksKinyarwanda(t)) return null;
   return t;
 }
 
@@ -172,6 +204,30 @@ export interface Written {
   reply: string | null;
   /** ref → line, only the lines that passed the guard. */
   why: Map<string, string>;
+  /** Kinyarwanda only: every piece as written, passed or not, for the native read (noteRwSamples). */
+  samples?: RwSample[];
+}
+
+/** A Kinyarwanda piece the writer produced, and whether the guard let it through. */
+export interface RwSample {
+  kind: "reply" | "why" | "answer";
+  text: string;
+  passed: boolean;
+}
+
+/**
+ * Keep rw pieces for a native speaker (WaState `rw-samples`; `pnpm agent:rw-samples` writes them to
+ * docs/i18n/rw-review-2026-11.csv and empties the list). Best effort: a failure costs a sample only.
+ */
+export async function noteRwSamples(taskId: string, samples: RwSample[] | undefined): Promise<void> {
+  if (!samples?.length) return;
+  const at = new Date().toISOString();
+  const rows = JSON.stringify(samples.map((s) => ({ ...s, taskId, at })));
+  const { db } = await import("@/lib/db");
+  await db
+    .$executeRaw`INSERT INTO "WaState" ("key", "value", "updatedAt") VALUES ('rw-samples', ${rows}::jsonb, now())
+      ON CONFLICT ("key") DO UPDATE SET "value" = COALESCE("WaState"."value", '[]'::jsonb) || ${rows}::jsonb, "updatedAt" = now()`
+    .catch(() => {});
 }
 
 /** The reply and per-home lines for a shortlist; each piece guarded on its own. */
@@ -183,20 +239,32 @@ export async function writeReply(facts: WriterFacts, timeoutMs = WRITE_TIMEOUT_M
   const guard = (text: string, maxLen: number, confirmed: boolean) => guardText(text, { allowed, maxLen, lang: facts.lang, anyConfirmed: confirmed });
   const refs = new Map(facts.homes.map((h) => [h.ref, h]));
   const why = new Map<string, string>();
+  const samples: RwSample[] = [];
   for (const w of out.why) {
     const home = refs.get(w.ref);
     const line = home ? guard(w.text, MAX_WHY, home.confirmed) : null;
     if (home && line) why.set(w.ref, line);
+    if (facts.lang === "rw" && w.text.trim()) samples.push({ kind: "why", text: w.text.trim(), passed: !!line });
   }
-  return { reply: guard(out.reply, MAX_REPLY, anyConfirmed), why };
+  const reply = guard(out.reply, MAX_REPLY, anyConfirmed);
+  if (facts.lang === "rw" && out.reply.trim()) samples.unshift({ kind: "reply", text: out.reply.trim(), passed: !!reply });
+  return { reply, why, ...(samples.length ? { samples } : {}) };
 }
 
 /** An answer to a question about renting, from KNOWLEDGE only. */
-export async function writeAnswer(question: string, lang: WriterFacts["lang"], timeoutMs = WRITE_TIMEOUT_MS, lane: SpendLane = "agent-write"): Promise<string | null> {
+export async function writeAnswer(
+  question: string,
+  lang: WriterFacts["lang"],
+  timeoutMs = WRITE_TIMEOUT_MS,
+  lane: SpendLane = "agent-write",
+  onSample?: (s: RwSample) => void,
+): Promise<string | null> {
   const out = await call(ANSWER_SYSTEM, JSON.stringify({ lang, question }), timeoutMs, lane);
   if (!out) return null;
   // The knowledge's own figures (3 months, 25–30%, 5,000, 12%) may be quoted; nothing else.
-  return guardText(out.reply, { allowed: allowedNumbers(KNOWLEDGE), maxLen: MAX_ANSWER, lang, anyConfirmed: false, allowMoney: true });
+  const text = guardText(out.reply, { allowed: allowedNumbers(KNOWLEDGE), maxLen: MAX_ANSWER, lang, anyConfirmed: false, allowMoney: true });
+  if (lang === "rw" && out.reply.trim()) onSample?.({ kind: "answer", text: out.reply.trim(), passed: !!text });
+  return text;
 }
 
 // ── Facts for the writer ─────────────────────────────────────────────────────

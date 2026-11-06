@@ -63,3 +63,63 @@ describe('facts for the writer', () => {
     expect(JSON.stringify(facts)).not.toMatch(/450|650/);
   });
 });
+
+describe('Kinyarwanda (on since 2026-11-07, behind looksKinyarwanda)', () => {
+  it('is a writer language unless the kill switch says otherwise', async () => {
+    const { WRITER_LOCALES } = await import('@/components/agent/writer');
+    if (!process.env.AGENT_WRITER_LOCALES) expect(WRITER_LOCALES).toEqual(['en', 'ar', 'rw']);
+  });
+
+  it('lets real Kinyarwanda through', async () => {
+    const { looksKinyarwanda } = await import('@/components/agent/writer');
+    expect(looksKinyarwanda("Nabonye amazu 6 ahuye n'ibyo ushaka i Kicukiro. Inzu ya mbere ifite ibyumba 2 kandi iri hafi y'umuhanda.")).toBe(true);
+    expect(looksKinyarwanda('Iri mu Kicukiro, ifite ibyumba 2.')).toBe(true);
+    expect(ok("Nabonye amazu 6 mu Kicukiro, inzu ya mbere ifite ibyumba 2.", { lang: 'rw' })).toBeTruthy();
+  });
+
+  it('holds back English, French, Arabic or a loop written as rw', async () => {
+    const { looksKinyarwanda } = await import('@/components/agent/writer');
+    expect(looksKinyarwanda('I found 6 homes in Kicukiro that match your search.')).toBe(false);
+    expect(looksKinyarwanda("J'ai trouvé 6 logements pour vous dans le quartier.")).toBe(false);
+    expect(looksKinyarwanda('وجدت ٦ منازل')).toBe(false);
+    expect(looksKinyarwanda('inzu inzu inzu ni nziza')).toBe(false);
+    expect(ok('I found 6 homes in Kicukiro.', { lang: 'rw' })).toBeNull();
+  });
+
+  it('keeps every rw piece as a sample, passed or held back', async () => {
+    vi.resetModules();
+    vi.doMock('@/components/agent/claude', () => ({
+      AGENT_MODEL: 'claude-haiku-5-5',
+      canSpend: async () => true,
+      claudeClient: () => ({
+        messages: {
+          parse: async () => ({
+            stop_reason: 'end_turn',
+            usage: { input_tokens: 1, output_tokens: 1 },
+            parsed_output: { reply: 'Nabonye amazu 2 mu Kicukiro, ufite ibyumba 2.', why: [{ ref: 'h1', text: 'It has 2 bedrooms.' }] },
+          }),
+        },
+      }),
+      noteFailure: async () => {},
+      recordSpend: async () => {},
+      strictOutputFormat: (x: unknown) => x,
+    }));
+    const { writeReply } = await import('@/components/agent/writer');
+    const facts = {
+      lang: 'rw' as const,
+      search: [],
+      widened: [],
+      count: 2,
+      homes: [{ ref: 'h1', title: 'x', area: null, neighbourhood: null, type: null, furnishing: null, terms: [], bedrooms: 2, bathrooms: null, period: 'month' as const, typicalPrice: false, inBudget: null, has: [], askBroker: [], distance: null, confirmed: false, brokerHome: true }],
+      followUp: null,
+    };
+    const w = await writeReply(facts);
+    expect(w?.reply).toBeTruthy();
+    expect(w?.why.size).toBe(0);
+    expect(w?.samples).toEqual([
+      { kind: 'reply', text: 'Nabonye amazu 2 mu Kicukiro, ufite ibyumba 2.', passed: true },
+      { kind: 'why', text: 'It has 2 bedrooms.', passed: false },
+    ]);
+    vi.doUnmock('@/components/agent/claude');
+  });
+});
