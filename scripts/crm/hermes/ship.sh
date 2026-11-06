@@ -44,7 +44,14 @@ health_build() { curl -s --max-time 15 "$SITE/api/health?probe=live" | /usr/bin/
 mkdir "$LOCK" 2>/dev/null || { [ -n "$(find "$LOCK" -maxdepth 0 -mmin +90 2>/dev/null)" ] && rm -rf "$LOCK" && mkdir "$LOCK"; } || { say "another deploy holds the lock"; exit 0; }
 trap 'rm -rf "$LOCK"' EXIT
 pgrep -f "deploy-cloudflare.sh" >/dev/null && { say "a deploy is already running"; exit 0; }
-pmset -g batt | head -1 | grep -q "AC Power" || { say "on battery — waits for power"; exit 0; }
+# The loop never deploys before a drill has proven the way back (rollback, then forward) once.
+DRILLED="$HOME/.claude/state/mkan-ship-drilled"
+[ "$MODE" = drill ] || [ -f "$DRILLED" ] || { say "no drill has passed yet — the loop does not deploy (bash scripts/crm/hermes/ship.sh --drill, in a session)"; exit 0; }
+# On power, or — for a drill someone is watching — a battery above 60%.
+if ! pmset -g batt | head -1 | grep -q "AC Power"; then
+  PCT=$(pmset -g batt | grep -oE '[0-9]+%' | head -1 | tr -d %)
+  [ "$MODE" = drill ] && [ "${PCT:-0}" -ge 60 ] || { say "on battery — waits for power"; exit 0; }
+fi
 FREE_GB=$(df -g / | awk 'NR==2{print $4}')
 [ "${FREE_GB:-0}" -ge 9 ] || { say "only ${FREE_GB} GB free (needs 9)"; [ ! -f "$DATA/.ship-disk-told" ] && post "🚚 Auto-deploy waits: the Mac has ${FREE_GB} GB free, it needs 9. Free some disk (docker builder prune, ~/.cache)." && touch "$DATA/.ship-disk-told"; exit 0; }
 rm -f "$DATA/.ship-disk-told"
@@ -127,7 +134,7 @@ if [ -n "$VERSION" ] && verify "$TARGET"; then
     for i in $(seq 1 48); do b=$(health_build); [ "$b" != "$TARGET" ] && break; sleep 15; done
     say "drill: after the rollback production reports build '${b:-none}' (the previous image) — rolling forward"
     CF_BUILD_DIR="$BUILD_DIR" bash scripts/deploy-cloudflare.sh "$ENV_FILE" rollback "$IMAGE" >>"$SLOG" 2>&1
-    verify "$TARGET" && say "drill: ✓ forward again on $TARGET" || say "drill: ✗ forward again did not verify — see $SLOG"
+    if verify "$TARGET"; then say "drill: ✓ forward again on $TARGET"; date -u +%FT%TZ > "$DRILLED"; else say "drill: ✗ forward again did not verify — see $SLOG"; fi
   fi
   post "🚀 mkan deployed by the loop: $LAST → $TARGET (Worker ${VERSION:0:8}). Checked: tests, smoke, health reports the new build, /en/find, /en/monetize, /api/monetize/live."
   exit 0
