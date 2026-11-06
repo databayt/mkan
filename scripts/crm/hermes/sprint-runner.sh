@@ -117,6 +117,9 @@ Lines you never cross in this run:
   never move or record money; never re-pair WhatsApp. Those commands refuse in this run (exit 3).
 - Never delete data, branches or files you did not create; no destructive migrations; no secret
   rotation.
+- Your --result and --lesson show on the public /monetize page: never write a phone number, a
+  person's name, a social handle, an email or a file path into them. Name a chat by its id, a home
+  by its K-code, a number by its last 3 digits (…155).
 When the prompt needs one of those, or needs Abdout's answer or approval, do all the preparation
 you can (the analysis, the drafts, the exact command for him), then stop and report it blocked.
 
@@ -152,6 +155,7 @@ MKAN_UNATTENDED=1 KUN_JOB="$LANE_JOB" /usr/bin/perl -e '
   --disallowedTools "Bash(pnpm wa:brokers gated:*)" "Bash(pnpm -s wa:brokers gated:*)" "Bash(pnpm wa:pair:*)" "Bash(pnpm wa:outbox:*)" \
     "Bash(pnpm deal:book:*)" "Bash(pnpm crm:outreach:*)" "Bash(pnpm crm:cadence:*)" "Bash(pnpm tt:upload:*)" "Bash(pnpm tt:ask:*)" \
     "Bash(git push --force:*)" "Bash(git push -f:*)" "Bash(git reset --hard:*)" "Bash(prisma migrate reset:*)" \
+    "Bash(pnpm sprint:approve:*)" "Bash(pnpm -s sprint:approve:*)" "Bash(pnpm exec tsx scripts/sprint.ts approve:*)" "Bash(tsx scripts/sprint.ts approve:*)" \
   >"$SESSION_LOG" 2>&1
 RC=$?
 echo "  exit $RC" >>"$RUNLOG"

@@ -12,6 +12,7 @@
  *   tsx scripts/sprint.ts brief <promptId>             the runner: key numbers now + the 5 most relevant lessons
  *   pnpm sprint:task <taskId> [--undo]                 tick (or untick) a task
  *   pnpm sprint:plan --file=plan.json                  create a WEEK / MONTH sprint from JSON (replaces an open one of that kind)
+ *   pnpm sprint:approve <promptId>                     Abdout, on the Mac: a prompt added on the web may run (refused unattended)
  *
  *   pnpm sprint:cycle [--dry] [--no-plan]             close, unblock, measure, plan, top up (scripts/sprint-cycle.ts)
  *
@@ -30,6 +31,8 @@ process.env.PRISMA_QUIET ??= '1';
 import { readFileSync } from 'node:fs';
 
 import { parseCondition } from '../src/lib/monetize/metrics';
+import { isWebText, unmarkWeb, WEB_MARK } from '../src/lib/monetize/provenance';
+import { refuseUnattended } from './unattended';
 import { shapeSprints, type SprintRow } from '../src/lib/monetize/sprint-shape';
 import { createSprint, type LoosePlanSprint } from './sprint/plan-db';
 
@@ -130,14 +133,20 @@ async function claim(db: Db) {
   });
   const s = shapeSprints(await rows(db));
   if (s.prompts.some((x) => x.status === 'running')) return console.log(JSON.stringify({ busy: true }));
-  const p = s.prompts.find((x) => x.status === 'pending');
+  // Never text a web form wrote and the Mac has not approved (src/lib/monetize/provenance.ts): this run
+  // has full permissions on the Mac.
+  const p = s.prompts.find((x) => x.status === 'pending' && !isWebText(x.text) && !isWebText(x.taskTitle));
   if (!p) return console.log(JSON.stringify({ empty: true }));
   // processedAt doubles as "started at" while running.
-  const took = await db.sprintPrompt.updateMany({ where: { id: p.id, status: 'pending' }, data: { status: 'running', processedAt: new Date() } });
+  const took = await db.sprintPrompt.updateMany({
+    where: { id: p.id, status: 'pending', NOT: { text: { contains: WEB_MARK.trim() } } },
+    data: { status: 'running', processedAt: new Date() },
+  });
   if (took.count !== 1) return console.log(JSON.stringify({ busy: true }));
   const baseline = await metricNow(p.metric);
   if (baseline != null) await db.sprintPrompt.update({ where: { id: p.id }, data: { baseline } });
-  console.log(JSON.stringify({ id: p.id, kind: p.kind, task: p.taskTitle, taskId: p.taskId, text: p.text, metric: p.metric, baseline, retries: p.retries, lastResult: p.retries ? p.result : null }));
+  const lastResult = p.retries && !isWebText(p.result) ? p.result : null;
+  console.log(JSON.stringify({ id: p.id, kind: p.kind, task: p.taskTitle, taskId: p.taskId, text: p.text, metric: p.metric, baseline, retries: p.retries, lastResult }));
 }
 
 /** The runner's context for one prompt: the key numbers now, and the 5 most relevant lessons (same metric, then same block). */
@@ -152,13 +161,33 @@ async function brief(db: Db, id: string) {
     if (p.metric && !(p.metric in keys)) keys[p.metric] = metrics[p.metric] ?? null;
     console.log(`Key numbers now: ${Object.entries(keys).map(([k, v]) => `${k}=${typeof v === 'number' ? +v.toFixed(3) : v}`).join(', ')}`);
   } else console.log('Key numbers now: unavailable (the /monetize read failed).');
-  const lessons = await db.sprintLesson.findMany({ orderBy: { createdAt: 'desc' }, take: 60 });
+  // Lessons a web form could have seeded are not read by an unattended run.
+  const lessons = (await db.sprintLesson.findMany({ orderBy: { createdAt: 'desc' }, take: 60 })).filter((l) => !isWebText(l.text));
   const block = p.task?.block;
   const blockMetrics = block ? new Set((await db.sprintPrompt.findMany({ where: { task: { block } }, select: { metric: true } })).map((x) => x.metric)) : new Set<string | null>();
   const rank = (l: (typeof lessons)[number]) => (p.metric && l.metric === p.metric ? 0 : l.metric && blockMetrics.has(l.metric) ? 1 : 2);
   const top = [...lessons].sort((a, b) => rank(a) - rank(b)).slice(0, 5);
   console.log(top.length ? 'Lessons so far (most relevant first):' : 'Lessons so far: none yet.');
   for (const l of top) console.log(`- [${l.verdict}] ${l.metric ?? '—'} ${l.before ?? '?'} → ${l.after ?? '?'}: ${l.text.replace(/\s+/g, ' ').slice(0, 220)}`);
+}
+
+/**
+ * Abdout, on the Mac: a prompt added on /monetize may run. The web mark comes off the prompt and its
+ * task, and it goes back to pending for the next runner tick. Refused in an unattended run — a session
+ * can never clear the mark itself.
+ */
+async function approve(db: Db, id: string) {
+  refuseUnattended('approve a prompt added on the web');
+  const p = await db.sprintPrompt.findUnique({ where: { id }, include: { task: { select: { id: true, title: true } } } });
+  if (!p) return console.log(`prompt ${id} not found`);
+  if (!isWebText(p.text) && !isWebText(p.task?.title)) return console.log(`prompt ${id} was not added on the web — nothing to approve`);
+  const text = unmarkWeb(p.text);
+  console.log(`Approving prompt ${id}${p.task ? ` (task: ${unmarkWeb(p.task.title)})` : ''}:\n\n${text}\n`);
+  await db.$transaction([
+    db.sprintPrompt.update({ where: { id }, data: { text, status: 'pending', processedAt: null, blockedAt: null, result: null } }),
+    ...(p.task && isWebText(p.task.title) ? [db.sprintTask.update({ where: { id: p.task.id }, data: { title: unmarkWeb(p.task.title) } })] : []),
+  ]);
+  console.log(`✓ prompt ${id} approved — pending; the runner takes it on its next tick`);
 }
 
 async function release(db: Db, id: string) {
@@ -200,6 +229,7 @@ async function main() {
     else if (cmd === 'claim') await claim(db);
     else if (cmd === 'release' && id) await release(db, id);
     else if (cmd === 'brief' && id) await brief(db, id);
+    else if (cmd === 'approve' && id) await approve(db, id);
     else if (cmd === 'plan' && arg('file')) await plan(db, arg('file')!);
     else console.log('usage: pnpm sprint:show | sprint:next | sprint:done <promptId> [--result=…] [--task-done] [--skip | --blocked [--unblock-when=…]] [--metric=…] [--lesson=…] | sprint:task <taskId> [--undo] | sprint:plan --file=plan.json');
   } finally {

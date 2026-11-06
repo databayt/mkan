@@ -128,7 +128,7 @@ export function templateFor(s: NextStep): Template | null {
         metric: "viewingsBooked",
         title: "First paid deal",
         why: `no paid deal this month; ${v.n} chats reached a shortlist`,
-        do: "List the tenants of the last 7 days who reached a shortlist and picked a home, rank them by readiness (budget fits, move-in date, replies), and for the top two prepare the viewing ask, the home and the broker — book nothing",
+        do: "List the tenants of the last 7 days who reached a shortlist and picked a home, rank them by readiness (budget fits, move-in date, replies), and for the top two prepare the viewing ask, the home and the broker — book nothing. Name a tenant by chat id and the last 3 digits of the number (…155), never the full number: the result shows on /monetize",
         doneWhen: "the top two viewing asks are drafted for Abdout with the exact `pnpm deal:book` command",
         gated: { unblockWhen: "brokerSends == gated", needsYou: "Turn broker sends on so a viewing can be booked." },
       };

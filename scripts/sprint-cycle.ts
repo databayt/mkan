@@ -40,6 +40,7 @@ import {
   weekWindow,
   type PlanFile,
 } from '../src/lib/monetize/sprint-auto';
+import { isWebText } from '../src/lib/monetize/provenance';
 import { liveMetrics } from './sprint/live';
 import { createSprint } from './sprint/plan-db';
 
@@ -81,7 +82,8 @@ async function close(db: Db, metrics: Metrics, now: Date, out: Summary) {
     const r = parseRetro(s.retro);
     const end = pickMetrics(metrics);
     const tasks = { done: s.tasks.filter((t) => t.done).length, total: s.tasks.length };
-    const text = retroText(`${s.kind} "${s.title}"`, { start: r.start, end, tasks, prompts });
+    // A sprint a web form named keeps its title out of the retro: retros become lessons an unattended run reads.
+    const text = retroText(isWebText(s.title) ? `${s.kind} sprint` : `${s.kind} "${s.title}"`, { start: r.start, end, tasks, prompts });
     const key = sprintMetric(s.kind as Kind, metrics);
     const before = num(r.start?.[key]);
     const after = num(metrics[key]);
@@ -99,7 +101,12 @@ async function close(db: Db, metrics: Metrics, now: Date, out: Summary) {
 async function unblock(db: Db, metrics: Metrics, now: Date, out: Summary) {
   for (const s of await openSprints(db)) {
     if (s.endsAt <= now) continue;
+    const webTask = new Set(s.tasks.filter((t) => isWebText(t.title)).map((t) => t.id));
     for (const p of s.prompts.filter((x) => x.status === 'blocked')) {
+      if (isWebText(p.text) || (p.taskId && webTask.has(p.taskId))) {
+        out.needsYou.push(`A prompt added on the web waits for approval: pnpm sprint:approve ${p.id}`);
+        continue;
+      }
       const first = p.text.split('\n')[0]!.slice(0, 70);
       if (p.unblockWhen) {
         if (!evalCondition(p.unblockWhen, metrics)) {
@@ -154,7 +161,7 @@ async function measure(db: Db, metrics: Metrics, now: Date, out: Summary) {
     where: { status: 'processed', metric: { not: null }, baseline: { not: null }, processedAt: { lte: new Date(now.getTime() - 24 * H), gte: new Date(now.getTime() - 14 * 24 * H) } },
   });
   const have = new Set((await db.sprintLesson.findMany({ where: { promptId: { in: done.map((p) => p.id) } }, select: { promptId: true } })).map((l) => l.promptId));
-  for (const p of done.filter((x) => !have.has(x.id))) {
+  for (const p of done.filter((x) => !have.has(x.id) && !isWebText(x.text) && !isWebText(x.result))) {
     const after = num(metrics[p.metric!]);
     const verdict = verdictOf(p.metric!, p.baseline, after);
     say(`lesson for "${p.text.split('\n')[0]!.slice(0, 60)}": ${p.metric} ${p.baseline} → ${after ?? '?'} = ${verdict}`);
@@ -171,12 +178,17 @@ async function measure(db: Db, metrics: Metrics, now: Date, out: Summary) {
 
 /** Everything the planner reads, as one JSON block. */
 async function plannerContext(db: Db, model: MonetizeOverview, metrics: Metrics, retros: string[]) {
-  const lessons = await db.sprintLesson.findMany({ orderBy: { createdAt: 'desc' }, take: 20 });
-  const blocked = await db.sprintPrompt.findMany({
-    where: { status: 'blocked', processedAt: { gte: new Date(Date.now() - 21 * 24 * H) } },
-    select: { text: true, result: true, unblockWhen: true, metric: true },
-    take: 20,
-  });
+  // The planner runs unattended: nothing a web form wrote reaches it (src/lib/monetize/provenance.ts).
+  const lessons = (await db.sprintLesson.findMany({ orderBy: { createdAt: 'desc' }, take: 40 })).filter((l) => !isWebText(l.text)).slice(0, 20);
+  const blocked = (
+    await db.sprintPrompt.findMany({
+      where: { status: 'blocked', processedAt: { gte: new Date(Date.now() - 21 * 24 * H) } },
+      select: { text: true, result: true, unblockWhen: true, metric: true, task: { select: { title: true } } },
+      take: 40,
+    })
+  )
+    .filter((b) => !isWebText(b.text) && !isWebText(b.result) && !isWebText(b.task?.title))
+    .slice(0, 20);
   const fs = (model as { firstShare?: Record<string, unknown> | null }).firstShare;
   const { posts: _posts, ...firstShare } = (fs ?? {}) as Record<string, unknown>;
   return {
@@ -187,9 +199,9 @@ async function plannerContext(db: Db, model: MonetizeOverview, metrics: Metrics,
     firstShare: fs ? firstShare : null,
     gates: model.gates,
     money: { revenueRwf: model.money.revenueRwf, breakEvenRwf: model.money.breakEvenRwf, netRwf: model.money.netRwf },
-    experiments: model.experiments.filter((e) => e.verdict === 'running'),
+    experiments: model.experiments.filter((e) => e.verdict === 'running' && !isWebText(e.hypothesis)),
     lessons: lessons.map((l) => ({ metric: l.metric, before: l.before, after: l.after, verdict: l.verdict, text: l.text, at: l.createdAt.toISOString().slice(0, 10) })),
-    closedRetros: retros,
+    closedRetros: retros.filter((r) => !isWebText(r)),
     needsYou: blocked.map((b) => ({ step: b.text.split('\n')[0]!.slice(0, 160), needsYou: b.result, unblockWhen: b.unblockWhen, metric: b.metric })),
   };
 }
@@ -338,7 +350,7 @@ async function topUp(db: Db, model: MonetizeOverview, now: Date, out: Summary) {
   if (pending >= 2) return;
   // A step is covered while a prompt for it (its tag, or any prompt on the same metric) is open, or ran
   // in the last 72 h — its number gets time to move before the loop tries again.
-  const recent = prompts.filter((p) => OPEN.includes(p.status) || (p.processedAt && now.getTime() - p.processedAt.getTime() < 72 * H));
+  const recent = prompts.filter((p) => !isWebText(p.text) && (OPEN.includes(p.status) || (p.processedAt && now.getTime() - p.processedAt.getTime() < 72 * H)));
   const covered = new Set(recent.map((p) => stepOf(p.text)).filter(Boolean));
   const coveredMetric = new Set(recent.map((p) => p.metric).filter(Boolean));
   const target = active.find((s) => s.kind === 'WEEK') ?? active[0]!;
@@ -390,7 +402,7 @@ async function replan(db: Db, model: MonetizeOverview, metrics: Metrics, now: Da
   mkdirSync(DATA, { recursive: true });
   writeFileSync(join(DATA, `.replanned-${today}-${used.length + 1}`), now.toISOString());
   const recent = prompts
-    .filter((p) => OPEN.includes(p.status) || (p.processedAt && now.getTime() - p.processedAt.getTime() < 72 * H))
+    .filter((p) => !isWebText(p.text) && (OPEN.includes(p.status) || (p.processedAt && now.getTime() - p.processedAt.getTime() < 72 * H)))
     .map((p) => `- [${p.status}] (${p.metric ?? 'no metric'}) ${p.text.split('\n')[0]!.slice(0, 160)}`)
     .join('\n');
   const r = await planWithClaude(db, ['WEEK'], model, metrics, [], join(DATA, `replan-${today}-${used.length + 1}.json`), now, recent);

@@ -3,20 +3,25 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 
-import { auth, isAdminOrSuper } from "@/lib/auth";
+import { auth, isAdminNow } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { BLOCKS } from "@/lib/monetize/types";
 import { REVENUE_LINES } from "@/lib/monetize/money";
+import { approvalHint, isWebText, markWeb } from "@/lib/monetize/provenance";
 
 /**
- * /monetize writes: money received and the experiment log. Each action
- * re-checks the role — the page gate does not protect a server action, which
- * is a public POST endpoint.
+ * /monetize writes: money received, the experiment log, the sprint plan. Each action re-checks the
+ * role against the database — the page gate does not protect a server action (a public POST
+ * endpoint), and the JWT's role outlives a demotion.
+ *
+ * Every piece of free text written here is marked as web text (src/lib/monetize/provenance.ts): the
+ * sprint runner and planner run unattended with full permissions on the Mac and never read it until
+ * Abdout approves it there.
  */
 async function requireAdmin() {
   const session = await auth();
-  if (!session?.user?.id || !isAdminOrSuper(session)) throw new Error("Unauthorized");
+  if (!session?.user?.id || !(await isAdminNow(session))) throw new Error("Unauthorized");
   return session;
 }
 
@@ -41,6 +46,10 @@ export async function addRevenueEntry(form: FormData): Promise<void> {
     dealId: blank(form.get("dealId")),
     note: blank(form.get("note")),
   });
+  // One deal is money once: deal.ts records a PAID deal's commission itself.
+  if (data.dealId && (await db.revenueEntry.findFirst({ where: { dealId: data.dealId }, select: { id: true } }))) {
+    throw new Error(`Deal ${data.dealId} is already recorded`);
+  }
   await db.revenueEntry.create({ data });
   logger.info("monetize:revenue", { actorId: session.user.id, line: data.line, amountRwf: data.amountRwf });
   revalidatePath("/[lang]/monetize", "page");
@@ -50,6 +59,7 @@ const experimentSchema = z.object({
   id: z.string().trim().max(40).optional(),
   block: z.enum(BLOCKS),
   hypothesis: z.string().trim().min(5).max(500),
+  // Free text is fine here: a web-saved experiment's hypothesis is marked, and the planner skips the whole row.
   metric: z.string().trim().min(1).max(80),
   baseline: z.coerce.number().optional(),
   target: z.coerce.number().optional(),
@@ -70,7 +80,8 @@ export async function saveExperiment(form: FormData): Promise<void> {
     result: get("result"),
     verdict: get("verdict"),
   });
-  const { id, ...fields } = data;
+  const { id, ...rest } = data;
+  const fields = { ...rest, hypothesis: markWeb(rest.hypothesis) };
   const endedAt = fields.verdict === "running" ? null : new Date();
   if (id) await db.experiment.update({ where: { id }, data: { ...fields, endedAt } });
   else await db.experiment.create({ data: { ...fields, endedAt } });
@@ -93,14 +104,22 @@ export async function toggleSprintTask(form: FormData): Promise<void> {
 
 const promptStatus = z.enum(["pending", "processed", "skipped"]);
 
+/**
+ * Mark a prompt done or skipped, or queue it again. No text from here: a result the page wrote would
+ * reach the next unattended run (its retry line and the lessons). A web-added prompt, or one on a
+ * web-added task, is queued only by the Mac (`pnpm sprint:approve`).
+ */
 export async function setPromptStatus(form: FormData): Promise<void> {
   await requireAdmin();
   const id = idOf(form);
   const status = promptStatus.parse(form.get("status"));
-  const result = blank(form.get("result"));
+  if (status === "pending") {
+    const p = await db.sprintPrompt.findUniqueOrThrow({ where: { id }, select: { text: true, task: { select: { title: true } } } });
+    if (isWebText(p.text) || isWebText(p.task?.title)) throw new Error(approvalHint(id));
+  }
   await db.sprintPrompt.update({
     where: { id },
-    data: { status, processedAt: status === "pending" ? null : new Date(), ...(result ? { result: String(result).slice(0, 500) } : {}) },
+    data: { status, processedAt: status === "pending" ? null : new Date() },
   });
   revalidatePath("/[lang]/monetize", "page");
 }
@@ -123,7 +142,7 @@ export async function saveSprint(form: FormData): Promise<void> {
     endsAt: form.get("endsAt"),
   });
   if (data.endsAt <= data.startsAt) throw new Error("The sprint ends before it starts");
-  await db.sprint.create({ data });
+  await db.sprint.create({ data: { ...data, title: markWeb(data.title), ...(data.goal ? { goal: markWeb(data.goal) } : {}) } });
   revalidatePath("/[lang]/monetize", "page");
 }
 
@@ -139,7 +158,7 @@ export async function addSprintTask(form: FormData): Promise<void> {
   const title = z.string().trim().min(2).max(200).parse(form.get("title"));
   const block = z.enum(BLOCKS).optional().parse(blank(form.get("block")));
   const order = await db.sprintTask.count({ where: { sprintId } });
-  await db.sprintTask.create({ data: { sprintId, title, block, order } });
+  await db.sprintTask.create({ data: { sprintId, title: markWeb(title), block, order } });
   revalidatePath("/[lang]/monetize", "page");
 }
 
@@ -149,6 +168,9 @@ export async function addSprintPrompt(form: FormData): Promise<void> {
   const text = z.string().trim().min(5).max(4000).parse(form.get("text"));
   const taskId = blank(form.get("taskId")) ? idOf(form, "taskId") : undefined;
   const order = await db.sprintPrompt.count({ where: { sprintId } });
-  await db.sprintPrompt.create({ data: { sprintId, text, taskId, order } });
+  // Never runnable as written: it waits, blocked, for Abdout's approval on the Mac.
+  const now = new Date();
+  const p = await db.sprintPrompt.create({ data: { sprintId, text: markWeb(text), taskId, order, status: "blocked", blockedAt: now, processedAt: now } });
+  await db.sprintPrompt.update({ where: { id: p.id }, data: { result: approvalHint(p.id) } });
   revalidatePath("/[lang]/monetize", "page");
 }
