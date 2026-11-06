@@ -45,9 +45,12 @@ export function Composer({
   size = "lg",
   autoFocus,
   canSendEmpty = false,
+  restore,
 }: {
   /** Resolves true when the message was accepted; the text is cleared then. */
   onSend: (text: string) => Promise<boolean>;
+  /** A sent message the server refused: back into an empty composer (use-agent-task.ts lostText). */
+  restore?: { text: string; at: number } | null;
   /** The `+` button — opens the guided search. Hidden when not given. */
   onPlus?: () => void;
   plusActive?: boolean;
@@ -83,6 +86,14 @@ export function Composer({
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT_PX)}px`;
   }, [text]);
+
+  // The server refused what was sent (rate, busy): the words come back instead of vanishing — into an
+  // empty composer only, once per refusal (2026-11-06). Set while rendering, not in an effect.
+  const [restoredAt, setRestoredAt] = useState<number | null>(null);
+  if (restore?.text && restore.at !== restoredAt) {
+    setRestoredAt(restore.at);
+    if (!text) setText(restore.text);
+  }
 
   const canSend = !disabled && (!!text.trim() || canSendEmpty);
   const submit = async () => {

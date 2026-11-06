@@ -40,7 +40,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
   const dict = useDictionary();
   const a = dict?.agent;
   const c = a?.chat;
-  const { task, running, pending, notice, send, refresh, reset, open, opening, regenerate, reply, chips } = useAgentTask(initialTask, { syncUrl: true });
+  const { task, running, pending, notice, lostText, send, refresh, reset, open, opening, regenerate, reply, chips } = useAgentTask(initialTask, { syncUrl: true });
   const [sheet, setSheet] = useState<"closed" | "open" | "never">("never");
   const [picks, setPicks] = useState<Picks>({});
   const [guided, setGuided] = useState(false);
@@ -86,6 +86,8 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
   const taskId = task?.id;
   const stay = task?.requirements?.stay;
   const notForMe: NotForMe = useCallback(async (item, reason) => {
+    // Not while a turn is running: its write would overwrite the change (2026-11-06).
+    if (running) return;
     const period = item.cost.period === "month" ? "month" : "night";
     if (reason === "like") {
       // Same district and size, priced around this home: the tenant points instead of describing.
@@ -109,7 +111,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
           ? { bedrooms: Math.min(10, (item.bedrooms ?? 1) + 1) }
           : { stay: stay ?? "long" };
     void say(label, false, filters);
-  }, [taskId, stay, a, say]);
+  }, [taskId, stay, a, say, running]);
   // ⋯ in the bar: delete the chat on screen, after the browser's own confirm.
   const deleteChat = async () => {
     if (!task || !window.confirm(a?.chats?.deleteConfirm ?? "Delete this chat?")) return;
@@ -303,6 +305,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
           busy={running}
           canSendEmpty={guided && picked}
           autoFocus={!task}
+          restore={lostText}
         />
         {/* ChatGPT's conversation has no footer line; the safety note shows before the first message. */}
         {!task ? (

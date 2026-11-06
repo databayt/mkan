@@ -124,6 +124,8 @@ export function useAgentTask(
   const [task, setTask] = useState<AgentTaskView | null>(initialTask);
   const [loaded, setLoaded] = useState(!lazy);
   const [notice, setNotice] = useState<string | null>(null);
+  /** A message the server refused after the composer had cleared it: handed back so it is not lost. */
+  const [lostText, setLostText] = useState<{ text: string; at: number } | null>(null);
   /** The chat being opened from the ☰ list or the address bar, until it arrives. */
   const [opening, setOpening] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -252,6 +254,7 @@ export function useAgentTask(
           );
           if (!res.ok) {
             setTask(before);
+            setLostText({ text: value, at: Date.now() });
             setNotice(res.error === "rate" ? a?.reply?.rate ?? "Please wait a few minutes." : res.error === "busy" ? a?.reply?.busy ?? "Still working." : a?.reply?.error ?? null);
             return;
           }
@@ -360,5 +363,5 @@ export function useAgentTask(
   const askingStay = !running && lastAgent?.role === "agent" && lastAgent.kind === "ask" && lastAgent.field === "stay";
   const examples = [a?.examples?.long, a?.examples?.room, a?.examples?.studio].filter((x): x is string => !!x);
 
-  return { task, loaded, running, waiting, pending, notice, send, refresh, reset, open, opening, regenerate, reply, chips, askingStay, examples, money };
+  return { task, loaded, running, waiting, pending, notice, lostText, send, refresh, reset, open, opening, regenerate, reply, chips, askingStay, examples, money };
 }

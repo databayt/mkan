@@ -13,6 +13,7 @@ import { usePicksLabel, Wizard, type Picks } from "../wizard";
 import { AskCard } from "../ask-card";
 import { ClarifyCard } from "../clarify-card";
 import { Composer } from "../composer";
+import { DemandCard } from "../demand-card";
 import { ChatHeader, headerButton, MenuGlyph } from "../header";
 import { Refine, Retry, ShowMonthly, ToWhatsApp } from "../refine";
 import { fill } from "../format";
@@ -78,7 +79,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
   const b = a?.bubble;
   const c = a?.chat;
   const { locale } = useLocale();
-  const { task, loaded, running, waiting, pending, notice, send, reset, open: openTask, opening, reply, regenerate } = useAgentTask(null, { lazy: true, active: open });
+  const { task, loaded, running, waiting, pending, notice, lostText, send, reset, open: openTask, opening, reply, regenerate } = useAgentTask(null, { lazy: true, active: open });
   const [sheet, setSheet] = useState<"closed" | "open" | "never">("never");
   const [picks, setPicks] = useState<Picks>({});
   const [guided, setGuided] = useState(false);
@@ -257,6 +258,8 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
                         ))}
                       {m.kind === "error" && <Retry onRetry={() => void regenerate()} disabled={pending} compact />}
                       {m.kind === "monthlyOnly" && <ShowMonthly onPick={(text, filters, clear) => void send(text, false, filters, clear)} disabled={pending} compact />}
+                      {/* Nothing fit: "leave your number" — the same card /find shows (it was missing here). */}
+                      {(m.kind === "none" || m.kind === "shortlist") && m.demand && task.demand && <DemandCard taskId={task.id} optedIn={task.demand.optedIn} />}
                     </>
                   )}
                 </AgentTurn>
@@ -292,6 +295,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
           canSendEmpty={guided && Object.keys(picks).length > 0}
           disabled={pending || running || !loaded}
           busy={running}
+          restore={lostText}
         />
       </footer>
 

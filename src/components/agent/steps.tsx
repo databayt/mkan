@@ -116,7 +116,8 @@ export function Steps({ task, compact = false }: { task: AgentTaskView; compact?
 
   const current = plan.find((s) => s.status === "running")?.step;
   const lastAt = turn.at(-1)?.at;
-  const failed = turn.some((e) => e.status === "failed");
+  // A search that could not widen, or a broker's "taken", ends a step without an error: no red dot (2026-11-06).
+  const failed = turn.some((e) => e.status === "failed" && e.kind !== "relaxed" && e.kind !== "broker_replied");
   const headline = asked
     ? summary(turn.find((e) => e.kind === "asked")!)
     : HEADLINE.map((k) => [...turn].reverse().find((e) => e.kind === k))
