@@ -40,6 +40,8 @@ import {
   isOptOut,
   messageText,
   phoneKey,
+  brokerGapLeft,
+  passScheduler,
   planOutbox,
   recipientKey,
   reminderOf,
@@ -66,10 +68,31 @@ const SEEN_KEEP = 3000;
 const PENDING_MS = 2 * 3_600_000;
 /** Photos kept from one burst. */
 const MAX_PHOTOS = 12;
-/** Broker messages per tick; the schedule spaces them. */
+/** Broker messages per pass; brokerGapLeft (outbox-pure.ts) spaces them — the 2-minute tick no longer does. */
 const BROKER_SENDS_PER_TICK = 1;
 
 type Log = (msg: string) => void;
+
+// ── kicks: a pass when something happens, not only on the clock ─────────────────────────────────
+// The */2 cron kept Neon awake around the clock (≈ $19/month) for 31 ticks a week that had work
+// (2026-11-07). A pass now runs seconds after an alert or ask is queued (whatsapp.ts sendMessages) and
+// after a broker writes (the webhook); the cron is the backstop — every 15 min by day, hourly at night.
+// The pass is the same one the cron runs, under the same lease: nothing is sent or read twice.
+/** Kicks run in the container only (Next's server, production, outbox on) — never in a Mac script. */
+const kicksOn = () => process.env.NEXT_RUNTIME === "nodejs" && process.env.NODE_ENV === "production" && process.env.MKAN_WA_OUTBOX?.trim() === "1";
+
+const passes = passScheduler(async (reason) => {
+  const r = await runOutbox({ log: (m) => console.log(`[wa-outbox] [kick:${reason}] ${m}`) }).catch((err) => {
+    console.warn(`[wa-outbox] kick ${reason} failed: ${(err as Error).message}`);
+    return null;
+  });
+  return { locked: r?.skipped === "locked" };
+});
+
+/** Run a pass in `delayMs` (container only). One asked for during a pass runs after it; asks merge. */
+export function kickOutbox(reason: string, delayMs = 3_000): void {
+  if (kicksOn()) passes.kick(reason, delayMs);
+}
 
 export interface OutboxResult {
   state: string;
@@ -168,7 +191,11 @@ async function drain(dry: boolean, log: Log, sendsOff: boolean): Promise<{ sent:
   });
   const held = plan.hold.reduce<Record<string, number>>((acc, h) => ({ ...acc, [h.reason]: (acc[h.reason] ?? 0) + 1 }), {});
   const alerts = plan.send.filter((r) => r.kind === "TENANT_ALERT");
-  const toSend = [...alerts, ...plan.send.filter((r) => r.kind !== "TENANT_ALERT").slice(0, BROKER_SENDS_PER_TICK)];
+  // Brokers hear from Mkan at a person's pace: none within BROKER_GAP_MS of the last broker message.
+  const gapLeft = brokerGapLeft(sentRows, now);
+  const brokerRows = plan.send.filter((r) => r.kind !== "TENANT_ALERT");
+  if (gapLeft > 0 && brokerRows.length && !dry) kickOutbox("broker-gap", gapLeft + 1_000);
+  const toSend = [...alerts, ...(gapLeft > 0 ? [] : brokerRows.slice(0, BROKER_SENDS_PER_TICK))];
   log(`queued ${rows.length} · sent today ${sentRows.length}/${cap} · plan ${plan.send.length} (this tick ${toSend.length}) · skip ${plan.skip.length} · hold ${JSON.stringify(held)}${sendsOff ? " · broker sends OFF" : ""}`);
 
   for (const { row, reason } of plan.skip) {
@@ -480,15 +507,23 @@ export async function runOutbox(opts: { dry?: boolean; log?: Log } = {}): Promis
   }
   const lease = dry ? null : await takeLease(LEASE, LEASE_MS);
   if (!dry && !lease) return { state, sent: 0, replies: 0, skipped: "locked" };
+  if (!dry) passes.enter();
   try {
     // Read once per pass: a person flips it with `pnpm wa:brokers` (broker-sends.ts).
     const sendsOff = (await brokerSendMode()) !== "gated";
-    const { sent, bridgeError } = await drain(dry, log, sendsOff);
-    if (bridgeError) {
-      if (!dry) await recordRun(false, bridgeError);
-      return { state, sent, replies: 0 };
+    const first = await drain(dry, log, sendsOff);
+    if (first.bridgeError) {
+      if (!dry) await recordRun(false, first.bridgeError);
+      return { state, sent: first.sent, replies: 0 };
     }
+    let sent = first.sent;
     const n = state === "open" ? await replies(dry, log, sendsOff) : 0;
+    // A broker's answer read just now queued the tenant's alert: it goes in this pass, not the next
+    // (2026-11-07: sending ran before reading, so it waited a full tick — 127–132 s this week).
+    if (n > 0 && !dry) {
+      const again = await drain(dry, log, sendsOff);
+      sent += again.sent;
+    }
     if (!dry) await pruneMessageClaims().catch(() => 0);
     if (!dry) await recordRun(true);
     return { state, sent, replies: n };
@@ -496,6 +531,9 @@ export async function runOutbox(opts: { dry?: boolean; log?: Log } = {}): Promis
     if (!dry) await recordRun(false, (err as Error).message);
     throw err;
   } finally {
-    if (!dry) await releaseLease(LEASE, lease);
+    if (!dry) {
+      await releaseLease(LEASE, lease);
+      passes.leave();
+    }
   }
 }

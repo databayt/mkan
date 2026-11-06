@@ -358,3 +358,74 @@ export function groupByPhone<T extends InboxItem>(items: T[]): { phone: string; 
     imageIds: its.filter((m) => m.image).map((m) => m.id),
   }));
 }
+
+// ── passes on events (wa-outbox.ts kickOutbox) ───────────────────────────────────────────────────
+
+/** The least time between two broker messages: a person does not send twice a minute. */
+export const BROKER_GAP_MS = 2 * 60_000;
+
+/** How long until a broker may get the next message: 0 when they may now. */
+export function brokerGapLeft(sent: Array<{ kind: string; sentAt: Date | null }>, now: Date, gapMs = BROKER_GAP_MS): number {
+  const last = Math.max(0, ...sent.filter((s) => s.kind !== 'TENANT_ALERT' && s.sentAt).map((s) => s.sentAt!.getTime()));
+  return last ? Math.max(0, gapMs - (now.getTime() - last)) : 0;
+}
+
+export interface PassScheduler {
+  /** Run a pass in `delayMs`; asks before it runs merge (the earliest wins). */
+  kick(reason: string, delayMs?: number): void;
+  /** A pass started (under the lease): kicks now wait for it to end. */
+  enter(): void;
+  /** The pass ended: one asked for meanwhile runs now (or when it was asked for). */
+  leave(): void;
+  /** When the waiting pass runs, if one waits. */
+  nextAt(): number | null;
+}
+
+/**
+ * One timer for the outbox's event-driven passes. `run` returns locked when another process holds
+ * the lease (the cron's own request): the pass is tried again `retryMs` later, `maxTries` times.
+ */
+export function passScheduler(
+  run: (reason: string) => Promise<{ locked?: boolean } | void>,
+  { retryMs = 15_000, maxTries = 4, now = () => Date.now() }: { retryMs?: number; maxTries?: number; now?: () => number } = {},
+): PassScheduler {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let timerAt = 0;
+  let passing = false;
+  let againAt: number | null = null;
+  const schedule = (reason: string, at: number, tries: number) => {
+    if (timer && timerAt <= at) return;
+    if (timer) clearTimeout(timer);
+    timerAt = at;
+    timer = setTimeout(() => {
+      timer = null;
+      void run(reason)
+        .then((r) => {
+          if (r && r.locked && tries < maxTries) schedule(reason, now() + retryMs, tries + 1);
+        })
+        .catch(() => {});
+    }, Math.max(0, at - now()));
+  };
+  return {
+    kick(reason, delayMs = 3_000) {
+      const at = now() + delayMs;
+      if (passing) {
+        againAt = againAt == null ? at : Math.min(againAt, at);
+        return;
+      }
+      schedule(reason, at, 0);
+    },
+    enter() {
+      passing = true;
+    },
+    leave() {
+      passing = false;
+      if (againAt != null) {
+        const at = againAt;
+        againAt = null;
+        schedule('again', Math.max(at, now() + 1_000), 0);
+      }
+    },
+    nextAt: () => (timer ? timerAt : null),
+  };
+}

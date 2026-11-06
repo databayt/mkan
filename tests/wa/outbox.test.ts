@@ -315,3 +315,75 @@ describe('the clock no longer loses a deal sheet or a check-in (2026-11-07)', ()
     expect(isTimedReminder(reminderLabel('after', 1))).toBe(false);
   });
 });
+
+describe('passes on events instead of every 2 minutes (2026-11-07)', () => {
+  it('a kick runs one pass after its delay; kicks before it merge, an earlier one moves it up', async () => {
+    const { vi } = await import('vitest');
+    const { passScheduler } = await import('../../scripts/wa/outbox-pure');
+    vi.useFakeTimers();
+    try {
+      const run = vi.fn(async () => ({}));
+      const s = passScheduler(run);
+      s.kick('broker-message', 8_000);
+      s.kick('queued', 3_000);
+      s.kick('later', 20_000);
+      await vi.advanceTimersByTimeAsync(2_999);
+      expect(run).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(run).toHaveBeenCalledTimes(1);
+      expect(run).toHaveBeenCalledWith('queued');
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(run).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a kick during a pass runs after it, not on top of it', async () => {
+    const { vi } = await import('vitest');
+    const { passScheduler } = await import('../../scripts/wa/outbox-pure');
+    vi.useFakeTimers();
+    try {
+      const run = vi.fn(async () => ({}));
+      const s = passScheduler(run);
+      s.enter();
+      s.kick('queued', 0);
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(run).not.toHaveBeenCalled();
+      s.leave();
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(run).toHaveBeenCalledWith('again');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('another process holding the lease: tried again, a bounded number of times', async () => {
+    const { vi } = await import('vitest');
+    const { passScheduler } = await import('../../scripts/wa/outbox-pure');
+    vi.useFakeTimers();
+    try {
+      const run = vi.fn(async () => ({ locked: true }));
+      const s = passScheduler(run, { retryMs: 15_000, maxTries: 2 });
+      s.kick('queued', 0);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(run).toHaveBeenCalledTimes(3);
+      expect(s.nextAt()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('brokers stay at a person\'s pace: no message within 2 min of the last one', async () => {
+    const { brokerGapLeft } = await import('../../scripts/wa/outbox-pure');
+    const now = kigali('2026-11-07T10:00:00');
+    expect(brokerGapLeft([], now)).toBe(0);
+    expect(brokerGapLeft([{ kind: 'BROKER_REQUEST', sentAt: kigali('2026-11-07T09:59:30') }], now)).toBe(90_000);
+    expect(brokerGapLeft([{ kind: 'BROKER_REQUEST', sentAt: kigali('2026-11-07T09:57:00') }], now)).toBe(0);
+    // A tenant alert does not count against brokers.
+    expect(brokerGapLeft([{ kind: 'TENANT_ALERT', sentAt: kigali('2026-11-07T09:59:59') }], now)).toBe(0);
+  });
+});

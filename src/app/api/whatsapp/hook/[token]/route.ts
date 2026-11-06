@@ -3,6 +3,7 @@ import { after, NextResponse, type NextRequest } from "next/server";
 import { isDirectChat } from "../../../../../../scripts/wa/tenant-pure";
 import { isMedia, messageText, phoneKey, senderPhone } from "../../../../../../scripts/wa/outbox-pure";
 import { answerTenant, noteFromMe } from "@/components/agent/wa-tenant";
+import { kickOutbox } from "@/components/agent/wa-outbox";
 import { claimMessage, settleMessage } from "@/components/agent/wa-state";
 import { postSlackCard } from "@/components/agent/whatsapp";
 import { db } from "@/lib/db";
@@ -71,7 +72,12 @@ async function handle(m: EvoMessage) {
     }
     return;
   }
-  if (await isBroker(phone)) return;
+  // A broker's message is read by the outbox pass (album grouping, quoted asks, the seen list): one
+  // runs a few seconds from now, so a burst of photos and its caption are read together.
+  if (await isBroker(phone)) {
+    kickOutbox("broker-message", 8_000);
+    return;
+  }
   const ts = Number(m.messageTimestamp ?? 0);
   const sentAt = ts > 0 ? new Date(ts * 1000) : new Date();
   if (key.fromMe) {

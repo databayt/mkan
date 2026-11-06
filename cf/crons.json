@@ -18,10 +18,12 @@
       "/api/cron/complete-bookings"
     ],
     "0 * * * *": [
-      "/api/cron/broker-requests"
+      "/api/cron/broker-requests",
+      "/api/cron/wa-outbox"
     ],
-    "*/2 * * * *": [
+    "15,30,45 5-19 * * *": [
       "/api/cron/wa-outbox"
     ]
-  }
+  },
+  "_outbox_note": "wa-outbox runs on events (kickOutbox: a message queued, a broker writing); these ticks are the backstop \u2014 :00 hourly, plus :15/:30/:45 from 07:00 to 21:45 Kigali (05\u201319 UTC). The */2 tick kept Neon awake around the clock (2026-11-07)."
 }

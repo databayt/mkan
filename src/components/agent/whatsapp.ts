@@ -82,7 +82,12 @@ export async function sendMessages(messages: Outgoing[], heading: string): Promi
       ...(on ? {} : { status: "SKIPPED" as const, error: "manual: slack card" }),
     })),
   });
-  if (on) return "queued";
+  if (on) {
+    // Sent in seconds by a pass in this process (the container), not at the next backstop tick. Imported
+    // when needed: wa-outbox imports this file.
+    void import("./wa-outbox").then((m) => m.kickOutbox("queued")).catch(() => {});
+    return "queued";
+  }
   const lines = messages.map((m) => `• *${m.label}* — ${waLink(m.to, m.body)}`);
   await postSlackCard(`:house: *${heading}* — tap to send on WhatsApp:\n${lines.join("\n")}`);
   return "manual";
