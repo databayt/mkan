@@ -39,7 +39,10 @@ const EDGE_CACHEABLE = [
   /^\/_next\/static\//, // build-hashed js/css/media + next/font woff2 — immutable for a year
   /^\/_next\/image$/, // the image optimiser's output — a month or more, must-revalidate
   /^\/fonts\//, // self-hosted fonts — immutable (next.config headers); none in public/ yet
-  /^\/images\//, // public/images — frozen only once next.config gives it a max-age
+  /^\/images\//, // public/images — a day (next.config headers)
+  // public/ icons and pictures, a day (next.config headers, 2026-11-07: they hit the container every time)
+  /^\/(?:icons|brands|amenities|illustrations|destinations|filter|guest-favorite|highlights|hosting|co-hosts|assets)\//,
+  /^\/(?:favicon\.ico|favicon\.svg|favicon-(?:16x16|32x32)\.png|apple-touch-icon\.png|android-chrome-(?:192x192|512x512)\.png)$/,
 ]
 
 // Shared across hosts: the same build serves mkan.sd, www and every subdomain.

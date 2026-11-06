@@ -240,6 +240,17 @@ const nextConfig: NextConfig = {
               value: "public, max-age=31536000, immutable",
             },
           ],
+        },
+        {
+          // public/ icons and pictures keep their names across deploys: a day in the browser and at the
+          // edge (cf/worker.js EDGE_CACHEABLE), a week stale-while-revalidate. They were max-age=0, so
+          // every one went to the container, 0.6 s each (2026-11-07).
+          source: "/:dir(images|icons|brands|amenities|illustrations|destinations|filter|guest-favorite|highlights|hosting|co-hosts|assets)/:path*",
+          headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }],
+        },
+        {
+          source: "/:file(favicon\\.ico|favicon\\.svg|favicon-16x16\\.png|favicon-32x32\\.png|apple-touch-icon\\.png|android-chrome-192x192\\.png|android-chrome-512x512\\.png)",
+          headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }],
         }
       );
     }
