@@ -29,6 +29,11 @@ export async function appendUserMessage(input: {
   lang: string;
   /** A new task starts from these (the web chat a WhatsApp ref carries over). */
   seed?: { messages: AgentMessage[]; requirements: Prisma.JsonValue };
+  /**
+   * Where a NEW chat came from — "web", or whatsapp-format refSourceOf's tiktok / k_page / organic —
+   * so every chat is attributed (2026-11-07: all 90 had none; only TikTok-coded ones were stamped).
+   */
+  refSource?: string | null;
 }): Promise<{ taskId: string } | { busy: true }> {
   const { current, message, lang, profileId } = input;
   if (current) {
@@ -48,6 +53,7 @@ export async function appendUserMessage(input: {
       locale: lang,
       messages: [...(input.seed?.messages ?? []), message] as unknown as Prisma.InputJsonValue,
       ...(input.seed?.requirements ? { requirements: input.seed.requirements as Prisma.InputJsonValue } : {}),
+      ...(input.refSource ? { refSource: input.refSource } : {}),
     },
     select: { id: true },
   });

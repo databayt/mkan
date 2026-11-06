@@ -25,6 +25,10 @@ const POST_SELECT = {
  * lane), the chats that opened with a TikTok code (AgentTask.refSource), the
  * chatbot's work on them, and the deals they became. Null when the tables
  * cannot be read — the page then says "unknown", never a quiet zero.
+ *
+ * A chat from the /k page (k_page) counts too — the page a TikTok link opens — but only for someone
+ * who first came from TikTok or that page: WhatsApp replies link /k pages as well, and a tenant
+ * already talking to Mkan who taps one is not a new share (2026-11-07).
  */
 export async function loadFirstShare(days: number): Promise<FirstShareView | null> {
   const since = new Date(Date.now() - days * DAY);
@@ -37,10 +41,13 @@ export async function loadFirstShare(days: number): Promise<FirstShareView | nul
         select: POST_SELECT,
       }),
       db.agentTask.findMany({
-        where: { refSource: "tiktok", createdAt: { gte: since } },
+        where: {
+          createdAt: { gte: since },
+          OR: [{ refSource: "tiktok" }, { refSource: "k_page", profile: { is: { firstSource: { in: ["tiktok", "k_page"] } } } }],
+        },
         select: { id: true, profileId: true, refListingId: true, createdAt: true, status: true },
       }),
-      db.agentProfile.findMany({ where: { firstSource: "tiktok", createdAt: { gte: since } }, select: { id: true } }),
+      db.agentProfile.findMany({ where: { firstSource: { in: ["tiktok", "k_page"] }, createdAt: { gte: since } }, select: { id: true } }),
     ]);
     const ids = tasks.map((t) => t.id);
     const listingIds = [...new Set(tasks.map((t) => t.refListingId).filter((x): x is number => x != null))];

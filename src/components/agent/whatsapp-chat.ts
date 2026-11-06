@@ -308,13 +308,13 @@ export async function handleTenantWhatsApp(input: {
     ...(seed && ref ? { origin: ref } : {}),
   };
   input.onAnswering?.();
-  let appended = await appendUserMessage({ profileId: profile.id, userId: profile.userId, current, message, lang, seed });
+  let appended = await appendUserMessage({ profileId: profile.id, userId: profile.userId, current, message, lang, seed, refSource: refSource ?? refSourceOf(rest, ref) });
   // The bridge sends one phone's messages in order, so "busy" is the tail of the last turn: wait for it,
   // then leave the message to the next poll (wa-tenant.ts gives its claim back) — never drop it.
   for (const until = Date.now() + BUSY_WAIT_MS; "busy" in appended && Date.now() < until; ) {
     await sleep(1_000);
     current = current ? await db.agentTask.findUnique({ where: { id: current.id }, select: { id: true, status: true, messages: true, updatedAt: true, locale: true } }) : null;
-    appended = await appendUserMessage({ profileId: profile.id, userId: profile.userId, current, message, lang, seed });
+    appended = await appendUserMessage({ profileId: profile.id, userId: profile.userId, current, message, lang, seed, refSource: refSource ?? refSourceOf(rest, ref) });
   }
   if ("busy" in appended) return { reply: null, why: "busy" };
   const { taskId } = appended;

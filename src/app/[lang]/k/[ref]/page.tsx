@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";
-import { ArrowLeft, MessageCircle } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { db } from "@/lib/db";
 import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
@@ -21,6 +21,8 @@ import { continueOnWhatsApp } from "@/components/agent/wa-link";
 import { brokerSendMode } from "@/components/agent/broker-sends";
 import { K_PAGE_MARK } from "@/components/agent/whatsapp-format";
 import { scrubTitle } from "@/lib/redact";
+import TrackView from "@/components/analytics/track-view";
+import { WhatsAppCta } from "./whatsapp-cta";
 
 /**
  * Mkan's own page for a broker home — /en/k/K5808 (Abdout, 2026-11-01). Every link a tenant
@@ -176,6 +178,8 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
           </Link>
         }
       />
+    {/* One VIEW per visit (the TikTok funnel's first step on Mkan's side; leads count since 2026-11-07). */}
+    <TrackView listingId={home.id} />
     <main className="w-full px-4 pb-16 pt-4">
       {photos.length > 0 && (
         <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 no-scrollbar">
@@ -249,15 +253,9 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
 
       {!lost && (
         <div className="mt-5 space-y-1.5">
-          <a
-            href={continueOnWhatsApp(null, `${fill(say("checkWords", "Check {ref} for me"), { ref: ref_ })} ${K_PAGE_MARK}`)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-3 text-[15px] font-medium text-background"
-          >
-            <MessageCircle className="size-4" aria-hidden />
+          <WhatsAppCta href={continueOnWhatsApp(null, `${fill(say("checkWords", "Check {ref} for me"), { ref: ref_ })} ${K_PAGE_MARK}`)} listingId={home.id}>
             {say("brokerAnswer", "Get the broker's answer on WhatsApp")}
-          </a>
+          </WhatsAppCta>
           <p className="text-center text-xs text-muted-foreground">
             {/* "Asks the broker right away" is true only while broker sends are on for WhatsApp tenants. */}
             {sendMode === "gated"

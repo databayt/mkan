@@ -10,7 +10,9 @@
 export type TrackableEvent =
   | "VIEW"
   | "CONTACT_PHONE_REVEAL"
-  | "CONTACT_PHONE_CLICK";
+  | "CONTACT_PHONE_CLICK"
+  /** The /k page's "Get the broker's answer on WhatsApp". */
+  | "CONTACT_MESSAGE";
 
 /**
  * Fire-and-forget. `sendBeacon` is the right primitive here: it survives the

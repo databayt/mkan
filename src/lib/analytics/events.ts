@@ -41,9 +41,12 @@ export async function recordListingEvent(args: RecordArgs): Promise<RecordResult
   try {
     // Doubles as the validity gate: an event for a listing that isn't live is
     // either a probe or a host looking at their own draft, and neither is
-    // marketplace demand. This mirrors the PDP's own 404 condition.
+    // marketplace demand. This mirrors the PDP's own 404 condition — and the
+    // /k page's: a broker home found on TikTok (an unpublished lead, the
+    // LEAD_SOURCES of components/agent/search.ts) is what a TikTok link opens,
+    // so its views count too (2026-11-07: /k views went unrecorded).
     const listing = await db.listing.findFirst({
-      where: { id: args.listingId, isPublished: true },
+      where: { id: args.listingId, OR: [{ isPublished: true }, { isPublished: false, source: { in: ["TIKTOK", "FACEBOOK", "WEB"] }, lostAt: null }] },
       select: { id: true, location: { select: { city: true, zoneKey: true } } },
     });
     if (!listing) return { recorded: false, reason: "unknown-listing" };

@@ -97,7 +97,7 @@ export async function sendAgentMessage(input: {
     ...(clear.length ? { clear } : {}),
   };
 
-  const appended = await appendUserMessage({ profileId, userId: viewer.profile.userId, current, message: userMsg, lang });
+  const appended = await appendUserMessage({ profileId, userId: viewer.profile.userId, current, message: userMsg, lang, refSource: "web" });
   if ("busy" in appended) return { ok: false, error: "busy" };
   const { taskId } = appended;
 
