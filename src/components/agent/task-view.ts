@@ -160,6 +160,17 @@ export async function loadTask(viewer: Viewer, taskId: string): Promise<AgentTas
 }
 
 /**
+ * A chat opened by a signed link (chat-link.ts) — the phone's own WhatsApp chat in any browser. Read
+ * only: no ownership, and no recoverStuck write (a stuck turn is left for the owner's next poll).
+ */
+export async function loadSharedTask(taskId: string): Promise<AgentTaskView | null> {
+  const task = await db.agentTask.findUnique({ where: { id: taskId }, select: TASK_SELECT });
+  if (!task) return null;
+  const live = { ...task, events: latestTurnEvents(task.events) };
+  return withViewings(toView(live), live);
+}
+
+/**
  * The poll: one indexed read of status, updatedAt and the last seq. Unchanged
  * → "same" (the route answers 204) — a running turn's poll no longer reads
  * the messages, shortlist and 60 events every second just to find no change.

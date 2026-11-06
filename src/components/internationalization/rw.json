@@ -6031,6 +6031,13 @@
       "submitHint": "Kanda Enter ushakishe",
       "prev": "Ikibazo kibanza",
       "next": "Ikibazo gikurikira"
+    },
+    "shared": {
+      "title": "Inzu zo mu biganiro byawe kuri WhatsApp",
+      "intro": "Amafoto n'ibyo kwimukira bizagutwara. Ohereza nimero y'inzu kuri WhatsApp, Mkan ibaze komisiyoneri.",
+      "empty": "Nta nzu iri muri ibi biganiro ubu. Bwira Mkan kuri WhatsApp icyo ushaka.",
+      "continue": "Komeza kuri WhatsApp",
+      "newSearch": "Shakisha bundi bushya"
     }
   },
   "monetize": {
@@ -6058,7 +6065,9 @@
       "leverZero": "Its main number is zero this window.",
       "capped": "The Claude spend cap is hit — chats fall back to the simpler readers.",
       "failRateHigh": "More than 1 in 5 chats failed.",
-      "brokerSendsOff": "Broker sends are off — the funnel stops at the shortlist, no deal can close."
+      "brokerSendsOff": "Broker sends are off — the funnel stops at the shortlist, no deal can close.",
+      "jobMissing": "Akazi iki gice gishingiyeho nta nyandiko y'uko kakozwe gasize — nta gihamya ko gakora.",
+      "targetsMissed": "Munsi ya kimwe cya kabiri cy'intego zacyo nizo zagezweho muri iki gihe."
     },
     "blocks": {
       "scrape": {
@@ -6235,7 +6244,12 @@
     "adChats": "{n} chats this window opened with a TikTok home code.",
     "gates": {
       "brokerSends": "Broker sends: {mode}",
-      "capped": "Claude cap hit"
+      "capped": "Claude cap hit",
+      "modes": {
+        "off": "zirahagaritswe",
+        "gated": "zirakora ku bakodesha ba WhatsApp bahitamo inzu",
+        "on": "zirakora"
+      }
     },
     "experiments": {
       "title": "Experiments — one lever per block",
@@ -6465,7 +6479,7 @@
     "heading": "Monetize the chatbot business",
     "statusRow": {
       "title": "Run by the Mkan agent",
-      "line": "{blocks} blocks · {broken} broken · {tasks} tasks open"
+      "line": "{blocks} blocks · {broken} zikeneye kwitabwaho · {tasks} tasks open"
     },
     "banner": {
       "next": "Next task",

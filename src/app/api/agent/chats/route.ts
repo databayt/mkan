@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { coerceMemory } from "@/components/agent/memory";
-import { AGENT_COOKIE, resolveViewer } from "@/components/agent/profile";
+import { AGENT_COOKIE, cookieWorthWriting, resolveViewer } from "@/components/agent/profile";
 import type { AgentChatRow, AgentChatsView } from "@/components/agent/types";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ const PAGE = 30;
  */
 export async function GET(req: NextRequest) {
   const hasCookie = !!(await cookies()).get(AGENT_COOKIE)?.value;
-  const viewer = await resolveViewer({ write: hasCookie });
+  const viewer = await resolveViewer({ write: hasCookie && (await cookieWorthWriting()) });
   const empty: AgentChatsView = { chats: [], next: null, signedIn: !!viewer.profile?.userId, memory: null };
   if (viewer.ids.length === 0) return NextResponse.json(empty, { headers: { "Cache-Control": "no-store" } });
 

@@ -256,6 +256,9 @@ export function useAgentTask(
             return;
           }
           if (res.task) setTask((prev) => mergeTask(prev, res.task!));
+          // No view came back (a read failed after the send): poll the chat the send made — a placeholder
+          // with no id never polls, and the composer would stay locked (2026-11-06).
+          else setTask((prev) => (prev && prev.id !== res.taskId ? { ...prev, id: res.taskId } : prev));
           // A new chat takes its address now; replace, so Back skips the empty page.
           if (syncUrl && res.taskId !== before?.id) window.history.replaceState(null, "", chatUrl(res.taskId));
         });

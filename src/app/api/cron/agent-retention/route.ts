@@ -17,7 +17,9 @@ export async function GET(request: NextRequest) {
   if (denied) return denied;
   const cutoff = new Date(Date.now() - IDLE_DAYS * 86_400_000);
   const [profiles, orphans] = await Promise.all([
-    db.agentProfile.deleteMany({ where: { userId: null, updatedAt: { lt: cutoff } } }),
+    // Idle means no chat either: a profile's updatedAt moves only with its memory, so a tenant who keeps
+    // chatting (every WhatsApp profile has no userId) must not lose their chats (2026-11-06).
+    db.agentProfile.deleteMany({ where: { userId: null, updatedAt: { lt: cutoff }, tasks: { none: { updatedAt: { gte: cutoff } } } } }),
     db.agentTask.deleteMany({ where: { profileId: null, updatedAt: { lt: cutoff } } }),
   ]);
   return NextResponse.json({ ok: true, profiles: profiles.count, orphanChats: orphans.count });

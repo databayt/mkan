@@ -139,6 +139,19 @@ export async function resolveViewer({ write }: { write: boolean }): Promise<View
 }
 
 /** A write-side viewer always has a profile. */
+/**
+ * Whether a read (the ☰ chat list) may resolve as a write: only when there is something to adopt or
+ * fold — a signed-in account, a profile this cookie already has, or chats from before profiles. A
+ * cookie that matches nothing makes no row (2026-11-06: any cookie value sent there created one).
+ */
+export async function cookieWorthWriting(): Promise<boolean> {
+  const cookie = readCookie((await cookies()).get(AGENT_COOKIE)?.value);
+  if (!cookie?.key) return false;
+  if ((await auth().catch(() => null))?.user?.id) return true;
+  if (await db.agentProfile.findUnique({ where: { keyHash: hashKey(cookie.key) }, select: { id: true } })) return true;
+  return (await db.agentTask.count({ where: { sessionKey: cookie.key, profileId: null } })) > 0;
+}
+
 export async function requireProfile(): Promise<Viewer & { profile: AgentProfileRow }> {
   const viewer = await resolveViewer({ write: true });
   if (!viewer.profile) throw new Error("agent profile missing after a write resolve");

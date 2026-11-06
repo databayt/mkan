@@ -40,6 +40,7 @@ import {
 import type { ShortlistItem } from "./types";
 import { postSlackCard, sendMessages } from "./whatsapp";
 import { scrubTitle } from "@/lib/redact";
+import { chatLink } from "./demand";
 import { readState } from "./wa-state";
 import { phoneKey } from "../../../scripts/wa/outbox-pure";
 
@@ -88,7 +89,7 @@ export async function prepareDealSheet(task: DealTask, listingId: number): Promi
   const item = ((task.shortlist as ShortlistItem[] | null) ?? []).find((s) => s.id === listingId);
   const lang = langOf(task.locale);
   const body = dealSheetMessage(
-    { title: scrubTitle(item?.title) || `#${listingId}`, ref: `K${listingId}`, cost: item?.cost ?? null, rep: viewingRep(), link: `${publicAppUrl()}/${lang}/find?c=${task.id}` },
+    { title: scrubTitle(item?.title) || `#${listingId}`, ref: `K${listingId}`, cost: item?.cost ?? null, rep: viewingRep(), link: chatLink(task.id, lang) },
     lang,
   );
   const value = { taskId: task.id, listingId, at: new Date().toISOString() } satisfies ViewingAsk;

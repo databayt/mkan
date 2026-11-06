@@ -6031,6 +6031,13 @@
       "submitHint": "Press Enter to search",
       "prev": "Previous question",
       "next": "Next question"
+    },
+    "shared": {
+      "title": "The homes from your WhatsApp chat",
+      "intro": "Photos and what moving in costs. Reply on WhatsApp with a home's number and Mkan checks it with the broker.",
+      "empty": "No homes in this chat yet. Tell Mkan on WhatsApp what you are looking for.",
+      "continue": "Continue on WhatsApp",
+      "newSearch": "New search"
     }
   },
   "monetize": {
@@ -6058,7 +6065,9 @@
       "leverZero": "Its main number is zero this window.",
       "capped": "The Claude spend cap is hit — chats fall back to the simpler readers.",
       "failRateHigh": "More than 1 in 5 chats failed.",
-      "brokerSendsOff": "Broker sends are off — the funnel stops at the shortlist, no deal can close."
+      "brokerSendsOff": "Broker sends are off — the funnel stops at the shortlist, no deal can close.",
+      "jobMissing": "A job this block depends on left no run record — not proof it runs.",
+      "targetsMissed": "Fewer than half of its targets are met this window."
     },
     "blocks": {
       "scrape": {
@@ -6235,7 +6244,12 @@
     "adChats": "{n} chats this window opened with a TikTok home code.",
     "gates": {
       "brokerSends": "Broker sends: {mode}",
-      "capped": "Claude cap hit"
+      "capped": "Claude cap hit",
+      "modes": {
+        "off": "off",
+        "gated": "on for WhatsApp tenants who pick a home",
+        "on": "on"
+      }
     },
     "experiments": {
       "title": "Experiments — one lever per block",
@@ -6465,7 +6479,7 @@
     "heading": "Monetize the chatbot business",
     "statusRow": {
       "title": "Run by the Mkan agent",
-      "line": "{blocks} blocks · {broken} broken · {tasks} tasks open"
+      "line": "{blocks} blocks · {broken} need attention · {tasks} tasks open"
     },
     "banner": {
       "next": "Next task",

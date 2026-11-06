@@ -445,10 +445,12 @@ async function tellWhatsAppTenants(tasks: AnsweredTask[], listingId: number, ans
     await Promise.all(tasks.filter((t) => t.profile?.waPhone).map((t) => sendDealSheet(t, listingId).catch((err) => console.warn(`[agent] deal sheet: ${(err as Error).message}`))));
     return;
   }
+  // Dynamic: demand.ts imports this module.
+  const { chatLink } = await import("./demand");
   const messages = tasks.flatMap((t) => {
     const to = t.profile?.waPhone;
     if (!to) return [];
-    const link = `${publicAppUrl()}/${t.locale}/find?c=${t.id}`;
+    const link = chatLink(t.id, t.locale);
     if (answer === "NO_REPLY") return tenantActive(t.messages, now) ? [{ kind: "TENANT_ALERT" as const, to, body: noReplyMessage(t.locale, titleIn(t, listingId), link), label: "tenant" }] : [];
     return [{ kind: "TENANT_ALERT" as const, to, body: brokerAnswerMessage(t.locale, titleIn(t, listingId), answer === "AVAILABLE", link, canPick), label: "tenant" }];
   });

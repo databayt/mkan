@@ -211,6 +211,16 @@ export async function runTurn(taskId: string, onShown: () => void = () => {}): P
   }, TURN_DEADLINE_MS);
   try {
     await turn(taskId, gate, onShown);
+  } catch (err) {
+    // A throw before the turn wrote anything (its first read, say, on a Neon blip) would leave the task
+    // RUNNING until the 90 s recovery: answer with the error now, as the deadline would (2026-11-06).
+    console.error(`[agent] turn ${taskId} threw before its reply`, err);
+    if (!gate.claimed && !gate.abandoned) {
+      gate.abandoned = true;
+      await appendReply(taskId, { role: "agent", kind: "error", at: new Date().toISOString() }, "FAILED")
+        .catch((e) => console.error("[agent] error reply not written", e))
+        .finally(onShown);
+    }
   } finally {
     clearTimeout(deadline);
   }

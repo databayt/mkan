@@ -10,8 +10,8 @@
 # Two things used to fall back to NEXTAUTH_SECRET and must not change with it: the bus-ticket QR
 # signatures (TICKET_QR_SECRET — tickets already issued keep verifying) and the analytics visitor
 # salt (ANALYTICS_SALT_SECRET — visitor ids stay stable). Both are pinned to the OLD value first.
-# The old value is kept as cf-mkan-AUTH_SECRET-prev-2026-11-06 for a rollback. A chat-link secret
-# (MKAN_CHAT_LINK_SECRET, signs /find?c=…&s=… links in WhatsApp messages) is made if missing.
+# The old value is kept as cf-mkan-AUTH_SECRET-prev-2026-11-06 for a rollback. (Chat links sign with a
+# key derived from MKAN_WA_BRIDGE_SECRET — src/components/agent/chat-link.ts — so nothing to make here.)
 # No value is ever printed.
 set -euo pipefail
 kc() { security find-generic-password -s "$1" -w 2>/dev/null || true; }
@@ -27,10 +27,9 @@ NEW=$(openssl rand -base64 32)
 [ "$NEW" != "$OLD" ] || { echo "random value repeated?"; exit 1; }
 put cf-mkan-AUTH_SECRET "mkan AUTH_SECRET" "$NEW"
 put cf-mkan-NEXTAUTH_SECRET "mkan NEXTAUTH_SECRET (= AUTH_SECRET)" "$NEW"
-[ -n "$(kc cf-mkan-MKAN_CHAT_LINK_SECRET)" ] || put cf-mkan-MKAN_CHAT_LINK_SECRET "mkan /find chat-link HMAC" "$(openssl rand -base64 32)"
 unset OLD NEW
 
-for k in AUTH_SECRET NEXTAUTH_SECRET TICKET_QR_SECRET ANALYTICS_SALT_SECRET MKAN_CHAT_LINK_SECRET; do
+for k in AUTH_SECRET NEXTAUTH_SECRET TICKET_QR_SECRET ANALYTICS_SALT_SECRET; do
   v=$(kc "cf-mkan-$k"); echo "  cf-mkan-$k: ${#v} chars"
 done
 echo "✓ rotated in the Keychain. It reaches production with the next deploy (scripts/cf-secrets.sh, then a container restart)."

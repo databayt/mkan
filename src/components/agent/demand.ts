@@ -13,10 +13,11 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { publicAppUrl } from "../../../scripts/crm/public-links";
+import { chatSig } from "./chat-link";
 import { appendTaskEvents, wasIntroduced } from "./broker";
 import { demandMessage, needSummary, tenantAlertMessage } from "./broker-message";
 import { gateForTask } from "./broker-sends";
-import { DEMAND_TTL_DAYS, pickBrokersForDemand } from "./demand-pure";
+import { DEMAND_TTL_DAYS, matchedText, pickBrokersForDemand } from "./demand-pure";
 import { rankCandidates } from "./rank";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements, type Requirements } from "./requirements";
 import { searchKigali, toShortlist } from "./search";
@@ -25,7 +26,11 @@ import { postSlackCard, sendMessages, type Outgoing } from "./whatsapp";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
 export const demandLink = (token: string, lang = "en") => `${publicAppUrl()}/${lang}/b/d/${token}`;
-export const chatLink = (taskId: string, lang = "en") => `${publicAppUrl()}/${lang}/find?c=${taskId}`;
+/** The chat's page, signed so the phone's own chat opens in any browser (chat-link.ts), read-only. */
+export const chatLink = (taskId: string, lang = "en") => {
+  const sig = chatSig(taskId);
+  return `${publicAppUrl()}/${lang}/find?c=${taskId}${sig ? `&s=${sig}` : ""}`;
+};
 
 /** Brokers loaded per request before scoring: the most recently active first. */
 const BROKER_POOL = 400;
@@ -140,8 +145,13 @@ export async function matchRequest(
 
   const task = await db.agentTask.findUnique({ where: { id: request.taskId }, select: { shortlist: true } });
   const current = ((task?.shortlist as unknown as ShortlistItem[] | null) ?? []).filter((s) => !ids.includes(s.id));
+  // The chat shows cards only under a shortlist message: the match gets one of its own (2026-11-06: the
+  // homes went into the shortlist of a "nothing found" chat and never showed). Appended in SQL, and not
+  // into a chat whose turn is running — that turn's own write would drop it.
+  const said = JSON.stringify([{ role: "agent", kind: "shortlist", count: cards.length, demand: true, text: matchedText(lang), at: new Date().toISOString() }]);
   await db.$transaction([
     db.agentTask.update({ where: { id: request.taskId }, data: { shortlist: json([...cards, ...current].slice(0, 12)) } }),
+    db.$executeRaw`UPDATE "AgentTask" SET "messages" = COALESCE("messages", '[]'::jsonb) || ${said}::jsonb, "updatedAt" = now() WHERE "id" = ${request.taskId} AND "status" <> 'RUNNING'`,
     db.tenantRequest.update({
       where: { id: request.id },
       data: { status: "MATCHED", matchedListingIds: { push: ids }, lastMatchedAt: new Date() },

@@ -157,3 +157,10 @@ export function normalisePhone(input: string): string | null {
   if (digits.length < 9 || digits.length > 15) return null;
   return `+${digits}`;
 }
+
+/** The line over homes a saved search found later (demand.ts matchRequest). */
+export function matchedText(lang: "en" | "ar" | "rw"): string {
+  if (lang === "ar") return "وصلت منازل جديدة تناسب بحثك:";
+  if (lang === "rw") return "Haje inzu nshya zihuye n'ibyo ushaka:";
+  return "New homes that fit your search came in:";
+}
