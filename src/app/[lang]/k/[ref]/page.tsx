@@ -18,6 +18,7 @@ import { ChatHeader, headerButton } from "@/components/agent/header";
 import { homeIdOfRef } from "@/components/agent/home-path";
 import { LEAD_SOURCES } from "@/components/agent/search";
 import { continueOnWhatsApp } from "@/components/agent/wa-link";
+import { brokerSendMode } from "@/components/agent/broker-sends";
 import { K_PAGE_MARK } from "@/components/agent/whatsapp-format";
 import { scrubTitle } from "@/lib/redact";
 
@@ -116,7 +117,7 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
 
   const l = langOf(lang);
   const t = COPY[l];
-  const d = await getDictionary(lang);
+  const [d, sendMode] = await Promise.all([getDictionary(lang), brokerSendMode().catch(() => "off" as const)]);
   const c = d.agent?.card as Record<string, unknown> | undefined;
   const say = (key: string, fallback: string) => ((c?.[key] as string | undefined) ?? fallback);
   const lines = c?.lines as Record<string, string> | undefined;
@@ -258,7 +259,10 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
             {say("brokerAnswer", "Get the broker's answer on WhatsApp")}
           </a>
           <p className="text-center text-xs text-muted-foreground">
-            {say("brokerAnswerHint", "Send the message that opens, and Mkan asks the broker right away. The answer comes to you on WhatsApp, and it's free.")}
+            {/* "Asks the broker right away" is true only while broker sends are on for WhatsApp tenants. */}
+            {sendMode === "gated"
+              ? say("brokerAnswerHint", "Send the message that opens, and Mkan asks the broker right away. The answer comes to you on WhatsApp, and it's free.")
+              : say("brokerAnswerHintPerson", "Send the message that opens, and someone at Mkan checks with the broker. The answer comes to you on WhatsApp, and it's free.")}
           </p>
         </div>
       )}

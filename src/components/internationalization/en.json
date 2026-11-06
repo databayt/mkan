@@ -5641,7 +5641,8 @@
       },
       "brokerAnswer": "Get the broker's answer on WhatsApp",
       "brokerAnswerHint": "Send the message that opens, and Mkan asks the broker right away. The answer comes to you on WhatsApp, and it's free.",
-      "checkWords": "Check {ref} for me"
+      "checkWords": "Check {ref} for me",
+      "brokerAnswerHintPerson": "Send the message that opens, and someone at Mkan checks with the broker. The answer comes to you on WhatsApp, and it's free."
     },
     "entry": "Ask the rental agent",
     "broker": {

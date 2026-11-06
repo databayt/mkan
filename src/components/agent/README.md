@@ -238,9 +238,14 @@ tenant WA → Evolution in the hogwarts container (instance "mkan", shared Whats
 - `/find` ⋯ → Continue on WhatsApp sends `ref:<task id>`: the phone's new chat starts from the web one.
 - A search kept open from WhatsApp alerts that same number (`TenantRequest.phone` set on the turn).
 - A broker's answer about a home the tenant asked on (WhatsApp words or the link) reaches the tenant on
-  WhatsApp (`broker.ts` `tellWhatsAppTenants`, via `AgentProfile.waPhone`). A yes carries the broker's
-  number (the one that answered, else the one asked) so the tenant calls them to arrange the viewing;
-  the web card shows Call / WhatsApp (`ShortlistItem.brokerPhone`, laid on in `task-view.ts`).
+  WhatsApp (`broker.ts` `tellWhatsAppTenants`, via `AgentProfile.waPhone`). Since 2026-11-01 a yes never
+  carries the broker's number (Mkan stays in the middle): the tenant gets the deal sheet and is asked
+  when they can come; tenant-facing titles pass through `scrubTitle` so an ad's own number is dropped too.
+- Since 2026-11-06 each WhatsApp message is claimed once (`wa-state.ts` claimMessage — never lost, never
+  answered twice), STOP stops every outbound message, a pick during a running turn waits instead of
+  being refused, "how did the viewing go?" has a reader (`deal.ts` recordAfterViewing), and links to a
+  chat are signed (`chat-link.ts`) so they open its homes read-only in any browser. Proven with
+  `pnpm wa:e2e` (no sends).
 - Rules (`scripts/wa/tenant-pure.ts`): reply only to messages a tenant sent (never a first message);
   STOP silences until START; a person at Mkan typing in the chat pauses the agent there for 12 h;
   messages older than 1 h are not answered; 20 replies/phone/hour, 120/line/hour.

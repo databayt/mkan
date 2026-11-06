@@ -264,3 +264,21 @@ describe("asksForHome — one of Abdout's own contacts asking for a home", () =>
     expect(asksForHome("انا في البيت")).toBe(false);
   });
 });
+
+describe("the chat keeps its language on a message that has none (2026-11-06)", () => {
+  it("numbers, prices, codes, emoji and 'ok' keep it", async () => {
+    const { waLang, isLanguageNeutral } = await import("@/components/agent/whatsapp-format");
+    for (const t of ["300k", "1", "K6516", "👍", "ok", "yego", "400,000 rwf", "Thanks!"]) expect(isLanguageNeutral(t)).toBe(true);
+    expect(waLang("300k", "ar")).toBe("ar");
+    expect(waLang("K6516", "rw")).toBe("rw");
+    expect(waLang("ok", "ar")).toBe("ar");
+  });
+
+  it("a real sentence still sets it", async () => {
+    const { waLang, isLanguageNeutral } = await import("@/components/agent/whatsapp-format");
+    expect(isLanguageNeutral("I want 2 bedrooms in Remera")).toBe(false);
+    expect(waLang("I want 2 bedrooms in Remera", "ar")).toBe("en");
+    expect(waLang("أريد شقة في كيميهورورا", "en")).toBe("ar");
+    expect(waLang("ndashaka inzu", "en")).toBe("rw");
+  });
+});

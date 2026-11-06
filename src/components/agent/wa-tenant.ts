@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 /**
  * Tenants on WhatsApp → the rental agent, inside the container.
  *
@@ -11,23 +13,38 @@ import "server-only";
 import { MEDIA_NUDGE_MS, tenantDecision, typePleaseText, type TenantDecision } from "../../../scripts/wa/tenant-pure";
 import { db } from "@/lib/db";
 import { sendPresence, sendText } from "@/lib/whatsapp/evolution";
-import { claimMessage, holdReply, MAX_ANSWER_TRIES, mutateState, readState, releaseMessage, settleMessage, writeState } from "./wa-state";
+import { addToList, claimMessage, holdReply, MAX_ANSWER_TRIES, mutateState, readState, releaseMessage, removeFromList, settleMessage, writeState } from "./wa-state";
 import { handleTenantWhatsApp, silenceTenant } from "./whatsapp-chat";
 import { postSlackCard } from "./whatsapp";
 
 const SENT_KEEP = 2000;
 
-type Sent = { id: string; phone: string; at: string }[];
+type Sent = { id: string; phone: string; at: string; h?: string }[];
 
-/** The agent's own message ids — so the echo of a reply is not mistaken for a person typing. */
-export async function recordSent(phone: string, id: string | undefined): Promise<void> {
-  if (!id) return;
-  await mutateState<Sent>("tenant-sent", [], (sent) => [...sent, { id, phone, at: new Date().toISOString() }].slice(-SENT_KEEP));
+/** A reply's words, hashed: its echo is ours even when it comes back before the send returned its id. */
+const textHash = (t: string) => createHash("sha1").update(t.replace(/\s+/g, " ").trim()).digest("hex").slice(0, 12);
+/** An echo of the same words this soon after sending is the agent's own, not a person typing. */
+const ECHO_WINDOW_MS = 120_000;
+
+/**
+ * The agent's own message ids — so the echo of a reply is not mistaken for a person typing. Called
+ * with the text before a send (no id yet) and with the id after: a slow send's echo used to arrive
+ * first, look like a person taking over, and mute the agent in that chat for 12 h (2026-11-06).
+ */
+export async function recordSent(phone: string, id: string | undefined, text?: string): Promise<void> {
+  if (!id && !text) return;
+  const entry = { id: id ?? "", phone, at: new Date().toISOString(), ...(text ? { h: textHash(text) } : {}) };
+  await mutateState<Sent>("tenant-sent", [], (sent) => [...sent, entry].slice(-SENT_KEEP));
 }
 
 /** A fromMe message in a tenant chat: ours, or a person at Mkan taking over. */
-export async function noteFromMe(phone: string, id: string | undefined, at: Date): Promise<void> {
-  if (!id || (await readState<Sent>("tenant-sent", [])).some((s) => s.id === id)) return;
+export async function noteFromMe(phone: string, id: string | undefined, at: Date, text?: string): Promise<void> {
+  const sent = await readState<Sent>("tenant-sent", []);
+  if (!id || sent.some((s) => s.id === id)) return;
+  if (text) {
+    const h = textHash(text);
+    if (sent.some((s) => s.phone === phone && s.h === h && Math.abs(new Date(s.at).getTime() - at.getTime()) < ECHO_WINDOW_MS)) return;
+  }
   await mutateState<Record<string, string>>("tenant-human", {}, (human) =>
     !human[phone] || new Date(human[phone]!).getTime() < at.getTime() ? { ...human, [phone]: at.toISOString() } : human,
   );
@@ -76,8 +93,9 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
           log(`tenant +${m.phone} reply handed to a person after failed sends`);
           return "error";
         }
+        await recordSent(m.phone, undefined, claim.text);
         const out = await sendText(m.phone, claim.text);
-        await recordSent(m.phone, out?.key?.id);
+        await recordSent(m.phone, out?.key?.id, claim.text);
         await settleMessage(m.msgId);
         log(`tenant +${m.phone} answered on a re-send (${claim.text.length} chars)`);
         return "sent";
@@ -95,7 +113,8 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         readState<Sent>("tenant-sent", []),
       ]);
       const hourAgo = now.getTime() - 3_600_000;
-      const recent = sent.filter((s) => new Date(s.at).getTime() > hourAgo);
+      // Sent replies only (they carry an id): the pre-send echo marks would count every reply twice.
+      const recent = sent.filter((s) => s.id && new Date(s.at).getTime() > hourAgo);
       const decision = tenantDecision({
         text: m.text,
         sentAt: m.sentAt,
@@ -107,7 +126,7 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         media: m.media,
       });
       if (decision === "stop") {
-        await mutateState<string[]>("tenant-stop", [], (list) => [...new Set([...list, m.phone])]);
+        await addToList("tenant-stop", m.phone);
         await silenceTenant(m.phone);
         await settleMessage(m.msgId);
         log(`tenant +${m.phone} said STOP — silenced`);
@@ -124,15 +143,16 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         const task = await db.agentTask.findFirst({ where: { profile: { waPhone: `+${m.phone}` } }, orderBy: { updatedAt: "desc" }, select: { locale: true } }).catch(() => null);
         const text = typePleaseText(task?.locale ?? "en");
         await holdReply(m.msgId, text, claim.tries);
+        await recordSent(m.phone, undefined, text);
         const out = await sendText(m.phone, text);
-        await recordSent(m.phone, out?.key?.id);
+        await recordSent(m.phone, out?.key?.id, text);
         await writeState(nudgeKey, { at: new Date().toISOString() });
         await settleMessage(m.msgId);
         log(`tenant +${m.phone} sent media — asked to type`);
         return "sent";
       }
       if (decision === "start") {
-        await mutateState<string[]>("tenant-stop", [], (list) => list.filter((p) => p !== m.phone));
+        await removeFromList("tenant-stop", m.phone);
         log(`tenant +${m.phone} said START`);
       } else if (decision !== "answer") {
         await settleMessage(m.msgId);
@@ -154,8 +174,9 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         return "nothing";
       }
       await holdReply(m.msgId, res.reply, claim.tries);
+      await recordSent(m.phone, undefined, res.reply);
       const out = await sendText(m.phone, res.reply);
-      await recordSent(m.phone, out?.key?.id);
+      await recordSent(m.phone, out?.key?.id, res.reply);
       await settleMessage(m.msgId);
       log(`tenant +${m.phone} answered (${res.reply.length} chars)`);
       return "sent";

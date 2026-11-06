@@ -5641,7 +5641,8 @@
       },
       "brokerAnswer": "Bona igisubizo cya komisiyoneri kuri WhatsApp",
       "brokerAnswerHint": "Ohereza ubutumwa bufunguka, Mkan ihita ibaza komisiyoneri. Igisubizo kikugeraho kuri WhatsApp, kandi ni ubuntu.",
-      "checkWords": "Ese inzu {ref} iracyahari? Mbarize."
+      "checkWords": "Ese inzu {ref} iracyahari? Mbarize.",
+      "brokerAnswerHintPerson": "Ohereza ubutumwa bufunguka, umuntu wo muri Mkan abaze komisiyoneri. Igisubizo kizakugeraho kuri WhatsApp, kandi ni ubuntu."
     },
     "entry": "Baza umukozi w'ubukode",
     "broker": {

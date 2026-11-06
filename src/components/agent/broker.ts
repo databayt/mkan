@@ -278,9 +278,14 @@ export function pickBroker(
     const r = recent.get(`${b.listingId}:${b.userId}`);
     if (r?.status === "PENDING" && r.expiresAt.getTime() > now) return { join: r, broker: b };
   }
+  // One person can post a home under two accounts: a number already asked about it is not asked again
+  // as "the next broker" (2026-11-06).
+  const digits = (b: BrokerLink) => (b.user.phoneNumber ?? "").replace(/\D/g, "");
+  const askedNumbers = new Set(brokers.filter((b) => recent.has(`${b.listingId}:${b.userId}`)).map(digits).filter(Boolean));
   // A broker who answered "available" may be asked again once that answer is old; silence and "rented" wait out the gap.
   const fresh = brokers.find((b) => {
     const r = recent.get(`${b.listingId}:${b.userId}`);
+    if (!r && digits(b) && askedNumbers.has(digits(b))) return false;
     return !r || (r.status === "AVAILABLE" && now - r.createdAt.getTime() > CONFIRMATION_TTL_DAYS * 86_400_000);
   });
   return fresh ? { ask: fresh } : null;
@@ -397,10 +402,14 @@ export async function applyAnswer(listingId: number, answer: Answer, brokerPhone
     // "Taken" closes the earlier "available" answers too: the home is gone (2026-11-06).
     await db.brokerRequest.updateMany({ where: { listingId, status: answer === "RENTED" ? { in: ["PENDING", "AVAILABLE"] } : "PENDING" }, data: { status: answer } });
   }
-  const tasks = await db.agentTask.findMany({
-    where: { status: { in: ["WAITING", "DONE"] }, updatedAt: { gte: new Date(Date.now() - 7 * 86_400_000) }, brokerRequests: { some: { listingId } } },
-    select: { id: true, shortlist: true, locale: true, messages: true, profile: { select: { waPhone: true } } },
+  const found = await db.agentTask.findMany({
+    // RUNNING too: an answer that lands mid-turn is written into the chat, and the turn keeps it (run.ts).
+    where: { status: { in: ["WAITING", "DONE", "RUNNING"] }, updatedAt: { gte: new Date(Date.now() - 7 * 86_400_000) }, brokerRequests: { some: { listingId } } },
+    select: { id: true, shortlist: true, locale: true, messages: true, profile: { select: { waPhone: true } }, brokerRequests: { where: { listingId }, select: { status: true } } },
   });
+  // "No reply" is news only to a tenant still waiting: one whose broker already said yes (or taken) in
+  // these 7 days used to hear "the broker hasn't answered" when a later ask expired (2026-11-06).
+  const tasks = answer === "NO_REPLY" ? found.filter((t) => !t.brokerRequests.some((r) => r.status === "AVAILABLE" || r.status === "RENTED")) : found;
   const availability = answer === "AVAILABLE" ? "confirmed" : answer === "RENTED" ? "rented" : "no_reply";
   await Promise.all(
     tasks.map(async (t) => {

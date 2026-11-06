@@ -57,7 +57,8 @@ import { answerTenant, noteFromMe, recordSent } from "./wa-tenant";
 import { postSlackCard } from "./whatsapp";
 
 const LEASE = "outbox-lease";
-const LEASE_MS = 5 * 60_000;
+/** Longer than a pass with tenant turns in it (each can take 16 s+); a pass releases it when done. */
+const LEASE_MS = 10 * 60_000;
 const REPLY_LOOKBACK_MS = 24 * 3_600_000;
 const SEEN_KEEP = 3000;
 /** Photos sent before the price wait this long for it. */
@@ -172,6 +173,12 @@ async function drain(dry: boolean, log: Log, sendsOff: boolean): Promise<{ sent:
   for (const { row, reason } of plan.skip) {
     log(`skip ${row.id} ${row.kind}: ${SKIP_TEXT[reason]}`);
     if (!dry) await db.outboundMessage.update({ where: { id: row.id }, data: { status: "SKIPPED", error: SKIP_TEXT[reason] } });
+    // An ask that never went out (too old, the broker opted out) is not "asked": its requests expire now,
+    // so the hourly pass hands the home to the next broker — they sat PENDING until the tenant heard
+    // "no reply" from a broker nobody had asked (2026-11-06). Sends switched off is left to a person.
+    if (!dry && row.kind === "BROKER_REQUEST" && row.brokerRequestIds.length && (reason === "stale" || reason === "opted-out")) {
+      await db.brokerRequest.updateMany({ where: { id: { in: row.brokerRequestIds }, status: "PENDING", sentAt: null }, data: { expiresAt: new Date() } }).catch(() => {});
+    }
   }
 
   let sent = 0;
@@ -204,8 +211,9 @@ async function drain(dry: boolean, log: Log, sendsOff: boolean): Promise<{ sent:
     try {
       // Brokers see "typing…" first, as from a person; tenant alerts go straight out.
       if (row.kind !== "TENANT_ALERT") await sendPresence(row.to, typingMs(body));
+      if (row.kind === "TENANT_ALERT") await recordSent(phoneKey(row.to), undefined, body);
       const out = await sendText(row.to, body);
-      if (row.kind === "TENANT_ALERT") await recordSent(phoneKey(row.to), out?.key?.id);
+      if (row.kind === "TENANT_ALERT") await recordSent(phoneKey(row.to), out?.key?.id, body);
       // A broker who replies to this very message (WhatsApp's quote) answers this ask, not their newest one.
       else if (out?.key?.id) await writeState(askMsgKey(out.key.id), { outboundId: row.id }).catch(() => {});
       const sentAt = new Date();
@@ -336,7 +344,7 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
   }
 
   // A person at Mkan typing in a tenant's chat pauses the agent there (wa-tenant.ts).
-  if (!dry) for (const m of all) if (m.fromMe && m.direct && m.phone && !byPhone.has(m.phone) && !posterPhones.has(m.phone)) await noteFromMe(m.phone, m.id, m.sentAt);
+  if (!dry) for (const m of all) if (m.fromMe && m.direct && m.phone && !byPhone.has(m.phone) && !posterPhones.has(m.phone)) await noteFromMe(m.phone, m.id, m.sentAt, m.text);
   // The TikTok repost ask goes out from the phone, not from here: remember it, so the
   // broker's "yes" answers that ask and not an open "is this available?" (broker-inbox.ts).
   if (!dry) for (const m of all) if (m.fromMe && m.direct && m.phone && (byPhone.has(m.phone) || posterPhones.has(m.phone)) && isRepostAsk(m.text)) await writeState(repostAskKey(m.phone), { at: m.sentAt.toISOString() });
@@ -456,7 +464,8 @@ export async function runOutbox(opts: { dry?: boolean; log?: Log } = {}): Promis
     if (!dry) await recordRun(false, `instance "mkan" is ${state} — run pnpm wa:pair`);
     if (!dry) return { state, sent: 0, replies: 0, skipped: "not-paired" };
   }
-  if (!dry && !(await takeLease(LEASE, LEASE_MS))) return { state, sent: 0, replies: 0, skipped: "locked" };
+  const lease = dry ? null : await takeLease(LEASE, LEASE_MS);
+  if (!dry && !lease) return { state, sent: 0, replies: 0, skipped: "locked" };
   try {
     // Read once per pass: a person flips it with `pnpm wa:brokers` (broker-sends.ts).
     const sendsOff = (await brokerSendMode()) !== "gated";
@@ -473,6 +482,6 @@ export async function runOutbox(opts: { dry?: boolean; log?: Log } = {}): Promis
     if (!dry) await recordRun(false, (err as Error).message);
     throw err;
   } finally {
-    if (!dry) await releaseLease(LEASE);
+    if (!dry) await releaseLease(LEASE, lease);
   }
 }

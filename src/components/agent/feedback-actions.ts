@@ -10,7 +10,6 @@ import { db } from "@/lib/db";
 import type { Locale } from "@/components/internationalization/config";
 import { listingPath } from "@/lib/listing-code";
 import { appendTaskEvent } from "./broker";
-import { askAvailabilityFor } from "./availability";
 import { coerceMemory, emptyMemory, MAX_IDS, PREF_FIELDS, type AgentMemory, type PrefField } from "./memory";
 import { ownedBy, requireProfile } from "./profile";
 import { LEAD_SOURCES } from "./search";
@@ -52,18 +51,6 @@ export async function noteHomeFeedback(input: { taskId: string; listingId: numbe
     });
   }
   return { ok: true };
-}
-
-/**
- * "Check availability" on a broker home the agent did not ask about (the stay
- * type was a guess): the tenant's tap is the consent, and the same one-message
- * broker loop runs for this one home.
- */
-export async function askAvailability(input: { taskId: string; listingId: number }): Promise<{ ok: boolean; asked: boolean }> {
-  const viewer = await requireProfile();
-  const task = await db.agentTask.findFirst({ where: { id: input.taskId, ...ownedBy(viewer) }, select: { id: true } });
-  if (!task) return { ok: false, asked: false };
-  return askAvailabilityFor(task.id, input.listingId);
 }
 
 export interface SavedHome {

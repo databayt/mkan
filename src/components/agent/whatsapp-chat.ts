@@ -159,7 +159,8 @@ export async function handleTenantWhatsApp(input: {
   if (personal && !searching) await postSlackCard(`🏠 ${profile.waPhone ?? "A contact"} from Abdout's personal list asked about a home — the agent is answering:\n> ${rest.slice(0, 300)}`).catch(() => {});
   const fresh = isFresh(rest) || !!ref;
   let current: (CurrentTask & { locale: string }) | null = fresh ? null : latest;
-  const lang: WaLang = /^\s*[1-9٠-٩]\.?\s*$/.test(rest) && current ? ((["en", "ar", "rw"].includes(current.locale) ? current.locale : "en") as WaLang) : waLang(rest || raw);
+  // A digit, a price, a code or an "ok" keeps the chat's language (whatsapp-format.ts isLanguageNeutral).
+  const lang: WaLang = waLang(rest || raw, (current ?? latest)?.locale);
   const d = await waDict(lang);
   if ((row?.turns ?? 0) >= MAX_TURNS_PER_HOUR) return { reply: busyText(d, "rate"), taskId: current?.id ?? null };
 
@@ -185,7 +186,8 @@ export async function handleTenantWhatsApp(input: {
   }
 
   // The deal sheet asked "when can you come?": a day and a time go to the person who books the viewing.
-  const viewingAsk = await readViewingAsk(profile.waPhone);
+  // A message about a home ("2 bedrooms, can I see one tomorrow?") is a search, not a time (2026-11-06).
+  const viewingAsk = asksForHome(rest) ? null : await readViewingAsk(profile.waPhone);
   if (viewingAsk) {
     const when = readViewingTime(rest, new Date());
     if (when && "at" in when) {
@@ -198,7 +200,11 @@ export async function handleTenantWhatsApp(input: {
 
   // A home's code ("K5808" from a TikTok post, or /find's "Check on WhatsApp"): a fresh chat that
   // searches like it, that home first. With a web ref too, the web chat's words come along.
-  const homeRef = readHomeRef(rest);
+  // A bare number answering the agent's own question ("budget?" → "6000") is that answer, not a home's
+  // code; with a K, or in a chat with no question pending, it is the code (2026-11-06).
+  const lastKind = current ? (((current.messages as unknown as AgentMessage[]) ?? []).findLast((m) => m.role === "agent") as { kind?: string } | undefined)?.kind : undefined;
+  const bareNumber = /^#?\d{4,6}$/.test(rest.trim());
+  const homeRef = bareNumber && (lastKind === "ask" || lastKind === "clarify") ? null : readHomeRef(rest);
   const refHome = homeRef ? await homeForRef(homeRef) : null;
   if (refHome) current = null;
   const refSource = refHome ? refSourceOf(rest, ref) : null;
@@ -241,8 +247,11 @@ export async function handleTenantWhatsApp(input: {
   // The web chat a ref names: its words and search come along to this phone's new chat.
   let seed: { messages: AgentMessage[]; requirements: Prisma.JsonValue } | undefined;
   if (ref) {
-    const web = await db.agentTask.findUnique({ where: { id: ref }, select: { messages: true, requirements: true, updatedAt: true } });
-    if (web && Date.now() - web.updatedAt.getTime() < REF_MAX_AGE_MS) {
+    const web = await db.agentTask.findUnique({ where: { id: ref }, select: { messages: true, requirements: true, updatedAt: true, profile: { select: { waPhone: true } } } });
+    // Only a web chat (or this phone's own) carries over: another phone's WhatsApp chat never does, whoever
+    // learns its id (2026-11-06).
+    const ownChat = !web?.profile?.waPhone || web.profile.waPhone === `+${digits}`;
+    if (web && ownChat && Date.now() - web.updatedAt.getTime() < REF_MAX_AGE_MS) {
       const words = ((web.messages as unknown as AgentMessage[]) ?? []).filter((m) => m.role === "user");
       seed = { messages: words.slice(0, -1), requirements: web.requirements };
       if (!text) text = (words.at(-1) as { text?: string } | undefined)?.text ?? "";

@@ -30,13 +30,24 @@ export async function postSlackCard(text: string): Promise<void> {
     console.warn(`[agent] no SLACK_BOT_TOKEN — manual send not posted:\n${text}`);
     return;
   }
-  const res = await fetch("https://slack.com/api/chat.postMessage", {
-    method: "POST",
-    headers: { "Content-Type": "application/json; charset=utf-8", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ channel: process.env.SLACK_HOME_CHANNEL?.trim() || DEFAULT_SLACK_CHANNEL, text, unfurl_links: false }),
-  }).catch(() => null);
-  const json = (await res?.json().catch(() => ({}))) as { ok?: boolean; error?: string } | undefined;
-  if (!json?.ok) console.warn(`[agent] slack: ${json?.error ?? "unreachable"}`);
+  // These cards are how a person learns a tenant needs them (a hand-off, a hidden number, a failed
+  // reply): one retry, then a durable record (WaState slack-failed) instead of a lost line (2026-11-06).
+  let error = "unreachable";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, 1_500));
+    const res = await fetch("https://slack.com/api/chat.postMessage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=utf-8", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ channel: process.env.SLACK_HOME_CHANNEL?.trim() || DEFAULT_SLACK_CHANNEL, text, unfurl_links: false }),
+    }).catch(() => null);
+    const json = (await res?.json().catch(() => ({}))) as { ok?: boolean; error?: string } | undefined;
+    if (json?.ok) return;
+    error = json?.error ?? "unreachable";
+  }
+  console.error(`[agent] slack card lost after a retry: ${error}`);
+  await import("./wa-state")
+    .then(({ mutateState }) => mutateState<{ count?: number }>("slack-failed", {}, (v) => ({ count: (v.count ?? 0) + 1, at: new Date().toISOString(), error, text: text.slice(0, 300) })))
+    .catch(() => {});
 }
 
 export interface Outgoing {

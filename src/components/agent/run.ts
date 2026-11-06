@@ -553,6 +553,11 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
       : null;
     const written = await writing;
     trace.resync(await lastSeq(task.id));
+    // A broker's answer that landed while this turn ran (applyAnswer writes running chats too) is kept,
+    // not overwritten by the shortlist this turn read at its start (2026-11-06).
+    const onDisk = await db.agentTask.findUnique({ where: { id: task.id }, select: { shortlist: true } }).catch(() => null);
+    const landed = new Map(((onDisk?.shortlist as unknown as ShortlistItem[] | null) ?? []).filter((s) => s.availability === "confirmed" || s.availability === "rented").map((s) => [s.id, s.availability]));
+    if (landed.size) shortlist = shortlist.map((s) => (landed.has(s.id) ? { ...s, availability: landed.get(s.id)! } : s));
     if (asked.size > 0) {
       shortlist = shortlist.map((s) => (asked.has(s.id) ? { ...s, availability: "asked" as const } : s));
     }
@@ -573,7 +578,7 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     await db.agentTask.update({
       where: { id: task.id },
       data: {
-        ...(asked.size > 0 || written?.why.size ? { shortlist: json(shortlist) } : {}),
+        ...(asked.size > 0 || written?.why.size || landed.size ? { shortlist: json(shortlist) } : {}),
         ...(willWrite || demand || checked ? { messages: json([...messages, finalAnswer]) } : {}),
         // A broker asked about one of the same homes is still being waited on.
         status: asked.size > 0 || shortlist.some((s) => s.availability === "asked") ? "WAITING" : "DONE",

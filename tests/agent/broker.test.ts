@@ -186,7 +186,8 @@ describe("tiktok mirror", () => {
 });
 
 describe("who to ask", () => {
-  const b = (userId: string) => ({ listingId: 5, userId, user: { phoneNumber: "+250788000000", username: null, sourceHostId: `tiktok:${userId}` } });
+  // Each broker their own number: one number under two accounts is one person (pickBroker asks it once).
+  const b = (userId: string) => ({ listingId: 5, userId, user: { phoneNumber: `+25078800000${userId.charCodeAt(0) % 10}`, username: null, sourceHostId: `tiktok:${userId}` } });
   const now = Date.parse("2026-11-01T12:00:00Z");
   const hours = (h: number) => new Date(now + h * 3_600_000);
   const req = (brokerUserId: string, status: string, createdAt = hours(-30), expiresAt = hours(-6)) => ({ id: `r-${brokerUserId}`, listingId: 5, brokerUserId, status, expiresAt, taskId: "t0", createdAt });
@@ -248,5 +249,16 @@ describe("one house, several brokers", () => {
     const pinned = rankCandidates(homes, r, 6, new Date(), last).ranked.map((x) => x.id);
     expect(pinned[0]).toBe(last);
     expect(pinned).toHaveLength(6);
+  });
+});
+
+describe("one person, two accounts", () => {
+  it("is not asked again as 'the next broker' for the same home", async () => {
+    const { pickBroker } = await import("@/components/agent/broker");
+    const now = Date.parse("2026-11-06T10:00:00Z");
+    const link = (userId: string, phone: string) => ({ listingId: 5, userId, user: { phoneNumber: phone, username: null, sourceHostId: null } });
+    const silent = { id: "r1", listingId: 5, brokerUserId: "u1", status: "NO_REPLY", createdAt: new Date(now - 30 * 3_600_000), expiresAt: new Date(now - 6 * 3_600_000) };
+    const brokers = [link("u1", "+250720000015"), link("u2", "250720000015"), link("u3", "+250720000016")];
+    expect(pickBroker(brokers as never, new Map([["5:u1", silent as never]]), now)).toEqual({ ask: brokers[2] });
   });
 });

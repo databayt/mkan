@@ -39,20 +39,40 @@ export function mutateState<T>(key: string, empty: T, change: (value: T) => T): 
 }
 
 /**
- * Take the lease on `key` for `ms` unless someone holds it. A conditional
- * update, so two crons racing for it cannot both win.
+ * Take the lease on `key` for `ms` unless someone holds it — the holder's token, or null. A
+ * conditional update, so two crons racing for it cannot both win.
  */
-export async function takeLease(key: string, ms: number): Promise<boolean> {
+export async function takeLease(key: string, ms: number): Promise<string | null> {
   const now = Date.now();
   const until = new Date(now + ms).toISOString();
+  const owner = `${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   await db.waState.createMany({ data: [{ key, value: { until: new Date(0).toISOString() } }], skipDuplicates: true });
-  const taken = await db.$executeRaw`UPDATE "WaState" SET "value" = jsonb_build_object('until', ${until}::text), "updatedAt" = now()
+  const taken = await db.$executeRaw`UPDATE "WaState" SET "value" = jsonb_build_object('until', ${until}::text, 'owner', ${owner}::text), "updatedAt" = now()
     WHERE "key" = ${key} AND ("value"->>'until')::timestamptz < ${new Date(now)}`;
-  return taken === 1;
+  return taken === 1 ? owner : null;
 }
 
-export async function releaseLease(key: string): Promise<void> {
-  await writeState(key, { until: new Date(0).toISOString() });
+/** Give the lease back — only the holder can: a pass that outran its lease must not free the next one's. */
+export async function releaseLease(key: string, owner?: string | null): Promise<void> {
+  if (!owner) return;
+  await db.$executeRaw`UPDATE "WaState" SET "value" = jsonb_build_object('until', ${new Date(0).toISOString()}::text), "updatedAt" = now()
+    WHERE "key" = ${key} AND "value"->>'owner' = ${owner}`;
+}
+
+/**
+ * Add to / take from a list of strings in one SQL statement — the webhook, the cron and the Mac's
+ * scripts can all write the same row, and mutateState's queue only orders one process (2026-11-06:
+ * a STOP written by one could be dropped by another's read-modify-write).
+ */
+export async function addToList(key: string, item: string): Promise<void> {
+  await db.$executeRaw`INSERT INTO "WaState" ("key", "value", "updatedAt") VALUES (${key}, ${JSON.stringify([item])}::jsonb, now())
+    ON CONFLICT ("key") DO UPDATE SET "value" = CASE WHEN "WaState"."value" @> to_jsonb(${item}::text) THEN "WaState"."value"
+      ELSE COALESCE("WaState"."value", '[]'::jsonb) || to_jsonb(${item}::text) END, "updatedAt" = now()`;
+}
+
+export async function removeFromList(key: string, item: string): Promise<void> {
+  await db.$executeRaw`UPDATE "WaState" SET "value" = COALESCE((SELECT jsonb_agg(x) FROM jsonb_array_elements("value") x WHERE x <> to_jsonb(${item}::text)), '[]'::jsonb), "updatedAt" = now()
+    WHERE "key" = ${key}`;
 }
 
 // ── one claim per tenant message ─────────────────────────────────────────

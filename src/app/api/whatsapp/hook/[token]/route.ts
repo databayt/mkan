@@ -3,8 +3,10 @@ import { after, NextResponse, type NextRequest } from "next/server";
 import { isDirectChat } from "../../../../../../scripts/wa/tenant-pure";
 import { isMedia, messageText, phoneKey, senderPhone } from "../../../../../../scripts/wa/outbox-pure";
 import { answerTenant, noteFromMe } from "@/components/agent/wa-tenant";
+import { claimMessage, settleMessage } from "@/components/agent/wa-state";
+import { postSlackCard } from "@/components/agent/whatsapp";
 import { db } from "@/lib/db";
-import { hookToken, type EvoMessage } from "@/lib/whatsapp/evolution";
+import { hookToken, INSTANCE, type EvoMessage } from "@/lib/whatsapp/evolution";
 
 /**
  * The Mkan line's webhook: the shared bridge (hogwarts' Evolution) posts each
@@ -60,13 +62,22 @@ async function handle(m: EvoMessage) {
   const key = m.key;
   if (!key?.id || !isDirectChat(key.remoteJid)) return;
   const phone = senderPhone(key);
-  if (!phone || (await isBroker(phone))) return;
+  if (!phone) {
+    // WhatsApp hides some senders' numbers (an @lid with no number on it): the agent cannot answer one
+    // yet, so a person does, from the phone — it used to be dropped without a word (2026-11-06).
+    if (!key.fromMe && key.remoteJid?.endsWith("@lid") && (await claimMessage(key.id))) {
+      await settleMessage(key.id);
+      await postSlackCard(`📵 Someone with a hidden number wrote to the Mkan line — the agent can't answer them; reply from the phone:\n> ${(messageText(m.message) || "[photo or voice note]").slice(0, 400).replace(/\n/g, "\n> ")}`).catch(() => {});
+    }
+    return;
+  }
+  if (await isBroker(phone)) return;
   const ts = Number(m.messageTimestamp ?? 0);
   const sentAt = ts > 0 ? new Date(ts * 1000) : new Date();
   if (key.fromMe) {
     // The echo of the agent's own reply can arrive before sendText returns and its id is recorded.
     await sleep(10_000);
-    await noteFromMe(phone, key.id, sentAt);
+    await noteFromMe(phone, key.id, sentAt, messageText(m.message));
     return;
   }
   // Claimed once in answerTenant (wa-state.ts claimMessage): the poll that brings the same message
@@ -86,6 +97,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   } catch {
     return NextResponse.json({ ok: true });
   }
+  // The bridge is shared: an event for another instance is not this line's (2026-11-06).
+  const instance = (payload as { instance?: unknown })?.instance;
+  if (typeof instance === "string" && instance && instance !== INSTANCE) return NextResponse.json({ ok: true });
   // Answer the bridge at once; the agent's turn takes seconds.
   after(async () => {
     for (const m of messagesOf(payload)) await handle(m).catch((err) => console.error(`[wa] hook: ${(err as Error).message}`));

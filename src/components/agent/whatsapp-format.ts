@@ -168,8 +168,27 @@ export const MAX_HOMES = 3;
 export const wantsViewing = (text: string): boolean =>
   /\b(?:view|viewing|visit|see it|book|visiter|voir)\b|معاين|زيار|أشوف|gusura|kureba/i.test(text);
 
-/** The language of a WhatsApp message: Arabic script, a few Kinyarwanda words, else English. */
-export function waLang(text: string): WaLang {
+/** Words every language uses on WhatsApp: they say nothing about which one the tenant writes in. */
+const NEUTRAL_WORDS = /^(?:ok|okay|okey|k|yes|yeah|yep|no|nope|yego|oya|oui|non|merci|thanks|thank you|thx|please|pls|hi|hello|hey|wow|sure|good|great|fine|cool|bro|sir|madam)$/i;
+
+/**
+ * A message with no language in it — a number, a price ("300k"), a home code, an emoji, "ok" — keeps
+ * the chat's language: each one used to flip an Arabic or Kinyarwanda chat to English for good.
+ */
+export function isLanguageNeutral(text: string): boolean {
+  const words = text
+    .replace(HOME_REF_RE, " ")
+    .replace(/\d+(?:[.,]\d+)*\s*(?:k|m|rwf|frw|usd|\$)?/gi, " ")
+    .replace(/[^\p{L}\s']/gu, " ")
+    .trim()
+    .toLowerCase();
+  if (!words) return true;
+  return NEUTRAL_WORDS.test(words);
+}
+
+/** The language of a WhatsApp message: Arabic script, a few Kinyarwanda words, else English — or the chat's own when the message says nothing. */
+export function waLang(text: string, prev?: string | null): WaLang {
+  if (prev && (prev === "en" || prev === "ar" || prev === "rw") && isLanguageNeutral(text)) return prev;
   if (/[؀-ۿ]/.test(text)) return "ar";
   if (/\b(muraho|mwaramutse|mwiriwe|ndashaka|ndashaka|inzu|icyumba|ibyumba|amafaranga|ukwezi|ibihumbi|murakoze|ese)\b/i.test(text)) return "rw";
   return "en";

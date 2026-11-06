@@ -174,7 +174,8 @@ export default {
   },
   async fetch(request, env) {
     const url = new URL(request.url)
-    if (url.pathname !== "/run" || request.headers.get("authorization") !== `Bearer ${env.WATCHDOG_TOKEN}`) return new Response("not found", { status: 404 })
+    // No token set means no /run at all — "Bearer undefined" used to open it (2026-11-06).
+    if (url.pathname !== "/run" || !env.WATCHDOG_TOKEN || request.headers.get("authorization") !== `Bearer ${env.WATCHDOG_TOKEN}`) return new Response("not found", { status: 404 })
     return Response.json({ failed: await runChecks(env) })
   },
 }
