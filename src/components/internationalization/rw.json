@@ -6312,7 +6312,7 @@
         },
         "neon": {
           "name": "Database (Neon)",
-          "what": "Billed to the Databayt account and shared — not counted here yet."
+          "what": "The app's database (Launch plan): about $24 a month, measured 11-07 — it never slept. Drops once it can sleep between the app's ticks."
         },
         "waBridge": {
           "name": "WhatsApp bridge",

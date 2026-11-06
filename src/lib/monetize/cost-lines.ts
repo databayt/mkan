@@ -44,7 +44,6 @@ const LANE_BLOCKS: Record<string, BlockKey[]> = {
 /** Used daily, charged nowhere in this business — shown at 0 with the reason. */
 export const FREE_LINES: { key: string; blocks: BlockKey[] }[] = [
   { key: "claudeMax", blocks: ["scrape", "enhance", "post", "chat"] },
-  { key: "neon", blocks: ["chat"] },
   { key: "waBridge", blocks: ["chat"] },
   { key: "groq", blocks: ["scrape", "chat"] },
   { key: "appleOcr", blocks: ["scrape"] },

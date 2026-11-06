@@ -19,6 +19,13 @@ export const DEFAULT_FIXED_RWF: Record<string, number> = {
    * which left the container out. Moving mkan to a plain Worker (OpenNext) would remove the $29.
    */
   cloudflare: Math.round((1 + 29.24) * USD_TO_RWF),
+  /**
+   * The database (Neon, Launch plan): its compute never slept — 0.25 CU around the clock since 10-26,
+   * 6 CU-hours a day × $0.106 ≈ $19.4/month — plus ≈ $4.4 for branches over the free nine, measured
+   * 2026-11-07 (get_project_consumption). It was shown as free. Re-estimate once the event-driven
+   * outbox (mkan 2fe50b6) lets it sleep and the archived branches are gone.
+   */
+  neon: Math.round(24 * USD_TO_RWF),
   /** The WhatsApp number's SIM and data bundle: the one bill mkan adds on its own. */
   whatsappLine: 5000,
   /**

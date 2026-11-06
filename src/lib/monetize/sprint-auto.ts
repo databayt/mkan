@@ -33,7 +33,7 @@ export function monthWindow(now = new Date()): { startsAt: string; endsAt: strin
 }
 
 /** Commands an unattended run must never be told to run (the runner also denies them). */
-export const GATED_COMMANDS = [/wa:brokers\s+gated/, /wa:pair/, /wa:outbox/, /deal:book/, /crm:outreach/, /crm:cadence/, /tt:upload/, /tt:ask/];
+export const GATED_COMMANDS = [/wa:brokers\s+gated/, /wa:pair/, /wa:outbox/, /deal:book/, /deal:status/, /deal:terms/, /crm:outreach/, /crm:cadence/, /tt:upload/, /tt:ask/];
 export const mentionsGated = (text: string) => GATED_COMMANDS.some((r) => r.test(text));
 
 // ── the plan file ──────────────────────────────────────────────────────
