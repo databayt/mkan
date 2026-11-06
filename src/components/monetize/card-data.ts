@@ -63,6 +63,7 @@ const JOB_STEP: Record<string, number> = {
   "mkan-mastering-reconcile": 2,
   "hermes_mkan-tiktok-post": 0,
   "hermes_mkan-tiktok-upload-retry": 2,
+  "hermes_mkan-tiktok-upload-evening": 2,
   "hermes_mkan-tiktok-stats": 3,
 };
 /** The step a number-based reason points at: where the block's main number is made. */

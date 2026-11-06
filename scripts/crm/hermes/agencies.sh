@@ -2,7 +2,7 @@
 # Kigali estate agencies from Google Maps → the broker directory, daily at 11:00, run by the
 # Hermes gateway's cron (no agent, no model). Installed to ~/.hermes/scripts/mkan-agencies.sh by
 # scripts/crm/install-ads-sweeps.sh agencies. 11:00 because the session-vault Chrome is shared:
-# the 06:00/18:00 TikTok sweep and the 07:00 post / 13:00 retry uploads drive it too, and two
+# the 06:00/18:00 TikTok sweep and the 07:00 / 12:30 / 18:30 uploads drive it too, and two
 # lanes on one Chrome time out (the 11-05 18:00 sweep did). New agencies are merged into the
 # directory (crm:brokers --apply) right after, so they are askable the same day.
 #

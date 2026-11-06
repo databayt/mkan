@@ -172,7 +172,7 @@ function tiktok(): string[] {
   out.push(`Queued homes: ${queue.length ? queue.map((q) => q.code || `K${q.id}`).join(', ') : 'none (no consented broker homes yet)'}`);
   out.push(`Picture video: ${existsSync(join(dir, 'carousel', 'video.mp4')) ? 'rendered' : 'not rendered'}`);
   const posted = Object.entries(uploads);
-  out.push(`Posted today: ${posted.length ? posted.map(([k, at]) => `${k} at ${kigali(at)}`).join(', ') : 'nothing yet (07:00 tick, 13:00 retry)'}`);
+  out.push(`Posted today: ${posted.length ? posted.map(([k, at]) => `${k} at ${kigali(at)}`).join(', ') : 'nothing yet (slots 07:00, 12:30, 18:30)'}`);
   const days = existsSync(TIKTOK)
     ? require('node:fs').readdirSync(TIKTOK).filter((d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && existsSync(join(TIKTOK, d, 'uploads.json')))
     : [];
@@ -196,7 +196,7 @@ async function lanes(db: Db): Promise<string[]> {
   const raw = existsSync(jobsFile) ? (JSON.parse(readFileSync(jobsFile, 'utf8')) as { jobs?: HermesJob[] } | HermesJob[]) : [];
   const jobs: HermesJob[] = Array.isArray(raw) ? raw : (raw.jobs ?? []);
   out.push('', 'Scheduled lanes (Hermes, on the Mac):');
-  for (const name of ['mkan-tiktok-sweep', 'mkan-web-sweep', 'mkan-demand-match', 'mkan-tiktok-post', 'mkan-tiktok-upload-retry', 'mkan-tiktok-stats', 'mkan-price-ask']) {
+  for (const name of ['mkan-tiktok-sweep', 'mkan-web-sweep', 'mkan-demand-match', 'mkan-tiktok-post', 'mkan-tiktok-upload-retry', 'mkan-tiktok-upload-evening', 'mkan-tiktok-stats', 'mkan-price-ask']) {
     const j = jobs.find((x) => x.name === name);
     if (!j) {
       out.push(`  ${name.padEnd(25)} not scheduled`);

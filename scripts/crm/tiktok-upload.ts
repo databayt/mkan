@@ -1,7 +1,8 @@
 /**
  * Posts the day's rendered TikTok videos to @mkan.rw — no phone step.
  *
- *   pnpm tt:upload [--date=YYYY-MM-DD] [--dry] [--notify]
+ *   pnpm tt:upload [--date=YYYY-MM-DD] [--dry] [--notify] [--upto=<n>]
+ *   pnpm tt:upload --plan [--upto=<n>]     what this slot would post — no browser, posts nothing
  *   pnpm tt:upload --file=<mp4> --caption=<txt> [--aigc] [--dry]   one ad-hoc video
  *
  * Drives TikTok Studio's web upload (tiktok.com/tiktokstudio/upload) in the
@@ -21,6 +22,12 @@
  * stamped in posted.json, so it rests 30 days like a hand-posted one, and its
  * TikTokPost row turns POSTED (with the post's URL when Studio shows it) or
  * FAILED with the reason.
+ *
+ * --upto=<n>: the day's posts are spread over three slots (2026-11-06) — 07:00 renders all three
+ * and posts one (--upto=1), 12:30 brings the day to two (--upto=2), 18:30 posts the rest (no cap).
+ * TikTok spreads reach per account, so one post every few hours reaches more people than three in
+ * one burst. A piece counts as out once it is in uploads.json or pending.json, so a slot that
+ * missed its turn is caught up by the next, and nothing clicked-but-unconfirmed is posted twice.
  *
  * --dry fills everything (file, caption, label) and stops before Post, saving a
  * screenshot next to the video. Env: TIKTOK_UPLOAD_CDP (default http://127.0.0.1:9222).
@@ -50,7 +57,7 @@ const date = argv('date', new Date().toISOString().slice(0, 10));
 const DAY = join(DATA, date);
 const UPLOADS = join(DAY, 'uploads.json');
 // Clicked Post, confirmation not seen yet. TikTok may well have it: a retry must not post it again
-// (the 13:00 retry, or kun's supervisor re-running the day's post). Cleared on confirmation, or by hand.
+// (a later upload slot, or kun's supervisor re-running the day's post). Cleared on confirmation, or by hand.
 const PENDING = join(DAY, 'pending.json');
 const CDP = (process.env.TIKTOK_UPLOAD_CDP ?? '').trim() || 'http://127.0.0.1:9222';
 const PAGE = ownTikTok().handle;
@@ -326,7 +333,26 @@ async function markRow(piece: Piece, data: Record<string, unknown>): Promise<voi
   }
 }
 
+/** --upto=<n>: how many of the day's pieces may be out once this slot is done; absent or not a number = all. */
+function slotCap(pieces: Piece[], done: Record<string, string>, pending: Record<string, string>): { out: number; room: number } {
+  const out = pieces.filter((x) => done[x.key] || pending[x.key]).length;
+  const upto = Number.parseInt(argv('upto'), 10);
+  return { out, room: Number.isFinite(upto) ? Math.max(0, upto - out) : Infinity };
+}
+
+/** --plan: the slot's dry run — which pieces it would post, read from the day's files only. */
+function plan(): void {
+  const pieces = todaysPieces();
+  const done = readJson<Record<string, string>>(UPLOADS, {});
+  const pending = readJson<Record<string, string>>(PENDING, {});
+  const { out, room } = slotCap(pieces, done, pending);
+  const due = pieces.filter((x) => !done[x.key] && !pending[x.key]);
+  const now = due.slice(0, room === Infinity ? due.length : room);
+  console.log(`${date}: ${pieces.length} rendered, ${out} out already, upto=${argv('upto') || 'all'} → this slot posts ${now.length}${now.length ? `: ${now.map((x) => x.key).join(', ')}` : ''}; ${due.length - now.length} left for later slots`);
+}
+
 async function main(): Promise<void> {
+  if (flag('plan')) return plan();
   refuseUnattended('uploading to the public TikTok page');
   const pieces = todaysPieces();
   const done = readJson<Record<string, string>>(UPLOADS, {});
@@ -338,7 +364,11 @@ async function main(): Promise<void> {
     writeFileSync(PENDING, JSON.stringify(pending, null, 2));
   }
   const unsure = pieces.filter((x) => !done[x.key] && pending[x.key] && !flag('force'));
-  const due = pieces.filter((x) => flag('force') || (!done[x.key] && !pending[x.key]));
+  const ready = pieces.filter((x) => flag('force') || (!done[x.key] && !pending[x.key]));
+  const { out, room } = slotCap(pieces, done, pending);
+  const due = room === Infinity || flag('force') ? ready : ready.slice(0, room);
+  const later = ready.length - due.length;
+  if (ready.length && !due.length) return void console.log(`slot quota reached for ${date}: ${out} of ${pieces.length} out, ${later} left for the next slot`);
   const unsureLine = (key: string, at: string) => `• ⚠️ ${key}: Post was clicked at ${at.slice(11, 16)} UTC but TikTok never confirmed — look at @${PAGE}; if it is not there: \`pnpm tt:upload --repost=${key}\``;
   const unsureLines = unsure.map((x) => unsureLine(x.key, pending[x.key]!));
   if (!due.length && !unsure.length) return void console.log(pieces.length ? `all ${pieces.length} pieces for ${date} already posted` : `nothing rendered for ${date} — run tt:run`);
@@ -395,7 +425,7 @@ async function main(): Promise<void> {
   // Clicked but never confirmed — before this run or in it: never re-posted on its own.
   const left = readJson<Record<string, string>>(PENDING, {});
   const unconfirmed = pieces.filter((x) => !done[x.key] && left[x.key]).map((x) => unsureLine(x.key, left[x.key]!));
-  if (flag('notify')) await postToMkan([`📲 *TikTok @${PAGE}* — ${ok}/${due.length} posted automatically`, ...lines, ...unconfirmed, `https://www.tiktok.com/@${PAGE}`].join('\n'));
+  if (flag('notify')) await postToMkan([`📲 *TikTok @${PAGE}* — ${ok}/${due.length} posted automatically${later ? ` (${later} more later today)` : ''}`, ...lines, ...unconfirmed, `https://www.tiktok.com/@${PAGE}`].join('\n'));
   await recordRun('tiktok-upload', ok === due.length && !unconfirmed.length, `${ok}/${due.length} posted${unconfirmed.length ? `, ${unconfirmed.length} unconfirmed` : ''}`);
   if (unconfirmed.length) process.exitCode = 77; // needs Abdout: a retry could post it twice
   else if (ok < due.length) process.exitCode = 1;

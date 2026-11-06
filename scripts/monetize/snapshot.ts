@@ -41,6 +41,7 @@ export const JOBS: Record<BlockKey, { job: string; cadence: number }[]> = {
   post: [
     { job: 'hermes_mkan-tiktok-post', cadence: 24 },
     { job: 'hermes_mkan-tiktok-upload-retry', cadence: 24 },
+    { job: 'hermes_mkan-tiktok-upload-evening', cadence: 24 },
     { job: 'hermes_mkan-tiktok-stats', cadence: 24 },
   ],
   // The chat lanes are Worker crons (wa-outbox, broker-requests): the page reads their effects from Neon.

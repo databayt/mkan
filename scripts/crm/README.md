@@ -505,7 +505,7 @@ TikTok poster with a phone. The 09:00 tick runs the build even when `wa:chats` c
 database (no Full Disk Access under Hermes) — it uses the last snapshot.
 
 **Runs that outlive the gateway — and a sleeping Mac.** Every Hermes lane (TikTok sweep 06:00/18:00,
-web sweep 06:45/18:45, demand match 09:00, TikTok post 07:00 + 13:00 retry, Monday stats) takes a lock
+web sweep 06:45/18:45, demand match 09:00, TikTok post 07:00 + upload slots 12:30/18:30, Monday stats) takes a lock
 and starts its run with `hermes/detached.sh` (double fork + setsid), so a gateway restart cannot kill
 it; the run posts its own failure to #mkan (`pnpm -s crm:post-mkan`). `hermes/lane.sh` (2026-11-02):
 the lock holds its run's PID, and a tick leaves any lock whose run is alive, however old (sleep only

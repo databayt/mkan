@@ -6,10 +6,16 @@
 #
 # Two halves, like the sweep (2026-11-01). The tick takes the post lock and starts the run
 # detached from the gateway (detached.sh): a gateway restart killed the 11-01 sweep and demand
-# runs mid-way, and a render + upload takes 15–30 min. The 13:00 retry takes the same lock, so
+# runs mid-way, and a render + upload takes 15–30 min. The 12:30 and 18:30 slots take the same lock, so
 # the two never upload at once. Both commands post their own summary to #mkan (--notify); the
 # run posts its failures there itself (crm:post-mkan), since Hermes no longer reads its output.
 # The tick prints only when it cannot start. Logs: .data/tiktok-post/post.log.
+#
+# Spread over the day (2026-11-06): this tick renders all of the day's homes but uploads only the
+# first (UPTO=1); the 12:30 slot brings the day to two and the 18:30 slot posts the rest, all
+# through the same uploads.json/pending.json and this one lock (tiktok-upload-retry.sh). TikTok
+# spreads reach per account: three posts in one 07:00 burst competed with each other.
+#   bash scripts/crm/hermes/tiktok-post.sh --plan      what this slot would post (no browser)
 set -uo pipefail
 REPO="${MKAN_REPO:-/Users/abdout/mkan}"
 LOGDIR="$REPO/scripts/crm/.data/tiktok-post"
@@ -19,7 +25,10 @@ LOCK="$LOGDIR/.post.lock"
 # muted, the code + WhatsApp + credit in the caption only. A render whose strip leaves text is
 # REJECTED and never uploads. No carousels or picture videos any more. 0 holds the lane.
 PER_DAY="${TIKTOK_POSTS_PER_DAY:-3}"
-# A run past this is stuck; the cap frees the lock long before the 13:00 retry.
+# How many of the day's posts are out once this slot is done (tt:upload --upto). The 12:30 slot
+# hands the whole morning post to this script when 07:00 rendered nothing, with its own UPTO.
+UPTO="${TIKTOK_UPLOAD_UPTO:-1}"
+# A run past this is stuck; the cap frees the lock long before the 12:30 slot.
 MAX_MINUTES="${TIKTOK_POST_MAX_MINUTES:-120}"
 export PATH="/opt/homebrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
 unset SLACK_HOME_CHANNEL
@@ -28,9 +37,13 @@ mkdir -p "$LOGDIR"
 . "$REPO/scripts/crm/hermes/lane.sh"
 LANE_JOB=hermes:mkan-tiktok-post
 
+if [ "${1:-}" = "--plan" ]; then
+  cd "$REPO" && echo "07:00 slot — render $PER_DAY, upload up to $UPTO:" && pnpm -s tt:upload --plan --upto="$UPTO"
+  exit 0
+fi
 if [ "${1:-}" != "--run" ]; then
   # A live run holds the lock — paused by sleep, or waiting for the network: let it be.
-  lane_tick "$LOCK" 'tiktok-(post|upload-retry)\.sh' || exit 0
+  lane_tick "$LOCK" 'tiktok-(post|upload-[a-z]+)\.sh' || exit 0
   if ! /bin/bash "$REPO/scripts/crm/hermes/detached.sh" /bin/bash "$0" --run; then
     rm -rf "$LOCK"
     echo "⚠️ TikTok post could not start detached from the gateway"
@@ -57,7 +70,7 @@ steps() {
   launchctl kickstart "gui/$(id -u)/com.databayt.chrome-session" >/dev/null 2>&1 || true
   # The 07:00 query has failed on a waking Neon; one retry after a minute.
   run tt:run --notify --n="$PER_DAY" || { sleep 60; run tt:run --notify --n="$PER_DAY"; } || return 2
-  run tt:upload --notify
+  run tt:upload --notify --upto="$UPTO"
   local up=$?
   # 77: a post was clicked but never confirmed — a re-run could post it twice; Abdout looks.
   [ "$up" -eq 77 ] && return 77
@@ -78,7 +91,7 @@ mins=$(( ($(date +%s) - started) / 60 ))
 case "$code" in
   0) lane_end ok; exit 0 ;;
   2) what="TikTok render failed twice"; lane_end fail "$what" ;;
-  3) what="TikTok auto-post had failures — the 13:00 retry posts what is left"; lane_end warn "$what" ;;
+  3) what="TikTok auto-post had failures — the 12:30 slot posts what is left"; lane_end warn "$what" ;;
   77) what="TikTok: a post was clicked but never confirmed — check @mkan.rw, then pnpm tt:upload --repost=<key> if it is missing"; lane_end fail "$what" 1 ;;
   *) what="TikTok post failed (exit $code after ${mins} min)"; lane_end fail "$what" ;;
 esac

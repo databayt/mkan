@@ -13,9 +13,13 @@
 # TIKTOK_POSTS_PER_DAY=<n> bakes a new default into the installed copy; without it the
 # script's own default stands (3 homes a day since the clean-video strip, 2026-11-05;
 # TIKTOK_POSTS_PER_DAY=0 holds the lane). Logs under .data/tiktok-post/.
-# A second job, mkan-tiktok-upload-retry (13:00), posts whatever 07:00 rendered but could
-# not upload; the day's uploads.json keeps it from posting anything twice, and the two
-# share one lock, so they never upload at once. A third, mkan-tiktok-stats (daily
+# The day's posts are spread over three slots (2026-11-06): 07:00 renders all and posts one,
+# mkan-tiktok-upload-retry (12:30) brings the day to two, mkan-tiktok-upload-evening (18:30,
+# the same script with SLOT/UPTO baked in) posts the rest, after any live 18:00 sweep. A slot
+# that missed its turn is caught up by the next; the day's uploads.json/pending.json keep any
+# piece from posting twice, and all three share one lock, so they never upload at once.
+#   bash scripts/crm/hermes/tiktok-post.sh --plan; bash scripts/crm/hermes/tiktok-upload-retry.sh --plan
+# A fourth, mkan-tiktok-stats (daily
 # 21:00), reads followers, views, likes, comments and shares per post for /monetize, and
 # puts the page's numbers in #mkan on Mondays.
 set -euo pipefail
@@ -33,7 +37,10 @@ if [ -n "${TIKTOK_POSTS_PER_DAY:-}" ]; then
 fi
 RETRY="mkan-tiktok-upload-retry"
 RETRY_SCRIPT="$HERMES_HOME/scripts/$RETRY.sh"
-RETRY_SCHEDULE="${TIKTOK_RETRY_SCHEDULE:-0 13 * * *}"
+RETRY_SCHEDULE="${TIKTOK_RETRY_SCHEDULE:-30 12 * * *}"
+EVENING="mkan-tiktok-upload-evening"
+EVENING_SCRIPT="$HERMES_HOME/scripts/$EVENING.sh"
+EVENING_SCHEDULE="${TIKTOK_EVENING_SCHEDULE:-30 18 * * *}"
 STATS="mkan-tiktok-stats"
 STATS_SCRIPT="$HERMES_HOME/scripts/$STATS.sh"
 STATS_SCHEDULE="${TIKTOK_STATS_SCHEDULE:-0 21 * * *}"
@@ -48,8 +55,9 @@ remove_hermes_job() {
 if [ "${1:-}" = "--remove" ]; then
   remove_hermes_job "$NAME"
   remove_hermes_job "$RETRY"
+  remove_hermes_job "$EVENING"
   remove_hermes_job "$STATS"
-  rm -f "$HERMES_SCRIPT" "$RETRY_SCRIPT" "$STATS_SCRIPT"
+  rm -f "$HERMES_SCRIPT" "$RETRY_SCRIPT" "$EVENING_SCRIPT" "$STATS_SCRIPT"
   exit 0
 fi
 
@@ -73,6 +81,19 @@ remove_hermes_job "$RETRY"
 hermes cron create "$RETRY_SCHEDULE" --name "$RETRY" --script "$RETRY.sh" --no-agent \
   --deliver "slack:$MKAN_CHANNEL" >/dev/null
 
+# The evening slot: the same uploader, posting whatever is left (and a longer cap — a day whose
+# earlier slots all missed posts three here, a few minutes apart).
+sed -e "s|\${MKAN_REPO:-/Users/abdout/mkan}|\${MKAN_REPO:-$REPO}|" \
+  -e 's|\${TIKTOK_UPLOAD_SLOT:-12:30}|${TIKTOK_UPLOAD_SLOT:-18:30}|' \
+  -e 's|\${TIKTOK_UPLOAD_UPTO:-2}|${TIKTOK_UPLOAD_UPTO:-all}|' \
+  -e 's|\${TIKTOK_RETRY_MAX_MINUTES:-60}|${TIKTOK_RETRY_MAX_MINUTES:-90}|' \
+  -e 's|\${TIKTOK_UPLOAD_JOB:-hermes:mkan-tiktok-upload-retry}|${TIKTOK_UPLOAD_JOB:-hermes:mkan-tiktok-upload-evening}|' \
+  "$REPO/scripts/crm/hermes/tiktok-upload-retry.sh" >"$EVENING_SCRIPT.tmp"
+chmod +x "$EVENING_SCRIPT.tmp" && mv -f "$EVENING_SCRIPT.tmp" "$EVENING_SCRIPT"
+remove_hermes_job "$EVENING"
+hermes cron create "$EVENING_SCHEDULE" --name "$EVENING" --script "$EVENING.sh" --no-agent \
+  --deliver "slack:$MKAN_CHANNEL" >/dev/null
+
 sed -e "s|\${MKAN_REPO:-/Users/abdout/mkan}|\${MKAN_REPO:-$REPO}|" \
   "$REPO/scripts/crm/hermes/tiktok-stats.sh" >"$STATS_SCRIPT.tmp"
 chmod +x "$STATS_SCRIPT.tmp" && mv -f "$STATS_SCRIPT.tmp" "$STATS_SCRIPT"
@@ -87,6 +108,7 @@ if [ -f "$PLIST" ]; then
   mv "$PLIST" "$HOME/Library/LaunchAgents/disabled/$LABEL.plist"
   echo "launchd $LABEL off (plist kept in LaunchAgents/disabled/)"
 fi
-echo "installed Hermes job $NAME — '$SCHEDULE', $PER_DAY homes a day (one clean video each), auto-posted to @mkan.rw"
-echo "installed Hermes job $RETRY — '$RETRY_SCHEDULE', posts what the morning tick could not upload (or the whole post when it rendered nothing)"
+echo "installed Hermes job $NAME — '$SCHEDULE', renders $PER_DAY homes a day (one clean video each), posts the first to @mkan.rw"
+echo "installed Hermes job $RETRY — '$RETRY_SCHEDULE', brings the day to two posts (or runs the whole post when 07:00 rendered nothing)"
+echo "installed Hermes job $EVENING — '$EVENING_SCHEDULE', posts the rest of the day's videos"
 echo "installed Hermes job $STATS — '$STATS_SCHEDULE', the page's views and likes in #mkan"
