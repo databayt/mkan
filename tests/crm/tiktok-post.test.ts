@@ -501,3 +501,61 @@ describe('bandCrop — a full-width caption banner is cut off, not wiped', () =>
     expect(fitGraph(1080, 500)).toContain('gblur=sigma=40');
   });
 });
+
+describe("only the text added on top of the video is wiped (2026-11-06)", () => {
+  const still = () => "still" as const;
+  const moving = () => "moving" as const;
+  const box = (x: number, y: number, text: string, h = 0.03, w = 0.4, conf = 0.95) => ({ x, y, w, h, conf, text });
+  const frames = (...per: { x: number; y: number; w: number; h: number; conf: number; text?: string }[][]) => per.map((boxes, i) => ({ t: i * 0.5, boxes }));
+
+  it("keeps a sign that moves with the picture, wipes a caption fixed on the screen", async () => {
+    const { addedText } = await import("../../scripts/crm/tiktok-post-pure");
+    const f = frames(
+      [box(0.1, 0.82, "Luxury living"), box(0.2, 0.3, "SUPERMARKET", 0.02, 0.15, 0.8)],
+      [box(0.1, 0.82, "Luxury living"), box(0.32, 0.31, "SUPERMARKET", 0.02, 0.15, 0.8)],
+      [box(0.1, 0.82, "Luxury living"), box(0.45, 0.33, "SUPERMARKET", 0.02, 0.15, 0.8)],
+    );
+    const out = addedText(f, { motion: moving }).flatMap((x) => x.boxes.map((b) => b.text));
+    expect(out).toEqual(["Luxury living", "Luxury living", "Luxury living"]);
+  });
+
+  it("wipes a phone number, a handle or a price wherever it is", async () => {
+    const { addedText } = await import("../../scripts/crm/tiktok-post-pure");
+    const f = frames([box(0.3, 0.4, "Call 0788 123 456", 0.02, 0.2, 0.7)], [box(0.5, 0.5, "@kigali.homes", 0.02, 0.2, 0.7)], [box(0.4, 0.45, "2 bedrooms 300k", 0.02, 0.2, 0.7)]);
+    expect(addedText(f, { motion: moving }).flatMap((x) => x.boxes).length).toBe(3);
+  });
+
+  it("with the camera still, wipes a bold caption and keeps a small label in the room", async () => {
+    const { addedText } = await import("../../scripts/crm/tiktok-post-pure");
+    const f = frames(
+      [box(0.1, 0.85, "Beautiful home", 0.04, 0.6, 0.98), box(0.45, 0.5, "Samsung", 0.012, 0.08, 0.9)],
+      [box(0.1, 0.85, "Beautiful home", 0.04, 0.6, 0.98), box(0.45, 0.5, "Samsung", 0.012, 0.08, 0.9)],
+    );
+    const out = addedText(f, { motion: still }).flatMap((x) => x.boxes.map((b) => b.text));
+    expect(out).toEqual(["Beautiful home", "Beautiful home"]);
+  });
+
+  it("a word glimpsed once while the camera moves is the scene", async () => {
+    const { addedText } = await import("../../scripts/crm/tiktok-post-pure");
+    const f = frames([box(0.6, 0.2, "EXIT", 0.02, 0.06, 0.9)], [], []);
+    expect(addedText(f, { motion: moving }).flatMap((x) => x.boxes)).toEqual([]);
+  });
+
+  it("the strict gate no longer fails a video for the scene's own text", async () => {
+    const { addedText, leftoverText } = await import("../../scripts/crm/tiktok-post-pure");
+    const scene = frames([box(0.2, 0.3, "PHARMACY", 0.03, 0.2, 0.95)], [box(0.35, 0.32, "PHARMACY", 0.03, 0.2, 0.95)]);
+    expect(leftoverText(scene).length).toBeGreaterThan(0);
+    expect(leftoverText(addedText(scene, { motion: moving }))).toEqual([]);
+  });
+
+  it("tells a moving camera from a still one", async () => {
+    const { sceneMotion } = await import("../../scripts/crm/tiktok-post-pure");
+    const gw = 8, gh = 8;
+    const flat = (v: number) => ({ data: new Uint8Array(gw * gh).fill(v) });
+    const stillFrames = Array.from({ length: 8 }, (_, i) => ({ t: i * 0.5, ...flat(120) }));
+    const movingFrames = Array.from({ length: 8 }, (_, i) => ({ t: i * 0.5, data: Uint8Array.from({ length: gw * gh }, (_, p) => ((p * 37 + i * 91) % 255)) }));
+    expect(sceneMotion(stillFrames, { gw, gh })(1)).toBe("still");
+    expect(sceneMotion(movingFrames, { gw, gh })(1)).toBe("moving");
+    expect(sceneMotion(stillFrames.slice(0, 2), { gw, gh })(0)).toBe("unknown");
+  });
+});

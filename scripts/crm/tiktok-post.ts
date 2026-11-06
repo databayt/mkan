@@ -53,6 +53,7 @@ import {
   brokerAsk,
   brokerPreviewAsk,
   brokerHandle,
+  addedText,
   bandCrop,
   brokerVideoUrl,
   fitGraph,
@@ -73,6 +74,8 @@ import {
   refOf,
   spokenContactSpans,
   type SpokenWord,
+  sceneMotion,
+  sceneTextKept,
   staticOverlayRegions,
   STRIP_FPS,
   stripGraph,
@@ -484,9 +487,12 @@ async function stripText(ref: string, made: { path: string; dur: number; pic?: R
   };
   let first = await read(made.path, 0, true);
   let body = { path: made.path, dur: made.dur };
+  // Only text added on top of the video is the broker's: a sign or a label in the scene stays
+  // (addedText — Abdout, 2026-11-06: "the text which was later added to the video").
+  let motion = sceneMotion(first.grays, { gw: GW, gh: GH });
   // A caption banner across the picture's top or bottom is cut off, not wiped (a wipe leaves a
   // frosted block): the rows between the bands re-fit to 9:16, then the rest is read again.
-  const band = bandCrop(textRegions(first.text, { duration: made.dur }), made.pic ?? { x: 0, y: 0, w: W, h: H });
+  const band = bandCrop(textRegions(addedText(first.text, { motion }), { duration: made.dur }), made.pic ?? { x: 0, y: 0, w: W, h: H });
   let cut = '';
   if (band) {
     const k = band.keep;
@@ -494,10 +500,12 @@ async function stripText(ref: string, made: { path: string; dur: number; pic?: R
     ffmpeg(['-i', made.path, '-filter_complex', `[0:v]crop=${k.w}:${k.h}:${k.x}:${k.y},${fitGraph(k.w, k.h)},setsar=1,format=yuv420p[v]`, '-map', '[v]', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-c:a', 'copy', path]);
     body = { path, dur: made.dur };
     first = await read(path, 0, true);
+    motion = sceneMotion(first.grays, { gw: GW, gh: GH });
     cut = `cut caption band (${[band.top && `top ${band.top}px`, band.bottom && `bottom ${band.bottom}px`].filter(Boolean).join(', ')}), `;
     console.log(`  … ${ref}: ${cut.slice(0, -2)} — re-fit ${k.w}×${k.h} to 9:16`);
   }
-  const seen = first.text;
+  const seen = addedText(first.text, { motion });
+  const keptScene = sceneTextKept(first.text, seen);
   const marks = staticOverlayRegions(first.grays, { gw: GW, gh: GH, duration: body.dur });
   for (let pass = 1; pass <= 2; pass++) {
     const words = textRegions(seen, { duration: body.dur, padScale: pass === 1 ? 1 : 1.6 });
@@ -508,10 +516,12 @@ async function stripText(ref: string, made: { path: string; dur: number; pic?: R
       ffmpeg(['-i', body.path, '-filter_complex', stripGraph(regions), '-map', '[v]', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-pix_fmt', 'yuv420p', '-c:a', 'copy', path]);
     }
     // Between the samples the wipe was built from: no readable text may be left.
-    const check = (await read(path, Math.floor(BODY_FPS / STRIP_FPS / 2))).text;
+    // Scene text the strip kept on purpose does not fail the gate; added text or a contact does.
+    const check = addedText((await read(path, Math.floor(BODY_FPS / STRIP_FPS / 2))).text, { motion });
     const left = leftoverText(check);
     if (!left.length) {
-      const note = cut + (regions.length ? `wiped ${words.length} text place${words.length === 1 ? '' : 's'} + ${marks.length} logo/watermark${marks.length === 1 ? '' : 's'}${pass > 1 ? ' (second pass)' : ''}` : 'no on-screen text or logo');
+      const kept = keptScene ? `, kept ${keptScene} line${keptScene === 1 ? '' : 's'} of scene text` : '';
+      const note = cut + (regions.length ? `wiped ${words.length} text place${words.length === 1 ? '' : 's'} + ${marks.length} logo/watermark${marks.length === 1 ? '' : 's'}${pass > 1 ? ' (second pass)' : ''}` : 'no added text or logo') + kept;
       console.log(`  … ${ref}: ${note}`);
       return { path, dur: body.dur, note };
     }

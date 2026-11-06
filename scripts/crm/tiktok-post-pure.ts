@@ -527,6 +527,116 @@ export function leftoverText(frames: TextFrame[], opts: { minConf?: number; minA
   return out;
 }
 
+// ── text added on top, not text in the scene (Abdout, 2026-11-06) ─────────────
+//
+// "Strip the text" means the text that was ADDED to the video afterwards — the broker's captions,
+// prices, phone number, @handle — never text that is part of the scene: a shop sign through the
+// window, a label on the fridge, a street name. Each line Vision reads is followed across the
+// sampled frames: one that holds still on the screen while the camera moves was put on top; one
+// that moves with the picture is in the scene and stays. Contact details and listing words are
+// wiped wherever they are. With the camera still, position cannot tell them apart, so only bold,
+// caption-placed text counts as added.
+
+/** The camera moving (so something fixed on the screen was put on top), still, or too few frames to say. */
+export type SceneMotion = 'moving' | 'still' | 'unknown';
+
+/** Whether the picture moves at time t: each window's median per-pixel spread (as staticOverlayRegions reads it). */
+export function sceneMotion(frames: GrayFrame[], opts: { gw: number; gh: number; window?: number; motionMin?: number }): (t: number) => SceneMotion {
+  const { gw, gh, window = 8, motionMin = 6 } = opts;
+  const N = gw * gh;
+  if (frames.length < 4 || !N) return () => 'unknown';
+  const spans: { from: number; to: number; motion: SceneMotion }[] = [];
+  for (let i = 0; i < frames.length; i += window) {
+    let chunk = frames.slice(i, i + window);
+    if (chunk.length < 4 && spans.length) {
+      // A short tail joins the window before it.
+      chunk = frames.slice(Math.max(0, i - window), i + window);
+      spans.pop();
+    }
+    if (chunk.length < 4) continue;
+    const mean = new Float32Array(N);
+    const sd = new Float32Array(N);
+    for (const f of chunk) for (let p = 0; p < N; p++) mean[p]! += f.data[p]! / chunk.length;
+    for (const f of chunk) for (let p = 0; p < N; p++) sd[p]! += (f.data[p]! - mean[p]!) ** 2 / chunk.length;
+    for (let p = 0; p < N; p++) sd[p] = Math.sqrt(sd[p]!);
+    const median = Float32Array.from(sd).sort()[Math.floor(N / 2)]!;
+    spans.push({ from: chunk[0]!.t, to: chunk[chunk.length - 1]!.t, motion: median >= motionMin ? 'moving' : 'still' });
+  }
+  return (t) => spans.find((s) => t >= s.from - 0.5 && t <= s.to + 0.5)?.motion ?? 'unknown';
+}
+
+/** Words of a rental ad: a line carrying them is the broker's caption wherever it sits. */
+const LISTING_TEXT =
+  /\b\d+\s*(?:k|m|rwf|frw|usd|\$)\b|\$\s*\d|\b(?:rwf|frw)\b|\b(?:bed(?:room)?s?|bath(?:room)?s?|for\s+rent|to\s+let|rent|price|deposit|furnished|available|call|whatsapp|dm|inbox|contact|per\s+month|monthly|kigali|kimironko|kicukiro|gasabo|nyarugenge|remera|kacyiru|kibagabaga|gisozi|kanombe|nyarutarama|kimihurura)\b|inzu|ibyumba|icyumba|ikodeshwa|irakodeshwa|amafaranga|ukwezi/i;
+
+const normText = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+
+/**
+ * Only the text added on top of the video, as frames textRegions can wipe. A line is followed across
+ * frames by its words (or, when Vision reads it differently, by where it sits and its size); it is
+ * added when it carries a contact or listing words, or holds still on screen while the camera moves,
+ * or — with the camera still — is bold and sits where captions sit. Text that moves with the picture,
+ * or is small and ordinary in a still shot, is the scene: it stays (2026-11-06).
+ */
+export function addedText(frames: TextFrame[], opts: { motion: (t: number) => SceneMotion; allow?: string[]; step?: number }): TextFrame[] {
+  const { motion, allow = [], step = 1 / STRIP_FPS } = opts;
+  type Sighting = { fi: number; bi: number; t: number; b: TextBox };
+  const tracks: Sighting[][] = [];
+  const cx = (b: TextBox) => b.x + b.w / 2;
+  const cy = (b: TextBox) => b.y + b.h / 2;
+  const iou = (a: TextBox, b: TextBox) => {
+    const x = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+    const y = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+    const i = x * y;
+    return i / (a.w * a.h + b.w * b.h - i || 1);
+  };
+  frames.forEach((f, fi) =>
+    f.boxes.forEach((b, bi) => {
+      const key = normText(b.text ?? '');
+      // The track this line continues: same words within a couple of samples, or the same place and size.
+      const track = tracks.find((tr) => {
+        const last = tr[tr.length - 1]!;
+        if (f.t - last.t > 2.5 * step + 1e-6 || last.fi === fi) return false;
+        return (key.length >= 3 && normText(last.b.text ?? '') === key) || (iou(last.b, b) > 0.5 && Math.abs(last.b.h - b.h) < 0.3 * Math.max(last.b.h, b.h));
+      });
+      const s = { fi, bi, t: f.t, b };
+      if (track) track.push(s);
+      else tracks.push([s]);
+    }),
+  );
+  const keep = new Set<string>();
+  for (const tr of tracks) {
+    const texts = tr.map((s) => s.b.text ?? '').join(' ');
+    let added = contactLeaks(texts, allow).length > 0 || LISTING_TEXT.test(texts);
+    if (!added) {
+      const moving = tr.some((s) => motion(s.t) === 'moving');
+      if (moving && tr.length >= 2) {
+        // Fixed on the screen while the picture moves: put on top. Moving with it: in the scene.
+        let drift = 0;
+        for (let i = 1; i < tr.length; i++) {
+          const a = tr[i - 1]!.b;
+          const b = tr[i]!.b;
+          drift = Math.max(drift, Math.hypot(cx(a) - cx(b), cy(a) - cy(b)) / Math.max(a.h, b.h, 1e-6));
+        }
+        added = drift < 0.35;
+      } else if (!moving) {
+        // A still camera (or a photo): bold and where captions sit, or big — that is a caption.
+        const b = tr.reduce((m, s) => (s.b.w * s.b.h > m.w * m.h ? s.b : m), tr[0]!.b);
+        const sure = tr.every((s) => s.b.conf >= 0.9);
+        const captionBand = b.y + b.h <= 0.25 || b.y >= 0.7;
+        added = sure && (b.h >= 0.035 || (captionBand && b.w >= 0.3));
+      }
+      // Seen once while the camera moves: a glimpse of the scene (a caption stays on screen longer).
+    }
+    if (added) for (const s of tr) keep.add(`${s.fi}:${s.bi}`);
+  }
+  return frames.map((f, fi) => ({ t: f.t, boxes: f.boxes.filter((_, bi) => keep.has(`${fi}:${bi}`)) }));
+}
+
+/** How many lines of scene text a strip leaves on purpose (for the log). */
+export const sceneTextKept = (all: TextFrame[], added: TextFrame[]) =>
+  all.reduce((n, f, i) => n + f.boxes.length - (added[i]?.boxes.length ?? 0), 0);
+
 // ── logos and watermarks: what holds still while the scene moves ─────────────
 
 /** A sampled frame, greyscale, `gw × gh` (row-major, 0–255). */
