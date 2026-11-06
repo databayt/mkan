@@ -183,12 +183,15 @@ interface HotelCreditDialogProps {
 }
 
 export default function HotelCreditDialog({ forceOpen }: HotelCreditDialogProps) {
+  // The flag gates the whole component, so its hooks always run in the same order.
+  return PHASE1.showHotelCreditDialog || forceOpen ? <HotelCreditDialogInner forceOpen={forceOpen} /> : null;
+}
+
+function HotelCreditDialogInner({ forceOpen }: HotelCreditDialogProps) {
   const { locale, isRTL } = useLocale();
   const router = useRouter();
   const labels = t[locale] ?? t.en;
   const [open, setOpen] = useState(false);
-
-  if (!PHASE1.showHotelCreditDialog && !forceOpen) return null;
 
   // Surface like a promo shortly after the page paints, once per browser.
   useEffect(() => {

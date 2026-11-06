@@ -28,6 +28,10 @@ export default [
     ],
   },
   {
+    // Same files as eslint-config-next's plugin block: without `files`, these rules also reach
+    // `.cjs`/`.json`, where `react-hooks` is not loaded, and ESLint crashed — CI skipped every job
+    // after it for months.
+    files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
     rules: {
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": "warn",
@@ -64,5 +68,10 @@ export default [
       "react-hooks/rules-of-hooks": "error",
       "@next/next/no-duplicate-head": "error",
     },
+  },
+  {
+    // CommonJS entry points (cf/entry.cjs) load with require() by definition.
+    files: ["**/*.cjs"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
   },
 ];

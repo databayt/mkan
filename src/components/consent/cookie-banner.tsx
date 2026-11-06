@@ -28,6 +28,11 @@ function writeCookie(name: string, value: string, maxAge: number) {
  * Airbnb-styled centered floating consent banner.
  */
 export function CookieBanner() {
+  // The flag gates the whole component, so its hooks always run in the same order.
+  return PHASE1.showCookieBanner ? <CookieBannerInner /> : null;
+}
+
+function CookieBannerInner() {
   const dict = useDictionary();
   const { locale } = useLocale();
   const t = (dict.cookieConsent as Record<string, string> | undefined) ?? {};
@@ -39,8 +44,6 @@ export function CookieBanner() {
   // `data-consent` on <html> and a CSS rule display:nones the banner before
   // anything renders; the effect below then unmounts it for real.
   const [open, setOpen] = useState(true);
-
-  if (!PHASE1.showCookieBanner) return null;
   // Two-phase close: CSS transition runs (fade + drop), then unmount. This
   // used to be a framer-motion AnimatePresence exit — the CSS version keeps
   // the identical 350ms ease-out feel without shipping the animation engine

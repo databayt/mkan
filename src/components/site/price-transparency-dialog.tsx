@@ -35,10 +35,13 @@ function PriceTagIcon() {
 }
 
 export function PriceTransparencyDialog() {
+  // The flag gates the whole component, so its hooks always run in the same order.
+  return PHASE1.showPriceTransparencyDialog ? <PriceTransparencyDialogInner /> : null;
+}
+
+function PriceTransparencyDialogInner() {
   const dict = useDictionary();
   const [open, setOpen] = useState(false);
-
-  if (!PHASE1.showPriceTransparencyDialog) return null;
 
   useEffect(() => {
     try {
