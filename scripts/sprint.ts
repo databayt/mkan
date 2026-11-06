@@ -10,6 +10,7 @@
  *                                                      value stored as the baseline), print it as JSON
  *   pnpm sprint:release <promptId> --result="…"        the runner: a run that ended without reporting → blocked
  *   tsx scripts/sprint.ts brief <promptId>             the runner: key numbers now + the 5 most relevant lessons
+ *   tsx scripts/sprint.ts beat <state> [--prompt=…]    the runner: the loop's state for /monetize's live card
  *   pnpm sprint:task <taskId> [--undo]                 tick (or untick) a task
  *   pnpm sprint:plan --file=plan.json                  create a WEEK / MONTH sprint from JSON (replaces an open one of that kind)
  *   pnpm sprint:approve <promptId>                     Abdout, on the Mac: a prompt added on the web may run (refused unattended)
@@ -193,13 +194,30 @@ async function approve(db: Db, id: string) {
 async function release(db: Db, id: string) {
   const p = await db.sprintPrompt.findUnique({ where: { id }, select: { status: true } });
   if (p?.status !== 'running') return console.log(`prompt ${id} is ${p?.status ?? 'gone'} — nothing to release`);
-  // --pending: give it back untouched (the runner's daily cap); otherwise it needs a look.
+  // --pending: give it back untouched (the plan's limit or the loop's budget parked it — not the prompt's
+  // fault, so no retry is counted); otherwise it needs a look. Either way an old `unblockWhen` goes: it
+  // belonged to an earlier "needs you" and would send a prompt that just failed straight back to
+  // pending — one prompt failed four times that way on 2026-11-06.
   const status = flag('pending') ? 'pending' : 'blocked';
   await db.sprintPrompt.update({
     where: { id },
-    data: { status, processedAt: status === 'pending' ? null : new Date(), result: (arg('result') ?? 'The run ended without reporting.').slice(0, 500) },
+    data: {
+      status,
+      processedAt: status === 'pending' ? null : new Date(),
+      ...(status === 'blocked' ? { blockedAt: new Date() } : {}),
+      unblockWhen: null,
+      result: (arg('result') ?? 'The run ended without reporting.').slice(0, 500),
+    },
   });
   console.log(`✓ prompt ${id} ${status}`);
+}
+
+/** The runner's heartbeat for /monetize's live card (scripts/sprint/beat.ts). */
+async function beat(db: Db, state: string) {
+  const { LOOP_STATES, writeBeat } = await import('./sprint/beat');
+  if (!(LOOP_STATES as readonly string[]).includes(state)) throw new Error(`state must be one of ${LOOP_STATES.join(', ')}`);
+  const v = await writeBeat(db, state as (typeof LOOP_STATES)[number], { promptId: arg('prompt'), until: arg('until'), note: arg('note') });
+  console.log(`♥ ${state}${v.promptId ? ` ${v.promptId}` : ''}${v.until ? ` until ${v.until}` : ''}`);
 }
 
 async function task(db: Db, id: string) {
@@ -230,6 +248,7 @@ async function main() {
     else if (cmd === 'release' && id) await release(db, id);
     else if (cmd === 'brief' && id) await brief(db, id);
     else if (cmd === 'approve' && id) await approve(db, id);
+    else if (cmd === 'beat' && id) await beat(db, id);
     else if (cmd === 'plan' && arg('file')) await plan(db, arg('file')!);
     else console.log('usage: pnpm sprint:show | sprint:next | sprint:done <promptId> [--result=…] [--task-done] [--skip | --blocked [--unblock-when=…]] [--metric=…] [--lesson=…] | sprint:task <taskId> [--undo] | sprint:plan --file=plan.json');
   } finally {
