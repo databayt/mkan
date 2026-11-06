@@ -42,6 +42,7 @@ import {
   phoneKey,
   planOutbox,
   recipientKey,
+  reminderOf,
   senderPhone,
   startOfKigaliDay,
   typingMs,
@@ -173,6 +174,15 @@ async function drain(dry: boolean, log: Log, sendsOff: boolean): Promise<{ sent:
   for (const { row, reason } of plan.skip) {
     log(`skip ${row.id} ${row.kind}: ${SKIP_TEXT[reason]}`);
     if (!dry) await db.outboundMessage.update({ where: { id: row.id }, data: { status: "SKIPPED", error: SKIP_TEXT[reason] } });
+    // A viewing reminder that never went out is marked so (the visit used to read it as sent), and a
+    // person hears it — unless the tenant said STOP, which is the end of it.
+    const reminder = reminderOf(row.label);
+    if (!dry && reminder) {
+      await db.listingVisit.update({ where: { id: reminder.visitId }, data: { reminders: { push: `${reminder.mark}:dropped` } } }).catch(() => {});
+      if (reason !== "tenant-stop") {
+        await postSlackCard(`⏰ The ${reminder.mark === "after" ? '"how did the viewing go?"' : `${reminder.mark} reminder`} for visit ${reminder.visitId} could not go out (${SKIP_TEXT[reason]}) — message the tenant yourself.`).catch(() => {});
+      }
+    }
     // An ask that never went out (too old, the broker opted out) is not "asked": its requests expire now,
     // so the hourly pass hands the home to the next broker — they sat PENDING until the tenant heard
     // "no reply" from a broker nobody had asked (2026-11-06). Sends switched off is left to a person.
@@ -218,6 +228,10 @@ async function drain(dry: boolean, log: Log, sendsOff: boolean): Promise<{ sent:
       else if (out?.key?.id) await writeState(askMsgKey(out.key.id), { outboundId: row.id }).catch(() => {});
       const sentAt = new Date();
       await db.outboundMessage.update({ where: { id: row.id }, data: { status: "SENT", sentAt, attempts: { increment: 1 }, error: null, ...(body !== row.body ? { body } : {}) } });
+      // The visit hears its reminder went out only now — "after" is what makes the tenant's next
+      // message the answer to "how did it go?" (deal.ts afterViewingFor).
+      const reminder = reminderOf(row.label);
+      if (reminder) await db.listingVisit.update({ where: { id: reminder.visitId }, data: { reminders: { push: reminder.mark } } }).catch(() => {});
       if (row.kind === "BROKER_REQUEST" && row.brokerRequestIds.length) {
         await db.brokerRequest.updateMany({ where: { id: { in: row.brokerRequestIds } }, data: { channel: "evolution", sentAt } });
       }

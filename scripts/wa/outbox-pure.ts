@@ -121,6 +121,58 @@ export type SkipReason = 'opted-out' | 'stale' | 'sends-off' | 'tenant-stop' | '
 export const ALERT_STALE_HOURS = 20;
 export const REMINDER_STALE_HOURS = 3;
 export const isReminder = (label: string | null | undefined) => !!label && label.startsWith('tenant-reminder');
+/** The 24 h and 2 h reminders are worthless once late; "how did the viewing go?" still reads well a day on. */
+export const isTimedReminder = (label: string | null | undefined) => !!label && /^tenant-reminder-(?:24h|2h)(?::|$)/.test(label);
+
+/**
+ * What a tenant alert is, so the outbox can treat them apart and /monetize can count them
+ * (2026-11-07: every alert was "tenant"). Rows labelled "tenant" from before keep the default rules.
+ */
+export const ALERT_LABEL = {
+  dealSheet: 'tenant-deal-sheet',
+  viewingConfirmed: 'tenant-viewing-confirmed',
+  brokerAnswer: 'tenant-broker-answer',
+  match: 'tenant-match',
+} as const;
+
+/** A viewing reminder's label: which one, for which visit — the outbox marks the visit when it goes. */
+export const reminderLabel = (mark: '24h' | '2h' | 'after', visitId: number) => `tenant-reminder-${mark}:v${visitId}`;
+export function reminderOf(label: string | null | undefined): { mark: '24h' | '2h' | 'after'; visitId: number } | null {
+  const m = label?.match(/^tenant-reminder-(24h|2h|after):v(\d+)$/);
+  return m ? { mark: m[1] as '24h' | '2h' | 'after', visitId: Number(m[2]) } : null;
+}
+
+/**
+ * The answer to the tenant's own open step — the deal sheet after a broker's yes, the booked
+ * viewing — may go until 22:00: a yes at 20:38 used to wait twelve hours for the morning.
+ */
+export const LATE_WINDOW_END_HOUR = 22;
+const LATE_LABELS: ReadonlySet<string> = new Set([ALERT_LABEL.dealSheet, ALERT_LABEL.viewingConfirmed]);
+
+/** [first hour, end hour) in Kigali time this row may be sent. */
+export function sendWindowFor(row: Pick<OutboxRow, 'kind' | 'label'>): [number, number] {
+  return row.kind === 'TENANT_ALERT' && row.label != null && LATE_LABELS.has(row.label) ? [WINDOW_START_HOUR, LATE_WINDOW_END_HOUR] : [WINDOW_START_HOUR, WINDOW_END_HOUR];
+}
+
+export function inWindowFor(row: Pick<OutboxRow, 'kind' | 'label'>, now: Date): boolean {
+  const [start, end] = sendWindowFor(row);
+  const h = kigaliHour(now);
+  return h >= start && h < end;
+}
+
+/** The first moment at or after `from` that the row may go out (its own send window). */
+export function firstSendableAt(row: Pick<OutboxRow, 'kind' | 'label'>, from: Date): Date {
+  const [start, end] = sendWindowFor(row);
+  const h = kigaliHour(from);
+  if (h >= start && h < end) return from;
+  const opens = new Date(startOfKigaliDay(from).getTime() + start * 3_600_000);
+  return h < start ? opens : new Date(opens.getTime() + DAY_MS);
+}
+
+/** When "how did the viewing go?" is due: 3 h after the visit, or the next 08:00 if that is in quiet hours. */
+export function afterViewingAt(visitAt: Date): Date {
+  return firstSendableAt({ kind: 'TENANT_ALERT', label: 'tenant-reminder-after' }, new Date(visitAt.getTime() + 3 * 3_600_000));
+}
 
 /**
  * Why a broker gets no new ask now, from the asks that number was sent (any
@@ -151,7 +203,6 @@ export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
   const { now, rows, cap } = input;
   const plan: Plan<R> = { send: [], skip: [], hold: [] };
   const today = kigaliDay(now);
-  const open = inSendWindow(now);
   const takenToday = new Set<string>();
   for (const [key, at] of input.lastSentAt) if (kigaliDay(at) === today) takenToday.add(key);
   let budget = Math.max(0, cap - input.sentToday);
@@ -162,7 +213,11 @@ export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
       plan.skip.push({ row, reason: 'tenant-stop' });
       continue;
     }
-    if (isAlert && now.getTime() - row.createdAt.getTime() > (isReminder(row.label) ? REMINDER_STALE_HOURS : ALERT_STALE_HOURS) * 3_600_000) {
+    // Late is counted from when the alert could first go out, not from when it was queued: a deal
+    // sheet queued at 21:00 has its 20 h from 08:00 (2026-11-07). A 24 h / 2 h reminder keeps 3 h from
+    // being queued, so "your viewing is in 2 h" can never arrive after the viewing.
+    const lateMs = isTimedReminder(row.label) ? now.getTime() - row.createdAt.getTime() : now.getTime() - firstSendableAt(row, row.createdAt).getTime();
+    if (isAlert && lateMs > (isTimedReminder(row.label) ? REMINDER_STALE_HOURS : ALERT_STALE_HOURS) * 3_600_000) {
       plan.skip.push({ row, reason: 'stale-alert' });
       continue;
     }
@@ -179,7 +234,7 @@ export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
       plan.skip.push({ row, reason: 'stale' });
       continue;
     }
-    if (!open) {
+    if (!inWindowFor(row, now)) {
       plan.hold.push({ row, reason: 'quiet-hours' });
       continue;
     }

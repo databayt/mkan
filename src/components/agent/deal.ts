@@ -50,7 +50,7 @@ import { postSlackCard, sendMessages } from "./whatsapp";
 import { scrubTitle } from "@/lib/redact";
 import { chatLink } from "./demand";
 import { readState } from "./wa-state";
-import { phoneKey } from "../../../scripts/wa/outbox-pure";
+import { ALERT_LABEL, afterViewingAt, inSendWindow, phoneKey, reminderLabel } from "../../../scripts/wa/outbox-pure";
 
 /** The number said STOP on WhatsApp (wa-tenant.ts keeps the list). */
 async function saidStop(phone: string): Promise<boolean> {
@@ -124,7 +124,8 @@ export async function prepareDealSheet(task: DealTask, listingId: number): Promi
 export async function sendDealSheet(task: DealTask, listingId: number): Promise<boolean> {
   const sheet = await prepareDealSheet(task, listingId);
   if (!sheet) return false;
-  await sendMessages([{ kind: "TENANT_ALERT", to: sheet.to, body: sheet.body, label: "tenant" }], `Deal sheet → tenant (home #${listingId})`);
+  // Labelled as a deal sheet: it may go until 22:00, the answer to the tenant's own pick (outbox-pure.ts).
+  await sendMessages([{ kind: "TENANT_ALERT", to: sheet.to, body: sheet.body, label: ALERT_LABEL.dealSheet }], `Deal sheet → tenant (home #${listingId})`);
   return true;
 }
 
@@ -299,6 +300,11 @@ export async function bookViewing(input: {
   if (open?.visitId) {
     // A new time for the same viewing: its reminders start over.
     visit = await db.listingVisit.update({ where: { id: open.visitId }, data: { ...visitData, outcome: "Scheduled", reminders: [] }, select: { id: true } });
+    // ...and a reminder still queued for the old time must not go out.
+    await db.outboundMessage.updateMany({
+      where: { status: "QUEUED", label: { startsWith: "tenant-reminder-", endsWith: `:v${open.visitId}` } },
+      data: { status: "SKIPPED", error: "viewing re-booked" },
+    });
     deal = await db.deal.update({ where: { id: open.id }, data: { ...dealData, status: "VIEWING_BOOKED" }, select: { id: true } });
   } else {
     visit = await db.listingVisit.create({ data: { listingId: input.listingId, ...visitData }, select: { id: true } });
@@ -318,7 +324,7 @@ export async function bookViewing(input: {
       rep,
       terms: terms ? confirmedTermsLine(lang, terms, moveIn) : null,
     });
-    await sendMessages([{ kind: "TENANT_ALERT", to: tenant, body, label: "tenant" }], `Viewing confirmed → tenant (home #${input.listingId})`);
+    await sendMessages([{ kind: "TENANT_ALERT", to: tenant, body, label: ALERT_LABEL.viewingConfirmed }], `Viewing confirmed → tenant (home #${input.listingId})`);
     await db.waState.delete({ where: { key: askKey(tenant) } }).catch(() => {});
   }
   const said = terms ? confirmedTermsLine("en", terms, moveIn) : null;
@@ -329,30 +335,49 @@ export async function bookViewing(input: {
 }
 
 /**
- * Hourly: the tenant is reminded 24 h and 2 h before (the person from Mkan
- * hears in #mkan), and asked how it went 3 h after. Each mark is sent once.
+ * Hourly: the tenant is reminded 24 h and 2 h before (the person from Mkan hears in #mkan), and asked
+ * how it went 3 h after — or at 08:00 the next morning when that falls in quiet hours (outbox-pure
+ * afterViewingAt). A queued reminder is marked `<mark>:queued`; the outbox marks `<mark>` when it
+ * actually goes out and `<mark>:dropped` when it cannot (2026-11-07: a late viewing's "how did it go?"
+ * queued after 20:00 was dropped as stale, yet the visit read it as sent). Each mark is queued once.
  */
 export async function viewingReminders(now = new Date()): Promise<number> {
   const visits = await db.listingVisit.findMany({
-    where: { outcome: "Scheduled", taskId: { not: null }, scheduledFor: { gte: new Date(now.getTime() - 6 * 3_600_000), lte: new Date(now.getTime() + 25 * 3_600_000) } },
+    // 18 h back: an evening viewing's "how did it go?" is queued the next morning.
+    where: { outcome: "Scheduled", taskId: { not: null }, scheduledFor: { gte: new Date(now.getTime() - 18 * 3_600_000), lte: new Date(now.getTime() + 25 * 3_600_000) } },
     select: { id: true, scheduledFor: true, contactPhone: true, reminders: true, repName: true, meetingPoint: true, taskId: true, listing: { select: { title: true } } },
   });
   let sent = 0;
   for (const v of visits) {
     const ms = v.scheduledFor.getTime() - now.getTime();
-    const mark = ms <= 25 * 3_600_000 && ms > 3 * 3_600_000 ? "24h" : ms <= 2.5 * 3_600_000 && ms > 0 ? "2h" : ms <= -3 * 3_600_000 ? "after" : null;
-    if (!mark || v.reminders.includes(mark)) continue;
+    const mark: "24h" | "2h" | "after" | null =
+      ms <= 25 * 3_600_000 && ms > 3 * 3_600_000
+        ? "24h"
+        : ms <= 2.5 * 3_600_000 && ms > 0
+          ? "2h"
+          : ms <= 0 && now.getTime() >= afterViewingAt(v.scheduledFor).getTime()
+            ? "after"
+            : null;
+    if (!mark || v.reminders.some((r) => r === mark || r.startsWith(`${mark}:`))) continue;
+    // "Your viewing is in 2 h" queued in quiet hours could only arrive late: a pass in the window sends it.
+    if (mark === "2h" && !inSendWindow(now)) continue;
     const task = v.taskId ? await db.agentTask.findUnique({ where: { id: v.taskId }, select: { locale: true } }) : null;
     const lang = langOf(task?.locale ?? "en");
     const title = v.listing.title?.trim() || `#${v.id}`;
     const rep = v.repName || viewingRep();
+    let note: string = `${mark}:none`;
     if (v.contactPhone) {
-      const body = mark === "after" ? afterViewingMessage(lang, title) : viewingReminderMessage(lang, { title, label: viewingLabel(v.scheduledFor, lang), rep }, mark);
-      // Labelled as a reminder: the outbox drops it if it could not go out within 3 h (outbox-pure.ts).
-      if (!(await saidStop(v.contactPhone))) await sendMessages([{ kind: "TENANT_ALERT", to: v.contactPhone, body, label: `tenant-reminder-${mark}` }], `Viewing ${mark} → tenant`);
+      if (await saidStop(v.contactPhone)) note = `${mark}:stopped`;
+      else {
+        const body = mark === "after" ? afterViewingMessage(lang, title) : viewingReminderMessage(lang, { title, label: viewingLabel(v.scheduledFor, lang), rep }, mark);
+        // Labelled with the visit: the outbox marks it when it goes out (wa-outbox.ts drain).
+        const channel = await sendMessages([{ kind: "TENANT_ALERT", to: v.contactPhone, body, label: reminderLabel(mark, v.id) }], `Viewing ${mark} → tenant`);
+        // A manual send is a person tapping the #mkan card: it counts as sent, as before.
+        note = channel === "queued" ? `${mark}:queued` : mark;
+      }
     }
     if (mark !== "after") await postSlackCard(`⏰ Viewing ${mark === "24h" ? "tomorrow" : "in 2 h"}: ${title}, ${viewingLabel(v.scheduledFor, "en")}${v.meetingPoint ? ` · ${v.meetingPoint}` : ""} · ${rep}`).catch(() => {});
-    await db.listingVisit.update({ where: { id: v.id }, data: { reminders: { push: mark } } });
+    await db.listingVisit.update({ where: { id: v.id }, data: { reminders: { push: note } } });
     sent += 1;
   }
   return sent;

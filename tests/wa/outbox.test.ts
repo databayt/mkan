@@ -268,3 +268,50 @@ describe('wa outbox — a broker quoting our ask', () => {
     expect(quotedId(null)).toBeNull();
   });
 });
+
+describe('the clock no longer loses a deal sheet or a check-in (2026-11-07)', () => {
+  const alert = (label: string, createdAt: string) => row({ kind: 'TENANT_ALERT', brokerId: null, to: '+250720000011', label, createdAt: kigali(createdAt) });
+
+  it('a deal sheet after 20:00 still goes until 22:00; a plain alert waits for the morning', async () => {
+    const { ALERT_LABEL } = await import('../../scripts/wa/outbox-pure');
+    const sheet = alert(ALERT_LABEL.dealSheet, '2026-11-06T20:38:00');
+    const plain = alert('tenant', '2026-11-06T20:38:00');
+    const p = base([sheet, plain], { now: kigali('2026-11-06T20:40:00') });
+    expect(p.send.map((r) => r.id)).toEqual([sheet.id]);
+    expect(p.hold.map((h) => [h.row.id, h.reason])).toEqual([[plain.id, 'quiet-hours']]);
+    const late = base([alert(ALERT_LABEL.dealSheet, '2026-11-06T21:59:00')], { now: kigali('2026-11-06T22:00:00') });
+    expect(late.send).toHaveLength(0);
+    expect(late.hold[0]?.reason).toBe('quiet-hours');
+  });
+
+  it('an alert is late 20 h after it could first go, not after it was queued', () => {
+    const q = alert('tenant-broker-answer', '2026-11-06T21:00:00');
+    // First sendable 08:00 on the 7th: still good at 18:00 that day...
+    expect(base([q], { now: kigali('2026-11-07T18:00:00') }).send.map((r) => r.id)).toEqual([q.id]);
+    // ...and too late by 05:00 on the 8th (21 h after 08:00).
+    expect(base([q], { now: kigali('2026-11-08T05:00:00') }).skip.map((s) => s.reason)).toEqual(['stale-alert']);
+  });
+
+  it('a 2 h reminder still counts 3 h from being queued: never after the viewing', async () => {
+    const { reminderLabel } = await import('../../scripts/wa/outbox-pure');
+    const r = alert(reminderLabel('2h', 7), '2026-11-07T05:00:00');
+    expect(base([r], { now: kigali('2026-11-07T08:30:00') }).skip.map((s) => s.reason)).toEqual(['stale-alert']);
+  });
+
+  it('"how did the viewing go?" is due 3 h after the visit, or at 08:00 when that is in quiet hours', async () => {
+    const { afterViewingAt } = await import('../../scripts/wa/outbox-pure');
+    expect(afterViewingAt(kigali('2026-11-07T16:30:00')).getTime()).toBe(kigali('2026-11-07T19:30:00').getTime());
+    expect(afterViewingAt(kigali('2026-11-07T17:30:00')).getTime()).toBe(kigali('2026-11-08T08:00:00').getTime());
+    expect(afterViewingAt(kigali('2026-11-08T03:00:00')).getTime()).toBe(kigali('2026-11-08T08:00:00').getTime());
+  });
+
+  it('reads a reminder label back to its visit, and leaves other labels alone', async () => {
+    const { reminderLabel, reminderOf, isTimedReminder } = await import('../../scripts/wa/outbox-pure');
+    expect(reminderOf(reminderLabel('after', 42))).toEqual({ mark: 'after', visitId: 42 });
+    expect(reminderOf('tenant-reminder-2h')).toBeNull();
+    expect(reminderOf('tenant')).toBeNull();
+    expect(isTimedReminder(reminderLabel('24h', 1))).toBe(true);
+    expect(isTimedReminder('tenant-reminder-2h')).toBe(true);
+    expect(isTimedReminder(reminderLabel('after', 1))).toBe(false);
+  });
+});

@@ -22,7 +22,7 @@ import { db } from "@/lib/db";
 import { listingPath } from "@/lib/listing-code";
 import { publicAppUrl, waLink } from "../../../scripts/crm/public-links";
 import { REASK_GAP_DAYS, tenantActive, tenantGate } from "./broker-gate";
-import { inSendWindow, phoneKey, REST_DAYS, brokerRest, startOfKigaliDay } from "../../../scripts/wa/outbox-pure";
+import { ALERT_LABEL, inSendWindow, phoneKey, REST_DAYS, brokerRest, startOfKigaliDay } from "../../../scripts/wa/outbox-pure";
 import { answerStats, dueForNext, MAX_BROKERS_PER_HOME, rankBrokers, SILENT_LOOKBACK_DAYS, type BrokerSignal } from "./broker-rank";
 import { availabilityMessage, brokerAnswerMessage, brokerNumber, needSummary, noReplyMessage, viewingRep, type BrokerHomeLine } from "./broker-message";
 import { brokerSendMode, testPhones } from "./broker-sends";
@@ -481,8 +481,8 @@ async function tellWhatsAppTenants(tasks: AnsweredTask[], listingId: number, ans
     const to = t.profile?.waPhone;
     if (!to) return [];
     const link = chatLink(t.id, t.locale);
-    if (answer === "NO_REPLY") return tenantActive(t.messages, now) ? [{ kind: "TENANT_ALERT" as const, to, body: noReplyMessage(t.locale, titleIn(t, listingId), link), label: "tenant" }] : [];
-    return [{ kind: "TENANT_ALERT" as const, to, body: brokerAnswerMessage(t.locale, titleIn(t, listingId), answer === "AVAILABLE", link, canPick), label: "tenant" }];
+    if (answer === "NO_REPLY") return tenantActive(t.messages, now) ? [{ kind: "TENANT_ALERT" as const, to, body: noReplyMessage(t.locale, titleIn(t, listingId), link), label: ALERT_LABEL.brokerAnswer }] : [];
+    return [{ kind: "TENANT_ALERT" as const, to, body: brokerAnswerMessage(t.locale, titleIn(t, listingId), answer === "AVAILABLE", link, canPick), label: ALERT_LABEL.brokerAnswer }];
   });
   if (messages.length) await sendMessages(messages, `Broker answered home #${listingId}`);
 }

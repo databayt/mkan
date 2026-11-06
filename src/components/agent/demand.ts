@@ -23,6 +23,7 @@ import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements, type Require
 import { searchKigali, toShortlist } from "./search";
 import type { EventKind, ShortlistItem, StepStatus } from "./types";
 import { postSlackCard, sendMessages, type Outgoing } from "./whatsapp";
+import { ALERT_LABEL } from "../../../scripts/wa/outbox-pure";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
 export const demandLink = (token: string, lang = "en") => `${publicAppUrl()}/${lang}/b/d/${token}`;
@@ -161,7 +162,7 @@ export async function matchRequest(
   await appendTaskEvents(request.taskId, events);
   if (request.phone) {
     await sendMessages(
-      [{ kind: "TENANT_ALERT", to: request.phone, body: tenantAlertMessage(lang, cards.length, chatLink(request.taskId, lang)), label: "tenant", tenantRequestId: request.id }],
+      [{ kind: "TENANT_ALERT", to: request.phone, body: tenantAlertMessage(lang, cards.length, chatLink(request.taskId, lang)), label: ALERT_LABEL.match, tenantRequestId: request.id }],
       `Rental agent → tenant alert (${cards.length} new)`,
     );
   }
