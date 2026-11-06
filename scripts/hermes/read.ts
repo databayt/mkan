@@ -20,6 +20,7 @@ process.env.DOTENV_CONFIG_QUIET = 'true'; // the modules it loads call dotenv ag
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { maskPhone, maskText } from '../../src/lib/redact';
 
 type Db = (typeof import('../../src/lib/db'))['db'];
 
@@ -34,22 +35,8 @@ const N = arg('n', 8);
 const since = new Date(Date.now() - DAYS * 86_400_000);
 const TIKTOK = join(__dirname, '..', 'crm', '.data', 'tiktok-post');
 
-/** "+250 780 984 777" → "…777"; also inside free text. */
-export const maskPhone = (p: string | null | undefined): string => {
-  const d = String(p ?? '').replace(/\D/g, '');
-  return d ? `…${d.slice(-3)}` : '—';
-};
-/** A run of 9–13 digits (spaces, dashes, dots and brackets allowed) reads as a phone; dates and ids pass. */
-const looksLikePhone = (m: string): boolean => {
-  const digits = m.replace(/\D/g, '').length;
-  return digits >= 9 && digits <= 13 && !/\d{4}-\d{2}-\d{2}/.test(m);
-};
-export const maskText = (t: string | null | undefined, max = 90): string =>
-  String(t ?? '')
-    .replace(/\+?\d[\d\s().-]{6,}\d/g, (m) => (looksLikePhone(m) ? maskPhone(m) : m))
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, max);
+// The masks live in src/lib/redact.ts (shared with the public /monetize view); re-exported for callers.
+export { maskPhone, maskText };
 const ago = (d: Date | string | null | undefined): string => {
   if (!d) return '—';
   const m = Math.round((Date.now() - new Date(d).getTime()) / 60_000);
