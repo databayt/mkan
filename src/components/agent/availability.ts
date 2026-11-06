@@ -21,7 +21,10 @@ const json = (v: unknown) => v as Prisma.InputJsonValue;
  *   none    — nobody to ask (no broker with a number, or this broker was asked
  *             about it lately and has not answered).
  */
-export type AskOutcome = { ok: boolean; asked: boolean; why?: "handed" | "web" | "none" };
+export type AskOutcome = { ok: boolean; asked: boolean; why?: "handed" | "web" | "none" | "busy" | "already" | "confirmed" };
+
+/** How long a pick waits for the turn that showed the homes to finish writing. */
+const PICK_WAIT_MS = 10_000;
 
 /**
  * The tenant picked a broker home — a digit on WhatsApp, "yes" to "want me to
@@ -30,13 +33,25 @@ export type AskOutcome = { ok: boolean; asked: boolean; why?: "handed" | "web" |
  * the task is the tenant's.
  */
 export async function askAvailabilityFor(taskId: string, listingId: number): Promise<AskOutcome> {
-  const task = await db.agentTask.findUnique({
-    where: { id: taskId },
-    select: { id: true, locale: true, requirements: true, shortlist: true, status: true },
-  });
-  if (!task || task.status === "RUNNING") return { ok: false, asked: false };
+  const read = () =>
+    db.agentTask.findUnique({
+      where: { id: taskId },
+      select: { id: true, locale: true, requirements: true, shortlist: true, status: true },
+    });
+  let task = await read();
+  // The turn that showed these homes may still be writing its tail (the writer, a broker ask): a pick
+  // sent in the meantime waits for it instead of being refused (2026-11-06).
+  for (const until = Date.now() + PICK_WAIT_MS; task?.status === "RUNNING" && Date.now() < until; ) {
+    await new Promise((r) => setTimeout(r, 500));
+    task = await read();
+  }
+  if (!task) return { ok: false, asked: false };
+  if (task.status === "RUNNING") return { ok: false, asked: false, why: "busy" };
   const shortlist = (task.shortlist as unknown as ShortlistItem[] | null) ?? [];
   const item = shortlist.find((s) => s.id === listingId);
+  // Already asked (this chat or another's) — the answer comes here; a yes already in — book the viewing.
+  if (item?.availability === "asked") return { ok: true, asked: false, why: "already" };
+  if (item?.availability === "confirmed") return { ok: true, asked: false, why: "confirmed" };
   if (!item?.lead || item.availability !== "unconfirmed") return { ok: false, asked: false };
 
   const outcome = await askBroker(task.id, item, task.requirements, task.locale);

@@ -46,6 +46,10 @@ const COPY: Record<
     pinGoneAlone: string;
     /** Under a ref's home: the pick is the consent to ask its broker. */
     checkPinned: string;
+    /** Under a ref's home a broker already said yes to: the pick books the viewing. */
+    bookPinned: string;
+    /** Under the homes, when one of them is confirmed available. */
+    book: string;
     /** Nothing fits: may we ask brokers who cover the area? */
     askAround: string;
   }
@@ -64,6 +68,8 @@ const COPY: Record<
     pinGone: "{ref} isn't available any more, sorry. Here are homes like it:",
     pinGoneAlone: "{ref} isn't available any more, sorry.",
     checkPinned: "Want me to check it's still free and set up a viewing? Reply *1*. It's free for you. 2 or 3 for the others.",
+    bookPinned: "The broker says it's available. Reply *1* and I'll set up the viewing — it's free for you.",
+    book: "A home marked available can be viewed: reply with its number and I'll set it up. It's free for you.",
     askAround: "Want me to ask a few brokers who work in that area? Reply *yes* and I'll message you when one has something.",
   },
   ar: {
@@ -80,6 +86,8 @@ const COPY: Record<
     pinGone: "{ref} لم يعد متاحاً للأسف. هذه منازل قريبة منه:",
     pinGoneAlone: "{ref} لم يعد متاحاً للأسف.",
     checkPinned: "هل أتأكد أنه ما زال متاحاً وأرتب لك معاينة؟ أرسل *1*، والمعاينة مجانية لك. أو 2 و3 للمنزلين الآخرين.",
+    bookPinned: "يقول الوسيط إنه متاح. أرسل *1* وسأرتب لك المعاينة، وهي مجانية لك.",
+    book: "يمكنك معاينة المنزل المتاح: أرسل رقمه وسأرتب ذلك، والمعاينة مجانية لك.",
     askAround: "هل أسأل بعض الوسطاء الذين يعملون في تلك المنطقة؟ أرسل *نعم* وسأراسلك حين يجد أحدهم شيئاً.",
   },
   rw: {
@@ -96,6 +104,8 @@ const COPY: Record<
     pinGone: "{ref} ntikiboneka, mbabarira. Dore amazu ameze nkayo:",
     pinGoneAlone: "{ref} ntikiboneka, mbabarira.",
     checkPinned: "Nkubarize niba igihari kandi dupange gusura? Ohereza *1*. Ni ubuntu kuri wowe. 2 cyangwa 3 ku yandi.",
+    bookPinned: "Komisiyoneri avuga ko iracyahari. Ohereza *1* ngupangire gusura — ni ubuntu kuri wowe.",
+    book: "Inzu yanditseho ko iracyahari ushobora kuyisura: ohereza nimero yayo nkagupangira. Ni ubuntu kuri wowe.",
     askAround: "Mbaze abakomisiyoneri bake bakorera muri ako gace? Ohereza *yego* nzakwandikira nibagira icyo babona.",
   },
 };
@@ -153,6 +163,10 @@ export const asksForHome = (text: string): boolean =>
 export const saysYes = (text: string) => /^(?:1|yes|yeah|yep|ok(?:ay)?|sure|please|go ahead|yego|ndiyo|oui|نعم|ايوه|أيوه|ايوا|تمام)[\s.!]*$/i.test(text.trim());
 
 export const MAX_HOMES = 3;
+
+/** "I'd like to view K1234" — the /find card's "Book the viewing on WhatsApp" prefill, in en / ar / rw / fr. */
+export const wantsViewing = (text: string): boolean =>
+  /\b(?:view|viewing|visit|see it|book|visiter|voir)\b|معاين|زيار|أشوف|gusura|kureba/i.test(text);
 
 /** The language of a WhatsApp message: Arabic script, a few Kinyarwanda words, else English. */
 export function waLang(text: string): WaLang {
@@ -236,8 +250,12 @@ export function formatWhatsApp(view: AgentTaskView, d: WaDict, lang: WaLang, cha
       const pinned = m.pin?.found ? view.shortlist[0] : undefined;
       // The message asked for the check itself ("Check K1234 for me"): it has started, say so.
       if (pinned && m.checked) parts.push(checkText(lang, m.checked, pinned.title.trim()));
+      // Asked already (run.ts marks it the moment the broker is asked): never "reply 1" for it again.
+      else if (pinned?.lead && pinned.availability === "asked") parts.push(checkText(lang, "already", pinned.title.trim()));
+      else if (pinned?.availability === "confirmed") parts.push(c.bookPinned);
       else if (pinned?.lead && pinned.availability === "unconfirmed") parts.push(c.checkPinned);
       else if (view.shortlist.some((s) => s.lead && s.availability === "unconfirmed")) parts.push(c.check);
+      if (!pinned && view.shortlist.slice(0, MAX_HOMES).some((s) => s.availability === "confirmed")) parts.push(c.book);
       if (!m.pin && m.refine === "stay") parts.push(d.refine.stay ?? "");
       else if (!m.pin && m.refine === "maxPrice") parts.push(d.refine.budget ?? "");
       break;
@@ -313,7 +331,12 @@ export function readPick(text: string, view: AgentTaskView | null, d: WaDict): P
  * handed (a person at Mkan checks it — broker sends paused, or a team number),
  * or none (no broker to reach, or one asked lately who has not answered yet).
  */
-export function checkText(lang: WaLang, outcome: "asked" | "handed" | "none", title: string): string {
+export function checkText(lang: WaLang, outcome: "asked" | "handed" | "none" | "already", title: string): string {
+  if (outcome === "already") {
+    if (lang === "ar") return `سألت الوسيط عن «${title}» من قبل، وسيصلك رده هنا.`;
+    if (lang === "rw") return `Nabajije komisiyoneri ibya "${title}" mbere. Igisubizo kizaza hano.`;
+    return `I've already asked the broker about "${title}". Their answer will come here.`;
+  }
   if (lang === "ar")
     return outcome === "asked"
       ? `سألت الوسيط عن «${title}». سأرسل لك الرد هنا.`

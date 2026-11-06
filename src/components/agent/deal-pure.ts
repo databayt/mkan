@@ -396,3 +396,31 @@ export function afterViewingMessage(lang: DealLang, title: string): string {
   if (lang === "rw") return `Gusura "${title}" byagenze bite? Ohereza 1 niba uyishaka, 2 niba itakunogeye, cyangwa utubwire uko wabibonye.`;
   return `How did the viewing of "${title}" go? Reply 1 if you want to take it, 2 if not, or tell us what you thought.`;
 }
+
+// ── after the viewing ───────────────────────────────────────────────────
+// "How did the viewing go? Reply 1 if you want to take it, 2 if not" (afterViewingMessage) had no
+// reader: a "1" picked home #1 of the chat and could ask a broker about another home (2026-11-06).
+// Word ends are a lookahead, not \b: \b is ASCII-only even under /u, so it never matches after نعم.
+
+const WANT_IT = /^\s*(?:1|yes|yeah|yep|sure|i\s+(?:want|will\s+take|'?ll\s+take|like)\s+it|i\s+take\s+it|take\s+it|we(?:'?ll|\s+will)\s+take\s+it|we\s+want\s+it|yego|ndayishaka|ndayifata|oui|je\s+la\s+prends|نعم|أريده|اريده|أبغاه|ابغاه|تمام)(?=$|[\s.,!?؟،])/iu;
+const NOT_IT = /^\s*(?:2|no|nope|not\s+for\s+me|i\s+don'?t\s+(?:want|like)\s+it|(?:i\s+)?did(?:n'?t|\s+not)\s+like(?:\s+it)?|oya|ntabwo|ntayo|non|لا|ما\s+عجبني|ما\s+يناسبني)(?=$|[\s.,!?؟،])/iu;
+
+/** The tenant's answer to "how did the viewing go?": want / not / anything else (a person reads it). */
+export function readAfterViewing(text: string): "want" | "not" | null {
+  const t = text.trim().replace(/[٠-٩]/g, (ch) => String(ch.charCodeAt(0) - 0x0660));
+  if (NOT_IT.test(t)) return "not";
+  if (WANT_IT.test(t)) return "want";
+  return null;
+}
+
+export function afterViewingWantText(lang: DealLang, title: string): string {
+  if (lang === "ar") return `رائع! سأخبر الوسيط أنك تريد «${title}»، وأعود إليك هنا بالعقد وما تدفعه.`;
+  if (lang === "rw") return `Ni byiza! Ndabwira komisiyoneri ko ushaka "${title}", ngaruke hano nkubwire ibijyanye n'amasezerano n'ibyo uzishyura.`;
+  return `Great! I'll tell the broker you want "${title}" and come back to you here with the lease and what to pay.`;
+}
+
+export function afterViewingNotText(lang: DealLang): string {
+  if (lang === "ar") return "شكراً لإخبارك. ما الذي يجب أن يتغير: المنطقة، الميزانية أم الحجم؟ اكتبه وسأبحث لك عن منازل أخرى.";
+  if (lang === "rw") return "Murakoze kumbwira. Ni iki gikwiye guhinduka: agace, amafaranga cyangwa ubunini? Bwandike ngushakire izindi nzu.";
+  return "Thanks for telling me. What should change — the area, the budget or the size? Write it and I'll look for other homes.";
+}

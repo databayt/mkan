@@ -527,7 +527,13 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
             })
         : null;
     const checked = check ? (check.asked ? "asked" : check.why === "handed" ? "handed" : check.why === "none" ? "none" : undefined) : undefined;
-    if (check?.asked) asked.add(pinned!.id);
+    if (check?.asked) {
+      asked.add(pinned!.id);
+      // Marked asked at once, not after the writer: the WhatsApp reply formatted at 16 s, and a "1" sent
+      // meanwhile, must see it asked — never "reply 1 to check" for a broker already asked (2026-11-06).
+      shortlist = shortlist.map((s) => (s.id === pinned!.id ? { ...s, availability: "asked" as const } : s));
+      await db.agentTask.update({ where: { id: task.id }, data: { shortlist: json(shortlist) } }).catch(() => {});
+    }
     // Only widened homes fit: keep the real need as demand, matched against new homes daily.
     const demand = relaxed.length && !assumed
       ? await openDemand(task.id, task.profileId, requirements, lang).catch((err) => {

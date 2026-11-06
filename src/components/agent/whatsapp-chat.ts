@@ -17,14 +17,15 @@ import { db } from "@/lib/db";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { publicAppUrl } from "../../../scripts/crm/public-links";
 import { appendUserMessage, type CurrentTask } from "./append";
-import { askAvailabilityFor } from "./availability";
+import { askAvailabilityFor, type AskOutcome } from "./availability";
+import { scrubTitle } from "@/lib/redact";
 import { appendTaskEvent } from "./broker";
 import { chatLink, optInDemand } from "./demand";
 import { hashKey, type Viewer } from "./profile";
 import { startTurn } from "./run";
 import { loadTask } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
-import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, waLang, type WaDict, type WaLang } from "./whatsapp-format";
+import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, waLang, wantsViewing, type WaDict, type WaLang } from "./whatsapp-format";
 import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, asksForHome, readHomeRef, refSourceOf, shownHomes, thanksText, wantsPerson, whichOneText, type RefSource } from "./whatsapp-format";
 import { afterHomesKind, chatText, visitText } from "./whatsapp-format";
 import { askAround } from "./demand";
@@ -32,8 +33,8 @@ import { viewingRep } from "./broker-message";
 import { parseBrokerReply } from "./broker-reply";
 import { homeForRef } from "./home-ref";
 import { isPersonal } from "./personal";
-import { proposeViewing, readViewingAsk } from "./deal";
-import { askTimeMessage, readViewingTime } from "./deal-pure";
+import { afterViewingFor, prepareDealSheet, proposeViewing, readViewingAsk, recordAfterViewing } from "./deal";
+import { askTimeMessage, readAfterViewing, readViewingTime } from "./deal-pure";
 import { postSlackCard } from "./whatsapp";
 
 const MAX_TEXT = 600;
@@ -47,9 +48,13 @@ const TURN_WAIT_MS = 16_000;
 const REF_MAX_AGE_MS = 30 * 24 * 3_600_000;
 
 export type WaResult =
-  | { reply: string; taskId: string | null }
+  /** `done`: the turn behind the reply, still writing its tail (the writer, the broker ask) — the phone's next message waits for it. */
+  | { reply: string; taskId: string | null; done?: Promise<void> }
   /** Nothing to send: a message already answered, or the last turn still running. */
   | { reply: null; why: "duplicate" | "busy" | "empty" | "personal" };
+
+/** How long a message waits for the same phone's last turn to finish before it is left to the next poll. */
+const BUSY_WAIT_MS = 20_000;
 
 export const waDigits = (phone: string) => phone.replace(/[^\d]/g, "").replace(/^00/, "");
 
@@ -93,7 +98,15 @@ const stampFirstSource = (profileId: string, source: RefSource, listingId: numbe
     })
     .catch(() => {});
 
-export async function handleTenantWhatsApp(input: { phone: string; text: string; msgId: string }): Promise<WaResult> {
+export async function handleTenantWhatsApp(input: {
+  phone: string;
+  text: string;
+  msgId: string;
+  /** A retry of a message whose last run died (wa-state.ts claimMessage): if it was already taken in, answer with where the chat stands. */
+  retry?: boolean;
+  /** Called once the agent will answer — the "typing…" presence, never shown before the personal / hand-off gates. */
+  onAnswering?: () => void;
+}): Promise<WaResult> {
   const digits = waDigits(input.phone);
   const raw = input.text.trim().slice(0, MAX_TEXT);
   if (!digits || !raw) return { reply: null, why: "empty" };
@@ -121,7 +134,20 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
     recent.some((t) => ((t.messages as unknown as AgentMessage[]) ?? []).some((m) => m.role === "user" && m.wa === input.msgId)) ||
     (recent.length > 0 &&
       !!(await db.agentEvent.findFirst({ where: { taskId: { in: recent.map((t) => t.id) }, payload: { path: ["wa"], equals: input.msgId } }, select: { seq: true } })));
-  if (answered) return { reply: null, why: "duplicate" };
+  if (answered) {
+    // A retried message that was taken in before its run died: the tenant still needs an answer.
+    if (input.retry) {
+      const task = recent.find((t) => ((t.messages as unknown as AgentMessage[]) ?? []).some((m) => m.role === "user" && m.wa === input.msgId)) ?? recent[0];
+      const fresh = task ? await db.agentTask.findUnique({ where: { id: task.id }, select: { status: true, locale: true } }) : null;
+      if (task && fresh && fresh.status !== "RUNNING") {
+        const view = await loadTask(viewer, task.id);
+        const rlang = (["en", "ar", "rw"].includes(fresh.locale) ? fresh.locale : "en") as WaLang;
+        if (view) return { reply: formatWhatsApp(view, await waDict(rlang), rlang, chatLink(task.id, rlang), publicAppUrl()), taskId: task.id };
+      }
+      if (fresh?.status === "RUNNING") return { reply: null, why: "busy" };
+    }
+    return { reply: null, why: "duplicate" };
+  }
 
   const { ref, rest } = readRef(raw);
   if (!profile.firstSource) await stampFirstSource(profile.id, refSourceOf(rest, ref), null);
@@ -144,6 +170,18 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
     await postSlackCard(`${asksBot ? "🤖 A tenant asked if they're talking to a bot" : "🙋 A tenant wants a person"} — ${profile.waPhone ?? "unknown number"}${current ? ` · chat ${current.id}` : ""}\n> ${rest.slice(0, 300)}`).catch(() => {});
     if (current) await stampSeen(current.id, input.msgId, 0);
     return { reply: asksBot ? botText(lang, viewingRep()) : personText(lang, viewingRep()), taskId: current?.id ?? null };
+  }
+
+  // "How did the viewing go? Reply 1 / 2": the answer is the deal's next step, not a pick of home #1
+  // (deal.ts recordAfterViewing). A new search or a home code still runs as one.
+  const viewed = !isFresh(rest) && !readHomeRef(rest) ? await afterViewingFor(profile.waPhone).catch(() => null) : null;
+  if (viewed) {
+    const verdict = readAfterViewing(rest);
+    if (verdict || !asksForHome(rest)) {
+      const reply = await recordAfterViewing(viewed, verdict, rest, profile.waPhone ?? `+${digits}`, lang);
+      if (viewed.taskId) await stampSeen(viewed.taskId, input.msgId, viewed.listingId);
+      return { reply, taskId: viewed.taskId };
+    }
   }
 
   // The deal sheet asked "when can you come?": a day and a time go to the person who books the viewing.
@@ -174,10 +212,18 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
     const pick = readPick(rest, view, d);
     if (pick?.kind === "check") {
       const item = view!.shortlist.find((s) => s.id === pick.listingId)!;
-      const res = await askAvailabilityFor(current.id, pick.listingId).catch(() => ({ ok: false, asked: false }) as const);
+      input.onAnswering?.();
+      const res: AskOutcome = await askAvailabilityFor(current.id, pick.listingId).catch(() => ({ ok: false, asked: false }));
+      // The turn that showed the homes is still writing: the next pass takes this pick (never refused).
+      if (res.why === "busy") return { reply: null, why: "busy" };
       await stampSeen(current.id, input.msgId, pick.listingId);
-      const outcome = res.asked ? "asked" : "why" in res && res.why === "handed" ? "handed" : "none";
-      return { reply: checkText(lang, outcome, item.title), taskId: current.id };
+      // A broker already said yes: the pick is "I want to see it" — the deal sheet and "when can you come?".
+      if (res.why === "confirmed") {
+        const sheet = await dealSheetFor(current.id, pick.listingId);
+        if (sheet) return { reply: sheet, taskId: current.id };
+      }
+      const outcome = res.asked ? "asked" : res.why === "handed" ? "handed" : res.why === "already" ? "already" : "none";
+      return { reply: checkText(lang, outcome, scrubTitle(item.title)), taskId: current.id };
     }
     if (pick?.kind === "askAround") {
       const result = await askAround(current.id).catch(() => ({ asked: 0, handed: false }));
@@ -250,10 +296,12 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
     wa: input.msgId,
     ...(refHome ? { filters: refHome.filters, pin: refHome.id } : {}),
   };
+  input.onAnswering?.();
   let appended = await appendUserMessage({ profileId: profile.id, userId: profile.userId, current, message, lang, seed });
-  // The bridge sends one phone's messages in order, so "busy" is the tail of the last turn: wait for it once.
-  for (let i = 0; "busy" in appended && i < 3; i++) {
-    await sleep(2_000);
+  // The bridge sends one phone's messages in order, so "busy" is the tail of the last turn: wait for it,
+  // then leave the message to the next poll (wa-tenant.ts gives its claim back) — never drop it.
+  for (const until = Date.now() + BUSY_WAIT_MS; "busy" in appended && Date.now() < until; ) {
+    await sleep(1_000);
     current = current ? await db.agentTask.findUnique({ where: { id: current.id }, select: { id: true, status: true, messages: true, updatedAt: true, locale: true } }) : null;
     appended = await appendUserMessage({ profileId: profile.id, userId: profile.userId, current, message, lang, seed });
   }
@@ -267,7 +315,21 @@ export async function handleTenantWhatsApp(input: { phone: string; text: string;
   const view: AgentTaskView | null = await loadTask(viewer, taskId);
   if (!view) return { reply: d.reply.error ?? "", taskId };
   if (view.demand && !view.demand.optedIn) await optInDemand(taskId, `+${digits}`).catch(() => {});
-  return { reply: formatWhatsApp(view, d, lang, chatLink(taskId, lang), publicAppUrl()), taskId };
+  // "I'd like to view K1234" (the /find card's "Book the viewing on WhatsApp") on a home a broker already
+  // said yes to: straight to the viewing, not "reply 1 to check" (2026-11-06).
+  if (refHome && wantsViewing(rest) && view.shortlist.find((s) => s.id === refHome.id)?.availability === "confirmed") {
+    await turn.done.catch(() => {});
+    const sheet = await dealSheetFor(taskId, refHome.id);
+    if (sheet) return { reply: sheet, taskId };
+  }
+  return { reply: formatWhatsApp(view, d, lang, chatLink(taskId, lang), publicAppUrl()), taskId, done: turn.done.catch(() => {}) };
+}
+
+/** The deal sheet as this message's reply (deal.ts prepareDealSheet opens the "when can you come?" window). */
+async function dealSheetFor(taskId: string, listingId: number): Promise<string | null> {
+  const task = await db.agentTask.findUnique({ where: { id: taskId }, select: { id: true, locale: true, shortlist: true, profile: { select: { waPhone: true } } } });
+  const sheet = task ? await prepareDealSheet(task, listingId) : null;
+  return sheet?.body ?? null;
 }
 
 /** A digit that ran no turn is kept as a silent trace row, so a retried webhook does not ask the broker twice. */

@@ -19,6 +19,7 @@ import { homeIdOfRef } from "@/components/agent/home-path";
 import { LEAD_SOURCES } from "@/components/agent/search";
 import { continueOnWhatsApp } from "@/components/agent/wa-link";
 import { K_PAGE_MARK } from "@/components/agent/whatsapp-format";
+import { scrubTitle } from "@/lib/redact";
 
 /**
  * Mkan's own page for a broker home — /en/k/K5808 (Abdout, 2026-11-01). Every link a tenant
@@ -93,7 +94,7 @@ export async function generateMetadata({ params }: HomePageProps): Promise<Metad
   const c = d.agent?.card as Record<string, unknown> | undefined;
   const price = home.priceMonth ? `${formatCurrency(home.priceMonth, lang, home.currency ?? "RWF")} ${(c?.perMonth as string) ?? "/ month"}` : null;
   return createMetadata({
-    title: home.title ?? `K${home.id}`,
+    title: scrubTitle(home.title) || `K${home.id}`,
     // What WhatsApp shows under the link: the price, the place, the size.
     description: [price, placeOf(home, l), home.bedrooms != null ? fill((c?.beds as string) ?? "{n} bd", { n: home.bedrooms }) : null].filter(Boolean).join(" · "),
     locale: lang,
@@ -181,7 +182,7 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
             <div key={src} className="relative aspect-[4/5] w-[85%] shrink-0 snap-center overflow-hidden rounded-2xl bg-muted">
               <BlurImage
                 src={src}
-                alt={i === 0 ? home.title ?? ref_ : ""}
+                alt={i === 0 ? scrubTitle(home.title) || ref_ : ""}
                 fill
                 sizes="(min-width: 512px) 430px, 85vw"
                 className="object-cover"
@@ -194,7 +195,7 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
 
       <div className="mt-4 space-y-1">
         <h1 dir="auto" className="text-start text-xl font-semibold leading-snug">
-          {home.title ?? ref_}
+          {scrubTitle(home.title) || ref_}
         </h1>
         <p className="text-sm text-muted-foreground">
           {[

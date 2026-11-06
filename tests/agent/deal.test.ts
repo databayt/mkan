@@ -167,3 +167,24 @@ describe("the terms the person from Mkan confirms", () => {
     expect(usual.lines.find((l) => l.key === "rentInAdvance")).toMatchObject({ qty: 3, source: "typical" });
   });
 });
+
+describe("after the viewing — the reply to 'how did it go?'", () => {
+  it("reads want and not in en / rw / fr / ar, and digits", async () => {
+    const { readAfterViewing } = await import("@/components/agent/deal-pure");
+    for (const t of ["1", "yes", "I want it", "We'll take it", "yego", "ndayishaka", "oui", "نعم", "١"]) expect(readAfterViewing(t)).toBe("want");
+    for (const t of ["2", "no", "not for me", "I didn't like it", "oya", "non", "لا", "٢"]) expect(readAfterViewing(t)).toBe("not");
+  });
+
+  it("leaves anything else to a person", async () => {
+    const { readAfterViewing } = await import("@/components/agent/deal-pure");
+    expect(readAfterViewing("the kitchen was small, can the price go down?")).toBeNull();
+    expect(readAfterViewing("12")).toBeNull();
+  });
+
+  it("answers in the tenant's language", async () => {
+    const { afterViewingWantText, afterViewingNotText } = await import("@/components/agent/deal-pure");
+    expect(afterViewingWantText("en", "2-bed in Remera")).toContain("2-bed in Remera");
+    expect(afterViewingWantText("ar", "x")).toMatch(/[؀-ۿ]/);
+    expect(afterViewingNotText("rw")).toMatch(/Murakoze/);
+  });
+});

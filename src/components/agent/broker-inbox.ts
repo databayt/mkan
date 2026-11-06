@@ -56,6 +56,18 @@ const phoneVariants = (phone: string) => [`+${phone.replace(/^\+/, "")}`, phone.
 
 type Ask = { id: string; kind: "BROKER_ASK" | "BROKER_REQUEST" | "TENANT_ALERT"; to: string; sentAt: Date | null; brokerRequestIds: string[]; body?: string };
 
+/** Where the outbox notes which ask a sent WhatsApp message carried (wa-outbox.ts), for a broker's quoted reply. */
+export const askMsgKey = (waMessageId: string) => `ask-msg:${waMessageId}`;
+
+/** The ask a broker quoted (WhatsApp's reply-to): that exact question, when it went to this number. */
+async function quotedAsk(phone: string, waMessageId: string | null | undefined): Promise<Ask | null> {
+  if (!waMessageId) return null;
+  const { outboundId } = await readState<{ outboundId?: string }>(askMsgKey(waMessageId), {});
+  if (!outboundId) return null;
+  const ask = await db.outboundMessage.findUnique({ where: { id: outboundId }, select: { id: true, kind: true, to: true, sentAt: true, brokerRequestIds: true, body: true } });
+  return ask && phoneVariants(phone).includes(ask.to) && ask.kind !== "TENANT_ALERT" ? ask : null;
+}
+
 /** The last question this number got from Mkan before `at`: a no-home ask, or "is this available?" with its requests. */
 async function lastAsk(phone: string, at: Date): Promise<Ask | null> {
   return db.outboundMessage.findFirst({
@@ -98,7 +110,9 @@ export async function readAvailabilityReply(phone: string, text: string, at: Dat
   const answer: "AVAILABLE" | "RENTED" | null = r.asksIfBot || homes.home == null ? null : r.gone ? "RENTED" : r.yes ? "AVAILABLE" : null;
   // The same answer already on record (the form, another broker who posted it) is not news: tenants heard it.
   const onRecord = answer && homes.home != null ? (await brokerAnswers([homes.home])).get(homes.home)?.status : undefined;
-  return { ask, r, answer, ...homes, isNews: homes.isNews && onRecord !== answer };
+  // A "taken" after another broker's "available" is news too: the home is gone, and the tenants must hear it.
+  const takenAfterYes = answer === "RENTED" && onRecord === "AVAILABLE";
+  return { ask, r, answer, ...homes, isNews: (homes.isNews && onRecord !== answer) || takenAfterYes };
 }
 
 /**
@@ -109,7 +123,8 @@ export async function readAvailabilityReply(phone: string, text: string, at: Dat
  */
 export async function recordTypedAnswer(requestIds: string[], listingId: number, answer: "AVAILABLE" | "RENTED", phone: string) {
   await db.brokerRequest.updateMany({
-    where: { id: { in: requestIds }, listingId, status: { in: ["PENDING", "NO_REPLY"] } },
+    // A "taken" also overrides an earlier "available" on the same ask.
+    where: { id: { in: requestIds }, listingId, status: { in: answer === "RENTED" ? ["PENDING", "NO_REPLY", "AVAILABLE"] : ["PENDING", "NO_REPLY"] } },
     data: { status: answer, respondedAt: new Date() },
   });
   await applyAnswer(listingId, answer, phone);
@@ -144,13 +159,14 @@ async function stampReply(brokerId: string, at: Date) {
   await db.broker.updateMany({ where: { id: brokerId, relationship: { in: ["NEW", "INTRODUCED"] } }, data: { relationship: "ACTIVE" } });
 }
 
-export async function handleBrokerReply(input: { brokerId: string; phone: string; text: string; photoUrls: string[]; at: Date }): Promise<InboxAction> {
+export async function handleBrokerReply(input: { brokerId: string; phone: string; text: string; photoUrls: string[]; at: Date; quotedId?: string | null }): Promise<InboxAction> {
   const { brokerId, phone, text, photoUrls, at } = input;
   await stampReply(brokerId, at);
   // A person answers "are you a bot?" (wa-outbox flags it in #mkan); the inbox stays quiet.
   if (parseBrokerReply(text).asksIfBot) return { kind: "none" };
-  // The broker answers the last question this number got; an older no-home ask never takes the reply.
-  const last = await lastAsk(phone, at);
+  // The broker answers the ask they quoted (2026-11-06: a reply to Monday's ask used to mark Tuesday's
+  // home), else the last question this number got; an older no-home ask never takes the reply.
+  const last = (await quotedAsk(phone, input.quotedId)) ?? (await lastAsk(phone, at));
   // The TikTok repost ask from the phone is a question too. When it is the latest one, a
   // "yes" answers it — never an older "is this available?".
   const { at: repostAt } = await readState<{ at: string | null }>(repostAskKey(phone), { at: null });

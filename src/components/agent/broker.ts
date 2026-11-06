@@ -394,7 +394,8 @@ export async function applyAnswer(listingId: number, answer: Answer, brokerPhone
   // answering broker's own rows (the caller stamped them), so a broker's answer rate
   // counts only what they said (broker-rank.ts answerStats).
   if (answer !== "NO_REPLY") {
-    await db.brokerRequest.updateMany({ where: { listingId, status: "PENDING" }, data: { status: answer } });
+    // "Taken" closes the earlier "available" answers too: the home is gone (2026-11-06).
+    await db.brokerRequest.updateMany({ where: { listingId, status: answer === "RENTED" ? { in: ["PENDING", "AVAILABLE"] } : "PENDING" }, data: { status: answer } });
   }
   const tasks = await db.agentTask.findMany({
     where: { status: { in: ["WAITING", "DONE"] }, updatedAt: { gte: new Date(Date.now() - 7 * 86_400_000) }, brokerRequests: { some: { listingId } } },

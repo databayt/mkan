@@ -15,6 +15,7 @@ import { HOME_TYPE_PROPERTY, type Candidate, type Ranked } from "./rank";
 import type { ShortlistItem } from "./types";
 import { brokerAnswers } from "./broker";
 import { AREAS, boxAround, NEIGHBOURHOOD_RADIUS_KM, neighbourhoodNamed } from "./areas";
+import { scrubTitle } from "@/lib/redact";
 
 const MAX_CANDIDATES = 400;
 /**
@@ -264,7 +265,8 @@ export async function toShortlist(ranked: Ranked[], lang: Locale, near?: string 
         id: row.id,
         // A lead has no public page; its card points at the broker's own ad.
         path: isLead(row) ? row.sourceUrl ?? "" : listingPath(lang, row),
-        title: titleById.get(row.id) ?? row.title ?? "",
+        // A broker's number, handle or link written into an ad's title never reaches the tenant.
+        title: scrubTitle(titleById.get(row.id) ?? row.title ?? ""),
         photo: row.photoUrls[0] ?? null,
         district: row.location?.state ?? null,
         zone: row.location?.neighbourhood ?? row.location?.sector ?? null,

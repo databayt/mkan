@@ -25,6 +25,8 @@ import { viewingRep } from "./broker-message";
 import { longStayCost, type CostEstimate, type ListingTerms } from "./cost";
 import {
   afterViewingMessage,
+  afterViewingNotText,
+  afterViewingWantText,
   confirmedTermsLine,
   dealSheetMessage,
   termsToAsk,
@@ -37,6 +39,15 @@ import {
 } from "./deal-pure";
 import type { ShortlistItem } from "./types";
 import { postSlackCard, sendMessages } from "./whatsapp";
+import { scrubTitle } from "@/lib/redact";
+import { readState } from "./wa-state";
+import { phoneKey } from "../../../scripts/wa/outbox-pure";
+
+/** The number said STOP on WhatsApp (wa-tenant.ts keeps the list). */
+async function saidStop(phone: string): Promise<boolean> {
+  const stopped = await readState<string[]>("tenant-stop", []).catch(() => [] as string[]);
+  return stopped.map(phoneKey).includes(phoneKey(phone));
+}
 
 /** The deal sheet asked this tenant for a time; their next message may be one (WaState). */
 const askKey = (address: string) => `viewing-ask:${address.replace(/\D/g, "")}`;
@@ -62,19 +73,34 @@ async function trace(taskId: string, kind: "viewing_proposed" | "viewing_confirm
   }
 }
 
-/** The broker said the home is free: the WhatsApp tenant gets the deal and is asked when they can come. */
-export async function sendDealSheet(task: { id: string; locale: string; shortlist: unknown; profile: { waPhone: string | null } | null }, listingId: number): Promise<boolean> {
+type DealTask = { id: string; locale: string; shortlist: unknown; profile: { waPhone: string | null } | null };
+
+/**
+ * The deal sheet for a home a broker said is free — what it costs, what Mkan covers, "when can you
+ * come?" — and the 72 h window in which the tenant's next day-and-time is read as the viewing.
+ * Null for a tenant with no WhatsApp, or one who said STOP.
+ */
+export async function prepareDealSheet(task: DealTask, listingId: number): Promise<{ to: string; body: string } | null> {
   const to = task.profile?.waPhone;
-  if (!to) return false;
+  if (!to) return null;
+  // A tenant who said STOP gets nothing more from the line (the outbox skips it too).
+  if (await saidStop(to)) return null;
   const item = ((task.shortlist as ShortlistItem[] | null) ?? []).find((s) => s.id === listingId);
   const lang = langOf(task.locale);
   const body = dealSheetMessage(
-    { title: item?.title?.trim() || `#${listingId}`, ref: `K${listingId}`, cost: item?.cost ?? null, rep: viewingRep(), link: `${publicAppUrl()}/${lang}/find?c=${task.id}` },
+    { title: scrubTitle(item?.title) || `#${listingId}`, ref: `K${listingId}`, cost: item?.cost ?? null, rep: viewingRep(), link: `${publicAppUrl()}/${lang}/find?c=${task.id}` },
     lang,
   );
-  await sendMessages([{ kind: "TENANT_ALERT", to, body, label: "tenant" }], `Deal sheet → tenant (home #${listingId})`);
   const value = { taskId: task.id, listingId, at: new Date().toISOString() } satisfies ViewingAsk;
   await db.waState.upsert({ where: { key: askKey(to) }, create: { key: askKey(to), value }, update: { value } });
+  return { to, body };
+}
+
+/** The broker said the home is free: the WhatsApp tenant gets the deal and is asked when they can come. */
+export async function sendDealSheet(task: DealTask, listingId: number): Promise<boolean> {
+  const sheet = await prepareDealSheet(task, listingId);
+  if (!sheet) return false;
+  await sendMessages([{ kind: "TENANT_ALERT", to: sheet.to, body: sheet.body, label: "tenant" }], `Deal sheet → tenant (home #${listingId})`);
   return true;
 }
 
@@ -151,7 +177,17 @@ export async function bookViewing(input: { taskId: string; listingId: number; at
   const task = await db.agentTask.findUnique({ where: { id: input.taskId }, select: { id: true, locale: true, shortlist: true, profile: { select: { waPhone: true } } } });
   if (!task) throw new Error(`no task ${input.taskId}`);
   const item = ((task.shortlist as ShortlistItem[] | null) ?? []).find((s) => s.id === input.listingId);
-  const link = await db.listingBroker.findFirst({ where: { listingId: input.listingId }, orderBy: [{ role: "desc" }, { createdAt: "asc" }], select: { brokerId: true } });
+  // The broker who said yes earns the deal — after a hand-on that is not the first poster (2026-11-06).
+  // Only the answering broker's own requests carry respondedAt (broker-inbox.ts recordTypedAnswer).
+  const yes = await db.brokerRequest.findFirst({
+    where: { listingId: input.listingId, status: "AVAILABLE", respondedAt: { not: null } },
+    orderBy: { respondedAt: "desc" },
+    select: { brokerUserId: true },
+  });
+  const answered = yes ? await db.listingBroker.findFirst({ where: { listingId: input.listingId, userId: yes.brokerUserId, brokerId: { not: null } }, select: { brokerId: true } }) : null;
+  const link = answered ?? (await db.listingBroker.findFirst({ where: { listingId: input.listingId }, orderBy: [{ role: "desc" }, { createdAt: "asc" }], select: { brokerId: true } }));
+  // Booking the same home for the same chat again is a new time, not a second deal: the open one moves.
+  const open = await db.deal.findFirst({ where: { taskId: task.id, listingId: input.listingId, status: { in: ["VIEWING_BOOKED", "VIEWED"] } }, select: { id: true, visitId: true } });
   const rep = input.by?.trim() || viewingRep();
   const tenant = task.profile?.waPhone ?? null;
   const terms = input.terms && Object.keys(input.terms).length > 0 ? input.terms : null;
@@ -172,33 +208,33 @@ export async function bookViewing(input: { taskId: string; listingId: number; at
   const moveIn: [number, number] | null = cost?.period === "month" ? [cost.total - (viewingFee ?? 0), cost.totalHigh - (viewingFee ?? 0)] : null;
   const round = (n: number | null | undefined) => (n == null ? null : Math.round(n));
 
-  const visit = await db.listingVisit.create({
-    data: {
-      listingId: input.listingId,
-      contactPhone: tenant,
-      scheduledFor: input.at,
-      recordedById: `mkan:${rep}`,
-      brokerId: link?.brokerId ?? null,
-      taskId: task.id,
-      repName: rep,
-      meetingPoint: input.place?.trim() || null,
-    },
-    select: { id: true },
-  });
-  const deal = await db.deal.create({
-    data: {
-      listingId: input.listingId,
-      brokerId: link?.brokerId ?? null,
-      visitId: visit.id,
-      taskId: task.id,
-      tenantPhone: tenant,
-      rentMonthly: round(cost?.headline),
-      upfront: moveIn ? round(moveIn[0]) : null,
-      brokerCommission: round(commission),
-      viewingFeePaid: round(viewingFee),
-    },
-    select: { id: true },
-  });
+  const visitData = {
+    contactPhone: tenant,
+    scheduledFor: input.at,
+    recordedById: `mkan:${rep}`,
+    brokerId: link?.brokerId ?? null,
+    taskId: task.id,
+    repName: rep,
+    meetingPoint: input.place?.trim() || null,
+  };
+  const dealData = {
+    brokerId: link?.brokerId ?? null,
+    tenantPhone: tenant,
+    rentMonthly: round(cost?.headline),
+    upfront: moveIn ? round(moveIn[0]) : null,
+    brokerCommission: round(commission),
+    viewingFeePaid: round(viewingFee),
+  };
+  let visit: { id: number };
+  let deal: { id: string };
+  if (open?.visitId) {
+    // A new time for the same viewing: its reminders start over.
+    visit = await db.listingVisit.update({ where: { id: open.visitId }, data: { ...visitData, outcome: "Scheduled", reminders: [] }, select: { id: true } });
+    deal = await db.deal.update({ where: { id: open.id }, data: { ...dealData, status: "VIEWING_BOOKED" }, select: { id: true } });
+  } else {
+    visit = await db.listingVisit.create({ data: { listingId: input.listingId, ...visitData }, select: { id: true } });
+    deal = await db.deal.create({ data: { listingId: input.listingId, visitId: visit.id, taskId: task.id, ...dealData }, select: { id: true } });
+  }
   await db.brokerRequest.updateMany({
     where: { taskId: task.id, listingId: input.listingId, status: "AVAILABLE" },
     data: { chosenSlot: input.at, visitId: visit.id, ...(terms ? { terms: terms as never } : {}) },
@@ -241,7 +277,8 @@ export async function viewingReminders(now = new Date()): Promise<number> {
     const rep = v.repName || viewingRep();
     if (v.contactPhone) {
       const body = mark === "after" ? afterViewingMessage(lang, title) : viewingReminderMessage(lang, { title, label: viewingLabel(v.scheduledFor, lang), rep }, mark);
-      await sendMessages([{ kind: "TENANT_ALERT", to: v.contactPhone, body, label: "tenant" }], `Viewing ${mark} → tenant`);
+      // Labelled as a reminder: the outbox drops it if it could not go out within 3 h (outbox-pure.ts).
+      if (!(await saidStop(v.contactPhone))) await sendMessages([{ kind: "TENANT_ALERT", to: v.contactPhone, body, label: `tenant-reminder-${mark}` }], `Viewing ${mark} → tenant`);
     }
     if (mark !== "after") await postSlackCard(`⏰ Viewing ${mark === "24h" ? "tomorrow" : "in 2 h"}: ${title}, ${viewingLabel(v.scheduledFor, "en")}${v.meetingPoint ? ` · ${v.meetingPoint}` : ""} · ${rep}`).catch(() => {});
     await db.listingVisit.update({ where: { id: v.id }, data: { reminders: { push: mark } } });
@@ -277,10 +314,59 @@ export async function setDealStatus(dealId: string, status: "VIEWED" | "SIGNED" 
     // The viewing took place, whatever came of it.
     await db.listingVisit.update({ where: { id: deal.visitId }, data: { outcome: "Completed", occurredAt: now } }).catch(() => {});
   }
-  // A signed lease: the home is no longer on the market, and the broker is a partner in practice.
-  if (status === "SIGNED") {
+  // A signed lease — or paid, which means signed (11-06: PAID alone left the home listed): the home is
+  // off the market, and the broker is a partner in practice.
+  if (status === "PAID") await db.deal.updateMany({ where: { id: deal.id, signedAt: null }, data: { signedAt: now } });
+  if (status === "SIGNED" || status === "PAID") {
     await db.listing.update({ where: { id: deal.listingId }, data: { lostAt: now, lostReason: "RENTED" } });
     if (deal.brokerId) await db.broker.updateMany({ where: { id: deal.brokerId, relationship: { in: ["NEW", "INTRODUCED", "ACTIVE"] } }, data: { relationship: "PARTNER" } });
   }
   return deal;
 }
+
+
+/** The tenant's viewing whose "how did it go?" went out in the last 72 h — their next message answers it. */
+export async function afterViewingFor(address: string | null | undefined, now = new Date()) {
+  if (!address) return null;
+  const digits = address.replace(/\D/g, "");
+  return db.listingVisit.findFirst({
+    where: {
+      contactPhone: { in: [`+${digits}`, digits] },
+      reminders: { has: "after" },
+      scheduledFor: { gte: new Date(now.getTime() - 75 * 3_600_000), lte: now },
+    },
+    orderBy: { scheduledFor: "desc" },
+    select: { id: true, listingId: true, taskId: true, listing: { select: { title: true } }, deal: { select: { id: true, status: true } } },
+  });
+}
+
+/**
+ * Write the answer to "how did the viewing go?": want → the deal stays VIEWED and the person who closes
+ * deals hears it now; not → the deal is LOST; anything else → a person reads it. Returns the reply.
+ */
+export async function recordAfterViewing(
+  v: NonNullable<Awaited<ReturnType<typeof afterViewingFor>>>,
+  verdict: "want" | "not" | null,
+  text: string,
+  phone: string,
+  lang: DealLang,
+): Promise<string> {
+  const title = scrubTitle(v.listing.title) || `#${v.listingId}`;
+  const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+  await db.listingVisit.update({ where: { id: v.id }, data: { outcome: "Completed" } }).catch(() => {});
+  if (verdict === "want") {
+    if (v.deal && v.deal.status === "VIEWING_BOOKED") await db.deal.update({ where: { id: v.deal.id }, data: { status: "VIEWED", notes: `tenant wants it (WhatsApp ${stamp})` } });
+    await postSlackCard(`🎉 ${phone} wants to take *K${v.listingId}* (${title}) after the viewing — call the broker to sign.${v.deal ? `\nThen: \`pnpm deal:status ${v.deal.id} SIGNED\`` : ""}\n> ${text.slice(0, 300)}`).catch(() => {});
+    return afterViewingWantText(lang, title);
+  }
+  if (verdict === "not") {
+    if (v.deal && (v.deal.status === "VIEWING_BOOKED" || v.deal.status === "VIEWED")) await db.deal.update({ where: { id: v.deal.id }, data: { status: "LOST", notes: `not for the tenant (WhatsApp ${stamp})` } });
+    await postSlackCard(`👎 ${phone} passed on *K${v.listingId}* (${title}) after the viewing.\n> ${text.slice(0, 300)}`).catch(() => {});
+    return afterViewingNotText(lang);
+  }
+  await postSlackCard(`💬 ${phone} wrote about the viewing of *K${v.listingId}* (${title}) — answer them yourself:\n> ${text.slice(0, 400)}`).catch(() => {});
+  return personAfterViewingText(lang);
+}
+
+const personAfterViewingText = (lang: DealLang) =>
+  lang === "ar" ? "شكراً! سيقرأ رسالتك شخص من فريق مكان ويرد عليك هنا." : lang === "rw" ? "Murakoze! Umuntu wo muri Mkan arasoma ubutumwa bwawe akagusubiza hano." : "Thanks! Someone from Mkan will read this and answer you here.";
