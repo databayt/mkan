@@ -24,12 +24,13 @@ cat > "$PLIST" <<XML
     <string>/bin/zsh</string><string>-lc</string>
     <string>cd $HOME/mkan &amp;&amp; pnpm crm:sync-up --apply</string>
   </array>
-  <key>StartInterval</key><integer>3600</integer>
+  <!-- At :00, with the app's own hourly tick: Neon wakes once an hour, not twice (2026-11-07). -->
+  <key>StartCalendarInterval</key><dict><key>Minute</key><integer>0</integer></dict>
   <key>StandardOutPath</key><string>$LOG</string>
   <key>StandardErrorPath</key><string>$LOG</string>
 </dict></plist>
 XML
 launchctl unload "$PLIST" 2>/dev/null || true
 launchctl load "$PLIST"
-echo "installed: $LABEL (hourly → $LOG)"
+echo "installed: $LABEL (hourly at :00 → $LOG)"
 launchctl list | grep "$LABEL" || true

@@ -19,7 +19,16 @@ const SITE = "https://www.mkan.sd"
 const REPO = "databayt/mkan"
 const SLACK_CHANNEL = "C0BS2NZE2AY" // private #mkan
 const RECHECK_MS = 60_000
-const CRON_STALE_SEC = 600 // the WhatsApp cron runs every 2 min
+// The outbox runs on events now, with a backstop tick every 15 min by day (05–20 UTC) and hourly at
+// night (2026-11-07; it was every 2 min, which kept Neon awake around the clock). Stale = two ticks missed.
+const cronStaleSec = (d = new Date()) => (d.getUTCHours() >= 5 && d.getUTCHours() < 20 ? 30 * 60 : 90 * 60)
+/**
+ * The checks that read the database (health's SELECT 1, the outbox lease, the Mac beat) run at :00 —
+ * and at :30 by day — when the app's own ticks wake Neon anyway; the page and the WhatsApp line are
+ * checked every 5 min. Run every 5 min, they alone kept Neon from ever suspending.
+ */
+const DB_CHECKS = new Set(["health", "wa_cron", "mac"])
+const fullTick = (d = new Date()) => d.getUTCMinutes() < 5 || (d.getUTCHours() >= 5 && d.getUTCHours() < 20 && d.getUTCMinutes() >= 30 && d.getUTCMinutes() < 35)
 const BEAT_STALE_SEC = 20 * 60 // kun's job supervisor beats every 15 min while the Mac is awake
 
 /**
@@ -74,7 +83,7 @@ const CHECKS = {
     })
     const age = (await res.json().catch(() => ({})))?.rows?.[0]?.age
     if (typeof age !== "number") throw new Error(`WhatsApp cron state unreadable (${res.status})`)
-    if (age > CRON_STALE_SEC) throw new Error(`WhatsApp cron last ran ${Math.round(age / 60)} min ago`)
+    if (age > cronStaleSec()) throw new Error(`WhatsApp cron last ran ${Math.round(age / 60)} min ago`)
   },
   async mac(env) {
     const host = new URL(env.DATABASE_URL).hostname
@@ -94,14 +103,14 @@ const FIX = {
   find: "The site or its container is down — check the mkan Worker (wrangler tail mkan) and redeploy if it is stuck.",
   health: "The app can't reach its database — check Neon project solitary-water-49503410.",
   wa_line: "The WhatsApp link dropped — in /Users/abdout/mkan run `pnpm wa:pair` and scan the QR from the +250780984777 phone (WhatsApp Business → Linked devices).",
-  wa_cron: "The `*/2` cron stopped reaching /api/cron/wa-outbox — check the mkan Worker's cron triggers and the container.",
+  wa_cron: "No outbox pass in two backstop ticks (:00 hourly, :15/:30/:45 by day) — check the mkan Worker's cron triggers and the container.",
   mac: "The Mac that runs the scrape, CRM and TikTok lanes has been off or asleep past a job's deadline. Open the lid (or plug it in): kun's supervisor re-runs what was missed within minutes of a real wake. If the Mac is awake, check `launchctl print gui/$(id -u)/com.databayt.supervisor`.",
 }
 
-async function runChecks(env) {
+async function runChecks(env, { full = true } = {}) {
   const failed = {}
   await Promise.all(
-    Object.entries(CHECKS).map(([name, check]) =>
+    Object.entries(CHECKS).filter(([name]) => full || !DB_CHECKS.has(name)).map(([name, check]) =>
       check(env).catch((err) => { failed[name] = String(err?.message ?? err).slice(0, 200) })
     )
   )
@@ -163,12 +172,15 @@ async function alert(env, failed) {
 export default {
   async scheduled(_controller, env, ctx) {
     ctx.waitUntil((async () => {
-      let failed = await runChecks(env)
+      const full = fullTick()
+      let failed = await runChecks(env, { full })
       if (Object.keys(failed).length) {
         await new Promise((r) => setTimeout(r, RECHECK_MS))
-        failed = await runChecks(env)
+        failed = await runChecks(env, { full })
       }
-      console.log(JSON.stringify({ failed }))
+      console.log(JSON.stringify({ full, failed }))
+      // A light tick never closes an issue: the database checks it skipped may still be failing.
+      if (!full && Object.keys(failed).length === 0) return
       await alert(env, failed)
     })())
   },
