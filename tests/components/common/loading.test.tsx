@@ -11,10 +11,10 @@ describe("Skeleton", () => {
     expect(el).toBeInTheDocument();
   });
 
-  it("applies the animate-pulse class", () => {
+  it("applies the shimmer class", () => {
     const { container } = render(<Skeleton />);
     const el = container.querySelector('[data-slot="skeleton"]');
-    expect(el).toHaveClass("animate-pulse");
+    expect(el).toHaveClass("animate-shimmer");
   });
 
   it("merges custom className", () => {
@@ -22,7 +22,7 @@ describe("Skeleton", () => {
     const el = container.querySelector('[data-slot="skeleton"]');
     expect(el).toHaveClass("h-12");
     expect(el).toHaveClass("w-full");
-    expect(el).toHaveClass("animate-pulse");
+    expect(el).toHaveClass("animate-shimmer");
   });
 
   it("passes through additional HTML props", () => {

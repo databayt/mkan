@@ -17,13 +17,13 @@ describe("ReportIssueDialog (simplified UI)", () => {
     expect(trigger).toBeInTheDocument();
 
     // The dialog content shouldn't be visible before clicking the trigger
-    expect(screen.queryByPlaceholderText(/Describe the issue in detail/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/What went wrong on this page/i)).not.toBeInTheDocument();
 
     // Click trigger
     fireEvent.click(trigger);
 
     // The dialog should open and render the textarea
-    expect(screen.getByPlaceholderText(/Describe the issue in detail/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/What went wrong on this page/i)).toBeInTheDocument();
   });
 
   it("only displays textarea and a submit button (no category dropdown or extra fields)", () => {
@@ -31,13 +31,13 @@ describe("ReportIssueDialog (simplified UI)", () => {
     fireEvent.click(screen.getByRole("button", { name: /report an issue/i }));
 
     // Textarea is present
-    expect(screen.getByPlaceholderText(/Describe the issue in detail/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/What went wrong on this page/i)).toBeInTheDocument();
 
     // Submit button is present
     const submitBtn = screen.getByRole("button", { name: /submit/i });
     expect(submitBtn).toBeInTheDocument();
-    // Verify it is the black variant (has the class bg-foreground)
-    expect(submitBtn).toHaveClass("bg-foreground");
+    // The theme's primary button (black in the light theme)
+    expect(submitBtn).toHaveClass("bg-primary");
 
     // Category dropdown (select element) is NOT present
     expect(screen.queryByLabelText(/category/i)).not.toBeInTheDocument();
@@ -47,22 +47,26 @@ describe("ReportIssueDialog (simplified UI)", () => {
     expect(screen.queryByText(/add steps and expected behavior/i)).not.toBeInTheDocument();
   });
 
-  it("keeps submit button disabled if input is less than 2 characters", () => {
+  it("keeps submit disabled until a signed-in report says something (10 chars, 3 distinct words)", () => {
     render(<ReportIssueDialog {...defaultProps} />);
     fireEvent.click(screen.getByRole("button", { name: /report an issue/i }));
 
-    const textarea = screen.getByPlaceholderText(/Describe the issue in detail/i);
+    const textarea = screen.getByPlaceholderText(/What went wrong on this page/i);
     const submitBtn = screen.getByRole("button", { name: /submit/i });
 
     // Initial disabled state (0 characters)
     expect(submitBtn).toBeDisabled();
 
-    // 1 character - still disabled
+    // Too short
     fireEvent.change(textarea, { target: { value: "A" } });
     expect(submitBtn).toBeDisabled();
 
-    // 2 characters - should be enabled
-    fireEvent.change(textarea, { target: { value: "ok" } });
+    // Long enough, but one word repeated is not a report (src/lib/report/limits.ts)
+    fireEvent.change(textarea, { target: { value: "ok ok ok ok" } });
+    expect(submitBtn).toBeDisabled();
+
+    // Says something: enabled
+    fireEvent.change(textarea, { target: { value: "the map is broken" } });
     expect(submitBtn).not.toBeDisabled();
   });
 
@@ -71,11 +75,11 @@ describe("ReportIssueDialog (simplified UI)", () => {
     render(<ReportIssueDialog {...defaultProps} onSubmit={mockSubmit} />);
     fireEvent.click(screen.getByRole("button", { name: /report an issue/i }));
 
-    const textarea = screen.getByPlaceholderText(/Describe the issue in detail/i);
+    const textarea = screen.getByPlaceholderText(/What went wrong on this page/i);
     const submitBtn = screen.getByRole("button", { name: /submit/i });
 
     fireEvent.change(textarea, {
-      target: { value: "ok" },
+      target: { value: "the map is broken" },
     });
     expect(submitBtn).not.toBeDisabled();
 
@@ -83,7 +87,7 @@ describe("ReportIssueDialog (simplified UI)", () => {
 
     expect(mockSubmit).toHaveBeenCalledTimes(1);
     expect(mockSubmit).toHaveBeenCalledWith(expect.objectContaining({
-      description: "ok",
+      description: "the map is broken",
       category: "other", // defaulted in the background
     }));
 

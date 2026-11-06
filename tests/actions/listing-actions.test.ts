@@ -4,6 +4,7 @@ vi.mock("@/lib/db", () => ({
   db: {
     listing: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -132,28 +133,32 @@ describe("createListing", () => {
 });
 
 describe("getListing", () => {
-  it("throws for invalid ID", async () => {
-    await expect(getListing("abc")).rejects.toThrow("Invalid listing ID");
-    await expect(getListing(-1)).rejects.toThrow("Invalid listing ID");
+  it("throws for an empty ID, and looks anything else up as a code", async () => {
     await expect(getListing(0)).rejects.toThrow("Invalid listing ID");
+    await expect(getListing("")).rejects.toThrow("Invalid listing ID");
+    // "abc" / "-1" may be a listing code ("0001-02") or an external id: looked up, then not found.
+    mockDb.listing.findFirst.mockResolvedValue(null);
+    await expect(getListing("abc")).rejects.toThrow("not found");
+    await expect(getListing(-1)).rejects.toThrow("not found");
   });
 
   it("throws when listing not found", async () => {
-    mockDb.listing.findUnique.mockResolvedValue(null);
+    mockDb.listing.findFirst.mockResolvedValue(null);
 
     await expect(getListing(1)).rejects.toThrow("not found");
   });
 
   it("returns listing with location and host", async () => {
     const listing = { id: 1, title: "Test", location: {}, host: {} };
-    mockDb.listing.findUnique.mockResolvedValue(listing as never);
+    mockDb.listing.findFirst.mockResolvedValue(listing as never);
 
     const result = await getListing(1);
 
     expect(result).toEqual(listing);
-    expect(mockDb.listing.findUnique).toHaveBeenCalledWith(
+    // The code first, then the external id, then the row id — the detail page's precedence.
+    expect(mockDb.listing.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 1 },
+        where: { OR: [{ code: "1" }, { sourceListingId: "1" }, { id: 1 }] },
         include: expect.objectContaining({ location: true }),
       })
     );

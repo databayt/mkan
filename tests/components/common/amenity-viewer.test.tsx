@@ -44,8 +44,8 @@ const renderAt = (lang: "en" | "ar", Comp: React.ComponentType<{ amenities?: str
 };
 
 describe("the enum is fully renderable", () => {
-  it("covers all 41 values, so the schema and this test agree on scope", () => {
-    expect(ALL_AMENITIES).toHaveLength(41);
+  it("covers all 43 values, so the schema and this test agree on scope", () => {
+    expect(ALL_AMENITIES).toHaveLength(43);
     expect(ALL_AMENITIES).toContain("Kitchen");
     expect(ALL_AMENITIES).toContain("CarbonMonoxideAlarm");
   });
