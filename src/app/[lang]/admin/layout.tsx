@@ -1,12 +1,11 @@
 import type { Locale } from "@/components/internationalization/config";
-import { UserRole } from "@prisma/client";
 
 import Navbar from "@/components/template/header/header";
 import SiteFooter from "@/components/template/footer/site-footer";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { NAVBAR_HEIGHT } from "@/lib/constants";
-import { requireRole } from "@/lib/auth-guard";
+import { requireAdminNow } from "@/lib/auth-guard";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { NOINDEX_METADATA } from "@/lib/metadata";
 
@@ -20,7 +19,7 @@ export default async function AdminLayout({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  await requireRole(lang, [UserRole.SUPER_ADMIN, UserRole.ADMIN]);
+  await requireAdminNow(lang);
   const dict = await getDictionary(lang as Locale);
   const adminDict = (dict as { admin?: Record<string, string> }).admin ?? {};
 

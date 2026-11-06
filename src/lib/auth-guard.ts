@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { auth, isAdminNow } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export async function requireAuth(locale: string) {
@@ -14,6 +14,15 @@ export async function requireAuth(locale: string) {
 export async function requireRole(locale: string, roles: string[]) {
   const session = await requireAuth(locale);
   if (!roles.includes(session.user.role)) {
+    redirect(`/${locale}`);
+  }
+  return session;
+}
+
+/** The admin console: an admin by the database right now, not only by a year-old JWT (src/lib/auth.ts isAdminNow). */
+export async function requireAdminNow(locale: string) {
+  const session = await requireAuth(locale);
+  if (!(await isAdminNow(session))) {
     redirect(`/${locale}`);
   }
   return session;

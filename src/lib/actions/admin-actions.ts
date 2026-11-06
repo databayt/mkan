@@ -5,7 +5,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import bcrypt from "bcryptjs";
 import { UserRole, BookingPaymentStatus } from "@prisma/client";
 
-import { auth, isAdminOrSuper, isSuperAdmin } from "@/lib/auth";
+import { auth, isAdminNow, isSuperAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { localizeListings } from "@/components/translation/localize";
@@ -13,7 +13,8 @@ import { getDisplayLang } from "@/components/translation/locale";
 
 async function requireAdminSession() {
   const session = await auth();
-  if (!session?.user?.id || !isAdminOrSuper(session)) {
+  // The database's role, not only the JWT's (a year-long session would outlive a demotion).
+  if (!session?.user?.id || !(await isAdminNow(session))) {
     throw new Error("Unauthorized");
   }
   return session;
