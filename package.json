@@ -171,7 +171,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.137.0",
-    "@auth/prisma-adapter": "^2.11.2",
+    "@auth/prisma-adapter": "^2.11.3",
     "@aws-sdk/client-s3": "^3.1079.0",
     "@aws-sdk/s3-request-presigner": "^3.1079.0",
     "@cloudflare/containers": "^0.3.7",
@@ -207,8 +207,8 @@
     "lucide-react": "^1.9.0",
     "mapbox-gl": "^3.22.0",
     "negotiator": "^1.0.0",
-    "next": "16.3.6",
-    "next-auth": "5.0.0-beta.31",
+    "next": "16.4.3",
+    "next-auth": "5.0.0-beta.32",
     "next-themes": "^0.4.6",
     "pg": "^8.20.0",
     "qrcode": "^1.5.4",
@@ -224,7 +224,7 @@
     "react-world-flags": "^1.6.0",
     "recharts": "3.8.0",
     "resend": "^6.12.2",
-    "sanitize-html": "^2.17.3",
+    "sanitize-html": "^2.17.4",
     "sharp": "^0.35.4",
     "sonner": "^2.0.7",
     "stripe": "^22.1.0",
@@ -254,7 +254,7 @@
     "@vitest/coverage-v8": "^4.1.5",
     "dotenv": "^17.4.2",
     "eslint": "^9.39.4",
-    "eslint-config-next": "16.3.6",
+    "eslint-config-next": "16.4.3",
     "jsdom": "^29.0.2",
     "playwright": "^1.59.1",
     "prisma": "^7.8.0",
@@ -270,6 +270,17 @@
       "@prisma/engines",
       "prisma",
       "@prisma/client"
-    ]
+    ],
+    "overrides": {
+      "fast-uri@3": "^3.1.7",
+      "flatted@3": "^3.4.2",
+      "nanoid@3": "^3.3.19",
+      "browserslist@4": "^4.28.7",
+      "brace-expansion@1": "^1.1.16",
+      "brace-expansion@5": "^5.0.7",
+      "js-yaml@4": "^4.3.2",
+      "hono@4": "^4.12.25",
+      "mysql2@3": "^3.22.0"
+    }
   }
 }
