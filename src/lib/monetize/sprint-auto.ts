@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { parseCondition, type Metrics } from "./metrics";
 import type { NextStep } from "./next-steps";
+import { roadmapMonth, roadmapWeek, roadTaskPrompt } from "./roadmap";
 
 /**
  * The sprint loop's pure half (scripts/sprint-cycle.ts holds the database half): sprint windows,
@@ -218,8 +219,36 @@ export function stepPrompt(s: NextStep): StepPrompt | null {
   return { step: key, title: t.title, block: s.block, metric: t.metric, text, unblockWhen: t.gated?.unblockWhen ?? null, needsYou: t.gated?.needsYou ?? null };
 }
 
+/**
+ * This week's roadmap entry as a plan (src/lib/monetize/roadmap.ts): its title, goal and tasks, one
+ * prompt each. The planner adapts it to the day's numbers; without the planner it is the plan as is.
+ */
+export function roadmapPlan(now = new Date()): PlanSprint | null {
+  const r = roadmapWeek(now);
+  const win = weekWindow(now);
+  if (!r || !r.tasks.length || r.startsAt !== win.startsAt) return null;
+  const tasks = r.tasks.slice(0, 7);
+  return {
+    kind: "WEEK",
+    title: r.title,
+    goal: r.goal,
+    ...win,
+    auto: true,
+    tasks: tasks.map((t, i) => ({ key: `r${i + 1}`, title: t.title, ...(t.block !== "cost" ? { block: t.block } : {}) })),
+    prompts: tasks.map((t, i) => ({ task: `r${i + 1}`, text: roadTaskPrompt(t, r), metric: t.metric })),
+  };
+}
+
+/** The month sprint's title from the live break-even and the roadmap's multiple for that month. */
+export function monthTitle(breakEvenRwf: number | null | undefined, now = new Date()): string {
+  const x = roadmapMonth(now)?.breakEvenX ?? 1;
+  const rwf = Math.round(((breakEvenRwf ?? 0) * x) / 1000) * 1000;
+  const label = x === 1 ? "Break even" : `${x}× break-even`;
+  return rwf > 0 ? `${label} — ${rwf.toLocaleString("en-US")} RWF a month` : label;
+}
+
 /** The fallback plan when the planner can't run: one task and one prompt per next step, money first. */
-export function fallbackPlan(kind: "WEEK" | "MONTH", steps: NextStep[], now = new Date()): PlanSprint {
+export function fallbackPlan(kind: "WEEK" | "MONTH", steps: NextStep[], now = new Date(), breakEvenRwf?: number | null): PlanSprint {
   const win = kind === "WEEK" ? weekWindow(now) : monthWindow(now);
   const made = steps.map(stepPrompt).filter((p): p is StepPrompt => p !== null).slice(0, 7);
   if (!made.length) {
@@ -236,8 +265,8 @@ export function fallbackPlan(kind: "WEEK" | "MONTH", steps: NextStep[], now = ne
   }
   return {
     kind,
-    title: kind === "WEEK" ? "First share — the weakest step first" : "Break even",
-    goal: kind === "WEEK" ? "Move the first-share funnel's weakest step this week; the first paid deal is the finish line." : "Revenue received this month covers every cost on /monetize.",
+    title: kind === "WEEK" ? "First share — the weakest step first" : monthTitle(breakEvenRwf, now),
+    goal: kind === "WEEK" ? "Move the first-share funnel's weakest step this week; the first paid deal is the finish line." : (roadmapMonth(now)?.goal ?? "Revenue received this month covers every cost on /monetize."),
     ...win,
     auto: true,
     tasks: made.map((p) => ({ key: p.step, title: p.title, ...(p.block ? { block: p.block as "scrape" | "enhance" | "post" | "chat" } : {}) })),
