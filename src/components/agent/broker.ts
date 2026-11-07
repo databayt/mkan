@@ -425,11 +425,12 @@ export async function applyAnswer(listingId: number, answer: Answer, brokerPhone
   );
   await settleTasks(tasks.map((t) => t.id));
   await markOriginChats(found, listingId, availability);
-  await tellWhatsAppTenants(tasks, listingId, answer);
+  const introduced = await tellWhatsAppTenants(tasks, listingId, answer, brokerPhone ?? null);
   if (answer === "AVAILABLE") {
     // Available again lifts an earlier "taken".
     await db.listing.update({ where: { id: listingId }, data: { lastAvailabilityConfirmedAt: new Date(), lostAt: null, lostReason: null } });
-    await tellViewingRep(tasks, listingId, number);
+    // An intro needs no person at the viewing (deal-intro.ts posts its own card).
+    if (!introduced) await tellViewingRep(tasks, listingId, number);
   }
   // A broker's "taken" means the home is lost: out of /find and the TikTok pick for good (it was hidden 30 days).
   if (answer === "RENTED") await db.listing.update({ where: { id: listingId }, data: { lostAt: new Date(), lostReason: "RENTED" } });
@@ -463,17 +464,28 @@ const titleIn = (t: AnsweredTask, listingId: number) => ((t.shortlist as Shortli
  * chat updates itself, a WhatsApp chat does not. "No reply" reaches only a
  * tenant still in the search. Queued like every other send (whatsapp.ts).
  */
-async function tellWhatsAppTenants(tasks: AnsweredTask[], listingId: number, answer: Answer) {
-  if (!tasks.some((t) => t.profile?.waPhone)) return;
+async function tellWhatsAppTenants(tasks: AnsweredTask[], listingId: number, answer: Answer, brokerPhone: string | null): Promise<boolean> {
+  if (!tasks.some((t) => t.profile?.waPhone)) return false;
   // Times exist only when the broker offered them on the form; a typed "yes" offers none.
   const offered = answer === "AVAILABLE" ? await db.brokerRequest.findMany({ where: { listingId, status: "AVAILABLE" }, select: { viewingSlots: true }, take: 20 }) : [];
   const canPick = offered.some((r) => Array.isArray(r.viewingSlots) && r.viewingSlots.some((s) => typeof s === "string" && Date.parse(s) > Date.now()));
   const now = new Date();
-  // A yes: the deal sheet (what it costs, what Mkan covers, what happens next) and "when can you come?" (deal.ts).
+  // A yes, until 10 deals are paid: a direct intro — the broker agrees Mkan's terms, then each gets
+  // the other's number (deal-intro.ts, Abdout 2026-11-07). Dynamic: deal-intro imports deal.ts.
   if (answer === "AVAILABLE" && !canPick) {
+    const { introMode, startIntro } = await import("./deal-intro");
+    if ((await introMode().catch(() => "relay" as const)) === "intro") {
+      const res = await startIntro(tasks, listingId, brokerPhone).catch((err) => {
+        console.warn(`[agent] intro: ${(err as Error).message}`);
+        return { started: false, reply: null };
+      });
+      if (res.started) return true;
+    }
+    // After that, Mkan in the middle: the deal sheet (what it costs, what Mkan covers, what happens
+    // next) and "when can you come?" (deal.ts).
     const { sendDealSheet } = await import("./deal");
     await Promise.all(tasks.filter((t) => t.profile?.waPhone).map((t) => sendDealSheet(t, listingId).catch((err) => console.warn(`[agent] deal sheet: ${(err as Error).message}`))));
-    return;
+    return false;
   }
   // Dynamic: demand.ts imports this module.
   const { chatLink } = await import("./demand");
@@ -485,6 +497,7 @@ async function tellWhatsAppTenants(tasks: AnsweredTask[], listingId: number, ans
     return [{ kind: "TENANT_ALERT" as const, to, body: brokerAnswerMessage(t.locale, titleIn(t, listingId), answer === "AVAILABLE", link, canPick), label: ALERT_LABEL.brokerAnswer }];
   });
   if (messages.length) await sendMessages(messages, `Broker answered home #${listingId}`);
+  return false;
 }
 
 /** A yes for a WhatsApp tenant: the person who will be at the viewing hears it in #mkan, with both chats one tap away. */

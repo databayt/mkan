@@ -446,6 +446,18 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
             ? "The 07:00 run records it on their CRM host; their videos stay off the page."
             : "Not a plain yes or no — read it. If it is a yes, tell Hermes: `these brokers said yes: <handle>`.";
       await postSlackCard(`📣 *${broker.name}* (+${g.phone}) answered the TikTok repost ask: *${action.answer ?? "unclear"}*\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 400)}\n${next}`);
+    } else if (action.kind === "terms") {
+      const said = action.reply ? await sendReply(g.phone, action.reply, broker.name, log, sendsOff) : false;
+      const what =
+        action.answer === "yes"
+          ? `agreed Mkan's terms (10% + free viewing) → intro sent to ${action.tenants} tenant(s)`
+          : action.answer === "no"
+            ? "declined Mkan's terms → the tenant got the deal sheet; a person takes it"
+            : "answered the terms ask — not a plain yes or no, read it and answer by hand";
+      await postSlackCard(`🤝 *${broker.name}* (+${g.phone}) ${what} · K${action.listingId}${action.reply && !said ? ` · not sent — <${waLink(g.phone, "")}|answer by hand>` : ""}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 400)}`);
+    } else if (action.kind === "intro") {
+      if (action.reply) await sendReply(g.phone, action.reply, broker.name, log, sendsOff);
+      await postSlackCard(`🤝 *${broker.name}* (+${g.phone}) on the intro for K${action.listingId}: ${action.outcome ?? "no outcome"}${action.rating != null ? ` · rated the tenant ${action.rating}/5` : ""}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 400)}`);
     } else if (action.kind === "availability") {
       const said = action.reply ? await sendReply(g.phone, action.reply, broker.name, log, sendsOff) : false;
       const marked = `${action.applied ? "marked" : "already"} ${action.answer === "RENTED" ? "rented" : "available"}`;

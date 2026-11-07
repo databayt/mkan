@@ -133,6 +133,8 @@ export const ALERT_LABEL = {
   viewingConfirmed: 'tenant-viewing-confirmed',
   brokerAnswer: 'tenant-broker-answer',
   match: 'tenant-match',
+  /** Direct intros (deal-intro.ts): "the broker will connect", the broker's number. */
+  intro: 'tenant-intro',
 } as const;
 
 /** A viewing reminder's label: which one, for which visit — the outbox marks the visit when it goes. */
@@ -147,7 +149,7 @@ export function reminderOf(label: string | null | undefined): { mark: '24h' | '2
  * viewing — may go until 22:00: a yes at 20:38 used to wait twelve hours for the morning.
  */
 export const LATE_WINDOW_END_HOUR = 22;
-const LATE_LABELS: ReadonlySet<string> = new Set([ALERT_LABEL.dealSheet, ALERT_LABEL.viewingConfirmed]);
+const LATE_LABELS: ReadonlySet<string> = new Set([ALERT_LABEL.dealSheet, ALERT_LABEL.viewingConfirmed, ALERT_LABEL.intro]);
 
 /** [first hour, end hour) in Kigali time this row may be sent. */
 export function sendWindowFor(row: Pick<OutboxRow, 'kind' | 'label'>): [number, number] {
@@ -239,11 +241,15 @@ export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
       continue;
     }
     const key = recipientKey(row);
-    if (!isAlert && takenToday.has(key)) {
+    // The line's own word back about something the broker started (labelled auto-*: Mkan's terms,
+    // the tenant's number, a follow-up on an intro) is not a new ask: it is not held for "already
+    // asked today" or a resting broker — held to tomorrow, it went stale unsent (2026-11-07).
+    const reply = !isAlert && !!row.label && row.label.startsWith('auto-');
+    if (!isAlert && !reply && takenToday.has(key)) {
       plan.hold.push({ row, reason: 'broker-today' });
       continue;
     }
-    const rest = isAlert ? undefined : input.resting?.get(phoneKey(row.to));
+    const rest = isAlert || reply ? undefined : input.resting?.get(phoneKey(row.to));
     if (rest) {
       plan.hold.push({ row, reason: rest });
       continue;
@@ -254,7 +260,7 @@ export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
     }
     plan.send.push(row);
     budget -= 1;
-    if (!isAlert) takenToday.add(key);
+    if (!isAlert && !reply) takenToday.add(key);
   }
   return plan;
 }

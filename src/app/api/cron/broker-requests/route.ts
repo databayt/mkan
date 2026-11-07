@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cronUnauthorized } from "@/lib/cron-auth";
 import { expireRequests, failStuckTasks, handOnUnanswered } from "@/components/agent/broker";
 import { viewingReminders } from "@/components/agent/deal";
+import { introSweep } from "@/components/agent/deal-intro";
 
 /**
  * Hourly — a broker who has not answered the rental agent within 24 h is
@@ -12,13 +13,15 @@ import { viewingReminders } from "@/components/agent/deal";
  * tenant), after the expiries so one home is never handed on twice in a run. It also fails turns stuck RUNNING for an hour
  * (a recycled Worker loses its `after()`); an open tab recovers its own sooner.
  *
+ * It also runs the direct-intro sweep (deal-intro.ts): terms asks, and follow-ups at 24 h and 7 days.
+ *
  * Gated by `CRON_SECRET` like the other crons; `cf/worker.js` sends it as a
  * Bearer token on the schedule in `cf/crons.json`.
  */
 export async function GET(request: NextRequest) {
   const denied = cronUnauthorized(request);
   if (denied) return denied;
-  const [{ expired, handedOn }, unstuck, reminded] = await Promise.all([
+  const [{ expired, handedOn }, unstuck, reminded, intros] = await Promise.all([
     expireRequests().then(async (expired) => ({
       expired,
       handedOn: await handOnUnanswered().catch((err) => {
@@ -32,6 +35,11 @@ export async function GET(request: NextRequest) {
       console.warn(`[cron] viewing reminders: ${(err as Error).message}`);
       return 0;
     }),
+    // Direct intros: terms asks that waited too long, follow-ups at 24 h and 7 days (deal-intro.ts).
+    introSweep().catch((err) => {
+      console.warn(`[cron] intro sweep: ${(err as Error).message}`);
+      return 0;
+    }),
   ]);
-  return NextResponse.json({ ok: true, expired, handedOn, unstuck, reminded });
+  return NextResponse.json({ ok: true, expired, handedOn, unstuck, reminded, intros });
 }

@@ -28,6 +28,7 @@ import { createBrokerHome, type AskForHome } from "./broker-home";
 import { aboutMeMessage, availableAckMessage, needReplyMessage, needSummary, offersReplyMenu, priceQuestionMessage, reAskMessage, takenAckMessage } from "./broker-message";
 import { isOffer, parseBrokerReply, repostAnswer, type BrokerReply } from "./broker-reply";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements } from "./requirements";
+import { answerTerms, introBrokerUpdate, introReplyFor } from "./deal-intro";
 import { readState, writeState } from "./wa-state";
 
 /** An ask is still being answered this long after it went out. */
@@ -42,6 +43,10 @@ export type InboxAction =
   | { kind: "availability"; listingId: number; answer: "AVAILABLE" | "RENTED"; applied: boolean; reply: { text: string; outboundId: string } | null }
   /** The answer to the TikTok repost ask (null: unclear, a person reads it). The Mac records it in the CRM. */
   | { kind: "repost"; answer: "YES" | "NO" | null }
+  /** The answer to Mkan's terms before an intro (deal-intro.ts); null: unclear, a person reads it. */
+  | { kind: "terms"; answer: "yes" | "no" | null; listingId: number; tenants: number; reply: { text: string; outboundId: string } | null }
+  /** About an intro: did the tenant sign, and how good a fit (deal-intro.ts introBrokerUpdate). */
+  | { kind: "intro"; listingId: number; outcome: string | null; rating: number | null; reply: { text: string; outboundId: string } | null }
   | { kind: "none" };
 
 /** A repost ask is still being answered this long after the phone sent it. */
@@ -146,6 +151,12 @@ async function replyOnce(ask: Ask, label: string, text: string): Promise<{ text:
   return { text, outboundId: id };
 }
 
+/** A word back to the broker outside an ask (an intro's thanks): written as sent, for the caller to send. */
+async function replyTo(phone: string, label: string, text: string, brokerId: string): Promise<{ text: string; outboundId: string }> {
+  const { id } = await db.outboundMessage.create({ data: { kind: "BROKER_REQUEST", to: `+${phone.replace(/^\+/, "")}`, body: text, label, status: "SENT", sentAt: new Date(), brokerId }, select: { id: true } });
+  return { text, outboundId: id };
+}
+
 /** Learn how fast the broker answers: a running blend that favours their usual pace over one slow day. */
 async function stampReply(brokerId: string, at: Date) {
   const [broker, last] = await Promise.all([
@@ -178,6 +189,15 @@ export async function handleBrokerReply(input: { brokerId: string; phone: string
     if (answer) await writeState(repostAskKey(phone), { at: null });
     return { kind: "repost", answer };
   }
+  // Mkan's terms before an intro (asked as the reply to their yes): the YES gets them the tenant's number.
+  const terms = photoUrls.length === 0 ? await answerTerms(phone, text, at) : null;
+  if (terms) {
+    const reply = terms.reply && last ? await replyOnce(last, terms.answer === "yes" ? "auto-intro" : "auto-terms-no", terms.reply) : terms.reply ? await replyTo(phone, "auto-intro", terms.reply, brokerId) : null;
+    return { kind: "terms", answer: terms.answer, listingId: terms.listingId, tenants: terms.tenants, reply };
+  }
+  // An intro's follow-up ("did they sign?"), or "signed" said on their own.
+  const intro = await introBrokerUpdate(brokerId, phone, text, at);
+  if (intro) return { kind: "intro", listingId: intro.listingId, outcome: intro.outcome, rating: intro.rating, reply: await replyTo(phone, "auto-intro-thanks", intro.reply, brokerId) };
   if (last?.kind !== "BROKER_REQUEST") return answerDemandAsk(brokerId, text, photoUrls, at);
   const read = await readAvailabilityReply(phone, text, at, last);
   return read ? answerAvailabilityAsk(read, phone, text, photoUrls.length > 0) : { kind: "none" };
@@ -188,6 +208,10 @@ async function answerAvailabilityAsk(read: NonNullable<Awaited<ReturnType<typeof
   const { ask, r, answer, home, isNews, many, need } = read;
   if (answer && home != null) {
     if (isNews) await recordTypedAnswer(ask.brokerRequestIds, home, answer, phone);
+    // A yes that started an intro (deal-intro.ts) is answered with Mkan's terms, or — terms on record —
+    // the tenant's number: one message, not a thanks and then another.
+    const intro = answer === "AVAILABLE" && isNews ? await introReplyFor(phone, home).catch(() => null) : null;
+    if (intro) return { kind: "availability", listingId: home, answer, applied: isNews, reply: await replyOnce(ask, "auto-terms", intro) };
     // "Budget?" next to the yes gets its answer in the same message; "when do you want to visit?" waits for the tenant.
     const aboutTenant = r.question && !/visit|view|come|see/i.test(text);
     const body = answer === "RENTED" ? takenAckMessage(ask.id) : aboutTenant ? `${availableAckMessage(ask.id)} ${need.they}` : availableAckMessage(ask.id);

@@ -1632,6 +1632,10 @@ model Deal {
   notes            String?
   signedAt         DateTime?
   paidAt           DateTime?
+  /// Mkan introduced tenant and broker directly (every deal until the 10th is paid — Abdout, 2026-11-07).
+  introducedAt     DateTime?
+  /// Intro follow-ups already queued: "tenant-24h", "tenant-7d", "broker-7d" (deal-intro.ts).
+  introFollowUps   String[]   @default([])
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 

@@ -35,6 +35,7 @@ import { homeForRef } from "./home-ref";
 import { isPersonal } from "./personal";
 import { afterViewingFor, prepareDealSheet, proposeViewing, readViewingAsk, recordAfterViewing } from "./deal";
 import { askTimeMessage, readAfterViewing, readViewingTime } from "./deal-pure";
+import { introFollowUpFor, introMode, introTenantAnswer, startIntro } from "./deal-intro";
 import { postSlackCard } from "./whatsapp";
 
 const MAX_TEXT = 600;
@@ -171,6 +172,17 @@ export async function handleTenantWhatsApp(input: {
     await postSlackCard(`${asksBot ? "🤖 A tenant asked if they're talking to a bot" : "🙋 A tenant wants a person"} — ${profile.waPhone ?? "unknown number"}${current ? ` · chat ${current.id}` : ""}\n> ${rest.slice(0, 300)}`).catch(() => {});
     if (current) await stampSeen(current.id, input.msgId, 0);
     return { reply: asksBot ? botText(lang, viewingRep()) : personText(lang, viewingRep()), taskId: current?.id ?? null };
+  }
+
+  // An intro's follow-up ("did you see it? 1 / 2 / 3", "did you take it? and 1–5"): the deal's next step,
+  // not a pick of home #1 (deal-intro.ts). A new search or a home code still runs as one.
+  const followUp = !isFresh(rest) && !readHomeRef(rest) ? await introFollowUpFor(profile.waPhone).catch(() => null) : null;
+  if (followUp) {
+    const reply = await introTenantAnswer(followUp, rest, lang).catch(() => null);
+    if (reply) {
+      if (followUp.deal.taskId) await stampSeen(followUp.deal.taskId, input.msgId, followUp.deal.listingId);
+      return { reply, taskId: followUp.deal.taskId };
+    }
   }
 
   // "How did the viewing go? Reply 1 / 2": the answer is the deal's next step, not a pick of home #1
@@ -336,10 +348,19 @@ export async function handleTenantWhatsApp(input: {
   return { reply: formatWhatsApp(view, d, lang, chatLink(taskId, lang), publicAppUrl()), taskId, done: turn.done.catch(() => {}) };
 }
 
-/** The deal sheet as this message's reply (deal.ts prepareDealSheet opens the "when can you come?" window). */
+/**
+ * A pick of a home a broker already said yes to, as this message's reply: until 10 deals are paid, the
+ * intro (the broker agrees Mkan's terms, then the numbers go — deal-intro.ts); after that, the deal
+ * sheet (deal.ts prepareDealSheet opens the "when can you come?" window).
+ */
 async function dealSheetFor(taskId: string, listingId: number): Promise<string | null> {
   const task = await db.agentTask.findUnique({ where: { id: taskId }, select: { id: true, locale: true, shortlist: true, profile: { select: { waPhone: true } } } });
-  const sheet = task ? await prepareDealSheet(task, listingId) : null;
+  if (!task) return null;
+  if ((await introMode().catch(() => "relay" as const)) === "intro") {
+    const res = await startIntro([task], listingId, null, { replyTo: task.id }).catch(() => ({ started: false, reply: null }));
+    if (res.started) return res.reply;
+  }
+  const sheet = await prepareDealSheet(task, listingId);
   return sheet?.body ?? null;
 }
 

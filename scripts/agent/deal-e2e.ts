@@ -17,6 +17,9 @@
  *   4. deal.ts bookViewing (`pnpm deal:book`) → ListingVisit + Deal
  *   5. setDealStatus SIGNED, PAID (`pnpm deal:status`) → RevenueEntry COMMISSION
  *   6. /monetize's first-share funnel counts the chat, attributed to a post
+ *   8. a direct intro on a second home (deal-intro.ts, until 10 deals are paid): the broker's yes →
+ *      Mkan's terms → their YES → a Deal with introducedAt and both numbers; the 24 h and 7-day
+ *      follow-ups (marked sent by hand: nothing is sent) → VIEWED, SIGNED, and both 1–5 ratings
  *
  * Nothing reaches a person: MKAN_WA_OUTBOX is forced off for this process, so
  * every send is written SKIPPED (the Mac's outbox only sends QUEUED rows), and
@@ -33,6 +36,8 @@ import { randomBytes, createHash } from "node:crypto";
 // ── the locks, before any src module reads env ──────────────────────────────
 process.env.MKAN_WA_OUTBOX = "0";
 delete process.env.SLACK_BOT_TOKEN;
+// Steps 1–7 walk the relay path (Mkan in the middle); step 8 turns direct intros on (deal-intro.ts).
+process.env.MKAN_INTRO_CAP = "0";
 process.env.PRISMA_QUIET ??= "1";
 const slackCards: string[] = [];
 const realWarn = console.warn.bind(console);
@@ -151,7 +156,27 @@ async function main() {
   };
   const before = await scopeCounts(profileBefore?.id ?? null);
 
-  const made = { taskIds: new Set<string>(), requestIds: [] as string[], postId: null as string | null, visitId: null as number | null, dealId: null as string | null };
+  const made = {
+    taskIds: new Set<string>(),
+    requestIds: [] as string[],
+    postId: null as string | null,
+    visitId: null as number | null,
+    dealId: null as string | null,
+    // Step 8's second home and its broker, restored in cleanup.
+    home2: null as { id: number; lostAt: Date | null; lostReason: string | null; lastAvailabilityConfirmedAt: Date | null } | null,
+    broker2: null as {
+      id: string;
+      relationship: string;
+      answers: number;
+      availableAnswers: number;
+      sharePct: unknown;
+      shareFlatRwf: number | null;
+      agreementNote: string | null;
+      agreedAt: Date | null;
+      visitFee: number | null;
+    } | null,
+    broker2Variants: [] as string[],
+  };
   let profileId = profileBefore?.id ?? null;
 
   try {
@@ -334,6 +359,82 @@ async function main() {
     const still = await db.deal.findUnique({ where: { id: booked.dealId }, select: { status: true } });
     check(guarded.status === 3 && still?.status === "PAID", "refused with exit 3, the deal untouched", `exit ${guarded.status}, deal ${still?.status}`);
 
+    // ── 8. a direct intro ───────────────────────────────────────────────────
+    console.log(`\n8. a direct intro (until 10 deals are paid): terms, both numbers, follow-ups`);
+    process.env.MKAN_INTRO_CAP = "1000";
+    const { answerTerms, introSweep, introBrokerUpdate } = await import("../../src/components/agent/deal-intro");
+    const home2 = await db.listing.findFirst({
+      where: { ...homeWhere, id: { not: home.id }, brokers: { some: { brokerId: { not: null }, user: { phoneNumber: { not: null } }, broker: { is: { sharePct: null, shareFlatRwf: null, optOut: false } } } } },
+      orderBy: { createdAt: "desc" },
+      select: homeSelect,
+    });
+    const link2 = home2
+      ? await db.listingBroker.findFirst({
+          where: { listingId: home2.id, brokerId: { not: null }, user: { phoneNumber: { not: null } }, broker: { is: { sharePct: null, shareFlatRwf: null, optOut: false } } },
+          select: { userId: true, brokerId: true, user: { select: { phoneNumber: true } } },
+        })
+      : null;
+    if (check(!!home2 && !!link2?.brokerId, "a second home whose broker has no terms yet", home2 ? `K${home2.id}` : "none")) {
+      made.home2 = home2;
+      const phone2 = link2!.user.phoneNumber!;
+      const digits2 = phone2.replace(/\D/g, "");
+      made.broker2 = await db.broker.findUnique({ where: { id: link2!.brokerId! }, select: { id: true, relationship: true, answers: true, availableAnswers: true, sharePct: true, shareFlatRwf: true, agreementNote: true, agreedAt: true, visitFee: true } });
+      made.broker2Variants = [`+${digits2}`, digits2];
+      const token2 = randomBytes(18).toString("base64url");
+      const req2 = await db.brokerRequest.create({
+        data: { tokenHash: createHash("sha256").update(token2).digest("hex"), listingId: home2!.id, brokerUserId: link2!.userId, taskId, locale: "en", need: { e2e: RUN }, channel: "e2e", consentAt: new Date(), expiresAt: new Date(Date.now() + 3_600_000) },
+        select: { id: true },
+      });
+      made.requestIds.push(req2.id);
+      const cards8 = slackCards.length;
+      await recordTypedAnswer([req2.id], home2!.id, "AVAILABLE", phone2);
+      const termsAsk = (await db.waState.findUnique({ where: { key: `terms-ask:${digits2}` }, select: { value: true } }))?.value as { tenants?: { taskId: string }[] } | null;
+      check(termsAsk?.tenants?.some((t) => t.taskId === taskId) === true, "the broker's yes opens Mkan's terms ask (no terms on record)", JSON.stringify(termsAsk));
+      check(slackCards.slice(cards8).some((c) => c.includes("🤝 *Intro*")), "#mkan hears the intro started");
+      const pending = await db.outboundMessage.findFirst({ where: { to: { in: variants }, label: "tenant-intro", createdAt: { gte: t0 } }, select: { body: true } });
+      check(!!pending && !/\+?\d{9,}/.test(pending.body), "the tenant hears the broker will connect — no number yet", pending?.body.slice(0, 80) ?? "none");
+
+      const yes = await answerTerms(phone2, "Yes, agreed", new Date());
+      check(yes?.answer === "yes" && !!yes.reply && yes.reply.includes(TEST_PHONE), "their YES gets them the tenant's number", yes?.reply?.slice(0, 120) ?? "no answer");
+      const b2 = await db.broker.findUnique({ where: { id: link2!.brokerId! }, select: { sharePct: true, visitFee: true, relationship: true, agreedAt: true } });
+      check(Number(b2?.sharePct) === 0.1 && b2?.visitFee === 0 && b2?.relationship === "PARTNER" && !!b2.agreedAt, "the terms are on record: 10%, free viewing, PARTNER (restored in cleanup)", JSON.stringify(b2));
+      const deal8 = await db.deal.findFirst({ where: { taskId, listingId: home2!.id }, select: { id: true, introducedAt: true, status: true, viewingFeePaid: true } });
+      check(!!deal8?.introducedAt && deal8.status === "VIEWING_BOOKED" && deal8.viewingFeePaid === 0, "a Deal with introducedAt, no viewing fee", JSON.stringify(deal8));
+      const intro = await db.outboundMessage.findFirst({ where: { to: { in: variants }, label: "tenant-intro", createdAt: { gte: t0 }, body: { contains: digits2 } }, select: { body: true } });
+      check(!!intro, "the tenant gets the broker's WhatsApp", intro?.body.slice(0, 120) ?? "none");
+
+      if (deal8) {
+        // A Kigali 10:00 at least `h` hours after the intro: inside the send window.
+        const kigali10 = (h: number) => {
+          const t = new Date(deal8.introducedAt!.getTime() + h * 3_600_000 + 2 * 3_600_000);
+          return new Date(`${new Date(t.getTime() + DAY).toISOString().slice(0, 10)}T10:00:00+02:00`);
+        };
+        const sent = async (label: string) =>
+          db.outboundMessage.updateMany({ where: { label, createdAt: { gte: t0 } }, data: { status: "SENT", sentAt: new Date() } });
+        await introSweep(kigali10(25));
+        check((await sent(`tenant-intro-fu-24h:${deal8.id}`)).count === 1, "24 h: the tenant is asked \"did you see it?\"");
+        const r8 = await say("1");
+        const viewed = await db.deal.findUnique({ where: { id: deal8.id }, select: { status: true } });
+        check(viewed?.status === "VIEWED", "\"1\" → VIEWED", `${viewed?.status} · ${"reply" in r8 ? r8.reply : ""}`);
+        await introSweep(kigali10(24 * 7 + 1));
+        check((await sent(`tenant-intro-fu-7d:${deal8.id}`)).count === 1, "7 days: the tenant is asked \"did you take it?\" and a rating");
+        const brokerFu = await sent(`auto-intro-fu:${deal8.id}`);
+        check(brokerFu.count === 1, "7 days: the broker is asked \"did they sign?\"");
+        await say("Yes I took it, 5");
+        const signed8 = await db.deal.findUnique({ where: { id: deal8.id }, select: { status: true, signedAt: true } });
+        check(signed8?.status === "SIGNED" && !!signed8.signedAt, "\"yes … 5\" → SIGNED", signed8?.status ?? "none");
+        const upd = await introBrokerUpdate(link2!.brokerId!, phone2, "Signed. 4", new Date());
+        check(upd?.rating === 4, "the broker's answer is read, with their rating", JSON.stringify(upd));
+        const scores = await db.agentEvent.findMany({ where: { taskId, kind: "feedback" }, select: { payload: true } });
+        const got = scores.map((e) => e.payload as { kind?: string; who?: string; score?: number }).filter((p) => p.kind === "score");
+        check(got.some((p) => p.who === "tenant" && p.score === 5) && got.some((p) => p.who === "broker" && p.score === 4), "both 1–5 ratings are recorded", JSON.stringify(got));
+      }
+      // What step 8 wrote to the broker and marked sent by hand goes now: the leak check below is for real sends.
+      await db.outboundMessage.deleteMany({ where: { createdAt: { gte: t0 }, OR: [{ to: { in: made.broker2Variants } }, { label: { startsWith: "tenant-intro" } }] } });
+      await db.waState.deleteMany({ where: { key: { in: [`terms-ask:${digits2}`, `intro-reply:${digits2}`] } } });
+    }
+    process.env.MKAN_INTRO_CAP = "0";
+
     const leaked = await db.outboundMessage.count({ where: { to: { in: [...variants, ...brokerVariants] }, createdAt: { gte: t0 }, status: { in: ["QUEUED", "SENT"] } } });
     check(leaked === 0 && blocked.length === 0, "nothing was sent to anyone", `${leaked} queued/sent row(s), ${blocked.length} blocked fetch(es), ${slackCards.length} Slack card(s) intercepted`);
   } catch (err) {
@@ -373,6 +474,17 @@ async function main() {
         db.waState.deleteMany({ where: { key: { in: [`viewing-ask:${TEST_DIGITS}`, ...msgIds.map((m) => `handoff:${m}`)] } } }),
       );
       await db.listing.update({ where: { id: home.id }, data: { lostAt: home.lostAt, lostReason: home.lostReason, lastAvailabilityConfirmedAt: home.lastAvailabilityConfirmedAt } });
+      if (made.home2) {
+        await db.listing.update({ where: { id: made.home2.id }, data: { lostAt: made.home2.lostAt, lostReason: made.home2.lostReason, lastAvailabilityConfirmedAt: made.home2.lastAvailabilityConfirmedAt } });
+        await run("OutboundMessage (broker 2)", db.outboundMessage.deleteMany({ where: { createdAt: { gte: t0 }, to: { in: made.broker2Variants } } }));
+      }
+      if (made.broker2) {
+        const b = made.broker2;
+        await db.broker.update({
+          where: { id: b.id },
+          data: { relationship: b.relationship as never, answers: b.answers, availableAnswers: b.availableAnswers, sharePct: b.sharePct as never, shareFlatRwf: b.shareFlatRwf, agreementNote: b.agreementNote, agreedAt: b.agreedAt, visitFee: b.visitFee },
+        });
+      }
       for (const b of brokersTouched)
         await db.broker.update({
           where: { id: b.id },

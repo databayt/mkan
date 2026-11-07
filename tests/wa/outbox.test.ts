@@ -387,3 +387,17 @@ describe('passes on events instead of every 2 minutes (2026-11-07)', () => {
     expect(brokerGapLeft([{ kind: 'TENANT_ALERT', sentAt: kigali('2026-11-07T09:59:59') }], now)).toBe(0);
   });
 });
+
+describe('wa outbox — the line\'s own replies', () => {
+  it('sends an auto-* reply to a broker asked today or resting, where a new ask waits', () => {
+    const to = '+250700000099';
+    const lastSentAt = new Map([[recipientKey({ brokerId: 'bx', to }), kigali('2026-10-21T09:00:00')]]);
+    const resting = new Map([['250700000099', 'broker-week' as const]]);
+    const ask = row({ kind: 'BROKER_REQUEST', to, brokerId: 'bx', label: 'ask' });
+    const reply = row({ kind: 'BROKER_REQUEST', to, brokerId: 'bx', label: 'auto-intro' });
+    const plan = base([ask, reply], { lastSentAt, resting });
+    expect(plan.send.map((r) => r.label)).toEqual(['auto-intro']);
+    expect(plan.hold.map((h) => h.reason)).toEqual(['broker-today']);
+  });
+});
+
