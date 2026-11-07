@@ -114,6 +114,6 @@ if [ -f "$PLIST" ]; then
   echo "launchd $LABEL off (plist kept in LaunchAgents/disabled/)"
 fi
 echo "installed Hermes job $NAME — '$SCHEDULE', picks the day's homes ($PER_DAY: one clean video each) and posts the first to @mkan.rw"
-echo "installed Hermes job $RETRY — '$RETRY_SCHEDULE', renders and posts each slot's share (or runs the whole post when 07:00 rendered nothing)"
-echo "installed Hermes job $EVENING — '$EVENING_SCHEDULE', adds the 18:00 sweep's ads, then renders and posts each slot's share"
+echo "installed Hermes job $RETRY — '$RETRY_SCHEDULE', posts each slot's share and renders ahead (or runs the whole post when 07:00 rendered nothing)"
+echo "installed Hermes job $EVENING — '$EVENING_SCHEDULE', adds the 15:00 sweep's ads, then posts each slot's share and renders ahead"
 echo "installed Hermes job $STATS — '$STATS_SCHEDULE', the page's views and likes in #mkan"
