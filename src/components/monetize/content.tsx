@@ -12,9 +12,11 @@ import { INK, MUTED } from "./listing-ui";
 import { LiveCard } from "./live-card";
 import { MobileBar, MoneyCard } from "./money-card";
 import { Road } from "./road";
+import { Scorecard } from "./scorecard";
 
 /**
- * /monetize, short (Abdout, 2026-11-07: "simple and clean. And short"): the title row; the loop, live;
+ * /monetize, short (Abdout, 2026-11-07: "simple and clean. And short"): the title row; the four
+ * percentages that say how money is going (scorecard.tsx); the loop, live;
  * the road to money beside the money card (the listing's sticky Reserve card); the four blocks as
  * flowcharts; every other number in one closed "All the numbers". From 19 screens to about four.
  */
@@ -32,6 +34,8 @@ export function MonetizeContent({ data, live, labels, locale, canEdit = false }:
           <span className={MUTED}>{fill(labels.lastUpdate, { date: formatDate(new Date(data.generatedAt), locale, { year: undefined, month: "short", day: "numeric" }) })}</span>
         </div>
       </header>
+
+      {data.score && <Scorecard score={data.score} labels={labels} locale={locale} />}
 
       <LiveCard initial={live} labels={labels.live} blocks={blocks} canEdit={canEdit} locale={locale} />
 

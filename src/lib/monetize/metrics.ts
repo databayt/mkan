@@ -1,4 +1,5 @@
 import { SUCCESS } from "./success";
+import { scoreMetrics } from "./scorecard";
 import type { MonetizeOverview } from "./load";
 
 /**
@@ -15,7 +16,7 @@ export type MetricValue = number | string | null;
 export type Metrics = Record<string, MetricValue>;
 
 /** The parts of the page model the reader needs — everything optional, so a half-loaded model still reads. */
-export type MetricsModel = Partial<Pick<MonetizeOverview, "blocks" | "money" | "gates" | "stages" | "bottleneck" | "experiments" | "nextSteps" | "adChats" | "funnel" | "fixedEstimated">> & {
+export type MetricsModel = Partial<Pick<MonetizeOverview, "blocks" | "money" | "gates" | "stages" | "bottleneck" | "experiments" | "nextSteps" | "adChats" | "funnel" | "fixedEstimated" | "score">> & {
   firstShare?: Partial<Record<string, unknown>> | null;
 };
 
@@ -85,6 +86,9 @@ export function readMetrics(model: MetricsModel): Metrics {
   }
   if (model.experiments) out.experimentsRunning = model.experiments.filter((e) => e.verdict === "running").length;
   if (model.nextSteps) out.openSteps = model.nextSteps.length;
+
+  // The scorecard: score.doing / brokers / tenants / chatbot (0–100), score.weakest, part.<key>.
+  if (model.score) Object.assign(out, scoreMetrics(model.score));
 
   const fs = model.firstShare;
   if (fs && typeof fs === "object") {

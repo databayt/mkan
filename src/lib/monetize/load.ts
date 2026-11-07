@@ -16,6 +16,9 @@ import { fixedCostsRwf, fixedEstimated, USD_TO_RWF } from "./costs";
 import { blockHealth, change, deltas, worst } from "./health";
 import { money, REVENUE_LINES, type MoneyView, type RevenueLineKey } from "./money";
 import type { BlockKey, BlockView, Health, JobState, Kpi, SnapshotMetrics } from "./types";
+import { scorecard, type ScorecardView } from "./scorecard";
+import { buildSamples } from "./score-samples";
+import { loadScoreQueries, postPoints } from "./score-load";
 
 /**
  * Everything /monetize shows, read in one pass.
@@ -71,6 +74,8 @@ export interface MonetizeOverview {
   funnel: Funnel;
   /** Featured → clean → posted → contacts → chatbot → got the home, per post and in total. Null = unreadable. */
   firstShare: FirstShareView | null;
+  /** The four percentages — doing, brokers, tenants, chatbot — and the funnel line (scorecard.ts). Null = unreadable. */
+  score?: ScorecardView | null;
 }
 
 type SnapRow = { block: string; at: Date; status: string; metrics: unknown };
@@ -126,7 +131,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   // Deals are read from the earlier of the comparison window and the month: one created weeks ago
   // and paid this month still counts as this month's money.
   const dealsFrom = new Date(Math.min(prevSince.getTime(), monthStart.getTime()));
-  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints, firstShare, lessons, inbox, handoffs, directory] =
+  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints, firstShare, lessons, inbox, handoffs, directory, scoreQ] =
     await Promise.all([
       // Every read below falls back on its own: one failed query must not take the page down (2026-11-06).
       agentFunnel(db, days).catch(() => emptyFunnel(days)),
@@ -198,6 +203,8 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
       db.waState.count({ where: { key: { startsWith: "handoff:" }, updatedAt: { gte: since } } }).catch(() => null),
       // The broker + agency directory the agent asks (goal: 1,000), and how many joined this window.
       Promise.all([db.broker.count(), db.broker.count({ where: { createdAt: { gte: since } } })]).catch(() => null),
+      // The scorecard's own counts (30 days for the deal road, 90 for ratings).
+      loadScoreQueries(now).catch(() => null),
     ]);
 
   // ── snapshots, per block ──────────────────────────────────────────────
@@ -379,6 +386,29 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
 
   const gates = { brokerSends, capped };
   const bn = bottleneck(stages);
+
+  // ── the scorecard: four percentages and the funnel line ──────────────
+  const score = scoreQ
+    ? (() => {
+        const { samples, counts, followers } = buildSamples({
+          ...scoreQ,
+          now,
+          post: postPoints(byBlock("post")),
+          week: {
+            people: inbox?.[0]?.people ?? null,
+            shortlisted: inbox?.[0]?.shortlisted ?? null,
+            tasks: funnel.tasks,
+            failed: funnel.failed,
+            p50: latency[0]?.p50 ?? null,
+            turns: funnel.shortlisted,
+            messages: inbox?.[0]?.messages ?? null,
+            handoffs,
+            evalReader: metricsOf(last("chat")).chat?.evalReaderPct ?? null,
+          },
+        });
+        return scorecard(samples, counts, followers);
+      })()
+    : null;
   const fixedIsEstimate = fixedEstimated();
   const steps = nextSteps({ money: m, blocks, bottleneck: bn, gates, fixedEstimated: fixedIsEstimate, shortlisted: funnel.shortlisted, paidDealsMonth: monthPaid.length });
 
@@ -415,6 +445,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     adChats: chatSplit[0]?.ad ?? 0,
     funnel,
     firstShare,
+    score,
   };
 }
 

@@ -6735,6 +6735,175 @@
     "details": {
       "title": "All the numbers",
       "lead": "Costs line by line, every post, every target, the experiments and the sprint's controls."
+    },
+    "score": {
+      "title": "The numbers that make money",
+      "weakest": "Weakest: {part}, {value} (target {target})",
+      "noData": "Not enough data yet",
+      "counted": "{n} counted",
+      "days": "{n} days",
+      "allTime": "all time",
+      "target": "target {v}",
+      "means": "What it means",
+      "fix": "How we fix it",
+      "funnelTitle": "From a post to Mkan's share · last 30 days",
+      "words": {
+        "strong": "Strong",
+        "ok": "OK",
+        "weak": "Weak",
+        "thin": "Not enough data"
+      },
+      "tiles": {
+        "doing": "How we're doing",
+        "brokers": "Brokers happy",
+        "tenants": "Tenants satisfied",
+        "chatbot": "Chatbot effective"
+      },
+      "steps": {
+        "posts": "Posts",
+        "views": "Views",
+        "chats": "Wrote",
+        "asked": "Asked a broker",
+        "yes": "Broker yes",
+        "viewing": "Viewing",
+        "viewed": "Viewed",
+        "paid": "Paid"
+      },
+      "units": {
+        "perDay": "{v} a day",
+        "min": "{v} min",
+        "score": "{v} / 5",
+        "perPost": "{v} a post"
+      },
+      "parts": {
+        "postsPerDay": {
+          "t": "Posts a day",
+          "means": "Fewer posts, fewer people see a home.",
+          "fix": "Post every fresh broker ad, 3 to 15 a day, most in the evening."
+        },
+        "followersWeek": {
+          "t": "New followers a week",
+          "means": "The page isn't growing, so every post starts from zero.",
+          "fix": "End each video with \"Follow for new homes every day\" and pin a how-to video."
+        },
+        "viewsPerPost": {
+          "t": "Views per post",
+          "means": "TikTok isn't pushing the videos: the opening or the timing is weak.",
+          "fix": "Open on the best room in the first second and post between 17:00 and 21:30."
+        },
+        "viewsToChats": {
+          "t": "Viewers who write",
+          "means": "People watch but don't message Mkan.",
+          "fix": "Show the home code and \"WhatsApp us\" on screen and in the caption, and link WhatsApp in the bio."
+        },
+        "chatsToAsked": {
+          "t": "Chats that ask for a viewing",
+          "means": "The bot shows homes, but the tenant doesn't pick one.",
+          "fix": "Show the 3 closest homes with the real move-in cost and ask \"Want to see it?\" with one tap."
+        },
+        "askedToYes": {
+          "t": "Brokers who say yes",
+          "means": "Brokers don't answer, or the home is already gone.",
+          "fix": "Ask brokers who answered before first, ask in Kinyarwanda, and nudge once after 2 hours."
+        },
+        "yesToViewing": {
+          "t": "Yeses that become a viewing",
+          "means": "A broker said yes and nobody booked, so the tenant cools off.",
+          "fix": "Introduce tenant and broker within the hour until 10 deals are paid; one-tap booking after that."
+        },
+        "viewingToViewed": {
+          "t": "Viewings that happen",
+          "means": "The tenant or the broker doesn't show up.",
+          "fix": "Remind both 24 hours and 2 hours before, and confirm the place the day before."
+        },
+        "viewedToPaid": {
+          "t": "Viewings that pay Mkan",
+          "means": "No lease is signed, or it's signed without telling Mkan.",
+          "fix": "Ask both sides after 7 days and send the share request the day they sign."
+        },
+        "brokerAnswerRate": {
+          "t": "Brokers who answer",
+          "means": "Brokers ignore Mkan's asks.",
+          "fix": "Short asks in Kinyarwanda, brokers who answered before first, and stop asking the silent ones."
+        },
+        "brokerReplyMin": {
+          "t": "Broker reply time",
+          "means": "Tenants wait too long and leave.",
+          "fix": "Ask during working hours and move to the next broker after 2 hours."
+        },
+        "brokerShareAgreed": {
+          "t": "Brokers who agreed Mkan's terms",
+          "means": "Brokers say yes but don't agree to share.",
+          "fix": "Ask the terms with the tenant: 10% of the commission and a free viewing."
+        },
+        "brokerStayed": {
+          "t": "Brokers who didn't opt out",
+          "means": "Too many messages annoy brokers.",
+          "fix": "At most one ask a day per broker, and only for real tenants."
+        },
+        "brokerRating": {
+          "t": "Brokers' rating of our tenants",
+          "means": "Mkan sends tenants who don't fit the home.",
+          "fix": "Match budget and area before asking the broker."
+        },
+        "tenantRating": {
+          "t": "Tenants' rating",
+          "means": "Tenants aren't happy with the help.",
+          "fix": "Read the low ratings and fix the most common complaint first."
+        },
+        "thumbsUp": {
+          "t": "Answers marked helpful",
+          "means": "The bot's answers miss what people asked.",
+          "fix": "Read the thumbs-down chats and fix the reading or the ranking."
+        },
+        "returning": {
+          "t": "Tenants who come back",
+          "means": "Tenants have no reason to come back.",
+          "fix": "Send new matches to tenants who asked for them."
+        },
+        "noStop": {
+          "t": "Tenants who didn't say STOP",
+          "means": "Messages feel like spam.",
+          "fix": "Fewer follow-ups, and only news about their homes."
+        },
+        "answeredIn3h": {
+          "t": "Tenants who hear back within 3 hours",
+          "means": "Tenants wait for brokers and look elsewhere.",
+          "fix": "Ask 2 brokers at once, move on after 2 hours, and tell the tenant what's happening."
+        },
+        "peopleToHomes": {
+          "t": "Chats that get homes",
+          "means": "The bot can't find homes for what people ask.",
+          "fix": "Widen the search (area, budget) and say so, and add homes in the areas people ask for."
+        },
+        "replyP50": {
+          "t": "Reply time",
+          "means": "Slow answers lose people.",
+          "fix": "Answer taps without the model and keep searches fast."
+        },
+        "noFailures": {
+          "t": "Chats without errors",
+          "means": "The bot breaks in the middle of a chat.",
+          "fix": "Read the failed chats and fix the most common error."
+        },
+        "handledAlone": {
+          "t": "Messages the bot handles alone",
+          "means": "A person has to step in too often.",
+          "fix": "Teach the bot the questions people hand over most."
+        },
+        "evalReader": {
+          "t": "Quality test",
+          "means": "The bot misreads what people want.",
+          "fix": "Add the misread messages to the test and fix the reader."
+        },
+        "messagesToAsk": {
+          "t": "Messages before a viewing ask",
+          "means": "The chat runs long before the tenant reaches a home they want.",
+          "fix": "Show homes in the first reply and ask one question at a time, only when needed."
+        }
+      },
+      "allMet": "Every part on target",
+      "followers": "{n} followers"
     }
   }
 }

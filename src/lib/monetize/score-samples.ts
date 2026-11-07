@@ -1,0 +1,111 @@
+import type { FunnelStepKey, Sample } from "./scorecard";
+
+/**
+ * Raw counts → the scorecard's samples (scorecard.ts PARTS). Pure, so the arithmetic is tested
+ * without a database: score-load.ts runs the queries, load.ts adds what the page already counted.
+ */
+
+/** One post snapshot reduced to what the scorecard reads (BlockSnapshot block "post"). */
+export interface PostPoint {
+  at: number;
+  posts: number | null;
+  views: number | null;
+  followers: number | null;
+}
+
+export interface ScoreRaw {
+  now: number;
+  /** Post snapshots, oldest first, the last ~14 days. */
+  post: PostPoint[];
+  /** The post snapshot nearest before 30 days ago (null: the page is younger than that). */
+  post30: PostPoint | null;
+  /** People who wrote in 30 days (Abdout's own and test numbers left out), and those who wrote on 2+ days. */
+  people30: number;
+  returning30: number;
+  /** Broker asks sent in 30 days: total, answered, distinct chats asked for, chats that got a yes, chats answered within 3 h. */
+  asks: { sent: number; answered: number; tasks: number; yes: number; fast: number };
+  /** Deals: booked in 30 days, of those viewed or further, paid in 30 days. */
+  deals: { booked: number; viewed: number; paid: number };
+  brokers: { asked: number; optOut: number; saidYes: number; agreed: number; replyMedianMin: number | null; replyN: number };
+  feedback: { tenantAvg: number | null; tenantN: number; brokerAvg: number | null; brokerN: number; up: number; down: number };
+  /** Median tenant messages before the first broker ask, over the chats that reached one (30 days). */
+  messagesToAsk: { median: number | null; n: number };
+  /** WhatsApp numbers that said STOP, and WhatsApp tenants ever. */
+  stops: number;
+  waTenants: number;
+  /** This week's chatbot numbers, already on the page (load.ts). */
+  week: { people: number | null; shortlisted: number | null; tasks: number; failed: number; p50: number | null; turns: number; messages: number | null; handoffs: number | null; evalReader: number | null };
+}
+
+const DAY = 86_400_000;
+const ratio = (n: number, of: number): Sample => ({ value: of > 0 ? n / of : null, n: of });
+
+/** The newest point at or before `t`, else the oldest one (a page younger than the window). */
+function baseAt(points: PostPoint[], t: number, pick: (p: PostPoint) => number | null): PostPoint | null {
+  const usable = points.filter((p) => pick(p) != null);
+  if (!usable.length) return null;
+  const before = usable.filter((p) => p.at <= t);
+  return before.length ? before[before.length - 1]! : usable[0]!;
+}
+
+/** Growth of a cumulative field over the last `days`, scaled to `per` days; n = days observed. */
+export function growth(points: PostPoint[], pick: (p: PostPoint) => number | null, now: number, days: number, per: number): Sample {
+  const usable = points.filter((p) => pick(p) != null);
+  const latest = usable.at(-1);
+  const base = baseAt(points, now - days * DAY, pick);
+  if (!latest || !base || latest === base) return { value: null, n: 0 };
+  const span = (latest.at - base.at) / DAY;
+  if (span <= 0) return { value: null, n: 0 };
+  const gained = Math.max(0, pick(latest)! - pick(base)!);
+  return { value: (gained / span) * per, n: Math.round(span) };
+}
+
+export function buildSamples(r: ScoreRaw): { samples: Record<string, Sample>; counts: Partial<Record<FunnelStepKey, number | null>>; followers: number | null } {
+  const latest = [...r.post].reverse().find((p) => p.posts != null || p.views != null) ?? null;
+  // 30 days of posts and views: the latest total minus the total 30 days ago (0 when the page is younger).
+  const posts30 = latest?.posts != null ? latest.posts - (r.post30?.posts ?? 0) : null;
+  const views30 = latest?.views != null ? latest.views - (r.post30?.views ?? 0) : null;
+  const w = r.week;
+  const samples: Record<string, Sample> = {
+    postsPerDay: growth(r.post, (p) => p.posts, r.now, 7, 1),
+    followersWeek: growth(r.post, (p) => p.followers, r.now, 7, 7),
+    viewsPerPost: latest?.posts ? { value: (latest.views ?? 0) / latest.posts, n: latest.posts } : { value: null, n: 0 },
+    viewsToChats: views30 != null ? ratio(r.people30, views30) : { value: null, n: 0 },
+    chatsToAsked: ratio(r.asks.tasks, r.people30),
+    askedToYes: ratio(Math.min(r.asks.yes, r.asks.tasks), r.asks.tasks),
+    yesToViewing: ratio(r.deals.booked, r.asks.yes),
+    viewingToViewed: ratio(r.deals.viewed, r.deals.booked),
+    viewedToPaid: ratio(r.deals.paid, r.deals.viewed),
+
+    brokerAnswerRate: ratio(r.asks.answered, r.asks.sent),
+    brokerReplyMin: { value: r.brokers.replyMedianMin, n: r.brokers.replyN },
+    brokerShareAgreed: ratio(r.brokers.agreed, r.brokers.saidYes),
+    brokerStayed: r.brokers.asked > 0 ? { value: 1 - r.brokers.optOut / r.brokers.asked, n: r.brokers.asked } : { value: null, n: 0 },
+    brokerRating: { value: r.feedback.brokerAvg, n: r.feedback.brokerN },
+
+    tenantRating: { value: r.feedback.tenantAvg, n: r.feedback.tenantN },
+    thumbsUp: ratio(r.feedback.up, r.feedback.up + r.feedback.down),
+    returning: ratio(r.returning30, r.people30),
+    noStop: r.waTenants > 0 ? { value: 1 - Math.min(r.stops, r.waTenants) / r.waTenants, n: r.waTenants } : { value: null, n: 0 },
+    answeredIn3h: ratio(r.asks.fast, r.asks.tasks),
+
+    peopleToHomes: w.people != null && w.shortlisted != null ? ratio(Math.min(w.shortlisted, w.people), w.people) : { value: null, n: 0 },
+    replyP50: { value: w.p50, n: w.turns },
+    noFailures: w.tasks > 0 ? { value: 1 - w.failed / w.tasks, n: w.tasks } : { value: null, n: 0 },
+    handledAlone: w.messages != null && w.messages > 0 ? { value: 1 - Math.min(w.handoffs ?? 0, w.messages) / w.messages, n: w.messages } : { value: null, n: 0 },
+    evalReader: { value: w.evalReader, n: w.evalReader != null ? 1 : 0 },
+    messagesToAsk: { value: r.messagesToAsk.median, n: r.messagesToAsk.n },
+  };
+  const counts: Partial<Record<FunnelStepKey, number | null>> = {
+    posts: posts30,
+    views: views30,
+    chats: r.people30,
+    asked: r.asks.tasks,
+    yes: r.asks.yes,
+    viewing: r.deals.booked,
+    viewed: r.deals.viewed,
+    paid: r.deals.paid,
+  };
+  const followers = [...r.post].reverse().find((p) => p.followers != null)?.followers ?? null;
+  return { samples, counts, followers };
+}
