@@ -55,3 +55,24 @@ describe("shapeFirstShare", () => {
     expect(view.posts.find((p) => p.id === "p3")!.chats).toBe(0);
   });
 });
+
+describe("bioChats — the /tt page's chats, apart from the captions' codes", () => {
+  const posts = [post({ id: "p1", listingId: 1 })];
+  const view = shapeFirstShare({
+    days: 7,
+    since: d("01"),
+    posts,
+    postedForAttribution: posts,
+    chats: [
+      chat({ id: "c1", source: "tiktok" }),
+      chat({ id: "b1", source: "tiktok_bio" }),
+      chat({ id: "b2", source: "tiktok_bio", refListingId: null }),
+    ],
+    firstContacts: [],
+    deals: [],
+  });
+  it("counts them inside chats and on their own; a bio chat with no code is not an unmatched code", () => {
+    expect(view).toMatchObject({ chats: 3, bioChats: 2, unattributedChats: 0 });
+    expect(view.posts[0]).toMatchObject({ chats: 2 });
+  });
+});

@@ -161,11 +161,12 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
       brokerSendMode().catch(() => "off" as const),
       // Web vs WhatsApp, and chats opened by a TikTok home code: `refSource` since 2026-11-05;
       // older chats only carry the first message's `pin`, which the /k page's button set too.
-      db.$queryRaw<{ wa: number; web: number; ad: number }[]>`
+      db.$queryRaw<{ wa: number; web: number; ad: number; bio: number }[]>`
         SELECT
           COUNT(*) FILTER (WHERE p."waPhone" IS NOT NULL)::int AS wa,
           COUNT(*) FILTER (WHERE p."waPhone" IS NULL)::int AS web,
-          COUNT(*) FILTER (WHERE t."refSource" = 'tiktok' OR (t."refSource" IS NULL AND t.messages->0->>'pin' IS NOT NULL))::int AS ad
+          COUNT(*) FILTER (WHERE t."refSource" = 'tiktok' OR (t."refSource" IS NULL AND t.messages->0->>'pin' IS NOT NULL))::int AS ad,
+          COUNT(*) FILTER (WHERE t."refSource" = 'tiktok_bio')::int AS bio
         FROM "AgentTask" t LEFT JOIN "AgentProfile" p ON p.id = t."profileId"
         WHERE t."createdAt" >= ${since}`,
       // `ms` is the turn's step clock ({ read: 900, search: 1400, … }, ms from its start): the last step is the reply time.
@@ -303,6 +304,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     { key: "chatToPaid", value: conv(paid.length, funnel.tasks), unit: "pct", lever: true, prev: conv(paidPrev.length, prevFunnel.tasks) },
     // Chats with a client's words in the window, Abdout's own contacts left out; the agent's funnel as a fallback.
     { key: "chats", value: inbox?.[0]?.chats ?? funnel.tasks, unit: "count", prev: prevFunnel.tasks },
+    { key: "tiktokBioChats", value: chatSplit[0]?.bio ?? 0, unit: "count" },
     { key: "waChats", value: chatSplit[0]?.wa ?? 0, unit: "count" },
     { key: "webChats", value: chatSplit[0]?.web ?? 0, unit: "count" },
     { key: "shortlistRate", value: conv(funnel.shortlisted, funnel.tasks), unit: "pct", prev: conv(prevFunnel.shortlisted, prevFunnel.tasks) },

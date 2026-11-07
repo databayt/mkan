@@ -47,6 +47,7 @@ export function FirstShareSection({ data, labels, locale }: { data: FirstShareVi
               <span className="font-semibold">{L.chatbot}: </span>
               {fill(L.chatbotLine, { chats: n(data.chats), shortlisted: n(data.shortlisted), asked: n(data.asked), answered: n(data.answered), failed: n(data.failedChats) })}
             </p>
+            {data.bioChats > 0 && <p>{fill(L.bioLine, { n: n(data.bioChats) })}</p>}
             {data.rejected > 0 && (
               <p className={MUTED}>{fill(L.rejectedLine, { n: n(data.rejected), why: data.rejectReasons.map((r) => `${r.reason} (${n(r.count)})`).join(", ") })}</p>
             )}

@@ -133,16 +133,20 @@ const CHECK_WORD_RE =
 export const asksToCheck = (text: string): boolean => readHomeRef(text) != null && CHECK_WORD_RE.test(text);
 
 /** Where a chat's home code came from — the first-share funnel's attribution (2026-11-05). */
-export type RefSource = "tiktok" | "k_page" | "web" | "organic";
+export type RefSource = "tiktok" | "tiktok_bio" | "k_page" | "web" | "organic";
 
 /** The words the /k/<code> page prefills after the code, so its chats count apart from TikTok's. */
 export const K_PAGE_MARK = "mkan.sd";
 
+/** The marker the /tt page (the TikTok profile's link) puts in its WhatsApp messages — with a code or without one. */
+export const TIKTOK_BIO_MARK = "tiktok_bio";
+
 /**
- * A code with the /k page's mark is that page; a code carried with a web chat's `ref:` is /find;
+ * The marker first (a /tt message is that page whatever else it carries); then a code with the /k page's mark is that page; a code carried with a web chat's `ref:` is /find;
  * a bare code is what a TikTok caption asks viewers to send. No code: organic.
  */
 export function refSourceOf(text: string, webRef: string | null): RefSource {
+  if (/\btiktok_bio\b/i.test(text)) return "tiktok_bio";
   if (readHomeRef(text) == null) return webRef ? "web" : "organic";
   if (/\bmkan\.sd\b/i.test(text)) return "k_page";
   return webRef ? "web" : "tiktok";

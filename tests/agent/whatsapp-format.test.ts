@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@/components/internationalization/en.json";
 import ar from "@/components/internationalization/ar.json";
-import { aboutHomes, askAroundText, asksForHome, botText, checkText, firstMessageKind, formatWhatsApp, isBareYes, isFresh, isThanks, K_PAGE_MARK, onlyGreetedSoFar, personAfterHello, readHomeRef, readPick, readRef, refSourceOf, saysYes, shownHomes, thanksText, waLang, wantsPerson, whichOneText, type WaDict } from "@/components/agent/whatsapp-format";
+import { aboutHomes, askAroundText, asksForHome, botText, checkText, firstMessageKind, formatWhatsApp, isBareYes, isFresh, isThanks, K_PAGE_MARK, TIKTOK_BIO_MARK, onlyGreetedSoFar, personAfterHello, readHomeRef, readPick, readRef, refSourceOf, saysYes, shownHomes, thanksText, waLang, wantsPerson, whichOneText, type WaDict } from "@/components/agent/whatsapp-format";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "@/components/agent/types";
 
 const dict = (d: typeof en): WaDict => d.agent as unknown as WaDict;
@@ -238,6 +238,12 @@ describe("refSourceOf — where a chat's home code came from", () => {
   });
   it("the /k page's mark makes it that page", () => {
     expect(refSourceOf(`K5808 ${K_PAGE_MARK}`, null)).toBe("k_page");
+  });
+  it("the /tt page's marker makes it tiktok_bio — with a code, without one, and over a web ref", () => {
+    expect(refSourceOf(`Check K5808 for me ${TIKTOK_BIO_MARK}`, null)).toBe("tiktok_bio");
+    expect(refSourceOf(`Hi Mkan, I'm looking for a home in Kigali. ${TIKTOK_BIO_MARK}`, null)).toBe("tiktok_bio");
+    expect(refSourceOf(`K5808 ${TIKTOK_BIO_MARK} ${K_PAGE_MARK}`, "cmabc")).toBe("tiktok_bio");
+    expect(refSourceOf("my tiktok bio is cute", null)).toBe("organic");
   });
   it("a code carried with a web chat's ref is /find", () => {
     expect(refSourceOf("I'd like to view K5808", "cmabc")).toBe("web");

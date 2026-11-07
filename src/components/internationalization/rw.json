@@ -6156,7 +6156,8 @@
       "evalReader": "Quality test: reading",
       "evalWriter": "Quality test: replies",
       "brokersTotal": "Brokers + agencies in the directory",
-      "brokersNewWeek": "New brokers + agencies"
+      "brokersNewWeek": "New brokers + agencies",
+      "tiktokBioChats": "Ibiganiro by'umurongo wa profili ya TikTok"
     },
     "lever": "Umubare nyamukuru",
     "jobs": "Imirimo",
@@ -6473,7 +6474,8 @@
         "POSTED": "Posted",
         "FAILED": "Upload failed"
       },
-      "empty": "No listing posts yet in this window — the first ones go out at 07:00."
+      "empty": "No listing posts yet in this window — the first ones go out at 07:00.",
+      "bioLine": "{n} muri zo zaturutse ku rupapuro rw'umurongo wa profili (/tt)"
     },
     "lessons": {
       "title": "What the sprint learned",
@@ -7031,5 +7033,13 @@
         }
       }
     }
+  },
+  "tt": {
+    "title": "Amazu yo kuri TikTok yacu",
+    "lead": "Kanda ku nzu uyibaze kuri WhatsApp. Mkan ibaza komisiyoneri, kandi ni ubuntu kuri wowe.",
+    "ask": "Baza kuri WhatsApp",
+    "general": "Ganira na Mkan kuri WhatsApp",
+    "generalMessage": "Muraho Mkan, ndashaka inzu i Kigali.",
+    "empty": "Amazu mashyaashyirwaho buri munsi. Kanda buto iri hejuru utubwire icyo ushaka."
   }
 }

@@ -6156,7 +6156,8 @@
       "evalReader": "Quality test: reading",
       "evalWriter": "Quality test: replies",
       "brokersTotal": "Brokers + agencies in the directory",
-      "brokersNewWeek": "New brokers + agencies"
+      "brokersNewWeek": "New brokers + agencies",
+      "tiktokBioChats": "TikTok profile-link chats"
     },
     "lever": "Main number",
     "jobs": "Jobs",
@@ -6473,7 +6474,8 @@
         "POSTED": "Posted",
         "FAILED": "Upload failed"
       },
-      "empty": "No listing posts yet in this window — the first ones go out at 07:00."
+      "empty": "No listing posts yet in this window — the first ones go out at 07:00.",
+      "bioLine": "{n} of them from the profile link page (/tt)"
     },
     "lessons": {
       "title": "What the sprint learned",
@@ -7031,5 +7033,13 @@
         }
       }
     }
+  },
+  "tt": {
+    "title": "Homes from our TikTok",
+    "lead": "Tap a home to ask about it on WhatsApp. Mkan checks with the broker, and it's free for you.",
+    "ask": "Ask on WhatsApp",
+    "general": "Chat with Mkan on WhatsApp",
+    "generalMessage": "Hi Mkan, I'm looking for a home in Kigali.",
+    "empty": "New homes are posted every day. Tap the button above and tell us what you need."
   }
 }

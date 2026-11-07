@@ -33,6 +33,7 @@ const FIRST_SHARE_KEYS: Record<string, string> = {
   views: "tiktokViews7",
   contacts: "tiktokContacts7",
   chats: "tiktokChats7",
+  bioChats: "tiktokBioChats7",
   shortlisted: "shortlisted7",
   asked: "brokersAsked7",
   answered: "brokersAnswered7",

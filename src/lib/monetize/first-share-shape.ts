@@ -29,6 +29,8 @@ export interface ChatRow {
   refListingId: number | null;
   createdAt: Date;
   failed: boolean;
+  /** AgentTask.refSource: "tiktok_bio" is a chat from the /tt page (the profile link). */
+  source?: string | null;
   shortlisted: boolean;
   asked: boolean;
   answered: boolean;
@@ -78,6 +80,8 @@ export interface FirstShareView extends FunnelCounts {
   failedUploads: number;
   /** Views of the posts with a stats reading; null until tt:stats has read any (not 0). */
   views: number | null;
+  /** Chats that started on the /tt page (the profile link), counted inside `chats`, apart from the captions' codes. */
+  bioChats: number;
   /** Code chats no post could claim (the home was never posted, or posted after the chat). */
   unattributedChats: number;
   rejectReasons: { reason: string; count: number }[];
@@ -136,7 +140,8 @@ export function shapeFirstShare(input: {
   let unattributed = 0;
   for (const c of input.chats) {
     const p = attribute(c, input.postedForAttribution);
-    if (!p) unattributed += 1;
+    if (!p && c.source !== "tiktok_bio") unattributed += 1;
+    else if (!p) continue;
     else byPost.set(p.id, [...(byPost.get(p.id) ?? []), c]);
   }
 
@@ -158,6 +163,7 @@ export function shapeFirstShare(input: {
     views: posts.some((p) => p.status === "POSTED" && p.views != null) ? posts.filter((p) => p.status === "POSTED").reduce((s, p) => s + (p.views ?? 0), 0) : null,
     ...total,
     contacts,
+    bioChats: input.chats.filter((c) => c.source === "tiktok_bio").length,
     unattributedChats: unattributed,
     rejectReasons: [...reasons].map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count).slice(0, 5),
     posts: shown.map((p) => ({

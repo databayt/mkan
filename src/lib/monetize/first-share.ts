@@ -26,7 +26,7 @@ const POST_SELECT = {
  * chatbot's work on them, and the deals they became. Null when the tables
  * cannot be read — the page then says "unknown", never a quiet zero.
  *
- * A chat from the /k page (k_page) counts too — the page a TikTok link opens — but only for someone
+ * A chat from the /k page (k_page) counts too (and tiktok_bio, the /tt profile-link page, is counted on its own as bioChats) — the page a TikTok link opens — but only for someone
  * who first came from TikTok or that page: WhatsApp replies link /k pages as well, and a tenant
  * already talking to Mkan who taps one is not a new share (2026-11-07).
  */
@@ -43,11 +43,11 @@ export async function loadFirstShare(days: number): Promise<FirstShareView | nul
       db.agentTask.findMany({
         where: {
           createdAt: { gte: since },
-          OR: [{ refSource: "tiktok" }, { refSource: "k_page", profile: { is: { firstSource: { in: ["tiktok", "k_page"] } } } }],
+          OR: [{ refSource: "tiktok" }, { refSource: "tiktok_bio" }, { refSource: "k_page", profile: { is: { firstSource: { in: ["tiktok", "k_page"] } } } }],
         },
-        select: { id: true, profileId: true, refListingId: true, createdAt: true, status: true },
+        select: { id: true, profileId: true, refSource: true, refListingId: true, createdAt: true, status: true },
       }),
-      db.agentProfile.findMany({ where: { firstSource: { in: ["tiktok", "k_page"] }, createdAt: { gte: since } }, select: { id: true } }),
+      db.agentProfile.findMany({ where: { firstSource: { in: ["tiktok", "tiktok_bio", "k_page"] }, createdAt: { gte: since } }, select: { id: true } }),
     ]);
     const ids = tasks.map((t) => t.id);
     const listingIds = [...new Set(tasks.map((t) => t.refListingId).filter((x): x is number => x != null))];
@@ -72,6 +72,7 @@ export async function loadFirstShare(days: number): Promise<FirstShareView | nul
       refListingId: t.refListingId,
       createdAt: t.createdAt,
       failed: t.status === "FAILED",
+      source: t.refSource,
       shortlisted: short.has(t.id),
       asked: asked.has(t.id),
       answered: answered.has(t.id),

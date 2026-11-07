@@ -1041,8 +1041,8 @@ async function repostNumbers(): Promise<string | null> {
     const reach = repostReach(posts.map((p) => ({ postedAt: p.postedAt!.getTime(), views: p.views })), now);
     const pattern = codePattern(posts.filter((p) => p.postedAt!.getTime() > now - 7 * 86_400_000).map((p) => p.ref));
     const [chats] = pattern
-      ? await db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM "AgentTask" WHERE "createdAt" > now() - interval '7 days' AND ("refSource" IN ('tiktok', 'k_page') OR "messages"::text ~* ${pattern})`
-      : await db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM "AgentTask" WHERE "createdAt" > now() - interval '7 days' AND "refSource" IN ('tiktok', 'k_page')`;
+      ? await db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM "AgentTask" WHERE "createdAt" > now() - interval '7 days' AND ("refSource" IN ('tiktok', 'tiktok_bio', 'k_page') OR "messages"::text ~* ${pattern})`
+      : await db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM "AgentTask" WHERE "createdAt" > now() - interval '7 days' AND "refSource" IN ('tiktok', 'tiktok_bio', 'k_page')`;
     return repostLine(reach, chats?.n ?? null);
   } catch (e) {
     console.warn(`  ! repost numbers not read: ${errorText(e).slice(0, 160)}`);
