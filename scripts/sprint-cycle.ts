@@ -45,6 +45,7 @@ import {
 } from '../src/lib/monetize/sprint-auto';
 import { isWebText } from '../src/lib/monetize/provenance';
 import { roadmapAhead, roadmapMonth, roadmapNext, roadmapWeek, STANDING_TASKS } from '../src/lib/monetize/roadmap';
+import { SETUP_KEYS, SETUP_TASK_TITLE, setupOf, setupPromptText, stepsDue, type SetupKey, type SetupState } from '../src/lib/monetize/setup';
 import { writeBeat } from './sprint/beat';
 import { liveMetrics } from './sprint/live';
 import { createSprint } from './sprint/plan-db';
@@ -116,6 +117,43 @@ async function retitleMonth(db: Db, model: MonetizeOverview, now: Date, out: Sum
   say(`retitle MONTH "${month.title}" → "${want}" (break-even moved)`);
   out.planned.push(`MONTH retitled: ${want}`);
   if (!dry) await db.sprint.update({ where: { id: month.id }, data: { title: want } });
+}
+
+// ── setup: one waiting prompt per business-setup step that is next ────────
+/**
+ * Mkan's business setup (setup.ts, kun docs mkan-setup): every step whose steps before it are ticked
+ * gets one prompt in this week's sprint — blocked on `setup.<key> == 1` with Abdout's part as the
+ * "needs you", so it costs no session until he ticks it; a step already ticked gets its follow-up as
+ * a pending prompt. Re-filed every week until its follow-up has run, so a closed week never drops one.
+ */
+async function setupPrompts(db: Db, model: MonetizeOverview, now: Date, out: Summary) {
+  const week = (await openSprints(db)).find((s) => s.kind === 'WEEK' && s.startsAt <= now && s.endsAt > now);
+  if (!week) return;
+  const state = ((model as { setup?: SetupState | null }).setup ?? {}) as SetupState;
+  const finished = await db.sprintPrompt.findMany({
+    where: { status: 'processed', OR: SETUP_KEYS.map((k) => ({ text: { endsWith: `— setup step: ${k}` } })) },
+    select: { text: true },
+  });
+  const followedUp = new Set(finished.map((p) => setupOf(p.text)).filter((k): k is SetupKey => k != null));
+  let task = week.tasks.find((t) => t.title === SETUP_TASK_TITLE) ?? null;
+  for (const { step, ticked } of stepsDue(state, followedUp)) {
+    if (week.prompts.some((p) => setupOf(p.text) === step.key && p.status !== 'skipped')) continue;
+    say(`setup: ${ticked ? 'ticked — the follow-up runs' : 'waits on Abdout'}: ${step.title}`);
+    if (!ticked) out.needsYou.push(step.ask.slice(0, 160));
+    if (dry) continue;
+    task ??= await db.sprintTask.create({ data: { sprintId: week.id, title: SETUP_TASK_TITLE, order: 90 } });
+    await db.sprintPrompt.create({
+      data: {
+        sprintId: week.id,
+        taskId: task.id,
+        order: 90,
+        text: setupPromptText(step),
+        metric: 'setup.done',
+        auto: true,
+        ...(ticked ? {} : { status: 'blocked', unblockWhen: `setup.${step.key} == 1`, blockedAt: now, processedAt: now, result: step.ask }),
+      },
+    });
+  }
 }
 
 // ── b. unblock ─────────────────────────────────────────────────────────
@@ -229,6 +267,8 @@ async function plannerContext(db: Db, model: MonetizeOverview, metrics: Metrics,
       : null,
     // Direct intros until 10 deals are paid, then Mkan in the middle (deal-intro.ts).
     intro,
+    // The business setup (setup.ts): the cycle files its prompts itself — plan none of your own for it.
+    setup: (model as { setup?: unknown }).setup ?? null,
     metrics,
     nextSteps: model.nextSteps,
     bottleneck: model.bottleneck,
@@ -517,6 +557,7 @@ async function main() {
     await unblock(db, metrics, now, out);
     await measure(db, metrics, now, out);
     if (!flag('no-plan')) await plan(db, model, metrics, retros, now, out);
+    await setupPrompts(db, model, now, out);
     await topUp(db, model, now, out);
     if (!flag('no-plan')) await replan(db, model, metrics, now, out);
     const n = (k: keyof Summary) => out[k].length;

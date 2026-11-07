@@ -41,6 +41,8 @@ export function toPublic(data: MonetizeOverview): MonetizeOverview {
     lessons: data.lessons.map((l) => ({ ...l, text: r(l.text) })),
     blocks: data.blocks.map((b) => ({ ...b, jobs: b.jobs.map((j) => ({ ...j, summary: j.summary == null ? j.summary : r(j.summary) })) })),
     experiments: data.experiments.map((e) => ({ ...e, hypothesis: r(e.hypothesis) })),
+    // The business setup is the admin's checklist (who ticked what, when): not for visitors.
+    setup: null,
     firstShare: data.firstShare && {
       ...data.firstShare,
       posts: data.firstShare.posts.map((p) => ({ ...p, brokerHandle: null, reason: p.reason == null ? null : r(p.reason) })),

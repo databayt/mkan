@@ -20,6 +20,7 @@ import { scorecard, type ScorecardView } from "./scorecard";
 import { buildSamples, reachOf, type ReachView } from "./score-samples";
 import { loadScoreQueries, postPoints } from "./score-load";
 import { connectionMode, INTRO_CAP } from "@/components/agent/intro-pure";
+import { SETUP_STATE_KEY, type SetupState } from "./setup";
 
 /**
  * Everything /monetize shows, read in one pass.
@@ -79,6 +80,8 @@ export interface MonetizeOverview {
   score?: ScorecardView | null;
   /** The TikTok page: followers, views, posts — now, this week, one point a day (score-samples.ts reachOf). */
   reach?: ReachView | null;
+  /** Mkan's business setup, ticked by Abdout on /monetize (setup.ts; WaState `mkan-setup`). */
+  setup?: SetupState | null;
   /** Direct intros until INTRO_CAP deals are paid, then Mkan in the middle (deal-intro.ts). */
   intro?: { intros: number; paid: number; cap: number; mode: "intro" | "relay" } | null;
 }
@@ -136,7 +139,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   // Deals are read from the earlier of the comparison window and the month: one created weeks ago
   // and paid this month still counts as this month's money.
   const dealsFrom = new Date(Math.min(prevSince.getTime(), monthStart.getTime()));
-  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints, firstShare, lessons, inbox, handoffs, directory, scoreQ] =
+  const [funnel, prevFunnel, snaps, revenue, dealRows, mastering, masteringPrev, backlog, spend, experiments, gate, chatSplit, latency, sprints, firstShare, lessons, inbox, handoffs, directory, scoreQ, setupRow] =
     await Promise.all([
       // Every read below falls back on its own: one failed query must not take the page down (2026-11-06).
       agentFunnel(db, days).catch(() => emptyFunnel(days)),
@@ -210,6 +213,8 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
       Promise.all([db.broker.count(), db.broker.count({ where: { createdAt: { gte: since } } })]).catch(() => null),
       // The scorecard's own counts (30 days for the deal road, 90 for ratings).
       loadScoreQueries(now).catch(() => null),
+      // The business setup Abdout ticks (setup.ts).
+      db.waState.findUnique({ where: { key: SETUP_STATE_KEY }, select: { value: true } }).catch(() => null),
     ]);
 
   // ── snapshots, per block ──────────────────────────────────────────────
@@ -452,6 +457,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     firstShare,
     score,
     reach: reachOf(postPoints(byBlock("post")), now),
+    setup: (setupRow?.value as SetupState | null | undefined) ?? {},
     intro: scoreQ ? { ...scoreQ.intro, cap: INTRO_CAP, mode: connectionMode(scoreQ.intro.paid) } : null,
   };
 }

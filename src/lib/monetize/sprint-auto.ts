@@ -58,8 +58,9 @@ export const PlanSprintSchema = z.object({
   startsAt: day,
   endsAt: day,
   auto: z.boolean().optional(),
-  tasks: z.array(z.object({ key: z.string().min(1), title: z.string().min(3).max(200), block: z.enum(["scrape", "enhance", "post", "chat"]).optional() })).min(1).max(7),
-  prompts: z.array(PlanPromptSchema).max(7),
+  // Up to 10: a road week (≤ 8) plus the standing tasks (TikTok) every week keeps.
+  tasks: z.array(z.object({ key: z.string().min(1), title: z.string().min(3).max(200), block: z.enum(["scrape", "enhance", "post", "chat"]).optional() })).min(1).max(10),
+  prompts: z.array(PlanPromptSchema).max(10),
 });
 export const PlanFileSchema = z.object({ sprints: z.array(PlanSprintSchema).min(1).max(2) });
 export type PlanPrompt = z.infer<typeof PlanPromptSchema>;
@@ -265,7 +266,7 @@ export function roadmapPlan(now = new Date()): PlanSprint | null {
   if (!r || !r.tasks.length || r.startsAt !== win.startsAt) return null;
   // Every week keeps the standing tasks (TikTok first), unless the road already gives that block and metric one.
   const standing = STANDING_TASKS.filter((st) => !r.tasks.some((t) => t.block === st.block && t.metric === st.metric));
-  const tasks = [...r.tasks.slice(0, 7 - standing.length), ...standing];
+  const tasks = [...r.tasks.slice(0, 10 - standing.length), ...standing];
   return {
     kind: "WEEK",
     title: r.title,

@@ -6,7 +6,7 @@ import { mentionsGated, monthTitle, roadmapPlan, validatePlan, weekWindow } from
 // The live metric keys (scripts/sprint/live.ts → readMetrics, read 2026-11-07): a task on any other key
 // could never be measured by the loop.
 const LIVE_KEYS =
-  "newHomes found read skipRate newBrokers brokersTotal brokersNewWeek videosClean videosFeatured videoRejectRate readyNew mastered backlog viewsPerPost postedDays7 likeRate followers engageRate postsListing contactsPerPost chatToPaid chats waChats webChats shortlistRate p50 brokerAnswerRate viewings paidDeals failRate people peopleToHomes peopleToViewing revenueMonthRwf breakEvenRwf netRwf costMonthRwf brokersAsked brokersAnswered brokersAvailable viewingsBooked shortlisted adChats paid7 signed7 viewings7 intros introsLeft score.doing score.brokers score.tenants score.chatbot score.tiktok followersWeek viewsWeek".split(
+  "newHomes found read skipRate newBrokers brokersTotal brokersNewWeek videosClean videosFeatured videoRejectRate readyNew mastered backlog viewsPerPost postedDays7 likeRate followers engageRate postsListing contactsPerPost chatToPaid chats waChats webChats shortlistRate p50 brokerAnswerRate viewings paidDeals failRate people peopleToHomes peopleToViewing revenueMonthRwf breakEvenRwf netRwf costMonthRwf brokersAsked brokersAnswered brokersAvailable viewingsBooked shortlisted adChats paid7 signed7 viewings7 intros introsLeft score.doing score.brokers score.tenants score.chatbot score.tiktok followersWeek viewsWeek setup.done".split(
     " ",
   );
 const metrics = Object.fromEntries(LIVE_KEYS.map((k) => [k, 0]));

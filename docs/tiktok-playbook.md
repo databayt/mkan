@@ -69,6 +69,9 @@ at the end of this file and as the sprint lesson; keep the winner as the default
    renting with Mkan works" (free viewing, no fee, WhatsApp the code), the best-viewed home, a trust video.
 8. **Conversion path.** The code in the caption + WhatsApp number (live); the WhatsApp link in the bio
    (Business account: check the follower minimum), and the same instruction as the pinned comment.
+   The whole setup behind it — Databayt Ltd, the business number, mkan.rw, the verified Business page,
+   MoMo — is [kun.databayt.org/en/docs/mkan-setup](https://kun.databayt.org/en/docs/mkan-setup); the bio link
+   opens mkan.rw → the homes from our videos (`/[lang]/tt`), and those chats are tagged `tiktok_bio`.
 9. **Sound.** Keep the broker's sound with spoken numbers muted, or test a Commercial Music Library
    track (business accounts may only use that library).
 10. **Trust line.** "Checked by Mkan: real home, real price, free viewing" on the end card.

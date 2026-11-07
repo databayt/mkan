@@ -13,6 +13,7 @@ import { INK, MUTED } from "./listing-ui";
 import { LiveCard } from "./live-card";
 import { MobileBar, MoneyCard } from "./money-card";
 import { DealsSection } from "./deals-section";
+import { SetupSection } from "./setup-section";
 import { Road } from "./road";
 import { Scorecard } from "./scorecard";
 
@@ -57,6 +58,7 @@ export function MonetizeContent({
 
       {data.score && <Scorecard score={data.score} reach={data.reach} intro={data.intro} labels={labels} locale={locale} />}
       {canEdit && deals && <DealsSection deals={deals} labels={labels} locale={locale} payoutSet={payoutSet} />}
+      {canEdit && <SetupSection state={data.setup ?? {}} labels={labels} locale={locale} />}
 
       <LiveCard initial={live} labels={labels.live} blocks={blocks} canEdit={canEdit} locale={locale} />
 

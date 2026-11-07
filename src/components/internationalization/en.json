@@ -6980,6 +6980,49 @@
       "sendShare": "Send share request",
       "markPaid": "Mark paid",
       "payoutMissing": "No pay number is set (MKAN_PAYOUT_MOMO): the request won't say where to pay."
+    },
+    "setup": {
+      "title": "Business setup",
+      "guide": "The guide",
+      "subtitle": "{n} of {total} done. Each tick lets the loop do that step's code work.",
+      "markDone": "Done",
+      "undo": "Undo",
+      "doneOn": "Done {date}",
+      "after": "After: {steps}",
+      "steps": {
+        "company": {
+          "t": "Databayt Ltd registered",
+          "what": "RDB: pick the office (residence or Norrsken) and submit draft REG-2026-383583."
+        },
+        "number": {
+          "t": "Business number",
+          "what": "An MTN SIM for Mkan, in .env as MKAN_KIGALI_WHATSAPP."
+        },
+        "whatsapp": {
+          "t": "WhatsApp on the business number",
+          "what": "WhatsApp Business on the new number, and the bot re-paired to it."
+        },
+        "domain": {
+          "t": "mkan.rw on Cloudflare",
+          "what": "Buy mkan.rw, add it as a Cloudflare zone, set its nameservers."
+        },
+        "tiktokBusiness": {
+          "t": "TikTok Business page",
+          "what": "@mkan.rw switched to Business, verified in a Rwanda Business Center."
+        },
+        "bioLink": {
+          "t": "TikTok Website link",
+          "what": "Edit profile → Website: https://mkan.rw"
+        },
+        "momoPay": {
+          "t": "MoMo Pay merchant code",
+          "what": "At an MTN business centre; store it in the Keychain as cf-mkan-MKAN_PAYOUT_MOMO."
+        },
+        "momoApi": {
+          "t": "MoMo API live",
+          "what": "Go live on momodeveloper.mtn.co.rw; production keys in the Keychain."
+        }
+      }
     }
   }
 }

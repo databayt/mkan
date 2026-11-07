@@ -272,3 +272,23 @@ export async function markDealPaid(form: FormData): Promise<void> {
   updateTag(MONETIZE_TAG);
 }
 
+// ── Mkan's business setup: Abdout ticks a step done (setup.ts) ────────────
+
+const setupSchema = z.object({ key: z.string().min(1).max(40), done: z.enum(["1", "0"]) });
+
+/** Tick (or untick) one setup step. A key from the fixed list and a yes/no — no free text reaches the loop here. */
+export async function markSetupStep(form: FormData): Promise<void> {
+  const session = await requireAdmin();
+  const { key, done } = setupSchema.parse({ key: form.get("key"), done: form.get("done") });
+  const { isSetupKey, SETUP_STATE_KEY } = await import("@/lib/monetize/setup");
+  if (!isSetupKey(key)) throw new Error(`Unknown setup step: ${key}`);
+  const row = await db.waState.findUnique({ where: { key: SETUP_STATE_KEY }, select: { value: true } });
+  const state = { ...((row?.value as Record<string, unknown> | null) ?? {}) };
+  if (done === "1") state[key] = { at: new Date().toISOString(), by: session.user.id };
+  else delete state[key];
+  await db.waState.upsert({ where: { key: SETUP_STATE_KEY }, create: { key: SETUP_STATE_KEY, value: state as never }, update: { value: state as never } });
+  logger.info("monetize:setup", { actorId: session.user.id, key, done });
+  revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
+}
+

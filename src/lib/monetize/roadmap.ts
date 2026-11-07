@@ -109,6 +109,13 @@ export const ROADMAP: RoadSprint[] = [
         doneWhen: "the part's number moved, and a lesson says by how much",
       },
       {
+        title: "The TikTok bio page, ready for mkan.rw",
+        block: "post",
+        metric: "adChats",
+        do: "Build /[lang]/tt: the homes from today's TikTok posts, each with its code and an \"Ask on WhatsApp\" button that opens Mkan's chat with that code, plus one general WhatsApp button. Tag the chats that start there as tiktok_bio (whatsapp-format.ts refSourceOf and its RefSource) and count them on the scorecard apart from the captions' codes. It is the page the TikTok profile's Website link will open (kun.databayt.org/en/docs/mkan-setup), served at mkan.sd/en/tt until mkan.rw is live.",
+        doneWhen: "mkan.sd/en/tt lists today's posted homes with a WhatsApp button each, a chat started there carries refSource tiktok_bio, and tests cover both",
+      },
+      {
         title: "Web chats reach WhatsApp",
         block: "chat",
         metric: "waChats",
@@ -165,12 +172,11 @@ export const ROADMAP: RoadSprint[] = [
         gate: "confirm the money arrived",
       },
       {
-        title: "A MoMo number on every share ask",
+        title: "MoMo request-to-pay, sandbox first",
         block: "chat",
-        metric: "revenueMonthRwf",
-        do: "Put Mkan's mobile-money pay number and the amount in the broker's share message, and record a payment with one admin tap.",
-        doneWhen: "the share message carries the number and a test payment records",
-        gate: "give Mkan's MoMo pay number",
+        metric: "paidDeals",
+        do: "Bring the MTN MoMo Collections client from ~/food (src/lib/momo/client.ts, with its fix for the \"#\" MTN's firewall refuses) into mkan, so \"Send share request\" on /monetize can also send the broker a MoMo request to pay Mkan's share, and its callback marks the deal paid and records the money once. Build and test it in the MoMo sandbox only; production waits for the MoMo API step of the business setup (kun.databayt.org/en/docs/mkan-setup).",
+        doneWhen: "a sandbox request-to-pay from the Deals card is answered and its callback marks a test deal paid, with tests; nothing reaches a real wallet",
       },
       {
         title: "Offer the broker subscription",

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/actions/monetize-actions", () => ({ addRevenueEntry: vi.fn(), saveExperiment: vi.fn(), toggleSprintTask: vi.fn(), setPromptStatus: vi.fn(), saveSprint: vi.fn(), closeSprint: vi.fn(), addSprintTask: vi.fn(), addSprintPrompt: vi.fn() }));
+vi.mock("@/lib/actions/monetize-actions", () => ({ addRevenueEntry: vi.fn(), saveExperiment: vi.fn(), toggleSprintTask: vi.fn(), setPromptStatus: vi.fn(), saveSprint: vi.fn(), closeSprint: vi.fn(), addSprintTask: vi.fn(), addSprintPrompt: vi.fn(), markSetupStep: vi.fn(), sendShareRequest: vi.fn(), markDealPaid: vi.fn(), decidePrompt: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...p }: { href: string; children: React.ReactNode }) => <a href={href} {...p}>{children}</a> }));
 

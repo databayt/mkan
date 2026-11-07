@@ -1,5 +1,6 @@
 import { SUCCESS } from "./success";
 import { scoreMetrics } from "./scorecard";
+import { setupMetrics } from "./setup";
 import type { MonetizeOverview } from "./load";
 
 /**
@@ -16,7 +17,7 @@ export type MetricValue = number | string | null;
 export type Metrics = Record<string, MetricValue>;
 
 /** The parts of the page model the reader needs — everything optional, so a half-loaded model still reads. */
-export type MetricsModel = Partial<Pick<MonetizeOverview, "blocks" | "money" | "gates" | "stages" | "bottleneck" | "experiments" | "nextSteps" | "adChats" | "funnel" | "fixedEstimated" | "score" | "intro">> & {
+export type MetricsModel = Partial<Pick<MonetizeOverview, "blocks" | "money" | "gates" | "stages" | "bottleneck" | "experiments" | "nextSteps" | "adChats" | "funnel" | "fixedEstimated" | "score" | "intro" | "setup">> & {
   firstShare?: Partial<Record<string, unknown>> | null;
 };
 
@@ -89,6 +90,8 @@ export function readMetrics(model: MetricsModel): Metrics {
 
   // The scorecard: score.doing / brokers / tenants / chatbot (0–100), score.weakest, part.<key>.
   if (model.score) Object.assign(out, scoreMetrics(model.score));
+  // The business setup: setup.<step> is 1 once Abdout ticked it, setup.done counts them (setup.ts).
+  if (model.setup) Object.assign(out, setupMetrics(model.setup));
   // Direct intros until 10 deals are paid: how many so far, and how many paid deals until Mkan stays in the middle.
   if (model.intro) {
     out.intros = model.intro.intros;
