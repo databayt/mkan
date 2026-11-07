@@ -193,36 +193,129 @@ export function pickFresh(
   return { picked: [...fresh, ...topUp], fresh: fresh.length, over: all.length - fresh.length, topUp: topUp.length };
 }
 
+/** A Kigali clock time "HH:MM" as minutes since midnight. */
+const minuteOf = (hhmm: string): number => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+};
+/** Minutes since midnight as "HH:MM". */
+export const clock = (minute: number): string => `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+
 /**
- * The upload slots, in Kigali hours (2026-11-07). tiktok-post.sh runs at 07:00 and posts the first
- * home. The other slots run at :30 past every hour from 08 to 22: tiktok-upload-retry.sh until
- * 17:30, and its evening copy from 18:30, which first adds the 18:00 sweep's ads to the day.
- * install-tiktok-post.sh schedules these same hours.
+ * The upload slots, in minutes of the Kigali day (2026-11-07, "plan B": every ad, at the hours
+ * Kigali scrolls). 07:00 is tiktok-post.sh: the morning pick and the first post. 08:30, 12:30 and
+ * 13:30 are tiktok-upload-retry.sh. Every 30 minutes from 17:00 to 21:30 is its evening copy,
+ * which first adds the 15:00 sweep's ads. 10 of the 14 slots fall in the evening, East Africa's
+ * best TikTok hours. install-tiktok-post.sh schedules these same times.
  */
-export const SLOT_HOURS: readonly number[] = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
+export const SLOT_TIMES: readonly number[] = ['07:00', '08:30', '12:30', '13:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30'].map(minuteOf);
+/** Where the evening starts, for the day/evening split of the page's numbers. */
+export const EVENING_FROM = minuteOf('17:00');
 /**
  * A slot that is behind (the Mac slept, or the vault Chrome was down) catches up by at most this
  * many. Each post is a render (5–16 min) plus an upload (~3 min), and the slot has a 75-minute cap.
  */
 export const MAX_PER_SLOT = 2;
 
-/** The hour in Kigali, whatever the machine's own time zone. */
-export const kigaliHour = (now = Date.now()): number => new Date(now + KIGALI_UTC_OFFSET).getUTCHours();
+/** Minutes since midnight in Kigali, whatever the machine's own time zone. */
+export const kigaliMinute = (now = Date.now()): number => {
+  const d = new Date(now + KIGALI_UTC_OFFSET);
+  return d.getUTCHours() * 60 + d.getUTCMinutes();
+};
 
 /**
  * How many of the day's posts this slot puts out. After slot k of S the day should be at
  * ceil(total·k/S), an even spread whatever the day's count. A slot that is behind catches up at
  * the pace that finishes by the last slot, and never more than `maxPerSlot` at once, so a missed
- * morning never turns into a burst. `total` = the day's queue less its rejected renders;
- * `out` = posted, or clicked and waiting for TikTok's confirmation.
+ * afternoon never turns into a burst. `total` = the day's queue less its rejected renders;
+ * `out` = posted, or clicked and waiting for TikTok's confirmation; `minute` = kigaliMinute().
  */
-export function slotQuota(total: number, out: number, hour: number, slots: readonly number[] = SLOT_HOURS, maxPerSlot = MAX_PER_SLOT): number {
-  const k = slots.filter((h) => h <= hour).length;
+export function slotQuota(total: number, out: number, minute: number, slots: readonly number[] = SLOT_TIMES, maxPerSlot = MAX_PER_SLOT): number {
+  const k = slots.filter((t) => t <= minute).length;
   const left = total - out;
   if (!k || left <= 0) return 0;
   const target = Math.ceil((total * k) / slots.length);
   const pace = Math.ceil(left / (slots.length - k + 1));
   return Math.max(0, Math.min(target - out, pace, maxPerSlot));
+}
+
+/** Minutes from `minute` to the day's next slot, or null after the last one. */
+export function nextSlotGap(minute: number, slots: readonly number[] = SLOT_TIMES): number | null {
+  const next = slots.find((t) => t > minute);
+  return next === undefined ? null : next - minute;
+}
+
+/** A render takes up to ~16 minutes: one started later than this before the next slot would hold its lock. */
+export const AHEAD_MARGIN_MIN = 20;
+
+/**
+ * How many videos a slot renders ahead, after its own posts are out, so the next slots post on the
+ * minute: up to 3 when the next slot is an hour or more away, 1 when it is half an hour away, none
+ * after the day's last slot. render() also stops starting renders AHEAD_MARGIN_MIN before the next slot.
+ */
+export function aheadRenders(gapToNextMin: number | null, toRender: number): number {
+  if (gapToNextMin === null || gapToNextMin < AHEAD_MARGIN_MIN || toRender <= 0) return 0;
+  return Math.min(toRender, gapToNextMin >= 60 ? 3 : 1);
+}
+
+const median = (xs: readonly number[]): number | null => {
+  if (!xs.length) return null;
+  const s = [...xs].sort((a, b) => a - b);
+  const i = Math.floor(s.length / 2);
+  return s.length % 2 ? s[i]! : Math.round((s[i - 1]! + s[i]!) / 2);
+};
+
+/**
+ * Plan B's reach numbers for the 21:00 line: the median views of broker reposts that are at least
+ * a day old, for the last 7 days, split into day posts (before 17:00 in Kigali) and evening ones,
+ * and for the 7 days before. A post's first day undercounts its views, so posts younger than a day
+ * are left out. `halved` is the sign TikTok holds reposts back: the median halved week over week,
+ * with at least `minPosts` posts in each week.
+ */
+export function repostReach(
+  posts: readonly { postedAt: number; views: number | null }[],
+  now = Date.now(),
+  minPosts = 10,
+): { week: number; median: number | null; dayMedian: number | null; eveningMedian: number | null; prevMedian: number | null; halved: boolean } {
+  const seen = posts.filter((p): p is { postedAt: number; views: number } => p.views !== null);
+  const between = (from: number, to: number) => seen.filter((p) => p.postedAt > now - from * DAY && p.postedAt <= now - to * DAY);
+  const week = between(8, 1);
+  const prev = between(15, 8);
+  const evening = (p: { postedAt: number }) => kigaliMinute(p.postedAt) >= EVENING_FROM;
+  const m = median(week.map((p) => p.views));
+  const pm = median(prev.map((p) => p.views));
+  return {
+    week: week.length,
+    median: m,
+    dayMedian: median(week.filter((p) => !evening(p)).map((p) => p.views)),
+    eveningMedian: median(week.filter(evening).map((p) => p.views)),
+    prevMedian: pm,
+    halved: week.length >= minPosts && prev.length >= minPosts && m !== null && pm !== null && m < pm / 2,
+  };
+}
+
+/** The reach numbers and the chats the posts brought, as one more part of the 21:00 line. */
+export function repostLine(r: ReturnType<typeof repostReach>, chats: number | null): string {
+  const n = (x: number | null) => (x === null ? '–' : x.toLocaleString('en-US'));
+  return [
+    `broker reposts a day or more old, last 7 days: ${r.week}, median ${n(r.median)} views (day ${n(r.dayMedian)}, evening ${n(r.eveningMedian)}; the week before ${n(r.prevMedian)})`,
+    chats === null ? null : `chats from the posts (a posted code quoted, or a TikTok link): ${chats}`,
+    r.halved ? '⚠️ repost views halved in a week: TikTok may be holding reposts back, so lower TIKTOK_POSTS_MAX' : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/**
+ * A Postgres regex (for `~*`) matching any of `refs` the way a chat quotes them: "K6552", "k 6552",
+ * "K-6552". A listing code like "0005-01" is matched as written. Null when there is nothing to match.
+ */
+export function codePattern(refs: readonly string[]): string | null {
+  const alts = [...new Set(refs.map((r) => r.trim()).filter(Boolean))].map((r) => {
+    const k = /^K(\d+)$/i.exec(r);
+    return k ? `k[ -]?${k[1]}` : r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  });
+  return alts.length ? `\\m(${alts.join('|')})\\M` : null;
 }
 
 /**

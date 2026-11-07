@@ -198,8 +198,9 @@ async function lanes(db: Db): Promise<string[]> {
   const streaks = existsSync(streaksFile) ? (JSON.parse(readFileSync(streaksFile, 'utf8')) as Record<string, { fails: number; at?: string; ok?: boolean; detail?: string; last?: string }>) : {};
   out.push('', 'Last runs, as the runs themselves recorded them:');
   // How long each run may go unrecorded before it is overdue: twice-daily lanes 13 h, daily ones 26 h.
+  // The TikTok sweep runs at 06:00 and 15:00 since 2026-11-07, so its night gap is 15 h: 16.
   // `mirror` (CRM homes → /find leads) runs inside every sweep and demand run: its own row, so a failed copy shows red.
-  const every: Record<string, number> = { 'tiktok-sweep': 13, mirror: 13, 'price-ask': 26, 'web-ads': 13, 'web-recheck': 13, 'demand-match': 26, 'tiktok-post': 26, 'tiktok-upload': 26 };
+  const every: Record<string, number> = { 'tiktok-sweep': 16, mirror: 16, 'price-ask': 26, 'web-ads': 13, 'web-recheck': 13, 'demand-match': 26, 'tiktok-post': 26, 'tiktok-upload': 26 };
   for (const job of Object.keys(every)) {
     const r = streaks[job];
     if (!r?.at) {

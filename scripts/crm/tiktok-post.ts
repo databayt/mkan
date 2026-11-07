@@ -3,7 +3,7 @@
  *
  *   pnpm tt:run [--n=fresh|<n>] [--slot] [--dry]   pick → render → card (the 07:00 Hermes tick; tt:upload posts after it)
  *   pnpm tt:pick [--n=fresh|<n>] [--dry]   choose today's homes → .data/tiktok-post/<date>/queue.json (a second pick adds to it)
- *   pnpm tt:render [--slot] [--id=5771] [--slideshow]   one 9:16 video per queued home (--slot: this upload slot's share; --id: one listing, for a look)
+ *   pnpm tt:render [--slot|--ahead] [--id=5771] [--slideshow]   one 9:16 video per queued home (--slot: this upload slot's share; --ahead: the next slots'; --id: one listing, for a look)
  *   pnpm tt:card                    show each video + its caption in Slack #mkan (tt:upload posts them)
  *   pnpm tt:posted <ref> <url>      the poster's receipt: the home rests 30 days
  *   pnpm tt:stats [--notify]        views / likes of our posts, read back by yt-dlp
@@ -33,9 +33,11 @@
  * `repostConsent`). A broker lead goes out as that broker's own video, AI-
  * upscaled, stabilised and graded; an owner's home with no video as its photos.
  *
- * How many (2026-11-07): every postable home whose ad went up today or yesterday, picked at
- * 07:00 and again after the 18:00 sweep, 3 to 15 a day (pickFresh), rendered and posted one by
- * one through the day's upload slots (slotQuota).
+ * How many, and when (2026-11-07): every postable home whose ad went up today or yesterday, picked
+ * at 07:00 and again in the evening slots after the 15:00 sweep, 3 to 15 a day (pickFresh). They
+ * go out one by one through the day's 14 slots, 10 of them between 17:00 and 21:30 when Kigali
+ * scrolls (slotQuota), each slot rendering ahead for the next (aheadRenders). The 21:00 stats line
+ * carries the reposts' reach by time of day and the chats the posts brought (repostReach).
  *
  * Env: MKAN_KIGALI_WHATSAPP (the number in the caption), TIKTOK_POSTS_PER_DAY
  * (default "fresh"; a number fixes the day's count and 0 holds the lane), TIKTOK_POSTS_MIN /
@@ -74,12 +76,19 @@ import {
   muteFilter,
   type MuteSpan,
   oldRenderDays,
+  AHEAD_MARGIN_MIN,
+  aheadRenders,
+  clock,
+  codePattern,
   dayPieces,
-  kigaliHour,
+  kigaliMinute,
+  nextSlotGap,
   pickFresh,
   pickToday,
   POSTS_CEILING,
   POSTS_FLOOR,
+  repostLine,
+  repostReach,
   slotQuota,
   refInText,
   refOf,
@@ -758,9 +767,12 @@ function markFailed(dir: string, ref: string, kind: 'rejected' | 'held' | 'error
  * listing into preview/ for a look (never posted, no row). Each queued home's
  * TikTokPost row turns CLEAN or REJECTED with the reason.
  *
- * --slot renders only what this upload slot posts (slotQuota): the next homes in the queue that
- * have no video yet. Every later slot renders its own share, so no render holds the post lock
- * for hours, and the day's videos come out one by one through the day.
+ * --slot renders only what this upload slot posts (slotQuota), and only when its share is not
+ * ready yet: the next homes in the queue that have no video. --ahead runs after the slot's posts
+ * are out and renders the next homes for the slots to come (aheadRenders): up to 3 when the next
+ * slot is an hour or more away, 1 when it is half an hour away, and none started within
+ * AHEAD_MARGIN_MIN of it. So no render holds the post lock for hours, and the evening's posts go
+ * out on the minute.
  */
 async function render(given?: PostRow[]): Promise<string[]> {
   const phone = whatsapp();
@@ -771,14 +783,25 @@ async function render(given?: PostRow[]): Promise<string[]> {
   // --id renders any one listing for a look, eligible or not — into preview/, never the queue.
   let rows = id ? await loadRows({ id }) : (given ?? readQueue());
   let want = Infinity;
-  if (real && flag('slot')) {
+  // --ahead: no render starts after this (minutes since midnight in Kigali).
+  let lastStart = Infinity;
+  const ahead = real && flag('ahead');
+  if (real && (flag('slot') || ahead)) {
     const files = existsSync(dir) ? readdirSync(dir) : [];
     const s = dayPieces(rows.map(refOf), files, readJsonFile(join(dir, 'uploads.json'), {}), readJsonFile(join(dir, 'pending.json'), {}));
-    const quota = slotQuota(s.total, s.out, kigaliHour());
-    want = Math.max(0, quota - s.ready.length);
+    const minute = kigaliMinute();
     const todo = new Set(s.todo);
     rows = rows.filter((r) => todo.has(refOf(r)));
-    console.log(`slot ${kigaliHour()}:00 — ${s.out} of ${s.total} out, ${s.ready.length} ready, this slot posts ${quota} → render ${Math.min(want, rows.length)} of ${rows.length} waiting`);
+    if (ahead) {
+      const gap = nextSlotGap(minute);
+      want = aheadRenders(gap, rows.length);
+      if (gap !== null) lastStart = minute + gap - AHEAD_MARGIN_MIN;
+      console.log(`ahead at ${clock(minute)} — ${rows.length} home(s) still to render, next slot ${gap === null ? 'tomorrow' : `in ${gap} min`} → render ${want}`);
+    } else {
+      const quota = slotQuota(s.total, s.out, minute);
+      want = Math.max(0, quota - s.ready.length);
+      console.log(`slot ${clock(minute)} — ${s.out} of ${s.total} out, ${s.ready.length} ready, this slot posts ${quota} → render ${Math.min(want, rows.length)} of ${rows.length} waiting`);
+    }
     if (!want || !rows.length) return [];
   }
   if (!id) {
@@ -808,6 +831,11 @@ async function render(given?: PostRow[]): Promise<string[]> {
   for (const r of rows) {
     // A slot that loses a render to the strip tries the next home, at most two extra.
     if (outs.length >= want || tried >= want + 2) break;
+    // Rendering ahead never runs into the next slot: a render takes up to ~16 minutes.
+    if (kigaliMinute() > lastStart) {
+      console.log(`  … stopping: the next slot is under ${AHEAD_MARGIN_MIN} min away`);
+      break;
+    }
     tried += 1;
     try {
       const { out, note } = await renderOne(r, dir, phone);
@@ -983,9 +1011,37 @@ async function stats(): Promise<void> {
     join(DATA, 'page-stats.jsonl'),
     `${JSON.stringify({ at: new Date().toISOString(), videos: vids.length, views, likes: vids.reduce((s, v) => s + v.likes, 0), comments, shares, ...(profile ?? {}), homeVideos: matched, rows })}\n`,
   );
-  const line = pageStatsLine(PAGE, vids, { matched, views: homeViews });
+  const reach = await repostNumbers();
+  const line = [pageStatsLine(PAGE, vids, { matched, views: homeViews }), reach].filter(Boolean).join(' · ');
   console.log(`${line}${rows ? ` · ${rows} TikTokPost rows updated` : ''}`);
   if (flag('notify')) await postToMkan(line);
+}
+
+/**
+ * Plan B's numbers (2026-11-07), for the review on 11-14: the broker reposts' median views, day
+ * against evening and week over week (repostReach), and the chats the posts brought. A chat counts
+ * when it quotes the code of a home posted in the last 7 days, or arrives from a TikTok link
+ * (AgentTask.refSource tiktok / k_page, set once the owed app deploy is live). A broken query
+ * leaves the part out and never stops the stats.
+ */
+async function repostNumbers(): Promise<string | null> {
+  try {
+    const { db } = await import('../../src/lib/db');
+    const now = Date.now();
+    const posts = await db.tikTokPost.findMany({
+      where: { status: 'POSTED', brokerHandle: { not: null }, postedAt: { gte: new Date(now - 15 * 86_400_000) } },
+      select: { ref: true, postedAt: true, views: true },
+    });
+    const reach = repostReach(posts.map((p) => ({ postedAt: p.postedAt!.getTime(), views: p.views })), now);
+    const pattern = codePattern(posts.filter((p) => p.postedAt!.getTime() > now - 7 * 86_400_000).map((p) => p.ref));
+    const [chats] = pattern
+      ? await db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM "AgentTask" WHERE "createdAt" > now() - interval '7 days' AND ("refSource" IN ('tiktok', 'k_page') OR "messages"::text ~* ${pattern})`
+      : await db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM "AgentTask" WHERE "createdAt" > now() - interval '7 days' AND "refSource" IN ('tiktok', 'k_page')`;
+    return repostLine(reach, chats?.n ?? null);
+  } catch (e) {
+    console.warn(`  ! repost numbers not read: ${errorText(e).slice(0, 160)}`);
+    return null;
+  }
 }
 
 

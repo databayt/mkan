@@ -12,11 +12,12 @@
 # (crm:post-mkan), since Hermes no longer reads its output. The tick prints only when it cannot
 # start. Logs: .data/tiktok-post/post.log.
 #
-# The whole day, one home at a time (2026-11-07, Abdout: post every ad that went up today). This
-# tick picks every postable home whose ad went up today or yesterday (3 to 15, pickFresh), renders
-# the first and posts it. The slots at :30 past every hour 08–22 (tiktok-upload-retry.sh) each
-# render and post their own share, and the evening ones first add the 18:00 sweep's ads. TikTok
-# spreads reach per account: three posts in one 07:00 burst competed with each other.
+# Every ad that went up today, posted when Kigali scrolls (2026-11-07, plan B). This tick picks
+# every postable home whose ad went up today or yesterday (3 to 15, pickFresh), renders the first,
+# posts it, then renders ahead for the 08:30 slot. The later slots (tiktok-upload-retry.sh: 08:30,
+# 12:30, 13:30, then every 30 minutes from 17:00 to 21:30) each post their share and render ahead,
+# and the evening ones first add the 15:00 sweep's ads. TikTok spreads reach per account: three
+# posts in one 07:00 burst competed with each other.
 #   bash scripts/crm/hermes/tiktok-post.sh --plan      what this slot would post (no browser)
 set -uo pipefail
 REPO="${MKAN_REPO:-/Users/abdout/mkan}"
@@ -78,6 +79,8 @@ steps() {
   run tt:run --notify --n="$PER_DAY" $RENDER_ARG || { sleep 60; run tt:run --notify --n="$PER_DAY" $RENDER_ARG; } || return 2
   run tt:upload --notify $UP_ARG
   local up=$?
+  # Then the 08:30 slot's video (and the next ones), so it posts on the minute.
+  [ "$UPTO" = spread ] && run tt:render --ahead
   # 77: a post was clicked but never confirmed — a re-run could post it twice; Abdout looks.
   [ "$up" -eq 77 ] && return 77
   [ "$up" -eq 0 ] || return 3

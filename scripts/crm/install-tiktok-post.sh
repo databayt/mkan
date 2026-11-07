@@ -13,13 +13,14 @@
 # TIKTOK_POSTS_PER_DAY=<n> bakes a new default into the installed copies; without it the
 # scripts' own default stands ("fresh" since 2026-11-07: every postable ad that went up today or
 # yesterday, 3 to 15 a day; TIKTOK_POSTS_PER_DAY=0 holds the lane). Logs under .data/tiktok-post/.
-# The day's posts go out one home at a time (2026-11-07): 07:00 picks and posts the first, and
-# mkan-tiktok-upload-retry (08:30–17:30) and mkan-tiktok-upload-evening (18:30–22:30, the same
-# script with SLOT/PICK baked in) run at :30 past every hour, each rendering and posting its share
-# of the day. The evening slots first add the 18:00 sweep's ads. A slot that missed its turn is
-# caught up by the next ones; the day's uploads.json/pending.json keep any piece from posting
-# twice, and every slot shares one lock, so no two ever upload at once. The hours match
-# SLOT_HOURS in tiktok-post-pure.ts.
+# The day's posts go out one home at a time, mostly when Kigali scrolls (2026-11-07, plan B):
+# 07:00 picks and posts the first; mkan-tiktok-upload-retry runs at 08:30, 12:30 and 13:30, and
+# mkan-tiktok-upload-evening (the same script with SLOT/PICK baked in) every 30 minutes from 17:00
+# to 21:30. Each slot posts its share of the day, then renders ahead for the next. The evening
+# slots first add the 15:00 sweep's ads. A slot that missed its turn is caught up by the next
+# ones; the day's uploads.json/pending.json keep any piece from posting twice, and every slot
+# shares one lock, so no two ever upload at once. The times match SLOT_TIMES in
+# tiktok-post-pure.ts.
 #   bash scripts/crm/hermes/tiktok-post.sh --plan; bash scripts/crm/hermes/tiktok-upload-retry.sh --plan
 # A fourth, mkan-tiktok-stats (daily
 # 21:00), reads followers, views, likes, comments and shares per post for /monetize, and
@@ -39,10 +40,10 @@ if [ -n "${TIKTOK_POSTS_PER_DAY:-}" ]; then
 fi
 RETRY="mkan-tiktok-upload-retry"
 RETRY_SCRIPT="$HERMES_HOME/scripts/$RETRY.sh"
-RETRY_SCHEDULE="${TIKTOK_RETRY_SCHEDULE:-30 8-17 * * *}"
+RETRY_SCHEDULE="${TIKTOK_RETRY_SCHEDULE:-30 8,12,13 * * *}"
 EVENING="mkan-tiktok-upload-evening"
 EVENING_SCRIPT="$HERMES_HOME/scripts/$EVENING.sh"
-EVENING_SCHEDULE="${TIKTOK_EVENING_SCHEDULE:-30 18-22 * * *}"
+EVENING_SCHEDULE="${TIKTOK_EVENING_SCHEDULE:-0,30 17-21 * * *}"
 STATS="mkan-tiktok-stats"
 STATS_SCRIPT="$HERMES_HOME/scripts/$STATS.sh"
 STATS_SCHEDULE="${TIKTOK_STATS_SCHEDULE:-0 21 * * *}"

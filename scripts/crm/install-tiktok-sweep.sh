@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # The TikTok lane's tick: discover → fetch → read → upsert → posts → /find mirror,
-# twice a day at 06:00 and 18:00 Kigali (since 2026-10-25; was 06:00 only), posting
-# each run's counts to #mkan. One job, two times — the lock keeps them from overlapping.
+# twice a day at 06:00 and 15:00 Kigali, posting each run's counts to #mkan. One job, two
+# times — the lock keeps them from overlapping. (06:00 only until 2026-10-25, then 06:00 and
+# 18:00. Since 2026-11-07 the second run is at 15:00: its ads are in by ~16:15 for the page's
+# evening posts, 17:00–21:30, and no sweep holds the vault Chrome while they upload.)
+# To move a live job without the config rewrite below: hermes cron edit <id> --schedule "…"
 #
 # Since 2026-10-20 the scheduler is the Hermes gateway's cron (no agent, no model):
 #   bash scripts/crm/install-tiktok-sweep.sh            # install / refresh the Hermes job
@@ -28,7 +31,7 @@ HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 HERMES_SCRIPT="$HERMES_HOME/scripts/$NAME.sh"
 CONFIG="$HERMES_HOME/config.yaml"
 MKAN_CHANNEL="C0BS2NZE2AY" # private #mkan
-SCHEDULE="${TIKTOK_SCHEDULE:-0 6,18 * * *}"
+SCHEDULE="${TIKTOK_SCHEDULE:-0 6,15 * * *}"
 PNPM="$(command -v pnpm)"
 LIMIT="${TIKTOK_DAILY_LIMIT:-40}"
 READ_LIMIT="${TIKTOK_READ_LIMIT:-80}"

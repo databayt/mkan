@@ -34,9 +34,16 @@ import {
   pickFresh,
   slotQuota,
   dayPieces,
-  kigaliHour,
+  kigaliMinute,
   kigaliMidnight,
-  SLOT_HOURS,
+  clock,
+  SLOT_TIMES,
+  EVENING_FROM,
+  nextSlotGap,
+  aheadRenders,
+  repostReach,
+  repostLine,
+  codePattern,
   POSTS_CEILING,
   refInText,
   refOf,
@@ -570,10 +577,10 @@ describe("only the text added on top of the video is wiped (2026-11-06)", () => 
 // ── 2026-11-07: every ad that went up today goes out, one at a time through the day ─────────
 const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
 
-describe('kigaliHour / kigaliMidnight', () => {
+describe('kigaliMinute / kigaliMidnight', () => {
   it('reads the clock in Kigali (UTC+2), whatever the machine says', () => {
-    expect(kigaliHour(Date.parse('2026-11-07T05:50:00Z'))).toBe(7);
-    expect(kigaliHour(Date.parse('2026-11-07T22:30:00Z'))).toBe(0);
+    expect(clock(kigaliMinute(Date.parse('2026-11-07T05:50:00Z')))).toBe('07:50');
+    expect(clock(kigaliMinute(Date.parse('2026-11-07T22:30:00Z')))).toBe('00:30');
   });
   it('starts the day at midnight in Kigali, 22:00 UTC the day before', () => {
     expect(kigaliMidnight(Date.parse('2026-11-07T21:59:00Z'))).toBe(Date.parse('2026-11-06T22:00:00Z'));
@@ -642,40 +649,97 @@ describe('a rejected render rests', () => {
 });
 
 describe('slotQuota', () => {
-  /** One day of slots: what each slot posts, given the slots that run. */
-  const day = (total: number, runs: readonly number[] = SLOT_HOURS) => {
+  const at = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
+  /** One day of slots: what each slot posts (by "HH:MM"), given the slots that run. */
+  const day = (total: number, runs: readonly number[] = SLOT_TIMES) => {
     let out = 0;
-    const posts: Record<number, number> = {};
-    for (const h of runs) {
-      const q = slotQuota(total, out, h);
-      posts[h] = q;
+    const posts: Record<string, number> = {};
+    for (const t of runs) {
+      const q = slotQuota(total, out, t);
+      posts[clock(t)] = q;
       out += q;
     }
     return { out, posts };
   };
-  it('spreads a 12-home day over the slots, one at a time', () => {
-    const { out, posts } = day(12);
-    expect(out).toBe(12);
+  it('has 14 slots, 10 of them from 17:00, when Kigali scrolls', () => {
+    expect(SLOT_TIMES.map(clock)).toEqual(['07:00', '08:30', '12:30', '13:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30']);
+    expect(SLOT_TIMES.filter((t) => t >= EVENING_FROM)).toHaveLength(10);
+  });
+  it('puts most of an 11-home day in the evening, one at a time', () => {
+    const { out, posts } = day(11);
+    expect(out).toBe(11);
     expect(Math.max(...Object.values(posts))).toBe(1);
-    expect(posts[7]).toBe(1);
+    const evening = Object.entries(posts).filter(([t, q]) => q && at(t) >= EVENING_FROM).length;
+    expect(evening).toBeGreaterThanOrEqual(7);
+    expect(posts['07:00']).toBe(1);
   });
   it('spreads a 3-home day through the day, not all in the morning', () => {
     const { posts } = day(3);
-    expect(Object.entries(posts).filter(([, q]) => q).map(([h]) => Number(h))).toEqual([7, 12, 17]);
+    expect(Object.entries(posts).filter(([, q]) => q).map(([t]) => t)).toEqual(['07:00', '17:00', '19:30']);
   });
-  it('a missed morning catches up two at a time and still finishes the day', () => {
-    const { out, posts } = day(12, SLOT_HOURS.filter((h) => h >= 13));
+  it('a full 15-home day posts every home by 21:30, never more than two at once', () => {
+    const { out, posts } = day(POSTS_CEILING);
+    expect(out).toBe(POSTS_CEILING);
+    expect(Math.max(...Object.values(posts))).toBe(2);
+  });
+  it('a missed day catches up two at a time and still finishes the evening', () => {
+    const { out, posts } = day(12, SLOT_TIMES.filter((t) => t >= EVENING_FROM));
     expect(out).toBe(12);
-    expect(posts[13]).toBe(2);
+    expect(posts['17:00']).toBe(2);
     expect(Math.max(...Object.values(posts))).toBe(2);
   });
   it('posts nothing before the first slot, or once the day is out', () => {
-    expect(slotQuota(5, 0, 6)).toBe(0);
-    expect(slotQuota(5, 5, 12)).toBe(0);
-    expect(slotQuota(0, 0, 12)).toBe(0);
+    expect(slotQuota(5, 0, at('06:00'))).toBe(0);
+    expect(slotQuota(5, 5, at('12:30'))).toBe(0);
+    expect(slotQuota(0, 0, at('12:30'))).toBe(0);
   });
   it('a late run after the last slot still posts at most two', () => {
-    expect(slotQuota(10, 4, 23)).toBe(2);
+    expect(slotQuota(10, 4, at('23:00'))).toBe(2);
+  });
+});
+
+describe('nextSlotGap / aheadRenders', () => {
+  const at = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
+  it('measures the minutes to the next slot, none after the last', () => {
+    expect(nextSlotGap(at('07:00'))).toBe(90);
+    expect(nextSlotGap(at('13:30'))).toBe(210);
+    expect(nextSlotGap(at('21:00'))).toBe(30);
+    expect(nextSlotGap(at('21:30'))).toBeNull();
+  });
+  it('renders up to 3 ahead before an hour-long gap, 1 before a half-hour one', () => {
+    expect(aheadRenders(90, 10)).toBe(3);
+    expect(aheadRenders(60, 2)).toBe(2);
+    expect(aheadRenders(30, 10)).toBe(1);
+  });
+  it('renders nothing after the last slot, too close to the next one, or with nothing left', () => {
+    expect(aheadRenders(null, 5)).toBe(0);
+    expect(aheadRenders(15, 5)).toBe(0);
+    expect(aheadRenders(90, 0)).toBe(0);
+  });
+});
+
+describe('repostReach / repostLine / codePattern', () => {
+  // NOW is 09:00 in Kigali. A post `d` days back at 09:00 is a day post; 10 hours later, an evening one.
+  const post = (d: number, views: number | null, evening = false) => ({ postedAt: NOW - d * 86_400_000 + (evening ? 10 * 3_600_000 : 0), views });
+  it('splits the last week, posts a day or more old, into day and evening medians', () => {
+    const r = repostReach([post(2, 40), post(3, 60), post(2, 120, true), post(4, 160, true), post(0.5, 5)], NOW);
+    expect(r).toMatchObject({ week: 4, median: 90, dayMedian: 50, eveningMedian: 140, prevMedian: null, halved: false });
+  });
+  it('flags reach halved week over week, only with 10 posts in each week', () => {
+    const lastWeek = Array.from({ length: 10 }, (_, i) => post(1.5 + (i % 6), 40));
+    const before = Array.from({ length: 10 }, (_, i) => post(8.5 + (i % 6), 100));
+    expect(repostReach([...lastWeek, ...before], NOW).halved).toBe(true);
+    expect(repostReach([...lastWeek.slice(1), ...before], NOW).halved).toBe(false);
+  });
+  it('reads as one line, with the warning only when reach halved', () => {
+    const halved = { week: 12, median: 40, dayMedian: 30, eveningMedian: 50, prevMedian: 100, halved: true };
+    expect(repostLine(halved, 2)).toContain('median 40 views (day 30, evening 50; the week before 100)');
+    expect(repostLine(halved, 2)).toContain('⚠️');
+    expect(repostLine({ ...halved, halved: false }, null)).not.toMatch(/⚠️|chats/);
+  });
+  it('matches the codes as a chat quotes them', () => {
+    expect(codePattern(['K6552', 'K6571', '0005-01', 'K6552'])).toBe('\\m(k[ -]?6552|k[ -]?6571|0005-01)\\M');
+    expect(codePattern([])).toBeNull();
   });
 });
 

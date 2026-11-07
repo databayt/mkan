@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # The TikTok page's upload slots, run by the Hermes gateway's cron (no agent, no model).
-# The whole day, one home at a time (2026-11-07, Abdout: post every ad that went up today). 07:00
-# picks the day's homes and posts the first (tiktok-post.sh). This script runs at :30 past every
-# hour: job mkan-tiktok-upload-retry from 08:30 to 17:30, and job mkan-tiktok-upload-evening from
-# 18:30 to 22:30 (the installer bakes SLOT, PICK and the job name into that copy). Each slot
-# renders its own share of the day (tt:render --slot), then posts it (tt:upload --spread,
-# slotQuota). The evening slots first add the ads that the 18:00 sweep fetched (tt:pick adds to
-# today's queue, up to the day's cap of 15). TikTok spreads reach per account, so one post an hour
-# reaches more people than a burst.
+# Every ad that went up today, posted when Kigali scrolls (2026-11-07, plan B). 07:00 picks the
+# day's homes and posts the first (tiktok-post.sh). This script is job mkan-tiktok-upload-retry at
+# 08:30, 12:30 and 13:30, and job mkan-tiktok-upload-evening every 30 minutes from 17:00 to 21:30
+# (the installer bakes SLOT, PICK and the job name into that copy). These are SLOT_TIMES in
+# tiktok-post-pure.ts. Each slot posts its share of the day (tt:upload --spread, slotQuota), then
+# renders ahead for the slots to come (tt:render --ahead), so a post goes out on the minute; it
+# renders its own share first only when nothing was ready. The evening slots first add the ads that
+# the 15:00 sweep fetched (tt:pick adds to today's queue, up to the day's cap of 15).
 # A piece counts as out once it is in the day's uploads.json or pending.json, so a slot that
 # missed its turn (vault Chrome down, TikTok slow, the Mac asleep) is caught up by the next ones,
 # and nothing clicked-but-unconfirmed is posted twice. When 07:00 rendered nothing at all (Neon
@@ -25,7 +25,7 @@ set -uo pipefail
 REPO="${MKAN_REPO:-/Users/abdout/mkan}"
 LOGDIR="$REPO/scripts/crm/.data/tiktok-post"
 LOCK="$LOGDIR/.post.lock"
-# A slot renders and posts one home (~20 min), two when it is behind.
+# A slot posts one home (two when it is behind) and renders up to three ahead.
 MAX_MINUTES="${TIKTOK_RETRY_MAX_MINUTES:-75}"
 SLOT="${TIKTOK_UPLOAD_SLOT:-day}"
 # "spread": the slot renders and posts its share of the day. A number brings the day to that
@@ -95,12 +95,15 @@ launchctl kickstart "gui/$(id -u)/com.databayt.chrome-session" >/dev/null 2>&1 |
 run() { /usr/bin/caffeinate -i pnpm -s "$@" >>"$LOGDIR/post.log" 2>>"$LOGDIR/post.err.log"; }
 steps() {
   local rc=0
-  # The evening copy: the 18:00 sweep's ads join today's queue (a pick adds, never past the cap).
+  # The evening copy: the 15:00 sweep's ads join today's queue (a pick adds, never past the cap).
   if [ "$PICK" = 1 ]; then run tt:pick --n="$PER_DAY" || rc=5; fi
-  # This slot's own share: the next homes in the queue with no video yet.
+  # This slot's own share, rendered now only when the slots before did not render it ahead.
   if [ "$UPTO" = spread ]; then run tt:render --slot || rc=4; fi
   run tt:upload --notify $UP_ARG
   local up=$?
+  # Posts out first, then the next slots' videos: up to 3 before a gap of an hour or more, 1 before
+  # a half-hour one, none started within 20 minutes of the next slot.
+  if [ "$UPTO" = spread ]; then run tt:render --ahead || rc=4; fi
   [ "$up" -ne 0 ] && return "$up"
   return "$rc"
 }

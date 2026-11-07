@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The TikTok lane's tick (06:00 and 18:00), run by the Hermes gateway's cron (no agent, no model).
+# The TikTok lane's tick (06:00 and 15:00), run by the Hermes gateway's cron (no agent, no model).
 # Installed to ~/.hermes/scripts/mkan-tiktok-sweep.sh by scripts/crm/install-tiktok-sweep.sh.
 #
 # Two halves (2026-11-01). The tick takes the lock and starts the run detached from the

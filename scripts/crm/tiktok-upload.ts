@@ -2,7 +2,7 @@
  * Posts the day's rendered TikTok videos to @mkan.rw — no phone step.
  *
  *   pnpm tt:upload [--date=YYYY-MM-DD] [--dry] [--notify] [--spread | --upto=<n>]
- *   pnpm tt:upload --plan [--spread | --upto=<n>]     what this slot would post — no browser, posts nothing
+ *   pnpm tt:upload --plan [--spread [--at=HH:MM] | --upto=<n>]     what this slot would post — no browser, posts nothing
  *   pnpm tt:upload --file=<mp4> --caption=<txt> [--aigc] [--dry]   one ad-hoc video
  *
  * Drives TikTok Studio's web upload (tiktok.com/tiktokstudio/upload) in the
@@ -23,13 +23,14 @@
  * TikTokPost row turns POSTED (with the post's URL when Studio shows it) or
  * FAILED with the reason.
  *
- * --spread (2026-11-07): the day's posts go out one by one through the day's slots (07:00, then
- * :30 past every hour 08–22). Each slot first renders its own share (tt:render --slot), then posts
- * its share of the day's queue (slotQuota): an even spread whatever the day's count, with a missed
- * slot caught up at most two at a time. A clean slot posts nothing to #mkan until the day's last
- * home is up. --upto=<n> instead brings the day to n posts. TikTok spreads reach per account, so
- * one post an hour reaches more people than a burst. A piece counts as out once it is in
- * uploads.json or pending.json, and nothing clicked-but-unconfirmed is posted twice.
+ * --spread (2026-11-07): the day's posts go out one by one through the day's slots: 07:00, 08:30,
+ * 12:30, 13:30, then every 30 minutes from 17:00 to 21:30, when Kigali scrolls (SLOT_TIMES). Each
+ * slot posts its share of the day's queue (slotQuota): an even spread over the slots whatever the
+ * day's count, with a missed slot caught up at most two at a time. Videos are rendered ahead by
+ * the slots before (tt:render --ahead), so a post goes out on the minute. A clean slot posts
+ * nothing to #mkan until the day's last home is up. --upto=<n> instead brings the day to n posts.
+ * A piece counts as out once it is in uploads.json or pending.json, and nothing
+ * clicked-but-unconfirmed is posted twice.
  *
  * --dry fills everything (file, caption, label) and stops before Post, saving a
  * screenshot next to the video. Env: TIKTOK_UPLOAD_CDP (default http://127.0.0.1:9222).
@@ -44,7 +45,7 @@ import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { chromium, type Page, type Response } from 'playwright';
 import { postToMkan, recordRun } from './notify';
-import { dayPieces, errorText, kigaliHour, slotQuota, type Ledger } from './tiktok-post-pure';
+import { clock, dayPieces, errorText, kigaliMinute, slotQuota, type Ledger } from './tiktok-post-pure';
 import { ownTikTok } from './tiktok-pure';
 
 const argv = (n: string, d = ''): string => {
@@ -340,26 +341,28 @@ async function markRow(piece: Piece, data: Record<string, unknown>): Promise<voi
  * the day, slotQuota over the whole queue, rendered or not, less the rejected renders. --upto=<n>:
  * the day is at n once this slot is done. Neither: everything rendered.
  */
-function slotCap(pieces: Piece[], done: Record<string, string>, pending: Record<string, string>): { out: number; room: number; total: number } {
+function slotCap(pieces: Piece[], done: Record<string, string>, pending: Record<string, string>, minute = kigaliMinute()): { out: number; room: number; total: number } {
   if (flag('spread')) {
     const queue = readJson<{ id: number; code: string | null }[]>(join(DAY, 'queue.json'), []).map((r) => r.code?.trim() || `K${r.id}`);
     const s = dayPieces(queue, existsSync(DAY) ? readdirSync(DAY) : [], done, pending);
-    return { out: s.out, room: slotQuota(s.total, s.out, kigaliHour()), total: s.total };
+    return { out: s.out, room: slotQuota(s.total, s.out, minute), total: s.total };
   }
   const out = pieces.filter((x) => done[x.key] || pending[x.key]).length;
   const upto = Number.parseInt(argv('upto'), 10);
   return { out, room: Number.isFinite(upto) ? Math.max(0, upto - out) : Infinity, total: pieces.length };
 }
 
-/** --plan: the slot's dry run — which pieces it would post, read from the day's files only. */
+/** --plan: the slot's dry run — which pieces it would post, read from the day's files only. --at=HH:MM plays another slot's time. */
 function plan(): void {
   const pieces = todaysPieces();
   const done = readJson<Record<string, string>>(UPLOADS, {});
   const pending = readJson<Record<string, string>>(PENDING, {});
-  const { out, room, total } = slotCap(pieces, done, pending);
+  const at = /^(\d{1,2}):(\d{2})$/.exec(argv('at'));
+  const minute = at ? Number(at[1]) * 60 + Number(at[2]) : kigaliMinute();
+  const { out, room, total } = slotCap(pieces, done, pending, minute);
   const due = pieces.filter((x) => !done[x.key] && !pending[x.key]);
   const now = due.slice(0, room === Infinity ? due.length : room);
-  const mode = flag('spread') ? `spread, the ${kigaliHour()}:00 slot's share is ${room}` : `upto=${argv('upto') || 'all'}`;
+  const mode = flag('spread') ? `spread, the ${clock(minute)} slot's share is ${room}` : `upto=${argv('upto') || 'all'}`;
   console.log(`${date}: ${total} in the day, ${pieces.length} rendered, ${out} out already, ${mode} → this slot posts ${now.length}${now.length ? `: ${now.map((x) => x.key).join(', ')}` : ''}; ${Math.max(0, total - out - now.length)} left for later slots`);
 }
 
