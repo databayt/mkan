@@ -107,6 +107,9 @@ describe("the loop, live", () => {
   it("reads a silent Mac as offline, but a park or a pause stands until it changes", () => {
     const stale = "2026-11-07T08:00:00Z";
     expect(liveView(sprints, { state: "running", at: stale }, stale, now).state).toBe("offline");
+    // At night the loop and the Mac beat only on the hour: an hour-old beat is still a live Mac.
+    const hourAgo = "2026-11-07T09:00:00Z";
+    expect(liveView(sprints, { state: "waiting", at: hourAgo }, hourAgo, now).state).toBe("waiting");
     expect(liveView(sprints, { state: "parked", at: stale, until: "2026-11-07T15:02:00Z" }, stale, now).state).toBe("parked");
     expect(liveView(sprints, { state: "stopped", at: stale }, stale, now).state).toBe("stopped");
     // A park whose time has long passed is not shown as parked.

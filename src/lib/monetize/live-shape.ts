@@ -1,7 +1,8 @@
 /**
  * The sprint loop, live — what /monetize's top card shows and polls (GET /api/monetize/live every 15 s).
  * Pure: built from the open sprints (sprint-shape.ts) and two WaState rows — 'sprint-loop' (the runner's
- * beat on every state change, scripts/sprint/beat.ts) and 'mac-beat' (kun's supervisor, every 15 min).
+ * beat on every state change, scripts/sprint/beat.ts) and 'mac-beat' (kun's supervisor). Both now land
+ * on the app's own ticks so Neon can sleep (2026-11-07): every quarter hour by day, on the hour at night.
  * A Mac that sleeps writes neither, so "offline" is read from their age, never written.
  */
 import { redactPublic } from "@/lib/redact";
@@ -55,8 +56,11 @@ export interface Beat {
 
 const MIN = 60_000;
 const STATES = new Set(["checking", "planning", "running", "idle", "waiting", "parked", "stopped"]);
-/** No beat from the Mac for this long and nothing says it is parked or stopped: it is asleep or off. */
-const OFFLINE_AFTER = 40 * MIN;
+/**
+ * No beat from the Mac for this long and nothing says it is parked or stopped: it is asleep or off.
+ * At night the loop and the Mac beat only on the hour (and at the latest every 75 min), so 80.
+ */
+const OFFLINE_AFTER = 80 * MIN;
 
 const firstLine = (t: string) => t.replace(/^In ~\/mkan[^:]*:\s*/, "").split("\n")[0]!.slice(0, 140);
 

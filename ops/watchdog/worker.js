@@ -29,11 +29,14 @@ const cronStaleSec = (d = new Date()) => (d.getUTCHours() >= 5 && d.getUTCHours(
  */
 const DB_CHECKS = new Set(["health", "wa_cron", "mac"])
 const fullTick = (d = new Date()) => d.getUTCMinutes() < 5 || (d.getUTCHours() >= 5 && d.getUTCHours() < 20 && d.getUTCMinutes() >= 30 && d.getUTCMinutes() < 35)
-const BEAT_STALE_SEC = 20 * 60 // kun's job supervisor beats every 15 min while the Mac is awake
+// kun's job supervisor beats in the 5 minutes after the app's ticks while the Mac is awake: every
+// quarter hour by day, on the hour at night, and at the latest every 75 min (2026-11-07).
+const BEAT_STALE_SEC = 80 * 60
 
 /**
  * The Mac's scheduled jobs, seen from outside (2026-11-02). kun's supervisor writes WaState
- * 'mac-beat' = { at, jobs: { <job>: { lastOk, dueBy } } } every 15 min while the Mac is awake; it
+ * 'mac-beat' = { at, jobs: { <job>: { lastOk, dueBy } } } while the Mac is awake, only when Neon is
+ * awake anyway (every quarter hour by day, hourly at night; see kun supervise.mjs beatDue); it
  * re-runs and escalates by itself then. Silence alone is normal (the lid is shut at night), so this
  * fails only when the beat is stale AND a job's deadline has passed: the Mac has been off or asleep
  * past the point where a missed run matters. Pure, for tests: (row, now) → overdue job names.
