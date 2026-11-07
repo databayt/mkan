@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, Copy } from "lucide-react";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 import { decidePrompt } from "@/lib/actions/monetize-actions";
 
@@ -99,9 +99,18 @@ function Decision({ task, L, onDone }: { task: LiveTask; L: Labels; onDone: () =
 }
 
 /**
+ * Every poll reads the database, and Neon only sleeps after 5 minutes without a query, so a /monetize tab
+ * left open on a screen nobody is looking at kept it awake all day (2026-11-07). After this long without a
+ * touch the card stops polling; the next touch pulls at once and polling resumes.
+ */
+const IDLE_AFTER_MS = 10 * 60_000;
+const SEEN_EVENTS = ["pointermove", "pointerdown", "keydown", "scroll", "focus"] as const;
+
+/**
  * The loop, live: what it is doing now and for how long, what's next, what it finished last, and — for an
  * admin — every step that waits on Abdout with the one thing to do. Polls /api/monetize/live every 15 s
- * while the tab is visible; the server renders the first state, so nothing flashes.
+ * while the tab is visible and someone touched the page in the last 10 minutes; the server renders the
+ * first state, so nothing flashes.
  */
 export function LiveCard({ initial, labels, blocks, canEdit, locale }: { initial: LiveView; labels: Labels; blocks: Record<string, string>; canEdit: boolean; locale: string }) {
   const L = labels;
@@ -109,9 +118,11 @@ export function LiveCard({ initial, labels, blocks, canEdit, locale }: { initial
   const [now, setNow] = useState(() => Date.parse(initial.generatedAt));
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const lastSeen = useRef(0);
 
   const pull = useCallback(async () => {
     if (document.visibilityState !== "visible") return;
+    if (Date.now() - lastSeen.current > IDLE_AFTER_MS) return;
     try {
       const r = await fetch("/api/monetize/live", { cache: "no-store" });
       if (r.ok) setLive((await r.json()) as LiveView);
@@ -121,16 +132,30 @@ export function LiveCard({ initial, labels, blocks, canEdit, locale }: { initial
   }, []);
 
   useEffect(() => {
+    lastSeen.current = Date.now();
     const poll = setInterval(pull, 15_000);
     const tick = setInterval(() => setNow(Date.now()), 30_000);
     // The server's clock rendered the first "for 12 min"; the browser's takes over right after.
     const first = setTimeout(() => setNow(Date.now()), 0);
-    document.addEventListener("visibilitychange", pull);
+    // A touch after an idle spell, or the tab coming back into view, pulls at once.
+    const seen = () => {
+      const wasIdle = Date.now() - lastSeen.current > IDLE_AFTER_MS;
+      lastSeen.current = Date.now();
+      if (wasIdle) void pull();
+    };
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      lastSeen.current = Date.now();
+      void pull();
+    };
+    for (const e of SEEN_EVENTS) window.addEventListener(e, seen, { passive: true });
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       clearInterval(poll);
       clearInterval(tick);
       clearTimeout(first);
-      document.removeEventListener("visibilitychange", pull);
+      for (const e of SEEN_EVENTS) window.removeEventListener(e, seen);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [pull]);
 
