@@ -5398,14 +5398,6 @@
       "activity": "Live activity",
       "results": "Results",
       "empty": "Every step the agent takes will appear here.",
-      "steps": {
-        "understand": "Understand your requirements",
-        "search": "Search Mkan homes",
-        "group": "Group duplicate ads",
-        "rank": "Rank homes that fit",
-        "confirm": "Confirm availability with brokers",
-        "present": "Present shortlist"
-      },
       "events": {
         "requirements_extracted": "Requirements read",
         "asked": "Waiting for your answer",
@@ -5707,26 +5699,29 @@
       "work": "Work"
     },
     "wizard": {
-      "stepOf": "{n} / {total}",
-      "back": "Back",
-      "next": "Next",
       "finish": "Show homes",
-      "orType": "Or just type what you need below.",
       "q": {
         "stay": "How long do you need it?",
         "where": "Where in Kigali?",
         "home": "What kind of home?",
         "budget": "What's your budget?"
       },
-      "rows": {
-        "zone": "Zone",
-        "neighbourhood": "Neighbourhood",
-        "near": "Near",
-        "bedrooms": "Bedrooms",
-        "bathrooms": "Bathrooms",
-        "furnishing": "Furnishing",
-        "home": "Home",
-        "purpose": "Purpose"
+      "options": {
+        "where": {
+          "gasabo": {
+            "hint": "Kimihurura, Kacyiru, Remera, Kimironko, Nyarutarama"
+          },
+          "kicukiro": {
+            "hint": "Niboye, Gikondo, Kagarama, Kanombe, Kicukiro centre"
+          },
+          "nyarugenge": {
+            "hint": "The city centre, Kiyovu, Nyamirambo"
+          },
+          "anywhere": {
+            "label": "Anywhere in Kigali",
+            "hint": "Search every district"
+          }
+        }
       }
     },
     "question": {
@@ -5737,40 +5732,7 @@
       "upToMonth": "Up to {price} a month",
       "upToNight": "Up to {price} a night",
       "moveIn": "About {total} to move in: 3 months, deposit and fees",
-      "stayTotal": "About {total} for {nights} nights, with the service fee",
-      "other": "Type something else"
-    },
-    "trace": {
-      "todos": "Update Todos",
-      "tools": {
-        "requirements_extracted": "Understand",
-        "asked": "AskUser",
-        "search_done": "Search",
-        "dedup_grouped": "Group",
-        "filtered": "Filter",
-        "ranked": "Rank",
-        "needs_confirmation": "Check",
-        "broker_contact_started": "Message",
-        "broker_replied": "Reply",
-        "viewing_proposed": "Viewing",
-        "viewing_confirmed": "Viewing",
-        "shortlist_ready": "Shortlist",
-        "failed": "Error",
-        "outcome_recorded": "Outcome",
-        "relaxed": "Widen",
-        "memory_used": "Memory",
-        "memory_updated": "Memory",
-        "reply_written": "Write",
-        "availability_asked": "Message"
-      },
-      "verbs": {
-        "understand": "Reading your request…",
-        "search": "Searching homes…",
-        "group": "Grouping duplicate ads…",
-        "rank": "Ranking…",
-        "confirm": "Checking with brokers…",
-        "present": "Writing the shortlist…"
-      }
+      "stayTotal": "About {total} for {nights} nights, with the service fee"
     },
     "relaxed": {
       "lead": "Nothing matched every detail, so I widened the search: {changes}.",
@@ -5957,13 +5919,6 @@
     "clarify": {
       "reply": "A few quick questions, so I search the right homes.",
       "label": "Questions",
-      "tabs": {
-        "stay": "Stay",
-        "homeType": "Home",
-        "furnished": "Furnishing",
-        "purpose": "Purpose",
-        "submit": "Submit"
-      },
       "q": {
         "stay": "How long do you need the home?",
         "homeType": "What kind of home?",
@@ -6023,15 +5978,7 @@
             "hint": "Near the offices of Kimihurura, Kacyiru and the centre."
           }
         }
-      },
-      "recommended": "(Recommended)",
-      "other": "Type something…",
-      "review": "Review your answers",
-      "skipped": "Not answered — any",
-      "submit": "Submit",
-      "submitHint": "Press Enter to search",
-      "prev": "Previous question",
-      "next": "Next question"
+      }
     },
     "shared": {
       "title": "The homes from your WhatsApp chat",
@@ -6039,6 +5986,58 @@
       "empty": "No homes in this chat yet. Tell Mkan on WhatsApp what you are looking for.",
       "continue": "Continue on WhatsApp",
       "newSearch": "New search"
+    },
+    "activity": {
+      "words": [
+        "Thinking…",
+        "Mulling it over…",
+        "Weighing it up…",
+        "Sizing it up…",
+        "Picturing your place…",
+        "Turning it over…",
+        "Piecing it together…",
+        "Considering…"
+      ],
+      "working": "Working",
+      "secs": "{s}s",
+      "brokersRunning": "{count} broker checks running",
+      "done": {
+        "read": "Read your message",
+        "memory": "used what you told me before",
+        "search": "searched {count} homes",
+        "group": "grouped {count} duplicate ads",
+        "widen": "widened {count} details",
+        "rank": "ranked {count}",
+        "none": "nothing fits yet",
+        "asked": "asked {count} questions",
+        "write": "wrote the reply",
+        "brokers": "asked {count} brokers",
+        "replied": "{count} brokers answered",
+        "viewing": "sent a viewing time",
+        "failed": "hit an error"
+      },
+      "live": {
+        "read": "Reading your message",
+        "search": "Searching homes",
+        "widen": "Widening the search",
+        "write": "Writing the reply"
+      },
+      "understood": "Understood",
+      "badge": "{kept} homes on the list, {ruledOut} ruled out",
+      "waiting": "Asked brokers about {count} homes — their answers appear here",
+      "questions": "{count} questions"
+    },
+    "questionCard": {
+      "label": "Questions",
+      "of": "{n} of {total}",
+      "prev": "Previous question",
+      "nextQuestion": "Next question",
+      "next": "Next",
+      "submit": "Submit",
+      "close": "Close",
+      "other": "Other",
+      "otherPlaceholder": "Type your answer…",
+      "recommended": "(Recommended)"
     }
   },
   "monetize": {

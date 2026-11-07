@@ -9,7 +9,8 @@ import { useDictionary } from "@/components/internationalization/use-dictionary"
 import { useLocale } from "@/components/internationalization/use-locale";
 import { formatCurrency } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
-import { usePicksLabel, Wizard, type Picks } from "../wizard";
+import { Wizard, type Picks } from "../wizard";
+import { ActivityRows, QuestionsRow, StatusLine, WaitingRow } from "../activity";
 import { AskCard } from "../ask-card";
 import { ClarifyCard } from "../clarify-card";
 import { Composer } from "../composer";
@@ -17,10 +18,11 @@ import { DemandCard } from "../demand-card";
 import { ChatHeader, headerButton, MenuGlyph } from "../header";
 import { Refine, Retry, ShowMonthly, ToWhatsApp } from "../refine";
 import { fill } from "../format";
-import { Steps } from "../steps";
+import { focusComposer, useQuestionContext } from "../question-card";
+import { describeAnswers } from "../questions";
 import { Suggestions } from "../suggestions";
-import { AgentTurn, PastAgentTurn, Prose, UserTurn } from "../turn";
-import { handsToWhatsApp, homesTurn, type ShortlistItem } from "../types";
+import { AgentTurn, AnsweredTurn, PastAgentTurn, Prose, UserTurn } from "../turn";
+import { handsToWhatsApp, homesTurn, type QuestionAnswer, type ShortlistItem } from "../types";
 import { useAgentTask } from "../use-agent-task";
 import { useStickToBottom } from "../use-stick-to-bottom";
 import { Welcome } from "../welcome";
@@ -79,32 +81,36 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
   const b = a?.bubble;
   const c = a?.chat;
   const { locale } = useLocale();
-  const { task, loaded, running, waiting, pending, notice, lostText, send, reset, open: openTask, opening, reply, regenerate } = useAgentTask(null, { lazy: true, active: open });
+  const { task, loaded, running, waiting, pending, notice, lostText, send, reset, open: openTask, opening, reply, regenerate, chips } = useAgentTask(null, { lazy: true, active: open });
   const [sheet, setSheet] = useState<"closed" | "open" | "never">("never");
-  const [picks, setPicks] = useState<Picks>({});
   const [guided, setGuided] = useState(false);
   const [returning, setReturning] = useState(false);
   /** Answers picked on a clarify card: a message typed instead goes out with them. */
   const [draft, setDraft] = useState<Picks>({});
-  const picksLabel = usePicksLabel();
+  /** The clarify card closed with × (its message's time): a row in the chat opens it again. */
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  const questionContext = useQuestionContext();
   const messages = task?.messages ?? [];
   const { ref: scrollRef, onScroll, away, scrolled, scrollToBottom } = useStickToBottom(`${messages.length}.${task?.shortlist.length ?? 0}.${running}.${open}`);
 
-  // The composer and the wizard's last step both search; a new search carries the picks.
-  const search = async (text: string) => {
-    const fresh = !task || guided;
-    const ok = await send(text.trim() || picksLabel(picks) || "…", fresh, fresh ? picks : Object.keys(draft).length ? draft : undefined);
+  // The composer and the guided search's "Show homes" both search; the guided one starts a new chat with its picks.
+  const search = async (text: string, picked?: { filters: Picks; answers: QuestionAnswer[] }) => {
+    const fresh = !task || !!picked;
+    const ok = await send(text, fresh, picked ? picked.filters : Object.keys(draft).length ? draft : undefined, undefined, picked?.answers);
     if (ok) {
       setDraft({});
-      setPicks({});
       setGuided(false);
       requestAnimationFrame(() => scrollToBottom());
     }
     return ok;
   };
+  // A question card closed with ×: the composer is back, ready to type.
+  const closeCard = (close: () => void) => {
+    close();
+    requestAnimationFrame(focusComposer);
+  };
   const newChat = () => {
     reset();
-    setPicks({});
     setGuided(false);
     setSheet((v) => (v === "never" ? v : "closed"));
   };
@@ -114,23 +120,28 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
     void openTask(id).then((ok) => ok && requestAnimationFrame(() => scrollToBottom()));
   };
 
-  useEffect(() => onWaiting(waiting), [waiting, onWaiting]);
-
-  // Escape closes the ☰ sheet first (Radix), the panel only when the sheet is shut. The
-  // listener sits in the capture phase: closing the sheet re-attaches it mid-event, and a
-  // bubbling listener would then catch the very Escape that closed the sheet.
-  useEffect(() => {
-    if (!open || sheet === "open") return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [open, onClose, sheet]);
-
   const lastAgentIndex = messages.findLastIndex((m) => m.role === "agent");
   const homesIndex = homesTurn(messages);
   const homesMessage = messages[homesIndex];
   const pendingTurn = running && messages.at(-1)?.role === "user";
   const fullPage = task ? `/${locale}/find?c=${task.id}` : `/${locale}/find`;
+  // The question card docks in the composer's place: the guided search, or the agent's clarify until closed.
+  const lastAgent = messages[lastAgentIndex];
+  const clarify = !running && lastAgentIndex === messages.length - 1 && lastAgent?.role === "agent" && lastAgent.kind === "clarify" ? lastAgent : null;
+  const dock: "guided" | "clarify" | null = guided ? "guided" : clarify && dismissed !== clarify.at ? "clarify" : null;
+
+  useEffect(() => onWaiting(waiting), [waiting, onWaiting]);
+
+  // Escape closes the ☰ sheet first (Radix), then a docked question card (its own key), the panel
+  // only when neither is up. The
+  // listener sits in the capture phase: closing the sheet re-attaches it mid-event, and a
+  // bubbling listener would then catch the very Escape that closed the sheet.
+  useEffect(() => {
+    if (!open || sheet === "open" || dock) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [open, onClose, sheet, dock]);
 
   return (
     <section
@@ -168,6 +179,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
         }
       />
 
+      <div className="relative flex min-h-0 flex-1 flex-col">
       <div
         ref={scrollRef}
         onScroll={onScroll}
@@ -176,46 +188,40 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
       >
         {!loaded || (!task && opening) ? (
           <Loader2 className="mx-auto mt-10 size-5 animate-spin text-muted-foreground" aria-hidden />
-        ) : !task || guided ? (
+        ) : !task ? (
           <div className="flex min-h-full flex-col justify-center py-4">
-            {guided ? (
-              <Wizard picks={picks} onChange={setPicks} onFinish={() => void search("")} disabled={pending} compact />
-            ) : (
-              <div className="flex flex-col items-center">
-                <Welcome
-                  compact
-                  onContinue={(text, filters) => void send(text, true, filters).then((ok) => ok && requestAnimationFrame(() => scrollToBottom()))}
-                  onReady={setReturning}
-                  disabled={pending}
-                />
-                {!returning && (
-                  <p className="text-balance text-center text-[22px] font-semibold leading-tight tracking-tight">{a?.greeting ?? "Where do you want to live in Kigali?"}</p>
-                )}
-              </div>
-            )}
+            <div className="flex flex-col items-center">
+              <Welcome
+                compact
+                onContinue={(text, filters) => void send(text, true, filters).then((ok) => ok && requestAnimationFrame(() => scrollToBottom()))}
+                onReady={setReturning}
+                disabled={pending}
+              />
+              {!returning && (
+                <p className="text-balance text-center text-[22px] font-semibold leading-tight tracking-tight">{a?.greeting ?? "Where do you want to live in Kigali?"}</p>
+              )}
+            </div>
           </div>
         ) : (
           <ol className="list-none space-y-5 py-3">
             {messages.map((m, i) => {
-              if (m.role === "user") return <UserTurn key={`${i}.${m.at}`} text={m.text} compact />;
+              if (m.role === "user") {
+                // Sent from the question card: drawn as that card, its questions and the answers.
+                const answered = m.answers?.length ? describeAnswers(m.answers, questionContext) : [];
+                return answered.length ? <AnsweredTurn key={`${i}.${m.at}`} items={answered} compact /> : <UserTurn key={`${i}.${m.at}`} text={m.text} compact />;
+              }
               const latest = i === lastAgentIndex && !pendingTurn;
               const homes = i === homesIndex && m.kind === "shortlist" && task.shortlist.length > 0;
               if (!latest && !homes) return <PastAgentTurn key={`${i}.${m.at}`} text={reply(m)} compact />;
               return (
-                <AgentTurn key={`${i}.${m.at}`} compact steps={latest ? <Steps task={task} compact /> : undefined}>
+                <AgentTurn key={`${i}.${m.at}`} compact steps={latest ? <ActivityRows task={task} chips={chips} compact /> : undefined}>
                   {m.kind === "ask" && !running ? (
                     <AskCard field={m.field} requirements={task.requirements} onPick={(text, filters) => void send(text, false, filters)} disabled={pending} compact />
                   ) : m.kind === "clarify" && !running ? (
                     <>
                       <Prose text={reply(m)} />
-                      <ClarifyCard
-                        key={m.at}
-                        fields={m.fields}
-                        onSubmit={(text, filters) => void send(text, false, filters).then((ok) => ok && (setDraft({}), requestAnimationFrame(() => scrollToBottom())))}
-                        onDraft={setDraft}
-                        disabled={pending}
-                        compact
-                      />
+                      {/* The card docks below; closed with ×, one row here opens it again. */}
+                      {!dock && <QuestionsRow count={m.fields.length} onOpen={() => setDismissed(null)} disabled={pending} compact />}
                     </>
                   ) : (
                     <Prose text={reply(m)} />
@@ -260,14 +266,24 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
                       {m.kind === "monthlyOnly" && <ShowMonthly onPick={(text, filters, clear) => void send(text, false, filters, clear)} disabled={pending} compact />}
                       {/* Nothing fit: "leave your number" — the same card /find shows (it was missing here). */}
                       {(m.kind === "none" || m.kind === "shortlist") && m.demand && task.demand && <DemandCard taskId={task.id} optedIn={task.demand.optedIn} />}
+                      {task.status === "WAITING" && <WaitingRow count={task.shortlist.filter((s) => s.availability === "asked").length} compact />}
                     </>
                   )}
+                  {/* The cards are up and the turn runs on (the writer, broker asks): the orange line stays. */}
+                  {latest && running && <StatusLine task={task} compact />}
                 </AgentTurn>
               );
             })}
-            {pendingTurn && <AgentTurn compact steps={<Steps task={task} compact />} />}
+            {pendingTurn && (
+              <AgentTurn compact steps={<ActivityRows task={task} chips={chips} compact />}>
+                <StatusLine task={task} compact />
+              </AgentTurn>
+            )}
           </ol>
         )}
+      </div>
+        {/* A docked question veils the chat, as Claude's card does; the chat still scrolls under it. */}
+        {dock && <div aria-hidden className="pointer-events-none absolute inset-0 bg-background/75 animate-in fade-in duration-300 motion-reduce:animate-none" />}
       </div>
 
       <footer className="relative px-3 pb-[max(env(safe-area-inset-bottom),10px)] pt-1">
@@ -281,22 +297,36 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
             <ArrowDown className="size-4" aria-hidden />
           </button>
         )}
-        {loaded && !task && !guided && (
-          <div className="pb-4">
-            <Suggestions onPick={(text) => void search(text)} onGuided={() => setGuided(true)} disabled={pending} compact />
-          </div>
-        )}
         {notice && <p className="mb-2 text-xs text-muted-foreground">{notice}</p>}
-        <Composer
-          size="sm"
-          onSend={search}
-          onPlus={() => setGuided((g) => !g)}
-          plusActive={guided}
-          canSendEmpty={guided && Object.keys(picks).length > 0}
-          disabled={pending || running || !loaded}
-          busy={running}
-          restore={lostText}
-        />
+        {dock === "guided" ? (
+          <Wizard
+            onSubmit={(text, filters, answers) => void search(text, { filters, answers })}
+            onClose={() => closeCard(() => setGuided(false))}
+            disabled={pending}
+            compact
+          />
+        ) : dock === "clarify" && clarify ? (
+          <ClarifyCard
+            key={clarify.at}
+            fields={clarify.fields}
+            onSubmit={(text, filters, answers) =>
+              void send(text, false, filters, undefined, answers).then((ok) => ok && (setDraft({}), requestAnimationFrame(() => scrollToBottom())))
+            }
+            onDraft={setDraft}
+            onClose={() => closeCard(() => setDismissed(clarify.at))}
+            disabled={pending}
+            compact
+          />
+        ) : (
+          <>
+            {loaded && !task && (
+              <div className="pb-4">
+                <Suggestions onPick={(text) => void search(text)} onGuided={() => setGuided(true)} disabled={pending} compact />
+              </div>
+            )}
+            <Composer size="sm" onSend={(text) => search(text)} onPlus={() => setGuided(true)} disabled={pending || running || !loaded} busy={running} restore={lostText} />
+          </>
+        )}
       </footer>
 
       {sheet !== "never" && (

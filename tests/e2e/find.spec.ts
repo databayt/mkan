@@ -42,6 +42,44 @@ test("a first message gets cards and its own address", async ({ page }) => {
   await expect(page.getByText("Best match").first()).toBeVisible();
 });
 
+test("the guided search asks on one card, sends its answers, and the turn shows its work", async ({ page }) => {
+  await page.goto("/en/find");
+  const card = page.getByRole("group", { name: "Guided search" });
+  // The composer's + docks the card in the composer's place (retried until React has hydrated).
+  await expect(async () => {
+    await page.getByRole("button", { name: "Guided search" }).last().click();
+    await expect(card).toBeVisible({ timeout: 3_000 });
+  }).toPass({ timeout: 45_000 });
+  const next = card.getByRole("button", { name: "Next", exact: true });
+
+  await expect(card.getByText("1 of 3")).toBeVisible();
+  await expect(next).toBeDisabled(); // nothing picked yet
+  await card.getByRole("radio", { name: /Kicukiro/ }).click();
+  await expect(card.getByRole("radio", { name: /Kicukiro/ })).toHaveAttribute("aria-checked", "true");
+  await next.click();
+
+  await expect(card.getByText("2 of 3")).toBeVisible();
+  await card.getByRole("button", { name: "Other" }).click();
+  await card.getByRole("textbox", { name: "Other" }).fill("2 bedrooms");
+  await next.click();
+
+  await expect(card.getByText("3 of 3")).toBeVisible();
+  const show = card.getByRole("button", { name: "Show homes" });
+  await expect(show).toBeDisabled();
+  await card.getByRole("radio", { name: /Up to RWF 500,000/ }).click();
+  await show.click();
+
+  // The tenant's turn is the card again: each question with its answer.
+  await expect(page.getByText("Where in Kigali?")).toBeVisible();
+  await expect(page.getByText("2 bedrooms", { exact: true }).first()).toBeVisible();
+  await expect(page).toHaveURL(/[?&]c=/, { timeout: 45_000 });
+  // The turn's steps fold into one row that opens the trace.
+  const row = page.getByRole("button", { name: /^Read your message/ });
+  await expect(row).toBeVisible({ timeout: 45_000 });
+  await row.click();
+  await expect(page.getByText(/^Searched \d+ candidate homes/)).toBeVisible();
+});
+
 test("☰ lists the chat; New chat empties; the chat reopens with its transcript", async ({ page }) => {
   await search(page);
   const url = page.url();

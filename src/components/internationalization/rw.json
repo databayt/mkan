@@ -5398,14 +5398,6 @@
       "activity": "Ibikorwa biri kuba",
       "results": "Ibisubizo",
       "empty": "Buri ntambwe umukozi atera izagaragara hano.",
-      "steps": {
-        "understand": "Gusobanukirwa ibyo ukeneye",
-        "search": "Gushakisha amazu ya Mkan",
-        "group": "Guhuza amatangazo asa",
-        "rank": "Gutondeka amazu akubereye",
-        "confirm": "Kwemeza ko ihari ku bakomisiyoneri",
-        "present": "Kwerekana urutonde rugufi"
-      },
       "events": {
         "requirements_extracted": "Ibyo ukeneye byasomwe",
         "asked": "Dutegereje igisubizo cyawe",
@@ -5707,26 +5699,29 @@
       "work": "Akazi"
     },
     "wizard": {
-      "stepOf": "{n} / {total}",
-      "back": "Subira inyuma",
-      "next": "Komeza",
       "finish": "Erekana amazu",
-      "orType": "Cyangwa wandike icyo ukeneye hepfo.",
       "q": {
         "stay": "Uyikeneye igihe kingana iki?",
         "where": "Ni hehe i Kigali?",
         "home": "Ni iyihe nzu?",
         "budget": "Ingengo y'imari yawe ni angahe?"
       },
-      "rows": {
-        "zone": "Akarere",
-        "neighbourhood": "Agace",
-        "near": "Hafi ya",
-        "bedrooms": "Ibyumba byo kuraramo",
-        "bathrooms": "Ubwiherero",
-        "furnishing": "Ibikoresho",
-        "home": "Ubwoko bw'inzu",
-        "purpose": "Impamvu"
+      "options": {
+        "where": {
+          "gasabo": {
+            "hint": "Kimihurura, Kacyiru, Remera, Kimironko, Nyarutarama"
+          },
+          "kicukiro": {
+            "hint": "Niboye, Gikondo, Kagarama, Kanombe, Kicukiro rwagati"
+          },
+          "nyarugenge": {
+            "hint": "Mu mujyi rwagati, Kiyovu, Nyamirambo"
+          },
+          "anywhere": {
+            "label": "Ahantu hose i Kigali",
+            "hint": "Shakisha mu turere twose"
+          }
+        }
       }
     },
     "question": {
@@ -5737,40 +5732,7 @@
       "upToMonth": "Kugeza kuri {price} ku kwezi",
       "upToNight": "Kugeza kuri {price} ku ijoro",
       "moveIn": "Hafi {total} kwimukira: amezi 3, ingwate n'amafaranga y'serivisi",
-      "stayTotal": "Hafi {total} ku majoro {nights}, harimo amafaranga ya serivisi",
-      "other": "Andika ikindi"
-    },
-    "trace": {
-      "todos": "Urutonde rw'imirimo",
-      "tools": {
-        "requirements_extracted": "Gusobanukirwa",
-        "asked": "Kubaza",
-        "search_done": "Gushakisha",
-        "dedup_grouped": "Guhuza",
-        "filtered": "Kuyungurura",
-        "ranked": "Gutondeka",
-        "needs_confirmation": "Kugenzura",
-        "broker_contact_started": "Ubutumwa",
-        "broker_replied": "Igisubizo",
-        "viewing_proposed": "Gusura",
-        "viewing_confirmed": "Gusura",
-        "shortlist_ready": "Urutonde",
-        "failed": "Ikosa",
-        "outcome_recorded": "Ibyavuyemo",
-        "relaxed": "Agura",
-        "memory_used": "Ububiko",
-        "memory_updated": "Ububiko",
-        "reply_written": "Kwandika",
-        "availability_asked": "Ubutumwa"
-      },
-      "verbs": {
-        "understand": "Ndasoma icyifuzo cyawe…",
-        "search": "Ndashakisha amazu…",
-        "group": "Ndahuza amatangazo asa…",
-        "rank": "Ndatondeka…",
-        "confirm": "Ndabaza abakomisiyoneri…",
-        "present": "Ndandika urutonde…"
-      }
+      "stayTotal": "Hafi {total} ku majoro {nights}, harimo amafaranga ya serivisi"
     },
     "relaxed": {
       "lead": "Nta nzu yujuje ibyo byose, nuko naguye ishakisha: {changes}.",
@@ -5957,13 +5919,6 @@
     "clarify": {
       "reply": "Ibibazo bike byihuse, kugira ngo nshake inzu zikwiye.",
       "label": "Ibibazo",
-      "tabs": {
-        "stay": "Igihe",
-        "homeType": "Inzu",
-        "furnished": "Ibikoresho",
-        "purpose": "Impamvu",
-        "submit": "Ohereza"
-      },
       "q": {
         "stay": "Ukeneye inzu igihe kingana iki?",
         "homeType": "Ukeneye inzu imeze ite?",
@@ -6023,15 +5978,7 @@
             "hint": "Hafi y'ibiro bya Kimihurura, Kacyiru n'umujyi rwagati."
           }
         }
-      },
-      "recommended": "(Byatoranyijwe)",
-      "other": "Andika ikindi…",
-      "review": "Reba ibisubizo byawe",
-      "skipped": "Nta gisubizo — icyo ari cyo cyose",
-      "submit": "Ohereza",
-      "submitHint": "Kanda Enter ushakishe",
-      "prev": "Ikibazo kibanza",
-      "next": "Ikibazo gikurikira"
+      }
     },
     "shared": {
       "title": "Inzu zo mu biganiro byawe kuri WhatsApp",
@@ -6039,6 +5986,58 @@
       "empty": "Nta nzu iri muri ibi biganiro ubu. Bwira Mkan kuri WhatsApp icyo ushaka.",
       "continue": "Komeza kuri WhatsApp",
       "newSearch": "Shakisha bundi bushya"
+    },
+    "activity": {
+      "words": [
+        "Ndatekereza…",
+        "Ndabitekerezaho…",
+        "Ndapima…",
+        "Ndabisesengura…",
+        "Ndatekereza ku nzu yawe…",
+        "Ndabyitondera…",
+        "Ndahuza ibitekerezo…",
+        "Ndabisuzuma…"
+      ],
+      "working": "Ndakora",
+      "secs": "{s}s",
+      "brokersRunning": "ibibazo {count} ku bakomisiyoneri birakomeje",
+      "done": {
+        "read": "Nasomye ubutumwa bwawe",
+        "memory": "nakoresheje ibyo wambwiye mbere",
+        "search": "nashakishije mu mazu {count}",
+        "group": "nahurije hamwe amatangazo {count} asa",
+        "widen": "naguye ibisabwa {count}",
+        "rank": "natondetse {count}",
+        "none": "nta nzu ihuye nabyo kugeza ubu",
+        "asked": "nabajije ibibazo {count}",
+        "write": "nanditse igisubizo",
+        "brokers": "nabajije abakomisiyoneri {count}",
+        "replied": "abakomisiyoneri {count} basubije",
+        "viewing": "nohereje igihe cyo gusura",
+        "failed": "habaye ikosa"
+      },
+      "live": {
+        "read": "Ndasoma ubutumwa bwawe",
+        "search": "Ndashakisha amazu",
+        "widen": "Ndagura ishakisha",
+        "write": "Ndandika igisubizo"
+      },
+      "understood": "Nasobanukiwe",
+      "badge": "amazu {kept} ari ku rutonde, {ruledOut} yakuweho",
+      "waiting": "Nabajije abakomisiyoneri ku mazu {count} — ibisubizo byabo bizagaragara hano",
+      "questions": "Ibibazo {count}"
+    },
+    "questionCard": {
+      "label": "Ibibazo",
+      "of": "{n} kuri {total}",
+      "prev": "Ikibazo kibanza",
+      "nextQuestion": "Ikibazo gikurikira",
+      "next": "Komeza",
+      "submit": "Ohereza",
+      "close": "Funga",
+      "other": "Ikindi",
+      "otherPlaceholder": "Andika igisubizo cyawe…",
+      "recommended": "(Byatoranyijwe)"
     }
   },
   "monetize": {

@@ -66,12 +66,23 @@ export interface AgentEventView {
   at: string;
 }
 
+/**
+ * One answer from the question card: `q` the question (questions.ts `QUESTION_IDS`), `a` the picked
+ * option's key, or `text` typed under "Other". Labels come from the dictionary when drawn.
+ */
+export interface QuestionAnswer {
+  q: string;
+  a?: string;
+  text?: string;
+}
+
 export type AgentMessage =
   /** `filters` are the badges the tenant picked; they win over the text. `clear` empties fields (a refine chip). */
   /** `wa`: the WhatsApp message id it came in as — a retried webhook or the fallback poll is answered once. */
   /** `pin`: the home a ref named ("K5808" from a TikTok post) — it leads the shortlist when it still fits. */
   /** `origin`: the web chat a WhatsApp chat was started from (`ref:`) — a broker's answer is marked there too. */
-  | { role: "user"; text: string; at: string; filters?: Record<string, unknown>; clear?: string[]; wa?: string; pin?: number; origin?: string }
+  /** `answers`: the question card it was sent from (question-card.tsx) — the turn is drawn as its answered card. */
+  | { role: "user"; text: string; at: string; filters?: Record<string, unknown>; clear?: string[]; wa?: string; pin?: number; origin?: string; answers?: QuestionAnswer[] }
   | { role: "agent"; kind: "ask"; field: HardField; at: string }
   /**
    * A vague first message missing several things at once: one stepper card asks

@@ -135,6 +135,121 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Rental agent (src/components/agent) — its work, questions and bubbles in the
+   Claude iOS app's look (2026-11-07). Colours sampled pixel-exact from the
+   app's screenshots (kun/.claude/handoff/reverse/claude-ios-chat/TEARDOWN.md);
+   the bubble is a 5% tint of the text colour, as claude.ai's own tokens are. */
+:root {
+  --agent-orange: #cc7c5e;
+  --agent-link: #284e90;
+  --agent-add: #4c9c49;
+  --agent-add-bg: #d2e7d3;
+  --agent-del: #bd3456;
+  --agent-del-bg: #ebcfd7;
+  --agent-card: #f9f9f7;
+  --agent-chip: #f0f0ee;
+  --agent-line: rgb(11 11 11 / 0.08);
+  --agent-ink: #131313;
+  --agent-ink-strong: #0b0b0b;
+  --agent-ink-2: #52514e;
+  --agent-ink-3: #7b7975;
+  --agent-ink-off: #c7c6c4;
+  --agent-btn: #131313;
+  --agent-btn-ink: #ffffff;
+  --agent-btn-off: #4d4d4c;
+  --agent-btn-off-ink: #bcbcba;
+  --agent-bubble: rgb(11 11 11 / 0.05);
+  --agent-bubble-ink: rgb(0 0 0 / 0.9);
+}
+
+.dark {
+  --agent-orange: #d97757;
+  --agent-link: #8fb0ef;
+  --agent-add: #7cc47a;
+  --agent-add-bg: rgb(76 156 73 / 0.22);
+  --agent-del: #f08aa5;
+  --agent-del-bg: rgb(189 52 86 / 0.26);
+  --agent-card: #232322;
+  --agent-chip: #343432;
+  --agent-line: rgb(255 255 255 / 0.1);
+  --agent-ink: #f2f2f0;
+  --agent-ink-strong: #fafaf8;
+  --agent-ink-2: #b4b3ae;
+  --agent-ink-3: #8f8e89;
+  --agent-ink-off: #55544f;
+  --agent-btn: #f2f2f0;
+  --agent-btn-ink: #131313;
+  --agent-btn-off: #3a3a38;
+  --agent-btn-off-ink: #7b7975;
+  --agent-bubble: rgb(255 255 255 / 0.05);
+  --agent-bubble-ink: rgb(255 255 255 / 0.93);
+}
+
+@theme inline {
+  --color-agent-orange: var(--agent-orange);
+  --color-agent-link: var(--agent-link);
+  --color-agent-add: var(--agent-add);
+  --color-agent-add-bg: var(--agent-add-bg);
+  --color-agent-del: var(--agent-del);
+  --color-agent-del-bg: var(--agent-del-bg);
+  --color-agent-card: var(--agent-card);
+  --color-agent-chip: var(--agent-chip);
+  --color-agent-line: var(--agent-line);
+  --color-agent-ink: var(--agent-ink);
+  --color-agent-ink-strong: var(--agent-ink-strong);
+  --color-agent-ink-2: var(--agent-ink-2);
+  --color-agent-ink-3: var(--agent-ink-3);
+  --color-agent-ink-off: var(--agent-ink-off);
+  --color-agent-btn: var(--agent-btn);
+  --color-agent-btn-ink: var(--agent-btn-ink);
+  --color-agent-btn-off: var(--agent-btn-off);
+  --color-agent-btn-off-ink: var(--agent-btn-off-ink);
+  --color-agent-bubble: var(--agent-bubble);
+  --color-agent-bubble-ink: var(--agent-bubble-ink);
+}
+
+/* The agent's thinking mark: three dots that tumble row → triangle → row →
+   inverted triangle, in the text's colour (activity.tsx <Dots>). Sized in em,
+   so it follows the line it sits on; reduced motion leaves the row still. */
+@keyframes agent-dot-a {
+  0%, 50%, 100% { translate: 0.02em 0.38em; }
+  25% { translate: 0.12em 0.66em; }
+  75% { translate: 0.12em 0.1em; }
+}
+@keyframes agent-dot-b {
+  0%, 50%, 100% { translate: 0.38em 0.38em; }
+  25% { translate: 0.38em 0.1em; }
+  75% { translate: 0.64em 0.1em; }
+}
+@keyframes agent-dot-c {
+  0%, 50%, 100% { translate: 0.74em 0.38em; }
+  25% { translate: 0.64em 0.66em; }
+  75% { translate: 0.38em 0.66em; }
+}
+.agent-dots {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+}
+.agent-dots > i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0.24em;
+  height: 0.24em;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.agent-dots > i:nth-child(1) { translate: 0.02em 0.38em; animation-name: agent-dot-a; }
+.agent-dots > i:nth-child(2) { translate: 0.38em 0.38em; animation-name: agent-dot-b; }
+.agent-dots > i:nth-child(3) { translate: 0.74em 0.38em; animation-name: agent-dot-c; }
+@media (prefers-reduced-motion: reduce) {
+  .agent-dots > i { animation: none; }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -11,7 +11,8 @@ import { startTurn } from "./run";
 import { CLEARABLE, coerceRequirements, type Requirements } from "./requirements";
 import { appendUserMessage } from "./append";
 import { loadTask } from "./task-view";
-import type { AgentMessage, AgentTaskView } from "./types";
+import { coerceAnswers } from "./questions";
+import type { AgentMessage, AgentTaskView, QuestionAnswer } from "./types";
 
 const MAX_TEXT = 600;
 /** Per tenant, across every chat they have. A person types far fewer; a loop does not. */
@@ -50,6 +51,8 @@ export async function sendAgentMessage(input: {
   filters?: Partial<Requirements>;
   /** Fields a refine chip empties ("Anywhere in Kigali"). */
   clear?: string[];
+  /** The question card's answers, kept on the message so the tenant's turn is drawn as that card. */
+  answers?: QuestionAnswer[];
 }): Promise<SendResult> {
   const text = input.text.trim().slice(0, MAX_TEXT);
   if (!text) return { ok: false, error: "empty" };
@@ -89,12 +92,14 @@ export async function sendAgentMessage(input: {
 
   const filters = coerceRequirements(input.filters);
   const clear = (input.clear ?? []).filter((k) => (CLEARABLE as readonly string[]).includes(k));
+  const answers = coerceAnswers(input.answers);
   const userMsg: AgentMessage = {
     role: "user",
     text,
     at: new Date().toISOString(),
     ...(Object.keys(filters).length ? { filters: filters as Record<string, unknown> } : {}),
     ...(clear.length ? { clear } : {}),
+    ...(answers.length ? { answers } : {}),
   };
 
   const appended = await appendUserMessage({ profileId, userId: viewer.profile.userId, current, message: userMsg, lang, refSource: "web" });

@@ -7,19 +7,52 @@ import { useDictionary } from "@/components/internationalization/use-dictionary"
 import { cn } from "@/lib/utils";
 import { noteAgentFeedback } from "./actions";
 
-/** The user's turn: a grey bubble at the end side, as in ChatGPT on iOS. */
+/**
+ * The user's turn as Claude draws it (2026-11-07): a rounded bubble at the end
+ * side, a 5% tint of the text colour, up to 85% of the column — claude.ai's own
+ * tokens (12 px radius, 12/16 px padding at 14 px), scaled to the chat's 17 px.
+ */
 export const UserTurn = memo(function UserTurn({ text, compact = false }: { text: string; compact?: boolean }) {
   return (
     <li className="flex justify-end">
       <p
         dir="auto"
         className={cn(
-          "max-w-[80%] whitespace-pre-wrap break-words bg-muted text-foreground",
-          compact ? "rounded-[20px] px-3.5 py-2 text-[15px]" : "rounded-[26px] px-[18px] py-3 text-[17px] leading-[1.45] md:text-base",
+          "max-w-[85%] whitespace-pre-wrap break-words bg-agent-bubble text-agent-bubble-ink",
+          compact ? "rounded-xl px-3 py-2 text-[15px] leading-[1.4]" : "rounded-2xl px-4 py-3 text-[17px] leading-[1.45] md:text-base",
         )}
       >
         {text}
       </p>
+    </li>
+  );
+});
+
+/**
+ * The user's turn when it was sent from the question card: the card again,
+ * each question in grey with the picked answer under it — the way Claude shows
+ * a submitted set of questions. Full width, like the card it came from.
+ */
+export const AnsweredTurn = memo(function AnsweredTurn({ items, compact = false }: { items: { question: string; answer: string }[]; compact?: boolean }) {
+  return (
+    <li>
+      <dl
+        className={cn(
+          "border border-agent-line bg-agent-card",
+          compact ? "space-y-2 rounded-[18px] px-4 py-3 text-[14px] leading-5" : "space-y-3 rounded-[22px] px-5 py-4 text-[17px] leading-[1.45] md:text-base",
+        )}
+      >
+        {items.map((item) => (
+          <div key={item.question}>
+            <dt dir="auto" className="text-agent-ink-3">
+              {item.question}
+            </dt>
+            <dd dir="auto" className="text-agent-ink-strong">
+              {item.answer}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </li>
   );
 });

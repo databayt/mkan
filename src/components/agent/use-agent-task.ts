@@ -10,7 +10,7 @@ import { requirementChips } from "./chips";
 import { fill } from "./format";
 import type { Requirements } from "./requirements";
 import type { Relaxed } from "./relax";
-import type { AgentMessage, AgentTaskView } from "./types";
+import type { AgentMessage, AgentTaskView, QuestionAnswer } from "./types";
 
 const POLL_MS = 800;
 /** A turn is 2–3 s; past that, a slow one is checked less often. */
@@ -233,7 +233,7 @@ export function useAgentTask(
    * refused send (rate, busy) takes the message back and says why.
    */
   const send = useCallback(
-    (message: string, fresh = false, filters?: Partial<Requirements>, clear?: string[]) =>
+    (message: string, fresh = false, filters?: Partial<Requirements>, clear?: string[], answers?: QuestionAnswer[]) =>
       new Promise<boolean>((resolve) => {
         const value = message.trim();
         if (!value) return resolve(false);
@@ -245,11 +245,12 @@ export function useAgentTask(
           at: new Date().toISOString(),
           ...(filters && Object.keys(filters).length ? { filters: filters as Record<string, unknown> } : {}),
           ...(clear?.length ? { clear } : {}),
+          ...(answers?.length ? { answers } : {}),
         };
         setTask(withSent(before, sent, locale, fresh));
         resolve(true);
         startTransition(async () => {
-          const res = await sendAgentMessage({ text: value, lang: locale, taskId: fresh ? undefined : before?.id || undefined, fresh, filters, clear }).catch(
+          const res = await sendAgentMessage({ text: value, lang: locale, taskId: fresh ? undefined : before?.id || undefined, fresh, filters, clear, answers }).catch(
             () => ({ ok: false, error: "failed" }) as const,
           );
           if (!res.ok) {
@@ -356,7 +357,7 @@ export function useAgentTask(
   const regenerate = useCallback(() => {
     const last = task?.messages.findLast((m) => m.role === "user");
     if (!last || last.role !== "user") return Promise.resolve(false);
-    return send(last.text, false, last.filters as Partial<Requirements> | undefined, last.clear);
+    return send(last.text, false, last.filters as Partial<Requirements> | undefined, last.clear, last.answers);
   }, [task?.messages, send]);
 
   const lastAgent = [...(task?.messages ?? [])].reverse().find((m) => m.role === "agent");

@@ -6,7 +6,8 @@ import { ArrowDown, Loader2, MessageCircle, MoreHorizontal, SlidersHorizontal, S
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { cn } from "@/lib/utils";
-import { usePicksLabel, Wizard, type Picks } from "./wizard";
+import { Wizard, type Picks } from "./wizard";
+import { ActivityRows, QuestionsRow, StatusLine, WaitingRow } from "./activity";
 import { deleteAgentChat } from "./actions";
 import { AskCard } from "./ask-card";
 import { ClarifyCard } from "./clarify-card";
@@ -16,11 +17,12 @@ import { noteHomeFeedback } from "./feedback-actions";
 import { roundPrice } from "./fields";
 import { ChatHeader, headerButton, MenuGlyph } from "./header";
 import { Refine, Retry, ShowMonthly, ToWhatsApp } from "./refine";
+import { focusComposer, useQuestionContext } from "./question-card";
+import { describeAnswers } from "./questions";
 import { ShortlistCard, type NotForMe } from "./shortlist-card";
-import { Steps } from "./steps";
 import { Suggestions } from "./suggestions";
-import { AgentTurn, PastAgentTurn, Prose, TurnActions, UserTurn } from "./turn";
-import { handsToWhatsApp, homesTurn, type AgentTaskView } from "./types";
+import { AgentTurn, AnsweredTurn, PastAgentTurn, Prose, TurnActions, UserTurn } from "./turn";
+import { handsToWhatsApp, homesTurn, type AgentTaskView, type QuestionAnswer } from "./types";
 import { useAgentTask } from "./use-agent-task";
 import { continueOnWhatsApp } from "./wa-link";
 import { useStickToBottom } from "./use-stick-to-bottom";
@@ -30,11 +32,13 @@ import { Welcome } from "./welcome";
 const ChatsSheet = dynamic(() => import("./chats-sheet").then((m) => m.ChatsSheet), { ssr: false });
 
 /**
- * /find — the rental agent laid out like ChatGPT on iOS: a slim bar with the
- * name in the middle, the greeting alone mid-screen when empty with starter
- * cards above a pill composer pinned to the bottom, then a single column of
- * grey user bubbles and plain agent text. Homes render inline as a swipeable
- * card row; the agent's work folds into one line on its turn.
+ * /find — the rental agent in ChatGPT's iOS shell (a slim bar, the greeting
+ * mid-screen with starter cards above a pill composer pinned to the bottom) with
+ * the Claude iOS app's way of showing its work (2026-11-07): Claude's user
+ * bubbles and plain agent text, the finished steps of a turn folded into one row
+ * with the step running now beside it, an orange line while it works, and its
+ * questions on one card docked in the composer's place. Homes render inline as a
+ * swipeable card row.
  */
 export function AgentContent({ initialTask }: { initialTask: AgentTaskView | null }) {
   const dict = useDictionary();
@@ -42,13 +46,13 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
   const c = a?.chat;
   const { task, running, pending, notice, lostText, send, refresh, reset, open, opening, regenerate, reply, chips } = useAgentTask(initialTask, { syncUrl: true });
   const [sheet, setSheet] = useState<"closed" | "open" | "never">("never");
-  const [picks, setPicks] = useState<Picks>({});
   const [guided, setGuided] = useState(false);
   const [returning, setReturning] = useState(false);
   /** Answers picked on a clarify card: a message typed instead goes out with them. */
   const [draft, setDraft] = useState<Picks>({});
-  const picksLabel = usePicksLabel();
-  const picked = Object.keys(picks).length > 0;
+  /** The clarify card closed with × (its message's time): a row in the chat opens it again. */
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  const questionContext = useQuestionContext();
 
   const messages = task?.messages ?? [];
   const growth = `${messages.length}.${task?.shortlist.length ?? 0}.${running}`;
@@ -56,8 +60,8 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
 
   // Sending always brings the conversation back to its end, as ChatGPT does.
   const say = useCallback(
-    async (text: string, fresh = false, filters?: Picks, clear?: string[]) => {
-      const ok = await send(text, fresh, filters, clear);
+    async (text: string, fresh = false, filters?: Picks, clear?: string[], answers?: QuestionAnswer[]) => {
+      const ok = await send(text, fresh, filters, clear, answers);
       if (ok) {
         setDraft({});
         requestAnimationFrame(() => scrollToBottom());
@@ -66,18 +70,19 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
     },
     [send, scrollToBottom],
   );
-  // The guided search and a composer under it start a new search with the picks.
-  const search = async (text: string) => {
-    const ok = await say(text.trim() || picksLabel(picks) || "…", true, picks);
-    if (ok) {
-      setPicks({});
-      setGuided(false);
-    }
+  // The guided search's "Show homes" starts a new search with exactly what was picked.
+  const search = async (text: string, filters?: Picks, answers?: QuestionAnswer[]) => {
+    const ok = await say(text, true, filters, undefined, answers);
+    if (ok) setGuided(false);
     return ok;
+  };
+  // A question card closed with ×: the composer is back, ready to type.
+  const closeCard = (close: () => void) => {
+    close();
+    requestAnimationFrame(focusComposer);
   };
   const newChat = () => {
     reset();
-    setPicks({});
     setGuided(false);
     setSheet((v) => (v === "never" ? v : "closed"));
   };
@@ -129,6 +134,10 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
   const homesMessage = messages[homesIndex];
   // While a turn runs, its steps sit on a pending agent turn after the user's message.
   const pendingTurn = running && messages.at(-1)?.role === "user";
+  // The question card docks in the composer's place: the guided search, or the agent's clarify until closed.
+  const lastAgent = messages[lastAgentIndex];
+  const clarify = !running && lastAgentIndex === messages.length - 1 && lastAgent?.role === "agent" && lastAgent.kind === "clarify" ? lastAgent : null;
+  const dock: "guided" | "clarify" | null = guided ? "guided" : clarify && dismissed !== clarify.at ? "clarify" : null;
 
   return (
     <div className="flex h-dvh flex-col overflow-x-clip bg-background">
@@ -172,6 +181,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
         }
       />
 
+      <div className="relative flex min-h-0 flex-1 flex-col">
       <div
         ref={scrollRef}
         onScroll={onScroll}
@@ -182,34 +192,33 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
           <Loader2 className="mx-auto mt-[30vh] size-5 animate-spin text-muted-foreground" aria-hidden />
         ) : !task ? (
           <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col items-center justify-center px-4 py-6">
-            {guided ? (
-              <Wizard picks={picks} onChange={setPicks} onFinish={() => void search("")} disabled={pending} />
-            ) : (
-              <>
-                <Welcome onContinue={(text, filters) => void say(text, true, filters)} onReady={setReturning} disabled={pending} />
-                {!returning && (
-                  <h1 className="text-balance text-center text-[26px] font-semibold leading-tight tracking-tight sm:text-3xl">
-                    {a?.greeting ?? "Where do you want to live in Kigali?"}
-                  </h1>
-                )}
-              </>
+            <Welcome onContinue={(text, filters) => void say(text, true, filters)} onReady={setReturning} disabled={pending} />
+            {!returning && (
+              <h1 className="text-balance text-center text-[26px] font-semibold leading-tight tracking-tight sm:text-3xl">
+                {a?.greeting ?? "Where do you want to live in Kigali?"}
+              </h1>
             )}
           </div>
         ) : (
           <ol className="mx-auto w-full max-w-3xl list-none space-y-7 px-4 pb-6 pt-4">
             {messages.map((m, i) => {
-              if (m.role === "user") return <UserTurn key={`${i}.${m.at}`} text={m.text} />;
+              if (m.role === "user") {
+                // Sent from the question card: drawn as that card, its questions and the answers.
+                const answered = m.answers?.length ? describeAnswers(m.answers, questionContext) : [];
+                return answered.length ? <AnsweredTurn key={`${i}.${m.at}`} items={answered} /> : <UserTurn key={`${i}.${m.at}`} text={m.text} />;
+              }
               const latest = i === lastAgentIndex && !pendingTurn;
               const homes = i === homesIndex && m.kind === "shortlist" && task.shortlist.length > 0;
               if (!latest && !homes) return <PastAgentTurn key={`${i}.${m.at}`} text={reply(m)} />;
               return (
-                <AgentTurn key={`${i}.${m.at}`} steps={latest ? <Steps task={task} /> : undefined}>
+                <AgentTurn key={`${i}.${m.at}`} steps={latest ? <ActivityRows task={task} chips={chips} /> : undefined}>
                   {m.kind === "ask" && !running ? (
                     <AskCard field={m.field} requirements={task.requirements} onPick={(text, filters) => void say(text, false, filters)} disabled={pending} />
                   ) : m.kind === "clarify" && !running ? (
                     <>
                       <Prose text={reply(m)} />
-                      <ClarifyCard key={m.at} fields={m.fields} onSubmit={(text, filters) => void say(text, false, filters)} onDraft={setDraft} disabled={pending} />
+                      {/* The card docks below; closed with ×, one row here opens it again. */}
+                      {!dock && <QuestionsRow count={m.fields.length} onOpen={() => setDismissed(null)} disabled={pending} />}
                     </>
                   ) : latest && m.kind === "shortlist" && m.pendingText && !m.text && running ? (
                     // Claude is writing the reply; the cards are already up below.
@@ -264,20 +273,26 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
                         <DemandCard taskId={task.id} optedIn={task.demand.optedIn} onDone={refresh} />
                       )}
 
+                      {task.status === "WAITING" && <WaitingRow count={task.shortlist.filter((s) => s.availability === "asked").length} />}
+
                       <TurnActions text={reply(m)} onRegenerate={() => void regenerate().then((ok) => ok && scrollToBottom())} disabled={pending} taskId={task.id} at={m.at} />
                     </>
                   )}
+                  {/* The cards are up and the turn runs on (the writer, broker asks): the orange line stays. */}
+                  {latest && running && <StatusLine task={task} />}
                 </AgentTurn>
               );
             })}
-            {pendingTurn && <AgentTurn steps={<Steps task={task} />} />}
-            {task && guided && (
-              <li>
-                <Wizard picks={picks} onChange={setPicks} onFinish={() => void search("")} disabled={pending} />
-              </li>
+            {pendingTurn && (
+              <AgentTurn steps={<ActivityRows task={task} chips={chips} />}>
+                <StatusLine task={task} />
+              </AgentTurn>
             )}
           </ol>
         )}
+      </div>
+        {/* A docked question veils the chat, as Claude's card does; the chat still scrolls under it. */}
+        {dock && <div aria-hidden className="pointer-events-none absolute inset-0 bg-background/75 animate-in fade-in duration-300 motion-reduce:animate-none" />}
       </div>
 
       <div className="relative mx-auto w-full max-w-3xl px-3 pb-[max(env(safe-area-inset-bottom),10px)] sm:px-4">
@@ -291,27 +306,44 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
             <ArrowDown className="size-5" aria-hidden />
           </button>
         )}
-        {!task && !guided && (
-          <div className="pb-5">
-            <Suggestions onPick={(text) => void say(text, true)} onGuided={() => setGuided(true)} disabled={pending} />
-          </div>
-        )}
         {notice && <p className="mb-2 text-center text-sm text-muted-foreground">{notice}</p>}
-        <Composer
-          onSend={guided || !task ? search : (t) => say(t, false, Object.keys(draft).length ? draft : undefined)}
-          onPlus={() => setGuided((g) => !g)}
-          plusActive={guided}
-          disabled={pending || running}
-          busy={running}
-          canSendEmpty={guided && picked}
-          autoFocus={!task}
-          restore={lostText}
-        />
-        {/* ChatGPT's conversation has no footer line; the safety note shows before the first message. */}
-        {!task ? (
-          <p className="mt-2 text-center text-[11px] text-muted-foreground">{a?.disclaimer ?? "Mkan checks with brokers, but always see a home before you pay."}</p>
+        {dock === "guided" ? (
+          <div className="pb-2">
+            <Wizard onSubmit={(text, filters, answers) => void search(text, filters, answers)} onClose={() => closeCard(() => setGuided(false))} disabled={pending} />
+          </div>
+        ) : dock === "clarify" && clarify ? (
+          <div className="pb-2">
+            <ClarifyCard
+              key={clarify.at}
+              fields={clarify.fields}
+              onSubmit={(text, filters, answers) => void say(text, false, filters, undefined, answers)}
+              onDraft={setDraft}
+              onClose={() => closeCard(() => setDismissed(clarify.at))}
+              disabled={pending}
+            />
+          </div>
         ) : (
-          <div className="h-2" aria-hidden />
+          <>
+            {!task && (
+              <div className="pb-5">
+                <Suggestions onPick={(text) => void say(text, true)} onGuided={() => setGuided(true)} disabled={pending} />
+              </div>
+            )}
+            <Composer
+              onSend={!task ? (t) => say(t, true) : (t) => say(t, false, Object.keys(draft).length ? draft : undefined)}
+              onPlus={() => setGuided(true)}
+              disabled={pending || running}
+              busy={running}
+              autoFocus={!task}
+              restore={lostText}
+            />
+            {/* ChatGPT's conversation has no footer line; the safety note shows before the first message. */}
+            {!task ? (
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">{a?.disclaimer ?? "Mkan checks with brokers, but always see a home before you pay."}</p>
+            ) : (
+              <div className="h-2" aria-hidden />
+            )}
+          </>
         )}
       </div>
 
