@@ -21,11 +21,12 @@ export const DEFAULT_FIXED_RWF: Record<string, number> = {
   cloudflare: Math.round((1 + 29.24) * USD_TO_RWF),
   /**
    * The database (Neon, Launch plan): its compute never slept — 0.25 CU around the clock since 10-26,
-   * 6 CU-hours a day × $0.106 ≈ $19.4/month — plus ≈ $4.4 for branches over the free nine, measured
-   * 2026-11-07 (get_project_consumption). It was shown as free. Re-estimate once the event-driven
-   * outbox (mkan 2fe50b6) lets it sleep and the archived branches are gone.
+   * 6 CU-hours a day × $0.106 ≈ $19.4/month, measured 2026-11-07 (get_project_consumption). It was
+   * shown as free. Branches cost nothing since 11-07: the 9 archived ones were deleted, and the 3 restore
+   * points left are inside the plan's 9 free child branches (they cost ≈ $4.5/month before). Re-estimate
+   * once the event-driven outbox and the Mac's beats on the app's ticks show how long it now sleeps.
    */
-  neon: Math.round(24 * USD_TO_RWF),
+  neon: Math.round(19.4 * USD_TO_RWF),
   /** The WhatsApp number's SIM and data bundle: the one bill mkan adds on its own. */
   whatsappLine: 5000,
   /**
