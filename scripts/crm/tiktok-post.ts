@@ -67,6 +67,7 @@ import {
   pictureRect,
   type Rect,
   captionFor,
+  asksForFollow,
   FRESH_DAYS,
   type GrayFrame,
   H,
@@ -255,6 +256,11 @@ async function pick(): Promise<PostRow[]> {
   if (!picked.length && fixed === 0) console.log('  broker videos on hold (--n=0)');
   else if (!picked.length && queued.length) console.log(`  nothing to add — today's queue has ${queued.length}`);
   else if (!picked.length) console.log('  nothing to post today — the pool fills when brokers say YES (tt:ask) or owners send homes');
+  // Lever 4: alternate the follow ask by post number (homes the ledger already holds + index).
+  const posted = Object.keys(ledger).length;
+  picked.forEach((r, i) => {
+    r.askFollow = asksForFollow(posted + i);
+  });
   // One row per home attempt: the page counts featured → enhanced → posted from these.
   for (const r of picked) {
     const row = await ledgerRow('picked', (db) =>
@@ -266,7 +272,7 @@ async function pick(): Promise<PostRow[]> {
   mkdirSync(dayDir(), { recursive: true });
   if (picked.length || !queued.length) writeFileSync(join(dayDir(), 'queue.json'), JSON.stringify([...queued, ...picked], null, 2));
   const now = new Date().toISOString();
-  for (const r of picked) ledger[refOf(r)] = { ...(ledger[refOf(r)] ?? {}), listingId: r.id, district: r.district, queuedAt: now };
+  for (const r of picked) ledger[refOf(r)] = { ...(ledger[refOf(r)] ?? {}), listingId: r.id, district: r.district, queuedAt: now, askFollow: r.askFollow };
   saveLedger(ledger);
   return picked;
 }

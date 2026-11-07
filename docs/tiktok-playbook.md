@@ -86,7 +86,9 @@ at the end of this file and as the sprint lesson; keep the winner as the default
 
 One line each, newest first: date started · lever · the change · baseline · result (date judged) · kept or dropped.
 
-- (none yet: the first one starts with the first TikTok prompt of sprint S2)
+- 2026-11-07 · lever 4 (ask for the follow) · every even post number's caption adds "Follow for new Kigali homes every day" (English + Kinyarwanda) after the home code and WhatsApp lines; odd posts unchanged; tagged `askFollow` in the ledger and queue · baseline follow rate 0.31%, followersWeek 5.8 · judge after 10 posts per side, compare views, likes and follower gain · result: pending
+- 2026-11-06 · lever 6 (cadence) · posts spread ~5.5 h apart instead of one 07:00 burst · baseline viewsPerPost 139 · not due until 10 spread posts · result: pending
+  (note: lever 4 overlaps the cadence run; judge its two sides against each other, never against 139.)
 
 ## Sources (read 2026-11-07)
 

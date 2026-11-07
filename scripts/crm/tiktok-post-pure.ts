@@ -34,12 +34,16 @@ export interface PostRow {
   lostAt: string | null;
   /** Its TikTokPost row (set at pick; carried in queue.json to render and upload). */
   postId?: string;
+  /** Lever 4 experiment: this post's caption carries the follow ask (set at pick, by postNumber parity). */
+  askFollow?: boolean;
 }
 
 export interface LedgerEntry {
   listingId: number;
   district: string | null;
   queuedAt: string;
+  /** Whether the caption carried the follow ask (lever 4 experiment, from 2026-11-07). */
+  askFollow?: boolean;
   postedAt?: string;
   /** Its render was rejected (text it could not strip, the video gone): it rests like a posted home. */
   rejectedAt?: string;
@@ -370,8 +374,17 @@ export function factsLine(r: PostRow): string {
 
 const tag = (s: string): string => `#${s.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
+/**
+ * Lever 4 ("ask for the follow"), alternating: every even post number asks, every odd one does
+ * not. The post number is the count of homes the ledger already holds, plus the pick's index.
+ */
+export const asksForFollow = (postNumber: number): boolean => postNumber % 2 === 0;
+
+/** The follow ask, in the caption's two languages. It always comes after the home code and the WhatsApp line. */
+export const FOLLOW_ASK = '➕ Follow for new Kigali homes every day · Kurikira kugira ngo ubone amazu mashya yo gukodesha i Kigali buri munsi';
+
 /** The text pasted under the video: English, one Kinyarwanda line, the ask, hashtags. */
-export function captionFor(r: PostRow, whatsapp: string): string {
+export function captionFor(r: PostRow, whatsapp: string, askFollow = r.askFollow ?? false): string {
   const ref = refOf(r);
   const place = placeLine(r);
   const price = formatRwf(r.priceMonth ?? 0);
@@ -385,6 +398,7 @@ export function captionFor(r: PostRow, whatsapp: string): string {
     `📲 WhatsApp ${whatsapp} — send "${ref}"`,
     `🇷🇼 Inzu ikodeshwa${rooms} i ${place} — ${price} ku kwezi. Ohereza "${ref}" kuri WhatsApp.`,
     // The broker agreed to reposts with their name on them: credited here, never on screen.
+    ...(askFollow ? [FOLLOW_ASK] : []),
     ...(brokerHandle(r.hostSourceId) ? [`Video: @${brokerHandle(r.hostSourceId)}`] : []),
     '',
     [...new Set(tags)].join(' '),

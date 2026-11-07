@@ -28,6 +28,8 @@ import {
   type TextFrame,
   brokerAsk,
   captionFor,
+  asksForFollow,
+  FOLLOW_ASK,
   ineligibleReason,
   brokerVideoUrl,
   pickToday,
@@ -159,6 +161,23 @@ describe('caption', () => {
     const m = brokerAsk('Eric');
     expect(m).toContain('Hello Eric');
     expect(m).toContain('Muraho Eric');
+  });
+});
+
+describe('follow ask (lever 4)', () => {
+  it('alternates by post number', () => {
+    expect([0, 1, 2, 3].map(asksForFollow)).toEqual([true, false, true, false]);
+  });
+  it('adds the ask in both languages, after the code and WhatsApp lines', () => {
+    const c = captionFor(row({ id: 77, askFollow: true }), '+250 788 000 000');
+    expect(c).toContain('Follow for new Kigali homes every day');
+    expect(c).toContain('Kurikira');
+    expect(c.indexOf(FOLLOW_ASK)).toBeGreaterThan(c.indexOf('WhatsApp +250'));
+    expect(c.split('\n').indexOf(FOLLOW_ASK)).toBeGreaterThan(2);
+  });
+  it('leaves the caption as it was on the other side', () => {
+    expect(captionFor(row({ id: 77 }), '+250 788 000 000')).not.toMatch(/Follow for new/);
+    expect(captionFor(row({ id: 77, askFollow: false }), '+250 788 000 000')).not.toContain('Kurikira');
   });
 });
 
