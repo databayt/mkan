@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { ROADMAP, roadmapAhead, roadmapNext, roadmapWeek, roadTaskPrompt, rungsView } from "@/lib/monetize/roadmap";
+import { ROADMAP, roadmapAhead, roadmapNext, roadmapWeek, roadTaskPrompt, rungsView, STANDING_TASKS } from "@/lib/monetize/roadmap";
 import { mentionsGated, monthTitle, roadmapPlan, validatePlan, weekWindow } from "@/lib/monetize/sprint-auto";
 
 // The live metric keys (scripts/sprint/live.ts → readMetrics, read 2026-11-07): a task on any other key
 // could never be measured by the loop.
 const LIVE_KEYS =
-  "newHomes found read skipRate newBrokers brokersTotal brokersNewWeek videosClean videosFeatured videoRejectRate readyNew mastered backlog viewsPerPost postedDays7 likeRate followers engageRate postsListing contactsPerPost chatToPaid chats waChats webChats shortlistRate p50 brokerAnswerRate viewings paidDeals failRate people peopleToHomes peopleToViewing revenueMonthRwf breakEvenRwf netRwf costMonthRwf brokersAsked brokersAnswered brokersAvailable viewingsBooked shortlisted adChats paid7 signed7 viewings7 intros introsLeft score.doing score.brokers score.tenants score.chatbot".split(
+  "newHomes found read skipRate newBrokers brokersTotal brokersNewWeek videosClean videosFeatured videoRejectRate readyNew mastered backlog viewsPerPost postedDays7 likeRate followers engageRate postsListing contactsPerPost chatToPaid chats waChats webChats shortlistRate p50 brokerAnswerRate viewings paidDeals failRate people peopleToHomes peopleToViewing revenueMonthRwf breakEvenRwf netRwf costMonthRwf brokersAsked brokersAnswered brokersAvailable viewingsBooked shortlisted adChats paid7 signed7 viewings7 intros introsLeft score.doing score.brokers score.tenants score.chatbot score.tiktok followersWeek viewsWeek".split(
     " ",
   );
 const metrics = Object.fromEntries(LIVE_KEYS.map((k) => [k, 0]));
@@ -31,6 +31,13 @@ describe("the road to money", () => {
     }
   });
 
+  it("keeps a standing TikTok task that the loop can measure and never tells a run to post", () => {
+    for (const t of STANDING_TASKS) {
+      expect(LIVE_KEYS).toContain(t.metric);
+      expect(mentionsGated(roadTaskPrompt(t, ROADMAP[1]!))).toBe(false);
+    }
+  });
+
   it("finds this week's sprint and the ones after it", () => {
     const now = new Date("2026-11-10T09:00:00Z");
     expect(roadmapWeek(now)?.key).toBe("S2");
@@ -43,6 +50,9 @@ describe("the road to money", () => {
     const now = new Date("2026-11-10T09:00:00Z");
     const plan = roadmapPlan(now)!;
     expect(plan.title).toBe("First intros");
+    // TikTok is the main entity: every week carries its standing task.
+    expect(plan.tasks.some((t) => /TikTok/.test(t.title))).toBe(true);
+    expect(plan.prompts.some((p) => p.metric === "followersWeek" && /tiktok-playbook\.md/.test(p.text))).toBe(true);
     expect(plan.tasks.length).toBe(plan.prompts.length);
     const v = validatePlan({ sprints: [plan] }, metrics, now);
     expect(v.ok ? [] : v.errors).toEqual([]);

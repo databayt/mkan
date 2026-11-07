@@ -44,7 +44,7 @@ import {
   type PlanFile,
 } from '../src/lib/monetize/sprint-auto';
 import { isWebText } from '../src/lib/monetize/provenance';
-import { roadmapAhead, roadmapMonth, roadmapNext, roadmapWeek } from '../src/lib/monetize/roadmap';
+import { roadmapAhead, roadmapMonth, roadmapNext, roadmapWeek, STANDING_TASKS } from '../src/lib/monetize/roadmap';
 import { writeBeat } from './sprint/beat';
 import { liveMetrics } from './sprint/live';
 import { createSprint } from './sprint/plan-db';
@@ -220,7 +220,7 @@ async function plannerContext(db: Db, model: MonetizeOverview, metrics: Metrics,
   const intro = (model as { intro?: unknown }).intro ?? null;
   return {
     // The road to money: this week's entry is the plan's backbone; the next ones are pulled forward.
-    roadmap: { thisWeek: roadmapWeek(now), next: roadmapNext(now, 2), month: roadmapMonth(now), ahead: roadmapAhead(now) },
+    roadmap: { thisWeek: roadmapWeek(now), next: roadmapNext(now, 2), month: roadmapMonth(now), ahead: roadmapAhead(now), standing: STANDING_TASKS },
     scorecard: score
       ? {
           tiles: score.tiles.map((t) => ({ tile: t.key, percent: t.score, weakest: t.weakest })),
@@ -259,6 +259,9 @@ viewing → signed → paid. Aim the sprint at the funnel's weakest step first (
 and use the lessons: do not repeat what was flat or worse; build on what moved. context.scorecard is the page's own
 verdict — four percentages (doing = the road from a post to Mkan's share, brokers, tenants, chatbot) and the weakest
 part with what it means and how to fix it: one prompt works that part, measured on its "part.<key>" metric.
+TikTok is Mkan's main entity (Abdout, 2026-11-07): EVERY WEEK sprint keeps roadmap.standing's TikTok task and at
+least one prompt from docs/tiktok-playbook.md, aimed at the weakest part of the TikTok tile (followers, views,
+likes, interactions, follow rate, posts a day), as one change at a time written into the playbook's Experiments.
 
 Follow the road (context.roadmap): a WEEK sprint takes roadmap.thisWeek's title and goal and one task per
 roadmap task (same block and metric), with prompts adapted to today's numbers and lessons. A roadmap task with a
@@ -284,8 +287,10 @@ ${midSprint ? `
 MID-SPRINT TOP-UP. The current sprint is already running and has no runnable prompt left: everything open waits on
 Abdout. Do NOT re-plan it. Return one WEEK sprint in the same JSON shape whose prompts are 1–3 NEW runnable prompts
 (no "unblockWhen") an unattended session can finish today, each on a metric no open prompt below already targets,
-with the tasks they belong to. Pull them forward from context.roadmap.next (the next sprints' tasks) before
-inventing new work. Open and recent prompts (do not repeat them):
+with the tasks they belong to. When no open prompt targets a TikTok number (followersWeek, viewsWeek, viewsPerPost,
+likeRate, engageRate, postedDays7 or a part.<key> of the TikTok tile), one of them is the next TikTok experiment from
+docs/tiktok-playbook.md. Then pull from context.roadmap.next (the next sprints' tasks) before inventing new work.
+Open and recent prompts (do not repeat them):
 ${midSprint}
 ` : ''}
 JSON shape (nothing else in the file):

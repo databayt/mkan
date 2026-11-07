@@ -102,10 +102,8 @@ describe("scorecard", () => {
 });
 
 describe("the chain and the averages", () => {
-  it("multiplies the road's hand-offs, keeps followers aside, and averages the other tiles", () => {
+  it("multiplies the road's hand-offs, and averages the other tiles", () => {
     const view = scorecard({
-      postsPerDay: { value: 3, n: 7 },
-      followersWeek: { value: 2, n: 7 }, // 10% of target, aside: shown, not in the percentage
       viewsPerPost: { value: 100, n: 10 }, // 50%
       viewsToChats: { value: 0.01, n: 1000 },
       chatsToAsked: { value: 0.15, n: 20 }, // 50%
@@ -114,7 +112,26 @@ describe("the chain and the averages", () => {
     });
     const doing = view.tiles.find((t) => t.key === "doing")!;
     expect(doing.score).toBe(25);
-    expect(doing.weakest).toBe("followersWeek");
     expect(view.tiles.find((t) => t.key === "brokers")!.score).toBe(75);
+  });
+
+  it("puts TikTok first: posting, followers, views, likes, interactions and the follow rate", () => {
+    const { samples } = buildSamples(
+      raw({
+        post: [
+          { at: NOW - 4 * DAY, posts: 5, views: 1000, followers: 10, likes: 30, talk: 2 },
+          { at: NOW, posts: 17, views: 2248, followers: 20, likes: 56, talk: 4 },
+        ],
+      }),
+    );
+    const tiktok = scorecard(samples).tiles[0]!;
+    expect(tiktok.key).toBe("tiktok");
+    const part = (k: string) => tiktok.parts.find((p) => p.key === k)!;
+    expect(part("likeRate").value).toBeCloseTo(56 / 2248);
+    expect(part("engageRate").value).toBeCloseTo(60 / 2248);
+    // 10 followers over 1,248 views in the same 4 days.
+    expect(part("followRate").value).toBeCloseTo(10 / 1248);
+    expect(part("viewsWeek").value).toBeCloseTo((1248 / 4) * 7);
+    expect(tiktok.score).toBeGreaterThan(0);
   });
 });

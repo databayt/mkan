@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { parseCondition, type Metrics } from "./metrics";
 import type { NextStep } from "./next-steps";
-import { roadmapMonth, roadmapWeek, roadTaskPrompt } from "./roadmap";
+import { roadmapMonth, roadmapWeek, roadTaskPrompt, STANDING_TASKS } from "./roadmap";
 
 /**
  * The sprint loop's pure half (scripts/sprint-cycle.ts holds the database half): sprint windows,
@@ -263,7 +263,9 @@ export function roadmapPlan(now = new Date()): PlanSprint | null {
   const r = roadmapWeek(now);
   const win = weekWindow(now);
   if (!r || !r.tasks.length || r.startsAt !== win.startsAt) return null;
-  const tasks = r.tasks.slice(0, 7);
+  // Every week keeps the standing tasks (TikTok first), unless the road already gives that block and metric one.
+  const standing = STANDING_TASKS.filter((st) => !r.tasks.some((t) => t.block === st.block && t.metric === st.metric));
+  const tasks = [...r.tasks.slice(0, 7 - standing.length), ...standing];
   return {
     kind: "WEEK",
     title: r.title,

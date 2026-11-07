@@ -25,6 +25,21 @@ export interface RoadTask {
   gate?: string;
 }
 
+/**
+ * Tasks every week carries, whatever the road says (Abdout, 2026-11-07: "TikTok is our main entity.
+ * Take good care of it… Embed this in the sprint every time"). roadmapPlan adds them to each week;
+ * the planner is told to keep them.
+ */
+export const STANDING_TASKS: RoadTask[] = [
+  {
+    title: "TikTok: more followers, views and interactions",
+    block: "post",
+    metric: "followersWeek",
+    do: "TikTok is Mkan's main entity. Read docs/tiktok-playbook.md and the TikTok tile on /monetize (its weakest part: part.<key> in the metrics). Judge the experiment in the playbook's Experiments list if one is due; then pick the playbook lever for the weakest TikTok number and make that one change in the posting code (the caption, the on-screen hook, the length, the follow ask, the question, the cadence), with its baseline written in the Experiments list. Never post or reply by hand.",
+    doneWhen: "one lever is changed on main with its experiment written down (or the running one judged and the playbook updated), and the TikTok tile's weakest number has a before value",
+  },
+];
+
 export interface RoadSprint {
   key: string;
   /** Monday → next Monday, UTC (the loop's week window). */

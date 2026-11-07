@@ -4,9 +4,11 @@ import { Fragment } from "react";
 import type { Locale } from "@/components/internationalization/config";
 import { formatNumber, formatPercentage } from "@/lib/i18n/formatters";
 import { ARROW_PART, type PartView, type ScorecardView, type TileView, type Word } from "@/lib/monetize/scorecard";
+import type { ReachView } from "@/lib/monetize/score-samples";
 import { cn } from "@/lib/utils";
 
 import { fill, formatValue, type MonetizeLabels } from "./format";
+import { ReachRow } from "./reach-row";
 import { INK, LINE, MUTED } from "./listing-ui";
 
 /**
@@ -147,11 +149,14 @@ function FunnelLine({ score, L, locale }: { score: ScorecardView; L: L; locale: 
 
 export function Scorecard({
   score,
+  reach,
   intro,
   labels,
   locale,
 }: {
   score: ScorecardView;
+  /** The TikTok page: followers, views, posts (reach-row.tsx). */
+  reach?: ReachView | null;
   intro?: { intros: number; paid: number; cap: number; mode: "intro" | "relay" } | null;
   labels: MonetizeLabels;
   locale: Locale;
@@ -162,11 +167,12 @@ export function Scorecard({
       <h2 id="score-title" className={cn("text-[22px] font-semibold leading-tight", INK)}>
         {L.title}
       </h2>
-      <div className="mt-4 grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {score.tiles.map((t) => (
           <Tile key={t.key} tile={t} L={L} locale={locale} />
         ))}
       </div>
+      {reach && <ReachRow reach={reach} labels={labels} locale={locale} />}
       <FunnelLine score={score} L={L} locale={locale} />
       {intro && (
         <p className={cn("mt-3 text-sm", MUTED)}>

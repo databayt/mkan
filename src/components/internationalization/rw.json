@@ -6757,7 +6757,8 @@
         "doing": "How we're doing",
         "brokers": "Brokers happy",
         "tenants": "Tenants satisfied",
-        "chatbot": "Chatbot effective"
+        "chatbot": "Chatbot effective",
+        "tiktok": "TikTok growing"
       },
       "steps": {
         "posts": "Posts",
@@ -6900,12 +6901,51 @@
           "t": "Messages before a viewing ask",
           "means": "The chat runs long before the tenant reaches a home they want.",
           "fix": "Show homes in the first reply and ask one question at a time, only when needed."
+        },
+        "viewsWeek": {
+          "t": "Views a week",
+          "means": "Too few people see our homes each week.",
+          "fix": "Post every day across the evening hours and put the best room and the price on screen in the first second (docs/tiktok-playbook.md #1, #6)."
+        },
+        "likeRate": {
+          "t": "Like rate",
+          "means": "Viewers watch but the video doesn't win them.",
+          "fix": "Open on the best room, trim to 12–25 s, natural light; test one change at a time."
+        },
+        "engageRate": {
+          "t": "Interaction rate",
+          "means": "People don't comment or share, the signals TikTok weighs most after watch time.",
+          "fix": "End the caption with a question (\"Which area next? 👇\") and pin a comment that invites one."
+        },
+        "followRate": {
+          "t": "Follow rate",
+          "means": "Viewers don't follow, so every post starts from zero.",
+          "fix": "Ask for the follow in the caption and on the end card: \"Follow for new Kigali homes every day\"; pin a 'how renting with Mkan works' video."
         }
       },
       "allMet": "Every part on target",
       "followers": "{n} followers",
       "introMode": "Until {cap} deals are paid, we introduce tenant and broker directly once the broker agrees Mkan's terms (10% of their commission, free viewing). {paid} paid so far · {intros} intros.",
-      "relayMode": "{paid} deals paid: Mkan now stays in the middle, and tenant and broker don't swap numbers."
+      "relayMode": "{paid} deals paid: Mkan now stays in the middle, and tenant and broker don't swap numbers.",
+      "reach": {
+        "title": "Our TikTok page",
+        "followers": "Followers",
+        "views": "Views on our posts",
+        "posts": "Posts",
+        "none": "—",
+        "week": "{v} this week",
+        "since": "{v} since {date}",
+        "noTrend": "no trend yet",
+        "perPost": "{v} views a post",
+        "trendFollowers": "Followers by day: {list}",
+        "trendViews": "Views each day: {list}",
+        "trendPosts": "Posts each day: {list}",
+        "likes": "Likes",
+        "talk": "Comments & shares",
+        "postsSub": "{n} posts · {v} views a post",
+        "trendLikes": "Likes each day: {list}",
+        "trendTalk": "Comments and shares each day: {list}"
+      }
     },
     "deals": {
       "title": "Deals",

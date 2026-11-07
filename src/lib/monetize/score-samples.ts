@@ -11,6 +11,9 @@ export interface PostPoint {
   posts: number | null;
   views: number | null;
   followers: number | null;
+  likes?: number | null;
+  /** Comments + shares on the page's videos: the interactions beyond a like. */
+  talk?: number | null;
 }
 
 export interface ScoreRaw {
@@ -38,6 +41,14 @@ export interface ScoreRaw {
 }
 
 const DAY = 86_400_000;
+/** The newest value of a field across the points (null when none has it). */
+const latestOf = (points: PostPoint[], pick: (p: PostPoint) => number | null): number | null => {
+  for (let i = points.length - 1; i >= 0; i--) {
+    const v = pick(points[i]!);
+    if (v != null) return v;
+  }
+  return null;
+};
 const ratio = (n: number, of: number): Sample => ({ value: of > 0 ? n / of : null, n: of });
 
 /** The newest point at or before `t`, else the oldest one (a page younger than the window). */
@@ -69,6 +80,18 @@ export function buildSamples(r: ScoreRaw): { samples: Record<string, Sample>; co
   const samples: Record<string, Sample> = {
     postsPerDay: growth(r.post, (p) => p.posts, r.now, 7, 1),
     followersWeek: growth(r.post, (p) => p.followers, r.now, 7, 7),
+    viewsWeek: growth(r.post, (p) => p.views, r.now, 7, 7),
+    // No likes on record is "not read yet", never 0%.
+    likeRate: latest?.views && latestOf(r.post, (p) => p.likes ?? null) != null ? { value: latestOf(r.post, (p) => p.likes ?? null)! / latest.views, n: latest.views } : { value: null, n: 0 },
+    engageRate:
+      latest?.views && latestOf(r.post, (p) => p.likes ?? null) != null
+        ? { value: (latestOf(r.post, (p) => p.likes ?? null)! + (latestOf(r.post, (p) => p.talk ?? null) ?? 0)) / latest.views, n: latest.views }
+        : { value: null, n: 0 },
+    followRate: (() => {
+      const f = growth(r.post, (p) => p.followers, r.now, 7, 7);
+      const v = growth(r.post, (p) => p.views, r.now, 7, 7);
+      return f.value != null && v.value != null && v.value > 0 ? { value: f.value / v.value, n: Math.round(v.value) } : { value: null, n: 0 };
+    })(),
     viewsPerPost: latest?.posts ? { value: (latest.views ?? 0) / latest.posts, n: latest.posts } : { value: null, n: 0 },
     viewsToChats: views30 != null ? ratio(r.people30, views30) : { value: null, n: 0 },
     chatsToAsked: ratio(r.asks.tasks, r.people30),
@@ -109,3 +132,86 @@ export function buildSamples(r: ScoreRaw): { samples: Record<string, Sample>; co
   const followers = [...r.post].reverse().find((p) => p.followers != null)?.followers ?? null;
   return { samples, counts, followers };
 }
+
+// ── TikTok reach: followers, views, posts (Abdout, 2026-11-07: "show how many people follow our page
+// and watch our posts, and always work on increasing them") ──────────────
+
+export interface ReachDay {
+  /** YYYY-MM-DD (UTC), the last snapshot of that day. */
+  day: string;
+  followers: number | null;
+  views: number | null;
+  posts: number | null;
+  likes: number | null;
+  talk: number | null;
+}
+
+export interface ReachView {
+  followers: number | null;
+  views: number | null;
+  posts: number | null;
+  likes: number | null;
+  /** Comments + shares. */
+  talk: number | null;
+  likesWeek: number | null;
+  talkWeek: number | null;
+  viewsPerPost: number | null;
+  /** Gained over the last 7 days, or since the first snapshot when the page's record is younger. */
+  followersWeek: number | null;
+  viewsWeek: number | null;
+  postsWeek: number | null;
+  /** The first day of that gain when the record is younger than a week (else null: a full week). */
+  since: string | null;
+  /** One point a day, oldest first, for the trend lines. */
+  days: ReachDay[];
+}
+
+/** The page's reach from the hourly post snapshots: the latest numbers, the week's gain, one point a day. */
+export function reachOf(points: PostPoint[], now: number, days = 14): ReachView {
+  const byDay = new Map<string, ReachDay>();
+  for (const p of points) {
+    if (p.at > now || now - p.at > days * DAY) continue;
+    const day = new Date(p.at).toISOString().slice(0, 10);
+    const prev = byDay.get(day);
+    byDay.set(day, {
+      day,
+      followers: p.followers ?? prev?.followers ?? null,
+      views: p.views ?? prev?.views ?? null,
+      posts: p.posts ?? prev?.posts ?? null,
+      likes: p.likes ?? prev?.likes ?? null,
+      talk: p.talk ?? prev?.talk ?? null,
+    });
+  }
+  const series = [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
+  const latest = (pick: (p: PostPoint) => number | null) => [...points].reverse().find((p) => pick(p) != null);
+  const gain = (pick: (p: PostPoint) => number | null) => {
+    const last = latest(pick);
+    const base = baseAt(points, now - 7 * DAY, pick);
+    if (!last || !base || last === base) return { value: null as number | null, since: null as string | null };
+    const young = now - base.at < 6.5 * DAY;
+    return { value: Math.max(0, pick(last)! - pick(base)!), since: young ? new Date(base.at).toISOString().slice(0, 10) : null };
+  };
+  const f = gain((p) => p.followers);
+  const v = gain((p) => p.views);
+  const n = gain((p) => p.posts);
+  const l = gain((p) => p.likes ?? null);
+  const t = gain((p) => p.talk ?? null);
+  const posts = latest((p) => p.posts)?.posts ?? null;
+  const views = latest((p) => p.views)?.views ?? null;
+  return {
+    followers: latest((p) => p.followers)?.followers ?? null,
+    views,
+    posts,
+    likes: latest((p) => p.likes ?? null)?.likes ?? null,
+    talk: latest((p) => p.talk ?? null)?.talk ?? null,
+    likesWeek: l.value,
+    talkWeek: t.value,
+    viewsPerPost: posts && views != null ? views / posts : null,
+    followersWeek: f.value,
+    viewsWeek: v.value,
+    postsWeek: n.value,
+    since: f.since ?? v.since ?? n.since,
+    days: series,
+  };
+}
+

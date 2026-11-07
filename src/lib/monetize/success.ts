@@ -36,6 +36,7 @@ export const SUCCESS: Record<BlockKey, SuccessTarget[]> = {
     { kpi: "postsListing", op: ">=", target: 21, per: "week" }, // one listing per post, three a day
     { kpi: "contactsPerPost", op: ">=", target: 1 },
     { kpi: "followersWeek", op: ">=", target: 20, per: "week" }, // the page grows every week
+    { kpi: "viewsWeek", op: ">=", target: 4200, per: "week" }, // three posts a day at 200 views each (2026-11-07)
     { kpi: "engageRate", op: ">=", target: 0.05 },
   ],
   chat: [

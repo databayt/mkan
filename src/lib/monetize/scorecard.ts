@@ -5,7 +5,7 @@
  * line walks posts → paid and marks the weakest arrow. Pure: samples in, tiles out — the loader
  * (score-load.ts) counts, this file judges, the page and the sprint loop read the same verdict.
  */
-export type TileKey = "doing" | "brokers" | "tenants" | "chatbot";
+export type TileKey = "tiktok" | "doing" | "brokers" | "tenants" | "chatbot";
 export type PartUnit = "pct" | "count" | "perDay" | "perPost" | "ms" | "min" | "score";
 export type Word = "strong" | "ok" | "weak" | "thin";
 
@@ -23,7 +23,8 @@ export interface PartDef {
   aside?: boolean;
 }
 
-export const TILES: TileKey[] = ["doing", "brokers", "tenants", "chatbot"];
+/** TikTok first: the page is Mkan's front door (Abdout, 2026-11-07: "TikTok is our main entity"). */
+export const TILES: TileKey[] = ["tiktok", "doing", "brokers", "tenants", "chatbot"];
 
 /**
  * How a tile's percentage is made. "How we are doing" is a chain — posts × views a post × each
@@ -31,12 +32,17 @@ export const TILES: TileKey[] = ["doing", "brokers", "tenants", "chatbot"];
  * today, and one step at 0% makes it 0% (an average said 67% while no viewing had ever happened,
  * 2026-11-07). The other three are separate signals of one feeling, so they average.
  */
-export const TILE_MODE: Record<TileKey, "product" | "mean"> = { doing: "product", brokers: "mean", tenants: "mean", chatbot: "mean" };
+export const TILE_MODE: Record<TileKey, "product" | "mean"> = { tiktok: "mean", doing: "product", brokers: "mean", tenants: "mean", chatbot: "mean" };
 
 export const PARTS: PartDef[] = [
+  // TikTok: the page grows, is watched and is engaged with (docs/tiktok-playbook.md).
+  { key: "postsPerDay", tile: "tiktok", op: ">=", target: 3, unit: "perDay", minN: 3, days: 7 },
+  { key: "followersWeek", tile: "tiktok", op: ">=", target: 20, unit: "count", minN: 2, days: 7 },
+  { key: "viewsWeek", tile: "tiktok", op: ">=", target: 4200, unit: "count", minN: 2, days: 7 },
+  { key: "likeRate", tile: "tiktok", op: ">=", target: 0.03, unit: "pct", minN: 200, days: 0 },
+  { key: "engageRate", tile: "tiktok", op: ">=", target: 0.05, unit: "pct", minN: 200, days: 0 },
+  { key: "followRate", tile: "tiktok", op: ">=", target: 0.01, unit: "pct", minN: 200, days: 7 },
   // How we are doing: the road from a post to Mkan's share.
-  { key: "postsPerDay", tile: "doing", op: ">=", target: 3, unit: "perDay", minN: 3, days: 7 },
-  { key: "followersWeek", tile: "doing", op: ">=", target: 20, unit: "count", minN: 2, days: 7, aside: true },
   { key: "viewsPerPost", tile: "doing", op: ">=", target: 200, unit: "perPost", minN: 3, days: 0 },
   { key: "viewsToChats", tile: "doing", op: ">=", target: 0.01, unit: "pct", minN: 200, days: 30 },
   { key: "chatsToAsked", tile: "doing", op: ">=", target: 0.3, unit: "pct", minN: 5, days: 30 },

@@ -17,7 +17,7 @@ import { blockHealth, change, deltas, worst } from "./health";
 import { money, REVENUE_LINES, type MoneyView, type RevenueLineKey } from "./money";
 import type { BlockKey, BlockView, Health, JobState, Kpi, SnapshotMetrics } from "./types";
 import { scorecard, type ScorecardView } from "./scorecard";
-import { buildSamples } from "./score-samples";
+import { buildSamples, reachOf, type ReachView } from "./score-samples";
 import { loadScoreQueries, postPoints } from "./score-load";
 import { connectionMode, INTRO_CAP } from "@/components/agent/intro-pure";
 
@@ -77,6 +77,8 @@ export interface MonetizeOverview {
   firstShare: FirstShareView | null;
   /** The four percentages — doing, brokers, tenants, chatbot — and the funnel line (scorecard.ts). Null = unreadable. */
   score?: ScorecardView | null;
+  /** The TikTok page: followers, views, posts — now, this week, one point a day (score-samples.ts reachOf). */
+  reach?: ReachView | null;
   /** Direct intros until INTRO_CAP deals are paid, then Mkan in the middle (deal-intro.ts). */
   intro?: { intros: number; paid: number; cap: number; mode: "intro" | "relay" } | null;
 }
@@ -449,6 +451,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     funnel,
     firstShare,
     score,
+    reach: reachOf(postPoints(byBlock("post")), now),
     intro: scoreQ ? { ...scoreQ.intro, cap: INTRO_CAP, mode: connectionMode(scoreQ.intro.paid) } : null,
   };
 }

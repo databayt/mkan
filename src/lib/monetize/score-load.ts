@@ -17,9 +17,11 @@ export type ScoreQueries = Omit<ScoreRaw, "now" | "post" | "week"> & {
 };
 
 const pointOf = (at: Date, metrics: unknown): PostPoint => {
-  const p = ((metrics ?? {}) as { post?: { videos?: number; photos?: number; views?: number; followers?: number | null } }).post ?? {};
+  const p =
+    ((metrics ?? {}) as { post?: { videos?: number; photos?: number; views?: number; followers?: number | null; likes?: number | null; comments?: number | null; shares?: number | null } }).post ?? {};
   const posts = p.videos != null || p.photos != null ? (p.videos ?? 0) + (p.photos ?? 0) : null;
-  return { at: at.getTime(), posts, views: p.views ?? null, followers: p.followers ?? null };
+  const talk = p.comments != null || p.shares != null ? (p.comments ?? 0) + (p.shares ?? 0) : null;
+  return { at: at.getTime(), posts, views: p.views ?? null, followers: p.followers ?? null, likes: p.likes ?? null, talk };
 };
 
 export function postPoints(rows: { at: Date; metrics: unknown }[]): PostPoint[] {

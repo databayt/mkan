@@ -55,7 +55,7 @@ export function MonetizeContent({
         </div>
       </header>
 
-      {data.score && <Scorecard score={data.score} intro={data.intro} labels={labels} locale={locale} />}
+      {data.score && <Scorecard score={data.score} reach={data.reach} intro={data.intro} labels={labels} locale={locale} />}
       {canEdit && deals && <DealsSection deals={deals} labels={labels} locale={locale} payoutSet={payoutSet} />}
 
       <LiveCard initial={live} labels={labels.live} blocks={blocks} canEdit={canEdit} locale={locale} />

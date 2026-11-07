@@ -17,6 +17,6 @@ export const MONETIZE_TAG = "monetize";
 
 export const loadMonetizeCached = unstable_cache(
   async (days: 7 | 30): Promise<MonetizeOverview> => JSON.parse(JSON.stringify(await loadMonetize(days))) as MonetizeOverview,
-  ["monetize-v3"],
+  ["monetize-v4"],
   { revalidate: 60, tags: [MONETIZE_TAG] },
 );
