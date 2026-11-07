@@ -11,7 +11,10 @@ import type { PostPoint, ScoreRaw } from "./score-samples";
  */
 const DAY = 86_400_000;
 
-export type ScoreQueries = Omit<ScoreRaw, "now" | "post" | "week">;
+export type ScoreQueries = Omit<ScoreRaw, "now" | "post" | "week"> & {
+  /** Direct intros so far and paid deals ever: intros last until INTRO_CAP deals are paid (deal-intro.ts). */
+  intro: { intros: number; paid: number };
+};
 
 const pointOf = (at: Date, metrics: unknown): PostPoint => {
   const p = ((metrics ?? {}) as { post?: { videos?: number; photos?: number; views?: number; followers?: number | null } }).post ?? {};
@@ -26,7 +29,7 @@ export function postPoints(rows: { at: Date; metrics: unknown }[]): PostPoint[] 
 export async function loadScoreQueries(now = Date.now()): Promise<ScoreQueries> {
   const since = new Date(now - 30 * DAY);
   const since90 = new Date(now - 90 * DAY);
-  const [post30, people, asks, deals, brokers, feedback, stops, shareYes, toAsk] = await Promise.all([
+  const [post30, people, asks, deals, brokers, feedback, stops, shareYes, toAsk, intro] = await Promise.all([
     db.blockSnapshot
       .findFirst({ where: { block: "post", at: { lte: since } }, orderBy: { at: "desc" }, select: { at: true, metrics: true } })
       .then((r) => (r ? pointOf(r.at, r.metrics) : null))
@@ -99,6 +102,8 @@ export async function loadScoreQueries(now = Date.now()): Promise<ScoreQueries> 
         FROM "AgentTask" t JOIN asked a ON a."taskId" = t.id
       )
       SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY n) AS median, COUNT(*)::int AS n FROM counted WHERE n > 0`.catch(() => [{ median: null, n: 0 }]),
+    db.$queryRaw<{ intros: number; paid: number }[]>`
+      SELECT COUNT(*) FILTER (WHERE "introducedAt" IS NOT NULL)::int AS intros, COUNT(*) FILTER (WHERE status = 'PAID')::int AS paid FROM "Deal"`.catch(() => [{ intros: 0, paid: 0 }]),
   ]);
   const b = brokers[0]!;
   const f = feedback[0]!;
@@ -114,6 +119,7 @@ export async function loadScoreQueries(now = Date.now()): Promise<ScoreQueries> 
       replyMedianMin: b.replyMedianMin != null ? Number(b.replyMedianMin) : null,
     },
     messagesToAsk: { median: toAsk[0]?.median != null ? Number(toAsk[0].median) : null, n: toAsk[0]?.n ?? 0 },
+    intro: intro[0] ?? { intros: 0, paid: 0 },
     feedback: { ...f, tenantAvg: f.tenantAvg != null ? Number(f.tenantAvg) : null, brokerAvg: f.brokerAvg != null ? Number(f.brokerAvg) : null },
     stops: stops[0]?.stops ?? 0,
     waTenants: stops[0]?.wa ?? 0,

@@ -19,6 +19,7 @@ import type { BlockKey, BlockView, Health, JobState, Kpi, SnapshotMetrics } from
 import { scorecard, type ScorecardView } from "./scorecard";
 import { buildSamples } from "./score-samples";
 import { loadScoreQueries, postPoints } from "./score-load";
+import { connectionMode, INTRO_CAP } from "@/components/agent/intro-pure";
 
 /**
  * Everything /monetize shows, read in one pass.
@@ -76,6 +77,8 @@ export interface MonetizeOverview {
   firstShare: FirstShareView | null;
   /** The four percentages — doing, brokers, tenants, chatbot — and the funnel line (scorecard.ts). Null = unreadable. */
   score?: ScorecardView | null;
+  /** Direct intros until INTRO_CAP deals are paid, then Mkan in the middle (deal-intro.ts). */
+  intro?: { intros: number; paid: number; cap: number; mode: "intro" | "relay" } | null;
 }
 
 type SnapRow = { block: string; at: Date; status: string; metrics: unknown };
@@ -446,6 +449,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     funnel,
     firstShare,
     score,
+    intro: scoreQ ? { ...scoreQ.intro, cap: INTRO_CAP, mode: connectionMode(scoreQ.intro.paid) } : null,
   };
 }
 

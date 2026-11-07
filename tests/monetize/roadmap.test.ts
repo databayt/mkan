@@ -6,7 +6,7 @@ import { mentionsGated, monthTitle, roadmapPlan, validatePlan, weekWindow } from
 // The live metric keys (scripts/sprint/live.ts → readMetrics, read 2026-11-07): a task on any other key
 // could never be measured by the loop.
 const LIVE_KEYS =
-  "newHomes found read skipRate newBrokers brokersTotal brokersNewWeek videosClean videosFeatured videoRejectRate readyNew mastered backlog viewsPerPost postedDays7 likeRate followers engageRate postsListing contactsPerPost chatToPaid chats waChats webChats shortlistRate p50 brokerAnswerRate viewings paidDeals failRate people peopleToHomes peopleToViewing revenueMonthRwf breakEvenRwf netRwf costMonthRwf brokersAsked brokersAnswered brokersAvailable viewingsBooked shortlisted adChats paid7 signed7 viewings7".split(
+  "newHomes found read skipRate newBrokers brokersTotal brokersNewWeek videosClean videosFeatured videoRejectRate readyNew mastered backlog viewsPerPost postedDays7 likeRate followers engageRate postsListing contactsPerPost chatToPaid chats waChats webChats shortlistRate p50 brokerAnswerRate viewings paidDeals failRate people peopleToHomes peopleToViewing revenueMonthRwf breakEvenRwf netRwf costMonthRwf brokersAsked brokersAnswered brokersAvailable viewingsBooked shortlisted adChats paid7 signed7 viewings7 intros introsLeft score.doing score.brokers score.tenants score.chatbot".split(
     " ",
   );
 const metrics = Object.fromEntries(LIVE_KEYS.map((k) => [k, 0]));
@@ -42,12 +42,12 @@ describe("the road to money", () => {
   it("plans a week from its roadmap entry, and the plan passes the planner's own checks", () => {
     const now = new Date("2026-11-10T09:00:00Z");
     const plan = roadmapPlan(now)!;
-    expect(plan.title).toBe("A viewing on a home that pays");
+    expect(plan.title).toBe("First intros");
     expect(plan.tasks.length).toBe(plan.prompts.length);
     const v = validatePlan({ sprints: [plan] }, metrics, now);
     expect(v.ok ? [] : v.errors).toEqual([]);
     // A gated task still runs: it prepares and stops blocked with the ask.
-    expect(plan.prompts[0]!.text).toMatch(/stop and report blocked/);
+    expect(plan.prompts.some((p) => /stop and report blocked/.test(p.text))).toBe(true);
     expect(roadmapPlan(new Date("2026-11-04T09:00:00Z"))).toBeNull(); // S1 has no roadmap tasks: the hand-made sprint stands
   });
 

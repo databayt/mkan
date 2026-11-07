@@ -35,7 +35,7 @@ export function MonetizeContent({ data, live, labels, locale, canEdit = false }:
         </div>
       </header>
 
-      {data.score && <Scorecard score={data.score} labels={labels} locale={locale} />}
+      {data.score && <Scorecard score={data.score} intro={data.intro} labels={labels} locale={locale} />}
 
       <LiveCard initial={live} labels={labels.live} blocks={blocks} canEdit={canEdit} locale={locale} />
 

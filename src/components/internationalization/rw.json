@@ -6903,7 +6903,9 @@
         }
       },
       "allMet": "Every part on target",
-      "followers": "{n} followers"
+      "followers": "{n} followers",
+      "introMode": "Until {cap} deals are paid, we introduce tenant and broker directly once the broker agrees Mkan's terms (10% of their commission, free viewing). {paid} paid so far · {intros} intros.",
+      "relayMode": "{paid} deals paid: Mkan now stays in the middle, and tenant and broker don't swap numbers."
     }
   }
 }

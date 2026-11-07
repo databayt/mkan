@@ -145,7 +145,17 @@ function FunnelLine({ score, L, locale }: { score: ScorecardView; L: L; locale: 
   );
 }
 
-export function Scorecard({ score, labels, locale }: { score: ScorecardView; labels: MonetizeLabels; locale: Locale }) {
+export function Scorecard({
+  score,
+  intro,
+  labels,
+  locale,
+}: {
+  score: ScorecardView;
+  intro?: { intros: number; paid: number; cap: number; mode: "intro" | "relay" } | null;
+  labels: MonetizeLabels;
+  locale: Locale;
+}) {
   const L = labels.score;
   return (
     <section aria-labelledby="score-title" className="pb-10">
@@ -158,6 +168,15 @@ export function Scorecard({ score, labels, locale }: { score: ScorecardView; lab
         ))}
       </div>
       <FunnelLine score={score} L={L} locale={locale} />
+      {intro && (
+        <p className={cn("mt-3 text-sm", MUTED)}>
+          {fill(intro.mode === "intro" ? L.introMode : L.relayMode, {
+            paid: formatNumber(intro.paid, locale),
+            cap: formatNumber(intro.cap, locale),
+            intros: formatNumber(intro.intros, locale),
+          })}
+        </p>
+      )}
     </section>
   );
 }

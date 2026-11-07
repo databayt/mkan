@@ -213,9 +213,22 @@ async function plannerContext(db: Db, model: MonetizeOverview, metrics: Metrics,
   const fs = (model as { firstShare?: Record<string, unknown> | null }).firstShare;
   const { posts: _posts, ...firstShare } = (fs ?? {}) as Record<string, unknown>;
   const now = new Date();
+  // The scorecard's verdict (scorecard.ts): the four percentages, and the weakest part with what it means
+  // and how to fix it, in the words /monetize shows (en.json monetize.score.parts).
+  const score = (model as { score?: { tiles: { key: string; score: number | null; weakest: string | null }[]; weakest: { tile: string; part: string } | null } | null }).score;
+  const playbook = (JSON.parse(readFileSync(join(process.cwd(), 'src/components/internationalization/en.json'), 'utf8')) as { monetize?: { score?: { parts?: Record<string, { t: string; means: string; fix: string }> } } }).monetize?.score?.parts ?? {};
+  const intro = (model as { intro?: unknown }).intro ?? null;
   return {
     // The road to money: this week's entry is the plan's backbone; the next ones are pulled forward.
     roadmap: { thisWeek: roadmapWeek(now), next: roadmapNext(now, 2), month: roadmapMonth(now), ahead: roadmapAhead(now) },
+    scorecard: score
+      ? {
+          tiles: score.tiles.map((t) => ({ tile: t.key, percent: t.score, weakest: t.weakest })),
+          weakest: score.weakest ? { ...score.weakest, ...(playbook[score.weakest.part] ?? {}) } : null,
+        }
+      : null,
+    // Direct intros until 10 deals are paid, then Mkan in the middle (deal-intro.ts).
+    intro,
     metrics,
     nextSteps: model.nextSteps,
     bottleneck: model.bottleneck,
@@ -243,7 +256,9 @@ Plan the ${windows} sprint${kinds.length > 1 ? 's' : ''} for Mkan's chatbot busi
 post on TikTok → chat → broker → viewing → deal). The north star is the FIRST SHARE — the first paid deal —
 measured by the funnel featured → clean → posted to TikTok → contacts → chatbot shortlist → broker asked →
 viewing → signed → paid. Aim the sprint at the funnel's weakest step first (lowest conversion with enough volume),
-and use the lessons: do not repeat what was flat or worse; build on what moved.
+and use the lessons: do not repeat what was flat or worse; build on what moved. context.scorecard is the page's own
+verdict — four percentages (doing = the road from a post to Mkan's share, brokers, tenants, chatbot) and the weakest
+part with what it means and how to fix it: one prompt works that part, measured on its "part.<key>" metric.
 
 Follow the road (context.roadmap): a WEEK sprint takes roadmap.thisWeek's title and goal and one task per
 roadmap task (same block and metric), with prompts adapted to today's numbers and lessons. A roadmap task with a

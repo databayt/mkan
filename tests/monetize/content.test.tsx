@@ -100,7 +100,7 @@ describe("/monetize content", () => {
     expect(screen.getByRole("heading", { name: en.monetize.road.title })).toBeTruthy();
     for (const r of Object.values(en.monetize.road.rungs)) expect(screen.getAllByText(r).length).toBeGreaterThan(0);
     expect(screen.getAllByText("First paid deal").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("A viewing on a home that pays").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("First intros").length).toBeGreaterThan(0);
   });
 
   it("draws the weakest block's flowchart first, with its live numbers, and names the weakest hand-off", () => {
