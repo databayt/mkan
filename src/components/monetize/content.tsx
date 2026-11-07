@@ -1,5 +1,6 @@
 import type { Locale } from "@/components/internationalization/config";
 import { formatDate } from "@/lib/i18n/formatters";
+import type { DealRow } from "@/lib/monetize/deal-pipeline";
 import type { LiveView } from "@/lib/monetize/live-shape";
 import type { MonetizeOverview } from "@/lib/monetize/load";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,7 @@ import { HealthBadge } from "./health-badge";
 import { INK, MUTED } from "./listing-ui";
 import { LiveCard } from "./live-card";
 import { MobileBar, MoneyCard } from "./money-card";
+import { DealsSection } from "./deals-section";
 import { Road } from "./road";
 import { Scorecard } from "./scorecard";
 
@@ -20,7 +22,25 @@ import { Scorecard } from "./scorecard";
  * the road to money beside the money card (the listing's sticky Reserve card); the four blocks as
  * flowcharts; every other number in one closed "All the numbers". From 19 screens to about four.
  */
-export function MonetizeContent({ data, live, labels, locale, canEdit = false }: { data: MonetizeOverview; live: LiveView; labels: MonetizeLabels; locale: Locale; lang: string; canEdit?: boolean }) {
+export function MonetizeContent({
+  data,
+  live,
+  labels,
+  locale,
+  canEdit = false,
+  deals = null,
+  payoutSet = false,
+}: {
+  data: MonetizeOverview;
+  live: LiveView;
+  labels: MonetizeLabels;
+  locale: Locale;
+  lang: string;
+  canEdit?: boolean;
+  /** Admin only: the deals and their money taps (deals.ts). */
+  deals?: DealRow[] | null;
+  payoutSet?: boolean;
+}) {
   const blocks = Object.fromEntries(data.blocks.map((b) => [b.key, labels.blocks[b.key].title]));
   return (
     <div className="mx-auto w-full max-w-[1184px] px-6 pb-28 pt-6 md:px-8 md:pb-16">
@@ -36,6 +56,7 @@ export function MonetizeContent({ data, live, labels, locale, canEdit = false }:
       </header>
 
       {data.score && <Scorecard score={data.score} intro={data.intro} labels={labels} locale={locale} />}
+      {canEdit && deals && <DealsSection deals={deals} labels={labels} locale={locale} payoutSet={payoutSet} />}
 
       <LiveCard initial={live} labels={labels.live} blocks={blocks} canEdit={canEdit} locale={locale} />
 

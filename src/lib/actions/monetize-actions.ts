@@ -209,3 +209,66 @@ export async function decidePrompt(form: FormData): Promise<void> {
   revalidatePath("/[lang]/monetize", "page");
   updateTag(MONETIZE_TAG);
 }
+
+// ── deals: the money taps (deal-pipeline.ts) ───────────────────────────────
+
+const dealMoneySchema = z.object({
+  dealId: z.string().trim().min(10).max(40),
+  amountRwf: z.coerce.number().int().positive().max(100_000_000).optional(),
+});
+
+/** Where brokers pay Mkan (MKAN_PAYOUT_MOMO + MKAN_PAYOUT_NAME), as deal.ts words it. */
+function payoutLine(): string | null {
+  const momo = process.env.MKAN_PAYOUT_MOMO?.trim();
+  const name = process.env.MKAN_PAYOUT_NAME?.trim();
+  return momo ? `MoMo ${momo}${name ? ` (${name})` : ""}` : null;
+}
+
+/**
+ * A signed deal: send the broker Mkan's share request on WhatsApp — the invoice deal.ts drafts on
+ * SIGNED, sent by Abdout's tap instead of copied from #mkan. An amount typed here prices a deal whose
+ * commission was never on record.
+ */
+export async function sendShareRequest(form: FormData): Promise<void> {
+  const session = await requireAdmin();
+  const { dealId, amountRwf } = dealMoneySchema.parse({ dealId: form.get("dealId"), amountRwf: blank(form.get("amountRwf")) });
+  const deal = await db.deal.findUnique({
+    where: { id: dealId },
+    select: { status: true, mkanShare: true, listingId: true, listing: { select: { title: true } }, broker: { select: { id: true, name: true, contactName: true, phones: true, whatsapp: true } } },
+  });
+  if (!deal || deal.status !== "SIGNED") throw new Error("Only a signed deal asks for Mkan's share");
+  const amount = amountRwf ?? deal.mkanShare;
+  if (!amount) throw new Error("Type Mkan's share in RWF first: the broker's commission is not on record");
+  const to = deal.broker?.whatsapp ?? deal.broker?.phones[0] ?? null;
+  if (!to || !deal.broker) throw new Error("No WhatsApp number for this deal's broker");
+  const { invoiceDraft } = await import("@/components/agent/deal-pure");
+  const { sendMessages } = await import("@/components/agent/whatsapp");
+  const { scrubTitle } = await import("@/lib/redact");
+  if (amountRwf && amountRwf !== deal.mkanShare) await db.deal.update({ where: { id: dealId }, data: { mkanShare: amountRwf } });
+  const body = invoiceDraft({
+    broker: deal.broker.contactName?.trim() || deal.broker.name,
+    amount,
+    ref: `K${deal.listingId}`,
+    title: scrubTitle(deal.listing.title) || `K${deal.listingId}`,
+    payout: payoutLine(),
+  });
+  // auto-*: the line's word about the broker's own deal, never held as a new ask (outbox-pure.ts).
+  await sendMessages([{ kind: "BROKER_REQUEST", to: `+${to.replace(/^\+/, "")}`, body, label: "auto-share-request", brokerId: deal.broker.id }], `Share request → broker (K${deal.listingId})`);
+  const value = { at: new Date().toISOString(), amount, by: session.user.id };
+  await db.waState.upsert({ where: { key: `share-asked:${dealId}` }, create: { key: `share-asked:${dealId}`, value }, update: { value } });
+  logger.info("monetize:share-request", { actorId: session.user.id, dealId, amount });
+  revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
+}
+
+/** The money is in: the deal is PAID and Mkan's share lands as COMMISSION, once (deal.ts setDealStatus). */
+export async function markDealPaid(form: FormData): Promise<void> {
+  const session = await requireAdmin();
+  const { dealId, amountRwf } = dealMoneySchema.parse({ dealId: form.get("dealId"), amountRwf: blank(form.get("amountRwf")) });
+  const { setDealStatus } = await import("@/components/agent/deal");
+  await setDealStatus(dealId, "PAID", { mkanShare: amountRwf ?? null, notes: `paid — marked on /monetize (${new Date().toISOString().slice(0, 10)})` });
+  logger.info("monetize:deal-paid", { actorId: session.user.id, dealId, amountRwf: amountRwf ?? null });
+  revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
+}
+

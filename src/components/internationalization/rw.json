@@ -6906,6 +6906,40 @@
       "followers": "{n} followers",
       "introMode": "Until {cap} deals are paid, we introduce tenant and broker directly once the broker agrees Mkan's terms (10% of their commission, free viewing). {paid} paid so far · {intros} intros.",
       "relayMode": "{paid} deals paid: Mkan now stays in the middle, and tenant and broker don't swap numbers."
+    },
+    "deals": {
+      "title": "Deals",
+      "subtitle": "Every deal, its next step and how long it has waited. Only admins see this.",
+      "empty": "No deals yet — the first intro starts on the next broker's yes for a WhatsApp tenant.",
+      "intro": "Intro",
+      "relay": "Through Mkan",
+      "none": "none",
+      "status": {
+        "VIEWING_BOOKED": "Viewing",
+        "VIEWED": "Viewed",
+        "SIGNED": "Signed",
+        "PAID": "Paid",
+        "LOST": "Lost"
+      },
+      "next": {
+        "tenant24h": "Waiting for the tenant: did they see it?",
+        "followUp7d": "Waiting to hear if they signed",
+        "booked": "Viewing booked — the person from Mkan takes it",
+        "askCommission": "Signed — type Mkan's share (10% of the broker's commission) and send the request",
+        "sendShare": "Signed — send the share request",
+        "awaitPayment": "Share requested — mark it paid when the money is in",
+        "paid": "Paid",
+        "lost": "Lost"
+      },
+      "waited": "{n} days",
+      "tenant": "Tenant",
+      "broker": "Broker",
+      "share": "Mkan's share",
+      "shareUnknown": "not priced yet",
+      "amount": "Amount (RWF)",
+      "sendShare": "Send share request",
+      "markPaid": "Mark paid",
+      "payoutMissing": "No pay number is set (MKAN_PAYOUT_MOMO): the request won't say where to pay."
     }
   }
 }

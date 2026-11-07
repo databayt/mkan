@@ -4,6 +4,7 @@ import { i18n, type Locale } from "@/components/internationalization/config";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { MonetizeContent } from "@/components/monetize/content";
 import type { MonetizeLabels } from "@/components/monetize/format";
+import { loadDeals } from "@/lib/monetize/deals";
 import { loadLive } from "@/lib/monetize/live";
 import { publicLive } from "@/lib/monetize/live-shape";
 import { loadMonetizeCached } from "@/lib/monetize/load-cached";
@@ -40,5 +41,18 @@ export default async function MonetizePage({
   // Masked here, on the server, so nothing personal reaches the HTML or the client components' props.
   const data = canEdit ? raw : toPublic(raw);
   const live = canEdit ? liveRaw : publicLive(liveRaw);
-  return <MonetizeContent data={data} live={live} labels={labels} locale={locale} lang={lang} canEdit={canEdit} />;
+  // The deals carry phone numbers: read only for an admin, never cached or shown to anyone else.
+  const deals = canEdit ? await loadDeals().catch(() => null) : null;
+  return (
+    <MonetizeContent
+      data={data}
+      live={live}
+      labels={labels}
+      locale={locale}
+      lang={lang}
+      canEdit={canEdit}
+      deals={deals}
+      payoutSet={!!process.env.MKAN_PAYOUT_MOMO?.trim()}
+    />
+  );
 }

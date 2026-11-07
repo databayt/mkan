@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fallbackPlan, mentionsGated, monthWindow, parseRetro, retroText, stepOf, stepPrompt, validatePlan, weekWindow } from "@/lib/monetize/sprint-auto";
+import { fallbackPlan, mentionsGated, monthWindow, parseRetro, repairPlan, retroText, stepOf, stepPrompt, validatePlan, weekWindow } from "@/lib/monetize/sprint-auto";
 import type { NextStep } from "@/lib/monetize/next-steps";
 
 const now = new Date("2026-11-05T10:00:00Z"); // a Thursday
@@ -62,6 +62,18 @@ describe("plans", () => {
     expect(bad({ unblockWhen: "brokerSends gated", needsYou: "x" })).toMatchObject({ ok: false });
     expect(bad({ task: "zzz" })).toMatchObject({ ok: false });
     expect(validatePlan({ sprints: [] }, metrics, now).ok).toBe(false);
+  });
+  it("drops only the prompts that break a rule, and sets the window, instead of throwing the plan away", () => {
+    const base = { kind: "WEEK", title: "First intros", startsAt: "2026-11-03", endsAt: "2026-11-10", tasks: [{ key: "a", title: "Task a" }] };
+    const good = { task: "a", text: "In ~/mkan: read the intro answers and fix any misread one.", metric: "chats" };
+    const gated = { task: "a", text: "In ~/mkan: run pnpm deal:book for the top tenant now.", metric: "chats" };
+    const r = repairPlan({ sprints: [{ ...base, prompts: [good, gated, { ...good, metric: "nope" }] }] }, metrics, now);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.plan.sprints[0]!.prompts).toEqual([good]);
+    expect(r.plan.sprints[0]!.startsAt).toBe("2026-11-02");
+    expect(r.dropped).toEqual(['WEEK prompt 2: a gated command needs an unblockWhen', 'WEEK prompt 3: unknown metric "nope"']);
+    expect(repairPlan({ sprints: [{ ...base, prompts: [gated] }] }, metrics, now).ok).toBe(false);
   });
 });
 

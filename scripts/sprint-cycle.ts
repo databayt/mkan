@@ -39,7 +39,7 @@ import {
   sprintMetric,
   stepOf,
   stepPrompt,
-  validatePlan,
+  repairPlan,
   weekWindow,
   type PlanFile,
 } from '../src/lib/monetize/sprint-auto';
@@ -349,11 +349,12 @@ async function planWithClaude(db: Db, kinds: Kind[], model: MonetizeOverview, me
   } catch (e) {
     return { plan: null, why: `planner JSON unreadable: ${(e as Error).message}` };
   }
-  const v = validatePlan(json, metrics, now);
+  // What can be mended is, and a prompt that breaks a rule is dropped — never the whole plan (repairPlan).
+  const v = repairPlan(json, metrics, now);
   if (!v.ok) return { plan: null, why: `planner plan invalid: ${v.errors.slice(0, 4).join('; ')}` };
-  const wrong = v.plan.sprints.filter((s) => !kinds.includes(s.kind));
-  if (wrong.length) return { plan: null, why: `planner planned ${wrong.map((s) => s.kind).join(',')} — not asked` };
-  return { plan: v.plan, why: 'planner' };
+  const asked = v.plan.sprints.filter((s) => kinds.includes(s.kind));
+  if (!asked.length) return { plan: null, why: `planner planned ${v.plan.sprints.map((s) => s.kind).join(',')} — not asked` };
+  return { plan: { ...v.plan, sprints: asked }, why: v.dropped.length ? `planner (dropped ${v.dropped.length}: ${v.dropped.slice(0, 2).join('; ')})` : 'planner' };
 }
 
 async function plan(db: Db, model: MonetizeOverview, metrics: Metrics, retros: string[], now: Date, out: Summary) {

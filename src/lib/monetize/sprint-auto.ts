@@ -89,6 +89,42 @@ export function validatePlan(json: unknown, metrics: Metrics, now = new Date()):
   return errors.length ? { ok: false, errors } : { ok: true, plan: r.data };
 }
 
+/**
+ * A planner's plan with what can be mended mended and the rest dropped: the window set to the
+ * kind's own, and every prompt that breaks a rule left out. One bad prompt no longer voids the
+ * plan: on 2026-11-07 a top-up with one gated prompt missing its `unblockWhen` was thrown away
+ * whole, and the loop sat "waiting on you" with nothing runnable. A sprint left with no prompt is
+ * dropped; a plan left with no sprint is still invalid.
+ */
+export function repairPlan(json: unknown, metrics: Metrics, now = new Date()): { ok: true; plan: PlanFile; dropped: string[] } | { ok: false; errors: string[] } {
+  const r = PlanFileSchema.safeParse(json);
+  if (!r.success) return { ok: false, errors: r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) };
+  const dropped: string[] = [];
+  const sprints = r.data.sprints
+    .map((s) => {
+      const win = s.kind === "WEEK" ? weekWindow(now) : monthWindow(now);
+      const keys = new Set(s.tasks.map((t) => t.key));
+      const prompts = s.prompts.filter((p, i) => {
+        const why = !(p.metric in metrics)
+          ? `unknown metric "${p.metric}"`
+          : p.task && !keys.has(p.task)
+            ? `unknown task "${p.task}"`
+            : mentionsGated(p.text) && !p.unblockWhen
+              ? "a gated command needs an unblockWhen"
+              : p.unblockWhen && !p.needsYou
+                ? "a gated prompt needs a needsYou line"
+                : null;
+        if (why) dropped.push(`${s.kind} prompt ${i + 1}: ${why}`);
+        return !why;
+      });
+      return { ...s, startsAt: win.startsAt, endsAt: win.endsAt, prompts };
+    })
+    .filter((s) => s.prompts.length > 0);
+  if (!sprints.length) return { ok: false, errors: dropped.length ? dropped : ["no prompts"] };
+  const v = validatePlan({ ...r.data, sprints }, metrics, now);
+  return v.ok ? { ok: true, plan: v.plan, dropped } : v;
+}
+
 // ── next step → prompt ────────────────────────────────────────────────
 
 const STEP_TAG = "— auto step:";
