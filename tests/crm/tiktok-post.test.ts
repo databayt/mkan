@@ -31,6 +31,13 @@ import {
   ineligibleReason,
   brokerVideoUrl,
   pickToday,
+  pickFresh,
+  slotQuota,
+  dayPieces,
+  kigaliHour,
+  kigaliMidnight,
+  SLOT_HOURS,
+  POSTS_CEILING,
   refInText,
   refOf,
   timeline,
@@ -557,5 +564,128 @@ describe("only the text added on top of the video is wiped (2026-11-06)", () => 
     expect(sceneMotion(stillFrames, { gw, gh })(1)).toBe("still");
     expect(sceneMotion(movingFrames, { gw, gh })(1)).toBe("moving");
     expect(sceneMotion(stillFrames.slice(0, 2), { gw, gh })(0)).toBe("unknown");
+  });
+});
+
+// ── 2026-11-07: every ad that went up today goes out, one at a time through the day ─────────
+const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
+
+describe('kigaliHour / kigaliMidnight', () => {
+  it('reads the clock in Kigali (UTC+2), whatever the machine says', () => {
+    expect(kigaliHour(Date.parse('2026-11-07T05:50:00Z'))).toBe(7);
+    expect(kigaliHour(Date.parse('2026-11-07T22:30:00Z'))).toBe(0);
+  });
+  it('starts the day at midnight in Kigali, 22:00 UTC the day before', () => {
+    expect(kigaliMidnight(Date.parse('2026-11-07T21:59:00Z'))).toBe(Date.parse('2026-11-06T22:00:00Z'));
+    expect(kigaliMidnight(Date.parse('2026-11-07T22:00:00Z'))).toBe(Date.parse('2026-11-07T22:00:00Z'));
+  });
+});
+
+describe('pickFresh', () => {
+  // NOW is 09:00 in Kigali on 10-20, so "yesterday" began at 10-18 22:00 UTC.
+  it('posts every postable ad that went up today or yesterday, not an older one', () => {
+    const rows = [
+      row({ id: 1, postedAt: hoursAgo(2) }),
+      row({ id: 2, postedAt: hoursAgo(30), district: 'Kicukiro' }), // 03:00 yesterday
+      row({ id: 3, postedAt: hoursAgo(36) }), // 21:00 the day before yesterday
+    ];
+    const f = pickFresh(rows, {}, new Set(), { floor: 0, now: NOW });
+    expect(f.picked.map((r) => r.id).sort()).toEqual([1, 2]);
+    expect(f).toMatchObject({ fresh: 2, over: 0, topUp: 0 });
+  });
+  it("keys on the ad's own date, not on when mkan fetched it", () => {
+    const yes = new Set(['kigalihomes']);
+    const lead = (id: number, d: number) => row({ id, source: 'TIKTOK', hostSourceId: 'tiktok:kigalihomes', photoUrls: brokerFrames(d), postedAt: hoursAgo(1) });
+    // Both were fetched an hour ago; only the video posted today is today's ad.
+    const f = pickFresh([lead(1, 0.2), lead(2, 3)], {}, yes, { floor: 0, now: NOW });
+    expect(f.picked.map((r) => r.id)).toEqual([1]);
+  });
+  it("still needs the broker's YES for a broker's ad", () => {
+    const lead = row({ id: 1, source: 'TIKTOK', hostSourceId: 'tiktok:kigalihomes', photoUrls: brokerFrames(0.2) });
+    expect(pickFresh([lead], {}, new Set(), { floor: 0, now: NOW }).picked).toEqual([]);
+  });
+  it('caps the day at the ceiling and keeps the rest for the next pick', () => {
+    const rows = Array.from({ length: 20 }, (_, i) => row({ id: i + 1, postedAt: hoursAgo(1) }));
+    const f = pickFresh(rows, {}, new Set(), { now: NOW });
+    expect(f.picked).toHaveLength(POSTS_CEILING);
+    expect(f.over).toBe(20 - POSTS_CEILING);
+  });
+  it("adds to today's queue without passing the ceiling", () => {
+    const rows = Array.from({ length: 5 }, (_, i) => row({ id: i + 1, postedAt: hoursAgo(1) }));
+    expect(pickFresh(rows, {}, new Set(), { already: POSTS_CEILING - 2, now: NOW }).picked).toHaveLength(2);
+    expect(pickFresh(rows, {}, new Set(), { already: POSTS_CEILING, now: NOW }).picked).toEqual([]);
+  });
+  it('tops a thin day up to the floor from the older pool', () => {
+    const rows = [row({ id: 1, postedAt: hoursAgo(1) }), row({ id: 2, postedAt: daysAgo(4) }), row({ id: 3, postedAt: daysAgo(5) })];
+    const f = pickFresh(rows, {}, new Set(), { floor: 3, now: NOW });
+    expect(f).toMatchObject({ fresh: 1, topUp: 2 });
+    expect(f.picked[0]!.id).toBe(1);
+  });
+  it('leaves out a home that is posted, queued, or rejected', () => {
+    const rows = [row({ id: 1, postedAt: hoursAgo(1) }), row({ id: 2, postedAt: hoursAgo(1) }), row({ id: 3, postedAt: hoursAgo(1) })];
+    const ledger: Ledger = {
+      K1: { listingId: 1, district: 'Gasabo', queuedAt: hoursAgo(2), postedAt: hoursAgo(1) },
+      K2: { listingId: 2, district: 'Gasabo', queuedAt: hoursAgo(2) },
+      K3: { listingId: 3, district: 'Gasabo', queuedAt: daysAgo(5), rejectedAt: daysAgo(5) },
+    };
+    expect(pickFresh(rows, ledger, new Set(), { floor: 0, now: NOW }).picked).toEqual([]);
+  });
+});
+
+describe('a rejected render rests', () => {
+  it('rests like a posted home, where a plain queued one frees up after 3 days', () => {
+    const queued: Ledger = { K1: { listingId: 1, district: 'Gasabo', queuedAt: daysAgo(5) } };
+    const rejected: Ledger = { K1: { ...queued.K1!, rejectedAt: daysAgo(5) } };
+    expect(pickToday([row({ id: 1 })], queued, new Set(), 3, NOW)).toHaveLength(1);
+    expect(pickToday([row({ id: 1 })], rejected, new Set(), 3, NOW)).toHaveLength(0);
+  });
+});
+
+describe('slotQuota', () => {
+  /** One day of slots: what each slot posts, given the slots that run. */
+  const day = (total: number, runs: readonly number[] = SLOT_HOURS) => {
+    let out = 0;
+    const posts: Record<number, number> = {};
+    for (const h of runs) {
+      const q = slotQuota(total, out, h);
+      posts[h] = q;
+      out += q;
+    }
+    return { out, posts };
+  };
+  it('spreads a 12-home day over the slots, one at a time', () => {
+    const { out, posts } = day(12);
+    expect(out).toBe(12);
+    expect(Math.max(...Object.values(posts))).toBe(1);
+    expect(posts[7]).toBe(1);
+  });
+  it('spreads a 3-home day through the day, not all in the morning', () => {
+    const { posts } = day(3);
+    expect(Object.entries(posts).filter(([, q]) => q).map(([h]) => Number(h))).toEqual([7, 12, 17]);
+  });
+  it('a missed morning catches up two at a time and still finishes the day', () => {
+    const { out, posts } = day(12, SLOT_HOURS.filter((h) => h >= 13));
+    expect(out).toBe(12);
+    expect(posts[13]).toBe(2);
+    expect(Math.max(...Object.values(posts))).toBe(2);
+  });
+  it('posts nothing before the first slot, or once the day is out', () => {
+    expect(slotQuota(5, 0, 6)).toBe(0);
+    expect(slotQuota(5, 5, 12)).toBe(0);
+    expect(slotQuota(0, 0, 12)).toBe(0);
+  });
+  it('a late run after the last slot still posts at most two', () => {
+    expect(slotQuota(10, 4, 23)).toBe(2);
+  });
+});
+
+describe('dayPieces', () => {
+  it("reads each queued home's state from the day's folder", () => {
+    const files = ['K1.mp4', 'K1.txt', 'K2.mp4', 'K3.rejected', 'K4.mp4', 'K4.txt', 'K5.error'];
+    // K2 has no caption yet: its render is still running.
+    expect(dayPieces(['K1', 'K2', 'K3', 'K4', 'K5'], files, { K1: hoursAgo(1) }, {})).toEqual({ total: 4, out: 1, ready: ['K4'], todo: ['K2', 'K5'], rejected: 1 });
+  });
+  it('counts a clicked post as out, and a posted one even with a stale marker', () => {
+    expect(dayPieces(['K1', 'K2'], ['K1.rejected', 'K2.mp4', 'K2.txt'], { K1: hoursAgo(1) }, { K2: hoursAgo(1) })).toMatchObject({ total: 2, out: 2, ready: [], todo: [] });
   });
 });

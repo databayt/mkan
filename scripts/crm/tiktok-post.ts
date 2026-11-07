@@ -1,9 +1,9 @@
 /**
  * mkan's own Kigali TikTok page — the daily video queue.
  *
- *   pnpm tt:run [--n=3] [--dry]          pick → render → card (the 07:00 Hermes tick; tt:upload posts after it)
- *   pnpm tt:pick [--n=3] [--dry]    choose today's homes → .data/tiktok-post/<date>/queue.json
- *   pnpm tt:render [--id=5771] [--slideshow]   one 9:16 video per queued home (or one listing, for a look)
+ *   pnpm tt:run [--n=fresh|<n>] [--slot] [--dry]   pick → render → card (the 07:00 Hermes tick; tt:upload posts after it)
+ *   pnpm tt:pick [--n=fresh|<n>] [--dry]   choose today's homes → .data/tiktok-post/<date>/queue.json (a second pick adds to it)
+ *   pnpm tt:render [--slot] [--id=5771] [--slideshow]   one 9:16 video per queued home (--slot: this upload slot's share; --id: one listing, for a look)
  *   pnpm tt:card                    show each video + its caption in Slack #mkan (tt:upload posts them)
  *   pnpm tt:posted <ref> <url>      the poster's receipt: the home rests 30 days
  *   pnpm tt:stats [--notify]        views / likes of our posts, read back by yt-dlp
@@ -33,8 +33,13 @@
  * `repostConsent`). A broker lead goes out as that broker's own video, AI-
  * upscaled, stabilised and graded; an owner's home with no video as its photos.
  *
+ * How many (2026-11-07): every postable home whose ad went up today or yesterday, picked at
+ * 07:00 and again after the 18:00 sweep, 3 to 15 a day (pickFresh), rendered and posted one by
+ * one through the day's upload slots (slotQuota).
+ *
  * Env: MKAN_KIGALI_WHATSAPP (the number in the caption), TIKTOK_POSTS_PER_DAY
- * (default 3), TIKTOK_PAGE_HANDLE (default mkan.rw), TIKTOK_PAGE_SECUID (when
+ * (default "fresh"; a number fixes the day's count and 0 holds the lane), TIKTOK_POSTS_MIN /
+ * TIKTOK_POSTS_MAX (3 / 15), TIKTOK_PAGE_HANDLE (default mkan.rw), TIKTOK_PAGE_SECUID (when
  * yt-dlp's @handle page breaks), KUN_DIR (for the shared reel encode; default
  * ~/kun), MKAN_WHISPER_MODEL (the local voice check's model).
  */
@@ -69,7 +74,13 @@ import {
   muteFilter,
   type MuteSpan,
   oldRenderDays,
+  dayPieces,
+  kigaliHour,
+  pickFresh,
   pickToday,
+  POSTS_CEILING,
+  POSTS_FLOOR,
+  slotQuota,
   refInText,
   refOf,
   spokenContactSpans,
@@ -153,14 +164,21 @@ async function loadRows(where: Record<string, unknown>): Promise<PostRow[]> {
 
 /** Handles of brokers who said YES. Twenty down → nobody (fail closed). */
 async function consentedHandles(): Promise<Set<string>> {
+  return (await readConsent()) ?? new Set();
+}
+
+/** The same, or null when Twenty does not answer: a render then waits for a later slot instead of rejecting the day. */
+async function readConsent(): Promise<Set<string> | null> {
   try {
     const hosts = await twentyClient().all('hosts', 0);
     return new Set(hosts.filter((h) => h.repostConsent === 'YES').map((h) => String(h.tiktokHandle ?? '').replace(/^@/, '').trim().toLowerCase()).filter(Boolean));
   } catch (e) {
-    console.warn(`  ! CRM unreachable (${(e as Error).message.slice(0, 80)}) — broker leads held back today`);
-    return new Set();
+    console.warn(`  ! CRM unreachable (${(e as Error).message.slice(0, 80)}) — broker leads held back`);
+    return null;
   }
 }
+
+const readJsonFile = <T>(p: string, d: T): T => (existsSync(p) ? (JSON.parse(readFileSync(p, 'utf8')) as T) : d);
 
 // ── the ledger: one TikTokPost row per home that goes through the lane ──────
 type Db = (typeof import('../../src/lib/db'))['db'];
@@ -182,10 +200,19 @@ async function ledgerRow<T>(what: string, fn: (db: Db) => Promise<T>): Promise<T
 const videoIdOf = (r: PostRow): string | null => brokerVideoUrl(r)?.split('/').pop() ?? null;
 
 // ── pick ─────────────────────────────────────────────────────────────────────
+/** A whole-number env setting, else its default. */
+const intEnv = (name: string, d: number): number => {
+  const v = Number((process.env[name] ?? '').trim() || NaN);
+  return Number.isInteger(v) && v >= 0 ? v : d;
+};
+
 async function pick(): Promise<PostRow[]> {
-  // 0 is an answer (broker videos on hold); only a missing or broken value falls back to 3.
-  const asked = Number(argv('n', process.env.TIKTOK_POSTS_PER_DAY ?? '3'));
-  const n = Number.isInteger(asked) && asked >= 0 ? asked : 3;
+  // --n / TIKTOK_POSTS_PER_DAY: "fresh" (the default since 2026-11-07) posts every postable home
+  // whose ad went up today or yesterday, from TIKTOK_POSTS_MIN (3) up to TIKTOK_POSTS_MAX (15); see
+  // pickFresh. A number is the day's fixed count, and 0 holds the lane (an answer, not a typo).
+  const raw = argv('n', process.env.TIKTOK_POSTS_PER_DAY ?? 'fresh').trim().toLowerCase();
+  const asked = Number(raw);
+  const fixed = raw !== 'fresh' && raw !== '' && Number.isInteger(asked) && asked >= 0 ? asked : null;
   // Brokers who answered the repost ask on WhatsApp since the last run go into today's pool.
   if (!flag('dry')) await syncLineConsent().catch((e) => console.warn(`  ! repost answers from the line not read: ${(e as Error).message.slice(0, 120)}`));
   const [rows, consented] = await Promise.all([loadRows({}), consentedHandles()]);
@@ -195,10 +222,29 @@ async function pick(): Promise<PostRow[]> {
     const w = ineligibleReason(r, consented);
     if (w) why.set(w, (why.get(w) ?? 0) + 1);
   }
-  const picked = pickToday(rows, ledger, consented, n);
+  // A second pick on the same day adds to today's queue. It never replaces the queue: an earlier
+  // pick's renders and uploads read from it.
+  const queued = readQueue();
+  const inQueue = new Set(queued.map(refOf));
+  const open = rows.filter((r) => !inQueue.has(refOf(r)));
+  let picked: PostRow[];
+  if (fixed !== null) picked = pickToday(open, ledger, consented, Math.max(0, fixed - queued.length));
+  else {
+    const floor = intEnv('TIKTOK_POSTS_MIN', POSTS_FLOOR);
+    const ceiling = intEnv('TIKTOK_POSTS_MAX', POSTS_CEILING);
+    const f = pickFresh(open, ledger, consented, { already: queued.length, floor, ceiling });
+    picked = f.picked;
+    console.log(
+      `ads posted today or yesterday: ${f.fresh} postable` +
+        (f.over ? ` (${f.over} more over the ${ceiling}-a-day cap stay for the next pick)` : '') +
+        (f.topUp ? ` + ${f.topUp} older to reach ${floor}` : '') +
+        (queued.length ? ` · ${queued.length} already in today's queue` : ''),
+    );
+  }
   console.log(`Kigali monthly homes: ${rows.length} · brokers consented: ${consented.size} · held back: ${[...why].map(([k, v]) => `${v} ${k}`).join(', ') || 'none'}`);
   for (const r of picked) console.log(`  ${refOf(r).padEnd(8)} #${r.id}  ${r.bedrooms ?? '?'}bd  RWF ${r.priceMonth}/mo  ${r.area ?? ''}, ${r.district ?? ''}  (${r.source})`);
-  if (!picked.length && n === 0) console.log('  broker videos on hold (--n=0)');
+  if (!picked.length && fixed === 0) console.log('  broker videos on hold (--n=0)');
+  else if (!picked.length && queued.length) console.log(`  nothing to add — today's queue has ${queued.length}`);
   else if (!picked.length) console.log('  nothing to post today — the pool fills when brokers say YES (tt:ask) or owners send homes');
   // One row per home attempt: the page counts featured → enhanced → posted from these.
   for (const r of picked) {
@@ -209,7 +255,7 @@ async function pick(): Promise<PostRow[]> {
   }
   if (flag('dry')) return picked;
   mkdirSync(dayDir(), { recursive: true });
-  writeFileSync(join(dayDir(), 'queue.json'), JSON.stringify(picked, null, 2));
+  if (picked.length || !queued.length) writeFileSync(join(dayDir(), 'queue.json'), JSON.stringify([...queued, ...picked], null, 2));
   const now = new Date().toISOString();
   for (const r of picked) ledger[refOf(r)] = { ...(ledger[refOf(r)] ?? {}), listingId: r.id, district: r.district, queuedAt: now };
   saveLedger(ledger);
@@ -616,9 +662,30 @@ function staleWork(): void {
   }
 }
 
-/** The 10 GiB floor, after freeing what the lane itself left: render folders over 14 days old, and stale work dirs. */
+/**
+ * Days a day folder keeps its videos. A posted video lives on TikTok, and up to 15 a day at
+ * 5–22 MB each add up; the folder's captions, records and screenshots stay.
+ */
+const VIDEO_KEEP_DAYS = 3;
+
+function pruneOldVideos(): number {
+  if (!existsSync(DATA)) return 0;
+  let n = 0;
+  for (const d of oldRenderDays(readdirSync(DATA), Date.now(), VIDEO_KEEP_DAYS)) {
+    for (const f of readdirSync(join(DATA, d))) {
+      if (!f.endsWith('.mp4')) continue;
+      rmSync(join(DATA, d, f), { force: true });
+      n += 1;
+    }
+  }
+  return n;
+}
+
+/** The 10 GiB floor, after freeing what the lane itself left: old videos, render folders over 14 days old, and stale work dirs. */
 function ensureDisk(): void {
   staleWork();
+  const pruned = pruneOldVideos();
+  if (pruned) console.log(`  … disk: ${pruned} video${pruned === 1 ? '' : 's'} over ${VIDEO_KEEP_DAYS} days old removed (their records stay)`);
   let free = freeGiB();
   if (free >= DISK_FLOOR_GIB) return;
   let freed = 0;
@@ -665,22 +732,67 @@ async function renderOne(r: PostRow, dir: string, phone: string): Promise<{ out:
   }
 }
 
+/** Renders of the day's queue that failed in this run: the run's record counts them. */
+let renderFailures = 0;
+
+/**
+ * A queued home that will not render today. `<ref>.rejected` takes it out of the day's count, so
+ * later slots neither wait for it nor try it again. A rejected render (text left after the strip,
+ * or the video gone) also rests in the ledger like a posted home. A broker whose YES is gone is
+ * only skipped. Any other failure gets one more try in a later slot: the first leaves
+ * `<ref>.error`, and the second turns it into `.rejected`.
+ */
+function markFailed(dir: string, ref: string, kind: 'rejected' | 'held' | 'error', why: string): void {
+  const line = `${new Date().toISOString()} ${why}\n`;
+  if (kind === 'error' && !existsSync(join(dir, `${ref}.error`))) return void writeFileSync(join(dir, `${ref}.error`), line);
+  writeFileSync(join(dir, `${ref}.rejected`), line);
+  if (kind !== 'rejected') return;
+  const ledger = loadLedger();
+  if (!ledger[ref]) return;
+  ledger[ref] = { ...ledger[ref]!, rejectedAt: new Date().toISOString() };
+  saveLedger(ledger);
+}
+
 /**
  * Renders `rows` (default: today's queue) into `dir`. `--id` renders any one
  * listing into preview/ for a look (never posted, no row). Each queued home's
  * TikTokPost row turns CLEAN or REJECTED with the reason.
+ *
+ * --slot renders only what this upload slot posts (slotQuota): the next homes in the queue that
+ * have no video yet. Every later slot renders its own share, so no render holds the post lock
+ * for hours, and the day's videos come out one by one through the day.
  */
 async function render(given?: PostRow[]): Promise<string[]> {
   const phone = whatsapp();
   const id = Number(argv('id', '0'));
+  // The day's real queue, not a look (--id, into preview/) or a dry run (into dry/).
+  const real = !id && !flag('dry');
+  const dir = id ? join(DATA, 'preview') : flag('dry') ? join(DATA, 'dry', argv('date', today())) : dayDir();
   // --id renders any one listing for a look, eligible or not — into preview/, never the queue.
   let rows = id ? await loadRows({ id }) : (given ?? readQueue());
+  let want = Infinity;
+  if (real && flag('slot')) {
+    const files = existsSync(dir) ? readdirSync(dir) : [];
+    const s = dayPieces(rows.map(refOf), files, readJsonFile(join(dir, 'uploads.json'), {}), readJsonFile(join(dir, 'pending.json'), {}));
+    const quota = slotQuota(s.total, s.out, kigaliHour());
+    want = Math.max(0, quota - s.ready.length);
+    const todo = new Set(s.todo);
+    rows = rows.filter((r) => todo.has(refOf(r)));
+    console.log(`slot ${kigaliHour()}:00 — ${s.out} of ${s.total} out, ${s.ready.length} ready, this slot posts ${quota} → render ${Math.min(want, rows.length)} of ${rows.length} waiting`);
+    if (!want || !rows.length) return [];
+  }
   if (!id) {
     // The queue was written at pick time; a broker can withdraw a YES in between.
-    const consented = await consentedHandles();
+    const consented = await readConsent();
+    if (!consented) {
+      // Twenty did not answer: nothing is rejected for it, and a later slot renders these.
+      renderFailures += 1;
+      return [];
+    }
     const held = rows.filter((r) => r.source === 'TIKTOK' && !consented.has(brokerHandle(r.hostSourceId) ?? ''));
     for (const r of held) {
       console.warn(`  ! ${refOf(r)}: broker has no YES on file — not rendered`);
+      if (real) markFailed(dir, refOf(r), 'held', 'broker has no YES on file');
       if (r.postId) await ledgerRow('rejected', (db) => db.tikTokPost.update({ where: { id: r.postId! }, data: { status: 'REJECTED', reason: 'broker has no YES on file' } }));
     }
     rows = rows.filter((r) => !held.includes(r));
@@ -690,10 +802,13 @@ async function render(given?: PostRow[]): Promise<string[]> {
     return [];
   }
   ensureDisk();
-  const dir = id ? join(DATA, 'preview') : flag('dry') ? join(DATA, 'dry', argv('date', today())) : dayDir();
   mkdirSync(dir, { recursive: true });
   const outs: string[] = [];
+  let tried = 0;
   for (const r of rows) {
+    // A slot that loses a render to the strip tries the next home, at most two extra.
+    if (outs.length >= want || tried >= want + 2) break;
+    tried += 1;
     try {
       const { out, note } = await renderOne(r, dir, phone);
       console.log(`  🎬 ${refOf(r)} → ${out}`);
@@ -702,6 +817,10 @@ async function render(given?: PostRow[]): Promise<string[]> {
     } catch (e) {
       const why = errorText(e);
       console.warn(`  ! ${refOf(r)}: ${e instanceof Rejected ? 'REJECTED — ' : ''}${why}`);
+      if (real) {
+        renderFailures += 1;
+        markFailed(dir, refOf(r), e instanceof Rejected ? 'rejected' : 'error', why);
+      }
       if (r.postId && !id) await ledgerRow('rejected', (db) => db.tikTokPost.update({ where: { id: r.postId! }, data: { status: 'REJECTED', reason: why.slice(0, 500) } }));
     }
   }
@@ -1143,19 +1262,23 @@ async function main(): Promise<void> {
       await card();
       break;
     case 'run': {
-      // One post per home: up to --n homes, each its own video and caption. No bundles.
+      // One post per home, each its own video and caption. No bundles.
+      // --slot (the 07:00 tick): render only what the first slot posts; each later slot renders its own.
       // --dry: render into dry/, no queue, no Slack card, no run record, no TikTokPost rows.
       const dry = flag('dry');
+      const slot = flag('slot') && !dry;
       try {
         const picked = await pick();
-        const outs = picked.length ? await render(picked) : [];
+        const queued = slot ? readQueue().length : picked.length;
+        const outs = slot ? await render() : picked.length ? await render(picked) : [];
         if (dry) {
           console.log(`dry run: ${picked.length} picked, ${outs.length} rendered → ${join(DATA, 'dry', argv('date', today()))} (nothing queued, sent or posted)`);
           break;
         }
         const sent = outs.length ? await card() : 0;
-        if (!picked.length && flag('notify')) await postToMkan(`🎬 TikTok @${PAGE}: nothing to post today — brokers to ask: \`pnpm tt:ask\``);
-        await recordRun('tiktok-post', outs.length === picked.length, `${picked.length} picked, ${outs.length} rendered, ${picked.length - outs.length} rejected, ${sent} sent`);
+        if (!queued && flag('notify')) await postToMkan(`🎬 TikTok @${PAGE}: nothing to post today — brokers to ask: \`pnpm tt:ask\``);
+        const later = slot ? ` · the rest render in the day's slots` : '';
+        await recordRun('tiktok-post', renderFailures === 0, `${picked.length} picked (${queued} in today's queue), ${outs.length} rendered, ${renderFailures} failed, ${sent} sent${later}`);
       } catch (e) {
         if (!dry) await recordRun('tiktok-post', false, (e as Error).message);
         throw e;

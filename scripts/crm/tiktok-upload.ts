@@ -1,8 +1,8 @@
 /**
  * Posts the day's rendered TikTok videos to @mkan.rw — no phone step.
  *
- *   pnpm tt:upload [--date=YYYY-MM-DD] [--dry] [--notify] [--upto=<n>]
- *   pnpm tt:upload --plan [--upto=<n>]     what this slot would post — no browser, posts nothing
+ *   pnpm tt:upload [--date=YYYY-MM-DD] [--dry] [--notify] [--spread | --upto=<n>]
+ *   pnpm tt:upload --plan [--spread | --upto=<n>]     what this slot would post — no browser, posts nothing
  *   pnpm tt:upload --file=<mp4> --caption=<txt> [--aigc] [--dry]   one ad-hoc video
  *
  * Drives TikTok Studio's web upload (tiktok.com/tiktokstudio/upload) in the
@@ -23,11 +23,13 @@
  * TikTokPost row turns POSTED (with the post's URL when Studio shows it) or
  * FAILED with the reason.
  *
- * --upto=<n>: the day's posts are spread over three slots (2026-11-06) — 07:00 renders all three
- * and posts one (--upto=1), 12:30 brings the day to two (--upto=2), 18:30 posts the rest (no cap).
- * TikTok spreads reach per account, so one post every few hours reaches more people than three in
- * one burst. A piece counts as out once it is in uploads.json or pending.json, so a slot that
- * missed its turn is caught up by the next, and nothing clicked-but-unconfirmed is posted twice.
+ * --spread (2026-11-07): the day's posts go out one by one through the day's slots (07:00, then
+ * :30 past every hour 08–22). Each slot first renders its own share (tt:render --slot), then posts
+ * its share of the day's queue (slotQuota): an even spread whatever the day's count, with a missed
+ * slot caught up at most two at a time. A clean slot posts nothing to #mkan until the day's last
+ * home is up. --upto=<n> instead brings the day to n posts. TikTok spreads reach per account, so
+ * one post an hour reaches more people than a burst. A piece counts as out once it is in
+ * uploads.json or pending.json, and nothing clicked-but-unconfirmed is posted twice.
  *
  * --dry fills everything (file, caption, label) and stops before Post, saving a
  * screenshot next to the video. Env: TIKTOK_UPLOAD_CDP (default http://127.0.0.1:9222).
@@ -37,12 +39,12 @@ config({ override: true });
 
 import { refuseUnattended } from '../unattended';
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { chromium, type Page, type Response } from 'playwright';
 import { postToMkan, recordRun } from './notify';
-import { errorText, type Ledger } from './tiktok-post-pure';
+import { dayPieces, errorText, kigaliHour, slotQuota, type Ledger } from './tiktok-post-pure';
 import { ownTikTok } from './tiktok-pure';
 
 const argv = (n: string, d = ''): string => {
@@ -333,11 +335,20 @@ async function markRow(piece: Piece, data: Record<string, unknown>): Promise<voi
   }
 }
 
-/** --upto=<n>: how many of the day's pieces may be out once this slot is done; absent or not a number = all. */
-function slotCap(pieces: Piece[], done: Record<string, string>, pending: Record<string, string>): { out: number; room: number } {
+/**
+ * How many pieces this slot may post. --spread (the Hermes slots since 2026-11-07): its share of
+ * the day, slotQuota over the whole queue, rendered or not, less the rejected renders. --upto=<n>:
+ * the day is at n once this slot is done. Neither: everything rendered.
+ */
+function slotCap(pieces: Piece[], done: Record<string, string>, pending: Record<string, string>): { out: number; room: number; total: number } {
+  if (flag('spread')) {
+    const queue = readJson<{ id: number; code: string | null }[]>(join(DAY, 'queue.json'), []).map((r) => r.code?.trim() || `K${r.id}`);
+    const s = dayPieces(queue, existsSync(DAY) ? readdirSync(DAY) : [], done, pending);
+    return { out: s.out, room: slotQuota(s.total, s.out, kigaliHour()), total: s.total };
+  }
   const out = pieces.filter((x) => done[x.key] || pending[x.key]).length;
   const upto = Number.parseInt(argv('upto'), 10);
-  return { out, room: Number.isFinite(upto) ? Math.max(0, upto - out) : Infinity };
+  return { out, room: Number.isFinite(upto) ? Math.max(0, upto - out) : Infinity, total: pieces.length };
 }
 
 /** --plan: the slot's dry run — which pieces it would post, read from the day's files only. */
@@ -345,10 +356,11 @@ function plan(): void {
   const pieces = todaysPieces();
   const done = readJson<Record<string, string>>(UPLOADS, {});
   const pending = readJson<Record<string, string>>(PENDING, {});
-  const { out, room } = slotCap(pieces, done, pending);
+  const { out, room, total } = slotCap(pieces, done, pending);
   const due = pieces.filter((x) => !done[x.key] && !pending[x.key]);
   const now = due.slice(0, room === Infinity ? due.length : room);
-  console.log(`${date}: ${pieces.length} rendered, ${out} out already, upto=${argv('upto') || 'all'} → this slot posts ${now.length}${now.length ? `: ${now.map((x) => x.key).join(', ')}` : ''}; ${due.length - now.length} left for later slots`);
+  const mode = flag('spread') ? `spread, the ${kigaliHour()}:00 slot's share is ${room}` : `upto=${argv('upto') || 'all'}`;
+  console.log(`${date}: ${total} in the day, ${pieces.length} rendered, ${out} out already, ${mode} → this slot posts ${now.length}${now.length ? `: ${now.map((x) => x.key).join(', ')}` : ''}; ${Math.max(0, total - out - now.length)} left for later slots`);
 }
 
 async function main(): Promise<void> {
@@ -365,13 +377,17 @@ async function main(): Promise<void> {
   }
   const unsure = pieces.filter((x) => !done[x.key] && pending[x.key] && !flag('force'));
   const ready = pieces.filter((x) => flag('force') || (!done[x.key] && !pending[x.key]));
-  const { out, room } = slotCap(pieces, done, pending);
+  const { out, room, total } = slotCap(pieces, done, pending);
   const due = room === Infinity || flag('force') ? ready : ready.slice(0, room);
-  const later = ready.length - due.length;
-  if (ready.length && !due.length) return void console.log(`slot quota reached for ${date}: ${out} of ${pieces.length} out, ${later} left for the next slot`);
+  // --spread counts the homes that still have to render, too.
+  const later = flag('spread') ? Math.max(0, total - out - due.length) : ready.length - due.length;
+  if (ready.length && !due.length) return void console.log(`slot quota reached for ${date}: ${out} of ${total} out, ${later} left for the next slots`);
   const unsureLine = (key: string, at: string) => `• ⚠️ ${key}: Post was clicked at ${at.slice(11, 16)} UTC but TikTok never confirmed — look at @${PAGE}; if it is not there: \`pnpm tt:upload --repost=${key}\``;
   const unsureLines = unsure.map((x) => unsureLine(x.key, pending[x.key]!));
-  if (!due.length && !unsure.length) return void console.log(pieces.length ? `all ${pieces.length} pieces for ${date} already posted` : `nothing rendered for ${date} — run tt:run`);
+  if (!due.length && !unsure.length) {
+    if (flag('spread') && total > out) return void console.log(`nothing rendered to post yet for ${date}: ${out} of ${total} out, ${total - out} still to render`);
+    return void console.log(pieces.length ? `all ${pieces.length} pieces for ${date} already posted` : `nothing rendered for ${date} — run tt:run`);
+  }
   if (!due.length) {
     for (const l of unsureLines) console.warn(l);
     if (flag('notify') && !dry) await postToMkan([`📲 *TikTok @${PAGE}* — nothing re-posted; needs a look:`, ...unsureLines].join('\n'));
@@ -425,7 +441,9 @@ async function main(): Promise<void> {
   // Clicked but never confirmed — before this run or in it: never re-posted on its own.
   const left = readJson<Record<string, string>>(PENDING, {});
   const unconfirmed = pieces.filter((x) => !done[x.key] && left[x.key]).map((x) => unsureLine(x.key, left[x.key]!));
-  if (flag('notify')) await postToMkan([`📲 *TikTok @${PAGE}* — ${ok}/${due.length} posted automatically${later ? ` (${later} more later today)` : ''}`, ...lines, ...unconfirmed, `https://www.tiktok.com/@${PAGE}`].join('\n'));
+  // Up to 16 slots a day: a clean --spread slot stays out of #mkan until the day's last home is up.
+  const quiet = flag('spread') && ok === due.length && !unconfirmed.length && later > 0;
+  if (flag('notify') && !quiet) await postToMkan([`📲 *TikTok @${PAGE}* — ${ok}/${due.length} posted automatically${later ? ` (${later} more later today)` : ''}`, ...lines, ...unconfirmed, `https://www.tiktok.com/@${PAGE}`].join('\n'));
   await recordRun('tiktok-upload', ok === due.length && !unconfirmed.length, `${ok}/${due.length} posted${unconfirmed.length ? `, ${unconfirmed.length} unconfirmed` : ''}`);
   if (unconfirmed.length) process.exitCode = 77; // needs Abdout: a retry could post it twice
   else if (ok < due.length) process.exitCode = 1;

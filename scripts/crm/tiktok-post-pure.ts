@@ -31,7 +31,8 @@ export interface PostRow {
    */
   postedAt: string | null;
   /** Set once the home is taken or its ad or video is gone (Listing.lostAt): it never goes out again. */
-  lostAt: string | null;  /** Its TikTokPost row (set at pick; carried in queue.json to render and upload). */
+  lostAt: string | null;
+  /** Its TikTokPost row (set at pick; carried in queue.json to render and upload). */
   postId?: string;
 }
 
@@ -40,6 +41,8 @@ export interface LedgerEntry {
   district: string | null;
   queuedAt: string;
   postedAt?: string;
+  /** Its render was rejected (text it could not strip, the video gone): it rests like a posted home. */
+  rejectedAt?: string;
   url?: string;
   views?: number;
   likes?: number;
@@ -108,6 +111,8 @@ export function ineligibleReason(r: PostRow, consented: ReadonlySet<string>, now
 function resting(e: LedgerEntry | undefined, now: number): boolean {
   if (!e) return false;
   if (e.postedAt) return now - Date.parse(e.postedAt) < REPOST_AFTER_DAYS * DAY;
+  // A video that kept text after the strip, or is gone, would only be rejected again next week.
+  if (e.rejectedAt) return now - Date.parse(e.rejectedAt) < REPOST_AFTER_DAYS * DAY;
   return now - Date.parse(e.queuedAt) < QUEUED_HOLD_DAYS * DAY;
 }
 
@@ -140,6 +145,109 @@ export function pickToday(rows: PostRow[], ledger: Ledger, consented: ReadonlySe
     }
   }
   return picked;
+}
+
+/**
+ * How much the page posts (Abdout, 2026-11-07): "post all ads that is posted in the internet
+ * today — if I fetch 10 hours, 20 hours, by today's date, we should post them all". So the rule
+ * keys on the ad's own date (sourcePostedAt), not on when mkan fetched it. Every postable home
+ * whose ad went up in the last AD_DAYS Kigali days goes out: today's, and yesterday's, because an
+ * ad posted after the 18:00 sweep only reaches mkan in the 06:00 one. The pick runs at 07:00 and
+ * again in each evening slot, after the 18:00 sweep has fetched the day's ads. A day is capped at
+ * POSTS_CEILING, because TikTok's own Content Sharing Guidelines cap automated posting at about
+ * 15 a day per account; whatever the cap holds back is still yesterday's ad tomorrow. A thin day
+ * tops up to POSTS_FLOOR from the older pool.
+ */
+export const AD_DAYS = 2;
+export const POSTS_FLOOR = 3;
+export const POSTS_CEILING = 15;
+const KIGALI_UTC_OFFSET = 7_200_000; // CAT, UTC+2, no daylight saving
+
+/** The midnight (in Kigali) that starts the day `now` falls in, in ms. */
+export const kigaliMidnight = (now = Date.now()): number => Math.floor((now + KIGALI_UTC_OFFSET) / DAY) * DAY - KIGALI_UTC_OFFSET;
+
+/**
+ * Today's homes under that rule, spread by district like pickToday. `already` counts the homes in
+ * today's queue: a second pick on the same day adds to the queue and never goes past the ceiling.
+ * `over` counts the recent ads the ceiling held back. They stay in the pool for the next pick.
+ */
+export function pickFresh(
+  rows: PostRow[],
+  ledger: Ledger,
+  consented: ReadonlySet<string>,
+  o: { already?: number; floor?: number; ceiling?: number; days?: number; now?: number } = {},
+): { picked: PostRow[]; fresh: number; over: number; topUp: number } {
+  const { already = 0, floor = POSTS_FLOOR, ceiling = POSTS_CEILING, days = AD_DAYS, now = Date.now() } = o;
+  const room = Math.max(0, ceiling - already);
+  const since = kigaliMidnight(now) - (days - 1) * DAY;
+  const recent = rows.filter((r) => {
+    const t = sourcePostedAt(r);
+    return t !== null && t >= since && t <= now;
+  });
+  // pickToday is deterministic, so its first `room` picks of the whole set are the picks for `room`.
+  const all = pickToday(recent, ledger, consented, Infinity, now);
+  const fresh = all.slice(0, room);
+  const short = Math.max(0, Math.min(floor - already - fresh.length, room - fresh.length));
+  const seen = new Set(recent.map((r) => r.id));
+  const topUp = short ? pickToday(rows.filter((r) => !seen.has(r.id)), ledger, consented, short, now) : [];
+  return { picked: [...fresh, ...topUp], fresh: fresh.length, over: all.length - fresh.length, topUp: topUp.length };
+}
+
+/**
+ * The upload slots, in Kigali hours (2026-11-07). tiktok-post.sh runs at 07:00 and posts the first
+ * home. The other slots run at :30 past every hour from 08 to 22: tiktok-upload-retry.sh until
+ * 17:30, and its evening copy from 18:30, which first adds the 18:00 sweep's ads to the day.
+ * install-tiktok-post.sh schedules these same hours.
+ */
+export const SLOT_HOURS: readonly number[] = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
+/**
+ * A slot that is behind (the Mac slept, or the vault Chrome was down) catches up by at most this
+ * many. Each post is a render (5–16 min) plus an upload (~3 min), and the slot has a 75-minute cap.
+ */
+export const MAX_PER_SLOT = 2;
+
+/** The hour in Kigali, whatever the machine's own time zone. */
+export const kigaliHour = (now = Date.now()): number => new Date(now + KIGALI_UTC_OFFSET).getUTCHours();
+
+/**
+ * How many of the day's posts this slot puts out. After slot k of S the day should be at
+ * ceil(total·k/S), an even spread whatever the day's count. A slot that is behind catches up at
+ * the pace that finishes by the last slot, and never more than `maxPerSlot` at once, so a missed
+ * morning never turns into a burst. `total` = the day's queue less its rejected renders;
+ * `out` = posted, or clicked and waiting for TikTok's confirmation.
+ */
+export function slotQuota(total: number, out: number, hour: number, slots: readonly number[] = SLOT_HOURS, maxPerSlot = MAX_PER_SLOT): number {
+  const k = slots.filter((h) => h <= hour).length;
+  const left = total - out;
+  if (!k || left <= 0) return 0;
+  const target = Math.ceil((total * k) / slots.length);
+  const pace = Math.ceil(left / (slots.length - k + 1));
+  return Math.max(0, Math.min(target - out, pace, maxPerSlot));
+}
+
+/**
+ * Where each of the day's queued homes stands, read from its folder: `<ref>.mp4` plus `<ref>.txt`
+ * is a finished render, because the caption is written after the video. `<ref>.rejected` marks a
+ * render that will not be tried again today. uploads.json holds the posted homes and pending.json
+ * the clicked ones. `todo` keeps the queue's order, which is the order homes render in.
+ */
+export function dayPieces(
+  queueRefs: readonly string[],
+  files: readonly string[],
+  uploads: Readonly<Record<string, string>>,
+  pending: Readonly<Record<string, string>>,
+): { total: number; out: number; ready: string[]; todo: string[]; rejected: number } {
+  const has = new Set(files);
+  const isOut = (ref: string): boolean => Boolean(uploads[ref] || pending[ref]);
+  const live = queueRefs.filter((ref) => isOut(ref) || !has.has(`${ref}.rejected`));
+  const rendered = (ref: string): boolean => has.has(`${ref}.mp4`) && has.has(`${ref}.txt`);
+  return {
+    total: live.length,
+    out: live.filter(isOut).length,
+    ready: live.filter((ref) => !isOut(ref) && rendered(ref)),
+    todo: live.filter((ref) => !isOut(ref) && !rendered(ref)),
+    rejected: queueRefs.length - live.length,
+  };
 }
 
 export const formatRwf = (n: number): string => `RWF ${Math.round(n).toLocaleString('en-US')}`;
