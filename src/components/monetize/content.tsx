@@ -12,6 +12,7 @@ import { HealthBadge } from "./health-badge";
 import { INK, MUTED } from "./listing-ui";
 import { LiveCard } from "./live-card";
 import { MobileBar, MoneyCard } from "./money-card";
+import type { HeldIntro } from "@/lib/monetize/deals";
 import { DealsSection } from "./deals-section";
 import { SetupSection } from "./setup-section";
 import { Road } from "./road";
@@ -30,6 +31,7 @@ export function MonetizeContent({
   locale,
   canEdit = false,
   deals = null,
+  heldIntros = [],
   payoutSet = false,
 }: {
   data: MonetizeOverview;
@@ -40,6 +42,8 @@ export function MonetizeContent({
   canEdit?: boolean;
   /** Admin only: the deals and their money taps (deals.ts). */
   deals?: DealRow[] | null;
+  /** Admin only: intros the line holds (deals.ts loadHeldIntros). */
+  heldIntros?: HeldIntro[];
   payoutSet?: boolean;
 }) {
   const blocks = Object.fromEntries(data.blocks.map((b) => [b.key, labels.blocks[b.key].title]));
@@ -57,7 +61,7 @@ export function MonetizeContent({
       </header>
 
       {data.score && <Scorecard score={data.score} reach={data.reach} intro={data.intro} labels={labels} locale={locale} />}
-      {canEdit && deals && <DealsSection deals={deals} labels={labels} locale={locale} payoutSet={payoutSet} />}
+      {canEdit && deals && <DealsSection deals={deals} labels={labels} locale={locale} payoutSet={payoutSet} held={heldIntros} />}
       {canEdit && <SetupSection state={data.setup ?? {}} labels={labels} locale={locale} />}
 
       <LiveCard initial={live} labels={labels.live} blocks={blocks} canEdit={canEdit} locale={locale} />

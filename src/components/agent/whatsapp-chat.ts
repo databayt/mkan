@@ -357,7 +357,7 @@ async function dealSheetFor(taskId: string, listingId: number): Promise<string |
   const task = await db.agentTask.findUnique({ where: { id: taskId }, select: { id: true, locale: true, shortlist: true, profile: { select: { waPhone: true } } } });
   if (!task) return null;
   if ((await introMode().catch(() => "relay" as const)) === "intro") {
-    const res = await startIntro([task], listingId, null, { replyTo: task.id }).catch(() => ({ started: false, reply: null }));
+    const res = await startIntro([task], listingId, null, { replyTo: task.id, typed: false }).catch(() => ({ started: false, reply: null }));
     if (res.started) return res.reply;
   }
   const sheet = await prepareDealSheet(task, listingId);

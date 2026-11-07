@@ -6979,7 +6979,14 @@
       "amount": "Amount (RWF)",
       "sendShare": "Send share request",
       "markPaid": "Mark paid",
-      "payoutMissing": "No pay number is set (MKAN_PAYOUT_MOMO): the request won't say where to pay."
+      "payoutMissing": "No pay number is set (MKAN_PAYOUT_MOMO): the request won't say where to pay.",
+      "held": {
+        "title": "Intangiriro zigutegereje",
+        "line": "K{ref} · {broker} yavuze ko iracyahari — abakodesha {n} barategereje: {who}",
+        "off": "Kohereza ku bakomisiyoneri byarahagaritswe, bityo ubusabe bufashwe. Kanda Yego ku ntambwe yo gufungura cyangwa ukoreshe pnpm wa:brokers gated, hanyuma buzoherezwa.",
+        "tries": "Byaguye incuro eshatu.Ohereza ubwawe.",
+        "send": "Fungura ikiganiro"
+      }
     },
     "setup": {
       "title": "Business setup",

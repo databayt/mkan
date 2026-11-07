@@ -51,3 +51,38 @@ export async function loadDeals(now = new Date()): Promise<DealRow[]> {
     now,
   );
 }
+
+export interface HeldIntro {
+  ref: number;
+  broker: string;
+  /** Full numbers: admin only. */
+  tenants: string[];
+  why: "off" | "tries";
+  chat: string;
+  since: string;
+}
+
+/**
+ * The intros waiting on Abdout: a terms ask or a tenant's number the line holds (sends off, or the outbox dropped it
+ * three times). Read straight from WaState, admin only, so a gated intro shows here instead of vanishing.
+ */
+export async function loadHeldIntros(): Promise<HeldIntro[]> {
+  const rows = await db.waState.findMany({ where: { OR: [{ key: { startsWith: "terms-ask:" } }, { key: { startsWith: "intro-reply:" } }] }, select: { key: true, value: true } });
+  const held = rows.filter((r) => (r.value as { heldAt?: string } | null)?.heldAt);
+  if (held.length === 0) return [];
+  const ids = [...new Set(held.map((r) => (r.value as { brokerId?: string }).brokerId).filter((x): x is string => !!x))];
+  const brokers = await db.broker.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, contactName: true } });
+  const name = new Map(brokers.map((b) => [b.id, b.contactName?.trim() || b.name]));
+  return held.map((r) => {
+    const v = r.value as { listingId: number; brokerId: string; tenants?: { phone: string }[]; heldAt: string; heldWhy?: string };
+    const phone = r.key.slice(r.key.indexOf(":") + 1);
+    return {
+      ref: v.listingId,
+      broker: name.get(v.brokerId) ?? `…${phone.slice(-3)}`,
+      tenants: (v.tenants ?? []).map((t) => t.phone),
+      why: v.heldWhy === "tries-used" ? ("tries" as const) : ("off" as const),
+      chat: `https://wa.me/${phone}`,
+      since: v.heldAt,
+    };
+  });
+}

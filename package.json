@@ -85,6 +85,8 @@
     "deal:book": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/deal.ts book",
     "deal:status": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/deal.ts status",
     "deal:terms": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/deal.ts terms",
+    "intro:start": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/intro-start.ts",
+    "intro:dry": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/intro-dry.ts",
     "deal:e2e": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/deal-e2e.ts",
     "wa:e2e": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/wa-e2e.ts",
     "agent:latency": "tsx scripts/agent/latency.ts",

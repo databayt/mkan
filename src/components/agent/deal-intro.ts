@@ -26,20 +26,25 @@ import { phoneKey } from "../../../scripts/wa/outbox-pure";
 import { ALERT_LABEL, inSendWindow } from "../../../scripts/wa/outbox-pure";
 import { agreementOf, sendDealSheet, setDealStatus } from "./deal";
 import { expectedShare, type DealLang } from "./deal-pure";
+import { brokerSendMode } from "./broker-sends";
 import {
   connectionMode,
+  decideSend,
   dueFollowUps,
+  heldIntroCard,
   FOLLOW_UP_TTL_MS,
   followUpBrokerMessage,
   followUpTenantMessage,
   introBrokerMessage,
   introPendingMessage,
+  lastDigits,
   introTenantMessage,
   MKAN_TERMS,
   readBrokerFollowUp,
   readRating,
   readTenantFollowUp,
   readTermsReply,
+  termsReplyApplies,
   TERMS_ASK_TTL_MS,
   TERMS_WAIT_MS,
   termsAskMessage,
@@ -67,7 +72,7 @@ export async function introMode(): Promise<ConnectionMode> {
 type IntroTask = { id: string; locale: string; shortlist: unknown; profile: { waPhone: string | null } | null };
 type Pending = { taskId: string; phone: string; lang: DealLang };
 /** The terms ask waiting on one broker (WaState `terms-ask:<number>`). */
-export type TermsAsk = { listingId: number; brokerId: string; tenants: Pending[]; at: string; replied?: boolean; queuedAt?: string };
+export type TermsAsk = { listingId: number; brokerId: string; tenants: Pending[]; at: string; replied?: boolean; queuedAt?: string; /** When #mkan was told this ask is held (sends off, or dropped 3 times). */ heldAt?: string };
 export const termsAskKey = (phone: string) => `terms-ask:${phoneKey(phone)}`;
 
 async function saidStop(phone: string): Promise<boolean> {
@@ -103,22 +108,30 @@ const firstName = (b: { contactName: string | null; name: string }) => (b.contac
  * the caller sends the deal sheet as before. `replyTo`: the chat answering right now gets its words
  * as `reply` instead of a queued message.
  */
-export async function startIntro(tasks: IntroTask[], listingId: number, answeredFrom: string | null, opts: { replyTo?: string } = {}): Promise<{ started: boolean; reply: string | null }> {
+export async function startIntro(tasks: IntroTask[], listingId: number, answeredFrom: string | null, opts: { replyTo?: string; typed?: boolean } = {}): Promise<{ started: boolean; reply: string | null }> {
   const broker = await yesBroker(listingId, answeredFrom);
   if (!broker) return { started: false, reply: null };
   const tenants: Pending[] = [];
+  let again: string | null = null;
   for (const t of tasks) {
     const phone = t.profile?.waPhone;
-    if (!phone || (await saidStop(phone))) continue;
+    if (!phone) {
+      // A web chat with no WhatsApp number cannot be introduced: it used to vanish here. A person asks for the number.
+      await postSlackCard(`📵 *Intro* K${listingId}: ${broker.name} said it's free, but chat …${t.id.slice(-6)} has no WhatsApp number — ask the tenant for one, or the intro cannot start.`).catch(() => {});
+      continue;
+    }
+    if (await saidStop(phone)) continue;
     // One intro per chat and home: a second yes about it is not a second deal.
     const open = await db.deal.findFirst({ where: { taskId: t.id, listingId, introducedAt: { not: null }, status: { in: ["VIEWING_BOOKED", "VIEWED"] } }, select: { id: true } });
     if (!open) tenants.push({ taskId: t.id, phone: plus(phone), lang: langOf(t.locale) });
+    // The tenant picking it again hears the broker's number again, not silence.
+    else if (t.id === opts.replyTo && agreementOf(broker)) again = introTenantMessage(langOf(t.locale), { title: await homeTitle(listingId, tasks), ref: `K${listingId}`, broker: firstName(broker), phone: broker.phone });
   }
-  if (tenants.length === 0) return { started: true, reply: null };
+  if (tenants.length === 0) return { started: true, reply: again };
   if (agreementOf(broker)) {
     const made = await makeIntro(listingId, broker, tenants, opts.replyTo);
     // Their yes gets the tenant's number as its reply (introReplyFor), else the queue carries it (introSweep).
-    await writeState(introReplyKey(broker.phone), { listingId, brokerId: broker.id, text: made.brokerText, at: new Date().toISOString() });
+    await writeState(introReplyKey(broker.phone), { listingId, brokerId: broker.id, text: made.brokerText, at: new Date().toISOString(), tenants: tenants.map((t) => ({ phone: t.phone })) });
     return { started: true, reply: made.tenantText };
   }
   const key = termsAskKey(broker.phone);
@@ -134,6 +147,8 @@ export async function startIntro(tasks: IntroTask[], listingId: number, answered
   };
   await writeState(key, merged);
   const title = await homeTitle(listingId, tasks);
+  // A yes from the form has no reply of the broker's to ride on: the terms ask goes out now, not at the next sweep.
+  if (opts.typed === false) await sweepTermsAsk(key.slice("terms-ask:".length), merged, new Date(), false).catch((err) => console.warn(`[agent] terms ask: ${(err as Error).message}`));
   const queued = tenants.filter((t) => t.taskId !== opts.replyTo);
   if (queued.length) {
     await sendMessages(
@@ -159,17 +174,15 @@ const introReplyKey = (phone: string) => `intro-reply:${phoneKey(phone)}`;
  * The line's reply to a broker's typed yes, when it starts an intro: the terms ask, or — terms on
  * record — the tenant's number. Null: the usual thanks. Read once, within minutes of the yes.
  */
-type IntroReply = { listingId: number; brokerId: string; text: string; at: string };
+type IntroReply = { listingId: number; brokerId: string; text: string; at: string; tenants?: { phone: string }[]; heldAt?: string };
 
 export async function introReplyFor(phone: string, listingId: number): Promise<string | null> {
+  // Nothing is cleared or flagged here: whether the words went out is read from the outbox rows
+  // (introSweep), so a reply the line could not send (sends off, a failure) is still owed.
   const made = await readState<IntroReply | null>(introReplyKey(phone), null);
-  if (made && made.listingId === listingId && Date.now() - Date.parse(made.at) < 10 * 60_000) {
-    await clearState(introReplyKey(phone));
-    return made.text;
-  }
+  if (made && made.listingId === listingId && Date.now() - Date.parse(made.at) < 10 * 60_000) return made.text;
   const ask = await readState<TermsAsk | null>(termsAskKey(phone), null);
-  if (ask && ask.listingId === listingId && !ask.replied && Date.now() - Date.parse(ask.at) < 10 * 60_000) {
-    await writeState(termsAskKey(phone), { ...ask, replied: true });
+  if (ask && ask.listingId === listingId && Date.now() - Date.parse(ask.at) < 10 * 60_000) {
     return termsAskMessage({ ref: `K${listingId}`, title: await homeTitle(listingId), tenants: ask.tenants.length });
   }
   return null;
@@ -224,10 +237,17 @@ async function makeIntro(
 }
 
 /** What the broker's message did to an open terms ask; null when no terms ask is waiting on this number. */
-export async function answerTerms(phone: string, text: string, at: Date): Promise<{ answer: "yes" | "no" | null; listingId: number; reply: string | null; tenants: number } | null> {
+export async function answerTerms(
+  phone: string,
+  text: string,
+  at: Date,
+  opts: { newestAvailabilityAskAt?: Date | null; quotedTerms?: boolean } = {},
+): Promise<{ answer: "yes" | "no" | null; listingId: number; reply: string | null; tenants: number } | null> {
   const key = termsAskKey(phone);
   const ask = await readState<TermsAsk | null>(key, null);
   if (!ask || at.getTime() - Date.parse(ask.at) > TERMS_ASK_TTL_MS || at.getTime() < Date.parse(ask.at)) return null;
+  // A "yes" to a newer "is this available?" is that answer's, not the terms' (it used to start an intro for the older home).
+  if (!termsReplyApplies({ askAt: new Date(ask.at), newestAvailabilityAskAt: opts.newestAvailabilityAskAt ?? null, quotedTerms: opts.quotedTerms ?? false })) return null;
   const answer = readTermsReply(text);
   if (answer == null) return { answer, listingId: ask.listingId, reply: null, tenants: ask.tenants.length };
   await clearState(key);
@@ -256,6 +276,66 @@ export async function answerTerms(phone: string, text: string, at: Date): Promis
   return { answer, listingId: ask.listingId, reply: made.brokerText, tenants: ask.tenants.length };
 }
 
+/** Broker sends on? (broker-sends.ts: `gated` is on, for real WhatsApp tenants; anything else is off.) */
+const sendsOn = async () => (await brokerSendMode().catch(() => "off" as const)) === "gated";
+
+/** The outbox rows written for a broker's message since `since` (the terms ask, the tenant's number), oldest first. */
+async function sentRows(phone: string, since: string, match: (m: { label: string | null; body: string }) => boolean) {
+  const rows = await db.outboundMessage.findMany({
+    where: { to: { in: variants(phone) }, kind: "BROKER_REQUEST", createdAt: { gte: new Date(Date.parse(since) - 60_000) } },
+    orderBy: { createdAt: "asc" },
+    select: { status: true, label: true, body: true },
+  });
+  return rows.filter(match).map((r) => ({ status: r.status }));
+}
+
+/** Tell #mkan once that an intro is held, and remember that it did (state `heldAt`), so the card does not repeat each tick. */
+async function holdCard(
+  key: string,
+  value: Record<string, unknown>,
+  why: "sends-off" | "tries-used",
+  v: { listingId: number; brokerId: string; phone: string; text: string; tenants: string[] },
+) {
+  if (value.heldAt) return;
+  await writeState(key, { ...value, heldAt: new Date().toISOString(), heldWhy: why });
+  const [broker, title] = await Promise.all([db.broker.findUnique({ where: { id: v.brokerId }, select: { name: true } }), homeTitle(v.listingId)]);
+  await postSlackCard(
+    heldIntroCard({ ref: `K${v.listingId}`, title, broker: broker?.name ?? lastDigits(v.phone), tenants: v.tenants, why, text: v.text, chatLink: `https://wa.me/${phoneKey(v.phone)}?text=${encodeURIComponent(v.text)}` }),
+  ).catch(() => {});
+}
+
+/** Right after a reply to a broker could not go out: read the outbox again for their open terms ask, so a held one reaches #mkan now. */
+export async function reconcileTermsAsk(phone: string, now = new Date()): Promise<void> {
+  const ask = await readState<TermsAsk | null>(termsAskKey(phone), null);
+  if (ask?.at) await sweepTermsAsk(phone, ask, now, true);
+}
+
+/**
+ * One terms ask, decided from what the outbox really did with it. `ride`: a typed yes gives its
+ * reply ten minutes to go out on the broker's own message first. True when it queued the ask.
+ */
+async function sweepTermsAsk(phone: string, ask: TermsAsk, now: Date, ride: boolean): Promise<boolean> {
+  const rows = await sentRows(phone, ask.at, (m) => m.label === "auto-terms");
+  const d = decideSend({ ageMs: now.getTime() - Date.parse(ask.at), rows, sendsOn: await sendsOn(), inWindow: inSendWindow(now) || !ride, ride });
+  if (d.do === "hold") {
+    await holdCard(termsAskKey(phone), ask as unknown as Record<string, unknown>, d.why, {
+      listingId: ask.listingId,
+      brokerId: ask.brokerId,
+      phone,
+      text: termsAskMessage({ ref: `K${ask.listingId}`, title: await homeTitle(ask.listingId), tenants: ask.tenants.length }),
+      tenants: ask.tenants.map((t) => t.phone),
+    });
+    return false;
+  }
+  if (d.do !== "queue") return false;
+  await sendMessages(
+    [{ kind: "BROKER_REQUEST", to: `+${phoneKey(phone)}`, body: termsAskMessage({ ref: `K${ask.listingId}`, title: await homeTitle(ask.listingId), tenants: ask.tenants.length }), label: "auto-terms", brokerId: ask.brokerId }],
+    `Terms ask → broker (home #${ask.listingId})`,
+  );
+  await writeState(termsAskKey(phone), { ...ask, queuedAt: now.toISOString(), heldAt: undefined });
+  return true;
+}
+
 const fuTenantLabel = (mark: "tenant-24h" | "tenant-7d", dealId: string) => `tenant-intro-fu-${mark === "tenant-24h" ? "24h" : "7d"}:${dealId}`;
 const fuBrokerLabel = (dealId: string) => `auto-intro-fu:${dealId}`;
 
@@ -279,27 +359,26 @@ export async function introSweep(now = new Date()): Promise<number> {
         const task = await db.agentTask.findUnique({ where: { id: t.taskId }, select: { id: true, locale: true, shortlist: true, profile: { select: { waPhone: true } } } });
         if (task) await sendDealSheet(task, ask.listingId).catch(() => {});
       }
-      await postSlackCard(`⌛ *Intro* K${ask.listingId}: the broker (+${phone}) never answered Mkan's terms in 24 h — the tenant got the deal sheet; a person takes it from here.`).catch(() => {});
+      await postSlackCard(`⌛ *Intro* K${ask.listingId}: the broker (${lastDigits(phone)}) never answered Mkan's terms in 24 h — the tenant got the deal sheet; a person takes it from here.`).catch(() => {});
       n += 1;
-    } else if (!ask.replied && !ask.queuedAt && age > 10 * 60_000 && inSendWindow(now)) {
-      // The yes came by the form (no reply to ride on): the queue carries the terms ask.
-      await sendMessages(
-        [{ kind: "BROKER_REQUEST", to: `+${phone}`, body: termsAskMessage({ ref: `K${ask.listingId}`, title: await homeTitle(ask.listingId), tenants: ask.tenants.length }), label: "auto-terms", brokerId: ask.brokerId }],
-        `Terms ask → broker (home #${ask.listingId})`,
-      );
-      await writeState(row.key, { ...ask, queuedAt: now.toISOString() });
-      n += 1;
-    }
+    } else if (await sweepTermsAsk(phone, ask, now, true)) n += 1;
   }
-  // ── the tenant's number for a broker whose yes had no reply to ride on (the form, a later pick) ──
+  // ── the tenant's number for a broker whose yes had no reply to ride on, or whose reply could not go ──
   const replies = await db.waState.findMany({ where: { key: { startsWith: "intro-reply:" } }, select: { key: true, value: true } });
   for (const row of replies) {
     const r = row.value as IntroReply | null;
-    if (!r?.at || now.getTime() - Date.parse(r.at) < 10 * 60_000 || !inSendWindow(now)) continue;
+    if (!r?.at) continue;
     const phone = row.key.slice("intro-reply:".length);
-    await sendMessages([{ kind: "BROKER_REQUEST", to: `+${phone}`, body: r.text, label: "auto-intro", brokerId: r.brokerId }], `Intro → broker (home #${r.listingId})`);
-    await clearState(row.key);
-    n += 1;
+    const age = now.getTime() - Date.parse(r.at);
+    const rows = await sentRows(phone, r.at, (m) => m.body === r.text);
+    const d = decideSend({ ageMs: age, rows, sendsOn: (await sendsOn()), inWindow: inSendWindow(now), ride: true });
+    if (d.do === "wait" && d.why === "delivered") await clearState(row.key);
+    else if (d.do === "queue") {
+      await sendMessages([{ kind: "BROKER_REQUEST", to: `+${phone}`, body: r.text, label: "auto-intro", brokerId: r.brokerId }], `Intro → broker (home #${r.listingId})`);
+      n += 1;
+    } else if (d.do === "hold") await holdCard(row.key, r as unknown as Record<string, unknown>, d.why, { listingId: r.listingId, brokerId: r.brokerId, phone, text: r.text, tenants: (r.tenants ?? []).map((t) => t.phone) });
+    // Past the grace and still unsent after three days: nobody is waiting on it any more.
+    if (age > TERMS_ASK_TTL_MS) await clearState(row.key);
   }
   // ── follow-ups ──
   if (!inSendWindow(now)) return n;

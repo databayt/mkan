@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { markDealPaid, sendShareRequest } from "@/lib/actions/monetize-actions";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { nextStepOf, type DealRow } from "@/lib/monetize/deal-pipeline";
+import type { HeldIntro } from "@/lib/monetize/deals";
 import { cn } from "@/lib/utils";
 
 import { fill, type MonetizeLabels } from "./format";
@@ -17,7 +18,7 @@ import { GRADIENT, INK, LINE, MUTED } from "./listing-ui";
 const RWF = (n: number, locale: Locale) => `${formatNumber(Math.round(n), locale)} RWF`;
 const SUBMIT = "h-10 rounded-[10px] border-0 px-4 text-sm font-semibold text-white hover:opacity-95";
 
-export function DealsSection({ deals, labels, locale, payoutSet }: { deals: DealRow[]; labels: MonetizeLabels; locale: Locale; payoutSet: boolean }) {
+export function DealsSection({ deals, labels, locale, payoutSet, held = [] }: { deals: DealRow[]; labels: MonetizeLabels; locale: Locale; payoutSet: boolean; held?: HeldIntro[] }) {
   const L = labels.deals;
   const now = new Date();
   return (
@@ -26,6 +27,22 @@ export function DealsSection({ deals, labels, locale, payoutSet }: { deals: Deal
         {L.title}
       </h2>
       <p className={cn("mt-1 text-sm", MUTED)}>{L.subtitle}</p>
+      {held.length > 0 && (
+        <div className="mt-4 rounded-xl border border-[#C13515] p-4">
+          <p className={cn("text-base font-semibold", INK)}>{L.held.title}</p>
+          <ul className="mt-2 flex flex-col gap-3">
+            {held.map((h) => (
+              <li key={`${h.ref}-${h.since}`}>
+                <p className={cn("text-sm font-medium", INK)}>{fill(L.held.line, { ref: h.ref, broker: h.broker, n: formatNumber(h.tenants.length, locale), who: h.tenants.join(", ") || L.none })}</p>
+                <p className={cn("mt-1 text-xs", MUTED)}>{h.why === "off" ? L.held.off : L.held.tries}</p>
+                <a href={h.chat} className="mt-1 inline-block text-xs underline" target="_blank" rel="noreferrer">
+                  {L.held.send}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {deals.length === 0 ? (
         <p className={cn("mt-4 rounded-xl border px-4 py-3 text-sm", LINE, MUTED)}>{L.empty}</p>
       ) : (

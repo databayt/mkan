@@ -6979,7 +6979,14 @@
       "amount": "Amount (RWF)",
       "sendShare": "Send share request",
       "markPaid": "Mark paid",
-      "payoutMissing": "No pay number is set (MKAN_PAYOUT_MOMO): the request won't say where to pay."
+      "payoutMissing": "No pay number is set (MKAN_PAYOUT_MOMO): the request won't say where to pay.",
+      "held": {
+        "title": "Intros waiting on you",
+        "line": "K{ref} · {broker} said it's free — {n} tenant(s) wait: {who}",
+        "off": "Broker sends are off, so the terms ask is held. Tap Yes on the \"broker asks on\" step below, or run pnpm wa:brokers gated: the sweep then sends it.",
+        "tries": "The outbox dropped it three times. Send it by hand.",
+        "send": "Open the chat"
+      }
     },
     "setup": {
       "title": "Business setup",

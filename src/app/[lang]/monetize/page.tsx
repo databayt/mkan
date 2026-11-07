@@ -4,7 +4,7 @@ import { i18n, type Locale } from "@/components/internationalization/config";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { MonetizeContent } from "@/components/monetize/content";
 import type { MonetizeLabels } from "@/components/monetize/format";
-import { loadDeals } from "@/lib/monetize/deals";
+import { loadDeals, loadHeldIntros } from "@/lib/monetize/deals";
 import { loadLive } from "@/lib/monetize/live";
 import { publicLive } from "@/lib/monetize/live-shape";
 import { loadMonetizeCached } from "@/lib/monetize/load-cached";
@@ -43,6 +43,7 @@ export default async function MonetizePage({
   const live = canEdit ? liveRaw : publicLive(liveRaw);
   // The deals carry phone numbers: read only for an admin, never cached or shown to anyone else.
   const deals = canEdit ? await loadDeals().catch(() => null) : null;
+  const heldIntros = canEdit ? await loadHeldIntros().catch(() => []) : [];
   return (
     <MonetizeContent
       data={data}
@@ -52,6 +53,7 @@ export default async function MonetizePage({
       lang={lang}
       canEdit={canEdit}
       deals={deals}
+      heldIntros={heldIntros}
       payoutSet={!!process.env.MKAN_PAYOUT_MOMO?.trim()}
     />
   );

@@ -132,7 +132,7 @@ export async function recordTypedAnswer(requestIds: string[], listingId: number,
     where: { id: { in: requestIds }, listingId, status: { in: answer === "RENTED" ? ["PENDING", "NO_REPLY", "AVAILABLE"] : ["PENDING", "NO_REPLY"] } },
     data: { status: answer, respondedAt: new Date() },
   });
-  await applyAnswer(listingId, answer, phone);
+  await applyAnswer(listingId, answer, phone, "typed");
   // The directory's own record of who answers (0 on every broker until 11-01).
   await db.broker.updateMany({
     where: { phones: { hasSome: phoneVariants(phone) } },
@@ -190,7 +190,9 @@ export async function handleBrokerReply(input: { brokerId: string; phone: string
     return { kind: "repost", answer };
   }
   // Mkan's terms before an intro (asked as the reply to their yes): the YES gets them the tenant's number.
-  const terms = photoUrls.length === 0 ? await answerTerms(phone, text, at) : null;
+  const newestAsk = last?.kind === "BROKER_REQUEST" && last.brokerRequestIds.length > 0 ? last.sentAt : null;
+  const quotedTerms = !!input.quotedId && last?.kind === "BROKER_REQUEST" && last.brokerRequestIds.length === 0;
+  const terms = photoUrls.length === 0 ? await answerTerms(phone, text, at, { newestAvailabilityAskAt: newestAsk, quotedTerms }) : null;
   if (terms) {
     const reply = terms.reply && last ? await replyOnce(last, terms.answer === "yes" ? "auto-intro" : "auto-terms-no", terms.reply) : terms.reply ? await replyTo(phone, "auto-intro", terms.reply, brokerId) : null;
     return { kind: "terms", answer: terms.answer, listingId: terms.listingId, tenants: terms.tenants, reply };

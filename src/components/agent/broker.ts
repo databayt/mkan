@@ -393,7 +393,7 @@ async function settleTasks(taskIds: string[]) {
  * in the middle (2026-11-01): the tenant never gets the broker's number; a yes
  * goes to #mkan for the person who sets up the viewing.
  */
-export async function applyAnswer(listingId: number, answer: Answer, brokerPhone?: string | null) {
+export async function applyAnswer(listingId: number, answer: Answer, brokerPhone?: string | null, via: "typed" | "form" = "form") {
   const number = answer === "AVAILABLE" ? brokerNumber(brokerPhone) : null;
   // Every open question about this home has its answer now. `respondedAt` stays on the
   // answering broker's own rows (the caller stamped them), so a broker's answer rate
@@ -425,7 +425,7 @@ export async function applyAnswer(listingId: number, answer: Answer, brokerPhone
   );
   await settleTasks(tasks.map((t) => t.id));
   await markOriginChats(found, listingId, availability);
-  const introduced = await tellWhatsAppTenants(tasks, listingId, answer, brokerPhone ?? null);
+  const introduced = await tellWhatsAppTenants(tasks, listingId, answer, brokerPhone ?? null, via === "typed");
   if (answer === "AVAILABLE") {
     // Available again lifts an earlier "taken".
     await db.listing.update({ where: { id: listingId }, data: { lastAvailabilityConfirmedAt: new Date(), lostAt: null, lostReason: null } });
@@ -464,7 +464,7 @@ const titleIn = (t: AnsweredTask, listingId: number) => ((t.shortlist as Shortli
  * chat updates itself, a WhatsApp chat does not. "No reply" reaches only a
  * tenant still in the search. Queued like every other send (whatsapp.ts).
  */
-async function tellWhatsAppTenants(tasks: AnsweredTask[], listingId: number, answer: Answer, brokerPhone: string | null): Promise<boolean> {
+async function tellWhatsAppTenants(tasks: AnsweredTask[], listingId: number, answer: Answer, brokerPhone: string | null, typed = false): Promise<boolean> {
   if (!tasks.some((t) => t.profile?.waPhone)) return false;
   // Times exist only when the broker offered them on the form; a typed "yes" offers none.
   const offered = answer === "AVAILABLE" ? await db.brokerRequest.findMany({ where: { listingId, status: "AVAILABLE" }, select: { viewingSlots: true }, take: 20 }) : [];
@@ -475,7 +475,7 @@ async function tellWhatsAppTenants(tasks: AnsweredTask[], listingId: number, ans
   if (answer === "AVAILABLE" && !canPick) {
     const { introMode, startIntro } = await import("./deal-intro");
     if ((await introMode().catch(() => "relay" as const)) === "intro") {
-      const res = await startIntro(tasks, listingId, brokerPhone).catch((err) => {
+      const res = await startIntro(tasks, listingId, brokerPhone, { typed }).catch((err) => {
         console.warn(`[agent] intro: ${(err as Error).message}`);
         return { started: false, reply: null };
       });

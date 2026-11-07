@@ -52,6 +52,7 @@ import {
 import { db } from "@/lib/db";
 import { askBodyNow, markIntroduced } from "./broker";
 import { brokerSendMode } from "./broker-sends";
+import { reconcileTermsAsk } from "./deal-intro";
 import { isRepostAsk, parseBrokerReply } from "./broker-reply";
 import { EvolutionError, connectionState, findMessages, isBridgeDown, mediaBytes, sendPresence, sendText } from "@/lib/whatsapp/evolution";
 import { handleBrokerReply, repostAskKey, askMsgKey } from "./broker-inbox";
@@ -460,6 +461,8 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
       await postSlackCard(`🤝 *${broker.name}* (+${g.phone}) on the intro for K${action.listingId}: ${action.outcome ?? "no outcome"}${action.rating != null ? ` · rated the tenant ${action.rating}/5` : ""}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 400)}`);
     } else if (action.kind === "availability") {
       const said = action.reply ? await sendReply(g.phone, action.reply, broker.name, log, sendsOff) : false;
+      // The terms ask rode on this reply: if it did not go, #mkan hears which tenant waits, now (deal-intro.ts).
+      if (action.reply && !said) await reconcileTermsAsk(g.phone).catch((err) => log(`terms ask reconcile failed: ${(err as Error).message}`));
       const marked = `${action.applied ? "marked" : "already"} ${action.answer === "RENTED" ? "rented" : "available"}`;
       const note = action.reply ? (said ? ` · we said "${action.reply.text}"` : sendsOff ? ` · not answered (broker sends off) — <${waLink(g.phone, "")}|answer by hand>` : "") : "";
       await postSlackCard(`✅ *${broker.name}* (+${g.phone}) answered → home #${action.listingId} ${marked}${note}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 600)}`);

@@ -8,7 +8,12 @@ import { dealSheetMessage } from "@/components/agent/deal-pure";
 import {
   connectionMode,
   dueFollowUps,
+  decideSend,
   followUpBrokerMessage,
+  heldIntroCard,
+  lastDigits,
+  nextSweepTick,
+  termsReplyApplies,
   followUpTenantMessage,
   INTRO_CAP,
   introBrokerMessage,
@@ -99,5 +104,65 @@ describe("direct intros", () => {
     expect(readBrokerFollowUp("No, they cancelled")).toBe("lost");
     expect(followUpBrokerMessage({ ref: "K6041", title: "2-bed", tenant: "+250700000012" })).toMatch(/SIGNED, NOT YET or NO/);
     for (const lang of ["en", "ar", "rw"] as const) expect(followUpTenantMessage(lang, "tenant-7d", "2-bed")).toMatch(/5/);
+  });
+});
+
+describe("the terms reader leaves no honest yes null", () => {
+  it("reads yes in English, Kinyarwanda, French, Arabic and Swahili", () => {
+    for (const t of ["Yes", "yes please!", "Ndabyemera", "ndabyemera cyane", "Yego rwose", "nibyo", "Turabyemera", "ni byiza", "Oui d'accord", "ndiyo", "نعم", "موافق", "ok 👍", "No problem", "no worries", "Nta kibazo", "not a problem", "Sawa 10% ni byiza"])
+      expect(readTermsReply(t), t).toBe("yes");
+  });
+  it("reads no, and leaves a counter-offer or a question to a person", () => {
+    for (const t of ["No", "oya", "No, 10% is too much", "I refuse"]) expect(readTermsReply(t), t).toBe("no");
+    for (const t of ["yes but 5%", "ok 7 percent", "yes, can you reduce it?", "what is the commission?", "who are you?"]) expect(readTermsReply(t), t).toBeNull();
+  });
+});
+
+describe("a held intro", () => {
+  const rows = (...status: Array<"QUEUED" | "SENT" | "FAILED" | "SKIPPED">) => status.map((s) => ({ status: s }));
+  const base = { ageMs: 30 * 60_000, rows: rows(), sendsOn: true, inWindow: true, ride: true };
+
+  it("is sent when nothing went out, and is never sent twice", () => {
+    expect(decideSend(base)).toEqual({ do: "queue", retry: false });
+    expect(decideSend({ ...base, rows: rows("SENT") })).toEqual({ do: "wait", why: "delivered" });
+    expect(decideSend({ ...base, rows: rows("QUEUED") })).toEqual({ do: "wait", why: "in-flight" });
+  });
+  it("lets a reply ride on the broker's yes for ten minutes, but not a form answer", () => {
+    expect(decideSend({ ...base, ageMs: 4 * 60_000 })).toEqual({ do: "wait", why: "grace" });
+    expect(decideSend({ ...base, ageMs: 4 * 60_000, ride: false })).toEqual({ do: "queue", retry: false });
+  });
+  it("is held with a card while sends are off, and retried after a SKIPPED or FAILED row", () => {
+    expect(decideSend({ ...base, sendsOn: false })).toEqual({ do: "hold", why: "sends-off" });
+    expect(decideSend({ ...base, rows: rows("SKIPPED") })).toEqual({ do: "queue", retry: true });
+    expect(decideSend({ ...base, rows: rows("SKIPPED", "FAILED", "SKIPPED") })).toEqual({ do: "hold", why: "tries-used" });
+    expect(decideSend({ ...base, inWindow: false })).toEqual({ do: "wait", why: "window" });
+  });
+  it("names the tenants by their last three digits and says how to release it", () => {
+    const card = heldIntroCard({ ref: "K6041", title: "2-bed", broker: "Test Homes", tenants: ["+250700000155"], why: "sends-off", text: "Thank you!" });
+    expect(card).toContain("K6041");
+    expect(card).toContain(lastDigits("+250700000155"));
+    expect(card).not.toContain("250700000155");
+    expect(card).toMatch(/Tap Yes on \/monetize/);
+  });
+  it("is not answered by a yes to a newer 'is this available?'", () => {
+    const askAt = new Date("2026-11-07T08:00:00Z");
+    const newer = new Date("2026-11-07T09:00:00Z");
+    expect(termsReplyApplies({ askAt, newestAvailabilityAskAt: null, quotedTerms: false })).toBe(true);
+    expect(termsReplyApplies({ askAt, newestAvailabilityAskAt: newer, quotedTerms: false })).toBe(false);
+    expect(termsReplyApplies({ askAt, newestAvailabilityAskAt: newer, quotedTerms: true })).toBe(true);
+  });
+  it("runs on the cron ticks: :00 all night, :15 :30 :45 from 07:00 to 21:59 Kigali", () => {
+    expect(nextSweepTick(new Date("2026-11-07T08:01:00Z")).toISOString()).toBe("2026-11-07T08:15:00.000Z");
+    expect(nextSweepTick(new Date("2026-11-07T08:50:00Z")).toISOString()).toBe("2026-11-07T09:00:00.000Z");
+    // 20:50 UTC (22:50 Kigali): only the hourly tick is left.
+    expect(nextSweepTick(new Date("2026-11-07T20:20:00Z")).toISOString()).toBe("2026-11-07T21:00:00.000Z");
+  });
+  it("a yes at any minute is a terms ask within 15 minutes by day and the tenant's number within the hour", () => {
+    for (let m = 0; m < 60; m++) {
+      const yes = new Date(Date.UTC(2026, 10, 7, 9, m));
+      // Ten-minute ride, then the next tick; the broker's YES is read by the outbox pass, which sends both numbers in that pass.
+      const queued = nextSweepTick(new Date(yes.getTime() + 10 * 60_000));
+      expect(queued.getTime() - yes.getTime(), `yes at :${m}`).toBeLessThanOrEqual(25 * 60_000);
+    }
   });
 });
