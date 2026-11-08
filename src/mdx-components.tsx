@@ -19,6 +19,7 @@ import { CodeTabs } from "@/components/docs/code-tabs"
 import { CopyButton } from "@/components/docs/copy-button"
 import { CardGrid, DocCard } from "@/components/docs/doc-card"
 import { FlowMedia } from "@/components/docs/flow-media"
+import { Mermaid } from "@/components/docs/mermaid"
 import { Shot } from "@/components/docs/shot"
 import { TutorialVideo } from "@/components/docs/tutorial-video"
 
@@ -259,6 +260,7 @@ const mdxComponents = {
   DocCard,
   CodeTabs,
   FlowMedia,
+  Mermaid,
   Shot,
   TutorialVideo,
   Tabs: ({ className, ...props }: ComponentProps<typeof Tabs>) => {

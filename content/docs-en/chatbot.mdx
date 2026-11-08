@@ -1,8 +1,8 @@
 ---
-title: Rental agent
+title: Mkan agent
 description: mkan's assistant that finds you a home in Kigali, on the site and on WhatsApp, from the first message to the viewing.
 flow: ask-agent
-summary: One agent with two doors — the site and WhatsApp — that searches real homes and arranges the viewing with the broker.
+summary: "The Mkan agent: one agent with two doors, the site and WhatsApp, that searches real homes and arranges the viewing with the broker."
 keywords: [agent, chatbot, whatsapp, search, viewing]
 ---
 
@@ -10,14 +10,42 @@ keywords: [agent, chatbot, whatsapp, search, viewing]
 
 ## One agent, two doors
 
-The **rental agent** understands what you ask in your own words, searches the Kigali homes published on mkan, ranks them, and works out what you will pay to move in. You reach it through two doors, and both run the same agent:
+The **Mkan agent** understands what you ask in your own words, searches the Kigali homes published on mkan, ranks them, and works out what you will pay to move in. You reach it through two doors, and both run the same agent:
 
 <CardGrid>
   <DocCard title="On the site" description={<>The “Ask the rental agent” button on the home, search and listings pages, or the full <code>/find</code> page.</>} />
   <DocCard title="On WhatsApp" description={<>Message the mkan line <span dir="ltr">+250 780 984 777</span> directly, or move there from the site with “Continue on WhatsApp”.</>} />
 </CardGrid>
 
+## The flow at a glance
+
+<Mermaid chart={`flowchart TD
+  A(["Tenant"]) --> B{"Where do they start?"}
+  B -->|Site| C["Mkan agent panel or /find"]
+  B -->|WhatsApp| D["Message to the mkan line"]
+  C --> E["Same agent: read, search, rank, reply"]
+  D --> E
+  E --> F["Home cards"]
+  F --> G{"Picked a home?"}
+  G -->|No| H["Refine or save the search"]
+  H --> E
+  G -->|Yes| I["mkan checks with the broker"]
+  I --> J(["Viewing"])`} />
+
 ## On the site
+
+<Mermaid chart={`flowchart TD
+  A(["Tenant's message"]) --> B["Read it: Claude Haiku, then Groq, then rules"]
+  B --> C{"Clear enough?"}
+  C -->|No| D["One short question"]
+  D --> A
+  C -->|Yes| E["Search published Kigali homes"]
+  E --> F{"Anything fits?"}
+  F -->|No| G["Widen one step"]
+  G --> E
+  F -->|Yes| H["Merge duplicates, rank, price the move-in"]
+  H --> I["Write the reply: no invented prices"]
+  I --> J(["Cards, refine chips, Continue on WhatsApp"])`} />
 
 <Steps>
 
@@ -48,6 +76,23 @@ You get home cards, each with a line on why it was picked and the move-in cost. 
 </Callout>
 
 ## On WhatsApp
+
+<Mermaid chart={`flowchart TD
+  A(["WhatsApp message"]) --> B{"STOP, or a person from the team typing?"}
+  B -->|Yes| C(["No reply"])
+  B -->|No| D{"Voice note or photo?"}
+  D -->|Yes| E(["Ask them to type"])
+  D -->|No| F{"A home's number?"}
+  F -->|No| G["Same agent"]
+  G --> H(["Three numbered homes and a link"])
+  F -->|Yes| I{"Broker asks switched on?"}
+  I -->|No| J["#mkan card for a person"]
+  I -->|Yes| K["Message to the broker"]
+  K --> L{"Broker: available?"}
+  L -->|No| M(["Tell the tenant"])
+  L -->|Yes| N["Direct intro or deal sheet"]
+  J --> N
+  N --> O(["Viewing"])`} />
 
 <Steps>
 
