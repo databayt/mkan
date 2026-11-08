@@ -3032,6 +3032,7 @@
   "siteFooter": {
     "support": "الدعم",
     "helpCenter": "مركز المساعدة",
+    "docs": "الدليل",
     "safetyInfo": "معلومات السلامة",
     "cancellationOptions": "خيارات الإلغاء",
     "disabilitySupport": "دعم ذوي الاحتياجات الخاصة",
@@ -7041,5 +7042,22 @@
     "general": "تحدث مع مكان في واتساب",
     "generalMessage": "مرحباً مكان، أبحث عن منزل في كيغالي.",
     "empty": "تُضاف منازل جديدة كل يوم. اضغط الزر أعلاه وأخبرنا بما تحتاج."
+  },
+  "docs": {
+    "copyPage": "نسخ الصفحة",
+    "copy": "نسخ",
+    "copied": "تم النسخ",
+    "copyToClipboard": "نسخ إلى الحافظة",
+    "onThisPage": "في هذه الصفحة",
+    "preview": "معاينة",
+    "code": "الكود",
+    "viewCode": "عرض الكود",
+    "expand": "توسيع",
+    "collapse": "طي",
+    "viewAsMarkdown": "عرض كـ Markdown",
+    "openInV0": "فتح في v0",
+    "openInChatGPT": "فتح في ChatGPT",
+    "openInClaude": "فتح في Claude",
+    "notTranslated": "هذه الصفحة لم تُترجم بعد — تُعرض النسخة الإنجليزية."
   }
 }

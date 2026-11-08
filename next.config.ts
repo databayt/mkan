@@ -1,5 +1,9 @@
 import type { NextConfig } from "next";
 import withBundleAnalyzerFactory from "@next/bundle-analyzer";
+import { createMDX } from "fumadocs-mdx/next";
+
+// /[lang]/docs — fumadocs-mdx compiles content/docs-{en,ar} (source.config.ts).
+const withMDX = createMDX();
 
 const withBundleAnalyzer = withBundleAnalyzerFactory({
   enabled: process.env.ANALYZE === "true",
@@ -13,6 +17,8 @@ const nextConfig: NextConfig = {
   ...(CF_CONTAINER ? { output: "standalone" as const } : {}),
   // Strict mode for better React development
   reactStrictMode: true,
+
+  pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
 
   // Optional out-of-tree build dir (e.g. NEXT_DIST_DIR=.next-perf) so a
   // verification/analyze build can run while `next dev` owns .next.
@@ -284,4 +290,4 @@ const nextConfig: NextConfig = {
 // serverless invocation. No DSN was ever configured, so the integration
 // wasn't actually capturing anything — safe to drop. Re-introduce via
 // Next.js 16's `instrumentation.ts` pattern if needed.
-export default withBundleAnalyzer(nextConfig);
+export default withBundleAnalyzer(withMDX(nextConfig));

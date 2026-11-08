@@ -72,3 +72,6 @@ inbox/
 # /shoot output — framed page stills (public/screenshot/<slug>-ar.png); local
 # media, never committed or baked into the container image
 /public/screenshot/
+
+# fumadocs-mdx generated
+.source

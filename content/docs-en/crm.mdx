@@ -1,0 +1,34 @@
+---
+title: CRM
+description: How the Twenty workspace at mkan.databayt.org connects to the mkan site.
+---
+
+The CRM is **Twenty**; mkan's workspace lives at `mkan.databayt.org`. It is the back office: where a home is collected, checked, its host contacted, and the decision made. The site (`www.mkan.sd`) is what guests see. Each has its own database, joined by scripts and one webhook.
+
+## What it holds
+
+| Object | What it is |
+| --- | --- |
+| Homes | Every home found or published: source, status, photos, price, zone |
+| Hosts | The people behind the homes, and their contacts |
+| Opportunities | The host onboarding funnel, from scraped to live |
+| Brokers | Brokers, agencies and landlords, with their zones |
+| TikTok posts | The ads the sweep found |
+
+## CRM → site
+
+- `pnpm crm:import` and `pnpm crm:publish` turn qualified homes into listings on the site.
+- A **webhook** at `www.mkan.sd/api/webhooks/twenty`: an edit in the CRM reaches the site in seconds, but only for certain fields:
+  - `publishState` publishes or hides the listing.
+  - `stillListed = false` takes the listing down.
+  - Price and title changes copy over.
+  - A host's phone and WhatsApp copy to their account.
+
+## Site → CRM
+
+- `pnpm crm:sync-up` runs nightly and mirrors the site's listings onto the CRM board.
+- `pnpm crm:hygiene` runs daily at 07:00 and cleans duplicates.
+
+<Callout title="The rule">
+  The CRM is where decisions are made; the site is what is live. To publish or hide a listing, change `publishState` in the CRM.
+</Callout>

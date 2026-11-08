@@ -3032,6 +3032,7 @@
   "siteFooter": {
     "support": "Ubufasha",
     "helpCenter": "Ikigo cy'ubufasha",
+    "docs": "Inyandiko",
     "safetyInfo": "Amakuru y'umutekano",
     "cancellationOptions": "Uburyo bwo guhagarika",
     "disabilitySupport": "Gufasha abantu bafite ubumuga",
@@ -7041,5 +7042,22 @@
     "general": "Ganira na Mkan kuri WhatsApp",
     "generalMessage": "Muraho Mkan, ndashaka inzu i Kigali.",
     "empty": "Amazu mashyaashyirwaho buri munsi. Kanda buto iri hejuru utubwire icyo ushaka."
+  },
+  "docs": {
+    "copyPage": "Copy Page",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyToClipboard": "Copy to Clipboard",
+    "onThisPage": "On This Page",
+    "preview": "Preview",
+    "code": "Code",
+    "viewCode": "View Code",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "viewAsMarkdown": "View as Markdown",
+    "openInV0": "Open in v0",
+    "openInChatGPT": "Open in ChatGPT",
+    "openInClaude": "Open in Claude",
+    "notTranslated": "Iyi paji ntirahindurwa mu Kinyarwanda — urabona verisiyo y'Icyongereza."
   }
 }

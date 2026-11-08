@@ -32,6 +32,13 @@ export default function SiteFooter() {
 							</li>
 							<li>
 								<Link
+									href='/docs'
+									className='text-muted-foreground text-sm font-light hover:underline'>
+									{dict.siteFooter?.docs ?? "Docs"}
+								</Link>
+							</li>
+							<li>
+								<Link
 									href='#'
 									className='text-muted-foreground text-sm font-light hover:underline'>
 									{dict.siteFooter?.safetyInfo ?? "Safety information"}

@@ -3032,6 +3032,7 @@
   "siteFooter": {
     "support": "Support",
     "helpCenter": "Help Center",
+    "docs": "Docs",
     "safetyInfo": "Safety information",
     "cancellationOptions": "Cancellation options",
     "disabilitySupport": "Supporting people with disabilities",
@@ -7041,5 +7042,22 @@
     "general": "Chat with Mkan on WhatsApp",
     "generalMessage": "Hi Mkan, I'm looking for a home in Kigali.",
     "empty": "New homes are posted every day. Tap the button above and tell us what you need."
+  },
+  "docs": {
+    "copyPage": "Copy Page",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyToClipboard": "Copy to Clipboard",
+    "onThisPage": "On This Page",
+    "preview": "Preview",
+    "code": "Code",
+    "viewCode": "View Code",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "viewAsMarkdown": "View as Markdown",
+    "openInV0": "Open in v0",
+    "openInChatGPT": "Open in ChatGPT",
+    "openInClaude": "Open in Claude",
+    "notTranslated": "This page is not translated yet — showing the English version."
   }
 }

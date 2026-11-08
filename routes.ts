@@ -16,6 +16,7 @@ export const publicRoutes = [
   "/privacy",
   "/terms",
   "/help",
+  "/docs",
   "/landing",
   "/host",
   "/travel-host",
