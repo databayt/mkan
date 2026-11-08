@@ -86,7 +86,9 @@ at the end of this file and as the sprint lesson; keep the winner as the default
 
 One line each, newest first: date started · lever · the change · baseline · result (date judged) · kept or dropped.
 
+- 2026-11-08 · lever 3 (search-first caption) · QUEUED, switch OFF (`TIKTOK_SEARCH_CAPTION=1` turns it on) · first line in plain searched words ("House for rent in Kimihurura, Kigali: 2 bedrooms, 400,000 RWF a month"), then 3–5 hashtags incl. #inzuikodeshwa and the area; code, WhatsApp line and askFollow tag kept · baseline follow rate 0.32%, viewsPerPost 115, like rate 2.5% (66 likes / 2,650 views, tt:stats 11-07 19:01) · turns on the day lever 4 is judged, never before · result: not started
 - 2026-11-07 · lever 4 (ask for the follow) · every even post number's caption adds "Follow for new Kigali homes every day" (English + Kinyarwanda) after the home code and WhatsApp lines; odd posts unchanged; tagged `askFollow` in the ledger and queue · baseline follow rate 0.31%, followersWeek 5.8 · judge after 10 posts per side, compare views, likes and follower gain · result: pending
+  interim 2026-11-08: askFollow 0 of 10 posts per side in the ledger (the 11-07 posts predate the tag or carry none; 3 posted 11-07, none tagged), so no per-side numbers yet. Page-level tt:stats 11-07 19:01: followers 21, views 2,650, likes 66, comments 0, shares 5, 10 home videos; followers gained since lever 4 began (20 → 21) = 1, not attributable to a side.
 - 2026-11-06 · lever 6 (cadence) · posts spread ~5.5 h apart instead of one 07:00 burst · baseline viewsPerPost 139 · not due until 10 spread posts · result: pending
   (note: lever 4 overlaps the cadence run; judge its two sides against each other, never against 139.)
 

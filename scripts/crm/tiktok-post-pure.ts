@@ -383,8 +383,29 @@ export const asksForFollow = (postNumber: number): boolean => postNumber % 2 ===
 /** The follow ask, in the caption's two languages. It always comes after the home code and the WhatsApp line. */
 export const FOLLOW_ASK = '➕ Follow for new Kigali homes every day · Kurikira kugira ngo ubone amazu mashya yo gukodesha i Kigali buri munsi';
 
+/**
+ * Lever 3 (search-first caption) switch. OFF unless TIKTOK_SEARCH_CAPTION=1; it turns on the day
+ * the askFollow run (lever 4) is judged, never before (docs/tiktok-playbook.md, Experiments).
+ */
+export const searchCaptionOn = (env: Record<string, string | undefined> = process.env): boolean => env.TIKTOK_SEARCH_CAPTION === '1';
+
+/** Lever 3's first line: the words a renter types into search, then 3-5 hashtags that include the area. */
+export function searchFirstLine(r: PostRow): string {
+  const beds = r.bedrooms ? `: ${r.bedrooms} bedroom${r.bedrooms > 1 ? 's' : ''}, ` : ': ';
+  const kind = kindEn(r);
+  const art = kind === 'house' || kind === 'apartment' || kind === 'villa' || kind === 'townhouse' || kind === 'cottage' || kind === 'room' || kind === 'studio' ? kind[0].toUpperCase() + kind.slice(1) : 'House';
+  const place = placeLine(r);
+  const where = /kigali/i.test(place) ? place : `${place}, Kigali`;
+  return `${art} for rent in ${where}${beds}${formatRwf(r.priceMonth ?? 0).replace('RWF ', '')} RWF a month`;
+}
+
 /** The text pasted under the video: English, one Kinyarwanda line, the ask, hashtags. */
-export function captionFor(r: PostRow, whatsapp: string, askFollow = r.askFollow ?? false): string {
+export function captionFor(
+  r: PostRow,
+  whatsapp: string,
+  askFollow = r.askFollow ?? false,
+  searchFirst = searchCaptionOn(),
+): string {
   const ref = refOf(r);
   const place = placeLine(r);
   const price = formatRwf(r.priceMonth ?? 0);
@@ -392,7 +413,9 @@ export function captionFor(r: PostRow, whatsapp: string, askFollow = r.askFollow
   const tags = ['kigali', 'houseforrent', 'kigalirealestate', 'inzuikodeshwa', 'rwanda', r.district ?? '', r.area ?? '']
     .filter(Boolean)
     .map(tag);
+  const tagList = searchFirst ? [...new Set(['inzuikodeshwa', 'houseforrent', 'kigali', r.area ?? r.district ?? '', 'rwanda'].filter(Boolean).map(tag))].slice(0, 5) : [...new Set(tags)];
   return [
+    ...(searchFirst ? [searchFirstLine(r)] : []),
     `🏠 ${headline(r)} — ${place}`,
     `💰 ${price} / month`,
     `📲 WhatsApp ${whatsapp} — send "${ref}"`,
@@ -401,7 +424,7 @@ export function captionFor(r: PostRow, whatsapp: string, askFollow = r.askFollow
     ...(askFollow ? [FOLLOW_ASK] : []),
     ...(brokerHandle(r.hostSourceId) ? [`Video: @${brokerHandle(r.hostSourceId)}`] : []),
     '',
-    [...new Set(tags)].join(' '),
+    tagList.join(' '),
   ].join('\n');
 }
 

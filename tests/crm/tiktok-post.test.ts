@@ -28,6 +28,7 @@ import {
   type TextFrame,
   brokerAsk,
   captionFor,
+  searchCaptionOn,
   asksForFollow,
   FOLLOW_ASK,
   ineligibleReason,
@@ -178,6 +179,33 @@ describe('follow ask (lever 4)', () => {
   it('leaves the caption as it was on the other side', () => {
     expect(captionFor(row({ id: 77 }), '+250 788 000 000')).not.toMatch(/Follow for new/);
     expect(captionFor(row({ id: 77, askFollow: false }), '+250 788 000 000')).not.toContain('Kurikira');
+  });
+});
+
+describe('search-first caption (lever 3, off by default)', () => {
+  const wa = '+250 788 000 000';
+  it('is off unless the env switch is 1', () => {
+    expect(searchCaptionOn({})).toBe(false);
+    expect(searchCaptionOn({ TIKTOK_SEARCH_CAPTION: '0' })).toBe(false);
+    expect(searchCaptionOn({ TIKTOK_SEARCH_CAPTION: '1' })).toBe(true);
+    expect(captionFor(row({ id: 77 }), wa)).not.toMatch(/for rent in/);
+  });
+  it('opens with plain searched words (EN) and keeps code, WhatsApp, Kinyarwanda and the ask', () => {
+    const c = captionFor(row({ id: 77, bedrooms: 2, area: 'Kimihurura', district: 'Gasabo', priceMonth: 400000, askFollow: true }), wa, undefined, true);
+    const lines = c.split('\n');
+    expect(lines[0]).toBe('Apartment for rent in Kimihurura, Gasabo, Kigali: 2 bedrooms, 400,000 RWF a month'.replace('Apartment', lines[0].split(' ')[0]));
+    expect(c).toContain('WhatsApp +250 788 000 000 — send "K77"');
+    expect(c).toContain(FOLLOW_ASK);
+  });
+  it('RW line and 3-5 hashtags incl. #inzuikodeshwa and the area', () => {
+    const c = captionFor(row({ id: 77, area: 'Kimihurura', district: 'Gasabo' }), wa, false, true);
+    expect(c).toContain('Inzu ikodeshwa');
+    const tags = c.split('\n').at(-1)!.split(' ');
+    expect(tags.length).toBeGreaterThanOrEqual(3);
+    expect(tags.length).toBeLessThanOrEqual(5);
+    expect(tags).toContain('#inzuikodeshwa');
+    expect(tags).toContain('#kimihurura');
+    expect(c).not.toContain(FOLLOW_ASK);
   });
 });
 
