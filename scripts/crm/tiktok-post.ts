@@ -275,10 +275,8 @@ async function pick(): Promise<PostRow[]> {
   });
   // One row per home attempt: the page counts featured → enhanced → posted from these.
   for (const r of picked) {
-    const row = await ledgerRow('picked', (db) =>
-      db.tikTokPost.create({ data: { listingId: r.id, ref: refOf(r), sourceVideoId: videoIdOf(r), brokerHandle: brokerHandle(r.hostSourceId), status: 'PICKED', askFollow: r.askFollow ?? false, waLine: 2 }, select: { id: true } }),
-    );
-    if (row) r.postId = row.id;
+    const id = await newRow(r);
+    if (id) r.postId = id;
   }
   if (flag('dry')) return picked;
   mkdirSync(dayDir(), { recursive: true });
@@ -287,6 +285,24 @@ async function pick(): Promise<PostRow[]> {
   for (const r of picked) ledger[refOf(r)] = { ...(ledger[refOf(r)] ?? {}), listingId: r.id, district: r.district, queuedAt: now, askFollow: r.askFollow };
   saveLedger(ledger);
   return picked;
+}
+
+/**
+ * The TikTokPost row of a picked home. The experiment tags (askFollow, waLine) are columns a migration adds:
+ * while the database lacks them the row is written without, so the home still counts as featured and clean.
+ */
+async function newRow(r: PostRow): Promise<string | null> {
+  const base = { listingId: r.id, ref: refOf(r), sourceVideoId: videoIdOf(r), brokerHandle: brokerHandle(r.hostSourceId), status: 'PICKED' };
+  const row =
+    (await ledgerRow('picked', (db) => db.tikTokPost.create({ data: { ...base, askFollow: r.askFollow ?? false, waLine: 2 }, select: { id: true } }))) ??
+    (await ledgerRow('picked (without the tags)', (db) => db.tikTokPost.create({ data: base, select: { id: true } })));
+  return row?.id ?? null;
+}
+
+/** A queued home with no row (its pick could not write one) gets one before its render, so the render is counted. */
+async function ensureRow(r: PostRow): Promise<string | null> {
+  const found = await ledgerRow('find', (db) => db.tikTokPost.findFirst({ where: { listingId: r.id, ref: refOf(r), status: 'PICKED' }, orderBy: { pickedAt: 'desc' }, select: { id: true } }));
+  return found?.id ?? (await newRow(r));
 }
 
 const readQueue = (): PostRow[] => {
@@ -871,6 +887,7 @@ async function render(given?: PostRow[], limit = Infinity): Promise<string[]> {
       break;
     }
     tried += 1;
+    if (real && !r.postId) r.postId = (await ensureRow(r)) ?? undefined;
     try {
       const { out, note } = await renderOne(r, dir, phone);
       console.log(`  🎬 ${refOf(r)} → ${out}`);
