@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HUMAN_HOLD_MS, isDirectChat, MAX_AGE_MS, PER_PHONE_PER_HOUR, tenantDecision, typePleaseText } from "../../scripts/wa/tenant-pure";
+import { HUMAN_HOLD_MS, isDirectChat, isTenantStop, langOfWords, MAX_AGE_MS, PER_PHONE_PER_HOUR, startText, stopConfirmText, tenantDecision, typePleaseText } from "../../scripts/wa/tenant-pure";
 
 const now = new Date("2026-10-24T10:00:00Z");
 const base = { text: "2 bedroom in Kicukiro", sentAt: now, now, stopped: false, humanAt: null, phoneRepliesLastHour: 0, lineRepliesLastHour: 0 };
@@ -20,6 +20,27 @@ describe("tenantDecision", () => {
     expect(tenantDecision({ ...base, sentAt: new Date(now.getTime() - MAX_AGE_MS - 1) })).toBe("skip-old");
     expect(tenantDecision({ ...base, phoneRepliesLastHour: PER_PHONE_PER_HOUR })).toBe("skip-rate");
     expect(tenantDecision({ ...base, text: "  " })).toBe("skip-empty");
+  });
+  it("a tenant's STOP is the whole message, in every language the line hears", () => {
+    for (const t of ["STOP", "Stop!", "stop.", "please stop", "Please, stop", "stop messaging me", "Stop sending me messages", "stop it", "hagarika", "Arrêtez", "arrete", "unsubscribe", "توقف", "أوقف الرسائل", "don't message me again", "leave me alone"]) {
+      expect(isTenantStop(t), t).toBe(true);
+      expect(tenantDecision({ ...base, text: t }), t).toBe("stop");
+    }
+  });
+  it("a complaint about the homes is a change to the search, not a STOP (2026-11-08)", () => {
+    for (const t of ["Stop sending me Kicukiro", "you keep sending the same houses", "dont send me those again", "this is a wrong number", "wrong number for the broker", "you keep on sending expensive ones", "stop by tomorrow", "sinshaka", "I want to stop renting in Remera"]) {
+      expect(isTenantStop(t), t).toBe(false);
+      expect(tenantDecision({ ...base, text: t }), t).toBe("answer");
+    }
+  });
+  it("tells the tenant STOP worked and how to come back, and welcomes them back", () => {
+    for (const lang of ["en", "ar", "rw"]) expect(stopConfirmText(lang)).toContain("START");
+    expect(stopConfirmText("ar")).toMatch(/[؀-ۿ]/);
+    expect(startText("en")).toMatch(/budget/i);
+    expect(startText("rw")).toMatch(/ibyumba/);
+    expect(langOfWords("hagarika")).toBe("rw");
+    expect(langOfWords("توقف")).toBe("ar");
+    expect(langOfWords("STOP")).toBeNull();
   });
   it("only one-to-one chats are tenants", () => {
     expect(isDirectChat("250780000001@s.whatsapp.net")).toBe(true);

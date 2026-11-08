@@ -10,9 +10,10 @@ import { createHash } from "node:crypto";
  * shows "typing…", runs the turn in-process (whatsapp-chat.ts) and sends the
  * reply. The turn dedupes by message id, so the two paths answer once.
  */
-import { MEDIA_NUDGE_MS, tenantDecision, typePleaseText, type TenantDecision } from "../../../scripts/wa/tenant-pure";
+import { langOfWords, MEDIA_NUDGE_MS, startText, stopConfirmText, tenantDecision, typePleaseText, type TenantDecision } from "../../../scripts/wa/tenant-pure";
 import { db } from "@/lib/db";
 import { sendPresence, sendText } from "@/lib/whatsapp/evolution";
+import { isPersonal } from "./personal";
 import { addToList, claimMessage, holdReply, MAX_ANSWER_TRIES, mutateState, readState, releaseMessage, removeFromList, settleMessage, writeState } from "./wa-state";
 import { handleTenantWhatsApp, silenceTenant } from "./whatsapp-chat";
 import { postSlackCard } from "./whatsapp";
@@ -52,6 +53,22 @@ export async function noteFromMe(phone: string, id: string | undefined, at: Date
 
 /** One phone's messages run in order: a second message waits for the first reply. */
 const chains = new Map<string, Promise<unknown>>();
+
+/** The language to answer a guardrail in: what the tenant just wrote says it, else the chat's last turn. */
+async function chatLocale(phone: string, text: string): Promise<string> {
+  const said = langOfWords(text);
+  if (said) return said;
+  const task = await db.agentTask.findFirst({ where: { profile: { waPhone: `+${phone}` } }, orderBy: { updatedAt: "desc" }, select: { locale: true } }).catch(() => null);
+  return task?.locale ?? "en";
+}
+
+/** One line from the line itself (not a turn): held first so a failed send is re-sent, never lost. */
+async function sendLine(m: TenantMessage, text: string, tries: number): Promise<void> {
+  await holdReply(m.msgId, text, tries);
+  await recordSent(m.phone, undefined, text);
+  const out = await sendText(m.phone, text);
+  await recordSent(m.phone, out?.key?.id, text);
+}
 
 export interface TenantMessage {
   phone: string;
@@ -107,10 +124,13 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         return "error";
       }
       const now = new Date();
-      const [stopped, human, sent] = await Promise.all([
+      // Abdout's own contacts (personal.ts) never get a line from the agent: no "please type", no STOP
+      // confirmation, no card. A text still reaches the handler, which answers only one about a home.
+      const [stopped, human, sent, personal] = await Promise.all([
         readState<string[]>("tenant-stop", []),
         readState<Record<string, string>>("tenant-human", {}),
         readState<Sent>("tenant-sent", []),
+        isPersonal(m.phone),
       ]);
       const hourAgo = now.getTime() - 3_600_000;
       // Sent replies only (they carry an id): the pre-send echo marks would count every reply twice.
@@ -128,33 +148,38 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
       if (decision === "stop") {
         await addToList("tenant-stop", m.phone);
         await silenceTenant(m.phone);
+        // One reply, so the tenant knows it worked and how to come back; then nothing until START.
+        if (!personal) {
+          await sendLine(m, stopConfirmText(await chatLocale(m.phone, m.text)), claim.tries);
+          await postSlackCard(`🛑 +${m.phone} said STOP — no replies or alerts until they send START:\n> ${m.text.slice(0, 200)}`).catch(() => {});
+        }
         await settleMessage(m.msgId);
         log(`tenant +${m.phone} said STOP — silenced`);
         return decision;
       }
       if (decision === "media") {
-        // Once an hour per chat: "please type", in the language the chat was last in.
         const nudgeKey = `tmedia:${m.phone}`;
-        const last = await readState<{ at?: string }>(nudgeKey, {});
-        if (last.at && Date.now() - new Date(last.at).getTime() < MEDIA_NUDGE_MS) {
+        const last = personal ? null : await readState<{ at?: string }>(nudgeKey, {});
+        if (!last || (last.at && Date.now() - new Date(last.at).getTime() < MEDIA_NUDGE_MS)) {
           await settleMessage(m.msgId);
           return "nothing";
         }
-        const task = await db.agentTask.findFirst({ where: { profile: { waPhone: `+${m.phone}` } }, orderBy: { updatedAt: "desc" }, select: { locale: true } }).catch(() => null);
-        const text = typePleaseText(task?.locale ?? "en");
-        await holdReply(m.msgId, text, claim.tries);
-        await recordSent(m.phone, undefined, text);
-        const out = await sendText(m.phone, text);
-        await recordSent(m.phone, out?.key?.id, text);
+        // Once an hour per chat: "please type", in the language the chat was last in.
+        await sendLine(m, typePleaseText(await chatLocale(m.phone, m.text)), claim.tries);
         await writeState(nudgeKey, { at: new Date().toISOString() });
         await settleMessage(m.msgId);
         log(`tenant +${m.phone} sent media — asked to type`);
         return "sent";
       }
       if (decision === "start") {
+        // Back after a STOP: a welcome line, not a turn on the bare word (it read as "not about a home").
         await removeFromList("tenant-stop", m.phone);
+        if (!personal) await sendLine(m, startText(await chatLocale(m.phone, m.text)), claim.tries);
+        await settleMessage(m.msgId);
         log(`tenant +${m.phone} said START`);
-      } else if (decision !== "answer") {
+        return personal ? "start" : "sent";
+      }
+      if (decision !== "answer") {
         await settleMessage(m.msgId);
         log(`tenant +${m.phone} ${decision}`);
         return decision;
