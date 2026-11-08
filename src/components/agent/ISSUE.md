@@ -1,5 +1,32 @@
 # Agent — open issues
 
+## 2026-11-08 — End-to-end trace of the three doors (web, WhatsApp, the TikTok bio page)
+
+- **How:** three code traces (web chat, WhatsApp, the agent core and broker loop), every claim re-read in
+  the code, and production checked read-only (SQL, Workers Logs, the live pages). No real renter had
+  chatted yet; these are the dead ends the first one would have hit.
+- **Shipped** (`44c3ff9`…`eeebf43`, 8 commits, +51 tests):
+  - `/tt` (the TikTok profile's link) never listed a home: its query filtered a `listing` relation
+    `TikTokPost` does not have, Prisma refused it, the page caught it. Now two typed queries.
+  - WhatsApp: a turn a restart killed was never answered; a claim another run held was marked seen; a
+    slow turn re-sent the previous reply; anything over 60 min old was dropped silently; complaints
+    ("stop sending me Kicukiro") were read as STOP; nothing noticed the webhook going silent. All fixed —
+    see README "WhatsApp chat".
+  - The turn: a seq another writer took threw the turn into its error; every non-search reply cleared
+    WAITING (the web poll stopped); 9 tasks sat WAITING with nothing pending.
+  - A pick nobody could check answered "I'll tell you here if the broker writes back" with no broker
+    asked; it goes to a person now.
+  - `25c82d7`'s web number reached only the first answer; every later step reads it now, and the card
+    says each use of it. The agent no longer says "phone numbers are never kept".
+  - Same-day viewings were reminded "tomorrow"; Claude timeouts never cooled down; the Arabic reply-only
+    writer ran out of tokens; the guard let "300k" through; broker asks could use the whole daily cap;
+    a malformed signed link crashed /find; wa:e2e wrote into Abdout's own chat.
+- **Owed:**
+  - A native Kinyarwanda read of the new rw lines (STOP / START / late / taken / person / reminders),
+    for `docs/i18n/rw-review-2026-11.csv`.
+  - Not done on purpose: a boot-time outbox pass after a restart (the local smoke container runs with the
+    prod env, so it needs a Cloudflare-only flag), `@lid` answering, Arabic-Indic digits in K-codes.
+
 ## 2026-11-03 (2) — The Claude key exists, and the reader passes its gate
 
 - **The key:** the Max plan's included $100 a month in API credits were claimed in the Console (org

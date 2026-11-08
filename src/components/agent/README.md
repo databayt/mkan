@@ -252,8 +252,17 @@ tenant WA → Evolution in the hogwarts container (instance "mkan", shared Whats
   chat are signed (`chat-link.ts`) so they open its homes read-only in any browser. Proven with
   `pnpm wa:e2e` (no sends).
 - Rules (`scripts/wa/tenant-pure.ts`): reply only to messages a tenant sent (never a first message);
-  STOP silences until START; a person at Mkan typing in the chat pauses the agent there for 12 h;
-  messages older than 1 h are not answered; 20 replies/phone/hour, 120/line/hour.
+  a STOP is the whole message (`isTenantStop`: stop, please stop, stop messaging me, hagarika, arrêtez,
+  توقف — never "stop sending me Kicukiro", which is a change to the search) and gets one reply naming
+  START plus a #mkan card; START gets a welcome line, not a turn; a person at Mkan typing in the chat
+  pauses the agent there for 12 h; a message the line reached late (> 15 min) is answered with "Sorry for
+  the slow reply" first, one older than 12 h goes to #mkan; Abdout's own contacts never get a line from
+  the bot; 20 replies/phone/hour, 120/line/hour.
+- Nothing is lost on the claim path (2026-11-08): a claim another run holds is `held` (left unseen, a pass
+  looks again); a retry whose turn a restart killed is re-run once (`whatsapp-format.ts` takenIn /
+  retryPlan, `append.ts` reopenForTurn); the reply waits for the turn's first reply or its deadline's error
+  and never re-sends the chat's previous one. A pick nobody can check (a host's own home, a broker gone
+  quiet, no broker number) goes to a person with a #mkan card, and the tenant hears so.
 - Brokers (any number in `Broker.phones`) are left to the outbox's burst reader. The outbox run (on events, plus
   backstop ticks at :00 hourly and :15/:30/:45 07:00–21:45 Kigali — `cf/crons.json`) also
   passes tenant messages the webhook missed; the turn answers each message id once.
@@ -266,3 +275,6 @@ tenant WA → Evolution in the hogwarts container (instance "mkan", shared Whats
   `ALTER DATABASE evolution SET search_path TO evolution_api, public;` (the `public` schema is
   empty), then `pg_terminate_backend` on the bridge's sessions so they reconnect. Its logs are the
   hogwarts container's stdout in Workers Observability (the `cloudflare-api` Keychain token can query them).
+  Since 2026-11-08 the webhook marks each tenant message it delivers (`thook:<id>`); the outbox counts
+  the ones the poll found without a mark (`hook-miss`) and posts one 📡 card per 6 h at 3 misses, or as
+  soon as one waited 30 min — the 11-07 outage went unnoticed for hours.
