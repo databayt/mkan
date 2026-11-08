@@ -44,6 +44,7 @@ export default async function MonetizePage({
   // The deals carry phone numbers: read only for an admin, never cached or shown to anyone else.
   const deals = canEdit ? await loadDeals().catch(() => null) : null;
   const heldIntros = canEdit ? await loadHeldIntros().catch(() => []) : [];
+  const momoMode = canEdit ? await (await import("@/lib/momo/share")).momoMode() : null;
   return (
     <MonetizeContent
       data={data}
@@ -54,6 +55,7 @@ export default async function MonetizePage({
       canEdit={canEdit}
       deals={deals}
       heldIntros={heldIntros}
+      momoMode={momoMode}
       payoutSet={!!process.env.MKAN_PAYOUT_MOMO?.trim()}
     />
   );

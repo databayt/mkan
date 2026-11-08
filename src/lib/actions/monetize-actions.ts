@@ -261,6 +261,20 @@ export async function sendShareRequest(form: FormData): Promise<void> {
   updateTag(MONETIZE_TAG);
 }
 
+/**
+ * "Send share request" by MoMo: a request-to-pay prompt to the broker for Mkan's share (src/lib/momo/).
+ * Sandbox only until setup.momoApi is ticked. The callback (/api/momo/callback) marks the deal paid once.
+ */
+export async function sendMomoShareRequest(form: FormData): Promise<void> {
+  const session = await requireAdmin();
+  const { dealId, amountRwf } = dealMoneySchema.parse({ dealId: form.get("dealId"), amountRwf: blank(form.get("amountRwf")) });
+  const { sendShareByMomo } = await import("@/lib/momo/share");
+  const r = await sendShareByMomo(dealId, amountRwf);
+  logger.info("monetize:momo-share-request", { actorId: session.user.id, dealId, amount: r.amount, sandbox: r.sandbox });
+  revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
+}
+
 /** The money is in: the deal is PAID and Mkan's share lands as COMMISSION, once (deal.ts setDealStatus). */
 export async function markDealPaid(form: FormData): Promise<void> {
   const session = await requireAdmin();

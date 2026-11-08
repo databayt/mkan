@@ -1,7 +1,7 @@
 import type { Locale } from "@/components/internationalization/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { markDealPaid, sendShareRequest } from "@/lib/actions/monetize-actions";
+import { markDealPaid, sendMomoShareRequest, sendShareRequest } from "@/lib/actions/monetize-actions";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { nextStepOf, type DealRow } from "@/lib/monetize/deal-pipeline";
 import type { HeldIntro } from "@/lib/monetize/deals";
@@ -18,7 +18,7 @@ import { GRADIENT, INK, LINE, MUTED } from "./listing-ui";
 const RWF = (n: number, locale: Locale) => `${formatNumber(Math.round(n), locale)} RWF`;
 const SUBMIT = "h-10 rounded-[10px] border-0 px-4 text-sm font-semibold text-white hover:opacity-95";
 
-export function DealsSection({ deals, labels, locale, payoutSet, held = [] }: { deals: DealRow[]; labels: MonetizeLabels; locale: Locale; payoutSet: boolean; held?: HeldIntro[] }) {
+export function DealsSection({ deals, labels, locale, payoutSet, held = [], momoMode = null }: { deals: DealRow[]; labels: MonetizeLabels; locale: Locale; payoutSet: boolean; held?: HeldIntro[]; momoMode?: "sandbox" | "production" | null }) {
   const L = labels.deals;
   const now = new Date();
   return (
@@ -82,6 +82,16 @@ export function DealsSection({ deals, labels, locale, payoutSet, held = [] }: { 
                     <Button type="submit" className={SUBMIT} style={{ background: GRADIENT }}>
                       {L.sendShare}
                     </Button>
+                  </form>
+                )}
+                {momoMode && (next.key === "sendShare" || next.key === "askCommission" || next.key === "awaitPayment") && (
+                  <form action={sendMomoShareRequest} className="mt-3 flex flex-wrap items-end gap-2">
+                    <input type="hidden" name="dealId" value={d.id} />
+                    <Input name="amountRwf" type="number" inputMode="numeric" min={1} defaultValue={d.mkanShare ?? undefined} aria-label={L.amount} placeholder={L.amount} className="h-10 w-40 rounded-[10px] text-sm" />
+                    <Button type="submit" variant="outline" className="h-10 rounded-[10px] px-4 text-sm font-semibold">
+                      {L.momoRequest}
+                    </Button>
+                    {momoMode === "sandbox" && <span className={cn("text-xs", MUTED)}>{L.momoSandbox}</span>}
                   </form>
                 )}
                 {(next.key === "awaitPayment" || next.key === "sendShare") && (

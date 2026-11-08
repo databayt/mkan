@@ -6998,6 +6998,8 @@
       "amount": "Amount (RWF)",
       "sendShare": "Send share request",
       "markPaid": "Mark paid",
+      "momoRequest": "Send share request by MoMo",
+      "momoSandbox": "Sandbox: a test prompt only, nothing reaches a real wallet.",
       "payoutMissing": "No pay number is set (MKAN_PAYOUT_MOMO): the request won't say where to pay.",
       "held": {
         "title": "Intros waiting on you",

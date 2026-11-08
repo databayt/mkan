@@ -33,6 +33,7 @@ export function MonetizeContent({
   deals = null,
   heldIntros = [],
   payoutSet = false,
+  momoMode = null,
 }: {
   data: MonetizeOverview;
   live: LiveView;
@@ -45,6 +46,7 @@ export function MonetizeContent({
   /** Admin only: intros the line holds (deals.ts loadHeldIntros). */
   heldIntros?: HeldIntro[];
   payoutSet?: boolean;
+  momoMode?: "sandbox" | "production" | null;
 }) {
   const blocks = Object.fromEntries(data.blocks.map((b) => [b.key, labels.blocks[b.key].title]));
   return (
@@ -61,7 +63,7 @@ export function MonetizeContent({
       </header>
 
       {data.score && <Scorecard score={data.score} reach={data.reach} intro={data.intro} labels={labels} locale={locale} />}
-      {canEdit && deals && <DealsSection deals={deals} labels={labels} locale={locale} payoutSet={payoutSet} held={heldIntros} />}
+      {canEdit && deals && <DealsSection deals={deals} labels={labels} locale={locale} payoutSet={payoutSet} held={heldIntros} momoMode={momoMode} />}
       {canEdit && <SetupSection state={data.setup ?? {}} labels={labels} locale={locale} />}
 
       <LiveCard initial={live} labels={labels.live} blocks={blocks} canEdit={canEdit} locale={locale} />
