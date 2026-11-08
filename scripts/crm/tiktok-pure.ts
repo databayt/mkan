@@ -84,6 +84,15 @@ export interface SeedRow {
 export const SEED_PAUSE_STREAK = 3;
 const WEEK_MS = 7 * 86_400_000;
 
+/**
+ * Whether a yt-dlp / fetch error is the Mac's link (DNS down after a wake, a timeout, a reset)
+ * and not the account's or the video's fault. Such a miss waits for the network and retries:
+ * it never counts toward pausing a seed, never burns a video's fetch attempts and never fails the run.
+ */
+export function isNetworkMiss(message: string | null | undefined): boolean {
+  return /curl: \((6|7|28|35|52|56)\)|could not resolve|resolving timed out|resolve|ENOTFOUND|EAI_AGAIN|nodename nor servname|temporary failure in name resolution|network is unreachable|connection (reset|refused|timed out|aborted)|timed out|timeout|ssl.*(eof|error)|name or service not known|fetch failed|HTTPSConnection/i.test(message ?? '');
+}
+
 /** Is this seed listed on this run? Active ones daily, paused ones once a week. */
 export function seedIsDue(seed: SeedRow, nowMs = Date.now()): boolean {
   if (seed.status === 'active') return true;

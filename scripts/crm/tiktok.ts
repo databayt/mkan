@@ -63,6 +63,7 @@ import {
   captionCarriesFacts,
   NOT_A_RENTAL_CAPTION,
   SEED_PAUSE_STREAK,
+  isNetworkMiss,
   byPriority,
   readPriority,
   requeueable,
@@ -261,7 +262,15 @@ async function vaultSearch(q: string): Promise<string | null> {
     return null;
   }
   const { chromium } = await import('playwright');
-  const browser = await chromium.connectOverCDP(cdp, { timeout: 20_000 });
+  // A vault that answers HTTP but hangs the CDP attach (10-31: Timeout 20000ms) must skip the
+  // search, not kill the run: the seeds, fetch and read stages do not need it.
+  let browser: Awaited<ReturnType<typeof chromium.connectOverCDP>>;
+  try {
+    browser = await chromium.connectOverCDP(cdp, { timeout: 20_000 });
+  } catch (e) {
+    console.warn(`  · tiktok search skipped: vault attach failed — ${(e as Error).message.split('\n')[0]!.slice(0, 120)}`);
+    return null;
+  }
   try {
     const ctx = browser.contexts()[0];
     if (!ctx) return null;
@@ -334,9 +343,15 @@ async function discover(): Promise<void> {
         runStats.seedsListed++;
         console.log(`  @${handle}: +${fresh} new${stale ? ` · ${stale} older than ${MAX_AGE_DAYS}d` : ''}`);
       } catch (e) {
+        const reason = (e as Error).message.split('\n')[0]!.slice(0, 160);
+        if (isNetworkMiss((e as Error).message)) {
+          // The link, not the account: no streak, no pause — it is listed again next run.
+          console.warn(`  ~ @${handle}: network miss, not counted — ${reason}`);
+          await sleep(DELAY_MS / 2);
+          continue;
+        }
         seed.failStreak = (seed.failStreak ?? 0) + 1;
         runStats.seedsFailed++;
-        const reason = (e as Error).message.split('\n')[0]!.slice(0, 160);
         console.warn(`  ! @${handle} (${seed.failStreak} run(s) in a row): ${reason}`);
         // Private, renamed or gone: stop warning daily, look again in a week.
         if (seed.failStreak >= SEED_PAUSE_STREAK) {
@@ -650,7 +665,7 @@ async function fetchStage(): Promise<void> {
         row.error = (e as Error).message.split('\n')[0]!.slice(0, 200);
         // A drop in the link is not the video's fault; a block, a removal or
         // "no video formats" is, and retrying those forever wasted every run.
-        if (!/resolve|ENOTFOUND|EAI_AGAIN|timed out|network/i.test(row.error)) row.attempts = (row.attempts ?? 0) + 1;
+        if (!isNetworkMiss(row.error)) row.attempts = (row.attempts ?? 0) + 1;
         if ((row.attempts ?? 0) >= MAX_FETCH_ATTEMPTS) Object.assign(row, { state: 'failed' });
         console.warn(`  ! ${row.videoId}: ${row.error}${row.state === 'failed' ? ` — given up after ${MAX_FETCH_ATTEMPTS} tries` : ''}`);
       } finally {

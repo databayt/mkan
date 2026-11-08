@@ -411,3 +411,20 @@ describe('needsTranscript', () => {
     expect(needsTranscript('beautiful home 🏡')).toBe(true);
   });
 });
+
+import { isNetworkMiss } from '../../scripts/crm/tiktok-pure';
+
+describe('isNetworkMiss — a DNS blip is the link, not the account or the video', () => {
+  it('reads host-resolution and timeout misses as the network', () => {
+    expect(isNetworkMiss('yt-dlp: ERROR: [TikTok] 7699: Unable to download webpage: Failed to perform, curl: (6) Could not resolve host: www.tiktok.com')).toBe(true);
+    expect(isNetworkMiss('yt-dlp: ERROR: Unable to download JSON metadata: HTTPSConnectionPool(host=www.tiktok.com)')).toBe(true);
+    expect(isNetworkMiss('curl: (28) Connection timed out after 20001 milliseconds')).toBe(true);
+    expect(isNetworkMiss('fetch failed')).toBe(true);
+  });
+  it('keeps real removals, blocks and private accounts counting', () => {
+    expect(isNetworkMiss('yt-dlp: ERROR: [TikTok] 7705: Your IP address is blocked from accessing this post')).toBe(false);
+    expect(isNetworkMiss("yt-dlp: ERROR: This user's account is likely either private")).toBe(false);
+    expect(isNetworkMiss('yt-dlp: ERROR: [TikTok] 7705: No video formats found!')).toBe(false);
+    expect(isNetworkMiss(undefined)).toBe(false);
+  });
+});
