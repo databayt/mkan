@@ -98,6 +98,8 @@ import {
   pickToday,
   POSTS_CEILING,
   POSTS_FLOOR,
+  diskFloorGiB,
+  fillUnreadFrames,
   repostLine,
   repostReach,
   slotQuota,
@@ -525,11 +527,30 @@ function ocrBoxes(images: string[]): TextBox[][] {
     execFileSync('swiftc', ['-O', OCR_SRC, '-o', tmp], { stdio: 'pipe' });
     renameSync(tmp, OCR_BIN);
   }
-  const out = JSON.parse(execFileSync(OCR_BIN, ['--boxes', ...images], { encoding: 'utf8', timeout: 600_000, maxBuffer: 64 * 1024 * 1024 })) as Record<string, TextBox[]>;
-  return images.map((p) => {
-    if (!Array.isArray(out[p])) throw new Error(`no text read for ${p}`);
-    return out[p]!;
-  });
+  const run = (paths: string[], timeout: number): Record<string, TextBox[]> =>
+    JSON.parse(execFileSync(OCR_BIN, ['--boxes', ...paths], { encoding: 'utf8', timeout, maxBuffer: 64 * 1024 * 1024 })) as Record<string, TextBox[]>;
+  let out: Record<string, TextBox[]>;
+  try {
+    out = run(images, 600_000);
+  } catch (e) {
+    // A timeout (ETIMEDOUT) or a Vision start failure: once more, with twice the time.
+    console.log(`  … text read failed (${firstLine(e)}) — once more, longer`);
+    try {
+      out = run(images, 1_200_000);
+    } catch {
+      // Still failing: read frame by frame; a single unreadable frame is skipped (the nearest
+      // frame stands in), two or more fail the render (fillUnreadFrames).
+      out = {};
+      for (const p of images) {
+        try {
+          Object.assign(out, run([p], 300_000));
+        } catch {
+          /* left unread */
+        }
+      }
+    }
+  }
+  return fillUnreadFrames(images.map((p) => (Array.isArray(out[p]) ? out[p]! : null)));
 }
 
 /** Every (BODY_FPS / STRIP_FPS)th frame of a body from frame `offset`, as JPEGs with their times. */
@@ -694,7 +715,7 @@ function reelEncode(mezz: string, out: string): void {
 
 // ── disk + work dirs ─────────────────────────────────────────────────────────
 /** Renders refuse below this, like kun's media lane. */
-const DISK_FLOOR_GIB = 10;
+const DISK_FLOOR_GIB = diskFloorGiB(process.env.TIKTOK_DISK_FLOOR_GIB);
 /** Work dirs of renders in flight: removed on exit, a kill included (the run's watchdog sends TERM). */
 const working = new Set<string>();
 const dropWork = () => {

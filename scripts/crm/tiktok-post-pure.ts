@@ -1341,3 +1341,32 @@ export function shortfallLine(page: string, date: string, ready: number, queued:
   const why = Object.entries(stalled).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`).join(', ');
   return `🎬 TikTok @${page}: ${ready} of ${floor} clean videos ready for ${date} at 21:00 Kigali (${queued} home${queued === 1 ? '' : 's'} queued${why ? `, stalled today: ${why}` : ''}) — the rest render in tomorrow's first slots.`;
 }
+
+/**
+ * Free GiB a render needs before it starts. A render's intermediates are a few hundred MB, so
+ * the old flat 10 GiB floor refused every slot on a Mac that sits at 4-6 GiB for weeks
+ * (2026-11-08: exit 4 all evening). Default 4; TIKTOK_DISK_FLOOR_GIB overrides, never under 2.
+ */
+export function diskFloorGiB(env: string | undefined): number {
+  const n = Number(env);
+  return Number.isFinite(n) && n >= 2 ? n : 4;
+}
+
+/**
+ * Per-frame OCR results where a frame the reader could not open is null. One unreadable frame is
+ * filled from its nearest readable neighbour (frames are a fraction of a second apart, so
+ * its text, if any, sits on the neighbour too, and the strict gate reads between samples again).
+ * Two or more, or nothing readable at all, throws: the render fails closed.
+ */
+export function fillUnreadFrames<T>(frames: (T[] | null)[], maxSkips = 1): T[][] {
+  const bad = frames.flatMap((f, i) => (f === null ? [i] : []));
+  if (bad.length > maxSkips || bad.length === frames.length) throw new Error(`${bad.length} of ${frames.length} frames could not be read`);
+  return frames.map((f, i) => {
+    if (f) return f;
+    for (let d = 1; d < frames.length; d++) {
+      const near = frames[i - d] ?? frames[i + d];
+      if (near) return near;
+    }
+    return [];
+  });
+}

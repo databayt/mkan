@@ -106,7 +106,7 @@ steps() {
   if [ "$UPTO" = spread ]; then run tt:render --ahead || rc=4; fi
   # Evening only: once today's homes are all rendered, tomorrow's three clean videos (tt:buffer picks and
   # renders them, settles lost ledger rows, and at 21:00 Kigali posts one #mkan line if fewer than three are ready).
-  if [ "$PICK" = 1 ] && [ "$UPTO" = spread ]; then run tt:buffer || rc=4; fi
+  if [ "$PICK" = 1 ] && [ "$UPTO" = spread ]; then run tt:buffer || { [ "$rc" -eq 0 ] && rc=6; }; fi
   [ "$up" -ne 0 ] && return "$up"
   return "$rc"
 }
@@ -131,6 +131,7 @@ case "$code" in
     ;;
   77) what="a post was clicked but never confirmed — check @mkan.rw, then pnpm tt:upload --repost=<key> if it is missing"; lane_end fail "$what" 1 ;;
   4) what="the $SLOT slot could not render its share (disk under 10 GiB free, or the video tools failed)"; lane_end fail "$what" ;;
+  6) what="the $SLOT slot posted, but tt:buffer (tomorrow's videos) failed"; lane_end warn "$what" ;;
   5) what="the $SLOT slot could not add the evening's ads to today's queue"; lane_end warn "$what" ;;
   *) what="the $SLOT slot could not post (exit $code after ${mins} min)"; lane_end fail "$what" ;;
 esac
