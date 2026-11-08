@@ -85,6 +85,17 @@ async function lastSeq(taskId: string): Promise<number> {
   return last?.seq ?? 0;
 }
 
+/** A unique violation on AgentEvent(taskId, seq): another writer took that seq. */
+const seqTaken = (err: unknown) => (err as { code?: string } | null)?.code === "P2002" || /unique constraint/i.test(String((err as Error | null)?.message ?? ""));
+
+/**
+ * A task waits while a home on its shortlist is with a broker. Every reply sets the status from this, so
+ * a "thanks" under homes a broker was asked about keeps the task WAITING — DONE stopped the web chat's
+ * polling and the broker's answer never showed (2026-11-08).
+ */
+export const restingStatus = (shortlist: unknown): "WAITING" | "DONE" =>
+  Array.isArray(shortlist) && shortlist.some((s) => (s as { availability?: string } | null)?.availability === "asked") ? "WAITING" : "DONE";
+
 class Trace {
   private seq: number;
   /** Other writers (the broker loop) append events too; continue after them. */
@@ -100,14 +111,32 @@ class Trace {
     this.seq = lastSeq;
   }
 
+  /**
+   * Write `n` events from the next free seq. The range is taken synchronously, so steps the turn runs side
+   * by side never share one; a pick, a tap or a broker's answer that took a seq mid-turn is read back and
+   * the write goes after it — it used to throw the turn into its error reply (2026-11-08).
+   */
+  private async withSeqs<T>(n: number, write: (first: number) => Promise<T>): Promise<T | null> {
+    for (let attempt = 0; ; attempt += 1) {
+      if (this.gate?.abandoned) return null;
+      const first = this.seq + 1;
+      this.seq += n;
+      try {
+        return await write(first);
+      } catch (err) {
+        if (!seqTaken(err) || attempt >= 2) throw err;
+        const last = await db.agentEvent.findFirst({ where: { taskId: this.taskId }, orderBy: { seq: "desc" }, select: { seq: true } });
+        this.resync(last?.seq ?? 0);
+      }
+    }
+  }
+
   async start(kind: EventKind, payload: Record<string, unknown> = {}): Promise<number> {
     if (this.gate?.abandoned) return -1;
-    this.seq += 1;
-    const row = await db.agentEvent.create({
-      data: { taskId: this.taskId, seq: this.seq, kind, status: "running", payload: json(payload) },
-      select: { id: true },
-    });
-    return row.id;
+    const row = await this.withSeqs(1, (seq) =>
+      db.agentEvent.create({ data: { taskId: this.taskId, seq, kind, status: "running", payload: json(payload) }, select: { id: true } }),
+    );
+    return row?.id ?? -1;
   }
 
   async finish(id: number, status: StepStatus, payload: Record<string, unknown> = {}) {
@@ -121,9 +150,10 @@ class Trace {
 
   /** Several finished steps in one round trip; seqs are taken before the write, in order. */
   async recordMany(rows: [EventKind, StepStatus, Record<string, unknown>][]) {
-    if (this.gate?.abandoned) return;
-    const data = rows.map(([kind, status, payload]) => ({ taskId: this.taskId, seq: ++this.seq, kind, status, payload: json(payload) }));
-    await db.agentEvent.createMany({ data });
+    if (this.gate?.abandoned || rows.length === 0) return;
+    await this.withSeqs(rows.length, (first) =>
+      db.agentEvent.createMany({ data: rows.map(([kind, status, payload], i) => ({ taskId: this.taskId, seq: first + i, kind, status, payload: json(payload) })) }),
+    );
   }
 }
 
@@ -292,7 +322,7 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
       await trace.record("requirements_extracted", "done", { requirements: base, reader: "rules", intent: followUp });
       // "2" or "is it still available?" under one home: that home's check goes to WhatsApp with it.
       const listingId = followUp === "check" ? checkTarget(latest, shown) : undefined;
-      await firstReply({ role: "agent", kind: "followUp", say: followUp, ...(listingId ? { listingId } : {}), at: now() }, { status: "DONE" });
+      await firstReply({ role: "agent", kind: "followUp", say: followUp, ...(listingId ? { listingId } : {}), at: now() }, { status: restingStatus(shown) });
       return;
     }
 
@@ -377,7 +407,7 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
       await Promise.all([understood, learn([]), text ? trace.record("reply_written", "done", { answer: true }) : null, noteRwSamples(task.id, samples)]);
       await firstReply(
         { role: "agent", kind: "answer", topic: reading.intent === "question" ? "question" : "other", ...(text ? { text } : {}), at: now() },
-        { status: "DONE" },
+        { status: restingStatus(shown) },
       );
       return;
     }
@@ -386,7 +416,7 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     // line and a one-tap "show monthly homes" — no search, no demand, no broker asked.
     if (requirements.stay === "short") {
       await understood;
-      await firstReply({ role: "agent", kind: "monthlyOnly", at: now() }, { status: "DONE", requirements: json(requirements) });
+      await firstReply({ role: "agent", kind: "monthlyOnly", at: now() }, { status: restingStatus(shown), requirements: json(requirements) });
       return;
     }
 
@@ -398,7 +428,7 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
         learn([]),
         trace.record("asked", "waiting_person", { fields: clarify.join(", ") }),
       ]);
-      await firstReply({ role: "agent", kind: "clarify", fields: clarify, at: now() }, { status: "DONE", requirements: json(requirements) });
+      await firstReply({ role: "agent", kind: "clarify", fields: clarify, at: now() }, { status: restingStatus(shown), requirements: json(requirements) });
       return;
     }
 
@@ -600,8 +630,10 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     if (gate.abandoned) return;
     await trace.record("failed", "failed", {}).catch(() => {});
     if (gate.claimed) {
-      // The reply is up; a later step (the writer, a broker ask) failed. Keep what the tenant sees.
-      await db.agentTask.update({ where: { id: task.id }, data: { status: "DONE" } }).catch(() => {});
+      // The reply is up; a later step (the writer, a broker ask) failed. Keep what the tenant sees — and a
+      // home a broker is asked about keeps the chat waiting for the answer.
+      const onDisk = await db.agentTask.findUnique({ where: { id: task.id }, select: { shortlist: true } }).catch(() => null);
+      await db.agentTask.update({ where: { id: task.id }, data: { status: restingStatus(onDisk?.shortlist) } }).catch(() => {});
     } else {
       const wrote = await firstReply({ role: "agent", kind: "error", at: now() }, { status: "FAILED" }).catch(() => false);
       if (wrote) await handOffFailedChat(task.id, "turn-failed");

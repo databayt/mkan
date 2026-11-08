@@ -166,6 +166,50 @@ describe('the turn deadline', () => {
   });
 });
 
+// 2026-11-08: a pick, a tap or a broker's answer that appended an event mid-turn took the seq the turn's
+// trace had counted on; the unique (taskId, seq) refused the turn's next step and the tenant got the error.
+describe('the trace when another writer took a seq', () => {
+  beforeEach(() => {
+    search.mockReset();
+    update.mockClear();
+  });
+
+  it('reads the last seq back, writes after it, and the turn still answers', async () => {
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.agentTask.findUnique).mockResolvedValueOnce({
+      id: 't1', locale: 'en', messages: [{ role: 'user', text: 'Months', filters: { stay: 'long' }, at: '' }], requirements: null, events: [],
+    } as never);
+    search.mockResolvedValue({ candidates: [home({ id: 7 })], truncated: false });
+    const create = vi.mocked(db.agentEvent.create);
+    create.mockClear();
+    create.mockRejectedValueOnce(Object.assign(new Error('Unique constraint failed on the fields: (`taskId`,`seq`)'), { code: 'P2002' }));
+    vi.mocked(db.agentEvent.findFirst).mockResolvedValueOnce({ seq: 9 } as never);
+    const { runTurn } = await import('@/components/agent/run');
+    await runTurn('t1');
+    expect(create.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect((create.mock.calls[1]![0] as { data: { seq: number } }).data.seq).toBe(10);
+    const kinds = update.mock.calls.map((c) => (c as unknown as [{ data: { messages?: { kind?: string }[] } }])[0].data.messages?.at(-1)?.kind).filter(Boolean);
+    expect(kinds).toContain('shortlist');
+    expect(kinds).not.toContain('error');
+  });
+
+  it('a database that is down is not retried as if a seq were taken', async () => {
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.agentTask.findUnique).mockResolvedValueOnce({
+      id: 't1', locale: 'en', messages: [{ role: 'user', text: 'Months', filters: { stay: 'long' }, at: '' }], requirements: null, events: [],
+    } as never);
+    search.mockResolvedValue({ candidates: [home({ id: 7 })], truncated: false });
+    const create = vi.mocked(db.agentEvent.create);
+    create.mockClear();
+    create.mockRejectedValueOnce(new Error("Can't reach database server"));
+    const findFirst = vi.mocked(db.agentEvent.findFirst);
+    findFirst.mockClear();
+    const { runTurn } = await import('@/components/agent/run');
+    await runTurn('t1');
+    expect(findFirst).not.toHaveBeenCalled();
+  });
+});
+
 // /find, 2026-11-03: under the homes, "How are you", "?" or "Can we meet now" ran a new search and
 // showed the same homes again; WhatsApp already answered them before a turn (whatsapp-chat.ts).
 describe('under the homes on /find', () => {
@@ -173,14 +217,14 @@ describe('under the homes on /find', () => {
     { role: 'user', text: '2 bedroom in Kicukiro', at: '1' },
     { role: 'agent', kind: 'shortlist', count: 1, at: '2' },
   ];
-  const turnWith = async (message: Record<string, unknown>) => {
+  const turnWith = async (message: Record<string, unknown>, availability = 'asked') => {
     const { db } = await import('@/lib/db');
     vi.mocked(db.agentTask.findUnique).mockResolvedValueOnce({
       id: 't1',
       locale: 'en',
       messages: [...said, { role: 'user', at: '3', ...message }],
       requirements: null,
-      shortlist: [{ id: 7, availability: 'asked', why: 'Ten minutes from your office' }],
+      shortlist: [{ id: 7, availability, why: 'Ten minutes from your office' }],
       events: [],
     } as never);
     const shortlist = await import('@/components/agent/search');
@@ -206,6 +250,12 @@ describe('under the homes on /find', () => {
     expect(readRequirementsWithGroq).not.toHaveBeenCalled();
     expect(replies()).toEqual([expect.objectContaining({ kind: 'followUp', say: 'chat' })]);
     expect(writes().some((d) => 'shortlist' in d)).toBe(false);
+    // A home is with its broker: the chat keeps waiting for the answer (DONE stopped the poll, 2026-11-08).
+    expect(writes().at(-1)?.status).toBe('WAITING');
+  });
+
+  it('is done after small talk when no home is with a broker', async () => {
+    await turnWith({ text: 'How are you' }, 'unconfirmed');
     expect(writes().at(-1)?.status).toBe('DONE');
   });
 

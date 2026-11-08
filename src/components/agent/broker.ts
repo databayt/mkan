@@ -692,6 +692,19 @@ export async function nudgeUnanswered(now = new Date()): Promise<number> {
  * is done; one that never did gets the error reply, so the chat does not end
  * on the tenant's own message.
  */
+/**
+ * WAITING tasks with no broker question still open are DONE: nothing can answer them, and a WAITING chat
+ * polls for half an hour every time it is opened. A pause or a script that closed the questions without
+ * settling their tasks left 9 such chats for 6–17 days (2026-11-08). Raw SQL so `updatedAt` stays: the
+ * chat keeps its place in the list, and the poll still sees the status change.
+ */
+export async function settleOrphanedWaiting(now = new Date(), idleMs = 15 * 60_000): Promise<number> {
+  return db.$executeRaw`
+    UPDATE "AgentTask" t SET "status" = 'DONE'
+    WHERE t."status" = 'WAITING' AND t."updatedAt" < ${new Date(now.getTime() - idleMs)}
+      AND NOT EXISTS (SELECT 1 FROM "BrokerRequest" b WHERE b."taskId" = t."id" AND b."status" = 'PENDING')`;
+}
+
 export async function failStuckTasks(now = new Date(), olderThanMs = 90_000): Promise<number> {
   const cutoff = new Date(now.getTime() - olderThanMs);
   const errorReply = JSON.stringify([{ role: "agent", kind: "error", at: now.toISOString() }]);
