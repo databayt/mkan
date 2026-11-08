@@ -18,10 +18,13 @@ const json = (v: unknown) => v as Prisma.InputJsonValue;
  *             tenant hears that we are checking;
  *   web     — /find in a browser never reaches a broker: the card offers the
  *             same chat on WhatsApp instead;
- *   none    — nobody to ask (no broker with a number, or this broker was asked
- *             about it lately and has not answered).
+ *   taken   — a broker already said it is rented: the tenant hears so, and picks another;
+ *   person  — nothing for the line to ask (a host's own home, a broker who went
+ *             quiet on it, no broker with a number): a person got a #mkan card.
+ *             Until 2026-11-08 these were "none" and the tenant heard "I'll tell
+ *             you here if the broker writes back" with no broker asked.
  */
-export type AskOutcome = { ok: boolean; asked: boolean; why?: "handed" | "web" | "none" | "busy" | "already" | "confirmed" };
+export type AskOutcome = { ok: boolean; asked: boolean; why?: "handed" | "web" | "none" | "busy" | "already" | "confirmed" | "taken" | "person" };
 
 /** How long a pick waits for the turn that showed the homes to finish writing. */
 const PICK_WAIT_MS = 10_000;
@@ -52,7 +55,13 @@ export async function askAvailabilityFor(taskId: string, listingId: number): Pro
   // Already asked (this chat or another's) — the answer comes here; a yes already in — book the viewing.
   if (item?.availability === "asked") return { ok: true, asked: false, why: "already" };
   if (item?.availability === "confirmed") return { ok: true, asked: false, why: "confirmed" };
-  if (!item?.lead || item.availability !== "unconfirmed") return { ok: false, asked: false };
+  if (item?.availability === "rented") return { ok: true, asked: false, why: "taken" };
+  if (!item) return { ok: false, asked: false };
+  if (!item.lead || item.availability !== "unconfirmed") {
+    // Nothing for the line to ask: a host's own home, or a broker who went quiet on this one.
+    await handPickToPerson(task.id, item, item.lead ? "no-reply" : "not-a-lead");
+    return { ok: true, asked: false, why: "person" };
+  }
 
   const outcome = await askBroker(task.id, item, task.requirements, task.locale);
   if (outcome.asked) {
@@ -74,15 +83,18 @@ export async function askBroker(taskId: string, item: ShortlistItem, requirement
   const gate = await gateForTask(taskId);
   if (!gate.ok) {
     if (gate.why === "not-whatsapp") return { ok: true, asked: false, why: "web" };
-    await handToPerson(taskId, item, gate.waPhone, gate.why === "test-phone");
-    await appendTaskEvent(taskId, "availability_asked", "waiting_person", { listingId: item.id, handed: true });
+    await handPickToPerson(taskId, item, gate.why === "test-phone" ? "test" : "paused", gate.waPhone);
     return { ok: true, asked: false, why: "handed" };
   }
 
   // Picking it means a monthly rent: the broker is asked about one.
   const requirements = { ...coerceRequirements(requirementsJson), stay: "long" as const };
   const asked = await requestConfirmations(taskId, [item], requirements as never, locale);
-  if (asked.length === 0) return { ok: true, asked: false, why: "none" };
+  if (asked.length === 0) {
+    // No broker with a number, or this one was asked lately and has not answered: a person checks.
+    await handPickToPerson(taskId, item, "no-broker", gate.waPhone);
+    return { ok: true, asked: false, why: "person" };
+  }
   await Promise.all([
     appendTaskEvent(taskId, "availability_asked", "waiting_person", { listingId: item.id }),
     // The tenant chose this home on their own phone: the request records when (schema: BrokerRequest.consentAt).
@@ -93,8 +105,25 @@ export async function askBroker(taskId: string, item: ShortlistItem, requirement
   return { ok: true, asked: true };
 }
 
-/** The pick, for a person: who asked, which home, which broker — and the chats one tap away. */
-async function handToPerson(taskId: string, item: ShortlistItem, tenant: string | null, test: boolean) {
+/** Why a pick went to a person instead of a broker message — the card's first line. */
+export type PickToPerson = "paused" | "test" | "no-broker" | "not-a-lead" | "no-reply" | "check-failed" | "no-sheet";
+const HEAD: Record<PickToPerson, string> = {
+  paused: "🙋 A tenant wants a home checked — broker sends are paused, so a person does it",
+  test: "🧪 TEST (team number, not sent)",
+  "no-broker": "🙋 A tenant wants a home checked — no broker with a number to ask, or the broker was asked lately and has not answered; a person checks",
+  "not-a-lead": "🙋 A tenant picked a home that is not a broker's lead (a host's own) — a person answers them",
+  "no-reply": "🙋 A tenant picked a home whose broker went quiet on it — a person checks",
+  "check-failed": "⚠️ A tenant's pick could not be checked (an error) — a person checks it",
+  "no-sheet": "🙋 A tenant wants to view a home the broker confirmed, but no deal sheet could be written — a person sets up the viewing",
+};
+
+/**
+ * The pick, for a person: who asked, which home, which broker — and the chats one tap away. The tenant
+ * hears that a person will reply (whatsapp-format.ts checkText "person"). `tenant` defaults to the task's
+ * own number (the WhatsApp chat's, or the one a web tenant left).
+ */
+export async function handPickToPerson(taskId: string, item: ShortlistItem, why: PickToPerson, tenant?: string | null): Promise<void> {
+  const phone = tenant !== undefined ? tenant : ((await gateForTask(taskId).catch(() => null))?.waPhone ?? null);
   const brokers = await db.listingBroker.findMany({
     where: { listingId: item.id, user: { phoneNumber: { not: null } } },
     orderBy: [{ role: "desc" }, { createdAt: "asc" }],
@@ -103,8 +132,8 @@ async function handToPerson(taskId: string, item: ShortlistItem, tenant: string 
   });
   const ad = homeLink(brokers[0]?.sourceUrl, brokers[0]?.listing) ?? item.path;
   const who = brokers.map((b) => `${b.user.username ?? "broker"} <${waLink(b.user.phoneNumber!, "")}|${b.user.phoneNumber}>`).join(" · ") || "no broker number on file";
-  const head = test ? "🧪 TEST (team number, not sent)" : "🙋 A tenant wants a home checked — broker sends are paused, so a person does it";
   await postSlackCard(
-    `${head}\n*${item.title}* (#${item.id}) — ${ad}\nTenant: ${tenant ? `<${waLink(tenant, "")}|${tenant}>` : "web"} · chat ${taskId}\nBroker: ${who}`,
+    `${HEAD[why]}\n*${item.title}* (#${item.id}) — ${ad}\nTenant: ${phone ? `<${waLink(phone, "")}|${phone}>` : "web"} · chat ${taskId}\nBroker: ${who}`,
   ).catch(() => {});
+  await appendTaskEvent(taskId, "availability_asked", "waiting_person", { listingId: item.id, handed: true, why }).catch(() => {});
 }

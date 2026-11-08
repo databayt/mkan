@@ -575,7 +575,8 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
               return null;
             })
         : null;
-    const checked = check ? (check.asked ? "asked" : check.why === "handed" ? "handed" : check.why === "none" ? "none" : undefined) : undefined;
+    // "person": nothing for the line to ask, a person was told — the web says a person is checking.
+    const checked = check ? (check.asked ? "asked" : check.why === "handed" || check.why === "person" ? "handed" : check.why === "none" ? "none" : undefined) : undefined;
     if (check?.asked) {
       asked.add(pinned!.id);
       // Marked asked at once, not after the writer: the WhatsApp reply formatted at 16 s, and a "1" sent

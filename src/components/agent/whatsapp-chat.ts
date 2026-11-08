@@ -17,7 +17,7 @@ import { db } from "@/lib/db";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { publicAppUrl } from "../../../scripts/crm/public-links";
 import { appendUserMessage, reopenForTurn, type CurrentTask } from "./append";
-import { askAvailabilityFor, type AskOutcome } from "./availability";
+import { askAvailabilityFor, handPickToPerson, type AskOutcome } from "./availability";
 import { scrubTitle } from "@/lib/redact";
 import { appendTaskEvent } from "./broker";
 import { chatLink, optInDemand } from "./demand";
@@ -243,17 +243,23 @@ export async function handleTenantWhatsApp(input: {
     if (pick?.kind === "check") {
       const item = view!.shortlist.find((s) => s.id === pick.listingId)!;
       input.onAnswering?.();
-      const res: AskOutcome = await askAvailabilityFor(current.id, pick.listingId).catch(() => ({ ok: false, asked: false }));
+      const res: AskOutcome | null = await askAvailabilityFor(current.id, pick.listingId).catch(() => null);
       // The turn that showed the homes is still writing: the next pass takes this pick (never refused).
-      if (res.why === "busy") return { reply: null, why: "busy" };
+      if (res?.why === "busy") return { reply: null, why: "busy" };
       await stampSeen(current.id, input.msgId, pick.listingId);
       // A broker already said yes: the pick is "I want to see it" — the deal sheet and "when can you come?".
-      if (res.why === "confirmed") {
+      if (res?.why === "confirmed") {
         const sheet = await dealSheetFor(current.id, pick.listingId);
         if (sheet) return { reply: sheet, taskId: current.id };
+        // A yes with no sheet to write: a person sets up the viewing, and the tenant hears so.
+        await handPickToPerson(current.id, item, "no-sheet").catch(() => {});
+        return { reply: checkText(lang, "person", scrubTitle(item.title)), taskId: current.id };
       }
-      const outcome = res.asked ? "asked" : res.why === "handed" ? "handed" : res.why === "already" ? "already" : "none";
-      return { reply: checkText(lang, outcome, scrubTitle(item.title)), taskId: current.id };
+      const why = res?.why;
+      const outcome = res?.asked ? "asked" : why === "handed" || why === "already" || why === "taken" || why === "person" ? why : null;
+      // A check that failed or found nothing to do is never answered with a promise nobody keeps (2026-11-08).
+      if (!outcome) await handPickToPerson(current.id, item, "check-failed").catch(() => {});
+      return { reply: checkText(lang, outcome ?? "person", scrubTitle(item.title)), taskId: current.id };
     }
     if (pick?.kind === "askAround") {
       const result = await askAround(current.id).catch(() => ({ asked: 0, handed: false }));

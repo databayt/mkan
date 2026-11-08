@@ -203,7 +203,9 @@ describe("honest answers", () => {
   it("says what happened to a check: asked, handed to a person, or nothing to ask", () => {
     expect(checkText("en", "asked", "Flat")).toMatch(/I've asked the broker/);
     expect(checkText("en", "handed", "Flat")).toMatch(/checking "Flat" with the broker now/);
-    expect(checkText("en", "none", "Flat")).toMatch(/can't get an answer/);
+    // Nothing for the line to ask: a person is told, and the tenant hears so — never "the broker will write back" (2026-11-08).
+    expect(checkText("en", "none", "Flat")).toMatch(/A person from Mkan will check "Flat"/);
+    expect(checkText("en", "taken", "Flat")).toMatch(/has just been taken/);
     expect(askAroundText("en", { asked: 3, handed: false })).toMatch(/asking brokers/);
     expect(askAroundText("en", { asked: 0, handed: false })).toMatch(/couldn't find a broker/);
   });

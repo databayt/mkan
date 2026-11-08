@@ -507,29 +507,33 @@ export function pickInWords(text: string, shown: readonly ShortlistItem[]): numb
  * handed (a person at Mkan checks it — broker sends paused, or a team number),
  * or none (no broker to reach, or one asked lately who has not answered yet).
  */
-export function checkText(lang: WaLang, outcome: "asked" | "handed" | "none" | "already", title: string): string {
+/**
+ * What a pick gets. "taken": a broker already said it is rented. "person" (and the old "none"): there was
+ * nobody for the line to ask — a host's own home, a broker who went quiet, a check that failed — so a
+ * person was told in #mkan. It used to say "I'll tell you here if the broker writes back" when no broker
+ * had been asked at all (2026-11-08). rw is machine-written (native review sheet).
+ */
+export function checkText(lang: WaLang, outcome: "asked" | "handed" | "none" | "already" | "taken" | "person", title: string): string {
   if (outcome === "already") {
     if (lang === "ar") return `سألت الوسيط عن «${title}» من قبل، وسيصلك رده هنا.`;
     if (lang === "rw") return `Nabajije komisiyoneri ibya "${title}" mbere. Igisubizo kizaza hano.`;
     return `I've already asked the broker about "${title}". Their answer will come here.`;
   }
+  if (outcome === "taken") {
+    if (lang === "ar") return `«${title}» أُجِّر للتو، للأسف. أرسل رقم منزل آخر، أو أخبرني بما تريد تغييره.`;
+    if (lang === "rw") return `"${title}" yamaze gufatwa, mbabarira. Ohereza nimero y'indi nzu, cyangwa umbwire icyo nahindura.`;
+    return `"${title}" has just been taken, sorry. Send the number of another home, or tell me what to change.`;
+  }
+  if (outcome === "person" || outcome === "none") {
+    if (lang === "ar") return `سيتحقق أحد من فريق مكان من «${title}» ويرد عليك هنا.`;
+    if (lang === "rw") return `Umuntu wo muri Mkan azagenzura "${title}" akugarukire hano.`;
+    return `A person from Mkan will check "${title}" and reply to you here.`;
+  }
   if (lang === "ar")
-    return outcome === "asked"
-      ? `سألت الوسيط عن «${title}». سأرسل لك الرد هنا.`
-      : outcome === "handed"
-        ? `تمام، أتحقق من «${title}» مع الوسيط الآن، وسأراسلك هنا.`
-        : `لا أستطيع الحصول على رد بخصوص «${title}» الآن. سأخبرك هنا إن ردّ الوسيط.`;
+    return outcome === "asked" ? `سألت الوسيط عن «${title}». سأرسل لك الرد هنا.` : `تمام، أتحقق من «${title}» مع الوسيط الآن، وسأراسلك هنا.`;
   if (lang === "rw")
-    return outcome === "asked"
-      ? `Nabajije komisiyoneri ibya "${title}". Igisubizo nzakikoherereza hano.`
-      : outcome === "handed"
-        ? `Yego, ndimo kubaza komisiyoneri ibya "${title}" ubu. Nzakwandikira hano.`
-        : `Ntabwo mbona igisubizo ku bya "${title}" ubu. Nzakubwira hano nasubiza.`;
-  return outcome === "asked"
-    ? `I've asked the broker about "${title}". I'll send their answer here.`
-    : outcome === "handed"
-      ? `Got it, I'm checking "${title}" with the broker now. I'll message you here.`
-      : `I can't get an answer about "${title}" right now. I'll tell you here if the broker writes back.`;
+    return outcome === "asked" ? `Nabajije komisiyoneri ibya "${title}". Igisubizo nzakikoherereza hano.` : `Yego, ndimo kubaza komisiyoneri ibya "${title}" ubu. Nzakwandikira hano.`;
+  return outcome === "asked" ? `I've asked the broker about "${title}". I'll send their answer here.` : `Got it, I'm checking "${title}" with the broker now. I'll message you here.`;
 }
 
 /** What to answer "yes, ask around" with. */
