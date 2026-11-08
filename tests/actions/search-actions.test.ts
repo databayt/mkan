@@ -200,6 +200,20 @@ describe("searchListings", () => {
     expect(where).toHaveProperty("location");
   });
 
+  // databayt/mkan#54 case 1: "Port Sudan" listed every home with any zoneKey,
+  // Kassala and Kigali included.
+  it.each(["Port Sudan", "بورتسودان"])("a '%s' search keeps only Port Sudan zones (mkan#54)", async (loc) => {
+    mockDb.listing.findMany.mockResolvedValue([] as never);
+
+    await searchListings({ location: loc });
+
+    const where = mockDb.listing.findMany.mock.calls[0][0]?.where as { location: { OR: Record<string, unknown>[] } };
+    const zoneClause = where.location.OR.find((c) => "zoneKey" in c) as { zoneKey: { in?: string[]; not?: unknown } };
+    expect(zoneClause.zoneKey.not).toBeUndefined();
+    expect(zoneClause.zoneKey.in).toContain("abu-hashish");
+    expect(zoneClause.zoneKey.in).not.toContain("gasabo/remera");
+  });
+
   it("applies guest capacity filter", async () => {
     mockDb.listing.findMany.mockResolvedValue([] as never);
 

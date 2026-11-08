@@ -404,7 +404,9 @@ function buildSearchWhere(
           { city: { contains: "Port Sudan", mode: "insensitive" } },
           { state: { contains: "Red Sea", mode: "insensitive" } },
           { address: { contains: "بورتسودان", mode: "insensitive" } },
-          { zoneKey: { not: null } },
+          // Only Port Sudan's own zones: `not: null` also matched every Kigali
+          // and Kassala home, which carry a zoneKey too (mkan#54).
+          { zoneKey: { in: PORT_SUDAN_ZONES.map((z) => z.slug) } },
         ],
       };
     } else {
