@@ -31,6 +31,7 @@ import { CONFIRMATION_TTL_DAYS } from "./rank";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements, type Requirements } from "./requirements";
 import type { EventKind, ShortlistItem, StepStatus } from "./types";
 import { postSlackCard, sendMessages, sendToBroker } from "./whatsapp";
+import { handOffFailedChat } from "./failed-handoff";
 
 export const REQUEST_TTL_HOURS = 24;
 const json = (v: unknown) => v as Prisma.InputJsonValue;
@@ -694,10 +695,14 @@ export async function nudgeUnanswered(now = new Date()): Promise<number> {
 export async function failStuckTasks(now = new Date(), olderThanMs = 90_000): Promise<number> {
   const cutoff = new Date(now.getTime() - olderThanMs);
   const errorReply = JSON.stringify([{ role: "agent", kind: "error", at: now.toISOString() }]);
-  return db.$executeRaw`
+  const rows = await db.$queryRaw<{ id: string; failed: boolean }[]>`
     UPDATE "AgentTask" SET
       "status" = (CASE WHEN "messages"->-1->>'role' = 'agent' THEN 'DONE' ELSE 'FAILED' END)::"AgentTaskStatus",
       "messages" = CASE WHEN "messages"->-1->>'role' = 'agent' THEN "messages" ELSE "messages" || ${errorReply}::jsonb END,
       "updatedAt" = ${now}
-    WHERE "status" = 'RUNNING' AND "updatedAt" < ${cutoff}`;
+    WHERE "status" = 'RUNNING' AND "updatedAt" < ${cutoff}
+    RETURNING id, ("status" = 'FAILED') AS failed`;
+  // A chat that ended on the tenant's own words reaches #mkan, not just the tenant's "Try again".
+  await Promise.all(rows.filter((r) => r.failed).map((r) => handOffFailedChat(r.id, "stuck")));
+  return rows.length;
 }

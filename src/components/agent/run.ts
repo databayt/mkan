@@ -38,6 +38,7 @@ import { openDemand } from "./demand";
 import { canSpend } from "./claude";
 import { checkTarget, followUpKind, underHomes } from "./follow-up";
 import { asksToCheck } from "./whatsapp-format";
+import { handOffFailedChat } from "./failed-handoff";
 import type { AgentMessage, EventKind, ShortlistItem, StepStatus } from "./types";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
@@ -206,6 +207,7 @@ export async function runTurn(taskId: string, onShown: () => void = () => {}): P
     gate.abandoned = true;
     console.warn(`[agent] turn ${taskId} had no reply after ${TURN_DEADLINE_MS} ms; answering with the error`);
     void appendReply(taskId, { role: "agent", kind: "error", at: new Date().toISOString() }, "FAILED")
+      .then(() => handOffFailedChat(taskId, "deadline"))
       .catch((err) => console.error("[agent] deadline reply not written", err))
       .finally(onShown);
   }, TURN_DEADLINE_MS);
@@ -218,6 +220,7 @@ export async function runTurn(taskId: string, onShown: () => void = () => {}): P
     if (!gate.claimed && !gate.abandoned) {
       gate.abandoned = true;
       await appendReply(taskId, { role: "agent", kind: "error", at: new Date().toISOString() }, "FAILED")
+        .then(() => handOffFailedChat(taskId, "threw"))
         .catch((e) => console.error("[agent] error reply not written", e))
         .finally(onShown);
     }
@@ -600,7 +603,8 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
       // The reply is up; a later step (the writer, a broker ask) failed. Keep what the tenant sees.
       await db.agentTask.update({ where: { id: task.id }, data: { status: "DONE" } }).catch(() => {});
     } else {
-      await firstReply({ role: "agent", kind: "error", at: now() }, { status: "FAILED" }).catch(() => {});
+      const wrote = await firstReply({ role: "agent", kind: "error", at: now() }, { status: "FAILED" }).catch(() => false);
+      if (wrote) await handOffFailedChat(task.id, "turn-failed");
     }
   }
 }
