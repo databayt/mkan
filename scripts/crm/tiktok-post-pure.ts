@@ -47,6 +47,9 @@ export interface LedgerEntry {
   postedAt?: string;
   /** Its render was rejected (text it could not strip, the video gone): it rests like a posted home. */
   rejectedAt?: string;
+  /** The broker video could not be fetched (photo post, removed, private): never featured again. */
+  fetchFailedAt?: string;
+  fetchFailure?: 'photo' | 'gone' | 'private';
   url?: string;
   views?: number;
   likes?: number;
@@ -121,6 +124,7 @@ export function ineligibleReason(r: PostRow, consented: ReadonlySet<string>, now
 
 function resting(e: LedgerEntry | undefined, now: number): boolean {
   if (!e) return false;
+  if (e.fetchFailedAt) return true;
   if (e.postedAt) return now - Date.parse(e.postedAt) < REPOST_AFTER_DAYS * DAY;
   // A video that kept text after the strip, or is gone, would only be rejected again next week.
   if (e.rejectedAt) return now - Date.parse(e.rejectedAt) < REPOST_AFTER_DAYS * DAY;
@@ -1282,6 +1286,21 @@ export function fetchFailure(stderr: string | null | undefined): 'network' | 'go
   const s = (stderr ?? '').toLowerCase();
   const net = /curl: \((6|7|28|35|52|56)\)|could not resolve|resolving timed out|nodename nor servname|temporary failure in name resolution|network is unreachable|connection (reset|refused|timed out)|timed out|timeout|ssl.*(eof|error)|name or service not known/;
   return net.test(s) ? 'network' : 'gone';
+}
+
+/**
+ * What a cheap `yt-dlp --simulate` probe of a broker's TikTok link says. `ok` = a video exists;
+ * `photo` = a photo post; `private` = login/private; `gone` = removed or never existed;
+ * `network` = could not tell (offline), which never marks a home.
+ */
+export type Probe = 'ok' | 'photo' | 'private' | 'gone' | 'network';
+export function probeVerdict(exitOk: boolean, stderr: string | null | undefined): Probe {
+  if (exitOk) return 'ok';
+  const s = (stderr ?? '').toLowerCase();
+  if (/\/photo\/|photo post|image post|no video (formats|in this post)|slideshow/.test(s)) return 'photo';
+  if (/private|log ?in|sign in|not available for you/.test(s)) return 'private';
+  if (fetchFailure(stderr) === 'network') return 'network';
+  return 'gone';
 }
 
 /** Clean videos tomorrow's posting needs ready before its first slot (three posts a day is the floor). */

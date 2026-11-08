@@ -88,6 +88,8 @@ import {
   codePattern,
   dayPieces,
   fetchFailure,
+  probeVerdict,
+  type Probe,
   bufferPlan,
   ledgerFixes,
   shortfallLine,
@@ -230,6 +232,19 @@ const intEnv = (name: string, d: number): number => {
   return Number.isInteger(v) && v >= 0 ? v : d;
 };
 
+/** Cheap fetchability check of a broker lead's video: metadata only, nothing downloaded. Non-broker homes have no fetch to fail. */
+function probeVideo(r: PostRow): Probe {
+  if (r.source !== 'TIKTOK') return 'ok';
+  const url = brokerVideoUrl(r);
+  if (!url) return 'photo'; // a broker lead whose frames carry no video id has nothing to fetch
+  try {
+    execFileSync('yt-dlp', ['-s', '-q', '--no-warnings', '--no-playlist', url], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 45_000 });
+    return 'ok';
+  } catch (e) {
+    return probeVerdict(false, String((e as { stderr?: string }).stderr ?? (e as Error).message ?? ''));
+  }
+}
+
 async function pick(): Promise<PostRow[]> {
   // --n / TIKTOK_POSTS_PER_DAY: "fresh" (the default since 2026-11-07) posts every postable home
   // whose ad went up today or yesterday, from TIKTOK_POSTS_MIN (3) up to TIKTOK_POSTS_MAX (15); see
@@ -251,13 +266,38 @@ async function pick(): Promise<PostRow[]> {
   const queued = readQueue();
   const inQueue = new Set(queued.map(refOf));
   const open = rows.filter((r) => !inQueue.has(refOf(r)));
+  // Fetchability: an unfetchable broker video is marked in the ledger (never featured again) and the
+  // pick runs again so the next ready home takes its place and the day's count holds.
+  const skipped: string[] = [];
+  const checked = new Set<string>();
+  const pickOnce = (): PostRow[] =>
+    fixed !== null
+      ? pickToday(open, ledger, consented, Math.max(0, fixed - queued.length))
+      : pickFresh(open, ledger, consented, { already: queued.length, floor: intEnv('TIKTOK_POSTS_MIN', POSTS_FLOOR), ceiling: intEnv('TIKTOK_POSTS_MAX', POSTS_CEILING) }).picked;
+  const verified = (): PostRow[] => {
+    for (let round = 0; round < 6; round += 1) {
+      const cand = pickOnce();
+      let marked = 0;
+      for (const r of cand) {
+        if (checked.has(refOf(r))) continue;
+        checked.add(refOf(r));
+        const v = probeVideo(r);
+        if (v === 'ok' || v === 'network') continue;
+        ledger[refOf(r)] = { ...(ledger[refOf(r)] ?? { listingId: r.id, district: r.district, queuedAt: new Date().toISOString() }), fetchFailedAt: new Date().toISOString(), fetchFailure: v };
+        skipped.push(`${refOf(r)} (${v})`);
+        marked += 1;
+      }
+      if (!marked) return cand;
+    }
+    return pickOnce();
+  };
   let picked: PostRow[];
-  if (fixed !== null) picked = pickToday(open, ledger, consented, Math.max(0, fixed - queued.length));
+  if (fixed !== null) picked = verified();
   else {
     const floor = intEnv('TIKTOK_POSTS_MIN', POSTS_FLOOR);
     const ceiling = intEnv('TIKTOK_POSTS_MAX', POSTS_CEILING);
     const f = pickFresh(open, ledger, consented, { already: queued.length, floor, ceiling });
-    picked = f.picked;
+    picked = verified();
     console.log(
       `ads posted today or yesterday: ${f.fresh} postable` +
         (f.over ? ` (${f.over} more over the ${ceiling}-a-day cap stay for the next pick)` : '') +
@@ -265,6 +305,7 @@ async function pick(): Promise<PostRow[]> {
         (queued.length ? ` · ${queued.length} already in today's queue` : ''),
     );
   }
+  if (skipped.length) console.log(`unfetchable broker videos skipped and replaced: ${skipped.join(', ')}${flag('dry') ? ' (dry: ledger not written)' : ''}`);
   console.log(`Kigali monthly homes: ${rows.length} · brokers consented: ${consented.size} · held back: ${[...why].map(([k, v]) => `${v} ${k}`).join(', ') || 'none'}`);
   for (const r of picked) console.log(`  ${refOf(r).padEnd(8)} #${r.id}  ${r.bedrooms ?? '?'}bd  RWF ${r.priceMonth}/mo  ${r.area ?? ''}, ${r.district ?? ''}  (${r.source})`);
   if (!picked.length && fixed === 0) console.log('  broker videos on hold (--n=0)');
@@ -829,7 +870,7 @@ function markFailed(dir: string, ref: string, kind: 'rejected' | 'held' | 'error
   if (kind !== 'rejected') return;
   const ledger = loadLedger();
   if (!ledger[ref]) return;
-  ledger[ref] = { ...ledger[ref]!, rejectedAt: new Date().toISOString() };
+  ledger[ref] = { ...ledger[ref]!, rejectedAt: new Date().toISOString(), ...(/could not be fetched/.test(why) ? { fetchFailedAt: new Date().toISOString(), fetchFailure: 'gone' as const } : {}) };
   saveLedger(ledger);
 }
 
