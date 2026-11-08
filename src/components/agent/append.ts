@@ -59,3 +59,23 @@ export async function appendUserMessage(input: {
   });
   return { taskId: created.id };
 }
+
+/**
+ * Take a chat back for one more turn on the tenant's last message — a WhatsApp retry whose turn died (a
+ * restart) or left only the error, which nobody sent. Trailing error replies are dropped so the new turn's
+ * answer stands in their place. Conditional on the row being as it was read and not live-RUNNING, so a
+ * second pass, or a new message landing meanwhile, wins instead (2026-11-08).
+ */
+export async function reopenForTurn(taskId: string): Promise<boolean> {
+  const t = await db.agentTask.findUnique({ where: { id: taskId }, select: { status: true, updatedAt: true, messages: true } });
+  if (!t) return false;
+  if (t.status === "RUNNING" && Date.now() - t.updatedAt.getTime() < STUCK_AFTER_MS) return false;
+  const list = (t.messages as unknown as AgentMessage[]) ?? [];
+  let end = list.length;
+  while (end > 0 && list[end - 1]!.role === "agent" && (list[end - 1] as { kind?: string }).kind === "error") end -= 1;
+  const res = await db.agentTask.updateMany({
+    where: { id: taskId, updatedAt: t.updatedAt },
+    data: { status: "RUNNING", messages: list.slice(0, end) as unknown as Prisma.InputJsonValue },
+  });
+  return res.count === 1;
+}

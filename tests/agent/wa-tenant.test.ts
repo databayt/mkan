@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HUMAN_HOLD_MS, isDirectChat, isTenantStop, langOfWords, MAX_AGE_MS, PER_PHONE_PER_HOUR, startText, stopConfirmText, tenantDecision, typePleaseText } from "../../scripts/wa/tenant-pure";
+import { HOOK_MISS_ALERT_AT, HOOK_MISS_WINDOW_MS, HUMAN_HOLD_MS, isDirectChat, isTenantStop, langOfWords, lateLead, MAX_AGE_MS, noteMisses, PER_PHONE_PER_HOUR, startText, stopConfirmText, tenantDecision, typePleaseText } from "../../scripts/wa/tenant-pure";
 
 const now = new Date("2026-10-24T10:00:00Z");
 const base = { text: "2 bedroom in Kicukiro", sentAt: now, now, stopped: false, humanAt: null, phoneRepliesLastHour: 0, lineRepliesLastHour: 0 };
@@ -42,10 +42,41 @@ describe("tenantDecision", () => {
     expect(langOfWords("توقف")).toBe("ar");
     expect(langOfWords("STOP")).toBeNull();
   });
+  it("answers up to 12 h late, saying sorry; older is a person's (2026-11-08: it dropped anything past 60 min)", () => {
+    expect(MAX_AGE_MS).toBe(12 * 3_600_000);
+    expect(tenantDecision({ ...base, sentAt: new Date(now.getTime() - 11 * 3_600_000) })).toBe("answer");
+    expect(tenantDecision({ ...base, sentAt: new Date(now.getTime() - 13 * 3_600_000) })).toBe("skip-old");
+    expect(lateLead("en")).toMatch(/sorry/i);
+    expect(lateLead("ar")).toMatch(/[؀-ۿ]/);
+    expect(lateLead("rw")).toMatch(/Mbabarira/);
+  });
   it("only one-to-one chats are tenants", () => {
     expect(isDirectChat("250780000001@s.whatsapp.net")).toBe(true);
     expect(isDirectChat("1203630@g.us")).toBe(false);
     expect(isDirectChat("status@broadcast")).toBe(false);
+  });
+});
+
+describe("messages the webhook never delivered", () => {
+  const at = (msAgo: number) => new Date(now.getTime() - msAgo);
+  it("a miss or two after a restart stays quiet; a third in the window tells #mkan once", () => {
+    let s = noteMisses({ ids: [] }, [{ id: "a", sentAt: at(3 * 60_000) }], now);
+    expect(s.alert).toBeNull();
+    s = noteMisses(s.next, [{ id: "b", sentAt: at(3 * 60_000) }], now);
+    expect(s.alert).toBeNull();
+    s = noteMisses(s.next, [{ id: "c", sentAt: at(3 * 60_000) }], now);
+    expect(s.alert).toMatchObject({ count: HOOK_MISS_ALERT_AT });
+    expect(noteMisses(s.next, [{ id: "d", sentAt: at(3 * 60_000) }], now).alert).toBeNull();
+  });
+  it("one message that waited half an hour is enough", () => {
+    expect(noteMisses({ ids: [] }, [{ id: "a", sentAt: at(40 * 60_000) }], now).alert).toMatchObject({ count: 1, oldestMin: 40 });
+  });
+  it("the same message seen on every pass counts once, and old misses age out", () => {
+    let s = noteMisses({ ids: [] }, [{ id: "a", sentAt: at(3 * 60_000) }], now);
+    s = noteMisses(s.next, [{ id: "a", sentAt: at(3 * 60_000) }], now);
+    expect(s.next.ids).toHaveLength(1);
+    const later = new Date(now.getTime() + HOOK_MISS_WINDOW_MS + 60_000);
+    expect(noteMisses(s.next, [], later).next.ids).toHaveLength(0);
   });
 });
 

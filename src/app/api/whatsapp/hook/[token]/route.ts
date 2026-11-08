@@ -4,7 +4,7 @@ import { isDirectChat } from "../../../../../../scripts/wa/tenant-pure";
 import { isMedia, messageText, phoneKey, senderPhone } from "../../../../../../scripts/wa/outbox-pure";
 import { answerTenant, noteFromMe } from "@/components/agent/wa-tenant";
 import { kickOutbox } from "@/components/agent/wa-outbox";
-import { claimMessage, settleMessage } from "@/components/agent/wa-state";
+import { claimMessage, markHeard, settleMessage } from "@/components/agent/wa-state";
 import { postSlackCard } from "@/components/agent/whatsapp";
 import { db } from "@/lib/db";
 import { hookToken, INSTANCE, type EvoMessage } from "@/lib/whatsapp/evolution";
@@ -66,9 +66,12 @@ async function handle(m: EvoMessage) {
   if (!phone) {
     // WhatsApp hides some senders' numbers (an @lid with no number on it): the agent cannot answer one
     // yet, so a person does, from the phone — it used to be dropped without a word (2026-11-06).
-    if (!key.fromMe && key.remoteJid?.endsWith("@lid") && (await claimMessage(key.id))) {
-      await settleMessage(key.id);
-      await postSlackCard(`📵 Someone with a hidden number wrote to the Mkan line — the agent can't answer them; reply from the phone:\n> ${(messageText(m.message) || "[photo or voice note]").slice(0, 400).replace(/\n/g, "\n> ")}`).catch(() => {});
+    if (!key.fromMe && key.remoteJid?.endsWith("@lid")) {
+      const claim = await claimMessage(key.id);
+      if (claim && claim.mode !== "held") {
+        await settleMessage(key.id);
+        await postSlackCard(`📵 Someone with a hidden number wrote to the Mkan line — the agent can't answer them; reply from the phone:\n> ${(messageText(m.message) || "[photo or voice note]").slice(0, 400).replace(/\n/g, "\n> ")}`).catch(() => {});
+      }
     }
     return;
   }
@@ -88,6 +91,8 @@ async function handle(m: EvoMessage) {
   }
   // Claimed once in answerTenant (wa-state.ts claimMessage): the poll that brings the same message
   // finds it answered — and one the webhook could not finish (a busy turn, an error) it answers itself.
+  // The mark first: the poll counts a tenant message without one as missed by the hook (2026-11-08).
+  await markHeard(key.id);
   await answerTenant({ phone, text: messageText(m.message), msgId: key.id, sentAt, media: isMedia(m.message, m.messageType) });
 }
 

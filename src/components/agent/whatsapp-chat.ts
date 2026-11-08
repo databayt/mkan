@@ -16,16 +16,16 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { publicAppUrl } from "../../../scripts/crm/public-links";
-import { appendUserMessage, type CurrentTask } from "./append";
+import { appendUserMessage, reopenForTurn, type CurrentTask } from "./append";
 import { askAvailabilityFor, type AskOutcome } from "./availability";
 import { scrubTitle } from "@/lib/redact";
 import { appendTaskEvent } from "./broker";
 import { chatLink, optInDemand } from "./demand";
 import { hashKey, type Viewer } from "./profile";
-import { startTurn } from "./run";
-import { loadTask } from "./task-view";
+import { startTurn, TURN_DEADLINE_MS } from "./run";
+import { loadTask, STUCK_AFTER_MS } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
-import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, waLang, wantsViewing, type WaDict, type WaLang } from "./whatsapp-format";
+import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, retryPlan, takenIn, waLang, wantsViewing, type WaDict, type WaLang } from "./whatsapp-format";
 import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, asksForHome, readHomeRef, refSourceOf, shownHomes, thanksText, wantsPerson, whichOneText, type RefSource } from "./whatsapp-format";
 import { afterHomesKind, chatText, visitText } from "./whatsapp-format";
 import { askAround } from "./demand";
@@ -43,16 +43,22 @@ const MAX_TEXT = 600;
 const CONTINUE_MS = 24 * 3_600_000;
 /** Fewer than the web's 30: a phone loop costs Groq tokens the whole site shares. */
 const MAX_TURNS_PER_HOUR = 20;
-/** The bridge holds the tenant's "typing…" this long; the turn's own deadline is 15 s. */
-const TURN_WAIT_MS = 16_000;
+/**
+ * How long the reply waits for the turn's first reply — past the turn's own deadline, whose error reply
+ * also counts, so a slow database still answers this message rather than leaving it to the next pass.
+ */
+const TURN_WAIT_MS = TURN_DEADLINE_MS + 3_000;
 /** A web chat a ref may carry over. */
 const REF_MAX_AGE_MS = 30 * 24 * 3_600_000;
 
 export type WaResult =
   /** `done`: the turn behind the reply, still writing its tail (the writer, the broker ask) — the phone's next message waits for it. */
   | { reply: string; taskId: string | null; done?: Promise<void> }
-  /** Nothing to send: a message already answered, or the last turn still running. */
-  | { reply: null; why: "duplicate" | "busy" | "empty" | "personal" };
+  /**
+   * Nothing to send: a message already answered, the last turn still running ("busy": not taken in, the claim
+   * is given back), or this message's own turn still running ("held": taken in, the claim is kept).
+   */
+  | { reply: null; why: "duplicate" | "busy" | "held" | "empty" | "personal"; done?: Promise<void> };
 
 /** How long a message waits for the same phone's last turn to finish before it is left to the next poll. */
 const BUSY_WAIT_MS = 20_000;
@@ -130,23 +136,29 @@ export async function handleTenantWhatsApp(input: {
       WHERE t."profileId" = ${profile.id} AND t."updatedAt" >= ${since}
         AND m->>'role' = 'user' AND m->>'at' >= ${since.toISOString()}`,
   ]);
-  // The webhook and the fallback poll can both bring the same message.
-  const answered =
-    recent.some((t) => ((t.messages as unknown as AgentMessage[]) ?? []).some((m) => m.role === "user" && m.wa === input.msgId)) ||
-    (recent.length > 0 &&
-      !!(await db.agentEvent.findFirst({ where: { taskId: { in: recent.map((t) => t.id) }, payload: { path: ["wa"], equals: input.msgId } }, select: { seq: true } })));
-  if (answered) {
-    // A retried message that was taken in before its run died: the tenant still needs an answer.
-    if (input.retry) {
-      const task = recent.find((t) => ((t.messages as unknown as AgentMessage[]) ?? []).some((m) => m.role === "user" && m.wa === input.msgId)) ?? recent[0];
-      const fresh = task ? await db.agentTask.findUnique({ where: { id: task.id }, select: { status: true, locale: true } }) : null;
-      if (task && fresh && fresh.status !== "RUNNING") {
-        const view = await loadTask(viewer, task.id);
-        const rlang = (["en", "ar", "rw"].includes(fresh.locale) ? fresh.locale : "en") as WaLang;
-        if (view) return { reply: formatWhatsApp(view, await waDict(rlang), rlang, chatLink(task.id, rlang), publicAppUrl()), taskId: task.id };
-      }
-      if (fresh?.status === "RUNNING") return { reply: null, why: "busy" };
+  // The webhook and the fallback poll can both bring the same message, and a retry brings one whose last
+  // run died before its reply went out (holdReply precedes every send). Where it stands in its chat decides
+  // (whatsapp-format.ts retryPlan) — 2026-11-08: a retry of a turn a restart killed read RUNNING, was given
+  // back as "busy", came back fresh as a duplicate and was never answered.
+  const host = recent.find((t) => ((t.messages as unknown as AgentMessage[]) ?? []).some((m) => m.role === "user" && m.wa === input.msgId));
+  if (host) {
+    const plan = retryPlan(takenIn((host.messages as unknown as AgentMessage[]) ?? [], input.msgId), host, !!input.retry, Date.now(), STUCK_AFTER_MS);
+    if (plan === "duplicate") return { reply: null, why: "duplicate" };
+    if (plan === "held") return { reply: null, why: "held" };
+    const rlang = (["en", "ar", "rw"].includes(host.locale) ? host.locale : "en") as WaLang;
+    const rd = await waDict(rlang);
+    if (plan === "resend") {
+      const view = await loadTask(viewer, host.id);
+      return view ? { reply: formatWhatsApp(view, rd, rlang, chatLink(host.id, rlang), publicAppUrl()), taskId: host.id } : { reply: null, why: "duplicate" };
     }
+    // The turn died (a restart) or only its unsent error stands: run it once more on the same words.
+    if (!(await reopenForTurn(host.id))) return { reply: null, why: "held" };
+    input.onAnswering?.();
+    return answerWithTurn({ taskId: host.id, viewer, msgId: input.msgId, digits, d: rd, lang: rlang });
+  }
+  // Answered without a turn (a pick, a thank-you, a viewing time): a trace row carries its id. A retry of
+  // one answers it again — those answers are safe to repeat (a broker already asked is "already asked").
+  if (!input.retry && recent.length > 0 && (await db.agentEvent.findFirst({ where: { taskId: { in: recent.map((t) => t.id) }, payload: { path: ["wa"], equals: input.msgId } }, select: { seq: true } }))) {
     return { reply: null, why: "duplicate" };
   }
 
@@ -333,19 +345,43 @@ export async function handleTenantWhatsApp(input: {
   // The chat a home code opened, and where the code came from: the first-share funnel's join to the post.
   if (refHome) await db.agentTask.updateMany({ where: { id: taskId, refListingId: null }, data: { refListingId: refHome.id, refSource } }).catch(() => {});
 
-  const turn = startTurn(taskId);
-  await Promise.race([turn.done.catch(() => {}), sleep(TURN_WAIT_MS)]);
-  const view: AgentTaskView | null = await loadTask(viewer, taskId);
-  if (!view) return { reply: d.reply.error ?? "", taskId };
-  if (view.demand && !view.demand.optedIn) await optInDemand(taskId, `+${digits}`).catch(() => {});
+  return answerWithTurn({ taskId, viewer, msgId: input.msgId, digits, d, lang, refHome, rest });
+}
+
+/**
+ * Run the turn on the message just taken in and say what it answered. Waits for the first reply — or the
+ * deadline's error, which is an answer too — a little past the turn's deadline. Nothing written for THIS
+ * message yet (a database slower than that) is "held": the chat's previous reply is never sent in its place
+ * (2026-11-08); the claim stays and the next pass sends this turn's reply.
+ */
+async function answerWithTurn(a: {
+  taskId: string;
+  viewer: Viewer;
+  msgId: string;
+  digits: string;
+  d: WaDict;
+  lang: WaLang;
+  refHome?: { id: number } | null;
+  rest?: string;
+}): Promise<WaResult> {
+  const turn = startTurn(a.taskId);
+  const done = turn.done.catch(() => {});
+  await Promise.race([turn.shown, sleep(TURN_WAIT_MS)]);
+  const view: AgentTaskView | null = await loadTask(a.viewer, a.taskId);
+  if (!view) return { reply: a.d.reply.error ?? "", taskId: a.taskId };
+  const stand = takenIn(view.messages, a.msgId);
+  if (stand === "unanswered") return { reply: null, why: "held", done };
+  if (stand !== "replied" && stand !== "errored") return { reply: null, why: "duplicate", done };
+  if (view.demand && !view.demand.optedIn) await optInDemand(a.taskId, `+${a.digits}`).catch(() => {});
   // "I'd like to view K1234" (the /find card's "Book the viewing on WhatsApp") on a home a broker already
   // said yes to: straight to the viewing, not "reply 1 to check" (2026-11-06).
-  if (refHome && wantsViewing(rest) && view.shortlist.find((s) => s.id === refHome.id)?.availability === "confirmed") {
-    await turn.done.catch(() => {});
-    const sheet = await dealSheetFor(taskId, refHome.id);
-    if (sheet) return { reply: sheet, taskId };
+  const refHome = a.refHome;
+  if (refHome && a.rest && wantsViewing(a.rest) && view.shortlist.find((s) => s.id === refHome.id)?.availability === "confirmed") {
+    await done;
+    const sheet = await dealSheetFor(a.taskId, refHome.id);
+    if (sheet) return { reply: sheet, taskId: a.taskId };
   }
-  return { reply: formatWhatsApp(view, d, lang, chatLink(taskId, lang), publicAppUrl()), taskId, done: turn.done.catch(() => {}) };
+  return { reply: formatWhatsApp(view, a.d, a.lang, chatLink(a.taskId, a.lang), publicAppUrl()), taskId: a.taskId, done };
 }
 
 /**

@@ -6,13 +6,17 @@
  *   - the sender said STOP (until they say START);
  *   - a person at Mkan typed in that chat in the last HUMAN_HOLD_MS — a human
  *     took the conversation over, and the bot does not talk across them;
- *   - the message is older than MAX_AGE_MS (the fallback poll after a long
- *     outage: an answer a day late reads like spam);
+ *   - the message is older than MAX_AGE_MS: after a long outage a person answers it
+ *     (a #mkan card), not the bot. Up to then the bot answers late, saying sorry first
+ *     (Abdout, 2026-11-08 — at night the backstop runs hourly, and the 60-minute
+ *     limit before dropped any message the webhook missed just after a pass);
  *   - the phone or the whole line is over its hourly ceiling.
  */
 
 export const HUMAN_HOLD_MS = 12 * 60 * 60 * 1000;
-export const MAX_AGE_MS = 60 * 60 * 1000;
+export const MAX_AGE_MS = 12 * 60 * 60 * 1000;
+/** A reply to a message older than this opens with an apology for the wait. */
+export const LATE_AFTER_MS = 15 * 60 * 1000;
 export const PER_PHONE_PER_HOUR = 20;
 export const LINE_PER_HOUR = 120;
 
@@ -44,6 +48,39 @@ export function startText(lang: string): string {
   if (lang === 'ar') return 'أهلاً بعودتك! أخبرني بالمنطقة وعدد الغرف والميزانية.';
   if (lang === 'rw') return "Murakaza neza! Mbwira agace, umubare w'ibyumba n'amafaranga ufite.";
   return 'Welcome back! Tell me the area, the number of bedrooms and your budget.';
+}
+
+/** The first line of a late answer (LATE_AFTER_MS). rw is machine-written (native review sheet). */
+export function lateLead(lang: string): string {
+  if (lang === 'ar') return 'آسف على تأخري في الرد.';
+  if (lang === 'rw') return 'Mbabarira gutinda kugusubiza.';
+  return 'Sorry for the slow reply.';
+}
+
+/**
+ * Tenant messages the webhook never delivered — the backstop poll found them with no `thook:` mark. A
+ * deploy restart misses one now and then; a bridge that stopped calling the hook (11-07: Evolution's own
+ * database error) misses every one. #mkan hears once per window: at HOOK_MISS_ALERT_AT misses, or as soon
+ * as one of them waited HOOK_MISS_LATE_MS.
+ */
+export const HOOK_MISS_WINDOW_MS = 6 * 60 * 60 * 1000;
+export const HOOK_MISS_ALERT_AT = 3;
+export const HOOK_MISS_LATE_MS = 30 * 60 * 1000;
+export type HookMisses = { ids: { id: string; at: string }[]; alertedAt?: string };
+export function noteMisses(
+  state: HookMisses,
+  missed: { id: string; sentAt: Date }[],
+  now: Date,
+): { next: HookMisses; alert: { count: number; oldestMin: number } | null } {
+  const since = now.getTime() - HOOK_MISS_WINDOW_MS;
+  const known = new Set((state.ids ?? []).map((m) => m.id));
+  const ids = [...(state.ids ?? []).filter((m) => Date.parse(m.at) > since), ...missed.filter((m) => !known.has(m.id)).map((m) => ({ id: m.id, at: now.toISOString() }))];
+  const alerted = !!state.alertedAt && Date.parse(state.alertedAt) > since;
+  const oldest = missed.reduce((o, m) => Math.max(o, now.getTime() - m.sentAt.getTime()), 0);
+  if (!alerted && missed.length > 0 && (ids.length >= HOOK_MISS_ALERT_AT || oldest >= HOOK_MISS_LATE_MS)) {
+    return { next: { ids, alertedAt: now.toISOString() }, alert: { count: ids.length, oldestMin: Math.round(oldest / 60_000) } };
+  }
+  return { next: { ids, ...(state.alertedAt ? { alertedAt: state.alertedAt } : {}) }, alert: null };
 }
 
 /** The chat's language from what the tenant just wrote, when it says: Arabic script, or a Kinyarwanda STOP/START. */

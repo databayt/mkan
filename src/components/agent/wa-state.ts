@@ -11,6 +11,9 @@
  *                 message not in it was typed by a person
  *   outbox-lease  one drain at a time
  *   streak        failed runs in a row, and whether #mkan heard
+ *   tmsg:<id>     one claim per tenant message (below)
+ *   thook:<id>    the webhook delivered this tenant message — one the poll finds without it was missed
+ *   hook-miss     the misses of the last hours, and when #mkan last heard (tenant-pure.ts noteMisses)
  */
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -83,16 +86,21 @@ export async function removeFromList(key: string, item: string): Promise<void> {
 //   working  someone is answering it; older than CLAIM_STALE_MS = that run died → retried
 //   reply    the reply is written but not yet sent → the next pass re-sends the same text
 //   done     answered, or deliberately not answered (STOP, a person's chat, too old…)
-// A busy turn deletes its claim, so the poll starts it fresh.
+// A busy turn deletes its claim, so the poll starts it fresh. A claim another run holds is "held": not
+// answered, not to be marked seen — the poll looks again once that run has finished or gone stale
+// (2026-11-08: it came back as null, the poll called it a duplicate, and a run that then died was lost).
 
-export type MessageClaim = { mode: "fresh" | "retry"; tries: number } | { mode: "resend"; text: string; tries: number; at: string };
+export type MessageClaim =
+  | { mode: "fresh" | "retry"; tries: number }
+  | { mode: "resend"; text: string; tries: number; at: string }
+  | { mode: "held" };
 type ClaimValue = { s: "working" | "reply" | "done"; at: string; tries: number; text?: string };
 
 export const CLAIM_STALE_MS = 120_000;
 export const MAX_ANSWER_TRIES = 3;
 const claimKey = (msgId: string) => `tmsg:${msgId}`;
 
-/** Take a tenant message to answer, or null when it is answered or someone is on it. */
+/** Take a tenant message to answer; `held` while another run is on it; null only when it is settled. */
 export async function claimMessage(msgId: string, now = new Date()): Promise<MessageClaim | null> {
   const key = claimKey(msgId);
   const fresh: ClaimValue = { s: "working", at: now.toISOString(), tries: 1 };
@@ -102,13 +110,25 @@ export async function claimMessage(msgId: string, now = new Date()): Promise<Mes
   const v = row?.value as ClaimValue | undefined;
   if (!v || v.s === "done") return null;
   if (v.s === "reply" && v.text) return { mode: "resend", text: v.text, tries: v.tries ?? 1, at: v.at };
-  if (now.getTime() - new Date(v.at).getTime() < CLAIM_STALE_MS) return null;
+  if (now.getTime() - new Date(v.at).getTime() < CLAIM_STALE_MS) return { mode: "held" };
   // A run that died mid-answer: take it over — conditionally, so two passes cannot both win.
   const tries = (v.tries ?? 1) + 1;
   const next: ClaimValue = { s: "working", at: now.toISOString(), tries };
   const taken = await db.$executeRaw`UPDATE "WaState" SET "value" = ${JSON.stringify(next)}::jsonb, "updatedAt" = now()
     WHERE "key" = ${key} AND "value"->>'s' = 'working' AND "value"->>'at' = ${v.at}`;
-  return taken === 1 ? { mode: "retry", tries } : null;
+  return taken === 1 ? { mode: "retry", tries } : { mode: "held" };
+}
+
+/** The webhook brought this tenant message (the poll counts one without the mark as a miss). */
+export async function markHeard(msgId: string): Promise<void> {
+  await db.waState.createMany({ data: [{ key: `thook:${msgId}`, value: {} }], skipDuplicates: true }).catch(() => {});
+}
+
+/** Which of these messages the webhook brought. */
+export async function heardIds(msgIds: string[]): Promise<Set<string>> {
+  if (msgIds.length === 0) return new Set();
+  const rows = await db.waState.findMany({ where: { key: { in: msgIds.map((id) => `thook:${id}`) } }, select: { key: true } });
+  return new Set(rows.map((r) => r.key.slice("thook:".length)));
 }
 
 /** The reply is written: if the send fails, the next pass sends this same text. */
@@ -129,9 +149,10 @@ export async function releaseMessage(msgId: string): Promise<void> {
 /** Claims older than the poll's lookback are history; so is the ask a sent message carried, after a week. */
 export async function pruneMessageClaims(olderThanMs = 2 * 86_400_000): Promise<number> {
   const now = Date.now();
-  const [claims, asks] = await Promise.all([
+  const [claims, heard, asks] = await Promise.all([
     db.waState.deleteMany({ where: { key: { startsWith: "tmsg:" }, updatedAt: { lt: new Date(now - olderThanMs) } } }),
+    db.waState.deleteMany({ where: { key: { startsWith: "thook:" }, updatedAt: { lt: new Date(now - olderThanMs) } } }),
     db.waState.deleteMany({ where: { key: { startsWith: "ask-msg:" }, updatedAt: { lt: new Date(now - 7 * 86_400_000) } } }),
   ]);
-  return claims.count + asks.count;
+  return claims.count + heard.count + asks.count;
 }

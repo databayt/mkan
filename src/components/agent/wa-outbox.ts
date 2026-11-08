@@ -23,7 +23,7 @@ import "server-only";
  * A lease in WaState keeps two drains from overlapping.
  */
 import { waLink } from "../../../scripts/crm/public-links";
-import { isDirectChat } from "../../../scripts/wa/tenant-pure";
+import { isDirectChat, noteMisses, type HookMisses } from "../../../scripts/wa/tenant-pure";
 import {
   MAX_ATTEMPTS,
   REST_DAYS,
@@ -56,7 +56,7 @@ import { reconcileTermsAsk } from "./deal-intro";
 import { isRepostAsk, parseBrokerReply } from "./broker-reply";
 import { EvolutionError, connectionState, findMessages, isBridgeDown, mediaBytes, sendPresence, sendText } from "@/lib/whatsapp/evolution";
 import { handleBrokerReply, repostAskKey, askMsgKey } from "./broker-inbox";
-import { mutateState, pruneMessageClaims, readState, releaseLease, takeLease, writeState } from "./wa-state";
+import { heardIds, mutateState, pruneMessageClaims, readState, releaseLease, takeLease, writeState } from "./wa-state";
 import { answerTenant, noteFromMe, recordSent } from "./wa-tenant";
 import { postSlackCard } from "./whatsapp";
 
@@ -341,6 +341,33 @@ async function storePhotos(brokerId: string, ids: string[]): Promise<string[]> {
   return urls;
 }
 
+/** A tenant message this old with no webhook mark (`thook:`) was missed by the hook. */
+const HOOK_MISS_AFTER_MS = 2 * 60_000;
+
+/**
+ * Count the tenant messages the webhook never brought, and tell #mkan once when it looks like the hook has
+ * stopped (tenant-pure.ts noteMisses) — 11-07 evening every reply landed on a backstop tick, up to an hour
+ * late at night, and nothing noticed: the line stayed "open" and the outbox kept running.
+ */
+async function noteHookMisses(tenants: { id: string; sentAt: Date }[], now: Date, log: Log): Promise<void> {
+  const heard = await heardIds(tenants.map((m) => m.id));
+  const missed = tenants.filter((m) => !heard.has(m.id) && now.getTime() - m.sentAt.getTime() > HOOK_MISS_AFTER_MS);
+  if (missed.length === 0) return;
+  const out: { alert: { count: number; oldestMin: number } | null } = { alert: null };
+  await mutateState<HookMisses>("hook-miss", { ids: [] }, (s) => {
+    const r = noteMisses(s, missed, now);
+    out.alert = r.alert;
+    return r.next;
+  });
+  log(`the webhook missed ${missed.length} tenant message(s)`);
+  if (out.alert) {
+    await postSlackCard(
+      `📡 The WhatsApp webhook missed ${out.alert.count} tenant message(s) in the last 6 h (the oldest waited ${out.alert.oldestMin} min) — the backstop poll answered them late. ` +
+        `Check the bridge: Evolution's instance mkan, its webhook and its logs (src/components/agent/README.md, "the hook").`,
+    ).catch(() => {});
+  }
+}
+
 async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<number> {
   const now = new Date();
   const records = await findMessages(new Date(now.getTime() - REPLY_LOOKBACK_MS), now, 200);
@@ -485,15 +512,17 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
     await postSlackCard(`💬 +${g.phone} (posts a home we asked about, not in the broker directory) replied on WhatsApp:\n> ${(g.text || "[photo or voice note]").replace(/\n/g, "\n> ").slice(0, 600)}\n<${waLink(g.phone, "")}|Open the chat>`);
   }
   // Tenants the webhook missed or could not finish; each message is claimed once (wa-state.ts), and one
-  // still busy or failed is NOT marked seen, so the next pass answers it (2026-11-06: it was dropped).
+  // still busy, held by another run, or failed is NOT marked seen, so the next pass answers it
+  // (2026-11-06: it was dropped; 2026-11-08: one another run held came back as a duplicate and was lost).
   const unfinished = new Set<string>();
+  if (!dry && tenants.length > 0) await noteHookMisses(tenants, now, log).catch((err) => log(`hook-miss count failed: ${(err as Error).message}`));
   for (const m of tenants) {
     if (dry) {
       log(`would pass a tenant message to the agent`);
       continue;
     }
     const outcome = await answerTenant({ phone: m.phone!, text: m.text, msgId: m.id, sentAt: m.sentAt, media: m.media });
-    if (outcome === "busy" || outcome === "error") unfinished.add(m.id);
+    if (outcome === "busy" || outcome === "held" || outcome === "error") unfinished.add(m.id);
   }
   if (!dry) {
     await mutateState<string[]>("seen", [], (list) => [...list, ...all.filter((m) => !unfinished.has(m.id)).map((m) => m.id)].slice(-SEEN_KEEP));

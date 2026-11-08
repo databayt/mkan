@@ -53,7 +53,7 @@ async function main() {
     const id = nextMsg();
     const first = await state.claimMessage(id);
     check(first?.mode === "fresh", "a new message is claimed fresh");
-    check((await state.claimMessage(id)) === null, "a second claim of the same message is refused (webhook + poll answer once)");
+    check((await state.claimMessage(id))?.mode === "held", "a second claim of the same message is held off (webhook + poll answer once; the poll leaves it unseen)");
     await state.releaseMessage(id);
     check((await state.claimMessage(id))?.mode === "fresh", "a busy turn gives the claim back: the next pass takes it fresh");
     // A run that died: its 'working' row goes stale and the next pass retries it.

@@ -28,7 +28,9 @@ const state = {
   writeState: vi.fn(async () => {}),
   mutateState: vi.fn(async () => {}),
 };
-vi.mock("@/components/agent/wa-state", () => ({ ...state, MAX_ANSWER_TRIES: 3 }));
+vi.mock("@/components/agent/wa-state", () => ({ ...state, MAX_ANSWER_TRIES: 3, CLAIM_STALE_MS: 120_000 }));
+const kick = vi.fn();
+vi.mock("@/components/agent/wa-outbox", () => ({ kickOutbox: (reason: string, ms: number) => kick(reason, ms) }));
 
 const { answerTenant } = await import("@/components/agent/wa-tenant");
 
@@ -37,9 +39,39 @@ const msg = (phone: string, text: string, o: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   stopped = [];
-  for (const f of [sendText, personal, post, handle, silence, ...Object.values(state)]) f.mockClear();
+  for (const f of [sendText, personal, post, handle, silence, kick, ...Object.values(state)]) f.mockClear();
   personal.mockResolvedValue(false);
   handle.mockResolvedValue({ reply: "Here are homes", taskId: "t1" });
+  state.claimMessage.mockResolvedValue({ mode: "fresh", tries: 1 });
+});
+
+describe("a message another run holds, or whose turn is still writing (2026-11-08)", () => {
+  it("a held claim is left alone — no answer, no settle — and a pass is scheduled", async () => {
+    state.claimMessage.mockResolvedValueOnce({ mode: "held" } as never);
+    expect(await answerTenant(msg("250720000017", "2 bedroom in Remera"))).toBe("held");
+    expect(handle).not.toHaveBeenCalled();
+    expect(state.settleMessage).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(kick).toHaveBeenCalledWith("held", 135_000));
+  });
+  it("a turn still writing keeps its claim: never released, never settled", async () => {
+    handle.mockResolvedValueOnce({ reply: null, why: "held" });
+    expect(await answerTenant(msg("250720000018", "2 bedroom in Remera"))).toBe("held");
+    expect(state.releaseMessage).not.toHaveBeenCalled();
+    expect(state.settleMessage).not.toHaveBeenCalled();
+    expect(sendText).not.toHaveBeenCalled();
+  });
+});
+
+describe("a message the line reached late", () => {
+  it("is answered with an apology first", async () => {
+    expect(await answerTenant(msg("250720000019", "2 bedroom in Remera", { sentAt: new Date(Date.now() - 40 * 60_000) }))).toBe("sent");
+    expect(sendText.mock.calls[0]![1]).toBe("Sorry for the slow reply.\n\nHere are homes");
+  });
+  it("past 12 hours goes to a person, not the bot", async () => {
+    expect(await answerTenant(msg("250720000010", "2 bedroom in Remera", { sentAt: new Date(Date.now() - 13 * 3_600_000) }))).toBe("skip-old");
+    expect(handle).not.toHaveBeenCalled();
+    expect(post.mock.calls[0]![0]).toMatch(/answer by hand/);
+  });
 });
 
 describe("a tenant's STOP", () => {

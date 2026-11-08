@@ -244,6 +244,35 @@ const CLARIFY_ORDER: Record<string, string[]> = {
 /** The newest agent message: what this turn answered. */
 export const lastAgent = (view: AgentTaskView) => [...view.messages].reverse().find((m): m is Extract<AgentMessage, { role: "agent" }> => m.role === "agent") ?? null;
 
+/**
+ * Where a tenant's WhatsApp message stands in its chat: not taken in, answered by a later message's turn
+ * ("superseded"), replied to, answered only with the error, or still waiting for its reply. Only agent
+ * messages AFTER it count — the previous turn's reply is not this one's (2026-11-08: a slow turn re-sent it).
+ */
+export type TakenIn = "not-in" | "superseded" | "replied" | "errored" | "unanswered";
+export function takenIn(messages: AgentMessage[], msgId: string): TakenIn {
+  const i = messages.findIndex((m) => m.role === "user" && m.wa === msgId);
+  if (i < 0) return "not-in";
+  const after = messages.slice(i + 1);
+  if (after.some((m) => m.role === "user")) return "superseded";
+  const agent = after.filter((m): m is Extract<AgentMessage, { role: "agent" }> => m.role === "agent");
+  if (agent.length === 0) return "unanswered";
+  return agent.at(-1)!.kind === "error" ? "errored" : "replied";
+}
+
+/**
+ * A message already in the chat, seen again — by a retry (its last run died before the reply went out:
+ * `holdReply` precedes every send) or by a fresh claim. "resend" = send the reply the chat holds; "rerun" =
+ * run the turn again (a restart killed it, or only the error stands, never sent); "held" = its turn is
+ * still running — keep the claim and look again; "duplicate" = answered already.
+ */
+export function retryPlan(stand: TakenIn, task: { status: string; updatedAt: Date }, retry: boolean, now: number, stuckMs: number): "duplicate" | "resend" | "held" | "rerun" {
+  if (stand === "not-in" || stand === "superseded") return "duplicate";
+  if (stand === "replied") return retry ? "resend" : "duplicate";
+  if (stand === "errored") return retry ? "rerun" : "duplicate";
+  return task.status === "RUNNING" && now - task.updatedAt.getTime() < stuckMs ? "held" : "rerun";
+}
+
 /** Everything the tenant gets for the turn that just ran. */
 export function formatWhatsApp(view: AgentTaskView, d: WaDict, lang: WaLang, chatUrl: string, appUrl: string): string {
   const c = COPY[lang];

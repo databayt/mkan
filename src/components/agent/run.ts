@@ -70,7 +70,7 @@ const WIDE_POOL = 2_000;
  * again") instead of leaving the chat silent: one sat 27 s on a starved
  * container and the database before it failed (2026-10-22).
  */
-const TURN_DEADLINE_MS = 15_000;
+export const TURN_DEADLINE_MS = 15_000;
 
 /** One turn's write gate: once the deadline has answered, nothing from the turn writes. */
 interface Gate {

@@ -10,11 +10,11 @@ import { createHash } from "node:crypto";
  * shows "typing…", runs the turn in-process (whatsapp-chat.ts) and sends the
  * reply. The turn dedupes by message id, so the two paths answer once.
  */
-import { langOfWords, MEDIA_NUDGE_MS, startText, stopConfirmText, tenantDecision, typePleaseText, type TenantDecision } from "../../../scripts/wa/tenant-pure";
+import { langOfWords, LATE_AFTER_MS, lateLead, MAX_AGE_MS, MEDIA_NUDGE_MS, startText, stopConfirmText, tenantDecision, typePleaseText, type TenantDecision } from "../../../scripts/wa/tenant-pure";
 import { db } from "@/lib/db";
 import { sendPresence, sendText } from "@/lib/whatsapp/evolution";
 import { isPersonal } from "./personal";
-import { addToList, claimMessage, holdReply, MAX_ANSWER_TRIES, mutateState, readState, releaseMessage, removeFromList, settleMessage, writeState } from "./wa-state";
+import { addToList, CLAIM_STALE_MS, claimMessage, holdReply, MAX_ANSWER_TRIES, mutateState, readState, releaseMessage, removeFromList, settleMessage, writeState } from "./wa-state";
 import { handleTenantWhatsApp, silenceTenant } from "./whatsapp-chat";
 import { postSlackCard } from "./whatsapp";
 
@@ -81,10 +81,16 @@ export interface TenantMessage {
 
 const log = (msg: string) => console.log(`[wa] ${msg}`);
 
-export type TenantOutcome = TenantDecision | "error" | "sent" | "nothing" | "busy" | "duplicate";
+export type TenantOutcome = TenantDecision | "error" | "sent" | "nothing" | "busy" | "held" | "duplicate";
 
 /** A reply that could not be sent this long after it was written is handed to a person instead. */
-const RESEND_WITHIN_MS = 15 * 60_000;
+const RESEND_WITHIN_MS = MAX_AGE_MS;
+
+/**
+ * Another run holds this message, or its own turn is still writing: the claim stays, and a pass looks
+ * again once it can be taken over. Dynamic: wa-outbox imports this module.
+ */
+const lookAgainSoon = () => void import("./wa-outbox").then((o) => o.kickOutbox("held", CLAIM_STALE_MS + 15_000)).catch(() => {});
 /** The next message from the same phone waits for this turn's tail (the writer, the broker ask) at most this long. */
 const CHAIN_HOLD_MS = 60_000;
 
@@ -94,8 +100,8 @@ const CHAIN_HOLD_MS = 60_000;
  * Each message is claimed once (wa-state.ts claimMessage): the webhook and the poll can both bring it,
  * and only one answers. A busy turn gives the claim back so the poll answers it a pass later; a run
  * that dies leaves it to be retried (MAX_ANSWER_TRIES, then a person); a reply that was written but
- * not sent is sent again — never lost, never twice. "busy" and "error" are not final: the poll must
- * not mark that message seen.
+ * not sent is sent again — never lost, never twice. "busy", "held" and "error" are not final: the poll
+ * must not mark that message seen (wa-outbox.ts).
  */
 export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
   let hold: Promise<unknown> = Promise.resolve();
@@ -103,10 +109,14 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
     try {
       const claim = await claimMessage(m.msgId);
       if (!claim) return "duplicate";
+      if (claim.mode === "held") {
+        lookAgainSoon();
+        return "held";
+      }
       if (claim.mode === "resend") {
         if (Date.now() - new Date(claim.at).getTime() > RESEND_WITHIN_MS) {
           await settleMessage(m.msgId);
-          await postSlackCard(`⚠️ A reply to +${m.phone} could not be sent for 15 min — answer by hand:\n> ${claim.text.slice(0, 500).replace(/\n/g, "\n> ")}`).catch(() => {});
+          await postSlackCard(`⚠️ A reply to +${m.phone} could not be sent for ${Math.round(RESEND_WITHIN_MS / 3_600_000)} h — answer by hand:\n> ${claim.text.slice(0, 500).replace(/\n/g, "\n> ")}`).catch(() => {});
           log(`tenant +${m.phone} reply handed to a person after failed sends`);
           return "error";
         }
@@ -179,6 +189,14 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         log(`tenant +${m.phone} said START`);
         return personal ? "start" : "sent";
       }
+      if (decision === "skip-old") {
+        // Older than MAX_AGE_MS (an outage longer than that): a person answers, never silence.
+        await settleMessage(m.msgId);
+        const hours = Math.round((now.getTime() - m.sentAt.getTime()) / 3_600_000);
+        if (!personal && m.text.trim()) await postSlackCard(`⏳ +${m.phone} wrote ${hours} h ago and the line never answered — answer by hand:\n> ${m.text.slice(0, 400).replace(/\n/g, "\n> ")}`).catch(() => {});
+        log(`tenant +${m.phone} skip-old (${hours} h)`);
+        return decision;
+      }
       if (decision !== "answer") {
         await settleMessage(m.msgId);
         log(`tenant +${m.phone} ${decision}`);
@@ -194,16 +212,25 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
           log(`tenant +${m.phone} busy — left for the next pass`);
           return "busy";
         }
+        if (why === "held") {
+          // Taken in, its turn still writing: keep the claim; a pass sends this turn's reply.
+          lookAgainSoon();
+          log(`tenant +${m.phone} held — its turn is still writing`);
+          return "held";
+        }
         await settleMessage(m.msgId);
         log(`tenant +${m.phone} no reply (${why})`);
         return "nothing";
       }
-      await holdReply(m.msgId, res.reply, claim.tries);
-      await recordSent(m.phone, undefined, res.reply);
-      const out = await sendText(m.phone, res.reply);
-      await recordSent(m.phone, out?.key?.id, res.reply);
+      // A message the line took long to reach (the webhook missed it, a restart): say sorry first.
+      const late = now.getTime() - m.sentAt.getTime() > LATE_AFTER_MS;
+      const reply = late ? `${lateLead(await chatLocale(m.phone, m.text))}\n\n${res.reply}` : res.reply;
+      await holdReply(m.msgId, reply, claim.tries);
+      await recordSent(m.phone, undefined, reply);
+      const out = await sendText(m.phone, reply);
+      await recordSent(m.phone, out?.key?.id, reply);
       await settleMessage(m.msgId);
-      log(`tenant +${m.phone} answered (${res.reply.length} chars)`);
+      log(`tenant +${m.phone} answered${late ? " late" : ""} (${reply.length} chars)`);
       return "sent";
     } catch (err) {
       // The claim stays: "working" goes stale and is retried, "reply" is re-sent.
