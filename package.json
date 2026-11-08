@@ -145,6 +145,8 @@
     "tt:pick": "tsx scripts/crm/tiktok-post.ts pick",
     "tt:render": "tsx scripts/crm/tiktok-post.ts render",
     "tt:card": "tsx scripts/crm/tiktok-post.ts card",
+    "tt:buffer": "tsx scripts/crm/tiktok-post.ts buffer",
+    "tt:reconcile": "tsx scripts/crm/tiktok-post.ts reconcile",
     "tt:posted": "tsx scripts/crm/tiktok-post.ts posted",
     "tt:stats": "tsx scripts/crm/tiktok-post.ts stats",
     "tt:ask": "tsx scripts/crm/tiktok-post.ts ask",

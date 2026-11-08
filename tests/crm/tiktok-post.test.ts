@@ -37,6 +37,10 @@ import {
   pickFresh,
   slotQuota,
   dayPieces,
+  fetchFailure,
+  bufferPlan,
+  ledgerFixes,
+  shortfallLine,
   kigaliMinute,
   kigaliMidnight,
   clock,
@@ -808,5 +812,62 @@ describe('dayPieces', () => {
   });
   it('counts a clicked post as out, and a posted one even with a stale marker', () => {
     expect(dayPieces(['K1', 'K2'], ['K1.rejected', 'K2.mp4', 'K2.txt'], { K1: hoursAgo(1) }, { K2: hoursAgo(1) })).toMatchObject({ total: 2, out: 2, ready: [], todo: [] });
+  });
+});
+
+describe('a day ahead: why homes stall and the buffer that covers it', () => {
+  it('reads DNS and timeout failures as network, so a sleeping Mac never rejects a live video', () => {
+    // the five 11-07 "could not be fetched" rejections, in yt-dlp's own words
+    expect(fetchFailure('ERROR: [TikTok] 77: Unable to download webpage: Failed to perform, curl: (6) Could not resolve host: www.tiktok.com')).toBe('network');
+    expect(fetchFailure('ERROR: [TikTok] 77: Unable to download webpage: Failed to perform, curl: (28) Resolving timed out after 30000 milliseconds')).toBe('network');
+    expect(fetchFailure('ERROR: Unable to download JSON metadata: Failed to resolve (nodename nor servname provided, or not known)')).toBe('network');
+  });
+  it('still calls a deleted or private video gone', () => {
+    expect(fetchFailure('ERROR: [TikTok] 77: Video not available')).toBe('gone');
+    expect(fetchFailure('ERROR: This video is private')).toBe('gone');
+    expect(fetchFailure('')).toBe('gone');
+    expect(fetchFailure(undefined)).toBe('gone');
+  });
+  it('renders tomorrow only once today has nothing to render or three videos waiting', () => {
+    expect(bufferPlan({ live: 0, ready: 0 }, { todo: 2, ready: 1 }, 20 * 60, 60)).toMatchObject({ missing: 3, pick: false, render: 0 });
+    expect(bufferPlan({ live: 0, ready: 0 }, { todo: 0, ready: 0 }, 18 * 60, 90)).toMatchObject({ missing: 3, pick: true, render: 3 });
+    // today still has a home to render, but five videos already wait to post: tomorrow does not starve
+    expect(bufferPlan({ live: 0, ready: 0 }, { todo: 1, ready: 5 }, 14 * 60, 180)).toMatchObject({ pick: true, render: 3 });
+  });
+  it('keeps the margin before the next slot, and renders it all after the last', () => {
+    expect(bufferPlan({ live: 3, ready: 0 }, { todo: 0, ready: 0 }, 19 * 60 + 40, 20)).toMatchObject({ render: 1 });
+    expect(bufferPlan({ live: 3, ready: 0 }, { todo: 0, ready: 0 }, 19 * 60 + 50, 10)).toMatchObject({ render: 0 });
+    expect(bufferPlan({ live: 3, ready: 0 }, { todo: 0, ready: 0 }, 21 * 60 + 30, null)).toMatchObject({ render: 3 });
+  });
+  it('only picks when the queue is under the floor, and asks for no more than is missing', () => {
+    expect(bufferPlan({ live: 3, ready: 1 }, { todo: 0, ready: 0 }, 18 * 60, 90)).toMatchObject({ missing: 2, pick: false, render: 2 });
+    expect(bufferPlan({ live: 2, ready: 2 }, { todo: 0, ready: 0 }, 18 * 60, 90)).toMatchObject({ missing: 1, pick: true });
+    expect(bufferPlan({ live: 5, ready: 3 }, { todo: 0, ready: 0 }, 18 * 60, 90)).toMatchObject({ missing: 0, render: 0, alert: false });
+  });
+  it('alerts at 21:00 Kigali, not before, and only while fewer than three are ready', () => {
+    expect(bufferPlan({ live: 3, ready: 2 }, { todo: 0, ready: 0 }, 20 * 60 + 59, 1).alert).toBe(false);
+    expect(bufferPlan({ live: 3, ready: 2 }, { todo: 0, ready: 0 }, 21 * 60, 30).alert).toBe(true);
+    expect(bufferPlan({ live: 3, ready: 3 }, { todo: 0, ready: 0 }, 21 * 60, 30).alert).toBe(false);
+  });
+  it('settles PICKED rows from the day folder, and leaves the rest alone', () => {
+    const rows = [
+      { id: 'a', ref: 'K1', status: 'PICKED' },
+      { id: 'b', ref: 'K2', status: 'PICKED' },
+      { id: 'c', ref: 'K3', status: 'PICKED' },
+      { id: 'd', ref: 'K4', status: 'POSTED' },
+      { id: 'e', ref: 'K5', status: 'PICKED' },
+    ];
+    const files = ['K1.mp4', 'K1.txt', 'K2.rejected', 'K4.mp4', 'K4.txt', 'K5.mp4']; // K5 has no caption yet: not finished
+    expect(ledgerFixes(rows, files, { K2: 'video gone' })).toEqual([
+      { id: 'a', ref: 'K1', status: 'CLEAN' },
+      { id: 'b', ref: 'K2', status: 'REJECTED', reason: 'video gone' },
+    ]);
+  });
+  it('writes the shortfall line with counts only', () => {
+    const line = shortfallLine('mkan.rw', '2026-11-09', 1, 3, { 'video not fetched': 2, 'render error': 0 });
+    expect(line).toContain('1 of 3 clean videos ready for 2026-11-09 at 21:00 Kigali');
+    expect(line).toContain('3 homes queued, stalled today: 2 video not fetched');
+    expect(line).not.toContain('render error');
+    expect(shortfallLine('mkan.rw', '2026-11-09', 0, 1, {})).toContain('1 home queued)');
   });
 });

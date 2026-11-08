@@ -87,6 +87,11 @@ import {
   clock,
   codePattern,
   dayPieces,
+  fetchFailure,
+  bufferPlan,
+  ledgerFixes,
+  shortfallLine,
+  BUFFER_READY,
   kigaliMinute,
   nextSlotGap,
   pickFresh,
@@ -130,7 +135,9 @@ const cmd = positional[0] ?? 'help';
 const DATA = join(__dirname, '.data', 'tiktok-post');
 const LEDGER = join(DATA, 'posted.json');
 const today = (): string => new Date().toISOString().slice(0, 10);
-const dayDir = (d = argv('date', today())) => join(DATA, d);
+/** `tt:buffer` works on tomorrow's folder through the same pick and render code: it sets this. */
+let dateOverride: string | null = null;
+const dayDir = (d = dateOverride ?? argv('date', today())) => join(DATA, d);
 const PAGE = ownTikTok().handle;
 const KUN = (process.env.KUN_DIR ?? '').trim() || join(homedir(), 'kun');
 
@@ -395,15 +402,29 @@ async function videoBody(r: PostRow, work: string): Promise<{ path: string; dur:
   mkdirSync(srcDir, { recursive: true });
   const src = join(srcDir, `${id}.mp4`);
   if (!existsSync(src)) {
-    try {
-      execFileSync('yt-dlp', ['-q', '--no-warnings', '-f', 'b[ext=mp4]/b', '-o', src, url], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 180_000 });
-    } catch (e) {
+    // DNS often fails for a minute after the Mac wakes: retry twice before calling the video gone.
+    let stderr = '';
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        execFileSync('yt-dlp', ['-q', '--no-warnings', '-f', 'b[ext=mp4]/b', '-o', src, url], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 180_000 });
+        stderr = '';
+        break;
+      } catch (e) {
+        stderr = String((e as { stderr?: string }).stderr ?? (e as Error).message ?? '').trim();
+        if (fetchFailure(stderr) === 'gone' || attempt === 2) break;
+        console.warn(`  … ${refOf(r)}: no network for the download (try ${attempt + 1} of 3) — waiting`);
+        await new Promise((res) => setTimeout(res, 20_000 * (attempt + 1)));
+      }
+    }
+    if (stderr) {
       // Gone from TikTok? The copy kept when the broker said YES (tt:consent) still plays.
       const kept = loadArchive()[id];
       const res = kept ? await fetch(kept).catch(() => null) : null;
       if (res?.ok) writeFileSync(src, Buffer.from(await res.arrayBuffer()));
       else {
-        console.warn(`  … ${refOf(r)}: no broker video (${String((e as { stderr?: string }).stderr ?? '').trim().split('\n').pop()?.slice(0, 100)})`);
+        console.warn(`  … ${refOf(r)}: no broker video (${stderr.split('\n').pop()?.slice(0, 100)})`);
+        // No network is not a deleted video: a later slot tries again, the home is not rejected.
+        if (fetchFailure(stderr) === 'network') throw new Transient('no network to fetch the broker video — a later slot retries');
         return null;
       }
     }
@@ -525,6 +546,8 @@ async function grayFrames(frames: { t: number; path: string }[]): Promise<GrayFr
 
 /** A render that must not go out, with the reason that goes on its TikTokPost row. */
 class Rejected extends Error {}
+/** A render that failed for want of the network: it waits for a later slot and is never rejected or retried-out. */
+class Transient extends Error {}
 
 /**
  * Every burned-in text and logo off a body — nothing of the broker's on our
@@ -785,7 +808,7 @@ function markFailed(dir: string, ref: string, kind: 'rejected' | 'held' | 'error
  * AHEAD_MARGIN_MIN of it. So no render holds the post lock for hours, and the evening's posts go
  * out on the minute.
  */
-async function render(given?: PostRow[]): Promise<string[]> {
+async function render(given?: PostRow[], limit = Infinity): Promise<string[]> {
   const phone = whatsapp();
   const id = Number(argv('id', '0'));
   // The day's real queue, not a look (--id, into preview/) or a dry run (into dry/).
@@ -793,7 +816,7 @@ async function render(given?: PostRow[]): Promise<string[]> {
   const dir = id ? join(DATA, 'preview') : flag('dry') ? join(DATA, 'dry', argv('date', today())) : dayDir();
   // --id renders any one listing for a look, eligible or not — into preview/, never the queue.
   let rows = id ? await loadRows({ id }) : (given ?? readQueue());
-  let want = Infinity;
+  let want = limit;
   // --ahead: no render starts after this (minutes since midnight in Kigali).
   let lastStart = Infinity;
   const ahead = real && flag('ahead');
@@ -827,7 +850,7 @@ async function render(given?: PostRow[]): Promise<string[]> {
     for (const r of held) {
       console.warn(`  ! ${refOf(r)}: broker has no YES on file — not rendered`);
       if (real) markFailed(dir, refOf(r), 'held', 'broker has no YES on file');
-      if (r.postId) await ledgerRow('rejected', (db) => db.tikTokPost.update({ where: { id: r.postId! }, data: { status: 'REJECTED', reason: 'broker has no YES on file' } }));
+      if (r.postId) await ledgerRow('rejected', (db) => db.tikTokPost.update({ where: { id: r.postId! }, data: { status: 'REJECTED', reason: 'broker has no YES on file' }, select: { id: true } }));
     }
     rows = rows.filter((r) => !held.includes(r));
   }
@@ -852,18 +875,125 @@ async function render(given?: PostRow[]): Promise<string[]> {
       const { out, note } = await renderOne(r, dir, phone);
       console.log(`  🎬 ${refOf(r)} → ${out}`);
       outs.push(out);
-      if (r.postId && !id) await ledgerRow('clean', (db) => db.tikTokPost.update({ where: { id: r.postId! }, data: { status: 'CLEAN', cleanAt: new Date(), reason: note.slice(0, 500) } }));
+      if (r.postId && !id) await ledgerRow('clean', (db) => db.tikTokPost.update({ where: { id: r.postId! }, data: { status: 'CLEAN', cleanAt: new Date(), reason: note.slice(0, 500) }, select: { id: true } }));
     } catch (e) {
       const why = errorText(e);
-      console.warn(`  ! ${refOf(r)}: ${e instanceof Rejected ? 'REJECTED — ' : ''}${why}`);
+      console.warn(`  ! ${refOf(r)}: ${e instanceof Rejected ? 'REJECTED — ' : e instanceof Transient ? 'WAITING — ' : ''}${why}`);
+      if (e instanceof Transient) {
+        renderFailures += 1;
+        continue;
+      }
       if (real) {
         renderFailures += 1;
         markFailed(dir, refOf(r), e instanceof Rejected ? 'rejected' : 'error', why);
       }
-      if (r.postId && !id) await ledgerRow('rejected', (db) => db.tikTokPost.update({ where: { id: r.postId! }, data: { status: 'REJECTED', reason: why.slice(0, 500) } }));
+      if (r.postId && !id) await ledgerRow('rejected', (db) => db.tikTokPost.update({ where: { id: r.postId! }, data: { status: 'REJECTED', reason: why.slice(0, 500) }, select: { id: true } }));
     }
   }
   return outs;
+}
+
+// ── a day ahead: tomorrow's three clean videos, and the 21:00 check ──────────────────────────
+const addDays = (d: string, n: number): string => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+
+/** A folder's pieces: the queue, the posted and clicked homes, and what is on disk. */
+function folderState(date: string) {
+  const dir = join(DATA, date);
+  const queue = readJsonFile<PostRow[]>(join(dir, 'queue.json'), []);
+  const files = existsSync(dir) ? readdirSync(dir) : [];
+  const pieces = dayPieces(queue.map(refOf), files, readJsonFile(join(dir, 'uploads.json'), {}), readJsonFile(join(dir, 'pending.json'), {}));
+  return { dir, queue, files, pieces };
+}
+
+/** Today's rejected and failed renders by cause, for the shortfall line. */
+function stalledToday(date: string): Record<string, number> {
+  const { dir, files } = folderState(date);
+  const out: Record<string, number> = {};
+  for (const f of files) {
+    const m = /^(K\d+)\.(rejected|error)$/.exec(f);
+    if (!m) continue;
+    const why = readFileSync(join(dir, f), 'utf8');
+    const k = /could not be fetched/.test(why) ? 'video not fetched' : /ocr|frames/i.test(why) ? 'text read timed out' : /YES/.test(why) ? 'no broker YES' : m[2] === 'error' ? 'render error' : 'rejected';
+    out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
+}
+
+/**
+ * Settles TikTokPost rows still PICKED from the day folders: a database write lost to a sleeping Neon
+ * or a column the database lacked (11-08) leaves a rendered video uncounted. Reads and writes `id` only.
+ */
+async function reconcile(days = 4): Promise<number> {
+  const { db } = await import('../../src/lib/db');
+  const since = new Date(Date.now() - days * 86_400_000);
+  const rows = await db.tikTokPost.findMany({ where: { status: 'PICKED', pickedAt: { gte: since } }, select: { id: true, ref: true, status: true, pickedAt: true } });
+  let fixed = 0;
+  for (let i = 0; i <= days; i += 1) {
+    const date = addDays(today(), -i);
+    const { dir, files } = folderState(date);
+    const why: Record<string, string> = {};
+    for (const f of files) if (f.endsWith('.rejected')) why[f.slice(0, -9)] = readFileSync(join(dir, f), 'utf8').replace(/^\S+\s/, '').trim().slice(0, 500);
+    for (const fx of ledgerFixes(rows.filter((r) => r.status === 'PICKED'), files, why)) {
+      const when = fx.status === 'CLEAN' ? new Date(statSync(join(dir, `${fx.ref}.mp4`)).mtimeMs) : new Date();
+      const data = fx.status === 'CLEAN' ? { status: 'CLEAN', cleanAt: when, reason: 'settled from the day folder (the write was lost)' } : { status: 'REJECTED', reason: fx.reason ?? 'rejected (settled from the day folder)' };
+      await db.tikTokPost.update({ where: { id: fx.id }, data, select: { id: true } });
+      const row = rows.find((r) => r.id === fx.id);
+      if (row) row.status = fx.status;
+      console.log(`  ✔ ${fx.ref} → ${fx.status} (${date})`);
+      fixed += 1;
+    }
+  }
+  return fixed;
+}
+
+/**
+ * tt:buffer — what the evening does for tomorrow. Settles lost ledger rows, then (once today has three rendered
+ * and waiting, or no home left to render) picks tomorrow's queue up to the floor of three, renders the missing clean videos into
+ * tomorrow's folder (the morning slot posts them first), and at 21:00 Kigali or later posts one line to #mkan
+ * if fewer than three are ready (once a day). --plan shows the plan and changes nothing.
+ */
+async function buffer(): Promise<void> {
+  const plan = flag('plan');
+  if (!plan) await reconcile().catch((e) => console.warn(`  ! ledger settle: ${errorText(e).slice(0, 120)}`));
+  const date = today();
+  const tomorrow = addDays(date, 1);
+  const minute = kigaliMinute();
+  const now = folderState(date);
+  const gap = nextSlotGap(minute);
+  const tmr = folderState(tomorrow);
+  let p = bufferPlan({ live: tmr.pieces.total, ready: tmr.pieces.ready.length }, { todo: now.pieces.todo.length, ready: now.pieces.ready.length }, minute, gap);
+  console.log(`buffer ${clock(minute)} — tomorrow ${tomorrow}: ${tmr.pieces.ready.length} of ${BUFFER_READY} ready, ${tmr.pieces.total} queued · today ${now.pieces.todo.length} still to render, ${now.pieces.ready.length} ready → ${p.pick ? 'pick, ' : ''}render ${p.render}${p.alert ? ', ALERT' : ''}`);
+  if (plan) return;
+  if (p.pick || (p.render > 0 && tmr.pieces.todo.length < p.render)) {
+    dateOverride = tomorrow;
+    try {
+      await pick();
+    } finally {
+      dateOverride = null;
+    }
+    const again = folderState(tomorrow);
+    p = bufferPlan({ live: again.pieces.total, ready: again.pieces.ready.length }, { todo: now.pieces.todo.length, ready: now.pieces.ready.length }, minute, gap);
+  }
+  if (p.render > 0) {
+    const { queue, pieces } = folderState(tomorrow);
+    const todo = new Set(pieces.todo);
+    const rows = queue.filter((r) => todo.has(refOf(r)));
+    dateOverride = tomorrow;
+    try {
+      const outs = await render(rows, p.render);
+      console.log(`  buffer: ${outs.length} rendered for ${tomorrow}`);
+    } finally {
+      dateOverride = null;
+    }
+  }
+  const after = folderState(tomorrow).pieces;
+  const q = bufferPlan({ live: after.total, ready: after.ready.length }, { todo: now.pieces.todo.length, ready: now.pieces.ready.length }, minute, gap);
+  const marker = join(DATA, `.shortfall-${tomorrow}`);
+  if (q.alert && !existsSync(marker)) {
+    writeFileSync(marker, new Date().toISOString());
+    await postToMkan(shortfallLine(PAGE, tomorrow, after.ready.length, after.total, stalledToday(date)));
+  }
+  console.log(`buffer done — ${after.ready.length} of ${BUFFER_READY} ready for ${tomorrow}`);
 }
 
 // ── card ─────────────────────────────────────────────────────────────────────
@@ -1055,7 +1185,7 @@ async function stats(): Promise<void> {
               })
             : null);
         if (!row) return false;
-        await db.tikTokPost.update({ where: { id: row.id }, data: { views, likes, ...extra, askFollow: marks.askFollow, waLine: marks.waLine, statsAt: new Date(), tiktokId: id || undefined, tiktokUrl: url, status: 'POSTED', postedAt: row.postedAt ?? at } });
+        await db.tikTokPost.update({ where: { id: row.id }, data: { views, likes, ...extra, askFollow: marks.askFollow, waLine: marks.waLine, statsAt: new Date(), tiktokId: id || undefined, tiktokUrl: url, status: 'POSTED', postedAt: row.postedAt ?? at }, select: { id: true } });
         return true;
       });
       if (hit) rows += 1;
@@ -1394,6 +1524,12 @@ async function main(): Promise<void> {
     case 'card':
       await card();
       break;
+    case 'buffer':
+      await buffer();
+      break;
+    case 'reconcile':
+      console.log(`${await reconcile()} ledger row(s) settled`);
+      break;
     case 'run': {
       // One post per home, each its own video and caption. No bundles.
       // --slot (the 07:00 tick): render only what the first slot posts; each later slot renders its own.
@@ -1439,7 +1575,7 @@ async function main(): Promise<void> {
 
 main()
   .then(async () => {
-    if (['pick', 'render', 'run', 'ask', 'consent', 'stats'].includes(cmd)) await (await import('../../src/lib/db')).db.$disconnect();
+    if (['pick', 'render', 'run', 'ask', 'consent', 'stats', 'buffer', 'reconcile'].includes(cmd)) await (await import('../../src/lib/db')).db.$disconnect();
   })
   .catch((e) => {
     console.error(`\n❌ ${errorText(e)}\n`);

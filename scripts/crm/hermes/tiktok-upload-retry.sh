@@ -104,6 +104,9 @@ steps() {
   # Posts out first, then the next slots' videos: up to 3 before a gap of an hour or more, 1 before
   # a half-hour one, none started within 20 minutes of the next slot.
   if [ "$UPTO" = spread ]; then run tt:render --ahead || rc=4; fi
+  # Evening only: once today's homes are all rendered, tomorrow's three clean videos (tt:buffer picks and
+  # renders them, settles lost ledger rows, and at 21:00 Kigali posts one #mkan line if fewer than three are ready).
+  if [ "$PICK" = 1 ] && [ "$UPTO" = spread ]; then run tt:buffer || rc=4; fi
   [ "$up" -ne 0 ] && return "$up"
   return "$rc"
 }

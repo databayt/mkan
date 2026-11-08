@@ -1269,3 +1269,75 @@ export function bestWorst<T extends Partial<PostNumbers>>(posts: T[], minViews =
   const ranked = posts.filter((p) => (p.views ?? 0) >= minViews).sort((a, b) => (interactionRate(b) ?? 0) - (interactionRate(a) ?? 0));
   return ranked.length ? { best: ranked[0]!, worst: ranked[ranked.length - 1]! } : null;
 }
+
+// ── a day ahead: why a featured home never became clean, and the buffer that covers it ──────────
+
+/**
+ * Whether a failed yt-dlp download says the broker's video is gone, or the Mac simply had no
+ * network (DNS down on wake-up: curl 6 "Could not resolve host", curl 28 "Resolving timed out").
+ * On 11-07 all five "could not be fetched" rejections were DNS, and each took a home out of the
+ * day for good as if the video were deleted. Only `gone` may reject; `network` waits for a later slot.
+ */
+export function fetchFailure(stderr: string | null | undefined): 'network' | 'gone' {
+  const s = (stderr ?? '').toLowerCase();
+  const net = /curl: \((6|7|28|35|52|56)\)|could not resolve|resolving timed out|nodename nor servname|temporary failure in name resolution|network is unreachable|connection (reset|refused|timed out)|timed out|timeout|ssl.*(eof|error)|name or service not known/;
+  return net.test(s) ? 'network' : 'gone';
+}
+
+/** Clean videos tomorrow's posting needs ready before its first slot (three posts a day is the floor). */
+export const BUFFER_READY = 3;
+/** The Kigali minute from which a day's missing buffer is reported (21:00). */
+export const SHORTFALL_AT = 21 * 60;
+
+/**
+ * What the evening does for tomorrow's buffer. `tomorrow` is read from its folder with dayPieces
+ * (`live` = homes queued and not rejected, `ready` = rendered and not yet out); `today` = how many of today's
+ * homes still wait for their render and how many are rendered and waiting to post. Today's own renders come
+ * first only while fewer than BUFFER_READY of its videos are ready; `gap` = minutes to today's next slot
+ * (null after the last). `pick` = the queue is short of the floor, so tomorrow's pick must add homes;
+ * `render` = how many to start now, never inside the margin before a slot; `alert` = it is 21:00 or later
+ * and fewer than BUFFER_READY are ready.
+ */
+export function bufferPlan(
+  tomorrow: { live: number; ready: number },
+  today: { todo: number; ready: number },
+  minute: number,
+  gap: number | null,
+  floor = BUFFER_READY,
+): { missing: number; pick: boolean; render: number; alert: boolean } {
+  const missing = Math.max(0, floor - tomorrow.ready);
+  const todayFirst = today.todo > 0 && today.ready < floor;
+  const room = todayFirst ? 0 : gap === null ? missing : aheadRenders(gap, missing);
+  return {
+    missing,
+    pick: tomorrow.live < floor && !todayFirst,
+    render: Math.min(room, missing),
+    alert: missing > 0 && minute >= SHORTFALL_AT,
+  };
+}
+
+/**
+ * TikTokPost rows still PICKED whose render the day's folder proves: `<ref>.mp4` + `<ref>.txt` is a clean
+ * video, `<ref>.rejected` a render that will not go out. The writes can be lost (Neon asleep on 11-07, a
+ * column the database did not have yet on 11-08), so each run settles the rows from the files.
+ */
+export function ledgerFixes(
+  rows: readonly { id: string; ref: string; status: string }[],
+  files: readonly string[],
+  rejectedWhy: Readonly<Record<string, string>> = {},
+): { id: string; ref: string; status: 'CLEAN' | 'REJECTED'; reason?: string }[] {
+  const has = new Set(files);
+  const out: { id: string; ref: string; status: 'CLEAN' | 'REJECTED'; reason?: string }[] = [];
+  for (const r of rows) {
+    if (r.status !== 'PICKED') continue;
+    if (has.has(`${r.ref}.mp4`) && has.has(`${r.ref}.txt`)) out.push({ id: r.id, ref: r.ref, status: 'CLEAN' });
+    else if (has.has(`${r.ref}.rejected`)) out.push({ id: r.id, ref: r.ref, status: 'REJECTED', reason: rejectedWhy[r.ref] });
+  }
+  return out;
+}
+
+/** The #mkan line when tomorrow is short, in counts, with what stalled today. */
+export function shortfallLine(page: string, date: string, ready: number, queued: number, stalled: Readonly<Record<string, number>>, floor = BUFFER_READY): string {
+  const why = Object.entries(stalled).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`).join(', ');
+  return `🎬 TikTok @${page}: ${ready} of ${floor} clean videos ready for ${date} at 21:00 Kigali (${queued} home${queued === 1 ? '' : 's'} queued${why ? `, stalled today: ${why}` : ''}) — the rest render in tomorrow's first slots.`;
+}

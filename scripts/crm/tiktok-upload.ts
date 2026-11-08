@@ -330,7 +330,7 @@ async function markRow(piece: Piece, data: Record<string, unknown>): Promise<voi
   if (!piece.postId || dry) return;
   try {
     const { db } = await import('../../src/lib/db');
-    await db.tikTokPost.update({ where: { id: piece.postId }, data });
+    await db.tikTokPost.update({ where: { id: piece.postId }, data, select: { id: true } });
   } catch (e) {
     console.warn(`  ! TikTokPost ${piece.key}: ${errorText(e).slice(0, 160)}`);
   }
