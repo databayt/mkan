@@ -18,6 +18,7 @@ import { money, REVENUE_LINES, type MoneyView, type RevenueLineKey } from "./mon
 import type { BlockKey, BlockView, Health, JobState, Kpi, SnapshotMetrics } from "./types";
 import { scorecard, type ScorecardView } from "./scorecard";
 import { buildSamples, reachOf, type ReachView } from "./score-samples";
+import { REAL_PERSON } from "./team";
 import { loadScoreQueries, postPoints } from "./score-load";
 import { connectionMode, INTRO_CAP } from "@/components/agent/intro-pure";
 import { SETUP_STATE_KEY, type SetupState } from "./setup";
@@ -182,8 +183,8 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
       loadSprints().catch(() => ({ week: null, month: null, prompts: [], startIndex: 0 }) as SprintsView),
       loadFirstShare(days).catch(() => null),
       loadLessons(8).catch(() => [] as LessonView[]),
-      // Messages clients sent in the window, and the people behind them — Abdout's own contacts
-      // (WaState personal:<number>) left out — and of those people, who got homes, a viewing, the home.
+      // Messages clients sent in the window, and the people behind them — the team and Abdout's own
+      // contacts left out (team.ts) — and of those people, who got homes, a viewing, the home.
       db.$queryRaw<{ chats: number; messages: number; people: number; shortlisted: number; viewing: number; signed: number }[]>`
         WITH said AS (
           SELECT t.id, t."profileId", COUNT(*)::int AS n
@@ -191,9 +192,8 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
           LEFT JOIN "AgentProfile" p ON p.id = t."profileId"
           CROSS JOIN LATERAL jsonb_array_elements(t.messages) m
           WHERE t."updatedAt" >= ${since} AND m->>'role' = 'user' AND m->>'at' >= ${since.toISOString()}
-            AND NOT EXISTS (SELECT 1 FROM "WaState" w WHERE p."waPhone" IS NOT NULL AND w.key = 'personal:' || replace(p."waPhone", '+', ''))
-            -- The team's test numbers are not clients (broker-sends.ts testPhones).
-            AND NOT EXISTS (SELECT 1 FROM "WaState" w WHERE p."waPhone" IS NOT NULL AND w.key = 'test-phones' AND w.value @> to_jsonb(replace(p."waPhone", '+', '')))
+            -- The team (test numbers, team browsers, admins) and Abdout's own contacts are not clients (team.ts).
+            AND ${REAL_PERSON}
           GROUP BY t.id, t."profileId"
         )
         SELECT COUNT(*)::int AS chats,

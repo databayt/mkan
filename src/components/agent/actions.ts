@@ -13,6 +13,15 @@ import { appendUserMessage } from "./append";
 import { loadTask } from "./task-view";
 import { coerceAnswers } from "./questions";
 import type { AgentMessage, AgentTaskView, QuestionAnswer } from "./types";
+import { isAutomatedBrowser, TEAM_PROFILES_KEY } from "@/lib/monetize/team";
+
+/** Add a browser's profile to the team list once (one SQL statement: two sends at once can't drop it). */
+async function markTeamProfile(profileId: string): Promise<void> {
+  await db.$executeRaw`
+    INSERT INTO "WaState" (key, value, "updatedAt") VALUES (${TEAM_PROFILES_KEY}, jsonb_build_array(${profileId}::text), now())
+    ON CONFLICT (key) DO UPDATE SET value = "WaState".value || to_jsonb(${profileId}::text), "updatedAt" = now()
+    WHERE NOT "WaState".value @> to_jsonb(${profileId}::text)`;
+}
 
 const MAX_TEXT = 600;
 /** Per tenant, across every chat they have. A person types far fewer; a loop does not. */
@@ -74,6 +83,8 @@ export async function sendAgentMessage(input: {
   ]);
   if (limited) return { ok: false, error: "rate" };
   const profileId = viewer.profile.id;
+  // Our own films and QA (headless Chrome) are the team, not renters: out of every count (monetize/team.ts).
+  if (isAutomatedBrowser((await headers()).get("user-agent"))) after(() => markTeamProfile(profileId).catch(() => {}));
 
   // The turns this tenant typed in the last hour, by each message's own time —
   // a chat a broker's answer touched no longer counts its whole history.

@@ -20,7 +20,10 @@ function raw(over: Partial<ScoreRaw> = {}): ScoreRaw {
     post30: null,
     people30: 20,
     returning30: 2,
-    asks: { sent: 125, answered: 30, tasks: 18, yes: 12, fast: 4 },
+    tiktokPeople30: 20,
+    asks: { sent: 125, answered: 30, tasks: 18, yes: 12 },
+    picks: { shown: 10, picked: 2 },
+    told: { asked: 18, told3h: 4, answers: 15, told1h: 12 },
     deals: { booked: 0, viewed: 0, paid: 0 },
     brokers: { asked: 18, optOut: 0, saidYes: 12, agreed: 0, replyMedianMin: 95, replyN: 6 },
     feedback: { tenantAvg: null, tenantN: 0, brokerAvg: null, brokerN: 0, up: 0, down: 0 },
@@ -98,6 +101,41 @@ describe("scorecard", () => {
         expect(part?.fix, p.key).toBeTruthy();
       }
     }
+  });
+});
+
+describe("the chatbot is judged on real renters' outcomes (2026-11-08)", () => {
+  it("counts picks and hearing back; homes shown is an aside that never counts or leads", () => {
+    const view = scorecard(buildSamples(raw()).samples);
+    const bot = view.tiles.find((t) => t.key === "chatbot")!;
+    const part = (k: string) => bot.parts.find((p) => p.key === k)!;
+    // 2 of 10 tenants who got homes picked one: half the 40% target. 12 of 15 answers reached them within the hour.
+    expect(part("pickRate").value).toBeCloseTo(0.2);
+    expect(part("pickRate").progress).toBeCloseTo(0.5);
+    expect(part("toldIn1h").value).toBeCloseTo(0.8);
+    expect(bot.weakest).toBe("pickRate");
+    // 9 of 10 got homes: shown, but out of the score and never the weakest.
+    expect(part("peopleToHomes").aside).toBe(true);
+    const withoutAside = scorecard(buildSamples(raw({ week: { ...raw().week, shortlisted: 1 } })).samples).tiles.find((t) => t.key === "chatbot")!;
+    expect(withoutAside.score).toBe(bot.score);
+    expect(withoutAside.weakest).toBe("pickRate");
+  });
+
+  it("hears back = the tenant was told within 3 h of their pick, not the broker answering", () => {
+    const tenants = scorecard(buildSamples(raw()).samples).tiles.find((t) => t.key === "tenants")!;
+    const heard = tenants.parts.find((p) => p.key === "answeredIn3h")!;
+    expect(heard.value).toBeCloseTo(4 / 18);
+    expect(heard.n).toBe(18);
+  });
+
+  it("reads TikTok viewers who write from TikTok's own chats: 0% when none came from a post, and that leads the road", () => {
+    const { samples, counts } = buildSamples(raw({ tiktokPeople30: 0 }));
+    expect(samples.viewsToChats).toEqual({ value: 0, n: 2248 });
+    // 0% at the top of the road ties 0% at yes → viewing; the road's order puts the first break first.
+    const view = scorecard(samples, counts);
+    expect(view.weakest).toEqual({ tile: "doing", part: "viewsToChats" });
+    expect(view.funnel.weakest).toBe("chats");
+    expect(buildSamples(raw({ tiktokPeople30: 22 })).samples.viewsToChats.value).toBeCloseTo(22 / 2248);
   });
 });
 

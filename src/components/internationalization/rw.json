@@ -6744,6 +6744,7 @@
       "weakest": "Weakest: {part}, {value} (target {target})",
       "noData": "Not enough data yet",
       "counted": "{n} counted",
+      "aside": "shown, not counted",
       "days": "{n} days",
       "allTime": "all time",
       "target": "target {v}",
@@ -6796,7 +6797,7 @@
           "fix": "Open on the best room in the first second and post between 17:00 and 21:30."
         },
         "viewsToChats": {
-          "t": "Viewers who write",
+          "t": "TikTok viewers who write",
           "means": "People watch but don't message Mkan.",
           "fix": "Show the home code and \"WhatsApp us\" on screen and in the caption, and link WhatsApp in the bio."
         },
@@ -6879,6 +6880,16 @@
           "t": "Chats that get homes",
           "means": "The bot can't find homes for what people ask.",
           "fix": "Widen the search (area, budget) and say so, and add homes in the areas people ask for."
+        },
+        "pickRate": {
+          "t": "Tenants who pick a home",
+          "means": "People get homes but don't choose one to check, so no broker is asked.",
+          "fix": "Read a home named in words as the pick, and offer the check under the best home."
+        },
+        "toldIn1h": {
+          "t": "Broker answers that reach the tenant within 1 hour",
+          "means": "A broker answered, but the tenant hears it too late and moves on.",
+          "fix": "Send the answer the moment it lands, and hand the tenant to a person when the broker hasn't agreed the terms in 2 daytime hours."
         },
         "replyP50": {
           "t": "Reply time",

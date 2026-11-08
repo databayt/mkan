@@ -3,11 +3,15 @@
  * AgentEvent rows and broker requests for a window. Shared by the terminal
  * (`pnpm agent:funnel`) and the /monetize page, so both say the same number.
  */
+import { REAL_PERSON } from "./team";
+
 type Db = (typeof import("@/lib/db"))["db"];
 
 export interface Funnel {
   days: number;
   tasks: number;
+  /** People who wrote in the window, the team and Abdout's own contacts left out (team.ts): conversations count us too. */
+  people: number;
   shortlisted: number;
   widened: number;
   rulesOnly: number;
@@ -40,7 +44,7 @@ export interface Funnel {
 /** All zeros: what the page shows for the chat funnel when its queries fail, instead of a 500. */
 export function emptyFunnel(days: number): Funnel {
   return {
-    days, tasks: 0, shortlisted: 0, widened: 0, rulesOnly: 0, failed: 0, asked: 0, answered: 0, available: 0, slotChosen: 0, booked: 0,
+    days, tasks: 0, people: 0, shortlisted: 0, widened: 0, rulesOnly: 0, failed: 0, asked: 0, answered: 0, available: 0, slotChosen: 0, booked: 0,
     readers: { claude: 0, groq: 0, rules: 0, taps: 0 }, written: 0, spendUsd: 0, capped: false, homesFirst: 0, returning: 0,
     saves: 0, passes: 0, thumbsUp: 0, thumbsDown: 0, demand: { opened: 0, asks: 0, offers: 0, matched: 0, optIns: 0, alerts: 0 },
   };
@@ -67,7 +71,7 @@ export async function agentFunnel(db: Db, days = 7, offsetDays = 0): Promise<Fun
     silent('feedback', { payload: { path: ['kind'], equals: 'good' } }),
     silent('feedback', { payload: { path: ['kind'], equals: 'bad' } }),
   ]);
-  const [tasks, failed, shortlisted, widened, rulesOnly, requests] = await Promise.all([
+  const [tasks, failed, shortlisted, widened, rulesOnly, requests, people] = await Promise.all([
     db.agentTask.count({ where: { createdAt: { gte: since, lt: until } } }),
     db.agentTask.count({ where: { createdAt: { gte: since, lt: until }, status: 'FAILED' } }),
     distinctTasks('shortlist_ready'),
@@ -76,6 +80,13 @@ export async function agentFunnel(db: Db, days = 7, offsetDays = 0): Promise<Fun
     db.agentEvent.count({ where: { kind: 'requirements_extracted', createdAt: { gte: since, lt: until }, payload: { path: ['reader'], equals: 'rules' } } }),
     // Asks that really went out (sentAt), so a skipped or queued one is not "asked" (2026-11-06).
     db.brokerRequest.findMany({ where: { sentAt: { gte: since, lt: until }, channel: { not: 'joined' } }, select: { status: true, respondedAt: true, chosenSlot: true, visitId: true } }),
+    db.$queryRaw<{ n: number }[]>`
+      SELECT COUNT(DISTINCT COALESCE(t."profileId", t.id))::int AS n
+      FROM "AgentTask" t LEFT JOIN "AgentProfile" p ON p.id = t."profileId"
+      CROSS JOIN LATERAL jsonb_array_elements(t.messages) m
+      WHERE t."updatedAt" >= ${since} AND m->>'role' = 'user' AND m->>'at' >= ${since.toISOString()} AND m->>'at' < ${until.toISOString()} AND ${REAL_PERSON}`
+      .then((r) => r[0]?.n ?? 0)
+      .catch(() => 0),
   ]);
   // Zeros, not a failed report, on a database without the demand tables yet.
   const demand = await Promise.all([
@@ -91,6 +102,7 @@ export async function agentFunnel(db: Db, days = 7, offsetDays = 0): Promise<Fun
   return {
     days,
     tasks,
+    people,
     shortlisted,
     widened,
     rulesOnly,

@@ -22,11 +22,20 @@ export interface ScoreRaw {
   post: PostPoint[];
   /** The post snapshot nearest before 30 days ago (null: the page is younger than that). */
   post30: PostPoint | null;
-  /** People who wrote in 30 days (Abdout's own and test numbers left out), and those who wrote on 2+ days. */
+  /** People who wrote in 30 days (the team and Abdout's own contacts left out: team.ts), and those who wrote on 2+ days. */
   people30: number;
   returning30: number;
-  /** Broker asks sent in 30 days: total, answered, distinct chats asked for, chats that got a yes, chats answered within 3 h. */
-  asks: { sent: number; answered: number; tasks: number; yes: number; fast: number };
+  /** Of those, the ones who came from TikTok: a post's code, the /tt page, or saying so (refSource). */
+  tiktokPeople30: number;
+  /** Broker asks sent in 30 days for real people's chats: total, answered, distinct chats asked for, chats that got a yes. */
+  asks: { sent: number; answered: number; tasks: number; yes: number };
+  /** Real WhatsApp tenants in 30 days who got homes, and of them who picked one (a check started: digit, words or code). */
+  picks: { shown: number; picked: number };
+  /**
+   * Hearing back on WhatsApp, 30 days: chats whose first ask went out, and of them those told something within 3 h;
+   * broker answers (yes / taken), and of them those that reached the tenant within 1 h.
+   */
+  told: { asked: number; told3h: number; answers: number; told1h: number };
   /** Deals: booked in 30 days, of those viewed or further, paid in 30 days. */
   deals: { booked: number; viewed: number; paid: number };
   brokers: { asked: number; optOut: number; saidYes: number; agreed: number; replyMedianMin: number | null; replyN: number };
@@ -93,7 +102,8 @@ export function buildSamples(r: ScoreRaw): { samples: Record<string, Sample>; co
       return f.value != null && v.value != null && v.value > 0 ? { value: f.value / v.value, n: Math.round(v.value) } : { value: null, n: 0 };
     })(),
     viewsPerPost: latest?.posts ? { value: (latest.views ?? 0) / latest.posts, n: latest.posts } : { value: null, n: 0 },
-    viewsToChats: views30 != null ? ratio(r.people30, views30) : { value: null, n: 0 },
+    // TikTok's own chats over TikTok's views: every chat over the views read 2.6% when not one came from a post (2026-11-08).
+    viewsToChats: views30 != null ? ratio(r.tiktokPeople30, views30) : { value: null, n: 0 },
     chatsToAsked: ratio(r.asks.tasks, r.people30),
     askedToYes: ratio(Math.min(r.asks.yes, r.asks.tasks), r.asks.tasks),
     yesToViewing: ratio(r.deals.booked, r.asks.yes),
@@ -110,9 +120,12 @@ export function buildSamples(r: ScoreRaw): { samples: Record<string, Sample>; co
     thumbsUp: ratio(r.feedback.up, r.feedback.up + r.feedback.down),
     returning: ratio(r.returning30, r.people30),
     noStop: r.waTenants > 0 ? { value: 1 - Math.min(r.stops, r.waTenants) / r.waTenants, n: r.waTenants } : { value: null, n: 0 },
-    answeredIn3h: ratio(r.asks.fast, r.asks.tasks),
+    // The tenant hears back, on their WhatsApp, within 3 h of their pick — not "the broker answered" (a web chat nobody could tell counted).
+    answeredIn3h: ratio(r.told.told3h, r.told.asked),
 
     peopleToHomes: w.people != null && w.shortlisted != null ? ratio(Math.min(w.shortlisted, w.people), w.people) : { value: null, n: 0 },
+    pickRate: ratio(r.picks.picked, r.picks.shown),
+    toldIn1h: ratio(r.told.told1h, r.told.answers),
     replyP50: { value: w.p50, n: w.turns },
     noFailures: w.tasks > 0 ? { value: 1 - w.failed / w.tasks, n: w.tasks } : { value: null, n: 0 },
     handledAlone: w.messages != null && w.messages > 0 ? { value: 1 - Math.min(w.handoffs ?? 0, w.messages) / w.messages, n: w.messages } : { value: null, n: 0 },

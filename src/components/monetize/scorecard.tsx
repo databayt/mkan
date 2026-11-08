@@ -88,6 +88,7 @@ function Tile({ tile, L, locale }: { tile: TileView; L: L; locale: Locale }) {
               <span className={cn("text-xs tabular-nums", MUTED)}>
                 {fill(L.target, { v: partValue(p, p.target, L, locale) })} · {fill(L.counted, { n: formatNumber(p.n, locale) })} ·{" "}
                 {p.days > 0 ? fill(L.days, { n: formatNumber(p.days, locale) }) : L.allTime}
+                {p.aside ? ` · ${L.aside}` : null}
               </span>
             </li>
           );

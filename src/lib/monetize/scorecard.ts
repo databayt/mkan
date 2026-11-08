@@ -62,8 +62,12 @@ export const PARTS: PartDef[] = [
   { key: "returning", tile: "tenants", op: ">=", target: 0.2, unit: "pct", minN: 5, days: 30 },
   { key: "noStop", tile: "tenants", op: ">=", target: 0.95, unit: "pct", minN: 5, days: 0 },
   { key: "answeredIn3h", tile: "tenants", op: ">=", target: 0.5, unit: "pct", minN: 5, days: 30 },
-  // The chatbot: homes for what people ask, fast, without breaking, without a person.
-  { key: "peopleToHomes", tile: "chatbot", op: ">=", target: 0.8, unit: "pct", minN: 5, days: 7 },
+  // The chatbot: real renters pick a home and hear the broker's answer fast — then speed, no errors,
+  // no person needed. "Chats that get homes" is shown but not counted: the bot shows homes to almost
+  // anyone, so it read 100% on our own tests while nothing converted (2026-11-08).
+  { key: "peopleToHomes", tile: "chatbot", op: ">=", target: 0.8, unit: "pct", minN: 5, days: 7, aside: true },
+  { key: "pickRate", tile: "chatbot", op: ">=", target: 0.4, unit: "pct", minN: 5, days: 30 },
+  { key: "toldIn1h", tile: "chatbot", op: ">=", target: 0.9, unit: "pct", minN: 3, days: 30 },
   { key: "replyP50", tile: "chatbot", op: "<=", target: 3000, unit: "ms", minN: 5, days: 7 },
   { key: "noFailures", tile: "chatbot", op: ">=", target: 0.95, unit: "pct", minN: 5, days: 7 },
   { key: "handledAlone", tile: "chatbot", op: ">=", target: 0.95, unit: "pct", minN: 10, days: 7 },
@@ -139,10 +143,10 @@ export function judgePart(def: PartDef, s: Sample | undefined): PartView {
   return { ...def, value, n, progress, status: progress >= 1 ? "met" : "missed" };
 }
 
-/** The lowest progress among counted parts; PARTS order breaks ties, so the cash road comes first. */
+/** The lowest progress among counted parts (an `aside` is shown, never counted); PARTS order breaks ties, so the cash road comes first. */
 function lowest(parts: PartView[]): PartView | null {
   let worst: PartView | null = null;
-  for (const p of parts) if (p.progress != null && p.progress < 1 && (worst == null || p.progress < worst.progress!)) worst = p;
+  for (const p of parts) if (!p.aside && p.progress != null && p.progress < 1 && (worst == null || p.progress < worst.progress!)) worst = p;
   return worst;
 }
 
