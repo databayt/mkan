@@ -88,7 +88,9 @@ jobs:
 
   e2e:
     name: E2E Tests
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest became 26.04, which Playwright's chromium does not support yet
+    # ("Playwright does not support chromium on ubuntu26.04-x64", every main push since 2026-11-08).
+    runs-on: ubuntu-24.04
     needs: [typecheck, lint, test]
     strategy:
       fail-fast: false

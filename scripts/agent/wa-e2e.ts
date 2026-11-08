@@ -13,17 +13,24 @@
  *      (a #mkan TEST card, no broker reached), the broker answers "available" (applyAnswer) and the
  *      deal sheet is written to that number for WhatsApp — SKIPPED, the lock below never sends it
  *
- * It drives the shipped functions with the team's test number (`pnpm wa:brokers test`), whose picks
- * never reach a broker (broker-sends.ts). Nothing reaches a person: see ./e2e-locks. It never writes
- * the line's shared arrays (tenant-stop, tenant-sent, seen) — another process's write there could drop
- * a real tenant's STOP — so STOP itself is covered by the unit tests (tests/wa/outbox.test.ts).
+ * It drives the shipped functions with a made-up number on the team's list (`pnpm wa:brokers test`), whose
+ * picks never reach a broker (broker-sends.ts), in a chat of its own that it deletes after. Nothing reaches
+ * a person: see ./e2e-locks. It never writes the line's shared arrays (tenant-stop, tenant-sent, seen) —
+ * another process's write there could drop a real tenant's STOP — so STOP itself is covered by the unit
+ * tests (tests/agent/wa-answer.test.ts, tests/wa/outbox.test.ts).
+ *
+ * 2026-11-08: it used Abdout's own number and appended into his live chat, and from the Mac (every query
+ * ~250 ms to us-east-1) its search outlasted the 15 s turn deadline and left that chat FAILED — the "one
+ * failed chat in 14 days". The fake number and a script-only deadline (AGENT_TURN_DEADLINE_MS) fix both.
  */
 import { blockedSends } from "./e2e-locks";
 
 // Step 4 walks the relay path (the deal sheet to the tenant), not a direct intro (deal-intro.ts).
 process.env.MKAN_INTRO_CAP = "0";
+// The Mac is far from the database: give the turn the time the container never needs (run.ts).
+process.env.AGENT_TURN_DEADLINE_MS ??= "60000";
 
-const TEST_DIGITS = "249919071294";
+const TEST_DIGITS = "250720000019";
 const TEST_PHONE = `+${TEST_DIGITS}`;
 const RUN = `wae2e-${Date.now().toString(36)}`;
 let n = 0;
@@ -48,6 +55,8 @@ async function main() {
   let listingBefore: { id: number; lostAt: Date | null; lostReason: string | null; lastAvailabilityConfirmedAt: Date | null } | null = null;
   try {
     if (!check((await testPhones()).has(TEST_DIGITS), "the test number is on the team list")) return;
+    // A chat of its own: whatever an earlier run of this made-up number left is deleted first.
+    await deleteTestChats(db, hashKey(`wa:${TEST_DIGITS}`));
 
     // ── 1. the claim ──────────────────────────────────────────────────────────
     const id = nextMsg();
@@ -174,14 +183,8 @@ async function main() {
     }
     await db.deal.deleteMany({ where: { id: { in: made.deals } } }).catch(() => {});
     await db.listingVisit.deleteMany({ where: { id: { in: made.visits } } }).catch(() => {});
-    const profile = await db.agentProfile.findUnique({ where: { keyHash: hashKey(`wa:${TEST_DIGITS}`) }, select: { id: true } });
-    if (profile) {
-      const tasks = await db.agentTask.findMany({ where: { profileId: profile.id, createdAt: { gte: t0 } }, select: { id: true } });
-      const ids = tasks.map((t) => t.id);
-      await db.brokerRequest.deleteMany({ where: { taskId: { in: ids } } }).catch(() => {});
-      await db.agentEvent.deleteMany({ where: { taskId: { in: ids } } }).catch(() => {});
-      await db.agentTask.deleteMany({ where: { id: { in: ids } } }).catch(() => {});
-    }
+    // The made-up number's chats are this script's alone: all of them go, and its profile.
+    await deleteTestChats(db, hashKey(`wa:${TEST_DIGITS}`), { profileToo: true });
     await db.outboundMessage.deleteMany({ where: { to: { in: [TEST_PHONE, TEST_DIGITS] }, createdAt: { gte: t0 } } }).catch(() => {});
     await db.waState.deleteMany({ where: { OR: [{ key: { startsWith: `tmsg:${RUN}` } }, { key: `viewing-ask:${TEST_DIGITS}`, updatedAt: { gte: t0 } }, { key: { startsWith: `handoff:${RUN}` } }] } }).catch(() => {});
     console.log(`\ncleanup done (${RUN})`);
@@ -189,6 +192,18 @@ async function main() {
   }
   console.log(failures ? `\n${failures} check(s) FAILED` : "\nall checks pass");
   process.exit(failures ? 1 : 0);
+}
+
+/** Every chat of the made-up test number (never a real person's — TEST_DIGITS is fake), and optionally its profile. */
+async function deleteTestChats(db: (typeof import("../../src/lib/db"))["db"], keyHash: string, opts: { profileToo?: boolean } = {}) {
+  const profile = await db.agentProfile.findUnique({ where: { keyHash }, select: { id: true, waPhone: true } });
+  if (!profile || profile.waPhone !== TEST_PHONE) return;
+  const ids = (await db.agentTask.findMany({ where: { profileId: profile.id }, select: { id: true } })).map((t) => t.id);
+  await db.brokerRequest.deleteMany({ where: { taskId: { in: ids } } }).catch(() => {});
+  await db.agentEvent.deleteMany({ where: { taskId: { in: ids } } }).catch(() => {});
+  await db.tenantRequest.deleteMany({ where: { taskId: { in: ids } } }).catch(() => {});
+  await db.agentTask.deleteMany({ where: { id: { in: ids } } }).catch(() => {});
+  if (opts.profileToo) await db.agentProfile.deleteMany({ where: { id: profile.id } }).catch(() => {});
 }
 
 main().catch((e) => {

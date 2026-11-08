@@ -69,8 +69,12 @@ const WIDE_POOL = 2_000;
  * A turn with no reply by now answers with the error (and the tenant's "Try
  * again") instead of leaving the chat silent: one sat 27 s on a starved
  * container and the database before it failed (2026-10-22).
+ *
+ * A script run from the Mac (wa:e2e) may set AGENT_TURN_DEADLINE_MS: Kigali → us-east-1 makes every query
+ * ~250 ms, and its turns hit the 15 s deadline by design (2026-11-08). Never in production.
  */
-export const TURN_DEADLINE_MS = 15_000;
+export const TURN_DEADLINE_MS =
+  process.env.NODE_ENV !== "production" && Number(process.env.AGENT_TURN_DEADLINE_MS) > 0 ? Number(process.env.AGENT_TURN_DEADLINE_MS) : 15_000;
 
 /** One turn's write gate: once the deadline has answered, nothing from the turn writes. */
 interface Gate {
