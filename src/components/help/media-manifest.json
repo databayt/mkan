@@ -1,1 +1,31 @@
-{}
+{
+  "ask-agent/video-ar": {
+    "kind": "video",
+    "title": {
+      "ar": "وكيل مكان — من الموقع إلى واتساب",
+      "en": "The Mkan agent — from the site to WhatsApp"
+    },
+    "poster": "https://cdn.databayt.org/mkan/ar/find/video.poster.webp?v=36eecdc9",
+    "width": 1920,
+    "height": 1080,
+    "duration": 92.9,
+    "sources": [
+      {
+        "src": "https://cdn.databayt.org/mkan/ar/find/video.av1.mp4?v=5e4f4c3a",
+        "type": "video/mp4; codecs=\"av01.0.08M.10, mp4a.40.2\""
+      },
+      {
+        "src": "https://cdn.databayt.org/mkan/ar/find/video.mp4?v=c786b769",
+        "type": "video/mp4; codecs=\"avc1.640029, mp4a.40.2\""
+      }
+    ],
+    "tracks": [
+      {
+        "src": "https://cdn.databayt.org/mkan/ar/find/video.vtt?v=d5ccc3aa",
+        "srclang": "ar",
+        "label": "العربية",
+        "default": true
+      }
+    ]
+  }
+}
