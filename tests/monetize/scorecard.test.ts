@@ -121,6 +121,16 @@ describe("the chatbot is judged on real renters' outcomes (2026-11-08)", () => {
     expect(withoutAside.weakest).toBe("pickRate");
   });
 
+  it("has no percentage until real renters got homes: fast and error-free for us is not effective", () => {
+    // 11-08 on production: no real WhatsApp tenant had got homes, while speed, errors and the quality test were all on target.
+    const view = scorecard(buildSamples(raw({ picks: { shown: 0, picked: 0 } })).samples);
+    const bot = view.tiles.find((t) => t.key === "chatbot")!;
+    expect(bot.parts.find((p) => p.key === "replyP50")!.status).toBe("met");
+    expect(bot.score).toBeNull();
+    expect(bot.word).toBe("thin");
+    expect(scoreMetrics(view)["score.chatbot"]).toBeNull();
+  });
+
   it("hears back = the tenant was told within 3 h of their pick, not the broker answering", () => {
     const tenants = scorecard(buildSamples(raw()).samples).tiles.find((t) => t.key === "tenants")!;
     const heard = tenants.parts.find((p) => p.key === "answeredIn3h")!;

@@ -21,6 +21,12 @@ export interface PartDef {
   days: number;
   /** Shown and judged, but left out of the tile's percentage (a volume beside a chain of rates). */
   aside?: boolean;
+  /**
+   * The tile has no percentage until this part has its sample. The chatbot tile read "100%, every
+   * part on target" on speed, errors and the quality test while no real renter had picked a home
+   * (2026-11-08): a bot is effective when renters pick, not when it is fast for us.
+   */
+  gate?: boolean;
 }
 
 /** TikTok first: the page is Mkan's front door (Abdout, 2026-11-07: "TikTok is our main entity"). */
@@ -66,7 +72,7 @@ export const PARTS: PartDef[] = [
   // no person needed. "Chats that get homes" is shown but not counted: the bot shows homes to almost
   // anyone, so it read 100% on our own tests while nothing converted (2026-11-08).
   { key: "peopleToHomes", tile: "chatbot", op: ">=", target: 0.8, unit: "pct", minN: 5, days: 7, aside: true },
-  { key: "pickRate", tile: "chatbot", op: ">=", target: 0.4, unit: "pct", minN: 5, days: 30 },
+  { key: "pickRate", tile: "chatbot", op: ">=", target: 0.4, unit: "pct", minN: 5, days: 30, gate: true },
   { key: "toldIn1h", tile: "chatbot", op: ">=", target: 0.9, unit: "pct", minN: 3, days: 30 },
   { key: "replyP50", tile: "chatbot", op: "<=", target: 3000, unit: "ms", minN: 5, days: 7 },
   { key: "noFailures", tile: "chatbot", op: ">=", target: 0.95, unit: "pct", minN: 5, days: 7 },
@@ -155,7 +161,8 @@ export function scorecard(samples: Record<string, Sample>, counts: Partial<Recor
   const tiles: TileView[] = TILES.map((key) => {
     const parts = judged.filter((p) => p.tile === key);
     const counted = parts.filter((p) => p.progress != null && !p.aside);
-    const score = !counted.length
+    const gated = parts.some((p) => p.gate && p.progress == null);
+    const score = !counted.length || gated
       ? null
       : TILE_MODE[key] === "product"
         ? Math.round(counted.reduce((s, p) => s * p.progress!, 1) * 100)
