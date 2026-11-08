@@ -1907,6 +1907,17 @@ model TikTokPost {
   tiktokId      String?
   views         Int?
   likes         Int?
+  comments      Int?
+  shares        Int?
+  /// TikTok's "favorites" (Studio / the video's collect count).
+  saves         Int?
+  /// Average watch time in seconds, and the share of viewers who watched to the end (0..1); Studio only.
+  avgWatchSec   Float?
+  completion    Float?
+  /// Lever 4: the caption carried the follow ask. Null = posted before the tag, read back from the live caption.
+  askFollow     Boolean?
+  /// Lever 8: which caption line the WhatsApp line sits on (2 or 3), read from the live caption.
+  waLine        Int?
   statsAt       DateTime?
   updatedAt     DateTime  @updatedAt
 

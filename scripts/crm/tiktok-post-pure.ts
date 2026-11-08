@@ -50,6 +50,13 @@ export interface LedgerEntry {
   url?: string;
   views?: number;
   likes?: number;
+  comments?: number;
+  shares?: number;
+  saves?: number;
+  avgWatchSec?: number;
+  completion?: number;
+  /** Which caption line carries the WhatsApp number (lever 8), read from the live caption. */
+  waLine?: number;
   statsAt?: string;
 }
 export type Ledger = Record<string, LedgerEntry>;
@@ -1182,4 +1189,83 @@ export function pageStatsLine(page: string, vids: PageVideo[], homes: { matched:
   ]
     .filter(Boolean)
     .join(' · ');
+}
+
+// ── per-post numbers (judging the levers post by post) ───────────────────────
+
+/** Which experiment marks a LIVE caption carries: the follow ask (lever 4) and the line the WhatsApp number is on (lever 8). */
+export function captionMarks(text: string | null | undefined): { askFollow: boolean; waLine: number | null } {
+  const lines = (text ?? '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const i = lines.findIndex((l) => /whatsapp\s*\+?\d/i.test(l));
+  return { askFollow: lines.some((l) => l.includes('Follow for new Kigali homes')), waLine: i < 0 ? null : i + 1 };
+}
+
+export interface PostNumbers {
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+}
+
+/** Likes + comments + shares + saves per view; null with no views. */
+export const interactionRate = (n: Partial<PostNumbers>): number | null => {
+  const v = n.views ?? 0;
+  return v > 0 ? ((n.likes ?? 0) + (n.comments ?? 0) + (n.shares ?? 0) + (n.saves ?? 0)) / v : null;
+};
+
+export interface StudioMetrics {
+  saves?: number;
+  comments?: number;
+  shares?: number;
+  avgWatchSec?: number;
+  /** 0..1 */
+  completion?: number;
+}
+
+const num = (v: unknown): number | undefined => {
+  const n = typeof v === 'string' ? Number(v.replace(/[,%\s]/g, '')) : typeof v === 'number' ? v : NaN;
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+};
+
+/**
+ * Reads what TikTok Studio's analytics answers (JSON the page loads for one video) into our columns.
+ * Studio's field names are not published and move, so this walks the whole payload and takes the
+ * first value under each known name; anything it does not find stays undefined, never 0.
+ * Completion above 1 is a percent (62 → 0.62). Watch time in ms (> 600) is converted to seconds.
+ */
+export function parseStudioMetrics(payload: unknown): StudioMetrics {
+  const want: Record<keyof StudioMetrics, RegExp> = {
+    saves: /^(favou?rites?|favorite_count|collect_count|saves?|save_count)$/i,
+    comments: /^(comments?|comment_count)$/i,
+    shares: /^(shares?|share_count|repost_count)$/i,
+    avgWatchSec: /^(average_?watch_?time|avg_?watch_?time|avg_play_time|average_time_watched|average_play_duration)$/i,
+    completion: /^(finish_?rate|completion_?rate|full_?video_?watched_?rate|watched_full_video_rate|complete_rate)$/i,
+  };
+  const out: StudioMetrics = {};
+  const seen = new Set<unknown>();
+  const walk = (x: unknown, depth: number): void => {
+    if (!x || typeof x !== 'object' || depth > 8 || seen.has(x)) return;
+    seen.add(x);
+    for (const [k, v] of Object.entries(x as Record<string, unknown>)) {
+      for (const key of Object.keys(want) as (keyof StudioMetrics)[]) {
+        if (out[key] !== undefined || !want[key].test(k)) continue;
+        // a metric object like { value: 12 } or a series: take its value / total
+        const raw = v && typeof v === 'object' && !Array.isArray(v) ? ((v as Record<string, unknown>).value ?? (v as Record<string, unknown>).total) : v;
+        const n = num(raw);
+        if (n !== undefined) out[key] = n;
+      }
+      walk(v, depth + 1);
+    }
+  };
+  walk(payload, 0);
+  if (out.completion !== undefined && out.completion > 1) out.completion = Math.min(1, out.completion / 100);
+  if (out.avgWatchSec !== undefined && out.avgWatchSec > 600) out.avgWatchSec = out.avgWatchSec / 1000;
+  return out;
+}
+
+/** The best and the worst post by interaction rate (posts with fewer than `minViews` views are too small to rank). */
+export function bestWorst<T extends Partial<PostNumbers>>(posts: T[], minViews = 20): { best: T; worst: T } | null {
+  const ranked = posts.filter((p) => (p.views ?? 0) >= minViews).sort((a, b) => (interactionRate(b) ?? 0) - (interactionRate(a) ?? 0));
+  return ranked.length ? { best: ranked[0]!, worst: ranked[ranked.length - 1]! } : null;
 }

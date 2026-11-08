@@ -68,6 +68,11 @@ import {
   type Rect,
   captionFor,
   asksForFollow,
+  captionMarks,
+  parseStudioMetrics,
+  interactionRate,
+  bestWorst,
+  type StudioMetrics,
   FRESH_DAYS,
   type GrayFrame,
   H,
@@ -264,7 +269,7 @@ async function pick(): Promise<PostRow[]> {
   // One row per home attempt: the page counts featured → enhanced → posted from these.
   for (const r of picked) {
     const row = await ledgerRow('picked', (db) =>
-      db.tikTokPost.create({ data: { listingId: r.id, ref: refOf(r), sourceVideoId: videoIdOf(r), brokerHandle: brokerHandle(r.hostSourceId), status: 'PICKED' }, select: { id: true } }),
+      db.tikTokPost.create({ data: { listingId: r.id, ref: refOf(r), sourceVideoId: videoIdOf(r), brokerHandle: brokerHandle(r.hostSourceId), status: 'PICKED', askFollow: r.askFollow ?? false, waLine: 2 }, select: { id: true } }),
     );
     if (row) r.postId = row.id;
   }
@@ -961,6 +966,49 @@ async function pageProfile(): Promise<{ followers: number; hearts: number; video
   }
 }
 
+/**
+ * Per-post numbers TikTok Studio shows and the public feed does not: saves, average watch time,
+ * completion. Read only: one tab in the signed-in Chrome opens each recent post's analytics page and
+ * listens to the JSON it loads (never clicks, posts, replies or pins). Empty when that Chrome is not
+ * up, or when Studio answers in a shape parseStudioMetrics does not know; the rest of the stats run.
+ */
+async function studioNumbers(ids: string[]): Promise<Map<string, StudioMetrics>> {
+  const out = new Map<string, StudioMetrics>();
+  if (!ids.length) return out;
+  const cdp = process.env.TIKTOK_CDP_URL ?? 'http://127.0.0.1:9222';
+  try {
+    const { chromium } = await import('playwright');
+    const browser = await chromium.connectOverCDP(cdp, { timeout: 15_000 });
+    const page = await browser.contexts()[0]!.newPage();
+    try {
+      for (const id of ids) {
+        const payloads: unknown[] = [];
+        const watch = async (res: import('playwright').Response): Promise<void> => {
+          if (!/tiktokstudio|analytics|aweme\/v\d\/data/i.test(res.url()) || !(res.headers()['content-type'] ?? '').includes('json')) return;
+          payloads.push(await res.json().catch(() => null));
+        };
+        page.on('response', watch);
+        try {
+          await page.goto(`https://www.tiktok.com/tiktokstudio/analytics/${id}`, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+          await page.waitForTimeout(6_000);
+        } catch (e) {
+          console.warn(`  ! Studio ${id}: ${firstLine(e)}`);
+        } finally {
+          page.off('response', watch);
+        }
+        const m = parseStudioMetrics(payloads);
+        if (Object.keys(m).length) out.set(id, m);
+      }
+    } finally {
+      await page.close().catch(() => {});
+      await browser.close().catch(() => {});
+    }
+  } catch (err) {
+    console.warn(`  ! Studio numbers not read (${(err as Error).message.slice(0, 120)})`);
+  }
+  return out;
+}
+
 async function stats(): Promise<void> {
   const secUid = (process.env.TIKTOK_PAGE_SECUID ?? '').trim();
   const target = secUid ? `tiktokuser:${secUid}` : `https://www.tiktok.com/@${PAGE}`;
@@ -969,6 +1017,10 @@ async function stats(): Promise<void> {
   const ledger = loadLedger();
   let matched = 0;
   let rows = 0;
+  // Studio's extras for the posts of the last 7 days (the public feed has views, likes, comments, shares).
+  const weekAgo = Date.now() - 7 * 86_400_000;
+  const studio = await studioNumbers(entries.filter((v) => Number(v.timestamp ?? 0) * 1000 >= weekAgo).map((v) => String(v.id ?? '')).filter(Boolean));
+  const perPost: { ref: string; views: number; likes: number; comments: number; shares: number; saves: number }[] = [];
   for (const v of entries) {
     const ref = refInText((v.description as string) ?? (v.title as string));
     const id = String(v.id ?? '');
@@ -976,6 +1028,19 @@ async function stats(): Promise<void> {
     const views = Number(v.view_count ?? 0);
     const likes = Number(v.like_count ?? 0);
     const at = new Date(Number(v.timestamp ?? Date.now() / 1000) * 1000);
+    const st = studio.get(id) ?? {};
+    const comments = Math.max(Number(v.comment_count ?? 0), st.comments ?? 0);
+    const shares = Math.max(Number(v.repost_count ?? 0), st.shares ?? 0);
+    const saves = st.saves ?? (v.collect_count != null ? Number(v.collect_count) : undefined);
+    // The experiment marks are read from the live caption: true for posts that predate the tag too.
+    const marks = captionMarks(String(v.description ?? v.title ?? ''));
+    const extra = {
+      comments,
+      shares,
+      ...(saves !== undefined ? { saves } : {}),
+      ...(st.avgWatchSec !== undefined ? { avgWatchSec: st.avgWatchSec } : {}),
+      ...(st.completion !== undefined ? { completion: st.completion } : {}),
+    };
     // The post's TikTokPost row: by its id or URL, else the newest row for that ref
     // posted (or rendered) no later than a day before the video went up.
     if (id || ref) {
@@ -990,13 +1055,14 @@ async function stats(): Promise<void> {
               })
             : null);
         if (!row) return false;
-        await db.tikTokPost.update({ where: { id: row.id }, data: { views, likes, statsAt: new Date(), tiktokId: id || undefined, tiktokUrl: url, status: 'POSTED', postedAt: row.postedAt ?? at } });
+        await db.tikTokPost.update({ where: { id: row.id }, data: { views, likes, ...extra, askFollow: marks.askFollow, waLine: marks.waLine, statsAt: new Date(), tiktokId: id || undefined, tiktokUrl: url, status: 'POSTED', postedAt: row.postedAt ?? at } });
         return true;
       });
       if (hit) rows += 1;
     }
     if (!ref || !ledger[ref]) continue;
-    ledger[ref] = { ...ledger[ref], postedAt: ledger[ref].postedAt ?? at.toISOString(), url, views, likes, statsAt: new Date().toISOString() };
+    if (at.getTime() >= weekAgo) perPost.push({ ref, views, likes, comments, shares, saves: saves ?? 0 });
+    ledger[ref] = { ...ledger[ref], postedAt: ledger[ref].postedAt ?? at.toISOString(), url, views, likes, ...extra, askFollow: marks.askFollow, ...(marks.waLine ? { waLine: marks.waLine } : {}), statsAt: new Date().toISOString() };
     matched += 1;
   }
   saveLedger(ledger);
@@ -1020,6 +1086,11 @@ async function stats(): Promise<void> {
   const reach = await repostNumbers();
   const line = [pageStatsLine(PAGE, vids, { matched, views: homeViews }), reach].filter(Boolean).join(' · ');
   console.log(`${line}${rows ? ` · ${rows} TikTokPost rows updated` : ''}`);
+  const bw = bestWorst(perPost);
+  if (bw) {
+    const f = (p: (typeof perPost)[number]) => `${p.ref} ${((interactionRate(p) ?? 0) * 100).toFixed(1)}% of ${p.views}`;
+    console.log(`per-post interaction, last 7 days (${perPost.length} posts): best ${f(bw.best)} · worst ${f(bw.worst)}`);
+  }
   if (flag('notify')) await postToMkan(line);
 }
 
