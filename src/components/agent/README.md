@@ -258,3 +258,11 @@ tenant WA → Evolution in the hogwarts container (instance "mkan", shared Whats
   backstop ticks at :00 hourly and :15/:30/:45 07:00–21:45 Kigali — `cf/crons.json`) also
   passes tenant messages the webhook missed; the turn answers each message id once.
 - Re-link after a `device_removed`: `pnpm wa:pair` (QR at `scripts/crm/.data/wa/qr.png`).
+- **Every reply lands on a :00/:15/:30/:45 tick, none within seconds → the bridge stopped calling
+  the hook.** 2026-11-08: Evolution's `updateChatUnreadMessages` runs raw SQL on an unqualified
+  `"Message"`; its tables live in schema `evolution_api` (`?schema=` in `EVOLUTION_DATABASE_URL`),
+  which raw queries ignore, so every incoming message threw `relation "Message" does not exist`
+  before the webhook fired. Fixed in the database, not in code:
+  `ALTER DATABASE evolution SET search_path TO evolution_api, public;` (the `public` schema is
+  empty), then `pg_terminate_backend` on the bridge's sessions so they reconnect. Its logs are the
+  hogwarts container's stdout in Workers Observability (the `cloudflare-api` Keychain token can query them).
