@@ -292,7 +292,7 @@ function aliasHood(s: string): string | null {
 }
 
 /** Edit distance with transpositions, capped: enough to tell a typo from another word. */
-function editDistance(a: string, b: string, cap: number): number {
+export function editDistance(a: string, b: string, cap: number): number {
   if (Math.abs(a.length - b.length) > cap) return cap + 1;
   const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array<number>(b.length).fill(0)]);
   for (let j = 0; j <= b.length; j++) d[0]![j] = j;

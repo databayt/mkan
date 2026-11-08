@@ -4,7 +4,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { dealSheetMessage } from "@/components/agent/deal-pure";
+import { brokerAnswerMessage } from "@/components/agent/broker-message";
+import { askedOnLabel, dealSheetMessage } from "@/components/agent/deal-pure";
 import {
   connectionMode,
   dueFollowUps,
@@ -25,10 +26,63 @@ import {
   readTenantFollowUp,
   readTermsReply,
   termsAskMessage,
+  TERMS_WAIT_AWAKE_HOURS,
+  termsHandOffDue,
 } from "@/components/agent/intro-pure";
 
 const PHONE = /\+?250\s?7\d{2}\s?\d{3}\s?\d{3}|\+\d{9,}/;
 const HOUR = 3_600_000;
+
+describe("the terms wait: 2 daytime hours (Abdout, 2026-11-08)", () => {
+  // Kigali is UTC+2; the daytime window is 08:00–20:00 Kigali (broker-rank.ts awakeMs).
+  const kigali = (iso: string) => new Date(`${iso}+02:00`);
+
+  it("hands off after 2 hours of Kigali daytime, not 24", () => {
+    expect(TERMS_WAIT_AWAKE_HOURS).toBe(2);
+    const yes = kigali("2026-11-09T10:00:00");
+    expect(termsHandOffDue(yes, kigali("2026-11-09T11:59:00"))).toBe(false);
+    expect(termsHandOffDue(yes, kigali("2026-11-09T12:00:00"))).toBe(true);
+  });
+
+  it("counts no night: a yes at 19:30 hands off at 09:30 the next morning", () => {
+    const yes = kigali("2026-11-09T19:30:00");
+    expect(termsHandOffDue(yes, kigali("2026-11-10T07:00:00"))).toBe(false);
+    expect(termsHandOffDue(yes, kigali("2026-11-10T09:29:00"))).toBe(false);
+    expect(termsHandOffDue(yes, kigali("2026-11-10T09:30:00"))).toBe(true);
+  });
+});
+
+describe("a late yes names the day the tenant asked (2026-11-08)", () => {
+  const now = new Date("2026-11-06T14:38:00Z");
+
+  it("labels the Kigali day only when the tenant last wrote more than a day ago", () => {
+    expect(askedOnLabel(new Date("2026-10-27T14:30:00Z"), now, "en")).toBe("27 Oct");
+    expect(askedOnLabel(new Date("2026-10-27T14:30:00Z"), now, "rw")).toBe("27 Ukwakira");
+    expect(askedOnLabel(new Date("2026-10-27T14:30:00Z"), now, "ar")).toBe("27 أكتوبر");
+    // 23:30 UTC is already the next day in Kigali.
+    expect(askedOnLabel(new Date("2026-10-31T23:30:00Z"), now, "en")).toBe("1 Nov");
+    expect(askedOnLabel(new Date("2026-11-06T08:00:00Z"), now, "en")).toBeNull();
+    expect(askedOnLabel(null, now, "en")).toBeNull();
+  });
+
+  it("says it in every message a yes sends: the intro's pending line, the deal sheet, the broker's answer", () => {
+    expect(introPendingMessage("en", "2-bedroom in Kimironko", "27 Oct")).toMatch(/^You asked about 2-bedroom in Kimironko on 27 Oct: good news.*If you're still looking/);
+    expect(introPendingMessage("en", "2-bedroom in Kimironko")).toMatch(/^Good news: 2-bedroom in Kimironko is still free!/);
+    expect(introPendingMessage("rw", "Inzu", "27 Ukwakira")).toMatch(/^Wabajije ibya Inzu ku itariki ya 27 Ukwakira/);
+    expect(introPendingMessage("ar", "شقة", "27 أكتوبر")).toMatch(/^سألت عن شقة يوم 27 أكتوبر/);
+
+    const facts = { title: "2-bedroom in Kimironko", ref: "K6041", cost: null, rep: "Osman", link: "https://mkan.sd/en/find?c=t1" };
+    const late = dealSheetMessage({ ...facts, askedOn: "27 Oct" }, "en");
+    expect(late.split("\n")[0]).toBe(`You asked about "2-bedroom in Kimironko" (K6041) on 27 Oct. Good news: the broker says it's still available.`);
+    expect(late).toMatch(/If you're still looking: when can you come to see it\?/);
+    expect(dealSheetMessage(facts, "en").split("\n")[0]).toBe(`Good news: the broker says "2-bedroom in Kimironko" (K6041) is still available.`);
+    expect(dealSheetMessage({ ...facts, askedOn: "27 Ukwakira" }, "rw")).toMatch(/Niba ugishaka inzu: ni ryari wayisura\?/);
+
+    expect(brokerAnswerMessage("en", "2-bedroom in Kimironko", true, "L", false, "Osman", "27 Oct")).toMatch(/^Mkan: you asked about "2-bedroom in Kimironko" on 27 Oct\. Good news.*\nIf you're still looking, Osman from Mkan/);
+    expect(brokerAnswerMessage("en", "2-bedroom in Kimironko", false, "L", false, "Osman", "27 Oct")).toBe(`Mkan: you asked about "2-bedroom in Kimironko" on 27 Oct. It's taken, sorry. Your other homes are here:\nL`);
+    expect(brokerAnswerMessage("en", "2-bedroom in Kimironko", true, "L", false, "Osman")).toMatch(/^Mkan: good news, the broker says "2-bedroom in Kimironko" is still available\.\nOsman from Mkan/);
+  });
+});
 
 describe("direct intros", () => {
   it("introduce until 10 deals are paid, then Mkan stays in the middle", () => {

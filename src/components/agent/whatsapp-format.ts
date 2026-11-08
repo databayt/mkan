@@ -9,9 +9,9 @@
  * agent's readers already understand, or into "check home N".
  */
 import { districtName } from "@/lib/geo/rwanda-places";
-import { zoneLabel } from "@/lib/geo/kigali-zones";
+import { KIGALI_ZONE_BY_SLUG, zoneLabel, zoneNamed } from "@/lib/geo/kigali-zones";
 import { forTenant } from "./home-path";
-import { EMPTY_REQUIREMENTS, parseAdjustments, parseRequirements } from "./requirements";
+import { EMPTY_REQUIREMENTS, editDistance, parseAdjustments, parseRequirements } from "./requirements";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "./types";
 
 export type WaLang = "en" | "ar" | "rw";
@@ -142,12 +142,20 @@ export const K_PAGE_MARK = "mkan.sd";
 export const TIKTOK_BIO_MARK = "tiktok_bio";
 
 /**
+ * A first message that says it came from TikTok without the code: "saw your video", "on TikTok",
+ * "kuri TikTok", "تيك توك". Not one chat in 17 posts and 2,248 views had sent a code (2026-11-08),
+ * so a viewer who writes in their own words must still count as TikTok's.
+ */
+const TIKTOK_WORDS_RE =
+  /\b(?:on|from|in|via|kuri|sur)\s+tik\s?tok\b|\btik\s?tok\s+(?:video|post|ad|page|live)s?\b|(?:على|من|في|ب)\s?تيك\s?توك|\b(?:saw|seen|watched|see)\b.{0,24}\b(?:video|post|reel)s?\b|\byour (?:video|post)s?\b/i;
+
+/**
  * The marker first (a /tt message is that page whatever else it carries); then a code with the /k page's mark is that page; a code carried with a web chat's `ref:` is /find;
- * a bare code is what a TikTok caption asks viewers to send. No code: organic.
+ * a bare code is what a TikTok caption asks viewers to send. No code: TikTok when the words say so, else organic.
  */
 export function refSourceOf(text: string, webRef: string | null): RefSource {
   if (/\btiktok_bio\b/i.test(text)) return "tiktok_bio";
-  if (readHomeRef(text) == null) return webRef ? "web" : "organic";
+  if (readHomeRef(text) == null) return webRef ? "web" : TIKTOK_WORDS_RE.test(text) ? "tiktok" : "organic";
   if (/\bmkan\.sd\b/i.test(text)) return "k_page";
   return webRef ? "web" : "tiktok";
 }
@@ -330,6 +338,11 @@ export function readPick(text: string, view: AgentTaskView | null, d: WaDict): P
   if (last?.kind === "none" && last.demand && !last.asked && saysYes(text)) return { kind: "askAround" };
   if (last?.kind === "shortlist" && last.pin?.found && view!.shortlist[0] && saysYes(text) && !/^\d/.test(text.trim())) return { kind: "check", listingId: view!.shortlist[0].id };
   const digit = text.trim().replace(/[٠-٩]/g, (ch) => String(ch.charCodeAt(0) - 0x0660)).match(/^([1-9])\.?$/);
+  if (!digit && view && last?.kind === "shortlist") {
+    // A home named in words under the list is the pick too ("the second one", "that 3 bedroom in Norvège").
+    const id = pickInWords(text, view.shortlist.slice(0, MAX_HOMES));
+    return id != null ? { kind: "check", listingId: id } : null;
+  }
   if (!digit || !view) return null;
   const n = Number(digit[1]);
   const m = lastAgent(view);
@@ -347,6 +360,117 @@ export function readPick(text: string, view: AgentTaskView | null, d: WaDict): P
     return item ? { kind: "check", listingId: item.id } : null;
   }
   return null;
+}
+
+// ── a home named in words (2026-11-08) ──────────────────────────────────────
+// Tenants rarely send a home's number: "That 3 bedroom 3 bathroom in novege" got a one-home list
+// and no check (11-07). A message under the list that points at exactly one shown home is its pick.
+
+const NOT_AR = "(?![\\u0621-\\u064A])";
+/** "the second one", "iya kabiri", "الثانية", "le deuxième", "the last": the shown home it names. */
+const ORDINALS: [RegExp, number | "last"][] = [
+  [new RegExp(`\\b(?:first|1st)\\b|\\b(?:i)?ya mbere\\b|\\bpremi(?:er|[eè]re)\\b|ال[أا]ول(?:ى|ي)?${NOT_AR}`, "i"), 0],
+  [new RegExp(`\\b(?:second|2nd)\\b|\\b(?:i)?ya kabiri\\b|\\bdeuxi[eè]me\\b|\\bseconde\\b|ال(?:ث|ت)اني(?:ة)?${NOT_AR}`, "i"), 1],
+  [new RegExp(`\\b(?:third|3rd)\\b|\\b(?:i)?ya gatatu\\b|\\btroisi[eè]me\\b|ال(?:ث|ت)ال(?:ث|ت)(?:ة)?${NOT_AR}`, "i"), 2],
+  [new RegExp(`\\blast\\b|\\b(?:i)?ya nyuma\\b|\\bderni(?:er|[eè]re)\\b|ال[أا]خير(?:ة)?${NOT_AR}`, "i"), "last"],
+];
+/** An ordinal about something else: "first floor", "last month", "second payment". */
+const ORDINAL_NOUN_RE = /\b(?:first|second|third|last|1st|2nd|3rd)\s+(?:floor|month|months|year|years|week|weeks|day|days|time|times|payment|deposit|rent|night|nights|thing)\b/i;
+/** "number 2", "option 2", "#2", "nimero 2", "رقم 2". */
+const NUMBERED_RE = /(?:\bnumber|\boption|\bhome|\bhouse|\bnimero|\bnum[eé]ro|#|رقم)\s*([1-9])(?!\d)/i;
+/** "that one", "I'll take it", "iyo nzu", "هذه" — only when one home was shown. */
+const THAT_ONE_RE =
+  /\b(?:that|this|the)\s+one\b|\bi(?:'ll|\s+will)?\s+(?:take|want|like|love)\s+(?:it|this|that)\b|^(?:iyo|iyi)\b|\b(?:iyo|iyi)\s+nzu\b|\bndayishaka\b|\bcel(?:le|ui)-?(?:ci|l[aà])\b|^(?:هذا|هذه|هذي|ذاك|تلك)(?![ء-ي])/i;
+/** Words that point at a home already shown ("that 3 bedroom…", "I like the one in Remera"). */
+const POINTER_RE =
+  /^(?:that|this|the)\b|\b(?:that|this)\s+(?:one|house|home|apartment|place|room)\b|\b(?:i(?:'d|\s+would)?\s+(?:want|like|love|take)|i'll\s+take|interested\s+in|check|book|visit|see)\s+(?:that|this|the)\b|^(?:iyo|iyi)\b|\b(?:iyo|iyi)\s+nzu\b|^(?:هذا|هذه|هذي|ذاك|تلك)|\bcel(?:le|ui)\b|^(?:cette|ce)\b/i;
+/** A home mentioned to turn it down: "too expensive", "not that one", "oya", "غالي". */
+const NOT_A_PICK_RE =
+  /\b(?:not|no|don'?t|doesn'?t|isn'?t|too|expensive|far|small|ugly|instead|except|but)\b|\boya\b|\bntabwo\b|\bhapana\b|\bpas\b|\btrop\b|(?:^|\s)(?:لا|مش|ليس|غالي|بعيد)(?:\s|$)/i;
+/** Words that start a new search instead ("looking for", "do you have", "another"). */
+const SEARCHY_RE = /\b(?:looking for|look for|i need|need an?|want an?|show me|do you have|any|another|other|others|more)\b|\bndashaka\b|\bnshaka\b|أبحث|ابحث|عايز|اريد|أريد/i;
+const BEDS_RE = /\b([1-9])\s*-?\s*(?:bed(?:room)?s?|bdrs?|brs?)\b|\bibyumba\s+(?:bi)?([1-9])\b|\b([1-9])\s*chambres?\b|([1-9])\s*غرف/i;
+const BATHS_RE = /\b([1-9])\s*-?\s*(?:bath(?:room)?s?|toilets?|douches?)\b|([1-9])\s*حمام/i;
+const PRICE_RE = /(\d+(?:[.,]\d+)?)\s*(k|m)\b|\b(\d{1,3}(?:[,\s]\d{3})+)\b|\b(\d{5,7})\b/i;
+const foldWords = (x: string) => x.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+function namedFacts(raw: string): { beds: number | null; baths: number | null; price: number | null; type: "house" | "apartment" | "room" | null } {
+  const b = raw.match(BEDS_RE);
+  const t = raw.match(BATHS_RE);
+  const p = raw.match(PRICE_RE);
+  let price: number | null = null;
+  if (p?.[1]) price = Number(p[1].replace(",", ".")) * (p[2]!.toLowerCase() === "m" ? 1_000_000 : 1_000);
+  else if (p?.[3]) price = Number(p[3].replace(/[,\s]/g, ""));
+  else if (p?.[4]) price = Number(p[4]);
+  const type = /\b(?:apartment|apartments|apart|flat|appartement)\b|شقة/i.test(raw)
+    ? "apartment"
+    : /\b(?:house|villa|maison)\b|بيت|منزل/i.test(raw)
+      ? "house"
+      : /\b(?:room|studio|chambre|icyumba)\b|غرفة/i.test(raw)
+        ? "room"
+        : null;
+  const num = (m: RegExpMatchArray | null) => (m ? Number(m.slice(1).find((g) => g != null)) : null);
+  return { beds: num(b), baths: num(t), price, type };
+}
+
+/** The names a shown home's place goes by: its zone, the zone above it and the district, with their other spellings. */
+function placeNames(item: ShortlistItem): { latin: string[]; arabic: string[] } {
+  const zones = [];
+  for (let z = item.zone ? KIGALI_ZONE_BY_SLUG.get(item.zone) : undefined; z; z = z.parent ? KIGALI_ZONE_BY_SLUG.get(z.parent) : undefined) zones.push(z);
+  const latin = [...zones.flatMap((z) => [z.nameEn, z.nameRw, ...z.aliases]), item.district ?? ""]
+    .flatMap((n) => foldWords(n).split(/[^a-z]+/))
+    .filter((w) => w.length >= 4 && w !== "kigali");
+  return { latin: [...new Set(latin)], arabic: zones.map((z) => z.nameAr).filter((n) => n.length > 2) };
+}
+
+/** Does the text name this home's place — exactly, or with a typo ("novege" → Norvège: 1 edit, 2 for long names)? */
+function namesPlaceOf(raw: string, item: ShortlistItem): boolean {
+  const { latin, arabic } = placeNames(item);
+  if (arabic.some((n) => raw.includes(n))) return true;
+  const tokens = foldWords(raw).split(/[^a-z]+/).filter((t) => t.length >= 4);
+  return tokens.some((t) => latin.some((w) => t === w || (w.length >= 5 && t.length >= 5 && editDistance(t, w, w.length >= 9 ? 2 : 1) <= (w.length >= 9 ? 2 : 1))));
+}
+
+/**
+ * The shown home a message names in words, or null. Read only under the list: an ordinal or
+ * "number 2" (in English, Kinyarwanda, Arabic or French); "that one" when one home was shown; or
+ * the home's place, bedrooms, bathrooms, price or type matching exactly one shown home — with a
+ * pointing word ("that…", "the…", "I like the…"), or with the place and one more fact. Anything that
+ * fits two homes, names another place, or reads like a new search is not a pick.
+ */
+export function pickInWords(text: string, shown: readonly ShortlistItem[]): number | null {
+  if (!shown.length) return null;
+  const raw = text.trim().toLowerCase().replace(/[٠-٩]/g, (ch) => String(ch.charCodeAt(0) - 0x0660));
+  if (!raw || HOME_REF_RE.test(raw)) return null;
+  // "The last one is too expensive", "not the first": about a home, but not a pick.
+  if (NOT_A_PICK_RE.test(raw)) return null;
+  const words = raw.split(/\s+/).filter(Boolean).length;
+  const numbered = raw.match(NUMBERED_RE);
+  if (numbered) return shown[Number(numbered[1]) - 1]?.id ?? null;
+  if (words <= 8 && !ORDINAL_NOUN_RE.test(raw)) {
+    for (const [re, at] of ORDINALS) if (re.test(raw)) return shown[at === "last" ? shown.length - 1 : at]?.id ?? null;
+  }
+  if (shown.length === 1 && words <= 8 && THAT_ONE_RE.test(raw)) return shown[0]!.id;
+
+  const facts = namedFacts(raw);
+  const placed = shown.filter((s) => namesPlaceOf(raw, s));
+  // A place none of the shown homes is in: a new search, not a pick.
+  if (!placed.length && zoneNamed(text)) return null;
+  const count = [facts.beds, facts.baths, facts.price, facts.type].filter((v) => v != null).length + (placed.length ? 1 : 0);
+  if (count === 0) return null;
+  const near = (have: number | null | undefined, said: number) => have != null && Math.abs(have - said) <= said * 0.1;
+  const fits = shown.filter(
+    (s) =>
+      (facts.beds == null || s.bedrooms === facts.beds) &&
+      (facts.baths == null || s.bathrooms === facts.baths) &&
+      (facts.price == null || near(s.cost?.headline, facts.price)) &&
+      (facts.type == null || s.homeType == null || s.homeType === facts.type) &&
+      (!placed.length || placed.includes(s)),
+  );
+  if (fits.length !== 1) return null;
+  const pointed = POINTER_RE.test(raw);
+  if (!pointed && SEARCHY_RE.test(raw)) return null;
+  return pointed || (placed.length > 0 && count >= 2) || count >= 3 ? fits[0]!.id : null;
 }
 
 /**

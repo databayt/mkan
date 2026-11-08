@@ -10,7 +10,7 @@ import "server-only";
  *   broker answers YES          ─► answerTerms: the agreement on Broker, a Deal per tenant
  *                                 (introducedAt), the tenant gets the broker's WhatsApp and the
  *                                 broker the tenant's
- *   no answer in 24 h / a NO    ─► the tenant goes the usual way: deal sheet, a person (deal.ts)
+ *   no YES in 2 daytime h / NO ─► the tenant goes the usual way: deal sheet, a person (deal.ts); a late YES is still recorded
  *   the hourly cron             ─► introSweep: follow-ups at 24 h (tenant) and 7 days (both, with a
  *                                 1–5 rating), re-queued once more if the outbox dropped one
  *   their answers               ─► introTenantAnswer / introBrokerUpdate: VIEWED, SIGNED (the
@@ -25,7 +25,8 @@ import { scrubTitle } from "@/lib/redact";
 import { phoneKey } from "../../../scripts/wa/outbox-pure";
 import { ALERT_LABEL, inSendWindow } from "../../../scripts/wa/outbox-pure";
 import { agreementOf, sendDealSheet, setDealStatus } from "./deal";
-import { expectedShare, type DealLang } from "./deal-pure";
+import { askedOnLabel, expectedShare, type DealLang } from "./deal-pure";
+import { lastTenantAt } from "./broker-gate";
 import { brokerSendMode } from "./broker-sends";
 import {
   connectionMode,
@@ -46,8 +47,9 @@ import {
   readTermsReply,
   termsReplyApplies,
   TERMS_ASK_TTL_MS,
-  TERMS_WAIT_MS,
+  TERMS_WAIT_AWAKE_HOURS,
   termsAskMessage,
+  termsHandOffDue,
   type ConnectionMode,
   type FollowUpMark,
   type IntroOutcome,
@@ -69,10 +71,25 @@ export async function introMode(): Promise<ConnectionMode> {
   return connectionMode(paid, Number.isFinite(cap) && process.env.MKAN_INTRO_CAP !== "" && process.env.MKAN_INTRO_CAP != null ? cap : undefined);
 }
 
-type IntroTask = { id: string; locale: string; shortlist: unknown; profile: { waPhone: string | null } | null };
-type Pending = { taskId: string; phone: string; lang: DealLang };
+/** `messages`, when the caller has them: a yes a day or more after the tenant last wrote names the day they asked. */
+type IntroTask = { id: string; locale: string; shortlist: unknown; messages?: unknown; profile: { waPhone: string | null } | null };
+type Pending = { taskId: string; phone: string; lang: DealLang; /** "27 Oct" when the yes came a day or more after they last wrote. */ askedOn?: string | null };
 /** The terms ask waiting on one broker (WaState `terms-ask:<number>`). */
-export type TermsAsk = { listingId: number; brokerId: string; tenants: Pending[]; at: string; replied?: boolean; queuedAt?: string; /** When #mkan was told this ask is held (sends off, or dropped 3 times). */ heldAt?: string };
+export type TermsAsk = {
+  listingId: number;
+  brokerId: string;
+  tenants: Pending[];
+  at: string;
+  replied?: boolean;
+  queuedAt?: string;
+  /** When #mkan was told this ask is held (sends off, or dropped 3 times). */
+  heldAt?: string;
+  /**
+   * When the tenants went the usual way (deal sheet, a person) because the broker had not agreed in
+   * TERMS_WAIT_AWAKE_HOURS. Kept until TERMS_ASK_TTL_MS so a late YES still records the terms.
+   */
+  handedAt?: string;
+};
 export const termsAskKey = (phone: string) => `terms-ask:${phoneKey(phone)}`;
 
 async function saidStop(phone: string): Promise<boolean> {
@@ -123,7 +140,7 @@ export async function startIntro(tasks: IntroTask[], listingId: number, answered
     if (await saidStop(phone)) continue;
     // One intro per chat and home: a second yes about it is not a second deal.
     const open = await db.deal.findFirst({ where: { taskId: t.id, listingId, introducedAt: { not: null }, status: { in: ["VIEWING_BOOKED", "VIEWED"] } }, select: { id: true } });
-    if (!open) tenants.push({ taskId: t.id, phone: plus(phone), lang: langOf(t.locale) });
+    if (!open) tenants.push({ taskId: t.id, phone: plus(phone), lang: langOf(t.locale), askedOn: askedOnLabel(lastTenantAt(t.messages), new Date(), langOf(t.locale)) });
     // The tenant picking it again hears the broker's number again, not silence.
     else if (t.id === opts.replyTo && agreementOf(broker)) again = introTenantMessage(langOf(t.locale), { title: await homeTitle(listingId, tasks), ref: `K${listingId}`, broker: firstName(broker), phone: broker.phone });
   }
@@ -136,7 +153,8 @@ export async function startIntro(tasks: IntroTask[], listingId: number, answered
   }
   const key = termsAskKey(broker.phone);
   const prev = await readState<TermsAsk | null>(key, null);
-  const same = prev && prev.listingId === listingId && Date.now() - Date.parse(prev.at) < TERMS_ASK_TTL_MS ? prev : null;
+  // An ask already handed to a person is not joined: these tenants get their own wait.
+  const same = prev && !prev.handedAt && prev.listingId === listingId && Date.now() - Date.parse(prev.at) < TERMS_ASK_TTL_MS ? prev : null;
   const merged: TermsAsk = {
     listingId,
     brokerId: broker.id,
@@ -152,13 +170,17 @@ export async function startIntro(tasks: IntroTask[], listingId: number, answered
   const queued = tenants.filter((t) => t.taskId !== opts.replyTo);
   if (queued.length) {
     await sendMessages(
-      queued.map((t) => ({ kind: "TENANT_ALERT" as const, to: t.phone, body: introPendingMessage(t.lang, title), label: ALERT_LABEL.intro })),
+      queued.map((t) => ({ kind: "TENANT_ALERT" as const, to: t.phone, body: introPendingMessage(t.lang, title, t.askedOn), label: ALERT_LABEL.intro })),
       `Intro pending → tenant (home #${listingId})`,
     );
   }
-  if (!same) await postSlackCard(`🤝 *Intro* K${listingId} (${title}): ${broker.name} said it's free — asking them to agree Mkan's terms (10% + free viewing) before the tenant's number goes.`).catch(() => {});
+  if (!same)
+    await postSlackCard(
+      `🤝 *Intro* K${listingId} (${title}): ${broker.name} said it's free — asking them to agree Mkan's terms (10% + free viewing) before the tenant's number goes. ` +
+        `No YES in ${TERMS_WAIT_AWAKE_HOURS} daytime hours → the tenant gets the deal sheet and a person books the viewing.`,
+    ).catch(() => {});
   const mine = tenants.find((t) => t.taskId === opts.replyTo);
-  return { started: true, reply: mine ? introPendingMessage(mine.lang, title) : null };
+  return { started: true, reply: mine ? introPendingMessage(mine.lang, title, mine.askedOn) : null };
 }
 
 async function homeTitle(listingId: number, tasks: { shortlist: unknown }[] = []): Promise<string> {
@@ -251,17 +273,39 @@ export async function answerTerms(
   const answer = readTermsReply(text);
   if (answer == null) return { answer, listingId: ask.listingId, reply: null, tenants: ask.tenants.length };
   await clearState(key);
+  // The tenants already went the usual way (the deal sheet, a person books the viewing): the answer
+  // is recorded and #mkan hears it; the tenant gets no second message.
+  if (ask.handedAt) {
+    const title = await homeTitle(ask.listingId);
+    if (answer === "yes") {
+      const b = await recordAgreement(ask.brokerId);
+      await postSlackCard(
+        `🤝 *Terms agreed late* K${ask.listingId} (${title}): ${b.name} agreed Mkan's terms (10% + free viewing) after the tenant was handed to a person — ` +
+          `the agreement is on record; book the viewing with them as planned.`,
+      ).catch(() => {});
+      return { answer, listingId: ask.listingId, reply: "Thank you, agreed. Mkan will be in touch about the viewing. Murakoze!", tenants: ask.tenants.length };
+    }
+    await postSlackCard(`✋ *Terms declined* K${ask.listingId} (${title}): the broker (${lastDigits(phone)}) said no to Mkan's terms after the hand-off.`).catch(() => {});
+    return { answer, listingId: ask.listingId, reply: "Understood, thank you. Mkan will be in touch about this tenant. Murakoze!", tenants: ask.tenants.length };
+  }
   if (answer === "no") {
     // The usual way, with a person in the middle: the deal sheet asks the tenant when they can come.
     for (const t of ask.tenants) {
-      const task = await db.agentTask.findUnique({ where: { id: t.taskId }, select: { id: true, locale: true, shortlist: true, profile: { select: { waPhone: true } } } });
+      const task = await db.agentTask.findUnique({ where: { id: t.taskId }, select: { id: true, locale: true, shortlist: true, messages: true, profile: { select: { waPhone: true } } } });
       if (task) await sendDealSheet(task, ask.listingId).catch(() => {});
     }
     return { answer, listingId: ask.listingId, reply: "Understood, thank you. Mkan will be in touch about this tenant. Murakoze!", tenants: ask.tenants.length };
   }
+  const b = await recordAgreement(ask.brokerId);
+  const made = await makeIntro(ask.listingId, { ...b, phone: plus(phone) }, ask.tenants);
+  return { answer, listingId: ask.listingId, reply: made.brokerText, tenants: ask.tenants.length };
+}
+
+/** The broker agreed Mkan's terms: the share and the free viewing on their record, and a partner from now on. */
+async function recordAgreement(brokerId: string) {
   const now = new Date();
   const b = await db.broker.update({
-    where: { id: ask.brokerId },
+    where: { id: brokerId },
     data: {
       sharePct: MKAN_TERMS.pct,
       shareFlatRwf: null,
@@ -272,8 +316,7 @@ export async function answerTerms(
     select: { id: true, name: true, contactName: true, phones: true, whatsapp: true, sharePct: true, shareFlatRwf: true, relationship: true, optOut: true },
   });
   await db.broker.updateMany({ where: { id: b.id, relationship: { notIn: ["PAUSED", "DO_NOT_CONTACT"] } }, data: { relationship: "PARTNER" } });
-  const made = await makeIntro(ask.listingId, { ...b, phone: plus(phone) }, ask.tenants);
-  return { answer, listingId: ask.listingId, reply: made.brokerText, tenants: ask.tenants.length };
+  return b;
 }
 
 /** Broker sends on? (broker-sends.ts: `gated` is on, for real WhatsApp tenants; anything else is off.) */
@@ -307,7 +350,7 @@ async function holdCard(
 /** Right after a reply to a broker could not go out: read the outbox again for their open terms ask, so a held one reaches #mkan now. */
 export async function reconcileTermsAsk(phone: string, now = new Date()): Promise<void> {
   const ask = await readState<TermsAsk | null>(termsAskKey(phone), null);
-  if (ask?.at) await sweepTermsAsk(phone, ask, now, true);
+  if (ask?.at && !ask.handedAt) await sweepTermsAsk(phone, ask, now, true);
 }
 
 /**
@@ -341,7 +384,7 @@ const fuBrokerLabel = (dealId: string) => `auto-intro-fu:${dealId}`;
 
 /**
  * Hourly (with viewingReminders): terms asks a form answer left unsent go out by the queue; one
- * unanswered for 24 h sends the tenants the usual way; intro follow-ups go when due, in the send
+ * without a YES for 2 daytime hours (TERMS_WAIT_AWAKE_HOURS) sends the tenants the usual way; intro follow-ups go when due, in the send
  * window; a broker follow-up the outbox dropped (stale, held) is queued again, three times at most.
  */
 export async function introSweep(now = new Date()): Promise<number> {
@@ -351,15 +394,22 @@ export async function introSweep(now = new Date()): Promise<number> {
   for (const row of asks) {
     const ask = row.value as TermsAsk | null;
     if (!ask?.at) continue;
-    const age = now.getTime() - Date.parse(ask.at);
     const phone = row.key.slice("terms-ask:".length);
-    if (age > TERMS_WAIT_MS) {
-      await clearState(row.key);
+    if (ask.handedAt) {
+      // Handed to a person: kept only so a late YES still records the terms (answerTerms); nothing more goes out.
+      if (now.getTime() - Date.parse(ask.at) > TERMS_ASK_TTL_MS) await clearState(row.key);
+      continue;
+    }
+    if (termsHandOffDue(new Date(ask.at), now)) {
+      await writeState(row.key, { ...ask, handedAt: now.toISOString() });
       for (const t of ask.tenants) {
-        const task = await db.agentTask.findUnique({ where: { id: t.taskId }, select: { id: true, locale: true, shortlist: true, profile: { select: { waPhone: true } } } });
+        const task = await db.agentTask.findUnique({ where: { id: t.taskId }, select: { id: true, locale: true, shortlist: true, messages: true, profile: { select: { waPhone: true } } } });
         if (task) await sendDealSheet(task, ask.listingId).catch(() => {});
       }
-      await postSlackCard(`⌛ *Intro* K${ask.listingId}: the broker (${lastDigits(phone)}) never answered Mkan's terms in 24 h — the tenant got the deal sheet; a person takes it from here.`).catch(() => {});
+      await postSlackCard(
+        `⌛ *Intro* K${ask.listingId}: the broker (${lastDigits(phone)}) hasn't agreed Mkan's terms in ${TERMS_WAIT_AWAKE_HOURS} daytime hours — ` +
+          `the tenant got the deal sheet; a person takes it from here. A YES from them later still records the terms.`,
+      ).catch(() => {});
       n += 1;
     } else if (await sweepTermsAsk(phone, ask, now, true)) n += 1;
   }

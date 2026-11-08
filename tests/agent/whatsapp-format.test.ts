@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@/components/internationalization/en.json";
 import ar from "@/components/internationalization/ar.json";
-import { aboutHomes, askAroundText, asksForHome, botText, checkText, firstMessageKind, formatWhatsApp, isBareYes, isFresh, isThanks, K_PAGE_MARK, TIKTOK_BIO_MARK, onlyGreetedSoFar, personAfterHello, readHomeRef, readPick, readRef, refSourceOf, saysYes, shownHomes, thanksText, waLang, wantsPerson, whichOneText, type WaDict } from "@/components/agent/whatsapp-format";
+import { aboutHomes, askAroundText, asksForHome, botText, checkText, firstMessageKind, formatWhatsApp, isBareYes, isFresh, isThanks, K_PAGE_MARK, TIKTOK_BIO_MARK, onlyGreetedSoFar, personAfterHello, pickInWords, readHomeRef, readPick, readRef, refSourceOf, saysYes, shownHomes, thanksText, waLang, wantsPerson, whichOneText, type WaDict } from "@/components/agent/whatsapp-format";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "@/components/agent/types";
 
 const dict = (d: typeof en): WaDict => d.agent as unknown as WaDict;
@@ -90,6 +90,62 @@ describe("readPick", () => {
     expect(readPick("3", list, dict(en))).toBeNull();
     expect(readPick("2 bedrooms", list, dict(en))).toBeNull();
     expect(readPick("1", null, dict(en))).toBeNull();
+  });
+});
+
+describe("a home named in words is the pick (2026-11-08)", () => {
+  // What the 11-07 test saw: three homes, one of them the 3-bedroom, 3-bathroom in Norvège.
+  const shown = [
+    home(21, { zone: "gasabo/kimironko/kibagabaga", district: "GASABO", bedrooms: 3, bathrooms: 2, cost: { headline: 400_000, period: "month", lines: [], total: 0, totalHigh: 0 } }),
+    home(22, { zone: "nyarugenge/kigali/norvege", district: "NYARUGENGE", bedrooms: 3, bathrooms: 3, cost: { headline: 450_000, period: "month", lines: [], total: 0, totalHigh: 0 } }),
+    home(23, { zone: "gasabo/remera", district: "GASABO", bedrooms: 2, bathrooms: 1, homeType: "apartment", cost: { headline: 300_000, period: "month", lines: [], total: 0, totalHigh: 0 } }),
+  ];
+  const list = view({ role: "agent", kind: "shortlist", count: 3, at }, shown);
+
+  it("reads the home by its place, rooms and a misspelt neighbourhood", () => {
+    expect(pickInWords("That 3 bedroom 3 bathroom in novege", shown)).toBe(22);
+    expect(readPick("That 3 bedroom 3 bathroom in novege", list, dict(en))).toEqual({ kind: "check", listingId: 22 });
+    expect(pickInWords("I like the one in Remera", shown)).toBe(23);
+    expect(pickInWords("the apartment for 300k", shown)).toBe(23);
+    expect(pickInWords("Kibagabaga 400k", shown)).toBe(21);
+  });
+
+  it("reads ordinals and numbers in English, Kinyarwanda, Arabic and French", () => {
+    expect(pickInWords("the second one", shown)).toBe(22);
+    expect(pickInWords("Iya kabiri", shown)).toBe(22);
+    expect(pickInWords("الثانية", shown)).toBe(22);
+    expect(pickInWords("le deuxième", shown)).toBe(22);
+    expect(pickInWords("the last one please", shown)).toBe(23);
+    expect(pickInWords("first", shown)).toBe(21);
+    expect(pickInWords("number 3", shown)).toBe(23);
+    expect(pickInWords("رقم ٣", shown)).toBe(23);
+    expect(pickInWords("that one", [shown[1]!])).toBe(22);
+  });
+
+  it("is not a pick when it fits two homes, names another place, turns a home down, or starts a new search", () => {
+    expect(pickInWords("that 3 bedroom", shown)).toBeNull();
+    expect(pickInWords("the one in Kicukiro", shown)).toBeNull();
+    expect(pickInWords("the last one is too expensive", shown)).toBeNull();
+    expect(pickInWords("not the first one", shown)).toBeNull();
+    expect(pickInWords("I need a 2 bedroom apartment in Remera", shown)).toBeNull();
+    expect(pickInWords("first floor please", shown)).toBeNull();
+    expect(pickInWords("40k mybe", shown)).toBeNull();
+    expect(pickInWords("3 bedroom 400k", shown)).toBeNull();
+    expect(pickInWords("that one", shown)).toBeNull();
+    expect(pickInWords("K5808", shown)).toBeNull();
+    // Only under a list: after a question, words are words.
+    expect(readPick("the second one", view({ role: "agent", kind: "clarify", fields: ["homeType"], at }), dict(en))).toBeNull();
+  });
+});
+
+describe("refSourceOf: TikTok in the tenant's own words", () => {
+  it("counts a chat that says it came from TikTok, without the code", () => {
+    expect(refSourceOf("Hi, I saw your video on TikTok", null)).toBe("tiktok");
+    expect(refSourceOf("Nabonye video yanyu kuri TikTok", null)).toBe("tiktok");
+    expect(refSourceOf("شفت الإعلان على تيك توك", null)).toBe("tiktok");
+    expect(refSourceOf("I saw the house in your post", null)).toBe("tiktok");
+    expect(refSourceOf("Hello, I need a 2 bedroom", null)).toBe("organic");
+    expect(refSourceOf("I saw your video", "cmh2abcdefghijklmnopqrst")).toBe("web");
   });
 });
 

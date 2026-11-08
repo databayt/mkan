@@ -295,20 +295,37 @@ export const viewingRep = (env: string | undefined = process.env.MKAN_VIEWING_RE
  * stays in the middle (Abdout, 2026-11-01): a yes never hands the tenant the
  * broker's number — the person from Mkan who will be at the viewing writes to
  * them. `canPick` — the broker offered viewing times on the form (asks before
- * 10-27), so the chat has a time to pick.
+ * 10-27), so the chat has a time to pick. `askedOn` — the answer comes a day or
+ * more after the tenant last wrote (deal-pure.ts askedOnLabel): it names the day
+ * they asked and asks whether they're still looking (2026-11-08).
  */
-export function brokerAnswerMessage(lang: string, title: string, available: boolean, link: string, canPick = false, rep = viewingRep()): string {
+export function brokerAnswerMessage(lang: string, title: string, available: boolean, link: string, canPick = false, rep = viewingRep(), askedOn: string | null = null): string {
   if (lang === "ar")
     return available
-      ? [`مكان: أكّد الوسيط أن «${title}» ما زال متاحاً.`, `سيراسلك ${rep} من مكان هنا قريباً لترتيب المعاينة معك ومع الوسيط، والمعاينة مجانية لك.`, ...(canPick ? ["أو اختر موعداً للمعاينة هنا:"] : []), link].join("\n")
-      : `مكان: «${title}» مؤجَّر للأسف. بقية المنازل لبحثك هنا:\n${link}`;
+      ? [
+          askedOn ? `مكان: سألت عن «${title}» يوم ${askedOn}، وأكّد الوسيط أنه ما زال متاحاً.` : `مكان: أكّد الوسيط أن «${title}» ما زال متاحاً.`,
+          `${askedOn ? "إن كنت ما زلت تبحث، " : ""}سيراسلك ${rep} من مكان هنا قريباً لترتيب المعاينة معك ومع الوسيط، والمعاينة مجانية لك.`,
+          ...(canPick ? ["أو اختر موعداً للمعاينة هنا:"] : []),
+          link,
+        ].join("\n")
+      : `مكان: ${askedOn ? `سألت عن «${title}» يوم ${askedOn}، وهو` : `«${title}»`} مؤجَّر للأسف. بقية المنازل لبحثك هنا:\n${link}`;
   if (lang === "rw")
     return available
-      ? [`Mkan: komisiyoneri yemeje ko "${title}" igihari.`, `${rep} wo muri Mkan arakwandikira hano vuba mupange gusura hamwe na komisiyoneri — ni ubuntu kuri wowe.`, ...(canPick ? ["Cyangwa uhitemo igihe cyo kuyisura hano:"] : []), link].join("\n")
-      : `Mkan: "${title}" yamaze gufatwa. Andi mazu ahuye n'ibyo ushaka ari hano:\n${link}`;
+      ? [
+          askedOn ? `Mkan: wabajije ibya "${title}" ku itariki ya ${askedOn}. Komisiyoneri yemeje ko igihari.` : `Mkan: komisiyoneri yemeje ko "${title}" igihari.`,
+          `${askedOn ? "Niba ugishaka inzu, " : ""}${rep} wo muri Mkan arakwandikira hano vuba mupange gusura hamwe na komisiyoneri — ni ubuntu kuri wowe.`,
+          ...(canPick ? ["Cyangwa uhitemo igihe cyo kuyisura hano:"] : []),
+          link,
+        ].join("\n")
+      : `Mkan: ${askedOn ? `wabajije ibya "${title}" ku itariki ya ${askedOn}. Yamaze` : `"${title}" yamaze`} gufatwa. Andi mazu ahuye n'ibyo ushaka ari hano:\n${link}`;
   return available
-    ? [`Mkan: good news, the broker says "${title}" is still available.`, `${rep} from Mkan will message you here shortly to set up the viewing with you and the broker. The viewing is free for you.`, ...(canPick ? ["Or pick a viewing time here:"] : []), link].join("\n")
-    : `Mkan: "${title}" is taken, sorry. Your other homes are here:\n${link}`;
+    ? [
+        askedOn ? `Mkan: you asked about "${title}" on ${askedOn}. Good news, the broker says it's still available.` : `Mkan: good news, the broker says "${title}" is still available.`,
+        `${askedOn ? "If you're still looking, " : ""}${rep} from Mkan will message you here shortly to set up the viewing with you and the broker. The viewing is free for you.`,
+        ...(canPick ? ["Or pick a viewing time here:"] : []),
+        link,
+      ].join("\n")
+    : `Mkan: ${askedOn ? `you asked about "${title}" on ${askedOn}. It's` : `"${title}" is`} taken, sorry. Your other homes are here:\n${link}`;
 }
 
 /** To a WhatsApp tenant: the broker has not answered in a day, and nobody else is left to ask about the home. */

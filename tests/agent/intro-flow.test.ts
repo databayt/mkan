@@ -72,6 +72,7 @@ vi.mock("@/components/agent/deal", () => ({
 }));
 
 import { answerTerms, introReplyFor, introSweep, startIntro, termsAskKey } from "@/components/agent/deal-intro";
+import { sendDealSheet } from "@/components/agent/deal";
 
 const BROKER = "250700000043";
 const task = (id: string, phone: string, locale = "en") => ({ id, locale, shortlist: [], profile: { waPhone: phone } });
@@ -86,8 +87,49 @@ beforeEach(() => {
   store.cards.length = 0;
   store.mode = "gated";
   store.brokers.splice(0, store.brokers.length, { id: "b1", name: "Test Homes", contactName: null, phones: [`+${BROKER}`], whatsapp: null, sharePct: null, shareFlatRwf: null, relationship: "NEW", optOut: false });
+  vi.mocked(sendDealSheet).mockClear();
   vi.useFakeTimers();
   vi.setSystemTime(noon);
+});
+
+describe("no YES in 2 daytime hours: the tenant goes the usual way (Abdout, 2026-11-08)", () => {
+  it("hands the tenant the deal sheet once, tells #mkan, and keeps the ask for a late YES", async () => {
+    await startIntro([task("t1", "+250700000011")], 6041, BROKER, { typed: false });
+    await introSweep(mins(119));
+    expect(sendDealSheet).not.toHaveBeenCalled();
+    await introSweep(mins(121));
+    expect(sendDealSheet).toHaveBeenCalledTimes(1);
+    expect(store.cards.some((c) => c.includes("2 daytime hours") && c.includes("K6041"))).toBe(true);
+    const ask = store.state.get(termsAskKey(BROKER)) as Row;
+    expect(ask.handedAt).toBeTruthy();
+    // Later ticks send nothing more for it.
+    const queued = store.out.length;
+    await introSweep(mins(180));
+    expect(sendDealSheet).toHaveBeenCalledTimes(1);
+    expect(store.out.length).toBe(queued);
+  });
+
+  it("a YES after the hand-off records the terms and tells #mkan — no deal, no number to the tenant", async () => {
+    await startIntro([task("t1", "+250700000011")], 6041, BROKER, { typed: false });
+    await introSweep(mins(121));
+    const alerts = store.out.filter((r) => r.kind === "TENANT_ALERT").length;
+    const res = await answerTerms(BROKER, "Yes", mins(200));
+    expect(res?.answer).toBe("yes");
+    expect(store.brokers[0]!.sharePct).toBe(0.1);
+    expect(store.brokers[0]!.agreedAt).toBeInstanceOf(Date);
+    expect(store.deals).toHaveLength(0);
+    expect(store.out.filter((r) => r.kind === "TENANT_ALERT")).toHaveLength(alerts);
+    expect(res?.reply).not.toContain("+250700000011");
+    expect(store.cards.some((c) => c.includes("Terms agreed late"))).toBe(true);
+    expect(store.state.has(termsAskKey(BROKER))).toBe(false);
+  });
+
+  it("the ask is gone once its 72 h are over", async () => {
+    await startIntro([task("t1", "+250700000011")], 6041, BROKER, { typed: false });
+    await introSweep(mins(121));
+    await introSweep(mins(73 * 60));
+    expect(store.state.has(termsAskKey(BROKER))).toBe(false);
+  });
 });
 
 describe("yes → terms → agreed → both numbers", () => {

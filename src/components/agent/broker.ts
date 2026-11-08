@@ -21,7 +21,8 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { listingPath } from "@/lib/listing-code";
 import { publicAppUrl, waLink } from "../../../scripts/crm/public-links";
-import { REASK_GAP_DAYS, tenantActive, tenantGate } from "./broker-gate";
+import { lastTenantAt, REASK_GAP_DAYS, tenantActive, tenantGate } from "./broker-gate";
+import { askedOnLabel } from "./deal-pure";
 import { ALERT_LABEL, inSendWindow, phoneKey, REST_DAYS, brokerRest, startOfKigaliDay } from "../../../scripts/wa/outbox-pure";
 import { answerStats, dueForNext, MAX_BROKERS_PER_HOME, nudgeDue, rankBrokers, SILENT_LOOKBACK_DAYS, type BrokerSignal } from "./broker-rank";
 import { availabilityMessage, brokerAnswerMessage, brokerNumber, needSummary, noReplyMessage, nudgeMessage, viewingRep, type BrokerHomeLine } from "./broker-message";
@@ -494,7 +495,9 @@ async function tellWhatsAppTenants(tasks: AnsweredTask[], listingId: number, ans
     if (!to) return [];
     const link = chatLink(t.id, t.locale);
     if (answer === "NO_REPLY") return tenantActive(t.messages, now) ? [{ kind: "TENANT_ALERT" as const, to, body: noReplyMessage(t.locale, titleIn(t, listingId), link), label: ALERT_LABEL.brokerAnswer }] : [];
-    return [{ kind: "TENANT_ALERT" as const, to, body: brokerAnswerMessage(t.locale, titleIn(t, listingId), answer === "AVAILABLE", link, canPick), label: ALERT_LABEL.brokerAnswer }];
+    // A day or more after they last wrote: name the day they asked, and ask whether they're still looking.
+    const askedOn = askedOnLabel(lastTenantAt(t.messages), now, t.locale === "ar" || t.locale === "rw" ? t.locale : "en");
+    return [{ kind: "TENANT_ALERT" as const, to, body: brokerAnswerMessage(t.locale, titleIn(t, listingId), answer === "AVAILABLE", link, canPick, undefined, askedOn), label: ALERT_LABEL.brokerAnswer }];
   });
   if (messages.length) await sendMessages(messages, `Broker answered home #${listingId}`);
   return false;

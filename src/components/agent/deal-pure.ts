@@ -33,6 +33,8 @@ export interface DealFacts {
   /** Who from Mkan comes to the viewing. */
   rep: string;
   link: string;
+  /** The day the tenant asked ("27 Oct"), when the broker's answer comes a day or more later (askedOnLabel). */
+  askedOn?: string | null;
 }
 
 /**
@@ -84,14 +86,14 @@ export function dealSheetMessage(f: DealFacts, lang: DealLang): string {
   if (lang === "ar") {
     const util = (s: string) => (s === "included" ? "ضمن الإيجار" : s === "separate" ? "على المستأجر" : "لم يذكرها الإعلان، سنسأل");
     return [
-      `خبر جيد: يقول الوسيط إن «${f.title}» (${f.ref}) ما زال متاحاً.`,
+      f.askedOn ? `سألت عن «${f.title}» (${f.ref}) يوم ${f.askedOn}. خبر جيد: يقول الوسيط إنه ما زال متاحاً.` : `خبر جيد: يقول الوسيط إن «${f.title}» (${f.ref}) ما زال متاحاً.`,
       rent != null ? `الإيجار: ${rwf(rent)} في الشهر.` : null,
       moveIn ? `للانتقال: نحو ${moveIn}${advance ? ` — ${months(advance.qty, lang)} مقدماً` : ""}${deposit && deposit.qty ? ` و${months(deposit.qty, lang)} تأميناً` : ""}${typical ? " (المعتاد في كيغالي، يُؤكَّد في المعاينة)" : ""}.` : null,
       pct ? `عمولة الوسيط: ${pct} من إيجار شهر${commission?.source === "typical" ? " (المعتاد، تُؤكَّد في المعاينة)" : ""}.` : c ? `لا عمولة وسيط.` : null,
       `المعاينة: مجانية لك، تدفعها مكان.`,
       `الماء: ${util(water)}. الكهرباء: ${util(power)}.`,
       `الخطوة التالية: نلتقي في المنزل، أنت والوسيط و${f.rep} من مكان. إن أعجبك نكتب العقد ونوقّعه في اليوم نفسه. أحضر هويتك.`,
-      `متى يناسبك أن تراه؟ أرسل اليوم والوقت، مثل «غداً 10 صباحاً».`,
+      `${f.askedOn ? "إن كنت ما زلت تبحث: " : ""}متى يناسبك أن تراه؟ أرسل اليوم والوقت، مثل «غداً 10 صباحاً».`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -99,21 +101,25 @@ export function dealSheetMessage(f: DealFacts, lang: DealLang): string {
   if (lang === "rw") {
     const util = (s: string) => (s === "included" ? "biri mu bukode" : s === "separate" ? "ubyishyura ukwawe" : "itangazo ntiribivuga, tuzabaza");
     return [
-      `Inkuru nziza: komisiyoneri avuga ko "${f.title}" (${f.ref}) igihari.`,
+      f.askedOn
+        ? `Wabajije ibya "${f.title}" (${f.ref}) ku itariki ya ${f.askedOn}. Inkuru nziza: komisiyoneri avuga ko igihari.`
+        : `Inkuru nziza: komisiyoneri avuga ko "${f.title}" (${f.ref}) igihari.`,
       rent != null ? `Ubukode: ${rwf(rent)} ku kwezi.` : null,
       moveIn ? `Kwimukira: hafi ${moveIn}${advance ? ` — ${months(advance.qty, lang)} mbere` : ""}${deposit && deposit.qty ? ` na ${months(deposit.qty, lang)} y'ingwate` : ""}${typical ? " (nk'uko bisanzwe i Kigali, bizemezwa mu gusura)" : ""}.` : null,
       pct ? `Komisiyo ya komisiyoneri: ${pct} by'ukwezi kumwe${commission?.source === "typical" ? " (bisanzwe, bizemezwa mu gusura)" : ""}.` : c ? `Nta komisiyo ya komisiyoneri.` : null,
       `Gusura: ni ubuntu kuri wowe, Mkan irabyishyura.`,
       `Amazi: ${util(water)}. Amashanyarazi: ${util(power)}.`,
       `Ibikurikira: duhurira ku nzu, wowe, komisiyoneri na ${f.rep} wo muri Mkan. Niba uyikunze, twandika amasezerano tukayasinya uwo munsi. Uzane indangamuntu.`,
-      `Ni ryari wayisura? Ohereza umunsi n'isaha, nka "ejo saa yine".`,
+      `${f.askedOn ? "Niba ugishaka inzu: ni" : "Ni"} ryari wayisura? Ohereza umunsi n'isaha, nka "ejo saa yine".`,
     ]
       .filter(Boolean)
       .join("\n");
   }
   const util = (s: string) => (s === "included" ? "included in the rent" : s === "separate" ? "paid by you" : "not in the ad, we'll ask");
   return [
-    `Good news: the broker says "${f.title}" (${f.ref}) is still available.`,
+    f.askedOn
+      ? `You asked about "${f.title}" (${f.ref}) on ${f.askedOn}. Good news: the broker says it's still available.`
+      : `Good news: the broker says "${f.title}" (${f.ref}) is still available.`,
     rent != null ? `Rent: ${rwf(rent)} a month.` : null,
     moveIn
       ? `To move in: about ${moveIn}${advance ? ` — ${months(advance.qty, lang)} up front` : ""}${deposit && deposit.qty ? ` + ${months(deposit.qty, lang)} deposit` : ""}${typical ? " (what's usual in Kigali, confirmed at the viewing)" : ""}.`
@@ -122,7 +128,7 @@ export function dealSheetMessage(f: DealFacts, lang: DealLang): string {
     `Viewing: free for you. Mkan covers it.`,
     `Water: ${util(water)}. Electricity: ${util(power)}.`,
     `Next: we meet at the house, you, the broker and ${f.rep} from Mkan. If you like it, we write and sign the lease the same day. Bring your ID.`,
-    `When can you come to see it? Reply with a day and time, like "tomorrow 10am".`,
+    `${f.askedOn ? "If you're still looking: when" : "When"} can you come to see it? Reply with a day and time, like "tomorrow 10am".`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -136,6 +142,24 @@ const kigali = (d: Date) => {
 };
 /** The UTC instant of a Kigali wall-clock time. */
 const atKigali = (y: number, m: number, d: number, h: number, min: number) => new Date(Date.UTC(y, m, d, h, min) - KIGALI_MS);
+
+/**
+ * A broker's answer that reaches a tenant who last wrote longer ago than this names the day they
+ * asked (2026-11-08): a yes on 11-06 went to a 10-27 chat as a fresh "Good news".
+ */
+export const LATE_ANSWER_MS = 24 * 3_600_000;
+const MONTH_NAMES: Record<DealLang, string[]> = {
+  en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+  ar: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"],
+  rw: ["Mutarama", "Gashyantare", "Werurwe", "Mata", "Gicurasi", "Kamena", "Nyakanga", "Kanama", "Nzeri", "Ukwakira", "Ugushyingo", "Ukuboza"],
+};
+
+/** "27 Oct" (the Kigali day) when the tenant last wrote more than LATE_ANSWER_MS ago; null when the answer is not late. */
+export function askedOnLabel(lastTenantAt: Date | null | undefined, now: Date, lang: DealLang): string | null {
+  if (!lastTenantAt || Number.isNaN(lastTenantAt.getTime()) || now.getTime() - lastTenantAt.getTime() <= LATE_ANSWER_MS) return null;
+  const k = kigali(lastTenantAt);
+  return `${k.d} ${MONTH_NAMES[lang][k.m]}`;
+}
 
 const WEEKDAYS: [RegExp, number][] = [
   [/\b(?:sun(?:day)?|ku cyumweru|الأحد|الاحد)\b/i, 0],

@@ -23,10 +23,12 @@ import { db } from "@/lib/db";
 import { waLink } from "../../../scripts/crm/public-links";
 import { viewingRep } from "./broker-message";
 import { longStayCost, type CostEstimate, type ListingTerms } from "./cost";
+import { lastTenantAt } from "./broker-gate";
 import {
   afterViewingMessage,
   afterViewingNotText,
   afterViewingWantText,
+  askedOnLabel,
   confirmedTermsLine,
   dealCommand,
   dealSheetMessage,
@@ -97,7 +99,8 @@ async function trace(taskId: string, kind: "viewing_proposed" | "viewing_confirm
   }
 }
 
-type DealTask = { id: string; locale: string; shortlist: unknown; profile: { waPhone: string | null } | null };
+/** `messages`, when the caller has them: an answer a day or more after the tenant last wrote names the day they asked. */
+type DealTask = { id: string; locale: string; shortlist: unknown; messages?: unknown; profile: { waPhone: string | null } | null };
 
 /**
  * The deal sheet for a home a broker said is free — what it costs, what Mkan covers, "when can you
@@ -112,7 +115,14 @@ export async function prepareDealSheet(task: DealTask, listingId: number): Promi
   const item = ((task.shortlist as ShortlistItem[] | null) ?? []).find((s) => s.id === listingId);
   const lang = langOf(task.locale);
   const body = dealSheetMessage(
-    { title: scrubTitle(item?.title) || `#${listingId}`, ref: `K${listingId}`, cost: item?.cost ?? null, rep: viewingRep(), link: chatLink(task.id, lang) },
+    {
+      title: scrubTitle(item?.title) || `#${listingId}`,
+      ref: `K${listingId}`,
+      cost: item?.cost ?? null,
+      rep: viewingRep(),
+      link: chatLink(task.id, lang),
+      askedOn: askedOnLabel(lastTenantAt(task.messages), new Date(), lang),
+    },
     lang,
   );
   const value = { taskId: task.id, listingId, at: new Date().toISOString() } satisfies ViewingAsk;

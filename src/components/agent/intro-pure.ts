@@ -8,6 +8,7 @@
  * at 7 days ("did you take it?" + 1–5 for Mkan), the broker at 7 days ("did they sign?" + 1–5 for the
  * tenant). Pure, so the tests read exactly what goes out and how each answer is read.
  */
+import { awakeMs } from "./broker-rank";
 import type { DealLang } from "./deal-pure";
 
 /** Intros last until this many deals are paid. */
@@ -22,10 +23,17 @@ export function connectionMode(paidDeals: number, cap = INTRO_CAP): ConnectionMo
   return paidDeals < cap ? "intro" : "relay";
 }
 
-/** A broker's answer to the terms ask is still read this long after it went out. */
+/** A broker's answer to the terms ask is still read this long after it went out — after the hand-off too. */
 export const TERMS_ASK_TTL_MS = 72 * 3_600_000;
-/** With no answer to the terms in this long, the tenant goes the usual way (deal sheet, a person). */
-export const TERMS_WAIT_MS = 24 * 3_600_000;
+/**
+ * Daytime hours (08:00–20:00 Kigali, broker-rank.ts awakeMs) a broker gets to agree the terms
+ * before the tenant goes the usual way: the deal sheet, a person books the viewing. Abdout,
+ * 2026-11-08: 24 h → 2 daytime hours — no broker had agreed yet (0 of 15), and a tenant told
+ * "the broker will connect with you shortly" should not wait a day. A yes at 19:30 hands off at 09:30.
+ */
+export const TERMS_WAIT_AWAKE_HOURS = 2;
+/** Has the broker had their daytime hours to agree the terms asked at `askAt`? */
+export const termsHandOffDue = (askAt: Date, now: Date): boolean => awakeMs(askAt, now) >= TERMS_WAIT_AWAKE_HOURS * 3_600_000;
 /** A follow-up's answer is read for this long. */
 export const FOLLOW_UP_TTL_MS = 72 * 3_600_000;
 
@@ -55,8 +63,16 @@ export function termsAskMessage(v: { ref: string; title: string; tenants: number
   );
 }
 
-/** To the tenant while the broker agrees the terms. */
-export function introPendingMessage(lang: DealLang, title: string): string {
+/**
+ * To the tenant while the broker agrees the terms. `askedOn` (deal-pure.ts askedOnLabel): the yes
+ * came a day or more after they last wrote — name the day, and ask whether they're still looking.
+ */
+export function introPendingMessage(lang: DealLang, title: string, askedOn: string | null = null): string {
+  if (askedOn) {
+    if (lang === "ar") return `سألت عن ${title} يوم ${askedOn}: خبر جيد، ما زال متاحاً! إن كنت ما زلت تبحث، نطلب الآن من الوسيط التواصل معك، وسنرسل لك رقمه هنا قريبًا.`;
+    if (lang === "rw") return `Wabajije ibya ${title} ku itariki ya ${askedOn}: inkuru nziza, iracyahari! Niba ugishaka inzu, turimo gusaba umukomisiyoneri kukuvugisha, turaguha nimero ye hano vuba.`;
+    return `You asked about ${title} on ${askedOn}: good news, it's still free! If you're still looking, we're asking the broker to connect with you now — you'll get their number here shortly.`;
+  }
   if (lang === "ar") return `خبر جيد: ${title} متاح! نطلب الآن من الوسيط التواصل معك، وسنرسل لك رقمه هنا قريبًا.`;
   if (lang === "rw") return `Inkuru nziza: ${title} iracyahari! Turimo gusaba umukomisiyoneri kukuvugisha, turaguha nimero ye hano vuba.`;
   return `Good news: ${title} is still free! We're asking the broker to connect with you now — you'll get their number here shortly.`;
