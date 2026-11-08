@@ -7074,6 +7074,8 @@
     "openInV0": "فتح في v0",
     "openInChatGPT": "فتح في ChatGPT",
     "openInClaude": "فتح في Claude",
-    "notTranslated": "هذه الصفحة لم تُترجم بعد — تُعرض النسخة الإنجليزية."
+    "notTranslated": "هذه الصفحة لم تُترجم بعد — تُعرض النسخة الإنجليزية.",
+    "externalDocs": "التوثيق",
+    "apiReference": "مرجع الواجهة البرمجية"
   }
 }

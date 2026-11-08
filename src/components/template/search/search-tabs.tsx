@@ -71,7 +71,6 @@ function TabButton({
   // scroll collapse/expand so this fires only on real selection changes).
   useEffect(() => {
     if (isActive) playTwirl();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
   return (

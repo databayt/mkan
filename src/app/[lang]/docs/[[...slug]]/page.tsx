@@ -173,14 +173,14 @@ export default async function DocsPage(props: {
                 {links?.doc && (
                   <Badge asChild variant="secondary" className="rounded-full">
                     <a href={links.doc} target="_blank" rel="noreferrer">
-                      Docs <ArrowUpRight className="ms-1 h-3 w-3" />
+                      {dictionary.docs.externalDocs} <ArrowUpRight className="ms-1 h-3 w-3" />
                     </a>
                   </Badge>
                 )}
                 {links?.api && (
                   <Badge asChild variant="secondary" className="rounded-full">
                     <a href={links.api} target="_blank" rel="noreferrer">
-                      API Reference <ArrowUpRight className="ms-1 h-3 w-3" />
+                      {dictionary.docs.apiReference} <ArrowUpRight className="ms-1 h-3 w-3" />
                     </a>
                   </Badge>
                 )}

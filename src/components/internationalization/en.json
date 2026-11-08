@@ -7074,6 +7074,8 @@
     "openInV0": "Open in v0",
     "openInChatGPT": "Open in ChatGPT",
     "openInClaude": "Open in Claude",
-    "notTranslated": "This page is not translated yet — showing the English version."
+    "notTranslated": "This page is not translated yet — showing the English version.",
+    "externalDocs": "Docs",
+    "apiReference": "API Reference"
   }
 }

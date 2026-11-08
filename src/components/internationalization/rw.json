@@ -7074,6 +7074,8 @@
     "openInV0": "Open in v0",
     "openInChatGPT": "Open in ChatGPT",
     "openInClaude": "Open in Claude",
-    "notTranslated": "Iyi paji ntirahindurwa mu Kinyarwanda — urabona verisiyo y'Icyongereza."
+    "notTranslated": "Iyi paji ntirahindurwa mu Kinyarwanda — urabona verisiyo y'Icyongereza.",
+    "externalDocs": "Inyandiko",
+    "apiReference": "Igitabo cya API"
   }
 }

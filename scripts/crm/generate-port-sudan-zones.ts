@@ -9,7 +9,7 @@
  * - Ex-urban tourism corridors (عروس، الكيلو)
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const RUN_DATE = '2026-08-14';

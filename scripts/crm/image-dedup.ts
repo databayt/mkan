@@ -9,7 +9,7 @@
  *   npx tsx scripts/crm/image-dedup.ts
  *   npx tsx scripts/crm/image-dedup.ts --apply
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export interface DuplicateCluster {

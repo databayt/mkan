@@ -25,7 +25,6 @@ export function useEditorField<T>(
 
   React.useEffect(() => {
     setValue(JSON.parse(serialized) as T);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serialized]);
 
   const dirty = JSON.stringify(value) !== serialized;

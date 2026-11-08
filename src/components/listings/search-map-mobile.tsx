@@ -115,7 +115,6 @@ export default function SearchMapMobile({
       const el = carouselRef.current?.querySelector<HTMLElement>(`[data-card-id="${id}"]`);
       el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Initialize the map once.

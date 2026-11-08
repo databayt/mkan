@@ -12,7 +12,7 @@
  *   npx tsx scripts/crm/port-sudan-sync-crm.ts --apply         # Upsert to Twenty CRM API
  */
 import { config } from 'dotenv';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 config({ override: true });

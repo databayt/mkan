@@ -28,7 +28,6 @@ export function useGuideField<T>(key: string, fallback: T) {
 
   React.useEffect(() => {
     setValue(JSON.parse(serialized) as T);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serialized]);
 
   const dirty = JSON.stringify(value) !== serialized;
@@ -103,7 +102,6 @@ export function GuideFieldsSection({
 
   React.useEffect(() => {
     setValue(JSON.parse(serialized));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serialized]);
 
   const dirty = JSON.stringify(value) !== serialized;

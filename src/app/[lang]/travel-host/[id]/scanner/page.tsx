@@ -191,7 +191,6 @@ export default function ScannerPage() {
           <CardContent className="space-y-4">
             {/* Camera viewport — only rendered while scanning */}
             <div className="relative overflow-hidden rounded-lg bg-muted aspect-video">
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption -- live camera feed */}
               <video ref={videoRef} className="h-full w-full object-cover" playsInline muted />
               {!cameraActive && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-muted-foreground">
