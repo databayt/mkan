@@ -6,6 +6,7 @@ import {
   brokerTier,
   dueForNext,
   isSilent,
+  nudgeDue,
   rankBrokers,
   smoothedRate,
   type BrokerSignal,
@@ -94,6 +95,25 @@ describe("the broker's own answer rate", () => {
   });
 });
 
+describe("who is asked first: answered before", () => {
+  it("puts a broker who answered before ahead of a better-scored one who never has", () => {
+    const list = [
+      { id: "new-active", s: sig({ relationship: "PARTNER", lastReplyAt: daysAgo(1), lastSeenAt: daysAgo(1) }) },
+      { id: "answered-once", s: sig({ asked: 2, answered: 1, askedLong: 3, answeredLong: 1 }) },
+    ];
+    expect(rankBrokers(list, (x) => x.s, now).map((x) => x.id)).toEqual(["answered-once", "new-active"]);
+  });
+
+  it("an older answer (outside 30 days) still counts, and a held or silent broker stays behind", () => {
+    const list = [
+      { id: "held-answered", s: sig({ asked: 1, answered: 1, askedLong: 1, answeredLong: 1, held: true }) },
+      { id: "long-ago", s: sig({ askedLong: 4, answeredLong: 1 }) },
+      { id: "never", s: sig({ relationship: "ACTIVE" }) },
+    ];
+    expect(rankBrokers(list, (x) => x.s, now).map((x) => x.id)).toEqual(["long-ago", "never", "held-answered"]);
+  });
+});
+
 describe("when the next broker is asked", () => {
   const kigali = (iso: string) => new Date(`${iso}+02:00`);
 
@@ -111,5 +131,34 @@ describe("when the next broker is asked", () => {
     expect(dueForNext(kigali("2026-11-05T09:00:00"), kigali("2026-11-05T12:00:00"))).toBe(true);
     expect(dueForNext(kigali("2026-11-05T18:30:00"), kigali("2026-11-05T23:00:00"))).toBe(false);
     expect(dueForNext(kigali("2026-11-05T18:30:00"), kigali("2026-11-06T09:30:00"))).toBe(true);
+  });
+});
+
+describe("the one nudge", () => {
+  const kigali = (iso: string) => new Date(`${iso}+02:00`);
+
+  it("is due after two daytime hours, not before", () => {
+    expect(nudgeDue(kigali("2026-11-05T09:00:00"), kigali("2026-11-05T10:59:00"))).toBe(false);
+    expect(nudgeDue(kigali("2026-11-05T09:00:00"), kigali("2026-11-05T11:00:00"))).toBe(true);
+  });
+
+  it("waits for the morning after a night ask, and counts only daytime across the evening", () => {
+    expect(nudgeDue(kigali("2026-11-05T21:00:00"), kigali("2026-11-06T07:59:00"))).toBe(false);
+    expect(nudgeDue(kigali("2026-11-05T21:00:00"), kigali("2026-11-06T09:59:00"))).toBe(false);
+    expect(nudgeDue(kigali("2026-11-05T21:00:00"), kigali("2026-11-06T10:00:00"))).toBe(true);
+    // 19:00 ask: one evening hour + one morning hour.
+    expect(nudgeDue(kigali("2026-11-05T19:00:00"), kigali("2026-11-06T08:59:00"))).toBe(false);
+    expect(nudgeDue(kigali("2026-11-05T19:00:00"), kigali("2026-11-06T09:00:00"))).toBe(true);
+  });
+
+  it("never repeats once recorded, and never fires for an ask that has not gone out", () => {
+    const sent = kigali("2026-11-05T09:00:00");
+    const later = kigali("2026-11-05T15:00:00");
+    expect(nudgeDue(sent, later, "2026-11-05T11:00:00.000Z")).toBe(false);
+    expect(nudgeDue(sent, later, new Date())).toBe(false);
+    expect(nudgeDue(null, later)).toBe(false);
+    // Comes before the hand-on at three hours.
+    expect(nudgeDue(sent, kigali("2026-11-05T11:30:00"))).toBe(true);
+    expect(dueForNext(sent, kigali("2026-11-05T11:30:00"))).toBe(false);
   });
 });

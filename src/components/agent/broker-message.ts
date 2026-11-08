@@ -120,6 +120,11 @@ export interface BrokerVoice {
   lang?: string | null;
   /** The tenant's need, as `needSummary().they`. */
   need?: string | null;
+  /**
+   * Kinyarwanda first with English under it (2026-11-08): Kigali brokers answer the line they can read at a
+   * glance. Default true for EN and RW brokers; a French broker keeps French. `false` writes one language.
+   */
+  bilingual?: boolean;
 }
 
 /** A first name fit to greet with: letters only, no emoji, no handle, not an agency's whole name. */
@@ -139,14 +144,24 @@ const langOf = (l: string | null | undefined): Lang => (l === "FR" || l === "RW"
  * names the tenant's need.
  */
 export function availabilityMessage(homes: BrokerHomeLine[], seed: string, voice: BrokerVoice = { introduce: true }): string {
+  const lang = langOf(voice.lang);
+  if (lang === "FR" || voice.bilingual === false) return askIn(lang, homes, seed, voice);
+  // Kinyarwanda carries the home and the question; the English under it points back at the same link.
+  const many = new Set(homes.map((h) => h.link)).size > 1;
+  const rw = askIn("RW", homes, seed, { ...voice, need: null });
+  const en = askIn("EN", homes, seed, voice, many ? "(the links above)" : "(the link above)");
+  return `${rw}\n\n${en}`;
+}
+
+/** The ask in one language. `listText` replaces the home list (the English half of a bilingual ask). */
+function askIn(lang: Lang, homes: BrokerHomeLine[], seed: string, voice: BrokerVoice, listText?: string): string {
   const links = [...new Set(homes.map((h) => h.link))];
   const many = links.length > 1;
   // One home: its ref beside the link. Several: links only.
   const code = !many ? homes.find((h) => h.code?.trim())?.code?.trim() : null;
-  const list = many ? links.join("\n") : `${links[0] ?? ""}${code ? ` (ref ${code})` : ""}`;
+  const list = listText ?? (many ? links.join("\n") : `${links[0] ?? ""}${code ? ` (ref ${code})` : ""}`);
   const name = greetName(voice.name);
   const need = voice.need?.trim() ? `\n${voice.need.trim()}` : "";
-  const lang = langOf(voice.lang);
   // One question, and for one home the answer is a digit.
   const menu = many ? "" : ` ${REPLY_MENU[lang]}`;
   if (lang === "FR") {
@@ -172,6 +187,25 @@ export function availabilityMessage(homes: BrokerHomeLine[], seed: string, voice
     `Hello${name ? ` ${name}` : ""}, it's Mkan again. We have a tenant interested in ${many ? "these homes" : "this home"}:\n${list}${need}\n${q}`,
     `${hi}, Mkan again. One of our tenants is asking about ${many ? "these" : "this one"}:\n${list}${need}\n${q}`,
   ]);
+}
+
+/**
+ * The one nudge, for a broker who has not answered after NUDGE_AWAKE_HOURS of daytime (broker-rank.ts
+ * nudgeDue): short, Kinyarwanda first with English under it, the same one-digit answer. It names the
+ * homes by link only — the first message already said who we are and why.
+ */
+export function nudgeMessage(links: string[], lang?: string | null, name?: string | null): string {
+  const uniq = [...new Set(links)];
+  const many = uniq.length > 1;
+  const list = uniq.join("\n");
+  const who = greetName(name);
+  const l = langOf(lang);
+  if (l === "FR")
+    return `Bonjour${who ? ` ${who}` : ""}, petit rappel de Mkan : ${many ? "ces maisons sont-elles toujours disponibles" : "cette maison est-elle toujours disponible"} ?\n${list}${many ? "" : `\n${REPLY_MENU.FR}`}`;
+  const menu = (m: string) => (many ? "" : `\n${m}`);
+  const rw = `Muraho${who ? ` ${who}` : ""}, ni Mkan nanone: ${many ? "ziracyahari" : "iracyahari"}?\n${list}${menu(REPLY_MENU.RW)}`;
+  const en = `Hi${who ? ` ${who}` : ""}, a quick reminder from Mkan: ${many ? "are these still available" : "is this still available"}?${menu(REPLY_MENU.EN)}`;
+  return `${rw}\n\n${en}`;
 }
 
 /** The tenant picked one of the times the broker offered on the form; the broker confirms there and then sees their contact. */

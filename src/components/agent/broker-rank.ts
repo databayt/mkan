@@ -36,6 +36,8 @@ export const SILENT_LOOKBACK_DAYS = 90;
 export const SILENT_AFTER_ASKS = 3;
 /** Daytime hours a broker gets to answer before the next one who posted the home is asked. */
 export const FALLBACK_AWAKE_HOURS = 3;
+/** Daytime hours a broker gets to answer an ask before the one nudge. */
+export const NUDGE_AWAKE_HOURS = 2;
 /** Brokers asked about one home for one tenant, at most. */
 export const MAX_BROKERS_PER_HOME = 3;
 
@@ -69,6 +71,9 @@ export function isSilent(s: BrokerSignal): boolean {
   return s.askedLong >= SILENT_AFTER_ASKS && s.answeredLong === 0 && !s.lastReplyAt;
 }
 
+/** Has this broker ever answered one of our availability asks (SILENT_LOOKBACK_DAYS)? They are asked before those who have not. */
+export const answeredBefore = (s: BrokerSignal): boolean => s.answeredLong > 0 || s.answered > 0;
+
 /** How likely this broker is to answer now — higher first. */
 export function brokerScore(s: BrokerSignal, now: Date): number {
   const days = (d: Date | null | undefined) => (d ? (now.getTime() - d.getTime()) / DAY_MS : null);
@@ -93,9 +98,9 @@ export function rankBrokers<T>(items: readonly T[], signal: (item: T) => BrokerS
   return items
     .map((item, i) => {
       const s = signal(item);
-      return { item, i, tier: brokerTier(s), score: brokerScore(s, now) };
+      return { item, i, tier: brokerTier(s), answered: answeredBefore(s), score: brokerScore(s, now) };
     })
-    .sort((a, b) => a.tier - b.tier || b.score - a.score || a.i - b.i)
+    .sort((a, b) => a.tier - b.tier || Number(b.answered) - Number(a.answered) || b.score - a.score || a.i - b.i)
     .map((x) => x.item);
 }
 
@@ -115,6 +120,13 @@ export function awakeMs(from: Date, to: Date): number {
 
 /** Has the broker had their daytime hours to answer an ask that went out at `sentAt`? */
 export const dueForNext = (sentAt: Date, now: Date, hours = FALLBACK_AWAKE_HOURS) => awakeMs(sentAt, now) >= hours * 3_600_000;
+
+/**
+ * Is the one nudge due? Once, and only after NUDGE_AWAKE_HOURS of the send window (08:00–20:00 Kigali)
+ * since the ask went out — so an ask at 21:00 is nudged at 10:00 next morning, never at night. A request
+ * that was nudged (`nudgedAt`) is never nudged again.
+ */
+export const nudgeDue = (sentAt: Date | null | undefined, now: Date, nudgedAt?: Date | string | null) => !!sentAt && !nudgedAt && dueForNext(sentAt, now, NUDGE_AWAKE_HOURS);
 
 /** One availability ask, as the stats read it. */
 export interface AskRow {

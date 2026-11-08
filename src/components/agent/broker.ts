@@ -23,8 +23,8 @@ import { listingPath } from "@/lib/listing-code";
 import { publicAppUrl, waLink } from "../../../scripts/crm/public-links";
 import { REASK_GAP_DAYS, tenantActive, tenantGate } from "./broker-gate";
 import { ALERT_LABEL, inSendWindow, phoneKey, REST_DAYS, brokerRest, startOfKigaliDay } from "../../../scripts/wa/outbox-pure";
-import { answerStats, dueForNext, MAX_BROKERS_PER_HOME, rankBrokers, SILENT_LOOKBACK_DAYS, type BrokerSignal } from "./broker-rank";
-import { availabilityMessage, brokerAnswerMessage, brokerNumber, needSummary, noReplyMessage, viewingRep, type BrokerHomeLine } from "./broker-message";
+import { answerStats, dueForNext, MAX_BROKERS_PER_HOME, nudgeDue, rankBrokers, SILENT_LOOKBACK_DAYS, type BrokerSignal } from "./broker-rank";
+import { availabilityMessage, brokerAnswerMessage, brokerNumber, needSummary, noReplyMessage, nudgeMessage, viewingRep, type BrokerHomeLine } from "./broker-message";
 import { brokerSendMode, testPhones } from "./broker-sends";
 import { CONFIRMATION_TTL_DAYS } from "./rank";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements, type Requirements } from "./requirements";
@@ -626,6 +626,52 @@ export async function handOnUnanswered(now = new Date()): Promise<number> {
     if (live.length && (await askNext(listingId, rows[0]!.listing.title, live, now, "slow"))) handed += 1;
   }
   return handed;
+}
+
+/**
+ * Cron, hourly: the one nudge. A broker whose ask went out and is still unanswered after NUDGE_AWAKE_HOURS
+ * of daytime (08:00–20:00 Kigali; a night ask is nudged next morning) gets one short reminder for all their
+ * open homes, Kinyarwanda first. It is recorded on each BrokerRequest (`need.nudgedAt`) before it is queued,
+ * so it never repeats. It follows every gate an ask does: broker sends `gated`, a real tenant still writing
+ * (liveWaiting), the send window, and the outbox's own opt-out and caps (label `auto-nudge` is a reply to our
+ * own ask, so it is not held for "asked today"). Returns the brokers nudged.
+ */
+export async function nudgeUnanswered(now = new Date()): Promise<number> {
+  if (!inSendWindow(now) || (await brokerSendMode()) !== "gated") return 0;
+  const open = await db.brokerRequest.findMany({
+    where: { status: "PENDING", expiresAt: { gt: now }, sentAt: { not: null }, channel: { not: "joined" } },
+    select: {
+      id: true,
+      listingId: true,
+      brokerUserId: true,
+      sentAt: true,
+      ...WAITING_SELECT,
+      listing: { select: HOME_FOR_LINK },
+      broker: { select: { phoneNumber: true, username: true } },
+    },
+  });
+  const due = open.filter((r) => nudgeDue(r.sentAt, now, (r.need as { nudgedAt?: string } | null)?.nudgedAt));
+  const live = new Set((await liveWaiting(due, now)).map((r) => r.id));
+  const byBroker = new Map<string, typeof due>();
+  for (const r of due) if (live.has(r.id) && r.broker.phoneNumber) byBroker.set(r.brokerUserId, [...(byBroker.get(r.brokerUserId) ?? []), r]);
+  let nudged = 0;
+  for (const [userId, rows] of byBroker) {
+    const ads = await db.listingBroker.findMany({
+      where: { userId, listingId: { in: rows.map((r) => r.listingId) } },
+      select: { listingId: true, sourceUrl: true, broker: { select: { contactName: true, preferredLanguage: true, optOut: true } } },
+    });
+    const person = ads.find((a) => a.broker)?.broker ?? null;
+    if (person?.optOut) continue;
+    const links = rows.map((r) => homeLink(ads.find((a) => a.listingId === r.listingId)?.sourceUrl, r.listing)).filter((l): l is string => !!l);
+    if (links.length === 0) continue;
+    // Recorded first: a failed send is not retried, the nudge is never sent twice.
+    const stamp = now.toISOString();
+    await Promise.all(rows.map((r) => db.brokerRequest.update({ where: { id: r.id }, data: { need: json({ ...((r.need as object | null) ?? {}), nudgedAt: stamp }) } })));
+    const phone = rows[0]!.broker.phoneNumber!;
+    await sendMessages([{ kind: "BROKER_ASK", to: phone, body: nudgeMessage(links, person?.preferredLanguage, person?.contactName), label: `auto-nudge:${userId}` }], "Rental agent nudge").catch((err) => console.warn(`[broker] nudge: ${(err as Error).message}`));
+    nudged += 1;
+  }
+  return nudged;
 }
 
 /**

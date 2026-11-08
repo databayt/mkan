@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cronUnauthorized } from "@/lib/cron-auth";
-import { expireRequests, failStuckTasks, handOnUnanswered } from "@/components/agent/broker";
+import { expireRequests, failStuckTasks, handOnUnanswered, nudgeUnanswered } from "@/components/agent/broker";
 import { viewingReminders } from "@/components/agent/deal";
 import { introSweep } from "@/components/agent/deal-intro";
 
@@ -21,9 +21,14 @@ import { introSweep } from "@/components/agent/deal-intro";
 export async function GET(request: NextRequest) {
   const denied = cronUnauthorized(request);
   if (denied) return denied;
-  const [{ expired, handedOn }, unstuck, reminded, intros] = await Promise.all([
+  const [{ expired, nudged, handedOn }, unstuck, reminded, intros] = await Promise.all([
     expireRequests().then(async (expired) => ({
       expired,
+      // The one nudge goes at 2 daytime hours, before the hand-on at 3.
+      nudged: await nudgeUnanswered().catch((err) => {
+        console.warn(`[cron] nudge unanswered: ${(err as Error).message}`);
+        return 0;
+      }),
       handedOn: await handOnUnanswered().catch((err) => {
         console.warn(`[cron] hand on unanswered: ${(err as Error).message}`);
         return 0;
@@ -41,5 +46,5 @@ export async function GET(request: NextRequest) {
       return 0;
     }),
   ]);
-  return NextResponse.json({ ok: true, expired, handedOn, unstuck, reminded, intros });
+  return NextResponse.json({ ok: true, expired, nudged, handedOn, unstuck, reminded, intros });
 }
