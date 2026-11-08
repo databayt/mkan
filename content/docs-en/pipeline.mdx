@@ -1,0 +1,101 @@
+---
+title: How mkan works
+description: Four building blocks turn a broker's TikTok ad into a home a tenant finds by chatting — scrape, enhance, post, chat.
+summary: "Scrape, then enhance, then post, then chat: from a broker's ad to a tenant's viewing."
+keywords: [scrape, enhance, post, chat, tiktok, crm]
+---
+
+<CardGrid cols={4}>
+  <DocCard title="1. Scrape" description="Read brokers' ads on TikTok, Facebook and property sites, and add them to the CRM." />
+  <DocCard title="2. Enhance" description="Turn the ad into a usable home: zone, terms, price, photos, duplicates removed." />
+  <DocCard title="3. Post" description="Put the home on mkan.sd and on the @mkan.rw TikTok page." />
+  <DocCard title="4. Chat" description="The Mkan agent finds the tenant the right home, on the site and on WhatsApp." href="/en/docs/chatbot" />
+</CardGrid>
+
+## The whole flow
+
+<Mermaid chart={`flowchart TD
+  A(["Broker's ad: TikTok, Facebook or a property site"]) --> B["1. Scrape: an AI reads the ad"]
+  B --> C{"A Kigali rental with a clear price?"}
+  C -->|No| X(["Skipped"])
+  C -->|Yes| D{"Duplicate?"}
+  D -->|Yes| E["Added as a note on the existing home"]
+  D -->|No| F["New home in the CRM: vetting"]
+  F --> G["2. Enhance: zone, terms, price, photos, clean-up"]
+  G --> H["Draft on the site, visible to the agent"]
+  H --> I{"Team decides: publish?"}
+  I -->|Yes| J["3. Post: live on mkan.sd with a listing code"]
+  H --> K{"Broker agreed to a repost?"}
+  K -->|Yes| L["3. Post: video on @mkan.rw"]
+  J --> M["4. Chat: the Mkan agent"]
+  H --> M
+  L --> N(["A tenant sees the ad"])
+  N --> M
+  M --> O(["Viewing with the broker"])`} />
+
+<Callout title="One board">
+  The CRM (Twenty) is where decisions are made; the site is what is live. Details in [CRM](/en/docs/crm).
+</Callout>
+
+## 1. Scrape
+
+mkan reads the rental ads brokers post and pulls out the home and the person behind it.
+
+<Mermaid chart={`flowchart TD
+  A(["Known broker accounts"]) --> B["Discover new videos"]
+  B --> C["Fetch: 8 frames, on-screen text, audio transcript"]
+  C --> D["Read: Claude Haiku or Groq"]
+  D --> E{"A rental? In Kigali? Price or rooms? Confident?"}
+  E -->|No| X(["Skipped, with the reason"])
+  E -->|Yes| F{"Same rooms, price and place?"}
+  F -->|Yes| G(["Note on the existing home"])
+  F -->|No| H(["Home and host in the CRM"])`} />
+
+- **Sources:** TikTok (the main one), property sites (houseinrwanda, imali, rwandahouseland), and Facebook by hand. Agencies are found on Google Maps.
+- **Schedule (Kigali time):** TikTok 06:00 and 15:00, property sites 06:45 and 18:45, agencies 11:00.
+- **New accounts** are proposed by search and added only when the team says so.
+
+## 2. Enhance
+
+Makes the ad a home that can be shown and searched.
+
+<Mermaid chart={`flowchart TD
+  A(["Home in vetting"]) --> B{"Monthly? Sensible price? Broker's number known?"}
+  B -->|No| X(["Stays on the board only"])
+  B -->|Yes| C["Draft on the site, linked to the broker"]
+  C --> D["Zone and terms: deposit, commission, water"]
+  D --> E{"Price missing?"}
+  E -->|Yes| F["Ask the broker on WhatsApp"]
+  F --> D
+  E -->|No| G["Photos: AVIF and WebP sizes, blur placeholder"]
+  G --> H["Daily clean-up: duplicates, phone numbers, deleted videos"]
+  H --> I(["Draft ready"])`} />
+
+- **Schedule:** drafts move with every scrape and at 09:00, price asks 09:30, clean-up 07:00, photo sizes hourly.
+- **A draft** is not shown to visitors in the listings, but the Mkan agent finds it and shows it as "availability not confirmed yet".
+
+## 3. Post
+
+Two ways out, each with its own decision.
+
+<Mermaid chart={`flowchart TD
+  A(["Draft ready"]) --> B{"Team set it LIVE in the CRM?"}
+  B -->|Yes| C["The site publishes it and mints a listing code"]
+  C --> D(["Live on mkan.sd"])
+  A --> E{"Broker agreed? 4+ photos? Recent ad?"}
+  E -->|Yes| F["Video prepared every morning at 07:00"]
+  F --> G["Uploaded to @mkan.rw, 17:00–21:30"]
+  G --> H(["On TikTok, then rests 30 days"])
+  D --> I["Hourly sync back to the CRM board"]`} />
+
+## 4. Chat
+
+The Mkan agent reads published homes and recent drafts together, finds the tenant a match on the site or on WhatsApp, then asks the broker and arranges the viewing. Details and the video in [Mkan agent](/en/docs/chatbot).
+
+## For the team
+
+- Scrape: `pnpm crm:tiktok`, `pnpm crm:web-ads run`, `pnpm crm:fb-rentals`, `pnpm crm:agencies`.
+- Enhance: `pnpm crm:tiktok-mirror`, `pnpm crm:zones`, `pnpm crm:price-ask`, `pnpm crm:hygiene`, `pnpm images:variants`.
+- Post: `publishState` in the CRM, `pnpm tt:run` and `pnpm tt:upload` for the TikTok page, `pnpm crm:sync-up`.
+- Schedules run on Hermes and launchd on the Mac, and GitHub Actions for photos.
+- The old Port Sudan and Airbnb commands (`crm:scrape`, `crm:import`, `crm:publish`, `crm:gate`) are not part of the Kigali flow.
