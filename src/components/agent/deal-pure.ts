@@ -521,12 +521,31 @@ export function viewingConfirmedMessage(lang: DealLang, v: { title: string; labe
   return v.terms ? `${body}\n${v.terms}` : body;
 }
 
-export function viewingReminderMessage(lang: DealLang, v: { title: string; label: string; rep: string }, which: "24h" | "2h"): string {
-  if (lang === "ar")
-    return which === "24h" ? `تذكير: معاينة «${v.title}» غداً، ${v.label}. سيلتقيك ${v.rep} من مكان هناك.` : `معاينة «${v.title}» اليوم، ${v.label}. ${v.rep} في الطريق. أخبرنا هنا إن تأخرت.`;
-  if (lang === "rw")
-    return which === "24h" ? `Kwibutsa: gusura "${v.title}" ni ejo, ${v.label}. ${v.rep} wo muri Mkan azakwakira.` : `Gusura "${v.title}" ni uyu munsi, ${v.label}. ${v.rep} ari mu nzira. Tubwire hano niba utinze.`;
-  return which === "24h" ? `Reminder: your viewing of "${v.title}" is tomorrow, ${v.label}. ${v.rep} from Mkan will meet you there.` : `Your viewing of "${v.title}" is today, ${v.label}. ${v.rep} is on the way. Tell us here if you're running late.`;
+/**
+ * "today" / "tomorrow" in Kigali for a viewing at `at`, seen from `now`; null further out (the date says
+ * it). The 24 h reminder fires 3–25 h ahead, so a viewing booked in the morning for 16:00 got "tomorrow"
+ * on the day itself (2026-11-08).
+ */
+export function kigaliDayWord(at: Date, now: Date): "today" | "tomorrow" | null {
+  const day = (d: Date) => Math.floor((d.getTime() + KIGALI_MS) / 86_400_000);
+  const diff = day(at) - day(now);
+  return diff === 0 ? "today" : diff === 1 ? "tomorrow" : null;
+}
+
+export function viewingReminderMessage(lang: DealLang, v: { title: string; label: string; rep: string }, which: "24h" | "2h", day: "today" | "tomorrow" | null = "tomorrow"): string {
+  if (lang === "ar") {
+    if (which === "2h") return `معاينة «${v.title}» اليوم، ${v.label}. ${v.rep} في الطريق. أخبرنا هنا إن تأخرت.`;
+    const when = day === "today" ? `اليوم، ${v.label}` : day === "tomorrow" ? `غداً، ${v.label}` : `يوم ${v.label}`;
+    return `تذكير: معاينة «${v.title}» ${when}. سيلتقيك ${v.rep} من مكان هناك.`;
+  }
+  if (lang === "rw") {
+    if (which === "2h") return `Gusura "${v.title}" ni uyu munsi, ${v.label}. ${v.rep} ari mu nzira. Tubwire hano niba utinze.`;
+    const when = day === "today" ? `ni uyu munsi, ${v.label}` : day === "tomorrow" ? `ni ejo, ${v.label}` : `ni ${v.label}`;
+    return `Kwibutsa: gusura "${v.title}" ${when}. ${v.rep} wo muri Mkan azakwakira.`;
+  }
+  if (which === "2h") return `Your viewing of "${v.title}" is today, ${v.label}. ${v.rep} is on the way. Tell us here if you're running late.`;
+  const when = day === "today" ? `today, ${v.label}` : day === "tomorrow" ? `tomorrow, ${v.label}` : `on ${v.label}`;
+  return `Reminder: your viewing of "${v.title}" is ${when}. ${v.rep} from Mkan will meet you there.`;
 }
 
 export function afterViewingMessage(lang: DealLang, title: string): string {

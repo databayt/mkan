@@ -22,6 +22,10 @@ export function chatSig(taskId: string): string | null {
 export function verifyChatSig(taskId: string | null | undefined, sig: string | null | undefined): boolean {
   if (!taskId || !sig) return false;
   const want = chatSig(taskId);
-  if (!want || want.length !== sig.length) return false;
-  return timingSafeEqual(Buffer.from(want), Buffer.from(sig));
+  if (!want) return false;
+  // Bytes, not characters: a 22-character `s` with one non-ASCII letter passed the length check and made
+  // timingSafeEqual throw — a 500 on /find that anyone could trigger (2026-11-08).
+  const a = Buffer.from(want);
+  const b = Buffer.from(sig);
+  return a.length === b.length && timingSafeEqual(a, b);
 }

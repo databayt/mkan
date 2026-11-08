@@ -211,6 +211,11 @@ async function drain(dry: boolean, log: Log, sendsOff: boolean): Promise<{ sent:
         await postSlackCard(`⏰ The ${reminder.mark === "after" ? '"how did the viewing go?"' : `${reminder.mark} reminder`} for visit ${reminder.visitId} could not go out (${SKIP_TEXT[reason]}) — message the tenant yourself.`).catch(() => {});
       }
     }
+    // A deal sheet, a broker's answer or an intro that could not go out in time is a person's to send, with
+    // the words written for them (2026-11-08: one held by the daily cap went stale and was dropped silently).
+    if (!dry && !reminder && row.kind === "TENANT_ALERT" && reason === "stale-alert") {
+      await postSlackCard(`📭 A message to the tenant ${row.to} could not go out in time (${row.label ?? "tenant alert"}) — <${waLink(row.to, row.body)}|send it yourself>:\n> ${row.body.slice(0, 400).replace(/\n/g, "\n> ")}`).catch(() => {});
+    }
     // An ask that never went out (too old, the broker opted out) is not "asked": its requests expire now,
     // so the hourly pass hands the home to the next broker — they sat PENDING until the tenant heard
     // "no reply" from a broker nobody had asked (2026-11-06). Sends switched off is left to a person.

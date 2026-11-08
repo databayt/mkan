@@ -21,6 +21,14 @@ describe("signed chat links (a WhatsApp chat opens in any browser, read-only)", 
     expect(verifyChatSig("cmtask1", null)).toBe(false);
   });
 
+  it("a signature of the right length with a non-ASCII letter is refused, not a crash (2026-11-08: a 500)", () => {
+    const good = chatSig("t1")!;
+    const bad = `é${good.slice(1)}`;
+    expect(bad.length).toBe(good.length);
+    expect(() => verifyChatSig("t1", bad)).not.toThrow();
+    expect(verifyChatSig("t1", bad)).toBe(false);
+  });
+
   it("signs nothing without the secret (the old, unsigned link)", () => {
     delete process.env.MKAN_WA_BRIDGE_SECRET;
     expect(chatSig("cmtask1")).toBeNull();

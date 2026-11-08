@@ -29,6 +29,16 @@ describe('the guard', () => {
     expect(ok('Under $6 a night')).toBeNull();
   });
 
+  it('refuses a price by its shape too, even when a title made the number allowed (2026-11-08)', () => {
+    const fromTitle = allowedNumbers({ title: 'House for rent at 300,000 RWF', bedrooms: 2, km: '1.2 km' });
+    expect(ok('Only 300k a month for 2 bedrooms.', { allowed: fromTitle })).toBeNull();
+    expect(ok('It goes for 300,000 a month.', { allowed: fromTitle })).toBeNull();
+    expect(ok('About 1.2 million', { allowed: allowedNumbers('1.2') })).toBeNull();
+    expect(ok('ibihumbi 300', { allowed: allowedNumbers('300'), lang: 'rw' })).toBeNull();
+    expect(ok('بـ 300 ألف', { allowed: allowedNumbers('300'), lang: 'ar' })).toBeNull();
+    expect(ok('It is 1.2 km from your work and has 2 bedrooms.', { allowed: fromTitle })).toBeTruthy();
+  });
+
   it('never calls a home available unless a broker confirmed', () => {
     expect(ok('This one is available now.')).toBeNull();
     expect(ok('This one is available now.', { anyConfirmed: true })).toBeTruthy();
@@ -154,7 +164,7 @@ describe('WhatsApp gets the reply sentence only (2026-11-07)', () => {
     expect(wa?.reply).toBe('I found 2 homes for you.');
     expect(wa?.why.size).toBe(0);
     expect(calls[0]!.max_tokens).toBe(1_200);
-    expect(calls[1]!.max_tokens).toBe(400);
+    expect(calls[1]!.max_tokens).toBe(800);
     expect(calls[1]!.system).toContain('WhatsApp');
     vi.doUnmock('@/components/agent/claude');
   });

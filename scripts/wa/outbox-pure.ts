@@ -201,6 +201,14 @@ export interface Plan<R extends OutboxRow = OutboxRow> {
   hold: Array<{ row: R; reason: HoldReason }>;
 }
 
+/**
+ * The last slots of the day's cap kept for tenant alerts (a quarter of it, at most 10): the cap stays the
+ * line's total — ban-risk protection — but broker asks can no longer use all of it and leave a later deal
+ * sheet waiting until it went stale (2026-11-08).
+ */
+export const ALERT_RESERVE = 10;
+const alertReserve = (cap: number) => Math.min(ALERT_RESERVE, Math.floor(cap / 4));
+
 export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
   const { now, rows, cap } = input;
   const plan: Plan<R> = { send: [], skip: [], hold: [] };
@@ -208,6 +216,7 @@ export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
   const takenToday = new Set<string>();
   for (const [key, at] of input.lastSentAt) if (kigaliDay(at) === today) takenToday.add(key);
   let budget = Math.max(0, cap - input.sentToday);
+  const reserve = alertReserve(cap);
 
   for (const row of rows) {
     const isAlert = row.kind === 'TENANT_ALERT';
@@ -254,7 +263,7 @@ export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
       plan.hold.push({ row, reason: rest });
       continue;
     }
-    if (budget <= 0) {
+    if (budget <= (isAlert ? 0 : reserve)) {
       plan.hold.push({ row, reason: 'daily-cap' });
       continue;
     }

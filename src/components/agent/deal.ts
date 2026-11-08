@@ -43,6 +43,7 @@ import {
   viewingLabel,
   viewingProposedMessage,
   viewingReminderMessage,
+  kigaliDayWord,
   type BrokerTerms,
   type DealLang,
   type ShareAgreement,
@@ -380,14 +381,14 @@ export async function viewingReminders(now = new Date()): Promise<number> {
     if (v.contactPhone) {
       if (await saidStop(v.contactPhone)) note = `${mark}:stopped`;
       else {
-        const body = mark === "after" ? afterViewingMessage(lang, title) : viewingReminderMessage(lang, { title, label: viewingLabel(v.scheduledFor, lang), rep }, mark);
+        const body = mark === "after" ? afterViewingMessage(lang, title) : viewingReminderMessage(lang, { title, label: viewingLabel(v.scheduledFor, lang), rep }, mark, kigaliDayWord(v.scheduledFor, now));
         // Labelled with the visit: the outbox marks it when it goes out (wa-outbox.ts drain).
         const channel = await sendMessages([{ kind: "TENANT_ALERT", to: v.contactPhone, body, label: reminderLabel(mark, v.id) }], `Viewing ${mark} → tenant`);
         // A manual send is a person tapping the #mkan card: it counts as sent, as before.
         note = channel === "queued" ? `${mark}:queued` : mark;
       }
     }
-    if (mark !== "after") await postSlackCard(`⏰ Viewing ${mark === "24h" ? "tomorrow" : "in 2 h"}: ${title}, ${viewingLabel(v.scheduledFor, "en")}${v.meetingPoint ? ` · ${v.meetingPoint}` : ""} · ${rep}`).catch(() => {});
+    if (mark !== "after") await postSlackCard(`⏰ Viewing ${mark === "24h" ? (kigaliDayWord(v.scheduledFor, now) ?? "coming up") : "in 2 h"}: ${title}, ${viewingLabel(v.scheduledFor, "en")}${v.meetingPoint ? ` · ${v.meetingPoint}` : ""} · ${rep}`).catch(() => {});
     await db.listingVisit.update({ where: { id: v.id }, data: { reminders: { push: note } } });
     sent += 1;
   }

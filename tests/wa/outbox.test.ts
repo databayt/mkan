@@ -73,11 +73,22 @@ describe('wa outbox — plan', () => {
   });
 
   it('sends oldest first up to the daily cap, counting what already went today', () => {
+    // 13 left of 40, and the last 10 are kept for tenant alerts (ALERT_RESERVE): 3 broker asks go.
     const rows = Array.from({ length: 6 }, () => row());
-    const plan = base(rows, { sentToday: 37, cap: 40 });
+    const plan = base(rows, { sentToday: 27, cap: 40 });
     expect(plan.send.map((r) => r.id)).toEqual(rows.slice(0, 3).map((r) => r.id));
     expect(plan.hold.every((h) => h.reason === 'daily-cap')).toBe(true);
     expect(base(rows, { sentToday: 40, cap: 40 }).send).toEqual([]);
+  });
+
+  it('keeps the last slots of the cap for tenant alerts: broker asks stop short, an alert still goes (2026-11-08)', () => {
+    const asks = Array.from({ length: 5 }, (_, i) => row({ brokerId: `r${i}`, to: `+25070000011${i}` }));
+    const alert = row({ kind: 'TENANT_ALERT', brokerId: null, to: '+250700000099' });
+    const plan = base([...asks, alert], { cap: 40, sentToday: 31 });
+    expect(plan.send).toEqual([alert]);
+    expect(plan.hold.filter((h) => h.reason === 'daily-cap')).toHaveLength(5);
+    // The total still holds: at the cap even an alert waits.
+    expect(base([alert], { cap: 40, sentToday: 40 }).send).toEqual([]);
   });
 
   it('sends one message per broker number per Kigali day, whatever kind of ask', () => {

@@ -98,7 +98,8 @@ Hard rules:
 const REPLY_ONLY_SYSTEM = `${SYSTEM}
 
 This reply goes to WhatsApp, which lists the homes itself: write only "reply" and leave "why" empty.`;
-const REPLY_ONLY_MAX_TOKENS = 400;
+/** Room for an Arabic reply: 400 cut one mid-string in production ("Unterminated string … 597"), 2026-11-08. */
+const REPLY_ONLY_MAX_TOKENS = 800;
 
 const ANSWER_SYSTEM = `You answer one question from a tenant looking for a home in Kigali, Rwanda, for Mkan, a rental app. Answer ONLY from the knowledge lines given; never add facts, prices or promises they do not contain. Write in the language given by "lang" (en English, ar Arabic, rw Kinyarwanda): 2–3 plain sentences, under 400 characters, warm, no lists, no emojis. If the knowledge does not cover the question, say you are not sure and that Mkan can find homes, estimate move-in costs and ask brokers. Put the answer in "reply" and leave "why" empty.
 
@@ -112,7 +113,8 @@ const PERSIAN = "۰۱۲۳۴۵۶۷۸۹";
 export const asciiDigits = (s: string) =>
   s.replace(/[٠-٩]/g, (d) => String(EASTERN.indexOf(d))).replace(/[۰-۹]/g, (d) => String(PERSIAN.indexOf(d))).replace(/٫/g, ".");
 
-const MONEY_RE = /\b(?:RWF|FRW|USD|Rwf|francs?)\b|\$|£|€|فرنك|دولار|ريال|amafaranga|\bk\b(?=\s|$)/i;
+/** Money in words: a currency, or a price's shape — "300k", "1.2 million", "ibihumbi", "ألف" (2026-11-08: "300k" passed). */
+const MONEY_RE = /\b(?:RWF|FRW|USD|Rwf|francs?)\b|\$|£|€|فرنك|دولار|ريال|amafaranga|ibihumbi|ألف|آلاف|\bk\b(?=\s|$)|\d\s?k\b|\d\s?(?:million|mln)\b/i;
 const AVAILABLE_RE = /availab|\bbooked\b|\breserved\b|vacant|متاح|متوفر|متوفّر|محجوز|شاغر|irahari|iraboneka|irakodeshwa/i;
 const ARABIC_RE = /[؀-ۿ]/;
 /** A number as people write it: "2", "1.2", "1,200" (read as 1200 on both sides). */
@@ -169,7 +171,13 @@ export function guardText(
   const t = text.trim().replace(/\s+/g, " ");
   if (!t || t.length > maxLen) return null;
   const plain = asciiDigits(t);
-  for (const n of plain.match(NUMBER_RE) ?? []) if (!allowed.has(n.replace(/,/g, ""))) return null;
+  for (const n of plain.match(NUMBER_RE) ?? []) {
+    const v = n.replace(/,/g, "");
+    if (!allowed.has(v)) return null;
+    // A figure of 1,000 or more is a price (bedrooms, baths and km are small): the cards show prices, the
+    // words never do — a title's "300,000" passed as an allowed number (2026-11-08).
+    if (!allowMoney && Number(v) >= 1000) return null;
+  }
   if (!allowMoney && MONEY_RE.test(plain)) return null;
   if (!anyConfirmed && AVAILABLE_RE.test(plain)) return null;
   if (lang === "ar" ? !ARABIC_RE.test(t) : ARABIC_RE.test(t)) return null;

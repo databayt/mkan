@@ -120,6 +120,9 @@ export async function noteFailure(err: unknown): Promise<void> {
   }
   if (err instanceof Anthropic.RateLimitError) cooldownUntil = Date.now() + 60_000;
   else if (err instanceof Anthropic.InternalServerError || (err instanceof Anthropic.APIError && (err.status ?? 0) >= 500)) cooldownUntil = Date.now() + 30_000;
+  // A timeout (APIConnectionTimeoutError is one) or a dropped connection has no status: without a cooldown
+  // every turn waited out the reader's 3 s and the writer's 2.5 s again while the API was slow (2026-11-08).
+  else if (err instanceof Anthropic.APIConnectionError) cooldownUntil = Date.now() + 30_000;
 }
 
 type JsonNode = Record<string, unknown>;

@@ -10,6 +10,7 @@ import {
   viewingConfirmedMessage,
   viewingLabel,
   viewingReminderMessage,
+  kigaliDayWord,
 } from "@/components/agent/deal-pure";
 
 const cost: CostEstimate = {
@@ -101,6 +102,22 @@ describe("the viewing messages", () => {
     expect(viewingConfirmedMessage("en", { title: "Flat", label, place: "Kibagabaga, near the market", rep: "Osman" })).toMatch(/You'll meet the broker and Osman from Mkan there/);
     expect(viewingReminderMessage("en", { title: "Flat", label, rep: "Osman" }, "24h")).toMatch(/tomorrow/);
     expect(viewingReminderMessage("rw", { title: "Flat", label, rep: "Osman" }, "2h")).toMatch(/uyu munsi/);
+  });
+
+  it("the day before says tomorrow, the same day says today — by Kigali's own day (2026-11-08)", () => {
+    const label = "Sun 8 Nov, 16:00";
+    const morning = new Date("2026-11-08T07:00:00Z"); // 09:00 in Kigali
+    expect(kigaliDayWord(new Date("2026-11-08T14:00:00Z"), morning)).toBe("today");
+    expect(kigaliDayWord(new Date("2026-11-09T08:00:00Z"), morning)).toBe("tomorrow");
+    // 23:30 and 00:30 in Kigali share a UTC date but not a Kigali one.
+    expect(kigaliDayWord(new Date("2026-11-08T22:30:00Z"), new Date("2026-11-08T21:30:00Z"))).toBe("tomorrow");
+    expect(kigaliDayWord(new Date("2026-11-10T08:00:00Z"), morning)).toBeNull();
+    const v = { title: "Flat", label, rep: "Osman" };
+    expect(viewingReminderMessage("en", v, "24h", "today")).toMatch(/is today, Sun 8 Nov/);
+    expect(viewingReminderMessage("en", v, "24h", null)).toMatch(/is on Sun 8 Nov/);
+    expect(viewingReminderMessage("ar", v, "24h", "today")).toMatch(/اليوم/);
+    expect(viewingReminderMessage("ar", v, "24h", "today")).not.toMatch(/غداً/);
+    expect(viewingReminderMessage("rw", v, "24h", "today")).toMatch(/uyu munsi/);
   });
 });
 
