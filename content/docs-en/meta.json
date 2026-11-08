@@ -1,4 +1,12 @@
 {
   "title": "Docs",
-  "pages": ["index", "---Guests & hosts---", "guests", "hosts", "---Team---", "crm"]
+  "pages": [
+    "index",
+    "---Guests & hosts---",
+    "guests",
+    "hosts",
+    "chatbot",
+    "---Team---",
+    "crm"
+  ]
 }

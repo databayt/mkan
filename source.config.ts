@@ -5,6 +5,7 @@ import {
   frontmatterSchema,
 } from "fumadocs-mdx/config"
 import rehypePrettyCode from "rehype-pretty-code"
+import { z } from "zod"
 
 import { transformers } from "./src/lib/highlight-code"
 
@@ -28,12 +29,20 @@ export default defineConfig({
   },
 })
 
+// `flow` names the published media for a guide (<FlowMedia flow>), the same
+// convention as hogwarts' help center; summary/keywords describe the guide.
+const schema = frontmatterSchema.extend({
+  flow: z.string().optional(),
+  summary: z.string().optional(),
+  keywords: z.array(z.string()).optional(),
+})
+
 export const docs = defineDocs({
   dir: "content/docs-en",
-  docs: { schema: frontmatterSchema },
+  docs: { schema },
 })
 
 export const docsArabic = defineDocs({
   dir: "content/docs-ar",
-  docs: { schema: frontmatterSchema },
+  docs: { schema },
 })

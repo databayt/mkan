@@ -125,8 +125,9 @@ broker types "yes" / "taken" (broker-inbox.ts) — or, for asks sent before 10-2
              ─► Available (+ up to 3 times on the form, Kigali time) | Rented
              └─ applyAnswer: every pending question about the home answered,
                 every waiting task's card + panel updated, lastAvailabilityConfirmedAt set;
-                a yes never hands the tenant the broker's number (Mkan stays in the middle):
-                the WhatsApp tenant gets the deal sheet (deal.ts sendDealSheet — rent, the
+                until 10 deals are paid a yes starts a direct intro (deal-intro.ts: the tenant
+                and broker get each other's WhatsApp once the broker agrees the terms); after
+                that, or with no answer in 24 h, Mkan stays in the middle: the WhatsApp tenant gets the deal sheet (deal.ts sendDealSheet — rent, the
                 move-in total, commission, viewing free because Mkan pays it, water and
                 electricity, next steps) and is asked when they can come; MKAN_VIEWING_REP
                 (Osman) gets a 🔑 #mkan card with both chats
@@ -160,13 +161,13 @@ cron /api/cron/broker-requests (hourly) ─► unanswered after 24 h = NO_REPLY 
 | `broker-sends.ts` · `broker-gate.ts` | the `broker-sends` switch and the team's numbers (WaState); the pure gate: WhatsApp tenant, not a team number, sends `gated` |
 | `home-ref.ts` | a TikTok post's code ("K5808") → that home's exact search; the turn pins it first (`pin`) |
 | `home-path.ts` + `app/[lang]/k/[ref]` | Mkan's own page for a broker home (`/en/k/K5808`): photos, facts, move-in cost, "Check availability on WhatsApp"; `forTenant` sends every tenant link to a broker home there and blanks the broker's handle (task-view, welcome, saved list) — never the broker's ad, handle or number (2026-11-01) |
-| `whatsapp.ts` | Outbound WhatsApp: with `MKAN_WA_OUTBOX=1` every message is an `OutboundMessage` row the 2-minute cron drains (`wa-outbox.ts`, daily cap `MKAN_WA_DAILY_CAP`, default 40); otherwise a #mkan card with a wa.me link (`SLACK_BOT_TOKEN`) |
+| `whatsapp.ts` | Outbound WhatsApp: with `MKAN_WA_OUTBOX=1` every message is an `OutboundMessage` row the outbox drains (`wa-outbox.ts`, run on events via `kickOutbox` plus backstop ticks — see `cf/crons.json`, daily cap `MKAN_WA_DAILY_CAP`, default 40); otherwise a #mkan card with a wa.me link (`SLACK_BOT_TOKEN`) |
 | `whatsapp-chat.ts` | Tenants chatting on WhatsApp: `handleTenantWhatsApp` runs the same turn for a phone (profile `sha256("wa:<digits>")`), digit picks, `ref:` hand-off, auto opt-in for demand alerts |
 | `whatsapp-format.ts` | Pure: the turn as one WhatsApp message (3 homes, numbered options, /find link), `readPick`, `waLang` |
 | `append.ts` · `availability.ts` | The message append and the "check availability" loop, shared by the web actions and WhatsApp |
 | `wa-link.ts` | Mkan's WhatsApp number and the /find ⋯ "Continue on WhatsApp" link |
 | `wa-tenant.ts` | `answerTenant`: the guardrails, "typing…", the turn, the send; `noteFromMe` (a person took the chat over) |
-| `wa-outbox.ts` | `runOutbox`: the 2-minute drain (sends under the caps, broker replies, missed tenant messages) |
+| `wa-outbox.ts` | `runOutbox`: the outbox drain, run on events (`kickOutbox`) + backstop ticks (sends under the caps, broker replies, missed tenant messages) |
 | `wa-state.ts` | The bridge's small state in `WaState` (seen ids, STOP list, human holds, lease, streak) |
 | `broker-actions.ts` | broker answer/confirm, tenant choose/outcome |
 | `broker-answer.tsx` + `app/[lang]/b/[token]` | the broker's one-tap page (noindex, no account) |
@@ -241,8 +242,9 @@ tenant WA → Evolution in the hogwarts container (instance "mkan", shared Whats
 - `/find` ⋯ → Continue on WhatsApp sends `ref:<task id>`: the phone's new chat starts from the web one.
 - A search kept open from WhatsApp alerts that same number (`TenantRequest.phone` set on the turn).
 - A broker's answer about a home the tenant asked on (WhatsApp words or the link) reaches the tenant on
-  WhatsApp (`broker.ts` `tellWhatsAppTenants`, via `AgentProfile.waPhone`). Since 2026-11-01 a yes never
-  carries the broker's number (Mkan stays in the middle): the tenant gets the deal sheet and is asked
+  WhatsApp (`broker.ts` `tellWhatsAppTenants`, via `AgentProfile.waPhone`). Since 2026-11-07 a yes starts a
+  direct intro until 10 deals are paid (`deal-intro.ts`); otherwise (the 2026-11-01 rule, Mkan in the
+  middle) it never carries the broker's number: the tenant gets the deal sheet and is asked
   when they can come; tenant-facing titles pass through `scrubTitle` so an ad's own number is dropped too.
 - Since 2026-11-06 each WhatsApp message is claimed once (`wa-state.ts` claimMessage — never lost, never
   answered twice), STOP stops every outbound message, a pick during a running turn waits instead of
@@ -252,6 +254,7 @@ tenant WA → Evolution in the hogwarts container (instance "mkan", shared Whats
 - Rules (`scripts/wa/tenant-pure.ts`): reply only to messages a tenant sent (never a first message);
   STOP silences until START; a person at Mkan typing in the chat pauses the agent there for 12 h;
   messages older than 1 h are not answered; 20 replies/phone/hour, 120/line/hour.
-- Brokers (any number in `Broker.phones`) are left to the outbox's burst reader. The 2-minute poll also
+- Brokers (any number in `Broker.phones`) are left to the outbox's burst reader. The outbox run (on events, plus
+  backstop ticks at :00 hourly and :15/:30/:45 07:00–21:45 Kigali — `cf/crons.json`) also
   passes tenant messages the webhook missed; the turn answers each message id once.
 - Re-link after a `device_removed`: `pnpm wa:pair` (QR at `scripts/crm/.data/wa/qr.png`).

@@ -1,0 +1,78 @@
+---
+title: Rental agent
+description: mkan's assistant that finds you a home in Kigali, on the site and on WhatsApp, from the first message to the viewing.
+flow: ask-agent
+summary: One agent with two doors — the site and WhatsApp — that searches real homes and arranges the viewing with the broker.
+keywords: [agent, chatbot, whatsapp, search, viewing]
+---
+
+<FlowMedia flow="ask-agent" lang="en" only="video" />
+
+## One agent, two doors
+
+The **rental agent** understands what you ask in your own words, searches the Kigali homes published on mkan, ranks them, and works out what you will pay to move in. You reach it through two doors, and both run the same agent:
+
+<CardGrid>
+  <DocCard title="On the site" description={<>The “Ask the rental agent” button on the home, search and listings pages, or the full <code>/find</code> page.</>} />
+  <DocCard title="On WhatsApp" description={<>Message the mkan line <span dir="ltr">+250 780 984 777</span> directly, or move there from the site with “Continue on WhatsApp”.</>} />
+</CardGrid>
+
+## On the site
+
+<Steps>
+
+### Ask in your own words
+
+Type what you need, like “furnished 2-bedroom in Kicukiro, up to 400k a month”, or pick a suggested card. No sign-in needed.
+
+### The agent reads your request
+
+It pulls out the area, budget, bedrooms and furnishing. If the request is vague, it asks one short question before searching.
+
+### It searches and ranks
+
+It searches the homes published in Kigali, merges duplicate ads, and ranks the best fits first. When nothing matches exactly, it widens the search step by step and tells you what it changed. Every step shows on screen as it works.
+
+### Home cards
+
+You get home cards, each with a line on why it was picked and the move-in cost. The agent never invents a price and never calls a home “available” before it is confirmed. Use “Refine” to narrow the results.
+
+### Continue on WhatsApp
+
+“Continue on WhatsApp” moves the same conversation to your phone, and the agent picks up where you left off.
+
+</Steps>
+
+<Callout title="When nothing fits">
+  It offers to save the search, and you get a WhatsApp message when a matching home is published.
+</Callout>
+
+## On WhatsApp
+
+<Steps>
+
+### Message the line
+
+Send your request to <span dir="ltr">+250 780 984 777</span>. The agent replies with three numbered homes and a link that opens them all on the site. Send “new” to start a fresh search.
+
+### Pick by number
+
+Send the number of the home you like (such as “2”), and mkan starts checking with its broker that it is still free. It costs you nothing.
+
+### mkan asks the broker
+
+mkan contacts the broker to confirm the home is still available. Once they confirm, you get the deal sheet (rent, move-in total, water and electricity, next steps) and we arrange the viewing. Until the first 10 deals, we may introduce you to the broker directly.
+
+</Steps>
+
+<Callout title="WhatsApp rules">
+  Send “STOP” to stop messages and “START” to resume. Voice notes and photos are not read yet, so type your request. Ask “are you a bot?” and it answers honestly; ask for a “person” and someone from the mkan team takes over.
+</Callout>
+
+## For the team
+
+- Source of truth: `src/components/agent/README.md`.
+- Reading: Claude Haiku, then Groq, then fixed rules — 3.5 s. Writing is guarded against invented numbers.
+- Limits: 30 messages an hour on the site, 20 replies per number per hour on WhatsApp, and a monthly spend cap (`AGENT_API_CAP_USD`). Without a Claude key the agent still runs at $0 on Groq and the rules.
+- WhatsApp goes through the Evolution bridge (`/api/whatsapp/hook/<token>`); outbound messages send on events, with backstop ticks in `cf/crons.json`.
+- Commands: `pnpm wa:e2e` (dry run, no sends), `pnpm wa:pair` (re-link the line), `pnpm wa:brokers off|gated` (the broker-ask switch).

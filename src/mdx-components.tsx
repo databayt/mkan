@@ -18,6 +18,9 @@ import { Callout } from "@/components/docs/callout"
 import { CodeTabs } from "@/components/docs/code-tabs"
 import { CopyButton } from "@/components/docs/copy-button"
 import { CardGrid, DocCard } from "@/components/docs/doc-card"
+import { FlowMedia } from "@/components/docs/flow-media"
+import { Shot } from "@/components/docs/shot"
+import { TutorialVideo } from "@/components/docs/tutorial-video"
 
 const mdxComponents = {
   // Allows customizing built-in components, e.g. to add styling.
@@ -255,6 +258,9 @@ const mdxComponents = {
   CardGrid,
   DocCard,
   CodeTabs,
+  FlowMedia,
+  Shot,
+  TutorialVideo,
   Tabs: ({ className, ...props }: ComponentProps<typeof Tabs>) => {
     return <Tabs className={cn("relative mt-6 w-full", className)} {...props} />
   },
