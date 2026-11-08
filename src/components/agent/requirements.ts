@@ -8,7 +8,7 @@
  */
 import { z } from "zod";
 import { districtForPlace, DISTRICTS } from "@/lib/geo/rwanda-places";
-import { KIGALI_ZONE_BY_SLUG } from "@/lib/geo/kigali-zones";
+import { KIGALI_ZONE_BY_SLUG, KIGALI_ZONES } from "@/lib/geo/kigali-zones";
 import { AREA_KEYS, landmarkIn, nearestSchool, NEIGHBOURHOODS } from "./areas";
 import {
   CLARIFY_FIELDS,
@@ -276,7 +276,54 @@ function neighbourhoodOf(text: string): string | null {
       const ar = KIGALI_ZONE_BY_SLUG.get(n.slug)?.nameAr;
       return n.name !== "Kicukiro" && !!ar && ar.length > 2 && !DISTRICTS.some((d) => d.nameAr === ar) && text.includes(ar);
     });
-  return hit?.name ?? null;
+  return hit?.name ?? aliasHood(s) ?? fuzzyHood(s) ?? null;
+}
+
+const fold = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+/** A zone's other spellings ("kaciyiru", "vision city", "sonatube") name its popular neighbourhood. */
+function aliasHood(s: string): string | null {
+  for (const n of NEIGHBOURHOODS) {
+    if (n.name === "Kicukiro") continue;
+    const z = KIGALI_ZONE_BY_SLUG.get(n.slug);
+    if (z?.aliases.some((a) => a.length > 3 && new RegExp(`(^|[^a-z])${fold(a).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`).test(s))) return n.name;
+  }
+  return null;
+}
+
+/** Edit distance with transpositions, capped: enough to tell a typo from another word. */
+function editDistance(a: string, b: string, cap: number): number {
+  if (Math.abs(a.length - b.length) > cap) return cap + 1;
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array<number>(b.length).fill(0)]);
+  for (let j = 0; j <= b.length; j++) d[0]![j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      d[i]![j] = Math.min(d[i - 1]![j]! + 1, d[i]![j - 1]! + 1, d[i - 1]![j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i]![j] = Math.min(d[i]![j]!, d[i - 2]![j - 2]! + 1);
+    }
+  }
+  return d[a.length]![b.length]!;
+}
+
+/** Every zone name and alias — a word that IS one is never a typo of another. */
+const ZONE_WORDS = new Set(KIGALI_ZONES.flatMap((z) => [z.nameEn, ...z.aliases]).flatMap((w) => fold(w).split(/[^a-z]+/)).filter(Boolean));
+const HOOD_WORDS = NEIGHBOURHOODS.filter((n) => n.name !== "Kicukiro").flatMap((n) => {
+  const z = KIGALI_ZONE_BY_SLUG.get(n.slug);
+  return [n.name, ...(z?.aliases ?? [])].map(fold).filter((w) => /^[a-z]{5,}$/.test(w)).map((w) => ({ w, name: n.name }));
+});
+
+/** "Kimirunko", "remmera", "Nyarutarma": a misspelt name still places the tenant (1 edit, 2 for long names). */
+function fuzzyHood(s: string): string | null {
+  let best: { name: string; dist: number } | null = null;
+  for (const tok of s.split(/[^a-z]+/)) {
+    if (tok.length < 5 || ZONE_WORDS.has(tok)) continue;
+    for (const { w, name } of HOOD_WORDS) {
+      const cap = w.length >= 9 ? 2 : 1;
+      const dist = editDistance(tok, w, cap);
+      if (dist <= cap && (!best || dist < best.dist)) best = { name, dist };
+    }
+  }
+  return best?.name ?? null;
 }
 
 function districtOf(text: string): Requirements["district"] {
