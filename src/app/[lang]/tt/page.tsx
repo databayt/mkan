@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { createMetadata } from "@/lib/metadata";
 import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import type { Locale } from "@/components/internationalization/config";
 import { BlurImage } from "@/components/atom/blur-image";
@@ -35,7 +36,12 @@ export default async function TtPage({ params }: { params: Promise<{ lang: Local
   const d = await getDictionary(lang);
   const t = d.tt;
   const card = d.agent?.card;
-  const homes: TtHome[] = await loadTtHomes(db).catch(() => []);
+  // A failed read still shows the WhatsApp button — but it is logged, never silent (2026-11-08: a query
+  // Prisma refused was caught here for a day and every viewer saw "no homes").
+  const homes: TtHome[] = await loadTtHomes(db).catch((err) => {
+    logger.error("tt_homes_not_loaded", err);
+    return [];
+  });
   const general = continueOnWhatsApp(null, `${t?.generalMessage ?? "Hi Mkan, I'm looking for a home in Kigali."} ${TIKTOK_BIO_MARK}`);
 
   return (

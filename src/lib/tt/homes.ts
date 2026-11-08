@@ -1,8 +1,14 @@
 /**
  * The homes on /tt — the page the TikTok profile's link opens (2026-11-07). The homes of today's and the
- * last 3 days' TikTok posts, newest post first, one card per home. The query takes the client so the
- * tests can hand it a fake; only the shape of the `where` and the dedupe matter.
+ * last 3 days' TikTok posts, newest post first, one card per home.
+ *
+ * Two queries, the posts and then their homes: TikTokPost carries only `listingId`, no relation to
+ * Listing, so a `listing` filter on the post query is refused by Prisma before it reaches the database.
+ * Until 2026-11-08 that refusal was caught and every TikTok viewer saw "new homes are posted every day"
+ * over 13 posted homes. Both argument objects are checked against Prisma's own types, so tsc refuses a
+ * field the model does not have; the query takes the client so the tests can hand it a fake.
  */
+import type { Prisma } from "@prisma/client";
 import { zoneLabel } from "@/lib/geo/kigali-zones";
 import { districtName } from "@/lib/geo/rwanda-places";
 
@@ -17,6 +23,33 @@ export function windowStart(now: number, back = TT_DAYS_BACK): Date {
   const local = now + KIGALI_MS;
   return new Date(local - (local % DAY) - back * DAY - KIGALI_MS);
 }
+
+/** The window's posts, newest first: only which home each one showed, and when. */
+export const ttPostArgs = (now: number) =>
+  ({
+    where: { status: "POSTED", postedAt: { gte: windowStart(now), lte: new Date(now) } },
+    orderBy: { postedAt: "desc" },
+    take: 80,
+    select: { listingId: true, postedAt: true },
+  }) satisfies Prisma.TikTokPostFindManyArgs;
+
+const TT_LISTING_SELECT = {
+  id: true,
+  title: true,
+  photoUrls: true,
+  priceMonth: true,
+  currency: true,
+  bedrooms: true,
+  lostAt: true,
+  location: { select: { state: true, sector: true, neighbourhood: true } },
+} satisfies Prisma.ListingSelect;
+
+/** Those posts' homes that are still on the market, by the month, with a price. */
+export const ttListingArgs = (ids: number[]) =>
+  ({
+    where: { id: { in: ids }, lostAt: null, rentPeriod: "MONTHLY", priceMonth: { not: null } },
+    select: TT_LISTING_SELECT,
+  }) satisfies Prisma.ListingFindManyArgs;
 
 export interface TtHome {
   id: number;
@@ -34,24 +67,26 @@ export interface TtHome {
 interface PostRowT {
   listingId: number;
   postedAt: Date | null;
-  listing: {
-    id: number;
-    title: string | null;
-    photoUrls: string[];
-    priceMonth: number | null;
-    currency: string | null;
-    bedrooms: number | null;
-    lostAt: Date | null;
-    location: { state: string | null; sector: string | null; neighbourhood: string | null } | null;
-  } | null;
 }
 
+interface ListingRowT {
+  id: number;
+  title: string | null;
+  photoUrls: string[];
+  priceMonth: number | null;
+  currency: string | null;
+  bedrooms: number | null;
+  lostAt: Date | null;
+  location: { state: string | null; sector: string | null; neighbourhood: string | null } | null;
+}
+
+/** The two reads the page needs; the arguments are Prisma's, so the real client and a test fake both fit. */
 export interface TtDb {
-  tikTokPost: { findMany(args: unknown): Promise<unknown[]> };
+  tikTokPost: { findMany(args: ReturnType<typeof ttPostArgs>): Promise<PostRowT[]> };
+  listing: { findMany(args: ReturnType<typeof ttListingArgs>): Promise<ListingRowT[]> };
 }
 
-const placeIn = (l: PostRowT["listing"], lang: "en" | "ar" | "rw"): string | null => {
-  if (!l) return null;
+const placeIn = (l: ListingRowT, lang: "en" | "ar" | "rw"): string | null => {
   const zone = zoneLabel(l.location?.neighbourhood ?? l.location?.sector ?? null, lang);
   if (zone) return zone;
   const district = (l.location?.state ?? "").toUpperCase();
@@ -60,33 +95,16 @@ const placeIn = (l: PostRowT["listing"], lang: "en" | "ar" | "rw"): string | nul
 
 /** Posted homes of the window: still available, with a photo and a monthly price. */
 export async function loadTtHomes(db: TtDb, now = Date.now()): Promise<TtHome[]> {
-  const rows = (await db.tikTokPost.findMany({
-    where: { status: "POSTED", postedAt: { gte: windowStart(now), lte: new Date(now) }, listing: { lostAt: null, rentPeriod: "MONTHLY", priceMonth: { not: null } } },
-    orderBy: { postedAt: "desc" },
-    take: 80,
-    select: {
-      listingId: true,
-      postedAt: true,
-      listing: {
-        select: {
-          id: true,
-          title: true,
-          photoUrls: true,
-          priceMonth: true,
-          currency: true,
-          bedrooms: true,
-          lostAt: true,
-          location: { select: { state: true, sector: true, neighbourhood: true } },
-        },
-      },
-    },
-  })) as PostRowT[];
+  const posts = await db.tikTokPost.findMany(ttPostArgs(now));
+  const ids = [...new Set(posts.map((p) => p.listingId))];
+  if (ids.length === 0) return [];
+  const homes = new Map((await db.listing.findMany(ttListingArgs(ids))).map((l) => [l.id, l]));
 
   const seen = new Set<number>();
   const out: TtHome[] = [];
-  for (const r of rows) {
-    const l = r.listing;
-    if (!l || !r.postedAt || seen.has(l.id) || l.lostAt || !l.photoUrls?.[0] || !l.priceMonth) continue;
+  for (const p of posts) {
+    const l = homes.get(p.listingId);
+    if (!l || !p.postedAt || seen.has(l.id) || l.lostAt || !l.photoUrls?.[0] || !l.priceMonth) continue;
     seen.add(l.id);
     out.push({
       id: l.id,
@@ -97,7 +115,7 @@ export async function loadTtHomes(db: TtDb, now = Date.now()): Promise<TtHome[]>
       currency: l.currency ?? "RWF",
       bedrooms: l.bedrooms,
       place: { en: placeIn(l, "en"), ar: placeIn(l, "ar"), rw: placeIn(l, "rw") },
-      postedAt: r.postedAt,
+      postedAt: p.postedAt,
     });
     if (out.length >= TT_MAX_HOMES) break;
   }
