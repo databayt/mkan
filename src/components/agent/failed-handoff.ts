@@ -6,15 +6,21 @@ import "server-only";
  * person can answer by hand (2026-11-08). Never throws; a Slack outage must not fail the failure path.
  */
 import { db } from "@/lib/db";
+import { waLink } from "../../../scripts/crm/public-links";
+import { TENANT_REACH, tenantNumber } from "./broker-gate";
 import { postSlackCard } from "./whatsapp";
 import type { AgentMessage } from "./types";
 
 export type FailWhy = "deadline" | "threw" | "turn-failed" | "stuck";
 
-/** The card text — pure, so the test replays it. */
-export function failedChatCard(taskId: string, why: FailWhy, lastUserText: string | null): string {
+/**
+ * The card text — pure, so the test replays it. It carries the tenant's number when the chat has one (the
+ * WhatsApp chat's, or one a web tenant left) — "answer by hand" with no way to reach them was no answer.
+ */
+export function failedChatCard(taskId: string, why: FailWhy, lastUserText: string | null, tenant: string | null = null): string {
   const said = (lastUserText ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
-  return `⚠️ A tenant wrote and the agent could not answer (${why}) — chat ${taskId}. Answer by hand:${said ? `\n> ${said}` : ""}`;
+  const who = tenant ? `\nTenant: <${waLink(tenant, "")}|${tenant}>` : "\nTenant: web chat, no number left";
+  return `⚠️ A tenant wrote and the agent could not answer (${why}) — chat ${taskId}. Answer by hand:${said ? `\n> ${said}` : ""}${who}`;
 }
 
 /** The last thing the tenant said in a task's messages. */
@@ -29,8 +35,8 @@ export function lastUserText(messages: unknown): string | null {
 
 export async function handOffFailedChat(taskId: string, why: FailWhy): Promise<void> {
   try {
-    const task = await db.agentTask.findUnique({ where: { id: taskId }, select: { messages: true } });
-    await postSlackCard(failedChatCard(taskId, why, lastUserText(task?.messages)));
+    const task = await db.agentTask.findUnique({ where: { id: taskId }, select: { messages: true, ...TENANT_REACH } });
+    await postSlackCard(failedChatCard(taskId, why, lastUserText(task?.messages), tenantNumber(task)));
   } catch (err) {
     console.warn(`[agent] failed-chat hand-off not posted for ${taskId}: ${(err as Error).message}`);
   }

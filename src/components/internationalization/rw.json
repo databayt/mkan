@@ -5635,7 +5635,7 @@
       "brokerAnswer": "Bona igisubizo cya komisiyoneri kuri WhatsApp",
       "brokerAnswerHint": "Ohereza ubutumwa bufunguka, Mkan ihita ibaza komisiyoneri. Igisubizo kikugeraho kuri WhatsApp, kandi ni ubuntu.",
       "askBrokerButton": "Baza komisiyoneri",
-      "askNumberHint": "Andika nimero yawe ya WhatsApp. Mkan ibaza komisiyoneri ikakohereza igisubizo aho, ni ubuntu.",
+      "askNumberHint": "Andika nimero yawe ya WhatsApp: Mkan ibaza komisiyoneri ikakohereza igisubizo aho, n'andi mazu mashya akubereye mu byumweru bibiri. Niba inzu ihari, komisiyoneri ahabwa nimero yawe kugira ngo mupange gusura. Ni ubuntu; ohereza STOP igihe cyose.",
       "askSent": "Byakozwe. Mkan irimo kubaza komisiyoneri, igisubizo kizakugeraho kuri WhatsApp.",
       "askChecking": "Twabyakiriye. Mkan irimo gusuzuma iyi nzu na komisiyoneri kandi izakwandikira kuri WhatsApp.",
       "askNoBroker": "Nta komisiyoneri ufite nimero uraboneka kuri iyi nzu. Yifungure kuri WhatsApp umuntu azagufasha.",

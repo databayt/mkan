@@ -252,7 +252,7 @@ export default function CardSheet({
                     </p>
                   )}
                   <p className="text-center text-xs text-muted-foreground">
-                    {c?.askNumberHint ?? "Leave your WhatsApp number. Mkan asks the broker and sends you the answer there. It's free."}
+                    {c?.askNumberHint ?? "Leave your WhatsApp number: Mkan asks the broker and sends the answer there, and for two weeks any new home that fits. If the home is free, the broker gets your number to set up the viewing. Free; reply STOP anytime."}
                   </p>
                 </form>
               )}

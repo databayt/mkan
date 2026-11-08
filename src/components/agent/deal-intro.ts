@@ -26,7 +26,7 @@ import { phoneKey } from "../../../scripts/wa/outbox-pure";
 import { ALERT_LABEL, inSendWindow } from "../../../scripts/wa/outbox-pure";
 import { agreementOf, sendDealSheet, setDealStatus } from "./deal";
 import { askedOnLabel, expectedShare, type DealLang } from "./deal-pure";
-import { lastTenantAt } from "./broker-gate";
+import { lastTenantAt, reachedAt, TENANT_REACH } from "./broker-gate";
 import { brokerSendMode } from "./broker-sends";
 import {
   connectionMode,
@@ -74,6 +74,29 @@ export async function introMode(): Promise<ConnectionMode> {
 /** `messages`, when the caller has them: a yes a day or more after the tenant last wrote names the day they asked. */
 type IntroTask = { id: string; locale: string; shortlist: unknown; messages?: unknown; profile: { waPhone: string | null } | null };
 type Pending = { taskId: string; phone: string; lang: DealLang; /** "27 Oct" when the yes came a day or more after they last wrote. */ askedOn?: string | null };
+
+/**
+ * The usual way for an intro that will not happen (the broker said no to Mkan's terms, or let them wait):
+ * each tenant's deal sheet, to the chat's number — a web tenant's left one (broker-gate.ts reachedAt), else
+ * the number the intro was started for. Says which chats got nothing, so #mkan is never told "the tenant
+ * got the deal sheet" when none went (2026-11-08).
+ */
+async function sheetsFor(tenants: Pending[], listingId: number): Promise<{ sent: number; missed: string[] }> {
+  let sent = 0;
+  const missed: string[] = [];
+  for (const t of tenants) {
+    const row = await db.agentTask.findUnique({ where: { id: t.taskId }, select: { id: true, locale: true, shortlist: true, messages: true, ...TENANT_REACH } });
+    if (!row) {
+      missed.push(t.taskId);
+      continue;
+    }
+    const task = reachedAt(row);
+    if (!task.profile.waPhone && t.phone) task.profile.waPhone = t.phone;
+    if (await sendDealSheet(task, listingId).catch(() => false)) sent += 1;
+    else missed.push(t.taskId);
+  }
+  return { sent, missed };
+}
 /** The terms ask waiting on one broker (WaState `terms-ask:<number>`). */
 export type TermsAsk = {
   listingId: number;
@@ -290,10 +313,8 @@ export async function answerTerms(
   }
   if (answer === "no") {
     // The usual way, with a person in the middle: the deal sheet asks the tenant when they can come.
-    for (const t of ask.tenants) {
-      const task = await db.agentTask.findUnique({ where: { id: t.taskId }, select: { id: true, locale: true, shortlist: true, messages: true, profile: { select: { waPhone: true } } } });
-      if (task) await sendDealSheet(task, ask.listingId).catch(() => {});
-    }
+    const { missed } = await sheetsFor(ask.tenants, ask.listingId);
+    if (missed.length) await postSlackCard(`⚠️ K${ask.listingId}: the broker declined Mkan's terms, and no deal sheet could go to chat ${missed.join(", ")} (no number, or a STOP) — a person takes it.`).catch(() => {});
     return { answer, listingId: ask.listingId, reply: "Understood, thank you. Mkan will be in touch about this tenant. Murakoze!", tenants: ask.tenants.length };
   }
   const b = await recordAgreement(ask.brokerId);
@@ -402,13 +423,11 @@ export async function introSweep(now = new Date()): Promise<number> {
     }
     if (termsHandOffDue(new Date(ask.at), now)) {
       await writeState(row.key, { ...ask, handedAt: now.toISOString() });
-      for (const t of ask.tenants) {
-        const task = await db.agentTask.findUnique({ where: { id: t.taskId }, select: { id: true, locale: true, shortlist: true, messages: true, profile: { select: { waPhone: true } } } });
-        if (task) await sendDealSheet(task, ask.listingId).catch(() => {});
-      }
+      const { sent, missed } = await sheetsFor(ask.tenants, ask.listingId);
+      const got = missed.length === 0 ? "the tenant got the deal sheet" : sent > 0 ? `${sent} of ${ask.tenants.length} tenants got the deal sheet (none could go to chat ${missed.join(", ")})` : `no deal sheet could go out (chat ${missed.join(", ")}: no number, or a STOP)`;
       await postSlackCard(
         `⌛ *Intro* K${ask.listingId}: the broker (${lastDigits(phone)}) hasn't agreed Mkan's terms in ${TERMS_WAIT_AWAKE_HOURS} daytime hours — ` +
-          `the tenant got the deal sheet; a person takes it from here. A YES from them later still records the terms.`,
+          `${got}; a person takes it from here. A YES from them later still records the terms.`,
       ).catch(() => {});
       n += 1;
     } else if (await sweepTermsAsk(phone, ask, now, true)) n += 1;

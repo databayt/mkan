@@ -56,7 +56,7 @@ vi.mock("@/lib/db", () => {
     brokerRequest: { findFirst: async () => ({ brokerUserId: "u1", broker: { phoneNumber: "+250700000043" } }) },
     listingBroker: { findFirst: async () => ({ brokerId: "b1" }) },
     listing: { findUnique: async () => ({ title: "2-bedroom apartment in Kimironko" }) },
-    agentTask: { findUnique: async () => ({ shortlist: [] }) },
+    agentTask: { findUnique: vi.fn(async () => ({ shortlist: [] })) },
   };
   return { db };
 });
@@ -67,7 +67,7 @@ vi.mock("@/components/agent/whatsapp", () => ({
 vi.mock("@/components/agent/broker-sends", () => ({ brokerSendMode: async () => store.mode }));
 vi.mock("@/components/agent/deal", () => ({
   agreementOf: (b: Row) => (b && Number(b.sharePct) > 0 ? { pct: Number(b.sharePct), flatRwf: null } : null),
-  sendDealSheet: vi.fn(async () => {}),
+  sendDealSheet: vi.fn(async () => true),
   setDealStatus: vi.fn(),
 }));
 
@@ -122,6 +122,23 @@ describe("no YES in 2 daytime hours: the tenant goes the usual way (Abdout, 2026
     expect(res?.reply).not.toContain("+250700000011");
     expect(store.cards.some((c) => c.includes("Terms agreed late"))).toBe(true);
     expect(store.state.has(termsAskKey(BROKER))).toBe(false);
+  });
+
+  it("a web tenant who left a number gets the deal sheet at that number (25c82d7's re-reads took only WhatsApp's)", async () => {
+    const { db } = await import("@/lib/db");
+    await startIntro([task("t2", "+250720000012")], 6041, BROKER, { typed: false });
+    vi.mocked(db.agentTask.findUnique).mockResolvedValueOnce({ id: "t2", locale: "en", shortlist: [], messages: [], profile: null, demand: { phone: "+250720000012", optInAt: new Date() } } as never);
+    await introSweep(mins(121));
+    expect(vi.mocked(sendDealSheet).mock.calls[0]![0]).toMatchObject({ id: "t2", profile: { waPhone: "+250720000012" } });
+    expect(store.cards.some((c) => c.includes("the tenant got the deal sheet"))).toBe(true);
+  });
+
+  it("when no sheet could go, #mkan hears that — never \"the tenant got the deal sheet\"", async () => {
+    vi.mocked(sendDealSheet).mockResolvedValueOnce(false);
+    await startIntro([task("t3", "+250720000013")], 6041, BROKER, { typed: false });
+    await introSweep(mins(121));
+    expect(store.cards.some((c) => c.includes("no deal sheet could go out"))).toBe(true);
+    expect(store.cards.some((c) => c.includes("the tenant got the deal sheet"))).toBe(false);
   });
 
   it("the ask is gone once its 72 h are over", async () => {

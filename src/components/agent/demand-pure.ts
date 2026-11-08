@@ -154,6 +154,9 @@ export function normalisePhone(input: string): string | null {
   if (/^07\d{8}$/.test(digits)) digits = `250${digits.slice(1)}`;
   else if (/^7\d{8}$/.test(digits)) digits = `250${digits}`;
   if (digits.startsWith("250") && !/^2507\d{8}$/.test(digits)) return null;
+  // No country code starts with 0: "0912345678" is a local number with its country missing, and
+  // "+0912345678" reached nobody, silently (2026-11-08).
+  if (digits.startsWith("0")) return null;
   if (digits.length < 9 || digits.length > 15) return null;
   return `+${digits}`;
 }

@@ -37,7 +37,10 @@ describe('failedChatCard', () => {
     expect(card).toContain('chat t1');
     expect(card).toContain('(deadline)');
     expect(card).toContain('> 2 bedroom in Kicukiro');
-    expect(failedChatCard('t1', 'stuck', 'x'.repeat(900)).length).toBeLessThan(400);
+    // The tenant's words are cut at 300; the card also names who to answer (2026-11-08).
+    expect(failedChatCard('t1', 'stuck', 'x'.repeat(900)).length).toBeLessThan(450);
+    expect(failedChatCard('t1', 'deadline', 'hi')).toContain('web chat, no number left');
+    expect(failedChatCard('t1', 'deadline', 'hi', '+250720000011')).toContain('wa.me/250720000011');
   });
 });
 

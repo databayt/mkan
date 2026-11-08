@@ -5635,7 +5635,7 @@
       "brokerAnswer": "Get the broker's answer on WhatsApp",
       "brokerAnswerHint": "Send the message that opens, and Mkan asks the broker right away. The answer comes to you on WhatsApp, and it's free.",
       "askBrokerButton": "Ask the broker",
-      "askNumberHint": "Leave your WhatsApp number. Mkan asks the broker and sends you the answer there. It's free.",
+      "askNumberHint": "Leave your WhatsApp number: Mkan asks the broker and sends the answer there, and for two weeks any new home that fits. If the home is free, the broker gets your number to set up the viewing. Free; reply STOP anytime.",
       "askSent": "Done. Mkan is asking the broker, and the answer will reach you on WhatsApp.",
       "askChecking": "Got it. Mkan is checking this home with the broker and will message you on WhatsApp.",
       "askNoBroker": "No broker with a number is on file for this home yet. Open it on WhatsApp and a person will help.",

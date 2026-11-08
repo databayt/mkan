@@ -130,6 +130,11 @@ describe("normalisePhone", () => {
     expect(normalisePhone("12345")).toBeNull();
     expect(normalisePhone("+25012345")).toBeNull();
   });
+  it("refuses a local number with its country missing — '+0912…' reached nobody, silently (2026-11-08)", () => {
+    expect(normalisePhone("0912345678")).toBeNull();
+    expect(normalisePhone("+0912345678")).toBeNull();
+    expect(normalisePhone("+249 912 345 678")).toBe("+249912345678");
+  });
 });
 
 describe("demand messages", () => {

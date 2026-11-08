@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { lastTenantAt, tenantActive, tenantGate, tenantNumber } from "@/components/agent/broker-gate";
+import { lastTenantAt, reachedAt, tenantActive, tenantGate, tenantNumber } from "@/components/agent/broker-gate";
+
+describe("reachedAt — the number every later step reaches the tenant at (2026-11-08)", () => {
+  it("the WhatsApp chat's own number first, else a web tenant's left one, never one without consent", () => {
+    expect(reachedAt({ id: "t", profile: { waPhone: "+250720000011" }, demand: { phone: "+250720000012", optInAt: new Date() } }).profile.waPhone).toBe("+250720000011");
+    expect(reachedAt({ id: "t", profile: null, demand: { phone: "+250720000012", optInAt: new Date() } }).profile.waPhone).toBe("+250720000012");
+    expect(reachedAt({ id: "t", profile: null, demand: { phone: "+250720000012", optInAt: null } }).profile.waPhone).toBeNull();
+    expect(reachedAt({ id: "t", profile: null, demand: null })).toEqual({ id: "t", profile: { waPhone: null } });
+  });
+});
 
 const tests = new Set(["249900000001"]);
 

@@ -34,6 +34,21 @@ export function tenantNumber(task: { profile?: { waPhone: string | null } | null
   return task?.demand?.phone && task.demand.optInAt ? task.demand.phone : null;
 }
 
+/**
+ * What every task read that may need to reach the tenant selects: both numbers. Four reads after the
+ * broker's first answer took only the WhatsApp one, so a web tenant who left a number got the answer and
+ * then nothing — no hand-on, no deal sheet after the terms wait, no viewing confirmation (2026-11-08).
+ */
+export const TENANT_REACH = { profile: { select: { waPhone: true } }, demand: { select: { phone: true, optInAt: true } } } as const;
+
+/** A task row with the number that reaches its tenant in `profile.waPhone` — the shape the deal and intro code read. */
+export function reachedAt<T extends { profile?: { waPhone: string | null } | null; demand?: { phone: string | null; optInAt: Date | null } | null }>(
+  row: T,
+): Omit<T, "profile" | "demand"> & { profile: { waPhone: string | null } } {
+  const { profile, demand, ...rest } = row;
+  return { ...rest, profile: { waPhone: tenantNumber({ profile, demand }) } };
+}
+
 /** A broker who was asked about a home is not asked about it again for this long — by any search. */
 export const REASK_GAP_DAYS = 14;
 /** A search whose tenant wrote nothing for this long stops asking brokers. */

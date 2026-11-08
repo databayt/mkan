@@ -139,6 +139,9 @@ async function recoverStuck(task: TaskRow): Promise<TaskRow> {
     where: { id: task.id, status: "RUNNING", updatedAt: { lt: new Date(Date.now() - STUCK_AFTER_MS) } },
     data: { status, messages: messages as unknown as Prisma.InputJsonValue },
   });
+  // The chat ended on the tenant's words: a person hears it too (failed-handoff.ts). Once — the update above
+  // wins for one reader only; the cron's failStuckTasks finds nothing left to fail.
+  if (count && status === "FAILED") void import("./failed-handoff").then((h) => h.handOffFailedChat(task.id, "stuck")).catch(() => {});
   return count ? { ...task, status, messages: messages as unknown as Prisma.JsonValue } : task;
 }
 

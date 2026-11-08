@@ -31,6 +31,9 @@ export async function optInForDemand(input: { taskId: string; phone: string }): 
   return { ok: true };
 }
 
+/** Broker asks one web tenant may start from /find's cards in an hour. */
+const ASKS_PER_HOUR = 5;
+
 export type AskWithNumberResult =
   | { ok: true; outcome: "asked" | "checking" | "already" | "confirmed" | "none" }
   | { ok: false; error: "phone" | "missing" | "busy" };
@@ -48,7 +51,12 @@ export async function askBrokerWithNumber(input: { taskId: string; listingId: nu
   if (!Number.isInteger(listingId)) return { ok: false, error: "missing" };
   const viewer = await requireProfile();
   const task = await db.agentTask.findFirst({ where: { id: String(input.taskId), ...ownedBy(viewer) }, select: { id: true } });
-  if (!task || !(await optInDemand(task.id, phone))) return { ok: false, error: "missing" };
+  if (!task) return { ok: false, error: "missing" };
+  // A browser reaches brokers only through this card: a few asks an hour per person, never a script's
+  // loop (the gate was built to stop exactly that, broker-gate.ts — 2026-11-08).
+  const recent = await db.agentEvent.count({ where: { kind: "availability_asked", createdAt: { gte: new Date(Date.now() - 3_600_000) }, task: ownedBy(viewer) } });
+  if (recent >= ASKS_PER_HOUR) return { ok: false, error: "busy" };
+  if (!(await optInDemand(task.id, phone))) return { ok: false, error: "missing" };
   const res = await askAvailabilityFor(task.id, listingId);
   await db.agentTask.update({ where: { id: task.id }, data: { updatedAt: new Date() } });
   if (res.why === "busy") return { ok: false, error: "busy" };

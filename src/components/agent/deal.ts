@@ -23,7 +23,7 @@ import { db } from "@/lib/db";
 import { waLink } from "../../../scripts/crm/public-links";
 import { viewingRep } from "./broker-message";
 import { longStayCost, type CostEstimate, type ListingTerms } from "./cost";
-import { lastTenantAt } from "./broker-gate";
+import { lastTenantAt, TENANT_REACH, tenantNumber } from "./broker-gate";
 import {
   afterViewingMessage,
   afterViewingNotText,
@@ -227,7 +227,7 @@ export async function bookViewing(input: {
   /** Mkan's share as the broker agreed it now (`--share-pct=` / `--share-rwf=`), or `none` (`--no-share`). */
   share?: (ShareAgreement & { none?: boolean }) | null;
 }): Promise<{ visitId: number; dealId: string; share: number | null; economics: string }> {
-  const task = await db.agentTask.findUnique({ where: { id: input.taskId }, select: { id: true, locale: true, shortlist: true, profile: { select: { waPhone: true } } } });
+  const task = await db.agentTask.findUnique({ where: { id: input.taskId }, select: { id: true, locale: true, shortlist: true, ...TENANT_REACH } });
   if (!task) throw new Error(`no task ${input.taskId}`);
   const item = ((task.shortlist as ShortlistItem[] | null) ?? []).find((s) => s.id === input.listingId);
   // The broker who said yes earns the deal — after a hand-on that is not the first poster (2026-11-06).
@@ -252,7 +252,8 @@ export async function bookViewing(input: {
   // Booking the same home for the same chat again is a new time, not a second deal: the open one moves.
   const open = await db.deal.findFirst({ where: { taskId: task.id, listingId: input.listingId, status: { in: ["VIEWING_BOOKED", "VIEWED"] } }, select: { id: true, visitId: true } });
   const rep = input.by?.trim() || viewingRep();
-  const tenant = task.profile?.waPhone ?? null;
+  // A web tenant's left number too: their confirmation and reminders go there (2026-11-08: they got none).
+  const tenant = tenantNumber(task);
   const terms = input.terms && Object.keys(input.terms).length > 0 ? input.terms : null;
   let cost: CostEstimate | null = item?.cost ?? null;
   if (terms) {

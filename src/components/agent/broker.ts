@@ -21,7 +21,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { listingPath } from "@/lib/listing-code";
 import { publicAppUrl, waLink } from "../../../scripts/crm/public-links";
-import { lastTenantAt, REASK_GAP_DAYS, tenantActive, tenantGate, tenantNumber } from "./broker-gate";
+import { lastTenantAt, reachedAt, REASK_GAP_DAYS, TENANT_REACH, tenantActive, tenantGate, tenantNumber } from "./broker-gate";
 import { askedOnLabel } from "./deal-pure";
 import { ALERT_LABEL, inSendWindow, phoneKey, REST_DAYS, brokerRest, startOfKigaliDay } from "../../../scripts/wa/outbox-pure";
 import { answerStats, dueForNext, MAX_BROKERS_PER_HOME, nudgeDue, rankBrokers, SILENT_LOOKBACK_DAYS, type BrokerSignal } from "./broker-rank";
@@ -409,14 +409,13 @@ export async function applyAnswer(listingId: number, answer: Answer, brokerPhone
     where: { status: { in: ["WAITING", "DONE", "RUNNING"] }, updatedAt: { gte: new Date(Date.now() - 7 * 86_400_000) }, brokerRequests: { some: { listingId } } },
     select: {
       id: true, shortlist: true, locale: true, messages: true,
-      profile: { select: { waPhone: true } },
       // A web tenant who left a number beside "Ask the broker" hears the answer there too (2026-11-08).
-      demand: { select: { phone: true, optInAt: true } },
+      ...TENANT_REACH,
       brokerRequests: { where: { listingId }, select: { status: true } },
     },
   });
   // From here a task's `profile.waPhone` is where the tenant is reached: the WhatsApp chat's own number, else that one.
-  const found = rows.map(({ demand: _demand, ...t }) => ({ ...t, profile: { waPhone: tenantNumber({ profile: t.profile, demand: _demand }) } }));
+  const found = rows.map((r) => reachedAt(r));
   // "No reply" is news only to a tenant still waiting: one whose broker already said yes (or taken) in
   // these 7 days used to hear "the broker hasn't answered" when a later ask expired (2026-11-06).
   const tasks = answer === "NO_REPLY" ? found.filter((t) => !t.brokerRequests.some((r) => r.status === "AVAILABLE" || r.status === "RENTED")) : found;
@@ -526,15 +525,18 @@ type Waiting = {
   taskId: string | null;
   locale: string;
   need: Prisma.JsonValue;
-  task: { messages: Prisma.JsonValue; profile: { waPhone: string | null } | null } | null;
+  task: { messages: Prisma.JsonValue; profile: { waPhone: string | null } | null; demand: { phone: string | null; optInAt: Date | null } | null } | null;
 };
-const WAITING_SELECT = { taskId: true, locale: true, need: true, task: { select: { messages: true, profile: { select: { waPhone: true } } } } } as const;
+const WAITING_SELECT = { taskId: true, locale: true, need: true, task: { select: { messages: true, ...TENANT_REACH } } } as const;
 
-/** The waiting rows whose search carries the question on: a real WhatsApp tenant (broker-gate.ts) still writing to us, while sends are on. */
+/**
+ * The waiting rows whose search carries the question on: a tenant with a WhatsApp number (the chat's own,
+ * or one a web tenant left — broker-gate.ts) still writing to us, while sends are on.
+ */
 async function liveWaiting<T extends Waiting>(rows: T[], now: Date): Promise<T[]> {
   if (rows.length === 0) return [];
   const [mode, tests] = await Promise.all([brokerSendMode(), testPhones()]);
-  return rows.filter((r) => r.task && tenantGate({ mode, waPhone: r.task.profile?.waPhone ?? null, testPhones: tests }).ok && tenantActive(r.task.messages, now));
+  return rows.filter((r) => r.task && tenantGate({ mode, waPhone: tenantNumber(r.task), testPhones: tests }).ok && tenantActive(r.task.messages, now));
 }
 
 /**
