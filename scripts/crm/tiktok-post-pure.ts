@@ -414,11 +414,12 @@ export function captionFor(
     .filter(Boolean)
     .map(tag);
   const tagList = searchFirst ? [...new Set(['inzuikodeshwa', 'houseforrent', 'kigali', r.area ?? r.district ?? '', 'rwanda'].filter(Boolean).map(tag))].slice(0, 5) : [...new Set(tags)];
+  // The WhatsApp line second, where TikTok still shows it before "more" (lever 8, 2026-11-08): as the
+  // third line it sat under the fold, and in 17 posts and 2,248 views not one viewer sent a code.
+  const wa = `📲 WhatsApp ${whatsapp} — send "${ref}"`;
   return [
-    ...(searchFirst ? [searchFirstLine(r)] : []),
-    `🏠 ${headline(r)} — ${place}`,
+    ...(searchFirst ? [searchFirstLine(r), wa, `🏠 ${headline(r)} — ${place}`] : [`🏠 ${headline(r)} — ${place}`, wa]),
     `💰 ${price} / month`,
-    `📲 WhatsApp ${whatsapp} — send "${ref}"`,
     `🇷🇼 Inzu ikodeshwa${rooms} i ${place} — ${price} ku kwezi. Ohereza "${ref}" kuri WhatsApp.`,
     // The broker agreed to reposts with their name on them: credited here, never on screen.
     ...(askFollow ? [FOLLOW_ASK] : []),

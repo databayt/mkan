@@ -7,9 +7,12 @@
 
 ## Why TikTok first
 
-Every tenant who reaches a broker started as a viewer. 30 days to 11-07: 17 posts → 2,248 views →
-58 people wrote → 17 asked a broker. More reach and more interaction feed every step below them, and
-a viewer who follows sees the next home without being found again.
+Every tenant who reaches a broker started as a viewer. 30 days to 11-08: 17 posts → 2,248 views →
+**0 viewers wrote** — not one chat has ever sent a post's code, and the "58 people wrote → 17 asked a
+broker" read on 11-07 was the team testing the bot (Abdout, 2026-11-08; the scorecard now leaves the
+team out: `src/lib/monetize/team.ts`). Getting a viewer to write is the first job, before reach.
+More reach and more interaction feed every step below them, and a viewer who follows sees the next
+home without being found again.
 
 ## The numbers (the TikTok tile on /monetize, `scorecard.ts`)
 
@@ -67,7 +70,9 @@ at the end of this file and as the sprint lesson; keep the winner as the default
    never two in a row from the same broker's footage.
 7. **Series and pins.** Playlists by price and area ("Under 200k", "Kimihurura"); pin three videos: "How
    renting with Mkan works" (free viewing, no fee, WhatsApp the code), the best-viewed home, a trust video.
-8. **Conversion path.** The code in the caption + WhatsApp number (live); the WhatsApp link in the bio
+8. **Conversion path.** The code in the caption + WhatsApp number (live; the second line since 11-08,
+   where TikTok shows it before "more"); a chat that says "on TikTok" or "saw your video" counts as
+   TikTok's without the code (`refSourceOf`); the WhatsApp link in the bio
    (Business account: check the follower minimum), and the same instruction as the pinned comment.
    The whole setup behind it — Databayt Ltd, the business number, mkan.rw, the verified Business page,
    MoMo — is [kun.databayt.org/en/docs/mkan-setup](https://kun.databayt.org/en/docs/mkan-setup); the bio link
@@ -85,6 +90,8 @@ at the end of this file and as the sprint lesson; keep the winner as the default
 ## Experiments
 
 One line each, newest first: date started · lever · the change · baseline · result (date judged) · kept or dropped.
+
+- 2026-11-08 · lever 8 (conversion path) · the `📲 WhatsApp … — send "K…"` line moves from the third caption line to the second (under the search line when lever 3 is on), so it shows before "more"; both lever-4 arms get it, so the follow test stays fair · baseline 0 TikTok chats in 17 posts / 2,248 views (no message ever carried a code; viewsToChats now counts TikTok-tagged chats only) · metric: TikTok chats per 1,000 views on /monetize ("TikTok viewers who write") · judge after 10 posts with the new caption · result: pending
 
 - 2026-11-08 · lever 3 (search-first caption) · QUEUED, switch OFF (`TIKTOK_SEARCH_CAPTION=1` turns it on) · first line in plain searched words ("House for rent in Kimihurura, Kigali: 2 bedrooms, 400,000 RWF a month"), then 3–5 hashtags incl. #inzuikodeshwa and the area; code, WhatsApp line and askFollow tag kept · baseline follow rate 0.32%, viewsPerPost 115, like rate 2.5% (66 likes / 2,650 views, tt:stats 11-07 19:01) · turns on the day lever 4 is judged, never before · result: not started
 - 2026-11-07 · lever 4 (ask for the follow) · every even post number's caption adds "Follow for new Kigali homes every day" (English + Kinyarwanda) after the home code and WhatsApp lines; odd posts unchanged; tagged `askFollow` in the ledger and queue · baseline follow rate 0.31%, followersWeek 5.8 · judge after 10 posts per side, compare views, likes and follower gain · result: pending

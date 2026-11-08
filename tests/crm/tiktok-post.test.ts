@@ -155,6 +155,16 @@ describe('caption', () => {
     expect(c).toContain('#gasabo');
     expect(refInText(c)).toBe('K77');
   });
+  it('puts the WhatsApp line second, where TikTok shows it before "more" — in both arms of the follow test', () => {
+    for (const askFollow of [false, true]) {
+      const lines = captionFor(row({ id: 77 }), '+250 788 000 000', askFollow, false).split('\n');
+      expect(lines[0]).toMatch(/^🏠 /);
+      expect(lines[1]).toBe('📲 WhatsApp +250 788 000 000 — send "K77"');
+    }
+    const search = captionFor(row({ id: 77, area: 'Kimihurura', district: 'Gasabo' }), '+250 788 000 000', false, true).split('\n');
+    expect(search[0]).toMatch(/for rent in/);
+    expect(search[1]).toBe('📲 WhatsApp +250 788 000 000 — send "K77"');
+  });
   it('carries no music line: the broker\'s own sound goes out, nothing generated', () => {
     expect(captionFor(row({ hostSourceId: 'tiktok:kigalihomes' }), '+250 788 000 000')).not.toMatch(/music|AI-generated/i);
   });
