@@ -1,11 +1,13 @@
 /**
  * Who the line may ask a broker for. Pure, so the rule is tested.
  *
- * A broker is asked about a home only for a tenant who reached Mkan on
- * WhatsApp (a real number that wrote to us first) and picked that home — a
- * digit, or "yes" to "want me to check it?". A browser on /find never reaches a
- * broker: its "Check" opens the same chat on WhatsApp. The team's own numbers
- * run the whole chat, but their picks become TEST cards in #mkan.
+ * A broker is asked about a home only for a tenant who has a WhatsApp number
+ * and picked that home — a digit, or "yes" to "want me to check it?" on
+ * WhatsApp, or a number typed into /find's card beside "Ask the broker"
+ * (2026-11-08: the number is the consent, and where the answer goes). A browser
+ * that left no number never reaches a broker: its card still offers the same
+ * chat on WhatsApp. The team's own numbers run the whole chat, but their picks
+ * become TEST cards in #mkan.
  *
  * Until 2026-11-01 every monthly search on /find asked the broker of each home
  * it showed, and the hourly cron asked again every day: 257 asks from 17
@@ -21,6 +23,15 @@ export function tenantGate(input: { mode: SendMode; waPhone: string | null; test
   if (input.testPhones.has(input.waPhone.replace(/\D/g, ""))) return { ok: false, why: "test-phone" };
   if (input.mode !== "gated") return { ok: false, why: "sends-off" };
   return { ok: true };
+}
+
+/**
+ * Where a task's tenant can be reached on WhatsApp: the number of the WhatsApp chat itself, else the
+ * number a web tenant left on the chat's request (`TenantRequest.phone`, set with `optInAt`).
+ */
+export function tenantNumber(task: { profile?: { waPhone: string | null } | null; demand?: { phone: string | null; optInAt: Date | null } | null } | null | undefined): string | null {
+  if (task?.profile?.waPhone) return task.profile.waPhone;
+  return task?.demand?.phone && task.demand.optInAt ? task.demand.phone : null;
 }
 
 /** A broker who was asked about a home is not asked about it again for this long — by any search. */

@@ -17,7 +17,7 @@ import "server-only";
  * 129 asks in a week reached 26 brokers, nearly all of them from test searches.
  */
 import { db } from "@/lib/db";
-import { tenantGate, type GateVerdict } from "./broker-gate";
+import { tenantGate, tenantNumber, type GateVerdict } from "./broker-gate";
 
 export type BrokerSendMode = "off" | "gated";
 export const BROKER_SENDS_KEY = "broker-sends";
@@ -47,13 +47,14 @@ export async function setTestPhones(phones: string[]): Promise<void> {
   await db.waState.upsert({ where: { key: TEST_PHONES_KEY }, create: { key: TEST_PHONES_KEY, value }, update: { value } });
 }
 
-/** May the line ask a broker on this task's behalf now? Reads the mode, the task's tenant and the team list. */
+/** May the line ask a broker on this task's behalf now? Reads the mode, the task's tenant (WhatsApp chat, or the number a web tenant left) and the team list. */
 export async function gateForTask(taskId: string): Promise<GateVerdict & { waPhone: string | null }> {
   const [mode, tests, task] = await Promise.all([
     brokerSendMode(),
     testPhones(),
-    db.agentTask.findUnique({ where: { id: taskId }, select: { profile: { select: { waPhone: true } } } }),
+    db.agentTask.findUnique({ where: { id: taskId }, select: { profile: { select: { waPhone: true } }, demand: { select: { phone: true, optInAt: true } } } }),
   ]);
-  const waPhone = task?.profile?.waPhone ?? null;
+  // A web tenant who typed a number beside "Ask the broker" counts like a WhatsApp one (broker-gate.ts).
+  const waPhone = tenantNumber(task);
   return { ...tenantGate({ mode, waPhone, testPhones: tests }), waPhone };
 }

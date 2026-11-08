@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lastTenantAt, tenantActive, tenantGate } from "@/components/agent/broker-gate";
+import { lastTenantAt, tenantActive, tenantGate, tenantNumber } from "@/components/agent/broker-gate";
 
 const tests = new Set(["249900000001"]);
 
@@ -23,5 +23,18 @@ describe("who the line may ask a broker for", () => {
     expect(tenantActive(msgs, new Date("2026-11-03T12:00:00Z"))).toBe(false);
     expect(tenantActive([], now)).toBe(false);
     expect(tenantActive(null, now)).toBe(false);
+  });
+
+  it("a web tenant's typed number is reachable only once they opted in (2026-11-08)", () => {
+    const optInAt = new Date("2026-11-08T10:00:00Z");
+    expect(tenantNumber({ profile: { waPhone: "+250700000001" }, demand: { phone: "+250700000009", optInAt } })).toBe("+250700000001");
+    expect(tenantNumber({ profile: { waPhone: null }, demand: { phone: "+250700000009", optInAt } })).toBe("+250700000009");
+    // A number with no opt-in time was never consented to.
+    expect(tenantNumber({ profile: null, demand: { phone: "+250700000009", optInAt: null } })).toBeNull();
+    expect(tenantNumber({ profile: null, demand: null })).toBeNull();
+    expect(tenantNumber(null)).toBeNull();
+    // ...and a number left on the card passes the gate, a team number still does not.
+    expect(tenantGate({ mode: "gated", waPhone: tenantNumber({ demand: { phone: "+250700000009", optInAt } }), testPhones: tests })).toEqual({ ok: true });
+    expect(tenantGate({ mode: "gated", waPhone: tenantNumber({ demand: { phone: "+249900000001", optInAt } }), testPhones: tests })).toEqual({ ok: false, why: "test-phone" });
   });
 });

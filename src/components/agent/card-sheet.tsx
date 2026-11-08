@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { ExternalLink, MessageCircle, Star } from "lucide-react";
 import { BlurImage } from "@/components/atom/blur-image";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { useLocale } from "@/components/internationalization/use-locale";
@@ -14,6 +16,7 @@ import type { CostLine } from "./cost";
 import { Availability, FitLine, kindLine, placeName, SaveHeart, type NotForMe } from "./shortlist-card";
 import type { ShortlistItem } from "./types";
 import { ViewingPanel } from "./viewing";
+import { askBrokerWithNumber } from "./demand-actions";
 import { continueOnWhatsApp } from "./wa-link";
 
 /**
@@ -40,10 +43,14 @@ export default function CardSheet({
   const c = dict?.agent?.card;
   const labels = dict?.agent?.mustHaves as Record<string, string> | undefined;
   const [why, setWhy] = useState(false);
-  // A broker lead nobody has asked about: the check happens on WhatsApp, where Mkan reaches the
-  // tenant again with the answer — a browser never messages a broker (2026-11-01), and a web chat
-  // has no number to send the answer to (4 of 4 "available" answers in a week reached nobody).
-  // "Check K1234 for me", sent from their phone, is the pick: the broker is asked at once (run.ts).
+  const d = dict?.agent?.demand;
+  const [phone, setPhone] = useState("");
+  const [asked, setAsked] = useState<"idle" | "asked" | "checking" | "none" | "phone" | "error">("idle");
+  const [pending, start] = useTransition();
+  // A broker lead nobody has asked about. A browser never messages a broker unasked (2026-11-01), and
+  // a web chat had no number to send the answer to (4 of 4 "available" answers in a week reached
+  // nobody): the WhatsApp number typed here is the consent and where the answer goes (2026-11-08).
+  // "Check K1234 for me", sent from their phone, is still the pick without it (run.ts).
   const canAsk = !!item.lead && item.availability === "unconfirmed";
   const ref = `K${item.id}`;
   const { locale } = useLocale();
@@ -199,19 +206,65 @@ export default function CardSheet({
           {item.viewing && <ViewingPanel item={item} viewing={item.viewing} taskId={taskId} onChange={onChange} />}
 
           {canAsk && (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
+              {asked === "asked" || asked === "checking" || asked === "none" ? (
+                <p role="status" className="rounded-2xl bg-muted px-3.5 py-3 text-sm text-foreground">
+                  {asked === "asked"
+                    ? c?.askSent ?? "Done. Mkan is asking the broker, and the answer will reach you on WhatsApp."
+                    : asked === "checking"
+                      ? c?.askChecking ?? "Got it. Mkan is checking this home with the broker and will message you on WhatsApp."
+                      : c?.askNoBroker ?? "No broker with a number is on file for this home yet. Open it on WhatsApp and a person will help."}
+                </p>
+              ) : (
+                <form
+                  className="space-y-1.5"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    start(async () => {
+                      const res = await askBrokerWithNumber({ taskId, listingId: item.id, phone }).catch(() => ({ ok: false as const, error: "missing" as const }));
+                      if (!res.ok) return setAsked(res.error === "phone" ? "phone" : "error");
+                      setAsked(res.outcome === "checking" ? "checking" : res.outcome === "none" ? "none" : "asked");
+                      onChange();
+                    });
+                  }}
+                >
+                  <div className="flex gap-2">
+                    <Input
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      dir="ltr"
+                      required
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder={d?.phonePlaceholder ?? "07X XXX XXXX"}
+                      aria-label={d?.phoneLabel ?? "WhatsApp number"}
+                      aria-invalid={asked === "phone"}
+                      className="h-11 min-w-0 flex-1"
+                    />
+                    <Button type="submit" disabled={pending || phone.trim().length < 9} className="h-11 shrink-0 rounded-full px-5">
+                      {c?.askBrokerButton ?? "Ask the broker"}
+                    </Button>
+                  </div>
+                  {(asked === "phone" || asked === "error") && (
+                    <p role="alert" className="text-xs text-destructive">
+                      {asked === "phone" ? d?.phoneError ?? "Please enter a valid WhatsApp number." : d?.error ?? "Something went wrong. Please try again."}
+                    </p>
+                  )}
+                  <p className="text-center text-xs text-muted-foreground">
+                    {c?.askNumberHint ?? "Leave your WhatsApp number. Mkan asks the broker and sends you the answer there. It's free."}
+                  </p>
+                </form>
+              )}
               <a
                 href={continueOnWhatsApp(taskId, fill(c?.checkWords ?? "Check {ref} for me", { ref }))}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-3 text-[15px] font-medium text-background transition-opacity hover:opacity-90"
+                className="flex w-full items-center justify-center gap-2 rounded-full py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 <MessageCircle className="size-4" aria-hidden />
                 {c?.brokerAnswer ?? "Get the broker's answer on WhatsApp"}
               </a>
-              <p className="text-center text-xs text-muted-foreground">
-                {c?.brokerAnswerHint ?? "Send the message that opens, and Mkan asks the broker right away. The answer comes to you on WhatsApp, and it's free."}
-              </p>
             </div>
           )}
 

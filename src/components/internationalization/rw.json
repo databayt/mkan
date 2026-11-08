@@ -5634,6 +5634,11 @@
       },
       "brokerAnswer": "Bona igisubizo cya komisiyoneri kuri WhatsApp",
       "brokerAnswerHint": "Ohereza ubutumwa bufunguka, Mkan ihita ibaza komisiyoneri. Igisubizo kikugeraho kuri WhatsApp, kandi ni ubuntu.",
+      "askBrokerButton": "Baza komisiyoneri",
+      "askNumberHint": "Andika nimero yawe ya WhatsApp. Mkan ibaza komisiyoneri ikakohereza igisubizo aho, ni ubuntu.",
+      "askSent": "Byakozwe. Mkan irimo kubaza komisiyoneri, igisubizo kizakugeraho kuri WhatsApp.",
+      "askChecking": "Twabyakiriye. Mkan irimo gusuzuma iyi nzu na komisiyoneri kandi izakwandikira kuri WhatsApp.",
+      "askNoBroker": "Nta komisiyoneri ufite nimero uraboneka kuri iyi nzu. Yifungure kuri WhatsApp umuntu azagufasha.",
       "checkWords": "Ese inzu {ref} iracyahari? Mbarize.",
       "brokerAnswerHintPerson": "Ohereza ubutumwa bufunguka, umuntu wo muri Mkan abaze komisiyoneri. Igisubizo kizakugeraho kuri WhatsApp, kandi ni ubuntu."
     },

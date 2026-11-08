@@ -9,6 +9,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { askAvailabilityFor } from "./availability";
 import { createBrokerHome } from "./broker-home";
 import { optInDemand } from "./demand";
 import { normalisePhone } from "./demand-pure";
@@ -28,6 +29,32 @@ export async function optInForDemand(input: { taskId: string; phone: string }): 
   // Touch the task so an open tab's poll picks the change up.
   await db.agentTask.update({ where: { id: task.id }, data: { updatedAt: new Date() } });
   return { ok: true };
+}
+
+export type AskWithNumberResult =
+  | { ok: true; outcome: "asked" | "checking" | "already" | "confirmed" | "none" }
+  | { ok: false; error: "phone" | "missing" | "busy" };
+
+/**
+ * "Ask the broker" on /find's card, with the tenant's WhatsApp number beside it (2026-11-08). The
+ * number is the consent and where the answer goes (demand.ts optInDemand → broker.ts applyAnswer);
+ * then the same pick a WhatsApp digit makes runs (availability.ts askAvailabilityFor): the gate, the
+ * broker — or, for the team's numbers and while sends are off, a #mkan card (`checking`).
+ */
+export async function askBrokerWithNumber(input: { taskId: string; listingId: number; phone: string }): Promise<AskWithNumberResult> {
+  const phone = normalisePhone(String(input.phone ?? ""));
+  if (!phone) return { ok: false, error: "phone" };
+  const listingId = Number(input.listingId);
+  if (!Number.isInteger(listingId)) return { ok: false, error: "missing" };
+  const viewer = await requireProfile();
+  const task = await db.agentTask.findFirst({ where: { id: String(input.taskId), ...ownedBy(viewer) }, select: { id: true } });
+  if (!task || !(await optInDemand(task.id, phone))) return { ok: false, error: "missing" };
+  const res = await askAvailabilityFor(task.id, listingId);
+  await db.agentTask.update({ where: { id: task.id }, data: { updatedAt: new Date() } });
+  if (res.why === "busy") return { ok: false, error: "busy" };
+  if (!res.ok) return { ok: false, error: "missing" };
+  if (res.asked) return { ok: true, outcome: "asked" };
+  return { ok: true, outcome: res.why === "handed" ? "checking" : res.why === "already" || res.why === "confirmed" ? res.why : "none" };
 }
 
 /** The ask behind a broker's link, with what the page and the submission need. */

@@ -120,10 +120,20 @@ export async function askAround(taskId: string): Promise<{ asked: number; handed
   return { asked, handed: false };
 }
 
-/** The tenant's opt-in: their number, for an alert when a home comes in. */
+/**
+ * The tenant's opt-in: their number, for an alert when a home comes in and for a broker's answer
+ * (broker.ts applyAnswer). A chat that found homes has no request yet (only an empty search opens
+ * one), so the first number opens it; an expired one is reopened.
+ */
 export async function optInDemand(taskId: string, phone: string): Promise<boolean> {
-  const res = await db.tenantRequest.updateMany({ where: { taskId, status: { in: ["OPEN", "MATCHED"] } }, data: { phone, optInAt: new Date() } });
-  return res.count > 0;
+  const data = { phone, optInAt: new Date() };
+  const res = await db.tenantRequest.updateMany({ where: { taskId, status: { in: ["OPEN", "MATCHED"] } }, data });
+  if (res.count > 0) return true;
+  const task = await db.agentTask.findUnique({ where: { id: taskId }, select: { id: true, profileId: true, requirements: true, locale: true } });
+  if (!task) return false;
+  const r = mergeRequirements(EMPTY_REQUIREMENTS, coerceRequirements(task.requirements));
+  await openDemand(task.id, task.profileId, r.stay ? r : { ...r, stay: "long" }, task.locale);
+  return (await db.tenantRequest.updateMany({ where: { taskId }, data })).count > 0;
 }
 
 /**
