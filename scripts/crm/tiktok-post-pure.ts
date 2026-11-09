@@ -174,7 +174,9 @@ export function pickToday(rows: PostRow[], ledger: Ledger, consented: ReadonlySe
  * tops up to POSTS_FLOOR from the older pool.
  */
 export const AD_DAYS = 2;
-export const POSTS_FLOOR = 3;
+// 11-09: 3 → 10. "Ready" counts ads up to FRESH_DAYS old, but the fresh window is AD_DAYS (2), so
+// a floor of 3 left ~80% of ready homes unposted (21 posted of 91 ready in 7 days).
+export const POSTS_FLOOR = 10;
 export const POSTS_CEILING = 15;
 const KIGALI_UTC_OFFSET = 7_200_000; // CAT, UTC+2, no daylight saving
 

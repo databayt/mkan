@@ -247,7 +247,7 @@ function probeVideo(r: PostRow): Probe {
 
 async function pick(): Promise<PostRow[]> {
   // --n / TIKTOK_POSTS_PER_DAY: "fresh" (the default since 2026-11-07) posts every postable home
-  // whose ad went up today or yesterday, from TIKTOK_POSTS_MIN (3) up to TIKTOK_POSTS_MAX (15); see
+  // whose ad went up today or yesterday, from TIKTOK_POSTS_MIN (10) up to TIKTOK_POSTS_MAX (15); see
   // pickFresh. A number is the day's fixed count, and 0 holds the lane (an answer, not a typo).
   const raw = argv('n', process.env.TIKTOK_POSTS_PER_DAY ?? 'fresh').trim().toLowerCase();
   const asked = Number(raw);
