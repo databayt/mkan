@@ -15,6 +15,7 @@
  *   tsx scripts/sprint.ts beat <state> [--prompt=…]    the runner: the loop's state for /monetize's live card
  *   pnpm sprint:task <taskId> [--undo]                 tick (or untick) a task
  *   pnpm sprint:plan --file=plan.json                  create a WEEK / MONTH sprint from JSON (replaces an open one of that kind)
+ *   pnpm sprint:plan --file=plan.json --append         add its tasks + prompts to the ACTIVE sprint of that kind instead
  *   pnpm sprint:approve <promptId>                     Abdout, on the Mac: a prompt added on the web may run (refused unattended)
  *
  *   pnpm sprint:cycle [--dry] [--no-plan]             close, unblock, measure, plan, top up (scripts/sprint-cycle.ts)
@@ -257,11 +258,14 @@ async function task(db: Db, id: string) {
 
 async function plan(db: Db, file: string) {
   const json = JSON.parse(readFileSync(file, 'utf8')) as { sprints: LoosePlanSprint[] };
+  // --append: into the active sprint of each kind, after what it holds (plan-db.ts createSprint).
+  const append = flag('append');
   for (const s of json.sprints) {
     if (s.kind !== 'WEEK' && s.kind !== 'MONTH') throw new Error(`kind must be WEEK or MONTH: ${s.kind}`);
     for (const p of s.prompts) if (p.unblockWhen && !parseCondition(p.unblockWhen)) throw new Error(`bad unblockWhen: ${p.unblockWhen}`);
-    const created = await createSprint(db, s, { auto: s.auto ?? false });
-    console.log(`✓ ${s.kind} sprint "${s.title}" — ${s.tasks.length} tasks, ${s.prompts.length} prompts  (${created.id})`);
+    const created = await createSprint(db, s, { auto: s.auto ?? false, append });
+    const what = `${s.tasks.length} tasks, ${s.prompts.length} prompts  (${created.id})`;
+    console.log(append ? `✓ appended to ${s.kind} sprint "${created.title}" — ${what}` : `✓ ${s.kind} sprint "${s.title}" — ${what}`);
   }
 }
 
@@ -279,7 +283,7 @@ async function main() {
     else if (cmd === 'approve' && id) await approve(db, id);
     else if (cmd === 'beat' && id) await beat(db, id);
     else if (cmd === 'plan' && arg('file')) await plan(db, arg('file')!);
-    else console.log('usage: pnpm sprint:show | sprint:next | sprint:done <promptId> [--result=…] [--task-done] [--skip | --blocked [--unblock-when=…]] [--metric=…] [--lesson=…] | sprint:task <taskId> [--undo] | sprint:plan --file=plan.json');
+    else console.log('usage: pnpm sprint:show | sprint:next | sprint:done <promptId> [--result=…] [--task-done] [--skip | --blocked [--unblock-when=…]] [--metric=…] [--lesson=…] | sprint:task <taskId> [--undo] | sprint:plan --file=plan.json [--append]');
   } finally {
     await db.$disconnect();
   }

@@ -1,0 +1,94 @@
+{
+  "sprints": [
+    {
+      "kind": "WEEK",
+      "title": "First intros — chatbot gaps + clean videos",
+      "goal": "Every gap between a tenant's shortlist and a booked viewing is closed or one tap away, and every TikTok video goes out clean (no blur), with a glass info card, a trending sound and a short caption.",
+      "startsAt": "2026-11-09",
+      "endsAt": "2026-11-16",
+      "tasks": [
+        { "key": "r1", "title": "Finish and test the 48-hour rule (switch stays off)", "block": "chat" },
+        { "key": "r2", "title": "Book a viewing from WhatsApp with one tap", "block": "chat" },
+        { "key": "r3", "title": "Start an intro with one tap on /monetize", "block": "chat" },
+        { "key": "r4", "title": "Shortlist → broker ask: inline ask, reachable brokers first, real people counted", "block": "chat" },
+        { "key": "r5", "title": "A web chat continues on WhatsApp", "block": "chat" },
+        { "key": "r6", "title": "One nudge for a quiet tenant (switch, off)", "block": "chat" },
+        { "key": "r7", "title": "No-match requests reach brokers (switch, off)", "block": "chat" },
+        { "key": "r8", "title": "Cron and Slack failures raise an alert", "block": "chat" },
+        { "key": "r9", "title": "Outbox pass at boot", "block": "chat" },
+        { "key": "r10", "title": "K-codes in any digits; French replies behind review", "block": "chat" },
+        { "key": "r11", "title": "Hidden-number (@lid) senders get answers", "block": "chat" },
+        { "key": "r12", "title": "Kinyarwanda review sheet refreshed", "block": "chat" },
+        { "key": "v1", "title": "Videos: added text removed cleanly, scene text kept, no blur", "block": "enhance" },
+        { "key": "v2", "title": "Videos: glass info card, text only", "block": "post" },
+        { "key": "v3", "title": "Videos: trending TikTok sound at upload, original muted", "block": "post" },
+        { "key": "v4", "title": "Videos: short English caption, no emoji", "block": "post" },
+        { "key": "v5", "title": "Videos: taken homes (yabonetse) never posted", "block": "enhance" },
+        { "key": "v6", "title": "Videos: format v2 judged on 10 posts (lever 11)", "block": "post" },
+        { "key": "v7", "title": "/find photo tour and English map checked in a browser (mkan#54)", "block": "chat" }
+      ],
+      "prompts": [
+        {
+          "task": "r1",
+          "metric": "viewingsBooked",
+          "text": "In ~/mkan: 4 of 4 broker \"available\" answers reached no tenant (viewingsBooked 0), and the 48-hour rule that fixes it sits uncommitted in the tree: src/components/agent/deal-48h.ts, deal-48h-pure.ts, intro-pure.ts, deal-intro.ts, deal-pure.ts, scripts/wa/deal-48h.ts, scripts/wa/outbox-pure.ts (and its package.json script line). A tenant who hears back within a day is the shortest way to a paid deal this week. Finish it: (1) skip a request while its broker still has a pending terms ask (WaState terms-ask:*), so the tenant never gets the deal sheet next to \"the broker will connect with you shortly\"; (2) include asks handed on to a second broker (created without consentAt in broker.ts) and tenants who joined someone else's ask (no respondedAt); (3) drop the unused SHEET_WITHIN_MS; (4) add tests for plan48h, the sweep's selection, dealNudgeMessage in en/ar/rw, saysSigned and the tenant-48h follow-up, and re-run tests/agent/intro.test.ts against the rewritten readers. The switch stays OFF. Commit and push to main with explicit paths (pull --rebase). Never deploy, never message a person. Done when the tests pass and the work is on main; then report blocked with exactly this ask: \"Deploy mkan, then turn the 48-hour rule on (pnpm wa:deal48h on).\" Report viewingsBooked before and after."
+        },
+        {
+          "task": "r2",
+          "metric": "viewingsBooked",
+          "text": "In ~/mkan: viewingsBooked is 0 because a viewing only exists after someone runs the booking script in a terminal: when a WhatsApp tenant names a time, proposeViewing (src/components/agent/deal.ts) only posts a Slack card, and the /monetize deal.book one-tap action (src/lib/monetize/actions.ts) has no share field, so it refuses every broker who has not agreed Mkan's terms (0 of 15 have). A viewing is the step right before a paid deal. Make proposeViewing create a deal.book decision on /monetize carrying the request, the home and the slot; add a share choice to that action (the agreed %, or no share for this deal); and count viewing_proposed events and intros in src/lib/monetize/agent-funnel.ts so slots and viewings show the WhatsApp path. Tests for each. Commit and push to main with explicit paths (pull --rebase). Never deploy, never book or message anyone. actions.ts is a held path, so ship.sh will not deploy it: report blocked with exactly this ask: \"Deploy mkan (held path actions.ts); then each proposed viewing is one Yes on /monetize.\" Report viewingsBooked and part.yesToViewing before and after."
+        },
+        {
+          "task": "r3",
+          "metric": "intros",
+          "text": "In ~/mkan: intros is 0 while three ready homes (listings 6041, 5866, 5882) wait for someone to run scripts/agent/intro-start.ts in a terminal. An intro puts a real tenant and a broker who agreed Mkan's share in touch, which is how a deal gets paid. Add an intro.start one-tap decision to /monetize (src/lib/monetize/actions.ts, like deal.book) that does exactly what intro-start.ts does for one listing, refuses unattended runs the same way, and is offered for every broker yes older than the terms window that has no intro yet. Tests for the action's params and the offer list. Commit and push to main with explicit paths (pull --rebase). Never deploy, never start an intro yourself. Report blocked with exactly this ask: \"Deploy mkan (held path actions.ts), then tap Start intro on /monetize for 6041, 5866 and 5882.\" Report intros before and after."
+        },
+        {
+          "task": "r4",
+          "metric": "brokersAsked7",
+          "text": "In ~/mkan: 17 shortlists produced 2 broker asks in 7 days. On the web (13 of 17 chats) the WhatsApp number field and \"Ask the broker\" hide inside each card's bottom sheet (src/components/agent/card-sheet.tsx), and search ranks homes whose broker cannot be asked (no phone, resting, over the cap) as high as reachable ones (search.ts / rank.ts). A broker ask is the first step a tenant takes toward a viewing. (1) Under the first web shortlist add one inline row, \"Check availability — leave your WhatsApp\", that asks for the top pick; (2) rank homes with a reachable broker first, reusing the availability checks; (3) make agentFunnel count conversations, shortlists and asks for real people only (REAL_PERSON in src/lib/monetize/team.ts), so team chats stop inflating it. New strings in en/ar/rw. Tests. Commit and push to main with explicit paths (pull --rebase). Never deploy, never message a person. Done when the tests pass and the funnel excludes the team. Report brokersAsked7 and part.chatsToAsked before and after."
+        },
+        {
+          "task": "r5",
+          "metric": "handoffs",
+          "text": "In ~/mkan: a web tenant who left a number and then writes on WhatsApp starts a fresh chat with no context: \"1\", \"yes\" or \"is it available?\" lose the web shortlist (only a ref: link joins the two, src/components/agent/whatsapp-chat.ts). Web chats outnumber WhatsApp 13 to 4, so this is where most tenants drop. On the first WhatsApp message from a number that has an open web request or a recent web task, continue that web task: same shortlist, same pick numbers, same language. Tests with a made-up number. Commit and push to main with explicit paths (pull --rebase). Never deploy, never message a person. Done when a test shows \"2\" on WhatsApp picks the second home of that number's web shortlist. Report handoffs before and after."
+        },
+        {
+          "task": "r6",
+          "metric": "part.returning",
+          "text": "In ~/mkan: a WhatsApp tenant who got homes and did not pick hears nothing again (part.returning is 0; Abdout asked on 11-08 for one follow-up nudge). A tenant who comes back is a tenant who can still book a viewing this week. Add one daytime nudge (08:00–20:00 Kigali) per chat, 6 hours or more after the shortlist, only when there is no pick, no STOP and no newer message, in en/ar/rw, sent through the outbox with its own label, behind a WaState switch that is OFF by default. Tests for the selection and the text. Commit and push to main with explicit paths (pull --rebase). Never deploy, never turn the switch on, never message a person. Report blocked with exactly this ask: \"Deploy mkan, then switch the quiet-tenant nudge on.\" Report part.returning before and after."
+        },
+        {
+          "task": "r7",
+          "metric": "brokersAsked",
+          "text": "In ~/mkan: 6 no-match tenant requests reached 0 brokers this week: brokers are only asked around after a \"nothing found\" WhatsApp reply and a yes (askAround in src/components/agent/demand.ts); widened results and the web \"notify me\" number never ask. Each of those tenants already wants a home Mkan does not list yet. Offer \"want me to ask brokers around for you?\" under widened WhatsApp results, and run the same ask for a web notify-me number, reusing askAround and demand-pure's broker matching. Put both behind a WaState switch that is OFF by default: this widens broker sends after the 11-01 complaints. Tests. Commit and push to main with explicit paths (pull --rebase). Never deploy, never turn the switch on, never message a person. Report blocked with exactly this ask: \"Abdout: OK to widen broker asks? If yes, deploy mkan and switch ask-around on.\" Report brokersAsked before and after."
+        },
+        {
+          "task": "r8",
+          "metric": "chat.health",
+          "text": "In ~/mkan: cron and Slack failures are silent. cf/worker.js only logs cron results; the broker-requests and intro-sweep routes catch every error and answer 200 (they run expiry, hand-on, nudges, reminders and the intro hand-off); and the slack-failed WaState row is written but never read, so a lost hand-off card is never seen. A silent failure here loses a tenant who was one message from a viewing. Make each cron route record a heartbeat (last ok, last error, in WaState) and make ops/watchdog/worker.js alert, through its GitHub-issue path, on a heartbeat older than twice its schedule and on a fresh slack-failed row. Put the checks in pure functions with tests. Commit and push to main with explicit paths (pull --rebase). Never deploy. Report blocked with exactly this ask: \"Deploy mkan and the watchdog worker.\" Report chat.health before and after."
+        },
+        {
+          "task": "r9",
+          "metric": "failRate",
+          "text": "In ~/mkan: after a restart or a container sleep, a missed tenant message waits for the next backstop tick, up to 60 minutes at night, because nothing runs the outbox at boot (src/instrumentation.ts; ISSUE.md lists it as not done). A tenant who waits an hour often does not come back. Add a Cloudflare-only flag (wrangler.jsonc vars, which reach the container env) and, when it is set, have register() call kickOutbox(\"boot\") about 30 seconds after start; local runs and the smoke test stay unchanged. Test the guard. Commit and push to main with explicit paths (pull --rebase). Never deploy. wrangler.jsonc is a held path: report blocked with exactly this ask: \"Deploy mkan (held path wrangler.jsonc).\" Report failRate before and after."
+        },
+        {
+          "task": "r10",
+          "metric": "evalReader",
+          "text": "In ~/mkan: a home code typed with Arabic-Indic or Persian digits, or with ك or ک for K, is not read (the K-code pattern and the bare-number check in src/components/agent/whatsapp-format.ts and whatsapp-chat.ts take ASCII only), and French or Swahili tenants get English because waLang returns en/ar/rw only. Every unread code is a tenant who asked for a specific home and got nothing. Normalise both digit ranges and the Arabic K before any code or pick is read; let waLang return fr for French messages and serve French from a table that stays behind a review flag (mkan#64: no machine text on the money path), and export that table as a review CSV under docs/i18n. Tests, including new eval cases. Commit and push to main with explicit paths (pull --rebase). Never deploy, never message a person. Report blocked with exactly this ask: \"A French speaker reviews the French CSV, then French replies go on.\" Report evalReader before and after."
+        },
+        {
+          "task": "r11",
+          "metric": "chat.health",
+          "text": "In ~/mkan: WhatsApp senders with a hidden number (@lid) get a #mkan card and never an answer, and a missed one is dropped silently by the poll (src/app/api/whatsapp/hook/[token]/route.ts, wa-outbox.ts). Every unanswered sender is a tenant lost before the first shortlist. Port only the @lid addressing from the 10-25 stash (git stash wip-10-25-prisma7-lid-opennext, also saved as ~/mkan-wip-2026-10-25.patch), leaving out its OpenNext, locks and broker-detection parts, so a @lid sender is answered on the same thread and the poll keeps them. Tests. Commit and push to main with explicit paths (pull --rebase). Never deploy, never re-pair WhatsApp, never message a person. Report blocked with exactly this ask: \"Phone test from a hidden-number WhatsApp account, then deploy mkan.\" Report chat.health before and after."
+        },
+        {
+          "task": "r12",
+          "metric": "openSteps",
+          "text": "In ~/mkan: the Kinyarwanda review sheet docs/i18n/rw-review-2026-11.csv (571 machine-written rows, native column empty) misses the 11-08 tenant lines (STOP, START, late reply, voice note in scripts/wa/tenant-pure.ts) and every new 48-hour, nudge and deal line, and the agent README still says the writer answers in en and ar only (Haiku writes rw since 11-07). Tenants read these lines on the way to a viewing, so they must be right in Kinyarwanda. Regenerate the sheet with every tenant- and broker-facing rw string, mark the new rows, and fix the README. Commit and push to main with explicit paths (pull --rebase). Never deploy. Report blocked with exactly this ask: \"A native Kinyarwanda reader fills the native column.\" Report openSteps before and after."
+        }
+      ]
+    }
+  ]
+}

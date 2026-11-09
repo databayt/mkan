@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { pickActive, shapeSprints, type SprintRow } from "@/lib/monetize/sprint-shape";
 
+import { nextOrder } from "../../scripts/sprint/plan-db";
+
 const d = (s: string) => new Date(s);
 const row = (over: Partial<SprintRow>): SprintRow => ({
   id: "s",
@@ -76,5 +78,12 @@ describe("sprint shaping", () => {
     expect(s.week!.auto).toBe(true);
     expect(s.week!.prompts[0]).toMatchObject({ metric: "chats", baseline: 3, unblockWhen: "brokerSends == gated", blockedAt: "2026-11-03T00:00:00.000Z", retries: 1, auto: true });
     expect(shapeSprints([week], d("2026-11-04")).week!.prompts[0]).toMatchObject({ metric: null, baseline: null, unblockWhen: null, blockedAt: null, retries: 0, auto: false });
+  });
+});
+
+describe("sprint:plan --append", () => {
+  it("starts appended rows one past the highest order the sprint holds", () => {
+    expect(nextOrder([])).toBe(0);
+    expect(nextOrder([{ order: 0 }, { order: 3 }, { order: 1 }])).toBe(4);
   });
 });
