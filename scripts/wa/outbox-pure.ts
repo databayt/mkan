@@ -135,6 +135,8 @@ export const ALERT_LABEL = {
   match: 'tenant-match',
   /** Direct intros (deal-intro.ts): "the broker will connect", the broker's number. */
   intro: 'tenant-intro',
+  /** The 48-hour rule's one nudge (deal-48h.ts). */
+  dealNudge: 'tenant-deal-nudge',
 } as const;
 
 /** A viewing reminder's label: which one, for which visit — the outbox marks the visit when it goes. */

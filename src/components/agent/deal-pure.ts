@@ -548,6 +548,13 @@ export function viewingReminderMessage(lang: DealLang, v: { title: string; label
   return `Reminder: your viewing of "${v.title}" is ${when}. ${v.rep} from Mkan will meet you there.`;
 }
 
+/** The 48-hour rule's one nudge, a day after the broker said yes and the tenant has not named a time. */
+export function dealNudgeMessage(lang: DealLang, title: string, rep: string): string {
+  if (lang === "ar") return `ما زال «${title}» متاحاً. أخبرنا باليوم والساعة المناسبين لك وسيؤكد ${rep} من مكان المعاينة مع الوسيط.`;
+  if (lang === "rw") return `"${title}" iracyahari. Tubwire umunsi n'isaha bikubereye, ${rep} wa Mkan abyemeze na komisiyoneri.`;
+  return `"${title}" is still available. Tell us a day and time that suits you and ${rep} from Mkan will confirm the viewing with the broker.`;
+}
+
 export function afterViewingMessage(lang: DealLang, title: string): string {
   if (lang === "ar") return `كيف كانت معاينة «${title}»؟ أرسل 1 إن أردت أخذه، أو 2 إن لم يناسبك، أو أخبرنا برأيك.`;
   if (lang === "rw") return `Gusura "${title}" byagenze bite? Ohereza 1 niba uyishaka, 2 niba itakunogeye, cyangwa utubwire uko wabibonye.`;

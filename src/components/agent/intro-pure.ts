@@ -37,7 +37,9 @@ export const termsHandOffDue = (askAt: Date, now: Date): boolean => awakeMs(askA
 /** A follow-up's answer is read for this long. */
 export const FOLLOW_UP_TTL_MS = 72 * 3_600_000;
 
-export type FollowUpMark = "tenant-24h" | "tenant-7d" | "broker-7d";
+/** "tenant-48h" is the second try: the 24 h question, asked again once, when nobody answered it. */
+export type TenantMark = "tenant-24h" | "tenant-48h" | "tenant-7d";
+export type FollowUpMark = TenantMark | "broker-7d";
 
 /** Which follow-ups are due for an intro made at `introducedAt` (each goes once). */
 export function dueFollowUps(introducedAt: Date, sent: string[], now: Date): FollowUpMark[] {
@@ -45,6 +47,9 @@ export function dueFollowUps(introducedAt: Date, sent: string[], now: Date): Fol
   const due: FollowUpMark[] = [];
   const has = (m: FollowUpMark) => sent.some((s) => s === m || s.startsWith(`${m}:`));
   if (age >= 24 * 3_600_000 && age < 6 * 86_400_000 && !has("tenant-24h")) due.push("tenant-24h");
+  // Second try (2026-11-09): the 24 h question went, 24 h later nothing came back — ask once more.
+  // An answer (even "not yet") marks `tenant-24h:answered`, so only silence is asked again.
+  if (age >= 48 * 3_600_000 && age < 6 * 86_400_000 && sent.includes("tenant-24h") && !sent.includes("tenant-24h:answered") && !has("tenant-48h")) due.push("tenant-48h");
   if (age >= 7 * 86_400_000 && age < 21 * 86_400_000) {
     if (!has("tenant-7d")) due.push("tenant-7d");
     if (!has("broker-7d")) due.push("broker-7d");
@@ -96,7 +101,12 @@ export function introBrokerMessage(v: { ref: string; title: string; tenants: str
   );
 }
 
-export function followUpTenantMessage(lang: DealLang, mark: "tenant-24h" | "tenant-7d", title: string): string {
+export function followUpTenantMessage(lang: DealLang, mark: TenantMark, title: string): string {
+  if (mark === "tenant-48h") {
+    if (lang === "ar") return `ما زلنا نسأل عن ${title}: هل رأيته؟ ردّ بـ 1 نعم · 2 ليس بعد · 3 لا يناسبني. إن لم يعد يهمّك، ردّ 3 ولن نسألك مجدداً.`;
+    if (lang === "rw") return `Turacyabaza kuri ${title}: wayibonye? Subiza 1 yego · 2 si ubu · 3 ntibimbereye. Niba utacyayishaka, subiza 3 ntituzongera kukubaza.`;
+    return `Checking in once more on ${title}: did you get to see it? Reply 1 yes · 2 not yet · 3 not for me. If you've moved on, reply 3 and we won't ask again.`;
+  }
   if (mark === "tenant-24h") {
     if (lang === "ar") return `هل رأيت ${title}؟ ردّ بـ 1 نعم · 2 ليس بعد · 3 لا يناسبني.`;
     if (lang === "rw") return `Wabonye ${title}? Subiza 1 yego · 2 si ubu · 3 ntibimbereye.`;
@@ -113,7 +123,19 @@ export function followUpBrokerMessage(v: { ref: string; title: string; tenant: s
 
 // ── reading the answers ───────────────────────────────────────────────────
 
-const words = (text: string) => ` ${text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim()} `;
+/**
+ * Lower-cased words only: Arabic marks (tashkeel) dropped so "وقّع" stays one word, Arabic-Indic digits
+ * made ASCII ("١" answers like "1"), and "didn't" / "haven't" read as "did not" / "have not".
+ */
+const words = (text: string) =>
+  ` ${text
+    .toLowerCase()
+    .replace(/\p{M}/gu, "")
+    .replace(/[٠-٩]/g, (ch) => String(ch.charCodeAt(0) - 0x0660))
+    .replace(/n['’]t\b/g, " not")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()} `;
 
 /** Words that agree, in English, Kinyarwanda, French, Arabic and Swahili (Kigali brokers write all of them). */
 const YES_WORDS =
@@ -138,26 +160,52 @@ export function readTermsReply(text: string): "yes" | "no" | null {
 
 export type IntroOutcome = "viewed" | "wait" | "signed" | "lost";
 
-/** The tenant's answer to a follow-up. 24 h: 1 seen · 2 not yet · 3 not for me; 7 days: yes (took it) / no. */
-export function readTenantFollowUp(text: string, mark: "tenant-24h" | "tenant-7d"): IntroOutcome | null {
+// Words, per language. Each is a whole word or phrase between spaces (see `words`); a negation is read
+// before the thing it negates, so "did not sign" is never "sign" and "I signed, no problem" is never "no".
+const ANY_NO = / (?:no|oya|non|لا|ntabwo|hapana) /;
+const NOT_FOR_ME = / (?:not for me|not interested|did not like|do not want|did not take|do not like|found another|ntibimbereye|ntabwo binkwiye|ntabwo nyishaka|ntayifashe|sinkeneye|pas pour moi|لا يناسبني|لا تناسبني|ما ناسبني|ما عجبني) /;
+const NOT_YET = / (?:not yet|not seen|have not seen|did not see|have not been|did not go|have not visited|later|tomorrow|si ubu|ntiragera|ntarayibona|sindayibona|ntabwo ndayibona|ntabwo ndayisura|ntirarabaho|ليس بعد|لم أره|لم اره|لم أذهب|لم اذهب|لاحقا|بكرة|غدا|pas encore|demain) /;
+const SAW_IT = / (?:yes|yeah|yep|yego|ego|saw it|seen it|seen|i saw|saw|visited|went|narayibonye|nayibonye|narayisuye|nayisuye|oui|vu|visité|visite|نعم|رأيته|رأيتها|شفته|شفتها|زرته|زرتها|ايوه|أيوه) /;
+const NOT_SIGNED = / (?:did not|have not|has not|had not|do not|does not|not paid|not done|not rented|not signed|not sign|did not sign|have not signed|not taken|ntarasinya|ntiyasinya|ntibarasinya|ntabwo nasinye|ntabwo twasinye|لم أوقع|لم اوقع|لم يوقع|لم يوقعوا|لم نوقع|pas signé|pas signe) /;
+const SIGNED = / (?:signed|sign|took|taken|take it|rented|done|paid|yes|yego|ego|nasinye|narasinye|twasinye|twarasinye|nayifashe|narayifashe|basinye|yasinye|basinyiye|yasinyiye|asinye|basinyishije|bashyize umukono|oui|signé|signe|loué|نعم|وقعت|وقعنا|وقع|وقعوا|تم التوقيع|استأجرت|استأجرنا|استأجر|ايوه|أيوه) /;
+const WAITING = / (?:not yet|still|soon|later|thinking|tomorrow|si ubu|ntibaragera|bataragera|ntiraraba|ليس بعد|لاحقا|قريبا|pas encore|bientôt|bientot) /;
+
+/** A tenant's "I signed" said on its own, any time: for the tenant's 24 h answer and for deals with no follow-up open. */
+export const saysSigned = (text: string): boolean => {
   const w = words(text);
-  if (mark === "tenant-24h") {
-    if (/^ 1 /.test(w) || / (yes|yego|saw it|seen|i saw|نعم|رأيته) /.test(w)) return "viewed";
-    if (/^ 2 /.test(w) || / (not yet|si ubu|ليس بعد|later) /.test(w)) return "wait";
-    if (/^ 3 /.test(w) || / (not for me|no|oya|ntibimbereye|لا) /.test(w)) return "lost";
+  return SIGNED.test(w) && !NOT_SIGNED.test(w) && !NOT_FOR_ME.test(w) && !NOT_YET.test(w) && / (?:signed|sign|nasinye|narasinye|twasinye|basinye|yasinye|basinyiye|yasinyiye|asinye|وقعت|وقعنا|وقع|وقعوا|signé|signe) /.test(w);
+};
+
+/**
+ * The tenant's answer to a follow-up. 24 h (and its second try): 1 seen · 2 not yet · 3 not for me;
+ * 7 days: yes (took it) / not yet / no. A "signed" counts at either, said unprompted.
+ */
+export function readTenantFollowUp(text: string, mark: TenantMark): IntroOutcome | null {
+  const w = words(text);
+  if (mark !== "tenant-7d") {
+    if (/^ 3 /.test(w) || NOT_FOR_ME.test(w)) return "lost";
+    if (saysSigned(text)) return "signed";
+    if (/^ 2 /.test(w) || NOT_YET.test(w)) return "wait";
+    if (/^ 1 /.test(w) || SAW_IT.test(w)) return "viewed";
+    if (ANY_NO.test(w)) return "lost";
     return null;
   }
-  if (/ (no|oya|not|لا) /.test(w) && !/ not yet /.test(w)) return "lost";
-  if (/ (yes|yego|took|taken|signed|نعم|استأجرت) /.test(w)) return "signed";
+  if (NOT_FOR_ME.test(w)) return "lost";
+  if (NOT_SIGNED.test(w) || NOT_YET.test(w) || WAITING.test(w)) return ANY_NO.test(w) && !NOT_YET.test(w) && !WAITING.test(w) ? "lost" : "wait";
+  if (SIGNED.test(w)) return "signed";
+  if (ANY_NO.test(w)) return "lost";
   return null;
 }
 
 /** The broker's answer to "did they sign?". */
 export function readBrokerFollowUp(text: string): IntroOutcome | null {
   const w = words(text);
-  if (/ (signed|yes|yego|done|paid) /.test(w) && !/ not /.test(w)) return "signed";
-  if (/ (not yet|si ubu|soon|later|still) /.test(w)) return "wait";
-  if (/ (no|oya|lost|cancel|cancelled) /.test(w)) return "lost";
+  // "Not yet" is a wait even with a "no" beside it ("no, not yet"); "did not sign" with a "no" is a no.
+  if (NOT_YET.test(w) || WAITING.test(w)) return "wait";
+  if (NOT_SIGNED.test(w)) return ANY_NO.test(w) ? "lost" : "wait";
+  if (/ (?:lost|cancel|cancelled|canceled|declined|refused|ntibakiriye|ntibabishatse|ألغي|ملغي) /.test(w)) return "lost";
+  if (SIGNED.test(w)) return "signed";
+  if (ANY_NO.test(w)) return "lost";
   return null;
 }
 

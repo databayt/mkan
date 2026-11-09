@@ -44,6 +44,7 @@ import {
   readBrokerFollowUp,
   readRating,
   readTenantFollowUp,
+  saysSigned,
   readTermsReply,
   termsReplyApplies,
   TERMS_ASK_TTL_MS,
@@ -52,9 +53,11 @@ import {
   termsHandOffDue,
   type ConnectionMode,
   type FollowUpMark,
+  type TenantMark,
   type IntroOutcome,
 } from "./intro-pure";
 import type { ShortlistItem } from "./types";
+import { fortyEightSweep } from "./deal-48h";
 import { readState, writeState } from "./wa-state";
 import { postSlackCard, sendMessages } from "./whatsapp";
 
@@ -400,7 +403,7 @@ async function sweepTermsAsk(phone: string, ask: TermsAsk, now: Date, ride: bool
   return true;
 }
 
-const fuTenantLabel = (mark: "tenant-24h" | "tenant-7d", dealId: string) => `tenant-intro-fu-${mark === "tenant-24h" ? "24h" : "7d"}:${dealId}`;
+const fuTenantLabel = (mark: TenantMark, dealId: string) => `tenant-intro-fu-${mark.slice("tenant-".length)}:${dealId}`;
 const fuBrokerLabel = (dealId: string) => `auto-intro-fu:${dealId}`;
 
 /**
@@ -451,6 +454,8 @@ export async function introSweep(now = new Date()): Promise<number> {
   }
   // ── follow-ups ──
   if (!inSendWindow(now)) return n;
+  // The 48-hour rule: nothing at all while its switch is off (deal-48h.ts).
+  n += await fortyEightSweep(now).catch((err) => (console.warn(`[agent] 48 h rule: ${(err as Error).message}`), 0));
   const deals = await db.deal.findMany({
     where: { introducedAt: { not: null, gte: new Date(now.getTime() - 21 * 86_400_000) }, status: { in: ["VIEWING_BOOKED", "VIEWED"] } },
     select: { id: true, listingId: true, taskId: true, tenantPhone: true, introducedAt: true, introFollowUps: true, brokerId: true, broker: { select: { phones: true, whatsapp: true, optOut: true } }, listing: { select: { title: true } } },
@@ -494,11 +499,11 @@ export async function introFollowUpFor(address: string | null | undefined, now =
     orderBy: { sentAt: "desc" },
     select: { label: true },
   });
-  const m = row?.label?.match(/^tenant-intro-fu-(24h|7d):(.+)$/);
+  const m = row?.label?.match(/^tenant-intro-fu-(24h|48h|7d):(.+)$/);
   if (!m) return null;
-  const mark: "tenant-24h" | "tenant-7d" = m[1] === "24h" ? "tenant-24h" : "tenant-7d";
+  const mark = `tenant-${m[1]}` as TenantMark;
   const deal = await db.deal.findUnique({ where: { id: m[2]! }, select: { id: true, status: true, listingId: true, taskId: true, introFollowUps: true, listing: { select: { title: true } } } });
-  if (!deal || deal.introFollowUps.includes(`${mark}:answered`)) return null;
+  if (!deal || deal.introFollowUps.includes(`${mark}:answered`) || (mark === "tenant-48h" && deal.introFollowUps.includes("tenant-24h:answered"))) return null;
   return { deal, mark };
 }
 
@@ -576,7 +581,7 @@ export async function introBrokerUpdate(brokerId: string, phone: string, text: s
   let dealId = fu && newerAsk === 0 ? fu.label!.slice("auto-intro-fu:".length) : null;
   const outcome = readBrokerFollowUp(text);
   // "Signed" said unprompted: the broker's open intro, when there is exactly one.
-  if (!dealId && outcome === "signed" && /sign/i.test(text)) {
+  if (!dealId && outcome === "signed" && saysSigned(text)) {
     const open = await db.deal.findMany({ where: { brokerId, introducedAt: { not: null }, status: { in: ["VIEWING_BOOKED", "VIEWED"] } }, select: { id: true }, take: 2 });
     if (open.length === 1) dealId = open[0]!.id;
   }
