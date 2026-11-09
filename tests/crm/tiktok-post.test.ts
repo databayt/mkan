@@ -28,6 +28,8 @@ import {
   type TextFrame,
   brokerAsk,
   captionFor,
+  captionV2,
+  formatV2On,
   searchCaptionOn,
   asksForFollow,
   FOLLOW_ASK,
@@ -53,6 +55,7 @@ import {
   codePattern,
   POSTS_CEILING,
   refInText,
+  captionMarks,
   refOf,
   timeline,
   waLink,
@@ -146,6 +149,34 @@ describe('pickToday', () => {
   it('puts the district posted least this week first', () => {
     const ledger: Ledger = { K9: { listingId: 9, district: 'Gasabo', queuedAt: daysAgo(2), postedAt: daysAgo(2) } };
     expect(pickToday(rows, ledger, new Set(), 1, NOW)[0].district).not.toBe('Gasabo');
+  });
+});
+
+describe('caption v2 (format v2, 2026-11-09)', () => {
+  const c = captionV2(row({ id: 6527, bedrooms: 2, propertyType: 'Apartment', area: 'Nyamirambo', district: 'Nyarugenge', priceMonth: 700_000, hostSourceId: 'tiktok:ibrahouserent' }), '+250 788 000 000');
+  it('is the shortest English caption: search line, WhatsApp second, credit, two tags', () => {
+    expect(c.split('\n')).toEqual([
+      '2-bedroom apartment, Nyamirambo, RWF 700,000 a month',
+      'WhatsApp +250 788 000 000 and send K6527',
+      'Video: @ibrahouserent',
+      '#kigali #houseforrent',
+    ]);
+  });
+  it('carries no emoji or pictograph', () => {
+    expect(c).not.toMatch(/\p{Extended_Pictographic}/u);
+  });
+  it('still gives the code to refInText and the WhatsApp line to captionMarks', () => {
+    expect(refInText(c)).toBe('K6527');
+    expect(captionMarks(c).waLine).toBe(2);
+  });
+  it('leaves out the credit for a home with no broker, and falls back to the district', () => {
+    const own = captionV2(row({ id: 9, bedrooms: null, propertyType: 'House', area: null, district: 'Gasabo' }), '+250 788 000 000');
+    expect(own.split('\n')).toEqual(['house, Gasabo, RWF 450,000 a month', 'WhatsApp +250 788 000 000 and send K9', '#kigali #houseforrent']);
+  });
+  it('is off unless TIKTOK_FORMAT=v2', () => {
+    expect(formatV2On({})).toBe(false);
+    expect(formatV2On({ TIKTOK_FORMAT: 'v1' })).toBe(false);
+    expect(formatV2On({ TIKTOK_FORMAT: 'v2' })).toBe(true);
   });
 });
 
@@ -608,6 +639,16 @@ describe("only the text added on top of the video is wiped (2026-11-06)", () => 
     );
     const out = addedText(f, { motion: still }).flatMap((x) => x.boxes.map((b) => b.text));
     expect(out).toEqual(["Beautiful home", "Beautiful home"]);
+  });
+
+  it("keeps a place-name sign that moves with the picture, still wipes a caption with rooms and a price (2026-11-09)", async () => {
+    const { addedText } = await import("../../scripts/crm/tiktok-post-pure");
+    const f = frames(
+      [box(0.2, 0.3, "KIGALI HEIGHTS", 0.03, 0.3, 0.95), box(0.4, 0.45, "Rooms available", 0.02, 0.2, 0.9)],
+      [box(0.33, 0.31, "KIGALI HEIGHTS", 0.03, 0.3, 0.95), box(0.52, 0.47, "Rooms available", 0.02, 0.2, 0.9)],
+      [box(0.46, 0.33, "KIGALI HEIGHTS", 0.03, 0.3, 0.95), box(0.1, 0.8, "2 bedrooms 300k Kimironko", 0.03, 0.6, 0.98)],
+    );
+    expect(addedText(f, { motion: moving }).flatMap((x) => x.boxes.map((b) => b.text))).toEqual(["2 bedrooms 300k Kimironko"]);
   });
 
   it("a word glimpsed once while the camera moves is the scene", async () => {

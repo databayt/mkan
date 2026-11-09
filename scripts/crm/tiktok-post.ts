@@ -67,6 +67,8 @@ import {
   pictureRect,
   type Rect,
   captionFor,
+  captionV2,
+  formatV2On,
   asksForFollow,
   captionMarks,
   parseStudioMetrics,
@@ -751,7 +753,9 @@ function reelEncode(mezz: string, out: string): void {
       console.warn(`  … reel profile declined (${String((e as { stderr?: string }).stderr ?? '').trim().split('\n').pop()}) — encoding directly`);
     }
   }
-  ffmpeg(['-i', mezz, '-map', '0:v:0', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-profile:v', 'high', '-maxrate', '8M', '-bufsize', '16M', '-pix_fmt', 'yuv420p', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-c:a', 'aac', '-b:a', '128k', '-ar', '48000', '-movflags', '+faststart', out]);
+  // The reel profile's loudness and 60 s cap, here too (2026-11-09): on a Mac under kun's 10 GiB floor
+  // this fallback is the usual path, and its sound is what plays when the upload's TikTok sound fails.
+  ffmpeg(['-i', mezz, '-t', '60', '-map', '0:v:0', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-profile:v', 'high', '-maxrate', '8M', '-bufsize', '16M', '-pix_fmt', 'yuv420p', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11', '-c:a', 'aac', '-b:a', '128k', '-ar', '48000', '-movflags', '+faststart', out]);
 }
 
 // ── disk + work dirs ─────────────────────────────────────────────────────────
@@ -845,7 +849,7 @@ async function renderOne(r: PostRow, dir: string, phone: string): Promise<{ out:
     const clean = await stripText(ref, made, work);
     const voiced = audioGuard(ref, clean, work);
     reelEncode(voiced.path, out);
-    writeFileSync(join(dir, `${ref}.txt`), captionFor(r, phone));
+    writeFileSync(join(dir, `${ref}.txt`), formatV2On() ? captionV2(r, phone) : captionFor(r, phone));
     return { out, note: `${clean.note}; ${voiced.note}` };
   } finally {
     rmSync(work, { recursive: true, force: true });

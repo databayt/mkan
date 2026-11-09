@@ -412,6 +412,31 @@ export function searchFirstLine(r: PostRow): string {
   return `${art} for rent in ${where}${beds}${formatRwf(r.priceMonth ?? 0).replace('RWF ', '')} RWF a month`;
 }
 
+/**
+ * Format v2 (Abdout, 2026-11-09): the broker's video cleaned of everything added on top (no blur),
+ * Mkan's glass card on it, a trending TikTok sound at upload, and a short caption with no emoji.
+ * OFF unless TIKTOK_FORMAT=v2 — it goes on after he has seen the previews.
+ */
+export const formatV2On = (env: Record<string, string | undefined> = process.env): boolean => env.TIKTOK_FORMAT?.trim() === 'v2';
+
+/**
+ * The v2 caption, English only and no emoji (Abdout picked the shortest, 2026-11-09): what a renter
+ * searches, the WhatsApp line second (lever 8 — it shows before "more"), the broker's credit, two tags.
+ * "send K6527" stays bare: refInText reads it without the quotes.
+ */
+export function captionV2(r: PostRow, whatsapp: string): string {
+  const beds = r.bedrooms ? `${r.bedrooms}-bedroom ` : '';
+  const place = r.area?.trim() || r.district?.trim() || 'Kigali';
+  const broker = brokerHandle(r.hostSourceId);
+  return [
+    `${beds}${kindEn(r)}, ${place}, ${formatRwf(r.priceMonth ?? 0)} a month`,
+    `WhatsApp ${whatsapp} and send ${refOf(r)}`,
+    // The broker agreed to reposts with their name on them: credited here.
+    ...(broker ? [`Video: @${broker}`] : []),
+    '#kigali #houseforrent',
+  ].join('\n');
+}
+
 /** The text pasted under the video: English, one Kinyarwanda line, the ask, hashtags. */
 export function captionFor(
   r: PostRow,
@@ -817,9 +842,15 @@ export function sceneMotion(frames: GrayFrame[], opts: { gw: number; gh: number;
   return (t) => spans.find((s) => t >= s.from - 0.5 && t <= s.to + 0.5)?.motion ?? 'unknown';
 }
 
-/** Words of a rental ad: a line carrying them is the broker's caption wherever it sits. */
+/**
+ * Words of a rental ad: a line carrying them is the broker's caption wherever it sits. Place names,
+ * "kigali", a bare "rent" and "available" are NOT here (2026-11-09): they are on real signs too
+ * ("KIGALI HEIGHTS", "Car rental", "Rooms available"), and text in the scene must never be wiped —
+ * a broker's caption with a place in it is still caught by its price, rooms or ad words, or by
+ * holding still on the screen while the camera moves.
+ */
 const LISTING_TEXT =
-  /\b\d+\s*(?:k|m|rwf|frw|usd|\$)\b|\$\s*\d|\b(?:rwf|frw)\b|\b(?:bed(?:room)?s?|bath(?:room)?s?|for\s+rent|to\s+let|rent|price|deposit|furnished|available|call|whatsapp|dm|inbox|contact|per\s+month|monthly|kigali|kimironko|kicukiro|gasabo|nyarugenge|remera|kacyiru|kibagabaga|gisozi|kanombe|nyarutarama|kimihurura)\b|inzu|ibyumba|icyumba|ikodeshwa|irakodeshwa|amafaranga|ukwezi/i;
+  /\b\d+\s*(?:k|m|rwf|frw|usd|\$)\b|\$\s*\d|\b(?:rwf|frw)\b|\b(?:bed(?:room)?s?|bath(?:room)?s?|for\s+rent|to\s+let|price|deposit|furnished|call|whatsapp|dm|inbox|contact|per\s+month|monthly)\b|inzu|ibyumba|icyumba|ikodeshwa|irakodeshwa|amafaranga|ukwezi/i;
 
 const normText = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 
