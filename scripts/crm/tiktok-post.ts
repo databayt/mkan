@@ -129,7 +129,7 @@ import {
   type PostRow,
 } from './tiktok-post-pure';
 import { cardStills } from './tiktok-v2-card';
-import { CARD, cardLines, cardTint, cleanPlan, fillProblems, glassGraph, luminance, qaProblems, type CleanPlan, type FillReport, type Measure } from './tiktok-v2-pure';
+import { CARD, TAKEN, cardLines, cardTint, cleanPlan, fillProblems, glassGraph, luminance, qaProblems, type CleanPlan, type FillReport, type Measure } from './tiktok-v2-pure';
 
 const argv = (n: string, d = ''): string => {
   const h = process.argv.find((a) => a.startsWith(`--${n}=`));
@@ -637,6 +637,8 @@ async function grayFrames(frames: { t: number; path: string }[]): Promise<GrayFr
 class Rejected extends Error {}
 /** A render that failed for want of the network: it waits for a later slot and is never rejected or retried-out. */
 class Transient extends Error {}
+/** A home whose own video says it is let: rejected, and marked taken (Listing.lostAt) by renderOne. */
+class TakenOnVideo extends Error {}
 
 /**
  * Every burned-in text and logo off a body — nothing of the broker's on our
@@ -664,6 +666,10 @@ async function stripText(ref: string, made: { path: string; dur: number; pic?: R
     }
   };
   let first = await read(made.path, 0, true);
+  // The broker's own text says the home is let ("yabonetse", "taken"): never posted, and off /find
+  // (11-08: K6584 went out with "yabonetse" on it).
+  const takenLine = first.text.flatMap((f) => f.boxes).find((b) => TAKEN.test(b.text ?? ''));
+  if (takenLine) throw new TakenOnVideo(`the video says the home is taken ("${(takenLine.text ?? '').slice(0, 40)}")`);
   let body = { path: made.path, dur: made.dur };
   // Only text added on top of the video is the broker's: a sign or a label in the scene stays
   // (addedText — Abdout, 2026-11-06: "the text which was later added to the video").
@@ -1076,7 +1082,14 @@ async function renderOne(r: PostRow, dir: string, phone: string): Promise<{ out:
     if (!video && r.source === 'TIKTOK') throw new Rejected('the broker video could not be fetched (gone, private, or a photo post)');
     const made = video ?? (await slideshowBody(r, work));
     console.log(`  … ${ref}: ${video ? 'broker video, enhanced' : 'photo slideshow'} (${made.dur.toFixed(1)} s)`);
-    const clean = await stripText(ref, made, work);
+    let clean: Awaited<ReturnType<typeof stripText>>;
+    try {
+      clean = await stripText(ref, made, work);
+    } catch (e) {
+      if (!(e instanceof TakenOnVideo)) throw e;
+      if (!argv('id') && !flag('dry')) await markTaken(r);
+      throw new Rejected(e.message);
+    }
     const voiced = audioGuard(ref, clean, work);
     reelEncode(voiced.path, out);
     writeFileSync(join(dir, `${ref}.txt`), captionFor(r, phone));
