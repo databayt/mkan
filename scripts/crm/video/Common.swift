@@ -255,7 +255,7 @@ struct TextLine {
 /// process is slow and can fail under load (CRImageReaderError): retried for about a minute, then thrown.
 func readText(_ img: CGImage) throws -> [TextLine] {
   let W = Double(img.width), H = Double(img.height)
-  let waits: [Double] = [2, 5, 10, 20, 30]
+  let waits: [Double] = [2, 5, 10, 20, 30, 45]
   var lastError: Error? = nil
   for attempt in 0...waits.count {
     let req = VNRecognizeTextRequest()

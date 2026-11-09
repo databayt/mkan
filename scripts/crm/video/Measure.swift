@@ -174,6 +174,7 @@ func measure(_ o: MeasureOpts) throws {
     ])
   }
 
+  var ocrFrames = 0, ocrFailures = 0
   var f = 0
   while let frame = reader.next() {
     let g = grayOf(frame, w: o.w, h: o.h, factor: half)
@@ -184,7 +185,15 @@ func measure(_ o: MeasureOpts) throws {
     tiny[f] = t
     if f % o.ocrStep == 0 {
       full[f] = frame
-      for line in try readText(cgImage(bgra: frame, w: o.w, h: o.h)) { pending.append(Sighting(f: f, line: line)) }
+      ocrFrames += 1
+      // Vision can fail to start under load (an AI upscale, another Vision job: e5rt error 13). One
+      // unread frame only thins the evidence; too many fail the measure (the caller retries later).
+      do {
+        for line in try readText(cgImage(bgra: frame, w: o.w, h: o.h)) { pending.append(Sighting(f: f, line: line)) }
+      } catch {
+        ocrFailures += 1
+        warn("measure: frame \(f) unread (\(error))")
+      }
     }
     if f % o.regStep == 0 {
       if let lr = lastReg, let a = grays[lr], let h = register(from: a, to: g) {
@@ -226,10 +235,11 @@ func measure(_ o: MeasureOpts) throws {
   }
   for s in pending { evaluate(s, last: count - 1) }
   flushWindow(until: count)
+  if ocrFailures > max(3, ocrFrames / 5) { throw ToolError("text read failed on \(ocrFailures) of \(ocrFrames) frames") }
   try writeJSON([
     "w": o.w, "h": o.h, "fps": o.fps, "frames": count, "ocrStep": o.ocrStep, "regStep": o.regStep,
     "cell": ["div": o.cellDiv, "w": cw, "h": ch],
-    "lines": lines, "motion": motion, "cuts": cuts, "staticWindows": windows,
+    "lines": lines, "motion": motion, "cuts": cuts, "staticWindows": windows, "ocrFrames": ocrFrames, "ocrFailures": ocrFailures,
     "seconds": r3(Date().timeIntervalSince(started)),
   ], to: o.out)
 }
