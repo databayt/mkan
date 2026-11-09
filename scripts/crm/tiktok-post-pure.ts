@@ -219,15 +219,15 @@ const minuteOf = (hhmm: string): number => {
 export const clock = (minute: number): string => `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
 
 /**
- * The upload slots, in minutes of the Kigali day (2026-11-07, "plan B": every ad, at the hours
- * Kigali scrolls). 07:00 is tiktok-post.sh: the morning pick and the first post. 08:30, 12:30 and
- * 13:30 are tiktok-upload-retry.sh. Every 30 minutes from 17:00 to 21:30 is its evening copy,
- * which first adds the 15:00 sweep's ads. 10 of the 14 slots fall in the evening, East Africa's
- * best TikTok hours. install-tiktok-post.sh schedules these same times.
+ * The upload slots, in minutes of the Kigali day. Lever 6 (the 11-07 evening spread) lost its test
+ * on 11-09 (69 views a post against the 139 baseline), so these are the pre-02ef707 slots again:
+ * 07:00 is tiktok-post.sh (the morning pick and the first post), then :30 past every hour from
+ * 08 to 22. 08:30–17:30 is tiktok-upload-retry.sh; 18:30–22:30 is its evening copy, which first
+ * adds the 15:00 sweep's ads. install-tiktok-post.sh schedules these same times.
  */
-export const SLOT_TIMES: readonly number[] = ['07:00', '08:30', '12:30', '13:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30'].map(minuteOf);
-/** Where the evening starts, for the day/evening split of the page's numbers. */
-export const EVENING_FROM = minuteOf('17:00');
+export const SLOT_TIMES: readonly number[] = ['07:00', ...Array.from({ length: 15 }, (_, i) => `${String(8 + i).padStart(2, '0')}:30`)].map(minuteOf);
+/** Where the evening copy starts, for the day/evening split of the page's numbers. */
+export const EVENING_FROM = minuteOf('18:30');
 /**
  * A slot that is behind (the Mac slept, or the vault Chrome was down) catches up by at most this
  * many. Each post is a render (5–16 min) plus an upload (~3 min), and the slot has a 75-minute cap.

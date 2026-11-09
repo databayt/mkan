@@ -763,31 +763,29 @@ describe('slotQuota', () => {
     }
     return { out, posts };
   };
-  it('has 14 slots, 10 of them from 17:00, when Kigali scrolls', () => {
-    expect(SLOT_TIMES.map(clock)).toEqual(['07:00', '08:30', '12:30', '13:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30']);
-    expect(SLOT_TIMES.filter((t) => t >= EVENING_FROM)).toHaveLength(10);
+  it('has the 16 pre-02ef707 slots: 07:00, then :30 past 08–22 (lever 6 rolled back)', () => {
+    expect(SLOT_TIMES.map(clock)).toEqual(['07:00', '08:30', '09:30', '10:30', '11:30', '12:30', '13:30', '14:30', '15:30', '16:30', '17:30', '18:30', '19:30', '20:30', '21:30', '22:30']);
+    expect(SLOT_TIMES.filter((t) => t >= EVENING_FROM)).toHaveLength(5);
   });
-  it('puts most of an 11-home day in the evening, one at a time', () => {
+  it('spreads an 11-home day one at a time from 07:00', () => {
     const { out, posts } = day(11);
     expect(out).toBe(11);
     expect(Math.max(...Object.values(posts))).toBe(1);
-    const evening = Object.entries(posts).filter(([t, q]) => q && at(t) >= EVENING_FROM).length;
-    expect(evening).toBeGreaterThanOrEqual(7);
     expect(posts['07:00']).toBe(1);
   });
   it('spreads a 3-home day through the day, not all in the morning', () => {
     const { posts } = day(3);
-    expect(Object.entries(posts).filter(([, q]) => q).map(([t]) => t)).toEqual(['07:00', '17:00', '19:30']);
+    expect(Object.entries(posts).filter(([, q]) => q).map(([t]) => t)).toEqual(['07:00', '12:30', '17:30']);
   });
-  it('a full 15-home day posts every home by 21:30, never more than two at once', () => {
+  it('a full 15-home day posts every home by 22:30, one a slot but the first', () => {
     const { out, posts } = day(POSTS_CEILING);
     expect(out).toBe(POSTS_CEILING);
-    expect(Math.max(...Object.values(posts))).toBe(2);
+    expect(Math.max(...Object.values(posts))).toBe(1);
   });
   it('a missed day catches up two at a time and still finishes the evening', () => {
-    const { out, posts } = day(12, SLOT_TIMES.filter((t) => t >= EVENING_FROM));
-    expect(out).toBe(12);
-    expect(posts['17:00']).toBe(2);
+    const { out, posts } = day(8, SLOT_TIMES.filter((t) => t >= EVENING_FROM));
+    expect(out).toBe(8);
+    expect(posts['18:30']).toBe(2);
     expect(Math.max(...Object.values(posts))).toBe(2);
   });
   it('posts nothing before the first slot, or once the day is out', () => {
@@ -804,9 +802,9 @@ describe('nextSlotGap / aheadRenders', () => {
   const at = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
   it('measures the minutes to the next slot, none after the last', () => {
     expect(nextSlotGap(at('07:00'))).toBe(90);
-    expect(nextSlotGap(at('13:30'))).toBe(210);
-    expect(nextSlotGap(at('21:00'))).toBe(30);
-    expect(nextSlotGap(at('21:30'))).toBeNull();
+    expect(nextSlotGap(at('13:30'))).toBe(60);
+    expect(nextSlotGap(at('22:00'))).toBe(30);
+    expect(nextSlotGap(at('22:30'))).toBeNull();
   });
   it('renders up to 3 ahead before an hour-long gap, 1 before a half-hour one', () => {
     expect(aheadRenders(90, 10)).toBe(3);

@@ -2,7 +2,7 @@
 # The TikTok page's upload slots, run by the Hermes gateway's cron (no agent, no model).
 # Every ad that went up today, posted when Kigali scrolls (2026-11-07, plan B). 07:00 picks the
 # day's homes and posts the first (tiktok-post.sh). This script is job mkan-tiktok-upload-retry at
-# 08:30, 12:30 and 13:30, and job mkan-tiktok-upload-evening every 30 minutes from 17:00 to 21:30
+# 08:30–17:30, and job mkan-tiktok-upload-evening at 18:30–22:30
 # (the installer bakes SLOT, PICK and the job name into that copy). These are SLOT_TIMES in
 # tiktok-post-pure.ts. Each slot posts its share of the day (tt:upload --spread, slotQuota), then
 # renders ahead for the slots to come (tt:render --ahead), so a post goes out on the minute; it
