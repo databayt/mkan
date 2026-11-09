@@ -359,6 +359,11 @@ export interface PlanOpts {
   minKeep?: number;
   /** A crop may zoom the picture at most this much (the stabiliser adds its own few percent). */
   maxZoom?: number;
+  /**
+   * The most of the frame a fill may clear at once (2026-11-09: a caption over a fifth of the frame
+   * on a walking indoor shot could not be cleared well — parallax — so it is skipped, not tried).
+   */
+  maxFill?: number;
 }
 
 /** A static-map window's cells (base64, one byte each) as rectangles that held still while the scene moved. */
@@ -412,18 +417,25 @@ const unionRect = (a: [number, number, number, number], b: [number, number, numb
   return [x, y, Math.max(a[0] + a[2], b[0] + b[2]) - x, Math.max(a[1] + a[3], b[1] + b[3]) - y];
 };
 
-/** The added text of a track as a region: its plate (or box) padded for the outline/shadow, over its frames. */
+/**
+ * The added text of a track as a region: its plate (or box) — the median of its sightings, edge by
+ * edge, so one sighting whose plate ran into a plain wall or sky does not swell it — padded for the
+ * letters' outline and shadow, over its frames.
+ */
 export function trackRegion(tr: Track, m: Measure): Region {
-  let rect: [number, number, number, number] | null = null;
-  for (const l of tr.lines) {
-    const r = l.looks.plate ?? l.box;
-    // Room for the letters' outline and shadow, not a slab of the picture around a huge word.
-    const p = Math.round(Math.min(28, Math.max(6, 4 + 0.25 * l.box[3])));
-    const pr = pad(r, p, m.w, m.h);
-    rect = rect ? unionRect(rect, pr) : pr;
-  }
+  const rs = tr.lines.map((l) => l.looks.plate ?? l.box);
+  const med = (xs: number[]) => {
+    const a = [...xs].sort((u, v) => u - v);
+    return a[Math.floor(a.length / 2)]!;
+  };
+  const x0 = med(rs.map((r) => r[0])), y0 = med(rs.map((r) => r[1]));
+  const x1 = med(rs.map((r) => r[0] + r[2])), y1 = med(rs.map((r) => r[1] + r[3]));
+  const lineH = med(tr.lines.map((l) => l.box[3]));
+  // Room for the letters' outline and shadow, not a slab of the picture around a huge word.
+  const p = Math.round(Math.min(28, Math.max(6, 4 + 0.25 * lineH)));
+  const rect = pad([x0, y0, x1 - x0, y1 - y0], p, m.w, m.h);
   // From the sample before its first sighting to the sample after its last.
-  return { f0: Math.max(0, tr.f0 - m.ocrStep), f1: Math.min(m.frames - 1, tr.f1 + m.ocrStep), rect: rect!, what: tr.text.slice(0, 40) };
+  return { f0: Math.max(0, tr.f0 - m.ocrStep), f1: Math.min(m.frames - 1, tr.f1 + m.ocrStep), rect, what: tr.text.slice(0, 40) };
 }
 
 /**
@@ -434,7 +446,7 @@ export function trackRegion(tr: Track, m: Measure): Region {
  * out with its shot — scene text is never hidden.
  */
 export function cleanPlan(m: Measure, opts: PlanOpts = {}): CleanPlan {
-  const { minKeep = 8, maxZoom = 1.2 } = opts;
+  const { minKeep = 8, maxZoom = 1.35, maxFill = 0.15 } = opts;
   const why: string[] = [];
   const tracks = trackLines(m);
   const verdicts = tracks.map((t) => ({ t, v: classifyTrack(t, m) }));
@@ -511,8 +523,8 @@ export function cleanPlan(m: Measure, opts: PlanOpts = {}): CleanPlan {
   let top = 0, bottom = 0, ok = true;
   for (const r of left) {
     const [, y, , h] = r.rect;
-    if (y + h <= 0.24 * H) top = Math.max(top, y + h);
-    else if (y >= 0.76 * H) bottom = Math.max(bottom, H - y);
+    if (y + h <= 0.28 * H) top = Math.max(top, y + h);
+    else if (y >= 0.72 * H) bottom = Math.max(bottom, H - y);
     else ok = false;
   }
   if (ok) {
@@ -525,7 +537,9 @@ export function cleanPlan(m: Measure, opts: PlanOpts = {}): CleanPlan {
     }
   }
 
-  // Fill what is left, in place.
+  // Fill what is left, in place — if it is small enough to clear well.
+  const atOnce = Math.max(...keep.flatMap(([a, b]) => [a, (a + b) / 2, b].map((f) => coveredShare(left.filter((r) => f >= r.f0 && f <= r.f1).map((r) => r.rect), W, H))));
+  if (atOnce > maxFill) return { ...base, keep, why: [...why, `added text covers ${Math.round(atOnce * 100)}% of the frame — too much to clear without blur`] };
   return {
     ...base,
     mode: 'fill',
@@ -533,6 +547,17 @@ export function cleanPlan(m: Measure, opts: PlanOpts = {}): CleanPlan {
     masks: left.map((r) => ({ f0: r.f0, f1: r.f1, rects: [r.rect] })),
     why: [...why, `clear ${left.length} region(s) in place: ${left.map((r) => r.what).slice(0, 4).join(' | ')}`],
   };
+}
+
+/** The share of a W × H frame covered by rectangles (their union, on an 8-px grid — overlaps count once). */
+export function coveredShare(rects: [number, number, number, number][], W: number, H: number): number {
+  if (!rects.length) return 0;
+  const g = 8, gw = Math.ceil(W / g), gh = Math.ceil(H / g);
+  const cells = new Uint8Array(gw * gh);
+  for (const [x, y, w, h] of rects) {
+    for (let cy = Math.floor(y / g); cy < Math.min(gh, Math.ceil((y + h) / g)); cy++) for (let cx = Math.floor(x / g); cx < Math.min(gw, Math.ceil((x + w) / g)); cx++) cells[cy * gw + cx] = 1;
+  }
+  return cells.reduce((n, c) => n + c, 0) / (gw * gh);
 }
 
 /** Two tracks are one caption block: on at the same time, stacked, overlapping across. */

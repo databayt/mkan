@@ -942,14 +942,14 @@ function cutVideo(video: string, norm: string, plan: CleanPlan, work: string): s
   return out;
 }
 
-/** Stabilised (a fixed 5% zoom, so the frame never shows its own edge), scaled to 1080×1920, graded. No blur anywhere. */
+/** Stabilised (the least zoom that never shows the frame's own edge, the correction capped so that zoom stays small), scaled to 1080×1920, graded. No blur anywhere. */
 function frameVideo(cut: string, work: string): string {
   const out = join(work, 'body.mp4');
   let stab = '';
   if (hasFilter('vidstabdetect')) {
     const trf = join(work, 'shake.trf');
     ffmpeg(['-i', cut, '-vf', `vidstabdetect=shakiness=5:accuracy=15:result=${trf}`, '-f', 'null', '-']);
-    stab = `vidstabtransform=input=${trf}:smoothing=20:optzoom=0:zoom=5:crop=black,`;
+    stab = `vidstabtransform=input=${trf}:smoothing=20:optzoom=1:maxshift=28:maxangle=0.02,`;
   }
   const grade = 'hqdn3d=1.5:1.5:6:6,deflicker=size=5,eq=contrast=1.05:saturation=1.1:gamma=1.03,colorbalance=rm=0.03:bm=-0.03,unsharp=5:5:0.6:5:5:0';
   ffmpeg(['-i', cut, '-filter_complex', `[0:v]${stab}scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H},${grade},fps=30,setsar=1,format=yuv420p[v]`, '-map', '[v]', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-c:a', 'copy', out]);

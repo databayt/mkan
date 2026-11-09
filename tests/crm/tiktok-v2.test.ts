@@ -189,26 +189,26 @@ describe('the clean plan on real broker videos', () => {
     expect(p.keep.reduce((s, [a, b]) => s + b - a + 1, 0) / m.fps).toBeGreaterThan(40);
   });
 
-  it('clears a seven-line caption block as one region (its inner lines too)', () => {
+  it('a seven-line caption block over a fifth of the frame is skipped, never blurred', () => {
     const p = cleanPlan(fixture('block-plate'));
-    expect(p.mode).toBe('fill');
-    expect(p.masks).toHaveLength(1);
-    const r = p.masks[0]!.rects[0]!;
-    expect(r[1]).toBeLessThanOrEqual(627);
-    expect(r[1] + r[3]).toBeGreaterThanOrEqual(899);
+    expect(p.mode).toBe('skip');
+    expect(p.why.join(' ')).toMatch(/too much to clear without blur/);
   });
 
-  it('clears captions held over the whole video but keeps a sign in the scene', () => {
+  it('a caption plate along the top edge is cropped off (no fill)', () => {
+    const p = cleanPlan(fixture('top-plate'));
+    expect(p.mode).toBe('crop');
+    const [, y, , h] = p.crop!;
+    expect(y).toBeGreaterThanOrEqual(270); // below the plate
+    expect(1280 / h).toBeLessThanOrEqual(1.35);
+  });
+
+  it('skips captions held over the whole video that cover a quarter of it, and still reads the sign as the scene', () => {
     const m = fixture('whole-video-captions');
     const p = cleanPlan(m);
-    expect(p.mode).toBe('fill');
-    expect(p.masks).toHaveLength(2);
-    // The sign is the scene: it gets no mask of its own. (Where the camera pans it under a caption's
-    // area for a moment, the fill restores the real pixels from other frames — the sign included.)
+    expect(p.mode).toBe('skip');
     const sign = trackLines(m).find((t) => /canal/i.test(t.text))!;
     expect(classifyTrack(sign, m).kind).toBe('scene');
-    // Both masks are the two captions (top and bottom bands), none is the sign's.
-    expect(p.masks.map((k) => (k.rects[0]![1] < m.h / 2 ? 'top' : 'bottom')).sort()).toEqual(['bottom', 'top']);
   });
 
   it('cuts the shot with a phone number filmed in the scene, and clears the logo and the price pill', () => {

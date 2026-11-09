@@ -17,10 +17,10 @@ import Foundation
 /// The caption's plate: Vision's box hugs the letters, but a broker's caption often sits on a plain
 /// coloured plate (pink, white, blue) that must go with it. From each side of the box, rows/columns
 /// are added while they stay one plain colour (the plate's, read just outside the box); nil when the
-/// box has no plate (letters straight on the picture). Never more than 1.5 × the line's height out.
+/// box has no plate (letters straight on the picture). Never more than 0.8 × the line's height out.
 func plateRect(_ px: [UInt8], w W: Int, h H: Int, box: Rect) -> Rect? {
   let b = box.clamped(W, H)
-  let maxOut = max(4, Int(Double(b.h) * 1.5))
+  let maxOut = max(4, Int(Double(b.h) * 0.8))
   /// Mean colour and spread of a strip.
   func strip(_ r: Rect) -> (c: (Double, Double, Double), spread: Double)? {
     let rr = r.clamped(W, H)
