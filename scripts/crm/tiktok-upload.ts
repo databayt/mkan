@@ -47,6 +47,7 @@ import { chromium, type Page, type Response } from 'playwright';
 import { postToMkan, recordRun } from './notify';
 import { clock, dayPieces, errorText, kigaliMinute, slotQuota, type Ledger } from './tiktok-post-pure';
 import { ownTikTok } from './tiktok-pure';
+import { parseSoundRow, pickSound, type SoundUse } from './tiktok-v2-pure';
 
 const argv = (n: string, d = ''): string => {
   const h = process.argv.find((a) => a.startsWith(`--${n}=`));
@@ -74,6 +75,8 @@ interface Piece {
   aigc: boolean;
   /** The home's TikTokPost row (tt:pick wrote it into queue.json). */
   postId?: string;
+  /** Format v2 (its <ref>.meta.json says so): it gets a TikTok sound at upload, the original muted. */
+  v2?: boolean;
 }
 
 const readJson = <T>(p: string, d: T): T => (existsSync(p) ? (JSON.parse(readFileSync(p, 'utf8')) as T) : d);
@@ -90,7 +93,8 @@ function todaysPieces(): Piece[] {
     const ref = r.code?.trim() || `K${r.id}`;
     const mp4 = join(DAY, `${ref}.mp4`);
     // A REJECTED render leaves no mp4, so it never gets here.
-    if (existsSync(mp4) && existsSync(join(DAY, `${ref}.txt`))) out.push({ key: ref, mp4, caption: readFileSync(join(DAY, `${ref}.txt`), 'utf8'), aigc: false, postId: r.postId });
+    const meta = readJson<{ format?: string }>(join(DAY, `${ref}.meta.json`), {});
+    if (existsSync(mp4) && existsSync(join(DAY, `${ref}.txt`))) out.push({ key: ref, mp4, caption: readFileSync(join(DAY, `${ref}.txt`), 'utf8'), aigc: false, postId: r.postId, v2: meta.format === 'v2' });
   }
   return out;
 }
@@ -275,9 +279,91 @@ async function postedUrl(p: Page, piece: Piece, seen: Set<string>): Promise<{ ur
   return null;
 }
 
+const SOUNDS = join(DATA, 'sounds.json');
+
+/** The video's length, for a track at least as long. */
+function videoSecs(mp4: string): number {
+  try {
+    return Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', mp4], { encoding: 'utf8' }).trim()) || 30;
+  } catch {
+    return 30;
+  }
+}
+
+/**
+ * Format v2's music (Abdout, 2026-11-09): a trending track from TikTok's Commercial Music Library,
+ * added in Studio's own editor, the broker's audio muted. Learned from the 11-09 probe of the
+ * upload page: Sounds opens a timeline editor; its filter offers "Commercial use"; each row's last
+ * button ("+") adds the track as a second track; the speaker on the video track (.volume-btn)
+ * mutes the original (VolumeUp → VolumeMute); Save returns to the form. Any failure leaves the
+ * editor unsaved and the post goes out with the file's own audio (cleaned, loudness-levelled) —
+ * the result line says so. TIKTOK_SOUND=off skips the step.
+ */
+async function addSound(p: Page, piece: Piece): Promise<string> {
+  if (!piece.v2 || (process.env.TIKTOK_SOUND ?? '').trim() === 'off') return 'file audio';
+  const shot = (name: string) => p.screenshot({ path: join(dirname(piece.mp4), `${piece.key}.${name}.png`) }).catch(() => {});
+  let opened = false;
+  try {
+    await p.getByRole('button', { name: /^sounds$/i }).first().click({ timeout: 30_000 });
+    opened = true;
+    await p.waitForTimeout(4000);
+    const gotIt = p.getByRole('button', { name: /^got it$/i }).first();
+    if (await gotIt.isVisible().catch(() => false)) await gotIt.click();
+    // Only what TikTok licenses for a business's posts.
+    const search = p.getByRole('textbox', { name: /search sounds/i }).first();
+    const box = await search.boundingBox();
+    if (!box) throw new Error('no sound search box');
+    await p.mouse.click(box.x + box.width + 26, box.y + box.height / 2);
+    await p.getByText(/^Commercial use$/).first().click({ timeout: 10_000 });
+    await p.waitForTimeout(2500);
+    await p.keyboard.press('Escape');
+    await p.waitForTimeout(800);
+    const items = p.getByRole('tabpanel').getByRole('listitem');
+    const rows = (await items.allInnerTexts()).map(parseSoundRow);
+    const used = readJson<SoundUse[]>(SOUNDS, []);
+    const i = pickSound(rows, used, videoSecs(piece.mp4));
+    if (i < 0) throw new Error(`no fresh commercial track among ${rows.length}`);
+    const pick = rows[i]!;
+    const row = items.nth(i);
+    await row.hover();
+    await row.getByRole('button').last().click();
+    // The track lands on the timeline as a second track.
+    await p.locator('.volume-btn').nth(1).waitFor({ timeout: 20_000 });
+    // Mute the broker's audio on the video track, and check it took.
+    const videoTrack = p.locator('.volume-btn').first();
+    if (!(await videoTrack.locator('[data-testid="VolumeMute"]').count())) await videoTrack.click();
+    await p.waitForTimeout(800);
+    if (!(await videoTrack.locator('[data-testid="VolumeMute"]').count())) throw new Error('the original audio would not mute');
+    await shot('sound');
+    await p.getByRole('button', { name: /^save$/i }).first().click();
+    await p.locator(EDITOR).first().waitFor({ state: 'visible', timeout: 60_000 });
+    await p.waitForTimeout(2000);
+    used.push({ ref: piece.key, title: pick.title, artist: pick.artist, at: new Date().toISOString() });
+    writeFileSync(SOUNDS, JSON.stringify(used.slice(-500), null, 2));
+    return `sound "${pick.title}" by ${pick.artist}, original muted`;
+  } catch (e) {
+    await shot('sound-failed');
+    if (opened) {
+      // Leave the editor without its changes.
+      const cancel = p.getByRole('button', { name: /^cancel$/i }).first();
+      if (await cancel.isVisible().catch(() => false)) {
+        await cancel.click().catch(() => {});
+        await p.waitForTimeout(1200);
+        const confirm = p.locator('.TUXModal-overlay, [role="dialog"]').getByRole('button', { name: /^(discard|leave|exit|discard changes|don't save)$/i });
+        if (await confirm.first().isVisible().catch(() => false)) await confirm.first().click().catch(() => {});
+      }
+      await p.locator(EDITOR).first().waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {});
+    }
+    return `file audio (the TikTok sound did not take: ${(e as Error).message.split('\n')[0]!.slice(0, 120)})`;
+  }
+}
+
 async function postOne(p: Page, piece: Piece): Promise<{ result: string; url?: string; id?: string }> {
   await openForm(p, piece);
   await p.waitForTimeout(3000);
+  await dismissPrompts(p);
+  // The sound before the caption: Studio's editor may rebuild the form behind it.
+  const sound = await addSound(p, piece);
   await dismissPrompts(p);
   await setCaption(p, piece.caption);
   await dismissPrompts(p);
@@ -290,7 +376,7 @@ async function postOne(p: Page, piece: Piece): Promise<{ result: string; url?: s
   for (let i = 0; i < 60 && (await post.isDisabled().catch(() => true)); i++) await p.waitForTimeout(3000);
   const shot = join(dirname(piece.mp4), `${piece.key}.upload.png`);
   await p.screenshot({ path: shot, fullPage: true });
-  if (dry) return { result: `dry run — filled, not posted (${shot})` };
+  if (dry) return { result: `dry run — filled, not posted (${shot}); ${sound}` };
 
   // Studio's answer to the publish call names the new post: watch for it while Post is clicked.
   const ids = new Set<string>();
@@ -322,7 +408,7 @@ async function postOne(p: Page, piece: Piece): Promise<{ result: string; url?: s
     p.off('response', watch);
   }
   const where = await postedUrl(p, piece, ids);
-  return { result: where ? `posted — ${where.url}` : 'posted (URL not shown yet — tt:stats fills it in)', ...(where ?? {}) };
+  return { result: `${where ? `posted — ${where.url}` : 'posted (URL not shown yet — tt:stats fills it in)'}; ${sound}`, ...(where ?? {}) };
 }
 
 /** The home's TikTokPost row, written without ever stopping the upload. */
@@ -424,7 +510,7 @@ async function main(): Promise<void> {
         }
         if (ledger[piece.key]) ledger[piece.key] = { ...ledger[piece.key]!, postedAt: done[piece.key], ...(r.url ? { url: r.url } : {}) };
         await markRow(piece, { status: 'POSTED', postedAt: new Date(done[piece.key]!), reason: null, ...(r.url ? { tiktokUrl: r.url, tiktokId: r.id } : {}) });
-        lines.push(`• ${piece.key}${r.url ? ` — ${r.url}` : ''}${piece.aigc ? ' (AI label on)' : ''}`);
+        lines.push(`• ${piece.key}${r.url ? ` — ${r.url}` : ''}${piece.aigc ? ' (AI label on)' : ''}${piece.v2 ? ` · ${r.result.split('; ').slice(1).join('; ')}` : ''}`);
       } catch (e) {
         const why = (e as Error).message;
         console.warn(`  ! ${piece.key}: ${why}`);

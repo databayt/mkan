@@ -128,6 +128,8 @@ import {
   type PageVideo,
   type PostRow,
 } from './tiktok-post-pure';
+import { cardStills } from './tiktok-v2-card';
+import { CARD, cardLines, cardTint, cleanPlan, fillProblems, glassGraph, luminance, qaProblems, type CleanPlan, type FillReport, type Measure } from './tiktok-v2-pure';
 
 const argv = (n: string, d = ''): string => {
   const h = process.argv.find((a) => a.startsWith(`--${n}=`));
@@ -447,15 +449,8 @@ function upscale(src: string, dur: number, work: string, info: { w: number; h: n
   return out;
 }
 
-/**
- * The broker's own video, remastered: AI-upscaled (see upscale), stabilised,
- * deflickered, graded to a daylight look, framed to 9:16 (a landscape clip sits
- * on a blurred fill instead of losing its sides). Its own sound stays — taken
- * from the source, since the upscale rebuilds the picture from frames — and its
- * burned-in text and logos come off in renderOne (stripText) on this 9:16 frame.
- * Null when there is no video to get (a photo post, a deleted video).
- */
-async function videoBody(r: PostRow, work: string): Promise<{ path: string; dur: number; pic: Rect } | null> {
+/** The broker's own video file (cached in src/): yt-dlp, else the copy kept at consent. Null when there is none. */
+async function fetchSource(r: PostRow): Promise<string | null> {
   const url = brokerVideoUrl(r);
   if (!url) return null;
   const id = url.split('/').pop()!;
@@ -490,6 +485,20 @@ async function videoBody(r: PostRow, work: string): Promise<{ path: string; dur:
       }
     }
   }
+  return src;
+}
+
+/**
+ * The broker's own video, remastered: AI-upscaled (see upscale), stabilised,
+ * deflickered, graded to a daylight look, framed to 9:16 (a landscape clip sits
+ * on a blurred fill instead of losing its sides). Its own sound stays — taken
+ * from the source, since the upscale rebuilds the picture from frames — and its
+ * burned-in text and logos come off in renderOne (stripText) on this 9:16 frame.
+ * Null when there is no video to get (a photo post, a deleted video).
+ */
+async function videoBody(r: PostRow, work: string): Promise<{ path: string; dur: number; pic: Rect } | null> {
+  const src = await fetchSource(r);
+  if (!src) return null;
   const info = probe(src);
   if (!info || info.dur < 3) return null;
   const dur = Math.min(info.dur, MAX_BODY);
@@ -775,14 +784,23 @@ for (const sig of ['SIGINT', 'SIGTERM'] as const) process.on(sig, () => {
 
 const freeGiB = (): number => Number(execFileSync('df', ['-g', homedir()], { encoding: 'utf8' }).trim().split('\n').pop()!.trim().split(/\s+/)[3]) || 0;
 
-/** Leftover `.work-*` dirs (a run killed mid-render) under every render folder. */
+/**
+ * Leftover `.work-*` dirs (a run killed mid-render) under every render folder — only ones untouched
+ * for 3 h, longer than any render may run (2026-11-09: a slot's cleanup deleted a preview render's
+ * frames while it was reading them; previews and slots run side by side, previews take no lock).
+ */
 function staleWork(): void {
+  const old = Date.now() - 3 * 3_600_000;
   for (const base of [DATA, join(DATA, 'dry')]) {
     if (!existsSync(base)) continue;
     for (const d of readdirSync(base)) {
       const day = join(base, d);
       if (!statSync(day).isDirectory()) continue;
-      for (const w of readdirSync(day)) if (w.startsWith('.work-') && !working.has(join(day, w))) rmSync(join(day, w), { recursive: true, force: true });
+      for (const w of readdirSync(day)) {
+        const path = join(day, w);
+        if (!w.startsWith('.work-') || working.has(path)) continue;
+        if (statSync(path).mtimeMs < old) rmSync(path, { recursive: true, force: true });
+      }
     }
   }
 }
@@ -826,6 +844,211 @@ function ensureDisk(): void {
   if (free < DISK_FLOOR_GIB) throw new Error(`only ${free} GiB free (floor ${DISK_FLOOR_GIB}) — free space before rendering`);
 }
 
+// ── format v2 (Abdout, 2026-11-09): cleaned without blur, Mkan's glass card, a short caption ──────
+//
+// The broker's source is read where its added text sits still (before any stabilising), cleared by
+// the least that works (tiktok-v2-pure.ts cleanPlan: trim, crop, or fill — Apple Vision + LaMa on
+// this Mac, scripts/crm/video), checked again, then framed, graded and given the card. A video that
+// cannot be cleaned is SKIPPED with the reason, never blurred. The music is TikTok's, chosen at upload.
+
+const VIDEO_SRC = join(__dirname, 'video');
+const VIDEO_BIN = join(__dirname, '.data', 'bin', 'mkan-video');
+const LAMA = join(__dirname, '.data', 'models', 'LaMa.mlmodelc');
+
+/** The Swift tool, rebuilt when any of its sources is newer than the binary. */
+function videoTool(): string {
+  const srcs = readdirSync(VIDEO_SRC).filter((f) => f.endsWith('.swift')).map((f) => join(VIDEO_SRC, f));
+  const newest = Math.max(...srcs.map((f) => statSync(f).mtimeMs));
+  if (!existsSync(VIDEO_BIN) || statSync(VIDEO_BIN).mtimeMs < newest) {
+    mkdirSync(dirname(VIDEO_BIN), { recursive: true });
+    const tmp = `${VIDEO_BIN}.${process.pid}`;
+    execFileSync('swiftc', ['-O', '-swift-version', '5', ...srcs, '-o', tmp], { stdio: 'pipe' });
+    renameSync(tmp, VIDEO_BIN);
+  }
+  return VIDEO_BIN;
+}
+
+/** Runs a shell pipeline (ffmpeg | mkan-video | ffmpeg) and fails on any stage. */
+function pipeline(script: string, timeout = 1_800_000): void {
+  try {
+    execFileSync('bash', ['-o', 'pipefail', '-c', script], { stdio: ['ignore', 'pipe', 'pipe'], timeout, maxBuffer: 64 * 1024 * 1024 });
+  } catch (e) {
+    throw new Error(`video step failed: ${String((e as { stderr?: string }).stderr ?? (e as Error).message).trim().split('\n').slice(-3).join(' | ')}`);
+  }
+}
+const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
+
+/** Black or flat borders (a narrower video boxed into 9:16): their crop, from ffmpeg's cropdetect. */
+function borderCrop(src: string, dur: number): string | null {
+  let err = '';
+  try {
+    execFileSync(FF, ['-hide_banner', '-t', String(Math.min(dur, 20)), '-i', src, '-vf', 'cropdetect=limit=24:round=2:reset=0', '-f', 'null', '-'], { stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 });
+  } catch (e) {
+    err = String((e as { stderr?: string }).stderr ?? '');
+  }
+  const all = [...(err || '').matchAll(/crop=(\d+):(\d+):(\d+):(\d+)/g)].map((m) => m[0]);
+  const last = all[all.length - 1];
+  const info = probe(src);
+  if (!last || !info) return null;
+  const [, w, h] = last.match(/crop=(\d+):(\d+)/)!.map(Number);
+  // Only a real border: at least 3% gone on a side.
+  return w! < info.w * 0.94 || h! < info.h * 0.94 ? last : null;
+}
+
+/** The source as the v2 steps want it: borders off, at most MAX_BODY s, a constant 30 fps (frame n = n/30 s). */
+function normalizeSource(src: string, work: string): { path: string; w: number; h: number; dur: number } {
+  const info = probe(src);
+  if (!info || info.dur < 3) throw new Rejected('the broker video is shorter than 3 s or unreadable');
+  if (info.w > info.h) throw new Rejected('a landscape video (v2 posts portrait footage only)');
+  const crop = borderCrop(src, info.dur);
+  const out = join(work, 'norm.mp4');
+  ffmpeg(['-i', src, '-t', String(MAX_BODY), '-vf', `${crop ? `${crop},` : ''}fps=30,setsar=1,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p`, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '10', '-g', '30', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', out]);
+  const n = probe(out)!;
+  return { path: out, w: n.w, h: n.h, dur: n.dur };
+}
+
+function measureVideo(video: string, w: number, h: number, out: string): Measure {
+  pipeline(`${q(FF)} -hide_banner -loglevel error -i ${q(video)} -f rawvideo -pix_fmt bgra - | ${q(videoTool())} measure --w=${w} --h=${h} --fps=30 --out=${q(out)}`);
+  return JSON.parse(readFileSync(out, 'utf8')) as Measure;
+}
+
+/** Clears the plan's masks in place: Vision-registered real pixels first, LaMa last (capped). */
+function fillVideo(norm: string, plan: CleanPlan, w: number, h: number, work: string): { path: string; report: FillReport } {
+  const planFile = join(work, 'fill-plan.json');
+  // The cap on painted (generated) area: Abdout, 2026-11-09 — small areas only, no AI label.
+  writeFileSync(planFile, JSON.stringify({ masks: plan.masks, cuts: plan.cuts, dilate: 4, maxGenFrac: 0.06, window: 90 }));
+  const out = join(work, 'clean.mp4');
+  const report = join(work, 'fill-report.json');
+  const model = existsSync(LAMA) ? ` --model=${q(LAMA)}` : '';
+  pipeline(
+    `${q(FF)} -hide_banner -loglevel error -i ${q(norm)} -f rawvideo -pix_fmt bgra - | ${q(videoTool())} fill --w=${w} --h=${h} --plan=${q(planFile)}${model} --report=${q(report)} | ` +
+      `${q(FF)} -hide_banner -loglevel error -y -f rawvideo -pix_fmt bgra -s ${w}x${h} -r 30 -i - -c:v libx264 -preset veryfast -crf 12 -pix_fmt yuv420p ${q(out)}`,
+  );
+  return { path: out, report: JSON.parse(readFileSync(report, 'utf8')) as FillReport };
+}
+
+/** The kept spans and the crop, at the source's resolution, with the source's sound. */
+function cutVideo(video: string, norm: string, plan: CleanPlan, work: string): string {
+  const out = join(work, 'cut.mp4');
+  const sel = plan.keep.map(([a, b]) => `between(n,${a},${b})`).join('+');
+  const asel = plan.keep.map(([a, b]) => `between(t,${(a / 30).toFixed(3)},${((b + 1) / 30).toFixed(3)})`).join('+');
+  const crop = plan.crop ? `,crop=${plan.crop[2]}:${plan.crop[3]}:${plan.crop[0]}:${plan.crop[1]}` : '';
+  const sound = hasAudio(norm);
+  ffmpeg([
+    '-i', video, ...(sound ? ['-i', norm] : []),
+    '-filter_complex', `[0:v]select='${sel}',setpts=N/30/TB${crop},setsar=1[v]${sound ? `;[1:a]aselect='${asel}',asetpts=N/SR/TB[a]` : ''}`,
+    '-map', '[v]', ...(sound ? ['-map', '[a]'] : []), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '12', '-pix_fmt', 'yuv420p', ...(sound ? ['-c:a', 'aac', '-b:a', '192k'] : []), out,
+  ]);
+  return out;
+}
+
+/** Stabilised (a fixed 5% zoom, so the frame never shows its own edge), scaled to 1080×1920, graded. No blur anywhere. */
+function frameVideo(cut: string, work: string): string {
+  const out = join(work, 'body.mp4');
+  let stab = '';
+  if (hasFilter('vidstabdetect')) {
+    const trf = join(work, 'shake.trf');
+    ffmpeg(['-i', cut, '-vf', `vidstabdetect=shakiness=5:accuracy=15:result=${trf}`, '-f', 'null', '-']);
+    stab = `vidstabtransform=input=${trf}:smoothing=20:optzoom=0:zoom=5:crop=black,`;
+  }
+  const grade = 'hqdn3d=1.5:1.5:6:6,deflicker=size=5,eq=contrast=1.05:saturation=1.1:gamma=1.03,colorbalance=rm=0.03:bm=-0.03,unsharp=5:5:0.6:5:5:0';
+  ffmpeg(['-i', cut, '-filter_complex', `[0:v]${stab}scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H},${grade},fps=30,setsar=1,format=yuv420p[v]`, '-map', '[v]', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-c:a', 'copy', out]);
+  return out;
+}
+
+/** The brightest tenth (luminance 0–1) of the picture where the card will sit, over a few frames. */
+async function underCard(body: string, dur: number, work: string): Promise<number> {
+  const lums: number[] = [];
+  for (const t of [0.2, 0.35, 0.5, 0.65, 0.8].map((k) => k * dur)) {
+    const f = join(work, `under-${t.toFixed(2)}.png`);
+    ffmpeg(['-ss', t.toFixed(2), '-i', body, '-frames:v', '1', '-vf', `crop=${CARD.w}:${CARD.h}:${CARD.x}:${CARD.y},scale=${Math.round(CARD.w / 4)}:${Math.round(CARD.h / 4)}`, f]);
+    const { data, info } = await sharp(f).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+    for (let i = 0; i < data.length; i += info.channels) lums.push(luminance(data[i]!, data[i + 1]!, data[i + 2]!));
+  }
+  lums.sort((a, b) => a - b);
+  return lums[Math.floor(lums.length * 0.9)] ?? 0.5;
+}
+
+/** Before | after at three moments, for a person to see what was removed (and that nothing else was). */
+function qaSheet(norm: string, cut: string, plan: CleanPlan, out: string): void {
+  const first = plan.keep[0]![0] / 30, last = plan.keep[plan.keep.length - 1]![1] / 30;
+  const span = plan.keep.reduce((s, [a, b]) => s + (b - a + 1), 0) / 30;
+  const shots: string[] = [];
+  for (const k of [0.15, 0.5, 0.85]) {
+    const tIn = first + k * (last - first), tOut = k * span;
+    const a = `${out}.a${k}.png`, b = `${out}.b${k}.png`;
+    ffmpeg(['-ss', tIn.toFixed(2), '-i', norm, '-frames:v', '1', '-vf', 'scale=-2:640', a]);
+    ffmpeg(['-ss', tOut.toFixed(2), '-i', cut, '-frames:v', '1', '-vf', 'scale=-2:640', b]);
+    shots.push(a, b);
+  }
+  ffmpeg([...shots.flatMap((f) => ['-i', f]), '-filter_complex', `${shots.map((_, i) => `[${i}:v]`).join('')}hstack=inputs=${shots.length}`, '-q:v', '3', out]);
+  for (const f of shots) rmSync(f, { force: true });
+}
+
+async function renderV2(r: PostRow, dir: string, phone: string, work: string): Promise<{ out: string; note: string }> {
+  const ref = refOf(r);
+  const out = join(dir, `${ref}.mp4`);
+  const t0 = Date.now();
+  const src = await fetchSource(r);
+  if (!src) throw new Rejected(r.source === 'TIKTOK' ? 'the broker video could not be fetched (gone, private, or a photo post)' : 'v2 needs a video (an owner photo slideshow is not in v2 yet)');
+  const norm = normalizeSource(src, work);
+  const m = measureVideo(norm.path, norm.w, norm.h, join(work, 'measure.json'));
+  const plan = cleanPlan(m);
+  const meta: Record<string, unknown> = { format: 'v2', ref, source: src.split('/').pop(), size: [norm.w, norm.h], plan: { mode: plan.mode, keep: plan.keep, crop: plan.crop, masks: plan.masks.length, why: plan.why } };
+  console.log(`  … ${ref}: v2 plan ${plan.mode} — ${plan.why.join('; ')}`);
+  if (plan.taken) {
+    if (!flag('preview') && !argv('id')) await markTaken(r);
+    throw new Rejected('the video says the home is taken');
+  }
+  if (plan.mode === 'skip') throw new Rejected(`cannot be cleaned without blur: ${plan.why.join('; ')}`);
+  let video = norm.path;
+  if (plan.mode === 'fill') {
+    const f = fillVideo(norm.path, plan, norm.w, norm.h, work);
+    meta.fill = f.report;
+    const bad = fillProblems(f.report);
+    console.log(`  … ${ref}: filled ${f.report.maskedFrames} frames (real ${f.report.realPx}, held ${f.report.prevPx}, painted ${f.report.lamaPx} px; seam ${f.report.seamP95}, flicker ${f.report.flickerP95}) in ${f.report.seconds.toFixed(0)} s`);
+    if (bad.length) throw new Rejected(`the fill is not clean enough: ${bad.join('; ')}`);
+    video = f.path;
+  }
+  const cut = cutVideo(video, norm.path, plan, work);
+  // The gate: read the cleaned video again; anything added still on it skips the video.
+  const c = probe(cut)!;
+  const left = qaProblems(measureVideo(cut, c.w, c.h, join(work, 'qa.json')));
+  qaSheet(norm.path, cut, plan, join(dir, `${ref}.qa.jpg`));
+  meta.qa = left;
+  writeFileSync(join(dir, `${ref}.meta.json`), JSON.stringify(meta, null, 2));
+  if (left.length) throw new Rejected(`added text still on it after cleaning: ${left.slice(0, 2).join(' · ')}`);
+  const body = frameVideo(cut, work);
+  const dur = probe(body)?.dur || c.dur;
+  // The card: one ink glass, as dark as the brightest tenth under it needs.
+  const tint = cardTint(await underCard(body, dur, work));
+  const stills = await cardStills(work, cardLines(r, phone), tint);
+  const mezz = join(work, 'carded.mp4');
+  ffmpeg([
+    '-i', body,
+    '-loop', '1', '-i', stills.shadow, '-loop', '1', '-i', stills.dx, '-loop', '1', '-i', stills.dy, '-loop', '1', '-i', stills.mask, '-loop', '1', '-i', stills.face,
+    '-filter_complex', glassGraph({ shadow: 1, dx: 2, dy: 3, mask: 4, face: 5, shadowPad: stills.shadowPad }),
+    '-map', '[v]', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-c:a', 'copy', '-t', String(dur), mezz,
+  ]);
+  const voiced = audioGuard(ref, { path: mezz, dur }, work);
+  reelEncode(voiced.path, out);
+  meta.card = { tint };
+  meta.seconds = Math.round((Date.now() - t0) / 1000);
+  writeFileSync(join(dir, `${ref}.meta.json`), JSON.stringify(meta, null, 2));
+  const note = `v2 ${plan.mode}${plan.mode === 'fill' ? ` (${plan.masks.length} region${plan.masks.length === 1 ? '' : 's'})` : ''}; card tint ${tint}; ${voiced.note}; ${meta.seconds} s`;
+  return { out, note };
+}
+
+/** A home whose own video says it is taken ("yabonetse"): off /find and the TikTok queue for good. */
+async function markTaken(r: PostRow): Promise<void> {
+  try {
+    const { db } = await import('../../src/lib/db');
+    await db.listing.updateMany({ where: { id: r.id, lostAt: null }, data: { lostAt: new Date(), lostReason: 'TAKEN_ON_VIDEO' } });
+  } catch (e) {
+    console.warn(`  … ${refOf(r)}: could not mark it taken (${firstLine(e)})`);
+  }
+}
+
 /**
  * One home → `<dir>/<ref>.mp4` + `<ref>.txt`: the broker's video (an owner's
  * home with no video: its photos) → enhance → every text and logo off → the
@@ -842,6 +1065,13 @@ async function renderOne(r: PostRow, dir: string, phone: string): Promise<{ out:
   mkdirSync(work, { recursive: true });
   working.add(work);
   try {
+    // Format v2: preview renders only (tt:render --id=…) until Abdout has seen them; then the default.
+    if (formatV2On()) {
+      if (!argv('id') && process.env.TIKTOK_V2_LIVE !== '1') throw new Error('format v2 is preview-only until approved (tt:render --id=…)');
+      const v2 = await renderV2(r, dir, phone, work);
+      writeFileSync(join(dir, `${ref}.txt`), captionV2(r, phone));
+      return v2;
+    }
     const video = flag('slideshow') && r.source !== 'TIKTOK' ? null : await videoBody(r, work);
     if (!video && r.source === 'TIKTOK') throw new Rejected('the broker video could not be fetched (gone, private, or a photo post)');
     const made = video ?? (await slideshowBody(r, work));
@@ -849,7 +1079,7 @@ async function renderOne(r: PostRow, dir: string, phone: string): Promise<{ out:
     const clean = await stripText(ref, made, work);
     const voiced = audioGuard(ref, clean, work);
     reelEncode(voiced.path, out);
-    writeFileSync(join(dir, `${ref}.txt`), formatV2On() ? captionV2(r, phone) : captionFor(r, phone));
+    writeFileSync(join(dir, `${ref}.txt`), captionFor(r, phone));
     return { out, note: `${clean.note}; ${voiced.note}` };
   } finally {
     rmSync(work, { recursive: true, force: true });
