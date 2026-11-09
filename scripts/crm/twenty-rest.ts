@@ -43,6 +43,17 @@ async function throttle(): Promise<void> {
   lastCallAt = Date.now();
 }
 
+/**
+ * A failure worth repeating: Twenty's own query timeout (it answers 400 QUERY_READ_TIMEOUT when
+ * its Postgres is busy — the 11-08 directory run died on it, twice), a 5xx, or a dropped
+ * connection. A real 400 (bad field, bad cursor) is NOT transient and stays fatal.
+ */
+export function isTransientTwenty(status: number | null, bodyText: string): boolean {
+  if (status === null) return true; // fetch threw: reset, refused, timeout
+  if (status >= 500) return true;
+  return status === 400 && /QUERY_READ_TIMEOUT|Query read timeout/i.test(bodyText);
+}
+
 export interface TwentyClient {
   rest<T = unknown>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<T>;
   /** Every record of one object type, following Twenty's `startingAfter` pages. */
@@ -78,11 +89,23 @@ export function twentyClient(): TwentyClient {
     attempt = 0
   ): Promise<T> {
     await throttle();
-    const res = await fetch(`${base}/${path}`, {
-      method,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${base}/${path}`, {
+        method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(60_000),
+      });
+    } catch (e) {
+      if (attempt < 4 && isTransientTwenty(null, '')) {
+        const backoff = 5_000 * (attempt + 1);
+        console.warn(`  … ${method} ${path.slice(0, 40)} dropped (${(e as Error).message}) — retry in ${backoff / 1000}s`);
+        await sleep(backoff);
+        return rest<T>(method, path, body, attempt + 1);
+      }
+      throw e;
+    }
     if (res.status === 429 && attempt < 8) {
       const backoff = 15_000 * (attempt + 1);
       console.warn(`  … 429 — waiting ${backoff / 1000}s (attempt ${attempt + 1})`);
@@ -90,6 +113,12 @@ export function twentyClient(): TwentyClient {
       return rest<T>(method, path, body, attempt + 1);
     }
     const json = await res.json().catch(() => ({}));
+    if (!res.ok && attempt < 4 && isTransientTwenty(res.status, JSON.stringify(json))) {
+      const backoff = 10_000 * (attempt + 1);
+      console.warn(`  … ${res.status} transient on ${method} ${path.slice(0, 40)} — retry in ${backoff / 1000}s`);
+      await sleep(backoff);
+      return rest<T>(method, path, body, attempt + 1);
+    }
     if (!res.ok) {
       throw new Error(`REST ${method} ${path} → ${res.status}: ${JSON.stringify(json).slice(0, 200)}`);
     }
