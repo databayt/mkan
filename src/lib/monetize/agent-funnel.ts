@@ -3,7 +3,13 @@
  * AgentEvent rows and broker requests for a window. Shared by the terminal
  * (`pnpm agent:funnel`) and the /monetize page, so both say the same number.
  */
+import { Prisma } from "@prisma/client";
 import { REAL_PERSON } from "./team";
+import { isE2eFixture, E2E_SENDER_PREFIX } from "./e2e-fixture";
+
+/** SQL twin of isE2eFixture: a task whose messages carry a wa:e2e sender id. */
+const E2E_FIXTURE_SQL = Prisma.sql`("messages"::text LIKE ${`%"wa":"${E2E_SENDER_PREFIX}%`})`;
+export { isE2eFixture };
 
 type Db = (typeof import("@/lib/db"))["db"];
 
@@ -72,8 +78,8 @@ export async function agentFunnel(db: Db, days = 7, offsetDays = 0): Promise<Fun
     silent('feedback', { payload: { path: ['kind'], equals: 'bad' } }),
   ]);
   const [tasks, failed, shortlisted, widened, rulesOnly, requests, people] = await Promise.all([
-    db.agentTask.count({ where: { createdAt: { gte: since, lt: until } } }),
-    db.agentTask.count({ where: { createdAt: { gte: since, lt: until }, status: 'FAILED' } }),
+    db.$queryRaw<{ n: number }[]>`SELECT COUNT(*)::int AS n FROM "AgentTask" WHERE "createdAt" >= ${since} AND "createdAt" < ${until} AND NOT ${E2E_FIXTURE_SQL}`.then((r) => r[0]?.n ?? 0),
+    db.$queryRaw<{ n: number }[]>`SELECT COUNT(*)::int AS n FROM "AgentTask" WHERE "createdAt" >= ${since} AND "createdAt" < ${until} AND status = 'FAILED' AND NOT ${E2E_FIXTURE_SQL}`.then((r) => r[0]?.n ?? 0),
     distinctTasks('shortlist_ready'),
     distinctTasks('relaxed', { status: 'done' }),
     // Turns the Groq reader missed (429, timeout) and the rules read alone.
