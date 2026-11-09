@@ -48,6 +48,7 @@ import {
   type DealLang,
   type ShareAgreement,
 } from "./deal-pure";
+import { buildViewingDecision, viewingMarker } from "./viewing-decision";
 import type { ShortlistItem } from "./types";
 import { postSlackCard, sendMessages } from "./whatsapp";
 import { scrubTitle } from "@/lib/redact";
@@ -176,10 +177,44 @@ export async function proposeViewing(ask: ViewingAsk, at: Date, tenant: string, 
       `${viewingRep()}: confirm the time with the broker and ask: ${termsToAsk(shown).join(" · ")}${share ? "" : " · Mkan's share"}. Then\n` +
       `\`pnpm deal:book --task=${ask.taskId} --listing=${ask.listingId} --at=${iso} --place="…"\` + what they said, e.g. \`--advance=3 --deposit=1 --commission=10 --water=yes --power=no --lease=12 --move-in=YYYY-MM-DD${share ? "" : " --share-pct=50"}\``,
   ).catch(() => {});
-  await trace(ask.taskId, "viewing_proposed", "waiting_person", { listingId: ask.listingId, at: iso });
+  const decided = await offerViewingDecision(ask, at, agreed, shown?.period === "month" ? Math.round(shown.headline) : null).catch(() => false);
+  await trace(ask.taskId, "viewing_proposed", "waiting_person", { listingId: ask.listingId, at: iso, decision: decided });
   const value = { ...ask, proposedAt: iso } satisfies ViewingAsk;
   await db.waState.update({ where: { key: askKey(tenant) }, data: { value } }).catch(() => {});
   return viewingProposedMessage(lang, label, viewingRep());
+}
+
+/**
+ * The same viewing as one Yes on /monetize: a blocked prompt in the open sprint plus its `deal.book`
+ * decision (WaState `decision:<promptId>`). A second time from the same chat for the same home moves the
+ * open, unanswered one instead of stacking a second; an answered one is never touched. False when there
+ * is no open sprint or the ask cannot be a valid action — the Slack card above is still the path then.
+ */
+export async function offerViewingDecision(ask: ViewingAsk, at: Date, agreed: ShareAgreement | null, rent: number | null): Promise<boolean> {
+  const d = buildViewingDecision({ taskId: ask.taskId, listingId: ask.listingId, at, agreed, rent });
+  if (!d) return false;
+  const sprint = await db.sprint.findFirst({ where: { status: "active" }, orderBy: { startsAt: "desc" }, select: { id: true } });
+  if (!sprint) return false;
+  const { decisionKey, actionEffect } = await import("@/lib/monetize/actions");
+  const record = (promptId: string) => ({ promptId, ask: d.ask, kind: "deal.book" as const, params: d.params, effect: actionEffect("deal.book", d.params), createdAt: new Date().toISOString() });
+  const open = await db.sprintPrompt.findMany({ where: { sprintId: sprint.id, status: "blocked", text: { startsWith: viewingMarker(ask.taskId, ask.listingId) } }, select: { id: true } });
+  for (const p of open) {
+    const row = await db.waState.findUnique({ where: { key: decisionKey(p.id) }, select: { value: true } });
+    const cur = row?.value as { decision?: string; consumedAt?: string } | null;
+    if (cur && !cur.decision && !cur.consumedAt) {
+      const value = record(p.id);
+      await db.waState.update({ where: { key: decisionKey(p.id) }, data: { value } });
+      return true;
+    }
+  }
+  const now = new Date();
+  const order = await db.sprintPrompt.count({ where: { sprintId: sprint.id } });
+  const p = await db.sprintPrompt.create({
+    data: { sprintId: sprint.id, text: d.text, order, status: "blocked", metric: "viewingsBooked", blockedAt: now, processedAt: now, result: "Waiting for Abdout's Yes on /monetize: the viewing a WhatsApp tenant asked for." },
+  });
+  const value = record(p.id);
+  await db.waState.create({ data: { key: decisionKey(p.id), value } });
+  return true;
 }
 
 type HomeTerms = { depositMonths: number | null; commissionPct: number | null; noCommission: boolean | null; viewingFee: number | null; waterIncluded: boolean | null; electricityIncluded: boolean | null };

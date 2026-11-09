@@ -25,6 +25,10 @@ export interface Funnel {
   asked: number;
   answered: number;
   available: number;
+  /** Chats whose tenant named a time on WhatsApp (viewing_proposed) — a slot the broker path never records. */
+  proposed: number;
+  /** Deals where Mkan introduced tenant and broker directly (Deal.introducedAt) in the window. */
+  intros: number;
   slotChosen: number;
   booked: number;
   /** Who read the typed turns (taps need no reader). */
@@ -50,7 +54,7 @@ export interface Funnel {
 /** All zeros: what the page shows for the chat funnel when its queries fail, instead of a 500. */
 export function emptyFunnel(days: number): Funnel {
   return {
-    days, tasks: 0, people: 0, shortlisted: 0, widened: 0, rulesOnly: 0, failed: 0, asked: 0, answered: 0, available: 0, slotChosen: 0, booked: 0,
+    days, tasks: 0, people: 0, shortlisted: 0, widened: 0, rulesOnly: 0, failed: 0, asked: 0, answered: 0, available: 0, proposed: 0, intros: 0, slotChosen: 0, booked: 0,
     readers: { claude: 0, groq: 0, rules: 0, taps: 0 }, written: 0, spendUsd: 0, capped: false, homesFirst: 0, returning: 0,
     saves: 0, passes: 0, thumbsUp: 0, thumbsDown: 0, demand: { opened: 0, asks: 0, offers: 0, matched: 0, optIns: 0, alerts: 0 },
   };
@@ -94,6 +98,12 @@ export async function agentFunnel(db: Db, days = 7, offsetDays = 0): Promise<Fun
       .then((r) => r[0]?.n ?? 0)
       .catch(() => 0),
   ]);
+  // The WhatsApp path (2026-11-09): slots named in chat and the deals that came of them, which no BrokerRequest row holds.
+  const [proposed, dealRows] = await Promise.all([
+    distinctTasks('viewing_proposed'),
+    db.deal.findMany({ where: { createdAt: { gte: since, lt: until } }, select: { introducedAt: true, taskId: true } }).catch(() => [] as { introducedAt: Date | null; taskId: string | null }[]),
+  ]);
+  const intros = dealRows.filter((d) => d.introducedAt).length;
   // Zeros, not a failed report, on a database without the demand tables yet.
   const demand = await Promise.all([
     db.tenantRequest.count({ where: { createdAt: { gte: since, lt: until } } }),
@@ -118,8 +128,11 @@ export async function agentFunnel(db: Db, days = 7, offsetDays = 0): Promise<Fun
     // without one (respondedAt stays null), and those used to count as answered — and as available.
     answered: requests.filter((r) => r.respondedAt && (r.status === 'AVAILABLE' || r.status === 'RENTED')).length,
     available: requests.filter((r) => r.respondedAt && r.status === 'AVAILABLE').length,
-    slotChosen: requests.filter((r) => r.chosenSlot).length,
-    booked: requests.filter((r) => r.visitId != null).length,
+    proposed,
+    intros,
+    // Never summed with the broker path: one chat can show up in both, so the larger of the two is the floor.
+    slotChosen: Math.max(requests.filter((r) => r.chosenSlot).length, proposed),
+    booked: Math.max(requests.filter((r) => r.visitId != null).length, dealRows.length),
     readers: { claude, groq, rules: rulesOnly, taps },
     written,
     spendUsd: spend.filter((r) => r.lane.startsWith('agent-')).reduce((sum, r) => sum + Number(r.usd), 0),

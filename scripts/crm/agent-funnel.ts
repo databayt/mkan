@@ -14,7 +14,7 @@ import { agentFunnel, type Funnel } from '../../src/lib/monetize/agent-funnel';
 export { agentFunnel, type Funnel };
 
 export const funnelLine = (f: Funnel): string =>
-  `/find, last ${f.days}d: ${f.tasks} conversations, ${f.people} real people (${f.homesFirst} homes-first, ${f.returning} returning) → ${f.shortlisted} shortlists (${f.widened} widened) → ${f.asked} broker asks → ${f.answered} answers (${f.available} available) → ${f.slotChosen} slots → ${f.booked} viewings · ${f.failed} failed` +
+  `/find, last ${f.days}d: ${f.tasks} conversations, ${f.people} real people (${f.homesFirst} homes-first, ${f.returning} returning) → ${f.shortlisted} shortlists (${f.widened} widened) → ${f.asked} broker asks → ${f.answered} answers (${f.available} available) → ${f.slotChosen} slots (${f.proposed} named on WhatsApp) → ${f.booked} viewings (${f.intros} intros) · ${f.failed} failed` +
   ` · read by Claude ${f.readers.claude} / Groq ${f.readers.groq} / rules ${f.readers.rules} / taps ${f.readers.taps} · ${f.written} written` +
   ` · ♥ ${f.saves} · passed ${f.passes} · 👍 ${f.thumbsUp} 👎 ${f.thumbsDown}` +
   ` · no match → ${f.demand.opened} requests → ${f.demand.asks} brokers asked → ${f.demand.offers} homes sent → ${f.demand.matched} matched · ${f.demand.optIns} opted in, ${f.demand.alerts} alerts` +

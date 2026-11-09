@@ -36,8 +36,13 @@ export const ACTIONS = {
       power: yesNo.optional(),
       lease: z.number().int().min(1).max(60).optional(),
       moveIn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      /** Mkan's share, the choice a Yes carries: the agreed % of the broker's commission, a flat RWF a lease, or none for this deal. */
+      sharePct: z.number().gt(0).max(100).optional(),
+      shareRwf: z.number().int().min(1).max(100_000_000).optional(),
+      noShare: z.literal(true).optional(),
     })
-    .strict(),
+    .strict()
+    .refine((p) => [p.sharePct, p.shareRwf, p.noShare].filter((v) => v !== undefined).length <= 1, { message: "one share choice: sharePct, shareRwf or noShare", path: ["sharePct"] }),
   /** pnpm deal:status — how a booked deal ended; PAID with a share writes Mkan's COMMISSION. */
   "deal.status": z
     .object({
@@ -53,7 +58,7 @@ export const ACTIONS = {
 
 export type ActionKind = keyof typeof ACTIONS;
 export const ACTION_KINDS = Object.keys(ACTIONS) as ActionKind[];
-export type ActionParams = Record<string, string | number>;
+export type ActionParams = Record<string, string | number | boolean>;
 
 export function parseAction(kind: string, params: unknown): { ok: true; kind: ActionKind; params: ActionParams } | { ok: false; error: string } {
   if (!(ACTION_KINDS as string[]).includes(kind)) return { ok: false, error: `kind must be one of ${ACTION_KINDS.join(", ")}` };
@@ -62,7 +67,7 @@ export function parseAction(kind: string, params: unknown): { ok: true; kind: Ac
   return { ok: true, kind: kind as ActionKind, params: r.data as ActionParams };
 }
 
-const flag = (name: string, v: string | number | undefined) => (v === undefined ? [] : [`--${name}=${v}`]);
+const flag = (name: string, v: string | number | boolean | undefined) => (v === undefined ? [] : [`--${name}=${v}`]);
 
 /** The pnpm script and its arguments — an argv, never a shell string. */
 export function actionArgv(kind: ActionKind, p: ActionParams): string[] {
@@ -83,6 +88,9 @@ export function actionArgv(kind: ActionKind, p: ActionParams): string[] {
         ...flag("power", p.power),
         ...flag("lease", p.lease),
         ...flag("move-in", p.moveIn),
+        ...flag("share-pct", p.sharePct),
+        ...flag("share-rwf", p.shareRwf),
+        ...(p.noShare ? ["--no-share"] : []),
         "--by=Mkan loop (Abdout's yes)",
       ];
     case "deal.status":
@@ -92,13 +100,21 @@ export function actionArgv(kind: ActionKind, p: ActionParams): string[] {
   }
 }
 
-const rwf = (v: string | number | undefined) => (typeof v === "number" ? `${v.toLocaleString("en-US")} RWF` : null);
+/** Mkan's share as a Yes will record it — said plainly, because it is the choice on the card. */
+function shareWords(p: ActionParams): string | null {
+  if (p.sharePct != null) return `Mkan's share ${p.sharePct}% of the broker's commission`;
+  if (p.shareRwf != null) return `Mkan's share ${Number(p.shareRwf).toLocaleString("en-US")} RWF a lease`;
+  if (p.noShare) return "no share for this deal";
+  return null;
+}
+
+const rwf = (v: string | number | boolean | undefined) => (typeof v === "number" ? `${v.toLocaleString("en-US")} RWF` : null);
 
 /** What a Yes does, in plain words, from the validated params only (shown to Abdout beside the buttons). */
 export function actionEffect(kind: ActionKind, p: ActionParams): string {
   switch (kind) {
     case "deal.book": {
-      const terms = [rwf(p.rent) && `rent ${rwf(p.rent)}`, p.advance != null && `${p.advance} months up front`, p.deposit != null && `deposit ${p.deposit} month(s)`, p.commission != null && `commission ${p.commission}%`, p.moveIn && `move in ${p.moveIn}`]
+      const terms = [rwf(p.rent) && `rent ${rwf(p.rent)}`, p.advance != null && `${p.advance} months up front`, p.deposit != null && `deposit ${p.deposit} month(s)`, p.commission != null && `commission ${p.commission}%`, p.moveIn && `move in ${p.moveIn}`, shareWords(p)]
         .filter(Boolean)
         .join(", ");
       return `Book the viewing of K${p.listing} at ${p.at} Kigali time${p.place ? ` (${p.place})` : ""} for chat …${String(p.task).slice(-6)}, and message the tenant on WhatsApp${terms ? ` — ${terms}` : ""}.`;
